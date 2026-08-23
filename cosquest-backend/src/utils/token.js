@@ -6,9 +6,9 @@ const jwt = require('jsonwebtoken');
  * and POST /api/auth/logout (bumps the user's value, invalidating this token).
  */
 function signToken(userId, tokenVersion) {
-  return jwt.sign({ sub: userId, tokenVersion }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRES_IN || '7d',
-  });
+  // Sessions intentionally have no time-based expiry. They remain valid until
+  // logout increments tokenVersion, which invalidates every previous token.
+  return jwt.sign({ sub: userId, tokenVersion }, process.env.JWT_SECRET);
 }
 
 function verifyToken(token) {

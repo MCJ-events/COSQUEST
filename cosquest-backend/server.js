@@ -1,8 +1,8 @@
 require('dotenv').config();
 
-const path = require('path');
 const express = require('express');
 const cors = require('cors');
+const cookieParser = require('cookie-parser');
 
 const apiRoutes = require('./src/routes');
 const { connectDB } = require('./src/config/db');
@@ -13,13 +13,8 @@ function buildApp() {
 
   app.use(cors());
   app.use(express.json());
-
-  // Serve locally-stored avatar photos (local disk fallback - see README)
-  const uploadDir = path.resolve(process.cwd(), process.env.UPLOAD_DIR || './uploads');
-  app.use(process.env.PUBLIC_UPLOAD_PATH || '/uploads', express.static(uploadDir));
-
-  // Serve the bundled preset-avatar illustrations (see src/models/avatarModel.js)
-  app.use('/avatars', express.static(path.resolve(__dirname, 'public/avatars')));
+  app.use(express.urlencoded({ extended: false })); // Apple OAuth callback uses form_post.
+  app.use(cookieParser(process.env.OAUTH_COOKIE_SECRET || process.env.JWT_SECRET));
 
   app.get('/health', (req, res) => res.json({ ok: true, service: 'cosquest-backend' }));
 

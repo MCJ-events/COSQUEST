@@ -36,16 +36,18 @@ async function identifyUser(req, res, next) {
     }
   }
 
-  const email = req.body?.email || req.query?.email;
-  if (!email) {
+  const identifier = req.body?.identifier || req.body?.email || req.body?.username || req.query?.identifier || req.query?.email || req.query?.username;
+  if (!identifier) {
     return res.status(401).json({
-      error: 'Provide the email you signed up with (before login) or an Authorization Bearer token (after login).',
+      error: 'Provide the email or username you signed up with (before login) or an Authorization Bearer token (after login).',
     });
   }
 
-  const user = await userModel.findByEmail(email);
+  const user = typeof identifier === 'string' && identifier.includes('@')
+    ? await userModel.findByEmail(identifier)
+    : await userModel.findByUsername(identifier);
   if (!user) {
-    return res.status(404).json({ error: 'No account found for that email.' });
+    return res.status(404).json({ error: 'No account found for that email or username.' });
   }
   req.userId = user.id;
   req.user = user;

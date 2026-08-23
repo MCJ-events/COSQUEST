@@ -21,6 +21,8 @@ async function main() {
   const tmpUploadDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cosquest-test-uploads-'));
 
   process.env.MONGODB_URI = mongod.getUri();
+  process.env.NODE_ENV = 'test';
+  process.env.CLOUDINARY_CLOUD_NAME = 'test-cloud'; // no real Cloudinary call in tests
   process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-only-secret-not-for-production';
   process.env.JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1h';
   process.env.PORT = '4111'; // deliberately not 4000, so it can't collide with a real dev server

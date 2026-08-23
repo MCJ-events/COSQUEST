@@ -1,6 +1,7 @@
 const userModel = require('../models/userModel');
 const { isValidAvatarKey } = require('../models/avatarModel');
 const { storeAvatarPhoto } = require('../utils/imageHost');
+const { isValidUsername, normalizeUsername } = require('../utils/validation');
 
 // GET /api/users/me
 function getMe(req, res) {
@@ -12,7 +13,7 @@ async function updateProfile(req, res) {
   const { firstName, lastName, username, age, gender } = req.body;
 
   if (username !== undefined) {
-    if (!/^[a-zA-Z0-9_]{3,20}$/.test(username)) {
+    if (!isValidUsername(username)) {
       return res
         .status(400)
         .json({ error: 'username must be 3-20 characters: letters, numbers, underscore only.' });
@@ -32,7 +33,10 @@ async function updateProfile(req, res) {
   const updated = await userModel.updateUser(req.userId, (user) => {
     if (firstName !== undefined) user.profile.firstName = String(firstName).trim();
     if (lastName !== undefined) user.profile.lastName = String(lastName).trim();
-    if (username !== undefined) user.profile.username = String(username).trim();
+    if (username !== undefined) {
+      user.profile.username = String(username).trim();
+      user.profile.usernameNormalized = normalizeUsername(username);
+    }
     if (age !== undefined) user.profile.age = age === '' || age === null ? null : Number(age);
     if (gender !== undefined) user.profile.gender = String(gender).trim();
   });
@@ -57,6 +61,7 @@ async function setAvatar(req, res) {
   const updated = await userModel.updateUser(req.userId, (user) => {
     user.profile.avatarKey = avatar;
     user.profile.avatarPhotoUrl = null; // picking a preset avatar clears any uploaded photo (mirrors the front-end's pickAv())
+    user.onboarding.avatarChosen = true;
   });
   return res.json({ user: userModel.sanitize(updated) });
 }
@@ -67,9 +72,10 @@ async function uploadAvatarPhoto(req, res) {
     return res.status(400).json({ error: 'No photo uploaded. Send multipart/form-data with a "photo" field.' });
   }
   try {
-    const url = await storeAvatarPhoto(req.file, req);
+    const url = await storeAvatarPhoto(req.file);
     const updated = await userModel.updateUser(req.userId, (user) => {
       user.profile.avatarPhotoUrl = url;
+      user.onboarding.avatarChosen = true;
     });
     return res.json({ user: userModel.sanitize(updated) });
   } catch (err) {

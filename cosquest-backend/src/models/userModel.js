@@ -1,4 +1,5 @@
 const User = require('./User');
+const { normalizeUsername } = require('../utils/validation');
 
 /**
  * Same public function names/signatures as the old JSON-file version (see
@@ -12,12 +13,32 @@ function escapeRegex(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-async function createUser({ email, passwordHash }) {
-  return User.create({ email: email.toLowerCase().trim(), passwordHash });
+async function createUser({ email, username, passwordHash }) {
+  const user = { passwordHash };
+  if (email) user.email = email.toLowerCase().trim();
+  if (username) {
+    user.profile = {
+      username: String(username).trim(),
+      usernameNormalized: normalizeUsername(username),
+    };
+  }
+  return User.create(user);
 }
 
 async function findByEmail(email) {
+  if (typeof email !== 'string' || !email.trim()) return null;
   return User.findOne({ email: email.toLowerCase().trim() });
+}
+
+async function findByUsername(username) {
+  const normalized = normalizeUsername(username);
+  if (!normalized) return null;
+
+  const currentUser = await User.findOne({ 'profile.usernameNormalized': normalized });
+  if (currentUser) return currentUser;
+
+  // Supports usernames assigned before usernameNormalized was introduced.
+  return User.findOne({ 'profile.username': new RegExp(`^${escapeRegex(String(username).trim())}$`, 'i') });
 }
 
 async function findById(id) {
@@ -29,7 +50,15 @@ async function findById(id) {
 }
 
 async function isUsernameTaken(username, excludeUserId) {
-  const query = { 'profile.username': new RegExp(`^${escapeRegex(username)}$`, 'i') };
+  const normalized = normalizeUsername(username);
+  if (!normalized) return false;
+  // The regex also protects accounts created before usernameNormalized existed.
+  const query = {
+    $or: [
+      { 'profile.usernameNormalized': normalized },
+      { 'profile.username': new RegExp(`^${escapeRegex(String(username).trim())}$`, 'i') },
+    ],
+  };
   if (excludeUserId) query._id = { $ne: excludeUserId };
   const existing = await User.findOne(query);
   return Boolean(existing);
@@ -52,7 +81,8 @@ async function updateUser(id, patchFn) {
 function sanitize(user) {
   if (!user) return null;
   const obj = user.toObject ? user.toObject() : user;
-  const { passwordHash, tokenVersion, __v, _id, ...safe } = obj;
+  const { passwordHash, tokenVersion, __v, _id, onboarding, ...safe } = obj;
+  if (safe.profile) delete safe.profile.usernameNormalized;
   safe.id = String(_id);
   return safe;
 }
@@ -60,6 +90,7 @@ function sanitize(user) {
 module.exports = {
   createUser,
   findByEmail,
+  findByUsername,
   findById,
   isUsernameTaken,
   updateUser,

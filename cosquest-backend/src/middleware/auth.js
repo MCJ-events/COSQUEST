@@ -36,4 +36,11 @@ async function requireAuth(req, res, next) {
   }
 }
 
-module.exports = { requireAuth };
+function requireCompletedOnboarding(req, res, next) {
+  if (!req.user?.onboardingComplete) {
+    return res.status(403).json({ error: 'Please complete onboarding before accessing this feature.' });
+  }
+  return next();
+}
+
+module.exports = { requireAuth, requireCompletedOnboarding };

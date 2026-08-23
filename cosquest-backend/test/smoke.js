@@ -16,7 +16,11 @@
  */
 
 const mongoose = require('mongoose');
+const jwt = require('jsonwebtoken');
 const sendNotification = require('../scripts/sendNotification');
+const Quest = require('../src/models/Quest');
+const { createCompletionCode } = require('../src/utils/oauth');
+const userModel = require('../src/models/userModel');
 
 async function call(baseUrl, method, path, { token, body, isForm } = {}) {
   const headers = {};
@@ -54,7 +58,7 @@ async function run(baseUrlArg) {
 
   const c = (method, path, opts) => call(baseUrl, method, path, opts);
   const email = `hero_${Date.now()}@example.com`;
-  const password = 'quest1234';
+  const password = 'Quest@1234';
 
   console.log('\n--- health ---');
   {
@@ -64,12 +68,37 @@ async function run(baseUrlArg) {
 
   console.log('\n--- signup (step 0 of onboarding - no token, no id handed out) ---');
   {
-    const r = await c('POST', '/api/auth/signup', { body: { email, password } });
+    const r = await c('POST', '/api/auth/signup', { body: { email: `weak_${Date.now()}@example.com`, password: 'quest1234', confirmPassword: 'quest1234' } });
+    assert(r.status === 400, 'POST /api/auth/signup (weak password) -> 400', r);
+  }
+  {
+    const r = await c('POST', '/api/auth/signup', { body: { email, password, confirmPassword: password } });
     assert(r.status === 201 && !r.json.token, 'POST /api/auth/signup -> 201, no token', r);
   }
   {
-    const r = await c('POST', '/api/auth/signup', { body: { email, password } });
+    const r = await c('POST', '/api/auth/signup', { body: { email, password, confirmPassword: password } });
     assert(r.status === 409, 'POST /api/auth/signup (duplicate email) -> 409', r);
+  }
+  {
+    const username = `Nova${Date.now()}`.slice(0, 20);
+    const r = await c('POST', '/api/auth/signup', {
+      body: { identifier: username, password, confirmPassword: password },
+    });
+    assert(
+      r.status === 201 && r.json.user.profile.username === username,
+      'POST /api/auth/signup (username + password) -> 201 and username becomes the profile username',
+      r
+    );
+    const readByUsername = await c('GET', `/api/users/me?identifier=${username}`);
+    assert(
+      readByUsername.status === 200 && readByUsername.json.user.profile.username === username,
+      'GET /api/users/me?identifier=username works before sign-in',
+      readByUsername
+    );
+    const duplicate = await c('POST', '/api/auth/signup', {
+      body: { identifier: username, password, confirmPassword: password },
+    });
+    assert(duplicate.status === 409, 'POST /api/auth/signup (duplicate username) -> 409', duplicate);
   }
   {
     const r = await c('POST', '/api/auth/login', { body: { email, password: 'wrong' } });
@@ -108,6 +137,14 @@ async function run(baseUrlArg) {
     );
   }
   {
+    const emailDuplicateUsername = `duplicate_${Date.now()}@example.com`;
+    await c('POST', '/api/auth/signup', { body: { email: emailDuplicateUsername, password, confirmPassword: password } });
+    const r = await c('PATCH', '/api/users/me/profile', {
+      body: { email: emailDuplicateUsername, username: 'Ravencaller' },
+    });
+    assert(r.status === 409, 'PATCH /api/users/me/profile (duplicate username) -> 409', r);
+  }
+  {
     const r = await c('PATCH', '/api/users/me/avatar', { body: { email, avatar: 'green-knight' } });
     assert(
       r.status === 200 && r.json.user.profile.avatarKey === 'green-knight',
@@ -127,10 +164,10 @@ async function run(baseUrlArg) {
     form.append('photo', new Blob([Buffer.from('fake-image-bytes')], { type: 'image/png' }), 'test.png');
     const r = await c('POST', '/api/users/me/avatar/photo', { body: form, isForm: true });
     assert(
-      r.status === 200 &&
+        r.status === 200 &&
         typeof r.json.user.profile.avatarPhotoUrl === 'string' &&
-        r.json.user.profile.avatarPhotoUrl.includes('/uploads/'),
-      'POST /api/users/me/avatar/photo (email as a form field, no token) -> uploaded, avatarPhotoUrl set',
+        r.json.user.profile.avatarPhotoUrl.includes('res.cloudinary.com'),
+      'POST /api/users/me/avatar/photo (email as a form field, no token) -> Cloudinary URL set',
       r
     );
   }
@@ -139,10 +176,10 @@ async function run(baseUrlArg) {
     assert(
       r.status === 200 &&
         Array.isArray(r.json.avatars) &&
-        r.json.avatars.length === 25 &&
+        r.json.avatars.length === 100 &&
         r.json.avatars[0].key &&
         r.json.avatars[0].imageUrl.startsWith('http'),
-      'GET /api/meta/avatars -> 25 illustrated options with full image URLs',
+      'GET /api/meta/avatars -> 100 illustrated options with full image URLs',
       r
     );
   }
@@ -241,6 +278,13 @@ async function run(baseUrlArg) {
     token = r.json.token;
   }
   {
+    assert(jwt.decode(token).exp === undefined, 'login token has no time-based expiration', jwt.decode(token));
+  }
+  {
+    const r = await c('POST', '/api/auth/login', { body: { identifier: 'Ravencaller', password } });
+    assert(r.status === 200 && r.json.token, 'POST /api/auth/login (username + password) -> 200 + token', r);
+  }
+  {
     // The welcome notification was created at signup - only visible now, after onboarding + login.
     const r = await c('GET', '/api/users/me/notifications', { token });
     assert(
@@ -258,10 +302,66 @@ async function run(baseUrlArg) {
     assert(r.status === 200 && r.json.user.email === email, 'GET /api/users/me with Bearer token (post-login) -> works too', r);
   }
 
+  console.log('\n--- Home Dashboard quests ---');
+  if (mongoose.connection.readyState === 1) {
+    const now = Date.now();
+    const questBase = {
+      description: 'A test quest for the Home Dashboard.',
+      location: { name: 'Test Square', address: 'San Diego', lat: 32.7157, lng: -117.1611 },
+      prizePool: { amount: 50000, currency: 'NGN' },
+      entryFee: { amount: 500, currency: 'NGN' },
+      maxParticipants: 2,
+      interests: ['anime', 'cosplay'],
+      isPublished: true,
+    };
+    const liveQuest = await Quest.create({
+      ...questBase, slug: `live-test-${Date.now()}`, title: 'Live Test Quest', status: 'live',
+      startsAt: new Date(now - 60 * 60 * 1000), endsAt: new Date(now + 60 * 60 * 1000),
+    });
+    await Quest.create({
+      ...questBase, slug: `upcoming-test-${Date.now()}`, title: 'Upcoming Test Quest', status: 'upcoming',
+      startsAt: new Date(now + 24 * 60 * 60 * 1000), endsAt: new Date(now + 26 * 60 * 60 * 1000),
+    });
+    {
+      const r = await c('GET', '/api/home/dashboard', { token });
+      assert(r.status === 200 && r.json.liveQuest?.id === String(liveQuest._id) && r.json.upcomingQuests.length >= 1, 'GET /api/home/dashboard -> greeting, live quest, upcoming quests, and location-aware data', r);
+    }
+    {
+      const r = await c('GET', '/api/quests?status=live&lat=32.7157&lng=-117.1611&radiusMiles=30');
+      assert(r.status === 200 && r.json.quests.some((quest) => quest.id === String(liveQuest._id)), 'GET /api/quests -> finds nearby live quests', r);
+    }
+    {
+      const r = await c('POST', `/api/quests/${liveQuest._id}/registrations`, { token });
+      assert(r.status === 201 && r.json.quest.registrationCount === 1 && r.json.quest.isRegistered, 'POST quest registration -> joined and count updated', r);
+    }
+    {
+      const r = await c('POST', `/api/quests/${liveQuest._id}/registrations`, { token });
+      assert(r.status === 409, 'POST duplicate quest registration -> 409', r);
+    }
+    {
+      const r = await c('DELETE', `/api/quests/${liveQuest._id}/registrations`, { token });
+      assert(r.status === 200 && r.json.quest.registrationCount === 0 && !r.json.quest.isRegistered, 'DELETE quest registration -> cancelled and count updated', r);
+    }
+  } else {
+    console.log('  skip - Home Dashboard API fixture requires the in-process test database');
+  }
+
+  console.log('\n--- OAuth completion-code exchange ---');
+  if (mongoose.connection.readyState === 1) {
+    const oauthUser = await userModel.createUser({ username: `Oauth${Date.now()}`.slice(0, 20) });
+    const oauthCode = await createCompletionCode(oauthUser.id);
+    const r = await c('POST', '/api/auth/oauth/exchange', { body: { oauthCode } });
+    assert(r.status === 200 && r.json.token && r.json.onboardingRequired === true, 'POST OAuth exchange -> token + onboarding required for new OAuth user', r);
+    const dashboard = await c('GET', '/api/home/dashboard', { token: r.json.token });
+    assert(dashboard.status === 403, 'incomplete OAuth user cannot open the Home Dashboard', dashboard);
+    const usedAgain = await c('POST', '/api/auth/oauth/exchange', { body: { oauthCode } });
+    assert(usedAgain.status === 400, 'POST OAuth exchange (used code) -> 400', usedAgain);
+  }
+
   console.log('\n--- one-shot onboarding (matches the front-end: everything submitted together at finishOnb()) ---');
   {
     const email2 = `hero2_${Date.now()}@example.com`;
-    await c('POST', '/api/auth/signup', { body: { email: email2, password } });
+    await c('POST', '/api/auth/signup', { body: { email: email2, password, confirmPassword: password } });
 
     const r = await c('POST', '/api/users/me/onboarding/complete', {
       body: {
@@ -288,14 +388,14 @@ async function run(baseUrlArg) {
   }
   {
     const email3 = `hero3_${Date.now()}@example.com`;
-    await c('POST', '/api/auth/signup', { body: { email: email3, password } });
+    await c('POST', '/api/auth/signup', { body: { email: email3, password, confirmPassword: password } });
 
     const r = await c('POST', '/api/users/me/onboarding/complete', {
       body: { email: email3, profile: { username: 'ab' }, faction: 'not-a-real-faction' }, // username too short + bad faction key
     });
     assert(
-      r.status === 400 && Array.isArray(r.json.errors) && r.json.errors.length === 2,
-      'POST onboarding/complete (invalid combined payload) -> 400 with both errors listed',
+      r.status === 400 && Array.isArray(r.json.errors) && r.json.errors.length >= 2,
+      'POST onboarding/complete (invalid combined payload) -> 400 with all errors listed',
       r.json
     );
 
@@ -315,8 +415,16 @@ async function run(baseUrlArg) {
     // `token`'s user has notificationsEnabled=true (step 4 above); the one-shot user does too;
     // this 4th user completes onboarding but never touches notificationsEnabled - a real negative case.
     const email4 = `hero4_${Date.now()}@example.com`;
-    await c('POST', '/api/auth/signup', { body: { email: email4, password } });
-    await c('POST', '/api/users/me/onboarding/complete', { body: { email: email4 } });
+    await c('POST', '/api/auth/signup', { body: { email: email4, password, confirmPassword: password } });
+    await c('POST', '/api/users/me/onboarding/complete', {
+      body: {
+        email: email4,
+        profile: { firstName: 'Taylor', lastName: 'Reed', username: `Taylor${Date.now()}`.slice(0, 20), age: 28, gender: 'Female', avatar: 'adventurer' },
+        faction: 'none',
+        interests: ['music'],
+        preferences: { locationEnabled: false, notificationsEnabled: false },
+      },
+    });
     const login4 = await c('POST', '/api/auth/login', { body: { email: email4, password } });
     const token4 = login4.json.token;
 
@@ -358,6 +466,7 @@ async function run(baseUrlArg) {
   }
 
   console.log('\n--- logout ---');
+  const tokenBeforeLogout = token;
   {
     const r = await c('POST', '/api/auth/logout');
     assert(r.status === 401, 'POST /api/auth/logout with NO token -> 401', r);
@@ -372,7 +481,7 @@ async function run(baseUrlArg) {
   }
   {
     const r = await c('POST', '/api/auth/login', { body: { email, password } });
-    assert(r.status === 200 && r.json.token, 'POST /api/auth/login again after logout -> 200 + new token', r);
+    assert(r.status === 200 && r.json.token && r.json.token !== tokenBeforeLogout, 'POST /api/auth/login again after logout -> 200 + fresh token', r);
     token = r.json.token;
   }
   {

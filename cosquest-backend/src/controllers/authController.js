@@ -2,6 +2,7 @@ const bcrypt = require('bcryptjs');
 const userModel = require('../models/userModel');
 const notificationModel = require('../models/notificationModel');
 const { signToken } = require('../utils/token');
+const { isValidEmail, isValidUsername, passwordError } = require('../utils/validation');
 
 const WELCOME_MESSAGE =
   "🎉 Welcome to CosQuest! 🥷✨ Your account is officially live. This is your new home for everything you love — real-world quests, your faction, your people, all in one place. 🗺️💜 So glad you're here — let's go make some legendary memories. 🏆";
@@ -21,22 +22,39 @@ const WELCOME_MESSAGE =
  */
 
 async function signup(req, res) {
-  const { email, password } = req.body;
+  const { email, username, identifier, password, confirmPassword } = req.body;
+  const signUpIdentifier = identifier || email || username;
 
-  if (!email || !password) {
-    return res.status(400).json({ error: 'email and password are required.' });
+  if (!signUpIdentifier || !password || confirmPassword === undefined) {
+    return res.status(400).json({ error: 'email or username, password, and confirmPassword are required.' });
   }
-  if (password.length < 6) {
-    return res.status(400).json({ error: 'password must be at least 6 characters.' });
+  if (password !== confirmPassword) {
+    return res.status(400).json({ error: 'password and confirmPassword must match.' });
+  }
+  if (!isValidEmail(signUpIdentifier) && !isValidUsername(signUpIdentifier)) {
+    return res.status(400).json({ error: 'Provide a valid email address or a username with 3-20 letters, numbers, or underscores.' });
+  }
+  const invalidPassword = passwordError(password);
+  if (invalidPassword) {
+    return res.status(400).json({ error: invalidPassword });
   }
 
-  const existing = await userModel.findByEmail(email);
+  const registeringWithEmail = isValidEmail(signUpIdentifier);
+  const existing = registeringWithEmail
+    ? await userModel.findByEmail(signUpIdentifier)
+    : await userModel.findByUsername(signUpIdentifier);
   if (existing) {
-    return res.status(409).json({ error: 'An account with this email already exists.' });
+    return res.status(409).json({
+      error: registeringWithEmail ? 'An account with this email already exists.' : 'That username is already taken.',
+    });
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
-  const user = await userModel.createUser({ email, passwordHash });
+  const user = await userModel.createUser({
+    email: registeringWithEmail ? signUpIdentifier : undefined,
+    username: registeringWithEmail ? undefined : signUpIdentifier,
+    passwordHash,
+  });
 
   // Their first-ever notification - can't actually be seen until login
   // succeeds (which now requires onboarding to be complete first), regardless
@@ -46,23 +64,29 @@ async function signup(req, res) {
   // No token here on purpose - signup only creates the account. A token is
   // only ever issued at login, and only once onboarding is complete.
   return res.status(201).json({
-    message: 'Account created. Complete onboarding using your email, then log in.',
+    message: 'Account created. Complete onboarding using your email or username, then log in.',
     user: userModel.sanitize(user),
   });
 }
 
 async function login(req, res) {
-  const { email, password } = req.body;
+  const { email, username, identifier, password } = req.body;
+  const signInIdentifier = identifier || email || username;
 
-  if (!email || !password) {
-    return res.status(400).json({ error: 'email and password are required.' });
+  if (!signInIdentifier || !password) {
+    return res.status(400).json({ error: 'email or username, and password, are required.' });
   }
 
-  const user = await userModel.findByEmail(email);
+  const user = isValidEmail(signInIdentifier)
+    ? await userModel.findByEmail(signInIdentifier)
+    : await userModel.findByUsername(signInIdentifier);
   if (!user) {
     return res.status(401).json({ error: 'Invalid email or password.' });
   }
 
+  if (!user.passwordHash) {
+    return res.status(401).json({ error: 'This account uses social sign-in. Continue with its original provider.' });
+  }
   const match = await bcrypt.compare(password, user.passwordHash);
   if (!match) {
     return res.status(401).json({ error: 'Invalid email or password.' });

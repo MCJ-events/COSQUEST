@@ -1,5 +1,15 @@
 # CosQuest Backend — API
 
+If this backend already has a MongoDB database from before username-only registration was added, run `npm run migrate:username-signup` once before deploying. It safely updates the unique email index so multiple accounts without an email are allowed.
+
+Login sessions do not expire on a timer. They stay active until the user logs out, at which point every previous token for that account is invalidated; the next sign-in issues a fresh token.
+
+Preset avatar images are delivered only from Cloudinary; `GET /api/meta/avatars` returns their Cloudinary URLs. User-uploaded profile photos also go only to `CLOUDINARY_PROFILE_PHOTO_FOLDER` (currently `cosquest/cosquest profile-photos`). Files are written to disk briefly while received, then deleted after Cloudinary upload—this backend does not serve or retain local avatar images.
+
+### Google and Apple OAuth
+
+OAuth starts in the browser at `GET /api/auth/oauth/google` or `GET /api/auth/oauth/apple`. After provider verification, the backend redirects to `OAUTH_SUCCESS_REDIRECT_URL` with a short-lived `oauthCode`; the frontend must immediately send that code to `POST /api/auth/oauth/exchange` to receive the usual CosQuest token. First-time OAuth users are sent through onboarding (`onboardingRequired: true`). Configure the `GOOGLE_OAUTH_*`, `APPLE_OAUTH_*`, `OAUTH_SUCCESS_REDIRECT_URL`, and `OAUTH_COOKIE_SECRET` values in `.env` before using either button. Apple requires a public HTTPS callback URL.
+
 Signup is just step 0 of one continuous onboarding process, not a separate thing. There's no token yet at that point, and no server-generated id is handed out as a stand-in credential either - so every onboarding-step endpoint below accepts either the plain `email` you signed up with **or** a Bearer token — whichever you have. **Login itself refuses to issue a token until onboarding is complete** — so onboarding has to be finished, identified by `email`, before login will ever succeed.
 
 ## Endpoints
@@ -7,8 +17,8 @@ Signup is just step 0 of one continuous onboarding process, not a separate thing
 ### Auth
 | Method | Path | Auth | Body | Notes |
 |---|---|---|---|---|
-| POST | `/api/auth/signup` | public, rate-limited | `{ email, password }` | 409 if email taken; password ≥ 6 chars; 10 req / 15 min / IP, else 429 |
-| POST | `/api/auth/login` | public, rate-limited | `{ email, password }` | 401 on bad credentials; **403 if `onboardingComplete` is still false**; 10 req / 2 hours / IP, else 429 |
+| POST | `/api/auth/signup` | public, rate-limited | `{ identifier, password, confirmPassword }` | `identifier` may be a unique email or username. A username becomes the profile username automatically; password must be 8+ characters with uppercase, lowercase, number, and special character; 10 req / 15 min / IP, else 429 |
+| POST | `/api/auth/login` | public, rate-limited | `{ identifier, password }` (or legacy `{ email, password }`) | `identifier` may be the email or username; 401 on bad credentials; **403 if `onboardingComplete` is still false**; 10 req / 2 hours / IP, else 429 |
 | POST | `/api/auth/logout` | Bearer token | — | bumps `tokenVersion`, invalidating this (and every other) existing token |
 
 ### Step 1 — Profile (identify with `email` in the body/query before login, or a Bearer token after)
@@ -17,9 +27,9 @@ Signup is just step 0 of one continuous onboarding process, not a separate thing
 | GET | `/api/users/me` | — (`?email=` or Bearer) | full current user (no `passwordHash`) |
 | PATCH | `/api/users/me/profile` | `{ email, firstName, lastName, username, age, gender }` | all fields optional/independent; username 3-20 chars `[a-zA-Z0-9_]`, must be unique; age 13-120 |
 | GET | `/api/users/check-username?username=&email=` | — | `{ available: boolean }` |
-| PATCH | `/api/users/me/avatar` | `{ email, avatar }` | `avatar` is a key from `GET /api/meta/avatars` (25 illustrated characters); clears any uploaded photo |
+| PATCH | `/api/users/me/avatar` | `{ email, avatar }` | `avatar` is a key from `GET /api/meta/avatars` (100 illustrated characters); clears any uploaded photo |
 | POST | `/api/users/me/avatar/photo` | multipart: `photo` file + `email` field | jpeg/png/webp/gif, 5MB max |
-| GET | `/api/meta/avatars` | — (public) | the 25 illustrated avatar options (`key`, `label`, `imageUrl`) |
+| GET | `/api/meta/avatars` | — (public) | the 100 illustrated avatar options (`key`, `label`, `imageUrl`) |
 
 ### Step 2 — Faction
 | Method | Path | Body | Notes |
@@ -39,7 +49,7 @@ Signup is just step 0 of one continuous onboarding process, not a separate thing
 | PATCH | `/api/users/me/preferences/location` | `{ email, locationEnabled, radiusMiles, lat, lng }` | radius 5-100; lat -90..90; lng -180..180; any subset of fields |
 | PATCH | `/api/users/me/preferences/notifications` | `{ email, notificationsEnabled }` | |
 | POST | `/api/users/me/devices` | `{ email, pushToken, platform }` | platform: `"ios" \| "android" \| "web"`; dedupes by token |
-| POST | `/api/users/me/onboarding/complete` | `{ email }` alone, or `{ email, profile, faction, interests, preferences }` | `email`-only: just flags onboarding done. With the extra fields: validates + saves everything in one atomic call (nothing saved if any field is invalid), matching the front-end's `finishOnb()` one-shot submit, then flags it done. **Login won't succeed until this has run.** |
+| POST | `/api/users/me/onboarding/complete` | `{ email }` alone, or `{ email, profile, faction, interests, preferences }` | Requires a completed profile, avatar/photo, faction, at least one interest, location choice, and notification choice. One-shot submissions are atomic: nothing is saved if anything is invalid. **Login won't succeed until this has run.** |
 
 ### Notifications (in-app inbox — Bearer token only, i.e. after login)
 | Method | Path | Body | Notes |
@@ -48,6 +58,12 @@ Signup is just step 0 of one continuous onboarding process, not a separate thing
 | PATCH | `/api/users/me/notifications/read` | — | marks all of this user's unread notifications as read |
 
 Every signup automatically creates one welcome notification for that account - since it's only reachable with a Bearer token, and login won't hand one out until onboarding is done, this is the very first thing they see right after their first successful login. Beyond that, sending a notification is done separately, via `npm run notify -- "message"` (see below) - there's no admin/broadcast endpoint yet, only a script, and it only reaches users who have `notificationsEnabled` on.
+
+### Home Dashboard and quests
+
+The Home Dashboard is available after login with `GET /api/home/dashboard` (Bearer token required). It returns the greeting/profile data, unread-notification count, closest live quest, nearby upcoming quests, and the user's registration state. Quests can also be listed with `GET /api/quests`, viewed with `GET /api/quests/:questId`, joined with `POST /api/quests/:questId/registrations`, and cancelled with `DELETE /api/quests/:questId/registrations` (the join/cancel calls require a Bearer token).
+
+Run `npm run seed` to create or update the three sample Lagos quests used by the dashboard. Their location, card limits, titles, prices, capacity, and schedule settings are in `.env`; use [.env.example](.env.example) as the safe configuration reference. The seed command upserts only its named sample quests and does not remove existing data.
 
 ## Usage examples (curl)
 
@@ -61,7 +77,7 @@ EMAIL="alex@gmail.com"
 ```bash
 curl -s -X POST $BASE_URL/api/auth/signup \
   -H "Content-Type: application/json" \
-  -d "{\"email\":\"$EMAIL\",\"password\":\"quest1234\"}"
+  -d "{\"identifier\":\"$EMAIL\",\"password\":\"Quest@1234\",\"confirmPassword\":\"Quest@1234\"}"
 ```
 
 ```json
@@ -76,7 +92,7 @@ curl -s -X POST $BASE_URL/api/auth/signup \
 ```bash
 curl -s -X POST $BASE_URL/api/auth/login \
   -H "Content-Type: application/json" \
-  -d "{\"email\":\"$EMAIL\",\"password\":\"quest1234\"}"
+  -d "{\"identifier\":\"$EMAIL\",\"password\":\"Quest@1234\",\"confirmPassword\":\"Quest@1234\"}"
 ```
 
 ```json
@@ -136,7 +152,7 @@ curl -s -X POST $BASE_URL/api/users/me/onboarding/complete \
 ```bash
 TOKEN=$(curl -s -X POST $BASE_URL/api/auth/login \
   -H "Content-Type: application/json" \
-  -d "{\"email\":\"$EMAIL\",\"password\":\"quest1234\"}" | node -pe "JSON.parse(require('fs').readFileSync(0)).token")
+  -d "{\"email\":\"$EMAIL\",\"password\":\"Quest@1234\"}" | node -pe "JSON.parse(require('fs').readFileSync(0)).token")
 ```
 
 **Success (200):**
@@ -155,7 +171,7 @@ TOKEN=$(curl -s -X POST $BASE_URL/api/auth/login \
 
 **Native PowerShell** (not git-bash):
 ```powershell
-$body = '{"email":"alex@gmail.com","password":"quest1234"}'
+$body = '{"email":"alex@gmail.com","password":"Quest@1234"}'
 Invoke-RestMethod -Uri http://localhost:6893/api/auth/login -Method Post -ContentType "application/json" -Body $body
 ```
 

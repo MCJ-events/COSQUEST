@@ -2,6 +2,7 @@ const userModel = require('../models/userModel');
 const { isValidFactionKey } = require('../models/factionModel');
 const { isValidInterestKey } = require('../models/interestModel');
 const { isValidAvatarKey } = require('../models/avatarModel');
+const { isValidUsername, normalizeUsername } = require('../utils/validation');
 
 /**
  * Onboarding step 4 ("Find quests near you"). The front-end has two fake
@@ -18,6 +19,9 @@ const { isValidAvatarKey } = require('../models/avatarModel');
 async function updateLocationPrefs(req, res) {
   const { locationEnabled, radiusMiles, lat, lng } = req.body;
 
+  if (locationEnabled !== undefined && typeof locationEnabled !== 'boolean') {
+    return res.status(400).json({ error: 'locationEnabled must be a boolean.' });
+  }
   if (radiusMiles !== undefined) {
     const n = Number(radiusMiles);
     if (!Number.isFinite(n) || n < 5 || n > 100) {
@@ -36,6 +40,7 @@ async function updateLocationPrefs(req, res) {
     if (radiusMiles !== undefined) user.preferences.radiusMiles = Number(radiusMiles);
     if (lat !== undefined) user.preferences.lastKnownLocation.lat = Number(lat);
     if (lng !== undefined) user.preferences.lastKnownLocation.lng = Number(lng);
+    if (locationEnabled !== undefined) user.onboarding.locationPreferenceChosen = true;
   });
 
   return res.json({ user: userModel.sanitize(updated) });
@@ -47,8 +52,12 @@ async function updateNotificationPrefs(req, res) {
   if (notificationsEnabled === undefined) {
     return res.status(400).json({ error: 'notificationsEnabled (boolean) is required.' });
   }
+  if (typeof notificationsEnabled !== 'boolean') {
+    return res.status(400).json({ error: 'notificationsEnabled must be a boolean.' });
+  }
   const updated = await userModel.updateUser(req.userId, (user) => {
     user.preferences.notificationsEnabled = Boolean(notificationsEnabled);
+    user.onboarding.notificationPreferenceChosen = true;
   });
   return res.json({ user: userModel.sanitize(updated) });
 }
@@ -80,16 +89,15 @@ async function registerDevice(req, res) {
  * first, and if anything is invalid, NOTHING is saved and onboardingComplete
  * stays false - there's no partial-onboarding state left behind.
  *
- * Every section is optional (an empty body just marks onboardingComplete
- * true), so this also still supports doing steps individually beforehand
- * via the other step 1-4 endpoints and calling this last, bodyless, to finish.
+ * Clients may submit every step at once or save each step independently.
+ * Either way, completion is allowed only after every required choice exists.
  */
 async function completeOnboarding(req, res) {
   const { profile, faction, interests, preferences } = req.body;
   const errors = [];
 
   if (profile?.username !== undefined) {
-    if (!/^[a-zA-Z0-9_]{3,20}$/.test(profile.username)) {
+    if (!isValidUsername(profile.username)) {
       errors.push('profile.username must be 3-20 characters: letters, numbers, underscore only.');
     } else if (await userModel.isUsernameTaken(profile.username, req.userId)) {
       errors.push('That username is already taken.');
@@ -121,12 +129,51 @@ async function completeOnboarding(req, res) {
       errors.push('preferences.radiusMiles must be a number between 5 and 100.');
     }
   }
+  if (preferences?.locationEnabled !== undefined && typeof preferences.locationEnabled !== 'boolean') {
+    errors.push('preferences.locationEnabled must be a boolean.');
+  }
+  if (preferences?.notificationsEnabled !== undefined && typeof preferences.notificationsEnabled !== 'boolean') {
+    errors.push('preferences.notificationsEnabled must be a boolean.');
+  }
   if (preferences?.lat !== undefined && (preferences.lat < -90 || preferences.lat > 90)) {
     errors.push('preferences.lat must be between -90 and 90.');
   }
   if (preferences?.lng !== undefined && (preferences.lng < -180 || preferences.lng > 180)) {
     errors.push('preferences.lng must be between -180 and 180.');
   }
+
+  const nextProfile = {
+    firstName: profile?.firstName !== undefined ? String(profile.firstName).trim() : req.user.profile.firstName,
+    lastName: profile?.lastName !== undefined ? String(profile.lastName).trim() : req.user.profile.lastName,
+    username: profile?.username !== undefined ? String(profile.username).trim() : req.user.profile.username,
+    age: profile?.age !== undefined ? profile.age : req.user.profile.age,
+    gender: profile?.gender !== undefined ? String(profile.gender).trim() : req.user.profile.gender,
+  };
+  const nextFaction = faction !== undefined ? faction : req.user.faction;
+  const nextInterests = interests !== undefined ? interests : req.user.interests;
+  const avatarChosen = req.user.onboarding?.avatarChosen || profile?.avatar !== undefined;
+  const locationPreferenceChosen =
+    req.user.onboarding?.locationPreferenceChosen || preferences?.locationEnabled !== undefined;
+  const notificationPreferenceChosen =
+    req.user.onboarding?.notificationPreferenceChosen || preferences?.notificationsEnabled !== undefined;
+
+  if (!nextProfile.firstName) errors.push('profile.firstName is required.');
+  if (!nextProfile.lastName) errors.push('profile.lastName is required.');
+  if (!isValidUsername(nextProfile.username)) {
+    errors.push('profile.username is required and must be 3-20 characters: letters, numbers, underscore only.');
+  }
+  const nextAge = Number(nextProfile.age);
+  if (!Number.isInteger(nextAge) || nextAge < 13 || nextAge > 120) {
+    errors.push('profile.age is required and must be a whole number between 13 and 120.');
+  }
+  if (!nextProfile.gender) errors.push('profile.gender is required.');
+  if (!avatarChosen) errors.push('Choose an avatar or upload a profile photo before completing onboarding.');
+  if (!nextFaction || !isValidFactionKey(nextFaction)) errors.push('Choose a faction before completing onboarding.');
+  if (!Array.isArray(nextInterests) || nextInterests.length === 0) {
+    errors.push('Choose at least one interest before completing onboarding.');
+  }
+  if (!locationPreferenceChosen) errors.push('Choose whether to enable location before completing onboarding.');
+  if (!notificationPreferenceChosen) errors.push('Choose whether to enable notifications before completing onboarding.');
 
   if (errors.length) {
     return res.status(400).json({ error: errors.join(' '), errors });
@@ -137,21 +184,25 @@ async function completeOnboarding(req, res) {
       if (profile.firstName !== undefined) user.profile.firstName = String(profile.firstName).trim();
       if (profile.lastName !== undefined) user.profile.lastName = String(profile.lastName).trim();
       if (profile.username !== undefined) user.profile.username = String(profile.username).trim();
+      if (profile.username !== undefined) user.profile.usernameNormalized = normalizeUsername(profile.username);
       if (profile.age !== undefined) user.profile.age = profile.age === '' || profile.age === null ? null : Number(profile.age);
       if (profile.gender !== undefined) user.profile.gender = String(profile.gender).trim();
       if (profile.avatar !== undefined) {
         user.profile.avatarKey = profile.avatar;
         user.profile.avatarPhotoUrl = null; // matches pickAv()'s behavior in the front-end
+        user.onboarding.avatarChosen = true;
       }
     }
     if (faction !== undefined) user.faction = faction;
     if (interests !== undefined) user.interests = [...new Set(interests)];
     if (preferences) {
       if (preferences.locationEnabled !== undefined) user.preferences.locationEnabled = Boolean(preferences.locationEnabled);
+      if (preferences.locationEnabled !== undefined) user.onboarding.locationPreferenceChosen = true;
       if (preferences.radiusMiles !== undefined) user.preferences.radiusMiles = Number(preferences.radiusMiles);
       if (preferences.lat !== undefined) user.preferences.lastKnownLocation.lat = Number(preferences.lat);
       if (preferences.lng !== undefined) user.preferences.lastKnownLocation.lng = Number(preferences.lng);
       if (preferences.notificationsEnabled !== undefined) user.preferences.notificationsEnabled = Boolean(preferences.notificationsEnabled);
+      if (preferences.notificationsEnabled !== undefined) user.onboarding.notificationPreferenceChosen = true;
     }
     user.onboardingComplete = true;
   });

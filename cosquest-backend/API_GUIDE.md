@@ -4,15 +4,19 @@ Base URL: `http://localhost:6893` (match your `.env`'s `PORT`). Every response b
 
 Signup is just step 0 of one continuous onboarding process, not a separate thing - there's no token yet at that point, and no server-generated id is handed out as a stand-in credential either. So every Step 1-4 endpoint below accepts **either** the plain `email` you signed up with (in the body/query) **or** an `Authorization: Bearer <token>` header - whichever you have. **Login itself refuses to issue a token until `onboardingComplete` is true**, so onboarding has to be finished (via `email`) before login will ever succeed. Once you're logged in, the Bearer token works on all the same endpoints too, e.g. for editing faction/interests later.
 
+Registration requires a unique, valid email address. Usernames are required during the profile step and are also unique without regard to letter case (for example, `Hero` and `hero` cannot both exist). Passwords must be at least eight characters and include an uppercase letter, lowercase letter, number, and special character.
+
 ## Auth
 
 **POST** `/api/auth/signup`
 ```json
 {
-  "email": "alex@gmail.com",
-  "password": "quest1234"
+  "identifier": "alex@gmail.com",
+  "password": "Quest@1234",
+  "confirmPassword": "Quest@1234"
 }
 ```
+`identifier` can instead be a username such as `Ravencaller`. When a username is used here, it is automatically saved as the profile username; it can later be edited from the user's profile.
 Response — note there's **no token here**, and `id` is what every onboarding call below needs:
 ```json
 {
@@ -46,11 +50,11 @@ Response — note there's **no token here**, and `id` is what every onboarding c
 ```
 Signup also creates one welcome notification for the account automatically (unconditional - it doesn't wait for the `notificationsEnabled` preference, since that isn't chosen until onboarding step 4). It's only reachable with a Bearer token, and login won't hand one out until onboarding is done - so it's the very first thing they see right after their first successful login.
 
-**POST** `/api/auth/login` — this is the only place a token is ever issued
+**POST** `/api/auth/login` — this is the only place a token is ever issued. Send the email or username in `identifier`; the legacy `email` field remains supported.
 ```json
 {
-  "email": "alex@gmail.com",
-  "password": "quest1234"
+  "identifier": "Ravencaller",
+  "password": "Quest@1234"
 }
 ```
 **Success (200)** — only happens once `onboardingComplete` is `true`:
@@ -260,13 +264,13 @@ Response:
 }
 ```
 
-**GET** `/api/meta/avatars` — public, no body (25 illustrated characters, not emoji - each `key` is what you send to `PATCH /api/users/me/avatar`)
-Response (truncated to 2 of 25 for brevity):
+**GET** `/api/meta/avatars` — public, no body (100 illustrated characters, not emoji - each `key` is what you send to `PATCH /api/users/me/avatar`)
+Response (truncated to 2 of 100 for brevity):
 ```json
 {
   "avatars": [
-    { "key": "adventurer", "label": "Adventurer", "imageUrl": "http://localhost:6893/avatars/avatar-01.png" },
-    { "key": "sky-guardian", "label": "Sky Guardian", "imageUrl": "http://localhost:6893/avatars/avatar-02.png" }
+    { "key": "adventurer", "label": "Adventurer", "imageUrl": "https://res.cloudinary.com/your-cloud/image/upload/example.png" },
+    { "key": "sky-guardian", "label": "Sky Guardian", "imageUrl": "https://res.cloudinary.com/your-cloud/image/upload/example.png" }
   ]
 }
 ```
@@ -524,7 +528,7 @@ Two ways to call this, both valid, both identified by `email` (no token exists y
 }
 ```
 
-Every section besides `email` is optional, and every field is validated exactly like its individual endpoint (username format/uniqueness, valid faction key, valid interest keys, valid avatar key, radius/lat/lng ranges) - but as **one atomic unit**: if anything is invalid, the whole call fails and **nothing is saved**, `onboardingComplete` stays `false` (so login keeps refusing too). (`avatar` maps to `avatarKey`; the photo upload stays its own separate multipart endpoint since a file can't ride along in this JSON body.)
+Every field is validated exactly like its individual endpoint (username format/uniqueness, valid faction key, valid interest keys, valid avatar key, radius/lat/lng ranges). Completion additionally requires first name, last name, username, age, gender, an avatar or photo, a faction, at least one interest, and an explicit location and notification choice. The submission is **one atomic unit**: if anything is invalid, nothing is saved, `onboardingComplete` stays `false`, and login keeps refusing too. (`avatar` maps to `avatarKey`; the photo upload stays its own separate multipart endpoint since a file can't ride along in this JSON body.)
 
 Response (same either way - the full user, now onboarded, ready to log in):
 ```json

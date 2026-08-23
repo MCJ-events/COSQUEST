@@ -7,6 +7,8 @@ const interestRoutes = require('./interestRoutes');
 const preferencesRoutes = require('./preferencesRoutes');
 const notificationRoutes = require('./notificationRoutes');
 const metaRoutes = require('./metaRoutes');
+const questRoutes = require('./questRoutes');
+const homeRoutes = require('./homeRoutes');
 
 const router = express.Router();
 
@@ -17,5 +19,7 @@ router.use('/', interestRoutes); // /api/interests, /api/users/me/interests
 router.use('/users', preferencesRoutes); // /api/users/me/preferences/*, devices, onboarding/complete
 router.use('/users', notificationRoutes); // /api/users/me/notifications
 router.use('/meta', metaRoutes); // /api/meta/avatars
+router.use('/', questRoutes); // /api/quests
+router.use('/home', homeRoutes); // /api/home/dashboard
 
 module.exports = router;
