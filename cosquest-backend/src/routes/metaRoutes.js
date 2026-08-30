@@ -2,6 +2,7 @@ const express = require('express');
 const { AVATARS } = require('../models/avatarModel');
 const CLOUDINARY_AVATAR_PUBLIC_IDS = require('../data/cloudinaryAvatarPublicIds');
 const { cloudinaryImageUrl } = require('../utils/cloudinary');
+const { PROFILE_CATEGORIES } = require('../models/profileCategoryModel');
 
 const router = express.Router();
 
@@ -20,5 +21,8 @@ router.get('/avatars', (req, res) => {
   }));
   return res.json({ avatars });
 });
+
+// GET /api/meta/profile-categories (public) - the searchable category picker.
+router.get('/profile-categories', (req, res) => res.json({ categories: PROFILE_CATEGORIES }));
 
 module.exports = router;

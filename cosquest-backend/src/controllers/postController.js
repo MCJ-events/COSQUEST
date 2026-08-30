@@ -1,0 +1,259 @@
+const fs = require('fs');
+const mongoose = require('mongoose');
+const Post = require('../models/Post');
+const PostLike = require('../models/PostLike');
+const PostComment = require('../models/PostComment');
+const userModel = require('../models/userModel');
+const { storePostMedia, deletePostMedia } = require('../utils/imageHost');
+
+const POST_TYPES = ['image', 'reel', 'thought'];
+const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+const VIDEO_TYPES = ['video/mp4', 'video/quicktime', 'video/webm'];
+
+function parseLimit(value, fallback = 20) {
+  const limit = Number(value);
+  return Number.isInteger(limit) && limit > 0 ? Math.min(limit, 50) : fallback;
+}
+
+function parsePage(value) {
+  const page = Number(value);
+  return Number.isInteger(page) && page > 0 ? Math.min(page, 1000) : 1;
+}
+
+function cleanUpLocalFiles(files) {
+  for (const file of files || []) {
+    if (file?.path) fs.unlink(file.path, () => {});
+  }
+}
+
+function authorPreview(author) {
+  return {
+    id: String(author._id),
+    username: author.profile.username,
+    name: [author.profile.firstName, author.profile.lastName].filter(Boolean).join(' ') || author.profile.username,
+    avatarKey: author.profile.avatarKey,
+    avatarPhotoUrl: author.profile.avatarPhotoUrl,
+    faction: author.faction,
+  };
+}
+
+function serializePost(post) {
+  const item = post.toObject ? post.toObject() : post;
+  return {
+    id: String(item._id),
+    type: item.type,
+    content: item.content,
+    media: item.media,
+    likeCount: item.likeCount,
+    commentCount: item.commentCount,
+    createdAt: item.createdAt,
+    updatedAt: item.updatedAt,
+    author: item.author?.profile ? authorPreview(item.author) : undefined,
+  };
+}
+
+function validatePostInput(type, content, files) {
+  if (!POST_TYPES.includes(type)) return 'type must be image, reel, or thought.';
+  if (typeof content !== 'string') return 'content must be text.';
+  if (type === 'thought' && (!content.trim() || content.trim().length > 300)) {
+    return 'A thought must contain 1 to 300 characters.';
+  }
+  if (type !== 'thought' && content.trim().length > 2200) return 'Post captions must be at most 2,200 characters.';
+  if (type === 'thought' && files.length) return 'Thoughts cannot include media.';
+  if (type === 'image') {
+    if (files.length < 1 || files.length > 8) return 'An image post must contain between 1 and 8 images.';
+    if (files.some((file) => !IMAGE_TYPES.includes(file.mimetype) || file.size > 10 * 1024 * 1024)) {
+      return 'Each post image must be JPEG, PNG, WEBP, or GIF and no larger than 10MB.';
+    }
+  }
+  if (type === 'reel') {
+    if (files.length !== 1 || !VIDEO_TYPES.includes(files[0].mimetype)) {
+      return 'A reel must contain exactly one MP4, MOV, or WEBM video.';
+    }
+  }
+  return null;
+}
+
+async function loadPost(postId) {
+  if (!mongoose.isValidObjectId(postId)) return null;
+  return Post.findById(postId).populate('author', 'profile.username profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl faction');
+}
+
+async function createPost(req, res) {
+  const type = String(req.body.type || '').trim().toLowerCase();
+  const content = req.body.content === undefined ? '' : req.body.content;
+  const files = req.files || [];
+  const validationError = validatePostInput(type, content, files);
+  if (validationError) {
+    cleanUpLocalFiles(files);
+    return res.status(400).json({ error: validationError });
+  }
+
+  let media = [];
+  try {
+    if (files.length) media = await storePostMedia(files, type);
+    if (type === 'reel' && Number(media[0].durationSeconds) > 30) {
+      await deletePostMedia(media);
+      return res.status(400).json({ error: 'A reel must be 30 seconds or shorter.' });
+    }
+    const post = await Post.create({ author: req.userId, type, content: content.trim(), media });
+    await post.populate('author', 'profile.username profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl faction');
+    return res.status(201).json({ post: serializePost(post) });
+  } catch (error) {
+    if (media.length) await deletePostMedia(media);
+    throw error;
+  }
+}
+
+async function listPosts(req, res) {
+  const type = req.query.type;
+  if (type && !POST_TYPES.includes(type)) return res.status(400).json({ error: 'type must be image, reel, or thought.' });
+  const limit = parseLimit(req.query.limit);
+  const page = parsePage(req.query.page);
+  const query = type ? { type } : {};
+  const [posts, total] = await Promise.all([
+    Post.find(query)
+      .populate('author', 'profile.username profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl faction')
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit),
+    Post.countDocuments(query),
+  ]);
+  return res.json({ posts: posts.map(serializePost), pagination: { page, limit, total, hasMore: page * limit < total } });
+}
+
+async function listUserPosts(req, res) {
+  const user = await userModel.findByUsername(req.params.username);
+  if (!user) return res.status(404).json({ error: 'Profile not found.' });
+  const type = req.query.type;
+  if (type && !POST_TYPES.includes(type)) return res.status(400).json({ error: 'type must be image, reel, or thought.' });
+  const limit = parseLimit(req.query.limit);
+  const page = parsePage(req.query.page);
+  const query = { author: user._id, ...(type ? { type } : {}) };
+  const [posts, total] = await Promise.all([
+    Post.find(query)
+      .populate('author', 'profile.username profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl faction')
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit),
+    Post.countDocuments(query),
+  ]);
+  return res.json({ posts: posts.map(serializePost), pagination: { page, limit, total, hasMore: page * limit < total } });
+}
+
+async function getPost(req, res) {
+  const post = await loadPost(req.params.postId);
+  if (!post) return res.status(404).json({ error: 'Post not found.' });
+  return res.json({ post: serializePost(post) });
+}
+
+async function updatePost(req, res) {
+  const post = await loadPost(req.params.postId);
+  if (!post) return res.status(404).json({ error: 'Post not found.' });
+  if (String(post.author._id) !== String(req.userId)) return res.status(403).json({ error: 'You can only edit your own post.' });
+  if (req.body.content === undefined || typeof req.body.content !== 'string') {
+    return res.status(400).json({ error: 'content is required.' });
+  }
+  const content = req.body.content.trim();
+  const maxLength = post.type === 'thought' ? 300 : 2200;
+  if ((post.type === 'thought' && !content) || content.length > maxLength) {
+    return res.status(400).json({ error: `content must be ${post.type === 'thought' ? '1 to 300' : 'at most 2,200'} characters.` });
+  }
+  post.content = content;
+  await post.save();
+  return res.json({ post: serializePost(post) });
+}
+
+async function deletePost(req, res) {
+  const post = await loadPost(req.params.postId);
+  if (!post) return res.status(404).json({ error: 'Post not found.' });
+  if (String(post.author._id) !== String(req.userId)) return res.status(403).json({ error: 'You can only delete your own post.' });
+  await Promise.all([PostLike.deleteMany({ post: post._id }), PostComment.deleteMany({ post: post._id }), Post.deleteOne({ _id: post._id })]);
+  await deletePostMedia(post.media);
+  return res.json({ message: 'Post deleted.' });
+}
+
+async function likePost(req, res) {
+  const post = await loadPost(req.params.postId);
+  if (!post) return res.status(404).json({ error: 'Post not found.' });
+  try {
+    await PostLike.create({ post: post._id, user: req.userId });
+  } catch (error) {
+    if (error?.code === 11000) return res.status(409).json({ error: 'You already liked this post.' });
+    throw error;
+  }
+  const updated = await Post.findByIdAndUpdate(post._id, { $inc: { likeCount: 1 } }, { new: true });
+  return res.status(201).json({ liked: true, likeCount: updated.likeCount });
+}
+
+async function unlikePost(req, res) {
+  const post = await loadPost(req.params.postId);
+  if (!post) return res.status(404).json({ error: 'Post not found.' });
+  const removed = await PostLike.deleteOne({ post: post._id, user: req.userId });
+  if (!removed.deletedCount) return res.status(404).json({ error: 'You have not liked this post.' });
+  const updated = await Post.findByIdAndUpdate(post._id, { $inc: { likeCount: -1 } }, { new: true });
+  return res.json({ liked: false, likeCount: Math.max(0, updated.likeCount) });
+}
+
+async function listComments(req, res) {
+  const post = await loadPost(req.params.postId);
+  if (!post) return res.status(404).json({ error: 'Post not found.' });
+  const limit = parseLimit(req.query.limit);
+  const page = parsePage(req.query.page);
+  const [comments, total] = await Promise.all([
+    PostComment.find({ post: post._id })
+      .populate('author', 'profile.username profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl faction')
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit),
+    PostComment.countDocuments({ post: post._id }),
+  ]);
+  return res.json({
+    comments: comments.map((comment) => ({
+      id: String(comment._id),
+      body: comment.body,
+      author: authorPreview(comment.author),
+      createdAt: comment.createdAt,
+      updatedAt: comment.updatedAt,
+    })),
+    pagination: { page, limit, total, hasMore: page * limit < total },
+  });
+}
+
+async function createComment(req, res) {
+  const post = await loadPost(req.params.postId);
+  if (!post) return res.status(404).json({ error: 'Post not found.' });
+  const body = typeof req.body.body === 'string' ? req.body.body.trim() : '';
+  if (!body || body.length > 500) return res.status(400).json({ error: 'A comment must contain 1 to 500 characters.' });
+  const comment = await PostComment.create({ post: post._id, author: req.userId, body });
+  const updated = await Post.findByIdAndUpdate(post._id, { $inc: { commentCount: 1 } }, { new: true });
+  await comment.populate('author', 'profile.username profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl faction');
+  return res.status(201).json({
+    comment: { id: String(comment._id), body: comment.body, author: authorPreview(comment.author), createdAt: comment.createdAt },
+    commentCount: updated.commentCount,
+  });
+}
+
+async function deleteComment(req, res) {
+  if (!mongoose.isValidObjectId(req.params.commentId)) return res.status(404).json({ error: 'Comment not found.' });
+  const comment = await PostComment.findById(req.params.commentId);
+  if (!comment || String(comment.post) !== String(req.params.postId)) return res.status(404).json({ error: 'Comment not found.' });
+  if (String(comment.author) !== String(req.userId)) return res.status(403).json({ error: 'You can only delete your own comment.' });
+  await PostComment.deleteOne({ _id: comment._id });
+  const updated = await Post.findByIdAndUpdate(comment.post, { $inc: { commentCount: -1 } }, { new: true });
+  return res.json({ message: 'Comment deleted.', commentCount: Math.max(0, updated?.commentCount || 0) });
+}
+
+module.exports = {
+  createPost,
+  listPosts,
+  listUserPosts,
+  getPost,
+  updatePost,
+  deletePost,
+  likePost,
+  unlikePost,
+  listComments,
+  createComment,
+  deleteComment,
+};

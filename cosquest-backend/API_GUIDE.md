@@ -6,6 +6,8 @@ Signup is just step 0 of one continuous onboarding process, not a separate thing
 
 Registration requires a unique, valid email address. Usernames are required during the profile step and are also unique without regard to letter case (for example, `Hero` and `hero` cannot both exist). Passwords must be at least eight characters and include an uppercase letter, lowercase letter, number, and special character.
 
+Profile fields also include an optional editable `bio` (500 characters maximum), a category with a `showCategoryOnProfile` display switch, and every user has a `pointsBalance` which starts at `0`. Public profile APIs return only safe public information; they never return an account email address, age, or gender. A separately saved contact email is public because the Contact options screen has no visibility switches.
+
 ## Auth
 
 **POST** `/api/auth/signup`
@@ -35,9 +37,6 @@ Response — note there's **no token here**, and `id` is what every onboarding c
     "faction": null,
     "interests": [],
     "preferences": {
-      "locationEnabled": false,
-      "radiusMiles": 50,
-      "lastKnownLocation": { "lat": null, "lng": null },
       "notificationsEnabled": false
     },
     "devices": [],
@@ -73,12 +72,9 @@ Signup also creates one welcome notification for the account automatically (unco
       "avatarKey": "green-knight",
       "avatarPhotoUrl": null
     },
-    "faction": "anime",
+    "faction": "ascendants",
     "interests": ["anime", "comic", "cosplay"],
     "preferences": {
-      "locationEnabled": true,
-      "radiusMiles": 50,
-      "lastKnownLocation": { "lat": 32.7157, "lng": -117.1611 },
       "notificationsEnabled": true
     },
     "devices": [],
@@ -129,9 +125,6 @@ Response:
     "faction": null,
     "interests": [],
     "preferences": {
-      "locationEnabled": false,
-      "radiusMiles": 50,
-      "lastKnownLocation": { "lat": null, "lng": null },
       "notificationsEnabled": false
     },
     "devices": [],
@@ -171,9 +164,6 @@ Response:
     "faction": null,
     "interests": [],
     "preferences": {
-      "locationEnabled": false,
-      "radiusMiles": 50,
-      "lastKnownLocation": { "lat": null, "lng": null },
       "notificationsEnabled": false
     },
     "devices": [],
@@ -218,9 +208,6 @@ Response:
     "faction": null,
     "interests": [],
     "preferences": {
-      "locationEnabled": false,
-      "radiusMiles": 50,
-      "lastKnownLocation": { "lat": null, "lng": null },
       "notificationsEnabled": false
     },
     "devices": [],
@@ -250,9 +237,6 @@ Response:
     "faction": null,
     "interests": [],
     "preferences": {
-      "locationEnabled": false,
-      "radiusMiles": 50,
-      "lastKnownLocation": { "lat": null, "lng": null },
       "notificationsEnabled": false
     },
     "devices": [],
@@ -282,11 +266,13 @@ Response:
 ```json
 {
   "factions": [
-    { "key": "marvel", "name": "Marvel", "color": "#ED1D24", "description": "Web-slingers, mutants, and cosmic heroes — bold, witty, and always ready for a team-up." },
-    { "key": "dc", "name": "DC", "color": "#0078F0", "description": "Gotham to Krypton — dark, epic, and larger than life. Justice never sleeps." },
-    { "key": "anime", "name": "Anime Realm", "color": "#EC4899", "description": "Manga & anime devotees — disciplined, dramatic, and endlessly creative." }
-  ],
-  "factionless": { "key": "none", "name": "Factionless" }
+    { "key": "ascendants", "name": "Ascendants", "color": "#8B5CF6", "description": "Ambitious challengers who rise through courage, growth, and relentless determination." },
+    { "key": "icons", "name": "Icons", "color": "#EC4899", "description": "Bold trendsetters whose creativity, presence, and style leave a lasting mark." },
+    { "key": "controllers", "name": "Controllers", "color": "#06B6D4", "description": "Calculated strategists who master every challenge through skill, focus, and precision." },
+    { "key": "blockbusters", "name": "Blockbusters", "color": "#F97316", "description": "Big-energy adventurers who thrive on action, spectacle, and unforgettable moments." },
+    { "key": "everborns", "name": "Everborns", "color": "#22C55E", "description": "Resilient spirits who adapt, endure, and return stronger after every challenge." },
+    { "key": "celestials", "name": "Celestials", "color": "#EAB308", "description": "Visionary explorers drawn to discovery, imagination, and limitless possibilities." }
+  ]
 }
 ```
 
@@ -294,7 +280,7 @@ Response:
 ```json
 {
   "email": "alex@gmail.com",
-  "factionKey": "anime"
+  "factionKey": "ascendants"
 }
 ```
 Response:
@@ -311,12 +297,9 @@ Response:
       "avatarKey": "green-knight",
       "avatarPhotoUrl": "http://localhost:6893/uploads/3f9c1a2e-8b4d-4a11-9c2e-7d6f5a3b2c1d.jpg"
     },
-    "faction": "anime",
+    "faction": "ascendants",
     "interests": [],
     "preferences": {
-      "locationEnabled": false,
-      "radiusMiles": 50,
-      "lastKnownLocation": { "lat": null, "lng": null },
       "notificationsEnabled": false
     },
     "devices": [],
@@ -372,12 +355,9 @@ Response:
       "avatarKey": "green-knight",
       "avatarPhotoUrl": "http://localhost:6893/uploads/3f9c1a2e-8b4d-4a11-9c2e-7d6f5a3b2c1d.jpg"
     },
-    "faction": "anime",
+    "faction": "ascendants",
     "interests": ["anime", "comic", "cosplay"],
     "preferences": {
-      "locationEnabled": false,
-      "radiusMiles": 50,
-      "lastKnownLocation": { "lat": null, "lng": null },
       "notificationsEnabled": false
     },
     "devices": [],
@@ -389,48 +369,7 @@ Response:
 }
 ```
 
-## Step 4 — Location & Notifications
-
-**PATCH** `/api/users/me/preferences/location`
-```json
-{
-  "email": "alex@gmail.com",
-  "locationEnabled": true,
-  "radiusMiles": 50,
-  "lat": 32.7157,
-  "lng": -117.1611
-}
-```
-Response:
-```json
-{
-  "user": {
-    "email": "alex@gmail.com",
-    "profile": {
-      "firstName": "Alex",
-      "lastName": "Rivera",
-      "username": "Ravencaller",
-      "age": 24,
-      "gender": "Female",
-      "avatarKey": "green-knight",
-      "avatarPhotoUrl": "http://localhost:6893/uploads/3f9c1a2e-8b4d-4a11-9c2e-7d6f5a3b2c1d.jpg"
-    },
-    "faction": "anime",
-    "interests": ["anime", "comic", "cosplay"],
-    "preferences": {
-      "locationEnabled": true,
-      "radiusMiles": 50,
-      "lastKnownLocation": { "lat": 32.7157, "lng": -117.1611 },
-      "notificationsEnabled": false
-    },
-    "devices": [],
-    "onboardingComplete": false,
-    "createdAt": "2026-07-20T12:00:00.000Z",
-    "updatedAt": "2026-07-20T12:06:00.000Z",
-    "id": "652f1a2b3c4d5e6f7a8b9c0d"
-  }
-}
-```
+## Step 4 — Notifications
 
 **PATCH** `/api/users/me/preferences/notifications`
 ```json
@@ -453,12 +392,9 @@ Response:
       "avatarKey": "green-knight",
       "avatarPhotoUrl": "http://localhost:6893/uploads/3f9c1a2e-8b4d-4a11-9c2e-7d6f5a3b2c1d.jpg"
     },
-    "faction": "anime",
+    "faction": "ascendants",
     "interests": ["anime", "comic", "cosplay"],
     "preferences": {
-      "locationEnabled": true,
-      "radiusMiles": 50,
-      "lastKnownLocation": { "lat": 32.7157, "lng": -117.1611 },
       "notificationsEnabled": true
     },
     "devices": [],
@@ -492,12 +428,9 @@ Response:
       "avatarKey": "green-knight",
       "avatarPhotoUrl": "http://localhost:6893/uploads/3f9c1a2e-8b4d-4a11-9c2e-7d6f5a3b2c1d.jpg"
     },
-    "faction": "anime",
+    "faction": "ascendants",
     "interests": ["anime", "comic", "cosplay"],
     "preferences": {
-      "locationEnabled": true,
-      "radiusMiles": 50,
-      "lastKnownLocation": { "lat": 32.7157, "lng": -117.1611 },
       "notificationsEnabled": true
     },
     "devices": [
@@ -522,13 +455,13 @@ Two ways to call this, both valid, both identified by `email` (no token exists y
 {
   "email": "alex@gmail.com",
   "profile": { "firstName": "Alex", "lastName": "Rivera", "username": "Ravencaller", "age": 24, "gender": "Female", "avatar": "green-knight" },
-  "faction": "anime",
+  "faction": "ascendants",
   "interests": ["anime", "comic", "cosplay"],
-  "preferences": { "locationEnabled": true, "radiusMiles": 50, "lat": 32.7157, "lng": -117.1611, "notificationsEnabled": true }
+  "preferences": { "notificationsEnabled": true }
 }
 ```
 
-Every field is validated exactly like its individual endpoint (username format/uniqueness, valid faction key, valid interest keys, valid avatar key, radius/lat/lng ranges). Completion additionally requires first name, last name, username, age, gender, an avatar or photo, a faction, at least one interest, and an explicit location and notification choice. The submission is **one atomic unit**: if anything is invalid, nothing is saved, `onboardingComplete` stays `false`, and login keeps refusing too. (`avatar` maps to `avatarKey`; the photo upload stays its own separate multipart endpoint since a file can't ride along in this JSON body.)
+Every field is validated exactly like its individual endpoint (username format/uniqueness, valid faction key, valid interest keys, valid avatar key). Completion additionally requires first name, last name, username, age, gender, an avatar or photo, a faction, at least one interest, and an explicit notification choice. The submission is **one atomic unit**: if anything is invalid, nothing is saved, `onboardingComplete` stays `false`, and login keeps refusing too. (`avatar` maps to `avatarKey`; the photo upload stays its own separate multipart endpoint since a file can't ride along in this JSON body.)
 
 Response (same either way - the full user, now onboarded, ready to log in):
 ```json
@@ -545,12 +478,9 @@ Response (same either way - the full user, now onboarded, ready to log in):
       "avatarKey": "green-knight",
       "avatarPhotoUrl": null
     },
-    "faction": "anime",
+    "faction": "ascendants",
     "interests": ["anime", "comic", "cosplay"],
     "preferences": {
-      "locationEnabled": true,
-      "radiusMiles": 50,
-      "lastKnownLocation": { "lat": 32.7157, "lng": -117.1611 },
       "notificationsEnabled": true
     },
     "devices": [],
@@ -565,10 +495,10 @@ Response (same either way - the full user, now onboarded, ready to log in):
 **Invalid one-shot payload (400)** — e.g. a bad username and an unknown faction key together:
 ```json
 {
-  "error": "profile.username must be 3-20 characters: letters, numbers, underscore only. faction must be one of the values from GET /api/factions, or \"none\".",
+  "error": "profile.username must be 3-20 characters: letters, numbers, underscore only. faction must be one of the values from GET /api/factions.",
   "errors": [
     "profile.username must be 3-20 characters: letters, numbers, underscore only.",
-    "faction must be one of the values from GET /api/factions, or \"none\"."
+    "faction must be one of the values from GET /api/factions."
   ]
 }
 ```
@@ -603,3 +533,82 @@ Response:
   "message": "Notifications marked as read."
 }
 ```
+
+Follow notifications appear in the same inbox with `"type": "follow"` and an `actor` containing the follower's public profile preview.
+
+## Public profile, follows, quest history, and points
+
+All profiles are public for now. Their public response intentionally excludes email address, age, gender, location, notification preferences, and devices.
+
+**GET** `/api/users/Ravencaller/profile` — public, no body
+
+```json
+{
+  "profile": {
+    "id": "652f1a2b3c4d5e6f7a8b9c0d",
+    "username": "Ravencaller",
+    "name": "Alex Rivera",
+    "avatarKey": "green-knight",
+    "avatarPhotoUrl": null,
+    "faction": "ascendants",
+    "bio": "Building a community around cosplay and creative experiments.",
+    "category": "digital-creator",
+    "contact": { "email": "hello@example.com", "phone": "+2348148327836", "businessAddress": "14 CosQuest Way, Lagos" },
+    "stats": { "followers": 12, "following": 4, "posts": 8, "quests": 3, "wins": 1, "points": 480 }
+  }
+}
+```
+
+**GET** `/api/meta/profile-categories` is public and returns the searchable category list. **PATCH** `/api/users/me/profile` also accepts `"bio"`, `"category"` (one of those category keys), and `"showCategoryOnProfile"` (boolean). Bio is optional and limited to 500 characters.
+
+**GET** `/api/users/me/contact` and **PATCH** `/api/users/me/contact` require a Bearer token. Patch accepts any combination of:
+
+```json
+{ "email": "hello@example.com", "phone": "+2348148327836", "businessAddress": "14 CosQuest Way, Lagos" }
+```
+
+The contact email is public and does not update the account/login email. Phone numbers must be in international format; business addresses are limited to 250 characters.
+
+**GET** `/api/users/me/points` — Bearer token required
+
+```json
+{ "points": 0 }
+```
+
+Points start at zero. This endpoint only reads the balance; the future points/rewards system is responsible for awarding or deducting them.
+
+**GET** `/api/users/Ravencaller/quests?status=registered&page=1&limit=20` — public
+
+Returns the user's quest registrations, newest first. Omit `status` for all; allowed values are `registered`, `cancelled`, `completed`, and `winner`. The Profile Quest count means every quest the user registered for. The future quest-management system, not the user, is responsible for marking a registration as `winner`.
+
+**POST** `/api/users/Ravencaller/follow` — Bearer token required, no body
+
+Follows the public profile and creates a follow notification for Ravencaller. `DELETE` on the same path unfollows it. A duplicate follow returns `409`.
+
+**GET** `/api/users/Ravencaller/followers?page=1&limit=20` and **GET** `/api/users/Ravencaller/following?page=1&limit=20` are public paginated lists.
+
+## Posts, reels, thoughts, likes, and comments
+
+**POST** `/api/posts` — Bearer token required; use `multipart/form-data`.
+
+| Type | Required fields | Rules |
+|---|---|---|
+| `image` | `type=image`, one or more `media` files | 1-8 JPEG, PNG, WEBP, or GIF files; maximum 10MB each |
+| `reel` | `type=reel`, one `media` file | exactly one MP4, MOV, or WEBM; Cloudinary must report 30 seconds or shorter |
+| `thought` | `type=thought`, `content` | no media; content must be 1-300 characters |
+
+`content` is optional for image posts/reels (a caption) and limited to 2,200 characters. Uploaded image posts go to `CLOUDINARY_POST_IMAGE_FOLDER` (default `cosquest/posts`); reels go to `CLOUDINARY_REEL_FOLDER` (default `cosquest/reels`). The existing Cloudinary credentials are used—no frontend Cloudinary secret is needed.
+
+Public reads:
+
+- `GET /api/posts?type=&page=&limit=` — public feed.
+- `GET /api/users/:username/posts?type=&page=&limit=` — profile posts.
+- `GET /api/posts/:postId` — one post.
+- `GET /api/posts/:postId/comments?page=&limit=` — public comments.
+
+Authenticated interactions:
+
+- `PATCH` or `DELETE /api/posts/:postId` — post author only.
+- `POST` or `DELETE /api/posts/:postId/likes` — like/unlike; responses include the public `likeCount`.
+- `POST /api/posts/:postId/comments` with `{ "body": "..." }` — add a public 1-500 character comment.
+- `DELETE /api/posts/:postId/comments/:commentId` — comment author only.

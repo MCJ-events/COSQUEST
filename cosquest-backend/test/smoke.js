@@ -187,15 +187,19 @@ async function run(baseUrlArg) {
   console.log('\n--- step 2: faction ---');
   {
     const r = await c('GET', '/api/factions');
-    assert(r.status === 200 && r.json.factions.length === 3, 'GET /api/factions -> 3 factions', r);
+    assert(r.status === 200 && r.json.factions.length === 6 && !r.json.factionless, 'GET /api/factions -> 6 required factions', r);
   }
   {
-    const r = await c('POST', '/api/users/me/faction', { body: { email, factionKey: 'anime' } });
-    assert(r.status === 200 && r.json.user.faction === 'anime', 'POST faction "anime" -> saved', r);
+    const r = await c('POST', '/api/users/me/faction', { body: { email, factionKey: 'ascendants' } });
+    assert(r.status === 200 && r.json.user.faction === 'ascendants', 'POST faction "ascendants" -> saved', r);
   }
   {
     const r = await c('POST', '/api/users/me/faction', { body: { email, factionKey: 'bogus' } });
     assert(r.status === 400, 'POST faction (invalid key) -> 400', r);
+  }
+  {
+    const r = await c('POST', '/api/users/me/faction', { body: { email, factionKey: 'none' } });
+    assert(r.status === 400, 'POST faction "none" -> 400 (a faction is required)', r);
   }
 
   console.log('\n--- step 3: interests ---');
@@ -214,23 +218,7 @@ async function run(baseUrlArg) {
     assert(r.status === 400, 'PUT interests (invalid key) -> 400', r);
   }
 
-  console.log('\n--- step 4: location & notification preferences ---');
-  {
-    const r = await c('PATCH', '/api/users/me/preferences/location', {
-      body: { email, locationEnabled: true, radiusMiles: 50, lat: 32.7157, lng: -117.1611 },
-    });
-    assert(
-      r.status === 200 &&
-        r.json.user.preferences.radiusMiles === 50 &&
-        r.json.user.preferences.lastKnownLocation.lat === 32.7157,
-      'PATCH preferences/location -> saved radius + coords',
-      r
-    );
-  }
-  {
-    const r = await c('PATCH', '/api/users/me/preferences/location', { body: { email, radiusMiles: 500 } });
-    assert(r.status === 400, 'PATCH preferences/location (radius out of range) -> 400', r);
-  }
+  console.log('\n--- step 4: notification preferences ---');
   {
     const r = await c('PATCH', '/api/users/me/preferences/notifications', {
       body: { email, notificationsEnabled: true },
@@ -259,9 +247,8 @@ async function run(baseUrlArg) {
     const u = r.json.user;
     assert(
       u.profile.username === 'Ravencaller' &&
-        u.faction === 'anime' &&
+        u.faction === 'ascendants' &&
         u.interests.length === 3 &&
-        u.preferences.locationEnabled === true &&
         u.onboardingComplete === true &&
         u.passwordHash === undefined,
       'GET /api/users/me?email=... (final) -> full onboarded state, no passwordHash leaked',
@@ -301,13 +288,20 @@ async function run(baseUrlArg) {
     const r = await c('GET', '/api/users/me', { token });
     assert(r.status === 200 && r.json.user.email === email, 'GET /api/users/me with Bearer token (post-login) -> works too', r);
   }
+  {
+    const r = await c('PATCH', '/api/users/me/preferences/location', {
+      token,
+      body: { locationEnabled: true, radiusMiles: 50, lat: 32.7157, lng: -117.1611 },
+    });
+    assert(r.status === 404, 'PATCH preferences/location -> 404 (user location is fixed and cannot be edited)', r);
+  }
 
   console.log('\n--- Home Dashboard quests ---');
   if (mongoose.connection.readyState === 1) {
     const now = Date.now();
     const questBase = {
       description: 'A test quest for the Home Dashboard.',
-      location: { name: 'Test Square', address: 'San Diego', lat: 32.7157, lng: -117.1611 },
+      location: { name: 'Test Square', address: 'Lagos', lat: 6.5244, lng: 3.3792 },
       prizePool: { amount: 50000, currency: 'NGN' },
       entryFee: { amount: 500, currency: 'NGN' },
       maxParticipants: 2,
@@ -324,10 +318,10 @@ async function run(baseUrlArg) {
     });
     {
       const r = await c('GET', '/api/home/dashboard', { token });
-      assert(r.status === 200 && r.json.liveQuest?.id === String(liveQuest._id) && r.json.upcomingQuests.length >= 1, 'GET /api/home/dashboard -> greeting, live quest, upcoming quests, and location-aware data', r);
+      assert(r.status === 200 && r.json.location.source === 'default' && r.json.liveQuest?.id === String(liveQuest._id) && r.json.upcomingQuests.length >= 1, 'GET /api/home/dashboard -> fixed-area greeting, live quest, and upcoming quests', r);
     }
     {
-      const r = await c('GET', '/api/quests?status=live&lat=32.7157&lng=-117.1611&radiusMiles=30');
+      const r = await c('GET', '/api/quests?status=live&lat=6.5244&lng=3.3792&radiusMiles=30');
       assert(r.status === 200 && r.json.quests.some((quest) => quest.id === String(liveQuest._id)), 'GET /api/quests -> finds nearby live quests', r);
     }
     {
@@ -359,24 +353,26 @@ async function run(baseUrlArg) {
   }
 
   console.log('\n--- one-shot onboarding (matches the front-end: everything submitted together at finishOnb()) ---');
+  let token2;
+  let username2;
   {
     const email2 = `hero2_${Date.now()}@example.com`;
+    username2 = `Jamie${Date.now()}`.slice(0, 20);
     await c('POST', '/api/auth/signup', { body: { email: email2, password, confirmPassword: password } });
 
     const r = await c('POST', '/api/users/me/onboarding/complete', {
       body: {
         email: email2,
-        profile: { firstName: 'Jamie', lastName: 'Cruz', username: `Jamie${Date.now()}`.slice(0, 20), age: 29, gender: 'Male', avatar: 'caped-champion' },
-        faction: 'marvel',
+        profile: { firstName: 'Jamie', lastName: 'Cruz', username: username2, age: 29, gender: 'Male', avatar: 'caped-champion' },
+        faction: 'icons',
         interests: ['game', 'scifi'],
-        preferences: { locationEnabled: true, radiusMiles: 25, lat: 34.05, lng: -118.24, notificationsEnabled: true },
+        preferences: { notificationsEnabled: true },
       },
     });
     assert(
       r.status === 200 &&
-        r.json.user.faction === 'marvel' &&
+        r.json.user.faction === 'icons' &&
         r.json.user.interests.length === 2 &&
-        r.json.user.preferences.radiusMiles === 25 &&
         r.json.user.profile.avatarKey === 'caped-champion' &&
         r.json.user.onboardingComplete === true,
       'POST onboarding/complete (one-shot, full payload, via email) -> everything set + onboardingComplete true in a single call',
@@ -385,6 +381,7 @@ async function run(baseUrlArg) {
 
     const login2 = await c('POST', '/api/auth/login', { body: { email: email2, password } });
     assert(login2.status === 200 && login2.json.token, 'POST /api/auth/login (one-shot user, onboarding done) -> 200 + token', login2);
+    token2 = login2.json.token;
   }
   {
     const email3 = `hero3_${Date.now()}@example.com`;
@@ -410,19 +407,128 @@ async function run(baseUrlArg) {
     assert(login3.status === 403, 'POST /api/auth/login (onboarding still incomplete after failed attempt) -> 403', login3);
   }
 
+  console.log('\n--- public profile, follows, points, posts, likes, and comments ---');
+  {
+    const r = await c('PATCH', '/api/users/me/profile', { token, body: { bio: 'Building a community around cosplay, props, and creative experiments.' } });
+    assert(r.status === 200 && r.json.user.profile.bio.includes('community'), 'PATCH profile bio -> saved', r);
+  }
+  {
+    const r = await c('GET', '/api/meta/profile-categories');
+    assert(r.status === 200 && r.json.categories.some((category) => category.key === 'digital-creator'), 'GET profile categories -> public category list', r);
+  }
+  {
+    const r = await c('PATCH', '/api/users/me/profile', { token, body: { category: 'digital-creator', showCategoryOnProfile: false } });
+    assert(r.status === 200 && r.json.user.profile.category === 'digital-creator' && r.json.user.profile.showCategoryOnProfile === false, 'PATCH profile category -> saved with display off', r);
+  }
+  {
+    const r = await c('GET', '/api/users/Ravencaller/profile');
+    assert(r.status === 200 && r.json.profile.category === null, 'GET public profile -> hidden category stays private', r);
+  }
+  {
+    const r = await c('PATCH', '/api/users/me/profile', { token, body: { showCategoryOnProfile: true } });
+    assert(r.status === 200 && r.json.user.profile.showCategoryOnProfile === true, 'PATCH profile category visibility -> enabled', r);
+  }
+  {
+    const r = await c('PATCH', '/api/users/me/contact', {
+      token,
+      body: { email: 'contact.raven@example.com', phone: '+2348148327836', businessAddress: '14 CosQuest Way, Lagos' },
+    });
+    assert(r.status === 200 && r.json.contact.phone === '+2348148327836', 'PATCH contact options -> saved', r);
+  }
+  {
+    const r = await c('GET', '/api/users/me/contact', { token });
+    assert(r.status === 200 && r.json.contact.email === 'contact.raven@example.com', 'GET my contact options -> saved values', r);
+  }
+  {
+    const r = await c('GET', '/api/users/Ravencaller/profile');
+    assert(
+      r.status === 200 &&
+        r.json.profile.bio.includes('community') &&
+        r.json.profile.category === 'digital-creator' &&
+        r.json.profile.contact.phone === '+2348148327836' &&
+        r.json.profile.stats.points === 0,
+      'GET public profile -> bio, category, contact, and stats',
+      r
+    );
+  }
+  {
+    const r = await c('GET', '/api/users/me/points', { token });
+    assert(r.status === 200 && r.json.points === 0, 'GET my points -> balance', r);
+  }
+  {
+    const r = await c('POST', `/api/users/${username2}/follow`, { token });
+    assert(r.status === 201 && r.json.following === true, 'POST follow -> following', r);
+  }
+  {
+    const r = await c('GET', `/api/users/${username2}/followers`);
+    assert(r.status === 200 && r.json.users.some((user) => user.username === 'Ravencaller'), 'GET followers -> public follower list', r);
+  }
+  {
+    const r = await c('GET', '/api/users/me/notifications', { token: token2 });
+    assert(r.status === 200 && r.json.notifications.some((notification) => notification.type === 'follow' && notification.actor?.username === 'Ravencaller'), 'follow -> notification appears for the followed user', r);
+  }
+  let thoughtId;
+  {
+    const r = await c('POST', '/api/posts', { token, body: { type: 'thought', content: 'Cosplay ideas for the next CosQuest.' } });
+    assert(r.status === 201 && r.json.post.type === 'thought' && r.json.post.content.length > 0, 'POST thought -> created', r);
+    thoughtId = r.json.post.id;
+  }
+  {
+    const form = new FormData();
+    form.append('type', 'image');
+    form.append('content', 'A one-image CosQuest post.');
+    form.append('media', new Blob(['image-bytes'], { type: 'image/png' }), 'look.png');
+    const r = await c('POST', '/api/posts', { token, body: form, isForm: true });
+    assert(r.status === 201 && r.json.post.type === 'image' && r.json.post.media.length === 1, 'POST image post -> 1 image stored through media host', r);
+  }
+  {
+    const form = new FormData();
+    form.append('type', 'reel');
+    form.append('content', 'A short CosQuest reel.');
+    form.append('media', new Blob(['video-bytes'], { type: 'video/mp4' }), 'quest.mp4');
+    const r = await c('POST', '/api/posts', { token, body: form, isForm: true });
+    assert(r.status === 201 && r.json.post.type === 'reel' && r.json.post.media[0].durationSeconds <= 30, 'POST reel -> short video stored through media host', r);
+  }
+  {
+    const r = await c('GET', '/api/users/Ravencaller/posts?type=thought');
+    assert(r.status === 200 && r.json.posts.some((post) => post.id === thoughtId), 'GET user posts -> public thought', r);
+  }
+  {
+    const r = await c('POST', `/api/posts/${thoughtId}/likes`, { token: token2 });
+    assert(r.status === 201 && r.json.liked === true && r.json.likeCount === 1, 'POST post like -> public count updated', r);
+  }
+  let commentId;
+  {
+    const r = await c('POST', `/api/posts/${thoughtId}/comments`, { token: token2, body: { body: 'This sounds amazing!' } });
+    assert(r.status === 201 && r.json.comment.body === 'This sounds amazing!' && r.json.commentCount === 1, 'POST comment -> created', r);
+    commentId = r.json.comment.id;
+  }
+  {
+    const r = await c('GET', `/api/posts/${thoughtId}/comments`);
+    assert(r.status === 200 && r.json.comments.some((comment) => comment.id === commentId), 'GET comments -> public list', r);
+  }
+  {
+    const r = await c('DELETE', `/api/posts/${thoughtId}/likes`, { token: token2 });
+    assert(r.status === 200 && r.json.liked === false && r.json.likeCount === 0, 'DELETE post like -> removed', r);
+  }
+  {
+    const r = await c('DELETE', `/api/users/${username2}/follow`, { token });
+    assert(r.status === 200 && r.json.following === false, 'DELETE follow -> unfollowed', r);
+  }
+
   console.log('\n--- notifications (in-app broadcast to everyone opted in) ---');
   if (mongoose.connection.readyState === 1) {
     // `token`'s user has notificationsEnabled=true (step 4 above); the one-shot user does too;
-    // this 4th user completes onboarding but never touches notificationsEnabled - a real negative case.
+    // this 4th user completes onboarding with notifications disabled - a real negative case.
     const email4 = `hero4_${Date.now()}@example.com`;
     await c('POST', '/api/auth/signup', { body: { email: email4, password, confirmPassword: password } });
     await c('POST', '/api/users/me/onboarding/complete', {
       body: {
         email: email4,
         profile: { firstName: 'Taylor', lastName: 'Reed', username: `Taylor${Date.now()}`.slice(0, 20), age: 28, gender: 'Female', avatar: 'adventurer' },
-        faction: 'none',
+        faction: 'celestials',
         interests: ['music'],
-        preferences: { locationEnabled: false, notificationsEnabled: false },
+        preferences: { notificationsEnabled: false },
       },
     });
     const login4 = await c('POST', '/api/auth/login', { body: { email: email4, password } });

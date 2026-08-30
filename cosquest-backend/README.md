@@ -4,7 +4,9 @@ If this backend already has a MongoDB database from before username-only registr
 
 Login sessions do not expire on a timer. They stay active until the user logs out, at which point every previous token for that account is invalidated; the next sign-in issues a fresh token.
 
-Preset avatar images are delivered only from Cloudinary; `GET /api/meta/avatars` returns their Cloudinary URLs. User-uploaded profile photos also go only to `CLOUDINARY_PROFILE_PHOTO_FOLDER` (currently `cosquest/cosquest profile-photos`). Files are written to disk briefly while received, then deleted after Cloudinary upload—this backend does not serve or retain local avatar images.
+The dashboard uses the fixed area configured by `DASHBOARD_DEFAULT_LAT`, `DASHBOARD_DEFAULT_LNG`, and `DASHBOARD_RADIUS_MILES`. Users cannot view, save, or edit a personal location. To remove legacy personal location fields from an existing MongoDB database, run `npm run migrate:remove-user-location` once after deployment.
+
+Preset avatar images are delivered only from Cloudinary; `GET /api/meta/avatars` returns their Cloudinary URLs. User-uploaded profile photos, image posts, and reels also go only to Cloudinary. Files are written to disk briefly while received, then deleted after Cloudinary upload—this backend does not serve or retain local media. Profile photos use `CLOUDINARY_PROFILE_PHOTO_FOLDER`; posts use `CLOUDINARY_POST_IMAGE_FOLDER` (default `cosquest/posts`) and reels use `CLOUDINARY_REEL_FOLDER` (default `cosquest/reels`). They all use the existing `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, and `CLOUDINARY_API_SECRET` values.
 
 ### Google and Apple OAuth
 
@@ -25,17 +27,20 @@ Signup is just step 0 of one continuous onboarding process, not a separate thing
 | Method | Path | Body | Notes |
 |---|---|---|---|
 | GET | `/api/users/me` | — (`?email=` or Bearer) | full current user (no `passwordHash`) |
-| PATCH | `/api/users/me/profile` | `{ email, firstName, lastName, username, age, gender }` | all fields optional/independent; username 3-20 chars `[a-zA-Z0-9_]`, must be unique; age 13-120 |
+| PATCH | `/api/users/me/profile` | `{ email, firstName, lastName, username, age, gender, bio, category, showCategoryOnProfile }` | all fields optional/independent; bio is 500 characters max; category must come from the public category list; username 3-20 chars `[a-zA-Z0-9_]`, must be unique; age 13-120 |
 | GET | `/api/users/check-username?username=&email=` | — | `{ available: boolean }` |
 | PATCH | `/api/users/me/avatar` | `{ email, avatar }` | `avatar` is a key from `GET /api/meta/avatars` (100 illustrated characters); clears any uploaded photo |
 | POST | `/api/users/me/avatar/photo` | multipart: `photo` file + `email` field | jpeg/png/webp/gif, 5MB max |
 | GET | `/api/meta/avatars` | — (public) | the 100 illustrated avatar options (`key`, `label`, `imageUrl`) |
+| GET | `/api/meta/profile-categories` | — (public) | searchable list for the Category picker |
+| GET | `/api/users/me/contact` | Bearer token | the user's public contact details for editing |
+| PATCH | `/api/users/me/contact` | `{ email, phone, businessAddress }` | saves public contact details; does not change the private login email |
 
 ### Step 2 — Faction
 | Method | Path | Body | Notes |
 |---|---|---|---|
-| GET | `/api/factions` | — (public) | the 3 factions (Marvel, DC, Anime Realm) |
-| POST | `/api/users/me/faction` | `{ email, factionKey }` | one of the 3 keys, or `"none"` |
+| GET | `/api/factions` | — (public) | the 6 factions (Ascendants, Icons, Controllers, Blockbusters, Everborns, Celestials) |
+| POST | `/api/users/me/faction` | `{ email, factionKey }` | one of the 6 required faction keys |
 
 ### Step 3 — Interests
 | Method | Path | Body | Notes |
@@ -43,13 +48,12 @@ Signup is just step 0 of one continuous onboarding process, not a separate thing
 | GET | `/api/interests` | — (public) | the 12 interests |
 | PUT | `/api/users/me/interests` | `{ email, interests: [key, ...] }` | replaces the full set; deduped, validated |
 
-### Step 4 — Location & notification preferences
+### Step 4 — Notification preferences
 | Method | Path | Body | Notes |
 |---|---|---|---|
-| PATCH | `/api/users/me/preferences/location` | `{ email, locationEnabled, radiusMiles, lat, lng }` | radius 5-100; lat -90..90; lng -180..180; any subset of fields |
 | PATCH | `/api/users/me/preferences/notifications` | `{ email, notificationsEnabled }` | |
 | POST | `/api/users/me/devices` | `{ email, pushToken, platform }` | platform: `"ios" \| "android" \| "web"`; dedupes by token |
-| POST | `/api/users/me/onboarding/complete` | `{ email }` alone, or `{ email, profile, faction, interests, preferences }` | Requires a completed profile, avatar/photo, faction, at least one interest, location choice, and notification choice. One-shot submissions are atomic: nothing is saved if anything is invalid. **Login won't succeed until this has run.** |
+| POST | `/api/users/me/onboarding/complete` | `{ email }` alone, or `{ email, profile, faction, interests, preferences }` | Requires a completed profile, avatar/photo, faction, at least one interest, and notification choice. One-shot submissions are atomic: nothing is saved if anything is invalid. **Login won't succeed until this has run.** |
 
 ### Notifications (in-app inbox — Bearer token only, i.e. after login)
 | Method | Path | Body | Notes |
@@ -58,6 +62,34 @@ Signup is just step 0 of one continuous onboarding process, not a separate thing
 | PATCH | `/api/users/me/notifications/read` | — | marks all of this user's unread notifications as read |
 
 Every signup automatically creates one welcome notification for that account - since it's only reachable with a Bearer token, and login won't hand one out until onboarding is done, this is the very first thing they see right after their first successful login. Beyond that, sending a notification is done separately, via `npm run notify -- "message"` (see below) - there's no admin/broadcast endpoint yet, only a script, and it only reaches users who have `notificationsEnabled` on.
+
+### Public profiles, follows, quest history, and points
+
+| Method | Path | Auth | Notes |
+|---|---|---|---|
+| GET | `/api/users/:username/profile` | public | public profile, bio, optional displayed category, public contact details, faction, and follower/following/post/registered-quest/win/point counts |
+| GET | `/api/users/:username/quests` | public | registered quest history; supports `?status=&page=&limit=` |
+| GET | `/api/users/me/points` | Bearer token | current in-app points balance; starts at `0` until the points system awards points |
+| POST | `/api/users/:username/follow` | Bearer token | follows the public profile and creates a follow notification for that person |
+| DELETE | `/api/users/:username/follow` | Bearer token | unfollows the profile |
+| GET | `/api/users/:username/followers` | public | paginated follower list |
+| GET | `/api/users/:username/following` | public | paginated following list |
+
+The Quest count means every quest that the user registered for. The future quest-management system can mark a registration as `completed` or `winner`; the public profile's Wins count is the number marked `winner`. There is intentionally no user-facing endpoint that lets somebody mark themselves as a winner.
+
+### Posts, reels, thoughts, likes, and comments
+
+| Method | Path | Auth | Notes |
+|---|---|---|---|
+| GET | `/api/posts` | public | public feed; supports `?type=image|reel|thought&page=&limit=` |
+| GET | `/api/users/:username/posts` | public | one user's public posts; supports the same query options |
+| POST | `/api/posts` | Bearer token | multipart/form-data: `type`, `content`, and `media` files |
+| GET/PATCH/DELETE | `/api/posts/:postId` | GET public; edits require Bearer token | authors can edit text or delete their own post |
+| POST/DELETE | `/api/posts/:postId/likes` | Bearer token | like or unlike; public responses include the like count |
+| GET/POST | `/api/posts/:postId/comments` | GET public; POST Bearer token | read or add public comments |
+| DELETE | `/api/posts/:postId/comments/:commentId` | Bearer token | comment author can delete their own comment |
+
+An image post requires 1-8 JPEG/PNG/WEBP/GIF files (10MB each maximum). A reel requires exactly one MP4/MOV/WEBM file and Cloudinary verifies it is 30 seconds or shorter. A thought has no media and must contain 1-300 characters. Image/reel captions are optional and limited to 2,200 characters.
 
 ### Home Dashboard and quests
 
@@ -119,7 +151,7 @@ curl -s $BASE_URL/api/factions
 
 curl -s -X POST $BASE_URL/api/users/me/faction \
   -H "Content-Type: application/json" \
-  -d "{\"email\":\"$EMAIL\",\"factionKey\":\"anime\"}"
+  -d "{\"email\":\"$EMAIL\",\"factionKey\":\"ascendants\"}"
 
 # Step 3: interests
 curl -s $BASE_URL/api/interests
@@ -128,11 +160,7 @@ curl -s -X PUT $BASE_URL/api/users/me/interests \
   -H "Content-Type: application/json" \
   -d "{\"email\":\"$EMAIL\",\"interests\":[\"anime\",\"comic\",\"cosplay\"]}"
 
-# Step 4: location & notifications
-curl -s -X PATCH $BASE_URL/api/users/me/preferences/location \
-  -H "Content-Type: application/json" \
-  -d "{\"email\":\"$EMAIL\",\"locationEnabled\":true,\"radiusMiles\":50,\"lat\":32.7157,\"lng\":-117.1611}"
-
+# Step 4: notifications
 curl -s -X PATCH $BASE_URL/api/users/me/preferences/notifications \
   -H "Content-Type: application/json" \
   -d "{\"email\":\"$EMAIL\",\"notificationsEnabled\":true}"
@@ -181,7 +209,7 @@ Invoke-RestMethod -Uri http://localhost:6893/api/auth/login -Method Post -Conten
 # Any step 1-4 endpoint still works, now via Bearer token, for edits after onboarding
 curl -s -X POST $BASE_URL/api/users/me/faction \
   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-  -d '{"factionKey":"dc"}'
+  -d '{"factionKey":"controllers"}'
 
 curl -s $BASE_URL/api/users/me -H "Authorization: Bearer $TOKEN"
 
@@ -217,9 +245,9 @@ curl -s -X POST $BASE_URL/api/users/me/onboarding/complete \
   -d "{
     \"email\": \"$EMAIL\",
     \"profile\": { \"firstName\":\"Alex\",\"lastName\":\"Rivera\",\"username\":\"Ravencaller\",\"age\":24,\"gender\":\"Female\",\"avatar\":\"green-knight\" },
-    \"faction\": \"anime\",
+    \"faction\": \"ascendants\",
     \"interests\": [\"anime\",\"comic\",\"cosplay\"],
-    \"preferences\": { \"locationEnabled\": true, \"radiusMiles\": 50, \"lat\": 32.7157, \"lng\": -117.1611, \"notificationsEnabled\": true }
+    \"preferences\": { \"notificationsEnabled\": true }
   }"
 ```
 

@@ -18,6 +18,7 @@ const storage = multer.diskStorage({
 });
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+const POST_MEDIA_TYPES = [...ALLOWED_TYPES, 'video/mp4', 'video/quicktime', 'video/webm'];
 
 const upload = multer({
   storage,
@@ -30,4 +31,17 @@ const upload = multer({
   },
 });
 
-module.exports = { upload, uploadDir };
+// Posts use the same temporary upload folder, then move to Cloudinary. The
+// controller applies the stricter per-post rules (1-8 images or 1 short reel).
+const postUpload = multer({
+  storage,
+  limits: { fileSize: 50 * 1024 * 1024, files: 8 },
+  fileFilter: (req, file, cb) => {
+    if (!POST_MEDIA_TYPES.includes(file.mimetype)) {
+      return cb(new Error('Post media must be JPEG, PNG, WEBP, GIF, MP4, MOV, or WEBM.'));
+    }
+    cb(null, true);
+  },
+});
+
+module.exports = { upload, postUpload, uploadDir };

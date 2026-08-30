@@ -1,7 +1,7 @@
 {
   "name": "cosquest-backend",
   "version": "1.0.0",
-  "description": "Backend for the CosQuest onboarding flow (steps 1-4): profile creation, factions, interests, location/notification preferences, and bearer-token auth.",
+  "description": "Backend for the CosQuest onboarding flow: profile creation, factions, interests, notification preferences, and bearer-token auth.",
   "main": "server.js",
   "type": "commonjs",
   "scripts": {
@@ -10,6 +10,7 @@
     "test": "node test/runWithMemoryMongo.js",
     "notify": "node scripts/sendNotification.js",
     "migrate:username-signup": "node scripts/migrateUsernameSignup.js",
+    "migrate:remove-user-location": "node scripts/removeUserLocationPreferences.js",
     "seed": "node scripts/seedHomeDashboard.js"
   },
   "dependencies": {

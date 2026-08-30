@@ -4,48 +4,6 @@ const { isValidInterestKey } = require('../models/interestModel');
 const { isValidAvatarKey } = require('../models/avatarModel');
 const { isValidUsername, normalizeUsername } = require('../utils/validation');
 
-/**
- * Onboarding step 4 ("Find quests near you"). The front-end has two fake
- * toggles (location, notifications) plus a radius slider. For real:
- *  - the BROWSER/OS owns the actual permission prompt (navigator.geolocation,
- *    Notification.requestPermission()) - the backend never triggers that UI.
- *  - the backend's only job is to store what the client tells it *after* the
- *    real permission was granted: the resulting coordinates, a push token,
- *    and the user's chosen radius/opt-in flags.
- * See README "Step 4 walkthrough" for the full request/response sequence.
- */
-
-// PATCH /api/users/me/preferences/location
-async function updateLocationPrefs(req, res) {
-  const { locationEnabled, radiusMiles, lat, lng } = req.body;
-
-  if (locationEnabled !== undefined && typeof locationEnabled !== 'boolean') {
-    return res.status(400).json({ error: 'locationEnabled must be a boolean.' });
-  }
-  if (radiusMiles !== undefined) {
-    const n = Number(radiusMiles);
-    if (!Number.isFinite(n) || n < 5 || n > 100) {
-      return res.status(400).json({ error: 'radiusMiles must be a number between 5 and 100.' });
-    }
-  }
-  if (lat !== undefined && (lat < -90 || lat > 90)) {
-    return res.status(400).json({ error: 'lat must be between -90 and 90.' });
-  }
-  if (lng !== undefined && (lng < -180 || lng > 180)) {
-    return res.status(400).json({ error: 'lng must be between -180 and 180.' });
-  }
-
-  const updated = await userModel.updateUser(req.userId, (user) => {
-    if (locationEnabled !== undefined) user.preferences.locationEnabled = Boolean(locationEnabled);
-    if (radiusMiles !== undefined) user.preferences.radiusMiles = Number(radiusMiles);
-    if (lat !== undefined) user.preferences.lastKnownLocation.lat = Number(lat);
-    if (lng !== undefined) user.preferences.lastKnownLocation.lng = Number(lng);
-    if (locationEnabled !== undefined) user.onboarding.locationPreferenceChosen = true;
-  });
-
-  return res.json({ user: userModel.sanitize(updated) });
-}
-
 // PATCH /api/users/me/preferences/notifications
 async function updateNotificationPrefs(req, res) {
   const { notificationsEnabled } = req.body;
@@ -113,7 +71,7 @@ async function completeOnboarding(req, res) {
     errors.push('profile.avatar is not a recognized avatar option. See GET /api/meta/avatars.');
   }
   if (faction !== undefined && !isValidFactionKey(faction)) {
-    errors.push('faction must be one of the values from GET /api/factions, or "none".');
+    errors.push('faction must be one of the values from GET /api/factions.');
   }
   if (interests !== undefined) {
     if (!Array.isArray(interests)) {
@@ -123,23 +81,8 @@ async function completeOnboarding(req, res) {
       if (invalid.length) errors.push(`Unknown interest key(s): ${invalid.join(', ')}`);
     }
   }
-  if (preferences?.radiusMiles !== undefined) {
-    const n = Number(preferences.radiusMiles);
-    if (!Number.isFinite(n) || n < 5 || n > 100) {
-      errors.push('preferences.radiusMiles must be a number between 5 and 100.');
-    }
-  }
-  if (preferences?.locationEnabled !== undefined && typeof preferences.locationEnabled !== 'boolean') {
-    errors.push('preferences.locationEnabled must be a boolean.');
-  }
   if (preferences?.notificationsEnabled !== undefined && typeof preferences.notificationsEnabled !== 'boolean') {
     errors.push('preferences.notificationsEnabled must be a boolean.');
-  }
-  if (preferences?.lat !== undefined && (preferences.lat < -90 || preferences.lat > 90)) {
-    errors.push('preferences.lat must be between -90 and 90.');
-  }
-  if (preferences?.lng !== undefined && (preferences.lng < -180 || preferences.lng > 180)) {
-    errors.push('preferences.lng must be between -180 and 180.');
   }
 
   const nextProfile = {
@@ -152,8 +95,6 @@ async function completeOnboarding(req, res) {
   const nextFaction = faction !== undefined ? faction : req.user.faction;
   const nextInterests = interests !== undefined ? interests : req.user.interests;
   const avatarChosen = req.user.onboarding?.avatarChosen || profile?.avatar !== undefined;
-  const locationPreferenceChosen =
-    req.user.onboarding?.locationPreferenceChosen || preferences?.locationEnabled !== undefined;
   const notificationPreferenceChosen =
     req.user.onboarding?.notificationPreferenceChosen || preferences?.notificationsEnabled !== undefined;
 
@@ -172,7 +113,6 @@ async function completeOnboarding(req, res) {
   if (!Array.isArray(nextInterests) || nextInterests.length === 0) {
     errors.push('Choose at least one interest before completing onboarding.');
   }
-  if (!locationPreferenceChosen) errors.push('Choose whether to enable location before completing onboarding.');
   if (!notificationPreferenceChosen) errors.push('Choose whether to enable notifications before completing onboarding.');
 
   if (errors.length) {
@@ -196,11 +136,6 @@ async function completeOnboarding(req, res) {
     if (faction !== undefined) user.faction = faction;
     if (interests !== undefined) user.interests = [...new Set(interests)];
     if (preferences) {
-      if (preferences.locationEnabled !== undefined) user.preferences.locationEnabled = Boolean(preferences.locationEnabled);
-      if (preferences.locationEnabled !== undefined) user.onboarding.locationPreferenceChosen = true;
-      if (preferences.radiusMiles !== undefined) user.preferences.radiusMiles = Number(preferences.radiusMiles);
-      if (preferences.lat !== undefined) user.preferences.lastKnownLocation.lat = Number(preferences.lat);
-      if (preferences.lng !== undefined) user.preferences.lastKnownLocation.lng = Number(preferences.lng);
       if (preferences.notificationsEnabled !== undefined) user.preferences.notificationsEnabled = Boolean(preferences.notificationsEnabled);
       if (preferences.notificationsEnabled !== undefined) user.onboarding.notificationPreferenceChosen = true;
     }
@@ -210,4 +145,4 @@ async function completeOnboarding(req, res) {
   return res.json({ message: 'Onboarding complete.', user: userModel.sanitize(updated) });
 }
 
-module.exports = { updateLocationPrefs, updateNotificationPrefs, registerDevice, completeOnboarding };
+module.exports = { updateNotificationPrefs, registerDevice, completeOnboarding };

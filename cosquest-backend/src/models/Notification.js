@@ -8,6 +8,8 @@ const notificationSchema = new mongoose.Schema(
   {
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     message: { type: String, required: true },
+    type: { type: String, enum: ['system', 'follow'], default: 'system' },
+    actor: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     read: { type: Boolean, default: false },
   },
   { timestamps: true }

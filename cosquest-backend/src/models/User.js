@@ -34,20 +34,27 @@ const userSchema = new mongoose.Schema(
       usernameNormalized: { type: String, default: undefined },
       age: { type: Number, default: null },
       gender: { type: String, default: '' },
+      bio: { type: String, default: '', trim: true, maxlength: 500 },
+      category: { type: String, default: null },
+      showCategoryOnProfile: { type: Boolean, default: true },
       avatarKey: { type: String, default: AVATARS[0].key },
       avatarPhotoUrl: { type: String, default: null },
     },
 
     faction: { type: String, default: null },
     interests: { type: [String], default: [] },
+    // The balance is read by the profile page now. A points ledger/reward
+    // system can safely award or deduct points later without changing the API.
+    pointsBalance: { type: Number, default: 0, min: 0 },
+    // Separate from the private account email. These are deliberately public
+    // details entered by the user on the Contact options screen.
+    contact: {
+      email: { type: String, default: '', trim: true, lowercase: true },
+      phone: { type: String, default: '', trim: true },
+      businessAddress: { type: String, default: '', trim: true, maxlength: 250 },
+    },
 
     preferences: {
-      locationEnabled: { type: Boolean, default: false },
-      radiusMiles: { type: Number, default: 50 },
-      lastKnownLocation: {
-        lat: { type: Number, default: null },
-        lng: { type: Number, default: null },
-      },
       notificationsEnabled: { type: Boolean, default: false },
     },
 
@@ -64,7 +71,6 @@ const userSchema = new mongoose.Schema(
     // These flags distinguish a deliberate "off" preference from an untouched default.
     onboarding: {
       avatarChosen: { type: Boolean, default: false },
-      locationPreferenceChosen: { type: Boolean, default: false },
       notificationPreferenceChosen: { type: Boolean, default: false },
     },
   },

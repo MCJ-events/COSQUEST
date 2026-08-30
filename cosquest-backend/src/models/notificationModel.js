@@ -20,12 +20,14 @@ async function createForEnabledUsers(message) {
  * sent at signup, before the person has ever set `notificationsEnabled`
  * (it defaults to false and isn't chosen until onboarding step 4).
  */
-async function createForUser(userId, message) {
-  return Notification.create({ user: userId, message });
+async function createForUser(userId, message, { type = 'system', actor } = {}) {
+  return Notification.create({ user: userId, message, type, actor: actor || null });
 }
 
 async function listForUser(userId) {
-  return Notification.find({ user: userId }).sort({ createdAt: -1 });
+  return Notification.find({ user: userId })
+    .populate('actor', 'profile.username profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl')
+    .sort({ createdAt: -1 });
 }
 
 async function markAllRead(userId) {
@@ -33,7 +35,16 @@ async function markAllRead(userId) {
 }
 
 function sanitize(n) {
-  return { id: String(n._id), message: n.message, read: n.read, createdAt: n.createdAt };
+  const actor = n.actor && typeof n.actor === 'object' && n.actor.profile
+    ? {
+        id: String(n.actor._id),
+        username: n.actor.profile.username,
+        name: [n.actor.profile.firstName, n.actor.profile.lastName].filter(Boolean).join(' '),
+        avatarKey: n.actor.profile.avatarKey,
+        avatarPhotoUrl: n.actor.profile.avatarPhotoUrl,
+      }
+    : null;
+  return { id: String(n._id), type: n.type, message: n.message, actor, read: n.read, createdAt: n.createdAt };
 }
 
 module.exports = { createForEnabledUsers, createForUser, listForUser, markAllRead, sanitize };

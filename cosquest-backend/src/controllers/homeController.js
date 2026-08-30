@@ -12,11 +12,7 @@ function configuredLocation() {
 }
 
 async function getDashboard(req, res) {
-  const saved = req.user.preferences.lastKnownLocation;
-  const useSavedLocation = req.user.preferences.locationEnabled && Number.isFinite(saved.lat) && Number.isFinite(saved.lng);
-  const location = useSavedLocation
-    ? { lat: saved.lat, lng: saved.lng, radiusMiles: req.user.preferences.radiusMiles, source: 'profile' }
-    : { ...configuredLocation(), source: 'default' };
+  const location = { ...configuredLocation(), source: 'default' };
 
   const [quests, registrations, notifications] = await Promise.all([
     Quest.find({ isPublished: true, status: { $in: ['live', 'upcoming'] } }).sort({ startsAt: 1 }),

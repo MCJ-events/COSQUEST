@@ -1,33 +1,46 @@
-/**
- * "none" (Factionless) is also a valid, selectable value in the front-end
- * (see the extra .fac[data-fac="none"] card in the onboarding markup) but
- * is kept out of this list since it is not a real faction record.
- */
 const FACTIONS = [
   {
-    key: 'marvel',
-    name: 'Marvel',
-    color: '#ED1D24',
-    description: 'Web-slingers, mutants, and cosmic heroes — bold, witty, and always ready for a team-up.',
+    key: 'ascendants',
+    name: 'Ascendants',
+    color: '#8B5CF6',
+    description: 'Ambitious challengers who rise through courage, growth, and relentless determination.',
   },
   {
-    key: 'dc',
-    name: 'DC',
-    color: '#0078F0',
-    description: 'Gotham to Krypton — dark, epic, and larger than life. Justice never sleeps.',
-  },
-  {
-    key: 'anime',
-    name: 'Anime Realm',
+    key: 'icons',
+    name: 'Icons',
     color: '#EC4899',
-    description: 'Manga & anime devotees — disciplined, dramatic, and endlessly creative.',
+    description: 'Bold trendsetters whose creativity, presence, and style leave a lasting mark.',
+  },
+  {
+    key: 'controllers',
+    name: 'Controllers',
+    color: '#06B6D4',
+    description: 'Calculated strategists who master every challenge through skill, focus, and precision.',
+  },
+  {
+    key: 'blockbusters',
+    name: 'Blockbusters',
+    color: '#F97316',
+    description: 'Big-energy adventurers who thrive on action, spectacle, and unforgettable moments.',
+  },
+  {
+    key: 'everborns',
+    name: 'Everborns',
+    color: '#22C55E',
+    description: 'Resilient spirits who adapt, endure, and return stronger after every challenge.',
+  },
+  {
+    key: 'celestials',
+    name: 'Celestials',
+    color: '#EAB308',
+    description: 'Visionary explorers drawn to discovery, imagination, and limitless possibilities.',
   },
 ];
 
 const FACTION_KEYS = FACTIONS.map((f) => f.key);
 
 function isValidFactionKey(key) {
-  return key === 'none' || FACTION_KEYS.includes(key);
+  return FACTION_KEYS.includes(key);
 }
 
 function getFaction(key) {
