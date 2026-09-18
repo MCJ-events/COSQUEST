@@ -3,6 +3,7 @@ const { identifyUser } = require('../middleware/identifyUser');
 const { asyncHandler } = require('../utils/asyncHandler');
 const {
   updateNotificationPrefs,
+  updateLocationPrefs,
   registerDevice,
   completeOnboarding,
 } = require('../controllers/preferencesController');
@@ -13,6 +14,7 @@ const router = express.Router();
 router.use(asyncHandler(identifyUser));
 
 router.patch('/me/preferences/notifications', asyncHandler(updateNotificationPrefs));
+router.patch('/me/preferences/location', asyncHandler(updateLocationPrefs));
 router.post('/me/devices', asyncHandler(registerDevice));
 router.post('/me/onboarding/complete', asyncHandler(completeOnboarding));
 

@@ -3,12 +3,17 @@ const mongoose = require('mongoose');
 const Post = require('../models/Post');
 const PostLike = require('../models/PostLike');
 const PostComment = require('../models/PostComment');
+const PostShare = require('../models/PostShare');
+const PostBookmark = require('../models/PostBookmark');
 const userModel = require('../models/userModel');
 const { storePostMedia, deletePostMedia } = require('../utils/imageHost');
 
 const POST_TYPES = ['image', 'reel', 'thought'];
-const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-const VIDEO_TYPES = ['video/mp4', 'video/quicktime', 'video/webm'];
+// 'image/jpg' isn't a registered MIME type, and 'application/octet-stream'
+// is a client's "couldn't detect it" fallback - both accepted here the same
+// way as upload.js's ALLOWED_TYPES, deferring real validation to Cloudinary.
+const IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif', 'application/octet-stream'];
+const VIDEO_TYPES = ['video/mp4', 'video/quicktime', 'video/webm', 'application/octet-stream'];
 
 function parseLimit(value, fallback = 20) {
   const limit = Number(value);
@@ -46,8 +51,11 @@ function serializePost(post) {
     media: item.media,
     likeCount: item.likeCount,
     commentCount: item.commentCount,
+    shareCount: item.shareCount,
+    bookmarkCount: item.bookmarkCount,
     createdAt: item.createdAt,
     updatedAt: item.updatedAt,
+    editedAt: item.editedAt || null,
     author: item.author?.profile ? authorPreview(item.author) : undefined,
   };
 }
@@ -160,6 +168,7 @@ async function updatePost(req, res) {
     return res.status(400).json({ error: `content must be ${post.type === 'thought' ? '1 to 300' : 'at most 2,200'} characters.` });
   }
   post.content = content;
+  post.editedAt = new Date();
   await post.save();
   return res.json({ post: serializePost(post) });
 }
@@ -168,7 +177,13 @@ async function deletePost(req, res) {
   const post = await loadPost(req.params.postId);
   if (!post) return res.status(404).json({ error: 'Post not found.' });
   if (String(post.author._id) !== String(req.userId)) return res.status(403).json({ error: 'You can only delete your own post.' });
-  await Promise.all([PostLike.deleteMany({ post: post._id }), PostComment.deleteMany({ post: post._id }), Post.deleteOne({ _id: post._id })]);
+  await Promise.all([
+    PostLike.deleteMany({ post: post._id }),
+    PostComment.deleteMany({ post: post._id }),
+    PostShare.deleteMany({ post: post._id }),
+    PostBookmark.deleteMany({ post: post._id }),
+    Post.deleteOne({ _id: post._id }),
+  ]);
   await deletePostMedia(post.media);
   return res.json({ message: 'Post deleted.' });
 }
@@ -193,6 +208,71 @@ async function unlikePost(req, res) {
   if (!removed.deletedCount) return res.status(404).json({ error: 'You have not liked this post.' });
   const updated = await Post.findByIdAndUpdate(post._id, { $inc: { likeCount: -1 } }, { new: true });
   return res.json({ liked: false, likeCount: Math.max(0, updated.likeCount) });
+}
+
+async function sharePost(req, res) {
+  const post = await loadPost(req.params.postId);
+  if (!post) return res.status(404).json({ error: 'Post not found.' });
+  try {
+    await PostShare.create({ post: post._id, user: req.userId });
+  } catch (error) {
+    if (error?.code === 11000) return res.status(409).json({ error: 'You already shared this post.' });
+    throw error;
+  }
+  const updated = await Post.findByIdAndUpdate(post._id, { $inc: { shareCount: 1 } }, { new: true });
+  return res.status(201).json({ shared: true, shareCount: updated.shareCount });
+}
+
+async function unsharePost(req, res) {
+  const post = await loadPost(req.params.postId);
+  if (!post) return res.status(404).json({ error: 'Post not found.' });
+  const removed = await PostShare.deleteOne({ post: post._id, user: req.userId });
+  if (!removed.deletedCount) return res.status(404).json({ error: 'You have not shared this post.' });
+  const updated = await Post.findByIdAndUpdate(post._id, { $inc: { shareCount: -1 } }, { new: true });
+  return res.json({ shared: false, shareCount: Math.max(0, updated.shareCount) });
+}
+
+async function bookmarkPost(req, res) {
+  const post = await loadPost(req.params.postId);
+  if (!post) return res.status(404).json({ error: 'Post not found.' });
+  try {
+    await PostBookmark.create({ post: post._id, user: req.userId });
+  } catch (error) {
+    if (error?.code === 11000) return res.status(409).json({ error: 'You already bookmarked this post.' });
+    throw error;
+  }
+  const updated = await Post.findByIdAndUpdate(post._id, { $inc: { bookmarkCount: 1 } }, { new: true });
+  return res.status(201).json({ bookmarked: true, bookmarkCount: updated.bookmarkCount });
+}
+
+async function unbookmarkPost(req, res) {
+  const post = await loadPost(req.params.postId);
+  if (!post) return res.status(404).json({ error: 'Post not found.' });
+  const removed = await PostBookmark.deleteOne({ post: post._id, user: req.userId });
+  if (!removed.deletedCount) return res.status(404).json({ error: 'You have not bookmarked this post.' });
+  const updated = await Post.findByIdAndUpdate(post._id, { $inc: { bookmarkCount: -1 } }, { new: true });
+  return res.json({ bookmarked: false, bookmarkCount: Math.max(0, updated.bookmarkCount) });
+}
+
+async function listMyBookmarks(req, res) {
+  const limit = parseLimit(req.query.limit);
+  const page = parsePage(req.query.page);
+  const query = { user: req.userId };
+  const [bookmarks, total] = await Promise.all([
+    PostBookmark.find(query)
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .populate({
+        path: 'post',
+        populate: { path: 'author', select: 'profile.username profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl faction' },
+      }),
+    PostBookmark.countDocuments(query),
+  ]);
+  return res.json({
+    posts: bookmarks.filter((bookmark) => bookmark.post).map((bookmark) => serializePost(bookmark.post)),
+    pagination: { page, limit, total, hasMore: page * limit < total },
+  });
 }
 
 async function listComments(req, res) {
@@ -253,6 +333,11 @@ module.exports = {
   deletePost,
   likePost,
   unlikePost,
+  sharePost,
+  unsharePost,
+  bookmarkPost,
+  unbookmarkPost,
+  listMyBookmarks,
   listComments,
   createComment,
   deleteComment,

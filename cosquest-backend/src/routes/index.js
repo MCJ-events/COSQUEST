@@ -10,6 +10,7 @@ const metaRoutes = require('./metaRoutes');
 const questRoutes = require('./questRoutes');
 const homeRoutes = require('./homeRoutes');
 const postRoutes = require('./postRoutes');
+const chatRoutes = require('./chatRoutes');
 
 const router = express.Router();
 
@@ -23,5 +24,6 @@ router.use('/users', notificationRoutes); // /api/users/me/notifications
 router.use('/meta', metaRoutes); // /api/meta/avatars
 router.use('/', questRoutes); // /api/quests
 router.use('/home', homeRoutes); // /api/home/dashboard
+router.use('/', chatRoutes); // /api/chats
 
 module.exports = router;

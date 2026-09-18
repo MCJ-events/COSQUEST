@@ -4,6 +4,30 @@ const { isValidInterestKey } = require('../models/interestModel');
 const { isValidAvatarKey } = require('../models/avatarModel');
 const { isValidUsername, normalizeUsername } = require('../utils/validation');
 
+const MIN_RADIUS_MILES = 5;
+const MAX_RADIUS_MILES = 100;
+const DEFAULT_RADIUS_MILES = 50;
+
+// Shared by the standalone endpoint and the one-shot onboarding payload.
+function validateLocationInput({ locationEnabled, radiusMiles, lat, lng }) {
+  if (typeof locationEnabled !== 'boolean') return 'locationEnabled (boolean) is required.';
+  if (locationEnabled) {
+    if (typeof lat !== 'number' || !Number.isFinite(lat) || lat < -90 || lat > 90) {
+      return 'lat is required when locationEnabled is true, and must be a number between -90 and 90.';
+    }
+    if (typeof lng !== 'number' || !Number.isFinite(lng) || lng < -180 || lng > 180) {
+      return 'lng is required when locationEnabled is true, and must be a number between -180 and 180.';
+    }
+  }
+  if (radiusMiles !== undefined) {
+    const n = Number(radiusMiles);
+    if (!Number.isFinite(n) || n < MIN_RADIUS_MILES || n > MAX_RADIUS_MILES) {
+      return `radiusMiles must be between ${MIN_RADIUS_MILES} and ${MAX_RADIUS_MILES}.`;
+    }
+  }
+  return null;
+}
+
 // PATCH /api/users/me/preferences/notifications
 async function updateNotificationPrefs(req, res) {
   const { notificationsEnabled } = req.body;
@@ -16,6 +40,30 @@ async function updateNotificationPrefs(req, res) {
   const updated = await userModel.updateUser(req.userId, (user) => {
     user.preferences.notificationsEnabled = Boolean(notificationsEnabled);
     user.onboarding.notificationPreferenceChosen = true;
+  });
+  return res.json({ user: userModel.sanitize(updated) });
+}
+
+// PATCH /api/users/me/preferences/location - CosQuest is played in the real
+// world, so unlike notifications, this is a required onboarding step (see
+// completeOnboarding below), not just an optional preference.
+async function updateLocationPrefs(req, res) {
+  const { locationEnabled, radiusMiles, lat, lng } = req.body;
+  const error = validateLocationInput({ locationEnabled, radiusMiles, lat, lng });
+  if (error) return res.status(400).json({ error });
+
+  const updated = await userModel.updateUser(req.userId, (user) => {
+    user.preferences.locationEnabled = Boolean(locationEnabled);
+    user.preferences.radiusMiles = radiusMiles !== undefined ? Number(radiusMiles) : user.preferences.radiusMiles || DEFAULT_RADIUS_MILES;
+    if (locationEnabled) {
+      user.location.lat = Number(lat);
+      user.location.lng = Number(lng);
+      user.location.updatedAt = new Date();
+    } else {
+      user.location.lat = null;
+      user.location.lng = null;
+      user.location.updatedAt = null;
+    }
   });
   return res.json({ user: userModel.sanitize(updated) });
 }
@@ -51,7 +99,7 @@ async function registerDevice(req, res) {
  * Either way, completion is allowed only after every required choice exists.
  */
 async function completeOnboarding(req, res) {
-  const { profile, faction, interests, preferences } = req.body;
+  const { profile, faction, interests, preferences, location } = req.body;
   const errors = [];
 
   if (profile?.username !== undefined) {
@@ -84,6 +132,10 @@ async function completeOnboarding(req, res) {
   if (preferences?.notificationsEnabled !== undefined && typeof preferences.notificationsEnabled !== 'boolean') {
     errors.push('preferences.notificationsEnabled must be a boolean.');
   }
+  if (location !== undefined) {
+    const locationError = validateLocationInput(location);
+    if (locationError) errors.push(`location.${locationError}`);
+  }
 
   const nextProfile = {
     firstName: profile?.firstName !== undefined ? String(profile.firstName).trim() : req.user.profile.firstName,
@@ -97,6 +149,9 @@ async function completeOnboarding(req, res) {
   const avatarChosen = req.user.onboarding?.avatarChosen || profile?.avatar !== undefined;
   const notificationPreferenceChosen =
     req.user.onboarding?.notificationPreferenceChosen || preferences?.notificationsEnabled !== undefined;
+  const nextLocationEnabled = location?.locationEnabled !== undefined ? location.locationEnabled : req.user.preferences?.locationEnabled;
+  const nextLat = location?.lat !== undefined ? location.lat : req.user.location?.lat;
+  const nextLng = location?.lng !== undefined ? location.lng : req.user.location?.lng;
 
   if (!nextProfile.firstName) errors.push('profile.firstName is required.');
   if (!nextProfile.lastName) errors.push('profile.lastName is required.');
@@ -114,6 +169,9 @@ async function completeOnboarding(req, res) {
     errors.push('Choose at least one interest before completing onboarding.');
   }
   if (!notificationPreferenceChosen) errors.push('Choose whether to enable notifications before completing onboarding.');
+  if (!nextLocationEnabled || typeof nextLat !== 'number' || typeof nextLng !== 'number') {
+    errors.push('Enable location and share your coordinates before completing onboarding.');
+  }
 
   if (errors.length) {
     return res.status(400).json({ error: errors.join(' '), errors });
@@ -139,10 +197,20 @@ async function completeOnboarding(req, res) {
       if (preferences.notificationsEnabled !== undefined) user.preferences.notificationsEnabled = Boolean(preferences.notificationsEnabled);
       if (preferences.notificationsEnabled !== undefined) user.onboarding.notificationPreferenceChosen = true;
     }
+    if (location) {
+      if (location.locationEnabled !== undefined) user.preferences.locationEnabled = Boolean(location.locationEnabled);
+      if (location.radiusMiles !== undefined) user.preferences.radiusMiles = Number(location.radiusMiles);
+      else if (!user.preferences.radiusMiles) user.preferences.radiusMiles = DEFAULT_RADIUS_MILES;
+      if (location.locationEnabled) {
+        user.location.lat = Number(location.lat);
+        user.location.lng = Number(location.lng);
+        user.location.updatedAt = new Date();
+      }
+    }
     user.onboardingComplete = true;
   });
 
   return res.json({ message: 'Onboarding complete.', user: userModel.sanitize(updated) });
 }
 
-module.exports = { updateNotificationPrefs, registerDevice, completeOnboarding };
+module.exports = { updateNotificationPrefs, updateLocationPrefs, registerDevice, completeOnboarding };

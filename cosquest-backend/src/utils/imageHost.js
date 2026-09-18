@@ -1,6 +1,15 @@
 const fs = require('fs');
 const { getCloudinary } = require('./cloudinary');
 
+// Cloudinary's API responding with an error (an `http_code`, almost always
+// 400) means the file's actual content was rejected - a client mistake, not
+// a server failure. A network/config error has no `http_code` and is left
+// alone, so errorHandler.js's default 500 still applies to those.
+function tagCloudinaryError(error) {
+  if (error?.http_code && error.http_code < 500) error.status = 400;
+  return error;
+}
+
 /**
  * @param {Express.Multer.File} file
  * @returns {Promise<string>} public URL for the stored image
@@ -19,6 +28,8 @@ async function storeAvatarPhoto(file) {
       resource_type: 'image',
     });
     return result.secure_url;
+  } catch (error) {
+    throw tagCloudinaryError(error);
   } finally {
     fs.unlink(file.path, () => {}); // Multer's temporary file is never used as local storage.
   }
@@ -76,7 +87,7 @@ async function storePostMedia(files, type) {
     // temporary upload as well.
     for (const file of files) fs.unlink(file.path, () => {});
     await deletePostMedia(uploaded);
-    throw error;
+    throw tagCloudinaryError(error);
   }
 }
 
@@ -86,4 +97,42 @@ async function deletePostMedia(media) {
   await Promise.allSettled(media.map((item) => getCloudinary().uploader.destroy(item.publicId, { resource_type: item.resourceType })));
 }
 
-module.exports = { storeAvatarPhoto, storePostMedia, deletePostMedia };
+/**
+ * Uploads a single chat attachment (image or voice note) to Cloudinary.
+ * Voice notes upload as Cloudinary resource_type 'video' (Cloudinary has no
+ * separate audio type); `kind` ('image'|'audio') is what the app calls it.
+ */
+async function storeChatMedia(file, kind) {
+  const resourceType = kind === 'audio' ? 'video' : 'image';
+  if (process.env.NODE_ENV !== 'test' && (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET)) {
+    throw new Error('Cloudinary is not fully configured. Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET.');
+  }
+
+  try {
+    let result;
+    if (process.env.NODE_ENV === 'test') {
+      result = {
+        secure_url: `https://res.cloudinary.com/test-cloud/${resourceType}/upload/cosquest/chat/${file.filename}`,
+        public_id: `cosquest/chat/${file.filename}`,
+        duration: kind === 'audio' ? 8 : null,
+      };
+    } else {
+      result = await getCloudinary().uploader.upload(file.path, {
+        folder: process.env.CLOUDINARY_CHAT_FOLDER || 'cosquest/chat',
+        resource_type: resourceType,
+      });
+    }
+    return { url: result.secure_url, publicId: result.public_id, resourceType, durationSeconds: result.duration || null };
+  } catch (error) {
+    throw tagCloudinaryError(error);
+  } finally {
+    fs.unlink(file.path, () => {});
+  }
+}
+
+function deleteChatMedia(media) {
+  if (!media) return Promise.resolve();
+  return deletePostMedia([media]);
+}
+
+module.exports = { storeAvatarPhoto, storePostMedia, deletePostMedia, storeChatMedia, deleteChatMedia };

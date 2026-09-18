@@ -20,6 +20,12 @@ const postSchema = new mongoose.Schema(
     media: { type: [mediaSchema], default: [] },
     likeCount: { type: Number, default: 0, min: 0 },
     commentCount: { type: Number, default: 0, min: 0 },
+    shareCount: { type: Number, default: 0, min: 0 },
+    bookmarkCount: { type: Number, default: 0, min: 0 },
+    // Set whenever the owner edits `content`; distinct from `updatedAt` so
+    // an edit can be shown to viewers ("edited") without conflating it with
+    // any other future field that might touch this document.
+    editedAt: { type: Date, default: null },
   },
   { timestamps: true }
 );

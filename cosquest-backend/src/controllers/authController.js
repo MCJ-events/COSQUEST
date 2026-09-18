@@ -43,9 +43,28 @@ async function signup(req, res) {
   const existing = registeringWithEmail
     ? await userModel.findByEmail(signUpIdentifier)
     : await userModel.findByUsername(signUpIdentifier);
+
   if (existing) {
-    return res.status(409).json({
-      error: registeringWithEmail ? 'An account with this email already exists.' : 'That username is already taken.',
+    if (existing.onboardingComplete) {
+      return res.status(409).json({
+        error: registeringWithEmail ? 'An account with this email already exists.' : 'That username is already taken.',
+      });
+    }
+    // Onboarding was started but never finished - this is the same person
+    // coming back, not a real conflict. Every onboarding-step endpoint
+    // already treats the bare email/username as sufficient identification
+    // pre-completion (see this file's header comment), so resuming here
+    // instead of dead-ending them is consistent, not a new trust decision.
+    // Refreshing the password also covers a forgotten one on an account
+    // that can't log in yet anyway - there's no separate reset flow.
+    const passwordHash = await bcrypt.hash(password, 10);
+    const updated = await userModel.updateUser(existing.id, (user) => {
+      user.passwordHash = passwordHash;
+    });
+    return res.status(200).json({
+      message: 'Welcome back - this account already exists but onboarding is not finished yet. Continuing where you left off.',
+      resumed: true,
+      user: userModel.sanitize(updated),
     });
   }
 
@@ -65,6 +84,7 @@ async function signup(req, res) {
   // only ever issued at login, and only once onboarding is complete.
   return res.status(201).json({
     message: 'Account created. Complete onboarding using your email or username, then log in.',
+    resumed: false,
     user: userModel.sanitize(user),
   });
 }

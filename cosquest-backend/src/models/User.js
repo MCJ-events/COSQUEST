@@ -56,6 +56,16 @@ const userSchema = new mongoose.Schema(
 
     preferences: {
       notificationsEnabled: { type: Boolean, default: false },
+      locationEnabled: { type: Boolean, default: false },
+      radiusMiles: { type: Number, default: 50, min: 5, max: 100 },
+    },
+    // The user's own device coordinates, captured during onboarding - separate
+    // from DASHBOARD_DEFAULT_LAT/LNG, which is now only a fallback for an
+    // account that somehow reaches the dashboard without this set.
+    location: {
+      lat: { type: Number, default: null },
+      lng: { type: Number, default: null },
+      updatedAt: { type: Date, default: null },
     },
 
     devices: [
@@ -66,6 +76,10 @@ const userSchema = new mongoose.Schema(
         registeredAt: { type: Date, default: Date.now },
       },
     ],
+
+    // Best-effort "last seen" signal for chat presence ("Active 7h ago").
+    // Touched by requireAuth, throttled there so it isn't a write on every request.
+    lastActiveAt: { type: Date, default: Date.now },
 
     onboardingComplete: { type: Boolean, default: false },
     // These flags distinguish a deliberate "off" preference from an untouched default.

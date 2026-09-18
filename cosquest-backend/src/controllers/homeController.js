@@ -3,6 +3,10 @@ const QuestRegistration = require('../models/QuestRegistration');
 const notificationModel = require('../models/notificationModel');
 const { distanceMiles, serializeQuest } = require('../utils/quest');
 
+// Fallback only - every user who completed onboarding after the location
+// step became required already has their own coordinates (see
+// preferencesController.completeOnboarding). This exists for accounts that
+// finished onboarding before that requirement existed.
 function configuredLocation() {
   return {
     lat: Number(process.env.DASHBOARD_DEFAULT_LAT || 6.5244),
@@ -12,7 +16,13 @@ function configuredLocation() {
 }
 
 async function getDashboard(req, res) {
-  const location = { ...configuredLocation(), source: 'default' };
+  const hasOwnLocation =
+    req.user.preferences?.locationEnabled &&
+    typeof req.user.location?.lat === 'number' &&
+    typeof req.user.location?.lng === 'number';
+  const location = hasOwnLocation
+    ? { lat: req.user.location.lat, lng: req.user.location.lng, radiusMiles: req.user.preferences.radiusMiles || 50, source: 'user' }
+    : { ...configuredLocation(), source: 'default' };
 
   const [quests, registrations, notifications] = await Promise.all([
     Quest.find({ isPublished: true, status: { $in: ['live', 'upcoming'] } }).sort({ startsAt: 1 }),

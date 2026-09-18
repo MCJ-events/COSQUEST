@@ -17,7 +17,23 @@ const storage = multer.diskStorage({
   },
 });
 
-const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+// A rejected file type is the caller's mistake, not a server failure -
+// errorHandler.js defaults to 500 unless the error carries its own status.
+function invalidFileType(message) {
+  const err = new Error(message);
+  err.status = 400;
+  return err;
+}
+
+// 'image/jpg' isn't a real registered MIME type (the correct one is
+// 'image/jpeg'), but several real clients - including some Postman/OS
+// combinations - send it anyway for a plain .jpg file. Accepting both means
+// a genuinely valid JPEG is never rejected over which spelling a client used.
+// 'application/octet-stream' is the generic "I couldn't determine the type"
+// fallback some clients send when they fail to detect a file's type at all -
+// letting it through here defers to Cloudinary's real content-based
+// validation (see imageHost.js) instead of trusting a client's guess.
+const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif', 'application/octet-stream'];
 const POST_MEDIA_TYPES = [...ALLOWED_TYPES, 'video/mp4', 'video/quicktime', 'video/webm'];
 
 const upload = multer({
@@ -25,7 +41,7 @@ const upload = multer({
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
   fileFilter: (req, file, cb) => {
     if (!ALLOWED_TYPES.includes(file.mimetype)) {
-      return cb(new Error('Only JPEG, PNG, WEBP, or GIF images are allowed.'));
+      return cb(invalidFileType(`Only JPEG, PNG, WEBP, or GIF images are allowed (received "${file.mimetype}").`));
     }
     cb(null, true);
   },
@@ -38,10 +54,25 @@ const postUpload = multer({
   limits: { fileSize: 50 * 1024 * 1024, files: 8 },
   fileFilter: (req, file, cb) => {
     if (!POST_MEDIA_TYPES.includes(file.mimetype)) {
-      return cb(new Error('Post media must be JPEG, PNG, WEBP, GIF, MP4, MOV, or WEBM.'));
+      return cb(invalidFileType(`Post media must be JPEG, PNG, WEBP, GIF, MP4, MOV, or WEBM (received "${file.mimetype}").`));
     }
     cb(null, true);
   },
 });
 
-module.exports = { upload, postUpload, uploadDir };
+const AUDIO_TYPES = ['audio/mpeg', 'audio/mp4', 'audio/m4a', 'audio/webm', 'audio/ogg', 'audio/wav', 'audio/x-wav'];
+const CHAT_MEDIA_TYPES = [...ALLOWED_TYPES, ...AUDIO_TYPES];
+
+// Chat messages carry at most one attachment: an image or a voice note.
+const chatUpload = multer({
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (!CHAT_MEDIA_TYPES.includes(file.mimetype)) {
+      return cb(invalidFileType(`Chat attachments must be JPEG, PNG, WEBP, GIF, or a voice note (MP3, M4A, WEBM, OGG, or WAV) (received "${file.mimetype}").`));
+    }
+    cb(null, true);
+  },
+});
+
+module.exports = { upload, postUpload, chatUpload, uploadDir };

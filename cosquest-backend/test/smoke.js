@@ -19,7 +19,38 @@ const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
 const sendNotification = require('../scripts/sendNotification');
 const Quest = require('../src/models/Quest');
+const Message = require('../src/models/Message');
 const { createCompletionCode } = require('../src/utils/oauth');
+
+// Real, valid, minimal media - not just placeholder bytes. `npm test`'s
+// ephemeral Cloudinary stub (see src/utils/imageHost.js, NODE_ENV=test)
+// accepts any bytes, but a real Cloudinary account actually decodes
+// uploads and correctly rejects garbage - these fixtures work against both.
+const REAL_PNG_BYTES = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+  'base64'
+);
+
+function makeSilentWav(durationSeconds = 1) {
+  const sampleRate = 8000;
+  const dataSize = sampleRate * durationSeconds * 2; // 16-bit mono
+  const buffer = Buffer.alloc(44 + dataSize);
+  buffer.write('RIFF', 0);
+  buffer.writeUInt32LE(36 + dataSize, 4);
+  buffer.write('WAVE', 8);
+  buffer.write('fmt ', 12);
+  buffer.writeUInt32LE(16, 16);
+  buffer.writeUInt16LE(1, 20); // PCM
+  buffer.writeUInt16LE(1, 22); // mono
+  buffer.writeUInt32LE(sampleRate, 24);
+  buffer.writeUInt32LE(sampleRate * 2, 28); // byte rate
+  buffer.writeUInt16LE(2, 32); // block align
+  buffer.writeUInt16LE(16, 34); // bits per sample
+  buffer.write('data', 36);
+  buffer.writeUInt32LE(dataSize, 40);
+  // Sample bytes are left at 0 (silence) from Buffer.alloc's zero-fill.
+  return buffer;
+}
 const userModel = require('../src/models/userModel');
 
 async function call(baseUrl, method, path, { token, body, isForm } = {}) {
@@ -76,8 +107,15 @@ async function run(baseUrlArg) {
     assert(r.status === 201 && !r.json.token, 'POST /api/auth/signup -> 201, no token', r);
   }
   {
+    // Onboarding isn't complete yet for this email - a repeat signup is the
+    // same person coming back, not a real conflict, so it resumes (200)
+    // instead of dead-ending them with a duplicate-email error.
     const r = await c('POST', '/api/auth/signup', { body: { email, password, confirmPassword: password } });
-    assert(r.status === 409, 'POST /api/auth/signup (duplicate email) -> 409', r);
+    assert(
+      r.status === 200 && r.json.resumed === true && r.json.user.email === email,
+      'POST /api/auth/signup (email, onboarding not finished yet) -> 200, resumes the same incomplete account',
+      r
+    );
   }
   {
     const username = `Nova${Date.now()}`.slice(0, 20);
@@ -98,7 +136,11 @@ async function run(baseUrlArg) {
     const duplicate = await c('POST', '/api/auth/signup', {
       body: { identifier: username, password, confirmPassword: password },
     });
-    assert(duplicate.status === 409, 'POST /api/auth/signup (duplicate username) -> 409', duplicate);
+    assert(
+      duplicate.status === 200 && duplicate.json.resumed === true,
+      'POST /api/auth/signup (username, onboarding not finished yet) -> 200, resumes the same incomplete account',
+      duplicate
+    );
   }
   {
     const r = await c('POST', '/api/auth/login', { body: { email, password: 'wrong' } });
@@ -161,7 +203,7 @@ async function run(baseUrlArg) {
     // there's no token yet; confirms identifyUser reading it after multer parses the body.
     const form = new FormData();
     form.append('email', email);
-    form.append('photo', new Blob([Buffer.from('fake-image-bytes')], { type: 'image/png' }), 'test.png');
+    form.append('photo', new Blob([REAL_PNG_BYTES], { type: 'image/png' }), 'test.png');
     const r = await c('POST', '/api/users/me/avatar/photo', { body: form, isForm: true });
     assert(
         r.status === 200 &&
@@ -170,6 +212,40 @@ async function run(baseUrlArg) {
       'POST /api/users/me/avatar/photo (email as a form field, no token) -> Cloudinary URL set',
       r
     );
+  }
+  {
+    // Regression: some real clients (including some Postman/OS combinations)
+    // send the non-standard 'image/jpg' instead of the correct 'image/jpeg'
+    // for a plain .jpg file - a real JPEG must not be rejected over this.
+    const form = new FormData();
+    form.append('email', email);
+    form.append('photo', new Blob([REAL_PNG_BYTES], { type: 'image/jpg' }), 'passport.jpg');
+    const r = await c('POST', '/api/users/me/avatar/photo', { body: form, isForm: true });
+    assert(r.status === 200, 'POST /api/users/me/avatar/photo (.jpg sent as image/jpg, not image/jpeg) -> accepted', r);
+  }
+  {
+    // A genuinely unsupported type is a client mistake, not a server failure -
+    // 400 with the actual received mimetype named, not a bare 500.
+    const form = new FormData();
+    form.append('email', email);
+    form.append('photo', new Blob([REAL_PNG_BYTES], { type: 'application/pdf' }), 'passport.pdf');
+    const r = await c('POST', '/api/users/me/avatar/photo', { body: form, isForm: true });
+    assert(
+      r.status === 400 && typeof r.json.error === 'string' && r.json.error.includes('application/pdf'),
+      'POST /api/users/me/avatar/photo (unsupported type) -> 400, names the received mimetype',
+      r
+    );
+  }
+  {
+    // 'application/octet-stream' is a client's "couldn't detect the type"
+    // fallback (some Postman/OS combinations send this for a real photo) -
+    // it must pass through to Cloudinary's real content check, not get
+    // blocked purely for carrying a generic label.
+    const form = new FormData();
+    form.append('email', email);
+    form.append('photo', new Blob([REAL_PNG_BYTES], { type: 'application/octet-stream' }), 'photo');
+    const r = await c('POST', '/api/users/me/avatar/photo', { body: form, isForm: true });
+    assert(r.status === 200, 'POST /api/users/me/avatar/photo (generic application/octet-stream label) -> accepted', r);
   }
   {
     const r = await c('GET', '/api/meta/avatars');
@@ -239,8 +315,16 @@ async function run(baseUrlArg) {
   console.log('\n--- finish onboarding, then login (only now does login succeed) ---');
   let token;
   {
-    const r = await c('POST', '/api/users/me/onboarding/complete', { body: { email } });
+    const r = await c('POST', '/api/users/me/onboarding/complete', {
+      body: { email, location: { locationEnabled: true, radiusMiles: 50, lat: 6.5244, lng: 3.3792 } },
+    });
     assert(r.status === 200 && r.json.user.onboardingComplete === true, 'POST onboarding/complete -> true', r);
+  }
+  {
+    // Now that onboarding is genuinely finished, a repeat signup is a real
+    // conflict again - not a resume.
+    const r = await c('POST', '/api/auth/signup', { body: { email, password, confirmPassword: password } });
+    assert(r.status === 409, 'POST /api/auth/signup (email, onboarding already finished) -> 409, a real duplicate', r);
   }
   {
     const r = await c('GET', `/api/users/me?email=${email}`);
@@ -288,12 +372,39 @@ async function run(baseUrlArg) {
     const r = await c('GET', '/api/users/me', { token });
     assert(r.status === 200 && r.json.user.email === email, 'GET /api/users/me with Bearer token (post-login) -> works too', r);
   }
+  console.log('\n--- location preferences (required at onboarding, updatable afterward) ---');
+  {
+    const r = await c('PATCH', '/api/users/me/preferences/location', { token, body: { locationEnabled: true, lat: 200, lng: 3.3792 } });
+    assert(r.status === 400, 'PATCH preferences/location (lat out of range) -> 400', r);
+  }
   {
     const r = await c('PATCH', '/api/users/me/preferences/location', {
       token,
-      body: { locationEnabled: true, radiusMiles: 50, lat: 32.7157, lng: -117.1611 },
+      body: { locationEnabled: true, lat: 6.5244, lng: 3.3792, radiusMiles: 500 },
     });
-    assert(r.status === 404, 'PATCH preferences/location -> 404 (user location is fixed and cannot be edited)', r);
+    assert(r.status === 400, 'PATCH preferences/location (radiusMiles out of range) -> 400', r);
+  }
+  {
+    const r = await c('PATCH', '/api/users/me/preferences/location', { token, body: { locationEnabled: false } });
+    assert(
+      r.status === 200 && r.json.user.preferences.locationEnabled === false && r.json.user.location.lat === null,
+      'PATCH preferences/location (disable) -> clears saved coordinates',
+      r
+    );
+  }
+  {
+    const r = await c('PATCH', '/api/users/me/preferences/location', {
+      token,
+      body: { locationEnabled: true, radiusMiles: 75, lat: 6.5244, lng: 3.3792 },
+    });
+    assert(
+      r.status === 200 &&
+        r.json.user.preferences.locationEnabled === true &&
+        r.json.user.preferences.radiusMiles === 75 &&
+        r.json.user.location.lat === 6.5244,
+      'PATCH preferences/location (enable) -> saved coordinates and radius',
+      r
+    );
   }
 
   console.log('\n--- Home Dashboard quests ---');
@@ -318,11 +429,15 @@ async function run(baseUrlArg) {
     });
     {
       const r = await c('GET', '/api/home/dashboard', { token });
-      assert(r.status === 200 && r.json.location.source === 'default' && r.json.liveQuest?.id === String(liveQuest._id) && r.json.upcomingQuests.length >= 1, 'GET /api/home/dashboard -> fixed-area greeting, live quest, and upcoming quests', r);
+      assert(r.status === 200 && r.json.location.source === 'user' && r.json.liveQuest?.id === String(liveQuest._id) && r.json.upcomingQuests.length >= 1, 'GET /api/home/dashboard -> greeting anchored to the user\'s own saved location, live quest, and upcoming quests', r);
     }
     {
       const r = await c('GET', '/api/quests?status=live&lat=6.5244&lng=3.3792&radiusMiles=30');
       assert(r.status === 200 && r.json.quests.some((quest) => quest.id === String(liveQuest._id)), 'GET /api/quests -> finds nearby live quests', r);
+    }
+    {
+      const r = await c('GET', `/api/quests/${liveQuest._id}`);
+      assert(r.status === 200 && r.json.quest.id === String(liveQuest._id), 'GET one quest -> public quest details', r);
     }
     {
       const r = await c('POST', `/api/quests/${liveQuest._id}/registrations`, { token });
@@ -335,6 +450,10 @@ async function run(baseUrlArg) {
     {
       const r = await c('DELETE', `/api/quests/${liveQuest._id}/registrations`, { token });
       assert(r.status === 200 && r.json.quest.registrationCount === 0 && !r.json.quest.isRegistered, 'DELETE quest registration -> cancelled and count updated', r);
+    }
+    {
+      const r = await c('GET', '/api/users/Ravencaller/quests?status=cancelled');
+      assert(r.status === 200 && r.json.quests.some((item) => item.quest.id === String(liveQuest._id)), 'GET public quest history -> registered quest is listed', r);
     }
   } else {
     console.log('  skip - Home Dashboard API fixture requires the in-process test database');
@@ -367,6 +486,7 @@ async function run(baseUrlArg) {
         faction: 'icons',
         interests: ['game', 'scifi'],
         preferences: { notificationsEnabled: true },
+        location: { locationEnabled: true, radiusMiles: 50, lat: 6.5244, lng: 3.3792 },
       },
     });
     assert(
@@ -464,6 +584,10 @@ async function run(baseUrlArg) {
     assert(r.status === 200 && r.json.users.some((user) => user.username === 'Ravencaller'), 'GET followers -> public follower list', r);
   }
   {
+    const r = await c('GET', '/api/users/Ravencaller/following');
+    assert(r.status === 200 && r.json.users.some((user) => user.username === username2), 'GET following -> public following list', r);
+  }
+  {
     const r = await c('GET', '/api/users/me/notifications', { token: token2 });
     assert(r.status === 200 && r.json.notifications.some((notification) => notification.type === 'follow' && notification.actor?.username === 'Ravencaller'), 'follow -> notification appears for the followed user', r);
   }
@@ -474,14 +598,36 @@ async function run(baseUrlArg) {
     thoughtId = r.json.post.id;
   }
   {
+    const r = await c('GET', '/api/posts?type=thought&page=1&limit=20');
+    assert(r.status === 200 && r.json.posts.some((post) => post.id === thoughtId), 'GET public posts -> public thought', r);
+  }
+  {
+    const r = await c('GET', `/api/posts/${thoughtId}`);
+    assert(r.status === 200 && r.json.post.id === thoughtId, 'GET one post -> post details', r);
+  }
+  {
+    const r = await c('PATCH', `/api/posts/${thoughtId}`, { token, body: { content: 'Updated CosQuest thought.' } });
+    assert(
+      r.status === 200 && r.json.post.content === 'Updated CosQuest thought.' && Boolean(r.json.post.editedAt),
+      'PATCH my post -> content updated and editedAt stamped',
+      r
+    );
+  }
+  {
     const form = new FormData();
     form.append('type', 'image');
     form.append('content', 'A one-image CosQuest post.');
-    form.append('media', new Blob(['image-bytes'], { type: 'image/png' }), 'look.png');
+    form.append('media', new Blob([REAL_PNG_BYTES], { type: 'image/png' }), 'look.png');
     const r = await c('POST', '/api/posts', { token, body: form, isForm: true });
     assert(r.status === 201 && r.json.post.type === 'image' && r.json.post.media.length === 1, 'POST image post -> 1 image stored through media host', r);
   }
   {
+    // Unlike the PNG/WAV fixtures above, this is still placeholder bytes, not
+    // a real decodable video - constructing one by hand reliably enough for a
+    // real Cloudinary account to accept isn't practical here. This assertion
+    // is expected to pass under `npm test` (test-mode Cloudinary stub) and
+    // may legitimately fail with a real Cloudinary account rejecting the
+    // fixture as an invalid video - that's a fixture limitation, not a bug.
     const form = new FormData();
     form.append('type', 'reel');
     form.append('content', 'A short CosQuest reel.');
@@ -497,6 +643,30 @@ async function run(baseUrlArg) {
     const r = await c('POST', `/api/posts/${thoughtId}/likes`, { token: token2 });
     assert(r.status === 201 && r.json.liked === true && r.json.likeCount === 1, 'POST post like -> public count updated', r);
   }
+  {
+    const r = await c('POST', `/api/posts/${thoughtId}/shares`, { token: token2 });
+    assert(r.status === 201 && r.json.shared === true && r.json.shareCount === 1, 'POST post share -> public count updated', r);
+  }
+  {
+    const r = await c('POST', `/api/posts/${thoughtId}/shares`, { token: token2 });
+    assert(r.status === 409, 'POST post share again -> 409', r);
+  }
+  {
+    const r = await c('DELETE', `/api/posts/${thoughtId}/shares`, { token: token2 });
+    assert(r.status === 200 && r.json.shared === false && r.json.shareCount === 0, 'DELETE post share -> removed', r);
+  }
+  {
+    const r = await c('POST', `/api/posts/${thoughtId}/bookmarks`, { token: token2 });
+    assert(r.status === 201 && r.json.bookmarked === true && r.json.bookmarkCount === 1, 'POST post bookmark -> public count updated', r);
+  }
+  {
+    const r = await c('GET', '/api/users/me/bookmarks', { token: token2 });
+    assert(r.status === 200 && r.json.posts.some((post) => post.id === thoughtId), 'GET my bookmarks -> saved post listed', r);
+  }
+  {
+    const r = await c('DELETE', `/api/posts/${thoughtId}/bookmarks`, { token: token2 });
+    assert(r.status === 200 && r.json.bookmarked === false && r.json.bookmarkCount === 0, 'DELETE post bookmark -> removed', r);
+  }
   let commentId;
   {
     const r = await c('POST', `/api/posts/${thoughtId}/comments`, { token: token2, body: { body: 'This sounds amazing!' } });
@@ -508,12 +678,215 @@ async function run(baseUrlArg) {
     assert(r.status === 200 && r.json.comments.some((comment) => comment.id === commentId), 'GET comments -> public list', r);
   }
   {
+    const r = await c('DELETE', `/api/posts/${thoughtId}/comments/${commentId}`, { token: token2 });
+    assert(r.status === 200 && r.json.commentCount === 0, 'DELETE my comment -> removed', r);
+  }
+  {
     const r = await c('DELETE', `/api/posts/${thoughtId}/likes`, { token: token2 });
     assert(r.status === 200 && r.json.liked === false && r.json.likeCount === 0, 'DELETE post like -> removed', r);
   }
   {
+    const r = await c('DELETE', `/api/posts/${thoughtId}`, { token });
+    assert(r.status === 200, 'DELETE my post -> removed', r);
+  }
+  {
     const r = await c('DELETE', `/api/users/${username2}/follow`, { token });
     assert(r.status === 200 && r.json.following === false, 'DELETE follow -> unfollowed', r);
+  }
+
+  console.log('\n--- chats: community, faction rooms, and direct messages ---');
+  let communityChatId;
+  let factionChatId;
+  let dmChatId;
+  let communityMessageId;
+  {
+    const r = await c('GET', '/api/chats');
+    assert(r.status === 401, 'GET /api/chats with NO token -> 401', r);
+  }
+  {
+    const r = await c('GET', '/api/chats', { token });
+    const community = r.json.chats?.find((chat) => chat.type === 'community');
+    const faction = r.json.chats?.find((chat) => chat.type === 'faction');
+    assert(
+      r.status === 200 && community && faction && faction.factionKey === 'ascendants',
+      'GET /api/chats -> "Your Space" includes the community room and my faction room',
+      r.json
+    );
+    communityChatId = community.id;
+    factionChatId = faction.id;
+  }
+  {
+    const r = await c('POST', '/api/chats/dm', { token, body: { username: username2 } });
+    assert(
+      r.status === 200 && r.json.chat.type === 'dm' && r.json.chat.otherParticipant.username === username2,
+      'POST /api/chats/dm -> creates a DM with the target user',
+      r
+    );
+    dmChatId = r.json.chat.id;
+  }
+  {
+    const r = await c('POST', '/api/chats/dm', { token, body: { username: username2 } });
+    assert(r.status === 200 && r.json.chat.id === dmChatId, 'POST /api/chats/dm again -> same DM, not a duplicate', r);
+  }
+  {
+    const r = await c('POST', `/api/chats/${factionChatId}/messages`, { token: token2, body: { content: 'Hi Ascendants' } });
+    assert(r.status === 403, 'POST message into a faction room you do not belong to -> 403', r);
+  }
+  {
+    const r = await c('POST', `/api/chats/${communityChatId}/messages`, { token, body: { content: 'Yooo, anyone at Waterfront?' } });
+    assert(
+      r.status === 201 && r.json.message.kind === 'text' && r.json.message.sender.username === 'Ravencaller',
+      'POST community message -> created',
+      r
+    );
+    communityMessageId = r.json.message.id;
+  }
+  {
+    const r = await c('POST', `/api/chats/${communityChatId}/messages`, {
+      token: token2,
+      body: { content: 'I can see you', replyTo: communityMessageId },
+    });
+    assert(r.status === 201 && r.json.message.replyTo?.id === communityMessageId, 'POST reply -> carries a replyTo preview of the original message', r);
+  }
+  {
+    const r = await c('GET', `/api/chats/${communityChatId}/messages`, { token });
+    assert(
+      r.status === 200 && r.json.messages.length === 2 && r.json.messages[0].content === 'I can see you',
+      'GET community messages -> newest first, includes the reply',
+      r
+    );
+  }
+  {
+    const r = await c('POST', `/api/chats/${communityChatId}/messages/${communityMessageId}/reactions`, { token: token2, body: { emoji: '😂' } });
+    assert(
+      r.status === 201 && r.json.reactions.some((reaction) => reaction.emoji === '😂' && reaction.count === 1 && reaction.mine === true),
+      'POST reaction -> added',
+      r
+    );
+  }
+  {
+    const r = await c('DELETE', `/api/chats/${communityChatId}/messages/${communityMessageId}/reactions`, { token: token2 });
+    assert(r.status === 200 && r.json.reactions.length === 0, 'DELETE reaction -> removed', r);
+  }
+  {
+    const r = await c('PATCH', `/api/chats/${communityChatId}/pinned-message`, { token, body: { messageId: communityMessageId } });
+    assert(r.status === 200 && r.json.pinnedMessage?.id === communityMessageId, 'PATCH pinned-message -> pinned', r);
+  }
+  {
+    const r = await c('GET', `/api/chats/${communityChatId}`, { token: token2 });
+    assert(
+      r.status === 200 && r.json.chat.pinnedMessage?.id === communityMessageId && r.json.chat.messageCount === 2,
+      'GET chat detail -> shows the pinned message and running message count',
+      r
+    );
+  }
+  {
+    const form = new FormData();
+    form.append('media', new Blob([makeSilentWav(1)], { type: 'audio/wav' }), 'note.wav');
+    const r = await c('POST', `/api/chats/${dmChatId}/messages`, { token, body: form, isForm: true });
+    assert(
+      r.status === 201 && r.json.message.kind === 'audio' && r.json.message.media.resourceType === 'video',
+      'POST voice note into a DM -> stored as an audio message',
+      r
+    );
+  }
+  {
+    const r = await c('GET', '/api/chats', { token: token2 });
+    const dm = r.json.chats.find((chat) => chat.type === 'dm' && chat.id === dmChatId);
+    assert(r.status === 200 && dm && dm.unreadCount === 1, 'GET /api/chats (recipient) -> unread count reflects the unread voice note', r);
+  }
+  {
+    const r = await c('PATCH', `/api/chats/${dmChatId}/read`, { token: token2 });
+    assert(r.status === 200, 'PATCH /api/chats/:id/read -> marks the DM read', r);
+  }
+  {
+    const r = await c('GET', `/api/chats/${dmChatId}/messages`, { token });
+    assert(r.status === 200 && r.json.messages[0]?.read === true, 'GET DM messages (sender) -> read receipt true after recipient read it', r);
+  }
+
+  console.log('\n--- chat message editing and delete-for-me / delete-for-everyone ---');
+  {
+    const r = await c('PATCH', `/api/chats/${communityChatId}/messages/${communityMessageId}`, {
+      token,
+      body: { content: 'Yooo, anyone at Waterfront? (updated)' },
+    });
+    assert(
+      r.status === 200 && r.json.message.content === 'Yooo, anyone at Waterfront? (updated)' && Boolean(r.json.message.editedAt),
+      'PATCH message -> content updated and editedAt stamped',
+      r
+    );
+  }
+  {
+    const r = await c('PATCH', `/api/chats/${communityChatId}/messages/${communityMessageId}`, { token: token2, body: { content: 'hijacked' } });
+    assert(r.status === 403, 'PATCH message by non-sender -> 403', r);
+  }
+  let toDeleteForMeId;
+  {
+    const r = await c('POST', `/api/chats/${communityChatId}/messages`, {
+      token: token2,
+      body: { content: 'A message token2 will delete for just themself.' },
+    });
+    toDeleteForMeId = r.json.message.id;
+  }
+  {
+    const r = await c('DELETE', `/api/chats/${communityChatId}/messages/${toDeleteForMeId}?scope=me`, { token: token2 });
+    assert(r.status === 200 && r.json.scope === 'me', 'DELETE message ?scope=me -> hidden for just that user', r);
+  }
+  {
+    const r = await c('GET', `/api/chats/${communityChatId}/messages`, { token: token2 });
+    assert(!r.json.messages.some((m) => m.id === toDeleteForMeId), 'GET messages (deleter) -> deleted-for-me message no longer shown to them', r);
+  }
+  {
+    const r = await c('GET', `/api/chats/${communityChatId}/messages`, { token });
+    assert(
+      r.json.messages.some((m) => m.id === toDeleteForMeId),
+      'GET messages (other member) -> still sees a message someone else deleted-for-me',
+      r
+    );
+  }
+  let toDeleteForEveryoneId;
+  {
+    const r = await c('POST', `/api/chats/${communityChatId}/messages`, { token, body: { content: 'Oops, wrong chat.' } });
+    toDeleteForEveryoneId = r.json.message.id;
+  }
+  {
+    const r = await c('DELETE', `/api/chats/${communityChatId}/messages/${toDeleteForEveryoneId}?scope=everyone`, { token: token2 });
+    assert(r.status === 403, 'DELETE ?scope=everyone by a non-sender -> 403', r);
+  }
+  {
+    const r = await c('DELETE', `/api/chats/${communityChatId}/messages/${toDeleteForEveryoneId}?scope=everyone`, { token });
+    assert(r.status === 200 && r.json.scope === 'everyone', 'DELETE ?scope=everyone (sender, within 5 minutes) -> deleted for everyone', r);
+  }
+  {
+    const r = await c('GET', `/api/chats/${communityChatId}/messages`, { token: token2 });
+    const deleted = r.json.messages.find((m) => m.id === toDeleteForEveryoneId);
+    assert(
+      deleted?.deleted === true && deleted.content === 'This message was deleted.' && deleted.media === null,
+      'GET messages (other member) -> sees a tombstone, not the original content, after delete-for-everyone',
+      r.json
+    );
+  }
+  if (mongoose.connection.readyState === 1) {
+    let oldMessageId;
+    {
+      const r = await c('POST', `/api/chats/${communityChatId}/messages`, { token, body: { content: 'An old message, about to be backdated.' } });
+      oldMessageId = r.json.message.id;
+    }
+    // Message.updateOne (Mongoose) silently ignores writes to createdAt - it's
+    // marked immutable by the timestamps option. Going through the native
+    // driver collection bypasses that, which is exactly what backdating this
+    // fixture for the test needs.
+    await Message.collection.updateOne({ _id: new mongoose.Types.ObjectId(oldMessageId) }, { $set: { createdAt: new Date(Date.now() - 10 * 60 * 1000) } });
+    {
+      const r = await c('DELETE', `/api/chats/${communityChatId}/messages/${oldMessageId}?scope=everyone`, { token });
+      assert(r.status === 403, 'DELETE ?scope=everyone after the 5-minute window -> 403, too late for everyone', r);
+    }
+    {
+      const r = await c('DELETE', `/api/chats/${communityChatId}/messages/${oldMessageId}?scope=me`, { token });
+      assert(r.status === 200, 'DELETE ?scope=me after the 5-minute window -> still allowed any time', r);
+    }
+  } else {
+    console.log('  skip - delete-for-everyone time-window test requires the in-process test database');
   }
 
   console.log('\n--- notifications (in-app broadcast to everyone opted in) ---');
@@ -529,6 +902,7 @@ async function run(baseUrlArg) {
         faction: 'celestials',
         interests: ['music'],
         preferences: { notificationsEnabled: false },
+        location: { locationEnabled: true, radiusMiles: 50, lat: 6.5244, lng: 3.3792 },
       },
     });
     const login4 = await c('POST', '/api/auth/login', { body: { email: email4, password } });

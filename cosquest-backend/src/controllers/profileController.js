@@ -119,7 +119,7 @@ async function uploadAvatarPhoto(req, res) {
     });
     return res.json({ user: userModel.sanitize(updated) });
   } catch (err) {
-    return res.status(500).json({ error: `Photo upload failed: ${err.message}` });
+    return res.status(err.status || 500).json({ error: `Photo upload failed: ${err.message}` });
   }
 }
 

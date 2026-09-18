@@ -30,6 +30,13 @@ async function requireAuth(req, res, next) {
     }
     req.userId = user.id;
     req.user = user;
+
+    // Throttled, fire-and-forget presence touch - never blocks or fails the request.
+    const ACTIVE_THROTTLE_MS = 5 * 60 * 1000;
+    if (Date.now() - new Date(user.lastActiveAt || 0).getTime() > ACTIVE_THROTTLE_MS) {
+      userModel.updateUser(user.id, (doc) => { doc.lastActiveAt = new Date(); }).catch(() => {});
+    }
+
     next();
   } catch (err) {
     return res.status(401).json({ error: 'Invalid or expired token.' });
