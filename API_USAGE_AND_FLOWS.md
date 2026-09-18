@@ -114,7 +114,7 @@ OAuth exchange body:
 | `PATCH /api/users/me/profile` | Identifier or Bearer | Save profile details during onboarding or edit profile later. |
 | `GET /api/users/check-username?username=new_name` | Identifier or Bearer | Check if a username is available. Before login also send `&email={{email}}`. |
 | `PATCH /api/users/me/avatar` | Identifier or Bearer | Set a valid preset avatar. It clears an uploaded photo. |
-| `POST /api/users/me/avatar/photo` | Identifier or Bearer | Multipart upload; set form-data `photo` to a local image file and also add `email` before login. |
+| `POST /api/users/me/avatar/photo` | Identifier or Bearer | Multipart upload; set form-data `photo` to a local image file and also add `email` before login. Accepts JPEG/PNG/WEBP/GIF even if the client mislabels the file's Content-Type (`image/jpg`, `application/octet-stream`, `text/plain` are all tolerated) - Cloudinary's real content check is the actual gatekeeper, so a genuinely non-image file still fails there with a clear `400`. |
 | `POST /api/users/me/faction` | Identifier or Bearer | Choose/replace faction. A faction is required before onboarding completion. |
 | `PUT /api/users/me/interests` | Identifier or Bearer | Replace the full list of interests. At least one is required before completion. |
 | `PATCH /api/users/me/preferences/notifications` | Identifier or Bearer | Save an explicit true/false notification choice. |

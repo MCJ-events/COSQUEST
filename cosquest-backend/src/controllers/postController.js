@@ -9,11 +9,12 @@ const userModel = require('../models/userModel');
 const { storePostMedia, deletePostMedia } = require('../utils/imageHost');
 
 const POST_TYPES = ['image', 'reel', 'thought'];
-// 'image/jpg' isn't a registered MIME type, and 'application/octet-stream'
-// is a client's "couldn't detect it" fallback - both accepted here the same
-// way as upload.js's ALLOWED_TYPES, deferring real validation to Cloudinary.
-const IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif', 'application/octet-stream'];
-const VIDEO_TYPES = ['video/mp4', 'video/quicktime', 'video/webm', 'application/octet-stream'];
+// 'image/jpg' isn't a registered MIME type, and 'application/octet-stream'/
+// 'text/plain' are mislabeled-but-real files (a mobile picker guessing
+// wrong) - all accepted here the same way as upload.js's ALLOWED_TYPES,
+// deferring real validation to Cloudinary.
+const IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif', 'application/octet-stream', 'text/plain'];
+const VIDEO_TYPES = ['video/mp4', 'video/quicktime', 'video/webm', 'application/octet-stream', 'text/plain'];
 
 function parseLimit(value, fallback = 20) {
   const limit = Number(value);

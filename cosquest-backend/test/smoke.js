@@ -256,6 +256,16 @@ async function run(baseUrlArg) {
     assert(r.status === 200, 'POST /api/users/me/avatar/photo (generic application/octet-stream label) -> accepted', r);
   }
   {
+    // A mobile image picker mislabeling a real photo asset as 'text/plain' is
+    // still a genuine file part (it has a filename, which is why it reaches
+    // this filter at all) - it must pass through to Cloudinary's real check.
+    const form = new FormData();
+    form.append('email', email);
+    form.append('photo', new Blob([REAL_PNG_BYTES], { type: 'text/plain' }), 'photo.jpg');
+    const r = await c('POST', '/api/users/me/avatar/photo', { body: form, isForm: true });
+    assert(r.status === 200, 'POST /api/users/me/avatar/photo (mislabeled text/plain) -> accepted', r);
+  }
+  {
     const r = await c('GET', '/api/meta/avatars');
     assert(
       r.status === 200 &&

@@ -30,10 +30,13 @@ function invalidFileType(message) {
 // combinations - send it anyway for a plain .jpg file. Accepting both means
 // a genuinely valid JPEG is never rejected over which spelling a client used.
 // 'application/octet-stream' is the generic "I couldn't determine the type"
-// fallback some clients send when they fail to detect a file's type at all -
-// letting it through here defers to Cloudinary's real content-based
-// validation (see imageHost.js) instead of trusting a client's guess.
-const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif', 'application/octet-stream'];
+// fallback some clients send when they fail to detect a file's type at all,
+// and 'text/plain' shows up when a mobile picker mislabels a real image
+// asset's type - both are a real file part (it has a filename, which is why
+// it even reaches this filter at all), just tagged wrong. Letting these
+// through defers to Cloudinary's real content-based validation (see
+// imageHost.js) instead of trusting a client's incorrect label.
+const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif', 'application/octet-stream', 'text/plain'];
 const POST_MEDIA_TYPES = [...ALLOWED_TYPES, 'video/mp4', 'video/quicktime', 'video/webm'];
 
 const upload = multer({
