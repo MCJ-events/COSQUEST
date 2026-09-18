@@ -39,8 +39,8 @@ Important: creation endpoints correctly return **201**, not 200. A duplicate lik
 
 1. Call public reference endpoints: avatars, factions, interests, and categories.
 2. Sign up with an email **or** a username and a strong password. Signup returns 201 but no token.
-3. Complete onboarding using the email/username from signup (or use a token if the user already has one). It requires name, username, age, gender, an avatar or uploaded photo, faction, at least one interest, an explicit notification choice, and enabled location with real coordinates.
-4. Sign in. Save `token` from the response into `{{accessToken}}`.
+3. Complete onboarding using the email/username from signup (or use a token if the user already has one). It requires name, username, age, gender, an avatar or uploaded photo, faction, at least one interest, an explicit notification choice, and enabled location with real coordinates. (Sign in works even before this step now - see step 4 - but nothing beyond onboarding itself is usable until it's done.)
+4. Sign in. Save `token` from the response into `{{accessToken}}`. This works as soon as the account exists with a correct password, even mid-onboarding - check the response's `onboardingRequired` to know whether to route to onboarding or the main app.
 5. Use Bearer-protected profile, dashboard, social, post, quest, notification, and points endpoints.
 6. To test a post lifecycle: create a thought → copy `post.id` → like/comment/read/update/delete → copy `comment.id` before deleting it.
 7. To test a quest lifecycle: list quests → copy a published quest ID → register → view profile quest history → cancel registration.
@@ -57,7 +57,7 @@ Important: creation endpoints correctly return **201**, not 200. A duplicate lik
 | Method and URL | Login? | Usage |
 | --- | --- | --- |
 | `POST /api/auth/signup` | Public | Create an email-or-username account. Returns `201`, no token yet. If that identifier already exists **and its onboarding was never finished**, returns `200` with `resumed: true` and the existing (partial) user instead of an error - the same account, picked back up. Returns `409` only if the existing account already completed onboarding. |
-| `POST /api/auth/login` | Public | Sign in only after onboarding is complete. Returns `200` with `token`. |
+| `POST /api/auth/login` | Public | Sign in with a valid password, whether or not onboarding is finished. Returns `200` with `token` and `onboardingRequired` (`true` if onboarding still isn't done - use that token to continue it; `requireCompletedOnboarding` still blocks every real feature until it's actually finished). |
 | `POST /api/auth/logout` | Bearer | Invalidates current tokens for the account. Returns `200`. |
 | `GET /api/auth/oauth/google` | Public | Browser redirect to Google. Expected browser redirect, not a JSON 200 response. |
 | `GET /api/auth/oauth/google/callback` | Provider | Google redirects here after consent. Do not manually invent the code/state. |

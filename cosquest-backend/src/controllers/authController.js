@@ -112,14 +112,17 @@ async function login(req, res) {
     return res.status(401).json({ error: 'Invalid email or password.' });
   }
 
-  if (!user.onboardingComplete) {
-    return res.status(403).json({ error: 'Please complete onboarding before logging in.' });
-  }
-
+  // Matches the OAuth exchange's shape (see oauthController.js): a valid
+  // password always signs a person in, even mid-onboarding, so they can
+  // pick up where they left off with a real token instead of being locked
+  // out until they finish. `requireCompletedOnboarding` still protects every
+  // real feature - this token only additionally lets them resume onboarding
+  // via Bearer instead of email, and log out.
   const token = signToken(user.id, user.tokenVersion);
   return res.json({
-    message: 'Logged in successfully.',
+    message: user.onboardingComplete ? 'Logged in successfully.' : 'Signed in. Complete onboarding to continue.',
     token,
+    onboardingRequired: !user.onboardingComplete,
     user: userModel.sanitize(user),
   });
 }

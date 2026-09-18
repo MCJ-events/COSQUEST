@@ -147,12 +147,20 @@ async function run(baseUrlArg) {
     assert(r.status === 401, 'POST /api/auth/login (wrong password) -> 401', r);
   }
   {
+    // Login now succeeds even mid-onboarding, so a returning user can pick
+    // up a real token and continue - requireCompletedOnboarding is what
+    // actually protects every real feature, not login itself.
     const r = await c('POST', '/api/auth/login', { body: { email, password } });
     assert(
-      r.status === 403,
-      'POST /api/auth/login (onboarding not complete yet) -> 403, blocked until onboarding is done',
+      r.status === 200 && r.json.token && r.json.onboardingRequired === true && r.json.user.onboardingComplete === false,
+      'POST /api/auth/login (onboarding not complete yet) -> 200 + token + onboardingRequired: true',
       r
     );
+    // The token works to continue onboarding, but requireCompletedOnboarding
+    // still blocks every real feature - a mid-onboarding token is not a
+    // backdoor into the app.
+    const points = await c('GET', '/api/users/me/points', { token: r.json.token });
+    assert(points.status === 403, 'GET /api/users/me/points with a mid-onboarding token -> still 403', points);
   }
   {
     const r = await c('GET', '/api/users/me');
@@ -524,7 +532,11 @@ async function run(baseUrlArg) {
     );
 
     const login3 = await c('POST', '/api/auth/login', { body: { email: email3, password } });
-    assert(login3.status === 403, 'POST /api/auth/login (onboarding still incomplete after failed attempt) -> 403', login3);
+    assert(
+      login3.status === 200 && login3.json.token && login3.json.onboardingRequired === true,
+      'POST /api/auth/login (onboarding still incomplete after failed attempt) -> 200 + token, still needs onboarding',
+      login3
+    );
   }
 
   console.log('\n--- public profile, follows, points, posts, likes, and comments ---');

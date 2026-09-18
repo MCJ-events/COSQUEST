@@ -189,7 +189,7 @@
             "auth": {
               "type": "noauth"
             },
-            "description": "Only succeeds once onboarding is complete. On success, automatically saves {{accessToken}} - every other request in this collection inherits it via collection-level Bearer auth, so you never paste a token manually."
+            "description": "Succeeds with any correct password, even mid-onboarding - check the response’s onboardingRequired to see whether to continue onboarding or use the main app (requireCompletedOnboarding still blocks every real feature until it’s actually finished). On success, automatically saves {{accessToken}} - every other request in this collection inherits it via collection-level Bearer auth, so you never paste a token manually."
           },
           "event": [
             {
