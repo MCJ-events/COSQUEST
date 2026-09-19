@@ -8,6 +8,7 @@ const User = require('../models/User');
 const userModel = require('../models/userModel');
 const { getFaction } = require('../models/factionModel');
 const { storeChatMedia } = require('../utils/imageHost');
+const { isBlockedEitherWay } = require('./publicProfileController');
 
 const EPOCH = new Date(0);
 const DELETE_FOR_EVERYONE_WINDOW_MS = 5 * 60 * 1000;
@@ -205,6 +206,7 @@ function serializeMessage(message, { viewerId, conversationType, otherLastReadAt
       deleted: true,
       deletedAt: message.deletedAt,
       editedAt: null,
+      forwarded: Boolean(message.forwardedFrom),
       createdAt: message.createdAt,
     };
   }
@@ -221,6 +223,7 @@ function serializeMessage(message, { viewerId, conversationType, otherLastReadAt
     deleted: false,
     deletedAt: null,
     editedAt: message.editedAt || null,
+    forwarded: Boolean(message.forwardedFrom),
     createdAt: message.createdAt,
   };
 }
@@ -242,11 +245,25 @@ async function listChats(req, res) {
   return res.json({ chats });
 }
 
+// Shared by "start a DM" and "forward to a user by name" - same rules either
+// way: can't message yourself, a block hides the user entirely (404, same as
+// everywhere else), and the target's own allowDirectMessages setting is the
+// last gate.
+async function resolveDmTarget(userId, username) {
+  const target = await userModel.findByUsername(username);
+  if (!target) return { error: { status: 404, message: 'User not found.' } };
+  if (String(target._id) === String(userId)) return { error: { status: 400, message: 'You cannot message yourself.' } };
+  if (await isBlockedEitherWay(userId, target._id)) return { error: { status: 404, message: 'User not found.' } };
+  if (target.privacy?.allowDirectMessages === false) {
+    return { error: { status: 403, message: 'This user is not accepting direct messages.' } };
+  }
+  return { target };
+}
+
 // POST /api/chats/dm - find-or-create a DM by target username.
 async function startDirectMessage(req, res) {
-  const target = await userModel.findByUsername(req.body?.username);
-  if (!target) return res.status(404).json({ error: 'User not found.' });
-  if (String(target._id) === String(req.userId)) return res.status(400).json({ error: 'You cannot message yourself.' });
+  const { target, error } = await resolveDmTarget(req.userId, req.body?.username);
+  if (error) return res.status(error.status).json({ error: error.message });
 
   const conversation = await getOrCreateDmConversation(req.userId, target._id);
   return res.json({ chat: await summarizeConversation(conversation, req.user) });
@@ -507,6 +524,98 @@ async function removeReaction(req, res) {
   return res.json({ reactions: await summarizeReactions(message._id, req.userId) });
 }
 
+// POST /api/chats/:conversationId/messages/:messageId/forward - body needs
+// exactly one of targetConversationId (an existing conversation you're
+// already in - Community, your faction room, or a DM) or targetUsername (any
+// user, found via GET /api/users/search - the DM is found-or-created for you,
+// same as tapping "+" to start a chat and then forwarding into it, subject to
+// the same block/allowDirectMessages rules as starting a DM directly).
+// Copies content/media into a brand-new message rather than moving or
+// re-uploading anything; deleting or editing the original never touches it.
+async function forwardMessage(req, res) {
+  const { conversation: sourceConversation, error: sourceError } = await loadConversationForUser(req.params.conversationId, req.user);
+  if (sourceError) return res.status(sourceError.status).json({ error: sourceError.message });
+
+  const original = await loadMessageInConversation(sourceConversation, req.params.messageId);
+  if (!original) return res.status(404).json({ error: 'Message not found.' });
+  if (original.deletedForEveryone) return res.status(400).json({ error: 'This message was deleted and cannot be forwarded.' });
+  if (original.deletedFor.some((userId) => String(userId) === String(req.userId))) {
+    return res.status(404).json({ error: 'Message not found.' });
+  }
+
+  const { targetConversationId, targetUsername } = req.body;
+  if (Boolean(targetConversationId) === Boolean(targetUsername)) {
+    return res.status(400).json({ error: 'Provide exactly one of targetConversationId or targetUsername.' });
+  }
+
+  let targetConversation;
+  if (targetUsername) {
+    const { target, error: dmError } = await resolveDmTarget(req.userId, targetUsername);
+    if (dmError) return res.status(dmError.status).json({ error: dmError.message });
+    targetConversation = await getOrCreateDmConversation(req.userId, target._id);
+  } else {
+    const { conversation, error: targetError } = await loadConversationForUser(targetConversationId, req.user);
+    if (targetError) return res.status(targetError.status).json({ error: 'You do not have access to that conversation.' });
+    targetConversation = conversation;
+  }
+
+  let message = await Message.create({
+    conversation: targetConversation._id,
+    sender: req.userId,
+    kind: original.kind,
+    content: original.content,
+    media: original.media,
+    forwardedFrom: original._id,
+  });
+  await Promise.all([
+    Conversation.updateOne({ _id: targetConversation._id }, { $inc: { messageCount: 1 } }),
+    ConversationMember.updateOne(
+      { conversation: targetConversation._id, user: req.userId },
+      { $set: { lastReadAt: new Date() } },
+      { upsert: true }
+    ),
+  ]);
+  message = await message.populate('sender', SENDER_FIELDS);
+
+  return res.status(201).json({
+    message: serializeMessage(message, { viewerId: req.userId, conversationType: targetConversation.type, otherLastReadAt: null, reactions: [] }),
+  });
+}
+
+// GET /api/chats/:conversationId/messages/:messageId/seen - who has read up to
+// (and including) this message, excluding the sender. In a DM this is
+// naturally 0 or 1 person; in community/faction rooms it can be many, hence
+// the pagination. Relies on the same ConversationMember.lastReadAt the unread
+// badge and DM read-receipt already use - no new schema needed.
+async function getMessageSeenBy(req, res) {
+  const { conversation, error } = await loadConversationForUser(req.params.conversationId, req.user);
+  if (error) return res.status(error.status).json({ error: error.message });
+
+  const message = await loadMessageInConversation(conversation, req.params.messageId);
+  if (!message) return res.status(404).json({ error: 'Message not found.' });
+
+  const limit = parseLimit(req.query.limit);
+  const page = parsePage(req.query.page);
+  const query = {
+    conversation: conversation._id,
+    user: { $ne: message.sender },
+    lastReadAt: { $gte: message.createdAt },
+  };
+  const [members, total] = await Promise.all([
+    ConversationMember.find(query)
+      .populate('user', 'profile.username profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl faction')
+      .sort({ lastReadAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit),
+    ConversationMember.countDocuments(query),
+  ]);
+
+  return res.json({
+    seenBy: members.filter((member) => member.user).map((member) => ({ ...userPreview(member.user), seenAt: member.lastReadAt })),
+    pagination: { page, limit, total, hasMore: page * limit < total },
+  });
+}
+
 module.exports = {
   listChats,
   startDirectMessage,
@@ -519,4 +628,8 @@ module.exports = {
   setPinnedMessage,
   setReaction,
   removeReaction,
+  getMessageSeenBy,
+  forwardMessage,
+  loadConversationForUser,
+  loadMessageInConversation,
 };

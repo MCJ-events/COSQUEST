@@ -4,10 +4,12 @@ This note records the agreed assumptions for the Profile page. It is kept outsid
 
 ## What the profile represents
 
-- Profiles are public for now. Anyone can view a profile, its public posts, follower list, following list, and registered-quest history. A visitor does **not** need to log in to read those items.
+- Profiles are public **by default**, but the owner can change that via `PATCH /api/users/me/privacy`: `public` (anyone, no login needed), `friends` (mutual follows only - there's no separate friend-request system, just one-way Follow), or `private` (owner only). This gates the profile itself plus its followers/following list, quest history, and share link/page. A separate, stricter `showActivityFeed` toggle can hide just the posts list from non-friends even on an otherwise-public profile.
+- Blocking exists (`POST`/`DELETE /api/users/:username/block`, `GET /api/users/me/blocked`) and overrides every visibility level unconditionally in both directions - a blocked relationship hides the profile, and blocks new follows and DMs between the two accounts.
 - The profile owner can edit their own display details: name, username, bio, profile category, avatar/photo, and public contact details.
 - The account-login email is private and is never changed by the public contact-email field.
 - The selected preset avatar and an uploaded profile photo **coexist** - the actual profile UI shows the uploaded photo as the main picture with the preset avatar as a small badge over it. Setting either one never clears the other. (This reverses an earlier, incorrect assumption that they were mutually exclusive.)
+- "Share Profile" links to a real, public web page (`GET /u/:username`, outside `/api`) with Open Graph/Twitter Card tags, so pasting the link into Instagram, Facebook, WhatsApp, etc. shows a rich preview card (name, bio, avatar/photo) instead of a bare link. `GET /api/users/:username/share` gives the frontend a ready-made `{ url, title, text }` payload to hand to the device's native share sheet, rather than the frontend constructing the link itself.
 
 ## Header and profile information
 
@@ -46,18 +48,21 @@ This note records the agreed assumptions for the Profile page. It is kept outsid
 - A completed, logged-in user can add a public comment of 1–500 characters.
 - A completed, logged-in user can follow or unfollow another profile, but cannot follow themself.
 - A successful follow creates a notification for the followed user. The notification page can display it and mark notifications read.
-- Moderation was intentionally deferred. Before launch, add reporting, blocking, rate limits suitable for social interactions, content review, and administrative tools.
+- Blocking is implemented (see above). Reporting, content review, and administrative moderation tools are still intentionally deferred - before launch, add reporting, rate limits suitable for social interactions, content review, and administrative tools.
+- A comment can be replied to once - `parentComment` on `PostComment` supports exactly one level of nesting (a reply cannot itself be replied to). Deleting a top-level comment cascades to its replies. The emoji "reactions" shown under comments in the UI are frontend-only (they insert a quick-reply string into the comment box) - there is no reaction storage or endpoint for posts.
+- Followers/following lists support `?search=` (case-insensitive, matches username/first/last name) via a `Follow` + `User` aggregation, since a plain populate can't filter on the populated side.
 
 ## Location and notifications
 
 - Enabling location, with real device coordinates, is a **required** onboarding step (CosQuest is played in the real world) - onboarding cannot complete without it, the same enforcement level as faction/interests/avatar. Users choose a discovery radius between 5 and 100 miles (default 50) and can change both the coordinates and the radius afterward via `PATCH /api/users/me/preferences/location`. Server environment settings (`DASHBOARD_DEFAULT_LAT`, `DASHBOARD_DEFAULT_LNG`, and radius) are now only a fallback, for an account that somehow reaches the dashboard before this existed.
 - Users choose whether notifications are enabled during onboarding and can later change that notification preference. Device push tokens can be registered after login.
+- Two granular preferences also exist as storage-only toggles for now: `eventReminders` (a push notification category) and `emailWeeklyNewsletter`. Neither actually triggers anything yet - there's no scheduled job producing event reminders, and no email-sending infrastructure in this backend at all (the current notification system is 100% in-app). Both are the first step for a settings screen with per-category toggles; the sending mechanisms are separate future work.
 
 ## Items intentionally not implemented yet
 
 1. A points ledger, point-award endpoint, deductions, transactions, and reward history.
 2. Quest winner-selection logic and admin controls. The profile only reads the `winner` registration status.
-3. Social moderation: reports, blocks, content review, hidden/deleted-by-moderator states, and admin actions.
-4. Profile visibility controls, private accounts, individual contact toggles, and a search endpoint for followers/following.
+3. Social moderation: reports, content review, hidden/deleted-by-moderator states, and admin actions. (Blocking is implemented - see "What the profile represents" above.)
+4. Individual contact-field visibility toggles. (Overall profile visibility levels, activity-feed visibility, and followers/following search are implemented - see above.)
 5. Post sharing, bookmarks, pinning, drafts, notifications for likes/comments, and video thumbnails/transcoding rules beyond Cloudinary’s stored media data.
 

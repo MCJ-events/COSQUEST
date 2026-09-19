@@ -1,6 +1,6 @@
 # CosQuest Postman collection
 
-`CosQuest.postman_collection.json` (73 requests across 9 folders, generated from [API_USAGE_AND_FLOWS.md](../../API_USAGE_AND_FLOWS.md)) and `CosQuest.postman_environment.json`.
+`CosQuest.postman_collection.json` (86 requests across 9 folders, generated from [API_USAGE_AND_FLOWS.md](../../API_USAGE_AND_FLOWS.md)) and `CosQuest.postman_environment.json`.
 
 ## Import
 
@@ -11,7 +11,7 @@
 
 Every request body uses real, literal example values — the same ones `test/smoke.js` uses (`hero@example.com` / `Quest@1234` / `Ravencaller` for the main account, `buddy@example.com` / `Buddy` for a second account used by Follow/DM requests) — not `{{email}}`/`{{username}}`-style template variables. Start your server and press Send; nothing needs filling in first.
 
-The only things that stay as variables are values that literally cannot be known ahead of time because the server generates them: `{{accessToken}}`, `{{postId}}`, `{{commentId}}`, `{{questId}}`, `{{communityConversationId}}`, `{{factionConversationId}}`, `{{dmConversationId}}`, `{{messageId}}`. Each is captured automatically by a test script on the request that creates or first lists it — run things roughly top-to-bottom within a folder the first time through and they fill themselves in.
+The only things that stay as variables are values that literally cannot be known ahead of time because the server generates them: `{{accessToken}}`, `{{postId}}`, `{{commentId}}`, `{{replyCommentId}}`, `{{questId}}`, `{{communityConversationId}}`, `{{factionConversationId}}`, `{{dmConversationId}}`, `{{messageId}}`, `{{forwardedMessageId}}`. Each is captured automatically by a test script on the request that creates or first lists it — run things roughly top-to-bottom within a folder the first time through and they fill themselves in.
 
 ## No manual token pasting
 
@@ -31,3 +31,4 @@ Because the identities are fixed literal values rather than freshly generated ea
 
 - Any request marked "multipart, attach a file/video manually" — Postman collections can't embed real binary files portably, so open the request's Body tab and select a real file before sending. For the reel and voice-note requests this needs to be a genuine short video/audio file — a real Cloudinary account rejects placeholder bytes as invalid.
 - **OAuth exchange** and the two OAuth browser-redirect requests — these need a real Google/Apple consent flow to produce a real `oauthCode`; they're kept here for reference, not for scripted runs.
+- **Open shareable profile page (me)** — this returns real HTML, not JSON. Postman will show the raw markup; to see the actual rendered card (and confirm the Open Graph preview looks right), paste `{{baseUrl}}/u/Ravencaller` into a real browser instead.

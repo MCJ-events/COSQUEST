@@ -117,7 +117,7 @@ OAuth exchange body:
 | `POST /api/users/me/avatar/photo` | Identifier or Bearer | Multipart upload; set form-data `photo` to a local image file and also add `email` before login. Accepts JPEG/PNG/WEBP/GIF even if the client mislabels the file's Content-Type (`image/jpg`, `application/octet-stream`, `text/plain` are all tolerated) - Cloudinary's real content check is the actual gatekeeper, so a genuinely non-image file still fails there with a clear `400`. |
 | `POST /api/users/me/faction` | Identifier or Bearer | Choose/replace faction. A faction is required before onboarding completion. |
 | `PUT /api/users/me/interests` | Identifier or Bearer | Replace the full list of interests. At least one is required before completion. |
-| `PATCH /api/users/me/preferences/notifications` | Identifier or Bearer | Save an explicit true/false notification choice. |
+| `PATCH /api/users/me/preferences/notifications` | Identifier or Bearer | Save the master on/off notification choice, and/or `eventReminders` (a per-category push toggle) and/or `emailWeeklyNewsletter` - any subset of the three in one call. At least one field is required. `eventReminders`/`emailWeeklyNewsletter` are preference storage only - no email actually sends yet (no email infrastructure exists in this backend), and no scheduled "event" trigger exists yet either. |
 | `PATCH /api/users/me/preferences/location` | Identifier or Bearer | Save real device coordinates and a discovery radius (5-100 miles, default 50). **Required** before onboarding completion - CosQuest is played in the real world. `lat`/`lng` are required whenever `locationEnabled` is `true`. |
 | `POST /api/users/me/devices` | Identifier or Bearer | Register an iOS, Android, or web push token. |
 | `POST /api/users/me/onboarding/complete` | Identifier or Bearer | Atomic final onboarding submission. Returns `200` only if every required selection is valid, including location. |
@@ -210,6 +210,9 @@ All endpoints in this section require a logged-in, fully onboarded account.
 | `GET /api/users/me/notifications` | List this user’s notifications, including follow notifications. |
 | `PATCH /api/users/me/notifications/read` | Mark every currently unread notification as read. Body not required. |
 | `GET /api/home/dashboard` | Get the dashboard anchored to the user's own saved location (`location.source: "user"`): user preview, unread notification count, live/upcoming/nearby quests. |
+| `GET /api/users/me/privacy` | Read my current Settings > Privacy & Visibility values. |
+| `PATCH /api/users/me/privacy` | Save any subset of `profileVisibility` (`public`/`friends`/`private`), `showActivityFeed`, `allowDirectMessages`. |
+| `GET /api/users/me/blocked?page=1&limit=20` | Paginated list of profiles I've blocked. |
 
 Contact body:
 
@@ -221,17 +224,29 @@ Contact body:
 }
 ```
 
+Privacy body (any subset of these three fields):
+
+```json
+{ "profileVisibility": "friends", "showActivityFeed": false, "allowDirectMessages": true }
+```
+
+`profileVisibility` gates the profile itself (and its followers/following/quest-history/share-link) - `public` is visible to anyone, `private` to the owner only, `friends` to the owner plus mutual follows (this app has no separate friend-request system, so "friends" means both users follow each other). `showActivityFeed: false` is a stricter, independent gate just on the posts list - it hides posts from anyone who isn't the owner or a friend even when the profile itself is otherwise public; a blocked viewer, or one denied by `profileVisibility`, gets `404` on the profile - a hidden activity feed alone returns `200` with an empty `posts` array instead, since the profile really is there. A block (see below) overrides every visibility level in both directions, always.
+
 ## Public profiles and follow system
 
 | Method and URL | Login? | Usage |
 | --- | --- | --- |
-| `GET /api/users/:username/profile` | Public | Public profile, bio, visible category, public contact, and stats. |
-| `GET /api/users/:username/quests?status=winner&page=1&limit=20` | Public | Registered-quest history. `status` may be `registered`, `cancelled`, `completed`, or `winner`. |
-| `GET /api/users/:username/followers?page=1&limit=20` | Public | Paginated followers. |
-| `GET /api/users/:username/following?page=1&limit=20` | Public | Paginated following. |
-| `POST /api/users/:username/follow` | Bearer + completed onboarding | Follow another user. Returns `201` and creates a notification for them. |
+| `GET /api/users/:username/profile` | Public, or Bearer to be recognized as a friend/owner | Public profile, bio, visible category, public contact, and stats. `404` if hidden from this viewer by `profileVisibility` or a block - see Privacy above. |
+| `GET /api/users/:username/quests?status=winner&page=1&limit=20` | Public, or Bearer | Registered-quest history. `status` may be `registered`, `cancelled`, `completed`, or `winner`. Same visibility rules as the profile. |
+| `GET /api/users/:username/followers?page=1&limit=20&search=jamie` | Public, or Bearer | Paginated followers. Same visibility rules as the profile. Optional `search` matches (case-insensitive, substring) against the follower's username, first name, or last name. |
+| `GET /api/users/:username/following?page=1&limit=20&search=jamie` | Public, or Bearer | Paginated following. Same visibility rules as the profile. Optional `search`, same matching rules as followers. |
+| `POST /api/users/:username/follow` | Bearer + completed onboarding | Follow another user. Returns `201` and creates a notification for them. `404` across a block. |
 | `DELETE /api/users/:username/follow` | Bearer + completed onboarding | Unfollow another user. Returns `200`. |
-| `GET /api/users/:username/posts?type=thought&page=1&limit=20` | Public | List only one user’s posts; omit `type` for all types. |
+| `GET /api/users/:username/posts?type=thought&page=1&limit=20` | Public, or Bearer | List only one user’s posts; omit `type` for all types. `404` if the profile itself isn't visible; `200` with an empty list if only the activity feed is hidden. |
+| `POST /api/users/:username/block` | Bearer + completed onboarding | Block a user. Returns `201`, and removes any existing follow between the two of you in either direction. `409` if already blocked. |
+| `DELETE /api/users/:username/block` | Bearer + completed onboarding | Unblock a user. Returns `200`. |
+| `GET /api/users/:username/share` | Public | Returns `{ url, title, text }` ready to hand straight to a native share sheet (`Share.share()` on mobile, `navigator.share()` on web) - the frontend never has to construct the link itself. |
+| `GET /u/:username` | Public, plain HTML (not JSON, not under `/api`) | The actual link to share to Instagram/Facebook/WhatsApp/etc. Real server-rendered HTML with Open Graph + Twitter Card tags (title, bio, avatar/photo image), so pasting it anywhere shows a rich preview card instead of a bare link. Anyone without the app still sees a readable profile card. `404` (HTML, not JSON) for an unknown username. |
 
 Example public URL:
 
@@ -255,9 +270,10 @@ GET {{baseUrl}}/api/users/{{targetUsername}}/profile
 | `POST /api/posts/:postId/bookmarks` | Bearer + completed onboarding | Bookmark once. Returns `201`; repeated bookmark is `409`. |
 | `DELETE /api/posts/:postId/bookmarks` | Bearer + completed onboarding | Remove own bookmark. |
 | `GET /api/users/me/bookmarks?page=1&limit=20` | Bearer + completed onboarding | List my saved posts, newest bookmark first. |
-| `GET /api/posts/:postId/comments?page=1&limit=20` | Public | Read public comments. |
-| `POST /api/posts/:postId/comments` | Bearer + completed onboarding | Create a public 1–500 character comment. Returns `201`. |
-| `DELETE /api/posts/:postId/comments/:commentId` | Bearer + completed onboarding | Comment author only. |
+| `GET /api/posts/:postId/comments?page=1&limit=20` | Public | Read public **top-level** comments (omit `parentComment`), each with a `replyCount`. |
+| `GET /api/posts/:postId/comments?parentComment=:commentId&page=1&limit=20` | Public | Read the replies under one specific top-level comment. |
+| `POST /api/posts/:postId/comments` | Bearer + completed onboarding | Create a public 1–500 character comment. Add `parentComment: "{{commentId}}"` to reply under an existing top-level comment - one level of nesting only, so replying to a reply is `400`. Returns `201`. |
+| `DELETE /api/posts/:postId/comments/:commentId` | Bearer + completed onboarding | Comment author only. Deleting a top-level comment cascades to delete its replies too. |
 
 Create a thought: choose **raw → JSON**.
 
@@ -281,6 +297,14 @@ Create comment body:
 { "body": "This cosplay looks amazing!" }
 ```
 
+Reply to a comment body (`parentComment` must be a top-level comment on the same post - a reply cannot itself be replied to):
+
+```json
+{ "body": "Thanks, glad you like it!", "parentComment": "{{commentId}}" }
+```
+
+Emoji reactions on a post ("quick replies") are frontend-only - the client sends them straight into the comment box as text, there's no separate reaction endpoint or storage for posts. (Chat messages are different: those reactions do have a real backend endpoint - see below.)
+
 ## Chats (Community, faction rooms, and direct messages)
 
 Every endpoint here is **Bearer + completed onboarding** - there is no pre-login/email-identified access, unlike the onboarding-step endpoints. There is no push/WebSocket layer; the client polls `GET .../messages` for new activity.
@@ -288,7 +312,7 @@ Every endpoint here is **Bearer + completed onboarding** - there is no pre-login
 | Method and URL | Usage |
 | --- | --- |
 | `GET /api/chats` | "Your Space": the single Community room, my current faction's room, and every DM I'm part of. Each entry includes `unreadCount` and a `lastMessage` preview. |
-| `POST /api/chats/dm` | Find-or-create a DM with `{ "username": "..." }`. Calling it again with the same username returns the same conversation, not a duplicate. |
+| `POST /api/chats/dm` | Find-or-create a DM with `{ "username": "..." }`. Calling it again with the same username returns the same conversation, not a duplicate. `404` across a block; `403` if the target's `allowDirectMessages` privacy setting is off. |
 | `GET /api/chats/:conversationId` | Room detail: title, member count, pinned message, and (for DMs) the other participant's presence (`lastActiveAt`). |
 | `GET /api/chats/:conversationId/messages?page=1&limit=30` | Paginated, newest first. Each message includes its reactions and, for a DM, `read` (whether the recipient has seen it) on messages I sent. |
 | `POST /api/chats/:conversationId/messages` | Send a message. `content` (text) and/or a single `media` file (image or voice note - MP3/M4A/WEBM/OGG/WAV) via multipart form-data; optional `replyTo` (a message id in the same conversation) to quote a message. |
@@ -299,6 +323,9 @@ Every endpoint here is **Bearer + completed onboarding** - there is no pre-login
 | `PATCH /api/chats/:conversationId/pinned-message` | `{ "messageId": "..." }` to pin, or `{ "messageId": null }` to unpin. Any member can do this - there is no moderator role yet. |
 | `POST /api/chats/:conversationId/messages/:messageId/reactions` | `{ "emoji": "😂" }` - one reaction per user per message; sending a new emoji replaces your old one. Returns `201` with the message's grouped reaction counts. |
 | `DELETE /api/chats/:conversationId/messages/:messageId/reactions` | Remove my own reaction from the message. |
+| `GET /api/chats/:conversationId/messages/:messageId/seen?page=1&limit=30` | Who has read up to (and including) this message, excluding the sender - reuses the same per-viewer `lastReadAt` the unread badge and DM read receipt are built on, so it's naturally 0-1 people in a DM and potentially many in the Community/faction rooms. |
+| `POST /api/chats/:conversationId/messages/:messageId/forward` | Body needs **exactly one** of `targetConversationId` (a conversation the caller already belongs to - Community, their current faction room, or any DM) or `targetUsername` (any user found via `GET /api/users/search` - the DM is found-or-created automatically, same as tapping "+" then forwarding). `403` for a conversation you don't belong to; `400` for zero or both target fields; the DM-by-username path applies the same block/`allowDirectMessages` checks as `POST /api/chats/dm`. The copy is marked `forwarded: true`; the original is untouched and unlinked from the copy's lifecycle (deleting/editing one never affects the other). |
+| `GET /api/users/search?search=jamie&page=1&limit=20` | Find people to start a DM/forward with, by username/first/last name (case-insensitive substring). Unlike profile visibility, this is **not gated by `profileVisibility`** - it's a discoverability search for messaging, not a profile-content view, so even a private/friends-only account can be found here (most chat apps work this way: you can find someone by name to message them even if you can't see their content). A block hides someone from search in both directions, same as everywhere else; incomplete accounts never show up. `400` with no `search` term. |
 
 Faction-room access follows the user's **current** `faction` value live - there's no separate join/leave step, and switching factions moves you into the new faction's room automatically. A logged-in user who isn't in a given faction room gets `403` posting or reading there.
 
@@ -315,6 +342,20 @@ Reply to a message (form field alongside `content`, or JSON if there's no attach
 ```
 
 Send a voice note: choose **form-data**, add field `media` as a File (MP3/M4A/WEBM/OGG/WAV), leave `content` empty.
+
+Forward a message body (into a conversation you're already in):
+
+```json
+{ "targetConversationId": "{{dmConversationId}}" }
+```
+
+Forward a message body (to any user by username - finds or creates the DM for you):
+
+```json
+{ "targetUsername": "Jamie123" }
+```
+
+"Copy text" on long-press is frontend-only - it copies a message's already-loaded `content` to the device clipboard, no API call involved. Stories are intentionally not implemented yet.
 
 ## Quests and registration
 
@@ -336,8 +377,8 @@ Quest registration has no raw body. First call `GET /api/quests`, copy a returne
 | `302` | Normal OAuth browser redirect. |
 | `400` | Missing/invalid body, invalid option, invalid upload, or validation failure. |
 | `401` | Missing, invalid, logged-out, or expired Bearer token. |
-| `403` | Logged in but onboarding incomplete, or trying to edit/delete another user’s content. |
-| `404` | User, quest, post, comment, or route does not exist. |
+| `403` | Logged in but onboarding incomplete, trying to edit/delete another user’s content, or the target has direct messages turned off. |
+| `404` | User, quest, post, comment, or route does not exist - or exists but is hidden from you by a privacy setting or a block (deliberately indistinguishable from not existing). |
 | `409` | An already-onboarded email/username re-signing up, or a duplicate follow/like/share/bookmark/registration, or an unavailable/full quest. (Re-signing up with an *incomplete* email/username resumes instead - see signup above.) |
 | `503` | Cloudinary or OAuth provider configuration is missing. |
 

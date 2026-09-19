@@ -14,6 +14,8 @@ const {
   setPinnedMessage,
   setReaction,
   removeReaction,
+  getMessageSeenBy,
+  forwardMessage,
 } = require('../controllers/chatController');
 
 const router = express.Router();
@@ -33,5 +35,7 @@ router.patch('/chats/:conversationId/read', asyncHandler(markRead));
 router.patch('/chats/:conversationId/pinned-message', asyncHandler(setPinnedMessage));
 router.post('/chats/:conversationId/messages/:messageId/reactions', asyncHandler(setReaction));
 router.delete('/chats/:conversationId/messages/:messageId/reactions', asyncHandler(removeReaction));
+router.get('/chats/:conversationId/messages/:messageId/seen', asyncHandler(getMessageSeenBy));
+router.post('/chats/:conversationId/messages/:messageId/forward', asyncHandler(forwardMessage));
 
 module.exports = router;

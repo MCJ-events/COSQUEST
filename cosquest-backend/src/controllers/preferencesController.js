@@ -30,16 +30,30 @@ function validateLocationInput({ locationEnabled, radiusMiles, lat, lng }) {
 
 // PATCH /api/users/me/preferences/notifications
 async function updateNotificationPrefs(req, res) {
-  const { notificationsEnabled } = req.body;
-  if (notificationsEnabled === undefined) {
+  const { notificationsEnabled, eventReminders, emailWeeklyNewsletter } = req.body;
+  // The master switch is required on its own during onboarding (step 4);
+  // afterward, the Settings screen can flip any one of these independently.
+  if (notificationsEnabled === undefined && eventReminders === undefined && emailWeeklyNewsletter === undefined) {
     return res.status(400).json({ error: 'notificationsEnabled (boolean) is required.' });
   }
-  if (typeof notificationsEnabled !== 'boolean') {
+  if (notificationsEnabled !== undefined && typeof notificationsEnabled !== 'boolean') {
     return res.status(400).json({ error: 'notificationsEnabled must be a boolean.' });
   }
+  if (eventReminders !== undefined && typeof eventReminders !== 'boolean') {
+    return res.status(400).json({ error: 'eventReminders must be a boolean.' });
+  }
+  if (emailWeeklyNewsletter !== undefined && typeof emailWeeklyNewsletter !== 'boolean') {
+    return res.status(400).json({ error: 'emailWeeklyNewsletter must be a boolean.' });
+  }
   const updated = await userModel.updateUser(req.userId, (user) => {
-    user.preferences.notificationsEnabled = Boolean(notificationsEnabled);
-    user.onboarding.notificationPreferenceChosen = true;
+    if (notificationsEnabled !== undefined) {
+      user.preferences.notificationsEnabled = notificationsEnabled;
+      user.onboarding.notificationPreferenceChosen = true;
+    }
+    if (eventReminders !== undefined) user.notificationCategories.eventReminders = eventReminders;
+    // Preference only - no email actually gets sent yet (no email
+    // infrastructure exists in this backend), see COMMUNITY/SETTINGS docs.
+    if (emailWeeklyNewsletter !== undefined) user.preferences.emailWeeklyNewsletter = emailWeeklyNewsletter;
   });
   return res.json({ user: userModel.sanitize(updated) });
 }

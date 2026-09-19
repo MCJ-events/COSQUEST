@@ -11,7 +11,7 @@ This note maps the three Community tabs (Feeds, Chats, Spotlight) to the `cosque
 | Post image/video | `post.media[]` (Cloudinary) |
 | Caption + hashtags | `post.content` — tags are plain substrings; there is no tag index or `#tag` search yet (not required by anything visible on this screen) |
 | ❤️ like count | `POST/DELETE /api/posts/:postId/likes` |
-| 💬 comment count | `POST /api/posts/:postId/comments` |
+| 💬 comment count, plus replies under a comment | `POST /api/posts/:postId/comments` (add `parentComment` to reply, one level deep); `GET /api/posts/:postId/comments?parentComment=:commentId` for a comment's replies |
 | 🔁 share/repost count | `POST/DELETE /api/posts/:postId/shares` |
 | 🔖 bookmark/save count | `POST/DELETE /api/posts/:postId/bookmarks`, `GET /api/users/me/bookmarks` |
 | 🔔 bell (unread notifications) | `GET /api/users/me/notifications` |
@@ -37,6 +37,13 @@ Built as a new subsystem: `Conversation`, `ConversationMember`, `Message`, `Mess
 | 📞 🎥 call icons | **Not built.** UI-only for now — real calling needs WebRTC signaling infrastructure, out of scope here. |
 | Edit a sent message | `PATCH /api/chats/:id/messages/:messageId` — sender-only, stamps `editedAt` (no time limit) |
 | Delete a message | `DELETE /api/chats/:id/messages/:messageId?scope=me\|everyone` — see below |
+| "Seen" on a message | `GET /api/chats/:id/messages/:messageId/seen` — who has read up to this message (excluding the sender), reusing the same `lastReadAt` the unread badge/DM checkmark already track; 0-1 people in a DM, potentially many in a room |
+| Forward a message | `POST /api/chats/:id/messages/:messageId/forward` with `{ targetConversationId }` (a conversation the caller already belongs to — Community, their faction room, or a DM they're in; `403` for anywhere else) **or** `{ targetUsername }` (any user found via `GET /api/users/search` — the DM is found-or-created automatically, so you can forward to someone you haven't messaged yet). Exactly one of the two is required. Copy is flagged `forwarded: true`, independent of the original from then on |
+| Search people to forward/DM with | `GET /api/users/search?search=jamie` — username/first/last name, case-insensitive. This is the fuzzy "search people by name" endpoint the DM "+" picker was missing (see "Still deferred" below, now resolved) — not gated by profile visibility (it's for finding someone to message, not viewing their profile), but blocks still hide people from it in both directions |
+| Long-press "Copy" | **Frontend-only** — copies the already-loaded `message.content` to the clipboard, no API call |
+| Emoji reactions row (as quick replies on a **post**) | Post-level "reactions" shown in some mockups are frontend-only shortcuts that submit a real comment — there's no separate reaction storage/endpoint for posts. (Chat-message reactions above are real and backend-backed.) |
+| Blocking someone in a chat context | `POST/DELETE /api/users/:username/block` (see `PROFILE_PAGE_ASSUMPTIONS.md`) — blocks unconditionally hide the profile and refuse new DMs/follows in both directions; the chats list/UI is expected to use the existing `GET /api/users/me/blocked` to grey out or hide a blocked person, there is no separate per-chat block flag |
+| Stories | **Deferred, not started**, per explicit product decision |
 
 **Message editing and deletion:** editing stamps `editedAt` on the message (kept forever, not just until the next change) so the client can show "(edited)." Deletion has two scopes, both **soft** — the `Message` row is never removed from the database, only flagged, so content stays recoverable/auditable there even once hidden from the API:
 - `scope=me` (default): adds the caller to the message's `deletedFor` list. Hidden from that person's own message list from then on, any time after sending, with no effect on anyone else's view.
@@ -49,7 +56,7 @@ Built as a new subsystem: `Conversation`, `ConversationMember`, `Message`, `Mess
 - "Community — General" is a single seeded/find-or-created global room; there's no flow to create additional community rooms.
 - Anyone in a conversation can set or clear its pinned message (no admin/moderator concept exists anywhere in this codebase yet).
 - The faction room's display name is just the faction's existing `name` (e.g. "Icons") — the mockup's flavor subtitle ("Comic Book Faction") isn't a real per-faction field in `factionModel.js`, so that styling, if wanted, is a frontend label rather than backend data.
-- DM search still only works by **exact username** (`POST /api/chats/dm`) — a fuzzy "search people by name" endpoint for the "+" picker does not exist yet and would need to be added when the picker is built.
+- `POST /api/chats/dm` still requires an **exact username** — the fuzzy "search people by name" endpoint for the "+" picker (`GET /api/users/search`) exists now (see the Chats tab table above) but `startDirectMessage` itself is unchanged; the picker is expected to call search first, then `POST /api/chats/dm` with the exact username it found. (This is a different endpoint from followers/following search — see `PROFILE_PAGE_ASSUMPTIONS.md`.)
 
 ## Spotlight tab — not started, deferred as requested
 
@@ -63,16 +70,15 @@ Needed later, in order:
 
 ## Net new surface area (built)
 
-- **Models:** `PostShare`, `PostBookmark`, `Conversation`, `ConversationMember`, `Message`, `MessageReaction`; `lastActiveAt` added to `User`; `shareCount`/`bookmarkCount`/`editedAt` added to `Post`; `editedAt`/`deletedForEveryone`/`deletedAt`/`deletedFor` added to `Message`.
-- **Controllers/routes:** `chatController`/`chatRoutes` (new, now including edit and delete-for-me/delete-for-everyone), share/bookmark/my-bookmarks additions to `postController`/`postRoutes`.
-- **Media:** `chatUpload` multer config + `storeChatMedia` reuse the existing Cloudinary pipeline, extended with voice-note audio mimetypes.
-- **Tests:** `test/smoke.js` covers share/bookmark lifecycle, the full chat flow (community + faction access control, DM creation/idempotency, replies, reactions, pinning, voice notes, unread counts, read receipts), message editing, and both delete scopes including the 5-minute delete-for-everyone cutoff.
+- **Models:** `PostShare`, `PostBookmark`, `Conversation`, `ConversationMember`, `Message`, `MessageReaction`, `Block`; `lastActiveAt`/`privacy` added to `User`; `shareCount`/`bookmarkCount`/`editedAt` added to `Post`; `editedAt`/`deletedForEveryone`/`deletedAt`/`deletedFor`/`forwardedFrom` added to `Message`; `parentComment`/`replyCount` added to `PostComment`.
+- **Controllers/routes:** `chatController`/`chatRoutes` (new, now including edit, delete-for-me/delete-for-everyone, seen-by, and forward), share/bookmark/my-bookmarks/comment-threading additions to `postController`/`postRoutes`, `blockController`/`privacyController` for blocking and visibility.
+- **Media:** `chatUpload` multer config + `storeChatMedia` reuse the existing Cloudinary pipeline, extended with voice-note audio mimetypes. Forwarding copies the same Cloudinary `media` reference rather than re-uploading.
+- **Tests:** `test/smoke.js` covers share/bookmark lifecycle, the full chat flow (community + faction access control, DM creation/idempotency, replies, reactions, pinning, voice notes, unread counts, read receipts, seen-by, forwarding by conversation id and by username), message editing, both delete scopes including the 5-minute delete-for-everyone cutoff, comment threading (reply, one-level-deep enforcement, cascade delete), followers/following search, people search, and privacy/blocking.
 
 ## Still deferred
 
 - Spotlight/leaderboard/points/levels (next, per above).
 - Hashtag indexing/search.
 - Voice/video calling (WebRTC).
-- Any moderation: block/report/mute for chats, consistent with the existing moderation deferral in `PROFILE_PAGE_ASSUMPTIONS.md`.
-- Fuzzy user search for the DM "+" picker.
+- Reporting and mute for chats (blocking itself is implemented — see the Chats tab table above and `PROFILE_PAGE_ASSUMPTIONS.md`).
 - Push/WebSocket delivery (currently polling).

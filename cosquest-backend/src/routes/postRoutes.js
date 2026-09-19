@@ -1,5 +1,5 @@
 const express = require('express');
-const { requireAuth, requireCompletedOnboarding } = require('../middleware/auth');
+const { requireAuth, optionalAuth, requireCompletedOnboarding } = require('../middleware/auth');
 const { postUpload } = require('../middleware/upload');
 const { asyncHandler } = require('../utils/asyncHandler');
 const {
@@ -38,6 +38,6 @@ router.get('/users/me/bookmarks', requireAuth, requireCompletedOnboarding, async
 router.get('/posts/:postId/comments', asyncHandler(listComments));
 router.post('/posts/:postId/comments', requireAuth, requireCompletedOnboarding, asyncHandler(createComment));
 router.delete('/posts/:postId/comments/:commentId', requireAuth, requireCompletedOnboarding, asyncHandler(deleteComment));
-router.get('/users/:username/posts', asyncHandler(listUserPosts));
+router.get('/users/:username/posts', asyncHandler(optionalAuth), asyncHandler(listUserPosts));
 
 module.exports = router;

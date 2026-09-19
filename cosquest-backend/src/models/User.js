@@ -58,6 +58,20 @@ const userSchema = new mongoose.Schema(
       notificationsEnabled: { type: Boolean, default: false },
       locationEnabled: { type: Boolean, default: false },
       radiusMiles: { type: Number, default: 50, min: 5, max: 100 },
+      // Separate from the master notificationsEnabled switch above - these
+      // only matter once that master switch (or, for email, real email
+      // sending infrastructure - not built yet) is on.
+      emailWeeklyNewsletter: { type: Boolean, default: false },
+    },
+    notificationCategories: {
+      eventReminders: { type: Boolean, default: true },
+    },
+    // Mirrors the Settings > Privacy & Visibility screen. Defaults match the
+    // fully-public behavior every existing account already had.
+    privacy: {
+      profileVisibility: { type: String, enum: ['public', 'friends', 'private'], default: 'public' },
+      showActivityFeed: { type: Boolean, default: true },
+      allowDirectMessages: { type: Boolean, default: true },
     },
     // The user's own device coordinates, captured during onboarding - separate
     // from DASHBOARD_DEFAULT_LAT/LNG, which is now only a fallback for an

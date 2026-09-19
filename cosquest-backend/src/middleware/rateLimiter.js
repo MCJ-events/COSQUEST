@@ -8,12 +8,19 @@ const rateLimit = require('express-rate-limit');
  * one real user could lock out everyone else.
  */
 
+// The automated smoke suite legitimately makes far more than 10 signups/logins
+// in a single run (many isolated test fixtures, all from one IP) - that's
+// nothing like real traffic, so it's exempted the same way Cloudinary calls
+// already are in imageHost.js. Production behavior is completely unaffected.
+const skipInTest = () => process.env.NODE_ENV === 'test';
+
 const loginLimiter = rateLimit({
   windowMs: 2 * 60 * 60 * 1000, // 2 hours
   max: 10, // 10 attempts per IP per window
   standardHeaders: true, // RateLimit-* response headers
   legacyHeaders: false,
   message: { error: 'Too many login attempts. Please try again in a couple of hours.' },
+  skip: skipInTest,
 });
 
 const signupLimiter = rateLimit({
@@ -22,6 +29,7 @@ const signupLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many accounts created from this address. Please try again later.' },
+  skip: skipInTest,
 });
 
 module.exports = { loginLimiter, signupLimiter };

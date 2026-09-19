@@ -1,7 +1,7 @@
 const express = require('express');
 const { identifyUser } = require('../middleware/identifyUser');
 const { upload } = require('../middleware/upload');
-const { requireAuth, requireCompletedOnboarding } = require('../middleware/auth');
+const { requireAuth, optionalAuth, requireCompletedOnboarding } = require('../middleware/auth');
 const { asyncHandler } = require('../utils/asyncHandler');
 const {
   getMe,
@@ -20,7 +20,11 @@ const {
   unfollowUser,
   listFollowers,
   listFollowing,
+  searchUsers,
 } = require('../controllers/publicProfileController');
+const { getProfileShareLink } = require('../controllers/shareController');
+const { getPrivacy, updatePrivacy } = require('../controllers/privacyController');
+const { blockUser, unblockUser, listBlockedUsers } = require('../controllers/blockController');
 
 const router = express.Router();
 
@@ -34,14 +38,24 @@ router.post('/me/avatar/photo', upload.single('photo'), asyncHandler(identifyUse
 router.get('/me/points', requireAuth, requireCompletedOnboarding, getMyPoints);
 router.get('/me/contact', requireAuth, requireCompletedOnboarding, getContact);
 router.patch('/me/contact', requireAuth, requireCompletedOnboarding, asyncHandler(updateContact));
+router.get('/me/privacy', requireAuth, requireCompletedOnboarding, getPrivacy);
+router.patch('/me/privacy', requireAuth, requireCompletedOnboarding, asyncHandler(updatePrivacy));
+router.get('/me/blocked', requireAuth, requireCompletedOnboarding, asyncHandler(listBlockedUsers));
+
+// Find people to start a DM/forward with, by name - see searchUsers. Placed
+// before /:username so "search" can never be mistaken for a username.
+router.get('/search', requireAuth, requireCompletedOnboarding, asyncHandler(searchUsers));
 
 // Public profile and social graph. These routes intentionally come after the
 // explicit /me routes so "me" can never be mistaken for a username.
-router.get('/:username/profile', asyncHandler(getPublicProfile));
-router.get('/:username/quests', asyncHandler(listQuestHistory));
-router.get('/:username/followers', asyncHandler(listFollowers));
-router.get('/:username/following', asyncHandler(listFollowing));
+router.get('/:username/profile', asyncHandler(optionalAuth), asyncHandler(getPublicProfile));
+router.get('/:username/share', asyncHandler(optionalAuth), asyncHandler(getProfileShareLink));
+router.get('/:username/quests', asyncHandler(optionalAuth), asyncHandler(listQuestHistory));
+router.get('/:username/followers', asyncHandler(optionalAuth), asyncHandler(listFollowers));
+router.get('/:username/following', asyncHandler(optionalAuth), asyncHandler(listFollowing));
 router.post('/:username/follow', requireAuth, requireCompletedOnboarding, asyncHandler(followUser));
 router.delete('/:username/follow', requireAuth, requireCompletedOnboarding, asyncHandler(unfollowUser));
+router.post('/:username/block', requireAuth, requireCompletedOnboarding, asyncHandler(blockUser));
+router.delete('/:username/block', requireAuth, requireCompletedOnboarding, asyncHandler(unblockUser));
 
 module.exports = router;

@@ -7,6 +7,7 @@ const PostShare = require('../models/PostShare');
 const PostBookmark = require('../models/PostBookmark');
 const userModel = require('../models/userModel');
 const { storePostMedia, deletePostMedia } = require('../utils/imageHost');
+const { canViewProfile, canViewActivityFeed } = require('./publicProfileController');
 
 const POST_TYPES = ['image', 'reel', 'thought'];
 // 'image/jpg' isn't a registered MIME type, and 'application/octet-stream'/
@@ -133,11 +134,17 @@ async function listPosts(req, res) {
 
 async function listUserPosts(req, res) {
   const user = await userModel.findByUsername(req.params.username);
-  if (!user) return res.status(404).json({ error: 'Profile not found.' });
+  if (!user || !(await canViewProfile(user, req.userId))) return res.status(404).json({ error: 'Profile not found.' });
   const type = req.query.type;
   if (type && !POST_TYPES.includes(type)) return res.status(400).json({ error: 'type must be image, reel, or thought.' });
   const limit = parseLimit(req.query.limit);
   const page = parsePage(req.query.page);
+  // The profile itself is visible, but "Show Activity Feed" being off hides
+  // the posts specifically from anyone who isn't the owner or a friend - an
+  // empty list, not a 404, since the profile really is there.
+  if (!(await canViewActivityFeed(user, req.userId))) {
+    return res.json({ posts: [], pagination: { page, limit, total: 0, hasMore: false } });
+  }
   const query = { author: user._id, ...(type ? { type } : {}) };
   const [posts, total] = await Promise.all([
     Post.find(query)
@@ -276,52 +283,92 @@ async function listMyBookmarks(req, res) {
   });
 }
 
+function serializeComment(comment) {
+  return {
+    id: String(comment._id),
+    body: comment.body,
+    author: authorPreview(comment.author),
+    parentComment: comment.parentComment ? String(comment.parentComment) : null,
+    replyCount: comment.replyCount || 0,
+    createdAt: comment.createdAt,
+    updatedAt: comment.updatedAt,
+  };
+}
+
+// GET /api/posts/:postId/comments - top-level comments by default; pass
+// ?parentComment=<id> to fetch the replies under one specific top-level
+// comment instead (one level of nesting only - a reply has no replies).
 async function listComments(req, res) {
   const post = await loadPost(req.params.postId);
   if (!post) return res.status(404).json({ error: 'Post not found.' });
+
+  let parentComment = null;
+  if (req.query.parentComment) {
+    if (!mongoose.isValidObjectId(req.query.parentComment)) return res.status(404).json({ error: 'Comment not found.' });
+    const parent = await PostComment.findById(req.query.parentComment);
+    if (!parent || String(parent.post) !== String(post._id)) return res.status(404).json({ error: 'Comment not found.' });
+    parentComment = parent._id;
+  }
+
   const limit = parseLimit(req.query.limit);
   const page = parsePage(req.query.page);
+  const query = { post: post._id, parentComment };
   const [comments, total] = await Promise.all([
-    PostComment.find({ post: post._id })
+    PostComment.find(query)
       .populate('author', 'profile.username profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl faction')
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit),
-    PostComment.countDocuments({ post: post._id }),
+    PostComment.countDocuments(query),
   ]);
   return res.json({
-    comments: comments.map((comment) => ({
-      id: String(comment._id),
-      body: comment.body,
-      author: authorPreview(comment.author),
-      createdAt: comment.createdAt,
-      updatedAt: comment.updatedAt,
-    })),
+    comments: comments.map(serializeComment),
     pagination: { page, limit, total, hasMore: page * limit < total },
   });
 }
 
+// POST /api/posts/:postId/comments - pass parentComment to reply under an
+// existing top-level comment; replying to a reply is rejected (one level deep).
 async function createComment(req, res) {
   const post = await loadPost(req.params.postId);
   if (!post) return res.status(404).json({ error: 'Post not found.' });
   const body = typeof req.body.body === 'string' ? req.body.body.trim() : '';
   if (!body || body.length > 500) return res.status(400).json({ error: 'A comment must contain 1 to 500 characters.' });
-  const comment = await PostComment.create({ post: post._id, author: req.userId, body });
-  const updated = await Post.findByIdAndUpdate(post._id, { $inc: { commentCount: 1 } }, { new: true });
+
+  let parent = null;
+  if (req.body.parentComment) {
+    if (!mongoose.isValidObjectId(req.body.parentComment)) return res.status(404).json({ error: 'Comment not found.' });
+    parent = await PostComment.findById(req.body.parentComment);
+    if (!parent || String(parent.post) !== String(post._id)) return res.status(404).json({ error: 'Comment not found.' });
+    if (parent.parentComment) return res.status(400).json({ error: 'You can only reply to a top-level comment.' });
+  }
+
+  const comment = await PostComment.create({ post: post._id, author: req.userId, body, parentComment: parent ? parent._id : null });
+  const [updated] = await Promise.all([
+    Post.findByIdAndUpdate(post._id, { $inc: { commentCount: 1 } }, { new: true }),
+    parent ? PostComment.updateOne({ _id: parent._id }, { $inc: { replyCount: 1 } }) : Promise.resolve(),
+  ]);
   await comment.populate('author', 'profile.username profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl faction');
   return res.status(201).json({
-    comment: { id: String(comment._id), body: comment.body, author: authorPreview(comment.author), createdAt: comment.createdAt },
+    comment: serializeComment(comment),
     commentCount: updated.commentCount,
   });
 }
 
+// Deleting a top-level comment cascades to its replies (they can't exist without it).
 async function deleteComment(req, res) {
   if (!mongoose.isValidObjectId(req.params.commentId)) return res.status(404).json({ error: 'Comment not found.' });
   const comment = await PostComment.findById(req.params.commentId);
   if (!comment || String(comment.post) !== String(req.params.postId)) return res.status(404).json({ error: 'Comment not found.' });
   if (String(comment.author) !== String(req.userId)) return res.status(403).json({ error: 'You can only delete your own comment.' });
+
+  const repliesResult = comment.parentComment ? { deletedCount: 0 } : await PostComment.deleteMany({ parentComment: comment._id });
   await PostComment.deleteOne({ _id: comment._id });
-  const updated = await Post.findByIdAndUpdate(comment.post, { $inc: { commentCount: -1 } }, { new: true });
+  if (comment.parentComment) {
+    await PostComment.updateOne({ _id: comment.parentComment }, { $inc: { replyCount: -1 } });
+  }
+  const removedCount = 1 + repliesResult.deletedCount;
+  const updated = await Post.findByIdAndUpdate(comment.post, { $inc: { commentCount: -removedCount } }, { new: true });
   return res.json({ message: 'Comment deleted.', commentCount: Math.max(0, updated?.commentCount || 0) });
 }
 

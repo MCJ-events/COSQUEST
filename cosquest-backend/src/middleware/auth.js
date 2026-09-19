@@ -43,6 +43,31 @@ async function requireAuth(req, res, next) {
   }
 }
 
+/**
+ * For routes that stay public (no token required) but now need to know
+ * *who's asking* to enforce profile visibility/blocking - e.g. a public
+ * profile is still readable by anyone, but "friends only" needs to check if
+ * this particular viewer qualifies. Never rejects: a missing or invalid
+ * token just leaves req.userId/req.user unset, same as an anonymous visitor.
+ */
+async function optionalAuth(req, res, next) {
+  const header = req.headers.authorization || '';
+  const [scheme, token] = header.split(' ');
+  if (scheme !== 'Bearer' || !token) return next();
+
+  try {
+    const decoded = verifyToken(token);
+    const user = await userModel.findById(decoded.sub);
+    if (user && decoded.tokenVersion === user.tokenVersion) {
+      req.userId = user.id;
+      req.user = user;
+    }
+  } catch (err) {
+    // Invalid/expired token on an optional-auth route: treat as anonymous, don't fail the request.
+  }
+  next();
+}
+
 function requireCompletedOnboarding(req, res, next) {
   if (!req.user?.onboardingComplete) {
     return res.status(403).json({ error: 'Please complete onboarding before accessing this feature.' });
@@ -50,4 +75,4 @@ function requireCompletedOnboarding(req, res, next) {
   return next();
 }
 
-module.exports = { requireAuth, requireCompletedOnboarding };
+module.exports = { requireAuth, optionalAuth, requireCompletedOnboarding };

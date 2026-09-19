@@ -32,6 +32,10 @@
       "value": ""
     },
     {
+      "key": "replyCommentId",
+      "value": ""
+    },
+    {
       "key": "questId",
       "value": ""
     },
@@ -49,6 +53,10 @@
     },
     {
       "key": "messageId",
+      "value": ""
+    },
+    {
+      "key": "forwardedMessageId",
       "value": ""
     },
     {
@@ -681,7 +689,8 @@
             },
             "auth": {
               "type": "noauth"
-            }
+            },
+            "description": "Any subset of notificationsEnabled (master switch), eventReminders (a push category), and emailWeeklyNewsletter works in one call - at least one field is required. The category fields are preference storage only; no email sends yet."
           }
         },
         {
@@ -997,6 +1006,90 @@
               ]
             }
           }
+        },
+        {
+          "name": "Get my privacy settings",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/me/privacy",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "me",
+                "privacy"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Save privacy settings",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/me/privacy",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "me",
+                "privacy"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"profileVisibility\": \"friends\",\n  \"showActivityFeed\": false,\n  \"allowDirectMessages\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Any subset of the three fields works in one call. profileVisibility: public | friends | private. \"Friends\" = mutual follow (no separate friend-request system exists)."
+          }
+        },
+        {
+          "name": "Get my blocked users",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/me/blocked?page=1&limit=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "me",
+                "blocked"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "disabled": false
+                },
+                {
+                  "key": "limit",
+                  "value": "20",
+                  "disabled": false
+                }
+              ]
+            }
+          }
         }
       ]
     },
@@ -1090,12 +1183,18 @@
                   "key": "limit",
                   "value": "20",
                   "disabled": false
+                },
+                {
+                  "key": "search",
+                  "value": "raven",
+                  "disabled": true
                 }
               ]
             },
             "auth": {
               "type": "noauth"
-            }
+            },
+            "description": "search (optional) matches case-insensitively against the follower’s username, first name, or last name."
           }
         },
         {
@@ -1124,12 +1223,54 @@
                   "key": "limit",
                   "value": "20",
                   "disabled": false
+                },
+                {
+                  "key": "search",
+                  "value": "raven",
+                  "disabled": true
                 }
               ]
             },
             "auth": {
               "type": "noauth"
-            }
+            },
+            "description": "search (optional), same matching rules as followers."
+          }
+        },
+        {
+          "name": "Search people (to DM/forward with)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/search?search=budd&page=1&limit=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "budd",
+                  "disabled": false
+                },
+                {
+                  "key": "page",
+                  "value": "1",
+                  "disabled": false
+                },
+                {
+                  "key": "limit",
+                  "value": "20",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "Username/first/last name, case-insensitive. Not gated by profileVisibility - it’s for finding someone to message, not viewing their profile - but a block hides them from this in both directions. Feeds the DM \"+\" picker and the \"forward to a new person\" flow (POST .../forward with targetUsername instead of targetConversationId)."
           }
         },
         {
@@ -1171,6 +1312,45 @@
           }
         },
         {
+          "name": "Block buddy",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/Buddy/block",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "Buddy",
+                "block"
+              ]
+            },
+            "description": "Also removes any existing follow between the two of you, in either direction. A block hides the profile (404) and blocks new follows/DMs in both directions, overriding any visibility setting."
+          }
+        },
+        {
+          "name": "Unblock buddy",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/Buddy/block",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "Buddy",
+                "block"
+              ]
+            }
+          }
+        },
+        {
           "name": "Get a user’s posts (buddy)",
           "request": {
             "method": "GET",
@@ -1207,6 +1387,50 @@
             "auth": {
               "type": "noauth"
             }
+          }
+        },
+        {
+          "name": "Get share link (me)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/Ravencaller/share",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "Ravencaller",
+                "share"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Returns { url, title, text } ready to hand to a native share sheet (Share.share() on mobile, navigator.share() on web) - the frontend never has to build the link itself."
+          }
+        },
+        {
+          "name": "Open shareable profile page (me)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/u/Ravencaller",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "u",
+                "Ravencaller"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "The actual link to paste into Instagram/Facebook/WhatsApp/etc - real HTML with Open Graph tags, not JSON, so it shows a rich preview card. Open this URL directly in a browser to see the rendered page (Postman will just show the raw HTML here)."
           }
         }
       ]
@@ -1585,7 +1809,8 @@
             },
             "auth": {
               "type": "noauth"
-            }
+            },
+            "description": "Top-level comments only (omit parentComment). Each one includes replyCount."
           }
         },
         {
@@ -1633,6 +1858,90 @@
           ]
         },
         {
+          "name": "Reply to a comment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/posts/{{postId}}/comments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "posts",
+                "{{postId}}",
+                "comments"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"Thanks, glad you like it!\",\n  \"parentComment\": \"{{commentId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "parentComment must reference a top-level comment - replying to a reply is 400 (one level of nesting only). The emoji \"reactions\" shown under comments in some mockups are frontend-only quick replies, not a real endpoint."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) pm.collectionVariables.set('replyCommentId', pm.response.json().comment.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get replies to a comment",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/posts/{{postId}}/comments?parentComment={{commentId}}&page=1&limit=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "posts",
+                "{{postId}}",
+                "comments"
+              ],
+              "query": [
+                {
+                  "key": "parentComment",
+                  "value": "{{commentId}}",
+                  "disabled": false
+                },
+                {
+                  "key": "page",
+                  "value": "1",
+                  "disabled": false
+                },
+                {
+                  "key": "limit",
+                  "value": "20",
+                  "disabled": false
+                }
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
           "name": "Delete my comment",
           "request": {
             "method": "DELETE",
@@ -1649,7 +1958,8 @@
                 "comments",
                 "{{commentId}}"
               ]
-            }
+            },
+            "description": "Deleting a top-level comment cascades to delete its replies too."
           }
         }
       ]
@@ -1721,7 +2031,8 @@
                   "language": "json"
                 }
               }
-            }
+            },
+            "description": "404 if either of you has blocked the other; 403 if buddy has turned off allowDirectMessages in their privacy settings."
           },
           "event": [
             {
@@ -2118,6 +2429,123 @@
                 "read"
               ]
             }
+          }
+        },
+        {
+          "name": "See who has read a message",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/chats/{{communityConversationId}}/messages/{{messageId}}/seen?page=1&limit=30",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "chats",
+                "{{communityConversationId}}",
+                "messages",
+                "{{messageId}}",
+                "seen"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "disabled": false
+                },
+                {
+                  "key": "limit",
+                  "value": "30",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "Who has read up to (and including) this message, excluding the sender - naturally 0-1 people in a DM, potentially many in Community/faction rooms. Long-press \"Copy text\" is frontend-only (clipboard copy of the already-loaded content) and Stories aren’t implemented yet - neither has an endpoint here."
+          }
+        },
+        {
+          "name": "Forward a message to my DM with buddy",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/chats/{{communityConversationId}}/messages/{{messageId}}/forward",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "chats",
+                "{{communityConversationId}}",
+                "messages",
+                "{{messageId}}",
+                "forward"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"targetConversationId\": \"{{dmConversationId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "targetConversationId must be a conversation you already belong to (Community, your faction room, or a DM you’re in) - anywhere else is 403, same as posting there directly. Copies content/media into a new message flagged forwarded: true; the original is untouched. Exactly one of targetConversationId or targetUsername is required - see the next request for the other form."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) pm.collectionVariables.set('forwardedMessageId', pm.response.json().message.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Forward a message to a new person by name",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/chats/{{communityConversationId}}/messages/{{messageId}}/forward",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "chats",
+                "{{communityConversationId}}",
+                "messages",
+                "{{messageId}}",
+                "forward"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"targetUsername\": \"Buddy\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "targetUsername works even with no prior DM - finds it via Search people, or creates one on the spot (same as tapping \"+\" then forwarding), subject to the same block/allowDirectMessages rules as Start/find a DM. Sending both targetConversationId and targetUsername, or neither, is 400."
           }
         }
       ]

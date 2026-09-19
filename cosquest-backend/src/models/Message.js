@@ -18,6 +18,10 @@ const messageSchema = new mongoose.Schema(
     content: { type: String, default: '', trim: true, maxlength: 2000 },
     media: { type: messageMediaSchema, default: null },
     replyTo: { type: mongoose.Schema.Types.ObjectId, ref: 'Message', default: null },
+    // Set when this message was created by forwarding another one, so the UI
+    // can show a "Forwarded" label. Points at the original message; the
+    // content/media above are this message's own copy, not a live reference.
+    forwardedFrom: { type: mongoose.Schema.Types.ObjectId, ref: 'Message', default: null },
 
     // Set when the sender edits `content`; kept separate from `updatedAt` so
     // reactions/reads (which don't touch this document) can't be confused

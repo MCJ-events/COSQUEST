@@ -608,6 +608,36 @@ async function run(baseUrlArg) {
     );
   }
   {
+    const r = await c('GET', '/api/users/Ravencaller/share');
+    assert(
+      r.status === 200 &&
+        typeof r.json.url === 'string' &&
+        r.json.url.endsWith('/u/Ravencaller') &&
+        r.json.title.includes('Ravencaller') &&
+        typeof r.json.text === 'string',
+      'GET /api/users/:username/share -> ready-made link/title/text for a native share sheet',
+      r
+    );
+  }
+  {
+    const r = await fetch(`${baseUrl}/u/Ravencaller`);
+    const html = await r.text();
+    assert(
+      r.status === 200 &&
+        r.headers.get('content-type')?.includes('text/html') &&
+        html.includes('og:title') &&
+        html.includes('og:image') &&
+        html.includes('Ravencaller') &&
+        html.includes('community'),
+      'GET /u/:username -> real HTML page with Open Graph tags for social previews',
+      { status: r.status, contentType: r.headers.get('content-type') }
+    );
+  }
+  {
+    const r = await fetch(`${baseUrl}/u/no-such-user-${Date.now()}`);
+    assert(r.status === 404 && r.headers.get('content-type')?.includes('text/html'), 'GET /u/:username (unknown user) -> 404 HTML, not a broken page', { status: r.status });
+  }
+  {
     const r = await c('GET', '/api/users/me/points', { token });
     assert(r.status === 200 && r.json.points === 0, 'GET my points -> balance', r);
   }
@@ -622,6 +652,18 @@ async function run(baseUrlArg) {
   {
     const r = await c('GET', '/api/users/Ravencaller/following');
     assert(r.status === 200 && r.json.users.some((user) => user.username === username2), 'GET following -> public following list', r);
+  }
+  {
+    const r = await c('GET', `/api/users/${username2}/followers?search=raven`);
+    assert(r.status === 200 && r.json.users.some((user) => user.username === 'Ravencaller'), 'GET followers?search= -> case-insensitive username substring match', r);
+  }
+  {
+    const r = await c('GET', `/api/users/${username2}/followers?search=zzz-no-such-name`);
+    assert(r.status === 200 && r.json.users.length === 0 && r.json.pagination.total === 0, 'GET followers?search= (no match) -> empty list, not an error', r);
+  }
+  {
+    const r = await c('GET', `/api/users/Ravencaller/following?search=jamie`);
+    assert(r.status === 200 && r.json.users.some((user) => user.username === username2), 'GET following?search= -> matches on the populated user, not the Follow row', r);
   }
   {
     const r = await c('GET', '/api/users/me/notifications', { token: token2 });
@@ -713,9 +755,37 @@ async function run(baseUrlArg) {
     const r = await c('GET', `/api/posts/${thoughtId}/comments`);
     assert(r.status === 200 && r.json.comments.some((comment) => comment.id === commentId), 'GET comments -> public list', r);
   }
+  let replyId;
+  {
+    const r = await c('POST', `/api/posts/${thoughtId}/comments`, { token, body: { body: 'Thanks, glad you like it!', parentComment: commentId } });
+    assert(r.status === 201 && r.json.comment.parentComment === commentId && r.json.commentCount === 2, 'POST reply -> created under the top-level comment', r);
+    replyId = r.json.comment.id;
+  }
+  {
+    const r = await c('POST', `/api/posts/${thoughtId}/comments`, { token: token2, body: { body: 'Replying to a reply', parentComment: replyId } });
+    assert(r.status === 400, 'POST reply to a reply -> 400, one level of nesting only', r);
+  }
+  {
+    const r = await c('GET', `/api/posts/${thoughtId}/comments`);
+    assert(
+      r.status === 200 &&
+        r.json.comments.some((comment) => comment.id === commentId && comment.replyCount === 1) &&
+        !r.json.comments.some((comment) => comment.id === replyId),
+      'GET comments (top-level only) -> shows replyCount, excludes the reply itself',
+      r
+    );
+  }
+  {
+    const r = await c('GET', `/api/posts/${thoughtId}/comments?parentComment=${commentId}`);
+    assert(
+      r.status === 200 && r.json.comments.length === 1 && r.json.comments[0].id === replyId,
+      'GET comments?parentComment= -> just the replies under that comment',
+      r
+    );
+  }
   {
     const r = await c('DELETE', `/api/posts/${thoughtId}/comments/${commentId}`, { token: token2 });
-    assert(r.status === 200 && r.json.commentCount === 0, 'DELETE my comment -> removed', r);
+    assert(r.status === 200 && r.json.commentCount === 0, 'DELETE top-level comment -> cascades to remove its reply too', r);
   }
   {
     const r = await c('DELETE', `/api/posts/${thoughtId}/likes`, { token: token2 });
@@ -728,6 +798,173 @@ async function run(baseUrlArg) {
   {
     const r = await c('DELETE', `/api/users/${username2}/follow`, { token });
     assert(r.status === 200 && r.json.following === false, 'DELETE follow -> unfollowed', r);
+  }
+
+  console.log('\n--- privacy, visibility, and blocking ---');
+  let tokenP;
+  let tokenS;
+  let tokenF;
+  let usernameP;
+  let usernameS;
+  let usernameF;
+  {
+    const stamp = Date.now();
+    usernameP = `Priv${stamp}`.slice(0, 20);
+    usernameS = `Stranger${stamp}`.slice(0, 20);
+    usernameF = `Friend${stamp}`.slice(0, 20);
+    const emailP = `privacy_p_${stamp}@example.com`;
+    const emailS = `privacy_s_${stamp}@example.com`;
+    const emailF = `privacy_f_${stamp}@example.com`;
+    const onboardBody = (email, username) => ({
+      email,
+      profile: { firstName: 'Test', lastName: 'User', username, age: 25, gender: 'Female', avatar: 'adventurer' },
+      faction: 'ascendants',
+      interests: ['anime'],
+      // Deliberately false - these accounts are unrelated to the
+      // notification-broadcast section's fixed opted-in-user count later.
+      preferences: { notificationsEnabled: false },
+      location: { locationEnabled: true, radiusMiles: 50, lat: 6.5244, lng: 3.3792 },
+    });
+    for (const email of [emailP, emailS, emailF]) {
+      await c('POST', '/api/auth/signup', { body: { email, password, confirmPassword: password } });
+    }
+    await c('POST', '/api/users/me/onboarding/complete', { body: onboardBody(emailP, usernameP) });
+    await c('POST', '/api/users/me/onboarding/complete', { body: onboardBody(emailS, usernameS) });
+    await c('POST', '/api/users/me/onboarding/complete', { body: onboardBody(emailF, usernameF) });
+    tokenP = (await c('POST', '/api/auth/login', { body: { email: emailP, password } })).json.token;
+    tokenS = (await c('POST', '/api/auth/login', { body: { email: emailS, password } })).json.token;
+    tokenF = (await c('POST', '/api/auth/login', { body: { email: emailF, password } })).json.token;
+  }
+  {
+    const r = await c('GET', '/api/users/me/privacy', { token: tokenP });
+    assert(
+      r.status === 200 &&
+        r.json.privacy.profileVisibility === 'public' &&
+        r.json.privacy.showActivityFeed === true &&
+        r.json.privacy.allowDirectMessages === true,
+      'GET /api/users/me/privacy -> defaults match existing fully-public behavior',
+      r
+    );
+  }
+  {
+    const r = await c('PATCH', '/api/users/me/privacy', { token: tokenP, body: { profileVisibility: 'not-a-real-level' } });
+    assert(r.status === 400, 'PATCH privacy (invalid visibility level) -> 400', r);
+  }
+  {
+    const r = await c('PATCH', '/api/users/me/privacy', { token: tokenP, body: { profileVisibility: 'private' } });
+    assert(r.status === 200 && r.json.privacy.profileVisibility === 'private', 'PATCH privacy -> set to private', r);
+  }
+  {
+    const r = await c('GET', `/api/users/${usernameP}/profile`);
+    assert(r.status === 404, 'GET private profile as a stranger (no token) -> 404', r);
+  }
+  {
+    const r = await c('GET', `/api/users/${usernameP}/profile`, { token: tokenS });
+    assert(r.status === 404, 'GET private profile as a stranger (with token) -> 404', r);
+  }
+  {
+    const r = await c('GET', `/api/users/${usernameP}/profile`, { token: tokenP });
+    assert(r.status === 200, 'GET private profile as its own owner -> 200', r);
+  }
+  {
+    const r = await c('PATCH', '/api/users/me/privacy', { token: tokenP, body: { profileVisibility: 'friends' } });
+    assert(r.status === 200 && r.json.privacy.profileVisibility === 'friends', 'PATCH privacy -> set to friends-only', r);
+  }
+  {
+    const r = await c('GET', `/api/users/${usernameP}/profile`, { token: tokenS });
+    assert(r.status === 404, 'GET friends-only profile as a non-friend -> 404', r);
+  }
+  {
+    await c('POST', `/api/users/${usernameP}/follow`, { token: tokenF });
+    await c('POST', `/api/users/${usernameF}/follow`, { token: tokenP });
+    const r = await c('GET', `/api/users/${usernameP}/profile`, { token: tokenF });
+    assert(r.status === 200, 'GET friends-only profile as a mutual follow ("friend") -> 200', r);
+  }
+  {
+    const r = await c('GET', `/api/users/${usernameP}/profile`, { token: tokenS });
+    assert(r.status === 404, 'GET friends-only profile as a still-non-friend stranger -> 404', r);
+  }
+  {
+    // Profile visible to everyone again, but the activity feed specifically
+    // stays hidden from strangers - a stricter, independent gate.
+    await c('PATCH', '/api/users/me/privacy', { token: tokenP, body: { profileVisibility: 'public', showActivityFeed: false } });
+    const post = await c('POST', '/api/posts', { token: tokenP, body: { type: 'thought', content: 'A thought only friends should see in the feed list.' } });
+    assert(post.status === 201, 'owner can still create posts regardless of their own showActivityFeed setting', post);
+  }
+  {
+    const r = await c('GET', `/api/users/${usernameP}/posts`);
+    assert(r.status === 200 && r.json.posts.length === 0, 'GET posts (showActivityFeed off) as a stranger -> hidden, empty list', r);
+  }
+  {
+    const r = await c('GET', `/api/users/${usernameP}/posts`, { token: tokenF });
+    assert(r.status === 200 && r.json.posts.length === 1, 'GET posts (showActivityFeed off) as a friend -> still visible', r);
+  }
+  {
+    const r = await c('GET', `/api/users/${usernameP}/posts`, { token: tokenP });
+    assert(r.status === 200 && r.json.posts.length === 1, 'GET posts (showActivityFeed off) as the owner -> still visible', r);
+  }
+  {
+    const r = await c('POST', `/api/users/${usernameS}/block`, { token: tokenP });
+    assert(r.status === 201 && r.json.blocked === true, 'POST block -> blocked', r);
+  }
+  {
+    const r = await c('POST', `/api/users/${usernameS}/block`, { token: tokenP });
+    assert(r.status === 409, 'POST block again -> 409', r);
+  }
+  {
+    const r = await c('GET', '/api/users/me/blocked', { token: tokenP });
+    assert(r.status === 200 && r.json.users.some((u) => u.username === usernameS), 'GET my blocked list -> includes the blocked user', r);
+  }
+  {
+    // Public visibility, but a block overrides it independent of the visibility level.
+    const r = await c('GET', `/api/users/${usernameP}/profile`, { token: tokenS });
+    assert(r.status === 404, 'GET profile across a block (public visibility) -> still 404', r);
+  }
+  {
+    const r = await c('POST', `/api/users/${usernameP}/follow`, { token: tokenS });
+    assert(r.status === 404, 'POST follow across a block -> 404', r);
+  }
+  {
+    const r = await c('POST', '/api/chats/dm', { token: tokenS, body: { username: usernameP } });
+    assert(r.status === 404, 'POST DM across a block -> 404', r);
+  }
+  {
+    const r = await c('DELETE', `/api/users/${usernameS}/block`, { token: tokenP });
+    assert(r.status === 200 && r.json.blocked === false, 'DELETE block -> unblocked', r);
+  }
+  {
+    const r = await c('GET', `/api/users/${usernameP}/profile`, { token: tokenS });
+    assert(r.status === 200, 'GET profile after unblocking -> visible again', r);
+  }
+  {
+    await c('PATCH', '/api/users/me/privacy', { token: tokenP, body: { allowDirectMessages: false } });
+    const r = await c('POST', '/api/chats/dm', { token: tokenS, body: { username: usernameP } });
+    assert(r.status === 403, 'POST DM (allowDirectMessages off) -> 403', r);
+  }
+  {
+    await c('PATCH', '/api/users/me/privacy', { token: tokenP, body: { allowDirectMessages: true } });
+    const r = await c('POST', '/api/chats/dm', { token: tokenS, body: { username: usernameP } });
+    assert(r.status === 200, 'POST DM (allowDirectMessages back on) -> 200', r);
+  }
+  {
+    const r = await c('PATCH', '/api/users/me/preferences/notifications', { token: tokenP, body: {} });
+    assert(r.status === 400, 'PATCH notification prefs with nothing to change -> 400', r);
+  }
+  {
+    const r = await c('PATCH', '/api/users/me/preferences/notifications', { token: tokenP, body: { eventReminders: false } });
+    assert(
+      r.status === 200 && r.json.user.notificationCategories.eventReminders === false && r.json.user.preferences.notificationsEnabled === false,
+      'PATCH notification prefs (eventReminders alone) -> updates just that category, leaves the master switch untouched',
+      r
+    );
+  }
+  {
+    const r = await c('PATCH', '/api/users/me/preferences/notifications', { token: tokenP, body: { emailWeeklyNewsletter: true } });
+    assert(
+      r.status === 200 && r.json.user.preferences.emailWeeklyNewsletter === true,
+      'PATCH notification prefs (emailWeeklyNewsletter alone) -> saved',
+      r
+    );
   }
 
   console.log('\n--- chats: community, faction rooms, and direct messages ---');
@@ -838,6 +1075,89 @@ async function run(baseUrlArg) {
   {
     const r = await c('GET', `/api/chats/${dmChatId}/messages`, { token });
     assert(r.status === 200 && r.json.messages[0]?.read === true, 'GET DM messages (sender) -> read receipt true after recipient read it', r);
+  }
+  {
+    // token2 replied into the community room after communityMessageId was
+    // sent, so their membership row's lastReadAt already covers it.
+    const r = await c('GET', `/api/chats/${communityChatId}/messages/${communityMessageId}/seen`, { token });
+    assert(
+      r.status === 200 && r.json.seenBy.some((user) => user.username === username2) && !r.json.seenBy.some((user) => user.username === 'Ravencaller'),
+      'GET message seen-by -> lists other members whose read receipt covers this message, excludes the sender',
+      r
+    );
+  }
+  let forwardedMessageId;
+  {
+    const r = await c('POST', `/api/chats/${communityChatId}/messages/${communityMessageId}/forward`, {
+      token,
+      body: { targetConversationId: dmChatId },
+    });
+    assert(
+      r.status === 201 && r.json.message.forwarded === true && r.json.message.content.includes('Waterfront'),
+      'POST forward message -> copied into another conversation the user belongs to',
+      r
+    );
+    forwardedMessageId = r.json.message.id;
+  }
+  {
+    const r = await c('GET', `/api/chats/${dmChatId}/messages`, { token });
+    assert(
+      r.status === 200 && r.json.messages.some((message) => message.id === forwardedMessageId && message.forwarded === true),
+      'GET DM messages -> forwarded copy appears there, marked forwarded',
+      r
+    );
+  }
+  {
+    // token2 is not in the Ascendants faction room - forwarding there is the
+    // same access check as posting there, so it's refused the same way.
+    const r = await c('POST', `/api/chats/${communityChatId}/messages/${communityMessageId}/forward`, {
+      token: token2,
+      body: { targetConversationId: factionChatId },
+    });
+    assert(r.status === 403, 'POST forward into a conversation you do not belong to -> 403', r);
+  }
+  {
+    const r = await c('POST', `/api/chats/${communityChatId}/messages/${communityMessageId}/forward`, {
+      token,
+      body: { targetConversationId: dmChatId, targetUsername: usernameS },
+    });
+    assert(r.status === 400, 'POST forward with BOTH targetConversationId and targetUsername -> 400', r);
+  }
+  {
+    const r = await c('POST', `/api/chats/${communityChatId}/messages/${communityMessageId}/forward`, { token, body: {} });
+    assert(r.status === 400, 'POST forward with NEITHER target -> 400', r);
+  }
+
+  console.log('\n--- search people to start a DM/forward with, by name ---');
+  {
+    const r = await c('GET', `/api/users/search?search=${usernameS.slice(0, 6).toLowerCase()}`, { token });
+    assert(r.status === 200 && r.json.users.some((u) => u.username === usernameS), 'GET /api/users/search -> matches by partial, case-insensitive username', r);
+  }
+  {
+    const r = await c('GET', '/api/users/search?search=zzz-no-such-name');
+    assert(r.status === 401, 'GET /api/users/search with NO token -> 401', r);
+  }
+  {
+    const r = await c('GET', '/api/users/search', { token });
+    assert(r.status === 400, 'GET /api/users/search with no search term -> 400', r);
+  }
+  {
+    // Ravencaller has no DM with the "Stranger" fixture user yet - forwarding
+    // by name should find-or-create it, exactly like tapping "+" first.
+    const r = await c('POST', `/api/chats/${communityChatId}/messages/${communityMessageId}/forward`, {
+      token,
+      body: { targetUsername: usernameS },
+    });
+    assert(r.status === 201 && r.json.message.forwarded === true, 'POST forward by targetUsername -> auto-creates the DM and forwards into it', r);
+  }
+  {
+    const r = await c('POST', '/api/chats/dm', { token, body: { username: usernameS } });
+    const messages = await c('GET', `/api/chats/${r.json.chat.id}/messages`, { token });
+    assert(
+      r.status === 200 && messages.json.messages.some((m) => m.forwarded === true && m.content.includes('Waterfront')),
+      'GET the auto-created DM -> contains the forwarded message',
+      { chat: r.json, messages: messages.json }
+    );
   }
 
   console.log('\n--- chat message editing and delete-for-me / delete-for-everyone ---');

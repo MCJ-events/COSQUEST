@@ -5,6 +5,7 @@ const cors = require('cors');
 const cookieParser = require('cookie-parser');
 
 const apiRoutes = require('./src/routes');
+const shareRoutes = require('./src/routes/shareRoutes');
 const { connectDB } = require('./src/config/db');
 const { notFound, errorHandler } = require('./src/middleware/errorHandler');
 
@@ -17,6 +18,10 @@ function buildApp() {
   app.use(cookieParser(process.env.OAUTH_COOKIE_SECRET || process.env.JWT_SECRET));
 
   app.get('/health', (req, res) => res.json({ ok: true, service: 'cosquest-backend' }));
+
+  // Shareable profile pages - real HTML with Open Graph tags, not JSON, so a
+  // link pasted into Instagram/Facebook/etc. renders a rich preview.
+  app.use('/u', shareRoutes);
 
   app.use('/api', apiRoutes);
 
