@@ -7,7 +7,7 @@ This note records the agreed assumptions for the Profile page. It is kept outsid
 - Profiles are public for now. Anyone can view a profile, its public posts, follower list, following list, and registered-quest history. A visitor does **not** need to log in to read those items.
 - The profile owner can edit their own display details: name, username, bio, profile category, avatar/photo, and public contact details.
 - The account-login email is private and is never changed by the public contact-email field.
-- The selected preset avatar and an uploaded profile photo are alternatives. Choosing a preset avatar clears the uploaded photo URL; uploading a photo becomes the profile photo.
+- The selected preset avatar and an uploaded profile photo **coexist** - the actual profile UI shows the uploaded photo as the main picture with the preset avatar as a small badge over it. Setting either one never clears the other. (This reverses an earlier, incorrect assumption that they were mutually exclusive.)
 
 ## Header and profile information
 

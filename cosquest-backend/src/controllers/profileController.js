@@ -99,8 +99,10 @@ async function setAvatar(req, res) {
     return res.status(400).json({ error: 'Not a recognized avatar option. See GET /api/meta/avatars.' });
   }
   const updated = await userModel.updateUser(req.userId, (user) => {
+    // Preset avatar and uploaded photo coexist by design (a small badge over
+    // the main photo, per the actual profile UI) - picking one never clears
+    // the other.
     user.profile.avatarKey = avatar;
-    user.profile.avatarPhotoUrl = null; // picking a preset avatar clears any uploaded photo (mirrors the front-end's pickAv())
     user.onboarding.avatarChosen = true;
   });
   return res.json({ user: userModel.sanitize(updated) });

@@ -266,6 +266,20 @@ async function run(baseUrlArg) {
     assert(r.status === 200, 'POST /api/users/me/avatar/photo (mislabeled text/plain) -> accepted', r);
   }
   {
+    // Regression: the preset avatar (a small badge) and the uploaded photo
+    // (the main picture) coexist by design - setting one must not wipe the
+    // other, in either direction.
+    const r = await c('PATCH', '/api/users/me/avatar', { body: { email, avatar: 'pink-idol' } });
+    assert(
+      r.status === 200 &&
+        r.json.user.profile.avatarKey === 'pink-idol' &&
+        typeof r.json.user.profile.avatarPhotoUrl === 'string' &&
+        r.json.user.profile.avatarPhotoUrl.includes('res.cloudinary.com'),
+      'PATCH /api/users/me/avatar -> sets the badge without clearing the existing uploaded photo',
+      r
+    );
+  }
+  {
     const r = await c('GET', '/api/meta/avatars');
     assert(
       r.status === 200 &&

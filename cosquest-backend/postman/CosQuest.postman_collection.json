@@ -572,7 +572,7 @@
             "auth": {
               "type": "noauth"
             },
-            "description": "Attach a real JPEG/PNG/WEBP/GIF under the \"photo\" field before sending. Alternative to Set preset avatar. The server tolerates a mislabeled Content-Type on that file (image/jpg, application/octet-stream, text/plain all pass through) since Cloudinary’s real content check is the actual gatekeeper."
+            "description": "Attach a real JPEG/PNG/WEBP/GIF under the \"photo\" field before sending. Coexists with Set preset avatar - the real profile UI shows this photo as the main picture with the preset avatar as a small badge over it; setting one never clears the other. The server also tolerates a mislabeled Content-Type on that file (image/jpg, application/octet-stream, text/plain all pass through) since Cloudinary’s real content check is the actual gatekeeper."
           }
         },
         {

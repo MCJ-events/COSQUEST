@@ -186,8 +186,9 @@ async function completeOnboarding(req, res) {
       if (profile.age !== undefined) user.profile.age = profile.age === '' || profile.age === null ? null : Number(profile.age);
       if (profile.gender !== undefined) user.profile.gender = String(profile.gender).trim();
       if (profile.avatar !== undefined) {
+        // Preset avatar and uploaded photo coexist (a small badge over the
+        // main photo) - setting one never clears the other.
         user.profile.avatarKey = profile.avatar;
-        user.profile.avatarPhotoUrl = null; // matches pickAv()'s behavior in the front-end
         user.onboarding.avatarChosen = true;
       }
     }
