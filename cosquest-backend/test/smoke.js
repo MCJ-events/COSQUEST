@@ -53,9 +53,10 @@ function makeSilentWav(durationSeconds = 1) {
 }
 const userModel = require('../src/models/userModel');
 
-async function call(baseUrl, method, path, { token, body, isForm } = {}) {
+async function call(baseUrl, method, path, { token, basicAuth, body, isForm } = {}) {
   const headers = {};
   if (token) headers.Authorization = `Bearer ${token}`;
+  if (basicAuth) headers.Authorization = `Basic ${Buffer.from(`${basicAuth.identifier}:${basicAuth.password}`).toString('base64')}`;
   let fetchBody = body;
   if (body && !isForm) {
     headers['Content-Type'] = 'application/json';
@@ -292,6 +293,52 @@ async function run(baseUrlArg) {
     );
   }
 
+  console.log('\n--- contact options (pre-login, identifier + password required either way) ---');
+  {
+    // Missing password entirely - the plain identifyUser pattern (email
+    // alone) is NOT enough for contact, since it holds more sensitive PII
+    // (phone, business address) than the other onboarding-step fields.
+    const r = await c('PATCH', '/api/users/me/contact', { body: { email, phone: '+2348148327836' } });
+    assert(r.status === 401, 'PATCH contact (pre-login, no password) -> 401', r);
+  }
+  {
+    const r = await c('PATCH', '/api/users/me/contact', { body: { email, password: 'wrong-password', phone: '+2348148327836' } });
+    assert(r.status === 401, 'PATCH contact (pre-login, wrong password) -> 401', r);
+  }
+  {
+    const r = await c('PATCH', '/api/users/me/contact', {
+      body: { email, password, phone: '+2348148327836', businessAddress: '14 CosQuest Way, Lagos' },
+    });
+    assert(r.status === 200 && r.json.contact.phone === '+2348148327836', 'PATCH contact (pre-login, correct email + password) -> saved', r);
+  }
+  {
+    // GET has no body to carry identifier+password in, so it uses standard
+    // HTTP Basic Auth instead of a JSON body - this way the password never
+    // has to sit in the URL (which would leak into logs/history).
+    const r = await c('GET', '/api/users/me/contact');
+    assert(r.status === 401, 'GET contact (pre-login, no credentials at all) -> 401', r);
+  }
+  {
+    const r = await c('GET', '/api/users/me/contact', { basicAuth: { identifier: email, password: 'wrong-password' } });
+    assert(r.status === 401, 'GET contact (pre-login, Basic auth with wrong password) -> 401', r);
+  }
+  {
+    const r = await c('GET', '/api/users/me/contact', { basicAuth: { identifier: email, password } });
+    assert(r.status === 200 && r.json.contact.phone === '+2348148327836', 'GET contact (pre-login, Basic auth with correct email + password) -> saved values', r);
+  }
+  {
+    // Regression: this app's own password policy allows a colon as the
+    // "special character" (e.g. "Quest@12:34"). Basic Auth packs
+    // identifier:password into one base64 blob, so decoding must split on
+    // the FIRST colon only - a naive split(':') would silently truncate the
+    // password right here and always fail a legitimate user.
+    const colonEmail = `colonpw_${Date.now()}@example.com`;
+    const colonPassword = 'Quest@12:34';
+    await c('POST', '/api/auth/signup', { body: { email: colonEmail, password: colonPassword, confirmPassword: colonPassword } });
+    const r = await c('GET', '/api/users/me/contact', { basicAuth: { identifier: colonEmail, password: colonPassword } });
+    assert(r.status === 200, 'GET contact (pre-login, Basic auth, password contains a colon) -> still authenticates correctly', r);
+  }
+
   console.log('\n--- step 2: faction ---');
   {
     const r = await c('GET', '/api/factions');
@@ -384,6 +431,23 @@ async function run(baseUrlArg) {
     assert(jwt.decode(token).exp === undefined, 'login token has no time-based expiration', jwt.decode(token));
   }
   {
+    const r = await c('GET', '/api/factions');
+    const ascendants = r.json.factions?.find((f) => f.key === 'ascendants');
+    assert(
+      r.status === 200 && ascendants?.memberCount >= 1 && Array.isArray(ascendants?.perks) && ascendants.perks.length > 0,
+      'GET /api/factions -> live memberCount and a perks list per faction',
+      r
+    );
+  }
+  {
+    const r = await c('GET', '/api/factions/ascendants/members');
+    assert(r.status === 200 && r.json.users.some((u) => u.username === 'Ravencaller'), 'GET /api/factions/:key/members -> includes an onboarded member of that faction', r);
+  }
+  {
+    const r = await c('GET', '/api/factions/not-a-real-faction/members');
+    assert(r.status === 404, 'GET /api/factions/:key/members (invalid key) -> 404', r);
+  }
+  {
     const r = await c('POST', '/api/auth/login', { body: { identifier: 'Ravencaller', password } });
     assert(r.status === 200 && r.json.token, 'POST /api/auth/login (username + password) -> 200 + token', r);
   }
@@ -459,6 +523,31 @@ async function run(baseUrlArg) {
       ...questBase, slug: `upcoming-test-${Date.now()}`, title: 'Upcoming Test Quest', status: 'upcoming',
       startsAt: new Date(now + 24 * 60 * 60 * 1000), endsAt: new Date(now + 26 * 60 * 60 * 1000),
     });
+    const ascendantsQuest = await Quest.create({
+      ...questBase, slug: `ascendants-test-${Date.now()}`, title: 'Ascendants Test Quest', status: 'upcoming', faction: 'ascendants',
+      startsAt: new Date(now + 24 * 60 * 60 * 1000), endsAt: new Date(now + 26 * 60 * 60 * 1000),
+    });
+    {
+      const r = await c('GET', `/api/quests/${ascendantsQuest._id}`);
+      assert(r.status === 200 && r.json.quest.faction === 'ascendants', 'GET one quest -> carries its faction tag', r);
+    }
+    {
+      const r = await c('GET', '/api/quests?status=upcoming&faction=ascendants&lat=6.5244&lng=3.3792&radiusMiles=30');
+      assert(
+        r.status === 200 && r.json.quests.every((q) => q.faction === 'ascendants') && r.json.quests.some((q) => q.id === String(ascendantsQuest._id)),
+        'GET /api/quests?faction= -> filters to just that faction\'s quests',
+        r
+      );
+    }
+    {
+      const r = await c('GET', '/api/factions');
+      const ascendants = r.json.factions?.find((f) => f.key === 'ascendants');
+      assert(r.status === 200 && ascendants?.activeQuestCount >= 1, 'GET /api/factions -> activeQuestCount reflects the tagged quest', r);
+    }
+    {
+      const controllers = (await c('GET', '/api/factions')).json.factions?.find((f) => f.key === 'controllers');
+      assert(controllers?.activeQuestCount === 0, 'GET /api/factions -> untagged faction has activeQuestCount 0, not a made-up number', controllers);
+    }
     {
       const r = await c('GET', '/api/home/dashboard', { token });
       assert(r.status === 200 && r.json.location.source === 'user' && r.json.liveQuest?.id === String(liveQuest._id) && r.json.upcomingQuests.length >= 1, 'GET /api/home/dashboard -> greeting anchored to the user\'s own saved location, live quest, and upcoming quests', r);

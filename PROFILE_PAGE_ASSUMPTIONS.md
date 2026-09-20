@@ -8,6 +8,7 @@ This note records the agreed assumptions for the Profile page. It is kept outsid
 - Blocking exists (`POST`/`DELETE /api/users/:username/block`, `GET /api/users/me/blocked`) and overrides every visibility level unconditionally in both directions - a blocked relationship hides the profile, and blocks new follows and DMs between the two accounts.
 - The profile owner can edit their own display details: name, username, bio, profile category, avatar/photo, and public contact details.
 - The account-login email is private and is never changed by the public contact-email field.
+- Contact Options (`GET`/`PATCH /api/users/me/contact`) works during onboarding, before login exists - but since it holds real PII (phone, address), knowing someone's signup email alone isn't enough: the pre-login path also requires the account's real password (already set at signup), unlike the other onboarding-step fields (profile/avatar/faction/interests/preferences), which accept a bare identifier. `PATCH` takes `{ identifier, password, ... }` in its JSON body; `GET` has no body, so it uses standard HTTP Basic Auth (`Authorization: Basic base64(identifier:password)`) instead, keeping the password out of the URL where it would otherwise leak into logs/browser history.
 - The selected preset avatar and an uploaded profile photo **coexist** - the actual profile UI shows the uploaded photo as the main picture with the preset avatar as a small badge over it. Setting either one never clears the other. (This reverses an earlier, incorrect assumption that they were mutually exclusive.)
 - "Share Profile" links to a real, public web page (`GET /u/:username`, outside `/api`) with Open Graph/Twitter Card tags, so pasting the link into Instagram, Facebook, WhatsApp, etc. shows a rich preview card (name, bio, avatar/photo) instead of a bare link. `GET /api/users/:username/share` gives the frontend a ready-made `{ url, title, text }` payload to hand to the device's native share sheet, rather than the frontend constructing the link itself.
 
@@ -20,7 +21,8 @@ This note records the agreed assumptions for the Profile page. It is kept outsid
 | Bio / About | Public text, editable by the owner, maximum 500 characters. |
 | Category | Optional public profile category, such as Digital creator. The owner can hide the category without deleting it. |
 | Contact options | Optional public contact email, international-format phone, and business address. All supplied contact values are public; there are no individual contact visibility toggles yet. |
-| Faction badge | One required faction: Ascendants, Icons, Controllers, Blockbusters, Everborns, or Celestials. `none` is not an option. |
+| Faction badge | One required faction: Ascendants, Icons, Controllers, Blockbusters, Everborn, or Celestials (`none` is not an option). `GET /api/factions` includes a static `description`/`perks` per faction plus live `memberCount` and `activeQuestCount`; `GET /api/factions/:key/members` gives a small preview list of that faction's onboarded members (e.g. an avatar row). A quest's optional `faction` tag (set only when a quest is created, no creation API exists yet) is a display/counting label only - it never restricts who can register for it. |
+| Faction rank/title (e.g. "Lieutenant") and User XP progress bar | **Not implemented.** No rank/tier or XP field exists on the user yet - this is the same deferred leveling system flagged under Points below; it needs an explicit answer on what earns XP and what the rank thresholds/names are before it can be built. |
 
 ## Counts and points
 
@@ -32,6 +34,7 @@ This note records the agreed assumptions for the Profile page. It is kept outsid
 | Quests | Number of quests the user registered for, including a registration later cancelled. |
 | Wins | Number of the user’s quest registrations whose quest system status is `winner`. The quest system decides winners; the profile does not decide them. |
 | Points | The user’s in-app `pointsBalance`. It starts at `0` and is currently read-only through the profile API. A later rewards/quest-points system should change the balance through a controlled ledger/service, not directly from the frontend. |
+| "Coins" / "gems" (dual currency shown on the home dashboard header) | **Not implemented.** No such fields exist on the user - only the single `pointsBalance` above. Open question: are these meant to be `pointsBalance` under different names, or genuinely separate currencies with their own earn/spend rules? |
 
 ## Posts: images, reels, and thoughts
 

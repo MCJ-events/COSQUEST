@@ -28,6 +28,7 @@ function serializeQuest(quest, { distance, isRegistered } = {}) {
     registrationCount: item.registrationCount,
     spacesRemaining: Math.max(0, item.maxParticipants - item.registrationCount),
     interests: item.interests,
+    faction: item.faction || null,
     ...(distance === undefined ? {} : { distanceMiles: Number(distance.toFixed(1)) }),
     ...(isRegistered === undefined ? {} : { isRegistered }),
   };

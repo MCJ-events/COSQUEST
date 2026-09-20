@@ -383,7 +383,43 @@
             },
             "auth": {
               "type": "noauth"
-            }
+            },
+            "description": "Each faction includes a static description/perks list plus live memberCount (onboarded accounts currently in that faction) and activeQuestCount (published live/upcoming quests tagged to it - a label only, never a registration restriction; genuinely 0 until a real quest is tagged, since there’s no quest-creation API yet)."
+          }
+        },
+        {
+          "name": "Get faction members (ascendants)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/factions/ascendants/members?page=1&limit=6",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "factions",
+                "ascendants",
+                "members"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "disabled": false
+                },
+                {
+                  "key": "limit",
+                  "value": "6",
+                  "disabled": false
+                }
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "A small preview page of that faction’s onboarded members, e.g. the avatar row on a faction card. 404 for an invalid key."
           }
         },
         {
@@ -732,6 +768,78 @@
           }
         },
         {
+          "name": "Save contact options (pre-login)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/me/contact",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "me",
+                "contact"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"hero@example.com\",\n  \"password\": \"Quest@1234\",\n  \"phone\": \"+2348148327836\",\n  \"businessAddress\": \"14 CosQuest Way, Lagos\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Contact holds more sensitive PII (phone, business address) than the other onboarding-step fields above, so unlike those (bare email/username), this pre-login path also requires the account’s real password - wrong identifier or wrong password both return a generic 401."
+          }
+        },
+        {
+          "name": "Get contact options (pre-login, Basic auth)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/me/contact",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "me",
+                "contact"
+              ]
+            },
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "hero@example.com",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "Quest@1234",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "A GET has no body, so the pre-login identifier+password goes in a standard HTTP Basic Auth header instead of a JSON field - Postman fills this in for you from the Authorization tab (already set to Basic Auth with the literal ME_EMAIL/ME_PASSWORD values). This keeps the password out of the URL, where it would otherwise leak into browser history and server logs."
+          }
+        },
+        {
           "name": "Register a device push token",
           "request": {
             "method": "POST",
@@ -916,7 +1024,8 @@
                   "language": "json"
                 }
               }
-            }
+            },
+            "description": "This one also works pre-login (before Complete onboarding / Login) with identifier+password instead of a Bearer token - see \"Save contact options (pre-login)\" in the Onboarding folder. GET works pre-login too, via HTTP Basic Auth instead - see \"Get contact options (pre-login, Basic auth)\" there."
           }
         },
         {
@@ -2574,6 +2683,11 @@
                   "disabled": true
                 },
                 {
+                  "key": "faction",
+                  "value": "ascendants",
+                  "disabled": true
+                },
+                {
                   "key": "lat",
                   "value": "6.5244",
                   "disabled": true
@@ -2597,7 +2711,8 @@
             },
             "auth": {
               "type": "noauth"
-            }
+            },
+            "description": "faction is optional - filters to quests tagged with that faction (a label only, never a registration restriction)."
           },
           "event": [
             {

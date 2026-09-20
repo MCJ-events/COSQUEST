@@ -1,5 +1,5 @@
 const express = require('express');
-const { identifyUser } = require('../middleware/identifyUser');
+const { identifyUser, identifyUserWithPassword } = require('../middleware/identifyUser');
 const { upload } = require('../middleware/upload');
 const { requireAuth, optionalAuth, requireCompletedOnboarding } = require('../middleware/auth');
 const { asyncHandler } = require('../utils/asyncHandler');
@@ -36,8 +36,13 @@ router.patch('/me/avatar', asyncHandler(identifyUser), asyncHandler(setAvatar));
 // multer has to parse the multipart body first, so req.body.email exists by the time identifyUser runs
 router.post('/me/avatar/photo', upload.single('photo'), asyncHandler(identifyUser), asyncHandler(uploadAvatarPhoto));
 router.get('/me/points', requireAuth, requireCompletedOnboarding, getMyPoints);
-router.get('/me/contact', requireAuth, requireCompletedOnboarding, getContact);
-router.patch('/me/contact', requireAuth, requireCompletedOnboarding, asyncHandler(updateContact));
+// Contact holds more sensitive PII (phone, business address) than the other
+// onboarding-step fields, so its pre-login branch requires the account's
+// password too, not just the identifier - see identifyUserWithPassword. GET
+// (no body) uses HTTP Basic Auth for this instead of a JSON body, so the
+// password never has to sit in a URL.
+router.get('/me/contact', asyncHandler(identifyUserWithPassword), asyncHandler(getContact));
+router.patch('/me/contact', asyncHandler(identifyUserWithPassword), asyncHandler(updateContact));
 router.get('/me/privacy', requireAuth, requireCompletedOnboarding, getPrivacy);
 router.patch('/me/privacy', requireAuth, requireCompletedOnboarding, asyncHandler(updatePrivacy));
 router.get('/me/blocked', requireAuth, requireCompletedOnboarding, asyncHandler(listBlockedUsers));

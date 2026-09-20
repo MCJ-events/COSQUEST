@@ -1,6 +1,6 @@
 # CosQuest Postman collection
 
-`CosQuest.postman_collection.json` (86 requests across 9 folders, generated from [API_USAGE_AND_FLOWS.md](../../API_USAGE_AND_FLOWS.md)) and `CosQuest.postman_environment.json`.
+`CosQuest.postman_collection.json` (89 requests across 9 folders, generated from [API_USAGE_AND_FLOWS.md](../../API_USAGE_AND_FLOWS.md)) and `CosQuest.postman_environment.json`.
 
 ## Import
 

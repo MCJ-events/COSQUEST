@@ -24,6 +24,7 @@ async function listQuests(req, res) {
 
   const query = { isPublished: true };
   if (status) query.status = status;
+  if (req.query.faction) query.faction = req.query.faction;
   const quests = await Quest.find(query).sort({ startsAt: 1 }).limit(parseLimit(req.query.limit, 20));
   const withDistance = quests.map((quest) => ({
     quest,

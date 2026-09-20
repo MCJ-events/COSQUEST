@@ -322,4 +322,6 @@ module.exports = {
   canViewProfile,
   canViewActivityFeed,
   isBlockedEitherWay,
+  parseLimit,
+  parsePage,
 };

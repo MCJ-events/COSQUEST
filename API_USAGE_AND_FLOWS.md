@@ -108,7 +108,8 @@ OAuth exchange body:
 | --- | --- | --- |
 | `GET /api/meta/avatars` | Public | List valid Cloudinary preset avatars. Use the returned `key` in avatar requests. |
 | `GET /api/meta/profile-categories` | Public | List valid profile categories. |
-| `GET /api/factions` | Public | List the six valid factions. |
+| `GET /api/factions` | Public | List the six valid factions - `key`, `name`, `color`, `description`, `perks` (a static array of perk strings), a live `memberCount` (onboarded accounts currently in that faction), and a live `activeQuestCount` (published quests tagged to that faction with status `live`/`upcoming`). A quest's faction tag is purely a label - it never restricts who can register. |
+| `GET /api/factions/:key/members?page=1&limit=6` | Public | A small preview page of that faction's onboarded members (e.g. the avatar row on a faction card) - same shape as followers/following. `404` for an invalid key. |
 | `GET /api/interests` | Public | List valid interest keys. |
 | `GET /api/users/me` | Identifier or Bearer | Read the current/in-progress user record. Before login include `?email={{email}}`. |
 | `PATCH /api/users/me/profile` | Identifier or Bearer | Save profile details during onboarding or edit profile later. |
@@ -200,13 +201,13 @@ If a photo was uploaded first, omit `profile.avatar`; the uploaded photo already
 
 ## My profile, contact, and notifications
 
-All endpoints in this section require a logged-in, fully onboarded account.
+All endpoints in this section require a logged-in, fully onboarded account, **except `GET`/`PATCH /api/users/me/contact`** (see below).
 
 | Method and URL | Usage |
 | --- | --- |
 | `GET /api/users/me/points` | Read current app points balance. Returns `200` with `{ "points": 0 }` until a future reward system awards points. |
-| `GET /api/users/me/contact` | Read the owner’s editable public contact values. |
-| `PATCH /api/users/me/contact` | Save public contact fields; does not change login email. |
+| `GET /api/users/me/contact` | Read the owner’s editable public contact values. Works two ways: **Bearer token** (post-login), or **pre-login** via standard HTTP Basic Auth - `Authorization: Basic base64(identifier:password)`. A GET has no body, so Basic Auth is used instead of a JSON field, keeping the password out of the URL (which would otherwise leak into browser history and server logs). |
+| `PATCH /api/users/me/contact` | Save public contact fields; does not change login email. Works two ways: **Bearer token** (post-login, same as everything else here), or **pre-login** with `{ email\|username, password, ...contact fields }` in the JSON body - contact holds more sensitive PII (phone, business address) than the other onboarding-step fields, so unlike those (which accept a bare identifier), this requires the account's real password too. Wrong identifier or wrong password both return a generic `401`. |
 | `GET /api/users/me/notifications` | List this user’s notifications, including follow notifications. |
 | `PATCH /api/users/me/notifications/read` | Mark every currently unread notification as read. Body not required. |
 | `GET /api/home/dashboard` | Get the dashboard anchored to the user's own saved location (`location.source: "user"`): user preview, unread notification count, live/upcoming/nearby quests. |
@@ -214,7 +215,7 @@ All endpoints in this section require a logged-in, fully onboarded account.
 | `PATCH /api/users/me/privacy` | Save any subset of `profileVisibility` (`public`/`friends`/`private`), `showActivityFeed`, `allowDirectMessages`. |
 | `GET /api/users/me/blocked?page=1&limit=20` | Paginated list of profiles I've blocked. |
 
-Contact body:
+Contact body (post-login, Bearer):
 
 ```json
 {
@@ -223,6 +224,26 @@ Contact body:
   "businessAddress": "Lekki, Lagos, Nigeria"
 }
 ```
+
+Save contact body (pre-login, no token yet - identifier and password both required):
+
+```json
+{
+  "identifier": "hero@example.com",
+  "password": "Quest@1234",
+  "phone": "+2348148327836",
+  "businessAddress": "Lekki, Lagos, Nigeria"
+}
+```
+
+Read contact pre-login (no token, no body on a GET) - send identifier:password as an HTTP Basic Auth header instead:
+
+```http
+GET /api/users/me/contact
+Authorization: Basic aGVyb0BleGFtcGxlLmNvbTpRdWVzdEAxMjM0
+```
+
+(that's `base64("hero@example.com:Quest@1234")` - every HTTP client library has a helper for Basic Auth, so the frontend rarely needs to build this by hand.)
 
 Privacy body (any subset of these three fields):
 
@@ -361,7 +382,7 @@ Forward a message body (to any user by username - finds or creates the DM for yo
 
 | Method and URL | Login? | Usage |
 | --- | --- | --- |
-| `GET /api/quests?lat=6.5244&lng=3.3792&radiusMiles=30&status=upcoming&limit=20` | Public | List published quests. Coordinates are optional; if supplied they filter/sort by distance. |
+| `GET /api/quests?lat=6.5244&lng=3.3792&radiusMiles=30&status=upcoming&faction=ascendants&limit=20` | Public | List published quests. Coordinates are optional; if supplied they filter/sort by distance. `faction` is optional - filters to quests tagged with that faction (a label only, not a registration restriction; a quest's `faction` is `null` unless explicitly tagged when it was created). |
 | `GET /api/quests/:questId` | Public | Read one published quest. |
 | `POST /api/quests/:questId/registrations` | Bearer + completed onboarding | Register for an available upcoming/live quest. Returns `201`; paid quests return `paymentStatus: pending`. |
 | `DELETE /api/quests/:questId/registrations` | Bearer + completed onboarding | Cancel the user’s active registration. Returns `200`. |

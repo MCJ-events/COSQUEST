@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { FACTION_KEYS } = require('./factionModel');
 
 const moneySchema = new mongoose.Schema(
   {
@@ -34,6 +35,10 @@ const questSchema = new mongoose.Schema(
     maxParticipants: { type: Number, required: true, min: 1 },
     registrationCount: { type: Number, default: 0, min: 0 },
     interests: { type: [String], default: [] },
+    // Optional label, not a registration gate - anyone can register for any
+    // quest regardless of their own faction. Only used to tally a faction's
+    // "Active Quests" count and any faction-branded display.
+    faction: { type: String, enum: FACTION_KEYS, default: null, index: true },
     isPublished: { type: Boolean, default: false, index: true },
     isSeedData: { type: Boolean, default: false, index: true },
   },
