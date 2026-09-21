@@ -11,7 +11,7 @@ const { storeChatMedia } = require('../utils/imageHost');
 const { validateChatMedia } = require('../utils/chatMedia');
 const { buildContentShare } = require('../utils/shareLinks');
 const { isBlockedEitherWay } = require('./publicProfileController');
-const { emitToConversation, emitToUsers } = require('../realtime/socket');
+const { emitToConversation, emitToConversationExcept, emitToUsers } = require('../realtime/socket');
 
 const EPOCH = new Date(0);
 const DELETE_FOR_EVERYONE_WINDOW_MS = 5 * 60 * 1000;
@@ -409,7 +409,13 @@ async function createMessage(req, res) {
   // the sender always sees their own message as unread-by-recipient at the
   // moment it's sent.
   const serialized = serializeMessage(message, { viewerId: req.userId, conversationType: conversation.type, otherLastReadAt: null, reactions: [] });
-  emitToConversation(conversation.id, 'message:new', { conversationId: conversation.id, message: serialized });
+  // serialized.replyTo carries the reply target's real content, built from
+  // the sender's own view (already checked they haven't hidden it - see the
+  // replyTo validation above). Anyone else who's "deleted [that message] for
+  // me" must not receive it live either; they'll pick the new message up
+  // next time REST re-serves this conversation, same as any other offline
+  // fallback here.
+  emitToConversationExcept(conversation.id, deletedForIds(message.replyTo), 'message:new', { conversationId: conversation.id, message: serialized });
   // DMs also get a direct push to both participants' personal rooms, so the
   // chat list (unread badge / last-message preview) updates live even for
   // whoever doesn't currently have this conversation open.
@@ -454,7 +460,11 @@ async function editMessage(req, res) {
     otherLastReadAt: otherMember?.lastReadAt || null,
     reactions: restReactions,
   });
-  emitToConversation(conversation.id, 'message:edited', {
+  // Exclude anyone who's hidden this message for themselves (they shouldn't
+  // see it change live) or hidden its reply target (same reasoning as
+  // createMessage above) - union of both, deduped.
+  const excludeFromBroadcast = [...new Set([...deletedForIds(message), ...deletedForIds(message.replyTo)])];
+  emitToConversationExcept(conversation.id, excludeFromBroadcast, 'message:edited', {
     conversationId: conversation.id,
     message: { ...serialized, reactions: await rawReactions(message._id) },
   });
@@ -554,7 +564,10 @@ async function setPinnedMessage(req, res) {
   conversation.pinDuration = duration;
   await conversation.save();
   const pinnedMessage = pinPreview(message, conversation);
-  emitToConversation(conversation.id, 'chat:pinned', { conversationId: conversation.id, pinnedMessage });
+  // getConversationDetail nulls the pinned message out for anyone who's hidden
+  // it (see hiddenFor() above) - the live broadcast has to honor that too,
+  // otherwise pinning would hand its content to a viewer who deleted it.
+  emitToConversationExcept(conversation.id, deletedForIds(message), 'chat:pinned', { conversationId: conversation.id, pinnedMessage });
   return res.json({ pinnedMessage });
 }
 
@@ -603,7 +616,7 @@ async function setReaction(req, res) {
     { $set: { emoji } },
     { upsert: true }
   );
-  emitToConversation(conversation.id, 'message:reaction', { conversationId: conversation.id, messageId: String(message._id), reactions: await rawReactions(message._id) });
+  emitToConversationExcept(conversation.id, deletedForIds(message), 'message:reaction', { conversationId: conversation.id, messageId: String(message._id), reactions: await rawReactions(message._id) });
   return res.status(201).json({ reactions: await summarizeReactions(message._id, req.userId) });
 }
 
@@ -616,7 +629,7 @@ async function removeReaction(req, res) {
   if (!message) return res.status(404).json({ error: 'Message not found.' });
 
   await MessageReaction.deleteOne({ message: message._id, user: req.userId });
-  emitToConversation(conversation.id, 'message:reaction', { conversationId: conversation.id, messageId: String(message._id), reactions: await rawReactions(message._id) });
+  emitToConversationExcept(conversation.id, deletedForIds(message), 'message:reaction', { conversationId: conversation.id, messageId: String(message._id), reactions: await rawReactions(message._id) });
   return res.json({ reactions: await summarizeReactions(message._id, req.userId) });
 }
 
@@ -778,6 +791,13 @@ async function bulkForwardMessages(req, res) {
 
 function hiddenFor(message, userId) {
   return message.deletedFor?.some((id) => String(id) === String(userId));
+}
+
+// Who has "deleted [this message] for me"? Used to keep realtime broadcasts
+// honest with the same rule every REST read already enforces via hiddenFor -
+// see emitToConversationExcept in src/realtime/socket.js.
+function deletedForIds(message) {
+  return (message?.deletedFor || []).map(String);
 }
 
 async function canSendToConversation(conversation, senderId) {

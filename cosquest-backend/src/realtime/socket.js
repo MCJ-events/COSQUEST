@@ -98,6 +98,21 @@ function emitToConversation(conversationId, event, payload) {
   io?.to(`conversation:${conversationId}`).emit(event, payload);
 }
 
+/**
+ * Same as emitToConversation, but skips every account in `excludeUserIds`
+ * (every one of their sockets, on every device - `user:<id>` is joined by
+ * all of them). Use this whenever a payload carries the content of a
+ * specific message: someone may have "deleted [it] for me"
+ * (Message.deletedFor), which every REST read already respects
+ * (see hiddenFor() in chatController.js) - a room-wide broadcast built from
+ * one actor's viewpoint must not hand that content to a viewer who hid it,
+ * even though they're sitting in the same conversation room.
+ */
+function emitToConversationExcept(conversationId, excludeUserIds, event, payload) {
+  if (!excludeUserIds?.length) return emitToConversation(conversationId, event, payload);
+  io?.to(`conversation:${conversationId}`).except(excludeUserIds.map((id) => `user:${id}`)).emit(event, payload);
+}
+
 /** Push to every connected socket for one account, regardless of what they have open. */
 function emitToUser(userId, event, payload) {
   io?.to(`user:${userId}`).emit(event, payload);
@@ -109,4 +124,4 @@ function emitToUsers(userIds, event, payload) {
   io?.to(userIds.map((id) => `user:${id}`)).emit(event, payload);
 }
 
-module.exports = { initSocket, getIO, emitToConversation, emitToUser, emitToUsers };
+module.exports = { initSocket, getIO, emitToConversation, emitToConversationExcept, emitToUser, emitToUsers };
