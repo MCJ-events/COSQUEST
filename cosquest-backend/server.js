@@ -1,5 +1,6 @@
 require('dotenv').config();
 
+const http = require('http');
 const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
@@ -10,6 +11,7 @@ const { connectDB } = require('./src/config/db');
 const { notFound, errorHandler } = require('./src/middleware/errorHandler');
 const { asyncHandler } = require('./src/utils/asyncHandler');
 const { renderPostShare, renderChatShare } = require('./src/controllers/contentShareController');
+const { initSocket } = require('./src/realtime/socket');
 
 function buildApp() {
   const app = express();
@@ -47,10 +49,16 @@ async function startServer() {
   const app = buildApp();
   const PORT = process.env.PORT;
 
+  // Socket.IO needs the raw http.Server (not the Express app) so it can
+  // upgrade HTTP connections to WebSocket on the same port - REST and
+  // real-time traffic share one listener, no second port to expose/CORS.
+  const httpServer = http.createServer(app);
+  initSocket(httpServer);
+
   return new Promise((resolve) => {
-    const server = app.listen(PORT, () => {
+    httpServer.listen(PORT, () => {
       console.log(`CosQuest backend listening on http://localhost:${PORT}`);
-      resolve(server);
+      resolve(httpServer);
     });
   });
 }

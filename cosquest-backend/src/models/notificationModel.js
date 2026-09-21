@@ -1,5 +1,6 @@
 const User = require('./User');
 const Notification = require('./Notification');
+const { emitToUser, emitToUsers } = require('../realtime/socket');
 
 /**
  * Drops one Notification per user currently opted in
@@ -12,6 +13,9 @@ async function createForEnabledUsers(message) {
   const users = await User.find({ 'preferences.notificationsEnabled': true }, '_id');
   if (!users.length) return 0;
   await Notification.insertMany(users.map((u) => ({ user: u._id, message })));
+  // Pushes the unread badge/toast live to anyone currently connected;
+  // everyone else just sees it next time they open GET /api/users/me/notifications.
+  emitToUsers(users.map((u) => String(u._id)), 'notification:new', { message });
   return users.length;
 }
 
@@ -21,7 +25,10 @@ async function createForEnabledUsers(message) {
  * (it defaults to false and isn't chosen until onboarding step 4).
  */
 async function createForUser(userId, message, { type = 'system', actor } = {}) {
-  return Notification.create({ user: userId, message, type, actor: actor || null });
+  const notification = await Notification.create({ user: userId, message, type, actor: actor || null });
+  if (actor) await notification.populate('actor', 'profile.username profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl');
+  emitToUser(String(userId), 'notification:new', sanitize(notification));
+  return notification;
 }
 
 async function listForUser(userId) {

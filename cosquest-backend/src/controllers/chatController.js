@@ -11,6 +11,7 @@ const { storeChatMedia } = require('../utils/imageHost');
 const { validateChatMedia } = require('../utils/chatMedia');
 const { buildContentShare } = require('../utils/shareLinks');
 const { isBlockedEitherWay } = require('./publicProfileController');
+const { emitToConversation, emitToUsers } = require('../realtime/socket');
 
 const EPOCH = new Date(0);
 const DELETE_FOR_EVERYONE_WINDOW_MS = 5 * 60 * 1000;
@@ -403,9 +404,20 @@ async function createMessage(req, res) {
   message = await message.populate('sender', SENDER_FIELDS);
   if (replyTo) message = await message.populate({ path: 'replyTo', populate: { path: 'sender', select: 'profile.username profile.firstName' } });
 
-  return res.status(201).json({
-    message: serializeMessage(message, { viewerId: req.userId, conversationType: conversation.type, otherLastReadAt: null, reactions: [] }),
-  });
+  // Real-time fan-out: everyone with this conversation open gets the new
+  // message instantly. `otherLastReadAt: null` matches the REST response -
+  // the sender always sees their own message as unread-by-recipient at the
+  // moment it's sent.
+  const serialized = serializeMessage(message, { viewerId: req.userId, conversationType: conversation.type, otherLastReadAt: null, reactions: [] });
+  emitToConversation(conversation.id, 'message:new', { conversationId: conversation.id, message: serialized });
+  // DMs also get a direct push to both participants' personal rooms, so the
+  // chat list (unread badge / last-message preview) updates live even for
+  // whoever doesn't currently have this conversation open.
+  if (conversation.type === 'dm') {
+    emitToUsers(conversation.participants.map(String), 'chat:preview', { conversationId: conversation.id });
+  }
+
+  return res.status(201).json({ message: serialized });
 }
 
 // PATCH /api/chats/:conversationId/messages/:messageId - sender-only, text edits.
@@ -431,14 +443,23 @@ async function editMessage(req, res) {
   const otherMember =
     conversation.type === 'dm' ? await ConversationMember.findOne({ conversation: conversation._id, user: { $ne: req.userId } }) : null;
 
-  return res.json({
-    message: serializeMessage(message, {
-      viewerId: req.userId,
-      conversationType: conversation.type,
-      otherLastReadAt: otherMember?.lastReadAt || null,
-      reactions: await summarizeReactions(message._id, req.userId),
-    }),
+  // REST response keeps the existing per-viewer shape ({emoji, count, mine})
+  // for the editor. The broadcast copy swaps in the viewer-agnostic raw list
+  // instead (see rawReactions) so other sockets in the room don't receive
+  // the editor's own `mine` flag mislabeled as theirs.
+  const restReactions = await summarizeReactions(message._id, req.userId);
+  const serialized = serializeMessage(message, {
+    viewerId: req.userId,
+    conversationType: conversation.type,
+    otherLastReadAt: otherMember?.lastReadAt || null,
+    reactions: restReactions,
   });
+  emitToConversation(conversation.id, 'message:edited', {
+    conversationId: conversation.id,
+    message: { ...serialized, reactions: await rawReactions(message._id) },
+  });
+
+  return res.json({ message: serialized });
 }
 
 // DELETE /api/chats/:conversationId/messages/:messageId?scope=me|everyone
@@ -476,6 +497,10 @@ async function deleteSelectedMessage(conversation, message, userId, scope) {
       await message.save();
     }
     await Conversation.updateOne({ _id: conversation._id, pinnedMessage: message._id }, { $set: CLEAR_PIN });
+    // "Everyone" deletes are visible to every viewer, so this is the one
+    // delete scope worth pushing live - a "me" delete only changes what the
+    // deleting user sees, so there's no one else to notify.
+    emitToConversation(conversation.id, 'message:deleted', { conversationId: conversation.id, messageId: String(message._id), scope: 'everyone' });
     return { status: 200, body: { deleted: true, scope: 'everyone', messageId: String(message._id) } };
   }
 
@@ -488,11 +513,16 @@ async function markRead(req, res) {
   const { conversation, error } = await loadConversationForUser(req.params.conversationId, req.user);
   if (error) return res.status(error.status).json({ error: error.message });
 
+  const lastReadAt = new Date();
   await ConversationMember.updateOne(
     { conversation: conversation._id, user: req.userId },
-    { $set: { lastReadAt: new Date() } },
+    { $set: { lastReadAt } },
     { upsert: true }
   );
+  // Drives the read-receipt checkmark on the other participant's sent
+  // messages in a DM (see serializeMessage's `read` field). Community/faction
+  // rooms don't render per-user read receipts, but this is harmless there too.
+  emitToConversation(conversation.id, 'chat:read', { conversationId: conversation.id, userId: req.userId, lastReadAt });
   return res.json({ message: 'Marked read.' });
 }
 
@@ -504,6 +534,7 @@ async function setPinnedMessage(req, res) {
   if (req.body.messageId === undefined) return res.status(400).json({ error: 'messageId is required; use null to unpin.' });
   if (req.body.messageId === null) {
     await Conversation.updateOne({ _id: conversation._id }, { $set: CLEAR_PIN });
+    emitToConversation(conversation.id, 'chat:pinned', { conversationId: conversation.id, pinnedMessage: null });
     return res.json({ pinnedMessage: null });
   }
 
@@ -522,7 +553,9 @@ async function setPinnedMessage(req, res) {
   conversation.pinnedBy = req.userId;
   conversation.pinDuration = duration;
   await conversation.save();
-  return res.json({ pinnedMessage: pinPreview(message, conversation) });
+  const pinnedMessage = pinPreview(message, conversation);
+  emitToConversation(conversation.id, 'chat:pinned', { conversationId: conversation.id, pinnedMessage });
+  return res.json({ pinnedMessage });
 }
 
 function pinPreview(message, conversation) {
@@ -534,6 +567,16 @@ function pinPreview(message, conversation) {
 async function summarizeReactions(messageId, viewerId) {
   const docs = await MessageReaction.find({ message: messageId });
   return groupReactions(docs, viewerId).get(String(messageId)) || [];
+}
+
+// `summarizeReactions` bakes in a `mine` flag for one specific viewer, which
+// is right for a REST response (one requester) but wrong to broadcast - every
+// other socket in the room would see someone else's reaction mislabeled as
+// "mine". Broadcast the raw {emoji, userId} facts instead and let each
+// client derive its own `mine` locally against its own user id.
+async function rawReactions(messageId) {
+  const docs = await MessageReaction.find({ message: messageId }).select('emoji user');
+  return docs.map((r) => ({ emoji: r.emoji, userId: String(r.user) }));
 }
 
 async function loadMessageInConversation(conversation, messageId) {
@@ -560,6 +603,7 @@ async function setReaction(req, res) {
     { $set: { emoji } },
     { upsert: true }
   );
+  emitToConversation(conversation.id, 'message:reaction', { conversationId: conversation.id, messageId: String(message._id), reactions: await rawReactions(message._id) });
   return res.status(201).json({ reactions: await summarizeReactions(message._id, req.userId) });
 }
 
@@ -572,6 +616,7 @@ async function removeReaction(req, res) {
   if (!message) return res.status(404).json({ error: 'Message not found.' });
 
   await MessageReaction.deleteOne({ message: message._id, user: req.userId });
+  emitToConversation(conversation.id, 'message:reaction', { conversationId: conversation.id, messageId: String(message._id), reactions: await rawReactions(message._id) });
   return res.json({ reactions: await summarizeReactions(message._id, req.userId) });
 }
 
@@ -635,9 +680,15 @@ async function forwardCopy(original, targetConversation, userId) {
   ]);
   message = await message.populate('sender', SENDER_FIELDS);
 
+  const serialized = serializeMessage(message, { viewerId: userId, conversationType: targetConversation.type, otherLastReadAt: null, reactions: [] });
+  emitToConversation(targetConversation.id, 'message:new', { conversationId: targetConversation.id, message: serialized });
+  if (targetConversation.type === 'dm') {
+    emitToUsers(targetConversation.participants.map(String), 'chat:preview', { conversationId: targetConversation.id });
+  }
+
   return {
     conversationId: String(targetConversation._id),
-    message: serializeMessage(message, { viewerId: userId, conversationType: targetConversation.type, otherLastReadAt: null, reactions: [] }),
+    message: serialized,
   };
 }
 
