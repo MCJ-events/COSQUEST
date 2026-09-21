@@ -40,6 +40,9 @@ async function main() {
     const additions = await require('./communitySettings').run(`http://localhost:${process.env.PORT}`);
     result.pass += additions.pass;
     result.fail += additions.fail;
+    const attachments = await require('./chatAttachments').run(`http://localhost:${process.env.PORT}`);
+    result.pass += attachments.pass;
+    result.fail += attachments.fail;
   } finally {
     await new Promise((resolve) => server.close(resolve));
     await disconnectDB();

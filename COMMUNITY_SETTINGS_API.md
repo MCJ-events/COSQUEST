@@ -1,5 +1,7 @@
 # Community, Spotlight, settings, and immediate sign-in
 
+For the latest attachment types, sticker/voice-note code, timed pin durations, and bulk actions, see [CHAT_ATTACHMENTS_API.md](CHAT_ATTACHMENTS_API.md).
+
 Current contract for the supplied Community and Settings screens. This document supersedes older onboarding, comment-threading, and Spotlight assumptions in the other guides.
 
 All protected examples use `Authorization: Bearer <token>`. Chat, Spotlight, social writes, and settings require completed onboarding. `:postId`, `:commentId`, `:conversationId`, and `:messageId` are IDs returned by the API; they are not usernames. JSON requests use `Content-Type: application/json`.
@@ -84,14 +86,14 @@ PATCH  /api/chats/:conversationId/read
 | Edit | `{"content":"Corrected text"}`; sender only, no edit time limit, returns `editedAt` |
 | React | `{"emoji":"❤️"}`; one emoji per user per message, a new emoji replaces the old one |
 | Remove reaction | DELETE, no body |
-| Pin | `{"messageId":"<messageId>"}`; one pinned message per conversation, any member |
+| Pin | `{"messageId":"<messageId>","duration":"24h"}`; duration is `24h`, `7d`, or `30d` (default `7d`); one pinned message per conversation, any member |
 | Unpin | `{"messageId":null}` |
 | Forward to an existing chat | `{"targetConversationId":"<conversationId>"}` |
 | Forward to a person | `{"targetUsername":"MarkJ"}`; finds/creates the DM |
 | Read / Seen | PATCH read advances the caller's read timestamp; GET seen returns people who have read through that message |
 | Copy text | Frontend copies already-loaded `message.content`; no backend call |
 | Copy link | GET message share; frontend copies `url` |
-| Select | Frontend selection state; call the corresponding operation for selected messages |
+| Select | Frontend selection state; POST `.../messages/bulk-delete` or `.../messages/bulk-forward` with `messageIds` |
 
 Forwarding requires exactly one target field and returns `{ conversationId, message }`, with `message.forwarded: true`. It copies text and media metadata; editing/deleting the original does not change the forwarded copy. Membership, blocking, and the recipient's Allow Direct Messages setting apply, including when forwarding by conversation ID. Sending into an existing DM also respects these settings.
 
@@ -103,7 +105,7 @@ Set `PUBLIC_BASE_URL` to the backend's public HTTPS origin so shared links work 
 
 ## Voice notes and the paperclip/file button
 
-Send one attachment per message, maximum 10 MB, as `multipart/form-data`:
+Send one attachment per message as `multipart/form-data`: 10 MB for images/audio/documents, 50 MB for videos, and 1 MB for stickers.
 
 ```text
 POST /api/chats/:conversationId/messages
@@ -117,6 +119,8 @@ replyTo: optional message ID
 - Voice notes: MP3, M4A, WEBM, OGG, WAV with the appropriate `audio/*` MIME type. Response `kind: "audio"` and `media.durationSeconds`. Existing audio support was retained.
 - Images: JPEG, PNG, WEBP, GIF. Response `kind: "image"`.
 - Documents: PDF, TXT, CSV, DOC/DOCX, XLS/XLSX, PPT/PPTX. Response `kind: "file"`.
+- Video: MP4, MOV, WEBM. Response `kind: "video"`.
+- Sticker: PNG, WEBP, GIF, with explicit `kind=sticker`.
 - Media includes `url`, `publicId`, `resourceType`, `fileName`, `mimeType`, `sizeBytes`, and `durationSeconds` where available. Forwarding preserves these values.
 
 The microphone permission/recording, waveform display, playback, paperclip picker, clipboard, and device share sheet belong to the mobile frontend. No frontend exists in this repository. Chat delivery is REST/polling; voice/video calls and WebSockets are not implemented. Production media storage requires Cloudinary configuration; test uploads use the existing test adapter. Cloudinary account delivery settings can also restrict PDF/Office-file downloads, so verify those using the production account.

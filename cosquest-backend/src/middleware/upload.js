@@ -63,22 +63,23 @@ const postUpload = multer({
   },
 });
 
-const AUDIO_TYPES = ['audio/mpeg', 'audio/mp4', 'audio/m4a', 'audio/webm', 'audio/ogg', 'audio/wav', 'audio/x-wav'];
+const AUDIO_TYPES = ['audio/mpeg', 'audio/mp4', 'audio/m4a', 'audio/x-m4a', 'audio/aac', 'audio/webm', 'audio/ogg', 'audio/wav', 'audio/x-wav'];
+const CHAT_VIDEO_TYPES = ['video/mp4', 'video/quicktime', 'video/webm'];
 const DOCUMENT_TYPES = [
   'application/pdf', 'text/plain', 'text/csv',
   'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
 ];
-const CHAT_MEDIA_TYPES = [...ALLOWED_TYPES, ...AUDIO_TYPES, ...DOCUMENT_TYPES];
+const CHAT_MEDIA_TYPES = [...ALLOWED_TYPES, ...AUDIO_TYPES, ...DOCUMENT_TYPES, ...CHAT_VIDEO_TYPES];
 
-// One image, voice note, or document per message, up to 10 MB.
+// The controller applies 1 MB stickers, 10 MB images/audio/documents, 50 MB videos.
 const chatUpload = multer({
   storage,
-  limits: { fileSize: 10 * 1024 * 1024 },
+  limits: { fileSize: 50 * 1024 * 1024, files: 1 },
   fileFilter: (req, file, cb) => {
     if (!CHAT_MEDIA_TYPES.includes(file.mimetype)) {
-      return cb(invalidFileType('Chat attachments must be an image, voice note, PDF, text, CSV, or Office document.'));
+      return cb(invalidFileType('Chat attachments must be an image, MP4/MOV/WEBM video, audio, PDF, text, CSV, or Office document.'));
     }
     cb(null, true);
   },

@@ -16,6 +16,8 @@ const {
   removeReaction,
   getMessageSeenBy,
   forwardMessage,
+  bulkDeleteMessages,
+  bulkForwardMessages,
   getMessage,
   getChatShareLink,
 } = require('../controllers/chatController');
@@ -34,6 +36,8 @@ router.get('/chats/:conversationId/messages/:messageId', asyncHandler(getMessage
 router.get('/chats/:conversationId/messages/:messageId/share', asyncHandler(getChatShareLink));
 router.get('/chats/:conversationId/messages', asyncHandler(listMessages));
 router.post('/chats/:conversationId/messages', chatUpload.single('media'), asyncHandler(createMessage));
+router.post('/chats/:conversationId/messages/bulk-delete', asyncHandler(bulkDeleteMessages));
+router.post('/chats/:conversationId/messages/bulk-forward', asyncHandler(bulkForwardMessages));
 router.patch('/chats/:conversationId/messages/:messageId', asyncHandler(editMessage));
 router.delete('/chats/:conversationId/messages/:messageId', asyncHandler(deleteMessage));
 router.patch('/chats/:conversationId/read', asyncHandler(markRead));

@@ -9,6 +9,7 @@ const messageMediaSchema = new mongoose.Schema(
     fileName: { type: String, default: null },
     mimeType: { type: String, default: null },
     sizeBytes: { type: Number, default: null },
+    waveform: { type: [Number], default: undefined },
   },
   { _id: false }
 );
@@ -17,7 +18,7 @@ const messageSchema = new mongoose.Schema(
   {
     conversation: { type: mongoose.Schema.Types.ObjectId, ref: 'Conversation', required: true, index: true },
     sender: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
-    kind: { type: String, enum: ['text', 'image', 'audio', 'file'], default: 'text' },
+    kind: { type: String, enum: ['text', 'image', 'video', 'audio', 'file', 'sticker'], default: 'text' },
     content: { type: String, default: '', trim: true, maxlength: 2000 },
     media: { type: messageMediaSchema, default: null },
     replyTo: { type: mongoose.Schema.Types.ObjectId, ref: 'Message', default: null },

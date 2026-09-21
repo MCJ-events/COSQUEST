@@ -8,12 +8,14 @@ const User = require('../models/User');
 const userModel = require('../models/userModel');
 const { getFaction } = require('../models/factionModel');
 const { storeChatMedia } = require('../utils/imageHost');
-const { DOCUMENT_TYPES } = require('../middleware/upload');
+const { validateChatMedia } = require('../utils/chatMedia');
 const { buildContentShare } = require('../utils/shareLinks');
 const { isBlockedEitherWay } = require('./publicProfileController');
 
 const EPOCH = new Date(0);
 const DELETE_FOR_EVERYONE_WINDOW_MS = 5 * 60 * 1000;
+const PIN_DURATIONS = { '24h': 24 * 60 * 60 * 1000, '7d': 7 * 24 * 60 * 60 * 1000, '30d': 30 * 24 * 60 * 60 * 1000 };
+const CLEAR_PIN = { pinnedMessage: null, pinnedAt: null, pinnedUntil: null, pinnedBy: null, pinDuration: null };
 
 function parseLimit(value, fallback = 30) {
   const limit = Number(value);
@@ -109,6 +111,8 @@ function previewMessage(message) {
   if (!message) return null;
   if (message.deletedForEveryone) return 'This message was deleted';
   if (message.kind === 'image') return 'Sent a photo';
+  if (message.kind === 'video') return 'Sent a video';
+  if (message.kind === 'sticker') return 'Sent a sticker';
   if (message.kind === 'audio') return 'Sent a voice note';
   if (message.kind === 'file') return 'Sent a file';
   return message.content;
@@ -277,15 +281,25 @@ async function startDirectMessage(req, res) {
 
 // GET /api/chats/:conversationId
 async function getConversationDetail(req, res) {
-  const { conversation, error } = await loadConversationForUser(req.params.conversationId, req.user);
+  let { conversation, error } = await loadConversationForUser(req.params.conversationId, req.user);
   if (error) return res.status(error.status).json({ error: error.message });
+
+  // Existing untimed pins receive a single 7-day window on their first read.
+  if (conversation.pinnedMessage && !conversation.pinnedUntil) {
+    const now = new Date();
+    conversation = await Conversation.findOneAndUpdate(
+      { _id: conversation._id, pinnedMessage: conversation.pinnedMessage, pinnedUntil: null },
+      { $set: { pinnedAt: now, pinnedUntil: new Date(now.getTime() + PIN_DURATIONS['7d']), pinDuration: '7d' } },
+      { new: true }
+    ) || await Conversation.findById(conversation._id);
+  }
 
   const summary = await summarizeConversation(conversation, req.user);
   let pinnedMessage = null;
-  if (conversation.pinnedMessage) {
+  if (conversation.pinnedMessage && conversation.pinnedUntil > new Date()) {
     const pinned = await Message.findById(conversation.pinnedMessage).populate('sender', 'profile.username profile.firstName');
     if (pinned && !pinned.deletedForEveryone && !hiddenFor(pinned, req.userId)) {
-      pinnedMessage = { ...replyPreview(pinned), content: pinned.content, kind: pinned.kind, createdAt: pinned.createdAt };
+      pinnedMessage = pinPreview(pinned, conversation);
     }
   }
   return res.json({ chat: { ...summary, pinnedMessage } });
@@ -300,7 +314,7 @@ async function listMessages(req, res) {
   const page = parsePage(req.query.page);
   const [messages, total, otherMember] = await Promise.all([
     Message.find({ conversation: conversation._id, deletedFor: { $ne: req.userId } })
-      .sort({ createdAt: -1 })
+      .sort({ createdAt: -1, _id: -1 })
       .skip((page - 1) * limit)
       .limit(limit)
       .populate('sender', SENDER_FIELDS)
@@ -365,11 +379,16 @@ async function createMessage(req, res) {
     replyTo = original._id;
   }
 
-  let kind = 'text';
+  const validation = validateChatMedia(file, req.body);
+  if (validation.error) {
+    cleanUpLocalFile(file);
+    return res.status(validation.status).json({ error: validation.error });
+  }
+  const { kind, waveform } = validation;
   let media = null;
   if (file) {
-    kind = file.mimetype.startsWith('audio/') ? 'audio' : DOCUMENT_TYPES.includes(file.mimetype) ? 'file' : 'image';
     media = await storeChatMedia(file, kind);
+    if (waveform) media.waveform = waveform;
   }
 
   let message = await Message.create({ conversation: conversation._id, sender: req.userId, kind, content, media, replyTo });
@@ -438,29 +457,30 @@ async function deleteMessage(req, res) {
   if (!message) return res.status(404).json({ error: 'Message not found.' });
 
   const scope = req.query.scope === 'everyone' ? 'everyone' : 'me';
+  const result = await deleteSelectedMessage(conversation, message, req.userId, scope);
+  return res.status(result.status).json(result.body);
+}
 
+async function deleteSelectedMessage(conversation, message, userId, scope) {
   if (scope === 'everyone') {
-    if (String(message.sender) !== String(req.userId)) {
-      return res.status(403).json({ error: 'You can only delete your own message for everyone.' });
+    if (String(message.sender) !== String(userId)) {
+      return { status: 403, body: { error: 'You can only delete your own message for everyone.' } };
     }
     if (!message.deletedForEveryone) {
       const ageMs = Date.now() - new Date(message.createdAt).getTime();
       if (ageMs > DELETE_FOR_EVERYONE_WINDOW_MS) {
-        return res.status(403).json({ error: 'Messages can only be deleted for everyone within 5 minutes of sending. You can still delete it for yourself.' });
+        return { status: 403, body: { error: 'Messages can only be deleted for everyone within 5 minutes of sending. You can still delete it for yourself.' } };
       }
       message.deletedForEveryone = true;
       message.deletedAt = new Date();
       await message.save();
-      if (conversation.pinnedMessage && String(conversation.pinnedMessage) === String(message._id)) {
-        conversation.pinnedMessage = null;
-        await conversation.save();
-      }
     }
-    return res.json({ deleted: true, scope: 'everyone', messageId: String(message._id) });
+    await Conversation.updateOne({ _id: conversation._id, pinnedMessage: message._id }, { $set: CLEAR_PIN });
+    return { status: 200, body: { deleted: true, scope: 'everyone', messageId: String(message._id) } };
   }
 
-  await Message.updateOne({ _id: message._id }, { $addToSet: { deletedFor: req.userId } });
-  return res.json({ deleted: true, scope: 'me', messageId: String(message._id) });
+  await Message.updateOne({ _id: message._id }, { $addToSet: { deletedFor: userId } });
+  return { status: 200, body: { deleted: true, scope: 'me', messageId: String(message._id) } };
 }
 
 // PATCH /api/chats/:conversationId/read
@@ -481,11 +501,14 @@ async function setPinnedMessage(req, res) {
   const { conversation, error } = await loadConversationForUser(req.params.conversationId, req.user);
   if (error) return res.status(error.status).json({ error: error.message });
 
-  if (req.body.messageId === null || req.body.messageId === undefined) {
-    conversation.pinnedMessage = null;
-    await conversation.save();
+  if (req.body.messageId === undefined) return res.status(400).json({ error: 'messageId is required; use null to unpin.' });
+  if (req.body.messageId === null) {
+    await Conversation.updateOne({ _id: conversation._id }, { $set: CLEAR_PIN });
     return res.json({ pinnedMessage: null });
   }
+
+  const duration = req.body.duration === undefined ? '7d' : req.body.duration;
+  if (typeof duration !== 'string' || !Object.prototype.hasOwnProperty.call(PIN_DURATIONS, duration)) return res.status(400).json({ error: 'duration must be 24h, 7d, or 30d.' });
 
   if (!mongoose.isValidObjectId(req.body.messageId)) return res.status(400).json({ error: 'messageId is not valid.' });
   const message = await Message.findById(req.body.messageId).populate('sender', 'profile.username profile.firstName');
@@ -494,8 +517,18 @@ async function setPinnedMessage(req, res) {
   }
   if (message.deletedForEveryone) return res.status(400).json({ error: 'A deleted message cannot be pinned.' });
   conversation.pinnedMessage = message._id;
+  conversation.pinnedAt = new Date();
+  conversation.pinnedUntil = new Date(conversation.pinnedAt.getTime() + PIN_DURATIONS[duration]);
+  conversation.pinnedBy = req.userId;
+  conversation.pinDuration = duration;
   await conversation.save();
-  return res.json({ pinnedMessage: { ...replyPreview(message), content: message.content, kind: message.kind, createdAt: message.createdAt } });
+  return res.json({ pinnedMessage: pinPreview(message, conversation) });
+}
+
+function pinPreview(message, conversation) {
+  return { ...replyPreview(message), content: message.content, kind: message.kind, createdAt: message.createdAt,
+    pinnedAt: conversation.pinnedAt, expiresAt: conversation.pinnedUntil,
+    pinnedBy: conversation.pinnedBy ? String(conversation.pinnedBy) : null, duration: conversation.pinDuration };
 }
 
 async function summarizeReactions(messageId, viewerId) {
@@ -580,9 +613,13 @@ async function forwardMessage(req, res) {
   const sendError = await canSendToConversation(targetConversation, req.userId);
   if (sendError) return res.status(sendError.status).json({ error: sendError.message });
 
+  return res.status(201).json(await forwardCopy(original, targetConversation, req.userId));
+}
+
+async function forwardCopy(original, targetConversation, userId) {
   let message = await Message.create({
     conversation: targetConversation._id,
-    sender: req.userId,
+    sender: userId,
     kind: original.kind,
     content: original.content,
     media: original.media,
@@ -591,17 +628,101 @@ async function forwardMessage(req, res) {
   await Promise.all([
     Conversation.updateOne({ _id: targetConversation._id }, { $inc: { messageCount: 1 } }),
     ConversationMember.updateOne(
-      { conversation: targetConversation._id, user: req.userId },
+      { conversation: targetConversation._id, user: userId },
       { $set: { lastReadAt: new Date() } },
       { upsert: true }
     ),
   ]);
   message = await message.populate('sender', SENDER_FIELDS);
 
-  return res.status(201).json({
+  return {
     conversationId: String(targetConversation._id),
-    message: serializeMessage(message, { viewerId: req.userId, conversationType: targetConversation.type, otherLastReadAt: null, reactions: [] }),
-  });
+    message: serializeMessage(message, { viewerId: userId, conversationType: targetConversation.type, otherLastReadAt: null, reactions: [] }),
+  };
+}
+
+function selectedIds(value) {
+  if (!Array.isArray(value) || value.length < 1 || value.length > 50 || value.some((id) => typeof id !== 'string' || !/^[a-f\d]{24}$/i.test(id))) return null;
+  return [...new Set(value.map((id) => id.toLowerCase()))];
+}
+
+function batchResponse(res, results) {
+  const succeeded = results.filter((item) => item.status < 300).length;
+  return res.status(succeeded === results.length ? 200 : 207).json({ results, summary: { total: results.length, succeeded, failed: results.length - succeeded } });
+}
+
+async function bulkDeleteMessages(req, res) {
+  const ids = selectedIds(req.body.messageIds);
+  const scope = req.body.scope === undefined ? 'me' : req.body.scope;
+  if (!ids || !['me', 'everyone'].includes(scope)) return res.status(400).json({ error: 'Provide 1-50 valid messageIds and scope me or everyone.' });
+  const { conversation, error } = await loadConversationForUser(req.params.conversationId, req.user);
+  if (error) return res.status(error.status).json({ error: error.message });
+  const results = [];
+  for (const messageId of ids) {
+    try {
+      const message = await loadMessageInConversation(conversation, messageId);
+      const result = message ? await deleteSelectedMessage(conversation, message, req.userId, scope) : { status: 404, body: { error: 'Message not found.' } };
+      results.push({ messageId, status: result.status, ...result.body });
+    } catch (error) {
+      console.error('Bulk delete failed:', error);
+      results.push({ messageId, status: 500, error: 'Deletion could not be confirmed. Refresh before retrying.' });
+    }
+  }
+  return batchResponse(res, results);
+}
+
+async function bulkForwardMessages(req, res) {
+  const ids = selectedIds(req.body.messageIds);
+  if (!ids) return res.status(400).json({ error: 'Provide 1-50 valid messageIds.' });
+  let targets = req.body.targets;
+  if (targets === undefined) targets = [{ targetConversationId: req.body.targetConversationId, targetUsername: req.body.targetUsername }];
+  else if (req.body.targetConversationId !== undefined || req.body.targetUsername !== undefined) return res.status(400).json({ error: 'Use targets or a single target, not both.' });
+  if (!Array.isArray(targets) || targets.length < 1 || targets.length > 10 || targets.some((target) => !target || typeof target !== 'object' || Boolean(target.targetConversationId) === Boolean(target.targetUsername) || (target.targetConversationId && (typeof target.targetConversationId !== 'string' || !/^[a-f\d]{24}$/i.test(target.targetConversationId))) || (target.targetUsername && typeof target.targetUsername !== 'string'))) {
+    return res.status(400).json({ error: 'Provide 1-10 targets, each with exactly one targetConversationId or targetUsername.' });
+  }
+  const { conversation, error } = await loadConversationForUser(req.params.conversationId, req.user);
+  if (error) return res.status(error.status).json({ error: error.message });
+  const originals = await Message.find({ _id: { $in: ids }, conversation: conversation._id, deletedForEveryone: false, deletedFor: { $ne: req.userId } }).sort({ createdAt: 1, _id: 1 });
+  if (originals.length !== ids.length) return res.status(404).json({ error: 'One or more selected messages are unavailable in this conversation.' });
+
+  // Validate all destinations before creating a DM or sending any copy.
+  const destinations = [];
+  for (const target of targets) {
+    if (target.targetUsername) {
+      const resolved = await resolveDmTarget(req.userId, target.targetUsername);
+      if (resolved.error) return res.status(resolved.error.status).json({ error: resolved.error.message });
+      destinations.push({ user: resolved.target });
+    } else {
+      const resolved = await loadConversationForUser(target.targetConversationId, req.user);
+      if (resolved.error) return res.status(resolved.error.status).json({ error: resolved.error.message });
+      const sendError = await canSendToConversation(resolved.conversation, req.userId);
+      if (sendError) return res.status(sendError.status).json({ error: sendError.message });
+      destinations.push({ conversation: resolved.conversation });
+    }
+  }
+  const conversations = new Map();
+  for (const destination of destinations) {
+    const target = destination.conversation || await getOrCreateDmConversation(req.userId, destination.user._id);
+    conversations.set(target.id, target);
+  }
+  const results = [];
+  for (const target of conversations.values()) {
+    for (const original of originals) {
+      const result = { sourceMessageId: original.id, conversationId: target.id };
+      try {
+        // Recheck per copy so a block or deletion during a batch is respected.
+        const sendError = await canSendToConversation(target, req.userId);
+        const current = await loadMessageInConversation(conversation, original.id);
+        if (sendError) results.push({ ...result, status: sendError.status, error: sendError.message });
+        else if (!current || current.deletedForEveryone || hiddenFor(current, req.userId)) results.push({ ...result, status: 404, error: 'Message unavailable.' });
+        else results.push({ ...result, status: 201, ...await forwardCopy(current, target, req.userId) });
+      } catch (error) {
+        console.error('Bulk forward failed:', error);
+        results.push({ ...result, status: 500, error: 'Forward could not be confirmed. Refresh before retrying.' });
+      }
+    }
+  }
+  return batchResponse(res, results);
 }
 
 function hiddenFor(message, userId) {
@@ -692,6 +813,8 @@ module.exports = {
   removeReaction,
   getMessageSeenBy,
   forwardMessage,
+  bulkDeleteMessages,
+  bulkForwardMessages,
   getMessage,
   getChatShareLink,
   loadConversationForUser,

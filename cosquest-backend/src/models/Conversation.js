@@ -22,6 +22,10 @@ const conversationSchema = new mongoose.Schema(
     participants: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], default: [] },
     dmKey: { type: String, default: null },
     pinnedMessage: { type: mongoose.Schema.Types.ObjectId, ref: 'Message', default: null },
+    pinnedAt: { type: Date, default: null },
+    pinnedUntil: { type: Date, default: null },
+    pinnedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    pinDuration: { type: String, enum: ['24h', '7d', '30d', null], default: null },
     messageCount: { type: Number, default: 0, min: 0 },
   },
   { timestamps: true }

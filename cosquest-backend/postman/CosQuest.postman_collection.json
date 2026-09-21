@@ -62,6 +62,10 @@
     {
       "key": "oauthCode",
       "value": ""
+    },
+    {
+      "key": "secondMessageId",
+      "value": ""
     }
   ],
   "item": [
@@ -3156,6 +3160,287 @@
                   "key": "content",
                   "type": "text",
                   "value": "Shared document"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Attachments, timed pins and bulk actions",
+      "description": "See CHAT_ATTACHMENTS_API.md. Set both messageId and secondMessageId from messages in this source conversation. Bulk endpoints return per-item status; inspect HTTP 207 results. Select files manually for upload requests.",
+      "item": [
+        {
+          "name": "Pin for 24h",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/api/chats/{{communityConversationId}}/pinned-message",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"messageId\": \"{{messageId}}\",\n  \"duration\": \"24h\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Pin for 7d",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/api/chats/{{communityConversationId}}/pinned-message",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"messageId\": \"{{messageId}}\",\n  \"duration\": \"7d\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Pin for 30d",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/api/chats/{{communityConversationId}}/pinned-message",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"messageId\": \"{{messageId}}\",\n  \"duration\": \"30d\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Delete selected for me",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/chats/{{communityConversationId}}/messages/bulk-delete",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"messageIds\": [\n    \"{{messageId}}\",\n    \"{{secondMessageId}}\"\n  ],\n  \"scope\": \"me\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Delete selected for everyone",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/chats/{{communityConversationId}}/messages/bulk-delete",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"messageIds\": [\n    \"{{messageId}}\",\n    \"{{secondMessageId}}\"\n  ],\n  \"scope\": \"everyone\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Forward selected to a chat",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/chats/{{communityConversationId}}/messages/bulk-forward",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"messageIds\": [\n    \"{{messageId}}\",\n    \"{{secondMessageId}}\"\n  ],\n  \"targetConversationId\": \"{{dmConversationId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Forward selected to multiple destinations",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/chats/{{communityConversationId}}/messages/bulk-forward",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"messageIds\": [\n    \"{{messageId}}\",\n    \"{{secondMessageId}}\"\n  ],\n  \"targets\": [\n    {\n      \"targetConversationId\": \"{{dmConversationId}}\"\n    },\n    {\n      \"targetConversationId\": \"{{factionConversationId}}\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Send image (select file)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/chats/{{communityConversationId}}/messages",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "kind",
+                  "type": "text",
+                  "value": "image"
+                },
+                {
+                  "key": "media",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Send video (select file)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/chats/{{communityConversationId}}/messages",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "kind",
+                  "type": "text",
+                  "value": "video"
+                },
+                {
+                  "key": "media",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Send file (select file)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/chats/{{communityConversationId}}/messages",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "kind",
+                  "type": "text",
+                  "value": "file"
+                },
+                {
+                  "key": "media",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Send audio (select file)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/chats/{{communityConversationId}}/messages",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "kind",
+                  "type": "text",
+                  "value": "audio"
+                },
+                {
+                  "key": "media",
+                  "type": "file",
+                  "src": []
+                },
+                {
+                  "key": "waveform",
+                  "type": "text",
+                  "value": "[0.1,0.5,0.9,0.2]",
+                  "disabled": true
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Send sticker (select file)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/chats/{{communityConversationId}}/messages",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "kind",
+                  "type": "text",
+                  "value": "sticker"
+                },
+                {
+                  "key": "media",
+                  "type": "file",
+                  "src": []
                 }
               ]
             }

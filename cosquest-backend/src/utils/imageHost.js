@@ -103,7 +103,7 @@ async function deletePostMedia(media) {
  * separate audio type); `kind` ('image'|'audio') is what the app calls it.
  */
 async function storeChatMedia(file, kind) {
-  const resourceType = kind === 'file' ? 'raw' : kind === 'audio' ? 'video' : 'image';
+  const resourceType = kind === 'file' ? 'raw' : ['audio', 'video'].includes(kind) ? 'video' : 'image';
   if (process.env.NODE_ENV !== 'test' && (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET)) {
     throw new Error('Cloudinary is not fully configured. Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET.');
   }
@@ -114,12 +114,13 @@ async function storeChatMedia(file, kind) {
       result = {
         secure_url: `https://res.cloudinary.com/test-cloud/${resourceType}/upload/cosquest/chat/${file.filename}`,
         public_id: `cosquest/chat/${file.filename}`,
-        duration: kind === 'audio' ? 8 : null,
+        duration: ['audio', 'video'].includes(kind) ? 8 : null,
       };
     } else {
       result = await getCloudinary().uploader.upload(file.path, {
         folder: process.env.CLOUDINARY_CHAT_FOLDER || 'cosquest/chat',
         resource_type: resourceType,
+        ...(kind === 'sticker' ? { allowed_formats: ['png', 'webp', 'gif'] } : {}),
       });
     }
     return {
