@@ -21,6 +21,7 @@ const {
   listFollowers,
   listFollowing,
   searchUsers,
+  discoverUsers,
 } = require('../controllers/publicProfileController');
 const { getProfileShareLink } = require('../controllers/shareController');
 const { getPrivacy, updatePrivacy } = require('../controllers/privacyController');
@@ -50,6 +51,7 @@ router.get('/me/blocked', requireAuth, requireCompletedOnboarding, asyncHandler(
 // Find people to start a DM/forward with, by name - see searchUsers. Placed
 // before /:username so "search" can never be mistaken for a username.
 router.get('/search', requireAuth, requireCompletedOnboarding, asyncHandler(searchUsers));
+router.get('/discover', requireAuth, requireCompletedOnboarding, asyncHandler(discoverUsers));
 
 // Public profile and social graph. These routes intentionally come after the
 // explicit /me routes so "me" can never be mistaken for a username.

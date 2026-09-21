@@ -43,6 +43,9 @@ async function main() {
     const attachments = await require('./chatAttachments').run(`http://localhost:${process.env.PORT}`);
     result.pass += attachments.pass;
     result.fail += attachments.fail;
+    const discovery = await require('./discoverUsers').run(`http://localhost:${process.env.PORT}`);
+    result.pass += discovery.pass;
+    result.fail += discovery.fail;
   } finally {
     await new Promise((resolve) => server.close(resolve));
     await disconnectDB();

@@ -300,6 +300,32 @@ async function searchUsers(req, res) {
   });
 }
 
+// GET /api/users/discover - browse people without a search term.
+async function discoverUsers(req, res) {
+  const limit = parseLimit(req.query.limit);
+  const page = parsePage(req.query.page);
+
+  const blocks = await Block.find({ $or: [{ blocker: req.userId }, { blocked: req.userId }] });
+  const excludedIds = [req.userId, ...blocks.map((block) => (
+    String(block.blocker) === String(req.userId) ? block.blocked : block.blocker
+  ))];
+  const query = { _id: { $nin: excludedIds }, onboardingComplete: true };
+
+  const [users, total] = await Promise.all([
+    User.find(query)
+      .select('profile.username profile.displayName profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl faction')
+      .sort({ createdAt: -1, _id: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit),
+    User.countDocuments(query),
+  ]);
+
+  return res.json({
+    users: users.map(previewUser),
+    pagination: { page, limit, total, hasMore: page * limit < total },
+  });
+}
+
 function listFollowers(req, res) {
   return listRelationship(req, res, 'followers');
 }
@@ -317,6 +343,7 @@ module.exports = {
   listFollowers,
   listFollowing,
   searchUsers,
+  discoverUsers,
   previewUser,
   statsFor,
   canViewProfile,
