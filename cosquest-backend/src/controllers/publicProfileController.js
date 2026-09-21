@@ -79,7 +79,7 @@ function previewUser(user) {
   return {
     id: String(user._id),
     username: user.profile.username,
-    name: [user.profile.firstName, user.profile.lastName].filter(Boolean).join(' ') || user.profile.username,
+    name: user.profile.displayName || [user.profile.firstName, user.profile.lastName].filter(Boolean).join(' ') || user.profile.username,
     avatarKey: user.profile.avatarKey,
     avatarPhotoUrl: user.profile.avatarPhotoUrl,
     faction: user.faction,
@@ -220,7 +220,7 @@ async function listRelationship(req, res, field) {
     const query = { [matchField]: target._id };
     const [rows, total] = await Promise.all([
       Follow.find(query)
-        .populate(populatedField, 'profile.username profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl faction')
+        .populate(populatedField, 'profile.username profile.displayName profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl faction')
         .sort({ createdAt: -1 })
         .skip((page - 1) * limit)
         .limit(limit),
@@ -287,7 +287,7 @@ async function searchUsers(req, res) {
   };
   const [users, total] = await Promise.all([
     User.find(query)
-      .select('profile.username profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl faction')
+      .select('profile.username profile.displayName profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl faction')
       .sort({ 'profile.username': 1 })
       .skip((page - 1) * limit)
       .limit(limit),

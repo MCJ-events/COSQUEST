@@ -37,6 +37,9 @@ async function main() {
   let result = { pass: 0, fail: 1 };
   try {
     result = await run(`http://localhost:${process.env.PORT}`);
+    const additions = await require('./communitySettings').run(`http://localhost:${process.env.PORT}`);
+    result.pass += additions.pass;
+    result.fail += additions.fail;
   } finally {
     await new Promise((resolve) => server.close(resolve));
     await disconnectDB();

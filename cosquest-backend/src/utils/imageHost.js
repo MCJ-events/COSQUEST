@@ -103,7 +103,7 @@ async function deletePostMedia(media) {
  * separate audio type); `kind` ('image'|'audio') is what the app calls it.
  */
 async function storeChatMedia(file, kind) {
-  const resourceType = kind === 'audio' ? 'video' : 'image';
+  const resourceType = kind === 'file' ? 'raw' : kind === 'audio' ? 'video' : 'image';
   if (process.env.NODE_ENV !== 'test' && (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET)) {
     throw new Error('Cloudinary is not fully configured. Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET.');
   }
@@ -122,7 +122,12 @@ async function storeChatMedia(file, kind) {
         resource_type: resourceType,
       });
     }
-    return { url: result.secure_url, publicId: result.public_id, resourceType, durationSeconds: result.duration || null };
+    return {
+      url: result.secure_url, publicId: result.public_id, resourceType,
+      durationSeconds: result.duration || null,
+      fileName: file.originalname.replace(/[\\/\x00-\x1f]/g, '_').slice(0, 255),
+      mimeType: file.mimetype, sizeBytes: file.size,
+    };
   } catch (error) {
     throw tagCloudinaryError(error);
   } finally {

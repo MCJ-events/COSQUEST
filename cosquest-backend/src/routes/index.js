@@ -15,6 +15,8 @@ const chatRoutes = require('./chatRoutes');
 const router = express.Router();
 
 router.use('/auth', authRoutes); // /api/auth/signup, /api/auth/login
+// Authentication is attached per settings endpoint, leaving onboarding routes usable.
+router.use('/users/me', require('./settingsRoutes'));
 router.use('/users', profileRoutes); // /api/users/me, /api/users/check-username, avatar routes
 router.use('/', postRoutes); // /api/posts, /api/users/:username/posts
 router.use('/', factionRoutes); // /api/factions, /api/users/me/faction
@@ -25,5 +27,6 @@ router.use('/meta', metaRoutes); // /api/meta/avatars
 router.use('/', questRoutes); // /api/quests
 router.use('/home', homeRoutes); // /api/home/dashboard
 router.use('/', chatRoutes); // /api/chats
+router.use('/spotlight', require('./spotlightRoutes'));
 
 module.exports = router;

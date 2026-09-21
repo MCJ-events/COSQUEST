@@ -1,8 +1,10 @@
 # CosQuest Backend — API Guide
 
+> Current signup, comments/replies, chat links/files, Spotlight, and Settings contract: [COMMUNITY_SETTINGS_API.md](../COMMUNITY_SETTINGS_API.md). That guide supersedes older examples and deferred-feature notes below for these features.
+
 Base URL: `http://localhost:6893` (match your `.env`'s `PORT`). Every response below is the **complete** object exactly as the codebase returns it (matches `src/models/User.js`'s schema field-for-field, run through `userModel.sanitize()`, which is why `passwordHash`/`tokenVersion`/`_id` never appear and `id` does instead).
 
-Signup is just step 0 of one continuous onboarding process, not a separate thing - there's no token yet at that point, and no server-generated id is handed out as a stand-in credential either. So every Step 1-4 endpoint below accepts **either** the plain `email` you signed up with (in the body/query) **or** an `Authorization: Bearer <token>` header - whichever you have. **Login itself refuses to issue a token until `onboardingComplete` is true**, so onboarding has to be finished (via `email`) before login will ever succeed. Once you're logged in, the Bearer token works on all the same endpoints too, e.g. for editing faction/interests later.
+Signup signs the user in immediately and returns a token. Save it and use Bearer authorization throughout onboarding. Completion unlocks the app using the same token; no extra login is needed. Returning users can also log in before completion and resume onboarding. Legacy identifier-based onboarding examples below remain supported.
 
 Registration requires a unique, valid email address. Usernames are required during the profile step and are also unique without regard to letter case (for example, `Hero` and `hero` cannot both exist). Passwords must be at least eight characters and include an uppercase letter, lowercase letter, number, and special character.
 
@@ -19,7 +21,7 @@ Profile fields also include an optional editable `bio` (500 characters maximum),
 }
 ```
 `identifier` can instead be a username such as `Ravencaller`. When a username is used here, it is automatically saved as the profile username; it can later be edited from the user's profile.
-Response — note there's **no token here**, and `id` is what every onboarding call below needs:
+Response — the current response additionally includes `token`, `onboardingRequired: true`, and `resumed: false`. Save the token for onboarding. The legacy user snapshot below omits those fields:
 ```json
 {
   "message": "Account created. Complete onboarding using your email, then log in.",
@@ -49,7 +51,7 @@ Response — note there's **no token here**, and `id` is what every onboarding c
 ```
 Signup also creates one welcome notification for the account automatically (unconditional - it doesn't wait for the `notificationsEnabled` preference, since that isn't chosen until onboarding step 4). It's only reachable with a Bearer token, and login won't hand one out until onboarding is done - so it's the very first thing they see right after their first successful login.
 
-**POST** `/api/auth/login` — this is the only place a token is ever issued. Send the email or username in `identifier`; the legacy `email` field remains supported.
+**POST** `/api/auth/login` — returning-user login also issues a token. Send the email or username in `identifier`; the legacy `email` field remains supported.
 ```json
 {
   "identifier": "Ravencaller",
@@ -444,9 +446,9 @@ Response:
 }
 ```
 
-**POST** `/api/users/me/onboarding/complete` — **login refuses to issue a token until this has succeeded**
+**POST** `/api/users/me/onboarding/complete` — unlocks the app using the existing signup token
 
-Two ways to call this, both valid, both identified by `email` (no token exists yet):
+Two ways to call this, both valid with the signup token; legacy email examples below are also supported:
 
 1. **`email`-only**, after already calling the individual step endpoints above one by one (as shown through this guide) — just flips `onboardingComplete` to `true`.
 2. **One-shot**, matching the front-end exactly: nothing is saved while a user clicks through onboarding steps 1-4 in the app — everything sits in the client's local `state` until they tap "Enter CosQuest," which fires once, all together. This endpoint accepts that same combined payload in a single call:

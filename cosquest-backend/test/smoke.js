@@ -98,14 +98,14 @@ async function run(baseUrlArg) {
     assert(r.status === 200 && r.json.ok === true, 'GET /health -> 200 { ok: true }', r);
   }
 
-  console.log('\n--- signup (step 0 of onboarding - no token, no id handed out) ---');
+  console.log('\n--- signup (session starts immediately) ---');
   {
     const r = await c('POST', '/api/auth/signup', { body: { email: `weak_${Date.now()}@example.com`, password: 'quest1234', confirmPassword: 'quest1234' } });
     assert(r.status === 400, 'POST /api/auth/signup (weak password) -> 400', r);
   }
   {
     const r = await c('POST', '/api/auth/signup', { body: { email, password, confirmPassword: password } });
-    assert(r.status === 201 && !r.json.token, 'POST /api/auth/signup -> 201, no token', r);
+    assert(r.status === 201 && r.json.token && r.json.onboardingRequired === true, 'POST /api/auth/signup -> 201, token and onboardingRequired', r);
   }
   {
     // Onboarding isn't complete yet for this email - a repeat signup is the
@@ -852,13 +852,13 @@ async function run(baseUrlArg) {
   }
   {
     const r = await c('POST', `/api/posts/${thoughtId}/comments`, { token: token2, body: { body: 'Replying to a reply', parentComment: replyId } });
-    assert(r.status === 400, 'POST reply to a reply -> 400, one level of nesting only', r);
+    assert(r.status === 201 && r.json.comment.parentComment === commentId && r.json.comment.replyToComment === replyId, 'POST reply to a reply -> stays in root thread and identifies replied-to comment', r);
   }
   {
     const r = await c('GET', `/api/posts/${thoughtId}/comments`);
     assert(
       r.status === 200 &&
-        r.json.comments.some((comment) => comment.id === commentId && comment.replyCount === 1) &&
+        r.json.comments.some((comment) => comment.id === commentId && comment.replyCount === 2) &&
         !r.json.comments.some((comment) => comment.id === replyId),
       'GET comments (top-level only) -> shows replyCount, excludes the reply itself',
       r
@@ -867,7 +867,7 @@ async function run(baseUrlArg) {
   {
     const r = await c('GET', `/api/posts/${thoughtId}/comments?parentComment=${commentId}`);
     assert(
-      r.status === 200 && r.json.comments.length === 1 && r.json.comments[0].id === replyId,
+      r.status === 200 && r.json.comments.length === 2 && r.json.comments.some((comment) => comment.id === replyId),
       'GET comments?parentComment= -> just the replies under that comment',
       r
     );

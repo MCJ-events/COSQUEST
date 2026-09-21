@@ -1,5 +1,7 @@
 # CosQuest Backend — API
 
+> Current signup, comments/replies, chat links/files, Spotlight, and Settings contract: [COMMUNITY_SETTINGS_API.md](../COMMUNITY_SETTINGS_API.md). That guide supersedes older examples and deferred-feature notes below for these features.
+
 If this backend already has a MongoDB database from before username-only registration was added, run `npm run migrate:username-signup` once before deploying. It safely updates the unique email index so multiple accounts without an email are allowed.
 
 Login sessions do not expire on a timer. They stay active until the user logs out, at which point every previous token for that account is invalidated; the next sign-in issues a fresh token.
@@ -12,7 +14,7 @@ Preset avatar images are delivered only from Cloudinary; `GET /api/meta/avatars`
 
 OAuth starts in the browser at `GET /api/auth/oauth/google` or `GET /api/auth/oauth/apple`. After provider verification, the backend redirects to `OAUTH_SUCCESS_REDIRECT_URL` with a short-lived `oauthCode`; the frontend must immediately send that code to `POST /api/auth/oauth/exchange` to receive the usual CosQuest token. First-time OAuth users are sent through onboarding (`onboardingRequired: true`). Configure the `GOOGLE_OAUTH_*`, `APPLE_OAUTH_*`, `OAUTH_SUCCESS_REDIRECT_URL`, and `OAUTH_COOKIE_SECRET` values in `.env` before using either button. Apple requires a public HTTPS callback URL.
 
-Signup is just step 0 of one continuous onboarding process, not a separate thing. There's no token yet at that point, and no server-generated id is handed out as a stand-in credential either - so every onboarding-step endpoint below accepts either the plain `email` you signed up with **or** a Bearer token — whichever you have. **Login itself refuses to issue a token until onboarding is complete** — so onboarding has to be finished, identified by `email`, before login will ever succeed.
+Signup signs the user in immediately and returns a token. Save it and use Bearer authorization throughout onboarding. Completion unlocks the app using the same token; no extra login is needed. Returning users can also log in before completion and resume onboarding. Legacy identifier-based onboarding examples below remain supported.
 
 ## Endpoints
 
@@ -53,7 +55,7 @@ Signup is just step 0 of one continuous onboarding process, not a separate thing
 |---|---|---|---|
 | PATCH | `/api/users/me/preferences/notifications` | `{ email, notificationsEnabled }` | |
 | POST | `/api/users/me/devices` | `{ email, pushToken, platform }` | platform: `"ios" \| "android" \| "web"`; dedupes by token |
-| POST | `/api/users/me/onboarding/complete` | `{ email }` alone, or `{ email, profile, faction, interests, preferences }` | Requires a completed profile, avatar/photo, faction, at least one interest, and notification choice. One-shot submissions are atomic: nothing is saved if anything is invalid. **Login won't succeed until this has run.** |
+| POST | `/api/users/me/onboarding/complete` | `{ email }` alone, or `{ email, profile, faction, interests, preferences }` | Requires a completed profile, avatar/photo, faction, at least one interest, and notification choice. One-shot submissions are atomic: nothing is saved if anything is invalid. The signup token unlocks the app after this succeeds. |
 
 ### Notifications (in-app inbox — Bearer token only, i.e. after login)
 | Method | Path | Body | Notes |
@@ -131,7 +133,7 @@ curl -s -X POST $BASE_URL/api/auth/login \
 { "error": "Please complete onboarding before logging in." }
 ```
 
-### 3. Complete onboarding, identified by `email` (no token exists yet)
+### 3. Complete onboarding with the signup token (legacy email examples below)
 
 ```bash
 # Step 1: profile
@@ -175,7 +177,7 @@ curl -s -X POST $BASE_URL/api/users/me/onboarding/complete \
   -d "{\"email\":\"$EMAIL\"}"
 ```
 
-### 4. Now log in — this is the only place a token is ever issued
+### 4. Optional returning-user login — new signups already have a token
 
 ```bash
 TOKEN=$(curl -s -X POST $BASE_URL/api/auth/login \
@@ -237,7 +239,7 @@ This is the in-app half only - it doesn't push a real phone/browser alert when s
 
 ### One-shot onboarding (matches the front-end exactly)
 
-The front-end doesn't call the step 1-4 endpoints individually — it collects everything into one local `state` object and submits it all together when the user taps "Enter CosQuest" (`finishOnb()`). `POST /api/users/me/onboarding/complete` accepts that same combined payload in a single call, identified by `email` since there's no token yet:
+The front-end doesn't call the step 1-4 endpoints individually — it collects everything into one local `state` object and submits it all together when the user taps "Enter CosQuest" (`finishOnb()`). `POST /api/users/me/onboarding/complete` accepts that same combined payload in a single call, using the signup Bearer token (legacy email identification also works):
 
 ```bash
 curl -s -X POST $BASE_URL/api/users/me/onboarding/complete \

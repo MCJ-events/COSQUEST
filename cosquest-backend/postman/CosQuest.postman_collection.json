@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "CosQuest Backend API",
-    "description": "Generated from API_USAGE_AND_FLOWS.md. Every request body uses real literal example values (the same ones test/smoke.js uses) instead of template placeholders, so you can start your server and press Send directly. Run Auth > Signup (me), then Onboarding > Complete onboarding (me, one-shot), then Auth > Login - every other request already inherits {{accessToken}} via collection-level Bearer auth, no manual token pasting required. Only server-generated ids (postId, conversation/message ids, the access token) are variables, since those cannot be known ahead of time - the request that creates each one captures it automatically.",
+    "description": "CosQuest API. Run Signup (me), save its token automatically, then complete onboarding. The same token enters the app without another login. Community, Spotlight, and Settings additions are in their own folder; see COMMUNITY_SETTINGS_API.md for bodies and behavior. Media fields require choosing a local file.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -125,8 +125,22 @@
             "auth": {
               "type": "noauth"
             },
-            "description": "Step 0 of onboarding. Returns 201, no token yet - onboarding must be completed via email before login works. Re-sending this before onboarding is finished resumes the same account (200, resumed: true) instead of erroring - only an already-onboarded account returns 409."
-          }
+            "description": "Creates the account and signs in immediately. Save token and use it through onboarding. Resume requires the existing password; completed accounts return 409."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code < 300) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.token) pm.collectionVariables.set('accessToken', json.token);",
+                  "}"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Signup (buddy - a second account for follow/DM testing)",
@@ -910,7 +924,7 @@
             "auth": {
               "type": "noauth"
             },
-            "description": "Submits every required onboarding field at once, including location - all required. Run this (or the individual steps above), then Login, to get a usable {{accessToken}}."
+            "description": "Submits every required onboarding field at once, including location - all required. Use the token captured at signup. It becomes usable for the main app immediately after completion."
           }
         },
         {
@@ -1997,7 +2011,7 @@
                 }
               }
             },
-            "description": "parentComment must reference a top-level comment - replying to a reply is 400 (one level of nesting only). The emoji \"reactions\" shown under comments in some mockups are frontend-only quick replies, not a real endpoint."
+            "description": "parentComment must reference a top-level comment - replying to a reply is 400 (replies stay within the original thread). The emoji \"reactions\" shown under comments in some mockups are frontend-only quick replies, not a real endpoint."
           },
           "event": [
             {
@@ -2781,6 +2795,368 @@
                 "quests",
                 "{{questId}}",
                 "registrations"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Community, Spotlight and Settings additions",
+      "item": [
+        {
+          "name": "Like comment",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/posts/{{postId}}/comments/{{commentId}}/likes"
+          }
+        },
+        {
+          "name": "Unlike comment",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/posts/{{postId}}/comments/{{commentId}}/likes"
+          }
+        },
+        {
+          "name": "Like reply",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/posts/{{postId}}/comments/{{replyCommentId}}/likes"
+          }
+        },
+        {
+          "name": "Unlike reply",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/posts/{{postId}}/comments/{{replyCommentId}}/likes"
+          }
+        },
+        {
+          "name": "Reply to a reply",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/posts/{{postId}}/comments",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"Replying in this thread\",\n  \"parentComment\": \"{{replyCommentId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Post share link",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/posts/{{postId}}/share"
+          }
+        },
+        {
+          "name": "Chat share link",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/chats/{{communityConversationId}}/share"
+          }
+        },
+        {
+          "name": "Message copy link",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/chats/{{communityConversationId}}/messages/{{messageId}}/share"
+          }
+        },
+        {
+          "name": "Open one linked message",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/chats/{{communityConversationId}}/messages/{{messageId}}"
+          }
+        },
+        {
+          "name": "Spotlight leaderboard",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/spotlight/leaderboard?page=1&limit=20"
+          }
+        },
+        {
+          "name": "Spotlight Anime board",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/spotlight/leaderboard?interest=anime&page=1&limit=20"
+          }
+        },
+        {
+          "name": "Spotlight realms",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/spotlight/realms"
+          }
+        },
+        {
+          "name": "Settings overview",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/users/me/settings"
+          }
+        },
+        {
+          "name": "Account information",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/users/me/account"
+          }
+        },
+        {
+          "name": "Save account information",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/users/me/account",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"displayName\": \"CosplayQueen\",\n  \"phone\": \"+15552345678\",\n  \"dateOfBirth\": \"1998-10-12\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Change password",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/users/me/password",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"Quest@1234\",\n  \"newPassword\": \"NewQuest@1234\",\n  \"confirmPassword\": \"NewQuest@1234\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code < 300) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.token) pm.collectionVariables.set('accessToken', json.token);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Privacy settings",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/users/me/privacy"
+          }
+        },
+        {
+          "name": "Save privacy settings",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/users/me/privacy",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"profileVisibility\": \"public\",\n  \"showOnlineStatus\": false,\n  \"showActivityFeed\": true,\n  \"allowFriendRequests\": true,\n  \"allowDirectMessages\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Notification settings",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/users/me/preferences/notifications"
+          }
+        },
+        {
+          "name": "Save notification settings",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/users/me/preferences/notifications",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notificationsEnabled\": true,\n  \"eventReminders\": true,\n  \"questUpdates\": true,\n  \"factionNews\": false,\n  \"friendActivity\": true,\n  \"rankChanges\": true,\n  \"emailWeeklyNewsletter\": false,\n  \"emailPromotionalEvents\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Appearance settings",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/users/me/appearance"
+          }
+        },
+        {
+          "name": "Save appearance settings",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/users/me/appearance",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"themeMode\": \"dark\",\n  \"accentColor\": \"#ca4aa0\",\n  \"fontSize\": \"medium\",\n  \"reduceMotion\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Data usage settings",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/users/me/data-usage"
+          }
+        },
+        {
+          "name": "Save data usage settings",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/users/me/data-usage",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"downloadOverWifiOnly\": true,\n  \"autoPlayVideos\": false,\n  \"imageQuality\": \"high\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Help and support links",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/users/me/help"
+          }
+        },
+        {
+          "name": "Submit bug report",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/users/me/support-requests",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"bug\",\n  \"subject\": \"Playback issue\",\n  \"message\": \"Describe the problem and reproduction steps.\",\n  \"platform\": \"android\",\n  \"appVersion\": \"2.4.0\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Send chat document (select file)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/chats/{{communityConversationId}}/messages",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "media",
+                  "type": "file",
+                  "src": []
+                },
+                {
+                  "key": "content",
+                  "type": "text",
+                  "value": "Shared document"
+                }
               ]
             }
           }

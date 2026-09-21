@@ -16,6 +16,8 @@ const {
   removeReaction,
   getMessageSeenBy,
   forwardMessage,
+  getMessage,
+  getChatShareLink,
 } = require('../controllers/chatController');
 
 const router = express.Router();
@@ -27,6 +29,9 @@ router.use(requireAuth, requireCompletedOnboarding);
 router.get('/chats', asyncHandler(listChats));
 router.post('/chats/dm', asyncHandler(startDirectMessage));
 router.get('/chats/:conversationId', asyncHandler(getConversationDetail));
+router.get('/chats/:conversationId/share', asyncHandler(getChatShareLink));
+router.get('/chats/:conversationId/messages/:messageId', asyncHandler(getMessage));
+router.get('/chats/:conversationId/messages/:messageId/share', asyncHandler(getChatShareLink));
 router.get('/chats/:conversationId/messages', asyncHandler(listMessages));
 router.post('/chats/:conversationId/messages', chatUpload.single('media'), asyncHandler(createMessage));
 router.patch('/chats/:conversationId/messages/:messageId', asyncHandler(editMessage));

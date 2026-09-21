@@ -8,83 +8,100 @@ const WELCOME_MESSAGE =
   "🎉 Welcome to CosQuest! 🥷✨ Your account is officially live. This is your new home for everything you love — real-world quests, your faction, your people, all in one place. 🗺️💜 So glad you're here — let's go make some legendary memories. 🏆";
 
 /**
- * NOTE: The front-end onboarding step 0 (Continue with Google / Apple / email)
- * is intentionally NOT implemented here - per scope, we start at step 1
- * (profile creation). Email verification is intentionally skipped, as requested.
- *
- * Signup is just the first step of one continuous onboarding process, not a
- * separate thing: it creates the account, and every onboarding step after it
- * is identified by the plain `email` the client already has (no token, and
- * no server-generated id handed out as a stand-in credential either). A
- * token is only ever issued at login, and login itself now refuses to
- * proceed until onboardingComplete is true - onboarding has to be finished
- * before the account can actually be logged into.
+ * Signup starts a session immediately. Save its token and use it throughout
+ * onboarding; the same token unlocks the app when onboarding is complete.
+ * Feature routes still requireCompletedOnboarding. OAuth has its own controller.
  */
 
 async function signup(req, res) {
   const { email, username, identifier, password, confirmPassword } = req.body;
+
   const signUpIdentifier = identifier || email || username;
 
   if (!signUpIdentifier || !password || confirmPassword === undefined) {
-    return res.status(400).json({ error: 'email or username, password, and confirmPassword are required.' });
+    return res.status(400).json({
+      error: 'email or username, password, and confirmPassword are required.',
+    });
   }
+
   if (password !== confirmPassword) {
-    return res.status(400).json({ error: 'password and confirmPassword must match.' });
+    return res.status(400).json({
+      error: 'password and confirmPassword must match.',
+    });
   }
+
   if (!isValidEmail(signUpIdentifier) && !isValidUsername(signUpIdentifier)) {
-    return res.status(400).json({ error: 'Provide a valid email address or a username with 3-20 letters, numbers, or underscores.' });
+    return res.status(400).json({
+      error:
+        'Provide a valid email address or a username with 3-20 letters, numbers, or underscores.',
+    });
   }
+
   const invalidPassword = passwordError(password);
+
   if (invalidPassword) {
-    return res.status(400).json({ error: invalidPassword });
+    return res.status(400).json({
+      error: invalidPassword,
+    });
   }
 
   const registeringWithEmail = isValidEmail(signUpIdentifier);
+
   const existing = registeringWithEmail
     ? await userModel.findByEmail(signUpIdentifier)
     : await userModel.findByUsername(signUpIdentifier);
 
+  /*
+   * Existing account that has not completed onboarding.
+   * Allow the user to continue onboarding and authenticate them.
+   */
   if (existing) {
     if (existing.onboardingComplete) {
       return res.status(409).json({
-        error: registeringWithEmail ? 'An account with this email already exists.' : 'That username is already taken.',
+        error: registeringWithEmail
+          ? 'An account with this email already exists.'
+          : 'That username is already taken.',
       });
     }
-    // Onboarding was started but never finished - this is the same person
-    // coming back, not a real conflict. Every onboarding-step endpoint
-    // already treats the bare email/username as sufficient identification
-    // pre-completion (see this file's header comment), so resuming here
-    // instead of dead-ending them is consistent, not a new trust decision.
-    // Refreshing the password also covers a forgotten one on an account
-    // that can't log in yet anyway - there's no separate reset flow.
-    const passwordHash = await bcrypt.hash(password, 10);
-    const updated = await userModel.updateUser(existing.id, (user) => {
-      user.passwordHash = passwordHash;
-    });
+
+    // Resuming issues a session, so require the existing account's password.
+    if (!existing.passwordHash || !(await bcrypt.compare(password, existing.passwordHash))) {
+      return res.status(401).json({ error: 'Invalid email/username or password.' });
+    }
+    const updated = existing;
+
+    const token = signToken(updated.id, updated.tokenVersion);
+
     return res.status(200).json({
-      message: 'Welcome back - this account already exists but onboarding is not finished yet. Continuing where you left off.',
+      message:
+        'Welcome back - this account already exists but onboarding is not finished yet. Continuing where you left off.',
       resumed: true,
+      token,
+      onboardingRequired: true,
       user: userModel.sanitize(updated),
     });
   }
 
+  /*
+   * Create a completely new account.
+   */
   const passwordHash = await bcrypt.hash(password, 10);
+
   const user = await userModel.createUser({
     email: registeringWithEmail ? signUpIdentifier : undefined,
     username: registeringWithEmail ? undefined : signUpIdentifier,
     passwordHash,
   });
 
-  // Their first-ever notification - can't actually be seen until login
-  // succeeds (which now requires onboarding to be complete first), regardless
-  // of the notificationsEnabled preference (chosen during onboarding itself).
   await notificationModel.createForUser(user._id, WELCOME_MESSAGE);
 
-  // No token here on purpose - signup only creates the account. A token is
-  // only ever issued at login, and only once onboarding is complete.
+  const token = signToken(user.id, user.tokenVersion);
+
   return res.status(201).json({
-    message: 'Account created. Complete onboarding using your email or username, then log in.',
+    message: 'Account created. Continue onboarding.',
     resumed: false,
+    token,
+    onboardingRequired: true,
     user: userModel.sanitize(user),
   });
 }

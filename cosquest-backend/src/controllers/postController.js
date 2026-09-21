@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const Post = require('../models/Post');
 const PostLike = require('../models/PostLike');
 const PostComment = require('../models/PostComment');
+const CommentLike = require('../models/CommentLike');
 const PostShare = require('../models/PostShare');
 const PostBookmark = require('../models/PostBookmark');
 const userModel = require('../models/userModel');
@@ -37,7 +38,7 @@ function authorPreview(author) {
   return {
     id: String(author._id),
     username: author.profile.username,
-    name: [author.profile.firstName, author.profile.lastName].filter(Boolean).join(' ') || author.profile.username,
+    name: author.profile.displayName || [author.profile.firstName, author.profile.lastName].filter(Boolean).join(' ') || author.profile.username,
     avatarKey: author.profile.avatarKey,
     avatarPhotoUrl: author.profile.avatarPhotoUrl,
     faction: author.faction,
@@ -86,7 +87,7 @@ function validatePostInput(type, content, files) {
 
 async function loadPost(postId) {
   if (!mongoose.isValidObjectId(postId)) return null;
-  return Post.findById(postId).populate('author', 'profile.username profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl faction');
+  return Post.findById(postId).populate('author', 'profile.username profile.displayName profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl faction');
 }
 
 async function createPost(req, res) {
@@ -107,7 +108,7 @@ async function createPost(req, res) {
       return res.status(400).json({ error: 'A reel must be 30 seconds or shorter.' });
     }
     const post = await Post.create({ author: req.userId, type, content: content.trim(), media });
-    await post.populate('author', 'profile.username profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl faction');
+    await post.populate('author', 'profile.username profile.displayName profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl faction');
     return res.status(201).json({ post: serializePost(post) });
   } catch (error) {
     if (media.length) await deletePostMedia(media);
@@ -123,7 +124,7 @@ async function listPosts(req, res) {
   const query = type ? { type } : {};
   const [posts, total] = await Promise.all([
     Post.find(query)
-      .populate('author', 'profile.username profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl faction')
+      .populate('author', 'profile.username profile.displayName profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl faction')
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit),
@@ -148,7 +149,7 @@ async function listUserPosts(req, res) {
   const query = { author: user._id, ...(type ? { type } : {}) };
   const [posts, total] = await Promise.all([
     Post.find(query)
-      .populate('author', 'profile.username profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl faction')
+      .populate('author', 'profile.username profile.displayName profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl faction')
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit),
@@ -187,6 +188,7 @@ async function deletePost(req, res) {
   if (String(post.author._id) !== String(req.userId)) return res.status(403).json({ error: 'You can only delete your own post.' });
   await Promise.all([
     PostLike.deleteMany({ post: post._id }),
+    CommentLike.deleteMany({ post: post._id }),
     PostComment.deleteMany({ post: post._id }),
     PostShare.deleteMany({ post: post._id }),
     PostBookmark.deleteMany({ post: post._id }),
@@ -273,7 +275,7 @@ async function listMyBookmarks(req, res) {
       .limit(limit)
       .populate({
         path: 'post',
-        populate: { path: 'author', select: 'profile.username profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl faction' },
+        populate: { path: 'author', select: 'profile.username profile.displayName profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl faction' },
       }),
     PostBookmark.countDocuments(query),
   ]);
@@ -283,13 +285,16 @@ async function listMyBookmarks(req, res) {
   });
 }
 
-function serializeComment(comment) {
+function serializeComment(comment, likes = { count: 0, mine: false }) {
   return {
     id: String(comment._id),
     body: comment.body,
     author: authorPreview(comment.author),
     parentComment: comment.parentComment ? String(comment.parentComment) : null,
     replyCount: comment.replyCount || 0,
+    replyToComment: comment.replyToComment ? String(comment.replyToComment) : null,
+    likeCount: likes.count,
+    likedByMe: likes.mine,
     createdAt: comment.createdAt,
     updatedAt: comment.updatedAt,
   };
@@ -297,7 +302,7 @@ function serializeComment(comment) {
 
 // GET /api/posts/:postId/comments - top-level comments by default; pass
 // ?parentComment=<id> to fetch the replies under one specific top-level
-// comment instead (one level of nesting only - a reply has no replies).
+// comment instead. A reply id resolves to its root thread as well.
 async function listComments(req, res) {
   const post = await loadPost(req.params.postId);
   if (!post) return res.status(404).json({ error: 'Post not found.' });
@@ -307,7 +312,7 @@ async function listComments(req, res) {
     if (!mongoose.isValidObjectId(req.query.parentComment)) return res.status(404).json({ error: 'Comment not found.' });
     const parent = await PostComment.findById(req.query.parentComment);
     if (!parent || String(parent.post) !== String(post._id)) return res.status(404).json({ error: 'Comment not found.' });
-    parentComment = parent._id;
+    parentComment = parent.parentComment || parent._id;
   }
 
   const limit = parseLimit(req.query.limit);
@@ -315,20 +320,25 @@ async function listComments(req, res) {
   const query = { post: post._id, parentComment };
   const [comments, total] = await Promise.all([
     PostComment.find(query)
-      .populate('author', 'profile.username profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl faction')
+      .populate('author', 'profile.username profile.displayName profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl faction')
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit),
     PostComment.countDocuments(query),
   ]);
+  const likes = await CommentLike.aggregate([
+    { $match: { comment: { $in: comments.map((comment) => comment._id) } } },
+    { $group: { _id: '$comment', count: { $sum: 1 }, mine: { $max: { $cond: [{ $eq: ['$user', req.userId ? new mongoose.Types.ObjectId(req.userId) : null] }, 1, 0] } } } },
+  ]);
+  const likesByComment = new Map(likes.map((like) => [String(like._id), { count: like.count, mine: Boolean(like.mine) }]));
   return res.json({
-    comments: comments.map(serializeComment),
+    comments: comments.map((comment) => serializeComment(comment, likesByComment.get(String(comment._id)))),
     pagination: { page, limit, total, hasMore: page * limit < total },
   });
 }
 
 // POST /api/posts/:postId/comments - pass parentComment to reply under an
-// existing top-level comment; replying to a reply is rejected (one level deep).
+// existing comment or reply. Store every reply under the root thread.
 async function createComment(req, res) {
   const post = await loadPost(req.params.postId);
   if (!post) return res.status(404).json({ error: 'Post not found.' });
@@ -340,15 +350,15 @@ async function createComment(req, res) {
     if (!mongoose.isValidObjectId(req.body.parentComment)) return res.status(404).json({ error: 'Comment not found.' });
     parent = await PostComment.findById(req.body.parentComment);
     if (!parent || String(parent.post) !== String(post._id)) return res.status(404).json({ error: 'Comment not found.' });
-    if (parent.parentComment) return res.status(400).json({ error: 'You can only reply to a top-level comment.' });
   }
 
-  const comment = await PostComment.create({ post: post._id, author: req.userId, body, parentComment: parent ? parent._id : null });
+  const rootId = parent ? parent.parentComment || parent._id : null;
+  const comment = await PostComment.create({ post: post._id, author: req.userId, body, parentComment: rootId, replyToComment: parent?._id || null });
   const [updated] = await Promise.all([
     Post.findByIdAndUpdate(post._id, { $inc: { commentCount: 1 } }, { new: true }),
-    parent ? PostComment.updateOne({ _id: parent._id }, { $inc: { replyCount: 1 } }) : Promise.resolve(),
+    rootId ? PostComment.updateOne({ _id: rootId }, { $inc: { replyCount: 1 } }) : Promise.resolve(),
   ]);
-  await comment.populate('author', 'profile.username profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl faction');
+  await comment.populate('author', 'profile.username profile.displayName profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl faction');
   return res.status(201).json({
     comment: serializeComment(comment),
     commentCount: updated.commentCount,
@@ -362,14 +372,36 @@ async function deleteComment(req, res) {
   if (!comment || String(comment.post) !== String(req.params.postId)) return res.status(404).json({ error: 'Comment not found.' });
   if (String(comment.author) !== String(req.userId)) return res.status(403).json({ error: 'You can only delete your own comment.' });
 
-  const repliesResult = comment.parentComment ? { deletedCount: 0 } : await PostComment.deleteMany({ parentComment: comment._id });
-  await PostComment.deleteOne({ _id: comment._id });
+  const query = comment.parentComment ? { _id: comment._id } : { $or: [{ _id: comment._id }, { parentComment: comment._id }] };
+  const removedIds = (await PostComment.find(query).select('_id')).map((item) => item._id);
+  const removed = await PostComment.deleteMany(query);
+  await CommentLike.deleteMany({ comment: { $in: removedIds } });
   if (comment.parentComment) {
     await PostComment.updateOne({ _id: comment.parentComment }, { $inc: { replyCount: -1 } });
   }
-  const removedCount = 1 + repliesResult.deletedCount;
+  const removedCount = removed.deletedCount;
   const updated = await Post.findByIdAndUpdate(comment.post, { $inc: { commentCount: -removedCount } }, { new: true });
   return res.json({ message: 'Comment deleted.', commentCount: Math.max(0, updated?.commentCount || 0) });
+}
+
+async function setCommentLike(req, res) {
+  if (!mongoose.isValidObjectId(req.params.commentId) || !mongoose.isValidObjectId(req.params.postId)) {
+    return res.status(404).json({ error: 'Comment not found.' });
+  }
+  const comment = await PostComment.findOne({ _id: req.params.commentId, post: req.params.postId });
+  if (!comment) return res.status(404).json({ error: 'Comment not found.' });
+  const query = { comment: comment._id, user: req.userId };
+  const liked = req.method === 'POST';
+  if (liked) {
+    try {
+      await CommentLike.updateOne(query, { $setOnInsert: { post: comment.post } }, { upsert: true });
+    } catch (error) {
+      if (error.code !== 11000) throw error;
+    }
+  } else {
+    await CommentLike.deleteOne(query);
+  }
+  return res.json({ liked, likeCount: await CommentLike.countDocuments({ comment: comment._id }) });
 }
 
 module.exports = {
@@ -389,4 +421,5 @@ module.exports = {
   listComments,
   createComment,
   deleteComment,
+  setCommentLike,
 };

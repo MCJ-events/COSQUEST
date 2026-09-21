@@ -22,7 +22,7 @@ function resolveAvatarImageUrl(user) {
 }
 
 function buildShareData(user, req) {
-  const name = [user.profile.firstName, user.profile.lastName].filter(Boolean).join(' ') || user.profile.username;
+  const name = user.profile.displayName || [user.profile.firstName, user.profile.lastName].filter(Boolean).join(' ') || user.profile.username;
   const faction = getFaction(user.faction);
   const bio = user.profile.bio || (faction ? `${faction.name} · CosQuest member` : 'CosQuest member');
   return {

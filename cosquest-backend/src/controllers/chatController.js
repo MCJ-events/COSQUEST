@@ -8,6 +8,8 @@ const User = require('../models/User');
 const userModel = require('../models/userModel');
 const { getFaction } = require('../models/factionModel');
 const { storeChatMedia } = require('../utils/imageHost');
+const { DOCUMENT_TYPES } = require('../middleware/upload');
+const { buildContentShare } = require('../utils/shareLinks');
 const { isBlockedEitherWay } = require('./publicProfileController');
 
 const EPOCH = new Date(0);
@@ -27,11 +29,11 @@ function userPreview(user) {
   return {
     id: String(user._id),
     username: user.profile.username,
-    name: [user.profile.firstName, user.profile.lastName].filter(Boolean).join(' ') || user.profile.username,
+    name: user.profile.displayName || [user.profile.firstName, user.profile.lastName].filter(Boolean).join(' ') || user.profile.username,
     avatarKey: user.profile.avatarKey,
     avatarPhotoUrl: user.profile.avatarPhotoUrl,
     faction: user.faction,
-    lastActiveAt: user.lastActiveAt,
+    lastActiveAt: user.privacy?.showOnlineStatus === false ? null : user.lastActiveAt,
   };
 }
 
@@ -108,6 +110,7 @@ function previewMessage(message) {
   if (message.deletedForEveryone) return 'This message was deleted';
   if (message.kind === 'image') return 'Sent a photo';
   if (message.kind === 'audio') return 'Sent a voice note';
+  if (message.kind === 'file') return 'Sent a file';
   return message.content;
 }
 
@@ -179,8 +182,11 @@ function groupReactions(reactionDocs, viewerId) {
   return result;
 }
 
-function replyPreview(original) {
+function replyPreview(original, viewerId) {
   if (!original) return null;
+  if (viewerId && original.deletedFor?.some((id) => String(id) === String(viewerId))) {
+    return { id: String(original._id), senderName: null, preview: 'Message unavailable' };
+  }
   return {
     id: String(original._id),
     senderName: original.sender?.profile?.username || original.sender?.profile?.firstName || 'Someone',
@@ -200,7 +206,7 @@ function serializeMessage(message, { viewerId, conversationType, otherLastReadAt
       content: 'This message was deleted.',
       media: null,
       sender: message.sender?.profile ? userPreview(message.sender) : undefined,
-      replyTo: replyPreview(message.replyTo),
+      replyTo: null,
       reactions: reactions || [],
       read,
       deleted: true,
@@ -217,7 +223,7 @@ function serializeMessage(message, { viewerId, conversationType, otherLastReadAt
     content: message.content,
     media: message.media || null,
     sender: message.sender?.profile ? userPreview(message.sender) : undefined,
-    replyTo: replyPreview(message.replyTo),
+    replyTo: replyPreview(message.replyTo, viewerId),
     reactions: reactions || [],
     read,
     deleted: false,
@@ -228,7 +234,7 @@ function serializeMessage(message, { viewerId, conversationType, otherLastReadAt
   };
 }
 
-const SENDER_FIELDS = 'profile.username profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl faction lastActiveAt';
+const SENDER_FIELDS = 'profile.username profile.displayName profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl faction lastActiveAt privacy.showOnlineStatus';
 
 // GET /api/chats - "Your Space" (community + faction room) plus every DM.
 async function listChats(req, res) {
@@ -278,7 +284,9 @@ async function getConversationDetail(req, res) {
   let pinnedMessage = null;
   if (conversation.pinnedMessage) {
     const pinned = await Message.findById(conversation.pinnedMessage).populate('sender', 'profile.username profile.firstName');
-    if (pinned) pinnedMessage = { ...replyPreview(pinned), content: pinned.content, kind: pinned.kind, createdAt: pinned.createdAt };
+    if (pinned && !pinned.deletedForEveryone && !hiddenFor(pinned, req.userId)) {
+      pinnedMessage = { ...replyPreview(pinned), content: pinned.content, kind: pinned.kind, createdAt: pinned.createdAt };
+    }
   }
   return res.json({ chat: { ...summary, pinnedMessage } });
 }
@@ -327,6 +335,11 @@ async function createMessage(req, res) {
     cleanUpLocalFile(req.file);
     return res.status(error.status).json({ error: error.message });
   }
+  const sendError = await canSendToConversation(conversation, req.userId);
+  if (sendError) {
+    cleanUpLocalFile(req.file);
+    return res.status(sendError.status).json({ error: sendError.message });
+  }
 
   const content = typeof req.body.content === 'string' ? req.body.content.trim() : '';
   const file = req.file || null;
@@ -345,7 +358,7 @@ async function createMessage(req, res) {
       return res.status(400).json({ error: 'replyTo is not a valid message id.' });
     }
     const original = await Message.findById(req.body.replyTo);
-    if (!original || String(original.conversation) !== String(conversation._id)) {
+    if (!original || String(original.conversation) !== String(conversation._id) || original.deletedForEveryone || hiddenFor(original, req.userId)) {
       cleanUpLocalFile(file);
       return res.status(400).json({ error: 'replyTo must reference a message in this conversation.' });
     }
@@ -355,7 +368,7 @@ async function createMessage(req, res) {
   let kind = 'text';
   let media = null;
   if (file) {
-    kind = file.mimetype.startsWith('audio/') ? 'audio' : 'image';
+    kind = file.mimetype.startsWith('audio/') ? 'audio' : DOCUMENT_TYPES.includes(file.mimetype) ? 'file' : 'image';
     media = await storeChatMedia(file, kind);
   }
 
@@ -415,6 +428,9 @@ async function editMessage(req, res) {
 // tombstone for every viewer, sender-only, within 5 minutes of sending - the
 // row is never actually removed either way, only flagged.
 async function deleteMessage(req, res) {
+  if (req.query.scope !== undefined && !['me', 'everyone'].includes(req.query.scope)) {
+    return res.status(400).json({ error: 'scope must be me or everyone.' });
+  }
   const { conversation, error } = await loadConversationForUser(req.params.conversationId, req.user);
   if (error) return res.status(error.status).json({ error: error.message });
 
@@ -473,9 +489,10 @@ async function setPinnedMessage(req, res) {
 
   if (!mongoose.isValidObjectId(req.body.messageId)) return res.status(400).json({ error: 'messageId is not valid.' });
   const message = await Message.findById(req.body.messageId).populate('sender', 'profile.username profile.firstName');
-  if (!message || String(message.conversation) !== String(conversation._id)) {
+  if (!message || String(message.conversation) !== String(conversation._id) || hiddenFor(message, req.userId)) {
     return res.status(404).json({ error: 'Message not found in this conversation.' });
   }
+  if (message.deletedForEveryone) return res.status(400).json({ error: 'A deleted message cannot be pinned.' });
   conversation.pinnedMessage = message._id;
   await conversation.save();
   return res.json({ pinnedMessage: { ...replyPreview(message), content: message.content, kind: message.kind, createdAt: message.createdAt } });
@@ -499,10 +516,11 @@ async function setReaction(req, res) {
   if (error) return res.status(error.status).json({ error: error.message });
 
   const message = await loadMessageInConversation(conversation, req.params.messageId);
-  if (!message) return res.status(404).json({ error: 'Message not found.' });
+  if (!message || hiddenFor(message, req.userId)) return res.status(404).json({ error: 'Message not found.' });
+  if (message.deletedForEveryone) return res.status(400).json({ error: 'A deleted message cannot receive reactions.' });
 
   const emoji = typeof req.body.emoji === 'string' ? req.body.emoji.trim() : '';
-  if (!emoji || emoji.length > 8) return res.status(400).json({ error: 'emoji is required and must be short.' });
+  if (!emoji || emoji.length > 32) return res.status(400).json({ error: 'emoji is required and must be short.' });
 
   await MessageReaction.findOneAndUpdate(
     { message: message._id, user: req.userId },
@@ -559,6 +577,9 @@ async function forwardMessage(req, res) {
     targetConversation = conversation;
   }
 
+  const sendError = await canSendToConversation(targetConversation, req.userId);
+  if (sendError) return res.status(sendError.status).json({ error: sendError.message });
+
   let message = await Message.create({
     conversation: targetConversation._id,
     sender: req.userId,
@@ -578,8 +599,49 @@ async function forwardMessage(req, res) {
   message = await message.populate('sender', SENDER_FIELDS);
 
   return res.status(201).json({
+    conversationId: String(targetConversation._id),
     message: serializeMessage(message, { viewerId: req.userId, conversationType: targetConversation.type, otherLastReadAt: null, reactions: [] }),
   });
+}
+
+function hiddenFor(message, userId) {
+  return message.deletedFor?.some((id) => String(id) === String(userId));
+}
+
+async function canSendToConversation(conversation, senderId) {
+  if (conversation.type !== 'dm') return null;
+  const otherId = conversation.participants.find((id) => String(id) !== String(senderId));
+  const other = await User.findById(otherId);
+  if (!other || await isBlockedEitherWay(senderId, otherId)) return { status: 403, message: 'Direct messages are unavailable for this conversation.' };
+  if (other.privacy?.allowDirectMessages === false) return { status: 403, message: 'This user is not accepting direct messages.' };
+  return null;
+}
+
+// Deep-link resolution checks membership, including for a message outside the first page.
+async function getMessage(req, res) {
+  const { conversation, error } = await loadConversationForUser(req.params.conversationId, req.user);
+  if (error) return res.status(error.status).json({ error: error.message });
+  const message = await loadMessageInConversation(conversation, req.params.messageId);
+  if (!message || hiddenFor(message, req.userId)) return res.status(404).json({ error: 'Message not found.' });
+  await message.populate('sender', SENDER_FIELDS);
+  await message.populate({ path: 'replyTo', populate: { path: 'sender', select: 'profile.username profile.firstName' } });
+  const other = conversation.type === 'dm' ? await ConversationMember.findOne({ conversation: conversation._id, user: { $ne: req.userId } }) : null;
+  return res.json({ message: serializeMessage(message, {
+    viewerId: req.userId, conversationType: conversation.type, otherLastReadAt: other?.lastReadAt,
+    reactions: await summarizeReactions(message._id, req.userId),
+  }) });
+}
+
+async function getChatShareLink(req, res) {
+  const { conversation, error } = await loadConversationForUser(req.params.conversationId, req.user);
+  if (error) return res.status(error.status).json({ error: error.message });
+  let path = `/c/${conversation.id}`;
+  if (req.params.messageId) {
+    const message = await loadMessageInConversation(conversation, req.params.messageId);
+    if (!message || message.deletedForEveryone || hiddenFor(message, req.userId)) return res.status(404).json({ error: 'Message not found.' });
+    path += `/m/${message.id}`;
+  }
+  return res.json({ ...buildContentShare(req, path, 'CosQuest chat', 'Open this conversation in CosQuest.'), requiresAuthentication: true });
 }
 
 // GET /api/chats/:conversationId/messages/:messageId/seen - who has read up to
@@ -630,6 +692,8 @@ module.exports = {
   removeReaction,
   getMessageSeenBy,
   forwardMessage,
+  getMessage,
+  getChatShareLink,
   loadConversationForUser,
   loadMessageInConversation,
 };

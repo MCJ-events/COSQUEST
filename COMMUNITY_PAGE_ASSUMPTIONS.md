@@ -1,5 +1,7 @@
 # CosQuest Community Page — API Gap Analysis & Assumptions
 
+> Current signup, comments/replies, chat links/files, Spotlight, and Settings contract: [COMMUNITY_SETTINGS_API.md](COMMUNITY_SETTINGS_API.md). That guide supersedes older examples and deferred-feature notes below for these features.
+
 This note maps the three Community tabs (Feeds, Chats, Spotlight) to the `cosquest-backend` API, records what's built, and what's still deferred. Kept outside `cosquest-backend`, alongside [PROFILE_PAGE_ASSUMPTIONS.md](PROFILE_PAGE_ASSUMPTIONS.md) and [API_USAGE_AND_FLOWS.md](API_USAGE_AND_FLOWS.md).
 
 ## Feeds tab — done
@@ -59,15 +61,9 @@ Built as a new subsystem: `Conversation`, `ConversationMember`, `Message`, `Mess
 - Each faction now has a static `description` and `perks` list, plus live `memberCount` and `activeQuestCount`, and a `GET /api/factions/:key/members` preview (see `PROFILE_PAGE_ASSUMPTIONS.md`). `Quest.faction` is an optional label (confirmed: it never restricts who can register - anyone can join any quest regardless of faction) set only by whoever seeds/creates the quest, since there's no quest-creation API yet; it's `null`/uncounted until a real quest is tagged, so `activeQuestCount` is genuinely `0` for every faction right now.
 - `POST /api/chats/dm` still requires an **exact username** — the fuzzy "search people by name" endpoint for the "+" picker (`GET /api/users/search`) exists now (see the Chats tab table above) but `startDirectMessage` itself is unchanged; the picker is expected to call search first, then `POST /api/chats/dm` with the exact username it found. (This is a different endpoint from followers/following search — see `PROFILE_PAGE_ASSUMPTIONS.md`.)
 
-## Spotlight tab — not started, deferred as requested
+## Spotlight tab — ranking implemented; earning and levels deferred
 
-Still blocked on a points system that doesn't exist. `User.pointsBalance` exists but nothing increments it — `PROFILE_PAGE_ASSUMPTIONS.md` already flags the points ledger as "intentionally not implemented yet."
-
-Needed later, in order:
-1. **What earns points** — quest completion? winning? posting? likes received? Needs an explicit answer before any leaderboard number means anything.
-2. **A `PointsTransaction` ledger** rather than incrementing `pointsBalance` directly.
-3. **A level formula** — a points-threshold table for "Level 1," "Level 2," etc.
-4. **Leaderboard endpoints** — global top-N for the podium, plus per-interest ("realm") boards using the existing `interests[]` field, with each user's rank computed as `countDocuments({ interests: key, pointsBalance: { $gt: user.pointsBalance } }) + 1`.
+`GET /api/spotlight/leaderboard` now ranks existing `pointsBalance` values, with top-three podium, caller rank, pagination, ties, and an optional interest filter. `GET /api/spotlight/realms` lists filter keys. Point-award rules, a ledger, and level thresholds remain deferred at the user's request. See the current contract linked above.
 
 ## Net new surface area (built)
 
@@ -78,7 +74,7 @@ Needed later, in order:
 
 ## Still deferred
 
-- Spotlight/leaderboard/points/levels (next, per above).
+- Point earning, a points ledger, and level rules. Leaderboard ranking is implemented.
 - Hashtag indexing/search.
 - Voice/video calling (WebRTC).
 - Reporting and mute for chats (blocking itself is implemented — see the Chats tab table above and `PROFILE_PAGE_ASSUMPTIONS.md`).

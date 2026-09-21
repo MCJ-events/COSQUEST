@@ -64,18 +64,24 @@ const postUpload = multer({
 });
 
 const AUDIO_TYPES = ['audio/mpeg', 'audio/mp4', 'audio/m4a', 'audio/webm', 'audio/ogg', 'audio/wav', 'audio/x-wav'];
-const CHAT_MEDIA_TYPES = [...ALLOWED_TYPES, ...AUDIO_TYPES];
+const DOCUMENT_TYPES = [
+  'application/pdf', 'text/plain', 'text/csv',
+  'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+];
+const CHAT_MEDIA_TYPES = [...ALLOWED_TYPES, ...AUDIO_TYPES, ...DOCUMENT_TYPES];
 
-// Chat messages carry at most one attachment: an image or a voice note.
+// One image, voice note, or document per message, up to 10 MB.
 const chatUpload = multer({
   storage,
   limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     if (!CHAT_MEDIA_TYPES.includes(file.mimetype)) {
-      return cb(invalidFileType(`Chat attachments must be JPEG, PNG, WEBP, GIF, or a voice note (MP3, M4A, WEBM, OGG, or WAV) (received "${file.mimetype}").`));
+      return cb(invalidFileType('Chat attachments must be an image, voice note, PDF, text, CSV, or Office document.'));
     }
     cb(null, true);
   },
 });
 
-module.exports = { upload, postUpload, chatUpload, uploadDir };
+module.exports = { upload, postUpload, chatUpload, uploadDir, DOCUMENT_TYPES };

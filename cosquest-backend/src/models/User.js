@@ -27,6 +27,7 @@ const userSchema = new mongoose.Schema(
     tokenVersion: { type: Number, default: 0 },
 
     profile: {
+      displayName: { type: String, default: '', trim: true, maxlength: 80 },
       firstName: { type: String, default: '' },
       lastName: { type: String, default: '' },
       username: { type: String, default: '' },
@@ -46,6 +47,22 @@ const userSchema = new mongoose.Schema(
     // The balance is read by the profile page now. A points ledger/reward
     // system can safely award or deduct points later without changing the API.
     pointsBalance: { type: Number, default: 0, min: 0 },
+    // Private account details, distinct from public Contact Options.
+    account: {
+      phone: { type: String, default: '' },
+      dateOfBirth: { type: String, default: null },
+    },
+    appearance: {
+      themeMode: { type: String, enum: ['light', 'dark', 'system'], default: 'system' },
+      accentColor: { type: String, default: '#ca4aa0' },
+      fontSize: { type: String, enum: ['small', 'medium', 'large'], default: 'medium' },
+      reduceMotion: { type: Boolean, default: false },
+    },
+    dataUsage: {
+      downloadOverWifiOnly: { type: Boolean, default: true },
+      autoPlayVideos: { type: Boolean, default: true },
+      imageQuality: { type: String, enum: ['low', 'medium', 'high', 'auto'], default: 'high' },
+    },
     // Separate from the private account email. These are deliberately public
     // details entered by the user on the Contact options screen.
     contact: {
@@ -62,9 +79,14 @@ const userSchema = new mongoose.Schema(
       // only matter once that master switch (or, for email, real email
       // sending infrastructure - not built yet) is on.
       emailWeeklyNewsletter: { type: Boolean, default: false },
+      emailPromotionalEvents: { type: Boolean, default: false },
     },
     notificationCategories: {
       eventReminders: { type: Boolean, default: true },
+      questUpdates: { type: Boolean, default: true },
+      factionNews: { type: Boolean, default: false },
+      friendActivity: { type: Boolean, default: true },
+      rankChanges: { type: Boolean, default: true },
     },
     // Mirrors the Settings > Privacy & Visibility screen. Defaults match the
     // fully-public behavior every existing account already had.
@@ -72,6 +94,8 @@ const userSchema = new mongoose.Schema(
       profileVisibility: { type: String, enum: ['public', 'friends', 'private'], default: 'public' },
       showActivityFeed: { type: Boolean, default: true },
       allowDirectMessages: { type: Boolean, default: true },
+      showOnlineStatus: { type: Boolean, default: true },
+      allowFriendRequests: { type: Boolean, default: true },
     },
     // The user's own device coordinates, captured during onboarding - separate
     // from DASHBOARD_DEFAULT_LAT/LNG, which is now only a fallback for an
@@ -107,5 +131,7 @@ const userSchema = new mongoose.Schema(
 
 // `sparse` lets accounts exist before their profile step assigns a username.
 userSchema.index({ 'profile.usernameNormalized': 1 }, { unique: true, sparse: true });
+userSchema.index({ onboardingComplete: 1, pointsBalance: -1, _id: 1 });
+userSchema.index({ onboardingComplete: 1, interests: 1, pointsBalance: -1, _id: 1 });
 
 module.exports = mongoose.model('User', userSchema);

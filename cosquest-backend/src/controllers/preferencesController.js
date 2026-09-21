@@ -31,9 +31,14 @@ function validateLocationInput({ locationEnabled, radiusMiles, lat, lng }) {
 // PATCH /api/users/me/preferences/notifications
 async function updateNotificationPrefs(req, res) {
   const { notificationsEnabled, eventReminders, emailWeeklyNewsletter } = req.body;
+  const extraCategories = ['questUpdates', 'factionNews', 'friendActivity', 'rankChanges'];
+  const extraFields = [...extraCategories, 'emailPromotionalEvents'];
+  for (const key of extraFields) {
+    if (req.body[key] !== undefined && typeof req.body[key] !== 'boolean') return res.status(400).json({ error: `${key} must be a boolean.` });
+  }
   // The master switch is required on its own during onboarding (step 4);
   // afterward, the Settings screen can flip any one of these independently.
-  if (notificationsEnabled === undefined && eventReminders === undefined && emailWeeklyNewsletter === undefined) {
+  if (notificationsEnabled === undefined && eventReminders === undefined && emailWeeklyNewsletter === undefined && !extraFields.some((key) => req.body[key] !== undefined)) {
     return res.status(400).json({ error: 'notificationsEnabled (boolean) is required.' });
   }
   if (notificationsEnabled !== undefined && typeof notificationsEnabled !== 'boolean') {
@@ -54,6 +59,10 @@ async function updateNotificationPrefs(req, res) {
     // Preference only - no email actually gets sent yet (no email
     // infrastructure exists in this backend), see COMMUNITY/SETTINGS docs.
     if (emailWeeklyNewsletter !== undefined) user.preferences.emailWeeklyNewsletter = emailWeeklyNewsletter;
+    for (const key of extraCategories) {
+      if (req.body[key] !== undefined) user.notificationCategories[key] = req.body[key];
+    }
+    if (req.body.emailPromotionalEvents !== undefined) user.preferences.emailPromotionalEvents = req.body.emailPromotionalEvents;
   });
   return res.json({ user: userModel.sanitize(updated) });
 }
@@ -225,7 +234,7 @@ async function completeOnboarding(req, res) {
     user.onboardingComplete = true;
   });
 
-  return res.json({ message: 'Onboarding complete.', user: userModel.sanitize(updated) });
+  return res.json({ message: 'Onboarding complete.', onboardingRequired: false, user: userModel.sanitize(updated) });
 }
 
 module.exports = { updateNotificationPrefs, updateLocationPrefs, registerDevice, completeOnboarding };

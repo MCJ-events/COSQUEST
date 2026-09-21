@@ -1,5 +1,7 @@
 # CosQuest Profile Page — Product Assumptions
 
+> Current signup, comments/replies, chat links/files, Spotlight, and Settings contract: [COMMUNITY_SETTINGS_API.md](COMMUNITY_SETTINGS_API.md). That guide supersedes older examples and deferred-feature notes below for these features.
+
 This note records the agreed assumptions for the Profile page. It is kept outside `cosquest-backend` so it is product documentation, not application code.
 
 ## What the profile represents

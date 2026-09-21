@@ -8,6 +8,8 @@ const apiRoutes = require('./src/routes');
 const shareRoutes = require('./src/routes/shareRoutes');
 const { connectDB } = require('./src/config/db');
 const { notFound, errorHandler } = require('./src/middleware/errorHandler');
+const { asyncHandler } = require('./src/utils/asyncHandler');
+const { renderPostShare, renderChatShare } = require('./src/controllers/contentShareController');
 
 function buildApp() {
   const app = express();
@@ -22,6 +24,9 @@ function buildApp() {
   // Shareable profile pages - real HTML with Open Graph tags, not JSON, so a
   // link pasted into Instagram/Facebook/etc. renders a rich preview.
   app.use('/u', shareRoutes);
+  app.get('/p/:postId', asyncHandler(renderPostShare));
+  app.get('/c/:conversationId', renderChatShare);
+  app.get('/c/:conversationId/m/:messageId', renderChatShare);
 
   app.use('/api', apiRoutes);
 

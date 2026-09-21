@@ -1,5 +1,7 @@
 # CosQuest API Usage Examples and Flows
 
+> Current signup, comments/replies, chat links/files, Spotlight, and Settings contract: [COMMUNITY_SETTINGS_API.md](COMMUNITY_SETTINGS_API.md). That guide supersedes older examples and deferred-feature notes below for these features.
+
 This document reflects the current backend routes. Base URL in Postman:
 
 ```text
@@ -14,7 +16,7 @@ Use collection variables instead of placing passwords or tokens directly in ever
 email          test@example.com
 username       test_user
 password       AStrongPassword!1
-accessToken    set from a successful login or OAuth exchange
+accessToken    set from signup, login, OAuth exchange, or a credential change
 targetUsername another_user
 questId        copied from GET /api/quests
 postId         copied from a post response
@@ -38,9 +40,9 @@ Important: creation endpoints correctly return **201**, not 200. A duplicate lik
 ## Recommended end-to-end flow
 
 1. Call public reference endpoints: avatars, factions, interests, and categories.
-2. Sign up with an email **or** a username and a strong password. Signup returns 201 but no token.
+2. Sign up with an email **or** a username and a strong password. Signup returns 201 with `token` and `onboardingRequired: true`. Save the token immediately.
 3. Complete onboarding using the email/username from signup (or use a token if the user already has one). It requires name, username, age, gender, an avatar or uploaded photo, faction, at least one interest, an explicit notification choice, and enabled location with real coordinates. (Sign in works even before this step now - see step 4 - but nothing beyond onboarding itself is usable until it's done.)
-4. Sign in. Save `token` from the response into `{{accessToken}}`. This works as soon as the account exists with a correct password, even mid-onboarding - check the response's `onboardingRequired` to know whether to route to onboarding or the main app.
+4. Onboarding completion returns `onboardingRequired: false`. Continue into the app using the same signup token; no extra login is needed. Returning users can still use Login.
 5. Use Bearer-protected profile, dashboard, social, post, quest, notification, and points endpoints.
 6. To test a post lifecycle: create a thought → copy `post.id` → like/comment/read/update/delete → copy `comment.id` before deleting it.
 7. To test a quest lifecycle: list quests → copy a published quest ID → register → view profile quest history → cancel registration.
@@ -56,7 +58,7 @@ Important: creation endpoints correctly return **201**, not 200. A duplicate lik
 
 | Method and URL | Login? | Usage |
 | --- | --- | --- |
-| `POST /api/auth/signup` | Public | Create an email-or-username account. Returns `201`, no token yet. If that identifier already exists **and its onboarding was never finished**, returns `200` with `resumed: true` and the existing (partial) user instead of an error - the same account, picked back up. Returns `409` only if the existing account already completed onboarding. |
+| `POST /api/auth/signup` | Public | Creates and signs in the account: `201` with `token`, `onboardingRequired: true`, and user. An incomplete account resumes with `200` only after checking its existing password. Completed accounts return `409`; incorrect resume credentials return `401`. |
 | `POST /api/auth/login` | Public | Sign in with a valid password, whether or not onboarding is finished. Returns `200` with `token` and `onboardingRequired` (`true` if onboarding still isn't done - use that token to continue it; `requireCompletedOnboarding` still blocks every real feature until it's actually finished). |
 | `POST /api/auth/logout` | Bearer | Invalidates current tokens for the account. Returns `200`. |
 | `GET /api/auth/oauth/google` | Public | Browser redirect to Google. Expected browser redirect, not a JSON 200 response. |
@@ -293,7 +295,7 @@ GET {{baseUrl}}/api/users/{{targetUsername}}/profile
 | `GET /api/users/me/bookmarks?page=1&limit=20` | Bearer + completed onboarding | List my saved posts, newest bookmark first. |
 | `GET /api/posts/:postId/comments?page=1&limit=20` | Public | Read public **top-level** comments (omit `parentComment`), each with a `replyCount`. |
 | `GET /api/posts/:postId/comments?parentComment=:commentId&page=1&limit=20` | Public | Read the replies under one specific top-level comment. |
-| `POST /api/posts/:postId/comments` | Bearer + completed onboarding | Create a public 1–500 character comment. Add `parentComment: "{{commentId}}"` to reply under an existing top-level comment - one level of nesting only, so replying to a reply is `400`. Returns `201`. |
+| `POST /api/posts/:postId/comments` | Bearer + completed onboarding | Create a public 1–500 character comment. Add `parentComment: "{{commentId}}"` to reply under an existing top-level comment - replies to replies stay in the root thread, with `replyToComment` recording the exact target. Returns `201`. |
 | `DELETE /api/posts/:postId/comments/:commentId` | Bearer + completed onboarding | Comment author only. Deleting a top-level comment cascades to delete its replies too. |
 
 Create a thought: choose **raw → JSON**.
@@ -318,7 +320,7 @@ Create comment body:
 { "body": "This cosplay looks amazing!" }
 ```
 
-Reply to a comment body (`parentComment` must be a top-level comment on the same post - a reply cannot itself be replied to):
+Reply to a comment body (`parentComment` can be any comment or reply on the same post):
 
 ```json
 { "body": "Thanks, glad you like it!", "parentComment": "{{commentId}}" }

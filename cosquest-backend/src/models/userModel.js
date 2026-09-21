@@ -81,7 +81,7 @@ async function updateUser(id, patchFn) {
 function sanitize(user) {
   if (!user) return null;
   const obj = user.toObject ? user.toObject() : user;
-  const { passwordHash, tokenVersion, __v, _id, onboarding, ...safe } = obj;
+  const { passwordHash, tokenVersion, __v, _id, onboarding, account, ...safe } = obj;
   if (safe.profile) delete safe.profile.usernameNormalized;
   safe.id = String(_id);
   return safe;
