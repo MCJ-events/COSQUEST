@@ -1,26 +1,30 @@
 /**
  * Runs the full smoke suite against a throwaway server instance backed by
  * an ephemeral, real, in-memory MongoDB (downloaded/managed automatically
- * by mongodb-memory-server - no MongoDB install, Atlas account, or
- * already-running server required). This is what `npm test` runs.
+ * by mongodb-memory-server) and an ephemeral, real Redis (same idea, via
+ * redis-memory-server) - no MongoDB or Redis install, Atlas/cloud account,
+ * or already-running server required. This is what `npm test` runs.
  *
- * It does NOT touch your real .env / MONGODB_URI / PORT - everything here
- * is set explicitly before the app is required, so it can safely run
- * alongside (or instead of) a real dev server without colliding.
+ * It does NOT touch your real .env / MONGODB_URI / REDIS_URL / PORT -
+ * everything here is set explicitly before the app is required, so it can
+ * safely run alongside (or instead of) a real dev server without colliding.
  */
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { MongoMemoryServer } = require('mongodb-memory-server');
+const { RedisMemoryServer } = require('redis-memory-server');
 
 async function main() {
   const mongod = await MongoMemoryServer.create();
+  const redisd = await RedisMemoryServer.create();
 
   // Isolated per-run temp folder so the smoke suite's real avatar-photo
   // upload test doesn't leave junk files behind in the project's own uploads/.
   const tmpUploadDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cosquest-test-uploads-'));
 
   process.env.MONGODB_URI = mongod.getUri();
+  process.env.REDIS_URL = `redis://${await redisd.getHost()}:${await redisd.getPort()}`;
   process.env.NODE_ENV = 'test';
   process.env.CLOUDINARY_CLOUD_NAME = 'test-cloud'; // no real Cloudinary call in tests
   process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-only-secret-not-for-production';
@@ -31,6 +35,8 @@ async function main() {
 
   const { startServer } = require('../server');
   const { disconnectDB } = require('../src/config/db');
+  const { disconnectRedis } = require('../src/config/redis');
+  const { closeSocket } = require('../src/realtime/socket');
   const server = await startServer();
 
   const { run } = require('./smoke');
@@ -48,12 +54,15 @@ async function main() {
     result.fail += discovery.fail;
   } finally {
     await new Promise((resolve) => server.close(resolve));
+    await closeSocket(); // quits the adapter's dedicated pub/sub Redis connections - see socket.js
     await disconnectDB();
+    await disconnectRedis();
     await mongod.stop();
+    await redisd.stop();
     fs.rmSync(tmpUploadDir, { recursive: true, force: true });
   }
 
-  console.log(`[integration] ran against an ephemeral in-memory MongoDB - ${result.pass} passed, ${result.fail} failed`);
+  console.log(`[integration] ran against an ephemeral in-memory MongoDB + Redis - ${result.pass} passed, ${result.fail} failed`);
   process.exit(result.fail > 0 ? 1 : 0);
 }
 

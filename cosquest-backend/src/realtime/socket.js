@@ -1,6 +1,9 @@
 const { Server } = require('socket.io');
+const { createAdapter } = require('@socket.io/redis-adapter');
 const { verifyToken } = require('../utils/token');
 const userModel = require('../models/userModel');
+const { duplicateRedisClient } = require('../config/redis');
+const { markOnline, markOffline, notifyPresenceChange } = require('./presence');
 // NOT required at top level: chatController.js requires this file back (to
 // emit events after a mutation), so requiring it here up-front would create
 // a load-order circle. Required lazily inside initSocket() instead, which
@@ -10,7 +13,7 @@ const userModel = require('../models/userModel');
 /**
  * Real-time layer for everything that needs an instant push instead of the
  * client polling REST: new/edited/deleted chat messages, reactions, read
- * receipts, typing indicators, and (optionally) notifications.
+ * receipts, typing indicators, presence, and notifications.
  *
  * This does NOT replace the REST API - every mutation still goes through
  * the normal controllers (auth, validation, persistence). Socket.IO is only
@@ -22,23 +25,51 @@ const userModel = require('../models/userModel');
  * Rooms:
  *  - `user:<userId>`         every socket for a given account joins this on
  *                             connect - used for account-wide pushes
- *                             (notifications, DM previews) that don't need
- *                             the client to have a conversation open.
+ *                             (notifications, DM previews, presence) that
+ *                             don't need the client to have a conversation
+ *                             open.
  *  - `conversation:<id>`     joined on request (`conversation:join`) after
  *                             the same membership check the REST layer uses
  *                             (loadConversationForUser), so someone can't
  *                             listen in on a faction room they're not in or
  *                             a DM that isn't theirs.
+ *
+ * Multi-instance: `io.to(room).emit(...)` only reaches sockets connected to
+ * *this* process by default - if this ever runs as more than one server
+ * process (behind a load balancer, multiple dynos/pods), a message saved by
+ * the process handling the REST call would never reach a recipient whose
+ * socket happens to be connected to a different process. The Redis adapter
+ * below fixes that: every instance publishes emitted events to Redis, and
+ * every instance (including the one that emitted) subscribes and
+ * re-broadcasts to its own local sockets, so `emitToConversation` etc. work
+ * the same regardless of how many processes are running or which one
+ * handled the originating HTTP request. Presence (see ./presence.js) uses
+ * the same Redis connection for the same reason: "who's online" has to be
+ * one shared answer, not one guess per process.
  */
 
 let io = null;
+let adapterClients = null; // { pubClient, subClient } - kept for closeSocket() to clean up on shutdown
 
-function initSocket(httpServer) {
+async function initSocket(httpServer) {
   const { loadConversationForUser } = require('../controllers/chatController');
 
   io = new Server(httpServer, {
     cors: { origin: '*' }, // tighten to your real frontend origin(s) in production
   });
+
+  const pubClient = duplicateRedisClient();
+  const subClient = duplicateRedisClient();
+  // Without a listener, an 'error' event on either connection (e.g. a Redis
+  // network blip) is an uncaught exception that crashes the whole process -
+  // ioredis warns about this loudly ("missing 'error' handler") for exactly
+  // that reason. ioredis auto-reconnects on its own; these just stop it from
+  // being fatal.
+  pubClient.on('error', (err) => console.error('[socket] redis pub client error:', err.message));
+  subClient.on('error', (err) => console.error('[socket] redis sub client error:', err.message));
+  await Promise.all([pubClient.connect(), subClient.connect()]);
+  io.adapter(createAdapter(pubClient, subClient));
+  adapterClients = { pubClient, subClient };
 
   // Handshake auth: client connects with `io(url, { auth: { token: '<JWT>' } })`,
   // the same bearer token already used for REST. Mirrors requireAuth in
@@ -62,6 +93,23 @@ function initSocket(httpServer) {
 
   io.on('connection', (socket) => {
     socket.join(`user:${socket.userId}`);
+
+    // Presence: only announce on the actual 0->1 / 1->0 transition (see
+    // presence.js), so opening a second tab doesn't re-announce "online" and
+    // closing one of several doesn't falsely announce "offline".
+    markOnline(socket.userId)
+      .then((justCameOnline) => {
+        if (justCameOnline) return notifyPresenceChange(io, socket.userId, 'presence:online');
+      })
+      .catch((err) => console.error('[socket] presence online update failed:', err.message));
+
+    socket.on('disconnect', () => {
+      markOffline(socket.userId)
+        .then((justWentOffline) => {
+          if (justWentOffline) return notifyPresenceChange(io, socket.userId, 'presence:offline');
+        })
+        .catch((err) => console.error('[socket] presence offline update failed:', err.message));
+    });
 
     socket.on('conversation:join', async (conversationId, ack) => {
       const user = await userModel.findById(socket.userId);
@@ -91,6 +139,27 @@ function initSocket(httpServer) {
 
 function getIO() {
   return io;
+}
+
+/**
+ * Shuts the socket layer down cleanly: closes every open socket, then quits
+ * the two dedicated Redis connections the adapter opened in initSocket().
+ * Those are separate from - and NOT closed by - the shared client in
+ * src/config/redis.js (see duplicateRedisClient), so without this they're
+ * simply abandoned: fine for a process that's about to exit anyway (as in
+ * production), but in a long-lived test process they sit there retrying
+ * to reconnect to a Redis that was deliberately shut down, and eventually
+ * print connection errors. Call this before disconnectRedis() on shutdown.
+ */
+async function closeSocket() {
+  if (io) {
+    await new Promise((resolve) => io.close(resolve));
+    io = null;
+  }
+  if (adapterClients) {
+    await Promise.all([adapterClients.pubClient.quit(), adapterClients.subClient.quit()]);
+    adapterClients = null;
+  }
 }
 
 /** Push to everyone currently viewing a conversation (has joined its room). */
@@ -124,4 +193,4 @@ function emitToUsers(userIds, event, payload) {
   io?.to(userIds.map((id) => `user:${id}`)).emit(event, payload);
 }
 
-module.exports = { initSocket, getIO, emitToConversation, emitToConversationExcept, emitToUser, emitToUsers };
+module.exports = { initSocket, getIO, closeSocket, emitToConversation, emitToConversationExcept, emitToUser, emitToUsers };

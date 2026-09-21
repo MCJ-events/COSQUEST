@@ -7,11 +7,12 @@ const cookieParser = require('cookie-parser');
 
 const apiRoutes = require('./src/routes');
 const shareRoutes = require('./src/routes/shareRoutes');
-const { connectDB } = require('./src/config/db');
+const { connectDB, disconnectDB } = require('./src/config/db');
+const { connectRedis, disconnectRedis } = require('./src/config/redis');
 const { notFound, errorHandler } = require('./src/middleware/errorHandler');
 const { asyncHandler } = require('./src/utils/asyncHandler');
 const { renderPostShare, renderChatShare } = require('./src/controllers/contentShareController');
-const { initSocket } = require('./src/realtime/socket');
+const { initSocket, closeSocket } = require('./src/realtime/socket');
 
 function buildApp() {
   const app = express();
@@ -39,13 +40,14 @@ function buildApp() {
 }
 
 /**
- * Connects to MongoDB, then starts listening. Exported (rather than just
- * run at the bottom of this file) so test/runWithMemoryMongo.js can boot
- * the exact same app against an ephemeral in-memory MongoDB instead of a
- * real one - see README "Testing".
+ * Connects to MongoDB and Redis, then starts listening. Exported (rather
+ * than just run at the bottom of this file) so test/runWithMemoryMongo.js
+ * can boot the exact same app against an ephemeral in-memory MongoDB and
+ * Redis instead of real ones - see README "Testing".
  */
 async function startServer() {
   await connectDB();
+  await connectRedis();
   const app = buildApp();
   const PORT = process.env.PORT;
 
@@ -53,7 +55,7 @@ async function startServer() {
   // upgrade HTTP connections to WebSocket on the same port - REST and
   // real-time traffic share one listener, no second port to expose/CORS.
   const httpServer = http.createServer(app);
-  initSocket(httpServer);
+  await initSocket(httpServer);
 
   return new Promise((resolve) => {
     httpServer.listen(PORT, () => {
@@ -63,11 +65,45 @@ async function startServer() {
   });
 }
 
+/**
+ * On SIGTERM/SIGINT (Ctrl+C locally; also what a process manager or a
+ * container/orchestrator platform sends before killing a dyno/pod during a
+ * deploy or restart) close things in dependency order: stop accepting new
+ * HTTP/WebSocket connections first, then the adapter's Redis pub/sub
+ * connections, then the database connections. Without this, every restart
+ * just abandons those connections instead of closing them, which is what
+ * produced the dangling-connection errors this same shutdown path fixes in
+ * test/runWithMemoryMongo.js.
+ */
+function registerGracefulShutdown(httpServer) {
+  let shuttingDown = false;
+  const shutdown = async (signal) => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    console.log(`[server] ${signal} received, shutting down...`);
+    try {
+      await new Promise((resolve) => httpServer.close(resolve));
+      await closeSocket();
+      await disconnectRedis();
+      await disconnectDB();
+      console.log('[server] Shutdown complete.');
+      process.exit(0);
+    } catch (err) {
+      console.error('[server] Error during shutdown:', err.message);
+      process.exit(1);
+    }
+  };
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
+}
+
 if (require.main === module) {
-  startServer().catch((err) => {
-    console.error('Failed to start server:', err.message);
-    process.exit(1);
-  });
+  startServer()
+    .then(registerGracefulShutdown)
+    .catch((err) => {
+      console.error('Failed to start server:', err.message);
+      process.exit(1);
+    });
 }
 
 module.exports = { buildApp, startServer };

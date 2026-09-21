@@ -16,6 +16,40 @@ OAuth starts in the browser at `GET /api/auth/oauth/google` or `GET /api/auth/oa
 
 Signup signs the user in immediately and returns a token. Save it and use Bearer authorization throughout onboarding. Completion unlocks the app using the same token; no extra login is needed. Returning users can also log in before completion and resume onboarding. Legacy identifier-based onboarding examples below remain supported.
 
+### Real-time: WebSockets + Redis
+
+Chat (new/edited/deleted messages, reactions, read receipts, pins, typing), presence (online/offline for DM partners), and notifications push live over Socket.IO instead of requiring the client to poll. Requires `REDIS_URL` in `.env` (a local `redis-server` is enough for development); `npm test` doesn't need one, it spins up its own ephemeral Redis automatically. See `src/realtime/socket.js` and `src/realtime/presence.js`.
+
+Connect with the same bearer token already used for REST:
+
+```js
+const socket = io('http://localhost:6893', { auth: { token } });
+
+socket.emit('conversation:join', conversationId, (ack) => {
+  if (!ack.ok) console.error(ack.error); // same membership check as the REST endpoints
+});
+
+socket.on('message:new', ({ conversationId, message }) => { /* ... */ });
+socket.on('message:edited', ({ conversationId, message }) => { /* ... */ });
+socket.on('message:deleted', ({ conversationId, messageId, scope }) => { /* ... */ }); // scope is always 'everyone' - a 'me' delete has no one else to notify
+socket.on('message:reaction', ({ conversationId, messageId, reactions }) => { /* [{emoji, userId}], not pre-counted - compute your own counts/"mine" locally */ });
+socket.on('chat:read', ({ conversationId, userId, lastReadAt }) => { /* ... */ });
+socket.on('chat:pinned', ({ conversationId, pinnedMessage }) => { /* pinnedMessage is null on unpin */ });
+socket.on('chat:preview', ({ conversationId }) => { /* DM chat list changed - re-fetch GET /api/chats */ });
+socket.on('typing:start', ({ conversationId, userId }) => { /* ... */ });
+socket.on('typing:stop', ({ conversationId, userId }) => { /* ... */ });
+socket.on('notification:new', (notification) => { /* same shape as GET /api/users/me/notifications */ });
+socket.on('presence:online', ({ userId }) => { /* a DM partner just connected */ });
+socket.on('presence:offline', ({ userId }) => { /* a DM partner's last connection just closed */ });
+
+socket.emit('typing:start', conversationId); // and 'typing:stop' - ephemeral, never persisted
+socket.emit('conversation:leave', conversationId);
+```
+
+Anyone who's deleted a specific message "for me" is transparently excluded from live pushes that would reveal it (edits, reactions, pins, replies to it) - same rule the REST endpoints already enforce, just kept honest in real time too.
+
+Runs correctly today as a single server process. If this is ever deployed as more than one instance behind a load balancer, the Socket.IO Redis adapter (already wired up) is what keeps a message saved by one instance reaching a recipient connected to another.
+
 ## Endpoints
 
 ### Auth
