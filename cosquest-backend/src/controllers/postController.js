@@ -7,7 +7,8 @@ const CommentLike = require('../models/CommentLike');
 const PostShare = require('../models/PostShare');
 const PostBookmark = require('../models/PostBookmark');
 const userModel = require('../models/userModel');
-const { storePostMedia, deletePostMedia } = require('../utils/imageHost');
+const { storePostMedia, deletePostMedia, storeChatMedia } = require('../utils/imageHost');
+const { transcribeAudio } = require('../utils/transcribeAudio');
 const { canViewProfile, canViewActivityFeed } = require('./publicProfileController');
 
 const POST_TYPES = ['image', 'reel', 'thought'];
@@ -289,6 +290,7 @@ function serializeComment(comment, likes = { count: 0, mine: false }) {
   return {
     id: String(comment._id),
     body: comment.body,
+    media: comment.media || null,
     author: authorPreview(comment.author),
     parentComment: comment.parentComment ? String(comment.parentComment) : null,
     replyCount: comment.replyCount || 0,
@@ -338,31 +340,87 @@ async function listComments(req, res) {
 }
 
 // POST /api/posts/:postId/comments - pass parentComment to reply under an
-// existing comment or reply. Store every reply under the root thread.
+// existing comment or reply. Store every reply under the root thread. A
+// comment needs body text, a voice attachment, or both.
 async function createComment(req, res) {
+  const file = req.file || null;
   const post = await loadPost(req.params.postId);
-  if (!post) return res.status(404).json({ error: 'Post not found.' });
+  if (!post) {
+    cleanUpLocalFiles(file ? [file] : []);
+    return res.status(404).json({ error: 'Post not found.' });
+  }
   const body = typeof req.body.body === 'string' ? req.body.body.trim() : '';
-  if (!body || body.length > 500) return res.status(400).json({ error: 'A comment must contain 1 to 500 characters.' });
+  if (!body && !file) {
+    return res.status(400).json({ error: 'A comment needs text or a voice attachment.' });
+  }
+  if (body.length > 500) {
+    cleanUpLocalFiles(file ? [file] : []);
+    return res.status(400).json({ error: 'A comment must be at most 500 characters.' });
+  }
+  if (file && !file.mimetype.startsWith('audio/')) {
+    cleanUpLocalFiles([file]);
+    return res.status(400).json({ error: 'A comment attachment must be an audio recording.' });
+  }
+  if (file && file.size > 10 * 1024 * 1024) {
+    cleanUpLocalFiles([file]);
+    return res.status(413).json({ error: 'Voice comments must be at most 10 MB.' });
+  }
 
   let parent = null;
   if (req.body.parentComment) {
-    if (!mongoose.isValidObjectId(req.body.parentComment)) return res.status(404).json({ error: 'Comment not found.' });
+    if (!mongoose.isValidObjectId(req.body.parentComment)) {
+      cleanUpLocalFiles(file ? [file] : []);
+      return res.status(404).json({ error: 'Comment not found.' });
+    }
     parent = await PostComment.findById(req.body.parentComment);
-    if (!parent || String(parent.post) !== String(post._id)) return res.status(404).json({ error: 'Comment not found.' });
+    if (!parent || String(parent.post) !== String(post._id)) {
+      cleanUpLocalFiles(file ? [file] : []);
+      return res.status(404).json({ error: 'Comment not found.' });
+    }
+  }
+
+  let media = null;
+  if (file) {
+    media = await storeChatMedia(file, 'audio');
+    media.transcribing = true;
   }
 
   const rootId = parent ? parent.parentComment || parent._id : null;
-  const comment = await PostComment.create({ post: post._id, author: req.userId, body, parentComment: rootId, replyToComment: parent?._id || null });
+  const comment = await PostComment.create({ post: post._id, author: req.userId, body, media, parentComment: rootId, replyToComment: parent?._id || null });
   const [updated] = await Promise.all([
     Post.findByIdAndUpdate(post._id, { $inc: { commentCount: 1 } }, { new: true }),
     rootId ? PostComment.updateOne({ _id: rootId }, { $inc: { replyCount: 1 } }) : Promise.resolve(),
   ]);
   await comment.populate('author', 'profile.username profile.displayName profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl faction');
+
+  // Fire-and-forget, same as chat's voice notes - nobody waits on Deepgram
+  // before their voice comment finishes posting.
+  if (media?.url) {
+    transcribeAndSaveComment(comment._id, media.url).catch((err) => {
+      console.error('Comment voice transcription failed:', err);
+    });
+  }
+
   return res.status(201).json({
     comment: serializeComment(comment),
     commentCount: updated.commentCount,
   });
+}
+
+// Runs independently of the create response. Posts have no realtime layer
+// (unlike chat), so the transcript simply lands on the comment for the next
+// GET /api/posts/:postId/comments - no socket broadcast to wire up.
+async function transcribeAndSaveComment(commentId, audioUrl) {
+  let transcript = '';
+  try {
+    transcript = await transcribeAudio(audioUrl);
+  } catch (err) {
+    console.error('Deepgram transcription request failed:', err);
+  }
+  await PostComment.findOneAndUpdate(
+    { _id: commentId, 'media.url': audioUrl },
+    { $set: { 'media.transcript': transcript || null, 'media.transcribing': false } }
+  );
 }
 
 // Deleting a top-level comment cascades to its replies (they can't exist without it).
@@ -373,9 +431,12 @@ async function deleteComment(req, res) {
   if (String(comment.author) !== String(req.userId)) return res.status(403).json({ error: 'You can only delete your own comment.' });
 
   const query = comment.parentComment ? { _id: comment._id } : { $or: [{ _id: comment._id }, { parentComment: comment._id }] };
-  const removedIds = (await PostComment.find(query).select('_id')).map((item) => item._id);
+  const removedComments = await PostComment.find(query).select('_id media');
+  const removedIds = removedComments.map((item) => item._id);
   const removed = await PostComment.deleteMany(query);
   await CommentLike.deleteMany({ comment: { $in: removedIds } });
+  const removedMedia = removedComments.filter((item) => item.media).map((item) => item.media);
+  if (removedMedia.length) await deletePostMedia(removedMedia);
   if (comment.parentComment) {
     await PostComment.updateOne({ _id: comment.parentComment }, { $inc: { replyCount: -1 } });
   }

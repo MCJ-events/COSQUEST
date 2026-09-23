@@ -1,6 +1,6 @@
 const express = require('express');
 const { requireAuth, optionalAuth, requireCompletedOnboarding } = require('../middleware/auth');
-const { postUpload } = require('../middleware/upload');
+const { postUpload, chatUpload } = require('../middleware/upload');
 const { asyncHandler } = require('../utils/asyncHandler');
 const { getPostShareLink } = require('../controllers/contentShareController');
 const {
@@ -39,7 +39,7 @@ router.post('/posts/:postId/bookmarks', requireAuth, requireCompletedOnboarding,
 router.delete('/posts/:postId/bookmarks', requireAuth, requireCompletedOnboarding, asyncHandler(unbookmarkPost));
 router.get('/users/me/bookmarks', requireAuth, requireCompletedOnboarding, asyncHandler(listMyBookmarks));
 router.get('/posts/:postId/comments', asyncHandler(optionalAuth), asyncHandler(listComments));
-router.post('/posts/:postId/comments', requireAuth, requireCompletedOnboarding, asyncHandler(createComment));
+router.post('/posts/:postId/comments', requireAuth, requireCompletedOnboarding, chatUpload.single('media'), asyncHandler(createComment));
 router.delete('/posts/:postId/comments/:commentId', requireAuth, requireCompletedOnboarding, asyncHandler(deleteComment));
 router.post('/posts/:postId/comments/:commentId/likes', requireAuth, requireCompletedOnboarding, asyncHandler(setCommentLike));
 router.delete('/posts/:postId/comments/:commentId/likes', requireAuth, requireCompletedOnboarding, asyncHandler(setCommentLike));
