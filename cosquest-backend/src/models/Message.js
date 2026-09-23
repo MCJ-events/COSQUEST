@@ -10,6 +10,8 @@ const messageMediaSchema = new mongoose.Schema(
     mimeType: { type: String, default: null },
     sizeBytes: { type: Number, default: null },
     waveform: { type: [Number], default: undefined },
+    transcript: { type: String, default: null },
+    transcribing: { type: Boolean, default: false },
   },
   { _id: false }
 );

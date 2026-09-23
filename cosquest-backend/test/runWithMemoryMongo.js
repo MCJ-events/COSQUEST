@@ -33,6 +33,8 @@ async function main() {
   process.env.UPLOAD_DIR = process.env.UPLOAD_DIR || tmpUploadDir;
   process.env.PUBLIC_UPLOAD_PATH = process.env.PUBLIC_UPLOAD_PATH || '/uploads';
 
+  // Attachment fixtures use fake hosted audio; never submit them to Deepgram.
+  require('../src/utils/transcribeAudio').transcribeAudio = async () => 'Test voice note.';
   const { startServer } = require('../server');
   const { disconnectDB } = require('../src/config/db');
   const { disconnectRedis } = require('../src/config/redis');

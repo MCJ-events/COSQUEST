@@ -9,6 +9,7 @@ const userModel = require('../models/userModel');
 const { getFaction } = require('../models/factionModel');
 const { storeChatMedia } = require('../utils/imageHost');
 const { validateChatMedia } = require('../utils/chatMedia');
+const { transcribeAudio } = require('../utils/transcribeAudio');
 const { buildContentShare } = require('../utils/shareLinks');
 const { isBlockedEitherWay } = require('./publicProfileController');
 const { emitToConversation, emitToConversationExcept, emitToUsers } = require('../realtime/socket');
@@ -390,6 +391,7 @@ async function createMessage(req, res) {
   if (file) {
     media = await storeChatMedia(file, kind);
     if (waveform) media.waveform = waveform;
+    if (kind === 'audio') media.transcribing = true;
   }
 
   let message = await Message.create({ conversation: conversation._id, sender: req.userId, kind, content, media, replyTo });
@@ -423,7 +425,51 @@ async function createMessage(req, res) {
     emitToUsers(conversation.participants.map(String), 'chat:preview', { conversationId: conversation.id });
   }
 
+  if (kind === 'audio' && media?.url) {
+    transcribeAndSaveVoiceNote(message._id, conversation, media.url).catch((err) => {
+      console.error('Voice note transcription failed:', err);
+    });
+  }
+
   return res.status(201).json({ message: serialized });
+}
+
+// Runs independently of the send response. Only update transcription fields,
+// preserving edits and deletions made while Deepgram was processing the audio.
+async function transcribeAndSaveVoiceNote(messageId, conversation, audioUrl) {
+  let transcript = '';
+  try {
+    transcript = await transcribeAudio(audioUrl);
+  } catch (err) {
+    console.error('Deepgram transcription request failed:', err);
+  }
+
+  const message = await Message.findOneAndUpdate(
+    { _id: messageId, kind: 'audio', 'media.url': audioUrl },
+    { $set: { 'media.transcript': transcript || null, 'media.transcribing': false } },
+    { new: true }
+  );
+  if (!message || message.deletedForEveryone) return;
+
+  const senderId = message.sender;
+  await message.populate('sender', SENDER_FIELDS);
+  if (message.replyTo) {
+    await message.populate({ path: 'replyTo', populate: { path: 'sender', select: 'profile.username profile.firstName' } });
+  }
+  const otherMember = conversation.type === 'dm'
+    ? await ConversationMember.findOne({ conversation: conversation._id, user: { $ne: senderId } })
+    : null;
+  const serialized = serializeMessage(message, {
+    viewerId: senderId,
+    conversationType: conversation.type,
+    otherLastReadAt: otherMember?.lastReadAt || null,
+    reactions: await rawReactions(message._id),
+  });
+  const excludeFromBroadcast = [...new Set([...deletedForIds(message), ...deletedForIds(message.replyTo)])];
+  emitToConversationExcept(conversation.id, excludeFromBroadcast, 'message:edited', {
+    conversationId: conversation.id,
+    message: serialized,
+  });
 }
 
 // PATCH /api/chats/:conversationId/messages/:messageId - sender-only, text edits.
@@ -697,6 +743,13 @@ async function forwardCopy(original, targetConversation, userId) {
   emitToConversation(targetConversation.id, 'message:new', { conversationId: targetConversation.id, message: serialized });
   if (targetConversation.type === 'dm') {
     emitToUsers(targetConversation.participants.map(String), 'chat:preview', { conversationId: targetConversation.id });
+  }
+
+  // A copy made before transcription finishes needs its own completion.
+  if (message.kind === 'audio' && message.media?.transcribing && message.media.url) {
+    transcribeAndSaveVoiceNote(message._id, targetConversation, message.media.url).catch((err) => {
+      console.error('Forwarded voice note transcription failed:', err);
+    });
   }
 
   return {

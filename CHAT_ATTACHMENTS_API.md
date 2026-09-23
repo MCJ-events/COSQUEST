@@ -40,6 +40,14 @@ multipart/form-data:
 
 `waveform` is optional display data: a JSON array of 1-128 finite values between 0 and 1. Only audio accepts it. The backend does not generate waveform samples. Duration is read from the media provider, not accepted from a client duration field. Stickers, video, and waveform metadata survive forwarding. Error `400` means invalid type/kind/fields; `413` means too large. Do not manually set multipart Content-Type in fetch—the runtime must set its boundary.
 
+## Voice-note transcription
+
+Set `DEEPGRAM_API_KEY` in the backend environment. New audio messages return immediately with `media.transcribing: true` and `media.transcript: null`. The backend sends the hosted audio URL to [Deepgram's pre-recorded transcription API](https://developers.deepgram.com/reference/speech-to-text/listen-pre-recorded) using Nova-2 and smart formatting.
+
+When processing finishes, the backend stores the transcript, clears `transcribing`, and emits `message:edited` with the updated message. Clients can also retrieve these fields on their next message fetch. Empty transcripts and failed requests leave `transcript: null` and clear `transcribing`; requests time out after 60 seconds. Forwarding preserves completed transcripts; copies made while processing receive their own transcription job.
+
+These jobs run in the server process. A server restart can interrupt pending transcription; automatic retries and a durable job queue are not included.
+
 ## Timed pin
 
 ```http
