@@ -26,6 +26,7 @@
     "ioredis": "^6.0.0",
     "jose": "^6.2.10",
     "jsonwebtoken": "^9.0.2",
+    "livekit-server-sdk": "^2.19.1",
     "mongoose": "^8.7.0",
     "multer": "^2.0.1",
     "rate-limit-redis": "^4.3.1",

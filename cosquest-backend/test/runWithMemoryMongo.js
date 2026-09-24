@@ -32,6 +32,9 @@ async function main() {
   process.env.PORT = '4111'; // deliberately not 4000, so it can't collide with a real dev server
   process.env.UPLOAD_DIR = process.env.UPLOAD_DIR || tmpUploadDir;
   process.env.PUBLIC_UPLOAD_PATH = process.env.PUBLIC_UPLOAD_PATH || '/uploads';
+  process.env.LIVEKIT_URL = 'wss://test.livekit.invalid';
+  process.env.LIVEKIT_API_KEY = 'test-api-key';
+  process.env.LIVEKIT_API_SECRET = 'test-api-secret-with-enough-entropy';
 
   // Attachment fixtures use fake hosted audio; never submit them to Deepgram.
   require('../src/utils/transcribeAudio').transcribeAudio = async () => 'Test voice note.';
@@ -54,6 +57,9 @@ async function main() {
     const discovery = await require('./discoverUsers').run(`http://localhost:${process.env.PORT}`);
     result.pass += discovery.pass;
     result.fail += discovery.fail;
+    const calls = await require('./calls').run(`http://localhost:${process.env.PORT}`);
+    result.pass += calls.pass;
+    result.fail += calls.fail;
   } finally {
     await new Promise((resolve) => server.close(resolve));
     await closeSocket(); // quits the adapter's dedicated pub/sub Redis connections - see socket.js
