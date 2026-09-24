@@ -34,6 +34,9 @@ async function run(baseUrl) {
     profile: {
       username: `Caller${index}${suffix}`,
       usernameNormalized: `caller${index}${suffix}`,
+      firstName: 'Call',
+      lastName: `User${index}`,
+      avatarKey: 'green-knight',
     },
     onboardingComplete: true,
     faction: 'ascendants',
@@ -69,12 +72,18 @@ async function run(baseUrl) {
   const firstCall = started.data.call;
   check(
     started.status === 201 && firstCall.status === 'ringing' && firstCall.type === 'audio' &&
+      firstCall.caller.name === 'Call User1' && firstCall.caller.avatarKey === 'green-knight' &&
       typeof started.data.token === 'string' && started.data.token.split('.').length === 3 &&
       started.data.livekitUrl === process.env.LIVEKIT_URL,
     'caller receives ringing call data and a LiveKit token',
     started
   );
   check((await request('POST', callPath, caller.token, { type: 'video' })).status === 409, 'a DM cannot have two active calls');
+  const secondDm = await request('POST', '/api/chats/dm', outsider.token, { username: recipient.username });
+  check(
+    (await request('POST', `/api/chats/${secondDm.data.chat.id}/calls`, outsider.token, { type: 'audio' })).status === 409,
+    'a participant cannot be active in calls from two different chats'
+  );
   check((await request('GET', `/api/calls/${firstCall.id}`, outsider.token)).status === 403, 'outsider cannot read a call');
   check((await request('GET', '/api/calls/not-an-id', caller.token)).status === 404, 'invalid call id returns not found');
 

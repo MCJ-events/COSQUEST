@@ -16,11 +16,11 @@ function getLivekitConfig() {
   return { url, apiKey, apiSecret };
 }
 
-async function createCallToken({ userId, username, roomName }) {
+async function createCallToken({ userId, username, name, roomName }) {
   const { apiKey, apiSecret } = getLivekitConfig();
   const accessToken = new AccessToken(apiKey, apiSecret, {
     identity: String(userId),
-    name: username || 'User',
+    name: name || username || 'User',
     ttl: '2h',
   });
 
@@ -39,4 +39,3 @@ function getLivekitUrl() {
 }
 
 module.exports = { createCallToken, getLivekitUrl };
-
