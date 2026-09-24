@@ -1,7 +1,9 @@
+const mongoose = require('mongoose');
 const { Server } = require('socket.io');
 const { createAdapter } = require('@socket.io/redis-adapter');
 const { verifyToken } = require('../utils/token');
 const userModel = require('../models/userModel');
+const Post = require('../models/Post');
 const { duplicateRedisClient } = require('../config/redis');
 const { markOnline, markOffline, notifyPresenceChange } = require('./presence');
 // NOT required at top level: chatController.js requires this file back (to
@@ -33,6 +35,11 @@ const { markOnline, markOffline, notifyPresenceChange } = require('./presence');
  *                             (loadConversationForUser), so someone can't
  *                             listen in on a faction room they're not in or
  *                             a DM that isn't theirs.
+ *  - `post:<id>`              joined on request (`post:join`). Posts have no
+ *                             REST access control (GET /posts/:postId is
+ *                             public), so the only check is that the post
+ *                             actually exists - unlike conversation:join,
+ *                             there's no membership to verify.
  *
  * Multi-instance: `io.to(room).emit(...)` only reaches sockets connected to
  * *this* process by default - if this ever runs as more than one server
@@ -123,6 +130,18 @@ async function initSocket(httpServer) {
       socket.leave(`conversation:${conversationId}`);
     });
 
+    socket.on('post:join', async (postId, ack) => {
+      if (!mongoose.isValidObjectId(postId) || !(await Post.exists({ _id: postId }))) {
+        return ack?.({ ok: false, error: 'Post not found.' });
+      }
+      socket.join(`post:${postId}`);
+      ack?.({ ok: true });
+    });
+
+    socket.on('post:leave', (postId) => {
+      socket.leave(`post:${postId}`);
+    });
+
     // Typing indicator: purely ephemeral, never persisted. `payload` is just
     // the conversationId; we trust room membership (join already checked
     // access) rather than re-validating on every keystroke.
@@ -193,4 +212,9 @@ function emitToUsers(userIds, event, payload) {
   io?.to(userIds.map((id) => `user:${id}`)).emit(event, payload);
 }
 
-module.exports = { initSocket, getIO, closeSocket, emitToConversation, emitToConversationExcept, emitToUser, emitToUsers };
+/** Push to everyone currently viewing a post (has joined its room via post:join). */
+function emitToPost(postId, event, payload) {
+  io?.to(`post:${postId}`).emit(event, payload);
+}
+
+module.exports = { initSocket, getIO, closeSocket, emitToConversation, emitToConversationExcept, emitToUser, emitToUsers, emitToPost };

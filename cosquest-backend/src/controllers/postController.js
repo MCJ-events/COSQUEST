@@ -10,6 +10,12 @@ const userModel = require('../models/userModel');
 const { storePostMedia, deletePostMedia, storeChatMedia } = require('../utils/imageHost');
 const { transcribeAudio } = require('../utils/transcribeAudio');
 const { canViewProfile, canViewActivityFeed } = require('./publicProfileController');
+// NEW — same emitter module chat's controller already uses, just the
+// post:<id> room instead of conversation:<id>. No circular-require risk
+// here the way chatController<->socket.js has: socket.js's initSocket
+// only ever lazily requires chatController, never postController, so
+// this can be a normal top-level require.
+const { emitToPost } = require('../realtime/socket');
 
 const POST_TYPES = ['image', 'reel', 'thought'];
 // 'image/jpg' isn't a registered MIME type, and 'application/octet-stream'/
