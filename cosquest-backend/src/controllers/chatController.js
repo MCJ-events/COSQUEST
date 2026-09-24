@@ -13,6 +13,7 @@ const { transcribeAudio } = require('../utils/transcribeAudio');
 const { buildContentShare } = require('../utils/shareLinks');
 const { isBlockedEitherWay } = require('./publicProfileController');
 const { emitToConversation, emitToConversationExcept, emitToUsers } = require('../realtime/socket');
+const { isOnline } = require('../realtime/presence');
 
 const EPOCH = new Date(0);
 const DELETE_FOR_EVERYONE_WINDOW_MS = 5 * 60 * 1000;
@@ -164,8 +165,26 @@ async function summarizeConversation(conversation, me) {
     summary.memberCount = await User.countDocuments({ faction: conversation.factionKey });
   } else {
     const otherId = conversation.participants.find((participantId) => String(participantId) !== String(me._id));
-    const otherUser = otherId ? await User.findById(otherId) : null;
-    summary.otherParticipant = otherUser ? userPreview(otherUser) : null;
+
+    const [otherUser, otherMember] = otherId
+      ? await Promise.all([
+          User.findById(otherId),
+          ConversationMember.findOne({ conversation: conversation._id, user: otherId }),
+        ])
+      : [null, null];
+
+    if (otherUser) {
+      // Same opt-out userPreview() already uses for lastActiveAt.
+      const showsStatus = otherUser.privacy?.showOnlineStatus !== false;
+      const otherLastReadAt = otherMember?.lastReadAt && otherMember.lastReadAt > EPOCH ? otherMember.lastReadAt : null;
+
+      summary.otherParticipant = {
+        ...userPreview(otherUser),
+        isOnline: showsStatus ? await isOnline(otherUser._id) : false,
+        lastReadAt: otherLastReadAt,
+      };
+    }
+
     summary.title = summary.otherParticipant?.name || summary.otherParticipant?.username || 'Direct Message';
   }
 

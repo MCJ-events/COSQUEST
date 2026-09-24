@@ -56,13 +56,29 @@ async function dmPartnerIds(userId) {
     .map(String);
 }
 
-/** Push a presence:online/presence:offline event to userId's DM partners, unless they've opted out of showing it. */
+/**
+ * Push a presence:online/presence:offline event to userId's DM partners,
+ * unless they've opted out of showing it.
+ *
+ * On offline, the moment they left is saved as lastActiveAt (so "last seen
+ * today at 14:32" is correct after a refresh too) and sent in the event, so
+ * the app can show "last seen ..." without refetching anything.
+ */
 async function notifyPresenceChange(io, userId, event) {
-  const user = await User.findById(userId, 'privacy.showOnlineStatus');
+  const goingOffline = event === 'presence:offline';
+  const lastActiveAt = new Date();
+
+  const user = goingOffline
+    ? await User.findByIdAndUpdate(userId, { $set: { lastActiveAt } }, { new: true }).select('privacy.showOnlineStatus')
+    : await User.findById(userId, 'privacy.showOnlineStatus');
+
   if (user?.privacy?.showOnlineStatus === false) return; // same opt-out userPreview() already respects in chatController.js
+
   const partnerIds = await dmPartnerIds(userId);
   if (!partnerIds.length) return;
-  io.to(partnerIds.map((id) => `user:${id}`)).emit(event, { userId: String(userId) });
+
+  const payload = goingOffline ? { userId: String(userId), lastActiveAt } : { userId: String(userId) };
+  io.to(partnerIds.map((id) => `user:${id}`)).emit(event, payload);
 }
 
 module.exports = { markOnline, markOffline, isOnline, notifyPresenceChange };
