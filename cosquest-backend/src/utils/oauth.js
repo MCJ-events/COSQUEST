@@ -4,7 +4,8 @@ const OAuthIdentity = require('../models/OAuthIdentity');
 const OAuthCompletionCode = require('../models/OAuthCompletionCode');
 const userModel = require('../models/userModel');
 const notificationModel = require('../models/notificationModel');
-const { signToken } = require('./token');
+const { signToken, generateSessionId } = require('./token');
+const { revokeSession } = require('../realtime/socket');
 
 const GOOGLE_ISSUERS = ['https://accounts.google.com', 'accounts.google.com'];
 const WELCOME_MESSAGE = 'Welcome to CosQuest! Your account is officially live.';
@@ -169,7 +170,11 @@ async function exchangeCompletionCode(code) {
   if (!record) return null;
   const user = await userModel.findById(record.user);
   if (!user) return null;
-  return { token: signToken(user.id, user.tokenVersion), user };
+  const sessionId = generateSessionId();
+  user.currentSessionId = sessionId;
+  await user.save();
+  revokeSession(user.id);
+  return { token: signToken(user.id, user.tokenVersion, sessionId), user };
 }
 
 function redirectSuccess(res, code, onboardingRequired) {

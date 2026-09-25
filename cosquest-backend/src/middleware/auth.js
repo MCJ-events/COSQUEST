@@ -10,6 +10,12 @@ const userModel = require('../models/userModel');
  * in it at sign-time still matches the user's current tokenVersion. Logging
  * out (POST /api/auth/logout) bumps that number, which instantly invalidates
  * this and every other previously-issued token for the account.
+ *
+ * Also enforces single-device sign-in: a token is only valid if the
+ * sessionId embedded in it still matches user.currentSessionId. Every fresh
+ * sign-in rotates that value (see generateSessionId in src/utils/token.js),
+ * so logging in on a new device immediately invalidates whatever token an
+ * older device was holding.
  */
 async function requireAuth(req, res, next) {
   const header = req.headers.authorization || '';
@@ -27,6 +33,9 @@ async function requireAuth(req, res, next) {
     }
     if (decoded.tokenVersion !== user.tokenVersion) {
       return res.status(401).json({ error: 'This session has been logged out. Please log in again.' });
+    }
+    if (decoded.sessionId !== user.currentSessionId) {
+      return res.status(401).json({ error: 'This account was signed in on another device. Please log in again.' });
     }
     req.userId = user.id;
     req.user = user;
@@ -58,7 +67,7 @@ async function optionalAuth(req, res, next) {
   try {
     const decoded = verifyToken(token);
     const user = await userModel.findById(decoded.sub);
-    if (user && decoded.tokenVersion === user.tokenVersion) {
+    if (user && decoded.tokenVersion === user.tokenVersion && decoded.sessionId === user.currentSessionId) {
       req.userId = user.id;
       req.user = user;
     }

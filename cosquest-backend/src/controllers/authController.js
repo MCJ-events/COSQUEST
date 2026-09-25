@@ -1,7 +1,8 @@
 const bcrypt = require('bcryptjs');
 const userModel = require('../models/userModel');
 const notificationModel = require('../models/notificationModel');
-const { signToken } = require('../utils/token');
+const { signToken, generateSessionId } = require('../utils/token');
+const { revokeSession } = require('../realtime/socket');
 const { isValidEmail, isValidUsername, passwordError } = require('../utils/validation');
 
 const WELCOME_MESSAGE =
@@ -70,7 +71,11 @@ async function signup(req, res) {
     }
     const updated = existing;
 
-    const token = signToken(updated.id, updated.tokenVersion);
+    const sessionId = generateSessionId();
+    updated.currentSessionId = sessionId;
+    await updated.save();
+    revokeSession(updated.id);
+    const token = signToken(updated.id, updated.tokenVersion, sessionId);
 
     return res.status(200).json({
       message:
@@ -95,7 +100,10 @@ async function signup(req, res) {
 
   await notificationModel.createForUser(user._id, WELCOME_MESSAGE);
 
-  const token = signToken(user.id, user.tokenVersion);
+  const sessionId = generateSessionId();
+  user.currentSessionId = sessionId;
+  await user.save();
+  const token = signToken(user.id, user.tokenVersion, sessionId);
 
   return res.status(201).json({
     message: 'Account created. Continue onboarding.',
@@ -135,7 +143,15 @@ async function login(req, res) {
   // out until they finish. `requireCompletedOnboarding` still protects every
   // real feature - this token only additionally lets them resume onboarding
   // via Bearer instead of email, and log out.
-  const token = signToken(user.id, user.tokenVersion);
+  //
+  // Rotating the session here is what enforces single-device sign-in: it
+  // invalidates whatever token was issued to any other device the moment
+  // this login succeeds (see requireAuth's sessionId check).
+  const sessionId = generateSessionId();
+  user.currentSessionId = sessionId;
+  await user.save();
+  revokeSession(user.id);
+  const token = signToken(user.id, user.tokenVersion, sessionId);
   return res.json({
     message: user.onboardingComplete ? 'Logged in successfully.' : 'Signed in. Complete onboarding to continue.',
     token,

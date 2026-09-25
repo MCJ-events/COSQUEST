@@ -12,6 +12,14 @@ const { AVATARS } = require('./avatarModel');
  * was current at sign-time, and requireAuth rejects a token whose embedded
  * version no longer matches the user's current one. Logging out just bumps
  * this number, which invalidates every token issued before that moment.
+ *
+ * `currentSessionId` enforces a single active device/session: every fresh
+ * sign-in (signup, login, OAuth) - and password/email change, which already
+ * signs everyone else out - generates a new one and embeds it in that token
+ * (see generateSessionId in src/utils/token.js). requireAuth and the socket
+ * handshake both reject a token whose embedded sessionId no longer matches,
+ * so signing in on a new device immediately invalidates whatever token the
+ * previous device was holding.
  */
 const userSchema = new mongoose.Schema(
   {
@@ -25,6 +33,7 @@ const userSchema = new mongoose.Schema(
     // Password is optional for accounts created with Google or Apple OAuth.
     passwordHash: { type: String, default: undefined },
     tokenVersion: { type: Number, default: 0 },
+    currentSessionId: { type: String, default: null },
 
     profile: {
       displayName: { type: String, default: '', trim: true, maxlength: 80 },

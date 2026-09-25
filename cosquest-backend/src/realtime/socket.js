@@ -90,6 +90,7 @@ async function initSocket(httpServer) {
       const user = await userModel.findById(decoded.sub);
       if (!user) return next(new Error('User no longer exists'));
       if (decoded.tokenVersion !== user.tokenVersion) return next(new Error('Session logged out'));
+      if (decoded.sessionId !== user.currentSessionId) return next(new Error('Signed in on another device'));
 
       socket.userId = String(user._id);
       next();
@@ -212,9 +213,28 @@ function emitToUsers(userIds, event, payload) {
   io?.to(userIds.map((id) => `user:${id}`)).emit(event, payload);
 }
 
+/**
+ * Called right after rotating a user's currentSessionId (login, OAuth,
+ * resume-signup, password/email change - see src/utils/token.js's
+ * generateSessionId). At this moment, whatever socket is sitting in
+ * `user:<userId>` is necessarily still holding the *old*, now-invalidated
+ * session - the new device hasn't connected a socket with its new session
+ * yet - so the room can be told and cleared outright: emit session:revoked
+ * so the client can show "signed in on another device" before it goes, then
+ * force-close the connection so it doesn't linger with a dead session
+ * (it would otherwise only find out on its next REST call or reconnect,
+ * via requireAuth/the handshake's own sessionId check).
+ */
+function revokeSession(userId, reason = 'signed_in_elsewhere') {
+  if (!io) return;
+  const room = `user:${userId}`;
+  io.to(room).emit('session:revoked', { reason });
+  io.in(room).disconnectSockets(true);
+}
+
 /** Push to everyone currently viewing a post (has joined its room via post:join). */
 function emitToPost(postId, event, payload) {
   io?.to(`post:${postId}`).emit(event, payload);
 }
 
-module.exports = { initSocket, getIO, closeSocket, emitToConversation, emitToConversationExcept, emitToUser, emitToUsers, emitToPost };
+module.exports = { initSocket, getIO, closeSocket, emitToConversation, emitToConversationExcept, emitToUser, emitToUsers, emitToPost, revokeSession };

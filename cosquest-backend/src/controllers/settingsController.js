@@ -4,7 +4,8 @@ const Block = require('../models/Block');
 const SupportRequest = require('../models/SupportRequest');
 const userModel = require('../models/userModel');
 const { isValidEmail, isValidUsername, normalizeUsername, passwordError } = require('../utils/validation');
-const { signToken } = require('../utils/token');
+const { signToken, generateSessionId } = require('../utils/token');
+const { revokeSession } = require('../realtime/socket');
 
 function accountInfo(user) {
   return {
@@ -80,6 +81,11 @@ async function updateAccount(req, res) {
     }
   }
   if (!Object.keys(patch).length) return res.json({ account: accountInfo(req.user) });
+  // Changing the login email already signs out every other session (via the
+  // tokenVersion bump below); rotate sessionId too so the token reissued
+  // here becomes the one true session, consistent with that.
+  const sessionId = emailChanged ? generateSessionId() : null;
+  if (emailChanged) patch.currentSessionId = sessionId;
   try {
     const updated = await User.findOneAndUpdate(
       { _id: req.userId, tokenVersion: req.user.tokenVersion },
@@ -87,7 +93,11 @@ async function updateAccount(req, res) {
       { new: true, runValidators: true }
     );
     if (!updated) return res.status(401).json({ error: 'Session changed. Please sign in again.' });
-    return res.json({ account: accountInfo(updated), ...(emailChanged ? { token: signToken(updated.id, updated.tokenVersion) } : {}) });
+    // Distinct reason from a real "signed in elsewhere": the device making
+    // this request already has the fresh token in this response and should
+    // just reconnect its socket quietly, not show a "logged out" screen.
+    if (emailChanged) revokeSession(updated.id, 'email_changed');
+    return res.json({ account: accountInfo(updated), ...(emailChanged ? { token: signToken(updated.id, updated.tokenVersion, sessionId) } : {}) });
   } catch (error) {
     if (error.code === 11000) return res.status(409).json({ error: 'Email or username is already taken.' });
     throw error;
@@ -100,12 +110,14 @@ async function changePassword(req, res) {
   if (invalid || newPassword !== confirmPassword) return res.status(400).json({ error: invalid || 'Passwords must match.' });
   if (!req.user.passwordHash || typeof currentPassword !== 'string' || !(await bcrypt.compare(currentPassword, req.user.passwordHash))) return res.status(401).json({ error: 'Current password is incorrect or this account uses social sign-in.' });
   const passwordHash = await bcrypt.hash(newPassword, 10);
+  const sessionId = generateSessionId();
   const updated = await User.findOneAndUpdate(
     { _id: req.userId, passwordHash: req.user.passwordHash, tokenVersion: req.user.tokenVersion },
-    { $set: { passwordHash }, $inc: { tokenVersion: 1 } }, { new: true }
+    { $set: { passwordHash, currentSessionId: sessionId }, $inc: { tokenVersion: 1 } }, { new: true }
   );
   if (!updated) return res.status(409).json({ error: 'Account changed. Please sign in again.' });
-  return res.json({ message: 'Password changed. Other sessions have been signed out.', token: signToken(updated.id, updated.tokenVersion) });
+  revokeSession(updated.id, 'password_changed');
+  return res.json({ message: 'Password changed. Other sessions have been signed out.', token: signToken(updated.id, updated.tokenVersion, sessionId) });
 }
 
 function getNotifications(req, res) { return res.json({ notifications: notifications(req.user) }); }
