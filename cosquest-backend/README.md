@@ -23,7 +23,7 @@ Chat (new/edited/deleted messages, reactions, read receipts, pins, typing), pres
 Connect with the same bearer token already used for REST:
 
 ```js
-const socket = io('http://localhost:6893', { auth: { token } });
+const socket = io('http://localhost:6893', { auth: { token }, transports: ['websocket'] });
 
 socket.emit('conversation:join', conversationId, (ack) => {
   if (!ack.ok) console.error(ack.error); // same membership check as the REST endpoints
@@ -40,7 +40,10 @@ socket.on('typing:start', ({ conversationId, userId }) => { /* ... */ });
 socket.on('typing:stop', ({ conversationId, userId }) => { /* ... */ });
 socket.on('notification:new', (notification) => { /* same shape as GET /api/users/me/notifications */ });
 socket.on('presence:online', ({ userId }) => { /* a DM partner just connected */ });
-socket.on('presence:offline', ({ userId }) => { /* a DM partner's last connection just closed */ });
+socket.on('presence:offline', ({ userId, lastActiveAt }) => { /* a DM partner's last connection just closed; lastActiveAt drives "last seen" */ });
+socket.on('call:incoming', ({ call }) => { /* someone is calling you - show the ringing screen */ });
+socket.on('call:updated', ({ call }) => { /* accepted/declined/missed/cancelled/ended - check call.status */ });
+socket.on('session:revoked', ({ reason }) => { /* 'signed_in_elsewhere': clear the token and go to login. 'password_changed'/'email_changed': reconnect with the new token from that response */ });
 
 socket.emit('typing:start', conversationId); // and 'typing:stop' - ephemeral, never persisted
 socket.emit('conversation:leave', conversationId);

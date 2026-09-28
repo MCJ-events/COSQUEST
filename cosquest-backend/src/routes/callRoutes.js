@@ -12,7 +12,10 @@ const {
 
 const router = express.Router();
 
-router.use(requireAuth, requireCompletedOnboarding);
+// Scoped to this router's own paths: it's mounted at '/' ahead of chatRoutes,
+// so an unscoped router.use would also run on every /api/chats request and
+// look the user up again before chatRoutes does its own check.
+router.use(['/calls', '/chats/:conversationId/calls'], requireAuth, requireCompletedOnboarding);
 router.post('/chats/:conversationId/calls', asyncHandler(startCall));
 router.get('/calls/incoming', asyncHandler(getIncomingCall));
 router.get('/calls/:callId', asyncHandler(getCall));

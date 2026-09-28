@@ -1,4 +1,4 @@
-const { verifyToken } = require('../utils/token');
+const { verifyToken, isCurrentSession } = require('../utils/token');
 const userModel = require('../models/userModel');
 
 /**
@@ -34,7 +34,7 @@ async function requireAuth(req, res, next) {
     if (decoded.tokenVersion !== user.tokenVersion) {
       return res.status(401).json({ error: 'This session has been logged out. Please log in again.' });
     }
-    if (decoded.sessionId !== user.currentSessionId) {
+    if (!isCurrentSession(decoded, user)) {
       return res.status(401).json({ error: 'This account was signed in on another device. Please log in again.' });
     }
     req.userId = user.id;
@@ -67,7 +67,7 @@ async function optionalAuth(req, res, next) {
   try {
     const decoded = verifyToken(token);
     const user = await userModel.findById(decoded.sub);
-    if (user && decoded.tokenVersion === user.tokenVersion && decoded.sessionId === user.currentSessionId) {
+    if (user && decoded.tokenVersion === user.tokenVersion && isCurrentSession(decoded, user)) {
       req.userId = user.id;
       req.user = user;
     }

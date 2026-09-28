@@ -26,7 +26,10 @@ const router = express.Router();
 
 // Every chat endpoint requires a fully onboarded, logged-in user - there is
 // no pre-login chat access, unlike the onboarding-step endpoints elsewhere.
-router.use(requireAuth, requireCompletedOnboarding);
+// Scoped to '/chats' because this router is mounted at '/': unscoped, it would
+// also re-check the login on every request that falls through to a later
+// router (e.g. /api/spotlight).
+router.use('/chats', requireAuth, requireCompletedOnboarding);
 
 router.get('/chats', asyncHandler(listChats));
 router.post('/chats/dm', asyncHandler(startDirectMessage));

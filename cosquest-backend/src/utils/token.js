@@ -30,4 +30,12 @@ function generateSessionId() {
   return crypto.randomBytes(16).toString('hex');
 }
 
-module.exports = { signToken, verifyToken, generateSessionId };
+// Tokens minted before sessions existed carry no sessionId, and accounts that
+// haven't signed in since have no currentSessionId - those still match, so
+// shipping this didn't sign everyone out. The account's next sign-in sets
+// currentSessionId, after which every older token stops matching.
+function isCurrentSession(decoded, user) {
+  return (decoded.sessionId ?? null) === (user.currentSessionId ?? null);
+}
+
+module.exports = { signToken, verifyToken, generateSessionId, isCurrentSession };

@@ -169,7 +169,9 @@ async function run(baseUrl) {
   check((await call('GET', '/api/users/me/settings', a.token)).status === 401, 'password change invalidates old token');
   a.token = changed.data.token;
   check((await call('POST', '/api/auth/login', null, { username: a.username, password })).status === 401, 'old password no longer works');
-  check((await call('POST', '/api/auth/login', null, { username: a.username, password: 'Changed@1234' })).status === 200, 'new password works');
+  const relogin = await call('POST', '/api/auth/login', null, { username: a.username, password: 'Changed@1234' });
+  check(relogin.status === 200, 'new password works');
+  a.token = relogin.data.token;
   check((await call('GET', '/api/users/me/help', a.token)).status === 200, 'help exposes configured links and support endpoint');
   const ticket = await call('POST', '/api/users/me/support-requests', a.token, { type: 'bug', subject: 'Test', message: 'Test report', platform: 'android' });
   check(ticket.status === 201 && ticket.data.request.status === 'open', 'bug report saved with tracking id', ticket);

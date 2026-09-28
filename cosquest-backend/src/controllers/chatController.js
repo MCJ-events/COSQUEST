@@ -413,7 +413,9 @@ async function createMessage(req, res) {
     if (kind === 'audio') media.transcribing = true;
   }
 
-  let message = await Message.create({ conversation: conversation._id, sender: req.userId, kind, content, media, replyTo });
+  const message = await Message.create({ conversation: conversation._id, sender: req.userId, kind, content, media, replyTo });
+  const populatePaths = [{ path: 'sender', select: SENDER_FIELDS }];
+  if (replyTo) populatePaths.push({ path: 'replyTo', populate: { path: 'sender', select: 'profile.username profile.firstName' } });
   await Promise.all([
     Conversation.updateOne({ _id: conversation._id }, { $inc: { messageCount: 1 } }),
     ConversationMember.updateOne(
@@ -421,9 +423,8 @@ async function createMessage(req, res) {
       { $set: { lastReadAt: new Date() } },
       { upsert: true }
     ),
+    message.populate(populatePaths),
   ]);
-  message = await message.populate('sender', SENDER_FIELDS);
-  if (replyTo) message = await message.populate({ path: 'replyTo', populate: { path: 'sender', select: 'profile.username profile.firstName' } });
 
   // Real-time fan-out: everyone with this conversation open gets the new
   // message instantly. `otherLastReadAt: null` matches the REST response -
@@ -875,8 +876,8 @@ function deletedForIds(message) {
 async function canSendToConversation(conversation, senderId) {
   if (conversation.type !== 'dm') return null;
   const otherId = conversation.participants.find((id) => String(id) !== String(senderId));
-  const other = await User.findById(otherId);
-  if (!other || await isBlockedEitherWay(senderId, otherId)) return { status: 403, message: 'Direct messages are unavailable for this conversation.' };
+  const [other, blocked] = await Promise.all([User.findById(otherId), isBlockedEitherWay(senderId, otherId)]);
+  if (!other || blocked) return { status: 403, message: 'Direct messages are unavailable for this conversation.' };
   if (other.privacy?.allowDirectMessages === false) return { status: 403, message: 'This user is not accepting direct messages.' };
   return null;
 }

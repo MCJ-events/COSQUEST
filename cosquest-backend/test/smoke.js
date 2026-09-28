@@ -448,8 +448,12 @@ async function run(baseUrlArg) {
     assert(r.status === 404, 'GET /api/factions/:key/members (invalid key) -> 404', r);
   }
   {
+    const previousToken = token;
     const r = await c('POST', '/api/auth/login', { body: { identifier: 'Ravencaller', password } });
     assert(r.status === 200 && r.json.token, 'POST /api/auth/login (username + password) -> 200 + token', r);
+    token = r.json.token;
+    const stale = await c('GET', '/api/users/me/notifications', { token: previousToken });
+    assert(stale.status === 401, 'signing in again invalidates the previous token (one active session per account)', stale);
   }
   {
     // The welcome notification was created at signup - only visible now, after onboarding + login.

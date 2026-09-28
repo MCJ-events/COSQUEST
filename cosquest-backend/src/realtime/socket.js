@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 const { Server } = require('socket.io');
 const { createAdapter } = require('@socket.io/redis-adapter');
-const { verifyToken } = require('../utils/token');
+const { verifyToken, isCurrentSession } = require('../utils/token');
 const userModel = require('../models/userModel');
 const Post = require('../models/Post');
 const { duplicateRedisClient } = require('../config/redis');
@@ -90,7 +90,7 @@ async function initSocket(httpServer) {
       const user = await userModel.findById(decoded.sub);
       if (!user) return next(new Error('User no longer exists'));
       if (decoded.tokenVersion !== user.tokenVersion) return next(new Error('Session logged out'));
-      if (decoded.sessionId !== user.currentSessionId) return next(new Error('Signed in on another device'));
+      if (!isCurrentSession(decoded, user)) return next(new Error('Signed in on another device'));
 
       socket.userId = String(user._id);
       next();

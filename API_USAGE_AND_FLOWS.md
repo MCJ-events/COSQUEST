@@ -330,7 +330,16 @@ Emoji reactions on a post ("quick replies") are frontend-only - the client sends
 
 ## Chats (Community, faction rooms, and direct messages)
 
-Every endpoint here is **Bearer + completed onboarding** - there is no pre-login/email-identified access, unlike the onboarding-step endpoints. There is no push/WebSocket layer; the client polls `GET .../messages` for new activity.
+Every endpoint here is **Bearer + completed onboarding** - there is no pre-login/email-identified access, unlike the onboarding-step endpoints.
+
+**Real-time: use the socket, don't poll.** New, edited and deleted messages, reactions, read receipts, pins, typing, presence and incoming calls are pushed live over Socket.IO. To receive them:
+
+1. Connect once after login with the same bearer token: `io(API_URL, { auth: { token }, transports: ['websocket'] })`.
+2. Emit `conversation:join` with the conversation id whenever a chat screen opens, and `conversation:leave` when it closes. Without the join, that phone never receives `message:new` for the chat.
+3. On `message:new`, append the message straight into the open chat instead of refetching.
+4. Use `GET .../messages` for the first page of history, and to catch up once when the app returns to the foreground or the socket reconnects - never on a timer.
+
+Full event list and payloads: the "Real-time: WebSockets + Redis" section of `cosquest-backend/README.md`.
 
 | Method and URL | Usage |
 | --- | --- |
