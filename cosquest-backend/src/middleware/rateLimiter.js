@@ -71,7 +71,7 @@ function accountKey(req) {
 
 const forgotPasswordLimiter = rateLimit({
   windowMs: 24 * 60 * 60 * 1000, // 24 hours
-  max: 3, // 3 reset codes per account per day
+  max: 30, // 30 reset codes per account per day
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many password reset requests for this account today. Please try again tomorrow.' },
