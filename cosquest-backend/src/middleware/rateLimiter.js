@@ -58,4 +58,26 @@ const signupLimiter = rateLimit({
   store: redisStore('rl:signup:'),
 });
 
-module.exports = { loginLimiter, signupLimiter };
+// Keyed by the account being targeted, not the caller's IP - forgot-password
+// sends an email per request, so this caps how many an account can trigger
+// per day regardless of how many different IPs ask for it. Falls back to IP
+// only if the request has no identifier at all, so a malformed request still
+// counts against something rather than bypassing the limiter entirely; the
+// route handler itself 400s a missing identifier before anything is sent.
+function accountKey(req) {
+  const identifier = String(req.body?.identifier || req.body?.email || req.body?.username || '').trim().toLowerCase();
+  return identifier || req.ip;
+}
+
+const forgotPasswordLimiter = rateLimit({
+  windowMs: 24 * 60 * 60 * 1000, // 24 hours
+  max: 3, // 3 reset codes per account per day
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many password reset requests for this account today. Please try again tomorrow.' },
+  skip: skipInTest,
+  keyGenerator: accountKey,
+  store: redisStore('rl:forgot:'),
+});
+
+module.exports = { loginLimiter, signupLimiter, forgotPasswordLimiter };

@@ -15,12 +15,16 @@
  * true - so login only ever succeeds *after* onboarding is finished, not before.
  */
 
+const crypto = require('crypto');
 const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
 const sendNotification = require('../scripts/sendNotification');
 const Quest = require('../src/models/Quest');
 const Message = require('../src/models/Message');
+const User = require('../src/models/User');
+const PasswordReset = require('../src/models/PasswordReset');
 const { createCompletionCode } = require('../src/utils/oauth');
+const mailer = require('../src/utils/mailer');
 
 // Real, valid, minimal media - not just placeholder bytes. `npm test`'s
 // ephemeral Cloudinary stub (see src/utils/imageHost.js, NODE_ENV=test)
@@ -454,6 +458,98 @@ async function run(baseUrlArg) {
     token = r.json.token;
     const stale = await c('GET', '/api/users/me/notifications', { token: previousToken });
     assert(stale.status === 401, 'signing in again invalidates the previous token (one active session per account)', stale);
+  }
+
+  console.log('\n--- forgot / reset password ---');
+  {
+    // A throwaway account, not the shared `email` fixture - later blocks in
+    // this file keep logging into that one with its original password.
+    const resetEmail = `reset_${Date.now()}@example.com`;
+    const originalPassword = 'Quest@1234';
+    const newPassword = 'NewPass@1234';
+    await c('POST', '/api/auth/signup', { body: { email: resetEmail, password: originalPassword, confirmPassword: originalPassword } });
+    const userDoc = await User.findOne({ email: resetEmail });
+
+    const unknown = await c('POST', '/api/auth/forgot-password', { body: { email: 'no-such-account@example.com' } });
+    assert(unknown.status === 200, 'POST /api/auth/forgot-password (unknown email) -> 200, same generic response either way (no account enumeration)', unknown);
+    assert(mailer.testSentEmails.length === 0, 'no email sent for an unknown account', mailer.testSentEmails);
+
+    const forgot = await c('POST', '/api/auth/forgot-password', { body: { email: resetEmail } });
+    assert(forgot.status === 200, 'POST /api/auth/forgot-password (known email) -> 200', forgot);
+    const sent = mailer.testSentEmails.at(-1);
+    const code = sent?.text.match(/(\d{6})/)?.[1];
+    assert(sent?.to === resetEmail && /^\d{6}$/.test(code || ''), 'a six-digit code is emailed to the address on file (captured here in test mode, never actually sent)', sent);
+
+    const wrongCode = await c('POST', '/api/auth/reset-password', { body: { email: resetEmail, code: code === '000000' ? '111111' : '000000', newPassword, confirmPassword: newPassword } });
+    assert(wrongCode.status === 400, 'POST /api/auth/reset-password (wrong code) -> 400', wrongCode);
+
+    const badConfirm = await c('POST', '/api/auth/reset-password', { body: { email: resetEmail, code, newPassword, confirmPassword: 'Different@1234' } });
+    assert(badConfirm.status === 400, 'POST /api/auth/reset-password (confirmPassword mismatch) -> 400', badConfirm);
+
+    const success = await c('POST', '/api/auth/reset-password', { body: { email: resetEmail, code, newPassword, confirmPassword: newPassword } });
+    assert(success.status === 200 && success.json.token, 'POST /api/auth/reset-password (correct code) -> 200, signs the caller straight in', success);
+
+    const reuse = await c('POST', '/api/auth/reset-password', { body: { email: resetEmail, code, newPassword: 'Another@1234', confirmPassword: 'Another@1234' } });
+    assert(reuse.status === 400, 'a consumed reset code cannot be reused', reuse);
+
+    const oldLogin = await c('POST', '/api/auth/login', { body: { email: resetEmail, password: originalPassword } });
+    assert(oldLogin.status === 401, 'the old password no longer works after a reset', oldLogin);
+    const newLogin = await c('POST', '/api/auth/login', { body: { email: resetEmail, password: newPassword } });
+    assert(newLogin.status === 200 && newLogin.json.token, 'the new password works after a reset', newLogin);
+
+    await c('POST', '/api/auth/forgot-password', { body: { email: resetEmail } });
+    const secondCode = mailer.testSentEmails.at(-1).text.match(/(\d{6})/)?.[1];
+    assert(secondCode && secondCode !== code, 'requesting again issues a fresh code (almost certainly different from the first)', { code, secondCode });
+    const rowsForAccount = await PasswordReset.countDocuments({ user: userDoc._id });
+    assert(rowsForAccount === 1, 'a second request replaces the outstanding code instead of adding a second one', { rowsForAccount });
+
+    // Simulate the 5-minute expiry without waiting for it - same technique
+    // chatAttachments.js already uses for pin/message age (backdate a
+    // timestamp directly rather than sleeping in the test).
+    await PasswordReset.updateOne({ user: userDoc._id }, { $set: { expiresAt: new Date(Date.now() - 1000) } });
+    const expired = await c('POST', '/api/auth/reset-password', { body: { email: resetEmail, code: secondCode, newPassword: 'Expired@1234', confirmPassword: 'Expired@1234' } });
+    assert(expired.status === 400, 'an expired code is rejected even though it is otherwise correct', expired);
+
+    // Enough wrong guesses locks the code out (brute-force protection) -
+    // loop rather than hardcode the exact attempt cap, so this doesn't break
+    // if that number is later tuned.
+    await PasswordReset.updateOne(
+      { user: userDoc._id },
+      { $set: { expiresAt: new Date(Date.now() + 5 * 60 * 1000), attempts: 0, codeHash: crypto.createHash('sha256').update('999999').digest('hex') } }
+    );
+    let lockedOut = null;
+    for (let i = 0; i < 10 && !lockedOut; i++) {
+      const attempt = await c('POST', '/api/auth/reset-password', { body: { email: resetEmail, code: '111222', newPassword, confirmPassword: newPassword } });
+      if (attempt.status === 429) lockedOut = attempt;
+    }
+    assert(lockedOut !== null, 'enough wrong guesses locks the code out (429) instead of allowing unlimited brute-force attempts', lockedOut);
+
+    // Two different accounts can never hold the same active code at the same
+    // time - enforced by PasswordReset's unique codeHash index (see
+    // issueResetCode's retry loop in authController.js). Proven directly at
+    // the data layer here, since forcing two real requests to collide on a
+    // random 6-digit code (1-in-a-million) isn't something a test can trigger
+    // on demand.
+    const otherEmail = `reset2_${Date.now()}@example.com`;
+    await c('POST', '/api/auth/signup', { body: { email: otherEmail, password: originalPassword, confirmPassword: originalPassword } });
+    const otherUserDoc = await User.findOne({ email: otherEmail });
+    const sharedHash = crypto.createHash('sha256').update('424242').digest('hex');
+    await PasswordReset.findOneAndUpdate(
+      { user: otherUserDoc._id },
+      { $set: { codeHash: sharedHash, expiresAt: new Date(Date.now() + 5 * 60 * 1000), attempts: 0 } },
+      { upsert: true }
+    );
+    let collision = null;
+    try {
+      await PasswordReset.findOneAndUpdate(
+        { user: userDoc._id },
+        { $set: { codeHash: sharedHash, expiresAt: new Date(Date.now() + 5 * 60 * 1000), attempts: 0 } },
+        { upsert: true }
+      );
+    } catch (error) {
+      collision = error;
+    }
+    assert(collision?.code === 11000, 'the database itself refuses to let two accounts hold the same active code (what issueResetCode retries against)', collision);
   }
   {
     // The welcome notification was created at signup - only visible now, after onboarding + login.
