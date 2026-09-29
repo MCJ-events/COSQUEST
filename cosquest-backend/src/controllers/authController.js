@@ -226,7 +226,7 @@ async function logout(req, res) {
 }
 
 /**
- * POST /api/auth/forgot-password (public; rate-limited to 3/account/day - see
+ * POST /api/auth/forgot-password (public; rate-limited to 30/account/day - see
  * forgotPasswordLimiter in rateLimiter.js)
  * Always the same response whether or not the identifier matches a real
  * account, so this can't be used to check which emails/usernames exist
