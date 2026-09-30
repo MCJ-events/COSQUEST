@@ -68,9 +68,13 @@ async function findCallForUser(callId, userId) {
   return { call };
 }
 
+// Runs on every call status change, including the non-terminal 'accepted'
+// transition - only save a call entry once the call has actually finished.
 function broadcastCallUpdate(call) {
   emitToUsers(participantIds(call), 'call:updated', { call: toCallJson(call) });
-  recordCallMessage(call).catch((error) => console.error('[calls] failed to record call message:', error.message));
+  if (TERMINAL_STATUSES.includes(call.status)) {
+    recordCallMessage(call).catch((error) => console.error('[calls] failed to record call message:', error.message));
+  }
 }
 
 async function markMissedIfExpired(call) {
