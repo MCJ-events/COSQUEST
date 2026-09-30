@@ -37,27 +37,48 @@ function cookieOptions(provider) {
   };
 }
 
+// The app/website passes where to send the person back to as ?redirectUri=.
+// Only the native app scheme and the CosQuest website are accepted, so this
+// can never be turned into an open redirect that leaks the one-time code.
+function safeRedirectTarget(value) {
+  if (typeof value !== 'string' || !value) return null;
+  let parsed;
+  try {
+    parsed = new URL(value);
+  } catch (error) {
+    return null;
+  }
+  const nativeApp = parsed.protocol === 'cosquest:';
+  const website = parsed.protocol === 'https:' && parsed.hostname === 'cosquest.vercel.app' && !parsed.username && !parsed.password;
+  return nativeApp || website ? parsed.toString() : null;
+}
+
 function startAuthorization(req, res, provider) {
   const state = randomValue();
   const nonce = randomValue();
-  res.cookie(`oauth_${provider}`, JSON.stringify({ state, nonce }), cookieOptions(provider));
+  const redirectTo = safeRedirectTarget(req.query?.redirectUri);
+  res.cookie(`oauth_${provider}`, JSON.stringify({ state, nonce, redirectTo }), cookieOptions(provider));
   return { state, nonce };
 }
 
-function verifyAuthorization(req, res, provider, state) {
+// Reads and clears the OAuth cookie. Returns null if it is missing or unreadable.
+function takeAuthorizationSession(req, res, provider) {
   const cookie = req.signedCookies?.[`oauth_${provider}`];
   res.clearCookie(`oauth_${provider}`, cookieOptions(provider));
-  if (!cookie) throw new Error('OAuth session expired or was blocked. Please try again.');
-  let stored;
+  if (!cookie) return null;
   try {
-    stored = JSON.parse(cookie);
+    return JSON.parse(cookie);
   } catch (error) {
-    throw new Error('Invalid OAuth session. Please try again.');
+    return null;
   }
-  if (!state || typeof stored.state !== 'string' || state.length !== stored.state.length || !crypto.timingSafeEqual(Buffer.from(state), Buffer.from(stored.state))) {
+}
+
+function verifyAuthorization(session, state) {
+  if (!session) throw new Error('OAuth session expired or was blocked. Please try again.');
+  if (!state || typeof session.state !== 'string' || state.length !== session.state.length || !crypto.timingSafeEqual(Buffer.from(state), Buffer.from(session.state))) {
     throw new Error('OAuth state check failed. Please try again.');
   }
-  return stored.nonce;
+  return session.nonce;
 }
 
 async function jose() {
@@ -177,22 +198,25 @@ async function exchangeCompletionCode(code) {
   return { token: signToken(user.id, user.tokenVersion, sessionId), user };
 }
 
-function redirectSuccess(res, code, onboardingRequired) {
-  const destination = new URL(process.env.OAUTH_SUCCESS_REDIRECT_URL);
+// redirectTo (already validated at sign-in start) wins; otherwise the
+// OAUTH_SUCCESS_REDIRECT_URL fallback is used.
+function redirectSuccess(res, code, onboardingRequired, redirectTo) {
+  const destination = new URL(redirectTo || process.env.OAUTH_SUCCESS_REDIRECT_URL);
   destination.searchParams.set('oauthCode', code);
   destination.searchParams.set('onboardingRequired', String(onboardingRequired));
   return res.redirect(destination.toString());
 }
 
-function redirectFailure(res, error) {
-  if (!process.env.OAUTH_SUCCESS_REDIRECT_URL) return res.status(400).json({ error });
-  const destination = new URL(process.env.OAUTH_SUCCESS_REDIRECT_URL);
+function redirectFailure(res, error, redirectTo) {
+  const base = redirectTo || process.env.OAUTH_SUCCESS_REDIRECT_URL;
+  if (!base) return res.status(400).json({ error });
+  const destination = new URL(base);
   destination.searchParams.set('oauthError', error);
   return res.redirect(destination.toString());
 }
 
 module.exports = {
-  configError, startAuthorization, verifyAuthorization, exchangeGoogleCode, exchangeAppleCode,
+  configError, startAuthorization, takeAuthorizationSession, safeRedirectTarget, verifyAuthorization, exchangeGoogleCode, exchangeAppleCode,
   verifyIdentityToken, findOrCreateUser, createCompletionCode, exchangeCompletionCode,
   redirectSuccess, redirectFailure,
 };

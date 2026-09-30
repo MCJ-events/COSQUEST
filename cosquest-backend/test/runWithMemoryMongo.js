@@ -60,6 +60,9 @@ async function main() {
     const calls = await require('./calls').run(`http://localhost:${process.env.PORT}`);
     result.pass += calls.pass;
     result.fail += calls.fail;
+    const oauthRedirect = await require('./oauthRedirect').run(`http://localhost:${process.env.PORT}`);
+    result.pass += oauthRedirect.pass;
+    result.fail += oauthRedirect.fail;
   } finally {
     await new Promise((resolve) => server.close(resolve));
     await closeSocket(); // quits the adapter's dedicated pub/sub Redis connections - see socket.js

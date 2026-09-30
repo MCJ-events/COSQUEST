@@ -1,5 +1,5 @@
 const {
-  configError, startAuthorization, verifyAuthorization, exchangeGoogleCode, exchangeAppleCode,
+  configError, startAuthorization, takeAuthorizationSession, verifyAuthorization, exchangeGoogleCode, exchangeAppleCode,
   verifyIdentityToken, findOrCreateUser, createCompletionCode, exchangeCompletionCode,
   redirectSuccess, redirectFailure,
 } = require('../utils/oauth');
@@ -52,11 +52,13 @@ function appleName(value) {
 }
 
 async function finishOAuth(req, res, provider) {
+  const session = takeAuthorizationSession(req, res, provider);
+  const redirectTo = session?.redirectTo || null;
   try {
-    if (configError(provider)) return redirectFailure(res, 'OAuth is not configured.');
-    if (req.query.error || req.body?.error) return redirectFailure(res, 'Sign-in was cancelled or denied.');
+    if (configError(provider)) return redirectFailure(res, 'OAuth is not configured.', redirectTo);
+    if (req.query.error || req.body?.error) return redirectFailure(res, 'Sign-in was cancelled or denied.', redirectTo);
     const input = provider === 'google' ? req.query : req.body;
-    const nonce = verifyAuthorization(req, res, provider, input.state);
+    const nonce = verifyAuthorization(session, input.state);
     const idToken = provider === 'google' ? await exchangeGoogleCode(input.code) : await exchangeAppleCode(input.code);
     const payload = await verifyIdentityToken(provider, idToken, nonce);
     const name = provider === 'google'
@@ -64,9 +66,9 @@ async function finishOAuth(req, res, provider) {
       : appleName(input.user);
     const user = await findOrCreateUser(provider, payload, name);
     const code = await createCompletionCode(user.id);
-    return redirectSuccess(res, code, !user.onboardingComplete);
+    return redirectSuccess(res, code, !user.onboardingComplete, redirectTo);
   } catch (error) {
-    return redirectFailure(res, error.message || 'OAuth sign-in failed.');
+    return redirectFailure(res, error.message || 'OAuth sign-in failed.', redirectTo);
   }
 }
 
