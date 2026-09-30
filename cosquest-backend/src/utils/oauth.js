@@ -150,29 +150,54 @@ async function exchangeAppleCode(code) {
 
 async function findOrCreateUser(provider, payload, name = {}) {
   const subject = String(payload.sub);
+
+  // 1. Already linked to a CosQuest account? Use it - unless that account
+  //    no longer exists (deleted user). Then remove the broken link so a
+  //    fresh one can be made below.
   const existingIdentity = await OAuthIdentity.findOne({ provider, subject }).populate('user');
   if (existingIdentity?.user) return existingIdentity.user;
+  if (existingIdentity && !existingIdentity.user) {
+    await OAuthIdentity.deleteOne({ _id: existingIdentity._id });
+  }
 
+  // 2. Find an existing account with the same (verified) email, or create one.
   const verifiedGoogleEmail = provider !== 'google' || payload.email_verified === true || payload.email_verified === 'true';
   const email = verifiedGoogleEmail && typeof payload.email === 'string' ? payload.email : undefined;
   let user = email ? await userModel.findByEmail(email) : null;
   let created = false;
   if (!user) {
-    user = await userModel.createUser({ email, passwordHash: undefined });
-    created = true;
-    await userModel.updateUser(user.id, (document) => {
-      if (name.firstName) document.profile.firstName = String(name.firstName).trim();
-      if (name.lastName) document.profile.lastName = String(name.lastName).trim();
-    });
-    user = await userModel.findById(user.id);
+    try {
+      user = await userModel.createUser({ email, passwordHash: undefined });
+      created = true;
+      const userId = user?.id || user?._id;
+      await userModel.updateUser(userId, (document) => {
+        if (name.firstName) document.profile.firstName = String(name.firstName).trim();
+        if (name.lastName) document.profile.lastName = String(name.lastName).trim();
+      });
+      user = await userModel.findById(userId);
+    } catch (error) {
+      // A simultaneous sign-in for the same new email created the account first.
+      if (error?.code !== 11000 || !email) throw error;
+      user = await userModel.findByEmail(email);
+      created = false;
+      if (!user) throw error;
+    }
   }
+  if (!user) throw new Error('Could not create your CosQuest account. Please try again.');
+
+  // 3. Link this Google/Apple account to the CosQuest account.
   try {
     await OAuthIdentity.create({ provider, subject, user: user.id });
   } catch (error) {
     if (error?.code !== 11000) throw error;
+    // Someone else created the link at the same moment - use theirs if valid.
     const identity = await OAuthIdentity.findOne({ provider, subject }).populate('user');
-    return identity.user;
+    if (identity?.user) return identity.user;
+    // The link points to a missing account: replace it with this one.
+    await OAuthIdentity.deleteOne({ provider, subject });
+    await OAuthIdentity.create({ provider, subject, user: user.id });
   }
+
   if (created) await notificationModel.createForUser(user.id, WELCOME_MESSAGE);
   return user;
 }

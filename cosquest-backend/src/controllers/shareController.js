@@ -1,8 +1,6 @@
 const userModel = require('../models/userModel');
-const { AVATAR_KEYS } = require('../models/avatarModel');
 const { getFaction } = require('../models/factionModel');
-const CLOUDINARY_AVATAR_PUBLIC_IDS = require('../data/cloudinaryAvatarPublicIds');
-const { cloudinaryImageUrl } = require('../utils/cloudinary');
+const { avatarImageUrl } = require('../utils/avatarCatalog');
 const { statsFor, canViewProfile } = require('./publicProfileController');
 
 // PUBLIC_PROFILE_BASE_URL lets a separate marketing/web frontend host these
@@ -14,14 +12,12 @@ function profileBaseUrl(req) {
   return base.replace(/\/$/, '');
 }
 
-function resolveAvatarImageUrl(user) {
+async function resolveAvatarImageUrl(user) {
   if (user.profile.avatarPhotoUrl) return user.profile.avatarPhotoUrl;
-  const index = AVATAR_KEYS.indexOf(user.profile.avatarKey);
-  if (index === -1 || index >= CLOUDINARY_AVATAR_PUBLIC_IDS.length) return null;
-  return cloudinaryImageUrl(CLOUDINARY_AVATAR_PUBLIC_IDS[index]);
+  return avatarImageUrl(user.profile.avatarKey);
 }
 
-function buildShareData(user, req) {
+async function buildShareData(user, req) {
   const name = user.profile.displayName || [user.profile.firstName, user.profile.lastName].filter(Boolean).join(' ') || user.profile.username;
   const faction = getFaction(user.faction);
   const bio = user.profile.bio || (faction ? `${faction.name} · CosQuest member` : 'CosQuest member');
@@ -30,7 +26,7 @@ function buildShareData(user, req) {
     title: `${name} (@${user.profile.username}) on CosQuest`,
     text: `Check out ${name}'s profile on CosQuest!`,
     bio,
-    imageUrl: resolveAvatarImageUrl(user),
+    imageUrl: await resolveAvatarImageUrl(user),
     name,
     username: user.profile.username,
     faction,
@@ -43,7 +39,7 @@ function buildShareData(user, req) {
 async function getProfileShareLink(req, res) {
   const user = await userModel.findByUsername(req.params.username);
   if (!user || !(await canViewProfile(user, req.userId))) return res.status(404).json({ error: 'Profile not found.' });
-  const { url, title, text } = buildShareData(user, req);
+  const { url, title, text } = await buildShareData(user, req);
   return res.json({ url, title, text });
 }
 
@@ -112,7 +108,7 @@ async function renderPublicProfilePage(req, res) {
   const user = await userModel.findByUsername(req.params.username);
   if (!user || !(await canViewProfile(user, req.userId))) return res.status(404).type('html').send(notFoundHtml());
 
-  const [stats, share] = await Promise.all([statsFor(user), Promise.resolve(buildShareData(user, req))]);
+  const [stats, share] = await Promise.all([statsFor(user), buildShareData(user, req)]);
   return res.type('html').send(profileHtml(share, stats));
 }
 

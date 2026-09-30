@@ -1,5 +1,5 @@
 const userModel = require('../models/userModel');
-const { isValidAvatarKey } = require('../models/avatarModel');
+const { isValidAvatarKey } = require('../utils/avatarCatalog');
 const { storeAvatarPhoto } = require('../utils/imageHost');
 const { isValidEmail, isValidUsername, normalizeUsername } = require('../utils/validation');
 const { isValidProfileCategory } = require('../models/profileCategoryModel');
@@ -95,7 +95,7 @@ async function checkUsername(req, res) {
 // PATCH /api/users/me/avatar
 async function setAvatar(req, res) {
   const { avatar } = req.body;
-  if (!isValidAvatarKey(avatar)) {
+  if (!(await isValidAvatarKey(avatar))) {
     return res.status(400).json({ error: 'Not a recognized avatar option. See GET /api/meta/avatars.' });
   }
   const updated = await userModel.updateUser(req.userId, (user) => {

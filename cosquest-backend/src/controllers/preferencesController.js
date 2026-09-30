@@ -1,7 +1,7 @@
 const userModel = require('../models/userModel');
 const { isValidFactionKey } = require('../models/factionModel');
 const { isValidInterestKey } = require('../models/interestModel');
-const { isValidAvatarKey } = require('../models/avatarModel');
+const { isValidAvatarKey } = require('../utils/avatarCatalog');
 const { isValidUsername, normalizeUsername } = require('../utils/validation');
 
 const MIN_RADIUS_MILES = 5;
@@ -138,7 +138,7 @@ async function completeOnboarding(req, res) {
       errors.push('profile.age must be a whole number between 13 and 120.');
     }
   }
-  if (profile?.avatar !== undefined && !isValidAvatarKey(profile.avatar)) {
+  if (profile?.avatar !== undefined && !(await isValidAvatarKey(profile.avatar))) {
     errors.push('profile.avatar is not a recognized avatar option. See GET /api/meta/avatars.');
   }
   if (faction !== undefined && !isValidFactionKey(faction)) {

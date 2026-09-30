@@ -63,6 +63,9 @@ async function main() {
     const oauthRedirect = await require('./oauthRedirect').run(`http://localhost:${process.env.PORT}`);
     result.pass += oauthRedirect.pass;
     result.fail += oauthRedirect.fail;
+    const avatarCatalog = await require('./avatarCatalog').run(`http://localhost:${process.env.PORT}`);
+    result.pass += avatarCatalog.pass;
+    result.fail += avatarCatalog.fail;
   } finally {
     await new Promise((resolve) => server.close(resolve));
     await closeSocket(); // quits the adapter's dedicated pub/sub Redis connections - see socket.js
