@@ -110,9 +110,42 @@ async function loadConversationForUser(conversationId, user) {
   return { conversation };
 }
 
-function previewMessage(message) {
+// Chat-list preview for a call entry, worded for the person LOOKING at it
+// (like WhatsApp):
+//
+//   what happened   caller sees                  other person sees
+//   answered        Voice call                   Voice call
+//   rang out        Voice call - No answer       Missed voice call
+//   declined        Voice call - Declined        You declined a voice call
+//   cancelled       Voice call - Cancelled       Missed voice call
+//
+// viewerId is optional: without it (e.g. reply previews with no viewer
+// context) it reads as the other person's side.
+function callLogPreview(callLog, viewerId) {
+  const video = callLog?.type === 'video';
+  const icon = video ? '🎥' : '📞';
+  const name = video ? 'Video call' : 'Voice call';
+  const lower = video ? 'video call' : 'voice call';
+  const isCaller = Boolean(viewerId) && String(callLog?.callerId) === String(viewerId);
+
+  switch (callLog?.status) {
+    case 'ended':
+      return `${icon} ${name}`;
+    case 'declined':
+      return isCaller ? `${icon} ${name} · Declined` : `${icon} You declined a ${lower}`;
+    case 'missed':
+      return isCaller ? `${icon} ${name} · No answer` : `${icon} Missed ${lower}`;
+    case 'cancelled':
+      return isCaller ? `${icon} ${name} · Cancelled` : `${icon} Missed ${lower}`;
+    default:
+      return `${icon} ${name}`;
+  }
+}
+
+function previewMessage(message, viewerId) {
   if (!message) return null;
   if (message.deletedForEveryone) return 'This message was deleted';
+  if (message.kind === 'call') return callLogPreview(message.callLog, viewerId);
   if (message.kind === 'image') return 'Sent a photo';
   if (message.kind === 'video') return 'Sent a video';
   if (message.kind === 'sticker') return 'Sent a sticker';
@@ -148,7 +181,8 @@ async function summarizeConversation(conversation, me) {
     lastMessage: lastMessage
       ? {
           senderName: lastMessage.sender?.profile?.username || lastMessage.sender?.profile?.firstName || 'Someone',
-          preview: previewMessage(lastMessage),
+          // me._id: call entries are worded for whoever is looking.
+          preview: previewMessage(lastMessage, me._id),
           createdAt: lastMessage.createdAt,
         }
       : null,
@@ -215,7 +249,7 @@ function replyPreview(original, viewerId) {
   return {
     id: String(original._id),
     senderName: original.sender?.profile?.username || original.sender?.profile?.firstName || 'Someone',
-    preview: previewMessage(original),
+    preview: previewMessage(original, viewerId),
   };
 }
 
@@ -230,6 +264,7 @@ function serializeMessage(message, { viewerId, conversationType, otherLastReadAt
       kind: message.kind,
       content: 'This message was deleted.',
       media: null,
+      callLog: null,
       sender: message.sender?.profile ? userPreview(message.sender) : undefined,
       replyTo: null,
       reactions: reactions || [],
@@ -247,6 +282,7 @@ function serializeMessage(message, { viewerId, conversationType, otherLastReadAt
     kind: message.kind,
     content: message.content,
     media: message.media || null,
+    callLog: message.callLog || null,
     sender: message.sender?.profile ? userPreview(message.sender) : undefined,
     replyTo: replyPreview(message.replyTo, viewerId),
     reactions: reactions || [],
@@ -501,6 +537,8 @@ async function editMessage(req, res) {
   if (!message) return res.status(404).json({ error: 'Message not found.' });
   if (String(message.sender) !== String(req.userId)) return res.status(403).json({ error: 'You can only edit your own message.' });
   if (message.deletedForEveryone) return res.status(400).json({ error: 'This message was deleted and cannot be edited.' });
+  // Call entries are a record of what happened - not editable.
+  if (message.kind === 'call') return res.status(400).json({ error: 'Call entries cannot be edited.' });
 
   const content = typeof req.body.content === 'string' ? req.body.content.trim() : '';
   if (!content) return res.status(400).json({ error: 'content is required.' });
@@ -717,6 +755,9 @@ async function forwardMessage(req, res) {
   if (original.deletedFor.some((userId) => String(userId) === String(req.userId))) {
     return res.status(404).json({ error: 'Message not found.' });
   }
+  // A call entry belongs to the call it records - it can't be copied into
+  // another chat.
+  if (original.kind === 'call') return res.status(400).json({ error: 'Call entries cannot be forwarded.' });
 
   const { targetConversationId, targetUsername } = req.body;
   if (Boolean(targetConversationId) === Boolean(targetUsername)) {
@@ -821,6 +862,10 @@ async function bulkForwardMessages(req, res) {
   if (error) return res.status(error.status).json({ error: error.message });
   const originals = await Message.find({ _id: { $in: ids }, conversation: conversation._id, deletedForEveryone: false, deletedFor: { $ne: req.userId } }).sort({ createdAt: 1, _id: 1 });
   if (originals.length !== ids.length) return res.status(404).json({ error: 'One or more selected messages are unavailable in this conversation.' });
+  // Same rule as single forward: call entries stay in their own chat.
+  if (originals.some((original) => original.kind === 'call')) {
+    return res.status(400).json({ error: 'Call entries cannot be forwarded. Unselect them and try again.' });
+  }
 
   // Validate all destinations before creating a DM or sending any copy.
   const destinations = [];
@@ -963,4 +1008,6 @@ module.exports = {
   getChatShareLink,
   loadConversationForUser,
   loadMessageInConversation,
+  serializeMessage,
+  SENDER_FIELDS,
 };

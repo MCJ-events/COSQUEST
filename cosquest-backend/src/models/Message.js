@@ -16,13 +16,28 @@ const messageMediaSchema = new mongoose.Schema(
   { _id: false }
 );
 
+// One "call entry" per finished call - see src/utils/callMessage.js. callId
+// is what the unique index below dedupes on, so the same call never produces
+// two log entries even if its finished status gets broadcast more than once.
+const callLogSchema = new mongoose.Schema(
+  {
+    callId: { type: mongoose.Schema.Types.ObjectId, ref: 'Call', required: true },
+    type: { type: String, enum: ['audio', 'video'], required: true },
+    status: { type: String, enum: ['declined', 'missed', 'cancelled', 'ended'], required: true },
+    durationSeconds: { type: Number, default: null },
+    callerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  },
+  { _id: false }
+);
+
 const messageSchema = new mongoose.Schema(
   {
     conversation: { type: mongoose.Schema.Types.ObjectId, ref: 'Conversation', required: true, index: true },
     sender: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
-    kind: { type: String, enum: ['text', 'image', 'video', 'audio', 'file', 'sticker'], default: 'text' },
+    kind: { type: String, enum: ['text', 'image', 'video', 'audio', 'file', 'sticker', 'call'], default: 'text' },
     content: { type: String, default: '', trim: true, maxlength: 2000 },
     media: { type: messageMediaSchema, default: null },
+    callLog: { type: callLogSchema, default: null },
     replyTo: { type: mongoose.Schema.Types.ObjectId, ref: 'Message', default: null },
     // Set when this message was created by forwarding another one, so the UI
     // can show a "Forwarded" label. Points at the original message; the
@@ -47,5 +62,14 @@ const messageSchema = new mongoose.Schema(
 );
 
 messageSchema.index({ conversation: 1, createdAt: -1 });
+
+// Partial, not sparse: only documents where callLog.callId actually exists
+// are indexed, so this never conflicts with the other 99% of messages - it
+// only stops the same call from getting a second log entry (see
+// recordCallMessage's E11000 handling).
+messageSchema.index(
+  { 'callLog.callId': 1 },
+  { unique: true, partialFilterExpression: { 'callLog.callId': { $exists: true } } }
+);
 
 module.exports = mongoose.model('Message', messageSchema);

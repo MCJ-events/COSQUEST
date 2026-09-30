@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const User = require('../src/models/User');
 const Call = require('../src/models/Call');
+const Message = require('../src/models/Message');
 const { signToken } = require('../src/utils/token');
 
 async function run(baseUrl) {
@@ -15,6 +16,18 @@ async function run(baseUrl) {
       fail += 1;
       console.log(`FAIL - ${name}`, JSON.stringify(value));
     }
+  }
+
+  // recordCallMessage runs fire-and-forget off broadcastCallUpdate, so the
+  // HTTP response can return before its writes land - poll briefly instead
+  // of asserting on it immediately.
+  async function waitForCallMessage(callId, attempts = 40) {
+    for (let i = 0; i < attempts; i++) {
+      const message = await Message.findOne({ 'callLog.callId': new mongoose.Types.ObjectId(callId) });
+      if (message) return message;
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+    return null;
   }
 
   async function request(method, path, token, body) {
@@ -108,10 +121,62 @@ async function run(baseUrl) {
   check(ended.data.call.status === 'ended' && ended.data.call.endedAt, 'participant can end an accepted call', ended);
   check((await request('POST', `/api/calls/${firstCall.id}/end`, recipient.token)).data.call.status === 'ended', 'ending a call is idempotent');
 
+  const endedMessage = await waitForCallMessage(firstCall.id);
+  check(
+    endedMessage?.kind === 'call' && endedMessage.callLog?.status === 'ended' && endedMessage.callLog?.type === 'audio' &&
+      typeof endedMessage.callLog?.durationSeconds === 'number' && String(endedMessage.callLog?.callerId) === caller.id,
+    'ending a call logs a call message with a duration in the DM',
+    endedMessage
+  );
+  const endedCallerChats = await request('GET', '/api/chats', caller.token);
+  const endedRecipientChats = await request('GET', '/api/chats', recipient.token);
+  const endedCallerDm = endedCallerChats.data.chats.find((chat) => chat.id === conversationId);
+  const endedRecipientDm = endedRecipientChats.data.chats.find((chat) => chat.id === conversationId);
+  check(endedCallerDm?.lastMessage?.preview === '📞 Voice call', 'caller chat list shows a plain preview for an answered call', endedCallerDm);
+  check(endedRecipientDm?.lastMessage?.preview === '📞 Voice call', 'recipient chat list shows the same preview for an answered call', endedRecipientDm);
+
+  check(
+    (await request('PATCH', `/api/chats/${conversationId}/messages/${endedMessage.id}`, caller.token, { content: 'nope' })).status === 400,
+    'a call entry cannot be edited'
+  );
+  check(
+    (await request('POST', `/api/chats/${conversationId}/messages/${endedMessage.id}/forward`, caller.token, { targetUsername: outsider.username })).status === 400,
+    'a call entry cannot be forwarded'
+  );
+
+  let duplicateBlocked = false;
+  try {
+    await Message.create({
+      conversation: conversationId,
+      sender: caller.id,
+      kind: 'call',
+      content: '',
+      callLog: { callId: firstCall.id, type: 'audio', status: 'ended', durationSeconds: 1, callerId: caller.id },
+    });
+  } catch (error) {
+    duplicateBlocked = error?.code === 11000;
+  }
+  check(duplicateBlocked, 'a second call-log message for the same call is rejected by the unique index');
+
   const declineStart = await request('POST', callPath, caller.token, { type: 'video' });
   check((await request('POST', `/api/calls/${declineStart.data.call.id}/decline`, caller.token)).status === 400, 'caller cannot use the decline endpoint');
   const declined = await request('POST', `/api/calls/${declineStart.data.call.id}/decline`, recipient.token);
   check(declined.data.call.status === 'declined', 'recipient can decline a ringing call', declined);
+
+  const declinedMessage = await waitForCallMessage(declineStart.data.call.id);
+  check(
+    declinedMessage?.kind === 'call' && declinedMessage.callLog?.status === 'declined' && declinedMessage.callLog?.type === 'video' &&
+      declinedMessage.callLog?.durationSeconds === null,
+    'declining a call logs a call message with no duration',
+    declinedMessage
+  );
+
+  const declinedCallerChats = await request('GET', '/api/chats', caller.token);
+  const declinedRecipientChats = await request('GET', '/api/chats', recipient.token);
+  const declinedCallerDm = declinedCallerChats.data.chats.find((chat) => chat.id === conversationId);
+  const declinedRecipientDm = declinedRecipientChats.data.chats.find((chat) => chat.id === conversationId);
+  check(declinedCallerDm?.lastMessage?.preview === '🎥 Video call · Declined', 'caller chat list shows who declined', declinedCallerDm);
+  check(declinedRecipientDm?.lastMessage?.preview === '🎥 You declined a video call', 'recipient chat list is worded from their own side', declinedRecipientDm);
 
   const recipientCloseStart = await request('POST', callPath, caller.token, { type: 'audio' });
   const recipientClose = await request('POST', `/api/calls/${recipientCloseStart.data.call.id}/end`, recipient.token);

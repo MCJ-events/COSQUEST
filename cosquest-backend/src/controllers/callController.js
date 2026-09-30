@@ -5,6 +5,7 @@ const { createCallToken, getLivekitUrl } = require('../utils/livekit');
 const { isBlockedEitherWay } = require('./publicProfileController');
 const { loadConversationForUser } = require('./chatController');
 const { emitToUsers } = require('../realtime/socket');
+const { recordCallMessage } = require('../utils/callMessage');
 
 const RING_TIMEOUT_MS = 45 * 1000;
 const TERMINAL_STATUSES = ['declined', 'missed', 'cancelled', 'ended'];
@@ -69,6 +70,7 @@ async function findCallForUser(callId, userId) {
 
 function broadcastCallUpdate(call) {
   emitToUsers(participantIds(call), 'call:updated', { call: toCallJson(call) });
+  recordCallMessage(call).catch((error) => console.error('[calls] failed to record call message:', error.message));
 }
 
 async function markMissedIfExpired(call) {
