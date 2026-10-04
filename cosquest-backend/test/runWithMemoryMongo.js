@@ -66,6 +66,9 @@ async function main() {
     const avatarCatalog = await require('./avatarCatalog').run(`http://localhost:${process.env.PORT}`);
     result.pass += avatarCatalog.pass;
     result.fail += avatarCatalog.fail;
+    const postShares = await require('./postShares').run(`http://localhost:${process.env.PORT}`);
+    result.pass += postShares.pass;
+    result.fail += postShares.fail;
   } finally {
     await new Promise((resolve) => server.close(resolve));
     await closeSocket(); // quits the adapter's dedicated pub/sub Redis connections - see socket.js

@@ -13,6 +13,7 @@ const {
   likePost,
   unlikePost,
   sharePost,
+  shareToFeed,
   unsharePost,
   bookmarkPost,
   unbookmarkPost,
@@ -35,6 +36,9 @@ router.post('/posts/:postId/likes', requireAuth, requireCompletedOnboarding, asy
 router.delete('/posts/:postId/likes', requireAuth, requireCompletedOnboarding, asyncHandler(unlikePost));
 router.post('/posts/:postId/shares', requireAuth, requireCompletedOnboarding, asyncHandler(sharePost));
 router.delete('/posts/:postId/shares', requireAuth, requireCompletedOnboarding, asyncHandler(unsharePost));
+// Share a post into your feed (like Facebook's "Share now"), with an
+// optional caption: body { content? }.
+router.post('/posts/:postId/share-to-feed', requireAuth, requireCompletedOnboarding, asyncHandler(shareToFeed));
 router.post('/posts/:postId/bookmarks', requireAuth, requireCompletedOnboarding, asyncHandler(bookmarkPost));
 router.delete('/posts/:postId/bookmarks', requireAuth, requireCompletedOnboarding, asyncHandler(unbookmarkPost));
 router.get('/users/me/bookmarks', requireAuth, requireCompletedOnboarding, asyncHandler(listMyBookmarks));

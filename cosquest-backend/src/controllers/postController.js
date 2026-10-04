@@ -9,7 +9,7 @@ const PostBookmark = require('../models/PostBookmark');
 const userModel = require('../models/userModel');
 const { storePostMedia, deletePostMedia, storeChatMedia } = require('../utils/imageHost');
 const { transcribeAudio } = require('../utils/transcribeAudio');
-const { canViewProfile, canViewActivityFeed } = require('./publicProfileController');
+const { canViewProfile, canViewActivityFeed, isBlockedEitherWay } = require('./publicProfileController');
 // NEW — same emitter module chat's controller already uses, just the
 // post:<id> room instead of conversation:<id>. No circular-require risk
 // here the way chatController<->socket.js has: socket.js's initSocket
@@ -17,13 +17,22 @@ const { canViewProfile, canViewActivityFeed } = require('./publicProfileControll
 // this can be a normal top-level require.
 const { emitToPost } = require('../realtime/socket');
 
+// Types a person can CREATE with POST /api/posts.
 const POST_TYPES = ['image', 'reel', 'thought'];
+// Types that can appear in lists ('share' = a shared post, created with
+// POST /api/posts/:postId/share-to-feed).
+const LIST_TYPES = [...POST_TYPES, 'share'];
 // 'image/jpg' isn't a registered MIME type, and 'application/octet-stream'/
 // 'text/plain' are mislabeled-but-real files (a mobile picker guessing
 // wrong) - all accepted here the same way as upload.js's ALLOWED_TYPES,
 // deferring real validation to Cloudinary.
 const IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif', 'application/octet-stream', 'text/plain'];
 const VIDEO_TYPES = ['video/mp4', 'video/quicktime', 'video/webm', 'application/octet-stream', 'text/plain'];
+
+const AUTHOR_FIELDS = 'profile.username profile.displayName profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl faction';
+
+// A shared post's original, with its author (used by every list).
+const SHARED_POST_POPULATE = { path: 'sharedPost', populate: { path: 'author', select: AUTHOR_FIELDS } };
 
 function parseLimit(value, fallback = 20) {
   const limit = Number(value);
@@ -52,6 +61,25 @@ function authorPreview(author) {
   };
 }
 
+// The original post inside a shared post. `{ unavailable: true }` when the
+// original was deleted.
+function serializeSharedPost(item) {
+  if (item.type !== 'share') return null;
+  const original = item.sharedPost;
+  if (!original || !original._id) return { unavailable: true };
+  return {
+    id: String(original._id),
+    type: original.type,
+    content: original.content,
+    media: original.media,
+    likeCount: original.likeCount,
+    commentCount: original.commentCount,
+    shareCount: original.shareCount,
+    createdAt: original.createdAt,
+    author: original.author?.profile ? authorPreview(original.author) : undefined,
+  };
+}
+
 function serializePost(post) {
   const item = post.toObject ? post.toObject() : post;
   return {
@@ -67,6 +95,8 @@ function serializePost(post) {
     updatedAt: item.updatedAt,
     editedAt: item.editedAt || null,
     author: item.author?.profile ? authorPreview(item.author) : undefined,
+    // For type 'share': the original post (or { unavailable: true }).
+    sharedPost: serializeSharedPost(item),
   };
 }
 
@@ -94,7 +124,9 @@ function validatePostInput(type, content, files) {
 
 async function loadPost(postId) {
   if (!mongoose.isValidObjectId(postId)) return null;
-  return Post.findById(postId).populate('author', 'profile.username profile.displayName profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl faction');
+  return Post.findById(postId)
+    .populate('author', AUTHOR_FIELDS)
+    .populate(SHARED_POST_POPULATE);
 }
 
 async function createPost(req, res) {
@@ -115,7 +147,7 @@ async function createPost(req, res) {
       return res.status(400).json({ error: 'A reel must be 30 seconds or shorter.' });
     }
     const post = await Post.create({ author: req.userId, type, content: content.trim(), media });
-    await post.populate('author', 'profile.username profile.displayName profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl faction');
+    await post.populate('author', AUTHOR_FIELDS);
     return res.status(201).json({ post: serializePost(post) });
   } catch (error) {
     if (media.length) await deletePostMedia(media);
@@ -125,13 +157,14 @@ async function createPost(req, res) {
 
 async function listPosts(req, res) {
   const type = req.query.type;
-  if (type && !POST_TYPES.includes(type)) return res.status(400).json({ error: 'type must be image, reel, or thought.' });
+  if (type && !LIST_TYPES.includes(type)) return res.status(400).json({ error: 'type must be image, reel, thought, or share.' });
   const limit = parseLimit(req.query.limit);
   const page = parsePage(req.query.page);
   const query = type ? { type } : {};
   const [posts, total] = await Promise.all([
     Post.find(query)
-      .populate('author', 'profile.username profile.displayName profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl faction')
+      .populate('author', AUTHOR_FIELDS)
+      .populate(SHARED_POST_POPULATE)
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit),
@@ -144,7 +177,7 @@ async function listUserPosts(req, res) {
   const user = await userModel.findByUsername(req.params.username);
   if (!user || !(await canViewProfile(user, req.userId))) return res.status(404).json({ error: 'Profile not found.' });
   const type = req.query.type;
-  if (type && !POST_TYPES.includes(type)) return res.status(400).json({ error: 'type must be image, reel, or thought.' });
+  if (type && !LIST_TYPES.includes(type)) return res.status(400).json({ error: 'type must be image, reel, thought, or share.' });
   const limit = parseLimit(req.query.limit);
   const page = parsePage(req.query.page);
   // The profile itself is visible, but "Show Activity Feed" being off hides
@@ -156,7 +189,8 @@ async function listUserPosts(req, res) {
   const query = { author: user._id, ...(type ? { type } : {}) };
   const [posts, total] = await Promise.all([
     Post.find(query)
-      .populate('author', 'profile.username profile.displayName profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl faction')
+      .populate('author', AUTHOR_FIELDS)
+      .populate(SHARED_POST_POPULATE)
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit),
@@ -202,6 +236,15 @@ async function deletePost(req, res) {
     Post.deleteOne({ _id: post._id }),
   ]);
   await deletePostMedia(post.media);
+
+  // Deleting your shared post takes your share back off the original.
+  if (post.type === 'share' && post.sharedPost?._id) {
+    const removed = await PostShare.deleteOne({ post: post.sharedPost._id, user: req.userId });
+    if (removed.deletedCount) {
+      await Post.updateOne({ _id: post.sharedPost._id, shareCount: { $gt: 0 } }, { $inc: { shareCount: -1 } });
+    }
+  }
+
   return res.json({ message: 'Post deleted.' });
 }
 
@@ -238,6 +281,45 @@ async function sharePost(req, res) {
   }
   const updated = await Post.findByIdAndUpdate(post._id, { $inc: { shareCount: 1 } }, { new: true });
   return res.status(201).json({ shared: true, shareCount: updated.shareCount });
+}
+
+// POST /api/posts/:postId/share-to-feed  { content? }
+// Creates a 'share' post in the feed that shows the ORIGINAL post inside it
+// (sharing a share shares its original). The original's shareCount goes up
+// once per person - same rule as POST /posts/:postId/shares.
+async function shareToFeed(req, res) {
+  const target = await loadPost(req.params.postId);
+  if (!target) return res.status(404).json({ error: 'Post not found.' });
+
+  // Always point at the original, never at another share.
+  const original = target.type === 'share' ? target.sharedPost : target;
+  if (!original || !original._id) {
+    return res.status(404).json({ error: 'This post is no longer available.' });
+  }
+
+  const originalAuthorId = original.author?._id || original.author;
+  if (await isBlockedEitherWay(req.userId, originalAuthorId)) {
+    return res.status(404).json({ error: 'Post not found.' });
+  }
+
+  const content = typeof req.body?.content === 'string' ? req.body.content.trim() : '';
+  if (content.length > 2200) return res.status(400).json({ error: 'Your caption must be at most 2,200 characters.' });
+
+  const post = await Post.create({ author: req.userId, type: 'share', content, sharedPost: original._id });
+
+  // Count the share on the original (once per person).
+  let shareCount = original.shareCount || 0;
+  try {
+    await PostShare.create({ post: original._id, user: req.userId });
+    const updated = await Post.findByIdAndUpdate(original._id, { $inc: { shareCount: 1 } }, { new: true });
+    shareCount = updated?.shareCount ?? shareCount;
+  } catch (error) {
+    if (error?.code !== 11000) throw error;
+  }
+
+  await post.populate('author', AUTHOR_FIELDS);
+  await post.populate(SHARED_POST_POPULATE);
+  return res.status(201).json({ post: serializePost(post), originalPostId: String(original._id), shareCount });
 }
 
 async function unsharePost(req, res) {
@@ -282,7 +364,10 @@ async function listMyBookmarks(req, res) {
       .limit(limit)
       .populate({
         path: 'post',
-        populate: { path: 'author', select: 'profile.username profile.displayName profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl faction' },
+        populate: [
+          { path: 'author', select: AUTHOR_FIELDS },
+          SHARED_POST_POPULATE,
+        ],
       }),
     PostBookmark.countDocuments(query),
   ]);
@@ -328,7 +413,7 @@ async function listComments(req, res) {
   const query = { post: post._id, parentComment };
   const [comments, total] = await Promise.all([
     PostComment.find(query)
-      .populate('author', 'profile.username profile.displayName profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl faction')
+      .populate('author', AUTHOR_FIELDS)
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit),
@@ -397,7 +482,7 @@ async function createComment(req, res) {
     Post.findByIdAndUpdate(post._id, { $inc: { commentCount: 1 } }, { new: true }),
     rootId ? PostComment.updateOne({ _id: rootId }, { $inc: { replyCount: 1 } }) : Promise.resolve(),
   ]);
-  await comment.populate('author', 'profile.username profile.displayName profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl faction');
+  await comment.populate('author', AUTHOR_FIELDS);
 
   // Fire-and-forget, same as chat's voice notes - nobody waits on Deepgram
   // before their voice comment finishes posting.
@@ -481,6 +566,7 @@ module.exports = {
   likePost,
   unlikePost,
   sharePost,
+  shareToFeed,
   unsharePost,
   bookmarkPost,
   unbookmarkPost,

@@ -15,9 +15,14 @@ const mediaSchema = new mongoose.Schema(
 const postSchema = new mongoose.Schema(
   {
     author: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
-    type: { type: String, enum: ['image', 'reel', 'thought'], required: true, index: true },
+    // 'share' = this post shares another post into the feed (like Facebook's
+    // "Share now"); content is the sharer's optional caption.
+    type: { type: String, enum: ['image', 'reel', 'thought', 'share'], required: true, index: true },
     content: { type: String, default: '', trim: true, maxlength: 2200 },
     media: { type: [mediaSchema], default: [] },
+    // The original post a 'share' post points to (always the ORIGINAL, never
+    // another share). Null for every other type.
+    sharedPost: { type: mongoose.Schema.Types.ObjectId, ref: 'Post', default: null, index: true },
     likeCount: { type: Number, default: 0, min: 0 },
     commentCount: { type: Number, default: 0, min: 0 },
     shareCount: { type: Number, default: 0, min: 0 },
