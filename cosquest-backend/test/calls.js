@@ -104,7 +104,14 @@ async function run(baseUrl) {
   const recipientIncoming = await request('GET', '/api/calls/incoming', recipient.token);
   check(callerIncoming.status === 200 && callerIncoming.data.call === null, 'caller does not receive their own incoming call');
   check(recipientIncoming.data.call?.id === firstCall.id, 'recipient sees the incoming call');
-  check((await request('POST', `/api/calls/${firstCall.id}/accept`, caller.token)).status === 400, 'caller cannot answer their own call');
+  // The caller is already in their own call, so "accept" is a harmless retry
+  // that does not make the call count as answered.
+  const callerAccept = await request('POST', `/api/calls/${firstCall.id}/accept`, caller.token);
+  check(
+    callerAccept.status === 200 && callerAccept.data.call.status === 'ringing',
+    'caller answering their own call does not mark it answered',
+    callerAccept
+  );
 
   const accepted = await request('POST', `/api/calls/${firstCall.id}/accept`, recipient.token);
   check(
@@ -159,7 +166,7 @@ async function run(baseUrl) {
   check(duplicateBlocked, 'a second call-log message for the same call is rejected by the unique index');
 
   const declineStart = await request('POST', callPath, caller.token, { type: 'video' });
-  check((await request('POST', `/api/calls/${declineStart.data.call.id}/decline`, caller.token)).status === 400, 'caller cannot use the decline endpoint');
+  check((await request('POST', `/api/calls/${declineStart.data.call.id}/decline`, caller.token)).status === 409, 'caller cannot decline a call they are in (they leave it instead)');
   const declined = await request('POST', `/api/calls/${declineStart.data.call.id}/decline`, recipient.token);
   check(declined.data.call.status === 'declined', 'recipient can decline a ringing call', declined);
 
@@ -189,7 +196,9 @@ async function run(baseUrl) {
   const missedStart = await request('POST', callPath, caller.token, { type: 'audio' });
   await Call.collection.updateOne(
     { _id: new mongoose.Types.ObjectId(missedStart.data.call.id) },
-    { $set: { createdAt: new Date(Date.now() - 46_000) } }
+    // Each person's ring time is tracked on their own `members` entry.
+    { $set: { createdAt: new Date(Date.now() - 46_000), 'members.$[ringing].invitedAt': new Date(Date.now() - 46_000) } },
+    { arrayFilters: [{ 'ringing.status': 'ringing' }] }
   );
   const missed = await request('GET', `/api/calls/${missedStart.data.call.id}`, caller.token);
   check(missed.data.call.status === 'missed' && missed.data.call.endedAt, 'unanswered call becomes missed after 45 seconds', missed);
@@ -203,6 +212,72 @@ async function run(baseUrl) {
   check(statuses[0] === 201 && statuses[1] === 409, 'concurrent starts create only one active call', concurrent);
   const winner = concurrent.find((result) => result.status === 201);
   await request('POST', `/api/calls/${winner.data.call.id}/end`, caller.token);
+
+  console.log('\n--- group calls ---');
+  const groupStart = await request('POST', callPath, caller.token, { type: 'audio' });
+  const groupCallId = groupStart.data.call.id;
+  check((await request('POST', `/api/calls/${groupCallId}/invite`, caller.token, {})).status === 400, 'adding people needs at least one person');
+  check((await request('POST', `/api/calls/${groupCallId}/invite`, outsider.token, { usernames: [recipient.username] })).status === 403, 'a non-participant cannot add people');
+  await request('POST', `/api/calls/${groupCallId}/accept`, recipient.token);
+
+  const invited = await request('POST', `/api/calls/${groupCallId}/invite`, caller.token, {
+    usernames: [outsider.username, 'nobody-by-this-name'],
+  });
+  check(
+    invited.status === 200 && invited.data.invited.includes(outsider.id) && invited.data.call.isGroup === true &&
+      invited.data.skipped.some((entry) => entry.reason === 'not_found'),
+    'a person in the call can add someone; unknown names are skipped, not fatal',
+    invited
+  );
+  check((await request('GET', '/api/calls/incoming', outsider.token)).data.call?.id === groupCallId, 'the added person is rung');
+  check((await request('GET', '/api/calls/incoming', recipient.token)).data.call === null, 'people already in the call are not rung again');
+
+  const outsiderAccepted = await request('POST', `/api/calls/${groupCallId}/accept`, outsider.token);
+  check(
+    outsiderAccepted.status === 200 && outsiderAccepted.data.call.members.filter((member) => member.status === 'joined').length === 3,
+    'the added person answers and all three are in the call',
+    outsiderAccepted
+  );
+
+  const recipientLeft = await request('POST', `/api/calls/${groupCallId}/end`, recipient.token);
+  check(recipientLeft.data.call.status === 'accepted', 'one person leaving a group call does not end it for the others', recipientLeft);
+  const rejoined = await request('POST', `/api/calls/${groupCallId}/join`, recipient.token);
+  check(rejoined.status === 200 && typeof rejoined.data.token === 'string', 'a person who left can rejoin while the call is going', rejoined);
+
+  await request('POST', `/api/calls/${groupCallId}/end`, recipient.token);
+  await request('POST', `/api/calls/${groupCallId}/end`, outsider.token);
+  const groupEnded = await request('POST', `/api/calls/${groupCallId}/end`, caller.token);
+  check(groupEnded.data.call.status === 'ended', 'the call ends when the last person leaves', groupEnded);
+  const groupMessage = await waitForCallMessage(groupCallId);
+  check(
+    groupMessage?.callLog?.groupCall === true && groupMessage.callLog.participantCount === 3,
+    'the call entry records a group call and how many took part',
+    groupMessage
+  );
+
+  console.log('\n--- community voice chats ---');
+  const voicePath = `/api/chats/${community.id}/voice`;
+  check((await request('GET', voicePath, null)).status === 401, 'voice chats require authentication');
+  check((await request('GET', `/api/chats/${conversationId}/voice`, caller.token)).status === 400, 'voice chats are not available in direct messages');
+  check((await request('GET', voicePath, caller.token)).data.voiceRoom === null, 'no voice chat is live at first');
+
+  const voiceJoin = await request('POST', `${voicePath}/join`, caller.token);
+  const voiceRoomId = voiceJoin.data.voiceRoom?.id;
+  check(
+    voiceJoin.status === 201 && voiceJoin.data.voiceRoom.memberCount === 1 && typeof voiceJoin.data.token === 'string',
+    'the first person to join starts the voice chat and gets a LiveKit token',
+    voiceJoin
+  );
+  const voiceJoin2 = await request('POST', `${voicePath}/join`, recipient.token);
+  check(voiceJoin2.status === 200 && voiceJoin2.data.voiceRoom.id === voiceRoomId && voiceJoin2.data.voiceRoom.memberCount === 2, 'a second person joins the same live voice chat', voiceJoin2);
+  check((await request('POST', `/api/voice/${voiceRoomId}/ping`, recipient.token)).data.voiceRoom.memberCount === 2, 'check-in keeps a member in the voice chat');
+  check((await request('POST', `/api/voice/${voiceRoomId}/ping`, outsider.token)).status === 404, 'check-in from someone who is not in it is rejected');
+  check((await request('POST', `/api/voice/not-an-id/leave`, caller.token)).status === 404, 'invalid voice chat id returns not found');
+
+  await request('POST', `/api/voice/${voiceRoomId}/leave`, recipient.token);
+  const lastLeave = await request('POST', `/api/voice/${voiceRoomId}/leave`, caller.token);
+  check(lastLeave.data.voiceRoom === null, 'the voice chat closes when the last person leaves', lastLeave);
+  check((await request('GET', voicePath, caller.token)).data.voiceRoom === null, 'a closed voice chat is no longer live');
 
   return { pass, fail };
 }

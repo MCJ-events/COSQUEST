@@ -26,6 +26,10 @@ const callLogSchema = new mongoose.Schema(
     status: { type: String, enum: ['declined', 'missed', 'cancelled', 'ended'], required: true },
     durationSeconds: { type: Number, default: null },
     callerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    // Group calls: true once someone was added, and how many people were
+    // actually in the call at some point.
+    groupCall: { type: Boolean, default: false },
+    participantCount: { type: Number, default: null },
   },
   { _id: false }
 );

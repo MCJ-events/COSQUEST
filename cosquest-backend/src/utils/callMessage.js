@@ -1,11 +1,14 @@
-// Saves the "call entry" message in a DM when a call finishes, and sends it
-// live to both people - exactly like a normal new message (message:new to
-// the conversation room + chat:preview to both users, so the chat list
-// updates too).
+// Saves the "call entry" message in the DM where a call started, once the
+// call has finished, and sends it live - exactly like a normal new message
+// (message:new to the conversation room + chat:preview to the DM's two
+// people, so the chat list updates too).
 //
-// Called from callController's broadcastCallUpdate(), which already runs on
-// EVERY call status change - so declined / missed / cancelled / ended are
-// all covered from one place.
+// Called from callController's broadcastCallUpdate(), which runs on every
+// call status change - so declined / missed / cancelled / ended are all
+// covered from one place.
+//
+// Group calls: the entry still goes in the DM the call started in, and also
+// records that it was a group call and how many people took part.
 
 const Conversation = require('../models/Conversation');
 const Message = require('../models/Message');
@@ -17,6 +20,13 @@ const FINISHED_STATUSES = ['declined', 'missed', 'cancelled', 'ended'];
 function durationSeconds(call) {
   if (call.status !== 'ended' || !call.answeredAt || !call.endedAt) return null;
   return Math.max(0, Math.round((new Date(call.endedAt) - new Date(call.answeredAt)) / 1000));
+}
+
+// Everyone who was actually in the call at some point.
+function participantCount(call) {
+  const members = call.members || [];
+  if (!members.length) return call.status === 'ended' ? 2 : null;
+  return members.filter((member) => member.joinedAt).length;
 }
 
 async function recordCallMessage(call) {
@@ -43,6 +53,8 @@ async function recordCallMessage(call) {
         status: call.status,
         durationSeconds: durationSeconds(call),
         callerId,
+        groupCall: Boolean(call.isGroup),
+        participantCount: participantCount(call),
       },
     });
   } catch (error) {
@@ -51,6 +63,7 @@ async function recordCallMessage(call) {
     throw error;
   }
 
+  const conversation = await Conversation.findById(conversationId).select('participants');
   await Conversation.updateOne({ _id: conversationId }, { $inc: { messageCount: 1 } });
   await message.populate('sender', SENDER_FIELDS);
 
@@ -66,7 +79,10 @@ async function recordCallMessage(call) {
     message: serialized,
   });
 
-  emitToUsers(call.participants.map(String), 'chat:preview', {
+  // Only the DM's own two people - people added to a group call aren't part
+  // of that DM.
+  const dmPeople = (conversation?.participants || []).map(String);
+  emitToUsers(dmPeople, 'chat:preview', {
     conversationId: String(conversationId),
   });
 }
