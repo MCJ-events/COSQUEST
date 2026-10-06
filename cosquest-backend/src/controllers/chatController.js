@@ -56,15 +56,33 @@ function cleanUpLocalFile(file) {
 // ==========================================================================
 // READ RECEIPTS (optional, like WhatsApp)
 // ==========================================================================
-// If EITHER person turned read receipts off, neither sees the other's
-// "read" state: no blue ticks, no "seen" in the chat list.
+// Turning read receipts off only affects reading FROM THEN ON:
+//  - if the OTHER person turned theirs off, I see their reads only up to the
+//    moment they did (ConversationMember.receiptsFrozenAt);
+//  - if I turned mine off, I see their reads only up to the moment I did
+//    (User.privacy.readReceiptsOffAt).
+// Messages already read before that keep showing as read.
 
 function readReceiptsOn(user) {
   return user?.privacy?.readReceipts !== false;
 }
 
-// For a DM: when the OTHER person last read it, or null if read receipts are
-// off on either side (or it isn't a DM).
+// How far `otherMember` has read, as far as `viewer` is allowed to see.
+function visibleReadAt(otherMember, otherUser, viewer) {
+  if (!otherMember) return null;
+
+  let readAt = readReceiptsOn(otherUser) ? otherMember.lastReadAt : otherMember.receiptsFrozenAt || null;
+
+  if (readAt && !readReceiptsOn(viewer)) {
+    const offAt = viewer?.privacy?.readReceiptsOffAt;
+    readAt = offAt ? new Date(Math.min(new Date(readAt).getTime(), new Date(offAt).getTime())) : null;
+  }
+
+  return readAt && readAt > EPOCH ? readAt : null;
+}
+
+// For a DM: how far the OTHER person has read, as far as the viewer is
+// allowed to see (or null if it isn't a DM).
 async function otherLastReadFor(conversation, viewer) {
   if (conversation.type !== 'dm') return null;
 
@@ -73,13 +91,12 @@ async function otherLastReadFor(conversation, viewer) {
   if (!otherId) return null;
 
   const [viewerDoc, otherUser, otherMember] = await Promise.all([
-    viewer?.privacy ? viewer : User.findById(viewerId).select('privacy.readReceipts'),
-    User.findById(otherId).select('privacy.readReceipts'),
+    viewer?.privacy ? viewer : User.findById(viewerId).select('privacy.readReceipts privacy.readReceiptsOffAt'),
+    User.findById(otherId).select('privacy.readReceipts privacy.readReceiptsOffAt'),
     ConversationMember.findOne({ conversation: conversation._id, user: otherId }),
   ]);
 
-  if (!readReceiptsOn(viewerDoc) || !readReceiptsOn(otherUser)) return null;
-  return otherMember?.lastReadAt || null;
+  return visibleReadAt(otherMember, otherUser, viewerDoc);
 }
 
 // ==========================================================================
@@ -334,10 +351,8 @@ async function summarizeConversation(conversation, me) {
     if (otherUser) {
       // Same opt-out userPreview() already uses for lastActiveAt.
       const showsStatus = otherUser.privacy?.showOnlineStatus !== false;
-      // Read receipts off on either side -> no "seen".
-      const receiptsOn = readReceiptsOn(me) && readReceiptsOn(otherUser);
-      const otherLastReadAt =
-        receiptsOn && otherMember?.lastReadAt && otherMember.lastReadAt > EPOCH ? otherMember.lastReadAt : null;
+      // Read receipts off on either side: only reads from before then.
+      const otherLastReadAt = visibleReadAt(otherMember, otherUser, me);
 
       summary.otherParticipant = {
         ...userPreview(otherUser),
@@ -1212,19 +1227,28 @@ async function getMessageSeenBy(req, res) {
   const limit = parseLimit(req.query.limit);
   const page = parsePage(req.query.page);
 
+  // I turned mine off: I only see who read it if it was sent before then.
   if (!readReceiptsOn(req.user)) {
-    return res.json({ seenBy: [], readReceiptsOff: true, pagination: { page, limit, total: 0, hasMore: false } });
+    const offAt = req.user.privacy?.readReceiptsOffAt;
+    if (!offAt || message.createdAt > offAt) {
+      return res.json({ seenBy: [], readReceiptsOff: true, pagination: { page, limit, total: 0, hasMore: false } });
+    }
   }
 
+  // People who turned theirs off are listed only if they'd read it before then.
   const hiddenUsers = await User.find({ 'privacy.readReceipts': false }, '_id');
+  const hiddenIds = hiddenUsers.map((user) => user._id);
   const query = {
     conversation: conversation._id,
-    user: { $ne: message.sender, $nin: hiddenUsers.map((user) => user._id) },
-    lastReadAt: { $gte: message.createdAt },
+    user: { $ne: message.sender },
+    $or: [
+      { user: { $nin: hiddenIds }, lastReadAt: { $gte: message.createdAt } },
+      { user: { $in: hiddenIds }, receiptsFrozenAt: { $gte: message.createdAt } },
+    ],
   };
   const [members, total] = await Promise.all([
     ConversationMember.find(query)
-      .populate('user', 'profile.username profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl faction')
+      .populate('user', 'profile.username profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl faction privacy.readReceipts')
       .sort({ lastReadAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit),
@@ -1232,7 +1256,10 @@ async function getMessageSeenBy(req, res) {
   ]);
 
   return res.json({
-    seenBy: members.filter((member) => member.user).map((member) => ({ ...userPreview(member.user), seenAt: member.lastReadAt })),
+    seenBy: members.filter((member) => member.user).map((member) => ({
+      ...userPreview(member.user),
+      seenAt: readReceiptsOn(member.user) ? member.lastReadAt : member.receiptsFrozenAt,
+    })),
     pagination: { page, limit, total, hasMore: page * limit < total },
   });
 }

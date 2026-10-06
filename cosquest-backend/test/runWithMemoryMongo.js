@@ -60,6 +60,9 @@ async function main() {
     const calls = await require('./calls').run(`http://localhost:${process.env.PORT}`);
     result.pass += calls.pass;
     result.fail += calls.fail;
+    const groupChat = await require('./groupChat').run(`http://localhost:${process.env.PORT}`);
+    result.pass += groupChat.pass;
+    result.fail += groupChat.fail;
     const oauthRedirect = await require('./oauthRedirect').run(`http://localhost:${process.env.PORT}`);
     result.pass += oauthRedirect.pass;
     result.fail += oauthRedirect.fail;

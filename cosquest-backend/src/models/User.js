@@ -108,6 +108,9 @@ const userSchema = new mongoose.Schema(
       // Read receipts (optional, like WhatsApp). Off: others don't see when
       // you've read their messages, and you don't see when they've read yours.
       readReceipts: { type: Boolean, default: true },
+      // When read receipts were last turned off (null while they're on).
+      // Messages read before this moment keep showing as read.
+      readReceiptsOffAt: { type: Date, default: null },
     },
     // The user's own device coordinates, captured during onboarding - separate
     // from DASHBOARD_DEFAULT_LAT/LNG, which is now only a fallback for an
