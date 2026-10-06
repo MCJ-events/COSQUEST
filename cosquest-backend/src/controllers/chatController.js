@@ -6,6 +6,7 @@ const Message = require('../models/Message');
 const MessageReaction = require('../models/MessageReaction');
 const User = require('../models/User');
 const userModel = require('../models/userModel');
+const notificationModel = require('../models/notificationModel');
 const { getFaction } = require('../models/factionModel');
 const { storeChatMedia } = require('../utils/imageHost');
 const { validateChatMedia } = require('../utils/chatMedia');
@@ -19,6 +20,8 @@ const EPOCH = new Date(0);
 const DELETE_FOR_EVERYONE_WINDOW_MS = 5 * 60 * 1000;
 const PIN_DURATIONS = { '24h': 24 * 60 * 60 * 1000, '7d': 7 * 24 * 60 * 60 * 1000, '30d': 30 * 24 * 60 * 60 * 1000 };
 const CLEAR_PIN = { pinnedMessage: null, pinnedAt: null, pinnedUntil: null, pinnedBy: null, pinDuration: null };
+const MAX_MENTIONS = 50;
+const MAX_EDIT_HISTORY = 20;
 
 function parseLimit(value, fallback = 30) {
   const limit = Number(value);
@@ -28,6 +31,10 @@ function parseLimit(value, fallback = 30) {
 function parsePage(value) {
   const page = Number(value);
   return Number.isInteger(page) && page > 0 ? Math.min(page, 1000) : 1;
+}
+
+function escapeRegex(str) {
+  return String(str).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function userPreview(user) {
@@ -45,6 +52,123 @@ function userPreview(user) {
 function cleanUpLocalFile(file) {
   if (file?.path) fs.unlink(file.path, () => {});
 }
+
+// ==========================================================================
+// READ RECEIPTS (optional, like WhatsApp)
+// ==========================================================================
+// If EITHER person turned read receipts off, neither sees the other's
+// "read" state: no blue ticks, no "seen" in the chat list.
+
+function readReceiptsOn(user) {
+  return user?.privacy?.readReceipts !== false;
+}
+
+// For a DM: when the OTHER person last read it, or null if read receipts are
+// off on either side (or it isn't a DM).
+async function otherLastReadFor(conversation, viewer) {
+  if (conversation.type !== 'dm') return null;
+
+  const viewerId = viewer?._id || viewer;
+  const otherId = conversation.participants.find((id) => String(id) !== String(viewerId));
+  if (!otherId) return null;
+
+  const [viewerDoc, otherUser, otherMember] = await Promise.all([
+    viewer?.privacy ? viewer : User.findById(viewerId).select('privacy.readReceipts'),
+    User.findById(otherId).select('privacy.readReceipts'),
+    ConversationMember.findOne({ conversation: conversation._id, user: otherId }),
+  ]);
+
+  if (!readReceiptsOn(viewerDoc) || !readReceiptsOn(otherUser)) return null;
+  return otherMember?.lastReadAt || null;
+}
+
+// ==========================================================================
+// @ MENTIONS
+// ==========================================================================
+
+// `mentions` can arrive as an array, a JSON string (multipart form), or a
+// comma-separated string; `mentionsEveryone` as a boolean or "true".
+function parseMentions(body) {
+  let raw = body?.mentions;
+
+  if (typeof raw === 'string') {
+    const text = raw.trim();
+    if (text.startsWith('[')) {
+      try {
+        raw = JSON.parse(text);
+      } catch {
+        raw = [];
+      }
+    } else {
+      raw = text ? text.split(',') : [];
+    }
+  }
+
+  const ids = Array.isArray(raw)
+    ? [...new Set(raw.map((id) => String(id).trim()).filter((id) => mongoose.isValidObjectId(id)))]
+    : [];
+
+  const everyone = body?.mentionsEveryone === true || body?.mentionsEveryone === 'true';
+  return { ids: ids.slice(0, MAX_MENTIONS), everyone };
+}
+
+// Who can be in this chat: the same rule loadConversationForUser() uses.
+function memberQueryFor(conversation) {
+  if (conversation.type === 'dm') return { _id: { $in: conversation.participants } };
+  if (conversation.type === 'faction') return { faction: conversation.factionKey, onboardingComplete: true };
+  return { onboardingComplete: true };
+}
+
+// Keeps only real people who can actually see this chat (never the sender).
+async function resolveMentions(conversation, senderId, ids) {
+  if (!ids.length) return [];
+  const users = await User.find({ ...memberQueryFor(conversation), _id: { $in: ids } }, '_id');
+  return users.map((user) => String(user._id)).filter((id) => id !== String(senderId));
+}
+
+function conversationLabel(conversation) {
+  if (conversation.type === 'community') return 'Community';
+  if (conversation.type === 'faction') return getFaction(conversation.factionKey)?.name || 'your faction';
+  return 'a chat';
+}
+
+// Notifies everyone mentioned (or everyone in the chat for @everyone).
+async function notifyMentions(conversation, message, sender) {
+  const senderId = String(sender._id);
+  let targetIds = message.mentions.map(String);
+
+  if (message.mentionsEveryone) {
+    const everyone = await User.find({ ...memberQueryFor(conversation), _id: { $ne: sender._id } }, '_id');
+    targetIds = everyone.map((user) => String(user._id));
+  }
+
+  targetIds = targetIds.filter((id) => id !== senderId);
+  if (!targetIds.length) return;
+
+  // Don't notify people who blocked the sender (or whom the sender blocked).
+  const allowed = [];
+  for (const id of targetIds) {
+    if (!(await isBlockedEitherWay(senderId, id))) allowed.push(id);
+  }
+  if (!allowed.length) return;
+
+  const name = sender.profile?.username || sender.profile?.firstName || 'Someone';
+  const where = conversation.type === 'dm' ? 'a message' : conversationLabel(conversation);
+  const text = message.mentionsEveryone
+    ? `${name} mentioned everyone in ${where}`
+    : `${name} mentioned you in ${where}`;
+
+  await notificationModel.createMentionNotifications(allowed, {
+    message: text,
+    actor: sender._id,
+    conversation: conversation._id,
+    chatMessage: message._id,
+  });
+}
+
+// ==========================================================================
+// CONVERSATIONS
+// ==========================================================================
 
 async function getOrCreateCommunityConversation() {
   const existing = await Conversation.findOne({ type: 'community' });
@@ -210,7 +334,10 @@ async function summarizeConversation(conversation, me) {
     if (otherUser) {
       // Same opt-out userPreview() already uses for lastActiveAt.
       const showsStatus = otherUser.privacy?.showOnlineStatus !== false;
-      const otherLastReadAt = otherMember?.lastReadAt && otherMember.lastReadAt > EPOCH ? otherMember.lastReadAt : null;
+      // Read receipts off on either side -> no "seen".
+      const receiptsOn = readReceiptsOn(me) && readReceiptsOn(otherUser);
+      const otherLastReadAt =
+        receiptsOn && otherMember?.lastReadAt && otherMember.lastReadAt > EPOCH ? otherMember.lastReadAt : null;
 
       summary.otherParticipant = {
         ...userPreview(otherUser),
@@ -253,10 +380,13 @@ function replyPreview(original, viewerId) {
   };
 }
 
+// `editedAt` and `canRollback` are only filled in for the AUTHOR: nobody else
+// knows a message was edited (per the group chat spec).
 function serializeMessage(message, { viewerId, conversationType, otherLastReadAt, reactions }) {
   const senderId = message.sender?._id || message.sender;
   const isMine = String(senderId) === String(viewerId);
   const read = conversationType === 'dm' && isMine ? Boolean(otherLastReadAt && message.createdAt <= otherLastReadAt) : undefined;
+  const mentions = (message.mentions || []).map(String);
 
   if (message.deletedForEveryone) {
     return {
@@ -272,6 +402,9 @@ function serializeMessage(message, { viewerId, conversationType, otherLastReadAt
       deleted: true,
       deletedAt: message.deletedAt,
       editedAt: null,
+      canRollback: false,
+      mentions: [],
+      mentionsEveryone: false,
       forwarded: Boolean(message.forwardedFrom),
       createdAt: message.createdAt,
     };
@@ -289,10 +422,19 @@ function serializeMessage(message, { viewerId, conversationType, otherLastReadAt
     read,
     deleted: false,
     deletedAt: null,
-    editedAt: message.editedAt || null,
+    editedAt: isMine ? message.editedAt || null : null,
+    canRollback: isMine && Boolean(message.editHistory?.length),
+    mentions,
+    mentionsEveryone: Boolean(message.mentionsEveryone),
     forwarded: Boolean(message.forwardedFrom),
     createdAt: message.createdAt,
   };
+}
+
+// The copy of a message sent live to EVERYONE in the room: never shows that
+// it was edited (the author's own app gets that from the REST response).
+function forBroadcast(serialized) {
+  return { ...serialized, editedAt: null, canRollback: false };
 }
 
 const SENDER_FIELDS = 'profile.username profile.displayName profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl faction lastActiveAt privacy.showOnlineStatus';
@@ -362,6 +504,48 @@ async function getConversationDetail(req, res) {
   return res.json({ chat: { ...summary, pinnedMessage } });
 }
 
+// GET /api/chats/:conversationId/members?search=&page=&limit=
+// The people in this chat, for the @ mention checkbox picker. DMs: the two
+// participants. Faction rooms: everyone in that faction. Community: everyone
+// onboarded (use `search` there - it can be a lot of people).
+async function listChatMembers(req, res) {
+  const { conversation, error } = await loadConversationForUser(req.params.conversationId, req.user);
+  if (error) return res.status(error.status).json({ error: error.message });
+
+  const limit = parseLimit(req.query.limit, 50);
+  const page = parsePage(req.query.page);
+  const search = typeof req.query.search === 'string' ? req.query.search.trim().replace(/^@/, '') : '';
+
+  const query = { ...memberQueryFor(conversation), _id: { $ne: req.user._id } };
+  if (conversation.type === 'dm') {
+    query._id = { $in: conversation.participants.filter((id) => String(id) !== String(req.user._id)) };
+  }
+  if (search) {
+    const pattern = new RegExp(escapeRegex(search), 'i');
+    query.$or = [
+      { 'profile.username': pattern },
+      { 'profile.displayName': pattern },
+      { 'profile.firstName': pattern },
+      { 'profile.lastName': pattern },
+    ];
+  }
+
+  const [users, total] = await Promise.all([
+    User.find(query)
+      .select(SENDER_FIELDS)
+      .sort({ 'profile.username': 1 })
+      .skip((page - 1) * limit)
+      .limit(limit),
+    User.countDocuments(query),
+  ]);
+
+  return res.json({
+    members: users.map(userPreview),
+    canMentionEveryone: true,
+    pagination: { page, limit, total, hasMore: page * limit < total },
+  });
+}
+
 // GET /api/chats/:conversationId/messages
 async function listMessages(req, res) {
   const { conversation, error } = await loadConversationForUser(req.params.conversationId, req.user);
@@ -369,7 +553,7 @@ async function listMessages(req, res) {
 
   const limit = parseLimit(req.query.limit);
   const page = parsePage(req.query.page);
-  const [messages, total, otherMember] = await Promise.all([
+  const [messages, total, otherLastReadAt] = await Promise.all([
     Message.find({ conversation: conversation._id, deletedFor: { $ne: req.userId } })
       .sort({ createdAt: -1, _id: -1 })
       .skip((page - 1) * limit)
@@ -377,14 +561,11 @@ async function listMessages(req, res) {
       .populate('sender', SENDER_FIELDS)
       .populate({ path: 'replyTo', populate: { path: 'sender', select: 'profile.username profile.firstName' } }),
     Message.countDocuments({ conversation: conversation._id, deletedFor: { $ne: req.userId } }),
-    conversation.type === 'dm'
-      ? ConversationMember.findOne({ conversation: conversation._id, user: { $ne: req.userId } })
-      : null,
+    otherLastReadFor(conversation, req.user),
   ]);
 
   const reactionDocs = await MessageReaction.find({ message: { $in: messages.map((message) => message._id) } });
   const reactionsByMessage = groupReactions(reactionDocs, req.userId);
-  const otherLastReadAt = otherMember?.lastReadAt || null;
 
   return res.json({
     messages: messages.map((message) =>
@@ -399,7 +580,9 @@ async function listMessages(req, res) {
   });
 }
 
-// POST /api/chats/:conversationId/messages - text and/or one attachment (image or voice note).
+// POST /api/chats/:conversationId/messages - text and/or one attachment.
+// Optional @ mentions: `mentions` (user ids: array, JSON string, or
+// comma-separated) and/or `mentionsEveryone` (true / "true").
 async function createMessage(req, res) {
   const { conversation, error } = await loadConversationForUser(req.params.conversationId, req.user);
   if (error) {
@@ -441,6 +624,10 @@ async function createMessage(req, res) {
     cleanUpLocalFile(file);
     return res.status(validation.status).json({ error: validation.error });
   }
+
+  const requested = parseMentions(req.body);
+  const mentions = await resolveMentions(conversation, req.userId, requested.ids);
+
   const { kind, waveform } = validation;
   let media = null;
   if (file) {
@@ -449,7 +636,16 @@ async function createMessage(req, res) {
     if (kind === 'audio') media.transcribing = true;
   }
 
-  const message = await Message.create({ conversation: conversation._id, sender: req.userId, kind, content, media, replyTo });
+  const message = await Message.create({
+    conversation: conversation._id,
+    sender: req.userId,
+    kind,
+    content,
+    media,
+    replyTo,
+    mentions,
+    mentionsEveryone: requested.everyone,
+  });
   const populatePaths = [{ path: 'sender', select: SENDER_FIELDS }];
   if (replyTo) populatePaths.push({ path: 'replyTo', populate: { path: 'sender', select: 'profile.username profile.firstName' } });
   await Promise.all([
@@ -473,12 +669,18 @@ async function createMessage(req, res) {
   // me" must not receive it live either; they'll pick the new message up
   // next time REST re-serves this conversation, same as any other offline
   // fallback here.
-  emitToConversationExcept(conversation.id, deletedForIds(message.replyTo), 'message:new', { conversationId: conversation.id, message: serialized });
+  emitToConversationExcept(conversation.id, deletedForIds(message.replyTo), 'message:new', { conversationId: conversation.id, message: forBroadcast(serialized) });
   // DMs also get a direct push to both participants' personal rooms, so the
   // chat list (unread badge / last-message preview) updates live even for
   // whoever doesn't currently have this conversation open.
   if (conversation.type === 'dm') {
     emitToUsers(conversation.participants.map(String), 'chat:preview', { conversationId: conversation.id });
+  }
+
+  if (message.mentions.length || message.mentionsEveryone) {
+    notifyMentions(conversation, message, req.user).catch((err) => {
+      console.error('Mention notifications failed:', err);
+    });
   }
 
   if (kind === 'audio' && media?.url) {
@@ -512,23 +714,51 @@ async function transcribeAndSaveVoiceNote(messageId, conversation, audioUrl) {
   if (message.replyTo) {
     await message.populate({ path: 'replyTo', populate: { path: 'sender', select: 'profile.username profile.firstName' } });
   }
-  const otherMember = conversation.type === 'dm'
-    ? await ConversationMember.findOne({ conversation: conversation._id, user: { $ne: senderId } })
-    : null;
   const serialized = serializeMessage(message, {
     viewerId: senderId,
     conversationType: conversation.type,
-    otherLastReadAt: otherMember?.lastReadAt || null,
+    otherLastReadAt: await otherLastReadFor(conversation, senderId),
     reactions: await rawReactions(message._id),
   });
   const excludeFromBroadcast = [...new Set([...deletedForIds(message), ...deletedForIds(message.replyTo)])];
   emitToConversationExcept(conversation.id, excludeFromBroadcast, 'message:edited', {
     conversationId: conversation.id,
-    message: serialized,
+    message: forBroadcast(serialized),
   });
 }
 
+// Shared by edit and rollback: sends the changed message live (without the
+// "edited" information - only the author knows) and builds the author's own
+// REST response (with it).
+async function respondWithChangedMessage(req, res, conversation, message) {
+  await message.populate('sender', SENDER_FIELDS);
+  await message.populate({ path: 'replyTo', populate: { path: 'sender', select: 'profile.username profile.firstName' } });
+
+  // REST response keeps the existing per-viewer shape ({emoji, count, mine})
+  // for the editor. The broadcast copy swaps in the viewer-agnostic raw list
+  // instead (see rawReactions) so other sockets in the room don't receive
+  // the editor's own `mine` flag mislabeled as theirs.
+  const restReactions = await summarizeReactions(message._id, req.userId);
+  const serialized = serializeMessage(message, {
+    viewerId: req.userId,
+    conversationType: conversation.type,
+    otherLastReadAt: await otherLastReadFor(conversation, req.user),
+    reactions: restReactions,
+  });
+  // Exclude anyone who's hidden this message for themselves (they shouldn't
+  // see it change live) or hidden its reply target (same reasoning as
+  // createMessage above) - union of both, deduped.
+  const excludeFromBroadcast = [...new Set([...deletedForIds(message), ...deletedForIds(message.replyTo)])];
+  emitToConversationExcept(conversation.id, excludeFromBroadcast, 'message:edited', {
+    conversationId: conversation.id,
+    message: { ...forBroadcast(serialized), reactions: await rawReactions(message._id) },
+  });
+
+  return res.json({ message: serialized });
+}
+
 // PATCH /api/chats/:conversationId/messages/:messageId - sender-only, text edits.
+// The previous text is kept (editHistory) so the author can undo the edit.
 async function editMessage(req, res) {
   const { conversation, error } = await loadConversationForUser(req.params.conversationId, req.user);
   if (error) return res.status(error.status).json({ error: error.message });
@@ -543,37 +773,37 @@ async function editMessage(req, res) {
   const content = typeof req.body.content === 'string' ? req.body.content.trim() : '';
   if (!content) return res.status(400).json({ error: 'content is required.' });
   if (content.length > 2000) return res.status(400).json({ error: 'Message content must be at most 2,000 characters.' });
+  if (content === message.content) return respondWithChangedMessage(req, res, conversation, message);
 
+  message.editHistory.push({ content: message.content, editedAt: new Date() });
+  if (message.editHistory.length > MAX_EDIT_HISTORY) {
+    message.editHistory = message.editHistory.slice(-MAX_EDIT_HISTORY);
+  }
   message.content = content;
   message.editedAt = new Date();
   await message.save();
-  await message.populate('sender', SENDER_FIELDS);
-  await message.populate({ path: 'replyTo', populate: { path: 'sender', select: 'profile.username profile.firstName' } });
 
-  const otherMember =
-    conversation.type === 'dm' ? await ConversationMember.findOne({ conversation: conversation._id, user: { $ne: req.userId } }) : null;
+  return respondWithChangedMessage(req, res, conversation, message);
+}
 
-  // REST response keeps the existing per-viewer shape ({emoji, count, mine})
-  // for the editor. The broadcast copy swaps in the viewer-agnostic raw list
-  // instead (see rawReactions) so other sockets in the room don't receive
-  // the editor's own `mine` flag mislabeled as theirs.
-  const restReactions = await summarizeReactions(message._id, req.userId);
-  const serialized = serializeMessage(message, {
-    viewerId: req.userId,
-    conversationType: conversation.type,
-    otherLastReadAt: otherMember?.lastReadAt || null,
-    reactions: restReactions,
-  });
-  // Exclude anyone who's hidden this message for themselves (they shouldn't
-  // see it change live) or hidden its reply target (same reasoning as
-  // createMessage above) - union of both, deduped.
-  const excludeFromBroadcast = [...new Set([...deletedForIds(message), ...deletedForIds(message.replyTo)])];
-  emitToConversationExcept(conversation.id, excludeFromBroadcast, 'message:edited', {
-    conversationId: conversation.id,
-    message: { ...serialized, reactions: await rawReactions(message._id) },
-  });
+// POST /api/chats/:conversationId/messages/:messageId/rollback - undo the
+// last edit (author only). Can be repeated to step back further.
+async function rollbackMessage(req, res) {
+  const { conversation, error } = await loadConversationForUser(req.params.conversationId, req.user);
+  if (error) return res.status(error.status).json({ error: error.message });
 
-  return res.json({ message: serialized });
+  const message = await loadMessageInConversation(conversation, req.params.messageId);
+  if (!message) return res.status(404).json({ error: 'Message not found.' });
+  if (String(message.sender) !== String(req.userId)) return res.status(403).json({ error: 'You can only undo edits on your own message.' });
+  if (message.deletedForEveryone) return res.status(400).json({ error: 'This message was deleted.' });
+  if (!message.editHistory?.length) return res.status(400).json({ error: 'There is no earlier version to go back to.' });
+
+  const previous = message.editHistory.pop();
+  message.content = previous.content;
+  message.editedAt = message.editHistory.length ? new Date() : null;
+  await message.save();
+
+  return respondWithChangedMessage(req, res, conversation, message);
 }
 
 // DELETE /api/chats/:conversationId/messages/:messageId?scope=me|everyone
@@ -633,10 +863,20 @@ async function markRead(req, res) {
     { $set: { lastReadAt } },
     { upsert: true }
   );
-  // Drives the read-receipt checkmark on the other participant's sent
-  // messages in a DM (see serializeMessage's `read` field). Community/faction
-  // rooms don't render per-user read receipts, but this is harmless there too.
-  emitToConversation(conversation.id, 'chat:read', { conversationId: conversation.id, userId: req.userId, lastReadAt });
+
+  // Read receipts are optional: if I turned them off, nobody is told I read
+  // it. In a DM, if the OTHER person turned them off, they don't get told
+  // either (they can't see read receipts).
+  let announce = readReceiptsOn(req.user);
+  if (announce && conversation.type === 'dm') {
+    const otherId = conversation.participants.find((id) => String(id) !== String(req.userId));
+    const other = otherId ? await User.findById(otherId).select('privacy.readReceipts') : null;
+    announce = readReceiptsOn(other);
+  }
+
+  if (announce) {
+    emitToConversation(conversation.id, 'chat:read', { conversationId: conversation.id, userId: req.userId, lastReadAt });
+  }
   return res.json({ message: 'Marked read.' });
 }
 
@@ -781,6 +1021,7 @@ async function forwardMessage(req, res) {
   return res.status(201).json(await forwardCopy(original, targetConversation, req.userId));
 }
 
+// Forwarded copies never carry the original's mentions or edit history.
 async function forwardCopy(original, targetConversation, userId) {
   let message = await Message.create({
     conversation: targetConversation._id,
@@ -801,7 +1042,7 @@ async function forwardCopy(original, targetConversation, userId) {
   message = await message.populate('sender', SENDER_FIELDS);
 
   const serialized = serializeMessage(message, { viewerId: userId, conversationType: targetConversation.type, otherLastReadAt: null, reactions: [] });
-  emitToConversation(targetConversation.id, 'message:new', { conversationId: targetConversation.id, message: serialized });
+  emitToConversation(targetConversation.id, 'message:new', { conversationId: targetConversation.id, message: forBroadcast(serialized) });
   if (targetConversation.type === 'dm') {
     emitToUsers(targetConversation.participants.map(String), 'chat:preview', { conversationId: targetConversation.id });
   }
@@ -935,9 +1176,8 @@ async function getMessage(req, res) {
   if (!message || hiddenFor(message, req.userId)) return res.status(404).json({ error: 'Message not found.' });
   await message.populate('sender', SENDER_FIELDS);
   await message.populate({ path: 'replyTo', populate: { path: 'sender', select: 'profile.username profile.firstName' } });
-  const other = conversation.type === 'dm' ? await ConversationMember.findOne({ conversation: conversation._id, user: { $ne: req.userId } }) : null;
   return res.json({ message: serializeMessage(message, {
-    viewerId: req.userId, conversationType: conversation.type, otherLastReadAt: other?.lastReadAt,
+    viewerId: req.userId, conversationType: conversation.type, otherLastReadAt: await otherLastReadFor(conversation, req.user),
     reactions: await summarizeReactions(message._id, req.userId),
   }) });
 }
@@ -959,6 +1199,9 @@ async function getChatShareLink(req, res) {
 // naturally 0 or 1 person; in community/faction rooms it can be many, hence
 // the pagination. Relies on the same ConversationMember.lastReadAt the unread
 // badge and DM read-receipt already use - no new schema needed.
+//
+// Read receipts are optional: if I turned mine off I see nobody, and people
+// who turned theirs off are never listed.
 async function getMessageSeenBy(req, res) {
   const { conversation, error } = await loadConversationForUser(req.params.conversationId, req.user);
   if (error) return res.status(error.status).json({ error: error.message });
@@ -968,9 +1211,15 @@ async function getMessageSeenBy(req, res) {
 
   const limit = parseLimit(req.query.limit);
   const page = parsePage(req.query.page);
+
+  if (!readReceiptsOn(req.user)) {
+    return res.json({ seenBy: [], readReceiptsOff: true, pagination: { page, limit, total: 0, hasMore: false } });
+  }
+
+  const hiddenUsers = await User.find({ 'privacy.readReceipts': false }, '_id');
   const query = {
     conversation: conversation._id,
-    user: { $ne: message.sender },
+    user: { $ne: message.sender, $nin: hiddenUsers.map((user) => user._id) },
     lastReadAt: { $gte: message.createdAt },
   };
   const [members, total] = await Promise.all([
@@ -992,9 +1241,11 @@ module.exports = {
   listChats,
   startDirectMessage,
   getConversationDetail,
+  listChatMembers,
   listMessages,
   createMessage,
   editMessage,
+  rollbackMessage,
   deleteMessage,
   markRead,
   setPinnedMessage,

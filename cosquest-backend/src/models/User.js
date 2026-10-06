@@ -105,6 +105,9 @@ const userSchema = new mongoose.Schema(
       allowDirectMessages: { type: Boolean, default: true },
       showOnlineStatus: { type: Boolean, default: true },
       allowFriendRequests: { type: Boolean, default: true },
+      // Read receipts (optional, like WhatsApp). Off: others don't see when
+      // you've read their messages, and you don't see when they've read yours.
+      readReceipts: { type: Boolean, default: true },
     },
     // The user's own device coordinates, captured during onboarding - separate
     // from DASHBOARD_DEFAULT_LAT/LNG, which is now only a fallback for an

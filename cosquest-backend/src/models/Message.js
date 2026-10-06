@@ -53,6 +53,25 @@ const messageSchema = new mongoose.Schema(
     // with an actual edit.
     editedAt: { type: Date, default: null },
 
+    // Earlier versions of `content`, newest last, so the author can undo an
+    // accidental edit (POST .../rollback). Never sent to other people: only
+    // the author knows a message was edited.
+    editHistory: {
+      type: [
+        {
+          _id: false,
+          content: { type: String, default: '' },
+          editedAt: { type: Date, default: Date.now },
+        },
+      ],
+      default: [],
+    },
+
+    // @ mentions: the people tagged in this message (checkbox picker in the
+    // app), or everyone in the chat. Mentioned people get a notification.
+    mentions: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], default: [] },
+    mentionsEveryone: { type: Boolean, default: false },
+
     // "Delete for everyone": the row is NEVER removed from the database -
     // only flagged, so it stays auditable. The controller hides the real
     // content/media once this is true and serves a tombstone instead.

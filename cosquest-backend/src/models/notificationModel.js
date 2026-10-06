@@ -2,6 +2,8 @@ const User = require('./User');
 const Notification = require('./Notification');
 const { emitToUser, emitToUsers } = require('../realtime/socket');
 
+const ACTOR_FIELDS = 'profile.username profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl';
+
 /**
  * Drops one Notification per user currently opted in
  * (`preferences.notificationsEnabled`). This is the in-app half of "allow
@@ -24,16 +26,57 @@ async function createForEnabledUsers(message) {
  * sent at signup, before the person has ever set `notificationsEnabled`
  * (it defaults to false and isn't chosen until onboarding step 4).
  */
-async function createForUser(userId, message, { type = 'system', actor } = {}) {
-  const notification = await Notification.create({ user: userId, message, type, actor: actor || null });
-  if (actor) await notification.populate('actor', 'profile.username profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl');
+async function createForUser(userId, message, { type = 'system', actor, conversation, chatMessage } = {}) {
+  const notification = await Notification.create({
+    user: userId,
+    message,
+    type,
+    actor: actor || null,
+    conversation: conversation || null,
+    chatMessage: chatMessage || null,
+  });
+  if (actor) await notification.populate('actor', ACTOR_FIELDS);
   emitToUser(String(userId), 'notification:new', sanitize(notification));
   return notification;
 }
 
+/**
+ * "@ mention" notifications for many people at once (one row each), sent
+ * live to whoever is connected. Used for "@everyone" in big rooms too, so
+ * it inserts in batches instead of one by one.
+ */
+async function createMentionNotifications(userIds, { message, actor, conversation, chatMessage }) {
+  const ids = [...new Set(userIds.map(String))];
+  if (!ids.length) return 0;
+
+  const actorDoc = actor ? await User.findById(actor).select(ACTOR_FIELDS) : null;
+  const BATCH = 500;
+
+  for (let i = 0; i < ids.length; i += BATCH) {
+    const batch = ids.slice(i, i + BATCH);
+    const docs = await Notification.insertMany(
+      batch.map((userId) => ({
+        user: userId,
+        message,
+        type: 'mention',
+        actor: actor || null,
+        conversation: conversation || null,
+        chatMessage: chatMessage || null,
+      }))
+    );
+
+    // Same payload for everyone in the batch (only the id differs, and the
+    // app refetches the list anyway when it opens Notifications).
+    const sample = sanitize({ ...docs[0].toObject(), actor: actorDoc });
+    emitToUsers(batch, 'notification:new', { ...sample, id: null });
+  }
+
+  return ids.length;
+}
+
 async function listForUser(userId) {
   return Notification.find({ user: userId })
-    .populate('actor', 'profile.username profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl')
+    .populate('actor', ACTOR_FIELDS)
     .sort({ createdAt: -1 });
 }
 
@@ -51,7 +94,16 @@ function sanitize(n) {
         avatarPhotoUrl: n.actor.profile.avatarPhotoUrl,
       }
     : null;
-  return { id: String(n._id), type: n.type, message: n.message, actor, read: n.read, createdAt: n.createdAt };
+  return {
+    id: n._id ? String(n._id) : null,
+    type: n.type,
+    message: n.message,
+    actor,
+    conversationId: n.conversation ? String(n.conversation) : null,
+    messageId: n.chatMessage ? String(n.chatMessage) : null,
+    read: n.read,
+    createdAt: n.createdAt,
+  };
 }
 
-module.exports = { createForEnabledUsers, createForUser, listForUser, markAllRead, sanitize };
+module.exports = { createForEnabledUsers, createForUser, createMentionNotifications, listForUser, markAllRead, sanitize };

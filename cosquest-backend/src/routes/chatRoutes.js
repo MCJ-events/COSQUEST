@@ -6,9 +6,11 @@ const {
   listChats,
   startDirectMessage,
   getConversationDetail,
+  listChatMembers,
   listMessages,
   createMessage,
   editMessage,
+  rollbackMessage,
   deleteMessage,
   markRead,
   setPinnedMessage,
@@ -34,6 +36,8 @@ router.use('/chats', requireAuth, requireCompletedOnboarding);
 router.get('/chats', asyncHandler(listChats));
 router.post('/chats/dm', asyncHandler(startDirectMessage));
 router.get('/chats/:conversationId', asyncHandler(getConversationDetail));
+// People in this chat, for the @ mention checkbox picker (?search=&page=&limit=).
+router.get('/chats/:conversationId/members', asyncHandler(listChatMembers));
 router.get('/chats/:conversationId/share', asyncHandler(getChatShareLink));
 router.get('/chats/:conversationId/messages/:messageId', asyncHandler(getMessage));
 router.get('/chats/:conversationId/messages/:messageId/share', asyncHandler(getChatShareLink));
@@ -42,6 +46,8 @@ router.post('/chats/:conversationId/messages', chatUpload.single('media'), async
 router.post('/chats/:conversationId/messages/bulk-delete', asyncHandler(bulkDeleteMessages));
 router.post('/chats/:conversationId/messages/bulk-forward', asyncHandler(bulkForwardMessages));
 router.patch('/chats/:conversationId/messages/:messageId', asyncHandler(editMessage));
+// Undo the last edit (author only).
+router.post('/chats/:conversationId/messages/:messageId/rollback', asyncHandler(rollbackMessage));
 router.delete('/chats/:conversationId/messages/:messageId', asyncHandler(deleteMessage));
 router.patch('/chats/:conversationId/read', asyncHandler(markRead));
 router.patch('/chats/:conversationId/pinned-message', asyncHandler(setPinnedMessage));

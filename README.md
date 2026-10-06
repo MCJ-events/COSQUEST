@@ -1,2 +1,0 @@
-# COSQUEST
-cosquest codebase
