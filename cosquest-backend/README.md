@@ -6,7 +6,7 @@ If this backend already has a MongoDB database from before username-only registr
 
 Login sessions do not expire on a timer. They stay active until the user logs out, at which point every previous token for that account is invalidated; the next sign-in issues a fresh token.
 
-The dashboard uses the fixed area configured by `DASHBOARD_DEFAULT_LAT`, `DASHBOARD_DEFAULT_LNG`, and `DASHBOARD_RADIUS_MILES`. Users cannot view, save, or edit a personal location. To remove legacy personal location fields from an existing MongoDB database, run `npm run migrate:remove-user-location` once after deployment.
+The dashboard uses the fixed area last configured by `DASHBOARD_DEFAULT_LAT`, `DASHBOARD_DEFAULT_LNG`, and `DASHBOARD_RADIUS_MILES`. Users cannot view, save, or edit a personal location. To remove legacy personal location fields from an existing MongoDB database, run `npm run migrate:remove-user-location` once after deployment.
 
 Preset avatar images are delivered only from Cloudinary; `GET /api/meta/avatars` returns their Cloudinary URLs. User-uploaded profile photos, image posts, and reels also go only to Cloudinary. Files are written to disk briefly while received, then deleted after Cloudinary upload—this backend does not serve or retain local media. Profile photos use `CLOUDINARY_PROFILE_PHOTO_FOLDER`; posts use `CLOUDINARY_POST_IMAGE_FOLDER` (default `cosquest/posts`) and reels use `CLOUDINARY_REEL_FOLDER` (default `cosquest/reels`). They all use the existing `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, and `CLOUDINARY_API_SECRET` values.
 
@@ -291,3 +291,4 @@ curl -s -X POST $BASE_URL/api/users/me/onboarding/complete \
 ```
 
 If any field is invalid, nothing is saved — you get a `400` with an `errors` array listing every problem at once, and `onboardingComplete` stays `false` (so login keeps refusing too). The individual step endpoints above still work too, e.g. for editing a field after onboarding is already complete (that time, via Bearer token).
+cosquest-backend/postman/CosQuest.postman_collection.json
