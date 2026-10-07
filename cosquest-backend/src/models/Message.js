@@ -53,6 +53,9 @@ const messageSchema = new mongoose.Schema(
     // with an actual edit.
     editedAt: { type: Date, default: null },
 
+    // A group admin deleted it (shown as "deleted by an admin").
+    deletedByAdmin: { type: Boolean, default: false },
+
     // Earlier versions of `content`, newest last, so the author can undo an
     // accidental edit (POST .../rollback). Never sent to other people: only
     // the author knows a message was edited.

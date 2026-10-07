@@ -133,6 +133,92 @@ async function run(baseUrl) {
   check(after.data.group?.myRole === 'owner', 'the longest-serving member becomes owner', after);
   check((await request('GET', `/api/chats/${groupId}/messages`, a.token)).status === 403, 'someone who left can no longer read the chat');
 
+  console.log('\n--- groups: admins ---');
+  const mods = await request('POST', '/api/groups', a.token, {
+    name: 'Mod Squad',
+    kind: 'private',
+    whoCanAdd: 'members',
+    members: [b.id, c.id],
+  });
+  const modsId = mods.data.group.id;
+  const modsChat = `/api/chats/${modsId}`;
+  const modMember = (userId, action = '') => `/api/groups/${modsId}/members/${userId}${action}`;
+
+  check((await request('POST', modMember(c.id, '/mute'), b.token, { duration: '1h' })).status === 403, 'regular members cannot mute people');
+  const promoted = await request('POST', modMember(b.id, '/role'), a.token, { role: 'admin' });
+  check(promoted.status === 200 && promoted.data.role === 'admin', 'the owner can make a member an admin', promoted);
+  check((await request('POST', modMember(a.id, '/ban'), b.token, {})).status === 403, 'admins cannot act on the owner');
+  check((await request('POST', modMember(b.id, '/mute'), b.token, { duration: '1h' })).status === 400, 'you cannot moderate yourself');
+
+  const mutedMember = await request('POST', modMember(c.id, '/mute'), b.token, { duration: '1h' });
+  check(mutedMember.status === 200 && mutedMember.data.mutedUntil, 'an admin can mute a member', mutedMember);
+  const blocked = await request('POST', `${modsChat}/messages`, c.token, { content: 'hello?' });
+  check(blocked.status === 403 && blocked.data.code === 'muted_by_admin', 'a muted member cannot send', blocked);
+  check((await request('GET', `${modsChat}/messages`, c.token)).status === 200, 'a muted member can still read');
+  const mutedSummary = (await request('GET', modsChat, c.token)).data.chat.group;
+  check(Boolean(mutedSummary.mutedByAdminUntil), 'the muted member sees that they are muted', mutedSummary);
+  await request('DELETE', modMember(c.id, '/mute'), b.token);
+  check((await request('POST', `${modsChat}/messages`, c.token, { content: 'thanks' })).status === 201, 'unmuting lets them send again');
+
+  check((await request('PATCH', `/api/groups/${modsId}`, a.token, { slowModeSeconds: 7 })).status === 400, 'slow mode only accepts the preset values');
+  const slow = await request('PATCH', `/api/groups/${modsId}`, a.token, { slowModeSeconds: 10 });
+  check(slow.status === 200 && slow.data.group.slowModeSeconds === 10, 'an admin can turn on slow mode', slow);
+  await request('POST', `/api/groups/${modsId}/members`, b.token, { userIds: [d.id] });
+  check((await request('POST', `${modsChat}/messages`, d.token, { content: 'one' })).status === 201, 'the first message under slow mode is fine');
+  const tooFast = await request('POST', `${modsChat}/messages`, d.token, { content: 'two' });
+  check(tooFast.status === 429 && tooFast.data.code === 'slow_mode' && tooFast.data.retryAfterSeconds > 0, 'a second message too soon is held back', tooFast);
+  check(
+    (await request('POST', `${modsChat}/messages`, b.token, { content: 'a' })).status === 201 &&
+      (await request('POST', `${modsChat}/messages`, b.token, { content: 'b' })).status === 201,
+    'admins are not limited by slow mode'
+  );
+  await request('PATCH', `/api/groups/${modsId}`, a.token, { slowModeSeconds: 0 });
+
+  const ownerMessage = await request('POST', `${modsChat}/messages`, a.token, { content: 'owner speaking' });
+  const memberMessage = await request('POST', `${modsChat}/messages`, c.token, { content: 'bad message' });
+  check((await request('DELETE', `${modsChat}/messages/${ownerMessage.data.message.id}?scope=everyone`, b.token)).status === 403, 'admins cannot delete the owner\'s messages');
+  const adminDelete = await request('DELETE', `${modsChat}/messages/${memberMessage.data.message.id}?scope=everyone`, b.token);
+  check(adminDelete.status === 200 && adminDelete.data.byAdmin === true, 'an admin can delete a member\'s message', adminDelete);
+  const afterDelete = (await request('GET', `${modsChat}/messages`, a.token)).data.messages.find((message) => message.id === memberMessage.data.message.id);
+  check(afterDelete.deleted === true && afterDelete.deletedByAdmin === true && /admin/.test(afterDelete.content), 'it shows as deleted by an admin', afterDelete);
+
+  check((await request('PATCH', `${modsChat}/pinned-message`, c.token, { messageId: ownerMessage.data.message.id })).status === 403, 'members cannot pin in a group');
+  check((await request('PATCH', `${modsChat}/pinned-message`, b.token, { messageId: ownerMessage.data.message.id })).status === 200, 'admins can pin in a group');
+
+  await request('POST', modMember(c.id, '/role'), a.token, { role: 'admin' });
+  check((await request('POST', modMember(c.id, '/role'), b.token, { role: 'member' })).status === 403, 'only the owner can remove an admin');
+  check((await request('POST', modMember(c.id, '/remove'), b.token)).status === 403, 'admins cannot remove other admins');
+  check((await request('POST', modMember(c.id, '/role'), a.token, { role: 'member' })).status === 200, 'the owner can remove an admin');
+
+  const removed = await request('POST', modMember(c.id, '/remove'), b.token);
+  check(removed.status === 200 && removed.data.removed === true, 'an admin can remove a member', removed);
+  check((await request('GET', `${modsChat}/messages`, c.token)).status === 403, 'a removed person can no longer read the chat');
+  const readded = await request('POST', `/api/groups/${modsId}/members`, b.token, { userIds: [c.id] });
+  check(readded.data.added.includes(c.id), 'a removed person can be added back', readded);
+
+  const banned = await request('POST', modMember(c.id, '/ban'), b.token, { reason: 'spam' });
+  check(banned.status === 200 && banned.data.banned === true, 'an admin can ban a member', banned);
+  const bans = await request('GET', `/api/groups/${modsId}/bans`, b.token);
+  check(bans.data.bans.length === 1 && bans.data.bans[0].user.id === c.id && bans.data.bans[0].reason === 'spam', 'admins can see the ban list', bans);
+  check((await request('GET', `/api/groups/${modsId}/bans`, d.token)).status === 403, 'non-admins cannot see the ban list');
+  const addBanned = await request('POST', `/api/groups/${modsId}/members`, b.token, { userIds: [c.id] });
+  check(addBanned.data.skipped.some((entry) => entry.reason === 'banned'), 'a banned person cannot be added', addBanned);
+  const code2 = (await request('GET', `/api/groups/${modsId}`, a.token)).data.group.inviteCode;
+  check((await request('POST', `/api/groups/invite/${code2}/join`, c.token)).status === 403, 'a banned person cannot use the invite link');
+  check((await request('DELETE', `/api/groups/${modsId}/bans/${c.id}`, b.token)).status === 200, 'an admin can unban');
+  check((await request('POST', `/api/groups/${modsId}/members`, b.token, { userIds: [c.id] })).data.added.includes(c.id), 'an unbanned person can be added again');
+
+  console.log('\n--- groups: banning from a faction group ---');
+  const hq = await request('POST', '/api/groups', a.token, { name: 'Ascendants Mods', kind: 'faction' });
+  const hqId = hq.data.group.id;
+  check((await request('GET', `/api/chats/${hqId}/messages`, c.token)).status === 200, 'faction members start inside the faction group');
+  check((await request('POST', `/api/groups/${hqId}/members/${c.id}/remove`, a.token)).data.code === 'use_ban', 'faction members can only be banned, not removed');
+  check((await request('POST', `/api/groups/${hqId}/members/${c.id}/ban`, a.token, {})).status === 200, 'an admin can ban someone from a faction group');
+  check((await request('GET', `/api/chats/${hqId}/messages`, c.token)).status === 403, 'a banned faction member is locked out');
+  check(!(await request('GET', '/api/chats', c.token)).data.chats.some((chat) => chat.id === hqId), 'and it disappears from their chat list');
+  await request('DELETE', `/api/groups/${hqId}/bans/${c.id}`, a.token);
+  check((await request('GET', `/api/chats/${hqId}/messages`, c.token)).status === 200, 'unbanning puts them back in automatically');
+
   return { pass, fail };
 }
 

@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 const Conversation = require('../models/Conversation');
 const ConversationMember = require('../models/ConversationMember');
 const GroupJoinRequest = require('../models/GroupJoinRequest');
+const GroupBan = require('../models/GroupBan');
 const User = require('../models/User');
 const notificationModel = require('../models/notificationModel');
 const { isValidFactionKey, getFaction } = require('../models/factionModel');
@@ -15,6 +16,8 @@ const {
   userPreview,
   isGroupMember,
   countGroupMembers,
+  groupRoleOf,
+  canActOn,
   GROUP_ROLES,
   SENDER_FIELDS,
 } = require('./chatController');
@@ -31,6 +34,14 @@ const MUTE_DURATIONS = {
   '1w': 7 * 24 * 60 * 60 * 1000,
   always: 100 * 365 * 24 * 60 * 60 * 1000,
 };
+// Admins muting a member (they can read, not send).
+const MEMBER_MUTE_DURATIONS = {
+  '1h': 60 * 60 * 1000,
+  '1d': 24 * 60 * 60 * 1000,
+  '1w': 7 * 24 * 60 * 60 * 1000,
+  forever: 100 * 365 * 24 * 60 * 60 * 1000,
+};
+const SLOW_MODE_VALUES = [0, 10, 30, 60, 300, 3600];
 
 // ==========================================================================
 // HELPERS
@@ -81,7 +92,12 @@ async function loadGroup(groupId) {
 async function roleIn(conversation, user) {
   const row = await ConversationMember.findOne({ conversation: conversation._id, user: user._id });
   if (row && GROUP_ROLES.includes(row.role)) return { role: row.role, row };
-  if (conversation.group?.kind === 'faction' && user.faction && user.faction === conversation.factionKey) {
+  if (
+    conversation.group?.kind === 'faction' &&
+    user.faction &&
+    user.faction === conversation.factionKey &&
+    !(await GroupBan.exists({ conversation: conversation._id, user: user._id }))
+  ) {
     return { role: 'member', row };
   }
   return { role: null, row };
@@ -105,11 +121,14 @@ function inviteInfo(group) {
 async function groupJson(conversation, me, role) {
   const group = conversation.group;
   const admin = isAdminRole(role);
-  const [memberCount, creator, pendingRequests] = await Promise.all([
+  const [memberCount, creator, pendingRequests, bannedCount, myRow] = await Promise.all([
     countGroupMembers(conversation),
     User.findById(group.createdBy).select(SENDER_FIELDS),
     admin ? GroupJoinRequest.countDocuments({ conversation: conversation._id, status: 'pending' }) : 0,
+    admin ? GroupBan.countDocuments({ conversation: conversation._id }) : 0,
+    ConversationMember.findOne({ conversation: conversation._id, user: me._id }, 'mutedByAdminUntil'),
   ]);
+  const now = new Date();
 
   return {
     id: idOf(conversation),
@@ -133,6 +152,9 @@ async function groupJson(conversation, me, role) {
     // Only people who can add others get the invite link.
     ...(canAddPeople(group, role) ? inviteInfo(group) : { inviteCode: null, inviteLink: null }),
     pendingRequestCount: pendingRequests,
+    bannedCount,
+    slowModeSeconds: group.slowModeSeconds || 0,
+    myMutedUntil: myRow?.mutedByAdminUntil && myRow.mutedByAdminUntil > now ? myRow.mutedByAdminUntil : null,
   };
 }
 
@@ -200,6 +222,10 @@ async function addPeopleToGroup(conversation, adder, users) {
       skipped.push({ userId, username, reason: 'unavailable' });
       continue;
     }
+    if (await GroupBan.exists({ conversation: conversation._id, user: user._id })) {
+      skipped.push({ userId, username, reason: 'banned' });
+      continue;
+    }
     if (group.kind === 'faction' && user.faction !== conversation.factionKey) {
       skipped.push({ userId, username, reason: 'wrong_faction' });
       continue;
@@ -246,6 +272,9 @@ async function joinOrRequest(conversation, user, via) {
 
   if (await isGroupMember(conversation, user)) {
     return { status: 200, body: { joined: true, alreadyMember: true } };
+  }
+  if (await GroupBan.exists({ conversation: conversation._id, user: user._id })) {
+    return { status: 403, body: { error: "You can't join this group." } };
   }
   if (group.kind === 'faction' && user.faction !== conversation.factionKey) {
     return { status: 403, body: { error: 'This group is for another faction.' } };
@@ -415,8 +444,11 @@ async function discoverGroups(req, res) {
   }
 
   const conversations = await Conversation.find(filter).sort({ updatedAt: -1 }).limit(50);
+  const myBans = await GroupBan.find({ user: req.user._id, conversation: { $in: conversations.map((c) => c._id) } }, 'conversation');
+  const bannedFrom = new Set(myBans.map((ban) => String(ban.conversation)));
   const groups = [];
   for (const conversation of conversations) {
+    if (bannedFrom.has(String(conversation._id))) continue;
     const preview = await groupPreview(conversation, req.user);
     if (!preview.isMember) groups.push(preview);
   }
@@ -476,6 +508,13 @@ async function updateGroup(req, res) {
     if (!VISIBILITY.includes(body.whoCanAdd)) return fail(400, 'whoCanAdd must be members or admins.');
     group.whoCanAdd = body.whoCanAdd;
   }
+  if (body.slowModeSeconds !== undefined) {
+    const seconds = Number(body.slowModeSeconds);
+    if (!SLOW_MODE_VALUES.includes(seconds)) {
+      return fail(400, `slowModeSeconds must be one of: ${SLOW_MODE_VALUES.join(', ')}.`);
+    }
+    group.slowModeSeconds = seconds;
+  }
   if (body.sizeLimit !== undefined) {
     const sizeLimit = Number(body.sizeLimit);
     const count = await countGroupMembers(conversation);
@@ -517,10 +556,15 @@ async function listGroupMembers(req, res) {
   );
   const roleByUser = new Map(rows.map((row) => [String(row.user), row.role]));
 
+  const banned = (await GroupBan.find({ conversation: conversation._id }, 'user')).map((ban) => ban.user);
   const filter =
     conversation.group.kind === 'faction'
-      ? { onboardingComplete: true, $or: [{ faction: conversation.factionKey }, { _id: { $in: rows.map((row) => row.user) } }] }
-      : { _id: { $in: rows.map((row) => row.user) } };
+      ? {
+          onboardingComplete: true,
+          $or: [{ faction: conversation.factionKey }, { _id: { $in: rows.map((row) => row.user) } }],
+          _id: { $nin: banned },
+        }
+      : { _id: { $in: rows.map((row) => row.user), $nin: banned } };
   if (search) {
     const pattern = new RegExp(search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
     filter.$and = [{ $or: [{ 'profile.username': pattern }, { 'profile.firstName': pattern }, { 'profile.lastName': pattern }, { 'profile.displayName': pattern }] }];
@@ -531,10 +575,24 @@ async function listGroupMembers(req, res) {
     User.countDocuments(filter),
   ]);
 
+  // Who's muted by an admin right now (shown to admins).
+  const now = new Date();
+  const mutedRows = isAdminRole(role)
+    ? await ConversationMember.find(
+        { conversation: conversation._id, user: { $in: users.map((user) => user._id) }, mutedByAdminUntil: { $gt: now } },
+        'user mutedByAdminUntil'
+      )
+    : [];
+  const mutedByUser = new Map(mutedRows.map((row) => [String(row.user), row.mutedByAdminUntil]));
+
   // Owner first, then admins, then everyone else.
   const order = { owner: 0, admin: 1, member: 2 };
   const members = users
-    .map((user) => ({ ...userPreview(user), role: roleByUser.get(String(user._id)) || 'member' }))
+    .map((user) => ({
+      ...userPreview(user),
+      role: roleByUser.get(String(user._id)) || 'member',
+      mutedUntil: mutedByUser.get(String(user._id)) || null,
+    }))
     .sort((a, b) => order[a.role] - order[b.role]);
 
   return res.json({ members, pagination: { page, limit, total, hasMore: page * limit < total } });
@@ -708,7 +766,249 @@ async function decideJoinRequest(req, res) {
   return res.json({ approved: approve });
 }
 
+// ==========================================================================
+// ADMINS (Phase 3)
+// ==========================================================================
+// Admins act on members; only the owner acts on admins; nobody acts on the
+// owner (see canActOn in chatController).
+
+// Loads the group, me (must be an admin) and the person I'm acting on.
+async function loadModeration(req, res) {
+  const conversation = await loadGroup(req.params.groupId);
+  if (!conversation) {
+    res.status(404).json({ error: 'Group not found.' });
+    return null;
+  }
+  const actorRole = await groupRoleOf(conversation, req.user);
+  if (!isAdminRole(actorRole)) {
+    res.status(403).json({ error: 'Only admins can do this.' });
+    return null;
+  }
+  if (!mongoose.isValidObjectId(req.params.userId)) {
+    res.status(404).json({ error: 'Person not found.' });
+    return null;
+  }
+  if (String(req.params.userId) === String(req.user._id)) {
+    res.status(400).json({ error: "You can't do this to yourself." });
+    return null;
+  }
+  const target = await User.findById(req.params.userId);
+  if (!target) {
+    res.status(404).json({ error: 'Person not found.' });
+    return null;
+  }
+  const targetRole = await groupRoleOf(conversation, target);
+  return { conversation, actorRole, target, targetRole };
+}
+
+function cannotActMessage(targetRole) {
+  if (targetRole === 'owner') return "The group's owner can't be changed by admins.";
+  if (targetRole === 'admin') return 'Only the owner can do this to an admin.';
+  return "You can't do this.";
+}
+
+function notify(userId, actor, text, conversation) {
+  notificationModel
+    .createForUser(userId, text, { type: 'group', actor: actor._id, conversation: conversation?._id || null })
+    .catch((error) => console.error('[groups] notification failed:', error.message));
+}
+
+// Tells the person's app to close the group (removed / banned).
+function tellRemoved(conversation, userId, reason) {
+  emitToUsers([String(userId)], 'group:removed', { conversationId: idOf(conversation), reason });
+}
+
+// POST /api/groups/:groupId/members/:userId/role  { role: "admin" | "member" }
+// Admins can make members admins; only the owner can remove an admin.
+async function setMemberRole(req, res) {
+  const ctx = await loadModeration(req, res);
+  if (!ctx) return;
+  const { conversation, actorRole, target, targetRole } = ctx;
+
+  const role = req.body?.role;
+  if (!['admin', 'member'].includes(role)) return res.status(400).json({ error: 'role must be admin or member.' });
+  if (!targetRole) return res.status(400).json({ error: 'This person is not in the group.' });
+  if (targetRole === 'owner') return res.status(403).json({ error: cannotActMessage('owner') });
+  if (role === 'member' && targetRole === 'admin' && actorRole !== 'owner') {
+    return res.status(403).json({ error: 'Only the owner can remove an admin.' });
+  }
+  if (targetRole === role) return res.json({ role });
+
+  await ConversationMember.updateOne(
+    { conversation: conversation._id, user: target._id },
+    {
+      $set: { role, ...(targetRole ? {} : { joinedAt: new Date() }) },
+      $setOnInsert: { lastReadAt: new Date(0) },
+    },
+    { upsert: true }
+  );
+
+  if (role === 'admin') {
+    notify(target._id, req.user, `${req.user.profile?.username || 'Someone'} made you an admin of ${conversation.group.name}`, conversation);
+  }
+  await broadcastGroupChange(conversation, [target._id]);
+  return res.json({ role });
+}
+
+// POST /api/groups/:groupId/members/:userId/remove
+// They can come back later (if invited / via the link). People in a faction
+// group because of their faction can't be removed - ban them instead.
+async function removeMember(req, res) {
+  const ctx = await loadModeration(req, res);
+  if (!ctx) return;
+  const { conversation, actorRole, target, targetRole } = ctx;
+
+  if (!targetRole) return res.status(400).json({ error: 'This person is not in the group.' });
+  if (!canActOn(actorRole, targetRole)) return res.status(403).json({ error: cannotActMessage(targetRole) });
+
+  const row = await ConversationMember.findOne({ conversation: conversation._id, user: target._id });
+  if (!row || !GROUP_ROLES.includes(row.role)) {
+    return res.status(400).json({
+      error: "They're in this group because of their faction. Ban them to keep them out.",
+      code: 'use_ban',
+    });
+  }
+
+  await ConversationMember.updateOne({ _id: row._id }, { $set: { role: null, mutedByAdminUntil: null } });
+
+  notify(target._id, req.user, `You were removed from ${conversation.group.name}`, null);
+  tellRemoved(conversation, target._id, 'removed');
+  await broadcastGroupChange(conversation);
+  return res.json({ removed: true });
+}
+
+// POST /api/groups/:groupId/members/:userId/ban  { reason? }
+// Removed, and can't come back until unbanned. Works on people who aren't in
+// the group too (to keep them out).
+async function banMember(req, res) {
+  const ctx = await loadModeration(req, res);
+  if (!ctx) return;
+  const { conversation, actorRole, target, targetRole } = ctx;
+
+  if (targetRole && !canActOn(actorRole, targetRole)) return res.status(403).json({ error: cannotActMessage(targetRole) });
+
+  const reason = typeof req.body?.reason === 'string' ? req.body.reason.trim().slice(0, 200) : '';
+  await GroupBan.updateOne(
+    { conversation: conversation._id, user: target._id },
+    { $set: { bannedBy: req.user._id, reason } },
+    { upsert: true }
+  );
+  await ConversationMember.updateOne(
+    { conversation: conversation._id, user: target._id },
+    { $set: { role: null, mutedByAdminUntil: null } }
+  );
+  await GroupJoinRequest.updateMany(
+    { conversation: conversation._id, user: target._id, status: 'pending' },
+    { $set: { status: 'declined', decidedBy: req.user._id, decidedAt: new Date() } }
+  );
+
+  if (targetRole) {
+    notify(target._id, req.user, `You were removed from ${conversation.group.name}`, null);
+    tellRemoved(conversation, target._id, 'banned');
+  }
+  await broadcastGroupChange(conversation);
+  return res.json({ banned: true });
+}
+
+// GET /api/groups/:groupId/bans - admins.
+async function listBans(req, res) {
+  const conversation = await loadGroup(req.params.groupId);
+  if (!conversation) return res.status(404).json({ error: 'Group not found.' });
+  if (!isAdminRole(await groupRoleOf(conversation, req.user))) {
+    return res.status(403).json({ error: 'Only admins can see banned people.' });
+  }
+
+  const bans = await GroupBan.find({ conversation: conversation._id })
+    .populate('user', SENDER_FIELDS)
+    .populate('bannedBy', SENDER_FIELDS)
+    .sort({ createdAt: -1 })
+    .limit(500);
+
+  return res.json({
+    bans: bans
+      .filter((ban) => ban.user)
+      .map((ban) => ({
+        user: userPreview(ban.user),
+        bannedBy: ban.bannedBy ? userPreview(ban.bannedBy) : null,
+        reason: ban.reason || '',
+        createdAt: ban.createdAt,
+      })),
+  });
+}
+
+// DELETE /api/groups/:groupId/bans/:userId - admins. They can be added or
+// join again (faction groups: they're back in automatically).
+async function unbanMember(req, res) {
+  const conversation = await loadGroup(req.params.groupId);
+  if (!conversation) return res.status(404).json({ error: 'Group not found.' });
+  if (!isAdminRole(await groupRoleOf(conversation, req.user))) {
+    return res.status(403).json({ error: 'Only admins can unban people.' });
+  }
+  if (!mongoose.isValidObjectId(req.params.userId)) return res.status(404).json({ error: 'Person not found.' });
+
+  await GroupBan.deleteOne({ conversation: conversation._id, user: req.params.userId });
+  await broadcastGroupChange(conversation, [req.params.userId]);
+  if (conversation.group.kind === 'faction') {
+    emitToUsers([String(req.params.userId)], 'chat:preview', { conversationId: idOf(conversation) });
+  }
+  return res.json({ unbanned: true });
+}
+
+// POST /api/groups/:groupId/members/:userId/mute  { duration: "1h"|"1d"|"1w"|"forever" }
+// They stay in the group and can read, but can't send until then.
+async function muteMember(req, res) {
+  const ctx = await loadModeration(req, res);
+  if (!ctx) return;
+  const { conversation, actorRole, target, targetRole } = ctx;
+
+  if (!targetRole) return res.status(400).json({ error: 'This person is not in the group.' });
+  if (!canActOn(actorRole, targetRole)) return res.status(403).json({ error: cannotActMessage(targetRole) });
+
+  const duration = MEMBER_MUTE_DURATIONS[req.body?.duration] ? req.body.duration : '1h';
+  const mutedUntil = new Date(Date.now() + MEMBER_MUTE_DURATIONS[duration]);
+
+  await ConversationMember.updateOne(
+    { conversation: conversation._id, user: target._id },
+    { $set: { mutedByAdminUntil: mutedUntil, mutedBy: req.user._id }, $setOnInsert: { lastReadAt: new Date(0) } },
+    { upsert: true }
+  );
+
+  notify(
+    target._id,
+    req.user,
+    duration === 'forever'
+      ? `An admin muted you in ${conversation.group.name}`
+      : `An admin muted you in ${conversation.group.name} for ${{ '1h': '1 hour', '1d': '1 day', '1w': '1 week' }[duration]}`,
+    conversation
+  );
+  await broadcastGroupChange(conversation, [target._id]);
+  return res.json({ mutedUntil });
+}
+
+// DELETE /api/groups/:groupId/members/:userId/mute
+async function unmuteMember(req, res) {
+  const ctx = await loadModeration(req, res);
+  if (!ctx) return;
+  const { conversation, actorRole, target, targetRole } = ctx;
+
+  if (targetRole && !canActOn(actorRole, targetRole)) return res.status(403).json({ error: cannotActMessage(targetRole) });
+
+  await ConversationMember.updateOne(
+    { conversation: conversation._id, user: target._id },
+    { $set: { mutedByAdminUntil: null, mutedBy: null } }
+  );
+  await broadcastGroupChange(conversation, [target._id]);
+  return res.json({ mutedUntil: null });
+}
+
 module.exports = {
+  setMemberRole,
+  removeMember,
+  banMember,
+  listBans,
+  unbanMember,
+  muteMember,
+  unmuteMember,
   createGroup,
   discoverGroups,
   getGroup,

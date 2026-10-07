@@ -4,6 +4,7 @@ const Conversation = require('../models/Conversation');
 const ConversationMember = require('../models/ConversationMember');
 const Message = require('../models/Message');
 const MessageReaction = require('../models/MessageReaction');
+const GroupBan = require('../models/GroupBan');
 const User = require('../models/User');
 const userModel = require('../models/userModel');
 const notificationModel = require('../models/notificationModel');
@@ -139,10 +140,45 @@ const GROUP_ROLES = ['owner', 'admin', 'member'];
 // automatically; other groups use explicit membership (a row with a role).
 async function isGroupMember(conversation, user) {
   if (conversation.type !== 'group' || conversation.group?.archived) return false;
-  if (conversation.group?.kind === 'faction' && user?.faction && user.faction === conversation.factionKey) return true;
+  if (conversation.group?.kind === 'faction' && user?.faction && user.faction === conversation.factionKey) {
+    // Banned people are kept out even though they're in the faction.
+    return !(await GroupBan.exists({ conversation: conversation._id, user: user._id || user }));
+  }
   return Boolean(
     await ConversationMember.exists({ conversation: conversation._id, user: user._id || user, role: { $in: GROUP_ROLES } })
   );
+}
+
+async function bannedUserIds(conversation) {
+  const bans = await GroupBan.find({ conversation: conversation._id }, 'user');
+  return bans.map((ban) => ban.user);
+}
+
+// owner / admin / member, or null if not in the group.
+async function groupRoleOf(conversation, userOrId) {
+  const userId = userOrId?._id || userOrId;
+  const row = await ConversationMember.findOne({ conversation: conversation._id, user: userId }, 'role');
+  if (row && GROUP_ROLES.includes(row.role)) return row.role;
+  if (conversation.group?.kind === 'faction') {
+    const user = userOrId?.faction !== undefined ? userOrId : await User.findById(userId).select('faction');
+    if (user?.faction === conversation.factionKey && !(await GroupBan.exists({ conversation: conversation._id, user: userId }))) {
+      return 'member';
+    }
+  }
+  return null;
+}
+
+function isAdminRole(role) {
+  return role === 'owner' || role === 'admin';
+}
+
+// Can `actor` act on `target` (delete their message, mute, remove, ban)?
+// Admins act on members; only the owner acts on admins; nobody acts on the owner.
+function canActOn(actorRole, targetRole) {
+  if (!isAdminRole(actorRole)) return false;
+  if (targetRole === 'owner') return false;
+  if (targetRole === 'admin') return actorRole === 'owner';
+  return true;
 }
 
 async function explicitGroupMemberIds(conversation) {
@@ -160,10 +196,15 @@ async function memberFilterFor(conversation) {
   if (conversation.type === 'faction') return { faction: conversation.factionKey, onboardingComplete: true };
   if (conversation.type === 'group') {
     const explicit = await explicitGroupMemberIds(conversation);
+    const banned = await bannedUserIds(conversation);
     if (conversation.group?.kind === 'faction') {
-      return { onboardingComplete: true, $or: [{ faction: conversation.factionKey }, { _id: { $in: explicit } }] };
+      return {
+        onboardingComplete: true,
+        $or: [{ faction: conversation.factionKey }, { _id: { $in: explicit } }],
+        _id: { $nin: banned },
+      };
     }
-    return { _id: { $in: explicit } };
+    return { _id: { $in: explicit, $nin: banned } };
   }
   return { onboardingComplete: true };
 }
@@ -381,13 +422,25 @@ async function summarizeConversation(conversation, me) {
     summary.title = group.name || 'Group';
     summary.factionKey = conversation.factionKey || null;
     summary.memberCount = await countGroupMembers(conversation);
+    const now = new Date();
+    const myRole = GROUP_ROLES.includes(member?.role) ? member.role : 'member';
+    const slowModeSeconds = group.slowModeSeconds || 0;
+    const nextSendAt =
+      slowModeSeconds && !isAdminRole(myRole) && member?.lastMessageAt
+        ? new Date(member.lastMessageAt.getTime() + slowModeSeconds * 1000)
+        : null;
     summary.group = {
       kind: group.kind,
       description: group.description || '',
       photoUrl: group.photoUrl || null,
-      myRole: member?.role || 'member',
-      muted: Boolean(member?.mutedUntil && member.mutedUntil > new Date()),
+      myRole,
+      muted: Boolean(member?.mutedUntil && member.mutedUntil > now),
       mutedUntil: member?.mutedUntil || null,
+      // Admins can mute people: they can read but not send until then.
+      mutedByAdminUntil: member?.mutedByAdminUntil && member.mutedByAdminUntil > now ? member.mutedByAdminUntil : null,
+      slowModeSeconds,
+      // Slow mode: when I can send my next message (null = now).
+      nextSendAt: nextSendAt && nextSendAt > now ? nextSendAt : null,
     };
   } else if (conversation.type === 'faction') {
     const faction = getFaction(conversation.factionKey);
@@ -463,7 +516,8 @@ function serializeMessage(message, { viewerId, conversationType, otherLastReadAt
     return {
       id: String(message._id),
       kind: message.kind,
-      content: 'This message was deleted.',
+      content: message.deletedByAdmin ? 'This message was deleted by an admin.' : 'This message was deleted.',
+      deletedByAdmin: Boolean(message.deletedByAdmin),
       media: null,
       callLog: null,
       sender: message.sender?.profile ? userPreview(message.sender) : undefined,
@@ -538,7 +592,12 @@ async function listChats(req, res) {
       factionKey: me.faction,
       'group.archived': { $ne: true },
     });
+    const bans = factionGroups.length
+      ? await GroupBan.find({ user: me._id, conversation: { $in: factionGroups.map((group) => group._id) } }, 'conversation')
+      : [];
+    const bannedFrom = new Set(bans.map((ban) => String(ban.conversation)));
     for (const conversation of factionGroups) {
+      if (bannedFrom.has(String(conversation._id))) continue;
       if (!seen.has(String(conversation._id))) {
         rooms.push(conversation);
         seen.add(String(conversation._id));
@@ -696,7 +755,7 @@ async function createMessage(req, res) {
   const sendError = await canSendToConversation(conversation, req.userId);
   if (sendError) {
     cleanUpLocalFile(req.file);
-    return res.status(sendError.status).json({ error: sendError.message });
+    return res.status(sendError.status).json({ error: sendError.message, ...(sendError.extra || {}) });
   }
 
   const content = typeof req.body.content === 'string' ? req.body.content.trim() : '';
@@ -756,7 +815,7 @@ async function createMessage(req, res) {
     Conversation.updateOne({ _id: conversation._id }, { $inc: { messageCount: 1 } }),
     ConversationMember.updateOne(
       { conversation: conversation._id, user: req.userId },
-      { $set: { lastReadAt: new Date() } },
+      { $set: { lastReadAt: new Date(), ...(conversation.type === 'group' ? { lastMessageAt: new Date() } : {}) } },
       { upsert: true }
     ),
     message.populate(populatePaths),
@@ -936,24 +995,42 @@ async function deleteMessage(req, res) {
 
 async function deleteSelectedMessage(conversation, message, userId, scope) {
   if (scope === 'everyone') {
+    // Group admins can delete members' messages (any time). Only the owner
+    // can delete an admin's message; nobody can delete the owner's.
+    let byAdmin = false;
     if (String(message.sender) !== String(userId)) {
-      return { status: 403, body: { error: 'You can only delete your own message for everyone.' } };
+      if (conversation.type === 'group') {
+        const [actorRole, targetRole] = await Promise.all([
+          groupRoleOf(conversation, userId),
+          groupRoleOf(conversation, message.sender),
+        ]);
+        byAdmin = canActOn(actorRole, targetRole || 'member');
+      }
+      if (!byAdmin) {
+        return { status: 403, body: { error: 'You can only delete your own message for everyone.' } };
+      }
     }
     if (!message.deletedForEveryone) {
       const ageMs = Date.now() - new Date(message.createdAt).getTime();
-      if (ageMs > DELETE_FOR_EVERYONE_WINDOW_MS) {
+      if (!byAdmin && ageMs > DELETE_FOR_EVERYONE_WINDOW_MS) {
         return { status: 403, body: { error: 'Messages can only be deleted for everyone within 5 minutes of sending. You can still delete it for yourself.' } };
       }
       message.deletedForEveryone = true;
       message.deletedAt = new Date();
+      if (byAdmin) message.deletedByAdmin = true;
       await message.save();
     }
     await Conversation.updateOne({ _id: conversation._id, pinnedMessage: message._id }, { $set: CLEAR_PIN });
     // "Everyone" deletes are visible to every viewer, so this is the one
     // delete scope worth pushing live - a "me" delete only changes what the
     // deleting user sees, so there's no one else to notify.
-    emitToConversation(conversation.id, 'message:deleted', { conversationId: conversation.id, messageId: String(message._id), scope: 'everyone' });
-    return { status: 200, body: { deleted: true, scope: 'everyone', messageId: String(message._id) } };
+    emitToConversation(conversation.id, 'message:deleted', {
+      conversationId: conversation.id,
+      messageId: String(message._id),
+      scope: 'everyone',
+      byAdmin: Boolean(message.deletedByAdmin),
+    });
+    return { status: 200, body: { deleted: true, scope: 'everyone', byAdmin: Boolean(message.deletedByAdmin), messageId: String(message._id) } };
   }
 
   await Message.updateOne({ _id: message._id }, { $addToSet: { deletedFor: userId } });
@@ -988,10 +1065,14 @@ async function markRead(req, res) {
   return res.json({ message: 'Marked read.' });
 }
 
-// PATCH /api/chats/:conversationId/pinned-message - any member can pin/unpin; there is no moderator role in this app yet.
+// PATCH /api/chats/:conversationId/pinned-message - anyone can pin/unpin in
+// DMs, Community and faction rooms; in groups only admins can.
 async function setPinnedMessage(req, res) {
   const { conversation, error } = await loadConversationForUser(req.params.conversationId, req.user);
   if (error) return res.status(error.status).json({ error: error.message });
+  if (conversation.type === 'group' && !isAdminRole(await groupRoleOf(conversation, req.user))) {
+    return res.status(403).json({ error: 'Only admins can pin messages in this group.' });
+  }
 
   if (req.body.messageId === undefined) return res.status(400).json({ error: 'messageId is required; use null to unpin.' });
   if (req.body.messageId === null) {
@@ -1143,7 +1224,7 @@ async function forwardCopy(original, targetConversation, userId) {
     Conversation.updateOne({ _id: targetConversation._id }, { $inc: { messageCount: 1 } }),
     ConversationMember.updateOne(
       { conversation: targetConversation._id, user: userId },
-      { $set: { lastReadAt: new Date() } },
+      { $set: { lastReadAt: new Date(), ...(targetConversation.type === 'group' ? { lastMessageAt: new Date() } : {}) } },
       { upsert: true }
     ),
   ]);
@@ -1268,6 +1349,35 @@ function deletedForIds(message) {
 }
 
 async function canSendToConversation(conversation, senderId) {
+  if (conversation.type === 'group') {
+    const row = await ConversationMember.findOne({ conversation: conversation._id, user: senderId });
+    const now = new Date();
+
+    // Muted by an admin: can read, can't send.
+    if (row?.mutedByAdminUntil && row.mutedByAdminUntil > now) {
+      return {
+        status: 403,
+        message: 'An admin muted you in this group. You can read messages but not send them for now.',
+        extra: { code: 'muted_by_admin', mutedUntil: row.mutedByAdminUntil },
+      };
+    }
+
+    // Slow mode: one message every N seconds (admins aren't limited).
+    const slow = conversation.group?.slowModeSeconds || 0;
+    if (slow > 0 && !isAdminRole(row?.role) && row?.lastMessageAt) {
+      const nextAt = row.lastMessageAt.getTime() + slow * 1000;
+      if (nextAt > now.getTime()) {
+        const wait = Math.ceil((nextAt - now.getTime()) / 1000);
+        return {
+          status: 429,
+          message: `Slow mode is on. You can send again in ${wait}s.`,
+          extra: { code: 'slow_mode', retryAfterSeconds: wait, nextSendAt: new Date(nextAt) },
+        };
+      }
+    }
+    return null;
+  }
+
   if (conversation.type !== 'dm') return null;
   const otherId = conversation.participants.find((id) => String(id) !== String(senderId));
   const [other, blocked] = await Promise.all([User.findById(otherId), isBlockedEitherWay(senderId, otherId)]);
@@ -1384,6 +1494,9 @@ module.exports = {
   userPreview,
   isGroupMember,
   countGroupMembers,
+  groupRoleOf,
+  canActOn,
+  isAdminRole,
   GROUP_ROLES,
   SENDER_FIELDS,
 };

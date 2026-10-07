@@ -26,8 +26,16 @@ const conversationMemberSchema = new mongoose.Schema(
     role: { type: String, enum: ['owner', 'admin', 'member', null], default: null },
     joinedAt: { type: Date, default: null },
     addedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
-    // Muted until this moment (far future = "always"). null = not muted.
+    // Notifications muted (by this person) until this moment (far future =
+    // "always"). null = not muted.
     mutedUntil: { type: Date, default: null },
+
+    // Groups - set by admins: this person can read but not send until then
+    // (far future = until unmuted).
+    mutedByAdminUntil: { type: Date, default: null },
+    mutedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    // When this person last sent a message here (slow mode).
+    lastMessageAt: { type: Date, default: null },
   },
   { timestamps: true }
 );

@@ -17,6 +17,13 @@ const {
   muteGroup,
   listJoinRequests,
   decideJoinRequest,
+  setMemberRole,
+  removeMember,
+  banMember,
+  listBans,
+  unbanMember,
+  muteMember,
+  unmuteMember,
 } = require('../controllers/groupController');
 
 const router = express.Router();
@@ -43,5 +50,14 @@ router.patch('/groups/:groupId/mute', asyncHandler(muteGroup));
 router.post('/groups/:groupId/invite-link/reset', asyncHandler(resetInviteLink));
 router.get('/groups/:groupId/requests', asyncHandler(listJoinRequests));
 router.post('/groups/:groupId/requests/:requestId/:decision', asyncHandler(decideJoinRequest));
+
+// Admins (Phase 3)
+router.post('/groups/:groupId/members/:userId/role', asyncHandler(setMemberRole));
+router.post('/groups/:groupId/members/:userId/remove', asyncHandler(removeMember));
+router.post('/groups/:groupId/members/:userId/ban', asyncHandler(banMember));
+router.post('/groups/:groupId/members/:userId/mute', asyncHandler(muteMember));
+router.delete('/groups/:groupId/members/:userId/mute', asyncHandler(unmuteMember));
+router.get('/groups/:groupId/bans', asyncHandler(listBans));
+router.delete('/groups/:groupId/bans/:userId', asyncHandler(unbanMember));
 
 module.exports = router;

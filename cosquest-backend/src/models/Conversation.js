@@ -37,6 +37,9 @@ const groupSchema = new mongoose.Schema(
     whoCanAdd: { type: String, enum: ['members', 'admins'], default: 'admins' },
     // The code in the invite link (https://.../g/<code>). Admins can reset it.
     inviteCode: { type: String, default: null },
+    // Slow mode: members can send one message every N seconds (0 = off).
+    // Admins aren't limited.
+    slowModeSeconds: { type: Number, enum: [0, 10, 30, 60, 300, 3600], default: 0 },
     // The last person left: the group stays in the database, hidden.
     archived: { type: Boolean, default: false },
   },
