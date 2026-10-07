@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 /**
- * Three flavors share one collection:
+ * Four flavors share one collection:
  *  - 'community': exactly one row for the whole app. Every onboarded user is
  *    an implicit member - membership isn't stored, it's just "is logged in".
  *  - 'faction': at most one row per faction key. Membership is implicit too -
@@ -10,17 +10,46 @@ const mongoose = require('mongoose');
  *  - 'dm': exactly 2 participants, created on demand. `dmKey` is the two
  *    participant ids sorted and joined, so a unique index can stop the same
  *    pair from getting a second conversation.
+ *  - 'group': created by users (group chat spec). Details live in `group`:
+ *      kind 'faction' - for one faction (`factionKey`); that faction's
+ *                       members are pulled in automatically, like the
+ *                       faction room.
+ *      kind 'open'    - an open community space anyone can find and join
+ *                       (instantly, or after admin approval).
+ *      kind 'private' - invite only (added by members, or an invite link).
+ *    Explicit members, their role (owner / admin / member) and mute live in
+ *    ConversationMember.
  *
- * `participants` is only populated for 'dm'; community/faction rooms don't
- * store a member list here (see ConversationMember for per-user lastReadAt,
- * which every type uses).
+ * `participants` is only populated for 'dm'.
  */
+const groupSchema = new mongoose.Schema(
+  {
+    name: { type: String, required: true, trim: true, maxlength: 80 },
+    description: { type: String, default: '', trim: true, maxlength: 500 },
+    photoUrl: { type: String, default: null },
+    kind: { type: String, enum: ['faction', 'open', 'private'], required: true },
+    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    // Invite link / "join" button: let people in instantly, or ask an admin.
+    joinMode: { type: String, enum: ['instant', 'approval'], default: 'instant' },
+    sizeLimit: { type: Number, default: 256, min: 2, max: 1024 },
+    // Who can see the member list, and who can add new people.
+    memberListVisibility: { type: String, enum: ['members', 'admins'], default: 'members' },
+    whoCanAdd: { type: String, enum: ['members', 'admins'], default: 'admins' },
+    // The code in the invite link (https://.../g/<code>). Admins can reset it.
+    inviteCode: { type: String, default: null },
+    // The last person left: the group stays in the database, hidden.
+    archived: { type: Boolean, default: false },
+  },
+  { _id: false }
+);
+
 const conversationSchema = new mongoose.Schema(
   {
-    type: { type: String, enum: ['community', 'faction', 'dm'], required: true },
+    type: { type: String, enum: ['community', 'faction', 'dm', 'group'], required: true },
     factionKey: { type: String, default: null },
     participants: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], default: [] },
     dmKey: { type: String, default: null },
+    group: { type: groupSchema, default: null },
     pinnedMessage: { type: mongoose.Schema.Types.ObjectId, ref: 'Message', default: null },
     pinnedAt: { type: Date, default: null },
     pinnedUntil: { type: Date, default: null },
@@ -34,5 +63,12 @@ const conversationSchema = new mongoose.Schema(
 conversationSchema.index({ type: 1 }, { unique: true, partialFilterExpression: { type: 'community' } });
 conversationSchema.index({ type: 1, factionKey: 1 }, { unique: true, partialFilterExpression: { type: 'faction' } });
 conversationSchema.index({ dmKey: 1 }, { unique: true, partialFilterExpression: { type: 'dm' } });
+
+// Groups: invite links, discovery, and "faction groups for my faction".
+conversationSchema.index(
+  { 'group.inviteCode': 1 },
+  { unique: true, partialFilterExpression: { 'group.inviteCode': { $type: 'string' } } }
+);
+conversationSchema.index({ type: 1, 'group.kind': 1, factionKey: 1 });
 
 module.exports = mongoose.model('Conversation', conversationSchema);

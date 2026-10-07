@@ -129,22 +129,59 @@ function parseMentions(body) {
   return { ids: ids.slice(0, MAX_MENTIONS), everyone };
 }
 
-// Who can be in this chat: the same rule loadConversationForUser() uses.
-function memberQueryFor(conversation) {
+// ==========================================================================
+// GROUPS (user-created - see Conversation.js)
+// ==========================================================================
+
+const GROUP_ROLES = ['owner', 'admin', 'member'];
+
+// Is this person in the group? Faction groups pull in that faction's members
+// automatically; other groups use explicit membership (a row with a role).
+async function isGroupMember(conversation, user) {
+  if (conversation.type !== 'group' || conversation.group?.archived) return false;
+  if (conversation.group?.kind === 'faction' && user?.faction && user.faction === conversation.factionKey) return true;
+  return Boolean(
+    await ConversationMember.exists({ conversation: conversation._id, user: user._id || user, role: { $in: GROUP_ROLES } })
+  );
+}
+
+async function explicitGroupMemberIds(conversation) {
+  const rows = await ConversationMember.find(
+    { conversation: conversation._id, role: { $in: GROUP_ROLES } },
+    'user'
+  );
+  return rows.map((row) => row.user);
+}
+
+// A User query for "everyone who can be in this chat" - the same rule
+// loadConversationForUser() uses.
+async function memberFilterFor(conversation) {
   if (conversation.type === 'dm') return { _id: { $in: conversation.participants } };
   if (conversation.type === 'faction') return { faction: conversation.factionKey, onboardingComplete: true };
+  if (conversation.type === 'group') {
+    const explicit = await explicitGroupMemberIds(conversation);
+    if (conversation.group?.kind === 'faction') {
+      return { onboardingComplete: true, $or: [{ faction: conversation.factionKey }, { _id: { $in: explicit } }] };
+    }
+    return { _id: { $in: explicit } };
+  }
   return { onboardingComplete: true };
+}
+
+async function countGroupMembers(conversation) {
+  return User.countDocuments(await memberFilterFor(conversation));
 }
 
 // Keeps only real people who can actually see this chat (never the sender).
 async function resolveMentions(conversation, senderId, ids) {
   if (!ids.length) return [];
-  const users = await User.find({ ...memberQueryFor(conversation), _id: { $in: ids } }, '_id');
+  const users = await User.find({ ...(await memberFilterFor(conversation)), _id: { $in: ids } }, '_id');
   return users.map((user) => String(user._id)).filter((id) => id !== String(senderId));
 }
 
 function conversationLabel(conversation) {
   if (conversation.type === 'community') return 'Community';
+  if (conversation.type === 'group') return conversation.group?.name || 'a group';
   if (conversation.type === 'faction') return getFaction(conversation.factionKey)?.name || 'your faction';
   return 'a chat';
 }
@@ -155,7 +192,7 @@ async function notifyMentions(conversation, message, sender) {
   let targetIds = message.mentions.map(String);
 
   if (message.mentionsEveryone) {
-    const everyone = await User.find({ ...memberQueryFor(conversation), _id: { $ne: sender._id } }, '_id');
+    const everyone = await User.find({ ...(await memberFilterFor(conversation)), _id: { $ne: sender._id } }, '_id');
     targetIds = everyone.map((user) => String(user._id));
   }
 
@@ -236,16 +273,22 @@ async function getOrCreateDmConversation(userIdA, userIdB) {
 
 // Access rules: community is open to any onboarded user, faction rooms follow
 // the user's *current* faction (switching factions moves you automatically),
-// DMs are restricted to their two participants.
+// DMs are restricted to their two participants, and groups to their members
+// (faction groups: everyone in that faction, plus anyone added).
 async function loadConversationForUser(conversationId, user) {
   if (!mongoose.isValidObjectId(conversationId)) return { error: { status: 404, message: 'Conversation not found.' } };
   const conversation = await Conversation.findById(conversationId);
   if (!conversation) return { error: { status: 404, message: 'Conversation not found.' } };
 
+  if (conversation.type === 'group' && conversation.group?.archived) {
+    return { error: { status: 404, message: 'Conversation not found.' } };
+  }
+
   const allowed =
     conversation.type === 'community' ||
     (conversation.type === 'faction' && conversation.factionKey === user.faction) ||
-    (conversation.type === 'dm' && conversation.participants.some((participantId) => String(participantId) === String(user._id)));
+    (conversation.type === 'dm' && conversation.participants.some((participantId) => String(participantId) === String(user._id))) ||
+    (conversation.type === 'group' && (await isGroupMember(conversation, user)));
   if (!allowed) return { error: { status: 403, message: 'You do not have access to this conversation.' } };
 
   return { conversation };
@@ -333,6 +376,19 @@ async function summarizeConversation(conversation, me) {
   if (conversation.type === 'community') {
     summary.title = 'Community';
     summary.memberCount = await User.countDocuments({ onboardingComplete: true });
+  } else if (conversation.type === 'group') {
+    const group = conversation.group || {};
+    summary.title = group.name || 'Group';
+    summary.factionKey = conversation.factionKey || null;
+    summary.memberCount = await countGroupMembers(conversation);
+    summary.group = {
+      kind: group.kind,
+      description: group.description || '',
+      photoUrl: group.photoUrl || null,
+      myRole: member?.role || 'member',
+      muted: Boolean(member?.mutedUntil && member.mutedUntil > new Date()),
+      mutedUntil: member?.mutedUntil || null,
+    };
   } else if (conversation.type === 'faction') {
     const faction = getFaction(conversation.factionKey);
     summary.factionKey = conversation.factionKey;
@@ -461,8 +517,33 @@ async function listChats(req, res) {
   if (me.faction) rooms.push(await getOrCreateFactionConversation(me.faction));
 
   const memberships = await ConversationMember.find({ user: me._id }).populate('conversation');
+  const seen = new Set(rooms.map((room) => String(room._id)));
   for (const membership of memberships) {
-    if (membership.conversation?.type === 'dm') rooms.push(membership.conversation);
+    const conversation = membership.conversation;
+    if (!conversation || seen.has(String(conversation._id))) continue;
+    const isDm = conversation.type === 'dm';
+    const isMyGroup =
+      conversation.type === 'group' && !conversation.group?.archived && GROUP_ROLES.includes(membership.role);
+    if (isDm || isMyGroup) {
+      rooms.push(conversation);
+      seen.add(String(conversation._id));
+    }
+  }
+
+  // Faction groups for my faction (members are pulled in automatically).
+  if (me.faction) {
+    const factionGroups = await Conversation.find({
+      type: 'group',
+      'group.kind': 'faction',
+      factionKey: me.faction,
+      'group.archived': { $ne: true },
+    });
+    for (const conversation of factionGroups) {
+      if (!seen.has(String(conversation._id))) {
+        rooms.push(conversation);
+        seen.add(String(conversation._id));
+      }
+    }
   }
 
   const chats = await Promise.all(rooms.map((conversation) => summarizeConversation(conversation, me)));
@@ -521,8 +602,9 @@ async function getConversationDetail(req, res) {
 
 // GET /api/chats/:conversationId/members?search=&page=&limit=
 // The people in this chat, for the @ mention checkbox picker. DMs: the two
-// participants. Faction rooms: everyone in that faction. Community: everyone
-// onboarded (use `search` there - it can be a lot of people).
+// participants. Faction rooms: everyone in that faction. Groups: their
+// members. Community: everyone onboarded (use `search` there - it can be a
+// lot of people).
 async function listChatMembers(req, res) {
   const { conversation, error } = await loadConversationForUser(req.params.conversationId, req.user);
   if (error) return res.status(error.status).json({ error: error.message });
@@ -531,17 +613,24 @@ async function listChatMembers(req, res) {
   const page = parsePage(req.query.page);
   const search = typeof req.query.search === 'string' ? req.query.search.trim().replace(/^@/, '') : '';
 
-  const query = { ...memberQueryFor(conversation), _id: { $ne: req.user._id } };
+  const query = { ...(await memberFilterFor(conversation)) };
+  query._id = query._id ? { ...query._id, $ne: req.user._id } : { $ne: req.user._id };
   if (conversation.type === 'dm') {
     query._id = { $in: conversation.participants.filter((id) => String(id) !== String(req.user._id)) };
   }
   if (search) {
     const pattern = new RegExp(escapeRegex(search), 'i');
-    query.$or = [
-      { 'profile.username': pattern },
-      { 'profile.displayName': pattern },
-      { 'profile.firstName': pattern },
-      { 'profile.lastName': pattern },
+    // $and, so this never overwrites a faction group's own $or (faction OR added).
+    query.$and = [
+      ...(query.$and || []),
+      {
+        $or: [
+          { 'profile.username': pattern },
+          { 'profile.displayName': pattern },
+          { 'profile.firstName': pattern },
+          { 'profile.lastName': pattern },
+        ],
+      },
     ];
   }
 
@@ -690,6 +779,10 @@ async function createMessage(req, res) {
   // whoever doesn't currently have this conversation open.
   if (conversation.type === 'dm') {
     emitToUsers(conversation.participants.map(String), 'chat:preview', { conversationId: conversation.id });
+  } else if (conversation.type === 'group' && conversation.group?.kind !== 'faction') {
+    // Group members' chat lists update live too (unread badge / preview).
+    const memberIds = await explicitGroupMemberIds(conversation);
+    emitToUsers(memberIds.map(String), 'chat:preview', { conversationId: conversation.id });
   }
 
   if (message.mentions.length || message.mentionsEveryone) {
@@ -1287,5 +1380,10 @@ module.exports = {
   loadConversationForUser,
   loadMessageInConversation,
   serializeMessage,
+  summarizeConversation,
+  userPreview,
+  isGroupMember,
+  countGroupMembers,
+  GROUP_ROLES,
   SENDER_FIELDS,
 };
