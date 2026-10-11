@@ -36,6 +36,10 @@ const conversationMemberSchema = new mongoose.Schema(
     mutedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     // When this person last sent a message here (slow mode).
     lastMessageAt: { type: Date, default: null },
+
+    // "Mute only Sparks / thread activity": replies posted inside Sparks
+    // don't count as unread; the main chat stays audible.
+    sparksMuted: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

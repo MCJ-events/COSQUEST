@@ -136,6 +136,7 @@ async function groupJson(conversation, me, role) {
     description: group.description || '',
     photoUrl: group.photoUrl || null,
     kind: group.kind,
+    scope: group.scope || 'local',
     factionKey: conversation.factionKey || null,
     factionName: conversation.factionKey ? getFaction(conversation.factionKey)?.name || null : null,
     joinMode: group.joinMode,
@@ -267,7 +268,12 @@ async function addPeopleToGroup(conversation, adder, users) {
 }
 
 // Joining (Join button or invite link): straight in, or a request for an admin.
-async function joinOrRequest(conversation, user, via) {
+// The introduction someone writes when asking to join, max 200 characters.
+function introOf(req) {
+  return typeof req.body?.message === 'string' ? req.body.message.trim().slice(0, 200) : '';
+}
+
+async function joinOrRequest(conversation, user, via, message = '') {
   const group = conversation.group;
 
   if (await isGroupMember(conversation, user)) {
@@ -288,7 +294,7 @@ async function joinOrRequest(conversation, user, via) {
     try {
       request = await GroupJoinRequest.findOneAndUpdate(
         { conversation: conversation._id, user: user._id, status: 'pending' },
-        { $setOnInsert: { via } },
+        { $setOnInsert: { via }, ...(message ? { $set: { message } } : {}) },
         { upsert: true, new: true }
       );
     } catch (error) {
@@ -340,6 +346,7 @@ async function groupPreview(conversation, user) {
     description: group.description || '',
     photoUrl: group.photoUrl || null,
     kind: group.kind,
+    scope: group.scope || 'local',
     factionKey: conversation.factionKey || null,
     joinMode: group.joinMode,
     memberCount,
@@ -629,7 +636,7 @@ async function joinGroup(req, res) {
   if (conversation.group.kind === 'private') {
     return res.status(403).json({ error: 'This group is invite only. Ask a member for the invite link.' });
   }
-  const result = await joinOrRequest(conversation, req.user, 'join');
+  const result = await joinOrRequest(conversation, req.user, 'join', introOf(req));
   return res.status(result.status).json(result.body);
 }
 
@@ -644,7 +651,7 @@ async function getInvite(req, res) {
 async function joinByInvite(req, res) {
   const conversation = await Conversation.findOne({ type: 'group', 'group.inviteCode': String(req.params.code), 'group.archived': { $ne: true } });
   if (!conversation) return res.status(404).json({ error: 'This invite link is no longer valid.' });
-  const result = await joinOrRequest(conversation, req.user, 'link');
+  const result = await joinOrRequest(conversation, req.user, 'link', introOf(req));
   return res.status(result.status).json({ ...result.body, groupId: idOf(conversation) });
 }
 
@@ -730,7 +737,13 @@ async function listJoinRequests(req, res) {
   return res.json({
     requests: requests
       .filter((request) => request.user)
-      .map((request) => ({ id: idOf(request), user: userPreview(request.user), via: request.via, createdAt: request.createdAt })),
+      .map((request) => ({
+        id: idOf(request),
+        user: userPreview(request.user),
+        via: request.via,
+        message: request.message || '',
+        createdAt: request.createdAt,
+      })),
   });
 }
 
@@ -1001,7 +1014,24 @@ async function unmuteMember(req, res) {
   return res.json({ mutedUntil: null });
 }
 
+// DELETE /api/groups/:groupId/requests/mine - cancel my pending join request.
+async function cancelMyRequest(req, res) {
+  const conversation = await loadGroup(req.params.groupId);
+  if (!conversation) return res.status(404).json({ error: 'Group not found.' });
+  const result = await GroupJoinRequest.updateOne(
+    { conversation: conversation._id, user: req.user._id, status: 'pending' },
+    { $set: { status: 'cancelled', decidedAt: new Date() } }
+  );
+  const cancelled = result.modifiedCount > 0;
+  // A private group stays hidden from people who never asked to join it (same
+  // 404 as getGroup), so this can't be used to find out which ids are groups.
+  if (!cancelled && conversation.group.kind === 'private') return res.status(404).json({ error: 'Group not found.' });
+  if (cancelled) await broadcastGroupChange(conversation);
+  return res.json({ cancelled });
+}
+
 module.exports = {
+  cancelMyRequest,
   setMemberRole,
   removeMember,
   banMember,

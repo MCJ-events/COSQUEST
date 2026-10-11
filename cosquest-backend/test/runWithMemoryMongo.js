@@ -66,6 +66,9 @@ async function main() {
     const groups = await require('./groups').run(`http://localhost:${process.env.PORT}`);
     result.pass += groups.pass;
     result.fail += groups.fail;
+    const groupExtras = await require('./groupExtras').run(`http://localhost:${process.env.PORT}`);
+    result.pass += groupExtras.pass;
+    result.fail += groupExtras.fail;
     const chatExtras = await require('./chatExtras').run(`http://localhost:${process.env.PORT}`);
     result.pass += chatExtras.pass;
     result.fail += chatExtras.fail;

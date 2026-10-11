@@ -56,6 +56,8 @@ const userSchema = new mongoose.Schema(
     // The balance is read by the profile page now. A points ledger/reward
     // system can safely award or deduct points later without changing the API.
     pointsBalance: { type: Number, default: 0, min: 0 },
+    // Expertise role shown under the name (a key from expertiseModel.js).
+    expertise: { type: String, default: null },
     // Private account details, distinct from public Contact Options.
     account: {
       phone: { type: String, default: '' },

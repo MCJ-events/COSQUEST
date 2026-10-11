@@ -22,6 +22,7 @@ const {
   bulkForwardMessages,
   getMessage,
   getChatShareLink,
+  setChatNotifications,
 } = require('../controllers/chatController');
 const { listSparks, getSpark, startSpark, addToSpark, pinSpark, deleteSpark, mergeSpark } = require('../controllers/sparkController');
 const { searchMessages, messageContext, createAlbum } = require('../controllers/chatExtrasController');
@@ -49,6 +50,8 @@ router.post('/chats/:conversationId/messages', chatUpload.single('media'), async
 // Search in chat (M16), a message with the conversation around it (M16), and
 // albums - several photos/videos in one message (M17).
 router.get('/chats/:conversationId/search', asyncHandler(searchMessages));
+// "Mute only Sparks / thread activity" (just for me).
+router.patch('/chats/:conversationId/notifications', asyncHandler(setChatNotifications));
 router.get('/chats/:conversationId/messages/:messageId/context', asyncHandler(messageContext));
 router.post('/chats/:conversationId/album', albumUpload.array('media', 10), asyncHandler(createAlbum));
 router.post('/chats/:conversationId/messages/bulk-delete', asyncHandler(bulkDeleteMessages));

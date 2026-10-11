@@ -13,6 +13,7 @@ const postRoutes = require('./postRoutes');
 const chatRoutes = require('./chatRoutes');
 const callRoutes = require('./callRoutes');
 const groupRoutes = require('./groupRoutes');
+const expertiseRoutes = require('./expertiseRoutes');
 
 const router = express.Router();
 
@@ -30,6 +31,7 @@ router.use('/', questRoutes); // /api/quests
 router.use('/home', homeRoutes); // /api/home/dashboard
 router.use('/', callRoutes); // /api/calls and /api/chats/:conversationId/calls
 router.use('/', groupRoutes); // /api/groups (user-created groups)
+router.use('/', expertiseRoutes); // /api/expertise (expertise roles)
 router.use('/', chatRoutes); // /api/chats
 router.use('/spotlight', require('./spotlightRoutes'));
 

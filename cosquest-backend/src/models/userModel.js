@@ -1,5 +1,6 @@
 const User = require('./User');
 const { normalizeUsername } = require('../utils/validation');
+const { expertiseLabel } = require('./expertiseModel');
 
 /**
  * Same public function names/signatures as the old JSON-file version (see
@@ -84,6 +85,8 @@ function sanitize(user) {
   const { passwordHash, tokenVersion, currentSessionId, __v, _id, onboarding, account, ...safe } = obj;
   if (safe.profile) delete safe.profile.usernameNormalized;
   safe.id = String(_id);
+  // Expertise role ("Front-end") - see expertiseModel.js.
+  safe.expertiseLabel = expertiseLabel(obj.expertise);
   return safe;
 }
 

@@ -24,6 +24,7 @@ const {
   unbanMember,
   muteMember,
   unmuteMember,
+  cancelMyRequest,
 } = require('../controllers/groupController');
 
 const router = express.Router();
@@ -49,6 +50,7 @@ router.post('/groups/:groupId/leave', asyncHandler(leaveGroup));
 router.patch('/groups/:groupId/mute', asyncHandler(muteGroup));
 router.post('/groups/:groupId/invite-link/reset', asyncHandler(resetInviteLink));
 router.get('/groups/:groupId/requests', asyncHandler(listJoinRequests));
+router.delete('/groups/:groupId/requests/mine', asyncHandler(cancelMyRequest));
 router.post('/groups/:groupId/requests/:requestId/:decision', asyncHandler(decideJoinRequest));
 
 // Admins (Phase 3)

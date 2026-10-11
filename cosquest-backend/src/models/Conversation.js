@@ -35,6 +35,9 @@ const groupSchema = new mongoose.Schema(
     // Who can see the member list, and who can add new people.
     memberListVisibility: { type: String, enum: ['members', 'admins'], default: 'members' },
     whoCanAdd: { type: String, enum: ['members', 'admins'], default: 'admins' },
+    // Local (made by members) or regional (made by orchestrators - set with
+    // scripts/setGroupScope.js until orchestrators have their own screen).
+    scope: { type: String, enum: ['local', 'regional'], default: 'local' },
     // The code in the invite link (https://.../g/<code>). Admins can reset it.
     inviteCode: { type: String, default: null },
     // Slow mode: members can send one message every N seconds (0 = off).

@@ -11,6 +11,7 @@ const User = require('../models/User');
 const userModel = require('../models/userModel');
 const notificationModel = require('../models/notificationModel');
 const { getFaction } = require('../models/factionModel');
+const { expertiseLabel } = require('../models/expertiseModel');
 const { storeChatMedia } = require('../utils/imageHost');
 const { validateChatMedia } = require('../utils/chatMedia');
 const { transcribeAudio } = require('../utils/transcribeAudio');
@@ -49,6 +50,8 @@ function userPreview(user) {
     avatarPhotoUrl: user.profile.avatarPhotoUrl,
     faction: user.faction,
     lastActiveAt: user.privacy?.showOnlineStatus === false ? null : user.lastActiveAt,
+    // Expertise role shown under the name ("Front-end"), or null.
+    expertise: expertiseLabel(user.expertise),
   };
 }
 
@@ -395,6 +398,8 @@ async function summarizeConversation(conversation, me) {
     createdAt: { $gt: lastReadAt },
     sender: { $ne: me._id },
     deletedFor: { $ne: me._id },
+    // "Mute only Sparks / thread activity": replies inside Sparks don't count.
+    ...(member?.sparksMuted ? { postedInSpark: { $ne: true } } : {}),
   });
 
   const summary = {
@@ -406,6 +411,8 @@ async function summarizeConversation(conversation, me) {
     otherParticipant: null,
     messageCount: conversation.messageCount,
     unreadCount,
+    // "Mute only Sparks / thread activity" is on for me.
+    sparksMuted: Boolean(member?.sparksMuted),
     lastMessage: lastMessage
       ? {
           senderName: lastMessage.sender?.profile?.username || lastMessage.sender?.profile?.firstName || 'Someone',
@@ -434,6 +441,8 @@ async function summarizeConversation(conversation, me) {
         : null;
     summary.group = {
       kind: group.kind,
+      // local (member-made) or regional (orchestrator-made)
+      scope: group.scope || 'local',
       description: group.description || '',
       photoUrl: group.photoUrl || null,
       myRole,
@@ -585,7 +594,7 @@ function forBroadcast(serialized) {
   return { ...serialized, editedAt: null, canRollback: false, previousContent: null };
 }
 
-const SENDER_FIELDS = 'profile.username profile.displayName profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl faction lastActiveAt privacy.showOnlineStatus';
+const SENDER_FIELDS = 'profile.username profile.displayName profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl faction lastActiveAt privacy.showOnlineStatus expertise';
 
 // GET /api/chats - "Your Space" (community + faction room) plus every DM.
 async function listChats(req, res) {
@@ -1510,7 +1519,7 @@ async function getMessageSeenBy(req, res) {
   };
   const [members, total] = await Promise.all([
     ConversationMember.find(query)
-      .populate('user', 'profile.username profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl faction privacy.readReceipts')
+      .populate('user', 'profile.username profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl faction privacy.readReceipts expertise')
       .sort({ lastReadAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit),
@@ -1526,7 +1535,26 @@ async function getMessageSeenBy(req, res) {
   });
 }
 
+// PATCH /api/chats/:conversationId/notifications  { sparksMuted: boolean }
+// "Mute only Sparks / thread activity" for me in this chat.
+async function setChatNotifications(req, res) {
+  const { conversation, error } = await loadConversationForUser(req.params.conversationId, req.user);
+  if (error) return res.status(error.status).json({ error: error.message });
+  if (typeof req.body?.sparksMuted !== 'boolean') {
+    return res.status(400).json({ error: 'sparksMuted must be true or false.' });
+  }
+  // A brand-new row starts "unread from the beginning" (EPOCH), like muteGroup -
+  // changing a setting must not quietly mark the whole chat as read.
+  await ConversationMember.updateOne(
+    { conversation: conversation._id, user: req.userId },
+    { $set: { sparksMuted: req.body.sparksMuted }, $setOnInsert: { lastReadAt: EPOCH } },
+    { upsert: true }
+  );
+  return res.json({ sparksMuted: req.body.sparksMuted });
+}
+
 module.exports = {
+  setChatNotifications,
   listChats,
   startDirectMessage,
   getConversationDetail,

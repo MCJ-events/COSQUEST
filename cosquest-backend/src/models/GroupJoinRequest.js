@@ -8,8 +8,10 @@ const groupJoinRequestSchema = new mongoose.Schema(
   {
     conversation: { type: mongoose.Schema.Types.ObjectId, ref: 'Conversation', required: true, index: true },
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
-    status: { type: String, enum: ['pending', 'approved', 'declined'], default: 'pending', index: true },
+    status: { type: String, enum: ['pending', 'approved', 'declined', 'cancelled'], default: 'pending', index: true },
     via: { type: String, enum: ['link', 'join'], default: 'join' },
+    // Their introduction ("I'd love to join the Saturday mural meetup").
+    message: { type: String, default: '', trim: true, maxlength: 200 },
     decidedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     decidedAt: { type: Date, default: null },
   },
