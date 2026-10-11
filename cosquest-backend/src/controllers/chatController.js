@@ -4,6 +4,8 @@ const Conversation = require('../models/Conversation');
 const ConversationMember = require('../models/ConversationMember');
 const Message = require('../models/Message');
 const MessageReaction = require('../models/MessageReaction');
+const Spark = require('../models/Spark');
+const sparks = require('../utils/sparks');
 const GroupBan = require('../models/GroupBan');
 const User = require('../models/User');
 const userModel = require('../models/userModel');
@@ -552,6 +554,11 @@ function serializeMessage(message, { viewerId, conversationType, otherLastReadAt
     mentions,
     mentionsEveryone: Boolean(message.mentionsEveryone),
     forwarded: Boolean(message.forwardedFrom),
+    // Sparks: the sub-conversation this message is part of (marker in the
+    // main chat; `era` drives the past/present colour).
+    spark: message.spark
+      ? { id: String(message.spark), era: message.sparkEra || 0, postedInSpark: Boolean(message.postedInSpark) }
+      : null,
     createdAt: message.createdAt,
   };
 }
@@ -788,6 +795,19 @@ async function createMessage(req, res) {
     return res.status(validation.status).json({ error: validation.error });
   }
 
+  // Reply posted inside a Spark's panel.
+  let sparkId = null;
+  if (req.body.sparkId) {
+    const spark = mongoose.isValidObjectId(req.body.sparkId)
+      ? await Spark.findOne({ _id: req.body.sparkId, conversation: conversation._id, deletedAt: null }, '_id')
+      : null;
+    if (!spark) {
+      cleanUpLocalFile(file);
+      return res.status(400).json({ error: 'That Spark no longer exists.' });
+    }
+    sparkId = spark._id;
+  }
+
   const requested = parseMentions(req.body);
   const mentions = await resolveMentions(conversation, req.userId, requested.ids);
 
@@ -821,6 +841,21 @@ async function createMessage(req, res) {
     message.populate(populatePaths),
   ]);
 
+  // Sparks: a reply from inside a Spark joins it right away (so it's tagged
+  // in the live message); every other message goes through topic detection
+  // after the response (tags arrive with the "spark:messages" event).
+  if (sparkId) {
+    const spark = await sparks.handleNewMessage(conversation, message, { sparkId }).catch((err) => {
+      console.error('[sparks] reply failed:', err.message);
+      return null;
+    });
+    if (spark) {
+      message.spark = spark._id;
+      message.sparkEra = Math.max(0, (spark.eras?.length || 1) - 1);
+      message.postedInSpark = true;
+    }
+  }
+
   // Real-time fan-out: everyone with this conversation open gets the new
   // message instantly. `otherLastReadAt: null` matches the REST response -
   // the sender always sees their own message as unread-by-recipient at the
@@ -853,6 +888,12 @@ async function createMessage(req, res) {
   if (kind === 'audio' && media?.url) {
     transcribeAndSaveVoiceNote(message._id, conversation, media.url).catch((err) => {
       console.error('Voice note transcription failed:', err);
+    });
+  }
+
+  if (!sparkId && sparks.SPARK_CHAT_TYPES.includes(conversation.type)) {
+    sparks.handleNewMessage(conversation, message).catch((err) => {
+      console.error('[sparks] detection failed:', err.message);
     });
   }
 
@@ -1497,6 +1538,8 @@ module.exports = {
   groupRoleOf,
   canActOn,
   isAdminRole,
+  hiddenFor,
+  groupReactions,
   GROUP_ROLES,
   SENDER_FIELDS,
 };

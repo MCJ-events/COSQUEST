@@ -23,6 +23,7 @@ const {
   getMessage,
   getChatShareLink,
 } = require('../controllers/chatController');
+const { listSparks, getSpark, startSpark, addToSpark, pinSpark, deleteSpark, mergeSpark } = require('../controllers/sparkController');
 
 const router = express.Router();
 
@@ -55,5 +56,14 @@ router.post('/chats/:conversationId/messages/:messageId/reactions', asyncHandler
 router.delete('/chats/:conversationId/messages/:messageId/reactions', asyncHandler(removeReaction));
 router.get('/chats/:conversationId/messages/:messageId/seen', asyncHandler(getMessageSeenBy));
 router.post('/chats/:conversationId/messages/:messageId/forward', asyncHandler(forwardMessage));
+
+// Sparks (sub-conversations) - Community, faction rooms and groups.
+router.get('/chats/:conversationId/sparks', asyncHandler(listSparks));
+router.post('/chats/:conversationId/sparks', asyncHandler(startSpark));
+router.get('/chats/:conversationId/sparks/:sparkId', asyncHandler(getSpark));
+router.post('/chats/:conversationId/sparks/:sparkId/messages', asyncHandler(addToSpark));
+router.patch('/chats/:conversationId/sparks/:sparkId/pin', asyncHandler(pinSpark));
+router.delete('/chats/:conversationId/sparks/:sparkId', asyncHandler(deleteSpark));
+router.post('/chats/:conversationId/sparks/:sparkId/merge', asyncHandler(mergeSpark));
 
 module.exports = router;

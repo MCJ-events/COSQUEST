@@ -614,3 +614,19 @@ Authenticated interactions:
 - `POST` or `DELETE /api/posts/:postId/likes` — like/unlike; responses include the public `likeCount`.
 - `POST /api/posts/:postId/comments` with `{ "body": "..." }` — add a public 1-500 character comment.
 - `DELETE /api/posts/:postId/comments/:commentId` — comment author only.
+
+
+## Sparks (sub-conversations in Community, faction rooms and groups)
+
+A Spark is a sub-conversation the Sparks bot detects in the main chat (3+ messages from 2+ people on one subject within ~2 minutes) or a member starts by hand. Not available in DMs. All endpoints need login.
+
+- `GET /api/chats/:conversationId/sparks` — `{ sparks, canManage }`. Active (pulsing) first, pinned ones first among them, then quiet cards. A pinned Spark is always `active`.
+- `GET /api/chats/:conversationId/sparks/:sparkId` — side panel: `{ spark, messages, seams, canManage }`. `messages` are the latest 500, oldest first, with reactions; `seams` are `[{ beforeMessageId, label }]` for long silences ("11 months later").
+- `POST /api/chats/:conversationId/sparks` with `{ messageId, subject (2-60), force? }` — start a Spark from a message. `409 { code: "similar_sparks", matches }` if similar ones exist (resend with `force: true` to start a new one anyway); `409 { code: "already_in_spark" }` if the message is already in one.
+- `POST /api/chats/:conversationId/sparks/:sparkId/messages` with `{ messageId }` — add a message to a Spark.
+- `PATCH .../sparks/:sparkId/pin` with `{ pinned }`, `DELETE .../sparks/:sparkId`, `POST .../sparks/:sparkId/merge` with `{ intoSparkId }` — group admins only (Community and faction rooms have no admins yet). Deleting leaves the messages in the main chat, unmarked; merging moves them into the other Spark without counting as a revival.
+- `POST /api/chats/:conversationId/messages` with an extra `sparkId` — reply from inside a Spark.
+
+Every message has `spark`: `null` or `{ id, era, postedInSpark }`. Socket events in the conversation room: `spark:updated { conversationId, spark }`, `spark:messages { conversationId, sparkId, era, messageIds }`, `spark:deleted { conversationId, sparkId, mergedInto? }`.
+
+Rules and thresholds live in `src/utils/sparks.js`. Set `ANTHROPIC_API_KEY` (optional) for AI-written subjects and summaries.

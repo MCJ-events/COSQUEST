@@ -42,6 +42,16 @@ const messageSchema = new mongoose.Schema(
     content: { type: String, default: '', trim: true, maxlength: 2000 },
     media: { type: messageMediaSchema, default: null },
     callLog: { type: callLogSchema, default: null },
+
+    // SPARKS: the sub-conversation this message belongs to (set by the
+    // Sparks bot, a manual "Start a Spark", or a reply posted inside one).
+    // The message still shows in the main chat, with a marker.
+    spark: { type: mongoose.Schema.Types.ObjectId, ref: 'Spark', default: null, index: true },
+    // Which "era" of the Spark it belongs to (0 = first; each revival adds
+    // one) - drives the past/present colour gradient.
+    sparkEra: { type: Number, default: 0 },
+    // Posted from inside the Spark panel (vs. picked up from the main chat).
+    postedInSpark: { type: Boolean, default: false },
     replyTo: { type: mongoose.Schema.Types.ObjectId, ref: 'Message', default: null },
     // Set when this message was created by forwarding another one, so the UI
     // can show a "Forwarded" label. Points at the original message; the

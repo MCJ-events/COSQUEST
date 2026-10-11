@@ -66,6 +66,9 @@ async function main() {
     const groups = await require('./groups').run(`http://localhost:${process.env.PORT}`);
     result.pass += groups.pass;
     result.fail += groups.fail;
+    const sparks = await require('./sparks').run(`http://localhost:${process.env.PORT}`);
+    result.pass += sparks.pass;
+    result.fail += sparks.fail;
     const oauthRedirect = await require('./oauthRedirect').run(`http://localhost:${process.env.PORT}`);
     result.pass += oauthRedirect.pass;
     result.fail += oauthRedirect.fail;
