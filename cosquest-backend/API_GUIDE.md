@@ -630,3 +630,12 @@ A Spark is a sub-conversation the Sparks bot detects in the main chat (3+ messag
 Every message has `spark`: `null` or `{ id, era, postedInSpark }`. Socket events in the conversation room: `spark:updated { conversationId, spark }`, `spark:messages { conversationId, sparkId, era, messageIds }`, `spark:deleted { conversationId, sparkId, mergedInto? }`.
 
 Rules and thresholds live in `src/utils/sparks.js`. Set `ANTHROPIC_API_KEY` (optional) for AI-written subjects and summaries.
+
+## Chat search, jump to message, albums, and "before your change"
+
+All need login and chat membership.
+
+- `GET /api/chats/:conversationId/search?q=&page=&limit=` — text and voice-note transcripts (and album captions), newest first, `q` 2-100 characters, matched literally. Each result: `{ message, context: { label, sparkId, sparkSubject } }` where `label` is the Spark's subject (`· revived` / `· history` once it has several eras) or `Original conversation`. Messages you deleted for yourself, and messages deleted for everyone, never appear.
+- `GET /api/chats/:conversationId/messages/:messageId/context?size=12` — the message with up to `size` (max 30) messages before and after, oldest first: `{ targetId, messages, hasOlder, hasNewer }`. Messages include reactions and DM read state.
+- `POST /api/chats/:conversationId/album` (multipart) — `media` ×1-10 (photos JPEG/PNG/WEBP/GIF up to 10 MB each, videos MP4/MOV/WEBM up to 50 MB each), optional `content` caption, `replyTo`, `sparkId`. Returns `{ message }` with `kind: "album"` and `album: [{ url, publicId, resourceType, kind, ... }]`. Albums can be forwarded; the chat-list preview reads `📷 3 photos` / `🎥 2 videos` / `📷 4 photos & videos`.
+- Messages now carry `album` (null unless `kind` is `album`) and `previousContent`: for the author only, the wording an undo (`POST .../rollback`) would restore; always null for everyone else and in live broadcasts.

@@ -85,4 +85,18 @@ const chatUpload = multer({
   },
 });
 
-module.exports = { upload, postUpload, chatUpload, uploadDir, DOCUMENT_TYPES };
+// Albums: up to 10 photos/videos in one message. chatUpload above only ever
+// accepts a single file, so albums need their own limits.
+const ALBUM_TYPES = [...ALLOWED_TYPES.filter((type) => type.startsWith('image/')), ...CHAT_VIDEO_TYPES];
+const albumUpload = multer({
+  storage,
+  limits: { fileSize: 50 * 1024 * 1024, files: 10 },
+  fileFilter: (req, file, cb) => {
+    if (!ALBUM_TYPES.includes(file.mimetype)) {
+      return cb(invalidFileType('Albums can only contain photos (JPEG, PNG, WEBP, GIF) and videos (MP4, MOV, WEBM).'));
+    }
+    cb(null, true);
+  },
+});
+
+module.exports = { upload, postUpload, chatUpload, albumUpload, uploadDir, DOCUMENT_TYPES };

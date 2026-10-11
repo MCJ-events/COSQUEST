@@ -455,7 +455,7 @@ async function detectAndAssign(conversation, message, { sparkId = null } = {}) {
     createdAt: { $gte: since },
     spark: null,
     deletedForEveryone: { $ne: true },
-    kind: { $in: ['text', 'image', 'video', 'audio'] },
+    kind: { $in: ['text', 'image', 'video', 'audio', 'album'] },
   })
     .sort({ createdAt: -1 })
     .limit(40);

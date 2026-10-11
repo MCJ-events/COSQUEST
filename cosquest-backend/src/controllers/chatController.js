@@ -373,6 +373,7 @@ function previewMessage(message, viewerId) {
   if (!message) return null;
   if (message.deletedForEveryone) return 'This message was deleted';
   if (message.kind === 'call') return callLogPreview(message.callLog, viewerId);
+  if (message.kind === 'album') return albumPreview(message.album);
   if (message.kind === 'image') return 'Sent a photo';
   if (message.kind === 'video') return 'Sent a video';
   if (message.kind === 'sticker') return 'Sent a sticker';
@@ -506,8 +507,18 @@ function replyPreview(original, viewerId) {
   };
 }
 
-// `editedAt` and `canRollback` are only filled in for the AUTHOR: nobody else
-// knows a message was edited (per the group chat spec).
+// "📷 3 photos", "🎥 2 videos", "📷 4 photos & videos"
+function albumPreview(album) {
+  const items = Array.isArray(album) ? album : [];
+  const videos = items.filter((item) => item?.kind === 'video').length;
+  const photos = items.length - videos;
+  if (!videos) return `📷 ${photos} ${photos === 1 ? 'photo' : 'photos'}`;
+  if (!photos) return `🎥 ${videos} ${videos === 1 ? 'video' : 'videos'}`;
+  return `📷 ${items.length} photos & videos`;
+}
+
+// `editedAt`, `canRollback` and `previousContent` are only filled in for the
+// AUTHOR: nobody else knows a message was edited (per the group chat spec).
 function serializeMessage(message, { viewerId, conversationType, otherLastReadAt, reactions }) {
   const senderId = message.sender?._id || message.sender;
   const isMine = String(senderId) === String(viewerId);
@@ -551,6 +562,11 @@ function serializeMessage(message, { viewerId, conversationType, otherLastReadAt
     deletedAt: null,
     editedAt: isMine ? message.editedAt || null : null,
     canRollback: isMine && Boolean(message.editHistory?.length),
+    // "Before your change": the wording an undo would restore (author only).
+    previousContent:
+      isMine && message.editHistory?.length ? message.editHistory[message.editHistory.length - 1].content : null,
+    // kind 'album': the photos/videos (the caption is `content`).
+    album: message.kind === 'album' ? message.album || [] : null,
     mentions,
     mentionsEveryone: Boolean(message.mentionsEveryone),
     forwarded: Boolean(message.forwardedFrom),
@@ -566,7 +582,7 @@ function serializeMessage(message, { viewerId, conversationType, otherLastReadAt
 // The copy of a message sent live to EVERYONE in the room: never shows that
 // it was edited (the author's own app gets that from the REST response).
 function forBroadcast(serialized) {
-  return { ...serialized, editedAt: null, canRollback: false };
+  return { ...serialized, editedAt: null, canRollback: false, previousContent: null };
 }
 
 const SENDER_FIELDS = 'profile.username profile.displayName profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl faction lastActiveAt privacy.showOnlineStatus';
@@ -1259,6 +1275,8 @@ async function forwardCopy(original, targetConversation, userId) {
     kind: original.kind,
     content: original.content,
     media: original.media,
+    // An album's photos live in `album`, not `media` - without this the copy would be empty.
+    album: original.kind === 'album' ? (original.album || []).map((item) => ({ ...item })) : undefined,
     forwardedFrom: original._id,
   });
   await Promise.all([
@@ -1540,6 +1558,11 @@ module.exports = {
   isAdminRole,
   hiddenFor,
   groupReactions,
+  otherLastReadFor,
+  canSendToConversation,
+  explicitGroupMemberIds,
+  forBroadcast,
+  albumPreview,
   GROUP_ROLES,
   SENDER_FIELDS,
 };

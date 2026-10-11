@@ -1,6 +1,6 @@
 const express = require('express');
 const { requireAuth, requireCompletedOnboarding } = require('../middleware/auth');
-const { chatUpload } = require('../middleware/upload');
+const { chatUpload, albumUpload } = require('../middleware/upload');
 const { asyncHandler } = require('../utils/asyncHandler');
 const {
   listChats,
@@ -24,6 +24,7 @@ const {
   getChatShareLink,
 } = require('../controllers/chatController');
 const { listSparks, getSpark, startSpark, addToSpark, pinSpark, deleteSpark, mergeSpark } = require('../controllers/sparkController');
+const { searchMessages, messageContext, createAlbum } = require('../controllers/chatExtrasController');
 
 const router = express.Router();
 
@@ -44,6 +45,12 @@ router.get('/chats/:conversationId/messages/:messageId', asyncHandler(getMessage
 router.get('/chats/:conversationId/messages/:messageId/share', asyncHandler(getChatShareLink));
 router.get('/chats/:conversationId/messages', asyncHandler(listMessages));
 router.post('/chats/:conversationId/messages', chatUpload.single('media'), asyncHandler(createMessage));
+
+// Search in chat (M16), a message with the conversation around it (M16), and
+// albums - several photos/videos in one message (M17).
+router.get('/chats/:conversationId/search', asyncHandler(searchMessages));
+router.get('/chats/:conversationId/messages/:messageId/context', asyncHandler(messageContext));
+router.post('/chats/:conversationId/album', albumUpload.array('media', 10), asyncHandler(createAlbum));
 router.post('/chats/:conversationId/messages/bulk-delete', asyncHandler(bulkDeleteMessages));
 router.post('/chats/:conversationId/messages/bulk-forward', asyncHandler(bulkForwardMessages));
 router.patch('/chats/:conversationId/messages/:messageId', asyncHandler(editMessage));

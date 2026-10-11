@@ -38,10 +38,14 @@ const messageSchema = new mongoose.Schema(
   {
     conversation: { type: mongoose.Schema.Types.ObjectId, ref: 'Conversation', required: true, index: true },
     sender: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
-    kind: { type: String, enum: ['text', 'image', 'video', 'audio', 'file', 'sticker', 'call'], default: 'text' },
+    kind: { type: String, enum: ['text', 'image', 'video', 'audio', 'file', 'sticker', 'call', 'album'], default: 'text' },
     content: { type: String, default: '', trim: true, maxlength: 2000 },
     media: { type: messageMediaSchema, default: null },
     callLog: { type: callLogSchema, default: null },
+
+    // kind 'album': several photos/videos in one message (each item is what
+    // storeChatMedia returns, plus its kind). The caption is `content`.
+    album: { type: [mongoose.Schema.Types.Mixed], default: undefined },
 
     // SPARKS: the sub-conversation this message belongs to (set by the
     // Sparks bot, a manual "Start a Spark", or a reply posted inside one).
