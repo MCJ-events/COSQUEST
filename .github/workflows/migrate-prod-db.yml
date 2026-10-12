@@ -1,0 +1,47 @@
+# ONE-OFF, for the production cutover: copy the current production MongoDB onto Mark's server and start
+# production there with the code on main. Run it only inside the agreed maintenance window, after the old
+# backend has been stopped (cosquest-backend/DEPLOY.md, "Production cutover").
+name: migrate-prod-db
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type MIGRATE to replace the production database on Mark''s server with a copy of SOURCE_MONGODB_URI'
+        required: true
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  migrate:
+    if: inputs.confirm == 'MIGRATE'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - name: SSH setup
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_PROD_SSH_KEY }}
+          DEPLOY_HOST_KEY: ${{ secrets.DEPLOY_HOST_KEY }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$DEPLOY_HOST_KEY" > ~/.ssh/known_hosts
+      - name: Copy the database (stops the new app first; checks document counts on both sides)
+        env:
+          SOURCE_MONGODB_URI: ${{ secrets.SOURCE_MONGODB_URI }}
+        run: |
+          printf '%s\n' "$SOURCE_MONGODB_URI" | ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes cosquest-deploy-prod@204.168.162.79 migrate
+      - name: Start production with main
+        env:
+          TEAM_ENV: ${{ secrets.COSQUEST_PROD_ENV }}
+        run: |
+          mkdir -p .deploy && printf '%s\n' "$TEAM_ENV" > .deploy/team.env
+          git archive --format=tar HEAD cosquest-backend > release.tar && tar -rf release.tar .deploy/team.env && gzip release.tar
+          ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes cosquest-deploy-prod@204.168.162.79 "deploy $GITHUB_SHA" < release.tar.gz
