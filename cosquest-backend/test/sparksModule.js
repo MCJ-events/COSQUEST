@@ -185,6 +185,11 @@ async function run(baseUrl) {
     check(many[0] === true && many[1] === false, 'canReadMany hides messages the person deleted for themselves, in one query', many);
     check((await require('../src/sparks/members').canReadMany(outsiderId(), communityId, [1])).every((ok) => ok === false), 'canReadMany says no to someone who cannot access the chat');
 
+    console.log('\n--- sparks module: polls ---');
+    const poll = await request('POST', `/api/chats/${groupId}/polls`, a.token, { question: 'Which day for the meetup?', options: ['Saturday', 'Sunday'] });
+    const pollRow = poll.status === 201 ? await sparksHost.store.getMessage(poll.data.message.id) : null;
+    check(poll.status === 201 && typeof poll.data.message.seq === 'number' && pollRow?.kind === 'text' && pollRow.text === 'Which day for the meetup?', 'a poll gets a seq and reaches Sparks as a text message with its question', { status: poll.status, row: pollRow });
+
     console.log('\n--- sparks module: the model link (GET /v1/model) ---');
     const manifest = (path) => fetch(`${baseUrl}${path}`, { redirect: 'manual' });
     const savedManifest = process.env.SPARKS_MODEL_MANIFEST_URL;

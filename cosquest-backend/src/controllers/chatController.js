@@ -5,6 +5,7 @@ const ConversationMember = require('../models/ConversationMember');
 const Message = require('../models/Message');
 const MessageReaction = require('../models/MessageReaction');
 const Spark = require('../models/Spark');
+const PollVote = require('../models/PollVote');
 const sparks = require('../utils/sparks'); // legacy engine (SPARKS_ENGINE=legacy)
 const sparksHost = require('../sparks'); // @cosquest/sparks-backend (default)
 const sparksCompat = require('../sparks/compat');
@@ -378,6 +379,7 @@ function previewMessage(message, viewerId) {
   if (!message) return null;
   if (message.deletedForEveryone) return 'This message was deleted';
   if (message.kind === 'call') return callLogPreview(message.callLog, viewerId);
+  if (message.kind === 'poll') return `📊 Poll: ${message.poll?.question || message.content}`;
   if (message.kind === 'album') return albumPreview(message.album);
   if (message.kind === 'image') return 'Sent a photo';
   if (message.kind === 'video') return 'Sent a video';
@@ -518,6 +520,56 @@ function replyPreview(original, viewerId) {
   };
 }
 
+// ==========================================================================
+// POLLS (kind 'poll')
+// ==========================================================================
+
+function pollIsClosed(poll) {
+  return Boolean(poll?.closedAt) || Boolean(poll?.closesAt && new Date(poll.closesAt) <= new Date());
+}
+
+// What the app shows: options with vote counts, total voters, open/closed,
+// and (for this viewer) which options they picked.
+function buildPollSummary(message, votes = [], viewerId = null) {
+  const poll = message.poll || {};
+  const counts = new Map((poll.options || []).map((option) => [option.id, 0]));
+  for (const vote of votes) {
+    for (const optionId of vote.optionIds || []) {
+      if (counts.has(optionId)) counts.set(optionId, counts.get(optionId) + 1);
+    }
+  }
+  const mine = viewerId ? votes.find((vote) => String(vote.user) === String(viewerId)) : null;
+
+  return {
+    question: poll.question || message.content || '',
+    options: (poll.options || []).map((option) => ({ id: option.id, text: option.text, votes: counts.get(option.id) || 0 })),
+    multiple: Boolean(poll.multiple),
+    anonymous: Boolean(poll.anonymous),
+    closesAt: poll.closesAt || null,
+    closedAt: poll.closedAt || null,
+    closed: pollIsClosed(poll),
+    totalVoters: votes.length,
+    // Only meaningful for one viewer (REST); live updates leave it out.
+    myVotes: mine ? [...mine.optionIds] : [],
+  };
+}
+
+// Results for every poll in a page of messages (one query).
+async function pollSummaries(messages, viewerId) {
+  const polls = messages.filter((message) => message.kind === 'poll' && message.poll && !message.deletedForEveryone);
+  if (!polls.length) return new Map();
+
+  const votes = await PollVote.find({ message: { $in: polls.map((message) => message._id) } }, 'message user optionIds');
+  const byMessage = new Map();
+  for (const vote of votes) {
+    const key = String(vote.message);
+    if (!byMessage.has(key)) byMessage.set(key, []);
+    byMessage.get(key).push(vote);
+  }
+
+  return new Map(polls.map((message) => [String(message._id), buildPollSummary(message, byMessage.get(String(message._id)) || [], viewerId)]));
+}
+
 // "📷 3 photos", "🎥 2 videos", "📷 4 photos & videos"
 function albumPreview(album) {
   const items = Array.isArray(album) ? album : [];
@@ -530,7 +582,7 @@ function albumPreview(album) {
 
 // `editedAt`, `canRollback` and `previousContent` are only filled in for the
 // AUTHOR: nobody else knows a message was edited (per the group chat spec).
-function serializeMessage(message, { viewerId, conversationType, otherLastReadAt, reactions }) {
+function serializeMessage(message, { viewerId, conversationType, otherLastReadAt, reactions, poll }) {
   const senderId = message.sender?._id || message.sender;
   const isMine = String(senderId) === String(viewerId);
   const read = conversationType === 'dm' && isMine ? Boolean(otherLastReadAt && message.createdAt <= otherLastReadAt) : undefined;
@@ -580,6 +632,8 @@ function serializeMessage(message, { viewerId, conversationType, otherLastReadAt
       isMine && message.editHistory?.length ? message.editHistory[message.editHistory.length - 1].content : null,
     // kind 'album': the photos/videos (the caption is `content`).
     album: message.kind === 'album' ? message.album || [] : null,
+    // kind 'poll': question, options with vote counts, my votes.
+    poll: message.kind === 'poll' && message.poll ? poll || buildPollSummary(message, [], null) : null,
     mentions,
     mentionsEveryone: Boolean(message.mentionsEveryone),
     forwarded: Boolean(message.forwardedFrom),
@@ -769,7 +823,10 @@ async function listMessages(req, res) {
     otherLastReadFor(conversation, req.user),
   ]);
 
-  const reactionDocs = await MessageReaction.find({ message: { $in: messages.map((message) => message._id) } });
+  const [reactionDocs, polls] = await Promise.all([
+    MessageReaction.find({ message: { $in: messages.map((message) => message._id) } }),
+    pollSummaries(messages, req.userId),
+  ]);
   const reactionsByMessage = groupReactions(reactionDocs, req.userId);
 
   return res.json({
@@ -779,6 +836,7 @@ async function listMessages(req, res) {
         conversationType: conversation.type,
         otherLastReadAt,
         reactions: reactionsByMessage.get(String(message._id)) || [],
+        poll: polls.get(String(message._id)),
       })
     ),
     pagination: { page, limit, total, hasMore: page * limit < total },
@@ -1023,6 +1081,7 @@ async function editMessage(req, res) {
   if (message.deletedForEveryone) return res.status(400).json({ error: 'This message was deleted and cannot be edited.' });
   // Call entries are a record of what happened - not editable.
   if (message.kind === 'call') return res.status(400).json({ error: 'Call entries cannot be edited.' });
+  if (message.kind === 'poll') return res.status(400).json({ error: 'Polls cannot be edited.' });
 
   const content = typeof req.body.content === 'string' ? req.body.content.trim() : '';
   if (!content) return res.status(400).json({ error: 'content is required.' });
@@ -1274,6 +1333,7 @@ async function forwardMessage(req, res) {
   // A call entry belongs to the call it records - it can't be copied into
   // another chat.
   if (original.kind === 'call') return res.status(400).json({ error: 'Call entries cannot be forwarded.' });
+  if (original.kind === 'poll') return res.status(400).json({ error: 'Polls cannot be forwarded.' });
 
   const { targetConversationId, targetUsername } = req.body;
   if (Boolean(targetConversationId) === Boolean(targetUsername)) {
@@ -1383,8 +1443,8 @@ async function bulkForwardMessages(req, res) {
   const originals = await Message.find({ _id: { $in: ids }, conversation: conversation._id, deletedForEveryone: false, deletedFor: { $ne: req.userId } }).sort({ createdAt: 1, _id: 1 });
   if (originals.length !== ids.length) return res.status(404).json({ error: 'One or more selected messages are unavailable in this conversation.' });
   // Same rule as single forward: call entries stay in their own chat.
-  if (originals.some((original) => original.kind === 'call')) {
-    return res.status(400).json({ error: 'Call entries cannot be forwarded. Unselect them and try again.' });
+  if (originals.some((original) => original.kind === 'call' || original.kind === 'poll')) {
+    return res.status(400).json({ error: 'Call entries and polls cannot be forwarded. Unselect them and try again.' });
   }
 
   // Validate all destinations before creating a DM or sending any copy.
@@ -1487,6 +1547,7 @@ async function getMessage(req, res) {
   return res.json({ message: serializeMessage(message, {
     viewerId: req.userId, conversationType: conversation.type, otherLastReadAt: await otherLastReadFor(conversation, req.user),
     reactions: await summarizeReactions(message._id, req.userId),
+    poll: (await pollSummaries([message], req.userId)).get(String(message._id)),
   }) });
 }
 
@@ -1613,6 +1674,9 @@ module.exports = {
   explicitGroupMemberIds,
   forBroadcast,
   albumPreview,
+  buildPollSummary,
+  pollIsClosed,
+  pollSummaries,
   GROUP_ROLES,
   SENDER_FIELDS,
 };

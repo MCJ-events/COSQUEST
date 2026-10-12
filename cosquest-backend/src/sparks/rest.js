@@ -13,6 +13,7 @@ const {
   serializeMessage,
   hiddenFor,
   groupReactions,
+  pollSummaries,
   SENDER_FIELDS,
 } = require('../controllers/chatController');
 const host = require('./index');
@@ -99,8 +100,9 @@ async function getSpark(req, res) {
       .populate({ path: 'replyTo', populate: { path: 'sender', select: 'profile.username profile.firstName' } })
   ).reverse();
   const reactionsByMessage = groupReactions(await MessageReaction.find({ message: { $in: docs.map((d) => d._id) } }), req.userId);
+  const polls = await pollSummaries(docs, req.userId);
   const messages = docs.map((doc) =>
-    serializeMessage(doc, { viewerId: req.userId, conversationType: conversation.type, otherLastReadAt: null, reactions: reactionsByMessage.get(String(doc._id)) || [] })
+    serializeMessage(doc, { viewerId: req.userId, conversationType: conversation.type, otherLastReadAt: null, reactions: reactionsByMessage.get(String(doc._id)) || [], poll: polls.get(String(doc._id)) })
   );
   return res.json({
     spark: await serializeRow(host.store, row),

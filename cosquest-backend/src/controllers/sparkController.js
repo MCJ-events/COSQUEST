@@ -10,6 +10,7 @@ const {
   isAdminRole,
   hiddenFor,
   groupReactions,
+  pollSummaries,
   SENDER_FIELDS,
 } = require('./chatController');
 const sparks = require('../utils/sparks');
@@ -87,6 +88,7 @@ async function getSpark(req, res) {
 
   const reactionDocs = await MessageReaction.find({ message: { $in: docs.map((doc) => doc._id) } });
   const reactionsByMessage = groupReactions(reactionDocs, req.userId);
+  const polls = await pollSummaries(docs, req.userId);
 
   const messages = docs.map((doc) =>
     serializeMessage(doc, {
@@ -94,6 +96,7 @@ async function getSpark(req, res) {
       conversationType: conversation.type,
       otherLastReadAt: null,
       reactions: reactionsByMessage.get(String(doc._id)) || [],
+      poll: polls.get(String(doc._id)),
     })
   );
 

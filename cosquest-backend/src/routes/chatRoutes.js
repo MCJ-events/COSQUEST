@@ -26,6 +26,7 @@ const {
 } = require('../controllers/chatController');
 const { listSparks, listNativeSparks, listSparkMembers, getSpark, startSpark, addToSpark, pinSpark, deleteSpark, mergeSpark } = require('../controllers/sparkController');
 const { searchMessages, messageContext, createAlbum } = require('../controllers/chatExtrasController');
+const { createPoll, votePoll, closePoll, listPollVotes } = require('../controllers/pollController');
 
 const router = express.Router();
 
@@ -66,6 +67,12 @@ router.post('/chats/:conversationId/messages/:messageId/reactions', asyncHandler
 router.delete('/chats/:conversationId/messages/:messageId/reactions', asyncHandler(removeReaction));
 router.get('/chats/:conversationId/messages/:messageId/seen', asyncHandler(getMessageSeenBy));
 router.post('/chats/:conversationId/messages/:messageId/forward', asyncHandler(forwardMessage));
+
+// Polls (kind 'poll'): create, vote, close, see who voted.
+router.post('/chats/:conversationId/polls', asyncHandler(createPoll));
+router.post('/chats/:conversationId/messages/:messageId/vote', asyncHandler(votePoll));
+router.post('/chats/:conversationId/messages/:messageId/poll/close', asyncHandler(closePoll));
+router.get('/chats/:conversationId/messages/:messageId/poll/votes', asyncHandler(listPollVotes));
 
 // Sparks (sub-conversations) - every chat, DMs included (Sparks module;
 // SPARKS_ENGINE=legacy restores the old engine: no DMs). See SPARKS_INTEGRATION.md.

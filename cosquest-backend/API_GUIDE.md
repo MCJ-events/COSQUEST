@@ -649,3 +649,14 @@ All need login and chat membership.
 - Groups have `scope`: `local` (member-made, the default) or `regional` (orchestrator-made). It appears in group info, discovery and the chat list's `group`. Until orchestrators have a screen, set it with `node scripts/setGroupScope.js "<group name or id>" regional|local`.
 - `POST /api/groups/:groupId/join` and `POST /api/groups/invite/:code/join` accept an optional `{ "message": "..." }` introduction (200 characters max) that admins see in `GET /api/groups/:groupId/requests` as `message`. `DELETE /api/groups/:groupId/requests/mine` cancels your own pending request (`{ cancelled: true|false }`).
 - `PATCH /api/chats/:conversationId/notifications` with `{ "sparksMuted": true|false }` — "mute only Sparks": replies posted inside Sparks stop counting toward your unread badge while the main chat still does. The chat list reports `sparksMuted`.
+
+## Polls
+
+A poll is a chat message with `kind: "poll"`, so replying, reacting, pinning, deleting, search and read state work like any message. Needs login and chat membership; creating follows the normal send rules (blocked DMs, muted by an admin, slow mode). Polls work in every chat type, DMs included.
+
+- `POST /api/chats/:id/polls` with `{ question (1-300), options: [text, ...] (2-12, each up to 100, no duplicates ignoring capitals), multiple?, anonymous?, closesIn?: "1h" | "1d" | "1w", replyTo? }` returns `201 { message }`. Option ids are `o1`, `o2`, ...
+- `POST /api/chats/:id/messages/:messageId/vote` with `{ optionIds: ["o1"] }`. Several ids only if the poll is `multiple`; an empty list removes your vote; voting again changes it. `400` once the poll is closed (by hand or by `closesIn`) or deleted. Returns `{ messageId, poll }`.
+- `POST .../messages/:messageId/poll/close` closes it early. Only the creator or, in groups, an admin (`403` otherwise).
+- `GET .../messages/:messageId/poll/votes` lists the voters per option. `403` for anonymous polls (counts only).
+
+A poll message carries `poll`: `{ question, options: [{ id, text, votes }], multiple, anonymous, closesAt, closedAt, closed, totalVoters, myVotes }`. The message list, a single message, search results and Spark panels all include live results; `myVotes` is that viewer's own picks. Live: the new poll arrives as `message:new`, and every vote or close sends `poll:updated { conversationId, messageId, poll }` (without `myVotes`: each app keeps its own). Polls cannot be edited or forwarded. The chat-list preview reads `📊 Poll: <question>`.

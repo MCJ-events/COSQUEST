@@ -19,6 +19,34 @@ const messageMediaSchema = new mongoose.Schema(
 // One "call entry" per finished call - see src/utils/callMessage.js. callId
 // is what the unique index below dedupes on, so the same call never produces
 // two log entries even if its finished status gets broadcast more than once.
+// A poll (kind 'poll'). `content` holds the question too, so previews,
+// search and replies work like any other message. Votes live in PollVote.
+const pollSchema = new mongoose.Schema(
+  {
+    question: { type: String, required: true, trim: true, maxlength: 300 },
+    options: {
+      type: [
+        {
+          _id: false,
+          id: { type: String, required: true },
+          text: { type: String, required: true, trim: true, maxlength: 100 },
+        },
+      ],
+      default: [],
+    },
+    // Several answers allowed per person.
+    multiple: { type: Boolean, default: false },
+    // Only counts are shown, never who voted for what.
+    anonymous: { type: Boolean, default: false },
+    // Closes by itself at this time (null = no end).
+    closesAt: { type: Date, default: null },
+    // Closed early by the creator (or a group admin).
+    closedAt: { type: Date, default: null },
+    closedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  },
+  { _id: false }
+);
+
 const callLogSchema = new mongoose.Schema(
   {
     callId: { type: mongoose.Schema.Types.ObjectId, ref: 'Call', required: true },
@@ -38,10 +66,12 @@ const messageSchema = new mongoose.Schema(
   {
     conversation: { type: mongoose.Schema.Types.ObjectId, ref: 'Conversation', required: true, index: true },
     sender: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
-    kind: { type: String, enum: ['text', 'image', 'video', 'audio', 'file', 'sticker', 'call', 'album'], default: 'text' },
+    kind: { type: String, enum: ['text', 'image', 'video', 'audio', 'file', 'sticker', 'call', 'album', 'poll'], default: 'text' },
     content: { type: String, default: '', trim: true, maxlength: 2000 },
     media: { type: messageMediaSchema, default: null },
     callLog: { type: callLogSchema, default: null },
+    // kind 'poll': the question, options and settings (votes: PollVote).
+    poll: { type: pollSchema, default: null },
 
     // kind 'album': several photos/videos in one message (each item is what
     // storeChatMedia returns, plus its kind). The caption is `content`.
