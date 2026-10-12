@@ -1,0 +1,62 @@
+# Push to main -> run the backend tests -> deploy to the TEST server on Mark's machine
+# (https://cosquest-api-test.204.168.162.79.sslip.io). How it works, secrets, rollback: cosquest-backend/DEPLOY.md
+name: deploy-test
+
+on:
+  push:
+    branches: [main]
+    paths: ["cosquest-backend/**", ".github/workflows/deploy-test.yml"]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-test
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: cosquest-backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: cosquest-backend/package-lock.json
+      - run: npm ci
+      - run: npm test
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Package cosquest-backend (+ your test-server keys)
+        env:
+          TEAM_ENV: ${{ secrets.COSQUEST_TEST_ENV }}
+        run: |
+          mkdir -p .deploy
+          printf '%s\n' "$TEAM_ENV" > .deploy/team.env
+          git archive --format=tar HEAD cosquest-backend > release.tar
+          tar -rf release.tar .deploy/team.env
+          gzip release.tar
+      - name: Deploy (build, health check, automatic rollback on failure)
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_HOST_KEY: ${{ secrets.DEPLOY_HOST_KEY }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$DEPLOY_HOST_KEY" > ~/.ssh/known_hosts
+          ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
+            cosquest-deploy@204.168.162.79 "deploy $GITHUB_SHA" < release.tar.gz
+      - name: Check it is live
+        run: |
+          for i in 1 2 3 4 5 6; do curl -fsS https://cosquest-api-test.204.168.162.79.sslip.io/health && exit 0; sleep 5; done; exit 1
