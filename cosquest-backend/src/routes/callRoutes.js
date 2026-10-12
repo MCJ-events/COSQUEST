@@ -31,6 +31,8 @@ router.use(
 
 // Calls (start in a DM; anyone in the call can add more people)
 router.post('/chats/:conversationId/calls', asyncHandler(startCall));
+// Sparks: the call's outline (attendees and chat admins).
+router.get('/calls/:callId/outline', asyncHandler(require('../sparks/calls').getOutline));
 router.get('/calls/incoming', asyncHandler(getIncomingCall));
 router.get('/calls/:callId', asyncHandler(getCall));
 router.post('/calls/:callId/accept', asyncHandler(acceptCall));

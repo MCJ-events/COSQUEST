@@ -102,6 +102,9 @@ async function initSocket(httpServer) {
   io.on('connection', (socket) => {
     socket.join(`user:${socket.userId}`);
 
+    // Sparks: the SDK's protocol channel (`sparks` event). See src/sparks/index.js.
+    require('../sparks').bindSocket(socket);
+
     // Presence: only announce on the actual 0->1 / 1->0 transition (see
     // presence.js), so opening a second tab doesn't re-announce "online" and
     // closing one of several doesn't falsely announce "offline".

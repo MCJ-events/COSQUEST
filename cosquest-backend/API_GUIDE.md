@@ -616,20 +616,23 @@ Authenticated interactions:
 - `DELETE /api/posts/:postId/comments/:commentId` — comment author only.
 
 
-## Sparks (sub-conversations in Community, faction rooms and groups)
+## Sparks (sub-conversations in every chat, DMs included)
 
-A Spark is a sub-conversation the Sparks bot detects in the main chat (3+ messages from 2+ people on one subject within ~2 minutes) or a member starts by hand. Not available in DMs. All endpoints need login.
+A Spark is a sub-conversation detected in the main chat (3+ messages from 2+ people on one subject within ~2 minutes) or started by hand. Since the Sparks module (`@cosquest/sparks-backend`, see [SPARKS_INTEGRATION.md](SPARKS_INTEGRATION.md)) the detection, sorting and summaries run on members' phones through the Sparks SDK, and Sparks exist in Community, faction rooms, groups **and DMs**. All endpoints need login. Spark ids are strings like `spk_3f2a...` (no longer ObjectIds).
 
-- `GET /api/chats/:conversationId/sparks` — `{ sparks, canManage }`. Active (pulsing) first, pinned ones first among them, then quiet cards. A pinned Spark is always `active`.
-- `GET /api/chats/:conversationId/sparks/:sparkId` — side panel: `{ spark, messages, seams, canManage }`. `messages` are the latest 500, oldest first, with reactions; `seams` are `[{ beforeMessageId, label }]` for long silences ("11 months later").
-- `POST /api/chats/:conversationId/sparks` with `{ messageId, subject (2-60), force? }` — start a Spark from a message. `409 { code: "similar_sparks", matches }` if similar ones exist (resend with `force: true` to start a new one anyway); `409 { code: "already_in_spark" }` if the message is already in one.
+- `GET /api/chats/:conversationId/sparks` — `{ sparks, canManage }`. Active (pulsing) first, pinned ones first among them, then quiet cards. Each Spark keeps the old fields and adds `state` (`active`/`dormant`), `revivalIndex`, `seams` (`fold`/`labeled`), `summaryStale`, `participantIds`, `version`.
+- `GET /api/chats/:conversationId/sparks/native` — the module's own Spark objects (the SDK's `Spark` type), for web clients.
+- `GET /api/chats/:conversationId/sparks/members` — `{ members: [{ userId, displayName, roles, isAdmin }] }`, the chat's members as Sparks sees them (roles = expertise labels), for the app's `sdk.sparks.setMembers`.
+- `GET /api/chats/:conversationId/sparks/:sparkId` — side panel: `{ spark, messages, seams, canManage }`. `messages` are the latest 500, oldest first, with reactions; `seams` are `[{ beforeMessageId, label }]` for long silences ("5 weeks later").
+- `POST /api/chats/:conversationId/sparks` with `{ messageId, subject (2-60; stored up to 48), force? }` — start a Spark from a message. `409 { code: "similar_sparks", matches }` if similar ones exist (resend with `force: true` to start a new one anyway); `409 { code: "already_in_spark" }` if the message is already in one.
 - `POST /api/chats/:conversationId/sparks/:sparkId/messages` with `{ messageId }` — add a message to a Spark.
-- `PATCH .../sparks/:sparkId/pin` with `{ pinned }`, `DELETE .../sparks/:sparkId`, `POST .../sparks/:sparkId/merge` with `{ intoSparkId }` — group admins only (Community and faction rooms have no admins yet). Deleting leaves the messages in the main chat, unmarked; merging moves them into the other Spark without counting as a revival.
-- `POST /api/chats/:conversationId/messages` with an extra `sparkId` — reply from inside a Spark.
+- `PATCH .../sparks/:sparkId/pin` with `{ pinned }`, `DELETE .../sparks/:sparkId`, `POST .../sparks/:sparkId/merge` with `{ intoSparkId }` — group owners/admins, and both people in a DM (Community and faction rooms have no admins yet). Deleting leaves the messages in the main chat, unmarked; merging moves them into the other Spark.
+- `POST /api/chats/:conversationId/messages` with an extra `sparkId` — reply from inside a Spark (revives it if it was quiet).
+- `GET /api/calls/:callId/outline` — the post-call outline (people who were on the call, and chat admins): `{ status: "pending"|"ready", outline }`.
 
-Every message has `spark`: `null` or `{ id, era, postedInSpark }`. Socket events in the conversation room: `spark:updated { conversationId, spark }`, `spark:messages { conversationId, sparkId, era, messageIds }`, `spark:deleted { conversationId, sparkId, mergedInto? }`.
+Every message has `seq` (per-chat sequence number) and `spark`: `null` or `{ id, era, postedInSpark }` (`era` = the Spark's revival index when the message joined). Socket events in the conversation room: `spark:updated { conversationId, spark }`, `spark:messages { conversationId, sparkId, era, messageIds }`, `spark:deleted { conversationId, sparkId, mergedInto? }`. Apps with the SDK also get the module's own protocol on the `sparks` socket event.
 
-Rules and thresholds live in `src/utils/sparks.js`. Set `ANTHROPIC_API_KEY` (optional) for AI-written subjects and summaries.
+With `SPARKS_ENGINE=legacy` the old stand-in engine (`src/utils/sparks.js`: keyword detection, no DMs, optional `ANTHROPIC_API_KEY` summaries) serves these endpoints instead.
 
 ## Chat search, jump to message, albums, and "before your change"
 

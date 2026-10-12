@@ -230,6 +230,8 @@ async function mutateCall(callId, mutator) {
 // entry in the chat once the call has finished.
 function broadcastCallUpdate(call) {
   emitToUsers(participantIds(call), 'call:updated', { call: toCallJson(call) });
+  // Sparks: call transcription/outline bookkeeping (no-op on the legacy engine).
+  require('../sparks/calls').sync(call);
 
   if (!isActive(call)) {
     recordCallMessage(call).catch((error) =>

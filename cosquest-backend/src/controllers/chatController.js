@@ -5,7 +5,9 @@ const ConversationMember = require('../models/ConversationMember');
 const Message = require('../models/Message');
 const MessageReaction = require('../models/MessageReaction');
 const Spark = require('../models/Spark');
-const sparks = require('../utils/sparks');
+const sparks = require('../utils/sparks'); // legacy engine (SPARKS_ENGINE=legacy)
+const sparksHost = require('../sparks'); // @cosquest/sparks-backend (default)
+const sparksCompat = require('../sparks/compat');
 const GroupBan = require('../models/GroupBan');
 const User = require('../models/User');
 const userModel = require('../models/userModel');
@@ -553,6 +555,8 @@ function serializeMessage(message, { viewerId, conversationType, otherLastReadAt
       mentions: [],
       mentionsEveryone: false,
       forwarded: Boolean(message.forwardedFrom),
+      spark: null,
+      seq: typeof message.seq === 'number' ? message.seq : null,
       createdAt: message.createdAt,
     };
   }
@@ -581,9 +585,15 @@ function serializeMessage(message, { viewerId, conversationType, otherLastReadAt
     forwarded: Boolean(message.forwardedFrom),
     // Sparks: the sub-conversation this message is part of (marker in the
     // main chat; `era` drives the past/present colour).
-    spark: message.spark
-      ? { id: String(message.spark), era: message.sparkEra || 0, postedInSpark: Boolean(message.postedInSpark) }
-      : null,
+    // The marker of whichever engine is on: module Sparks (sparkId) by
+    // default, the stand-in's tags (spark/sparkEra) with SPARKS_ENGINE=legacy.
+    spark: sparksHost.isModule()
+      ? sparksCompat.messageMarker(message)
+      : message.spark
+        ? { id: String(message.spark), era: message.sparkEra || 0, postedInSpark: Boolean(message.postedInSpark) }
+        : null,
+    // Per-chat sequence number (Sparks; the app passes it to sdk.sparks.ingest).
+    seq: typeof message.seq === 'number' ? message.seq : null,
     createdAt: message.createdAt,
   };
 }
@@ -822,7 +832,14 @@ async function createMessage(req, res) {
 
   // Reply posted inside a Spark's panel.
   let sparkId = null;
-  if (req.body.sparkId) {
+  let moduleSpark = null;
+  if (req.body.sparkId && sparksHost.isModule()) {
+    moduleSpark = await sparksHost.replyFields(conversation._id, String(req.body.sparkId));
+    if (!moduleSpark) {
+      cleanUpLocalFile(file);
+      return res.status(400).json({ error: 'That Spark no longer exists.' });
+    }
+  } else if (req.body.sparkId) {
     const spark = mongoose.isValidObjectId(req.body.sparkId)
       ? await Spark.findOne({ _id: req.body.sparkId, conversation: conversation._id, deletedAt: null }, '_id')
       : null;
@@ -853,6 +870,7 @@ async function createMessage(req, res) {
     replyTo,
     mentions,
     mentionsEveryone: requested.everyone,
+    ...(moduleSpark || {}),
   });
   const populatePaths = [{ path: 'sender', select: SENDER_FIELDS }];
   if (replyTo) populatePaths.push({ path: 'replyTo', populate: { path: 'sender', select: 'profile.username profile.firstName' } });
@@ -916,7 +934,10 @@ async function createMessage(req, res) {
     });
   }
 
-  if (!sparkId && sparks.SPARK_CHAT_TYPES.includes(conversation.type)) {
+  if (sparksHost.isModule()) {
+    // Every chat type, DMs included; seq was assigned at insert.
+    sparksHost.onMessage(message);
+  } else if (!sparkId && sparks.SPARK_CHAT_TYPES.includes(conversation.type)) {
     sparks.handleNewMessage(conversation, message).catch((err) => {
       console.error('[sparks] detection failed:', err.message);
     });
@@ -1297,6 +1318,7 @@ async function forwardCopy(original, targetConversation, userId) {
     ),
   ]);
   message = await message.populate('sender', SENDER_FIELDS);
+  sparksHost.onMessage(message); // no-op on the legacy engine
 
   const serialized = serializeMessage(message, { viewerId: userId, conversationType: targetConversation.type, otherLastReadAt: null, reactions: [] });
   emitToConversation(targetConversation.id, 'message:new', { conversationId: targetConversation.id, message: forBroadcast(serialized) });

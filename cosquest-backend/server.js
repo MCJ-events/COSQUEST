@@ -12,7 +12,8 @@ const { connectRedis, disconnectRedis } = require('./src/config/redis');
 const { notFound, errorHandler } = require('./src/middleware/errorHandler');
 const { asyncHandler } = require('./src/utils/asyncHandler');
 const { renderPostShare, renderChatShare } = require('./src/controllers/contentShareController');
-const { initSocket, closeSocket } = require('./src/realtime/socket');
+const { initSocket, closeSocket, getIO } = require('./src/realtime/socket');
+const sparks = require('./src/sparks');
 
 function buildApp() {
   const app = express();
@@ -23,6 +24,15 @@ function buildApp() {
   app.use(cookieParser(process.env.OAUTH_COOKIE_SECRET || process.env.JWT_SECRET));
 
   app.get('/health', (req, res) => res.json({ ok: true, service: 'cosquest-backend' }));
+
+  // Sparks: the on-device model manifest. The app's SDK reads `${API}/v1/model`;
+  // the manifest and model files are hosted by the Sparks team, this only
+  // points there (SPARKS_MODEL_MANIFEST_URL, see SPARKS_INTEGRATION.md).
+  app.get('/v1/model', (req, res) => {
+    const url = process.env.SPARKS_MODEL_MANIFEST_URL;
+    if (!url) return res.status(404).json({ error: 'SPARKS_MODEL_MANIFEST_URL is not set.' });
+    return res.redirect(302, url);
+  });
 
   // Shareable profile pages - real HTML with Open Graph tags, not JSON, so a
   // link pasted into Instagram/Facebook/etc. renders a rich preview.
@@ -56,6 +66,8 @@ async function startServer() {
   // real-time traffic share one listener, no second port to expose/CORS.
   const httpServer = http.createServer(app);
   await initSocket(httpServer);
+  // Sparks module (ESM, loaded with import()): after Mongo and Socket.IO are up.
+  await sparks.init({ getIO });
 
   return new Promise((resolve) => {
     httpServer.listen(PORT, () => {
@@ -82,6 +94,7 @@ function registerGracefulShutdown(httpServer) {
     shuttingDown = true;
     console.log(`[server] ${signal} received, shutting down...`);
     try {
+      sparks.stop();
       await new Promise((resolve) => httpServer.close(resolve));
       await closeSocket();
       await disconnectRedis();

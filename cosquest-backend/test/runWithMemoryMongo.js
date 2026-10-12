@@ -35,6 +35,9 @@ async function main() {
   process.env.LIVEKIT_URL = 'wss://test.livekit.invalid';
   process.env.LIVEKIT_API_KEY = 'test-api-key';
   process.env.LIVEKIT_API_SECRET = 'test-api-secret-with-enough-entropy';
+  // Sparks module: production timers, except the wait for an author's hint
+  // (20 s in production) so the end-to-end test does not idle.
+  process.env.SPARKS_CONFIG = JSON.stringify({ hintWaitMs: 1500 });
 
   // Attachment fixtures use fake hosted audio; never submit them to Deepgram.
   require('../src/utils/transcribeAudio').transcribeAudio = async () => 'Test voice note.';
@@ -72,9 +75,28 @@ async function main() {
     const chatExtras = await require('./chatExtras').run(`http://localhost:${process.env.PORT}`);
     result.pass += chatExtras.pass;
     result.fail += chatExtras.fail;
-    const sparks = await require('./sparks').run(`http://localhost:${process.env.PORT}`);
+    // The stand-in keyword engine's own suite: it is the rollback path now,
+    // so it runs with SPARKS_ENGINE=legacy (read per request).
+    process.env.SPARKS_ENGINE = 'legacy';
+    let sparks;
+    try {
+      sparks = await require('./sparks').run(`http://localhost:${process.env.PORT}`);
+    } finally {
+      delete process.env.SPARKS_ENGINE;
+    }
     result.pass += sparks.pass;
     result.fail += sparks.fail;
+    // The Sparks module (SPARKS_ENGINE=module): store contract + end to end with mock-SDK phones.
+    process.env.SPARKS_ENGINE = 'module';
+    let sparksStore, sparksModule;
+    try {
+      sparksStore = await require('./sparksStore').run();
+      sparksModule = await require('./sparksModule').run(`http://localhost:${process.env.PORT}`);
+    } finally {
+      delete process.env.SPARKS_ENGINE;
+    }
+    result.pass += sparksStore.pass + sparksModule.pass;
+    result.fail += sparksStore.fail + sparksModule.fail;
     const oauthRedirect = await require('./oauthRedirect').run(`http://localhost:${process.env.PORT}`);
     result.pass += oauthRedirect.pass;
     result.fail += oauthRedirect.fail;
@@ -82,6 +104,7 @@ async function main() {
     result.pass += avatarCatalog.pass;
     result.fail += avatarCatalog.fail;
   } finally {
+    require('../src/sparks').stop();
     await new Promise((resolve) => server.close(resolve));
     await closeSocket(); // quits the adapter's dedicated pub/sub Redis connections - see socket.js
     await disconnectDB();
