@@ -104,8 +104,10 @@ async function main() {
     await send(amara, pa, dmId, 'Book the convention hotel tonight please');
     await show('DM', dmId, pa);
     say('OK: a Spark in a group chat and in a DM, end to end');
+    await new Promise((r) => setTimeout(r, 1500)); // let in-flight follow-up jobs (role pings) finish before teardown
   } finally {
     for (const p of phones) p.close();
+    await new Promise((r) => setTimeout(r, 500)); // let the server see the disconnects before it shuts down
     server.kill('SIGTERM');
     await new Promise((r) => server.once('exit', r));
     await mongoose.disconnect();
