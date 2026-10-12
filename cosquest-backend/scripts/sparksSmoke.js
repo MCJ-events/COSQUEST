@@ -28,6 +28,7 @@ async function main() {
     MONGODB_URI: mongod.getUri(),
     REDIS_URL: `redis://${await redisd.getHost()}:${await redisd.getPort()}`,
     PORT,
+    SPARKS_ENGINE: 'module',
     JWT_SECRET: 'smoke-only-secret',
     JWT_EXPIRES_IN: '1h',
     CLOUDINARY_CLOUD_NAME: 'smoke',

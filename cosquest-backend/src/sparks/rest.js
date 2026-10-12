@@ -2,7 +2,7 @@
  * The app's existing Spark REST endpoints (routes/chatRoutes.js), served by
  * the Sparks module. Same URLs, bodies, status codes and response shapes as
  * the stand-in engine (src/controllers/sparkController.js dispatches here
- * unless SPARKS_ENGINE=legacy). Differences are listed in
+ * when SPARKS_ENGINE=module). Differences are listed in
  * SPARKS_INTEGRATION.md ("Compatibility").
  */
 const Message = require('../models/Message');

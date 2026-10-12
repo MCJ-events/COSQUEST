@@ -1,6 +1,8 @@
 # Sparks integration (backend)
 
-This backend now runs Sparks on the real Sparks module, `@cosquest/sparks-backend` (version in `vendor/`), instead of the stand-in keyword engine in `src/utils/sparks.js`. The stand-in is still in the repo, untouched, behind `SPARKS_ENGINE=legacy`.
+This backend can now run Sparks on the real Sparks module, `@cosquest/sparks-backend` (version in `vendor/`), instead of the stand-in keyword engine in `src/utils/sparks.js`.
+
+**Turning it on.** Merging this changes nothing by default: `SPARKS_ENGINE` defaults to `legacy`, so the app keeps today's keyword Sparks. The real Sparks detects topics on members' phones through the SDK, so switch to `SPARKS_ENGINE=module` once the Expo app ships the SDK (or once the server fallback worker runs for chats without a capable phone). Everything in this document describes `module` mode. Switching back is the same variable.
 
 What the module does: the trigger gate (3+ messages from 2+ people within 2 minutes), leasing AI jobs to members' phones (detect a topic, sort a message into a Spark, summarize, role pings, call scribe and outline), HPKE encryption of every job input to one phone, Spark state (create, attach, dormancy, revival with seams, merge, pin, delete) and calls. All AI runs on the phones through the Sparks SDK; the backend never sees a model. The module touches our database and sockets only through `src/sparks/`.
 
@@ -39,7 +41,7 @@ Upstream guides (cosquest-sparks repo): `docs/guides/BACKEND_INTEGRATION.md` (th
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `SPARKS_ENGINE` | `module` | `legacy` switches every Spark endpoint, event and message hook back to the stand-in engine (rollback, section 5) |
+| `SPARKS_ENGINE` | `legacy` | `module` switches every Spark endpoint, event and message hook to the real Sparks module; `legacy` (the default) keeps the stand-in engine (section 5) |
 | `SPARKS_WORKER` | on | `0` keeps this process from running the module's sweepers (`sparks.start()`: dormancy, summaries, job leases and retries, hint timeouts, call outlines). Exactly one process must run them (section 3) |
 | `SPARKS_TIMERS` | production | `demo`: the module's `demoOverrides` (a Spark goes quiet after 75 s instead of 12 minutes). For QA builds only |
 | `SPARKS_CONFIG` | none | JSON of config overrides, e.g. `{"exitTimeoutMs":900000}`. Every key is in the module's `dist/config.d.ts` |
@@ -73,7 +75,7 @@ npm test && npm run sparks:smoke
 
 The adapter is deliberately thin (the module's own rules are not copied anywhere here), so a new version drops in. Read its `CHANGELOG.md` for new optional store fields or ports; `src/sparks/mongoStore.js` stores rows as plain documents, so new optional row fields are kept without code changes.
 
-Later: the module is published as a private npm package on GitHub Packages (`@cosquest/sparks-backend`). Then `vendor/` goes away, `.npmrc` gets `@cosquest:registry=https://npm.pkg.github.com` plus a read token (a Render secret), and Dependabot or Renovate opens a pull request for every release, which your CI runs `npm test` on.
+Later: the module is published as a private npm package on GitHub Packages (as `@ubmids/sparks-backend`, installed under its usual name with an npm alias: `"@cosquest/sparks-backend": "npm:@ubmids/sparks-backend@^1.1.0"`, so no code changes). Then `vendor/` goes away, `.npmrc` gets `@ubmids:registry=https://npm.pkg.github.com` plus a read token (a Render secret), and Dependabot or Renovate opens a pull request for every release, which your CI runs `npm test` on.
 
 ## 5. Rolling back
 
@@ -156,7 +158,7 @@ Call transcripts (`sparks_segments`) and outlines are kept until you delete them
 
 ## 10. Testing
 
-- `npm test`: everything as before, plus `test/sparksStore.js` (the atomic job methods under concurrency, consent rules, seq assignment and backfill) and `test/sparksModule.js` (the real server, two mock-SDK phones over Socket.IO with real HPKE: device registration, a Spark in a group and in a DM, the old REST and socket API, admin pin refused for members). The stand-in's own suite (`test/sparks.js`) runs with `SPARKS_ENGINE=legacy`, so the rollback path stays tested.
+- `npm test`: everything as before, plus `test/sparksStore.js` (the atomic job methods under concurrency, consent rules, seq assignment and backfill) and `test/sparksModule.js` (the real server, two mock-SDK phones over Socket.IO with real HPKE: device registration, a Spark in a group and in a DM, the old REST and socket API, admin pin refused for members). The stand-in's own suite (`test/sparks.js`) runs with `SPARKS_ENGINE=legacy` and the module suites with `SPARKS_ENGINE=module`, so both paths stay tested.
 - `npm run sparks:smoke`: starts `node server.js` against throwaway databases and prints a Spark appearing in a group and in a DM.
 - On devices: the checklist in cosquest-sparks `docs/guides/APP_INTEGRATION.md` §12.
 

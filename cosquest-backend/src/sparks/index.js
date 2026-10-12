@@ -3,8 +3,11 @@
  * (@cosquest/sparks-backend, an ESM package vendored as a tgz in vendor/).
  * Everything else talks to this file. See SPARKS_INTEGRATION.md.
  *
- *   SPARKS_ENGINE   module (default) | legacy  - legacy = the old keyword
- *                   engine in src/utils/sparks.js (rollback switch)
+ *   SPARKS_ENGINE   legacy (default) | module  - module = the real Sparks
+ *                   (detection on members' phones via the SDK). Leave it on
+ *                   legacy until the Expo app ships the SDK (or the server
+ *                   fallback worker runs), then set module. legacy = the old
+ *                   keyword engine in src/utils/sparks.js.
  *   SPARKS_WORKER   unset/1: this process runs the sweepers (sparks.start()).
  *                   0: it does not. With several instances, set 0 on all but one.
  *   SPARKS_TIMERS   production (default) | demo (short timers for QA builds)
@@ -21,7 +24,7 @@ let store = null;
 let initPromise = null;
 
 function engine() {
-  return String(process.env.SPARKS_ENGINE || 'module').toLowerCase() === 'legacy' ? 'legacy' : 'module';
+  return String(process.env.SPARKS_ENGINE || 'legacy').toLowerCase() === 'module' ? 'module' : 'legacy';
 }
 const isModule = () => engine() === 'module';
 const isReady = () => Boolean(backend);

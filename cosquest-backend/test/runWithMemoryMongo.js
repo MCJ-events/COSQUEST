@@ -86,13 +86,17 @@ async function main() {
     }
     result.pass += sparks.pass;
     result.fail += sparks.fail;
-    // The Sparks module (default engine): store contract + end to end with mock-SDK phones.
-    const sparksStore = await require('./sparksStore').run();
-    result.pass += sparksStore.pass;
-    result.fail += sparksStore.fail;
-    const sparksModule = await require('./sparksModule').run(`http://localhost:${process.env.PORT}`);
-    result.pass += sparksModule.pass;
-    result.fail += sparksModule.fail;
+    // The Sparks module (SPARKS_ENGINE=module): store contract + end to end with mock-SDK phones.
+    process.env.SPARKS_ENGINE = 'module';
+    let sparksStore, sparksModule;
+    try {
+      sparksStore = await require('./sparksStore').run();
+      sparksModule = await require('./sparksModule').run(`http://localhost:${process.env.PORT}`);
+    } finally {
+      delete process.env.SPARKS_ENGINE;
+    }
+    result.pass += sparksStore.pass + sparksModule.pass;
+    result.fail += sparksStore.fail + sparksModule.fail;
     const oauthRedirect = await require('./oauthRedirect').run(`http://localhost:${process.env.PORT}`);
     result.pass += oauthRedirect.pass;
     result.fail += oauthRedirect.fail;

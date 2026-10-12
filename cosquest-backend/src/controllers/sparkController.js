@@ -17,7 +17,7 @@ const { emitToConversation } = require('../realtime/socket');
 const sparksHost = require('../sparks');
 
 // THIS FILE is the stand-in engine's REST layer, kept for rollback
-// (SPARKS_ENGINE=legacy). By default every endpoint below is served by the
+// (SPARKS_ENGINE=legacy, the default). With SPARKS_ENGINE=module every endpoint below is served by the
 // Sparks module through src/sparks/rest.js - same URLs and response shapes,
 // and DMs have Sparks too. See SPARKS_INTEGRATION.md.
 //
