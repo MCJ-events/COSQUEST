@@ -12,7 +12,7 @@ Upstream guides (cosquest-sparks repo): `docs/guides/BACKEND_INTEGRATION.md` (th
 
 | Where | What |
 |---|---|
-| `vendor/cosquest-sparks-backend-1.1.0.tgz`, `package.json` | The module, as a `file:` dependency. ESM, Node 20+ |
+| `vendor/cosquest-sparks-backend-1.2.0.tgz`, `package.json` | The module, as a `file:` dependency. ESM, Node 20+ |
 | `src/sparks/index.js` | The one place it is loaded (`await import(...)` from CommonJS), at startup after Mongo and Socket.IO are up. Socket channel, message hook, manual start, engine switch |
 | `src/sparks/mongoStore.js` | `MongoSparksStore`: all ~45 `SparksStore` methods on MongoDB |
 | `src/sparks/ports.js`, `members.js` | Socket delivery, membership, admins, history visibility, role pings |
@@ -55,7 +55,7 @@ Upstream guides (cosquest-sparks repo): `docs/guides/BACKEND_INTEGRATION.md` (th
 
 1. **Node 20 or newer** (the module's requirement). Render's default Node is fine; pin it with `NODE_VERSION=20` (or newer) in the service's environment if the service still pins an older one.
 2. **Number the existing messages, once.** In a Render Shell (or locally against the production `MONGODB_URI`): `npm run migrate:message-seq`. It is safe before or after the deploy and safe to run twice. Without it, older messages are simply invisible to Sparks (catch-up history starts at the first new message); nothing breaks.
-3. **Deploy.** `npm install` installs the module from `vendor/` (it is committed; there is no registry to reach). On start the logs show `[sparks] module 1.1.0 ready (engine=module, sweepers on)`. The `sparks_*` collections and their indexes, and the two new `messages` indexes, are created at startup.
+3. **Deploy.** `npm install` installs the module from `vendor/` (it is committed; there is no registry to reach). On start the logs show `[sparks] module 1.2.0 ready (engine=module, sweepers on)`. The `sparks_*` collections and their indexes, and the two new `messages` indexes, are created at startup.
 4. **One sweeper process.** Today the service is one instance, and that instance runs the sweepers: nothing to set. If you scale to more instances (or add a separate worker service), set `SPARKS_WORKER=0` on every instance but one. Running the sweepers twice is not dangerous (job leasing is atomic in Mongo) but wastes work and can open duplicate jobs. More than one web instance also needs the Redis adapter (already wired) so a job offer emitted by one instance reaches a phone connected to another.
 5. **Model manifest.** Set `SPARKS_MODEL_MANIFEST_URL` to the manifest URL we give you.
 
@@ -67,15 +67,15 @@ Now: we hand you a new tarball.
 
 ```sh
 cd cosquest-backend
-git rm vendor/cosquest-sparks-backend-1.1.0.tgz
-cp ~/Downloads/cosquest-sparks-backend-1.2.0.tgz vendor/
-npm install ./vendor/cosquest-sparks-backend-1.2.0.tgz   # rewrites the file: entry and package-lock.json
+git rm vendor/cosquest-sparks-backend-1.2.0.tgz
+cp ~/Downloads/cosquest-sparks-backend-1.3.0.tgz vendor/
+npm install ./vendor/cosquest-sparks-backend-1.3.0.tgz   # rewrites the file: entry and package-lock.json
 npm test && npm run sparks:smoke
 ```
 
 The adapter is deliberately thin (the module's own rules are not copied anywhere here), so a new version drops in. Read its `CHANGELOG.md` for new optional store fields or ports; `src/sparks/mongoStore.js` stores rows as plain documents, so new optional row fields are kept without code changes.
 
-Later: the module is published as a private npm package on GitHub Packages (as `@ubmids/sparks-backend`, installed under its usual name with an npm alias: `"@cosquest/sparks-backend": "npm:@ubmids/sparks-backend@^1.1.0"`, so no code changes). Then `vendor/` goes away, `.npmrc` gets `@ubmids:registry=https://npm.pkg.github.com` plus a read token (a Render secret), and Dependabot or Renovate opens a pull request for every release, which your CI runs `npm test` on.
+Later: the module is published as a private npm package on GitHub Packages (as `@ubmids/sparks-backend`, installed under its usual name with an npm alias: `"@cosquest/sparks-backend": "npm:@ubmids/sparks-backend@^1.2.0"`, so no code changes). Then `vendor/` goes away, `.npmrc` gets `@ubmids:registry=https://npm.pkg.github.com` plus a read token (a Render secret), and Dependabot or Renovate opens a pull request for every release, which your CI runs `npm test` on.
 
 ## 5. Rolling back
 
