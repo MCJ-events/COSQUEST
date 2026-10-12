@@ -185,6 +185,16 @@ async function run(baseUrl) {
     check(many[0] === true && many[1] === false, 'canReadMany hides messages the person deleted for themselves, in one query', many);
     check((await require('../src/sparks/members').canReadMany(outsiderId(), communityId, [1])).every((ok) => ok === false), 'canReadMany says no to someone who cannot access the chat');
 
+    console.log('\n--- sparks module: replies follow their Spark (1.2.1) ---');
+    const inSpark = g1.data.message.id;
+    const quickReply = await say(b, null, groupId, 'same here, 7pm then', { replyTo: inSpark });
+    const followed = await waitFor(async () => ((await Message.findById(quickReply.data.message.id).lean())?.sparkId === sparkId ? true : null), 5000);
+    check(quickReply.status === 201 && followed === true, 'a short reply to a message in a Spark joins that Spark without asking a phone', await Message.findById(quickReply.data.message.id).lean());
+    const loose = await say(a, null, groupId, 'a stand-alone remark about nothing in particular');
+    const replyToLoose = await say(b, null, groupId, 'agreed', { replyTo: loose.data.message.id });
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    check((await Message.findById(replyToLoose.data.message.id).lean())?.sparkId === null, 'a reply to a main-chat message stays in the main chat');
+
     console.log('\n--- sparks module: polls ---');
     const poll = await request('POST', `/api/chats/${groupId}/polls`, a.token, { question: 'Which day for the meetup?', options: ['Saturday', 'Sunday'] });
     const pollRow = poll.status === 201 ? await sparksHost.store.getMessage(poll.data.message.id) : null;
