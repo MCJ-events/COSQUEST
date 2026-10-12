@@ -56,6 +56,21 @@ const messageSchema = new mongoose.Schema(
     sparkEra: { type: Number, default: 0 },
     // Posted from inside the Spark panel (vs. picked up from the main chat).
     postedInSpark: { type: Boolean, default: false },
+
+    // SPARKS MODULE (@cosquest/sparks-backend, see SPARKS_INTEGRATION.md).
+    // `seq`: per-conversation sequence number, strictly increasing, assigned
+    // atomically at insert by the pre('save') hook below (MessageSeqCounter).
+    // Messages from before this field existed have none until
+    // scripts/backfillMessageSeq.js runs.
+    seq: { type: Number, default: undefined },
+    // The module's Spark (string id like "spk_..."; lives in sparks_sparks).
+    // Separate from the legacy `spark`/`sparkEra` above, which only the
+    // legacy engine (SPARKS_ENGINE=legacy) writes.
+    sparkId: { type: String, default: null },
+    // The Spark's revival index when this message joined (colour marker).
+    sparkRevivalIndex: { type: Number, default: undefined },
+    // pending | none | judged | assigned: the module's sorting bookkeeping.
+    sparkHintState: { type: String, enum: ['pending', 'none', 'judged', 'assigned'], default: 'none' },
     replyTo: { type: mongoose.Schema.Types.ObjectId, ref: 'Message', default: null },
     // Set when this message was created by forwarding another one, so the UI
     // can show a "Forwarded" label. Points at the original message; the
@@ -102,6 +117,21 @@ const messageSchema = new mongoose.Schema(
 );
 
 messageSchema.index({ conversation: 1, createdAt: -1 });
+// Sparks module: per-chat order, and a Spark's messages in order. Partial so
+// legacy rows without a seq / sparkId are not indexed (and never collide).
+messageSchema.index({ conversation: 1, seq: 1 }, { unique: true, partialFilterExpression: { seq: { $type: 'number' } } });
+messageSchema.index({ sparkId: 1, seq: 1 }, { partialFilterExpression: { sparkId: { $type: 'string' } } });
+
+// Assigns `seq` to every new message, whatever code path creates it
+// (Message.create / doc.save()). One atomic $inc per insert on the
+// conversation's counter. NOTE: Message.insertMany() does not run this hook;
+// nothing in the codebase uses it for messages - if you add one, assign seq
+// with MessageSeqCounter.next() yourself.
+messageSchema.pre('save', async function assignSeq() {
+  if (!this.isNew || typeof this.seq === 'number') return;
+  const MessageSeqCounter = require('./MessageSeqCounter');
+  this.seq = await MessageSeqCounter.next(this.conversation);
+});
 
 // Partial, not sparse: only documents where callLog.callId actually exists
 // are indexed, so this never conflicts with the other 99% of messages - it

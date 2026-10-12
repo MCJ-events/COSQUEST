@@ -14,8 +14,14 @@ const {
 } = require('./chatController');
 const sparks = require('../utils/sparks');
 const { emitToConversation } = require('../realtime/socket');
+const sparksHost = require('../sparks');
 
-// Sparks live in Community, faction rooms and groups (not DMs).
+// THIS FILE is the stand-in engine's REST layer, kept for rollback
+// (SPARKS_ENGINE=legacy). By default every endpoint below is served by the
+// Sparks module through src/sparks/rest.js - same URLs and response shapes,
+// and DMs have Sparks too. See SPARKS_INTEGRATION.md.
+//
+// Legacy engine: Sparks live in Community, faction rooms and groups (not DMs).
 
 async function loadSparkChat(req, res) {
   const { conversation, error } = await loadConversationForUser(req.params.conversationId, req.user);
@@ -252,4 +258,22 @@ async function mergeSpark(req, res) {
   return res.json({ spark: sparks.serializeSpark(into) });
 }
 
-module.exports = { listSparks, getSpark, startSpark, addToSpark, pinSpark, deleteSpark, mergeSpark };
+const legacy = { listSparks, getSpark, startSpark, addToSpark, pinSpark, deleteSpark, mergeSpark };
+
+// Engine switch per request (SPARKS_ENGINE is read every time, so a restart
+// with SPARKS_ENGINE=legacy is all a rollback needs).
+function dispatch(name) {
+  return (req, res) => (sparksHost.isModule() ? require('../sparks/rest')[name](req, res) : legacy[name](req, res));
+}
+
+module.exports = {
+  listSparks: dispatch('listSparks'),
+  getSpark: dispatch('getSpark'),
+  startSpark: dispatch('startSpark'),
+  addToSpark: dispatch('addToSpark'),
+  pinSpark: dispatch('pinSpark'),
+  deleteSpark: dispatch('deleteSpark'),
+  mergeSpark: dispatch('mergeSpark'),
+  listNativeSparks: (req, res) =>
+    sparksHost.isModule() ? require('../sparks/rest').listNativeSparks(req, res) : res.status(404).json({ error: 'Not available on the legacy Sparks engine.' }),
+};

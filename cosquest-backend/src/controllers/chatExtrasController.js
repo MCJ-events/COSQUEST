@@ -19,7 +19,8 @@ const {
 } = require('./chatController');
 const { storeChatMedia, deleteChatMedia } = require('../utils/imageHost');
 const { validateChatMedia } = require('../utils/chatMedia');
-const sparks = require('../utils/sparks');
+const sparks = require('../utils/sparks'); // legacy engine (SPARKS_ENGINE=legacy)
+const sparksHost = require('../sparks');
 const { emitToConversationExcept, emitToUsers } = require('../realtime/socket');
 
 const REPLY_SENDER = 'profile.username profile.firstName';
@@ -61,6 +62,11 @@ async function serializeMany(docs, conversation, viewer) {
 // "Spider-Man uniform · history", "Original conversation".
 function contextLabel(message, spark) {
   if (!spark) return 'Original conversation';
+  if (spark.sparkId) {
+    // Module Spark: revivalIndex counts the lives; the message's own index says which one.
+    if (spark.revivalIndex === 0) return spark.subject;
+    return (message.sparkRevivalIndex || 0) >= spark.revivalIndex ? `${spark.subject} · revived` : `${spark.subject} · history`;
+  }
   const eras = spark.eras?.length || 1;
   if (eras <= 1) return spark.subject;
   return (message.sparkEra || 0) >= eras - 1 ? `${spark.subject} · revived` : `${spark.subject} · history`;
@@ -105,17 +111,24 @@ async function searchMessages(req, res) {
   const sparkIds = [...new Set(docs.map((doc) => doc.spark).filter(Boolean).map(String))];
   const sparkDocs = sparkIds.length ? await Spark.find({ _id: { $in: sparkIds }, deletedAt: null }) : [];
   const sparkById = new Map(sparkDocs.map((spark) => [String(spark._id), spark]));
+  // Module Sparks (string ids); only live ones label a result.
+  const moduleIds = sparksHost.isModule() ? [...new Set(docs.map((doc) => doc.sparkId).filter(Boolean))] : [];
+  for (const id of moduleIds) {
+    const row = sparksHost.store ? await sparksHost.store.getSpark(id) : null;
+    if (row && (row.state === 'active' || row.state === 'dormant')) sparkById.set(id, row);
+  }
   const messages = await serializeMany(docs, conversation, req.user);
 
   return res.json({
     query: q,
     results: messages.map((message, index) => {
-      const spark = docs[index].spark ? sparkById.get(String(docs[index].spark)) : null;
+      const key = (sparksHost.isModule() && docs[index].sparkId) || (docs[index].spark ? String(docs[index].spark) : null);
+      const spark = key ? sparkById.get(key) : null;
       return {
         message,
         context: {
           label: contextLabel(docs[index], spark),
-          sparkId: spark ? String(spark._id) : null,
+          sparkId: spark ? String(spark.sparkId || spark._id) : null,
           sparkSubject: spark ? spark.subject : null,
         },
       };
@@ -227,7 +240,14 @@ async function createAlbum(req, res) {
 
   // Same rule as a normal message: a Spark that is gone is an error, not ignored.
   let sparkId = null;
-  if (req.body.sparkId) {
+  let moduleSpark = null;
+  if (req.body.sparkId && sparksHost.isModule()) {
+    moduleSpark = await sparksHost.replyFields(conversation._id, String(req.body.sparkId));
+    if (!moduleSpark) {
+      cleanUp(files);
+      return res.status(400).json({ error: 'That Spark no longer exists.' });
+    }
+  } else if (req.body.sparkId) {
     const spark = mongoose.isValidObjectId(req.body.sparkId)
       ? await Spark.findOne({ _id: req.body.sparkId, conversation: conversation._id, deletedAt: null }, '_id')
       : null;
@@ -260,6 +280,7 @@ async function createAlbum(req, res) {
     content,
     album,
     replyTo,
+    ...(moduleSpark || {}),
   });
 
   await Promise.all([
@@ -300,7 +321,9 @@ async function createAlbum(req, res) {
     emitToUsers(memberIds.map(String), 'chat:preview', { conversationId: String(conversation._id) });
   }
 
-  if (!sparkId && content && sparks.SPARK_CHAT_TYPES.includes(conversation.type)) {
+  if (sparksHost.isModule()) {
+    sparksHost.onMessage(message);
+  } else if (!sparkId && content && sparks.SPARK_CHAT_TYPES.includes(conversation.type)) {
     sparks.handleNewMessage(conversation, message).catch((err) => {
       console.error('[sparks] detection failed:', err.message);
     });

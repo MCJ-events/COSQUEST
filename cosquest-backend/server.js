@@ -12,7 +12,8 @@ const { connectRedis, disconnectRedis } = require('./src/config/redis');
 const { notFound, errorHandler } = require('./src/middleware/errorHandler');
 const { asyncHandler } = require('./src/utils/asyncHandler');
 const { renderPostShare, renderChatShare } = require('./src/controllers/contentShareController');
-const { initSocket, closeSocket } = require('./src/realtime/socket');
+const { initSocket, closeSocket, getIO } = require('./src/realtime/socket');
+const sparks = require('./src/sparks');
 
 function buildApp() {
   const app = express();
@@ -56,6 +57,8 @@ async function startServer() {
   // real-time traffic share one listener, no second port to expose/CORS.
   const httpServer = http.createServer(app);
   await initSocket(httpServer);
+  // Sparks module (ESM, loaded with import()): after Mongo and Socket.IO are up.
+  await sparks.init({ getIO });
 
   return new Promise((resolve) => {
     httpServer.listen(PORT, () => {
@@ -82,6 +85,7 @@ function registerGracefulShutdown(httpServer) {
     shuttingDown = true;
     console.log(`[server] ${signal} received, shutting down...`);
     try {
+      sparks.stop();
       await new Promise((resolve) => httpServer.close(resolve));
       await closeSocket();
       await disconnectRedis();

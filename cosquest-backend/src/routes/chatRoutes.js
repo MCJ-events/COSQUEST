@@ -24,7 +24,7 @@ const {
   getChatShareLink,
   setChatNotifications,
 } = require('../controllers/chatController');
-const { listSparks, getSpark, startSpark, addToSpark, pinSpark, deleteSpark, mergeSpark } = require('../controllers/sparkController');
+const { listSparks, listNativeSparks, getSpark, startSpark, addToSpark, pinSpark, deleteSpark, mergeSpark } = require('../controllers/sparkController');
 const { searchMessages, messageContext, createAlbum } = require('../controllers/chatExtrasController');
 
 const router = express.Router();
@@ -67,8 +67,11 @@ router.delete('/chats/:conversationId/messages/:messageId/reactions', asyncHandl
 router.get('/chats/:conversationId/messages/:messageId/seen', asyncHandler(getMessageSeenBy));
 router.post('/chats/:conversationId/messages/:messageId/forward', asyncHandler(forwardMessage));
 
-// Sparks (sub-conversations) - Community, faction rooms and groups.
+// Sparks (sub-conversations) - every chat, DMs included (Sparks module;
+// SPARKS_ENGINE=legacy restores the old engine: no DMs). See SPARKS_INTEGRATION.md.
 router.get('/chats/:conversationId/sparks', asyncHandler(listSparks));
+// The module's own Spark objects (summary, seams, state) - for web clients.
+router.get('/chats/:conversationId/sparks/native', asyncHandler(listNativeSparks));
 router.post('/chats/:conversationId/sparks', asyncHandler(startSpark));
 router.get('/chats/:conversationId/sparks/:sparkId', asyncHandler(getSpark));
 router.post('/chats/:conversationId/sparks/:sparkId/messages', asyncHandler(addToSpark));
