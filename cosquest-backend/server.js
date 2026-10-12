@@ -31,7 +31,9 @@ function buildApp() {
   app.get('/v1/model', (req, res) => {
     const url = process.env.SPARKS_MODEL_MANIFEST_URL;
     if (!url) return res.status(404).json({ error: 'SPARKS_MODEL_MANIFEST_URL is not set.' });
-    return res.redirect(302, url);
+    // Keep the query: SDK 1.2 asks with ?mq=5 to be offered the small model for 3-4 GB phones.
+    const q = req.originalUrl.indexOf('?');
+    return res.redirect(302, q === -1 ? url : url + (url.includes('?') ? '&' : '?') + req.originalUrl.slice(q + 1));
   });
 
   // Shareable profile pages - real HTML with Open Graph tags, not JSON, so a
