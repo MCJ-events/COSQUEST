@@ -25,6 +25,15 @@ function buildApp() {
 
   app.get('/health', (req, res) => res.json({ ok: true, service: 'cosquest-backend' }));
 
+  // Sparks: the on-device model manifest. The app's SDK reads `${API}/v1/model`;
+  // the manifest and model files are hosted by the Sparks team, this only
+  // points there (SPARKS_MODEL_MANIFEST_URL, see SPARKS_INTEGRATION.md).
+  app.get('/v1/model', (req, res) => {
+    const url = process.env.SPARKS_MODEL_MANIFEST_URL;
+    if (!url) return res.status(404).json({ error: 'SPARKS_MODEL_MANIFEST_URL is not set.' });
+    return res.redirect(302, url);
+  });
+
   // Shareable profile pages - real HTML with Open Graph tags, not JSON, so a
   // link pasted into Instagram/Facebook/etc. renders a rich preview.
   app.use('/u', shareRoutes);

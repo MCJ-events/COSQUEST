@@ -108,7 +108,7 @@ async function searchMessages(req, res) {
     Message.countDocuments(filter),
   ]);
 
-  const sparkIds = [...new Set(docs.map((doc) => doc.spark).filter(Boolean).map(String))];
+  const sparkIds = sparksHost.isModule() ? [] : [...new Set(docs.map((doc) => doc.spark).filter(Boolean).map(String))];
   const sparkDocs = sparkIds.length ? await Spark.find({ _id: { $in: sparkIds }, deletedAt: null }) : [];
   const sparkById = new Map(sparkDocs.map((spark) => [String(spark._id), spark]));
   // Module Sparks (string ids); only live ones label a result.
@@ -122,7 +122,7 @@ async function searchMessages(req, res) {
   return res.json({
     query: q,
     results: messages.map((message, index) => {
-      const key = (sparksHost.isModule() && docs[index].sparkId) || (docs[index].spark ? String(docs[index].spark) : null);
+      const key = sparksHost.isModule() ? docs[index].sparkId || null : docs[index].spark ? String(docs[index].spark) : null;
       const spark = key ? sparkById.get(key) : null;
       return {
         message,

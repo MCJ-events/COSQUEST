@@ -122,6 +122,9 @@ async function run(baseUrl) {
 
     const panel = await request('GET', `/api/chats/${groupId}/sparks/${sparkId}`, a.token);
     check(panel.status === 200 && panel.data.messages.length === 3 && panel.data.messages[0].id === g1.data.message.id && Array.isArray(panel.data.seams), 'the side panel lists its messages oldest first', panel.data);
+    const roster = await request('GET', `/api/chats/${groupId}/sparks/members`, b.token);
+    const owner = roster.data.members?.find((m) => m.userId === a.id);
+    check(roster.status === 200 && roster.data.members.length === 2 && owner?.isAdmin === true && owner.roles[0] === 'Front-end' && roster.data.members.find((m) => m.userId === b.id)?.roles[0] === 'Design', 'GET .../sparks/members: roles are the expertise labels, admins flagged', roster.data);
     const native = await request('GET', `/api/chats/${groupId}/sparks/native`, a.token);
     check(native.status === 200 && native.data.sparks[0]?.sparkId === sparkId && native.data.sparks[0].version >= 1, 'GET .../sparks/native returns the module Spark objects', native.data);
 

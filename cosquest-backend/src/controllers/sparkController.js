@@ -274,6 +274,8 @@ module.exports = {
   pinSpark: dispatch('pinSpark'),
   deleteSpark: dispatch('deleteSpark'),
   mergeSpark: dispatch('mergeSpark'),
+  listSparkMembers: (req, res) =>
+    sparksHost.isModule() ? require('../sparks/rest').listSparkMembers(req, res) : res.status(404).json({ error: 'Not available on the legacy Sparks engine.' }),
   listNativeSparks: (req, res) =>
     sparksHost.isModule() ? require('../sparks/rest').listNativeSparks(req, res) : res.status(404).json({ error: 'Not available on the legacy Sparks engine.' }),
 };

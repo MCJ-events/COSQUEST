@@ -56,5 +56,16 @@ export function createChatApi({ baseUrl, getToken }) {
     unpin: (id) => request(`${chatPath(id)}/pinned-message`, 'PATCH', { messageId: null }),
     deleteSelected: (id, messageIds, scope = 'me') => request(`${chatPath(id)}/messages/bulk-delete`, 'POST', { messageIds, scope }),
     forwardSelected: (id, messageIds, targets) => request(`${chatPath(id)}/messages/bulk-forward`, 'POST', { messageIds, targets }),
+
+    // Sparks (every chat, DMs included). Spark ids are opaque strings ("spk_...").
+    listSparks: (id) => request(`${chatPath(id)}/sparks`),
+    getSpark: (id, sparkId) => request(`${chatPath(id)}/sparks/${encodeURIComponent(sparkId)}`),
+    getSparkMembers: (id) => request(`${chatPath(id)}/sparks/members`),
+    startSpark: (id, messageId, subject, force = false) => request(`${chatPath(id)}/sparks`, 'POST', { messageId, subject, ...(force ? { force: true } : {}) }),
+    addToSpark: (id, sparkId, messageId) => request(`${chatPath(id)}/sparks/${encodeURIComponent(sparkId)}/messages`, 'POST', { messageId }),
+    sendInSpark: (id, sparkId, content, replyTo) => request(`${chatPath(id)}/messages`, 'POST', { content, sparkId, ...(replyTo ? { replyTo } : {}) }),
+    pinSpark: (id, sparkId, pinned = true) => request(`${chatPath(id)}/sparks/${encodeURIComponent(sparkId)}/pin`, 'PATCH', { pinned }),
+    deleteSpark: (id, sparkId) => request(`${chatPath(id)}/sparks/${encodeURIComponent(sparkId)}`, 'DELETE'),
+    mergeSpark: (id, sparkId, intoSparkId) => request(`${chatPath(id)}/sparks/${encodeURIComponent(sparkId)}/merge`, 'POST', { intoSparkId }),
   };
 }

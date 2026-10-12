@@ -16,6 +16,10 @@ OAuth starts in the browser at `GET /api/auth/oauth/google` or `GET /api/auth/oa
 
 Signup signs the user in immediately and returns a token. Save it and use Bearer authorization throughout onboarding. Completion unlocks the app using the same token; no extra login is needed. Returning users can also log in before completion and resume onboarding. Legacy identifier-based onboarding examples below remain supported.
 
+### Sparks
+
+Sparks (sub-conversations, in every chat including DMs) run on the `@cosquest/sparks-backend` module, vendored in `vendor/` and mounted in `src/sparks/`. Before the first deploy with it, run `npm run migrate:message-seq` once (numbers existing messages). Env vars, Render setup, upgrades, rollback (`SPARKS_ENGINE=legacy`) and what the app needs next: [SPARKS_INTEGRATION.md](SPARKS_INTEGRATION.md).
+
 ### Real-time: WebSockets + Redis
 
 Chat (new/edited/deleted messages, reactions, read receipts, pins, typing), presence (online/offline for DM partners), and notifications push live over Socket.IO instead of requiring the client to poll. Requires `REDIS_URL` in `.env` (a local `redis-server` is enough for development); `npm test` doesn't need one, it spins up its own ephemeral Redis automatically. See `src/realtime/socket.js` and `src/realtime/presence.js`.

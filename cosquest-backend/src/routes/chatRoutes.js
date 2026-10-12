@@ -24,7 +24,7 @@ const {
   getChatShareLink,
   setChatNotifications,
 } = require('../controllers/chatController');
-const { listSparks, listNativeSparks, getSpark, startSpark, addToSpark, pinSpark, deleteSpark, mergeSpark } = require('../controllers/sparkController');
+const { listSparks, listNativeSparks, listSparkMembers, getSpark, startSpark, addToSpark, pinSpark, deleteSpark, mergeSpark } = require('../controllers/sparkController');
 const { searchMessages, messageContext, createAlbum } = require('../controllers/chatExtrasController');
 
 const router = express.Router();
@@ -72,6 +72,8 @@ router.post('/chats/:conversationId/messages/:messageId/forward', asyncHandler(f
 router.get('/chats/:conversationId/sparks', asyncHandler(listSparks));
 // The module's own Spark objects (summary, seams, state) - for web clients.
 router.get('/chats/:conversationId/sparks/native', asyncHandler(listNativeSparks));
+// Members as Sparks sees them (roles, admin flags), for sdk.sparks.setMembers.
+router.get('/chats/:conversationId/sparks/members', asyncHandler(listSparkMembers));
 router.post('/chats/:conversationId/sparks', asyncHandler(startSpark));
 router.get('/chats/:conversationId/sparks/:sparkId', asyncHandler(getSpark));
 router.post('/chats/:conversationId/sparks/:sparkId/messages', asyncHandler(addToSpark));

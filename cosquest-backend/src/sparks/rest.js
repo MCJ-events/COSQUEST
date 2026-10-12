@@ -70,6 +70,20 @@ async function listNativeSparks(req, res) {
   return res.json({ sparks: await host.backend.sparksOfChat(String(conversation._id)) });
 }
 
+// GET /api/chats/:conversationId/sparks/members - the chat's members exactly
+// as the module sees them (ChatMember[]: userId, displayName, roles, isAdmin),
+// for the app's sdk.sparks.setMembers. Same role spelling as role pings.
+async function listSparkMembers(req, res) {
+  const conversation = await loadChat(req, res);
+  if (!conversation) return;
+  const list = [...(await members.chatMembers(String(conversation._id)))]; // a copy: the list is cached
+  // An implicit-membership room's list is capped (SPARKS_INTEGRATION.md §8): make sure the viewer is in it.
+  if (!list.some((m) => m.userId === String(req.userId))) {
+    list.push({ userId: String(req.userId), displayName: members.displayNameOf(req.user), roles: [], isAdmin: await members.isAdmin(String(req.userId), String(conversation._id)) });
+  }
+  return res.json({ members: list });
+}
+
 // GET /api/chats/:conversationId/sparks/:sparkId
 async function getSpark(req, res) {
   const conversation = await loadChat(req, res);
@@ -205,4 +219,4 @@ async function mergeSpark(req, res) {
   return res.json({ spark: await serializeRow(host.store, await host.store.getSpark(into.sparkId)) });
 }
 
-module.exports = { listSparks, listNativeSparks, getSpark, startSpark, addToSpark, pinSpark, deleteSpark, mergeSpark };
+module.exports = { listSparks, listNativeSparks, listSparkMembers, getSpark, startSpark, addToSpark, pinSpark, deleteSpark, mergeSpark };

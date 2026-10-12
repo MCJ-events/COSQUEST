@@ -585,8 +585,9 @@ function serializeMessage(message, { viewerId, conversationType, otherLastReadAt
     forwarded: Boolean(message.forwardedFrom),
     // Sparks: the sub-conversation this message is part of (marker in the
     // main chat; `era` drives the past/present colour).
-    // Module Sparks (sparkId) first; legacy-engine tags (spark/sparkEra) otherwise.
-    spark: message.sparkId && sparksHost.isModule()
+    // The marker of whichever engine is on: module Sparks (sparkId) by
+    // default, the stand-in's tags (spark/sparkEra) with SPARKS_ENGINE=legacy.
+    spark: sparksHost.isModule()
       ? sparksCompat.messageMarker(message)
       : message.spark
         ? { id: String(message.spark), era: message.sparkEra || 0, postedInSpark: Boolean(message.postedInSpark) }

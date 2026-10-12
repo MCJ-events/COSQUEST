@@ -154,6 +154,155 @@ const failures = deleted.results.filter((result) => result.status >= 300);
 
 Use a Set of selected message IDs from the current conversation; cap it at 50. After selecting Forward, show a recipient picker (up to 10). Each destination has exactly one of targetConversationId/targetUsername. Both bulk APIs return a results array and summary. HTTP 207 is not a promise rejection: inspect `summary.failed`, not just whether fetch succeeded. Refresh before retrying an uncertain result, and do not resend successful items.
 
+## Sparks (on-device AI)
+
+`sparks.js` connects the Sparks SDK (`@cosquest/sparks-sdk`, the real package; React Native New Architecture, which Expo SDK 52+ uses by default) to the app's existing Socket.IO connection. The backend half is already in `cosquest-backend` (see [SPARKS_INTEGRATION.md](../../cosquest-backend/SPARKS_INTEGRATION.md)); the full SDK guide is `docs/guides/APP_INTEGRATION.md` in the cosquest-sparks repo.
+
+### Install and build
+
+The SDK is a native module, so it needs a development build; Expo Go cannot load it (`createSparks` rejects there). We hand over the SDK package; install it from the path or registry we give you, then:
+
+```sh
+npx expo install expo-dev-client expo-build-properties
+```
+
+Merge into `app.json` (keep your existing plugins):
+
+```json
+{
+  "expo": {
+    "plugins": [
+      "expo-dev-client",
+      ["expo-build-properties", {
+        "android": { "minSdkVersion": 26 },
+        "ios": { "deploymentTarget": "16.0" }
+      }]
+    ]
+  }
+}
+```
+
+Then `npx expo prebuild` and `npx expo run:ios` / `npx expo run:android` (or an EAS development build). Android needs NDK 27.1.12297006 and CMake 3.22.1 installed locally (EAS images have them); keep `arm64-v8a` for release builds (the model tiers need it).
+
+### Start it once per login
+
+```js
+import { startSparks, stopSparks } from './chat/sparks.js';
+
+// After login, with the app's existing socket (io(url, { auth: { token } })):
+await startSparks({
+  socket,
+  userId: me.id,
+  sessionId: loginSessionId,        // new value on every login
+  apiBaseUrl: process.env.EXPO_PUBLIC_API_URL,
+  getToken: () => sessionStore.getState().token,
+  onError: (error) => console.warn(error.message),
+});
+
+// Logout:
+await stopSparks();                 // wipes the SDK's local store and device key
+```
+
+The helper listens for `sparks` socket frames before creating the SDK and replays any that arrive early (the backend answers `device.register` immediately). Do not recreate the SDK on reconnect; it queues and retries by itself.
+
+### Feed every chat, DMs included
+
+```js
+import { ingestMessages, openChatForSparks } from './chat/sparks.js';
+
+// When a chat screen opens:
+await openChatForSparks(api, conversationId);           // members, roles, admin flags; first time also catches up history
+
+// Every message you render: history pages, message:new / message:edited, your own sends.
+ingestMessages(conversationId, page.messages);
+socket.on('message:new', ({ conversationId, message }) => ingestMessages(conversationId, [message]));
+const { message } = await api.sendText(conversationId, text);
+ingestMessages(conversationId, [message]);              // the response carries seq; the SDK then tags it (hint)
+```
+
+### Show Sparks
+
+The REST API and socket events the app already uses keep working (same URLs and shapes; they now include DMs). With the SDK running, `useSparks` gives the live list straight from the phone's mirror:
+
+```js
+import { useSparks } from './chat/sparks.js';
+
+const { available, sparks } = useSparks(conversationId);
+// available === false (Expo Go, before login): keep using api.listSparks(conversationId).
+```
+
+| Existing Spark UI | Call it uses now |
+|---|---|
+| Circles / cards list | `api.listSparks(id)` plus `spark:updated` / `spark:deleted` as before; or `useSparks(id)` with the SDK |
+| Side panel | `api.getSpark(id, sparkId)` (messages oldest first, seams) |
+| Marker on a message | `message.spark` `{ id, era, postedInSpark }` as before; `era` is the Spark's revival index (colour by it) |
+| Reply inside a Spark | `api.sendInSpark(id, sparkId, text)` (revives a quiet Spark) |
+| "Start a Spark" | `api.startSpark(id, messageId, subject)` works on every phone (409 `similar_sparks` / `already_in_spark` as before). With the model loaded, `sdk.sparks.startSpark({ chatId, seedMessageId, subject })` uses the model's duplicate check and returns `needs_choice` |
+| "Add to existing" | `api.addToSpark(id, sparkId, messageId)` |
+| Pin / merge / delete (admins) | `api.pinSpark`, `api.mergeSpark`, `api.deleteSpark` (403 for non-admins; both people in a DM are admins) |
+| "Catch me up" (new) | `getSparks().sparks.summarize(sparkId)`; needs the model, else hide the button |
+| Role pings (new) | Arrive as normal `notification:new` mentions ("A Spark needs Front-end: ...") |
+
+Spark ids are now strings like `spk_3f2a9c1b0d4e`; treat them as opaque.
+
+### Game state and the model
+
+```js
+import { useSparksAppState, setSparksGameState, ensureSparksModel } from './chat/sparks.js';
+
+useSparksAppState(currentGameState);      // root component: 'background' when the app is backgrounded
+setSparksGameState('battle');             // on every change: idle, map, battle, ar, trivia, background
+
+// After onboarding, when it suits the UX (Wi-Fi only by default; about 1 GB plus 142 MB of speech files):
+await ensureSparksModel({ onStatus: (s) => setModelStatus(s) });
+```
+
+Until the model is loaded the phone does no AI work for the group (other members' phones do it), so the user still sees every Spark.
+
+### Automatic updates (expo-updates)
+
+JavaScript changes reach phones over the air; native changes need a store build. Set it up once:
+
+```sh
+npx expo install expo-updates
+eas update:configure                      # writes updates.url with your EAS project id
+```
+
+`app.json`:
+
+```json
+{
+  "expo": {
+    "runtimeVersion": { "policy": "fingerprint" },
+    "updates": { "url": "https://u.expo.dev/<your-eas-project-id>" }
+  }
+}
+```
+
+`eas.json` (a channel per build profile):
+
+```json
+{
+  "build": {
+    "preview": { "distribution": "internal", "channel": "preview" },
+    "production": { "channel": "production" }
+  }
+}
+```
+
+Ship a JavaScript change: `eas update --branch preview --message "..."` to testers first, then `eas update --branch production --message "..."`. Each channel reads the branch of the same name.
+
+The `fingerprint` runtime version is a hash of the native project, so an update is only offered to builds with exactly the same native code: a JavaScript update can never land on a build whose native side does not match it.
+
+What arrives how:
+
+| Change | How it reaches phones |
+|---|---|
+| Sparks SDK JavaScript layer (message sorting, the transport, job handling, these helpers) | Over the air with `eas update`, after updating the SDK package |
+| SDK native code (the inference engine, Swift/Kotlin, speech) | A new store build (the fingerprint changes, so old builds keep their old update) |
+| The model itself | Automatically: phones read the model manifest and download the new version; no app update |
+| Backend module | Deployed with the backend; no app update |
+
 ## Verification boundary
 
-JavaScript syntax is checked and the matching backend APIs have automated integration coverage. This repository has no Expo app or mobile build environment, so these components have not been bundled or run on iOS/Android here. Verify permissions, camera/gallery/cloud-file selection, cancel paths, microphone interruption, playback, foreground/background transitions, and production Cloudinary uploads in the actual app before release.
+`sparks.js` is checked for syntax and its backend protocol is covered end to end by `cosquest-backend` tests (mock-SDK phones over Socket.IO), but it has not run inside the app with the real SDK here. JavaScript syntax is checked and the matching backend APIs have automated integration coverage. This repository has no Expo app or mobile build environment, so these components have not been bundled or run on iOS/Android here. Verify permissions, camera/gallery/cloud-file selection, cancel paths, microphone interruption, playback, foreground/background transitions, and production Cloudinary uploads in the actual app before release.
