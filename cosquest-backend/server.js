@@ -17,6 +17,10 @@ const sparks = require('./src/sparks');
 
 function buildApp() {
   const app = express();
+  // Behind one reverse proxy (Caddy on Mark's server, Render's proxy): take the client IP from X-Forwarded-For,
+  // so rate limits are per user, not one shared bucket for everyone (see src/middleware/rateLimiter.js).
+  // TRUST_PROXY overrides the hop count (0 = off).
+  app.set('trust proxy', process.env.TRUST_PROXY !== undefined ? Number(process.env.TRUST_PROXY) : 1);
 
   app.use(cors());
   app.use(express.json());
