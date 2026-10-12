@@ -53,7 +53,12 @@ function createPorts({ getIO, store, log }) {
     },
 
     chatMembers: (chatId) => members.chatMembers(chatId),
+    // Module 1.2: "may this person use this chat?" asked directly, because the
+    // member list of Community and faction rooms is capped (engaged members
+    // only) and a real member can be missing from it.
+    isMember: (userId, chatId) => members.hasAccess(userId, chatId),
     canRead: (userId, chatId, seq) => members.canRead(userId, chatId, seq),
+    canReadMany: (userId, chatId, seqs) => members.canReadMany(userId, chatId, seqs),
     isAdmin: (userId, chatId) => members.isAdmin(userId, chatId),
 
     // OPEN_QUESTIONS Q7, reference default: admins of the call's chat.

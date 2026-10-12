@@ -56,6 +56,7 @@ async function run(baseUrl) {
   };
   const [a, b, c] = [await make(1, 'front_end'), await make(2, 'design'), await make(3)];
   const phones = [];
+  const outsiderId = () => String(new (require('mongoose').Types.ObjectId)());
 
   try {
     console.log('\n--- sparks module: devices ---');
@@ -166,6 +167,38 @@ async function run(baseUrl) {
     check(removed.status === 200 && removed.data.deleted === true, 'the owner deletes it', removed.data);
     const seedAfter = await Message.findById(seed.data.message.id).lean();
     check(seedAfter.sparkId === null, 'its messages stay in the main chat, unmarked', seedAfter.sparkId);
+
+    console.log('\n--- sparks module: Community and the 1.2 membership checks ---');
+    // d is a real Community member who never opened or wrote in it, so is not on
+    // the module's (capped, engaged-members) list: the module must ask isMember.
+    const d = await make(4);
+    const communityId = (await request('GET', '/api/chats', a.token)).data.chats.find((chat) => chat.type === 'community').id;
+    const note = await say(a, null, communityId, 'convention ticket sale starts friday morning');
+    const fromOutsider = await request('POST', `/api/chats/${communityId}/sparks`, d.token, { messageId: note.data.message.id, subject: 'Ticket sale' });
+    check(fromOutsider.status === 201 && fromOutsider.data.spark.createdBy === d.id, 'a Community member who is not on the engaged list can start a Spark', fromOutsider.data);
+    check((await sparksHost.store.getDevice(`web-${d.id}`)) === null, 'no stand-in "web phone" is registered any more');
+    const stranger = await request('POST', `/api/chats/${communityId}/sparks`, d.token, { messageId: seed.data.message.id, subject: 'Not mine' });
+    check([403, 404].includes(stranger.status), 'a message from a chat you are not in cannot be used', stranger);
+    const hiddenMsg = await say(a, null, communityId, 'a message d will hide for themselves');
+    await request('DELETE', `/api/chats/${communityId}/messages/${hiddenMsg.data.message.id}?scope=me`, d.token);
+    const many = await require('../src/sparks/members').canReadMany(d.id, communityId, [note.data.message.seq, hiddenMsg.data.message.seq]);
+    check(many[0] === true && many[1] === false, 'canReadMany hides messages the person deleted for themselves, in one query', many);
+    check((await require('../src/sparks/members').canReadMany(outsiderId(), communityId, [1])).every((ok) => ok === false), 'canReadMany says no to someone who cannot access the chat');
+
+    console.log('\n--- sparks module: the model link (GET /v1/model) ---');
+    const manifest = (path) => fetch(`${baseUrl}${path}`, { redirect: 'manual' });
+    const savedManifest = process.env.SPARKS_MODEL_MANIFEST_URL;
+    delete process.env.SPARKS_MODEL_MANIFEST_URL;
+    check((await manifest('/v1/model')).status === 404, 'without SPARKS_MODEL_MANIFEST_URL the link says it is not set');
+    process.env.SPARKS_MODEL_MANIFEST_URL = 'https://models.example.test/v1/model';
+    const plain = await manifest('/v1/model');
+    check(plain.status === 302 && plain.headers.get('location') === 'https://models.example.test/v1/model', 'it forwards phones to the model manifest', plain.headers.get('location'));
+    const withQuery = await manifest('/v1/model?mq=5');
+    check(withQuery.headers.get('location') === 'https://models.example.test/v1/model?mq=5', 'it keeps the ?mq=5 the 1.2 SDK sends (so small phones get the small model)', withQuery.headers.get('location'));
+    process.env.SPARKS_MODEL_MANIFEST_URL = 'https://models.example.test/v1/model?channel=beta';
+    check((await manifest('/v1/model?mq=5')).headers.get('location') === 'https://models.example.test/v1/model?channel=beta&mq=5', 'and joins it with & when the address already has a query');
+    if (savedManifest === undefined) delete process.env.SPARKS_MODEL_MANIFEST_URL;
+    else process.env.SPARKS_MODEL_MANIFEST_URL = savedManifest;
   } finally {
     for (const p of phones) p.close();
   }

@@ -177,32 +177,16 @@ async function replyFields(conversationId, sparkId) {
 // ---------------------------------------------------------------------------
 
 /**
- * "Start a Spark" / "add to this Spark" from the REST API. The module only
- * takes these as spark.create from a registered device, so the backend
- * registers a stand-in device for the user ("web-<userId>": tier none,
- * never available, never offered a job) and hands the module the same
- * spark.create the SDK would send. Returns the Spark row the seed message
- * ended up in, or null. Recommendation filed: a direct module method for this.
+ * "Start a Spark" / "add to this Spark" from the REST API, through the
+ * module's own backend.startSpark (module 1.2) - the same rules as
+ * spark.create from a phone, checked as `userId`. The caller has already run
+ * the duplicate check, so this always creates ('new') or attaches
+ * ({ attachTo }). Returns the Spark row the seed message ended up in, or
+ * null. Refusals come back as errors carrying a status (400 / 403 / 404).
  */
 async function startManual({ userId, chatId, seedMessageId, subject, attachTo = null }) {
-  const deviceId = `web-${userId}`;
-  if (!(await store.getDevice(deviceId))) {
-    const now = Date.now();
-    await store.upsertDevice({
-      deviceId, userId, sessionId: 'rest', platform: 'web', tier: 'none', modelVersion: null, transcription: false,
-      publicKey: '', kid: 'none', lastHeartbeatAt: now, available: false, gameState: 'idle', charging: false,
-      batteryLevel: null, thermal: 'nominal', modelLoaded: false,
-    });
-  }
-  const { randomUUID } = require('crypto');
-  const frame = {
-    v: 1, type: 'spark.create', id: randomUUID(), ts: new Date().toISOString(),
-    payload: { clientRequestId: randomUUID(), chatId, seedMessageId, subject, resolution: attachTo ? { attachTo } : 'new' },
-  };
-  const r = await backend.handle({ userId, deviceId }, frame);
-  if (r.error) throw Object.assign(new Error(`spark.create refused: ${r.error}`), { status: 400 });
-  const seed = await store.getMessage(seedMessageId);
-  return seed?.sparkId ? store.getSpark(seed.sparkId) : null;
+  const result = await backend.startSpark({ userId, chatId, seedMessageId, subject, resolution: attachTo ? { attachTo } : 'new' });
+  return result.status === 'needs_choice' ? null : store.getSpark(result.spark.sparkId);
 }
 
 module.exports = {

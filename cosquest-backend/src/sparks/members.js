@@ -183,8 +183,22 @@ async function canRead(userId, chatId, seq) {
   return !hidden;
 }
 
+/**
+ * canRead for many messages at once (module 1.2, ports.canReadMany): one
+ * access check and one query instead of one per message. Same answer as
+ * canRead for each seq, in the same order.
+ */
+async function canReadMany(userId, chatId, seqs) {
+  if (!seqs.length) return [];
+  const conversation = oid(chatId);
+  if (!conversation || !mongoose.isValidObjectId(userId) || !(await hasAccess(userId, chatId))) return seqs.map(() => false);
+  const hidden = await Message.find({ conversation, seq: { $in: seqs }, deletedFor: new mongoose.Types.ObjectId(String(userId)) }, 'seq').lean();
+  const hiddenSeqs = new Set(hidden.map((m) => m.seq));
+  return seqs.map((seq) => !hiddenSeqs.has(seq));
+}
+
 function oid(id) {
   return mongoose.isValidObjectId(id) ? new mongoose.Types.ObjectId(String(id)) : null;
 }
 
-module.exports = { chatMembers, isAdmin, canRead, hasAccess, invalidate, displayNameOf };
+module.exports = { chatMembers, isAdmin, canRead, canReadMany, hasAccess, invalidate, displayNameOf };

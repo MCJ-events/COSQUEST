@@ -15,7 +15,7 @@ Upstream guides (cosquest-sparks repo): `docs/guides/BACKEND_INTEGRATION.md` (th
 | `vendor/cosquest-sparks-backend-1.2.0.tgz`, `package.json` | The module, as a `file:` dependency. ESM, Node 20+ |
 | `src/sparks/index.js` | The one place it is loaded (`await import(...)` from CommonJS), at startup after Mongo and Socket.IO are up. Socket channel, message hook, manual start, engine switch |
 | `src/sparks/mongoStore.js` | `MongoSparksStore`: all ~45 `SparksStore` methods on MongoDB |
-| `src/sparks/ports.js`, `members.js` | Socket delivery, membership, admins, history visibility, role pings |
+| `src/sparks/ports.js`, `members.js` | Socket delivery, membership, admins, history visibility, role pings. Module 1.2 ports: `isMember` (a real member missing from a capped Community/faction list is still a member) and `canReadMany` (one query per job instead of one per message) |
 | `src/sparks/rest.js`, `compat.js` | The existing Spark REST endpoints and socket events, served by the module in their old shapes |
 | `src/sparks/calls.js` | Call hooks (from `callController.broadcastCallUpdate`) and `GET /api/calls/:callId/outline` |
 | `src/models/Message.js` | New fields `seq`, `sparkId`, `sparkRevivalIndex`, `sparkHintState` (existing fields untouched); a pre-save hook assigns `seq` |
@@ -172,5 +172,5 @@ Call transcripts (`sparks_segments`) and outlines are kept until you delete them
 ## 12. Known gaps
 
 - Targeted voice calls ("calling all sergeants") are logged, not rung: CosQuest calls have no "ring this subset" path yet (`ports.onTargetedCall`). Users have no rank yet, so rank targets match nobody.
-- Manual starts over REST go through a stand-in device per user (`web-<userId>`, tier none, never given work), because the module only accepts `spark.create` from a device. Harmless; a direct module method is on the module's to-do list.
+- Manual starts over REST use the module's own `backend.startSpark` (1.2). Before 1.2 they went through a stand-in device per user (`web-<userId>`); any such rows left in `sparks_devices` are harmless and unused.
 - Edits and voice-note transcripts that arrive after sending are not re-sent to phones; the module reads the current text whenever it builds a job.
