@@ -12,7 +12,7 @@ Upstream guides (cosquest-sparks repo): `docs/guides/BACKEND_INTEGRATION.md` (th
 
 | Where | What |
 |---|---|
-| `vendor/cosquest-sparks-backend-1.2.0.tgz`, `package.json` | The module, as a `file:` dependency. ESM, Node 20+ |
+| `vendor/cosquest-sparks-backend-1.2.1.tgz`, `package.json` | The module, as a `file:` dependency. ESM, Node 20+ |
 | `src/sparks/index.js` | The one place it is loaded (`await import(...)` from CommonJS), at startup after Mongo and Socket.IO are up. Socket channel, message hook, manual start, engine switch |
 | `src/sparks/mongoStore.js` | `MongoSparksStore`: all ~45 `SparksStore` methods on MongoDB |
 | `src/sparks/ports.js`, `members.js` | Socket delivery, membership, admins, history visibility, role pings. Module 1.2 ports: `isMember` (a real member missing from a capped Community/faction list is still a member) and `canReadMany` (one query per job instead of one per message) |
@@ -67,7 +67,7 @@ Now: we hand you a new tarball.
 
 ```sh
 cd cosquest-backend
-git rm vendor/cosquest-sparks-backend-1.2.0.tgz
+git rm vendor/cosquest-sparks-backend-1.2.1.tgz
 cp ~/Downloads/cosquest-sparks-backend-1.3.0.tgz vendor/
 npm install ./vendor/cosquest-sparks-backend-1.3.0.tgz   # rewrites the file: entry and package-lock.json
 npm test && npm run sparks:smoke
