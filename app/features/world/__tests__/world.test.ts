@@ -53,7 +53,7 @@ describe("world store", () => {
     store.reset();
     assert.equal(store.get().page, "chat");
     assert.equal(store.get().gameMounted, false);
-    assert.equal(store.get().gameReady, false);
+    assert.equal(store.get().gameReady, true, "the native world outlives a sign-out");
     assert.equal(store.get().pendingOpen, null);
     assert.equal(store.get().openSerial, 1);
   });

@@ -90,10 +90,15 @@ export function createWorldStore(initial?: Partial<WorldState>) {
     setFactionColor(color: string | null) {
       if (state.factionColor !== color) set({ factionColor: color });
     },
-    /** Sign-out: forget everything but the serials (they only ever grow). */
+    /**
+     * Sign-out: forget everything but the serials (they only ever grow) and
+     * whether the game's world is standing: the native game outlives a
+     * sign-out (it only drops the player) and reports ready once per run.
+     */
     reset() {
       set({
         ...INITIAL,
+        gameReady: state.gameReady,
         openSerial: state.openSerial,
         closeSerial: state.closeSerial,
       });
