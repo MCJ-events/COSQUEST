@@ -9,6 +9,7 @@ import Animated, { SlideInDown, SlideOutDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { distanceText } from "@/features/game/geo";
+import { useGame } from "@/features/game/runtime";
 import { parseServerDate, type QuestPoint } from "@/features/game/wire";
 
 import { Chip, GameButton } from "./kit";
@@ -50,6 +51,8 @@ export default function PointSheet({
   }, [cooling]);
   const guardian = point.extra?.guardian;
   const holder = point.extra?.holder_name ?? (point.extra?.holder ? factionName(point.extra.holder) : null);
+  const { me } = useGame();
+  const ours = !!point.extra?.holder && point.extra.holder === me?.faction;
   const playLabel = cooling
     ? `Recharging · ${minutesLeft(point.cooling_until)} min`
     : inReach
@@ -84,7 +87,9 @@ export default function PointSheet({
           <Chip text={distanceText(distance)} color={inReach ? GP.mint : GP.slate} />
         </View>
         <Text style={styles.blurb}>
-          {holder
+          {ours
+            ? `Held by your faction. ${asDuel ? "Beat its Guardian" : "Win here"} to defend ${point.name}.`
+            : holder
             ? `${holder} holds ${point.name}. ${asDuel ? "Beat its Guardian" : "Win here"} to take it for your faction.`
             : asDuel
               ? `Beat its Guardian to take ${point.name} for your faction.`

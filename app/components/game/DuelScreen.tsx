@@ -162,7 +162,11 @@ function Briefing({ point, busy, problem, onFight, onClose }: { point: QuestPoin
           <Fact label="DISTANCE" value={distanceText(gameStore.distanceTo(point))} color={GP.ink} />
         </View>
         <Text style={styles.blurb}>
-          {holder ? `${holder} holds ${point.name}. Beat its Guardian to take it for your faction.` : `Beat it to take ${point.name} for your faction.`}
+          {point.extra?.holder && point.extra.holder === gameStore.get().me?.faction
+            ? `Held by your faction. Beat its Guardian to defend ${point.name}.`
+            : holder
+              ? `${holder} holds ${point.name}. Beat its Guardian to take it for your faction.`
+              : `Beat it to take ${point.name} for your faction.`}
         </Text>
         <Text style={styles.howto}>Tap to strike · Hold to block, keep holding to charge · Flick toward to dash, away to dodge · Drag to walk</Text>
         {problem ? <Text style={styles.problem}>{problem}</Text> : null}

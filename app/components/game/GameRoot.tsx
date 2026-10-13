@@ -55,7 +55,10 @@ export default function GameRoot({ parked }: { parked: boolean }) {
   const ctx = useCallback(() => ({ me: gameStore.get().me, playerName: gameStore.playerName() }), []);
   const nearby = useMemo(() => gameStore.nearby(), [points, fix]); // eslint-disable-line react-hooks/exhaustive-deps
   // An invite or a link asked for a spot: it is selected once its point is here.
-  const focusPoint = focus?.pointId ? points.find((p) => p.id === focus.pointId) ?? null : null;
+  // Any invite target (shrine, duel or raid) is a point id, as on iOS
+  // (GameHostOpenHook.resolve): open that point's sheet once it is loaded.
+  const focusId = focus ? focus.pointId ?? focus.duelId ?? focus.raidId ?? null : null;
+  const focusPoint = focusId ? points.find((p) => p.id === focusId) ?? null : null;
   const selected = points.find((p) => p.id === selectedId) ?? (screen.kind === "home" ? focusPoint : null);
   const closeSheet = () => {
     setSelectedId(null);
@@ -126,8 +129,8 @@ export default function GameRoot({ parked }: { parked: boolean }) {
   }
 
   const dailiesLeft = me?.dailies.filter((d) => !d.done).length ?? 0;
-  const focusAway = focus && !focus.pointId && focus.lat !== undefined && focus.lng !== undefined ? focus : null;
-  const focusMissing = focus?.pointId && !points.some((p) => p.id === focus.pointId) ? focus : null;
+  const focusAway = focus && !focusId && focus.lat !== undefined && focus.lng !== undefined ? focus : null;
+  const focusMissing = focus && focusId && !focusPoint ? focus : null;
 
   return (
     <View style={styles.root}>
@@ -240,7 +243,13 @@ function FocusBanner({ place, lat, lng, onClose }: { place: string; lat?: number
         <Text style={styles.focusTitle} numberOfLines={1}>
           Head to {place}
         </Text>
-        <Text style={styles.focusSub}>{d !== null ? `${distanceText(d)} away. It shows on the map when you are near.` : "It shows on the map when you are near."}</Text>
+        <Text style={styles.focusSub}>
+          {d === null
+            ? "It opens when you're close."
+            : d <= gameStore.reach()
+              ? "You're here. It opens as soon as it wakes."
+              : `${distanceText(d)} away. It opens when you're close.`}
+        </Text>
       </View>
       <Pressable onPress={onClose} hitSlop={10} accessibilityRole="button" accessibilityLabel="Dismiss">
         <Ionicons name="close" size={20} color="#FFF" />
