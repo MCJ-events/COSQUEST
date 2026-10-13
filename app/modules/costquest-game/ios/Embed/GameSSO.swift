@@ -62,7 +62,10 @@ enum GameSSO {
         do {
             (data, response) = try await URLSession.shared.data(for: request)
         } catch {
-            if error is CancellationError { throw error }
+            // URLSession reports a cancelled task as URLError(.cancelled).
+            if error is CancellationError || (error as? URLError)?.code == .cancelled {
+                throw CancellationError()
+            }
             throw Failure.network
         }
         guard let http = response as? HTTPURLResponse else { throw Failure.network }

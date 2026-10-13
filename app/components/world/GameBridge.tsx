@@ -56,6 +56,10 @@ export default function GameBridge() {
       callGame("reset");
       world.reset();
       lastSummary.current = null;
+    } else {
+      // Started signed out (SessionGate has already read the saved login):
+      // no account key from an earlier session may stay installed.
+      callGame("setSession", null);
     }
     previousToken.current = token;
   }, [token]);

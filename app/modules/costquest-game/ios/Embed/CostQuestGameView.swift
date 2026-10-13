@@ -33,8 +33,9 @@ public final class CostQuestGameView: ExpoView {
 
   public override func layoutSubviews() {
     super.layoutSubviews()
-    let view = GameHost.shared.hostingController().view!
-    if view.superview === self { view.frame = bounds }
+    if let view = GameHost.shared.existingController?.view, view.superview === self {
+      view.frame = bounds
+    }
   }
 
   private func attach() {
@@ -59,9 +60,9 @@ public final class CostQuestGameView: ExpoView {
   }
 
   private func detach() {
-    let controller = GameHost.shared.hostingController()
     // Only if it is still ours: a newer view may have taken it already.
-    guard controller.view.superview === self else { return }
+    guard let controller = GameHost.shared.existingController,
+          controller.view.superview === self else { return }
     controller.willMove(toParent: nil)
     controller.view.removeFromSuperview()
     controller.removeFromParent()

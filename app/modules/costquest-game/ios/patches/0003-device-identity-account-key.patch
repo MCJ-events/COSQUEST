@@ -22,3 +22,18 @@
          return lastNonce
      }
  
+@@ -75,9 +81,12 @@
+         let nonce = nextNonce()
+         let payload = Self.signingPayload(method: method, path: path,
+                                           body: body, nonce: nonce)
+-        let signature = try key().signature(for: payload)
++        // [merged-app] One key for both headers: the account key can be
++        // installed between two key() calls, and a mixed pair is a 401.
++        let signingKey = try key()
++        let signature = try signingKey.signature(for: payload)
+         return [
+-            "X-Device-Key": try publicKeyHex(),
++            "X-Device-Key": signingKey.publicKey.rawRepresentation.hexString,
+             "X-Signature": signature.hexString,
+             "X-Nonce": String(nonce),
+         ]

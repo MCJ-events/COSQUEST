@@ -32,8 +32,8 @@ Pod::Spec.new do |s|
 
   s.source_files = 'Embed/**/*.{h,swift}', 'Game/**/*.{h,c,swift}'
   # The C surface Swift sees (through the pod's own module): the engine's
-  # one header and the Unity callback setters. Everything else stays private.
-  s.public_header_files = 'Embed/CostQuestGameBridge.h', 'Game/Engine/mote_lib.h', 'Game/Engine/error.h'
+  # one header, the Unity callback setters and the memory probe. Everything else stays private.
+  s.public_header_files = 'Embed/*.h', 'Game/Engine/mote_lib.h', 'Game/Engine/error.h'
   s.exclude_files = with_unity ? [] : unity_files.map { |f| "Game/Unity/#{f}" }
 
   s.resource_bundles = {

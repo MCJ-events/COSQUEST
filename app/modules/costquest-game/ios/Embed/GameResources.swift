@@ -33,7 +33,7 @@ enum GameFonts {
             let url = Bundle.costQuestGame.url(forResource: name, withExtension: "ttf")
                 ?? Bundle.costQuestGame.url(forResource: name, withExtension: "ttf", subdirectory: "Fonts")
             guard let url else { continue }
-            CTFontManagerRegisterFontsForURL(url as CFURL, .process, nil)
+            _ = CTFontManagerRegisterFontsForURL(url as CFURL, .process, nil)
         }
     }
 }

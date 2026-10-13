@@ -84,7 +84,16 @@ final class GameHost {
     /// What the account's SSO answered last, for diagnostics and events.
     private(set) var playerKey: String?
 
-    @ObservationIgnored var sink: GameEventSink?
+    /// The Expo module's event sink. A new one (a JS reload) gets onReady
+    /// again if the world is already standing, or its veil would never lift.
+    @ObservationIgnored var sink: GameEventSink? {
+        didSet {
+            if rootAppeared, sink != nil {
+                readySent = false
+                noteReady()
+            }
+        }
+    }
     /// Set by GameHostHooks: hands a cosquest://coins return to the game.
     @ObservationIgnored var urlHandler: ((URL) -> Void)?
 
@@ -93,6 +102,7 @@ final class GameHost {
     @ObservationIgnored private var sessionTask: Task<Void, Never>?
     @ObservationIgnored private var unityPausedByHost = false
     @ObservationIgnored private var readySent = false
+    @ObservationIgnored private var rootAppeared = false
     @ObservationIgnored private let chrome: GameChromeWindowController
     var chromeController: GameChromeWindowController { chrome }
 
@@ -103,6 +113,10 @@ final class GameHost {
     // MARK: - Lifecycle
 
     /// The one hosting controller, made on first ask.
+    /// The controller if it has been made, without making it (parking and
+    /// layout must not build a world).
+    var existingController: UIHostingController<GameEmbedRoot>? { controller }
+
     func hostingController() -> UIHostingController<GameEmbedRoot> {
         if let controller { return controller }
         GameFonts.register()
@@ -124,7 +138,8 @@ final class GameHost {
 
     /// The world is standing: AppRoot appeared. Sent once per process.
     func noteReady() {
-        guard !readySent else { return }
+        rootAppeared = true
+        guard !readySent, sink != nil else { return }
         readySent = true
         sink?.send("onReady", ["playerKey": playerKey])
     }
@@ -181,14 +196,20 @@ final class GameHost {
     /// One login: trade the chat session for the account's player key.
     /// nil signs out (the phone's own device identity is used again).
     func setSession(_ token: String?) {
-        guard token != sessionToken else { return }
-        sessionToken = token
-        sessionTask?.cancel()
+        // Signed out (or never signed in): always forget the account key,
+        // even if no token was ever set in this process; one saved by an
+        // earlier run must not play on without a CosQuest session.
         guard let token, !token.isEmpty else {
+            sessionTask?.cancel()
+            sessionTask = nil
+            sessionToken = nil
             if AccountKey.shared.clear() { identityChanged() }
             playerKey = nil
             return
         }
+        guard token != sessionToken else { return }
+        sessionToken = token
+        sessionTask?.cancel()
         sessionTask = Task { [weak self] in
             do {
                 let answer = try await GameSSO.exchange(chatToken: token)
@@ -206,7 +227,9 @@ final class GameHost {
                 ])
             } catch is CancellationError {
             } catch {
-                guard let self else { return }
+                guard !Task.isCancelled, let self else { return }
+                // Let the next setSession with the same token try again.
+                self.sessionToken = nil
                 // The game still works on this phone's own identity; the
                 // shell decides whether to say anything.
                 let code = (error as? GameSSO.Failure)?.code ?? "sso_failed"
@@ -243,9 +266,15 @@ final class GameHost {
         sink?.send("onRequestChat", ["chatId": chatId])
     }
 
-    /// A game modal (a fight, an encounter) is covering the shell.
+    /// A game modal (a fight, an encounter) is covering the shell. Only the
+    /// game's own: a React Native modal (the bubble's previews, the share
+    /// picker) presented from the app's root view controller also shows up
+    /// as `presentedViewController` here, because UIKit answers for the
+    /// presenting ancestor, and must not count.
     func isCoveredByGameModal() -> Bool {
-        controller?.presentedViewController != nil
+        guard let presented = controller?.presentedViewController else { return false }
+        // RCTModalHostViewController (Paper) / RCTFabricModalHostViewController.
+        return !String(describing: type(of: presented)).contains("ModalHost")
     }
 }
 
@@ -265,6 +294,13 @@ struct GameHostHooks: ViewModifier {
                     Task { await CoinsModel.shared.handle(url, store: roam) }
                 }
                 host.noteReady()
+            }
+            // A prewarm (or an unpark) shows the world while the page is off
+            // screen; AppRoot's own .task starts location then. Stop it again
+            // unless the game page is what the person is looking at.
+            .task {
+                try? await Task.sleep(for: .milliseconds(300))
+                if !host.visible { roam.location.stop() }
             }
             .onChange(of: host.visible) { _, visible in
                 if visible {

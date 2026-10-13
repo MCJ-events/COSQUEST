@@ -27,6 +27,9 @@ final class AccountKey: Sendable {
 
     private let state = Mutex(State())
     private static let keychainAccount = "com.cosquest.game.accountkey"
+    /// The Keychain outlives deleting the app; UserDefaults does not. A saved
+    /// key without this flag belongs to an earlier install and is dropped.
+    private static let savedFlag = "cq.accountKey.saved"
 
     private init() {}
 
@@ -46,7 +49,12 @@ final class AccountKey: Sendable {
             defer { s.loaded = true }
             return s.loaded
         }
-        guard !already, let saved = Self.read() else { return }
+        guard !already else { return }
+        guard UserDefaults.standard.bool(forKey: Self.savedFlag) else {
+            Self.delete()
+            return
+        }
+        guard let saved = Self.read() else { return }
         state.withLock { s in
             if s.seed == nil {
                 s.seed = saved.seed
@@ -116,11 +124,14 @@ final class AccountKey: Sendable {
         var query = baseQuery()
         query[kSecValueData as String] = data
         query[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
-        SecItemAdd(query as CFDictionary, nil)
+        if SecItemAdd(query as CFDictionary, nil) == errSecSuccess {
+            UserDefaults.standard.set(true, forKey: savedFlag)
+        }
     }
 
     private static func delete() {
         SecItemDelete(baseQuery() as CFDictionary)
+        UserDefaults.standard.removeObject(forKey: savedFlag)
     }
 }
 
