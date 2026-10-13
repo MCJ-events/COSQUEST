@@ -13,14 +13,15 @@
 //     there (data: { url: "cosquest://play?raid=..." }).
 import * as Notifications from "expo-notifications";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Platform } from "react-native";
+import { AppState, Platform } from "react-native";
 
 import { parsePlayUrl } from "@/features/world/deepLink";
 import type { GameSharePayload } from "@/features/world/gameInvite";
 import { sameSummary, type UnreadSummary, unreadSummary } from "@/features/world/unread";
 import { factionVeilColor, world } from "@/features/world/worldState";
 import { callGame, CostQuestGame, gamePlayable } from "@/modules/costquest-game/src";
-import { useAppSelector } from "@/store/hooks";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { fetchChats } from "@/store/thunks/chatThunks";
 import { getPref, setPref } from "@/utils/prefsStorage";
 
 import ShareToChatSheet from "./ShareToChatSheet";
@@ -70,6 +71,18 @@ export default function GameBridge() {
   }, []);
 
   // ---------- unread ----------
+  // The bubble counts what the chat list says. The list is otherwise only
+  // fetched when the Chats screen opens, so after a cold start (or a while
+  // in the background) the bubble would read 0: fetch it here as well.
+  const dispatch = useAppDispatch();
+  useEffect(() => {
+    if (!CostQuestGame || !token) return;
+    void dispatch(fetchChats(token));
+    const sub = AppState.addEventListener("change", (next) => {
+      if (next === "active") void dispatch(fetchChats(token));
+    });
+    return () => sub.remove();
+  }, [dispatch, token]);
   const summary = useMemo(() => unreadSummary(conversations), [conversations]);
   useEffect(() => {
     if (!CostQuestGame || !token) return;

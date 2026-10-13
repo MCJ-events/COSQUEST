@@ -81,6 +81,10 @@ function markOpenStart() {
   openStartedAt = performance.now();
   openSettledAt = 0;
 }
+/** Pager transitions, for chasing state bugs on a device (same switch). */
+function trace(message: string) {
+  if (LOG_TIMING) console.log(`[world] ${message}`);
+}
 function reportInteractive(label: string) {
   if (!LOG_TIMING || !openStartedAt) return;
   console.log(`[world] interactive in ${Math.round(performance.now() - openStartedAt)} ms (${label})`);
@@ -175,6 +179,7 @@ export default function WorldPager({ children }: { children: ReactNode }) {
 
   const onSettled = useCallback(
     (target: WorldPage) => {
+      trace(`settled on ${target}`);
       setMoving(false);
       world.settled(target);
       setStatusLight(target === "game");
@@ -196,6 +201,7 @@ export default function WorldPager({ children }: { children: ReactNode }) {
   );
 
   const onDragStart = useCallback((from: WorldPage) => {
+    trace(`drag from ${from}`);
     setMoving(true);
     if (from === "chat") {
       markOpenStart();
@@ -213,6 +219,7 @@ export default function WorldPager({ children }: { children: ReactNode }) {
 
   const animateTo = useCallback(
     (target: WorldPage) => {
+      trace(`animate to ${target} (page ${world.get().page})`);
       setMoving(true);
       if (target === "game") {
         if (world.get().page !== "game") markOpenStart();
@@ -227,6 +234,7 @@ export default function WorldPager({ children }: { children: ReactNode }) {
         },
         (finished) => {
           if (finished) runOnJS(onSettled)(target);
+          else runOnJS(trace)(`animation to ${target} interrupted`);
         },
       ));
     },
@@ -343,11 +351,16 @@ export default function WorldPager({ children }: { children: ReactNode }) {
           progress.set(next);
         })
         .onEnd((event) => {
+          // Decide on where the finger let go, not on the last update drawn:
+          // when the UI thread is janky (a busy low-end phone) the updates
+          // lag far behind, and a full swipe would bounce back.
+          const released = progressFor(dragFrom.get(), event.translationX, width);
           const target = settleTarget({
             from: dragFrom.get(),
-            progress: progress.get(),
+            progress: released,
             velocityX: event.velocityX,
           });
+          if (LOG_TIMING) runOnJS(trace)(`release at ${released.toFixed(2)} (drawn ${progress.get().toFixed(2)}), vx ${Math.round(event.velocityX)} -> ${target}`);
           progress.set(withTiming(
             target === "game" ? 1 : 0,
             {
@@ -356,6 +369,7 @@ export default function WorldPager({ children }: { children: ReactNode }) {
             },
             (finished) => {
               if (finished) runOnJS(onSettled)(target);
+              else runOnJS(trace)(`swipe settle to ${target} interrupted`);
             },
           ));
         }),

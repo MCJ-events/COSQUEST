@@ -60,7 +60,7 @@ export default function GameInviteCard({
           <Ionicons name={look.icon} size={18} color="#FFFFFF" />
         </View>
         <View style={styles.headerText}>
-          <Text style={[styles.kind, { color: mine ? "rgba(255,255,255,0.85)" : look.tint }]}>{look.label}</Text>
+          <Text style={[styles.kind, { color: look.tint }]}>{look.label}</Text>
           <Text style={[styles.title, mine && styles.titleMine]} numberOfLines={2}>
             {inviteTitle(invite)}
           </Text>
@@ -68,7 +68,7 @@ export default function GameInviteCard({
       </View>
 
       <View style={styles.whenRow}>
-        <Ionicons name="time-outline" size={13} color={mine ? "rgba(255,255,255,0.8)" : "#7A6B7F"} />
+        <Ionicons name="time-outline" size={13} color="#7A6B7F" />
         <Text style={[styles.when, mine && styles.whenMine]}>{when}</Text>
       </View>
 
@@ -125,8 +125,10 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: "#1D1020",
   },
+  // The sender's own bubble is light pink (chat bubbleMine #F3DDED): keep
+  // the dark ink rather than white.
   titleMine: {
-    color: "#FFFFFF",
+    color: "#1D1020",
   },
   whenRow: {
     flexDirection: "row",
@@ -139,7 +141,7 @@ const styles = StyleSheet.create({
     color: "#7A6B7F",
   },
   whenMine: {
-    color: "rgba(255,255,255,0.85)",
+    color: "#6B5A70",
   },
   join: {
     flexDirection: "row",
