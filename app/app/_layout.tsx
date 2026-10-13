@@ -3,6 +3,7 @@ import ActiveCallOverlay from "@/components/calls/ActiveCallOverlay";
 import CallBannerFrame from "@/components/calls/CallBannerFrame";
 import IncomingCallListener from "@/components/calls/IncomingCallListener";
 import SessionGate from "@/components/SessionGate";
+import GameBridge from "@/components/world/GameBridge";
 import { UserProvider } from "@/context/UserContext";
 import { useSocketConnection } from "@/hooks/useSocketConnection";
 import { store } from "@/store/store";
@@ -79,6 +80,17 @@ export default function RootLayout() {
                 <Stack.Screen name="settings" />
                 <Stack.Screen name="notifications" />
 
+                {/* cosquest://play?... and cosquest://coins?...: hand the
+                    link to the game and step aside (no flash). */}
+                <Stack.Screen
+                  name="play"
+                  options={{ presentation: "transparentModal", animation: "none" }}
+                />
+                <Stack.Screen
+                  name="coins"
+                  options={{ presentation: "transparentModal", animation: "none" }}
+                />
+
                 {/* Audio/video call screen */}
                 <Stack.Screen
                   name="call/[id]"
@@ -92,6 +104,10 @@ export default function RootLayout() {
 
             {/* Ringing screen — shows on top of any screen when someone calls */}
             <IncomingCallListener />
+
+            {/* Merged app: the chat <-> game bridge (one login, unread,
+                calls, invites to chat, notification links) */}
+            <GameBridge />
 
             <StatusBar style="auto" />
           </UserProvider>

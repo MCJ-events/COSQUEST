@@ -88,6 +88,8 @@ import MentionPicker, {
 } from "@/components/chat/MentionPicker";
 import { MentionText } from "@/components/chat/MentionText";
 import PollBubble from "@/components/chat/PollBubble";
+import GameInviteCard from "@/components/world/GameInviteCard";
+import type { ChatMessage } from "@/services/chats";
 import PollCreator from "@/components/chat/PollCreator";
 import { RankBadge, RankLine, RoleBadge } from "@/components/chat/RankBadge";
 import type { Rank } from "@/services/ranks";
@@ -172,6 +174,9 @@ type Message = {
 
   // kind "poll": the question, options and results.
   poll?: PollSummary | null;
+
+  // kind "game_invite" (merged app): the raid / shrine / duel card.
+  gameInvite?: ChatMessage["gameInvite"];
 
   // Groups: "owner" / "admin" badge for the sender (null otherwise).
   senderGroupRole?: "owner" | "admin" | null;
@@ -1307,6 +1312,15 @@ const Bubble = memo(function Bubble({
               conversationId={msg.conversationId || ""}
               poll={msg.poll}
               mine={mine}
+            />
+          ) : null}
+
+          {/* GAME INVITE (merged app: a raid / shrine / duel card) */}
+          {!msg.deleted && msg.kind === "game_invite" ? (
+            <GameInviteCard
+              raw={msg.gameInvite}
+              mine={mine}
+              onLongPress={() => onLongPress(msg)}
             />
           ) : null}
 

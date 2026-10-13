@@ -2,7 +2,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { buildPlayUrl, isGameCoinsUrl, parsePlayUrl } from "../deepLink.ts";
+import { buildPlayUrl, isGameCoinsUrl, parsePlayUrl, urlFromParams } from "../deepLink.ts";
 
 describe("parsePlayUrl", () => {
   it("reads a raid with a place and a position", () => {
@@ -63,5 +63,19 @@ describe("isGameCoinsUrl", () => {
   it("spots the game's Stripe return", () => {
     assert.equal(isGameCoinsUrl("cosquest://coins?order=o1&result=success"), true);
     assert.equal(isGameCoinsUrl("cosquest://play"), false);
+  });
+});
+
+describe("urlFromParams (Expo Router params back into a link)", () => {
+  it("rebuilds a play link the parser accepts", () => {
+    const url = urlFromParams("play", { raid: "r-1", place: "Tate Modern", lat: "51.5", lng: "-0.1" });
+    assert.deepEqual(parsePlayUrl(url)?.target, { raidId: "r-1", place: "Tate Modern", lat: 51.5, lng: -0.1 });
+  });
+  it("keeps repeated keys, so an ambiguous link stays refused", () => {
+    assert.equal(parsePlayUrl(urlFromParams("play", { raid: ["a", "b"] })), null);
+  });
+  it("a bare route is a bare link", () => {
+    assert.equal(urlFromParams("coins", {}), "cosquest://coins");
+    assert.equal(urlFromParams("coins", { order: "o_1" }), "cosquest://coins?order=o_1");
   });
 });

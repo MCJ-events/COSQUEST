@@ -1,4 +1,5 @@
 import { HapticTab } from "@/components/haptic-tab";
+import WorldPager from "@/components/world/WorldPager";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { FONTS } from "@/constants/fonts";
 import { Ionicons } from "@expo/vector-icons";
@@ -27,7 +28,17 @@ function TabIcon({
   );
 }
 
+// Merged app: the tabs are page 0 of the world; the game is page 1, one
+// swipe to the right (components/world/WorldPager.tsx).
 export default function TabLayout() {
+  return (
+    <WorldPager>
+      <ChatTabs />
+    </WorldPager>
+  );
+}
+
+function ChatTabs() {
   return (
     <Tabs
       screenOptions={{

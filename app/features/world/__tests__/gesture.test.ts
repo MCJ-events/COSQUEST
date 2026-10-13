@@ -68,6 +68,9 @@ describe("edgeZone", () => {
     assert.equal(zone.x, 0);
     assert.equal(inRect(zone, 5, 500), true);
     assert.equal(inRect(zone, 100, 500), false);
+    // The game's player chip (top left) and its bottom cards keep their taps.
+    assert.equal(inRect(zone, 5, 47 + 30), false);
+    assert.equal(inRect(zone, 5, 844 - 34 - 40), false);
   });
   it("never has a negative height on a tiny window", () => {
     const zone = edgeZone({ page: "chat", width: 300, height: 120, topInset: 40, bottomInset: 30 });
@@ -126,7 +129,7 @@ describe("crossedCommit (the haptic tick)", () => {
 describe("the look", () => {
   it("settles faster for a short remainder and fast under reduce motion", () => {
     assert.ok(settleDuration(0.9, "game", false) < settleDuration(0.1, "game", false));
-    assert.ok(settleDuration(0, "game", false) <= 320, "a programmatic open stays under 320 ms");
+    assert.ok(settleDuration(0, "game", false) < 300, "a programmatic open stays under 300 ms");
     assert.equal(settleDuration(0.5, "game", true), 160);
   });
   it("drifts, shrinks and dims the chat; reduce motion only dims", () => {

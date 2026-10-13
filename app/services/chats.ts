@@ -107,6 +107,17 @@ export type ChatMessage = {
 
   // Only on YOUR messages: true when an edit can be undone.
   canRollback?: boolean;
+
+  // kind "game_invite": a raid / shrine / duel card from the game (merged
+  // app; features/world/gameInvite.ts reads it). null on other kinds.
+  gameInvite?: {
+    type: string;
+    targetId: string;
+    place?: string | null;
+    lat?: number | null;
+    lng?: number | null;
+    startsAt?: string | null;
+  } | null;
 };
 
 export type ChatLastMessage = {

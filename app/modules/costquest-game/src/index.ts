@@ -54,6 +54,8 @@ export type CostQuestGameModule = {
   setCallPill(state: GameCallPillState | null): Promise<void>;
   handleURL(url: string): Promise<void>;
   reset(): Promise<void>;
+  /** iOS: bytes used now (phys_footprint) and still available, for measuring the prewarm. */
+  memoryReport?(): { physical: number; footprint: number; available: number };
   addListener<K extends keyof GameEvents>(event: K, listener: GameEvents[K]): Subscription;
 };
 
@@ -66,7 +68,11 @@ export const gameInstalled = CostQuestGame != null;
 /** Is it the real game (not the Android placeholder)? */
 export const gamePlayable = CostQuestGame != null && CostQuestGame.available !== false;
 
-export type CostQuestGameViewProps = ViewProps & { accessibilityLabel?: string };
+export type CostQuestGameViewProps = ViewProps & {
+  accessibilityLabel?: string;
+  /** Off the window but kept warm (the chat has been showing for a while). */
+  parked?: boolean;
+};
 
 export const CostQuestGameView: ComponentType<CostQuestGameViewProps> | null = gameInstalled
   ? requireNativeView<CostQuestGameViewProps>("CostQuestGame")

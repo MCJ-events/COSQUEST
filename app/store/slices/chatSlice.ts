@@ -20,6 +20,7 @@ import {
   unpinMessageThunk,
 } from "../thunks/chatThunks";
 
+import { invitePreview, normalizeInvite } from "@/features/world/gameInvite";
 import type { Chat, ChatMessage } from "@/services/chats";
 
 type ChatState = {
@@ -137,6 +138,11 @@ function getPreview(message: ChatMessage): string {
 
   if (message.kind === "poll") {
     return `📊 ${message.content || "Poll"}`;
+  }
+
+  // Game invite (merged app): same wording as the backend's preview.
+  if (message.kind === "game_invite") {
+    return invitePreview(normalizeInvite(message.gameInvite));
   }
 
   // Call entry. A moment later the backend's chat:preview refresh replaces

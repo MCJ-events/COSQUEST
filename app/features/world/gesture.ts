@@ -62,7 +62,7 @@ export type Rect = { x: number; y: number; width: number; height: number };
  * The strip where the world swipe may begin.
  * Chat: the RIGHT edge (the game is to the right), between the top bar and the
  * floating tab bar, so the header buttons and tabs near the edge keep their taps.
- * Game: the LEFT edge, full height below the status bar.
+ * Game: the LEFT edge, between the game's top bar and its bottom cards.
  */
 export function edgeZone(opts: {
   page: WorldPage;
@@ -78,8 +78,11 @@ export function edgeZone(opts: {
     const bottom = Math.max(bottomInset, 0) + 24 + 68 + 8;
     return { x: width - EDGE_WIDTH, y: top, width: EDGE_WIDTH, height: Math.max(0, height - top - bottom) };
   }
-  const top = topInset + 8;
-  return { x: 0, y: top, width: EDGE_WIDTH, height: Math.max(0, height - top) };
+  // Game: below its top bar (the player chip sits top left, ~56 tall) and
+  // above its bottom card area, so the game's own buttons keep their taps.
+  const top = topInset + 64;
+  const bottom = Math.max(bottomInset, 0) + 96;
+  return { x: 0, y: top, width: EDGE_WIDTH, height: Math.max(0, height - top - bottom) };
 }
 
 export function inRect(rect: Rect, x: number, y: number): boolean {
@@ -136,7 +139,9 @@ export function settleDuration(progress: number, target: WorldPage, reduceMotion
   "worklet";
   if (reduceMotion) return 160;
   const remaining = target === "game" ? 1 - progress : progress;
-  return Math.round(140 + 180 * Math.min(1, Math.max(0, remaining)));
+  // A full programmatic open (the handle, Join, a link) is 280 ms, inside the
+  // 300 ms budget for "swipe to an interactive game" once it is warm.
+  return Math.round(120 + 160 * Math.min(1, Math.max(0, remaining)));
 }
 
 /** The chat layer at a given progress: drift, shrink, dim (reduce motion: dim only). */

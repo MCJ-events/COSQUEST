@@ -64,12 +64,11 @@ function pathOf(url: string): string {
 /** A GameTarget from query values, or null when it names nothing usable. */
 export function targetFromParams(params: URLSearchParams): GameTarget | null {
   const target: GameTarget = {};
-  const pick = (short: string, long: string) => params.get(short) ?? params.get(long);
-  const shrine = pick("shrine", "shrineId");
-  const raid = pick("raid", "raidId");
-  const duel = pick("duel", "duelId");
-  const ids = [shrine, raid, duel].filter((v) => v !== null);
-  if (ids.length > 1) return null; // ambiguous: refuse rather than pick one
+  const all = (short: string, long: string) => [...params.getAll(short), ...params.getAll(long)];
+  const named = [all("shrine", "shrineId"), all("raid", "raidId"), all("duel", "duelId")];
+  // Two spots named (or one named twice) is ambiguous: refuse rather than pick.
+  if (named.reduce((n, values) => n + values.length, 0) > 1) return null;
+  const [shrine, raid, duel] = named.map((values) => values[0] ?? null);
   if (raid !== null) {
     if (!isValidTargetId(raid)) return null;
     target.raidId = raid;
@@ -131,4 +130,24 @@ export function buildPlayUrl(target: GameTarget | null, scheme = "cosquest"): st
   if (target.place) params.set("place", target.place);
   const query = params.toString();
   return query ? `${scheme}://play?${query}` : `${scheme}://play`;
+}
+
+/**
+ * Expo Router hands a route its query as params; this rebuilds the link
+ * (app/play.tsx, app/coins.tsx). Repeated keys stay repeated, so an
+ * ambiguous link is still refused by parsePlayUrl.
+ */
+export function urlFromParams(
+  path: "play" | "coins",
+  params: Record<string, string | string[] | undefined>,
+  scheme = "cosquest",
+): string {
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    for (const item of Array.isArray(value) ? value : [value]) {
+      if (item !== undefined) query.append(key, item);
+    }
+  }
+  const text = query.toString();
+  return text ? `${scheme}://${path}?${text}` : `${scheme}://${path}`;
 }

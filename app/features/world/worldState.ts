@@ -10,29 +10,36 @@ export type WorldState = {
   page: "chat" | "game";
   /** The game has been mounted (prewarmed or opened). */
   gameMounted: boolean;
-  /** Waiting for the pager: open the game at this spot. */
-  pendingTarget: GameTarget | null;
-  /** Bumped by every open request, so the pager animates even to the same page. */
+  /** The game said its world is standing (onReady). */
+  gameReady: boolean;
+  /**
+   * Waiting for the pager: swipe to the game (at this spot, if any). Kept
+   * until the pager takes it, so a link that arrives before login, or a Join
+   * tapped inside a pushed chat screen, still lands once the pager is up.
+   */
+  pendingOpen: { target: GameTarget | null } | null;
+  /** Bumped by every open request, so the pager reacts even to the same spot. */
   openSerial: number;
-  /** Bumped by every "back to chat" request. */
+  /** Waiting for the pager: back to the chat (and into this conversation). */
+  pendingClose: { chatId: string | null } | null;
   closeSerial: number;
-  /** A chat to open after returning to the chat page. */
-  pendingChatId: string | null;
-  /** The game's faction colour, once the game says who the player is. */
+  /** The veil colour (the player's faction), once known. */
   factionColor: string | null;
 };
 
+const INITIAL: WorldState = {
+  page: "chat",
+  gameMounted: false,
+  gameReady: false,
+  pendingOpen: null,
+  openSerial: 0,
+  pendingClose: null,
+  closeSerial: 0,
+  factionColor: null,
+};
+
 export function createWorldStore(initial?: Partial<WorldState>) {
-  let state: WorldState = {
-    page: "chat",
-    gameMounted: false,
-    pendingTarget: null,
-    openSerial: 0,
-    closeSerial: 0,
-    pendingChatId: null,
-    factionColor: null,
-    ...initial,
-  };
+  let state: WorldState = { ...INITIAL, ...initial };
   const listeners = new Set<() => void>();
   const set = (patch: Partial<WorldState>) => {
     state = { ...state, ...patch };
@@ -48,11 +55,28 @@ export function createWorldStore(initial?: Partial<WorldState>) {
     },
     /** Swipe to the game (optionally opening a spot there). */
     openGame(target: GameTarget | null = null) {
-      set({ pendingTarget: target, openSerial: state.openSerial + 1, gameMounted: true });
+      set({
+        pendingOpen: { target },
+        pendingClose: null,
+        openSerial: state.openSerial + 1,
+        gameMounted: true,
+      });
     },
     /** Swipe back to the chat (optionally into one conversation). */
     openChat(chatId: string | null = null) {
-      set({ pendingChatId: chatId, closeSerial: state.closeSerial + 1 });
+      set({ pendingClose: { chatId }, pendingOpen: null, closeSerial: state.closeSerial + 1 });
+    },
+    /** The pager takes the open request (once). */
+    takeOpen(): { target: GameTarget | null } | null {
+      const request = state.pendingOpen;
+      if (request) set({ pendingOpen: null });
+      return request;
+    },
+    /** The pager takes the back-to-chat request (once). */
+    takeClose(): { chatId: string | null } | null {
+      const request = state.pendingClose;
+      if (request) set({ pendingClose: null });
+      return request;
     },
     settled(page: "chat" | "game") {
       if (state.page !== page) set({ page });
@@ -60,21 +84,19 @@ export function createWorldStore(initial?: Partial<WorldState>) {
     mountGame() {
       if (!state.gameMounted) set({ gameMounted: true });
     },
-    takeTarget(): GameTarget | null {
-      const target = state.pendingTarget;
-      if (target) set({ pendingTarget: null });
-      return target;
-    },
-    takeChatId(): string | null {
-      const chatId = state.pendingChatId;
-      if (chatId) set({ pendingChatId: null });
-      return chatId;
+    markGameReady() {
+      if (!state.gameReady) set({ gameReady: true });
     },
     setFactionColor(color: string | null) {
       if (state.factionColor !== color) set({ factionColor: color });
     },
+    /** Sign-out: forget everything but the serials (they only ever grow). */
     reset() {
-      set({ page: "chat", gameMounted: false, pendingTarget: null, pendingChatId: null, factionColor: null });
+      set({
+        ...INITIAL,
+        openSerial: state.openSerial,
+        closeSerial: state.closeSerial,
+      });
     },
   };
 }

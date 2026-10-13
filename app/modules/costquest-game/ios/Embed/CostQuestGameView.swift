@@ -5,8 +5,20 @@ import UIKit
 /// to whichever view controller holds this view. The controller outlives the
 /// view, so a remount (or the page sliding away and back) finds the world
 /// exactly as it was left.
+///
+/// `parked`: the shell sets it once the chat has been on screen for a while.
+/// The world leaves the window (RealityKit stops drawing, SwiftUI pauses its
+/// tasks) but the controller, and everything the player was doing, stays;
+/// unparking puts the same world back. docs/merged-app-ux.md, "Warm game".
 public final class CostQuestGameView: ExpoView {
   private weak var attachedTo: UIViewController?
+
+  var parked = false {
+    didSet {
+      guard parked != oldValue else { return }
+      if parked { detach() } else if window != nil { attach() }
+    }
+  }
 
   public required init(appContext: AppContext? = nil) {
     super.init(appContext: appContext)
@@ -16,12 +28,13 @@ public final class CostQuestGameView: ExpoView {
 
   public override func didMoveToWindow() {
     super.didMoveToWindow()
-    if window != nil { attach() } else { detach() }
+    if window != nil, !parked { attach() } else { detach() }
   }
 
   public override func layoutSubviews() {
     super.layoutSubviews()
-    GameHost.shared.hostingController().view.frame = bounds
+    let view = GameHost.shared.hostingController().view!
+    if view.superview === self { view.frame = bounds }
   }
 
   private func attach() {

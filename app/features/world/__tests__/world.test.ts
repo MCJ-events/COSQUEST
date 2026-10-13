@@ -6,31 +6,56 @@ import { LOW_MEMORY_BYTES, prewarmDecision } from "../prewarm.ts";
 import { createWorldStore, factionVeilColor } from "../worldState.ts";
 
 describe("world store", () => {
-  it("an open request mounts the game, carries the spot once, and bumps the serial", () => {
+  it("an open request mounts the game and carries the spot once", () => {
     const store = createWorldStore();
     let calls = 0;
     store.subscribe(() => calls++);
     store.openGame({ raidId: "r1" });
     assert.equal(store.get().gameMounted, true);
     assert.equal(store.get().openSerial, 1);
-    assert.deepEqual(store.takeTarget(), { raidId: "r1" });
-    assert.equal(store.takeTarget(), null, "taken once");
+    assert.deepEqual(store.takeOpen(), { target: { raidId: "r1" } });
+    assert.equal(store.takeOpen(), null, "taken once");
     assert.ok(calls >= 2);
   });
-  it("back to chat can carry a conversation", () => {
+  it("a bare open (the handle, cosquest://play) has no spot", () => {
     const store = createWorldStore();
+    store.openGame();
+    assert.deepEqual(store.takeOpen(), { target: null });
+  });
+  it("an open made before the pager exists waits for it", () => {
+    const store = createWorldStore();
+    store.openGame({ shrineId: "s1" });
+    // ... sign-in, the pager mounts later and takes it then.
+    assert.deepEqual(store.takeOpen(), { target: { shrineId: "s1" } });
+  });
+  it("back to chat can carry a conversation, and cancels a pending open", () => {
+    const store = createWorldStore();
+    store.openGame({ duelId: "d1" });
     store.openChat("c1");
     assert.equal(store.get().closeSerial, 1);
-    assert.equal(store.takeChatId(), "c1");
-    assert.equal(store.takeChatId(), null);
+    assert.equal(store.takeOpen(), null, "the later request wins");
+    assert.deepEqual(store.takeClose(), { chatId: "c1" });
+    assert.equal(store.takeClose(), null);
   });
-  it("settles and resets", () => {
+  it("an open cancels a pending back-to-chat", () => {
     const store = createWorldStore();
+    store.openChat(null);
+    store.openGame(null);
+    assert.equal(store.takeClose(), null);
+  });
+  it("settles, marks ready, and resets on sign-out without rewinding the serials", () => {
+    const store = createWorldStore();
+    store.openGame(null);
     store.settled("game");
+    store.markGameReady();
     assert.equal(store.get().page, "game");
+    assert.equal(store.get().gameReady, true);
     store.reset();
     assert.equal(store.get().page, "chat");
     assert.equal(store.get().gameMounted, false);
+    assert.equal(store.get().gameReady, false);
+    assert.equal(store.get().pendingOpen, null);
+    assert.equal(store.get().openSerial, 1);
   });
   it("unsubscribes", () => {
     const store = createWorldStore();

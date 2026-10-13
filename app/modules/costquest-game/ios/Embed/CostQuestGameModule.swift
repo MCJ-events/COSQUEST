@@ -1,5 +1,7 @@
+import Darwin
 import ExpoModulesCore
 import UIKit
+import os
 
 // The React Native face of the game (modules/costquest-game/src/index.ts).
 // Every call lands on the main thread and goes straight to GameHost.
@@ -97,12 +99,38 @@ public final class CostQuestGameModule: Module {
       MainActor.assumeIsolated { GameHost.shared.reset() }
     }.runOnQueue(.main)
 
+    // For measuring the prewarm on a phone (docs/merged-app-ux.md): what this
+    // process uses now and what iOS would still let it have, in bytes.
+    Function("memoryReport") { () -> [String: Double] in
+      [
+        "physical": Double(ProcessInfo.processInfo.physicalMemory),
+        "footprint": Double(Self.footprint()),
+        "available": Double(os_proc_available_memory()),
+      ]
+    }
+
     View(CostQuestGameView.self) {
+      Prop("parked") { (view: CostQuestGameView, parked: Bool?) in
+        view.parked = parked ?? false
+      }
+
       // Only for tests and screen readers: the game draws everything else.
       Prop("accessibilityLabel") { (view: CostQuestGameView, label: String?) in
         view.accessibilityLabel = label
       }
     }
+  }
+
+  /// phys_footprint: the number Xcode's memory gauge and jetsam go by.
+  private static func footprint() -> UInt64 {
+    var info = task_vm_info_data_t()
+    var count = mach_msg_type_number_t(MemoryLayout<task_vm_info_data_t>.size / MemoryLayout<natural_t>.size)
+    let result = withUnsafeMutablePointer(to: &info) { pointer in
+      pointer.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
+        task_info(mach_task_self_, task_flavor_t(TASK_VM_INFO), $0, &count)
+      }
+    }
+    return result == KERN_SUCCESS ? info.phys_footprint : 0
   }
 
   static var hasUnity: Bool {

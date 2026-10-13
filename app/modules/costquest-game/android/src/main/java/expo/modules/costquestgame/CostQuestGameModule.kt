@@ -33,6 +33,7 @@ class CostQuestGameModule : Module() {
       Prop("accessibilityLabel") { view: CostQuestGameView, label: String? ->
         view.contentDescription = label
       }
+      Prop("parked") { _: CostQuestGameView, _: Boolean? -> }
     }
   }
 }
