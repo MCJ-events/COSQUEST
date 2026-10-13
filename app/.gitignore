@@ -46,3 +46,6 @@ app-example
 /ios
 /android
 .idea/
+
+# Merged app: scripts/verify-ios.sh logs and derived data
+build-logs/
