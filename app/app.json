@@ -79,8 +79,15 @@
             "ndkVersion": "27.1.12297006"
           },
           "ios": {
-            "deploymentTarget": "16.0"
+            "deploymentTarget": "18.0"
           }
+        }
+      ],
+      [
+        "./modules/costquest-game/plugin/withCostQuestGame",
+        {
+          "nfc": false,
+          "serverUrl": ""
         }
       ]
     ],

@@ -1,0 +1,17 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'com.cosquest'
+version = '0.1.0'
+
+// PLACEHOLDER (merge task 1). The same module API as iOS, so the shell runs
+// on Android unchanged; the real game (task 2) replaces what is behind it.
+android {
+  namespace "expo.modules.costquestgame"
+  defaultConfig {
+    versionCode 1
+    versionName '0.1.0'
+  }
+}

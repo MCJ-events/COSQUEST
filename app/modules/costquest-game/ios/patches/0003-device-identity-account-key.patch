@@ -1,0 +1,24 @@
+--- a/Game/Net/DeviceIdentity.swift
++++ b/Game/Net/DeviceIdentity.swift
+@@ -32,6 +32,10 @@
+     private var lastNonce: Int = 0
+ 
+     private func key() throws -> Curve25519.Signing.PrivateKey {
++        // [merged-app] Signed in through CosQuest: the account's player key
++        // (Embed/AccountKey.swift, from POST /v1/sso/cosquest) wins over this
++        // phone's own, so the player follows the account across phones.
++        if let account = AccountKey.shared.privateKey { return account }
+         if let cachedKey { return cachedKey }
+         if let stored = try Self.loadFromKeychain() {
+             cachedKey = stored
+@@ -50,7 +54,9 @@
+ 
+     func nextNonce() -> Int {
+         let now = Int(Date().timeIntervalSince1970 * 1000)
+-        lastNonce = max(now, lastNonce + 1)
++        // [merged-app] An account key may have signed from another phone:
++        // start above the highest nonce the server has seen for it.
++        lastNonce = max(now, lastNonce + 1, AccountKey.shared.nonceFloor + 1)
+         return lastNonce
+     }
+ 
