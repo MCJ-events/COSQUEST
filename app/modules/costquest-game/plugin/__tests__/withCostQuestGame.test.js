@@ -3,7 +3,7 @@
 const assert = require("node:assert/strict");
 const { describe, it } = require("node:test");
 
-const { mergeUsage, GAME_USAGE } = require("../withCostQuestGame");
+const { mergeUsage, GAME_USAGE, CHAT_USAGE } = require("../withCostQuestGame");
 
 describe("mergeUsage", () => {
   it("uses the game's sentence when the chat has none", () => {
@@ -40,5 +40,11 @@ describe("mergeUsage", () => {
     ]) {
       assert.ok(GAME_USAGE[key], key);
     }
+  });
+});
+
+describe("chat fallbacks", () => {
+  it("the microphone always says what calls use it for", () => {
+    assert.match(CHAT_USAGE.NSMicrophoneUsageDescription, /calls/);
   });
 });

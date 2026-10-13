@@ -44,6 +44,13 @@
     "plugins": [
       "expo-router",
       [
+        "./modules/costquest-game/plugin/withCostQuestGame",
+        {
+          "nfc": false,
+          "serverUrl": ""
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "image": "./assets/images/cosquest-logo.png",
@@ -81,13 +88,6 @@
           "ios": {
             "deploymentTarget": "18.0"
           }
-        }
-      ],
-      [
-        "./modules/costquest-game/plugin/withCostQuestGame",
-        {
-          "nfc": false,
-          "serverUrl": ""
         }
       ]
     ],

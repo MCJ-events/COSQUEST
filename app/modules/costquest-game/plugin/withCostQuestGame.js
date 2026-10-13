@@ -2,6 +2,10 @@
 //
 // app.json: ["./modules/costquest-game/plugin/withCostQuestGame", { "nfc": false, "serverUrl": "" }]
 //
+// Keep this plugin FIRST in app.json's list (after expo-router): Expo runs
+// mods in reverse order, so it then merges after every other plugin has
+// written its own sentence (expo-image-picker sets the camera one outright).
+//
 // - Info.plist: the game's permission strings, MERGED with the chat app's
 //   (a key the chat already has keeps its sentence and gains the game's
 //   purpose, never a second copy), its Bonjour services (the peer mesh), and
@@ -41,6 +45,14 @@ const GAME_USAGE = {
     "In the game, CosQuest shares game data directly with players standing near you, so the game keeps up when the network does not.",
 };
 
+// What the CHAT uses these for, only if no other plugin wrote a sentence
+// (today expo-audio does). Without one, the game's sentence would be the only
+// reason iOS shows for the microphone that calls and voice messages use.
+// Never rewrites the chat's words.
+const CHAT_USAGE = {
+  NSMicrophoneUsageDescription: "CosQuest uses the microphone for calls and voice messages.",
+};
+
 const BONJOUR = ["_costquest._udp", "_costquest._tcp"];
 
 /** The chat's sentence plus the game's, once. Exported for tests. */
@@ -55,6 +67,9 @@ function mergeUsage(existing, game) {
 function withGameInfoPlist(config, { serverUrl }) {
   return withInfoPlist(config, (cfg) => {
     const plist = cfg.modResults;
+    for (const [key, chat] of Object.entries(CHAT_USAGE)) {
+      if (typeof plist[key] !== "string" || !plist[key].trim()) plist[key] = chat;
+    }
     for (const [key, game] of Object.entries(GAME_USAGE)) {
       plist[key] = mergeUsage(plist[key], game);
     }
@@ -132,3 +147,4 @@ function withCostQuestGame(config, props = {}) {
 module.exports = createRunOncePlugin(withCostQuestGame, "costquest-game", "0.1.0");
 module.exports.mergeUsage = mergeUsage;
 module.exports.GAME_USAGE = GAME_USAGE;
+module.exports.CHAT_USAGE = CHAT_USAGE;
