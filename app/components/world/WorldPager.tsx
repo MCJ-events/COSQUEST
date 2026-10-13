@@ -70,6 +70,23 @@ import WorldHandle from "./WorldHandle";
 /** iOS said memory is short at some point in this run: warm less. */
 let memoryWarned = false;
 
+// Swipe-to-interactive, measured: from the finger starting the world swipe
+// (or a programmatic open) to the game settled on screen with its world
+// standing. Logged as "[world] interactive in N ms" (logcat: ReactNativeJS)
+// in dev builds and builds made with EXPO_PUBLIC_WORLD_TIMING=1.
+const LOG_TIMING = __DEV__ || process.env.EXPO_PUBLIC_WORLD_TIMING === "1";
+let openStartedAt = 0;
+let openSettledAt = 0;
+function markOpenStart() {
+  openStartedAt = performance.now();
+  openSettledAt = 0;
+}
+function reportInteractive(label: string) {
+  if (!LOG_TIMING || !openStartedAt) return;
+  console.log(`[world] interactive in ${Math.round(performance.now() - openStartedAt)} ms (${label})`);
+  openStartedAt = 0;
+}
+
 /** Keep the world in the window this long after the chat comes back (ms). */
 const PARK_AFTER_MS = 15000;
 /** A prewarm keeps the world in the window this long, to build it (ms). */
@@ -151,6 +168,7 @@ export default function WorldPager({ children }: { children: ReactNode }) {
   // The veil holds until the game says its world is standing.
   useEffect(() => {
     ready.set(withTiming(gameReady ? 1 : 0, { duration: gameReady ? 220 : 0 }));
+    if (gameReady && openSettledAt) reportInteractive("cold: waited for the world");
   }, [gameReady, ready]);
 
   // ---------- settling ----------
@@ -162,8 +180,11 @@ export default function WorldPager({ children }: { children: ReactNode }) {
       setStatusLight(target === "game");
       if (target === "game") {
         callGame("resume");
+        openSettledAt = performance.now();
+        if (world.get().gameReady) reportInteractive("warm");
         return;
       }
+      openStartedAt = 0;
       callGame("pause");
       wake(memoryWarned ? 0 : PARK_AFTER_MS);
       const close = world.takeClose();
@@ -177,6 +198,7 @@ export default function WorldPager({ children }: { children: ReactNode }) {
   const onDragStart = useCallback((from: WorldPage) => {
     setMoving(true);
     if (from === "chat") {
+      markOpenStart();
       world.mountGame();
       // Location and the map's refresh start while it slides in.
       callGame("resume");
@@ -193,6 +215,7 @@ export default function WorldPager({ children }: { children: ReactNode }) {
     (target: WorldPage) => {
       setMoving(true);
       if (target === "game") {
+        if (world.get().page !== "game") markOpenStart();
         world.mountGame();
         callGame("resume");
       }

@@ -6,9 +6,10 @@ import android.graphics.Color
 import expo.modules.kotlin.AppContext
 import expo.modules.kotlin.views.ExpoView
 
-// PLACEHOLDER: a dark page. The shell draws its own "coming to Android" card
-// over it; this only keeps the view slot real, so layout and gestures behave
-// as they will once the game is behind it (merge task 2).
+// The iOS game's view slot, kept on Android only so the module's default view
+// name still resolves. The Android game is the React Native one
+// (components/game/GameRoot), which does not mount this; Unity's view is
+// CostQuestUnityView.
 @SuppressLint("ViewConstructor")
 class CostQuestGameView(context: Context, appContext: AppContext) : ExpoView(context, appContext) {
   init {

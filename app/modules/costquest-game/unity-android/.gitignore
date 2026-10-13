@@ -1,0 +1,5 @@
+# The exported Unity Gradle project (hundreds of MB; build output of
+# scripts/export-unity-android.sh). EXPORT_PIN records which one it was.
+export/
+# Unity batch-mode logs of the export script.
+logs/

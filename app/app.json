@@ -47,7 +47,8 @@
         "./modules/costquest-game/plugin/withCostQuestGame",
         {
           "nfc": false,
-          "serverUrl": ""
+          "serverUrl": "",
+          "unityAndroid": false
         }
       ],
       [
