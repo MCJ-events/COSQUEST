@@ -45,6 +45,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useCallMinimized } from "@/components/calls/callUi";
 import {
   ACTIVATE_OFFSET_X,
+  androidGestureExclusion,
   chatLayer,
   crossedCommit,
   edgeZone,
@@ -58,7 +59,7 @@ import {
 } from "@/features/world/gesture";
 import { prewarmDecision, PREWARM_IDLE_DELAY_MS } from "@/features/world/prewarm";
 import { factionVeilColor, world } from "@/features/world/worldState";
-import { callGame, CostQuestGame, gameInstalled, gamePlayable } from "@/modules/costquest-game/src";
+import { callGame, CostQuestGame, gameInstalled, gamePlayable, nativeHelpers } from "@/modules/costquest-game/src";
 import { useAppSelector } from "@/store/hooks";
 
 import GamePage from "./GamePage";
@@ -340,6 +341,17 @@ export default function WorldPager({ children }: { children: ReactNode }) {
 
   const edgePan = useMemo(() => makePan(), [makePan]);
   const zone = edgeZone({ page, width, height, topInset: insets.top, bottomInset: insets.bottom });
+
+  // Android gesture navigation owns the screen edges (system Back). Take back
+  // the doorway's 200 dp so the swipe follows the finger there; the rest of
+  // the edge stays the system's (on the game page, Back = back to the chat).
+  useEffect(() => {
+    if (Platform.OS !== "android" || !nativeHelpers?.setGestureExclusion) return;
+    const rects = allowed && !callFullscreen
+      ? androidGestureExclusion({ page, width, height, topInset: insets.top, bottomInset: insets.bottom })
+      : [];
+    nativeHelpers.setGestureExclusion(rects).catch(() => {});
+  }, [allowed, callFullscreen, page, width, height, insets.top, insets.bottom]);
 
   // ---------- the layers ----------
 

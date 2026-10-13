@@ -172,3 +172,35 @@ export function gameLayer(progress: number, width: number, reduceMotion: boolean
   }
   return { translateX: (1 - progress) * width, opacity: 1, veil };
 }
+
+/** Android caps the system-gesture exclusion at this much height per screen edge (dp). */
+export const ANDROID_EXCLUSION_MAX = 200;
+
+/**
+ * Android gesture navigation: the left and right screen edges belong to the
+ * system Back gesture. Where the world swipe has its doorway (the handle on
+ * the chat's right edge, the chat bubble on the game's left edge) the app
+ * takes the edge back with View.systemGestureExclusionRects, so a drag there
+ * follows the finger instead of firing Back. Android honours at most 200 dp
+ * per edge, so the rect is the 200 dp centred on the doorway, inside the edge
+ * zone. Everywhere else on the edge the system Back gesture still works, and
+ * on the game page it does exactly what the swipe does: back to the chat.
+ */
+export function androidGestureExclusion(opts: {
+  page: WorldPage;
+  width: number;
+  height: number;
+  topInset: number;
+  bottomInset: number;
+}): Rect[] {
+  const zone = edgeZone(opts);
+  if (zone.height <= 0) return [];
+  // The doorway's centre: the handle / bubble top (GameBubble.tsx) + half its 56 pt.
+  const doorway = Math.max(opts.topInset + 72, opts.height * 0.42 - 28) + 28;
+  const h = Math.min(ANDROID_EXCLUSION_MAX, zone.height);
+  const top = Math.min(Math.max(doorway - h / 2, zone.y), zone.y + zone.height - h);
+  // The bubble sticks out 60 pt from the game's left edge; the strip is 22.
+  const w = opts.page === "game" ? 60 : Math.max(EDGE_WIDTH, 32);
+  const x = opts.page === "game" ? 0 : opts.width - w;
+  return [{ x, y: Math.round(top), width: w, height: Math.round(h) }];
+}

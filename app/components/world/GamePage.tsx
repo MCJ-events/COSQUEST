@@ -1,6 +1,6 @@
-// Page 1 of the world: the game's native view, the faction veil it fades up
-// out of, and the chat bubble over it. On the Android placeholder (until the
-// Android game lands) a card says so instead of a map.
+// Page 1 of the world: the game (the native iOS game's view, or the React
+// Native game with gameUi 'rn': Android, and iOS behind the flag), the
+// faction veil it fades up out of, and the chat bubble over it.
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
@@ -10,7 +10,8 @@ import type { ViewStyle } from "react-native";
 
 import { FONTS } from "@/constants/fonts";
 import { world } from "@/features/world/worldState";
-import { CostQuestGameView, gamePlayable } from "@/modules/costquest-game/src";
+import GameRoot from "@/components/game/GameRoot";
+import { CostQuestGameView, GAME_UI, gamePlayable } from "@/modules/costquest-game/src";
 
 import GameBubble from "./GameBubble";
 import { useWorld } from "./useWorld";
@@ -41,7 +42,11 @@ export default function GamePage({
 
   return (
     <View style={styles.page}>
-      {mounted && CostQuestGameView ? (
+      {mounted && GAME_UI === "rn" ? (
+        <View style={StyleSheet.absoluteFill} accessibilityLabel="CostQuest game">
+          <GameRoot parked={parked} />
+        </View>
+      ) : mounted && CostQuestGameView ? (
         <CostQuestGameView
           style={StyleSheet.absoluteFill}
           parked={parked}

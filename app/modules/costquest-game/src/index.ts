@@ -1,14 +1,20 @@
 // The CostQuest game, as the shell sees it.
 //
-// iOS: the real game (modules/costquest-game/ios). Android: a placeholder
-// with the same API until merge task 2. Web and Expo Go: no native module at
-// all, so `CostQuestGame` is null and the shell shows the "get the app" page.
+// Two games behind one API, chosen by the gameUi flag (features/game/config.ts):
+//   native  iOS: the costquest-ios SwiftUI game in modules/costquest-game/ios
+//   rn      the shared React Native game (components/game), implemented in
+//           TypeScript by ./rnGame.ts. Android always; iOS with
+//           EXPO_PUBLIC_GAME_UI=rn until it is checked on a Mac.
+// Web: no game (the shell shows the "get the app" page).
 import { requireNativeView, requireOptionalNativeModule } from "expo";
 import type { ComponentType } from "react";
 import { Platform, type ViewProps } from "react-native";
 
+import { GAME_UI } from "@/features/game/runtime";
 import type { GameTarget } from "@/features/world/deepLink";
 import type { GameSharePayload } from "@/features/world/gameInvite";
+
+import { createRnGame } from "./rnGame";
 
 export type GameChatPreview = { chatId: string; title: string; text: string };
 
@@ -59,13 +65,30 @@ export type CostQuestGameModule = {
   addListener<K extends keyof GameEvents>(event: K, listener: GameEvents[K]): Subscription;
 };
 
-export const CostQuestGame =
-  Platform.OS === "web" ? null : requireOptionalNativeModule<CostQuestGameModule>("CostQuestGame");
+/** The platform's module: the iOS game, or the Android helpers (RAM, Unity, gestures, NFC, speech). */
+const nativeGame =
+  Platform.OS === "web" ? null : requireOptionalNativeModule<CostQuestGameModule & NativeOnly>("CostQuestGame");
 
-/** Is there a game to swipe into (even the Android placeholder)? */
+/** Android-only helpers on the native module (android/src/.../CostQuestGameModule.kt). */
+export type NativeOnly = {
+  /** Keep the system back gesture off a strip of the screen edge (dp). */
+  setGestureExclusion?(rects: { x: number; y: number; width: number; height: number }[]): Promise<void>;
+  nfcAvailable?: boolean;
+  uwbAvailable?: boolean;
+};
+
+export { GAME_UI };
+
+export const CostQuestGame: CostQuestGameModule | null =
+  Platform.OS === "web" ? null : GAME_UI === "rn" ? createRnGame(nativeGame) : nativeGame;
+
+/** The native module's own helpers (null on iOS-native, web, Expo Go). */
+export const nativeHelpers: NativeOnly | null = Platform.OS === "android" ? nativeGame : null;
+
+/** Is there a game to swipe into? */
 export const gameInstalled = CostQuestGame != null;
 
-/** Is it the real game (not the Android placeholder)? */
+/** Is it a playable game (not a placeholder)? */
 export const gamePlayable = CostQuestGame != null && CostQuestGame.available !== false;
 
 export type CostQuestGameViewProps = ViewProps & {
@@ -74,9 +97,9 @@ export type CostQuestGameViewProps = ViewProps & {
   parked?: boolean;
 };
 
-export const CostQuestGameView: ComponentType<CostQuestGameViewProps> | null = gameInstalled
-  ? requireNativeView<CostQuestGameViewProps>("CostQuestGame")
-  : null;
+/** The native game's view (iOS native UI only; the RN game is components/game/GameRoot). */
+export const CostQuestGameView: ComponentType<CostQuestGameViewProps> | null =
+  GAME_UI === "native" && nativeGame ? requireNativeView<CostQuestGameViewProps>("CostQuestGame") : null;
 
 /** Fire and forget: a game call never throws into the shell. */
 export function callGame<K extends keyof CostQuestGameModule>(

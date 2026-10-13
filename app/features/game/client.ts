@@ -151,7 +151,7 @@ export class GameClient {
     let response: Awaited<ReturnType<FetchLike>>;
     try {
       response = await this.fetcher(url, { method, headers, body: bodyText, signal: controller?.signal });
-    } catch (error) {
+    } catch {
       throw new GameError("network", "Can't reach CosQuest right now.", 0);
     } finally {
       if (timer) clearTimeout(timer);

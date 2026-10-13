@@ -150,3 +150,23 @@ describe("the look", () => {
     assert.equal(calm.opacity, 0.5);
   });
 });
+
+describe("android gesture exclusion", () => {
+  it("takes at most 200 dp of the edge, centred on the doorway, inside the edge zone", async () => {
+    const { androidGestureExclusion, edgeZone } = await import("../gesture.ts");
+    const opts = { width: 412, height: 915, topInset: 48, bottomInset: 24 };
+    for (const page of ["chat", "game"] as const) {
+      const [rect] = androidGestureExclusion({ ...opts, page });
+      const zone = edgeZone({ ...opts, page });
+      assert.ok(rect.height <= 200);
+      assert.ok(rect.y >= zone.y && rect.y + rect.height <= zone.y + zone.height + 1);
+      const doorway = Math.max(48 + 72, 915 * 0.42 - 28) + 28;
+      assert.ok(rect.y <= doorway && doorway <= rect.y + rect.height, "covers the handle / bubble");
+      assert.equal(page === "chat" ? rect.x + rect.width : rect.x, page === "chat" ? 412 : 0);
+    }
+  });
+  it("nothing when there is no edge zone (tiny window)", async () => {
+    const { androidGestureExclusion } = await import("../gesture.ts");
+    assert.deepEqual(androidGestureExclusion({ page: "chat", width: 300, height: 150, topInset: 40, bottomInset: 40 }), []);
+  });
+});
