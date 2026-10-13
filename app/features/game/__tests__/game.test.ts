@@ -16,7 +16,7 @@ import {
 } from "../config.ts";
 import { bearingDeg, distanceM, distanceText, reachM, stepToward, toLocal } from "../geo.ts";
 import { bytesToHex, Identity, signingPayload, utf8ToBytes, verifySignature } from "../identity.ts";
-import { createGameStore, type KeyStorage } from "../store.ts";
+import { createGameStore, type KeyStorage, nearestFirst } from "../store.ts";
 import {
   arriveMoment,
   fallbackLine,
@@ -305,5 +305,19 @@ describe("store", () => {
     await store.submit({ attempt_id: "a" } as never, [0]);
     assert.equal(store.isCooling(store.get().points[0]), true);
     assert.equal(store.get().me?.coins, 7);
+  });
+});
+
+describe("nearestFirst", () => {
+  const pt = (id: string, lat: number, lng: number) => ({ id, lat, lng }) as unknown as QuestPoint;
+  const far = pt("far", 51.51, -0.13);
+  const near = pt("near", 51.5075, -0.1279);
+  it("sorts by distance from the fix, without touching its input", () => {
+    const input = [far, near];
+    assert.deepEqual(nearestFirst(input, { lat: 51.5074, lng: -0.1278 }).map((p) => p.id), ["near", "far"]);
+    assert.deepEqual(input.map((p) => p.id), ["far", "near"]);
+  });
+  it("keeps the server's order with no fix", () => {
+    assert.deepEqual(nearestFirst([far, near], null).map((p) => p.id), ["far", "near"]);
   });
 });

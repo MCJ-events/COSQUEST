@@ -21,6 +21,8 @@ const written = new Map<string, string>();
 const inFlight = new Map<string, Promise<string | null>>();
 /** How long a moment waits for the model before the authored line (iOS: 2.5 s). */
 const MODEL_WAIT_MS = 2500;
+/** Log each line said (dev builds, and test builds with EXPO_PUBLIC_WORLD_TIMING=1). */
+const TRACE = __DEV__ || process.env.EXPO_PUBLIC_WORLD_TIMING === "1";
 
 function ask(m: WardenMoment): Promise<string | null> {
   const key = m.key;
@@ -86,6 +88,7 @@ export const wardenVoice = {
       : null;
     const line = fromModel ? { text: fromModel, fromModel: true } : { text: fallbackLine(moment), fromModel: false };
     said = { id: ++serial, text: line.text, moment: moment.kind, fromModel: line.fromModel };
+    if (TRACE) console.log(`[warden] ${moment.kind}${line.fromModel ? " (model)" : ""}: ${line.text}`);
     notify();
     if (!muted) {
       Speech.stop()

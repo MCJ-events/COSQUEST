@@ -99,6 +99,13 @@ export type GameStoreDeps = {
   log?: (message: string) => void;
 };
 
+/** Points nearest first (as given when there is no fix yet). Pure, so a
+ * component can memoise it on the points and the fix it is given. */
+export function nearestFirst(points: QuestPoint[], here: LatLng | null): QuestPoint[] {
+  if (!here) return points;
+  return [...points].sort((a, b) => distanceM(here, a) - distanceM(here, b));
+}
+
 export function createGameStore(deps: GameStoreDeps) {
   let state: GameState = { ...INITIAL };
   let identity: Identity | null = null;
@@ -320,9 +327,7 @@ export function createGameStore(deps: GameStoreDeps) {
 
     /** Nearest first. */
     nearby(): QuestPoint[] {
-      const here = state.fix;
-      if (!here) return state.points;
-      return [...state.points].sort((a, b) => distanceM(here, a) - distanceM(here, b));
+      return nearestFirst(state.points, state.fix);
     },
 
     playsAsDuel(p: QuestPoint): boolean {

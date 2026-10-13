@@ -11,6 +11,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { bearingDeg, distanceText } from "@/features/game/geo";
 import { gameStore, GAME_SERVER, GAME_SERVER_IS_PRODUCTION, useGame, useLocationPermission, startLocation } from "@/features/game/runtime";
+import { nearestFirst } from "@/features/game/store";
 import { arriveMoment, nudgeMoment } from "@/features/game/warden";
 import type { QuestPoint } from "@/features/game/wire";
 import { factionVeilColor } from "@/features/world/worldState";
@@ -53,7 +54,10 @@ export default function GameRoot({ parked }: { parked: boolean }) {
   const { me, points, fix, focus } = state;
   const color = factionVeilColor(me?.faction, chatFaction);
   const ctx = useCallback(() => ({ me: gameStore.get().me, playerName: gameStore.playerName() }), []);
-  const nearby = useMemo(() => gameStore.nearby(), [points, fix]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Computed from the points and the fix themselves: the React Compiler
+  // memoises on what the callback reads, so reading the store here would
+  // freeze the list at its first (empty) value.
+  const nearby = useMemo(() => nearestFirst(points, fix), [points, fix]);
   // An invite or a link asked for a spot: it is selected once its point is here.
   // Any invite target (shrine, duel or raid) is a point id, as on iOS
   // (GameHostOpenHook.resolve): open that point's sheet once it is loaded.
@@ -68,10 +72,16 @@ export default function GameRoot({ parked }: { parked: boolean }) {
   // The Warden greets a point the first time it comes into reach (and starts
   // writing the greeting while the player walks up, when the model is on).
   useEffect(() => {
+    if (__DEV__ || process.env.EXPO_PUBLIC_WORLD_TIMING === "1") {
+      console.log(`[warden] effect: parked=${parked} screen=${screen.kind} faction=${me?.faction ?? "-"} points=${nearby.length}`);
+    }
     if (parked || screen.kind !== "home" || !me?.faction) return;
     const approaching = nearby.find((x) => !gameStore.isCooling(x) && (gameStore.distanceTo(x) ?? 1e9) < gameStore.reach() + 60);
     if (approaching) wardenVoice.prepare(arriveMoment(ctx(), approaching));
     const p = nearby.find((x) => gameStore.inReach(x) && !gameStore.isCooling(x));
+    if (__DEV__ || process.env.EXPO_PUBLIC_WORLD_TIMING === "1") {
+      console.log(`[warden] check: ${nearby.length} nearby, in reach ${p ? p.name : "none"}${p && greeted.current.has(p.id) ? " (greeted)" : ""}`);
+    }
     if (p && !greeted.current.has(p.id)) {
       greeted.current.add(p.id);
       wardenVoice.speak(arriveMoment(ctx(), p)).catch(() => {});
