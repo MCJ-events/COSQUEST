@@ -72,7 +72,7 @@ Android the same game, not an imitation of it.
 |---|---|---|
 | `WardenLines.swift`, `WardenMoments.swift` (scripted lines per moment) | `features/game/warden.ts` | **Parity** (same moments, same seeded choice). |
 | `WardenCheck.swift` (guard on model output) | `features/game/wardenCheck.ts` | Parity (ported with tests). |
-| `Game/MoteEngine.swift`, `ModelStore.swift` (mote, ~968 MB model download) | `modules/costquest-warden` (mote's own C sources built with the NDK, JNI bridge), `features/game/wardenModel.ts` (download, sha256 while streaming, RAM-based variant choice) | **Built, not yet run on a phone.** C compiles clean for arm64-v8a and x86_64; the model's hashes match the server manifest; the same C ran the real model on this Linux host. Fallback: the scripted lines, which is also what iOS says when the model is off or slow (2.5 s cap). |
+| `Game/MoteEngine.swift`, `ModelStore.swift` (mote, ~968 MB model download) | `modules/costquest-warden` (mote's own C sources built with the NDK, JNI bridge), `features/game/wardenModel.ts` (download, sha256 while streaming, RAM-based variant choice) | **Built, not yet run on a phone.** C compiles clean for arm64-v8a and x86_64 (64-bit only: the NEON path is AArch64), and `libcostquest_warden.so` ships in the APK. The same C, driven the way `warden_jni.c` drives it, ran both staging models on a Linux host (2026-10-13). The 1.7B Warden (`qwen3-warden.mq`, phones with 6 GB+) speaks in voice: "That duel was tough, Ada, but you never gave up! Caffè Nero will remember this one." The 0.5B variant (`aimm05b_q4_v21.mq`, smaller phones) answers like a generic assistant ("I'm ada, an assistant built for…"), and WardenCheck accepts it on both platforms. That is a model/manifest decision, not an Android one. Fallback: the authored lines, which is also what iOS says when the model is off or slow (2.5 s cap). |
 | `WardenSpeaker.swift` (TTS) | `expo-speech` | Parity. |
 | `VoiceAnswer.swift` (speech recognition) | Kotlin `SpeechListener` | Native side done; not wired in the encounter yet. |
 | `RecapSheet`, `WardenCoach` | — | Not ported. |
@@ -133,7 +133,21 @@ game is checked on a Mac, then `EXPO_PUBLIC_GAME_UI=rn` switches it. Both
 implement the same `CostQuestGame` API (`modules/costquest-game/src`), so the
 shell does not know which one it hosts.
 
-## 5. What is at parity, in one line
+## 5. Checked on an emulator (2026-10-13)
+Android 15 x86_64 emulator, the staging game server, and a throwaway local
+chat backend (`cosquest-backend/scripts/devLocal.js`). Build with
+`app/scripts/android-emulator-build.sh`. Checked:
+- sign-in, the swipe both ways, Back and edge-back to the chat;
+- the bubble with its unread count, and tapping it to return;
+- invite card → Join → that point's sheet;
+- walking to points with emulator GPS;
+- a Guardian Duel played to its reward;
+- the journal tabs, sharing to chat, and the Warden's line on arrival.
+
+Warm swipe-to-interactive was 0.6–0.8 s on a software-rendered emulator
+(median frame 250 ms), so phone numbers are still to be measured.
+
+## 6. What is at parity, in one line
 Sign in once, map with nearby points, walk to a point, play its challenge
 (all quiz kinds and the Guardian Duel, judged by the server), XP/levels/coins,
 codex, dailies and streak, faction and the faction war, the Warden's lines
