@@ -34,5 +34,6 @@ router.use('/', groupRoutes); // /api/groups (user-created groups)
 router.use('/', expertiseRoutes); // /api/expertise (expertise roles)
 router.use('/', chatRoutes); // /api/chats
 router.use('/spotlight', require('./spotlightRoutes'));
+router.use('/game', require('./gameRoutes')); // /api/game/session (the game's single sign-on)
 
 module.exports = router;

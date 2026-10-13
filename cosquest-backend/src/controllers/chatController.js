@@ -380,6 +380,7 @@ function previewMessage(message, viewerId) {
   if (message.deletedForEveryone) return 'This message was deleted';
   if (message.kind === 'call') return callLogPreview(message.callLog, viewerId);
   if (message.kind === 'poll') return `📊 Poll: ${message.poll?.question || message.content}`;
+  if (message.kind === 'game_invite') return gameInvitePreview(message.gameInvite);
   if (message.kind === 'album') return albumPreview(message.album);
   if (message.kind === 'image') return 'Sent a photo';
   if (message.kind === 'video') return 'Sent a video';
@@ -571,6 +572,26 @@ async function pollSummaries(messages, viewerId) {
 }
 
 // "📷 3 photos", "🎥 2 videos", "📷 4 photos & videos"
+// GAME INVITES (kind 'game_invite', the merged app's CostQuest game)
+const GAME_INVITE_LABELS = { raid: 'Raid', shrine: 'Shrine', duel: 'Duel' };
+
+function gameInvitePreview(invite) {
+  const label = GAME_INVITE_LABELS[invite?.type] || 'Game';
+  return invite?.place ? `🎮 ${label} at ${invite.place}` : `🎮 ${label} invite`;
+}
+
+function serializeGameInvite(invite) {
+  if (!invite) return null;
+  return {
+    type: invite.type,
+    targetId: invite.targetId,
+    place: invite.place || '',
+    lat: typeof invite.lat === 'number' ? invite.lat : null,
+    lng: typeof invite.lng === 'number' ? invite.lng : null,
+    startsAt: invite.startsAt || null,
+  };
+}
+
 function albumPreview(album) {
   const items = Array.isArray(album) ? album : [];
   const videos = items.filter((item) => item?.kind === 'video').length;
@@ -634,6 +655,8 @@ function serializeMessage(message, { viewerId, conversationType, otherLastReadAt
     album: message.kind === 'album' ? message.album || [] : null,
     // kind 'poll': question, options with vote counts, my votes.
     poll: message.kind === 'poll' && message.poll ? poll || buildPollSummary(message, [], null) : null,
+    // kind 'game_invite': what to open in the game, where and when.
+    gameInvite: message.kind === 'game_invite' ? serializeGameInvite(message.gameInvite) : null,
     mentions,
     mentionsEveryone: Boolean(message.mentionsEveryone),
     forwarded: Boolean(message.forwardedFrom),
@@ -1082,6 +1105,7 @@ async function editMessage(req, res) {
   // Call entries are a record of what happened - not editable.
   if (message.kind === 'call') return res.status(400).json({ error: 'Call entries cannot be edited.' });
   if (message.kind === 'poll') return res.status(400).json({ error: 'Polls cannot be edited.' });
+  if (message.kind === 'game_invite') return res.status(400).json({ error: 'Game invites cannot be edited.' });
 
   const content = typeof req.body.content === 'string' ? req.body.content.trim() : '';
   if (!content) return res.status(400).json({ error: 'content is required.' });
@@ -1367,6 +1391,8 @@ async function forwardCopy(original, targetConversation, userId) {
     media: original.media,
     // An album's photos live in `album`, not `media` - without this the copy would be empty.
     album: original.kind === 'album' ? (original.album || []).map((item) => ({ ...item })) : undefined,
+    // A game invite is forwardable: "come to this raid" passed on to another chat.
+    gameInvite: original.kind === 'game_invite' ? serializeGameInvite(original.gameInvite) : undefined,
     forwardedFrom: original._id,
   });
   await Promise.all([
@@ -1674,6 +1700,8 @@ module.exports = {
   explicitGroupMemberIds,
   forBroadcast,
   albumPreview,
+  gameInvitePreview,
+  serializeGameInvite,
   buildPollSummary,
   pollIsClosed,
   pollSummaries,

@@ -15,6 +15,7 @@ const KIND = {
   album: 'media',
   audio: 'voice',
   call: 'system',
+  game_invite: 'system',
 };
 
 function idOf(value) {

@@ -66,7 +66,7 @@ const messageSchema = new mongoose.Schema(
   {
     conversation: { type: mongoose.Schema.Types.ObjectId, ref: 'Conversation', required: true, index: true },
     sender: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
-    kind: { type: String, enum: ['text', 'image', 'video', 'audio', 'file', 'sticker', 'call', 'album', 'poll'], default: 'text' },
+    kind: { type: String, enum: ['text', 'image', 'video', 'audio', 'file', 'sticker', 'call', 'album', 'poll', 'game_invite'], default: 'text' },
     content: { type: String, default: '', trim: true, maxlength: 2000 },
     media: { type: messageMediaSchema, default: null },
     callLog: { type: callLogSchema, default: null },
@@ -101,6 +101,23 @@ const messageSchema = new mongoose.Schema(
     sparkRevivalIndex: { type: Number, default: undefined },
     // pending | none | judged | assigned: the module's sorting bookkeeping.
     sparkHintState: { type: String, enum: ['pending', 'none', 'judged', 'assigned'], default: 'none' },
+    // kind 'game_invite': an invitation into the CostQuest game (merged app),
+    // a raid, a shrine or a duel at a place and maybe a time. Tapping Join
+    // swipes into the game and opens it there. `content` is the optional note.
+    gameInvite: {
+      type: new mongoose.Schema(
+        {
+          type: { type: String, enum: ['raid', 'shrine', 'duel'], required: true },
+          targetId: { type: String, required: true, maxlength: 80 },
+          place: { type: String, default: '', maxlength: 80 },
+          lat: { type: Number, default: null },
+          lng: { type: Number, default: null },
+          startsAt: { type: Date, default: null },
+        },
+        { _id: false }
+      ),
+      default: undefined,
+    },
     replyTo: { type: mongoose.Schema.Types.ObjectId, ref: 'Message', default: null },
     // Set when this message was created by forwarding another one, so the UI
     // can show a "Forwarded" label. Points at the original message; the

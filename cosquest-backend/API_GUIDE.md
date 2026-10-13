@@ -660,3 +660,13 @@ A poll is a chat message with `kind: "poll"`, so replying, reacting, pinning, de
 - `GET .../messages/:messageId/poll/votes` lists the voters per option. `403` for anonymous polls (counts only).
 
 A poll message carries `poll`: `{ question, options: [{ id, text, votes }], multiple, anonymous, closesAt, closedAt, closed, totalVoters, myVotes }`. The message list, a single message, search results and Spark panels all include live results; `myVotes` is that viewer's own picks. Live: the new poll arrives as `message:new`, and every vote or close sends `poll:updated { conversationId, messageId, poll }` (without `myVotes`: each app keeps its own). Polls cannot be edited or forwarded. The chat-list preview reads `📊 Poll: <question>`.
+
+## Game invites and the game session (merged app)
+
+The merged app carries the CostQuest game next to the chat (`app/`, docs/merged-app-ux.md). A game invite is a chat message with `kind: "game_invite"`, so replying, reacting, pinning, deleting, forwarding and read state work like any message. Needs login and chat membership; sending follows the normal rules (blocked DMs, muted by an admin, slow mode).
+
+- `POST /api/chats/:id/game-invites` with `{ type: "raid" | "shrine" | "duel", targetId (1-80 of letters, digits, : _ . -), place? (up to 80), lat?, lng? (both or neither), startsAt? (ISO date, up to 60 days ahead), note? (up to 300, becomes `content`), replyTo? }` returns `201 { message }`.
+
+The message carries `gameInvite`: `{ type, targetId, place, lat, lng, startsAt }` (`null` on every other kind and once deleted for everyone). Live: `message:new` as usual. Invites cannot be edited; they can be forwarded (the card goes with them). The chat-list preview reads `🎮 Raid at <place>` (or `🎮 Raid invite` with no place).
+
+- `GET /api/game/session` (Bearer) returns `{ user: { id, username, displayName, faction, avatarKey, avatarPhotoUrl, onboardingComplete } }`. It runs the full session check (logged out, or signed in on another phone, is `401`), which is why the game backend's single sign-on (`POST /v1/sso/cosquest` on ubmids/costquest-backend) calls it with the person's own token before giving them their player. Nothing else uses it.
