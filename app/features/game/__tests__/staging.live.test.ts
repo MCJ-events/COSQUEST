@@ -66,3 +66,45 @@ describe("staging game server (live)", { skip: !live && "set CQ_LIVE_STAGING=1" 
     }
   });
 });
+
+describe("a Guardian Duel against staging, at real speed (live)", { skip: !live && "set CQ_LIVE_STAGING=1" }, () => {
+  it("the ported engine's fight is judged won or lost, never held", { timeout: 150000 }, async () => {
+    const { DuelRunner, InputKind, setupFromServer } = await import("../duel/index.ts");
+    const identity = new Identity(randomBytes(32).toString("hex"), "device");
+    const client = new GameClient({ baseUrl: STAGING_GAME_SERVER, identity: () => identity });
+    await client.saveProfile("TS Duelist", { face: 1, mark: 1, tint: "#33C773" });
+    await client.chooseFaction("gaming");
+    const { points } = await client.questPoints(HERE.lat, HERE.lng);
+    const p = points.find((x) => x.tier === "common") ?? points[0];
+    const start = await client.duelStart({ mode: "point", target: p.id, lat: p.lat, lng: p.lng, accuracy_m: 5 });
+    const setup = setupFromServer(start.setup, start.seed_text);
+    // A simple player: walk in, then strike, block now and then, special when charged.
+    let tick = 0;
+    const runner = new DuelRunner(setup, {
+      input: {
+        next() {
+          tick++;
+          const me = runner.sim.state.p1;
+          const them = runner.sim.state.p2;
+          if (me.meter >= 100 && tick % 30 === 0) return InputKind.Special1;
+          if (Math.abs(me.x - them.x) > 1300) return InputKind.MoveToward;
+          if (tick % 90 === 0) return InputKind.HoldStart;
+          if (tick % 90 === 20) return InputKind.HoldEnd;
+          return tick % 9 === 0 ? InputKind.Tap : InputKind.None;
+        },
+      },
+    });
+    let last = performance.now();
+    while (!runner.over) {
+      await new Promise((r) => setTimeout(r, 16));
+      const now = performance.now();
+      runner.advance(now - last);
+      last = now;
+    }
+    const payload = runner.finishPayload();
+    assert.match(payload.hash, /^[0-9a-f]{16}$/);
+    const outcome = await client.duelFinish(start.duel_id, payload);
+    console.log(`[live duel] ${outcome.status} in ${payload.result.ticks} ticks, hp ${payload.result.p1_hp}/${payload.result.p2_hp}, ${payload.inputs.length} inputs, reward ${JSON.stringify(outcome.point?.reward ?? null)}${outcome.message ? `, ${outcome.message}` : ""}`);
+    assert.ok(outcome.status === "won" || outcome.status === "lost", `judged ${outcome.status}: ${outcome.message ?? ""}`);
+  });
+});
