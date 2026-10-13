@@ -62,9 +62,12 @@ export default function GameRoot({ parked }: { parked: boolean }) {
     gameStore.setFocus(null);
   };
 
-  // The Warden greets a point the first time it comes into reach.
+  // The Warden greets a point the first time it comes into reach (and starts
+  // writing the greeting while the player walks up, when the model is on).
   useEffect(() => {
     if (parked || screen.kind !== "home" || !me?.faction) return;
+    const approaching = nearby.find((x) => !gameStore.isCooling(x) && (gameStore.distanceTo(x) ?? 1e9) < gameStore.reach() + 60);
+    if (approaching) wardenVoice.prepare(arriveMoment(ctx(), approaching));
     const p = nearby.find((x) => gameStore.inReach(x) && !gameStore.isCooling(x));
     if (p && !greeted.current.has(p.id)) {
       greeted.current.add(p.id);

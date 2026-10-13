@@ -72,7 +72,13 @@ export default function Encounter({
     gameStore
       .open(point)
       .then((a) => {
-        if (!cancelled) startWith(a);
+        if (cancelled) return;
+        startWith(a);
+        // Both reactions, written while the question is read (blitz waits for its score).
+        if (a.kind !== "blitz") {
+          wardenVoice.prepare(reactionMoment(ctx(), true, point, a.kind));
+          wardenVoice.prepare(reactionMoment(ctx(), false, point, a.kind));
+        }
       })
       .catch((error: Error) => {
         if (!cancelled) setPhase({ failed: error.message });

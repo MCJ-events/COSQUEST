@@ -1,0 +1,31 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'com.cosquest'
+version = '0.1.0'
+
+// The Warden's on-device model for the React Native game on Android: the
+// mote engine (plain C, the SAME sources iOS compiles, in
+// ../costquest-game/ios/Game/Engine) built with the NDK, behind a small JNI
+// bridge. Built at -O3 in every configuration, as on iOS: at -O0 the model
+// runs at a few tokens a second, which is not slower but unusable.
+android {
+  namespace "expo.modules.costquestwarden"
+  defaultConfig {
+    versionCode 1
+    versionName '0.1.0'
+    externalNativeBuild {
+      cmake {
+        arguments "-DANDROID_STL=none"
+      }
+    }
+  }
+  externalNativeBuild {
+    cmake {
+      path "src/main/cpp/CMakeLists.txt"
+      version "3.22.1"
+    }
+  }
+}

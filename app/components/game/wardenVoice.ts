@@ -5,7 +5,7 @@
 import * as Speech from "expo-speech";
 import { useSyncExternalStore } from "react";
 
-import { type LineWriter, lineFor, type WardenMoment } from "@/features/game/warden";
+import { fallbackLine, type LineWriter, type WardenMoment } from "@/features/game/warden";
 import { getPref, setPref } from "@/utils/prefsStorage";
 
 export type Said = { id: number; text: string; moment: string; fromModel: boolean };
@@ -16,6 +16,32 @@ let muted = false;
 let hideTimer: ReturnType<typeof setTimeout> | null = null;
 /** The on-device model, when one is loaded (features/game/wardenModel). */
 let writer: LineWriter | null = null;
+/** Lines the model has written, by moment (written ahead, as on iOS). */
+const written = new Map<string, string>();
+const inFlight = new Map<string, Promise<string | null>>();
+/** How long a moment waits for the model before the authored line (iOS: 2.5 s). */
+const MODEL_WAIT_MS = 2500;
+
+function ask(m: WardenMoment): Promise<string | null> {
+  const key = m.key;
+  const cached = written.get(key);
+  if (cached) return Promise.resolve(cached);
+  const running = inFlight.get(key);
+  if (running) return running;
+  if (!writer) return Promise.resolve(null);
+  const job = writer(m)
+    .then((text) => {
+      if (text) {
+        if (written.size > 200) written.clear();
+        written.set(key, text);
+      }
+      return text;
+    })
+    .catch(() => null)
+    .finally(() => inFlight.delete(key));
+  inFlight.set(key, job);
+  return job;
+}
 const listeners = new Set<() => void>();
 const notify = () => listeners.forEach((l) => l());
 
@@ -48,9 +74,17 @@ export const wardenVoice = {
     notify();
   },
 
-  /** Say a moment's line. Returns it (the reward screen shows it too). */
+  /** Start writing a line now so it is ready when wanted (no-op without a model). */
+  prepare(moment: WardenMoment) {
+    void ask(moment);
+  },
+
+  /** Say a moment's line: the model's if it is ready in time, the authored one otherwise. */
   async speak(moment: WardenMoment, holdMs = 6000): Promise<string> {
-    const line = await lineFor(moment, writer);
+    const fromModel = writer
+      ? await Promise.race([ask(moment), new Promise<null>((r) => setTimeout(() => r(null), MODEL_WAIT_MS))])
+      : null;
+    const line = fromModel ? { text: fromModel, fromModel: true } : { text: fallbackLine(moment), fromModel: false };
     said = { id: ++serial, text: line.text, moment: moment.kind, fromModel: line.fromModel };
     notify();
     if (!muted) {

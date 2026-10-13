@@ -10,6 +10,9 @@ import Animated, { SlideInDown, SlideOutDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { gameStore, useGame } from "@/features/game/runtime";
+import { startWardenModel, useWardenModel } from "@/features/game/wardenModel";
+
+import { wardenVoice } from "./wardenVoice";
 
 import { ProgressBar } from "./kit";
 import { GF, GP, realmColor, realmIcon, tierColor } from "./theme";
@@ -73,6 +76,7 @@ export default function Journal({ onClose, initial = "today" }: { onClose: () =>
                 </View>
               </View>
             ))}
+            <WardenCard />
             {me?.today ? (
               <Text style={styles.muted}>
                 Today: {me.today.points_played} points, {me.today.correct} won, {me.today.xp} XP{me.today.best_place ? `. Best: ${me.today.best_place}` : ""}.
@@ -162,7 +166,50 @@ export default function Journal({ onClose, initial = "today" }: { onClose: () =>
   );
 }
 
+/** The Warden's voice on this phone: fetch the model, and what it measures. */
+function WardenCard() {
+  const model = useWardenModel();
+  const mb = model.bytes ? Math.round(model.bytes / 1048576) : null;
+  const text =
+    model.phase === "unsupported"
+      ? "The Warden speaks its written lines on this phone."
+      : model.phase === "too-small"
+        ? "This phone is too small to hold the Warden's model, so it speaks its written lines."
+        : model.phase === "off"
+          ? "Let the Warden write its own lines here, on this phone, with no network. A one-time download."
+          : model.phase === "downloading"
+            ? `Downloading ${model.label ?? "the model"}: ${Math.round((model.progress ?? 0) * 100)}%${mb ? ` of ${mb} MB` : ""}`
+            : model.phase === "verifying"
+              ? "Checking every byte…"
+              : model.phase === "loading"
+                ? "Waking the Warden…"
+                : model.phase === "ready"
+                  ? `${model.label} is writing lines here.${model.tokensPerSecond ? ` ${model.tokensPerSecond.toFixed(1)} words a second, first word in ${((model.firstTokenMs ?? 0) / 1000).toFixed(1)} s.` : ""} ${model.written} written, ${model.rejected} rejected.`
+                  : `The model could not start: ${model.error ?? "unknown"}. The written lines speak meanwhile.`;
+  return (
+    <View style={styles.streak}>
+      <Ionicons name="eye" size={26} color={GP.skyDeep} />
+      <View style={{ flex: 1, gap: 6 }}>
+        <Text style={styles.streakTitle}>{"The Warden's voice"}</Text>
+        <Text style={styles.muted}>{text}</Text>
+        {model.phase === "downloading" ? <ProgressBar value={model.progress ?? 0} color={GP.skyDeep} track={GP.track} /> : null}
+        {model.phase === "off" || model.phase === "failed" ? (
+          <Pressable
+            onPress={() => startWardenModel((w) => wardenVoice.setWriter(w))}
+            style={styles.wardenButton}
+            accessibilityRole="button"
+            accessibilityLabel="Download the Warden's model">
+            <Text style={styles.wardenButtonText}>{model.phase === "failed" ? "Try again" : "Download"}</Text>
+          </Pressable>
+        ) : null}
+      </View>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
+  wardenButton: { alignSelf: "flex-start", paddingHorizontal: 14, height: 32, borderRadius: 16, backgroundColor: GP.skyDeep, justifyContent: "center" },
+  wardenButtonText: { fontFamily: GF.bold, fontSize: 13, color: "#FFF" },
   sheet: { position: "absolute", left: 0, right: 0, bottom: 0, borderTopLeftRadius: 28, borderTopRightRadius: 28, backgroundColor: GP.cream, elevation: 18 },
   head: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 18, paddingTop: 16 },
   title: { fontFamily: GF.display, fontSize: 26, color: GP.ink },
