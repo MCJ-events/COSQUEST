@@ -11,6 +11,11 @@
 #   scripts/verify-ios.sh --sim-only      only the simulator build
 #   scripts/verify-ios.sh --run           also install and launch a Release
 #                                         simulator build (JS bundled in)
+#   scripts/verify-ios.sh --rn-game       the bundled JS uses the shared React
+#                                         Native game (gameUi 'rn', the one
+#                                         Android runs) against the STAGING
+#                                         game server, instead of the SwiftUI
+#                                         game. Use with --run to try it.
 #
 # Needs: Xcode 26+ (iOS 18 SDK or later) with its command line tools, Node 22,
 # CocoaPods, and for Unity the GitHub CLI signed in to an account that can
@@ -28,12 +33,14 @@ mkdir -p "$LOGS"
 NO_UNITY=0
 SIM_ONLY=0
 RUN=0
+RN_GAME=0
 for arg in "$@"; do
   case "$arg" in
     --no-unity) NO_UNITY=1 ;;
     --sim-only) SIM_ONLY=1 ;;
     --run) RUN=1 ;;
-    -h|--help) sed -n '2,20p' "$0"; exit 0 ;;
+    --rn-game) RN_GAME=1 ;;
+    -h|--help) sed -n '2,25p' "$0"; exit 0 ;;
     *) echo "unknown option: $arg" >&2; exit 2 ;;
   esac
 done
@@ -53,6 +60,12 @@ need pod "gem install cocoapods (or brew install cocoapods)"
 # preview profile; nothing secret). An app/.env with your own wins.
 export EXPO_PUBLIC_API_URL="${EXPO_PUBLIC_API_URL:-https://cosquest-1.onrender.com}"
 export EXPO_PUBLIC_WEB_URL="${EXPO_PUBLIC_WEB_URL:-https://cosquest.vercel.app}"
+if [ "$RN_GAME" = 1 ]; then
+  # The shared React Native game on iOS (docs/android-port.md §4), on staging.
+  export EXPO_PUBLIC_GAME_UI=rn
+  export EXPO_PUBLIC_GAME_SERVER="${EXPO_PUBLIC_GAME_SERVER:-staging}"
+  export EXPO_PUBLIC_WORLD_TIMING=1
+fi
 
 # 1. UnityFramework (device builds only).
 if [ "$NO_UNITY" = 1 ]; then
@@ -146,6 +159,7 @@ if [ "$RUN" = 1 ]; then
 fi
 
 echo
+[ "$RN_GAME" = 1 ] && ran+=("(JS built with gameUi=rn, game server $EXPO_PUBLIC_GAME_SERVER)")
 echo "verify-ios: passed"
 echo "  ran:     ${ran[*]}"
 [ ${#skipped[@]} -gt 0 ] && echo "  skipped: ${skipped[*]}"

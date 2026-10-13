@@ -105,7 +105,6 @@ export default function Encounter({
     } catch (error) {
       setPhase({ failed: `Couldn't send your answer: ${(error as Error).message}. Open the point again to retry.` });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [attempt, point]);
 
   // The server's clock: when it runs out, send whatever was answered.
