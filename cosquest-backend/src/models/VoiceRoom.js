@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const limits = require('../config/callLimits');
 
 // A live voice chat in the Community room or a faction room - like WhatsApp's
 // group voice chat. Nobody's phone rings: members see it's live and can join
@@ -8,7 +9,8 @@ const mongoose = require('mongoose');
 // Anyone who hasn't checked in for 90 seconds (app closed, lost signal) is
 // removed automatically, so a voice chat never stays "live" with nobody in it.
 
-const MAX_MEMBERS = 50;
+// How many people can be in one voice chat: VOICE_ROOM_MAX_MEMBERS (default
+// 1000, see src/config/callLimits.js).
 const STALE_AFTER_MS = 90 * 1000;
 
 const voiceMemberSchema = new mongoose.Schema(
@@ -49,7 +51,7 @@ voiceRoomSchema.index({ 'members.user': 1, active: 1 });
 
 const VoiceRoom = mongoose.model('VoiceRoom', voiceRoomSchema);
 
-VoiceRoom.MAX_MEMBERS = MAX_MEMBERS;
+Object.defineProperty(VoiceRoom, 'MAX_MEMBERS', { get: () => limits.voiceRoomMaxMembers() });
 VoiceRoom.STALE_AFTER_MS = STALE_AFTER_MS;
 
 module.exports = VoiceRoom;

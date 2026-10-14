@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const limits = require('../config/callLimits');
 
 // One document per call. A call always starts in a DM (one-to-one), and
 // anyone in it can then add more people - it becomes a group call.
@@ -18,8 +19,9 @@ const mongoose = require('mongoose');
 //   missed    - they didn't answer within 45 seconds
 //   left      - they were in the call and left (they can join again)
 
-const MAX_IN_CALL = 8; // people ringing or in the call at the same time
-const MAX_EVER_INVITED = 30; // everyone who was ever part of one call
+// Size limits come from env (src/config/callLimits.js):
+//   CALL_MAX_IN_CALL       people ringing or in the call at the same time (default 1000)
+//   CALL_MAX_EVER_INVITED  everyone who was ever part of one call (default 5000)
 
 const callMemberSchema = new mongoose.Schema(
   {
@@ -60,8 +62,8 @@ const callSchema = new mongoose.Schema(
       required: true,
       validate: {
         validator: (participants) =>
-          participants.length >= 2 && participants.length <= MAX_EVER_INVITED,
-        message: `A call needs between 2 and ${MAX_EVER_INVITED} people.`,
+          participants.length >= 2 && participants.length <= limits.maxEverInvited(),
+        message: () => `A call needs between 2 and ${limits.maxEverInvited()} people.`,
       },
     },
     // Each person's own status in this call.
@@ -108,7 +110,10 @@ callSchema.index(
 
 const Call = mongoose.model('Call', callSchema);
 
-Call.MAX_IN_CALL = MAX_IN_CALL;
+// Kept for anything that read the old constant; the live value is
+// limits.maxInCall(), which follows CALL_MAX_IN_CALL.
+Object.defineProperty(Call, 'MAX_IN_CALL', { get: () => limits.maxInCall() });
+Object.defineProperty(Call, 'MAX_EVER_INVITED', { get: () => limits.maxEverInvited() });
 
 // The old one-to-one version had a unique index allowing each person in only
 // one active call, built on `participants`. That index would block group
