@@ -21,7 +21,7 @@ const { transcribeAudio } = require('../utils/transcribeAudio');
 const { buildContentShare } = require('../utils/shareLinks');
 const { isBlockedEitherWay } = require('./publicProfileController');
 const { emitToConversation, emitToConversationExcept, emitToUsers } = require('../realtime/socket');
-const { isOnline } = require('../realtime/presence');
+const { isOnline, onlineTotal, onlineUserIds, countOnlineAmong } = require('../realtime/presence');
 const { rankFor } = require('../utils/ranks');
 
 const EPOCH = new Date(0);
@@ -224,6 +224,38 @@ async function memberFilterFor(conversation) {
 
 async function countGroupMembers(conversation) {
   return User.countDocuments(await memberFilterFor(conversation));
+}
+
+// ==========================================================================
+// ONLINE COUNT (group / faction / community chat header: "12 online")
+// ==========================================================================
+// Members online right now, leaving out anyone who hides their online status
+// (privacy.showOnlineStatus false - the same opt-out as everywhere else).
+// Whichever side is smaller is walked: the online set (asked of Mongo with
+// $in) or the member list (asked of Redis with SMISMEMBER). If both are over
+// ONLINE_COUNT_MAX the answer is null (unknown) rather than a slow request.
+const ONLINE_COUNT_MAX = 5000;
+const ONLINE_COUNT_TYPES = ['group', 'faction', 'community'];
+
+async function onlineCountFor(conversation, memberCount) {
+  if (!ONLINE_COUNT_TYPES.includes(conversation.type)) return null;
+  const filter = { $and: [await memberFilterFor(conversation), { 'privacy.showOnlineStatus': { $ne: false } }] };
+
+  const online = await onlineTotal();
+  if (!online) return 0;
+  const members = Number.isFinite(memberCount) ? memberCount : Infinity;
+
+  if (online <= ONLINE_COUNT_MAX && online <= members) {
+    const ids = (await onlineUserIds()).filter((id) => mongoose.isValidObjectId(id));
+    if (!ids.length) return 0;
+    return User.countDocuments({ $and: [...filter.$and, { _id: { $in: ids } }] });
+  }
+  if (members <= ONLINE_COUNT_MAX) {
+    const rows = await User.find(filter, '_id').limit(ONLINE_COUNT_MAX + 1).lean();
+    if (rows.length > ONLINE_COUNT_MAX) return null;
+    return countOnlineAmong(rows.map((row) => row._id));
+  }
+  return null;
 }
 
 // Keeps only real people who can actually see this chat (never the sender).
@@ -757,7 +789,9 @@ async function getConversationDetail(req, res) {
       pinnedMessage = pinPreview(pinned, conversation);
     }
   }
-  return res.json({ chat: { ...summary, pinnedMessage } });
+  // Group / faction / community only (null for DMs, or when too big to count quickly).
+  const onlineCount = await onlineCountFor(conversation, summary.memberCount);
+  return res.json({ chat: { ...summary, pinnedMessage, onlineCount } });
 }
 
 // GET /api/chats/:conversationId/members?search=&page=&limit=

@@ -3,8 +3,11 @@
  * `rank` on senders / member lists), the online count in a chat's header
  * (GET /api/chats/:id onlineCount) and search by date range / oldest first.
  */
+const mongoose = require('mongoose');
 const User = require('../src/models/User');
 const { signToken } = require('../src/utils/token');
+const presence = require('../src/realtime/presence');
+const { getRedisClient } = require('../src/config/redis');
 const { rankFor, getLadder } = require('../src/utils/ranks');
 
 async function run(baseUrl) {
@@ -133,6 +136,40 @@ async function run(baseUrl) {
     'GET /api/groups/:id/members: rank on each member',
     groupMembers
   );
+
+  console.log('\n--- chat pages: online count ---');
+  const redis = getRedisClient();
+  const detail = async (id, token = a.token) => (await request('GET', `/api/chats/${id}`, token)).data.chat;
+  check((await detail(groupId)).onlineCount === 0, 'nobody connected -> onlineCount 0');
+  await Promise.all([a, b, c, e].map((user) => presence.markOnline(user.id)));
+  const counted = await detail(groupId);
+  check(counted.onlineCount === 2, 'counts online members (me included), not people hiding their status, not outsiders', counted.onlineCount);
+  // More people online than members: the member list is checked against Redis instead.
+  const strangers = Array.from({ length: 20 }, () => String(new mongoose.Types.ObjectId()));
+  await redis.sadd('presence:online', ...strangers);
+  check((await detail(groupId)).onlineCount === 2, 'same answer when the online set is bigger than the group (SMISMEMBER path)');
+  await redis.srem('presence:online', ...strangers);
+  await presence.markOffline(b.id);
+  check((await detail(groupId)).onlineCount === 1, 'someone going offline drops the count');
+
+  const rooms = (await request('GET', '/api/chats', a.token)).data.chats || [];
+  const factionRoom = rooms.find((chat) => chat.type === 'faction');
+  const community = rooms.find((chat) => chat.type === 'community');
+  const factionBefore = (await detail(factionRoom.id)).onlineCount;
+  await presence.markOnline(d.id);
+  const factionAfter = (await detail(factionRoom.id)).onlineCount;
+  check(Number.isInteger(factionBefore) && factionAfter === factionBefore + 1, 'faction room: members with no member rows are counted', { factionBefore, factionAfter });
+  const communityCount = (await detail(community.id)).onlineCount;
+  await presence.markOnline(b.id);
+  check(Number.isInteger(communityCount) && (await detail(community.id)).onlineCount === communityCount + 1, 'community: counted too');
+  check(
+    !rooms.some((chat) => 'onlineCount' in chat),
+    'the chat list does not compute it (detail only)',
+    rooms.map((chat) => Object.keys(chat))
+  );
+  const dm = await request('POST', '/api/chats/dm', a.token, { username: b.username });
+  check((await detail(dm.data.chat.id)).onlineCount === null, 'DMs: onlineCount null (they have isOnline on the other person)');
+  await Promise.all([a, b, c, d, e].map((user) => presence.markOffline(user.id)));
 
   return { pass, fail };
 }
