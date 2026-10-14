@@ -250,3 +250,17 @@ Built against the cosquest-sparks `voice-room-sparks` branch (module changes und
 **Ranks** ("calling all sergeants"). The module matches a rank target against `ChatMember.rank`, lower-cased, by position in its config `ranks` (default `private, corporal, sergeant, lieutenant, captain, omega`, not CosQuest's ladder). Branch `wale-pages-backend` adds the ladder (`src/utils/ranks.js`, `GET /api/ranks`, `rankOverride` on User) and shows ranks on message senders, but does not touch `src/sparks/members.js`, so on its own the module would still see no ranks. This branch closes that gap without depending on it: `members.js` selects `pointsBalance rankOverride` and, when `src/utils/ranks.js` is present, sets `rank` to the rank's name in lower case; `index.js` then sets the module's `ranks` to the ladder's names in the same spelling (before `SPARKS_CONFIG`, which can still override), and `command-context` returns them for the SDK. Verified by copying that branch's `src/utils/ranks.js` in locally (not committed): a member with 1,600 points is listed as "sergeant" at the ladder's sergeant position. After both branches are merged nothing else is needed for rank targets to resolve. Two limits remain, by design: commands need an admin (Q7), so they work in DM calls by leaders who run groups (reaching those groups' members), not in Community or faction voice chats; and `RANKS_JSON` names are what people must say ("staff sergeant").
 
 **Vendoring.** The transcript and share routes need a module with `transcript()` and `shareOutline()` (after 1.3.0). With the vendored 1.3.0 they answer `501` and `test/sparksVoiceRooms.js` reports those checks as skipped; the voice chat wiring works with 1.3.0. Developed against a local build (`pnpm pack` in cosquest-sparks `packages/sparks-backend`, `npm install --no-save <tgz>`; not committed). When the release is cut: replace `vendor/cosquest-sparks-backend-1.3.0.tgz` with the new tarball as in section 4 and run `npm test`.
+
+
+## 14. Module 1.3.1: live summary of the current topic in calls
+
+Built against the cosquest-sparks `live-topic-summary` branch (CHANGELOG "Unreleased"; app side: cosquest-sparks `docs/APP_SPEC_live_summary.md`). While a call runs, the scribe phone writes a 1 to 2 sentence summary of the current topic; the module checks it, stores the latest per topic and sends `call.topic_summary` to the call's attendees over the existing `sparks` channel (`ports.broadcastToCall`), and to someone joining mid-call after the topics so far (`ports.sendToUsers`). No new port, route or socket event is needed here.
+
+| Where | What |
+|---|---|
+| `src/sparks/mongoStore.js` | `sparks_topic_summaries` (one row per call and topic, `_id` = `callId:topicId`) and the two optional store methods `saveTopicSummary` / `topicSummaries`, so summaries survive a restart and are shared between instances. Without them the module keeps them in memory |
+| `test/sparksStore.js` | 4 checks: latest version per topic, first-summarized order, rows as written, calls not mixed |
+
+Config (module defaults; override with the `SPARKS_CONFIG` env JSON, e.g. `{"liveTopicSummary":false}`): `liveTopicSummary` true (false: topics only, as before), `liveTopicSummaryEveryMs` 30,000, `liveTopicSummaryMinLines` 3, `liveTopicSummaryMaxChars` 280.
+
+**Vendoring.** The store methods are unused until the module with live summaries is vendored (the vendored 1.3.0 never calls them, and sends nothing new). When that release is cut: replace the tarball as in section 4 and run `npm test`.
