@@ -172,6 +172,22 @@ Call transcripts (`sparks_segments`) and outlines are kept until you delete them
 
 ## 12. Known gaps
 
-- Targeted voice calls ("calling all sergeants") are logged, not rung: CosQuest calls have no "ring this subset" path yet (`ports.onTargetedCall`). Users have no rank yet, so rank targets match nobody.
+- Users have no rank yet, so rank targets in voice commands ("calling all sergeants") match nobody; role targets (expertise labels) work. Targeted calls ring (section 13).
 - Manual starts over REST use the module's own `backend.startSpark` (1.2). Before 1.2 they went through a stand-in device per user (`web-<userId>`); any such rows left in `sparks_devices` are harmless and unused.
 - Edits and voice-note transcripts that arrive after sending are not re-sent to phones; the module reads the current text whenever it builds a job.
+
+## 13. Module 1.3: Manage Sparks, search inside a Spark, targeted calls
+
+Built against the cosquest-sparks `admin-search` branch (module changes listed under "Unreleased" in its CHANGELOG). App-facing shapes: cosquest-sparks `docs/APP_SPEC_admin_search.md`; summary in API_GUIDE.md (Sparks).
+
+| Where | What |
+|---|---|
+| `src/sparks/admin.js` | M31: proposed merges (list, accept, dismiss), merging several Sparks at once (`POST .../sparks/merge`), `notifyAdmins` (socket `spark:merge_suggested` + bell) for `ports.onMergeSuggested` |
+| `src/sparks/search.js` | M16 limited to one Spark: `GET .../sparks/:sparkId/search` and the in-Spark jump-to-message context. Uses the module's `sparkHistory` (eras, follows merges) and `readableSeqs` (canReadMany) |
+| `src/sparks/targetedCalls.js` | `ports.onTargetedCall` rings the targets into the leader's call (or starts one); `ports.commandMembers` (the call's DM plus the groups the leader runs); `GET /api/calls/:callId/command-context` |
+| `src/controllers/callController.js` | `inviteToCall`'s body is now `inviteUsers(callId, inviter, { userIds, usernames })`, shared with targeted calls (same checks, same response); new `startCallFor` (a DM call without an HTTP request) |
+| `src/sparks/mongoStore.js` | `sparks_merge_suggestions` (unique `pairKey`: a pair is proposed once, ever) and the four optional store methods |
+| `test/sparksAdminSearch.js` | 44 checks: proposals live to admins, 403s, accept/dismiss/409, multi-merge all-or-nothing, in-Spark search by era and through a merged id, a command ringing two people with the blocked and busy skipped, batches, a new call when the leader left |
+
+**Vendoring.** These routes need module 1.3 (`admin.mergeMany`, `admin.mergeSuggestions`, `sparkHistory`, `readableSeqs`). With the vendored 1.2.3 they answer `501` and `test/sparksAdminSearch.js` reports the admin and search part as skipped; targeted calls work with 1.2.3 but reach only the call's own DM (1.2.3 ignores `commandMembers`). When the release is cut: replace `vendor/cosquest-sparks-backend-1.2.3.tgz` with the new tarball as in section 4 and run `npm test` (811 checks with it).
+
