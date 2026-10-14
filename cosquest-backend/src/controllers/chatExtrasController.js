@@ -75,11 +75,36 @@ function contextLabel(message, spark) {
   return (message.sparkEra || 0) >= eras - 1 ? `${spark.subject} · revived` : `${spark.subject} · history`;
 }
 
+// A `from` / `to` search bound: an ISO date ("2026-10-01") or date-time
+// ("2026-10-01T09:30:00Z"). A plain date as `to` means the end of that day
+// (UTC), so from=to=2026-10-01 finds everything sent that day.
+// Returns undefined (not given), null (invalid) or a Date.
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+const ISO_DATE_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:?\d{2})?$/;
+
+function parseSearchDate(value, endOfDay) {
+  if (value === undefined || value === '') return undefined;
+  if (typeof value !== 'string') return null;
+  const text = value.trim();
+  const dateOnly = ISO_DATE.test(text);
+  if (!dateOnly && !ISO_DATE_TIME.test(text)) return null;
+  const zoned = /(Z|[+-]\d{2}:?\d{2})$/.test(text);
+  // No time zone given: UTC (never the server's local time).
+  const date = new Date(dateOnly ? `${text}T00:00:00.000Z` : zoned ? text : `${text}Z`);
+  if (Number.isNaN(date.getTime())) return null;
+  // Impossible days roll over in Date (2026-02-31 -> March 3): refuse them.
+  if (!(zoned && !text.endsWith('Z')) && date.toISOString().slice(0, 10) !== text.slice(0, 10)) return null;
+  if (dateOnly && endOfDay) return new Date(date.getTime() + 24 * 60 * 60 * 1000 - 1);
+  return date;
+}
+
 // ==========================================================================
 // M16 · SEARCH IN CHAT
 // GET /api/chats/:conversationId/search?q=spider-man+mask&page=1&limit=20
-// Text and voice-note transcripts, newest first. Each result has its context
-// label and the Spark it belongs to (if any).
+//   &from=2026-10-01&to=2026-10-14&sort=newest|oldest
+// Text and voice-note transcripts, newest first (sort=oldest for oldest
+// first). from / to (optional, inclusive) limit it to messages sent in that
+// range. Each result has its context label and the Spark it belongs to (if any).
 // ==========================================================================
 async function searchMessages(req, res) {
   const { conversation, error } = await loadConversationForUser(req.params.conversationId, req.user);
@@ -93,6 +118,15 @@ async function searchMessages(req, res) {
   const page = Math.min(500, Math.max(1, Number(req.query.page) || 1));
   const pattern = new RegExp(escapeRegex(q), 'i');
 
+  const from = parseSearchDate(req.query.from, false);
+  const to = parseSearchDate(req.query.to, true);
+  if (from === null) return res.status(400).json({ error: 'from must be a date like 2026-10-01 or 2026-10-01T09:30:00Z.' });
+  if (to === null) return res.status(400).json({ error: 'to must be a date like 2026-10-14 or 2026-10-14T18:00:00Z.' });
+  if (from && to && from > to) return res.status(400).json({ error: 'from must be on or before to.' });
+  const sort = req.query.sort === undefined || req.query.sort === '' ? 'newest' : req.query.sort;
+  if (sort !== 'newest' && sort !== 'oldest') return res.status(400).json({ error: 'sort must be newest or oldest.' });
+  const direction = sort === 'oldest' ? 1 : -1;
+
   const filter = {
     conversation: conversation._id,
     deletedForEveryone: { $ne: true },
@@ -100,10 +134,11 @@ async function searchMessages(req, res) {
     kind: { $ne: 'call' },
     $or: [{ content: pattern }, { 'media.transcript': pattern }],
   };
+  if (from || to) filter.createdAt = { ...(from ? { $gte: from } : {}), ...(to ? { $lte: to } : {}) };
 
   const [docs, total] = await Promise.all([
     Message.find(filter)
-      .sort({ createdAt: -1, _id: -1 })
+      .sort({ createdAt: direction, _id: direction })
       .skip((page - 1) * limit)
       .limit(limit)
       .populate('sender', SENDER_FIELDS)

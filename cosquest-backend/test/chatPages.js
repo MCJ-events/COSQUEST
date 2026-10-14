@@ -5,6 +5,7 @@
  */
 const mongoose = require('mongoose');
 const User = require('../src/models/User');
+const Message = require('../src/models/Message');
 const { signToken } = require('../src/utils/token');
 const presence = require('../src/realtime/presence');
 const { getRedisClient } = require('../src/config/redis');
@@ -170,6 +171,45 @@ async function run(baseUrl) {
   const dm = await request('POST', '/api/chats/dm', a.token, { username: b.username });
   check((await detail(dm.data.chat.id)).onlineCount === null, 'DMs: onlineCount null (they have isOnline on the other person)');
   await Promise.all([a, b, c, d, e].map((user) => presence.markOffline(user.id)));
+
+  console.log('\n--- chat pages: search by date ---');
+  const say = async (content, at) => {
+    const sent = await request('POST', `/api/chats/${groupId}/messages`, a.token, { content });
+    // Native driver: Mongoose treats createdAt as immutable.
+    await Message.collection.updateOne({ _id: new mongoose.Types.ObjectId(sent.data.message.id) }, { $set: { createdAt: new Date(at) } });
+    return sent.data.message.id;
+  };
+  const jan5 = await say('dragonfruit smoothie one', '2026-01-05T10:00:00.000Z');
+  const jan10 = await say('dragonfruit smoothie two', '2026-01-10T10:00:00.000Z');
+  const jan15 = await say('dragonfruit smoothie three', '2026-01-15T23:59:59.000Z');
+  const search = (query) => request('GET', `/api/chats/${groupId}/search?q=dragonfruit${query}`, b.token);
+  const ids = (response) => (response.data.results || []).map((result) => result.message.id).join();
+
+  const all = await search('');
+  check(all.status === 200 && ids(all) === [jan15, jan10, jan5].join() && all.data.pagination.total === 3, 'no range: everything, newest first (unchanged)', all.data);
+  check(ids(await search('&sort=oldest')) === [jan5, jan10, jan15].join(), 'sort=oldest: oldest first');
+  check(ids(await search('&sort=newest')) === [jan15, jan10, jan5].join(), 'sort=newest is the default order');
+  const fromTen = await search('&from=2026-01-10');
+  check(ids(fromTen) === [jan15, jan10].join() && fromTen.data.pagination.total === 2, 'from (a date) is inclusive', fromTen.data);
+  check(ids(await search('&to=2026-01-10')) === [jan10, jan5].join(), 'to (a date) includes that whole day');
+  check(ids(await search('&from=2026-01-10&to=2026-01-10')) === jan10, 'from = to: just that day');
+  check(ids(await search('&to=2026-01-15')) === [jan15, jan10, jan5].join(), 'to includes a message at 23:59:59 that day');
+  check(ids(await search('&from=2026-01-10T10:00:00Z&to=2026-01-15T23:59:59.000Z&sort=oldest')) === [jan10, jan15].join(), 'date-times are inclusive to the second');
+  check(ids(await search('&to=2026-01-10T09:59:59Z')) === jan5, 'a date-time bound is exact');
+  const offset = await search(`&from=${encodeURIComponent('2026-01-10T11:00:00+01:00')}&to=${encodeURIComponent('2026-01-10T11:00:00+01:00')}`);
+  check(ids(offset) === jan10, 'time zone offsets are understood', offset.data);
+  const shape = all.data;
+  check(typeof shape.query === 'string' && Array.isArray(shape.results) && shape.results[0].context && shape.pagination, 'response shape unchanged ({ query, results: [{ message, context }], pagination })');
+
+  const bad = await search('&from=yesterday');
+  check(bad.status === 400 && /from/.test(bad.data.error), 'an invalid from -> 400 with an error', bad);
+  const badTo = await search('&to=2026-02-31');
+  check(badTo.status === 400 && /to/.test(badTo.data.error), 'an impossible date -> 400', badTo);
+  const backwards = await search('&from=2026-01-15&to=2026-01-05');
+  check(backwards.status === 400 && /before/.test(backwards.data.error), 'from after to -> 400', backwards);
+  const badSort = await search('&sort=sideways');
+  check(badSort.status === 400 && /sort/.test(badSort.data.error), 'an unknown sort -> 400', badSort);
+  check((await request('GET', `/api/chats/${groupId}/search?q=dragonfruit&from=2026-01-01`, e.token)).status === 403, 'outsiders still cannot search the chat');
 
   return { pass, fail };
 }
