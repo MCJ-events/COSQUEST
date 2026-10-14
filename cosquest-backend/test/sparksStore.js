@@ -88,6 +88,39 @@ async function run() {
   await store.addPing(sparkId, 0, 'Front-end', ['u1']);
   check((await store.hasPing(sparkId, 0, 'Front-end')) && !(await store.hasPing(sparkId, 1, 'Front-end')), 'role pings are once per role per revival');
 
+  console.log('\n--- sparks store: role pings kept for the app ---');
+  // The module stores the job result (with confidences) before applying it.
+  await store.c.jobs.insertOne({
+    _id: `job_${tag}_pings`, type: 'spark.rolepings', scopeId: sparkId, chatId: `chat_${tag}`, idempotencyKey: `pings_${tag}`, status: 'done', endedAt: new Date(),
+    result: { type: 'spark.rolepings', pings: [{ role: 'Design', userIds: ['u2', 'u3'], confidence: 0.87 }] },
+  });
+  await new Promise((resolve) => setTimeout(resolve, 5)); // distinct `at`
+  await store.addPing(sparkId, 0, 'Design', ['u2', 'u3']);
+  const pings = await store.pingsOfSpark(sparkId);
+  check(
+    pings.length === 2 && pings[0].role === 'Design' && pings[0].confidence === 0.87 && pings[0].at instanceof Date && pings[1].role === 'Front-end' && pings[1].confidence === null,
+    'addPing records when it was applied and the confidence from its job (null without one); newest first',
+    pings
+  );
+  await store.addPing(sparkId, 0, 'Design', ['someone-else']);
+  check((await store.pingsOfSpark(sparkId)).filter((p) => p.role === 'Design').map((p) => p.userIds.join()).join('|') === 'u2,u3', 'a repeat ping for the same role and revival changes nothing');
+  for (let i = 0; i < 12; i += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 2)); // distinct `at`
+    await store.addPing(sparkId, 1, `Role${i}`, ['u1']);
+  }
+  const recent = await store.pingsOfSpark(sparkId);
+  check(recent.length === 10 && recent[0].role === 'Role11', 'pingsOfSpark returns the last 10', recent.map((p) => p.role));
+  check((await store.pingsOfSpark('spk_none')).length === 0, 'a Spark with no pings -> []');
+  const { serializeRow, rolePingsJson } = require('../src/sparks/compat');
+  const json = rolePingsJson(pings);
+  check(
+    json.length === 2 && Object.keys(json[0]).sort().join() === 'at,role,userIds' && json[0].userIds.join() === 'u2,u3' && !Number.isNaN(Date.parse(json[0].at)),
+    'rolePings JSON is { role, userIds, at } only (no confidence)',
+    json
+  );
+  const serialized = await serializeRow(store, await store.getSpark(sparkId));
+  check(serialized.rolePings.length === 10 && serialized.rolePings[0].role === 'Role11', 'the Spark JSON carries rolePings', serialized.rolePings);
+
   console.log('\n--- sparks store: messages (their collection) ---');
   const conversation = new mongoose.Types.ObjectId();
   const sender = new mongoose.Types.ObjectId();
@@ -117,7 +150,7 @@ async function run() {
   check(row.chatId === String(conversation) && row.senderId === String(sender) && row.kind === 'text' && row.sparkRevivalIndex === 0 && typeof row.sentAt === 'string', 'a Message maps onto MessageRow', row);
   check((await store.recentSenders(String(conversation), Date.now() - 60000)).join() === String(sender), 'recentSenders');
 
-  await store.c.jobs.deleteMany({ idempotencyKey: { $in: [`key_${tag}`, `race_${tag}`] } });
+  await store.c.jobs.deleteMany({ idempotencyKey: { $in: [`key_${tag}`, `race_${tag}`, `pings_${tag}`] } });
   return { pass, fail };
 }
 
