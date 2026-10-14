@@ -24,14 +24,15 @@ const ORDINALS: string[][] = [
 
 const FILLERS = new Set(["the", "its", "it", "is", "um", "uh", "answer", "option", "one", "i", "think", "say"]);
 
-/** Lower case, accents folded, split on anything that is not a letter or digit. */
+/**
+ * Lower case, accents folded, split on anything that is not a letter or digit.
+ * (No \p{...} escapes: Hermes is not guaranteed to have them. Latin letters
+ * are enough: the answers are English.)
+ */
 export function spokenWords(s: string): string[] {
-  return s
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/\p{M}/gu, "")
-    .split(/[^\p{L}\p{N}]+/u)
-    .filter(Boolean);
+  let lower = s.toLowerCase();
+  if (typeof lower.normalize === "function") lower = lower.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  return lower.split(/[^0-9a-z\u00df-\u00ff\u0100-\u024f]+/).filter(Boolean);
 }
 
 const isNumber = (w: string) => /^[+-]?\d+$/.test(w);
