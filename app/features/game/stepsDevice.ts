@@ -1,0 +1,81 @@
+// The phone side of walking rewards: the step counter through the game
+// module (modules/costquest-game StepCounter.kt), the Physical activity
+// permission, and the ledger saved with the app's small settings. steps.ts is
+// the pure part; this file is the glue (like runtime.ts), so it is not unit
+// tested. iOS: CMPedometer in Features/StepsFeature.swift.
+import { PermissionsAndroid, Platform } from "react-native";
+
+import { nativeHelpers } from "@/modules/costquest-game/src";
+import { getPref, setPref } from "@/utils/prefsStorage";
+
+import { gameStore } from "./runtime.ts";
+import {
+  EMPTY_STEPS_VIEW,
+  LEDGER_KEY,
+  isValidReading,
+  noteSteps as noteStepsWith,
+  type SensorAnswer,
+  type StepsDeps,
+  type StepsView,
+  updateSteps,
+} from "./steps.ts";
+
+/** ACTIVITY_RECOGNITION is a run-time permission from Android 10 (API 29); before that the counter is open. */
+async function permitted(ask: boolean): Promise<"granted" | "denied"> {
+  if (Platform.OS !== "android" || Number(Platform.Version) < 29) return "granted";
+  const permission = PermissionsAndroid.PERMISSIONS.ACTIVITY_RECOGNITION;
+  if (await PermissionsAndroid.check(permission)) return "granted";
+  if (!ask) return "denied";
+  const result = await PermissionsAndroid.request(permission, {
+    title: "Count your walks",
+    message: "CosQuest counts your steps to pay the weekly walking rewards. The count stays on your phone; only the week's distance is sent.",
+    buttonPositive: "OK",
+  });
+  return result === PermissionsAndroid.RESULTS.GRANTED ? "granted" : "denied";
+}
+
+async function sense(ask: boolean): Promise<SensorAnswer> {
+  const n = nativeHelpers;
+  if (Platform.OS !== "android" || !n?.readStepCounter || n.stepCounterAvailable === false) return { kind: "unavailable" };
+  try {
+    if ((await permitted(ask)) !== "granted") return { kind: "denied" };
+    const got = await n.readStepCounter();
+    if (!got.available) return { kind: "unavailable" };
+    const reading = { steps: got.steps ?? NaN, elapsedRealtimeMs: got.elapsedRealtimeMs, wallClockMs: got.wallClockMs };
+    return isValidReading(reading) ? { kind: "reading", reading } : { kind: "error" };
+  } catch (error) {
+    const code = (error as { code?: string } | null)?.code;
+    return code === "ERR_STEPS_PERMISSION" ? { kind: "denied" } : { kind: "error" };
+  }
+}
+
+// One ledger write at a time: the card and a resume reading can overlap.
+let queue: Promise<unknown> = Promise.resolve();
+function serial<T>(work: () => Promise<T>): Promise<T> {
+  const next = queue.then(work, work);
+  queue = next.catch(() => {});
+  return next;
+}
+
+function deps(): StepsDeps {
+  return {
+    client: gameStore.client,
+    sense,
+    load: () => getPref(LEDGER_KEY),
+    save: async (text) => {
+      await setPref(LEDGER_KEY, text);
+    },
+    now: () => Date.now(),
+  };
+}
+
+/** The card's update (StepsModel.update). `ask`: may show the permission prompt. */
+export function updateStepsOnPhone(previous: StepsView = EMPTY_STEPS_VIEW, ask = false): Promise<StepsView> {
+  return serial(() => updateSteps(deps(), previous, ask));
+}
+
+/** A quiet reading (no prompt, no network) when the game comes to the front. Android only; elsewhere nothing. */
+export function noteStepsOnPhone(): Promise<void> {
+  if (Platform.OS !== "android") return Promise.resolve();
+  return serial(() => noteStepsWith(deps()));
+}

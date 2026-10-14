@@ -10,12 +10,14 @@ import Animated, { SlideInDown, SlideOutDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { gameStore, useGame } from "@/features/game/runtime";
+import { unlocked } from "@/features/game/unlocks";
 import { startWardenModel, useWardenModel } from "@/features/game/wardenModel";
 
 import { wardenVoice } from "./wardenVoice";
 
 import { ProgressBar } from "./kit";
 import LiveStampCard from "./LiveStampCard";
+import StepsCard from "./StepsCard";
 import { GF, GP, realmColor, realmIcon, tierColor } from "./theme";
 
 type Tab = "today" | "codex" | "war";
@@ -78,6 +80,7 @@ export default function Journal({ onClose, initial = "today" }: { onClose: () =>
                 </View>
               </View>
             ))}
+            {unlocked(me, "walking") ? <StepsCard /> : null}
             <WardenCard />
             {me?.today ? (
               <Text style={styles.muted}>

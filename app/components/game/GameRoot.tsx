@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { bearingDeg, distanceText } from "@/features/game/geo";
 import { gameStore, GAME_SERVER, GAME_SERVER_IS_PRODUCTION, useGame, useLocationPermission, startLocation } from "@/features/game/runtime";
 import { nearestFirst } from "@/features/game/store";
+import { noteStepsOnPhone } from "@/features/game/stepsDevice";
 import { unlocked } from "@/features/game/unlocks";
 import { arriveMoment, nudgeMoment } from "@/features/game/warden";
 import type { QuestPoint } from "@/features/game/wire";
@@ -96,6 +97,12 @@ export default function GameRoot({ parked }: { parked: boolean }) {
       wardenVoice.speak(arriveMoment(ctx(), p)).catch(() => {});
     }
   }, [nearby, parked, screen.kind, me?.faction, ctx]);
+
+  // A quiet step-counter reading each time the game comes to the front (no
+  // prompt, no network), so the week's walking is split between weeks well.
+  useEffect(() => {
+    if (!parked) void noteStepsOnPhone();
+  }, [parked]);
 
   // Now and then, the best next move.
   useEffect(() => {

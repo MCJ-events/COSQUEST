@@ -78,6 +78,10 @@ export type NativeOnly = {
   /** One spoken utterance (SpeechListener.kt); results arrive as onSpeechResult / onSpeechError. */
   startListening?(options: { prompt?: string; locale?: string; choices?: string[]; onDeviceOnly?: boolean }): Promise<{ onDevice: boolean }>;
   stopListening?(): Promise<void>;
+  /** The phone has a hardware step counter (StepCounter.kt). */
+  stepCounterAvailable?: boolean;
+  /** One read of the step counter: steps since boot, with the clocks it was read at. */
+  readStepCounter?(): Promise<{ steps: number | null; elapsedRealtimeMs: number; wallClockMs: number; available: boolean }>;
   addListener?(event: "onSpeechResult", listener: (e: { text: string; final: boolean }) => void): Subscription;
   addListener?(event: "onSpeechError", listener: (e: { code: string; message: string }) => void): Subscription;
 };

@@ -78,6 +78,8 @@ class CostQuestGameModule : Module() {
     /** PackageManager.FEATURE_UWB (API 31), by name so minSdk 26 compiles. */
     Constant("uwbAvailable") { appContext.reactContext?.packageManager?.hasSystemFeature("android.hardware.uwb") == true }
     Constant("upstream") { "android-helpers" }
+    /** The phone has a hardware step counter (Sensor.TYPE_STEP_COUNTER), for walking rewards. */
+    Constant("stepCounterAvailable") { appContext.reactContext?.let { StepCounter.available(it) } ?: false }
 
     OnCreate {
       CQUnityEvents.sink = { scene, kind, json ->
@@ -196,6 +198,13 @@ class CostQuestGameModule : Module() {
     AsyncFunction("stopListening") {
       speech?.stop()
     }.runOnQueue(Queues.MAIN)
+
+    // --- Walking (steps) ---------------------------------------------------
+
+    /** One read of the step counter: { steps, elapsedRealtimeMs, wallClockMs, available } (StepCounter.kt). */
+    AsyncFunction("readStepCounter") { promise: expo.modules.kotlin.Promise ->
+      StepCounter.read(context, promise)
+    }
 
     // --- UWB ----------------------------------------------------------------
 
