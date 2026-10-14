@@ -25,6 +25,7 @@ const {
   setChatNotifications,
 } = require('../controllers/chatController');
 const { listSparks, listNativeSparks, listSparkMembers, getSpark, startSpark, addToSpark, pinSpark, deleteSpark, mergeSpark } = require('../controllers/sparkController');
+const { decideRolePing } = require('../controllers/sparkController');
 const { searchMessages, messageContext, createAlbum } = require('../controllers/chatExtrasController');
 const { createPoll, votePoll, closePoll, listPollVotes } = require('../controllers/pollController');
 
@@ -81,6 +82,8 @@ router.get('/chats/:conversationId/sparks', asyncHandler(listSparks));
 router.get('/chats/:conversationId/sparks/native', asyncHandler(listNativeSparks));
 // Members as Sparks sees them (roles, admin flags), for sdk.sparks.setMembers.
 router.get('/chats/:conversationId/sparks/members', asyncHandler(listSparkMembers));
+// Sparks bot posts: an admin approves or dismisses a suggested role ping.
+router.post('/chats/:conversationId/sparks/bot-posts/:messageId/role-pings/decide', asyncHandler(decideRolePing));
 router.post('/chats/:conversationId/sparks', asyncHandler(startSpark));
 router.get('/chats/:conversationId/sparks/:sparkId', asyncHandler(getSpark));
 router.post('/chats/:conversationId/sparks/:sparkId/messages', asyncHandler(addToSpark));
