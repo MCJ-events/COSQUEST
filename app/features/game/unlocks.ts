@@ -2,6 +2,7 @@
 // RoamUnlock): features open as a player levels, each introduced once.
 // Fifteen features at once is a home screen nobody can read.
 // Pure (tested in features/game/__tests__/unlocks.test.ts).
+import { isProductionServer, resolveGameServer } from "./config.ts";
 import type { QuestPoint, RoamMe } from "./wire.ts";
 
 export type Unlock = "codex" | "relics" | "war" | "battle" | "walking" | "friends" | "raids";
@@ -27,8 +28,20 @@ export function playerLevel(me: RoamMe | null | undefined): number {
   return me?.standing?.level ?? 1;
 }
 
+/**
+ * Test builds only: every feature open whatever the level, to check screens
+ * on an emulator with a new player (like iOS's RoamDev launch arguments).
+ * The gates are the client's (the server does not gate these features by
+ * level), and the switch is refused against the production server.
+ */
+export function unlockAllFor(flag: string | undefined | null, server: string): boolean {
+  return flag === "1" && !isProductionServer(server);
+}
+
+const UNLOCK_ALL = unlockAllFor(process.env.EXPO_PUBLIC_GAME_UNLOCK_ALL, resolveGameServer(process.env.EXPO_PUBLIC_GAME_SERVER));
+
 export function unlocked(me: RoamMe | null | undefined, u: Unlock): boolean {
-  return playerLevel(me) >= UNLOCKS[u].level;
+  return UNLOCK_ALL || playerLevel(me) >= UNLOCKS[u].level;
 }
 
 /** The next unlock to introduce at this level, if any. */

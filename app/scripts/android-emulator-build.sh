@@ -16,6 +16,9 @@
 #   GAME_SERVER    [staging]                "staging" or an https URL
 #   GAME_UI        [rn]                     the React Native game
 #   ABI            [x86_64]                 arm64-v8a for a phone
+#   UNLOCK_ALL     [0]                      1: every feature open whatever the
+#                                           player's level (screens on a new
+#                                           player; refused on production)
 #   JAVA_HOME / ANDROID_HOME                 JDK 17 and the Android SDK
 #
 # The release build is signed with the debug key (the Expo template's
@@ -41,6 +44,7 @@ export EXPO_PUBLIC_API_URL="$CHAT_API_URL"
 export EXPO_PUBLIC_GAME_SERVER="$GAME_SERVER"
 export EXPO_PUBLIC_GAME_UI="$GAME_UI"
 export EXPO_PUBLIC_WORLD_TIMING=1
+export EXPO_PUBLIC_GAME_UNLOCK_ALL="${UNLOCK_ALL:-0}"
 export NODE_ENV=production
 # Metro caches in $TMPDIR/metro-cache; on a shared machine another user may
 # own /tmp/metro-cache, so use a private temp dir then.

@@ -2,7 +2,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { pendingUnlock, unlocked, visiblePoints } from "../unlocks.ts";
+import { PRODUCTION_GAME_SERVER, STAGING_GAME_SERVER } from "../config.ts";
+import { pendingUnlock, unlockAllFor, unlocked, visiblePoints } from "../unlocks.ts";
 import type { QuestPoint, RoamMe } from "../wire.ts";
 
 const at = (level: number) => ({ standing: { level } }) as unknown as RoamMe;
@@ -29,5 +30,10 @@ describe("unlocks", () => {
     const pts = [{ id: "a", source: "raid" }, { id: "b", source: "osm" }] as unknown as QuestPoint[];
     assert.deepEqual(visiblePoints(pts, at(4)).map((p) => p.id), ["b"]);
     assert.deepEqual(visiblePoints(pts, at(5)).map((p) => p.id), ["a", "b"]);
+  });
+  it("opens everything only in a test build that is not on production", () => {
+    assert.equal(unlockAllFor("1", STAGING_GAME_SERVER), true);
+    assert.equal(unlockAllFor("1", PRODUCTION_GAME_SERVER), false);
+    assert.equal(unlockAllFor(undefined, STAGING_GAME_SERVER), false);
   });
 });
