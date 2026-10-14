@@ -147,6 +147,24 @@ chat backend (`cosquest-backend/scripts/devLocal.js`). Build with
 Warm swipe-to-interactive was 0.6–0.8 s on a software-rendered emulator
 (median frame 250 ms), so phone numbers are still to be measured.
 
+### Checked on the emulator again (2026-10-14, task 3)
+The same setup, with `UNLOCK_ALL=1` so a level 2 player sees every feature.
+Each of these was driven against staging:
+- the Quest Hour banner and the events calendar;
+- the More sheet;
+- Friends: a friend added by a code that a second (Node) player made at the
+  same spot, and a gift sent;
+- the Relics collection and the Forge weapon card;
+- the journal's stamp card and walking card (the emulator has no step sensor,
+  and the card says so);
+- a Room: started, entered, a shrine taken, walked by GPS to a weapon and
+  picked it up, a chest question answered correctly, and the results;
+- a raid boss: banner, sheet, walked into reach, briefing with the shared HP,
+  the fight, and the server's verdict ("You dealt 40 damage. Boss HP 5960 / 6000").
+
+Not reachable there: the voice button. Staging serves only duels, so no quiz
+card appears.
+
 ## 6. What is at parity, in one line
 Sign in once, map with nearby points, walk to a point, play its challenge
 (all quiz kinds, answered by voice too, and the Guardian Duel, judged by the
