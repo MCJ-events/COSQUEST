@@ -170,7 +170,30 @@ Call transcripts (`sparks_segments`) and outlines are kept until you delete them
 3. Keep using the REST Spark API for screens; the `useSparks` hook there gives live SDK Sparks when the SDK is running.
 4. Full app guide: cosquest-sparks `docs/guides/APP_INTEGRATION.md`.
 
-## 12. Known gaps
+## 12. Sparks bot posts (module 1.3)
+
+The module can now post in the chat as the "Sparks bot". Two posts exist:
+
+- **Role pings** ("Relevant expertise: Front-end and Back-end."): after a Spark is created or revived, a phone picks the roles it needs. At or above `rolePingMinConfidence` (0.75) the people are notified at once (a mention notification, as before); between `rolePingSuggestMinConfidence` (0.5) and that, the ping is a **suggestion** that waits for an admin. One post per Spark per life lists both.
+- **Earlier context** ("Earlier context: Route preview"): when a Spark is created or revived, a phone looks for a related earlier discussion (another, quiet Spark) and the post quotes up to 3 of its messages that every member can read. When no phone can look (jobs lapse after 2 minutes), the module's own subject match (trigram similarity of Spark subjects, no message text compared) is the fallback. At most one post per Spark life, never the same earlier Spark twice.
+
+What this backend does with them:
+
+| Where | What |
+|---|---|
+| `src/models/Message.js` | New kind `sparks_bot` (no user `sender`) and field `sparksBot` (the module's post). `seq` as for every message |
+| `src/sparks/botPosts.js` | `ports.postBotMessage` (save + `message:new` + `chat:preview`) and `ports.updateBotMessage` (save + `message:edited`); per-reader filtering of earlier-context quotes |
+| `src/sparks/messageRow.js` | A `sparks_bot` message reaches the module as kind `system` from `sparks-bot` with its `bot` post, so the module never treats it as conversation |
+| `src/controllers/chatController.js` | Serialized with `sparksBot` and a Sparks bot `sender` (`isBot: true`); `GET /messages`, `GET /messages/:id` and the jump-to context drop quotes the viewer cannot read; bot posts cannot be edited or forwarded |
+| `src/sparks/rest.js` | `POST /api/chats/:conversationId/sparks/bot-posts/:messageId/role-pings/decide` `{ role, decision: 'approve' \| 'dismiss' }`, admins only |
+
+Config (through `SPARKS_CONFIG`): `rolePingMinConfidence` (auto, 0.75), `rolePingSuggestMinConfidence` (0.5; set it to 0.75 or more for no suggestions), `botPosts` (true; false turns every bot post off), `earlierContext` (true), `earlierContextMinScore` (0.9), `earlierContextLexicalMinScore` (0.6; above 1 turns the server fallback off), `earlierContextQuoteMax` (3). For every ping to wait for an admin: `{"rolePingMinConfidence":1.01}`.
+
+Role pings and the phone search need phones running the Sparks SDK (the jobs run on them); until the app ships it, only the earlier-context subject fallback can post. Earlier context runs only on SDK 1.2.5 or newer (`jobMinSdkVersion`).
+
+Vendoring: `vendor/cosquest-sparks-backend-1.2.3.tgz` on this branch is a development build of the module with these changes (same version number). Before merging, replace it with the released tarball and run `npm install ./vendor/<released>.tgz` (section 4), then `npm test`.
+
+## 13. Known gaps
 
 - Users have no rank yet, so rank targets in voice commands ("calling all sergeants") match nobody; role targets (expertise labels) work. Targeted calls ring (section 13).
 - Manual starts over REST use the module's own `backend.startSpark` (1.2). Before 1.2 they went through a stand-in device per user (`web-<userId>`); any such rows left in `sparks_devices` are harmless and unused.

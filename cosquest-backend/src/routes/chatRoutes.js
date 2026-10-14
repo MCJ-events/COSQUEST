@@ -25,6 +25,7 @@ const {
   setChatNotifications,
 } = require('../controllers/chatController');
 const { listSparks, listNativeSparks, listSparkMembers, getSpark, startSpark, addToSpark, pinSpark, deleteSpark, mergeSpark } = require('../controllers/sparkController');
+const { decideRolePing } = require('../controllers/sparkController');
 const { searchMessages, messageContext, createAlbum } = require('../controllers/chatExtrasController');
 const sparksAdmin = require('../sparks/admin');
 const sparkSearch = require('../sparks/search');
@@ -92,6 +93,8 @@ router.post('/chats/:conversationId/sparks/merge', asyncHandler(sparksAdmin.merg
 // Search inside one Spark, every era (M16 limited to a Spark), and jump to a message in it.
 router.get('/chats/:conversationId/sparks/:sparkId/search', asyncHandler(sparkSearch.searchSpark));
 router.get('/chats/:conversationId/sparks/:sparkId/messages/:messageId/context', asyncHandler(sparkSearch.sparkMessageContext));
+// Sparks bot posts: an admin approves or dismisses a suggested role ping.
+router.post('/chats/:conversationId/sparks/bot-posts/:messageId/role-pings/decide', asyncHandler(decideRolePing));
 router.post('/chats/:conversationId/sparks', asyncHandler(startSpark));
 router.get('/chats/:conversationId/sparks/:sparkId', asyncHandler(getSpark));
 router.post('/chats/:conversationId/sparks/:sparkId/messages', asyncHandler(addToSpark));

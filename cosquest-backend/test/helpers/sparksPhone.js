@@ -61,6 +61,19 @@ function bestActive(text, active) {
   return hit ? { sparkId: hit.sparkId, score: 1 } : { sparkId: null, score: 0 };
 }
 
+// A role named in the Spark's messages is pinged: "maybe <role>" with 0.6
+// (a suggestion for admins), otherwise 0.8 (automatic). No mention, no ping.
+function rolePings(input) {
+  const text = input.recent.map((m) => m.text.toLowerCase()).join('\n');
+  const pings = [];
+  for (const r of input.roles) {
+    const name = r.role.toLowerCase();
+    if (!text.includes(name)) continue;
+    pings.push({ role: r.role, userIds: r.userIds, confidence: text.includes(`maybe ${name}`) ? 0.6 : 0.8, reason: `mentioned ${r.role}` });
+  }
+  return pings;
+}
+
 function runJob(input) {
   switch (input.type) {
     case 'spark.detect':
@@ -73,7 +86,7 @@ function runJob(input) {
       return { type: 'spark.summarize', summary: `${people} people are talking about ${input.subject.toLowerCase()} (${input.messages.length} messages).`, basedOnSeq };
     }
     case 'spark.rolepings':
-      return { type: 'spark.rolepings', pings: [] };
+      return { type: 'spark.rolepings', pings: rolePings(input) };
     default:
       return null; // call jobs: not simulated here (released)
   }
@@ -100,7 +113,7 @@ async function connectPhone(baseUrl, { userId, token, tier = 'full', deviceId = 
   });
 
   const frames = []; // every inbound `sparks` envelope
-  const legacy = []; // the app's old socket events: spark:updated / spark:messages / spark:deleted
+  const legacy = []; // the app's socket events: spark:updated / spark:messages / spark:deleted, message:new / message:edited
   const sparks = new Map(); // sparkId -> latest Spark (wire shape), from spark.event / spark.snapshot
   const results = []; // { jobId, type, verdict }
   const waiters = new Set();
@@ -150,7 +163,7 @@ async function connectPhone(baseUrl, { userId, token, tier = 'full', deviceId = 
     if (msg.type === 'spark.event' && ['deleted', 'merged'].includes(msg.payload.kind)) sparks.delete(msg.payload.spark.sparkId);
     notify();
   });
-  for (const ev of ['spark:updated', 'spark:messages', 'spark:deleted']) {
+  for (const ev of ['spark:updated', 'spark:messages', 'spark:deleted', 'message:new', 'message:edited']) {
     socket.on(ev, (payload) => {
       legacy.push({ event: ev, payload });
       notify();

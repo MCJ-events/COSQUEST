@@ -65,8 +65,17 @@ const callLogSchema = new mongoose.Schema(
 const messageSchema = new mongoose.Schema(
   {
     conversation: { type: mongoose.Schema.Types.ObjectId, ref: 'Conversation', required: true, index: true },
-    sender: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
-    kind: { type: String, enum: ['text', 'image', 'video', 'audio', 'file', 'sticker', 'call', 'album', 'poll'], default: 'text' },
+    // Required for every kind except 'sparks_bot' (a post by the Sparks bot has no user sender).
+    sender: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: function senderRequired() {
+        return this.kind !== 'sparks_bot';
+      },
+      default: null,
+      index: true,
+    },
+    kind: { type: String, enum: ['text', 'image', 'video', 'audio', 'file', 'sticker', 'call', 'album', 'poll', 'sparks_bot'], default: 'text' },
     content: { type: String, default: '', trim: true, maxlength: 2000 },
     media: { type: messageMediaSchema, default: null },
     callLog: { type: callLogSchema, default: null },
@@ -99,6 +108,9 @@ const messageSchema = new mongoose.Schema(
     sparkId: { type: String, default: null },
     // The Spark's revival index when this message joined (colour marker).
     sparkRevivalIndex: { type: Number, default: undefined },
+    // kind 'sparks_bot': what the Sparks bot posted (the module's SparksBotPost:
+    // role_pings or earlier_context). `content` holds its plain-text headline.
+    sparksBot: { type: mongoose.Schema.Types.Mixed, default: undefined },
     // pending | none | judged | assigned: the module's sorting bookkeeping.
     sparkHintState: { type: String, enum: ['pending', 'none', 'judged', 'assigned'], default: 'none' },
     replyTo: { type: mongoose.Schema.Types.ObjectId, ref: 'Message', default: null },

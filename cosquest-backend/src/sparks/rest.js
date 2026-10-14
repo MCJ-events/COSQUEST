@@ -221,4 +221,34 @@ async function mergeSpark(req, res) {
   return res.json({ spark: await serializeRow(host.store, await host.store.getSpark(into.sparkId)) });
 }
 
-module.exports = { listSparks, listNativeSparks, listSparkMembers, getSpark, startSpark, addToSpark, pinSpark, deleteSpark, mergeSpark };
+// POST /api/chats/:conversationId/sparks/bot-posts/:messageId/role-pings/decide
+// { role, decision: 'approve' | 'dismiss' } - admins. A suggested role ping in
+// a Sparks bot post (module 1.3): approve notifies the role's people now,
+// dismiss drops it. 200 { post } (the updated role_pings post; the message
+// also goes out on message:edited).
+async function decideRolePing(req, res) {
+  const conversation = await loadChat(req, res);
+  if (!conversation) return;
+  const { role, decision } = req.body || {};
+  if (typeof role !== 'string' || !role || !['approve', 'dismiss'].includes(decision)) {
+    return res.status(400).json({ error: "Send a role and a decision ('approve' or 'dismiss')." });
+  }
+  const message = await loadMessageInConversation(conversation, req.params.messageId);
+  if (!message || message.kind !== 'sparks_bot' || message.sparksBot?.kind !== 'role_pings') {
+    return res.status(404).json({ error: 'Role ping post not found.' });
+  }
+  try {
+    const post = await host.backend.admin.decideRolePing(req.userId, String(message._id), role, decision);
+    return res.json({ post });
+  } catch (error) {
+    const status = error?.status;
+    if (status === 403) return res.status(403).json({ error: 'Only group admins can approve or dismiss suggested role pings.' });
+    if (status === 404) return res.status(404).json({ error: 'That suggested role ping was not found.' });
+    if (status === 409) return res.status(409).json({ error: 'That role ping was already decided.' });
+    if (status === 410) return res.status(410).json({ error: 'That Spark no longer exists.' });
+    if (status === 400 || status === 501) return res.status(status).json({ error: error.message });
+    throw error;
+  }
+}
+
+module.exports = { listSparks, listNativeSparks, listSparkMembers, getSpark, startSpark, addToSpark, pinSpark, deleteSpark, mergeSpark, decideRolePing };

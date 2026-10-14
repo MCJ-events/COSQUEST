@@ -9,6 +9,8 @@ const PollVote = require('../models/PollVote');
 const sparks = require('../utils/sparks'); // legacy engine (SPARKS_ENGINE=legacy)
 const sparksHost = require('../sparks'); // @cosquest/sparks-backend (default)
 const sparksCompat = require('../sparks/compat');
+// Lazy (src/sparks/botPosts.js requires this file).
+const botPosts = () => require('../sparks/botPosts');
 const GroupBan = require('../models/GroupBan');
 const User = require('../models/User');
 const userModel = require('../models/userModel');
@@ -378,6 +380,7 @@ function callLogPreview(callLog, viewerId) {
 function previewMessage(message, viewerId) {
   if (!message) return null;
   if (message.deletedForEveryone) return 'This message was deleted';
+  if (message.kind === 'sparks_bot') return message.content; // the Sparks bot's headline
   if (message.kind === 'call') return callLogPreview(message.callLog, viewerId);
   if (message.kind === 'poll') return `📊 Poll: ${message.poll?.question || message.content}`;
   if (message.kind === 'album') return albumPreview(message.album);
@@ -419,7 +422,7 @@ async function summarizeConversation(conversation, me) {
     sparksMuted: Boolean(member?.sparksMuted),
     lastMessage: lastMessage
       ? {
-          senderName: lastMessage.sender?.profile?.username || lastMessage.sender?.profile?.firstName || 'Someone',
+          senderName: lastMessage.kind === 'sparks_bot' ? 'Sparks bot' : lastMessage.sender?.profile?.username || lastMessage.sender?.profile?.firstName || 'Someone',
           // me._id: call entries are worded for whoever is looking.
           preview: previewMessage(lastMessage, me._id),
           createdAt: lastMessage.createdAt,
@@ -515,7 +518,7 @@ function replyPreview(original, viewerId) {
   }
   return {
     id: String(original._id),
-    senderName: original.sender?.profile?.username || original.sender?.profile?.firstName || 'Someone',
+    senderName: original.kind === 'sparks_bot' ? 'Sparks bot' : original.sender?.profile?.username || original.sender?.profile?.firstName || 'Someone',
     preview: previewMessage(original, viewerId),
   };
 }
@@ -596,7 +599,7 @@ function serializeMessage(message, { viewerId, conversationType, otherLastReadAt
       deletedByAdmin: Boolean(message.deletedByAdmin),
       media: null,
       callLog: null,
-      sender: message.sender?.profile ? userPreview(message.sender) : undefined,
+      sender: message.kind === 'sparks_bot' ? botPosts().botSender() : message.sender?.profile ? userPreview(message.sender) : undefined,
       replyTo: null,
       reactions: reactions || [],
       read,
@@ -619,7 +622,7 @@ function serializeMessage(message, { viewerId, conversationType, otherLastReadAt
     content: message.content,
     media: message.media || null,
     callLog: message.callLog || null,
-    sender: message.sender?.profile ? userPreview(message.sender) : undefined,
+    sender: message.kind === 'sparks_bot' ? botPosts().botSender() : message.sender?.profile ? userPreview(message.sender) : undefined,
     replyTo: replyPreview(message.replyTo, viewerId),
     reactions: reactions || [],
     read,
@@ -634,6 +637,9 @@ function serializeMessage(message, { viewerId, conversationType, otherLastReadAt
     album: message.kind === 'album' ? message.album || [] : null,
     // kind 'poll': question, options with vote counts, my votes.
     poll: message.kind === 'poll' && message.poll ? poll || buildPollSummary(message, [], null) : null,
+    // kind 'sparks_bot': the Sparks bot's post (role_pings or earlier_context);
+    // docs: cosquest-sparks docs/APP_SPEC_bot_posts.md. Only on bot messages.
+    ...(message.kind === 'sparks_bot' ? { sparksBot: message.sparksBot || null } : {}),
     mentions,
     mentionsEveryone: Boolean(message.mentionsEveryone),
     forwarded: Boolean(message.forwardedFrom),
@@ -828,17 +834,20 @@ async function listMessages(req, res) {
     pollSummaries(messages, req.userId),
   ]);
   const reactionsByMessage = groupReactions(reactionDocs, req.userId);
+  const serializedMessages = messages.map((message) =>
+    serializeMessage(message, {
+      viewerId: req.userId,
+      conversationType: conversation.type,
+      otherLastReadAt,
+      reactions: reactionsByMessage.get(String(message._id)) || [],
+      poll: polls.get(String(message._id)),
+    })
+  );
+  // Sparks bot "Earlier context" posts: only the quotes this reader may read.
+  await botPosts().redactForViewer(serializedMessages, conversation._id, req.userId);
 
   return res.json({
-    messages: messages.map((message) =>
-      serializeMessage(message, {
-        viewerId: req.userId,
-        conversationType: conversation.type,
-        otherLastReadAt,
-        reactions: reactionsByMessage.get(String(message._id)) || [],
-        poll: polls.get(String(message._id)),
-      })
-    ),
+    messages: serializedMessages,
     pagination: { page, limit, total, hasMore: page * limit < total },
   });
 }
@@ -1334,6 +1343,7 @@ async function forwardMessage(req, res) {
   // another chat.
   if (original.kind === 'call') return res.status(400).json({ error: 'Call entries cannot be forwarded.' });
   if (original.kind === 'poll') return res.status(400).json({ error: 'Polls cannot be forwarded.' });
+  if (original.kind === 'sparks_bot') return res.status(400).json({ error: 'Sparks bot posts cannot be forwarded.' });
 
   const { targetConversationId, targetUsername } = req.body;
   if (Boolean(targetConversationId) === Boolean(targetUsername)) {
@@ -1443,7 +1453,7 @@ async function bulkForwardMessages(req, res) {
   const originals = await Message.find({ _id: { $in: ids }, conversation: conversation._id, deletedForEveryone: false, deletedFor: { $ne: req.userId } }).sort({ createdAt: 1, _id: 1 });
   if (originals.length !== ids.length) return res.status(404).json({ error: 'One or more selected messages are unavailable in this conversation.' });
   // Same rule as single forward: call entries stay in their own chat.
-  if (originals.some((original) => original.kind === 'call' || original.kind === 'poll')) {
+  if (originals.some((original) => original.kind === 'call' || original.kind === 'poll' || original.kind === 'sparks_bot')) {
     return res.status(400).json({ error: 'Call entries and polls cannot be forwarded. Unselect them and try again.' });
   }
 
@@ -1544,11 +1554,13 @@ async function getMessage(req, res) {
   if (!message || hiddenFor(message, req.userId)) return res.status(404).json({ error: 'Message not found.' });
   await message.populate('sender', SENDER_FIELDS);
   await message.populate({ path: 'replyTo', populate: { path: 'sender', select: 'profile.username profile.firstName' } });
-  return res.json({ message: serializeMessage(message, {
+  const serialized = serializeMessage(message, {
     viewerId: req.userId, conversationType: conversation.type, otherLastReadAt: await otherLastReadFor(conversation, req.user),
     reactions: await summarizeReactions(message._id, req.userId),
     poll: (await pollSummaries([message], req.userId)).get(String(message._id)),
-  }) });
+  });
+  await botPosts().redactForViewer([serialized], conversation._id, req.userId);
+  return res.json({ message: serialized });
 }
 
 async function getChatShareLink(req, res) {
