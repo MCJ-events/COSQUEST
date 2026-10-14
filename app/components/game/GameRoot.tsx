@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { bearingDeg, distanceText } from "@/features/game/geo";
 import { gameStore, GAME_SERVER, GAME_SERVER_IS_PRODUCTION, useGame, useLocationPermission, startLocation } from "@/features/game/runtime";
 import { nearestFirst } from "@/features/game/store";
+import { unlocked } from "@/features/game/unlocks";
 import { arriveMoment, nudgeMoment } from "@/features/game/warden";
 import type { QuestPoint } from "@/features/game/wire";
 import { factionVeilColor } from "@/features/world/worldState";
@@ -20,9 +21,14 @@ import { useAppSelector } from "@/store/hooks";
 
 import DuelScreen from "./DuelScreen";
 import Encounter from "./Encounter";
+import FriendsButton from "./FriendsButton";
+import FriendsSheet from "./FriendsSheet";
 import { NearbyTray, PlayerChip, Rail, StagingBadge, WardenBubble } from "./Hud";
 import Journal from "./Journal";
 import { GameButton } from "./kit";
+import LiveBanner from "./LiveBanner";
+import LiveCalendarSheet from "./LiveCalendarSheet";
+import MoreSheet, { type MoreTile } from "./MoreSheet";
 import Onboarding from "./Onboarding";
 import PointSheet from "./PointSheet";
 import Reward, { type RewardSummary } from "./Reward";
@@ -36,6 +42,9 @@ type Screen =
   | { kind: "duel"; point: QuestPoint }
   | { kind: "reward"; reward: RewardSummary };
 
+/** What is open over the map (one at a time, closed by Android Back). */
+type Sheet = "journal" | "more" | "events" | "friends";
+
 const NUDGE_EVERY_MS = 150000;
 
 export default function GameRoot({ parked }: { parked: boolean }) {
@@ -47,7 +56,7 @@ export default function GameRoot({ parked }: { parked: boolean }) {
   const chatFaction = useAppSelector((s) => s.auth.user?.faction ?? null);
   const [screen, setScreen] = useState<Screen>({ kind: "home" });
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [journal, setJournal] = useState(false);
+  const [sheet, setSheet] = useState<Sheet | null>(null);
   const [, recentre] = useState(0);
   const greeted = useRef(new Set<string>());
 
@@ -104,16 +113,16 @@ export default function GameRoot({ parked }: { parked: boolean }) {
   // pager's own handler takes it (back to the chat).
   useEffect(() => {
     if (parked) return;
-    const open = screen.kind !== "home" || journal || selected !== null;
+    const open = screen.kind !== "home" || sheet !== null || selected !== null;
     if (!open) return;
     const sub = BackHandler.addEventListener("hardwareBackPress", () => {
-      if (journal) setJournal(false);
+      if (sheet) setSheet(null);
       else if (screen.kind === "reward" || screen.kind === "encounter" || screen.kind === "duel") setScreen({ kind: "home" });
       else closeSheet();
       return true;
     });
     return () => sub.remove();
-  }, [parked, screen.kind, journal, selectedId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [parked, screen.kind, sheet, selectedId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const play = (p: QuestPoint) => {
     setSelectedId(null);
@@ -139,6 +148,12 @@ export default function GameRoot({ parked }: { parked: boolean }) {
   }
 
   const dailiesLeft = me?.dailies.filter((d) => !d.done).length ?? 0;
+  // The rest of the game, under More (RoamHomeView.swift moreTiles), as levels unlock it.
+  const moreTiles: MoreTile[] = [];
+  if (unlocked(me, "friends")) {
+    moreTiles.push({ id: "friends", icon: "people", color: GP.berry, title: "Friends", embed: <FriendsButton size={58} onPress={() => setSheet("friends")} />, onPress: () => setSheet("friends") });
+  }
+  moreTiles.push({ id: "events", icon: "calendar", color: GP.navy, title: "Quest Hours", onPress: () => setSheet("events") });
   const focusAway = focus && !focusId && focus.lat !== undefined && focus.lng !== undefined ? focus : null;
   const focusMissing = focus && focusId && !focusPoint ? focus : null;
 
@@ -157,28 +172,37 @@ export default function GameRoot({ parked }: { parked: boolean }) {
         onSelect={(p) => setSelectedId(p.id)}
       />
 
-      <PlayerChip me={me} name={gameStore.playerName()} color={color} onPress={() => setJournal(true)} />
+      <PlayerChip me={me} name={gameStore.playerName()} color={color} onPress={() => setSheet("journal")} />
       {!GAME_SERVER_IS_PRODUCTION ? <StagingBadge label={GAME_SERVER.includes("staging") ? "STAGING" : "TEST SERVER"} /> : null}
-      <Rail onJournal={() => setJournal(true)} onRecentre={() => {
+      <Rail
+        onJournal={() => setSheet("journal")}
+        onMore={() => setSheet("more")}
+        onRecentre={() => {
           recentre((n) => n + 1);
           void gameStore.refreshPoints(true);
-        }} dailiesLeft={dailiesLeft} />
+        }}
+        dailiesLeft={dailiesLeft}
+      />
 
+      {/* Under the top bar, left of the rail: one column, as iOS's worldBanners. */}
+      <View style={[styles.banners, { top: insets.top + 84 }]} pointerEvents="box-none">
       {permission === "denied" ? (
-        <View style={[styles.notice, { top: insets.top + 84 }]}>
+        <View style={styles.notice}>
           <Text style={styles.noticeText}>{"Location is off, so Quest Points can't find you. Turn it on in Settings to play."}</Text>
           <GameButton title="Try again" small color={GP.skyDeep} onPress={() => startLocation(true)} />
         </View>
       ) : !fix ? (
-        <View style={[styles.notice, { top: insets.top + 84 }]}>
+        <View style={styles.notice}>
           <Text style={styles.noticeText}>Finding you…</Text>
         </View>
       ) : state.problem ? (
-        <View style={[styles.notice, { top: insets.top + 84 }]}>
+        <View style={styles.notice}>
           <Text style={styles.noticeText}>{state.problem}</Text>
           <GameButton title="Try again" small color={GP.skyDeep} onPress={() => gameStore.loadBasics()} />
         </View>
       ) : null}
+
+      {screen.kind === "home" ? <LiveBanner parked={parked} onOpen={() => setSheet("events")} /> : null}
 
       {focusAway || focusMissing ? (
         <FocusBanner
@@ -188,6 +212,7 @@ export default function GameRoot({ parked }: { parked: boolean }) {
           onClose={() => gameStore.setFocus(null)}
         />
       ) : null}
+      </View>
 
       {!selected ? (
         <NearbyTray
@@ -215,7 +240,10 @@ export default function GameRoot({ parked }: { parked: boolean }) {
         />
       ) : null}
 
-      {journal ? <Journal onClose={() => setJournal(false)} /> : null}
+      {sheet === "journal" ? <Journal onClose={() => setSheet(null)} /> : null}
+      {sheet === "more" ? <MoreSheet tiles={moreTiles} onClose={() => setSheet(null)} /> : null}
+      {sheet === "events" ? <LiveCalendarSheet onClose={() => setSheet(null)} /> : null}
+      {sheet === "friends" ? <FriendsSheet onClose={() => setSheet(null)} /> : null}
 
       {screen.kind === "encounter" ? (
         <Animated.View entering={FadeIn.duration(220)} exiting={FadeOut.duration(160)} style={StyleSheet.absoluteFill}>
@@ -237,13 +265,12 @@ export default function GameRoot({ parked }: { parked: boolean }) {
 }
 
 function FocusBanner({ place, lat, lng, onClose }: { place: string; lat?: number; lng?: number; onClose: () => void }) {
-  const insets = useSafeAreaInsets();
   const { fix } = useGame();
   const there = lat !== undefined && lng !== undefined ? { lat, lng } : null;
   const d = there ? gameStore.distanceTo(there) : null;
   const heading = fix && there ? bearingDeg(fix, there) : null;
   return (
-    <Animated.View entering={FadeIn} style={[styles.focus, { top: insets.top + 140 }]} accessibilityLiveRegion="polite">
+    <Animated.View entering={FadeIn} style={styles.focus} accessibilityLiveRegion="polite">
       {heading !== null ? (
         <Ionicons name="navigate" size={22} color={GP.sun} style={{ transform: [{ rotate: `${heading - 45}deg` }] }} />
       ) : (
@@ -270,10 +297,8 @@ function FocusBanner({ place, lat, lng, onClose }: { place: string; lat?: number
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#E6EFDF" },
+  banners: { position: "absolute", left: 76, right: 70, gap: 8 },
   notice: {
-    position: "absolute",
-    left: 76,
-    right: 70,
     padding: 12,
     gap: 8,
     borderRadius: 16,
@@ -281,9 +306,6 @@ const styles = StyleSheet.create({
   },
   noticeText: { fontFamily: GF.body, fontSize: 14, color: "#FFF" },
   focus: {
-    position: "absolute",
-    left: 76,
-    right: 70,
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
