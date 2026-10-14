@@ -11,6 +11,7 @@ const {
   loadConversationForUser,
   loadMessageInConversation,
   serializeMessage,
+  groupRolesFor,
   hiddenFor,
   groupReactions,
   pollSummaries,
@@ -101,8 +102,9 @@ async function getSpark(req, res) {
   ).reverse();
   const reactionsByMessage = groupReactions(await MessageReaction.find({ message: { $in: docs.map((d) => d._id) } }), req.userId);
   const polls = await pollSummaries(docs, req.userId);
+  const groupRoles = await groupRolesFor(conversation);
   const messages = docs.map((doc) =>
-    serializeMessage(doc, { viewerId: req.userId, conversationType: conversation.type, otherLastReadAt: null, reactions: reactionsByMessage.get(String(doc._id)) || [], poll: polls.get(String(doc._id)) })
+    serializeMessage(doc, { viewerId: req.userId, conversationType: conversation.type, otherLastReadAt: null, reactions: reactionsByMessage.get(String(doc._id)) || [], poll: polls.get(String(doc._id)), groupRoles })
   );
   return res.json({
     spark: await serializeRow(host.store, row),

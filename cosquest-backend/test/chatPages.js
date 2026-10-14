@@ -211,6 +211,23 @@ async function run(baseUrl) {
   check(badSort.status === 400 && /sort/.test(badSort.data.error), 'an unknown sort -> 400', badSort);
   check((await request('GET', `/api/chats/${groupId}/search?q=dragonfruit&from=2026-01-01`, e.token)).status === 403, 'outsiders still cannot search the chat');
 
+  // ---------- senderGroupRole: "Owner" / "Admin" beside names ----------
+  await request('POST', `/api/groups/${groupId}/members/${b.id}/role`, a.token, { role: 'admin' });
+  const ownerSent = await request('POST', `/api/chats/${groupId}/messages`, a.token, { content: 'owner here' });
+  check(ownerSent.data.message?.senderGroupRole === 'owner', 'a new message says its sender is the owner', ownerSent.data);
+  const roleList = (await request('GET', `/api/chats/${groupId}/messages`, d.token)).data.messages || [];
+  check(
+    roleList.find((m) => m.sender?.id === b.id)?.senderGroupRole === 'admin' &&
+      roleList.find((m) => m.sender?.id === c.id)?.senderGroupRole === null &&
+      roleList.find((m) => m.sender?.id === a.id)?.senderGroupRole === 'owner',
+    'the message list marks owner and admins, and members get null',
+    roleList.map((m) => [m.sender?.id, m.senderGroupRole])
+  );
+  const single = await request('GET', `/api/chats/${groupId}/messages/${ownerSent.data.message?.id}`, d.token);
+  check(single.data.message?.senderGroupRole === 'owner', 'a single message carries it too', single.data);
+  const roleSearch = await request('GET', `/api/chats/${groupId}/search?q=owner`, d.token);
+  check(roleSearch.data.results?.[0]?.message?.senderGroupRole === 'owner', 'search results carry it too', roleSearch.data);
+
   return { pass, fail };
 }
 

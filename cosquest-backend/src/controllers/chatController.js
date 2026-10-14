@@ -619,7 +619,21 @@ function albumPreview(album) {
 
 // `editedAt`, `canRollback` and `previousContent` are only filled in for the
 // AUTHOR: nobody else knows a message was edited (per the group chat spec).
-function serializeMessage(message, { viewerId, conversationType, otherLastReadAt, reactions, poll }) {
+/**
+ * Group chats: who is owner / admin, as Map(userId -> 'owner' | 'admin'),
+ * so each message can say "Owner" / "Admin" beside the sender's name
+ * (senderGroupRole). One small query per request: only owner and admin
+ * rows are read, never the whole member list. Other chat types: null.
+ */
+async function groupRolesFor(conversation) {
+  if (conversation?.type !== 'group') return null;
+  const rows = await ConversationMember.find({ conversation: conversation._id, role: { $in: ['owner', 'admin'] } })
+    .select('user role')
+    .lean();
+  return new Map(rows.map((row) => [String(row.user), row.role]));
+}
+
+function serializeMessage(message, { viewerId, conversationType, otherLastReadAt, reactions, poll, groupRoles }) {
   const senderId = message.sender?._id || message.sender;
   const isMine = String(senderId) === String(viewerId);
   const read = conversationType === 'dm' && isMine ? Boolean(otherLastReadAt && message.createdAt <= otherLastReadAt) : undefined;
@@ -634,6 +648,7 @@ function serializeMessage(message, { viewerId, conversationType, otherLastReadAt
       media: null,
       callLog: null,
       sender: message.sender?.profile ? userPreview(message.sender) : undefined,
+      senderGroupRole: groupRoles?.get(String(senderId)) || null,
       replyTo: null,
       reactions: reactions || [],
       read,
@@ -657,6 +672,7 @@ function serializeMessage(message, { viewerId, conversationType, otherLastReadAt
     media: message.media || null,
     callLog: message.callLog || null,
     sender: message.sender?.profile ? userPreview(message.sender) : undefined,
+    senderGroupRole: groupRoles?.get(String(senderId)) || null,
     replyTo: replyPreview(message.replyTo, viewerId),
     reactions: reactions || [],
     read,
@@ -862,9 +878,10 @@ async function listMessages(req, res) {
     otherLastReadFor(conversation, req.user),
   ]);
 
-  const [reactionDocs, polls] = await Promise.all([
+  const [reactionDocs, polls, groupRoles] = await Promise.all([
     MessageReaction.find({ message: { $in: messages.map((message) => message._id) } }),
     pollSummaries(messages, req.userId),
+    groupRolesFor(conversation),
   ]);
   const reactionsByMessage = groupReactions(reactionDocs, req.userId);
 
@@ -876,6 +893,7 @@ async function listMessages(req, res) {
         otherLastReadAt,
         reactions: reactionsByMessage.get(String(message._id)) || [],
         poll: polls.get(String(message._id)),
+        groupRoles,
       })
     ),
     pagination: { page, limit, total, hasMore: page * limit < total },
@@ -1000,7 +1018,7 @@ async function createMessage(req, res) {
   // message instantly. `otherLastReadAt: null` matches the REST response -
   // the sender always sees their own message as unread-by-recipient at the
   // moment it's sent.
-  const serialized = serializeMessage(message, { viewerId: req.userId, conversationType: conversation.type, otherLastReadAt: null, reactions: [] });
+  const serialized = serializeMessage(message, { viewerId: req.userId, conversationType: conversation.type, otherLastReadAt: null, reactions: [], groupRoles: await groupRolesFor(conversation) });
   // serialized.replyTo carries the reply target's real content, built from
   // the sender's own view (already checked they haven't hidden it - see the
   // replyTo validation above). Anyone else who's "deleted [that message] for
@@ -1587,6 +1605,7 @@ async function getMessage(req, res) {
     viewerId: req.userId, conversationType: conversation.type, otherLastReadAt: await otherLastReadFor(conversation, req.user),
     reactions: await summarizeReactions(message._id, req.userId),
     poll: (await pollSummaries([message], req.userId)).get(String(message._id)),
+    groupRoles: await groupRolesFor(conversation),
   }) });
 }
 
@@ -1699,6 +1718,7 @@ module.exports = {
   loadConversationForUser,
   loadMessageInConversation,
   serializeMessage,
+  groupRolesFor,
   summarizeConversation,
   userPreview,
   isGroupMember,

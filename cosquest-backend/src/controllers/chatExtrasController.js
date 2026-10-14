@@ -17,6 +17,7 @@ const {
   otherLastReadFor,
   forBroadcast,
   SENDER_FIELDS,
+  groupRolesFor,
 } = require('./chatController');
 const { storeChatMedia, deleteChatMedia } = require('../utils/imageHost');
 const { validateChatMedia } = require('../utils/chatMedia');
@@ -43,10 +44,11 @@ function deletedForIds(message) {
 // Serialize a page of messages for one viewer: reactions and (in DMs) the
 // other person's read position included, the same as the normal message list.
 async function serializeMany(docs, conversation, viewer) {
-  const [reactionDocs, otherLastReadAt, polls] = await Promise.all([
+  const [reactionDocs, otherLastReadAt, polls, groupRoles] = await Promise.all([
     MessageReaction.find({ message: { $in: docs.map((doc) => doc._id) } }),
     otherLastReadFor(conversation, viewer),
     pollSummaries(docs, viewer._id),
+    groupRolesFor(conversation),
   ]);
   const reactionsByMessage = groupReactions(reactionDocs, viewer._id);
   return docs.map((doc) =>
@@ -56,6 +58,7 @@ async function serializeMany(docs, conversation, viewer) {
       otherLastReadAt,
       reactions: reactionsByMessage.get(String(doc._id)) || [],
       poll: polls.get(String(doc._id)),
+      groupRoles,
     })
   );
 }
