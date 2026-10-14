@@ -13,6 +13,7 @@ import { bearingDeg, distanceText } from "@/features/game/geo";
 import { gameStore, GAME_SERVER, GAME_SERVER_IS_PRODUCTION, useGame, useLocationPermission, startLocation } from "@/features/game/runtime";
 import { nearestFirst } from "@/features/game/store";
 import { raidPlaysAsDuel } from "@/features/game/raids";
+import { useRoomBeacons, useRooms } from "@/features/game/roomsRuntime";
 import { noteStepsOnPhone } from "@/features/game/stepsDevice";
 import { unlocked, visiblePoints } from "@/features/game/unlocks";
 import { arriveMoment, nudgeMoment } from "@/features/game/warden";
@@ -35,6 +36,8 @@ import Onboarding from "./Onboarding";
 import PointSheet from "./PointSheet";
 import RaidBanner from "./RaidBanner";
 import RaidScreen from "./RaidScreen";
+import RoomScreen from "./RoomScreen";
+import RoomSheet from "./RoomSheet";
 import RelicsButton from "./RelicsButton";
 import RelicsSheet from "./RelicsSheet";
 import Reward, { type RewardSummary } from "./Reward";
@@ -47,10 +50,11 @@ type Screen =
   | { kind: "encounter"; point: QuestPoint }
   | { kind: "duel"; point: QuestPoint; raid?: boolean }
   | { kind: "raid"; point: QuestPoint }
+  | { kind: "room"; gameId: string }
   | { kind: "reward"; reward: RewardSummary };
 
 /** What is open over the map (one at a time, closed by Android Back). */
-type Sheet = "journal" | "more" | "events" | "friends" | "relics";
+type Sheet = "journal" | "more" | "events" | "friends" | "relics" | "battle";
 
 const NUDGE_EVERY_MS = 150000;
 
@@ -64,6 +68,8 @@ export default function GameRoot({ parked }: { parked: boolean }) {
   const [screen, setScreen] = useState<Screen>({ kind: "home" });
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [sheet, setSheet] = useState<Sheet | null>(null);
+  /** A Room beacon tapped on the map: the Battle sheet opens on that room. */
+  const [roomFocus, setRoomFocus] = useState<string | null>(null);
   const [, recentre] = useState(0);
   const greeted = useRef(new Set<string>());
 
@@ -76,6 +82,13 @@ export default function GameRoot({ parked }: { parked: boolean }) {
   // memoises on what the callback reads, so reading the store here would
   // freeze the list at its first (empty) value.
   const nearby = useMemo(() => nearestFirst(points, fix), [points, fix]);
+  const battleOpen = unlocked(me, "battle");
+  const rooms = useRooms();
+  useRoomBeacons(!parked && battleOpen && screen.kind !== "room");
+  const openBattle = (focus: string | null) => {
+    setRoomFocus(focus);
+    setSheet("battle");
+  };
   // An invite or a link asked for a spot: it is selected once its point is here.
   // Any invite target (shrine, duel or raid) is a point id, as on iOS
   // (GameHostOpenHook.resolve): open that point's sheet once it is loaded.
@@ -128,7 +141,8 @@ export default function GameRoot({ parked }: { parked: boolean }) {
   // pager's own handler takes it (back to the chat).
   useEffect(() => {
     if (parked) return;
-    const open = screen.kind !== "home" || sheet !== null || selected !== null;
+    // RoomScreen takes Back itself (it asks before leaving a fight).
+    const open = (screen.kind !== "home" && screen.kind !== "room") || sheet !== null || selected !== null;
     if (!open) return;
     const sub = BackHandler.addEventListener("hardwareBackPress", () => {
       if (sheet) setSheet(null);
@@ -167,6 +181,9 @@ export default function GameRoot({ parked }: { parked: boolean }) {
   const dailiesLeft = me?.dailies.filter((d) => !d.done).length ?? 0;
   // The rest of the game, under More (RoamHomeView.swift moreTiles), as levels unlock it.
   const moreTiles: MoreTile[] = [];
+  if (battleOpen) {
+    moreTiles.push({ id: "battle", icon: "people-circle", color: GP.berry, title: "Rooms", badge: rooms.nearby.length || null, onPress: () => openBattle(null) });
+  }
   if (unlocked(me, "friends")) {
     moreTiles.push({ id: "friends", icon: "people", color: GP.berry, title: "Friends", embed: <FriendsButton size={58} onPress={() => setSheet("friends")} />, onPress: () => setSheet("friends") });
   }
@@ -187,6 +204,8 @@ export default function GameRoot({ parked }: { parked: boolean }) {
         cooling={gameStore.isCooling}
         factionColor={color}
         onSelect={(p) => setSelectedId(p.id)}
+        rooms={battleOpen && screen.kind === "home" ? rooms.nearby : []}
+        onRoom={(r) => openBattle(r.game_id)}
       />
 
       <PlayerChip me={me} name={gameStore.playerName()} color={color} onPress={() => setSheet("journal")} />
@@ -264,6 +283,16 @@ export default function GameRoot({ parked }: { parked: boolean }) {
       {sheet === "events" ? <LiveCalendarSheet onClose={() => setSheet(null)} /> : null}
       {sheet === "friends" ? <FriendsSheet onClose={() => setSheet(null)} /> : null}
       {sheet === "relics" ? <RelicsSheet onClose={() => setSheet(null)} /> : null}
+      {sheet === "battle" ? (
+        <RoomSheet
+          focusGameId={roomFocus}
+          onClose={() => setSheet(null)}
+          onEnter={(gameId) => {
+            setSheet(null);
+            setScreen({ kind: "room", gameId });
+          }}
+        />
+      ) : null}
 
       {screen.kind === "encounter" ? (
         <Animated.View entering={FadeIn.duration(220)} exiting={FadeOut.duration(160)} style={StyleSheet.absoluteFill}>
@@ -278,6 +307,11 @@ export default function GameRoot({ parked }: { parked: boolean }) {
       {screen.kind === "raid" ? (
         <Animated.View entering={FadeIn.duration(220)} exiting={FadeOut.duration(160)} style={StyleSheet.absoluteFill}>
           <RaidScreen point={screen.point} parked={parked} onClose={() => setScreen({ kind: "home" })} />
+        </Animated.View>
+      ) : null}
+      {screen.kind === "room" ? (
+        <Animated.View entering={FadeIn.duration(220)} exiting={FadeOut.duration(160)} style={StyleSheet.absoluteFill}>
+          <RoomScreen gameId={screen.gameId} onClose={() => setScreen({ kind: "home" })} />
         </Animated.View>
       ) : null}
       {screen.kind === "reward" ? (

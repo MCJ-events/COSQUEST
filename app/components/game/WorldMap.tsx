@@ -26,9 +26,11 @@ import Svg, { Circle, Defs, Path, Pattern, Rect } from "react-native-svg";
 import { toLocal, type LatLng } from "@/features/game/geo";
 import { buildLayers, type MapLayers } from "@/features/game/mapPaths";
 import { raidTint } from "@/features/game/raids";
+import type { NearbyRoom } from "@/features/game/rooms";
 import type { GroundGeometry, QuestPoint } from "@/features/game/wire";
 
 import { RaidCrown } from "./RaidParts";
+import RoomBeacon from "./RoomBeacon";
 import { GF, GP, realmColor, realmIcon, tierColor } from "./theme";
 
 /** Pixels per metre: about 260 m across a phone. */
@@ -57,6 +59,9 @@ type Props = {
   cooling: (p: QuestPoint) => boolean;
   factionColor: string;
   onSelect: (p: QuestPoint) => void;
+  /** Public Rooms near you (Battle unlocked), as beacons. */
+  rooms?: NearbyRoom[];
+  onRoom?: (room: NearbyRoom) => void;
 };
 
 export default function WorldMap(props: Props) {
@@ -104,6 +109,12 @@ export default function WorldMap(props: Props) {
                 cooling={props.cooling(p)}
                 onPress={props.onSelect}
               />
+            );
+          })}
+          {(props.rooms ?? []).map((r) => {
+            const local = toLocal(origin, r);
+            return (
+              <RoomBeacon key={r.game_id} room={r} left={(local.x + extent) * MAP_SCALE} top={(extent - local.z) * MAP_SCALE} onPress={(room) => props.onRoom?.(room)} />
             );
           })}
         </Animated.View>
