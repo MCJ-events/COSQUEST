@@ -49,7 +49,7 @@ async function serializeMany(docs, conversation, viewer) {
     pollSummaries(docs, viewer._id),
   ]);
   const reactionsByMessage = groupReactions(reactionDocs, viewer._id);
-  return docs.map((doc) =>
+  const out = docs.map((doc) =>
     serializeMessage(doc, {
       viewerId: viewer._id,
       conversationType: conversation.type,
@@ -58,6 +58,8 @@ async function serializeMany(docs, conversation, viewer) {
       poll: polls.get(String(doc._id)),
     })
   );
+  // Sparks bot "Earlier context" posts: only the quotes this reader may read.
+  return require('../sparks/botPosts').redactForViewer(out, conversation._id, viewer._id);
 }
 
 // Where a search result sits: in a Spark (and which part of its history),
