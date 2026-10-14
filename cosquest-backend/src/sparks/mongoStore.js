@@ -37,6 +37,8 @@ const NAMES = {
   segments: 'sparks_segments',
   topics: 'sparks_topics',
   outlines: 'sparks_outlines',
+  // Live topic summaries (module 1.3.1): the latest per (call, topic).
+  topicSummaries: 'sparks_topic_summaries',
   consents: 'sparks_consents',
   mergeSuggestions: 'sparks_merge_suggestions',
 };
@@ -87,6 +89,7 @@ class MongoSparksStore {
       c.calls.createIndex({ status: 1 }),
       c.segments.createIndex({ callId: 1, startMs: 1 }),
       c.topics.createIndex({ callId: 1, idx: 1 }),
+      c.topicSummaries.createIndex({ callId: 1, firstAt: 1 }),
       c.consents.createIndex({ userId: 1, decidedAt: -1 }),
       // Proposed merges (module 1.3): one row per pair of Sparks, ever.
       c.mergeSuggestions.createIndex({ pairKey: 1 }, { unique: true }),
@@ -332,6 +335,19 @@ class MongoSparksStore {
   }
   async topics(callId) {
     return (await this.c.topics.find({ callId }).sort({ idx: 1 }).toArray()).map((d) => d.topic);
+  }
+  // Live topic summaries (module 1.3.1, optional store methods): one row per
+  // (call, topic), replaced on update; read in the order topics were first
+  // summarized. With module 1.3.0 these are simply never called.
+  async saveTopicSummary(s) {
+    await this.c.topicSummaries.updateOne(
+      { _id: `${s.callId}:${s.topicId}` },
+      { $set: { callId: s.callId, summary: s }, $setOnInsert: { firstAt: new Date() } },
+      { upsert: true },
+    );
+  }
+  async topicSummaries(callId) {
+    return (await this.c.topicSummaries.find({ callId }).sort({ firstAt: 1, _id: 1 }).toArray()).map((d) => d.summary);
   }
   async saveOutline(callId, outline, status) {
     await this.c.outlines.replaceOne({ _id: callId }, { _id: callId, status, outline: outline ?? null }, { upsert: true });

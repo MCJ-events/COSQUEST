@@ -214,3 +214,16 @@ Built against the cosquest-sparks `admin-search` branch (module changes listed u
 
 **Vendoring.** These routes need module 1.3 (`admin.mergeMany`, `admin.mergeSuggestions`, `sparkHistory`, `readableSeqs`). With the vendored 1.2.3 they answer `501` and `test/sparksAdminSearch.js` reports the admin and search part as skipped; targeted calls work with 1.2.3 but reach only the call's own DM (1.2.3 ignores `commandMembers`). When the release is cut: replace `vendor/cosquest-sparks-backend-1.2.3.tgz` with the new tarball as in section 4 and run `npm test` (811 checks with it).
 
+
+## 14. Module 1.3.1: live summary of the current topic in calls
+
+Built against the cosquest-sparks `live-topic-summary` branch (CHANGELOG "Unreleased"; app side: cosquest-sparks `docs/APP_SPEC_live_summary.md`). While a call runs, the scribe phone writes a 1 to 2 sentence summary of the current topic; the module checks it, stores the latest per topic and sends `call.topic_summary` to the call's attendees over the existing `sparks` channel (`ports.broadcastToCall`), and to someone joining mid-call after the topics so far (`ports.sendToUsers`). No new port, route or socket event is needed here.
+
+| Where | What |
+|---|---|
+| `src/sparks/mongoStore.js` | `sparks_topic_summaries` (one row per call and topic, `_id` = `callId:topicId`) and the two optional store methods `saveTopicSummary` / `topicSummaries`, so summaries survive a restart and are shared between instances. Without them the module keeps them in memory |
+| `test/sparksStore.js` | 4 checks: latest version per topic, first-summarized order, rows as written, calls not mixed |
+
+Config (module defaults; override with the `SPARKS_CONFIG` env JSON, e.g. `{"liveTopicSummary":false}`): `liveTopicSummary` true (false: topics only, as before), `liveTopicSummaryEveryMs` 30,000, `liveTopicSummaryMinLines` 3, `liveTopicSummaryMaxChars` 280.
+
+**Vendoring.** The store methods are unused until the module with live summaries is vendored (the vendored 1.3.0 never calls them, and sends nothing new). When that release is cut: replace the tarball as in section 4 and run `npm test`.
