@@ -162,7 +162,7 @@ const styles = StyleSheet.create({
   swatch: { width: 16, height: 16, borderRadius: 8 },
   sideName: { fontFamily: GF.bold, fontSize: 14, color: GP.ink },
   label: { fontFamily: GF.bold, fontSize: 14, color: GP.ink, marginTop: 4 },
-  input: { height: 48, paddingHorizontal: 14, borderRadius: 14, borderWidth: 2, borderColor: "rgba(30,58,76,0.2)", backgroundColor: "#FFF", fontFamily: GF.bold, fontSize: 17, color: GP.ink },
+  input: { height: 48, paddingHorizontal: 14, paddingVertical: 0, textAlignVertical: "center", borderRadius: 14, borderWidth: 2, borderColor: "rgba(30,58,76,0.2)", backgroundColor: "#FFF", fontFamily: GF.bold, fontSize: 17, color: GP.ink },
   problemText: { fontFamily: GF.body, fontSize: 15, color: GP.ink },
   problem: { flexDirection: "row", alignItems: "center", gap: 8, alignSelf: "flex-start", paddingHorizontal: 14, paddingVertical: 9, borderRadius: 18, backgroundColor: GP.navy },
   problemBanner: { fontFamily: GF.bold, fontSize: 14, color: "#FFF", flexShrink: 1 },

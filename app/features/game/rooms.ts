@@ -108,6 +108,9 @@ export type Verdict = {
   downed?: string | null;
   correct?: boolean | null;
   duplicate?: boolean | null;
+  /** A capture's notes (engine.py): the shrine, and the side that now holds it. */
+  anchor?: string | null;
+  faction?: string | null;
 };
 
 export type EventKind = "pickup" | "hit" | "capture" | "trivia_answer" | "respawn";
@@ -222,6 +225,8 @@ export function parseVerdict(raw: unknown): Verdict | null {
     downed: typeof r.downed === "string" ? r.downed : null,
     correct: typeof r.correct === "boolean" ? r.correct : null,
     duplicate: top.duplicate === true ? true : null,
+    ...(typeof r.anchor === "string" ? { anchor: r.anchor } : {}),
+    ...(typeof r.faction === "string" ? { faction: r.faction } : {}),
   };
 }
 
@@ -691,8 +696,13 @@ export function onVerdict(
       }
       return addFeed(withMoment(next, "Hit", "good"), "Hit.", false, now);
     }
-    case "capture":
+    case "capture": {
+      // The server set the holder when it applied the capture; its scoreboard
+      // only says so every few events, so take it from the verdict's notes.
+      const faction = v.faction ?? next.faction;
+      if (v.anchor && faction) next = { ...next, captures: { ...next.captures, [v.anchor]: faction } };
       return addFeed(withMoment(next, "Point captured", "good"), `Captured a point for ${next.faction ?? "your side"}.`, false, now);
+    }
     case "trivia_answer":
       return v.correct ? addFeed(withMoment(next, "Correct", "good"), "Correct.", false, now) : addFeed(withMoment(next, "Not that one", "bad"), "Not that one.", false, now);
     case "respawn":

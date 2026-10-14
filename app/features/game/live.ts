@@ -9,6 +9,7 @@
 // Wednesday (features/game/__tests__/live.test.ts).
 // Pure: no React Native imports.
 import { GameError, type GameClient } from "./client.ts";
+import { distanceM } from "./geo.ts";
 import { parseServerDate, type RoamMe } from "./wire.ts";
 
 // ---------- wire ----------
@@ -247,10 +248,15 @@ export type LiveCalendarState = {
 /** The calendar shared by the banner and the sheet (LiveCalendarModel). A
  * dropped request keeps the last good calendar: it should not hide a Quest
  * Hour that is still on. Snapshots are immutable (read with useSyncExternalStore). */
+/** A move this far makes the calendar stale whatever its age. */
+export const MOVED_FAR_M = 25_000;
+
 export function createLiveCalendarStore(deps: { fetchCalendar: (lat: number, lng: number) => Promise<LiveCalendar>; now?: () => number }) {
   const now = deps.now ?? (() => Date.now());
   let state: LiveCalendarState = { calendar: null, error: null, loading: false, fetchedAt: 0 };
   let inFlight: Promise<void> | null = null;
+  /** Where the calendar in hand was asked for: its region's clock. */
+  let place: { lat: number; lng: number } | null = null;
   const listeners = new Set<() => void>();
   const set = (patch: Partial<LiveCalendarState>) => {
     state = { ...state, ...patch };
@@ -272,6 +278,7 @@ export function createLiveCalendarStore(deps: { fetchCalendar: (lat: number, lng
       inFlight = (async () => {
         try {
           const calendar = await deps.fetchCalendar(lat, lng);
+          place = { lat, lng };
           set({ calendar, error: null, loading: false, fetchedAt: now() });
         } catch (error) {
           set({ error: error instanceof GameError ? error.message : "Check your connection.", loading: false });
@@ -283,7 +290,11 @@ export function createLiveCalendarStore(deps: { fetchCalendar: (lat: number, lng
     },
     /** Fetch if never fetched, or the last good one is older than the refresh period. */
     refreshIfStale(lat: number, lng: number): Promise<void> {
-      if (state.calendar && now() - state.fetchedAt < CALENDAR_REFRESH_MS) return Promise.resolve();
+      // Fresh, and still for this place. A phone's first fix can be a stale
+      // last-known one far away; the calendar is per region, so a move of
+      // more than a city's width asks again at once.
+      const moved = place ? distanceM(place, { lat, lng }) > MOVED_FAR_M : true;
+      if (state.calendar && !moved && now() - state.fetchedAt < CALENDAR_REFRESH_MS) return Promise.resolve();
       return store.load(lat, lng);
     },
   };

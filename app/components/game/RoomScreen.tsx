@@ -3,7 +3,7 @@
 // it is on screen and closes the live link when it goes. costquest-ios
 // CostQuestApp.swift onRoom → UI/EntryView.swift (presetSide, presetHandle)
 // → UI/PlayView.swift → UI/ResultsView.swift.
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Alert, BackHandler, StyleSheet, View } from "react-native";
 
 import { isTerminal } from "@/features/game/rooms";
@@ -42,14 +42,20 @@ export default function RoomScreen({ gameId, onClose }: { gameId: string; onClos
   // Android Back: out of the lobby at once; out of a fight only after asking,
   // because it is the one thing that should never happen by accident mid fight.
   // Only while the game is the page showing: Back on the chat is the chat's.
+  // Registered once (not on every render), so the fight's own listeners (a
+  // chest's question) stay newer and take Back first.
+  const leaveRef = useRef(confirmLeave);
+  useEffect(() => {
+    leaveRef.current = confirmLeave;
+  });
   useEffect(() => {
     if (!onScreen) return;
     const sub = BackHandler.addEventListener("hardwareBackPress", () => {
-      confirmLeave();
+      leaveRef.current();
       return true;
     });
     return () => sub.remove();
-  });
+  }, [onScreen]);
 
   return (
     <View style={StyleSheet.absoluteFill}>

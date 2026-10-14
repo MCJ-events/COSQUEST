@@ -311,6 +311,9 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 52,
     paddingHorizontal: 14,
+    // Android's default padding clips the display font's tall line in 52 pt.
+    paddingVertical: 0,
+    textAlignVertical: "center",
     borderRadius: 14,
     borderWidth: 2,
     borderColor: "rgba(30,58,76,0.2)",

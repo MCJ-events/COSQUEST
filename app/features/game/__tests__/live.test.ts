@@ -264,10 +264,16 @@ describe("live: the calendar call and its state", () => {
     clock += 299_000;
     await store.refreshIfStale(1, 2);
     assert.equal(fetched, 1);
-    clock += 2_000;
-    fail = true;
-    await store.refreshIfStale(1, 2);
+    // ...unless the player is now somewhere else entirely (a stale first fix).
+    await store.refreshIfStale(51.5, -0.12);
+    assert.equal(fetched, 2, "a far move asks again at once");
+    await store.refreshIfStale(51.5, -0.12);
     assert.equal(fetched, 2);
+    clock += 2_000;
+    clock += 299_000;
+    fail = true;
+    await store.refreshIfStale(51.5, -0.12);
+    assert.equal(fetched, 3);
     assert.equal(store.get().calendar, CAL, "a dropped request does not hide a Quest Hour");
     assert.equal(store.get().error, "lat out of range");
     assert.equal(store.get().loading, false);

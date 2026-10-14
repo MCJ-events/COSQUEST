@@ -501,6 +501,16 @@ describe("rooms: one player's session", () => {
     assert.equal(sockets[1].closed, true);
   });
 
+  it("a capture's verdict says at once that your side holds the shrine", () => {
+    const v = parseVerdict({ client_seq: 7, ok: true, reason: "", deltas: { p1: 10 }, anchor: "s1", faction: "Gaming" });
+    assert.ok(v);
+    const s = { ...INITIAL_FIGHT, playerId: "p1", faction: "Gaming", tokens: 100 };
+    const next = onVerdict(s, "capture", v, 1, 2);
+    assert.equal(next.captures.s1, "Gaming");
+    assert.equal(next.tokens, 110);
+    assert.equal(anchorTitle({ id: "s1", kind: "capture_point", asset: "", lat: 0, lng: 0, payload: {} } as unknown as GameAnchor, next.captures, next.faction), "Your side holds this point");
+  });
+
   it("leaving while the join is in flight opens no live link", async () => {
     const { client } = clientWith((c) => (c.url.endsWith("/join") ? { body: { player_id: "p1", faction: "DC", starting_tokens: 100 } } : c.url.endsWith("/anchors") ? { body: [] } : undefined));
     const sockets: FakeSocket[] = [];
