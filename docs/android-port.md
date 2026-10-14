@@ -51,14 +51,14 @@ Android the same game, not an imitation of it.
 | **run** (Quest Run: walk → point → challenge → reward) | (a) | **Parity** (it is the core loop above) |
 | **spawns** (wandering challenges) | (a) | Partial: they arrive as normal points with source "wander" and play the same; the radar strip and expiry line are not drawn. |
 | **holds** / **siege** | (a) | Partial: holds show on points and in the sheet; taking a rival hold is a duel against its Guardian, which plays. The siege-specific UI is not ported. |
-| **raids** (co-op Boss Trivia) | (a) | **Not ported.** Needs the live session (`Game/LiveLink.swift`, websocket) and its UI. A raid invite card opens the game at that spot. |
-| **live** (events calendar, Quest Hour, stamp streak) | (a) | Not ported (calendar UI). The streak shows in the HUD and journal. |
-| **steps** (pedometer rewards, sealed shrines) | (a) + expo-sensors Pedometer | Not ported. |
-| **relics** (faction weapons: collect, power up, equip) | (a) | Partial: relics arrive in rewards and the client has the route; no relic screen. |
-| **Forge weapons** | (a) | Not ported (catalogue view). |
+| **raids** (co-op Boss Trivia / boss fights) | (a) | **Parity.** `RaidBanner` (nearest boss, shared HP), `RaidLine` in the point sheet, crowned markers, hidden below level 5. Both ways the server runs a raid: Boss Trivia (`RaidScreen`: lobby, the crew's 5 shared questions, shared boss HP, result) polling `/v1/roam/raids/state` once a second like iOS (the server polls on purpose; there is no websocket), and a boss fought as a Guardian Duel with mode `raid` (`raid_duel`, which staging runs: a fight was judged won there). |
+| **live** (events calendar, Quest Hour / Landmark Day, stamp card) | (a) | **Parity.** `LiveBanner` counts down by the phone's clock and flips on the minute without a refetch, `LiveCalendarSheet` (now + 30 days), `LiveStampCard` in the journal from `/me.features.live`. The server pays the multiplier and stamps as reward lines. iOS's More → "Events" is the separate venue-games flow (`DiscoverView`, `v1/games`: paid entry, venue packs, AR), not ported. |
+| **steps** (walking rewards: 5/25/50 km a week) | (a) + (c) `StepCounter.kt` | **Parity in rules, different sensor.** `StepsCard` in the journal from level 2, the same signed week-total report. Android has no pedometer history, so the hardware step counter (steps since boot) is read whenever the game comes forward and a TS ledger keeps the week's tally across reboots, at 0.7 m a step (errs low; iOS uses Apple's distance). Needs ACTIVITY_RECOGNITION. Sealed shrines: not implemented on the server or iOS either. |
+| **relics** (faction weapons: collect, power up, equip) | (a) | **Parity.** `RelicsSheet` (all relics by faction, owned/unfound, rarity, level, power, shards), equip and level up as the server allows, the starter relic, `RelicsButton` on the rail from level 2, `RelicDropCard` in the reward. |
+| **Forge weapons** | (a) | **Parity except 3D.** The Forge catalogue with damage, range and cooldown; view-only on both platforms (only admins and creators change them). The turning 3D GLB preview is not ported: the server's thumbnail when it has one, else a 2D drawing. |
 | **coins** (bought on the web through Stripe) | (a) | Balance shows and is spent on hints; buying stays on the web (same as iOS). |
-| **social** (friends added in person, gifts) | (a) + (c) NFC/mesh | Not ported. Depends on the mesh and NFC handshakes. |
-| **rooms** (the arena battle anywhere) | (b) | Not ported (Unity rooms). |
+| **social** (friends, gifts) | (a) | **Parity except hold-phones.** Friends list, levels, one gift per friend a day, opening gifts, and adding a friend by a 6-character code (the server accepts it within 10 minutes and 100 m of where it was made). iOS has the same code path, so iPhone and Android players can add each other. Holding two phones together needs Apple's peer link (Bonjour/AWDL) and UWB, so it is not ported. |
+| **rooms** (the arena battle anywhere) | (a) | **Playable in 2D.** Start a Room, share its code, beacons on the map, join, lobby, the fight and the results. A Room fight is server-judged events (pickups, hits within 12 m, shrines, trivia chests, respawns) with a live link; iOS draws the arena in AR, Android top-down, aiming with the compass and ranging by GPS (iOS does the same without UWB). Checked on staging with two players, including a hit. Not ported: the AR arena, UWB precision, the outbox surviving an app kill. |
 
 ### AR/, Map/, Unity/ → Unity on both (b)
 | iOS | Android | Status |
@@ -149,8 +149,12 @@ Warm swipe-to-interactive was 0.6–0.8 s on a software-rendered emulator
 
 ## 6. What is at parity, in one line
 Sign in once, map with nearby points, walk to a point, play its challenge
-(all quiz kinds and the Guardian Duel, judged by the server), XP/levels/coins,
-codex, dailies and streak, faction and the faction war, the Warden's lines
-and voice: **at parity**. 3D (world, duel looks, AR shrine), raids, live
-events, steps, relic/forge screens, friends, rooms, mesh/UWB: **degraded or
-not ported**, for the reasons above.
+(all quiz kinds, answered by voice too, and the Guardian Duel, judged by the
+server), XP/levels/coins, codex, dailies and streak, faction and the faction
+war, the Warden's lines and voice, boss raids, Quest Hours and the stamp
+card, walking rewards, relics and the Forge catalogue, friends and gifts (add
+by code), Rooms (in 2D): **at parity or playable**. Features open by level as
+on iOS (`features/game/unlocks.ts`); the rest sits in a More sheet as on iOS.
+3D (world, duel looks, AR shrine, Room arena in AR, Forge 3D previews),
+hold-phones friend adds, venue events (`DiscoverView`), mesh/UWB: **degraded
+or not ported**, for the reasons above.
