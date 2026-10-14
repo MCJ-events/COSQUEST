@@ -32,6 +32,8 @@ import LiveCalendarSheet from "./LiveCalendarSheet";
 import MoreSheet, { type MoreTile } from "./MoreSheet";
 import Onboarding from "./Onboarding";
 import PointSheet from "./PointSheet";
+import RelicsButton from "./RelicsButton";
+import RelicsSheet from "./RelicsSheet";
 import Reward, { type RewardSummary } from "./Reward";
 import { GF, GP } from "./theme";
 import { useWardenSaid, wardenVoice } from "./wardenVoice";
@@ -44,7 +46,7 @@ type Screen =
   | { kind: "reward"; reward: RewardSummary };
 
 /** What is open over the map (one at a time, closed by Android Back). */
-type Sheet = "journal" | "more" | "events" | "friends";
+type Sheet = "journal" | "more" | "events" | "friends" | "relics";
 
 const NUDGE_EVERY_MS = 150000;
 
@@ -188,8 +190,9 @@ export default function GameRoot({ parked }: { parked: boolean }) {
           recentre((n) => n + 1);
           void gameStore.refreshPoints(true);
         }}
-        dailiesLeft={dailiesLeft}
-      />
+        dailiesLeft={dailiesLeft}>
+        {unlocked(me, "relics") ? <RelicsButton onPress={() => setSheet("relics")} /> : null}
+      </Rail>
 
       {/* Under the top bar, left of the rail: one column, as iOS's worldBanners. */}
       <View style={[styles.banners, { top: insets.top + 84 }]} pointerEvents="box-none">
@@ -251,6 +254,7 @@ export default function GameRoot({ parked }: { parked: boolean }) {
       {sheet === "more" ? <MoreSheet tiles={moreTiles} onClose={() => setSheet(null)} /> : null}
       {sheet === "events" ? <LiveCalendarSheet onClose={() => setSheet(null)} /> : null}
       {sheet === "friends" ? <FriendsSheet onClose={() => setSheet(null)} /> : null}
+      {sheet === "relics" ? <RelicsSheet onClose={() => setSheet(null)} /> : null}
 
       {screen.kind === "encounter" ? (
         <Animated.View entering={FadeIn.duration(220)} exiting={FadeOut.duration(160)} style={StyleSheet.absoluteFill}>

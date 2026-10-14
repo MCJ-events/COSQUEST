@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { DuelOutcome, QuestPoint, RoamExtra, RoamStanding, RoamVerdict } from "@/features/game/wire";
 
 import { GameButton, GameTitle, ProgressBar } from "./kit";
+import { RelicDropExtra } from "./RelicDropCard";
 import { edgeOf, GF, GP, realmColor } from "./theme";
 
 export type RewardSummary = {
@@ -156,16 +157,22 @@ export default function Reward({ reward, onDone }: { reward: RewardSummary; onDo
           </Animated.View>
         ) : null}
 
-        {reward.extras.map((e, i) => (
+        {reward.extras.map((e, i) =>
+          e.kind === "relic" && e.relic ? (
+            <Animated.View key={`${e.kind}-${i}`} entering={FadeInDown.delay(550 + i * 80)}>
+              <RelicDropExtra extra={e} />
+            </Animated.View>
+          ) : (
           <Animated.View key={`${e.kind}-${i}`} entering={FadeInDown.delay(550 + i * 80)} style={styles.extra}>
-            <Ionicons name={e.kind === "relic" ? "diamond" : e.kind === "codex" ? "albums" : "sparkles"} size={22} color={GP.sun} />
+            <Ionicons name={e.kind === "relic" ? "diamond" : e.kind === "codex" ? "albums" : e.kind === "stamps" ? "ribbon" : "sparkles"} size={22} color={GP.sun} />
             <View style={{ flex: 1 }}>
               <Text style={styles.extraTitle}>{e.title}</Text>
               {e.subtitle ? <Text style={styles.extraSub}>{e.subtitle}</Text> : null}
             </View>
             {e.new ? <Text style={styles.newTag}>NEW</Text> : null}
           </Animated.View>
-        ))}
+          ),
+        )}
 
         <GameButton title="Continue" color={GP.sun} onPress={onDone} style={{ marginTop: 8 }} />
       </ScrollView>

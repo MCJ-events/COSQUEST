@@ -1,0 +1,304 @@
+// A Relic, drawn: each kind (blade, axe, bow, staff, hammer, gauntlet) as a
+// chunky silhouette in a crystal the colour of its rarity, and the ten level
+// pips. costquest-ios Features/RelicsFeature.swift (WeaponShape, WeaponShine,
+// WeaponGlyph, RelicArt, CrystalFrame, CrystalFacet, RelicPips).
+//
+// Relics have no 3D models on iOS either: this is the same drawing, in SVG.
+// Forge weapons (which do have GLB models on iOS) use it too, with the kind
+// read from the name. Differences: the legendary rim is a still gradient,
+// not iOS's turning one.
+import { useId } from "react";
+import { StyleSheet, Text, View } from "react-native";
+import Svg, { Circle, Defs, G, LinearGradient, Path, Rect, Stop } from "react-native-svg";
+
+import { RELIC_MAX_LEVEL } from "@/features/game/relics";
+
+import { edgeOf, GF, GP } from "./theme";
+
+/** RelicLook.rarityColor. */
+export function rarityColor(rarity: string | null | undefined): string {
+  switch (rarity) {
+    case "legendary":
+      return "#FF6B33";
+    case "epic":
+      return GP.sun;
+    case "rare":
+      return GP.rare;
+    default:
+      return GP.sky;
+  }
+}
+
+/** The rarity's colour for text on cream (the sun is too light there). */
+export function rarityInk(rarity: string | null | undefined): string {
+  const c = rarityColor(rarity);
+  return c === GP.sun ? GP.sunDeep : c === GP.sky ? GP.skyDeep : c;
+}
+
+/** The shard purple. */
+export const SHARD = GP.rare;
+
+// ---------- the weapon (unit square as 0..100, pointing up) ----------
+
+type Part =
+  | { k: "rect"; x0: number; y0: number; x1: number; y1: number; r: number }
+  | { k: "circle"; cx: number; cy: number; r: number }
+  | { k: "path"; d: string }
+  /** A stroked line (the bow's limb and string, the staff's fork), `w` wide. */
+  | { k: "line"; d: string; w: number };
+
+const rect = (x0: number, y0: number, x1: number, y1: number, r = 2): Part => ({ k: "rect", x0, y0, x1, y1, r });
+const circle = (cx: number, cy: number, r: number): Part => ({ k: "circle", cx, cy, r });
+const path = (d: string): Part => ({ k: "path", d });
+const line = (d: string, w: number): Part => ({ k: "line", d, w });
+
+/** WeaponShape: built from overlapping parts, outlined in ink, filled on top. */
+function weaponParts(kind: string): Part[] {
+  switch (kind) {
+    case "axe":
+      return [rect(45, 10, 55, 96, 4), path("M53 16 L74 7 Q102 30 76 58 L53 46 Z"), path("M47 22 L27 30 L47 40 Z"), circle(50, 94, 6)];
+    case "bow":
+      return [
+        line("M60 6 Q2 50 60 94", 11),
+        line("M60 6 L60 94", 3.5),
+        rect(30, 47, 86, 53, 2),
+        path("M98 50 L82 40 L82 60 Z"),
+        rect(40, 33, 50, 49, 2),
+        rect(40, 33, 44, 50, 1),
+      ];
+    case "staff":
+      return [rect(45, 28, 55, 97, 4), line("M30 20 Q50 46 70 20", 7), path("M50 0 L63 17 L50 34 L37 17 Z"), rect(40, 60, 60, 66, 2)];
+    case "hammer":
+      return [rect(45, 32, 55, 96, 4), rect(16, 8, 84, 38, 6), rect(10, 12, 20, 34, 3), rect(80, 12, 90, 34, 3), circle(50, 93, 6)];
+    case "gauntlet":
+      return [
+        ...[0, 1, 2, 3].map((i) => {
+          const x = 22 + i * 14.5;
+          return rect(x, 12 + (i === 0 || i === 3 ? 5 : 0), x + 15, 46, 7);
+        }),
+        rect(20, 30, 80, 70, 12),
+        rect(14, 44, 52, 58, 7),
+        path("M26 68 L74 68 L80 95 L20 95 Z"),
+      ];
+    default:
+      // blade
+      return [path("M50 2 L60 14 L60 64 L40 64 L40 14 Z"), rect(22, 62, 78, 71, 4), rect(45, 70, 55, 88, 2), circle(50, 92, 6.5)];
+  }
+}
+
+/** WeaponShine: a fuller of light, so it reads as metal rather than a sticker. */
+function weaponShine(kind: string): Part | null {
+  switch (kind) {
+    case "blade":
+      return rect(47.5, 14, 51, 58);
+    case "axe":
+      return rect(64, 16, 70, 46);
+    case "hammer":
+      return rect(24, 12, 76, 17);
+    case "staff":
+      return rect(46, 7, 50, 24);
+    case "gauntlet":
+      return rect(30, 34, 70, 39);
+    default:
+      return null;
+  }
+}
+
+const turn = (kind: string) => (kind === "bow" ? -30 : 38);
+
+function drawPart(p: Part, key: string, fill: string, opacity: number, outline: number) {
+  if (p.k === "line") {
+    return <Path key={key} d={p.d} fill="none" stroke={fill} strokeOpacity={opacity} strokeWidth={p.w + outline * 2} strokeLinecap="round" />;
+  }
+  const stroke = outline > 0 ? { stroke: fill, strokeOpacity: opacity, strokeWidth: outline * 2, strokeLinejoin: "round" as const } : {};
+  if (p.k === "rect") {
+    return <Rect key={key} x={p.x0} y={p.y0} width={p.x1 - p.x0} height={p.y1 - p.y0} rx={p.r} fill={fill} fillOpacity={opacity} {...stroke} />;
+  }
+  if (p.k === "circle") return <Circle key={key} cx={p.cx} cy={p.cy} r={p.r} fill={fill} fillOpacity={opacity} {...stroke} />;
+  return <Path key={key} d={p.d} fill={fill} fillOpacity={opacity} {...stroke} />;
+}
+
+/**
+ * The weapon's layers in a 0..100 box, already turned. `lw`: the ink line in
+ * box units (0 = a flat silhouette in `fill`).
+ */
+function WeaponLayers({ kind, fill, ink, lw, gradientId, shadow, opacity = 1 }: { kind: string; fill: string; ink: string; lw: number; gradientId?: string; shadow?: number; opacity?: number }) {
+  const parts = weaponParts(kind);
+  const shine = weaponShine(kind);
+  const rotate = `rotate(${turn(kind)} 50 50)`;
+  return (
+    <G>
+      {shadow ? (
+        <G transform={`translate(0 ${shadow})`}>
+          <G transform={rotate}>{parts.map((p, i) => drawPart(p, `s${i}`, "#000000", 0.3, lw))}</G>
+        </G>
+      ) : null}
+      <G transform={rotate}>
+      {lw > 0 ? parts.map((p, i) => drawPart(p, `o${i}`, ink, 1, lw)) : null}
+      {parts.map((p, i) =>
+        p.k === "line"
+          ? drawPart(p, `f${i}`, fill, opacity, 0)
+          : drawPart(p, `f${i}`, gradientId ? `url(#${gradientId})` : fill, opacity, 0),
+      )}
+      {lw > 0 && shine ? drawPart(shine, "shine", "#FFFFFF", 0.85, 0) : null}
+      </G>
+    </G>
+  );
+}
+
+/**
+ * The weapon alone (WeaponGlyph; flat, it is the rail button's WeaponShape
+ * in white).
+ */
+export function WeaponGlyph({ kind, size, fill = GP.cream, ink = GP.ink, lineWidth = 3, flat }: { kind: string; size: number; fill?: string; ink?: string; lineWidth?: number; flat?: boolean }) {
+  const gid = `wg${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
+  return (
+    <Svg width={size} height={size} viewBox="-6 -6 112 112" accessible={false}>
+      {flat ? null : (
+        <Defs>
+          <LinearGradient id={gid} x1="0" y1="0" x2="1" y2="1">
+            <Stop offset="0" stopColor={fill} stopOpacity={1} />
+            <Stop offset="1" stopColor={fill} stopOpacity={0.78} />
+          </LinearGradient>
+        </Defs>
+      )}
+      <WeaponLayers kind={kind} fill={fill} ink={ink} lw={flat ? 0 : (lineWidth * 112) / size} gradientId={flat ? undefined : gid} />
+    </Svg>
+  );
+}
+
+// ---------- the crystal ----------
+
+/** CrystalFrame: a pointy-topped hexagon with softened corners, in (x, y, w, h). */
+function crystalPath(x: number, y: number, w: number, h: number): string {
+  const pts: [number, number][] = [
+    [x + w / 2, y],
+    [x + w, y + h * 0.25],
+    [x + w, y + h * 0.75],
+    [x + w / 2, y + h],
+    [x, y + h * 0.75],
+    [x, y + h * 0.25],
+  ];
+  const k = Math.min(w, h) * 0.1;
+  const toward = (p: [number, number], q: [number, number]): [number, number] => {
+    const dx = q[0] - p[0];
+    const dy = q[1] - p[1];
+    const len = Math.max(0.001, Math.hypot(dx, dy));
+    return [p[0] + (dx / len) * k, p[1] + (dy / len) * k];
+  };
+  const f = (n: number) => n.toFixed(2);
+  let d = "";
+  pts.forEach((b, i) => {
+    const a = pts[(i + pts.length - 1) % pts.length];
+    const c = pts[(i + 1) % pts.length];
+    const from = toward(b, a);
+    const to = toward(b, c);
+    d += `${i === 0 ? "M" : "L"}${f(from[0])} ${f(from[1])} Q${f(b[0])} ${f(b[1])} ${f(to[0])} ${f(to[1])} `;
+  });
+  return `${d}Z`;
+}
+
+/** CrystalFacet: the light upper-left face. */
+function facetPath(w: number, h: number): string {
+  return `M${w / 2} ${h * 0.06} L${w * 0.06} ${h * 0.28} L${w * 0.06} ${h * 0.55} L${w / 2} ${h / 2} Z`;
+}
+
+/**
+ * RelicArt: a faceted hexagon in the rarity's colour, a hard darker base like
+ * every panel in the game, and the weapon across it. Not owned: a dim crystal
+ * with a ghost of the weapon and a "?".
+ */
+export function RelicArt({ kind, rarity, owned = true, size = 80 }: { kind: string; rarity: string; owned?: boolean; size?: number }) {
+  const gid = `ra${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
+  const tint = owned ? rarityColor(rarity) : GP.navy;
+  const w = size;
+  const h = size * 1.08;
+  const base = size * 0.05;
+  const outer = Math.max(2, size * 0.04);
+  const inset = size * 0.05;
+  // The weapon sits in the middle, 0.6 of the crystal wide.
+  const glyph = Math.min(w, h) - size * 0.4;
+  const gx = (w - glyph) / 2;
+  const gy = (h - glyph) / 2;
+  const lw = (Math.max(1.5, size * 0.028) * 100) / glyph;
+  const frame = crystalPath(outer / 2, outer / 2, w - outer, h - outer);
+  return (
+    <View style={{ width: w, height: h + base }} accessible={false} importantForAccessibility="no-hide-descendants">
+      <Svg width={w} height={h + base}>
+        <Defs>
+          <LinearGradient id={`${gid}b`} x1="0" y1="0" x2="0" y2="1">
+            {owned
+              ? [
+                  <Stop key="0" offset="0" stopColor={tint} stopOpacity={0.85} />,
+                  <Stop key="1" offset="0.5" stopColor={tint} stopOpacity={1} />,
+                  <Stop key="2" offset="1" stopColor={edgeOf(tint)} stopOpacity={1} />,
+                ]
+              : [<Stop key="0" offset="0" stopColor={GP.navy} stopOpacity={0.9} />, <Stop key="1" offset="1" stopColor={GP.navyEdge} stopOpacity={1} />]}
+          </LinearGradient>
+          <LinearGradient id={`${gid}m`} x1="0" y1="0" x2="1" y2="1">
+            <Stop offset="0" stopColor={GP.cream} stopOpacity={1} />
+            <Stop offset="1" stopColor={GP.cream} stopOpacity={0.78} />
+          </LinearGradient>
+          <LinearGradient id={`${gid}l`} x1="0" y1="0" x2="1" y2="1">
+            <Stop offset="0" stopColor={GP.sun} />
+            <Stop offset="0.35" stopColor="#FFFFFF" />
+            <Stop offset="0.65" stopColor={GP.berry} />
+            <Stop offset="1" stopColor={GP.sun} />
+          </LinearGradient>
+        </Defs>
+        <G transform={`translate(0 ${base})`}>
+          <Path d={frame} fill={edgeOf(tint)} />
+        </G>
+        <Path d={frame} fill={`url(#${gid}b)`} />
+        <Path d={facetPath(w, h)} fill="#FFFFFF" fillOpacity={owned ? 0.22 : 0.06} />
+        <Path
+          d={crystalPath(inset, inset, w - inset * 2, h - inset * 2)}
+          fill="none"
+          stroke="#FFFFFF"
+          strokeOpacity={owned ? 0.75 : 0.12}
+          strokeWidth={Math.max(1.5, size * 0.03)}
+        />
+        <G transform={`translate(${gx} ${gy}) scale(${glyph / 100})`}>
+          {owned ? (
+            <WeaponLayers kind={kind} fill={GP.cream} ink={GP.ink} lw={lw} gradientId={`${gid}m`} shadow={3} />
+          ) : (
+            <WeaponLayers kind={kind} fill="#FFFFFF" ink={GP.ink} lw={0} opacity={0.13} />
+          )}
+        </G>
+        <Path d={frame} fill="none" stroke={GP.ink} strokeOpacity={owned ? 0.9 : 0.5} strokeWidth={outer} />
+        {owned && rarity === "legendary" ? <Path d={frame} fill="none" stroke={`url(#${gid}l)`} strokeWidth={Math.max(2, size * 0.05)} /> : null}
+      </Svg>
+      {owned ? null : (
+        <View style={[styles.mark, { height: h }]}>
+          <Text style={{ fontFamily: GF.display, fontSize: size * 0.3, color: "rgba(255,255,255,0.5)" }}>?</Text>
+        </View>
+      )}
+    </View>
+  );
+}
+
+/** RelicPips: ten pips, filled to the level. */
+export function RelicPips({ level, tint, size = 7 }: { level: number; tint: string; size?: number }) {
+  return (
+    <View style={[styles.pips, { gap: size * 0.4 }]} accessible accessibilityLabel={`Level ${level} of ${RELIC_MAX_LEVEL}`}>
+      {Array.from({ length: RELIC_MAX_LEVEL }, (_, i) => (
+        <View
+          key={i}
+          style={{
+            width: size,
+            height: size,
+            borderRadius: size / 2,
+            backgroundColor: i < level ? tint : "rgba(31,59,77,0.15)",
+            borderWidth: 1,
+            borderColor: i < level ? "rgba(31,59,77,0.5)" : "rgba(31,59,77,0.15)",
+          }}
+        />
+      ))}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  mark: { position: "absolute", left: 0, right: 0, top: 0, alignItems: "center", justifyContent: "center" },
+  pips: { flexDirection: "row", alignItems: "center" },
+});
