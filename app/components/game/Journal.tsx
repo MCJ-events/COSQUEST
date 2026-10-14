@@ -15,6 +15,7 @@ import { startWardenModel, useWardenModel } from "@/features/game/wardenModel";
 import { wardenVoice } from "./wardenVoice";
 
 import { ProgressBar } from "./kit";
+import LiveStampCard from "./LiveStampCard";
 import { GF, GP, realmColor, realmIcon, tierColor } from "./theme";
 
 type Tab = "today" | "codex" | "war";
@@ -61,6 +62,7 @@ export default function Journal({ onClose, initial = "today" }: { onClose: () =>
                 </View>
               </View>
             ) : null}
+            <LiveStampCard me={me} />
             {me?.dailies.map((d) => (
               <View key={d.id} style={styles.daily} accessibilityLabel={`${d.title}: ${d.progress} of ${d.target}${d.done ? ", done" : ""}`}>
                 <Ionicons name={d.done ? "checkmark-circle" : "ellipse-outline"} size={24} color={d.done ? GP.mint : GP.slate} />

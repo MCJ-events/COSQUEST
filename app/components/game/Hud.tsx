@@ -2,6 +2,7 @@
 // (journal: codex and dailies; the Warden's mute; recentre), the nearby tray
 // and the Warden's speech bubble. costquest-ios Roam/RoamHomeView.swift.
 import { Ionicons } from "@expo/vector-icons";
+import type { ReactNode } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown, FadeOutDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -51,12 +52,27 @@ export function PlayerChip({ me, name, color, onPress }: { me: RoamMe | null; na
   );
 }
 
-export function Rail({ onJournal, onRecentre, dailiesLeft }: { onJournal: () => void; onRecentre: () => void; dailiesLeft: number }) {
+export function Rail({
+  onJournal,
+  onMore,
+  onRecentre,
+  dailiesLeft,
+  children,
+}: {
+  onJournal: () => void;
+  onMore: () => void;
+  onRecentre: () => void;
+  dailiesLeft: number;
+  /** Feature buttons that live on the rail (Relics), between the journal and More. */
+  children?: ReactNode;
+}) {
   const insets = useSafeAreaInsets();
   const muted = useWardenMuted();
   return (
     <View style={[styles.rail, { top: insets.top + 84 }]}>
       <RailButton icon="book" label="Journal: codex and dailies" onPress={onJournal} badge={dailiesLeft > 0 ? String(dailiesLeft) : null} />
+      {children}
+      <RailButton icon="grid" label="More" onPress={onMore} />
       <RailButton icon={muted ? "volume-mute" : "volume-high"} label={muted ? "Warden voice off" : "Warden voice on"} onPress={() => wardenVoice.setMuted(!muted)} />
       <RailButton icon="locate" label="Centre on me" onPress={onRecentre} />
     </View>
