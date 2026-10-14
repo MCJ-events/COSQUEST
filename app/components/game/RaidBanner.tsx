@@ -59,7 +59,7 @@ export default function RaidBanner({
         <Text style={styles.sub}>{away}</Text>
       </View>
       {onFight ? (
-        <GameButton title="Fight the boss" small color={RAID_COLOR} onPress={() => onFight(boss)} accessibilityLabel={`Fight the boss: ${boss.name}`} />
+        <GameButton title="Fight" small color={RAID_COLOR} onPress={() => onFight(boss)} accessibilityLabel={`Fight the boss: ${boss.name}`} />
       ) : null}
     </Animated.View>
   );
