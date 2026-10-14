@@ -38,6 +38,7 @@ const NAMES = {
   topics: 'sparks_topics',
   outlines: 'sparks_outlines',
   consents: 'sparks_consents',
+  mergeSuggestions: 'sparks_merge_suggestions',
 };
 
 function strip(doc, extra = []) {
@@ -87,6 +88,9 @@ class MongoSparksStore {
       c.segments.createIndex({ callId: 1, startMs: 1 }),
       c.topics.createIndex({ callId: 1, idx: 1 }),
       c.consents.createIndex({ userId: 1, decidedAt: -1 }),
+      // Proposed merges (module 1.3): one row per pair of Sparks, ever.
+      c.mergeSuggestions.createIndex({ pairKey: 1 }, { unique: true }),
+      c.mergeSuggestions.createIndex({ chatId: 1, status: 1, createdAt: -1 }),
       Message.createIndexes(),
     ]);
   }
@@ -344,6 +348,35 @@ class MongoSparksStore {
   async latestConsent(userId, callId) {
     const d = await this.c.consents.find({ userId, $or: [{ callId }, { scope: 'always' }] }).sort({ decidedAt: -1, _id: -1 }).limit(1).next();
     return strip(d);
+  }
+
+  // ---------- proposed merges (module 1.3) ----------
+
+  /** Inserts unless the pair was ever proposed (unique pairKey). True if inserted. */
+  async insertMergeSuggestion(m) {
+    try {
+      await this.c.mergeSuggestions.insertOne({ _id: m.suggestionId, ...defined(m) });
+      return true;
+    } catch (error) {
+      if (error?.code === 11000) return false;
+      throw error;
+    }
+  }
+  async getMergeSuggestion(suggestionId) {
+    if (typeof suggestionId !== 'string') return null;
+    return strip(await this.c.mergeSuggestions.findOne({ _id: suggestionId }));
+  }
+  async mergeSuggestionsOfChat(chatId, statuses) {
+    const filter = { chatId, ...(statuses ? { status: { $in: statuses } } : {}) };
+    return (await this.c.mergeSuggestions.find(filter).sort({ createdAt: -1 }).limit(500).toArray()).map((d) => strip(d));
+  }
+  /** Conditional: only while the row's status is `whereStatus` (when given), so two admins cannot both decide. */
+  async patchMergeSuggestion(suggestionId, patch, whereStatus) {
+    const set = defined(patch);
+    delete set.suggestionId;
+    const filter = { _id: suggestionId, ...(whereStatus ? { status: whereStatus } : {}) };
+    const r = await this.c.mergeSuggestions.updateOne(filter, { $set: set });
+    return r.matchedCount > 0;
   }
 }
 

@@ -98,11 +98,23 @@ async function main() {
     try {
       sparksStore = await require('./sparksStore').run();
       sparksModule = await require('./sparksModule').run(`http://localhost:${process.env.PORT}`);
+      const botPostsRun = await require('./sparksBotPosts').run(`http://localhost:${process.env.PORT}`);
+      sparksModule.pass += botPostsRun.pass;
+      sparksModule.fail += botPostsRun.fail;
     } finally {
       delete process.env.SPARKS_ENGINE;
     }
     result.pass += sparksStore.pass + sparksModule.pass;
     result.fail += sparksStore.fail + sparksModule.fail;
+    // Sparks 1.3: Manage Sparks (proposed merges, multi-merge), in-Spark search, targeted calls.
+    process.env.SPARKS_ENGINE = 'module';
+    try {
+      const sparksAdminSearch = await require('./sparksAdminSearch').run(`http://localhost:${process.env.PORT}`);
+      result.pass += sparksAdminSearch.pass;
+      result.fail += sparksAdminSearch.fail;
+    } finally {
+      delete process.env.SPARKS_ENGINE;
+    }
     const oauthRedirect = await require('./oauthRedirect').run(`http://localhost:${process.env.PORT}`);
     result.pass += oauthRedirect.pass;
     result.fail += oauthRedirect.fail;

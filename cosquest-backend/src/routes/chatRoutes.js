@@ -25,7 +25,10 @@ const {
   setChatNotifications,
 } = require('../controllers/chatController');
 const { listSparks, listNativeSparks, listSparkMembers, getSpark, startSpark, addToSpark, pinSpark, deleteSpark, mergeSpark } = require('../controllers/sparkController');
+const { decideRolePing } = require('../controllers/sparkController');
 const { searchMessages, messageContext, createAlbum } = require('../controllers/chatExtrasController');
+const sparksAdmin = require('../sparks/admin');
+const sparkSearch = require('../sparks/search');
 const { createPoll, votePoll, closePoll, listPollVotes } = require('../controllers/pollController');
 
 const router = express.Router();
@@ -81,6 +84,17 @@ router.get('/chats/:conversationId/sparks', asyncHandler(listSparks));
 router.get('/chats/:conversationId/sparks/native', asyncHandler(listNativeSparks));
 // Members as Sparks sees them (roles, admin flags), for sdk.sparks.setMembers.
 router.get('/chats/:conversationId/sparks/members', asyncHandler(listSparkMembers));
+// Manage Sparks (M31, admins): proposed merges and merging several at once
+// (Sparks module 1.3; src/sparks/admin.js). Before /sparks/:sparkId.
+router.get('/chats/:conversationId/sparks/merge-suggestions', asyncHandler(sparksAdmin.listMergeSuggestions));
+router.post('/chats/:conversationId/sparks/merge-suggestions/:suggestionId/accept', asyncHandler(sparksAdmin.acceptMergeSuggestion));
+router.post('/chats/:conversationId/sparks/merge-suggestions/:suggestionId/dismiss', asyncHandler(sparksAdmin.dismissMergeSuggestion));
+router.post('/chats/:conversationId/sparks/merge', asyncHandler(sparksAdmin.mergeManySparks));
+// Search inside one Spark, every era (M16 limited to a Spark), and jump to a message in it.
+router.get('/chats/:conversationId/sparks/:sparkId/search', asyncHandler(sparkSearch.searchSpark));
+router.get('/chats/:conversationId/sparks/:sparkId/messages/:messageId/context', asyncHandler(sparkSearch.sparkMessageContext));
+// Sparks bot posts: an admin approves or dismisses a suggested role ping.
+router.post('/chats/:conversationId/sparks/bot-posts/:messageId/role-pings/decide', asyncHandler(decideRolePing));
 router.post('/chats/:conversationId/sparks', asyncHandler(startSpark));
 router.get('/chats/:conversationId/sparks/:sparkId', asyncHandler(getSpark));
 router.post('/chats/:conversationId/sparks/:sparkId/messages', asyncHandler(addToSpark));

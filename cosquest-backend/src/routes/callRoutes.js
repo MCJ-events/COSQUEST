@@ -33,6 +33,8 @@ router.use(
 router.post('/chats/:conversationId/calls', asyncHandler(startCall));
 // Sparks: the call's outline (attendees and chat admins).
 router.get('/calls/:callId/outline', asyncHandler(require('../sparks/calls').getOutline));
+// Sparks voice commands: what this user can target from this call (the SDK's CommandContext).
+router.get('/calls/:callId/command-context', asyncHandler(require('../sparks/targetedCalls').getCommandContext));
 router.get('/calls/incoming', asyncHandler(getIncomingCall));
 router.get('/calls/:callId', asyncHandler(getCall));
 router.post('/calls/:callId/accept', asyncHandler(acceptCall));

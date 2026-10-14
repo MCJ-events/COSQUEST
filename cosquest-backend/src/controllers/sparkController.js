@@ -281,4 +281,7 @@ module.exports = {
     sparksHost.isModule() ? require('../sparks/rest').listSparkMembers(req, res) : res.status(404).json({ error: 'Not available on the legacy Sparks engine.' }),
   listNativeSparks: (req, res) =>
     sparksHost.isModule() ? require('../sparks/rest').listNativeSparks(req, res) : res.status(404).json({ error: 'Not available on the legacy Sparks engine.' }),
+  // Sparks bot posts (module 1.3): approve / dismiss a suggested role ping.
+  decideRolePing: (req, res) =>
+    sparksHost.isModule() ? require('../sparks/rest').decideRolePing(req, res) : res.status(404).json({ error: 'Not available on the legacy Sparks engine.' }),
 };
