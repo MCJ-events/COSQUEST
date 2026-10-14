@@ -17,6 +17,7 @@ import { parseServerDate } from "@/features/game/wire";
 
 import { GameButton, GameTitle, ProgressBar } from "./kit";
 import { type RewardSummary, rewardFromVerdict } from "./Reward";
+import SayItButton from "./SayItButton";
 import { challengeName, CHOICE_COLORS, edgeOf, GF, GP, realmColor } from "./theme";
 import { wardenVoice } from "./wardenVoice";
 
@@ -240,6 +241,7 @@ export default function Encounter({
                 removed={removed}
                 marks={reveal?.marks ?? null}
                 correct={reveal?.correct ?? null}
+                voice={phase === "playing"}
                 onPick={(i) => {
                   if (phase !== "playing") return;
                   const next = [...blitz];
@@ -256,6 +258,7 @@ export default function Encounter({
                 picked={picked}
                 removed={removed[0] ?? []}
                 correct={reveal?.correct?.[0] ?? null}
+                voice={phase === "playing"}
                 onPick={(i) => {
                   if (phase !== "playing" || picked !== null) return;
                   setPicked(i);
@@ -338,12 +341,15 @@ function TriviaCard({
   picked,
   removed,
   correct,
+  voice,
   onPick,
 }: {
   question: AttemptQuestion;
   picked: number | null;
   removed: number[];
   correct: number | null;
+  /** Offer the spoken answer (only while the clock runs). */
+  voice: boolean;
   onPick: (i: number) => void;
 }) {
   return (
@@ -356,6 +362,7 @@ function TriviaCard({
         </View>
       ) : null}
       <Text style={styles.question}>{question.q}</Text>
+      {voice && correct === null && picked === null ? <SayItButton key={question.id} choices={question.choices} removed={removed} onPick={onPick} /> : null}
       {question.choices.map((choice, i) => {
         const state =
           correct !== null ? (i === correct ? "right" : i === picked ? "wrong" : "dim") : removed.includes(i) ? "removed" : picked === i ? "picked" : "idle";
@@ -409,6 +416,7 @@ function BlitzCard({
   removed,
   marks,
   correct,
+  voice,
   onPick,
 }: {
   questions: AttemptQuestion[];
@@ -417,6 +425,7 @@ function BlitzCard({
   removed: Record<number, number[]>;
   marks: boolean[] | null;
   correct: number[] | null;
+  voice: boolean;
   onPick: (i: number) => void;
 }) {
   return (
@@ -448,7 +457,7 @@ function BlitzCard({
         </View>
       ) : questions[showing] ? (
         <Animated.View key={showing} entering={FadeInRight.duration(220)}>
-          <TriviaCard question={questions[showing]} picked={null} removed={removed[showing] ?? []} correct={null} onPick={onPick} />
+          <TriviaCard question={questions[showing]} picked={null} removed={removed[showing] ?? []} correct={null} voice={voice} onPick={onPick} />
         </Animated.View>
       ) : null}
     </View>

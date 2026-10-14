@@ -75,6 +75,11 @@ export type NativeOnly = {
   setGestureExclusion?(rects: { x: number; y: number; width: number; height: number }[]): Promise<void>;
   nfcAvailable?: boolean;
   uwbAvailable?: boolean;
+  /** One spoken utterance (SpeechListener.kt); results arrive as onSpeechResult / onSpeechError. */
+  startListening?(options: { prompt?: string; locale?: string; choices?: string[]; onDeviceOnly?: boolean }): Promise<{ onDevice: boolean }>;
+  stopListening?(): Promise<void>;
+  addListener?(event: "onSpeechResult", listener: (e: { text: string; final: boolean }) => void): Subscription;
+  addListener?(event: "onSpeechError", listener: (e: { code: string; message: string }) => void): Subscription;
 };
 
 export { GAME_UI };

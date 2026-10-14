@@ -18,6 +18,16 @@ class ListenOptions : Record {
 
   /** BCP 47, e.g. "en-GB". Default: the phone's language. */
   @Field val locale: String? = null
+
+  /** The likeliest phrases (the answer choices); Android 13+ biases towards them. */
+  @Field val choices: List<String>? = null
+
+  /**
+   * Refuse ("offline_unavailable") rather than fall back to a recogniser
+   * that may send audio to a server. The game's voice answers set this:
+   * iOS promises a player's voice never leaves the phone.
+   */
+  @Field val onDeviceOnly: Boolean = false
 }
 
 /**
@@ -44,12 +54,16 @@ class SpeechListener(
 
   /** @return true when the on-device recogniser is used. */
   fun start(options: ListenOptions): Boolean {
-    stop()
+    // A recogniser still waiting for its final result is dropped, not leaked.
+    destroy()
     if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
       throw SpeechException("permission_denied", "Microphone permission is not granted.")
     }
     val onDevice = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
       SpeechRecognizer.isOnDeviceRecognitionAvailable(context)
+    if (!onDevice && options.onDeviceOnly) {
+      throw SpeechException("offline_unavailable", "This phone has no on-device speech recogniser.")
+    }
     if (!onDevice && !SpeechRecognizer.isRecognitionAvailable(context)) {
       throw SpeechException("unavailable", "This phone has no speech recogniser.")
     }
@@ -67,6 +81,11 @@ class SpeechListener(
       putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, context.packageName)
       options.locale?.takeIf { it.isNotBlank() }?.let { putExtra(RecognizerIntent.EXTRA_LANGUAGE, it) }
       options.prompt?.takeIf { it.isNotBlank() }?.let { putExtra(RecognizerIntent.EXTRA_PROMPT, it) }
+      // The answer choices, like iOS's contextualStrings: "Alfred", not "all fred".
+      val bias = options.choices?.filter { it.isNotBlank() }.orEmpty()
+      if (bias.isNotEmpty() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        putStringArrayListExtra(RecognizerIntent.EXTRA_BIASING_STRINGS, ArrayList(bias))
+      }
     }
     recognizer = r
     r.startListening(intent)
