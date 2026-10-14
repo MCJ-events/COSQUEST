@@ -199,6 +199,11 @@ class CostQuestGameModule : Module() {
       speech?.stop()
     }.runOnQueue(Queues.MAIN)
 
+    /** Stops and drops the utterance: no result or error event follows (a new start() is clean). */
+    AsyncFunction("cancelListening") {
+      speech?.destroy()
+    }.runOnQueue(Queues.MAIN)
+
     // --- Walking (steps) ---------------------------------------------------
 
     /** One read of the step counter: { steps, elapsedRealtimeMs, wallClockMs, available } (StepCounter.kt). */

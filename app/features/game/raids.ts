@@ -359,7 +359,10 @@ export function createRaidSession(deps: RaidSessionDeps) {
 
   /** Takes the server's state if it is the newest; true when it did. */
   const apply = (s: RaidState, seq: number, extra: Partial<RaidSnapshot> = {}): boolean => {
-    if (seq < applied) {
+    // An older reply, or one that would take a finished raid back to an
+    // unfinished one (a poll sent before the winning answer was locked in):
+    // the server never un-finishes a raid, so neither does the screen.
+    if (seq < applied || (snap.state && raidIsOver(snap.state) && !raidIsOver(s))) {
       if (Object.keys(extra).length) set(extra);
       return false;
     }

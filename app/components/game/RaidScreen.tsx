@@ -36,6 +36,7 @@ import type { QuestPoint } from "@/features/game/wire";
 import { Chip, GameButton, GameTitle } from "./kit";
 import { RaidCrown, RaidHPBar } from "./RaidParts";
 import { CHOICE_COLORS, edgeOf, GF, GP } from "./theme";
+import { useOnScreen } from "./useOnScreen";
 
 const BACKDROP = edgeOf(RAID_COLOR, 0.38);
 
@@ -47,6 +48,7 @@ function featureChanged() {
 
 export default function RaidScreen({ point, parked, onClose }: { point: QuestPoint; parked: boolean; onClose: () => void }) {
   const insets = useSafeAreaInsets();
+  const onScreen = useOnScreen();
   const [session] = useState<RaidSession>(() =>
     createRaidSession({
       client: gameStore.client,
@@ -63,19 +65,25 @@ export default function RaidScreen({ point, parked, onClose }: { point: QuestPoi
   );
   const snap = useSyncExternalStore(session.subscribe, session.get, session.get);
 
+  // However the raid is left (its close button or Android Back), the HUD and
+  // the boss's crew count catch up.
   useEffect(() => {
     void session.run();
-    return () => session.stop();
+    return () => {
+      session.stop();
+      featureChanged();
+    };
   }, [session]);
 
+  // No polling or ticking while the chat is in front.
+  const away = parked || !onScreen;
   useEffect(() => {
-    if (parked) session.pause();
+    if (away) session.pause();
     else session.resume();
-  }, [parked, session]);
+  }, [away, session]);
 
   const leave = () => {
     session.stop();
-    featureChanged();
     onClose();
   };
 
@@ -98,9 +106,9 @@ export default function RaidScreen({ point, parked, onClose }: { point: QuestPoi
             <Text style={styles.joiningText}>Joining the raid…</Text>
           </View>
         ) : s.phase === "lobby" ? (
-          <Lobby s={s} busy={snap.busy} onStart={() => void session.start()} />
+          <Lobby s={s} busy={snap.busy} paused={away} onStart={() => void session.start()} />
         ) : s.phase === "fight" ? (
-          <Fight snap={snap} s={s} onAnswer={(q, c) => void session.answer(q, c)} />
+          <Fight snap={snap} s={s} paused={away} onAnswer={(q, c) => void session.answer(q, c)} />
         ) : (
           <Result s={s} onLeave={leave} />
         )}
@@ -145,12 +153,13 @@ function BossTitle({ s }: { s: RaidState }) {
   );
 }
 
-function Lobby({ s, busy, onStart }: { s: RaidState; busy: boolean; onStart: () => void }) {
+function Lobby({ s, busy, paused, onStart }: { s: RaidState; busy: boolean; paused: boolean; onStart: () => void }) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
+    if (paused) return;
     const t = setInterval(() => setNow(Date.now()), 15000);
     return () => clearInterval(t);
-  }, []);
+  }, [paused]);
   const clock = lobbyClockText(s, now);
   return (
     <View style={styles.stack}>
@@ -184,12 +193,13 @@ function Lobby({ s, busy, onStart }: { s: RaidState; busy: boolean; onStart: () 
   );
 }
 
-function Fight({ snap, s, onAnswer }: { snap: RaidSnapshot; s: RaidState; onAnswer: (q: number, c: number) => void }) {
+function Fight({ snap, s, paused, onAnswer }: { snap: RaidSnapshot; s: RaidState; paused: boolean; onAnswer: (q: number, c: number) => void }) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
+    if (paused) return;
     const t = setInterval(() => setNow(Date.now()), 250);
     return () => clearInterval(t);
-  }, []);
+  }, [paused]);
   const left = secondsLeft(snap, now);
   const i = currentQuestion(snap);
   return (

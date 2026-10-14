@@ -43,6 +43,7 @@ import { ForgeArmourySection, ForgeWeaponDetail } from "./ForgeArmoury";
 import { GameButton } from "./kit";
 import { RelicArt, RelicPips, rarityColor, rarityInk, SHARD } from "./RelicArt";
 import { GF, GP, realmColor, realmIcon } from "./theme";
+import { useOnScreen } from "./useOnScreen";
 
 type Picked = { kind: "relic"; id: string } | { kind: "forge"; id: string } | null;
 
@@ -58,14 +59,15 @@ export default function RelicsSheet({ onClose }: { onClose: () => void }) {
   }, []);
 
   // Back closes the card first (this listener is newer than the game's).
+  const onScreen = useOnScreen();
   useEffect(() => {
-    if (!picked) return;
+    if (!picked || !onScreen) return;
     const sub = BackHandler.addEventListener("hardwareBackPress", () => {
       setPicked(null);
       return true;
     });
     return () => sub.remove();
-  }, [picked]);
+  }, [picked, onScreen]);
 
   const close = () => {
     relicsStore.clearProblem();

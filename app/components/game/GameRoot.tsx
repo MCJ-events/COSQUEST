@@ -42,6 +42,7 @@ import RelicsButton from "./RelicsButton";
 import RelicsSheet from "./RelicsSheet";
 import Reward, { type RewardSummary } from "./Reward";
 import { GF, GP } from "./theme";
+import { useOnScreen } from "./useOnScreen";
 import { useWardenSaid, wardenVoice } from "./wardenVoice";
 import WorldMap from "./WorldMap";
 
@@ -68,6 +69,7 @@ export default function GameRoot({ parked }: { parked: boolean }) {
   const [screen, setScreen] = useState<Screen>({ kind: "home" });
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [sheet, setSheet] = useState<Sheet | null>(null);
+  const onScreen = useOnScreen();
   /** A Room beacon tapped on the map: the Battle sheet opens on that room. */
   const [roomFocus, setRoomFocus] = useState<string | null>(null);
   const [, recentre] = useState(0);
@@ -86,6 +88,9 @@ export default function GameRoot({ parked }: { parked: boolean }) {
   const rooms = useRooms();
   useRoomBeacons(!parked && battleOpen && screen.kind !== "room");
   const openBattle = (focus: string | null) => {
+    // A point sheet left open under the Room would take its first Back.
+    setSelectedId(null);
+    gameStore.setFocus(null);
     setRoomFocus(focus);
     setSheet("battle");
   };
@@ -140,9 +145,11 @@ export default function GameRoot({ parked }: { parked: boolean }) {
   // Android Back inside the game: close what is open first; on the map, the
   // pager's own handler takes it (back to the chat).
   useEffect(() => {
-    if (parked) return;
-    // RoomScreen takes Back itself (it asks before leaving a fight).
-    const open = (screen.kind !== "home" && screen.kind !== "room") || sheet !== null || selected !== null;
+    // Only while the game is the page showing: the game stays mounted (warm)
+    // behind the chat, and Back there is the chat's. RoomScreen takes Back
+    // itself (it asks before leaving a fight).
+    if (parked || !onScreen || screen.kind === "room") return;
+    const open = screen.kind !== "home" || sheet !== null || selected !== null;
     if (!open) return;
     const sub = BackHandler.addEventListener("hardwareBackPress", () => {
       if (sheet) setSheet(null);
@@ -151,7 +158,7 @@ export default function GameRoot({ parked }: { parked: boolean }) {
       return true;
     });
     return () => sub.remove();
-  }, [parked, screen.kind, sheet, selectedId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [parked, onScreen, screen.kind, sheet, selectedId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const play = (p: QuestPoint) => {
     setSelectedId(null);

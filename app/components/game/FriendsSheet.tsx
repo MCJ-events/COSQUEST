@@ -32,6 +32,7 @@ import { useGame } from "@/features/game/runtime";
 
 import { Chip, GameButton } from "./kit";
 import { GF, GP, realmColor } from "./theme";
+import { useOnScreen } from "./useOnScreen";
 
 export default function FriendsSheet({ onClose }: { onClose: () => void }) {
   const insets = useSafeAreaInsets();
@@ -179,15 +180,17 @@ export default function FriendsSheet({ onClose }: { onClose: () => void }) {
 function MyCode() {
   const friends = useFriends();
   const [now, setNow] = useState(() => Date.now());
-  const live = friends.codeExpiresAt !== null;
+  const onScreen = useOnScreen();
+  const left = codeSecondsLeft(friends.codeExpiresAt, now);
+  // Tick only while there is a code to count down and the game is in front
+  // (a new code reads high for at most the first tick).
+  const ticking = friends.codeExpiresAt !== null && left > 0 && onScreen;
   useEffect(() => {
-    if (!live) return;
-    setNow(Date.now());
+    if (!ticking) return;
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
-  }, [live, friends.codeExpiresAt]);
+  }, [ticking]);
 
-  const left = codeSecondsLeft(friends.codeExpiresAt, now);
   if (!friends.code || left <= 0) {
     return (
       <GameButton

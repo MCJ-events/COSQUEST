@@ -32,7 +32,8 @@ function androidEngine(): SpeechEngine | null {
       await n.startListening!({ choices, locale, onDeviceOnly: true });
     },
     async stop() {
-      await n.stopListening!();
+      // Dropped, not just stopped: a late final result must not reach the next attempt.
+      await (n.cancelListening ?? n.stopListening)!();
     },
     subscribe(onResult, onError) {
       const a = n.addListener!("onSpeechResult", (e) => onResult(e.text, e.final));

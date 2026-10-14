@@ -12,7 +12,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { ActivityIndicator, BackHandler, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import Animated, { FadeIn, FadeOut, ZoomIn } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle, Path } from "react-native-svg";
@@ -45,11 +45,14 @@ const COMPASS = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
 export default function RoomFight({
   session,
   state,
+  parked,
   onLeave,
   onDone,
 }: {
   session: RoomSession;
   state: RoomSessionState;
+  /** The chat is in front: no compass, no ticking, no position pings. */
+  parked: boolean;
   /** The leave button (asks first). */
   onLeave: () => void;
   /** Out of the results. */
@@ -59,7 +62,7 @@ export default function RoomFight({
   const { fix } = useGame();
   const { terms, anchors, fight } = state;
   const over = fightOver(fight);
-  const heading = useHeading(!over);
+  const heading = useHeading(!over && !parked);
   const [now, setNow] = useState(() => Date.now());
   const [trivia, setTrivia] = useState<GameAnchor | null>(null);
   const [pending, setPending] = useState(false);
@@ -67,9 +70,10 @@ export default function RoomFight({
 
   // The clock for countdowns.
   useEffect(() => {
+    if (parked) return;
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
-  }, []);
+  }, [parked]);
 
   // Position on the live link: on every new fix, and every two seconds while
   // standing still so the live map keeps you (the session throttles to 1 Hz).
@@ -79,10 +83,21 @@ export default function RoomFight({
     session.setPosition(latest.current.fix, heading);
   }, [fix, heading, session]);
   useEffect(() => {
-    if (over) return;
+    if (over || parked) return;
     const t = setInterval(() => session.setPosition(latest.current.fix, latest.current.heading), POSITION_TICK_MS);
     return () => clearInterval(t);
-  }, [session, over]);
+  }, [session, over, parked]);
+
+  // Back on a chest's question closes the question, not the game (this
+  // listener is newer than RoomScreen's).
+  useEffect(() => {
+    if (!trivia || parked) return;
+    const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+      setTrivia(null);
+      return true;
+    });
+    return () => sub.remove();
+  }, [trivia, parked]);
 
   // A refreshed standing once it is over: the server pays Room XP when it settles.
   useEffect(() => {

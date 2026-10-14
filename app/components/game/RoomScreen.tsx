@@ -11,10 +11,12 @@ import { newRoomSession, useRoomSession } from "@/features/game/roomsRuntime";
 
 import RoomFight from "./RoomFight";
 import RoomLobby from "./RoomLobby";
+import { useOnScreen } from "./useOnScreen";
 
 export default function RoomScreen({ gameId, onClose }: { gameId: string; onClose: () => void }) {
   const [session] = useState(() => newRoomSession(gameId));
   const state = useRoomSession(session);
+  const onScreen = useOnScreen();
 
   useEffect(() => {
     void session.load();
@@ -39,7 +41,9 @@ export default function RoomScreen({ gameId, onClose }: { gameId: string; onClos
 
   // Android Back: out of the lobby at once; out of a fight only after asking,
   // because it is the one thing that should never happen by accident mid fight.
+  // Only while the game is the page showing: Back on the chat is the chat's.
   useEffect(() => {
+    if (!onScreen) return;
     const sub = BackHandler.addEventListener("hardwareBackPress", () => {
       confirmLeave();
       return true;
@@ -49,7 +53,7 @@ export default function RoomScreen({ gameId, onClose }: { gameId: string; onClos
 
   return (
     <View style={StyleSheet.absoluteFill}>
-      {state.joined ? <RoomFight session={session} state={state} onLeave={confirmLeave} onDone={onClose} /> : <RoomLobby session={session} state={state} onClose={onClose} />}
+      {state.joined ? <RoomFight session={session} state={state} parked={!onScreen} onLeave={confirmLeave} onDone={onClose} /> : <RoomLobby session={session} state={state} onClose={onClose} />}
     </View>
   );
 }

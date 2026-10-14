@@ -201,6 +201,31 @@ describe("VoiceAnswer session", () => {
     e.error("network");
     assert.equal(v.state.kind, "unavailable");
   });
+  it("gives up if stopped while permission is asked or the recogniser starts", async () => {
+    const e = fakeEngine();
+    const t = fakeTimers();
+    const v = new VoiceAnswer({ engine: e.engine, callActive: () => false, ...t });
+    const a = v.listen(CHOICES, () => assert.fail("no pick"));
+    v.stop(); // the card went away while the permission dialog was up
+    await a;
+    assert.ok(!e.log.some((l) => l.startsWith("start")), "never started");
+    assert.equal(v.state.kind, "idle");
+
+    let release: () => void = () => {};
+    const slow = fakeEngine();
+    slow.engine.start = async () => {
+      slow.log.push("start");
+      await new Promise<void>((r) => (release = r));
+    };
+    const w = new VoiceAnswer({ engine: slow.engine, callActive: () => false, ...t });
+    const b = w.listen(CHOICES, () => {});
+    await new Promise((r) => setImmediate(r));
+    w.stop();
+    release();
+    await b;
+    assert.equal(slow.log.at(-1), "stop", "closed again after the late start");
+    assert.equal(t.count, 0, "no orphaned timer");
+  });
   it("ignores a double tap while permission is being asked", async () => {
     const e = fakeEngine();
     const v = new VoiceAnswer({ engine: e.engine, callActive: () => false, ...fakeTimers() });

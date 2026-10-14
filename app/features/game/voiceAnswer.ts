@@ -96,6 +96,7 @@ export type SpeechEngine = {
   requestPermission(): Promise<boolean>;
   /** Starts one utterance. Rejects with { code } when it cannot. */
   start(options: { choices: string[]; locale?: string }): Promise<void>;
+  /** Ends the utterance and drops it: no result may arrive after this. */
   stop(): Promise<void>;
   /** Partial and final results, and errors once listening. Returns an unsubscribe. */
   subscribe(onResult: (text: string, final: boolean) => void, onError: (code: string) => void): () => void;
@@ -146,6 +147,8 @@ export class VoiceAnswer {
   private choices: string[] = [];
   private onMatch: ((i: number) => void) | null = null;
   private starting = false;
+  /** Bumped by stop(): a listen() still awaiting permission or the recogniser gives up. */
+  private session = 0;
   private timer: unknown = null;
   private unsubscribe: (() => void) | null = null;
   private watchers = new Set<() => void>();
@@ -185,10 +188,14 @@ export class VoiceAnswer {
     this.choices = choices;
     this.onMatch = onMatch;
     this.heard = "";
+    const mine = ++this.session;
     try {
       const engine = this.deps.engine;
       if (!engine) return this.set({ kind: "unavailable", why: unavailableReason("unavailable") });
-      if (!(await engine.requestPermission())) return this.set({ kind: "unavailable", why: unavailableReason("permission_denied") });
+      const allowed = await engine.requestPermission();
+      // Stopped (the card went away, the clock ran out) while the dialog was up.
+      if (mine !== this.session) return;
+      if (!allowed) return this.set({ kind: "unavailable", why: unavailableReason("permission_denied") });
       // The microphone belongs to the ongoing CosQuest call.
       if (this.deps.callActive()) return this.set({ kind: "unavailable", why: "Your call is using the microphone. Tap your answer instead." });
       this.unsubscribe?.();
@@ -198,13 +205,22 @@ export class VoiceAnswer {
       );
       this.set({ kind: "listening" });
       try {
-        await engine.start({ choices: choices.filter(Boolean), locale: "en-GB" });
+        // The phone's own language: an on-device recogniser has it, where a
+        // fixed "en-GB" may not be downloaded.
+        await engine.start({ choices: choices.filter(Boolean) });
       } catch (error) {
+        if (mine !== this.session) return;
         const code = (error as { code?: string })?.code ?? "error";
         this.teardown();
         return this.set({ kind: "unavailable", why: unavailableReason(code) });
       }
+      // Stopped while the recogniser was starting: close it again.
+      if (mine !== this.session) {
+        engine.stop().catch(() => {});
+        return;
+      }
       // A player who taps the mic and says nothing should not be left with a hot microphone.
+      if (this.timer != null) this.deps.clearTimeout(this.timer);
       this.timer = this.deps.setTimeout(() => {
         this.timer = null;
         if (this.state.kind === "listening") this.finish();
@@ -216,6 +232,7 @@ export class VoiceAnswer {
 
   /** Stop listening (second tap, the card going away, a pick by touch). */
   stop() {
+    this.session++;
     this.teardown();
     if (this.state.kind === "listening") this.set({ kind: "idle" });
   }

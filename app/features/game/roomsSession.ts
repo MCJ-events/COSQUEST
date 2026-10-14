@@ -323,6 +323,8 @@ export function createRoomSession(deps: RoomSessionDeps) {
 
   let socket: SocketLike | null = null;
   let wantsLink = false;
+  /** Bumped by leave(): a join whose reply lands after it must not open a link. */
+  let epoch = 0;
   let reconnect: Timer | null = null;
   let backoff = 500;
   let lastPositionAt = -Infinity;
@@ -422,8 +424,10 @@ export function createRoomSession(deps: RoomSessionDeps) {
     /** Join (a rejoin gives back the same row and balance), then open the live link. */
     async join(handle: string, side: string | null): Promise<boolean> {
       store.set({ joining: true, problem: null });
+      const mine = epoch;
       try {
         const r = await joinGame(client, gameId, handle, side);
+        if (mine !== epoch) return false;
         setFight({ ...fight(), playerId: r.player_id, faction: r.faction ?? null, tokens: r.tokens ?? r.starting_tokens ?? fight().tokens });
         store.set({ joined: true, joining: false });
         if (!store.get().anchors.length) {
@@ -443,6 +447,7 @@ export function createRoomSession(deps: RoomSessionDeps) {
 
     /** Close the link and stop retrying. Safe to call more than once. */
     leave() {
+      epoch++;
       wantsLink = false;
       if (reconnect) clock.clearTimeout(reconnect);
       reconnect = null;

@@ -501,6 +501,24 @@ describe("rooms: one player's session", () => {
     assert.equal(sockets[1].closed, true);
   });
 
+  it("leaving while the join is in flight opens no live link", async () => {
+    const { client } = clientWith((c) => (c.url.endsWith("/join") ? { body: { player_id: "p1", faction: "DC", starting_tokens: 100 } } : c.url.endsWith("/anchors") ? { body: [] } : undefined));
+    const sockets: FakeSocket[] = [];
+    const session = createRoomSession({
+      client,
+      gameId: "g1",
+      openSocket: (u) => {
+        const s = new FakeSocket(u);
+        sockets.push(s);
+        return s;
+      },
+    });
+    const joining = session.join("Ada", "DC");
+    session.leave();
+    assert.equal(await joining, false);
+    assert.equal(sockets.length, 0);
+  });
+
   it("a refused join is said in the server's words", async () => {
     const { client } = clientWith((c) => (c.url.endsWith("/join") ? { status: 402, body: { detail: { reason: "This event costs 50 CosCoins to enter.", entry_coins: 50 } } } : undefined));
     const session = createRoomSession({ client, gameId: "g1", openSocket: (u) => new FakeSocket(u) });
