@@ -660,3 +660,8 @@ A poll is a chat message with `kind: "poll"`, so replying, reacting, pinning, de
 - `GET .../messages/:messageId/poll/votes` lists the voters per option. `403` for anonymous polls (counts only).
 
 A poll message carries `poll`: `{ question, options: [{ id, text, votes }], multiple, anonymous, closesAt, closedAt, closed, totalVoters, myVotes }`. The message list, a single message, search results and Spark panels all include live results; `myVotes` is that viewer's own picks. Live: the new poll arrives as `message:new`, and every vote or close sends `poll:updated { conversationId, messageId, poll }` (without `myVotes`: each app keeps its own). Polls cannot be edited or forwarded. The chat-list preview reads `📊 Poll: <question>`.
+
+## Faction ranks and online count
+
+- `GET /api/ranks` (public) — `{ ranks: [{ key, name, short, level, chevrons, bars, star, minPoints }] }`, lowest first (`level` 1). The point levels in the default ladder (`src/utils/ranks.js`) are placeholders until the real ladder is agreed; set the env var `RANKS_JSON` to a JSON array of the same objects to replace the whole ladder without a code change (`key`, `name`, `minPoints` required, one rank at 0 points; an invalid value is logged and ignored).
+- People in chat (`message.sender`, `GET /api/chats/:id/members`, `GET /api/groups/:id/members`, join requests, bans, seen-by, poll voters) carry `rank`: `{ key, name, short, level, chevrons, bars, star }` — the highest rank their points reach, or the one an orchestrator set by hand (`User.rankOverride` = a rank key), which adds `overridden: true`. Points themselves are not shown.

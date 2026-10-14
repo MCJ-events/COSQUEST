@@ -22,6 +22,7 @@ const { buildContentShare } = require('../utils/shareLinks');
 const { isBlockedEitherWay } = require('./publicProfileController');
 const { emitToConversation, emitToConversationExcept, emitToUsers } = require('../realtime/socket');
 const { isOnline } = require('../realtime/presence');
+const { rankFor } = require('../utils/ranks');
 
 const EPOCH = new Date(0);
 const DELETE_FOR_EVERYONE_WINDOW_MS = 5 * 60 * 1000;
@@ -55,6 +56,10 @@ function userPreview(user) {
     lastActiveAt: user.privacy?.showOnlineStatus === false ? null : user.lastActiveAt,
     // Expertise role shown under the name ("Front-end"), or null.
     expertise: expertiseLabel(user.expertise),
+    // Faction rank badge (from points, or set by hand: overridden: true).
+    // Needs pointsBalance + rankOverride selected (SENDER_FIELDS has them);
+    // the points themselves are never shown here.
+    rank: rankFor(user),
   };
 }
 
@@ -658,7 +663,7 @@ function forBroadcast(serialized) {
   return { ...serialized, editedAt: null, canRollback: false, previousContent: null };
 }
 
-const SENDER_FIELDS = 'profile.username profile.displayName profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl faction lastActiveAt privacy.showOnlineStatus expertise';
+const SENDER_FIELDS = 'profile.username profile.displayName profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl faction lastActiveAt privacy.showOnlineStatus expertise pointsBalance rankOverride';
 
 // GET /api/chats - "Your Space" (community + faction room) plus every DM.
 async function listChats(req, res) {
@@ -1602,7 +1607,7 @@ async function getMessageSeenBy(req, res) {
   };
   const [members, total] = await Promise.all([
     ConversationMember.find(query)
-      .populate('user', 'profile.username profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl faction privacy.readReceipts expertise')
+      .populate('user', 'profile.username profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl faction privacy.readReceipts expertise pointsBalance rankOverride')
       .sort({ lastReadAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit),
