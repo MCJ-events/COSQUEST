@@ -58,6 +58,35 @@ export function numbersIn(text: string): Set<number> {
   return out;
 }
 
+/**
+ * The small model's other voice. The 0.5B variant (phones under 6 GB) was
+ * not tuned on the Warden data and answers like a generic assistant: "I'm
+ * ada, an assistant built for the Crest of London. I run on your device." or
+ * "I won't be able to help you with that." Lines that talk about being an
+ * assistant, a model or a device, or that refuse or apologise, are never the
+ * Warden, so they fall back to the authored lines.
+ *
+ * Checked against all 1,500 lines of the Warden training and held-out sets
+ * (costquest-qlm/warden): none trips it. Keep in step with WardenCheck.swift.
+ */
+export const OFF_VOICE = [
+  // Talking about itself.
+  "assistant", "language model", "as an ai", "i'm an ai", "i am an ai", " an ai ", "ai model", "chatbot",
+  "artificial intelligence", "openai", "qwen", "alibaba", "trained by", "i was trained", "my training",
+  "your device", "this device", "i run on",
+  // Refusing, apologising, offering help.
+  "can't help", "cannot help", "can not help", "unable to help", "won't be able to", "not able to help",
+  "can't assist", "cannot assist", "i'm sorry", "i am sorry", "i apologi", "i'm unable", "i am unable",
+  "i cannot", "i'm not able", "i am not able", "help you with", "how can i help", "how may i help",
+  "here to help", "let me know", "feel free", "i don't have", "i do not have", "anything else", "is there anything",
+];
+
+/** The off-voice phrase a line contains, or null. Curly apostrophes count as straight. */
+export function offVoice(text: string): string | null {
+  const lower = ` ${text.toLowerCase().replace(/\u2019/g, "'")} `;
+  return OFF_VOICE.find((p) => lower.includes(p)) ?? null;
+}
+
 /** null when the line may be said; otherwise why not. */
 export function lineProblem(text: string, m: WardenMoment): string | null {
   const words = text.split(/\s+/).filter(Boolean);
@@ -82,6 +111,8 @@ export function lineProblem(text: string, m: WardenMoment): string | null {
   for (const bad of ["prize", "money", "cash", "bet ", "$", "<think", "as an ai", "i'm an ai"]) {
     if (lower.includes(bad)) return `banned: ${bad}`;
   }
+  const off = offVoice(text);
+  if (off) return `off voice: ${off.trim()}`;
   if (m.kind === "arrive") {
     const head = m.fact("place")?.split(" ")[0];
     if (head && !lower.includes(head.toLowerCase())) return "arrive without the place";
