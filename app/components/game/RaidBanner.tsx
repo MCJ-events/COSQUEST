@@ -50,8 +50,10 @@ export default function RaidBanner({
       accessibilityLiveRegion="polite">
       <RaidBadge />
       <View style={styles.body} accessible accessibilityLabel={`A boss has appeared: ${boss.name}. ${away}.${hp ? ` Boss health ${Math.max(0, hp.left)} of ${hp.max}.` : ""}`}>
-        <Text style={styles.title} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
-          A boss has appeared: {boss.name}
+        {/* Two lines, not shrunk to fit: Android ignores minimumFontScale and
+            shrank the name to nothing beside the button. */}
+        <Text style={styles.title} numberOfLines={2}>
+          {boss.name}
         </Text>
         {hp ? <RaidHPBar hp={hp.left} maxHp={hp.max} compact /> : null}
         <Text style={styles.sub}>{away}</Text>
