@@ -211,6 +211,10 @@ async function sendVoiceUpdate(roomId, extraUserIds) {
   const payload = { conversationId: view.conversationId, voiceRoom: view.active ? view.json : null };
   const people = new Set([...view.memberIds, ...extraUserIds]);
   emitToRooms([`conversation:${view.conversationId}`, ...[...people].map((id) => `user:${id}`)], 'voice:updated', payload);
+  // Sparks: the voice chat as a Sparks call (consent, transcription, topics,
+  // outline). Rides this coalesced update, so membership reaches the module
+  // batched. No-op on the legacy engine. See src/sparks/voiceRooms.js.
+  require('../sparks/voiceRooms').sync(roomId, view, extraUserIds);
 }
 
 const voiceUpdates = createCoalescer({
@@ -415,6 +419,8 @@ module.exports = {
   joinVoiceRoom,
   pingVoiceRoom,
   leaveVoiceRoom,
+  // Sparks (src/sparks/voiceRooms.js): drop people who went quiet, close if empty.
+  refreshVoiceRoom: (roomId) => refreshRoom(roomId),
   // Exported for tests.
   _internal: { pruneStale, closeIfEmpty, addMember, removeMember, flushUpdates: () => voiceUpdates.flushAll() },
 };
