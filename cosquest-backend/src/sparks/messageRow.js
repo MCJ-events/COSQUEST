@@ -15,6 +15,7 @@ const KIND = {
   album: 'media',
   audio: 'voice',
   call: 'system',
+  sparks_bot: 'system', // a Sparks bot post (module 1.3): never conversation
 };
 
 function idOf(value) {
@@ -36,7 +37,7 @@ function toMessageRow(doc) {
     messageId: String(doc._id),
     chatId: idOf(doc.conversation),
     seq: doc.seq,
-    senderId: idOf(doc.sender),
+    senderId: idOf(doc.sender) || (doc.kind === 'sparks_bot' ? 'sparks-bot' : null),
     kind: KIND[doc.kind] || 'text',
     text: textOf(doc),
     sentAt: new Date(doc.createdAt || Date.now()).toISOString(),
@@ -47,6 +48,7 @@ function toMessageRow(doc) {
   if (typeof doc.sparkRevivalIndex === 'number') row.sparkRevivalIndex = doc.sparkRevivalIndex;
   if (doc.postedInSpark && doc.sparkId) row.postedInSpark = true;
   if (doc.deletedForEveryone) row.deleted = true;
+  if (doc.kind === 'sparks_bot' && doc.sparksBot) row.bot = doc.sparksBot;
   return row;
 }
 

@@ -16,6 +16,7 @@
  */
 const members = require('./members');
 const compat = require('./compat');
+const botPosts = require('./botPosts');
 
 function createPorts({ getIO, store, log }) {
   const emit = (rooms, msg) => {
@@ -80,6 +81,11 @@ function createPorts({ getIO, store, log }) {
         });
       })().catch((error) => log('warn', 'role ping notification failed', String(error)));
     },
+
+    // Sparks bot posts (module 1.3): stored as kind 'sparks_bot' messages and
+    // sent on the usual message:new / message:edited events (botPosts.js).
+    postBotMessage: (chatId, draft) => botPosts.postBotMessage(chatId, draft),
+    updateBotMessage: (messageId, update) => botPosts.updateBotMessage(messageId, update),
 
     // Targeted calls ("calling all sergeants"): CosQuest calls are DM-started
     // LiveKit calls; ringing a subset is not wired yet, so this only logs.
