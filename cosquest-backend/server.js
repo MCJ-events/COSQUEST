@@ -18,6 +18,11 @@ const sparks = require('./src/sparks');
 function buildApp() {
   const app = express();
 
+  // Behind a reverse proxy (Render, Mark's server): trust its X-Forwarded-For so the rate
+  // limiter sees each user's real address (and express-rate-limit stops raising
+  // ERR_ERL_UNEXPECTED_X_FORWARDED_FOR). 1 = exactly one proxy in front of the app.
+  app.set('trust proxy', 1);
+
   app.use(cors());
   app.use(express.json());
   app.use(express.urlencoded({ extended: false })); // Apple OAuth callback uses form_post.
