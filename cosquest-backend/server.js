@@ -15,8 +15,20 @@ const { renderPostShare, renderChatShare } = require('./src/controllers/contentS
 const { initSocket, closeSocket, getIO } = require('./src/realtime/socket');
 const sparks = require('./src/sparks');
 
+function trustProxy(value) {
+  if (value === undefined || value.trim() === '') return 1;
+  if (/^\d+$/.test(value.trim())) return Number(value);
+  return value.split(',').map((part) => part.trim()).filter(Boolean);
+}
+
 function buildApp() {
   const app = express();
+  // Behind one reverse proxy (Caddy on Mark's server, Render's proxy): take the client IP from X-Forwarded-For,
+  // so rate limits are per user, not one shared bucket for everyone (see src/middleware/rateLimiter.js).
+  // TRUST_PROXY overrides it: a hop count (0 = off), or a comma list of trusted proxy addresses/ranges for when
+  // traffic arrives through a varying number of proxies, e.g. while old app builds still reach us through the
+  // Render forwarder: "loopback, uniquelocal, <Render outbound IPs>" (DEPLOY.md, "Leaving Render").
+  app.set('trust proxy', trustProxy(process.env.TRUST_PROXY));
 
   // Behind a reverse proxy (Render, Mark's server): trust its X-Forwarded-For so the rate
   // limiter sees each user's real address (and express-rate-limit stops raising
