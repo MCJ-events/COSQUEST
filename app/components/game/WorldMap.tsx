@@ -25,8 +25,10 @@ import Svg, { Circle, Defs, Path, Pattern, Rect } from "react-native-svg";
 
 import { toLocal, type LatLng } from "@/features/game/geo";
 import { buildLayers, type MapLayers } from "@/features/game/mapPaths";
+import { raidTint } from "@/features/game/raids";
 import type { GroundGeometry, QuestPoint } from "@/features/game/wire";
 
+import { RaidCrown } from "./RaidParts";
 import { GF, GP, realmColor, realmIcon, tierColor } from "./theme";
 
 /** Pixels per metre: about 260 m across a phone. */
@@ -190,7 +192,7 @@ const PointMarker = memo(function PointMarker({
   cooling: boolean;
   onPress: (p: QuestPoint) => void;
 }) {
-  const color = cooling ? "#9AA7B0" : realmColor(point.realm);
+  const color = cooling ? "#9AA7B0" : raidTint(point) ?? realmColor(point.realm);
   const ring = cooling ? "#C9D1D6" : tierColor(point.tier);
   const pulse = useSharedValue(0);
   useEffect(() => {
@@ -214,7 +216,7 @@ const PointMarker = memo(function PointMarker({
       accessibilityLabel={`${point.name}, ${point.tier} ${isDuel ? "Guardian" : point.challenge}${cooling ? ", recharging" : ""}${inReach ? ", in reach" : ""}`}>
       {inReach && !cooling ? <Animated.View style={[styles.pulse, { borderColor: ring }, pulseStyle]} /> : null}
       <View style={[styles.pin, { backgroundColor: color, borderColor: selected ? GP.navy : ring, transform: [{ scale: selected ? 1.15 : 1 }] }]}>
-        <Ionicons name={isDuel ? "shield" : realmIcon(point.realm)} size={20} color="#FFFFFF" />
+        {point.source === "raid" ? <RaidCrown size={20} /> : <Ionicons name={isDuel ? "shield" : realmIcon(point.realm)} size={20} color="#FFFFFF" />}
       </View>
       <View style={[styles.stem, { backgroundColor: selected ? GP.navy : ring }]} />
     </Pressable>

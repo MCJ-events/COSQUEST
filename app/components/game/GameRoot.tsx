@@ -12,8 +12,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { bearingDeg, distanceText } from "@/features/game/geo";
 import { gameStore, GAME_SERVER, GAME_SERVER_IS_PRODUCTION, useGame, useLocationPermission, startLocation } from "@/features/game/runtime";
 import { nearestFirst } from "@/features/game/store";
+import { raidPlaysAsDuel } from "@/features/game/raids";
 import { noteStepsOnPhone } from "@/features/game/stepsDevice";
-import { unlocked } from "@/features/game/unlocks";
+import { unlocked, visiblePoints } from "@/features/game/unlocks";
 import { arriveMoment, nudgeMoment } from "@/features/game/warden";
 import type { QuestPoint } from "@/features/game/wire";
 import { factionVeilColor } from "@/features/world/worldState";
@@ -32,6 +33,8 @@ import LiveCalendarSheet from "./LiveCalendarSheet";
 import MoreSheet, { type MoreTile } from "./MoreSheet";
 import Onboarding from "./Onboarding";
 import PointSheet from "./PointSheet";
+import RaidBanner from "./RaidBanner";
+import RaidScreen from "./RaidScreen";
 import RelicsButton from "./RelicsButton";
 import RelicsSheet from "./RelicsSheet";
 import Reward, { type RewardSummary } from "./Reward";
@@ -42,7 +45,8 @@ import WorldMap from "./WorldMap";
 type Screen =
   | { kind: "home" }
   | { kind: "encounter"; point: QuestPoint }
-  | { kind: "duel"; point: QuestPoint }
+  | { kind: "duel"; point: QuestPoint; raid?: boolean }
+  | { kind: "raid"; point: QuestPoint }
   | { kind: "reward"; reward: RewardSummary };
 
 /** What is open over the map (one at a time, closed by Android Back). */
@@ -63,7 +67,9 @@ export default function GameRoot({ parked }: { parked: boolean }) {
   const [, recentre] = useState(0);
   const greeted = useRef(new Set<string>());
 
-  const { me, points, fix, focus } = state;
+  const { me, fix, focus } = state;
+  // Bosses wait for level 5 (RoamGuide.swift visiblePoints).
+  const points = useMemo(() => visiblePoints(state.points, me), [state.points, me]);
   const color = factionVeilColor(me?.faction, chatFaction);
   const ctx = useCallback(() => ({ me: gameStore.get().me, playerName: gameStore.playerName() }), []);
   // Computed from the points and the fix themselves: the React Compiler
@@ -126,7 +132,7 @@ export default function GameRoot({ parked }: { parked: boolean }) {
     if (!open) return;
     const sub = BackHandler.addEventListener("hardwareBackPress", () => {
       if (sheet) setSheet(null);
-      else if (screen.kind === "reward" || screen.kind === "encounter" || screen.kind === "duel") setScreen({ kind: "home" });
+      else if (screen.kind !== "home") setScreen({ kind: "home" });
       else closeSheet();
       return true;
     });
@@ -136,12 +142,14 @@ export default function GameRoot({ parked }: { parked: boolean }) {
   const play = (p: QuestPoint) => {
     setSelectedId(null);
     gameStore.setFocus(null);
-    setScreen(gameStore.playsAsDuel(p) ? { kind: "duel", point: p } : { kind: "encounter", point: p });
+    // A boss first: the server would refuse it as a point duel (RoamHomeView.swift 239-255).
+    if (p.source === "raid") setScreen(raidPlaysAsDuel(p, me) ? { kind: "duel", point: p, raid: true } : { kind: "raid", point: p });
+    else setScreen(gameStore.playsAsDuel(p) ? { kind: "duel", point: p } : { kind: "encounter", point: p });
   };
 
   const share = (p: QuestPoint) => {
     emitGameEvent("onShareToChat", {
-      type: gameStore.playsAsDuel(p) ? "duel" : "shrine",
+      type: p.source === "raid" ? "raid" : gameStore.playsAsDuel(p) ? "duel" : "shrine",
       targetId: p.id,
       place: p.name,
       lat: p.lat,
@@ -213,6 +221,7 @@ export default function GameRoot({ parked }: { parked: boolean }) {
       ) : null}
 
       {screen.kind === "home" ? <LiveBanner parked={parked} onOpen={() => setSheet("events")} /> : null}
+      {fix && screen.kind === "home" && unlocked(me, "raids") ? <RaidBanner points={nearby} fix={fix} onFight={(boss) => setSelectedId(boss.id)} /> : null}
 
       {focusAway || focusMissing ? (
         <FocusBanner
@@ -242,7 +251,7 @@ export default function GameRoot({ parked }: { parked: boolean }) {
           distance={gameStore.distanceTo(selected)}
           inReach={gameStore.inReach(selected)}
           cooling={gameStore.isCooling(selected)}
-          asDuel={gameStore.playsAsDuel(selected)}
+          asDuel={selected.source === "raid" ? raidPlaysAsDuel(selected, me) : gameStore.playsAsDuel(selected)}
           factionName={gameStore.factionName}
           onPlay={() => play(selected)}
           onShare={() => share(selected)}
@@ -263,7 +272,12 @@ export default function GameRoot({ parked }: { parked: boolean }) {
       ) : null}
       {screen.kind === "duel" ? (
         <Animated.View entering={FadeIn.duration(220)} exiting={FadeOut.duration(160)} style={StyleSheet.absoluteFill}>
-          <DuelScreen point={screen.point} parked={parked} onReward={(reward) => setScreen({ kind: "reward", reward })} onClose={() => setScreen({ kind: "home" })} />
+          <DuelScreen point={screen.point} raid={screen.raid} parked={parked} onReward={(reward) => setScreen({ kind: "reward", reward })} onClose={() => setScreen({ kind: "home" })} />
+        </Animated.View>
+      ) : null}
+      {screen.kind === "raid" ? (
+        <Animated.View entering={FadeIn.duration(220)} exiting={FadeOut.duration(160)} style={StyleSheet.absoluteFill}>
+          <RaidScreen point={screen.point} parked={parked} onClose={() => setScreen({ kind: "home" })} />
         </Animated.View>
       ) : null}
       {screen.kind === "reward" ? (

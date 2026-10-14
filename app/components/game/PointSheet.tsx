@@ -9,10 +9,12 @@ import Animated, { SlideInDown, SlideOutDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { distanceText } from "@/features/game/geo";
+import { isRaidPoint, RAID_COLOR } from "@/features/game/raids";
 import { useGame } from "@/features/game/runtime";
 import { parseServerDate, type QuestPoint } from "@/features/game/wire";
 
 import { Chip, GameButton } from "./kit";
+import RaidLine from "./RaidLine";
 import { challengeName, difficultyName, GF, GP, realmColor, realmIcon, tierColor } from "./theme";
 
 function minutesLeft(until: string | null | undefined): number {
@@ -42,7 +44,8 @@ export default function PointSheet({
   onClose: () => void;
 }) {
   const insets = useSafeAreaInsets();
-  const color = realmColor(point.realm);
+  const boss = isRaidPoint(point);
+  const color = boss ? RAID_COLOR : realmColor(point.realm);
   const [, tick] = useState(0);
   useEffect(() => {
     if (!cooling) return;
@@ -56,7 +59,9 @@ export default function PointSheet({
   const playLabel = cooling
     ? `Recharging · ${minutesLeft(point.cooling_until)} min`
     : inReach
-      ? asDuel
+      ? boss
+        ? "Fight the boss"
+        : asDuel
         ? "Fight the Guardian"
         : `Play ${challengeName(point.challenge)}`
       : `Walk closer · ${distanceText(distance)}`;
@@ -66,7 +71,7 @@ export default function PointSheet({
       <View style={[styles.header, { backgroundColor: color }]}>
         <Ionicons name={asDuel ? "shield" : realmIcon(point.realm)} size={120} color="rgba(0,0,0,0.10)" style={styles.watermark} />
         <View style={styles.headerRow}>
-          <Text style={styles.kicker}>{`${factionName(point.realm)} ${asDuel ? "Guardian" : "Quest Point"}`.toUpperCase()}</Text>
+          <Text style={styles.kicker}>{boss ? "BOSS RAID" : `${factionName(point.realm)} ${asDuel ? "Guardian" : "Quest Point"}`.toUpperCase()}</Text>
           <Pressable onPress={onClose} hitSlop={10} accessibilityRole="button" accessibilityLabel="Close" style={styles.close}>
             <Ionicons name="close" size={20} color="#FFF" />
           </Pressable>
@@ -81,13 +86,16 @@ export default function PointSheet({
         ) : null}
       </View>
       <View style={styles.body}>
+        <RaidLine point={point} />
         <View style={styles.chips}>
           <Chip text={point.tier.toUpperCase()} color={tierColor(point.tier)} />
-          <Chip text={asDuel ? `Guardian Duel · ${difficultyName(point.tier)}` : challengeName(point.challenge)} color={GP.navy} />
+          <Chip text={boss ? (asDuel ? "Boss fight" : "Boss Trivia") : asDuel ? `Guardian Duel · ${difficultyName(point.tier)}` : challengeName(point.challenge)} color={GP.navy} />
           <Chip text={distanceText(distance)} color={inReach ? GP.mint : GP.slate} />
         </View>
         <Text style={styles.blurb}>
-          {ours
+          {boss
+            ? "A boss: fight it with your crew. It leaves at half past."
+            : ours
             ? `Held by your faction. ${asDuel ? "Beat its Guardian" : "Win here"} to defend ${point.name}.`
             : holder
             ? `${holder} holds ${point.name}. ${asDuel ? "Beat its Guardian" : "Win here"} to take it for your faction.`
@@ -97,7 +105,7 @@ export default function PointSheet({
         </Text>
         <GameButton
           title={playLabel}
-          color={cooling ? GP.slate : inReach ? GP.sun : GP.skyDeep}
+          color={cooling ? GP.slate : inReach ? (boss ? RAID_COLOR : GP.sun) : GP.skyDeep}
           disabled={cooling || !inReach}
           onPress={onPlay}
           icon={<Ionicons name={asDuel ? "flash" : "play"} size={20} color="#FFF" />}

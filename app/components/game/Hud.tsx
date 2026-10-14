@@ -8,9 +8,11 @@ import Animated, { FadeInDown, FadeOutDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { distanceText } from "@/features/game/geo";
+import { raidTint } from "@/features/game/raids";
 import type { QuestPoint, RoamMe } from "@/features/game/wire";
 
 import { ProgressBar } from "./kit";
+import { RaidCrown } from "./RaidParts";
 import { challengeName, GF, GP, realmColor, realmIcon, tierColor } from "./theme";
 import { type Said, useWardenMuted, wardenVoice } from "./wardenVoice";
 
@@ -120,8 +122,8 @@ export function NearbyTray({
               onPress={() => onSelect(p)}
               accessibilityRole="button"
               accessibilityLabel={`${p.name}, ${distanceText(distanceOf(p))}${reach ? ", in reach" : ""}${cool ? ", recharging" : ""}`}>
-              <View style={[styles.cardIcon, { backgroundColor: cool ? "#9AA7B0" : realmColor(p.realm) }]}>
-                <Ionicons name={p.challenge === "duel" ? "shield" : realmIcon(p.realm)} size={16} color="#FFF" />
+              <View style={[styles.cardIcon, { backgroundColor: cool ? "#9AA7B0" : raidTint(p) ?? realmColor(p.realm) }]}>
+                {p.source === "raid" ? <RaidCrown size={16} /> : <Ionicons name={p.challenge === "duel" ? "shield" : realmIcon(p.realm)} size={16} color="#FFF" />}
               </View>
               <View style={{ flexShrink: 1 }}>
                 <Text style={styles.cardName} numberOfLines={1}>

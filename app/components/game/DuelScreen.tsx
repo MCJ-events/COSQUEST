@@ -38,11 +38,13 @@ import {
   setupFromServer,
 } from "@/features/game/duel";
 import { distanceText } from "@/features/game/geo";
+import { raidDuelStart } from "@/features/game/raids";
 import { gameStore } from "@/features/game/runtime";
 import { levelMoment, reactionMoment } from "@/features/game/warden";
 import type { DuelStart, QuestPoint, RoamStanding } from "@/features/game/wire";
 
 import { GameButton, ProgressBar } from "./kit";
+import { RaidDuelBriefing, raidDuelRewardSummary } from "./RaidDuel";
 import { type RewardSummary, rewardFromDuel } from "./Reward";
 import { difficultyName, edgeOf, GF, GP, realmColor, realmIcon, tierColor } from "./theme";
 import { wardenVoice } from "./wardenVoice";
@@ -58,11 +60,14 @@ type Phase =
 export default function DuelScreen({
   point,
   parked,
+  raid,
   onReward,
   onClose,
 }: {
   point: QuestPoint;
   parked: boolean;
+  /** A boss fought as a duel: mode "raid", its damage goes into the crew's shared pool. */
+  raid?: boolean;
   onReward: (r: RewardSummary) => void;
   onClose: () => void;
 }) {
@@ -74,7 +79,7 @@ export default function DuelScreen({
     setPhase({ kind: "starting" });
     before.current = gameStore.get().me?.standing ?? null;
     try {
-      const start = await gameStore.duelStart(point);
+      const start = raid ? await raidDuelStart(gameStore.client, point, gameStore.get().fix) : await gameStore.duelStart(point);
       for (let n = 3; n >= 1; n--) {
         setPhase({ kind: "countdown", start, n });
         Haptics.selectionAsync().catch(() => {});
@@ -98,7 +103,7 @@ export default function DuelScreen({
         const outcome = await gameStore.duelFinish(start, runner.finishPayload());
         await gameStore.refreshMe();
         const after = gameStore.get().me?.standing ?? null;
-        const reward = rewardFromDuel(outcome, point, before.current, after);
+        const reward = raid ? raidDuelRewardSummary(outcome, point, before.current, after) : rewardFromDuel(outcome, point, before.current, after);
         if (reward.leveledUp && after) wardenVoice.speak(levelMoment(ctx(), after, reward.rankUp), 5000).catch(() => {});
         // Let the K.O. land before the reward.
         setTimeout(() => onReward(reward), 900);
@@ -106,11 +111,12 @@ export default function DuelScreen({
         setPhase({ kind: "failed", message: `Couldn't send the fight: ${(error as Error).message}` });
       }
     },
-    [point, onReward],  
+    [point, raid, onReward],  
   );
 
   if (phase.kind === "briefing" || phase.kind === "starting" || phase.kind === "failed") {
-    return <Briefing point={point} busy={phase.kind === "starting"} problem={phase.kind === "failed" ? phase.message : null} onFight={fight} onClose={onClose} />;
+    const Brief = raid ? RaidDuelBriefing : Briefing;
+    return <Brief point={point} busy={phase.kind === "starting"} problem={phase.kind === "failed" ? phase.message : null} onFight={fight} onClose={onClose} />;
   }
   return (
     <Arena
@@ -120,6 +126,7 @@ export default function DuelScreen({
       countdown={phase.kind === "countdown" ? phase.n : 0}
       ending={phase.kind === "reporting" ? phase : null}
       paused={parked}
+      raid={raid}
       onOver={finished}
       onQuit={onClose}
     />
@@ -252,6 +259,7 @@ function Arena({
   countdown,
   ending,
   paused,
+  raid,
   onOver,
   onQuit,
 }: {
@@ -260,6 +268,7 @@ function Arena({
   countdown: number;
   ending: { won: boolean; reason: string } | null;
   paused: boolean;
+  raid?: boolean;
   onOver: (start: DuelStart, runner: DuelRunner) => void;
   onQuit: () => void;
 }) {
@@ -403,7 +412,7 @@ function Arena({
           <Animated.Text entering={ZoomIn.springify()} style={[styles.countdown, { color: ending.won ? GP.sun : "#FFF" }]}>
             {ending.reason}
           </Animated.Text>
-          <Text style={styles.versus}>{ending.won ? "You win!" : "The Guardian holds."}</Text>
+          <Text style={styles.versus}>{ending.won ? "You win!" : raid ? "Every hit counts toward the crew's." : "The Guardian holds."}</Text>
           <ActivityIndicator color="#FFF" style={{ marginTop: 12 }} />
         </View>
       ) : null}
