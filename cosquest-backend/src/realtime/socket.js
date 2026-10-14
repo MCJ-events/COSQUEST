@@ -235,9 +235,19 @@ function revokeSession(userId, reason = 'signed_in_elsewhere') {
   io.in(room).disconnectSockets(true);
 }
 
+/**
+ * Push one event to several rooms at once (e.g. a conversation room plus some
+ * accounts' `user:` rooms). One emit, one serialisation, and a socket that is
+ * in more than one of the rooms still gets the event only once.
+ */
+function emitToRooms(rooms, event, payload) {
+  if (!rooms?.length) return;
+  io?.to(rooms).emit(event, payload);
+}
+
 /** Push to everyone currently viewing a post (has joined its room via post:join). */
 function emitToPost(postId, event, payload) {
   io?.to(`post:${postId}`).emit(event, payload);
 }
 
-module.exports = { initSocket, getIO, closeSocket, emitToConversation, emitToConversationExcept, emitToUser, emitToUsers, emitToPost, revokeSession };
+module.exports = { initSocket, getIO, closeSocket, emitToConversation, emitToConversationExcept, emitToUser, emitToUsers, emitToRooms, emitToPost, revokeSession };

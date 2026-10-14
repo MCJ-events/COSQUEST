@@ -1,13 +1,28 @@
 const mongoose = require('mongoose');
 const VoiceRoom = require('../models/VoiceRoom');
+const User = require('../models/User');
 const { createCallToken, getLivekitUrl } = require('../utils/livekit');
 const { loadConversationForUser } = require('./chatController');
-const { emitToConversation, emitToUsers } = require('../realtime/socket');
+const { emitToRooms } = require('../realtime/socket');
+const limits = require('../config/callLimits');
+const { createCoalescer } = require('../utils/coalescer');
 
-const MAX_MEMBERS = VoiceRoom.MAX_MEMBERS;
 const STALE_AFTER_MS = VoiceRoom.STALE_AFTER_MS;
 const USER_FIELDS =
   'profile.username profile.displayName profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl';
+
+// How this scales to big voice chats (hundreds of people):
+//
+// - Joining, leaving, checking in and removing people who went quiet are
+//   each one atomic database update. Nobody loads the whole voice chat,
+//   changes it and saves it back, so 200 people joining at once don't
+//   collide and retry, and a check-in never overwrites someone's join.
+//   Every update that changes who is in it bumps `__v`; check-ins don't.
+// - The voice chat's JSON is built once per version (`__v`) and shared by
+//   every response and live update until the next change, so the 30-second
+//   check-ins of a 1,000-person voice chat cost a tiny lookup each.
+// - Live updates (`voice:updated`) are coalesced per voice chat: at most one
+//   per interval, always the latest state (src/utils/coalescer.js).
 
 // ==========================================================================
 // HELPERS
@@ -40,105 +55,193 @@ function userPreview(user) {
   };
 }
 
-function isMember(room, userId) {
-  return room.members.some((member) => idOf(member.user) === String(userId));
-}
+// Names and avatars for the member list, kept for a minute so a busy voice
+// chat doesn't look up every member again on every join.
+const PREVIEW_TTL_MS = 60 * 1000;
+const PREVIEW_CACHE_MAX = 20000;
+const previewCache = new Map(); // userId -> { preview, at }
 
-// Removes anyone whose app hasn't checked in for 90 seconds.
-function pruneStale(room, now = new Date()) {
-  const cutoff = now.getTime() - STALE_AFTER_MS;
-  const before = room.members.length;
-  room.members = room.members.filter((member) => new Date(member.lastSeenAt).getTime() > cutoff);
-  return room.members.length !== before;
-}
-
-// The voice chat closes when the last person leaves.
-function closeIfEmpty(room, now = new Date()) {
-  if (room.active && room.members.length === 0) {
-    room.active = false;
-    room.endedAt = now;
-    return true;
+async function previewsFor(userIds) {
+  const now = Date.now();
+  const result = new Map();
+  const missing = [];
+  for (const id of new Set(userIds.map(String))) {
+    const hit = previewCache.get(id);
+    if (hit && now - hit.at < PREVIEW_TTL_MS) result.set(id, hit.preview);
+    else missing.push(id);
   }
-  return false;
+  if (missing.length) {
+    const users = await User.find({ _id: { $in: missing } }).select(USER_FIELDS).lean();
+    const found = new Map(users.map((user) => [String(user._id), user]));
+    if (previewCache.size + missing.length > PREVIEW_CACHE_MAX) previewCache.clear();
+    for (const id of missing) {
+      const preview = userPreview(found.get(id) || id);
+      previewCache.set(id, { preview, at: now });
+      result.set(id, preview);
+    }
+  }
+  return result;
 }
 
-function toVoiceJson(room) {
+function toVoiceJson(room, previews) {
   return {
     id: idOf(room),
     conversationId: idOf(room.conversation),
     conversationType: room.conversationType,
     factionKey: room.factionKey || null,
     active: Boolean(room.active),
-    startedBy: userPreview(room.startedBy),
+    startedBy: previews.get(idOf(room.startedBy)) || userPreview(room.startedBy),
     startedAt: room.createdAt,
     endedAt: room.endedAt,
     members: room.members.map((member) => ({
-      user: userPreview(member.user),
+      user: previews.get(idOf(member.user)) || userPreview(member.user),
       joinedAt: member.joinedAt,
     })),
     memberCount: room.members.length,
-    maxMembers: MAX_MEMBERS,
+    maxMembers: limits.voiceRoomMaxMembers(),
   };
 }
 
-async function populateRoom(room) {
-  if (!room) return room;
-  await room.populate([
-    { path: 'startedBy', select: USER_FIELDS },
-    { path: 'members.user', select: USER_FIELDS },
-  ]);
-  return room;
+// The current state of a voice chat: { active, conversationId, memberIds,
+// json }, built once per version and shared until it changes.
+const viewCache = new Map(); // roomId -> { version, active, promise }
+
+async function buildView(roomId) {
+  const room = await VoiceRoom.findById(roomId).lean();
+  if (!room) return null;
+  const memberIds = room.members.map((member) => idOf(member.user));
+  const previews = await previewsFor([idOf(room.startedBy), ...memberIds]);
+  return {
+    version: room.__v,
+    active: Boolean(room.active),
+    conversationId: idOf(room.conversation),
+    memberIds,
+    json: toVoiceJson(room, previews),
+  };
 }
 
-// Loads a voice chat, applies a change and saves it, retrying if someone
-// else changed it at the same moment. Same idea as mutateCall().
-async function mutateRoom(roomId, mutator) {
-  for (let attempt = 0; attempt < 5; attempt += 1) {
-    const room = await VoiceRoom.findById(roomId);
-    if (!room) return { room: null };
+async function roomView(roomId) {
+  const key = String(roomId);
+  const head = await VoiceRoom.findById(roomId, '__v active').lean();
+  if (!head) return null;
+  const cached = viewCache.get(key);
+  if (cached && cached.version === head.__v && cached.active === head.active) return cached.promise;
 
-    const result = mutator(room);
-    if (result?.error) return { room: await populateRoom(room), error: result.error };
-    if (result === false) return { room: await populateRoom(room), changed: false };
-
-    try {
-      await room.save();
-      return { room: await populateRoom(room), changed: true, result };
-    } catch (error) {
-      if (error?.name === 'VersionError') continue;
-      throw error;
-    }
-  }
-
-  const error = new Error('The voice chat changed too quickly. Please try again.');
-  error.status = 409;
-  throw error;
+  const promise = buildView(roomId);
+  viewCache.set(key, { version: head.__v, active: head.active, promise });
+  promise.catch(() => viewCache.get(key)?.promise === promise && viewCache.delete(key));
+  if (!head.active) setTimeout(() => viewCache.get(key)?.promise === promise && viewCache.delete(key), 60 * 1000).unref?.();
+  return promise;
 }
+
+// ==========================================================================
+// ATOMIC CHANGES
+// ==========================================================================
+
+// The voice chat closes when the last person leaves.
+async function closeIfEmpty(roomId, now = new Date()) {
+  const closed = await VoiceRoom.updateOne(
+    { _id: roomId, active: true, members: { $size: 0 } },
+    { $set: { active: false, endedAt: now }, $inc: { __v: 1 } }
+  );
+  return closed.modifiedCount > 0;
+}
+
+// Removes anyone whose app hasn't checked in for 90 seconds (and closes the
+// voice chat if that empties it). Returns { changed, closed }.
+async function pruneStale(roomId, now = new Date()) {
+  const cutoff = new Date(now.getTime() - STALE_AFTER_MS);
+  const pruned = await VoiceRoom.updateOne(
+    { _id: roomId, active: true, members: { $elemMatch: { lastSeenAt: { $lte: cutoff } } } },
+    { $pull: { members: { lastSeenAt: { $lte: cutoff } } }, $inc: { __v: 1 } }
+  );
+  if (!pruned.modifiedCount) return { changed: false, closed: false };
+  return { changed: true, closed: await closeIfEmpty(roomId, now) };
+}
+
+// "I'm still here". Doesn't bump the version: nothing anyone sees changed.
+async function touchMember(roomId, userId, now = new Date()) {
+  const touched = await VoiceRoom.updateOne(
+    { _id: roomId, active: true, 'members.user': userId },
+    { $set: { 'members.$.lastSeenAt': now } }
+  );
+  return touched.matchedCount > 0;
+}
+
+// Adds this person if there's room. The size check is part of the same
+// update, so two people taking the last place at once can't both get in.
+async function addMember(roomId, userId, now = new Date()) {
+  const max = limits.voiceRoomMaxMembers();
+  const added = await VoiceRoom.updateOne(
+    { _id: roomId, active: true, 'members.user': { $ne: userId }, [`members.${max - 1}`]: { $exists: false } },
+    { $push: { members: { user: userId, joinedAt: now, lastSeenAt: now } }, $inc: { __v: 1 } }
+  );
+  if (added.modifiedCount) return { joined: true };
+
+  if (await touchMember(roomId, userId, now)) return { joined: false }; // already in it
+  const room = await VoiceRoom.findById(roomId, 'active').lean();
+  if (!room?.active) return { error: { status: 410, message: 'This voice chat has ended. Try again.' } };
+  return { error: { status: 409, message: `This voice chat is full (${max} people).` } };
+}
+
+// Takes this person out (and closes the voice chat if they were the last).
+async function removeMember(roomId, userId, now = new Date()) {
+  const removed = await VoiceRoom.updateOne(
+    { _id: roomId, active: true, 'members.user': userId },
+    { $pull: { members: { user: userId } }, $inc: { __v: 1 } }
+  );
+  if (!removed.modifiedCount) return { changed: false, closed: false };
+  return { changed: true, closed: await closeIfEmpty(roomId, now) };
+}
+
+// ==========================================================================
+// LIVE UPDATES
+// ==========================================================================
+
+const lastMemberCount = new Map(); // roomId -> members at the last update (sets the interval)
+
+async function sendVoiceUpdate(roomId, extraUserIds) {
+  const view = await roomView(roomId);
+  if (!view) return;
+  if (view.active) lastMemberCount.set(roomId, view.memberIds.length);
+  else lastMemberCount.delete(roomId);
+
+  // Everyone looking at that chat, everyone in the voice chat, and anyone
+  // who just left it - in one emit, so nobody gets it twice.
+  const payload = { conversationId: view.conversationId, voiceRoom: view.active ? view.json : null };
+  const people = new Set([...view.memberIds, ...extraUserIds]);
+  emitToRooms([`conversation:${view.conversationId}`, ...[...people].map((id) => `user:${id}`)], 'voice:updated', payload);
+}
+
+const voiceUpdates = createCoalescer({
+  label: 'voice',
+  interval: (value) => limits.broadcastIntervalMs(lastMemberCount.get(value?.roomId) || 0),
+  send: (roomId, value) => {
+    sendVoiceUpdate(roomId, [...value.extras]).catch((error) =>
+      console.error('[voice] live update failed:', error.message)
+    );
+  },
+});
 
 // Tells everyone looking at that chat (and everyone in the voice chat) who's
 // in it now. `voiceRoom: null` means it has closed.
-function broadcastVoiceUpdate(room, extraUserIds = []) {
-  const conversationId = idOf(room.conversation);
-  const payload = { conversationId, voiceRoom: room.active ? toVoiceJson(room) : null };
-
-  emitToConversation(conversationId, 'voice:updated', payload);
-
-  const memberIds = room.members.map((member) => idOf(member.user));
-  emitToUsers([...new Set([...memberIds, ...extraUserIds.map(String)])], 'voice:updated', payload);
+function broadcastVoiceUpdate(roomId, extraUserIds = [], { immediate = false } = {}) {
+  const key = String(roomId);
+  voiceUpdates.push(
+    key,
+    { roomId: key, extras: new Set(extraUserIds.map(String)) },
+    {
+      immediate,
+      merge: (pending, next) => ({ roomId: key, extras: new Set([...pending.extras, ...next.extras]) }),
+    }
+  );
 }
 
 // Removes stale members (and closes the room if it's empty), right now.
 async function refreshRoom(roomId) {
-  const { room, changed } = await mutateRoom(roomId, (current) => {
-    if (!current.active) return false;
-    const now = new Date();
-    const pruned = pruneStale(current, now);
-    const closed = closeIfEmpty(current, now);
-    return pruned || closed ? true : false;
-  });
-
-  if (room && changed) broadcastVoiceUpdate(room);
-  return room;
+  const { changed, closed } = await pruneStale(roomId);
+  if (changed) broadcastVoiceUpdate(roomId, [], { immediate: closed });
+  return roomView(roomId);
 }
 
 // Voice chats are for the Community room and faction rooms only.
@@ -170,21 +273,16 @@ async function leaveOtherRooms(userId, keepRoomId = null) {
   const filter = { active: true, 'members.user': userId };
   if (keepRoomId) filter._id = { $ne: keepRoomId };
 
-  const others = await VoiceRoom.find(filter, '_id');
+  const others = await VoiceRoom.find(filter, '_id').lean();
   for (const other of others) {
-    const { room, changed } = await mutateRoom(other._id, (current) => {
-      if (!isMember(current, userId)) return false;
-      current.members = current.members.filter((member) => idOf(member.user) !== String(userId));
-      closeIfEmpty(current);
-      return true;
-    });
-    if (room && changed) broadcastVoiceUpdate(room, [userId]);
+    const { changed, closed } = await removeMember(other._id, userId);
+    if (changed) broadcastVoiceUpdate(other._id, [userId], { immediate: closed });
   }
 }
 
 async function findVoiceRoomForUser(roomId) {
   if (!mongoose.isValidObjectId(roomId)) return { status: 404, error: 'Voice chat not found.' };
-  const room = await VoiceRoom.findById(roomId, '_id conversation');
+  const room = await VoiceRoom.findById(roomId, '_id conversation').lean();
   if (!room) return { status: 404, error: 'Voice chat not found.' };
   return { room };
 }
@@ -198,11 +296,11 @@ async function getVoiceRoom(req, res) {
   const { conversation, error } = await loadVoiceConversation(req.params.conversationId, req.user);
   if (error) return res.status(error.status).json({ error: error.message });
 
-  const live = await VoiceRoom.findOne({ conversation: conversation._id, active: true }, '_id');
+  const live = await VoiceRoom.findOne({ conversation: conversation._id, active: true }, '_id').lean();
   if (!live) return res.json({ voiceRoom: null });
 
-  const room = await refreshRoom(live._id);
-  return res.json({ voiceRoom: room?.active ? toVoiceJson(room) : null });
+  const view = await refreshRoom(live._id);
+  return res.json({ voiceRoom: view?.active ? view.json : null });
 }
 
 // POST /api/chats/:conversationId/voice/join - start the voice chat (if none
@@ -215,13 +313,18 @@ async function joinVoiceRoom(req, res) {
   getLivekitUrl();
 
   const userId = String(req.userId);
-  let live = await VoiceRoom.findOne({ conversation: conversation._id, active: true }, '_id');
+  const findLive = () => VoiceRoom.findOne({ conversation: conversation._id, active: true }, '_id').lean();
+  let live = await findLive();
 
-  if (live) await refreshRoom(live._id);
-  live = await VoiceRoom.findOne({ conversation: conversation._id, active: true }, '_id');
+  if (live) {
+    const { changed, closed } = await pruneStale(live._id);
+    if (changed) broadcastVoiceUpdate(live._id, [], { immediate: closed });
+    if (closed) live = await findLive();
+  }
 
-  let room;
+  let roomId = null;
   let started = false;
+  let changed = false;
 
   if (!live) {
     // Nobody's talking yet - start a new voice chat.
@@ -237,48 +340,38 @@ async function joinVoiceRoom(req, res) {
 
     try {
       await fresh.save();
-      room = await populateRoom(fresh);
+      roomId = fresh._id;
       started = true;
+      changed = true;
     } catch (saveError) {
       if (saveError?.code !== 11000) throw saveError;
       // Someone else started one at the same moment - join theirs instead.
-      live = await VoiceRoom.findOne({ conversation: conversation._id, active: true }, '_id');
+      live = await findLive();
     }
   }
 
-  if (!room && !live) {
+  if (!roomId && !live) {
     return res.status(409).json({ error: 'The voice chat changed. Please try again.' });
   }
 
-  if (!room) {
-    const result = await mutateRoom(live._id, (current) => {
-      if (!current.active) return { error: { status: 410, message: 'This voice chat has ended. Try again.' } };
-
-      const now = new Date();
-      pruneStale(current, now);
-
-      const mine = current.members.find((member) => idOf(member.user) === userId);
-      if (mine) {
-        mine.lastSeenAt = now;
-        return true;
-      }
-      if (current.members.length >= MAX_MEMBERS) {
-        return { error: { status: 409, message: `This voice chat is full (${MAX_MEMBERS} people).` } };
-      }
-
-      current.members.push({ user: req.userId, joinedAt: now, lastSeenAt: now });
-      return true;
-    });
-
-    if (result.error) return res.status(result.error.status).json({ error: result.error.message });
-    room = result.room;
+  if (!roomId) {
+    const added = await addMember(live._id, userId);
+    if (added.error) return res.status(added.error.status).json({ error: added.error.message });
+    roomId = live._id;
+    changed = added.joined;
   }
 
-  await leaveOtherRooms(userId, room._id);
-  broadcastVoiceUpdate(room);
+  await leaveOtherRooms(userId, roomId);
+  if (changed) broadcastVoiceUpdate(roomId);
+
+  const view = await roomView(roomId);
+  const room = await VoiceRoom.findById(roomId, 'roomName').lean();
+  if (!view?.active || !room) {
+    return res.status(410).json({ error: 'This voice chat has ended. Try again.' });
+  }
 
   return res.status(started ? 201 : 200).json({
-    voiceRoom: toVoiceJson(room),
+    voiceRoom: view.json,
     token: await tokenFor(room, req.user),
     livekitUrl: getLivekitUrl(),
   });
@@ -289,30 +382,17 @@ async function pingVoiceRoom(req, res) {
   const found = await findVoiceRoomForUser(req.params.roomId);
   if (found.error) return res.status(found.status).json({ error: found.error });
 
-  const userId = String(req.userId);
-  let membershipChanged = false;
+  const roomId = found.room._id;
+  const now = new Date();
 
-  const { room, changed, error } = await mutateRoom(found.room._id, (current) => {
-    if (!current.active) return { error: { status: 410, message: 'This voice chat has ended.' } };
-
-    const now = new Date();
-    const mine = current.members.find((member) => idOf(member.user) === userId);
-    if (!mine) return { error: { status: 404, message: 'You are not in this voice chat.' } };
-
-    mine.lastSeenAt = now;
-    membershipChanged = pruneStale(current, now);
-    closeIfEmpty(current, now);
-    return true;
-  });
-
-  if (error) {
-    return res.status(error.status).json({
-      error: error.message,
-      voiceRoom: room?.active ? toVoiceJson(room) : null,
-    });
+  if (!(await touchMember(roomId, String(req.userId), now))) {
+    const view = await roomView(roomId);
+    if (!view?.active) return res.status(410).json({ error: 'This voice chat has ended.', voiceRoom: null });
+    return res.status(404).json({ error: 'You are not in this voice chat.', voiceRoom: view.json });
   }
-  if (changed && membershipChanged) broadcastVoiceUpdate(room);
-  return res.json({ voiceRoom: room.active ? toVoiceJson(room) : null });
+
+  const view = await refreshRoom(roomId);
+  return res.json({ voiceRoom: view?.active ? view.json : null });
 }
 
 // POST /api/voice/:roomId/leave
@@ -320,20 +400,14 @@ async function leaveVoiceRoom(req, res) {
   const found = await findVoiceRoomForUser(req.params.roomId);
   if (found.error) return res.status(found.status).json({ error: found.error });
 
+  const roomId = found.room._id;
   const userId = String(req.userId);
 
-  const { room, changed } = await mutateRoom(found.room._id, (current) => {
-    if (!current.active || !isMember(current, userId)) return false;
+  const removed = await removeMember(roomId, userId);
+  if (removed.changed) broadcastVoiceUpdate(roomId, [userId], { immediate: removed.closed });
 
-    const now = new Date();
-    current.members = current.members.filter((member) => idOf(member.user) !== userId);
-    pruneStale(current, now);
-    closeIfEmpty(current, now);
-    return true;
-  });
-
-  if (room && changed) broadcastVoiceUpdate(room, [userId]);
-  return res.json({ voiceRoom: room?.active ? toVoiceJson(room) : null });
+  const view = removed.closed ? null : await refreshRoom(roomId);
+  return res.json({ voiceRoom: view?.active ? view.json : null });
 }
 
 module.exports = {
@@ -342,5 +416,5 @@ module.exports = {
   pingVoiceRoom,
   leaveVoiceRoom,
   // Exported for tests.
-  _internal: { pruneStale, closeIfEmpty },
+  _internal: { pruneStale, closeIfEmpty, addMember, removeMember, flushUpdates: () => voiceUpdates.flushAll() },
 };

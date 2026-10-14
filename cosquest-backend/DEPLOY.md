@@ -30,6 +30,21 @@ LIVEKIT_URL=...
 
 Settings > Secrets and variables > Actions > `COSQUEST_TEST_ENV`. Use test or development keys, not production ones. The next deploy applies it (run the workflow by hand to apply it at once). The infrastructure values above cannot be overridden from here.
 
+## Call and voice chat size limits
+
+Optional. Without them, calls take up to 1,000 people at once and voice chats up to 1,000. Set them in `COSQUEST_TEST_ENV` / `COSQUEST_PROD_ENV` like any other setting; a missing or invalid value uses the default.
+
+| Setting | Default | What it does |
+|---|---|---|
+| `CALL_MAX_IN_CALL` | 1000 | People ringing or in one call at the same time. The app shows it (`maxParticipants`) |
+| `CALL_MAX_EVER_INVITED` | 5000 | Everyone who was ever part of one call (at least 2) |
+| `CALL_MAX_INVITES_PER_REQUEST` | 50 | People added by one "add people" request. The app shows it (`maxInvitesPerRequest`) |
+| `VOICE_ROOM_MAX_MEMBERS` | 1000 | People in one Community or faction voice chat (`maxMembers`) |
+| `CALL_BROADCAST_INTERVAL_MS` | 250 | Shortest gap between two live updates of one call or voice chat |
+| `CALL_BROADCAST_MS_PER_MEMBER` | 2 | Extra gap per person, so big calls update less often (500 people: 1 s, 1,000: 2 s) |
+
+Calls of a few hundred people or more also need LiveKit sized for them: see "Big calls and LiveKit" in the pull request that added these (about one CPU core per 100 listeners with 10 people talking; 1,000 people needs its own LiveKit server).
+
 ## Secrets this workflow uses
 
 | Secret | What it is |

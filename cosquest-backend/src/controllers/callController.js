@@ -5,12 +5,14 @@ const userModel = require('../models/userModel');
 const { createCallToken, getLivekitUrl } = require('../utils/livekit');
 const { isBlockedEitherWay } = require('./publicProfileController');
 const { loadConversationForUser } = require('./chatController');
+const Block = require('../models/Block');
 const { emitToUsers } = require('../realtime/socket');
 const { recordCallMessage } = require('../utils/callMessage');
+const limits = require('../config/callLimits');
+const { createMutationQueue } = require('../utils/mutationQueue');
+const { createCoalescer } = require('../utils/coalescer');
 
 const RING_TIMEOUT_MS = 45 * 1000;
-const MAX_IN_CALL = Call.MAX_IN_CALL;
-const MAX_INVITES_PER_REQUEST = MAX_IN_CALL - 1;
 const TERMINAL_STATUSES = ['declined', 'missed', 'cancelled', 'ended'];
 const USER_FIELDS =
   'profile.username profile.displayName profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl';
@@ -60,6 +62,13 @@ function participantIds(call) {
 
 function isActive(call) {
   return !TERMINAL_STATUSES.includes(call.status);
+}
+
+// People ringing or in the call right now. (Counted from `members`, not
+// `activeMembers`, which is only refreshed on save - several changes can be
+// applied to one loaded copy before it is saved.)
+function activeCount(call) {
+  return call.members.filter((member) => ['ringing', 'joined'].includes(member.status)).length;
 }
 
 // Calls started before group calls existed have no `members` - build them
@@ -161,16 +170,47 @@ function settle(call, now = new Date()) {
 // LOADING, SAVING AND SENDING
 // ==========================================================================
 
+// Plain objects (lean), not full documents: a 1,000-person call populates
+// 1,000 users, and only their names and avatars are read.
 async function populateCall(call) {
   if (!call) return call;
   await call.populate([
-    { path: 'caller', select: USER_FIELDS },
-    { path: 'members.user', select: USER_FIELDS },
+    { path: 'caller', select: USER_FIELDS, options: { lean: true } },
+    { path: 'members.user', select: USER_FIELDS, options: { lean: true } },
   ]);
   return call;
 }
 
+// A call's JSON is built once per loaded copy of the call and shared by
+// everything that sends that copy (the live update, the ring, and every
+// HTTP response in the same batch), instead of once per recipient.
+const callJsonCache = new WeakMap(); // call document -> { json, text }
+
 function toCallJson(call) {
+  let cached = callJsonCache.get(call);
+  if (!cached) {
+    cached = { json: buildCallJson(call), text: null };
+    callJsonCache.set(call, cached);
+  }
+  return cached.json;
+}
+
+function callJsonText(call) {
+  toCallJson(call);
+  const cached = callJsonCache.get(call);
+  if (cached.text === null) cached.text = JSON.stringify(cached.json);
+  return cached.text;
+}
+
+// res.json({ call, ...extra }) without serialising the (possibly large) call
+// again for every person: the call's text is made once and reused.
+function sendCall(res, status, call, extra = {}) {
+  const rest = JSON.stringify(extra);
+  const body = rest === '{}' ? `{"call":${callJsonText(call)}}` : `{"call":${callJsonText(call)},${rest.slice(1)}`;
+  return res.status(status).type('application/json').send(body);
+}
+
+function buildCallJson(call) {
   return {
     id: idOf(call),
     conversationId: idOf(call.conversation),
@@ -187,7 +227,11 @@ function toCallJson(call) {
       joinedAt: member.joinedAt || null,
       leftAt: member.leftAt || null,
     })),
-    maxParticipants: MAX_IN_CALL,
+    // The app shows these: how many people can be in the call at once, and
+    // how many can be added in one go (CALL_MAX_IN_CALL /
+    // CALL_MAX_INVITES_PER_REQUEST).
+    maxParticipants: limits.maxInCall(),
+    maxInvitesPerRequest: limits.maxInvitesPerRequest(),
     createdAt: call.createdAt,
     answeredAt: call.answeredAt,
     endedAt: call.endedAt,
@@ -195,40 +239,41 @@ function toCallJson(call) {
 }
 
 // Loads a call, applies a change, and saves it. If someone else changed the
-// same call at the same moment, it reloads and tries again.
+// same call at the same moment, it reloads and tries again. Changes to the
+// same call that arrive together are applied in one batch (one load, one
+// save, one populate) - see src/utils/mutationQueue.js.
 //
 // `mutator(call)` returns:
 //   false                     - nothing changed (no save)
 //   { error: {status, ...} }  - stop with that error (no save)
 //   anything else             - save, and pass it back as `result`
-async function mutateCall(callId, mutator) {
-  for (let attempt = 0; attempt < 5; attempt += 1) {
+const callMutations = createMutationQueue({
+  load: async (callId) => {
     const call = await Call.findById(callId);
-    if (!call) return { call: null };
+    if (call) ensureMembers(call);
+    return call;
+  },
+  populate: populateCall,
+  conflictMessage: 'The call changed too quickly. Please try again.',
+});
 
-    ensureMembers(call);
-    const result = mutator(call);
-
-    if (result?.error) return { call: await populateCall(call), error: result.error };
-    if (result === false) return { call: await populateCall(call), changed: false };
-
-    try {
-      await call.save();
-      return { call: await populateCall(call), changed: true, result };
-    } catch (error) {
-      if (error?.name === 'VersionError') continue; // changed by someone else - retry
-      throw error;
-    }
-  }
-
-  const error = new Error('The call changed too quickly. Please try again.');
-  error.status = 409;
-  throw error;
+async function mutateCall(callId, mutator) {
+  const { doc, ...rest } = await callMutations(callId, mutator);
+  return { call: doc, ...rest };
 }
 
-// Tells everyone who was part of the call what changed, and saves the call
-// entry in the chat once the call has finished.
-function broadcastCallUpdate(call) {
+// Last state sent per call, so an older copy can never follow a newer one
+// (e.g. "accepted" arriving after "ended").
+const lastSentAt = new Map(); // callId -> updatedAt (ms)
+
+function sendCallUpdate(callId, call) {
+  const at = new Date(call.updatedAt || 0).getTime();
+  if (at < (lastSentAt.get(callId) ?? -Infinity)) return;
+  lastSentAt.set(callId, at);
+  if (!isActive(call)) {
+    setTimeout(() => lastSentAt.get(callId) === at && lastSentAt.delete(callId), 60 * 1000).unref?.();
+  }
+
   emitToUsers(participantIds(call), 'call:updated', { call: toCallJson(call) });
   // Sparks: call transcription/outline bookkeeping (no-op on the legacy engine).
   require('../sparks/calls').sync(call);
@@ -238,6 +283,26 @@ function broadcastCallUpdate(call) {
       console.error('[calls] failed to record call message:', error.message)
     );
   }
+}
+
+// At most one `call:updated` per call per interval (250 ms, longer for very
+// big calls - see CALL_BROADCAST_*), always carrying the latest state. The
+// first change goes out at once; a call ending goes out at once.
+const callUpdates = createCoalescer({
+  label: 'calls',
+  interval: (call) => limits.broadcastIntervalMs(call?.members?.length || 0),
+  send: sendCallUpdate,
+});
+
+function newer(a, b) {
+  const at = (call) => new Date(call?.updatedAt || 0).getTime();
+  return at(b) >= at(a) ? b : a;
+}
+
+// Tells everyone who was part of the call what changed, and saves the call
+// entry in the chat once the call has finished.
+function broadcastCallUpdate(call) {
+  callUpdates.push(idOf(call), call, { immediate: !isActive(call), merge: newer });
 }
 
 // Applies the 45-second rule to a call right now (and sends any change).
@@ -291,23 +356,58 @@ async function isBusy(userId, exceptCallId = null) {
   return Boolean(await Call.exists(filter));
 }
 
-async function joinInfo(call, user) {
+// The LiveKit token and address for joining this call's room.
+// Of these people, who has blocked (or been blocked by) `userId`? One query.
+async function blockedEitherWayAmong(userId, otherIds) {
+  if (!otherIds.length) return new Set();
+  const blocks = await Block.find(
+    {
+      $or: [
+        { blocker: userId, blocked: { $in: otherIds } },
+        { blocker: { $in: otherIds }, blocked: userId },
+      ],
+    },
+    'blocker blocked'
+  ).lean();
+  const me = String(userId);
+  return new Set(blocks.map((block) => (String(block.blocker) === me ? String(block.blocked) : String(block.blocker))));
+}
+
+// Of these people, who is ringing in or part of another active call? Same
+// rule as isBusy(), for everyone at once.
+async function busyAmong(userIds, exceptCallId) {
+  if (!userIds.length) return new Set();
+  const wanted = new Set(userIds.map(String));
+  const [current, legacy] = await Promise.all([
+    Call.find({ active: true, _id: { $ne: exceptCallId }, activeMembers: { $in: userIds } }, 'activeMembers').lean(),
+    Call.find(
+      { active: true, _id: { $ne: exceptCallId }, participants: { $in: userIds }, 'members.0': { $exists: false } },
+      'participants'
+    ).lean(),
+  ]);
+  const busy = new Set();
+  current.forEach((call) => call.activeMembers.forEach((id) => wanted.has(String(id)) && busy.add(String(id))));
+  legacy.forEach((call) => call.participants.forEach((id) => wanted.has(String(id)) && busy.add(String(id))));
+  return busy;
+}
+
+async function joinExtras(call, user) {
   const token = await createCallToken({
     userId: user._id,
     name: displayName(user),
     roomName: call.roomName,
   });
-  return { call: toCallJson(call), token, livekitUrl: getLivekitUrl() };
+  return { token, livekitUrl: getLivekitUrl() };
 }
 
+// Is this person part of the call? Asks the database directly instead of
+// loading the call's whole participant list on every request.
 async function findCallForUser(callId, userId) {
   if (!mongoose.isValidObjectId(callId)) return { status: 404, error: 'Call not found.' };
-  const call = await Call.findById(callId, 'participants');
-  if (!call) return { status: 404, error: 'Call not found.' };
-  if (!participantIds(call).includes(String(userId))) {
-    return { status: 403, error: 'You are not part of this call.' };
-  }
-  return { callId: call._id };
+  const mine = await Call.findOne({ _id: callId, participants: userId }, '_id').lean();
+  if (mine) return { callId: mine._id };
+  if (!(await Call.exists({ _id: callId }))) return { status: 404, error: 'Call not found.' };
+  return { status: 403, error: 'You are not part of this call.' };
 }
 
 // ==========================================================================
@@ -387,10 +487,10 @@ async function startCall(req, res) {
     throw saveError;
   }
 
-  let response;
+  let extras;
   try {
     await populateCall(call);
-    response = await joinInfo(call, req.user);
+    extras = await joinExtras(call, req.user);
   } catch (tokenError) {
     await Call.updateOne(
       { _id: call._id, status: 'ringing' },
@@ -400,11 +500,11 @@ async function startCall(req, res) {
   }
 
   emitToUsers([recipientId], 'call:incoming', {
-    call: response.call,
+    call: toCallJson(call),
     invitedBy: userPreview(call.caller),
   });
   scheduleRingTimeout(call._id);
-  return res.status(201).json(response);
+  return sendCall(res, 201, call, extras);
 }
 
 // GET /api/calls/incoming - is anything ringing for me right now?
@@ -413,6 +513,8 @@ async function getIncomingCall(req, res) {
 
   const call = await Call.findOne({
     active: true,
+    // Ringing people are always in activeMembers, which is indexed.
+    activeMembers: req.userId,
     members: {
       $elemMatch: {
         user: req.userId,
@@ -424,12 +526,16 @@ async function getIncomingCall(req, res) {
 
   if (!call) return res.json({ call: null, invitedBy: null });
 
+  ensureMembers(call);
   await populateCall(call);
-  await call.populate({ path: 'members.invitedBy', select: USER_FIELDS });
 
+  // Only the person who added me, not every member's inviter.
   const mine = memberOf(call, req.userId);
-  const invitedBy = mine?.invitedBy ? userPreview(mine.invitedBy) : userPreview(call.caller);
-  return res.json({ call: toCallJson(call), invitedBy });
+  const inviter = mine?.invitedBy
+    ? await User.findById(mine.invitedBy).select(USER_FIELDS).lean()
+    : null;
+  const invitedBy = inviter ? userPreview(inviter) : userPreview(call.caller);
+  return sendCall(res, 200, call, { invitedBy });
 }
 
 // GET /api/calls/:callId
@@ -438,7 +544,7 @@ async function getCall(req, res) {
   if (found.error) return res.status(found.status).json({ error: found.error });
 
   const call = await refreshCall(found.callId);
-  return res.json({ call: toCallJson(call) });
+  return sendCall(res, 200, call);
 }
 
 // POST /api/calls/:callId/accept - answer a ringing call.
@@ -473,7 +579,7 @@ async function acceptCall(req, res) {
   if (!isActive(call) || mine?.status !== 'joined') {
     return res.status(410).json({ error: 'This call has ended.' });
   }
-  return res.json(await joinInfo(call, req.user));
+  return sendCall(res, 200, call, await joinExtras(call, req.user));
 }
 
 // POST /api/calls/:callId/decline - say no to a ringing call.
@@ -503,7 +609,7 @@ async function declineCall(req, res) {
 
   if (error) return res.status(error.status).json({ error: error.message });
   if (changed) broadcastCallUpdate(call);
-  return res.json({ call: toCallJson(call) });
+  return sendCall(res, 200, call);
 }
 
 // POST /api/calls/:callId/end - hang up / leave. In a group call the others
@@ -535,7 +641,7 @@ async function endCall(req, res) {
 
   if (error) return res.status(error.status).json({ error: error.message });
   if (changed) broadcastCallUpdate(call);
-  return res.json({ call: toCallJson(call) });
+  return sendCall(res, 200, call);
 }
 
 // POST /api/calls/:callId/join - go back into a call you left (or missed)
@@ -560,8 +666,9 @@ async function rejoinCall(req, res) {
     if (!mine) return { error: { status: 403, message: 'You are not part of this call.' } };
     if (mine.status === 'joined') return false;
 
-    if (mine.status !== 'ringing' && current.activeMembers.length >= MAX_IN_CALL) {
-      return { error: { status: 409, message: `This call is full (${MAX_IN_CALL} people).` } };
+    const maxInCall = limits.maxInCall();
+    if (mine.status !== 'ringing' && activeCount(current) >= maxInCall) {
+      return { error: { status: 409, message: `This call is full (${maxInCall} people).` } };
     }
 
     mine.status = 'joined';
@@ -573,7 +680,7 @@ async function rejoinCall(req, res) {
 
   if (error) return res.status(error.status).json({ error: error.message });
   if (changed) broadcastCallUpdate(call);
-  return res.json(await joinInfo(call, req.user));
+  return sendCall(res, 200, call, await joinExtras(call, req.user));
 }
 
 // POST /api/calls/:callId/invite - add people to the call.
@@ -588,41 +695,59 @@ async function inviteToCall(req, res) {
   if (!userIds.length && !usernames.length) {
     return res.status(400).json({ error: 'Choose at least one person to add.' });
   }
-  if (userIds.length + usernames.length > MAX_INVITES_PER_REQUEST) {
-    return res.status(400).json({ error: `You can add up to ${MAX_INVITES_PER_REQUEST} people at a time.` });
+  const maxPerRequest = limits.maxInvitesPerRequest();
+  if (userIds.length + usernames.length > maxPerRequest) {
+    return res.status(400).json({ error: `You can add up to ${maxPerRequest} people at a time.` });
   }
 
   const skipped = [];
   const candidates = new Map(); // userId -> user
 
+  // Everyone in one query, not one query per person.
+  const validIds = [];
   for (const rawId of userIds) {
     if (typeof rawId !== 'string' || !mongoose.isValidObjectId(rawId)) {
       skipped.push({ userId: String(rawId), reason: 'not_found' });
-      continue;
+    } else {
+      validIds.push(rawId);
     }
-    const user = await User.findById(rawId).select('privacy.allowDirectMessages profile.username');
+  }
+  const foundUsers = validIds.length
+    ? await User.find({ _id: { $in: validIds } }).select('privacy.allowDirectMessages profile.username').lean()
+    : [];
+  const byId = new Map(foundUsers.map((user) => [String(user._id), user]));
+  for (const rawId of validIds) {
+    const user = byId.get(String(rawId));
     if (!user) skipped.push({ userId: rawId, reason: 'not_found' });
     else candidates.set(String(user._id), user);
   }
 
-  for (const rawName of usernames) {
-    const name = typeof rawName === 'string' ? rawName.trim().replace(/^@/, '') : '';
-    const user = name ? await userModel.findByUsername(name) : null;
+  const names = usernames.map((rawName) => (typeof rawName === 'string' ? rawName.trim().replace(/^@/, '') : ''));
+  const byName = await Promise.all(names.map((name) => (name ? userModel.findByUsername(name) : null)));
+  names.forEach((name, index) => {
+    const user = byName[index];
     if (!user) skipped.push({ username: name, reason: 'not_found' });
     else candidates.set(String(user._id), user);
-  }
+  });
 
-  // Checks that don't depend on the call itself.
+  // Checks that don't depend on the call itself - blocks and "already on
+  // another call" for everyone at once.
+  candidates.delete(String(req.userId));
+  const candidateIds = [...candidates.keys()];
+  const [blockedIds, busyIds] = await Promise.all([
+    blockedEitherWayAmong(req.userId, candidateIds),
+    busyAmong(candidateIds, found.callId),
+  ]);
+
   const allowed = [];
   for (const [userId, user] of candidates) {
     const username = user.profile?.username || null;
 
-    if (userId === String(req.userId)) continue;
-    if (await isBlockedEitherWay(req.userId, userId)) {
+    if (blockedIds.has(userId)) {
       skipped.push({ userId, username, reason: 'unavailable' });
     } else if (user.privacy?.allowDirectMessages === false) {
       skipped.push({ userId, username, reason: 'not_accepting_calls' });
-    } else if (await isBusy(userId, found.callId)) {
+    } else if (busyIds.has(userId)) {
       skipped.push({ userId, username, reason: 'busy' });
     } else {
       allowed.push({ userId, username });
@@ -644,18 +769,25 @@ async function inviteToCall(req, res) {
 
     const invited = [];
     const lateSkipped = [];
-    let activeCount = current.members.filter((member) =>
-      ['ringing', 'joined'].includes(member.status)
-    ).length;
+    const maxInCall = limits.maxInCall();
+    const maxEverInvited = limits.maxEverInvited();
+    let active = activeCount(current);
+    const membersById = new Map(current.members.map((member) => [idOf(member.user), member]));
 
     for (const { userId, username } of allowed) {
-      const existing = memberOf(current, userId);
+      const existing = membersById.get(userId);
 
       if (existing && ['ringing', 'joined'].includes(existing.status)) {
         lateSkipped.push({ userId, username, reason: 'already_in_call' });
         continue;
       }
-      if (activeCount >= MAX_IN_CALL) {
+      if (active >= maxInCall) {
+        lateSkipped.push({ userId, username, reason: 'call_full' });
+        continue;
+      }
+      if (!existing && current.participants.length >= maxEverInvited) {
+        // Everyone who was ever in this call is remembered on it; past
+        // CALL_MAX_EVER_INVITED only people who were in it before can come back.
         lateSkipped.push({ userId, username, reason: 'call_full' });
         continue;
       }
@@ -668,12 +800,13 @@ async function inviteToCall(req, res) {
         existing.leftAt = null;
       } else {
         current.members.push({ user: userId, status: 'ringing', invitedBy: req.userId, invitedAt: now });
+        membersById.set(userId, current.members[current.members.length - 1]);
         if (!current.participants.some((participant) => idOf(participant) === userId)) {
           current.participants.push(userId);
         }
       }
 
-      activeCount += 1;
+      active += 1;
       invited.push(userId);
     }
 
@@ -691,6 +824,8 @@ async function inviteToCall(req, res) {
   if (changed) {
     broadcastCallUpdate(call);
 
+    // One ring for the whole batch: a single emit to every invited person's
+    // room, with the call serialised once.
     const inviter = call.members.find((member) => idOf(member.user) === String(req.userId))?.user;
     emitToUsers(result.invited, 'call:incoming', {
       call: toCallJson(call),
@@ -699,8 +834,7 @@ async function inviteToCall(req, res) {
     scheduleRingTimeout(call._id);
   }
 
-  return res.json({
-    call: toCallJson(call),
+  return sendCall(res, 200, call, {
     invited: result?.invited || [],
     skipped: [...skipped, ...(result?.lateSkipped || [])],
   });
@@ -716,5 +850,5 @@ module.exports = {
   rejoinCall,
   inviteToCall,
   // Exported for tests.
-  _internal: { expireRinging, settle, ensureMembers },
+  _internal: { expireRinging, settle, ensureMembers, flushUpdates: () => callUpdates.flushAll() },
 };
