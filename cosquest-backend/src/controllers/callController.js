@@ -700,6 +700,20 @@ async function inviteToCall(req, res) {
     return res.status(400).json({ error: `You can add up to ${maxPerRequest} people at a time.` });
   }
 
+  const { call, error, invited, skipped } = await inviteUsers(found.callId, req.user, { userIds, usernames });
+  if (error) return res.status(error.status).json({ error: error.message, invited: [], skipped });
+  return sendCall(res, 200, call, { invited, skipped });
+}
+
+// Rings people into a call, as `inviter` (who must be in it): blocks either
+// way, "not accepting calls" and "already on another call" are skipped, then
+// the call's own limits. One batch: at most CALL_MAX_INVITES_PER_REQUEST
+// people (the caller checks). Used by POST /calls/:id/invite and by Sparks
+// voice commands ("calling all sergeants", src/sparks/targetedCalls.js).
+// Returns { call, invited, skipped } or { error, skipped }.
+async function inviteUsers(callId, inviter, { userIds = [], usernames = [] } = {}) {
+  const inviterId = String(inviter._id);
+  const found = { callId };
   const skipped = [];
   const candidates = new Map(); // userId -> user
 
@@ -732,10 +746,10 @@ async function inviteToCall(req, res) {
 
   // Checks that don't depend on the call itself - blocks and "already on
   // another call" for everyone at once.
-  candidates.delete(String(req.userId));
+  candidates.delete(inviterId);
   const candidateIds = [...candidates.keys()];
   const [blockedIds, busyIds] = await Promise.all([
-    blockedEitherWayAmong(req.userId, candidateIds),
+    blockedEitherWayAmong(inviterId, candidateIds),
     busyAmong(candidateIds, found.callId),
   ]);
 
@@ -762,7 +776,7 @@ async function inviteToCall(req, res) {
 
     if (!isActive(current)) return { error: { status: 410, message: 'This call has ended.' } };
 
-    const mine = memberOf(current, req.userId);
+    const mine = memberOf(current, inviterId);
     if (!mine || mine.status !== 'joined') {
       return { error: { status: 403, message: 'Only people in the call can add others.' } };
     }
@@ -794,12 +808,12 @@ async function inviteToCall(req, res) {
 
       if (existing) {
         existing.status = 'ringing';
-        existing.invitedBy = req.userId;
+        existing.invitedBy = inviterId;
         existing.invitedAt = now;
         existing.joinedAt = null;
         existing.leftAt = null;
       } else {
-        current.members.push({ user: userId, status: 'ringing', invitedBy: req.userId, invitedAt: now });
+        current.members.push({ user: userId, status: 'ringing', invitedBy: inviterId, invitedAt: now });
         membersById.set(userId, current.members[current.members.length - 1]);
         if (!current.participants.some((participant) => idOf(participant) === userId)) {
           current.participants.push(userId);
@@ -817,8 +831,7 @@ async function inviteToCall(req, res) {
   });
 
   if (error) {
-    const allSkipped = [...skipped, ...(error.lateSkipped || [])];
-    return res.status(error.status).json({ error: error.message, invited: [], skipped: allSkipped });
+    return { error, skipped: [...skipped, ...(error.lateSkipped || [])] };
   }
 
   if (changed) {
@@ -826,18 +839,75 @@ async function inviteToCall(req, res) {
 
     // One ring for the whole batch: a single emit to every invited person's
     // room, with the call serialised once.
-    const inviter = call.members.find((member) => idOf(member.user) === String(req.userId))?.user;
+    const inviterInCall = call.members.find((member) => idOf(member.user) === inviterId)?.user;
     emitToUsers(result.invited, 'call:incoming', {
       call: toCallJson(call),
-      invitedBy: userPreview(inviter || req.user),
+      invitedBy: userPreview(inviterInCall || inviter),
     });
     scheduleRingTimeout(call._id);
   }
 
-  return sendCall(res, 200, call, {
+  return {
+    call,
     invited: result?.invited || [],
     skipped: [...skipped, ...(result?.lateSkipped || [])],
+  };
+}
+
+// Starts a one-to-one call in a DM for `caller`, ringing `recipientId`, with
+// no HTTP request: a Sparks voice command when the leader is on no call
+// (src/sparks/targetedCalls.js). Same rules as POST /chats/:id/calls (blocks,
+// "not accepting calls", one active call per DM and per person). The caller
+// is in the call; their app gets a token with POST /calls/:id/join.
+// Returns { call } or { error: { status, message } }.
+async function startCallFor(caller, conversation, recipientId, type = 'audio') {
+  const callerId = String(caller._id);
+  const otherId = String(recipientId);
+  const recipient = await User.findById(otherId).select('privacy.allowDirectMessages');
+  if (!recipient || (await isBlockedEitherWay(callerId, otherId))) {
+    return { error: { status: 403, message: 'Calls are unavailable for this conversation.' } };
+  }
+  if (recipient.privacy?.allowDirectMessages === false) {
+    return { error: { status: 403, message: 'This user is not accepting direct messages or calls.' } };
+  }
+  getLivekitUrl();
+
+  const memberIds = [callerId, otherId];
+  await refreshCallsFor(memberIds);
+  const existing = await Call.exists({
+    active: true,
+    $or: [
+      { conversation: conversation._id },
+      { activeMembers: { $in: memberIds } },
+      { participants: { $in: memberIds }, 'members.0': { $exists: false } },
+    ],
   });
+  if (existing) return { error: { status: 409, message: 'One of you is already on a call.' } };
+
+  const now = new Date();
+  const call = new Call({
+    conversation: conversation._id,
+    conversationType: 'dm',
+    type,
+    caller: callerId,
+    participants: memberIds,
+    members: [
+      { user: callerId, status: 'joined', invitedAt: now, joinedAt: now },
+      { user: otherId, status: 'ringing', invitedBy: callerId, invitedAt: now },
+    ],
+    status: 'ringing',
+  });
+  call.roomName = `call_${call._id}`;
+  try {
+    await call.save();
+  } catch (saveError) {
+    if (saveError?.code === 11000) return { error: { status: 409, message: 'A call is already in progress in this chat.' } };
+    throw saveError;
+  }
+  await populateCall(call);
+  emitToUsers([otherId], 'call:incoming', { call: toCallJson(call), invitedBy: userPreview(call.caller) });
+  scheduleRingTimeout(call._id);
+  return { call };
 }
 
 module.exports = {
@@ -849,6 +919,10 @@ module.exports = {
   endCall,
   rejoinCall,
   inviteToCall,
+  // Sparks voice commands (src/sparks/targetedCalls.js).
+  inviteUsers,
+  startCallFor,
+  toCallJson,
   // Exported for tests.
   _internal: { expireRinging, settle, ensureMembers, flushUpdates: () => callUpdates.flushAll() },
 };
