@@ -86,6 +86,7 @@ class MongoSparksStore {
       c.jobs.createIndex({ endedAt: 1 }, { expireAfterSeconds: 7 * 86400 }),
       c.calls.createIndex({ status: 1 }),
       c.segments.createIndex({ callId: 1, startMs: 1 }),
+      c.segments.createIndex({ callId: 1, startMs: 1, segmentId: 1 }),
       c.topics.createIndex({ callId: 1, idx: 1 }),
       c.consents.createIndex({ userId: 1, decidedAt: -1 }),
       // Proposed merges (module 1.3): one row per pair of Sparks, ever.
@@ -316,6 +317,25 @@ class MongoSparksStore {
   }
   async segments(callId) {
     return (await this.c.segments.find({ callId }).sort({ startMs: 1, receivedAt: 1 }).toArray()).map((d) => strip(d));
+  }
+  /** One transcript page in (startMs, segmentId) order, after `after` (module: backend.transcript). */
+  async segmentsPage(callId, after, limit) {
+    const filter = after
+      ? { callId, $or: [{ startMs: { $gt: after.startMs } }, { startMs: after.startMs, segmentId: { $gt: after.segmentId } }] }
+      : { callId };
+    return (await this.c.segments.find(filter).sort({ startMs: 1, segmentId: 1 }).limit(limit).toArray()).map((d) => strip(d));
+  }
+  /**
+   * "Share the outline" (module: backend.shareOutline): set outlineShare on the
+   * call row only if it has none, or only a claim with no post older than
+   * staleBefore. One atomic update, so two requests on two instances post once.
+   */
+  async claimOutlineShare(callId, claim, staleBefore) {
+    const r = await this.c.calls.updateOne(
+      { _id: callId, $or: [{ outlineShare: null }, { 'outlineShare.messageId': null, 'outlineShare.sharedAt': { $lt: staleBefore } }] },
+      { $set: { outlineShare: claim } }
+    );
+    return r.modifiedCount > 0;
   }
   async insertTopic(t) {
     // idx = position in the call's topic list; retry if another insert took it.
