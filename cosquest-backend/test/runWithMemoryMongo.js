@@ -63,6 +63,9 @@ async function main() {
     const calls = await require('./calls').run(`http://localhost:${process.env.PORT}`);
     result.pass += calls.pass;
     result.fail += calls.fail;
+    const callLimits = await require('./callLimits').run(`http://localhost:${process.env.PORT}`);
+    result.pass += callLimits.pass;
+    result.fail += callLimits.fail;
     const groupChat = await require('./groupChat').run(`http://localhost:${process.env.PORT}`);
     result.pass += groupChat.pass;
     result.fail += groupChat.fail;
