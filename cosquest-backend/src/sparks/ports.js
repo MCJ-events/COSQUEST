@@ -16,6 +16,7 @@
  */
 const members = require('./members');
 const compat = require('./compat');
+const targetedCalls = require('./targetedCalls');
 
 function createPorts({ getIO, store, log }) {
   const emit = (rooms, msg) => {
@@ -81,10 +82,19 @@ function createPorts({ getIO, store, log }) {
       })().catch((error) => log('warn', 'role ping notification failed', String(error)));
     },
 
-    // Targeted calls ("calling all sergeants"): CosQuest calls are DM-started
-    // LiveKit calls; ringing a subset is not wired yet, so this only logs.
+    // Targeted calls ("calling all sergeants"): the targets are rung into the
+    // leader's current call through the normal "add people" path (blocks,
+    // busy, limits), or a new call starts. See targetedCalls.js.
     onTargetedCall(cmd, targetUserIds) {
-      log('info', `targeted call ${cmd.intent?.action} in ${cmd.callId} -> ${targetUserIds.join(', ')} (not wired to the call layer yet)`);
+      log('info', `targeted call ${cmd.intent?.action} in ${cmd.callId} -> ${targetUserIds.length} people`);
+      targetedCalls.ring(cmd, targetUserIds).catch((error) => log('warn', 'targeted call failed', String(error)));
+    },
+    // Module 1.3: who a voice command can reach (the call's DM plus the groups the leader runs).
+    commandMembers: (callId, chatId, issuerUserId) => targetedCalls.commandMembers(callId, chatId, issuerUserId),
+
+    // Module 1.3: a proposed merge -> the chat's admins (socket event + bell).
+    onMergeSuggested(proposal, adminUserIds) {
+      require('./admin').notifyAdmins(proposal, adminUserIds).catch((error) => log('warn', 'merge suggestion notification failed', String(error)));
     },
 
     log,
