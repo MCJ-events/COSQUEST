@@ -74,6 +74,36 @@ function rolePings(input) {
   return pings;
 }
 
+// A call outline: each span titled by its two most used words (or its live
+// topic), "<people> talked about <title>."; the reduce joins spans with the
+// same title into one topic. Enough to prove the pipeline, not the model.
+function outlineSpan(input) {
+  const segs = [...input.segments].sort((a, b) => a.startMs - b.startMs);
+  const freq = new Map();
+  for (const sg of segs) for (const w of new Set(tokens(sg.text))) freq.set(w, (freq.get(w) || 0) + 1);
+  const top = [...freq.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, 2).map(([w]) => w);
+  const title = input.topicTitle !== 'Opening' ? input.topicTitle : top.length ? title2(top) : 'Opening';
+  const speakerIds = [...new Set(segs.map((sg) => sg.userId))];
+  const willDo = segs.filter((sg) => /\bI will\b/i.test(sg.text));
+  return {
+    spanId: input.spanId, title, summary: `${speakerIds.length} people talked about ${title.toLowerCase()}.`,
+    points: segs.slice(0, 2).map((sg) => sg.text.slice(0, 80)), decisions: segs.filter((sg) => /\bagreed\b/i.test(sg.text)).map((sg) => sg.text.slice(0, 80)),
+    actionItems: willDo.map((sg) => ({ text: sg.text.slice(0, 80), ownerUserId: sg.userId })),
+    startMs: segs[0].startMs, endMs: segs[segs.length - 1].endMs, speakerIds,
+  };
+}
+const title2 = (ws) => ws.map(title).join(' ');
+
+function outlineReduce(input) {
+  const topics = [];
+  for (const sp of [...input.spans].sort((a, b) => a.startMs - b.startMs)) {
+    const t = topics.find((x) => x.title === sp.title);
+    if (t) t.spanIds.push(sp.spanId);
+    else topics.push({ title: sp.title, spanIds: [sp.spanId], summary: sp.summary, points: sp.points, decisions: sp.decisions, actionItems: sp.actionItems });
+  }
+  return { type: 'call.outline.reduce', title: topics.map((t) => t.title).slice(0, 2).join(' and '), summary: `The call covered ${topics.length} topic(s).`, topics };
+}
+
 function runJob(input) {
   switch (input.type) {
     case 'spark.detect':
@@ -87,6 +117,10 @@ function runJob(input) {
     }
     case 'spark.rolepings':
       return { type: 'spark.rolepings', pings: rolePings(input) };
+    case 'call.outline.map':
+      return { type: 'call.outline.map', span: outlineSpan(input) };
+    case 'call.outline.reduce':
+      return outlineReduce(input);
     default:
       return null; // call jobs: not simulated here (released)
   }
@@ -208,6 +242,12 @@ async function connectPhone(baseUrl, { userId, token, tier = 'full', deviceId = 
     userId, deviceId, socket, frames, legacy, sparks, results, registerAck, registered, until, send, heartbeat,
     /** Join the app's conversation room (to receive the old spark:* events too). */
     join: (conversationId) => socket.timeout(5000).emitWithAck('conversation:join', conversationId),
+    /** The transcription notice for a call (or a voice chat): accepted or declined, as the SDK's recordConsent sends it. */
+    consent: (callId, decision = 'accepted', scope = 'call') =>
+      send('call.consent', { userId, noticeVersion: 2, decision, scope, callId, decidedAt: new Date().toISOString() }),
+    /** One final line of this user's speech, as the SDK posts it after transcribing. */
+    speak: (callId, text, startMs, endMs = startMs + 1500) =>
+      send('call.segment', { segment: { segmentId: `seg_${randomUUID().slice(0, 12)}`, callId, userId, deviceId, startMs, endMs, text, final: true, locale: 'en-GB', engine: 'moonshine-base' } }),
     /** The author's own hint for a message it just sent (SDK 1.2 'model' method). */
     hint(message, chatId) {
       if (!hasModel) return Promise.resolve();

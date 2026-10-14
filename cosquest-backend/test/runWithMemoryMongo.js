@@ -112,6 +112,10 @@ async function main() {
       const sparksAdminSearch = await require('./sparksAdminSearch').run(`http://localhost:${process.env.PORT}`);
       result.pass += sparksAdminSearch.pass;
       result.fail += sparksAdminSearch.fail;
+      // Sparks in voice chats; the full transcript; sharing the outline into the chat.
+      const sparksVoiceRooms = await require('./sparksVoiceRooms').run(`http://localhost:${process.env.PORT}`);
+      result.pass += sparksVoiceRooms.pass;
+      result.fail += sparksVoiceRooms.fail;
     } finally {
       delete process.env.SPARKS_ENGINE;
     }
@@ -123,6 +127,7 @@ async function main() {
     result.fail += avatarCatalog.fail;
   } finally {
     require('../src/sparks').stop();
+    require('../src/sparks/voiceRooms').stopSweep();
     await new Promise((resolve) => server.close(resolve));
     await closeSocket(); // quits the adapter's dedicated pub/sub Redis connections - see socket.js
     await disconnectDB();
