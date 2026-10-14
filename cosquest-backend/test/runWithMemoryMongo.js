@@ -98,6 +98,9 @@ async function main() {
     try {
       sparksStore = await require('./sparksStore').run();
       sparksModule = await require('./sparksModule').run(`http://localhost:${process.env.PORT}`);
+      const botPostsRun = await require('./sparksBotPosts').run(`http://localhost:${process.env.PORT}`);
+      sparksModule.pass += botPostsRun.pass;
+      sparksModule.fail += botPostsRun.fail;
     } finally {
       delete process.env.SPARKS_ENGINE;
     }
