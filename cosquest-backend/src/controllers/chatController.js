@@ -23,7 +23,8 @@ const { transcribeAudio } = require('../utils/transcribeAudio');
 const { buildContentShare } = require('../utils/shareLinks');
 const { isBlockedEitherWay } = require('./publicProfileController');
 const { emitToConversation, emitToConversationExcept, emitToUsers } = require('../realtime/socket');
-const { isOnline } = require('../realtime/presence');
+const { isOnline, onlineTotal, onlineUserIds, countOnlineAmong } = require('../realtime/presence');
+const { rankFor } = require('../utils/ranks');
 
 const EPOCH = new Date(0);
 const DELETE_FOR_EVERYONE_WINDOW_MS = 5 * 60 * 1000;
@@ -57,6 +58,10 @@ function userPreview(user) {
     lastActiveAt: user.privacy?.showOnlineStatus === false ? null : user.lastActiveAt,
     // Expertise role shown under the name ("Front-end"), or null.
     expertise: expertiseLabel(user.expertise),
+    // Faction rank badge (from points, or set by hand: overridden: true).
+    // Needs pointsBalance + rankOverride selected (SENDER_FIELDS has them);
+    // the points themselves are never shown here.
+    rank: rankFor(user),
   };
 }
 
@@ -221,6 +226,38 @@ async function memberFilterFor(conversation) {
 
 async function countGroupMembers(conversation) {
   return User.countDocuments(await memberFilterFor(conversation));
+}
+
+// ==========================================================================
+// ONLINE COUNT (group / faction / community chat header: "12 online")
+// ==========================================================================
+// Members online right now, leaving out anyone who hides their online status
+// (privacy.showOnlineStatus false - the same opt-out as everywhere else).
+// Whichever side is smaller is walked: the online set (asked of Mongo with
+// $in) or the member list (asked of Redis with SMISMEMBER). If both are over
+// ONLINE_COUNT_MAX the answer is null (unknown) rather than a slow request.
+const ONLINE_COUNT_MAX = 5000;
+const ONLINE_COUNT_TYPES = ['group', 'faction', 'community'];
+
+async function onlineCountFor(conversation, memberCount) {
+  if (!ONLINE_COUNT_TYPES.includes(conversation.type)) return null;
+  const filter = { $and: [await memberFilterFor(conversation), { 'privacy.showOnlineStatus': { $ne: false } }] };
+
+  const online = await onlineTotal();
+  if (!online) return 0;
+  const members = Number.isFinite(memberCount) ? memberCount : Infinity;
+
+  if (online <= ONLINE_COUNT_MAX && online <= members) {
+    const ids = (await onlineUserIds()).filter((id) => mongoose.isValidObjectId(id));
+    if (!ids.length) return 0;
+    return User.countDocuments({ $and: [...filter.$and, { _id: { $in: ids } }] });
+  }
+  if (members <= ONLINE_COUNT_MAX) {
+    const rows = await User.find(filter, '_id').limit(ONLINE_COUNT_MAX + 1).lean();
+    if (rows.length > ONLINE_COUNT_MAX) return null;
+    return countOnlineAmong(rows.map((row) => row._id));
+  }
+  return null;
 }
 
 // Keeps only real people who can actually see this chat (never the sender).
@@ -585,7 +622,21 @@ function albumPreview(album) {
 
 // `editedAt`, `canRollback` and `previousContent` are only filled in for the
 // AUTHOR: nobody else knows a message was edited (per the group chat spec).
-function serializeMessage(message, { viewerId, conversationType, otherLastReadAt, reactions, poll }) {
+/**
+ * Group chats: who is owner / admin, as Map(userId -> 'owner' | 'admin'),
+ * so each message can say "Owner" / "Admin" beside the sender's name
+ * (senderGroupRole). One small query per request: only owner and admin
+ * rows are read, never the whole member list. Other chat types: null.
+ */
+async function groupRolesFor(conversation) {
+  if (conversation?.type !== 'group') return null;
+  const rows = await ConversationMember.find({ conversation: conversation._id, role: { $in: ['owner', 'admin'] } })
+    .select('user role')
+    .lean();
+  return new Map(rows.map((row) => [String(row.user), row.role]));
+}
+
+function serializeMessage(message, { viewerId, conversationType, otherLastReadAt, reactions, poll, groupRoles }) {
   const senderId = message.sender?._id || message.sender;
   const isMine = String(senderId) === String(viewerId);
   const read = conversationType === 'dm' && isMine ? Boolean(otherLastReadAt && message.createdAt <= otherLastReadAt) : undefined;
@@ -600,6 +651,7 @@ function serializeMessage(message, { viewerId, conversationType, otherLastReadAt
       media: null,
       callLog: null,
       sender: message.kind === 'sparks_bot' ? botPosts().botSender() : message.sender?.profile ? userPreview(message.sender) : undefined,
+      senderGroupRole: groupRoles?.get(String(senderId)) || null,
       replyTo: null,
       reactions: reactions || [],
       read,
@@ -623,6 +675,7 @@ function serializeMessage(message, { viewerId, conversationType, otherLastReadAt
     media: message.media || null,
     callLog: message.callLog || null,
     sender: message.kind === 'sparks_bot' ? botPosts().botSender() : message.sender?.profile ? userPreview(message.sender) : undefined,
+    senderGroupRole: groupRoles?.get(String(senderId)) || null,
     replyTo: replyPreview(message.replyTo, viewerId),
     reactions: reactions || [],
     read,
@@ -664,7 +717,7 @@ function forBroadcast(serialized) {
   return { ...serialized, editedAt: null, canRollback: false, previousContent: null };
 }
 
-const SENDER_FIELDS = 'profile.username profile.displayName profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl faction lastActiveAt privacy.showOnlineStatus expertise';
+const SENDER_FIELDS = 'profile.username profile.displayName profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl faction lastActiveAt privacy.showOnlineStatus expertise pointsBalance rankOverride';
 
 // GET /api/chats - "Your Space" (community + faction room) plus every DM.
 async function listChats(req, res) {
@@ -758,7 +811,9 @@ async function getConversationDetail(req, res) {
       pinnedMessage = pinPreview(pinned, conversation);
     }
   }
-  return res.json({ chat: { ...summary, pinnedMessage } });
+  // Group / faction / community only (null for DMs, or when too big to count quickly).
+  const onlineCount = await onlineCountFor(conversation, summary.memberCount);
+  return res.json({ chat: { ...summary, pinnedMessage, onlineCount } });
 }
 
 // GET /api/chats/:conversationId/members?search=&page=&limit=
@@ -829,9 +884,10 @@ async function listMessages(req, res) {
     otherLastReadFor(conversation, req.user),
   ]);
 
-  const [reactionDocs, polls] = await Promise.all([
+  const [reactionDocs, polls, groupRoles] = await Promise.all([
     MessageReaction.find({ message: { $in: messages.map((message) => message._id) } }),
     pollSummaries(messages, req.userId),
+    groupRolesFor(conversation),
   ]);
   const reactionsByMessage = groupReactions(reactionDocs, req.userId);
   const serializedMessages = messages.map((message) =>
@@ -841,6 +897,7 @@ async function listMessages(req, res) {
       otherLastReadAt,
       reactions: reactionsByMessage.get(String(message._id)) || [],
       poll: polls.get(String(message._id)),
+      groupRoles,
     })
   );
   // Sparks bot "Earlier context" posts: only the quotes this reader may read.
@@ -970,7 +1027,7 @@ async function createMessage(req, res) {
   // message instantly. `otherLastReadAt: null` matches the REST response -
   // the sender always sees their own message as unread-by-recipient at the
   // moment it's sent.
-  const serialized = serializeMessage(message, { viewerId: req.userId, conversationType: conversation.type, otherLastReadAt: null, reactions: [] });
+  const serialized = serializeMessage(message, { viewerId: req.userId, conversationType: conversation.type, otherLastReadAt: null, reactions: [], groupRoles: await groupRolesFor(conversation) });
   // serialized.replyTo carries the reply target's real content, built from
   // the sender's own view (already checked they haven't hidden it - see the
   // replyTo validation above). Anyone else who's "deleted [that message] for
@@ -1558,6 +1615,7 @@ async function getMessage(req, res) {
     viewerId: req.userId, conversationType: conversation.type, otherLastReadAt: await otherLastReadFor(conversation, req.user),
     reactions: await summarizeReactions(message._id, req.userId),
     poll: (await pollSummaries([message], req.userId)).get(String(message._id)),
+    groupRoles: await groupRolesFor(conversation),
   });
   await botPosts().redactForViewer([serialized], conversation._id, req.userId);
   return res.json({ message: serialized });
@@ -1614,7 +1672,7 @@ async function getMessageSeenBy(req, res) {
   };
   const [members, total] = await Promise.all([
     ConversationMember.find(query)
-      .populate('user', 'profile.username profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl faction privacy.readReceipts expertise')
+      .populate('user', 'profile.username profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl faction privacy.readReceipts expertise pointsBalance rankOverride')
       .sort({ lastReadAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit),
@@ -1672,6 +1730,7 @@ module.exports = {
   loadConversationForUser,
   loadMessageInConversation,
   serializeMessage,
+  groupRolesFor,
   summarizeConversation,
   userPreview,
   isGroupMember,

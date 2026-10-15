@@ -176,6 +176,10 @@ async function getCommandContext(req, res) {
   const callId = String(req.params.callId);
   const userId = String(req.userId);
   if (!mongoose.isValidObjectId(callId) || !(await Call.exists({ _id: callId, participants: userId }))) {
+    // A voice chat (Community or faction room): nobody is an admin there, so no voice commands.
+    if (mongoose.isValidObjectId(callId) && (await require('../models/VoiceRoom').exists({ _id: callId, 'members.user': userId }))) {
+      return res.json({ callId, canIssue: false, ranks: host.backend.config.ranks, roles: [], groups: [], members: [] });
+    }
     return res.status(404).json({ error: 'Call not found.' });
   }
   const call = await Call.findById(callId, 'conversation').lean();

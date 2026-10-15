@@ -81,6 +81,9 @@ async function main() {
     const chatExtras = await require('./chatExtras').run(`http://localhost:${process.env.PORT}`);
     result.pass += chatExtras.pass;
     result.fail += chatExtras.fail;
+    const chatPages = await require('./chatPages').run(`http://localhost:${process.env.PORT}`);
+    result.pass += chatPages.pass;
+    result.fail += chatPages.fail;
     // The stand-in keyword engine's own suite: it is the rollback path now,
     // so it runs with SPARKS_ENGINE=legacy (read per request).
     process.env.SPARKS_ENGINE = 'legacy';
@@ -112,6 +115,10 @@ async function main() {
       const sparksAdminSearch = await require('./sparksAdminSearch').run(`http://localhost:${process.env.PORT}`);
       result.pass += sparksAdminSearch.pass;
       result.fail += sparksAdminSearch.fail;
+      // Sparks in voice chats; the full transcript; sharing the outline into the chat.
+      const sparksVoiceRooms = await require('./sparksVoiceRooms').run(`http://localhost:${process.env.PORT}`);
+      result.pass += sparksVoiceRooms.pass;
+      result.fail += sparksVoiceRooms.fail;
     } finally {
       delete process.env.SPARKS_ENGINE;
     }
@@ -123,6 +130,7 @@ async function main() {
     result.fail += avatarCatalog.fail;
   } finally {
     require('../src/sparks').stop();
+    require('../src/sparks/voiceRooms').stopSweep();
     await new Promise((resolve) => server.close(resolve));
     await closeSocket(); // quits the adapter's dedicated pub/sub Redis connections - see socket.js
     await disconnectDB();

@@ -195,7 +195,7 @@ Vendoring: `vendor/cosquest-sparks-backend-1.2.3.tgz` on this branch is a develo
 
 ## 13. Known gaps
 
-- Users have no rank yet, so rank targets in voice commands ("calling all sergeants") match nobody; role targets (expertise labels) work. Targeted calls ring (section 13).
+- Ranks: `src/sparks/members.js` gives each member their faction rank (`rank`, the ladder name in lower case, e.g. "staff sergeant") and `index.js` sets the module's `ranks` to the ladder, but only once `src/utils/ranks.js` exists (branch `wale-pages-backend`, `GET /api/ranks`). Until that branch is merged, rank targets in voice commands ("calling all sergeants") match nobody; role targets (expertise labels) work. Targeted calls ring (section 13). Section 14 has the details.
 - Manual starts over REST use the module's own `backend.startSpark` (1.2). Before 1.2 they went through a stand-in device per user (`web-<userId>`); any such rows left in `sparks_devices` are harmless and unused.
 - Edits and voice-note transcripts that arrive after sending are not re-sent to phones; the module reads the current text whenever it builds a job.
 
@@ -214,3 +214,53 @@ Built against the cosquest-sparks `admin-search` branch (module changes listed u
 
 **Vendoring.** These routes need module 1.3 (`admin.mergeMany`, `admin.mergeSuggestions`, `sparkHistory`, `readableSeqs`). With the vendored 1.2.3 they answer `501` and `test/sparksAdminSearch.js` reports the admin and search part as skipped; targeted calls work with 1.2.3 but reach only the call's own DM (1.2.3 ignores `commandMembers`). When the release is cut: replace `vendor/cosquest-sparks-backend-1.2.3.tgz` with the new tarball as in section 4 and run `npm test` (811 checks with it).
 
+## 14. Sparks in voice chats, the full transcript, sharing the outline
+
+Built against the cosquest-sparks `voice-room-sparks` branch (module changes under "Unreleased" in its CHANGELOG). App-facing spec: cosquest-sparks `docs/APP_SPEC_call_extras.md`; endpoints in API_GUIDE.md (Sparks).
+
+**Voice chats are Sparks calls.** Before, only DM calls (`Call`, `callController`) reached the module; Community and faction voice chats (`VoiceRoom`, `voiceRoomController`) did not, so consent, transcription, live topics and outlines did nothing there. `src/sparks/voiceRooms.js` now mirrors each voice chat into the module's call layer the way `calls.js` mirrors calls:
+
+| Voice chat | Sparks call |
+|---|---|
+| `VoiceRoom._id` (one document per session: it closes when the last person leaves) | call id |
+| `conversation` (the Community or faction room) | `chatId` |
+| `members` | attendees (`everAttended` keeps everyone who was ever in it) |
+| started / members changed / closed | `onCallStarted` / `onCallMembership` / `onCallEnded` |
+
+- **Batched.** `sync()` runs from the controller's coalesced `voice:updated` send (`sendVoiceUpdate`): at most one per interval per voice chat (`CALL_BROADCAST_*`), always the latest member list. In `voiceRooms.js` one sync runs at a time per voice chat and a newer one replaces any waiting one. In the test, 30 people joining at once reached the module as one membership update, and 60 joins and leaves as 3. Someone who joined and left inside one interval is still recorded as having attended (the update's "left" list).
+- **Privacy** is the module's, unchanged: a segment is stored and relayed only if the speaker's latest notice decision for that call (or a standing "always") is "accepted".
+- **Stale voice chats.** A voice chat whose people all vanished was only closed when someone next opened it. A sweep (every minute, on processes that sync voice chats, not with `SPARKS_WORKER=0`) refreshes voice chats that are live Sparks calls, so the Sparks call ends and its outline is written.
+- **Voice commands** do not apply: nobody is an admin of a Community or faction room, so `ports.canIssueTargetedCall` is false; `GET /api/calls/:voiceRoomId/command-context` answers `{ canIssue: false }`.
+- **Admins.** The outline and transcript rule (OPEN_QUESTIONS Q9) is "attended, or an admin of the chat"; Community and faction rooms have no admins, so there it is the people who were in the voice chat.
+
+**Full transcript.** `GET /api/calls/:callId/transcript?cursor=&limit=` (a call id or a voice chat id) uses the module's `backend.transcript` (final lines in call order, speaker, start and end, the topic each fell under, the topic markers; keyset paging) and adds `kind` and `speakers` (name and avatar per speaker on the page). Same access as the outline. Paging uses the new optional store method `segmentsPage` (index `sparks_segments (callId, startMs, segmentId)`).
+
+**Share the outline.** `POST /api/calls/:callId/outline/share` uses the module's `backend.shareOutline`, which posts through `ports.postBotMessage` (section 12): a `sparks_bot` message whose `sparksBot` is `{ kind: "call_outline", callId, callKind, headline, title, summary, startedAt, endedAt, topics, speakerIds, sharedBy, sharedAt }`. Why a bot post rather than a normal message with an outline attachment: the 1.3 path already stores, numbers, delivers (`message:new`, chat preview), serializes and protects it (cannot be edited or forwarded) with no change here; the module never treats a bot post as conversation, so the outline's text is not fed back into Spark detection, sorting or summaries; and the app renders it in the bot-post slot it already has, with a typed shape from the SDK. A user message would be detected and sorted into Sparks like any other text. Once per call: the module claims the share on the `sparks_calls` row with the new optional store method `claimOutlineShare` (one atomic update, so two requests on two instances post once), and sharing again returns the same message. If the shared message is deleted, it can be shared again. Who: people who were on it and are in the chat (someone added to a DM call from outside cannot post into that DM), and chat admins.
+
+| Where | What |
+|---|---|
+| `src/sparks/voiceRooms.js` | New: the voice chat mirror, its batching and the stale sweep |
+| `src/controllers/voiceRoomController.js` | `sendVoiceUpdate` calls `voiceRooms.sync`; exports `refreshVoiceRoom` for the sweep |
+| `src/sparks/calls.js`, `src/routes/callRoutes.js` | `GET /api/calls/:callId/transcript`, `POST /api/calls/:callId/outline/share` |
+| `src/sparks/targetedCalls.js` | `command-context` for a voice chat: `{ canIssue: false }` instead of 404 |
+| `src/sparks/mongoStore.js` | `segmentsPage`, `claimOutlineShare`, one index |
+| `src/sparks/members.js`, `src/sparks/index.js` | Ranks, when `src/utils/ranks.js` exists (below) |
+| `test/sparksVoiceRooms.js`, `test/helpers/sparksPhone.js` | 36 checks (37 with ranks): a faction voice chat end to end with mock-SDK phones (consent, segments, relay, batched membership, outline by phones, transcript paging and access, share and idempotency, the sweep) and the two store methods under concurrency. The phone helper now speaks `call.consent` / `call.segment` and runs outline jobs |
+
+**Ranks** ("calling all sergeants"). The module matches a rank target against `ChatMember.rank`, lower-cased, by position in its config `ranks` (default `private, corporal, sergeant, lieutenant, captain, omega`, not CosQuest's ladder). Branch `wale-pages-backend` adds the ladder (`src/utils/ranks.js`, `GET /api/ranks`, `rankOverride` on User) and shows ranks on message senders, but does not touch `src/sparks/members.js`, so on its own the module would still see no ranks. This branch closes that gap without depending on it: `members.js` selects `pointsBalance rankOverride` and, when `src/utils/ranks.js` is present, sets `rank` to the rank's name in lower case; `index.js` then sets the module's `ranks` to the ladder's names in the same spelling (before `SPARKS_CONFIG`, which can still override), and `command-context` returns them for the SDK. Verified by copying that branch's `src/utils/ranks.js` in locally (not committed): a member with 1,600 points is listed as "sergeant" at the ladder's sergeant position. After both branches are merged nothing else is needed for rank targets to resolve. Two limits remain, by design: commands need an admin (Q7), so they work in DM calls by leaders who run groups (reaching those groups' members), not in Community or faction voice chats; and `RANKS_JSON` names are what people must say ("staff sergeant").
+
+**Vendoring.** The transcript and share routes need a module with `transcript()` and `shareOutline()` (after 1.3.0). With the vendored 1.3.0 they answer `501` and `test/sparksVoiceRooms.js` reports those checks as skipped; the voice chat wiring works with 1.3.0. Developed against a local build (`pnpm pack` in cosquest-sparks `packages/sparks-backend`, `npm install --no-save <tgz>`; not committed). When the release is cut: replace `vendor/cosquest-sparks-backend-1.3.0.tgz` with the new tarball as in section 4 and run `npm test`.
+
+
+## 14. Module 1.3.1: live summary of the current topic in calls
+
+Built against the cosquest-sparks `live-topic-summary` branch (CHANGELOG "Unreleased"; app side: cosquest-sparks `docs/APP_SPEC_live_summary.md`). While a call runs, the scribe phone writes a 1 to 2 sentence summary of the current topic; the module checks it, stores the latest per topic and sends `call.topic_summary` to the call's attendees over the existing `sparks` channel (`ports.broadcastToCall`), and to someone joining mid-call after the topics so far (`ports.sendToUsers`). No new port, route or socket event is needed here.
+
+| Where | What |
+|---|---|
+| `src/sparks/mongoStore.js` | `sparks_topic_summaries` (one row per call and topic, `_id` = `callId:topicId`) and the two optional store methods `saveTopicSummary` / `topicSummaries`, so summaries survive a restart and are shared between instances. Without them the module keeps them in memory |
+| `test/sparksStore.js` | 4 checks: latest version per topic, first-summarized order, rows as written, calls not mixed |
+
+Config (module defaults; override with the `SPARKS_CONFIG` env JSON, e.g. `{"liveTopicSummary":false}`): `liveTopicSummary` true (false: topics only, as before), `liveTopicSummaryEveryMs` 30,000, `liveTopicSummaryMinLines` 3, `liveTopicSummaryMaxChars` 280.
+
+**Vendoring.** The store methods are unused until the module with live summaries is vendored (the vendored 1.3.0 never calls them, and sends nothing new). When that release is cut: replace the tarball as in section 4 and run `npm test`.

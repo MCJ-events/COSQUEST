@@ -22,7 +22,8 @@
  *   lastActivityAt     lastMessageAt
  *   createdAt          createdAt
  * Added (new, additive): state, revivalIndex, seams (fold + labeled),
- * summaryStale, participantIds, version, mergedInto.
+ * summaryStale, participantIds, version, mergedInto, rolePings
+ * ([{ role, userIds, at }] - the role pings applied to it, newest first).
  * Message marker `spark: { id, era, postedInSpark }`: id = sparkId,
  * era = sparkRevivalIndex.
  */
@@ -46,7 +47,12 @@ async function sparkStats(sparkId) {
 
 /** A module SparkRow -> the app's old Spark JSON (+ additive fields). */
 async function serializeRow(store, row) {
-  const [sessions, seams, stats] = await Promise.all([store.sessions(row.sparkId), store.seams(row.sparkId), sparkStats(row.sparkId)]);
+  const [sessions, seams, stats, pings] = await Promise.all([
+    store.sessions(row.sparkId),
+    store.seams(row.sparkId),
+    sparkStats(row.sparkId),
+    store.pingsOfSpark ? store.pingsOfSpark(row.sparkId, ROLE_PINGS_SHOWN) : [],
+  ]);
   const eras = sessions.length
     ? sessions.map((s) => ({ index: s.sessionIndex, startedAt: new Date(s.startedAt) }))
     : [{ index: 0, startedAt: new Date(row.createdAt) }];
@@ -75,7 +81,20 @@ async function serializeRow(store, row) {
     participantIds: stats.participantIds,
     version: row.version,
     ...(row.mergedInto ? { mergedInto: row.mergedInto } : {}),
+    // Roles the module pinged for this Spark, newest first (last 10).
+    rolePings: rolePingsJson(pings),
   };
+}
+
+const ROLE_PINGS_SHOWN = 10;
+
+/** Stored role pings -> [{ role, userIds, at }] (at: ISO time, null for pings stored before it was recorded). */
+function rolePingsJson(pings) {
+  return (pings || []).map((ping) => ({
+    role: ping.role,
+    userIds: (ping.userIds || []).map(String),
+    at: ping.at ? new Date(ping.at).toISOString() : null,
+  }));
 }
 
 /** The old panel `seams`: [{ beforeMessageId, label }] - labelled ones only (folds have no text). */
@@ -104,4 +123,4 @@ async function emitLegacyEvent(store, event) {
   if (row) emitToConversation(chatId, 'spark:updated', { conversationId: chatId, spark: await serializeRow(store, row) });
 }
 
-module.exports = { serializeRow, legacySeams, messageMarker, emitLegacyEvent, keywordsOf };
+module.exports = { serializeRow, rolePingsJson, legacySeams, messageMarker, emitLegacyEvent, keywordsOf };

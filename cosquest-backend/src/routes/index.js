@@ -32,6 +32,7 @@ router.use('/home', homeRoutes); // /api/home/dashboard
 router.use('/', callRoutes); // /api/calls and /api/chats/:conversationId/calls
 router.use('/', groupRoutes); // /api/groups (user-created groups)
 router.use('/', expertiseRoutes); // /api/expertise (expertise roles)
+router.use('/', require('./rankRoutes')); // /api/ranks (faction rank ladder, public)
 router.use('/', chatRoutes); // /api/chats
 router.use('/spotlight', require('./spotlightRoutes'));
 

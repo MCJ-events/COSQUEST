@@ -337,7 +337,7 @@ async function groupPreview(conversation, user) {
   const group = conversation.group;
   const [memberCount, pending, member] = await Promise.all([
     countGroupMembers(conversation),
-    GroupJoinRequest.exists({ conversation: conversation._id, user: user._id, status: 'pending' }),
+    GroupJoinRequest.findOne({ conversation: conversation._id, user: user._id, status: 'pending' }).select('message createdAt').lean(),
     isGroupMember(conversation, user),
   ]);
   return {
@@ -353,6 +353,9 @@ async function groupPreview(conversation, user) {
     sizeLimit: group.sizeLimit,
     isMember: member,
     requestPending: Boolean(pending),
+    // Your own pending request, so the invite screen can show "Your
+    // introduction · Sent" after a reload (M25). Only ever your own.
+    myRequest: pending ? { message: pending.message || '', createdAt: pending.createdAt } : null,
   };
 }
 

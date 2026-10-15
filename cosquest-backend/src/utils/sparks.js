@@ -291,6 +291,8 @@ function serializeSpark(spark, now = Date.now()) {
     startedByBot: !spark.createdBy,
     lastActivityAt: spark.lastActivityAt,
     createdAt: spark.createdAt,
+    // Same shape as the module engine (src/sparks/compat.js); this engine never pings roles.
+    rolePings: [],
   };
 }
 
