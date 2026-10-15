@@ -80,8 +80,11 @@ async function run(baseUrl) {
   const requests = await request('GET', `/api/groups/${groupId}/requests`, a.token);
   check(requests.data.requests.length === 1 && requests.data.requests[0].message.length === 200, 'admins see the introduction, cut to 200 characters', requests.data.requests[0]?.message?.length);
   check((await request('GET', `/api/groups/${groupId}`, c.token)).data.preview.requestPending === true, 'the person sees their request is pending');
+  const mine = (await request('GET', `/api/groups/${groupId}`, c.token)).data.preview.myRequest;
+  check(mine?.message?.length === 200 && !Number.isNaN(Date.parse(mine.createdAt)), 'and their own introduction comes back with the preview (M25)', mine);
   const cancelled = await request('DELETE', `/api/groups/${groupId}/requests/mine`, c.token);
   check(cancelled.status === 200 && cancelled.data.cancelled === true, 'they can cancel their own request', cancelled);
+  check((await request('GET', `/api/groups/${groupId}`, c.token)).data.preview.myRequest === null, 'after cancelling, no request comes back');
   check((await request('GET', `/api/groups/${groupId}/requests`, a.token)).data.requests.length === 0, 'it disappears from the admins\' list');
   check((await request('DELETE', `/api/groups/${groupId}/requests/mine`, c.token)).data.cancelled === false, 'cancelling again does nothing');
   const again = await request('POST', `/api/groups/${groupId}/join`, c.token);

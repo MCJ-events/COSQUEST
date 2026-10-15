@@ -123,6 +123,15 @@ async function run(baseUrl) {
 
     const panel = await request('GET', `/api/chats/${groupId}/sparks/${sparkId}`, a.token);
     check(panel.status === 200 && panel.data.messages.length === 3 && panel.data.messages[0].id === g1.data.message.id && Array.isArray(panel.data.seams), 'the side panel lists its messages oldest first', panel.data);
+    check(Array.isArray(panel.data.spark?.rolePings) && panel.data.spark.rolePings.length === 0, 'a Spark with no role pings has rolePings: []', panel.data.spark?.rolePings);
+    // The fake phones answer role-ping jobs with no pings, so apply one the way the module does (store.addPing).
+    await sparksHost.store.addPing(sparkId, 0, 'Design', [b.id]);
+    const pinged = await request('GET', `/api/chats/${groupId}/sparks/${sparkId}`, b.token);
+    const ping = pinged.data.spark?.rolePings?.[0];
+    check(pinged.status === 200 && ping?.role === 'Design' && ping.userIds.join() === b.id && typeof ping.at === 'string' && !('confidence' in ping), 'GET .../sparks/:sparkId shows the role ping { role, userIds, at }', pinged.data.spark?.rolePings);
+    const listed = (await request('GET', `/api/chats/${groupId}/sparks`, a.token)).data.sparks.find((s) => s.id === sparkId);
+    check(listed?.rolePings?.[0]?.role === 'Design', 'the Spark list carries rolePings too', listed?.rolePings);
+    check((await request('GET', `/api/chats/${groupId}/sparks/${sparkId}`, c.token)).status === 403, 'someone outside the chat cannot load the Spark (or its role pings)');
     const roster = await request('GET', `/api/chats/${groupId}/sparks/members`, b.token);
     const owner = roster.data.members?.find((m) => m.userId === a.id);
     check(roster.status === 200 && roster.data.members.length === 2 && owner?.isAdmin === true && owner.roles[0] === 'Front-end' && roster.data.members.find((m) => m.userId === b.id)?.roles[0] === 'Design', 'GET .../sparks/members: roles are the expertise labels, admins flagged', roster.data);

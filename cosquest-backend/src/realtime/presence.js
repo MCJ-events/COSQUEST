@@ -42,6 +42,36 @@ async function isOnline(userId) {
   return Boolean(await getRedisClient().sismember(ONLINE_SET_KEY, String(userId)));
 }
 
+/** How many people are online right now (anywhere). */
+async function onlineTotal() {
+  return getRedisClient().scard(ONLINE_SET_KEY);
+}
+
+/** Everyone online right now (ids as strings). Only call when onlineTotal() is small. */
+async function onlineUserIds() {
+  return getRedisClient().smembers(ONLINE_SET_KEY);
+}
+
+/** How many of these user ids are online: one SMISMEMBER per 1000 ids. */
+async function countOnlineAmong(userIds) {
+  const redis = getRedisClient();
+  const ids = userIds.map(String);
+  let online = 0;
+  for (let i = 0; i < ids.length; i += 1000) {
+    const chunk = ids.slice(i, i + 1000);
+    let flags;
+    try {
+      flags = await redis.smismember(ONLINE_SET_KEY, ...chunk);
+    } catch {
+      // Redis older than 6.2 has no SMISMEMBER: same answer, pipelined.
+      const results = await chunk.reduce((pipe, id) => pipe.sismember(ONLINE_SET_KEY, id), redis.pipeline()).exec();
+      flags = results.map(([, value]) => value);
+    }
+    online += flags.filter((flag) => Number(flag) === 1).length;
+  }
+  return online;
+}
+
 // Who should be told userId's presence changed? Only their DM partners -
 // community/faction "rooms" have no stored member list to broadcast to (see
 // Conversation.js's comments), so announcing presence there would mean
@@ -81,4 +111,4 @@ async function notifyPresenceChange(io, userId, event) {
   io.to(partnerIds.map((id) => `user:${id}`)).emit(event, payload);
 }
 
-module.exports = { markOnline, markOffline, isOnline, notifyPresenceChange };
+module.exports = { markOnline, markOffline, isOnline, onlineTotal, onlineUserIds, countOnlineAmong, notifyPresenceChange };

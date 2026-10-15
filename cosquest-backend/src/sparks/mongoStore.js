@@ -80,6 +80,7 @@ class MongoSparksStore {
       c.sparks.createIndex({ state: 1 }),
       c.sessions.createIndex({ sparkId: 1, sessionIndex: 1 }),
       c.seams.createIndex({ sparkId: 1, addedAt: 1 }),
+      c.pings.createIndex({ sparkId: 1, at: -1 }),
       c.jobs.createIndex({ idempotencyKey: 1 }, { unique: true }),
       c.jobs.createIndex({ status: 1, createdAt: 1 }),
       c.jobs.createIndex({ type: 1, scopeId: 1, status: 1 }),
@@ -233,11 +234,29 @@ class MongoSparksStore {
     return Boolean(await this.c.pings.findOne({ _id: `${sparkId}:${revivalIndex}:${role}` }, { projection: { _id: 1 } }));
   }
   async addPing(sparkId, revivalIndex, role, userIds) {
+    // Also kept for the app (rolePings on the Spark JSON, see compat.js):
+    // when it was applied, and the model's confidence for it. The module does
+    // not pass the confidence here, but it stores the job result (with each
+    // ping's confidence) before applying it, so it is read from that job.
     await this.c.pings.updateOne(
       { _id: `${sparkId}:${revivalIndex}:${role}` },
-      { $setOnInsert: { sparkId, revivalIndex, role, userIds } },
+      { $setOnInsert: { sparkId, revivalIndex, role, userIds, at: new Date(), confidence: await this.pingConfidence(sparkId, role) } },
       { upsert: true }
     );
+  }
+  /** The confidence of the newest applied role-ping result for this role, or null. */
+  async pingConfidence(sparkId, role) {
+    const job = await this.c.jobs.findOne(
+      { type: 'spark.rolepings', scopeId: sparkId, status: 'done', 'result.pings.role': role },
+      { sort: { endedAt: -1 }, projection: { 'result.pings': 1 } }
+    );
+    const ping = job?.result?.pings?.find((p) => p.role === role);
+    return typeof ping?.confidence === 'number' ? ping.confidence : null;
+  }
+  /** CosQuest addition (not a module port): a Spark's role pings, newest first. */
+  async pingsOfSpark(sparkId, limit = 10) {
+    const rows = await this.c.pings.find({ sparkId }).sort({ at: -1, _id: -1 }).limit(limit).toArray();
+    return rows.map((row) => strip(row));
   }
 
   // ---------- jobs ----------
