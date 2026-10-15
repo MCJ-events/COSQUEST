@@ -46,7 +46,9 @@ function configOverrides() {
     }
   }
   const demo = String(process.env.SPARKS_TIMERS || '').toLowerCase() === 'demo';
-  return { ...(demo ? mod.demoOverrides : {}), ...extra };
+  // Voice commands by rank: the module's rank order is CosQuest's faction ladder (members.js).
+  const ladder = require('./members').rankLadder();
+  return { ...(demo ? mod.demoOverrides : {}), ...(ladder ? { ranks: ladder } : {}), ...extra };
 }
 
 /**

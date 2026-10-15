@@ -33,6 +33,10 @@ router.use(
 router.post('/chats/:conversationId/calls', asyncHandler(startCall));
 // Sparks: the call's outline (attendees and chat admins).
 router.get('/calls/:callId/outline', asyncHandler(require('../sparks/calls').getOutline));
+// Sparks: the full transcript (same access as the outline), and sharing the outline into the chat.
+// Both take a call id or a voice chat id (voiceRoom.id).
+router.get('/calls/:callId/transcript', asyncHandler(require('../sparks/calls').getTranscript));
+router.post('/calls/:callId/outline/share', asyncHandler(require('../sparks/calls').shareOutline));
 // Sparks voice commands: what this user can target from this call (the SDK's CommandContext).
 router.get('/calls/:callId/command-context', asyncHandler(require('../sparks/targetedCalls').getCommandContext));
 router.get('/calls/incoming', asyncHandler(getIncomingCall));

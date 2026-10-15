@@ -24,8 +24,12 @@
  *
  * Roles (for role pings) are the user's expertise label, exactly as
  * expertiseModel.js spells it ("Front-end", "Costume crafting"): readable,
- * one spelling, exact match. Ranks: CosQuest users have none yet, so `rank`
- * is omitted.
+ * one spelling, exact match. Ranks (voice commands: "calling all
+ * sergeants"): the faction rank from src/utils/ranks.js (points, or set by
+ * hand), as its name in lower case ("staff sergeant"), the same spelling as
+ * the module's config `ranks` (see rankLadder, used by index.js). Until
+ * src/utils/ranks.js exists (branch wale-pages-backend) `rank` is omitted
+ * and rank-targeted commands resolve to nobody.
  */
 const mongoose = require('mongoose');
 const Conversation = require('../models/Conversation');
@@ -37,7 +41,7 @@ const { expertiseLabel } = require('../models/expertiseModel');
 
 const GROUP_ROLES = ['owner', 'admin', 'member'];
 const CACHE_MS = 5_000;
-const USER_FIELDS = 'profile.username profile.displayName profile.firstName profile.lastName expertise faction onboardingComplete';
+const USER_FIELDS = 'profile.username profile.displayName profile.firstName profile.lastName expertise faction onboardingComplete pointsBalance rankOverride';
 
 const cache = new Map(); // key -> { at, value }
 function cached(key, fn) {
@@ -65,9 +69,34 @@ function displayNameOf(user) {
   return p.displayName || [p.firstName, p.lastName].filter(Boolean).join(' ') || p.username || 'Someone';
 }
 
+// src/utils/ranks.js (faction ranks) when this build has it.
+let ranksUtil;
+function ranks() {
+  if (ranksUtil === undefined) {
+    try {
+      ranksUtil = require('../utils/ranks');
+    } catch (error) {
+      if (error?.code !== 'MODULE_NOT_FOUND') throw error;
+      ranksUtil = null;
+    }
+  }
+  return ranksUtil;
+}
+
+/** The rank ladder's names, lowest first, lower case (the module's config `ranks`), or null without ranks. */
+function rankLadder() {
+  return ranks() ? ranks().getLadder().map((rank) => rank.name.toLowerCase()) : null;
+}
+
+function rankOf(user) {
+  const rank = ranks()?.rankFor(user);
+  return rank ? rank.name.toLowerCase() : null;
+}
+
 function toMember(user, isAdmin) {
   const label = expertiseLabel(user.expertise);
-  return { userId: String(user._id), displayName: displayNameOf(user), roles: label ? [label] : [], isAdmin: Boolean(isAdmin) };
+  const rank = rankOf(user);
+  return { userId: String(user._id), displayName: displayNameOf(user), ...(rank ? { rank } : {}), roles: label ? [label] : [], isAdmin: Boolean(isAdmin) };
 }
 
 async function loadConversation(chatId) {
@@ -201,4 +230,4 @@ function oid(id) {
   return mongoose.isValidObjectId(id) ? new mongoose.Types.ObjectId(String(id)) : null;
 }
 
-module.exports = { chatMembers, isAdmin, canRead, canReadMany, hasAccess, invalidate, displayNameOf };
+module.exports = { chatMembers, isAdmin, canRead, canReadMany, hasAccess, invalidate, displayNameOf, rankLadder };

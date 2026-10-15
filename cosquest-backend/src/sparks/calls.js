@@ -7,10 +7,16 @@
  *   who is in the call changed   -> onCallMembership
  *   finished                     -> onCallEnded (the outline starts after the grace window)
  * Transcription itself is phone-side (consent + segments on the `sparks`
- * channel); nothing here touches LiveKit.
+ * channel); nothing here touches LiveKit. Voice chats (Community and faction
+ * rooms) are mirrored the same way by voiceRooms.js; the REST routes below
+ * take either id.
  */
+const mongoose = require('mongoose');
 const host = require('./index');
 const members = require('./members');
+const User = require('../models/User');
+const Message = require('../models/Message');
+const Conversation = require('../models/Conversation');
 
 const TERMINAL = ['declined', 'missed', 'cancelled', 'ended'];
 const queues = new Map();
@@ -69,4 +75,78 @@ async function getOutline(req, res) {
   return res.json((await host.store.getOutline(call.callId)) || { status: 'pending', outline: null });
 }
 
-module.exports = { sync, getOutline };
+const fail = (res, error) => {
+  if (!error?.status) throw error;
+  const message = {
+    400: 'Bad cursor.',
+    403: 'Only people who were on the call, and admins of the chat, can do this.',
+    404: 'No outline for this call.',
+    409: 'The outline is not ready yet.',
+    501: 'Sparks needs an update for this.',
+    502: 'The outline could not be posted. Please try again.',
+  }[error.status];
+  return res.status(error.status).json({ error: error.status === 404 && /unknown call/.test(error.message) ? 'Call not found.' : message || error.message, reason: error.message });
+};
+
+const unavailable = (res) => res.status(503).json({ error: 'Sparks are unavailable right now.' });
+
+// GET /api/calls/:callId/transcript?cursor=&limit= - the full transcript of a
+// call or a voice chat (its id), one page at a time: final lines in order,
+// speaker, start and end (ms since the call started), the topic each fell
+// under, plus the topic markers. Same rule as the outline (OPEN_QUESTIONS Q9:
+// attendees and the chat's admins). `speakers` has a name and avatar for every
+// userId on the page.
+async function getTranscript(req, res) {
+  if (!host.isModule() || !host.isReady()) return unavailable(res);
+  if (typeof host.backend.transcript !== 'function') return res.status(501).json({ error: 'Sparks needs an update for this.', reason: 'module without transcript()' });
+  let page;
+  try {
+    page = await host.backend.transcript(String(req.userId), String(req.params.callId), {
+      cursor: typeof req.query.cursor === 'string' && req.query.cursor ? req.query.cursor : null,
+      limit: Number(req.query.limit) || undefined,
+    });
+  } catch (error) {
+    return fail(res, error);
+  }
+  return res.json({ ...page, kind: (await voiceRooms().isVoiceRoom(page.callId)) ? 'voice_room' : 'call', speakers: await speakerPreviews(page.segments.map((s) => s.userId)) });
+}
+
+// POST /api/calls/:callId/outline/share - post the finished outline into the
+// call's chat as a Sparks bot post (kind 'sparks_bot', sparksBot.kind
+// 'call_outline'). Attendees who are in the chat, and the chat's admins.
+// Once per call: 201 the first time, 200 with the same message after.
+async function shareOutline(req, res) {
+  if (!host.isModule() || !host.isReady()) return unavailable(res);
+  if (typeof host.backend.shareOutline !== 'function') return res.status(501).json({ error: 'Sparks needs an update for this.', reason: 'module without shareOutline()' });
+  const callId = String(req.params.callId);
+  let result;
+  try {
+    result = await host.backend.shareOutline(String(req.userId), callId, { callKind: (await voiceRooms().isVoiceRoom(callId)) ? 'voice_room' : 'call' });
+  } catch (error) {
+    return fail(res, error);
+  }
+  return res.status(result.shared ? 201 : 200).json({ shared: result.shared, post: result.post, message: await serializedMessage(result.messageId, req.userId) });
+}
+
+const voiceRooms = () => require('./voiceRooms');
+
+async function speakerPreviews(userIds) {
+  const ids = [...new Set(userIds)].filter((id) => mongoose.isValidObjectId(id));
+  if (!ids.length) return {};
+  const users = await User.find({ _id: { $in: ids } }, 'profile.username profile.displayName profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl').lean();
+  return Object.fromEntries(users.map((u) => [String(u._id), {
+    id: String(u._id), username: u.profile?.username || null, name: members.displayNameOf(u), avatarKey: u.profile?.avatarKey || null, avatarPhotoUrl: u.profile?.avatarPhotoUrl || null,
+  }]));
+}
+
+// The bot post as GET /chats/:id/messages returns it, for this viewer.
+async function serializedMessage(messageId, viewerId) {
+  if (!mongoose.isValidObjectId(messageId)) return null;
+  const message = await Message.findById(messageId);
+  if (!message) return null;
+  const conversation = await Conversation.findById(message.conversation, 'type').lean();
+  const { serializeMessage } = require('../controllers/chatController');
+  return serializeMessage(message, { viewerId, conversationType: conversation?.type, otherLastReadAt: null, reactions: [] });
+}
+
+module.exports = { sync, getOutline, getTranscript, shareOutline };

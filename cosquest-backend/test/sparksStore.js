@@ -117,6 +117,20 @@ async function run() {
   check(row.chatId === String(conversation) && row.senderId === String(sender) && row.kind === 'text' && row.sparkRevivalIndex === 0 && typeof row.sentAt === 'string', 'a Message maps onto MessageRow', row);
   check((await store.recentSenders(String(conversation), Date.now() - 60000)).join() === String(sender), 'recentSenders');
 
+  console.log('\n--- sparks store: live topic summaries (module 1.3.1) ---');
+  const callId = `call_${tag}`;
+  const sum = (topicId, summary, updatedAtMs) => ({ callId, topicId, summary, updatedAtMs, basedOnSegmentId: `seg_${updatedAtMs}` });
+  check((await store.topicSummaries(callId)).length === 0, 'no summaries for a new call');
+  await store.saveTopicSummary(sum('tp_1', 'Ada and Bo are picking uniform sizes.', 1000));
+  await store.saveTopicSummary(sum('tp_2', 'Ada and Bo are planning the raid route.', 2000));
+  await store.saveTopicSummary(sum('tp_1', 'Ada and Bo are picking uniform sizes. Masks were added.', 3000));
+  const sums = await store.topicSummaries(callId);
+  check(sums.length === 2 && sums[0].topicId === 'tp_1' && sums[0].updatedAtMs === 3000 && sums[0].summary.endsWith('Masks were added.') && sums[1].topicId === 'tp_2',
+    'one row per topic, the latest version, in the order topics were first summarized', sums);
+  check(JSON.stringify(Object.keys(sums[0]).sort()) === JSON.stringify(['basedOnSegmentId', 'callId', 'summary', 'topicId', 'updatedAtMs']), 'rows come back as the module wrote them', sums[0]);
+  check((await store.topicSummaries(`other_${tag}`)).length === 0, 'other calls are not mixed in');
+  await store.c.topicSummaries.deleteMany({ callId });
+
   await store.c.jobs.deleteMany({ idempotencyKey: { $in: [`key_${tag}`, `race_${tag}`] } });
   return { pass, fail };
 }
