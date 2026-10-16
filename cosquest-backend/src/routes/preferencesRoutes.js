@@ -5,6 +5,7 @@ const {
   updateNotificationPrefs,
   updateLocationPrefs,
   registerDevice,
+  unregisterDevice,
   completeOnboarding,
 } = require('../controllers/preferencesController');
 
@@ -16,6 +17,7 @@ router.use(asyncHandler(identifyUser));
 router.patch('/me/preferences/notifications', asyncHandler(updateNotificationPrefs));
 router.patch('/me/preferences/location', asyncHandler(updateLocationPrefs));
 router.post('/me/devices', asyncHandler(registerDevice));
+router.delete('/me/devices', asyncHandler(unregisterDevice));
 router.post('/me/onboarding/complete', asyncHandler(completeOnboarding));
 
 module.exports = router;

@@ -1,6 +1,7 @@
 const User = require('./User');
 const Notification = require('./Notification');
 const { emitToUser, emitToUsers } = require('../realtime/socket');
+const push = require('../utils/push');
 
 const ACTOR_FIELDS = 'profile.username profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl';
 
@@ -37,6 +38,7 @@ async function createForUser(userId, message, { type = 'system', actor, conversa
   });
   if (actor) await notification.populate('actor', ACTOR_FIELDS);
   emitToUser(String(userId), 'notification:new', sanitize(notification));
+  push.notifyFromNotification([String(userId)], { type, message, conversation });
   return notification;
 }
 
@@ -69,6 +71,7 @@ async function createMentionNotifications(userIds, { message, actor, conversatio
     // app refetches the list anyway when it opens Notifications).
     const sample = sanitize({ ...docs[0].toObject(), actor: actorDoc });
     emitToUsers(batch, 'notification:new', { ...sample, id: null });
+    push.notifyFromNotification(batch, { type: 'mention', message, conversation });
   }
 
   return ids.length;

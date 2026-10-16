@@ -128,6 +128,9 @@ async function main() {
     const avatarCatalog = await require('./avatarCatalog').run(`http://localhost:${process.env.PORT}`);
     result.pass += avatarCatalog.pass;
     result.fail += avatarCatalog.fail;
+    const pushRun = await require('./push').run(`http://localhost:${process.env.PORT}`);
+    result.pass += pushRun.pass;
+    result.fail += pushRun.fail;
   } finally {
     require('../src/sparks').stop();
     require('../src/sparks/voiceRooms').stopSweep();

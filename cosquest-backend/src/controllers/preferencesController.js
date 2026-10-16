@@ -1,3 +1,4 @@
+const User = require('../models/User');
 const userModel = require('../models/userModel');
 const { isValidFactionKey } = require('../models/factionModel');
 const { isValidInterestKey } = require('../models/interestModel');
@@ -91,17 +92,51 @@ async function updateLocationPrefs(req, res) {
   return res.json({ user: userModel.sanitize(updated) });
 }
 
+function hasBearer(req) {
+  return /^Bearer \S+/.test(req.headers.authorization || '');
+}
+
 // POST /api/users/me/devices  (register a push token, only meaningful once notificationsEnabled is true)
+//
+// With a Bearer session the phone is this account's for pushes: the same
+// token is taken off any other account first (one phone, one signed-in
+// account). Registered by email only (before login), it is stored but gets
+// no pushes until the signed-in app registers it again.
 async function registerDevice(req, res) {
   const { pushToken, platform } = req.body;
   if (!pushToken || !platform) {
     return res.status(400).json({ error: 'pushToken and platform ("ios" | "android" | "web") are required.' });
   }
+  if (typeof pushToken !== 'string' || pushToken.length > 300 || typeof platform !== 'string' || platform.length > 20) {
+    return res.status(400).json({ error: 'pushToken and platform must be short strings.' });
+  }
+  const authed = hasBearer(req);
+  if (authed) {
+    await User.updateMany(
+      { _id: { $ne: req.userId }, 'devices.pushToken': pushToken },
+      { $pull: { devices: { pushToken } } }
+    );
+  }
   const updated = await userModel.updateUser(req.userId, (user) => {
-    const exists = user.devices.some((d) => d.pushToken === pushToken);
-    if (!exists) {
-      user.devices.push({ pushToken, platform, registeredAt: new Date() });
+    const existing = user.devices.find((d) => d.pushToken === pushToken);
+    if (!existing) {
+      user.devices.push({ pushToken, platform, registeredAt: new Date(), authed });
+    } else if (authed && !existing.authed) {
+      existing.authed = true;
+      existing.platform = platform;
+      existing.registeredAt = new Date();
     }
+  });
+  return res.json({ user: userModel.sanitize(updated) });
+}
+
+// DELETE /api/users/me/devices  { pushToken }  (sign-out: this phone stops getting this account's pushes)
+async function unregisterDevice(req, res) {
+  if (!hasBearer(req)) return res.status(401).json({ error: 'Sign in to remove a device.' });
+  const { pushToken } = req.body || {};
+  if (typeof pushToken !== 'string' || !pushToken) return res.status(400).json({ error: 'pushToken is required.' });
+  const updated = await userModel.updateUser(req.userId, (user) => {
+    user.devices = user.devices.filter((d) => d.pushToken !== pushToken);
   });
   return res.json({ user: userModel.sanitize(updated) });
 }
@@ -237,4 +272,4 @@ async function completeOnboarding(req, res) {
   return res.json({ message: 'Onboarding complete.', onboardingRequired: false, user: userModel.sanitize(updated) });
 }
 
-module.exports = { updateNotificationPrefs, updateLocationPrefs, registerDevice, completeOnboarding };
+module.exports = { updateNotificationPrefs, updateLocationPrefs, registerDevice, unregisterDevice, completeOnboarding };
