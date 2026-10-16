@@ -55,6 +55,8 @@ function buildApp() {
   app.get('/c/:conversationId', renderChatShare);
   app.get('/c/:conversationId/m/:messageId', renderChatShare);
 
+  // The CostQuest game's one login: GET /api/game/session (src/routes/gameRoutes.js).
+  app.use('/api/game', require('./src/routes/gameRoutes'));
   app.use('/api', apiRoutes);
 
   app.use(notFound);
