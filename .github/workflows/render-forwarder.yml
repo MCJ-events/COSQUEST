@@ -1,0 +1,27 @@
+# Tests for render-forwarder/ (the temporary Render service for old app builds).
+name: render-forwarder
+
+on:
+  pull_request:
+    paths: ["render-forwarder/**", ".github/workflows/render-forwarder.yml"]
+  push:
+    branches: [main]
+    paths: ["render-forwarder/**", ".github/workflows/render-forwarder.yml"]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: render-forwarder
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - run: npm test
