@@ -4,7 +4,14 @@
   "private": true,
   "description": "Temporary: forwards everything that still reaches cosquest-1.onrender.com (old app builds) to the backend on Mark's server.",
   "main": "server.js",
-  "scripts": { "start": "node --no-deprecation server.js" },
-  "engines": { "node": ">=20" },
-  "dependencies": { "http-proxy": "^1.18.1" }
+  "scripts": {
+    "start": "node --no-deprecation server.js",
+    "test": "node --no-deprecation --test"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "http-proxy": "^1.18.1"
+  }
 }
