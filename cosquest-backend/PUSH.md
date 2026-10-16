@@ -1,0 +1,56 @@
+# Push notifications
+
+Phones get a push for a new DM or group message, an @mention, a follow, a group admin notice, a ringing call, and game events the CostQuest game server forwards (raids, gifts, friends).
+
+## How it works
+
+- **The app** gets an Expo push token (`expo-notifications`, `getExpoPushTokenAsync`) once the user is signed in and has allowed notifications. It sends the token to `POST /api/users/me/devices` with its Bearer session.
+- **This server** stores the token on the user (`user.devices`) and sends through Expo's push service (`src/utils/push.js`). Expo delivers through APNs and FCM with the credentials stored on the app's Expo project, so this server holds no Apple or Google key.
+- **The game server** calls `POST /api/internal/push` with a shared secret and chat user ids. The game knows a player's chat account through one login (`sso_players.subject`). Tokens and notification switches stay here.
+
+## Who gets a push
+
+| Moment | Who | Skipped when |
+|---|---|---|
+| New message | the other person in a DM; members of a user-made group | muted chat, blocked either way, @mentioned (the mention push covers it), `@everyone` (sent as mentions), community and faction rooms |
+| @mention, follow, group notice | the people the in-app notification goes to | follow: `notificationCategories.friendActivity` off |
+| Call ringing | the people rung | push lives 45 s |
+| Game event | the user ids the game sends | the `category` switch is off |
+
+Always skipped: `preferences.notificationsEnabled` off, and phones registered without a session. Messages, mentions and calls also skip users with the app connected right now (they see it live); game events do not.
+
+## Devices
+
+- `POST /api/users/me/devices { pushToken, platform }`. With a Bearer session the token is taken off any other account first (one phone, one signed-in account) and marked `authed`. Registered by email only (before login) it is stored but never pushed to: anyone who knows an email could otherwise point that account's notifications at their own phone.
+- `DELETE /api/users/me/devices { pushToken }` (Bearer only): the app calls it on sign-out.
+- Tokens Expo reports as `DeviceNotRegistered` are removed.
+
+## Taps
+
+Every push carries `data.type`. Message, mention and call pushes carry `data.chatId` (the app opens that chat). Game pushes carry `data.url`, a `cosquest://play?...` link (the app opens the game there).
+
+Android channels: `messages`, `calls`, `game`, `default` (the app creates them).
+
+## Configuration
+
+| Variable | |
+|---|---|
+| `PUSH_ENABLED` | `0` stops sending. Off under `NODE_ENV=test` unless `1`. |
+| `EXPO_ACCESS_TOKEN` | Only if the Expo project turns on enhanced push security. |
+| `GAME_PUSH_SECRET` | Shared with the game server's `CQ_CHAT_PUSH_SECRET`. Unset, `/api/internal/push` returns 404. |
+
+## Account steps (once per app id)
+
+Expo can only deliver what the Expo project has keys for:
+
+1. **iOS:** an APNs key (.p8) from the Apple Developer account that signs the app (Keys, Apple Push Notifications service). Upload it with `eas credentials` (iOS, Push Notifications) for the bundle id.
+2. **Android:** a Firebase project with an Android app for the package name. Its `google-services.json` goes in the app build (`expo.android.googleServicesFile`); a service account key (Firebase console, Project settings, Service accounts, Generate new private key) goes to `eas credentials` (Android, FCM V1).
+
+## Try it
+
+```sh
+curl -s https://exp.host/--/api/v2/push/send -H 'Content-Type: application/json' \
+  -d '{"to":"ExponentPushToken[...]","title":"Test","body":"Hello"}'
+```
+
+`npm test` runs `test/push.js` (Expo replaced by a capture).

@@ -18,6 +18,7 @@ const expertiseRoutes = require('./expertiseRoutes');
 const router = express.Router();
 
 router.use('/auth', authRoutes); // /api/auth/signup, /api/auth/login
+router.use('/internal', require('./internalRoutes')); // /api/internal/push (game server -> phones)
 // Authentication is attached per settings endpoint, leaving onboarding routes usable.
 router.use('/users/me', require('./settingsRoutes'));
 router.use('/users', profileRoutes); // /api/users/me, /api/users/check-username, avatar routes

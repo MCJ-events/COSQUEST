@@ -132,6 +132,11 @@ const userSchema = new mongoose.Schema(
         pushToken: String,
         platform: String,
         registeredAt: { type: Date, default: Date.now },
+        // Registered with a signed-in session (Bearer), not just an email.
+        // Only these get pushes (src/utils/push.js): anyone who knows an
+        // email could otherwise point that account's notifications at
+        // their own phone.
+        authed: { type: Boolean, default: false },
       },
     ],
 

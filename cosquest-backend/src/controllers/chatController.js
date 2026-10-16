@@ -25,6 +25,7 @@ const { isBlockedEitherWay } = require('./publicProfileController');
 const { emitToConversation, emitToConversationExcept, emitToUsers } = require('../realtime/socket');
 const { isOnline, onlineTotal, onlineUserIds, countOnlineAmong } = require('../realtime/presence');
 const { rankFor } = require('../utils/ranks');
+const push = require('../utils/push');
 
 const EPOCH = new Date(0);
 const DELETE_FOR_EVERYONE_WINDOW_MS = 5 * 60 * 1000;
@@ -306,6 +307,34 @@ async function notifyMentions(conversation, message, sender) {
     conversation: conversation._id,
     chatMessage: message._id,
   });
+}
+
+// Push to phones for a new message: the other person in a DM, or the members
+// of a user-made group. Not people who muted the chat, blocked the sender,
+// or are @mentioned (their mention push says it), and not for @everyone
+// (that one goes out as mentions). Runs after the response.
+async function pushNewMessage(conversation, message, sender) {
+  if (message.mentionsEveryone) return;
+  let ids;
+  if (conversation.type === 'dm') ids = conversation.participants.map(String);
+  else if (conversation.type === 'group' && conversation.group?.kind !== 'faction') ids = (await explicitGroupMemberIds(conversation)).map(String);
+  else return;
+  const senderId = String(sender._id);
+  const mentioned = new Set((message.mentions || []).map(String));
+  ids = ids.filter((id) => id !== senderId && !mentioned.has(id));
+  if (!ids.length) return;
+  const muted = await ConversationMember.find(
+    { conversation: conversation._id, user: { $in: ids }, mutedUntil: { $gt: new Date() } },
+    'user'
+  );
+  const mutedIds = new Set(muted.map((row) => String(row.user)));
+  const recipientIds = [];
+  for (const id of ids) {
+    if (mutedIds.has(id)) continue;
+    if (await isBlockedEitherWay(senderId, id)) continue;
+    recipientIds.push(id);
+  }
+  push.notifyNewMessage({ conversation, message, sender, recipientIds, groupName: conversation.group?.name });
 }
 
 // ==========================================================================
@@ -1051,6 +1080,10 @@ async function createMessage(req, res) {
       console.error('Mention notifications failed:', err);
     });
   }
+
+  pushNewMessage(conversation, message, req.user).catch((err) => {
+    console.error('Message push failed:', err.message);
+  });
 
   if (kind === 'audio' && media?.url) {
     transcribeAndSaveVoiceNote(message._id, conversation, media.url).catch((err) => {

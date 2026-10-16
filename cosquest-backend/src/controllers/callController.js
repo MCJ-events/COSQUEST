@@ -7,6 +7,7 @@ const { isBlockedEitherWay } = require('./publicProfileController');
 const { loadConversationForUser } = require('./chatController');
 const Block = require('../models/Block');
 const { emitToUsers } = require('../realtime/socket');
+const push = require('../utils/push');
 const { recordCallMessage } = require('../utils/callMessage');
 const limits = require('../config/callLimits');
 const { createMutationQueue } = require('../utils/mutationQueue');
@@ -503,6 +504,7 @@ async function startCall(req, res) {
     call: toCallJson(call),
     invitedBy: userPreview(call.caller),
   });
+  push.notifyIncomingCall([recipientId], { call: toCallJson(call), caller: userPreview(call.caller) });
   scheduleRingTimeout(call._id);
   return sendCall(res, 201, call, extras);
 }
@@ -844,6 +846,7 @@ async function inviteUsers(callId, inviter, { userIds = [], usernames = [] } = {
       call: toCallJson(call),
       invitedBy: userPreview(inviterInCall || inviter),
     });
+    push.notifyIncomingCall(result.invited, { call: toCallJson(call), caller: userPreview(inviterInCall || inviter) });
     scheduleRingTimeout(call._id);
   }
 
@@ -906,6 +909,7 @@ async function startCallFor(caller, conversation, recipientId, type = 'audio') {
   }
   await populateCall(call);
   emitToUsers([otherId], 'call:incoming', { call: toCallJson(call), invitedBy: userPreview(call.caller) });
+  push.notifyIncomingCall([otherId], { call: toCallJson(call), caller: userPreview(call.caller) });
   scheduleRingTimeout(call._id);
   return { call };
 }
