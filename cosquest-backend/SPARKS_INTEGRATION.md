@@ -264,3 +264,7 @@ Built against the cosquest-sparks `live-topic-summary` branch (CHANGELOG "Unrele
 Config (module defaults; override with the `SPARKS_CONFIG` env JSON, e.g. `{"liveTopicSummary":false}`): `liveTopicSummary` true (false: topics only, as before), `liveTopicSummaryEveryMs` 30,000, `liveTopicSummaryMinLines` 3, `liveTopicSummaryMaxChars` 280.
 
 **Vendoring.** The store methods are unused until the module with live summaries is vendored (the vendored 1.3.0 never calls them, and sends nothing new). When that release is cut: replace the tarball as in section 4 and run `npm test`.
+
+## 15. Module 1.3.2: adaptive deadlines for slow phones
+
+Budget Android phones run the lite model many times slower than an iPhone, and `spark.detect` hit its fixed 60 s deadline on every job (Dammy's tests, 15 and 16 Oct). The module now remembers how long each phone needs per job type and stretches that phone's deadline when it offers it such a job (its time x 1.3 + 5 s, never past `deadlineMaxMs`: detect and assign 4 min). Fast phones keep the usual deadlines. Nothing to change here: the timings live on the device row (`jobMs`) and the job row (`offeredAt`), which `mongoStore.js` already stores as given (`$set` of the patch). A `SPARKS_CONFIG` `deadlineMs` override still works and is the floor. SDK 1.2.7 (app PR on EngrSammy/Cosquest) is the phone side: a faster engine and a detect job that sends its subject when the duplicate check cannot finish in time.
