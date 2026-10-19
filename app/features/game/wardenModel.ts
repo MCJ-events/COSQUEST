@@ -143,3 +143,26 @@ export function startWardenModel(onWriter: (writer: (m: WardenMoment) => Promise
 export function wardenModelState(): WardenModelState {
   return state;
 }
+
+/**
+ * A free answer from the model ("Ask the Warden"), or null when it is not
+ * loaded or is busy with a line. Not streamed: the native module returns the
+ * whole answer, so the screen shows the rule until it arrives.
+ */
+export async function askModel(prompt: string, maxTokens = 96): Promise<{ text: string; firstTokenMs?: number; tokensPerSecond?: number } | null> {
+  if (!CostQuestWarden || state.phase !== "ready" || busy) return null;
+  busy = true;
+  try {
+    const out = await CostQuestWarden.generate(prompt, maxTokens, 0.6);
+    return { text: out.text, firstTokenMs: out.firstTokenMs, tokensPerSecond: out.tokensPerSecond };
+  } catch {
+    return null;
+  } finally {
+    busy = false;
+  }
+}
+
+/** Stop a long answer (the native engine's stop, when it has one). */
+export function stopModel() {
+  CostQuestWarden?.stop();
+}

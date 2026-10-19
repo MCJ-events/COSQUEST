@@ -125,6 +125,7 @@ export function TopBar({
   color,
   onProfile,
   onCoins,
+  onAskWarden,
 }: {
   me: RoamMe | null;
   profile: Profile | null;
@@ -132,6 +133,8 @@ export function TopBar({
   color: string;
   onProfile: () => void;
   onCoins: () => void;
+  /** The Warden's face beside the chip: "Ask the Warden". */
+  onAskWarden?: () => void;
 }) {
   const insets = useSafeAreaInsets();
   const coins = me?.coins ?? 0;
@@ -139,6 +142,11 @@ export function TopBar({
   return (
     <View style={[styles.top, { top: insets.top + 4 }]} pointerEvents="box-none">
       <PlayerChip me={me} profile={profile} name={name} color={color} onPress={onProfile} />
+      {onAskWarden ? (
+        <Pressable onPress={onAskWarden} accessibilityRole="button" accessibilityLabel="Ask the Warden" hitSlop={4} style={({ pressed }) => ({ transform: [{ scale: pressed ? 0.94 : 1 }] })}>
+          <WardenBadge tint={color} size={40} />
+        </Pressable>
+      ) : null}
       <View style={{ flex: 1, minWidth: 4 }} pointerEvents="none" />
       <View style={styles.stats}>
         <Pressable onPress={onCoins} accessibilityRole="button" accessibilityLabel={`${coins} CosCoins`} accessibilityHint="Opens your CosCoins" hitSlop={5}>

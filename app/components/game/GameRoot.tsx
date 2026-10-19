@@ -28,6 +28,7 @@ import { openVenueEvents, venueEventsAvailable } from "@/modules/costquest-game/
 import { emitGameEvent } from "@/modules/costquest-game/src/rnGame";
 import { useAppSelector } from "@/store/hooks";
 
+import AskWarden from "./AskWarden";
 import { GameBannerHost, showBanner } from "./Banner";
 import CoachOverlay from "./Coach";
 import CoinsSheet from "./CoinsSheet";
@@ -48,6 +49,7 @@ import PointSheet from "./PointSheet";
 import ProfileSheet from "./ProfileSheet";
 import RaidBanner from "./RaidBanner";
 import RaidScreen from "./RaidScreen";
+import RecapSheet from "./RecapSheet";
 import RoomScreen from "./RoomScreen";
 import RoomSheet from "./RoomSheet";
 import RelicsButton from "./RelicsButton";
@@ -70,7 +72,7 @@ type Screen =
   | { kind: "reward"; reward: RewardSummary };
 
 /** What is open over the map (one at a time, closed by Android Back). */
-type Sheet = "dailies" | "codex" | "war" | "more" | "events" | "friends" | "relics" | "battle" | "profile" | "coins";
+type Sheet = "dailies" | "codex" | "war" | "more" | "events" | "friends" | "relics" | "battle" | "profile" | "coins" | "recap" | "ask";
 
 const NUDGE_EVERY_MS = 150000;
 /** The first nudge waits for the map to settle (RoamHomeView.nudgeLoop: 25 s). */
@@ -347,6 +349,9 @@ export default function GameRoot({ parked }: { parked: boolean }) {
   if (venueEventsAvailable) {
     moreTiles.push({ id: "events", icon: "ticket", color: GP.navy, title: "Events", onPress: () => void openVenueEvents({ handle: gameStore.playerName() }) });
   }
+  if (me?.tutorial_done) moreTiles.push({ id: "recap", icon: "book", color: GP.skyDeep, title: "Your day", onPress: () => setSheet("recap") });
+  // Always there, so More is never a sheet with one button in it.
+  moreTiles.push({ id: "warden", icon: "chatbubble-ellipses", color, title: "Ask the Warden", onPress: () => setSheet("ask") });
   moreTiles.push({ id: "profile", icon: "person-circle", color: GP.skyDeep, title: "Profile", onPress: () => setSheet("profile") });
   const focusAway = focus && !focusId && focus.lat !== undefined && focus.lng !== undefined ? focus : null;
   const focusMissing = focus && focusId && !focusPoint ? focus : null;
@@ -370,7 +375,7 @@ export default function GameRoot({ parked }: { parked: boolean }) {
         onRoom={(r) => openBattle(r.game_id)}
       />
 
-      <TopBar me={me} profile={state.profile} name={gameStore.playerName()} color={color} onProfile={() => setSheet("profile")} onCoins={() => setSheet("coins")} />
+      <TopBar me={me} profile={state.profile} name={gameStore.playerName()} color={color} onProfile={() => setSheet("profile")} onCoins={() => setSheet("coins")} onAskWarden={() => setSheet("ask")} />
       {!GAME_SERVER_IS_PRODUCTION ? <StagingBadge label={GAME_SERVER.includes("staging") ? "STAGING" : "TEST SERVER"} /> : null}
       {showsRail ? (
         <Rail
@@ -458,13 +463,15 @@ export default function GameRoot({ parked }: { parked: boolean }) {
       {coachStep ? <CoachOverlay key={coachStep.id} step={coachStep} tint={color} onAction={() => coachAct(coachStep)} onLater={() => markCoach(coachStep)} /> : null}
 
       {sheet === "dailies" || sheet === "codex" || sheet === "war" ? (
-        <Journal initial={sheet === "dailies" ? "today" : sheet} onClose={() => setSheet(null)} />
+        <Journal initial={sheet === "dailies" ? "today" : sheet} onClose={() => setSheet(null)} onRecap={() => setSheet("recap")} />
       ) : null}
       {sheet === "more" ? <MoreSheet tiles={moreTiles} onClose={() => setSheet(null)} /> : null}
       {sheet === "events" ? <LiveCalendarSheet onClose={() => setSheet(null)} /> : null}
       {sheet === "friends" ? <FriendsSheet onClose={() => setSheet(null)} /> : null}
       {sheet === "relics" ? <RelicsSheet onClose={() => setSheet(null)} /> : null}
       {sheet === "coins" ? <CoinsSheet onClose={() => setSheet(null)} /> : null}
+      {sheet === "recap" ? <RecapSheet onClose={() => setSheet(null)} /> : null}
+      {sheet === "ask" ? <AskWarden onClose={() => setSheet(null)} /> : null}
       {sheet === "profile" ? <ProfileSheet onClose={() => setSheet(null)} onCoins={() => setSheet("coins")} /> : null}
       {sheet === "battle" ? (
         <RoomSheet
