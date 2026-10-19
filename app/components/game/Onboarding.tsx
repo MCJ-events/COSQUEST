@@ -80,6 +80,7 @@ export default function Onboarding({ suggestedName, onDone }: { suggestedName: s
   const relicRef = useRef<RelicFull | null>(null);
   const speaking = useRef(false);
   const beatRef = useRef(beat);
+  const savedName = useRef((profile?.handle ?? "").trim());
 
   const name = handle.trim();
   const houseName = (id: string | null) => (id ? gameStore.factionName(id) : "your house");
@@ -165,7 +166,9 @@ export default function Onboarding({ suggestedName, onDone }: { suggestedName: s
       poll();
       return;
     }
-    const next = nextNarrative(b, name.length);
+    // The name is asked unless the game already has one: the chat's name is
+    // only the suggestion in the field, and is saved when the player says so.
+    const next = nextNarrative(b, b === "shrines" ? savedName.current.length : name.length);
     if (next) go(next);
   };
 
@@ -201,6 +204,7 @@ export default function Onboarding({ suggestedName, onDone }: { suggestedName: s
     setWorking(true);
     try {
       await gameStore.saveProfile(name.slice(0, 24), profile?.avatar ?? undefined);
+      savedName.current = name.slice(0, 24);
       Keyboard.dismiss();
       go("nameAck");
     } catch (e) {

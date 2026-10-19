@@ -106,7 +106,9 @@ function JournalSheet({ close, initial = "today", onRecap }: JournalProps & { cl
 
   return (
     <SheetFrame top={insets.top + 40}>
-      <SheetHeader title={TITLES[tab]} onClose={close} />
+      <View style={styles.head}>
+        <SheetHeader title={TITLES[tab]} onClose={close} />
+      </View>
       <View style={styles.tabs} accessibilityRole="tablist">
         {(["today", "codex", "war"] as Tab[]).map((t) => (
           <Pressable
@@ -401,6 +403,7 @@ function WardenCard() {
 const INK60 = "rgba(31,59,77,0.6)";
 
 const styles = StyleSheet.create({
+  head: { paddingHorizontal: 18 },
   tabs: { flexDirection: "row", gap: 6, paddingHorizontal: 16, paddingVertical: 8 },
   tab: { paddingHorizontal: 14, minHeight: 36, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.6)", justifyContent: "center" },
   tabOn: { backgroundColor: "#FFFFFF", shadowColor: GP.navy, shadowOpacity: 0.12, shadowRadius: 6, shadowOffset: { width: 0, height: 3 }, elevation: 2 },

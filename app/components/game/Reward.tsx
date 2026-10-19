@@ -8,7 +8,7 @@ import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
-import Animated, { Easing, FadeIn, FadeOut, SlideInLeft, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
+import Animated, { Easing, FadeIn, FadeOut, useAnimatedStyle, useSharedValue, withSpring, withTiming } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { gameStore } from "@/features/game/runtime";
@@ -201,20 +201,10 @@ export default function Reward({ reward, onDone }: { reward: RewardSummary; onDo
           <View style={styles.panelWrap}>
             <GamePanel>
               <View style={{ gap: 10 }}>
-                {reward.lines.slice(0, shownLines).map((l, i) => (
-                  <Animated.View
-                    key={`${l.label}-${i}`}
-                    entering={SlideInLeft.springify().stiffness(LINE_SPRING.stiffness).damping(LINE_SPRING.damping)}
-                    accessible
-                    accessibilityLabel={`${l.label}, ${lineAmount(l).replace("+", "plus ")}`}
-                    style={styles.line}>
-                    <Text style={styles.lineLabel} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.8} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-                      {l.label}
-                    </Text>
-                    <Text style={styles.lineXp} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-                      {lineAmount(l)}
-                    </Text>
-                  </Animated.View>
+                {/* Every line is laid out from the start and slides in when its turn comes: lines inserted one by one
+                    moved their siblings mid-animation, and Android drew them over the level row. */}
+                {reward.lines.map((l, i) => (
+                  <RewardLine key={`${l.label}-${i}`} label={l.label} amount={lineAmount(l)} shown={i < shownLines} />
                 ))}
                 <View style={styles.divider} />
                 <View style={styles.levelRow} accessible accessibilityLabel={`Level ${barLevel}${after ? `, ${after.rank}` : ""}, plus ${reward.xp} XP`}>
@@ -321,3 +311,27 @@ const styles = StyleSheet.create({
   note: { fontFamily: GF.body, fontSize: 14, color: "rgba(31,59,77,0.7)" },
   footer: { paddingHorizontal: 18, paddingTop: 8 },
 });
+
+/** One pay line: `.move(edge: .leading)` with spring(0.35, 0.7) when its turn comes. */
+function RewardLine({ label, amount, shown }: { label: string; amount: string; shown: boolean }) {
+  const t = useSharedValue(shown ? 1 : 0);
+  useEffect(() => {
+    if (shown) t.set(withSpring(1, LINE_SPRING));
+  }, [shown, t]);
+  const style = useAnimatedStyle(() => ({ opacity: Math.min(1, t.get() * 1.5), transform: [{ translateX: (1 - t.get()) * -60 }] }));
+  return (
+    <Animated.View
+      accessible={shown}
+      accessibilityElementsHidden={!shown}
+      importantForAccessibility={shown ? "yes" : "no-hide-descendants"}
+      accessibilityLabel={`${label}, ${amount.replace("+", "plus ")}`}
+      style={[styles.line, style]}>
+      <Text style={styles.lineLabel} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.8} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+        {label}
+      </Text>
+      <Text style={styles.lineXp} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+        {amount}
+      </Text>
+    </Animated.View>
+  );
+}

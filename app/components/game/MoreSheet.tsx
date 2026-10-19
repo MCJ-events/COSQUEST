@@ -45,7 +45,8 @@ export default function MoreSheet({ tiles, onClose }: { tiles: MoreTile[]; onClo
 
   // LazyVGrid(.adaptive(minimum: 84), spacing: 14): as many columns as fit, shared evenly.
   const cols = Math.max(1, Math.floor((width + SPACING) / (MIN_TILE + SPACING)));
-  const tileWidth = width > 0 ? (width - SPACING * (cols - 1)) / cols : MIN_TILE;
+  // Floored: three tiles of 114.33 and their gaps came to a hair over the row, and the third wrapped.
+  const tileWidth = width > 0 ? Math.floor((width - SPACING * (cols - 1)) / cols) : MIN_TILE;
   const onLayout = (e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width);
 
   return (
