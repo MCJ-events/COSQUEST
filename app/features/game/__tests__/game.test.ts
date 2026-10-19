@@ -291,6 +291,32 @@ describe("store", () => {
     assert.equal(again.signedIn(), false);
   });
 
+  it("a player moving from the SwiftUI game keeps the native game's phone key, once", async () => {
+    const legacy = "3c".repeat(32);
+    const storage = memoryStorage();
+    const { fetch } = fakeFetch((call) => {
+      if (call.url.endsWith("/v1/sso/cosquest")) return { status: 503, body: { detail: "not configured" } };
+      if (call.url.includes("/v1/roam/config")) return { body: { factions: [], ranks: [], max_level: 40, open_radius_m: 80, cooldown_s: 600 } };
+      if (call.url.includes("/v1/roam/me")) return { body: ME(call.url.split("device_key=")[1]) };
+      return undefined;
+    });
+    let asked = 0;
+    const legacySeedHex = async () => {
+      asked += 1;
+      return legacy.toUpperCase();
+    };
+    const store = createGameStore({ baseUrl: "https://g", storage, randomSeedHex: () => "00".repeat(32), legacySeedHex, fetch });
+    await store.setSession("chat-token");
+    assert.equal(store.get().session?.playerKey, new Identity(legacy, "device").publicKeyHex);
+    const again = createGameStore({ baseUrl: "https://g", storage, randomSeedHex: () => "00".repeat(32), legacySeedHex, fetch });
+    await again.setSession("chat-token");
+    assert.equal(asked, 1, "adopted once, then the RN key is the phone's key");
+    // Junk or a failing native read: a fresh key, not a crash.
+    const fresh = createGameStore({ baseUrl: "https://g", storage: memoryStorage(), randomSeedHex: () => "11".repeat(32), legacySeedHex: async () => { throw new Error("keychain"); }, fetch });
+    await fresh.setSession("chat-token");
+    assert.equal(fresh.get().session?.playerKey, new Identity("11".repeat(32), "device").publicKeyHex);
+  });
+
   it("one login works: the account's player, points around the fix, cooling shown at once", async () => {
     const seed = "22".repeat(32);
     const pub = new Identity(seed, "account").publicKeyHex;

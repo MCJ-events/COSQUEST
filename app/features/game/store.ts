@@ -94,6 +94,13 @@ export type GameStoreDeps = {
   storage: KeyStorage;
   /** 32 random bytes as hex (expo-crypto in the app, node:crypto in tests). */
   randomSeedHex: () => string;
+  /**
+   * iOS: the native game's own key (Keychain, Game/Net/DeviceIdentity.swift),
+   * the same 32-byte Ed25519 seed. Adopted once when this phone has no RN key
+   * yet, so a player who never signed in keeps their progress when iOS moves
+   * from the SwiftUI game to this one. Null: nothing to adopt.
+   */
+  legacySeedHex?: () => Promise<string | null>;
   fetch?: ConstructorParameters<typeof GameClient>[0]["fetch"];
   now?: () => number;
   log?: (message: string) => void;
@@ -127,7 +134,8 @@ export function createGameStore(deps: GameStoreDeps) {
   async function deviceIdentity(): Promise<Identity> {
     let seed = await deps.storage.get(DEVICE_KEY_STORE);
     if (!seed || !SEED_HEX.test(seed)) {
-      seed = deps.randomSeedHex();
+      const legacy = (await deps.legacySeedHex?.().catch(() => null))?.trim().toLowerCase() ?? null;
+      seed = legacy && SEED_HEX.test(legacy) ? legacy : deps.randomSeedHex();
       await deps.storage.set(DEVICE_KEY_STORE, seed);
     }
     return new Identity(seed, "device");
