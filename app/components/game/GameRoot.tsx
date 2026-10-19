@@ -4,6 +4,7 @@
 // journal (dailies, codex, faction war) and first-time onboarding.
 // costquest-ios Roam/RoamHomeView.swift is the reference for the loop.
 import { Ionicons } from "@expo/vector-icons";
+import { useFonts } from "expo-font";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BackHandler, Pressable, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
@@ -22,9 +23,11 @@ import { factionVeilColor } from "@/features/world/worldState";
 import { emitGameEvent } from "@/modules/costquest-game/src/rnGame";
 import { useAppSelector } from "@/store/hooks";
 
+import { GameBannerHost } from "./Banner";
 import DuelScreen from "./DuelScreen";
 import Encounter from "./Encounter";
 import FriendsButton from "./FriendsButton";
+import { GAME_FONTS } from "./fonts";
 import FriendsSheet from "./FriendsSheet";
 import { NearbyTray, PlayerChip, Rail, StagingBadge, WardenBubble } from "./Hud";
 import Journal from "./Journal";
@@ -61,6 +64,8 @@ const NUDGE_EVERY_MS = 150000;
 
 export default function GameRoot({ parked }: { parked: boolean }) {
   const insets = useSafeAreaInsets();
+  // The game's own type (Lilita One, Fredoka); bundled, so this is one frame or two.
+  const [fontsReady, fontsError] = useFonts(GAME_FONTS);
   const state = useGame();
   const permission = useLocationPermission();
   const said = useWardenSaid();
@@ -178,7 +183,7 @@ export default function GameRoot({ parked }: { parked: boolean }) {
     });
   };
 
-  if (!state.session) {
+  if (!state.session || (!fontsReady && !fontsError)) {
     return <View style={styles.root} />;
   }
   if (gameStore.needsOnboarding) {
@@ -326,6 +331,9 @@ export default function GameRoot({ parked }: { parked: boolean }) {
           <Reward reward={screen.reward} onDone={() => setScreen({ kind: "home" })} />
         </Animated.View>
       ) : null}
+
+      {/* The big moments ("Guardian beaten!", "Quest done!"), over everything. */}
+      <GameBannerHost top={insets.top + 150} />
     </View>
   );
 }

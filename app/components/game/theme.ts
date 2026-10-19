@@ -87,16 +87,56 @@ export function difficultyName(tier: string): string {
   return tier === "epic" ? "Hard" : tier === "rare" ? "Medium" : tier === "starter" ? "Easy" : "Normal";
 }
 
-/** A darker edge for the chunky game buttons (GamePalette.edge(of:)). */
-export function edgeOf(hex: string, by = 0.72): string {
-  const n = parseInt(hex.slice(1), 16);
-  const ch = (shift: number) => Math.round(((n >> shift) & 255) * by);
-  return `#${[16, 8, 0].map((s) => ch(s).toString(16).padStart(2, "0")).join("")}`;
+/**
+ * A darker edge for the chunky game buttons (GamePalette.edge(of:)):
+ * the same hue, saturation x1.1, brightness x0.68 (HSB).
+ * `by` scales the brightness instead (the older flat edges).
+ */
+export function edgeOf(hex: string, by = 0.68): string {
+  const n = parseInt(hex.slice(1, 7), 16);
+  if (!Number.isFinite(n)) return hex;
+  const r = ((n >> 16) & 255) / 255;
+  const g = ((n >> 8) & 255) / 255;
+  const b = (n & 255) / 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const d = max - min;
+  let h = 0;
+  if (d > 0) {
+    if (max === r) h = ((g - b) / d) % 6;
+    else if (max === g) h = (b - r) / d + 2;
+    else h = (r - g) / d + 4;
+    h /= 6;
+    if (h < 0) h += 1;
+  }
+  const s = max === 0 ? 0 : Math.min(1, (d / max) * 1.1);
+  const v = max * by;
+  const i = Math.floor(h * 6);
+  const f = h * 6 - i;
+  const p = v * (1 - s);
+  const q = v * (1 - f * s);
+  const t = v * (1 - (1 - f) * s);
+  const [R, G, B] = [
+    [v, t, p],
+    [q, v, p],
+    [p, v, t],
+    [p, q, v],
+    [t, p, v],
+    [v, p, q],
+  ][((i % 6) + 6) % 6];
+  return `#${[R, G, B].map((c) => Math.round(c * 255).toString(16).padStart(2, "0")).join("")}`;
 }
 
+/**
+ * The game's type (GameKit.swift GameFont, loaded from ./fonts.ts):
+ * display = Lilita One, the rest Fredoka by weight. `app*` are the chat
+ * app's Poppins, for the few places the game shows the app's own words.
+ */
 export const GF = {
-  display: FONTS.extrabold,
-  bold: FONTS.bold,
-  body: FONTS.semibold,
-  regular: FONTS.regular,
+  display: "CQ-LilitaOne",
+  bold: "CQ-Fredoka-Bold",
+  body: "CQ-Fredoka-SemiBold",
+  regular: "CQ-Fredoka-Medium",
+  appBold: FONTS.bold,
+  appRegular: FONTS.regular,
 } as const;
