@@ -77,7 +77,7 @@ function mergeUsage(existing, game) {
   return `${sentence} ${game}`;
 }
 
-function withGameInfoPlist(config, { serverUrl }) {
+function withGameInfoPlist(config, { serverUrl, nfc }) {
   return withInfoPlist(config, (cfg) => {
     const plist = cfg.modResults;
     for (const [key, chat] of Object.entries(CHAT_USAGE)) {
@@ -91,6 +91,10 @@ function withGameInfoPlist(config, { serverUrl }) {
     if (serverUrl) {
       plist.CQServerURL = serverUrl;
     }
+    // Whether this build has the NFC entitlement (withGameEntitlements), so
+    // the RN game's NFC helper says "built without NFC" up front instead of
+    // a reader sheet failing later (ios/Embed/GameHelpers.swift NfcHelper).
+    plist.CQNfcEnabled = nfc === true;
     return cfg;
   });
 }

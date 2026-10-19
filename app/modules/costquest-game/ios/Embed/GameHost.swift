@@ -48,6 +48,10 @@ struct GameCallPill: Sendable, Equatable {
 /// Where module events go: the Expo module, held weakly. Thread-safe on the
 /// module's side (sendEvent hands the payload to the JS thread).
 final class GameEventSink: @unchecked Sendable {
+    /// The latest module's sink, set synchronously by OnCreate (the helpers
+    /// read it until their own main-queue copy lands).
+    nonisolated(unsafe) static var current: GameEventSink?
+
     weak var module: CostQuestGameModule?
 
     init(module: CostQuestGameModule?) { self.module = module }

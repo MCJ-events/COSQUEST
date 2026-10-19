@@ -76,11 +76,18 @@ actor WardenEngineHolder {
     var first: Duration?
     var text = ""
     var tokens = 0
-    // MoteEngine streams pieces (one per token) from its own queue.
+    // MoteEngine streams pieces (one per token) from its own queue. The
+    // Warden says one line: stop at the first newline or end-of-turn mark,
+    // as the Android JNI sink does (warden_jni.c on_piece).
     for await piece in engine.answer(prompt, temperature: Float(temperature), maxTokens: maxTokens) {
       if first == nil { first = clock.now - start }
       tokens += 1
       text += piece
+      if let cut = text.range(of: "\n") ?? text.range(of: "<|im_end|>") {
+        text = String(text[..<cut.lowerBound])
+        engine.stop()
+        break
+      }
     }
     let total = clock.now - start
     return Generation(text: text, tokens: tokens, firstTokenMs: first.map(Self.ms) ?? 0, totalMs: Self.ms(total))

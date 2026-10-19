@@ -36,7 +36,9 @@ public final class CostQuestGameModule: Module {
       "onReady", "onSession", "onShareToChat", "onRequestChat", "onError",
       // Platform helpers for the shared RN game (GameHelpers.swift), the
       // same events as the Android module.
-      "onNfcTag", "onSpeechResult", "onSpeechError"
+      "onNfcTag", "onNfcEnd", "onSpeechResult", "onSpeechError",
+      // Unity's scenes, as CQUnityEvents.kt sends them (NativeIslands.swift).
+      "onUnityEvent"
     )
 
     Constants {
@@ -54,17 +56,32 @@ public final class CostQuestGameModule: Module {
         "uwbAvailable": UwbHelper.available,
         "pedometerAvailable": PedometerHelper.available,
         "stepCounterAvailable": false,
+        // The Forge model view (NativeIslands.swift CostQuestModelView).
+        "modelViewAvailable": true,
       ]
     }
 
     OnCreate {
       let sink = GameEventSink(module: self)
+      // Read by the helpers at send time, so an event in the module's first
+      // tick (before the main-queue hop below) is not dropped.
+      GameEventSink.current = sink
       DispatchQueue.main.async {
         MainActor.assumeIsolated {
           GameHost.shared.sink = sink
           GameHelpers.shared.sink = sink
+          UnityIsland.sink = sink
         }
       }
+    }
+
+    // Unity stops drawing while the app is away (Android: OnActivityEntersBackground).
+    OnAppEntersBackground {
+      DispatchQueue.main.async { MainActor.assumeIsolated { UnityIsland.appWentAway() } }
+    }
+
+    OnAppEntersForeground {
+      DispatchQueue.main.async { MainActor.assumeIsolated { UnityIsland.appCameBack() } }
     }
 
     // No OnDestroy: the sink holds the module weakly, and clearing it here
@@ -130,12 +147,12 @@ public final class CostQuestGameModule: Module {
     }
 
     AsyncFunction("stopListening") {
-      MainActor.assumeIsolated { GameHelpers.shared.speech.stop() }
+      MainActor.assumeIsolated { GameHelpers.shared.speechIfMade?.stop() }
     }.runOnQueue(.main)
 
     /// Stops and drops the utterance: no result or error event follows.
     AsyncFunction("cancelListening") {
-      MainActor.assumeIsolated { GameHelpers.shared.speech.cancel() }
+      MainActor.assumeIsolated { GameHelpers.shared.speechIfMade?.cancel() }
     }.runOnQueue(.main)
 
     /// Walking distance between two times ({ fromMs, toMs?, ask }):
@@ -159,6 +176,54 @@ public final class CostQuestGameModule: Module {
       throw helperError("ERR_UWB_NO_MESH", "UWB ranging needs the peer mesh to exchange session tokens; the shared game has no mesh yet.")
     }
 
+    // MARK: The native game's key, for players moving to the RN game.
+
+    /// The SwiftUI game's anonymous Ed25519 seed (hex) from the Keychain, or
+    /// null. features/game/store.ts adopts it once, so a player who never
+    /// signed in keeps their progress when iOS switches games.
+    AsyncFunction("readLegacyDeviceKey") { () -> String? in
+      LegacyDeviceKey.read()
+    }
+
+    // MARK: Unity (NativeIslands.swift), the Android names.
+
+    /// DuelBridge.StartDuel(setupJson): boots Unity if needed, then starts the fight.
+    AsyncFunction("unityStartDuel") { (setupJson: String) in
+      try MainActor.assumeIsolated {
+        try UnityIsland.boot()
+        UnityIsland.send("DuelBridge", "StartDuel", setupJson)
+      }
+    }.runOnQueue(.main)
+
+    /// DuelBridge.DemoDuel: an offline practice fight.
+    AsyncFunction("unityDemoDuel") {
+      try MainActor.assumeIsolated {
+        try UnityIsland.boot()
+        UnityIsland.send("DuelBridge", "DemoDuel", "")
+      }
+    }.runOnQueue(.main)
+
+    /// DuelBridge.Quit. Unity stays loaded (it cannot be restarted).
+    AsyncFunction("unityQuit") {
+      MainActor.assumeIsolated { UnityIsland.send("DuelBridge", "Quit", "") }
+    }.runOnQueue(.main)
+
+    /// Any other bridge message (WorldRoot, HubBridge, BattleBridge; FRAMEWORK_PIN.md).
+    AsyncFunction("unitySend") { (gameObject: String, method: String, message: String?) in
+      try MainActor.assumeIsolated {
+        guard UnityIsland.available else {
+          throw helperError("ERR_NO_UNITY", "This build has no Unity (hasUnity is false).")
+        }
+        UnityIsland.send(gameObject, method, message ?? "")
+      }
+    }.runOnQueue(.main)
+
+    AsyncFunction("unityPause") { (paused: Bool) in
+      MainActor.assumeIsolated { UnityIsland.pause(paused) }
+    }.runOnQueue(.main)
+
+    // MARK: Views. The first is the module's default view.
+
     View(CostQuestGameView.self) {
       Prop("parked") { (view: CostQuestGameView, parked: Bool?) in
         view.parked = parked ?? false
@@ -166,6 +231,33 @@ public final class CostQuestGameModule: Module {
 
       // Only for tests and screen readers: the game draws everything else.
       Prop("accessibilityLabel") { (view: CostQuestGameView, label: String?) in
+        view.accessibilityLabel = label
+      }
+    }
+
+    // requireNativeView("CostQuestGame", "CostQuestUnityView")
+    View(CostQuestUnityView.self) {
+      Prop("paused") { (view: CostQuestUnityView, paused: Bool?) in
+        view.paused = paused ?? false
+      }
+      Prop("accessibilityLabel") { (view: CostQuestUnityView, label: String?) in
+        view.accessibilityLabel = label
+      }
+    }
+
+    // requireNativeView("CostQuestGame", "CostQuestModelView")
+    View(CostQuestModelView.self) {
+      Prop("uri") { (view: CostQuestModelView, uri: String?) in
+        view.uri = uri
+      }
+      Prop("tint") { (view: CostQuestModelView, tint: String?) in
+        if let colour = CostQuestModelView.color(tint) { view.tint = colour }
+      }
+      // The model turns unless Reduce Motion is on (ForgeModelView reads it);
+      // accepted for the JS interface's sake.
+      Prop("spin") { (_: CostQuestModelView, _: Bool?) in }
+      Prop("accessibilityLabel") { (view: CostQuestModelView, label: String?) in
+        view.isAccessibilityElement = label != nil
         view.accessibilityLabel = label
       }
     }
