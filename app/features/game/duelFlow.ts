@@ -7,6 +7,7 @@
 import { GameError, type GameClient } from "./client.ts";
 import { resolveDuelRenderer, resolveIslandsOff } from "./config.ts";
 import { DuelEventType } from "./duel/types.ts";
+import type { RunState } from "./run.ts";
 import { type SiegeReward, siegeDrop } from "./siege.ts";
 import type { DuelFighterPeek, DuelFinished, DuelOutcome, DuelPay, DuelStart, QuestPoint, RoamExtra, RoamMe, TrialLadder } from "./wire.ts";
 
@@ -15,7 +16,7 @@ import type { DuelFighterPeek, DuelFinished, DuelOutcome, DuelPay, DuelStart, Qu
 // ---------------------------------------------------------------------
 
 /** Which /v1/duel/start mode a screen asks for (DuelRequest: .point, .raid, .siege). */
-export type DuelMode = "point" | "raid" | "siege" | "trial";
+export type DuelMode = "point" | "raid" | "siege" | "trial" | "run";
 
 /** The `raid` boolean the screen has always taken, and the new `mode`: mode wins. */
 export function duelModeOf(mode: DuelMode | undefined, raid: boolean | undefined): DuelMode {
@@ -217,7 +218,14 @@ export type DuelOutcomeFull = Omit<DuelOutcome, "reward"> & {
   siege?: { point_name?: string | null } | null;
   trial?: { faction: string; faction_name?: string | null; rung: number; rungs?: number | null; name?: string | null; cleared?: number | null; first_clear?: boolean | null } | null;
   raid?: { damage?: number | null; hp_left?: number | null; hp_max?: number | null; defeated?: boolean | null; reward?: DuelPay | null } | null;
-  run?: { earned?: number | null; speed_mult?: number | null; surged?: boolean | null; stake_result?: { won: boolean; stake: number } | null } | null;
+  run?: {
+    earned?: number | null;
+    speed_mult?: number | null;
+    surged?: boolean | null;
+    stake_result?: { won: boolean; stake: number } | null;
+    /** The run as the server now has it: the score, the point done (RunModel.adopt). */
+    run?: RunState | null;
+  } | null;
 };
 
 export function asFull(o: DuelOutcome): DuelOutcomeFull {
@@ -297,6 +305,8 @@ export function backLabel(o: Pick<DuelOutcome, "mode">): string {
 export function bannerAfter(o: DuelOutcomeFull | null | undefined, mode: DuelMode, pointName: string): { title: string; subtitle: string } | null {
   if (!o) return null;
   if (mode === "raid") return o.raid?.defeated === true ? { title: "Boss defeated!", subtitle: pointName } : null;
+  // A run point goes back to the run, which shows its own score.
+  if (mode === "run") return null;
   if (o.status !== "won") return null;
   if (mode === "siege") return { title: "Taken!", subtitle: pointName };
   return { title: "Guardian beaten!", subtitle: (mode === "trial" ? o.trial?.name : null) ?? pointName };
@@ -457,4 +467,20 @@ export function trialAgainLabel(o: Pick<DuelOutcome, "status" | "mode">, ladderA
   if (o.mode !== "trial") return null;
   if (o.status === "won") return ladderAfter && !ladderAfter.next ? null : "Next rung";
   return o.status === "held" ? null : "Try again";
+}
+
+// ---------------------------------------------------------------------
+// A Quest Run point fought (DuelRequest.run, DuelModes.run)
+// ---------------------------------------------------------------------
+
+/** A run point: a 30 second fight for the point's value. */
+export type RunDuelRequest = { runId: string; idx: number; stake: boolean; name: string; value: number };
+
+/** Run points are fought when the point is a duel or the server fights run points (run_mode). */
+export function runPlaysAsDuel(kind: string | null | undefined, me: RoamMe | null | undefined): boolean {
+  return kind === "duel" || me?.features?.duel?.run_mode === "duel";
+}
+
+export function runDuelTarget(r: Pick<RunDuelRequest, "runId" | "idx">): string {
+  return `${r.runId}:${r.idx}`;
 }

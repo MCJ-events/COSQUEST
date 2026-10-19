@@ -296,6 +296,8 @@ export class GameClient {
     lat?: number | null;
     lng?: number | null;
     accuracy_m?: number | null;
+    /** A Quest Run's Forbidden Zone: stake half the score on this fight. */
+    stake?: boolean;
   }): Promise<DuelStart> {
     // Absent rather than null: the server's accuracy_m is a number with a default.
     const payload: Record<string, unknown> = { device_key: this.deviceKey(), mode: body.mode, target: body.target };
@@ -304,6 +306,7 @@ export class GameClient {
       payload.lng = body.lng;
     }
     if (body.accuracy_m != null) payload.accuracy_m = Math.min(5000, Math.max(0, body.accuracy_m));
+    if (body.stake !== undefined) payload.stake = body.stake;
     const text = await this.request<string>("POST", "v1/duel/start", { body: payload, signed: true, raw: true });
     return parseDuelStart(text);
   }

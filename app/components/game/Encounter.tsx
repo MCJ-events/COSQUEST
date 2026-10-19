@@ -472,7 +472,7 @@ function ResultLine({ verdict }: { verdict: RoamVerdict }) {
 }
 
 /** The countdown every challenge runs against: the server's deadline, refreshed every 0.1 s; the whole row turns berry under 6 s. */
-function DeadlineBar({ deadline, total }: { deadline: number; total: number }) {
+export function DeadlineBar({ deadline, total }: { deadline: number; total: number }) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const tick = setInterval(() => setNow(Date.now()), 100);
@@ -641,7 +641,7 @@ function ChoiceButton({ text, index, state, onPress }: { text: string; index: nu
   );
 }
 
-function TriviaCard({
+export function TriviaCard({
   question,
   picked,
   removed,
@@ -682,7 +682,7 @@ const REORDER = springOf(0.5, 0.8);
  * dragging on a phone held up in the street, and tapping a numbered one again
  * takes it back. After the verdict the beats rearrange themselves.
  */
-function SequenceCard({
+export function SequenceCard({
   prompt,
   beats,
   order,
@@ -727,7 +727,7 @@ function SequenceCard({
 }
 
 /** Five questions, one clock. The answers go to the server together at the end, so the key is never on the phone. */
-function BlitzCard({
+export function BlitzCard({
   questions,
   showing,
   answers,

@@ -69,6 +69,8 @@ import {
   trialAgainLabel,
   type TrialRequest,
   trialTarget,
+  type RunDuelRequest,
+  runDuelTarget,
   cueForSimEvent,
   unityDuelAction,
   unitySetupJson,
@@ -87,6 +89,7 @@ import { CostQuestUnityView, nativeHelpers } from "@/modules/costquest-game/src"
 import { showBanner } from "./Banner";
 import BattlePause from "./BattlePause";
 import DuelResult from "./DuelResult";
+import { runModel } from "./runModel";
 import DuelVersus from "./DuelVersus";
 import { announce, GameButton, MAX_FONT_SCALE, ProgressBar } from "./kit";
 import { RaidDuelBriefing } from "./RaidDuel";
@@ -159,6 +162,7 @@ export default function DuelScreen({
   raid,
   mode: modeProp,
   trial,
+  run,
   onClose,
 }: {
   point: QuestPoint;
@@ -172,13 +176,15 @@ export default function DuelScreen({
   mode?: DuelMode;
   /** A Guardian Trials rung (mode "trial"): the faction's next, or one to replay. Fought anywhere, no briefing. */
   trial?: TrialRequest;
+  /** A Quest Run point (mode "run"): fought for its value, no briefing; the run comes back with the verdict. */
+  run?: RunDuelRequest;
   /** Unused since the verdict is DuelResult now (Swift goes back to the map); kept so callers still compile. */
   onReward?: (r: RewardSummary) => void;
   onClose: () => void;
 }) {
   const mode = duelModeOf(modeProp, raid);
   // A siege fought as a duel and a trial go straight to the opponent: no briefing (DuelView.task).
-  const direct = mode === "siege" || mode === "trial";
+  const direct = mode === "siege" || mode === "trial" || mode === "run";
   const [phase, setPhase] = useState<Phase>(direct ? { kind: "starting" } : { kind: "briefing" });
   const phaseRef = useRef<Phase>(phase);
   const [paused, setPaused] = useState(false);
@@ -354,7 +360,10 @@ export default function DuelScreen({
             ? await siegeDuelStart(gameStore.client, point, fix)
             : mode === "trial" && trial
               ? await gameStore.client.duelStart({ mode: "trial", target: trialTarget(trial) })
-              : await gameStore.duelStart(point);
+              : mode === "run" && run
+                ? // A pocket run has no location; a daily run is judged for reach.
+                  await gameStore.client.duelStart({ mode: "run", target: runDuelTarget(run), lat: fix?.lat, lng: fix?.lng, accuracy_m: fix?.accuracy, stake: run.stake })
+                : await gameStore.duelStart(point);
       if (!alive.current) return;
       go({ kind: "versus", start });
       playSound("whoosh");
@@ -421,6 +430,8 @@ export default function DuelScreen({
 
   const done = (outcome: DuelOutcome) => {
     const me = gameStore.get().me;
+    const after = asFull(outcome).run?.run;
+    if (after) runModel.adopt(after);
     const b = bannerAfter(asFull(outcome), mode, point.name);
     if (b) showBanner(b.title, { subtitle: b.subtitle, color: mode === "raid" ? RAID_COLOR : realmColor(me?.faction), sound: "fanfare" });
     onClose();

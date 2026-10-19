@@ -6,7 +6,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useFonts } from "expo-font";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { BackHandler, Pressable, StyleSheet, Text, View } from "react-native";
+import { AppState, BackHandler, Pressable, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -15,6 +15,7 @@ import { COACH_DONE_KEY, coachStepFor, type CoachStep, parseIdList, UNLOCKS_INTR
 import { bearingDeg, distanceM, distanceText } from "@/features/game/geo";
 import { hasTrials, type TrialRequest, trialPoint } from "@/features/game/duelFlow";
 import { relativeBearing, suggestedId } from "@/features/game/guide";
+import { isLive, isPocket, type RunPoint, runPointOf, runQuestPoints } from "@/features/game/run";
 import { gameStore, GAME_SERVER, GAME_SERVER_IS_PRODUCTION, useGame, useLocationPermission, startLocation } from "@/features/game/runtime";
 import { nearestFirst } from "@/features/game/store";
 import { raidPlaysAsDuel } from "@/features/game/raids";
@@ -51,6 +52,8 @@ import ProfileSheet from "./ProfileSheet";
 import RaidBanner from "./RaidBanner";
 import RaidScreen from "./RaidScreen";
 import RecapSheet from "./RecapSheet";
+import { QuestRunButton, RunChallenge, runDistance, RunHUD, runInReach, RunResults, RunStartSheet, RunTray } from "./Run";
+import { runModel, useRun } from "./runModel";
 import RoomScreen from "./RoomScreen";
 import RoomSheet from "./RoomSheet";
 import RelicsButton from "./RelicsButton";
@@ -74,7 +77,7 @@ type Screen =
   | { kind: "reward"; reward: RewardSummary };
 
 /** What is open over the map (one at a time, closed by Android Back). */
-type Sheet = "dailies" | "codex" | "war" | "more" | "events" | "friends" | "relics" | "battle" | "profile" | "coins" | "recap" | "ask" | "trials";
+type Sheet = "dailies" | "codex" | "war" | "more" | "events" | "friends" | "relics" | "battle" | "profile" | "coins" | "recap" | "ask" | "trials" | "runStart";
 
 const NUDGE_EVERY_MS = 150000;
 /** The first nudge waits for the map to settle (RoamHomeView.nudgeLoop: 25 s). */
@@ -93,6 +96,11 @@ export default function GameRoot({ parked }: { parked: boolean }) {
   const chatFaction = useAppSelector((s) => s.auth.user?.faction ?? null);
   const [screen, setScreen] = useState<Screen>({ kind: "home" });
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // The Quest Run: while one is live the map shows its points and the tray is the route.
+  const runState = useRun();
+  const runLive = isLive(runState.run);
+  const pocketRun = runLive && !!runState.run && isPocket(runState.run);
+  const [runPoint, setRunPoint] = useState<RunPoint | null>(null);
   const [sheet, setSheet] = useState<Sheet | null>(null);
   const onScreen = useOnScreen();
   /** A Room beacon tapped on the map: the Battle sheet opens on that room. */
@@ -159,7 +167,7 @@ export default function GameRoot({ parked }: { parked: boolean }) {
   // What the Warden has to show next. Nothing while a card, a sheet or a
   // challenge is up: one voice at a time (RoamHomeView.coachStep).
   const coachStep: CoachStep | null =
-    coachDone && !parked && screen.kind === "home" && !selected && sheet === null && fix
+    coachDone && !parked && screen.kind === "home" && !selected && sheet === null && fix && !runLive && !runPoint
       ? coachStepFor({
           me,
           playerName: gameStore.playerName(),
@@ -241,7 +249,19 @@ export default function GameRoot({ parked }: { parked: boolean }) {
   }, [parked]);
 
   // Now and then, the best next move: shown, and put away after 12 s.
-  const quietNudge = !parked && screen.kind === "home" && !selected && !coachStep && me?.tutorial_done === true;
+  const quietNudge = !parked && screen.kind === "home" && !selected && !coachStep && !runLive && me?.tutorial_done === true;
+
+  // The run as the server has it: on the way in, and back from the background
+  // (it may have ended, or a lost one be found again).
+  const sessionKey = state.session?.playerKey ?? null;
+  useEffect(() => {
+    if (!sessionKey || parked) return;
+    void runModel.resume();
+    const sub = AppState.addEventListener("change", (s) => {
+      if (s === "active") void runModel.resume();
+    });
+    return () => sub.remove();
+  }, [sessionKey, parked]);
   useEffect(() => {
     if (!quietNudge) return;
     let hide: ReturnType<typeof setTimeout> | null = null;
@@ -276,10 +296,12 @@ export default function GameRoot({ parked }: { parked: boolean }) {
     // itself (it asks before leaving a fight); a sheet's own card or editor
     // takes it before this (the last handler added runs first).
     if (parked || !onScreen || screen.kind === "room") return;
-    const open = screen.kind !== "home" || sheet !== null || selected !== null;
+    const open = screen.kind !== "home" || sheet !== null || selected !== null || runPoint !== null || runState.finished !== null;
     if (!open) return;
     const sub = BackHandler.addEventListener("hardwareBackPress", () => {
-      if (sheet) setSheet(null);
+      if (runPoint) setRunPoint(null);
+      else if (runState.finished) runModel.close();
+      else if (sheet) setSheet(null);
       // A challenge in progress asks before it is left.
       else if (screen.kind === "encounter" && encounterGuard.current) return encounterGuard.current();
       else if (screen.kind === "siege" && siegeGuard.current) return siegeGuard.current();
@@ -288,7 +310,7 @@ export default function GameRoot({ parked }: { parked: boolean }) {
       return true;
     });
     return () => sub.remove();
-  }, [parked, onScreen, screen.kind, sheet, selectedId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [parked, onScreen, screen.kind, sheet, selectedId, runPoint, runState.finished]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const home = () => {
     setSelectedId(null);
@@ -361,7 +383,8 @@ export default function GameRoot({ parked }: { parked: boolean }) {
   moreTiles.push({ id: "profile", icon: "person-circle", color: GP.skyDeep, title: "Profile", onPress: () => setSheet("profile") });
   const focusAway = focus && !focusId && focus.lat !== undefined && focus.lng !== undefined ? focus : null;
   const focusMissing = focus && focusId && !focusPoint ? focus : null;
-  const showsRail = fix !== null && !selected && screen.kind === "home";
+  // The pocket board is full width; the rail would sit on its tiles.
+  const showsRail = fix !== null && !selected && screen.kind === "home" && !pocketRun;
   const showBubble = said !== null && !coachStep && screen.kind === "home";
 
   return (
@@ -370,14 +393,21 @@ export default function GameRoot({ parked }: { parked: boolean }) {
         ground={state.ground}
         centre={state.centre}
         fix={fix}
-        points={points}
+        points={runLive ? runQuestPoints(runState.run) : points}
         reachM={gameStore.reach()}
         selectedId={selected?.id ?? null}
         inReach={gameStore.inReach}
         cooling={gameStore.isCooling}
         factionColor={color}
-        onSelect={(p) => setSelectedId(p.id)}
-        rooms={battleOpen && screen.kind === "home" ? rooms.nearby : []}
+        onSelect={(p) => {
+          const rp = runPointOf(runState.run, p.id);
+          if (rp) {
+            if (!rp.done) setRunPoint(rp);
+            return;
+          }
+          if (!runLive) setSelectedId(p.id);
+        }}
+        rooms={battleOpen && screen.kind === "home" && !runLive ? rooms.nearby : []}
         onRoom={(r) => openBattle(r.game_id)}
       />
 
@@ -402,6 +432,7 @@ export default function GameRoot({ parked }: { parked: boolean }) {
 
       {/* Under the top bar, left of the rail: one column, as iOS's worldBanners. */}
       <View style={[styles.banners, { top: insets.top + 72, right: showsRail ? 84 : 14 }]} pointerEvents="box-none">
+        {runLive ? <RunHUD /> : null}
         {permission === "denied" ? (
           <View style={styles.notice}>
             <Text style={styles.noticeText}>{"Location is off, so Quest Points can't find you. Turn it on in Settings to play."}</Text>
@@ -435,12 +466,21 @@ export default function GameRoot({ parked }: { parked: boolean }) {
       {!selected && screen.kind === "home" ? (
         <View style={[styles.bottom, { bottom: insets.bottom + 10 }]} pointerEvents="box-none">
           {showBubble ? <WardenBubble text={said.text} color={color} onClose={() => wardenVoice.quiet()} /> : null}
-          {me?.tutorial_done && fix ? (
-            <View style={{ paddingRight: 62 }}>
-              <NearbyRadar points={nearby} fix={fix} inReach={gameStore.inReach} />
-            </View>
+          {runLive ? (
+            <RunTray onPick={setRunPoint} onEnd={() => void runModel.finish()} distanceOf={runDistance} inReach={runInReach} />
+          ) : me?.tutorial_done ? (
+            <>
+              <View style={{ paddingLeft: 14, paddingRight: 76 }}>
+                <QuestRunButton onPress={() => setSheet("runStart")} />
+              </View>
+              {fix ? (
+                <View style={{ paddingRight: 62 }}>
+                  <NearbyRadar points={nearby} fix={fix} inReach={gameStore.inReach} />
+                </View>
+              ) : null}
+            </>
           ) : null}
-          <NearbyTray
+          {runLive ? null : <NearbyTray
             points={nearby}
             suggested={suggested}
             distanceOf={(p) => gameStore.distanceTo(p)}
@@ -449,7 +489,7 @@ export default function GameRoot({ parked }: { parked: boolean }) {
             cooling={gameStore.isCooling}
             newCard={(p) => codexOpen && p.extra?.codex !== "owned"}
             onSelect={(p) => setSelectedId(p.id)}
-          />
+          />}
         </View>
       ) : null}
 
@@ -535,6 +575,17 @@ export default function GameRoot({ parked }: { parked: boolean }) {
       {screen.kind === "reward" ? (
         <Animated.View entering={FadeIn.duration(220)} exiting={FadeOut.duration(160)} style={StyleSheet.absoluteFill}>
           <Reward reward={screen.reward} onDone={home} />
+        </Animated.View>
+      ) : null}
+
+      {sheet === "runStart" ? <RunStartSheet onClose={() => setSheet(null)} /> : null}
+      {runPoint ? (
+        <Animated.View entering={FadeIn.duration(220)} exiting={FadeOut.duration(160)} style={StyleSheet.absoluteFill}>
+          <RunChallenge key={runPoint.idx} point={runPoint} onDone={() => setRunPoint(null)} />
+        </Animated.View>
+      ) : runState.finished ? (
+        <Animated.View entering={FadeIn.duration(220)} style={StyleSheet.absoluteFill}>
+          <RunResults result={runState.finished} board={runState.board} onClose={() => runModel.close()} />
         </Animated.View>
       ) : null}
 
