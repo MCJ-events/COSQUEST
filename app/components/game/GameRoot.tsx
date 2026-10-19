@@ -94,6 +94,9 @@ export default function GameRoot({ parked }: { parked: boolean }) {
   /** A Room beacon tapped on the map: the Battle sheet opens on that room. */
   const [roomFocus, setRoomFocus] = useState<string | null>(null);
   const [, recentre] = useState(0);
+  const [onboarding, setOnboarding] = useState(false);
+  const needsOnboarding = !!state.session && gameStore.needsOnboarding;
+  if (needsOnboarding && !onboarding) setOnboarding(true);
   const [legendOf, setLegendOf] = useState<{ id: string; text: string } | null>(null);
   const greeted = useRef(new Set<string>());
   // What the coach has said (cq.coach.done, cq.unlocks.introduced), read once.
@@ -311,8 +314,11 @@ export default function GameRoot({ parked }: { parked: boolean }) {
   if (!state.session || (!fontsReady && !fontsError)) {
     return <View style={styles.root} />;
   }
-  if (gameStore.needsOnboarding) {
-    return <Onboarding suggestedName={chatName} />;
+  // Opened by the server's answer and closed only by onboarding itself:
+  // choosing a house clears needsOnboarding halfway through, and following it
+  // would close the welcome before the gift and the location question.
+  if (gameStore.needsOnboarding || onboarding) {
+    return <Onboarding suggestedName={chatName} onDone={() => setOnboarding(false)} />;
   }
 
   const dailiesLeft = me?.dailies.filter((d) => !d.done).length ?? 0;
