@@ -32,7 +32,7 @@ import { GameBannerHost, showBanner } from "./Banner";
 import CoachOverlay from "./Coach";
 import CoinsSheet from "./CoinsSheet";
 import DuelScreen from "./DuelScreen";
-import Encounter from "./Encounter";
+import Encounter, { encounterGuard } from "./Encounter";
 import FriendsButton from "./FriendsButton";
 import { GAME_FONTS } from "./fonts";
 import FriendsSheet from "./FriendsSheet";
@@ -53,7 +53,7 @@ import RoomSheet from "./RoomSheet";
 import RelicsButton from "./RelicsButton";
 import RelicsSheet from "./RelicsSheet";
 import Reward, { type RewardSummary } from "./Reward";
-import SiegeScreen from "./SiegeScreen";
+import SiegeScreen, { siegeGuard } from "./SiegeScreen";
 import { GF, GP, realmColor } from "./theme";
 import { useHeading } from "./useHeading";
 import { useOnScreen } from "./useOnScreen";
@@ -273,6 +273,9 @@ export default function GameRoot({ parked }: { parked: boolean }) {
     if (!open) return;
     const sub = BackHandler.addEventListener("hardwareBackPress", () => {
       if (sheet) setSheet(null);
+      // A challenge in progress asks before it is left.
+      else if (screen.kind === "encounter" && encounterGuard.current) return encounterGuard.current();
+      else if (screen.kind === "siege" && siegeGuard.current) return siegeGuard.current();
       else if (screen.kind !== "home") setScreen({ kind: "home" });
       else closeSheet();
       return true;

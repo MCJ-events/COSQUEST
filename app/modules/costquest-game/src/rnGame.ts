@@ -8,6 +8,7 @@
 // the gesture-exclusion, NFC and speech helpers.
 import { parsePlayUrl } from "@/features/world/deepLink";
 import type { GameTarget } from "@/features/world/deepLink";
+import { parseCoinsReturn } from "@/features/game/coins";
 import { gameStore, startLocation, stopLocation } from "@/features/game/runtime";
 
 import type { CostQuestGameModule, GameEvents } from "./index";
@@ -99,6 +100,13 @@ export function createRnGame(native: NativeHelpers): CostQuestGameModule {
     async setUnread() {},
     async setCallPill() {},
     async handleURL(url: string) {
+      // cosquest://coins?order=...: back from Stripe's checkout (CoinsModel.handle).
+      const coins = parseCoinsReturn(url);
+      if (coins) {
+        const { handleCoinsReturn } = await import("@/components/game/coinsModel");
+        await handleCoinsReturn({ order: coins.order ?? undefined, result: coins.result ?? undefined });
+        return;
+      }
       const link = parsePlayUrl(url);
       if (link?.target) await open(link.target);
     },
