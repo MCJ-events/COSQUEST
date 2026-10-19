@@ -484,3 +484,17 @@ export function runPlaysAsDuel(kind: string | null | undefined, me: RoamMe | nul
 export function runDuelTarget(r: Pick<RunDuelRequest, "runId" | "idx">): string {
   return `${r.runId}:${r.idx}`;
 }
+
+// ---------------------------------------------------------------------
+// Your Guardian's stance (GuardianStancePicker, DuelLook.stances)
+// ---------------------------------------------------------------------
+
+export const STANCES = [
+  { id: "aggressive", name: "Aggressive", line: "Presses forward and swings first." },
+  { id: "counter", name: "Counter", line: "Waits for your mistake, then punishes it." },
+  { id: "turtle", name: "Turtle", line: "Blocks, dodges and makes you work for it." },
+] as const;
+
+export function stanceLead(isDefault: boolean | null | undefined, picked: boolean): string {
+  return `How your hero fights when a rival sieges a point you hold.${isDefault === true && !picked ? " Your faction's default for now." : ""}`;
+}

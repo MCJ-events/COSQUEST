@@ -320,6 +320,12 @@ export class GameClient {
     return parseDuelStart(text);
   }
 
+  /** How this player's hero fights when a rival sieges a point they hold (PUT v1/duel/stance). */
+  async setStance(stance: string): Promise<string> {
+    const r = await this.request<{ stance: string }>("PUT", "v1/duel/stance", { body: { device_key: this.deviceKey(), stance }, signed: true });
+    return r.stance;
+  }
+
   /** Idempotent on duel_id: a lost reply is asked again and answered with the first verdict. */
   async duelFinish(duelId: string, finished: DuelFinished): Promise<DuelOutcome> {
     const body = {

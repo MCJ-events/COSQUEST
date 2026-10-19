@@ -10,7 +10,7 @@ import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Speech from "expo-speech";
 import { useEffect, useRef, useState } from "react";
-import { Keyboard, Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
+import { Keyboard, Platform, Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
 import Animated, {
   Easing,
   FadeInDown,
@@ -74,7 +74,9 @@ export default function Onboarding({ suggestedName, onDone }: { suggestedName: s
   const [revealed, setRevealed] = useState(false);
   const [awake, setAwake] = useState(first.awake);
   const [relic, setRelic] = useState<RelicFull | null>(null);
-  const [typing, setTyping] = useState(false);
+  /** The keyboard's height while it is up (0 when down): the Warden steps back to make room. */
+  const [keyboard, setKeyboard] = useState(0);
+  const typing = keyboard > 0;
   const claiming = useRef(false);
   const waitingForGift = useRef(false);
   const relicRef = useRef<RelicFull | null>(null);
@@ -130,8 +132,8 @@ export default function Onboarding({ suggestedName, onDone }: { suggestedName: s
   useEffect(() => {
     say(line);
     const t = first.awake ? null : setTimeout(() => setAwake(true), 900);
-    const show = Keyboard.addListener("keyboardDidShow", () => setTyping(true));
-    const hide = Keyboard.addListener("keyboardDidHide", () => setTyping(false));
+    const show = Keyboard.addListener(Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow", (e) => setKeyboard(e.endCoordinates.height));
+    const hide = Keyboard.addListener(Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide", () => setKeyboard(0));
     return () => {
       if (t) clearTimeout(t);
       show.remove();
@@ -258,7 +260,7 @@ export default function Onboarding({ suggestedName, onDone }: { suggestedName: s
       <Dawn tint={tint} awake={awake} />
       <Pressable style={StyleSheet.absoluteFill} onPress={tapped} accessibilityLabel="Continue" accessibilityRole="button" />
 
-      <View style={[styles.column, { paddingTop: insets.top, paddingBottom: insets.bottom + (small ? 12 : 26) }]} pointerEvents="box-none">
+      <View style={[styles.column, { paddingTop: insets.top, paddingBottom: small ? keyboard + 12 : insets.bottom + 26 }]} pointerEvents="box-none">
         <View style={styles.topBar}>
           <Pressable
             onPress={() => {

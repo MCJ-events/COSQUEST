@@ -5,7 +5,6 @@
 // Left out on purpose, with the reason:
 //  - "Appearance" and "Time in town": they light the iOS 3D map; the React
 //    Native map has no night or dark theme to choose.
-//  - The Guardian stance picker: the client has no call for it yet.
 import { Ionicons } from "@expo/vector-icons";
 import Constants from "expo-constants";
 import * as Application from "expo-application";
@@ -44,6 +43,7 @@ import { Chip, GameButton, GameCoin, GameHeading, GameIconButton, GamePanel, MAX
 import { notify, setHapticsOn, useHapticsOn } from "./prefs";
 import { RelicArt } from "./RelicArt";
 import { SheetHost } from "./Sheet";
+import StancePicker from "./StancePicker";
 import { GameBackdrop } from "./GameBackdrop";
 import { SheetFrame } from "./SheetFrame";
 import { playSound } from "./sound";
@@ -219,6 +219,12 @@ function HeroTab({ tint, handle, onEdit }: { tint: string; handle: string; onEdi
             <SlotIcon name="happy" />
           </HeroSlot>
         </View>
+        {me?.features?.duel ? (
+          <>
+            <View style={styles.rule} />
+            <StancePicker duel={me.features.duel} />
+          </>
+        ) : null}
       </View>
     </View>
   );

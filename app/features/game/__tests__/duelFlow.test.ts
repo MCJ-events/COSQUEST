@@ -327,3 +327,15 @@ describe("guardian trials", () => {
     assert.equal(hasTrials(null), false);
   });
 });
+
+import { stanceLead, stanceName, STANCES } from "../duelFlow.ts";
+
+describe("guardian stance", () => {
+  it("names the stances and says when the faction's default is in use", () => {
+    assert.deepEqual(STANCES.map((s) => s.id), ["aggressive", "counter", "turtle"]);
+    assert.equal(stanceName("counter"), "Counter");
+    assert.equal(stanceName(null), "Default");
+    assert.ok(stanceLead(true, false).endsWith("Your faction's default for now."));
+    assert.ok(!stanceLead(true, true).includes("default"));
+  });
+});
