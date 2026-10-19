@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const Call = require('../models/Call');
+const VoiceRoom = require('../models/VoiceRoom');
 const User = require('../models/User');
 const userModel = require('../models/userModel');
 const { createCallToken, getLivekitUrl } = require('../utils/livekit');
@@ -171,14 +172,35 @@ function settle(call, now = new Date()) {
 // LOADING, SAVING AND SENDING
 // ==========================================================================
 
+// Who is away in this call or voice chat right now: everyone in one of its
+// answered private calls. Worked out from the private calls each time (not
+// stored), so it can never be left behind when a private call ends.
+async function awayIn(mainId) {
+  const privateCalls = await Call.find(
+    { active: true, isPrivate: true, privateOf: mainId, status: 'accepted' },
+    'members.user members.status'
+  ).lean();
+  const away = new Set();
+  privateCalls.forEach((call) =>
+    call.members.forEach((member) => member.status === 'joined' && away.add(idOf(member.user)))
+  );
+  return away;
+}
+
+const awayByCall = new WeakMap(); // call document -> Set of userIds away in a private call
+
 // Plain objects (lean), not full documents: a 1,000-person call populates
 // 1,000 users, and only their names and avatars are read.
 async function populateCall(call) {
   if (!call) return call;
-  await call.populate([
-    { path: 'caller', select: USER_FIELDS, options: { lean: true } },
-    { path: 'members.user', select: USER_FIELDS, options: { lean: true } },
+  const [away] = await Promise.all([
+    call.isPrivate || !isActive(call) ? new Set() : awayIn(call._id),
+    call.populate([
+      { path: 'caller', select: USER_FIELDS, options: { lean: true } },
+      { path: 'members.user', select: USER_FIELDS, options: { lean: true } },
+    ]),
   ]);
+  awayByCall.set(call, away);
   return call;
 }
 
@@ -212,6 +234,7 @@ function sendCall(res, status, call, extra = {}) {
 }
 
 function buildCallJson(call) {
+  const away = awayByCall.get(call) || new Set();
   return {
     id: idOf(call),
     conversationId: idOf(call.conversation),
@@ -219,10 +242,15 @@ function buildCallJson(call) {
     type: call.type,
     status: call.status,
     isGroup: Boolean(call.isGroup),
+    // A private call: the call ('call') or voice chat ('voice') it was started from.
+    privateOf: call.privateOf ? idOf(call.privateOf) : null,
+    privateOfType: call.privateOfType || null,
     caller: userPreview(call.caller),
     members: call.members.map((member) => ({
       user: userPreview(member.user),
       status: member.status,
+      // In one of this call's private calls right now.
+      away: away.has(idOf(member.user)),
       invitedBy: member.invitedBy ? idOf(member.invitedBy) : null,
       invitedAt: member.invitedAt || null,
       joinedAt: member.joinedAt || null,
@@ -276,6 +304,9 @@ function sendCallUpdate(callId, call) {
   }
 
   emitToUsers(participantIds(call), 'call:updated', { call: toCallJson(call) });
+  // Private calls stay out of Sparks (no transcript or outline) and leave no
+  // call entry in the chat.
+  if (call.isPrivate) return;
   // Sparks: call transcription/outline bookkeeping (no-op on the legacy engine).
   require('../sparks/calls').sync(call);
 
@@ -304,6 +335,35 @@ function newer(a, b) {
 // entry in the chat once the call has finished.
 function broadcastCallUpdate(call) {
   callUpdates.push(idOf(call), call, { immediate: !isActive(call), merge: newer });
+  // Once a private call has been answered, any change to it can change who
+  // is away in the call or voice chat it came from.
+  if (call.isPrivate && call.answeredAt) {
+    announceAway(call).catch((error) => console.error('[calls] away update failed:', error.message));
+  }
+}
+
+// Sends the main call (or voice chat) of this private call again, with who
+// is away now.
+async function announceAway(privateCall) {
+  const mainId = privateCall.privateOf;
+  if (privateCall.privateOfType === 'voice') {
+    const people = privateCall.members.map((member) => member.user?._id || member.user);
+    await require('./voiceRoomController').privateCallChanged(mainId, people);
+    return;
+  }
+
+  // Marks the main call as changed now, so this copy goes out after (and
+  // replaces) any copy loaded before the private call changed.
+  const touched = await Call.updateOne(
+    { _id: mainId, status: { $in: ['ringing', 'accepted'] } },
+    { $set: { updatedAt: new Date() } }
+  );
+  if (!touched.matchedCount) return; // the main call has ended
+  const main = await Call.findById(mainId);
+  if (!main || !isActive(main)) return;
+  ensureMembers(main);
+  await populateCall(main);
+  broadcastCallUpdate(main);
 }
 
 // Applies the 45-second rule to a call right now (and sends any change).
@@ -344,7 +404,8 @@ function scheduleRingTimeout(callId) {
   timer.unref?.();
 }
 
-// Is this person ringing in, or part of, another active call?
+// Is this person ringing in, or part of, another active call? (A private
+// call started from `exceptCallId` doesn't count either.)
 async function isBusy(userId, exceptCallId = null) {
   const filter = {
     active: true,
@@ -353,7 +414,10 @@ async function isBusy(userId, exceptCallId = null) {
       { participants: userId, 'members.0': { $exists: false } },
     ],
   };
-  if (exceptCallId) filter._id = { $ne: exceptCallId };
+  if (exceptCallId) {
+    filter._id = { $ne: exceptCallId };
+    filter.privateOf = { $ne: exceptCallId };
+  }
   return Boolean(await Call.exists(filter));
 }
 
@@ -376,11 +440,15 @@ async function blockedEitherWayAmong(userId, otherIds) {
 
 // Of these people, who is ringing in or part of another active call? Same
 // rule as isBusy(), for everyone at once.
-async function busyAmong(userIds, exceptCallId) {
+async function busyAmong(userIds, exceptCallId = null) {
   if (!userIds.length) return new Set();
   const wanted = new Set(userIds.map(String));
+  const notThisCall = exceptCallId ? { privateOf: { $ne: exceptCallId } } : {};
   const [current, legacy] = await Promise.all([
-    Call.find({ active: true, _id: { $ne: exceptCallId }, activeMembers: { $in: userIds } }, 'activeMembers').lean(),
+    Call.find(
+      { active: true, _id: { $ne: exceptCallId }, ...notThisCall, activeMembers: { $in: userIds } },
+      'activeMembers'
+    ).lean(),
     Call.find(
       { active: true, _id: { $ne: exceptCallId }, participants: { $in: userIds }, 'members.0': { $exists: false } },
       'participants'
@@ -450,7 +518,7 @@ async function startCall(req, res) {
   const existing = await Call.findOne({
     active: true,
     $or: [
-      { conversation: conversation._id },
+      { conversation: conversation._id, isPrivate: false },
       { activeMembers: { $in: memberIds } },
       { participants: { $in: memberIds }, 'members.0': { $exists: false } },
     ],
@@ -777,6 +845,7 @@ async function inviteUsers(callId, inviter, { userIds = [], usernames = [] } = {
     if (expireRinging(current, now)) settle(current, now);
 
     if (!isActive(current)) return { error: { status: 410, message: 'This call has ended.' } };
+    if (current.isPrivate) return { error: { status: 400, message: 'Private calls are one-to-one.' } };
 
     const mine = memberOf(current, inviterId);
     if (!mine || mine.status !== 'joined') {
@@ -880,7 +949,7 @@ async function startCallFor(caller, conversation, recipientId, type = 'audio') {
   const existing = await Call.exists({
     active: true,
     $or: [
-      { conversation: conversation._id },
+      { conversation: conversation._id, isPrivate: false },
       { activeMembers: { $in: memberIds } },
       { participants: { $in: memberIds }, 'members.0': { $exists: false } },
     ],
@@ -914,8 +983,154 @@ async function startCallFor(caller, conversation, recipientId, type = 'audio') {
   return { call };
 }
 
+// ==========================================================================
+// PRIVATE CALLS ("private call on top")
+// ==========================================================================
+
+// Checks the person to call privately: a valid id, not yourself.
+function privateTargetId(req) {
+  const userId = req.body?.userId;
+  if (typeof userId !== 'string' || !mongoose.isValidObjectId(userId)) {
+    return { error: { status: 400, message: 'Choose who to call privately (userId).' } };
+  }
+  if (userId === String(req.userId)) {
+    return { error: { status: 400, message: 'You cannot call yourself.' } };
+  }
+  return { userId };
+}
+
+// Starts a private call between `caller` and `targetId`, who are both in the
+// call or voice chat `main` ({ id, type: 'call'|'voice', conversation,
+// conversationType }). Rings only the target. Being in `main` doesn't count
+// as busy; any other call, or another private call, does.
+// Returns { call, extras } or { error: { status, message } }.
+async function startPrivate(caller, targetId, main) {
+  const callerId = String(caller._id);
+  const target = await User.findById(targetId).select('privacy.allowDirectMessages');
+  if (!target || (await isBlockedEitherWay(callerId, targetId))) {
+    return { error: { status: 403, message: 'You cannot call this person privately.' } };
+  }
+  if (target.privacy?.allowDirectMessages === false) {
+    return { error: { status: 403, message: 'This user is not accepting direct messages or calls.' } };
+  }
+  getLivekitUrl();
+
+  const memberIds = [callerId, String(targetId)];
+  await refreshCallsFor(memberIds); // a private call that rang out doesn't block a new one
+  if (await Call.exists({ active: true, isPrivate: true, activeMembers: { $in: memberIds } })) {
+    return { error: { status: 409, message: 'One of you is already in a private call.' } };
+  }
+  const busy = await busyAmong(memberIds, main.type === 'call' ? main.id : null);
+  if (busy.size) return { error: { status: 409, message: 'One of you is on another call.' } };
+
+  const now = new Date();
+  const call = new Call({
+    conversation: main.conversation,
+    conversationType: main.conversationType,
+    type: 'audio', // either person can turn their camera on once connected
+    caller: callerId,
+    participants: memberIds,
+    members: [
+      { user: callerId, status: 'joined', invitedAt: now, joinedAt: now },
+      { user: targetId, status: 'ringing', invitedBy: callerId, invitedAt: now },
+    ],
+    status: 'ringing',
+    isPrivate: true,
+    privateOf: main.id,
+    privateOfType: main.type,
+  });
+  call.roomName = `call_${call._id}`;
+
+  try {
+    await call.save();
+  } catch (saveError) {
+    if (saveError?.code === 11000) {
+      return { error: { status: 409, message: 'One of you is already in a private call.' } };
+    }
+    throw saveError;
+  }
+
+  let extras;
+  try {
+    await populateCall(call);
+    extras = await joinExtras(call, caller);
+  } catch (tokenError) {
+    await Call.updateOne(
+      { _id: call._id, status: 'ringing' },
+      { $set: { status: 'cancelled', active: false, activeMembers: [], endedAt: new Date() } }
+    );
+    throw tokenError;
+  }
+
+  emitToUsers([String(targetId)], 'call:incoming', {
+    call: toCallJson(call),
+    invitedBy: userPreview(call.caller),
+    privateOf: String(main.id),
+    privateOfType: main.type,
+  });
+  push.notifyIncomingCall([String(targetId)], { call: toCallJson(call), caller: userPreview(call.caller) });
+  scheduleRingTimeout(call._id);
+  return { call, extras };
+}
+
+// POST /api/calls/:callId/private - { userId }: a private call with someone
+// else in this call. Answer, decline and hang up with the usual
+// /api/calls/:id/accept, /decline and /end.
+async function startPrivateCall(req, res) {
+  const found = await findCallForUser(req.params.callId, req.userId);
+  if (found.error) return res.status(found.status).json({ error: found.error });
+  const { userId: targetId, error: targetError } = privateTargetId(req);
+  if (targetError) return res.status(targetError.status).json({ error: targetError.message });
+
+  const main = await refreshCall(found.callId);
+  if (!main || !isActive(main)) return res.status(410).json({ error: 'This call has ended.' });
+  if (main.isPrivate) return res.status(400).json({ error: 'This is already a private call.' });
+  if (memberOf(main, req.userId)?.status !== 'joined') {
+    return res.status(403).json({ error: 'Join the call first.' });
+  }
+  if (memberOf(main, targetId)?.status !== 'joined') {
+    return res.status(409).json({ error: 'That person is not in this call right now.' });
+  }
+
+  const started = await startPrivate(req.user, targetId, {
+    id: main._id,
+    type: 'call',
+    conversation: main.conversation?._id || main.conversation,
+    conversationType: main.conversationType || 'dm',
+  });
+  if (started.error) return res.status(started.error.status).json({ error: started.error.message });
+  return sendCall(res, 201, started.call, started.extras);
+}
+
+// POST /api/voice/:roomId/private - { userId }: the same, from a voice chat.
+async function startPrivateVoiceCall(req, res) {
+  const roomId = req.params.roomId;
+  if (!mongoose.isValidObjectId(roomId)) return res.status(404).json({ error: 'Voice chat not found.' });
+  const { userId: targetId, error: targetError } = privateTargetId(req);
+  if (targetError) return res.status(targetError.status).json({ error: targetError.message });
+
+  const room = await VoiceRoom.findById(roomId, 'conversation conversationType active members.user').lean();
+  if (!room) return res.status(404).json({ error: 'Voice chat not found.' });
+  if (!room.active) return res.status(410).json({ error: 'This voice chat has ended.' });
+  const inRoom = (userId) => room.members.some((member) => idOf(member.user) === String(userId));
+  if (!inRoom(req.userId)) return res.status(403).json({ error: 'You are not in this voice chat.' });
+  if (!inRoom(targetId)) return res.status(409).json({ error: 'That person is not in this voice chat right now.' });
+
+  const started = await startPrivate(req.user, targetId, {
+    id: room._id,
+    type: 'voice',
+    conversation: room.conversation,
+    conversationType: room.conversationType,
+  });
+  if (started.error) return res.status(started.error.status).json({ error: started.error.message });
+  return sendCall(res, 201, started.call, started.extras);
+}
+
 module.exports = {
   startCall,
+  startPrivateCall,
+  startPrivateVoiceCall,
+  awayIn,
   getIncomingCall,
   getCall,
   acceptCall,

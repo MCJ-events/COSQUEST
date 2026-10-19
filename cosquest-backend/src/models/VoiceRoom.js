@@ -1,13 +1,14 @@
 const mongoose = require('mongoose');
 const limits = require('../config/callLimits');
 
-// A live voice chat in the Community room or a faction room - like WhatsApp's
+// A live voice chat in the Community room, a faction room or a group - like WhatsApp's
 // group voice chat. Nobody's phone rings: members see it's live and can join
 // and leave whenever they like. It closes when the last person leaves.
 //
 // Members' apps check in every 30 seconds (POST /api/voice/:roomId/ping).
 // Anyone who hasn't checked in for 90 seconds (app closed, lost signal) is
 // removed automatically, so a voice chat never stays "live" with nobody in it.
+// People away in a private call (src/models/Call.js) are never removed this way.
 
 // How many people can be in one voice chat: VOICE_ROOM_MAX_MEMBERS (default
 // 1000, see src/config/callLimits.js).
@@ -25,7 +26,7 @@ const voiceMemberSchema = new mongoose.Schema(
 const voiceRoomSchema = new mongoose.Schema(
   {
     conversation: { type: mongoose.Schema.Types.ObjectId, ref: 'Conversation', required: true },
-    conversationType: { type: String, enum: ['community', 'faction'], required: true },
+    conversationType: { type: String, enum: ['community', 'faction', 'group'], required: true },
     factionKey: { type: String, default: null },
     startedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     members: { type: [voiceMemberSchema], default: [] },

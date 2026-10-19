@@ -40,9 +40,12 @@ const MAX_REACH = 5000;
 
 const idOf = (v) => String(v?._id || v);
 
-/** The call `userId` is in right now: `preferredCallId` if they are in it, else their newest active call. */
+/**
+ * The call `userId` is in right now: `preferredCallId` if they are in it, else their newest active call.
+ * Never a private call (one-to-one; nobody is rung into it).
+ */
 async function currentCallOf(userId, preferredCallId) {
-  const joined = { active: true, members: { $elemMatch: { user: userId, status: 'joined' } } };
+  const joined = { active: true, isPrivate: { $ne: true }, members: { $elemMatch: { user: userId, status: 'joined' } } };
   if (mongoose.isValidObjectId(preferredCallId)) {
     const preferred = await Call.findOne({ _id: preferredCallId, ...joined }, '_id').lean();
     if (preferred) return String(preferred._id);
