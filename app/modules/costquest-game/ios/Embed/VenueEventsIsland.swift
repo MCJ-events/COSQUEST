@@ -41,6 +41,9 @@ enum VenueEventsIsland {
 
   static func open(_ options: VenueEventsOptions) throws {
     guard presented == nil else { return }
+    // The native views' type (GameKit's Lilita One and Fredoka); in the RN
+    // game nothing else has registered them in this process.
+    GameFonts.register()
     guard let top = topViewController() else {
       throw helperError("ERR_NO_WINDOW", "There is no window to show the events on.")
     }
