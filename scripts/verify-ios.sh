@@ -10,12 +10,21 @@
 #                                         the no-Unity one (NO_UNITY)
 #   scripts/verify-ios.sh --sim-only      only the simulator build
 #   scripts/verify-ios.sh --run           also install and launch a Release
-#                                         simulator build (JS bundled in)
-#   scripts/verify-ios.sh --rn-game       the bundled JS uses the shared React
-#                                         Native game (gameUi 'rn', the one
-#                                         Android runs) against the STAGING
-#                                         game server, instead of the SwiftUI
-#                                         game. Use with --run to try it.
+#                                         simulator build (JS bundled in), open
+#                                         the game page and take screenshots
+#   scripts/verify-ios.sh --native-game   the bundled JS shows the SwiftUI game
+#                                         (EXPO_PUBLIC_GAME_UI=native), the
+#                                         fallback. Default: the shared React
+#                                         Native game, as on Android
+#                                         (docs/one-codebase.md)
+#   scripts/verify-ios.sh --staging       the bundled JS talks to the STAGING
+#                                         game server (default: production,
+#                                         read-only use only)
+#   (--rn-game is still accepted: it is the default now, and implies --staging
+#   as it always did.)
+#
+# What the Mac must look at by hand after this passes is the checklist in
+# docs/one-codebase.md, "What the Mac must verify".
 #
 # Needs: Xcode 26+ (iOS 18 SDK or later) with its command line tools, Node 22,
 # CocoaPods, and for Unity the GitHub CLI signed in to an account that can
@@ -33,14 +42,17 @@ mkdir -p "$LOGS"
 NO_UNITY=0
 SIM_ONLY=0
 RUN=0
-RN_GAME=0
+NATIVE_GAME=0
+STAGING=0
 for arg in "$@"; do
   case "$arg" in
     --no-unity) NO_UNITY=1 ;;
     --sim-only) SIM_ONLY=1 ;;
     --run) RUN=1 ;;
-    --rn-game) RN_GAME=1 ;;
-    -h|--help) sed -n '2,25p' "$0"; exit 0 ;;
+    --native-game) NATIVE_GAME=1 ;;
+    --staging) STAGING=1 ;;
+    --rn-game) STAGING=1 ;;
+    -h|--help) sed -n '2,32p' "$0"; exit 0 ;;
     *) echo "unknown option: $arg" >&2; exit 2 ;;
   esac
 done
@@ -60,9 +72,14 @@ need pod "gem install cocoapods (or brew install cocoapods)"
 # preview profile; nothing secret). An app/.env with your own wins.
 export EXPO_PUBLIC_API_URL="${EXPO_PUBLIC_API_URL:-https://cosquest-1.onrender.com}"
 export EXPO_PUBLIC_WEB_URL="${EXPO_PUBLIC_WEB_URL:-https://cosquest.vercel.app}"
-if [ "$RN_GAME" = 1 ]; then
-  # The shared React Native game on iOS (docs/android-port.md §4), on staging.
+if [ "$NATIVE_GAME" = 1 ]; then
+  # The SwiftUI game, kept compiling as the fallback (features/game/config.ts).
+  export EXPO_PUBLIC_GAME_UI=native
+else
+  # The shared React Native game, the iOS default since docs/one-codebase.md.
   export EXPO_PUBLIC_GAME_UI=rn
+fi
+if [ "$STAGING" = 1 ]; then
   export EXPO_PUBLIC_GAME_SERVER="${EXPO_PUBLIC_GAME_SERVER:-staging}"
   export EXPO_PUBLIC_WORLD_TIMING=1
 fi
@@ -90,10 +107,23 @@ npm test 2>&1 | tee "$LOGS/npm-test.log" | tail -8
 npm run typecheck 2>&1 | tee "$LOGS/typecheck.log" | tail -5
 ran+=("npm test" "typecheck")
 
+step "config plugin tests"
+node --test modules/costquest-game/plugin/__tests__/*.test.js 2>&1 | tee "$LOGS/plugin-test.log" | grep -E "^# (pass|fail)"
+grep -q "^# fail 0" "$LOGS/plugin-test.log" || { echo "plugin tests failed: $LOGS/plugin-test.log" >&2; exit 1; }
+ran+=("plugin tests")
+
 # 3. Native project from app.json + the config plugins.
 step "expo prebuild --clean (ios)"
 CI=1 npx expo prebuild --platform ios --clean --no-install 2>&1 | tee "$LOGS/prebuild.log" | tail -5
 ran+=("prebuild")
+
+# The flag the RN game's NFC helper reads (GameHelpers.swift NfcHelper.entitled).
+plist="$(ls ios/*/Info.plist | grep -v Pods | head -1)"
+if /usr/libexec/PlistBuddy -c 'Print :CQNfcEnabled' "$plist" >/dev/null 2>&1; then
+  echo "    Info.plist CQNfcEnabled = $(/usr/libexec/PlistBuddy -c 'Print :CQNfcEnabled' "$plist")"
+else
+  echo "    WARNING: Info.plist has no CQNfcEnabled (config plugin not applied?)" >&2
+fi
 
 step "pod install"
 (cd ios && pod install 2>&1 | tee "$LOGS/pod-install.log" | grep -E "CostQuestGame|Pod installation|error" || true)
@@ -152,14 +182,24 @@ if [ "$RUN" = 1 ]; then
   app_path="$(ls -d "$APP"/build-logs/DerivedData/Build/Products/Release-iphonesimulator/*.app | head -1)"
   xcrun simctl install "$device" "$app_path"
   bundle_id="$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$app_path/Info.plist")"
+  xcrun simctl privacy "$device" grant location "$bundle_id" 2>/dev/null || true
+  xcrun simctl location "$device" set 51.5007,-0.1246 2>/dev/null || true
   xcrun simctl launch "$device" "$bundle_id"
-  echo "    launched $bundle_id on $device. Try: swipe left from the right edge of the chat tabs;"
-  echo "    xcrun simctl openurl $device 'cosquest://play?shrine=test-1&place=Somewhere'"
-  ran+=("simulator run")
+  echo "    launched $bundle_id on $device"
+  shots="$LOGS/screens"
+  mkdir -p "$shots"
+  sleep 20
+  xcrun simctl io "$device" screenshot "$shots/01-launch.png" >/dev/null
+  # The game page (the RN game unless --native-game), on a point near Big Ben.
+  xcrun simctl openurl "$device" 'cosquest://play?place=Westminster' || true
+  sleep 15
+  xcrun simctl io "$device" screenshot "$shots/02-game.png" >/dev/null
+  echo "    screenshots in $shots (compare with docs/one-codebase-shots/ from the Android emulator)"
+  ran+=("simulator run" "screenshots")
 fi
 
 echo
-[ "$RN_GAME" = 1 ] && ran+=("(JS built with gameUi=rn, game server $EXPO_PUBLIC_GAME_SERVER)")
+ran+=("(JS built with gameUi=$EXPO_PUBLIC_GAME_UI, game server ${EXPO_PUBLIC_GAME_SERVER:-production})")
 echo "verify-ios: passed"
 echo "  ran:     ${ran[*]}"
 [ ${#skipped[@]} -gt 0 ] && echo "  skipped: ${skipped[*]}"
