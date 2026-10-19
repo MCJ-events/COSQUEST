@@ -66,25 +66,25 @@ export function tierColor(tier: string): string {
   return tier === "epic" ? GP.sun : tier === "rare" ? GP.rare : GP.sky;
 }
 
+/** Roam/RoamStyle.swift challengeName: the native game's words. */
 export function challengeName(kind: string): string {
   switch (kind) {
-    case "trivia":
-      return "Trivia";
-    case "rebus":
-      return "Emoji rebus";
     case "sequence":
       return "Sequence";
+    case "rebus":
+      return "Rebus";
     case "blitz":
       return "Blitz";
     case "duel":
-      return "Guardian Duel";
+      return "Duel";
     default:
-      return kind.charAt(0).toUpperCase() + kind.slice(1);
+      return "Trivia";
   }
 }
 
+/** Features/DuelFeature.swift (the Guardian's difficulty on the briefing). */
 export function difficultyName(tier: string): string {
-  return tier === "epic" ? "Hard" : tier === "rare" ? "Medium" : tier === "starter" ? "Easy" : "Normal";
+  return tier === "epic" ? "Hard" : tier === "rare" ? "Even" : "Easy";
 }
 
 /**
