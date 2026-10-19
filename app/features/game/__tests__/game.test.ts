@@ -12,6 +12,8 @@ import {
   resolveDuelRenderer,
   resolveGameServer,
   resolveGameUi,
+  resolveIslandsOff,
+  NATIVE_ISLANDS,
   STAGING_GAME_SERVER,
 } from "../config.ts";
 import { bearingDeg, distanceM, distanceText, reachM, stepToward, toLocal } from "../geo.ts";
@@ -39,11 +41,21 @@ describe("config", () => {
     assert.equal(resolveGameServer("http://evil.example"), PRODUCTION_GAME_SERVER);
     assert.equal(isProductionServer(STAGING_GAME_SERVER), false);
   });
-  it("iOS stays native unless asked; Android is always rn", () => {
-    assert.equal(resolveGameUi("ios", undefined), "native");
+  it("the shared RN game everywhere; the SwiftUI game only on iOS and only when asked", () => {
+    assert.equal(resolveGameUi("ios", undefined), "rn");
+    assert.equal(resolveGameUi("ios", ""), "rn");
     assert.equal(resolveGameUi("ios", "rn"), "rn");
+    assert.equal(resolveGameUi("ios", " native "), "native");
+    assert.equal(resolveGameUi("ios", "Native"), "rn");
     assert.equal(resolveGameUi("android", "native"), "rn");
     assert.equal(resolveGameUi("android", undefined), "rn");
+    assert.equal(resolveGameUi("web", "native"), "rn");
+  });
+  it("native islands can be turned off one by one, or all at once", () => {
+    assert.deepEqual([...resolveIslandsOff(undefined)], []);
+    assert.deepEqual([...resolveIslandsOff("forgeModel")], ["forgeModel"]);
+    assert.deepEqual([...resolveIslandsOff(" unityDuel , nonsense")], ["unityDuel"]);
+    assert.deepEqual([...resolveIslandsOff("all")].sort(), [...NATIVE_ISLANDS].sort());
   });
   it("Unity draws the duel only when the build has it and the flag asks", () => {
     assert.equal(resolveDuelRenderer("unity", false), "rn");

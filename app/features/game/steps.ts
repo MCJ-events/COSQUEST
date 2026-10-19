@@ -11,7 +11,8 @@
 // on iOS, the phone reports the week's TOTAL (idempotent), never a delta.
 //
 // Where the figure comes from differs. iOS asks CMPedometer for the distance
-// since Monday 00:00 UTC (Apple's own stride model). Android has no history
+// since Monday 00:00 UTC (Apple's own stride model): a "distance" answer from
+// stepsDevice.ts, reported as it is. Android has no history
 // to ask: the hardware step counter only says how many steps since boot. So
 // this file keeps a ledger: the last reading, and the steps credited to each
 // week from the difference between readings. Rules:
@@ -290,6 +291,8 @@ export function markSent(ledger: StepLedger, week: string, meters: number): Step
 /** What the phone's counter said, or why it could not say. */
 export type SensorAnswer =
   | { kind: "reading"; reading: CounterReading }
+  /** iOS: CMPedometer's own distance since this UTC week's Monday (no ledger needed: iOS keeps the history). */
+  | { kind: "distance"; meters: number }
   | { kind: "unavailable" }
   | { kind: "denied" }
   | { kind: "error" };
@@ -341,6 +344,17 @@ export async function updateSteps(deps: StepsDeps, previous: StepsView, ask: boo
     if (firstAsk) {
       ledger = { ...ledger, asked: true };
       await deps.save(JSON.stringify(ledger));
+    }
+    if (answer.kind === "distance") {
+      // As StepsModel.update on iOS: this week's total, straight from the pedometer.
+      const thisWeek = isoDay(utcMonday(deps.now()));
+      const got = await reportSteps(deps.client, thisWeek, answer.meters);
+      if (got.newly?.length) {
+        view.newly = got.newly;
+        view.justPaid = true;
+      }
+      view.status = got;
+      return view;
     }
     if (answer.kind !== "reading") {
       view.note = STEPS_NOTES[answer.kind];

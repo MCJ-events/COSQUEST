@@ -1,4 +1,4 @@
-// The Warden's model on this phone (Android): which one, fetched, verified,
+// The Warden's model on this phone (Android, and iOS in the shared game): which one, fetched, verified,
 // loaded, and plugged into the voice. The server names the files and their
 // digests (GET /v1/model); which to run is a deploy, not a release, as on iOS
 // (costquest-ios Game/Warden.swift, Game/ModelStore.swift).

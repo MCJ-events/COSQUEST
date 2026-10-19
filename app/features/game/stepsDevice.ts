@@ -2,7 +2,9 @@
 // module (modules/costquest-game StepCounter.kt), the Physical activity
 // permission, and the ledger saved with the app's small settings. steps.ts is
 // the pure part; this file is the glue (like runtime.ts), so it is not unit
-// tested. iOS: CMPedometer in Features/StepsFeature.swift.
+// tested. iOS (the shared game): CMPedometer through the same module
+// (ios/Embed/GameHelpers.swift queryPedometer), as Features/StepsFeature.swift
+// reads it for the native game.
 import { PermissionsAndroid, Platform } from "react-native";
 
 import { nativeHelpers } from "@/modules/costquest-game/src";
@@ -18,6 +20,7 @@ import {
   type StepsDeps,
   type StepsView,
   updateSteps,
+  utcMonday,
 } from "./steps.ts";
 
 /** ACTIVITY_RECOGNITION is a run-time permission from Android 10 (API 29); before that the counter is open. */
@@ -34,8 +37,31 @@ async function permitted(ask: boolean): Promise<"granted" | "denied"> {
   return result === PermissionsAndroid.RESULTS.GRANTED ? "granted" : "denied";
 }
 
+/** iOS: the week's distance from CMPedometer's history (Motion & Fitness permission). */
+async function sensePedometer(ask: boolean): Promise<SensorAnswer> {
+  const n = nativeHelpers;
+  if (!n?.queryPedometer || n.pedometerAvailable === false) return { kind: "unavailable" };
+  try {
+    const got = await n.queryPedometer({ fromMs: utcMonday(Date.now()), ask });
+    switch (got.status) {
+      case "ok":
+        return Number.isFinite(got.meters) && got.meters >= 0 ? { kind: "distance", meters: got.meters } : { kind: "error" };
+      case "unavailable":
+        return { kind: "unavailable" };
+      case "denied":
+      case "notDetermined":
+        return { kind: "denied" };
+      default:
+        return { kind: "error" };
+    }
+  } catch {
+    return { kind: "error" };
+  }
+}
+
 async function sense(ask: boolean): Promise<SensorAnswer> {
   const n = nativeHelpers;
+  if (Platform.OS === "ios") return sensePedometer(ask);
   if (Platform.OS !== "android" || !n?.readStepCounter || n.stepCounterAvailable === false) return { kind: "unavailable" };
   try {
     if ((await permitted(ask)) !== "granted") return { kind: "denied" };
@@ -74,7 +100,7 @@ export function updateStepsOnPhone(previous: StepsView = EMPTY_STEPS_VIEW, ask =
   return serial(() => updateSteps(deps(), previous, ask));
 }
 
-/** A quiet reading (no prompt, no network) when the game comes to the front. Android only; elsewhere nothing. */
+/** A quiet reading (no prompt, no network) when the game comes to the front. Android only (iOS keeps its own history). */
 export function noteStepsOnPhone(): Promise<void> {
   if (Platform.OS !== "android") return Promise.resolve();
   return serial(() => noteStepsWith(deps()));

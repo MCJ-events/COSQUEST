@@ -31,7 +31,13 @@ public final class CostQuestGameModule: Module {
   public func definition() -> ModuleDefinition {
     Name("CostQuestGame")
 
-    Events("onReady", "onSession", "onShareToChat", "onRequestChat", "onError")
+    Events(
+      // The game API (the native SwiftUI game).
+      "onReady", "onSession", "onShareToChat", "onRequestChat", "onError",
+      // Platform helpers for the shared RN game (GameHelpers.swift), the
+      // same events as the Android module.
+      "onNfcTag", "onSpeechResult", "onSpeechError"
+    )
 
     Constants {
       [
@@ -43,13 +49,21 @@ public final class CostQuestGameModule: Module {
         // For the shell's prewarm policy (features/world/prewarm.ts).
         "physicalMemory": Double(ProcessInfo.processInfo.physicalMemory),
         "upstream": "costquest-ios",
+        // Platform helpers (GameHelpers.swift), as on Android.
+        "nfcAvailable": NfcHelper.available,
+        "uwbAvailable": UwbHelper.available,
+        "pedometerAvailable": PedometerHelper.available,
+        "stepCounterAvailable": false,
       ]
     }
 
     OnCreate {
       let sink = GameEventSink(module: self)
       DispatchQueue.main.async {
-        MainActor.assumeIsolated { GameHost.shared.sink = sink }
+        MainActor.assumeIsolated {
+          GameHost.shared.sink = sink
+          GameHelpers.shared.sink = sink
+        }
       }
     }
 
@@ -103,6 +117,46 @@ public final class CostQuestGameModule: Module {
         "footprint": Double(cq_phys_footprint()),
         "available": Double(os_proc_available_memory()),
       ]
+    }
+
+    // MARK: Platform helpers for the shared RN game (GameHelpers.swift).
+    // Same names, arguments, events and error codes as Android.
+
+    /// Resolves { onDevice } once listening has started; results come as events.
+    AsyncFunction("startListening") { (options: ListenOptionsRecord?) async throws -> [String: Bool] in
+      let request = ListenRequest(options)
+      let onDevice = try await GameHelpers.shared.startListening(request)
+      return ["onDevice": onDevice]
+    }
+
+    AsyncFunction("stopListening") {
+      MainActor.assumeIsolated { GameHelpers.shared.speech.stop() }
+    }.runOnQueue(.main)
+
+    /// Stops and drops the utterance: no result or error event follows.
+    AsyncFunction("cancelListening") {
+      MainActor.assumeIsolated { GameHelpers.shared.speech.cancel() }
+    }.runOnQueue(.main)
+
+    /// Walking distance between two times ({ fromMs, toMs?, ask }):
+    /// { status: ok|unavailable|denied|notDetermined|error, meters, steps }.
+    AsyncFunction("queryPedometer") { (query: PedometerQueryRecord) async -> [String: Any] in
+      let window = PedometerWindow(query)
+      return await GameHelpers.shared.queryPedometer(window).dictionary
+    }
+
+    AsyncFunction("startNfcScan") {
+      try MainActor.assumeIsolated { try GameHelpers.shared.nfc.start() }
+    }.runOnQueue(.main)
+
+    AsyncFunction("stopNfcScan") {
+      MainActor.assumeIsolated { GameHelpers.shared.nfc.stop() }
+    }.runOnQueue(.main)
+
+    /// As on Android: UWB needs the peer mesh to swap session tokens first,
+    /// and the shared game has no mesh. `uwbAvailable` says whether the chip is there.
+    AsyncFunction("startUwbRanging") { (_: [String: Any]?) throws in
+      throw helperError("ERR_UWB_NO_MESH", "UWB ranging needs the peer mesh to exchange session tokens; the shared game has no mesh yet.")
     }
 
     View(CostQuestGameView.self) {

@@ -273,6 +273,24 @@ describe("steps: one update (StepsModel.update)", () => {
     assert.deepEqual(h.asks, [true, false]);
   });
 
+  it("iOS: the pedometer's distance since Monday is reported as it is, with no ledger", async () => {
+    const h = harness(MON + 20 * H);
+    h.setAnswer({ kind: "distance", meters: 5321.7 });
+    const v = await updateSteps(h.deps, EMPTY_STEPS_VIEW, false);
+    assert.equal(v.note, null);
+    assert.equal(v.status?.meters, 5321);
+    assert.deepEqual(v.newly.map((n) => n.km), [5]);
+    assert.equal(v.justPaid, true);
+    const posts = h.server.calls.filter((c) => c.method === "POST").map((c) => JSON.parse(c.body ?? "{}"));
+    assert.deepEqual(posts, [{ device_key: h.id.publicKeyHex, week_start: "2026-10-12", meters: 5321 }]);
+    // Again with the same figure: nothing paid twice.
+    const again = await updateSteps(h.deps, v, false);
+    assert.equal(again.justPaid, false);
+    // A quiet reading on open does nothing on iOS (the history is Apple's).
+    await noteSteps(h.deps);
+    assert.equal(h.server.calls.filter((c) => c.method === "POST").length, 2);
+  });
+
   it("a walk over Sunday midnight: last week is sent too, then this week", async () => {
     const h = harness(MON - 3 * H);
     const boot = MON - 3 * D;
