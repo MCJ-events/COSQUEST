@@ -1,14 +1,18 @@
 // "More": the rest of the game, one tap away (costquest-ios
-// Roam/RoamHomeView.swift moreTiles / MoreSheet). The rail keeps four
-// buttons at most, so the map is not framed by a column of icons; every
-// other feature is a tile here, shown once its level unlocks it.
+// Roam/HallPage.swift MoreSheet, tiles from RoamHomeView.swift moreTiles).
+// The rail keeps four buttons at most, so the map is not framed by a column
+// of icons; every other feature is a tile here, shown once its level unlocks
+// it. A tile closes the sheet first and opens its own 380 ms later (two
+// sheets cannot be up at once).
 import { Ionicons } from "@expo/vector-icons";
-import type { ReactNode } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
-import Animated, { SlideInDown, SlideOutDown } from "react-native-reanimated";
+import { type ReactNode, useRef, useState } from "react";
+import { type LayoutChangeEvent, StyleSheet, Text, View } from "react-native";
+import Animated, { Easing, Keyframe } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { GF, GP } from "./theme";
+import { GameIconButton, MAX_FONT_SCALE } from "./kit";
+import { SheetHost } from "./Sheet";
+import { edgeOf, GF, GP } from "./theme";
 
 export type MoreTile = {
   id: string;
@@ -16,64 +20,104 @@ export type MoreTile = {
   color: string;
   title: string;
   badge?: number | null;
-  /** The feature's own button, drawn instead of the icon (it carries its own badge). */
-  embed?: ReactNode;
-  onPress: () => void;
+  /** What the tile does, after the sheet has closed. Without it (and without `custom`) the tile is information only. */
+  onPress?: () => void;
+  /** The feature's own button, drawn instead of the icon (it carries its own badge); `press` is the tile's action. */
+  custom?: (press: () => void) => ReactNode;
 };
+
+/** A drag of the sheet closes it; the slide is 220 ms (SheetHost), the next sheet waits 380. */
+const SLIDE_MS = 220;
+const NEXT_SHEET_MS = 380;
+const MIN_TILE = 84;
+const SPACING = 14;
+
+const EASE = Easing.inOut(Easing.cubic);
+const PANEL_IN = new Keyframe({
+  from: { transform: [{ translateY: 320 }] },
+  to: { transform: [{ translateY: 0 }], easing: EASE },
+}).duration(300);
 
 export default function MoreSheet({ tiles, onClose }: { tiles: MoreTile[]; onClose: () => void }) {
   const insets = useSafeAreaInsets();
+  const [width, setWidth] = useState(0);
+  const next = useRef<(() => void) | null>(null);
+
+  // LazyVGrid(.adaptive(minimum: 84), spacing: 14): as many columns as fit, shared evenly.
+  const cols = Math.max(1, Math.floor((width + SPACING) / (MIN_TILE + SPACING)));
+  const tileWidth = width > 0 ? (width - SPACING * (cols - 1)) / cols : MIN_TILE;
+  const onLayout = (e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width);
+
   return (
-    <View style={StyleSheet.absoluteFill}>
-      <Pressable style={styles.scrim} onPress={onClose} accessibilityRole="button" accessibilityLabel="Close More" />
-      <Animated.View
-        entering={SlideInDown.springify().damping(20)}
-        exiting={SlideOutDown.duration(160)}
-        style={[styles.sheet, { paddingBottom: insets.bottom + 18 }]}>
-        <View style={styles.grabber} />
-        <View style={styles.head}>
-          <Text style={styles.title}>More</Text>
-          <Pressable onPress={onClose} hitSlop={10} accessibilityRole="button" accessibilityLabel="Close">
-            <Ionicons name="close" size={24} color={GP.ink} />
-          </Pressable>
-        </View>
-        <View style={styles.grid}>
-          {tiles.map((t) => (
-            <Pressable
-              key={t.id}
-              onPress={t.onPress}
-              style={styles.tile}
-              accessibilityRole="button"
-              accessibilityLabel={t.badge ? `${t.title}, ${t.badge}` : t.title}>
-              {t.embed ?? (
-              <View style={[styles.icon, { backgroundColor: t.color }]}>
-                <Ionicons name={t.icon} size={24} color="#FFF" />
-                {t.badge ? (
-                  <View style={styles.badge}>
-                    <Text style={styles.badgeText}>{t.badge > 99 ? "99+" : t.badge}</Text>
-                  </View>
-                ) : null}
-              </View>
-              )}
-              <Text style={styles.tileTitle} numberOfLines={2}>
-                {t.title}
+    <SheetHost
+      band="any"
+      scrimLabel="Close More"
+      onClose={() => {
+        onClose();
+        const action = next.current;
+        next.current = null;
+        if (action) setTimeout(action, Math.max(0, NEXT_SHEET_MS - SLIDE_MS));
+      }}>
+      {(close) => {
+        const choose = (t: MoreTile) => () => {
+          next.current = t.onPress ?? null;
+          close();
+        };
+        return (
+          <Animated.View entering={PANEL_IN} style={[styles.sheet, { paddingBottom: insets.bottom + 20 }]}>
+            <View style={styles.grabber} />
+            <View style={styles.head}>
+              <Text style={styles.title} accessibilityRole="header" maxFontSizeMultiplier={MAX_FONT_SCALE}>
+                More
               </Text>
-            </Pressable>
-          ))}
+            </View>
+            <View style={styles.grid} onLayout={onLayout}>
+              {tiles.map((t) => (
+                <View key={t.id} style={[styles.tile, { width: tileWidth }]}>
+                  <TileIcon tile={t} choose={choose(t)} />
+                  <Text style={styles.tileTitle} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+                    {t.title}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </Animated.View>
+        );
+      }}
+    </SheetHost>
+  );
+}
+
+function TileIcon({ tile, choose }: { tile: MoreTile; choose: () => void }) {
+  if (tile.custom) return <>{tile.custom(choose)}</>;
+  if (tile.onPress) {
+    return <GameIconButton icon={tile.icon} color={tile.color} diameter={54} badge={tile.badge && tile.badge > 0 ? tile.badge : null} accessibilityLabel={tile.title} onPress={choose} />;
+  }
+  // Information only (the bag's count): a button that does nothing would be a lie.
+  return (
+    <View style={styles.info} accessible accessibilityLabel={`${tile.title}, ${tile.badge ?? 0}`}>
+      <View style={[styles.infoEdge, { backgroundColor: edgeOf(tile.color) }]} />
+      <View style={[styles.infoFace, { backgroundColor: tile.color }]}>
+        <Ionicons name={tile.icon} size={24} color="#FFFFFF" />
+      </View>
+      {tile.badge && tile.badge > 0 ? (
+        <View style={styles.badge}>
+          <Text style={styles.badgeText} maxFontSizeMultiplier={1.2}>
+            {tile.badge}
+          </Text>
         </View>
-      </Animated.View>
+      ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  scrim: { ...StyleSheet.absoluteFill, backgroundColor: "rgba(20,32,44,0.35)" },
   sheet: {
     position: "absolute",
     left: 0,
     right: 0,
     bottom: 0,
-    paddingHorizontal: 18,
+    paddingHorizontal: 20,
     paddingTop: 8,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
@@ -81,15 +125,18 @@ const styles = StyleSheet.create({
     elevation: 12,
   },
   grabber: { alignSelf: "center", width: 40, height: 5, borderRadius: 3, backgroundColor: "rgba(0,0,0,0.15)", marginBottom: 8 },
-  head: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
-  title: { fontFamily: GF.display, fontSize: 24, color: GP.ink },
-  grid: { flexDirection: "row", flexWrap: "wrap", rowGap: 16 },
-  tile: { width: "25%", alignItems: "center", gap: 6 },
-  icon: { width: 58, height: 58, borderRadius: 18, alignItems: "center", justifyContent: "center" },
+  head: { marginBottom: 16 },
+  title: { fontFamily: GF.display, fontSize: 26, color: GP.ink },
+  grid: { flexDirection: "row", flexWrap: "wrap", columnGap: SPACING, rowGap: 18 },
+  tile: { alignItems: "center", gap: 6 },
+  tileTitle: { alignSelf: "stretch", textAlign: "center", fontFamily: GF.bold, fontSize: 12, color: GP.ink },
+  info: { width: 54, height: 58 },
+  infoEdge: { position: "absolute", left: 0, top: 4, width: 54, height: 54, borderRadius: 27 },
+  infoFace: { width: 54, height: 54, borderRadius: 27, alignItems: "center", justifyContent: "center" },
   badge: {
     position: "absolute",
-    top: -5,
-    right: -5,
+    top: -4,
+    right: -6,
     minWidth: 20,
     height: 20,
     paddingHorizontal: 5,
@@ -98,8 +145,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: GP.berry,
     borderWidth: 2,
-    borderColor: GP.cream,
+    borderColor: "#FFFFFF",
   },
-  badgeText: { fontFamily: GF.bold, fontSize: 11, color: "#FFF" },
-  tileTitle: { fontFamily: GF.bold, fontSize: 12, color: GP.ink, textAlign: "center" },
+  badgeText: { fontFamily: GF.display, fontSize: 13, color: "#FFFFFF", fontVariant: ["tabular-nums"] },
 });

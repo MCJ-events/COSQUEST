@@ -26,6 +26,7 @@ import Svg, { Circle, Defs, Path, Pattern, Rect } from "react-native-svg";
 import { toLocal, type LatLng } from "@/features/game/geo";
 import { buildLayers, type MapLayers } from "@/features/game/mapPaths";
 import { raidTint } from "@/features/game/raids";
+import { pinTint } from "@/features/game/siege";
 import type { NearbyRoom } from "@/features/game/rooms";
 import type { GroundGeometry, QuestPoint } from "@/features/game/wire";
 
@@ -186,6 +187,14 @@ const Ground = memo(function Ground({ layers, extent, size }: { layers: MapLayer
 
 const MARKER = 46;
 
+/** The pin's colour by the rule the iOS world uses: raid > holder > tier (siege.ts pinTint). */
+export function pinFill(p: QuestPoint): string {
+  const tint = pinTint(p);
+  if (tint.kind === "raid") return raidTint(p) ?? tierColor(p.tier);
+  if (tint.kind === "holder") return realmColor(tint.faction);
+  return tierColor(tint.tier);
+}
+
 const PointMarker = memo(function PointMarker({
   point,
   left,
@@ -203,8 +212,9 @@ const PointMarker = memo(function PointMarker({
   cooling: boolean;
   onPress: (p: QuestPoint) => void;
 }) {
-  const color = cooling ? "#9AA7B0" : raidTint(point) ?? realmColor(point.realm);
-  const ring = cooling ? "#C9D1D6" : tierColor(point.tier);
+  // RoamHomeView.object: a boss's raid tint, else its holder's colour, else its tier's.
+  const color = cooling ? "#9AA7B0" : pinFill(point);
+  const ring = cooling ? "#C9D1D6" : "#FFFFFF";
   const pulse = useSharedValue(0);
   useEffect(() => {
     if (inReach && !cooling) {
@@ -224,12 +234,12 @@ const PointMarker = memo(function PointMarker({
       hitSlop={10}
       style={[styles.marker, { left: left - MARKER / 2, top: top - MARKER, zIndex: selected ? 3 : inReach ? 2 : 1 }]}
       accessibilityRole="button"
-      accessibilityLabel={`${point.name}, ${point.tier} ${isDuel ? "Guardian" : point.challenge}${cooling ? ", recharging" : ""}${inReach ? ", in reach" : ""}`}>
-      {inReach && !cooling ? <Animated.View style={[styles.pulse, { borderColor: ring }, pulseStyle]} /> : null}
+      accessibilityLabel={`${point.name}, ${point.tier} ${isDuel ? "Guardian" : point.challenge}${point.extra?.holder ? ", held" : ""}${cooling ? ", recharging" : ""}${inReach ? ", in reach" : ""}`}>
+      {inReach && !cooling ? <Animated.View style={[styles.pulse, { borderColor: color }, pulseStyle]} /> : null}
       <View style={[styles.pin, { backgroundColor: color, borderColor: selected ? GP.navy : ring, transform: [{ scale: selected ? 1.15 : 1 }] }]}>
         {point.source === "raid" ? <RaidCrown size={20} /> : <Ionicons name={isDuel ? "shield" : realmIcon(point.realm)} size={20} color="#FFFFFF" />}
       </View>
-      <View style={[styles.stem, { backgroundColor: selected ? GP.navy : ring }]} />
+      <View style={[styles.stem, { backgroundColor: selected ? GP.navy : color }]} />
     </Pressable>
   );
 });

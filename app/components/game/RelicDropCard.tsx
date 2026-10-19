@@ -7,39 +7,50 @@
 // this only draws it, and asks for the Relicdex again so the rail badge and
 // the Relicdex have it (RelicsModel.noteDrop in RoamHomeView).
 import * as Haptics from "expo-haptics";
-import { useEffect } from "react";
+import { useEffect, useId } from "react";
 import { StyleSheet, Text, View } from "react-native";
-import Animated, { useAnimatedStyle, useSharedValue, withDelay, withSpring, withTiming } from "react-native-reanimated";
+import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withSpring, withTiming } from "react-native-reanimated";
+import Svg, { Defs, RadialGradient, Rect, Stop } from "react-native-svg";
 
 import { abilityName, powerNow, relicDrop, type RelicDrop } from "@/features/game/relics";
 import { relicsStore } from "@/features/game/relicsLive";
+import { SPRING_DROP_FLIP } from "@/features/game/spring";
 import type { RoamExtra } from "@/features/game/wire";
 
+import { MAX_FONT_SCALE } from "./kit";
 import { RelicArt, rarityColor } from "./RelicArt";
+import { playSound } from "./sound";
 import { GF, GP } from "./theme";
 
 export function RelicDropCard({ drop }: { drop: RelicDrop }) {
   const { relic, isNew, shards } = drop;
   const tint = rarityColor(relic.rarity);
+  const reduced = useReducedMotion();
+  const gid = `dg${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
   const flip = useSharedValue(0);
   const glow = useSharedValue(0);
 
   useEffect(() => {
-    glow.value = withDelay(150, withTiming(1, { duration: 350 }));
-    flip.value = withDelay(150, withSpring(1, { damping: 9, stiffness: 110 }));
+    // RelicDropCard.task: 150 ms, then the glow (easeOut 0.35 s), the cue and the flip (spring 0.6 / 0.62).
+    glow.set(withDelay(150, withTiming(1, { duration: 350, easing: Easing.out(Easing.quad) })));
+    flip.set(withDelay(150, reduced ? withTiming(1, { duration: 200 }) : withSpring(1, SPRING_DROP_FLIP)));
     const t = setTimeout(() => {
+      playSound(isNew ? "fanfare" : "coin");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     }, 150);
     relicsStore.noteDrop();
     return () => clearTimeout(t);
-  }, [flip, glow]);
+  }, [flip, glow, isNew, reduced]);
 
-  const glowStyle = useAnimatedStyle(() => ({ opacity: 0.35 * glow.value, transform: [{ scale: 0.6 + 0.5 * glow.value }] }));
+  // A radial glow (tint at 0.9 fading to nothing) growing 0.6 to 1.1.
+  const glowStyle = useAnimatedStyle(() => ({ opacity: glow.get(), transform: [{ scale: 0.6 + 0.5 * glow.get() }] }));
   const artStyle = useAnimatedStyle(() => ({
-    opacity: Math.min(1, flip.value * 1.5),
-    transform: [{ perspective: 600 }, { rotateY: `${(1 - flip.value) * 180}deg` }, { scale: 0.4 + 0.6 * flip.value }],
+    opacity: Math.min(1, flip.get() * 1.5),
+    transform: reduced
+      ? [{ scale: 0.4 + 0.6 * flip.get() }]
+      : [{ perspective: 600 }, { rotateY: `${(1 - flip.get()) * 180}deg` }, { scale: 0.4 + 0.6 * flip.get() }],
   }));
-  const textStyle = useAnimatedStyle(() => ({ opacity: Math.min(1, flip.value), transform: [{ translateX: (1 - Math.min(1, flip.value)) * 12 }] }));
+  const textStyle = useAnimatedStyle(() => ({ opacity: Math.min(1, flip.get()), transform: [{ translateX: reduced ? 0 : (1 - Math.min(1, flip.get())) * 12 }] }));
 
   return (
     <View
@@ -47,20 +58,30 @@ export function RelicDropCard({ drop }: { drop: RelicDrop }) {
       accessible
       accessibilityLabel={isNew ? `New Relic: ${relic.name}, ${relic.rarity}` : `${relic.name} again: ${shards} shards`}>
       <View style={styles.art}>
-        <Animated.View style={[styles.glow, { backgroundColor: tint }, glowStyle]} />
+        <Animated.View style={[styles.glow, glowStyle]} pointerEvents="none">
+          <Svg width={112} height={112}>
+            <Defs>
+              <RadialGradient id={gid} cx={56} cy={56} r={56} fx={56} fy={56} gradientUnits="userSpaceOnUse">
+                <Stop offset={4 / 56} stopColor={tint} stopOpacity={0.9} />
+                <Stop offset="1" stopColor={tint} stopOpacity={0} />
+              </RadialGradient>
+            </Defs>
+            <Rect x={0} y={0} width={112} height={112} fill={`url(#${gid})`} />
+          </Svg>
+        </Animated.View>
         <Animated.View style={artStyle}>
           <RelicArt kind={relic.kind} rarity={relic.rarity} size={66} />
         </Animated.View>
       </View>
       <Animated.View style={[styles.text, textStyle]}>
         <View style={styles.row}>
-          {isNew ? <Text style={styles.newTag}>NEW!</Text> : null}
-          <Text style={[styles.kicker, { color: tint }]}>{`${relic.rarity.toUpperCase()} RELIC`}</Text>
+          {isNew ? <Text style={styles.newTag} maxFontSizeMultiplier={MAX_FONT_SCALE}>NEW!</Text> : null}
+          <Text style={[styles.kicker, { color: tint === GP.sun ? GP.sunDeep : tint }]} maxFontSizeMultiplier={MAX_FONT_SCALE}>{`${relic.rarity.toUpperCase()} RELIC`}</Text>
         </View>
-        <Text style={styles.name} numberOfLines={2} adjustsFontSizeToFit>
+        <Text style={styles.name} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.8} maxFontSizeMultiplier={MAX_FONT_SCALE}>
           {relic.name}
         </Text>
-        <Text style={[styles.line, { color: isNew ? GP.sky : "#B9A0FF" }]}>
+        <Text style={[styles.line, { color: isNew ? GP.sky : "#B9A0FF" }]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
           {isNew ? `${abilityName(relic.ability)} · power ${powerNow(relic)}` : `+${shards} shards`}
         </Text>
       </Animated.View>
@@ -79,12 +100,12 @@ export default RelicDropCard;
 const styles = StyleSheet.create({
   card: { flexDirection: "row", alignItems: "center", gap: 14, padding: 10, borderRadius: 18, borderWidth: 2 },
   art: { width: 80, height: 80, alignItems: "center", justifyContent: "center" },
-  glow: { position: "absolute", width: 104, height: 104, borderRadius: 52 },
+  glow: { position: "absolute", width: 112, height: 112 },
   text: { flex: 1, gap: 3 },
   row: { flexDirection: "row", alignItems: "center", gap: 6 },
   newTag: {
     fontFamily: GF.display,
-    fontSize: 12,
+    fontSize: 13,
     letterSpacing: 1,
     color: GP.ink,
     backgroundColor: GP.sun,

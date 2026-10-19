@@ -5,7 +5,6 @@
 // refetch; the calendar itself is fetched every 5 minutes.
 // costquest-ios Features/LiveFeature.swift (LiveBanner, LiveCard).
 import { Ionicons } from "@expo/vector-icons";
-import * as Haptics from "expo-haptics";
 import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
@@ -14,6 +13,7 @@ import { bannerAt, type LiveCalendar, type LiveClock, nextChange, phoneClock, so
 import { liveCalendar, livePlace, useLiveCalendar } from "@/features/game/liveRuntime";
 import { useGame } from "@/features/game/runtime";
 
+import { MAX_FONT_SCALE, pressFeedback } from "./kit";
 import { GF, GP } from "./theme";
 
 /** The phone's clock (its zone is read per instant, so a zone change still shows). */
@@ -70,17 +70,14 @@ export default function LiveBanner({ parked, onOpen }: { parked: boolean; onOpen
   const now = useLiveNow(calendar, !parked);
   const banner = bannerAt(calendar, now);
   if (!banner) return null;
-  const open = () => {
-    Haptics.selectionAsync().catch(() => {});
-    onOpen();
-  };
   const isLive = banner.kind === "live";
   const detail = isLive ? `On now · ${banner.left}` : soonText(banner.start, now, LIVE_CLOCK);
   const mult = times(banner.event.multiplier);
   return (
     <Animated.View entering={FadeIn.duration(200)} exiting={FadeOut.duration(160)}>
       <Pressable
-        onPress={open}
+        onPressIn={pressFeedback}
+        onPress={onOpen}
         accessibilityRole="button"
         accessibilityLabel={`${banner.event.title}, ${mult} XP, ${isLive ? banner.left : detail}`}
         accessibilityHint="Opens the events calendar">
@@ -100,14 +97,14 @@ function LiveCard({ title, detail, multiplier, isLive, pressed }: { title: strin
           <Ionicons name={isLive ? "flash" : "time"} size={20} color={isLive ? "#FFF" : GP.sunDeep} />
         </View>
         <View style={styles.text}>
-          <Text style={styles.title} numberOfLines={1}>
+          <Text style={styles.title} numberOfLines={1} maxFontSizeMultiplier={MAX_FONT_SCALE}>
             {title.toUpperCase()}
           </Text>
-          <Text style={styles.detail} numberOfLines={1}>
+          <Text style={styles.detail} numberOfLines={1} maxFontSizeMultiplier={MAX_FONT_SCALE}>
             {detail}
           </Text>
         </View>
-        <Text style={styles.mult}>{multiplier} XP</Text>
+        <Text style={styles.mult} maxFontSizeMultiplier={MAX_FONT_SCALE}>{multiplier} XP</Text>
       </View>
     </View>
   );

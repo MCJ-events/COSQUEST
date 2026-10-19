@@ -106,6 +106,12 @@ export const wardenVoice = {
     return line.text;
   },
 
+  /** A moment's line without saying it (the point card's legend): the model's if it comes within `waitMs`. */
+  async line(moment: WardenMoment, waitMs = 8000): Promise<string> {
+    const fromModel = writer ? await Promise.race([ask(moment), new Promise<null>((r) => setTimeout(() => r(null), waitMs))]) : null;
+    return fromModel || fallbackLine(moment);
+  },
+
   quiet() {
     Speech.stop().catch(() => {});
     if (hideTimer) clearTimeout(hideTimer);

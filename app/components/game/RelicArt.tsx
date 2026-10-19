@@ -5,12 +5,15 @@
 //
 // Relics have no 3D models on iOS either: this is the same drawing, in SVG.
 // Forge weapons (which do have GLB models on iOS) use it too, with the kind
-// read from the name. Differences: the legendary rim is a still gradient,
-// not iOS's turning one.
-import { useId } from "react";
+// read from the name. The legendary rim turns once every 4 s (paused under
+// Reduce Motion): iOS's angular gradient is a band of white and berry on sun
+// travelling round the outline, drawn here with dashes that slide along it.
+import { useEffect, useId } from "react";
 import { StyleSheet, Text, View } from "react-native";
-import Svg, { Circle, Defs, G, LinearGradient, Path, Rect, Stop } from "react-native-svg";
+import Animated, { cancelAnimation, Easing, useAnimatedProps, useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withTiming } from "react-native-reanimated";
+import Svg, { Circle, Defs, G, LinearGradient, Path, RadialGradient, Rect, Stop } from "react-native-svg";
 
+import { bandOffset, crystalPath, crystalPerimeter } from "@/features/game/crystal";
 import { RELIC_MAX_LEVEL } from "@/features/game/relics";
 
 import { edgeOf, GF, GP } from "./theme";
@@ -169,35 +172,6 @@ export function WeaponGlyph({ kind, size, fill = GP.cream, ink = GP.ink, lineWid
 
 // ---------- the crystal ----------
 
-/** CrystalFrame: a pointy-topped hexagon with softened corners, in (x, y, w, h). */
-function crystalPath(x: number, y: number, w: number, h: number): string {
-  const pts: [number, number][] = [
-    [x + w / 2, y],
-    [x + w, y + h * 0.25],
-    [x + w, y + h * 0.75],
-    [x + w / 2, y + h],
-    [x, y + h * 0.75],
-    [x, y + h * 0.25],
-  ];
-  const k = Math.min(w, h) * 0.1;
-  const toward = (p: [number, number], q: [number, number]): [number, number] => {
-    const dx = q[0] - p[0];
-    const dy = q[1] - p[1];
-    const len = Math.max(0.001, Math.hypot(dx, dy));
-    return [p[0] + (dx / len) * k, p[1] + (dy / len) * k];
-  };
-  const f = (n: number) => n.toFixed(2);
-  let d = "";
-  pts.forEach((b, i) => {
-    const a = pts[(i + pts.length - 1) % pts.length];
-    const c = pts[(i + 1) % pts.length];
-    const from = toward(b, a);
-    const to = toward(b, c);
-    d += `${i === 0 ? "M" : "L"}${f(from[0])} ${f(from[1])} Q${f(b[0])} ${f(b[1])} ${f(to[0])} ${f(to[1])} `;
-  });
-  return `${d}Z`;
-}
-
 /** CrystalFacet: the light upper-left face. */
 function facetPath(w: number, h: number): string {
   return `M${w / 2} ${h * 0.06} L${w * 0.06} ${h * 0.28} L${w * 0.06} ${h * 0.55} L${w / 2} ${h / 2} Z`;
@@ -239,12 +213,6 @@ export function RelicArt({ kind, rarity, owned = true, size = 80 }: { kind: stri
             <Stop offset="0" stopColor={GP.cream} stopOpacity={1} />
             <Stop offset="1" stopColor={GP.cream} stopOpacity={0.78} />
           </LinearGradient>
-          <LinearGradient id={`${gid}l`} x1="0" y1="0" x2="1" y2="1">
-            <Stop offset="0" stopColor={GP.sun} />
-            <Stop offset="0.35" stopColor="#FFFFFF" />
-            <Stop offset="0.65" stopColor={GP.berry} />
-            <Stop offset="1" stopColor={GP.sun} />
-          </LinearGradient>
         </Defs>
         <G transform={`translate(0 ${base})`}>
           <Path d={frame} fill={edgeOf(tint)} />
@@ -266,7 +234,7 @@ export function RelicArt({ kind, rarity, owned = true, size = 80 }: { kind: stri
           )}
         </G>
         <Path d={frame} fill="none" stroke={GP.ink} strokeOpacity={owned ? 0.9 : 0.5} strokeWidth={outer} />
-        {owned && rarity === "legendary" ? <Path d={frame} fill="none" stroke={`url(#${gid}l)`} strokeWidth={Math.max(2, size * 0.05)} /> : null}
+        {owned && rarity === "legendary" ? <LegendaryRim frame={frame} perimeter={crystalPerimeter(outer / 2, outer / 2, w - outer, h - outer)} size={size} /> : null}
       </Svg>
       {owned ? null : (
         <View style={[styles.mark, { height: h }]}>
@@ -274,6 +242,77 @@ export function RelicArt({ kind, rarity, owned = true, size = 80 }: { kind: stri
         </View>
       )}
     </View>
+  );
+}
+
+const AnimatedPath = Animated.createAnimatedComponent(Path);
+
+/** One band of the rim: `seg` long, centred `centre` of the way round at turn 0, sliding with `turn`. */
+function RimBand({ frame, perimeter, seg, centre, color, width, turn }: { frame: string; perimeter: number; seg: number; centre: number; color: string; width: number; turn: { get(): number } }) {
+  const props = useAnimatedProps(() => ({ strokeDashoffset: bandOffset(perimeter, seg, centre, turn.get()) }));
+  return <AnimatedPath d={frame} fill="none" stroke={color} strokeWidth={width} strokeLinecap="round" strokeDasharray={[seg, perimeter - seg]} animatedProps={props} />;
+}
+
+/**
+ * The legendary rim (RelicArt's AngularGradient of sun, white, berry, sun,
+ * white, sun, one turn every 4 s, with a sun glow of radius size x 0.08).
+ */
+function LegendaryRim({ frame, perimeter, size }: { frame: string; perimeter: number; size: number }) {
+  const reduced = useReducedMotion();
+  const turn = useSharedValue(0);
+  useEffect(() => {
+    cancelAnimation(turn);
+    turn.set(0);
+    if (!reduced) turn.set(withRepeat(withTiming(1, { duration: 4000, easing: Easing.linear }), -1, false));
+    return () => cancelAnimation(turn);
+  }, [reduced, turn]);
+  const width = Math.max(2, size * 0.05);
+  const seg = perimeter * 0.15;
+  return (
+    <G>
+      <Path d={frame} fill="none" stroke={GP.sun} strokeOpacity={0.3} strokeWidth={width + size * 0.16} strokeLinejoin="round" />
+      <Path d={frame} fill="none" stroke={GP.sun} strokeWidth={width} strokeLinejoin="round" />
+      <RimBand frame={frame} perimeter={perimeter} seg={seg} centre={0.2} color="#FFFFFF" width={width} turn={turn} />
+      <RimBand frame={frame} perimeter={perimeter} seg={seg * 0.9} centre={0.4} color={GP.berry} width={width} turn={turn} />
+      <RimBand frame={frame} perimeter={perimeter} seg={seg} centre={0.8} color="#FFFFFF" width={width} turn={turn} />
+    </G>
+  );
+}
+
+/**
+ * Sunburst (UI/ResultsView.swift): 14 rays fading outwards, turning once in
+ * 24 s (still under Reduce Motion). Draw it at its own size; the caller
+ * masks it to a circle.
+ */
+export function RelicSunburst({ color, size = 260 }: { color: string; size?: number }) {
+  const reduced = useReducedMotion();
+  const gid = `sb${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
+  const spin = useSharedValue(0);
+  useEffect(() => {
+    cancelAnimation(spin);
+    spin.set(0);
+    if (!reduced) spin.set(withRepeat(withTiming(1, { duration: 24000, easing: Easing.linear }), -1, false));
+    return () => cancelAnimation(spin);
+  }, [reduced, spin]);
+  const style = useAnimatedStyle(() => ({ transform: [{ rotate: `${spin.get() * 360}deg` }] }));
+  const r = size / 2;
+  const rays = 14;
+  return (
+    <Animated.View pointerEvents="none" style={[{ width: size, height: size }, style]}>
+      <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+        <Defs>
+          <RadialGradient id={gid} cx={r} cy={r} r={r} fx={r} fy={r} gradientUnits="userSpaceOnUse">
+            <Stop offset={40 / r} stopColor={color} stopOpacity={0.55} />
+            <Stop offset="1" stopColor={color} stopOpacity={0} />
+          </RadialGradient>
+        </Defs>
+        {Array.from({ length: rays }, (_, i) => {
+          const a0 = (i / rays) * 2 * Math.PI;
+          const a1 = a0 + Math.PI / rays;
+          return <Path key={i} d={`M${r} ${r} L${r + r * Math.cos(a0)} ${r + r * Math.sin(a0)} L${r + r * Math.cos(a1)} ${r + r * Math.sin(a1)} Z`} fill={`url(#${gid})`} />;
+        })}
+      </Svg>
+    </Animated.View>
   );
 }
 
