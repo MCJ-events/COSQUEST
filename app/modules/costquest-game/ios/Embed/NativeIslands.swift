@@ -140,6 +140,7 @@ public final class CostQuestUnityView: ExpoView {
   }
 
   private var poll: Timer?
+  private var pollTries = 0
   private lazy var placeholder: UILabel = {
     let label = UILabel()
     label.text = "Fights need the device build of CosQuest."
@@ -200,11 +201,11 @@ public final class CostQuestUnityView: ExpoView {
   private func adoptWhenReady() {
     if adopt() { return }
     poll?.invalidate()
-    var tries = 0
+    pollTries = 0
     poll = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] timer in
       MainActor.assumeIsolated {
-        tries += 1
-        guard let self, self.window != nil, tries < 100 else { timer.invalidate(); return }
+        guard let self, self.window != nil, self.pollTries < 100 else { timer.invalidate(); return }
+        self.pollTries += 1
         if self.adopt() { timer.invalidate() }
       }
     }
