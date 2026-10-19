@@ -20,6 +20,8 @@ import {
   milestoneState,
   noteSteps,
   parseLedger,
+  pedometerMeters,
+  permissionName,
   progressTo,
   reportsDue,
   type SensorAnswer,
@@ -347,6 +349,45 @@ describe("steps: one update (StepsModel.update)", () => {
     const e = await updateSteps(h.deps, d, false);
     assert.equal(e.note, "Couldn't read your steps just now.");
     assert.equal(e.motionDenied, false);
+  });
+
+  it("iOS: denied says Motion & Fitness; never asked is quiet (no note, no Settings button)", async () => {
+    const h = harness(MON + D);
+    const ios = { ...h.deps, platform: "ios" as const };
+    h.setAnswer({ kind: "denied" });
+    const d = await updateSteps(ios, EMPTY_STEPS_VIEW, true);
+    assert.equal(d.note, "Allow Motion & Fitness in Settings to count your walks.");
+    assert.equal(d.noteIsProblem, true);
+    assert.equal(d.motionDenied, true);
+
+    h.setAnswer({ kind: "undetermined" });
+    const q = await updateSteps(ios, d, false);
+    assert.equal(q.note, null);
+    assert.equal(q.noteIsProblem, false);
+    assert.equal(q.motionDenied, false);
+    assert.equal(q.status?.meters, 0);
+    assert.equal(h.server.calls.filter((c) => c.method === "POST").length, 0);
+    assert.equal(permissionName("ios"), "Motion & Fitness");
+    assert.equal(permissionName("android"), "Physical activity");
+    assert.equal(permissionName(undefined), "Physical activity");
+  });
+
+  it("the first explicit read asks (the prompt on first appearance, as Swift), later quiet reads do not", async () => {
+    const h = harness(MON + D);
+    h.setAnswer({ kind: "distance", meters: 100 });
+    await updateSteps({ ...h.deps, platform: "ios" }, EMPTY_STEPS_VIEW, false);
+    await updateSteps({ ...h.deps, platform: "ios" }, EMPTY_STEPS_VIEW, false);
+    assert.deepEqual(h.asks, [true, false]);
+  });
+
+  it("pedometer metres fall back to steps when the distance is 0", () => {
+    assert.equal(pedometerMeters(5321.7, 7000), 5321.7);
+    assert.equal(pedometerMeters(0, 1000), 700);
+    assert.equal(pedometerMeters(0, 0), 0);
+    assert.equal(pedometerMeters(0, undefined), 0);
+    assert.equal(pedometerMeters(-1, 10), null);
+    assert.equal(pedometerMeters(Number.NaN, 10), null);
+    assert.equal(pedometerMeters(undefined, 10), null);
   });
 
   it("nobody signed in: a note, no call", async () => {

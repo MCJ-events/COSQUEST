@@ -8,11 +8,15 @@
 // for a player to acquire, equip or trade a Forge weapon. A Forge weapon is
 // labelled as such and shown with its stats; nothing is granted.
 //
-// Not ported: the lod0 GLB download, its sha256 check and the on-disk cache
-// (they only fed iOS's turning 3D preview). The screens draw the weapon in
-// 2D, or the server's own thumbnail of it when the build made one.
+// The 3D model (iOS, through the native CostQuestModelView island): the pure
+// rules for which file to fetch, where it lives in the cache, whether the
+// download can be trusted and when the 3D view shows are below
+// (forgePreviewFile ... forgeUses3d); the download itself is forgeDevice.ts.
+// Everywhere else the screens draw the weapon in 2D, or the server's own
+// thumbnail of it when the build made one.
 // Pure: the client is passed in (tested in __tests__/forge.test.ts).
 import { GameError, type GameClient } from "./client.ts";
+import type { NativeIsland } from "./config.ts";
 
 export type ForgeStats = { damage?: number | null; range_m?: number | null; cooldown_s?: number | null };
 export type ForgeFile = { file: string; lod?: number | null; bytes?: number | null; sha256?: string | null; url: string };
@@ -190,3 +194,99 @@ export function createForgeStore(deps: { client: GameClient; now?: () => number 
 }
 
 export type ForgeStore = ReturnType<typeof createForgeStore>;
+
+// ---------- the 3D model: which file, where, can it be trusted ----------
+
+/** Larger than any model the Forge makes today by two orders of magnitude; a bigger file is a mistake, not a weapon. */
+export const FORGE_MAX_FILE_BYTES = 64 * 1024 * 1024;
+
+/**
+ * The file a close-up preview wants (ForgeElement.previewFile): of the .glb
+ * and .usdz files the lowest level of detail (lod0, the best mesh), USDZ
+ * preferred over glTF when a build has both. Null when there is neither.
+ */
+export function forgePreviewFile(el: ForgeElement): ForgeFile | null {
+  const usable = el.files.filter((f) => f.file.endsWith(".usdz") || f.file.endsWith(".glb"));
+  if (!usable.length) return null;
+  const lowest = Math.min(...usable.map((f) => f.lod ?? 0));
+  const atLowest = usable.filter((f) => (f.lod ?? 0) === lowest);
+  return atLowest.find((f) => f.file.endsWith(".usdz")) ?? atLowest[0];
+}
+
+/** A name from the wire reduced to one bare path component (ForgeCatalogueStore.component). */
+export function forgeComponent(s: string): string {
+  const last = s.split(/[\\/]/).filter(Boolean).pop() ?? "";
+  return last === "" || last === ".." || last === "." ? "_" : last;
+}
+
+/**
+ * Where a model lives under the cache, as path segments: per server, then the
+ * element, then its version, then the file. Keyed by id and version, so a new
+ * version is a new file and an old one is never shown again.
+ */
+export function forgeModelPath(host: string, el: ForgeElement, file: string): string[] {
+  return ["forge", forgeComponent(host), forgeComponent(el.id), String(el.version), forgeComponent(file)];
+}
+
+/** A server host (and port) as one cache folder name, from its base URL. */
+export function forgeHostOf(baseUrl: string): string {
+  const m = /^https?:\/\/([^/?#]+)/i.exec(baseUrl);
+  return (m ? m[1] : baseUrl).replace(":", "_");
+}
+
+/** A file's absolute URL: an absolute one as it is, a path against the server. */
+export function forgeFileUrl(baseUrl: string, url: string): string {
+  return /^https?:\/\//.test(url) ? url : `${baseUrl.replace(/\/+$/, "")}/${url.replace(/^\/+/, "")}`;
+}
+
+/** Bytes as lowercase hex (what the catalogue's sha256 is written in). */
+export function hexOf(bytes: ArrayLike<number>): string {
+  let out = "";
+  for (let i = 0; i < bytes.length; i++) out += (bytes[i] & 255).toString(16).padStart(2, "0");
+  return out;
+}
+
+/** The digest check: no digest in the catalogue means nothing to check; otherwise it must match, in any case. */
+export function digestOk(actualHex: string, expected: string | null | undefined): boolean {
+  return !expected || actualHex.toLowerCase() === expected.toLowerCase();
+}
+
+/** Whether a download of this size may be kept (a file the catalogue sized too big is never fetched). */
+export function sizeOk(bytes: number | null | undefined, actual?: number): boolean {
+  if (bytes != null && bytes > FORGE_MAX_FILE_BYTES) return false;
+  return actual === undefined || actual <= FORGE_MAX_FILE_BYTES;
+}
+
+/**
+ * Whether this weapon's card shows the 3D model: the native view exists on
+ * this build, its island is not turned off (EXPO_PUBLIC_GAME_2D), and the
+ * weapon has a model to fetch.
+ */
+export function forgeUses3d(el: ForgeElement, opts: { viewAvailable: boolean; islandsOff: ReadonlySet<NativeIsland> }): boolean {
+  return opts.viewAvailable && !opts.islandsOff.has("forgeModel") && forgePreviewFile(el) !== null;
+}
+
+/**
+ * What to do with the cache once the server has spoken: the id folders the
+ * catalogue no longer lists, and the version folders it has moved past
+ * (ForgeCatalogueStore.prune). `onDisk` maps an element folder to its version folders.
+ */
+export function forgePrune(weapons: ForgeElement[], onDisk: Record<string, string[]>): string[][] {
+  const live = new Map(weapons.map((w) => [forgeComponent(w.id), String(w.version)]));
+  const out: string[][] = [];
+  for (const [id, versions] of Object.entries(onDisk)) {
+    const keep = live.get(id);
+    if (keep === undefined) out.push([id]);
+    else for (const v of versions) if (v !== keep) out.push([id, v]);
+  }
+  return out;
+}
+
+/** The card's tag and subtitle (ForgeTile "FORGE · 3D", ForgeWeaponDetail "· drag to turn"). */
+export function forgeTileTag(has3d: boolean): string {
+  return has3d ? "FORGE · 3D" : "FORGE";
+}
+
+export function forgeDetailSubtitle(version: number, has3d: boolean): string {
+  return `Weapon · version ${version}${has3d ? " · drag to turn" : ""}`;
+}

@@ -15,6 +15,7 @@ import {
   EMPTY_STEPS_VIEW,
   LEDGER_KEY,
   isValidReading,
+  pedometerMeters,
   noteSteps as noteStepsWith,
   type SensorAnswer,
   type StepsDeps,
@@ -44,13 +45,18 @@ async function sensePedometer(ask: boolean): Promise<SensorAnswer> {
   try {
     const got = await n.queryPedometer({ fromMs: utcMonday(Date.now()), ask });
     switch (got.status) {
-      case "ok":
-        return Number.isFinite(got.meters) && got.meters >= 0 ? { kind: "distance", meters: got.meters } : { kind: "error" };
+      case "ok": {
+        // Steps without distance (some phones): metres from the steps.
+        const meters = pedometerMeters(got.meters, got.steps);
+        return meters === null ? { kind: "error" } : { kind: "distance", meters };
+      }
       case "unavailable":
         return { kind: "unavailable" };
       case "denied":
-      case "notDetermined":
         return { kind: "denied" };
+      case "notDetermined":
+        // Never asked (and this read did not ask): not a refusal, so no note and no Settings button.
+        return { kind: "undetermined" };
       default:
         return { kind: "error" };
     }
@@ -92,6 +98,7 @@ function deps(): StepsDeps {
       await setPref(LEDGER_KEY, text);
     },
     now: () => Date.now(),
+    platform: Platform.OS === "ios" ? "ios" : "android",
   };
 }
 
