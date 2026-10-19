@@ -72,12 +72,14 @@ export const GAME_SCREENS = [
 export type GameScreen = (typeof GAME_SCREENS)[number];
 
 /**
- * Native views the shared RN screens embed on iOS (ios/Embed/NativeIslands.swift),
+ * Native views the shared RN screens embed on iOS (ios/Embed/NativeIslands.swift,
+ * VenueEventsIsland.swift),
  * each with a 2D fallback the same screen draws when the island is off or absent:
  *   forgeModel  the Forge weapon's turning 3D model (RealityKit + GLBMesh)   -> 2D art
  *   unityDuel   the Guardian Duel drawn by Unity (DuelBridge)                -> 2D arena (same sim)
+ *   venueEvents the paid venue games in AR (ARKit, VenueEventsIsland.swift)  -> no Events tile
  */
-export const NATIVE_ISLANDS = ["forgeModel", "unityDuel"] as const;
+export const NATIVE_ISLANDS = ["forgeModel", "unityDuel", "venueEvents"] as const;
 export type NativeIsland = (typeof NATIVE_ISLANDS)[number];
 
 /**

@@ -38,7 +38,9 @@ public final class CostQuestGameModule: Module {
       // same events as the Android module.
       "onNfcTag", "onNfcEnd", "onSpeechResult", "onSpeechError",
       // Unity's scenes, as CQUnityEvents.kt sends them (NativeIslands.swift).
-      "onUnityEvent"
+      "onUnityEvent",
+      // The native venue Events closed (VenueEventsIsland.swift).
+      "onVenueEventsClosed"
     )
 
     Constants {
@@ -58,6 +60,8 @@ public final class CostQuestGameModule: Module {
         "stepCounterAvailable": false,
         // The Forge model view (NativeIslands.swift CostQuestModelView).
         "modelViewAvailable": true,
+        // Venue Events, native (ARKit): VenueEventsIsland.swift.
+        "venueEventsAvailable": true,
       ]
     }
 
@@ -71,6 +75,7 @@ public final class CostQuestGameModule: Module {
           GameHost.shared.sink = sink
           GameHelpers.shared.sink = sink
           UnityIsland.sink = sink
+          VenueEventsIsland.sink = sink
         }
       }
     }
@@ -220,6 +225,19 @@ public final class CostQuestGameModule: Module {
 
     AsyncFunction("unityPause") { (paused: Bool) in
       MainActor.assumeIsolated { UnityIsland.pause(paused) }
+    }.runOnQueue(.main)
+
+    // MARK: Venue Events (VenueEventsIsland.swift): native, over the RN game.
+
+    /// Presents the native Events flow full screen; `onVenueEventsClosed` follows.
+    /// Call setSession(chat token) first so the native client signs as the same player.
+    AsyncFunction("openVenueEvents") { (options: VenueEventsOptionsRecord?) in
+      let opts = VenueEventsOptions(options ?? VenueEventsOptionsRecord())
+      try MainActor.assumeIsolated { try VenueEventsIsland.open(opts) }
+    }.runOnQueue(.main)
+
+    AsyncFunction("closeVenueEvents") {
+      MainActor.assumeIsolated { VenueEventsIsland.close() }
     }.runOnQueue(.main)
 
     // MARK: Views. The first is the module's default view.

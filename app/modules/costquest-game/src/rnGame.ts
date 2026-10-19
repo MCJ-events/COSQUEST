@@ -34,6 +34,10 @@ export function emitGameEvent<K extends keyof GameEvents>(event: K, payload: Par
 
 const emit = emitGameEvent;
 
+/** The chat's session token, as the shell last gave it (for the native venue Events: ./index.ts openVenueEvents). */
+let chatToken: string | null = null;
+export const currentChatToken = () => chatToken;
+
 export function createRnGame(native: NativeHelpers): CostQuestGameModule {
   let readySent = false;
 
@@ -77,6 +81,7 @@ export function createRnGame(native: NativeHelpers): CostQuestGameModule {
     },
     open,
     async setSession(token: string | null) {
+      chatToken = token;
       await gameStore.setSession(token);
       const s = gameStore.get();
       if (token && s.session) {

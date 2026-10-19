@@ -3,18 +3,21 @@
 // Two games behind one API, chosen by the gameUi flag (features/game/config.ts):
 //   native  iOS: the costquest-ios SwiftUI game in modules/costquest-game/ios
 //   rn      the shared React Native game (components/game), implemented in
-//           TypeScript by ./rnGame.ts. Android always; iOS with
-//           EXPO_PUBLIC_GAME_UI=rn until it is checked on a Mac.
+//           TypeScript by ./rnGame.ts. Android always; iOS by default
+//           (EXPO_PUBLIC_GAME_UI=native brings the SwiftUI game back).
+//           A few parts only the platform can draw are native "islands"
+//           inside the RN screens (docs/one-codebase.md).
 // Web: no game (the shell shows the "get the app" page).
 import { requireNativeView, requireOptionalNativeModule } from "expo";
 import type { ComponentType } from "react";
 import { Platform, type ViewProps } from "react-native";
 
+import { resolveIslandsOff } from "@/features/game/config";
 import { GAME_UI } from "@/features/game/runtime";
 import type { GameTarget } from "@/features/world/deepLink";
 import type { GameSharePayload } from "@/features/world/gameInvite";
 
-import { createRnGame } from "./rnGame";
+import { createRnGame, currentChatToken } from "./rnGame";
 
 export type GameChatPreview = { chatId: string; title: string; text: string };
 
@@ -126,6 +129,16 @@ export type NativeOnly = {
    * {"result": ..., "inputs": [[tick, code(, arg)]], "hash": ...}, what POST /v1/duel/finish takes.
    */
   addListener?(event: "onUnityEvent", listener: (e: UnityEvent) => void): Subscription;
+
+  // Venue Events (iOS: ios/Embed/VenueEventsIsland.swift), the native ARKit flow.
+  venueEventsAvailable?: boolean;
+  /** The SwiftUI game's anonymous key (iOS), for features/game/store.ts to adopt once. */
+  readLegacyDeviceKey?(): Promise<string | null>;
+  /** The native game's own sign-in (iOS GameHost.setSession): its client signs as the same player. */
+  setSession?(token: string | null): Promise<void>;
+  openVenueEvents?(options: { gameId?: string | null; side?: string[]; handle?: string | null }): Promise<void>;
+  closeVenueEvents?(): Promise<void>;
+  addListener?(event: "onVenueEventsClosed", listener: () => void): Subscription;
 };
 
 export type UnityEvent = { scene: "duel" | "battle" | "hub" | "world" | string; kind: string; json: string };
@@ -137,6 +150,35 @@ export const CostQuestGame: CostQuestGameModule | null =
 
 /** The native module's own helpers (null on web and Expo Go). */
 export const nativeHelpers: NativeOnly | null = Platform.OS === "web" ? null : nativeGame;
+
+/** Native islands turned off for this build (EXPO_PUBLIC_GAME_2D, features/game/config.ts). */
+export const ISLANDS_OFF = resolveIslandsOff(process.env.EXPO_PUBLIC_GAME_2D);
+
+/** Venue Events (paid games at a venue, in AR): native on iOS, absent elsewhere. */
+export const venueEventsAvailable =
+  Platform.OS === "ios" && nativeGame?.venueEventsAvailable === true && !ISLANDS_OFF.has("venueEvents");
+
+/**
+ * Opens the native venue Events over the RN game (iOS). The native client is
+ * signed in first with the same chat session, so a game joined there belongs
+ * to the same player. `onClosed` runs when the player comes back.
+ */
+export async function openVenueEvents(
+  options: { gameId?: string | null; side?: string[]; handle?: string | null } = {},
+  onClosed?: () => void,
+): Promise<boolean> {
+  if (!venueEventsAvailable || !nativeGame?.openVenueEvents) return false;
+  const token = currentChatToken();
+  if (token) await nativeGame.setSession?.(token).catch(() => {});
+  if (onClosed && nativeGame.addListener) {
+    const sub = nativeGame.addListener("onVenueEventsClosed", () => {
+      sub.remove();
+      onClosed();
+    });
+  }
+  await nativeGame.openVenueEvents(options);
+  return true;
+}
 
 /** Is there a game to swipe into? */
 export const gameInstalled = CostQuestGame != null;
