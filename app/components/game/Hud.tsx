@@ -201,6 +201,7 @@ export function Rail({
   relics,
   onDailies,
   onCodex,
+  onTrials,
   onMore,
   onRecentre,
 }: {
@@ -211,6 +212,8 @@ export function Rail({
   relics?: ReactNode;
   onDailies: () => void;
   onCodex: () => void;
+  /** Guardian Trials, when the server runs the duel: it takes the Codex's place (the Codex moves to More). */
+  onTrials?: () => void;
   onMore: () => void;
   onRecentre: () => void;
 }) {
@@ -226,12 +229,16 @@ export function Rail({
           {relics}
         </CoachAnchor>
       ) : null}
-      {showCodex ? (
+      {onTrials ? (
+        <CoachAnchor ids={["trials"]}>
+          <GameIconButton icon="flash" color={GP.berry} diameter={50} accessibilityLabel="Guardian Trials" onPress={onTrials} />
+        </CoachAnchor>
+      ) : showCodex ? (
         <CoachAnchor ids={["codex"]}>
           <GameIconButton icon="albums" color={GP.sun} diameter={50} accessibilityLabel="Codex" badge={codexCount && codexCount > 0 ? codexCount : null} onPress={onCodex} />
         </CoachAnchor>
       ) : null}
-      <CoachAnchor ids={MORE_IDS}>
+      <CoachAnchor ids={onTrials ? [...MORE_IDS, "codex"] : MORE_IDS}>
         <GameIconButton icon="grid" color={GP.skyDeep} diameter={50} accessibilityLabel="More" onPress={onMore} />
       </CoachAnchor>
       <View style={styles.extras}>

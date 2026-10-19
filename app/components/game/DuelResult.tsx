@@ -31,7 +31,20 @@ import { GF, GP, realmColor } from "./theme";
 
 const GOLD = "#FFC83D";
 
-export default function DuelResult({ outcome, start, onDone }: { outcome: DuelOutcome; start: DuelStart | null; onDone: () => void }) {
+export default function DuelResult({
+  outcome,
+  start,
+  onDone,
+  again,
+  onAgain,
+}: {
+  outcome: DuelOutcome;
+  start: DuelStart | null;
+  onDone: () => void;
+  /** "Next rung" or "Try again" after a trial (DuelResultView onAgain), or null. */
+  again?: string | null;
+  onAgain?: () => void;
+}) {
   const insets = useSafeAreaInsets();
   const reduce = useReducedMotion();
   const o = asFull(outcome);
@@ -95,7 +108,8 @@ export default function DuelResult({ outcome, start, onDone }: { outcome: DuelOu
           </View>
         ) : null}
 
-        <GameButton title={backLabel(o)} color={GP.sun} onPress={onDone} style={styles.back} />
+        {again && onAgain ? <GameButton title={again} color={won ? GP.mint : GP.berry} onPress={onAgain} style={styles.back} /> : null}
+        <GameButton title={backLabel(o)} color={again && onAgain ? GP.skyDeep : GP.sun} onPress={onDone} style={styles.back} />
       </ScrollView>
     </Animated.View>
   );

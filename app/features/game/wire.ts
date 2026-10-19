@@ -72,7 +72,11 @@ export type DuelMe = {
   raid_mode?: string | null;
   run_mode?: string | null;
   live?: { duel_id: string; mode?: string | null; target?: string | null; expires_at?: string | null } | null;
+  /** Guardian Trials: one ladder per faction (DuelMe.trials). */
+  trials?: Record<string, TrialLadder> | null;
 };
+
+export type TrialLadder = { cleared: number; rungs: number; next?: { rung: number; name: string; level: number } | null };
 
 export type RoamMe = {
   device_key: string;

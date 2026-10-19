@@ -299,3 +299,31 @@ describe("Unity on the device", () => {
     assert.equal(parseCue('"x"'), "x");
   });
 });
+
+import { hasTrials, trialAgainLabel, trialPoint, trialsOrder, trialTarget } from "../duelFlow.ts";
+
+describe("guardian trials", () => {
+  it("targets the next rung or a replay", () => {
+    assert.equal(trialTarget({ faction: "anime", rung: null }), "anime");
+    assert.equal(trialTarget({ faction: "anime", rung: 3 }), "anime:3");
+  });
+  it("orders the ladders by the server's factions", () => {
+    const t = { zeta: { cleared: 0, rungs: 8 }, dc: { cleared: 1, rungs: 8 }, anime: { cleared: 0, rungs: 8 } };
+    assert.deepEqual(trialsOrder(t, ["anime", "marvel", "dc"]), ["anime", "dc", "zeta"]);
+    assert.deepEqual(trialsOrder(null, ["anime"]), []);
+  });
+  it("offers the next fight", () => {
+    assert.equal(trialAgainLabel({ status: "won", mode: "trial" }, { cleared: 2, rungs: 8, next: { rung: 3, name: "X", level: 4 } }), "Next rung");
+    assert.equal(trialAgainLabel({ status: "won", mode: "trial" }, { cleared: 8, rungs: 8, next: null }), null);
+    assert.equal(trialAgainLabel({ status: "lost", mode: "trial" }, null), "Try again");
+    assert.equal(trialAgainLabel({ status: "won", mode: "point" }, null), null);
+  });
+  it("stands a point in for the fight", () => {
+    const p = trialPoint({ faction: "dc", rung: null }, "DC", { cleared: 1, rungs: 8, next: { rung: 2, name: "Gotham Warden", level: 3 } });
+    assert.equal(p.realm, "dc");
+    assert.equal(p.name, "DC Trials");
+    assert.equal(p.extra?.guardian, "Gotham Warden");
+    assert.equal(hasTrials({ features: { duel: {} } } as never), true);
+    assert.equal(hasTrials(null), false);
+  });
+});

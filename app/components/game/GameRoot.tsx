@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { getPref, setPref } from "@/utils/prefsStorage";
 import { COACH_DONE_KEY, coachStepFor, type CoachStep, parseIdList, UNLOCKS_INTRODUCED_KEY, unlockOfStep } from "@/features/game/coach";
 import { bearingDeg, distanceM, distanceText } from "@/features/game/geo";
+import { hasTrials, type TrialRequest, trialPoint } from "@/features/game/duelFlow";
 import { relativeBearing, suggestedId } from "@/features/game/guide";
 import { gameStore, GAME_SERVER, GAME_SERVER_IS_PRODUCTION, useGame, useLocationPermission, startLocation } from "@/features/game/runtime";
 import { nearestFirst } from "@/features/game/store";
@@ -56,6 +57,7 @@ import RelicsButton from "./RelicsButton";
 import RelicsSheet from "./RelicsSheet";
 import Reward, { type RewardSummary } from "./Reward";
 import SiegeScreen, { siegeGuard } from "./SiegeScreen";
+import TrialsSheet from "./TrialsSheet";
 import { GF, GP, realmColor } from "./theme";
 import { useHeading } from "./useHeading";
 import { useOnScreen } from "./useOnScreen";
@@ -65,14 +67,14 @@ import WorldMap from "./WorldMap";
 type Screen =
   | { kind: "home" }
   | { kind: "encounter"; point: QuestPoint }
-  | { kind: "duel"; point: QuestPoint; mode: "point" | "raid" | "siege" }
+  | { kind: "duel"; point: QuestPoint; mode: "point" | "raid" | "siege" | "trial"; trial?: TrialRequest }
   | { kind: "raid"; point: QuestPoint }
   | { kind: "siege"; point: QuestPoint }
   | { kind: "room"; gameId: string }
   | { kind: "reward"; reward: RewardSummary };
 
 /** What is open over the map (one at a time, closed by Android Back). */
-type Sheet = "dailies" | "codex" | "war" | "more" | "events" | "friends" | "relics" | "battle" | "profile" | "coins" | "recap" | "ask";
+type Sheet = "dailies" | "codex" | "war" | "more" | "events" | "friends" | "relics" | "battle" | "profile" | "coins" | "recap" | "ask" | "trials";
 
 const NUDGE_EVERY_MS = 150000;
 /** The first nudge waits for the map to settle (RoamHomeView.nudgeLoop: 25 s). */
@@ -331,8 +333,12 @@ export default function GameRoot({ parked }: { parked: boolean }) {
   if (unlocked(me, "war")) {
     moreTiles.push({ id: "war", icon: "flag", color, title: "Faction war", onPress: () => setSheet("war") });
   }
+  const trialsOn = hasTrials(me);
   if (battleOpen) {
     moreTiles.push({ id: "battle", icon: "people-circle", color: GP.berry, title: "Rooms", badge: rooms.nearby.length || null, onPress: () => openBattle(null) });
+  }
+  if (trialsOn && codexOpen) {
+    moreTiles.push({ id: "codex", icon: "albums", color: GP.sun, title: "Codex", badge: codexCount || null, onPress: () => setSheet("codex") });
   }
   if (unlocked(me, "friends")) {
     moreTiles.push({
@@ -385,6 +391,7 @@ export default function GameRoot({ parked }: { parked: boolean }) {
           relics={unlocked(me, "relics") ? <RelicsButton onPress={() => setSheet("relics")} /> : undefined}
           onDailies={() => setSheet("dailies")}
           onCodex={() => setSheet("codex")}
+          onTrials={trialsOn ? () => setSheet("trials") : undefined}
           onMore={() => setSheet("more")}
           onRecentre={() => {
             recentre((n) => n + 1);
@@ -472,6 +479,15 @@ export default function GameRoot({ parked }: { parked: boolean }) {
       {sheet === "coins" ? <CoinsSheet onClose={() => setSheet(null)} /> : null}
       {sheet === "recap" ? <RecapSheet onClose={() => setSheet(null)} /> : null}
       {sheet === "ask" ? <AskWarden onClose={() => setSheet(null)} /> : null}
+      {sheet === "trials" ? (
+        <TrialsSheet
+          onClose={() => setSheet(null)}
+          onFight={(t) => {
+            const ladder = gameStore.get().me?.features?.duel?.trials?.[t.faction];
+            setScreen({ kind: "duel", mode: "trial", trial: t, point: trialPoint(t, gameStore.factionName(t.faction), ladder) });
+          }}
+        />
+      ) : null}
       {sheet === "profile" ? <ProfileSheet onClose={() => setSheet(null)} onCoins={() => setSheet("coins")} /> : null}
       {sheet === "battle" ? (
         <RoomSheet
@@ -491,7 +507,7 @@ export default function GameRoot({ parked }: { parked: boolean }) {
       ) : null}
       {screen.kind === "duel" ? (
         <Animated.View entering={FadeIn.duration(220)} exiting={FadeOut.duration(160)} style={StyleSheet.absoluteFill}>
-          <DuelScreen point={screen.point} mode={screen.mode} parked={parked} onClose={home} />
+          <DuelScreen point={screen.point} mode={screen.mode} trial={screen.trial} parked={parked} onClose={home} />
         </Animated.View>
       ) : null}
       {screen.kind === "raid" ? (

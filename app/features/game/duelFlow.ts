@@ -8,14 +8,14 @@ import { GameError, type GameClient } from "./client.ts";
 import { resolveDuelRenderer, resolveIslandsOff } from "./config.ts";
 import { DuelEventType } from "./duel/types.ts";
 import { type SiegeReward, siegeDrop } from "./siege.ts";
-import type { DuelFighterPeek, DuelFinished, DuelOutcome, DuelPay, DuelStart, QuestPoint, RoamExtra } from "./wire.ts";
+import type { DuelFighterPeek, DuelFinished, DuelOutcome, DuelPay, DuelStart, QuestPoint, RoamExtra, RoamMe, TrialLadder } from "./wire.ts";
 
 // ---------------------------------------------------------------------
 // Modes and copy
 // ---------------------------------------------------------------------
 
 /** Which /v1/duel/start mode a screen asks for (DuelRequest: .point, .raid, .siege). */
-export type DuelMode = "point" | "raid" | "siege";
+export type DuelMode = "point" | "raid" | "siege" | "trial";
 
 /** The `raid` boolean the screen has always taken, and the new `mode`: mode wins. */
 export function duelModeOf(mode: DuelMode | undefined, raid: boolean | undefined): DuelMode {
@@ -298,7 +298,8 @@ export function bannerAfter(o: DuelOutcomeFull | null | undefined, mode: DuelMod
   if (!o) return null;
   if (mode === "raid") return o.raid?.defeated === true ? { title: "Boss defeated!", subtitle: pointName } : null;
   if (o.status !== "won") return null;
-  return mode === "siege" ? { title: "Taken!", subtitle: pointName } : { title: "Guardian beaten!", subtitle: pointName };
+  if (mode === "siege") return { title: "Taken!", subtitle: pointName };
+  return { title: "Guardian beaten!", subtitle: (mode === "trial" ? o.trial?.name : null) ?? pointName };
 }
 
 /** What the screen says out loud for a verdict (VoiceOver). */
@@ -409,3 +410,51 @@ export function unityDuelAction(e: { scene: string; kind: string; json: string }
 export const SCENE_WAIT_MS = 10_000;
 /** The VS card holds this long while the arena loads (DuelView.begin). */
 export const VERSUS_MS = 1800;
+
+// ---------------------------------------------------------------------
+// Guardian Trials (TrialsSheet, DuelRequest.trial)
+// ---------------------------------------------------------------------
+
+/** A ladder's fight: the faction's next rung, or `rung` to replay one. */
+export type TrialRequest = { faction: string; rung: number | null };
+
+/** /v1/duel/start's target for a trial: "anime" for the next rung, "anime:3" to replay rung 3. */
+export function trialTarget(t: TrialRequest): string {
+  return t.rung === null ? t.faction : `${t.faction}:${t.rung}`;
+}
+
+/** The rail shows Trials (and More holds the Codex) once the server runs the duel. */
+export function hasTrials(me: RoamMe | null | undefined): boolean {
+  return !!me?.features?.duel;
+}
+
+/** The ladders in the server's faction order, then any others by id. */
+export function trialsOrder(trials: Record<string, TrialLadder> | null | undefined, factionIds: string[]): string[] {
+  const t = trials ?? {};
+  const known = factionIds.filter((f) => t[f] !== undefined);
+  return [...known, ...Object.keys(t).filter((f) => !known.includes(f)).sort()];
+}
+
+/** What stands in for a point while a trial is fought (the screens read a name, a realm and a tier). */
+export function trialPoint(t: TrialRequest, factionName: string, ladder?: TrialLadder | null): QuestPoint {
+  const rung = t.rung ?? ladder?.next?.rung ?? null;
+  return {
+    id: `trial:${trialTarget(t)}`,
+    name: `${factionName} Trials`,
+    lat: 0,
+    lng: 0,
+    source: "trial",
+    place_kind: "trial",
+    tier: "rare",
+    realm: t.faction,
+    challenge: "duel",
+    extra: { guardian: (t.rung === null ? ladder?.next?.name : null) ?? `${factionName} Guardian`, ...(rung !== null ? { rung: String(rung) } : {}) },
+  };
+}
+
+/** "Next rung" or "Try again" after a trial; nothing once the ladder is done (DuelView.again). */
+export function trialAgainLabel(o: Pick<DuelOutcome, "status" | "mode">, ladderAfter: TrialLadder | null | undefined): string | null {
+  if (o.mode !== "trial") return null;
+  if (o.status === "won") return ladderAfter && !ladderAfter.next ? null : "Next rung";
+  return o.status === "held" ? null : "Try again";
+}

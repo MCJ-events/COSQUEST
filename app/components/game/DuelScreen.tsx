@@ -66,6 +66,9 @@ import {
   pauseTitle,
   SCENE_WAIT_MS,
   siegeDuelStart,
+  trialAgainLabel,
+  type TrialRequest,
+  trialTarget,
   cueForSimEvent,
   unityDuelAction,
   unitySetupJson,
@@ -155,6 +158,7 @@ export default function DuelScreen({
   parked,
   raid,
   mode: modeProp,
+  trial,
   onClose,
 }: {
   point: QuestPoint;
@@ -166,12 +170,16 @@ export default function DuelScreen({
    * hold fought as a duel, when me.features.duel.siege_mode is "duel": no briefing).
    */
   mode?: DuelMode;
+  /** A Guardian Trials rung (mode "trial"): the faction's next, or one to replay. Fought anywhere, no briefing. */
+  trial?: TrialRequest;
   /** Unused since the verdict is DuelResult now (Swift goes back to the map); kept so callers still compile. */
   onReward?: (r: RewardSummary) => void;
   onClose: () => void;
 }) {
   const mode = duelModeOf(modeProp, raid);
-  const [phase, setPhase] = useState<Phase>(mode === "siege" ? { kind: "starting" } : { kind: "briefing" });
+  // A siege fought as a duel and a trial go straight to the opponent: no briefing (DuelView.task).
+  const direct = mode === "siege" || mode === "trial";
+  const [phase, setPhase] = useState<Phase>(direct ? { kind: "starting" } : { kind: "briefing" });
   const phaseRef = useRef<Phase>(phase);
   const [paused, setPaused] = useState(false);
   const [renderer, setRenderer] = useState<"unity" | "rn">(USE_UNITY ? "unity" : "rn");
@@ -344,7 +352,9 @@ export default function DuelScreen({
           ? await raidDuelStart(gameStore.client, point, fix)
           : mode === "siege"
             ? await siegeDuelStart(gameStore.client, point, fix)
-            : await gameStore.duelStart(point);
+            : mode === "trial" && trial
+              ? await gameStore.client.duelStart({ mode: "trial", target: trialTarget(trial) })
+              : await gameStore.duelStart(point);
       if (!alive.current) return;
       go({ kind: "versus", start });
       playSound("whoosh");
@@ -382,9 +392,9 @@ export default function DuelScreen({
     }
   };
 
-  // A siege fought as a duel goes straight to the opponent: no briefing (DuelView.task).
+  // A siege fought as a duel, or a trial, goes straight to the opponent: no briefing (DuelView.task).
   useEffect(() => {
-    if (mode !== "siege" || startedOnce.current) return;
+    if (!direct || startedOnce.current) return;
     startedOnce.current = true;
     void fight();
     // fight() reads the current props once; this is the screen's one start.
@@ -419,7 +429,7 @@ export default function DuelScreen({
   const unity = renderer === "unity" && !!CostQuestUnityView;
   const insets = useSafeAreaInsets();
 
-  if (phase.kind === "briefing" || (phase.kind === "starting" && mode !== "siege") || (phase.kind === "failed" && !phase.afterStart && mode !== "siege")) {
+  if (phase.kind === "briefing" || (phase.kind === "starting" && !direct) || (phase.kind === "failed" && !phase.afterStart && !direct)) {
     const Brief = mode === "raid" ? RaidDuelBriefing : Briefing;
     return <Brief point={point} busy={phase.kind === "starting"} problem={phase.kind === "failed" ? phase.message : null} onFight={fight} onClose={onClose} />;
   }
@@ -490,7 +500,18 @@ export default function DuelScreen({
         </View>
       ) : null}
 
-      {phase.kind === "result" ? <DuelResult outcome={phase.outcome} start={phase.start} onDone={() => done(phase.outcome)} /> : null}
+      {phase.kind === "result" ? (
+        <DuelResult
+          outcome={phase.outcome}
+          start={phase.start}
+          onDone={() => done(phase.outcome)}
+          again={trialAgainLabel(phase.outcome, trial ? gameStore.get().me?.features?.duel?.trials?.[trial.faction] : null)}
+          onAgain={() => {
+            // The ladder's next rung (or the same one again): a fresh start, no briefing.
+            void fight();
+          }}
+        />
+      ) : null}
 
       {phase.kind === "failed" ? (
         <View style={styles.centerCol}>
