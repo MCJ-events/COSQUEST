@@ -26,6 +26,7 @@ import type {
   RoamHint,
   RoamLeaders,
   RoamMe,
+  RoamSpin,
   RoamVerdict,
 } from "./wire.ts";
 import { isCooling, pointPlaysAsDuel } from "./wire.ts";
@@ -382,6 +383,16 @@ export function createGameStore(deps: GameStoreDeps) {
       void store.refreshMe();
       void store.refreshPoints(true);
       return out;
+    },
+
+    /** Spin: the one-second verb. Items fly into the bag, and the point rests (RoamStore.spin). */
+    async spin(p: QuestPoint): Promise<RoamSpin> {
+      const here = state.fix;
+      if (!here) throw new GameError("http", "Waiting for your location.");
+      const r = await client.spin(p.id, here.lat, here.lng, here.accuracy);
+      set({ points: state.points.map((x) => (x.id === p.id ? { ...x, extra: { ...(x.extra ?? {}), spin_ready_at: r.spin_ready_at } } : x)) });
+      void store.refreshMe();
+      return r;
     },
 
     /** The point cools for this player: show it at once, not on the next fetch. Starters go. */

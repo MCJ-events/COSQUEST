@@ -113,3 +113,33 @@ describe("quest run", () => {
     assert.equal(boardPlaceText(1204, { world: true, approx: false }), "#1,204 worldwide today");
   });
 });
+
+import { spinBanner, spinReady } from "../wire.ts";
+
+describe("spin", () => {
+  it("rests, then is ready again", () => {
+    const at = Date.UTC(2026, 9, 19, 12, 0);
+    assert.equal(spinReady({ extra: null }, at), true);
+    assert.equal(spinReady({ extra: { spin_ready_at: "2026-10-19T12:05:00Z" } }, at), false);
+    assert.equal(spinReady({ extra: { spin_ready_at: "2026-10-19T11:55:00Z" } }, at), true);
+  });
+  it("names what went into the bag", () => {
+    assert.deepEqual(spinBanner({ items: { time: 1, fifty: 2 }, xp: 5, streak_bonus: false, names: { fifty: "50/50", time: "Extra time" } }), {
+      title: "+5 XP",
+      subtitle: "1× Extra time  2× 50/50",
+    });
+    assert.deepEqual(spinBanner({ items: {}, xp: 10, streak_bonus: true, names: {} }), { title: "Spin streak! ×2", subtitle: "Bag full" });
+  });
+});
+
+import { freshLoss, holdsLostOf } from "../wire.ts";
+
+describe("holds lost", () => {
+  it("tells each loss once", () => {
+    const me = { features: { siege: { holds_lost: [{ point_id: "a", at: "t1", by_faction: "dc" }, { point_id: "b", at: "t2" }] } } };
+    assert.equal(holdsLostOf(me).length, 2);
+    assert.equal(freshLoss(holdsLostOf(me), new Set())?.point_id, "a");
+    assert.equal(freshLoss(holdsLostOf(me), new Set(["at1"]))?.point_id, "b");
+    assert.equal(freshLoss(holdsLostOf(null), new Set()), null);
+  });
+});

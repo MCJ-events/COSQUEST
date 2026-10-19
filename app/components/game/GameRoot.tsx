@@ -24,7 +24,7 @@ import { isSiege, siegePlaysAsDuel } from "@/features/game/siege";
 import { noteStepsOnPhone } from "@/features/game/stepsDevice";
 import { unlocked, visiblePoints } from "@/features/game/unlocks";
 import { arriveMoment, legendMoment, nudgeMoment } from "@/features/game/warden";
-import type { QuestPoint } from "@/features/game/wire";
+import { freshLoss, holdsLostOf, type QuestPoint, spinBanner } from "@/features/game/wire";
 import { factionVeilColor } from "@/features/world/worldState";
 import { openVenueEvents, venueEventsAvailable } from "@/modules/costquest-game/src";
 import { emitGameEvent } from "@/modules/costquest-game/src/rnGame";
@@ -80,6 +80,7 @@ type Screen =
 type Sheet = "dailies" | "codex" | "war" | "more" | "events" | "friends" | "relics" | "battle" | "profile" | "coins" | "recap" | "ask" | "trials" | "runStart";
 
 const NUDGE_EVERY_MS = 150000;
+const LOSS_SEEN_KEY = "cq.holdsLost.seen";
 /** The first nudge waits for the map to settle (RoamHomeView.nudgeLoop: 25 s). */
 const FIRST_NUDGE_MS = 25000;
 /** A nudge is put away after 12 s if nothing else has spoken since. */
@@ -114,6 +115,9 @@ export default function GameRoot({ parked }: { parked: boolean }) {
   // What the coach has said (cq.coach.done, cq.unlocks.introduced), read once.
   const [coachDone, setCoachDone] = useState<Set<string> | null>(null);
   const [introduced, setIntroduced] = useState<Set<string>>(() => new Set());
+  // Losses already told (cq.holdsLost.seen), read once.
+  const lossSeen = useRef<Set<string> | null>(null);
+  const [lossLoaded, setLossLoaded] = useState(false);
 
   const { me, fix, focus } = state;
   // Bosses wait for level 5 (RoamGuide.swift visiblePoints).
@@ -154,8 +158,10 @@ export default function GameRoot({ parked }: { parked: boolean }) {
 
   useEffect(() => {
     let alive = true;
-    void Promise.all([getPref(COACH_DONE_KEY), getPref(UNLOCKS_INTRODUCED_KEY)]).then(([done, intro]) => {
+    void Promise.all([getPref(COACH_DONE_KEY), getPref(UNLOCKS_INTRODUCED_KEY), getPref(LOSS_SEEN_KEY)]).then(([done, intro, lostSeen]) => {
       if (!alive) return;
+      lossSeen.current = new Set(parseIdList(lostSeen));
+      setLossLoaded(true);
       setCoachDone(new Set(parseIdList(done)));
       setIntroduced(new Set(parseIdList(intro)));
     });
@@ -233,6 +239,20 @@ export default function GameRoot({ parked }: { parked: boolean }) {
       alive = false;
     };
   }, [selectedKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // A rival took back a point this player had taken: say so once, with the way to answer it.
+  const lossesKey = holdsLostOf(me)
+    .map((l) => l.point_id + (l.at ?? ""))
+    .join("|");
+  useEffect(() => {
+    const seen = lossSeen.current;
+    const lost = seen ? freshLoss(holdsLostOf(gameStore.get().me), seen) : null;
+    if (!seen || !lost) return;
+    seen.add(lost.point_id + (lost.at ?? ""));
+    void setPref(LOSS_SEEN_KEY, JSON.stringify([...seen]));
+    const by = lost.by_faction_name ?? gameStore.factionName(lost.by_faction ?? "");
+    showBanner(`${by} took it back`, { subtitle: `${lost.point_name ?? "Your point"}: go take it back`, color: realmColor(lost.by_faction), sound: "hit" });
+  }, [lossesKey, lossLoaded]);
 
   // A quiet step-counter reading each time the game comes to the front (no
   // prompt, no network), so the week's walking is split between weeks well.
@@ -325,6 +345,17 @@ export default function GameRoot({ parked }: { parked: boolean }) {
     // A rival's hold: a fight with its Guardian when the server says so, the quiz Siege otherwise.
     else if (isSiege(p, me)) setScreen(siegePlaysAsDuel(me) ? { kind: "duel", point: p, mode: "siege" } : { kind: "siege", point: p });
     else setScreen(gameStore.playsAsDuel(p) ? { kind: "duel", point: p, mode: "point" } : { kind: "encounter", point: p });
+  };
+
+  // Spin: the one-second verb. Items fly into the bag (RoamHomeView.spin).
+  const spin = async (p: QuestPoint) => {
+    try {
+      const r = await gameStore.spin(p);
+      const b = spinBanner(r);
+      showBanner(b.title, { subtitle: b.subtitle, color: GP.sky, sound: "coin" });
+    } catch (e) {
+      showBanner("Can't spin", { subtitle: e instanceof Error ? e.message : null, color: GP.berry, sound: "hit" });
+    }
   };
 
   const share = (p: QuestPoint) => {
@@ -502,6 +533,7 @@ export default function GameRoot({ parked }: { parked: boolean }) {
           factionName={gameStore.factionName}
           legend={legendOf?.id === selected.id ? legendOf.text : null}
           onPlay={() => play(selected)}
+          onSpin={() => void spin(selected)}
           onShare={() => share(selected)}
           onClose={closeSheet}
         />

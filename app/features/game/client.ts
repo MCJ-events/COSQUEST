@@ -21,6 +21,7 @@ import type {
   QuestPoint,
   QuestPoints,
   Relic,
+  RoamSpin,
   RoamAnswer,
   RoamAttempt,
   RoamBag,
@@ -201,6 +202,14 @@ export class GameClient {
       }),
     );
     return { ...got, points: got.points.map(normalisePoint) };
+  }
+
+  /** Spin a point in reach: items, a little XP, then 5 minutes' rest. Not retried (a second spin would be refused). */
+  async spin(pointId: string, lat: number, lng: number, accuracy: number): Promise<RoamSpin> {
+    return this.request("POST", "v1/roam/items/spin", {
+      body: { device_key: this.deviceKey(), point_id: pointId, lat, lng, accuracy_m: Math.min(5000, Math.max(0, accuracy)) },
+      signed: true,
+    });
   }
 
   async roamMe(): Promise<RoamMe> {

@@ -14,7 +14,7 @@ import { challengeLabel, difficultyLabel, pointSubtitle, rechargeText, realmLine
 import { isRaidPoint, RAID_COLOR } from "@/features/game/raids";
 import { useGame } from "@/features/game/runtime";
 import { siegeOf } from "@/features/game/siege";
-import type { QuestPoint } from "@/features/game/wire";
+import { type QuestPoint, spinReady } from "@/features/game/wire";
 
 import { Chip, GameButton, GameIconButton, GamePanel, MAX_FONT_SCALE, withAlpha } from "./kit";
 import { HoldLine, SiegeLine, SpawnLine } from "./PointLines";
@@ -44,6 +44,7 @@ export default function PointSheet({
   factionName,
   legend,
   onPlay,
+  onSpin,
   onShare,
   onClose,
 }: {
@@ -57,17 +58,21 @@ export default function PointSheet({
   /** The Warden's line about the place, once written. */
   legend?: string | null;
   onPlay: () => void;
+  /** Spin the point for items (in reach, not resting). */
+  onSpin?: () => void;
   onShare: () => void;
   onClose: () => void;
 }) {
   const insets = useSafeAreaInsets();
   const { me } = useGame();
   const [now, setNow] = useState(() => Date.now());
+  // The spin's rest ends on its own: tick while it runs.
+  const resting = !spinReady(point, now);
   useEffect(() => {
-    if (!cooling) return;
-    const t = setInterval(() => setNow(Date.now()), 15000);
+    if (!cooling && !resting) return;
+    const t = setInterval(() => setNow(Date.now()), resting ? 5000 : 15000);
     return () => clearInterval(t);
-  }, [cooling]);
+  }, [cooling, resting]);
 
   const duel = point.challenge === "duel";
   const boss = isRaidPoint(point);
@@ -114,7 +119,19 @@ export default function PointSheet({
           {cooling ? (
             <GameButton title={rechargeText(point, now)} color={WAIT_FACE} disabled onPress={() => {}} icon={<Ionicons name="hourglass" size={22} color="#FFFFFF" />} />
           ) : inReach ? (
-            siege ? (
+            <View style={styles.buttons}>
+              {onSpin ? (
+                <GameButton
+                  title={spinReady(point, now) ? "Spin" : "Resting"}
+                  color={GP.sky}
+                  disabled={!spinReady(point, now)}
+                  onPress={onSpin}
+                  style={{ flex: 1 }}
+                  icon={<Ionicons name="sync" size={22} color="#FFFFFF" />}
+                />
+              ) : null}
+              <View style={{ flex: 1 }}>
+              {siege ? (
               // A rival holds it: one answer won't take it, its Guardian has to be beaten.
               <GameButton title="Siege" color={realmColor(siege.faction)} onPress={onPlay} icon={<Ionicons name="flag" size={22} color="#FFFFFF" />} />
             ) : boss ? (
@@ -123,7 +140,9 @@ export default function PointSheet({
               <GameButton title="Fight" color={GP.mint} onPress={onPlay} icon={<Ionicons name="flash" size={22} color="#FFFFFF" />} />
             ) : (
               <GameButton title="Play" color={GP.mint} onPress={onPlay} icon={<Ionicons name="play" size={22} color="#FFFFFF" />} />
-            )
+            )}
+              </View>
+            </View>
           ) : (
             <GameButton
               title={`${distanceText(distance)} away · walk closer`}
@@ -147,5 +166,6 @@ const styles = StyleSheet.create({
   subtitle: { fontFamily: GF.regular, fontSize: 15, color: withAlpha(GP.ink, 0.7) },
   legend: { fontFamily: GF.regular, fontSize: 15, fontStyle: "italic", color: withAlpha(GP.ink, 0.75) },
   realm: { flexDirection: "row", alignItems: "center", gap: 8 },
+  buttons: { flexDirection: "row", gap: 10 },
   realmText: { flexShrink: 1, fontFamily: GF.body, fontSize: 14 },
 });
