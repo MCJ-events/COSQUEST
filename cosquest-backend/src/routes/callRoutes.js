@@ -10,6 +10,8 @@ const {
   endCall,
   rejoinCall,
   inviteToCall,
+  startPrivateCall,
+  startPrivateVoiceCall,
 } = require('../controllers/callController');
 const {
   getVoiceRoom,
@@ -46,11 +48,15 @@ router.post('/calls/:callId/decline', asyncHandler(declineCall));
 router.post('/calls/:callId/end', asyncHandler(endCall));
 router.post('/calls/:callId/invite', asyncHandler(inviteToCall));
 router.post('/calls/:callId/join', asyncHandler(rejoinCall));
+// Private call on top: a one-to-one call with someone in this call ({ userId }).
+router.post('/calls/:callId/private', asyncHandler(startPrivateCall));
 
-// Voice chats (Community and faction rooms - nobody's phone rings)
+// Voice chats (Community, faction and group rooms - nobody's phone rings)
 router.get('/chats/:conversationId/voice', asyncHandler(getVoiceRoom));
 router.post('/chats/:conversationId/voice/join', asyncHandler(joinVoiceRoom));
 router.post('/voice/:roomId/ping', asyncHandler(pingVoiceRoom));
 router.post('/voice/:roomId/leave', asyncHandler(leaveVoiceRoom));
+// Private call on top, from a voice chat ({ userId }).
+router.post('/voice/:roomId/private', asyncHandler(startPrivateVoiceCall));
 
 module.exports = router;

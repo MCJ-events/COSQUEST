@@ -83,7 +83,14 @@ async function previewsFor(userIds) {
   return result;
 }
 
-function toVoiceJson(room, previews) {
+// Who is in one of this voice chat's answered private calls right now
+// (callController.awayIn; required here, not at the top, as callController
+// requires this file too).
+function awayIn(roomId) {
+  return require('./callController').awayIn(roomId);
+}
+
+function toVoiceJson(room, previews, away = new Set()) {
   return {
     id: idOf(room),
     conversationId: idOf(room.conversation),
@@ -96,6 +103,8 @@ function toVoiceJson(room, previews) {
     members: room.members.map((member) => ({
       user: previews.get(idOf(member.user)) || userPreview(member.user),
       joinedAt: member.joinedAt,
+      // In a private call with someone from this voice chat right now.
+      away: away.has(idOf(member.user)),
     })),
     memberCount: room.members.length,
     maxMembers: limits.voiceRoomMaxMembers(),
@@ -110,13 +119,16 @@ async function buildView(roomId) {
   const room = await VoiceRoom.findById(roomId).lean();
   if (!room) return null;
   const memberIds = room.members.map((member) => idOf(member.user));
-  const previews = await previewsFor([idOf(room.startedBy), ...memberIds]);
+  const [previews, away] = await Promise.all([
+    previewsFor([idOf(room.startedBy), ...memberIds]),
+    room.active ? awayIn(room._id) : new Set(),
+  ]);
   return {
     version: room.__v,
     active: Boolean(room.active),
     conversationId: idOf(room.conversation),
     memberIds,
-    json: toVoiceJson(room, previews),
+    json: toVoiceJson(room, previews, away),
   };
 }
 
@@ -148,12 +160,15 @@ async function closeIfEmpty(roomId, now = new Date()) {
 }
 
 // Removes anyone whose app hasn't checked in for 90 seconds (and closes the
-// voice chat if that empties it). Returns { changed, closed }.
+// voice chat if that empties it). Someone away in a private call counts as
+// still here. Returns { changed, closed }.
 async function pruneStale(roomId, now = new Date()) {
   const cutoff = new Date(now.getTime() - STALE_AFTER_MS);
+  const away = [...(await awayIn(roomId))].map((id) => new mongoose.Types.ObjectId(id));
+  const stale = { lastSeenAt: { $lte: cutoff }, user: { $nin: away } };
   const pruned = await VoiceRoom.updateOne(
-    { _id: roomId, active: true, members: { $elemMatch: { lastSeenAt: { $lte: cutoff } } } },
-    { $pull: { members: { lastSeenAt: { $lte: cutoff } } }, $inc: { __v: 1 } }
+    { _id: roomId, active: true, members: { $elemMatch: stale } },
+    { $pull: { members: stale }, $inc: { __v: 1 } }
   );
   if (!pruned.modifiedCount) return { changed: false, closed: false };
   return { changed: true, closed: await closeIfEmpty(roomId, now) };
@@ -248,19 +263,33 @@ async function refreshRoom(roomId) {
   return roomView(roomId);
 }
 
-// Voice chats are for the Community room and faction rooms only.
+// Voice chats are for the Community room, faction rooms and groups (members
+// only - loadConversationForUser checks that).
 async function loadVoiceConversation(conversationId, user) {
   const { conversation, error } = await loadConversationForUser(conversationId, user);
   if (error) return { error };
-  if (!['community', 'faction'].includes(conversation.type)) {
+  if (!['community', 'faction', 'group'].includes(conversation.type)) {
     return {
       error: {
         status: 400,
-        message: 'Voice chats are for Community and faction chats. Use a call in direct messages.',
+        message: 'Voice chats are for Community, faction and group chats. Use a call in direct messages.',
       },
     };
   }
   return { conversation };
+}
+
+// A private call from this voice chat changed (answered or ended): sends the
+// voice chat again with who is away now. Its two people count as having just
+// checked in, so they aren't removed for the time they spent away.
+async function privateCallChanged(roomId, userIds) {
+  const ids = userIds.map((id) => new mongoose.Types.ObjectId(String(id)));
+  const updated = await VoiceRoom.updateOne(
+    { _id: roomId, active: true },
+    { $set: { 'members.$[person].lastSeenAt': new Date() }, $inc: { __v: 1 } },
+    { arrayFilters: [{ 'person.user': { $in: ids } }] }
+  );
+  if (updated.modifiedCount) broadcastVoiceUpdate(roomId);
 }
 
 async function tokenFor(room, user) {
@@ -421,6 +450,8 @@ module.exports = {
   leaveVoiceRoom,
   // Sparks (src/sparks/voiceRooms.js): drop people who went quiet, close if empty.
   refreshVoiceRoom: (roomId) => refreshRoom(roomId),
+  // callController: a private call from this voice chat was answered or ended.
+  privateCallChanged,
   // Exported for tests.
   _internal: { pruneStale, closeIfEmpty, addMember, removeMember, flushUpdates: () => voiceUpdates.flushAll() },
 };

@@ -45,13 +45,16 @@ socket.on('typing:stop', ({ conversationId, userId }) => { /* ... */ });
 socket.on('notification:new', (notification) => { /* same shape as GET /api/users/me/notifications */ });
 socket.on('presence:online', ({ userId }) => { /* a DM partner just connected */ });
 socket.on('presence:offline', ({ userId, lastActiveAt }) => { /* a DM partner's last connection just closed; lastActiveAt drives "last seen" */ });
-socket.on('call:incoming', ({ call }) => { /* someone is calling you - show the ringing screen */ });
-socket.on('call:updated', ({ call }) => { /* accepted/declined/missed/cancelled/ended - check call.status */ });
+socket.on('call:incoming', ({ call, invitedBy, privateOf, privateOfType }) => { /* someone is calling you - show the ringing screen. privateOf is set for a private call (below) */ });
+socket.on('call:updated', ({ call }) => { /* accepted/declined/missed/cancelled/ended - check call.status. call.members[].away: in a private call right now */ });
+socket.on('voice:updated', ({ conversationId, voiceRoom }) => { /* who is in the voice chat (voiceRoom.members[].away as above); null when it closes */ });
 socket.on('session:revoked', ({ reason }) => { /* 'signed_in_elsewhere': clear the token and go to login. 'password_changed'/'email_changed': reconnect with the new token from that response */ });
 
 socket.emit('typing:start', conversationId); // and 'typing:stop' - ephemeral, never persisted
 socket.emit('conversation:leave', conversationId);
 ```
+
+**Private call on top.** Two people in a call or a voice chat (Community, faction or group) can step into a one-to-one call without leaving it: `POST /api/calls/:callId/private` or `POST /api/voice/:roomId/private` with `{ userId }` (both must be in it). It's a normal call in its own LiveKit room - `201 { call, token, livekitUrl }`, always audio to start, `call.privateOf` / `call.privateOfType` (`'call'` or `'voice'`) set - that rings only that person (`call:incoming` with `privateOf`), and is answered, declined and ended with the usual `/api/calls/:id/accept`, `/decline` and `/end`. While it's answered, the main call's or voice chat's `members[].away` is `true` for both, and both stay members of it (in a voice chat, time away counts as checking in). It keeps going if the main call ends. `409` if either person is already in a private call or on another call, or the other person isn't in the call/voice chat right now; nobody can be added to a private call. Private calls stay out of Sparks (no transcript or outline) and leave no call entry in the chat.
 
 Anyone who's deleted a specific message "for me" is transparently excluded from live pushes that would reveal it (edits, reactions, pins, replies to it) - same rule the REST endpoints already enforce, just kept honest in real time too.
 

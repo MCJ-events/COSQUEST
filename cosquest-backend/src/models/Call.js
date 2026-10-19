@@ -18,6 +18,14 @@ const limits = require('../config/callLimits');
 //   declined  - they said no
 //   missed    - they didn't answer within 45 seconds
 //   left      - they were in the call and left (they can join again)
+//
+// Private calls ("private call on top"): two people in a call or a voice
+// chat step aside into a one-to-one call of their own (its own LiveKit room)
+// without leaving the first one. `privateOf` is that call's or voice chat's
+// id and `privateOfType` says which. While a private call is answered, the
+// main call shows both people as away (worked out from the private calls,
+// see callController's awayIn). A private call keeps going if the main one
+// ends. Each person is in at most one private call at a time.
 
 // Size limits come from env (src/config/callLimits.js):
 //   CALL_MAX_IN_CALL       people ringing or in the call at the same time (default 1000)
@@ -42,7 +50,12 @@ const callMemberSchema = new mongoose.Schema(
 const callSchema = new mongoose.Schema(
   {
     conversation: { type: mongoose.Schema.Types.ObjectId, ref: 'Conversation', required: true },
-    conversationType: { type: String, enum: ['dm'], default: 'dm' },
+    // 'dm' for every normal call. A private call from a voice chat has its
+    // room's type.
+    conversationType: { type: String, enum: ['dm', 'community', 'faction', 'group'], default: 'dm' },
+    isPrivate: { type: Boolean, default: false },
+    privateOf: { type: mongoose.Schema.Types.ObjectId, default: null },
+    privateOfType: { type: String, enum: ['call', 'voice', null], default: null },
     type: { type: String, enum: ['audio', 'video'], required: true },
     status: {
       type: String,
@@ -103,9 +116,22 @@ callSchema.index({ participants: 1, status: 1, createdAt: -1 });
 callSchema.index({ activeMembers: 1 });
 
 // One active call per DM, even when two start requests arrive together.
+// Private calls don't count: several can run from one call or voice chat.
 callSchema.index(
-  { conversation: 1 },
-  { unique: true, partialFilterExpression: { active: true } }
+  { conversation: 1, isPrivate: 1 },
+  { unique: true, partialFilterExpression: { active: true, isPrivate: false } }
+);
+
+// One active private call per person, even when two arrive together.
+callSchema.index(
+  { activeMembers: 1, isPrivate: 1 },
+  { unique: true, partialFilterExpression: { active: true, isPrivate: true } }
+);
+
+// "Who is away in this call or voice chat?"
+callSchema.index(
+  { privateOf: 1 },
+  { partialFilterExpression: { active: true, isPrivate: true } }
 );
 
 const Call = mongoose.model('Call', callSchema);
@@ -119,10 +145,23 @@ Object.defineProperty(Call, 'MAX_EVER_INVITED', { get: () => limits.maxEverInvit
 // one active call, built on `participants`. That index would block group
 // calls, so it's removed automatically once, on startup. ("Already on
 // another call" is now checked in the controller, using `activeMembers`.)
-function dropLegacyIndex() {
-  Call.collection.dropIndex('participants_1').catch(() => {
+//
+// The same goes for the old "one active call per DM" index (`conversation_1`),
+// which would also block a second private call from the same voice chat: the
+// calls in progress are marked as not private (so the new index covers them),
+// the new indexes are built, then the old one is removed.
+async function dropLegacyIndex() {
+  const ignore = () => {
     // Already removed (or never existed) - nothing to do.
-  });
+  };
+  Call.collection.dropIndex('participants_1').catch(ignore);
+  try {
+    await Call.updateMany({ active: true, isPrivate: { $exists: false } }, { $set: { isPrivate: false } });
+    await Call.init();
+    await Call.collection.dropIndex('conversation_1').catch(ignore);
+  } catch (error) {
+    console.error('[calls] index update failed:', error.message);
+  }
 }
 
 if (mongoose.connection.readyState === 1) {

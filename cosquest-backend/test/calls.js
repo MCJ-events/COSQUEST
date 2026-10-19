@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const User = require('../src/models/User');
 const Call = require('../src/models/Call');
 const Message = require('../src/models/Message');
+const VoiceRoom = require('../src/models/VoiceRoom');
 const { signToken } = require('../src/utils/token');
 
 async function run(baseUrl) {
@@ -43,7 +44,7 @@ async function run(baseUrl) {
   }
 
   const suffix = `${Date.now()}${Math.floor(Math.random() * 10000)}`;
-  const users = await Promise.all([1, 2, 3].map((index) => User.create({
+  const users = await Promise.all([1, 2, 3, 4].map((index) => User.create({
     profile: {
       username: `Caller${index}${suffix}`,
       usernameNormalized: `caller${index}${suffix}`,
@@ -54,7 +55,7 @@ async function run(baseUrl) {
     onboardingComplete: true,
     faction: 'ascendants',
   })));
-  const [caller, recipient, outsider] = users.map((user) => ({
+  const [caller, recipient, outsider, stranger] = users.map((user) => ({
     id: user.id,
     username: user.profile.username,
     token: signToken(user.id, user.tokenVersion),
@@ -255,6 +256,89 @@ async function run(baseUrl) {
     groupMessage
   );
 
+  console.log('\n--- private calls (from a call) ---');
+  const awayOf = (call, userId) => call.members.find((member) => member.user.id === userId)?.away;
+  const memberStatus = (call, userId) => call.members.find((member) => member.user.id === userId)?.status;
+  const mainStart = await request('POST', callPath, caller.token, { type: 'video' });
+  const mainId = mainStart.data.call.id;
+  const privatePath = `/api/calls/${mainId}/private`;
+  await request('POST', `/api/calls/${mainId}/accept`, recipient.token);
+  await request('POST', `/api/calls/${mainId}/invite`, caller.token, { userIds: [outsider.id] });
+  check(
+    (await request('POST', privatePath, caller.token, { userId: outsider.id })).status === 409,
+    'a private call needs the other person to be in the call (not just ringing)'
+  );
+  await request('POST', `/api/calls/${mainId}/accept`, outsider.token);
+  check((await request('POST', privatePath, caller.token, {})).status === 400, 'a private call needs a userId');
+  check((await request('POST', privatePath, caller.token, { userId: caller.id })).status === 400, 'you cannot call yourself privately');
+  check((await request('POST', privatePath, stranger.token, { userId: caller.id })).status === 403, 'someone outside the call cannot start a private call from it');
+  check((await request('POST', privatePath, caller.token, { userId: stranger.id })).status === 409, 'you cannot privately call someone who is not in the call');
+
+  const privateStart = await request('POST', privatePath, caller.token, { userId: recipient.id });
+  const privateCall = privateStart.data.call;
+  check(
+    privateStart.status === 201 && privateCall.privateOf === mainId && privateCall.privateOfType === 'call' &&
+      privateCall.type === 'audio' && privateCall.status === 'ringing' && privateCall.isGroup === false &&
+      typeof privateStart.data.token === 'string' && privateCall.id !== mainId,
+    'a private call starts as audio, ringing, in its own call, even though both are busy in the main call',
+    privateStart
+  );
+  const privateIncoming = await request('GET', '/api/calls/incoming', recipient.token);
+  check(
+    privateIncoming.data.call?.id === privateCall.id && privateIncoming.data.call.privateOf === mainId,
+    'the other person is rung, with privateOf set to the main call',
+    privateIncoming
+  );
+  check((await request('GET', '/api/calls/incoming', outsider.token)).data.call === null, 'nobody else in the main call is rung');
+  check(
+    awayOf((await request('GET', `/api/calls/${mainId}`, outsider.token)).data.call, caller.id) === false,
+    'nobody is away while the private call is still ringing'
+  );
+  check(
+    (await request('POST', privatePath, outsider.token, { userId: caller.id })).status === 409,
+    'someone already in a private call cannot be rung into a second one'
+  );
+
+  const privateAccepted = await request('POST', `/api/calls/${privateCall.id}/accept`, recipient.token);
+  check(
+    privateAccepted.status === 200 && privateAccepted.data.call.status === 'accepted' && typeof privateAccepted.data.token === 'string',
+    'the private call connects when they accept',
+    privateAccepted
+  );
+  const mainDuring = (await request('GET', `/api/calls/${mainId}`, outsider.token)).data.call;
+  check(
+    mainDuring.status === 'accepted' && awayOf(mainDuring, caller.id) === true && awayOf(mainDuring, recipient.id) === true &&
+      awayOf(mainDuring, outsider.id) === false &&
+      mainDuring.members.filter((member) => member.status === 'joined').length === 3,
+    'the main call shows both as away, and both are still members of it',
+    mainDuring
+  );
+  check(
+    (await request('POST', `/api/calls/${privateCall.id}/invite`, caller.token, { userIds: [outsider.id] })).status === 400,
+    'nobody can be added to a private call'
+  );
+  const privateEnded = await request('POST', `/api/calls/${privateCall.id}/end`, caller.token);
+  check(privateEnded.data.call.status === 'ended', 'either person can end the private call', privateEnded);
+  const mainAfter = (await request('GET', `/api/calls/${mainId}`, outsider.token)).data.call;
+  check(
+    mainAfter.status === 'accepted' && awayOf(mainAfter, caller.id) === false && awayOf(mainAfter, recipient.id) === false &&
+      memberStatus(mainAfter, caller.id) === 'joined' && memberStatus(mainAfter, recipient.id) === 'joined',
+    'ending the private call puts both back in the main call (away is false again)',
+    mainAfter
+  );
+  check(!(await waitForCallMessage(privateCall.id, 8)), 'a private call leaves no call entry in the chat');
+
+  const secondPrivate = await request('POST', privatePath, caller.token, { userId: recipient.id });
+  await request('POST', `/api/calls/${secondPrivate.data.call.id}/accept`, recipient.token);
+  for (const person of [outsider, recipient, caller]) await request('POST', `/api/calls/${mainId}/end`, person.token);
+  const outlived = await request('GET', `/api/calls/${secondPrivate.data.call.id}`, caller.token);
+  check(
+    (await request('GET', `/api/calls/${mainId}`, caller.token)).data.call.status === 'ended' && outlived.data.call.status === 'accepted',
+    'a private call keeps going on its own when the main call ends',
+    outlived
+  );
+  await request('POST', `/api/calls/${secondPrivate.data.call.id}/end`, recipient.token);
+
   console.log('\n--- community voice chats ---');
   const voicePath = `/api/chats/${community.id}/voice`;
   check((await request('GET', voicePath, null)).status === 401, 'voice chats require authentication');
@@ -274,10 +358,78 @@ async function run(baseUrl) {
   check((await request('POST', `/api/voice/${voiceRoomId}/ping`, outsider.token)).status === 404, 'check-in from someone who is not in it is rejected');
   check((await request('POST', `/api/voice/not-an-id/leave`, caller.token)).status === 404, 'invalid voice chat id returns not found');
 
+  console.log('\n--- private calls (from a voice chat) ---');
+  const voicePrivatePath = `/api/voice/${voiceRoomId}/private`;
+  check((await request('POST', voicePrivatePath, caller.token, { userId: outsider.id })).status === 409, 'you cannot privately call someone who is not in the voice chat');
+  check((await request('POST', voicePrivatePath, outsider.token, { userId: caller.id })).status === 403, 'someone outside the voice chat cannot start a private call from it');
+  const voicePrivate = await request('POST', voicePrivatePath, caller.token, { userId: recipient.id });
+  check(
+    voicePrivate.status === 201 && voicePrivate.data.call.privateOf === voiceRoomId && voicePrivate.data.call.privateOfType === 'voice' &&
+      voicePrivate.data.call.conversationId === community.id && voicePrivate.data.call.type === 'audio',
+    'a private call can start from a voice chat',
+    voicePrivate
+  );
+  await request('POST', `/api/calls/${voicePrivate.data.call.id}/accept`, recipient.token);
+  const voiceDuring = (await request('GET', voicePath, outsider.token)).data.voiceRoom;
+  check(
+    voiceDuring.memberCount === 2 && awayOf(voiceDuring, caller.id) === true && awayOf(voiceDuring, recipient.id) === true,
+    'the voice chat shows both as away and keeps them as members',
+    voiceDuring
+  );
+
+  // Both apps go quiet for longer than the 90-second check-in window.
+  const longAgo = new Date(Date.now() - 120_000);
+  await VoiceRoom.collection.updateOne(
+    { _id: new mongoose.Types.ObjectId(voiceRoomId) },
+    { $set: { 'members.$[].lastSeenAt': longAgo }, $inc: { __v: 1 } }
+  );
+  check(
+    (await request('GET', voicePath, outsider.token)).data.voiceRoom?.memberCount === 2,
+    'time in a private call counts as being present in the voice chat'
+  );
+
+  await request('POST', `/api/calls/${voicePrivate.data.call.id}/end`, caller.token);
+  // The voice chat is updated in the background once the private call ends.
+  let voiceAfter = null;
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    const room = await VoiceRoom.findById(voiceRoomId).lean();
+    if (room.members.every((member) => member.lastSeenAt > longAgo)) {
+      voiceAfter = (await request('GET', voicePath, outsider.token)).data.voiceRoom;
+      break;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  check(
+    voiceAfter?.memberCount === 2 && awayOf(voiceAfter, caller.id) === false && awayOf(voiceAfter, recipient.id) === false,
+    'ending the private call returns both to the voice chat (away is false, not dropped as quiet)',
+    voiceAfter
+  );
+
   await request('POST', `/api/voice/${voiceRoomId}/leave`, recipient.token);
   const lastLeave = await request('POST', `/api/voice/${voiceRoomId}/leave`, caller.token);
   check(lastLeave.data.voiceRoom === null, 'the voice chat closes when the last person leaves', lastLeave);
   check((await request('GET', voicePath, caller.token)).data.voiceRoom === null, 'a closed voice chat is no longer live');
+
+  console.log('\n--- group voice chats ---');
+  const group = await request('POST', '/api/groups', caller.token, { name: 'Voice Owls', kind: 'private', members: [recipient.id] });
+  const groupVoicePath = `/api/chats/${group.data.group.id}/voice`;
+  check((await request('GET', groupVoicePath, caller.token)).data.voiceRoom === null, 'a group has no live voice chat at first');
+  check((await request('POST', `${groupVoicePath}/join`, outsider.token)).status === 403, 'people outside the group cannot join its voice chat');
+  const groupVoice = await request('POST', `${groupVoicePath}/join`, caller.token);
+  const groupRoomId = groupVoice.data.voiceRoom?.id;
+  check(
+    groupVoice.status === 201 && groupVoice.data.voiceRoom.conversationType === 'group' && typeof groupVoice.data.token === 'string',
+    'a group member can start a voice chat in the group',
+    groupVoice
+  );
+  const groupVoice2 = await request('POST', `${groupVoicePath}/join`, recipient.token);
+  check(groupVoice2.status === 200 && groupVoice2.data.voiceRoom.memberCount === 2, 'another member joins the group voice chat', groupVoice2);
+  check((await request('POST', `/api/voice/${groupRoomId}/ping`, recipient.token)).data.voiceRoom?.memberCount === 2, 'group voice chat check-ins work');
+  await request('POST', `/api/voice/${groupRoomId}/leave`, recipient.token);
+  check(
+    (await request('POST', `/api/voice/${groupRoomId}/leave`, caller.token)).data.voiceRoom === null,
+    'the group voice chat closes when the last person leaves'
+  );
 
   return { pass, fail };
 }
