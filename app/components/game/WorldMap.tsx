@@ -25,6 +25,7 @@ import Svg, { Circle, Defs, Path, Pattern, Rect } from "react-native-svg";
 
 import { toLocal, type LatLng } from "@/features/game/geo";
 import { buildLayers, type MapLayers } from "@/features/game/mapPaths";
+import { spreadPins } from "@/features/game/pinSpread";
 import { effectiveHour, mapStyle, type MapStyle, timeOfDay } from "@/features/game/mapStyle";
 import { raidTint } from "@/features/game/raids";
 import { pinTint } from "@/features/game/siege";
@@ -89,6 +90,19 @@ export default function WorldMap(props: Props) {
   const ty = useSharedValue(0);
   const anchor = { x: width / 2, y: height * PLAYER_Y };
 
+  // Each point's spot on the board, and an offset that spreads crowded pins
+  // apart (F-37); recomputed only when the points or the board change.
+  const spotsKey = origin ? `${origin.lat},${origin.lng},${extent}|${points.map((p) => `${p.id}:${p.lat}:${p.lng}`).join(";")}` : "";
+  const spots = useMemo(() => {
+    if (!origin) return new Map<string, { left: number; top: number; dx: number; dy: number }>();
+    const raw = points.map((p) => {
+      const local = toLocal(origin, p);
+      return { id: p.id, x: (local.x + extent) * MAP_SCALE, y: (extent - local.z) * MAP_SCALE };
+    });
+    const offsets = spreadPins(raw);
+    return new Map(raw.map((r) => [r.id, { left: r.x, top: r.y, ...(offsets.get(r.id) ?? { dx: 0, dy: 0 }) }]));
+  }, [spotsKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     if (!origin || !fix) return;
     const p = toLocal(origin, fix);
@@ -110,13 +124,18 @@ export default function WorldMap(props: Props) {
         <Animated.View style={[styles.world, { width: size, height: size }, worldStyle]}>
           <Ground layers={layers} extent={extent} size={size} look={look} />
           {points.map((p) => {
-            const local = toLocal(origin, p);
+            const spot = spots.get(p.id);
+            return spot && (spot.dx || spot.dy) ? <PinLeader key={`l-${p.id}`} left={spot.left} top={spot.top} dx={spot.dx} dy={spot.dy} /> : null;
+          })}
+          {points.map((p) => {
+            const spot = spots.get(p.id);
+            if (!spot) return null;
             return (
               <PointMarker
                 key={p.id}
                 point={p}
-                left={(local.x + extent) * MAP_SCALE}
-                top={(extent - local.z) * MAP_SCALE}
+                left={spot.left + spot.dx}
+                top={spot.top + spot.dy}
                 selected={props.selectedId === p.id}
                 inReach={props.inReach(p)}
                 cooling={props.cooling(p)}
@@ -254,7 +273,9 @@ const PointMarker = memo(function PointMarker({
   return (
     <Pressable
       onPress={() => onPress(point)}
-      hitSlop={10}
+      // Small: spread pins sit a little over a pin's width apart (pinSpread.ts),
+      // so a bigger slop would reach into the neighbour's face.
+      hitSlop={4}
       style={[styles.marker, { left: left - MARKER / 2, top: top - MARKER, zIndex: selected ? 3 : inReach ? 2 : 1 }]}
       accessibilityRole="button"
       accessibilityLabel={`${point.name}, ${point.tier} ${isDuel ? "Guardian" : point.challenge}${point.extra?.holder ? ", held" : ""}${cooling ? ", recharging" : ""}${inReach ? ", in reach" : ""}`}>
@@ -266,6 +287,25 @@ const PointMarker = memo(function PointMarker({
     </Pressable>
   );
 });
+
+/** A crowded pin's thin line back to its real spot, with a dot on the spot. */
+function PinLeader({ left, top, dx, dy }: { left: number; top: number; dx: number; dy: number }) {
+  // From the real spot to the moved pin's stem (its bottom centre).
+  const length = Math.hypot(dx, dy);
+  const angle = Math.atan2(dy, dx);
+  return (
+    <>
+      <View
+        pointerEvents="none"
+        style={[
+          styles.leader,
+          { left: left + dx / 2 - length / 2, top: top + dy / 2 - 1, width: length, transform: [{ rotate: `${angle}rad` }] },
+        ]}
+      />
+      <View pointerEvents="none" style={[styles.leaderDot, { left: left - 4, top: top - 4 }]} />
+    </>
+  );
+}
 
 function PlayerMarker({ x, y, accuracyPx, reachPx, color }: { x: number; y: number; accuracyPx: number; reachPx: number; color: string }) {
   return (
@@ -309,6 +349,21 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 },
+  },
+  leader: {
+    position: "absolute",
+    height: 2,
+    borderRadius: 1,
+    backgroundColor: "rgba(31,59,77,0.45)",
+  },
+  leaderDot: {
+    position: "absolute",
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "rgba(31,59,77,0.6)",
+    borderWidth: 1.5,
+    borderColor: "#FFFFFF",
   },
   stem: {
     width: 4,
