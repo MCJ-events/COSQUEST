@@ -26,6 +26,7 @@ import "@/utils/webAlert";
 import "@/utils/webGlobalStyles";
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
+import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "react-native-reanimated";
@@ -43,9 +44,17 @@ function SocketConnectionGate() {
   return null;
 }
 
+// The phone's splash stays up until the fonts and the saved login are ready
+// (SessionGate hides it), instead of a blank frame and then a second splash
+// (audit B6). If something hangs, it goes after 6 s anyway.
+void SplashScreen.preventAutoHideAsync().catch(() => {});
+setTimeout(() => void SplashScreen.hideAsync().catch(() => {}), 6000);
+
 export default function RootLayout() {
   // Icon fonts (so they resolve on web) + Poppins, the app font (Figma).
-  const [fontsLoaded] = useFonts({
+  // Poppins is also built into the app (the expo-font plugin in app.json), so
+  // on Android this resolves from the APK without a download.
+  const [fontsLoaded, fontsError] = useFonts({
     ...Ionicons.font,
     ...MaterialIcons.font,
     Poppins_400Regular,
@@ -55,7 +64,7 @@ export default function RootLayout() {
     Poppins_800ExtraBold,
   });
 
-  if (!fontsLoaded) return null;
+  if (!fontsLoaded && !fontsError) return null;
 
   return (
     <Provider store={store}>

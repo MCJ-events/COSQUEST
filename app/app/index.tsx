@@ -1,48 +1,16 @@
-import { AppBackground } from "@/components/AppBackground";
-import { store } from "@/store/store";
-import { Image } from "expo-image";
-import { router } from "expo-router";
-import { useEffect } from "react";
-import { StyleSheet, View } from "react-native";
+import { Redirect } from "expo-router";
 
+import { useAppSelector } from "@/store/hooks";
+
+// Straight to the right screen (audit B6): the native splash stays up until
+// the fonts and the saved login are ready (app/_layout.tsx, SessionGate), so
+// there is no second splash, no 1.5 s wait and no /home hop.
+//   logged in (saved login - see components/SessionGate) -> the chats
+//   logged in but onboarding not finished               -> onboarding
+//     (SessionGate sends you there once your profile says so)
+//   not logged in                                       -> onboarding
 export default function Index() {
-  useEffect(() => {
-    // After a brief splash:
-    //   logged in (saved login - see components/SessionGate) -> home
-    //   logged in but onboarding not finished               -> onboarding
-    //   not logged in                                       -> onboarding
-    const t = setTimeout(() => {
-      const { token, user } = store.getState().auth;
-
-      if (token && user?.onboardingComplete !== false) {
-        router.replace("/home");
-        return;
-      }
-
-      router.replace("/onboarding");
-    }, 1500);
-
-    return () => clearTimeout(t);
-  }, []);
-
-  return (
-    <AppBackground variant="plain">
-      <View style={styles.screen}>
-        <Image
-          source={require("@/assets/images/cosquest-logo.png")}
-          style={styles.logo}
-          contentFit="contain"
-        />
-      </View>
-    </AppBackground>
-  );
+  const token = useAppSelector((s) => s.auth.token);
+  const user = useAppSelector((s) => s.auth.user);
+  return <Redirect href={token && user?.onboardingComplete !== false ? "/community" : "/onboarding"} />;
 }
-
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  logo: { width: 220, height: 90 },
-});
