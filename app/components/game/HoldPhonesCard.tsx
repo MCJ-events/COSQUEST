@@ -22,7 +22,7 @@ import { GF, GP } from "./theme";
 export function HoldPhonesCard() {
   const model = nearbyFriends;
   const s = useNearbyFriends();
-  const { fix } = useGame();
+  const fix = useGame((s) => s.fix);
   const reduce = useReducedMotion();
 
   // The radios run exactly as long as the card is on screen.

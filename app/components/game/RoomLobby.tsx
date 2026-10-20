@@ -16,7 +16,7 @@ import { GF, GP } from "./theme";
 
 export default function RoomLobby({ session, state, onClose }: { session: RoomSession; state: RoomSessionState; onClose: () => void }) {
   const insets = useSafeAreaInsets();
-  const { me } = useGame();
+  const me = useGame((s) => s.me);
   const { terms, problem, joining } = state;
   const [side, setSide] = useState<string | null>(null);
   const [handle, setHandle] = useState(() => gameStore.playerName());

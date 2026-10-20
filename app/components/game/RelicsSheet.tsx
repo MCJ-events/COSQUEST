@@ -65,7 +65,7 @@ type Picked = { kind: "relic"; id: string } | { kind: "forge"; id: string } | nu
 
 export default function RelicsSheet({ onClose }: { onClose: () => void }) {
   const insets = useSafeAreaInsets();
-  const { me } = useGame();
+  const me = useGame((s) => s.me);
   const relics = useRelics();
   const [picked, setPicked] = useState<Picked>(null);
 
@@ -197,7 +197,7 @@ function Hero({ payload, onPick }: { payload: RelicsPayload; onPick: (id: string
 }
 
 function FactionSection({ faction, payload, mine, onPick }: { faction: string; payload: RelicsPayload; mine: boolean; onPick: (id: string) => void }) {
-  const { config } = useGame();
+  const config = useGame((s) => s.config);
   const all = catalogueOf(payload, faction);
   if (!all.length) return null;
   const have = all.filter((s) => ownedRelic(payload, s.id)).length;
@@ -267,7 +267,7 @@ function Tile({ stub: s, relic: r, equipped, onPress }: { stub: RelicStub; relic
 
 function RelicDetail({ id, stub, onClose }: { id: string; stub: RelicStub | null; onClose: () => void }) {
   const { payload, busy, problem, levelled } = useRelics();
-  const { config } = useGame();
+  const config = useGame((s) => s.config);
   const reduced = useReducedMotion();
   const r = ownedRelic(payload, id);
   const bump = useSharedValue(1);

@@ -120,7 +120,7 @@ function ForgeTile({ weapon: w, has3d, onPress }: { weapon: ForgeElement; has3d:
 
 export function ForgeWeaponDetail({ id, onClose }: { id: string; onClose: () => void }) {
   const { weapons } = useForge();
-  const { config } = useGame();
+  const config = useGame((s) => s.config);
   const models = useForgeModels();
   const reduced = useReducedMotion();
   const w = weapons.find((x) => x.id === id);

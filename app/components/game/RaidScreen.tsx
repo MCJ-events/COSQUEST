@@ -167,7 +167,7 @@ function Failed({ name, why, onRetry, onLeave }: { name: string; why: string; on
 }
 
 function BossTitle({ s }: { s: RaidState }) {
-  const { config } = useGame();
+  const config = useGame((s) => s.config);
   const realm = config?.factions.find((f) => f.id === s.realm)?.name ?? gameStore.factionName(s.realm);
   return (
     <View style={styles.bossTitle}>

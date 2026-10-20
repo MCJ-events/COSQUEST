@@ -58,7 +58,9 @@ const MOTES = motes();
 
 export default function Onboarding({ suggestedName, onDone }: { suggestedName: string; onDone: () => void }) {
   const insets = useSafeAreaInsets();
-  const { config, profile, me } = useGame();
+  const config = useGame((s) => s.config);
+  const profile = useGame((s) => s.profile);
+  const me = useGame((s) => s.me);
   const muted = useWardenMuted();
   const [first] = useState(() => {
     const handle = (profile?.handle || suggestedName || "").trim();

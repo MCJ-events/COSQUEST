@@ -51,7 +51,8 @@ export default function RoomSheet({
 }) {
   const insets = useSafeAreaInsets();
   const rooms = useRooms();
-  const { fix, me } = useGame();
+  const fix = useGame((s) => s.fix);
+  const me = useGame((s) => s.me);
   const now = useNow(1000);
   const [minutes, setMinutes] = useState(ROOM_DEFAULT_MINUTES);
   const [isPrivate, setPrivate] = useState(false);

@@ -26,7 +26,8 @@ function reload() {
 export default function LiveCalendarSheet({ onClose }: { onClose: () => void }) {
   const insets = useSafeAreaInsets();
   const { calendar, error } = useLiveCalendar();
-  const { fix, centre } = useGame();
+  const fix = useGame((s) => s.fix);
+  const centre = useGame((s) => s.centre);
   const hasPlace = fix !== null || centre !== null;
   const now = useLiveNow(calendar);
 

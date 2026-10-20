@@ -117,7 +117,8 @@ export default function SiegeScreen({
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   const reduce = useReducedMotion();
-  const { me, fix } = useGame();
+  const me = useGame((s) => s.me);
+  const fix = useGame((s) => s.fix);
   const relics = useRelics();
   const said = useWardenSaid();
   const [m, setModel] = useState<SiegeModel>(() => initialSiege(point));

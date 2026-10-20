@@ -59,7 +59,7 @@ export default function RoomFight({
   onDone: () => void;
 }) {
   const insets = useSafeAreaInsets();
-  const { fix } = useGame();
+  const fix = useGame((s) => s.fix);
   const { terms, anchors, fight } = state;
   const over = fightOver(fight);
   const heading = useHeading(!over && !parked);

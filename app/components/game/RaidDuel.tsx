@@ -45,7 +45,9 @@ export function RaidDuelBriefing({
   const now = useMinuteClock();
   const hp = raidHp(point);
   // Values from the store's snapshot, never read off the singleton in render (React Compiler).
-  const { me, fix, config } = useGame();
+  const me = useGame((s) => s.me);
+  const fix = useGame((s) => s.fix);
+  const config = useGame((s) => s.config);
   const realm = config?.factions.find((f) => f.id === point.realm)?.name ?? gameStore.factionName(point.realm);
   // iOS has no live regions: say a refusal when it arrives.
   useEffect(() => {

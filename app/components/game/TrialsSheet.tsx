@@ -29,7 +29,8 @@ export default function TrialsSheet({ onClose, onFight }: { onClose: () => void;
 
 function TrialsBody({ close, onFight }: { close: () => void; onFight: (t: TrialRequest) => void }) {
   const insets = useSafeAreaInsets();
-  const { me, config } = useGame();
+  const me = useGame((s) => s.me);
+  const config = useGame((s) => s.config);
   const trials = me?.features?.duel?.trials ?? {};
   const order = trialsOrder(trials, (config?.factions ?? []).map((f) => f.id));
   // After the sheet has gone, so the fight is not drawn under it.

@@ -46,7 +46,8 @@ export function useLiveNow(calendar: LiveCalendar | null, active = true): number
 
 /** Fetch the calendar once there is a place, and again when it is 5 minutes old. */
 function useCalendarPolling(active: boolean) {
-  const { fix, centre } = useGame();
+  const fix = useGame((s) => s.fix);
+  const centre = useGame((s) => s.centre);
   const hasPlace = fix !== null || centre !== null;
   useEffect(() => {
     if (!active || !hasPlace) return;

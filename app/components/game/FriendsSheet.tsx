@@ -51,7 +51,7 @@ export default function FriendsSheet({ onClose }: { onClose: () => void }) {
 function FriendsBody({ close }: { close: () => void }) {
   const insets = useSafeAreaInsets();
   const friends = useFriends();
-  const { fix } = useGame();
+  const fix = useGame((s) => s.fix);
   const [typed, setTyped] = useState("");
   // With the hold-phones card above it, this panel is the other way in.
   const holdPhones = nearbyFriends !== null;

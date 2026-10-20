@@ -34,7 +34,7 @@ export default function RecapSheet({ onClose }: { onClose: () => void }) {
 
 function RecapBody({ close }: { close: () => void }) {
   const insets = useSafeAreaInsets();
-  const { me } = useGame();
+  const me = useGame((s) => s.me);
   const [story, setStory] = useState<string | null>(null);
   const tint = realmColor(me?.faction);
   const name = gameStore.playerName();

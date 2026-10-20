@@ -55,8 +55,16 @@ export const gameStore = createGameStore({
   },
 });
 
-export function useGame(): GameState {
-  return useSyncExternalStore(gameStore.subscribe, gameStore.get, gameStore.get);
+/**
+ * The game store in a component. Pass a selector (`useGame((s) => s.me)`) so
+ * the component re-renders only when what it reads changes, not on every GPS
+ * fix (audit B8); with none it gets the whole state and re-renders on any change.
+ */
+export function useGame(): GameState;
+export function useGame<T>(select: (state: GameState) => T): T;
+export function useGame<T>(select?: (state: GameState) => T): GameState | T {
+  const get: () => GameState | T = select ? () => select(gameStore.get()) : gameStore.get;
+  return useSyncExternalStore<GameState | T>(gameStore.subscribe, get, get);
 }
 
 // ---------- location ----------

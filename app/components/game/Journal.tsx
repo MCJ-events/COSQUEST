@@ -30,6 +30,7 @@ import {
 } from "@/features/game/journal";
 import { hasDayToTell } from "@/features/game/recap";
 import { gameStore, useGame } from "@/features/game/runtime";
+import type { GameState } from "@/features/game/store";
 import { unlocked } from "@/features/game/unlocks";
 import { startWardenModel, useWardenModel } from "@/features/game/wardenModel";
 import type { CodexCard, FactionWar } from "@/features/game/wire";
@@ -70,7 +71,10 @@ export default function Journal(props: JournalProps) {
 function JournalSheet({ close, initial = "today", onRecap }: JournalProps & { close: () => void }) {
   const insets = useSafeAreaInsets();
   const [tab, setTab] = useState<Tab>(initial);
-  const { me, codex, war, leaders } = useGame();
+  const me = useGame((s) => s.me);
+  const codex = useGame((s) => s.codex);
+  const war = useGame((s) => s.war);
+  const leaders = useGame((s) => s.leaders);
   const [codexTried, setCodexTried] = useState(false);
   const [codexFailed, setCodexFailed] = useState(false);
   const [warTried, setWarTried] = useState(false);
@@ -201,7 +205,7 @@ function CodexBody({
   onRetry,
   onPick,
 }: {
-  codex: ReturnType<typeof useGame>["codex"];
+  codex: GameState["codex"];
   tried: boolean;
   failed: boolean;
   onRetry: () => void;
@@ -282,7 +286,7 @@ function CodexBody({
 
 // ---------- the war ----------
 
-function WarBody({ war, leaders, mine, tried }: { war: FactionWar | null; leaders: ReturnType<typeof useGame>["leaders"]; mine: string | null; tried: boolean }) {
+function WarBody({ war, leaders, mine, tried }: { war: FactionWar | null; leaders: GameState["leaders"]; mine: string | null; tried: boolean }) {
   return (
     <>
       {war ? (

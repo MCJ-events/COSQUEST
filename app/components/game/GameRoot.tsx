@@ -93,7 +93,18 @@ export default function GameRoot({ parked }: { parked: boolean }) {
   const insets = useSafeAreaInsets();
   // The game's own type (Lilita One, Fredoka); bundled, so this is one frame or two.
   const [fontsReady, fontsError] = useFonts(GAME_FONTS);
-  const state = useGame();
+  // One selector per field, so a change elsewhere in the store (the war, the
+  // leaders) does not re-render the map (audit B8).
+  const session = useGame((s) => s.session);
+  const allPoints = useGame((s) => s.points);
+  const me = useGame((s) => s.me);
+  const fix = useGame((s) => s.fix);
+  const focus = useGame((s) => s.focus);
+  const profile = useGame((s) => s.profile);
+  const codex = useGame((s) => s.codex);
+  const ground = useGame((s) => s.ground);
+  const centre = useGame((s) => s.centre);
+  const problem = useGame((s) => s.problem);
   const permission = useLocationPermission();
   const said = useWardenSaid();
   const chatName = useAppSelector((s) => s.auth.user?.profile?.username || s.auth.user?.profile?.firstName || "");
@@ -112,7 +123,7 @@ export default function GameRoot({ parked }: { parked: boolean }) {
   const [roomFocus, setRoomFocus] = useState<string | null>(null);
   const [, recentre] = useState(0);
   const [onboarding, setOnboarding] = useState(false);
-  const needsOnboarding = !!state.session && gameStore.needsOnboarding;
+  const needsOnboarding = !!session && gameStore.needsOnboarding;
   if (needsOnboarding && !onboarding) setOnboarding(true);
   const [legendOf, setLegendOf] = useState<{ id: string; text: string } | null>(null);
   const greeted = useRef(new Set<string>());
@@ -123,9 +134,8 @@ export default function GameRoot({ parked }: { parked: boolean }) {
   const lossSeen = useRef<Set<string> | null>(null);
   const [lossLoaded, setLossLoaded] = useState(false);
 
-  const { me, fix, focus } = state;
   // Bosses wait for level 5 (RoamGuide.swift visiblePoints).
-  const points = useMemo(() => visiblePoints(state.points, me), [state.points, me]);
+  const points = useMemo(() => visiblePoints(allPoints, me), [allPoints, me]);
   const color = factionVeilColor(me?.faction, chatFaction);
   const ctx = useCallback(() => ({ me: gameStore.get().me, playerName: gameStore.playerName() }), []);
   // Computed from the points and the fix themselves: the React Compiler
@@ -282,7 +292,7 @@ export default function GameRoot({ parked }: { parked: boolean }) {
 
   // The run as the server has it: on the way in, and back from the background
   // (it may have ended, or a lost one be found again).
-  const sessionKey = state.session?.playerKey ?? null;
+  const sessionKey = session?.playerKey ?? null;
   useEffect(() => {
     if (!sessionKey || parked) return;
     void runModel.resume();
@@ -385,7 +395,21 @@ export default function GameRoot({ parked }: { parked: boolean }) {
     });
   };
 
-  if (!state.session || (!fontsReady && !fontsError)) {
+  // Stable across GPS fixes, so the memoised pins skip those renders (audit B8).
+  const run = runState.run;
+  const onSelectPoint = useCallback(
+    (p: QuestPoint) => {
+      const rp = runPointOf(run, p.id);
+      if (rp) {
+        if (!rp.done) setRunPoint(rp);
+        return;
+      }
+      if (!runLive) setSelectedId(p.id);
+    },
+    [run, runLive],
+  );
+
+  if (!session || (!fontsReady && !fontsError)) {
     return <View style={styles.root} />;
   }
   // Opened by the server's answer and closed only by onboarding itself:
@@ -397,7 +421,7 @@ export default function GameRoot({ parked }: { parked: boolean }) {
 
   const dailiesLeft = me?.dailies.filter((d) => !d.done).length ?? 0;
   const codexOpen = unlocked(me, "codex");
-  const codexCount = state.codex?.counts.total ?? null;
+  const codexCount = codex?.counts.total ?? null;
   // The rest of the game, under More (RoamHomeView.swift moreTiles), as levels unlock it.
   const moreTiles: MoreTile[] = [];
   if (unlocked(me, "war")) {
@@ -442,8 +466,8 @@ export default function GameRoot({ parked }: { parked: boolean }) {
   return (
     <View style={styles.root}>
       <WorldMap
-        ground={state.ground}
-        centre={state.centre}
+        ground={ground}
+        centre={centre}
         fix={fix}
         points={runLive ? runQuestPoints(runState.run) : points}
         reachM={gameStore.reach()}
@@ -451,19 +475,12 @@ export default function GameRoot({ parked }: { parked: boolean }) {
         inReach={gameStore.inReach}
         cooling={gameStore.isCooling}
         factionColor={color}
-        onSelect={(p) => {
-          const rp = runPointOf(runState.run, p.id);
-          if (rp) {
-            if (!rp.done) setRunPoint(rp);
-            return;
-          }
-          if (!runLive) setSelectedId(p.id);
-        }}
+        onSelect={onSelectPoint}
         rooms={battleOpen && screen.kind === "home" && !runLive ? rooms.nearby : []}
         onRoom={(r) => openBattle(r.game_id)}
       />
 
-      <TopBar me={me} profile={state.profile} name={gameStore.playerName()} color={color} onProfile={() => setSheet("profile")} onCoins={() => setSheet("coins")} onAskWarden={() => setSheet("ask")} />
+      <TopBar me={me} profile={profile} name={gameStore.playerName()} color={color} onProfile={() => setSheet("profile")} onCoins={() => setSheet("coins")} onAskWarden={() => setSheet("ask")} />
       {!GAME_SERVER_IS_PRODUCTION ? <StagingBadge label={GAME_SERVER.includes("staging") ? "STAGING" : "TEST SERVER"} /> : null}
       {showsRail ? (
         <Rail
@@ -501,9 +518,9 @@ export default function GameRoot({ parked }: { parked: boolean }) {
           <View style={styles.notice}>
             <Text style={styles.noticeText}>Finding you…</Text>
           </View>
-        ) : state.problem ? (
+        ) : problem ? (
           <View style={styles.notice}>
-            <Text style={styles.noticeText}>{state.problem}</Text>
+            <Text style={styles.noticeText}>{problem}</Text>
             <GameButton title="Try again" small color={GP.skyDeep} onPress={() => gameStore.loadBasics()} />
           </View>
         ) : null}
@@ -660,7 +677,7 @@ export default function GameRoot({ parked }: { parked: boolean }) {
 }
 
 function FocusBanner({ place, lat, lng, onClose }: { place: string; lat?: number; lng?: number; onClose: () => void }) {
-  const { fix } = useGame();
+  const fix = useGame((s) => s.fix);
   const there = lat !== undefined && lng !== undefined ? { lat, lng } : null;
   const d = there ? gameStore.distanceTo(there) : null;
   const heading = fix && there ? bearingDeg(fix, there) : null;

@@ -64,7 +64,7 @@ export default function PointSheet({
   onClose: () => void;
 }) {
   const insets = useSafeAreaInsets();
-  const { me } = useGame();
+  const me = useGame((s) => s.me);
   const [now, setNow] = useState(() => Date.now());
   // The spin's rest ends on its own: tick while it runs.
   const resting = !spinReady(point, now);

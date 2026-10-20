@@ -76,7 +76,7 @@ export default function ProfileSheet(props: ProfileProps) {
 
 function ProfileBody({ close, onCoins, initial = "hero" }: ProfileProps & { close: () => void }) {
   const insets = useSafeAreaInsets();
-  const { me } = useGame();
+  const me = useGame((s) => s.me);
   const [tab, setTab] = useState<Tab>(initial);
   const [profile, setProfile] = useState<ProfileFull | null>(null);
   const [editing, setEditing] = useState(false);
@@ -183,7 +183,7 @@ function ProfileBody({ close, onCoins, initial = "hero" }: ProfileProps & { clos
 // ---------- Hero ----------
 
 function HeroTab({ tint, handle, onEdit }: { tint: string; handle: string; onEdit: () => void }) {
-  const { me } = useGame();
+  const me = useGame((s) => s.me);
   const equipped = equippedOf(me);
   return (
     <View>
@@ -267,7 +267,7 @@ function Stat({ value, label, icon, color }: { value: string; label: string; ico
 }
 
 function RecordTab({ profile, showAll, onShowAll }: { profile: ProfileFull | null; showAll: boolean; onShowAll: () => void }) {
-  const { me } = useGame();
+  const me = useGame((s) => s.me);
   const wall = profile?.wall ?? [];
   const shown = showAll ? wall : wall.slice(0, 4);
   const currency = wallCurrency(wall);
@@ -383,7 +383,7 @@ function OnOff({ on, onPress, label }: { on: boolean; onPress: () => void; label
 }
 
 function SettingsTab({ handle, avatar, onEdit }: { handle: string; avatar: ProfileAvatar; onEdit: () => void }) {
-  const { me } = useGame();
+  const me = useGame((s) => s.me);
   const haptics = useHapticsOn();
   const muted = useWardenMuted();
   const clock = useWorldClock();

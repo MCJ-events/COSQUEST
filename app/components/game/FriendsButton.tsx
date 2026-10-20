@@ -14,7 +14,7 @@ import { edgeOf, GF, GP } from "./theme";
 
 export default function FriendsButton({ onPress, size = 46, style }: { onPress: () => void; size?: number; style?: StyleProp<ViewStyle> }) {
   const friends = useFriends();
-  const { me } = useGame();
+  const me = useGame((s) => s.me);
   // The list's count once it is in; /me's until then.
   const pending = friends.payload ? friends.payload.pending_gifts : pendingFromMe(me);
 

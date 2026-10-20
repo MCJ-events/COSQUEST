@@ -33,7 +33,9 @@ export default function AskWarden({ onClose }: { onClose: () => void }) {
 
 function AskBody({ close }: { close: () => void }) {
   const insets = useSafeAreaInsets();
-  const { me, problem, points } = useGame();
+  const me = useGame((s) => s.me);
+  const problem = useGame((s) => s.problem);
+  const points = useGame((s) => s.points);
   const model = useWardenModel();
   const [turns, setTurns] = useState<Turn[]>([]);
   const [question, setQuestion] = useState("");

@@ -13,7 +13,7 @@ import { WeaponGlyph } from "./RelicArt";
 import { GF, GP } from "./theme";
 
 export default function RelicsButton({ onPress }: { onPress: () => void }) {
-  const { me } = useGame();
+  const me = useGame((s) => s.me);
   const { payload } = useRelics();
   const equipped = equippedFor(payload, me);
   const count = payload?.owned.length ?? me?.features?.relics?.owned_count ?? 0;

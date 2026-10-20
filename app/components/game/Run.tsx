@@ -108,7 +108,7 @@ export function RunStartSheet({ onClose }: { onClose: () => void }) {
 function RunStartBody({ close }: { close: () => void }) {
   const insets = useSafeAreaInsets();
   const s = useRun();
-  const { fix } = useGame();
+  const fix = useGame((s) => s.fix);
   const [counting, setCounting] = useState<number | null>(null);
   const alive = useRef(true);
   useEffect(() => {
@@ -375,7 +375,7 @@ type Phase = "stake" | "opening" | "playing" | "submitting" | "result" | { faile
 
 /** A run's challenge: quick, no shrine ceremony, because the clock is running. */
 export function RunChallenge({ point, onDone }: { point: RunPoint; onDone: () => void }) {
-  const { me } = useGame();
+  const me = useGame((s) => s.me);
   const s = useRun();
   const asDuel = runPlaysAsDuel(point.kind, me);
   const held = s.openedStakes[point.idx];
