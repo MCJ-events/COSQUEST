@@ -64,23 +64,16 @@ export default function Community() {
     [avatarFromList],
   );
 
-  return (
-    <AppBackground variant="blueGradient">
-      <ScrollView
-        contentContainerStyle={[
-          styles.scroll,
-          {
-            // Figma: the header starts 52 from the top on phones (that
-            // includes the status bar). In a browser there's no status bar
-            // and the browser has its own top bar, so only a small gap.
-            paddingTop: Platform.OS === "web" ? 16 : Math.max(insets.top, 52),
-            paddingBottom: tabBarSpace(insets.bottom),
-          },
-        ]}
-        showsVerticalScrollIndicator={false}>
-        {/* Keeps everything a comfortable width on big computer screens.
-            Full width on phones. */}
-        <View style={styles.column}>
+  // Figma: the header starts 52 from the top on phones (that includes the
+  // status bar). In a browser there's no status bar and the browser has its
+  // own top bar, so only a small gap.
+  const scrollPad = {
+    paddingTop: Platform.OS === "web" ? 16 : Math.max(insets.top, 52),
+    paddingBottom: tabBarSpace(insets.bottom),
+  };
+
+  const top = (
+    <>
           {/* HEADER - avatar in a soft pink circle, title, pink bell */}
           <View style={[styles.header, styles.padded]}>
             <Pressable
@@ -144,22 +137,39 @@ export default function Community() {
               );
             })}
           </View>
+    </>
+  );
 
-          {/* CONTENT - the feed is full width; chats and spotlight keep
-              their side padding. */}
-          {tab === "Feeds" ? (
-            <Feeds />
-          ) : tab === "Chats" ? (
-            <View style={styles.padded}>
-              <Chats />
-            </View>
-          ) : (
-            <View style={styles.padded}>
-              <Spotlight />
-            </View>
-          )}
-        </View>
-      </ScrollView>
+  return (
+    <AppBackground variant="blueGradient">
+      {tab === "Feeds" ? (
+        // The feed is its own list (audit B2); the header scrolls with it.
+        <Feeds
+          header={top}
+          contentContainerStyle={[styles.column, scrollPad]}
+        />
+      ) : (
+        <ScrollView
+          contentContainerStyle={[styles.scroll, scrollPad]}
+          showsVerticalScrollIndicator={false}>
+          {/* Keeps everything a comfortable width on big computer screens.
+              Full width on phones. */}
+          <View style={styles.column}>
+            {top}
+
+            {/* CONTENT - chats and spotlight keep their side padding. */}
+            {tab === "Chats" ? (
+              <View style={styles.padded}>
+                <Chats />
+              </View>
+            ) : (
+              <View style={styles.padded}>
+                <Spotlight />
+              </View>
+            )}
+          </View>
+        </ScrollView>
+      )}
     </AppBackground>
   );
 }

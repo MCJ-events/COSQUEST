@@ -1,23 +1,40 @@
 import { CreatePost } from "@/components/community/feed/CreatePost";
 import { FeedEmptyState } from "@/components/community/feed/FeedEmptyState";
+import { FeedRowContext, setVisiblePosts } from "@/components/community/feed/feedVisibility";
 import { PostCard } from "@/components/community/feed/PostCard";
-import { useCallback, useEffect, useState } from "react";
+import { type ReactElement, useCallback, useEffect, useRef } from "react";
 import {
   ActivityIndicator,
+  FlatList,
   Pressable,
+  type StyleProp,
   StyleSheet,
   Text,
   View,
+  type ViewStyle,
+  type ViewToken,
 } from "react-native";
 
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 
-import { fetchPosts } from "@/store/thunks/postThunks";
+import { fetchMorePosts, fetchPosts } from "@/store/thunks/postThunks";
 import { perfMarkOnce, useRenderCount } from "@/utils/perfMarks";
 
 // Facebook-style feed: every post is full width. (The Community screen no
 // longer adds side padding around the feed — see app/(tabs)/community.tsx.)
-export function Feeds() {
+//
+// Audit B2: the feed is its own virtualised list (it was every post inside
+// the screen's ScrollView), the next page loads as you near the end, only
+// the videos on screen play (feedVisibility.ts), and the "5 mins ago" labels
+// tick on their own instead of re-rendering the whole feed every 30 s.
+export function Feeds({
+  header,
+  contentContainerStyle,
+}: {
+  /** What scrolls above the feed (the Community header and tabs). */
+  header?: ReactElement;
+  contentContainerStyle?: StyleProp<ViewStyle>;
+}) {
   const dispatch = useAppDispatch();
 
   const posts = useAppSelector((state) => state.post.posts);
@@ -25,6 +42,10 @@ export function Feeds() {
   const loading = useAppSelector((state) => state.post.loading);
 
   const error = useAppSelector((state) => state.post.error);
+
+  const page = useAppSelector((state) => state.post.page);
+  const hasMore = useAppSelector((state) => state.post.hasMore);
+  const loadingMore = useAppSelector((state) => state.post.loadingMore);
 
   const token = useAppSelector((state) => state.auth.token);
   useRenderCount("Feeds");
@@ -34,19 +55,6 @@ export function Feeds() {
   useEffect(() => {
     if (feedShown) perfMarkOnce("interactive");
   }, [feedShown]);
-
-  // Re-render every 30s so "2m" / "1h" times stay current.
-  const [clock, setClock] = useState(Date.now());
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setClock(Date.now());
-    }, 30000);
-
-    return () => clearInterval(timer);
-  }, []);
-
-  void clock;
 
   const loadPosts = useCallback(() => {
     if (!token) {
@@ -60,28 +68,46 @@ export function Feeds() {
     loadPosts();
   }, [loadPosts]);
 
+  const loadMore = useCallback(() => {
+    if (!token || !hasMore || loading || loadingMore || posts.length === 0) return;
+    dispatch(fetchMorePosts({ token, page: page + 1 }));
+  }, [dispatch, token, hasMore, loading, loadingMore, posts.length, page]);
+
+  // Videos play only while at least half of their post is on screen.
+  const viewability = useRef({ itemVisiblePercentThreshold: 50 }).current;
+  const onViewable = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
+    setVisiblePosts(viewableItems.filter((v) => v.isViewable).map((v) => String(v.key)));
+  }).current;
+  useEffect(() => () => setVisiblePosts([]), []);
+
+  const renderPost = useCallback(
+    ({ item }: { item: (typeof posts)[number] }) => (
+      <FeedRowContext.Provider value={String(item.id)}>
+        <PostCard post={item} token={token ?? ""} />
+      </FeedRowContext.Provider>
+    ),
+    [token],
+  );
+
+  let state: ReactElement | null = null;
   if (!token) {
-    return (
+    state = (
       <View style={styles.centerState}>
         <Text style={styles.stateText}>
           Please sign in to view the community feed.
         </Text>
       </View>
     );
-  }
-
-  if (loading && posts.length === 0) {
-    return (
+  } else if (loading && posts.length === 0) {
+    state = (
       <View style={styles.centerState}>
         <ActivityIndicator size="large" color="#C5399A" />
 
         <Text style={styles.stateText}>Loading community feed...</Text>
       </View>
     );
-  }
-
-  if (error && posts.length === 0) {
-    return (
+  } else if (error && posts.length === 0) {
+    state = (
       <View style={styles.centerState}>
         <Text style={styles.stateText}>{error}</Text>
 
@@ -93,27 +119,50 @@ export function Feeds() {
   }
 
   return (
-    <View style={styles.feed}>
-      <CreatePost />
+    <FlatList
+      data={state ? [] : posts}
+      keyExtractor={(post) => String(post.id)}
+      renderItem={renderPost}
+      contentContainerStyle={contentContainerStyle}
+      showsVerticalScrollIndicator={false}
+      onEndReached={loadMore}
+      onEndReachedThreshold={1.5}
+      viewabilityConfig={viewability}
+      onViewableItemsChanged={onViewable}
+      initialNumToRender={4}
+      maxToRenderPerBatch={4}
+      windowSize={7}
+      ListHeaderComponent={
+        <>
+          {header}
+          {state ?? (
+            <View style={styles.feed}>
+              <CreatePost />
 
-      {loading && posts.length > 0 ? (
-        <View style={styles.refreshing}>
-          <ActivityIndicator size="small" color="#C5399A" />
-        </View>
-      ) : null}
-
-      {posts.length === 0 ? (
-        <View style={styles.padded}>
-          <FeedEmptyState />
-        </View>
-      ) : (
-        <View>
-          {posts.map((post) => (
-            <PostCard key={post.id} post={post} token={token} />
-          ))}
-        </View>
-      )}
-    </View>
+              {loading && posts.length > 0 ? (
+                <View style={styles.refreshing}>
+                  <ActivityIndicator size="small" color="#C5399A" />
+                </View>
+              ) : null}
+            </View>
+          )}
+        </>
+      }
+      ListEmptyComponent={
+        state ? null : (
+          <View style={styles.padded}>
+            <FeedEmptyState />
+          </View>
+        )
+      }
+      ListFooterComponent={
+        loadingMore ? (
+          <View style={styles.refreshing}>
+            <ActivityIndicator size="small" color="#C5399A" />
+          </View>
+        ) : null
+      }
+    />
   );
 }
 

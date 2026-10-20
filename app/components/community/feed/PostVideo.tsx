@@ -7,14 +7,23 @@ import { Pressable, StyleSheet, View } from "react-native";
 
 import { getCloudinaryVideoPoster } from "@/utils/videoPoster";
 
+import { usePostOnScreen } from "./feedVisibility";
+
 export function PostVideo({ uri }: { uri: string }) {
   const [muted, setMuted] = useState(true);
+  // In the feed, only the videos on screen play (audit B2).
+  const onScreen = usePostOnScreen();
+  const [pausedByTap, setPausedByTap] = useState(false);
 
   const player = useVideoPlayer(uri, (instance) => {
     instance.loop = true;
     instance.muted = true;
-    instance.play();
   });
+
+  useEffect(() => {
+    if (onScreen && !pausedByTap) player.play();
+    else player.pause();
+  }, [player, onScreen, pausedByTap]);
 
   useEffect(() => {
     player.muted = muted;
@@ -42,11 +51,7 @@ export function PostVideo({ uri }: { uri: string }) {
       <Pressable
         style={StyleSheet.absoluteFill}
         onPress={() => {
-          if (player.playing) {
-            player.pause();
-          } else {
-            player.play();
-          }
+          setPausedByTap(player.playing);
         }}>
         <VideoView
           player={player}
