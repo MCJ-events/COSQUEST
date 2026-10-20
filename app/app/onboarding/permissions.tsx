@@ -292,11 +292,14 @@ export default function Permissions() {
         return;
       }
 
+      // A first fix on a phone that has had none (just switched on, indoors)
+      // often takes more than 6 s; at 6 s sign-up stopped here with "could
+      // not get your location quickly enough". The switch shows a spinner.
       position = await withTimeout(
         Location.getCurrentPositionAsync({
           accuracy: Location.Accuracy.Low,
         }),
-        6000,
+        20000,
       );
 
       if (!isMountedRef.current) {
