@@ -27,7 +27,6 @@ import {
   Image,
   ImageStyle,
   Keyboard,
-  KeyboardAvoidingView,
   Modal,
   PanResponder,
   Platform,
@@ -39,6 +38,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { KeyboardAvoidingView } from "@/components/ui/keyboard";
 
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 

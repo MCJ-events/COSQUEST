@@ -10,14 +10,13 @@ import { saveUserProfile } from "@/store/thunks/userThunks";
 import { router } from "expo-router";
 import { useState } from "react";
 import {
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
+import { KeyboardAvoidingView } from "@/components/ui/keyboard";
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
 
 export default function CreateProfile() {
@@ -304,7 +303,7 @@ export default function CreateProfile() {
     <AppBackground variant="gradient">
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}>
+        behavior="padding">
         <ScrollView
           contentContainerStyle={styles.scroll}
           keyboardShouldPersistTaps="handled">

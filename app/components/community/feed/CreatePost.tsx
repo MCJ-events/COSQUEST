@@ -8,7 +8,6 @@ import { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
@@ -18,6 +17,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { KeyboardAvoidingView } from "@/components/ui/keyboard";
 
 import { VideoPreviewFrame } from "@/components/VideoPreviewFrame";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";

@@ -15,13 +15,13 @@ import {
   Alert,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { KeyboardAwareScrollView } from "@/components/ui/keyboard";
 
 const PINK = "#C34D9C";
 
@@ -188,7 +188,8 @@ export default function Category() {
         </Pressable>
       </View>
 
-      <ScrollView
+      <KeyboardAwareScrollView
+        bottomOffset={24}
         contentContainerStyle={[
           styles.scroll,
           { paddingBottom: insets.bottom + 40 },
@@ -288,7 +289,7 @@ export default function Category() {
             })}
           </View>
         )}
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </View>
   );
 }

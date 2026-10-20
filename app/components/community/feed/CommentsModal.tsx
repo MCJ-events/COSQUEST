@@ -13,7 +13,6 @@ import {
   Alert,
   Animated,
   Easing,
-  KeyboardAvoidingView,
   Modal,
   PanResponder,
   Platform,
@@ -24,6 +23,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { KeyboardAvoidingView } from "@/components/ui/keyboard";
 
 import { FONTS } from "@/constants/fonts";
 import { useAppDispatch } from "@/store/hooks";
@@ -1268,7 +1268,7 @@ export function CommentsModal({
       onRequestClose={onClose}>
       <KeyboardAvoidingView
         style={styles.root}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}>
+        behavior="padding">
         <Pressable style={styles.overlay} onPress={onClose} />
 
         <View style={styles.sheet}>

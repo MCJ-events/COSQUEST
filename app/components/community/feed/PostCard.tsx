@@ -15,7 +15,6 @@ import { Image } from "expo-image";
 import { useState } from "react";
 import {
   Alert,
-  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
@@ -24,6 +23,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { KeyboardAvoidingView } from "@/components/ui/keyboard";
 
 import { CommentsModal } from "./CommentsModal";
 import { PostActions } from "./PostActions";

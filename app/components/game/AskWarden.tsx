@@ -6,7 +6,8 @@
 // phone held at arm's length outdoors is miserable.
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useRef, useState } from "react";
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { KeyboardAvoidingView } from "@/components/ui/keyboard";
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -81,7 +82,7 @@ function AskBody({ close }: { close: () => void }) {
   const canSend = question.trim().length > 0 && !answering;
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={[styles.root, { paddingTop: insets.top + 24 }]}>
+    <KeyboardAvoidingView behavior="padding" style={[styles.root, { paddingTop: insets.top + 24 }]}>
       <View style={styles.header}>
         <GameIconButton icon="close" color={GP.berry} diameter={40} onPress={close} accessibilityLabel="Close" />
         <View style={{ flex: 1, alignItems: "center" }}>

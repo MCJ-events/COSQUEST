@@ -22,6 +22,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { safeBack } from "@/utils/safeBack";
+import { KeyboardAvoidingView } from "@/components/ui/keyboard";
 
 type User = {
   id: string;
@@ -271,35 +272,37 @@ export default function Followers() {
       ) : null}
 
       {!loading || followers.length > 0 ? (
-        <FlatList
-          data={followers}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => {
-            const isFollowing = followingUsernames.has(
-              item.username.toLowerCase(),
-            );
+        <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
+          <FlatList
+            data={followers}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => {
+              const isFollowing = followingUsernames.has(
+                item.username.toLowerCase(),
+              );
 
-            return (
-              <FollowerRow
-                item={item}
-                following={isFollowing}
-                onToggle={() => handleToggle(item)}
-                disabled={processingUsername === item.username}
-              />
-            );
-          }}
-          contentContainerStyle={{
-            paddingBottom: insets.bottom + 24,
-          }}
-          keyboardShouldPersistTaps="handled"
-          ListEmptyComponent={
-            <Text style={styles.empty}>
-              {query.trim()
-                ? `No followers match “${query}”.`
-                : "You don't have any followers yet."}
-            </Text>
-          }
-        />
+              return (
+                <FollowerRow
+                  item={item}
+                  following={isFollowing}
+                  onToggle={() => handleToggle(item)}
+                  disabled={processingUsername === item.username}
+                />
+              );
+            }}
+            contentContainerStyle={{
+              paddingBottom: insets.bottom + 24,
+            }}
+            keyboardShouldPersistTaps="handled"
+            ListEmptyComponent={
+              <Text style={styles.empty}>
+                {query.trim()
+                  ? `No followers match “${query}”.`
+                  : "You don't have any followers yet."}
+              </Text>
+            }
+          />
+        </KeyboardAvoidingView>
       ) : null}
     </View>
   );

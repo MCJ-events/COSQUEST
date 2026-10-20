@@ -7,15 +7,14 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import {
-      ActivityIndicator,
-      Alert,
-      Platform,
-      Pressable,
-      ScrollView,
-      StyleSheet,
-      Text,
-      TextInput,
-      View,
+  ActivityIndicator,
+  Alert,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -38,6 +37,7 @@ import {
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { fetchChats } from "@/store/thunks/chatThunks";
 import { safeBack } from "@/utils/safeBack";
+import { KeyboardAwareScrollView } from "@/components/ui/keyboard";
 
 const KIND_LABEL = {
   private: "Private",
@@ -119,7 +119,8 @@ export default function DiscoverGroups() {
 
   return (
     <GroupScreen title="Discover groups" onBack={() => safeBack()}>
-      <ScrollView
+      <KeyboardAwareScrollView
+        bottomOffset={24}
         contentContainerStyle={[
           styles.scroll,
           { paddingBottom: insets.bottom + 40 },
@@ -230,7 +231,7 @@ export default function DiscoverGroups() {
             </Pressable>
           ))}
         </View>
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </GroupScreen>
   );
 }

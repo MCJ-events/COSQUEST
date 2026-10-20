@@ -37,6 +37,7 @@ import { useAppSelector } from "@/store/hooks";
 import { getPref, setPref } from "@/utils/prefsStorage";
 import { safeBack } from "@/utils/safeBack";
 import { DARK_SCREEN_GRADIENT, LIGHT_SCREEN_GRADIENT, themedStyles, useInk, useThemedStyles } from "@/constants/chatTheme";
+import { KeyboardAvoidingView } from "@/components/ui/keyboard";
 
 const PINK = "#B63D91";
 const INK = "#24283C";
@@ -422,44 +423,47 @@ export default function SearchInChat() {
       </View>
 
       {/* RESULTS */}
-      <FlatList
-        style={styles.flex}
-        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 30 }]}
-        data={ready ? results : []}
-        keyExtractor={(item) => item.message.id}
-        renderItem={renderItem}
-        onEndReached={loadMore}
-        onEndReachedThreshold={0.5}
-        initialNumToRender={6}
-        maxToRenderPerBatch={6}
-        windowSize={7}
-        removeClippedSubviews={Platform.OS === "android"}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          !ready ? (
-            <Text style={styles.empty}>Type at least 2 letters to search this chat.</Text>
-          ) : error ? (
-            <Text style={styles.empty}>{error}</Text>
-          ) : loadingPage ? null : (
-            <Text style={styles.empty}>
-              No messages match “{text}”{range !== "all" ? ` in the ${dateLabel.toLowerCase()}` : ""}.
-            </Text>
-          )
-        }
-        ListFooterComponent={
-          <>
-            {loadingPage > 1 ? <ActivityIndicator color={PINK} style={styles.moreSpinner} /> : null}
-            {error && results.length ? (
-              <Pressable style={styles.more} onPress={() => run(text, page + 1, range)}>
-                <Text style={styles.moreText}>Couldn&apos;t load more · tap to retry</Text>
-              </Pressable>
-            ) : null}
-            <Text style={styles.footnote}>Results open with the surrounding conversation.</Text>
-          </>
-        }
-      />
+      {/* The list ends above the keyboard while searching. */}
+      <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
+        <FlatList
+          style={styles.flex}
+          contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 30 }]}
+          data={ready ? results : []}
+          keyExtractor={(item) => item.message.id}
+          renderItem={renderItem}
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.5}
+          initialNumToRender={6}
+          maxToRenderPerBatch={6}
+          windowSize={7}
+          removeClippedSubviews={Platform.OS === "android"}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            !ready ? (
+              <Text style={styles.empty}>Type at least 2 letters to search this chat.</Text>
+            ) : error ? (
+              <Text style={styles.empty}>{error}</Text>
+            ) : loadingPage ? null : (
+              <Text style={styles.empty}>
+                No messages match “{text}”{range !== "all" ? ` in the ${dateLabel.toLowerCase()}` : ""}.
+              </Text>
+            )
+          }
+          ListFooterComponent={
+            <>
+              {loadingPage > 1 ? <ActivityIndicator color={PINK} style={styles.moreSpinner} /> : null}
+              {error && results.length ? (
+                <Pressable style={styles.more} onPress={() => run(text, page + 1, range)}>
+                  <Text style={styles.moreText}>Couldn&apos;t load more · tap to retry</Text>
+                </Pressable>
+              ) : null}
+              <Text style={styles.footnote}>Results open with the surrounding conversation.</Text>
+            </>
+          }
+        />
+      </KeyboardAvoidingView>
 
       {/* SURROUNDING CONVERSATION */}
       <Modal visible={!!context} animationType="slide" onRequestClose={() => setContext(null)}>

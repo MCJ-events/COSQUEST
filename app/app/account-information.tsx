@@ -17,13 +17,13 @@ import {
   Alert,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { KeyboardAwareScrollView } from "@/components/ui/keyboard";
 
 const PINK = "#C34D9C";
 
@@ -338,7 +338,8 @@ export default function AccountInformation() {
         style={StyleSheet.absoluteFill}
       />
 
-      <ScrollView
+      <KeyboardAwareScrollView
+        bottomOffset={24}
         contentContainerStyle={[
           styles.scroll,
           {
@@ -445,7 +446,7 @@ export default function AccountInformation() {
             <Text style={styles.saveButtonText}>Save Changes</Text>
           )}
         </Pressable>
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </View>
   );
 }

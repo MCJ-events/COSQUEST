@@ -32,6 +32,7 @@ import { canActOn, getGroup, getGroupMembers, type Group, type GroupMember } fro
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { createChat } from "@/store/thunks/chatThunks";
 import { safeBack } from "@/utils/safeBack";
+import { KeyboardAvoidingView } from "@/components/ui/keyboard";
 
 const PINK = "#B63D91";
 const INK = "#24283C";
@@ -286,43 +287,46 @@ export default function GroupMembers() {
         </View>
       </View>
 
-      <FlatList
-        ref={listRef}
-        style={styles.flex}
-        contentContainerStyle={[styles.content, { paddingBottom: detailInList ? insets.bottom + 30 : 16 }]}
-        data={members}
-        keyExtractor={(item) => item.id}
-        renderItem={renderItem}
-        ItemSeparatorComponent={Separator}
-        onEndReached={loadMore}
-        onEndReachedThreshold={0.5}
-        initialNumToRender={12}
-        maxToRenderPerBatch={12}
-        windowSize={9}
-        removeClippedSubviews={Platform.OS === "android"}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          loadingPage ? (
-            <ActivityIndicator color={PINK} style={styles.loading} />
-          ) : (
-            <Text style={styles.empty}>No members found.</Text>
-          )
-        }
-        ListFooterComponent={
-          <>
-            {loadingPage > 1 ? <ActivityIndicator color={PINK} style={styles.loading} /> : null}
-            {detailInList ? detailCard : null}
-            {detailInList ? (
-              <Text style={styles.footnote}>
-                Faction rank is visual identity. Admin status alone grants chat powers; a Private can be an admin and a
-                Sergeant can be a member.
-              </Text>
-            ) : null}
-          </>
-        }
-      />
+      {/* The list ends above the keyboard while searching. */}
+      <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
+        <FlatList
+          ref={listRef}
+          style={styles.flex}
+          contentContainerStyle={[styles.content, { paddingBottom: detailInList ? insets.bottom + 30 : 16 }]}
+          data={members}
+          keyExtractor={(item) => item.id}
+          renderItem={renderItem}
+          ItemSeparatorComponent={Separator}
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.5}
+          initialNumToRender={12}
+          maxToRenderPerBatch={12}
+          windowSize={9}
+          removeClippedSubviews={Platform.OS === "android"}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            loadingPage ? (
+              <ActivityIndicator color={PINK} style={styles.loading} />
+            ) : (
+              <Text style={styles.empty}>No members found.</Text>
+            )
+          }
+          ListFooterComponent={
+            <>
+              {loadingPage > 1 ? <ActivityIndicator color={PINK} style={styles.loading} /> : null}
+              {detailInList ? detailCard : null}
+              {detailInList ? (
+                <Text style={styles.footnote}>
+                  Faction rank is visual identity. Admin status alone grants chat powers; a Private can be an admin and a
+                  Sergeant can be a member.
+                </Text>
+              ) : null}
+            </>
+          }
+        />
+      </KeyboardAvoidingView>
 
       {/* Big groups: the detail stays on screen under the list. */}
       {!detailInList && selected ? (

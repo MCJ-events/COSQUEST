@@ -5,6 +5,7 @@ import CallBannerFrame from "@/components/calls/CallBannerFrame";
 import IncomingCallListener from "@/components/calls/IncomingCallListener";
 import SessionGate from "@/components/SessionGate";
 import GameBridge from "@/components/world/GameBridge";
+import { KeyboardProvider } from "@/components/ui/keyboard";
 import { UserProvider } from "@/context/UserContext";
 import { useSocketConnection } from "@/hooks/useSocketConnection";
 import { store } from "@/store/store";
@@ -66,6 +67,8 @@ export default function RootLayout() {
         <AvatarCatalogLoader />
 
         <GestureHandlerRootView style={{ flex: 1 }}>
+          {/* The keyboard, the same way everywhere (components/ui/keyboard.tsx) */}
+          <KeyboardProvider statusBarTranslucent navigationBarTranslucent>
           <UserProvider>
             {/* Green "Tap to return to call" bar while a call is minimized */}
             <CallBannerFrame>
@@ -114,6 +117,7 @@ export default function RootLayout() {
             {/* Dark icons: most screens are light even when the phone is dark (the chat sets its own). */}
             <StatusBar style="dark" />
           </UserProvider>
+          </KeyboardProvider>
         </GestureHandlerRootView>
       </SessionGate>
     </Provider>

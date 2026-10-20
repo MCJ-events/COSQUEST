@@ -8,10 +8,11 @@ import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import type { ReactNode } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { RankLine } from "@/components/chat/RankBadge";
+import { KeyboardAwareScrollView } from "@/components/ui/keyboard";
 import { AVATARS } from "@/constants/avatars";
 import { FONTS } from "@/constants/fonts";
 import type { GroupMember, GroupPerson } from "@/services/groups";
@@ -79,12 +80,14 @@ export function AdminScreen({
       {loading ? (
         <ActivityIndicator color={A.pink} style={styles.loading} />
       ) : (
-        <ScrollView
+        // Keeps the "Find a member" fields (admins, moderation) above the keyboard.
+        <KeyboardAwareScrollView
           contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 30 }]}
           keyboardShouldPersistTaps="handled"
+          bottomOffset={24}
           showsVerticalScrollIndicator={false}>
           {children}
-        </ScrollView>
+        </KeyboardAwareScrollView>
       )}
     </LinearGradient>
   );

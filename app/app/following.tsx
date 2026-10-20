@@ -17,6 +17,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { safeBack } from "@/utils/safeBack";
+import { KeyboardAvoidingView } from "@/components/ui/keyboard";
 
 type User = {
   id: string;
@@ -228,28 +229,30 @@ export default function Following() {
       ) : null}
 
       {!loading || following.length > 0 ? (
-        <FlatList
-          data={following}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <FollowingRow
-              item={item}
-              onUnfollow={() => handleUnfollow(item)}
-              disabled={processingUsername === item.username}
-            />
-          )}
-          contentContainerStyle={{
-            paddingBottom: insets.bottom + 24,
-          }}
-          keyboardShouldPersistTaps="handled"
-          ListEmptyComponent={
-            <Text style={styles.empty}>
-              {query.trim()
-                ? `No following match “${query}”.`
-                : "You are not following anyone yet."}
-            </Text>
-          }
-        />
+        <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
+          <FlatList
+            data={following}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <FollowingRow
+                item={item}
+                onUnfollow={() => handleUnfollow(item)}
+                disabled={processingUsername === item.username}
+              />
+            )}
+            contentContainerStyle={{
+              paddingBottom: insets.bottom + 24,
+            }}
+            keyboardShouldPersistTaps="handled"
+            ListEmptyComponent={
+              <Text style={styles.empty}>
+                {query.trim()
+                  ? `No following match “${query}”.`
+                  : "You are not following anyone yet."}
+              </Text>
+            }
+          />
+        </KeyboardAvoidingView>
       ) : null}
     </View>
   );
