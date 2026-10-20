@@ -43,6 +43,7 @@ import { KeyboardAvoidingView } from "@/components/ui/keyboard";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useStableCallback } from "@/hooks/useStableCallback";
+import { MESSAGE_PAGE_SIZE, olderPageQuery } from "@/services/messagePaging";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import CallNotesSheet, { callNotesEnabled } from "@/components/calls/CallNotesSheet";
 
@@ -54,6 +55,7 @@ import {
   fetchMessageSeen,
   fetchMessageShare,
   fetchMessages,
+  fetchOlderMessages,
   forwardMessageThunk,
   pinMessageThunk,
   reactToMessageThunk,
@@ -2237,6 +2239,20 @@ export default function ChatScreen() {
     (state) => !!state.chat.messagesLoading[conversationId],
   );
 
+  // Older history, a page at a time, when you scroll up (audit B4).
+  const paging = useAppSelector((state) => state.chat.messagePaging[conversationId]);
+  const loadingOlder = !!paging?.loading;
+  const loadOlder = useStableCallback(() => {
+    if (!token || !paging || !paging.hasMore || paging.loading || messages.length === 0) return;
+    dispatch(
+      fetchOlderMessages({
+        conversationId,
+        token,
+        ...olderPageQuery(messages[messages.length - 1]?.id, paging),
+      }),
+    );
+  });
+
   // Test builds: how long from the tap in the chat list to the messages on screen.
   useRenderCount("ChatScreen");
   const hasMessages = messages.length > 0;
@@ -2927,6 +2943,8 @@ export default function ChatScreen() {
         fetchMessages({
           conversationId,
           token,
+          // The newest page; older ones load as you scroll up (audit B4).
+          limit: MESSAGE_PAGE_SIZE,
         }),
       );
 
@@ -5118,6 +5136,13 @@ export default function ChatScreen() {
             onScroll={handleScroll}
             scrollEventThrottle={16}
             extraData={listExtra}
+            onEndReached={loadOlder}
+            onEndReachedThreshold={0.5}
+            ListFooterComponent={
+              loadingOlder ? (
+                <ActivityIndicator style={{ paddingVertical: 12 }} size="small" color="#C5399A" />
+              ) : null
+            }
             onScrollToIndexFailed={(info) => {
               listRef.current?.scrollToOffset({
                 offset: info.averageItemLength * info.index,

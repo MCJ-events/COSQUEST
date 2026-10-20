@@ -8,6 +8,7 @@ import {
   fetchChatShare,
   fetchConversation,
   fetchMessages,
+  fetchOlderMessages,
   fetchMessageSeen,
   fetchMessageShare,
   pinMessageThunk,
@@ -22,6 +23,7 @@ import {
 
 import { invitePreview, normalizeInvite } from "@/features/world/gameInvite";
 import type { Chat, ChatMessage } from "@/services/chats";
+import { FIRST_PAGE, mergeOlder, type MessagePaging } from "@/services/messagePaging";
 
 type ChatState = {
   conversations: Chat[];
@@ -33,6 +35,9 @@ type ChatState = {
   loading: boolean;
 
   messagesLoading: Record<string, boolean>;
+
+  // Older history, page by page, per conversation (audit B4).
+  messagePaging: Record<string, MessagePaging>;
 
   error: string | null;
 
@@ -86,6 +91,8 @@ const initialState: ChatState = {
   loading: false,
 
   messagesLoading: {},
+
+  messagePaging: {},
 
   error: null,
 
@@ -244,6 +251,8 @@ const chatSlice = createSlice({
       state.messages = {};
 
       state.messagesLoading = {};
+
+      state.messagePaging = {};
 
       state.hiddenMessageIds = {};
 
@@ -779,7 +788,11 @@ const chatSlice = createSlice({
       })
 
       .addCase(fetchMessages.fulfilled, (state, action) => {
-        const { conversationId, messages, mode } = action.payload;
+        const { conversationId, messages } = action.payload;
+        const paging = state.messagePaging[conversationId];
+        // Older pages loaded: refresh the newest page in place instead of
+        // dropping them (coming back to the chat keeps your place).
+        const mode = action.payload.mode === "replace" && paging && paging.page > 1 ? "append" : action.payload.mode;
 
         state.messagesLoading[conversationId] = false;
 
@@ -826,9 +839,46 @@ const chatSlice = createSlice({
           }
         } else {
           state.messages[conversationId] = incoming;
+          const limit = action.meta.arg.limit;
+          state.messagePaging[conversationId] = {
+            ...FIRST_PAGE,
+            hasMore: limit ? (messages || []).length >= limit : true,
+          };
         }
 
         updateConversationPreview(state, conversationId);
+      })
+
+      .addCase(fetchOlderMessages.pending, (state, action) => {
+        const { conversationId } = action.meta.arg;
+        state.messagePaging[conversationId] = {
+          ...(state.messagePaging[conversationId] || FIRST_PAGE),
+          loading: true,
+        };
+      })
+
+      .addCase(fetchOlderMessages.fulfilled, (state, action) => {
+        const { conversationId, messages, hasMore } = action.payload;
+        const hiddenIds = state.hiddenMessageIds[conversationId] || [];
+        const older = messages
+          .filter((message) => !hiddenIds.includes(message.id))
+          .map((message) => ({ ...message, conversationId, reactions: message.reactions || [] }));
+        const { merged, added } = mergeOlder(state.messages[conversationId] || [], older);
+        if (added > 0) state.messages[conversationId] = merged;
+        state.messagePaging[conversationId] = {
+          page: action.meta.arg.page,
+          // Nothing new came back (a backend that ignores paging): stop asking.
+          hasMore: hasMore && added > 0,
+          loading: false,
+        };
+      })
+
+      .addCase(fetchOlderMessages.rejected, (state, action) => {
+        const { conversationId } = action.meta.arg;
+        state.messagePaging[conversationId] = {
+          ...(state.messagePaging[conversationId] || FIRST_PAGE),
+          loading: false,
+        };
       })
 
       .addCase(fetchMessages.rejected, (state, action) => {
