@@ -87,10 +87,16 @@ function watchLogin() {
 async function autoDownload(created: SparksSdk) {
   try {
     const caps = await created.getCapabilities();
-    if (!caps || caps.tier === "none") return;
+    if (!caps) return;
+    // Phones too old for the model still note their owner's speech on calls:
+    // ensure() fetches just the speech files for them.
+    if (caps.tier === "none") return void (await created.model.ensure({ allowCellular: false }));
     const status = created.model.status();
-    if (status.phase === "ready") return void created.model.load().catch(() => {});
-    if (status.phase !== "not_downloaded" && status.phase !== "download_paused" && status.phase !== "error") return;
+    // ensure() also when the model is already here: it checks the speech
+    // files too (call notes) and fetches any that are missing or were never
+    // verified (SDK 1.2.1 could leave one unfinished). Files already verified
+    // are not downloaded again.
+    if (!["ready", "not_downloaded", "download_paused", "error"].includes(status.phase)) return;
     const done = await created.model.ensure({ allowCellular: false });
     if (done.phase === "ready" && sdk === created) await created.model.load();
   } catch (error: any) {
@@ -105,6 +111,13 @@ function listen(socket: any) {
   socket.on("sparks", (msg: BackendToSdk) => {
     if (sdk) sdk.receive(msg);
     else early.push(msg);
+  });
+  // A reconnected socket is a new connection to the backend, which no longer
+  // knows this device: the SDK registers again (SDK 1.2.4).
+  let connectedBefore = !!socket.connected;
+  socket.on("connect", () => {
+    if (connectedBefore) void sdk?.transportReconnected().catch(() => undefined);
+    connectedBefore = true;
   });
 }
 
@@ -131,14 +144,19 @@ export async function startSparks(
       modelManifestUrl: SPARKS_MODEL_MANIFEST,
       getAuthToken: async () => getToken?.() || "",
       // Through our socket. No answer in 10 s: emitWithAck rejects and the SDK
-      // retries with backoff. An answer with `error` is a refusal (retrying
-      // wouldn't help), so it resolves (as in Subomi's sparks.js).
+      // retries with backoff. An answer with `error` is a refusal; it is
+      // returned so the SDK can act on it (on "register first" it registers
+      // again by itself, SDK 1.2.4).
       transport: {
         send: async (msg) => {
           const reply = await socket.timeout(10_000).emitWithAck("sparks", msg);
           if (reply?.error) console.warn("[sparks] refused:", reply.error);
+          return reply;
         },
       },
+      // Dev builds log every job step (offer, accepted or refused and why, each
+      // model call with its timing, result or release).
+      logLevel: __DEV__ ? "info" : "warn",
     });
 
     sdk = created;
