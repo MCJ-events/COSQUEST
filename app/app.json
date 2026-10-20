@@ -8,7 +8,7 @@
     "scheme": "cosquest",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "com.dammy0227.cosquest",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
