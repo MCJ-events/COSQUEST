@@ -31,6 +31,37 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const CHOICE_Y = [910, 1096, 1282, 1468];
 const CHOICE_X = 600;
 
+// Where the answer rows really are: the rows move with the question's
+// length (one, two or three lines), so fixed positions missed when it
+// wrapped. A raw screenshot is read down a column near the right edge (clear
+// of the Chats bubble and most text): the rows are the tall bands that differ
+// from the background. null when it can't tell (then CHOICE_Y is used).
+function choiceRows() {
+  const raw = execFileSync(ADB, ['exec-out', 'screencap'], { maxBuffer: 64 * 1024 * 1024 });
+  const w = raw.readUInt32LE(0);
+  const h = raw.readUInt32LE(4);
+  const header = raw.length - w * h * 4;
+  if (header < 12 || header > 16) return null;
+  const px = (x, y) => {
+    const o = header + (y * w + x) * 4;
+    return [raw[o], raw[o + 1], raw[o + 2]];
+  };
+  const x = Math.round(w * 0.94);
+  const bg = px(x, Math.round(h * 0.9));
+  const differs = (y) => px(x, y).reduce((d, c, k) => d + Math.abs(c - bg[k]), 0) > 60;
+  const bands = [];
+  let start = -1;
+  for (let y = Math.round(h * 0.2); y < Math.round(h * 0.88); y += 1) {
+    if (differs(y)) {
+      if (start < 0) start = y;
+    } else if (start >= 0) {
+      if (y - start >= h * 0.045) bands.push(Math.round((start + y) / 2));
+      start = -1;
+    }
+  }
+  return bands.length >= 2 ? bands : null;
+}
+
 function screen() {
   const m = adb('shell', 'wm', 'size').match(/(\d+)x(\d+)/);
   return { w: Number(m[1]), h: Number(m[2]) };
@@ -52,11 +83,18 @@ async function quiz(timeoutS) {
   const scale = h / 2400;
   // let "The shrine is waking" pass and the card appear
   await sleep(Math.max(0, Number(issued) * 1000 + 2500 - Date.now()));
+  let rows = null;
+  try {
+    rows = choiceRows();
+  } catch (e) {
+    console.error(`screencap: ${e.message}`);
+  }
+  const ys = rows && rows.length > Math.max(...answers) ? rows : CHOICE_Y.map((y) => Math.round(y * scale));
   for (const i of answers) {
-    adb('shell', 'input', 'tap', String(Math.round(CHOICE_X * scale)), String(Math.round(CHOICE_Y[i] * scale)));
+    adb('shell', 'input', 'tap', String(Math.round(CHOICE_X * scale)), String(ys[i]));
     await sleep(900);
   }
-  console.log(`${kind}: tapped ${answers.join(',')}`);
+  console.log(`${kind}: tapped ${answers.join(',')} at y ${answers.map((i) => ys[i]).join(',')}${rows ? '' : ' (fixed rows)'}`);
 }
 
 async function taps(n, afterS, fx, fy) {
