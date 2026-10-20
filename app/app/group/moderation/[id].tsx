@@ -187,7 +187,7 @@ export default function Moderation() {
           value={slowValue}
           onChange={setSlowMode}
         />
-        <Note>Admins aren't limited by slow mode.</Note>
+        <Note>Admins aren&apos;t limited by slow mode.</Note>
       </Card>
 
       {/* SELECTED MEMBER */}

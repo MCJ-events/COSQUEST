@@ -180,7 +180,7 @@ export default function ShareMediaSheet({
                 ))}
               </View>
             ) : (
-              <Text style={styles.hint}>Pick up to {MAX} photos and short videos. They're sent together as one message.</Text>
+              <Text style={styles.hint}>Pick up to {MAX} photos and short videos. They&apos;re sent together as one message.</Text>
             )}
 
             {/* CAPTION */}

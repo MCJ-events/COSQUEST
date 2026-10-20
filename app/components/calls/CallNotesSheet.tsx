@@ -84,7 +84,7 @@ export default function CallNotesSheet({
             <ActivityIndicator style={{ marginVertical: 40 }} color="#C5399A" />
           ) : loaded.state === "pending" ? (
             <Text style={styles.empty}>
-              Sparks is still writing up this call. It's ready a minute or two after the call ends.
+              Sparks is still writing up this call. It&apos;s ready a minute or two after the call ends.
             </Text>
           ) : loaded.state === "error" ? (
             <Text style={styles.empty}>{loaded.message}</Text>
@@ -119,7 +119,7 @@ export default function CallNotesSheet({
                 );
               })}
               {outline && !topics.length && !outline.summary ? (
-                <Text style={styles.empty}>Sparks didn't pick up any topics on this call.</Text>
+                <Text style={styles.empty}>Sparks didn&apos;t pick up any topics on this call.</Text>
               ) : null}
             </ScrollView>
           )}

@@ -125,17 +125,17 @@ export default function SparksModel() {
 
   let body;
   if (!sparksEnabled()) {
-    body = <Text style={styles.text}>The Sparks AI isn't switched on yet. Sparks keep working as they do today.</Text>;
+    body = <Text style={styles.text}>The Sparks AI isn&apos;t switched on yet. Sparks keep working as they do today.</Text>;
   } else if (Platform.OS === "web") {
     body = (
       <Text style={styles.text}>
-        The Sparks AI runs on phones. On the website you still see every Spark: members' phones do the AI work for the group.
+        The Sparks AI runs on phones. On the website you still see every Spark: members&apos; phones do the AI work for the group.
       </Text>
     );
   } else if (waiting) {
     body = <ActivityIndicator color={PINK} style={styles.loading} />;
   } else if (!getSparksSdk()) {
-    body = <Text style={styles.text}>The Sparks AI couldn't start. Check your connection and open this screen again.</Text>;
+    body = <Text style={styles.text}>The Sparks AI couldn&apos;t start. Check your connection and open this screen again.</Text>;
   } else {
     body = (
       <>
@@ -160,7 +160,7 @@ export default function SparksModel() {
           {!capable ? (
             <Text style={styles.note}>
               {REASONS[caps?.tierReason || ""] || "A smaller version for more phones is planned."} You still see every
-              Spark: other members' phones do the AI work for the group.
+              Spark: other members&apos; phones do the AI work for the group.
             </Text>
           ) : null}
         </View>
@@ -210,7 +210,7 @@ export default function SparksModel() {
 
         <Text style={styles.footnote}>
           The AI runs on your phone, not on a server. It works out Spark subjects and summaries for your chats, only while
-          you're not busy in the game.
+          you&apos;re not busy in the game.
         </Text>
       </>
     );

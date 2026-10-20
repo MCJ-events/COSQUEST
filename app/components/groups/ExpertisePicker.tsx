@@ -66,7 +66,7 @@ export default function ExpertisePicker({
             <Ionicons name="close" size={24} color={MUTED} />
           </Pressable>
         </View>
-        <Text style={styles.hint}>Shown under your name. It isn't a rank and gives no chat powers.</Text>
+        <Text style={styles.hint}>Shown under your name. It isn&apos;t a rank and gives no chat powers.</Text>
 
         {loading ? (
           <ActivityIndicator color={PINK} style={styles.loading} />

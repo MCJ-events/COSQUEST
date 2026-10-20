@@ -49,3 +49,4 @@ app-example
 
 # Merged app: scripts/verify-ios.sh logs and derived data
 build-logs/
+modules/*/android/build/

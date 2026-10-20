@@ -131,7 +131,7 @@ export default function PollCreator({
             contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 30 }]}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}>
-            <Text style={styles.bigTitle}>Let's decide together.</Text>
+            <Text style={styles.bigTitle}>Let&apos;s decide together.</Text>
             <Text style={styles.lead}>Ask the group and keep the results in your conversation.</Text>
 
             <Text style={styles.label}>Question</Text>
