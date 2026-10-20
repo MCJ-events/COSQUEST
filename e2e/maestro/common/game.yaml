@@ -8,10 +8,11 @@ appId: com.dammy0227.cosquest
     times: 6
     commands:
       - back
-# From 93% of the width, not the very edge: with gesture navigation a swipe
-# from the edge is the system Back gesture.
+# From the edge handle (98%, 42%): it sits in the app's gesture-exclusion
+# strip, so with gesture navigation this is not the system Back gesture, and
+# it starts on no chat row (a swipe that starts on a row can open it).
 - swipe:
-    start: "93%,45%"
+    start: "98%,42%"
     end: "20%,45%"
     duration: 400
 # A swipe Maestro sends does not always take on the tall screen; the edge

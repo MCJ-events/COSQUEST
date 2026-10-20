@@ -12,7 +12,7 @@ name: J11 join a faction
 # The one-codebase game picks a side in the Warden's first-run conversation;
 # the side then shows on the player's profile (the map chip has no faction).
 - swipe:
-    start: "93%,45%"
+    start: "98%,42%"
     end: "20%,45%"
     duration: 400
 # A swipe Maestro sends does not always take on the tall screen; the edge
