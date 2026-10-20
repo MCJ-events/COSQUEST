@@ -9,21 +9,75 @@ name: J11 join a faction
     env: { USER: ada, PASS: cosquest-dev-1 }
 - runFlow: common/chats.yaml
 - assertVisible: "Your faction room.*"
+# The one-codebase game picks a side in the Warden's first-run conversation;
+# the side then shows on the player's profile (the map chip has no faction).
 - swipe:
     start: "99%,45%"
     end: "20%,45%"
     duration: 400
 - extendedWaitUntil:
-    visible: "Choose your side"
+    visible: "That's me|Your name|Choose your side|Continue"
     timeout: 60000
-- takeScreenshot: j11-choose-side
-- tapOn: "Marvel.*"
-- scrollUntilVisible:
-    element: "Let's go"
-    direction: DOWN
-- tapOn: "Let's go"
+- repeat:
+    while:
+      notVisible: "Map of the streets around you"
+    times: 25
+    commands:
+      - runFlow:
+          when:
+            visible: "That's me"
+          commands:
+            - hideKeyboard
+            - tapOn: "That's me"
+      - runFlow:
+          when:
+            visible: "Marvel"
+            notVisible: "Stand with Marvel.*"
+          commands:
+            - takeScreenshot: j11-choose-side
+            - tapOn: "Marvel"
+      - runFlow:
+          when:
+            visible: "Stand with Marvel.*"
+          commands:
+            - tapOn: "Stand with Marvel.*"
+      - runFlow:
+          when:
+            visible: "Show me what's near"
+          commands:
+            - tapOn: "Show me what's near"
+      # The older first run (merged-app-sync): pick a side.
+      - runFlow:
+          when:
+            visible: "Choose your side"
+          commands:
+            - takeScreenshot: j11-choose-side
+            - tapOn: "Marvel.*"
+            - scrollUntilVisible:
+                element: "Let's go"
+                direction: DOWN
+            - tapOn: "Let's go"
+      - runFlow:
+          when:
+            visible: "Continue"
+            notVisible: "That's me|Show me what's near|Marvel"
+          commands:
+            - tapOn: "Continue"
+      - waitForAnimationToEnd:
+          timeout: 1500
 - extendedWaitUntil:
     visible: "Map of the streets around you"
     timeout: 60000
-- assertVisible: ".*Rookie · Marvel.*"
+# Coach cards keep coming for a while after the first run; dismiss, then
+# open the profile, until the side shows.
+- repeat:
+    while:
+      notVisible: ".*[Mm]arvel.*"
+    times: 5
+    commands:
+      - runFlow: common/warden-later.yaml
+      - tapOn: "You, .*"
+      - waitForAnimationToEnd:
+          timeout: 3000
+- assertVisible: ".*[Mm]arvel.*"
 - takeScreenshot: j11-faction-on-map

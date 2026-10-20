@@ -42,7 +42,7 @@ name: J12 notifications and deep links
 - takeScreenshot: j12-link-chat
 - openLink: "cosquest://play?shrine=XQ-trafalgar-trivia"
 - extendedWaitUntil:
-    visible: "Test Trivia Stone|Choose your side"
+    visible: "Test Trivia Stone|Choose your side|That's me|Your name|Continue"
     timeout: 60000
 - takeScreenshot: j12-link-game
 # A link with no screen (the message link fallback) gets a way out, not
