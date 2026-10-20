@@ -6,7 +6,7 @@ import { ONBOARDING_TOTAL, STEP } from "@/constants/onboarding";
 import { useGoogleAuth } from "@/utils/googleAuth";
 import { router } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Alert, StyleSheet, Text, View } from "react-native";
 import { useAppSelector } from "../../store/hooks";
 
 WebBrowser.maybeCompleteAuthSession();
@@ -46,7 +46,8 @@ export default function AuthSignup() {
 
             <Button
               label="Sign up with Apple"
-              onPress={() => {}}
+              // Did nothing at all; now says what sign-in's Apple button says.
+              onPress={() => Alert.alert("Apple sign-in", "Coming soon. Use Google or your email for now.")}
               variant="dark"
             />
 
