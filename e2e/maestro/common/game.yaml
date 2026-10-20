@@ -8,10 +8,21 @@ appId: com.dammy0227.cosquest
     times: 6
     commands:
       - back
+# From 93% of the width, not the very edge: with gesture navigation a swipe
+# from the edge is the system Back gesture.
 - swipe:
-    start: "99%,45%"
+    start: "93%,45%"
     end: "20%,45%"
     duration: 400
+# A swipe Maestro sends does not always take on the tall screen; the edge
+# handle opens the game too.
+- waitForAnimationToEnd:
+    timeout: 2000
+- runFlow:
+    when:
+      visible: "Open the game"
+    commands:
+      - tapOn: "Open the game"
 - extendedWaitUntil:
     visible: "That's me|Your name|Choose your side|Map of the streets around you|Continue"
     timeout: 60000

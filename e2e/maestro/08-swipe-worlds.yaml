@@ -36,7 +36,7 @@ name: J08 swipe from chat into the game and back
     visible: "Profile"
     timeout: 10000
 - swipe:
-    start: "99%,45%"
+    start: "93%,45%"
     end: "20%,45%"
     duration: 400
 - extendedWaitUntil:
