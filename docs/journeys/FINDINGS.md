@@ -1,35 +1,106 @@
 # CosQuest journeys: findings
 
-Task cq 054, 2026-10-20. Android emulator (API 35, x86_64), release build of
-`merged-app-sync`, against local backends:
+Task cq 054, 2026-10-20. Android emulator (API 35, x86_64, 1080x2400),
+release builds of `merged-app-sync`, against local backends:
 
 - chat: `MCJ-events/COSQUEST` main 8a218aa with its `merged-app` branch merged
   in locally (main alone has no game-invite route, see F-01), in-memory Mongo
   and Redis, seeded by `e2e/seed/chat-local.js`;
-- game: `ubmids/costquest-backend` integration branch (what staging runs),
-  local Postgres, seeded points at Trafalgar Square;
-- calls: a local LiveKit dev server.
+- game: `ubmids/costquest-backend` `integration-20261016` (what staging runs),
+  local Postgres, the seeded test world at Trafalgar Square;
+- calls: a local LiveKit dev server; the other people in a call are
+  `e2e/seed/peer.js` joining the room with `@livekit/rtc-node` and sending a tone.
+
+Plus a light pass against the test servers (`e2e/testserver/smoke.js`).
+How to run everything: `e2e/README.md`. Journey results: the table at the end.
 
 Severity: **Blocker** (a journey cannot be finished), **High** (wrong or
 broken in a way most people hit), **Medium** (wrong but there is a way
-round), **Low** (polish, copy, consistency).
+round), **Low** (polish, copy, consistency), **Info** (test rig notes).
 
-Owner: **app** (the merged Expo app), **chat backend** (MCJ-events/COSQUEST),
-**game backend** (ubmids/costquest-backend), **Sparks** (SDK/module),
-**design** (needs a product decision).
+Owner: **app** (the merged Expo app; for chat screens that is the team's code
+in `app/`), **chat backend** (MCJ-events/COSQUEST), **game backend**
+(ubmids/costquest-backend), **Sparks** (SDK/module), **design** (needs a
+product decision).
 
-Status: **fixed** (commit on `merged-app-sync`), **open**.
+Status: **fixed** (commit on `merged-app-sync`), **open**. "Proof" names the
+journey or unit test that shows it.
 
-| ID | Sev | Owner | Where | What | Status |
-|----|-----|-------|-------|------|--------|
-| F-01 | High | chat backend | `POST /api/chats/:id/game-invites` | The route the merged app uses for game invite cards and "share to chat" exists only on MCJ-events/COSQUEST `merged-app` (d7d72e9), not on `main` (8a218aa). Against main every invite or shared result fails with 404. Merging `merged-app` into main locally needed 7 small conflict resolutions (all unions: `Message.kind` enum, `messageRow`, `chatController` serializer, `gameController`, `gameRoutes`, test runner, API guide); the backend suite then passes 1008/1008. | open |
-| F-02 | High | app | Cosquest tab (`app/(tabs)/home.tsx`) | The first tab, where sign-in, the splash and "leave group" land, was the Expo starter screen: React logo, "Welcome to the Cosquest", "Edit app/(tabs)/index.tsx to see changes". Same in the team's chat app. Now: the map-pin tab opens the game (it is the game's icon) and `/home` redirects to the chats. | fixed |
-| F-03 | High | app / design | Live tab (`app/(tabs)/live.tsx`) | Also the Expo starter screen. Replaced with an honest page pointing to voice chats and calls (chats) and Quest Hours and raids (game) until a Live design exists. | fixed (stop-gap) |
-| F-04 | Blocker | app | Sign-up, profile picture step | Continue did nothing visible: the step needs a photo AND an avatar, and the "Upload a profile picture" error renders at the top of the screen, off screen once you have scrolled the 100-avatar grid down to Continue. Fixed: the error now also shows next to Continue. | fixed |
-| F-05 | Medium | design | Sign-up, profile picture step | The subtitle says "take a photo **or** pick an avatar" but a photo is required (added on purpose in 3c01fbc, "upload profile picture validation"). Either the copy or the rule should change; left as the team wrote it. | open (needs decision) |
-| F-06 | Medium | app | Sign-up, profile picture step | Continue sits under a grid of 100 avatars: you must scroll past all of them to move on. A pinned Continue would help. | open |
-| F-07 | Medium | app (a11y) | `components/Field.tsx` (every onboarding form) | Text inputs had no accessible name (TalkBack read "edit box"), and the show/hide password eye had no label. Now named after their label, with a testID. | fixed |
-| F-08 | High | design | Factions | Two faction systems: chat onboarding asks for one of 6 (Ascendants, Icons, Controllers, Blockbusters, Everborn, Celestials) and the game asks again on first open with 5 different ones (Anime, Marvel, DC, Movies, Gaming). A new player picks a side twice, with different names. | open (needs decision) |
-| F-09 | Low | app | Sign-up vs sign-in | Sign-up offers Google and Apple; sign-in offers only Google. On Android, Apple sign-in is offered on sign-up only. | open |
-| F-10 | Low | design | Create profile | Gender is Male or Female only, no other option and no "prefer not to say". | open (needs decision) |
-| F-11 | Low | app (lint) | team chat code | `npm run lint` reports 15 errors, all in the team's chat files: 14 unescaped apostrophes, and `useRoomContext`/`useStageMode` called conditionally in `components/calls/CallSession.tsx:811` (rules-of-hooks: can crash if the condition flips between renders). Left as the team wrote them. | open |
+## Fixed
+
+| ID | Sev | Owner | Where | What | Commit | Proof |
+|----|-----|-------|-------|------|--------|-------|
+| F-02 | High | app | Cosquest tab (`app/(tabs)/home.tsx`) | The first tab, where sign-in and the splash land, was the Expo starter screen ("Edit app/(tabs)/index.tsx to see changes"). Same in the team's chat app. Now the map-pin tab opens the game and `/home` goes to the chats. | badebea | J01 asserts the starter text is gone |
+| F-03 | High | app / design | Live tab | Also the Expo starter screen. Now an honest page pointing to voice chats, calls, Quest Hours and raids until a Live design exists. Its copy said "a voice chat in any group" (wrong: only Community and faction rooms) and "Go to your chats" landed on Feeds; both fixed. | badebea, 7c8b33a | manual |
+| F-04 | Blocker | app | Sign-up, picture step | Continue did nothing visible: the step needs a photo AND an avatar and the error showed at the top, off screen below the 100-avatar grid. The error now also shows next to Continue. | 50dbd3f | J01 |
+| F-07 | Medium | app (a11y) | `components/Field.tsx` | Onboarding text inputs and the password eye had no accessible names. | 50dbd3f | TalkBack names |
+| F-11 | Low | app (lint) | team chat code | `npm run lint` failed with 15 errors: 13 unescaped apostrophes in the team's chat copy, `__dirname` in the game's config plugin, and the conditional hooks (F-31). Now 0 errors. | ecbfc0b | `npm run lint` |
+| F-12 | Low | app (a11y) | Onboarding permissions | The location and notification switches had no names or switch role. | 89ca7fb | a11y tree |
+| F-13 | High | app | Onboarding faction step | Choosing Everborn ("Fantasy Fans") failed: "Failed to save faction. Please try again." The app sent `everborn`, the backend only takes `everborns`. | 2ba5b5d | J01 before: FAIL at the faction step |
+| F-14 | Low | app (a11y) | Profile photo screen | Avatar tiles and the back chevron had no names. | 89ca7fb | a11y tree |
+| F-16a | High | app / chat backend | Onboarding | The onboarding calls identified the account by the email in the body only, so anyone who knows an email could edit an account still onboarding (`identifyUser.js:40`). The app now also sends the sign-up token. The backend still accepts email alone: see F-16b. | 0f0c1bc | unit test signupSession |
+| F-21 | High | app | Chat composer, sheets (14 screens) | On Android 15 (edge-to-edge) the keyboard covered the message box and Send: you could not see what you typed or reach Send. `KeyboardAvoidingView` had no behaviour on Android, and edge-to-edge stops the window resizing. Now `padding` on both platforms. | b434ee5 | J03 before: FAIL at Send; after: PASS |
+| F-22 | High | app | Reply bubbles | Every reply quote said "Reply / Message". The backend sends `replyTo: {id, senderName, preview}`; the app read `sender.username` and `content`. | 32cdc02 | J06 asserts no placeholder; unit test replyQuote |
+| F-23 | Low | app (a11y) | Chat header | The back chevron had no name. | cf4da93 | a11y tree |
+| F-24 | Low | app | New group, step 4 | The subtitle said "Private group group". | c67723e | J03 |
+| F-25 | Low | app (a11y) | Photo preview | Close and send had no names. | 9934006 | a11y tree |
+| F-31 | Blocker | app | 1:1 call becomes a group call | **The app crashed** ("Rendered fewer hooks than expected") as soon as someone was added to a 1:1 call: two hooks in `CallSession.tsx` ran after the group call's early return. This is the `rules-of-hooks` lint error from the team's main. | 9034081 | J07 before: crash; after: PASS |
+| F-33 | High | app (game) | Point sheet | A link or chat invite opened the point tapped earlier instead of its own (`selectedId ?? focusPoint`). On Trafalgar Square, where pins overlap (F-37), this is easy to hit. | 6c2e372 | J09 taps a pin then follows a link |
+| F-34 | Medium | app / design | Game reward screen | There was no way to share a game result into a chat (only "Invite a chat here" from a point). Added "Share to a chat" on the reward screen; it sends a text line ("🏆 Point taken at Test Trivia Stone · +470 XP in CosQuest") because the chat backend has no result card (`Message.kind` has `game_invite` only). A real card needs a backend kind: see F-44. | 1c71855 | J10; unit test resultShareText |
+| F-35 | Low | app (a11y) | Community header, Notifications | The profile and bell buttons and the notifications back arrow had no names. | 2ab7e5e | a11y tree |
+| F-36 | Medium | app | `cosquest://play` links | A play link opened while a chat screen was showing opened the game behind the chat (nothing visible happened). The route now dismisses to the tabs first, as the in-chat invite card already did. | c5550b4 | J12 |
+
+## Open
+
+| ID | Sev | Owner | Where | What |
+|----|-----|-------|-------|------|
+| F-01 | High | chat backend | `POST /api/chats/:id/game-invites` | The route the merged app uses for invite cards exists only on MCJ-events/COSQUEST `merged-app`, not on `main`, and **not on the test server** (404, `e2e/testserver/smoke.js`). Against them every "Invite a chat here" fails ("Couldn't send to ..."). Merging `merged-app` into main locally needed 7 small union resolutions; the backend suite then passes 1008/1008. |
+| F-05 | Medium | design | Sign-up, picture step | The subtitle says "take a photo **or** pick an avatar" but a photo is required (added on purpose in 3c01fbc). Copy or rule should change. |
+| F-06 | Medium | app | Sign-up, picture step | Continue sits under 100 avatars: you scroll past all of them to move on. A pinned Continue would help. |
+| F-08 | High | design | Factions | Two faction systems: chat onboarding asks for one of 6 ("Anime Fans", "Comic Book Fans", ... backed by Ascendants, Icons, ...), the game asks again on first open ("Choose your side") with 5 different ones (Anime, Marvel, DC, Movies, Gaming) and does not pre-fill. A new player picks a side twice, with different names. |
+| F-09 | Low | app | Sign-up vs sign-in | Sign-up offers Google and Apple; sign-in only Google. |
+| F-10 | Low | design | Create profile | Gender is Male or Female only. |
+| F-15 | Medium | app | Sign-in and other fetches | When the backend cannot be reached the raw error is shown: "fetch failed: java.net.ConnectException: Failed to connect to localhost/127.0.0.1:4120" or "java.io.IOException: unexpected end of stream". It should say CosQuest can't be reached and offer a retry; the second case (a dead pooled connection after a server restart) could be retried silently. |
+| F-16b | High | chat backend | `src/middleware/identifyUser.js:40` | Onboarding routes still accept an email with no token, for any account not yet onboarded. With F-16a the app sends the token, so the backend can now require it. |
+| F-17 | Low | app | Profile | "Posts 1" while the Posts tab says "No posts yet" (her one post is a Thought). |
+| F-18 | Low | app | Profile faction card | Shows "Private · 4 members" (her faction group) under the ICONS logo, while the faction has 1.9K members. |
+| F-19 | Medium | app / design | Profile | The Quest/Wins/Points stat cards and the Edit Profile / Share Profile buttons render on Android as grey bars with a line through the label (the glass effect). Share Profile failures are only `console.log`ged. |
+| F-20 | Low | app | Profile photo | "Change Profile Photo" in Account Information opens the system picker straight away; the same label in Edit Profile opens a screen with photo and avatars. Two flows, one label. |
+| F-26 | Medium | app / design | Chat, edited message | After an edit, the "Saved text / Changes saved / Restore previous wording" panel stays open under the message every time the chat is opened (half the screen in the DM with Tunde). |
+| F-27 | Low | app / Sparks | Start a Spark | A Spark started from an older message opens as "Quiet · last reply 4:27 AM" the moment you start it. |
+| F-28 | Low | app | Spark panel | Every message repeats its own date header ("Oct 20 · 10:26 AM"). |
+| F-29 | Low | design | New group, step 4 | "Eligible faction members join automatically" shows for a private group. |
+| F-32 | High | app / Sparks | Group calls and voice chats | The "Sparks" button in a group call or a Community/faction voice chat only says "Sparks in calls is coming soon." Sparks in calls works in 1:1 calls only (the sparks-calls branch). Same for "Share" (screen sharing) and tapping a person ("Player cards and private calls are coming soon"). |
+| F-37 | Medium | app (game) | Map at Trafalgar Square | About 20 points within 40 m overlap; tapping one pin often opens another (tapping "Test Trivia Stone" opened "Nelson's Column"). No clustering or a picker for stacked pins. |
+| F-38 | Medium | app (game) | Game screens | The Chats bubble (left edge, mid-screen) sits over content: the first quiz answer, the "+470 XP" on the reward screen, the boss name on the raid screen. A tap meant for the first answer can open the chats mid-question. |
+| F-39 | Low | app (game) | Boss sheet | "58 min left" next to "It leaves at half past" (the server keeps bosses out from :00 to :30). |
+| F-40 | Medium | game backend | integration-20261016, one uvicorn worker | After about 6 hours the local API stopped answering (`/health` timed out, two DB sessions left "idle in transaction"); the app showed "Can't reach CosQuest right now." A restart fixed it. Log: `out/logs/game-api-hang-1.log` in the task folder. Worth a check on staging. |
+| F-41 | Low | app | Incoming call | Tapping the "Accept"/"Decline" captions does nothing; only the round buttons do. |
+| F-42 | Medium | Sparks | 1:1 call with Sparks on | "Sparks starts once Sparks AI has downloaded": the model comes from the backend's `/v1/model` manifest. The local backend has none, so Sparks notes in calls could not be exercised here; the consent card and pill were. |
+| F-43 | Low | design | Call controls | The audio call's Mute shows a crossed mic whether or not you are muted (the video bar switches between mic and crossed mic). |
+| F-44 | Medium | chat backend | Messages | No message kind for a game result, so shared results (F-34) are plain text. |
+| F-45 | Low | app | Chat attach sheet (from code) | No File/Document option although documents render; "Audio" only shows a "press and hold the mic" alert. |
+| F-46 | Low | app | Links (from code) | `cosquest://chat/<id>/message/<id>` (the message link fallback) has no route and there is no `+not-found`; invite links are `https://cosquest.vercel.app/group/join/<code>`, which won't open the Android app without app links. |
+| F-47 | Low | app | Chat search (from code) | "Open the chat" from a search result pushes a second copy of the chat and does not scroll to the message. |
+| F-48 | Medium | backend / rig | Uploads | The chat backend has no local storage fallback: without Cloudinary keys every upload (onboarding photo, chat media, voice) is a 500. The rig stubs it. Any file sent as `application/octet-stream` is stored as `kind: "image"`. |
+
+## Test rig notes (Info)
+
+- **Voice recording** cannot be tested on the farm's headless emulator (no
+  microphone); J06 plays a seeded voice note instead.
+- **Maestro and the game.** After every step Maestro waits for the screen to
+  go idle; the quiz timer and fight scene never do, so each step there takes
+  20 to 40 s, longer than a question's clock. The timed taps (answer, strike)
+  go through `e2e/seed/phone.js` (adb taps; the quiz answer comes from the
+  local game DB). Not an app bug, but the quiz screen redraws continuously.
+- **One game player per emulator.** The game's device key survives a
+  reinstall, so `e2e/reset.sh` clears the local game DB's players before each
+  journey (fresh "Choose your side", no cooldowns, this hour's boss).
+- **Sign-in rate limits** (10 per IP per 2 h) and the one-session-per-account
+  rule would break repeated runs; the local runner turns the limits off.
+- **adb reverse tunnels** dropped a few times during the day; `journey.sh`
+  renews them every 5 s.
+
+## Journey results
+
+Filled in by the before/after runs: see the end of this file.
