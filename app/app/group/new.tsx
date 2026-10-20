@@ -396,7 +396,7 @@ export default function NewGroup() {
                 {myName}
               </Text>
             ) : step === 4 ? (
-              <Text style={styles.subtitle}>{KIND_LABEL[kind]} group</Text>
+              <Text style={styles.subtitle}>{KIND_LABEL[kind]}</Text>
             ) : null}
           </View>
           <Pressable
