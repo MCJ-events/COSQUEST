@@ -126,10 +126,14 @@ function OrbitCircle({
       pulse.setValue(0);
       return;
     }
+    // The pulse runs for as long as someone speaks: on the native driver
+    // (opacity and scale only), so it never waits on the JS thread (audit
+    // B10). The circle's own move and resize animate layout (left, top,
+    // width, height), which the native driver can't, and run once per change.
     const loop = Animated.loop(
       Animated.sequence([
-        Animated.timing(pulse, { toValue: 1, duration: 900, easing: Easing.out(Easing.ease), useNativeDriver: false }),
-        Animated.timing(pulse, { toValue: 0, duration: 0, useNativeDriver: false }),
+        Animated.timing(pulse, { toValue: 1, duration: 900, easing: Easing.out(Easing.ease), useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 0, duration: 0, useNativeDriver: true }),
       ]),
     );
     loop.start();
