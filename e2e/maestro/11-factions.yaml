@@ -23,12 +23,20 @@ name: J11 join a faction
       notVisible: "Map of the streets around you"
     times: 25
     commands:
+      # The name field submits on Enter. (hideKeyboard is Back when no
+      # keyboard is up, which leaves the game.) The button if still there.
       - runFlow:
           when:
             visible: "That's me"
           commands:
-            - hideKeyboard
-            - tapOn: "That's me"
+            - pressKey: Enter
+            - waitForAnimationToEnd:
+                timeout: 1500
+            - runFlow:
+                when:
+                  visible: "That's me"
+                commands:
+                  - tapOn: "That's me"
       - runFlow:
           when:
             visible: "Marvel"

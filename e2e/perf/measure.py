@@ -171,15 +171,18 @@ def cold(runs=3):
         time.sleep(1.5)
         adb("logcat", "-c")
         t0 = device_ms()
-        shell(f"am start -n {PKG}/.MainActivity")
+        launched = shell(f"am start -W -n {PKG}/.MainActivity")
         start = displayed = interactive = None
+        m = re.search(r"TotalTime: (\d+)", launched)
+        if m:
+            displayed = int(m.group(1))  # Android's own launch time (first frame)
         until = time.time() + 60
         while time.time() < until and interactive is None:
             time.sleep(0.5)
             for at, text in logcat_since(t0 - 1000):
                 if start is None and "START u0" in text and PKG in text:
                     start = at
-                m = re.search(r"Displayed " + re.escape(PKG) + r"/\S+: \+(?:(\d+)s)?(\d+)ms", text)
+                m = re.search(r"Displayed " + re.escape(PKG) + r"/\S+(?: for user \d+)?: \+(?:(\d+)s)?(\d+)ms", text)
                 if m and displayed is None:
                     displayed = int(m.group(1) or 0) * 1000 + int(m.group(2))
                 m = re.search(r"\[perf\] mark interactive (\d+)", text)
@@ -236,7 +239,9 @@ def quiz():
 
 def feed():
     time.sleep(4)
-    return window(lambda: (fling(12), fling(6, up=True)), ["PostCard", "Feeds"])
+    res = window(lambda: (fling(12), fling(6, up=True)), ["PostCard", "Feeds"])
+    fling(10, up=True)  # back to the top, where the Chats pill is
+    return res
 
 
 def main():
