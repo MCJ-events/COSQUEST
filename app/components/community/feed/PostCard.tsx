@@ -642,7 +642,7 @@ export function PostCard({ post, token }: { post: any; token: string }) {
         }}>
         <KeyboardAvoidingView
           style={styles.editRoot}
-          behavior={Platform.OS === "ios" ? "padding" : undefined}>
+          behavior="padding">
           <Pressable
             style={styles.editOverlay}
             onPress={() => {

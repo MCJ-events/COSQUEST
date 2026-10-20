@@ -107,7 +107,7 @@ export default function PollCreator({
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
       <LinearGradient colors={["#F6F9FE", "#E3F0FC"]} style={styles.screen}>
-        <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+        <KeyboardAvoidingView style={styles.flex} behavior="padding">
           {/* HEADER */}
           <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
             <Pressable onPress={onClose} hitSlop={10} accessibilityLabel="Back">

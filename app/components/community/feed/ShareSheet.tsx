@@ -372,7 +372,7 @@ export function ShareSheet({
       onRequestClose={onClose}>
       <KeyboardAvoidingView
         style={styles.root}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}>
+        behavior="padding">
         <Pressable style={styles.overlay} onPress={onClose} />
 
         <View style={styles.sheet}>

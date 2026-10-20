@@ -157,7 +157,7 @@ export default function StartSparkSheet({
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose} />
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
+      <KeyboardAvoidingView behavior="padding">
         <View style={[styles.sheet, deciding && styles.sheetTall, { paddingBottom: insets.bottom + 16 }]}>
           {!deciding ? (
             <>

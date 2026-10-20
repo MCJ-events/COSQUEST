@@ -199,7 +199,7 @@ export default function EditProfile() {
 
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}>
+        behavior="padding">
         {/* HEADER */}
         <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
           <Pressable

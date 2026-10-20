@@ -143,7 +143,7 @@ export default function GroupInvite() {
 
   return (
     <LinearGradient colors={["#F6F9FE", "#E3F0FC"]} style={styles.screen}>
-      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+      <KeyboardAvoidingView style={styles.flex} behavior="padding">
         <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
           <Pressable onPress={() => safeBack()} hitSlop={10} accessibilityLabel="Back">
             <Ionicons name="chevron-back" size={26} color={INK} />

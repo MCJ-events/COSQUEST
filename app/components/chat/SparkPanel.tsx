@@ -315,7 +315,7 @@ export default function SparkPanel({
         <Pressable style={styles.dim} onPress={onClose} />
 
         <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          behavior="padding"
           style={[styles.panel, { marginTop: insets.top + 64, marginBottom: insets.bottom + 12 }]}>
           {/* HEADER */}
           <View style={styles.header}>

@@ -4788,7 +4788,7 @@ export default function ChatScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.screen}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      behavior="padding"
       // Was insets.top: that's meant to offset content sitting ABOVE this
       // view outside of it, not the safe-area inside it — since the header
       // lives inside this same KeyboardAvoidingView, adding insets.top here

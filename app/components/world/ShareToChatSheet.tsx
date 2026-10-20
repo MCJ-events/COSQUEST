@@ -10,7 +10,6 @@ import {
   FlatList,
   KeyboardAvoidingView,
   Modal,
-  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -90,7 +89,7 @@ export default function ShareToChatSheet({
     <Modal visible={!!payload} transparent animationType="slide" onRequestClose={close}>
       <Pressable style={styles.scrim} onPress={close} accessibilityLabel="Close" />
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior="padding"
         style={[styles.sheet, { paddingBottom: insets.bottom + 12 }]}>
         <View style={styles.grabber} />
         <View style={styles.headerRow}>

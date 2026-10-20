@@ -380,7 +380,7 @@ export default function NewGroup() {
 
   return (
     <LinearGradient colors={["#F6F9FE", "#E3F0FC"]} style={styles.screen}>
-      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+      <KeyboardAvoidingView style={styles.flex} behavior="padding">
         {/* HEADER */}
         <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
           <Pressable onPress={back} hitSlop={10} accessibilityLabel="Back">
