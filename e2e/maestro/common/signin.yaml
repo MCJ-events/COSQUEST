@@ -1,0 +1,32 @@
+# Sign in from a clean install. env: USER, PASS
+appId: com.dammy0227.cosquest
+---
+- launchApp:
+    clearState: true
+    permissions:
+      all: allow
+- extendedWaitUntil:
+    visible: "Continue"
+    timeout: 30000
+- tapOn: "Continue"
+- tapOn: "Sign-in"
+- extendedWaitUntil:
+    visible: "Welcome back!"
+    timeout: 10000
+# The fields had no accessible names before F-07, so tap where they are.
+- tapOn:
+    point: "50%,42%"
+- inputText: ${USER}
+- tapOn:
+    point: "50%,54%"
+- inputText: ${PASS}
+- hideKeyboard
+- tapOn:
+    text: "Sign in"
+    index: 0
+- extendedWaitUntil:
+    visible: ".*(Cosquest|Community).*"
+    timeout: 30000
+- tapOn:
+    text: "Got it"
+    optional: true

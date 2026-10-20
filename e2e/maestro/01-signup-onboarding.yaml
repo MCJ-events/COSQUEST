@@ -1,0 +1,66 @@
+# J01 Sign up and onboarding: a new person makes an account, a profile,
+# a picture, interests, a faction, permissions, and lands in the app.
+appId: com.dammy0227.cosquest
+name: J01 sign up and onboarding
+---
+- launchApp:
+    clearState: true
+    permissions:
+      all: allow
+- evalScript: ${output.n = String(Date.now()).slice(-6)}
+- extendedWaitUntil:
+    visible: "Continue"
+    timeout: 30000
+- tapOn: "Continue"
+- tapOn: "Sign up with email"
+- extendedWaitUntil:
+    visible: "We have a space.*"
+    timeout: 10000
+- tapOn:
+    point: "50%,31%"
+- inputText: "nia${output.n}@example.test"
+- tapOn:
+    point: "45%,43%"
+- inputText: "Cosquest-dev-1!"
+- tapOn:
+    point: "45%,55%"
+- inputText: "Cosquest-dev-1!"
+- hideKeyboard
+- tapOn: "Sign up"
+- extendedWaitUntil:
+    visible: "Create Your Profile"
+    timeout: 15000
+- takeScreenshot: j01-profile
+- tapOn:
+    point: "27%,31%"
+- inputText: "Nia"
+- tapOn:
+    point: "73%,31%"
+- inputText: "Okafor"
+- tapOn:
+    point: "50%,42%"
+- inputText: "nia${output.n}"
+- tapOn:
+    point: "20%,54%"
+- inputText: "24"
+- hideKeyboard
+- tapOn: "Female"
+- tapOn: "Continue"
+- extendedWaitUntil:
+    visible: "Upload Profile Picture"
+    timeout: 15000
+- tapOn: "Choose from camera roll"
+- tapOn: "Photo taken on.*"
+- tapOn:
+    text: "CROP"
+    optional: true
+- extendedWaitUntil:
+    visible: "Pink Idol"
+    timeout: 10000
+- tapOn: "Pink Idol"
+- scrollUntilVisible:
+    element: "Continue"
+    direction: DOWN
+    timeout: 30000
+- tapOn: "Continue"
+- takeScreenshot: j01-after-picture

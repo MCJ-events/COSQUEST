@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+# Run one Maestro journey on the emulator and record it.
+#
+#   e2e/journey.sh maestro/01-signup-onboarding.yaml [label]
+#
+# Writes $VIDEOS/<label>.mp4 (screen + a silent audio track, so players treat
+# it as a video and not a GIF), $OUT/<label>.maestro.log and Maestro's
+# screenshots/debug output under $OUT/<label>/. Exit status is Maestro's.
+#
+# adb screenrecord stops after 3 minutes, so the phone records 170 s segments
+# back to back and they are joined afterwards.
+set -uo pipefail
+here="$(cd "$(dirname "$0")" && pwd)"
+: "${ANDROID_HOME:=$HOME/cq-work/tools/android-sdk}"
+export PATH="$ANDROID_HOME/platform-tools:$PATH"
+: "${MAESTRO:=$HOME/cq-work/cx-journeys/tools/maestro/bin/maestro}"
+: "${JAVA_HOME:=$HOME/cq-work/tools/jdk17}"
+export JAVA_HOME MAESTRO_CLI_NO_ANALYTICS=1 MAESTRO_CLI_ANALYSIS_NOTIFICATION_DISABLED=true
+: "${OUT:=$here/out}"
+: "${VIDEOS:=$OUT/videos}"
+flow="$1"
+label="${2:-$(basename "$flow" .yaml)}"
+mkdir -p "$OUT/$label" "$VIDEOS"
+
+adb shell rm -f "/sdcard/jr-$label-*.mp4" >/dev/null 2>&1
+adb shell "i=0; while true; do screenrecord --time-limit 170 --bit-rate 4000000 /sdcard/jr-$label-\$(printf %02d \$i).mp4 || break; i=\$((i+1)); done" &
+rec=$!
+sleep 1
+
+start=$(date +%s)
+"$MAESTRO" test --format junit --output "$OUT/$label/report.xml" \
+  --debug-output "$OUT/$label" ${MAESTRO_ARGS:-} "$here/$flow" > "$OUT/$label.maestro.log" 2>&1
+status=$?
+secs=$(( $(date +%s) - start ))
+
+# Stop the recorder: the on-phone loop first, then the screenrecord itself
+# (SIGINT lets it finish the file).
+kill "$rec" 2>/dev/null
+adb shell 'for p in $(pidof screenrecord); do kill -INT $p; done' >/dev/null 2>&1
+sleep 3
+tmp="$OUT/$label/segments"
+mkdir -p "$tmp"
+for f in $(adb shell ls "/sdcard/jr-$label-*.mp4" 2>/dev/null | tr -d '\r'); do
+  adb pull "$f" "$tmp/" >/dev/null && adb shell rm -f "$f"
+done
+ls "$tmp"/*.mp4 >/dev/null 2>&1 && {
+  for f in "$tmp"/*.mp4; do echo "file '$f'"; done > "$tmp/list.txt"
+  ffmpeg -loglevel error -y -f concat -safe 0 -i "$tmp/list.txt" \
+    -f lavfi -i anullsrc=channel_layout=stereo:sample_rate=44100 \
+    -map 0:v -map 1:a -c:v libx264 -preset veryfast -crf 30 -vf "scale=540:-2" \
+    -c:a aac -shortest "$VIDEOS/$label.mp4"
+  rm -rf "$tmp"
+}
+result=$([ $status = 0 ] && echo PASS || echo FAIL)
+echo "$label $result ${secs}s" | tee -a "$OUT/results.txt"
+exit $status
