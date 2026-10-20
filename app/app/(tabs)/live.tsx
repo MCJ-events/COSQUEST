@@ -11,6 +11,7 @@ import { router } from "expo-router";
 import type { ComponentProps } from "react";
 import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { tabBarSpace } from "@/constants/tabBar";
 
 type IconName = ComponentProps<typeof Ionicons>["name"];
 
@@ -53,7 +54,7 @@ export default function LiveScreen() {
       <ScrollView
         contentContainerStyle={[
           styles.scroll,
-          { paddingTop: Platform.OS === "web" ? 16 : Math.max(insets.top, 52) },
+          { paddingTop: Platform.OS === "web" ? 16 : Math.max(insets.top, 52), paddingBottom: tabBarSpace(insets.bottom) },
         ]}
         showsVerticalScrollIndicator={false}>
         <Text style={styles.title} accessibilityRole="header">
@@ -81,7 +82,7 @@ export default function LiveScreen() {
 }
 
 const styles = StyleSheet.create({
-  scroll: { paddingHorizontal: 24, paddingBottom: 140 },
+  scroll: { paddingHorizontal: 24 },
   title: {
     fontFamily: FONTS.semibold,
     fontSize: 22,

@@ -20,6 +20,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { tabBarSpace } from "@/constants/tabBar";
 
 type Tab = "Feeds" | "Chats" | "Spotlight";
 
@@ -73,6 +74,7 @@ export default function Community() {
             // includes the status bar). In a browser there's no status bar
             // and the browser has its own top bar, so only a small gap.
             paddingTop: Platform.OS === "web" ? 16 : Math.max(insets.top, 52),
+            paddingBottom: tabBarSpace(insets.bottom),
           },
         ]}
         showsVerticalScrollIndicator={false}>
@@ -165,9 +167,7 @@ export default function Community() {
 const PINK = "#C34D9C";
 
 const styles = StyleSheet.create({
-  scroll: {
-    paddingBottom: 140,
-  },
+  scroll: {},
 
   column: {
     width: "100%",

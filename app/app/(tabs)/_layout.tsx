@@ -7,8 +7,10 @@ import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import { Tabs } from "expo-router";
 import { world } from "@/features/world/worldState";
+import { TAB_BAR_HEIGHT, tabBarBottom } from "@/constants/tabBar";
 import { ReactNode } from "react";
-import { StyleSheet, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const ACTIVE = "#DC179F";
 const INACTIVE = "#FFFFFF";
@@ -39,20 +41,32 @@ export default function TabLayout() {
   );
 }
 
+// Tab labels grow with the phone's text size only a little: the bar has a
+// fixed height and four labels side by side.
+const TAB_LABEL_MAX_SCALE = 1.15;
+
 function ChatTabs() {
+  const insets = useSafeAreaInsets();
   return (
     <Tabs
+      // The bar floats above the bottom inset (tabBarBottom), so React
+      // Navigation must not also pad the inset inside the 68 points.
+      safeAreaInsets={{ bottom: 0 }}
       screenOptions={{
         tabBarActiveTintColor: ACTIVE,
         tabBarInactiveTintColor: INACTIVE,
         headerShown: false,
         tabBarButton: HapticTab,
-        tabBarLabelStyle: styles.label,
+        tabBarLabel: ({ color, children }) => (
+          <Text style={[styles.label, { color }]} numberOfLines={1} maxFontSizeMultiplier={TAB_LABEL_MAX_SCALE}>
+            {children}
+          </Text>
+        ),
         tabBarStyle: {
           position: "absolute",
           marginHorizontal: 16,
-          bottom: 24,
-          height: 68,
+          bottom: tabBarBottom(insets.bottom),
+          height: TAB_BAR_HEIGHT,
           paddingTop: 8,
           borderTopWidth: 0,
           backgroundColor: "transparent",

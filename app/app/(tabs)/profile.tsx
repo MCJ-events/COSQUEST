@@ -33,6 +33,7 @@ import {
 } from "react-native";
 
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { tabBarSpace } from "@/constants/tabBar";
 
 type Tab = "Posts" | "Reels" | "Thoughts";
 
@@ -565,6 +566,7 @@ export default function Profile() {
           styles.scroll,
           {
             paddingTop: insets.top + 8,
+            paddingBottom: tabBarSpace(insets.bottom),
           },
         ]}
         showsVerticalScrollIndicator={false}>
@@ -911,7 +913,6 @@ const MILKY = {
 const styles = StyleSheet.create({
   scroll: {
     paddingHorizontal: H_PAD,
-    paddingBottom: 140,
     width: "100%",
     maxWidth: 640,
     alignSelf: "center",
