@@ -18,7 +18,11 @@ export type GameInvite = {
 
 /** What the game's share action hands the chat (onShareToChat). */
 export type GameSharePayload = {
+  /** "raid" | "shrine" | "duel" for an invite card; "result" for a game
+   * result shared as a text message (see resultShareText). */
   type?: string;
+  /** type "result": the message to send. */
+  text?: string | null;
   targetId?: string;
   place?: string | null;
   lat?: number | null;
@@ -148,4 +152,17 @@ export function shareToInviteBody(
   const trimmed = note?.trim();
   if (trimmed) body.note = trimmed.slice(0, 300);
   return body;
+}
+
+/** A game result as the line sent to a chat: there is no result card in the
+ * chat backend (Message.kind has game_invite only), so it goes as text. */
+export function resultShareText(r: {
+  headline: string;
+  pointName?: string | null;
+  xp?: number | null;
+  win?: boolean;
+}): string {
+  const where = r.pointName ? ` at ${r.pointName}` : "";
+  const xp = r.xp && r.xp > 0 ? ` · +${r.xp} XP` : "";
+  return `${r.win ? "🏆" : "⚔️"} ${r.headline.replace(/[!.]+$/, "")}${where}${xp} in CosQuest`;
 }

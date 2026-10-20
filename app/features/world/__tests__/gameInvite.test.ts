@@ -10,6 +10,7 @@ import {
   inviteToTarget,
   inviteWhen,
   normalizeInvite,
+  resultShareText,
   shareToInviteBody,
 } from "../gameInvite.ts";
 
@@ -81,5 +82,17 @@ describe("shareToInviteBody (the game's share action -> the API body)", () => {
     const body = shareToInviteBody({ type: "shrine", targetId: "p1", lat: 51.5 }, "n".repeat(400));
     assert.equal(body?.lat, undefined);
     assert.equal(body?.note?.length, 300);
+  });
+});
+
+describe("sharing a game result to a chat", () => {
+  it("says what happened, where, and the XP", () => {
+    assert.equal(
+      resultShareText({ headline: "Point taken!", pointName: "Test Trivia Stone", xp: 470, win: true }),
+      "🏆 Point taken at Test Trivia Stone · +470 XP in CosQuest",
+    );
+  });
+  it("still reads well for a loss with no XP and no place", () => {
+    assert.equal(resultShareText({ headline: "The Guardian held", xp: 0, win: false }), "⚔️ The Guardian held in CosQuest");
   });
 });

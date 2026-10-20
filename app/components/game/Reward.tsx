@@ -90,7 +90,7 @@ function useCountUp(target: number, ms = 900) {
   return value;
 }
 
-export default function Reward({ reward, onDone }: { reward: RewardSummary; onDone: () => void }) {
+export default function Reward({ reward, onDone, onShare }: { reward: RewardSummary; onDone: () => void; onShare?: () => void }) {
   const insets = useSafeAreaInsets();
   const xp = useCountUp(reward.xp);
   useEffect(() => {
@@ -174,6 +174,7 @@ export default function Reward({ reward, onDone }: { reward: RewardSummary; onDo
           ),
         )}
 
+        {onShare ? <GameButton title="Share to a chat" color={GP.navy} onPress={onShare} style={{ marginTop: 8 }} /> : null}
         <GameButton title="Continue" color={GP.sun} onPress={onDone} style={{ marginTop: 8 }} />
       </ScrollView>
     </View>

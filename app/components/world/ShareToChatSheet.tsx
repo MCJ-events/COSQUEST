@@ -27,6 +27,7 @@ import {
   shareToInviteBody,
 } from "@/features/world/gameInvite";
 import { chatTitle } from "@/features/world/unread";
+import { sendMessage } from "@/services/chats";
 import { sendGameInvite } from "@/services/gameInvites";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { socketMessageReceived } from "@/store/slices/chatSlice";
@@ -46,7 +47,9 @@ export default function ShareToChatSheet({
   const [note, setNote] = useState("");
   const [sendingTo, setSendingTo] = useState<string | null>(null);
 
-  const body = payload ? shareToInviteBody(payload) : null;
+  // A game result goes as a text message; anything else as an invite card.
+  const resultText = payload?.type === "result" && payload.text ? payload.text : null;
+  const body = payload && !resultText ? shareToInviteBody(payload) : null;
   const invite = body ? normalizeInvite(body) : null;
 
   const chats = useMemo(() => {
@@ -68,11 +71,13 @@ export default function ShareToChatSheet({
 
   const send = async (chatId: string, title: string) => {
     if (!payload || !token || sendingTo) return;
-    const request = shareToInviteBody(payload, note);
-    if (!request) return;
+    const request = resultText ? null : shareToInviteBody(payload, note);
+    if (!resultText && !request) return;
     setSendingTo(chatId);
     try {
-      const message = await sendGameInvite(chatId, request, token);
+      const message = resultText
+        ? await sendMessage(chatId, { content: note.trim() ? `${resultText}\n${note.trim()}` : resultText }, token)
+        : await sendGameInvite(chatId, request!, token);
       dispatch(socketMessageReceived({ conversationId: chatId, message }));
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       close();
@@ -93,13 +98,17 @@ export default function ShareToChatSheet({
         style={[styles.sheet, { paddingBottom: insets.bottom + 12 }]}>
         <View style={styles.grabber} />
         <View style={styles.headerRow}>
-          <Text style={styles.heading}>Invite to a chat</Text>
+          <Text style={styles.heading}>{resultText ? "Share to a chat" : "Invite to a chat"}</Text>
           <Pressable onPress={close} hitSlop={12} accessibilityRole="button" accessibilityLabel="Close">
             <Ionicons name="close" size={22} color="#1D1020" />
           </Pressable>
         </View>
 
-        {invite ? (
+        {resultText ? (
+          <View style={styles.preview}>
+            <Text style={styles.previewTitle}>{resultText}</Text>
+          </View>
+        ) : invite ? (
           <View style={styles.preview}>
             <Text style={styles.previewTitle}>🎮 {inviteTitle(invite)}</Text>
             <Text style={styles.previewWhen}>{inviteWhen(invite.startsAt)}</Text>
@@ -126,7 +135,7 @@ export default function ShareToChatSheet({
         />
 
         <FlatList
-          data={invite ? chats : []}
+          data={invite || resultText ? chats : []}
           keyExtractor={(chat) => chat.id}
           keyboardShouldPersistTaps="handled"
           style={styles.list}

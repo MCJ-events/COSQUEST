@@ -19,6 +19,7 @@ import { unlocked, visiblePoints } from "@/features/game/unlocks";
 import { arriveMoment, nudgeMoment } from "@/features/game/warden";
 import type { QuestPoint } from "@/features/game/wire";
 import { factionVeilColor } from "@/features/world/worldState";
+import { resultShareText } from "@/features/world/gameInvite";
 import { emitGameEvent } from "@/modules/costquest-game/src/rnGame";
 import { useAppSelector } from "@/store/hooks";
 
@@ -328,7 +329,11 @@ export default function GameRoot({ parked }: { parked: boolean }) {
       ) : null}
       {screen.kind === "reward" ? (
         <Animated.View entering={FadeIn.duration(220)} exiting={FadeOut.duration(160)} style={StyleSheet.absoluteFill}>
-          <Reward reward={screen.reward} onDone={() => setScreen({ kind: "home" })} />
+          <Reward
+            reward={screen.reward}
+            onDone={() => setScreen({ kind: "home" })}
+            onShare={() => emitGameEvent("onShareToChat", { type: "result", text: resultShareText(screen.reward) })}
+          />
         </Animated.View>
       ) : null}
     </View>
