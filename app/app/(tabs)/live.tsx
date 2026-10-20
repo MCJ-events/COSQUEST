@@ -64,9 +64,9 @@ export default function LiveScreen() {
         <Row
           icon="mic-outline"
           title="Voice chats and calls"
-          body="Start a voice chat in any group, or call someone from a chat. With Sparks on, calls can keep notes."
+          body="Start a voice chat in Community or your faction room, or call someone from a DM. With Sparks on, 1:1 calls can keep notes."
           action="Go to your chats"
-          onPress={() => router.navigate("/community")}
+          onPress={() => router.navigate({ pathname: "/community", params: { tab: "Chats" } })}
         />
         <Row
           icon="flash-outline"

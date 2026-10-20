@@ -8,7 +8,7 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { fetchCurrentUser } from "@/store/thunks/userThunks";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -30,6 +30,11 @@ export default function Community() {
   const dispatch = useAppDispatch();
 
   const [tab, setTab] = useState<Tab>("Feeds");
+  // /community?tab=Chats opens on that pill (the Live tab's "Go to your chats").
+  const { tab: tabParam } = useLocalSearchParams<{ tab?: string }>();
+  useEffect(() => {
+    if (tabParam === "Feeds" || tabParam === "Chats" || tabParam === "Spotlight") setTab(tabParam);
+  }, [tabParam]);
 
   const authUser = useAppSelector((state) => state.auth.user);
 
