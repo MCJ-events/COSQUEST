@@ -1,4 +1,3 @@
-import { AppBackground } from "@/components/AppBackground";
 import { Button } from "@/components/Button";
 import { ErrorText } from "@/components/ErrorText";
 import { Field } from "@/components/Field";
@@ -11,13 +10,12 @@ import { router } from "expo-router";
 import { useState } from "react";
 import {
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
-import { KeyboardAvoidingView } from "@/components/ui/keyboard";
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
+import { OnboardingScreen } from "@/components/OnboardingScreen";
 
 export default function CreateProfile() {
   const { data, update } = useOnboarding();
@@ -300,13 +298,7 @@ export default function CreateProfile() {
   const isSaving = loading || checkingUsername;
 
   return (
-    <AppBackground variant="gradient">
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior="padding">
-        <ScrollView
-          contentContainerStyle={styles.scroll}
-          keyboardShouldPersistTaps="handled">
+    <OnboardingScreen background="gradient" insetTop={false} topGap={0} contentStyle={styles.scroll}>
           <OnboardingProgress step={STEP.profile} total={ONBOARDING_TOTAL} />
 
           <Text style={styles.headline}>Create Your Profile</Text>
@@ -440,9 +432,7 @@ export default function CreateProfile() {
               disabled={isSaving}
             />
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </AppBackground>
+        </OnboardingScreen>
   );
 }
 

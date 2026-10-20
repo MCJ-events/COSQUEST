@@ -1,4 +1,3 @@
-import { AppBackground } from "@/components/AppBackground";
 import { Button } from "@/components/Button";
 import { ErrorText } from "@/components/ErrorText";
 import { Field } from "@/components/Field";
@@ -8,14 +7,13 @@ import { useGoogleAuth } from "@/utils/googleAuth";
 import { router } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
+import { OnboardingScreen } from "@/components/OnboardingScreen";
 
 WebBrowser.maybeCompleteAuthSession();
 
 export default function Signin() {
-  const insets = useSafeAreaInsets();
 
   const dispatch = useAppDispatch();
 
@@ -101,15 +99,7 @@ export default function Signin() {
   }
 
   return (
-    <AppBackground variant="gradient">
-      <ScrollView keyboardShouldPersistTaps="handled">
-        <View
-          style={[
-            styles.screen,
-            {
-              paddingTop: insets.top + 35,
-            },
-          ]}>
+    <OnboardingScreen background="gradient" contentStyle={styles.screen}>
           <Text style={styles.headline}>Welcome back!</Text>
 
           <Text style={styles.sub}>
@@ -180,9 +170,7 @@ export default function Signin() {
               <Text style={styles.signupLink}>Sign up</Text>
             </Pressable>
           </View>
-        </View>
-      </ScrollView>
-    </AppBackground>
+        </OnboardingScreen>
   );
 }
 

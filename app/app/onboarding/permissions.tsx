@@ -1,4 +1,3 @@
-import { AppBackground } from "@/components/AppBackground";
 import { Button } from "@/components/Button";
 import { ErrorText } from "@/components/ErrorText";
 import { OnboardingProgress } from "@/components/OnboardingProgress";
@@ -17,17 +16,16 @@ import * as Notifications from "expo-notifications";
 import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
-  Dimensions,
   Linking,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from "react-native";
+import { OnboardingScreen } from "@/components/OnboardingScreen";
 
-const SCREEN_H = Dimensions.get("window").height;
 
 const IS_WEB = Platform.OS === "web";
 
@@ -119,6 +117,7 @@ function getWebPosition(): Promise<{ lat: number; lng: number }> {
 }
 
 export default function Permissions() {
+  const { height: windowHeight } = useWindowDimensions();
   const { data, update } = useOnboarding();
 
   const dispatch = useAppDispatch();
@@ -523,13 +522,12 @@ export default function Permissions() {
   }
 
   return (
-    <AppBackground variant="gradient">
-      <ScrollView contentContainerStyle={styles.scroll}>
+    <OnboardingScreen background="gradient" insetTop={false} topGap={0} contentStyle={styles.scroll}>
         <OnboardingProgress step={STEP.permissions} total={ONBOARDING_TOTAL} />
 
         <Image
           source={require("@/assets/images/permissions.png")}
-          style={styles.hero}
+          style={[styles.hero, { height: windowHeight / 3 }]}
           contentFit="cover"
         />
 
@@ -648,8 +646,7 @@ export default function Permissions() {
             disabled={saving}
           />
         </View>
-      </ScrollView>
-    </AppBackground>
+      </OnboardingScreen>
   );
 }
 
@@ -663,7 +660,6 @@ const styles = StyleSheet.create({
   hero: {
     alignSelf: "stretch",
     marginHorizontal: -24,
-    height: SCREEN_H / 3,
     marginTop: 8,
   },
 

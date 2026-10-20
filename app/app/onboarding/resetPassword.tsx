@@ -1,13 +1,12 @@
-import { AppBackground } from "@/components/AppBackground";
 import { Button } from "@/components/Button";
 import { Field } from "@/components/Field";
 import { useAppDispatch } from "@/store/hooks";
 import { resetPasswordThunk } from "@/store/thunks/authThunks";
 import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { safeBack } from "@/utils/safeBack";
+import { OnboardingScreen } from "@/components/OnboardingScreen";
 
 // Backend errors that need a special button (exact texts from the API doc).
 const INVALID_CODE_ERROR = "That code is invalid or has expired.";
@@ -15,7 +14,6 @@ const TOO_MANY_ATTEMPTS_ERROR =
   "Too many incorrect attempts. Request a new code.";
 
 export default function ResetPassword() {
-  const insets = useSafeAreaInsets();
   const dispatch = useAppDispatch();
 
   // Passed along from Forgot Password → Verification → here.
@@ -112,9 +110,7 @@ export default function ResetPassword() {
     serverError === TOO_MANY_ATTEMPTS_ERROR;
 
   return (
-    <AppBackground variant="gradient">
-      <ScrollView keyboardShouldPersistTaps="handled">
-        <View style={[styles.screen, { paddingTop: insets.top + 35 }]}>
+    <OnboardingScreen background="gradient" contentStyle={styles.screen}>
           <Text style={styles.headline}>Reset Password</Text>
           <Text style={styles.sub}>Enter your new password</Text>
           <Field
@@ -164,9 +160,7 @@ export default function ResetPassword() {
               disabled={submitting}
             />
           </View>
-        </View>
-      </ScrollView>
-    </AppBackground>
+        </OnboardingScreen>
   );
 }
 

@@ -1,7 +1,7 @@
-import { AppBackground } from "@/components/AppBackground";
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { OnboardingScreen, useHeroHeight } from "@/components/OnboardingScreen";
 
 function Button({ label, onPress }: { label: string; onPress: () => void }) {
   return (
@@ -15,14 +15,16 @@ function Button({ label, onPress }: { label: string; onPress: () => void }) {
 }
 
 export default function Welcome() {
+  // The picture is 400 high on tall phones and shrinks on short ones (an
+  // iPhone SE) so the headline and Continue fit without scrolling.
+  const heroHeight = useHeroHeight(400, 300);
   return (
-    <AppBackground variant="plain">
-      <View style={styles.screen}>
+    <OnboardingScreen background="plain" topGap={0} centered contentStyle={styles.screen}>
         <View style={styles.body}>
           <Text style={styles.headline}>SCAN, SOLVE,{"\n"}EARN</Text>
           <Image
             source={require("@/assets/images/welcome-page.png")}
-            style={styles.hero}
+            style={[styles.hero, { height: heroHeight }]}
             contentFit="contain"
           />
           <Button
@@ -30,17 +32,14 @@ export default function Welcome() {
             onPress={() => router.push("/onboarding/oauthSignup")}
           />
         </View>
-      </View>
-    </AppBackground>
+    </OnboardingScreen>
   );
 }
 
 const styles = StyleSheet.create({
   screen: {
-    flex: 1,
     paddingHorizontal: 25,
     paddingBottom: 24,
-    justifyContent: "center",
   },
   headline: {
     fontSize: 35,
@@ -48,8 +47,8 @@ const styles = StyleSheet.create({
     textAlign: "center",
     color: "#191922",
   },
-  body: { flex: 1, justifyContent: "center", gap: 15 },
-  hero: { width: "100%", height: 400, marginVertical: 24 },
+  body: { justifyContent: "center", gap: 15 },
+  hero: { width: "100%", marginVertical: 24 },
   button: {
     flexDirection: "row",
     justifyContent: "center",

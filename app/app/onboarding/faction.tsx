@@ -1,4 +1,3 @@
-import { AppBackground } from "@/components/AppBackground";
 import { Button } from "@/components/Button";
 import { ErrorText } from "@/components/ErrorText";
 import { FactionDescriptionModal } from "@/components/faction/FactionDescriptionModal";
@@ -12,7 +11,8 @@ import { useAppDispatch } from "@/store/hooks";
 import { saveUserFaction } from "@/store/thunks/userThunks";
 import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
+import { OnboardingScreen } from "@/components/OnboardingScreen";
 
 const POPUP_DELAY = 2000;
 
@@ -264,8 +264,7 @@ export default function Faction() {
   const selectedFaction = FACTIONS.find((f) => f.id === selectedFactionId);
 
   return (
-    <AppBackground variant="blueGradient">
-      <ScrollView contentContainerStyle={styles.scroll}>
+    <OnboardingScreen background="blueGradient" insetTop={false} topGap={0} contentStyle={styles.scroll}>
         <OnboardingProgress step={STEP.faction} total={ONBOARDING_TOTAL} />
 
         <Text style={styles.headline}>Start or Join Faction</Text>
@@ -314,8 +313,7 @@ export default function Faction() {
             disabled={saving}
           />
         </View>
-      </ScrollView>
-    </AppBackground>
+      </OnboardingScreen>
   );
 }
 

@@ -1,4 +1,3 @@
-import { AppBackground } from "@/components/AppBackground";
 import { Button } from "@/components/Button";
 import { ErrorText } from "@/components/ErrorText";
 import { OnboardingProgress } from "@/components/OnboardingProgress";
@@ -10,7 +9,8 @@ import { useAppDispatch } from "@/store/hooks";
 import { saveUserInterests } from "@/store/thunks/userThunks";
 import { router } from "expo-router";
 import { useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
+import { OnboardingScreen } from "@/components/OnboardingScreen";
 
 export default function Interests() {
   const { data, update } = useOnboarding();
@@ -91,8 +91,7 @@ export default function Interests() {
   };
 
   return (
-    <AppBackground variant="gradient">
-      <ScrollView contentContainerStyle={styles.scroll}>
+    <OnboardingScreen background="gradient" insetTop={false} topGap={0} contentStyle={styles.scroll}>
         <OnboardingProgress step={STEP.interests} total={ONBOARDING_TOTAL} />
 
         <Text style={styles.headline}>What Are You Into?</Text>
@@ -126,8 +125,7 @@ export default function Interests() {
             disabled={saving}
           />
         </View>
-      </ScrollView>
-    </AppBackground>
+      </OnboardingScreen>
   );
 }
 

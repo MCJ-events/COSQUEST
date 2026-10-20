@@ -1,4 +1,3 @@
-import { AppBackground } from "@/components/AppBackground";
 import { Button } from "@/components/Button";
 import { ErrorText } from "@/components/ErrorText";
 import { Field } from "@/components/Field";
@@ -9,8 +8,9 @@ import { useOnboarding } from "@/context/OnboardingContext";
 import { registerUser } from "@/store/thunks/authThunks";
 import { router } from "expo-router";
 import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
+import { OnboardingScreen } from "@/components/OnboardingScreen";
 
 export default function Signup() {
   const { data, update } = useOnboarding();
@@ -86,11 +86,7 @@ export default function Signup() {
   }
 
   return (
-    <AppBackground variant="gradient">
-      <ScrollView
-        keyboardShouldPersistTaps="handled"
-        automaticallyAdjustKeyboardInsets>
-        <View style={styles.screen}>
+    <OnboardingScreen background="gradient" insetTop={false} topGap={0} contentStyle={styles.screen}>
           <OnboardingProgress step={STEP.account} total={ONBOARDING_TOTAL} />
 
           <Text style={styles.headline}>We have a space {"\n"} for you!</Text>
@@ -149,9 +145,7 @@ export default function Signup() {
           </View>
 
           <Terms />
-        </View>
-      </ScrollView>
-    </AppBackground>
+        </OnboardingScreen>
   );
 }
 

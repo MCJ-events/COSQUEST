@@ -1,19 +1,17 @@
-import { AppBackground } from "@/components/AppBackground";
 import { Button } from "@/components/Button";
 import { CodeInput } from "@/components/CodeInputs";
 import { ErrorText } from "@/components/ErrorText";
 import { requestPasswordReset } from "@/services/auth";
 import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { StyleSheet, Text, View } from "react-native";
+import { OnboardingScreen } from "@/components/OnboardingScreen";
 
 // There is no separate "check this code" endpoint on the backend: the code
 // is checked in the LAST step (reset-password), together with the new
 // password. So this screen only makes sure 6 digits were typed, then
 // carries the email + code on to the Reset Password screen.
 export default function Verification() {
-  const insets = useSafeAreaInsets();
 
   // Sent here by the Forgot Password screen.
   const params = useLocalSearchParams<{ email?: string }>();
@@ -85,9 +83,7 @@ export default function Verification() {
   }
 
   return (
-    <AppBackground variant="gradient">
-      <ScrollView keyboardShouldPersistTaps="handled">
-        <View style={[styles.screen, { paddingTop: insets.top + 35 }]}>
+    <OnboardingScreen background="gradient" contentStyle={styles.screen}>
           <Text style={styles.headline}>Verification</Text>
           <Text style={styles.sub}>
             Enter the 6-digit code sent to{"\n"}
@@ -122,9 +118,7 @@ export default function Verification() {
           <View style={styles.buttons}>
             <Button label="Verify" onPress={handleVerify} variant="brand" />
           </View>
-        </View>
-      </ScrollView>
-    </AppBackground>
+        </OnboardingScreen>
   );
 }
 

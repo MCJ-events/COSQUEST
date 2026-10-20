@@ -1,14 +1,12 @@
-import { AppBackground } from "@/components/AppBackground";
 import { Button } from "@/components/Button";
 import { Field } from "@/components/Field";
 import { requestPasswordReset } from "@/services/auth";
 import { router } from "expo-router";
 import { useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { StyleSheet, Text, View } from "react-native";
+import { OnboardingScreen } from "@/components/OnboardingScreen";
 
 export default function ForgotPassword() {
-  const insets = useSafeAreaInsets();
   const [form, setForm] = useState({
     email: "",
   });
@@ -66,9 +64,7 @@ export default function ForgotPassword() {
   }
 
   return (
-    <AppBackground variant="gradient">
-      <ScrollView keyboardShouldPersistTaps="handled">
-        <View style={[styles.screen, { paddingTop: insets.top + 35 }]}>
+    <OnboardingScreen background="gradient" contentStyle={styles.screen}>
           <Text style={styles.headline}>Forgot Your Password?</Text>
           <Text style={styles.sub}>
             Enter your email address and we&apos;ll send you a 6-digit code to
@@ -89,9 +85,7 @@ export default function ForgotPassword() {
               disabled={submitting}
             />
           </View>
-        </View>
-      </ScrollView>
-    </AppBackground>
+        </OnboardingScreen>
   );
 }
 

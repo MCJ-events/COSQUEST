@@ -1,4 +1,3 @@
-import { AppBackground } from "@/components/AppBackground";
 import { Button } from "@/components/Button";
 import { ErrorText } from "@/components/ErrorText";
 import { OnboardingProgress } from "@/components/OnboardingProgress";
@@ -11,9 +10,9 @@ import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
+import { OnboardingScreen } from "@/components/OnboardingScreen";
 
 export default function UploadPicture() {
   const { data, update } = useOnboarding();
@@ -161,13 +160,28 @@ export default function UploadPicture() {
   }
 
   const isSaving = loading || saving;
-  const insets = useSafeAreaInsets();
 
   return (
-    <AppBackground variant="gradient">
-      <ScrollView
-        contentContainerStyle={styles.scroll}
-        keyboardShouldPersistTaps="handled">
+    <OnboardingScreen
+      background="gradient"
+      insetTop={false}
+      topGap={0}
+      contentStyle={styles.scroll}
+      // Pinned under the 100 avatars, so moving on needs no scrolling; the
+      // photo error shows here too (the one at the top is off screen).
+      footerStyle={styles.footer}
+      footer={
+        <>
+          <ErrorText>{errors.avatar || errors.photo}</ErrorText>
+
+          <Button
+            label={isSaving ? "Saving..." : "Continue"}
+            variant="brand"
+            onPress={handleContinue}
+            disabled={isSaving}
+          />
+        </>
+      }>
         <OnboardingProgress
           step={STEP.uploadPicture}
           total={ONBOARDING_TOTAL}
@@ -247,21 +261,7 @@ export default function UploadPicture() {
             </Pressable>
           ))}
         </View>
-      </ScrollView>
-
-      {/* Pinned under the 100 avatars, so moving on needs no scrolling; the
-          photo error shows here too (the one at the top is off screen). */}
-      <View style={[styles.footer, { paddingBottom: insets.bottom + 16 }]}>
-        <ErrorText>{errors.avatar || errors.photo}</ErrorText>
-
-        <Button
-          label={isSaving ? "Saving..." : "Continue"}
-          variant="brand"
-          onPress={handleContinue}
-          disabled={isSaving}
-        />
-      </View>
-    </AppBackground>
+      </OnboardingScreen>
   );
 }
 

@@ -1,4 +1,3 @@
-import { AppBackground } from "@/components/AppBackground";
 import { Button } from "@/components/Button";
 import { OnboardingProgress } from "@/components/OnboardingProgress";
 import { Terms } from "@/components/Terms";
@@ -8,6 +7,7 @@ import { router } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { ActivityIndicator, Alert, StyleSheet, Text, View } from "react-native";
 import { useAppSelector } from "../../store/hooks";
+import { OnboardingScreen } from "@/components/OnboardingScreen";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -19,8 +19,7 @@ export default function AuthSignup() {
   const { continueWithGoogle, googleLoading } = useGoogleAuth();
 
   return (
-    <AppBackground variant="gradient">
-      <View style={styles.screen}>
+    <OnboardingScreen background="gradient" insetTop={false} topGap={0} contentStyle={styles.screen}>
         <OnboardingProgress step={STEP.account} total={ONBOARDING_TOTAL} />
 
         <View style={styles.body}>
@@ -87,8 +86,7 @@ export default function AuthSignup() {
 
           <Terms />
         </View>
-      </View>
-    </AppBackground>
+      </OnboardingScreen>
   );
 }
 
