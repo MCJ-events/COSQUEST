@@ -25,7 +25,9 @@ mkdir -p "$OUT/$label" "$VIDEOS"
 # The tunnels to this machine's backends go if adb reconnects; renew them
 # now and every few seconds while the journey runs.
 "$here/emu.sh" tunnels
-( while true; do sleep 5; "$here/emu.sh" tunnels >/dev/null 2>&1; done ) &
+# The phone's GPS also gets Trafalgar Square again each time (a phone outdoors
+# keeps getting fixes; a lone fix at boot goes stale).
+( while true; do sleep 5; "$here/emu.sh" tunnels >/dev/null 2>&1; adb emu geo fix -0.1278 51.5074 >/dev/null 2>&1; done ) &
 keeper=$!
 adb shell rm -f "/sdcard/jr-$label-*.mp4" /sdcard/jr-stop >/dev/null 2>&1
 adb shell "i=0; while [ ! -f /sdcard/jr-stop ]; do screenrecord --time-limit 170 --bit-rate 4000000 /sdcard/jr-$label-\$(printf %02d \$i).mp4 || break; i=\$((i+1)); done" &

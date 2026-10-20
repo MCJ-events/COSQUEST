@@ -82,7 +82,7 @@ name: J01 sign up and onboarding
     point: "84%,66%"
 - extendedWaitUntil:
     notVisible: "Getting your location.*"
-    timeout: 20000
+    timeout: 30000
 - takeScreenshot: j01-permissions
 - scrollUntilVisible:
     element: "Continue"
