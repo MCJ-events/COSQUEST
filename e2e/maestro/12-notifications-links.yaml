@@ -45,3 +45,14 @@ name: J12 notifications and deep links
     visible: "Test Trivia Stone|Choose your side"
     timeout: 60000
 - takeScreenshot: j12-link-game
+# A link with no screen (the message link fallback) gets a way out, not
+# expo-router's developer page (F-46).
+- openLink: "cosquest://chat/${output.raid}/message/000000000000000000000000"
+- extendedWaitUntil:
+    visible: "This link doesn.t go anywhere"
+    timeout: 15000
+- takeScreenshot: j12-link-unknown
+- tapOn: "Go to your chats"
+- extendedWaitUntil:
+    visible: "Profile"
+    timeout: 15000

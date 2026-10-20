@@ -49,6 +49,11 @@ journey or unit test that shows it.
 | F-34 | Medium | app / design | Game reward screen | There was no way to share a game result into a chat (only "Invite a chat here" from a point). Added "Share to a chat" on the reward screen; it sends a text line ("🏆 Point taken at Test Trivia Stone · +470 XP in CosQuest") because the chat backend has no result card (`Message.kind` has `game_invite` only). A real card needs a backend kind: see F-44. | 1c71855 | J10; unit test resultShareText |
 | F-35 | Low | app (a11y) | Community header, Notifications | The profile and bell buttons and the notifications back arrow had no names. | 2ab7e5e | a11y tree |
 | F-36 | Medium | app | `cosquest://play` links | A play link opened while a chat screen was showing opened the game behind the chat (nothing visible happened). The route now dismisses to the tabs first, as the in-chat invite card already did. | c5550b4 | J12 |
+| F-06 | Medium | app | Sign-up, picture step | Continue sat under 100 avatars: you scrolled past all of them to move on. It is now pinned at the bottom with the photo error next to it. | 6f2590f | J01 asserts Continue is on screen without scrolling |
+| F-15 | Medium | app | Sign-in and every chat API call | With the backend unreachable the raw platform error was shown ("fetch failed: java.net.ConnectException: Failed to connect to localhost/127.0.0.1:4120", "java.io.IOException: unexpected end of stream"). `apiRequest` now says "Can't reach CosQuest right now. Check your connection and try again." and retries a GET once (a dead pooled connection after a server restart). POSTs are not retried silently. | 1b7a2c3 | unit test networkError |
+| F-19 | Medium | app | Profile | The Quest/Wins/Points cards, Edit Profile / Share Profile and the Posts/Reels/Thoughts bar rendered on Android as a grey box with a line across the label: Android draws the elevation shadow through a see-through background. Elevation is now off on Android for those (iOS unchanged). | ca9ee20 | J02 screenshot j02-profile, before vs after |
+| F-26 | Medium | app | Chat, edited message | After an edit the "Saved text / Changes saved / Restore previous wording" card opened under every message edited in the last 10 minutes, each time the chat was opened (half the screen). It now shows only under the message you just edited and has Done. | 55b5ca5 | J06 edits, sees the card, taps Done |
+| F-41 | Low | app | Incoming call | Tapping the "Accept"/"Decline" captions did nothing; only the round buttons did. The caption is now part of the button. | 3718d17 | J07 answers by tapping the caption |
 
 ## Open
 
@@ -56,33 +61,33 @@ journey or unit test that shows it.
 |----|-----|-------|-------|------|
 | F-01 | High | chat backend | `POST /api/chats/:id/game-invites` | The route the merged app uses for invite cards exists only on MCJ-events/COSQUEST `merged-app`, not on `main`, and **not on the test server** (404, `e2e/testserver/smoke.js`). Against them every "Invite a chat here" fails ("Couldn't send to ..."). Merging `merged-app` into main locally needed 7 small union resolutions; the backend suite then passes 1008/1008. |
 | F-05 | Medium | design | Sign-up, picture step | The subtitle says "take a photo **or** pick an avatar" but a photo is required (added on purpose in 3c01fbc). Copy or rule should change. |
-| F-06 | Medium | app | Sign-up, picture step | Continue sits under 100 avatars: you scroll past all of them to move on. A pinned Continue would help. |
 | F-08 | High | design | Factions | Two faction systems: chat onboarding asks for one of 6 ("Anime Fans", "Comic Book Fans", ... backed by Ascendants, Icons, ...), the game asks again on first open ("Choose your side") with 5 different ones (Anime, Marvel, DC, Movies, Gaming) and does not pre-fill. A new player picks a side twice, with different names. |
 | F-09 | Low | app | Sign-up vs sign-in | Sign-up offers Google and Apple; sign-in only Google. |
 | F-10 | Low | design | Create profile | Gender is Male or Female only. |
-| F-15 | Medium | app | Sign-in and other fetches | When the backend cannot be reached the raw error is shown: "fetch failed: java.net.ConnectException: Failed to connect to localhost/127.0.0.1:4120" or "java.io.IOException: unexpected end of stream". It should say CosQuest can't be reached and offer a retry; the second case (a dead pooled connection after a server restart) could be retried silently. |
 | F-16b | High | chat backend | `src/middleware/identifyUser.js:40` | Onboarding routes still accept an email with no token, for any account not yet onboarded. With F-16a the app sends the token, so the backend can now require it. |
 | F-17 | Low | app | Profile | "Posts 1" while the Posts tab says "No posts yet" (her one post is a Thought). |
 | F-18 | Low | app | Profile faction card | Shows "Private · 4 members" (her faction group) under the ICONS logo, while the faction has 1.9K members. |
-| F-19 | Medium | app / design | Profile | The Quest/Wins/Points stat cards and the Edit Profile / Share Profile buttons render on Android as grey bars with a line through the label (the glass effect). Share Profile failures are only `console.log`ged. |
 | F-20 | Low | app | Profile photo | "Change Profile Photo" in Account Information opens the system picker straight away; the same label in Edit Profile opens a screen with photo and avatars. Two flows, one label. |
-| F-26 | Medium | app / design | Chat, edited message | After an edit, the "Saved text / Changes saved / Restore previous wording" panel stays open under the message every time the chat is opened (half the screen in the DM with Tunde). |
 | F-27 | Low | app / Sparks | Start a Spark | A Spark started from an older message opens as "Quiet · last reply 4:27 AM" the moment you start it. |
-| F-28 | Low | app | Spark panel | Every message repeats its own date header ("Oct 20 · 10:26 AM"). |
 | F-29 | Low | design | New group, step 4 | "Eligible faction members join automatically" shows for a private group. |
 | F-32 | High | app / Sparks | Group calls and voice chats | The "Sparks" button in a group call or a Community/faction voice chat only says "Sparks in calls is coming soon." Sparks in calls works in 1:1 calls only (the sparks-calls branch). Same for "Share" (screen sharing) and tapping a person ("Player cards and private calls are coming soon"). |
 | F-37 | Medium | app (game) | Map at Trafalgar Square | About 20 points within 40 m overlap; tapping one pin often opens another (tapping "Test Trivia Stone" opened "Nelson's Column"). No clustering or a picker for stacked pins. |
 | F-38 | Medium | app (game) | Game screens | The Chats bubble (left edge, mid-screen) sits over content: the first quiz answer, the "+470 XP" on the reward screen, the boss name on the raid screen. A tap meant for the first answer can open the chats mid-question. |
 | F-39 | Low | app (game) | Boss sheet | "58 min left" next to "It leaves at half past" (the server keeps bosses out from :00 to :30). |
 | F-40 | Medium | game backend | integration-20261016, one uvicorn worker | After about 6 hours the local API stopped answering (`/health` timed out, two DB sessions left "idle in transaction"); the app showed "Can't reach CosQuest right now." A restart fixed it. Log: `out/logs/game-api-hang-1.log` in the task folder. Worth a check on staging. |
-| F-41 | Low | app | Incoming call | Tapping the "Accept"/"Decline" captions does nothing; only the round buttons do. |
 | F-42 | Medium | Sparks | 1:1 call with Sparks on | "Sparks starts once Sparks AI has downloaded": the model comes from the backend's `/v1/model` manifest. The local backend has none, so Sparks notes in calls could not be exercised here; the consent card and pill were. |
-| F-43 | Low | design | Call controls | The audio call's Mute shows a crossed mic whether or not you are muted (the video bar switches between mic and crossed mic). |
 | F-44 | Medium | chat backend | Messages | No message kind for a game result, so shared results (F-34) are plain text. |
 | F-45 | Low | app | Chat attach sheet (from code) | No File/Document option although documents render; "Audio" only shows a "press and hold the mic" alert. |
 | F-46 | Low | app | Links (from code) | `cosquest://chat/<id>/message/<id>` (the message link fallback) has no route and there is no `+not-found`; invite links are `https://cosquest.vercel.app/group/join/<code>`, which won't open the Android app without app links. |
 | F-47 | Low | app | Chat search (from code) | "Open the chat" from a search result pushes a second copy of the chat and does not scroll to the message. |
 | F-48 | Medium | backend / rig | Uploads | The chat backend has no local storage fallback: without Cloudinary keys every upload (onboarding photo, chat media, voice) is a 500. The rig stubs it. Any file sent as `application/octet-stream` is stored as `kind: "image"`. |
+
+## Looked at, not changed (by design)
+
+| ID | Where | What |
+|----|-------|------|
+| F-28 | Spark panel | Each message carries its own date and time: that is the Figma M07 timeline (a date-time dot per message), not a repeated header. |
+| F-43 | Call controls | The audio call's Mute button always shows a crossed mic; its state is the pink ring and TalkBack's "selected", the usual mute-toggle pattern. Left to design. |
 
 ## Test rig notes (Info)
 

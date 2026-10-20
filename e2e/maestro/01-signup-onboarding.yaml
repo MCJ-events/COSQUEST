@@ -58,10 +58,8 @@ name: J01 sign up and onboarding
     visible: "Pink Idol"
     timeout: 10000
 - tapOn: "Pink Idol"
-- scrollUntilVisible:
-    element: "Continue"
-    direction: DOWN
-    timeout: 30000
+# Continue is pinned under the 100 avatars (F-06): no scrolling to reach it.
+- assertVisible: "Continue"
 - tapOn: "Continue"
 - takeScreenshot: j01-after-picture
 # Interests

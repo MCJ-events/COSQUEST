@@ -63,6 +63,13 @@ name: J06 mentions, replies, edit, search, polls, media and voice
 - inputText: "@cy count me in, I can tank and heal"
 - tapOn: "Save edit"
 - hideKeyboard
+# The edit card shows under the message just edited, and Done closes it
+# (F-26: it used to open under every recent edit, each time).
+- extendedWaitUntil:
+    visible: ".*Changes saved.*"
+    timeout: 10000
+- tapOn: "Done"
+- assertNotVisible: ".*Changes saved.*"
 - runScript:
     file: scripts/peer.js
     env: { ARGS: "cy|messages|Raid Night|3" }
@@ -120,6 +127,16 @@ name: J06 mentions, replies, edit, search, polls, media and voice
     timeout: 10000
 - assertVisible: "Can someone send the strat doc again?"
 - takeScreenshot: j06-search
+# "Open the chat" goes back to this chat at the message (F-47: it pushed a
+# second copy of the chat, so one Back showed the same chat again).
+- tapOn: "Open the chat"
+- extendedWaitUntil:
+    visible: "Can someone send the strat doc again\\?"
+    timeout: 10000
+- tapOn: "Back"
+- extendedWaitUntil:
+    visible: "YOUR GROUPS"
+    timeout: 10000
 # Voice note from Tunde: it plays
 - runFlow:
     file: common/open-chat.yaml

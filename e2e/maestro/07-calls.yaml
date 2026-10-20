@@ -17,7 +17,9 @@ name: J07 1:1 call, group call and voice chat with Sparks on
     timeout: 20000
 - assertVisible: "Bolu Adeyemi"
 - takeScreenshot: j07-incoming
-- tapOn: "Accept call"
+# The caption under the round button answers too (F-41).
+- tapOn:
+    text: "Accept"
 - extendedWaitUntil:
     notVisible: "Connecting.*"
     timeout: 20000

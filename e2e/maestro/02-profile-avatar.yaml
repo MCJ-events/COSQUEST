@@ -55,7 +55,9 @@ name: J02 profile and avatar
 - tapOn: "OK"
 # Back on Edit Profile; back again to the profile.
 - tapOn: "Back"
-- extendedWaitUntil:
-    visible: "Ada Okoro"
-    timeout: 10000
+# The profile is still scrolled down to Edit Profile: scroll back to the name.
+- scrollUntilVisible:
+    element: "Ada Okoro"
+    direction: UP
+    timeout: 15000
 - takeScreenshot: j02-profile-after
