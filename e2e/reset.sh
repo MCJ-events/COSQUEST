@@ -30,8 +30,15 @@ restart() { # name script log port
 }
 
 rm -f "$here/seed/.peer-state.json"
-restart chat-local e2e/seed/chat-local.js "$OUT/chat-local.log" 4120
-for _ in $(seq 1 60); do grep -q "\[chat-local\] ready\|failed" "$OUT/chat-local.log" 2>/dev/null && break; sleep 1; done
+# Twice if need be: right after a call journey the old backend can take a
+# while to let go (live sockets), and the first start then fails.
+for attempt in 1 2; do
+  restart chat-local e2e/seed/chat-local.js "$OUT/chat-local.log" 4120
+  for _ in $(seq 1 60); do grep -q "\[chat-local\] ready\|failed" "$OUT/chat-local.log" 2>/dev/null && break; sleep 1; done
+  grep -q "\[chat-local\] ready" "$OUT/chat-local.log" && break
+  cp "$OUT/chat-local.log" "$OUT/chat-local.failed-$attempt.log"
+  sleep 5
+done
 grep -q "\[chat-local\] ready" "$OUT/chat-local.log" || { echo "chat backend did not start, see $OUT/chat-local.log" >&2; exit 1; }
 
 if ! curl -s -m 2 -o /dev/null -X POST http://127.0.0.1:4130/run; then
