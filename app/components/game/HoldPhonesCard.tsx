@@ -15,6 +15,7 @@ import { nearbyFriends, useNearbyFriends } from "@/features/game/friendsNearbyDe
 import { useGame } from "@/features/game/runtime";
 
 import { GameButton, GamePanel, MAX_FONT_SCALE, withAlpha } from "./kit";
+import { notify } from "./prefs";
 import { playSound } from "./sound";
 import { GF, GP } from "./theme";
 
@@ -35,7 +36,7 @@ export function HoldPhonesCard() {
   const seen = useRef(s.celebrations);
   useEffect(() => {
     if (s.celebrations > seen.current) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      notify(Haptics.NotificationFeedbackType.Success);
       playSound("fanfare");
     }
     seen.current = s.celebrations;

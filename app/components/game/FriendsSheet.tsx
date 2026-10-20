@@ -267,7 +267,9 @@ function MyCode() {
         </Text>
       </Pressable>
       <QrCode text={friends.code.code} />
-      <Chip text={`Valid ${countdownText(left)}`} color={left < 60 ? GP.berry : GP.skyDeep} />
+      <View style={styles.centre}>
+        <Chip text={`Valid ${countdownText(left)}`} color={left < 60 ? GP.berry : GP.skyDeep} />
+      </View>
       <Text style={styles.sub} maxFontSizeMultiplier={MAX_FONT_SCALE}>
         Show this to a friend standing beside you.
       </Text>
@@ -333,6 +335,7 @@ const styles = StyleSheet.create({
     color: GP.ink,
   },
   codeBox: { alignItems: "center", gap: 10 },
+  centre: { alignSelf: "center" },
   code: { fontFamily: MONO, fontWeight: "800", fontSize: 46, letterSpacing: 6, color: GP.ink },
   friend: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 4 },
   dot: { width: 14, height: 14, borderRadius: 7 },

@@ -1,5 +1,5 @@
 // The player's choices about the game itself, kept on the phone (costquest-ios
-// UI/Preferences.swift: `haptics`). Never sent to a server.
+// UI/Preferences.swift: `haptics`, `worldClock`). Never sent to a server.
 //
 // Others honour the haptics choice by reading `hapticsOn()` before an impact,
 // or by calling `impact` / `notify` / `selection` here, which do it for them:
@@ -12,6 +12,7 @@
 import * as Haptics from "expo-haptics";
 import { useSyncExternalStore } from "react";
 
+import { isWorldClock, type WorldClock } from "@/features/game/mapStyle";
 import { getPref, setPref } from "@/utils/prefsStorage";
 
 const HAPTICS_PREF = "game.haptics";
@@ -66,4 +67,43 @@ export function notify(type: Haptics.NotificationFeedbackType) {
 /** UISelectionFeedbackGenerator().selectionChanged(), unless haptics are off. */
 export function selection() {
   if (haptics) Haptics.selectionAsync().catch(() => {});
+}
+
+// ---------- Time in town (Preferences.worldClock) ----------
+
+const WORLD_CLOCK_PREF = "game.worldClock";
+
+let worldClock: WorldClock = "real";
+
+getPref(WORLD_CLOCK_PREF)
+  .then((v) => {
+    if (isWorldClock(v)) {
+      worldClock = v;
+      notifyAll();
+    }
+  })
+  .catch(() => {});
+
+/** The hour the town is lit for: the phone's, or one the player fixed. */
+export function worldClockNow(): WorldClock {
+  return worldClock;
+}
+
+export function setWorldClock(next: WorldClock) {
+  worldClock = next;
+  setPref(WORLD_CLOCK_PREF, next).catch(() => {});
+  notifyAll();
+}
+
+export function useWorldClock(): WorldClock {
+  return useSyncExternalStore(
+    (l) => {
+      listeners.add(l);
+      return () => {
+        listeners.delete(l);
+      };
+    },
+    worldClockNow,
+    worldClockNow,
+  );
 }

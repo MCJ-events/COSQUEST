@@ -3,8 +3,10 @@
 // costquest-ios UI/ProfileView.swift, UI/HeroStage.swift, UI/AvatarView.swift.
 //
 // Left out on purpose, with the reason:
-//  - "Appearance" and "Time in town": they light the iOS 3D map; the React
-//    Native map has no night or dark theme to choose.
+//  - "Appearance" (Automatic / Light / Dark): it set SwiftUI's colour scheme,
+//    which the game's own palette never read; the app's light or dark is the
+//    chat app's setting. "Time in town" is here: it lights the map
+//    (features/game/mapStyle.ts).
 import { Ionicons } from "@expo/vector-icons";
 import Constants from "expo-constants";
 import * as Application from "expo-application";
@@ -39,8 +41,9 @@ import type { ProfileAvatar } from "@/features/game/wire";
 import AvatarView from "./AvatarView";
 import { HeroStatBar, XPBar } from "./Bars";
 import HeroStage, { HeroSlot, SlotIcon } from "./HeroStage";
+import { WORLD_CLOCKS } from "@/features/game/mapStyle";
 import { Chip, GameButton, GameCoin, GameHeading, GameIconButton, GamePanel, MAX_FONT_SCALE, pressFeedback } from "./kit";
-import { notify, setHapticsOn, useHapticsOn } from "./prefs";
+import { notify, setHapticsOn, setWorldClock, useHapticsOn, useWorldClock } from "./prefs";
 import { RelicArt } from "./RelicArt";
 import { SheetHost } from "./Sheet";
 import StancePicker from "./StancePicker";
@@ -383,6 +386,7 @@ function SettingsTab({ handle, avatar, onEdit }: { handle: string; avatar: Profi
   const { me } = useGame();
   const haptics = useHapticsOn();
   const muted = useWardenMuted();
+  const clock = useWorldClock();
   const version = `${Constants.expoConfig?.version ?? "?"} (${Application.nativeBuildVersion ?? "?"})`;
   return (
     <View style={{ gap: 18 }}>
@@ -411,6 +415,21 @@ function SettingsTab({ handle, avatar, onEdit }: { handle: string; avatar: Profi
       <Section title="The world">
         <GamePanel padding={14}>
           <View style={{ gap: 14 }}>
+            <Text style={styles.prefTitle} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+              Time in town
+            </Text>
+            <View style={styles.choices} accessibilityRole="radiogroup" accessibilityLabel="Time in town">
+              {WORLD_CLOCKS.map((c) => (
+                <GameButton
+                  key={c.id}
+                  title={c.label}
+                  size="small"
+                  color={c.id === clock ? GP.skyDeep : "#999999"}
+                  onPress={() => setWorldClock(c.id)}
+                  accessibilityLabel={c.id === clock ? `${c.label}, selected` : c.label}
+                />
+              ))}
+            </View>
             <View style={styles.prefRow}>
               <Text style={styles.prefTitle}>Haptics</Text>
               <OnOff
@@ -433,6 +452,9 @@ function SettingsTab({ handle, avatar, onEdit }: { handle: string; avatar: Profi
             </View>
           </View>
         </GamePanel>
+        <Text style={styles.note} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+          The town is lit for the hour you are playing in. Fix it to a time if you would rather not wait until dark to see it that way.
+        </Text>
       </Section>
 
       <View style={{ paddingBottom: 26 }}>
@@ -626,6 +648,7 @@ const styles = StyleSheet.create({
   identityMeta: { flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" },
   identityHint: { flexShrink: 1, fontFamily: GF.body, fontSize: 13, color: INK55 },
   pencil: { width: 34, height: 34, borderRadius: 17, alignItems: "center", justifyContent: "center", backgroundColor: GP.sun, borderWidth: 2.5, borderColor: GP.ink },
+  choices: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   prefRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 },
   prefTitle: { fontFamily: GF.display, fontSize: 17, color: GP.ink },
   prefNote: { fontFamily: GF.body, fontSize: 12, color: INK55 },
