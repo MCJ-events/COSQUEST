@@ -23,6 +23,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Dimensions,
+  Platform,
   Pressable,
   ScrollView,
   Share,
@@ -902,7 +903,9 @@ const MILKY = {
   shadowOpacity: 0.1,
   shadowRadius: 4,
   shadowOffset: { width: 0, height: 2 },
-  elevation: 2,
+  // Android draws an elevation shadow through a see-through background: the
+  // cards showed a grey box with a line across the label. iOS keeps it.
+  elevation: Platform.OS === "android" ? 0 : 2,
 } as const;
 
 const styles = StyleSheet.create({
