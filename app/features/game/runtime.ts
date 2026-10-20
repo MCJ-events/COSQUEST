@@ -9,6 +9,7 @@ import { useSyncExternalStore } from "react";
 import { Platform } from "react-native";
 
 import { isProductionServer, resolveDuelRenderer, resolveGameServer, resolveGameUi } from "./config.ts";
+import { LOCATION_WATCH } from "./locationWatch.ts";
 import { createGameStore, type GameState, type KeyStorage } from "./store.ts";
 
 /** Metro inlines EXPO_PUBLIC_* at bundle time (direct dotted access only). */
@@ -99,7 +100,9 @@ export async function startLocation(ask: boolean): Promise<LocationPermission> {
       gameStore.setFix({ lat: last.coords.latitude, lng: last.coords.longitude, accuracy: last.coords.accuracy ?? 50, at: last.timestamp });
     }
     watch = await Location.watchPositionAsync(
-      { accuracy: Location.Accuracy.BestForNavigation, distanceInterval: 3, timeInterval: 2000 },
+      // High (not BestForNavigation), 5 s / 5 m: accurate enough for the 40 m
+      // reach (locationWatch.test.ts), less battery and fewer map renders (audit B8).
+      { accuracy: Location.Accuracy.High, distanceInterval: LOCATION_WATCH.distanceIntervalM, timeInterval: LOCATION_WATCH.timeIntervalMs },
       (pos) =>
         gameStore.setFix({
           lat: pos.coords.latitude,
