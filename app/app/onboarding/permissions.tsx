@@ -292,15 +292,27 @@ export default function Permissions() {
         return;
       }
 
-      // A first fix on a phone that has had none (just switched on, indoors)
-      // often takes more than 6 s; at 6 s sign-up stopped here with "could
-      // not get your location quickly enough". The switch shows a spinner.
-      position = await withTimeout(
-        Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Low,
-        }),
-        20000,
-      );
+      // Low accuracy is a network fix only; with no network location (Wi-Fi
+      // off, no Google location services, an emulator) none ever came and
+      // sign-up stopped here with "could not get your location quickly
+      // enough". If it hasn't come in 8 s, ask the GPS too (the switch keeps
+      // its spinner meanwhile).
+      try {
+        position = await withTimeout(
+          Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Low,
+          }),
+          8000,
+        );
+      } catch (error) {
+        if (!(error instanceof Error && error.message === "LOCATION_TIMEOUT")) throw error;
+        position = await withTimeout(
+          Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.High,
+          }),
+          15000,
+        );
+      }
 
       if (!isMountedRef.current) {
         return;
