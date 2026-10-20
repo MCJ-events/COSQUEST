@@ -681,6 +681,12 @@ function CallStage({
         ? "Requesting"
         : "Connecting";
 
+  // Hooks for the big-call stage below. They must run on every render, before
+  // the group call's early return: called after it, a 1:1 call that became a
+  // group call (someone added) rendered fewer hooks and crashed the app.
+  const room = useRoomContext();
+  const stageMode = useStageMode(remoteCount + 1);
+
   // ==========================================
   // GROUP CALL: ORBITAL VIEW (Group Calls doc, board A · Light Orbit)
   // ==========================================
@@ -807,9 +813,6 @@ function CallStage({
   // BIG CALL (more than 8 people): speaker stage + list, audio or video.
   // Only the tiles on screen receive video. See StageLayout.
   // ==========================================
-
-  const room = useRoomContext();
-  const stageMode = useStageMode(remoteCount + 1);
 
   if (stageMode) {
     return (
