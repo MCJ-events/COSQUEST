@@ -39,6 +39,8 @@ name: polish fit tour
 - tapOn: "Profile"
 - takeScreenshot: ${P}-09-profile
 - tapOn: "Community"
+# Into the game from the chat list, as journey J08 does.
+- runFlow: ../../maestro/common/chats.yaml
 - runFlow: ../../maestro/common/game.yaml
 - runFlow: ../../maestro/common/warden-later.yaml
 - takeScreenshot: ${P}-10-map
