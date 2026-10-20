@@ -1,4 +1,4 @@
-import { canRetrySilently, isNetworkFailure, OFFLINE_MESSAGE } from "./networkError";
+import { canRetrySilently, fetchJson, isNetworkFailure, OFFLINE_MESSAGE, REQUEST_TIMEOUT_MS, UPLOAD_TIMEOUT_MS } from "./networkError";
 import { signupTokenFor } from "./signupSession";
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL;
@@ -38,34 +38,38 @@ export async function apiRequest<T>(
     headers.Authorization = `Bearer ${token}`;
   }
 
+  // No answer in 15 s (uploads 60 s) counts as no answer (audit B7).
   const send = () =>
-    fetch(`${BASE_URL}${endpoint}`, {
-      method,
-      headers,
-      body:
-        body === undefined
-          ? undefined
-          : isFormData
-            ? (body as FormData)
-            : JSON.stringify(body),
-    });
+    fetchJson(
+      `${BASE_URL}${endpoint}`,
+      {
+        method,
+        headers,
+        body:
+          body === undefined
+            ? undefined
+            : isFormData
+              ? (body as FormData)
+              : JSON.stringify(body),
+      },
+      isFormData ? UPLOAD_TIMEOUT_MS : REQUEST_TIMEOUT_MS,
+    );
 
   // No answer at all: retry a read once, then say so in plain words (the
   // platform's text was shown as is, e.g. "java.net.ConnectException").
-  let response: Response;
+  let answer: Awaited<ReturnType<typeof send>>;
   try {
-    response = await send();
+    answer = await send();
   } catch (error) {
     if (!isNetworkFailure(error)) throw error;
     if (!canRetrySilently(method)) throw new Error(OFFLINE_MESSAGE);
     try {
-      response = await send();
+      answer = await send();
     } catch (again) {
       throw isNetworkFailure(again) ? new Error(OFFLINE_MESSAGE) : again;
     }
   }
-
-  const data = await response.json().catch(() => null);
+  const { response, data } = answer;
 
   if (!response.ok) {
     const message =

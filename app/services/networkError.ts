@@ -25,3 +25,47 @@ export function isNetworkFailure(error: unknown): boolean {
 export function canRetrySilently(method: string): boolean {
   return method === "GET";
 }
+
+// No answer in time (audit B7). fetch() itself never gives up: on a dead
+// connection, or while the free-tier chat API wakes up, a screen could spin
+// for minutes. Every chat API call now stops after 15 s (uploads 60 s) and says
+// the same plain sentence as no answer at all; apiRequest retries a GET once.
+export const REQUEST_TIMEOUT_MS = 15_000;
+export const UPLOAD_TIMEOUT_MS = 60_000;
+
+/** Thrown when a request gets no full answer in time (isNetworkFailure: true). */
+export class RequestTimeoutError extends Error {
+  constructor(ms: number) {
+    super(`Request timeout: no answer in ${ms} ms`);
+    this.name = "RequestTimeoutError";
+  }
+}
+
+type FetchLike = (url: string, init: RequestInit & { signal: AbortSignal }) => Promise<Response>;
+
+/**
+ * fetch, with the body read as JSON (null if it isn't), cut off after `ms`.
+ * The clock covers the whole answer, the body included.
+ */
+export async function fetchJson(
+  url: string,
+  init: RequestInit,
+  ms: number = REQUEST_TIMEOUT_MS,
+  fetchFn: FetchLike = fetch as FetchLike,
+): Promise<{ response: Response; data: any }> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
+  try {
+    const response = await fetchFn(url, { ...init, signal: controller.signal });
+    const data = await response.json().catch((error: unknown) => {
+      if (controller.signal.aborted) throw error;
+      return null;
+    });
+    return { response, data };
+  } catch (error) {
+    if (controller.signal.aborted) throw new RequestTimeoutError(ms);
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
+}

@@ -1,4 +1,5 @@
 ﻿import { apiRequest } from "./api";
+import { fetchJson, isNetworkFailure, OFFLINE_MESSAGE } from "./networkError";
 
 // ==========================================
 // SPARKS (sub-conversations surfaced from a group chat)
@@ -117,12 +118,13 @@ export async function startSpark(
   token: string,
 ): Promise<StartSparkResult> {
   const BASE_URL = process.env.EXPO_PUBLIC_API_URL;
-  const response = await fetch(`${BASE_URL}${base(conversationId)}`, {
+  const { response, data: body } = await fetchJson(`${BASE_URL}${base(conversationId)}`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
     body: JSON.stringify(data),
+  }).catch((error) => {
+    throw isNetworkFailure(error) ? new Error(OFFLINE_MESSAGE) : error;
   });
-  const body = await response.json().catch(() => null);
 
   if (response.ok) return { ok: true, spark: body?.spark };
   if (response.status === 409 && body?.code === "similar_sparks") {

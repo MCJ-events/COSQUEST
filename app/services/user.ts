@@ -1,5 +1,6 @@
 import { appendFileToFormData } from "@/utils/appendFileToFormData";
 import { apiRequest } from "./api";
+import { fetchJson, isNetworkFailure, OFFLINE_MESSAGE, UPLOAD_TIMEOUT_MS } from "./networkError";
 import { signupToken } from "./signupSession";
 
 export type ProfileCategory = {
@@ -338,13 +339,13 @@ export async function uploadAvatarPhoto(
     headers.Authorization = `Bearer ${bearer}`;
   }
 
-  const response = await fetch(`${BASE_URL}/api/users/me/avatar/photo`, {
-    method: "POST",
-    headers,
-    body: formData,
+  const { response, data } = await fetchJson(
+    `${BASE_URL}/api/users/me/avatar/photo`,
+    { method: "POST", headers, body: formData },
+    UPLOAD_TIMEOUT_MS,
+  ).catch((error) => {
+    throw isNetworkFailure(error) ? new Error(OFFLINE_MESSAGE) : error;
   });
-
-  const data = await response.json().catch(() => null);
 
   if (!response.ok) {
     throw new Error(
