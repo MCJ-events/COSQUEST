@@ -6,6 +6,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import { Tabs } from "expo-router";
+import { world } from "@/features/world/worldState";
 import { ReactNode } from "react";
 import { StyleSheet, View } from "react-native";
 
@@ -72,6 +73,13 @@ function ChatTabs() {
       }}>
       <Tabs.Screen
         name="home"
+        // Merged app: the map pin opens the game instead of a page (home.tsx).
+        listeners={{
+          tabPress: (event) => {
+            event.preventDefault();
+            world.openGame(null);
+          },
+        }}
         options={{
           title: "Cosquest",
           tabBarIcon: ({ color, focused }) => (
