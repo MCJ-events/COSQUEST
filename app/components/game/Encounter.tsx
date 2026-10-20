@@ -11,6 +11,7 @@
 // ported: the crystal is drawn in 2D and the challenge opens at once.
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import Animated, {
@@ -299,6 +300,8 @@ export default function Encounter({
 
   return (
     <View style={[styles.root, { backgroundColor: color }]}>
+      {/* EncounterView.statusBarHidden() */}
+      <StatusBar hidden animated />
       <LinearGradient colors={[color, edgeOf(color)]} style={StyleSheet.absoluteFill} pointerEvents="none" />
       <Animated.View style={[StyleSheet.absoluteFill, scrimStyle]} pointerEvents="none">
         <LinearGradient colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.7)"]} style={StyleSheet.absoluteFill} />

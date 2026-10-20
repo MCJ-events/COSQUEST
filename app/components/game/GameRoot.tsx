@@ -103,6 +103,7 @@ export default function GameRoot({ parked }: { parked: boolean }) {
   const pocketRun = runLive && !!runState.run && isPocket(runState.run);
   const [runPoint, setRunPoint] = useState<RunPoint | null>(null);
   const [sheet, setSheet] = useState<Sheet | null>(null);
+  const [bagCount, setBagCount] = useState<number | null>(null);
   const onScreen = useOnScreen();
   /** A Room beacon tapped on the map: the Battle sheet opens on that room. */
   const [roomFocus, setRoomFocus] = useState<string | null>(null);
@@ -403,6 +404,10 @@ export default function GameRoot({ parked }: { parked: boolean }) {
       custom: (press) => <FriendsButton size={58} onPress={press} />,
     });
   }
+  // What is in the bag, as a number only (RoamHomeView moreTiles "bag": not a button).
+  if (bagCount && bagCount > 0) {
+    moreTiles.push({ id: "bag", icon: "bag-handle", color: GP.sky, title: "Bag", badge: bagCount });
+  }
   moreTiles.push({ id: "live", icon: "calendar", color: GP.navy, title: "Quest Hours", onPress: () => setSheet("events") });
   // The paid venue games in AR stay native on iOS (VenueEventsIsland.swift).
   if (venueEventsAvailable) {
@@ -453,7 +458,14 @@ export default function GameRoot({ parked }: { parked: boolean }) {
           onDailies={() => setSheet("dailies")}
           onCodex={() => setSheet("codex")}
           onTrials={trialsOn ? () => setSheet("trials") : undefined}
-          onMore={() => setSheet("more")}
+          onMore={() => {
+            setSheet("more");
+            // The Bag tile's count, fresh each time More opens (RoamStore.bag).
+            gameStore.client
+              .bag()
+              .then((b) => setBagCount(Object.values(b.bag).reduce((n, v) => n + (v > 0 ? v : 0), 0)))
+              .catch(() => {});
+          }}
           onRecentre={() => {
             recentre((n) => n + 1);
             void gameStore.refreshPoints(true);

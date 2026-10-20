@@ -9,6 +9,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
+import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import Animated, {
@@ -335,6 +336,8 @@ export default function SiegeScreen({
 
   return (
     <View style={styles.root} accessibilityViewIsModal>
+      {/* SiegeView.statusBarHidden() */}
+      <StatusBar hidden animated />
       <GameBackdrop />
       {/* Dusk over the arena, tinted with whoever holds it. */}
       <LinearGradient colors={[withAlpha(GP.navy, 0.75), withAlpha(holderColor, 0.25), withAlpha(GP.navyEdge, 0.6)]} style={StyleSheet.absoluteFill} pointerEvents="none" />

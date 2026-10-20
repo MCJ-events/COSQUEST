@@ -22,6 +22,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
+import { StatusBar } from "expo-status-bar";
 import { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -492,7 +493,13 @@ export default function DuelScreen({
 
   if (phase.kind === "briefing" || (phase.kind === "starting" && !direct) || (phase.kind === "failed" && !phase.afterStart && !direct)) {
     const Brief = mode === "raid" ? RaidDuelBriefing : Briefing;
-    return <Brief point={point} busy={phase.kind === "starting"} problem={phase.kind === "failed" ? phase.message : null} onFight={fight} onClose={onClose} />;
+    // PointDuelView.statusBarHidden()
+    return (
+      <>
+        <StatusBar hidden animated />
+        <Brief point={point} busy={phase.kind === "starting"} problem={phase.kind === "failed" ? phase.message : null} onFight={fight} onClose={onClose} />
+      </>
+    );
   }
 
   const UnityView = CostQuestUnityView;
@@ -511,6 +518,8 @@ export default function DuelScreen({
 
   return (
     <View style={styles.stage}>
+      {/* DuelView.statusBarHidden(phase == .fighting) */}
+      {phase.kind === "fighting" ? <StatusBar hidden animated /> : null}
       <LinearGradient colors={[GP.navy, GP.navyEdge]} style={StyleSheet.absoluteFill} />
 
       {phase.kind === "starting" ? (
