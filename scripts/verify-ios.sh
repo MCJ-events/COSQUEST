@@ -112,6 +112,14 @@ node --test modules/costquest-game/plugin/__tests__/*.test.js 2>&1 | tee "$LOGS/
 grep -q "^# fail 0" "$LOGS/plugin-test.log" || { echo "plugin tests failed: $LOGS/plugin-test.log" >&2; exit 1; }
 ran+=("plugin tests")
 
+# The Swift voice matcher and WardenCheck (patches 0005 and 0006) against the
+# TypeScript test vectors, with this Mac's compiler. Linux runs the same
+# script with swift.org's toolchain (it passed there on 2026-10-20).
+step "Swift matcher and WardenCheck vs the TS vectors"
+SWIFTC="$(xcrun --find swiftc)" scripts/swift-linux-check.sh 2>&1 | tee "$LOGS/swift-check.log" | tail -3
+grep -q "ALL PASSED" "$LOGS/swift-check.log" || { echo "Swift check failed: $LOGS/swift-check.log" >&2; exit 1; }
+ran+=("swift matcher check")
+
 # 3. Native project from app.json + the config plugins.
 step "expo prebuild --clean (ios)"
 CI=1 npx expo prebuild --platform ios --clean --no-install 2>&1 | tee "$LOGS/prebuild.log" | tail -5
@@ -124,6 +132,25 @@ if /usr/libexec/PlistBuddy -c 'Print :CQNfcEnabled' "$plist" >/dev/null 2>&1; th
 else
   echo "    WARNING: Info.plist has no CQNfcEnabled (config plugin not applied?)" >&2
 fi
+
+# What the RN game's native islands need from Info.plist: the camera (the
+# AR shrine, venue Events), Bonjour and Local Network (hold phones together,
+# the venue mesh), Nearby Interaction (friend distance, UWB), motion (walking),
+# speech and microphone (voice answers), location.
+plist_need() {
+  if /usr/libexec/PlistBuddy -c "Print :$1" "$plist" >/dev/null 2>&1; then
+    echo "    Info.plist $1: ok"
+  else
+    echo "    WARNING: Info.plist has no $1" >&2
+  fi
+}
+for key in NSCameraUsageDescription NSLocalNetworkUsageDescription NSNearbyInteractionUsageDescription \
+           NSMotionUsageDescription NSSpeechRecognitionUsageDescription NSMicrophoneUsageDescription \
+           NSLocationWhenInUseUsageDescription NSBonjourServices; do
+  plist_need "$key"
+done
+/usr/libexec/PlistBuddy -c 'Print :NSBonjourServices' "$plist" 2>/dev/null | grep -q "_costquest._tcp" \
+  || echo "    WARNING: NSBonjourServices lacks _costquest._tcp (hold phones together cannot find the other phone)" >&2
 
 step "pod install"
 (cd ios && pod install 2>&1 | tee "$LOGS/pod-install.log" | grep -E "CostQuestGame|Pod installation|error" || true)

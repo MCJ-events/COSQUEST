@@ -123,6 +123,8 @@ public final class CostQuestWardenModule: Module {
     }
 
     AsyncFunction("load") { (model: String, tokenizer: String) async throws -> WardenInfoRecord in
+      Self.keepOutOfBackup(Self.path(model))
+      Self.keepOutOfBackup(Self.path(tokenizer))
       let info = try await WardenEngineHolder.shared.load(model: Self.path(model), tokenizer: Self.path(tokenizer))
       var r = WardenInfoRecord()
       r.dim = info.dim
@@ -159,6 +161,8 @@ public final class CostQuestWardenModule: Module {
     /// A file's sha256, streamed (the model is too big to hash in JS).
     AsyncFunction("sha256File") { (uriOrPath: String) async throws -> String in
       let path = Self.path(uriOrPath)
+      // Checked once it has downloaded: the moment to take it out of backups.
+      Self.keepOutOfBackup(path)
       return try await Task.detached(priority: .utility) {
         guard let handle = FileHandle(forReadingAtPath: path) else {
           throw wardenError("ERR_WARDEN_HASH", "Could not read the file.")
@@ -173,6 +177,19 @@ public final class CostQuestWardenModule: Module {
         return hasher.finalize().map { String(format: "%02x", $0) }.joined()
       }.value
     }
+  }
+
+  /// The model (300 MB to 1 GB) and its folder are not iCloud backup
+  /// material: they download again (ModelStore kept them in Application
+  /// Support with isExcludedFromBackup; features/game/wardenModel.ts keeps
+  /// them under Documents/warden, so the flag is set here).
+  private static func keepOutOfBackup(_ path: String) {
+    var values = URLResourceValues()
+    values.isExcludedFromBackup = true
+    var file = URL(fileURLWithPath: path)
+    try? file.setResourceValues(values)
+    var folder = file.deletingLastPathComponent()
+    try? folder.setResourceValues(values)
   }
 
   /// expo-file-system hands `file://` URIs; the engine wants paths.
