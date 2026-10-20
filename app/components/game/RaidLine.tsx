@@ -21,7 +21,7 @@ function Line({ point }: { point: QuestPoint }) {
   return (
     <View style={styles.row} accessible accessibilityLabel={text.replace(/ · /g, ", ")}>
       <RaidCrown size={16} color={RAID_COLOR} />
-      <Text style={styles.text} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+      <Text style={styles.text} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8} maxFontSizeMultiplier={1.4}>
         {text}
       </Text>
     </View>

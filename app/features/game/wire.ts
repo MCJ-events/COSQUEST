@@ -72,7 +72,24 @@ export type DuelMe = {
   raid_mode?: string | null;
   run_mode?: string | null;
   live?: { duel_id: string; mode?: string | null; target?: string | null; expires_at?: string | null } | null;
+  /** Guardian Trials: one ladder per faction (DuelMe.trials). */
+  trials?: Record<string, TrialLadder> | null;
 };
+
+export type HoldLost = { point_id: string; point_name?: string | null; by_faction?: string | null; by_faction_name?: string | null; at?: string | null };
+
+/** Points this player took that a rival took back (RoamMe.holds_lost: features.siege.holds_lost). */
+export function holdsLostOf(me: { features?: Record<string, unknown> | null } | null | undefined): HoldLost[] {
+  const siege = (me?.features?.siege ?? null) as { holds_lost?: HoldLost[] | null } | null;
+  return siege?.holds_lost ?? [];
+}
+
+/** The first loss not yet told, by point and time (RoamHomeView.noticeLost, cq.holdsLost.seen). */
+export function freshLoss(lost: HoldLost[] | null | undefined, seen: ReadonlySet<string>): HoldLost | null {
+  return (lost ?? []).find((l) => !seen.has(l.point_id + (l.at ?? ""))) ?? null;
+}
+
+export type TrialLadder = { cleared: number; rungs: number; next?: { rung: number; name: string; level: number } | null };
 
 export type RoamMe = {
   device_key: string;
@@ -187,6 +204,33 @@ export type RoamLeaders = {
 };
 
 export type RoamBag = { bag: Record<string, number>; names: Record<string, string> };
+
+/** /v1/roam/items/spin: items, a little XP, then the point rests (RoamSpin). */
+export type RoamSpin = {
+  point_id: string;
+  items: Record<string, number>;
+  xp: number;
+  streak_bonus: boolean;
+  spins_in_window?: number | null;
+  bag: Record<string, number>;
+  names: Record<string, string>;
+  spin_ready_at: string;
+};
+
+/** A point can be spun again once its rest is over (PointCard.spinReady). */
+export function spinReady(p: Pick<QuestPoint, "extra">, now: number): boolean {
+  const t = parseServerDate(p.extra?.spin_ready_at);
+  return t === null || t <= now;
+}
+
+/** The spin banner: "+12 XP" or "Spin streak! ×2", and what went into the bag ("2× 50/50  1× Extra time"). */
+export function spinBanner(r: Pick<RoamSpin, "items" | "xp" | "streak_bonus" | "names">): { title: string; subtitle: string } {
+  const got = Object.entries(r.items)
+    .map(([k, n]) => `${n}× ${r.names[k] ?? k}`)
+    .sort()
+    .join("  ");
+  return { title: r.streak_bonus ? "Spin streak! ×2" : `+${r.xp} XP`, subtitle: got || "Bag full" };
+}
 
 export type Relic = {
   id: string;
@@ -303,7 +347,15 @@ export type DuelStart = {
   resumed?: boolean;
 };
 
-export type DuelResult = { winner: number; ticks: number; p1_hp: number; p2_hp: number };
+export type DuelResult = {
+  winner: number;
+  ticks: number;
+  p1_hp: number;
+  p2_hp: number;
+  /** The fantasy battle's own words (GuardianDefeated | HeroDefeated | Timeout); the side-on duel leaves them out. */
+  end_reason?: string;
+  kills?: number;
+};
 
 /** The finish body's payload: what the sim reports at the end. */
 export type DuelFinished = { result: DuelResult; inputs: number[][]; hash: string };

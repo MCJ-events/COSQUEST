@@ -2,13 +2,16 @@
 // as a duel: the crown (iOS draws SF Symbol crown.fill; Ionicons has none, so
 // it is a small SVG here) and the big HP bar that drains as the crew lands
 // hits. costquest-ios Features/RaidsFeature.swift (RaidHPBar, RaidLook).
+import { LinearGradient } from "expo-linear-gradient";
 import { useEffect } from "react";
 import { StyleSheet, Text, View } from "react-native";
-import Animated, { useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated";
+import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSpring, withTiming } from "react-native-reanimated";
 import Svg, { Path } from "react-native-svg";
 
 import { RAID_COLOR } from "@/features/game/raids";
+import { SPRING_RAID_HP } from "@/features/game/spring";
 
+import { MAX_FONT_SCALE } from "./kit";
 import { GF, GP } from "./theme";
 
 export function RaidCrown({ size = 20, color = "#FFFFFF" }: { size?: number; color?: string }) {
@@ -32,20 +35,24 @@ export function RaidBadge({ size = 34 }: { size?: number }) {
 export function RaidHPBar({ hp, maxHp, compact }: { hp: number; maxHp: number; compact?: boolean }) {
   const left = Math.max(0, hp);
   const share = left / Math.max(1, maxHp);
+  const reduced = useReducedMotion();
   const width = useSharedValue(share);
   useEffect(() => {
-    width.set(withSpring(share, { damping: 14, stiffness: 120 }));
-  }, [share, width]);
+    // RaidHPBar `.spring(response: 0.45, dampingFraction: 0.7)`; a plain fade-length move under Reduce Motion.
+    width.set(reduced ? withTiming(share, { duration: 150 }) : withSpring(share, SPRING_RAID_HP));
+  }, [share, width, reduced]);
   const fill = useAnimatedStyle(() => ({ width: `${Math.max(0, Math.min(1, width.get())) * 100}%` }));
   const height = compact ? 6 : 30;
   return (
     <View accessible accessibilityLabel={`Boss health ${left} of ${maxHp}`} style={{ gap: 6 }}>
       <View style={[styles.track, { height, borderRadius: height / 2, borderWidth: compact ? 0 : 3 }]}>
-        <Animated.View style={[styles.fill, { borderRadius: height / 2, minWidth: share > 0 && !compact ? 18 : 0, borderRightWidth: compact ? 0 : 6 }, fill]}>
+        <Animated.View style={[styles.fill, { borderRadius: height / 2, minWidth: share > 0 && !compact ? 18 : 0 }, fill]}>
+          {/* berry to the raid colour, left to right, across the fill (Swift RaidHPBar). */}
+          <LinearGradient colors={[GP.berry, RAID_COLOR]} start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }} style={StyleSheet.absoluteFill} />
           {!compact ? <View style={styles.shine} /> : null}
         </Animated.View>
       </View>
-      {!compact ? <Text style={styles.label}>{`HP ${left} / ${maxHp}`}</Text> : null}
+      {!compact ? <Text style={styles.label} maxFontSizeMultiplier={MAX_FONT_SCALE}>{`HP ${left} / ${maxHp}`}</Text> : null}
     </View>
   );
 }
@@ -53,8 +60,7 @@ export function RaidHPBar({ hp, maxHp, compact }: { hp: number; maxHp: number; c
 const styles = StyleSheet.create({
   badge: { backgroundColor: RAID_COLOR, alignItems: "center", justifyContent: "center" },
   track: { backgroundColor: "rgba(30,58,76,0.6)", borderColor: "rgba(255,255,255,0.7)", overflow: "hidden" },
-  // iOS draws berry → raid colour; one colour with a berry edge reads the same without a gradient dependency.
-  fill: { height: "100%", backgroundColor: RAID_COLOR, borderRightColor: GP.berry },
+  fill: { height: "100%", overflow: "hidden" },
   shine: { position: "absolute", top: 3, left: 8, right: 8, height: 6, borderRadius: 3, backgroundColor: "rgba(255,255,255,0.3)" },
-  label: { fontFamily: GF.display, fontSize: 18, color: "#FFF", textAlign: "center", fontVariant: ["tabular-nums"] },
+  label: { textShadowColor: "rgba(30,58,76,0.45)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3, fontFamily: GF.display, fontSize: 18, color: "#FFF", textAlign: "center", fontVariant: ["tabular-nums"] },
 });

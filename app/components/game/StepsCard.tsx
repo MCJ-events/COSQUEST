@@ -4,10 +4,10 @@
 // "walking" unlock). The phone's step counter feeds it on Android
 // (features/game/stepsDevice.ts); the server decides what the walk is worth
 // and pays it, and its refusals are shown in its own words.
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Linking, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Linking, Platform, StyleSheet, Text, View } from "react-native";
 
 import { gameStore } from "@/features/game/runtime";
 import {
@@ -16,6 +16,7 @@ import {
   km,
   type MilestoneState,
   milestoneState,
+  permissionName,
   progressTo,
   type StepsMilestone,
   type StepsStatus,
@@ -23,7 +24,8 @@ import {
 } from "@/features/game/steps";
 import { updateStepsOnPhone } from "@/features/game/stepsDevice";
 
-import { Chip, GameButton, ProgressBar } from "./kit";
+import { announce, Chip, GameButton, MAX_FONT_SCALE, ProgressBar } from "./kit";
+import { playSound } from "./sound";
 import { GF, GP } from "./theme";
 
 export default function StepsCard() {
@@ -42,8 +44,12 @@ export default function StepsCard() {
       latest.current = next;
       if (!alive.current) return;
       setView(next);
+      if (next.note) announce(next.note);
       if (next.justPaid) {
+        // StepsModel.update: fanfare and a success haptic when a milestone pays.
+        playSound("fanfare");
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+        announce(next.newly.map((n) => `${n.km} km reached! ${describeRewards(n.rewards)}`).join(". "));
         // XP and the item bag moved; let the rest of the game see it.
         void gameStore.refreshMe();
       }
@@ -69,8 +75,10 @@ export default function StepsCard() {
       <View style={styles.header}>
         <Ionicons name="footsteps" size={28} color={GP.grass} accessibilityElementsHidden importantForAccessibility="no" />
         <View style={{ flex: 1, gap: 2 }}>
-          <Text style={styles.title}>This week: {km(s?.meters ?? 0)} km walked</Text>
-          <Text style={styles.muted}>Walk to earn XP and items. Resets Monday.</Text>
+          <Text style={styles.title} accessibilityRole="header" maxFontSizeMultiplier={MAX_FONT_SCALE}>
+            This week: {km(s?.meters ?? 0)} km walked
+          </Text>
+          <Text style={styles.muted} maxFontSizeMultiplier={MAX_FONT_SCALE}>Walk to earn XP and items. Resets Monday.</Text>
         </View>
       </View>
       {s ? (
@@ -86,18 +94,22 @@ export default function StepsCard() {
         <ActivityIndicator color={GP.navy} style={{ marginVertical: 8 }} />
       ) : null}
       {view.newly.length ? (
-        <View style={styles.paid}>
+        <View style={styles.paid} accessible accessibilityLabel={view.newly.map((n) => `${n.km} km reached! ${describeRewards(n.rewards)}`).join(". ")}>
           {view.newly.map((n) => (
             <View key={n.km} style={styles.paidRow}>
               <Ionicons name="walk" size={18} color={GP.mint} accessibilityElementsHidden importantForAccessibility="no" />
-              <Text style={styles.paidText}>
+              <Text style={styles.paidText} maxFontSizeMultiplier={MAX_FONT_SCALE}>
                 {n.km} km reached! {describeRewards(n.rewards)}
               </Text>
             </View>
           ))}
         </View>
       ) : null}
-      {view.note ? <Text style={[styles.note, { color: view.noteIsProblem ? GP.berry : GP.mist }]}>{view.note}</Text> : null}
+      {view.note ? (
+        <Text style={[styles.note, { color: view.noteIsProblem ? GP.berry : GP.mist }]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+          {view.note}
+        </Text>
+      ) : null}
       {view.motionDenied ? (
         <GameButton
           title="Open Settings"
@@ -107,7 +119,7 @@ export default function StepsCard() {
           onPress={() => {
             Linking.openSettings().catch(() => {});
           }}
-          accessibilityLabel="Open Settings to allow Physical activity"
+          accessibilityLabel={`Open Settings to allow ${permissionName(Platform.OS === "ios" ? "ios" : "android")}`}
         />
       ) : null}
       <GameButton
@@ -127,7 +139,7 @@ function Progress({ status }: { status: StepsStatus }) {
   return (
     <View style={{ gap: 6 }} accessible accessibilityLabel={p.line}>
       <ProgressBar value={p.value} color={p.allDone ? GP.mint : GP.sun} track={GP.track} />
-      <Text style={[styles.line, p.allDone && { color: GP.mint }]}>{p.line}</Text>
+      <Text style={[styles.line, p.allDone && { color: GP.mint }]} maxFontSizeMultiplier={MAX_FONT_SCALE}>{p.line}</Text>
     </View>
   );
 }
@@ -141,9 +153,15 @@ function MilestoneTile({ milestone, state }: { milestone: StepsMilestone; state:
       style={[styles.tile, { backgroundColor: `${color}${state === "locked" ? "14" : "29"}` }]}
       accessible
       accessibilityLabel={`${milestone.km} kilometres, ${word.toLowerCase()}. ${describeRewards(milestone)}`}>
-      <Ionicons name={state === "done" ? "checkmark-circle" : state === "next" ? "flag" : "lock-closed"} size={20} color={color} />
-      <Text style={styles.tileKm}>{milestone.km} km</Text>
-      <Text style={styles.tileRewards} numberOfLines={3} adjustsFontSizeToFit>
+      {state === "done" ? (
+        <MaterialCommunityIcons name="check-decagram" size={22} color={color} />
+      ) : (
+        <Ionicons name={state === "next" ? "flag" : "lock-closed"} size={20} color={color} />
+      )}
+      <Text style={styles.tileKm} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+        {milestone.km} km
+      </Text>
+      <Text style={styles.tileRewards} numberOfLines={3} adjustsFontSizeToFit maxFontSizeMultiplier={MAX_FONT_SCALE}>
         {describeRewards(milestone, true)}
       </Text>
       <View>
@@ -156,7 +174,7 @@ function MilestoneTile({ milestone, state }: { milestone: StepsMilestone; state:
 const styles = StyleSheet.create({
   card: { gap: 12, padding: 14, borderRadius: 18, backgroundColor: "#FFF" },
   header: { flexDirection: "row", alignItems: "center", gap: 12 },
-  title: { fontFamily: GF.display, fontSize: 17, color: GP.ink },
+  title: { fontFamily: GF.display, fontSize: 20, color: GP.ink },
   muted: { fontFamily: GF.body, fontSize: 13, color: GP.mist },
   line: { fontFamily: GF.bold, fontSize: 13, color: GP.mist },
   tiles: { flexDirection: "row", gap: 8 },

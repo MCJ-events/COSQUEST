@@ -1,5 +1,7 @@
 // Tap, then say the answer (costquest-ios Roam/ChallengeViews.swift SayItButton).
-// Recognised on the phone by the Kotlin SpeechListener; matched to a choice
+// Recognised on the phone by the platform's recogniser through the game
+// module (Android: SpeechListener.kt; iOS: Speech in ios/Embed/GameHelpers.swift,
+// both with the same calls and events); matched to a choice
 // in features/game/voiceAnswer.ts; the server marks the index exactly as a tap.
 // Anything that stops it (no permission, a call, no offline recogniser) says
 // so in one line and the choices stay tappable: typing is always the fallback.
@@ -16,10 +18,10 @@ import { store } from "@/store/store";
 
 import { GF, GP } from "./theme";
 
-/** The Android recogniser through the game module; null where there is none (iOS rn, web). */
-function androidEngine(): SpeechEngine | null {
+/** The phone's recogniser through the game module; null where there is none (web, an older native build). */
+function phoneEngine(): SpeechEngine | null {
   const n = nativeHelpers;
-  if (Platform.OS !== "android" || !n?.startListening || !n.stopListening || !n.addListener) return null;
+  if (Platform.OS === "web" || !n?.startListening || !n.stopListening || !n.addListener) return null;
   return {
     async requestPermission() {
       const status = await AudioModule.requestRecordingPermissionsAsync();
@@ -50,7 +52,7 @@ export default function SayItButton({ choices, removed, onPick }: { choices: str
   const voice = useMemo(
     () =>
       new VoiceAnswer({
-        engine: androidEngine(),
+        engine: phoneEngine(),
         callActive: () => store.getState().call.active != null,
         setTimeout: (fn, ms) => setTimeout(fn, ms),
         clearTimeout: (h) => clearTimeout(h as ReturnType<typeof setTimeout>),

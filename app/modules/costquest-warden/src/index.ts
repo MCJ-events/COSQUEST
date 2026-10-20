@@ -1,7 +1,9 @@
 // The Warden's on-device model (the mote engine), as the React Native game
-// sees it. Android only for now (android/, NDK + JNI); elsewhere the module is
-// absent and the Warden speaks its authored lines, exactly as iOS does before
-// its model has downloaded.
+// sees it. Android: android/ (NDK + JNI). iOS: the same module name from the
+// game pod (costquest-game/ios/Embed/CostQuestWardenModule.swift, over
+// Game/MoteEngine.swift), because the engine is built there. Elsewhere (web)
+// the module is absent and the Warden speaks its authored lines, exactly as
+// the native game does before its model has downloaded.
 import { requireOptionalNativeModule } from "expo";
 import { Platform } from "react-native";
 
@@ -27,4 +29,4 @@ export type CostQuestWardenModule = {
 };
 
 export const CostQuestWarden: CostQuestWardenModule | null =
-  Platform.OS === "android" ? requireOptionalNativeModule<CostQuestWardenModule>("CostQuestWarden") : null;
+  Platform.OS === "android" || Platform.OS === "ios" ? requireOptionalNativeModule<CostQuestWardenModule>("CostQuestWarden") : null;

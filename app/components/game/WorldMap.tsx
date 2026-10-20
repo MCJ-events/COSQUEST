@@ -11,7 +11,7 @@
 // The whole world is one view that slides under a fixed player marker, so a
 // new fix is one animated translate, and the paths are built once per ground.
 import { Ionicons } from "@expo/vector-icons";
-import { memo, useEffect, useMemo } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import Animated, {
   Easing,
@@ -25,10 +25,13 @@ import Svg, { Circle, Defs, Path, Pattern, Rect } from "react-native-svg";
 
 import { toLocal, type LatLng } from "@/features/game/geo";
 import { buildLayers, type MapLayers } from "@/features/game/mapPaths";
+import { effectiveHour, mapStyle, type MapStyle, timeOfDay } from "@/features/game/mapStyle";
 import { raidTint } from "@/features/game/raids";
+import { pinTint } from "@/features/game/siege";
 import type { NearbyRoom } from "@/features/game/rooms";
 import type { GroundGeometry, QuestPoint } from "@/features/game/wire";
 
+import { useWorldClock } from "./prefs";
 import { RaidCrown } from "./RaidParts";
 import RoomBeacon from "./RoomBeacon";
 import { GF, GP, realmColor, realmIcon, tierColor } from "./theme";
@@ -38,14 +41,22 @@ export const MAP_SCALE = 1.5;
 /** Where the player stands on screen, as a share of the height. */
 export const PLAYER_Y = 0.56;
 
-const LAND = "#E6EFDF";
-const BUILDING = "#D3DCE5";
-const BUILDING_EDGE = "#BCC8D3";
-const WATER = "#9DD2EF";
-const GREEN = "#BEE3A3";
-const PAVED = "#F3F1EA";
-const ROAD = "#FFFFFF";
-const ROAD_EDGE = "#D3DBE2";
+/** How far a building's wall shows below its roof, in metres: the board seen from a little south. */
+const WALL_DROP_M = 3;
+
+/** The map's colours for the hour the town is lit for, looked at again each minute. */
+function useMapStyle(): MapStyle {
+  const clock = useWorldClock();
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(t);
+  }, []);
+  const hour = effectiveHour(clock, now);
+  // Only a change of bucket redraws the ground.
+  const bucket = timeOfDay(hour);
+  return useMemo(() => mapStyle(hour), [bucket]); // eslint-disable-line react-hooks/exhaustive-deps
+}
 
 type Props = {
   ground: GroundGeometry | null;
@@ -71,6 +82,7 @@ export default function WorldMap(props: Props) {
   const extent = ground?.radius_m ?? 600;
   const size = extent * 2 * MAP_SCALE;
   const layers = useMemo(() => (ground ? buildLayers(ground) : null), [ground]);
+  const look = useMapStyle();
 
   const tx = useSharedValue(0);
   const ty = useSharedValue(0);
@@ -92,10 +104,10 @@ export default function WorldMap(props: Props) {
   }));
 
   return (
-    <View style={styles.root} accessibilityLabel="Map of the streets around you">
+    <View style={[styles.root, { backgroundColor: look.land }]} accessibilityLabel="Map of the streets around you">
       {origin ? (
         <Animated.View style={[styles.world, { width: size, height: size }, worldStyle]}>
-          <Ground layers={layers} extent={extent} size={size} />
+          <Ground layers={layers} extent={extent} size={size} look={look} />
           {points.map((p) => {
             const local = toLocal(origin, p);
             return (
@@ -119,7 +131,7 @@ export default function WorldMap(props: Props) {
           })}
         </Animated.View>
       ) : (
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: LAND }]} />
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: look.land }]} />
       )}
 
       {fix ? (
@@ -133,7 +145,7 @@ export default function WorldMap(props: Props) {
       ) : null}
 
       {ground?.attribution ? (
-        <Text style={styles.attribution} pointerEvents="none">
+        <Text style={[styles.attribution, { color: look.ink }]} pointerEvents="none">
           {ground.attribution}
         </Text>
       ) : null}
@@ -141,29 +153,29 @@ export default function WorldMap(props: Props) {
   );
 }
 
-const Ground = memo(function Ground({ layers, extent, size }: { layers: MapLayers | null; extent: number; size: number }) {
+const Ground = memo(function Ground({ layers, extent, size, look }: { layers: MapLayers | null; extent: number; size: number; look: MapStyle }) {
   const box = `${-extent} ${-extent} ${extent * 2} ${extent * 2}`;
   return (
     <Svg width={size} height={size} viewBox={box} style={StyleSheet.absoluteFill}>
       <Defs>
         <Pattern id="grid" width={40} height={40} patternUnits="userSpaceOnUse">
-          <Path d="M40 0L0 0 0 40" stroke="#D8E3D0" strokeWidth={1} fill="none" />
+          <Path d="M40 0L0 0 0 40" stroke={look.grid} strokeWidth={1} fill="none" />
         </Pattern>
       </Defs>
-      <Rect x={-extent} y={-extent} width={extent * 2} height={extent * 2} fill={LAND} />
+      <Rect x={-extent} y={-extent} width={extent * 2} height={extent * 2} fill={look.land} />
       {layers ? (
         <>
-          <Path d={layers.green} fill={GREEN} />
-          <Path d={layers.water} fill={WATER} />
+          <Path d={layers.green} fill={look.green} />
+          <Path d={layers.water} fill={look.water} />
           {layers.waterways.map((w, i) => (
-            <Path key={`ww${i}`} d={w.d} stroke={WATER} strokeWidth={w.width} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+            <Path key={`ww${i}`} d={w.d} stroke={look.water} strokeWidth={w.width} strokeLinecap="round" strokeLinejoin="round" fill="none" />
           ))}
-          <Path d={layers.paved} fill={PAVED} />
+          <Path d={layers.paved} fill={look.paved} />
           {layers.roads.map((r, i) => (
             <Path
               key={`re${i}`}
               d={r.d}
-              stroke={r.kind === "rail" ? "#B9B4C4" : ROAD_EDGE}
+              stroke={r.kind === "rail" ? look.rail : look.casing}
               strokeWidth={r.width + (r.kind === "path" || r.kind === "rail" ? 0.6 : 2)}
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -173,9 +185,19 @@ const Ground = memo(function Ground({ layers, extent, size }: { layers: MapLayer
           {layers.roads
             .filter((r) => r.kind !== "rail")
             .map((r, i) => (
-              <Path key={`r${i}`} d={r.d} stroke={r.kind === "path" ? "#FBFAF5" : ROAD} strokeWidth={r.width} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+              <Path
+                key={`r${i}`}
+                d={r.d}
+                stroke={r.kind === "path" ? look.path : r.kind === "major" ? look.roadMajor : look.road}
+                strokeWidth={r.width}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                fill="none"
+              />
             ))}
-          <Path d={layers.buildings} fill={BUILDING} stroke={BUILDING_EDGE} strokeWidth={0.8} />
+          {/* The wall below each roof, then the roof: buildings stand up off the board. */}
+          <Path d={layers.buildings} fill={look.wall} transform={`translate(0 ${WALL_DROP_M})`} />
+          <Path d={layers.buildings} fill={look.roof} stroke={look.roofEdge} strokeWidth={0.8} />
         </>
       ) : (
         <Rect x={-extent} y={-extent} width={extent * 2} height={extent * 2} fill="url(#grid)" />
@@ -185,6 +207,14 @@ const Ground = memo(function Ground({ layers, extent, size }: { layers: MapLayer
 });
 
 const MARKER = 46;
+
+/** The pin's colour by the rule the iOS world uses: raid > holder > tier (siege.ts pinTint). */
+export function pinFill(p: QuestPoint): string {
+  const tint = pinTint(p);
+  if (tint.kind === "raid") return raidTint(p) ?? tierColor(p.tier);
+  if (tint.kind === "holder") return realmColor(tint.faction);
+  return tierColor(tint.tier);
+}
 
 const PointMarker = memo(function PointMarker({
   point,
@@ -203,8 +233,9 @@ const PointMarker = memo(function PointMarker({
   cooling: boolean;
   onPress: (p: QuestPoint) => void;
 }) {
-  const color = cooling ? "#9AA7B0" : raidTint(point) ?? realmColor(point.realm);
-  const ring = cooling ? "#C9D1D6" : tierColor(point.tier);
+  // RoamHomeView.object: a boss's raid tint, else its holder's colour, else its tier's.
+  const color = cooling ? "#9AA7B0" : pinFill(point);
+  const ring = cooling ? "#C9D1D6" : "#FFFFFF";
   const pulse = useSharedValue(0);
   useEffect(() => {
     if (inReach && !cooling) {
@@ -224,12 +255,12 @@ const PointMarker = memo(function PointMarker({
       hitSlop={10}
       style={[styles.marker, { left: left - MARKER / 2, top: top - MARKER, zIndex: selected ? 3 : inReach ? 2 : 1 }]}
       accessibilityRole="button"
-      accessibilityLabel={`${point.name}, ${point.tier} ${isDuel ? "Guardian" : point.challenge}${cooling ? ", recharging" : ""}${inReach ? ", in reach" : ""}`}>
-      {inReach && !cooling ? <Animated.View style={[styles.pulse, { borderColor: ring }, pulseStyle]} /> : null}
+      accessibilityLabel={`${point.name}, ${point.tier} ${isDuel ? "Guardian" : point.challenge}${point.extra?.holder ? ", held" : ""}${cooling ? ", recharging" : ""}${inReach ? ", in reach" : ""}`}>
+      {inReach && !cooling ? <Animated.View style={[styles.pulse, { borderColor: color }, pulseStyle]} /> : null}
       <View style={[styles.pin, { backgroundColor: color, borderColor: selected ? GP.navy : ring, transform: [{ scale: selected ? 1.15 : 1 }] }]}>
         {point.source === "raid" ? <RaidCrown size={20} /> : <Ionicons name={isDuel ? "shield" : realmIcon(point.realm)} size={20} color="#FFFFFF" />}
       </View>
-      <View style={[styles.stem, { backgroundColor: selected ? GP.navy : ring }]} />
+      <View style={[styles.stem, { backgroundColor: selected ? GP.navy : color }]} />
     </Pressable>
   );
 });
@@ -251,7 +282,6 @@ function PlayerMarker({ x, y, accuracyPx, reachPx, color }: { x: number; y: numb
 const styles = StyleSheet.create({
   root: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: LAND,
     overflow: "hidden",
   },
   world: {

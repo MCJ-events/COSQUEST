@@ -1,19 +1,38 @@
-// What a point paid: XP counting up, each line the server itemised, the
-// level bar moving (and a level-up), dailies completed, and what features
-// added (a Codex card, a Relic). The numbers are the server's.
-// costquest-ios Roam/RewardView.swift.
+// What a point paid, counted up where you can see it: "Rewards!" (or "For
+// trying") over the encounter, a cream panel whose lines appear every 280 ms,
+// the XP counting up, the level bar moving from where it was (and a LEVEL UP
+// ceremony if it crossed a level). The numbers are the server's.
+// costquest-ios Roam/RewardView.swift. Swift never shows coins on a reward.
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { LinearGradient } from "expo-linear-gradient";
 import { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
-import Animated, { FadeInDown, ZoomIn } from "react-native-reanimated";
+import Animated, { Easing, FadeIn, FadeOut, useAnimatedStyle, useSharedValue, withSpring, withTiming } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import type { DuelOutcome, QuestPoint, RoamExtra, RoamStanding, RoamVerdict } from "@/features/game/wire";
+import { gameStore } from "@/features/game/runtime";
+import {
+  ceremonyTimeline,
+  type DailyDone,
+  dailiesDone,
+  factionLine,
+  ioniconForSymbol,
+  lineAmount,
+  standingProgress,
+} from "@/features/game/rewardCeremony";
+import { springOf } from "@/features/game/strike";
+import { dailyMoment } from "@/features/game/warden";
+import type { DuelOutcome, QuestPoint, RoamDaily, RoamExtra, RoamMe, RoamStanding, RoamVerdict } from "@/features/game/wire";
 
-import { GameButton, GameTitle, ProgressBar } from "./kit";
+import { showBanner } from "./Banner";
+import { announce, GameButton, GamePanel, GameTitle, MAX_FONT_SCALE } from "./kit";
+import { LevelUp } from "./LevelUp";
+import { Pop } from "./Pop";
 import { RelicDropExtra } from "./RelicDropCard";
-import { edgeOf, GF, GP, realmColor } from "./theme";
+import { playSound } from "./sound";
+import { GF, GP, realmColor } from "./theme";
+import { wardenVoice } from "./wardenVoice";
 
 export type RewardSummary = {
   pointName: string;
@@ -32,9 +51,13 @@ export type RewardSummary = {
   extras: RoamExtra[];
   /** Held: the server would not pay this fight, and says why. */
   note?: string | null;
+  /** The dailies completed, by title (from me.dailies); the banner and the Warden's line on leaving. */
+  dailiesInfo?: DailyDone<RoamDaily>[];
+  /** The Warden's level-up line: said 2.4 s in, when the ceremony has started. */
+  speakLevel?: () => void;
 };
 
-export function rewardFromVerdict(v: RoamVerdict, point: QuestPoint): RewardSummary {
+export function rewardFromVerdict(v: RoamVerdict, point: QuestPoint, me?: RoamMe | null): RewardSummary {
   const win = v.correct > 0 && !v.late;
   return {
     pointName: v.point_name || point.name,
@@ -51,6 +74,7 @@ export function rewardFromVerdict(v: RoamVerdict, point: QuestPoint): RewardSumm
     rankUp: v.rank_up,
     dailiesCompleted: v.dailies_completed,
     extras: v.extras ?? [],
+    dailiesInfo: dailiesDone(v.dailies_completed, (v.me ?? me)?.dailies ?? me?.dailies),
   };
 }
 
@@ -76,138 +100,239 @@ export function rewardFromDuel(o: DuelOutcome, point: QuestPoint, before: RoamSt
   };
 }
 
-function useCountUp(target: number, ms = 900) {
-  const [value, setValue] = useState(0);
-  useEffect(() => {
-    const start = Date.now();
-    const t = setInterval(() => {
-      const f = Math.min(1, (Date.now() - start) / ms);
-      setValue(Math.round(target * (1 - (1 - f) ** 3)));
-      if (f >= 1) clearInterval(t);
-    }, 30);
-    return () => clearInterval(t);
-  }, [target, ms]);
-  return value;
+/**
+ * RoamHomeView.celebrate: "Quest done!" for each daily the point completed (the
+ * daily's title, else "Daily quest"), and 1.2 s later the Warden's line for it.
+ * Called when the player leaves the reward (or the reveal).
+ */
+export function celebrate(reward: RewardSummary) {
+  const done = reward.dailiesInfo ?? dailiesDone(reward.dailiesCompleted, gameStore.get().me?.dailies);
+  for (const d of done) showBanner("Quest done!", { subtitle: d.title, color: GP.mint, sound: "fanfare" });
+  const last = [...done].reverse().find((d) => d.daily);
+  if (last?.daily) {
+    const daily = last.daily as RoamDaily;
+    setTimeout(() => {
+      wardenVoice.speak(dailyMoment({ me: gameStore.get().me, playerName: gameStore.playerName() }, daily), 4000).catch(() => {});
+    }, 1200);
+  }
 }
+
+const LINE_SPRING = springOf(0.35, 0.7);
 
 export default function Reward({ reward, onDone, onShare }: { reward: RewardSummary; onDone: () => void; onShare?: () => void }) {
   const insets = useSafeAreaInsets();
-  const xp = useCountUp(reward.xp);
+  const before = reward.before ?? reward.after;
+  const after = reward.after;
+  const [shownLines, setShownLines] = useState(0);
+  const [xpCounted, setXpCounted] = useState(0);
+  const [barLevel, setBarLevel] = useState(before?.level ?? 1);
+  const [xpDone, setXpDone] = useState(false);
+  const [showLevelUp, setShowLevelUp] = useState(false);
+  const bar = useSharedValue(standingProgress(before));
+  const panelOpacity = useSharedValue(1);
+  const levelsUp = reward.leveledUp && !!after;
+
+  // RewardView.play(): lines every 280 ms, the XP counted up, then the bar.
   useEffect(() => {
-    Haptics.notificationAsync(reward.win ? Haptics.NotificationFeedbackType.Success : Haptics.NotificationFeedbackType.Warning).catch(() => {});
-  }, [reward.win]);
-  const s = reward.after;
+    const t = ceremonyTimeline(reward.lines.length, reward.xp, levelsUp);
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    const at = (ms: number, fn: () => void) => timers.push(setTimeout(fn, ms));
+    const settle = () => {
+      bar.value = withTiming(standingProgress(after), { duration: t.settleMs, easing: Easing.out(Easing.quad) });
+    };
+    t.lineAt.forEach((ms, i) =>
+      at(ms, () => {
+        setShownLines(i + 1);
+        // CosCoins are bought, not earned: a line is XP, never coins, so never the coin sound.
+        playSound("tap");
+      }),
+    );
+    t.xp.forEach((s) => at(s.atMs, () => setXpCounted(s.value)));
+    at(t.xpDoneAt, () => {
+      setXpDone(true);
+      announce(`${reward.win ? "Rewards" : "For trying"}. Plus ${reward.xp} XP.${after && !levelsUp ? ` Level ${after.level}.` : ""}`);
+    });
+    if (t.level && after) {
+      at(t.level.fillAt, () => {
+        bar.value = withTiming(1, { duration: t.level?.fillMs ?? 500, easing: Easing.in(Easing.quad) });
+      });
+      at(t.level.popAt, () => {
+        setBarLevel(after.level);
+        bar.value = 0;
+        playSound("fanfare");
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+        setShowLevelUp(true);
+        settle();
+      });
+    } else {
+      at(t.settleAt, settle);
+    }
+    return () => timers.forEach(clearTimeout);
+    // The reward is fixed for the life of the screen.
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // The Warden's level-up line lands with the ceremony (2.4 s in).
+  useEffect(() => {
+    if (!reward.leveledUp || !reward.speakLevel) return;
+    const timer = setTimeout(() => reward.speakLevel?.(), 2400);
+    return () => clearTimeout(timer);
+  }, [reward]);
+
+  useEffect(() => {
+    panelOpacity.value = withTiming(showLevelUp ? 0 : 1, { duration: 300, easing: Easing.inOut(Easing.cubic) });
+  }, [showLevelUp, panelOpacity]);
+
+  const barStyle = useAnimatedStyle(() => ({ width: `${Math.max(0, Math.min(1, bar.value)) * 100}%` }));
+  const panelStyle = useAnimatedStyle(() => ({ opacity: panelOpacity.value }));
+  const faction = factionLine(reward.factionPoints);
+  const dailies = reward.dailiesInfo ?? dailiesDone(reward.dailiesCompleted, null);
+
   return (
-    <View style={[styles.root, { backgroundColor: reward.win ? GP.navy : "#2A3A46", paddingTop: insets.top + 24 }]}>
-      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 24 }]}>
-        <Animated.View entering={ZoomIn.springify()} style={styles.hero}>
-          <View style={[styles.crest, { backgroundColor: realmColor(reward.realm) }]}>
-            <Ionicons name={reward.win ? "trophy" : "shield-half"} size={44} color="#FFF" />
+    <View style={[styles.root, { backgroundColor: realmColor(reward.realm) }]}>
+      <LinearGradient colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.7)"]} style={StyleSheet.absoluteFill} pointerEvents="none" />
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0,0,0,0.55)" }]} pointerEvents="none" />
+      <Animated.View
+        style={[styles.column, { paddingTop: insets.top + 12 }, panelStyle]}
+        pointerEvents={showLevelUp ? "none" : "auto"}
+        importantForAccessibility={showLevelUp ? "no-hide-descendants" : "auto"}
+        accessibilityElementsHidden={showLevelUp}>
+        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+          <GameTitle text={reward.win ? "Rewards!" : "For trying"} size={44} />
+          <View style={styles.panelWrap}>
+            <GamePanel>
+              <View style={{ gap: 10 }}>
+                {/* Every line is laid out from the start and slides in when its turn comes: lines inserted one by one
+                    moved their siblings mid-animation, and Android drew them over the level row. */}
+                {reward.lines.map((l, i) => (
+                  <RewardLine key={`${l.label}-${i}`} label={l.label} amount={lineAmount(l)} shown={i < shownLines} />
+                ))}
+                <View style={styles.divider} />
+                <View style={styles.levelRow} accessible accessibilityLabel={`Level ${barLevel}${after ? `, ${after.rank}` : ""}, plus ${reward.xp} XP`}>
+                  <Text style={styles.level} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+                    Level {barLevel}
+                  </Text>
+                  {after ? <Text style={styles.rank}>{after.rank}</Text> : null}
+                  <View style={{ flex: 1 }} />
+                  <Text style={styles.xpCount} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+                    +{xpCounted} XP
+                  </Text>
+                </View>
+                <View style={styles.track} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
+                  <Animated.View style={[styles.fill, barStyle]}>
+                    <LinearGradient colors={[GP.sky, GP.skyDeep]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill} />
+                    <View style={styles.gloss} />
+                  </Animated.View>
+                </View>
+                {reward.extras.map((x, i) =>
+                  x.kind === "relic" && x.relic ? (
+                    // Lands after the XP has counted: its own moment, not one more line.
+                    xpDone ? (
+                      <Pop key={`${x.kind}-${i}`} from={0.6} response={0.5} damping={0.7}>
+                        <RelicDropExtra extra={x} />
+                      </Pop>
+                    ) : null
+                  ) : (
+                    <View key={`${x.kind}-${i}`} style={styles.extra} accessible accessibilityLabel={`${x.title}${x.subtitle ? `, ${x.subtitle}` : ""}${x.new ? ", new" : ""}`}>
+                      <View style={styles.extraIcon}>
+                        <Ionicons name={extraIcon(x)} size={18} color="#FFFFFF" />
+                      </View>
+                      <View style={{ flex: 1, gap: 1 }}>
+                        <Text style={styles.extraTitle}>{x.title}</Text>
+                        {x.subtitle ? <Text style={styles.extraSub}>{x.subtitle}</Text> : null}
+                      </View>
+                    </View>
+                  ),
+                )}
+                {faction ? (
+                  <View style={styles.factionRow} accessible accessibilityLabel={faction}>
+                    <Ionicons name="flag" size={16} color="rgba(31,59,77,0.7)" />
+                    <Text style={styles.faction}>{faction}</Text>
+                  </View>
+                ) : null}
+                {dailies.map((d) => (
+                  <View key={d.id} style={styles.factionRow} accessible accessibilityLabel={`Quest done: ${d.title}`}>
+                    <Ionicons name="checkmark-circle" size={18} color={GP.mint} />
+                    <Text style={styles.daily}>{d.title}</Text>
+                  </View>
+                ))}
+                {reward.note ? <Text style={styles.note}>{reward.note}</Text> : null}
+              </View>
+            </GamePanel>
           </View>
-          <GameTitle text={reward.headline} size={34} edge={edgeOf(reward.win ? GP.sun : GP.slate)} />
-          <Text style={styles.place}>{reward.pointName}</Text>
+        </ScrollView>
+        <View style={[styles.footer, { paddingBottom: insets.bottom + 20 }]}>
+          {onShare ? <GameButton title="Share to a chat" color={GP.navy} onPress={onShare} style={{ marginBottom: 10 }} /> : null}
+          <GameButton
+            title="Back to the map"
+            color={GP.mint}
+            onPress={() => {
+              celebrate(reward);
+              onDone();
+            }}
+          />
+        </View>
+      </Animated.View>
+      {showLevelUp && after ? (
+        <Animated.View entering={FadeIn.duration(300)} exiting={FadeOut.duration(300)} style={StyleSheet.absoluteFill}>
+          <LevelUp level={after.level} rank={after.rank} rankUp={reward.rankUp} onDone={() => setShowLevelUp(false)} />
         </Animated.View>
-
-        <Animated.View entering={FadeInDown.delay(150)} style={styles.xpRow} accessibilityLabel={`${reward.xp} XP`}>
-          <Text style={styles.xp}>+{xp}</Text>
-          <Text style={styles.xpUnit}>XP</Text>
-          {reward.factionPoints > 0 ? <Text style={styles.fp}>+{reward.factionPoints} faction</Text> : null}
-          {reward.coins > 0 ? <Text style={styles.fp}>+{reward.coins} coins</Text> : null}
-        </Animated.View>
-
-        {reward.note ? <Text style={styles.note}>{reward.note}</Text> : null}
-
-        {reward.lines.length ? (
-          <Animated.View entering={FadeInDown.delay(250)} style={styles.lines}>
-            {reward.lines.map((l, i) => (
-              <View key={`${l.label}-${i}`} style={styles.line}>
-                <Text style={styles.lineLabel}>{l.label}</Text>
-                <Text style={styles.lineValue}>{[l.xp ? `+${l.xp} XP` : "", l.factionPoints ? `+${l.factionPoints} FP` : "", l.coins ? `+${l.coins} c` : ""].filter(Boolean).join("  ")}</Text>
-              </View>
-            ))}
-          </Animated.View>
-        ) : null}
-
-        {s ? (
-          <Animated.View entering={FadeInDown.delay(350)} style={styles.level}>
-            <View style={styles.levelHead}>
-              <Text style={styles.levelText}>Level {s.level}</Text>
-              <Text style={styles.rank}>{s.rank}</Text>
-            </View>
-            <ProgressBar value={s.into_level / Math.max(1, s.level_span)} height={12} />
-            <Text style={styles.toNext}>{s.max_level ? "Max level" : `${s.level_span - s.into_level} XP to level ${s.level + 1}`}</Text>
-          </Animated.View>
-        ) : null}
-
-        {reward.leveledUp && s ? (
-          <Animated.View entering={ZoomIn.delay(500).springify()} style={styles.banner}>
-            <Ionicons name="arrow-up-circle" size={26} color={GP.navy} />
-            <Text style={styles.bannerText}>{reward.rankUp ? `New rank: ${s.rank}!` : `Level ${s.level}!`}</Text>
-          </Animated.View>
-        ) : null}
-
-        {reward.dailiesCompleted.length ? (
-          <Animated.View entering={FadeInDown.delay(450)} style={styles.dailies}>
-            {reward.dailiesCompleted.map((d) => (
-              <View key={d} style={styles.daily}>
-                <Ionicons name="checkmark-done-circle" size={20} color={GP.mint} />
-                <Text style={styles.dailyText}>Daily complete: {d}</Text>
-              </View>
-            ))}
-          </Animated.View>
-        ) : null}
-
-        {reward.extras.map((e, i) =>
-          e.kind === "relic" && e.relic ? (
-            <Animated.View key={`${e.kind}-${i}`} entering={FadeInDown.delay(550 + i * 80)}>
-              <RelicDropExtra extra={e} />
-            </Animated.View>
-          ) : (
-          <Animated.View key={`${e.kind}-${i}`} entering={FadeInDown.delay(550 + i * 80)} style={styles.extra}>
-            <Ionicons name={e.kind === "relic" ? "diamond" : e.kind === "codex" ? "albums" : e.kind === "stamps" ? "ribbon" : "sparkles"} size={22} color={GP.sun} />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.extraTitle}>{e.title}</Text>
-              {e.subtitle ? <Text style={styles.extraSub}>{e.subtitle}</Text> : null}
-            </View>
-            {e.new ? <Text style={styles.newTag}>NEW</Text> : null}
-          </Animated.View>
-          ),
-        )}
-
-        {onShare ? <GameButton title="Share to a chat" color={GP.navy} onPress={onShare} style={{ marginTop: 8 }} /> : null}
-        <GameButton title="Continue" color={GP.sun} onPress={onDone} style={{ marginTop: 8 }} />
-      </ScrollView>
+      ) : null}
     </View>
   );
 }
 
+function extraIcon(x: RoamExtra): keyof typeof Ionicons.glyphMap {
+  const name = ioniconForSymbol(x.icon, x.kind);
+  return name in Ionicons.glyphMap ? (name as keyof typeof Ionicons.glyphMap) : "sparkles";
+}
+
 const styles = StyleSheet.create({
   root: { ...StyleSheet.absoluteFill },
-  content: { padding: 20, gap: 16 },
-  hero: { alignItems: "center", gap: 8 },
-  crest: { width: 92, height: 92, borderRadius: 46, alignItems: "center", justifyContent: "center", borderWidth: 4, borderColor: "#FFF" },
-  place: { fontFamily: GF.bold, fontSize: 15, color: "rgba(255,255,255,0.8)" },
-  xpRow: { flexDirection: "row", alignItems: "baseline", justifyContent: "center", gap: 6, flexWrap: "wrap" },
-  xp: { fontFamily: GF.display, fontSize: 56, color: GP.sun },
-  xpUnit: { fontFamily: GF.display, fontSize: 22, color: GP.sun },
-  fp: { fontFamily: GF.bold, fontSize: 15, color: "rgba(255,255,255,0.85)", marginLeft: 8 },
-  note: { fontFamily: GF.body, fontSize: 14, color: GP.ice, textAlign: "center" },
-  lines: { borderRadius: 18, backgroundColor: "rgba(255,255,255,0.08)", padding: 12, gap: 8 },
-  line: { flexDirection: "row", justifyContent: "space-between", gap: 8 },
-  lineLabel: { fontFamily: GF.body, fontSize: 14, color: "#FFF", flexShrink: 1 },
-  lineValue: { fontFamily: GF.bold, fontSize: 14, color: GP.sun },
-  level: { gap: 6 },
-  levelHead: { flexDirection: "row", justifyContent: "space-between" },
-  levelText: { fontFamily: GF.display, fontSize: 18, color: "#FFF" },
-  rank: { fontFamily: GF.bold, fontSize: 15, color: GP.ice },
-  toNext: { fontFamily: GF.regular, fontSize: 12, color: "rgba(255,255,255,0.7)" },
-  banner: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, padding: 12, borderRadius: 18, backgroundColor: GP.sun },
-  bannerText: { fontFamily: GF.display, fontSize: 20, color: GP.navy },
-  dailies: { gap: 6 },
-  daily: { flexDirection: "row", alignItems: "center", gap: 8 },
-  dailyText: { fontFamily: GF.bold, fontSize: 14, color: "#FFF" },
-  extra: { flexDirection: "row", alignItems: "center", gap: 10, padding: 12, borderRadius: 16, backgroundColor: "rgba(255,255,255,0.1)" },
-  extraTitle: { fontFamily: GF.display, fontSize: 15, color: "#FFF" },
-  extraSub: { fontFamily: GF.regular, fontSize: 12, color: "rgba(255,255,255,0.75)" },
-  newTag: { fontFamily: GF.display, fontSize: 11, color: GP.navy, backgroundColor: GP.sun, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, overflow: "hidden" },
+  column: { flex: 1 },
+  scroll: { flexGrow: 1, justifyContent: "center", gap: 18, paddingVertical: 12 },
+  panelWrap: { paddingHorizontal: 18 },
+  line: { flexDirection: "row", alignItems: "center", gap: 8 },
+  lineLabel: { flex: 1, fontFamily: GF.body, fontSize: 16, color: GP.ink },
+  lineXp: { fontFamily: GF.display, fontSize: 18, color: GP.skyDeep },
+  divider: { height: StyleSheet.hairlineWidth * 2, backgroundColor: "rgba(31,59,77,0.2)" },
+  levelRow: { flexDirection: "row", alignItems: "baseline", gap: 8 },
+  level: { fontFamily: GF.display, fontSize: 22, color: GP.ink },
+  rank: { fontFamily: GF.body, fontSize: 14, color: "rgba(31,59,77,0.6)" },
+  xpCount: { fontFamily: GF.display, fontSize: 22, color: GP.skyDeep, fontVariant: ["tabular-nums"] },
+  track: { height: 16, borderRadius: 8, backgroundColor: "rgba(31,59,77,0.12)", overflow: "hidden" },
+  fill: { height: 16, minWidth: 12, borderRadius: 8, overflow: "hidden" },
+  gloss: { position: "absolute", top: 2, left: 6, right: 6, height: 4, borderRadius: 2, backgroundColor: "rgba(255,255,255,0.3)" },
+  extra: { flexDirection: "row", alignItems: "center", gap: 10 },
+  extraIcon: { width: 34, height: 34, borderRadius: 17, backgroundColor: GP.skyDeep, alignItems: "center", justifyContent: "center" },
+  extraTitle: { fontFamily: GF.display, fontSize: 17, color: GP.ink },
+  extraSub: { fontFamily: GF.body, fontSize: 13, color: "rgba(31,59,77,0.6)" },
+  factionRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  faction: { fontFamily: GF.body, fontSize: 14, color: "rgba(31,59,77,0.7)" },
+  daily: { flex: 1, fontFamily: GF.body, fontSize: 14, color: GP.ink },
+  note: { fontFamily: GF.body, fontSize: 14, color: "rgba(31,59,77,0.7)" },
+  footer: { paddingHorizontal: 18, paddingTop: 8 },
 });
+
+/** One pay line: `.move(edge: .leading)` with spring(0.35, 0.7) when its turn comes. */
+function RewardLine({ label, amount, shown }: { label: string; amount: string; shown: boolean }) {
+  const t = useSharedValue(shown ? 1 : 0);
+  useEffect(() => {
+    if (shown) t.set(withSpring(1, LINE_SPRING));
+  }, [shown, t]);
+  const style = useAnimatedStyle(() => ({ opacity: Math.min(1, t.get() * 1.5), transform: [{ translateX: (1 - t.get()) * -60 }] }));
+  return (
+    <Animated.View
+      accessible={shown}
+      accessibilityElementsHidden={!shown}
+      importantForAccessibility={shown ? "yes" : "no-hide-descendants"}
+      accessibilityLabel={`${label}, ${amount.replace("+", "plus ")}`}
+      style={[styles.line, style]}>
+      <Text style={styles.lineLabel} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.8} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+        {label}
+      </Text>
+      <Text style={styles.lineXp} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+        {amount}
+      </Text>
+    </Animated.View>
+  );
+}

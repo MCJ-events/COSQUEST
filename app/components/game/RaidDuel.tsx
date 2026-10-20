@@ -6,6 +6,7 @@
 // costquest-ios Features/DuelFeature.swift (DuelView with .raid(point):
 // title "Boss raid · ...", raidPanel, the raid subtitle lines).
 import { Ionicons } from "@expo/vector-icons";
+import { useEffect } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -15,7 +16,7 @@ import { RAID_COLOR, raidDuelBlurb, raidDuelReward, raidHp, raidLineText } from 
 import { gameStore, useGame } from "@/features/game/runtime";
 import type { DuelOutcome, QuestPoint, RoamStanding } from "@/features/game/wire";
 
-import { GameButton } from "./kit";
+import { announce, GameButton, MAX_FONT_SCALE, pressFeedback } from "./kit";
 import { useMinuteClock } from "./RaidBanner";
 import { RaidCrown, RaidHPBar } from "./RaidParts";
 import type { RewardSummary } from "./Reward";
@@ -46,6 +47,10 @@ export function RaidDuelBriefing({
   // Values from the store's snapshot, never read off the singleton in render (React Compiler).
   const { me, fix, config } = useGame();
   const realm = config?.factions.find((f) => f.id === point.realm)?.name ?? gameStore.factionName(point.realm);
+  // iOS has no live regions: say a refusal when it arrives.
+  useEffect(() => {
+    if (problem) announce(problem);
+  }, [problem]);
   return (
     <View style={styles.root}>
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
@@ -53,7 +58,7 @@ export function RaidDuelBriefing({
           <RaidCrown size={280} color="rgba(0,0,0,0.12)" />
         </View>
         <View style={styles.topBar}>
-          <Pressable onPress={onClose} style={styles.iconButton} accessibilityRole="button" accessibilityLabel="Leave" hitSlop={8}>
+          <Pressable onPressIn={pressFeedback} onPress={onClose} style={styles.iconButton} accessibilityRole="button" accessibilityLabel="Leave" hitSlop={8}>
             <Ionicons name="close" size={22} color="#FFF" />
           </Pressable>
           <Text style={styles.placeChip} numberOfLines={1}>
@@ -63,7 +68,7 @@ export function RaidDuelBriefing({
         <View style={{ flex: 1 }} />
         <Animated.View entering={FadeIn.duration(400)} style={{ gap: 8 }}>
           <Text style={styles.kicker}>{raidLineText(point, now)}</Text>
-          <Text style={styles.boss} numberOfLines={3} adjustsFontSizeToFit>
+          <Text style={styles.boss} numberOfLines={3} adjustsFontSizeToFit maxFontSizeMultiplier={MAX_FONT_SCALE} accessibilityRole="header">
             {point.name}
           </Text>
           {hp ? <RaidHPBar hp={hp.left} maxHp={hp.max} /> : null}
@@ -92,9 +97,9 @@ export function RaidDuelBriefing({
 
 function Fact({ label, value, color }: { label: string; value: string; color: string }) {
   return (
-    <View style={styles.fact}>
-      <Text style={styles.factLabel}>{label}</Text>
-      <Text style={[styles.factValue, { color }]} numberOfLines={1} adjustsFontSizeToFit>
+    <View style={styles.fact} accessible accessibilityLabel={`${label.toLowerCase()}: ${value}`}>
+      <Text style={styles.factLabel} maxFontSizeMultiplier={MAX_FONT_SCALE}>{label}</Text>
+      <Text style={[styles.factValue, { color }]} numberOfLines={1} adjustsFontSizeToFit maxFontSizeMultiplier={MAX_FONT_SCALE}>
         {value}
       </Text>
     </View>

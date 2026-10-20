@@ -12,7 +12,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import Animated, { FadeIn, FadeInRight, ZoomIn } from "react-native-reanimated";
+import Animated, { FadeIn, FadeInRight, useReducedMotion, ZoomIn } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import {
@@ -33,12 +33,15 @@ import {
 import { gameStore, useGame } from "@/features/game/runtime";
 import type { QuestPoint } from "@/features/game/wire";
 
-import { Chip, GameButton, GameTitle } from "./kit";
+import { announce, Chip, GameButton, GameIconButton, GameTitle, MAX_FONT_SCALE, pressFeedback, withAlpha } from "./kit";
+import { GameBackdrop } from "./GameBackdrop";
 import { RaidCrown, RaidHPBar } from "./RaidParts";
+import { playSound } from "./sound";
 import { CHOICE_COLORS, edgeOf, GF, GP } from "./theme";
 import { useOnScreen } from "./useOnScreen";
 
-const BACKDROP = edgeOf(RAID_COLOR, 0.38);
+/** White type sits straight on the light GameBackdrop (as on iOS): a soft navy shadow keeps it legible. */
+const LEGIBLE = { textShadowColor: "rgba(30,58,76,0.45)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 } as const;
 
 /** The world changed (a fight paid, a lobby grew): HUD and points catch up (iOS store.featureChanged()). */
 function featureChanged() {
@@ -55,10 +58,13 @@ export default function RaidScreen({ point, parked, onClose }: { point: QuestPoi
       pointId: point.id,
       fix: () => gameStore.get().fix,
       onFinished: (s) => {
-        Haptics.notificationAsync(s.phase === "won" ? Haptics.NotificationFeedbackType.Success : Haptics.NotificationFeedbackType.Warning).catch(() => {});
+        // Swift: the sound only (fanfare for a win, whoosh otherwise), no haptic.
+        playSound(s.phase === "won" ? "fanfare" : "whoosh");
+        announce(s.phase === "won" ? `Victory! ${s.boss_name} is down.` : `Defeated. ${s.boss_name} got away.`);
         featureChanged();
       },
       onSwing: (hit) => {
+        playSound(hit ? "hit" : "tap");
         Haptics.notificationAsync(hit ? Haptics.NotificationFeedbackType.Success : Haptics.NotificationFeedbackType.Error).catch(() => {});
       },
     }),
@@ -87,14 +93,26 @@ export default function RaidScreen({ point, parked, onClose }: { point: QuestPoi
     onClose();
   };
 
+  // The hit/miss flash and the notice are moments: VoiceOver has no live regions.
+  useEffect(() => {
+    if (snap.lastHit !== null) announce(snap.lastHit ? `Hit! ${snap.lastDamage} damage` : "Miss");
+  }, [snap.swings]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (snap.notice) announce(snap.notice);
+  }, [snap.notice]);
+
+  const onStart = async () => {
+    await session.start();
+    if (session.get().state?.phase === "fight") playSound("whoosh");
+  };
+
   const s = snap.state;
   return (
     <View style={[styles.root, { paddingTop: insets.top + 8 }]}>
+      <GameBackdrop />
       <View style={styles.header}>
         <Chip text="Boss raid" color={RAID_COLOR} />
-        <Pressable onPress={leave} style={styles.close} accessibilityRole="button" accessibilityLabel="Leave the raid" hitSlop={8}>
-          <Ionicons name="close" size={22} color="#FFF" />
-        </Pressable>
+        <GameIconButton icon="close" color={withAlpha(GP.ink, 0.55)} diameter={40} onPress={leave} accessibilityLabel="Leave the raid" />
       </View>
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 30 }]}>
         {snap.failure ? (
@@ -105,15 +123,20 @@ export default function RaidScreen({ point, parked, onClose }: { point: QuestPoi
             <ActivityIndicator color="#FFF" size="large" />
             <Text style={styles.joiningText}>Joining the raid…</Text>
           </View>
-        ) : s.phase === "lobby" ? (
-          <Lobby s={s} busy={snap.busy} paused={away} onStart={() => void session.start()} />
-        ) : s.phase === "fight" ? (
-          <Fight snap={snap} s={s} paused={away} onAnswer={(q, c) => void session.answer(q, c)} />
         ) : (
-          <Result s={s} onLeave={leave} />
+          // Phase changes cross-fade: `.animation(.smooth(duration: 0.3), value: phase)`.
+          <Animated.View key={s.phase} entering={FadeIn.duration(300)}>
+            {s.phase === "lobby" ? (
+              <Lobby s={s} busy={snap.busy} paused={away} onStart={() => void onStart()} />
+            ) : s.phase === "fight" ? (
+              <Fight snap={snap} s={s} paused={away} onAnswer={(q, c) => void session.answer(q, c)} />
+            ) : (
+              <Result s={s} onLeave={leave} />
+            )}
+          </Animated.View>
         )}
         {snap.notice ? (
-          <Animated.View entering={FadeIn} style={styles.notice} accessibilityLiveRegion="polite">
+          <Animated.View entering={FadeIn} style={styles.notice} accessible>
             <Text style={styles.noticeText}>{snap.notice}</Text>
           </Animated.View>
         ) : null}
@@ -200,6 +223,7 @@ function Fight({ snap, s, paused, onAnswer }: { snap: RaidSnapshot; s: RaidState
     const t = setInterval(() => setNow(Date.now()), 250);
     return () => clearInterval(t);
   }, [paused]);
+  const reduced = useReducedMotion();
   const left = secondsLeft(snap, now);
   const i = currentQuestion(snap);
   return (
@@ -209,7 +233,7 @@ function Fight({ snap, s, paused, onAnswer }: { snap: RaidSnapshot; s: RaidState
       <View style={styles.spread}>
         <View style={styles.rowGap} accessible accessibilityLabel={`${left} seconds left`}>
           <Ionicons name="timer" size={24} color={left <= 10 ? GP.sun : "#FFF"} />
-          <Text style={[styles.clock, { color: left <= 10 ? GP.sun : "#FFF" }]}>{`${left} s`}</Text>
+          <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[styles.clock, { color: left <= 10 ? GP.sun : "#FFF" }]}>{`${left} s`}</Text>
         </View>
         <View style={styles.rowGap}>
           <Ionicons name="flash" size={20} color="#FFF" />
@@ -219,9 +243,9 @@ function Fight({ snap, s, paused, onAnswer }: { snap: RaidSnapshot; s: RaidState
       {snap.lastHit !== null ? (
         <Animated.Text
           key={snap.swings}
-          entering={ZoomIn.springify()}
+          entering={reduced ? FadeIn : ZoomIn.springify()}
           style={[styles.flash, { color: snap.lastHit ? GP.sun : "rgba(255,255,255,0.85)" }]}
-          accessibilityLiveRegion="assertive">
+          maxFontSizeMultiplier={MAX_FONT_SCALE}>
           {snap.lastHit ? `HIT! −${snap.lastDamage}` : "Miss!"}
         </Animated.Text>
       ) : null}
@@ -260,11 +284,11 @@ function Question({ q, index, total, onPick }: { q: RaidQuestion; index: number;
 function Choice({ text, index, onPress }: { text: string; index: number; onPress: () => void }) {
   const face = CHOICE_COLORS[index % CHOICE_COLORS.length];
   return (
-    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={text}>
+    <Pressable onPressIn={pressFeedback} onPress={onPress} accessibilityRole="button" accessibilityLabel={text}>
       {({ pressed }) => (
         <View style={[styles.choiceEdge, { backgroundColor: edgeOf(face), paddingBottom: pressed ? 1 : 5, marginTop: pressed ? 4 : 0 }]}>
           <View style={[styles.choice, { backgroundColor: face }]}>
-            <Text style={styles.choiceText} numberOfLines={2} adjustsFontSizeToFit>
+            <Text style={styles.choiceText} numberOfLines={2} adjustsFontSizeToFit maxFontSizeMultiplier={MAX_FONT_SCALE}>
               {text}
             </Text>
           </View>
@@ -291,6 +315,7 @@ function CrewDamage({ s }: { s: RaidState }) {
 }
 
 function Result({ s, onLeave }: { s: RaidState; onLeave: () => void }) {
+  const reduced = useReducedMotion();
   const won = s.phase === "won";
   const r = s.reward;
   const [names, setNames] = useState<Record<string, string>>({});
@@ -309,7 +334,7 @@ function Result({ s, onLeave }: { s: RaidState; onLeave: () => void }) {
   const answers = revealRows(s);
   return (
     <View style={styles.stack}>
-      <Animated.View entering={ZoomIn.springify()} style={{ alignItems: "center", paddingTop: 20 }}>
+      <Animated.View entering={reduced ? FadeIn : ZoomIn.springify()} style={{ alignItems: "center", paddingTop: 20 }}>
         <GameTitle text={won ? "VICTORY!" : "DEFEATED"} size={50} color={won ? GP.sun : "#FFF"} edge={won ? GP.sunDeep : GP.ink} />
       </Animated.View>
       <Text style={styles.outcome}>{won ? `${s.boss_name} is down!` : `${s.boss_name} got away.`}</Text>
@@ -357,16 +382,15 @@ function RewardRow({ icon, text, color }: { icon: keyof typeof Ionicons.glyphMap
 }
 
 const styles = StyleSheet.create({
-  root: { ...StyleSheet.absoluteFill, backgroundColor: BACKDROP },
+  root: { ...StyleSheet.absoluteFill, backgroundColor: GP.ice },
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 18, paddingBottom: 8 },
-  close: { width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(30,58,76,0.55)", alignItems: "center", justifyContent: "center" },
   content: { paddingHorizontal: 18, gap: 18 },
   joining: { alignItems: "center", gap: 14, paddingTop: 80 },
-  joiningText: { fontFamily: GF.display, fontSize: 20, color: "#FFF" },
+  joiningText: { ...LEGIBLE, fontFamily: GF.display, fontSize: 20, color: "#FFF" },
   stack: { gap: 16 },
   bossTitle: { alignItems: "center", gap: 4 },
-  realm: { fontFamily: GF.bold, fontSize: 15, color: "rgba(255,255,255,0.9)" },
-  white: { fontFamily: GF.bold, fontSize: 15, color: "#FFF", textAlign: "center" },
+  realm: { ...LEGIBLE, fontFamily: GF.bold, fontSize: 15, color: "rgba(255,255,255,0.9)" },
+  white: { ...LEGIBLE, fontFamily: GF.bold, fontSize: 15, color: "#FFF", textAlign: "center" },
   panel: { padding: 16, gap: 10, borderRadius: 20, backgroundColor: GP.cream },
   panelTitle: { fontFamily: GF.display, fontSize: 21, color: GP.ink },
   panelTitleSmall: { fontFamily: GF.display, fontSize: 18, color: GP.ink },
@@ -376,9 +400,9 @@ const styles = StyleSheet.create({
   rowGap: { flexDirection: "row", alignItems: "center", gap: 10 },
   player: { fontFamily: GF.body, fontSize: 17, color: GP.ink },
   you: { fontFamily: GF.display },
-  clock: { fontFamily: GF.display, fontSize: 24, fontVariant: ["tabular-nums"] },
-  damage: { fontFamily: GF.display, fontSize: 19, color: "#FFF" },
-  flash: { fontFamily: GF.display, fontSize: 26, textAlign: "center" },
+  clock: { ...LEGIBLE, fontFamily: GF.display, fontSize: 24, fontVariant: ["tabular-nums"] },
+  damage: { ...LEGIBLE, fontFamily: GF.display, fontSize: 19, color: "#FFF" },
+  flash: { ...LEGIBLE, fontFamily: GF.display, fontSize: 26, textAlign: "center" },
   kicker: { fontFamily: GF.display, fontSize: 15 },
   clue: { fontSize: 44, textAlign: "center" },
   question: { fontFamily: GF.display, fontSize: 22, color: GP.ink },
@@ -387,7 +411,7 @@ const styles = StyleSheet.create({
   choiceText: { fontFamily: GF.display, fontSize: 18, color: "#FFF", textAlign: "center" },
   crewName: { flex: 1, fontFamily: GF.body, fontSize: 15, color: GP.ink },
   crewDamage: { fontFamily: GF.display, fontSize: 17, color: RAID_COLOR },
-  outcome: { fontFamily: GF.display, fontSize: 22, color: "#FFF", textAlign: "center" },
+  outcome: { ...LEGIBLE, fontFamily: GF.display, fontSize: 22, color: "#FFF", textAlign: "center" },
   rewardText: { fontFamily: GF.display, fontSize: 19, color: GP.ink },
   revealQ: { fontFamily: GF.body, fontSize: 14, color: "rgba(30,58,76,0.75)" },
   revealA: { fontFamily: GF.bold, fontSize: 16, color: GP.grass },

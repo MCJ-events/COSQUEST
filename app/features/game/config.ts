@@ -33,18 +33,74 @@ export function isProductionServer(url: string): boolean {
 
 /**
  * The game's UI on this build:
- *   native  the costquest-ios SwiftUI game embedded by the native module (iOS only)
- *   rn      the shared React Native game in components/game (Android, and iOS behind the flag)
- * `EXPO_PUBLIC_GAME_UI` overrides; otherwise iOS stays native until the RN
- * screens are checked on a Mac, and everything else is rn.
+ *   rn      the shared React Native game in components/game: Android, and iOS
+ *           by default since the one-codebase work (docs/one-codebase.md)
+ *   native  the costquest-ios SwiftUI game embedded by the native module.
+ *           iOS only, kept compiling as the fallback: EXPO_PUBLIC_GAME_UI=native
+ * Anything else (unset, a typo) is rn; Android is always rn.
  */
 export type GameUi = "native" | "rn";
 
 export function resolveGameUi(os: string, raw: string | undefined | null): GameUi {
   const value = (raw ?? "").trim();
-  if (value === "rn") return "rn";
   if (value === "native" && os === "ios") return "native";
-  return os === "ios" ? "native" : "rn";
+  return "rn";
+}
+
+/**
+ * The game's screens, one id each, for the parity table (docs/one-codebase.md)
+ * and the per-screen native fallback below. The shared RN game draws all of
+ * them; a few are drawn by a thin native view inside the RN screen where only
+ * the platform can draw them (3D model, AR, Unity), see NATIVE_ISLANDS.
+ */
+export const GAME_SCREENS = [
+  "map",
+  "hud",
+  "pointSheet",
+  "encounter",
+  "duel",
+  "reward",
+  "onboarding",
+  "journal",
+  "warden",
+  "raids",
+  "live",
+  "steps",
+  "relics",
+  "forge",
+  "friends",
+  "rooms",
+  "more",
+] as const;
+export type GameScreen = (typeof GAME_SCREENS)[number];
+
+/**
+ * Native views the shared RN screens embed on iOS (ios/Embed/NativeIslands.swift,
+ * VenueEventsIsland.swift, ShrineIsland.swift),
+ * each with a 2D fallback the same screen draws when the island is off or absent:
+ *   forgeModel  the Forge weapon's turning 3D model (RealityKit + GLBMesh)   -> 2D art
+ *   unityDuel   the Guardian Duel drawn by Unity (DuelBridge)                -> 2D arena (same sim)
+ *   venueEvents the paid venue games in AR (ARKit, VenueEventsIsland.swift)  -> no Events tile
+ *   unityBattle the fantasy battle scene (BattleBridge)                       -> point fights stay duels
+ *   arShrine    the shrine on its RealityKit stage or through the camera
+ *               (ShrineIsland.swift)                                         -> 2D crystal
+ *   (FriendBeaconIsland.swift has no 2D twin: where it is missing the hold-phones card is not shown.)
+ */
+export const NATIVE_ISLANDS = ["forgeModel", "unityDuel", "unityBattle", "venueEvents", "arShrine"] as const;
+export type NativeIsland = (typeof NATIVE_ISLANDS)[number];
+
+/**
+ * Which islands this build turns OFF: `EXPO_PUBLIC_GAME_2D=forgeModel,unityDuel`
+ * (or `all`) draws those parts in 2D even where the native view exists, as a
+ * fallback if one misbehaves on a phone. Unknown names are ignored.
+ */
+export function resolveIslandsOff(raw: string | undefined | null): ReadonlySet<NativeIsland> {
+  const names = (raw ?? "")
+    .split(",")
+    .map((n) => n.trim())
+    .filter(Boolean);
+  if (names.includes("all")) return new Set(NATIVE_ISLANDS);
+  return new Set(NATIVE_ISLANDS.filter((n) => names.includes(n)));
 }
 
 /**

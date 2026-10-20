@@ -526,7 +526,12 @@ export const isTerminal = (status: string) => TERMINAL_STATUSES.includes(status)
 // ---------- the fight, as this player sees it (GameSession's state and handle()) ----------
 
 export type FeedEntry = { id: number; text: string; refusal: boolean; at: number };
-export type Moment = { id: number; text: string; tone: "good" | "bad" };
+/**
+ * `feel`: the haptic, as the AR field gives it (AR/FieldModel.swift): taking
+ * damage is a heavy impact, a pickup a medium one, everything else the
+ * success or error the tone says.
+ */
+export type Moment = { id: number; text: string; tone: "good" | "bad"; feel?: "heavy" | "medium" };
 export type HeldWeapon = { name: string; range: number | null; damage: number | null };
 
 export type FightState = {
@@ -580,9 +585,9 @@ function addFeed(s: FightState, text: string, refusal: boolean, now: number): Fi
   return { ...s, serial, feed: [{ id: serial, text, refusal, at: now }, ...s.feed].slice(0, FEED_MAX) };
 }
 
-function withMoment(s: FightState, text: string, tone: "good" | "bad"): FightState {
+function withMoment(s: FightState, text: string, tone: "good" | "bad", feel?: Moment["feel"]): FightState {
   const serial = s.serial + 1;
-  return { ...s, serial, moment: { id: serial, text, tone } };
+  return { ...s, serial, moment: feel ? { id: serial, text, tone, feel } : { id: serial, text, tone } };
 }
 
 function applyBoard(s: FightState, board: Scoreboard, now: number): FightState {
@@ -621,7 +626,7 @@ export function onLive(s: FightState, msg: LiveMessage, now: number): FightState
         if (delta < 0) {
           const who = nameOf(s, msg.actor);
           next = addFeed(next, `${cap(who)} took ${-delta} from you.`, true, now);
-          if (msg.kind === "hit") next = withMoment(next, `Hit by ${who}, ${delta}`, "bad");
+          if (msg.kind === "hit") next = withMoment(next, `Hit by ${who}, ${delta}`, "bad", "heavy");
         }
         return next;
       }
@@ -634,7 +639,7 @@ export function onLive(s: FightState, msg: LiveMessage, now: number): FightState
     case "downed":
       if (msg.player === s.playerId) {
         const next = addFeed({ ...s, state: "respawning", held: null }, `You were downed${msg.by ? ` by ${nameOf(s, msg.by)}` : ""}.`, true, now);
-        return withMoment(next, "You're down", "bad");
+        return withMoment(next, "You're down", "bad", "heavy");
       }
       return addFeed(s, `${cap(nameOf(s, msg.player))} went down.`, false, now);
     case "game": {
@@ -685,7 +690,7 @@ export function onVerdict(
     case "pickup": {
       const w = extra.weapon ?? null;
       next = { ...next, held: w };
-      next = withMoment(next, `Picked up the ${w?.name ?? "weapon"}`, "good");
+      next = withMoment(next, `Picked up the ${w?.name ?? "weapon"}`, "good", "medium");
       return addFeed(next, `Picked up the ${w?.name ?? "weapon"}.`, false, now);
     }
     case "hit": {

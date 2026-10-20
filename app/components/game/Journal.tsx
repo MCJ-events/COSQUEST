@@ -1,173 +1,358 @@
 // The player's journal: today's dailies and streak, the Codex (the cards
 // earned by playing points, sets, foils), and this week's faction war and
 // leaders. The server decides every card and every number; this draws them.
-// costquest-ios Features/CodexFeature.swift, Roam/RoamSheets.swift (dailies),
-// Roam/HallPage.swift (war, leaders).
+// costquest-ios Roam/RoamSheets.swift (DailiesSheet, DailyRow, WarSheet,
+// WarBar), Features/CodexFeature.swift (CodexSheet).
 import { Ionicons } from "@expo/vector-icons";
-import { useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import Animated, { SlideInDown, SlideOutDown } from "react-native-reanimated";
+import { useCallback, useEffect, useState } from "react";
+import { ActivityIndicator, BackHandler, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import {
+  countChips,
+  dailyFraction,
+  dailyLabel,
+  dailyProgressText,
+  endsIn,
+  groupByRealm,
+  orderSets,
+  realmTitle,
+  regionName,
+  resetTime,
+  setFraction,
+  setLabel,
+  showBestStreak,
+  streakLine,
+  streakTitle,
+  topPoints,
+  warBarWidth,
+  warFooter,
+} from "@/features/game/journal";
+import { hasDayToTell } from "@/features/game/recap";
 import { gameStore, useGame } from "@/features/game/runtime";
 import { unlocked } from "@/features/game/unlocks";
 import { startWardenModel, useWardenModel } from "@/features/game/wardenModel";
+import type { CodexCard, FactionWar } from "@/features/game/wire";
 
-import { wardenVoice } from "./wardenVoice";
-
-import { ProgressBar } from "./kit";
+import { CodexBar, XPBar } from "./Bars";
+import CodexDetail, { CodexTile } from "./CodexDetail";
+import { Chip, GameButton, GameHeading, GamePanel, MAX_FONT_SCALE, ProgressBar } from "./kit";
 import LiveStampCard from "./LiveStampCard";
+import { SheetHost } from "./Sheet";
+import { SheetHeader } from "./SheetHeader";
+import { SheetFrame } from "./SheetFrame";
 import StepsCard from "./StepsCard";
-import { GF, GP, realmColor, realmIcon, tierColor } from "./theme";
+import { GF, GP, realmColor, realmIcon } from "./theme";
+import { wardenVoice } from "./wardenVoice";
 
 type Tab = "today" | "codex" | "war";
 
-export default function Journal({ onClose, initial = "today" }: { onClose: () => void; initial?: Tab }) {
+const TITLES: Record<Tab, string> = { today: "Daily quests", codex: "Codex", war: "Faction war" };
+const TAB_NAMES: Record<Tab, string> = { today: "Dailies", codex: "Codex", war: "Faction war" };
+const DONE_FACE = "#DBF7E6";
+
+type JournalProps = {
+  onClose: () => void;
+  initial?: Tab;
+  /** Opens "Your day" (RecapSheet) when the player has played today. */
+  onRecap?: () => void;
+};
+
+export default function Journal(props: JournalProps) {
+  const insets = useSafeAreaInsets();
+  return (
+    <SheetHost band={{ top: insets.top + 40, height: 130 }} scrimLabel="Close the journal" onClose={props.onClose}>
+      {(close) => <JournalSheet {...props} close={close} />}
+    </SheetHost>
+  );
+}
+
+function JournalSheet({ close, initial = "today", onRecap }: JournalProps & { close: () => void }) {
   const insets = useSafeAreaInsets();
   const [tab, setTab] = useState<Tab>(initial);
   const { me, codex, war, leaders } = useGame();
   const [codexTried, setCodexTried] = useState(false);
+  const [codexFailed, setCodexFailed] = useState(false);
+  const [warTried, setWarTried] = useState(false);
+  const [picked, setPicked] = useState<CodexCard | null>(null);
+
+  const fetchCodex = useCallback(() => {
+    gameStore
+      .refreshCodex()
+      .then((got) => setCodexFailed(!got))
+      .finally(() => setCodexTried(true));
+  }, []);
+  const loadCodex = useCallback(() => {
+    setCodexFailed(false);
+    fetchCodex();
+  }, [fetchCodex]);
 
   useEffect(() => {
-    if (tab !== "codex") return;
-    gameStore.refreshCodex().finally(() => setCodexTried(true));
-  }, [tab]);
+    if (tab === "codex") fetchCodex();
+  }, [tab, fetchCodex]);
+  // Android Back closes an open card first, then the sheet (the root's handler).
+  useEffect(() => {
+    if (!picked) return;
+    const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+      setPicked(null);
+      return true;
+    });
+    return () => sub.remove();
+  }, [picked]);
   useEffect(() => {
     void gameStore.refreshMe();
-    void gameStore.refreshWar();
+    gameStore.refreshWar().finally(() => setWarTried(true));
   }, []);
 
   return (
-    <Animated.View entering={SlideInDown.springify().damping(20)} exiting={SlideOutDown.duration(180)} style={[styles.sheet, { top: insets.top + 40 }]}>
+    <SheetFrame top={insets.top + 40}>
       <View style={styles.head}>
-        <Text style={styles.title}>Journal</Text>
-        <Pressable onPress={onClose} style={styles.close} accessibilityRole="button" accessibilityLabel="Close the journal" hitSlop={8}>
-          <Ionicons name="close" size={20} color={GP.navy} />
-        </Pressable>
+        <SheetHeader title={TITLES[tab]} onClose={close} />
       </View>
       <View style={styles.tabs} accessibilityRole="tablist">
         {(["today", "codex", "war"] as Tab[]).map((t) => (
-          <Pressable key={t} onPress={() => setTab(t)} style={[styles.tab, tab === t && styles.tabOn]} accessibilityRole="tab" accessibilityState={{ selected: tab === t }}>
-            <Text style={[styles.tabText, tab === t && styles.tabTextOn]}>{t === "today" ? "Dailies" : t === "codex" ? "Codex" : "Faction war"}</Text>
+          <Pressable
+            key={t}
+            onPress={() => {
+              setPicked(null);
+              setTab(t);
+            }}
+            style={[styles.tab, tab === t && styles.tabOn]}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: tab === t }}>
+            <Text style={[styles.tabText, tab === t && styles.tabTextOn]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+              {TAB_NAMES[t]}
+            </Text>
           </Pressable>
         ))}
       </View>
-      <ScrollView contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + 24 }]}>
+      <ScrollView contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + 24 }]} showsVerticalScrollIndicator={false}>
         {tab === "today" ? (
-          <>
-            {me ? (
-              <View style={styles.streak}>
-                <Ionicons name="flame" size={28} color={me.streak.played_today ? GP.sun : GP.slate} />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.streakTitle}>{me.streak.days ? `${me.streak.days} day streak` : "Start a streak today"}</Text>
-                  <Text style={styles.muted}>{me.streak.played_today ? "Played today. Come back tomorrow." : "Play one point today to keep it."} Best {me.streak.best}.</Text>
-                </View>
-              </View>
-            ) : null}
-            <LiveStampCard me={me} />
-            {me?.dailies.map((d) => (
-              <View key={d.id} style={styles.daily} accessibilityLabel={`${d.title}: ${d.progress} of ${d.target}${d.done ? ", done" : ""}`}>
-                <Ionicons name={d.done ? "checkmark-circle" : "ellipse-outline"} size={24} color={d.done ? GP.mint : GP.slate} />
-                <View style={{ flex: 1, gap: 6 }}>
-                  <View style={styles.row}>
-                    <Text style={styles.dailyTitle}>{d.title}</Text>
-                    <Text style={styles.reward}>+{d.reward.xp} XP</Text>
-                  </View>
-                  <ProgressBar value={d.progress / Math.max(1, d.target)} color={d.done ? GP.mint : GP.sun} track={GP.track} />
-                  <Text style={styles.muted}>
-                    {Math.min(d.progress, d.target)} / {d.target}
-                  </Text>
-                </View>
-              </View>
-            ))}
-            {unlocked(me, "walking") ? <StepsCard /> : null}
-            <WardenCard />
-            {me?.today ? (
-              <Text style={styles.muted}>
-                Today: {me.today.points_played} points, {me.today.correct} won, {me.today.xp} XP{me.today.best_place ? `. Best: ${me.today.best_place}` : ""}.
-              </Text>
-            ) : null}
-          </>
-        ) : tab === "codex" ? (
-          !codexTried && !codex ? (
-            <ActivityIndicator color={GP.navy} style={{ marginTop: 40 }} />
-          ) : codex ? (
+          me ? (
             <>
-              <View style={styles.row}>
-                <Text style={styles.big}>{codex.counts.total} cards</Text>
-                <Text style={styles.muted}>{codex.counts.foils} foil</Text>
-              </View>
-              {codex.sets.map((s) => (
-                <View key={s.id} style={{ gap: 4 }}>
-                  <View style={styles.row}>
-                    <Text style={styles.setTitle}>{s.title}</Text>
-                    <Text style={styles.muted}>
-                      {s.progress}/{s.target}
-                    </Text>
+              <GamePanel>
+                <View style={styles.streakRow} accessible accessibilityLabel={`${streakTitle(me.streak)}. ${streakLine(me.streak)}${showBestStreak(me.streak) ? ` Best ${me.streak.best}.` : ""}`}>
+                  <Ionicons name="flame" size={34} color={me.streak.days > 0 ? GP.sunDeep : "#999999"} />
+                  <View style={{ flex: 1, gap: 2 }}>
+                    <Text style={styles.streakTitle}>{streakTitle(me.streak)}</Text>
+                    <Text style={styles.streakLine}>{streakLine(me.streak)}</Text>
                   </View>
-                  <ProgressBar value={s.progress / Math.max(1, s.target)} color={s.done ? GP.mint : GP.skyDeep} track={GP.track} />
-                </View>
-              ))}
-              <View style={styles.grid}>
-                {codex.cards.map((c) => (
-                  <View key={c.point_id} style={[styles.card, { borderColor: tierColor(c.tier) }]} accessibilityLabel={`${c.point_name}, ${c.tier}${c.foil ? ", foil" : ""}, played ${c.times} times`}>
-                    <View style={[styles.cardArt, { backgroundColor: realmColor(c.realm) }]}>
-                      <Ionicons name={realmIcon(c.realm)} size={26} color="#FFF" />
-                      {c.foil ? <Ionicons name="sparkles" size={14} color={GP.sun} style={styles.foil} /> : null}
+                  {showBestStreak(me.streak) ? (
+                    <View style={{ alignItems: "center" }}>
+                      <Text style={styles.bestNum}>{me.streak.best}</Text>
+                      <Text style={styles.bestLabel}>best</Text>
                     </View>
-                    <Text style={styles.cardName} numberOfLines={2}>
-                      {c.point_name}
-                    </Text>
-                    <Text style={styles.cardMeta}>×{c.times}</Text>
+                  ) : null}
+                </View>
+              </GamePanel>
+              <LiveStampCard me={me} />
+              {me.dailies.map((d) => (
+                <GamePanel key={d.id} face={d.done ? DONE_FACE : GP.cream}>
+                  <View accessible accessibilityLabel={dailyLabel(d)} style={{ gap: 10 }}>
+                    <View style={styles.dailyHead}>
+                      <Ionicons name={d.done ? "checkmark-circle" : "locate"} size={24} color={d.done ? GP.mint : GP.skyDeep} />
+                      <Text style={styles.dailyTitle} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+                        {d.title}
+                      </Text>
+                      <Text style={styles.dailyXp} maxFontSizeMultiplier={MAX_FONT_SCALE}>{`+${d.reward.xp} XP`}</Text>
+                    </View>
+                    <XPBar progress={dailyFraction(d)} />
+                    <Text style={styles.dailyLine}>{dailyProgressText(d)}</Text>
                   </View>
-                ))}
-              </View>
-              {!codex.cards.length ? <Text style={styles.muted}>Play a Quest Point to earn your first card.</Text> : null}
+                </GamePanel>
+              ))}
+              {unlocked(me, "walking") ? <StepsCard /> : null}
+              <Text style={styles.footnote}>{`New quests every day at ${resetTime()}.`}</Text>
+              <WardenCard />
+              {me.today && hasDayToTell(me) && onRecap ? (
+                <GameButton title="Your day" color={GP.sun} onPress={onRecap} />
+              ) : me.today && !onRecap ? (
+                <Text style={styles.footnote}>
+                  Today: {me.today.points_played} points, {me.today.correct} won, {me.today.xp} XP{me.today.best_place ? `. Best: ${me.today.best_place}` : ""}.
+                </Text>
+              ) : null}
             </>
           ) : (
-            <Text style={styles.muted}>The Codex is not available right now.</Text>
+            <ActivityIndicator color={GP.navy} style={{ marginTop: 40 }} />
           )
+        ) : tab === "codex" ? (
+          <CodexBody
+            codex={codex}
+            tried={codexTried}
+            failed={codexFailed}
+            onRetry={loadCodex}
+            onPick={setPicked}
+          />
         ) : (
-          <>
-            {war ? (
-              <>
-                <Text style={styles.big}>This week in {war.region}</Text>
-                {war.standings.map((s, i) => (
-                  <View key={s.faction} style={{ gap: 4 }}>
-                    <View style={styles.row}>
-                      <Text style={[styles.setTitle, me?.faction === s.faction && { color: realmColor(s.faction) }]}>
-                        {i + 1}. {s.name}
-                        {me?.faction === s.faction ? " (you)" : ""}
-                      </Text>
-                      <Text style={styles.muted}>{s.points} pts</Text>
-                    </View>
-                    <ProgressBar value={s.share} color={realmColor(s.faction)} track={GP.track} />
-                  </View>
-                ))}
-              </>
-            ) : (
-              <Text style={styles.muted}>No war data here yet.</Text>
-            )}
-            {leaders?.leaders.length ? (
-              <View style={{ gap: 6, marginTop: 10 }}>
-                <Text style={styles.big}>Leaders</Text>
-                {leaders.leaders.slice(0, 10).map((l) => (
-                  <View key={l.place} style={[styles.leader, l.you && { backgroundColor: "rgba(242,153,46,0.15)" }]}>
-                    <Text style={styles.place}>{l.place}</Text>
-                    <Text style={styles.leaderName} numberOfLines={1}>
-                      {l.handle}
-                    </Text>
-                    <Text style={styles.muted}>
-                      Lv {l.level} · {l.week_xp} XP
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            ) : null}
-          </>
+          <WarBody war={war} leaders={leaders} mine={me?.faction ?? null} tried={warTried} />
         )}
       </ScrollView>
-    </Animated.View>
+      {picked ? <CodexDetail card={picked} onClose={() => setPicked(null)} /> : null}
+    </SheetFrame>
+  );
+}
+
+// ---------- the Codex ----------
+
+function CodexBody({
+  codex,
+  tried,
+  failed,
+  onRetry,
+  onPick,
+}: {
+  codex: ReturnType<typeof useGame>["codex"];
+  tried: boolean;
+  failed: boolean;
+  onRetry: () => void;
+  onPick: (card: CodexCard) => void;
+}) {
+  const [gridWidth, setGridWidth] = useState(0);
+  if (codex) {
+    const tile = gridWidth > 0 ? Math.floor((gridWidth - 20) / 3) : 0;
+    return (
+      <>
+        <View style={styles.chips}>
+          {countChips(codex.counts).map((c, i) => (
+            <Chip key={c} text={c} color={i === 0 ? GP.skyDeep : GP.sunDeep} />
+          ))}
+        </View>
+        {codex.sets.length ? (
+          <GamePanel>
+            <View style={{ gap: 12 }}>
+              <Text style={styles.panelTitle}>Sets</Text>
+              {orderSets(codex.sets).map((s) => (
+                <View key={s.id} accessible accessibilityLabel={setLabel(s)} style={{ gap: 4 }}>
+                  <View style={styles.setRow}>
+                    {s.done ? <Ionicons name="checkmark-circle" size={18} color={GP.mint} /> : null}
+                    <Text style={styles.setTitle} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+                      {s.title}
+                    </Text>
+                    <Text style={styles.setCount}>{`${s.progress}/${s.target}`}</Text>
+                  </View>
+                  <CodexBar progress={setFraction(s)} done={s.done} />
+                </View>
+              ))}
+            </View>
+          </GamePanel>
+        ) : null}
+        {codex.cards.length === 0 ? (
+          <GamePanel>
+            <View style={{ alignItems: "center", gap: 10 }}>
+              <Ionicons name="albums" size={40} color={GP.sunDeep} />
+              <Text style={styles.emptyText}>Play a Quest Point to earn your first card.</Text>
+            </View>
+          </GamePanel>
+        ) : (
+          groupByRealm(codex.cards).map((g) => {
+            const title = realmTitle(g);
+            return (
+              <View key={g.realm} style={{ gap: 10 }}>
+                <View accessible accessibilityRole="header" accessibilityLabel={`${title}, ${g.cards.length}`} style={styles.realmHead}>
+                  <View style={[styles.realmDot, { backgroundColor: realmColor(g.realm) }]}>
+                    <Ionicons name={realmIcon(g.realm)} size={18} color="#FFFFFF" />
+                  </View>
+                  <GameHeading text={title} size={24} />
+                  <Text style={styles.realmCount}>{g.cards.length}</Text>
+                </View>
+                <View style={styles.grid} onLayout={(e) => setGridWidth(e.nativeEvent.layout.width)}>
+                  {tile > 0
+                    ? g.cards.map((c) => <CodexTile key={c.point_id} card={c} width={tile} onPress={() => onPick(c)} />)
+                    : null}
+                </View>
+              </View>
+            );
+          })
+        )}
+      </>
+    );
+  }
+  if (failed || tried) {
+    return (
+      <GamePanel>
+        <View style={{ alignItems: "center", gap: 12 }}>
+          <Text style={styles.emptyText}>{"Couldn't load your Codex."}</Text>
+          <GameButton title="Try again" size="small" color={GP.sky} onPress={onRetry} />
+        </View>
+      </GamePanel>
+    );
+  }
+  return <ActivityIndicator color={GP.navy} style={{ marginTop: 40 }} />;
+}
+
+// ---------- the war ----------
+
+function WarBody({ war, leaders, mine, tried }: { war: FactionWar | null; leaders: ReturnType<typeof useGame>["leaders"]; mine: string | null; tried: boolean }) {
+  return (
+    <>
+      {war ? (
+        <GamePanel>
+          <View style={{ gap: 12 }}>
+            <View style={styles.warHead}>
+              <Text style={styles.warRegion} maxFontSizeMultiplier={MAX_FONT_SCALE} accessibilityRole="header">
+                {regionName(war.region)}
+              </Text>
+              <Text style={styles.warEnds}>{endsIn(war.ends_at)}</Text>
+            </View>
+            {war.standings.map((s) => (
+              <WarBar key={s.faction} standing={s} top={topPoints(war)} mine={s.faction === mine} />
+            ))}
+            <Text style={styles.warFooter}>{warFooter(war)}</Text>
+          </View>
+        </GamePanel>
+      ) : tried ? (
+        <Text style={styles.footnote}>No war data here yet.</Text>
+      ) : (
+        <ActivityIndicator color={GP.navy} style={{ marginTop: 40 }} />
+      )}
+      {leaders?.leaders.length ? (
+        <GamePanel>
+          <View style={{ gap: 10 }}>
+            <Text style={styles.panelTitle} accessibilityRole="header">
+              Top players this week
+            </Text>
+            {leaders.leaders.slice(0, 10).map((l) => (
+              <View
+                key={l.place}
+                accessible
+                accessibilityLabel={`${l.place}, ${l.handle}${l.you ? ", you" : ""}, level ${l.level}, ${l.week_xp} XP`}
+                style={[styles.leader, l.you && { backgroundColor: "rgba(242,153,46,0.18)" }]}>
+                <Text style={[styles.place, { color: l.place <= 3 ? GP.sunDeep : "rgba(31,59,77,0.5)" }]}>{l.place}</Text>
+                <View style={[styles.dot, { backgroundColor: realmColor(l.faction) }]} />
+                <Text style={styles.leaderName} numberOfLines={1} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+                  {l.handle}
+                </Text>
+                <Text style={styles.leaderLevel}>{`Lv ${l.level}`}</Text>
+                <View style={{ flex: 1 }} />
+                <Text style={styles.leaderXp}>{`${l.week_xp} XP`}</Text>
+              </View>
+            ))}
+          </View>
+        </GamePanel>
+      ) : null}
+    </>
+  );
+}
+
+/** WarBar: a house against the top one, never thinner than a nub of 10. */
+function WarBar({ standing, top, mine }: { standing: FactionWar["standings"][number]; top: number; mine: boolean }) {
+  const [track, setTrack] = useState(0);
+  const colour = realmColor(standing.faction);
+  return (
+    <View accessible accessibilityLabel={`${standing.name}${mine ? ", you" : ""}, ${standing.points} points`} style={{ gap: 4 }}>
+      <View style={styles.warRow}>
+        <Ionicons name={realmIcon(standing.faction)} size={17} color={colour} />
+        <Text style={styles.warName} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+          {standing.name}
+        </Text>
+        {mine ? <Chip text="You" color={colour} /> : null}
+        <View style={{ flex: 1 }} />
+        <Text style={styles.warName}>{standing.points}</Text>
+      </View>
+      <View style={styles.warTrack} onLayout={(e) => setTrack(e.nativeEvent.layout.width)}>
+        <View style={{ width: Math.min(track, warBarWidth(standing.points, top, track)), height: 12, borderRadius: 6, backgroundColor: colour }} />
+      </View>
+    </View>
   );
 }
 
@@ -192,55 +377,73 @@ function WardenCard() {
                   ? `${model.label} is writing lines here.${model.tokensPerSecond ? ` ${model.tokensPerSecond.toFixed(1)} words a second, first word in ${((model.firstTokenMs ?? 0) / 1000).toFixed(1)} s.` : ""} ${model.written} written, ${model.rejected} rejected.`
                   : `The model could not start: ${model.error ?? "unknown"}. The written lines speak meanwhile.`;
   return (
-    <View style={styles.streak}>
-      <Ionicons name="eye" size={26} color={GP.skyDeep} />
-      <View style={{ flex: 1, gap: 6 }}>
-        <Text style={styles.streakTitle}>{"The Warden's voice"}</Text>
-        <Text style={styles.muted}>{text}</Text>
-        {model.phase === "downloading" ? <ProgressBar value={model.progress ?? 0} color={GP.skyDeep} track={GP.track} /> : null}
-        {model.phase === "off" || model.phase === "failed" ? (
-          <Pressable
-            onPress={() => startWardenModel((w) => wardenVoice.setWriter(w))}
-            style={styles.wardenButton}
-            accessibilityRole="button"
-            accessibilityLabel="Download the Warden's model">
-            <Text style={styles.wardenButtonText}>{model.phase === "failed" ? "Try again" : "Download"}</Text>
-          </Pressable>
-        ) : null}
+    <GamePanel padding={14}>
+      <View style={styles.wardenRow}>
+        <Ionicons name="eye" size={26} color={GP.skyDeep} />
+        <View style={{ flex: 1, gap: 6 }}>
+          <Text style={styles.wardenTitle}>{"The Warden's voice"}</Text>
+          <Text style={styles.wardenText}>{text}</Text>
+          {model.phase === "downloading" ? <ProgressBar value={model.progress ?? 0} color={GP.skyDeep} track={GP.track} /> : null}
+          {model.phase === "off" || model.phase === "failed" ? (
+            <GameButton
+              title={model.phase === "failed" ? "Try again" : "Download"}
+              size="small"
+              color={GP.skyDeep}
+              accessibilityLabel="Download the Warden's model"
+              onPress={() => startWardenModel((w) => wardenVoice.setWriter(w))}
+              style={{ alignSelf: "flex-start" }}
+            />
+          ) : null}
+        </View>
       </View>
-    </View>
+    </GamePanel>
   );
 }
 
+const INK60 = "rgba(31,59,77,0.6)";
+
 const styles = StyleSheet.create({
-  wardenButton: { alignSelf: "flex-start", paddingHorizontal: 14, height: 32, borderRadius: 16, backgroundColor: GP.skyDeep, justifyContent: "center" },
-  wardenButtonText: { fontFamily: GF.bold, fontSize: 13, color: "#FFF" },
-  sheet: { position: "absolute", left: 0, right: 0, bottom: 0, borderTopLeftRadius: 28, borderTopRightRadius: 28, backgroundColor: GP.cream, elevation: 18 },
-  head: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 18, paddingTop: 16 },
-  title: { fontFamily: GF.display, fontSize: 26, color: GP.ink },
-  close: { width: 36, height: 36, borderRadius: 18, backgroundColor: GP.ice, alignItems: "center", justifyContent: "center" },
-  tabs: { flexDirection: "row", gap: 6, paddingHorizontal: 16, paddingVertical: 10 },
-  tab: { paddingHorizontal: 14, height: 34, borderRadius: 17, backgroundColor: GP.ice, justifyContent: "center" },
-  tabOn: { backgroundColor: GP.navy },
-  tabText: { fontFamily: GF.bold, fontSize: 13, color: GP.ink },
-  tabTextOn: { color: "#FFF" },
-  body: { paddingHorizontal: 16, gap: 14 },
-  streak: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14, borderRadius: 18, backgroundColor: "#FFF" },
-  streakTitle: { fontFamily: GF.display, fontSize: 17, color: GP.ink },
-  daily: { flexDirection: "row", gap: 12, padding: 14, borderRadius: 18, backgroundColor: "#FFF" },
-  row: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 8 },
-  dailyTitle: { fontFamily: GF.bold, fontSize: 15, color: GP.ink, flexShrink: 1 },
-  reward: { fontFamily: GF.display, fontSize: 13, color: GP.sunDeep },
-  muted: { fontFamily: GF.body, fontSize: 13, color: GP.mist },
-  big: { fontFamily: GF.display, fontSize: 19, color: GP.ink },
-  setTitle: { fontFamily: GF.bold, fontSize: 14, color: GP.ink },
+  head: { paddingHorizontal: 18 },
+  tabs: { flexDirection: "row", gap: 6, paddingHorizontal: 16, paddingVertical: 8 },
+  tab: { paddingHorizontal: 14, minHeight: 36, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.6)", justifyContent: "center" },
+  tabOn: { backgroundColor: "#FFFFFF", shadowColor: GP.navy, shadowOpacity: 0.12, shadowRadius: 6, shadowOffset: { width: 0, height: 3 }, elevation: 2 },
+  tabText: { fontFamily: GF.display, fontSize: 14, letterSpacing: 0.4, color: GP.mist },
+  tabTextOn: { color: GP.ink },
+  body: { paddingHorizontal: 18, paddingTop: 6, gap: 16 },
+  streakRow: { flexDirection: "row", alignItems: "center", gap: 14 },
+  streakTitle: { fontFamily: GF.display, fontSize: 24, color: GP.ink },
+  streakLine: { fontFamily: GF.regular, fontSize: 14, color: "rgba(31,59,77,0.7)" },
+  bestNum: { fontFamily: GF.display, fontSize: 20, color: INK60 },
+  bestLabel: { fontFamily: GF.body, fontSize: 12, color: INK60 },
+  dailyHead: { flexDirection: "row", alignItems: "center", gap: 8 },
+  dailyTitle: { flex: 1, fontFamily: GF.display, fontSize: 20, color: GP.ink },
+  dailyXp: { fontFamily: GF.display, fontSize: 16, color: GP.skyDeep },
+  dailyLine: { fontFamily: GF.body, fontSize: 14, color: "rgba(31,59,77,0.65)" },
+  footnote: { fontFamily: GF.body, fontSize: 14, color: GP.ink, paddingHorizontal: 4 },
+  chips: { flexDirection: "row", gap: 10, flexWrap: "wrap" },
+  panelTitle: { fontFamily: GF.display, fontSize: 22, color: GP.ink },
+  setRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  setTitle: { flex: 1, fontFamily: GF.bold, fontSize: 15, color: GP.ink },
+  setCount: { fontFamily: GF.bold, fontSize: 14, color: "rgba(31,59,77,0.7)" },
+  emptyText: { fontFamily: GF.bold, fontSize: 17, color: GP.ink, textAlign: "center" },
+  realmHead: { flexDirection: "row", alignItems: "center", gap: 8 },
+  realmDot: { width: 34, height: 34, borderRadius: 17, alignItems: "center", justifyContent: "center" },
+  realmCount: { fontFamily: GF.display, fontSize: 18, color: "rgba(31,59,77,0.7)" },
   grid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-  card: { width: "30%", padding: 8, borderRadius: 14, borderWidth: 2, backgroundColor: "#FFF", gap: 4 },
-  cardArt: { height: 56, borderRadius: 10, alignItems: "center", justifyContent: "center" },
-  foil: { position: "absolute", top: 4, right: 4 },
-  cardName: { fontFamily: GF.bold, fontSize: 11, color: GP.ink },
-  cardMeta: { fontFamily: GF.regular, fontSize: 10, color: GP.mist },
-  leader: { flexDirection: "row", alignItems: "center", gap: 10, padding: 8, borderRadius: 12 },
-  place: { fontFamily: GF.display, fontSize: 15, color: GP.ink, width: 24 },
-  leaderName: { flex: 1, fontFamily: GF.bold, fontSize: 14, color: GP.ink },
+  warHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
+  warRegion: { flexShrink: 1, fontFamily: GF.display, fontSize: 24, color: GP.ink },
+  warEnds: { fontFamily: GF.body, fontSize: 14, color: "rgba(31,59,77,0.65)" },
+  warRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  warName: { fontFamily: GF.display, fontSize: 17, color: GP.ink },
+  warTrack: { height: 12, borderRadius: 6, backgroundColor: "rgba(31,59,77,0.1)", overflow: "hidden" },
+  warFooter: { fontFamily: GF.regular, fontSize: 14, color: "rgba(31,59,77,0.7)" },
+  leader: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 2 },
+  place: { width: 28, fontFamily: GF.display, fontSize: 18, textAlign: "center" },
+  dot: { width: 12, height: 12, borderRadius: 6 },
+  leaderName: { flexShrink: 1, fontFamily: GF.body, fontSize: 16, color: GP.ink },
+  leaderLevel: { fontFamily: GF.body, fontSize: 13, color: "rgba(31,59,77,0.5)" },
+  leaderXp: { fontFamily: GF.display, fontSize: 16, color: GP.ink },
+  wardenRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+  wardenTitle: { fontFamily: GF.display, fontSize: 17, color: GP.ink },
+  wardenText: { fontFamily: GF.body, fontSize: 13, color: GP.mist },
 });

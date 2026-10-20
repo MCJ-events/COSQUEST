@@ -26,6 +26,7 @@ import type {
   RoamHint,
   RoamLeaders,
   RoamMe,
+  RoamSpin,
   RoamVerdict,
 } from "./wire.ts";
 import { isCooling, pointPlaysAsDuel } from "./wire.ts";
@@ -94,6 +95,13 @@ export type GameStoreDeps = {
   storage: KeyStorage;
   /** 32 random bytes as hex (expo-crypto in the app, node:crypto in tests). */
   randomSeedHex: () => string;
+  /**
+   * iOS: the native game's own key (Keychain, Game/Net/DeviceIdentity.swift),
+   * the same 32-byte Ed25519 seed. Adopted once when this phone has no RN key
+   * yet, so a player who never signed in keeps their progress when iOS moves
+   * from the SwiftUI game to this one. Null: nothing to adopt.
+   */
+  legacySeedHex?: () => Promise<string | null>;
   fetch?: ConstructorParameters<typeof GameClient>[0]["fetch"];
   now?: () => number;
   log?: (message: string) => void;
@@ -127,7 +135,8 @@ export function createGameStore(deps: GameStoreDeps) {
   async function deviceIdentity(): Promise<Identity> {
     let seed = await deps.storage.get(DEVICE_KEY_STORE);
     if (!seed || !SEED_HEX.test(seed)) {
-      seed = deps.randomSeedHex();
+      const legacy = (await deps.legacySeedHex?.().catch(() => null))?.trim().toLowerCase() ?? null;
+      seed = legacy && SEED_HEX.test(legacy) ? legacy : deps.randomSeedHex();
       await deps.storage.set(DEVICE_KEY_STORE, seed);
     }
     return new Identity(seed, "device");
@@ -362,10 +371,11 @@ export function createGameStore(deps: GameStoreDeps) {
 
     // ---------- playing a duel point ----------
 
-    async duelStart(p: QuestPoint): Promise<DuelStart> {
+    /** `battle`: this build can play the fantasy battle scene (DuelModel.start: body.battle on point fights). */
+    async duelStart(p: QuestPoint, opts?: { battle?: boolean }): Promise<DuelStart> {
       const here = state.fix;
       if (!here) throw new GameError("http", "Waiting for your location.");
-      return client.duelStart({ mode: "point", target: p.id, lat: here.lat, lng: here.lng, accuracy_m: here.accuracy });
+      return client.duelStart({ mode: "point", target: p.id, lat: here.lat, lng: here.lng, accuracy_m: here.accuracy, battle: opts?.battle });
     },
 
     async duelFinish(start: DuelStart, finished: DuelFinished): Promise<DuelOutcome> {
@@ -374,6 +384,16 @@ export function createGameStore(deps: GameStoreDeps) {
       void store.refreshMe();
       void store.refreshPoints(true);
       return out;
+    },
+
+    /** Spin: the one-second verb. Items fly into the bag, and the point rests (RoamStore.spin). */
+    async spin(p: QuestPoint): Promise<RoamSpin> {
+      const here = state.fix;
+      if (!here) throw new GameError("http", "Waiting for your location.");
+      const r = await client.spin(p.id, here.lat, here.lng, here.accuracy);
+      set({ points: state.points.map((x) => (x.id === p.id ? { ...x, extra: { ...(x.extra ?? {}), spin_ready_at: r.spin_ready_at } } : x)) });
+      void store.refreshMe();
+      return r;
     },
 
     /** The point cools for this player: show it at once, not on the next fetch. Starters go. */

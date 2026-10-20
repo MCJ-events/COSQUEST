@@ -21,6 +21,7 @@ import type {
   QuestPoint,
   QuestPoints,
   Relic,
+  RoamSpin,
   RoamAnswer,
   RoamAttempt,
   RoamBag,
@@ -203,6 +204,14 @@ export class GameClient {
     return { ...got, points: got.points.map(normalisePoint) };
   }
 
+  /** Spin a point in reach: items, a little XP, then 5 minutes' rest. Not retried (a second spin would be refused). */
+  async spin(pointId: string, lat: number, lng: number, accuracy: number): Promise<RoamSpin> {
+    return this.request("POST", "v1/roam/items/spin", {
+      body: { device_key: this.deviceKey(), point_id: pointId, lat, lng, accuracy_m: Math.min(5000, Math.max(0, accuracy)) },
+      signed: true,
+    });
+  }
+
   async roamMe(): Promise<RoamMe> {
     const key = this.deviceKey();
     return this.retrying(() => this.request("GET", "v1/roam/me", { query: { device_key: key } }));
@@ -296,16 +305,28 @@ export class GameClient {
     lat?: number | null;
     lng?: number | null;
     accuracy_m?: number | null;
+    /** A Quest Run's Forbidden Zone: stake half the score on this fight. */
+    stake?: boolean;
+    /** This build can play the fantasy battle scene: a point fight may come back as kind "battle" (server knob point_battle). */
+    battle?: boolean;
   }): Promise<DuelStart> {
     // Absent rather than null: the server's accuracy_m is a number with a default.
     const payload: Record<string, unknown> = { device_key: this.deviceKey(), mode: body.mode, target: body.target };
+    if (body.battle) payload.battle = true;
     if (body.lat != null && body.lng != null) {
       payload.lat = body.lat;
       payload.lng = body.lng;
     }
     if (body.accuracy_m != null) payload.accuracy_m = Math.min(5000, Math.max(0, body.accuracy_m));
+    if (body.stake !== undefined) payload.stake = body.stake;
     const text = await this.request<string>("POST", "v1/duel/start", { body: payload, signed: true, raw: true });
     return parseDuelStart(text);
+  }
+
+  /** How this player's hero fights when a rival sieges a point they hold (PUT v1/duel/stance). */
+  async setStance(stance: string): Promise<string> {
+    const r = await this.request<{ stance: string }>("PUT", "v1/duel/stance", { body: { device_key: this.deviceKey(), stance }, signed: true });
+    return r.stance;
   }
 
   /** Idempotent on duel_id: a lost reply is asked again and answered with the first verdict. */

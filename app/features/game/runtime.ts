@@ -1,6 +1,7 @@
 // The React Native game's one store, wired to the phone: the secure store for
 // the phone's own key, expo-crypto for randomness, expo-location for the fix.
 // (store.ts is the pure part; this file is the glue, so it is not unit tested.)
+import { requireOptionalNativeModule } from "expo";
 import * as Crypto from "expo-crypto";
 import * as Location from "expo-location";
 import * as SecureStore from "expo-secure-store";
@@ -36,10 +37,18 @@ function randomSeedHex(): string {
   return Array.from(Crypto.getRandomBytes(32), (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+/** iOS: the SwiftUI game's Keychain key, for players moving to this game (CostQuestGameModule.swift). */
+async function legacySeedHex(): Promise<string | null> {
+  if (Platform.OS !== "ios") return null;
+  const native = requireOptionalNativeModule<{ readLegacyDeviceKey?: () => Promise<string | null> }>("CostQuestGame");
+  return (await native?.readLegacyDeviceKey?.()) ?? null;
+}
+
 export const gameStore = createGameStore({
   baseUrl: GAME_SERVER,
   storage: secureStorage,
   randomSeedHex,
+  legacySeedHex,
   log: (message) => {
     if (__DEV__) console.log(message);
   },

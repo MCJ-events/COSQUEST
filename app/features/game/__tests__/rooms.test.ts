@@ -258,6 +258,8 @@ describe("rooms: the fight's state (GameSession.handle)", () => {
     assert.equal(s.tokens, 100);
     assert.equal(s.feed[0].text, "Bo took 15 from you.");
     assert.equal(s.moment?.text, "Hit by Bo, -15");
+    // FieldModel: taking damage is a heavy impact, not a warning.
+    assert.equal(s.moment?.feel, "heavy");
     // Our own event echoed back changes nothing (the verdict already did).
     assert.equal(onLive(s, { t: "event", kind: "hit", actor: "p1", deltas: { p1: 15 } }, 2100), s);
     s = onLive({ ...s, held: { name: "Axe", range: null, damage: null } }, { t: "downed", player: "p1", by: "p2" }, 3000);

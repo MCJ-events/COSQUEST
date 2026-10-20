@@ -3,18 +3,22 @@
 // Two games behind one API, chosen by the gameUi flag (features/game/config.ts):
 //   native  iOS: the costquest-ios SwiftUI game in modules/costquest-game/ios
 //   rn      the shared React Native game (components/game), implemented in
-//           TypeScript by ./rnGame.ts. Android always; iOS with
-//           EXPO_PUBLIC_GAME_UI=rn until it is checked on a Mac.
+//           TypeScript by ./rnGame.ts. Android always; iOS by default
+//           (EXPO_PUBLIC_GAME_UI=native brings the SwiftUI game back).
+//           A few parts only the platform can draw are native "islands"
+//           inside the RN screens (docs/one-codebase.md).
 // Web: no game (the shell shows the "get the app" page).
 import { requireNativeView, requireOptionalNativeModule } from "expo";
-import type { ComponentType } from "react";
+import type { ComponentType, Ref } from "react";
 import { Platform, type ViewProps } from "react-native";
 
+import { resolveIslandsOff } from "@/features/game/config";
+import type { BeaconEvent } from "@/features/game/friendsNearby";
 import { GAME_UI } from "@/features/game/runtime";
 import type { GameTarget } from "@/features/world/deepLink";
 import type { GameSharePayload } from "@/features/world/gameInvite";
 
-import { createRnGame } from "./rnGame";
+import { createRnGame, currentChatToken } from "./rnGame";
 
 export type GameChatPreview = { chatId: string; title: string; text: string };
 
@@ -69,7 +73,12 @@ export type CostQuestGameModule = {
 const nativeGame =
   Platform.OS === "web" ? null : requireOptionalNativeModule<CostQuestGameModule & NativeOnly>("CostQuestGame");
 
-/** Android-only helpers on the native module (android/src/.../CostQuestGameModule.kt). */
+/**
+ * The platform helpers on the native module: the same names on both platforms
+ * (android/src/.../CostQuestGameModule.kt, ios/Embed/GameHelpers.swift), so
+ * the shared screens call one interface. Optional: an older native build, or
+ * a platform without the feature, simply lacks the function.
+ */
 export type NativeOnly = {
   /** Keep the system back gesture off a strip of the screen edge (dp). */
   setGestureExclusion?(rects: { x: number; y: number; width: number; height: number }[]): Promise<void>;
@@ -80,21 +89,112 @@ export type NativeOnly = {
   stopListening?(): Promise<void>;
   /** Stops and drops the utterance: no event follows. */
   cancelListening?(): Promise<void>;
+  /** iOS: CMPedometer can report walking distance (GameHelpers.swift). */
+  pedometerAvailable?: boolean;
+  /**
+   * iOS: walking distance and steps since `fromMs` (CMPedometer keeps a week of history).
+   * `ask`: may show the Motion & Fitness prompt. Android has readStepCounter instead.
+   */
+  queryPedometer?(query: { fromMs: number; toMs?: number; ask: boolean }): Promise<{
+    status: "ok" | "unavailable" | "denied" | "notDetermined" | "error";
+    meters: number;
+    steps: number;
+  }>;
+  /** NFC checkpoint tags (NfcReader.kt / GameHelpers.swift NfcHelper); a tag arrives as onNfcTag. */
+  startNfcScan?(): Promise<void>;
+  stopNfcScan?(): Promise<void>;
   /** The phone has a hardware step counter (StepCounter.kt). */
   stepCounterAvailable?: boolean;
   /** One read of the step counter: steps since boot, with the clocks it was read at. */
   readStepCounter?(): Promise<{ steps: number | null; elapsedRealtimeMs: number; wallClockMs: number; available: boolean }>;
   addListener?(event: "onSpeechResult", listener: (e: { text: string; final: boolean }) => void): Subscription;
   addListener?(event: "onSpeechError", listener: (e: { code: string; message: string }) => void): Subscription;
+  addListener?(event: "onNfcTag", listener: (e: { id: string; ndefText?: string | null }) => void): Subscription;
+  /** iOS: the NFC sheet closed without a tag (cancelled, timed out, not entitled). Android's reader never ends by itself. */
+  addListener?(event: "onNfcEnd", listener: (e: { code: string; message: string }) => void): Subscription;
+
+  // Unity (fights). Only does something when `hasUnity` is true: a device
+  // build with UnityFramework (iOS) or a unityAndroid build (Android).
+  /** DuelBridge.StartDuel(setupJson): boots Unity if needed, then starts the fight. Rejects ERR_NO_UNITY / ERR_UNITY_START. */
+  unityStartDuel?(setupJson: string): Promise<void>;
+  /** DuelBridge.DemoDuel: an offline practice fight. */
+  unityDemoDuel?(): Promise<void>;
+  /** DuelBridge.Quit. Unity stays loaded (it cannot be restarted). */
+  unityQuit?(): Promise<void>;
+  /** The export has the fantasy battle scene (iOS: CQSetBattleEventCallback found). Absent on Android. */
+  hasBattleScene?: boolean;
+  /** BattleBridge.StartBattle(setupJson), for a setup of kind "battle". Rejects ERR_NO_BATTLE / ERR_UNITY_START. */
+  unityStartBattle?(setupJson: string): Promise<void>;
+  /** Any other bridge message (WorldRoot, HubBridge, BattleBridge; FRAMEWORK_PIN.md). */
+  unitySend?(gameObject: string, method: string, message?: string | null): Promise<void>;
+  unityPause?(paused: boolean): Promise<void>;
+  /**
+   * Unity to the app: scene "duel" | "battle" | "hub" | "world"; kind "ready" | "sfx" | "finished" | "quit"
+   * (world: "anchorTapped" | "checkpointTapped" | "ready"). A duel's "finished" json is
+   * {"result": ..., "inputs": [[tick, code(, arg)]], "hash": ...}, what POST /v1/duel/finish takes.
+   */
+  addListener?(event: "onUnityEvent", listener: (e: UnityEvent) => void): Subscription;
+
+  // Hold phones together (iOS: ios/Embed/FriendBeaconIsland.swift). Absent on Android.
+  friendBeaconAvailable?: boolean;
+  /** The phone can measure the distance to the other iPhone (Nearby Interaction). */
+  friendBeaconUWB?: boolean;
+  startFriendBeacon?(key: string, handle: string): Promise<void>;
+  stopFriendBeacon?(): Promise<void>;
+  addListener?(event: "onFriendBeacon", listener: (e: FriendBeaconEvent) => void): Subscription;
+
+  // Venue Events (iOS: ios/Embed/VenueEventsIsland.swift), the native ARKit flow.
+  venueEventsAvailable?: boolean;
+  /** The SwiftUI game's anonymous key (iOS), for features/game/store.ts to adopt once. */
+  readLegacyDeviceKey?(): Promise<string | null>;
+  /** The native game's own sign-in (iOS GameHost.setSession): its client signs as the same player. */
+  setSession?(token: string | null): Promise<void>;
+  openVenueEvents?(options: { gameId?: string | null; side?: string[]; handle?: string | null }): Promise<void>;
+  closeVenueEvents?(): Promise<void>;
+  addListener?(event: "onVenueEventsClosed", listener: () => void): Subscription;
 };
+
+export type UnityEvent = { scene: "duel" | "battle" | "hub" | "world" | string; kind: string; json: string };
+
+/** The hold-phones beacon (FriendBeaconIsland.swift), as features/game/friendsNearby.ts reads it. */
+export type FriendBeaconEvent = BeaconEvent;
 
 export { GAME_UI };
 
 export const CostQuestGame: CostQuestGameModule | null =
   Platform.OS === "web" ? null : GAME_UI === "rn" ? createRnGame(nativeGame) : nativeGame;
 
-/** The native module's own helpers (null on iOS-native, web, Expo Go). */
-export const nativeHelpers: NativeOnly | null = Platform.OS === "android" ? nativeGame : null;
+/** The native module's own helpers (null on web and Expo Go). */
+export const nativeHelpers: NativeOnly | null = Platform.OS === "web" ? null : nativeGame;
+
+/** Native islands turned off for this build (EXPO_PUBLIC_GAME_2D, features/game/config.ts). */
+export const ISLANDS_OFF = resolveIslandsOff(process.env.EXPO_PUBLIC_GAME_2D);
+
+/** Venue Events (paid games at a venue, in AR): native on iOS, absent elsewhere. */
+export const venueEventsAvailable =
+  Platform.OS === "ios" && nativeGame?.venueEventsAvailable === true && !ISLANDS_OFF.has("venueEvents");
+
+/**
+ * Opens the native venue Events over the RN game (iOS). The native client is
+ * signed in first with the same chat session, so a game joined there belongs
+ * to the same player. `onClosed` runs when the player comes back.
+ */
+export async function openVenueEvents(
+  options: { gameId?: string | null; side?: string[]; handle?: string | null } = {},
+  onClosed?: () => void,
+): Promise<boolean> {
+  if (!venueEventsAvailable || !nativeGame?.openVenueEvents) return false;
+  const token = currentChatToken();
+  if (token) await nativeGame.setSession?.(token).catch(() => {});
+  if (onClosed && nativeGame.addListener) {
+    const sub = nativeGame.addListener("onVenueEventsClosed", () => {
+      sub.remove();
+      onClosed();
+    });
+  }
+  await nativeGame.openVenueEvents(options);
+  return true;
+}
 
 /** Is there a game to swipe into? */
 export const gameInstalled = CostQuestGame != null;
@@ -107,6 +207,73 @@ export type CostQuestGameViewProps = ViewProps & {
   /** Off the window but kept warm (the chat has been showing for a while). */
   parked?: boolean;
 };
+
+export type CostQuestUnityViewProps = ViewProps & {
+  /** Unity keeps running under the view unless paused (the fight is paused while the app is away). */
+  paused?: boolean;
+  accessibilityLabel?: string;
+};
+
+/**
+ * Unity's view, where it draws a fight (iOS: UnityBridge's view adopted by
+ * ios/Embed/UnityIsland.swift; Android: CostQuestUnityView.kt). Null where
+ * there is no Unity in the build: draw the 2D fight instead.
+ */
+export const CostQuestUnityView: ComponentType<CostQuestUnityViewProps> | null =
+  nativeGame?.hasUnity === true ? requireNativeView<CostQuestUnityViewProps>("CostQuestGame", "CostQuestUnityView") : null;
+
+export type CostQuestModelViewProps = ViewProps & {
+  /** A downloaded .glb or .usdz on this phone (file:// URI). */
+  uri: string;
+  /** The weapon's colour (#RRGGBB), for parts without their own. */
+  tint?: string;
+  /** Turn slowly by itself (off under Reduce Motion). */
+  spin?: boolean;
+  accessibilityLabel?: string;
+};
+
+/**
+ * iOS only: a Forge model turning on a small stage (RealityKit, Game/Net/GLBMesh
+ * for .glb), the native game's ForgeModelView. Null elsewhere: draw the 2D art.
+ */
+export const CostQuestModelView: ComponentType<CostQuestModelViewProps> | null =
+  Platform.OS === "ios" && nativeGame && (nativeGame as { modelViewAvailable?: boolean }).modelViewAvailable === true
+    ? requireNativeView<CostQuestModelViewProps>("CostQuestGame", "CostQuestModelView")
+    : null;
+
+export type CostQuestShrineViewProps = ViewProps & {
+  /** The shrine's colour (the point's tier), #RRGGBB. */
+  tint: string;
+  /** The Warden's colour (the player's faction), #RRGGBB. */
+  wardenTint?: string;
+  /** Through the camera (ARKit), where the phone can; otherwise the rendered stage. */
+  useAR?: boolean;
+  /** The shrine is standing: the approach can say "Tap the shrine". `ar`: it is in the room. */
+  onPlaced?: (e: { nativeEvent: { ar: boolean } }) => void;
+  ref?: Ref<CostQuestShrineViewHandle | null>;
+};
+
+/** The view's functions (ShrineScene): the Strike's beats, the break, a second chance, a photo. */
+export type CostQuestShrineViewHandle = {
+  pulse(i: number): Promise<void>;
+  resolve(correct: boolean): Promise<void>;
+  reset(): Promise<void>;
+  /** A JPEG of the shrine in the player's street (file:// URI); null on the rendered stage. */
+  photo(): Promise<string | null>;
+};
+
+/**
+ * iOS only: the native game's shrine (Game/Roam/ShrineStage.swift) on its
+ * RealityKit stage or through the camera (ios/Embed/ShrineIsland.swift).
+ * Null elsewhere: draw the 2D crystal (components/game/ShrineCrystal.tsx).
+ */
+export const CostQuestShrineView: ComponentType<CostQuestShrineViewProps> | null =
+  Platform.OS === "ios" && nativeGame && (nativeGame as { shrineViewAvailable?: boolean }).shrineViewAvailable === true
+    ? requireNativeView<CostQuestShrineViewProps>("CostQuestGame", "CostQuestShrineView")
+    : null;
+
+/** The phone can put the shrine in the room (ARWorldTrackingConfiguration.isSupported). */
+export const shrineARSupported = (nativeGame as { shrineARSupported?: boolean } | null)?.shrineARSupported === true;
 
 /** The native game's view (iOS native UI only; the RN game is components/game/GameRoot). */
 export const CostQuestGameView: ComponentType<CostQuestGameViewProps> | null =

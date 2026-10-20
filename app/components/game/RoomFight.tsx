@@ -220,7 +220,7 @@ export default function RoomFight({
         )}
       </View>
 
-      {fight.moment ? <MomentToast key={fight.moment.id} text={fight.moment.text} tone={fight.moment.tone} /> : null}
+      {fight.moment ? <MomentToast key={fight.moment.id} text={fight.moment.text} tone={fight.moment.tone} feel={fight.moment.feel} /> : null}
 
       {trivia ? (
         <TriviaPanel
@@ -397,13 +397,15 @@ function Downed({ state, now, onRespawn }: { state: RoomSessionState; now: numbe
   );
 }
 
-function MomentToast({ text, tone }: { text: string; tone: "good" | "bad" }) {
+function MomentToast({ text, tone, feel }: { text: string; tone: "good" | "bad"; feel?: "heavy" | "medium" }) {
   const [shown, setShown] = useState(true);
   useEffect(() => {
-    Haptics.notificationAsync(tone === "good" ? Haptics.NotificationFeedbackType.Success : Haptics.NotificationFeedbackType.Warning).catch(() => {});
+    // FieldModel: damage .heavy, a pickup .medium at full intensity, captures .success.
+    if (feel) Haptics.impactAsync(feel === "heavy" ? Haptics.ImpactFeedbackStyle.Heavy : Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    else Haptics.notificationAsync(tone === "good" ? Haptics.NotificationFeedbackType.Success : Haptics.NotificationFeedbackType.Error).catch(() => {});
     const t = setTimeout(() => setShown(false), 1800);
     return () => clearTimeout(t);
-  }, [tone]);
+  }, [tone, feel]);
   if (!shown) return null;
   const color = tone === "good" ? GP.mint : GP.berry;
   return (

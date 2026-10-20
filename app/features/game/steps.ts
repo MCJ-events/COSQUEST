@@ -11,7 +11,8 @@
 // on iOS, the phone reports the week's TOTAL (idempotent), never a delta.
 //
 // Where the figure comes from differs. iOS asks CMPedometer for the distance
-// since Monday 00:00 UTC (Apple's own stride model). Android has no history
+// since Monday 00:00 UTC (Apple's own stride model): a "distance" answer from
+// stepsDevice.ts, reported as it is. Android has no history
 // to ask: the hardware step counter only says how many steps since boot. So
 // this file keeps a ledger: the last reading, and the steps credited to each
 // week from the difference between readings. Rules:
@@ -290,6 +291,10 @@ export function markSent(ledger: StepLedger, week: string, meters: number): Step
 /** What the phone's counter said, or why it could not say. */
 export type SensorAnswer =
   | { kind: "reading"; reading: CounterReading }
+  /** iOS: CMPedometer's own distance since this UTC week's Monday (no ledger needed: iOS keeps the history). */
+  | { kind: "distance"; meters: number }
+  /** iOS: the Motion & Fitness question has not been asked yet and this read was not allowed to ask. Not a refusal: no note. */
+  | { kind: "undetermined" }
   | { kind: "unavailable" }
   | { kind: "denied" }
   | { kind: "error" };
@@ -309,9 +314,30 @@ export const EMPTY_STEPS_VIEW: StepsView = { status: null, newly: [], note: null
 
 export const STEPS_NOTES = {
   unavailable: "This phone can't count walking distance.",
+  /** Android's permission is called Physical activity. */
   denied: "Allow Physical activity in Settings to count your walks.",
+  /** iOS (StepsFeature.swift deny()): the permission is Motion & Fitness. */
+  deniedIos: "Allow Motion & Fitness in Settings to count your walks.",
   error: "Couldn't read your steps just now.",
 } as const;
+
+export type StepsPlatform = "ios" | "android";
+
+/** The permission as the phone's Settings calls it. */
+export function permissionName(platform: StepsPlatform | undefined): string {
+  return platform === "ios" ? "Motion & Fitness" : "Physical activity";
+}
+
+/**
+ * Metres from a CMPedometer answer. A phone that can count steps but not
+ * distance answers meters 0 with its steps: those become metres at STRIDE_M.
+ */
+export function pedometerMeters(meters: unknown, steps: unknown): number | null {
+  const m = typeof meters === "number" && Number.isFinite(meters) ? meters : NaN;
+  const n = typeof steps === "number" && Number.isFinite(steps) ? steps : 0;
+  if (Number.isNaN(m) || m < 0) return null;
+  return m > 0 ? m : metersFor(n);
+}
 
 export type StepsDeps = {
   client: GameClient;
@@ -320,6 +346,8 @@ export type StepsDeps = {
   load: () => Promise<string | null>;
   save: (text: string) => Promise<void>;
   now: () => number;
+  /** Which phone: only the wording of the denied note (and Settings label) differs. Default Android. */
+  platform?: StepsPlatform;
 };
 
 const messageOf = (error: unknown) => (error instanceof Error && error.message ? error.message : "Something went wrong.");
@@ -342,10 +370,28 @@ export async function updateSteps(deps: StepsDeps, previous: StepsView, ask: boo
       ledger = { ...ledger, asked: true };
       await deps.save(JSON.stringify(ledger));
     }
+    if (answer.kind === "distance") {
+      // As StepsModel.update on iOS: this week's total, straight from the pedometer.
+      const thisWeek = isoDay(utcMonday(deps.now()));
+      const got = await reportSteps(deps.client, thisWeek, answer.meters);
+      if (got.newly?.length) {
+        view.newly = got.newly;
+        view.justPaid = true;
+      }
+      view.status = got;
+      return view;
+    }
     if (answer.kind !== "reading") {
-      view.note = STEPS_NOTES[answer.kind];
-      view.noteIsProblem = answer.kind !== "unavailable";
-      view.motionDenied = answer.kind === "denied";
+      if (answer.kind === "undetermined") {
+        // Never asked, and this read could not ask: show the server's figure quietly (no red note, no Settings button).
+      } else if (answer.kind === "denied") {
+        view.note = deps.platform === "ios" ? STEPS_NOTES.deniedIos : STEPS_NOTES.denied;
+        view.noteIsProblem = true;
+        view.motionDenied = true;
+      } else {
+        view.note = STEPS_NOTES[answer.kind];
+        view.noteIsProblem = answer.kind !== "unavailable";
+      }
       view.status = await stepsStatus(deps.client);
       return view;
     }

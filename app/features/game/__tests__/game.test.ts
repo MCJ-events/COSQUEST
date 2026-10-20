@@ -12,6 +12,8 @@ import {
   resolveDuelRenderer,
   resolveGameServer,
   resolveGameUi,
+  resolveIslandsOff,
+  NATIVE_ISLANDS,
   STAGING_GAME_SERVER,
 } from "../config.ts";
 import { bearingDeg, distanceM, distanceText, reachM, stepToward, toLocal } from "../geo.ts";
@@ -44,11 +46,21 @@ describe("config", () => {
     assert.equal(resolveGameServer("http://127.0.0.1:8399/v1"), PRODUCTION_GAME_SERVER);
     assert.equal(isProductionServer(STAGING_GAME_SERVER), false);
   });
-  it("iOS stays native unless asked; Android is always rn", () => {
-    assert.equal(resolveGameUi("ios", undefined), "native");
+  it("the shared RN game everywhere; the SwiftUI game only on iOS and only when asked", () => {
+    assert.equal(resolveGameUi("ios", undefined), "rn");
+    assert.equal(resolveGameUi("ios", ""), "rn");
     assert.equal(resolveGameUi("ios", "rn"), "rn");
+    assert.equal(resolveGameUi("ios", " native "), "native");
+    assert.equal(resolveGameUi("ios", "Native"), "rn");
     assert.equal(resolveGameUi("android", "native"), "rn");
     assert.equal(resolveGameUi("android", undefined), "rn");
+    assert.equal(resolveGameUi("web", "native"), "rn");
+  });
+  it("native islands can be turned off one by one, or all at once", () => {
+    assert.deepEqual([...resolveIslandsOff(undefined)], []);
+    assert.deepEqual([...resolveIslandsOff("forgeModel")], ["forgeModel"]);
+    assert.deepEqual([...resolveIslandsOff(" unityDuel , nonsense")], ["unityDuel"]);
+    assert.deepEqual([...resolveIslandsOff("all")].sort(), [...NATIVE_ISLANDS].sort());
   });
   it("Unity draws the duel only when the build has it and the flag asks", () => {
     assert.equal(resolveDuelRenderer("unity", false), "rn");
@@ -282,6 +294,32 @@ describe("store", () => {
     await again.setSession(null);
     assert.equal(again.get().session, null);
     assert.equal(again.signedIn(), false);
+  });
+
+  it("a player moving from the SwiftUI game keeps the native game's phone key, once", async () => {
+    const legacy = "3c".repeat(32);
+    const storage = memoryStorage();
+    const { fetch } = fakeFetch((call) => {
+      if (call.url.endsWith("/v1/sso/cosquest")) return { status: 503, body: { detail: "not configured" } };
+      if (call.url.includes("/v1/roam/config")) return { body: { factions: [], ranks: [], max_level: 40, open_radius_m: 80, cooldown_s: 600 } };
+      if (call.url.includes("/v1/roam/me")) return { body: ME(call.url.split("device_key=")[1]) };
+      return undefined;
+    });
+    let asked = 0;
+    const legacySeedHex = async () => {
+      asked += 1;
+      return legacy.toUpperCase();
+    };
+    const store = createGameStore({ baseUrl: "https://g", storage, randomSeedHex: () => "00".repeat(32), legacySeedHex, fetch });
+    await store.setSession("chat-token");
+    assert.equal(store.get().session?.playerKey, new Identity(legacy, "device").publicKeyHex);
+    const again = createGameStore({ baseUrl: "https://g", storage, randomSeedHex: () => "00".repeat(32), legacySeedHex, fetch });
+    await again.setSession("chat-token");
+    assert.equal(asked, 1, "adopted once, then the RN key is the phone's key");
+    // Junk or a failing native read: a fresh key, not a crash.
+    const fresh = createGameStore({ baseUrl: "https://g", storage: memoryStorage(), randomSeedHex: () => "11".repeat(32), legacySeedHex: async () => { throw new Error("keychain"); }, fetch });
+    await fresh.setSession("chat-token");
+    assert.equal(fresh.get().session?.playerKey, new Identity("11".repeat(32), "device").publicKeyHex);
   });
 
   it("one login works: the account's player, points around the fix, cooling shown at once", async () => {

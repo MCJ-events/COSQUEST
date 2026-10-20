@@ -8,6 +8,8 @@ import { useSyncExternalStore } from "react";
 import { fallbackLine, type LineWriter, type WardenMoment } from "@/features/game/warden";
 import { getPref, setPref } from "@/utils/prefsStorage";
 
+import { callActive, prepareGameAudio } from "./sound";
+
 export type Said = { id: number; text: string; moment: string; fromModel: boolean };
 
 let said: Said | null = null;
@@ -90,7 +92,10 @@ export const wardenVoice = {
     said = { id: ++serial, text: line.text, moment: moment.kind, fromModel: line.fromModel };
     if (TRACE) console.log(`[warden] ${moment.kind}${line.fromModel ? " (model)" : ""}: ${line.text}`);
     notify();
-    if (!muted) {
+    // Not over a call, and through the game's own session so the silent
+    // switch does not swallow it (GameKit.swift: .playback, call-safe).
+    if (!muted && !callActive()) {
+      prepareGameAudio();
       Speech.stop()
         .catch(() => {})
         .finally(() => Speech.speak(line.text, { rate: 1.02, pitch: 0.95 }));
@@ -104,6 +109,12 @@ export const wardenVoice = {
       }
     }, holdMs);
     return line.text;
+  },
+
+  /** A moment's line without saying it (the point card's legend): the model's if it comes within `waitMs`. */
+  async line(moment: WardenMoment, waitMs = 8000): Promise<string> {
+    const fromModel = writer ? await Promise.race([ask(moment), new Promise<null>((r) => setTimeout(() => r(null), waitMs))]) : null;
+    return fromModel || fallbackLine(moment);
   },
 
   quiet() {
