@@ -8,19 +8,23 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { router } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { memo, type ReactElement, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  FlatList,
   Modal,
   Platform,
   Pressable,
-  ScrollView,
+  type StyleProp,
   StyleSheet,
   Text,
   TextInput,
   View,
+  type ViewStyle,
 } from "react-native";
+
+import { useStableCallback } from "@/hooks/useStableCallback";
 
 import { GroupAvatar } from "@/components/groups/GroupUi";
 import { AVATARS } from "@/constants/avatars";
@@ -180,7 +184,8 @@ function groupLook(chat: ChatItem): { icon: keyof typeof Ionicons.glyphMap; labe
 // GROUP ROW
 // ==========================================
 
-function GroupRow({ chat, first, onPress }: { chat: ChatItem; first: boolean; onPress: () => void }) {
+const GroupRow = memo(function GroupRow({ chat, first, onOpen }: { chat: ChatItem; first: boolean; onOpen: (chatId: string) => void }) {
+  const onPress = () => onOpen(chat.id);
   const look = groupLook(chat);
   const unread = chat.unreadCount || 0;
   const muted = !!chat.group?.muted;
@@ -233,13 +238,28 @@ function GroupRow({ chat, first, onPress }: { chat: ChatItem; first: boolean; on
       </View>
     </Pressable>
   );
-}
+});
 
 // ==========================================
 // SCREEN
 // ==========================================
 
-export function Chats() {
+// The chat hub is its own list (audit B3/B10): the groups are rows of a
+// FlatList (the screen's header scrolls with them), the DM circles a
+// horizontal FlatList, Find People a FlatList.
+type DmCell = { key: string; kind: "dm"; chat: ChatItem } | { key: string; kind: "person"; person: FollowUser } | { key: string; kind: "find" };
+
+// The side padding the Community screen gives the chats (styles.padded there).
+const PAD = { paddingHorizontal: 24 };
+
+export function Chats({
+  header,
+  contentContainerStyle,
+}: {
+  /** What scrolls above the chats (the Community header and tabs). */
+  header?: ReactElement;
+  contentContainerStyle?: StyleProp<ViewStyle>;
+} = {}) {
   const dispatch = useAppDispatch();
 
   // Subomi's on-phone AI (phones only, when switched on).
@@ -455,277 +475,325 @@ export function Chats() {
     return () => clearTimeout(timer);
   }, [peopleVisible, search, token, currentUsername]);
 
+  const onOpenChat = useStableCallback(openChat);
+
   if (!token) {
-    return null;
+    // Signed out: just the screen's header (the chats themselves need a login).
+    return <View style={contentContainerStyle}>{header}</View>;
   }
 
   const showGroups = filter !== "dms";
   const showDms = filter !== "groups";
 
-  return (
-    <View style={styles.wrap}>
-      {/* SEARCH */}
-      <View style={styles.search}>
-        <Ionicons name="search-outline" size={18} color={COLORS.soft} />
-        <TextInput
-          value={query}
-          onChangeText={setQuery}
-          style={styles.searchInput}
-          placeholder="Search groups, people and messages"
-          placeholderTextColor={COLORS.soft}
-          autoCapitalize="none"
-          autoCorrect={false}
-        />
-        {query ? (
-          <Pressable onPress={() => setQuery("")} hitSlop={8}>
-            <Ionicons name="close-circle" size={17} color={COLORS.soft} />
-          </Pressable>
-        ) : null}
-      </View>
+  const dmCells: DmCell[] = [
+    ...visibleDms.map((chat) => ({ key: `dm-${chat.id}`, kind: "dm" as const, chat })),
+    ...visibleNotYet.map((person) => ({ key: `p-${person.id || person.username}`, kind: "person" as const, person })),
+    { key: "find", kind: "find" as const },
+  ];
 
-      {/* CHIPS */}
-      <View style={styles.chips}>
-        {(
-          [
-            ["all", "All chats"],
-            ["groups", "Groups"],
-            ["dms", "DMs"],
-          ] as [Filter, string][]
-        ).map(([value, label]) => (
-          <Pressable
-            key={value}
-            onPress={() => setFilter(value)}
-            style={[styles.chip, filter === value && styles.chipOn]}
-            accessibilityRole="button"
-            accessibilityState={{ selected: filter === value }}>
-            <Text style={[styles.chipText, filter === value && styles.chipTextOn]}>{label}</Text>
-          </Pressable>
-        ))}
-      </View>
+  const renderDm = ({ item }: { item: DmCell }) => {
+    if (item.kind === "dm") {
+      const chat = item.chat;
+      const username = chat.otherParticipant?.username || "";
+      const followed = followingByUsername.get(username.toLowerCase());
+      const name = followed?.name || chat.otherParticipant?.name || username || "Someone";
+      const photo = chat.otherParticipant?.avatarPhotoUrl || followed?.avatarPhotoUrl || null;
+      const unread = chat.unreadCount || 0;
 
-      {/* YOUR GROUPS */}
-      {showGroups ? (
-        <>
-          <View style={styles.sectionRow}>
-            <Text style={styles.section}>YOUR GROUPS</Text>
-            <Pressable onPress={() => router.push("/group/discover")} hitSlop={8}>
-              <Text style={styles.sectionLink}>Discover</Text>
-            </Pressable>
+      return (
+        <Pressable key={chat.id} style={styles.dmItem} onPress={() => openChat(chat.id)}>
+          <View style={[styles.dmCircle, { backgroundColor: avatarTint(name) }]}>
+            {photo ? (
+              <Image source={{ uri: photo }} style={styles.dmPhoto} contentFit="cover" />
+            ) : (
+              <Text style={styles.dmInitials}>{initialsOf(name)}</Text>
+            )}
+            {chat.otherParticipant?.isOnline ? <View style={styles.onlineDot} /> : null}
+            {unread > 0 ? (
+              <View style={styles.dmUnread}>
+                <Text style={styles.unreadText}>{unread > 99 ? "99+" : unread}</Text>
+              </View>
+            ) : null}
           </View>
+          <Text style={styles.dmName} numberOfLines={1}>
+            {name.split(" ")[0]}
+          </Text>
+        </Pressable>
+      );
+    }
+    if (item.kind === "person") {
+      const person = item.person;
+      const busy = startingChatWith === person.username;
+      const name = person.name || person.username;
 
-          {loading && !conversations.length ? (
-            <View style={styles.center}>
-              <ActivityIndicator size="small" color={COLORS.pink} />
-              <Text style={styles.centerText}>Loading chats...</Text>
-            </View>
-          ) : error && !conversations.length ? (
-            <View style={styles.errorBox}>
-              <Text style={styles.errorText}>{error}</Text>
-              <Pressable style={styles.retry} onPress={() => dispatch(fetchChats(token))}>
-                <Text style={styles.retryText}>Retry</Text>
-              </Pressable>
-            </View>
-          ) : visibleGroups.length === 0 ? (
-            <Text style={styles.empty}>{q ? "No groups match your search." : "No groups yet."}</Text>
-          ) : (
-            <View style={styles.groupList}>
-              {visibleGroups.map((chat, index) => (
-                <GroupRow key={chat.id} chat={chat} first={index === 0} onPress={() => openChat(chat.id)} />
-              ))}
-            </View>
-          )}
-        </>
-      ) : null}
-
-      {/* DIRECT MESSAGES */}
-      {showDms ? (
-        <>
-          <Text style={[styles.section, styles.dmSection]}>DIRECT MESSAGES</Text>
-
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dmRow}>
-            {visibleDms.map((chat) => {
-              const username = chat.otherParticipant?.username || "";
-              const followed = followingByUsername.get(username.toLowerCase());
-              const name = followed?.name || chat.otherParticipant?.name || username || "Someone";
-              const photo = chat.otherParticipant?.avatarPhotoUrl || followed?.avatarPhotoUrl || null;
-              const unread = chat.unreadCount || 0;
-
-              return (
-                <Pressable key={chat.id} style={styles.dmItem} onPress={() => openChat(chat.id)}>
-                  <View style={[styles.dmCircle, { backgroundColor: avatarTint(name) }]}>
-                    {photo ? (
-                      <Image source={{ uri: photo }} style={styles.dmPhoto} contentFit="cover" />
-                    ) : (
-                      <Text style={styles.dmInitials}>{initialsOf(name)}</Text>
-                    )}
-                    {chat.otherParticipant?.isOnline ? <View style={styles.onlineDot} /> : null}
-                    {unread > 0 ? (
-                      <View style={styles.dmUnread}>
-                        <Text style={styles.unreadText}>{unread > 99 ? "99+" : unread}</Text>
-                      </View>
-                    ) : null}
-                  </View>
-                  <Text style={styles.dmName} numberOfLines={1}>
-                    {name.split(" ")[0]}
-                  </Text>
-                </Pressable>
-              );
-            })}
-
-            {visibleNotYet.map((person) => {
-              const busy = startingChatWith === person.username;
-              const name = person.name || person.username;
-
-              return (
-                <Pressable key={person.id || person.username} style={styles.dmItem} disabled={busy} onPress={() => openOrCreateChat(person)}>
-                  <View style={[styles.dmCircle, { backgroundColor: avatarTint(name) }]}>
-                    {person.avatarPhotoUrl ? (
-                      <Image source={getAvatarSource(person)} style={styles.dmPhoto} contentFit="cover" />
-                    ) : (
-                      <Text style={styles.dmInitials}>{initialsOf(name)}</Text>
-                    )}
-                    {isPersonOnline(person) ? <View style={styles.onlineDot} /> : null}
-                    {busy ? (
-                      <View style={styles.dmBusy}>
-                        <ActivityIndicator size="small" color="#FFFFFF" />
-                      </View>
-                    ) : null}
-                  </View>
-                  <Text style={styles.dmName} numberOfLines={1}>
-                    {name.split(" ")[0]}
-                  </Text>
-                </Pressable>
-              );
-            })}
-
-            {/* + Find People */}
-            <Pressable style={styles.dmItem} onPress={openPeople} accessibilityLabel="Find people">
-              <View style={[styles.dmCircle, styles.plusCircle]}>
-                <Ionicons name="add" size={26} color={COLORS.pink} />
+      return (
+        <Pressable key={person.id || person.username} style={styles.dmItem} disabled={busy} onPress={() => openOrCreateChat(person)}>
+          <View style={[styles.dmCircle, { backgroundColor: avatarTint(name) }]}>
+            {person.avatarPhotoUrl ? (
+              <Image source={getAvatarSource(person)} style={styles.dmPhoto} contentFit="cover" />
+            ) : (
+              <Text style={styles.dmInitials}>{initialsOf(name)}</Text>
+            )}
+            {isPersonOnline(person) ? <View style={styles.onlineDot} /> : null}
+            {busy ? (
+              <View style={styles.dmBusy}>
+                <ActivityIndicator size="small" color="#FFFFFF" />
               </View>
-              <Text style={styles.dmName}>Find</Text>
-            </Pressable>
-          </ScrollView>
-        </>
-      ) : null}
-
-      {/* CREATE A GROUP */}
-      <Pressable
-        style={({ pressed }) => [styles.createButton, pressed && styles.pressed]}
-        onPress={() => router.push("/group/new")}
-        accessibilityRole="button">
-        <Ionicons name="add" size={20} color="#FFFFFF" />
-        <Text style={styles.createText}>Create a group</Text>
+            ) : null}
+          </View>
+          <Text style={styles.dmName} numberOfLines={1}>
+            {name.split(" ")[0]}
+          </Text>
+        </Pressable>
+      );
+    }
+    // + Find People
+    return (
+      <Pressable style={styles.dmItem} onPress={openPeople} accessibilityLabel="Find people">
+        <View style={[styles.dmCircle, styles.plusCircle]}>
+          <Ionicons name="add" size={26} color={COLORS.pink} />
+        </View>
+        <Text style={styles.dmName}>Find</Text>
       </Pressable>
+    );
+  };
 
-      {/* FIND PEOPLE */}
-      <Modal visible={peopleVisible} transparent animationType="slide" onRequestClose={closePeople}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modal}>
-            <View style={styles.modalHeader}>
-              <View>
-                <Text style={styles.modalTitle}>Find People</Text>
-                <Text style={styles.modalSubtitle}>Follow people and start connecting</Text>
-              </View>
-              <Pressable onPress={closePeople} hitSlop={10} style={styles.closeButton}>
-                <Ionicons name="close" size={21} color={COLORS.ink} />
-              </Pressable>
-            </View>
+  const groupsShown = showGroups && !(loading && !conversations.length) && !(error && !conversations.length);
 
-            <View style={styles.modalSearch}>
-              <Ionicons name="search" size={18} color={COLORS.soft} />
+  return (
+    <FlatList
+      data={groupsShown ? visibleGroups : []}
+      keyExtractor={(chat) => chat.id}
+      contentContainerStyle={contentContainerStyle}
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+      ItemSeparatorComponent={GroupGap}
+      renderItem={({ item: chat, index }) => (
+        <View style={PAD}>
+          <GroupRow chat={chat} first={index === 0} onOpen={onOpenChat} />
+        </View>
+      )}
+      ListHeaderComponent={
+        <>
+          {header}
+          <View style={[PAD, styles.wrapTop]}>
+            {/* SEARCH */}
+            <View style={styles.search}>
+              <Ionicons name="search-outline" size={18} color={COLORS.soft} />
               <TextInput
-                value={search}
-                onChangeText={setSearch}
-                style={styles.modalSearchInput}
-                placeholder="Search by username..."
+                value={query}
+                onChangeText={setQuery}
+                style={styles.searchInput}
+                placeholder="Search groups, people and messages"
                 placeholderTextColor={COLORS.soft}
                 autoCapitalize="none"
                 autoCorrect={false}
               />
-              {search.length > 0 ? (
-                <Pressable onPress={() => setSearch("")}>
+              {query ? (
+                <Pressable onPress={() => setQuery("")} hitSlop={8}>
                   <Ionicons name="close-circle" size={17} color={COLORS.soft} />
                 </Pressable>
               ) : null}
             </View>
 
-            <Text style={styles.peopleTitle}>{search.trim() ? "Search Results" : "People on CosQuest"}</Text>
-
-            {peopleLoading ? (
-              <View style={styles.center}>
-                <ActivityIndicator size="small" color={COLORS.pink} />
-                <Text style={styles.centerText}>Finding people...</Text>
-              </View>
-            ) : null}
-
-            {!peopleLoading && peopleError ? (
-              <View style={styles.center}>
-                <Text style={styles.errorText}>{peopleError}</Text>
-                <Pressable style={styles.retry} onPress={() => setSearch((value) => value.trim())}>
-                  <Text style={styles.retryText}>Try Again</Text>
+            {/* CHIPS */}
+            <View style={styles.chips}>
+              {(
+                [
+                  ["all", "All chats"],
+                  ["groups", "Groups"],
+                  ["dms", "DMs"],
+                ] as [Filter, string][]
+              ).map(([value, label]) => (
+                <Pressable
+                  key={value}
+                  onPress={() => setFilter(value)}
+                  style={[styles.chip, filter === value && styles.chipOn]}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: filter === value }}>
+                  <Text style={[styles.chipText, filter === value && styles.chipTextOn]}>{label}</Text>
                 </Pressable>
-              </View>
-            ) : null}
+              ))}
+            </View>
 
-            {!peopleLoading && !peopleError ? (
-              <ScrollView style={styles.peopleList} keyboardShouldPersistTaps="handled">
-                {people.length === 0 ? (
-                  <Text style={styles.empty}>{search.trim() ? "No users found." : "No people to show."}</Text>
+            {/* YOUR GROUPS */}
+            {showGroups ? (
+              <>
+                <View style={styles.sectionRow}>
+                  <Text style={styles.section}>YOUR GROUPS</Text>
+                  <Pressable onPress={() => router.push("/group/discover")} hitSlop={8}>
+                    <Text style={styles.sectionLink}>Discover</Text>
+                  </Pressable>
+                </View>
+
+                {loading && !conversations.length ? (
+                  <View style={styles.center}>
+                    <ActivityIndicator size="small" color={COLORS.pink} />
+                    <Text style={styles.centerText}>Loading chats...</Text>
+                  </View>
+                ) : error && !conversations.length ? (
+                  <View style={styles.errorBox}>
+                    <Text style={styles.errorText}>{error}</Text>
+                    <Pressable style={styles.retry} onPress={() => dispatch(fetchChats(token))}>
+                      <Text style={styles.retryText}>Retry</Text>
+                    </Pressable>
+                  </View>
+                ) : visibleGroups.length === 0 ? (
+                  <Text style={styles.empty}>{q ? "No groups match your search." : "No groups yet."}</Text>
                 ) : null}
-
-                {people.map((person) => {
-                  const isFollowing = followingUsernames.has(person.username.toLowerCase());
-                  const busy = processingUsername === person.username || startingChatWith === person.username;
-
-                  return (
-                    <View key={person.id} style={styles.personRow}>
-                      <Image source={getAvatarSource(person)} style={styles.personAvatar} contentFit="cover" />
-                      <View style={styles.personInfo}>
-                        <Text style={styles.personName} numberOfLines={1}>
-                          {person.name || person.username}
-                        </Text>
-                        <Text style={styles.personUsername} numberOfLines={1}>
-                          @{person.username}
-                        </Text>
-                      </View>
-
-                      <Pressable
-                        disabled={busy}
-                        style={[styles.followButton, isFollowing ? styles.followingButton : styles.followButtonOn, busy && styles.off]}
-                        onPress={() => handleFollow(person)}>
-                        {processingUsername === person.username ? (
-                          <ActivityIndicator size="small" color={isFollowing ? COLORS.ink : "#FFFFFF"} />
-                        ) : (
-                          <Text style={isFollowing ? styles.followingText : styles.followText}>
-                            {isFollowing ? "Following" : "Follow"}
-                          </Text>
-                        )}
-                      </Pressable>
-
-                      {isFollowing ? (
-                        <Pressable disabled={busy} style={[styles.messageButton, busy && styles.off]} onPress={() => handleMessage(person)}>
-                          {startingChatWith === person.username ? (
-                            <ActivityIndicator size="small" color={COLORS.ink} />
-                          ) : (
-                            <Ionicons name="chatbubble-outline" size={16} color={COLORS.ink} />
-                          )}
-                        </Pressable>
-                      ) : null}
-                    </View>
-                  );
-                })}
-              </ScrollView>
+              </>
             ) : null}
           </View>
+        </>
+      }
+      ListFooterComponent={
+        <View style={[PAD, styles.wrapBottom]}>
+          {/* DIRECT MESSAGES */}
+          {showDms ? (
+            <>
+              <Text style={[styles.section, styles.dmSection]}>DIRECT MESSAGES</Text>
+
+              <FlatList
+                horizontal
+                data={dmCells}
+                keyExtractor={(cell) => cell.key}
+                renderItem={renderDm}
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.dmRow}
+              />
+            </>
+          ) : null}
+
+          {/* CREATE A GROUP */}
+          <Pressable
+            style={({ pressed }) => [styles.createButton, pressed && styles.pressed]}
+            onPress={() => router.push("/group/new")}
+            accessibilityRole="button">
+            <Ionicons name="add" size={20} color="#FFFFFF" />
+            <Text style={styles.createText}>Create a group</Text>
+          </Pressable>
+
+          {/* FIND PEOPLE */}
+          <Modal visible={peopleVisible} transparent animationType="slide" onRequestClose={closePeople}>
+            <View style={styles.modalOverlay}>
+              <View style={styles.modal}>
+                <View style={styles.modalHeader}>
+                  <View>
+                    <Text style={styles.modalTitle}>Find People</Text>
+                    <Text style={styles.modalSubtitle}>Follow people and start connecting</Text>
+                  </View>
+                  <Pressable onPress={closePeople} hitSlop={10} style={styles.closeButton}>
+                    <Ionicons name="close" size={21} color={COLORS.ink} />
+                  </Pressable>
+                </View>
+
+                <View style={styles.modalSearch}>
+                  <Ionicons name="search" size={18} color={COLORS.soft} />
+                  <TextInput
+                    value={search}
+                    onChangeText={setSearch}
+                    style={styles.modalSearchInput}
+                    placeholder="Search by username..."
+                    placeholderTextColor={COLORS.soft}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                  {search.length > 0 ? (
+                    <Pressable onPress={() => setSearch("")}>
+                      <Ionicons name="close-circle" size={17} color={COLORS.soft} />
+                    </Pressable>
+                  ) : null}
+                </View>
+
+                <Text style={styles.peopleTitle}>{search.trim() ? "Search Results" : "People on CosQuest"}</Text>
+
+                {peopleLoading ? (
+                  <View style={styles.center}>
+                    <ActivityIndicator size="small" color={COLORS.pink} />
+                    <Text style={styles.centerText}>Finding people...</Text>
+                  </View>
+                ) : null}
+
+                {!peopleLoading && peopleError ? (
+                  <View style={styles.center}>
+                    <Text style={styles.errorText}>{peopleError}</Text>
+                    <Pressable style={styles.retry} onPress={() => setSearch((value) => value.trim())}>
+                      <Text style={styles.retryText}>Try Again</Text>
+                    </Pressable>
+                  </View>
+                ) : null}
+
+                {!peopleLoading && !peopleError ? (
+                  <FlatList
+                    style={styles.peopleList}
+                    keyboardShouldPersistTaps="handled"
+                    data={people}
+                    keyExtractor={(person) => String(person.id || person.username)}
+                    ListEmptyComponent={
+                      <Text style={styles.empty}>{search.trim() ? "No users found." : "No people to show."}</Text>
+                    }
+                    renderItem={({ item: person }) => {
+                      const isFollowing = followingUsernames.has(person.username.toLowerCase());
+                      const busy = processingUsername === person.username || startingChatWith === person.username;
+
+                      return (
+                        <View key={person.id} style={styles.personRow}>
+                          <Image source={getAvatarSource(person)} style={styles.personAvatar} contentFit="cover" />
+                          <View style={styles.personInfo}>
+                            <Text style={styles.personName} numberOfLines={1}>
+                              {person.name || person.username}
+                            </Text>
+                            <Text style={styles.personUsername} numberOfLines={1}>
+                              @{person.username}
+                            </Text>
+                          </View>
+
+                          <Pressable
+                            disabled={busy}
+                            style={[styles.followButton, isFollowing ? styles.followingButton : styles.followButtonOn, busy && styles.off]}
+                            onPress={() => handleFollow(person)}>
+                            {processingUsername === person.username ? (
+                              <ActivityIndicator size="small" color={isFollowing ? COLORS.ink : "#FFFFFF"} />
+                            ) : (
+                              <Text style={isFollowing ? styles.followingText : styles.followText}>
+                                {isFollowing ? "Following" : "Follow"}
+                              </Text>
+                            )}
+                          </Pressable>
+
+                          {isFollowing ? (
+                            <Pressable disabled={busy} style={[styles.messageButton, busy && styles.off]} onPress={() => handleMessage(person)}>
+                              {startingChatWith === person.username ? (
+                                <ActivityIndicator size="small" color={COLORS.ink} />
+                              ) : (
+                                <Ionicons name="chatbubble-outline" size={16} color={COLORS.ink} />
+                              )}
+                            </Pressable>
+                          ) : null}
+                        </View>
+                      );
+                    }}
+                  />
+                ) : null}
+              </View>
+            </View>
+          </Modal>
         </View>
-      </Modal>
-    </View>
+      }
+    />
   );
+}
+
+function GroupGap() {
+  return <View style={{ height: 4 }} />;
 }
 
 const styles = StyleSheet.create({
   wrap: { marginTop: 8, paddingBottom: 12 },
+
+  wrapTop: { marginTop: 8 },
+
+  wrapBottom: { paddingBottom: 12 },
 
   pressed: { opacity: 0.75 },
 

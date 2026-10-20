@@ -142,31 +142,24 @@ export default function Community() {
 
   return (
     <AppBackground variant="blueGradient">
+      {/* The feed and the chats are lists of their own (audit B2/B3), the
+          header scrolling with them; a comfortable width on big computer
+          screens, full width on phones. */}
       {tab === "Feeds" ? (
-        // The feed is its own list (audit B2); the header scrolls with it.
-        <Feeds
-          header={top}
-          contentContainerStyle={[styles.column, scrollPad]}
-        />
+        <Feeds header={top} contentContainerStyle={[styles.column, scrollPad]} />
+      ) : tab === "Chats" ? (
+        <Chats header={top} contentContainerStyle={[styles.column, scrollPad]} />
       ) : (
         <ScrollView
           contentContainerStyle={[styles.scroll, scrollPad]}
           showsVerticalScrollIndicator={false}>
-          {/* Keeps everything a comfortable width on big computer screens.
-              Full width on phones. */}
           <View style={styles.column}>
             {top}
 
-            {/* CONTENT - chats and spotlight keep their side padding. */}
-            {tab === "Chats" ? (
-              <View style={styles.padded}>
-                <Chats />
-              </View>
-            ) : (
-              <View style={styles.padded}>
-                <Spotlight />
-              </View>
-            )}
+            {/* CONTENT - spotlight keeps its side padding. */}
+            <View style={styles.padded}>
+              <Spotlight />
+            </View>
           </View>
         </ScrollView>
       )}
