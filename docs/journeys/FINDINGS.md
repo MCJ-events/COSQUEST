@@ -54,6 +54,10 @@ journey or unit test that shows it.
 | F-19 | Medium | app | Profile | The Quest/Wins/Points cards, Edit Profile / Share Profile and the Posts/Reels/Thoughts bar rendered on Android as a grey box with a line across the label: Android draws the elevation shadow through a see-through background. Elevation is now off on Android for those (iOS unchanged). | ca9ee20 | J02 screenshot j02-profile, before vs after |
 | F-26 | Medium | app | Chat, edited message | After an edit the "Saved text / Changes saved / Restore previous wording" card opened under every message edited in the last 10 minutes, each time the chat was opened (half the screen). It now shows only under the message you just edited and has Done. | 55b5ca5 | J06 edits, sees the card, taps Done |
 | F-41 | Low | app | Incoming call | Tapping the "Accept"/"Decline" captions did nothing; only the round buttons did. The caption is now part of the button. | 3718d17 | J07 answers by tapping the caption |
+| F-46 | Low | app | Links | A link with no screen (e.g. the message link fallback `cosquest://chat/<id>/message/<id>`) showed expo-router's developer "Unmatched Route" page. There is now a `+not-found` screen with "Go to your chats". Still open: invite links are `https://cosquest.vercel.app/group/join/<code>`, which won't open the Android app without app links (needs the domain's assetlinks.json). | 39dda0c | J12 opens an unknown link |
+| F-47 | Low | app | Chat search | "Open the chat" from a search result pushed a second copy of the chat (Back showed the same chat again) and did not show the message. It now goes back to the chat and scrolls to the message. | b83f40f, 79c3d33 | J06: Open the chat, the message is on screen, one Back reaches the list; unit test chatFocus |
+| F-49 | High | app | Sign-up, location step | With no recent GPS fix (a phone just switched on, indoors; a fresh emulator) the location switch gave up after 6 s ("could not get your location quickly enough") and sign-up could not continue. It now waits up to 20 s with the spinner. | 3a1a7c4 | J01 on a freshly booted emulator (failed on build 9, see results) |
+| F-50 | Medium | app | Sign-up first screen | "Sign up with Apple" did nothing when tapped (`onPress={() => {}}`), a dead end on both platforms. It now says Apple sign-in is coming, as sign-in's Apple button already did. Apple sign-in itself still needs building (and is required by App Review when Google sign-in is offered on iOS). | bc59520 | J01 taps it |
 
 ## Open
 
@@ -65,7 +69,6 @@ journey or unit test that shows it.
 | F-09 | Low | app | Sign-up vs sign-in | Sign-up offers Google and Apple; sign-in only Google. |
 | F-10 | Low | design | Create profile | Gender is Male or Female only. |
 | F-16b | High | chat backend | `src/middleware/identifyUser.js:40` | Onboarding routes still accept an email with no token, for any account not yet onboarded. With F-16a the app sends the token, so the backend can now require it. |
-| F-17 | Low | app | Profile | "Posts 1" while the Posts tab says "No posts yet" (her one post is a Thought). |
 | F-18 | Low | app | Profile faction card | Shows "Private · 4 members" (her faction group) under the ICONS logo, while the faction has 1.9K members. |
 | F-20 | Low | app | Profile photo | "Change Profile Photo" in Account Information opens the system picker straight away; the same label in Edit Profile opens a screen with photo and avatars. Two flows, one label. |
 | F-27 | Low | app / Sparks | Start a Spark | A Spark started from an older message opens as "Quiet · last reply 4:27 AM" the moment you start it. |
@@ -78,8 +81,6 @@ journey or unit test that shows it.
 | F-42 | Medium | Sparks | 1:1 call with Sparks on | "Sparks starts once Sparks AI has downloaded": the model comes from the backend's `/v1/model` manifest. The local backend has none, so Sparks notes in calls could not be exercised here; the consent card and pill were. |
 | F-44 | Medium | chat backend | Messages | No message kind for a game result, so shared results (F-34) are plain text. |
 | F-45 | Low | app | Chat attach sheet (from code) | No File/Document option although documents render; "Audio" only shows a "press and hold the mic" alert. |
-| F-46 | Low | app | Links (from code) | `cosquest://chat/<id>/message/<id>` (the message link fallback) has no route and there is no `+not-found`; invite links are `https://cosquest.vercel.app/group/join/<code>`, which won't open the Android app without app links. |
-| F-47 | Low | app | Chat search (from code) | "Open the chat" from a search result pushes a second copy of the chat and does not scroll to the message. |
 | F-48 | Medium | backend / rig | Uploads | The chat backend has no local storage fallback: without Cloudinary keys every upload (onboarding photo, chat media, voice) is a 500. The rig stubs it. Any file sent as `application/octet-stream` is stored as `kind: "image"`. |
 
 ## Looked at, not changed (by design)
@@ -87,6 +88,7 @@ journey or unit test that shows it.
 | ID | Where | What |
 |----|-------|------|
 | F-28 | Spark panel | Each message carries its own date and time: that is the Figma M07 timeline (a date-time dot per message), not a repeated header. |
+| F-17 | Profile | "Posts 1" while the Posts tab says "No posts yet": the count is every post (photos, reels, thoughts), the tab shows photo posts only. Which one the number means is a design call. |
 | F-43 | Call controls | The audio call's Mute button always shows a crossed mic; its state is the pink ring and TalkBack's "selected", the usual mute-toggle pattern. Left to design. |
 
 ## Test rig notes (Info)
