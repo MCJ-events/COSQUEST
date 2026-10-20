@@ -205,13 +205,16 @@ function placeData(g: Grid, codewords: readonly number[]) {
 function drawFormat(dark: boolean[][], size: number, mask: number) {
   const f = formatBits(mask);
   const bit = (i: number) => ((f >>> i) & 1) === 1;
-  for (let i = 0; i <= 5; i++) dark[8][i] = bit(i);
-  dark[8][7] = bit(6);
+  // dark[row][column]. First copy: down column 8 from the top (bits 0-8),
+  // then left along row 8 (bits 9-14). Second copy: along row 8 from the
+  // right edge (bits 0-7), then down column 8 near the bottom (bits 8-14).
+  for (let i = 0; i <= 5; i++) dark[i][8] = bit(i);
+  dark[7][8] = bit(6);
   dark[8][8] = bit(7);
-  dark[7][8] = bit(8);
-  for (let i = 9; i < 15; i++) dark[14 - i][8] = bit(i);
-  for (let i = 0; i < 8; i++) dark[size - 1 - i][8] = bit(i);
-  for (let i = 8; i < 15; i++) dark[8][size - 15 + i] = bit(i);
+  dark[8][7] = bit(8);
+  for (let i = 9; i < 15; i++) dark[8][14 - i] = bit(i);
+  for (let i = 0; i < 8; i++) dark[8][size - 1 - i] = bit(i);
+  for (let i = 8; i < 15; i++) dark[size - 15 + i][8] = bit(i);
   dark[size - 8][8] = true;
 }
 
