@@ -12,7 +12,7 @@
 // new fix is one animated translate, and the paths are built once per ground.
 import { Ionicons } from "@expo/vector-icons";
 import { memo, useEffect, useMemo, useState } from "react";
-import { Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { PixelRatio, Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -25,6 +25,7 @@ import Svg, { Circle, Defs, Path, Pattern, Rect } from "react-native-svg";
 
 import { toLocal, type LatLng } from "@/features/game/geo";
 import { buildLayers, type MapLayers } from "@/features/game/mapPaths";
+import { groundRaster } from "@/features/game/mapRaster";
 import { spreadPins } from "@/features/game/pinSpread";
 import { effectiveHour, mapStyle, type MapStyle, timeOfDay } from "@/features/game/mapStyle";
 import { raidTint } from "@/features/game/raids";
@@ -175,8 +176,15 @@ export default function WorldMap(props: Props) {
 
 const Ground = memo(function Ground({ layers, extent, size, look }: { layers: MapLayers | null; extent: number; size: number; look: MapStyle }) {
   const box = `${-extent} ${-extent} ${extent * 2} ${extent * 2}`;
+  // Drawn at most MAX_GROUND_PX square and scaled up (mapRaster.ts): the full
+  // size crashed Android on 560 dpi screens and cost ~160 MB.
+  const raster = groundRaster(size, PixelRatio.get());
   return (
-    <Svg width={size} height={size} viewBox={box} style={StyleSheet.absoluteFill}>
+    <Svg
+      width={raster.drawn}
+      height={raster.drawn}
+      viewBox={box}
+      style={{ position: "absolute", left: raster.offset, top: raster.offset, transform: [{ scale: raster.scale }] }}>
       <Defs>
         <Pattern id="grid" width={40} height={40} patternUnits="userSpaceOnUse">
           <Path d="M40 0L0 0 0 40" stroke={look.grid} strokeWidth={1} fill="none" />
