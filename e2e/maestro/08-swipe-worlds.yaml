@@ -20,7 +20,11 @@ name: J08 swipe from chat into the game and back
 - extendedWaitUntil:
     visible: "Profile"
     timeout: 10000
-- assertVisible: ".*Are you at the fountains yet.*"
+# All chats lists every group before the DMs (F-51), so scroll to it.
+- scrollUntilVisible:
+    element: ".*Are you at the fountains yet.*"
+    direction: DOWN
+    timeout: 20000
 - takeScreenshot: j08-back-in-chats
 - swipe:
     start: "99%,45%"
