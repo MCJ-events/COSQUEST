@@ -17,7 +17,12 @@ export default function PlayLink() {
   useEffect(() => {
     const link = parsePlayUrl(urlFromParams("play", params));
     if (link) world.openGame(link.target);
-    if (router.canGoBack()) {
+    if (router.canDismiss()) {
+      // Back to the tabs, past any chat screen on top: the game sits behind
+      // them and only opens once they are on screen (as joinInvite does).
+      // router.back() alone left an open chat covering the game.
+      router.dismissAll();
+    } else if (router.canGoBack()) {
       router.back();
     } else {
       // Opened cold: the splash decides between the app and sign-in.
