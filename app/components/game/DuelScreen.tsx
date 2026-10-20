@@ -847,6 +847,7 @@ function Arena({
   onOver: (start: DuelStart, runner: DuelRunner, how: "over" | "left") => void;
   onPause: () => void;
 }) {
+  useRenderCount("DuelArena");
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   const reduceMotion = useReducedMotion();

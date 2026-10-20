@@ -148,7 +148,8 @@ def window(seconds_or_fn, counter_names):
     inside = [l for l in lines if l[0] <= t1 + 2100]
     res = {**g, **js_frames(inside), "window_s": round((t1 - t0) / 1000, 1)}
     for name in counter_names:
-        res[f"renders_{name}"] = after.get(name, 0) - before.get(name, 0)
+        if name in after or name in before:  # not every build has every counter
+            res[f"renders_{name}"] = after.get(name, 0) - before.get(name, 0)
     return res
 
 
@@ -225,7 +226,7 @@ def duel():
         while time.time() < end:
             shell(f"input tap {int(w * 0.55)} {int(h * 0.45)}")
             time.sleep(0.3)
-    res = window(taps, ["DuelScreen", "GameRoot"])
+    res = window(taps, ["DuelScreen", "DuelArena", "GameRoot"])
     maestro("back-to-map.yaml")
     return res
 

@@ -54,6 +54,7 @@ ROWS = [
     ("Duel: JS fps", ("duel", "js_fps")),
     ("Duel: JS frames over 50 ms", ("duel", "js_long_frames")),
     ("Duel: DuelScreen renders", ("duel", "renders_DuelScreen")),
+    ("Duel: arena renders (no counter in the before build)", ("duel", "renders_DuelArena")),
     ("Quiz 10 s: UI jank %", ("quiz", "janky_pct")),
     ("Quiz: JS fps", ("quiz", "js_fps")),
     ("Quiz: Encounter renders", ("quiz", "renders_Encounter")),
