@@ -36,7 +36,17 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
-import Animated, { FadeIn, useReducedMotion, ZoomIn } from "react-native-reanimated";
+import Animated, {
+  Easing,
+  FadeIn,
+  type SharedValue,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withSequence,
+  withTiming,
+  ZoomIn,
+} from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import {
@@ -700,55 +710,115 @@ function Fact({ label, value, color }: { label: string; value: string; color: st
 }
 
 // ---------- the arena (2D) ----------
+//
+// The sim runs in JS at a fixed 60 Hz (DuelRunner). Each frame's drawing (the
+// fighters' positions and poses, the shake) goes to Reanimated shared values,
+// which move the views on the UI thread without a React render; React state
+// changes only when something discrete does (health, meter, the clock's
+// second, a hit flash, a floating number). It used to set state every frame
+// and re-render the whole arena 60 times a second (audit B1).
 
-type Floater = { id: number; x: number; text: string; color: string; born: number };
+type Floater = { id: number; x: number; text: string; color: string };
 
-/** What one frame draws: a plain copy of the sim's state (never the live sim, so render stays pure). */
-type FighterView = {
-  x: number;
-  facing: number;
-  action: number;
-  actionTick: number;
-  actionLength: number;
+/** The continuous part of a fighter: written to a shared value every frame. */
+type Pose = { left: number; top: number; opacity: number; rotate: number; translateY: number; scaleY: number; scaleX: number; arm: number; leg: number };
+
+/** The discrete part of a fighter: React state, changes a few times a second at most. */
+type FighterLook = {
+  hpPct: number;
   hp: number;
   maxHp: number;
   meter: number;
-  guard: number;
-  holding: boolean;
-  charging: boolean;
-  invulnerable: boolean;
+  guardPct: number;
+  glow: boolean;
+  hit: boolean;
+  blocking: boolean;
   cls: number;
 };
-type Snap = { now: number; ticksLeft: number; p1: FighterView; p2: FighterView; floaters: Floater[]; shakeAt: number; glowAt: [number, number] };
+type ArenaLook = { seconds: number; p1: FighterLook; p2: FighterLook; floaters: Floater[] };
 
-function viewOf(f: FighterState, x: number): FighterView {
+const NO_POSE: Pose = { left: -200, top: 0, opacity: 1, rotate: 0, translateY: 0, scaleY: 1, scaleX: 1, arm: 20, leg: 6 };
+
+/** The pose of the current action (FighterAction) at its normalised time. */
+function poseOf(f: FighterState, x: number, now: number, toScreenX: (mm: number) => number, groundY: number): Pose {
+  const A = FighterAction;
+  const t = f.actionLength > 0 ? Math.min(1, f.actionTick / f.actionLength) : 0;
+  const arm =
+    f.action === A.Light1 || f.action === A.Light2 || f.action === A.Light3
+      ? Math.sin(t * Math.PI) * 95
+      : f.action === A.HeavyRelease || f.action === A.DashStrike
+        ? Math.sin(t * Math.PI) * 120
+        : f.action === A.Special1 || f.action === A.Special2
+          ? 140 * Math.sin(t * Math.PI)
+          : f.action === A.Block || f.action === A.BlockStun || f.action === A.HeavyCharge
+            ? 60
+            : f.action === A.Victory
+              ? 150
+              : 20;
+  const lean =
+    f.action === A.DashIn || f.action === A.DashStrike
+      ? 18
+      : f.action === A.HitLight || f.action === A.HitHeavy || f.action === A.GuardBreak
+        ? -16
+        : f.action === A.DodgeBack
+          ? -22
+          : f.action === A.WalkFwd
+            ? 6
+            : f.action === A.WalkBack
+              ? -6
+              : 0;
+  const down = f.action === A.Knockdown ? 1 : f.action === A.GetUp ? 1 - t : 0;
+  const defeated = f.action === A.Defeat;
+  const bob = f.action === A.Idle ? Math.sin(now / 260) * 2 : 0;
+  const walking = f.action === A.WalkFwd || f.action === A.WalkBack;
   return {
-    x,
-    facing: f.facing,
-    action: f.action,
-    actionTick: f.actionTick,
-    actionLength: f.actionLength,
+    left: toScreenX(x) - 40,
+    top: groundY - FIGHTER_H + bob + (defeated ? 30 : 0),
+    opacity: f.invulnerable && f.action === A.DodgeBack ? 0.55 : 1,
+    rotate: down ? 80 * down : lean,
+    translateY: down * 40,
+    scaleY: defeated ? 0.75 : 1,
+    scaleX: f.facing,
+    arm: -arm,
+    leg: walking ? Math.sin(now / 90) * 18 : 6,
+  };
+}
+
+function lookOf(f: FighterState, glow: boolean): FighterLook {
+  const A = FighterAction;
+  return {
+    hpPct: Math.round((f.hp / Math.max(1, f.stats.maxHp)) * 100),
     hp: f.hp,
     maxHp: f.stats.maxHp,
-    meter: f.meter,
-    guard: f.guard,
-    holding: f.holding,
-    charging: f.action === FighterAction.HeavyCharge || (f.holding && f.chargeTicks > 0),
-    invulnerable: f.invulnerable,
+    meter: Math.floor(f.meter),
+    guardPct: Math.round(f.guard / 5) * 5,
+    glow: glow || f.action === A.HeavyCharge || (f.holding && f.chargeTicks > 0),
+    hit: f.action === A.HitLight || f.action === A.HitHeavy,
+    blocking: f.action === A.Block || f.action === A.BlockStun || f.holding,
     cls: f.class,
   };
 }
 
-function snapshot(runner: DuelRunner, now: number, floaters: Floater[], shakeAt: number, glowAt: [number, number]): Snap {
+function sameFighterLook(a: FighterLook, b: FighterLook): boolean {
+  return (
+    a.hpPct === b.hpPct &&
+    a.hp === b.hp &&
+    a.meter === b.meter &&
+    a.guardPct === b.guardPct &&
+    a.glow === b.glow &&
+    a.hit === b.hit &&
+    a.blocking === b.blocking &&
+    a.cls === b.cls
+  );
+}
+
+function arenaLook(runner: DuelRunner, now: number, floaters: Floater[], glowAt: [number, number]): ArenaLook {
   const st = runner.sim.state;
   return {
-    now,
-    ticksLeft: st.ticksLeft,
-    p1: viewOf(st.p1, runner.drawX(0)),
-    p2: viewOf(st.p2, runner.drawX(1)),
-    floaters: [...floaters],
-    shakeAt,
-    glowAt: [glowAt[0], glowAt[1]],
+    seconds: Math.ceil(st.ticksLeft / 60),
+    p1: lookOf(st.p1, now - glowAt[0] < 400),
+    p2: lookOf(st.p2, now - glowAt[1] < 400),
+    floaters,
   };
 }
 
@@ -784,9 +854,25 @@ function Arena({
   const view: DuelPresentation = useMemo(() => presentationFromServer(start.setup), [start]);
   const gestures = useMemo(() => new GestureRecognizer({ width, height }), [width, height]);
   const runner = useMemo(() => new DuelRunner(setup, { input: gestures }), [setup, gestures]);
-  const [snap, setSnap] = useState<Snap>(() => snapshot(runner, 0, [], -1e9, [-1e9, -1e9]));
   const live = countdown === 0 && !over;
   const halfWidth = setup.arenaHalfWidthMm;
+  const groundY = height * 0.68;
+  const toScreenX = useCallback((mm: number) => width / 2 + (mm / halfWidth) * (width * 0.46), [width, halfWidth]);
+
+  // Per frame (UI thread): the two fighters' poses and the shake.
+  const p1Pose = useSharedValue<Pose>(NO_POSE);
+  const p2Pose = useSharedValue<Pose>(NO_POSE);
+  const shake = useSharedValue(0);
+  // Discrete (React): health, meter, the clock, hit flashes, floating numbers.
+  const [look, setLook] = useState<ArenaLook>(() => arenaLook(runner, 0, [], [-1e9, -1e9]));
+
+  // The fighters stand in place before the fight starts (the countdown).
+  useEffect(() => {
+    const st = runner.sim.state;
+    p1Pose.set(poseOf(st.p1, runner.drawX(0), 0, toScreenX, groundY));
+    p2Pose.set(poseOf(st.p2, runner.drawX(1), 0, toScreenX, groundY));
+    setLook(arenaLook(runner, 0, [], [-1e9, -1e9]));
+  }, [runner, toScreenX, groundY, p1Pose, p2Pose]);
 
   useEffect(() => {
     runnerRef.current = runner;
@@ -795,18 +881,22 @@ function Arena({
     };
   }, [runner, runnerRef]);
 
-  // The loop: real time in, fixed 60 Hz ticks out, one snapshot per frame.
+  // The loop: real time in, fixed 60 Hz ticks out; poses to shared values every
+  // frame, React state only when the discrete look changes.
   useEffect(() => {
     if (!live || paused) return;
-    const toX = (mm: number) => width / 2 + (mm / halfWidth) * (width * 0.46);
-    let floaters: Floater[] = [];
+    let floaters: (Floater & { born: number })[] = [];
     let floaterId = 0;
-    let shakeAt = -1e9;
     const glowAt: [number, number] = [-1e9, -1e9];
     let raf = 0;
     let done = false;
     let last = performance.now();
+    let shown = arenaLook(runner, last, [], glowAt);
     gestures.setEnabled(true, last);
+    const shakeNow = () => {
+      if (reduceMotion) return;
+      shake.set(withSequence(...[6, -6, 5, -5, 3, -3, 0].map((v) => withTiming(v, { duration: 30 }))));
+    };
     const onEvent = (e: DuelEvent, now: number) => {
       // DuelSFX at the sim's own moments: a hit Medium, a block Light, a heavy or a break Heavy, a special Heavy, the K.O. Success.
       playCue(cueForSimEvent(e.type, e.hitStop));
@@ -814,19 +904,19 @@ function Arena({
         const heavy = (e.hitStop ?? 0) > 6;
         floaters.push({
           id: ++floaterId,
-          x: toX(e.x ?? 0),
+          x: toScreenX(e.x ?? 0),
           text: e.type === DuelEventType.Blocked ? `${e.damage}` : `-${e.damage}`,
           color: e.type === DuelEventType.Blocked ? GP.ice : e.target === 1 ? GP.berry : GP.sun,
           born: now,
         });
-        if (heavy) shakeAt = now;
+        if (heavy) shakeNow();
       } else if (e.type === DuelEventType.GuardBreak) {
-        floaters.push({ id: ++floaterId, x: toX(e.x ?? 0), text: "BREAK!", color: GP.sun, born: now });
-        shakeAt = now;
+        floaters.push({ id: ++floaterId, x: toScreenX(e.x ?? 0), text: "BREAK!", color: GP.sun, born: now });
+        shakeNow();
       } else if (e.type === DuelEventType.Telegraph) {
         glowAt[(e.source ?? 1) - 1] = now;
       } else if (e.type === DuelEventType.KO) {
-        shakeAt = now;
+        shakeNow();
       }
     };
     const loop = (now: number) => {
@@ -834,8 +924,23 @@ function Arena({
       const r = runner.advance(now - last);
       last = now;
       for (const e of r.events) onEvent(e, now);
+      const before = floaters.length;
       floaters = floaters.filter((f) => now - f.born < 900);
-      setSnap(snapshot(runner, now, floaters, shakeAt, glowAt));
+      const st = runner.sim.state;
+      const t = reduceMotion ? 0 : now;
+      p1Pose.set(poseOf(st.p1, runner.drawX(0), t, toScreenX, groundY));
+      p2Pose.set(poseOf(st.p2, runner.drawX(1), t, toScreenX, groundY));
+      const next = arenaLook(runner, now, floaters, glowAt);
+      if (
+        next.seconds !== shown.seconds ||
+        r.events.length > 0 ||
+        floaters.length !== before ||
+        !sameFighterLook(next.p1, shown.p1) ||
+        !sameFighterLook(next.p2, shown.p2)
+      ) {
+        shown = { ...next, floaters: floaters.map(({ id, x, text, color }) => ({ id, x, text, color })) };
+        setLook(shown);
+      }
       if (runner.over) {
         if (!done) {
           done = true;
@@ -850,13 +955,8 @@ function Arena({
       cancelAnimationFrame(raf);
       gestures.setEnabled(false, performance.now());
     };
-  }, [live, paused, runner, gestures, start, onOver, width, halfWidth]);
+  }, [live, paused, runner, gestures, start, onOver, toScreenX, groundY, reduceMotion, p1Pose, p2Pose, shake]);
 
-  const toScreenX = (mm: number) => width / 2 + (mm / halfWidth) * (width * 0.46);
-  const now = snap.now;
-  const shaking = !reduceMotion && now - snap.shakeAt < 220;
-  const offset = shaking ? Math.sin(now / 18) * 6 : 0;
-  const groundY = height * 0.68;
   const p1Color = realmColor(view.p1Faction || gameStore.get().me?.faction);
   const p2Color = realmColor(view.p2Faction || point.realm);
   // One clock for touches and the loop's poll (a touch event's own timestamp
@@ -866,7 +966,8 @@ function Arena({
     for (const p of e.nativeEvent.changedTouches) fn(t, p.pageX, p.pageY, Number(p.identifier));
   };
   const hearsTouch = live && !paused;
-  const seconds = Math.ceil(snap.ticksLeft / 60);
+  const seconds = look.seconds;
+  const shakeStyle = useAnimatedStyle(() => ({ transform: [{ translateX: shake.get() }] }));
 
   return (
     <View
@@ -882,30 +983,25 @@ function Arena({
       <View style={[styles.ground, { top: groundY, backgroundColor: edgeOf(p2Color, 0.22) }]} />
       <View style={[styles.groundLine, { top: groundY }]} />
 
-      <View style={[StyleSheet.absoluteFill, { transform: [{ translateX: offset }] }]} pointerEvents="none" importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
-        <Fighter f={snap.p2} toScreenX={toScreenX} groundY={groundY} color={p2Color} glow={now - snap.glowAt[1] < 400} now={reduceMotion ? 0 : now} guardian />
-        <Fighter f={snap.p1} toScreenX={toScreenX} groundY={groundY} color={p1Color} glow={now - snap.glowAt[0] < 400} now={reduceMotion ? 0 : now} />
-        {snap.floaters.map((fl) => {
-          const age = (now - fl.born) / 900;
-          return (
-            <Text key={fl.id} style={[styles.floater, { left: fl.x - 40, top: groundY - FIGHTER_H - 30 - age * 50, opacity: 1 - age, color: fl.color }]}>
-              {fl.text}
-            </Text>
-          );
-        })}
-      </View>
+      <Animated.View style={[StyleSheet.absoluteFill, shakeStyle]} pointerEvents="none" importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
+        <Fighter pose={p2Pose} look={look.p2} color={p2Color} guardian />
+        <Fighter pose={p1Pose} look={look.p1} color={p1Color} />
+        {look.floaters.map((fl) => (
+          <FloatingNumber key={fl.id} floater={fl} top={groundY - FIGHTER_H - 30} />
+        ))}
+      </Animated.View>
 
       <View style={[styles.hud, { top: insets.top + 8 }]} pointerEvents="box-none">
-        <Bars name={view.p1Name || gameStore.playerName()} level={view.p1Level} f={snap.p1} color={p1Color} align="left" />
+        <Bars name={view.p1Name || gameStore.playerName()} level={view.p1Level} f={look.p1} color={p1Color} align="left" />
         <View style={styles.clock} accessible accessibilityLabel={`${seconds} seconds left`}>
           <Text style={styles.clockText} maxFontSizeMultiplier={1.2}>{seconds}</Text>
         </View>
-        <Bars name={view.p2Name || "Guardian"} level={view.p2Level} f={snap.p2} color={p2Color} align="right" />
+        <Bars name={view.p2Name || "Guardian"} level={view.p2Level} f={look.p2} color={p2Color} align="right" />
       </View>
 
       <View style={[styles.specials, { bottom: insets.bottom + 18 }]}>
-        <SpecialButton n={1} label="Special" ready={snap.p1.meter >= 100} onPress={() => gestures.special(1)} disabled={!hearsTouch} />
-        <SpecialButton n={2} label="Ultimate" ready={snap.p1.meter >= 300} onPress={() => gestures.special(2)} disabled={!hearsTouch} />
+        <SpecialButton n={1} label="Special" ready={look.p1.meter >= 100} onPress={() => gestures.special(1)} disabled={!hearsTouch} />
+        <SpecialButton n={2} label="Ultimate" ready={look.p1.meter >= 300} onPress={() => gestures.special(2)} disabled={!hearsTouch} />
       </View>
       {over || countdown > 0 ? null : <PauseButton top={insets.top + 8 + 76} onPress={onPause} />}
 
@@ -930,8 +1026,18 @@ function Arena({
   );
 }
 
-function Bars({ name, level, f, color, align }: { name: string; level: number; f: FighterView; color: string; align: "left" | "right" }) {
-  const hp = f.hp / Math.max(1, f.maxHp);
+/** "-12" rising and fading over 0.9 s, animated on the UI thread. */
+function FloatingNumber({ floater, top }: { floater: Floater; top: number }) {
+  const age = useSharedValue(0);
+  useEffect(() => {
+    age.set(withTiming(1, { duration: 900, easing: Easing.linear }));
+  }, [age]);
+  const style = useAnimatedStyle(() => ({ opacity: 1 - age.get(), transform: [{ translateY: -age.get() * 50 }] }));
+  return <Animated.Text style={[styles.floater, { left: floater.x - 40, top, color: floater.color }, style]}>{floater.text}</Animated.Text>;
+}
+
+function Bars({ name, level, f, color, align }: { name: string; level: number; f: FighterLook; color: string; align: "left" | "right" }) {
+  const hp = f.hpPct / 100;
   return (
     <View style={[styles.bars, { alignItems: align === "left" ? "flex-start" : "flex-end" }]} accessible accessibilityLabel={`${name}, level ${level}, ${f.hp} of ${f.maxHp} health`}>
       <Text style={styles.barName} numberOfLines={1} maxFontSizeMultiplier={MAX_FONT_SCALE}>
@@ -948,7 +1054,7 @@ function Bars({ name, level, f, color, align }: { name: string; level: number; f
         ))}
       </View>
       <View style={{ width: "60%", transform: [{ scaleX: align === "right" ? -1 : 1 }] }}>
-        <ProgressBar value={f.guard / 100} color={GP.ice} track="rgba(0,0,0,0.3)" height={4} />
+        <ProgressBar value={f.guardPct / 100} color={GP.ice} track="rgba(0,0,0,0.3)" height={4} />
       </View>
     </View>
   );
@@ -969,91 +1075,40 @@ function SpecialButton({ n, label, ready, onPress, disabled }: { n: number; labe
 }
 
 /**
- * One fighter, drawn from its sim state: a body, a head, a weapon arm, and the
- * pose of the current action (FighterAction) at its normalised time.
+ * One fighter: a body, a head, a weapon arm and legs. Where it stands and its
+ * pose come from a shared value (every frame, no render); its colours and
+ * the shield / glow from the discrete look.
  */
-function Fighter({
-  f,
-  toScreenX,
-  groundY,
-  color,
-  glow: telegraphed,
-  now,
-  guardian,
-}: {
-  f: FighterView;
-  toScreenX: (mm: number) => number;
-  groundY: number;
-  color: string;
-  glow: boolean;
-  now: number;
-  guardian?: boolean;
-}) {
-  const A = FighterAction;
-  const t = f.actionLength > 0 ? Math.min(1, f.actionTick / f.actionLength) : 0;
-  const attackArm =
-    f.action === A.Light1 || f.action === A.Light2 || f.action === A.Light3
-      ? Math.sin(t * Math.PI) * 95
-      : f.action === A.HeavyRelease || f.action === A.DashStrike
-        ? Math.sin(t * Math.PI) * 120
-        : f.action === A.Special1 || f.action === A.Special2
-          ? 140 * Math.sin(t * Math.PI)
-          : f.action === A.Block || f.action === A.BlockStun || f.action === A.HeavyCharge
-            ? 60
-            : f.action === A.Victory
-              ? 150
-              : 20;
-  const lean =
-    f.action === A.DashIn || f.action === A.DashStrike
-      ? 18
-      : f.action === A.HitLight || f.action === A.HitHeavy || f.action === A.GuardBreak
-        ? -16
-        : f.action === A.DodgeBack
-          ? -22
-          : f.action === A.WalkFwd
-            ? 6
-            : f.action === A.WalkBack
-              ? -6
-              : 0;
-  const down = f.action === A.Knockdown ? 1 : f.action === A.GetUp ? 1 - t : 0;
-  const defeated = f.action === A.Defeat;
-  const hit = f.action === A.HitLight || f.action === A.HitHeavy;
-  const glow = telegraphed || f.charging;
-  const blocking = f.action === A.Block || f.action === A.BlockStun || f.holding;
-  const left = toScreenX(f.x);
-  const facing = f.facing;
-  const bob = f.action === A.Idle ? Math.sin(now / 260) * 2 : 0;
+function Fighter({ pose, look, color, guardian }: { pose: SharedValue<Pose>; look: FighterLook; color: string; guardian?: boolean }) {
+  const bodyStyle = useAnimatedStyle(() => {
+    const p = pose.get();
+    return {
+      left: p.left,
+      top: p.top,
+      opacity: p.opacity,
+      transform: [{ scaleX: p.scaleX }, { rotate: `${p.rotate}deg` }, { translateY: p.translateY }, { scaleY: p.scaleY }],
+    };
+  });
+  const armStyle = useAnimatedStyle(() => ({ transform: [{ rotate: `${pose.get().arm}deg` }] }));
+  const leg1Style = useAnimatedStyle(() => ({ transform: [{ rotate: `${pose.get().leg}deg` }] }));
+  const leg2Style = useAnimatedStyle(() => ({ transform: [{ rotate: `${-pose.get().leg}deg` }] }));
   return (
-    <View
-      style={[
-        styles.fighter,
-        {
-          left: left - 40,
-          top: groundY - FIGHTER_H + bob + (defeated ? 30 : 0),
-          opacity: f.invulnerable && f.action === A.DodgeBack ? 0.55 : 1,
-          transform: [
-            { scaleX: facing },
-            { rotate: `${down ? 80 * down : lean}deg` },
-            { translateY: down * 40 },
-            { scaleY: defeated ? 0.75 : 1 },
-          ],
-        },
-      ]}>
-      {glow ? <View style={[styles.glow, { borderColor: guardian ? GP.berry : GP.sun }]} /> : null}
-      <View style={[styles.head, { backgroundColor: hit ? "#FFFFFF" : color }]}>
+    <Animated.View style={[styles.fighter, bodyStyle]}>
+      {look.glow ? <View style={[styles.glow, { borderColor: guardian ? GP.berry : GP.sun }]} /> : null}
+      <View style={[styles.head, { backgroundColor: look.hit ? "#FFFFFF" : color }]}>
         {guardian ? <Ionicons name="skull" size={20} color="rgba(0,0,0,0.35)" /> : <View style={styles.eye} />}
       </View>
-      <View style={[styles.body, { backgroundColor: hit ? "#FFFFFF" : edgeOf(color, 0.85) }]} />
-      <View style={[styles.arm, { transform: [{ rotate: `${-attackArm}deg` }] }]}>
+      <View style={[styles.body, { backgroundColor: look.hit ? "#FFFFFF" : edgeOf(color, 0.85) }]} />
+      <Animated.View style={[styles.arm, armStyle]}>
         <View style={[styles.forearm, { backgroundColor: edgeOf(color, 0.7) }]} />
-        {f.cls === 0 ? <View style={styles.blade} /> : <View style={[styles.fist, { backgroundColor: edgeOf(color, 0.6) }]} />}
-      </View>
-      {blocking ? <View style={[styles.shield, { borderColor: f.guard < 30 ? GP.berry : GP.ice }]} /> : null}
+        {look.cls === 0 ? <View style={styles.blade} /> : <View style={[styles.fist, { backgroundColor: edgeOf(color, 0.6) }]} />}
+      </Animated.View>
+      {look.blocking ? <View style={[styles.shield, { borderColor: look.guardPct < 30 ? GP.berry : GP.ice }]} /> : null}
       <View style={styles.legs}>
-        <View style={[styles.leg, { backgroundColor: edgeOf(color, 0.55), transform: [{ rotate: `${f.action === A.WalkFwd || f.action === A.WalkBack ? Math.sin(now / 90) * 18 : 6}deg` }] }]} />
-        <View style={[styles.leg, { backgroundColor: edgeOf(color, 0.55), transform: [{ rotate: `${f.action === A.WalkFwd || f.action === A.WalkBack ? -Math.sin(now / 90) * 18 : -6}deg` }] }]} />
+        <Animated.View style={[styles.leg, { backgroundColor: edgeOf(color, 0.55) }, leg1Style]} />
+        <Animated.View style={[styles.leg, { backgroundColor: edgeOf(color, 0.55) }, leg2Style]} />
       </View>
-    </View>
+    </Animated.View>
   );
 }
 
