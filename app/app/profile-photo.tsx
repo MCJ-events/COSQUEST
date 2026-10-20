@@ -226,7 +226,11 @@ export default function ProfilePhoto() {
         ]}
         showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <Pressable onPress={() => safeBack()} hitSlop={10}>
+          <Pressable
+            onPress={() => safeBack()}
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel="Back">
             <Ionicons name="chevron-back" size={26} color="#191922" />
           </Pressable>
 
@@ -284,7 +288,10 @@ export default function ProfilePhoto() {
               <Pressable
                 key={avatar.id}
                 style={[styles.avatarItem, active && styles.avatarItemActive]}
-                onPress={() => chooseAvatar(avatar.id)}>
+                onPress={() => chooseAvatar(avatar.id)}
+                accessibilityRole="button"
+                accessibilityLabel={avatar.label || avatar.id}
+                accessibilityState={{ selected: active }}>
                 <Image
                   source={avatar.source}
                   style={styles.avatarImage}

@@ -45,13 +45,18 @@ function Toggle({
   on,
   disabled,
   onToggle,
+  label,
 }: {
   on: boolean;
   disabled?: boolean;
   onToggle: () => void;
+  label: string;
 }) {
   return (
     <Pressable
+      accessibilityRole="switch"
+      accessibilityLabel={label}
+      accessibilityState={{ checked: on, disabled: !!disabled }}
       style={[
         styles.toggle,
         on && styles.toggleOn,
@@ -543,6 +548,7 @@ export default function Permissions() {
             </View>
 
             <Toggle
+              label="Enable Location"
               on={data.locationGranted}
               onToggle={toggleLocation}
               disabled={locationLoading || saving}
@@ -599,6 +605,7 @@ export default function Permissions() {
             </View>
 
             <Toggle
+              label="Allow Notifications"
               on={!IS_WEB && data.notificationsEnabled}
               onToggle={toggleNotifications}
               disabled={IS_WEB || notificationLoading || saving}
