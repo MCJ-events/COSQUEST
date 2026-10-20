@@ -12,6 +12,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
+
+import { setChatFocus } from "@/services/chatFocus";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -495,8 +497,13 @@ export default function SearchInChat() {
             <Pressable
               style={styles.primary}
               onPress={() => {
+                const target = context?.targetId;
                 setContext(null);
-                router.push({ pathname: "/chat/[id]", params: { id: conversationId } });
+                // Back to the chat this search came from, at the message found
+                // (it pushed a second copy of the chat, at the bottom).
+                if (target && conversationId) setChatFocus(conversationId, target);
+                if (router.canGoBack()) router.back();
+                else router.replace({ pathname: "/chat/[id]", params: { id: conversationId } });
               }}>
               <Text style={styles.primaryText}>Open the chat</Text>
             </Pressable>

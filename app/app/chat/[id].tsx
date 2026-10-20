@@ -1,5 +1,6 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { replyQuote } from "@/services/replyQuote";
+import { takeChatFocus } from "@/services/chatFocus";
 import {
   AudioModule,
   RecordingPresets,
@@ -3299,6 +3300,26 @@ export default function ChatScreen() {
       setHighlightedId((current) => (current === messageId ? null : current));
     }, 1600);
   };
+
+  // A message found in chat search (services/chatFocus.ts): scroll to it once
+  // it is in the list.
+  const [focusMessageId, setFocusMessageId] = useState<string | null>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      const messageId = takeChatFocus(conversationId);
+      if (messageId) setFocusMessageId(messageId);
+    }, [conversationId]),
+  );
+
+  useEffect(() => {
+    if (!focusMessageId || !visibleMessages.some((item) => item.id === focusMessageId)) return;
+    setFocusMessageId(null);
+    const timer = setTimeout(() => scrollToMessage(focusMessageId), 300);
+    return () => clearTimeout(timer);
+    // scrollToMessage is recreated every render; the list and the id are what matter.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusMessageId, visibleMessages]);
 
   // ========================================
   // VOICE MESSAGE
