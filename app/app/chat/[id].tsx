@@ -1,4 +1,5 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { replyQuote } from "@/services/replyQuote";
 import {
   AudioModule,
   RecordingPresets,
@@ -1196,7 +1197,7 @@ const Bubble = memo(function Bubble({
                     styles.replyPreviewTitle,
                     mine && styles.replyPreviewTitleMine,
                   ]}>
-                  {msg.replyTo.sender?.username || "Reply"}
+                  {replyQuote(msg.replyTo).name}
                 </Text>
 
                 <View style={styles.replyLine}>
@@ -1214,9 +1215,7 @@ const Bubble = memo(function Bubble({
                       styles.replyPreviewText,
                       mine && styles.replyPreviewTextMine,
                     ]}>
-                    {msg.replyTo.content ||
-                      getMessageTypeLabel(msg.replyTo) ||
-                      "Message"}
+                    {replyQuote(msg.replyTo, getMessageTypeLabel(msg.replyTo)).text}
                   </Text>
                 </View>
               </View>
