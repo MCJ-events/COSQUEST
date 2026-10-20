@@ -99,6 +99,11 @@ export default function GameRoot({ parked }: { parked: boolean }) {
   // (GameHostOpenHook.resolve): open that point's sheet once it is loaded.
   const focusId = focus ? focus.pointId ?? focus.duelId ?? focus.raidId ?? null : null;
   const focusPoint = focusId ? points.find((p) => p.id === focusId) ?? null : null;
+  // A new link or invite wins over a point tapped earlier: the tapped one
+  // used to stay selected and its sheet showed instead of the linked point.
+  useEffect(() => {
+    if (focusId) setSelectedId(null);
+  }, [focusId]);
   const selected = points.find((p) => p.id === selectedId) ?? (screen.kind === "home" ? focusPoint : null);
   const closeSheet = () => {
     setSelectedId(null);
