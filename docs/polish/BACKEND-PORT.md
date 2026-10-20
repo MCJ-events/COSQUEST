@@ -40,8 +40,8 @@ ignores `page`. The app drops duplicates by id and stops asking when a page
 brings nothing new.
 
 Port: copy `messageCursor()` and the changed body of `listMessages()`.
-Index: `{ conversation: 1, createdAt: -1, _id: -1 }` on messages (check the
-existing indexes on `Message`; the sort already needs it).
+Index: the existing `{ conversation: 1, createdAt: -1 }` on `Message` serves
+it; no new index.
 
 ## 2. Some chats in one request: `GET /api/chats?ids=a,b,c`
 
