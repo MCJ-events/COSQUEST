@@ -14,14 +14,20 @@ import {
       socketCallIncoming,
       socketCallUpdated,
 } from "@/store/slices/callSlice";
+import { createIdBatcher, previewSummary } from "@/services/idBatcher";
+import { normalizeChat } from "@/services/chats";
 import {
+      socketChatSummaries,
       socketPresenceChanged,
       socketTypingStarted,
       socketTypingStopped,
 } from "@/store/slices/chatSlice";
 import { socketFollowerAdded } from "@/store/slices/followSlice";
 import { fetchIncomingCall } from "@/store/thunks/callThunks";
-import { fetchConversation } from "@/store/thunks/chatThunks";
+import { fetchConversation, refreshConversations } from "@/store/thunks/chatThunks";
+
+// Previews within this long are fetched together (audit B5).
+const PREVIEW_BATCH_MS = 400;
 
 // How long someone stays showing as "online" after their connection
 // actually drops — covers a brief app-background/network-blip without
@@ -198,17 +204,32 @@ export function useSocketConnection() {
     // fetchConversation.fulfilled reducer update both
     // conversationDetails and the conversations list array, which is
     // what the Direct Message list actually renders from.
-    const handleChatPreview = (payload: { conversationId: string }) => {
+    //
+    // Audit B5: a busy group sends one per message, and each used to fetch
+    // the conversation again. Now previews are collected for 400 ms and
+    // fetched once per chat (several chats: one request for all of them);
+    // a preview that already carries the chat's summary (the backend change
+    // in docs/polish/BACKEND-PORT.md) is used as is, with no fetch.
+    const previews = createIdBatcher(PREVIEW_BATCH_MS, (ids) => {
+      if (ids.length === 1) {
+        dispatch(fetchConversation({ conversationId: ids[0], token }));
+      } else {
+        dispatch(refreshConversations({ ids, token }));
+      }
+    });
+
+    const handleChatPreview = (payload: { conversationId: string; chat?: unknown }) => {
       if (!payload?.conversationId) {
         return;
       }
 
-      dispatch(
-        fetchConversation({
-          conversationId: payload.conversationId,
-          token,
-        }),
-      );
+      const summary = previewSummary(payload);
+      if (summary) {
+        dispatch(socketChatSummaries([normalizeChat(summary)]));
+        return;
+      }
+
+      previews.add(payload.conversationId);
     };
 
     // ======================================
@@ -250,10 +271,9 @@ export function useSocketConnection() {
     const handleConnect = () => {
       checkForMissedRinging();
 
-      if (hasConnectedBefore) {
-        dmIdsRef.current.forEach((conversationId) => {
-          dispatch(fetchConversation({ conversationId, token }));
-        });
+      // One request for every DM, not one per DM (audit B5).
+      if (hasConnectedBefore && dmIdsRef.current.length > 0) {
+        dispatch(refreshConversations({ ids: dmIdsRef.current, token }));
       }
 
       hasConnectedBefore = true;
@@ -294,6 +314,7 @@ export function useSocketConnection() {
       socket.off("typing:start", handleTypingStart);
       socket.off("typing:stop", handleTypingStop);
       socket.off("chat:preview", handleChatPreview);
+      previews.cancel();
       socket.off("call:incoming", handleCallIncoming);
       socket.off("call:updated", handleCallUpdated);
       socket.off("connect", handleConnect);

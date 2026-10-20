@@ -9,6 +9,7 @@ import {
   fetchConversation,
   fetchMessages,
   fetchOlderMessages,
+  refreshConversations,
   fetchMessageSeen,
   fetchMessageShare,
   pinMessageThunk,
@@ -80,6 +81,19 @@ type ChatState = {
   // haven't even opened yet.
   typingByConversation: Record<string, boolean>;
 };
+
+/** Chat summaries (list shape) merged into the list and any open details. */
+function mergeChatSummaries(state: ChatState, chats: Chat[]) {
+  for (const chat of chats) {
+    if (!chat?.id) continue;
+    const index = state.conversations.findIndex((item) => item.id === chat.id);
+    if (index >= 0) state.conversations[index] = { ...state.conversations[index], ...chat };
+    else state.conversations.push(chat);
+    if (state.conversationDetails[chat.id]) {
+      state.conversationDetails[chat.id] = { ...state.conversationDetails[chat.id], ...chat };
+    }
+  }
+}
 
 const initialState: ChatState = {
   conversations: [],
@@ -239,6 +253,11 @@ const chatSlice = createSlice({
   initialState,
 
   reducers: {
+    // A chat:preview that carries the chat's summary (no fetch needed).
+    socketChatSummaries: (state, action: PayloadAction<Chat[]>) => {
+      mergeChatSummaries(state, action.payload);
+    },
+
     // ======================================
     // CLEAR ALL
     // ======================================
@@ -849,6 +868,12 @@ const chatSlice = createSlice({
         updateConversationPreview(state, conversationId);
       })
 
+      // Some chats' summaries at once (audit B5): merged in, never replacing
+      // the list (the answer may be a few chats or all of them).
+      .addCase(refreshConversations.fulfilled, (state, action) => {
+        mergeChatSummaries(state, action.payload);
+      })
+
       .addCase(fetchOlderMessages.pending, (state, action) => {
         const { conversationId } = action.meta.arg;
         state.messagePaging[conversationId] = {
@@ -1203,6 +1228,7 @@ const chatSlice = createSlice({
 });
 
 export const {
+  socketChatSummaries,
   clearChats,
   clearConversationMessages,
   toggleSelectedMessage,

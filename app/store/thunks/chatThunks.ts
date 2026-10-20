@@ -6,6 +6,7 @@ import {
   forwardMessage,
   getChatShare,
   getChats,
+  getChatsByIds,
   getConversation,
   getMessageSeen,
   getMessageShare,
@@ -146,6 +147,21 @@ export const fetchMessages = createAsyncThunk(
       return rejectWithValue(
         error instanceof Error ? error.message : "Failed to load messages",
       );
+    }
+  },
+);
+
+// ==========================================
+// SOME CHATS AT ONCE (reconnect catch-up, preview bursts; audit B5)
+// ==========================================
+
+export const refreshConversations = createAsyncThunk(
+  "chat/refreshConversations",
+  async ({ ids, token }: { ids: string[]; token: string }, { rejectWithValue }) => {
+    try {
+      return await getChatsByIds(ids, token);
+    } catch (error) {
+      return rejectWithValue(error instanceof Error ? error.message : "Failed to refresh chats");
     }
   },
 );

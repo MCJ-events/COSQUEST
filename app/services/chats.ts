@@ -251,7 +251,7 @@ function getConversationId(chat: Chat): string {
   return String(chat.id || chat._id || "");
 }
 
-function normalizeChat(raw: any): Chat {
+export function normalizeChat(raw: any): Chat {
   return {
     ...raw,
     id: String(raw?.id ?? raw?._id ?? ""),
@@ -275,6 +275,27 @@ export async function getChats(token: string): Promise<Chat[]> {
     method: "GET",
     token,
   });
+
+  const data = Array.isArray(response)
+    ? response
+    : (response?.chats ?? response?.conversations ?? response?.data ?? []);
+
+  return data.map(normalizeChat);
+}
+
+/* =========================================================
+   SOME CHATS, ONE REQUEST (audit B5)
+   GET /api/chats?ids=a,b,c
+   The cursor backend (docs/polish/BACKEND-PORT.md) answers only those chats;
+   today's ignores `ids` and answers the whole list, which is just as right
+   to merge (useSocketConnection: reconnect catch-up, preview bursts).
+========================================================= */
+
+export async function getChatsByIds(ids: string[], token: string): Promise<Chat[]> {
+  const response = await apiRequest<any>(
+    `/api/chats?ids=${ids.map(encodeURIComponent).join(",")}`,
+    { method: "GET", token },
+  );
 
   const data = Array.isArray(response)
     ? response
