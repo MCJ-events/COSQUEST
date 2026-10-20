@@ -20,12 +20,21 @@ name: J08 swipe from chat into the game and back
 - extendedWaitUntil:
     visible: "Profile"
     timeout: 10000
-# All chats lists every group before the DMs (F-51), so scroll to it.
+# All chats lists every group first and shows DMs as avatars only (F-51),
+# so open Bolu's DM to read it.
 - scrollUntilVisible:
-    element: ".*Are you at the fountains yet.*"
+    element: "Bolu"
     direction: DOWN
     timeout: 20000
+- tapOn: "Bolu"
+- extendedWaitUntil:
+    visible: ".*Are you at the fountains yet.*"
+    timeout: 10000
 - takeScreenshot: j08-back-in-chats
+- tapOn: "Back"
+- extendedWaitUntil:
+    visible: "Profile"
+    timeout: 10000
 - swipe:
     start: "99%,45%"
     end: "20%,45%"

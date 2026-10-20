@@ -82,7 +82,7 @@ journey or unit test that shows it.
 | F-44 | Medium | chat backend | Messages | No message kind for a game result, so shared results (F-34) are plain text. |
 | F-45 | Low | app | Chat attach sheet (from code) | No File/Document option although documents render; "Audio" only shows a "press and hold the mic" alert. |
 | F-48 | Medium | backend / rig | Uploads | The chat backend has no local storage fallback: without Cloudinary keys every upload (onboarding photo, chat media, voice) is a 500. The rig stubs it. Any file sent as `application/octet-stream` is stored as `kind: "image"`. |
-| F-51 | Low | design | Chat list, All chats | Every group comes before the DMs, so a new DM (Bolu's "Are you at the fountains yet?") lands below the fold under seven groups, while the game's Chats bubble says there is something new. No ordering by latest message across groups and DMs. |
+| F-51 | Low | design | Chat list, All chats | Every group comes first and DMs are a row of avatars with a count but no preview, below the fold under seven groups. Coming back from the game (the Chats bubble said something was new), Bolu's "Are you at the fountains yet?" is nowhere in sight until you scroll and open his DM. No ordering by latest message across groups and DMs. |
 
 ## Looked at, not changed (by design)
 
