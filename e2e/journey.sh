@@ -22,22 +22,27 @@ flow="$1"
 label="${2:-$(basename "$flow" .yaml)}"
 mkdir -p "$OUT/$label" "$VIDEOS"
 
-adb shell rm -f "/sdcard/jr-$label-*.mp4" >/dev/null 2>&1
-adb shell "i=0; while true; do screenrecord --time-limit 170 --bit-rate 4000000 /sdcard/jr-$label-\$(printf %02d \$i).mp4 || break; i=\$((i+1)); done" &
+# The tunnels to this machine's backends go if adb reconnects; renew them.
+"$here/emu.sh" tunnels
+adb shell rm -f "/sdcard/jr-$label-*.mp4" /sdcard/jr-stop >/dev/null 2>&1
+adb shell "i=0; while [ ! -f /sdcard/jr-stop ]; do screenrecord --time-limit 170 --bit-rate 4000000 /sdcard/jr-$label-\$(printf %02d \$i).mp4 || break; i=\$((i+1)); done" &
 rec=$!
 sleep 1
 
 start=$(date +%s)
 "$MAESTRO" test --format junit --output "$OUT/$label/report.xml" \
-  --debug-output "$OUT/$label" ${MAESTRO_ARGS:-} "$here/$flow" > "$OUT/$label.maestro.log" 2>&1
+  --debug-output "$OUT/$label" --flatten-debug-output --test-output-dir "$OUT/$label" ${MAESTRO_ARGS:-} "$here/$flow" > "$OUT/$label.maestro.log" 2>&1
 status=$?
 secs=$(( $(date +%s) - start ))
 
-# Stop the recorder: the on-phone loop first, then the screenrecord itself
-# (SIGINT lets it finish the file).
-kill "$rec" 2>/dev/null
+# Stop the recorder: tell the on-phone loop not to start another segment,
+# then SIGINT the running screenrecord so it finishes the file, and wait for
+# the loop to end (killing adb first would cut the file off unfinished).
+adb shell touch /sdcard/jr-stop
 adb shell 'for p in $(pidof screenrecord); do kill -INT $p; done' >/dev/null 2>&1
-sleep 3
+for _ in $(seq 1 20); do kill -0 "$rec" 2>/dev/null || break; sleep 1; done
+kill "$rec" 2>/dev/null
+sleep 1
 tmp="$OUT/$label/segments"
 mkdir -p "$tmp"
 for f in $(adb shell ls "/sdcard/jr-$label-*.mp4" 2>/dev/null | tr -d '\r'); do

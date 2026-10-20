@@ -1,0 +1,10 @@
+# Open the chat list (Community tab, Chats pill).
+appId: com.dammy0227.cosquest
+---
+- tapOn: "Community"
+- tapOn:
+    text: "Chats"
+    index: 0
+- extendedWaitUntil:
+    visible: "YOUR GROUPS"
+    timeout: 15000

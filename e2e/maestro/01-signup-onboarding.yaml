@@ -64,3 +64,61 @@ name: J01 sign up and onboarding
     timeout: 30000
 - tapOn: "Continue"
 - takeScreenshot: j01-after-picture
+# Interests
+- extendedWaitUntil:
+    visible: "Comics"
+    timeout: 15000
+- tapOn: "Comics"
+- tapOn: "Video Games"
+- scrollUntilVisible:
+    element: "Continue"
+    direction: DOWN
+    timeout: 20000
+- tapOn: "Continue"
+# Permissions: location is required. The toggles had no labels (F-12),
+# so tap where they sit.
+- extendedWaitUntil:
+    visible: "Find CosQuests.*"
+    timeout: 15000
+- tapOn:
+    point: "84%,66%"
+- extendedWaitUntil:
+    notVisible: "Getting your location.*"
+    timeout: 20000
+- takeScreenshot: j01-permissions
+- scrollUntilVisible:
+    element: "Continue"
+    direction: DOWN
+    timeout: 20000
+- tapOn: "Continue"
+# Faction: the consent modal comes up after 2 s.
+- extendedWaitUntil:
+    visible: "Got it.*"
+    timeout: 15000
+- tapOn: "Got it.*"
+- tapOn: "Continue"
+# Fantasy Fans is Everborn, the one the backend refused before F-13.
+- tapOn: "Fantasy Fans"
+- tapOn: "Join Faction"
+- scrollUntilVisible:
+    element: "Continue"
+    direction: DOWN
+    timeout: 20000
+- tapOn: "Continue"
+- extendedWaitUntil:
+    visible: "COSQUEST"
+    timeout: 15000
+- takeScreenshot: j01-welcome
+- tapOn: "Continue"
+- extendedWaitUntil:
+    visible: "Welcome to CosQuest!"
+    timeout: 20000
+- tapOn: "CONTINUE"
+- extendedWaitUntil:
+    visible: "Got it"
+    timeout: 20000
+- takeScreenshot: j01-landed
+- tapOn: "Got it"
+# Lands somewhere real, not the Expo starter page (F-02).
+- assertNotVisible: "Edit app/.*"
+- assertVisible: "Community"

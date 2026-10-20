@@ -24,8 +24,9 @@ appId: com.dammy0227.cosquest
 - tapOn:
     text: "Sign in"
     index: 0
+# Signed in once the tab bar shows (the sign-in page says "Cosquest" too).
 - extendedWaitUntil:
-    visible: ".*(Cosquest|Community).*"
+    visible: "Profile"
     timeout: 30000
 - tapOn:
     text: "Got it"
