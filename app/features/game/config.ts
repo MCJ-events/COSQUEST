@@ -13,13 +13,16 @@ export const STAGING_GAME_SERVER = "https://costquest-staging.204.168.162.79.ssl
 /**
  * The server for this build. `EXPO_PUBLIC_GAME_SERVER` is inlined by Metro at
  * bundle time: "staging", "production", or an https URL. Unset: production,
- * as on iOS. Anything that is not https is refused (falls back to production).
+ * as on iOS. Anything that is not https is refused (falls back to production),
+ * except a game server on this machine for local test runs: plain http to
+ * localhost, 127.0.0.1 or 10.0.2.2 (the Android emulator's name for the host).
  */
 export function resolveGameServer(raw: string | undefined | null): string {
   const value = (raw ?? "").trim();
   if (!value || value === "production") return PRODUCTION_GAME_SERVER;
   if (value === "staging") return STAGING_GAME_SERVER;
   if (/^https:\/\/[^\s/?#]+(\/[^\s?#]*)?$/i.test(value)) return value.replace(/\/+$/, "");
+  if (/^http:\/\/(localhost|127\.0\.0\.1|10\.0\.2\.2)(:\d{1,5})?\/?$/i.test(value)) return value.replace(/\/+$/, "");
   return PRODUCTION_GAME_SERVER;
 }
 

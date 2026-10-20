@@ -37,6 +37,11 @@ describe("config", () => {
     assert.equal(resolveGameServer("staging"), STAGING_GAME_SERVER);
     assert.equal(resolveGameServer("https://x.example/"), "https://x.example");
     assert.equal(resolveGameServer("http://evil.example"), PRODUCTION_GAME_SERVER);
+    // A local game server for test runs: plain http to this machine only.
+    assert.equal(resolveGameServer("http://localhost:8399/"), "http://localhost:8399");
+    assert.equal(resolveGameServer("http://10.0.2.2:8399"), "http://10.0.2.2:8399");
+    assert.equal(resolveGameServer("http://localhost.evil.example"), PRODUCTION_GAME_SERVER);
+    assert.equal(resolveGameServer("http://127.0.0.1:8399/v1"), PRODUCTION_GAME_SERVER);
     assert.equal(isProductionServer(STAGING_GAME_SERVER), false);
   });
   it("iOS stays native unless asked; Android is always rn", () => {

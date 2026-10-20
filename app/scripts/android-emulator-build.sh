@@ -13,7 +13,10 @@
 #
 # Env (defaults in brackets):
 #   CHAT_API_URL   [http://localhost:4120]  the chat backend (devLocal.js)
-#   GAME_SERVER    [staging]                "staging" or an https URL
+#   GAME_SERVER    [staging]                "staging", an https URL, or a game
+#                                           server on this machine for local runs
+#                                           (http://localhost:PORT with
+#                                           `adb reverse tcp:PORT tcp:PORT`)
 #   GAME_UI        [rn]                     the React Native game
 #   ABI            [x86_64]                 arm64-v8a for a phone
 #   UNLOCK_ALL     [0]                      1: every feature open whatever the
@@ -37,7 +40,8 @@ export PATH="${JAVA_HOME:?set JAVA_HOME}/bin:$PATH"
 
 case "$GAME_SERVER" in
   staging | https://*) ;;
-  *) echo "GAME_SERVER must be 'staging' or an https URL" >&2; exit 2 ;;
+  http://localhost:* | http://127.0.0.1:* | http://10.0.2.2:*) ;;
+  *) echo "GAME_SERVER must be 'staging', an https URL or http://localhost:PORT" >&2; exit 2 ;;
 esac
 
 export EXPO_PUBLIC_API_URL="$CHAT_API_URL"
