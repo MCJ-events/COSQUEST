@@ -120,6 +120,10 @@ export type NativeOnly = {
   unityDemoDuel?(): Promise<void>;
   /** DuelBridge.Quit. Unity stays loaded (it cannot be restarted). */
   unityQuit?(): Promise<void>;
+  /** The export has the fantasy battle scene (iOS: CQSetBattleEventCallback found). Absent on Android. */
+  hasBattleScene?: boolean;
+  /** BattleBridge.StartBattle(setupJson), for a setup of kind "battle". Rejects ERR_NO_BATTLE / ERR_UNITY_START. */
+  unityStartBattle?(setupJson: string): Promise<void>;
   /** Any other bridge message (WorldRoot, HubBridge, BattleBridge; FRAMEWORK_PIN.md). */
   unitySend?(gameObject: string, method: string, message?: string | null): Promise<void>;
   unityPause?(paused: boolean): Promise<void>;

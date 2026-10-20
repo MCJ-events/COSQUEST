@@ -72,11 +72,15 @@ import {
   type RunDuelRequest,
   runDuelTarget,
   cueForSimEvent,
+  isBattleSetup,
+  SCENE_TIMEOUT_TEXT,
+  unityBattleAction,
   unityDuelAction,
   unitySetupJson,
   verdictCue,
   versusTitle,
   VERSUS_MS,
+  wantsBattle,
 } from "@/features/game/duelFlow";
 import { distanceText } from "@/features/game/geo";
 import { RAID_COLOR, raidDuelStart } from "@/features/game/raids";
@@ -122,6 +126,27 @@ const USE_UNITY =
       hasBridge: typeof nativeHelpers?.unityStartDuel === "function" && typeof nativeHelpers?.addListener === "function",
     },
   }) === "unity";
+
+/**
+ * Point fights may come back as the fantasy battle (UnityBattleHost) when
+ * Unity draws them and the export has the Battle scene (iOS reports it;
+ * Android leaves it out, so Android never asks).
+ */
+const ASK_BATTLE = wantsBattle({
+  renderer: USE_UNITY ? "unity" : "rn",
+  hasBattleScene: nativeHelpers?.hasBattleScene === true,
+  hasStart: typeof nativeHelpers?.unityStartBattle === "function",
+  islandsOffRaw: process.env.EXPO_PUBLIC_GAME_2D,
+});
+
+/** BattleBridge's own pause (UnityBattleHost.setPaused) and Quit. Never throws. */
+function battleSend(method: "SetPaused" | "Quit", message: string) {
+  try {
+    nativeHelpers?.unitySend?.("BattleBridge", method, message)?.catch(() => {});
+  } catch {
+    // a build without it
+  }
+}
 
 /** The sound and the haptic of one cue (DuelSFX.play). */
 function playCue(c: DuelCue) {
@@ -192,6 +217,8 @@ export default function DuelScreen({
   const before = useRef<RoamStanding | null>(null);
   const alive = useRef(true);
   const sceneReady = useRef(false);
+  /** This fight is the fantasy battle (a setup of kind "battle"), played only by Unity. */
+  const battle = useRef(false);
   const startedOnce = useRef(false);
   const runnerRef = useRef<DuelRunner | null>(null);
   const unitySub = useRef<{ remove: () => void } | null>(null);
@@ -247,8 +274,14 @@ export default function DuelScreen({
 
   // Unity keeps running unless told otherwise: freeze it under the pause page.
   const unityOn = renderer === "unity" && phase.kind === "fighting";
+  // The battle freezes itself behind the pause page (BattleBridge.SetPaused);
+  // the runtime stops only while the game is behind the chat.
   useEffect(() => {
-    if (unityOn) unityPause(paused || parked);
+    if (!unityOn) return;
+    if (battle.current) {
+      battleSend("SetPaused", paused || parked ? "1" : "0");
+      unityPause(parked);
+    } else unityPause(paused || parked);
   }, [unityOn, paused, parked]);
 
   // The verdict: sounds and haptics from the SERVER's word, then the Warden.
@@ -312,7 +345,8 @@ export default function DuelScreen({
     if (renderer === "unity" && cur.kind === "fighting") {
       unityPause(false);
       // The scene answers with `quit` and the fight as it stood. If it never does, leave anyway.
-      void nativeHelpers?.unityQuit?.()?.catch(() => {});
+      if (battle.current) battleSend("Quit", "");
+      else void nativeHelpers?.unityQuit?.()?.catch(() => {});
       void wait(3000).then(() => {
         if (alive.current && phaseRef.current.kind === "fighting") abandon();
       });
@@ -324,7 +358,7 @@ export default function DuelScreen({
   };
 
   const onUnity = (start: DuelStart, e: { scene: string; kind: string; json: string }) => {
-    const a = unityDuelAction(e);
+    const a = battle.current ? unityBattleAction(e) : unityDuelAction(e);
     if (!a) return;
     if (a.kind === "ready") sceneReady.current = true;
     else if (a.kind === "sfx") playCue(cueFor(a.cue));
@@ -349,6 +383,7 @@ export default function DuelScreen({
     announce("Finding your opponent");
     before.current = gameStore.get().me?.standing ?? null;
     sceneReady.current = false;
+    battle.current = false;
     let unity = USE_UNITY;
     setRenderer(unity ? "unity" : "rn");
     try {
@@ -363,8 +398,9 @@ export default function DuelScreen({
               : mode === "run" && run
                 ? // A pocket run has no location; a daily run is judged for reach.
                   await gameStore.client.duelStart({ mode: "run", target: runDuelTarget(run), lat: fix?.lat, lng: fix?.lng, accuracy_m: fix?.accuracy, stake: run.stake })
-                : await gameStore.duelStart(point);
+                : await gameStore.duelStart(point, { battle: ASK_BATTLE });
       if (!alive.current) return;
+      battle.current = isBattleSetup(start);
       go({ kind: "versus", start });
       playSound("whoosh");
       announce(versusTitle(start, (id) => gameStore.factionName(id)));
@@ -373,8 +409,16 @@ export default function DuelScreen({
         try {
           unitySub.current?.remove();
           unitySub.current = nativeHelpers?.addListener?.("onUnityEvent", (e) => onUnity(start, e)) ?? null;
-          await nativeHelpers?.unityStartDuel?.(unitySetupJson(start));
+          if (battle.current) await nativeHelpers?.unityStartBattle?.(unitySetupJson(start));
+          else await nativeHelpers?.unityStartDuel?.(unitySetupJson(start));
         } catch {
+          // A battle has no 2D arena: say so, as DuelView does when its scene never opens.
+          if (battle.current) {
+            unitySub.current?.remove();
+            unitySub.current = null;
+            if (alive.current) go({ kind: "failed", message: SCENE_TIMEOUT_TEXT, afterStart: true });
+            return;
+          }
           // Unity would not start: the 2D arena plays this same fight.
           unity = false;
           unitySub.current?.remove();
@@ -391,6 +435,12 @@ export default function DuelScreen({
       if (alive.current && !sceneReady.current && phaseRef.current.kind === "fighting") {
         unitySub.current?.remove();
         unitySub.current = null;
+        if (battle.current) {
+          battleSend("Quit", "");
+          unityPause(true);
+          go({ kind: "failed", message: SCENE_TIMEOUT_TEXT, afterStart: true });
+          return;
+        }
         void nativeHelpers?.unityQuit?.()?.catch(() => {});
         unityPause(true);
         setRenderer("rn");

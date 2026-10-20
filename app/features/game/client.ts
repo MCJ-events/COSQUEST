@@ -307,9 +307,12 @@ export class GameClient {
     accuracy_m?: number | null;
     /** A Quest Run's Forbidden Zone: stake half the score on this fight. */
     stake?: boolean;
+    /** This build can play the fantasy battle scene: a point fight may come back as kind "battle" (server knob point_battle). */
+    battle?: boolean;
   }): Promise<DuelStart> {
     // Absent rather than null: the server's accuracy_m is a number with a default.
     const payload: Record<string, unknown> = { device_key: this.deviceKey(), mode: body.mode, target: body.target };
+    if (body.battle) payload.battle = true;
     if (body.lat != null && body.lng != null) {
       payload.lat = body.lat;
       payload.lng = body.lng;

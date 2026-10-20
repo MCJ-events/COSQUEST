@@ -62,6 +62,9 @@ public final class CostQuestGameModule: Module {
         "modelViewAvailable": true,
         // Venue Events, native (ARKit): VenueEventsIsland.swift.
         "venueEventsAvailable": true,
+        // The fantasy battle scene is in this Unity export (BattleBridge,
+        // CQSetBattleEventCallback): the RN fight asks the server for it.
+        "hasBattleScene": UnityIsland.hasBattleScene,
       ]
     }
 
@@ -205,6 +208,19 @@ public final class CostQuestGameModule: Module {
       try MainActor.assumeIsolated {
         try UnityIsland.boot()
         UnityIsland.send("DuelBridge", "DemoDuel", "")
+      }
+    }.runOnQueue(.main)
+
+    /// BattleBridge.StartBattle(setupJson): the fantasy action fight, for a
+    /// setup of kind "battle" (UnityBattleHost.begin). Quit, pause and resume
+    /// go through unitySend("BattleBridge", "Quit" | "SetPaused", ...).
+    AsyncFunction("unityStartBattle") { (setupJson: String) in
+      try MainActor.assumeIsolated {
+        guard UnityIsland.hasBattleScene else {
+          throw helperError("ERR_NO_BATTLE", "This Unity build has no Battle scene.")
+        }
+        try UnityIsland.boot()
+        UnityIsland.send("BattleBridge", "StartBattle", setupJson)
       }
     }.runOnQueue(.main)
 

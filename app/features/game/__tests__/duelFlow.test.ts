@@ -339,3 +339,53 @@ describe("guardian stance", () => {
     assert.ok(!stanceLead(true, true).includes("default"));
   });
 });
+
+import { isBattleSetup, parseBattleFinished, SCENE_TIMEOUT_TEXT, unityBattleAction, wantsBattle } from "../duelFlow.ts";
+
+describe("the fantasy battle (BattleWire.swift, UnityBattleHost.swift)", () => {
+  const ok = { renderer: "unity" as const, hasBattleScene: true, hasStart: true, islandsOffRaw: "" };
+
+  it("asks for it only when Unity draws, the export has the scene, and the island is on", () => {
+    assert.equal(wantsBattle(ok), true);
+    assert.equal(wantsBattle({ ...ok, renderer: "rn" }), false);
+    assert.equal(wantsBattle({ ...ok, hasBattleScene: false }), false);
+    assert.equal(wantsBattle({ ...ok, hasStart: false }), false);
+    assert.equal(wantsBattle({ ...ok, islandsOffRaw: "unityBattle" }), false);
+    assert.equal(wantsBattle({ ...ok, islandsOffRaw: "all" }), false);
+    assert.equal(wantsBattle({ ...ok, islandsOffRaw: "unityDuel" }), true);
+  });
+
+  it("tells a battle setup from a duel's by its kind", () => {
+    const battle = parseDuelStart('{"duel_id":"d1","mode":"point","target":"p","seed":4611686018427387903,"setup":{"kind":"battle","seed":4611686018427387903,"hero":{"name":"Ada","class":"mage","level":3}}}');
+    assert.equal(isBattleSetup(battle), true);
+    assert.equal(battle.seed_text, "4611686018427387903");
+    assert.equal(isBattleSetup({ setup: { p1: { name: "a" }, p2: { name: "b" } } }), false);
+  });
+
+  it("reports the battle's result in the duel's finish shape (BattleFinished.asDuelFinished)", () => {
+    const won = { result: { won: true, end_reason: "GuardianDefeated", ticks: 900, hero_hp: 41, kills: 7 }, inputs: [[3, 1], [40, 2, 5]], hash: "00ff00ff00ff00ff" };
+    assert.deepEqual(parseBattleFinished(JSON.stringify(won)), {
+      result: { winner: 1, ticks: 900, p1_hp: 41, p2_hp: 0, end_reason: "GuardianDefeated", kills: 7 },
+      inputs: [[3, 1], [40, 2, 5]],
+      hash: "00ff00ff00ff00ff",
+    });
+    const lost = { ...won, result: { ...won.result, won: false, end_reason: "HeroDefeated", hero_hp: 0 } };
+    assert.deepEqual(parseBattleFinished(JSON.stringify(lost))?.result, { winner: 2, ticks: 900, p1_hp: 0, p2_hp: 1, end_reason: "HeroDefeated", kills: 7 });
+    assert.equal(parseBattleFinished("junk"), null);
+    assert.equal(parseBattleFinished(JSON.stringify({ ...won, result: { ...won.result, won: "yes" } })), null);
+    assert.equal(parseBattleFinished(JSON.stringify({ ...won, inputs: [[1, "x"]] })), null);
+  });
+
+  it("reads only the battle scene's events; its quit has nothing to report", () => {
+    const ev = (kind: string, json = "") => ({ scene: "battle", kind, json });
+    const fin = { result: { won: true, end_reason: "Timeout", ticks: 2400, hero_hp: 5, kills: 2 }, inputs: [], hash: "0123456789abcdef" };
+    assert.deepEqual(unityBattleAction(ev("ready")), { kind: "ready" });
+    assert.deepEqual(unityBattleAction(ev("sfx", '{"name":"hit_heavy","haptic":"heavy"}')), { kind: "sfx", cue: "hit_heavy" });
+    assert.equal(unityBattleAction(ev("finished", JSON.stringify(fin)))?.kind, "finished");
+    assert.deepEqual(unityBattleAction(ev("finished", "junk")), { kind: "quit", payload: null });
+    assert.deepEqual(unityBattleAction(ev("quit", JSON.stringify(fin))), { kind: "quit", payload: null });
+    assert.equal(unityBattleAction({ scene: "duel", kind: "ready", json: "" }), null);
+    assert.equal(unityBattleAction(ev("other")), null);
+    assert.match(SCENE_TIMEOUT_TEXT, /arena didn't open/);
+  });
+});

@@ -79,7 +79,7 @@ export type GameScreen = (typeof GAME_SCREENS)[number];
  *   unityDuel   the Guardian Duel drawn by Unity (DuelBridge)                -> 2D arena (same sim)
  *   venueEvents the paid venue games in AR (ARKit, VenueEventsIsland.swift)  -> no Events tile
  */
-export const NATIVE_ISLANDS = ["forgeModel", "unityDuel", "venueEvents"] as const;
+export const NATIVE_ISLANDS = ["forgeModel", "unityDuel", "unityBattle", "venueEvents"] as const;
 export type NativeIsland = (typeof NATIVE_ISLANDS)[number];
 
 /**

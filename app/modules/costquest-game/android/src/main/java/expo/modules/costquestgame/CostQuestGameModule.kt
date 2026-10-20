@@ -243,6 +243,18 @@ class CostQuestGameModule : Module() {
       host.send("DuelBridge", "DemoDuel", "")
     }.runOnQueue(Queues.MAIN)
 
+    /**
+     * BattleBridge.StartBattle(setupJson), the iOS name. The Android export's
+     * Battle scene is not detected, so `hasBattleScene` is left out (false)
+     * and the RN game never asks the server for a battle here.
+     */
+    AsyncFunction("unityStartBattle") { setupJson: String ->
+      val host = requireUnity()
+      val activity = appContext.currentActivity ?: throw CodedException("ERR_NO_ACTIVITY", "No activity", null)
+      if (!host.start(activity)) throw CodedException("ERR_UNITY_START", "Unity did not start", null)
+      host.send("BattleBridge", "StartBattle", setupJson)
+    }.runOnQueue(Queues.MAIN)
+
     /** DuelBridge.Quit. Unity stays loaded (it cannot be restarted); it is paused when its view goes. */
     AsyncFunction("unityQuit") {
       UnityHosts.host?.send("DuelBridge", "Quit", "")

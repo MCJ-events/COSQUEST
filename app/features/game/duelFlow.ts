@@ -355,6 +355,77 @@ export function unitySetupJson(start: Pick<DuelStart, "setup" | "seed_text">): s
   return text.replace(`"${marker}"`, digits);
 }
 
+// ---------------------------------------------------------------------
+// The fantasy battle (BattleWire.swift, UnityBattleHost.swift)
+// ---------------------------------------------------------------------
+
+/**
+ * Whether a point fight may ask the server for the fantasy battle
+ * (DuelModel.start: body.battle = true): Unity draws the fight, the export
+ * has the Battle scene, and the island "unityBattle" is not turned off.
+ */
+export function wantsBattle(i: { renderer: "unity" | "rn"; hasBattleScene: boolean; hasStart: boolean; islandsOffRaw: string | null | undefined }): boolean {
+  return i.renderer === "unity" && i.hasBattleScene && i.hasStart && !resolveIslandsOff(i.islandsOffRaw).has("unityBattle");
+}
+
+/** BattleSetupPeek.isBattle: a setup of kind "battle" is played by the Battle scene, not the duel. */
+export function isBattleSetup(start: Pick<DuelStart, "setup">): boolean {
+  return start.setup?.kind === "battle";
+}
+
+/**
+ * BattleFinished.asDuelFinished: the Battle scene's
+ * {result: {won, end_reason, ticks, hero_hp, kills}, inputs, hash} as the finish
+ * body the server takes. 1 is the player, 2 the Guardian. Null if unreadable.
+ */
+export function parseBattleFinished(json: string): DuelFinished | null {
+  let v: unknown;
+  try {
+    v = JSON.parse(json);
+  } catch {
+    return null;
+  }
+  if (!isRec(v) || !isRec(v.result) || !Array.isArray(v.inputs) || typeof v.hash !== "string") return null;
+  const r = v.result;
+  if (typeof r.won !== "boolean" || typeof r.end_reason !== "string" || !isInt(r.ticks) || !isInt(r.hero_hp) || !isInt(r.kills)) return null;
+  const inputs: number[][] = [];
+  for (const row of v.inputs) {
+    if (!Array.isArray(row) || !row.every(isInt)) return null;
+    inputs.push(row as number[]);
+  }
+  return {
+    result: { winner: r.won ? 1 : 2, ticks: r.ticks, p1_hp: r.hero_hp, p2_hp: r.won ? 0 : 1, end_reason: r.end_reason, kills: r.kills },
+    inputs,
+    hash: v.hash,
+  };
+}
+
+/**
+ * One Battle scene event (UnityBattleHost.deliver). Unlike the duel, its
+ * `quit` carries nothing to report: the server forfeits a fight left running.
+ */
+export function unityBattleAction(e: { scene: string; kind: string; json: string }): UnityDuelAction | null {
+  if (e.scene !== "battle") return null;
+  switch (e.kind) {
+    case "ready":
+      return { kind: "ready" };
+    case "sfx":
+      return { kind: "sfx", cue: parseCue(e.json) };
+    case "finished": {
+      const payload = parseBattleFinished(e.json);
+      // Unreadable: Swift quits rather than report nonsense.
+      return payload ? { kind: "finished", payload } : { kind: "quit", payload: null };
+    }
+    case "quit":
+      return { kind: "quit", payload: null };
+    default:
+      return null;
+  }
+}
+
+/** DuelError.sceneTimeout: the battle has no 2D arena to fall back to. */
+export const SCENE_TIMEOUT_TEXT = "The arena didn't open. Close CosQuest and try again.";
+
 /** What one Unity event means to the duel screen. */
 export type UnityDuelAction =
   | { kind: "ready" }

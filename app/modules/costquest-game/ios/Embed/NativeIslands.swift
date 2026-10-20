@@ -33,6 +33,17 @@ enum UnityIsland {
 
   static var available: Bool { CostQuestGameModule.hasUnity }
 
+  /// The Battle scene is optional in an export: its callback setter is looked
+  /// up, not linked (UnityBattleHost.registerOnce), so its absence is "no
+  /// battle in this build", not a link error.
+  nonisolated static var hasBattleScene: Bool {
+    #if NO_UNITY
+    return false
+    #else
+    return dlsym(UnsafeMutableRawPointer(bitPattern: -2), "CQSetBattleEventCallback") != nil
+    #endif
+  }
+
   #if !NO_UNITY
   private static var registered = false
 

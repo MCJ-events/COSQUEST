@@ -347,7 +347,15 @@ export type DuelStart = {
   resumed?: boolean;
 };
 
-export type DuelResult = { winner: number; ticks: number; p1_hp: number; p2_hp: number };
+export type DuelResult = {
+  winner: number;
+  ticks: number;
+  p1_hp: number;
+  p2_hp: number;
+  /** The fantasy battle's own words (GuardianDefeated | HeroDefeated | Timeout); the side-on duel leaves them out. */
+  end_reason?: string;
+  kills?: number;
+};
 
 /** The finish body's payload: what the sim reports at the end. */
 export type DuelFinished = { result: DuelResult; inputs: number[][]; hash: string };

@@ -5,7 +5,7 @@
 // Features/SpawnsFeature.swift NearbyRadar.
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useEffect, useRef, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text } from "react-native";
 import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 
 import { gameStore } from "@/features/game/runtime";
