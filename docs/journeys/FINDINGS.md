@@ -107,8 +107,36 @@ journey or unit test that shows it.
 - **Sign-in rate limits** (10 per IP per 2 h) and the one-session-per-account
   rule would break repeated runs; the local runner turns the limits off.
 - **adb reverse tunnels** dropped a few times during the day; `journey.sh`
-  renews them every 5 s.
+  renews them every 5 s, and the GPS fix too.
+- **Quiz rows move** with the question's length; `phone.js` finds them in a
+  raw screenshot (the quiz screen never goes idle, so a UI dump is slow).
+- **Memory**: the emulator uses about 6 GB of the task's 9 GB; it is stopped
+  for each Gradle build.
 
 ## Journey results
 
-Filled in by the before/after runs: see the end of this file.
+Before: the first merged build, no fixes (journeys as of 249471b). After: build
+11 (d77866b, every fix), all 12 in one run on 2026-10-20 16:18-16:39 UTC; J09
+failed once on a quiz tap that missed a wrapped answer row (a rig problem,
+fixed in `e2e/seed/phone.js`) and passed on the re-run. Videos:
+`before-*.mp4`, `after-*.mp4` (build 10) and `final-*.mp4` (build 11) in the
+task's `out/videos/`.
+
+| Journey | Before | After (build 11) | Why it failed before |
+|---|---|---|---|
+| J01 sign-up and onboarding | FAIL | PASS | F-13 faction refused, F-02 starter page (later runs also caught F-49) |
+| J02 profile and avatar | PASS | PASS | (F-19 is visual: compare j02-profile screenshots) |
+| J03 DMs and groups | FAIL | PASS | F-21 Send hidden by the keyboard |
+| J04 a Spark forms | FAIL | PASS | F-21 |
+| J05 Start a Spark | FAIL | PASS | F-21 |
+| J06 messaging | FAIL | PASS | F-22 reply quotes (now also F-26, F-47) |
+| J07 calls | FAIL | PASS | F-31 crash (now also F-41) |
+| J08 swipe between worlds | FAIL | PASS | the journey looked for a DM preview that All chats doesn't show (F-51) |
+| J09 game play | FAIL | PASS | F-33 the link opened the tapped point |
+| J10 share to chat | FAIL | PASS | F-34 no share button |
+| J11 factions | PASS | PASS | |
+| J12 notifications and links | FAIL | PASS | F-36 game opened behind the chat (now also F-46) |
+| **Total** | **2 of 12** | **12 of 12** | |
+
+Test servers (`e2e/testserver/smoke.js`, 2026-10-20 15:45 UTC): 17 of 18; the
+failure is F-01.
