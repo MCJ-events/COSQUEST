@@ -58,7 +58,8 @@ function ChatTabs() {
         headerShown: false,
         tabBarButton: HapticTab,
         tabBarLabel: ({ color, children }) => (
-          <Text style={[styles.label, { color }]} numberOfLines={1} maxFontSizeMultiplier={TAB_LABEL_MAX_SCALE}>
+          // Shrinks to fit rather than "Cosqu…" at the largest display size.
+          <Text style={[styles.label, { color }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8} maxFontSizeMultiplier={TAB_LABEL_MAX_SCALE}>
             {children}
           </Text>
         ),

@@ -130,6 +130,9 @@ export default function Community() {
                   hitSlop={6}
                   onPress={() => setTab(key)}>
                   <Text
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.75}
                     style={[styles.tabText, active && styles.tabTextActive]}>
                     {key}
                   </Text>
@@ -247,7 +250,11 @@ const styles = StyleSheet.create({
 
   tab: {
     minWidth: 82,
-    height: 26,
+    // minHeight and flexShrink: at the largest text and display size the
+    // three pills no longer fit a 320-point row; they shrink (and their text
+    // with them) instead of the last one being cut off.
+    minHeight: 26,
+    flexShrink: 1,
     paddingHorizontal: 18,
     borderRadius: 13,
     alignItems: "center",
