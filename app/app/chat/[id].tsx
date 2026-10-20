@@ -3314,8 +3314,12 @@ export default function ChatScreen() {
 
   useEffect(() => {
     if (!focusMessageId || !visibleMessages.some((item) => item.id === focusMessageId)) return;
-    setFocusMessageId(null);
-    const timer = setTimeout(() => scrollToMessage(focusMessageId), 300);
+    // Cleared after the scroll: clearing it first re-ran this effect, whose
+    // cleanup cancelled the timer.
+    const timer = setTimeout(() => {
+      scrollToMessage(focusMessageId);
+      setFocusMessageId(null);
+    }, 300);
     return () => clearTimeout(timer);
     // scrollToMessage is recreated every render; the list and the id are what matter.
     // eslint-disable-next-line react-hooks/exhaustive-deps
