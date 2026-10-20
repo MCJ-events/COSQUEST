@@ -10,22 +10,32 @@ here="$(cd "$(dirname "$0")" && pwd)"
 : "${GAME_PG:=cx054-game-pg}"
 mkdir -p "$OUT"
 
-restart() { # name script log
-  local pidf="$OUT/$1.pid"
-  if [ -f "$pidf" ] && kill -0 "$(cat "$pidf")" 2>/dev/null; then
-    kill "$(cat "$pidf")"
-    for _ in $(seq 1 20); do kill -0 "$(cat "$pidf")" 2>/dev/null || break; sleep 0.5; done
-  fi
-  (cd "$here/.." && nohup node "$2" > "$3" 2>&1 & echo $! > "$pidf")
+# The node process listening on a port, if it is one of ours (e2e/seed).
+ours_on() {
+  local pid
+  pid=$(ss -ltnp 2>/dev/null | grep "127.0.0.1:$1 " | grep -o 'pid=[0-9]*' | head -1 | cut -d= -f2)
+  [ -n "$pid" ] && tr '\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null | grep -q "e2e/seed/" && echo "$pid"
+}
+
+restart() { # name script log port
+  local pidf="$OUT/$1.pid" pid
+  for pid in $( [ -f "$pidf" ] && cat "$pidf") $(ours_on "$4"); do
+    kill "$pid" 2>/dev/null
+  done
+  # wait for the old one to let go of its port before the new one binds it
+  for _ in $(seq 1 40); do ss -ltn | grep -q "127.0.0.1:$4 " || break; sleep 0.5; done
+  (cd "$here/.." || exit 1; nohup node "$2" > "$3" 2>&1 &)
+  for _ in $(seq 1 60); do pid=$(ours_on "$4") && break; sleep 0.5; done
+  echo "${pid:-}" > "$pidf"
 }
 
 rm -f "$here/seed/.peer-state.json"
-restart chat-local e2e/seed/chat-local.js "$OUT/chat-local.log"
+restart chat-local e2e/seed/chat-local.js "$OUT/chat-local.log" 4120
 for _ in $(seq 1 60); do grep -q "\[chat-local\] ready\|failed" "$OUT/chat-local.log" 2>/dev/null && break; sleep 1; done
 grep -q "\[chat-local\] ready" "$OUT/chat-local.log" || { echo "chat backend did not start, see $OUT/chat-local.log" >&2; exit 1; }
 
 if ! curl -s -m 2 -o /dev/null -X POST http://127.0.0.1:4130/run; then
-  restart peer-server e2e/seed/peer-server.js "$OUT/peer-server.log"
+  restart peer-server e2e/seed/peer-server.js "$OUT/peer-server.log" 4130
   sleep 1
 fi
 
