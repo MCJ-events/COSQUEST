@@ -90,13 +90,17 @@ npm test 2>&1 | tee "$LOGS/npm-test.log" | tail -8
 npm run typecheck 2>&1 | tee "$LOGS/typecheck.log" | tail -5
 ran+=("npm test" "typecheck")
 
+step "lint (0 errors expected since merged-app-sync ecbfc0b)"
+npm run lint 2>&1 | tee "$LOGS/lint.log" | tail -3
+ran+=("lint")
+
 # 3. Native project from app.json + the config plugins.
 step "expo prebuild --clean (ios)"
 CI=1 npx expo prebuild --platform ios --clean --no-install 2>&1 | tee "$LOGS/prebuild.log" | tail -5
 ran+=("prebuild")
 
 step "pod install"
-(cd ios && pod install 2>&1 | tee "$LOGS/pod-install.log" | grep -E "CostQuestGame|Pod installation|error" || true)
+(cd ios && pod install 2>&1 | tee "$LOGS/pod-install.log" | grep -E "CostQuestGame|SparksCallAudio|Pod installation|error" || true)
 grep -q "Pod installation complete" "$LOGS/pod-install.log" || { echo "pod install failed: $LOGS/pod-install.log" >&2; exit 1; }
 ran+=("pod install")
 
@@ -155,6 +159,16 @@ if [ "$RUN" = 1 ]; then
   xcrun simctl launch "$device" "$bundle_id"
   echo "    launched $bundle_id on $device. Try: swipe left from the right edge of the chat tabs;"
   echo "    xcrun simctl openurl $device 'cosquest://play?shrine=test-1&place=Somewhere'"
+  # What the Android journeys (docs/journeys/) changed that only a Mac can see.
+  echo "    By hand on iOS (docs/journeys/FINDINGS.md has the Android side):"
+  echo "     - chat: the keyboard still sits just under the composer (padding on both platforms, b434ee5)"
+  echo "     - edit a message: the edit card shows once under it and Done closes it (55b5ca5)"
+  echo "     - chat search, Open the chat: back to the same chat at the message (b83f40f)"
+  echo "     - profile: stat cards keep their soft shadow (only Android lost elevation, ca9ee20)"
+  echo "     - sign-up picture step: Continue pinned above the home indicator (6f2590f)"
+  echo "     - incoming call: tapping the Accept caption answers (3718d17)"
+  echo "     - xcrun simctl openurl $device 'cosquest://nowhere' shows 'This link doesn't go anywhere' (39dda0c)"
+  echo "     - a 1:1 call with Sparks on (sparks-call-audio module), then add a third person: no crash (9034081)"
   ran+=("simulator run")
 fi
 
