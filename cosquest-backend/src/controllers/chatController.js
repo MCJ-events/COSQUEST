@@ -684,8 +684,37 @@ function forBroadcast(serialized) {
 const SENDER_FIELDS = 'profile.username profile.displayName profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl faction lastActiveAt privacy.showOnlineStatus expertise';
 
 // GET /api/chats - "Your Space" (community + faction room) plus every DM.
+// chat:preview for a DM, with each participant's own summary (unread count,
+// last message, the other person). Falls back to the bare event on any error.
+async function emitDmPreviews(conversation) {
+  const ids = conversation.participants.map(String);
+  try {
+    const users = await User.find({ _id: { $in: ids } });
+    await Promise.all(
+      users.map(async (user) => {
+        const chat = await summarizeConversation(conversation, user);
+        emitToUsers([String(user._id)], 'chat:preview', { conversationId: conversation.id, chat });
+      })
+    );
+  } catch (err) {
+    console.error('DM preview summaries failed:', err);
+    emitToUsers(ids, 'chat:preview', { conversationId: conversation.id });
+  }
+}
+
+// GET /api/chats[?ids=a,b,c]
+// With `ids` (polish, docs/polish/BACKEND-PORT.md): only those of my chats are
+// summarised and returned, for the app's reconnect catch-up and preview
+// bursts (one request instead of one per chat). Without it, every chat, as
+// before. Ids that aren't mine are simply left out.
+function parseIdList(value) {
+  if (typeof value !== 'string' || !value.trim()) return null;
+  return new Set(value.split(',').map((id) => id.trim()).filter((id) => mongoose.isValidObjectId(id)).slice(0, 200));
+}
+
 async function listChats(req, res) {
   const me = req.user;
+  const only = parseIdList(req.query.ids);
   const rooms = [await getOrCreateCommunityConversation()];
   if (me.faction) rooms.push(await getOrCreateFactionConversation(me.faction));
 
@@ -724,7 +753,8 @@ async function listChats(req, res) {
     }
   }
 
-  const chats = await Promise.all(rooms.map((conversation) => summarizeConversation(conversation, me)));
+  const wanted = only ? rooms.filter((conversation) => only.has(String(conversation._id))) : rooms;
+  const chats = await Promise.all(wanted.map((conversation) => summarizeConversation(conversation, me)));
   return res.json({ chats });
 }
 
@@ -835,16 +865,24 @@ async function listMessages(req, res) {
 
   const limit = parseLimit(req.query.limit);
   const page = parsePage(req.query.page);
-  const [messages, total, otherLastReadAt] = await Promise.all([
-    Message.find({ conversation: conversation._id, deletedFor: { $ne: req.userId } })
+  // `before` (polish, docs/polish/BACKEND-PORT.md): the page just older than
+  // that message (an id in this chat) or that time (ISO). It replaces `page`
+  // and doesn't shift when new messages arrive. Unknown values are ignored.
+  const cursor = await messageCursor(conversation, req.query.before);
+  const visible = { conversation: conversation._id, deletedFor: { $ne: req.userId } };
+  const filter = cursor ? { ...visible, ...cursor } : visible;
+  const [found, total, otherLastReadAt] = await Promise.all([
+    Message.find(filter)
       .sort({ createdAt: -1, _id: -1 })
-      .skip((page - 1) * limit)
-      .limit(limit)
+      .skip(cursor ? 0 : (page - 1) * limit)
+      .limit(cursor ? limit + 1 : limit)
       .populate('sender', SENDER_FIELDS)
       .populate({ path: 'replyTo', populate: { path: 'sender', select: 'profile.username profile.firstName' } }),
-    Message.countDocuments({ conversation: conversation._id, deletedFor: { $ne: req.userId } }),
+    Message.countDocuments(visible),
     otherLastReadFor(conversation, req.user),
   ]);
+  const messages = cursor ? found.slice(0, limit) : found;
+  const hasMore = cursor ? found.length > limit : page * limit < total;
 
   const [reactionDocs, polls] = await Promise.all([
     MessageReaction.find({ message: { $in: messages.map((message) => message._id) } }),
@@ -862,8 +900,33 @@ async function listMessages(req, res) {
         poll: polls.get(String(message._id)),
       })
     ),
-    pagination: { page, limit, total, hasMore: page * limit < total },
+    pagination: {
+      page: cursor ? null : page,
+      limit,
+      total,
+      hasMore,
+      // Pass as `before` for the next older page.
+      nextBefore: messages.length ? String(messages[messages.length - 1]._id) : null,
+    },
   });
+}
+
+// The query part for "older than `before`": a message id in this chat (its
+// time, then its id for ties) or an ISO time. null when absent or unusable.
+async function messageCursor(conversation, before) {
+  if (typeof before !== 'string' || !before) return null;
+  if (mongoose.isValidObjectId(before)) {
+    const anchor = await Message.findOne({ _id: before, conversation: conversation._id }, 'createdAt');
+    if (!anchor) return null;
+    return {
+      $or: [
+        { createdAt: { $lt: anchor.createdAt } },
+        { createdAt: anchor.createdAt, _id: { $lt: anchor._id } },
+      ],
+    };
+  }
+  const at = new Date(before);
+  return Number.isNaN(at.getTime()) ? null : { createdAt: { $lt: at } };
 }
 
 // POST /api/chats/:conversationId/messages - text and/or one attachment.
@@ -996,7 +1059,10 @@ async function createMessage(req, res) {
   // chat list (unread badge / last-message preview) updates live even for
   // whoever doesn't currently have this conversation open.
   if (conversation.type === 'dm') {
-    emitToUsers(conversation.participants.map(String), 'chat:preview', { conversationId: conversation.id });
+    // Polish (docs/polish/BACKEND-PORT.md): each of the two gets their own
+    // chat summary in the event, so the app needn't fetch the chat again.
+    // Apps that only read conversationId are unaffected.
+    void emitDmPreviews(conversation);
   } else if (conversation.type === 'group' && conversation.group?.kind !== 'faction') {
     // Group members' chat lists update live too (unread badge / preview).
     const memberIds = await explicitGroupMemberIds(conversation);
