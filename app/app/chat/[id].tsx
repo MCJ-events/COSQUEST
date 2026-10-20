@@ -16,7 +16,7 @@ import * as ImagePicker from "expo-image-picker";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { VideoView, useVideoPlayer } from "expo-video";
 import * as VideoThumbnails from "expo-video-thumbnails";
-import { createContext, memo, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { createContext, memo, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import {
   ActivityIndicator,
@@ -42,6 +42,7 @@ import { KeyboardAvoidingView } from "@/components/ui/keyboard";
 
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { useStableCallback } from "@/hooks/useStableCallback";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import CallNotesSheet, { callNotesEnabled } from "@/components/calls/CallNotesSheet";
 
@@ -768,8 +769,11 @@ function SwipeToReply({
   const enabledRef = useRef(enabled);
   const onReplyRef = useRef(onReply);
 
-  enabledRef.current = enabled;
-  onReplyRef.current = onReply;
+  // After each commit, not during render (audit B3).
+  useLayoutEffect(() => {
+    enabledRef.current = enabled;
+    onReplyRef.current = onReply;
+  });
 
   const springBack = () => {
     Animated.spring(translateX, {
@@ -1457,7 +1461,21 @@ const Bubble = memo(function Bubble({
       </View>
     </View>
   );
-});
+}, sameBubbleProps);
+
+// The chat's other person changes on every presence event (online, last
+// active); a bubble reads only these three fields of it (getTickState), so a
+// presence change no longer re-renders every bubble (audit B3).
+function sameBubbleProps(prev: Record<string, unknown>, next: Record<string, unknown>): boolean {
+  for (const key of Object.keys(next)) {
+    if (key === "otherParticipant") continue;
+    if (prev[key] !== next[key]) return false;
+  }
+  if (Object.keys(prev).length !== Object.keys(next).length) return false;
+  const a = prev.otherParticipant as Chat["otherParticipant"] | undefined;
+  const b = next.otherParticipant as Chat["otherParticipant"] | undefined;
+  return a?.lastReadAt === b?.lastReadAt && a?.isOnline === b?.isOnline && a?.lastActiveAt === b?.lastActiveAt;
+}
 
 // ==========================================
 // RECORDING INDICATOR
@@ -2210,8 +2228,6 @@ export default function ChatScreen() {
       state.chat.conversations.find((chat) => chat.id === conversationId),
   ) as Chat | undefined;
 
-  const conversations = useAppSelector((state) => state.chat.conversations);
-
   const messages = useAppSelector(
     (state) =>
       (state.chat.messages[conversationId] || EMPTY_MESSAGES) as Message[],
@@ -2311,7 +2327,9 @@ export default function ChatScreen() {
 
   const recorderStateRef = useRef(recorderState);
 
-  recorderStateRef.current = recorderState;
+  useLayoutEffect(() => {
+    recorderStateRef.current = recorderState;
+  });
 
   const [recordingBusy, setRecordingBusy] = useState(false);
   const recordingPressActive = useRef(false);
@@ -2931,10 +2949,11 @@ export default function ChatScreen() {
   // message:edited now delivers a finished transcript live.
 
   const conversationRef = useRef(conversation);
-  conversationRef.current = conversation;
-
   const messagesRef = useRef(messages);
-  messagesRef.current = messages;
+  useLayoutEffect(() => {
+    conversationRef.current = conversation;
+    messagesRef.current = messages;
+  });
 
   useEffect(() => {
     if (!token || !conversationId) {
@@ -4675,7 +4694,9 @@ export default function ChatScreen() {
   // Tapping a call entry calls back. Kept stable (same function every
   // render) so the memoised message bubbles don't all re-render.
   const beginCallRef = useRef(beginCall);
-  beginCallRef.current = beginCall;
+  useLayoutEffect(() => {
+    beginCallRef.current = beginCall;
+  });
 
   const handleCallBack = useCallback((type: "audio" | "video") => {
     beginCallRef.current(type);
@@ -4798,6 +4819,26 @@ export default function ChatScreen() {
     setNewMessageCount(0);
   };
 
+  // The bubbles are memoised: hand them the same functions every render
+  // (audit B3), and the list the same extraData until one of its parts changes.
+  const onBubblePress = useStableCallback(handleMessagePress);
+  const onBubbleLongPress = useStableCallback(openMessageActions);
+  const onBubbleMediaPress = useStableCallback(handleMediaPress);
+  const onBubbleReplyPress = useStableCallback(scrollToMessage);
+  const onBubbleReaction = useStableCallback((message: Message, emoji: string) => {
+    if (selectionMode) {
+      toggleMessageSelection(message);
+
+      return;
+    }
+
+    reactToMessage(message, emoji);
+  });
+  const listExtra = useMemo(
+    () => [listExtraData, quietSparkCardAfter, rolePingsAfter, editCardFor],
+    [listExtraData, quietSparkCardAfter, rolePingsAfter, editCardFor],
+  );
+
   // ========================================
   // NO TOKEN
   // ========================================
@@ -4823,6 +4864,8 @@ export default function ChatScreen() {
 
   const selectedMessageIsMine =
     !!selectedMessage && isMyMessage(selectedMessage);
+
+
 
   return (
     <KeyboardAvoidingView
@@ -5074,7 +5117,7 @@ export default function ChatScreen() {
             keyExtractor={(item) => item.id}
             onScroll={handleScroll}
             scrollEventThrottle={16}
-            extraData={[listExtraData, quietSparkCardAfter, rolePingsAfter, editCardFor]}
+            extraData={listExtra}
             onScrollToIndexFailed={(info) => {
               listRef.current?.scrollToOffset({
                 offset: info.averageItemLength * info.index,
@@ -5152,19 +5195,11 @@ export default function ChatScreen() {
                       selected={selected}
                       pinned={pinned}
                       myReactionEmoji={findMyReaction(item)?.emoji}
-                      onPress={handleMessagePress}
-                      onLongPress={openMessageActions}
-                      onReaction={(message, emoji) => {
-                        if (selectionMode) {
-                          toggleMessageSelection(message);
-
-                          return;
-                        }
-
-                        reactToMessage(message, emoji);
-                      }}
-                      onMediaPress={handleMediaPress}
-                      onReplyPress={scrollToMessage}
+                      onPress={onBubblePress}
+                      onLongPress={onBubbleLongPress}
+                      onReaction={onBubbleReaction}
+                      onMediaPress={onBubbleMediaPress}
+                      onReplyPress={onBubbleReplyPress}
                       onCallBack={handleCallBack}
                       otherParticipant={conversation?.otherParticipant}
                     />
@@ -6104,38 +6139,10 @@ export default function ChatScreen() {
               keyboardShouldPersistTaps="handled">
               <Text style={styles.forwardSectionTitle}>Your chats</Text>
 
-              {conversations
-                .filter((chat) => chat.id !== conversationId)
-                .map((chat) => {
-                  const name =
-                    chat.type === "dm"
-                      ? chat.title || chat.otherParticipant?.username || "User"
-                      : chat.title ||
-                        (chat.type === "faction" ? "Faction" : "Community");
-
-                  return (
-                    <Pressable
-                      key={chat.id}
-                      style={styles.actionButton}
-                      onPress={() => forwardToConversation(chat.id)}>
-                      <View style={styles.forwardChatIcon}>
-                        <Ionicons
-                          name={
-                            chat.type === "dm"
-                              ? "person-outline"
-                              : "people-outline"
-                          }
-                          size={20}
-                          color="#C5399A"
-                        />
-                      </View>
-
-                      <Text style={styles.actionText} numberOfLines={1}>
-                        {name}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
+              <ForwardChatList
+                conversationId={conversationId}
+                onPick={forwardToConversation}
+              />
 
               {userSearch.trim() ? (
                 <>
@@ -8035,3 +8042,54 @@ const STYLE_PAIR = themedStyles({
     justifyContent: "center",
   },
 });
+
+// The forward sheet's "Your chats": selects the chat list itself, so the
+// chat screen no longer re-renders on every presence or preview change to
+// any chat (audit B3).
+function ForwardChatList({
+  conversationId,
+  onPick,
+}: {
+  conversationId: string;
+  onPick: (chatId: string) => void;
+}) {
+  const styles = useThemedStyles(STYLE_PAIR);
+  const conversations = useAppSelector((state) => state.chat.conversations);
+  const forwardToConversation = onPick;
+  return (
+    <>
+      {conversations
+                .filter((chat) => chat.id !== conversationId)
+                .map((chat) => {
+                  const name =
+                    chat.type === "dm"
+                      ? chat.title || chat.otherParticipant?.username || "User"
+                      : chat.title ||
+                        (chat.type === "faction" ? "Faction" : "Community");
+
+                  return (
+                    <Pressable
+                      key={chat.id}
+                      style={styles.actionButton}
+                      onPress={() => forwardToConversation(chat.id)}>
+                      <View style={styles.forwardChatIcon}>
+                        <Ionicons
+                          name={
+                            chat.type === "dm"
+                              ? "person-outline"
+                              : "people-outline"
+                          }
+                          size={20}
+                          color="#C5399A"
+                        />
+                      </View>
+
+                      <Text style={styles.actionText} numberOfLines={1}>
+                        {name}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+    </>
+  );
+}
