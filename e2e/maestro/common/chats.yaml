@@ -1,6 +1,13 @@
 # Open the chat list (Community tab, Chats pill).
 appId: com.dammy0227.cosquest
 ---
+# From anywhere: back out (closing the keyboard counts as one) to the tabs.
+- repeat:
+    while:
+      notVisible: "Profile"
+    times: 6
+    commands:
+      - back
 - tapOn: "Community"
 - tapOn:
     text: "Chats"
