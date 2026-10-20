@@ -22,6 +22,12 @@
 #                                         read-only use only)
 #   (--rn-game is still accepted: it is the default now, and implies --staging
 #   as it always did.)
+#   scripts/verify-ios.sh --polish        with --run: also the fit checks of
+#                                         docs/polish (task 058) on three
+#                                         simulators: iPhone SE (home button,
+#                                         375x667), a Dynamic Island iPhone,
+#                                         and that one at the largest
+#                                         accessibility text size
 #
 # What the Mac must look at by hand after this passes is the checklist in
 # docs/one-codebase.md, "What the Mac must verify".
@@ -44,6 +50,7 @@ SIM_ONLY=0
 RUN=0
 NATIVE_GAME=0
 STAGING=0
+POLISH=0
 for arg in "$@"; do
   case "$arg" in
     --no-unity) NO_UNITY=1 ;;
@@ -52,7 +59,8 @@ for arg in "$@"; do
     --native-game) NATIVE_GAME=1 ;;
     --staging) STAGING=1 ;;
     --rn-game) STAGING=1 ;;
-    -h|--help) sed -n '2,32p' "$0"; exit 0 ;;
+    --polish) POLISH=1; RUN=1 ;;
+    -h|--help) sed -n '2,38p' "$0"; exit 0 ;;
     *) echo "unknown option: $arg" >&2; exit 2 ;;
   esac
 done
@@ -169,9 +177,27 @@ done
 /usr/libexec/PlistBuddy -c 'Print :NSBonjourServices' "$plist" 2>/dev/null | grep -q "_costquest._tcp" \
   || echo "    WARNING: NSBonjourServices lacks _costquest._tcp (hold phones together cannot find the other phone)" >&2
 
+# Polish (docs/polish, task 058): fonts built in, phone only, the splash held.
+# Poppins is embedded by the expo-font plugin (app.json): UIAppFonts lists it.
+if /usr/libexec/PlistBuddy -c 'Print :UIAppFonts' "$plist" 2>/dev/null | grep -q "Poppins_400Regular.ttf"; then
+  echo "    Info.plist UIAppFonts has Poppins: ok"
+else
+  echo "    WARNING: UIAppFonts lacks Poppins (expo-font plugin fonts not embedded?)" >&2
+fi
+# supportsTablet false (Subomi's call, no iPad layouts yet): iPhone only.
+if grep -q "TARGETED_DEVICE_FAMILY = \"1,2\"" ios/*.xcodeproj/project.pbxproj 2>/dev/null; then
+  echo "    WARNING: TARGETED_DEVICE_FAMILY still includes iPad (app.json supportsTablet should be false)" >&2
+else
+  echo "    TARGETED_DEVICE_FAMILY: iPhone only: ok"
+fi
+
 step "pod install"
-(cd ios && pod install 2>&1 | tee "$LOGS/pod-install.log" | grep -E "CostQuestGame|SparksCallAudio|Pod installation|error" || true)
+(cd ios && pod install 2>&1 | tee "$LOGS/pod-install.log" | grep -E "CostQuestGame|SparksCallAudio|KeyboardController|Pod installation|error" || true)
 grep -q "Pod installation complete" "$LOGS/pod-install.log" || { echo "pod install failed: $LOGS/pod-install.log" >&2; exit 1; }
+# One keyboard approach app-wide (audit A4): react-native-keyboard-controller's pod.
+grep -q "react-native-keyboard-controller" ios/Podfile.lock \
+  && echo "    react-native-keyboard-controller pod: ok" \
+  || echo "    WARNING: react-native-keyboard-controller is not in Podfile.lock" >&2
 ran+=("pod install")
 
 WORKSPACE="$(ls -d ios/*.xcworkspace | head -1)"
@@ -249,6 +275,42 @@ if [ "$RUN" = 1 ]; then
   echo "     - xcrun simctl openurl $device 'cosquest://nowhere' shows 'This link doesn't go anywhere' (39dda0c)"
   echo "     - a 1:1 call with Sparks on (sparks-call-audio module), then add a third person: no crash (9034081)"
   ran+=("simulator run" "screenshots")
+
+  # 7. Polish fit checks (task 058, docs/polish/BASELINE.md has the Android side).
+  if [ "$POLISH" = 1 ]; then
+    step "polish: three phones"
+    sim_named() { xcrun simctl list devices available | grep -E "$1" | head -1 | sed -E 's/.*\(([0-9A-F-]{36})\).*/\1/'; }
+    se="$(sim_named 'iPhone SE')"
+    island="$(sim_named 'iPhone 1[5-9] Pro|iPhone 2[0-9] Pro|iPhone 1[6-9] |iPhone 2[0-9] ')"
+    for spec in "se:$se:L" "island:$island:L" "island-a11y:$island:accessibility-extra-extra-extra-large"; do
+      name="${spec%%:*}"; rest="${spec#*:}"; dev="${rest%%:*}"; size="${rest#*:}"
+      if [ -z "$dev" ]; then echo "    WARNING: no simulator for $name (install it in Xcode > Settings > Platforms)" >&2; continue; fi
+      xcrun simctl boot "$dev" 2>/dev/null || true
+      xcrun simctl ui "$dev" content_size "$( [ "$size" = L ] && echo large || echo "$size")" 2>/dev/null || true
+      xcrun simctl install "$dev" "$app_path"
+      xcrun simctl terminate "$dev" "$bundle_id" 2>/dev/null || true
+      xcrun simctl launch "$dev" "$bundle_id" >/dev/null
+      sleep 15
+      xcrun simctl io "$dev" screenshot "$shots/polish-$name-01-welcome.png" >/dev/null
+      echo "    $name: $shots/polish-$name-01-welcome.png"
+    done
+    echo "    By hand, on each of the three (sign in as chioma_e2e on the test server build):"
+    echo "     - start: the logo splash stays until the first screen; no white flash, no second logo splash (B6)"
+    echo "     - welcome and every sign-up step: nothing under the notch / Dynamic Island or the home indicator;"
+    echo "       on the SE the welcome hero shrinks and the page scrolls; Continue always reachable (A2)"
+    echo "     - sign in, forgot / reset password, chat search, group admin pages: the field stays above the keyboard (A4)"
+    echo "     - tab bar floats above the home indicator, not on it; the SE (no indicator) keeps a small gap (A1)"
+    echo "     - largest text: tab labels, game HUD cards and chat bubbles grow at most 1.3x (HUD 1.2x), nothing clipped (A3)"
+    echo "     - game: the Chats bubble tucks to the edge during quizzes and duels, never over an answer (A5, F-38)"
+    echo "     - map at Trafalgar Square: crowded pins spread apart with a thin line to their spot; each tap opens the pin you tapped (A8, F-37)"
+    echo "     - rotate is locked; the app is not offered on iPad (A7)"
+    echo "     - duel: fighters move smoothly at 60 fps; the clock and health update (B1); quiz bar drains smoothly (B9)"
+    echo "     - feed: scrolls smoothly with videos, only the video on screen plays, more posts load at the end (B2)"
+    echo "     - a 2,000-message group: opens fast, scrolling up loads older messages with a small spinner (B4)"
+    echo "     - airplane mode, then pull a screen: 'Can't reach CosQuest right now' within 15 s, not an endless spinner (B7)"
+    echo "     - orbit call: the speaking pulse is smooth (native driver, B10)"
+    ran+=("polish screenshots")
+  fi
 fi
 
 echo
