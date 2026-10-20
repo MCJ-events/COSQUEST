@@ -134,10 +134,18 @@ list); with the RN game the default they only matter for the fallback.
 
 ## What the Mac must verify
 
-Nothing on this branch's iOS side has been compiled by Xcode: Linux can
-only parse Swift. All 120 Swift files pass a Swift 6 syntax parse, and the
-pure Swift (matcher, WardenCheck) compiles and runs. Everything below needs
-a Mac with Xcode 26+.
+Nothing on this branch's iOS side has been compiled by Xcode. What Linux
+could check (Swift 6.1.2, 2026-10-20): all 120 Swift files pass a Swift 6
+syntax parse; the pure Swift (matcher, WardenCheck) compiles and runs
+against the TS vectors (`app/scripts/swift-linux-check.sh`); and the whole
+native layer the RN game uses (`ios/Embed`: the module definition, the
+helpers, the Unity, model, shrine and friend islands, the Warden engine
+holder; not VenueEventsIsland, which needs the whole native game) type-checks
+under Swift 6 with strict concurrency against stand-ins that copy the real
+SDK and expo-modules-core signatures (`app/scripts/swift-stub-check.sh`;
+planted isolation errors are caught). That removes most of the
+concurrency risk, not the linking against the real SDKs. Everything below
+needs a Mac with Xcode 26+.
 
 1. `scripts/verify-ios.sh` (needs `gh` signed in for the Unity framework),
    then `scripts/verify-ios.sh --no-unity --sim-only --run`. Both must pass.
@@ -145,7 +153,7 @@ a Mac with Xcode 26+.
    check, prebuild, the Info.plist keys the islands need, pod install, a
    simulator build (no Unity) and a generic device build (Unity embedded).
 2. **Compile errors to expect, if any, are in the Swift written on this
-   branch and never compiled** (strict concurrency `complete`, Swift 6):
+   branch and never built by Xcode** (strict concurrency `complete`, Swift 6):
    `Embed/CostQuestGameModule.swift`, `GameHelpers.swift`,
    `NativeIslands.swift`, `VenueEventsIsland.swift`,
    `CostQuestWardenModule.swift`, `FriendBeaconIsland.swift`,
