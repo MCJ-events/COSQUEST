@@ -8,7 +8,8 @@
 # screenshots/debug output under $OUT/<label>/. Exit status is Maestro's.
 #
 # adb screenrecord stops after 3 minutes, so the phone records 170 s segments
-# back to back and they are joined afterwards.
+# back to back and they are joined afterwards. REC_SIZE (e.g. 720x1560)
+# records at that size, for screens the encoder refuses at full size.
 set -uo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 : "${ANDROID_HOME:=$HOME/cq-work/tools/android-sdk}"
@@ -31,7 +32,7 @@ mkdir -p "$OUT/$label" "$VIDEOS"
 ( while true; do sleep 5; "$here/emu.sh" tunnels >/dev/null 2>&1; adb emu geo fix -0.1278 51.5074 >/dev/null 2>&1; done ) &
 keeper=$!
 adb shell rm -f "/sdcard/jr-$label-*.mp4" /sdcard/jr-stop >/dev/null 2>&1
-adb shell "i=0; while [ ! -f /sdcard/jr-stop ]; do screenrecord --time-limit 170 --bit-rate 4000000 /sdcard/jr-$label-\$(printf %02d \$i).mp4 || break; i=\$((i+1)); done" &
+adb shell "i=0; while [ ! -f /sdcard/jr-stop ]; do screenrecord --time-limit 170 --bit-rate 4000000 ${REC_SIZE:+--size $REC_SIZE} /sdcard/jr-$label-\$(printf %02d \$i).mp4 || break; i=\$((i+1)); done" &
 rec=$!
 sleep 1
 

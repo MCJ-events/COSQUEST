@@ -12,6 +12,8 @@ name: polish fit tour
 - takeScreenshot: ${P}-04-feed
 - scroll
 - takeScreenshot: ${P}-05-feed-scrolled
+# The keyboard can stay up after sign-in on this emulator; it covers the tabs.
+- hideKeyboard
 - tapOn:
     text: "Chats"
     index: 0

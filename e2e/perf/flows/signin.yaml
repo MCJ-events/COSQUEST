@@ -47,3 +47,4 @@ appId: com.dammy0227.cosquest
 - tapOn:
     text: "Got it"
     optional: true
+- hideKeyboard
