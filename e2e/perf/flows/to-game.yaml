@@ -1,0 +1,5 @@
+# Into the game, first run and coach cards out of the way.
+appId: com.dammy0227.cosquest
+---
+- runFlow: ../../maestro/common/game.yaml
+- runFlow: ../../maestro/common/warden-later.yaml

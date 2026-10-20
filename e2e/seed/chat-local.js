@@ -634,6 +634,72 @@ async function seed() {
   ]);
   await api('POST', `/api/quests/${quests[1].id}/registrations`, tok('ada')).catch((e) => log(`quest registration skipped: ${e.message}`));
 
+  // ---- perf world (SEED_PERF=1, docs/polish/BASELINE.md) -------------------------
+  // A group with 2,000 messages and a feed of 50 posts (photos and videos).
+  const perf = env.SEED_PERF === '1' ? await seedPerf() : null;
+  async function seedPerf() {
+    const mongoose = breq('mongoose');
+    const PERF_MESSAGES = Number(env.PERF_MESSAGES || 2000);
+    await group('g:big', 'cy', { name: 'Big Group 2k', description: 'Two thousand messages, for the scroll test.', kind: 'open' }, ['ada', 'bo', 'chioma', 'tunde', 'zara']);
+    const crowd = ['cy', 'ada', 'bo', 'chioma', 'tunde', 'zara'];
+    const lines = ['Anyone at the fountains?', 'That boss took forever 😅', 'Saturday works for me', 'Who has the spare wig?',
+      'Photos from last night are up', 'Raid at 8, bring snacks', "I'll be 10 minutes late", 'The new Codex cards are wild',
+      'Has anyone tried the Trafalgar quiz?', 'Lagos meetup is on!'];
+    const start = now - 3 * 24 * 60 * MIN;
+    const rows = [];
+    for (let i = 0; i < PERF_MESSAGES - 2; i += 1) {
+      const at = new Date(start + i * 60 * 1000);
+      rows.push({
+        _id: new mongoose.Types.ObjectId(),
+        conversation: new mongoose.Types.ObjectId(convs['g:big'].id),
+        sender: new mongoose.Types.ObjectId(users[crowd[i % crowd.length]].id),
+        kind: 'text',
+        content: `${lines[i % lines.length]} (#${i + 1})`,
+        createdAt: at,
+        updatedAt: at,
+      });
+    }
+    await Message.collection.insertMany(rows);
+    // The newest two through the API, so the list shows a normal preview.
+    await say('g:big', 'bo', 3, 'Message 1999: still scrolling?');
+    await say('g:big', 'cy', 2, 'Message 2000: the end of the scroll test');
+    await ConversationMember.updateOne({ conversation: convs['g:big'].id, user: users.ada.id }, { $set: { lastReadAt: new Date() } }, { upsert: true, timestamps: false });
+
+    // 50 posts: thoughts, photos and short videos.
+    const people = ['bo', 'chioma', 'tunde', 'zara', 'cy', 'lena', 'kofi', 'dami'];
+    let clip = null;
+    try {
+      const out = path.join(env.UPLOAD_DIR, 'perf-clip-src.mp4');
+      require('child_process').execFileSync('ffmpeg', ['-loglevel', 'error', '-y', '-f', 'lavfi', '-i', 'testsrc2=size=480x480:rate=30:duration=6',
+        '-f', 'lavfi', '-i', 'anullsrc=channel_layout=stereo:sample_rate=44100', '-shortest', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-c:a', 'aac', out]);
+      clip = fs.readFileSync(out);
+    } catch (e) {
+      log(`perf: no ffmpeg video (${e.message}); reels skipped`);
+    }
+    const perfPosts = [];
+    for (let i = 0; i < 50; i += 1) {
+      const u = people[i % people.length];
+      let post;
+      if (i % 5 === 1 && clip) {
+        const form = new FormData();
+        form.append('type', 'reel');
+        form.append('content', `Reel ${i + 1}: costume test`);
+        form.append('media', new Blob([clip], { type: 'video/mp4' }), `reel-${i + 1}.mp4`);
+        post = (await api('POST', '/api/posts', tok(u), undefined, { form })).post;
+      } else if (i % 5 === 3) {
+        const form = new FormData();
+        form.append('type', 'image');
+        form.append('content', `Shoot ${i + 1}`);
+        form.append('media', new Blob([media.photoPng(10 + i)], { type: 'image/png' }), `shoot-${i + 1}.png`);
+        post = (await api('POST', '/api/posts', tok(u), undefined, { form })).post;
+      } else {
+        post = await thought(u, `Feed post ${i + 1}: ${lines[i % lines.length]}`);
+      }
+      perfPosts.push(post.id);
+    }
+    return { bigGroup: convs['g:big'].id, messages: PERF_MESSAGES, posts: perfPosts.length, reels: clip ? 10 : 0 };
+  }
+
   // ---- result -----------------------------------------------------------------
   const sparkList = [];
   for (const s of sparks) {
@@ -657,6 +723,7 @@ async function seed() {
     gameInvite,
     messages,
     posts,
+    perf,
     quests: quests.map((q) => ({ id: q.id, slug: q.slug, title: q.title, status: q.status })),
   };
 }
