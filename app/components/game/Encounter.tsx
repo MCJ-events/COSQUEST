@@ -7,13 +7,16 @@
 // Beats: the shrine's crystal stands in front of you; you answer and the
 // Strike runs (three rising pulses, sound and haptics, while the server marks
 // it); the crystal breaks and the answers are shown; then the reward counts up
-// (Reward.tsx). The AR/3D stage and the "Tap the shrine" approach are not
-// ported: the crystal is drawn in 2D and the challenge opens at once.
+// (Reward.tsx). First the approach: the shrine rises (or is placed on the
+// floor through the camera) and the challenge opens when you tap it. On iOS
+// the shrine is the native game's own (ShrineIsland.swift: RealityKit, or
+// ARKit when AR is on), with a photo of the moment after an AR reveal;
+// elsewhere, or with the island "arShrine" off, it is the 2D crystal.
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { StatusBar } from "expo-status-bar";
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { type ReactNode, useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { ActivityIndicator, Alert, Pressable, ScrollView, Share, StyleSheet, Text, View } from "react-native";
 import Animated, {
   Easing,
   FadeIn,
@@ -23,12 +26,18 @@ import Animated, {
   SlideInRight,
   SlideOutLeft,
   useAnimatedStyle,
+  useReducedMotion,
   useSharedValue,
+  withDelay,
+  withRepeat,
+  withSequence,
   withSpring,
   withTiming,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { resolveIslandsOff } from "@/features/game/config";
+import { challengeBlurb } from "@/features/game/guide";
 import { gameStore } from "@/features/game/runtime";
 import {
   challengeLabel,
@@ -58,8 +67,14 @@ import { playSound } from "./sound";
 import { playResolve, startStrike } from "./strike";
 import { CHOICE_COLORS, edgeOf, GF, GP, realmColor, tierColor } from "./theme";
 import { useWardenSaid, wardenVoice } from "./wardenVoice";
+import { CostQuestShrineView, type CostQuestShrineViewHandle, shrineARSupported } from "@/modules/costquest-game/src";
 
-type Phase = "opening" | "playing" | "submitting" | "reveal" | { failed: string };
+import { setShrineAR, useShrineAR } from "./prefs";
+
+type Phase = "approach" | "opening" | "playing" | "submitting" | "reveal" | { failed: string };
+
+/** The native shrine stage on iOS, unless this build turned the island off (EXPO_PUBLIC_GAME_2D). */
+const NativeShrine = CostQuestShrineView && !resolveIslandsOff(process.env.EXPO_PUBLIC_GAME_2D).has("arShrine") ? CostQuestShrineView : null;
 
 /** Second chance and the hint buttons are this purple in Swift (Color(0.55, 0.36, 0.95)). */
 const PURPLE = "#8C5CF2";
@@ -82,8 +97,15 @@ export default function Encounter({
   onClose: () => void;
 }) {
   const insets = useSafeAreaInsets();
-  const [phase, setPhaseState] = useState<Phase>("opening");
-  const phaseRef = useRef<Phase>("opening");
+  const [phase, setPhaseState] = useState<Phase>("approach");
+  const phaseRef = useRef<Phase>("approach");
+  /** The shrine is standing: "Tap the shrine". */
+  const [placed, setPlaced] = useState(false);
+  /** It stands in the player's street (the camera was used): a photo can be taken. */
+  const [inRoom, setInRoom] = useState(false);
+  const arPref = useShrineAR();
+  const useAR = arPref && shrineARSupported;
+  const nativeShrine = useRef<CostQuestShrineViewHandle | null>(null);
   const [attempt, setAttempt] = useState<RoamAttempt | null>(null);
   const [verdict, setVerdict] = useState<RoamVerdict | null>(null);
   const [picked, setPicked] = useState<number | null>(null);
@@ -97,7 +119,15 @@ export default function Encounter({
   const [hinting, setHinting] = useState(false);
   const [bag, setBag] = useState<Record<string, number>>({});
   const mounted = useRef(true);
-  const crystal = useRef<CrystalHandle>(null);
+  const crystal2d = useRef<CrystalHandle>(null);
+  // One handle for the Strike, whichever shrine is drawn (looked up when called).
+  const [crystal] = useState<{ current: CrystalHandle }>(() => ({
+    current: {
+      pulse: (i) => (NativeShrine ? void nativeShrine.current?.pulse(i).catch(() => {}) : crystal2d.current?.pulse(i)),
+      resolve: (win) => (NativeShrine ? void nativeShrine.current?.resolve(win).catch(() => {}) : crystal2d.current?.resolve(win)),
+      reset: () => (NativeShrine ? void nativeShrine.current?.reset().catch(() => {}) : crystal2d.current?.reset()),
+    },
+  }));
   const said = useWardenSaid();
   const coins = useSyncExternalStore(gameStore.subscribe, () => gameStore.get().me?.coins ?? 0);
   const prices = useSyncExternalStore(gameStore.subscribe, () => gameStore.get().config?.hints ?? null);
@@ -144,16 +174,37 @@ export default function Encounter({
     };
   }, []);
 
-  // Open the point: the server judges reach and hands out the challenge.
+  // Arriving: the bag for the hints, and the Warden's welcome once the shrine stands.
   useEffect(() => {
-    let cancelled = false;
-    playSound("whoosh");
-    wardenVoice.speak(arriveMoment(ctx(), point), 4000).catch(() => {});
     refreshBag();
+    // Once per point.
+  }, [point.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const onPlaced = useCallback(
+    (ar: boolean) => {
+      setPlaced(true);
+      setInRoom(ar);
+      if (phaseRef.current === "approach") wardenVoice.speak(arriveMoment(ctx(), point), 1500).catch(() => {});
+    },
+    [point],
+  );
+
+  // The 2D crystal rises in place, then stands (SimulatedStage: 500 ms).
+  useEffect(() => {
+    if (NativeShrine) return;
+    const t = setTimeout(() => onPlaced(false), 500);
+    return () => clearTimeout(t);
+  }, [onPlaced]);
+
+  // Tapping the shrine opens the point: the server judges reach and hands out the challenge.
+  const begin = useCallback(() => {
+    if (phaseRef.current !== "approach") return;
+    setPhase("opening");
+    playSound("whoosh");
     gameStore
       .open(point)
       .then((a) => {
-        if (cancelled) return;
+        if (!mounted.current) return;
         startWith(a);
         // Both reactions, written while the question is read (blitz waits for its score).
         if (a.kind !== "blitz") {
@@ -162,13 +213,23 @@ export default function Encounter({
         }
       })
       .catch((error: Error) => {
-        if (!cancelled) setPhase({ failed: error.message });
+        if (mounted.current) setPhase({ failed: error.message });
       });
-    return () => {
-      cancelled = true;
-    };
-    // Once per point.
-  }, [point.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [point, setPhase, startWith]);
+
+  /** EncounterView's AR/3D switch: the stage is built again, and placed again. */
+  const switchStage = () => {
+    setPlaced(false);
+    setInRoom(false);
+    setShrineAR(!arPref);
+  };
+
+  /** The moment, as a photo: the shrine and the Warden standing in the player's own street. */
+  const photo = async () => {
+    playSound("tap");
+    const uri = await nativeShrine.current?.photo().catch(() => null);
+    if (uri) Share.share({ url: uri, message: `CosQuest at ${point.name}` }).catch(() => {});
+  };
 
   const submit = useCallback(async () => {
     if (!attempt || phaseRef.current !== "playing") return;
@@ -198,7 +259,7 @@ export default function Encounter({
       strike.cancel();
       if (mounted.current) setPhase({ failed: `Couldn't send your answer: ${(error as Error).message}. Open the point again to retry.` });
     }
-  }, [attempt, point, setPhase, refreshBag]);
+  }, [attempt, point, setPhase, refreshBag, crystal]);
 
   // The server's clock: when it runs out, send whatever was answered.
   useEffect(() => {
@@ -302,13 +363,35 @@ export default function Encounter({
     <View style={[styles.root, { backgroundColor: color }]}>
       {/* EncounterView.statusBarHidden() */}
       <StatusBar hidden animated />
-      <LinearGradient colors={[color, edgeOf(color)]} style={StyleSheet.absoluteFill} pointerEvents="none" />
+      {NativeShrine ? (
+        <NativeShrine
+          ref={nativeShrine}
+          style={StyleSheet.absoluteFill}
+          tint={tierColor(point.tier)}
+          wardenTint={realmColor(gameStore.get().me?.faction)}
+          useAR={useAR}
+          onPlaced={(e) => onPlaced(e.nativeEvent.ar)}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        />
+      ) : (
+        <LinearGradient colors={[color, edgeOf(color)]} style={StyleSheet.absoluteFill} pointerEvents="none" />
+      )}
       <Animated.View style={[StyleSheet.absoluteFill, scrimStyle]} pointerEvents="none">
         <LinearGradient colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.7)"]} style={StyleSheet.absoluteFill} />
       </Animated.View>
 
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <GameIconButton icon="close" color={GP.navy} diameter={42} onPress={leave} accessibilityLabel="Leave" />
+        {phase === "approach" && NativeShrine && shrineARSupported ? (
+          <GameIconButton
+            icon={arPref ? "cube" : "camera"}
+            color={GP.skyDeep}
+            diameter={42}
+            onPress={switchStage}
+            accessibilityLabel={arPref ? "Switch to 3D view" : "Switch to camera view"}
+          />
+        ) : null}
         <View style={styles.headRight}>
           <Text style={styles.place} numberOfLines={1} accessibilityRole="header" maxFontSizeMultiplier={MAX_FONT_SCALE}>
             {point.name}
@@ -323,8 +406,32 @@ export default function Encounter({
       {said ? <WardenLine key={said.id} text={said.text} compact={phase === "playing"} tint={realmColor(gameStore.get().me?.faction)} /> : null}
 
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 12 }]} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-        <View style={styles.stage}>
-          <ShrineCrystal tint={tierColor(point.tier)} ref={crystal} />
+        <View style={styles.stage} pointerEvents="box-none">
+          {NativeShrine ? null : <ShrineCrystal tint={tierColor(point.tier)} ref={crystal2d} />}
+          {phase === "approach" ? (
+            <View style={styles.opening} pointerEvents="none">
+              {placed ? (
+                <Animated.View entering={FadeIn.duration(250)} style={styles.approach} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+                  <Bounce>
+                    <Ionicons name="hand-left" size={34} color="#FFF" />
+                  </Bounce>
+                  <Text style={styles.approachTitle} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+                    Tap the shrine
+                  </Text>
+                  <Text style={styles.approachBlurb} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+                    {challengeBlurb(point.challenge)}
+                  </Text>
+                </Animated.View>
+              ) : (
+                <>
+                  <ActivityIndicator color="#FFF" />
+                  <Text style={styles.openingText} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+                    {useAR && NativeShrine ? "Point your camera at the ground" : "The shrine is rising…"}
+                  </Text>
+                </>
+              )}
+            </View>
+          ) : null}
           {phase === "opening" ? (
             <View style={styles.opening} accessible accessibilityLabel="The shrine is waking" accessibilityLiveRegion="polite">
               <ActivityIndicator color="#FFF" size="large" />
@@ -423,6 +530,9 @@ export default function Encounter({
             {phase === "reveal" && verdict?.can_retry ? (
               <GameButton title={secondChanceLabel(bag.retry ?? 0)} color={PURPLE} onPress={retry} icon={<Ionicons name="refresh" size={18} color="#FFF" />} />
             ) : null}
+            {phase === "reveal" && inRoom ? (
+              <GameButton title="Photo" size="small" color={GP.skyDeep} icon={<Ionicons name="camera" size={16} color="#FFF" />} onPress={() => void photo()} style={{ alignSelf: "flex-start" }} />
+            ) : null}
             {phase === "reveal" ? (
               <Animated.View entering={FadeIn.duration(300)}>
                 <GameButton title="Collect" color={GP.sun} onPress={collect} />
@@ -431,6 +541,16 @@ export default function Encounter({
           </View>
         ) : null}
       </ScrollView>
+
+      {/* Over the stage, under the header (Leave and the AR switch stay reachable). */}
+      {phase === "approach" && placed ? (
+        <Pressable
+          style={[StyleSheet.absoluteFill, { top: insets.top + 64 }]}
+          onPress={begin}
+          accessibilityRole="button"
+          accessibilityLabel={`Tap the shrine. ${challengeBlurb(point.challenge)}`}
+        />
+      ) : null}
     </View>
   );
 }
@@ -810,6 +930,9 @@ const styles = StyleSheet.create({
   content: { flexGrow: 1, paddingHorizontal: 16, paddingTop: 8, gap: 14 },
   stage: { flex: 1, minHeight: 130, alignItems: "center", justifyContent: "center" },
   opening: { position: "absolute", bottom: 0, alignItems: "center", gap: 8 },
+  approach: { alignItems: "center", gap: 6 },
+  approachTitle: { fontFamily: GF.display, fontSize: 30, color: "#FFF", textShadowColor: "rgba(0,0,0,0.5)", textShadowRadius: 4 },
+  approachBlurb: { fontFamily: GF.body, fontSize: 16, color: "rgba(255,255,255,0.9)", textAlign: "center", textShadowColor: "rgba(0,0,0,0.5)", textShadowRadius: 4 },
   openingText: { fontFamily: GF.display, fontSize: 20, color: "#FFF", textShadowColor: "rgba(0,0,0,0.5)", textShadowRadius: 4 },
   failTitle: { fontFamily: GF.display, fontSize: 24, color: GP.ink },
   failText: { fontFamily: GF.regular, fontSize: 16, color: GP.ink },
@@ -858,3 +981,15 @@ const styles = StyleSheet.create({
   summaryQ: { fontFamily: GF.body, fontSize: 14, color: "#FFF" },
   summaryA: { fontFamily: GF.display, fontSize: 15 },
 });
+
+/** The tap hand's bounce (.symbolEffect(.bounce, options: .repeating)); still under Reduce Motion. */
+function Bounce({ children }: { children: ReactNode }) {
+  const reduce = useReducedMotion();
+  const y = useSharedValue(0);
+  useEffect(() => {
+    if (reduce) return;
+    y.value = withRepeat(withSequence(withTiming(-8, { duration: 260, easing: Easing.out(Easing.quad) }), withTiming(0, { duration: 260, easing: Easing.in(Easing.quad) }), withDelay(500, withTiming(0, { duration: 1 }))), -1);
+  }, [reduce, y]);
+  const style = useAnimatedStyle(() => ({ transform: [{ translateY: y.value }] }));
+  return <Animated.View style={style}>{children}</Animated.View>;
+}

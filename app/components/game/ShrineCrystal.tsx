@@ -75,7 +75,9 @@ export function ShrineCrystal({ tint, size = 112, ref }: { tint: string; size?: 
       burst.value = 0;
       burst.value = withTiming(1, { duration: reduce ? 1 : win ? 800 : 500, easing: Easing.out(Easing.cubic) });
       scale.value = withTiming(win ? 0.01 : 0.7, { duration: reduce ? 1 : 450, easing: Easing.in(Easing.quad) });
-      glow.value = withTiming(win ? 1 : 0, { duration: 300 });
+      // The glow is part of the crystal (ShrineScene: a sphere inside it): it
+      // flashes with the break and goes with it, rather than staying as a disc.
+      glow.value = win ? withSequence(withTiming(1, { duration: reduce ? 1 : 150 }), withTiming(0, { duration: reduce ? 1 : 450 })) : withTiming(0, { duration: 300 });
     },
     reset() {
       grey.value = 0;

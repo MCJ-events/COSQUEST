@@ -1,5 +1,5 @@
 // The player's choices about the game itself, kept on the phone (costquest-ios
-// UI/Preferences.swift: `haptics`, `worldClock`). Never sent to a server.
+// UI/Preferences.swift: `haptics`, `worldClock`, `shrineAR`). Never sent to a server.
 //
 // Others honour the haptics choice by reading `hapticsOn()` before an impact,
 // or by calling `impact` / `notify` / `selection` here, which do it for them:
@@ -105,5 +105,44 @@ export function useWorldClock(): WorldClock {
     },
     worldClockNow,
     worldClockNow,
+  );
+}
+
+// ---------- The shrine through the camera (Preferences.shrineAR) ----------
+
+const SHRINE_AR_PREF = "game.shrineAR";
+
+/** Off by default, as on iOS: AR drains the battery and is awkward one-handed. */
+let shrineAR = false;
+
+getPref(SHRINE_AR_PREF)
+  .then((v) => {
+    if (v === "0" || v === "1") {
+      shrineAR = v === "1";
+      notifyAll();
+    }
+  })
+  .catch(() => {});
+
+export function shrineAROn(): boolean {
+  return shrineAR;
+}
+
+export function setShrineAR(next: boolean) {
+  shrineAR = next;
+  setPref(SHRINE_AR_PREF, next ? "1" : "0").catch(() => {});
+  notifyAll();
+}
+
+export function useShrineAR(): boolean {
+  return useSyncExternalStore(
+    (l) => {
+      listeners.add(l);
+      return () => {
+        listeners.delete(l);
+      };
+    },
+    shrineAROn,
+    shrineAROn,
   );
 }

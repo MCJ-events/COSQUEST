@@ -88,7 +88,7 @@ export function challengeLabel(kind: string): string {
 
 /** The scrim under the question: lighter while the shrine is shown, darker once you play (EncounterView.scrim). */
 export function scrimOpacity(phase: string): number {
-  return phase === "opening" ? 0.25 : 0.7;
+  return phase === "approach" || phase === "opening" ? 0.25 : 0.7;
 }
 
 /** HintBar: a hint is usable when allowed, not busy, and a bag item or the coins cover it. */

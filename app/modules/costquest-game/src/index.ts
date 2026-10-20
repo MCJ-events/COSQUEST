@@ -9,7 +9,7 @@
 //           inside the RN screens (docs/one-codebase.md).
 // Web: no game (the shell shows the "get the app" page).
 import { requireNativeView, requireOptionalNativeModule } from "expo";
-import type { ComponentType } from "react";
+import type { ComponentType, Ref } from "react";
 import { Platform, type ViewProps } from "react-native";
 
 import { resolveIslandsOff } from "@/features/game/config";
@@ -240,6 +240,40 @@ export const CostQuestModelView: ComponentType<CostQuestModelViewProps> | null =
   Platform.OS === "ios" && nativeGame && (nativeGame as { modelViewAvailable?: boolean }).modelViewAvailable === true
     ? requireNativeView<CostQuestModelViewProps>("CostQuestGame", "CostQuestModelView")
     : null;
+
+export type CostQuestShrineViewProps = ViewProps & {
+  /** The shrine's colour (the point's tier), #RRGGBB. */
+  tint: string;
+  /** The Warden's colour (the player's faction), #RRGGBB. */
+  wardenTint?: string;
+  /** Through the camera (ARKit), where the phone can; otherwise the rendered stage. */
+  useAR?: boolean;
+  /** The shrine is standing: the approach can say "Tap the shrine". `ar`: it is in the room. */
+  onPlaced?: (e: { nativeEvent: { ar: boolean } }) => void;
+  ref?: Ref<CostQuestShrineViewHandle | null>;
+};
+
+/** The view's functions (ShrineScene): the Strike's beats, the break, a second chance, a photo. */
+export type CostQuestShrineViewHandle = {
+  pulse(i: number): Promise<void>;
+  resolve(correct: boolean): Promise<void>;
+  reset(): Promise<void>;
+  /** A JPEG of the shrine in the player's street (file:// URI); null on the rendered stage. */
+  photo(): Promise<string | null>;
+};
+
+/**
+ * iOS only: the native game's shrine (Game/Roam/ShrineStage.swift) on its
+ * RealityKit stage or through the camera (ios/Embed/ShrineIsland.swift).
+ * Null elsewhere: draw the 2D crystal (components/game/ShrineCrystal.tsx).
+ */
+export const CostQuestShrineView: ComponentType<CostQuestShrineViewProps> | null =
+  Platform.OS === "ios" && nativeGame && (nativeGame as { shrineViewAvailable?: boolean }).shrineViewAvailable === true
+    ? requireNativeView<CostQuestShrineViewProps>("CostQuestGame", "CostQuestShrineView")
+    : null;
+
+/** The phone can put the shrine in the room (ARWorldTrackingConfiguration.isSupported). */
+export const shrineARSupported = (nativeGame as { shrineARSupported?: boolean } | null)?.shrineARSupported === true;
 
 /** The native game's view (iOS native UI only; the RN game is components/game/GameRoot). */
 export const CostQuestGameView: ComponentType<CostQuestGameViewProps> | null =

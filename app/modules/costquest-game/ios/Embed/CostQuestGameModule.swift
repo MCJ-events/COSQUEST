@@ -70,6 +70,10 @@ public final class CostQuestGameModule: Module {
         // "Hold phones together" (FriendBeaconIsland.swift): iPhone to iPhone.
         "friendBeaconAvailable": true,
         "friendBeaconUWB": FriendBeaconIsland.usesUWB,
+        // The shrine on the native stage (ShrineIsland.swift), and whether
+        // this phone can put it in the room through the camera.
+        "shrineViewAvailable": true,
+        "shrineARSupported": CostQuestShrineView.arSupported,
       ]
     }
 
@@ -294,6 +298,35 @@ public final class CostQuestGameModule: Module {
       }
       Prop("accessibilityLabel") { (view: CostQuestUnityView, label: String?) in
         view.accessibilityLabel = label
+      }
+    }
+
+    // requireNativeView("CostQuestGame", "CostQuestShrineView")
+    View(CostQuestShrineView.self) {
+      Events("onPlaced")
+      Prop("tint") { (view: CostQuestShrineView, tint: String?) in
+        if let colour = CostQuestModelView.color(tint) { view.tint = colour }
+      }
+      Prop("wardenTint") { (view: CostQuestShrineView, tint: String?) in
+        view.wardenTint = CostQuestModelView.color(tint)
+      }
+      Prop("useAR") { (view: CostQuestShrineView, on: Bool?) in
+        view.useAR = on ?? false
+      }
+      OnViewDidUpdateProps { (view: CostQuestShrineView) in
+        view.propsDone()
+      }
+      AsyncFunction("pulse") { (view: CostQuestShrineView, i: Int) async in
+        await view.pulse(i)
+      }
+      AsyncFunction("resolve") { (view: CostQuestShrineView, correct: Bool) async in
+        await view.resolve(correct)
+      }
+      AsyncFunction("reset") { (view: CostQuestShrineView) async in
+        await view.reset()
+      }
+      AsyncFunction("photo") { (view: CostQuestShrineView) async -> String? in
+        await view.photo()
       }
     }
 

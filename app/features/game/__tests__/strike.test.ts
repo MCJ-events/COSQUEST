@@ -81,6 +81,7 @@ test("header words are Swift's", () => {
   assert.equal(challengeLabel("rebus"), "Rebus");
   assert.equal(challengeLabel("duel"), "Duel");
   assert.equal(challengeLabel("anything"), "Trivia");
+  assert.equal(scrimOpacity("approach"), 0.25);
   assert.equal(scrimOpacity("opening"), 0.25);
   assert.equal(scrimOpacity("playing"), 0.7);
 });
