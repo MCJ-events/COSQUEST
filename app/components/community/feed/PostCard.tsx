@@ -32,6 +32,7 @@ import { getMediaUrls, PostMedia } from "./PostMedia";
 import { PostMenu } from "./PostMenu";
 import { SharedPostEmbed } from "./SharedPostEmbed";
 import { ShareSheet } from "./ShareSheet";
+import { useRenderCount } from "@/utils/perfMarks";
 
 /* =========================================================
    HELPERS
@@ -180,6 +181,7 @@ function factionColor(faction: string) {
 }
 
 export function PostCard({ post, token }: { post: any; token: string }) {
+  useRenderCount("PostCard");
   const dispatch = useAppDispatch();
 
   /* =========================================================

@@ -32,6 +32,7 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { useSparksBoot } from "@/hooks/useSparks";
 import { createChat, fetchChats } from "@/store/thunks/chatThunks";
 import { fetchFollowing, followUserThunk } from "@/store/thunks/followThunks";
+import { perfStart } from "@/utils/perfMarks";
 
 // ==========================================
 // DESIGN TOKENS (from M01)
@@ -354,6 +355,7 @@ export function Chats() {
   const visibleNotYet = notYetMessaged.filter((person) => matches(person.name, person.username));
 
   const openChat = (chatId: string) => {
+    perfStart("chat-open");
     router.push({ pathname: "/chat/[id]", params: { id: chatId } });
   };
 

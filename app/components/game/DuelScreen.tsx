@@ -102,6 +102,7 @@ import type { RewardSummary } from "./Reward";
 import { playSound } from "./sound";
 import { edgeOf, GF, GP, realmColor, realmIcon, tierColor } from "./theme";
 import { wardenVoice } from "./wardenVoice";
+import { useRenderCount } from "@/utils/perfMarks";
 
 type Phase =
   | { kind: "briefing" }
@@ -208,6 +209,7 @@ export default function DuelScreen({
   onReward?: (r: RewardSummary) => void;
   onClose: () => void;
 }) {
+  useRenderCount("DuelScreen");
   const mode = duelModeOf(modeProp, raid);
   // A siege fought as a duel and a trial go straight to the opponent: no briefing (DuelView.task).
   const direct = mode === "siege" || mode === "trial" || mode === "run";

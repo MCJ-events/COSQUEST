@@ -13,6 +13,7 @@ import {
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 
 import { fetchPosts } from "@/store/thunks/postThunks";
+import { perfMarkOnce, useRenderCount } from "@/utils/perfMarks";
 
 // Facebook-style feed: every post is full width. (The Community screen no
 // longer adds side padding around the feed — see app/(tabs)/community.tsx.)
@@ -26,6 +27,13 @@ export function Feeds() {
   const error = useAppSelector((state) => state.post.error);
 
   const token = useAppSelector((state) => state.auth.token);
+  useRenderCount("Feeds");
+
+  // The first usable screen after a cold start (test builds only).
+  const feedShown = posts.length > 0;
+  useEffect(() => {
+    if (feedShown) perfMarkOnce("interactive");
+  }, [feedShown]);
 
   // Re-render every 30s so "2m" / "1h" times stay current.
   const [clock, setClock] = useState(Date.now());

@@ -106,6 +106,7 @@ import SparksOrbit, { SparkCard } from "@/components/chat/SparksOrbit";
 import { useSparkLayout } from "@/constants/sparkLayout";
 import { themedStyles, useInk, useThemedStyles } from "@/constants/chatTheme";
 import { useSparksFeed } from "@/hooks/useSparks";
+import { perfEnd, useRenderCount } from "@/utils/perfMarks";
 import { VoiceLiveCard, VoiceStartButton } from "@/components/voice/voiceUi";
 import { voiceChatAllowed } from "@/services/voiceRooms";
 import ShareMediaSheet from "@/components/chat/ShareMediaSheet";
@@ -1028,6 +1029,7 @@ const Bubble = memo(function Bubble({
 
   otherParticipant?: Chat["otherParticipant"];
 }) {
+  useRenderCount("Bubble");
   const styles = useThemedStyles(STYLE_PAIR);
   const ink = useInk();
   const onPhoto = useContext(PhotoWallpaperContext);
@@ -2218,6 +2220,15 @@ export default function ChatScreen() {
   const messagesLoading = useAppSelector(
     (state) => !!state.chat.messagesLoading[conversationId],
   );
+
+  // Test builds: how long from the tap in the chat list to the messages on screen.
+  useRenderCount("ChatScreen");
+  const hasMessages = messages.length > 0;
+  useEffect(() => {
+    if (!hasMessages) return;
+    const frame = requestAnimationFrame(() => perfEnd("chat-open"));
+    return () => cancelAnimationFrame(frame);
+  }, [hasMessages]);
 
   const selectedIds = useAppSelector(
     (state) =>

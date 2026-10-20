@@ -39,6 +39,7 @@ import { RaidCrown, RaidHPBar } from "./RaidParts";
 import { playSound } from "./sound";
 import { CHOICE_COLORS, edgeOf, GF, GP } from "./theme";
 import { useOnScreen } from "./useOnScreen";
+import { useRenderCount } from "@/utils/perfMarks";
 
 /** White type sits straight on the light GameBackdrop (as on iOS): a soft navy shadow keeps it legible. */
 const LEGIBLE = { textShadowColor: "rgba(30,58,76,0.45)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 } as const;
@@ -50,6 +51,7 @@ function featureChanged() {
 }
 
 export default function RaidScreen({ point, parked, onClose }: { point: QuestPoint; parked: boolean; onClose: () => void }) {
+  useRenderCount("RaidScreen");
   const insets = useSafeAreaInsets();
   const onScreen = useOnScreen();
   const [session] = useState<RaidSession>(() =>

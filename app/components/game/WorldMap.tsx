@@ -35,6 +35,7 @@ import { useWorldClock } from "./prefs";
 import { RaidCrown } from "./RaidParts";
 import RoomBeacon from "./RoomBeacon";
 import { GF, GP, realmColor, realmIcon, tierColor } from "./theme";
+import { useRenderCount } from "@/utils/perfMarks";
 
 /** Pixels per metre: about 260 m across a phone. */
 export const MAP_SCALE = 1.5;
@@ -233,6 +234,7 @@ const PointMarker = memo(function PointMarker({
   cooling: boolean;
   onPress: (p: QuestPoint) => void;
 }) {
+  useRenderCount("PointMarker");
   // RoamHomeView.object: a boss's raid tint, else its holder's colour, else its tier's.
   const color = cooling ? "#9AA7B0" : pinFill(point);
   const ring = cooling ? "#C9D1D6" : "#FFFFFF";

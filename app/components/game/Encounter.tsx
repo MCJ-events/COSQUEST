@@ -70,6 +70,7 @@ import { useWardenSaid, wardenVoice } from "./wardenVoice";
 import { CostQuestShrineView, type CostQuestShrineViewHandle, shrineARSupported } from "@/modules/costquest-game/src";
 
 import { setShrineAR, useShrineAR } from "./prefs";
+import { useRenderCount } from "@/utils/perfMarks";
 
 type Phase = "approach" | "opening" | "playing" | "submitting" | "reveal" | { failed: string };
 
@@ -96,6 +97,7 @@ export default function Encounter({
   onReward: (reward: RewardSummary) => void;
   onClose: () => void;
 }) {
+  useRenderCount("Encounter");
   const insets = useSafeAreaInsets();
   const [phase, setPhaseState] = useState<Phase>("approach");
   const phaseRef = useRef<Phase>("approach");

@@ -67,6 +67,7 @@ import { useHeading } from "./useHeading";
 import { useOnScreen } from "./useOnScreen";
 import { useWardenSaid, wardenVoice } from "./wardenVoice";
 import WorldMap from "./WorldMap";
+import { useRenderCount } from "@/utils/perfMarks";
 
 type Screen =
   | { kind: "home" }
@@ -88,6 +89,7 @@ const FIRST_NUDGE_MS = 25000;
 const NUDGE_SHOWN_MS = 12000;
 
 export default function GameRoot({ parked }: { parked: boolean }) {
+  useRenderCount("GameRoot");
   const insets = useSafeAreaInsets();
   // The game's own type (Lilita One, Fredoka); bundled, so this is one frame or two.
   const [fontsReady, fontsError] = useFonts(GAME_FONTS);
