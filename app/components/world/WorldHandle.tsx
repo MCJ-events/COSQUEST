@@ -8,7 +8,7 @@ import { Gesture, GestureDetector, type GestureType } from "react-native-gesture
 import Animated, { runOnJS, type SharedValue, useAnimatedStyle } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { BUBBLE_Y } from "./GameBubble";
+import { bubbleTop } from "@/features/world/bubbleZone";
 
 export default function WorldHandle({
   progress,
@@ -45,7 +45,7 @@ export default function WorldHandle({
   if (!visible) return null;
 
   // Same height as the game's chat bubble, so the two read as one doorway.
-  const top = Math.max(insets.top + 72, height * BUBBLE_Y - 28);
+  const top = bubbleTop(height, insets.top);
 
   return (
     <GestureDetector gesture={gesture}>

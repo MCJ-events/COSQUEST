@@ -21,7 +21,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { FONTS } from "@/constants/fonts";
 import { getPref, setPref } from "@/utils/prefsStorage";
 
-import { BUBBLE_Y } from "./GameBubble";
+import { bubbleTop } from "@/features/world/bubbleZone";
 import { useWorld } from "./useWorld";
 
 export const COACHMARK_PREF = "world.swipeTaught";
@@ -83,7 +83,7 @@ export default function SwipeCoachmark({ color }: { color: string }) {
     setShow(false);
   };
 
-  const top = Math.max(insets.top + 72, height * BUBBLE_Y - 28);
+  const top = bubbleTop(height, insets.top);
 
   return (
     <Animated.View

@@ -25,6 +25,11 @@ export type WorldState = {
   closeSerial: number;
   /** The veil colour (the player's faction), once known. */
   factionColor: string | null;
+  /**
+   * A full-screen game screen is up (a quiz, a fight, a reward, the first
+   * run), not the map: the Chats bubble tucks in to keep off its content.
+   */
+  gameFocus: boolean;
 };
 
 const INITIAL: WorldState = {
@@ -36,6 +41,7 @@ const INITIAL: WorldState = {
   pendingClose: null,
   closeSerial: 0,
   factionColor: null,
+  gameFocus: false,
 };
 
 export function createWorldStore(initial?: Partial<WorldState>) {
@@ -89,6 +95,9 @@ export function createWorldStore(initial?: Partial<WorldState>) {
     },
     setFactionColor(color: string | null) {
       if (state.factionColor !== color) set({ factionColor: color });
+    },
+    setGameFocus(focus: boolean) {
+      if (state.gameFocus !== focus) set({ gameFocus: focus });
     },
     /**
      * Sign-out: forget everything but the serials (they only ever grow) and

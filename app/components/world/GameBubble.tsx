@@ -4,6 +4,9 @@
 //   long press  the last three conversations with something new; tap one to
 //               go straight into it
 //   drag right  the same swipe as the edge: the chat follows the finger
+// Over a full-screen game screen (a quiz, a fight, a reward) it tucks into a
+// sliver inside the game's side margin, with the same gestures (F-38); its
+// size and place are features/world/bubbleZone.ts.
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useMemo, useState } from "react";
@@ -13,12 +16,14 @@ import Animated, { FadeIn, FadeOut, runOnJS } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { FONTS } from "@/constants/fonts";
+import { BUBBLE_HEIGHT, BUBBLE_TUCKED_WIDTH, BUBBLE_WIDTH, bubbleTop } from "@/features/world/bubbleZone";
 import { badgeText, unreadSummary } from "@/features/world/unread";
 import { world } from "@/features/world/worldState";
 import { useAppSelector } from "@/store/hooks";
 
-/** Where the bubble sits, as a share of the screen height (inside the edge zone). */
-export const BUBBLE_Y = 0.42;
+import { useWorldSelector } from "./useWorld";
+
+export { BUBBLE_Y } from "@/features/world/bubbleZone";
 
 export default function GameBubble({ makePan }: { makePan: () => GestureType }) {
   const { height } = useWindowDimensions();
@@ -26,6 +31,7 @@ export default function GameBubble({ makePan }: { makePan: () => GestureType }) 
   const conversations = useAppSelector((state) => state.chat.conversations);
   const summary = useMemo(() => unreadSummary(conversations), [conversations]);
   const [peek, setPeek] = useState(false);
+  const tucked = useWorldSelector((state) => state.gameFocus);
 
   const openPeek = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
@@ -50,13 +56,14 @@ export default function GameBubble({ makePan }: { makePan: () => GestureType }) 
   );
 
   const badge = badgeText(summary.count);
-  const top = Math.max(insets.top + 72, height * BUBBLE_Y - 28);
+  const top = bubbleTop(height, insets.top);
 
   return (
     <>
       <GestureDetector gesture={gesture}>
         <View
-          style={[styles.bubble, { top }]}
+          style={[styles.bubble, { top }, tucked && styles.tucked]}
+          hitSlop={tucked ? { right: 6, top: 4, bottom: 4 } : undefined}
           accessible
           accessibilityRole="button"
           accessibilityLabel={badge ? `Chats, ${summary.count} unread` : "Chats"}
@@ -66,13 +73,19 @@ export default function GameBubble({ makePan }: { makePan: () => GestureType }) 
             if (event.nativeEvent.actionName === "longpress") setPeek(true);
             else goToChat(null);
           }}>
-          <Ionicons name="chevron-back" size={14} color="rgba(255,255,255,0.75)" />
-          <Ionicons name="chatbubbles" size={22} color="#FFFFFF" />
-          {badge ? (
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{badge}</Text>
-            </View>
-          ) : null}
+          {tucked ? (
+            badge ? <View style={styles.tuckedDot} /> : null
+          ) : (
+            <>
+              <Ionicons name="chevron-back" size={14} color="rgba(255,255,255,0.75)" />
+              <Ionicons name="chatbubbles" size={22} color="#FFFFFF" />
+              {badge ? (
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>{badge}</Text>
+                </View>
+              ) : null}
+            </>
+          )}
         </View>
       </GestureDetector>
 
@@ -126,8 +139,8 @@ const styles = StyleSheet.create({
   bubble: {
     position: "absolute",
     left: 0,
-    height: 56,
-    minWidth: 60,
+    height: BUBBLE_HEIGHT,
+    minWidth: BUBBLE_WIDTH,
     paddingLeft: 4,
     paddingRight: 12,
     flexDirection: "row",
@@ -144,6 +157,22 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
     elevation: 8,
+  },
+  tucked: {
+    minWidth: BUBBLE_TUCKED_WIDTH,
+    width: BUBBLE_TUCKED_WIDTH,
+    paddingLeft: 0,
+    paddingRight: 0,
+    justifyContent: "center",
+    borderTopRightRadius: BUBBLE_TUCKED_WIDTH,
+    borderBottomRightRadius: BUBBLE_TUCKED_WIDTH,
+  },
+  tuckedDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginLeft: 2,
+    backgroundColor: "#DC179F",
   },
   badge: {
     position: "absolute",

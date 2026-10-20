@@ -6,6 +6,8 @@
 // imports so they run in plain Node tests (features/world/__tests__) and in
 // Reanimated worklets alike. docs/merged-app-ux.md explains every number.
 
+import { BUBBLE_HEIGHT, bubbleTop } from "./bubbleZone.ts";
+
 export type WorldPage = "chat" | "game";
 
 /** How wide the edge zones are, in points. */
@@ -195,8 +197,8 @@ export function androidGestureExclusion(opts: {
 }): Rect[] {
   const zone = edgeZone(opts);
   if (zone.height <= 0) return [];
-  // The doorway's centre: the handle / bubble top (GameBubble.tsx) + half its 56 pt.
-  const doorway = Math.max(opts.topInset + 72, opts.height * 0.42 - 28) + 28;
+  // The doorway's centre: the handle / bubble top (bubbleZone.ts) + half its height.
+  const doorway = bubbleTop(opts.height, opts.topInset) + BUBBLE_HEIGHT / 2;
   const h = Math.min(ANDROID_EXCLUSION_MAX, zone.height);
   const top = Math.min(Math.max(doorway - h / 2, zone.y), zone.y + zone.height - h);
   // The bubble sticks out 60 pt from the game's left edge; the strip is 22.

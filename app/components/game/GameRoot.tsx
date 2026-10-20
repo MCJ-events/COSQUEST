@@ -25,7 +25,7 @@ import { noteStepsOnPhone } from "@/features/game/stepsDevice";
 import { unlocked, visiblePoints } from "@/features/game/unlocks";
 import { arriveMoment, legendMoment, nudgeMoment } from "@/features/game/warden";
 import { freshLoss, holdsLostOf, type QuestPoint, spinBanner } from "@/features/game/wire";
-import { factionVeilColor } from "@/features/world/worldState";
+import { factionVeilColor, world } from "@/features/world/worldState";
 import { resultShareText } from "@/features/world/gameInvite";
 import { openVenueEvents, venueEventsAvailable } from "@/modules/costquest-game/src";
 import { emitGameEvent } from "@/modules/costquest-game/src/rnGame";
@@ -340,6 +340,14 @@ export default function GameRoot({ parked }: { parked: boolean }) {
     });
     return () => sub.remove();
   }, [parked, onScreen, screen.kind, sheet, selectedId, runPoint, runState.finished]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // A full-screen game screen (not the map): the Chats bubble tucks in so it
+  // does not cover answers, titles or rewards (F-38, features/world/bubbleZone.ts).
+  const fullScreen = gameStore.needsOnboarding || onboarding || screen.kind !== "home" || runPoint !== null || runState.finished !== null;
+  useEffect(() => {
+    world.setGameFocus(fullScreen);
+  }, [fullScreen]);
+  useEffect(() => () => world.setGameFocus(false), []);
 
   const home = () => {
     setSelectedId(null);
