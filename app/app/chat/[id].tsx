@@ -2309,6 +2309,8 @@ export default function ChatScreen() {
   const [voiceHint, setVoiceHint] = useState("");
 
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
+  // The edit card (M15) shows under the message you just edited, until Done.
+  const [editCardFor, setEditCardFor] = useState<string | null>(null);
 
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
 
@@ -3782,6 +3784,7 @@ export default function ChatScreen() {
           },
         }),
       ).unwrap();
+      setEditCardFor(target.id);
     } catch (error) {
       // Put the user back into edit mode with their text so nothing is lost.
       setEditingMessage(target);
@@ -3813,6 +3816,7 @@ export default function ChatScreen() {
           token,
         }),
       ).unwrap();
+      setEditCardFor(null);
     } catch (error) {
       Alert.alert(
         "Undo edit",
@@ -5034,7 +5038,7 @@ export default function ChatScreen() {
             keyExtractor={(item) => item.id}
             onScroll={handleScroll}
             scrollEventThrottle={16}
-            extraData={[listExtraData, quietSparkCardAfter, rolePingsAfter]}
+            extraData={[listExtraData, quietSparkCardAfter, rolePingsAfter, editCardFor]}
             onScrollToIndexFailed={(info) => {
               listRef.current?.scrollToOffset({
                 offset: info.averageItemLength * info.index,
@@ -5151,7 +5155,7 @@ export default function ChatScreen() {
                   ) : null}
 
                   {/* Figma M15: your edited message - edit again or undo */}
-                  {isMyMessage(item) && (item as any).canRollback && !item.deleted && editedRecently(item.editedAt) ? (
+                  {editCardFor === item.id && isMyMessage(item) && (item as any).canRollback && !item.deleted && editedRecently(item.editedAt) ? (
                     <View style={styles.editCard}>
                       <Text style={styles.editSection}>YOUR MESSAGE</Text>
                       <View style={styles.editBox}>
@@ -5178,6 +5182,12 @@ export default function ChatScreen() {
                           <Text style={styles.editButtonText}>Undo · restore previous message</Text>
                         </Pressable>
                       </View>
+                      <Pressable
+                        style={styles.editDone}
+                        accessibilityRole="button"
+                        onPress={() => setEditCardFor(null)}>
+                        <Text style={styles.editDoneText}>Done</Text>
+                      </Pressable>
                     </View>
                   ) : null}
                 </View>
@@ -6802,6 +6812,8 @@ const STYLE_PAIR = themedStyles({
 
   // Figma M15: "Your message" / "Restore previous wording" card.
   editCard: { marginTop: 14 },
+  editDone: { alignSelf: "flex-end", paddingVertical: 8, paddingHorizontal: 14 },
+  editDoneText: { fontFamily: FONTS.semibold, fontSize: 14, color: "#B63D91" },
 
   editSection: {
     marginTop: 6,
