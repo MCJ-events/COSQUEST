@@ -12,6 +12,7 @@ import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
 
 export default function UploadPicture() {
@@ -160,6 +161,7 @@ export default function UploadPicture() {
   }
 
   const isSaving = loading || saving;
+  const insets = useSafeAreaInsets();
 
   return (
     <AppBackground variant="gradient">
@@ -245,20 +247,20 @@ export default function UploadPicture() {
             </Pressable>
           ))}
         </View>
+      </ScrollView>
 
-        {/* Next to Continue too: the photo error sits at the top, off screen
-            once the avatar grid is scrolled to this button. */}
+      {/* Pinned under the 100 avatars, so moving on needs no scrolling; the
+          photo error shows here too (the one at the top is off screen). */}
+      <View style={[styles.footer, { paddingBottom: insets.bottom + 16 }]}>
         <ErrorText>{errors.avatar || errors.photo}</ErrorText>
 
-        <View style={styles.buttonContainer}>
-          <Button
-            label={isSaving ? "Saving..." : "Continue"}
-            variant="brand"
-            onPress={handleContinue}
-            disabled={isSaving}
-          />
-        </View>
-      </ScrollView>
+        <Button
+          label={isSaving ? "Saving..." : "Continue"}
+          variant="brand"
+          onPress={handleContinue}
+          disabled={isSaving}
+        />
+      </View>
     </AppBackground>
   );
 }
@@ -398,7 +400,8 @@ const styles = StyleSheet.create({
     transform: [{ scale: 1.12 }],
   },
 
-  buttonContainer: {
-    marginTop: 80,
+  footer: {
+    paddingHorizontal: 24,
+    paddingTop: 8,
   },
 });
