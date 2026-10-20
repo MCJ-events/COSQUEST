@@ -40,7 +40,9 @@ public final class CostQuestGameModule: Module {
       // Unity's scenes, as CQUnityEvents.kt sends them (NativeIslands.swift).
       "onUnityEvent",
       // The native venue Events closed (VenueEventsIsland.swift).
-      "onVenueEventsClosed"
+      "onVenueEventsClosed",
+      // "Hold phones together" (FriendBeaconIsland.swift).
+      "onFriendBeacon"
     )
 
     Constants {
@@ -65,6 +67,9 @@ public final class CostQuestGameModule: Module {
         // The fantasy battle scene is in this Unity export (BattleBridge,
         // CQSetBattleEventCallback): the RN fight asks the server for it.
         "hasBattleScene": UnityIsland.hasBattleScene,
+        // "Hold phones together" (FriendBeaconIsland.swift): iPhone to iPhone.
+        "friendBeaconAvailable": true,
+        "friendBeaconUWB": FriendBeaconIsland.usesUWB,
       ]
     }
 
@@ -79,6 +84,7 @@ public final class CostQuestGameModule: Module {
           GameHelpers.shared.sink = sink
           UnityIsland.sink = sink
           VenueEventsIsland.sink = sink
+          FriendBeaconIsland.sink = sink
         }
       }
     }
@@ -241,6 +247,18 @@ public final class CostQuestGameModule: Module {
 
     AsyncFunction("unityPause") { (paused: Bool) in
       MainActor.assumeIsolated { UnityIsland.pause(paused) }
+    }.runOnQueue(.main)
+
+    // MARK: Hold phones together (FriendBeaconIsland.swift).
+
+    /// Advertises this player (their game key and name) to iPhones on the
+    /// Friends screen nearby; `onFriendBeacon` reports who is there.
+    AsyncFunction("startFriendBeacon") { (key: String, handle: String) async in
+      await FriendBeaconIsland.start(key: key, handle: handle)
+    }
+
+    AsyncFunction("stopFriendBeacon") {
+      MainActor.assumeIsolated { FriendBeaconIsland.stop() }
     }.runOnQueue(.main)
 
     // MARK: Venue Events (VenueEventsIsland.swift): native, over the RN game.

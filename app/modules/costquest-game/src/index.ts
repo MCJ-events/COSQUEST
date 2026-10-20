@@ -13,6 +13,7 @@ import type { ComponentType } from "react";
 import { Platform, type ViewProps } from "react-native";
 
 import { resolveIslandsOff } from "@/features/game/config";
+import type { BeaconEvent } from "@/features/game/friendsNearby";
 import { GAME_UI } from "@/features/game/runtime";
 import type { GameTarget } from "@/features/world/deepLink";
 import type { GameSharePayload } from "@/features/world/gameInvite";
@@ -134,6 +135,14 @@ export type NativeOnly = {
    */
   addListener?(event: "onUnityEvent", listener: (e: UnityEvent) => void): Subscription;
 
+  // Hold phones together (iOS: ios/Embed/FriendBeaconIsland.swift). Absent on Android.
+  friendBeaconAvailable?: boolean;
+  /** The phone can measure the distance to the other iPhone (Nearby Interaction). */
+  friendBeaconUWB?: boolean;
+  startFriendBeacon?(key: string, handle: string): Promise<void>;
+  stopFriendBeacon?(): Promise<void>;
+  addListener?(event: "onFriendBeacon", listener: (e: FriendBeaconEvent) => void): Subscription;
+
   // Venue Events (iOS: ios/Embed/VenueEventsIsland.swift), the native ARKit flow.
   venueEventsAvailable?: boolean;
   /** The SwiftUI game's anonymous key (iOS), for features/game/store.ts to adopt once. */
@@ -146,6 +155,9 @@ export type NativeOnly = {
 };
 
 export type UnityEvent = { scene: "duel" | "battle" | "hub" | "world" | string; kind: string; json: string };
+
+/** The hold-phones beacon (FriendBeaconIsland.swift), as features/game/friendsNearby.ts reads it. */
+export type FriendBeaconEvent = BeaconEvent;
 
 export { GAME_UI };
 
