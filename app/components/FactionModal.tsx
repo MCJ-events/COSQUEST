@@ -2,7 +2,7 @@ import { Button } from "@/components/Button";
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
 import {
-  Dimensions,
+  useWindowDimensions,
   Modal,
   Pressable,
   StyleSheet,
@@ -41,7 +41,6 @@ type Props = {
 const DISMISS_DISTANCE = 120;
 const DISMISS_VELOCITY = 800;
 
-const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 // ==========================================
 // COMPONENT
@@ -54,6 +53,8 @@ export function FactionModal({
   onAgree,
   onClose,
 }: Props) {
+  // Read on every render (display size, split screen), not once at load.
+  const { height: SCREEN_HEIGHT } = useWindowDimensions();
   // ==========================================
   // ANIMATION STATE
   // ==========================================
@@ -86,7 +87,7 @@ export function FactionModal({
       // Keep it below the screen while hidden.
       translateY.value = SCREEN_HEIGHT;
     }
-  }, [visible, translateY]);
+  }, [visible, translateY, SCREEN_HEIGHT]);
 
   // ==========================================
   // CLEAR ERROR WHEN CHECKED

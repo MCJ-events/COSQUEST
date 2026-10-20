@@ -13,7 +13,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
       ActivityIndicator,
       Alert,
-      Dimensions,
+      useWindowDimensions,
       Modal,
       Pressable,
       ScrollView,
@@ -45,8 +45,10 @@ import { safeBack } from "@/utils/safeBack";
 type Tab = "Posts" | "Reels" | "Thoughts";
 
 const GRID_GAP = 2;
-const COLUMN =
-  (Math.min(Dimensions.get("window").width, 640) - 40 - GRID_GAP * 2) / 3;
+// Three posts a row; the tile size follows the window when the screen renders.
+function gridColumn(windowWidth: number) {
+  return (Math.min(windowWidth, 640) - 40 - GRID_GAP * 2) / 3;
+}
 
 function capitalize(value?: string | null) {
   return value ? value.charAt(0).toUpperCase() + value.slice(1) : "";
@@ -73,6 +75,7 @@ function Stat({ value, label }: { value?: number; label: string }) {
 }
 
 export default function UserProfileScreen() {
+  const column = gridColumn(useWindowDimensions().width);
   const insets = useSafeAreaInsets();
   const dispatch = useAppDispatch();
 
@@ -521,7 +524,7 @@ export default function UserProfileScreen() {
               {imagePosts.map((post) => (
                 <Pressable
                   key={post.id}
-                  style={styles.thumbWrap}
+                  style={[styles.thumbWrap, { width: column, height: column }]}
                   onPress={() => openPost(post.id)}>
                   <Image
                     source={{ uri: post.media![0].url }}
@@ -557,7 +560,7 @@ export default function UserProfileScreen() {
                 return (
                   <Pressable
                     key={post.id}
-                    style={[styles.thumbWrap, styles.reelThumb]}
+                    style={[styles.thumbWrap, styles.reelThumb, { width: column, height: column * 1.4 }]}
                     onPress={() => openPost(post.id)}>
                     {poster ? (
                       <Image
@@ -888,14 +891,11 @@ const styles = StyleSheet.create({
   },
 
   thumbWrap: {
-    width: COLUMN,
-    height: COLUMN,
     backgroundColor: "#E9E9ED",
     overflow: "hidden",
   },
 
   reelThumb: {
-    height: COLUMN * 1.4,
     backgroundColor: "#2C2C2A",
   },
 

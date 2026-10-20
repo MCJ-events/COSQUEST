@@ -3,7 +3,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useEffect } from "react";
 import {
-      Dimensions,
+      useWindowDimensions,
       Modal,
       Pressable,
       ScrollView,
@@ -135,7 +135,6 @@ const FACTION_DETAILS: Record<string, FactionDetails> = {
 const DISMISS_DISTANCE = 120;
 const DISMISS_VELOCITY = 800;
 
-const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 export function FactionDescriptionModal({
   visible,
@@ -143,6 +142,8 @@ export function FactionDescriptionModal({
   onClose,
   onContinue,
 }: Props) {
+  // Read on every render (display size, split screen), not once at load.
+  const { height: SCREEN_HEIGHT } = useWindowDimensions();
   const translateY = useSharedValue(SCREEN_HEIGHT);
 
   const details = FACTION_DETAILS[faction.id] ?? FACTION_DETAILS.ascendants;
@@ -156,7 +157,7 @@ export function FactionDescriptionModal({
         stiffness: 150,
       });
     }
-  }, [visible, translateY]);
+  }, [visible, translateY, SCREEN_HEIGHT]);
 
   const pan = Gesture.Pan()
     .onUpdate((event) => {

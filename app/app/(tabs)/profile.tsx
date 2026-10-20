@@ -22,7 +22,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import {
   ActivityIndicator,
-  Dimensions,
+  useWindowDimensions,
   Platform,
   Pressable,
   ScrollView,
@@ -315,6 +315,8 @@ function ThoughtItem({ post }: { post: Post }) {
 }
 
 export default function Profile() {
+  const { width: windowWidth } = useWindowDimensions();
+  const sizes = useMemo(() => heroSizes(windowWidth), [windowWidth]);
   const insets = useSafeAreaInsets();
   const dispatch = useAppDispatch();
 
@@ -618,8 +620,8 @@ export default function Profile() {
 
         {/* PHOTO (Figma): a square photo, with a big pink CIRCLE fading in
             at the bottom, and the avatar sitting in that circle. */}
-        <View style={styles.heroWrap}>
-          <View style={styles.hero}>
+        <View style={[styles.heroWrap, sizes.heroWrap]}>
+          <View style={[styles.hero, sizes.hero]}>
             {cloudinaryPhoto ? (
               <Image
                 source={{ uri: cloudinaryPhoto }}
@@ -636,7 +638,7 @@ export default function Profile() {
               </View>
             )}
 
-            <View style={styles.heroCircle} pointerEvents="none">
+            <View style={[styles.heroCircle, sizes.heroCircle]} pointerEvents="none">
               {/* Figma: linear-gradient(180deg, rgba(0,0,0,0) 47.87%, #C34D9C 100%) */}
               <LinearGradient
                 colors={["rgba(0,0,0,0)", PINK]}
@@ -651,12 +653,12 @@ export default function Profile() {
           {/* Avatar (Figma: 89 x 89): a strong pink circle with a deep
               shadow, so it looks like it's coming out of the photo. It sits
               outside the photo's clipping, so the shadow isn't cut off. */}
-          <View style={styles.avatarShadow} pointerEvents="none">
+          <View style={[styles.avatarShadow, sizes.avatarShadow]} pointerEvents="none">
             <LinearGradient
               colors={["#E28BC8", PINK]}
               start={{ x: 0, y: 0 }}
               end={{ x: 0, y: 1 }}
-              style={styles.avatarRing}>
+              style={[styles.avatarRing, sizes.avatarRing]}>
               <Image
                 source={selectedAvatar}
                 style={styles.avatarImg}
@@ -887,14 +889,24 @@ export default function Profile() {
 const GAP = 1;
 const H_PAD = 16;
 
-const SCREEN_W = Math.min(Dimensions.get("window").width, 640);
-
-// Figma photo: a 316 x 316 square on a 402 wide screen.
-const HERO_SIZE = Math.min(316, SCREEN_W - 2 * 30);
-// The pink circle is a little wider than the photo, and sits at its bottom.
-const HERO_CIRCLE = Math.round(HERO_SIZE * 1.06);
-// Figma avatar: 89.21 x 89.21 on the 316 photo.
-const AVATAR_SIZE = Math.round(HERO_SIZE * (89.21 / 316));
+// The hero's sizes follow the window (read when the screen renders, so a
+// display-size change or split screen resizes it; it was read once at load).
+function heroSizes(windowWidth: number) {
+  const screenW = Math.min(windowWidth, 640);
+  // Figma photo: a 316 x 316 square on a 402 wide screen.
+  const hero = Math.min(316, screenW - 2 * 30);
+  // The pink circle is a little wider than the photo, and sits at its bottom.
+  const circle = Math.round(hero * 1.06);
+  // Figma avatar: 89.21 x 89.21 on the 316 photo.
+  const avatar = Math.round(hero * (89.21 / 316));
+  return {
+    hero: { width: hero, height: hero },
+    heroWrap: { width: hero, height: hero },
+    avatarRing: { width: avatar, height: avatar, borderRadius: avatar / 2 },
+    avatarShadow: { left: (hero - avatar) / 2, width: avatar, height: avatar, borderRadius: avatar / 2 },
+    heroCircle: { width: circle, height: circle, borderRadius: circle / 2, left: (hero - circle) / 2 },
+  };
+}
 
 // The "milky", pressed-in glass look (same as the chat bubbles): see-through
 // white with a bright white rim and a soft shadow.
@@ -964,8 +976,6 @@ const styles = StyleSheet.create({
 
   // Straight top edge, round bottom.
   hero: {
-    width: HERO_SIZE,
-    height: HERO_SIZE,
     borderRadius: 6,
     overflow: "hidden",
     backgroundColor: "rgba(178,204,239,0.72)",
@@ -978,27 +988,18 @@ const styles = StyleSheet.create({
   },
 
   avatarRing: {
-    width: AVATAR_SIZE,
-    height: AVATAR_SIZE,
-    borderRadius: AVATAR_SIZE / 2,
     overflow: "hidden",
   },
 
   // Holds the photo + the avatar (not clipped, so the avatar's shadow shows).
   heroWrap: {
     alignSelf: "center",
-    width: HERO_SIZE,
-    height: HERO_SIZE,
   },
 
   // Deep shadow under the avatar circle: it "pops out" of the photo.
   avatarShadow: {
     position: "absolute",
-    left: (HERO_SIZE - AVATAR_SIZE) / 2,
     bottom: 6,
-    width: AVATAR_SIZE,
-    height: AVATAR_SIZE,
-    borderRadius: AVATAR_SIZE / 2,
     backgroundColor: PINK,
 
     shadowColor: "#4A0F3B",
@@ -1011,10 +1012,6 @@ const styles = StyleSheet.create({
   // The big pink circle at the bottom of the photo.
   heroCircle: {
     position: "absolute",
-    width: HERO_CIRCLE,
-    height: HERO_CIRCLE,
-    borderRadius: HERO_CIRCLE / 2,
-    left: (HERO_SIZE - HERO_CIRCLE) / 2,
     bottom: -4,
     overflow: "hidden",
     alignItems: "center",
