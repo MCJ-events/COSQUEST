@@ -203,7 +203,7 @@ export default function Notifications() {
   return (
     <View style={[styles.screen, { paddingTop: insets.top + 8 }]}>
       <View style={styles.header}>
-        <Pressable onPress={() => safeBack()} hitSlop={10}>
+        <Pressable onPress={() => safeBack()} hitSlop={10} accessibilityRole="button" accessibilityLabel="Back">
           <Ionicons name="arrow-back" size={24} color="#191922" />
         </Pressable>
 

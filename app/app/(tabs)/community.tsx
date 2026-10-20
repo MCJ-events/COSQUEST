@@ -76,7 +76,11 @@ export default function Community() {
         <View style={styles.column}>
           {/* HEADER - avatar in a soft pink circle, title, pink bell */}
           <View style={[styles.header, styles.padded]}>
-            <Pressable onPress={() => router.push("/profile")} hitSlop={10}>
+            <Pressable
+              onPress={() => router.push("/profile")}
+              hitSlop={10}
+              accessibilityRole="button"
+              accessibilityLabel="Your profile">
               <View style={styles.avatarWrap}>
                 <Image
                   source={selectedAvatar}
@@ -96,7 +100,9 @@ export default function Community() {
 
             <Pressable
               onPress={() => router.push("/notifications")}
-              hitSlop={10}>
+              hitSlop={10}
+              accessibilityRole="button"
+              accessibilityLabel="Notifications">
               <Ionicons name="notifications" size={28} color="#C5399A" />
             </Pressable>
           </View>
