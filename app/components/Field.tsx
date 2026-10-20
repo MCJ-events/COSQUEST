@@ -61,6 +61,8 @@ export function Field({
         ) : null}
         <TextInput
           style={styles.input}
+          accessibilityLabel={label}
+          testID={`field-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder}
@@ -75,7 +77,11 @@ export function Field({
           multiline={multiline}
         />
         {secureTextEntry ? (
-          <Pressable onPress={() => setHidden((h) => !h)} hitSlop={10}>
+          <Pressable
+            onPress={() => setHidden((h) => !h)}
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel={hidden ? `Show ${label.toLowerCase()}` : `Hide ${label.toLowerCase()}`}>
             <Ionicons
               name={hidden ? "eye-off-outline" : "eye-outline"}
               size={20}

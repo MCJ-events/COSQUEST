@@ -246,7 +246,9 @@ export default function UploadPicture() {
           ))}
         </View>
 
-        <ErrorText>{errors.avatar}</ErrorText>
+        {/* Next to Continue too: the photo error sits at the top, off screen
+            once the avatar grid is scrolled to this button. */}
+        <ErrorText>{errors.avatar || errors.photo}</ErrorText>
 
         <View style={styles.buttonContainer}>
           <Button
