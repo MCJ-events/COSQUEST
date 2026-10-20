@@ -596,25 +596,40 @@ function ResultLine({ verdict }: { verdict: RoamVerdict }) {
   );
 }
 
-/** The countdown every challenge runs against: the server's deadline, refreshed every 0.1 s; the whole row turns berry under 6 s. */
+/**
+ * The countdown every challenge runs against: the server's deadline; the whole
+ * row turns berry under 6 s. The bar drains on the UI thread and the number
+ * re-renders only when its second changes (it used to re-render every 0.1 s,
+ * audit B9).
+ */
 export function DeadlineBar({ deadline, total }: { deadline: number; total: number }) {
-  const [now, setNow] = useState(() => Date.now());
+  const leftAt = useCallback((t: number) => (deadline ? Math.max(0, (deadline - t) / 1000) : total), [deadline, total]);
+  const [seconds, setSeconds] = useState(() => deadlineView(leftAt(Date.now())).seconds);
+  const [hot, setHot] = useState(() => deadlineView(leftAt(Date.now())).hot);
+  const frac = useSharedValue(1);
   useEffect(() => {
-    const tick = setInterval(() => setNow(Date.now()), 100);
-    return () => clearInterval(tick);
-  }, []);
-  const left = deadline ? Math.max(0, (deadline - now) / 1000) : total;
-  const { seconds, hot } = deadlineView(left);
-  const frac = total > 0 ? Math.min(1, left / total) : 0;
+    const left = leftAt(Date.now());
+    frac.set(total > 0 ? Math.min(1, left / total) : 0);
+    if (deadline && left > 0) frac.set(withTiming(0, { duration: left * 1000, easing: Easing.linear }));
+    const tick = () => {
+      const v = deadlineView(leftAt(Date.now()));
+      setSeconds(v.seconds);
+      setHot(v.hot);
+    };
+    tick();
+    const timer = setInterval(tick, 250);
+    return () => clearInterval(timer);
+  }, [deadline, total, leftAt, frac]);
   useEffect(() => {
     if (hot) announce("Under six seconds left.");
   }, [hot]);
+  const fill = useAnimatedStyle(() => ({ width: `${frac.get() * 100}%` }));
   const tint = hot ? GP.berry : "#FFFFFF";
   return (
     <View style={styles.deadline} accessible accessibilityRole="timer" accessibilityLabel={`${seconds} seconds left`}>
       <Ionicons name="timer" size={18} color={tint} />
       <View style={styles.deadlineTrack}>
-        <View style={{ width: `${frac * 100}%`, height: 12, borderRadius: 6, backgroundColor: hot ? GP.berry : GP.sun }} />
+        <Animated.View style={[{ height: 12, borderRadius: 6, backgroundColor: hot ? GP.berry : GP.sun }, fill]} />
       </View>
       <Text style={[styles.deadlineText, { color: tint }]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
         {seconds}

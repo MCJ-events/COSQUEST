@@ -218,25 +218,37 @@ function Lobby({ s, busy, paused, onStart }: { s: RaidState; busy: boolean; paus
   );
 }
 
-function Fight({ snap, s, paused, onAnswer }: { snap: RaidSnapshot; s: RaidState; paused: boolean; onAnswer: (q: number, c: number) => void }) {
-  const [now, setNow] = useState(() => Date.now());
+/**
+ * The fight's clock on its own, so its tick re-renders only these few views,
+ * not the question, the boss and the crew (audit B9). It holds whole seconds,
+ * so React skips the ticks where the second hasn't changed.
+ */
+function FightClock({ snap, paused }: { snap: RaidSnapshot; paused: boolean }) {
+  const [left, setLeft] = useState(() => secondsLeft(snap, Date.now()));
   useEffect(() => {
+    setLeft(secondsLeft(snap, Date.now()));
     if (paused) return;
-    const t = setInterval(() => setNow(Date.now()), 250);
+    const t = setInterval(() => setLeft(secondsLeft(snap, Date.now())), 250);
     return () => clearInterval(t);
-  }, [paused]);
+  }, [paused, snap]);
+  return (
+    <View style={styles.rowGap} accessible accessibilityLabel={`${left} seconds left`}>
+      <Ionicons name="timer" size={24} color={left <= 10 ? GP.sun : "#FFF"} />
+      <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[styles.clock, { color: left <= 10 ? GP.sun : "#FFF" }]}>{`${left} s`}</Text>
+    </View>
+  );
+}
+
+function Fight({ snap, s, paused, onAnswer }: { snap: RaidSnapshot; s: RaidState; paused: boolean; onAnswer: (q: number, c: number) => void }) {
+  useRenderCount("RaidFight");
   const reduced = useReducedMotion();
-  const left = secondsLeft(snap, now);
   const i = currentQuestion(snap);
   return (
     <View style={styles.stack}>
       <BossTitle s={s} />
       <RaidHPBar hp={s.hp} maxHp={s.max_hp} />
       <View style={styles.spread}>
-        <View style={styles.rowGap} accessible accessibilityLabel={`${left} seconds left`}>
-          <Ionicons name="timer" size={24} color={left <= 10 ? GP.sun : "#FFF"} />
-          <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[styles.clock, { color: left <= 10 ? GP.sun : "#FFF" }]}>{`${left} s`}</Text>
-        </View>
+        <FightClock snap={snap} paused={paused} />
         <View style={styles.rowGap}>
           <Ionicons name="flash" size={20} color="#FFF" />
           <Text style={styles.damage}>{`Your damage ${s.you.damage}`}</Text>
