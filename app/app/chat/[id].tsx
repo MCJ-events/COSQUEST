@@ -5526,7 +5526,9 @@ export default function ChatScreen() {
                   setAttachmentCaption("");
                 }
               }}
-              disabled={attachmentSending}>
+              disabled={attachmentSending}
+              accessibilityRole="button"
+              accessibilityLabel="Close preview">
               <Ionicons name="close" size={28} color="#FFFFFF" />
             </Pressable>
 
@@ -5576,7 +5578,9 @@ export default function ChatScreen() {
             <Pressable
               style={styles.attachmentSendButton}
               onPress={sendAttachment}
-              disabled={attachmentSending}>
+              disabled={attachmentSending}
+              accessibilityRole="button"
+              accessibilityLabel="Send attachment">
               {attachmentSending ? (
                 <ActivityIndicator color="#FFFFFF" />
               ) : (
