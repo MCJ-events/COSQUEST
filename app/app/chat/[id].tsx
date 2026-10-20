@@ -4861,6 +4861,8 @@ export default function ChatScreen() {
               <Pressable
                 onPress={() => safeBack()}
                 hitSlop={10}
+                accessibilityRole="button"
+                accessibilityLabel="Back"
                 style={styles.backButton}>
                 <Ionicons name="chevron-back" size={27} color={ink.text("#191922")} />
               </Pressable>
