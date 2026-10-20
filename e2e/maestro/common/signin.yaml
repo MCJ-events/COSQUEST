@@ -24,6 +24,16 @@ appId: com.dammy0227.cosquest
 - tapOn:
     text: "Sign in"
     index: 0
+# After the local backend restarts (a fresh seed), the phone's first request
+# can fail on a dead pooled connection ("fetch failed ... unexpected end of
+# stream"): try once more.
+- runFlow:
+    when:
+      visible: "fetch failed.*"
+    commands:
+      - tapOn:
+          text: "Sign in"
+          index: 0
 # Signed in once the tab bar shows (the sign-in page says "Cosquest" too).
 - extendedWaitUntil:
     visible: "Profile"
