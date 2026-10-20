@@ -13,7 +13,7 @@ import { bannerAt, type LiveCalendar, type LiveClock, nextChange, phoneClock, so
 import { liveCalendar, livePlace, useLiveCalendar } from "@/features/game/liveRuntime";
 import { useGame } from "@/features/game/runtime";
 
-import { MAX_FONT_SCALE, pressFeedback } from "./kit";
+import { HUD_FONT_SCALE, pressFeedback } from "./kit";
 import { GF, GP } from "./theme";
 
 /** The phone's clock (its zone is read per instant, so a zone change still shows). */
@@ -97,14 +97,14 @@ function LiveCard({ title, detail, multiplier, isLive, pressed }: { title: strin
           <Ionicons name={isLive ? "flash" : "time"} size={20} color={isLive ? "#FFF" : GP.sunDeep} />
         </View>
         <View style={styles.text}>
-          <Text style={styles.title} numberOfLines={1} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+          <Text style={styles.title} numberOfLines={1} maxFontSizeMultiplier={HUD_FONT_SCALE}>
             {title.toUpperCase()}
           </Text>
-          <Text style={styles.detail} numberOfLines={1} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+          <Text style={styles.detail} numberOfLines={1} maxFontSizeMultiplier={HUD_FONT_SCALE}>
             {detail}
           </Text>
         </View>
-        <Text style={styles.mult} maxFontSizeMultiplier={MAX_FONT_SCALE}>{multiplier} XP</Text>
+        <Text style={styles.mult} maxFontSizeMultiplier={HUD_FONT_SCALE}>{multiplier} XP</Text>
       </View>
     </View>
   );

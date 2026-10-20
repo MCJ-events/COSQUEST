@@ -27,6 +27,9 @@ export function announce(text: string) {
 /** Large text may grow, but not so far that the game's fixed shapes clip it. */
 export const MAX_FONT_SCALE = 1.4;
 
+/** The map's HUD (top bar, rail, Nearby tray, banners) sits in fixed slots over the map: it grows less. */
+export const HUD_FONT_SCALE = 1.2;
+
 const DISABLED_FACE = "#9E9E9E";
 
 type ButtonSize = "large" | "medium" | "small";

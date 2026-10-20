@@ -24,7 +24,7 @@ import type { Profile, QuestPoint, RoamMe } from "@/features/game/wire";
 
 import AvatarView from "./AvatarView";
 import { CoachAnchor } from "./Coach";
-import { announce, GameCoin, GameIconButton, MAX_FONT_SCALE, pressFeedback, withAlpha } from "./kit";
+import { announce, GameCoin, GameIconButton, HUD_FONT_SCALE, pressFeedback, withAlpha } from "./kit";
 import { edgeOf, GF, GP, realmColor, realmIcon, tierColor } from "./theme";
 import WardenBadge from "./WardenBadge";
 import { useWardenMuted, wardenVoice } from "./wardenVoice";
@@ -101,10 +101,10 @@ export function PlayerChip({
         </View>
       ) : (
         <View style={{ flexShrink: 1, paddingRight: 6 }}>
-          <Text style={styles.handle} numberOfLines={1} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+          <Text style={styles.handle} numberOfLines={1} maxFontSizeMultiplier={HUD_FONT_SCALE}>
             {handle}
           </Text>
-          <Text style={styles.rank} numberOfLines={1} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+          <Text style={styles.rank} numberOfLines={1} maxFontSizeMultiplier={HUD_FONT_SCALE}>
             {rank}
           </Text>
         </View>
@@ -152,7 +152,7 @@ export function TopBar({
         <Pressable onPress={onCoins} accessibilityRole="button" accessibilityLabel={`${coins} CosCoins`} accessibilityHint="Opens your CosCoins" hitSlop={5}>
           <ResourceChip>
             <GameCoin size={18} />
-            <Text style={styles.resourceText} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+            <Text style={styles.resourceText} maxFontSizeMultiplier={HUD_FONT_SCALE}>
               {coins}
             </Text>
           </ResourceChip>
@@ -161,7 +161,7 @@ export function TopBar({
           <View accessible accessibilityLabel={`${streak.days} day streak`}>
             <ResourceChip>
               <Ionicons name="flame" size={16} color={streak.played_today ? GP.sun : "rgba(255,255,255,0.6)"} />
-              <Text style={styles.resourceText} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+              <Text style={styles.resourceText} maxFontSizeMultiplier={HUD_FONT_SCALE}>
                 {streak.days}
               </Text>
             </ResourceChip>
@@ -347,29 +347,29 @@ function NearbyCard({
             </View>
           </View>
           {duel ? (
-            <Text style={[styles.difficulty, { color: edgeOf(tint) }]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+            <Text style={[styles.difficulty, { color: edgeOf(tint) }]} maxFontSizeMultiplier={HUD_FONT_SCALE}>
               {difficultyLabel(point.tier).toUpperCase()}
             </Text>
           ) : null}
           <View style={{ flex: 1 }} />
           {ready ? (
-            <Text style={styles.here} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+            <Text style={styles.here} maxFontSizeMultiplier={HUD_FONT_SCALE}>
               HERE
             </Text>
           ) : (
             <View style={styles.distance}>
               {bearing !== null ? <Ionicons name="arrow-up" size={11} color={GP.mist} style={{ transform: [{ rotate: `${bearing}deg` }] }} /> : null}
-              <Text style={styles.distanceText} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+              <Text style={styles.distanceText} maxFontSizeMultiplier={HUD_FONT_SCALE}>
                 {distanceText(distance)}
               </Text>
             </View>
           )}
         </View>
         <View style={{ gap: 3 }}>
-          <Text style={styles.cardName} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.85} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+          <Text style={styles.cardName} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.85} maxFontSizeMultiplier={HUD_FONT_SCALE}>
             {point.name}
           </Text>
-          <Text style={styles.subline} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+          <Text style={styles.subline} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} maxFontSizeMultiplier={HUD_FONT_SCALE}>
             <Text style={{ color: withAlpha(GP.ink, 0.5) }}>{challengeLabel(point.challenge).toUpperCase()}</Text>
             <Text style={{ color: withAlpha(GP.ink, 0.3) }}>{"  ·  "}</Text>
             <Text style={{ color: toneColor(status.tone, point, status.holder) }}>{status.fact.toUpperCase()}</Text>
@@ -426,11 +426,11 @@ export function NearbyTray({
     <View style={{ gap: 8 }}>
       {/* On a plate: bare white type vanished over the pale day board. */}
       <View style={styles.plate} accessible accessibilityLabel={here > 0 ? `NEARBY, ${here} in reach` : "NEARBY"}>
-        <Text style={styles.plateText} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+        <Text style={styles.plateText} maxFontSizeMultiplier={HUD_FONT_SCALE}>
           NEARBY
         </Text>
         {here > 0 ? (
-          <Text style={[styles.plateText, { color: GP.mint, letterSpacing: 0, fontVariant: ["tabular-nums"] }]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+          <Text style={[styles.plateText, { color: GP.mint, letterSpacing: 0, fontVariant: ["tabular-nums"] }]} maxFontSizeMultiplier={HUD_FONT_SCALE}>
             {"·  "}
             {here} in reach
           </Text>
@@ -506,10 +506,10 @@ export function WardenBubble({ text, color, onClose }: { text: string; color: st
         accessibilityLiveRegion={Platform.OS === "android" ? "polite" : undefined}>
         <WardenBadge tint={color} size={36} />
         <View style={{ flex: 1, gap: 3 }}>
-          <Text style={[styles.bubbleLabel, { color }]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+          <Text style={[styles.bubbleLabel, { color }]} maxFontSizeMultiplier={HUD_FONT_SCALE}>
             THE WARDEN
           </Text>
-          <Text style={styles.bubbleText} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+          <Text style={styles.bubbleText} maxFontSizeMultiplier={HUD_FONT_SCALE}>
             {text}
           </Text>
         </View>

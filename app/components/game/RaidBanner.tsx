@@ -11,7 +11,7 @@ import { distanceM, distanceText, type LatLng } from "@/features/game/geo";
 import { nearestBoss, RAID_COLOR, raidHp } from "@/features/game/raids";
 import type { QuestPoint } from "@/features/game/wire";
 
-import { announce, GameButton, MAX_FONT_SCALE } from "./kit";
+import { announce, GameButton, HUD_FONT_SCALE } from "./kit";
 import { RaidBadge, RaidHPBar } from "./RaidParts";
 import { GF } from "./theme";
 
@@ -63,11 +63,11 @@ export default function RaidBanner({
       <View style={styles.body} accessible accessibilityRole="summary" accessibilityLabel={`A boss has appeared: ${boss.name}. ${away}.${hp ? ` Boss health ${Math.max(0, hp.left)} of ${hp.max}.` : ""}`}>
         {/* Two lines, not shrunk to fit: Android ignores minimumFontScale and
             shrank the name to nothing beside the button. */}
-        <Text style={styles.title} numberOfLines={2} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+        <Text style={styles.title} numberOfLines={2} maxFontSizeMultiplier={HUD_FONT_SCALE}>
           {`A boss has appeared: ${boss.name}`}
         </Text>
         {hp ? <RaidHPBar hp={hp.left} maxHp={hp.max} compact /> : null}
-        <Text style={styles.sub} maxFontSizeMultiplier={MAX_FONT_SCALE}>{away}</Text>
+        <Text style={styles.sub} maxFontSizeMultiplier={HUD_FONT_SCALE}>{away}</Text>
       </View>
       {onFight ? (
         <GameButton title="Fight the boss" small color={RAID_COLOR} onPress={() => onFight(boss)} accessibilityLabel={`Fight the boss: ${boss.name}`}
