@@ -1,3 +1,5 @@
+import { signupTokenFor } from "./signupSession";
+
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL;
 
 if (!BASE_URL) {
@@ -14,7 +16,9 @@ export async function apiRequest<T>(
   endpoint: string,
   options: RequestOptions = {},
 ): Promise<T> {
-  const { method = "GET", body, token } = options;
+  const { method = "GET", body } = options;
+  // Onboarding calls carry the sign-up token (services/signupSession.ts).
+  const token = options.token ?? signupTokenFor(endpoint);
 
   const isFormData =
     typeof FormData !== "undefined" && body instanceof FormData;

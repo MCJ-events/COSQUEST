@@ -1,5 +1,6 @@
 import { appendFileToFormData } from "@/utils/appendFileToFormData";
 import { apiRequest } from "./api";
+import { signupToken } from "./signupSession";
 
 export type ProfileCategory = {
   key: string;
@@ -331,8 +332,10 @@ export async function uploadAvatarPhoto(
 
   // Do NOT set Content-Type here.
   // fetch will create the multipart boundary automatically.
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
+  // During onboarding: the sign-up token (services/signupSession.ts).
+  const bearer = token || signupToken();
+  if (bearer) {
+    headers.Authorization = `Bearer ${bearer}`;
   }
 
   const response = await fetch(`${BASE_URL}/api/users/me/avatar/photo`, {
