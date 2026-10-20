@@ -1,0 +1,28 @@
+# Swipe from the chats into the game; pick a side if it asks (first time).
+appId: com.dammy0227.cosquest
+---
+- repeat:
+    while:
+      notVisible: "Profile"
+    times: 6
+    commands:
+      - back
+- swipe:
+    start: "99%,45%"
+    end: "20%,45%"
+    duration: 400
+- extendedWaitUntil:
+    visible: "Choose your side|Map of the streets around you"
+    timeout: 60000
+- runFlow:
+    when:
+      visible: "Choose your side"
+    commands:
+      - tapOn: "Anime.*"
+      - scrollUntilVisible:
+          element: "Let's go"
+          direction: DOWN
+      - tapOn: "Let's go"
+- extendedWaitUntil:
+    visible: "Map of the streets around you"
+    timeout: 60000

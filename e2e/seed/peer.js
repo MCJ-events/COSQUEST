@@ -11,6 +11,7 @@
  * CHAT_API (default http://localhost:4120), SEED_OUT (default ./.seed.json).
  * See README.md for every command.
  */
+const { joinMedia } = require('./lkmedia');
 const fs = require('fs');
 const path = require('path');
 const { createRequire } = require('module');
@@ -46,7 +47,7 @@ Sparks
   spark-reply <conv> <spark subject|id|last> "text"
   spark-add <conv> <spark> <msg>
   spark-burst <conv> "topic"               3 on-topic messages from you + 2 others (legacy engine auto-forms a Spark)
-Calls (LiveKit tokens come back from the backend; this CLI does not send audio)
+Calls (with @livekit/rtc-node installed, see lkmedia.js, the peer joins the room and sends a tone)
   call <user> [--video] [--hold 45] [--add u1,u2] [--keep]    ring <user> in your DM; hang up after --hold s
   accept-call [--wait 60] [--hold 120]     wait for a ringing call, answer, stay --hold s, hang up
   decline-call [--wait 60]                 end-call                call-add <user[,user]>
@@ -257,11 +258,16 @@ const brief = (m) => m && { id: m.id, kind: m.kind, from: m.sender?.username, co
 const callBrief = (c) => c && { id: c.id, status: c.status, type: c.type, isGroup: c.isGroup, members: (c.members || []).map((m) => `${m.user?.username || m.user?.id || m.user}:${m.status}`) };
 
 // Keep a call open, printing status changes, until it ends or `seconds` pass.
-async function holdCall(peer, callId, seconds, { keep } = {}) {
+async function holdCall(peer, callId, seconds, { keep, media } = {}) {
   let last = '';
   const until = Date.now() + seconds * 1000;
   let call = null;
+  const leaveMedia = await joinMedia(media?.url, media?.token, { log: out }).catch((e) => {
+    out('media join failed', String(e.message || e));
+    return null;
+  });
   const stop = async () => {
+    if (leaveMedia) await leaveMedia();
     if (!keep) {
       const r = await peer.call('POST', `/api/calls/${callId}/end`, undefined, { allowError: true });
       out('hung up', callBrief(r.data.call) || r.data);
@@ -279,6 +285,7 @@ async function holdCall(peer, callId, seconds, { keep } = {}) {
       last = now;
     }
     if (!call || ['declined', 'missed', 'cancelled', 'ended'].includes(call.status)) {
+      if (leaveMedia) await leaveMedia();
       const state = loadState();
       if (state.calls) delete state.calls[peer.username];
       saveState(state);
@@ -297,7 +304,12 @@ async function holdVoice(peer, conv, seconds) {
   const state = loadState();
   state.voice = { ...(state.voice || {}), [peer.username]: room.id };
   saveState(state);
+  const leaveMedia = await joinMedia(joined.livekitUrl, joined.token, { log: out }).catch((e) => {
+    out('media join failed', String(e.message || e));
+    return null;
+  });
   const leave = async () => {
+    if (leaveMedia) await leaveMedia();
     await peer.call('POST', `/api/voice/${room.id}/leave`, undefined, { allowError: true });
     out('left voice chat');
     process.exit(0);
@@ -594,7 +606,7 @@ async function main() {
         const inv = await peer.call('POST', `/api/calls/${r.call.id}/invite`, { usernames: flags.add.split(',') }, { allowError: true });
         out(inv.ok ? 'added' : `add failed ${inv.status}`, inv.ok ? callBrief(inv.data.call) : inv.data);
       }
-      await holdCall(peer, r.call.id, Number(flags.hold || 45), { keep: flags.keep });
+      await holdCall(peer, r.call.id, Number(flags.hold || 45), { keep: flags.keep, media: { url: r.livekitUrl, token: r.token } });
       return;
     }
     case 'accept-call':
@@ -613,7 +625,7 @@ async function main() {
       state.calls = { ...(state.calls || {}), [peer.username]: ringing.id };
       saveState(state);
       out('answered', { ...callBrief(r.call), livekitUrl: r.livekitUrl });
-      await holdCall(peer, ringing.id, Number(flags.hold || 120), { keep: flags.keep });
+      await holdCall(peer, ringing.id, Number(flags.hold || 120), { keep: flags.keep, media: { url: r.livekitUrl, token: r.token } });
       return;
     }
     case 'end-call': {

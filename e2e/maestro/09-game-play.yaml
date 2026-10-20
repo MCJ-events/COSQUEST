@@ -1,0 +1,79 @@
+# J09 Play the game: find a Quest Point and answer its quiz, fight a Guardian
+# duel and a boss raid, and earn XP. Points are the seeded test world at
+# Trafalgar Square (local game backend); links open them, as a chat invite does.
+# Timed taps (start, answer, strike) go through seed/phone.js: Maestro waits
+# for the screen to settle after a tap, and the quiz timer never settles.
+appId: com.dammy0227.cosquest
+name: J09 find a point, a quiz, a duel, a raid, rewards
+---
+- runFlow:
+    file: common/signin.yaml
+    env: { USER: ada, PASS: cosquest-dev-1 }
+- runFlow: common/game.yaml
+- assertVisible: "Test Trivia Stone.*in reach"
+- takeScreenshot: j09-map
+# Tap a pin first, then follow a link: the link's point must open (F-33).
+- tapOn: "Nelson's Column.*"
+- openLink: "cosquest://play?shrine=XQ-trafalgar-trivia"
+- extendedWaitUntil:
+    visible: "Test Trivia Stone"
+    timeout: 15000
+- assertVisible: "Play Trivia"
+- runScript:
+    file: scripts/peer.js
+    env: { ARGS: "phone|quiz", BG: "true" }
+- tapOn: "Play Trivia"
+- extendedWaitUntil:
+    visible: "Correct!"
+    timeout: 15000
+- takeScreenshot: j09-quiz-correct
+- tapOn: "Collect"
+- extendedWaitUntil:
+    visible: "\\+[0-9]+ XP"
+    timeout: 15000
+- takeScreenshot: j09-quiz-reward
+- scrollUntilVisible:
+    element: "Continue"
+    direction: DOWN
+    timeout: 20000
+- tapOn: "Continue"
+# Guardian duel
+- openLink: "cosquest://play?duel=XD-trafalgar-duel"
+- extendedWaitUntil:
+    visible: "Test Guardian's Post"
+    timeout: 15000
+- tapOn: "Fight the Guardian"
+- runScript:
+    file: scripts/peer.js
+    env: { ARGS: "phone|taps|150|--after|3", BG: "true" }
+- tapOn:
+    text: "Fight the Guardian|Fight"
+    optional: true
+- extendedWaitUntil:
+    visible: "Continue"
+    timeout: 90000
+- takeScreenshot: j09-duel-result
+- scrollUntilVisible:
+    element: "Continue"
+    direction: DOWN
+    timeout: 20000
+- tapOn: "Continue"
+# Boss raid (a duel boss), from the raid banner
+- tapOn: "Fight the boss: .*"
+- tapOn: "Fight the boss"
+- runScript:
+    file: scripts/peer.js
+    env: { ARGS: "phone|taps|150|--after|3", BG: "true" }
+- tapOn: "Fight the boss"
+- extendedWaitUntil:
+    visible: "Continue"
+    timeout: 90000
+- takeScreenshot: j09-raid-result
+- scrollUntilVisible:
+    element: "Continue"
+    direction: DOWN
+    timeout: 20000
+- tapOn: "Continue"
+# Rewards: ada is past level 1 now.
+- assertVisible: "ada, level ([2-9]|[1-9][0-9]) .*"
+- takeScreenshot: j09-after

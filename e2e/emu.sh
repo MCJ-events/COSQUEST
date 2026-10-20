@@ -47,6 +47,12 @@ case "${1:-}" in
     adb emu geo fix -0.1278 51.5074 >/dev/null
     adb install -r -g "$apk" | tail -1
     tunnels
+    # A photo in the gallery for the picture journeys (profile, chat media).
+    if ! adb shell ls /sdcard/Pictures/selfie.png >/dev/null 2>&1; then
+      node -e "process.stdout.write(require('$here/seed/media.js').avatarPng('#C5399A', '#2B2A5A', 800))" > "$OUT/selfie.png"
+      adb push "$OUT/selfie.png" /sdcard/Pictures/selfie.png >/dev/null
+      adb shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/Pictures/selfie.png >/dev/null
+    fi
     ;;
   install)
     adb install -r -g "${2:-$apk_default}" | tail -1

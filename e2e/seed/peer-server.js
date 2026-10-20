@@ -7,6 +7,7 @@
  *   POST /run  { "args": ["bo", "send", "ada", "hello"], "background": false }
  *     -> { "code": 0, "stdout": "...", "stderr": "..." }
  *   background: true starts it and answers at once (calls that ring and hold).
+ *   args ["phone", ...] run phone.js instead: quick adb taps on the emulator.
  *
  *   node e2e/seed/peer-server.js          # PORT [4130]
  *
@@ -18,11 +19,14 @@ const { spawn } = require('child_process');
 
 const PORT = Number(process.env.PEER_PORT || 4130);
 const PEER = path.join(__dirname, 'peer.js');
+// args starting with "phone" go to phone.js (quick adb taps on the emulator).
+const PHONE = path.join(__dirname, 'phone.js');
 const children = new Set();
 
 function run(args, background) {
   return new Promise((resolve) => {
-    const child = spawn(process.execPath, [PEER, ...args], { env: process.env });
+    const argv = args[0] === 'phone' ? [PHONE, ...args.slice(1)] : [PEER, ...args];
+    const child = spawn(process.execPath, argv, { env: process.env });
     children.add(child);
     let stdout = '';
     let stderr = '';

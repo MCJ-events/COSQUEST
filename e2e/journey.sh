@@ -22,8 +22,11 @@ flow="$1"
 label="${2:-$(basename "$flow" .yaml)}"
 mkdir -p "$OUT/$label" "$VIDEOS"
 
-# The tunnels to this machine's backends go if adb reconnects; renew them.
+# The tunnels to this machine's backends go if adb reconnects; renew them
+# now and every few seconds while the journey runs.
 "$here/emu.sh" tunnels
+( while true; do sleep 5; "$here/emu.sh" tunnels >/dev/null 2>&1; done ) &
+keeper=$!
 adb shell rm -f "/sdcard/jr-$label-*.mp4" /sdcard/jr-stop >/dev/null 2>&1
 adb shell "i=0; while [ ! -f /sdcard/jr-stop ]; do screenrecord --time-limit 170 --bit-rate 4000000 /sdcard/jr-$label-\$(printf %02d \$i).mp4 || break; i=\$((i+1)); done" &
 rec=$!
@@ -42,6 +45,7 @@ adb shell touch /sdcard/jr-stop
 adb shell 'for p in $(pidof screenrecord); do kill -INT $p; done' >/dev/null 2>&1
 for _ in $(seq 1 20); do kill -0 "$rec" 2>/dev/null || break; sleep 1; done
 kill "$rec" 2>/dev/null
+kill "$keeper" 2>/dev/null
 sleep 1
 tmp="$OUT/$label/segments"
 mkdir -p "$tmp"
