@@ -19,10 +19,19 @@ appId: com.dammy0227.cosquest
 - tapOn:
     id: "field-email-or-username"
 - inputText: ${USER}
+# The fit evidence: the form with the keyboard up (on a small screen before
+# the keyboard fix, the password field was under it).
+- takeScreenshot: ${P}-03-signin-keyboard
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: "field-password"
+    direction: DOWN
+    timeout: 5000
+    optional: true
 - tapOn:
     id: "field-password"
 - inputText: ${PASS}
-- takeScreenshot: ${P}-03-signin-keyboard
 - hideKeyboard
 - scrollUntilVisible:
     element:
@@ -47,4 +56,3 @@ appId: com.dammy0227.cosquest
 - tapOn:
     text: "Got it"
     optional: true
-- hideKeyboard

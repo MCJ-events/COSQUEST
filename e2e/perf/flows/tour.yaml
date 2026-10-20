@@ -12,14 +12,14 @@ name: polish fit tour
 - takeScreenshot: ${P}-04-feed
 - scroll
 - takeScreenshot: ${P}-05-feed-scrolled
-# The keyboard can stay up after sign-in on this emulator; it covers the tabs.
-- hideKeyboard
-- tapOn:
-    text: "Chats"
-    index: 0
-- extendedWaitUntil:
-    visible: "YOUR GROUPS"
-    timeout: 15000
+# Back to the top of the feed, where the Chats pill is.
+- scrollUntilVisible:
+    element:
+      text: "Chats"
+      index: 0
+    direction: UP
+    timeout: 20000
+- runFlow: ../../maestro/common/chats.yaml
 - takeScreenshot: ${P}-06-chats
 - scrollUntilVisible:
     element: ".*Big Group 2k.*"

@@ -56,8 +56,12 @@ import { useWardenMuted, wardenVoice } from "./wardenVoice";
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 const MOTES = motes();
 
+/** Below this window height (points) the first run uses its compact sizes. */
+const SHORT_SCREEN = 720;
+
 export default function Onboarding({ suggestedName, onDone }: { suggestedName: string; onDone: () => void }) {
   const insets = useSafeAreaInsets();
+  const { height } = useWindowDimensions();
   const config = useGame((s) => s.config);
   const profile = useGame((s) => s.profile);
   const me = useGame((s) => s.me);
@@ -255,14 +259,18 @@ export default function Onboarding({ suggestedName, onDone }: { suggestedName: s
   };
 
   const askingName = beat === "askName" && revealed;
-  const small = typing && beat === "askName";
+  // Compact while the name keyboard is up, and on short screens (a 360x640
+  // phone): the full sizes (the Warden's halo, a 130-point line, a 150-point
+  // button area) left the last step's button below the bottom edge there.
+  const typingName = typing && beat === "askName";
+  const small = typingName || height < SHORT_SCREEN;
 
   return (
     <View style={styles.root}>
       <Dawn tint={tint} awake={awake} />
       <Pressable style={StyleSheet.absoluteFill} onPress={tapped} accessibilityLabel="Continue" accessibilityRole="button" />
 
-      <View style={[styles.column, { paddingTop: insets.top, paddingBottom: small ? keyboard + 12 : insets.bottom + 26 }]} pointerEvents="box-none">
+      <View style={[styles.column, { paddingTop: insets.top, paddingBottom: typingName ? keyboard + 12 : insets.bottom + (small ? 12 : 26) }]} pointerEvents="box-none">
         <View style={styles.topBar}>
           <Pressable
             onPress={() => {
