@@ -99,7 +99,7 @@ export default function PointSheet({
                 {pointSubtitle(point)}
               </Text>
             </View>
-            <GameIconButton icon="chatbubbles" color={GP.skyDeep} diameter={36} onPress={onShare} accessibilityLabel="Invite to a chat" />
+            <GameIconButton icon="chatbubbles" color={GP.skyDeep} diameter={36} onPress={onShare} accessibilityLabel={`Invite a chat to ${point.name}`} />
             <GameIconButton icon="close" color="#7D949E" diameter={36} onPress={onClose} accessibilityLabel="Close" />
           </View>
 

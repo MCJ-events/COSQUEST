@@ -32,18 +32,13 @@ name: J10 share a game result and an invite into a chat
 - runScript:
     file: scripts/peer.js
     env: { ARGS: "phone|quiz", BG: "true" }
-- tapOn: "Play Trivia"
+- tapOn: "Play"
+- tapOn: "Tap the shrine.*"
 - extendedWaitUntil:
-    visible: "Correct!"
-    timeout: 15000
+    visible: "Collect"
+    timeout: 30000
 - tapOn: "Collect"
-- extendedWaitUntil:
-    visible: "\\+[0-9]+ XP"
-    timeout: 15000
-- scrollUntilVisible:
-    element: "Share to a chat"
-    direction: DOWN
-    timeout: 20000
+- runFlow: common/reward.yaml
 - tapOn: "Share to a chat"
 - extendedWaitUntil:
     visible: ".*Point taken at Test Trivia Stone.*"
@@ -57,11 +52,8 @@ name: J10 share a game result and an invite into a chat
     file: scripts/peer.js
     env: { ARGS: "bo|messages|ada|1" }
 - assertTrue: ${output.peer.stdout.indexOf("Point taken at Test Trivia Stone") >= 0}
-- scrollUntilVisible:
-    element: "Continue"
-    direction: DOWN
-    timeout: 20000
-- tapOn: "Continue"
+- tapOn: "Back to the map"
+- runFlow: common/warden-later.yaml
 # Back in the chats: the invite card in Raid Night Crew
 - tapOn: "Chats.*"
 - runFlow:

@@ -3,11 +3,14 @@
 # seed, new user ids), forget every player in the local game DB, and make sure
 # the peer server is up.
 #
-# Env: OUT [e2e/out] (pid files, logs), GAME_PG [cx054-game-pg]
+# Env: OUT [e2e/out] (pid files, logs), GAME_PG [cx054-game-pg],
+#      CHAT_PORT [4120] (the port here; the phone still uses 4120 via adb reverse)
 set -uo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 : "${OUT:=$here/out}"
 : "${GAME_PG:=cx054-game-pg}"
+: "${CHAT_PORT:=4120}"
+export PORT="$CHAT_PORT" CHAT_API="http://localhost:$CHAT_PORT" MEDIA_BASE_URL="${MEDIA_BASE_URL:-http://localhost:4120}"
 mkdir -p "$OUT"
 
 # The node process listening on a port, if it is one of ours (e2e/seed).
@@ -33,7 +36,7 @@ rm -f "$here/seed/.peer-state.json"
 # Twice if need be: right after a call journey the old backend can take a
 # while to let go (live sockets), and the first start then fails.
 for attempt in 1 2; do
-  restart chat-local e2e/seed/chat-local.js "$OUT/chat-local.log" 4120
+  restart chat-local e2e/seed/chat-local.js "$OUT/chat-local.log" "$CHAT_PORT"
   for _ in $(seq 1 60); do grep -q "\[chat-local\] ready\|failed" "$OUT/chat-local.log" 2>/dev/null && break; sleep 1; done
   grep -q "\[chat-local\] ready" "$OUT/chat-local.log" && break
   cp "$OUT/chat-local.log" "$OUT/chat-local.failed-$attempt.log"

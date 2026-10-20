@@ -7,7 +7,9 @@
 #   e2e/emu.sh down         stop the emulator this script started
 #   e2e/emu.sh adb ...      adb against the journeys' emulator
 #
-# Env: ANDROID_HOME (SDK), AVD [cx054], EMU_MEM [3072], OUT (logs) [e2e/out]
+# Env: ANDROID_HOME (SDK), AVD [cx054], EMU_MEM [3072], OUT (logs) [e2e/out],
+#      EMU_PORT (console port, e.g. 5600: adb then only talks to emulator-5600,
+#      for a farm where another task's emulator is on the same adb server)
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 : "${ANDROID_HOME:=$HOME/cq-work/tools/android-sdk}"
@@ -17,13 +19,21 @@ export PATH="$ANDROID_HOME/platform-tools:$PATH"
 : "${EMU_MEM:=3072}"
 : "${OUT:=$here/out}"
 mkdir -p "$OUT"
+port_arg=""
+if [ -n "${EMU_PORT:-}" ]; then
+  export ANDROID_SERIAL="emulator-$EMU_PORT"
+  port_arg="-port $EMU_PORT"
+fi
 pidfile="$OUT/emulator.pid"
 apk_default="$here/../app/android/app/build/outputs/apk/release/app-release.apk"
 
 # Ports on this machine the app reaches as localhost on the phone.
 #   4120 chat backend, 8399 game backend, 7880/7881 LiveKit signalling/TCP.
+# TUNNELS maps phone ports to other ports here ("4120:4220 8399:8499 ...")
+# when another run already holds 4120/8399 on this machine.
+: "${TUNNELS:=4120:4120 8399:8399 7880:7880 7881:7881}"
 tunnels() {
-  for p in 4120 8399 7880 7881; do adb reverse "tcp:$p" "tcp:$p" >/dev/null; done
+  for t in $TUNNELS; do adb reverse "tcp:${t%%:*}" "tcp:${t##*:}" >/dev/null; done
 }
 
 case "${1:-}" in
@@ -31,7 +41,7 @@ case "${1:-}" in
     apk="${2:-$apk_default}"
     if ! adb get-state >/dev/null 2>&1; then
       nohup sg kvm -c "$ANDROID_HOME/emulator/emulator -avd $AVD -no-window -no-audio -no-boot-anim \
-        -gpu swiftshader_indirect -no-snapshot -memory $EMU_MEM -cores 4" > "$OUT/emulator.log" 2>&1 &
+        -gpu swiftshader_indirect -no-snapshot -memory $EMU_MEM -cores 4 $port_arg" > "$OUT/emulator.log" 2>&1 &
       echo $! > "$pidfile"
       echo "emulator launcher pid $(cat "$pidfile")"
     fi

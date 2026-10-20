@@ -18,6 +18,7 @@ export PATH="$ANDROID_HOME/platform-tools:$PATH"
 export JAVA_HOME MAESTRO_CLI_NO_ANALYTICS=1 MAESTRO_CLI_ANALYSIS_NOTIFICATION_DISABLED=true
 : "${OUT:=$here/out}"
 : "${VIDEOS:=$OUT/videos}"
+[ -n "${EMU_PORT:-}" ] && export ANDROID_SERIAL="emulator-$EMU_PORT"
 flow="$1"
 label="${2:-$(basename "$flow" .yaml)}"
 mkdir -p "$OUT/$label" "$VIDEOS"
@@ -36,7 +37,7 @@ sleep 1
 
 start=$(date +%s)
 "$MAESTRO" test --format junit --output "$OUT/$label/report.xml" \
-  --debug-output "$OUT/$label" --flatten-debug-output --test-output-dir "$OUT/$label" ${MAESTRO_ARGS:-} "$here/$flow" > "$OUT/$label.maestro.log" 2>&1
+  --debug-output "$OUT/$label" --flatten-debug-output --test-output-dir "$OUT/$label" ${ANDROID_SERIAL:+--device "$ANDROID_SERIAL"} ${MAESTRO_ARGS:-} "$here/$flow" > "$OUT/$label.maestro.log" 2>&1
 status=$?
 secs=$(( $(date +%s) - start ))
 

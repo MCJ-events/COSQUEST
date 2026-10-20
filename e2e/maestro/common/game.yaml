@@ -1,4 +1,5 @@
-# Swipe from the chats into the game; pick a side if it asks (first time).
+# Swipe from the chats into the game; the first time, go through the Warden's
+# first-run conversation (one-codebase): the name, a side, the gift, location.
 appId: com.dammy0227.cosquest
 ---
 - repeat:
@@ -12,17 +13,48 @@ appId: com.dammy0227.cosquest
     end: "20%,45%"
     duration: 400
 - extendedWaitUntil:
-    visible: "Choose your side|Map of the streets around you"
+    visible: "That's me|Your name|Choose your side|Map of the streets around you|Continue"
     timeout: 60000
-- runFlow:
-    when:
-      visible: "Choose your side"
+- repeat:
+    while:
+      notVisible: "Map of the streets around you"
+    times: 25
     commands:
-      - tapOn: "Anime.*"
-      - scrollUntilVisible:
-          element: "Let's go"
-          direction: DOWN
-      - tapOn: "Let's go"
+      - runFlow:
+          when:
+            visible: "That's me"
+          commands:
+            - hideKeyboard
+            - tapOn: "That's me"
+      - runFlow:
+          when:
+            visible: "Anime"
+          commands:
+            - tapOn: "Anime"
+            - tapOn: "Stand with Anime.*"
+      - runFlow:
+          when:
+            visible: "Show me what's near"
+          commands:
+            - tapOn: "Show me what's near"
+      # The older first run (merged-app-sync): pick a side.
+      - runFlow:
+          when:
+            visible: "Choose your side"
+          commands:
+            - tapOn: "Anime.*"
+            - scrollUntilVisible:
+                element: "Let's go"
+                direction: DOWN
+            - tapOn: "Let's go"
+      - runFlow:
+          when:
+            visible: "Continue"
+            notVisible: "That's me|Show me what's near|Anime"
+          commands:
+            - tapOn: "Continue"
+      - waitForAnimationToEnd:
+          timeout: 1500
 - extendedWaitUntil:
     visible: "Map of the streets around you"
     timeout: 60000

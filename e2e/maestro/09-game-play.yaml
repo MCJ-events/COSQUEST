@@ -18,62 +18,67 @@ name: J09 find a point, a quiz, a duel, a raid, rewards
 - extendedWaitUntil:
     visible: "Test Trivia Stone"
     timeout: 15000
-- assertVisible: "Play Trivia"
+- assertVisible: "Play"
 - runScript:
     file: scripts/peer.js
     env: { ARGS: "phone|quiz", BG: "true" }
-- tapOn: "Play Trivia"
+- tapOn: "Play"
+# one-codebase: the shrine wakes when tapped, then the question.
+- tapOn: "Tap the shrine.*"
 - extendedWaitUntil:
-    visible: "Correct!"
-    timeout: 15000
+    visible: "Collect"
+    timeout: 30000
 - takeScreenshot: j09-quiz-correct
 - tapOn: "Collect"
-- extendedWaitUntil:
-    visible: "\\+[0-9]+ XP"
-    timeout: 15000
+- runFlow: common/reward.yaml
 - takeScreenshot: j09-quiz-reward
-- scrollUntilVisible:
-    element: "Continue"
-    direction: DOWN
-    timeout: 20000
-- tapOn: "Continue"
+- tapOn: "Back to the map"
+- runFlow: common/warden-later.yaml
 # Guardian duel
 - openLink: "cosquest://play?duel=XD-trafalgar-duel"
 - extendedWaitUntil:
     visible: "Test Guardian's Post"
     timeout: 15000
-- tapOn: "Fight the Guardian"
+- tapOn: "Fight"
 - runScript:
     file: scripts/peer.js
     env: { ARGS: "phone|taps|150|--after|3", BG: "true" }
 - tapOn:
-    text: "Fight the Guardian|Fight"
+    text: "Fight"
     optional: true
 - extendedWaitUntil:
-    visible: "Continue"
+    visible: "Back to the map"
     timeout: 90000
 - takeScreenshot: j09-duel-result
-- scrollUntilVisible:
-    element: "Continue"
-    direction: DOWN
-    timeout: 20000
-- tapOn: "Continue"
+- tapOn: "Back to the map"
+- runFlow: common/warden-later.yaml
 # Boss raid (a duel boss), from the raid banner
 - tapOn: "Fight the boss: .*"
+# The boss's sheet (the banner's own button says the same, so pick the one
+# under the sheet's title), then the versus screen's Fight.
+- tapOn:
+    text: "Fight the boss"
+    below:
+      text: "Test Boss \\(Duel\\)"
+# The raid's briefing
+- extendedWaitUntil:
+    visible: "HP [0-9]+ / [0-9]+"
+    timeout: 15000
 - tapOn: "Fight the boss"
 - runScript:
     file: scripts/peer.js
     env: { ARGS: "phone|taps|150|--after|3", BG: "true" }
-- tapOn: "Fight the boss"
+- tapOn:
+    text: "Fight"
+    optional: true
 - extendedWaitUntil:
-    visible: "Continue"
+    visible: "Back to the map"
     timeout: 90000
 - takeScreenshot: j09-raid-result
-- scrollUntilVisible:
-    element: "Continue"
-    direction: DOWN
-    timeout: 20000
-- tapOn: "Continue"
+- tapOn: "Back to the map"
+- runFlow: common/warden-later.yaml
 # Rewards: ada is past level 1 now.
-- assertVisible: "ada, level ([2-9]|[1-9][0-9]) .*"
+- extendedWaitUntil:
+    visible: "You, ada, level ([2-9]|[1-9][0-9]).*"
+    timeout: 15000
 - takeScreenshot: j09-after

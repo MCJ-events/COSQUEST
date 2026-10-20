@@ -26,16 +26,18 @@ const adb = (...args) => execFileSync(ADB, args, { encoding: 'utf8' });
 const sql = (q) => execFileSync('docker', ['exec', PG, 'psql', '-U', 'costquest', '-At', '-c', q], { encoding: 'utf8' }).trim();
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-// Answer rows on the quiz screen (components/game/Encounter.tsx) on a
-// 1080x2400 phone; x is right of centre to keep clear of the Chats bubble.
-const CHOICE_Y = [910, 1096, 1282, 1468];
+// Answer rows on the quiz screen (components/game/Encounter.tsx, one-codebase
+// layout: four full-width rows at the bottom) on a 1080x2400 phone; x is right
+// of centre to keep clear of the Chats bubble.
+const CHOICE_Y = [1695, 1872, 2049, 2226];
 const CHOICE_X = 600;
 
 // Where the answer rows really are: the rows move with the question's
-// length (one, two or three lines), so fixed positions missed when it
-// wrapped. A raw screenshot is read down a column near the right edge (clear
-// of the Chats bubble and most text): the rows are the tall bands that differ
-// from the background. null when it can't tell (then CHOICE_Y is used).
+// length, so fixed positions missed when it wrapped. A raw screenshot is read
+// down a column near the right edge (inside the rows, clear of the Chats
+// bubble and most text) and compared with a column just outside the rows (the
+// background at the same height, which is a gradient): the rows are the tall
+// bands where the two differ. null when it can't tell (then CHOICE_Y is used).
 function choiceRows() {
   const raw = execFileSync(ADB, ['exec-out', 'screencap'], { maxBuffer: 64 * 1024 * 1024 });
   const w = raw.readUInt32LE(0);
@@ -47,19 +49,24 @@ function choiceRows() {
     return [raw[o], raw[o + 1], raw[o + 2]];
   };
   const x = Math.round(w * 0.94);
-  const bg = px(x, Math.round(h * 0.9));
-  const differs = (y) => px(x, y).reduce((d, c, k) => d + Math.abs(c - bg[k]), 0) > 60;
+  const outside = Math.round(w * 0.995);
+  const differs = (y) => {
+    const a = px(x, y);
+    const b = px(outside, y);
+    return a.reduce((d, c, k) => d + Math.abs(c - b[k]), 0) > 60;
+  };
   const bands = [];
   let start = -1;
-  for (let y = Math.round(h * 0.2); y < Math.round(h * 0.88); y += 1) {
+  for (let y = Math.round(h * 0.2); y < Math.round(h * 0.97); y += 1) {
     if (differs(y)) {
       if (start < 0) start = y;
     } else if (start >= 0) {
-      if (y - start >= h * 0.045) bands.push(Math.round((start + y) / 2));
+      if (y - start >= h * 0.03) bands.push(Math.round((start + y) / 2));
       start = -1;
     }
   }
-  return bands.length >= 2 ? bands : null;
+  // The answers are the last four bands (anything above is the question area).
+  return bands.length >= 2 ? bands.slice(-4) : null;
 }
 
 function screen() {
