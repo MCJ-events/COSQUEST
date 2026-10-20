@@ -101,7 +101,7 @@ const FACTION_DETAILS: Record<string, FactionDetails> = {
     image: require("@/assets/images/factions/details/blockbusters-detail.png"),
   },
 
-  everborn: {
+  everborns: {
     members: "1.9K",
     activeQuests: "11",
     about:
