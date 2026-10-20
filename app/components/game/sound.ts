@@ -34,6 +34,9 @@ let broken = false;
 
 const inCall = () => store.getState().call?.active != null;
 
+/** A CosQuest call is on: the game keeps quiet (GameKit's call-safe audio, patch 0004). */
+export const callActive = inCall;
+
 /** The game's session, once: playback, mixed with others (GameAudio.play). */
 export function prepareGameAudio() {
   if (sessionSet || inCall()) return;

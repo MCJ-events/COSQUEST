@@ -8,6 +8,8 @@ import { useSyncExternalStore } from "react";
 import { fallbackLine, type LineWriter, type WardenMoment } from "@/features/game/warden";
 import { getPref, setPref } from "@/utils/prefsStorage";
 
+import { callActive, prepareGameAudio } from "./sound";
+
 export type Said = { id: number; text: string; moment: string; fromModel: boolean };
 
 let said: Said | null = null;
@@ -90,7 +92,10 @@ export const wardenVoice = {
     said = { id: ++serial, text: line.text, moment: moment.kind, fromModel: line.fromModel };
     if (TRACE) console.log(`[warden] ${moment.kind}${line.fromModel ? " (model)" : ""}: ${line.text}`);
     notify();
-    if (!muted) {
+    // Not over a call, and through the game's own session so the silent
+    // switch does not swallow it (GameKit.swift: .playback, call-safe).
+    if (!muted && !callActive()) {
+      prepareGameAudio();
       Speech.stop()
         .catch(() => {})
         .finally(() => Speech.speak(line.text, { rate: 1.02, pitch: 0.95 }));
