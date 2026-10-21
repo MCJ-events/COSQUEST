@@ -166,16 +166,16 @@ ran+=("one-codebase swift stub check")
 if [ "$GODOT" = 1 ] || [ "${EXPO_PUBLIC_GAME3D:-0}" = 1 ]; then
   export EXPO_PUBLIC_GAME3D=1
   step "godot: LibGodot 4.5.1.migeran.2 xcframeworks (download-prebuilt, sha256 checked)"
-  scripts/godot-prebuilt.sh 2>&1 | tee "$LOGS/godot-prebuilt.log" | tail -5
+  GODOT_PLATFORMS=ios scripts/godot-prebuilt.sh 2>&1 | tee "$LOGS/godot-prebuilt.log" | tail -5
   for f in libgodot.xcframework libgodot-cpp.xcframework; do
     ls -d node_modules/@borndotcom/react-native-godot/ios/libs/*/*/"$f" >/dev/null 2>&1 \
       && echo "    $f: ok" \
       || { echo "    MISSING: $f under node_modules/@borndotcom/react-native-godot/ios/libs" >&2; exit 1; }
   done
   step "godot: export the fight as game3d.pck (iOS preset)"
-  GODOT_EDITOR="${GODOT_EDITOR:-/Applications/Godot.app/Contents/MacOS/Godot}" \
+  GODOT="${GODOT_EDITOR:-/Applications/Godot.app/Contents/MacOS/Godot}" \
     scripts/godot-export.sh ios 2>&1 | tee "$LOGS/godot-export.log" | tail -5
-  ls -la game3d-export/ios/game3d.pck 2>/dev/null || { echo "    MISSING: game3d-export/ios/game3d.pck" >&2; exit 1; }
+  ls -la godot-export/ios/game3d.pck 2>/dev/null || { echo "    MISSING: godot-export/ios/game3d.pck" >&2; exit 1; }
   ran+=("godot prebuilt + pck")
 fi
 
@@ -355,7 +355,8 @@ if [ "$RUN" = 1 ]; then
     echo "     - win or lose: Godot closes and the app's reward screen shows win/lose, damage and time"
     echo "     - open and close the fight 10 times (X button): no crash; the Xcode memory gauge returns to the map level"
     echo "     - background the app during a fight and come back: the fight resumes or closes cleanly"
-    echo "     - Metal: Godot runs gl_compatibility through LibGodot's iOS build (OpenGL ES on ANGLE/Metal); note the fps in the CQPERF log lines"
+    echo "     - renderer: the JS starts Godot with opengl3 + gl_compatibility as the library README does (Apple GLES, deprecated); note fps in the CQPERF lines and try --rendering-driver metal --rendering-method mobile (LibGodot iOS is built with Metal)
+     - no 3D Tiles on iOS yet (the GDExtension is built for Android only): the fight logs "CQ tiles unavailable""
     ran+=("godot by-hand list")
   fi
 
