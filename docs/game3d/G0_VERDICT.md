@@ -12,7 +12,7 @@ for the camera, HUD and FX numbers only.
 
 | # | Question | Verdict | One-line evidence |
 |---|---|---|---|
-| 1 | Godot inside the merged Expo app on Android | **GO** (with one open memory item) | Map point, then "Fight (3D)", then the Godot fight, then the result on the app's reward screen, recorded. 10 open/close cycles without a crash. About 7 MB of native memory stays behind per fight on the emulator; cause not found yet. |
+| 1 | Godot inside the merged Expo app on Android | **GO** | Map point, then "Fight (3D)", then the Godot fight, then the result on the app's reward screen, recorded. 10 open/close cycles without a crash, leaving ~0.3 MB native memory per fight. A leak in the library's worklet bridge (~1.7 MB per JS-to-Godot call, ~7 MB per fight) was found and designed around. |
 | 2 | Combat feel | **GO** | Armstrong (Forge, runtime GLB) on a joystick, slash arc, sparks, WHIRL on a 6 s cooldown, Guardian with a health bar, 45 s timer, reference HUD. Input to motion: thumb on the stick p50 83 ms, Attack p50 82 ms, under 100 ms in 19/21 and 18/21 presses. A drag that starts beside the stick is p50 118 ms. All on a 16 fps software GPU. |
 | 3 | Photoreal 3D Tiles on a phone in Godot | **NO-GO for G1** (the build is a GO, the photoreal product is not) | The 3D Tiles for Godot GDExtension now builds for Android arm64 and x86_64. It loads in the app and streams and renders a public CesiumGS sample tileset inside the fight (recorded). A real textured photogrammetry tileset (NASA Dingo Gap, 5,149 tiles) loads about 90 tiles and then draws nothing. Re-creating the engine with the extension loaded crashes. No iOS build. Google tiles need a billed key, logo and credits, and no caching. |
 | 4 | Cost | measured | PSS: map 328 MB, arena 422 MB (+94), with 3 characters 438 MB (+110), with tiles 499 MB (+171). APK: +73 MB raw for Godot (x86_64; arm64 77 MB raw, 25 MB compressed), +14 MB raw for the tiles plugin (4.6 MB compressed). |
@@ -39,20 +39,35 @@ for the camera, HUD and FX numbers only.
 - **Video:** `out/videos/g01-map-to-fight-to-reward.mp4`. Map point, briefing, Fight (3D), a 26 s fight played with on-screen touches, VICTORY, then the reward "Guardian down!" with damage 2701 / 453 and 26 s. Armstrong celebrates in Filament, then "Back to the map".
 - **Screens:** in `out/shots/g01-*`.
 
-**Open and close repeatedly:**
+**Open and close repeatedly** (`cosquest://fight3d?mode=...&cycle=10&ms=8000`, PSS and native heap sampled every 2 to 3 s, `e2e/godot/memwatch.sh`):
 
-| Mode | Cycles | Crash | Memory left behind per fight |
+| Build and mode | Cycles | Crash | Memory left behind per fight |
 |---|---|---|---|
-| destroy engine on close (build without the tiles plugin), arena only | 10 | none | ~8 MB native heap |
-| destroy engine on close, 2 Forge characters | 10 | none | ~8 MB |
-| keep one engine (pause/resume, now the default), arena only | 8 | none | ~6 MB |
-| keep one engine, 2 Forge characters | 10 | none | ~7 MB |
+| first bridge, destroy engine on close (no tiles plugin), arena / 2 Forge characters | 10 / 10 | none | ~8 MB native heap |
+| first bridge, keep one engine (pause/resume), arena / 2 Forge characters | 8 / 10 | none | ~6 / ~7 MB |
 | destroy engine on close **with the 3D Tiles GDExtension loaded** | 2 | **SIGSEGV** in the extension's init on the second engine | n/a |
+| status pushed by Godot, close = pause (one worklet run per fight) | 10 | none | ~2.2 MB |
+| **final**: + kept engine starts fights from the JS thread (no worklet run) | 10 | none | **~0.3 MB native, ~0.6 MB PSS** (206.7 to 209.7 MB native over 10 fights) |
 
-- **Godot's own object counts don't grow:** `gd_objects` stays at ~1,490, resources at 9 and nodes at 50 across fights. The growth is below the scene level: the GL driver, the engine's native allocations, or the worklet/JSI bridge.
-- **Consequences:**
-  1. The default is now **one engine for the app's life**. Close pauses it and the next fight resumes it (`EXPO_PUBLIC_GODOT_KEEP=0` switches back to destroy). Destroy/re-create also crashed with a GDExtension loaded.
-  2. **Find the 6 to 8 MB per fight before G2.** First measure on a real phone (hardware GL); then use Godot's memory monitors in a debug build and `malloc_debug`/heapprofd on the emulator. Ten fights in a session costs ~70 MB today. That is acceptable for a proof, not for a game session of 50 fights.
+**How the leak was found:**
+- **Long fights are flat:** a single 45 s fight, with or without the bot, stays flat. So do 10 fight restarts inside one Godot view (`selfcycle=10`: 438 to 440 MB) and 8 background/foreground surface cycles.
+- **Godot's own allocator is flat:** `OS.get_static_memory_usage` stays at 58.3 MB across headless restarts with the Forge GLBs. Object counts stay at ~1,490 objects, 9 resources and 50 nodes.
+- **The cause:** 300 `bridge.get_status()` calls from React Native (`statusspam=300`) put **+550 MB** of native heap on the emulator, and a Hermes `gc()` in the Godot thread's runtime frees none of it.
+  - Every `runOnGodotThread(fn)` in react-native-godot 1.0.1 builds a new `JsiWorklet` and `WorkletInvoker`. That means the worklet's source is compiled again in the Godot thread's Hermes runtime, and the memory never comes back.
+  - The first bridge polled `get_status` and called `end_fight`, about 4 to 5 runs per fight.
+
+**The fix** (`features/game3d/engine.ts`, `game3d/bridge.gd`):
+1. Godot pushes `{"event": "state", ...}` and the result through one callback, set once per engine. Every message carries the app's `fight_id`, and late ones from a replaced fight are dropped.
+2. Close is a plain pause. The next `start_fight` replaces the paused fight.
+3. A kept engine starts the next fight from the React Native thread: `Engine.get_singleton("CQBridge").call_deferred("start_fight", json)`. Godot's `call_deferred` is thread-safe. The Bridge registers itself as an Engine singleton, because Node lookups are main-thread only.
+4. Only the first fight on a new engine uses worklet runs: create, plus a few tries while the scene tree comes up.
+
+**For later:** the library should reuse one worklet per call site, or free the old ones. Report it to Migeran, or patch it in G1.
+
+**Consequences:**
+1. The default is now **one engine for the app's life**. Close pauses it and the next fight resumes it (`EXPO_PUBLIC_GODOT_KEEP=0` switches back to destroy).
+2. Destroy/re-create leaks more and crashed once a GDExtension (3D Tiles) was loaded.
+3. The kept engine costs its baseline (~90 MB PSS on the emulator) after the first fight. G1 adds destroy on `onTrimMemory`.
 
 **Library patches** (patch-package, `app/patches/@borndotcom+react-native-godot+1.0.1.patch`):
 1. `download-prebuilt.js`: `PREBUILT_ONLY` filter, so Linux installs the Android zips only.
@@ -238,7 +253,7 @@ No account, key or paid service was used.
 
 ## Risks
 
-1. **Memory per fight** (~7 MB native on the emulator, both engine strategies). Unknown on phones. Blocks long sessions until found.
+1. **Memory per fight:** ~0.3 MB native after the bridge fix, on the emulator. The library's worklet leak (~1.7 MB per `runOnGodotThread`) is still there for any new code that calls into Godot per frame or per event. The rule: one call per fight, push from Godot. Check on phones.
 2. **One engine per process.** Destroy/re-create leaks, and crashes with GDExtensions. Keeping the engine costs its baseline (~90 MB PSS on the emulator) for the rest of the session after the first fight. Option: destroy only on memory pressure (`onTrimMemory`).
 3. **Library maturity:** react-native-godot 1.0.1 has a small community and RN 0.81 as its target. We carry 4 patches for 0.86, and every RN upgrade may need more. Migeran sells support. LibGodot is a fork of Godot 4.5 and will lag upstream.
 4. **APK size:** +25 MB compressed for the full engine. A trimmed engine build is needed to stay reasonable.
@@ -251,7 +266,7 @@ No account, key or paid service was used.
 
 | Stage | Scope | Size | Exit gate |
 |---|---|---|---|
-| **G1 Phone-grade core** | Measure on 3 real phones: one low-end Adreno, one Mali, one iPhone via `verify-ios.sh --godot`. Find the 7 MB/fight growth. Trimmed LibGodot build (build profile; arm64 + x86_64 for CI). Release signing of the pck. Engine kept alive with destroy on `onTrimMemory`. iOS compile and fixes. | M (2 weeks) | 60 fps and under 50 ms input to motion on the mid phone; under 300 MB extra PSS; +15 MB compressed engine; 50 fights without growth |
+| **G1 Phone-grade core** | Measure on 3 real phones: one low-end Adreno, one Mali, one iPhone via `verify-ios.sh --godot`. Re-check memory per fight on phones (0.3 MB on the emulator) and fix the library's worklet leak (patch or upstream). Trimmed LibGodot build (build profile; arm64 + x86_64 for CI). Release signing of the pck. Engine kept alive with destroy on `onTrimMemory`. iOS compile and fixes. | M (2 weeks) | 60 fps and under 50 ms input to motion on the mid phone; under 300 MB extra PSS; +15 MB compressed engine; 50 fights without growth |
 | **G2 Combat systems** | Attack chain with real clips (add attack/hit/dodge clips to the 057 rig stage), the 4 locked skills, the Guardian AI from the server's guardian stats, hit reactions, an equipped Forge weapon in the hand socket (056 `sockets`), sounds, haptics. | L (4 weeks) | the duel design doc's numbers playable; designer sign-off on feel |
 | **G3 Server truth and rewards** | The server simulates the 3D fight from an input log, or a deterministic, seeded sim in shared Rust/Python. Rewards paid by the server as in the 2D duel. Anti-cheat bounds. | L (3 to 4 weeks) | server verdict = client verdict on 1,000 recorded fights |
 | **G4 Places** | The OSM + Forge environment arena generator (the fallback above), served as contract-2 environment packs per point, LODs by device class, loaded at runtime. | L (4 weeks) | 50 London and Lagos points with arenas under 2 MB each, loading in under 1 s on the mid phone |
