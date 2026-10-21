@@ -128,7 +128,7 @@ export default function Community() {
               const active = tab === key;
 
               return (
-                <Pressable
+                <Pressable accessibilityRole="tab" accessibilityLabel={key}
                   key={key}
                   style={[
                     styles.tab,

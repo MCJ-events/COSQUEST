@@ -97,7 +97,7 @@ export default function PollBubble({
           const percent = total > 0 ? Math.round((option.votes / total) * 100) : 0;
 
           return (
-            <Pressable
+            <Pressable accessibilityLabel="Done"
               key={option.id}
               onPress={() => vote(option.id)}
               disabled={closed || busy}

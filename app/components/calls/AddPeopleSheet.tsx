@@ -326,7 +326,7 @@ export default function AddPeopleSheet({
               {formatCount(selectedList.length)} of {formatCount(pickLimit)}{" "}
               selected
             </Text>
-            <Pressable
+            <Pressable accessibilityLabel="Clear"
               onPress={() => {
                 setSelected({});
                 setNotice(null);
@@ -372,7 +372,7 @@ export default function AddPeopleSheet({
           )}
         />
 
-        <Pressable
+        <Pressable accessibilityRole="button" accessibilityLabel="Add to the call"
           style={[
             styles.addButton,
             (selectedList.length === 0 || adding) && styles.addButtonOff,
@@ -408,7 +408,7 @@ const PersonRow = memo(function PersonRow({
   onToggle: (person: Person) => void;
 }) {
   return (
-    <Pressable
+    <Pressable accessibilityLabel="Done"
       style={styles.row}
       onPress={() => onToggle(person)}
       accessibilityRole="checkbox"

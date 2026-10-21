@@ -73,7 +73,7 @@ const MemberRow = memo(function MemberRow({
   const base = expertise || (member.rank ? null : `@${member.username}`);
   const detail = member.mutedUntil ? (base ? `${base} · muted` : "Muted") : base;
   return (
-    <Pressable style={[styles.row, selected && styles.rowOn]} onPress={() => onPress(member)}>
+    <Pressable accessibilityRole="button" accessibilityLabel="Open" style={[styles.row, selected && styles.rowOn]} onPress={() => onPress(member)}>
       <PersonAvatar person={member} size={44} />
       <View style={styles.flex}>
         <View style={styles.nameRow}>
@@ -242,13 +242,13 @@ export default function GroupMembers() {
         <Text style={styles.status}>{STATUS[selected.role] || STATUS.member}</Text>
 
         {selected.id !== myUserId ? (
-          <Pressable style={[styles.soft, messaging && styles.off]} disabled={messaging} onPress={() => message(selected)}>
+          <Pressable accessibilityRole="button" accessibilityLabel={`Message ${firstName(selected)}`} style={[styles.soft, messaging && styles.off]} disabled={messaging} onPress={() => message(selected)}>
             {messaging ? <ActivityIndicator color={PINK} /> : <Text style={styles.softText}>Message {firstName(selected)}</Text>}
           </Pressable>
         ) : null}
 
         {canManage(selected) ? (
-          <Pressable
+          <Pressable accessibilityRole="button" accessibilityLabel={`Manage ${firstName(selected)}`}
             style={styles.soft}
             onPress={() => router.push({ pathname: "/group/moderation/[id]", params: { id: groupId, userId: selected.id } })}>
             <Text style={styles.softText}>Manage {firstName(selected)}</Text>

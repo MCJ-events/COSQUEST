@@ -163,7 +163,7 @@ export function DormantSparkCard({ spark, onOpen }: { spark: Spark; onOpen: (spa
           {spark.summary}
         </Text>
       ) : null}
-      <Pressable style={({ pressed }) => [styles.dormantButton, pressed && styles.pressed]} onPress={() => onOpen(spark)}>
+      <Pressable accessibilityRole="button" accessibilityLabel="Open conversation" style={({ pressed }) => [styles.dormantButton, pressed && styles.pressed]} onPress={() => onOpen(spark)}>
         <Text style={styles.dormantButtonText}>Open conversation</Text>
       </Pressable>
     </View>
@@ -201,7 +201,7 @@ export function SparksListSheet({
         <ScrollView style={styles.list}>
           {sparks.length === 0 ? <Text style={styles.empty}>No Sparks yet.</Text> : null}
           {sparks.map((spark) => (
-            <Pressable key={spark.id} style={styles.card} onPress={() => onOpen(spark)}>
+            <Pressable accessibilityRole="button" accessibilityLabel={`Open Spark: ${spark.subject}`} key={spark.id} style={styles.card} onPress={() => onOpen(spark)}>
               <View style={[styles.cardIcon, spark.revived && styles.circleRevived]}>
                 <Ionicons
                   name={spark.active ? "sparkles-outline" : "time-outline"}

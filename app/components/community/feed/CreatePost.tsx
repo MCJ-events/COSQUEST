@@ -392,7 +392,7 @@ export function CreatePost() {
                 </View>
               </View>
 
-              <Pressable style={styles.closeButton} onPress={close}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Close" style={styles.closeButton} onPress={close}>
                 <Ionicons name="close" size={23} color={C.ink} />
               </Pressable>
             </View>
@@ -417,7 +417,7 @@ export function CreatePost() {
               style={styles.hashtagScroll}
               contentContainerStyle={styles.hashtagContent}>
               {HASHTAGS.map((tag) => (
-                <Pressable
+                <Pressable accessibilityRole="button" accessibilityLabel={`Add ${tag}`}
                   key={tag}
                   style={styles.hashtagChip}
                   onPress={() => addHashtag(tag)}>
@@ -498,7 +498,7 @@ export function CreatePost() {
 
             {/* POST BUTTON */}
 
-            <Pressable
+            <Pressable accessibilityRole="button" accessibilityLabel="Post"
               style={styles.postButton}
               onPress={handlePost}
               disabled={posting}>
@@ -531,7 +531,7 @@ function PostOption({
   onPress: () => void;
 }) {
   return (
-    <Pressable style={styles.option} onPress={onPress}>
+    <Pressable accessibilityRole="button" accessibilityLabel={label} style={styles.option} onPress={onPress}>
       <View
         style={[
           styles.optionIcon,

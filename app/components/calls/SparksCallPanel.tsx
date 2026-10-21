@@ -128,7 +128,7 @@ export default function SparksCallPanel({
       </Text>
 
       {notes.phase === "declined" ? (
-        <Pressable style={styles.turnOn} onPress={notes.accept} accessibilityRole="button">
+        <Pressable accessibilityLabel="Turn on Sparks for you" style={styles.turnOn} onPress={notes.accept} accessibilityRole="button">
           <Text style={styles.turnOnText}>Turn on Sparks for you</Text>
         </Pressable>
       ) : null}

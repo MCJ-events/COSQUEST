@@ -348,14 +348,14 @@ export default function SparkPanel({
           {/* ADMIN MENU (M31 powers) */}
           {showMenu ? (
             <View style={styles.menu}>
-              <Pressable style={styles.menuItem} onPress={togglePin}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Keep visible through quiet periods" style={styles.menuItem} onPress={togglePin}>
                 <View style={styles.menuText}>
                   <Text style={styles.menuLabel}>{spark?.pinned ? "Unpin Spark" : "Pin Spark"}</Text>
                   <Text style={styles.menuHint}>Keep visible through quiet periods</Text>
                 </View>
                 <Ionicons name={spark?.pinned ? "pin" : "pin-outline"} size={20} color={MUTED} />
               </Pressable>
-              <Pressable
+              <Pressable accessibilityRole="button" accessibilityLabel="Merge into another Spark…"
                 style={styles.menuItem}
                 onPress={() => {
                   setShowMenu(false);
@@ -364,7 +364,7 @@ export default function SparkPanel({
                 <Text style={[styles.menuLabel, styles.menuText]}>Merge into another Spark…</Text>
                 <Ionicons name="git-merge-outline" size={20} color={MUTED} />
               </Pressable>
-              <Pressable style={[styles.menuItem, styles.menuLast]} onPress={confirmDelete}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Delete Spark" style={[styles.menuItem, styles.menuLast]} onPress={confirmDelete}>
                 <Text style={[styles.menuLabel, styles.menuText, styles.danger]}>Delete Spark</Text>
                 <Ionicons name="trash-outline" size={20} color={C.dangerDeep} />
               </Pressable>
@@ -376,7 +376,7 @@ export default function SparkPanel({
               <Text style={styles.mergeTitle}>Merge into…</Text>
               {mergeTargets.length === 0 ? <Text style={styles.empty}>No other Sparks in this chat.</Text> : null}
               {mergeTargets.map((target) => (
-                <Pressable key={target.id} style={styles.menuItem} onPress={() => mergeInto(target)}>
+                <Pressable accessibilityRole="button" accessibilityLabel="Open" key={target.id} style={styles.menuItem} onPress={() => mergeInto(target)}>
                   <View style={styles.menuText}>
                     <Text style={styles.menuLabel} numberOfLines={1}>
                       {target.subject}
@@ -388,7 +388,7 @@ export default function SparkPanel({
                   <Ionicons name="chevron-forward" size={18} color={MUTED} />
                 </Pressable>
               ))}
-              <Pressable style={[styles.menuItem, styles.menuLast]} onPress={() => setShowMerge(false)}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Cancel" style={[styles.menuItem, styles.menuLast]} onPress={() => setShowMerge(false)}>
                 <Text style={[styles.menuLabel, styles.muted]}>Cancel</Text>
               </Pressable>
             </View>
@@ -516,7 +516,7 @@ export default function SparkPanel({
           {spark?.active && !revived ? (
             <Text style={styles.footer}>Also visible in the main conversation</Text>
           ) : (
-            <Pressable onPress={onClose} hitSlop={6}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Return to main conversation" onPress={onClose} hitSlop={6}>
               <Text style={styles.footerLink}>← Return to main conversation</Text>
             </Pressable>
           )}

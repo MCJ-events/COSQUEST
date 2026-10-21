@@ -101,7 +101,7 @@ function RolePingCard({
           const name = member?.displayName || "Member";
           return (
             <View key={userId}>
-              <Pressable
+              <Pressable accessibilityLabel={name}
                 style={styles.person}
                 onPress={onOpenMember ? () => onOpenMember(userId) : undefined}
                 accessibilityRole={onOpenMember ? "button" : undefined}>

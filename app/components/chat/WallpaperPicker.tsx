@@ -50,7 +50,7 @@ function PresetTile({
   onPress: () => void;
 }) {
   return (
-    <Pressable style={styles.tileWrap} onPress={onPress}>
+    <Pressable accessibilityRole="button" accessibilityLabel="Wallpaper" style={styles.tileWrap} onPress={onPress}>
       <View style={[styles.tile, selected && styles.tileSelected]}>
         <View
           style={[StyleSheet.absoluteFill, { backgroundColor: preset.color }]}
@@ -229,7 +229,7 @@ export function WallpaperPicker({
         <View style={styles.header}>
           <Text style={styles.title}>Chat wallpaper</Text>
 
-          <Pressable style={styles.close} onPress={cancel} hitSlop={8}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Close" style={styles.close} onPress={cancel} hitSlop={8}>
             <Ionicons name="close" size={22} color={C.ink} />
           </Pressable>
         </View>
@@ -243,7 +243,7 @@ export function WallpaperPicker({
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.tiles}>
           {/* YOUR PHOTO */}
-          <Pressable style={styles.tileWrap} onPress={chooseFromPhotos}>
+          <Pressable accessibilityRole="button" accessibilityLabel={photoSelected ? "Your photo" : "Choose photo"} style={styles.tileWrap} onPress={chooseFromPhotos}>
             <View
               style={[
                 styles.tile,
@@ -286,14 +286,14 @@ export function WallpaperPicker({
         </ScrollView>
 
         <View style={styles.buttons}>
-          <Pressable
+          <Pressable accessibilityRole="button" accessibilityLabel="Set for all chats"
             style={[styles.button, styles.buttonSecondary]}
             onPress={() => save("all")}
             disabled={saving}>
             <Text style={styles.buttonSecondaryText}>Set for all chats</Text>
           </Pressable>
 
-          <Pressable
+          <Pressable accessibilityRole="button" accessibilityLabel="Set for this chat"
             style={[styles.button, styles.buttonPrimary]}
             onPress={() => save("chat")}
             disabled={saving}>

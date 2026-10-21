@@ -359,7 +359,7 @@ export default function MentionPicker({
 
           {/* EVERYONE */}
           {!searching ? (
-            <Pressable
+            <Pressable accessibilityLabel="Everyone"
               style={styles.everyoneRow}
               onPress={() => setEveryone((value) => !value)}
               accessibilityRole="checkbox"
@@ -403,7 +403,7 @@ export default function MentionPicker({
             loadingPage > 1 ? (
               <ActivityIndicator color={PINK} style={styles.more} />
             ) : error && rows.length ? (
-              <Pressable onPress={() => fetchPage(query.trim(), page + 1)} style={styles.more}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Couldn't load more, tap to try again" onPress={() => fetchPage(query.trim(), page + 1)} style={styles.more}>
                 <Text style={styles.retry}>Couldn&apos;t load more · tap to retry</Text>
               </Pressable>
             ) : null
@@ -420,7 +420,7 @@ export default function MentionPicker({
               <Text style={styles.selectedHint}>They&apos;ll be notified when you send your message.</Text>
             </>
           ) : null}
-          <Pressable
+          <Pressable accessibilityRole="button" accessibilityLabel={confirmLabel}
             style={[styles.confirm, !everyone && !count && styles.off]}
             disabled={!everyone && !count}
             onPress={() => onDone(everyone ? [] : picked, everyone)}>

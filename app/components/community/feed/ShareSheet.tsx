@@ -383,7 +383,7 @@ export function ShareSheet({
           <View style={styles.header}>
             <Text style={styles.title}>Share</Text>
 
-            <Pressable style={styles.close} onPress={onClose}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Close" style={styles.close} onPress={onClose}>
               <Ionicons name="close" size={23} color={C.ink} />
             </Pressable>
           </View>
@@ -404,7 +404,7 @@ export function ShareSheet({
               />
             </View>
 
-            <Pressable
+            <Pressable accessibilityRole="button" accessibilityLabel="Add"
               style={styles.plus}
               onPress={() => {
                 setSearchText("");
@@ -516,14 +516,14 @@ export function ShareSheet({
               ) : null}
 
               <View style={styles.composerButtons}>
-                <Pressable
+                <Pressable accessibilityRole="button" accessibilityLabel="Cancel"
                   style={[styles.composerButton, styles.composerCancel]}
                   onPress={() => setComposerOpen(false)}
                   disabled={sharingToFeed}>
                   <Text style={styles.composerCancelText}>Cancel</Text>
                 </Pressable>
 
-                <Pressable
+                <Pressable accessibilityRole="button" accessibilityLabel="Share"
                   style={[styles.composerButton, styles.composerShare]}
                   onPress={shareToFeed}
                   disabled={sharingToFeed}>

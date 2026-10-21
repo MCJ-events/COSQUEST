@@ -206,7 +206,7 @@ const GroupRow = memo(function GroupRow({ chat, first, onOpen }: { chat: ChatIte
     : "No messages yet";
 
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.groupRow, first && styles.groupRowCard, pressed && styles.pressed]}>
+    <Pressable accessibilityRole="button" accessibilityLabel={title} onPress={onPress} style={({ pressed }) => [styles.groupRow, first && styles.groupRowCard, pressed && styles.pressed]}>
       {chat.type === "group" && chat.group?.photoUrl ? (
         <GroupAvatar name={title} photoUrl={chat.group.photoUrl} size={48} />
       ) : (
@@ -514,7 +514,7 @@ export function Chats({
       const unread = chat.unreadCount || 0;
 
       return (
-        <Pressable key={chat.id} style={styles.dmItem} onPress={() => openChat(chat.id)}>
+        <Pressable accessibilityRole="button" accessibilityLabel={`Chat with ${name}`} key={chat.id} style={styles.dmItem} onPress={() => openChat(chat.id)}>
           <View style={[styles.dmCircle, { backgroundColor: avatarTint(name) }]}>
             {photo ? (
               <Image source={{ uri: photo }} style={styles.dmPhoto} contentFit="cover" />
@@ -540,7 +540,7 @@ export function Chats({
       const name = person.name || person.username;
 
       return (
-        <Pressable key={person.id || person.username} style={styles.dmItem} disabled={busy} onPress={() => openOrCreateChat(person)}>
+        <Pressable accessibilityRole="button" accessibilityLabel={`Message ${name}`} key={person.id || person.username} style={styles.dmItem} disabled={busy} onPress={() => openOrCreateChat(person)}>
           <View style={[styles.dmCircle, { backgroundColor: avatarTint(name) }]}>
             {person.avatarPhotoUrl ? (
               <Image source={getAvatarSource(person)} style={styles.dmPhoto} contentFit="cover" />
@@ -620,7 +620,7 @@ export function Chats({
                   ["dms", "DMs"],
                 ] as [Filter, string][]
               ).map(([value, label]) => (
-                <Pressable
+                <Pressable accessibilityLabel={label}
                   key={value}
                   onPress={() => setFilter(value)}
                   style={[styles.chip, filter === value && styles.chipOn]}

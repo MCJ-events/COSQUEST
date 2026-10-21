@@ -44,7 +44,7 @@ export function SharePerson({
   onPress: () => void;
 }) {
   return (
-    <Pressable style={styles.person} onPress={onPress} disabled={sending}>
+    <Pressable accessibilityRole="button" accessibilityLabel="Done" style={styles.person} onPress={onPress} disabled={sending}>
       <View style={styles.avatarWrap}>
         <Image
           source={avatarSource(person)}

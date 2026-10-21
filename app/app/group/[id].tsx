@@ -609,7 +609,7 @@ export default function GroupInfo() {
             ) : null}
           </View>
 
-          <Pressable
+          <Pressable accessibilityRole="button" accessibilityLabel="Join group"
             style={[
               groupStyles.primaryButton,
               (preview.requestPending || busy === "join") &&
@@ -643,7 +643,7 @@ export default function GroupInfo() {
       right={
         <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
           {g.canEdit ? (
-            <Pressable onPress={openEdit} hitSlop={10}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Edit" onPress={openEdit} hitSlop={10}>
               <Text style={styles.editText}>Edit</Text>
             </Pressable>
           ) : null}
@@ -663,7 +663,7 @@ export default function GroupInfo() {
         showsVerticalScrollIndicator={false}>
         {/* HERO */}
         <View style={styles.hero}>
-          <Pressable
+          <Pressable accessibilityRole="button" accessibilityLabel="Camera"
             onPress={g.canEdit ? changePhoto : undefined}
             disabled={!g.canEdit}
             style={styles.photoWrap}>
@@ -700,7 +700,7 @@ export default function GroupInfo() {
             </View>
           ) : null}
 
-          <Pressable
+          <Pressable accessibilityRole="button" accessibilityLabel="Open chat"
             style={styles.messagePill}
             onPress={() =>
               router.push({ pathname: "/chat/[id]", params: { id: g.id } })
@@ -738,16 +738,16 @@ export default function GroupInfo() {
               </Text>
             </View>
             <View style={styles.linkActions}>
-              <Pressable style={styles.linkButton} onPress={copyLink}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Copy" style={styles.linkButton} onPress={copyLink}>
                 <Ionicons name="copy-outline" size={16} color={PINK} />
                 <Text style={styles.linkButtonText}>Copy</Text>
               </Pressable>
-              <Pressable style={styles.linkButton} onPress={shareLink}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Share" style={styles.linkButton} onPress={shareLink}>
                 <Ionicons name="share-social-outline" size={16} color={PINK} />
                 <Text style={styles.linkButtonText}>Share</Text>
               </Pressable>
               {g.canEdit ? (
-                <Pressable style={styles.linkButton} onPress={confirmResetLink}>
+                <Pressable accessibilityRole="button" accessibilityLabel="Reset" style={styles.linkButton} onPress={confirmResetLink}>
                   <Ionicons name="refresh" size={16} color={PINK} />
                   <Text style={styles.linkButtonText}>Reset</Text>
                 </Pressable>
@@ -779,7 +779,7 @@ export default function GroupInfo() {
         {g.canSeeMembers ? (
           <View style={styles.memberCard}>
             {members.map((member) => (
-              <Pressable
+              <Pressable accessibilityRole="button" accessibilityLabel="Member options"
                 key={member.id}
                 style={styles.memberRow}
                 disabled={!g.canEdit || member.id === myUserId}
@@ -834,7 +834,7 @@ export default function GroupInfo() {
             ))}
 
             {membersHasMore ? (
-              <Pressable
+              <Pressable accessibilityRole="button" accessibilityLabel="Show more members"
                 style={styles.moreButton}
                 onPress={() => loadMembers(memberPage + 1)}>
                 <Text style={styles.moreText}>
@@ -993,7 +993,7 @@ export default function GroupInfo() {
               }
             />
           </ScrollView>
-          <Pressable
+          <Pressable accessibilityRole="button" accessibilityLabel="Add people"
             style={[
               groupStyles.primaryButton,
               (!Object.keys(toAdd).length || busy === "add") &&
@@ -1265,7 +1265,7 @@ export default function GroupInfo() {
                     {entry.bannedBy ? ` · by @${entry.bannedBy.username}` : ""}
                   </Text>
                 </View>
-                <Pressable
+                <Pressable accessibilityRole="button" accessibilityLabel="Unban"
                   style={styles.unbanButton}
                   disabled={busy === `unban-${entry.user.id}`}
                   onPress={() => unban(entry)}>
@@ -1325,14 +1325,14 @@ export default function GroupInfo() {
           ) : null}
 
           {g.photoUrl ? (
-            <Pressable
+            <Pressable accessibilityRole="button" accessibilityLabel="Remove group photo"
               style={styles.removePhoto}
               onPress={() => save({ removePhoto: true })}>
               <Text style={styles.removePhotoText}>Remove group photo</Text>
             </Pressable>
           ) : null}
 
-          <Pressable
+          <Pressable accessibilityRole="button" accessibilityLabel="Save"
             style={[
               groupStyles.primaryButton,
               styles.saveButton,

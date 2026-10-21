@@ -188,12 +188,12 @@ export function CommentItem({
 
           {/* ACTIONS: Reply (pink) + view replies */}
           <View style={styles.actions}>
-            <Pressable onPress={onReply} hitSlop={6}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Reply" onPress={onReply} hitSlop={6}>
               <Text style={styles.replyText}>Reply</Text>
             </Pressable>
 
             {Number(comment?.replyCount || 0) > 0 ? (
-              <Pressable onPress={onToggleReplies} hitSlop={6}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Show or hide replies" onPress={onToggleReplies} hitSlop={6}>
                 <Text style={styles.viewReplies}>
                   {repliesOpen
                     ? "Hide replies"
@@ -206,7 +206,7 @@ export function CommentItem({
 
             {/* Delete your own comment */}
             {isMine ? (
-              <Pressable onPress={onDelete} hitSlop={8}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Delete" onPress={onDelete} hitSlop={8}>
                 <Text style={styles.deleteText}>Delete</Text>
               </Pressable>
             ) : null}

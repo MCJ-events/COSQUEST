@@ -142,7 +142,7 @@ export default function DiscoverGroups() {
             style={styles.input}
             onSubmitEditing={openLink}
           />
-          <Pressable
+          <Pressable accessibilityRole="button" accessibilityLabel="Open the invitation link"
             onPress={openLink}
             disabled={!link.trim()}
             style={[styles.goButton, !link.trim() && styles.off]}>
@@ -179,7 +179,7 @@ export default function DiscoverGroups() {
 
         <View style={styles.list}>
           {groups.map((group) => (
-            <Pressable
+            <Pressable accessibilityRole="button" accessibilityLabel={`Open ${group.name}`}
               key={group.id}
               style={styles.card}
               onPress={() =>
@@ -209,7 +209,7 @@ export default function DiscoverGroups() {
                 ) : null}
               </View>
 
-              <Pressable
+              <Pressable accessibilityRole="button" accessibilityLabel={`Join ${group.name}`}
                 style={[
                   styles.joinButton,
                   (group.requestPending || joiningId === group.id) &&

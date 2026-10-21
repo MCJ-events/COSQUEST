@@ -53,10 +53,10 @@ export default function SparksCallNotes({
         </View>
         <Text style={styles.cardBody}>{notice.body}</Text>
         <View style={styles.cardButtons}>
-          <Pressable style={[styles.button, styles.buttonGhost]} onPress={notes.decline} accessibilityRole="button">
+          <Pressable accessibilityLabel={notice.declineLabel} style={[styles.button, styles.buttonGhost]} onPress={notes.decline} accessibilityRole="button">
             <Text style={styles.buttonGhostText}>{notice.declineLabel}</Text>
           </Pressable>
-          <Pressable style={[styles.button, styles.buttonMain]} onPress={notes.accept} accessibilityRole="button">
+          <Pressable accessibilityLabel={notice.acceptLabel} style={[styles.button, styles.buttonMain]} onPress={notes.accept} accessibilityRole="button">
             <Text style={styles.buttonMainText}>{notice.acceptLabel}</Text>
           </Pressable>
         </View>

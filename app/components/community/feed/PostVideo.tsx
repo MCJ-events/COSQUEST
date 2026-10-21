@@ -48,7 +48,7 @@ export function PostVideo({ uri }: { uri: string }) {
 
   return (
     <View style={styles.container}>
-      <Pressable
+      <Pressable accessibilityRole="button" accessibilityLabel="Play or pause video"
         style={StyleSheet.absoluteFill}
         onPress={() => {
           setPausedByTap(player.playing);
@@ -72,7 +72,7 @@ export function PostVideo({ uri }: { uri: string }) {
         ) : null}
       </Pressable>
 
-      <Pressable
+      <Pressable accessibilityRole="button" accessibilityLabel={muted ? "Sound on" : "Sound off"}
         style={styles.sound}
         onPress={() => setMuted((value) => !value)}>
         <Ionicons

@@ -170,7 +170,7 @@ export default function PollCreator({
               ))}
 
               {options.length < MAX_OPTIONS ? (
-                <Pressable style={styles.addRow} onPress={addOption}>
+                <Pressable accessibilityRole="button" accessibilityLabel="Add another option" style={styles.addRow} onPress={addOption}>
                   <Text style={styles.addText}>Add another option</Text>
                   <Ionicons name="add" size={22} color={MUTED} />
                 </Pressable>
@@ -186,10 +186,10 @@ export default function PollCreator({
               <PinkSwitch value={multiple} onChange={setMultiple} />
             </View>
 
-            <Pressable style={[styles.primary, (!ready || sending) && styles.off]} disabled={!ready || sending} onPress={send}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Send poll to group" style={[styles.primary, (!ready || sending) && styles.off]} disabled={!ready || sending} onPress={send}>
               {sending ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.primaryText}>Send poll to group</Text>}
             </Pressable>
-            <Pressable style={styles.secondary} onPress={onClose}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Cancel" style={styles.secondary} onPress={onClose}>
               <Text style={styles.secondaryText}>Cancel</Text>
             </Pressable>
           </ScrollView>

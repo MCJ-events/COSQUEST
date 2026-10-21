@@ -156,7 +156,7 @@ export function OptionSelector<T extends string>({
         const selected = option.value === value;
 
         return (
-          <Pressable
+          <Pressable accessibilityLabel={option.label}
             key={option.value}
             disabled={disabled}
             onPress={() => onChange(option.value)}
@@ -192,7 +192,7 @@ export function GroupRow({
   right?: ReactNode;
 }) {
   return (
-    <Pressable
+    <Pressable accessibilityRole="button" accessibilityLabel="Open"
       onPress={onPress}
       disabled={!onPress}
       style={({ pressed }) => [

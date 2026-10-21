@@ -159,7 +159,7 @@ export function PersonRow({
   const name = person.name || person.username;
   const shownRole = role ?? (person as GroupMember).role;
   return (
-    <Pressable
+    <Pressable accessibilityRole="button" accessibilityLabel={name}
       onPress={onPress}
       disabled={!onPress}
       style={[styles.row, last && styles.rowLast, selected && styles.rowSelected]}>
@@ -200,7 +200,7 @@ export function PrimaryButton({
   danger?: boolean;
 }) {
   return (
-    <Pressable
+    <Pressable accessibilityRole="button" accessibilityLabel={label}
       style={[styles.primary, danger && styles.primaryDanger, (disabled || busy) && styles.off]}
       disabled={disabled || busy}
       onPress={onPress}>
@@ -223,7 +223,7 @@ export function SoftButton({
   disabled?: boolean;
 }) {
   return (
-    <Pressable style={[styles.soft, flex && styles.flex, disabled && styles.off]} onPress={onPress} disabled={disabled}>
+    <Pressable accessibilityRole="button" accessibilityLabel={label} style={[styles.soft, flex && styles.flex, disabled && styles.off]} onPress={onPress} disabled={disabled}>
       <Text style={[styles.softText, danger && styles.dangerText]} numberOfLines={1}>
         {label}
       </Text>
@@ -265,7 +265,7 @@ export function ConfirmCard({
       {extraText ? <Text style={styles.extraText}>{extraText}</Text> : null}
       {children}
       <PrimaryButton label={confirmLabel} onPress={onConfirm} busy={busy} danger={danger} />
-      <Pressable onPress={onCancel} style={styles.cancel} hitSlop={6}>
+      <Pressable accessibilityRole="button" accessibilityLabel={cancelLabel} onPress={onCancel} style={styles.cancel} hitSlop={6}>
         <Text style={styles.cancelText}>{cancelLabel}</Text>
       </Pressable>
     </View>
@@ -296,7 +296,7 @@ export function Pills<T extends string>({
       {options.map((option) => {
         const on = option.value === value;
         return (
-          <Pressable key={option.value} onPress={() => onChange(option.value)} style={[styles.pill, on && styles.pillOn]}>
+          <Pressable accessibilityRole="button" accessibilityLabel={option.label} key={option.value} onPress={() => onChange(option.value)} style={[styles.pill, on && styles.pillOn]}>
             <Text style={[styles.pillText, on && styles.pillTextOn]}>{option.label}</Text>
           </Pressable>
         );

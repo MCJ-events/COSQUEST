@@ -175,7 +175,7 @@ export function VoiceLiveCard({ conversationId, title }: { conversationId: strin
         <Text style={styles.count}>
           {room.memberCount} on call
         </Text>
-        <Pressable style={[styles.join, joining && styles.off]} onPress={join} disabled={joining}>
+        <Pressable accessibilityRole="button" accessibilityLabel={mine ? "Return to call" : "Join call"} style={[styles.join, joining && styles.off]} onPress={join} disabled={joining}>
           {joining ? (
             <ActivityIndicator color="#FFFFFF" />
           ) : (

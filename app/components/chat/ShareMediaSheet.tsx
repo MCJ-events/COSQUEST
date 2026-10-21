@@ -137,11 +137,11 @@ export default function ShareMediaSheet({
           <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
             {/* TILES */}
             <View style={styles.tiles}>
-              <Pressable style={styles.tile} onPress={() => pick(false)}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Photo" style={styles.tile} onPress={() => pick(false)}>
                 <Ionicons name="image-outline" size={24} color={PINK} />
                 <Text style={styles.tileText}>Photo</Text>
               </Pressable>
-              <Pressable
+              <Pressable accessibilityRole="button" accessibilityLabel="Voice note"
                 style={styles.tile}
                 onPress={() => {
                   onClose();
@@ -150,7 +150,7 @@ export default function ShareMediaSheet({
                 <Ionicons name="mic-outline" size={24} color={PINK} />
                 <Text style={styles.tileText}>Voice note</Text>
               </Pressable>
-              <Pressable style={styles.tile} onPress={() => pick(true)}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Short video" style={styles.tile} onPress={() => pick(true)}>
                 <Ionicons name="film-outline" size={24} color={PINK} />
                 <Text style={styles.tileText}>Short video</Text>
               </Pressable>
@@ -196,7 +196,7 @@ export default function ShareMediaSheet({
               style={styles.input}
             />
 
-            <Pressable style={[styles.primary, (!picked.length || sending) && styles.off]} disabled={!picked.length || sending} onPress={send}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Send selected media" style={[styles.primary, (!picked.length || sending) && styles.off]} disabled={!picked.length || sending} onPress={send}>
               {sending ? (
                 <ActivityIndicator color="#FFFFFF" />
               ) : (
@@ -205,7 +205,7 @@ export default function ShareMediaSheet({
                 </Text>
               )}
             </Pressable>
-            <Pressable style={styles.secondary} onPress={onClose}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Cancel" style={styles.secondary} onPress={onClose}>
               <Text style={styles.secondaryText}>Cancel</Text>
             </Pressable>
           </ScrollView>

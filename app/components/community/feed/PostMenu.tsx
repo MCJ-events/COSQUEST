@@ -51,20 +51,20 @@ export function PostMenu({
       transparent
       animationType="fade"
       onRequestClose={onClose}>
-      <Pressable style={styles.overlay} onPress={onClose}>
+      <Pressable accessibilityRole="button" accessibilityLabel="Edit post" style={styles.overlay} onPress={onClose}>
         {/* Inner Pressable stops taps on the menu from closing it */}
-        <Pressable style={styles.menu} onPress={() => {}}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Edit post" style={styles.menu} onPress={() => {}}>
           {isMine ? (
             <>
               {/* EDIT */}
-              <Pressable style={styles.item} onPress={handleEdit}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Edit post" style={styles.item} onPress={handleEdit}>
                 <Ionicons name="create-outline" size={21} color={C.ink} />
 
                 <Text style={styles.itemText}>Edit post</Text>
               </Pressable>
 
               {/* DELETE */}
-              <Pressable style={styles.item} onPress={handleDelete}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Delete post" style={styles.item} onPress={handleDelete}>
                 <Ionicons name="trash-outline" size={21} color="#D9364F" />
 
                 <Text style={[styles.itemText, styles.deleteText]}>

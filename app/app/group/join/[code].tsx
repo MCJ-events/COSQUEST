@@ -166,7 +166,7 @@ export default function GroupInvite() {
           <View style={styles.center}>
             <Ionicons name="link-outline" size={34} color={MUTED} />
             <Text style={styles.errorText}>{error || "This invite link isn't valid anymore."}</Text>
-            <Pressable style={[styles.secondary, styles.errorButton]} onPress={() => safeBack()}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Go back" style={[styles.secondary, styles.errorButton]} onPress={() => safeBack()}>
               <Text style={styles.secondaryText}>Go back</Text>
             </Pressable>
           </View>
@@ -194,7 +194,7 @@ export default function GroupInvite() {
             {preview.description ? <Text style={styles.description}>{preview.description}</Text> : null}
 
             {preview.isMember ? (
-              <Pressable style={styles.primary} onPress={() => openChat(preview.id)}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Open group chat" style={styles.primary} onPress={() => openChat(preview.id)}>
                 <Text style={styles.primaryText}>Open group chat</Text>
               </Pressable>
             ) : pending ? (
@@ -216,7 +216,7 @@ export default function GroupInvite() {
                     The group&apos;s admins will review your request. We&apos;ll notify you when you&apos;re approved.
                   </Text>
                   <Text style={styles.pendingNote}>Chat is available after approval</Text>
-                  <Pressable onPress={cancelRequest} style={styles.cancelLink} hitSlop={6}>
+                  <Pressable accessibilityRole="button" accessibilityLabel="Cancel join request" onPress={cancelRequest} style={styles.cancelLink} hitSlop={6}>
                     <Text style={styles.cancelText}>Cancel join request</Text>
                   </Pressable>
                 </View>
@@ -238,7 +238,7 @@ export default function GroupInvite() {
                   </>
                 ) : null}
 
-                <Pressable style={[styles.primary, joining && styles.off]} disabled={joining} onPress={join}>
+                <Pressable accessibilityRole="button" accessibilityLabel={approval ? "Ask to join" : "Join group"} style={[styles.primary, joining && styles.off]} disabled={joining} onPress={join}>
                   {joining ? (
                     <ActivityIndicator color="#FFFFFF" />
                   ) : (

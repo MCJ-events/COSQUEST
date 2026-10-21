@@ -135,7 +135,7 @@ const ResultCard = memo(function ResultCard({
           <Text style={styles.contextText}>{result.context.label}</Text>
         </View>
       ) : null}
-      <Pressable style={styles.jump} onPress={() => onJump(result)}>
+      <Pressable accessibilityRole="button" accessibilityLabel="Jump to message" style={styles.jump} onPress={() => onJump(result)}>
         <Text style={styles.jumpText}>Jump to message ↗</Text>
       </Pressable>
     </View>
@@ -390,7 +390,7 @@ export default function SearchInChat() {
         {showDates ? (
           <View style={styles.menu}>
             {DATE_OPTIONS.map((option, index) => (
-              <Pressable
+              <Pressable accessibilityRole="button" accessibilityLabel="Done"
                 key={option.value}
                 style={[styles.menuRow, index === DATE_OPTIONS.length - 1 && styles.menuRowLast]}
                 onPress={() => {
@@ -456,7 +456,7 @@ export default function SearchInChat() {
             <>
               {loadingPage > 1 ? <ActivityIndicator color={PINK} style={styles.moreSpinner} /> : null}
               {error && results.length ? (
-                <Pressable style={styles.more} onPress={() => run(text, page + 1, range)}>
+                <Pressable accessibilityRole="button" accessibilityLabel="Couldn't load more, tap to try again" style={styles.more} onPress={() => run(text, page + 1, range)}>
                   <Text style={styles.moreText}>Couldn&apos;t load more · tap to retry</Text>
                 </Pressable>
               ) : null}
@@ -499,7 +499,7 @@ export default function SearchInChat() {
           )}
 
           <View style={[styles.footer, { paddingBottom: insets.bottom + 14 }]}>
-            <Pressable
+            <Pressable accessibilityRole="button" accessibilityLabel="Open the chat"
               style={styles.primary}
               onPress={() => {
                 const target = context?.targetId;

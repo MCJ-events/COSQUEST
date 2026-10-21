@@ -93,7 +93,7 @@ export default function DeleteAccount() {
               {"•"} {line}
             </Text>
           ))}
-          <Text style={[styles.note, { color: r.textMuted }]}>Your game progress on this account stops with it. This can't be undone.</Text>
+          <Text style={[styles.note, { color: r.textMuted }]}>Your game progress on this account stops with it. This can{"'"}t be undone.</Text>
           {social ? (
             <>
               <Text style={[styles.label, { color: r.text }]}>Type DELETE to confirm</Text>

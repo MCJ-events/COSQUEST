@@ -354,7 +354,7 @@ export default function UserProfileScreen() {
 
   const header = (
     <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-      <Pressable onPress={goBack} hitSlop={10} style={styles.headerButton}>
+      <Pressable accessibilityRole="button" accessibilityLabel="Back" onPress={goBack} hitSlop={10} style={styles.headerButton}>
         <Ionicons name="chevron-back" size={26} color={C.ink} />
       </Pressable>
 
@@ -393,7 +393,7 @@ export default function UserProfileScreen() {
         <Text style={styles.centerText}>
           Unblock them to see their profile and message each other again.
         </Text>
-        <Pressable
+        <Pressable accessibilityRole="button" accessibilityLabel="Unblock"
           style={styles.primaryButton}
           onPress={unblock}
           disabled={!!busy}>
@@ -460,7 +460,7 @@ export default function UserProfileScreen() {
         {/* ACTIONS */}
         {!isMe ? (
           <View style={styles.actions}>
-            <Pressable
+            <Pressable accessibilityRole="button" accessibilityLabel={iFollow ? `Unfollow @${username}` : `Follow @${username}`}
               style={[
                 styles.actionButton,
                 iFollow ? styles.actionGhost : styles.actionPrimary,
@@ -482,7 +482,7 @@ export default function UserProfileScreen() {
               )}
             </Pressable>
 
-            <Pressable
+            <Pressable accessibilityRole="button" accessibilityLabel="Message"
               style={[styles.actionButton, styles.actionGhost]}
               onPress={openMessage}
               disabled={!!busy}>
@@ -501,7 +501,7 @@ export default function UserProfileScreen() {
             const active = tab === key;
 
             return (
-              <Pressable
+              <Pressable accessibilityRole="tab" accessibilityLabel={key}
                 key={key}
                 style={styles.tab}
                 onPress={() => setTab(key)}>
@@ -529,7 +529,7 @@ export default function UserProfileScreen() {
           imagePosts.length ? (
             <View style={styles.grid}>
               {imagePosts.map((post) => (
-                <Pressable
+                <Pressable accessibilityRole="button" accessibilityLabel="Copy"
                   key={post.id}
                   style={[styles.thumbWrap, { width: column, height: column }]}
                   onPress={() => openPost(post.id)}>
@@ -565,7 +565,7 @@ export default function UserProfileScreen() {
                 );
 
                 return (
-                  <Pressable
+                  <Pressable accessibilityRole="button" accessibilityLabel="Play"
                     key={post.id}
                     style={[styles.thumbWrap, styles.reelThumb, { width: column, height: column * 1.4 }]}
                     onPress={() => openPost(post.id)}>
@@ -596,7 +596,7 @@ export default function UserProfileScreen() {
           thoughtPosts.length ? (
             <View style={styles.thoughts}>
               {thoughtPosts.map((post) => (
-                <Pressable
+                <Pressable accessibilityRole="button" accessibilityLabel="Open post"
                   key={post.id}
                   style={styles.thought}
                   onPress={() => openPost(post.id)}>
@@ -633,12 +633,12 @@ export default function UserProfileScreen() {
         transparent
         animationType="fade"
         onRequestClose={() => setMenuVisible(false)}>
-        <Pressable
+        <Pressable accessibilityRole="button" accessibilityLabel="Close"
           style={styles.menuBackdrop}
           onPress={() => setMenuVisible(false)}>
           <View style={styles.menu}>
             {blockedByMe ? (
-              <Pressable style={styles.menuItem} onPress={unblock}>
+              <Pressable accessibilityRole="button" accessibilityLabel={`Unblock @${username}`} style={styles.menuItem} onPress={unblock}>
                 <Ionicons
                   name="checkmark-circle-outline"
                   size={20}
@@ -647,7 +647,7 @@ export default function UserProfileScreen() {
                 <Text style={styles.menuText}>Unblock @{username}</Text>
               </Pressable>
             ) : (
-              <Pressable style={styles.menuItem} onPress={block}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Block" style={styles.menuItem} onPress={block}>
                 <Ionicons name="ban-outline" size={20} color="#D9364F" />
                 <Text style={[styles.menuText, styles.menuDanger]}>
                   Block @{username}

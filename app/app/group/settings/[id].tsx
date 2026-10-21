@@ -70,7 +70,7 @@ function Row({
   danger?: boolean;
 }) {
   return (
-    <Pressable onPress={onPress} disabled={!onPress} style={[styles.row, last && styles.rowLast]}>
+    <Pressable accessibilityRole="button" accessibilityLabel={title} onPress={onPress} disabled={!onPress} style={[styles.row, last && styles.rowLast]}>
       <View style={styles.flex}>
         <Text style={[styles.rowTitle, danger && styles.danger]}>{title}</Text>
         {hint ? <Text style={styles.rowHint}>{hint}</Text> : null}

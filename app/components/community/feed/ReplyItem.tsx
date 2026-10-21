@@ -140,12 +140,12 @@ export function ReplyItem({
         {/* ACTIONS */}
         <View style={styles.actions}>
           {/* REPLY */}
-          <Pressable onPress={onReply} hitSlop={6}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Reply" onPress={onReply} hitSlop={6}>
             <Text style={styles.replyText}>Reply</Text>
           </Pressable>
 
           {/* LIKE */}
-          <Pressable style={styles.likeAction} onPress={onLike} hitSlop={6}>
+          <Pressable accessibilityRole="button" accessibilityLabel={liked ? "Unlike reply" : "Like reply"} style={styles.likeAction} onPress={onLike} hitSlop={6}>
             <Ionicons
               name={liked ? "heart" : "heart-outline"}
               size={16}
@@ -161,7 +161,7 @@ export function ReplyItem({
 
       {/* DELETE */}
       {mine ? (
-        <Pressable onPress={onDelete} hitSlop={8}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Delete" onPress={onDelete} hitSlop={8}>
           <Ionicons name="trash-outline" size={17} color="#9999A1" />
         </Pressable>
       ) : null}

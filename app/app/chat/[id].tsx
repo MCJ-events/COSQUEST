@@ -1150,7 +1150,7 @@ const Bubble = memo(function Bubble({
           </View>
         ) : null}
 
-        <Pressable
+        <Pressable accessibilityRole="button" accessibilityLabel="Open this Spark"
           onPress={() => onPress(msg)}
           onLongPress={() => onLongPress(msg)}
           delayLongPress={300}
@@ -1166,7 +1166,7 @@ const Bubble = memo(function Bubble({
 
           {/* SPARK marker: this message is part of a Spark (tap to open) */}
           {msg.spark && !msg.deleted && sparkCtx && metaVariant !== "inline" ? (
-            <Pressable
+            <Pressable accessibilityRole="button" accessibilityLabel="Sparks"
               onPress={() => msg.spark && sparkCtx.open(msg.spark.id)}
               hitSlop={6}
               style={[styles.sparkMarker, hasMedia && styles.mediaPad]}>
@@ -1207,7 +1207,7 @@ const Bubble = memo(function Bubble({
 
           {/* REPLY */}
           {msg.replyTo && !msg.deleted ? (
-            <Pressable
+            <Pressable accessibilityRole="button" accessibilityLabel={`Reply to ${replyQuote(msg.replyTo).name}, go to the message`}
               onPress={() => onReplyPress(msg.replyTo!.id)}
               style={[styles.replyPreview, mine && styles.replyPreviewMine]}>
               <View style={[styles.replyBar, mine && styles.replyBarMine]} />
@@ -1246,7 +1246,7 @@ const Bubble = memo(function Bubble({
 
           {/* IMAGE */}
           {!msg.deleted && msg.kind === "image" && mediaUrl ? (
-            <Pressable
+            <Pressable accessibilityRole="imagebutton" accessibilityLabel="Photo, open full screen"
               onPress={() => onMediaPress(msg)}
               onLongPress={() => onLongPress(msg)}
               delayLongPress={300}
@@ -1273,7 +1273,7 @@ const Bubble = memo(function Bubble({
 
           {/* VIDEO */}
           {!msg.deleted && msg.kind === "video" && mediaUrl ? (
-            <Pressable
+            <Pressable accessibilityRole="button" accessibilityLabel="Play"
               onPress={() => onMediaPress(msg)}
               onLongPress={() => onLongPress(msg)}
               delayLongPress={300}
@@ -1461,7 +1461,7 @@ const Bubble = memo(function Bubble({
               mine ? styles.reactionsMine : styles.reactionsTheirs,
             ]}>
             {getReactionCounts(msg.reactions!).map((reaction) => (
-              <Pressable
+              <Pressable accessibilityRole="button" accessibilityLabel={`Reaction ${reaction.emoji}`}
                 key={reaction.emoji}
                 onPress={() => onReaction(msg, reaction.emoji)}
                 style={[
@@ -1891,7 +1891,7 @@ function AudioBubble({
         </Pressable>
 
         <View style={styles.audioBody}>
-          <Pressable
+          <Pressable accessibilityRole="adjustable" accessibilityLabel="Voice note position"
             onLayout={(event) => setWaveWidth(event.nativeEvent.layout.width)}
             onPress={(event) => seekTo(event.nativeEvent.locationX)}
             style={styles.waveRow}>
@@ -2011,7 +2011,7 @@ function AudioBubble({
           )}
 
           {transcriptIsLong && transcript ? (
-            <Pressable
+            <Pressable accessibilityLabel={transcriptExpanded ? "See less" : "See more"}
               onPress={() => setTranscriptExpanded((current) => !current)}
               hitSlop={6}
               accessibilityRole="button">
@@ -2203,7 +2203,7 @@ function MenuItem({
 }) {
   const styles = useThemedStyles(STYLE_PAIR);
   return (
-    <Pressable style={styles.menuItem} onPress={onPress}>
+    <Pressable accessibilityRole="button" accessibilityLabel={label} style={styles.menuItem} onPress={onPress}>
       <Text style={[styles.menuItemText, danger && styles.dangerText]}>
         {label}
       </Text>
@@ -5004,7 +5004,7 @@ export default function ChatScreen() {
         <View style={styles.header}>
           {selectionMode ? (
             <>
-              <Pressable onPress={exitSelectionMode} hitSlop={10}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Close" onPress={exitSelectionMode} hitSlop={10}>
                 <Ionicons name="close" size={27} color={C.ink} />
               </Pressable>
 
@@ -5012,7 +5012,7 @@ export default function ChatScreen() {
 
               <View style={styles.selectionActions}>
                 {selectedIds.length === 1 ? (
-                  <Pressable onPress={replyToSelected} hitSlop={8}>
+                  <Pressable accessibilityRole="button" accessibilityLabel="Reply" onPress={replyToSelected} hitSlop={8}>
                     <Ionicons
                       name="arrow-undo-outline"
                       size={23}
@@ -5021,11 +5021,11 @@ export default function ChatScreen() {
                   </Pressable>
                 ) : null}
 
-                <Pressable onPress={copySelected} hitSlop={8}>
+                <Pressable accessibilityRole="button" accessibilityLabel="Copy" onPress={copySelected} hitSlop={8}>
                   <Ionicons name="copy-outline" size={22} color={C.brand} />
                 </Pressable>
 
-                <Pressable onPress={forwardSelected} hitSlop={8}>
+                <Pressable accessibilityRole="button" accessibilityLabel="Forward" onPress={forwardSelected} hitSlop={8}>
                   <Ionicons
                     name="arrow-redo-outline"
                     size={23}
@@ -5033,7 +5033,7 @@ export default function ChatScreen() {
                   />
                 </Pressable>
 
-                <Pressable onPress={deleteSelected} hitSlop={8}>
+                <Pressable accessibilityRole="button" accessibilityLabel="Delete" onPress={deleteSelected} hitSlop={8}>
                   <Ionicons name="trash-outline" size={23} color={C.danger} />
                 </Pressable>
               </View>
@@ -5158,7 +5158,7 @@ export default function ChatScreen() {
       {/* ================================== */}
 
       {pinnedMessageId && !selectionMode ? (
-        <Pressable
+        <Pressable accessibilityRole="button" accessibilityLabel="Pinned message, go to it"
           style={styles.pinnedBanner}
           onPress={() => scrollToMessage(pinnedMessageId)}>
           <MaterialCommunityIcons name="pin-outline" size={21} color={ink.text(C.brandDeep)} />
@@ -5346,7 +5346,7 @@ export default function ChatScreen() {
                           <Text style={styles.editNoteTitle}>✓ Changes saved · only you see this</Text>
                           <Text style={styles.editNoteText}>Your message has been updated.</Text>
                         </View>
-                        <Pressable style={styles.editButton} onPress={() => startEditing(item)}>
+                        <Pressable accessibilityRole="button" accessibilityLabel="Edit again" style={styles.editButton} onPress={() => startEditing(item)}>
                           <Text style={styles.editButtonText}>Edit again</Text>
                         </Pressable>
                       </View>
@@ -5357,11 +5357,11 @@ export default function ChatScreen() {
                         {item.previousContent ? (
                           <Text style={styles.editPrevious}>“{item.previousContent}”</Text>
                         ) : null}
-                        <Pressable style={styles.editButton} onPress={() => undoEdit(item)}>
+                        <Pressable accessibilityRole="button" accessibilityLabel="Undo · restore previous message" style={styles.editButton} onPress={() => undoEdit(item)}>
                           <Text style={styles.editButtonText}>Undo · restore previous message</Text>
                         </Pressable>
                       </View>
-                      <Pressable
+                      <Pressable accessibilityLabel="Done"
                         style={styles.editDone}
                         accessibilityRole="button"
                         onPress={() => setEditCardFor(null)}>
@@ -5398,7 +5398,7 @@ export default function ChatScreen() {
       {/* ================================== */}
 
       {showJumpButton && !selectionMode ? (
-        <Pressable style={styles.jumpButton} onPress={jumpToLatest}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Jump to latest" style={styles.jumpButton} onPress={jumpToLatest}>
           <Ionicons name="chevron-down" size={20} color={C.brandSoft} />
 
           {newMessageCount > 0 ? (
@@ -5438,7 +5438,7 @@ export default function ChatScreen() {
               </Text>
             </View>
 
-            <Pressable
+            <Pressable accessibilityRole="button" accessibilityLabel="Clear"
               hitSlop={8}
               onPress={() => {
                 setEditingMessage(null);
@@ -5468,7 +5468,7 @@ export default function ChatScreen() {
               </Text>
             </View>
 
-            <Pressable
+            <Pressable accessibilityRole="button" accessibilityLabel="Clear"
               hitSlop={8}
               onPress={() => {
                 setReplyingTo(null);
@@ -5532,7 +5532,7 @@ export default function ChatScreen() {
             You blocked @{otherUsername}. Unblock to send messages.
           </Text>
 
-          <Pressable
+          <Pressable accessibilityRole="button" accessibilityLabel="Unblock"
             style={styles.blockedButton}
             onPress={doUnblock}
             disabled={blockBusy}>
@@ -5611,7 +5611,7 @@ export default function ChatScreen() {
                 ) : null}
 
                 {!editingMessage && !draft.trim() && !groupChat ? (
-                  <Pressable
+                  <Pressable accessibilityRole="button" accessibilityLabel="Camera"
                     hitSlop={6}
                     style={styles.pillIcon}
                     onPress={takePhoto}>
@@ -5671,7 +5671,7 @@ export default function ChatScreen() {
         animationType="fade"
         onRequestClose={() => setMediaViewer(null)}>
         <View style={styles.mediaViewerBackdrop}>
-          <Pressable
+          <Pressable accessibilityRole="button" accessibilityLabel="Close"
             style={styles.mediaViewerClose}
             onPress={() => setMediaViewer(null)}>
             <Ionicons name="close" size={28} color="#FFFFFF" />
@@ -5789,8 +5789,8 @@ export default function ChatScreen() {
         transparent
         animationType="fade"
         onRequestClose={closeMenu}>
-        <Pressable style={[styles.menuBackdrop, styles.sheetBackdrop]} onPress={menuTap(closeMenu)}>
-          <Pressable
+        <Pressable accessibilityRole="button" accessibilityLabel="Message actions" style={[styles.menuBackdrop, styles.sheetBackdrop]} onPress={menuTap(closeMenu)}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Message actions"
             style={[styles.menuColumn, styles.sheetColumn]}
             onPress={(event) => event.stopPropagation()}>
             <View style={styles.sheetTitleRow}>
@@ -6038,10 +6038,10 @@ export default function ChatScreen() {
         transparent
         animationType="slide"
         onRequestClose={() => setDeleteSheet(null)}>
-        <Pressable
+        <Pressable accessibilityRole="button" accessibilityLabel="Close"
           style={styles.modalBackdrop}
           onPress={() => setDeleteSheet(null)}>
-          <Pressable
+          <Pressable accessible={false}
             style={styles.actionSheet}
             onPress={(event) => event.stopPropagation()}>
             <View style={styles.sheetHandle} />
@@ -6101,7 +6101,7 @@ export default function ChatScreen() {
                       </Text>
 
                       {canEveryone ? (
-                        <Pressable
+                        <Pressable accessibilityRole="button" accessibilityLabel="Delete for everyone"
                           style={styles.deleteOption}
                           onPress={forEveryone}>
                           <Ionicons
@@ -6115,7 +6115,7 @@ export default function ChatScreen() {
                         </Pressable>
                       ) : null}
 
-                      <Pressable style={styles.deleteOption} onPress={forMe}>
+                      <Pressable accessibilityRole="button" accessibilityLabel="Delete for me" style={styles.deleteOption} onPress={forMe}>
                         <Ionicons
                           name="trash-bin-outline"
                           size={20}
@@ -6126,7 +6126,7 @@ export default function ChatScreen() {
                         </Text>
                       </Pressable>
 
-                      <Pressable
+                      <Pressable accessibilityRole="button" accessibilityLabel="Cancel"
                         style={styles.cancelButton}
                         onPress={closeSheet}>
                         <Text style={styles.cancelText}>Cancel</Text>
@@ -6148,10 +6148,10 @@ export default function ChatScreen() {
         transparent
         animationType="slide"
         onRequestClose={() => setInfoMessage(null)}>
-        <Pressable
+        <Pressable accessibilityRole="button" accessibilityLabel="Close"
           style={styles.modalBackdrop}
           onPress={() => setInfoMessage(null)}>
-          <Pressable
+          <Pressable accessible={false}
             style={styles.actionSheet}
             onPress={(event) => event.stopPropagation()}>
             <View style={styles.sheetHandle} />
@@ -6220,7 +6220,7 @@ export default function ChatScreen() {
               )}
             </ScrollView>
 
-            <Pressable
+            <Pressable accessibilityRole="button" accessibilityLabel="Close"
               style={styles.cancelButton}
               onPress={() => setInfoMessage(null)}>
               <Text style={styles.cancelText}>Close</Text>
@@ -6238,8 +6238,8 @@ export default function ChatScreen() {
         transparent
         animationType="slide"
         onRequestClose={closeForwardModal}>
-        <Pressable style={styles.modalBackdrop} onPress={closeForwardModal}>
-          <Pressable
+        <Pressable accessibilityRole="button" accessibilityLabel="Close" style={styles.modalBackdrop} onPress={closeForwardModal}>
+          <Pressable accessible={false}
             style={styles.actionSheet}
             onPress={(event) => event.stopPropagation()}>
             <View style={styles.sheetHandle} />
@@ -6288,7 +6288,7 @@ export default function ChatScreen() {
                     <Text style={styles.noUsersText}>No people found.</Text>
                   ) : (
                     searchedUsers.map((person) => (
-                      <Pressable
+                      <Pressable accessibilityRole="button" accessibilityLabel={`Forward to ${person.name || person.username || "User"}`}
                         key={person.id}
                         style={styles.actionButton}
                         onPress={() => forwardToUser(person.username || "")}>
@@ -6324,7 +6324,7 @@ export default function ChatScreen() {
               ) : null}
             </ScrollView>
 
-            <Pressable style={styles.cancelButton} onPress={closeForwardModal}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Cancel" style={styles.cancelButton} onPress={closeForwardModal}>
               <Text style={styles.cancelText}>Cancel</Text>
             </Pressable>
           </Pressable>
@@ -6340,7 +6340,7 @@ export default function ChatScreen() {
         transparent
         animationType="slide"
         onRequestClose={() => setShowAttachments(false)}>
-        <Pressable
+        <Pressable accessibilityRole="button" accessibilityLabel="Close"
           style={styles.modalBackdrop}
           onPress={() => setShowAttachments(false)}>
           <View style={styles.attachmentSheet}>
@@ -6396,12 +6396,12 @@ export default function ChatScreen() {
         transparent
         animationType="fade"
         onRequestClose={() => setShowChatMenu(false)}>
-        <Pressable
+        <Pressable accessibilityRole="button" accessibilityLabel="Group info"
           style={styles.chatMenuBackdrop}
           onPress={() => setShowChatMenu(false)}>
           <View style={[styles.chatMenu, { top: insets.top + 52 }]}>
             {conversation?.type === "group" ? (
-              <Pressable style={styles.chatMenuItem} onPress={openTheirProfile}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Group info" style={styles.chatMenuItem} onPress={openTheirProfile}>
                 <Ionicons
                   name="information-circle-outline"
                   size={20}
@@ -6412,7 +6412,7 @@ export default function ChatScreen() {
             ) : null}
 
             {otherUsername ? (
-              <Pressable style={styles.chatMenuItem} onPress={openTheirProfile}>
+              <Pressable accessibilityRole="button" accessibilityLabel="View profile" style={styles.chatMenuItem} onPress={openTheirProfile}>
                 <Ionicons
                   name="person-circle-outline"
                   size={20}
@@ -6422,7 +6422,7 @@ export default function ChatScreen() {
               </Pressable>
             ) : null}
 
-            <Pressable
+            <Pressable accessibilityRole="button" accessibilityLabel="Wallpaper"
               style={styles.chatMenuItem}
               onPress={() => {
                 setShowChatMenu(false);
@@ -6434,7 +6434,7 @@ export default function ChatScreen() {
 
             {otherUsername ? (
               iBlockedThem ? (
-                <Pressable style={styles.chatMenuItem} onPress={doUnblock}>
+                <Pressable accessibilityRole="button" accessibilityLabel="Unblock" style={styles.chatMenuItem} onPress={doUnblock}>
                   <Ionicons
                     name="checkmark-circle-outline"
                     size={20}
@@ -6443,7 +6443,7 @@ export default function ChatScreen() {
                   <Text style={styles.chatMenuText}>Unblock</Text>
                 </Pressable>
               ) : (
-                <Pressable style={styles.chatMenuItem} onPress={confirmBlock}>
+                <Pressable accessibilityRole="button" accessibilityLabel="Block" style={styles.chatMenuItem} onPress={confirmBlock}>
                   <Ionicons name="ban-outline" size={20} color={C.danger} />
                   <Text style={[styles.chatMenuText, styles.dangerText]}>
                     Block
@@ -6572,7 +6572,7 @@ function AttachmentButton({
 }) {
   const styles = useThemedStyles(STYLE_PAIR);
   return (
-    <Pressable style={styles.attachmentButton} onPress={onPress}>
+    <Pressable accessibilityRole="button" accessibilityLabel={label} style={styles.attachmentButton} onPress={onPress}>
       <View style={styles.attachmentIcon}>
         <Ionicons name={icon} size={26} color={C.brand} />
       </View>
@@ -8200,7 +8200,7 @@ function ForwardChatList({
                         (chat.type === "faction" ? "Faction" : "Community");
 
                   return (
-                    <Pressable
+                    <Pressable accessibilityRole="button" accessibilityLabel={`Forward to ${name}`}
                       key={chat.id}
                       style={styles.actionButton}
                       onPress={() => forwardToConversation(chat.id)}>

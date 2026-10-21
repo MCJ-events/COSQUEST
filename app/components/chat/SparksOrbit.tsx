@@ -105,7 +105,7 @@ export default function SparksOrbit({
         ))}
 
         {quiet.map((spark) => (
-          <Pressable key={spark.id} style={styles.quiet} onPress={() => onOpen(spark)}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Quiet" key={spark.id} style={styles.quiet} onPress={() => onOpen(spark)}>
             <Text style={styles.quietTitle} numberOfLines={2}>
               {spark.subject}
             </Text>
@@ -115,7 +115,7 @@ export default function SparksOrbit({
         ))}
 
         {hidden > 0 ? (
-          <Pressable style={styles.all} onPress={onShowAll}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Show all Sparks" style={styles.all} onPress={onShowAll}>
             <Text style={styles.allText}>All · {sparks.length}</Text>
           </Pressable>
         ) : null}

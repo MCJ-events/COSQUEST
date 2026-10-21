@@ -131,7 +131,7 @@ export default function PostDetailScreen() {
           Join CosQuest to see posts from the community.
         </Text>
 
-        <Pressable
+        <Pressable accessibilityRole="button" accessibilityLabel="Log in"
           style={styles.button}
           onPress={() => router.push("/onboarding/signin")}>
           <Text style={styles.buttonText}>Log in</Text>
@@ -159,7 +159,7 @@ export default function PostDetailScreen() {
           {error || "It may have been deleted."}
         </Text>
 
-        <Pressable style={styles.button} onPress={load}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Try again" style={styles.button} onPress={load}>
           <Text style={styles.buttonText}>Try again</Text>
         </Pressable>
       </View>
@@ -171,7 +171,7 @@ export default function PostDetailScreen() {
       <Stack.Screen options={{ headerShown: false }} />
 
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        <Pressable onPress={goBack} hitSlop={10} style={styles.back}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Back" onPress={goBack} hitSlop={10} style={styles.back}>
           <Ionicons name="chevron-back" size={26} color={C.ink} />
         </Pressable>
 

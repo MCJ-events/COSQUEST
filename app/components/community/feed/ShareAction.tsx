@@ -12,7 +12,7 @@ export function ShareAction({
   onPress: () => void;
 }) {
   return (
-    <Pressable style={styles.action} onPress={onPress}>
+    <Pressable accessibilityRole="button" accessibilityLabel={label} style={styles.action} onPress={onPress}>
       <View style={styles.icon}>
         <Ionicons name={icon} size={21} color="#FFFFFF" />
       </View>

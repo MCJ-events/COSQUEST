@@ -140,7 +140,7 @@ function ChoiceRow({
   disabled?: boolean;
 }) {
   return (
-    <Pressable
+    <Pressable accessibilityLabel={title}
       onPress={onPress}
       disabled={disabled}
       style={[styles.choiceRow, last && styles.rowLast, disabled && styles.off]}
@@ -157,7 +157,7 @@ function ChoiceRow({
 
 function LinkRow({ title, value, onPress, last }: { title: string; value: string; onPress: () => void; last?: boolean }) {
   return (
-    <Pressable onPress={onPress} style={[styles.choiceRow, last && styles.rowLast]}>
+    <Pressable accessibilityRole="button" accessibilityLabel="Open" onPress={onPress} style={[styles.choiceRow, last && styles.rowLast]}>
       <View style={styles.flex}>
         <Text style={styles.rowTitle}>{title}</Text>
         <Text style={styles.rowHint}>{value}</Text>
@@ -170,7 +170,7 @@ function LinkRow({ title, value, onPress, last }: { title: string; value: string
 function MemberLine({ member, onPress }: { member: GroupMember; onPress: () => void }) {
   const name = member.name || member.username;
   return (
-    <Pressable onPress={onPress} style={styles.memberRow}>
+    <Pressable accessibilityRole="button" accessibilityLabel={name} onPress={onPress} style={styles.memberRow}>
       {member.avatarPhotoUrl ? (
         <Image source={{ uri: member.avatarPhotoUrl }} style={styles.memberPhoto} contentFit="cover" />
       ) : (
@@ -436,7 +436,7 @@ export default function NewGroup() {
               {KINDS.map((item) => {
                 const on = kind === item.value;
                 return (
-                  <Pressable
+                  <Pressable accessibilityLabel="Done"
                     key={item.value}
                     onPress={() => changeKind(item.value)}
                     style={[styles.typeCard, on && styles.typeCardOn]}
@@ -534,7 +534,7 @@ export default function NewGroup() {
                 </Text>
               ) : null}
 
-              <Pressable style={styles.inviteRow} onPress={() => setStep(4)}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Use an invitation link instead" style={styles.inviteRow} onPress={() => setStep(4)}>
                 <View style={styles.flex}>
                   <Text style={styles.rowTitle}>Use an invitation link instead</Text>
                   <Text style={styles.rowHint}>Share after your group is created</Text>
@@ -646,10 +646,10 @@ export default function NewGroup() {
                     : "People with the link join straight away."}
                 </Text>
                 <View style={styles.twoButtons}>
-                  <Pressable style={styles.softButton} onPress={copyLink} disabled={!link}>
+                  <Pressable accessibilityRole="button" accessibilityLabel="Copy link" style={styles.softButton} onPress={copyLink} disabled={!link}>
                     <Text style={styles.softButtonText}>Copy link</Text>
                   </Pressable>
-                  <Pressable style={styles.softButton} onPress={shareLink} disabled={!link}>
+                  <Pressable accessibilityRole="button" accessibilityLabel="Share invite" style={styles.softButton} onPress={shareLink} disabled={!link}>
                     <Text style={styles.softButtonText}>Share invite</Text>
                   </Pressable>
                 </View>
@@ -667,7 +667,7 @@ export default function NewGroup() {
                     onPress={() => router.push({ pathname: "/group/[id]", params: { id: created.group.id } })}
                   />
                 ))}
-                <Pressable
+                <Pressable accessibilityRole="button" accessibilityLabel="View all members"
                   style={[styles.choiceRow, styles.rowLast]}
                   onPress={() => router.push({ pathname: "/group/[id]", params: { id: created.group.id } })}>
                   <View style={styles.flex}>
@@ -684,13 +684,13 @@ export default function NewGroup() {
         {/* FOOTER BUTTON */}
         <View style={[styles.footer, { paddingBottom: insets.bottom + 14 }]}>
           {created ? (
-            <Pressable
+            <Pressable accessibilityRole="button" accessibilityLabel="Open group chat"
               style={styles.primary}
               onPress={() => router.replace({ pathname: "/chat/[id]", params: { id: created.chatId } })}>
               <Text style={styles.primaryText}>Open group chat</Text>
             </Pressable>
           ) : (
-            <Pressable
+            <Pressable accessibilityRole="button" accessibilityLabel={nextLabel}
               style={[styles.primary, (creating || (step === 2 && !name.trim())) && styles.off]}
               disabled={creating || (step === 2 && !name.trim())}
               onPress={step === 4 ? create : next}>

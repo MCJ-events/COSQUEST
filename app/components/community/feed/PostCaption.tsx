@@ -65,7 +65,7 @@ export function PostCaption({
       ) : null}
 
       {isLong ? (
-        <Pressable onPress={() => setExpanded((value) => !value)} hitSlop={6}>
+        <Pressable accessibilityRole="button" accessibilityLabel={expanded ? "See less" : "See more"} onPress={() => setExpanded((value) => !value)} hitSlop={6}>
           <Text style={styles.more}>{expanded ? "See less" : "See more"}</Text>
         </Pressable>
       ) : null}

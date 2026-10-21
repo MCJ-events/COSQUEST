@@ -1286,7 +1286,7 @@ export function CommentsModal({
               </Text>
             </View>
 
-            <Pressable style={styles.close} onPress={onClose}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Close" style={styles.close} onPress={onClose}>
               <Ionicons name="close" size={23} color={C.ink} />
             </Pressable>
           </View>
@@ -1384,7 +1384,7 @@ export function CommentsModal({
                   Replying to @{replyingTo?.author?.username || "user"}
                 </Text>
 
-                <Pressable onPress={() => setReplyingTo(null)}>
+                <Pressable accessibilityRole="button" accessibilityLabel="Clear" onPress={() => setReplyingTo(null)}>
                   <Ionicons name="close-circle" size={21} color={C.muted} />
                 </Pressable>
               </View>
@@ -1401,7 +1401,7 @@ export function CommentsModal({
             {!isRecording ? (
               <View style={styles.reactions}>
                 {QUICK_EMOJIS.map((emoji) => (
-                  <Pressable
+                  <Pressable accessibilityRole="button" accessibilityLabel={`Add ${emoji}`}
                     key={emoji}
                     style={styles.reaction}
                     hitSlop={6}
@@ -1463,7 +1463,7 @@ export function CommentsModal({
                   )}
                 </View>
               ) : (
-                <Pressable
+                <Pressable accessibilityRole="button" accessibilityLabel="Send"
                   style={[
                     styles.send,
                     !commentText.trim() && styles.sendDisabled,

@@ -682,7 +682,7 @@ export const PostCard = memo(function PostCard({ post, token }: { post: any; tok
             <View style={styles.editHeader}>
               <Text style={styles.editTitle}>Edit post</Text>
 
-              <Pressable
+              <Pressable accessibilityRole="button" accessibilityLabel="Close"
                 onPress={() => {
                   if (!savingEdit) {
                     setEditing(false);
@@ -704,7 +704,7 @@ export const PostCard = memo(function PostCard({ post, token }: { post: any; tok
               placeholderTextColor={C.muted}
             />
 
-            <Pressable
+            <Pressable accessibilityRole="button" accessibilityLabel="Save changes"
               style={[
                 styles.saveButton,
                 savingEdit && styles.saveButtonDisabled,

@@ -189,7 +189,7 @@ export default function StartSparkSheet({
                 Sparks bot checks active and quiet topics first. You choose where your message belongs.
               </Text>
 
-              <Pressable
+              <Pressable accessibilityRole="button" accessibilityLabel="Check for matching Sparks"
                 style={[styles.primary, (subject.trim().length < 2 || !!busy) && styles.off]}
                 disabled={subject.trim().length < 2 || !!busy}
                 onPress={() => check(false)}>
@@ -199,7 +199,7 @@ export default function StartSparkSheet({
                   <Text style={styles.primaryText}>Check for matching Sparks</Text>
                 )}
               </Pressable>
-              <Pressable style={styles.secondary} onPress={onClose}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Cancel" style={styles.secondary} onPress={onClose}>
                 <Text style={styles.secondaryText}>Cancel</Text>
               </Pressable>
             </>
@@ -245,7 +245,7 @@ export default function StartSparkSheet({
                       {spark.summary}
                     </Text>
                   ) : null}
-                  <Pressable
+                  <Pressable accessibilityRole="button" accessibilityLabel={`Add to ${spark.subject}`}
                     style={[spark.active ? styles.primary : styles.secondary, styles.matchButton, !!busy && styles.off]}
                     disabled={!!busy}
                     onPress={() => addTo(spark)}>
@@ -260,11 +260,11 @@ export default function StartSparkSheet({
                 </View>
               ))}
 
-              <Pressable style={[styles.secondary, !!busy && styles.off]} disabled={!!busy} onPress={() => check(true)}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Start a separate new Spark" style={[styles.secondary, !!busy && styles.off]} disabled={!!busy} onPress={() => check(true)}>
                 {busy === "new" ? <ActivityIndicator color={PINK} /> : <Text style={styles.secondaryText}>Start a separate new Spark</Text>}
               </Pressable>
               <Text style={styles.note}>Nothing is merged without your choice.</Text>
-              <Pressable style={styles.secondary} onPress={onClose}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Cancel" style={styles.secondary} onPress={onClose}>
                 <Text style={styles.secondaryText}>Cancel</Text>
               </Pressable>
             </ScrollView>
