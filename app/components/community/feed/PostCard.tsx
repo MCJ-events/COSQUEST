@@ -12,7 +12,7 @@ import {
 } from "@/store/thunks/postThunks";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
-import { useState } from "react";
+import { memo, useState } from "react";
 import {
   Alert,
   Modal,
@@ -180,7 +180,9 @@ function factionColor(faction: string) {
   return RING_PALETTE[hash % RING_PALETTE.length];
 }
 
-export function PostCard({ post, token }: { post: any; token: string }) {
+// Memoised (audit B2): the feed list re-renders its mounted rows as its
+// window moves; a card whose post hasn't changed skips that.
+export const PostCard = memo(function PostCard({ post, token }: { post: any; token: string }) {
   useRenderCount("PostCard");
   const dispatch = useAppDispatch();
 
@@ -725,7 +727,7 @@ export function PostCard({ post, token }: { post: any; token: string }) {
       />
     </View>
   );
-}
+});
 
 /* =========================================================
    STYLES
