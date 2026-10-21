@@ -161,7 +161,7 @@ export default function PeoplePicker({
           const full = !checked && max !== undefined && count >= max;
 
           return (
-            <Pressable accessibilityLabel={person.name || person.username}
+            <Pressable accessibilityLabel={`${person.name || person.username}, @${person.username}`}
               key={keyOf(person)}
               style={[styles.row, full && styles.rowOff]}
               disabled={full}

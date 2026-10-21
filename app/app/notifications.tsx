@@ -135,7 +135,7 @@ function NotificationRow({
           disabled={followBusy}
           onPress={onToggleFollow}
           accessibilityRole="button"
-          accessibilityLabel={following ? `Unfollow @${item.actor?.username}` : `Follow @${item.actor?.username}`}>
+          accessibilityLabel={following ? "Following" : "Follow"}>
           {followBusy ? (
             <ActivityIndicator size="small" color="#FFFFFF" />
           ) : (

@@ -1401,7 +1401,7 @@ export function CommentsModal({
             {!isRecording ? (
               <View style={styles.reactions}>
                 {QUICK_EMOJIS.map((emoji) => (
-                  <Pressable accessibilityRole="button" accessibilityLabel={`Add ${emoji}`}
+                  <Pressable accessibilityRole="button" accessibilityLabel={emoji}
                     key={emoji}
                     style={styles.reaction}
                     hitSlop={6}

@@ -179,7 +179,7 @@ export default function DiscoverGroups() {
 
         <View style={styles.list}>
           {groups.map((group) => (
-            <Pressable accessibilityRole="button" accessibilityLabel={`Open ${group.name}`}
+            <Pressable accessibilityRole="button" accessibilityLabel={group.name}
               key={group.id}
               style={styles.card}
               onPress={() =>
@@ -209,7 +209,7 @@ export default function DiscoverGroups() {
                 ) : null}
               </View>
 
-              <Pressable accessibilityRole="button" accessibilityLabel={`Join ${group.name}`}
+              <Pressable accessibilityRole="button" accessibilityLabel="Join"
                 style={[
                   styles.joinButton,
                   (group.requestPending || joiningId === group.id) &&

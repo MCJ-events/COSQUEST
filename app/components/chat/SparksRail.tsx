@@ -201,7 +201,7 @@ export function SparksListSheet({
         <ScrollView style={styles.list}>
           {sparks.length === 0 ? <Text style={styles.empty}>No Sparks yet.</Text> : null}
           {sparks.map((spark) => (
-            <Pressable accessibilityRole="button" accessibilityLabel={`Open Spark: ${spark.subject}`} key={spark.id} style={styles.card} onPress={() => onOpen(spark)}>
+            <Pressable accessibilityRole="button" accessibilityLabel={spark.subject} key={spark.id} style={styles.card} onPress={() => onOpen(spark)}>
               <View style={[styles.cardIcon, spark.revived && styles.circleRevived]}>
                 <Ionicons
                   name={spark.active ? "sparkles-outline" : "time-outline"}

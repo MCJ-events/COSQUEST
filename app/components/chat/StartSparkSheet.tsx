@@ -245,7 +245,7 @@ export default function StartSparkSheet({
                       {spark.summary}
                     </Text>
                   ) : null}
-                  <Pressable accessibilityRole="button" accessibilityLabel={`Add to ${spark.subject}`}
+                  <Pressable accessibilityRole="button" accessibilityLabel={spark.subject}
                     style={[spark.active ? styles.primary : styles.secondary, styles.matchButton, !!busy && styles.off]}
                     disabled={!!busy}
                     onPress={() => addTo(spark)}>

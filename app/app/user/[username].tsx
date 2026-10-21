@@ -460,7 +460,7 @@ export default function UserProfileScreen() {
         {/* ACTIONS */}
         {!isMe ? (
           <View style={styles.actions}>
-            <Pressable accessibilityRole="button" accessibilityLabel={iFollow ? `Unfollow @${username}` : `Follow @${username}`}
+            <Pressable accessibilityRole="button" accessibilityLabel={iFollow ? "Following" : "Follow"}
               style={[
                 styles.actionButton,
                 iFollow ? styles.actionGhost : styles.actionPrimary,

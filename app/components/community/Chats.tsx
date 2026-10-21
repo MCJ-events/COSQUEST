@@ -516,7 +516,7 @@ export function Chats({
       const unread = chat.unreadCount || 0;
 
       return (
-        <Pressable accessibilityRole="button" accessibilityLabel={`Chat with ${name}`} key={chat.id} style={styles.dmItem} onPress={() => openChat(chat.id)}>
+        <Pressable accessibilityRole="button" accessibilityLabel={name} key={chat.id} style={styles.dmItem} onPress={() => openChat(chat.id)}>
           <View style={[styles.dmCircle, { backgroundColor: avatarTint(name) }]}>
             {photo ? (
               <Image source={{ uri: photo }} style={styles.dmPhoto} contentFit="cover" />
@@ -542,7 +542,7 @@ export function Chats({
       const name = person.name || person.username;
 
       return (
-        <Pressable accessibilityRole="button" accessibilityLabel={`Message ${name}`} key={person.id || person.username} style={styles.dmItem} disabled={busy} onPress={() => openOrCreateChat(person)}>
+        <Pressable accessibilityRole="button" accessibilityLabel={`${name}, start a chat`} key={person.id || person.username} style={styles.dmItem} disabled={busy} onPress={() => openOrCreateChat(person)}>
           <View style={[styles.dmCircle, { backgroundColor: avatarTint(name) }]}>
             {person.avatarPhotoUrl ? (
               <Image source={getAvatarSource(person)} style={styles.dmPhoto} contentFit="cover" />
@@ -765,7 +765,7 @@ export function Chats({
                             style={[styles.followButton, isFollowing ? styles.followingButton : styles.followButtonOn, busy && styles.off]}
                             onPress={() => handleFollow(person)}
                             accessibilityRole="button"
-                            accessibilityLabel={isFollowing ? `Unfollow @${person.username}` : `Follow @${person.username}`}>
+                            accessibilityLabel={isFollowing ? "Following" : "Follow"}>
                             {processingUsername === person.username ? (
                               <ActivityIndicator size="small" color={isFollowing ? COLORS.ink : "#FFFFFF"} />
                             ) : (

@@ -706,7 +706,7 @@ export const PostCard = memo(function PostCard({ post, token }: { post: any; tok
               placeholderTextColor={C.muted}
             />
 
-            <Pressable accessibilityRole="button" accessibilityLabel="Save changes"
+            <Pressable accessibilityRole="button" accessibilityLabel={savingEdit ? "Saving..." : "Save Changes"}
               style={[
                 styles.saveButton,
                 savingEdit && styles.saveButtonDisabled,

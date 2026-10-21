@@ -1461,7 +1461,7 @@ const Bubble = memo(function Bubble({
               mine ? styles.reactionsMine : styles.reactionsTheirs,
             ]}>
             {getReactionCounts(msg.reactions!).map((reaction) => (
-              <Pressable accessibilityRole="button" accessibilityLabel={`Reaction ${reaction.emoji}`}
+              <Pressable accessibilityRole="button" accessibilityLabel={reaction.emoji}
                 key={reaction.emoji}
                 onPress={() => onReaction(msg, reaction.emoji)}
                 style={[
@@ -6288,7 +6288,7 @@ export default function ChatScreen() {
                     <Text style={styles.noUsersText}>No people found.</Text>
                   ) : (
                     searchedUsers.map((person) => (
-                      <Pressable accessibilityRole="button" accessibilityLabel={`Forward to ${person.name || person.username || "User"}`}
+                      <Pressable accessibilityRole="button" accessibilityLabel={`${person.name || person.username || "User"}, forward`}
                         key={person.id}
                         style={styles.actionButton}
                         onPress={() => forwardToUser(person.username || "")}>
@@ -8200,7 +8200,7 @@ function ForwardChatList({
                         (chat.type === "faction" ? "Faction" : "Community");
 
                   return (
-                    <Pressable accessibilityRole="button" accessibilityLabel={`Forward to ${name}`}
+                    <Pressable accessibilityRole="button" accessibilityLabel={`${name}, forward`}
                       key={chat.id}
                       style={styles.actionButton}
                       onPress={() => forwardToConversation(chat.id)}>

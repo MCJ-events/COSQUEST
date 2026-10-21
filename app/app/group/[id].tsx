@@ -835,7 +835,7 @@ export default function GroupInfo() {
             ))}
 
             {membersHasMore ? (
-              <Pressable accessibilityRole="button" accessibilityLabel="Show more members"
+              <Pressable accessibilityRole="button" accessibilityLabel="Show more"
                 style={styles.moreButton}
                 onPress={() => loadMembers(memberPage + 1)}>
                 <Text style={styles.moreText}>

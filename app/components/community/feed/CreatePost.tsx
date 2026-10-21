@@ -417,7 +417,7 @@ export function CreatePost() {
               style={styles.hashtagScroll}
               contentContainerStyle={styles.hashtagContent}>
               {HASHTAGS.map((tag) => (
-                <Pressable accessibilityRole="button" accessibilityLabel={`Add ${tag}`}
+                <Pressable accessibilityRole="button" accessibilityLabel={tag}
                   key={tag}
                   style={styles.hashtagChip}
                   onPress={() => addHashtag(tag)}>
