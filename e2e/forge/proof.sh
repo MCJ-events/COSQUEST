@@ -15,6 +15,9 @@
 #    f03 a duel with the equipped weapon, f04 a point dressed with a Forge
 #    station and environment
 # Videos (silent audio track) in $VIDEOS, screenshots in $OUT/<label>/.
+# Steps 3+ are adb drivers (e2e/forge/drive/*.sh), not Maestro flows: over a
+# live 3D view Maestro's hierarchy dumps never settle on the software GPU.
+# The Maestro versions (flows/0[1-4]-*.yaml) are kept for a phone or a GPU emulator.
 set -uo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 e2e="$here/.."
@@ -39,7 +42,7 @@ journey 00-smoke.yaml f00-before
 "$here/stack.sh" publish > "$OUT/$run-published.txt"
 echo "published $(grep -c ' published$' "$OUT/$run-published.txt") elements" | tee -a "$results"
 
-journey 01-avatar.yaml f01-avatar
+journey ../drive/f01-avatar.sh f01-avatar
 
 # Walk the phone to the nearest live find (the spawn rules decide where).
 drop=$(python3 "$here/nearest_drop.py")
@@ -49,15 +52,13 @@ if [ -n "$drop" ]; then
   name="${rest%%|*}"
   echo "find: $name, ${rest#*|} (metres from Trafalgar Square | expires)" | tee -a "$results"
   sleep 6
-  journey 02-item.yaml f02-item -e "DROP_NAME=${name// /.}"
+  journey ../drive/f02-item.sh f02-item
 else
   echo "f02-item SKIPPED: no live find within 1 km" | tee -a "$results"
 fi
 
 echo "-0.1278 51.5074" > "$GEO_FILE"
 sleep 6
-journey 03-duel.yaml f03-duel
-if [ -f "$here/flows/04-station.yaml" ]; then
-  journey 04-station.yaml f04-station ${STATION_ARGS:-}
-fi
+journey ../drive/f03-duel.sh f03-duel
+journey ../drive/f04-station.sh f04-station
 cat "$results"

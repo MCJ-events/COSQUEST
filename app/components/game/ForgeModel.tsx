@@ -15,8 +15,10 @@
 //   with the contract's fallbacks, and turns slowly when asked to.
 // EXPO_PUBLIC_GAME_2D=forgeModel (or all) turns the 3D off: thumbnails only.
 //
-// <ForgeStage> puts several entries in one scene (one engine): a point's
-// environment, its station and a character, laid out in metres.
+// <ForgeStage> puts several entries in one scene (one engine), laid out in
+// metres. Not used by the screens yet: on the emulator a three-model stage
+// ran away with memory (cq 056, cause not found), so a point's scene is
+// layered single-model views instead (ForgeWorld.ForgePointScene).
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { Component, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
@@ -255,14 +257,20 @@ function Rigged({
     return () => clearTimeout(t);
   }, [playing, clip]);
   const index = clipIndex(clips, playing);
+  // Stable arrays for the transforms (Filament compares them by value, but
+  // there is no reason to hand it new ones on every render).
+  const tx = translate?.join(",") ?? "";
+  const translateArr = useMemo<Float3 | undefined>(() => (translate ? [translate[0], translate[1], translate[2]] : undefined), [tx]); // eslint-disable-line react-hooks/exhaustive-deps
+  const scaleArr = useMemo<Float3 | undefined>(() => (scale ? [scale, scale, scale] : undefined), [scale]);
+  const rotateArr = useMemo<Float3 | undefined>(() => (rotateY ? [0, rotateY, 0] : undefined), [rotateY]);
   const rotate = (ENGINE as { W: Worklets }).W.useSharedValue<Float3>([0, rotateY ?? 0, 0]);
   return (
     <F.Model
       source={{ uri }}
       transformToUnitCube={unitCube}
-      translate={translate}
-      scale={scale ? [scale, scale, scale] : undefined}
-      rotate={spin ? rotate : rotateY ? [0, rotateY, 0] : undefined}
+      translate={translateArr}
+      scale={scaleArr}
+      rotate={spin ? rotate : rotateArr}
       castShadow
       receiveShadow>
       {entry.rigged ? <F.Animator animationIndex={Math.max(0, index)} transitionDuration={0.25} onAnimationsLoaded={(a) => setClips(a.map((x) => x.name))} /> : null}

@@ -8,6 +8,7 @@
 // fetched, cached and shown by type and role, which is what lets a new Forge
 // asset appear with no app release.
 import * as Crypto from "expo-crypto";
+import { Image } from "expo-image";
 import { Directory, File, Paths } from "expo-file-system";
 import { useSyncExternalStore } from "react";
 import { Dimensions, PixelRatio } from "react-native";
@@ -112,10 +113,26 @@ export async function refreshCatalogue(force = false): Promise<void> {
     const entries = mergeCatalogue(state.entries, update, since === null);
     set({ entries, cursor: update.cursor ?? state.cursor });
     void setPref(CATALOGUE_KEY, JSON.stringify({ entries, cursor: update.cursor ?? state.cursor }));
+    void prefetchOpponents(entries);
   } catch {
     // Offline, or a server from before contract 2: keep what we have.
   } finally {
     catalogueBusy = false;
+  }
+}
+
+/**
+ * Guardians and bosses show on the versus card, which is up for under two
+ * seconds: their light LOD and thumbnail are fetched as soon as the
+ * catalogue names them, one at a time, so the card has them at once.
+ */
+async function prefetchOpponents(entries: ForgeEntry[]) {
+  for (const e of entries) {
+    if (e.type !== "character" || (e.gameplay.role !== "guardian" && e.gameplay.role !== "boss")) continue;
+    const f = glbFor(e, "thumb");
+    if (f) await ensureFile(e, f);
+    const t = thumbUrl(e, 256);
+    if (t) await Image.prefetch(t).catch(() => false);
   }
 }
 

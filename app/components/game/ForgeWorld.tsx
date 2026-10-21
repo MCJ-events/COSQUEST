@@ -38,7 +38,7 @@ import {
 import { claim, equip, refreshInventory, startForgeWorld, thumbUrl, absUrl, useEquipped, useForgeWorld } from "@/features/game/forgeWorldDevice";
 import { gameStore, useGame } from "@/features/game/runtime";
 
-import ForgeModel, { ForgeStage, type StageItem, useForgeEntry } from "./ForgeModel";
+import ForgeModel, { useForgeEntry } from "./ForgeModel";
 import { GameButton, MAX_FONT_SCALE } from "./kit";
 import { SheetHost } from "./Sheet";
 import { SheetFrame } from "./SheetFrame";
@@ -428,18 +428,38 @@ export function ForgePointScene({ point, style, celebrate }: { point: unknown; s
   const { station, environment } = usePointForge(point);
   const { avatar } = useEquipped();
   const me = useForgeEntry(avatar);
-  const items = useMemo(() => {
-    const out: StageItem[] = [];
-    if (environment) {
-      const backdrop = environment.gameplay.placement === "backdrop";
-      out.push({ entry: environment, at: backdrop ? [0, 0, -3.2] : [2.2, 0, -1.2], height: backdrop ? 3.2 : 1.6, rotateY: backdrop ? 0 : -0.5 });
-    }
-    if (station) out.push({ entry: station, at: [0, 0, 0], height: 3.5 });
-    if (me && (station || environment)) out.push({ entry: me, at: [-1.6, 0, 1], height: 1.7, rotateY: 0.5, animation: celebrate ? "celebrate" : "idle" });
-    return out;
-  }, [station, environment, me, celebrate]);
-  if (!items.length) return null;
-  return <ForgeStage items={items} eye={[0, 2.0, 7.5]} target={[0, 1.5, 0]} style={style} />;
+  if (!station && !environment) return null;
+  const backdrop = environment?.gameplay.placement === "backdrop";
+  // Layers, each its own small 3D view with a transparent background: the
+  // environment behind (or beside, as a prop), the station in the middle,
+  // your avatar at its foot. One model per view is the pattern measured to
+  // hold up on the emulator (see ForgeStage).
+  return (
+    <View style={[{ width: "100%", height: 300 }, style]} pointerEvents="none">
+      {environment ? (
+        <ForgeModel
+          entry={environment}
+          purpose="scene"
+          style={backdrop ? StyleSheet.absoluteFill : { position: "absolute", right: 0, bottom: 0, width: "45%", height: "55%" }}
+          size={300}
+          distance={backdrop ? 1.9 : 2.2}
+        />
+      ) : null}
+      {station ? (
+        <ForgeModel entry={station} purpose="scene" style={{ position: "absolute", left: "20%", right: "20%", top: 0, bottom: 0 }} size={300} distance={1.9} />
+      ) : null}
+      {me ? (
+        <ForgeModel
+          entry={me}
+          purpose="scene"
+          animation={celebrate ? "celebrate" : "idle"}
+          style={{ position: "absolute", left: 0, bottom: 0, width: "34%", height: "62%" }}
+          size={150}
+          distance={2.4}
+        />
+      ) : null}
+    </View>
+  );
 }
 
 // ---------- duels ----------

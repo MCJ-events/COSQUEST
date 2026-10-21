@@ -44,8 +44,15 @@ rec=$!
 sleep 1
 
 start=$(date +%s)
-"$MAESTRO" test --format junit --output "$OUT/$label/report.xml" \
-  --debug-output "$OUT/$label" --flatten-debug-output --test-output-dir "$OUT/$label" ${ANDROID_SERIAL:+--device "$ANDROID_SERIAL"} ${MAESTRO_ARGS:-} "$here/$flow" > "$OUT/$label.maestro.log" 2>&1
+case "$flow" in
+  # A driver script instead of a Maestro flow (cq 056): adb taps and
+  # screenshots, for screens with a live 3D view, where Maestro's view
+  # hierarchy dumps never settle on the software-rendered emulator. It gets
+  # SHOTS (its screenshot folder) and MAESTRO (for any plain-UI part).
+  *.sh) SHOTS="$OUT/$label" MAESTRO="$MAESTRO" bash "$here/$flow" > "$OUT/$label.maestro.log" 2>&1 ;;
+  *) "$MAESTRO" test --format junit --output "$OUT/$label/report.xml" \
+       --debug-output "$OUT/$label" --flatten-debug-output --test-output-dir "$OUT/$label" ${ANDROID_SERIAL:+--device "$ANDROID_SERIAL"} ${MAESTRO_ARGS:-} "$here/$flow" > "$OUT/$label.maestro.log" 2>&1 ;;
+esac
 status=$?
 secs=$(( $(date +%s) - start ))
 
