@@ -22,6 +22,10 @@ import {
 } from "@/features/game/guide";
 import type { Profile, QuestPoint, RoamMe } from "@/features/game/wire";
 
+import { Image } from "expo-image";
+
+import { useMyPicture } from "@/components/world/useMyPicture";
+
 import AvatarView from "./AvatarView";
 import { CoachAnchor } from "./Coach";
 import { announce, GameCoin, GameIconButton, HUD_FONT_SCALE, pressFeedback, withAlpha } from "./kit";
@@ -61,6 +65,7 @@ export function PlayerChip({
   const rank = s?.rank ?? "Rookie";
   const level = s?.level ?? 1;
   const loading = !me && !profile;
+  const picture = useMyPicture();
   const R = 24.5;
   const C = 2 * Math.PI * R;
   const face = color;
@@ -86,7 +91,12 @@ export function PlayerChip({
             transform="rotate(-90 27 27)"
           />
         </Svg>
-        <AvatarView avatar={profile?.avatar ?? { face: 1, mark: 1, tint: face }} size={40} />
+        {/* Task 059: the person's own photo / chat avatar, the same face as in the chat. */}
+        {picture ? (
+          <Image source={picture} style={styles.photo} contentFit="cover" accessibilityIgnoresInvertColors />
+        ) : (
+          <AvatarView avatar={profile?.avatar ?? { face: 1, mark: 1, tint: face }} size={40} />
+        )}
         <View style={styles.level}>
           <Text style={styles.levelText} maxFontSizeMultiplier={1.2}>
             {level}
@@ -531,6 +541,7 @@ export function StagingBadge({ label }: { label: string }) {
 }
 
 const styles = StyleSheet.create({
+  photo: { width: 40, height: 40, borderRadius: 20, borderWidth: 2, borderColor: "rgba(255,255,255,0.85)" },
   top: {
     position: "absolute",
     left: 12,

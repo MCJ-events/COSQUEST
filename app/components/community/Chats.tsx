@@ -16,6 +16,7 @@ import {
   Modal,
   Platform,
   Pressable,
+  RefreshControl,
   type StyleProp,
   StyleSheet,
   Text,
@@ -38,6 +39,7 @@ import { createChat, fetchChats } from "@/store/thunks/chatThunks";
 import { fetchFollowing, followUserThunk } from "@/store/thunks/followThunks";
 import { perfStart } from "@/utils/perfMarks";
 import { C } from "@/theme/tokens";
+import { EmptyState, ErrorState, SkeletonRows } from "@/components/kit";
 
 // ==========================================
 // DESIGN TOKENS (from M01)
@@ -267,6 +269,16 @@ export function Chats({
   useSparksBoot();
 
   const token = useAppSelector((state) => state.auth.token);
+  const [pulling, setPulling] = useState(false);
+  const pull = async () => {
+    if (!token) return;
+    setPulling(true);
+    try {
+      await dispatch(fetchChats(token));
+    } finally {
+      setPulling(false);
+    }
+  };
   const authUser = useAppSelector((state) => state.auth.user);
   const user = useAppSelector((state) => state.user.user);
   const conversations = useAppSelector((state) => state.chat.conversations) as ChatItem[];
@@ -568,6 +580,8 @@ export function Chats({
       contentContainerStyle={contentContainerStyle}
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
+      // Task 059: pull down to refresh the chats.
+      refreshControl={token ? <RefreshControl refreshing={pulling} onRefresh={pull} tintColor={C.brand} colors={[C.brand]} /> : undefined}
       ItemSeparatorComponent={GroupGap}
       renderItem={({ item: chat, index }) => (
         <View style={PAD}>
@@ -591,7 +605,7 @@ export function Chats({
                 autoCorrect={false}
               />
               {query ? (
-                <Pressable onPress={() => setQuery("")} hitSlop={8}>
+                <Pressable onPress={() => setQuery("")} hitSlop={8} accessibilityRole="button" accessibilityLabel="Clear search">
                   <Ionicons name="close-circle" size={17} color={COLORS.soft} />
                 </Pressable>
               ) : null}
@@ -622,25 +636,29 @@ export function Chats({
               <>
                 <View style={styles.sectionRow}>
                   <Text style={styles.section}>YOUR GROUPS</Text>
-                  <Pressable onPress={() => router.push("/group/discover")} hitSlop={8}>
+                  <Pressable onPress={() => router.push("/group/discover")} hitSlop={8} accessibilityRole="button" accessibilityLabel="Discover groups">
                     <Text style={styles.sectionLink}>Discover</Text>
                   </Pressable>
                 </View>
 
                 {loading && !conversations.length ? (
-                  <View style={styles.center}>
-                    <ActivityIndicator size="small" color={COLORS.pink} />
-                    <Text style={styles.centerText}>Loading chats...</Text>
-                  </View>
+                  // Task 059: the shape of the list while it loads.
+                  <SkeletonRows count={4} label="Loading chats" style={{ marginHorizontal: -16 }} />
                 ) : error && !conversations.length ? (
-                  <View style={styles.errorBox}>
-                    <Text style={styles.errorText}>{error}</Text>
-                    <Pressable style={styles.retry} onPress={() => dispatch(fetchChats(token))}>
-                      <Text style={styles.retryText}>Retry</Text>
-                    </Pressable>
-                  </View>
+                  <ErrorState compact title="Couldn't load your chats" message={error} onRetry={() => dispatch(fetchChats(token))} />
                 ) : visibleGroups.length === 0 ? (
-                  <Text style={styles.empty}>{q ? "No groups match your search." : "No groups yet."}</Text>
+                  q ? (
+                    <Text style={styles.empty}>No groups match your search.</Text>
+                  ) : (
+                    <EmptyState
+                      compact
+                      icon="people-outline"
+                      title="No groups yet"
+                      message="Find a group for your fandom, or start one."
+                      actionLabel="Discover groups"
+                      onAction={() => router.push("/group/discover")}
+                    />
+                  )
                 ) : null}
               </>
             ) : null}
@@ -669,7 +687,8 @@ export function Chats({
           <Pressable
             style={({ pressed }) => [styles.createButton, pressed && styles.pressed]}
             onPress={() => router.push("/group/new")}
-            accessibilityRole="button">
+            accessibilityRole="button"
+            accessibilityLabel="Create a group">
             <Ionicons name="add" size={20} color="#FFFFFF" />
             <Text style={styles.createText}>Create a group</Text>
           </Pressable>
@@ -683,7 +702,7 @@ export function Chats({
                     <Text style={styles.modalTitle}>Find People</Text>
                     <Text style={styles.modalSubtitle}>Follow people and start connecting</Text>
                   </View>
-                  <Pressable onPress={closePeople} hitSlop={10} style={styles.closeButton}>
+                  <Pressable onPress={closePeople} hitSlop={10} style={styles.closeButton} accessibilityRole="button" accessibilityLabel="Close">
                     <Ionicons name="close" size={21} color={COLORS.ink} />
                   </Pressable>
                 </View>
@@ -700,7 +719,7 @@ export function Chats({
                     autoCorrect={false}
                   />
                   {search.length > 0 ? (
-                    <Pressable onPress={() => setSearch("")}>
+                    <Pressable onPress={() => setSearch("")} accessibilityRole="button" accessibilityLabel="Clear search">
                       <Ionicons name="close-circle" size={17} color={COLORS.soft} />
                     </Pressable>
                   ) : null}
@@ -708,20 +727,10 @@ export function Chats({
 
                 <Text style={styles.peopleTitle}>{search.trim() ? "Search Results" : "People on CosQuest"}</Text>
 
-                {peopleLoading ? (
-                  <View style={styles.center}>
-                    <ActivityIndicator size="small" color={COLORS.pink} />
-                    <Text style={styles.centerText}>Finding people...</Text>
-                  </View>
-                ) : null}
+                {peopleLoading ? <SkeletonRows count={5} avatar={44} label="Finding people" /> : null}
 
                 {!peopleLoading && peopleError ? (
-                  <View style={styles.center}>
-                    <Text style={styles.errorText}>{peopleError}</Text>
-                    <Pressable style={styles.retry} onPress={() => setSearch((value) => value.trim())}>
-                      <Text style={styles.retryText}>Try Again</Text>
-                    </Pressable>
-                  </View>
+                  <ErrorState compact title="Couldn't load people" message={peopleError} onRetry={() => setSearch((value) => value.trim())} />
                 ) : null}
 
                 {!peopleLoading && !peopleError ? (
@@ -731,7 +740,7 @@ export function Chats({
                     data={people}
                     keyExtractor={(person) => String(person.id || person.username)}
                     ListEmptyComponent={
-                      <Text style={styles.empty}>{search.trim() ? "No users found." : "No people to show."}</Text>
+                      <EmptyState compact icon="search-outline" title={search.trim() ? "No one by that name" : "No people to show yet"} message={search.trim() ? "Check the spelling, or try part of their username." : undefined} />
                     }
                     renderItem={({ item: person }) => {
                       const isFollowing = followingUsernames.has(person.username.toLowerCase());
@@ -752,7 +761,9 @@ export function Chats({
                           <Pressable
                             disabled={busy}
                             style={[styles.followButton, isFollowing ? styles.followingButton : styles.followButtonOn, busy && styles.off]}
-                            onPress={() => handleFollow(person)}>
+                            onPress={() => handleFollow(person)}
+                            accessibilityRole="button"
+                            accessibilityLabel={isFollowing ? `Unfollow @${person.username}` : `Follow @${person.username}`}>
                             {processingUsername === person.username ? (
                               <ActivityIndicator size="small" color={isFollowing ? COLORS.ink : "#FFFFFF"} />
                             ) : (
@@ -763,7 +774,7 @@ export function Chats({
                           </Pressable>
 
                           {isFollowing ? (
-                            <Pressable disabled={busy} style={[styles.messageButton, busy && styles.off]} onPress={() => handleMessage(person)}>
+                            <Pressable disabled={busy} style={[styles.messageButton, busy && styles.off]} onPress={() => handleMessage(person)} accessibilityRole="button" accessibilityLabel={`Message @${person.username}`}>
                               {startingChatWith === person.username ? (
                                 <ActivityIndicator size="small" color={COLORS.ink} />
                               ) : (

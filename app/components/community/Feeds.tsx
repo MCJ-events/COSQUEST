@@ -2,11 +2,11 @@ import { CreatePost } from "@/components/community/feed/CreatePost";
 import { FeedEmptyState } from "@/components/community/feed/FeedEmptyState";
 import { FeedRowContext, setVisiblePosts } from "@/components/community/feed/feedVisibility";
 import { PostCard } from "@/components/community/feed/PostCard";
-import { type ReactElement, useCallback, useEffect, useRef } from "react";
+import { type ReactElement, useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
-  Pressable,
+  RefreshControl,
   type StyleProp,
   StyleSheet,
   Text,
@@ -20,6 +20,7 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { fetchMorePosts, fetchPosts } from "@/store/thunks/postThunks";
 import { perfMarkOnce, useRenderCount } from "@/utils/perfMarks";
 import { C } from "@/theme/tokens";
+import { ErrorState, SkeletonPosts } from "@/components/kit";
 
 // Facebook-style feed: every post is full width. (The Community screen no
 // longer adds side padding around the feed — see app/(tabs)/community.tsx.)
@@ -69,6 +70,17 @@ export function Feeds({
     loadPosts();
   }, [loadPosts]);
 
+  const [pulling, setPulling] = useState(false);
+  const pull = useCallback(async () => {
+    if (!token) return;
+    setPulling(true);
+    try {
+      await dispatch(fetchPosts(token));
+    } finally {
+      setPulling(false);
+    }
+  }, [dispatch, token]);
+
   // FlatList calls onEndReached as soon as what it has rendered is short
   // (4 cards at first), which fetched pages 2 and 3 straight after opening.
   // The next page waits until the person has scrolled.
@@ -107,23 +119,10 @@ export function Feeds({
       </View>
     );
   } else if (loading && posts.length === 0) {
-    state = (
-      <View style={styles.centerState}>
-        <ActivityIndicator size="large" color={C.brand} />
-
-        <Text style={styles.stateText}>Loading community feed...</Text>
-      </View>
-    );
+    // Task 059: the shape of the feed while it loads, not a spinner.
+    state = <SkeletonPosts count={2} style={styles.padded} />;
   } else if (error && posts.length === 0) {
-    state = (
-      <View style={styles.centerState}>
-        <Text style={styles.stateText}>{error}</Text>
-
-        <Pressable style={styles.retryButton} onPress={loadPosts}>
-          <Text style={styles.retryText}>Try Again</Text>
-        </Pressable>
-      </View>
-    );
+    state = <ErrorState title="Couldn't load the feed" message={error} onRetry={loadPosts} />;
   }
 
   return (
@@ -134,6 +133,10 @@ export function Feeds({
       contentContainerStyle={contentContainerStyle}
       showsVerticalScrollIndicator={false}
       onEndReached={loadMore}
+      // Task 059: pull down to refresh.
+      refreshControl={
+        token ? <RefreshControl refreshing={pulling} onRefresh={pull} tintColor={C.brand} colors={[C.brand]} /> : undefined
+      }
       onEndReachedThreshold={1.5}
       onScrollBeginDrag={onScrollBeginDrag}
       viewabilityConfig={viewability}

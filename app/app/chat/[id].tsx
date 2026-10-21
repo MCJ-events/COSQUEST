@@ -3,6 +3,7 @@ import { replyQuote } from "@/services/replyQuote";
 import { setOpenChat, takeChatFocus } from "@/services/chatFocus";
 import { useCapabilities } from "@/services/capabilities";
 import { openReport } from "@/components/safety/ReportSheet";
+import { SkeletonMessages } from "@/components/kit";
 import {
   AudioModule,
   RecordingPresets,
@@ -5191,10 +5192,9 @@ export default function ChatScreen() {
       {/* ================================== */}
 
       {messagesLoading && messages.length === 0 ? (
-        <View style={styles.loading}>
-          <ActivityIndicator size="large" color={C.brand} />
-
-          <Text style={styles.loadingText}>Loading messages...</Text>
+        // Task 059: bubbles in the shape of a chat while it loads.
+        <View style={styles.messageListWrapper}>
+          <SkeletonMessages count={9} />
         </View>
       ) : (
         <View style={styles.messageListWrapper}>

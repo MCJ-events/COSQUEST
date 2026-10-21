@@ -53,7 +53,7 @@ export default function LiveStampCard({ me }: { me: RoamMe | null }) {
         <View style={styles.fail}>
           <Text style={styles.failText}>Couldn&apos;t load your stamps.</Text>
           <GameButton
-            title="Retry"
+            title="Try again"
             size="small"
             color={GP.sky}
             onPress={() => {

@@ -21,6 +21,10 @@ export type AppNotificationItem = {
   // @ mention notifications: the chat (and message) to open.
   conversationId?: string | null;
   messageId?: string | null;
+  // Task 059: game events (type "game"): the cosquest://play link and the
+  // kind (raid_started, boss_appeared, duel_challenge, ...).
+  link?: string | null;
+  gameKind?: string | null;
 };
 
 function normalizeActor(raw: any): NotificationActor | null {

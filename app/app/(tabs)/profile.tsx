@@ -21,7 +21,7 @@ import { useVideoPlayer, VideoView } from "expo-video";
 import { useEffect, useMemo, useState } from "react";
 
 import {
-  ActivityIndicator,
+  RefreshControl,
   useWindowDimensions,
   Platform,
   Pressable,
@@ -35,6 +35,11 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { tabBarSpace } from "@/constants/tabBar";
 import { C } from "@/theme/tokens";
+import { SkeletonProfile } from "@/components/kit";
+import { GameProgressRow } from "@/components/world/GameProgressRow";
+import { gameStore } from "@/features/game/runtime";
+
+const refreshGame = () => gameStore.refreshMe();
 
 type Tab = "Posts" | "Reels" | "Thoughts";
 
@@ -261,6 +266,9 @@ function FactionProfileCard({
           style={[styles.xpProgress, { width: `${progress * 100}%` }]}
         />
       </View>
+
+      {/* Task 059: the game's level and XP next to the chat's points and rank. */}
+      <GameProgressRow />
     </View>
   );
 }
@@ -358,6 +366,17 @@ export default function Profile() {
 
     dispatch(fetchPosts(token));
   }, [dispatch, token]);
+
+  // Task 059: pull down to refresh the profile, its posts and game progress.
+  const [pulling, setPulling] = useState(false);
+  const pull = async () => {
+    setPulling(true);
+    try {
+      await Promise.all([email ? dispatch(fetchCurrentUser(email)) : null, token ? dispatch(fetchPosts(token)) : null, refreshGame()]);
+    } finally {
+      setPulling(false);
+    }
+  };
 
   const firstName =
     user?.profile?.firstName ||
@@ -565,6 +584,7 @@ export default function Profile() {
   return (
     <AppBackground variant="blueGradient">
       <ScrollView
+        refreshControl={<RefreshControl refreshing={pulling} onRefresh={pull} tintColor={C.brand} colors={[C.brand]} />}
         contentContainerStyle={[
           styles.scroll,
           {
@@ -592,13 +612,7 @@ export default function Profile() {
           </Pressable>
         </View>
 
-        {profileLoading ? (
-          <View style={styles.loading}>
-            <ActivityIndicator size="small" color={PINK} />
-
-            <Text style={styles.loadingText}>Loading profile...</Text>
-          </View>
-        ) : null}
+        {profileLoading ? <SkeletonProfile /> : null}
 
         {profileError && !profileLoading ? (
           <View style={styles.errorBox}>
@@ -614,7 +628,7 @@ export default function Profile() {
                   dispatch(fetchPosts(token));
                 }
               }}>
-              <Text style={styles.retryText}>Retry</Text>
+              <Text style={styles.retryText}>Try again</Text>
             </Pressable>
           </View>
         ) : null}

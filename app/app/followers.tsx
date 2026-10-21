@@ -267,7 +267,7 @@ export default function Followers() {
                 );
               }
             }}>
-            <Text style={styles.retryText}>Retry</Text>
+            <Text style={styles.retryText}>Try again</Text>
           </Pressable>
         </View>
       ) : null}
