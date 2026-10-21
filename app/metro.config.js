@@ -13,6 +13,8 @@ const config = getDefaultConfig(__dirname);
 
 const WEB_STUBS = {
   "react-native-maps": path.resolve(__dirname, "web-stubs/react-native-maps.tsx"),
+  "react-native-filament": path.resolve(__dirname, "web-stubs/forge-3d.tsx"),
+  "react-native-worklets-core": path.resolve(__dirname, "web-stubs/forge-3d.tsx"),
 };
 
 const defaultResolveRequest = config.resolver.resolveRequest;
