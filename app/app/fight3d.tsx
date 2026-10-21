@@ -1,4 +1,4 @@
-// cosquest://fight3d?mode=full|arena|chars&cycle=N&ms=8000&autoplay=1
+// cosquest://fight3d?mode=full|arena|chars&cycle=N&ms=8000&autoplay=1&keep=0|1&tiles=<url>
 // Test builds only (EXPO_PUBLIC_GAME3D=1): opens the 3D fight (cq 061) with no
 // point, in a given mode, once or N times for the leak test. Like
 // cosquest://play, it hands the request to the game and gets out of the way;
@@ -19,6 +19,11 @@ export default function Fight3DLink() {
 
   useEffect(() => {
     if (fight3dAvailable()) {
+      // Test knobs over the build's env (measurements without a rebuild).
+      const one = (k: string) => (Array.isArray(params[k]) ? params[k][0] : params[k]) as string | undefined;
+      const flags = FIGHT3D as { keep: boolean; tilesUrl: string };
+      if (one("keep") !== undefined) flags.keep = one("keep") === "1";
+      if (one("tiles") !== undefined) flags.tilesUrl = one("tiles") ?? "";
       requestFight3D(runFromParams(params, FIGHT3D));
       world.openGame(null);
     }
