@@ -21,8 +21,10 @@ export type GameSharePayload = {
   /** "raid" | "shrine" | "duel" for an invite card; "result" for a game
    * result shared as a text message (see resultShareText). */
   type?: string;
-  /** type "result": the message to send. */
+  /** type "result": the message to send (and the card's fallback). */
   text?: string | null;
+  /** type "result": the card (kind game_result, task 059) where the server has it. */
+  result?: GameResultCard | null;
   targetId?: string;
   place?: string | null;
   lat?: number | null;
@@ -154,8 +156,39 @@ export function shareToInviteBody(
   return body;
 }
 
-/** A game result as the line sent to a chat: there is no result card in the
- * chat backend (Message.kind has game_invite only), so it goes as text. */
+/** A game result shared to a chat as a card (Message kind "game_result",
+ * task 059). Servers without it get resultShareText as a text message. */
+export type GameResultCard = {
+  headline: string;
+  pointName?: string;
+  realm?: string;
+  win?: boolean;
+  xp?: number;
+  coins?: number;
+  level?: number | null;
+  rank?: string;
+};
+
+/** A message's `gameResult`, cleaned; null when it is not a usable card. */
+export function normalizeResult(raw: unknown): GameResultCard | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  const headline = typeof r.headline === "string" ? r.headline.trim().slice(0, 80) : "";
+  if (!headline) return null;
+  const n = (v: unknown) => (typeof v === "number" && Number.isFinite(v) && v >= 0 ? Math.round(v) : 0);
+  return {
+    headline,
+    pointName: typeof r.pointName === "string" ? r.pointName.slice(0, 80) : "",
+    realm: typeof r.realm === "string" ? r.realm.slice(0, 24) : "",
+    win: r.win === true,
+    xp: n(r.xp),
+    coins: n(r.coins),
+    level: typeof r.level === "number" && Number.isFinite(r.level) ? r.level : null,
+    rank: typeof r.rank === "string" ? r.rank.slice(0, 40) : "",
+  };
+}
+
+/** A game result as one line of text (the card's fallback). */
 export function resultShareText(r: {
   headline: string;
   pointName?: string | null;

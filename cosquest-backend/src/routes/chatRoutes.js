@@ -27,7 +27,7 @@ const {
 const { listSparks, listNativeSparks, listSparkMembers, getSpark, startSpark, addToSpark, pinSpark, deleteSpark, mergeSpark } = require('../controllers/sparkController');
 const { searchMessages, messageContext, createAlbum } = require('../controllers/chatExtrasController');
 const { createPoll, votePoll, closePoll, listPollVotes } = require('../controllers/pollController');
-const { createGameInvite } = require('../controllers/gameController');
+const { createGameInvite, createGameResult } = require('../controllers/gameController');
 
 const router = express.Router();
 
@@ -74,6 +74,8 @@ router.post('/chats/:conversationId/polls', asyncHandler(createPoll));
 
 // Game invites (kind 'game_invite', the merged app): raid / shrine / duel cards.
 router.post('/chats/:conversationId/game-invites', asyncHandler(createGameInvite));
+// Polish (task 059): a game result as a card.
+router.post('/chats/:conversationId/game-results', asyncHandler(createGameResult));
 router.post('/chats/:conversationId/messages/:messageId/vote', asyncHandler(votePoll));
 router.post('/chats/:conversationId/messages/:messageId/poll/close', asyncHandler(closePoll));
 router.get('/chats/:conversationId/messages/:messageId/poll/votes', asyncHandler(listPollVotes));

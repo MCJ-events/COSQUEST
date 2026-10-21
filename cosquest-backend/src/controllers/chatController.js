@@ -382,6 +382,7 @@ function previewMessage(message, viewerId) {
   if (message.kind === 'call') return callLogPreview(message.callLog, viewerId);
   if (message.kind === 'poll') return `📊 Poll: ${message.poll?.question || message.content}`;
   if (message.kind === 'game_invite') return gameInvitePreview(message.gameInvite);
+  if (message.kind === 'game_result') return gameResultPreview(message.gameResult);
   if (message.kind === 'album') return albumPreview(message.album);
   if (message.kind === 'image') return 'Sent a photo';
   if (message.kind === 'video') return 'Sent a video';
@@ -581,6 +582,26 @@ function gameInvitePreview(invite) {
   return invite?.place ? `🎮 ${label} at ${invite.place}` : `🎮 ${label} invite`;
 }
 
+// Polish (task 059): kind 'game_result'.
+function gameResultPreview(result) {
+  if (!result) return '🎮 Game result';
+  return `${result.win ? '🏆' : '⚔️'} ${result.headline}${result.pointName ? ` at ${result.pointName}` : ''}`;
+}
+
+function serializeGameResult(result) {
+  if (!result) return null;
+  return {
+    headline: result.headline,
+    pointName: result.pointName || '',
+    realm: result.realm || '',
+    win: Boolean(result.win),
+    xp: Number(result.xp) || 0,
+    coins: Number(result.coins) || 0,
+    level: typeof result.level === 'number' ? result.level : null,
+    rank: result.rank || '',
+  };
+}
+
 function serializeGameInvite(invite) {
   if (!invite) return null;
   return {
@@ -658,6 +679,7 @@ function serializeMessage(message, { viewerId, conversationType, otherLastReadAt
     poll: message.kind === 'poll' && message.poll ? poll || buildPollSummary(message, [], null) : null,
     // kind 'game_invite': what to open in the game, where and when.
     gameInvite: message.kind === 'game_invite' ? serializeGameInvite(message.gameInvite) : null,
+    gameResult: message.kind === 'game_result' ? serializeGameResult(message.gameResult) : null,
     mentions,
     mentionsEveryone: Boolean(message.mentionsEveryone),
     forwarded: Boolean(message.forwardedFrom),

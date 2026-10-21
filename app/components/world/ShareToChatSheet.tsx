@@ -25,10 +25,12 @@ import {
   inviteWhen,
   normalizeInvite,
   shareToInviteBody,
+  normalizeResult,
 } from "@/features/world/gameInvite";
 import { chatTitle } from "@/features/world/unread";
 import { sendMessage } from "@/services/chats";
-import { sendGameInvite } from "@/services/gameInvites";
+import { sendGameInvite, sendGameResult } from "@/services/gameInvites";
+import { useCapabilities } from "@/services/capabilities";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { socketMessageReceived } from "@/store/slices/chatSlice";
 import { C } from "@/theme/tokens";
@@ -47,6 +49,7 @@ export default function ShareToChatSheet({
   const [query, setQuery] = useState("");
   const [note, setNote] = useState("");
   const [sendingTo, setSendingTo] = useState<string | null>(null);
+  const caps = useCapabilities();
 
   // A game result goes as a text message; anything else as an invite card.
   const resultText = payload?.type === "result" && payload.text ? payload.text : null;
@@ -76,8 +79,13 @@ export default function ShareToChatSheet({
     if (!resultText && !request) return;
     setSendingTo(chatId);
     try {
+      // Task 059: a result card where the server has kind game_result
+      // (services/capabilities.ts), the same line as text where it doesn't.
+      const card = resultText ? normalizeResult(payload.result) : null;
       const message = resultText
-        ? await sendMessage(chatId, { content: note.trim() ? `${resultText}\n${note.trim()}` : resultText }, token)
+        ? card && caps.gameResults
+          ? await sendGameResult(chatId, { ...card, note: note.trim() || undefined }, token)
+          : await sendMessage(chatId, { content: note.trim() ? `${resultText}\n${note.trim()}` : resultText }, token)
         : await sendGameInvite(chatId, request!, token);
       dispatch(socketMessageReceived({ conversationId: chatId, message }));
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});

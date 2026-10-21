@@ -13,6 +13,7 @@ export type Capabilities = {
   blockAnywhere: boolean;
   pushTokens: boolean;
   gameEvents: boolean;
+  gameResults: boolean;
   /** Known from the server (false: an older server, everything new hidden). */
   known: boolean;
 };
@@ -24,6 +25,7 @@ const NONE: Capabilities = {
   blockAnywhere: false,
   pushTokens: true,
   gameEvents: false,
+  gameResults: false,
   known: false,
 };
 
@@ -41,6 +43,7 @@ export function parseCapabilities(body: any): Capabilities {
     blockAnywhere: c.blockAnywhere === true,
     pushTokens: c.pushTokens !== false,
     gameEvents: c.gameEvents === true,
+    gameResults: c.gameResults === true,
     known: true,
   };
 }

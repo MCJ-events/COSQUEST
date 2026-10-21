@@ -66,7 +66,7 @@ const messageSchema = new mongoose.Schema(
   {
     conversation: { type: mongoose.Schema.Types.ObjectId, ref: 'Conversation', required: true, index: true },
     sender: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
-    kind: { type: String, enum: ['text', 'image', 'video', 'audio', 'file', 'sticker', 'call', 'album', 'poll', 'game_invite'], default: 'text' },
+    kind: { type: String, enum: ['text', 'image', 'video', 'audio', 'file', 'sticker', 'call', 'album', 'poll', 'game_invite', 'game_result'], default: 'text' },
     content: { type: String, default: '', trim: true, maxlength: 2000 },
     media: { type: messageMediaSchema, default: null },
     callLog: { type: callLogSchema, default: null },
@@ -113,6 +113,25 @@ const messageSchema = new mongoose.Schema(
           lat: { type: Number, default: null },
           lng: { type: Number, default: null },
           startsAt: { type: Date, default: null },
+        },
+        { _id: false }
+      ),
+      default: undefined,
+    },
+    // Polish (task 059): kind 'game_result', a CostQuest result shared to a
+    // chat as a card. `content` holds the same result as one line of text, so
+    // apps without the card still show something readable.
+    gameResult: {
+      type: new mongoose.Schema(
+        {
+          headline: { type: String, required: true, maxlength: 80 },
+          pointName: { type: String, default: '', maxlength: 80 },
+          realm: { type: String, default: '', maxlength: 24 },
+          win: { type: Boolean, default: false },
+          xp: { type: Number, default: 0, min: 0, max: 100000 },
+          coins: { type: Number, default: 0, min: 0, max: 100000 },
+          level: { type: Number, default: null, min: 0, max: 1000 },
+          rank: { type: String, default: '', maxlength: 40 },
         },
         { _id: false }
       ),

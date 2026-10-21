@@ -145,6 +145,23 @@ async function run(baseUrl) {
     push.setTransport(null);
   }
 
+  // Game results as a card (kind game_result), with a text line for older apps.
+  const dmAC = await request('POST', '/api/chats/dm', a.token, { username: c.username });
+  const res1 = await request('POST', `/api/chats/${dmAC.data.chat.id}/game-results`, a.token, { headline: 'Won the duel!', pointName: 'Trafalgar Square', realm: 'anime', win: true, xp: 120, coins: 15, level: 4, rank: 'Scout', note: 'beat that' });
+  check(res1.status === 201 && res1.data.message.kind === 'game_result', 'POST game-results -> a game_result message', res1);
+  const gr = res1.data.message.gameResult || {};
+  check(gr.headline === 'Won the duel!' && gr.win === true && gr.xp === 120 && gr.level === 4 && gr.pointName === 'Trafalgar Square', 'the card carries the result', gr);
+  check(/Won the duel at Trafalgar Square · \+120 XP in CosQuest\nbeat that/.test(res1.data.message.content), 'content is the same result as text (older apps)', res1.data.message.content);
+  const noHead = await request('POST', `/api/chats/${dmAC.data.chat.id}/game-results`, a.token, { xp: 5 });
+  check(noHead.status === 400, 'game result without a headline -> 400', noHead);
+  const huge = await request('POST', `/api/chats/${dmAC.data.chat.id}/game-results`, a.token, { headline: 'x', xp: -5, coins: 1e12 });
+  check(huge.status === 201 && huge.data.message.gameResult.xp === 0 && huge.data.message.gameResult.coins === 100000, 'numbers are clamped', huge.data.message.gameResult);
+  const listed2 = await request('GET', `/api/chats/${dmAC.data.chat.id}/messages`, c.token);
+  check(listed2.data.messages.some((m) => m.kind === 'game_result' && m.gameResult && m.gameResult.headline === 'Won the duel!'), 'the other person sees the card in the history', null);
+  const outsider = await request('POST', `/api/chats/${dmAC.data.chat.id}/game-results`, b.token, { headline: 'sneaky' });
+  check(outsider.status === 403 || outsider.status === 404, 'not a member -> refused', outsider.status);
+  check(caps.data.capabilities.gameResults === true, 'capabilities say game results are supported', caps.data);
+
   // Delete account.
   await Post.create({ author: b.id, content: 'my post', type: 'text' }).catch(() => null);
   const wrongPw = await request('DELETE', '/api/users/me', b.token, { password: 'not it' });

@@ -654,7 +654,23 @@ export default function GameRoot({ parked }: { parked: boolean }) {
           <Reward
             reward={screen.reward}
             onDone={home}
-            onShare={() => emitGameEvent("onShareToChat", { type: "result", text: resultShareText(screen.reward) })}
+            onShare={() =>
+              emitGameEvent("onShareToChat", {
+                type: "result",
+                text: resultShareText(screen.reward),
+                // Task 059: the card, where the chat server draws one.
+                result: {
+                  headline: screen.reward.headline,
+                  pointName: screen.reward.pointName,
+                  realm: screen.reward.realm,
+                  win: screen.reward.win,
+                  xp: screen.reward.xp,
+                  coins: screen.reward.coins,
+                  level: screen.reward.after?.level ?? null,
+                  rank: screen.reward.after?.rank ?? "",
+                },
+              })
+            }
           />
         </Animated.View>
       ) : null}

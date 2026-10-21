@@ -99,6 +99,7 @@ import MentionPicker, {
 import { MentionText } from "@/components/chat/MentionText";
 import PollBubble from "@/components/chat/PollBubble";
 import GameInviteCard from "@/components/world/GameInviteCard";
+import GameResultCard from "@/components/world/GameResultCard";
 import type { ChatMessage } from "@/services/chats";
 import PollCreator from "@/components/chat/PollCreator";
 import { RankBadge, RankLine, RoleBadge } from "@/components/chat/RankBadge";
@@ -197,6 +198,7 @@ type Message = {
 
   // kind "game_invite" (merged app): the raid / shrine / duel card.
   gameInvite?: ChatMessage["gameInvite"];
+  gameResult?: unknown;
 
   // Groups: "owner" / "admin" badge for the sender (null otherwise).
   senderGroupRole?: "owner" | "admin" | null;
@@ -1066,7 +1068,10 @@ const Bubble = memo(function Bubble({
       : "🚫 This message was deleted."
     : msg.kind === "poll"
       ? ""
-      : msg.content || "";
+      : msg.kind === "game_result" && msg.gameResult
+        ? // The first line repeats the card (for older apps); the note follows it.
+          (msg.content || "").split("\n").slice(1).join("\n")
+        : msg.content || "";
 
   const mediaUrl = getMediaUrl(msg.media);
 
@@ -1360,6 +1365,11 @@ const Bubble = memo(function Bubble({
               poll={msg.poll}
               mine={mine}
             />
+          ) : null}
+
+          {/* GAME RESULT (task 059: a shared result as a card) */}
+          {!msg.deleted && msg.kind === "game_result" ? (
+            <GameResultCard raw={msg.gameResult} mine={mine} onLongPress={() => onLongPress(msg)} />
           ) : null}
 
           {/* GAME INVITE (merged app: a raid / shrine / duel card) */}

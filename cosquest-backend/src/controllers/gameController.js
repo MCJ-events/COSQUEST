@@ -150,6 +150,59 @@ async function createGameInvite(req, res) {
   return res.status(201).json({ message: serialized });
 }
 
+// Polish (task 059): POST /api/chats/:conversationId/game-results
+// Body: { headline, pointName?, realm?, win?, xp?, coins?, level?, rank?, note? }
+// A result card ("Won the duel at Trafalgar Square, +120 XP"). The message's
+// content is the same line as text, for apps that do not draw the card.
+function parseResult(body) {
+  const str = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
+  const num = (v, max) => {
+    const n = Number(v);
+    return Number.isFinite(n) && n >= 0 ? Math.min(Math.round(n), max) : 0;
+  };
+  const headline = str(body?.headline, 80);
+  if (!headline) return { error: 'headline is required (up to 80 characters).' };
+  const result = {
+    headline,
+    pointName: str(body?.pointName, 80),
+    realm: str(body?.realm, 24),
+    win: body?.win === true,
+    xp: num(body?.xp, 100000),
+    coins: num(body?.coins, 100000),
+    level: body?.level === undefined || body?.level === null ? null : num(body.level, 1000),
+    rank: str(body?.rank, 40),
+  };
+  const note = str(body?.note, 300);
+  const line = `${result.win ? '🏆' : '⚔️'} ${headline.replace(/[!.]+$/, '')}${result.pointName ? ` at ${result.pointName}` : ''}${result.xp ? ` · +${result.xp} XP` : ''} in CosQuest`;
+  return { result, content: note ? `${line}\n${note}` : line };
+}
+
+async function createGameResult(req, res) {
+  const { conversation, error } = await loadConversationForUser(req.params.conversationId, req.user);
+  if (error) return res.status(error.status).json({ error: error.message });
+  const sendError = await canSendToConversation(conversation, req.userId);
+  if (sendError) return res.status(sendError.status).json({ error: sendError.message, ...(sendError.extra || {}) });
+  const { result, content, error: resultError } = parseResult(req.body);
+  if (resultError) return res.status(400).json({ error: resultError });
+
+  const now = new Date();
+  const message = await Message.create({ conversation: conversation._id, sender: req.userId, kind: 'game_result', content, gameResult: result });
+  await Promise.all([
+    Conversation.updateOne({ _id: conversation._id }, { $inc: { messageCount: 1 } }),
+    ConversationMember.updateOne(
+      { conversation: conversation._id, user: req.userId },
+      { $set: { lastReadAt: now, ...(conversation.type === 'group' ? { lastMessageAt: now } : {}) } },
+      { upsert: true }
+    ),
+    message.populate('sender', SENDER_FIELDS),
+  ]);
+  const serialized = serializeMessage(message, { viewerId: req.userId, conversationType: conversation.type, otherLastReadAt: null, reactions: [] });
+  emitToConversationExcept(String(conversation._id), [], 'message:new', { conversationId: String(conversation._id), message: forBroadcast(serialized) });
+  previewToMembers(conversation).catch(() => {});
+  if (sparksHost.isModule()) sparksHost.onMessage(message);
+  return res.status(201).json({ message: serialized });
+}
+
 // GET /api/game/session (requireAuth)
 async function getGameSession(req, res) {
   const user = req.user;
@@ -166,4 +219,4 @@ async function getGameSession(req, res) {
   });
 }
 
-module.exports = { createGameInvite, getGameSession, parseInvite };
+module.exports = { createGameInvite, createGameResult, getGameSession, parseInvite, parseResult };

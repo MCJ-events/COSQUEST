@@ -51,6 +51,7 @@ function capabilities(req, res) {
       pushTokens: true,
       push: push.enabled(),
       gameEvents: Boolean(process.env.GAME_EVENTS_KEY),
+      gameResults: true,
     },
   });
 }
