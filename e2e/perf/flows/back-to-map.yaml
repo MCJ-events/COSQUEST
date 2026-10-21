@@ -5,7 +5,7 @@ appId: com.dammy0227.cosquest
 # label stays in the tree under a game screen, so "map visible" is not proof
 # of being back on it.)
 - extendedWaitUntil:
-    visible: "Back to the map|Leave.*|Nice!"
+    visible: "Back to the map|Nice!"
     timeout: 60000
     optional: true
 - tapOn:
