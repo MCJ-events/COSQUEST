@@ -129,9 +129,14 @@ export function Feeds({
       onEndReachedThreshold={1.5}
       viewabilityConfig={viewability}
       onViewableItemsChanged={onViewable}
+      // First paint with 4 cards (the fast start); the rest of the page then
+      // mounts in small batches while idle, ten screens each way, so a
+      // scroll through the first pages doesn't build cards mid-fling (the
+      // measured run with a 3-screen window lost JS frames doing that).
       initialNumToRender={4}
-      maxToRenderPerBatch={4}
-      windowSize={7}
+      maxToRenderPerBatch={3}
+      updateCellsBatchingPeriod={80}
+      windowSize={21}
       ListHeaderComponent={
         <>
           {header}
