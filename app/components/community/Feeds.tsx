@@ -137,14 +137,13 @@ export function Feeds({
       onScrollBeginDrag={onScrollBeginDrag}
       viewabilityConfig={viewability}
       onViewableItemsChanged={onViewable}
-      // First paint with 4 cards (the fast start); the rest of the page then
-      // mounts in small batches while idle, ten screens each way, so a
-      // scroll through the first pages doesn't build cards mid-fling (the
-      // measured run with a 3-screen window lost JS frames doing that).
+      // A 3-screen window. (A 21-screen one, tried to keep cards from being
+      // built mid-fling, kept off-screen cards mounted; on the polish run
+      // Android then moved the keyboard's focus onto one of them and the app
+      // crashed leaving at the largest display size. Reverted.)
       initialNumToRender={4}
-      maxToRenderPerBatch={3}
-      updateCellsBatchingPeriod={80}
-      windowSize={21}
+      maxToRenderPerBatch={4}
+      windowSize={7}
       ListHeaderComponent={
         <>
           {header}

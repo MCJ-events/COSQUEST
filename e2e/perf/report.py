@@ -14,7 +14,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.environ.get("OUT", os.path.join(HERE, "..", "out"))
 PROFILES = [("small", "Small, 360x640 dp (720x1280 at 320 dpi)"),
             ("large", "Large, 411x891 dp (1440x3120 at 560 dpi), gesture nav, edge to edge"),
-            ("large-a11y", "Large + font scale 1.3 + display size largest (720 dpi)")]
+            ("large-a11y", "Large + font scale 1.3 + display size largest (720 dpi)"),
+            ("game-ref", "Game reference, 1440x3120 at 420 dpi (the before build's map fits under the bitmap limit here)")]
 
 
 def arg(name, default):
