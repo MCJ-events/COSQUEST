@@ -45,7 +45,7 @@ test("knobs: keep, autostart, cycle, lod; autostart and cycle need the flag", ()
   assert.equal(off.autostart, null);
   assert.equal(off.cycle, 0);
   const d = fight3dFlags({ EXPO_PUBLIC_GAME3D: "1", EXPO_PUBLIC_GAME3D_AUTOSTART: "bogus", EXPO_PUBLIC_GAME3D_CYCLE: "x" }, android);
-  assert.deepEqual({ keep: d.keep, autostart: d.autostart, cycle: d.cycle, cycleMs: d.cycleMs, lod: d.lod }, { keep: false, autostart: null, cycle: 0, cycleMs: 8000, lod: null });
+  assert.deepEqual({ keep: d.keep, autostart: d.autostart, cycle: d.cycle, cycleMs: d.cycleMs, lod: d.lod }, { keep: true, autostart: null, cycle: 0, cycleMs: 8000, lod: null });
   assert.equal(parseMode("chars"), "chars");
   assert.equal(parseMode("CHARS"), null);
 });

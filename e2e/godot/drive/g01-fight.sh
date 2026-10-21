@@ -15,17 +15,23 @@ shot g01-2-briefing
 tap 540 2196 "Fight (3D)"
 for i in 1 2 3 4 5 6; do sleep 1.5; shot "g01-3-open-$i"; done
 # Play: walk up to the Guardian, then strike; WHIRL whenever it is ready.
+# Stop playing the moment Godot reports the end (the reward screen comes next;
+# a stray tap there would dismiss it): the phone-side loop reads Godot's log.
+adb logcat -c
 adb shell "cd /data/local/tmp/cqlat; E=/dev/input/event2
   cat down.bin > \$E; sleep 0.1; cat up_push.bin > \$E; sleep 1.2; cat up.bin > \$E
-  i=0; while [ \$i -lt 120 ]; do
+  i=0; while [ \$i -lt 160 ]; do
+    logcat -d -s godot -t 40 | grep -q 'CQ fight_end' && break
     if [ \$((i % 24)) = 3 ]; then cat skill_down.bin > \$E; sleep 0.1; cat up.bin > \$E; fi
     cat atk_down.bin > \$E; sleep 0.08; cat atk_up.bin > \$E; sleep 0.17
     if [ \$((i % 40)) = 20 ]; then cat down.bin > \$E; sleep 0.1; cat left_push.bin > \$E; sleep 0.4; cat up.bin > \$E; fi
     i=\$((i+1)); done" &
 player=$!
-for i in $(seq 1 12); do sleep 3; shot "g01-4-fight-$i"; done
+n=0
+while kill -0 $player 2>/dev/null && [ $n -lt 20 ]; do sleep 3; n=$((n+1)); shot "g01-4-fight-$n"; done
 wait $player
-wait_s 6
+wait_s 3
 shot g01-5-result
 alive || exit 1
-wait_s 4; shot g01-6-result
+wait_s 5; shot g01-6-reward
+wait_s 4; tap 540 2194 "Back to the map"; wait_s 4; shot g01-7-map

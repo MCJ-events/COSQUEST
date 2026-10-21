@@ -3,7 +3,7 @@
 #
 #   e2e/godot/latency.sh [N] [label]    a fight must be on screen (cosquest://fight3d)
 #
-# For each of N rounds: touch down on the joystick, wait, then push it (one
+# For each of N rounds: (move) touch down beside the joystick, wait, then push it (one
 # raw evdev packet written to the touchscreen; the phone's CLOCK_REALTIME read
 # right before and after the write), release; then press Attack the same way.
 # inject.c reads CLOCK_REALTIME right before its write() (the times count from
@@ -31,6 +31,8 @@ adb shell "cd $dev; i=0; while [ \$i -lt $N ]; do
   sleep 0.7; cat up.bin > /dev/input/event2; sleep 0.8
   echo INJ attack \$i \$(./inject /dev/input/event2 atk_down.bin)
   sleep 0.12; cat atk_up.bin > /dev/input/event2; sleep 0.9
+  echo INJ press \$i \$(./inject /dev/input/event2 stick_tap.bin)
+  sleep 0.6; cat up.bin > /dev/input/event2; sleep 0.8
   i=\$((i+1)); done" > "$tmp/inj.txt"
 sleep 1
 adb logcat -d | grep "CQLAT" | grep -v "src=bot" > "$tmp/lat.txt"
@@ -45,7 +47,8 @@ for l in open(sys.argv[2]):
 rows = []
 for kind, i, a, b in [(x[1], int(x[2]), float(x[3]), float(x[4])) for x in inj]:
     # the first Godot record of this kind whose input arrived after the write began
-    cand = [x for x in lat if x[0] == kind and a <= x[1] < a + 1.0]
+    want = "move" if kind == "press" else kind   # a press on the stick is a move record
+    cand = [x for x in lat if x[0] == want and a <= x[1] < a + 1.0]
     if not cand:
         rows.append((kind, i, a, b, None, None, None)); continue
     k, tin, tout, eng = cand[0]
@@ -54,7 +57,7 @@ with open(sys.argv[3], "w") as f:
     f.write("kind\ti\tinject_start\tinject_end\tdelivery_ms\tend_to_end_ms\tengine_ms\n")
     for r in rows:
         f.write("\t".join("" if v is None else (f"{v:.3f}" if isinstance(v, float) else str(v)) for v in r) + "\n")
-for kind in ("move", "attack"):
+for kind in ("move", "press", "attack"):
     e2e = [r[5] for r in rows if r[0] == kind and r[5] is not None]
     dl = [r[4] for r in rows if r[0] == kind and r[4] is not None]
     en = [r[6] for r in rows if r[0] == kind and r[6] is not None]

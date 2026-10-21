@@ -30,7 +30,12 @@ export function parseMode(raw: unknown): Fight3DMode | null {
 export type Fight3DFlags = {
   /** EXPO_PUBLIC_GAME3D=1, on a platform that can run it (iOS, Android 10+). */
   on: boolean;
-  /** EXPO_PUBLIC_GODOT_KEEP=1: keep the engine between fights (pause/resume) instead of destroying it. */
+  /**
+   * Keep one engine for the app's life (pause/resume between fights), the
+   * default; EXPO_PUBLIC_GODOT_KEEP=0 destroys it on close instead. Destroying
+   * leaked ~7 MB of native heap per fight on the emulator, and re-creating the
+   * engine in one process crashed once a GDExtension (3D Tiles) was loaded.
+   */
   keep: boolean;
   /** EXPO_PUBLIC_GAME3D_AUTOSTART=<mode>: open the fight as soon as the game is up (test builds). */
   autostart: Fight3DMode | null;
@@ -71,7 +76,7 @@ export function fight3dFlags(env: Fight3DEnv, platform: { os: string; version: n
   const lod = intIn(env.EXPO_PUBLIC_GAME3D_LOD, 0, 2, -1);
   return {
     on,
-    keep: env.EXPO_PUBLIC_GODOT_KEEP === "1",
+    keep: env.EXPO_PUBLIC_GODOT_KEEP !== "0",
     autostart: on ? parseMode(env.EXPO_PUBLIC_GAME3D_AUTOSTART) : null,
     cycle: on ? intIn(env.EXPO_PUBLIC_GAME3D_CYCLE, 0, 1000, 0) : 0,
     cycleMs: intIn(env.EXPO_PUBLIC_GAME3D_CYCLE_MS, 500, 600_000, 8000),

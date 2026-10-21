@@ -53,6 +53,9 @@ ATK = (958, 2262)
 # WHIRL, the real skill: slot 2 of the arc (135 degrees, 185 canvas px from Attack).
 SKILL = (762, 2065)
 files = {
+    # a thumb landing on the drawn stick, right of its centre (home (78, 88) pt
+    # from the bottom-left = canvas (144, 1438), +80 canvas px): steers at once
+    "stick_tap.bin": down(round((144 + 80) * 1.5), round(1438 * 1.5), 104),
     "up_push.bin": move(STICK[0], STICK[1] - 180),
     "left_push.bin": move(STICK[0] - 180, STICK[1]),
     "skill_down.bin": down(*SKILL, 103),

@@ -147,9 +147,16 @@ func _down(id: int, p: Vector2, src: String) -> void:
 	if p.x < size.x * 0.55 and p.y > size.y * 0.42 and _stick_id == -999:
 		_ptrs[id] = {"role": "stick", "slot": -1}
 		_stick_id = id
-		_stick_origin = p     # floating stick: it spawns where the thumb lands
-		_knob = p
-		stick = Vector2.ZERO
+		if p.distance_to(_stick_home()) <= STICK_BASE_R:
+			# On the drawn stick: its centre is the origin, so the thumb's first
+			# touch already steers (no wait for the first drag event, which
+			# Android batches to the next vsync).
+			_stick_origin = _stick_home()
+			_drag(id, p, src)
+		else:
+			_stick_origin = p     # floating stick: it spawns where the thumb lands
+			_knob = p
+			stick = Vector2.ZERO
 		return
 	_ptrs[id] = {"role": "none", "slot": -1}
 
