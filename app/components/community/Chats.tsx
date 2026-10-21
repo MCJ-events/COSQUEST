@@ -40,6 +40,7 @@ import { fetchFollowing, followUserThunk } from "@/store/thunks/followThunks";
 import { perfStart } from "@/utils/perfMarks";
 import { C } from "@/theme/tokens";
 import { EmptyState, ErrorState, SkeletonRows } from "@/components/kit";
+import { haptic } from "@/utils/haptics";
 
 // ==========================================
 // DESIGN TOKENS (from M01)
@@ -423,6 +424,7 @@ export function Chats({
   }
 
   async function handleFollow(person: FollowUser) {
+    haptic.tap();
     if (!token) return;
     setProcessingUsername(person.username);
     try {

@@ -38,6 +38,7 @@ import { openReport } from "@/components/safety/ReportSheet";
 import { confirmBlock } from "@/components/safety/block";
 import { useCapabilities } from "@/services/capabilities";
 import { hidePostsBy } from "@/store/slices/postSlice";
+import { haptic } from "@/utils/haptics";
 
 /* =========================================================
    HELPERS
@@ -340,6 +341,7 @@ export const PostCard = memo(function PostCard({ post, token }: { post: any; tok
     if (!post?.id) {
       return;
     }
+    haptic.tap();
 
     if (post.liked) {
       dispatch(unlikePostThunk({ postId: post.id, token }));
