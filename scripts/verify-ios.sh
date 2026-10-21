@@ -355,8 +355,8 @@ if [ "$RUN" = 1 ]; then
     echo "     - win or lose: Godot closes and the app's reward screen shows win/lose, damage and time"
     echo "     - open and close the fight 10 times (X button): no crash; the Xcode memory gauge returns to the map level"
     echo "     - background the app during a fight and come back: the fight resumes or closes cleanly"
-    echo "     - renderer: the JS starts Godot with opengl3 + gl_compatibility as the library README does (Apple GLES, deprecated); note fps in the CQPERF lines and try --rendering-driver metal --rendering-method mobile (LibGodot iOS is built with Metal)
-     - no 3D Tiles on iOS yet (the GDExtension is built for Android only): the fight logs "CQ tiles unavailable""
+    echo "     - renderer: the JS starts Godot with opengl3 + gl_compatibility as the library README does (Apple GLES, deprecated); note fps in the CQPERF lines and try --rendering-driver metal --rendering-method mobile (LibGodot iOS is built with Metal)"
+    echo "     - no 3D Tiles on iOS yet (the GDExtension is built for Android only): the fight logs 'CQ tiles unavailable'"
     ran+=("godot by-hand list")
   fi
 
