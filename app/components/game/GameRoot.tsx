@@ -36,6 +36,7 @@ import { GameBannerHost, showBanner } from "./Banner";
 import CoachOverlay from "./Coach";
 import CoinsSheet from "./CoinsSheet";
 import DuelScreen from "./DuelScreen";
+import { Fight3DHost } from "./Fight3D";
 import Encounter, { encounterGuard } from "./Encounter";
 import FriendsButton from "./FriendsButton";
 import { AvatarBadge, ForgeBag, ForgeClaim, ForgeDropsLayer, ForgeHudChip, useForgeOn, useForgeOwnedCount, useForgeWorldPolling, useHasForgeAvatar } from "./ForgeWorld";
@@ -70,6 +71,9 @@ import { useWardenSaid, wardenVoice } from "./wardenVoice";
 import WorldMap from "./WorldMap";
 import { useRenderCount } from "@/utils/perfMarks";
 import type { ForgeDrop } from "@/features/game/forgeWorld";
+import { type Fight3DRun, rewardFrom3D } from "@/features/game3d/fight3d";
+import { FIGHT3D, fight3dAvailable } from "@/features/game3d/flags";
+import { takeFight3DRequest, useFight3DRequestSerial } from "@/features/game3d/request";
 
 type Screen =
   | { kind: "home" }
@@ -78,6 +82,8 @@ type Screen =
   | { kind: "raid"; point: QuestPoint }
   | { kind: "siege"; point: QuestPoint }
   | { kind: "room"; gameId: string }
+  /** The 3D fight in Godot (cq 061): from a duel's briefing, or a test run (point null). */
+  | { kind: "fight3d"; point: QuestPoint | null; run: Fight3DRun }
   | { kind: "reward"; reward: RewardSummary };
 
 /** What is open over the map (one at a time, closed by Android Back). */
@@ -342,7 +348,7 @@ export default function GameRoot({ parked }: { parked: boolean }) {
     // behind the chat, and Back there is the chat's. RoomScreen takes Back
     // itself (it asks before leaving a fight); a sheet's own card or editor
     // takes it before this (the last handler added runs first).
-    if (parked || !onScreen || screen.kind === "room") return;
+    if (parked || !onScreen || screen.kind === "room" || screen.kind === "fight3d") return;
     const open = screen.kind !== "home" || sheet !== null || selected !== null || runPoint !== null || runState.finished !== null || forgeDrop !== null;
     if (!open) return;
     const sub = BackHandler.addEventListener("hardwareBackPress", () => {
@@ -372,6 +378,25 @@ export default function GameRoot({ parked }: { parked: boolean }) {
     setSelectedId(null);
     setScreen({ kind: "home" });
   };
+
+  // The 3D fight (cq 061). Test builds may open it as soon as the game is up
+  // (EXPO_PUBLIC_GAME3D_AUTOSTART=<mode>, with EXPO_PUBLIC_GAME3D_CYCLE=N for the leak test).
+  const fight3d = (point: QuestPoint | null, run?: Partial<Fight3DRun>) =>
+    setScreen({ kind: "fight3d", point, run: { mode: "full", cycle: 0, cycleMs: FIGHT3D.cycleMs, autoplay: FIGHT3D.autoplay, ...run } });
+  const autostarted = useRef(false);
+  const autostartReady = !!session && (fontsReady || !!fontsError) && !gameStore.needsOnboarding && !onboarding && screen.kind === "home";
+  useEffect(() => {
+    if (!autostartReady || autostarted.current || !FIGHT3D.autostart || !fight3dAvailable()) return;
+    autostarted.current = true;
+    fight3d(null, { mode: FIGHT3D.autostart, cycle: FIGHT3D.cycle, autoplay: FIGHT3D.autoplay || FIGHT3D.cycle > 0 });
+  }, [autostartReady]);
+  // The test link (cosquest://fight3d?..., app/fight3d.tsx): opened once the game is up.
+  const fight3dAsked = useFight3DRequestSerial();
+  useEffect(() => {
+    if (!autostartReady || !fight3dAsked) return;
+    const run = takeFight3DRequest();
+    if (run && fight3dAvailable()) fight3d(null, run);
+  }, [autostartReady, fight3dAsked]);
 
   const play = (p: QuestPoint) => {
     setSelectedId(null);
@@ -638,7 +663,14 @@ export default function GameRoot({ parked }: { parked: boolean }) {
       ) : null}
       {screen.kind === "duel" ? (
         <Animated.View entering={FadeIn.duration(220)} exiting={FadeOut.duration(160)} style={StyleSheet.absoluteFill}>
-          <DuelScreen point={screen.point} mode={screen.mode} trial={screen.trial} parked={parked} onClose={home} />
+          <DuelScreen
+            point={screen.point}
+            mode={screen.mode}
+            trial={screen.trial}
+            parked={parked}
+            onFight3D={(screen.mode === "point" || screen.mode === "raid") && fight3dAvailable() ? () => fight3d(screen.point) : undefined}
+            onClose={home}
+          />
         </Animated.View>
       ) : null}
       {screen.kind === "raid" ? (
@@ -661,6 +693,22 @@ export default function GameRoot({ parked }: { parked: boolean }) {
       {screen.kind === "room" ? (
         <Animated.View entering={FadeIn.duration(220)} exiting={FadeOut.duration(160)} style={StyleSheet.absoluteFill}>
           <RoomScreen gameId={screen.gameId} onClose={home} />
+        </Animated.View>
+      ) : null}
+      {screen.kind === "fight3d" ? (
+        <Animated.View entering={FadeIn.duration(220)} exiting={FadeOut.duration(160)} style={StyleSheet.absoluteFill}>
+          <Fight3DHost
+            point={screen.point}
+            run={screen.run}
+            parked={parked}
+            onResult={(r) =>
+              setScreen({
+                kind: "reward",
+                reward: rewardFrom3D(r, screen.point ?? { name: "Test arena", realm: me?.faction ?? "" }, gameStore.get().me?.standing ?? null),
+              })
+            }
+            onClose={home}
+          />
         </Animated.View>
       ) : null}
       {screen.kind === "reward" ? (

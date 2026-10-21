@@ -103,6 +103,11 @@ export default function RootLayout() {
                   name="coins"
                   options={{ presentation: "transparentModal", animation: "none" }}
                 />
+                {/* cosquest://fight3d?...: the 3D fight's test link (cq 061), same idea. */}
+                <Stack.Screen
+                  name="fight3d"
+                  options={{ presentation: "transparentModal", animation: "none" }}
+                />
 
                 {/* Audio/video call screen */}
                 <Stack.Screen

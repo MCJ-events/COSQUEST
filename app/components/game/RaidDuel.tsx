@@ -33,12 +33,15 @@ export function RaidDuelBriefing({
   busy,
   problem,
   onFight,
+  onFight3D,
   onClose,
 }: {
   point: QuestPoint;
   busy: boolean;
   problem: string | null;
   onFight: () => void;
+  /** The 3D fight in Godot (cq 061, EXPO_PUBLIC_GAME3D=1): a second button. */
+  onFight3D?: () => void;
   onClose: () => void;
 }) {
   const insets = useSafeAreaInsets();
@@ -90,7 +93,12 @@ export function RaidDuelBriefing({
         {busy ? (
           <ActivityIndicator color={GP.navy} />
         ) : (
-          <GameButton title="Fight the boss" color={RAID_COLOR} onPress={onFight} icon={<RaidCrown size={20} />} />
+          <>
+            <GameButton title="Fight the boss" color={RAID_COLOR} onPress={onFight} icon={<RaidCrown size={20} />} testID="duel-fight" />
+            {onFight3D ? (
+              <GameButton title="Fight (3D)" color={GP.navy} onPress={onFight3D} testID="fight3d-open" icon={<Ionicons name="cube" size={20} color="#FFF" />} accessibilityHint="A practice fight in 3D. The server does not judge it." />
+            ) : null}
+          </>
         )}
       </View>
     </View>

@@ -56,6 +56,8 @@ export type RewardSummary = {
   dailiesInfo?: DailyDone<RoamDaily>[];
   /** The Warden's level-up line: said 2.4 s in, when the ceremony has started. */
   speakLevel?: () => void;
+  /** A fight's own numbers (the 3D fight, cq 061): shown as rows, each with testID `reward-<id>`. */
+  stats?: { id: string; label: string; value: string }[];
 };
 
 export function rewardFromVerdict(v: RoamVerdict, point: QuestPoint, me?: RoamMe | null): RewardSummary {
@@ -197,13 +199,25 @@ export default function Reward({ reward, onDone, onShare }: { reward: RewardSumm
         pointerEvents={showLevelUp ? "none" : "auto"}
         importantForAccessibility={showLevelUp ? "no-hide-descendants" : "auto"}
         accessibilityElementsHidden={showLevelUp}>
-        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-          <GameTitle text={reward.win ? "Rewards!" : "For trying"} size={44} />
+        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false} testID="reward-screen">
+          <View testID={reward.win ? "reward-win" : "reward-lose"}>
+            <GameTitle text={reward.win ? "Rewards!" : "For trying"} size={44} />
+          </View>
           {/* Your Forge avatar celebrates a win (cq 056); nothing without one. */}
           {reward.win ? <ForgeCelebrate size={130} /> : null}
           <View style={styles.panelWrap}>
             <GamePanel>
               <View style={{ gap: 10 }}>
+                {reward.stats?.map((st) => (
+                  <View key={st.id} style={styles.line} testID={`reward-${st.id}`} accessible accessibilityLabel={`${st.label}, ${st.value}`}>
+                    <Text style={styles.lineLabel} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+                      {st.label}
+                    </Text>
+                    <Text style={styles.lineXp} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+                      {st.value}
+                    </Text>
+                  </View>
+                ))}
                 {/* Every line is laid out from the start and slides in when its turn comes: lines inserted one by one
                     moved their siblings mid-animation, and Android drew them over the level row. */}
                 {reward.lines.map((l, i) => (
@@ -267,6 +281,7 @@ export default function Reward({ reward, onDone, onShare }: { reward: RewardSumm
           {onShare ? <GameButton title="Share to a chat" color={GP.navy} onPress={onShare} style={{ marginBottom: 10 }} /> : null}
           <GameButton
             title="Back to the map"
+            testID="reward-done"
             color={GP.mint}
             onPress={() => {
               celebrate(reward);
