@@ -48,6 +48,8 @@ export EXPO_PUBLIC_API_URL="$CHAT_API_URL"
 export EXPO_PUBLIC_GAME_SERVER="$GAME_SERVER"
 export EXPO_PUBLIC_GAME_UI="$GAME_UI"
 export EXPO_PUBLIC_WORLD_TIMING=1
+# Test-only routes (app/dev/crash, app/dev/push-test): task 059 journeys.
+export EXPO_PUBLIC_E2E=1
 export EXPO_PUBLIC_GAME_UNLOCK_ALL="${UNLOCK_ALL:-0}"
 export NODE_ENV=production
 # Metro caches in $TMPDIR/metro-cache; on a shared machine another user may

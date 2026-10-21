@@ -83,3 +83,25 @@ changes, chat extras) can stay bare; the app handles both.
 - Feed posts already page (`/api/posts?page=&limit=`, `pagination.hasMore`);
   the app now uses it (20 at a time).
 - No change to auth, models or socket rooms.
+
+---
+
+# Task 059 additions: App Store must-haves, push, game events, result cards
+
+Branch `polish-cohesion`, folder `cosquest-backend/`. Not deployed, not pushed to MCJ-events/COSQUEST. Tests: `test/polishCohesion.js` (54 checks, in `npm test`). Full suite on this copy: 833 passed, 0 failed.
+
+The app feature-detects all of it with `GET /api/meta/capabilities`: where that answers 404 (today's test server) the app hides Delete account, Report, block-by-id and the result card, and keeps working.
+
+| What | Route / file | Notes for porting |
+|---|---|---|
+| Capabilities | `GET /api/meta/capabilities` (public), `src/controllers/safetyController.js` | Port first: it is what turns the app's features on |
+| Delete account | `DELETE /api/users/me` `{ password }` or `{ confirm: "DELETE" }` for Google/Apple accounts | Wipes the profile to "Deleted user", removes email and password, bumps `tokenVersion`; deletes posts (and their likes/comments/bookmarks/shares), follows, blocks, reactions, poll votes, notifications, OAuth identities, password resets, quest registrations, join requests, memberships; marks their messages deleted for everyone. New field `User.deletedAt`. `sanitize()` now sends `hasPassword` (true/false, never the hash) so the app knows which confirmation to ask for |
+| Reports | `POST /api/reports` `{ targetType: user|post|comment|message|group, targetId, reason, details?, snapshot?, conversationId? }`, model `src/models/Report.js` | One report per reporter per target (reporting again updates it). Reasons: spam, harassment, hate, nudity, violence, self_harm, impersonation, underage, other. No admin screen yet: read the `reports` collection (status open/reviewed/actioned/dismissed) |
+| Block from anywhere | `POST /api/blocks` `{ userId }` or `{ username }`; `DELETE /api/blocks/:userId` | Same Block model and follow clean-up as `POST /api/users/:username/block`; idempotent (200 when already blocked) |
+| Push tokens | existing `POST /api/users/me/devices`, now moves a token from any other account first; new `DELETE /api/users/me/devices` `{ pushToken }` (sign out) | |
+| Push sending | `src/utils/push.js` (Expo push API), `src/utils/messagePush.js` | Off unless `PUSH_ENABLED=1`; optional `EXPO_ACCESS_TOKEN`. Sends for follows, group adds, mentions, game events (`notificationModel.createForUser`) and new DM / group messages to members who are not connected and have not muted the chat (never Community / faction rooms). Data: `{ type, conversationId, username, link }`, badge = unread notifications. Removes tokens Expo reports as DeviceNotRegistered |
+| Game events | `POST /api/notifications/game-events` with header `X-Game-Events-Key: $GAME_EVENTS_KEY`, body `{ userIds?|usernames?, kind, message, link? }` | For the game backend to call (raid started, boss appeared, duel challenge, friend joined, reward ready, live event, invite accepted). `link` must be `cosquest://play...`. Creates type `game` notifications (new `link`, `gameKind` fields) and pushes. 503 without the key. Nothing in ubmids/costquest-backend calls it yet |
+| Game result card | `POST /api/chats/:id/game-results` `{ headline, pointName?, realm?, win?, xp?, coins?, level?, rank?, note? }`, Message kind `game_result` with `gameResult` | `content` carries the same result as one line of text, so apps without the card still show it. Same send rules as a message (blocked DMs, admin mute, slow mode) |
+| Routes mounted first | `src/routes/safetyRoutes.js`, `router.use('/', ...)` at the top of `src/routes/index.js` | So `DELETE /users/me` is not caught by the settings router |
+
+Env to add on a server: `PUSH_ENABLED`, `EXPO_ACCESS_TOKEN` (optional), `GAME_EVENTS_KEY`.

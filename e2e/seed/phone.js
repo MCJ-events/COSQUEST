@@ -13,6 +13,8 @@
  *
  *   node e2e/seed/phone.js quiz [--timeout 60]        answer the next quiz right
  *   node e2e/seed/phone.js taps <n> [--after 3] [--x .55 --y .45]   tap to strike
+ *   node e2e/seed/phone.js net off|on          the phone's wifi and data (task 059)
+ *   node e2e/seed/phone.js shade [close]        the notification shade
  *
  * Uses adb from ANDROID_HOME (default ~/cq-work/tools/android-sdk) and the
  * game Postgres container cx054-game-pg (e2e-game/game-up.sh).
@@ -125,7 +127,17 @@ async function main() {
   }
   if (cmd === 'quiz') await quiz(Number(flags.timeout || 60));
   else if (cmd === 'taps') await taps(Number(args[0] || 60), Number(flags.after || 3), Number(flags.x || 0.55), Number(flags.y || 0.45));
-  else throw new Error('phone.js quiz | taps <n>');
+  // Task 059: the phone's network off / on (the offline-send journey). The
+  // adb tunnels to this machine are not network, so the backends stay
+  // reachable; what changes is what the app is told (NetInfo).
+  else if (cmd === 'net') {
+    const on = args[0] === 'on';
+    adb('shell', 'svc', 'wifi', on ? 'enable' : 'disable');
+    adb('shell', 'svc', 'data', on ? 'enable' : 'disable');
+  } else if (cmd === 'shade') {
+    // Pull the notification shade down (push tap journey).
+    adb('shell', 'cmd', 'statusbar', args[0] === 'close' ? 'collapse' : 'expand-notifications');
+  } else throw new Error('phone.js quiz | taps <n> | net on|off | shade [close]');
 }
 
 main().catch((e) => {

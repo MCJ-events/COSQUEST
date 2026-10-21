@@ -47,15 +47,18 @@ export function routeForUrl(url: string | null | undefined): string | null {
   if (path[0] === "--") path.shift();
   const [head, a, b] = path;
   if (!head) return null;
+  // Exact shapes only: a longer path (cosquest://chat/<id>/message/<id>) is
+  // left to the router and its "this link doesn't go anywhere" page.
+  const n = path.length;
   const h = head.toLowerCase();
-  if (h === "chat" && a && ID.test(a)) return `/chat/${a}`;
-  if ((h === "user" || h === "u") && a && NAME.test(a)) return `/user/${a}`;
-  if (h.startsWith("@") && NAME.test(head.slice(1))) return `/user/${head.slice(1)}`;
-  if (h === "play") return query ? `/play?${query}` : "/play";
-  if (h === "group" && a === "join" && b && ID.test(b)) return `/group/join/${b}`;
-  if ((h === "invite" || h === "join") && a && ID.test(a)) return `/group/join/${a}`;
-  if (h === "post" && a && ID.test(a)) return `/post/${a}`;
-  if (h === "notifications") return "/notifications";
+  if (h === "chat" && n === 2 && ID.test(a)) return `/chat/${a}`;
+  if ((h === "user" || h === "u") && n === 2 && NAME.test(a)) return `/user/${a}`;
+  if (h.startsWith("@") && n === 1 && NAME.test(head.slice(1))) return `/user/${head.slice(1)}`;
+  if (h === "play" && n === 1) return query ? `/play?${query}` : "/play";
+  if (h === "group" && a === "join" && n === 3 && ID.test(b)) return `/group/join/${b}`;
+  if ((h === "invite" || h === "join") && n === 2 && ID.test(a)) return `/group/join/${a}`;
+  if (h === "post" && n === 2 && ID.test(a)) return `/post/${a}`;
+  if (h === "notifications" && n === 1) return "/notifications";
   return null;
 }
 

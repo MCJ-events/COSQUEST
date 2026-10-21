@@ -26,6 +26,7 @@ test("links: anything odd is left alone", () => {
   assert.equal(routeForUrl("cosquest://chat/"), null);
   assert.equal(routeForUrl("cosquest://chat/../../etc"), null);
   assert.equal(routeForUrl("cosquest://user/a b"), null);
+  assert.equal(routeForUrl("cosquest://chat/abc/message/000000000000000000000000"), null);
   assert.equal(routeForUrl("https://evil.example/%E0%A4%A"), null);
 });
 

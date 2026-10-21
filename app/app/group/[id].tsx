@@ -82,6 +82,7 @@ import { safeBack } from "@/utils/safeBack";
 import { C } from "@/theme/tokens";
 import { openReport } from "@/components/safety/ReportSheet";
 import { useCapabilities } from "@/services/capabilities";
+import { confirmBlock } from "@/components/safety/block";
 
 const KIND_LABEL = {
   private: "Private group",
@@ -1155,6 +1156,40 @@ export default function GroupInfo() {
                       });
                     }}
                   />
+
+                  {/* Task 059: block (and report) from the group, not only DMs. */}
+                  <GroupRow
+                    icon="ban-outline"
+                    label={`Block ${actingOn.name || actingOn.username}`}
+                    danger
+                    onPress={() => {
+                      const who = { username: actingOn.username, userId: actingOn.id, name: actingOn.name || undefined };
+                      setActingOn(null);
+                      setTimeout(() => confirmBlock(who), 300);
+                    }}
+                  />
+                  {caps.reports ? (
+                    <GroupRow
+                      icon="flag-outline"
+                      label={`Report ${actingOn.name || actingOn.username}`}
+                      danger
+                      onPress={() => {
+                        const m = actingOn;
+                        setActingOn(null);
+                        setTimeout(
+                          () =>
+                            openReport({
+                              targetType: "user",
+                              targetId: m.id,
+                              name: `@${m.username}`,
+                              person: { username: m.username, userId: m.id },
+                              conversationId: g.id,
+                            }),
+                          300,
+                        );
+                      }}
+                    />
+                  ) : null}
 
                   {actingOn.role === "member" &&
                   (myRole === "owner" || myRole === "admin") ? (

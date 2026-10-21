@@ -28,6 +28,10 @@
 #                                         375x667), a Dynamic Island iPhone,
 #                                         and that one at the largest
 #                                         accessibility text size
+#   scripts/verify-ios.sh --cohesion      with --run: the task 059 checks (one
+#                                         theme, App Store must-haves, push,
+#                                         links, dark mode): the light and dark
+#                                         launch screenshots and a by-hand list
 #
 # What the Mac must look at by hand after this passes is the checklist in
 # docs/one-codebase.md, "What the Mac must verify".
@@ -51,6 +55,7 @@ RUN=0
 NATIVE_GAME=0
 STAGING=0
 POLISH=0
+COHESION=0
 for arg in "$@"; do
   case "$arg" in
     --no-unity) NO_UNITY=1 ;;
@@ -60,6 +65,7 @@ for arg in "$@"; do
     --staging) STAGING=1 ;;
     --rn-game) STAGING=1 ;;
     --polish) POLISH=1; RUN=1 ;;
+    --cohesion) COHESION=1; RUN=1 ;;
     -h|--help) sed -n '2,38p' "$0"; exit 0 ;;
     *) echo "unknown option: $arg" >&2; exit 2 ;;
   esac
@@ -118,6 +124,12 @@ ran+=("npm test" "typecheck")
 step "lint (0 errors expected since merged-app-sync ecbfc0b)"
 npm run lint 2>&1 | tee "$LOGS/lint.log" | tail -3
 ran+=("lint")
+
+step "task 059: every chat and community button labelled; release config"
+node scripts/a11y-buttons.js --check 2>&1 | tee "$LOGS/a11y-buttons.log" | head -1
+EAS_BUILD_PROFILE=production node scripts/check-release-env.js 2>&1 | tee "$LOGS/release-env.log" | tail -3 || true
+echo "    (release env: failing here is expected until the production hosts are set as EAS env vars; see docs/polish/DECISIONS.md)"
+ran+=("a11y labels" "release env check")
 
 step "config plugin tests"
 node --test modules/costquest-game/plugin/__tests__/*.test.js 2>&1 | tee "$LOGS/plugin-test.log" | grep -E "^# (pass|fail)"
@@ -310,6 +322,39 @@ if [ "$RUN" = 1 ]; then
     echo "     - airplane mode, then pull a screen: 'Can't reach CosQuest right now' within 15 s, not an endless spinner (B7)"
     echo "     - orbit call: the speaking pulse is smooth (native driver, B10)"
     ran+=("polish screenshots")
+  fi
+
+  # 8. Cohesion checks (task 059, docs/polish/DECISIONS.md and PALETTE.md).
+  if [ "$COHESION" = 1 ]; then
+    step "cohesion: light and dark, links, push"
+    xcrun simctl ui "$device" appearance dark 2>/dev/null || true
+    xcrun simctl terminate "$device" "$bundle_id" 2>/dev/null || true
+    xcrun simctl launch "$device" "$bundle_id" >/dev/null
+    sleep 2
+    xcrun simctl io "$device" screenshot "$shots/cohesion-01-splash-dark.png" >/dev/null
+    sleep 15
+    xcrun simctl io "$device" screenshot "$shots/cohesion-02-dark.png" >/dev/null
+    xcrun simctl ui "$device" appearance light 2>/dev/null || true
+    # A push shaped like the backend's (cosquest-backend src/utils/push.js): tap it, it opens Notifications.
+    printf '%s' "{\"aps\":{\"alert\":{\"title\":\"CosQuest\",\"body\":\"Simulator push\"}},\"body\":{\"type\":\"system\"}}" > "$LOGS/push.apns"
+    xcrun simctl push "$device" "$bundle_id" "$LOGS/push.apns" 2>/dev/null || echo "    (simctl push not available on this Xcode)"
+    echo "    screenshots: $shots/cohesion-*.png"
+    echo "    By hand (sign in as chioma_e2e on a test-server build, then on a local-backend build for the new routes):"
+    echo "     - splash: the logo on brand pink (dark mode: on navy), then straight to the first screen"
+    echo "     - dark mode: chat AND game sheets go dark together (Profile, More, Journal); the map is lit as at night"
+    echo "     - allow notifications: a push token is registered (backend log: POST /api/users/me/devices); tap a push:"
+    echo "       a message opens its chat, a follow the person, a game event the game; the app icon shows the unread badge"
+    echo "     - links: xcrun simctl openurl $device 'cosquest://chat/<id>', 'cosquest://user/<name>', 'cosquest://invite/<code>', 'cosquest://play?shrine=<id>'"
+    echo "     - airplane mode: 'You're offline' banner; send a text: 'Waiting for network', sent when back"
+    echo "     - on the test server (no /api/meta/capabilities): no Delete account, no Report; Block still there"
+    echo "     - on a local backend with this branch's cosquest-backend: Settings > Account Information > Delete account works;"
+    echo "       Report from a profile, a message, a post, a group; Block from a group's member list"
+    echo "     - Help & Support: Contact support and Report a bug send; Terms / Privacy / Guidelines say 'Not published yet' without URLs"
+    echo "     - VoiceOver: every chat and community button reads a name (scripts/a11y-buttons.js counted 0 missing)"
+    echo "     - profile: game level and XP under the chat points; the game's HUD chip shows your photo"
+    echo "     - share a game result to a chat: a card on a local backend, a text line on the test server"
+    echo "     - pod install picked up RNSentry, EXUpdates, RNCNetInfo and react-native-webview (Podfile.lock)"
+    ran+=("cohesion screenshots")
   fi
 fi
 
