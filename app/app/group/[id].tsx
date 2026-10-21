@@ -780,7 +780,7 @@ export default function GroupInfo() {
         {g.canSeeMembers ? (
           <View style={styles.memberCard}>
             {members.map((member) => (
-              <Pressable accessibilityRole="button" accessibilityLabel="Member options"
+              <Pressable accessibilityRole="button" accessibilityLabel={`${member.name || member.username}, member options`}
                 key={member.id}
                 style={styles.memberRow}
                 disabled={!g.canEdit || member.id === myUserId}

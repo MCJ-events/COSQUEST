@@ -61,6 +61,7 @@ import { playSound } from "./sound";
 import { edgeOf, GF, GP, realmColor, realmIcon } from "./theme";
 import { useOnScreen } from "./useOnScreen";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
+import { ErrorState } from "@/components/kit";
 
 type Picked = { kind: "relic"; id: string } | { kind: "forge"; id: string } | null;
 
@@ -114,10 +115,8 @@ export default function RelicsSheet({ onClose }: { onClose: () => void }) {
           </>
         ) : relics.failed ? (
           <>
-            <View style={styles.failed}>
-              <Text style={styles.failedText}>{"Couldn't load your Relics."}</Text>
-              <GameButton title="Try again" size="small" color={GP.sky} onPress={() => void relicsStore.refresh()} />
-            </View>
+            {/* Task 059: the shared kit's error state, in the game's tone. */}
+            <ErrorState tone="game" compact title="Couldn't load your Relics" onRetry={() => void relicsStore.refresh()} />
             <ForgeArmourySection onPick={(id) => setPicked({ kind: "forge", id })} />
           </>
         ) : (

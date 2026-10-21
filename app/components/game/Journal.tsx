@@ -46,6 +46,7 @@ import StepsCard from "./StepsCard";
 import { GF, GP, realmColor, realmIcon } from "./theme";
 import { wardenVoice } from "./wardenVoice";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
+import { ErrorState } from "@/components/kit";
 
 type Tab = "today" | "codex" | "war";
 
@@ -277,10 +278,8 @@ function CodexBody({
   if (failed || tried) {
     return (
       <GamePanel>
-        <View style={{ alignItems: "center", gap: 12 }}>
-          <Text style={styles.emptyText}>{"Couldn't load your Codex."}</Text>
-          <GameButton title="Try again" size="small" color={GP.sky} onPress={onRetry} />
-        </View>
+        {/* Task 059: the shared kit's error state, in the game's tone. */}
+        <ErrorState tone="game" compact title="Couldn't load your Codex" onRetry={onRetry} />
       </GamePanel>
     );
   }

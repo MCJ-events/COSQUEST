@@ -37,7 +37,7 @@ name: J15 block
     element: ".*Kofi.*"
     direction: DOWN
     timeout: 15000
-- tapOn: ".*Kofi.*"
+- tapOn: "Kofi Boateng.*"
 - tapOn: "Block Kofi.*"
 - takeScreenshot: j15-member-confirm
 - tapOn: "Block"

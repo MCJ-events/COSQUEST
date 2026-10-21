@@ -24,7 +24,7 @@ name: J16 offline send
 - takeScreenshot: j16-offline
 - tapOn: "Message.*|Type a message.*"
 - inputText: "Sent from the tube"
-- tapOn: "Send"
+- tapOn: "Send message"
 - extendedWaitUntil:
     visible: "Waiting for network"
     timeout: 10000

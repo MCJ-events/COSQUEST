@@ -39,6 +39,7 @@ import { SheetHeader } from "./SheetHeader";
 import { GF, GP, realmColor } from "./theme";
 import { useOnScreen } from "./useOnScreen";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
+import { EmptyState, ErrorState, SkeletonRows } from "@/components/kit";
 
 export default function FriendsSheet({ onClose }: { onClose: () => void }) {
   const insets = useSafeAreaInsets();
@@ -210,19 +211,13 @@ function FriendsBody({ close }: { close: () => void }) {
               friends.payload.friends.length ? (
                 friends.payload.friends.map((f) => <FriendRow key={f.friend_key} f={f} busy={friends.busy} canGift={canGiftTo(friends, f)} />)
               ) : (
-                <Text style={styles.empty} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-                  No friends yet. Meet up, show your code, and play together.
-                </Text>
+                // Task 059: the shared kit's states, in the game's tone.
+                <EmptyState tone="game" compact icon="people-outline" title="No friends yet" message="Meet up, show your code, and play together." />
               )
             ) : friends.failed ? (
-              <>
-                <Text style={styles.empty} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-                  {"Can't load your friends right now."}
-                </Text>
-                <GameButton title="Try again" size="small" color={GP.skyDeep} onPress={() => void friendsModel.refresh()} style={{ alignSelf: "flex-start" }} />
-              </>
+              <ErrorState tone="game" compact title="Can't load your friends right now" message="Check your connection and try again." onRetry={() => void friendsModel.refresh()} />
             ) : (
-              <ActivityIndicator color={GP.ink} />
+              <SkeletonRows count={3} avatar={40} label="Loading friends" />
             )}
           </View>
         </GamePanel>

@@ -35,7 +35,7 @@ name: J14 report
 - extendedWaitUntil:
     visible: ".*Storm cape.*"
     timeout: 20000
-- longPressOn: ".*No excuses this year.*"
+- longPressOn: ".*Race you to it.*"
 - scrollUntilVisible:
     element: "Report"
     direction: DOWN
