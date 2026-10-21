@@ -3,7 +3,7 @@
 # screenshots), then the measurements, each on a fresh perf world.
 #
 #   e2e/perf/run-profile.sh <run> <small|large|large-a11y|game-ref> [tour|measure|game]
-#   (game: only the map, duel and quiz measurements)
+#   (game: only the map, duel and quiz measurements; only:cold,feed: those)
 #
 # Writes $VIDEOS/<run>-tour-<profile>.mp4, $OUT/<run>-tour-<profile>/ (the
 # screenshots) and $OUT/perf-<run>-<profile>.json.
@@ -28,6 +28,8 @@ if [ "$what" != tour ]; then
     || { echo "signin failed ($OUT/$run-$prof-signin.log)"; exit 1; }
   if [ "$what" = game ]; then
     python3 "$here/measure.py" "$run-$prof" --only map,duel,quiz
+  elif [ "${what#only:}" != "$what" ]; then
+    python3 "$here/measure.py" "$run-$prof" --only "${what#only:}"
   else
     python3 "$here/measure.py" "$run-$prof"
   fi
