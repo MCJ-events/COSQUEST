@@ -39,9 +39,23 @@ e2e/emu.sh down
 Videos are 540 px H.264 with a silent audio track (so players treat them as
 videos, not GIFs). Maestro's screenshots and logs go to `$OUT/<label>/`.
 
+## Perf and fit (task 058)
+
+`e2e/perf/`: phone profiles (`profile.sh small|large|large-a11y|game-ref`), a
+recorded fit tour with screenshots (`flows/tour.yaml`), the measurements
+(`measure.py`: cold start, feed, a 2,000-message chat, map, duel, quiz), one
+runner per profile (`run-profile.sh <run> <profile> [tour|measure|game|only:a,b]`)
+and the before/after table (`report.py`). Needs a build with
+`EXPO_PUBLIC_PERF_MARKS=1` and the AVD `cx058` (1440x3120, 560 dpi):
+`AVD=cx058 EMU_MEM=2048 e2e/emu.sh up <apk>`. Results: `docs/polish/BASELINE.md`.
+
 ## Things to know
 
 - The emulator uses about 6 GB on this farm; stop it while Gradle builds.
+- With gesture navigation a swipe from the screen edge is Back; the flows
+  swipe into the game from the edge handle (98%, 42%) instead.
+- Maestro's `hideKeyboard` presses Back when no keyboard is up (it can leave
+  the screen); the game's name step submits with Enter.
 - Each game journey needs a new player (one boss fight per hour, cooldowns):
   `reset.sh` clears the local game DB's players.
 - Maestro waits for the screen to settle after each step; the quiz and fight
