@@ -104,7 +104,8 @@
         }
       ],
       "expo-asset",
-      "./plugins/withSceneLifecycle"
+      "./plugins/withSceneLifecycle",
+      "./plugins/withGodot"
     ],
     "experiments": {
       "typedRoutes": true,

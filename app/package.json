@@ -9,10 +9,12 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "lint": "expo lint",
-    "test": "node --test \"services/__tests__/*.test.ts\" \"features/world/__tests__/*.test.ts\" \"features/game/__tests__/*.test.ts\" \"features/game/duel/__tests__/*.test.ts\" \"modules/costquest-game/plugin/__tests__/*.test.js\"",
-    "typecheck": "tsc --noEmit -p ."
+    "test": "node --test \"services/__tests__/*.test.ts\" \"features/world/__tests__/*.test.ts\" \"features/game/__tests__/*.test.ts\" \"features/game/duel/__tests__/*.test.ts\" \"features/game3d/__tests__/*.test.ts\" \"modules/costquest-game/plugin/__tests__/*.test.js\" \"plugins/__tests__/*.test.js\"",
+    "typecheck": "tsc --noEmit -p .",
+    "postinstall": "patch-package"
   },
   "dependencies": {
+    "@borndotcom/react-native-godot": "1.0.1",
     "@config-plugins/react-native-webrtc": "^15.0.2",
     "@cosquest/sparks-sdk": "file:vendor/cosquest-sparks-sdk-1.2.7.tgz",
     "@expo-google-fonts/poppins": "^0.4.1",
@@ -81,7 +83,13 @@
     "@types/react": "~19.2.4",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~57.0.2",
+    "patch-package": "^8.0.1",
     "typescript": "~6.0.3"
   },
-  "private": true
+  "private": true,
+  "overrides": {
+    "@borndotcom/react-native-godot": {
+      "react-native-worklets-core": "$react-native-worklets-core"
+    }
+  }
 }

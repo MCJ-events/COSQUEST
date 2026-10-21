@@ -23,6 +23,10 @@
 #                                           player's level (screens on a new
 #                                           player; refused on production)
 #   JAVA_HOME / ANDROID_HOME                 JDK 17 and the Android SDK
+#   LIBGODOT_ANDROID_PATH / LIBGODOT_CPP_ANDROID_PATH
+#                  [official]               LibGodot zips (scripts/godot-prebuilt.sh);
+#                                           the official ones have no x86_64
+#   GODOT_EXPORT   [0]                      1: export game3d/ first (scripts/godot-export.sh)
 #
 # The release build is signed with the debug key (the Expo template's
 # default) and is for testing only. When the chat URL is plain http, this
@@ -55,6 +59,24 @@ export NODE_ENV=production
 if [ -e /tmp/metro-cache ] && [ ! -w /tmp/metro-cache ]; then
   export TMPDIR="$PWD/node_modules/.cache/tmp"
   mkdir -p "$TMPDIR"
+fi
+
+# Godot (cq 061): the LibGodot prebuilts live in node_modules (not on npm), so
+# install them when missing (scripts/godot-prebuilt.sh; LIBGODOT_*_PATH for
+# local zips), and refuse an ABI they do not have before a long build.
+GODOT_LIBS=node_modules/@borndotcom/react-native-godot/android/libs
+if [ -d node_modules/@borndotcom/react-native-godot ]; then
+  if [ -n "${LIBGODOT_ANDROID_PATH:-}" ] || ! ls "$GODOT_LIBS"/libgodot-android/*/com >/dev/null 2>&1; then
+    scripts/godot-prebuilt.sh
+  fi
+  aar=$(find "$GODOT_LIBS/libgodot-android" -name '*.aar' | head -1)
+  if ! unzip -l "$aar" | grep -q "jni/$ABI/libgodot_android.so" ||
+    [ ! -f "$(find "$GODOT_LIBS/libgodot-cpp-android" -path "*/$ABI/libgodot-cpp.a" | head -1)" ]; then
+    echo "LibGodot has no $ABI build installed; point LIBGODOT_ANDROID_PATH / LIBGODOT_CPP_ANDROID_PATH at zips that do" >&2
+    exit 2
+  fi
+  # GODOT_EXPORT=1: export game3d/ first (scripts/godot-export.sh android).
+  if [ "${GODOT_EXPORT:-0}" = 1 ]; then scripts/godot-export.sh android; fi
 fi
 
 if [ "${SKIP_PREBUILD:-0}" != 1 ]; then
