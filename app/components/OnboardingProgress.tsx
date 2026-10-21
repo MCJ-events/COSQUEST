@@ -1,5 +1,6 @@
 import { StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { C } from "@/theme/tokens";
 
 export function OnboardingProgress({
   step,
@@ -25,6 +26,6 @@ export function OnboardingProgress({
 const styles = StyleSheet.create({
   row: { flexDirection: "row", gap: 4, paddingHorizontal: 24 },
   segment: { flex: 1, height: 6, borderRadius: 5 },
-  filled: { backgroundColor: "#C5399A" },
+  filled: { backgroundColor: C.brand },
   empty: { backgroundColor: "#cccccc" },
 });

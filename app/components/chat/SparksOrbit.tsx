@@ -16,12 +16,13 @@ import { DormantSparkCard } from "@/components/chat/SparksRail";
 import { FONTS } from "@/constants/fonts";
 import { type Spark } from "@/services/sparks";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
+import { C } from "@/theme/tokens";
 
-const PINK = "#B63D91";
-const TEAL = "#2A8A92";
-const INK = "#24283C";
-const MUTED = "#66738A";
-const LILAC = "#F0EDF9";
+const PINK = C.brandDeep;
+const TEAL = C.teal;
+const INK = C.inkNavy;
+const MUTED = C.slate;
+const LILAC = C.lilac;
 
 function people(spark: Spark) {
   return `${spark.participantCount} ${spark.participantCount === 1 ? "person" : "people"}`;
@@ -198,7 +199,7 @@ const STYLE_PAIR = themedStyles({
     paddingVertical: 9,
     borderRadius: 12,
     backgroundColor: "#FFFFFF",
-    shadowColor: "#24283C",
+    shadowColor: C.inkNavy,
     shadowOpacity: 0.08,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 2 },

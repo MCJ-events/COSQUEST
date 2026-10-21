@@ -28,6 +28,7 @@ import {
 } from "@/utils/googleAuth";
 import { safeBack } from "@/utils/safeBack";
 import { OnboardingScreen } from "@/components/OnboardingScreen";
+import { C } from "@/theme/tokens";
 
 // Lets a popup-style sign-in (if the browser used one) hand the result
 // back to the page that opened it and close itself.
@@ -97,7 +98,7 @@ export default function GoogleOAuthReturn() {
           </>
         ) : (
           <>
-            <ActivityIndicator size="large" color="#C5399A" />
+            <ActivityIndicator size="large" color={C.brand} />
 
             <Text style={styles.text}>Signing you in with Google...</Text>
           </>
@@ -117,7 +118,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontWeight: "800",
-    color: "#191922",
+    color: C.ink,
     textAlign: "center",
   },
 
@@ -134,7 +135,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
     paddingVertical: 12,
     borderRadius: 22,
-    backgroundColor: "#C5399A",
+    backgroundColor: C.brand,
   },
 
   buttonText: {

@@ -25,11 +25,12 @@ import {
   type ModelStatus,
 } from "@/services/sparksSdk";
 import { safeBack } from "@/utils/safeBack";
+import { C } from "@/theme/tokens";
 
-const PINK = "#B63D91";
-const INK = "#24283C";
-const MUTED = "#66738A";
-const LILAC = "#F0EDF9";
+const PINK = C.brandDeep;
+const INK = C.inkNavy;
+const MUTED = C.slate;
+const LILAC = C.lilac;
 
 const REASONS: Record<string, string> = {
   ram: "This phone has less memory than the AI needs (about 6 GB).",
@@ -145,7 +146,7 @@ export default function SparksModel() {
             <Ionicons
               name={capable ? "checkmark-circle" : "information-circle"}
               size={26}
-              color={capable ? "#2A8A92" : MUTED}
+              color={capable ? C.teal : MUTED}
             />
             <View style={styles.flex}>
               <Text style={styles.cardTitle}>
@@ -217,7 +218,7 @@ export default function SparksModel() {
   }
 
   return (
-    <LinearGradient colors={["#F6F9FE", "#E3F0FC"]} style={styles.screen}>
+    <LinearGradient colors={[C.skyPale, C.skyPale2]} style={styles.screen}>
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <Pressable onPress={() => safeBack()} hitSlop={10} accessibilityLabel="Back">
           <Ionicons name="chevron-back" size={26} color={INK} />
@@ -250,13 +251,13 @@ const styles = StyleSheet.create({
   cardTitle: { fontFamily: FONTS.semibold, fontSize: 16, color: INK },
   cardText: { marginTop: 3, fontFamily: FONTS.regular, fontSize: 13, color: MUTED },
   note: { marginTop: 12, fontFamily: FONTS.regular, fontSize: 13, lineHeight: 19, color: MUTED },
-  error: { marginTop: 10, fontFamily: FONTS.regular, fontSize: 13, color: "#C0394B" },
+  error: { marginTop: 10, fontFamily: FONTS.regular, fontSize: 13, color: C.dangerDeep },
   track: { marginTop: 14, height: 8, borderRadius: 4, overflow: "hidden", backgroundColor: "#E3E7EF" },
   bar: { height: 8, borderRadius: 4, backgroundColor: PINK },
   primary: { marginTop: 16, height: 50, borderRadius: 16, alignItems: "center", justifyContent: "center", backgroundColor: PINK },
   primaryText: { fontFamily: FONTS.semibold, fontSize: 16, color: "#FFFFFF" },
   secondary: { marginTop: 10, height: 48, borderRadius: 16, alignItems: "center", justifyContent: "center", backgroundColor: LILAC },
   secondaryText: { fontFamily: FONTS.semibold, fontSize: 15, color: PINK },
-  danger: { color: "#C0394B" },
+  danger: { color: C.dangerDeep },
   footnote: { marginTop: 6, fontFamily: FONTS.regular, fontSize: 12.5, lineHeight: 18, color: MUTED },
 });

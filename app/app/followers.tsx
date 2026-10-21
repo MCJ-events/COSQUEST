@@ -23,6 +23,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { safeBack } from "@/utils/safeBack";
 import { KeyboardAvoidingView } from "@/components/ui/keyboard";
+import { C } from "@/theme/tokens";
 
 type User = {
   id: string;
@@ -210,18 +211,18 @@ export default function Followers() {
       ]}>
       <View style={styles.header}>
         <Pressable onPress={() => safeBack()} hitSlop={10}>
-          <Ionicons name="arrow-back" size={24} color="#191922" />
+          <Ionicons name="arrow-back" size={24} color={C.ink} />
         </Pressable>
 
         <Text style={styles.headerTitle}>Followers</Text>
 
         <Pressable onPress={() => searchRef.current?.focus()} hitSlop={10}>
-          <Ionicons name="search" size={22} color="#191922" />
+          <Ionicons name="search" size={22} color={C.ink} />
         </Pressable>
       </View>
 
       <View style={styles.searchRow}>
-        <Ionicons name="search" size={18} color="#9C9CAA" />
+        <Ionicons name="search" size={18} color={C.muted} />
 
         <TextInput
           ref={searchRef}
@@ -229,7 +230,7 @@ export default function Followers() {
           value={query}
           onChangeText={setQuery}
           placeholder="Search followers..."
-          placeholderTextColor="#9C9CAA"
+          placeholderTextColor={C.muted}
           autoCapitalize="none"
           autoCorrect={false}
         />
@@ -237,7 +238,7 @@ export default function Followers() {
 
       {loading && followers.length === 0 ? (
         <View style={styles.loading}>
-          <ActivityIndicator size="small" color="#C5399A" />
+          <ActivityIndicator size="small" color={C.brand} />
 
           <Text style={styles.loadingText}>Loading followers...</Text>
         </View>
@@ -325,7 +326,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: "700",
-    color: "#191922",
+    color: C.ink,
   },
 
   searchRow: {
@@ -342,7 +343,7 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 14,
-    color: "#191922",
+    color: C.ink,
     padding: 0,
   },
 
@@ -373,12 +374,12 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#191922",
+    color: C.ink,
   },
 
   handle: {
     fontSize: 13,
-    color: "#9C9CAA",
+    color: C.muted,
     marginTop: 1,
   },
 
@@ -391,11 +392,11 @@ const styles = StyleSheet.create({
   },
 
   followBtnActive: {
-    backgroundColor: "#C5399A",
+    backgroundColor: C.brand,
   },
 
   followingBtn: {
-    backgroundColor: "#191922",
+    backgroundColor: C.ink,
   },
 
   followBackText: {
@@ -437,7 +438,7 @@ const styles = StyleSheet.create({
 
   errorText: {
     fontSize: 12,
-    color: "#B42318",
+    color: C.dangerInk,
     textAlign: "center",
   },
 
@@ -445,12 +446,12 @@ const styles = StyleSheet.create({
     marginTop: 7,
     fontSize: 13,
     fontWeight: "700",
-    color: "#C5399A",
+    color: C.brand,
   },
 
   empty: {
     textAlign: "center",
-    color: "#9C9CAA",
+    color: C.muted,
     marginTop: 40,
     fontSize: 13,
   },

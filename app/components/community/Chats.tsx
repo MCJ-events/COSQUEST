@@ -37,21 +37,22 @@ import { useSparksBoot } from "@/hooks/useSparks";
 import { createChat, fetchChats } from "@/store/thunks/chatThunks";
 import { fetchFollowing, followUserThunk } from "@/store/thunks/followThunks";
 import { perfStart } from "@/utils/perfMarks";
+import { C } from "@/theme/tokens";
 
 // ==========================================
 // DESIGN TOKENS (from M01)
 // ==========================================
 const COLORS = {
-  ink: "#24283C",
-  muted: "#66738A",
+  ink: C.inkNavy,
+  muted: C.slate,
   soft: "#8A93A6",
-  pink: "#B63D91",
+  pink: C.brandDeep,
   pinkSoft: "#F7E3F0",
   chip: "#ECE8F4",
   line: "rgba(36,40,60,0.10)",
   white: "#FFFFFF",
   online: "#25D366",
-  danger: "#B42318",
+  danger: C.dangerInk,
   dangerSoft: "rgba(255,80,80,0.08)",
   hairlineSoft: "rgba(23,25,34,0.07)",
 };
@@ -130,7 +131,7 @@ function initialsOf(name?: string) {
   return letters.toUpperCase();
 }
 
-const AVATAR_TINTS = ["#E9E1F5", "#DCE8EF", "#F3DDED", "#E2F0E8", "#F5E6D8"];
+const AVATAR_TINTS = ["#E9E1F5", "#DCE8EF", C.brandTint, "#E2F0E8", "#F5E6D8"];
 
 function avatarTint(name?: string) {
   let hash = 0;
@@ -924,7 +925,7 @@ const styles = StyleSheet.create({
 
   dmPhoto: { width: 56, height: 56, borderRadius: 28 },
 
-  dmInitials: { fontFamily: FONTS.bold, fontSize: 14, color: "#7D356D" },
+  dmInitials: { fontFamily: FONTS.bold, fontSize: 14, color: C.plum },
 
   dmName: { marginTop: 6, maxWidth: 64, fontFamily: FONTS.regular, fontSize: 12.5, color: COLORS.ink, textAlign: "center" },
 

@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { AVATARS } from "@/constants/avatars";
 import { CommentAudio } from "./CommentAudio";
+import { C } from "@/theme/tokens";
 
 function getAvatar(author: any) {
   // Real uploaded profile photo
@@ -148,7 +149,7 @@ export function ReplyItem({
             <Ionicons
               name={liked ? "heart" : "heart-outline"}
               size={16}
-              color={liked ? "#C5399A" : "#8B8B93"}
+              color={liked ? C.brand : "#8B8B93"}
             />
 
             <Text style={[styles.likeCount, liked && styles.likedCount]}>
@@ -191,7 +192,7 @@ const styles = StyleSheet.create({
   username: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#191922",
+    color: C.ink,
   },
 
   time: {
@@ -217,7 +218,7 @@ const styles = StyleSheet.create({
   replyText: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#C5399A",
+    color: C.brand,
   },
 
   likeAction: {
@@ -233,6 +234,6 @@ const styles = StyleSheet.create({
   },
 
   likedCount: {
-    color: "#C5399A",
+    color: C.brand,
   },
 });

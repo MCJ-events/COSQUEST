@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { ErrorText } from "./ErrorText";
+import { C } from "@/theme/tokens";
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
@@ -57,7 +58,7 @@ export function Field({
         ]}
       >
         {leftIcon ? (
-          <Ionicons name={leftIcon} size={18} color="#C5399A" />
+          <Ionicons name={leftIcon} size={18} color={C.brand} />
         ) : null}
         <TextInput
           style={styles.input}
@@ -68,7 +69,7 @@ export function Field({
           placeholder={placeholder}
           keyboardType={keyboardType}
           secureTextEntry={secureTextEntry ? hidden : false}
-          placeholderTextColor="#9C9CAA"
+          placeholderTextColor={C.muted}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
           textContentType={textContentType}
@@ -109,13 +110,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 15,
-    color: "#191922",
+    color: C.ink,
     shadowColor: "#000",
     shadowOpacity: 0.08,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 5 },
   },
   inputRowError: { borderColor: "#E24D4D", borderWidth: 1 },
-  inputRowFocused: { borderColor: "#C5399A", borderWidth: 1 },
-  input: { flex: 1, fontSize: 15, color: "#191922" },
+  inputRowFocused: { borderColor: C.brand, borderWidth: 1 },
+  input: { flex: 1, fontSize: 15, color: C.ink },
 });

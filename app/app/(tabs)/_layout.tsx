@@ -11,8 +11,9 @@ import { TAB_BAR_HEIGHT, tabBarBottom } from "@/constants/tabBar";
 import { ReactNode } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { C } from "@/theme/tokens";
 
-const ACTIVE = "#DC179F";
+const ACTIVE = C.brandVivid;
 const INACTIVE = "#FFFFFF";
 
 // Figma: the open tab gets a short pink line above its icon.

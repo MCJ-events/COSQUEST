@@ -4,6 +4,7 @@ import { router } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { ActivityIndicator, Alert, StyleSheet, Text, View } from "react-native";
 import { OnboardingScreen } from "@/components/OnboardingScreen";
+import { C } from "@/theme/tokens";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -60,7 +61,7 @@ export default function AuthSignin() {
 
         {googleLoading ? (
           <View style={styles.loadingRow}>
-            <ActivityIndicator size="small" color="#C5399A" />
+            <ActivityIndicator size="small" color={C.brand} />
 
             <Text style={styles.loadingText}>
               Connecting your Google account...
@@ -71,7 +72,7 @@ export default function AuthSignin() {
         <Text style={styles.sub}>
           Don&apos;t have an account?{" "}
           <Text
-            style={{ color: "#C5399A", fontWeight: "700" }}
+            style={{ color: C.brand, fontWeight: "700" }}
             onPress={() => router.push("/onboarding/signup")}>
             Sign-up
           </Text>
@@ -90,11 +91,11 @@ const styles = StyleSheet.create({
     fontSize: 35,
     fontWeight: "800",
     textAlign: "center",
-    color: "#191922",
+    color: C.ink,
   },
   sub: {
     fontSize: 14,
-    color: "#2b2b2c",
+    color: C.inkSoft,
     textAlign: "center",
     marginTop: 20,
     lineHeight: 20,

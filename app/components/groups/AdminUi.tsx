@@ -17,18 +17,19 @@ import { AVATARS } from "@/constants/avatars";
 import { FONTS } from "@/constants/fonts";
 import type { GroupMember, GroupPerson } from "@/services/groups";
 import { safeBack } from "@/utils/safeBack";
+import { C } from "@/theme/tokens";
 
 export const A = {
-  pink: "#B63D91",
-  ink: "#24283C",
-  muted: "#66738A",
-  lilac: "#F0EDF9",
-  pinkSoft: "#F3DDED",
+  pink: C.brandDeep,
+  ink: C.inkNavy,
+  muted: C.slate,
+  lilac: C.lilac,
+  pinkSoft: C.brandTint,
   line: "rgba(36,40,60,0.08)",
-  danger: "#C0394B",
+  danger: C.dangerDeep,
 };
 
-const AVATAR_TINTS = ["#E9E1F5", "#DCE8EF", "#F3DDED", "#E2F0E8", "#F5E6D8"];
+const AVATAR_TINTS = ["#E9E1F5", "#DCE8EF", C.brandTint, "#E2F0E8", "#F5E6D8"];
 
 function avatarTint(name?: string) {
   let hash = 0;
@@ -59,7 +60,7 @@ export function AdminScreen({
 }) {
   const insets = useSafeAreaInsets();
   return (
-    <LinearGradient colors={["#F6F9FE", "#E3F0FC"]} style={styles.screen}>
+    <LinearGradient colors={[C.skyPale, C.skyPale2]} style={styles.screen}>
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <Pressable onPress={() => safeBack()} hitSlop={10} accessibilityLabel="Back">
           <Ionicons name="chevron-back" size={26} color={A.ink} />
@@ -346,7 +347,7 @@ const styles = StyleSheet.create({
 
   avatar: { alignItems: "center", justifyContent: "center" },
 
-  avatarText: { fontFamily: FONTS.bold, fontSize: 12, color: "#7D356D" },
+  avatarText: { fontFamily: FONTS.bold, fontSize: 12, color: C.plum },
 
   nameRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 3 },
 

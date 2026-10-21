@@ -26,10 +26,11 @@ import { setSparksMuted } from "@/services/chatPrefs";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { fetchChats } from "@/store/thunks/chatThunks";
 import { safeBack } from "@/utils/safeBack";
+import { C } from "@/theme/tokens";
 
-const PINK = "#B63D91";
-const INK = "#24283C";
-const MUTED = "#66738A";
+const PINK = C.brandDeep;
+const INK = C.inkNavy;
+const MUTED = C.slate;
 const PINK_SOFT = "#F7E3F0";
 const LINE = "rgba(36,40,60,0.08)";
 
@@ -74,7 +75,7 @@ function Row({
         <Text style={[styles.rowTitle, danger && styles.danger]}>{title}</Text>
         {hint ? <Text style={styles.rowHint}>{hint}</Text> : null}
       </View>
-      {right ?? (icon ? <Ionicons name={icon} size={22} color={danger ? "#C0394B" : MUTED} /> : null)}
+      {right ?? (icon ? <Ionicons name={icon} size={22} color={danger ? C.dangerDeep : MUTED} /> : null)}
     </Pressable>
   );
 }
@@ -227,7 +228,7 @@ export default function GroupSettings() {
   const roleLabel = group?.myRole === "owner" ? "Owner" : group?.myRole === "admin" ? "Admin" : "Member";
 
   return (
-    <LinearGradient colors={["#F6F9FE", "#E3F0FC"]} style={styles.screen}>
+    <LinearGradient colors={[C.skyPale, C.skyPale2]} style={styles.screen}>
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <Pressable onPress={() => safeBack()} hitSlop={10} accessibilityLabel="Back">
           <Ionicons name="chevron-back" size={26} color={INK} />
@@ -442,7 +443,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
-    backgroundColor: "#F3DDED",
+    backgroundColor: C.brandTint,
   },
 
   chipText: { fontFamily: FONTS.semibold, fontSize: 11, color: PINK },
@@ -459,5 +460,5 @@ const styles = StyleSheet.create({
 
   rowHint: { marginTop: 2, fontFamily: FONTS.regular, fontSize: 12, lineHeight: 17, color: MUTED },
 
-  danger: { color: "#C0394B" },
+  danger: { color: C.dangerDeep },
 });

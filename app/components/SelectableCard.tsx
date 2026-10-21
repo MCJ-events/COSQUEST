@@ -2,6 +2,7 @@ import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import type { ImageSourcePropType, StyleProp, ViewStyle } from "react-native";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { C } from "@/theme/tokens";
 
 export function SelectableCard({
   label,
@@ -57,7 +58,7 @@ const styles = StyleSheet.create({
     shadowRadius: 20,
     shadowOffset: { width: 0, height: 8 },
   },
-  cardSelected: { borderColor: "#C5399A" },
+  cardSelected: { borderColor: C.brand },
   tint: {
     position: "absolute",
     left: 0,
@@ -73,7 +74,7 @@ const styles = StyleSheet.create({
     width: 26,
     height: 26,
     borderRadius: 13,
-    backgroundColor: "#C5399A",
+    backgroundColor: C.brand,
     alignItems: "center",
     justifyContent: "center",
   },

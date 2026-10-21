@@ -6,6 +6,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { OnboardingScreen } from "@/components/OnboardingScreen";
+import { C } from "@/theme/tokens";
 
 // There is no separate "check this code" endpoint on the backend: the code
 // is checked in the LAST step (reset-password), together with the new
@@ -132,20 +133,20 @@ const styles = StyleSheet.create({
     fontSize: 35,
     fontWeight: "800",
     textAlign: "center",
-    color: "#191922",
+    color: C.ink,
   },
   sub: {
     fontSize: 14,
-    color: "#2b2b2c",
+    color: C.inkSoft,
     textAlign: "center",
     marginTop: 20,
     marginBottom: 50,
     lineHeight: 20,
   },
-  email: { fontWeight: "700", color: "#191922" },
+  email: { fontWeight: "700", color: C.ink },
   resendWrap: { alignItems: "center", gap: 6, marginTop: 20, marginBottom: 20 },
-  resendPrompt: { fontSize: 15, color: "#2b2b2c" },
-  resend: { color: "#C5399A", fontWeight: "700", fontSize: 16 },
+  resendPrompt: { fontSize: 15, color: C.inkSoft },
+  resend: { color: C.brand, fontWeight: "700", fontSize: 16 },
   resendOk: {
     color: "#2E9E5B",
     fontSize: 12,

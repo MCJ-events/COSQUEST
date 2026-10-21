@@ -13,6 +13,7 @@ import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { OnboardingScreen } from "@/components/OnboardingScreen";
+import { C } from "@/theme/tokens";
 
 const POPUP_DELAY = 2000;
 
@@ -326,14 +327,14 @@ const styles = StyleSheet.create({
   headline: {
     fontSize: 35,
     fontWeight: "800",
-    color: "#191922",
+    color: C.ink,
     textAlign: "center",
     marginTop: 20,
   },
 
   sub: {
     fontSize: 14,
-    color: "#2b2b2c",
+    color: C.inkSoft,
     textAlign: "center",
     marginTop: 10,
     marginBottom: 20,

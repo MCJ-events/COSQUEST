@@ -48,11 +48,12 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { fetchChats } from "@/store/thunks/chatThunks";
 import { setSparksMuted } from "@/services/chatPrefs";
 import { safeBack } from "@/utils/safeBack";
+import { C } from "@/theme/tokens";
 
-const PINK = "#B63D91";
-const INK = "#24283C";
-const MUTED = "#66738A";
-const LILAC = "#F0EDF9";
+const PINK = C.brandDeep;
+const INK = C.inkNavy;
+const MUTED = C.slate;
+const LILAC = C.lilac;
 const PINK_SOFT = "#F7E3F0";
 const LINE = "rgba(36,40,60,0.08)";
 
@@ -93,7 +94,7 @@ const STEP_TITLE: Record<Step, string> = {
   4: "Set the ground rules",
 };
 
-const AVATAR_TINTS = ["#E9E1F5", "#DCE8EF", "#F3DDED", "#E2F0E8", "#F5E6D8"];
+const AVATAR_TINTS = ["#E9E1F5", "#DCE8EF", C.brandTint, "#E2F0E8", "#F5E6D8"];
 
 function avatarTint(name?: string) {
   let hash = 0;
@@ -379,7 +380,7 @@ export default function NewGroup() {
           : `Create ${name.trim() || "group"}`;
 
   return (
-    <LinearGradient colors={["#F6F9FE", "#E3F0FC"]} style={styles.screen}>
+    <LinearGradient colors={[C.skyPale, C.skyPale2]} style={styles.screen}>
       <KeyboardAvoidingView style={styles.flex} behavior="padding">
         {/* HEADER */}
         <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
@@ -487,7 +488,7 @@ export default function NewGroup() {
                 value={name}
                 onChangeText={setName}
                 placeholder="e.g. Barrio Logan Ascendants"
-                placeholderTextColor="#9AA3B5"
+                placeholderTextColor={C.placeholder}
                 maxLength={60}
                 style={styles.input}
               />
@@ -497,7 +498,7 @@ export default function NewGroup() {
                 value={description}
                 onChangeText={setDescription}
                 placeholder="What is this group for?"
-                placeholderTextColor="#9AA3B5"
+                placeholderTextColor={C.placeholder}
                 maxLength={300}
                 multiline
                 style={[styles.input, styles.textArea]}
@@ -807,7 +808,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
-    backgroundColor: "#F3DDED",
+    backgroundColor: C.brandTint,
   },
 
   chipCenter: { alignSelf: "center", marginTop: 10 },
@@ -912,7 +913,7 @@ const styles = StyleSheet.create({
 
   memberPhoto: { width: 42, height: 42, borderRadius: 21 },
 
-  memberInitials: { fontFamily: FONTS.bold, fontSize: 12, color: "#7D356D" },
+  memberInitials: { fontFamily: FONTS.bold, fontSize: 12, color: C.plum },
 
   memberNameRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 3 },
 

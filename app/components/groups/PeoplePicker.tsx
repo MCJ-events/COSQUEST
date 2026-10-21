@@ -24,6 +24,7 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { getAvatarSource } from "@/utils/callHelpers";
 
 import { INK, MILKY, MUTED, PINK } from "./GroupUi";
+import { C } from "@/theme/tokens";
 
 function keyOf(person: GroupPerson) {
   return (person.id || person.username).toLowerCase();
@@ -133,12 +134,12 @@ export default function PeoplePicker({
   return (
     <View>
       <View style={styles.search}>
-        <Ionicons name="search" size={18} color="#9C9CAA" />
+        <Ionicons name="search" size={18} color={C.muted} />
         <TextInput
           value={query}
           onChangeText={setQuery}
           placeholder="Search by username"
-          placeholderTextColor="#9C9CAA"
+          placeholderTextColor={C.muted}
           style={styles.searchInput}
           autoCapitalize="none"
           autoCorrect={false}

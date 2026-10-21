@@ -22,6 +22,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { tabBarSpace } from "@/constants/tabBar";
+import { C } from "@/theme/tokens";
 
 type Tab = "Feeds" | "Chats" | "Spotlight";
 
@@ -109,14 +110,14 @@ export default function Community() {
               hitSlop={10}
               accessibilityRole="button"
               accessibilityLabel="Notifications">
-              <Ionicons name="notifications" size={28} color="#C5399A" />
+              <Ionicons name="notifications" size={28} color={C.brand} />
             </Pressable>
           </View>
 
           {/* LOADING */}
           {loading && !user ? (
             <View style={styles.loading}>
-              <ActivityIndicator size="small" color="#C5399A" />
+              <ActivityIndicator size="small" color={C.brand} />
             </View>
           ) : null}
 
@@ -178,7 +179,7 @@ export default function Community() {
   );
 }
 
-const PINK = "#C34D9C";
+const PINK = C.brandSoft;
 
 const styles = StyleSheet.create({
   scroll: {},
@@ -214,7 +215,7 @@ const styles = StyleSheet.create({
     marginTop: 1,
     fontFamily: FONTS.regular,
     fontSize: 12,
-    color: "#66738A",
+    color: C.slate,
   },
 
   // Figma: a bigger avatar on a soft pink circle.

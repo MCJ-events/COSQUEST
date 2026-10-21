@@ -41,6 +41,7 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { fetchFollowing } from "@/store/thunks/followThunks";
 import { getCloudinaryVideoPoster } from "@/utils/videoPoster";
 import { safeBack } from "@/utils/safeBack";
+import { C } from "@/theme/tokens";
 
 type Tab = "Posts" | "Reels" | "Thoughts";
 
@@ -349,7 +350,7 @@ export default function UserProfileScreen() {
   const header = (
     <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
       <Pressable onPress={goBack} hitSlop={10} style={styles.headerButton}>
-        <Ionicons name="chevron-back" size={26} color="#191922" />
+        <Ionicons name="chevron-back" size={26} color={C.ink} />
       </Pressable>
 
       <Text style={styles.headerTitle} numberOfLines={1}>
@@ -362,7 +363,7 @@ export default function UserProfileScreen() {
           hitSlop={10}
           style={styles.headerButton}
           accessibilityLabel="More options">
-          <Ionicons name="ellipsis-vertical" size={20} color="#191922" />
+          <Ionicons name="ellipsis-vertical" size={20} color={C.ink} />
         </Pressable>
       ) : (
         <View style={styles.headerButton} />
@@ -375,13 +376,13 @@ export default function UserProfileScreen() {
   if (loading) {
     content = (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#C5399A" />
+        <ActivityIndicator size="large" color={C.brand} />
       </View>
     );
   } else if (blockedByMe) {
     content = (
       <View style={styles.center}>
-        <Ionicons name="ban-outline" size={42} color="#8A8A93" />
+        <Ionicons name="ban-outline" size={42} color={C.grey2} />
         <Text style={styles.centerTitle}>You blocked @{username}</Text>
         <Text style={styles.centerText}>
           Unblock them to see their profile and message each other again.
@@ -397,7 +398,7 @@ export default function UserProfileScreen() {
   } else if (unavailable || !profile) {
     content = (
       <View style={styles.center}>
-        <Ionicons name="lock-closed-outline" size={42} color="#8A8A93" />
+        <Ionicons name="lock-closed-outline" size={42} color={C.grey2} />
         <Text style={styles.centerTitle}>Profile not available</Text>
         <Text style={styles.centerText}>
           This profile is private, or it no longer exists.
@@ -463,7 +464,7 @@ export default function UserProfileScreen() {
               {busy === "follow" ? (
                 <ActivityIndicator
                   size="small"
-                  color={iFollow ? "#C5399A" : "#FFFFFF"}
+                  color={iFollow ? C.brand : "#FFFFFF"}
                 />
               ) : (
                 <Text
@@ -480,7 +481,7 @@ export default function UserProfileScreen() {
               onPress={openMessage}
               disabled={!!busy}>
               {busy === "message" ? (
-                <ActivityIndicator size="small" color="#C5399A" />
+                <ActivityIndicator size="small" color={C.brand} />
               ) : (
                 <Text style={styles.actionGhostText}>Message</Text>
               )}
@@ -507,7 +508,7 @@ export default function UserProfileScreen() {
                         : "chatbubble-ellipses-outline"
                   }
                   size={18}
-                  color={active ? "#C5399A" : "#9C9CAA"}
+                  color={active ? C.brand : C.muted}
                 />
                 <Text style={[styles.tabText, active && styles.tabTextActive]}>
                   {key}
@@ -635,7 +636,7 @@ export default function UserProfileScreen() {
                 <Ionicons
                   name="checkmark-circle-outline"
                   size={20}
-                  color="#191922"
+                  color={C.ink}
                 />
                 <Text style={styles.menuText}>Unblock @{username}</Text>
               </Pressable>
@@ -680,7 +681,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontSize: 17,
     fontWeight: "800",
-    color: "#191922",
+    color: C.ink,
   },
 
   scroll: {
@@ -703,7 +704,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
     fontSize: 17,
     fontWeight: "800",
-    color: "#191922",
+    color: C.ink,
     textAlign: "center",
   },
 
@@ -711,7 +712,7 @@ const styles = StyleSheet.create({
     marginTop: 6,
     fontSize: 13,
     lineHeight: 19,
-    color: "#6B6B72",
+    color: C.grey3,
     textAlign: "center",
   },
 
@@ -720,7 +721,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 26,
     paddingVertical: 11,
     borderRadius: 20,
-    backgroundColor: "#C5399A",
+    backgroundColor: C.brand,
   },
 
   primaryButtonText: {
@@ -738,7 +739,7 @@ const styles = StyleSheet.create({
     padding: 3,
     borderRadius: 64,
     borderWidth: 2,
-    borderColor: "#C5399A",
+    borderColor: C.brand,
   },
 
   avatar: {
@@ -752,7 +753,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
     fontSize: 22,
     fontWeight: "800",
-    color: "#191922",
+    color: C.ink,
     textAlign: "center",
   },
 
@@ -812,7 +813,7 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 18,
     fontWeight: "800",
-    color: "#191922",
+    color: C.ink,
   },
 
   statLabel: {
@@ -836,7 +837,7 @@ const styles = StyleSheet.create({
   },
 
   actionPrimary: {
-    backgroundColor: "#C5399A",
+    backgroundColor: C.brand,
   },
 
   actionPrimaryText: {
@@ -852,7 +853,7 @@ const styles = StyleSheet.create({
   },
 
   actionGhostText: {
-    color: "#C5399A",
+    color: C.brand,
     fontWeight: "700",
     fontSize: 14,
   },
@@ -876,11 +877,11 @@ const styles = StyleSheet.create({
   tabText: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#9C9CAA",
+    color: C.muted,
   },
 
   tabTextActive: {
-    color: "#C5399A",
+    color: C.brand,
     fontWeight: "800",
   },
 
@@ -936,7 +937,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 30,
     fontSize: 13,
-    color: "#9C9CAA",
+    color: C.muted,
   },
 
   menuBackdrop: {
@@ -967,7 +968,7 @@ const styles = StyleSheet.create({
   menuText: {
     fontSize: 15.5,
     fontWeight: "600",
-    color: "#191922",
+    color: C.ink,
   },
 
   menuDanger: {
@@ -983,6 +984,6 @@ const styles = StyleSheet.create({
   menuCancelText: {
     fontSize: 15.5,
     fontWeight: "600",
-    color: "#777780",
+    color: C.grey5,
   },
 });

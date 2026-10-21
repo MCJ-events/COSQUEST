@@ -7,6 +7,7 @@ import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { safeBack } from "@/utils/safeBack";
 import { OnboardingScreen } from "@/components/OnboardingScreen";
+import { C } from "@/theme/tokens";
 
 // Backend errors that need a special button (exact texts from the API doc).
 const INVALID_CODE_ERROR = "That code is invalid or has expired.";
@@ -174,11 +175,11 @@ const styles = StyleSheet.create({
     fontSize: 35,
     fontWeight: "800",
     textAlign: "center",
-    color: "#191922",
+    color: C.ink,
   },
   sub: {
     fontSize: 14,
-    color: "#2b2b2c",
+    color: C.inkSoft,
     textAlign: "center",
     marginTop: 20,
     marginBottom: 50,
@@ -194,12 +195,12 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   serverErrorText: {
-    color: "#B42318",
+    color: C.dangerInk,
     fontSize: 13,
     textAlign: "center",
   },
   link: {
-    color: "#C5399A",
+    color: C.brand,
     fontSize: 13,
     fontWeight: "700",
   },

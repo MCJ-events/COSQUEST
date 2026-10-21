@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Modal, Pressable, StyleSheet, Text } from "react-native";
+import { C } from "@/theme/tokens";
 
 type PostMenuProps = {
   visible: boolean;
@@ -45,7 +46,7 @@ export function PostMenu({
             <>
               {/* EDIT */}
               <Pressable style={styles.item} onPress={handleEdit}>
-                <Ionicons name="create-outline" size={21} color="#191922" />
+                <Ionicons name="create-outline" size={21} color={C.ink} />
 
                 <Text style={styles.itemText}>Edit post</Text>
               </Pressable>
@@ -101,7 +102,7 @@ const styles = StyleSheet.create({
     marginLeft: 14,
     fontSize: 16,
     fontWeight: "600",
-    color: "#191922",
+    color: C.ink,
   },
 
   deleteText: {
@@ -124,6 +125,6 @@ const styles = StyleSheet.create({
   cancelText: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#777780",
+    color: C.grey5,
   },
 });

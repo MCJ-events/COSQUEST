@@ -1,10 +1,11 @@
 import { Ionicons } from "@expo/vector-icons";
 import { StyleSheet, Text, View } from "react-native";
+import { C } from "@/theme/tokens";
 
 export function FeedEmptyState() {
   return (
     <View style={styles.container}>
-      <Ionicons name="newspaper-outline" size={44} color="#9C9CAA" />
+      <Ionicons name="newspaper-outline" size={44} color={C.muted} />
 
       <Text style={styles.title}>No posts yet</Text>
 
@@ -33,7 +34,7 @@ const styles = StyleSheet.create({
     marginTop: 6,
     fontSize: 13,
     lineHeight: 19,
-    color: "#777780",
+    color: C.grey5,
     textAlign: "center",
   },
 });

@@ -13,6 +13,7 @@ import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
 import { OnboardingScreen } from "@/components/OnboardingScreen";
+import { C } from "@/theme/tokens";
 
 export default function UploadPicture() {
   const { data, update } = useOnboarding();
@@ -201,7 +202,7 @@ export default function UploadPicture() {
               style={styles.takePhotoBtn}
               onPress={takePhoto}
               disabled={isSaving}>
-              <Ionicons name="camera" size={18} color="#C5399A" />
+              <Ionicons name="camera" size={18} color={C.brand} />
 
               <Text style={styles.takePhotoText}>Take photo</Text>
             </Pressable>
@@ -275,7 +276,7 @@ const styles = StyleSheet.create({
     fontSize: 35,
     fontWeight: "800",
     textAlign: "center",
-    color: "#191922",
+    color: C.ink,
     marginTop: 20,
   },
 
@@ -328,7 +329,7 @@ const styles = StyleSheet.create({
   },
 
   takePhotoText: {
-    color: "#191922",
+    color: C.ink,
     fontSize: 15,
     fontWeight: "600",
   },
@@ -350,7 +351,7 @@ const styles = StyleSheet.create({
   },
 
   rollText: {
-    color: "#191922",
+    color: C.ink,
     fontSize: 15,
     fontWeight: "600",
   },
@@ -360,7 +361,7 @@ const styles = StyleSheet.create({
     padding: 3,
     borderRadius: 110,
     borderWidth: 2,
-    borderColor: "#C5399A",
+    borderColor: C.brand,
     marginBottom: 30,
   },
 
@@ -390,7 +391,7 @@ const styles = StyleSheet.create({
   },
 
   avatarActive: {
-    borderColor: "#C5399A",
+    borderColor: C.brand,
     borderWidth: 2,
   },
 

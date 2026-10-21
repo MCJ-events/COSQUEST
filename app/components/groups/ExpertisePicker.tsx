@@ -10,10 +10,11 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { FONTS } from "@/constants/fonts";
 import { getExpertiseRoles, setMyExpertise, type ExpertiseRole } from "@/services/chatPrefs";
+import { C } from "@/theme/tokens";
 
-const PINK = "#B63D91";
-const INK = "#24283C";
-const MUTED = "#66738A";
+const PINK = C.brandDeep;
+const INK = C.inkNavy;
+const MUTED = C.slate;
 
 export default function ExpertisePicker({
   visible,
@@ -124,5 +125,5 @@ const styles = StyleSheet.create({
     borderBottomColor: "rgba(36,40,60,0.08)",
   },
   rowText: { fontFamily: FONTS.semibold, fontSize: 15, color: INK },
-  clear: { color: "#C0394B" },
+  clear: { color: C.dangerDeep },
 });

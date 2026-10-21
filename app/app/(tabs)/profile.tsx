@@ -34,11 +34,12 @@ import {
 
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { tabBarSpace } from "@/constants/tabBar";
+import { C } from "@/theme/tokens";
 
 type Tab = "Posts" | "Reels" | "Thoughts";
 
 // Figma colours
-const PINK = "#C34D9C";
+const PINK = C.brandSoft;
 const PURPLE = "#7E2167";
 
 // How many faction member avatars to show before the "+N" pill.
@@ -274,7 +275,7 @@ function ReelItem({ post }: { post: Post }) {
   if (!videoUrl) {
     return (
       <View style={styles.reelUnavailable}>
-        <Ionicons name="videocam-outline" size={32} color="#9C9CAA" />
+        <Ionicons name="videocam-outline" size={32} color={C.muted} />
         <Text style={styles.reelUnavailableText}>Video unavailable</Text>
       </View>
     );
@@ -579,7 +580,7 @@ export default function Profile() {
             hitSlop={10}
             accessibilityRole="button"
             accessibilityLabel="Create a post">
-            <Ionicons name="add" size={28} color="#191922" />
+            <Ionicons name="add" size={28} color={C.ink} />
           </Pressable>
 
           <Pressable
@@ -786,7 +787,7 @@ export default function Profile() {
                         : "person-outline"
                   }
                   size={18}
-                  color={active ? "#191922" : "#9C9CAA"}
+                  color={active ? C.ink : C.muted}
                 />
 
                 <Text style={[styles.tabText, active && styles.tabTextActive]}>
@@ -825,7 +826,7 @@ export default function Profile() {
             </View>
           ) : (
             <View style={styles.emptyContent}>
-              <Ionicons name="images-outline" size={36} color="#9C9CAA" />
+              <Ionicons name="images-outline" size={36} color={C.muted} />
 
               <Text style={styles.emptyTitle}>No posts yet</Text>
 
@@ -846,7 +847,7 @@ export default function Profile() {
             </View>
           ) : (
             <View style={styles.emptyContent}>
-              <Ionicons name="videocam-outline" size={36} color="#9C9CAA" />
+              <Ionicons name="videocam-outline" size={36} color={C.muted} />
 
               <Text style={styles.emptyTitle}>No reels yet</Text>
 
@@ -870,7 +871,7 @@ export default function Profile() {
               <Ionicons
                 name="chatbubble-ellipses-outline"
                 size={36}
-                color="#9C9CAA"
+                color={C.muted}
               />
 
               <Text style={styles.emptyTitle}>No thoughts yet</Text>
@@ -963,7 +964,7 @@ const styles = StyleSheet.create({
   errorText: {
     fontFamily: FONTS.regular,
     fontSize: 12,
-    color: "#B42318",
+    color: C.dangerInk,
     textAlign: "center",
   },
 
@@ -1035,7 +1036,7 @@ const styles = StyleSheet.create({
     marginTop: 14,
     fontFamily: FONTS.bold,
     fontSize: 20,
-    color: "#191922",
+    color: C.ink,
     textAlign: "center",
   },
 
@@ -1043,7 +1044,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
     fontFamily: FONTS.regular,
     fontSize: 10.5,
-    color: "#8A8A93",
+    color: C.grey2,
     textAlign: "center",
   },
 
@@ -1061,7 +1062,7 @@ const styles = StyleSheet.create({
   statValue: {
     fontFamily: FONTS.semibold,
     fontSize: 15,
-    color: "#191922",
+    color: C.ink,
   },
 
   statLabel: {
@@ -1091,7 +1092,7 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.semibold,
     fontSize: 13,
     lineHeight: 17,
-    color: "#191922",
+    color: C.ink,
   },
 
   gameStatLabel: {
@@ -1105,7 +1106,7 @@ const styles = StyleSheet.create({
     marginTop: 18,
     fontFamily: FONTS.semibold,
     fontSize: 11,
-    color: "#191922",
+    color: C.ink,
   },
 
   about: {
@@ -1340,12 +1341,12 @@ const styles = StyleSheet.create({
   tabText: {
     fontFamily: FONTS.regular,
     fontSize: 14,
-    color: "#9C9CAA",
+    color: C.muted,
   },
 
   tabTextActive: {
     fontFamily: FONTS.semibold,
-    color: "#191922",
+    color: C.ink,
   },
 
   // Edge to edge, 3 columns.
@@ -1387,7 +1388,7 @@ const styles = StyleSheet.create({
 
   empty: {
     textAlign: "center",
-    color: "#9C9CAA",
+    color: C.muted,
     marginTop: 4,
     fontFamily: FONTS.regular,
     fontSize: 11.5,
@@ -1443,7 +1444,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     fontFamily: FONTS.regular,
     fontSize: 12,
-    color: "#9C9CAA",
+    color: C.muted,
   },
 
   thoughtsList: {
@@ -1472,6 +1473,6 @@ const styles = StyleSheet.create({
     marginTop: 8,
     fontFamily: FONTS.regular,
     fontSize: 10.5,
-    color: "#9C9CAA",
+    color: C.muted,
   },
 });

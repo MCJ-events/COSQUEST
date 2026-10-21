@@ -42,14 +42,15 @@ import { useAppSelector } from "@/store/hooks";
 import { apiRequest } from "@/services/api";
 import { RecordingPresets, requestRecordingPermissionsAsync, setAudioModeAsync, useAudioRecorder } from "expo-audio";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
+import { C } from "@/theme/tokens";
 
-const PINK = "#B63D91";
-const TEAL = "#2A8A92";
-const INK = "#24283C";
-const MUTED = "#66738A";
-const LILAC = "#F0EDF9";
+const PINK = C.brandDeep;
+const TEAL = C.teal;
+const INK = C.inkNavy;
+const MUTED = C.slate;
+const LILAC = C.lilac;
 
-const AVATAR_TINTS = ["#E9E1F5", "#DCE8EF", "#F3DDED", "#E2F0E8", "#F5E6D8"];
+const AVATAR_TINTS = ["#E9E1F5", "#DCE8EF", C.brandTint, "#E2F0E8", "#F5E6D8"];
 
 function avatarTint(name?: string) {
   let hash = 0;
@@ -365,7 +366,7 @@ export default function SparkPanel({
               </Pressable>
               <Pressable style={[styles.menuItem, styles.menuLast]} onPress={confirmDelete}>
                 <Text style={[styles.menuLabel, styles.menuText, styles.danger]}>Delete Spark</Text>
-                <Ionicons name="trash-outline" size={20} color="#C0394B" />
+                <Ionicons name="trash-outline" size={20} color={C.dangerDeep} />
               </Pressable>
             </View>
           ) : null}
@@ -500,7 +501,7 @@ export default function SparkPanel({
               <Ionicons
                 name={recording ? "stop-circle" : "mic-outline"}
                 size={recording ? 30 : 24}
-                color={recording ? "#C0394B" : PINK}
+                color={recording ? C.dangerDeep : PINK}
               />
             </Pressable>
             <Pressable
@@ -540,7 +541,7 @@ const STYLE_PAIR = themedStyles({
     paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: 12,
-    shadowColor: "#24283C",
+    shadowColor: C.inkNavy,
     shadowOpacity: 0.16,
     shadowRadius: 18,
     shadowOffset: { width: -4, height: 4 },
@@ -582,7 +583,7 @@ const STYLE_PAIR = themedStyles({
 
   mergeTitle: { paddingTop: 12, fontFamily: FONTS.semibold, fontSize: 12, color: MUTED },
 
-  danger: { color: "#C0394B" },
+  danger: { color: C.dangerDeep },
 
   muted: { color: MUTED },
 
@@ -624,7 +625,7 @@ const STYLE_PAIR = themedStyles({
 
   avatar: { width: 30, height: 30, borderRadius: 15, alignItems: "center", justifyContent: "center" },
 
-  avatarText: { fontFamily: FONTS.bold, fontSize: 10, color: "#7D356D" },
+  avatarText: { fontFamily: FONTS.bold, fontSize: 10, color: C.plum },
 
   senderText: { flex: 1, minWidth: 0, gap: 3 },
 

@@ -11,10 +11,11 @@ import { getSocket } from "@/services/socket";
 import { getVoiceRoom, joinVoiceRoom, normalizeVoiceRoom, type VoiceJoinInfo, type VoiceRoom } from "@/services/voiceRooms";
 import { useAppSelector } from "@/store/hooks";
 import { ensureCallPermissions } from "@/utils/callHelpers";
+import { C } from "@/theme/tokens";
 
-const PINK = "#B63D91";
-const INK = "#24283C";
-const MUTED = "#66738A";
+const PINK = C.brandDeep;
+const INK = C.inkNavy;
+const MUTED = C.slate;
 
 // ---------------------------------------------------------------------
 // Session state (one voice chat at a time, app-wide)

@@ -39,6 +39,7 @@ import {
 import { CommentItem } from "./CommentItem";
 
 import { getSocket, joinPost, leavePost } from "@/services/socket";
+import { C } from "@/theme/tokens";
 
 type LikeState = {
   liked: boolean;
@@ -147,7 +148,7 @@ function RecordingIndicator({
         <Ionicons
           name="chevron-back"
           size={14}
-          color={cancelArmed ? "#D64545" : "#8A8A90"}
+          color={cancelArmed ? C.danger : C.grey1}
         />
 
         <Text
@@ -1286,7 +1287,7 @@ export function CommentsModal({
             </View>
 
             <Pressable style={styles.close} onPress={onClose}>
-              <Ionicons name="close" size={23} color="#191922" />
+              <Ionicons name="close" size={23} color={C.ink} />
             </Pressable>
           </View>
 
@@ -1294,7 +1295,7 @@ export function CommentsModal({
 
           {loading ? (
             <View style={styles.loading}>
-              <ActivityIndicator size="large" color="#C5399A" />
+              <ActivityIndicator size="large" color={C.brand} />
 
               <Text style={styles.loadingText}>Loading comments...</Text>
             </View>
@@ -1384,7 +1385,7 @@ export function CommentsModal({
                 </Text>
 
                 <Pressable onPress={() => setReplyingTo(null)}>
-                  <Ionicons name="close-circle" size={21} color="#9C9CAA" />
+                  <Ionicons name="close-circle" size={21} color={C.muted} />
                 </Pressable>
               </View>
             ) : null}
@@ -1456,9 +1457,9 @@ export function CommentsModal({
                   accessibilityLabel="Hold to record voice comment"
                   {...micPanResponder.panHandlers}>
                   {sendingVoice ? (
-                    <ActivityIndicator size="small" color="#C34D9C" />
+                    <ActivityIndicator size="small" color={C.brandSoft} />
                   ) : (
-                    <Ionicons name="mic-outline" size={19} color="#C34D9C" />
+                    <Ionicons name="mic-outline" size={19} color={C.brandSoft} />
                   )}
                 </View>
               ) : (
@@ -1528,7 +1529,7 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: FONTS.semibold,
     fontSize: 18,
-    color: "#191922",
+    color: C.ink,
   },
 
   count: {
@@ -1606,7 +1607,7 @@ const styles = StyleSheet.create({
   },
 
   replyBannerText: {
-    color: "#C5399A",
+    color: C.brand,
     fontFamily: FONTS.semibold,
     fontSize: 12,
   },
@@ -1682,7 +1683,7 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
     fontFamily: FONTS.regular,
     fontSize: 13.5,
-    color: "#191922",
+    color: C.ink,
     ...(Platform.OS === "web"
       ? ({ outlineStyle: "none", resize: "none" } as object)
       : null),
@@ -1694,7 +1695,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#C5399A",
+    backgroundColor: C.brand,
   },
 
   sendDisabled: {
@@ -1731,7 +1732,7 @@ const styles = StyleSheet.create({
     width: 9,
     height: 9,
     borderRadius: 5,
-    backgroundColor: "#D64545",
+    backgroundColor: C.danger,
     marginRight: 8,
   },
 
@@ -1739,7 +1740,7 @@ const styles = StyleSheet.create({
     width: 38,
     fontFamily: FONTS.semibold,
     fontSize: 14,
-    color: "#191922",
+    color: C.ink,
   },
 
   recordingWave: {
@@ -1757,7 +1758,7 @@ const styles = StyleSheet.create({
     minHeight: 4,
     maxHeight: 25,
     borderRadius: 3,
-    backgroundColor: "#C5399A",
+    backgroundColor: C.brand,
     marginHorizontal: 1.2,
   },
 
@@ -1771,10 +1772,10 @@ const styles = StyleSheet.create({
   slideCancelText: {
     fontFamily: FONTS.medium,
     fontSize: 12,
-    color: "#8A8A90",
+    color: C.grey1,
   },
 
   dangerText: {
-    color: "#D64545",
+    color: C.danger,
   },
 });

@@ -22,6 +22,7 @@ import Animated, {
       useSharedValue,
       withSpring,
 } from "react-native-reanimated";
+import { C } from "@/theme/tokens";
 
 type Props = {
   visible: boolean;
@@ -211,7 +212,7 @@ export function FactionDescriptionModal({
                   onPress={onClose}
                   style={styles.backButton}
                   hitSlop={10}>
-                  <Ionicons name="arrow-back" size={19} color="#191922" />
+                  <Ionicons name="arrow-back" size={19} color={C.ink} />
                 </Pressable>
 
                 <Text style={styles.headerTitle}>Factions</Text>
@@ -220,7 +221,7 @@ export function FactionDescriptionModal({
                   <Ionicons
                     name="ellipsis-horizontal"
                     size={18}
-                    color="#191922"
+                    color={C.ink}
                   />
                 </View>
               </View>
@@ -391,7 +392,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontSize: 15,
     fontWeight: "800",
-    color: "#191922",
+    color: C.ink,
   },
 
   backButton: {
@@ -434,7 +435,7 @@ const styles = StyleSheet.create({
   factionName: {
     fontSize: 25,
     fontWeight: "900",
-    color: "#191922",
+    color: C.ink,
     marginTop: 9,
     letterSpacing: -0.4,
   },
@@ -466,7 +467,7 @@ const styles = StyleSheet.create({
   statNumber: {
     fontSize: 16,
     fontWeight: "900",
-    color: "#191922",
+    color: C.ink,
     marginTop: 1,
   },
 
@@ -479,7 +480,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 11,
     fontWeight: "900",
-    color: "#191922",
+    color: C.ink,
     marginTop: 15,
     marginBottom: 6,
   },

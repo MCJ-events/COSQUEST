@@ -27,13 +27,14 @@ import { FONTS } from "@/constants/fonts";
 import type { Rank } from "@/services/ranks";
 import { addToSpark, monthYear, startSpark, type Spark } from "@/services/sparks";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
+import { C } from "@/theme/tokens";
 
-const PINK = "#B63D91";
-const INK = "#24283C";
-const MUTED = "#66738A";
-const LILAC = "#F0EDF9";
+const PINK = C.brandDeep;
+const INK = C.inkNavy;
+const MUTED = C.slate;
+const LILAC = C.lilac;
 
-const AVATAR_TINTS = ["#E9E1F5", "#DCE8EF", "#F3DDED", "#E2F0E8", "#F5E6D8"];
+const AVATAR_TINTS = ["#E9E1F5", "#DCE8EF", C.brandTint, "#E2F0E8", "#F5E6D8"];
 
 function avatarTint(name?: string) {
   let hash = 0;
@@ -177,7 +178,7 @@ export default function StartSparkSheet({
                 value={subject}
                 onChangeText={setSubject}
                 placeholder="e.g. Spider-Man uniform"
-                placeholderTextColor="#9AA3B5"
+                placeholderTextColor={C.placeholder}
                 maxLength={60}
                 autoFocus
                 style={styles.input}
@@ -288,7 +289,7 @@ const STYLE_PAIR = themedStyles({
     backgroundColor: "#FFFFFF",
   },
 
-  sheetTall: { maxHeight: "94%", backgroundColor: "#F6F9FE" },
+  sheetTall: { maxHeight: "94%", backgroundColor: C.skyPale },
 
   header: { flexDirection: "row", alignItems: "center", gap: 10, justifyContent: "space-between" },
 
@@ -309,7 +310,7 @@ const STYLE_PAIR = themedStyles({
 
   avatar: { width: 30, height: 30, borderRadius: 15, alignItems: "center", justifyContent: "center" },
 
-  avatarText: { fontFamily: FONTS.bold, fontSize: 10, color: "#7D356D" },
+  avatarText: { fontFamily: FONTS.bold, fontSize: 10, color: C.plum },
 
   seedName: { flex: 1, minWidth: 0, gap: 3 },
 
@@ -380,7 +381,7 @@ const STYLE_PAIR = themedStyles({
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
-    backgroundColor: "#F3DDED",
+    backgroundColor: C.brandTint,
   },
 
   botChipText: { fontFamily: FONTS.semibold, fontSize: 11, color: PINK },
@@ -396,7 +397,7 @@ const STYLE_PAIR = themedStyles({
 
   stateChip: { alignSelf: "flex-start", paddingHorizontal: 9, paddingVertical: 3, borderRadius: 10 },
 
-  stateChipActive: { backgroundColor: "#F3DDED" },
+  stateChipActive: { backgroundColor: C.brandTint },
 
   stateChipQuiet: { backgroundColor: "#ECEDF3" },
 

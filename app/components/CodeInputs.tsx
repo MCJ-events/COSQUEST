@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { C } from "@/theme/tokens";
 
 export function CodeInput({
   value,
@@ -56,7 +57,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  boxActive: { borderColor: "#C5399A", borderWidth: 1 },
-  digit: { fontSize: 22, fontWeight: "700", color: "#191922" },
+  boxActive: { borderColor: C.brand, borderWidth: 1 },
+  digit: { fontSize: 22, fontWeight: "700", color: C.ink },
   hiddenInput: { ...StyleSheet.absoluteFill, opacity: 0 },
 });

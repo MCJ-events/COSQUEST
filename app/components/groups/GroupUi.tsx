@@ -12,10 +12,11 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { FONTS } from "@/constants/fonts";
+import { C } from "@/theme/tokens";
 
-export const PINK = "#C34D9C";
-export const INK = "#191922";
-export const MUTED = "#7A7A84";
+export const PINK = C.brandSoft;
+export const INK = C.ink;
+export const MUTED = C.grey4;
 
 // The milky, pressed-in box used across the app's Figma screens.
 export const MILKY = {
@@ -47,7 +48,7 @@ export function GroupScreen({
   return (
     <View style={styles.screen}>
       <LinearGradient
-        colors={["#FFFFFF", "#E1F3FF"]}
+        colors={["#FFFFFF", C.skyWash]}
         locations={[0, 0.6442]}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
@@ -199,7 +200,7 @@ export function GroupRow({
         pressed && onPress ? styles.pressed : null,
       ]}>
       <View style={[styles.rowIcon, danger && styles.rowIconDanger]}>
-        <Ionicons name={icon} size={16} color={danger ? "#D64545" : PINK} />
+        <Ionicons name={icon} size={16} color={danger ? C.danger : PINK} />
       </View>
 
       <View style={styles.rowText}>
@@ -209,7 +210,7 @@ export function GroupRow({
 
       {right ??
         (onPress && !danger ? (
-          <Ionicons name="chevron-forward" size={16} color="#8A8A93" />
+          <Ionicons name="chevron-forward" size={16} color={C.grey2} />
         ) : null)}
     </Pressable>
   );
@@ -348,5 +349,5 @@ const styles = StyleSheet.create({
     color: MUTED,
   },
 
-  danger: { color: "#D64545" },
+  danger: { color: C.danger },
 });

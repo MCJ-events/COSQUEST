@@ -29,6 +29,7 @@ import {
 
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { safeBack } from "@/utils/safeBack";
+import { C } from "@/theme/tokens";
 
 export default function ProfilePhoto() {
   const insets = useSafeAreaInsets();
@@ -231,14 +232,14 @@ export default function ProfilePhoto() {
             hitSlop={10}
             accessibilityRole="button"
             accessibilityLabel="Back">
-            <Ionicons name="chevron-back" size={26} color="#191922" />
+            <Ionicons name="chevron-back" size={26} color={C.ink} />
           </Pressable>
 
           <Text style={styles.headerTitle}>Profile Photo</Text>
 
           <Pressable onPress={handleSave} hitSlop={10} disabled={saving}>
             {saving ? (
-              <ActivityIndicator size="small" color="#C5399A" />
+              <ActivityIndicator size="small" color={C.brand} />
             ) : (
               <Text style={styles.save}>Save</Text>
             )}
@@ -269,7 +270,7 @@ export default function ProfilePhoto() {
             },
           ]}
           onPress={choosePhoto}>
-          <Ionicons name="image-outline" size={21} color="#C5399A" />
+          <Ionicons name="image-outline" size={21} color={C.brand} />
 
           <Text style={styles.uploadButtonText}>Upload a new photo</Text>
         </Pressable>
@@ -353,13 +354,13 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: "700",
-    color: "#191922",
+    color: C.ink,
   },
 
   save: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#C5399A",
+    color: C.brand,
   },
 
   previewSection: {
@@ -374,7 +375,7 @@ const styles = StyleSheet.create({
     padding: 4,
     backgroundColor: "rgba(255,255,255,0.50)",
     borderWidth: 2,
-    borderColor: "#C5399A",
+    borderColor: C.brand,
   },
 
   previewImage: {
@@ -386,7 +387,7 @@ const styles = StyleSheet.create({
   previewLabel: {
     marginTop: 10,
     fontSize: 13,
-    color: "#777780",
+    color: C.grey5,
   },
 
   uploadButton: {
@@ -397,7 +398,7 @@ const styles = StyleSheet.create({
     borderRadius: 13,
     backgroundColor: "rgba(255,255,255,0.25)",
     borderWidth: 1,
-    borderColor: "#C5399A",
+    borderColor: C.brand,
     marginBottom: 28,
   },
 
@@ -405,20 +406,20 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     fontSize: 14,
     fontWeight: "700",
-    color: "#C5399A",
+    color: C.brand,
   },
 
   sectionTitle: {
     fontSize: 17,
     fontWeight: "700",
-    color: "#191922",
+    color: C.ink,
     marginBottom: 5,
   },
 
   sectionSubtitle: {
     fontSize: 12,
     lineHeight: 18,
-    color: "#777780",
+    color: C.grey5,
     marginBottom: 15,
   },
 
@@ -440,7 +441,7 @@ const styles = StyleSheet.create({
   },
 
   avatarItemActive: {
-    borderColor: "#C5399A",
+    borderColor: C.brand,
   },
 
   avatarImage: {
@@ -458,7 +459,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#C5399A",
+    backgroundColor: C.brand,
   },
 
   bottomSave: {
@@ -468,7 +469,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     flexDirection: "row",
-    backgroundColor: "#C5399A",
+    backgroundColor: C.brand,
   },
 
   bottomSaveDisabled: {

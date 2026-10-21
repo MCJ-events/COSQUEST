@@ -33,6 +33,7 @@ import { PostMenu } from "./PostMenu";
 import { SharedPostEmbed } from "./SharedPostEmbed";
 import { ShareSheet } from "./ShareSheet";
 import { useRenderCount } from "@/utils/perfMarks";
+import { C } from "@/theme/tokens";
 
 /* =========================================================
    HELPERS
@@ -164,7 +165,7 @@ function factionColor(faction: string) {
   const key = faction.toLowerCase();
 
   if (!key) {
-    return "#C5399A";
+    return C.brand;
   }
 
   if (FACTION_COLORS[key]) {
@@ -681,7 +682,7 @@ export const PostCard = memo(function PostCard({ post, token }: { post: any; tok
               editable={!savingEdit}
               style={styles.editInput}
               placeholder="Write something..."
-              placeholderTextColor="#9C9CAA"
+              placeholderTextColor={C.muted}
             />
 
             <Pressable
@@ -800,7 +801,7 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.semibold,
     fontSize: 13.5,
     lineHeight: 18,
-    color: "#191922",
+    color: C.ink,
   },
 
   meta: {
@@ -898,7 +899,7 @@ const styles = StyleSheet.create({
   editTitle: {
     fontSize: 18,
     fontWeight: "700",
-    color: "#191922",
+    color: C.ink,
   },
 
   editClose: {
@@ -912,7 +913,7 @@ const styles = StyleSheet.create({
 
   editCloseText: {
     fontSize: 26,
-    color: "#191922",
+    color: C.ink,
     lineHeight: 28,
   },
 
@@ -925,7 +926,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     paddingVertical: 14,
     fontSize: 15,
-    color: "#191922",
+    color: C.ink,
     marginBottom: 15,
   },
 
@@ -934,7 +935,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 18,
-    backgroundColor: "#C5399A",
+    backgroundColor: C.brand,
   },
 
   saveButtonDisabled: {

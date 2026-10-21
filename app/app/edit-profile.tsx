@@ -30,8 +30,9 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { updateAuthUser } from "@/store/slices/authSlice";
 import { updateUser } from "@/store/slices/userSlice";
 import { safeBack } from "@/utils/safeBack";
+import { C } from "@/theme/tokens";
 
-const PINK = "#C34D9C";
+const PINK = C.brandSoft;
 
 // "digital-creator" -> "Digital creator"
 function humanize(value?: string | null) {
@@ -208,7 +209,7 @@ export default function EditProfile() {
             style={styles.headerSide}
             accessibilityRole="button"
             accessibilityLabel="Back">
-            <Ionicons name="chevron-back" size={24} color="#191922" />
+            <Ionicons name="chevron-back" size={24} color={C.ink} />
           </Pressable>
 
           <Text style={styles.headerTitle}>Edit Profile</Text>
@@ -266,7 +267,7 @@ export default function EditProfile() {
                 onChangeText={setDisplayName}
                 style={[styles.field, styles.input]}
                 placeholder="Your name"
-                placeholderTextColor="#9C9CAA"
+                placeholderTextColor={C.muted}
                 autoCapitalize="words"
               />
             </View>
@@ -278,7 +279,7 @@ export default function EditProfile() {
                 onChangeText={setUsername}
                 style={[styles.field, styles.input]}
                 placeholder="username"
-                placeholderTextColor="#9C9CAA"
+                placeholderTextColor={C.muted}
                 autoCapitalize="none"
                 autoCorrect={false}
               />
@@ -291,7 +292,7 @@ export default function EditProfile() {
                 onChangeText={setBio}
                 style={[styles.field, styles.input, styles.bioInput]}
                 placeholder="Tell people about yourself"
-                placeholderTextColor="#9C9CAA"
+                placeholderTextColor={C.muted}
                 multiline
                 maxLength={300}
                 textAlignVertical="top"
@@ -313,7 +314,7 @@ export default function EditProfile() {
                   <Text style={styles.rowValue} numberOfLines={1}>
                     {category || "Not selected"}
                   </Text>
-                  <Ionicons name="chevron-forward" size={16} color="#8A8A93" />
+                  <Ionicons name="chevron-forward" size={16} color={C.grey2} />
                 </View>
               </Pressable>
             </View>
@@ -329,7 +330,7 @@ export default function EditProfile() {
                 <Text style={styles.rowValue} numberOfLines={1}>
                   {contactSummary}
                 </Text>
-                <Ionicons name="chevron-forward" size={16} color="#8A8A93" />
+                <Ionicons name="chevron-forward" size={16} color={C.grey2} />
               </View>
             </Pressable>
           </View>
@@ -457,7 +458,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     fontFamily: FONTS.medium,
     fontSize: 12,
-    color: "#7A7A84",
+    color: C.grey4,
   },
 
   sectionLabel: {
@@ -469,7 +470,7 @@ const styles = StyleSheet.create({
   input: {
     fontFamily: FONTS.regular,
     fontSize: 14.5,
-    color: "#191922",
+    color: C.ink,
     ...(Platform.OS === "web" ? ({ outlineStyle: "none" } as object) : null),
   },
 
@@ -495,7 +496,7 @@ const styles = StyleSheet.create({
   rowTitle: {
     fontFamily: FONTS.medium,
     fontSize: 15,
-    color: "#191922",
+    color: C.ink,
   },
 
   rowRight: {
@@ -509,7 +510,7 @@ const styles = StyleSheet.create({
   rowValue: {
     fontFamily: FONTS.regular,
     fontSize: 13.5,
-    color: "#8A8A93",
+    color: C.grey2,
     flexShrink: 1,
   },
 });

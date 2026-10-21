@@ -10,6 +10,7 @@ import { StyleSheet, Text } from "react-native";
 import { FONTS } from "@/constants/fonts";
 
 import { LinkText } from "./LinkText";
+import { C } from "@/theme/tokens";
 
 // @everyone, or @username (letters, numbers, _ and .)
 const MENTION_PATTERN = /(@everyone\b|@[A-Za-z0-9_.]+)/g;
@@ -46,6 +47,6 @@ export function MentionText({ text, mine }: { text: string; mine: boolean }) {
 const styles = StyleSheet.create({
   mention: {
     fontFamily: FONTS.semibold,
-    color: "#C34D9C",
+    color: C.brandSoft,
   },
 });

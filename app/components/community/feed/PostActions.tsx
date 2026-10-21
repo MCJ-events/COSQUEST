@@ -4,6 +4,7 @@ import { useId, useState } from "react";
 import { Pressable, type StyleProp, StyleSheet, Text, type TextStyle, View } from "react-native";
 import Svg, { Defs, LinearGradient, Path, Stop } from "react-native-svg";
 import { useFeedClock } from "./feedVisibility";
+import { C } from "@/theme/tokens";
 
 // ==========================================
 // FIGMA MEASUREMENTS (card = 355.42 x 384.19)
@@ -190,9 +191,9 @@ export function PostActions({
 }) {
   const [panelWidth, setPanelWidth] = useState(0);
 
-  const baseColor = overlay ? "#FFFFFF" : "#3B3B42";
+  const baseColor = overlay ? "#FFFFFF" : C.ink2;
   const likeColor = liked ? "#FF3B30" : baseColor;
-  const saveColor = bookmarked ? "#C5399A" : baseColor;
+  const saveColor = bookmarked ? C.brand : baseColor;
 
   const stats = (
     <>
@@ -336,7 +337,7 @@ const styles = StyleSheet.create({
 
   timeInline: {
     marginLeft: 0,
-    color: "#8A8A93",
+    color: C.grey2,
   },
 
   // Save (and its count) on its own at the bottom right.

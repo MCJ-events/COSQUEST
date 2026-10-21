@@ -34,10 +34,11 @@ import { getGroupMembers } from "@/services/groups";
 import type { Rank } from "@/services/ranks";
 import { useAppSelector } from "@/store/hooks";
 import { DARK_SCREEN_GRADIENT, LIGHT_SCREEN_GRADIENT, themedStyles, useInk, useThemedStyles } from "@/constants/chatTheme";
+import { C } from "@/theme/tokens";
 
-const PINK = "#B63D91";
-const INK = "#24283C";
-const MUTED = "#66738A";
+const PINK = C.brandDeep;
+const INK = C.inkNavy;
+const MUTED = C.slate;
 const LINE = "rgba(36,40,60,0.08)";
 
 const PAGE_SIZE = 50;
@@ -348,7 +349,7 @@ export default function MentionPicker({
               value={query}
               onChangeText={setQuery}
               placeholder="Find a member"
-              placeholderTextColor="#9AA3B5"
+              placeholderTextColor={C.placeholder}
               style={styles.searchInput}
               autoCapitalize="none"
               autoCorrect={false}

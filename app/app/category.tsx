@@ -22,8 +22,9 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { KeyboardAwareScrollView } from "@/components/ui/keyboard";
+import { C } from "@/theme/tokens";
 
-const PINK = "#C34D9C";
+const PINK = C.brandSoft;
 
 export default function Category() {
   const insets = useSafeAreaInsets();
@@ -153,7 +154,7 @@ export default function Category() {
     <View style={styles.screen}>
       {/* Same background as the Figma screens */}
       <LinearGradient
-        colors={["#FFFFFF", "#E1F3FF"]}
+        colors={["#FFFFFF", C.skyWash]}
         locations={[0, 0.6442]}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
@@ -168,7 +169,7 @@ export default function Category() {
           style={styles.headerSide}
           accessibilityRole="button"
           accessibilityLabel="Back">
-          <Ionicons name="arrow-back" size={24} color="#191922" />
+          <Ionicons name="arrow-back" size={24} color={C.ink} />
         </Pressable>
 
         <Text style={styles.headerTitle}>Category</Text>
@@ -223,14 +224,14 @@ export default function Category() {
             value={query}
             onChangeText={setQuery}
             placeholder="Search categories"
-            placeholderTextColor="#9C9CAA"
+            placeholderTextColor={C.muted}
             autoCapitalize="none"
             autoCorrect={false}
           />
 
           {query ? (
             <Pressable onPress={() => setQuery("")} hitSlop={8}>
-              <Ionicons name="close-circle" size={18} color="#9C9CAA" />
+              <Ionicons name="close-circle" size={18} color={C.muted} />
             </Pressable>
           ) : null}
         </View>
@@ -244,7 +245,7 @@ export default function Category() {
           </View>
         ) : loadError ? (
           <View style={styles.stateBox}>
-            <Ionicons name="cloud-offline-outline" size={30} color="#9C9CAA" />
+            <Ionicons name="cloud-offline-outline" size={30} color={C.muted} />
             <Text style={styles.stateText}>{loadError}</Text>
 
             <Pressable style={styles.retry} onPress={loadCategories}>
@@ -282,7 +283,7 @@ export default function Category() {
                   <Ionicons
                     name={active ? "radio-button-on" : "radio-button-off"}
                     size={22}
-                    color={active ? PINK : "#9C9CAA"}
+                    color={active ? PINK : C.muted}
                   />
                 </Pressable>
               );
@@ -353,7 +354,7 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: FONTS.bold,
     fontSize: 22,
-    color: "#191922",
+    color: C.ink,
   },
 
   subtitle: {
@@ -404,7 +405,7 @@ const styles = StyleSheet.create({
   rowLabel: {
     fontFamily: FONTS.regular,
     fontSize: 14.5,
-    color: "#191922",
+    color: C.ink,
   },
 
   searchRow: {
@@ -419,7 +420,7 @@ const styles = StyleSheet.create({
     height: 50,
     fontFamily: FONTS.regular,
     fontSize: 14.5,
-    color: "#191922",
+    color: C.ink,
     ...(Platform.OS === "web" ? ({ outlineStyle: "none" } as object) : null),
   },
 
@@ -429,7 +430,7 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.medium,
     fontSize: 11,
     letterSpacing: 0.4,
-    color: "#7A7A84",
+    color: C.grey4,
   },
 
   list: {

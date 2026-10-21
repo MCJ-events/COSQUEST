@@ -10,6 +10,7 @@ import { useState } from "react";
 import { Keyboard, Pressable, StyleSheet, Text, View } from "react-native";
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
 import { OnboardingScreen } from "@/components/OnboardingScreen";
+import { C } from "@/theme/tokens";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -187,12 +188,12 @@ const styles = StyleSheet.create({
     fontSize: 35,
     fontWeight: "800",
     textAlign: "center",
-    color: "#191922",
+    color: C.ink,
   },
 
   sub: {
     fontSize: 14,
-    color: "#2b2b2c",
+    color: C.inkSoft,
     textAlign: "center",
     marginTop: 20,
     marginBottom: 36,
@@ -241,7 +242,7 @@ const styles = StyleSheet.create({
   },
 
   signupLink: {
-    color: "#C5399A",
+    color: C.brand,
     fontSize: 14,
     fontWeight: "700",
   },

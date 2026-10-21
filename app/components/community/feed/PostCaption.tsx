@@ -1,6 +1,7 @@
 import { FONTS } from "@/constants/fonts";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { C } from "@/theme/tokens";
 
 // Long captions fold with "See more".
 const LONG_CAPTION_CHARS = 200;
@@ -9,8 +10,8 @@ const COLLAPSED_LINES = 3;
 // Figma: Poppins ~14, black text, bold username, pink hashtags.
 const CAPTION_SIZE = 14; // Updated from 13.5
 const CAPTION_LINE_HEIGHT = 22; // Updated from 21
-const CAPTION_COLOR = "#191922";
-const HASHTAG_COLOR = "#C5399A";
+const CAPTION_COLOR = C.ink;
+const HASHTAG_COLOR = C.brand;
 
 function extractHashtags(text?: string) {
   if (!text) {
@@ -99,6 +100,6 @@ const styles = StyleSheet.create({
     marginTop: 3,
     fontFamily: FONTS.semibold,
     fontSize: 12.5,
-    color: "#8A8A93",
+    color: C.grey2,
   },
 });

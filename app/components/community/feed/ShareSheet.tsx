@@ -29,6 +29,7 @@ import { getPostShareLink } from "@/utils/shareLinks";
 
 import { ShareAction } from "./ShareAction";
 import { SharePerson } from "./SharePerson";
+import { C } from "@/theme/tokens";
 
 // How many friends to show before searching.
 const MAX_SUGGESTIONS = 9;
@@ -383,14 +384,14 @@ export function ShareSheet({
             <Text style={styles.title}>Share</Text>
 
             <Pressable style={styles.close} onPress={onClose}>
-              <Ionicons name="close" size={23} color="#191922" />
+              <Ionicons name="close" size={23} color={C.ink} />
             </Pressable>
           </View>
 
           {/* SEARCH */}
           <View style={styles.searchRow}>
             <View style={styles.searchBox}>
-              <Ionicons name="search" size={18} color="#C5399A" />
+              <Ionicons name="search" size={18} color={C.brand} />
 
               <TextInput
                 value={searchText}
@@ -417,7 +418,7 @@ export function ShareSheet({
           <View style={styles.peopleArea}>
             {loadingPeople ? (
               <View style={styles.loading}>
-                <ActivityIndicator size="small" color="#C5399A" />
+                <ActivityIndicator size="small" color={C.brand} />
               </View>
             ) : people.length === 0 ? (
               <View style={styles.noPeople}>
@@ -493,7 +494,7 @@ export function ShareSheet({
                   hitSlop={10}
                   disabled={sharingToFeed}
                   accessibilityLabel="Close">
-                  <Ionicons name="close" size={22} color="#191922" />
+                  <Ionicons name="close" size={22} color={C.ink} />
                 </Pressable>
               </View>
 
@@ -501,7 +502,7 @@ export function ShareSheet({
                 value={caption}
                 onChangeText={setCaption}
                 placeholder="Say something about this… (optional)"
-                placeholderTextColor="#9C9CAA"
+                placeholderTextColor={C.muted}
                 style={styles.composerInput}
                 multiline
                 maxLength={2200}
@@ -568,7 +569,7 @@ const styles = StyleSheet.create({
   composerTitle: {
     fontSize: 17,
     fontWeight: "800",
-    color: "#191922",
+    color: C.ink,
   },
 
   composerInput: {
@@ -578,7 +579,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     backgroundColor: "#F5F3F8",
     fontSize: 15,
-    color: "#191922",
+    color: C.ink,
     textAlignVertical: "top",
   },
 
@@ -586,9 +587,9 @@ const styles = StyleSheet.create({
     marginTop: 10,
     paddingLeft: 10,
     borderLeftWidth: 3,
-    borderLeftColor: "#C5399A",
+    borderLeftColor: C.brand,
     fontSize: 13,
-    color: "#6B6B72",
+    color: C.grey3,
   },
 
   composerButtons: {
@@ -616,7 +617,7 @@ const styles = StyleSheet.create({
   },
 
   composerShare: {
-    backgroundColor: "#C5399A",
+    backgroundColor: C.brand,
   },
 
   composerShareText: {
@@ -666,7 +667,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: "700",
-    color: "#191922",
+    color: C.ink,
   },
 
   close: {
@@ -698,7 +699,7 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 13,
-    color: "#191922",
+    color: C.ink,
   },
 
   plus: {
@@ -707,7 +708,7 @@ const styles = StyleSheet.create({
     borderRadius: 21,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#C5399A",
+    backgroundColor: C.brand,
   },
 
   peopleArea: {

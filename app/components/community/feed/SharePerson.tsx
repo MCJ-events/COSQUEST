@@ -9,6 +9,7 @@ import {
 } from "react-native";
 
 import { AVATARS } from "@/constants/avatars";
+import { C } from "@/theme/tokens";
 
 function avatarSource(person: any) {
   if (person?.avatarPhotoUrl) {
@@ -59,7 +60,7 @@ export function SharePerson({
 
         {sending ? (
           <View style={styles.loading}>
-            <ActivityIndicator size="small" color="#C5399A" />
+            <ActivityIndicator size="small" color={C.brand} />
           </View>
         ) : null}
       </View>
@@ -120,7 +121,7 @@ const styles = StyleSheet.create({
     maxWidth: 85,
     fontSize: 11,
     fontWeight: "600",
-    color: "#3B3B42",
+    color: C.ink2,
     textAlign: "center",
   },
 });

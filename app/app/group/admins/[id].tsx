@@ -22,6 +22,7 @@ import {
 import { FONTS } from "@/constants/fonts";
 import { getGroup, getGroupMembers, setMemberRole, type Group, type GroupMember } from "@/services/groups";
 import { useAppSelector } from "@/store/hooks";
+import { C } from "@/theme/tokens";
 
 export default function Administrators() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -125,7 +126,7 @@ export default function Administrators() {
             value={search}
             onChangeText={setSearch}
             placeholder="Find a member"
-            placeholderTextColor="#9AA3B5"
+            placeholderTextColor={C.placeholder}
             autoCapitalize="none"
             style={styles.search}
           />

@@ -22,6 +22,7 @@ import { world } from "@/features/world/worldState";
 import { useAppSelector } from "@/store/hooks";
 
 import { useWorldSelector } from "./useWorld";
+import { C } from "@/theme/tokens";
 
 export { BUBBLE_Y } from "@/features/world/bubbleZone";
 
@@ -122,7 +123,7 @@ export default function GameBubble({ makePan }: { makePan: () => GestureType }) 
               }}
               accessibilityRole="button">
               <Text style={styles.allChatsText}>All chats</Text>
-              <Ionicons name="chevron-forward" size={14} color="#DC179F" />
+              <Ionicons name="chevron-forward" size={14} color={C.brandVivid} />
             </Pressable>
           </Animated.View>
         </Pressable>
@@ -172,7 +173,7 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
     marginLeft: 2,
-    backgroundColor: "#DC179F",
+    backgroundColor: C.brandVivid,
   },
   badge: {
     position: "absolute",
@@ -184,7 +185,7 @@ const styles = StyleSheet.create({
     borderRadius: 11,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#DC179F",
+    backgroundColor: C.brandVivid,
     borderWidth: 2,
     borderColor: "#FFFFFF",
   },
@@ -229,7 +230,7 @@ const styles = StyleSheet.create({
   rowTitle: {
     fontFamily: FONTS.semibold,
     fontSize: 14,
-    color: "#1D1020",
+    color: C.plumInk,
   },
   rowText: {
     fontFamily: FONTS.regular,
@@ -248,6 +249,6 @@ const styles = StyleSheet.create({
   allChatsText: {
     fontFamily: FONTS.semibold,
     fontSize: 13,
-    color: "#DC179F",
+    color: C.brandVivid,
   },
 });

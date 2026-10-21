@@ -11,6 +11,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { AVATARS } from "@/constants/avatars";
 import type { SharedPost } from "@/store/slices/postSlice";
 import { getCloudinaryVideoPoster } from "@/utils/videoPoster";
+import { C } from "@/theme/tokens";
 
 function avatarFor(author?: {
   avatarPhotoUrl?: string | null;
@@ -30,7 +31,7 @@ export function SharedPostEmbed({ shared }: { shared?: SharedPost | null }) {
   if (!shared || shared.unavailable) {
     return (
       <View style={[styles.frame, styles.unavailable]}>
-        <Ionicons name="eye-off-outline" size={18} color="#8A8A93" />
+        <Ionicons name="eye-off-outline" size={18} color={C.grey2} />
         <Text style={styles.unavailableText}>
           This post is no longer available.
         </Text>
@@ -144,7 +145,7 @@ const styles = StyleSheet.create({
 
   unavailableText: {
     fontSize: 13,
-    color: "#8A8A93",
+    color: C.grey2,
   },
 
   authorRow: {
@@ -169,13 +170,13 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#191922",
+    color: C.ink,
   },
 
   meta: {
     marginTop: 1,
     fontSize: 12,
-    color: "#8A8A93",
+    color: C.grey2,
   },
 
   mediaWrap: {
@@ -221,6 +222,6 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     fontSize: 13.5,
     lineHeight: 19,
-    color: "#3B3B42",
+    color: C.ink2,
   },
 });

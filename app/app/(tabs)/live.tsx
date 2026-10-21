@@ -12,6 +12,7 @@ import type { ComponentProps } from "react";
 import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { tabBarSpace } from "@/constants/tabBar";
+import { C } from "@/theme/tokens";
 
 type IconName = ComponentProps<typeof Ionicons>["name"];
 
@@ -35,7 +36,7 @@ function Row({
       accessibilityRole="button"
       accessibilityLabel={`${title}. ${action}`}>
       <View style={styles.iconWrap}>
-        <Ionicons name={icon} size={22} color="#C5399A" />
+        <Ionicons name={icon} size={22} color={C.brand} />
       </View>
       <View style={styles.cardText}>
         <Text style={styles.cardTitle}>{title}</Text>
@@ -93,7 +94,7 @@ const styles = StyleSheet.create({
   subtitle: {
     fontFamily: FONTS.regular,
     fontSize: 13,
-    color: "#66738A",
+    color: C.slate,
     textAlign: "center",
     marginTop: 4,
     marginBottom: 24,
@@ -118,7 +119,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(195,77,156,0.14)",
   },
   cardText: { flex: 1 },
-  cardTitle: { fontFamily: FONTS.semibold, fontSize: 15, color: "#191922" },
+  cardTitle: { fontFamily: FONTS.semibold, fontSize: 15, color: C.ink },
   cardBody: { fontFamily: FONTS.regular, fontSize: 13, color: "#4A4F5C", marginTop: 4, lineHeight: 19 },
-  cardAction: { fontFamily: FONTS.medium, fontSize: 13, color: "#C5399A", marginTop: 8 },
+  cardAction: { fontFamily: FONTS.medium, fontSize: 13, color: C.brand, marginTop: 8 },
 });

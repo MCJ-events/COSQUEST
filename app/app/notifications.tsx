@@ -24,6 +24,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { safeBack } from "@/utils/safeBack";
+import { C } from "@/theme/tokens";
 
 function getAvatarSource(actor: AppNotificationItem["actor"]) {
   if (actor?.avatarPhotoUrl) {
@@ -204,7 +205,7 @@ export default function Notifications() {
     <View style={[styles.screen, { paddingTop: insets.top + 8 }]}>
       <View style={styles.header}>
         <Pressable onPress={() => safeBack()} hitSlop={10} accessibilityRole="button" accessibilityLabel="Back">
-          <Ionicons name="arrow-back" size={24} color="#191922" />
+          <Ionicons name="arrow-back" size={24} color={C.ink} />
         </Pressable>
 
         <Text style={styles.headerTitle}>Notifications</Text>
@@ -214,7 +215,7 @@ export default function Notifications() {
 
       {loading && notifications.length === 0 ? (
         <View style={styles.center}>
-          <ActivityIndicator size="small" color="#C5399A" />
+          <ActivityIndicator size="small" color={C.brand} />
 
           <Text style={styles.centerText}>Loading notifications...</Text>
         </View>
@@ -233,7 +234,7 @@ export default function Notifications() {
 
       {!loading && !error && notifications.length === 0 ? (
         <View style={styles.center}>
-          <Ionicons name="notifications-outline" size={38} color="#9C9CAA" />
+          <Ionicons name="notifications-outline" size={38} color={C.muted} />
 
           <Text style={styles.emptyTitle}>No notifications yet</Text>
         </View>
@@ -285,7 +286,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontSize: 18,
     fontWeight: "700",
-    color: "#191922",
+    color: C.ink,
   },
 
   center: {
@@ -297,13 +298,13 @@ const styles = StyleSheet.create({
 
   centerText: { fontSize: 12, color: "#79797E" },
 
-  errorText: { fontSize: 13, color: "#B42318", textAlign: "center" },
+  errorText: { fontSize: 13, color: C.dangerInk, textAlign: "center" },
 
   retryText: {
     marginTop: 4,
     fontSize: 13,
     fontWeight: "700",
-    color: "#C5399A",
+    color: C.brand,
   },
 
   emptyTitle: {
@@ -344,8 +345,8 @@ const styles = StyleSheet.create({
   },
   rowText: { flex: 1 },
   body: { fontSize: 13.5, color: "#3a3a40", lineHeight: 19 },
-  handle: { fontWeight: "700", color: "#191922" },
-  time: { fontSize: 12, color: "#9C9CAA", marginTop: 3 },
+  handle: { fontWeight: "700", color: C.ink },
+  time: { fontSize: 12, color: C.muted, marginTop: 3 },
 
   followBtn: {
     minWidth: 78,
@@ -353,9 +354,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 7,
     borderRadius: 16,
-    backgroundColor: "#C5399A",
+    backgroundColor: C.brand,
   },
-  followingBtn: { backgroundColor: "#191922" },
+  followingBtn: { backgroundColor: C.ink },
   followBtnDisabled: { opacity: 0.6 },
   followText: { fontSize: 13, fontWeight: "700", color: "#FFFFFF" },
   followingText: { fontSize: 13, fontWeight: "700", color: "#FFFFFF" },

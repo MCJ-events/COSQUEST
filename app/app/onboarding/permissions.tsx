@@ -25,6 +25,7 @@ import {
   View,
 } from "react-native";
 import { OnboardingScreen } from "@/components/OnboardingScreen";
+import { C } from "@/theme/tokens";
 
 
 const IS_WEB = Platform.OS === "web";
@@ -547,7 +548,7 @@ export default function Permissions() {
         <View style={styles.rows}>
           <View style={styles.row}>
             <View style={styles.iconWrap}>
-              <Ionicons name="location" size={22} color="#C5399A" />
+              <Ionicons name="location" size={22} color={C.brand} />
             </View>
 
             <View style={styles.rowText}>
@@ -595,16 +596,16 @@ export default function Permissions() {
                   radiusMi: value,
                 })
               }
-              minimumTrackTintColor="#C5399A"
+              minimumTrackTintColor={C.brand}
               maximumTrackTintColor="#D5D5DC"
-              thumbTintColor="#C5399A"
+              thumbTintColor={C.brand}
               disabled={saving}
             />
           </View>
 
           <View style={[styles.row, IS_WEB && styles.rowMuted]}>
             <View style={styles.iconWrap}>
-              <Ionicons name="notifications" size={22} color="#C5399A" />
+              <Ionicons name="notifications" size={22} color={C.brand} />
             </View>
 
             <View style={styles.rowText}>
@@ -666,14 +667,14 @@ const styles = StyleSheet.create({
   headline: {
     fontSize: 35,
     fontWeight: "800",
-    color: "#191922",
+    color: C.ink,
     textAlign: "center",
     marginTop: 8,
   },
 
   sub: {
     fontSize: 14,
-    color: "#2b2b2c",
+    color: C.inkSoft,
     textAlign: "center",
     marginTop: 8,
     marginBottom: 24,
@@ -720,12 +721,12 @@ const styles = StyleSheet.create({
   rowTitle: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#191922",
+    color: C.ink,
   },
 
   rowDetail: {
     fontSize: 12,
-    color: "#6b6b72",
+    color: C.grey3,
     marginTop: 2,
   },
 
@@ -746,7 +747,7 @@ const styles = StyleSheet.create({
   radiusValue: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#C5399A",
+    color: C.brand,
   },
 
   toggle: {
@@ -785,7 +786,7 @@ const styles = StyleSheet.create({
   },
 
   settingsLink: {
-    color: "#C5399A",
+    color: C.brand,
     fontWeight: "500",
     textAlign: "center",
     marginTop: 5,

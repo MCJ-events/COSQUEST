@@ -34,11 +34,12 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { fetchChats } from "@/store/thunks/chatThunks";
 import { cancelJoinRequest } from "@/services/chatPrefs";
 import { safeBack } from "@/utils/safeBack";
+import { C } from "@/theme/tokens";
 
-const PINK = "#B63D91";
-const INK = "#24283C";
-const MUTED = "#66738A";
-const LILAC = "#F0EDF9";
+const PINK = C.brandDeep;
+const INK = C.inkNavy;
+const MUTED = C.slate;
+const LILAC = C.lilac;
 const PINK_SOFT = "#F7E3F0";
 
 const KIND_LABEL: Record<GroupKind, string> = {
@@ -142,7 +143,7 @@ export default function GroupInvite() {
   const shownIntro = sent ?? (myRequest?.message ? { text: myRequest.message, at: new Date(myRequest.createdAt || Date.now()) } : null);
 
   return (
-    <LinearGradient colors={["#F6F9FE", "#E3F0FC"]} style={styles.screen}>
+    <LinearGradient colors={[C.skyPale, C.skyPale2]} style={styles.screen}>
       <KeyboardAvoidingView style={styles.flex} behavior="padding">
         <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
           <Pressable onPress={() => safeBack()} hitSlop={10} accessibilityLabel="Back">
@@ -229,7 +230,7 @@ export default function GroupInvite() {
                       value={intro}
                       onChangeText={setIntro}
                       placeholder="Say hi and why you'd like to join (optional)"
-                      placeholderTextColor="#9AA3B5"
+                      placeholderTextColor={C.placeholder}
                       multiline
                       maxLength={200}
                       style={styles.introInput}
@@ -294,7 +295,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
-    backgroundColor: "#F3DDED",
+    backgroundColor: C.brandTint,
   },
 
   chipText: { fontFamily: FONTS.semibold, fontSize: 11, color: PINK },

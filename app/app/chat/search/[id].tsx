@@ -38,11 +38,12 @@ import { getPref, setPref } from "@/utils/prefsStorage";
 import { safeBack } from "@/utils/safeBack";
 import { DARK_SCREEN_GRADIENT, LIGHT_SCREEN_GRADIENT, themedStyles, useInk, useThemedStyles } from "@/constants/chatTheme";
 import { KeyboardAvoidingView } from "@/components/ui/keyboard";
+import { C } from "@/theme/tokens";
 
-const PINK = "#B63D91";
-const INK = "#24283C";
-const MUTED = "#66738A";
-const LILAC = "#F0EDF9";
+const PINK = C.brandDeep;
+const INK = C.inkNavy;
+const MUTED = C.slate;
+const LILAC = C.lilac;
 const LINE = "rgba(36,40,60,0.08)";
 
 const RECENT_LIMIT = 3;
@@ -352,7 +353,7 @@ export default function SearchInChat() {
             onSubmitEditing={() => remember(query)}
             returnKeyType="search"
             placeholder="Search messages"
-            placeholderTextColor="#9AA3B5"
+            placeholderTextColor={C.placeholder}
             autoFocus
             autoCapitalize="none"
             autoCorrect={false}
@@ -361,7 +362,7 @@ export default function SearchInChat() {
           {loadingPage === 1 ? <ActivityIndicator size="small" color={PINK} /> : null}
           {query ? (
             <Pressable onPress={() => setQuery("")} hitSlop={8} accessibilityLabel="Clear search">
-              <Ionicons name="close-circle" size={17} color="#9AA3B5" />
+              <Ionicons name="close-circle" size={17} color={C.placeholder} />
             </Pressable>
           ) : null}
         </View>
@@ -560,7 +561,7 @@ const STYLE_PAIR = themedStyles({
 
   chip: { paddingHorizontal: 12, height: 28, borderRadius: 14, justifyContent: "center", backgroundColor: "#ECE8F4" },
 
-  chipOn: { backgroundColor: "#F3DDED" },
+  chipOn: { backgroundColor: C.brandTint },
 
   chipText: { fontFamily: FONTS.medium, fontSize: 12, color: MUTED },
 

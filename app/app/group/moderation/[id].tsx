@@ -45,6 +45,7 @@ import {
   type MemberMuteDuration,
 } from "@/services/groups";
 import { useAppSelector } from "@/store/hooks";
+import { C } from "@/theme/tokens";
 
 type Action = "remove" | "ban" | "mute" | null;
 
@@ -224,7 +225,7 @@ export default function Moderation() {
             value={search}
             onChangeText={setSearch}
             placeholder="Find a member"
-            placeholderTextColor="#9AA3B5"
+            placeholderTextColor={C.placeholder}
             autoCapitalize="none"
             style={styles.search}
           />

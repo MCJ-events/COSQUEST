@@ -25,6 +25,7 @@ import { PostCard } from "@/components/community/feed/PostCard";
 import { getPost } from "@/services/posts";
 import { useAppSelector } from "@/store/hooks";
 import { safeBack } from "@/utils/safeBack";
+import { C } from "@/theme/tokens";
 
 // The backend's single-post answer may be { post: {...} } or the post
 // itself, and may use slightly different names than the feed list
@@ -122,7 +123,7 @@ export default function PostDetailScreen() {
     // Opened from a shared link without being logged in.
     content = (
       <View style={styles.center}>
-        <Ionicons name="lock-closed-outline" size={40} color="#C5399A" />
+        <Ionicons name="lock-closed-outline" size={40} color={C.brand} />
 
         <Text style={styles.centerTitle}>Log in to see this post</Text>
 
@@ -142,7 +143,7 @@ export default function PostDetailScreen() {
   } else if (loading) {
     content = (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#C5399A" />
+        <ActivityIndicator size="large" color={C.brand} />
 
         <Text style={styles.centerText}>Loading post...</Text>
       </View>
@@ -150,7 +151,7 @@ export default function PostDetailScreen() {
   } else {
     content = (
       <View style={styles.center}>
-        <Ionicons name="alert-circle-outline" size={40} color="#8A8A93" />
+        <Ionicons name="alert-circle-outline" size={40} color={C.grey2} />
 
         <Text style={styles.centerTitle}>Post not available</Text>
 
@@ -171,7 +172,7 @@ export default function PostDetailScreen() {
 
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <Pressable onPress={goBack} hitSlop={10} style={styles.back}>
-          <Ionicons name="chevron-back" size={26} color="#191922" />
+          <Ionicons name="chevron-back" size={26} color={C.ink} />
         </Pressable>
 
         <Text style={styles.headerTitle}>Post</Text>
@@ -210,7 +211,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: "700",
-    color: "#191922",
+    color: C.ink,
   },
 
   scroll: {
@@ -236,7 +237,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
     fontSize: 17,
     fontWeight: "700",
-    color: "#191922",
+    color: C.ink,
     textAlign: "center",
   },
 
@@ -244,7 +245,7 @@ const styles = StyleSheet.create({
     marginTop: 6,
     fontSize: 13,
     lineHeight: 19,
-    color: "#6B6B72",
+    color: C.grey3,
     textAlign: "center",
   },
 
@@ -253,7 +254,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 11,
     borderRadius: 20,
-    backgroundColor: "#C5399A",
+    backgroundColor: C.brand,
   },
 
   buttonText: {

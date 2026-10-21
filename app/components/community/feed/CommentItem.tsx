@@ -6,6 +6,7 @@ import { AVATARS } from "@/constants/avatars";
 import { FONTS } from "@/constants/fonts";
 import { CommentAudio } from "./CommentAudio";
 import { ReplyItem } from "./ReplyItem";
+import { C } from "@/theme/tokens";
 
 function getAvatar(author: any) {
   // Real uploaded profile photo
@@ -170,7 +171,7 @@ export function CommentItem({
 
             {isPostAuthor ? (
               <View style={styles.authorBadge}>
-                <Ionicons name="heart-outline" size={11} color="#C5399A" />
+                <Ionicons name="heart-outline" size={11} color={C.brand} />
                 <Text style={styles.authorBadgeText}>by author</Text>
               </View>
             ) : null}
@@ -222,7 +223,7 @@ export function CommentItem({
           <Ionicons
             name={liked ? "heart" : "heart-outline"}
             size={18}
-            color={liked ? "#C5399A" : "#9C9CAA"}
+            color={liked ? C.brand : C.muted}
           />
 
           {likeCount > 0 ? (
@@ -302,7 +303,7 @@ const styles = StyleSheet.create({
   username: {
     fontFamily: FONTS.semibold,
     fontSize: 13,
-    color: "#191922",
+    color: C.ink,
   },
 
   time: {
@@ -320,7 +321,7 @@ const styles = StyleSheet.create({
   authorBadgeText: {
     fontFamily: FONTS.medium,
     fontSize: 10.5,
-    color: "#C5399A",
+    color: C.brand,
   },
 
   text: {
@@ -328,7 +329,7 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.regular,
     fontSize: 13,
     lineHeight: 19,
-    color: "#3B3B42",
+    color: C.ink2,
   },
 
   actions: {
@@ -341,7 +342,7 @@ const styles = StyleSheet.create({
   replyText: {
     fontFamily: FONTS.medium,
     fontSize: 12,
-    color: "#C5399A",
+    color: C.brand,
   },
 
   viewReplies: {
@@ -367,11 +368,11 @@ const styles = StyleSheet.create({
     marginTop: 2,
     fontFamily: FONTS.medium,
     fontSize: 11,
-    color: "#9C9CAA",
+    color: C.muted,
   },
 
   likedCount: {
-    color: "#C5399A",
+    color: C.brand,
   },
 
   replies: {

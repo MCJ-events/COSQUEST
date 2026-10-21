@@ -79,6 +79,7 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { fetchChats, fetchConversation } from "@/store/thunks/chatThunks";
 import { getAvatarSource } from "@/utils/callHelpers";
 import { safeBack } from "@/utils/safeBack";
+import { C } from "@/theme/tokens";
 
 const KIND_LABEL = {
   private: "Private group",
@@ -571,7 +572,7 @@ export default function GroupInfo() {
     return (
       <GroupScreen title="Group info" onBack={() => safeBack()}>
         <View style={styles.center}>
-          <Ionicons name="alert-circle-outline" size={34} color="#9C9CAA" />
+          <Ionicons name="alert-circle-outline" size={34} color={C.muted} />
           <Text style={styles.centerText}>
             {loadError || "This group isn't available."}
           </Text>
@@ -807,7 +808,7 @@ export default function GroupInfo() {
                   <Ionicons
                     name="volume-mute"
                     size={15}
-                    color="#9C9CAA"
+                    color={C.muted}
                     style={styles.mutedIcon}
                   />
                 ) : null}
@@ -1042,7 +1043,7 @@ export default function GroupInfo() {
                       style={styles.declineButton}
                       onPress={() => answer(request, false)}
                       accessibilityLabel="Decline">
-                      <Ionicons name="close" size={18} color="#D64545" />
+                      <Ionicons name="close" size={18} color={C.danger} />
                     </Pressable>
                     <Pressable
                       style={styles.approveButton}
@@ -1406,7 +1407,7 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.regular,
     fontSize: 13.5,
     lineHeight: 20,
-    color: "#3B3B42",
+    color: C.ink2,
     textAlign: "center",
   },
 
@@ -1618,7 +1619,7 @@ const styles = StyleSheet.create({
   removePhotoText: {
     fontFamily: FONTS.medium,
     fontSize: 13.5,
-    color: "#D64545",
+    color: C.danger,
   },
 
   saveButton: { marginTop: 16 },

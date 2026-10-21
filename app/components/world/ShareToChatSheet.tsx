@@ -31,6 +31,7 @@ import { sendMessage } from "@/services/chats";
 import { sendGameInvite } from "@/services/gameInvites";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { socketMessageReceived } from "@/store/slices/chatSlice";
+import { C } from "@/theme/tokens";
 
 export default function ShareToChatSheet({
   payload,
@@ -100,7 +101,7 @@ export default function ShareToChatSheet({
         <View style={styles.headerRow}>
           <Text style={styles.heading}>{resultText ? "Share to a chat" : "Invite to a chat"}</Text>
           <Pressable onPress={close} hitSlop={12} accessibilityRole="button" accessibilityLabel="Close">
-            <Ionicons name="close" size={22} color="#1D1020" />
+            <Ionicons name="close" size={22} color={C.plumInk} />
           </Pressable>
         </View>
 
@@ -152,16 +153,16 @@ export default function ShareToChatSheet({
                   <Ionicons
                     name={item.type === "dm" ? "person" : "people"}
                     size={16}
-                    color="#DC179F"
+                    color={C.brandVivid}
                   />
                 </View>
                 <Text style={styles.rowTitle} numberOfLines={1}>
                   {title}
                 </Text>
                 {sendingTo === item.id ? (
-                  <ActivityIndicator color="#DC179F" />
+                  <ActivityIndicator color={C.brandVivid} />
                 ) : (
-                  <Ionicons name="paper-plane-outline" size={18} color="#DC179F" />
+                  <Ionicons name="paper-plane-outline" size={18} color={C.brandVivid} />
                 )}
               </Pressable>
             );
@@ -208,7 +209,7 @@ const styles = StyleSheet.create({
   heading: {
     fontFamily: FONTS.bold,
     fontSize: 18,
-    color: "#1D1020",
+    color: C.plumInk,
   },
   preview: {
     padding: 12,
@@ -218,7 +219,7 @@ const styles = StyleSheet.create({
   previewTitle: {
     fontFamily: FONTS.semibold,
     fontSize: 15,
-    color: "#1D1020",
+    color: C.plumInk,
   },
   previewWhen: {
     fontFamily: FONTS.regular,
@@ -236,7 +237,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#F4F0F5",
     fontFamily: FONTS.regular,
     fontSize: 14,
-    color: "#1D1020",
+    color: C.plumInk,
   },
   list: {
     flexGrow: 0,
@@ -264,7 +265,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontFamily: FONTS.medium,
     fontSize: 15,
-    color: "#1D1020",
+    color: C.plumInk,
   },
   empty: {
     textAlign: "center",

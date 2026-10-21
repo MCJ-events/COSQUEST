@@ -11,6 +11,7 @@ import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
 import { OnboardingScreen } from "@/components/OnboardingScreen";
+import { C } from "@/theme/tokens";
 
 export default function Signup() {
   const { data, update } = useOnboarding();
@@ -159,7 +160,7 @@ const styles = StyleSheet.create({
     fontSize: 35,
     fontWeight: "800",
     textAlign: "center",
-    color: "#191922",
+    color: C.ink,
     marginTop: 20,
     marginBottom: 60,
   },
@@ -182,7 +183,7 @@ const styles = StyleSheet.create({
   },
 
   signinLink: {
-    color: "#C5399A",
+    color: C.brand,
     fontSize: 14,
     fontWeight: "700",
   },

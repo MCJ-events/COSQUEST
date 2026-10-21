@@ -14,11 +14,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { apiRequest } from "@/services/api";
 
 import type { CallOutline } from "@cosquest/sparks-sdk";
+import { C } from "@/theme/tokens";
 
 // Sparks in calls needs the backend's Sparks module (same switch as the rest of Sparks).
 export const callNotesEnabled = ["module", "qlm"].includes(String(process.env.EXPO_PUBLIC_SPARKS_ENGINE || ""));
 
-const TOPIC_COLORS = ["#3FD3E0", "#F5A524", "#C5399A", "#2FB36B", "#8B7CF6", "#FF7A59", "#4C9AFF", "#E5D04B"];
+const TOPIC_COLORS = ["#3FD3E0", "#F5A524", C.brand, "#2FB36B", "#8B7CF6", "#FF7A59", "#4C9AFF", "#E5D04B"];
 
 type Loaded =
   | { state: "loading" }
@@ -71,17 +72,17 @@ export default function CallNotesSheet({
       <View style={styles.backdrop}>
         <View style={[styles.sheet, { paddingBottom: insets.bottom + 16 }]}>
           <View style={styles.header}>
-            <Ionicons name="sparkles" size={18} color="#C5399A" />
+            <Ionicons name="sparkles" size={18} color={C.brand} />
             <Text style={styles.headerTitle} numberOfLines={1}>
               {outline?.title || "Sparks from this call"}
             </Text>
             <Pressable onPress={onClose} hitSlop={12} accessibilityRole="button" accessibilityLabel="Close">
-              <Ionicons name="close" size={24} color="#191922" />
+              <Ionicons name="close" size={24} color={C.ink} />
             </Pressable>
           </View>
 
           {loaded.state === "loading" ? (
-            <ActivityIndicator style={{ marginVertical: 40 }} color="#C5399A" />
+            <ActivityIndicator style={{ marginVertical: 40 }} color={C.brand} />
           ) : loaded.state === "pending" ? (
             <Text style={styles.empty}>
               Sparks is still writing up this call. It&apos;s ready a minute or two after the call ends.
@@ -140,13 +141,13 @@ const styles = StyleSheet.create({
     paddingTop: 16,
   },
   header: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 },
-  headerTitle: { flex: 1, fontSize: 18, fontWeight: "800", color: "#191922" },
-  summary: { fontSize: 15, lineHeight: 21, color: "#191922", marginBottom: 14 },
+  headerTitle: { flex: 1, fontSize: 18, fontWeight: "800", color: C.ink },
+  summary: { fontSize: 15, lineHeight: 21, color: C.ink, marginBottom: 14 },
   topic: { borderLeftWidth: 3, paddingLeft: 12, marginBottom: 16 },
-  topicTitle: { fontSize: 15, fontWeight: "800", color: "#191922", marginBottom: 4 },
+  topicTitle: { fontSize: 15, fontWeight: "800", color: C.ink, marginBottom: 4 },
   text: { fontSize: 14, lineHeight: 20, color: "#3A3A44", marginBottom: 4 },
-  label: { fontSize: 12, fontWeight: "800", color: "#8A8A90", marginTop: 6, marginBottom: 2, textTransform: "uppercase" },
+  label: { fontSize: 12, fontWeight: "800", color: C.grey1, marginTop: 6, marginBottom: 2, textTransform: "uppercase" },
   bullet: { fontSize: 14, lineHeight: 20, color: "#3A3A44" },
-  owner: { color: "#8A8A90" },
-  empty: { fontSize: 14, lineHeight: 20, color: "#6B6B72", marginVertical: 24 },
+  owner: { color: C.grey1 },
+  empty: { fontSize: 14, lineHeight: 20, color: C.grey3, marginVertical: 24 },
 });

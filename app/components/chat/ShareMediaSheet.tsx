@@ -26,11 +26,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { FONTS } from "@/constants/fonts";
 import { sendAlbum, type PickedMedia } from "@/services/chatExtras";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
+import { C } from "@/theme/tokens";
 
-const PINK = "#B63D91";
-const INK = "#24283C";
-const MUTED = "#66738A";
-const LILAC = "#F0EDF9";
+const PINK = C.brandDeep;
+const INK = C.inkNavy;
+const MUTED = C.slate;
+const LILAC = C.lilac;
 const MAX = 10;
 
 function lengthOf(seconds?: number | null) {
@@ -189,7 +190,7 @@ export default function ShareMediaSheet({
               value={caption}
               onChangeText={setCaption}
               placeholder="Add a caption (optional)"
-              placeholderTextColor="#9AA3B5"
+              placeholderTextColor={C.placeholder}
               maxLength={2000}
               multiline
               style={styles.input}

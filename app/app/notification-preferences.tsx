@@ -18,8 +18,9 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { C } from "@/theme/tokens";
 
-const PINK = "#C34D9C";
+const PINK = C.brandSoft;
 
 type NotificationSettings = {
   notificationsEnabled?: boolean;
@@ -203,7 +204,7 @@ export default function NotificationPreferences() {
     <View style={styles.screen}>
       {/* Figma: linear-gradient(180deg, #FFFFFF 0%, #E1F3FF 64.42%) */}
       <LinearGradient
-        colors={["#FFFFFF", "#E1F3FF"]}
+        colors={["#FFFFFF", C.skyWash]}
         locations={[0, 0.6442]}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
@@ -227,7 +228,7 @@ export default function NotificationPreferences() {
             style={styles.backButton}
             accessibilityRole="button"
             accessibilityLabel="Back">
-            <Ionicons name="arrow-back" size={24} color="#191922" />
+            <Ionicons name="arrow-back" size={24} color={C.ink} />
           </Pressable>
 
           <View style={styles.headerCenter}>
@@ -390,7 +391,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontFamily: FONTS.semibold,
     fontSize: 17,
-    color: "#191922",
+    color: C.ink,
   },
 
   section: {
@@ -402,7 +403,7 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.medium,
     fontSize: 11,
     letterSpacing: 0.4,
-    color: "#7A7A84",
+    color: C.grey4,
   },
 
   // Milky pressed-in row.
@@ -445,6 +446,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontFamily: FONTS.regular,
     fontSize: 13.5,
-    color: "#3B3B42",
+    color: C.ink2,
   },
 });

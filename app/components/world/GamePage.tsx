@@ -15,6 +15,7 @@ import { CostQuestGameView, GAME_UI, gamePlayable } from "@/modules/costquest-ga
 
 import GameBubble from "./GameBubble";
 import { useWorld } from "./useWorld";
+import { C } from "@/theme/tokens";
 
 /** If the game never says it is ready, lift the veil anyway after this (ms). */
 const READY_TIMEOUT_MS = 6000;
@@ -141,7 +142,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 20,
-    backgroundColor: "#DC179F",
+    backgroundColor: C.brandVivid,
   },
   soonButtonText: {
     color: "#FFFFFF",

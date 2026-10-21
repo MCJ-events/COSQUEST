@@ -48,6 +48,7 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { clearActiveCall } from "@/store/slices/callSlice";
 import { endCall, refreshCall } from "@/store/thunks/callThunks";
 import { ensureCallPermissions, getAvatarSource } from "@/utils/callHelpers";
+import { C } from "@/theme/tokens";
 
 // The backend marks an unanswered call "missed" after 45s and tells both
 // phones over the socket. This local timer is only a backup.
@@ -1214,7 +1215,7 @@ const styles = StyleSheet.create({
     height: 150,
     borderRadius: 16,
     overflow: "hidden",
-    backgroundColor: "#2A1030",
+    backgroundColor: C.plumDark,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.3)",
   },

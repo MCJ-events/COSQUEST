@@ -28,6 +28,7 @@ import {
   createReelPostThunk,
   fetchPosts,
 } from "@/store/thunks/postThunks";
+import { C } from "@/theme/tokens";
 
 type SelectedFile = {
   uri: string;
@@ -357,7 +358,7 @@ export function CreatePost() {
 
         {/* Figma: 22 x 18, radius 4, #C34D9C29 */}
         <View style={styles.composerPlus}>
-          <Ionicons name="add" size={16} color="#C5399A" />
+          <Ionicons name="add" size={16} color={C.brand} />
         </View>
       </Pressable>
 
@@ -392,7 +393,7 @@ export function CreatePost() {
               </View>
 
               <Pressable style={styles.closeButton} onPress={close}>
-                <Ionicons name="close" size={23} color="#191922" />
+                <Ionicons name="close" size={23} color={C.ink} />
               </Pressable>
             </View>
 
@@ -473,7 +474,7 @@ export function CreatePost() {
               <PostOption
                 icon="videocam"
                 label="Video"
-                color="#C5399A"
+                color={C.brand}
                 onPress={pickVideo}
               />
 
@@ -587,7 +588,7 @@ const styles = StyleSheet.create({
     minWidth: 0,
     fontSize: 12,
     fontFamily: FONTS.medium,
-    color: "#777780",
+    color: C.grey5,
   },
 
   // Figma: width 22, height 18, radius 4, background #C34D9C29
@@ -655,7 +656,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: "700",
-    color: "#191922",
+    color: C.ink,
   },
 
   username: {
@@ -683,7 +684,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     paddingVertical: 14,
     fontSize: 15,
-    color: "#191922",
+    color: C.ink,
   },
 
   hashtagScroll: {
@@ -706,7 +707,7 @@ const styles = StyleSheet.create({
   hashtagText: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#C5399A",
+    color: C.brand,
   },
 
   mediaPreview: {
@@ -775,7 +776,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#C5399A",
+    backgroundColor: C.brand,
   },
 
   postButtonText: {

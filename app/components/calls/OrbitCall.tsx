@@ -19,10 +19,11 @@ import { Alert, Animated, Easing, Pressable, StyleSheet, Text, View } from "reac
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { FONTS } from "@/constants/fonts";
+import { C } from "@/theme/tokens";
 
-const INK = "#24283C";
-const MUTED = "#66738A";
-const PINK = "#B63D91";
+const INK = C.inkNavy;
+const MUTED = C.slate;
+const PINK = C.brandDeep;
 const BLUE = "#2E9BF0";
 const GREEN = "#22C55E";
 const GREY = "#B9C0CC";
@@ -380,7 +381,7 @@ export default function OrbitCallScreen({
   const comingSoon = (what: string) => Alert.alert(what, `${what} is coming soon.`);
 
   return (
-    <LinearGradient colors={["#F4F8FD", "#E3F0FC"]} style={styles.screen}>
+    <LinearGradient colors={["#F4F8FD", C.skyPale2]} style={styles.screen}>
       {/* HEADER */}
       <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
         <Pressable style={styles.roundBtn} onPress={onMinimize} accessibilityLabel="Minimize call">
@@ -555,7 +556,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 18,
-    backgroundColor: "#24283C",
+    backgroundColor: C.inkNavy,
   },
   focusTitle: { fontFamily: FONTS.semibold, fontSize: 14, color: "#FFFFFF" },
   focusText: { fontFamily: FONTS.regular, fontSize: 12, color: "rgba(255,255,255,0.7)" },

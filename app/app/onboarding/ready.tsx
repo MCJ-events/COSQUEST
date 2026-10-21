@@ -13,6 +13,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { OnboardingScreen } from "@/components/OnboardingScreen";
+import { C } from "@/theme/tokens";
 
 
 const AnimatedImage = Animated.createAnimatedComponent(Image);
@@ -352,14 +353,14 @@ const styles = StyleSheet.create({
   small: {
     fontSize: 35,
     fontWeight: "800",
-    color: "#191922",
+    color: C.ink,
     textAlign: "center",
   },
 
   big: {
     fontSize: 44,
     fontWeight: "900",
-    color: "#191922",
+    color: C.ink,
     textAlign: "center",
     letterSpacing: 1,
   },

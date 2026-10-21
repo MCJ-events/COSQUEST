@@ -11,9 +11,10 @@ import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } fro
 import { CALL_COLORS } from "@/components/calls/CallVisuals";
 import type { Call } from "@/services/calls";
 import type { CallNotes } from "@/services/sparksCallNotes";
+import { C } from "@/theme/tokens";
 
 // Topic colours; a topic that comes back keeps its colour (colorIndex).
-export const TOPIC_COLORS = ["#3FD3E0", "#F5A524", "#C5399A", "#2FB36B", "#8B7CF6", "#FF7A59", "#4C9AFF", "#E5D04B"];
+export const TOPIC_COLORS = ["#3FD3E0", "#F5A524", C.brand, "#2FB36B", "#8B7CF6", "#FF7A59", "#4C9AFF", "#E5D04B"];
 
 export function nameOf(call: Call, userId: string, myUserId: string | null) {
   if (userId === myUserId) return "You";

@@ -28,6 +28,7 @@ import {
 } from "@/constants/wallpapers";
 
 import { setAllChatsWallpaper, setChatWallpaper } from "./useChatWallpaper";
+import { C } from "@/theme/tokens";
 
 function sameWallpaper(a: Wallpaper | null, b: Wallpaper | null) {
   if (!a || !b || a.kind !== b.kind) {
@@ -229,7 +230,7 @@ export function WallpaperPicker({
           <Text style={styles.title}>Chat wallpaper</Text>
 
           <Pressable style={styles.close} onPress={cancel} hitSlop={8}>
-            <Ionicons name="close" size={22} color="#191922" />
+            <Ionicons name="close" size={22} color={C.ink} />
           </Pressable>
         </View>
 
@@ -256,7 +257,7 @@ export function WallpaperPicker({
                   contentFit="cover"
                 />
               ) : (
-                <Ionicons name="images-outline" size={26} color="#C5399A" />
+                <Ionicons name="images-outline" size={26} color={C.brand} />
               )}
 
               {photoSelected ? (
@@ -340,7 +341,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: "800",
-    color: "#191922",
+    color: C.ink,
   },
 
   close: {
@@ -356,7 +357,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
     paddingHorizontal: 20,
     fontSize: 12.5,
-    color: "#8A8A93",
+    color: C.grey2,
   },
 
   tiles: {
@@ -382,7 +383,7 @@ const styles = StyleSheet.create({
   },
 
   tileSelected: {
-    borderColor: "#C5399A",
+    borderColor: C.brand,
   },
 
   photoTile: {
@@ -406,7 +407,7 @@ const styles = StyleSheet.create({
     right: 8,
     top: 54,
     width: 30,
-    backgroundColor: "#C5399A",
+    backgroundColor: C.brand,
   },
 
   check: {
@@ -418,7 +419,7 @@ const styles = StyleSheet.create({
     borderRadius: 11,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#C5399A",
+    backgroundColor: C.brand,
   },
 
   tileLabel: {
@@ -443,7 +444,7 @@ const styles = StyleSheet.create({
   },
 
   buttonPrimary: {
-    backgroundColor: "#C5399A",
+    backgroundColor: C.brand,
   },
 
   buttonPrimaryText: {
@@ -457,7 +458,7 @@ const styles = StyleSheet.create({
   },
 
   buttonSecondaryText: {
-    color: "#3B3B42",
+    color: C.ink2,
     fontSize: 14.5,
     fontWeight: "700",
   },

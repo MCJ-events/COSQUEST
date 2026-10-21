@@ -1,27 +1,36 @@
 // The game's look, from costquest-ios UI/GameKit.swift (GamePalette) and
 // Roam/RoamStyle.swift, so the React Native game reads as the same game.
 import { FONTS } from "@/constants/fonts";
+import { C } from "@/theme/tokens";
 
 const rgb = (r: number, g: number, b: number) =>
   `#${[r, g, b].map((v) => Math.round(v * 255).toString(16).padStart(2, "0")).join("")}`;
 
+/**
+ * The game's palette, from the app's one theme (theme/palettes.ts, the
+ * `game*` keys): today's values are GamePalette's, and EXPO_PUBLIC_PALETTE
+ * swaps them with the chat's for the unified options.
+ */
 export const GP = {
-  sky: rgb(0.49, 0.76, 0.89),
-  skyDeep: rgb(0.17, 0.6, 0.84),
-  grass: rgb(0.49, 0.76, 0.4),
-  sun: rgb(0.95, 0.6, 0.18),
-  sunDeep: rgb(0.82, 0.47, 0.06),
-  navy: rgb(0.12, 0.23, 0.3),
-  navyEdge: rgb(0.07, 0.15, 0.2),
-  cream: rgb(0.95, 0.97, 0.98),
-  berry: rgb(0.85, 0.22, 0.25),
-  mint: rgb(0.24, 0.75, 0.54),
-  ink: rgb(0.12, 0.23, 0.3),
-  ice: rgb(0.78, 0.88, 0.92),
-  slate: rgb(0.55, 0.7, 0.77),
-  mist: rgb(0.36, 0.48, 0.55),
-  track: rgb(0.83, 0.87, 0.89),
-  rare: rgb(0.6, 0.38, 0.97),
+  sky: C.gameSky,
+  skyDeep: C.gameSkyDeep,
+  grass: C.gameGrass,
+  sun: C.gameSun,
+  sunDeep: C.gameSunDeep,
+  navy: C.gameNavy,
+  navyEdge: C.gameNavyEdge,
+  cream: C.gameCream,
+  berry: C.gameBerry,
+  mint: C.gameMint,
+  ink: C.gameInk,
+  ice: C.gameIce,
+  slate: C.gameSlate,
+  mist: C.gameMist,
+  track: C.gameTrack,
+  rare: C.gameRare,
+  /** CosCoins: gold in every palette. */
+  coin: C.coin,
+  coinDeep: C.coinDeep,
 } as const;
 
 /** The four answer colours: "the blue one" means the same to every player. */

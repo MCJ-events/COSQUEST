@@ -15,6 +15,7 @@ import {
   nextSpeed,
   SpeedPill,
 } from "@/components/chat/VoiceSpeed";
+import { C } from "@/theme/tokens";
 
 export type CommentMedia = {
   url?: string;
@@ -135,7 +136,7 @@ export function CommentAudio({ media }: { media?: CommentMedia | null }) {
                   {
                     height: 4 + bar * 18,
                     backgroundColor:
-                      index / WAVE_BARS < progress ? "#C5399A" : "#D8D8DF",
+                      index / WAVE_BARS < progress ? C.brand : "#D8D8DF",
                   },
                 ]}
               />
@@ -167,7 +168,7 @@ export function CommentAudio({ media }: { media?: CommentMedia | null }) {
             <Ionicons
               name={showTranscript ? "chevron-up" : "text-outline"}
               size={16}
-              color="#8A8A90"
+              color={C.grey1}
             />
           </Pressable>
         ) : null}
@@ -177,7 +178,7 @@ export function CommentAudio({ media }: { media?: CommentMedia | null }) {
         <View style={styles.transcriptBox}>
           {transcribing && !transcript ? (
             <View style={styles.transcriptLoadingRow}>
-              <ActivityIndicator size="small" color="#C5399A" />
+              <ActivityIndicator size="small" color={C.brand} />
 
               <Text style={styles.transcriptLoadingText}>Transcribing…</Text>
             </View>
@@ -209,7 +210,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: "#C5399A",
+    backgroundColor: C.brand,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -270,7 +271,7 @@ const styles = StyleSheet.create({
 
   transcriptLoadingText: {
     fontSize: 12,
-    color: "#8A8A90",
+    color: C.grey1,
     fontStyle: "italic",
   },
 });

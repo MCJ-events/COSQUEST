@@ -1,19 +1,20 @@
 import { router } from "expo-router";
 import { StyleSheet, Text } from "react-native";
+import { C } from "@/theme/tokens";
 
 export function Terms() {
   return (
     <Text style={styles.terms}>
       By continuing you agree to the{" "}
       <Text
-        style={{ color: "#C5399A" }}
+        style={{ color: C.brand }}
         onPress={() => router.push("/onboarding/oauthSignup")}
       >
         CosQuest terms
       </Text>{" "}
       & the{" "}
       <Text
-        style={{ color: "#C5399A" }}
+        style={{ color: C.brand }}
         onPress={() => router.push("/onboarding/oauthSignup")}
       >
         community guidelines

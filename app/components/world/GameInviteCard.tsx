@@ -17,6 +17,7 @@ import {
 } from "@/features/world/gameInvite";
 import { world } from "@/features/world/worldState";
 import { gameInstalled } from "@/modules/costquest-game/src";
+import { C } from "@/theme/tokens";
 
 const LOOK: Record<GameInvite["type"], { icon: keyof typeof Ionicons.glyphMap; tint: string; label: string }> = {
   raid: { icon: "flame", tint: "#E8452C", label: "RAID" },
@@ -123,12 +124,12 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: FONTS.semibold,
     fontSize: 15,
-    color: "#1D1020",
+    color: C.plumInk,
   },
   // The sender's own bubble is light pink (chat bubbleMine #F3DDED): keep
   // the dark ink rather than white.
   titleMine: {
-    color: "#1D1020",
+    color: C.plumInk,
   },
   whenRow: {
     flexDirection: "row",

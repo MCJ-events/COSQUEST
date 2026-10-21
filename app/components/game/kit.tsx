@@ -245,8 +245,8 @@ export function GamePanel({ children, face = GP.cream, padding = 18, style }: { 
 export function GameCoin({ size = 26 }: { size?: number }) {
   return (
     <View style={{ width: size, height: size }} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
-      <View style={[StyleSheet.absoluteFill, { top: size * 0.08, borderRadius: size / 2, backgroundColor: GP.sunDeep }]} />
-      <LinearGradient colors={["#FFCC40", GP.sun]} style={[StyleSheet.absoluteFill, { borderRadius: size / 2, alignItems: "center", justifyContent: "center" }]}>
+      <View style={[StyleSheet.absoluteFill, { top: size * 0.08, borderRadius: size / 2, backgroundColor: GP.coinDeep }]} />
+      <LinearGradient colors={["#FFCC40", GP.coin]} style={[StyleSheet.absoluteFill, { borderRadius: size / 2, alignItems: "center", justifyContent: "center" }]}>
         <View
           style={{
             position: "absolute",
@@ -259,7 +259,7 @@ export function GameCoin({ size = 26 }: { size?: number }) {
             borderColor: "rgba(255,255,255,0.6)",
           }}
         />
-        <Text style={{ fontFamily: GF.display, fontSize: size * 0.55, color: GP.sunDeep, lineHeight: size * 0.7 }} maxFontSizeMultiplier={1}>
+        <Text style={{ fontFamily: GF.display, fontSize: size * 0.55, color: GP.coinDeep, lineHeight: size * 0.7 }} maxFontSizeMultiplier={1}>
           C
         </Text>
       </LinearGradient>

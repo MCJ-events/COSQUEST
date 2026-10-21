@@ -16,6 +16,7 @@ import {
 } from "react-native";
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
 import { OnboardingScreen } from "@/components/OnboardingScreen";
+import { C } from "@/theme/tokens";
 
 export default function CreateProfile() {
   const { data, update } = useOnboarding();
@@ -446,13 +447,13 @@ const styles = StyleSheet.create({
     fontSize: 35,
     fontWeight: "800",
     textAlign: "center",
-    color: "#191922",
+    color: C.ink,
     marginTop: 20,
   },
 
   sub: {
     fontSize: 14,
-    color: "#2b2b2c",
+    color: C.inkSoft,
     textAlign: "center",
     marginTop: 10,
     marginBottom: 50,
@@ -467,7 +468,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#191922",
+    color: C.ink,
     marginBottom: 6,
   },
 
@@ -494,18 +495,18 @@ const styles = StyleSheet.create({
   },
 
   segActive: {
-    borderColor: "#C5399A",
+    borderColor: C.brand,
     backgroundColor: "#fff",
   },
 
   segText: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#191922",
+    color: C.ink,
   },
 
   segTextActive: {
-    color: "#C5399A",
+    color: C.brand,
   },
 
   usernameChecking: {

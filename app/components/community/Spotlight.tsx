@@ -5,6 +5,7 @@ import { Image } from "expo-image";
 import { useEffect } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { DraggableAvatar } from "./DraggableAvatar";
+import { C } from "@/theme/tokens";
 
 function getAvatar(entry: any) {
   return (
@@ -69,7 +70,7 @@ export function Spotlight() {
 
       {loading && leaderboard.length === 0 ? (
         <View style={styles.loading}>
-          <ActivityIndicator size="small" color="#C5399A" />
+          <ActivityIndicator size="small" color={C.brand} />
 
           <Text style={styles.loadingText}>Loading leaderboard...</Text>
         </View>
@@ -79,7 +80,7 @@ export function Spotlight() {
 
       {!loading && error && leaderboard.length === 0 ? (
         <View style={styles.empty}>
-          <Ionicons name="alert-circle-outline" size={28} color="#C5399A" />
+          <Ionicons name="alert-circle-outline" size={28} color={C.brand} />
 
           <Text style={styles.emptyText}>{error}</Text>
         </View>
@@ -89,7 +90,7 @@ export function Spotlight() {
 
       {!loading && !error && leaderboard.length === 0 ? (
         <View style={styles.empty}>
-          <Ionicons name="trophy-outline" size={30} color="#9C9CAA" />
+          <Ionicons name="trophy-outline" size={30} color={C.muted} />
 
           <Text style={styles.emptyText}>No Spotlight rankings yet.</Text>
         </View>
@@ -124,7 +125,7 @@ export function Spotlight() {
                     <Ionicons
                       name="person"
                       size={first ? 34 : 26}
-                      color="#C5399A"
+                      color={C.brand}
                     />
                   </View>
                 )}
@@ -161,7 +162,7 @@ export function Spotlight() {
                   />
                 ) : (
                   <View style={[styles.avatar, styles.avatarFallback]}>
-                    <Ionicons name="person" size={18} color="#C5399A" />
+                    <Ionicons name="person" size={18} color={C.brand} />
                   </View>
                 )}
 
@@ -223,7 +224,7 @@ const styles = StyleSheet.create({
 
   loadingText: {
     fontSize: 13,
-    color: "#777780",
+    color: C.grey5,
   },
 
   empty: {
@@ -235,7 +236,7 @@ const styles = StyleSheet.create({
 
   emptyText: {
     fontSize: 14,
-    color: "#777780",
+    color: C.grey5,
     textAlign: "center",
   },
 
@@ -299,7 +300,7 @@ const styles = StyleSheet.create({
   podiumScore: {
     fontSize: 18,
     fontWeight: "700",
-    color: "#C5399A",
+    color: C.brand,
     textAlign: "center",
     marginTop: -6,
   },
@@ -341,18 +342,18 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#191922",
+    color: C.ink,
   },
 
   meta: {
     fontSize: 12,
-    color: "#6b6b72",
+    color: C.grey3,
     marginTop: 2,
   },
 
   rank: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#9C9CAA",
+    color: C.muted,
   },
 });

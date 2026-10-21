@@ -8,6 +8,7 @@ import { Fragment } from "react";
 import { Linking, Platform, StyleSheet, Text } from "react-native";
 
 import { getWebBaseUrl } from "@/utils/shareLinks";
+import { C } from "@/theme/tokens";
 
 // http(s):// or cosquest:// up to the next space.
 const LINK_PATTERN = /((?:https?|cosquest):\/\/[^\s]+)/gi;
@@ -113,5 +114,5 @@ const styles = StyleSheet.create({
   // White on your own (pink) bubbles, pink on theirs (white).
   linkMine: { color: "#FFFFFF" },
 
-  linkTheirs: { color: "#C5399A" },
+  linkTheirs: { color: C.brand },
 });

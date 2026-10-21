@@ -2,6 +2,7 @@ import { Image } from "expo-image";
 import { router } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { OnboardingScreen, useHeroHeight } from "@/components/OnboardingScreen";
+import { C } from "@/theme/tokens";
 
 function Button({ label, onPress }: { label: string; onPress: () => void }) {
   return (
@@ -45,7 +46,7 @@ const styles = StyleSheet.create({
     fontSize: 35,
     fontWeight: "800",
     textAlign: "center",
-    color: "#191922",
+    color: C.ink,
   },
   body: { justifyContent: "center", gap: 15 },
   hero: { width: "100%", marginVertical: 24 },
@@ -55,7 +56,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 15,
     borderRadius: 30,
-    backgroundColor: "#C5399A",
+    backgroundColor: C.brand,
     marginTop: 15,
   },
   buttonLabel: { fontSize: 17, fontWeight: "600", color: "#FFFFFF" },

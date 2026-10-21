@@ -33,6 +33,7 @@ import { inviteToCall } from "@/store/thunks/callThunks";
 import { getAvatarSource } from "@/utils/callHelpers";
 
 import { CALL_COLORS } from "./CallVisuals";
+import { C } from "@/theme/tokens";
 
 type Person = {
   id?: string;
@@ -560,7 +561,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: "#2A1030",
+    backgroundColor: C.plumDark,
   },
 
   rowText: {

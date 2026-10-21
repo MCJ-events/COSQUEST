@@ -19,6 +19,7 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 
 import { fetchMorePosts, fetchPosts } from "@/store/thunks/postThunks";
 import { perfMarkOnce, useRenderCount } from "@/utils/perfMarks";
+import { C } from "@/theme/tokens";
 
 // Facebook-style feed: every post is full width. (The Community screen no
 // longer adds side padding around the feed — see app/(tabs)/community.tsx.)
@@ -108,7 +109,7 @@ export function Feeds({
   } else if (loading && posts.length === 0) {
     state = (
       <View style={styles.centerState}>
-        <ActivityIndicator size="large" color="#C5399A" />
+        <ActivityIndicator size="large" color={C.brand} />
 
         <Text style={styles.stateText}>Loading community feed...</Text>
       </View>
@@ -153,7 +154,7 @@ export function Feeds({
 
               {loading && posts.length > 0 ? (
                 <View style={styles.refreshing}>
-                  <ActivityIndicator size="small" color="#C5399A" />
+                  <ActivityIndicator size="small" color={C.brand} />
                 </View>
               ) : null}
             </View>
@@ -170,7 +171,7 @@ export function Feeds({
       ListFooterComponent={
         loadingMore ? (
           <View style={styles.refreshing}>
-            <ActivityIndicator size="small" color="#C5399A" />
+            <ActivityIndicator size="small" color={C.brand} />
           </View>
         ) : null
       }
@@ -197,7 +198,7 @@ const styles = StyleSheet.create({
   stateText: {
     marginTop: 12,
     fontSize: 14,
-    color: "#6B6B72",
+    color: C.grey3,
     textAlign: "center",
   },
 
@@ -206,7 +207,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 20,
-    backgroundColor: "#C5399A",
+    backgroundColor: C.brand,
   },
 
   retryText: {

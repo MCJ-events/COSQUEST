@@ -25,11 +25,12 @@ import { PinkSwitch } from "@/components/ui/PinkSwitch";
 import { FONTS } from "@/constants/fonts";
 import { createPoll } from "@/services/polls";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
+import { C } from "@/theme/tokens";
 
-const PINK = "#B63D91";
-const INK = "#24283C";
-const MUTED = "#66738A";
-const LILAC = "#F0EDF9";
+const PINK = C.brandDeep;
+const INK = C.inkNavy;
+const MUTED = C.slate;
+const LILAC = C.lilac;
 const LINE = "rgba(36,40,60,0.08)";
 const MAX_OPTIONS = 12;
 
@@ -106,7 +107,7 @@ export default function PollCreator({
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-      <LinearGradient colors={["#F6F9FE", "#E3F0FC"]} style={styles.screen}>
+      <LinearGradient colors={[C.skyPale, C.skyPale2]} style={styles.screen}>
         <KeyboardAvoidingView style={styles.flex} behavior="padding">
           {/* HEADER */}
           <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
@@ -139,7 +140,7 @@ export default function PollCreator({
               value={question}
               onChangeText={setQuestion}
               placeholder="e.g. Where should we meet for the next CosQuest?"
-              placeholderTextColor="#9AA3B5"
+              placeholderTextColor={C.placeholder}
               maxLength={300}
               multiline
               style={styles.input}
@@ -161,7 +162,7 @@ export default function PollCreator({
                     value={option}
                     onChangeText={(text) => setOption(index, text)}
                     placeholder={`Option ${index + 1}`}
-                    placeholderTextColor="#9AA3B5"
+                    placeholderTextColor={C.placeholder}
                     maxLength={100}
                     style={styles.input}
                   />
@@ -254,7 +255,7 @@ const STYLE_PAIR = themedStyles({
 
   addText: { fontFamily: FONTS.semibold, fontSize: 15, color: INK },
 
-  warning: { marginTop: 8, fontFamily: FONTS.regular, fontSize: 12, color: "#C0394B" },
+  warning: { marginTop: 8, fontFamily: FONTS.regular, fontSize: 12, color: C.dangerDeep },
 
   switchRow: { flexDirection: "row", alignItems: "center", gap: 12, marginTop: 18 },
 

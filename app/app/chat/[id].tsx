@@ -141,6 +141,7 @@ import {
 import { startCall } from "@/store/thunks/callThunks";
 import { ensureCallPermissions } from "@/utils/callHelpers";
 import { safeBack } from "@/utils/safeBack";
+import { C } from "@/theme/tokens";
 
 type AttachmentDraft = {
   uri: string;
@@ -402,7 +403,7 @@ function isInFuture(value?: string | null) {
 }
 
 // Figma M02 avatars: initials on a soft colour picked from the name.
-const AVATAR_TINTS = ["#E9E1F5", "#DCE8EF", "#F3DDED", "#E2F0E8", "#F5E6D8"];
+const AVATAR_TINTS = ["#E9E1F5", "#DCE8EF", C.brandTint, "#E2F0E8", "#F5E6D8"];
 
 function initialsOf(name?: string) {
   const parts = String(name || "?").trim().split(/\s+/).filter(Boolean);
@@ -834,7 +835,7 @@ function SwipeToReply({
           },
         ]}>
         <View style={styles.swipeIcon}>
-          <Ionicons name="arrow-undo" size={17} color="#C5399A" />
+          <Ionicons name="arrow-undo" size={17} color={C.brand} />
         </View>
       </Animated.View>
 
@@ -935,7 +936,7 @@ function MessageMeta({
   const styles = useThemedStyles(STYLE_PAIR);
   const ink = useInk();
   const color =
-    variant === "overlay" ? "#FFFFFF" : ink.text("#66738A");
+    variant === "overlay" ? "#FFFFFF" : ink.text(C.slate);
 
   // No ticks on call entries (like WhatsApp).
   const tickState =
@@ -1179,7 +1180,7 @@ const Bubble = memo(function Bubble({
               <Ionicons
                 name="arrow-redo-outline"
                 size={12}
-                color={mine ? "#6B6B72" : "#8A8A90"}
+                color={mine ? C.grey3 : C.grey1}
               />
 
               <Text
@@ -1214,7 +1215,7 @@ const Bubble = memo(function Bubble({
                     <Ionicons
                       name={replyIcon}
                       size={12}
-                      color={mine ? "#6B6B72" : "#777783"}
+                      color={mine ? C.grey3 : "#777783"}
                     />
                   ) : null}
 
@@ -1293,7 +1294,7 @@ const Bubble = memo(function Bubble({
               <AudioBubble mediaUrl={mediaUrl} mine={mine} msg={msg} />
             ) : (
               <View style={styles.audioMessage}>
-                <Ionicons name="mic-outline" size={18} color="#C5399A" />
+                <Ionicons name="mic-outline" size={18} color={C.brand} />
 
                 <View style={styles.audioLine} />
 
@@ -1312,7 +1313,7 @@ const Bubble = memo(function Bubble({
                 mine && styles.documentMessageMine,
               ]}>
               <View style={styles.documentIcon}>
-                <Ionicons name="document-text" size={23} color="#C5399A" />
+                <Ionicons name="document-text" size={23} color={C.brand} />
               </View>
 
               <View style={styles.documentInfo}>
@@ -1556,7 +1557,7 @@ function RecordingIndicator({
         <Ionicons
           name="chevron-back"
           size={14}
-          color={cancelArmed ? "#D64545" : "#8A8A90"}
+          color={cancelArmed ? C.danger : C.grey1}
         />
 
         <Text
@@ -1790,7 +1791,7 @@ function AudioBubble({
 
   const progress = duration > 0 ? Math.min(1, currentTime / duration) : 0;
 
-  const playedColor = "#C5399A";
+  const playedColor = C.brand;
   const idleColor = mine ? "rgba(25,25,34,0.22)" : "#C9C9D2";
 
   const transcript = msg.media?.transcript;
@@ -1857,7 +1858,7 @@ function AudioBubble({
           hitSlop={8}
           style={[
             styles.audioPlay,
-            { backgroundColor: mine ? "#FFFFFF" : "#C34D9C" },
+            { backgroundColor: mine ? "#FFFFFF" : C.brandSoft },
           ]}
           accessibilityRole="button"
           accessibilityLabel={
@@ -1866,7 +1867,7 @@ function AudioBubble({
           <Ionicons
             name={status.playing ? "pause" : "play"}
             size={16}
-            color={mine ? "#C34D9C" : "#FFFFFF"}
+            color={mine ? C.brandSoft : "#FFFFFF"}
             // Optical centre: a play triangle looks off-centre otherwise.
             style={status.playing ? undefined : { marginLeft: 2 }}
           />
@@ -1918,7 +1919,7 @@ function AudioBubble({
             <Ionicons
               name={showTranscript ? "chevron-up" : "text-outline"}
               size={16}
-              color={mine ? "#6B6B72" : "#8A8A90"}
+              color={mine ? C.grey3 : C.grey1}
             />
           </Pressable>
         ) : null}
@@ -1928,7 +1929,7 @@ function AudioBubble({
         <View style={styles.transcriptBox}>
           {transcribing && !transcript ? (
             <View style={styles.transcriptLoadingRow}>
-              <ActivityIndicator size="small" color="#C5399A" />
+              <ActivityIndicator size="small" color={C.brand} />
 
               <Text
                 style={[
@@ -2078,9 +2079,9 @@ function CallLogContent({
           : "Cancelled"
       : "Tap to call back";
 
-  const textColor = missedForMe ? "#E5484D" : "#191922";
-  const subColor = mine ? "#6B6B72" : "#8A8A90";
-  const arrowColor = missedForMe ? "#E5484D" : mine ? "#C5399A" : "#2FB36B";
+  const textColor = missedForMe ? "#E5484D" : C.ink;
+  const subColor = mine ? C.grey3 : C.grey1;
+  const arrowColor = missedForMe ? "#E5484D" : mine ? C.brand : "#2FB36B";
 
   // The call's Sparks: answered calls only, opened from the "Sparks" link.
   const [notesOpen, setNotesOpen] = useState(false);
@@ -2117,7 +2118,7 @@ function CallLogContent({
         <Ionicons
           name={video ? "videocam" : "call"}
           size={18}
-          color={missedForMe ? "#E5484D" : "#C5399A"}
+          color={missedForMe ? "#E5484D" : C.brand}
         />
       </View>
 
@@ -2148,7 +2149,7 @@ function CallLogContent({
             style={styles.callLogNotes}
             accessibilityRole="button"
             accessibilityLabel="Sparks from this call">
-            <Ionicons name="sparkles" size={12} color="#C5399A" />
+            <Ionicons name="sparkles" size={12} color={C.brand} />
             <Text style={styles.callLogNotesText}>Sparks</Text>
           </Pressable>
         ) : null}
@@ -2190,7 +2191,7 @@ function MenuItem({
         {label}
       </Text>
 
-      <Ionicons name={icon} size={22} color={danger ? "#C0394B" : "#66738A"} />
+      <Ionicons name={icon} size={22} color={danger ? C.dangerDeep : C.slate} />
     </Pressable>
   );
 }
@@ -2638,7 +2639,7 @@ export default function ChatScreen() {
       open: (sparkId: string) => setOpenSparkId(sparkId),
       colorFor: (sparkId: string, era: number) => {
         const spark = sparks.find((item) => item.id === sparkId);
-        return spark ? eraColor(era, spark.eras?.length || 1) : "#C34D9C";
+        return spark ? eraColor(era, spark.eras?.length || 1) : C.brandSoft;
       },
       subjectFor: (sparkId: string) =>
         sparks.find((item) => item.id === sparkId)?.subject || "Spark",
@@ -4940,7 +4941,7 @@ export default function ChatScreen() {
           {selectionMode ? (
             <>
               <Pressable onPress={exitSelectionMode} hitSlop={10}>
-                <Ionicons name="close" size={27} color="#191922" />
+                <Ionicons name="close" size={27} color={C.ink} />
               </Pressable>
 
               <Text style={styles.selectionTitle}>{selectedIds.length}</Text>
@@ -4951,25 +4952,25 @@ export default function ChatScreen() {
                     <Ionicons
                       name="arrow-undo-outline"
                       size={23}
-                      color="#C5399A"
+                      color={C.brand}
                     />
                   </Pressable>
                 ) : null}
 
                 <Pressable onPress={copySelected} hitSlop={8}>
-                  <Ionicons name="copy-outline" size={22} color="#C5399A" />
+                  <Ionicons name="copy-outline" size={22} color={C.brand} />
                 </Pressable>
 
                 <Pressable onPress={forwardSelected} hitSlop={8}>
                   <Ionicons
                     name="arrow-redo-outline"
                     size={23}
-                    color="#C5399A"
+                    color={C.brand}
                   />
                 </Pressable>
 
                 <Pressable onPress={deleteSelected} hitSlop={8}>
-                  <Ionicons name="trash-outline" size={23} color="#D64545" />
+                  <Ionicons name="trash-outline" size={23} color={C.danger} />
                 </Pressable>
               </View>
             </>
@@ -4981,7 +4982,7 @@ export default function ChatScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="Back"
                 style={styles.backButton}>
-                <Ionicons name="chevron-back" size={27} color={ink.text("#191922")} />
+                <Ionicons name="chevron-back" size={27} color={ink.text(C.ink)} />
               </Pressable>
 
               {/* Tap their photo or name to see their profile (DMs) */}
@@ -5006,7 +5007,7 @@ export default function ChatScreen() {
                       <Ionicons
                         name={groupChat ? "people-outline" : "person"}
                         size={20}
-                        color="#C5399A"
+                        color={C.brand}
                       />
                     )}
                   </View>
@@ -5039,7 +5040,7 @@ export default function ChatScreen() {
                     disabled={callStarting}
                     accessibilityRole="button"
                     accessibilityLabel="Start voice call">
-                    <Ionicons name="call-outline" size={22} color="#C5399A" />
+                    <Ionicons name="call-outline" size={22} color={C.brand} />
                   </Pressable>
 
                   <Pressable
@@ -5054,7 +5055,7 @@ export default function ChatScreen() {
                     <Ionicons
                       name="videocam-outline"
                       size={25}
-                      color="#C5399A"
+                      color={C.brand}
                     />
                   </Pressable>
                 </>
@@ -5078,9 +5079,9 @@ export default function ChatScreen() {
                   hitSlop={8}
                   accessibilityLabel="Search in chat"
                   onPress={() => router.push({ pathname: "/chat/search/[id]", params: { id: conversationId } })}>
-                  <Ionicons name="search-outline" size={22} color={ink.text("#24283C")} />
+                  <Ionicons name="search-outline" size={22} color={ink.text(C.inkNavy)} />
                 </Pressable>
-                <Ionicons name="ellipsis-horizontal" size={24} color={ink.text("#24283C")} />
+                <Ionicons name="ellipsis-horizontal" size={24} color={ink.text(C.inkNavy)} />
               </View>
               </Pressable>
             </>
@@ -5096,7 +5097,7 @@ export default function ChatScreen() {
         <Pressable
           style={styles.pinnedBanner}
           onPress={() => scrollToMessage(pinnedMessageId)}>
-          <MaterialCommunityIcons name="pin-outline" size={21} color={ink.text("#B63D91")} />
+          <MaterialCommunityIcons name="pin-outline" size={21} color={ink.text(C.brandDeep)} />
 
           <View style={styles.pinnedBannerText}>
             <Text style={styles.pinnedBannerTitle}>
@@ -5114,7 +5115,7 @@ export default function ChatScreen() {
             </Text>
           </View>
 
-          <Ionicons name="chevron-forward" size={18} color={ink.text("#B63D91")} />
+          <Ionicons name="chevron-forward" size={18} color={ink.text(C.brandDeep)} />
         </Pressable>
       ) : null}
 
@@ -5138,7 +5139,7 @@ export default function ChatScreen() {
 
       {messagesLoading && messages.length === 0 ? (
         <View style={styles.loading}>
-          <ActivityIndicator size="large" color="#C5399A" />
+          <ActivityIndicator size="large" color={C.brand} />
 
           <Text style={styles.loadingText}>Loading messages...</Text>
         </View>
@@ -5159,7 +5160,7 @@ export default function ChatScreen() {
             onEndReachedThreshold={0.5}
             ListFooterComponent={
               loadingOlder ? (
-                <ActivityIndicator style={{ paddingVertical: 12 }} size="small" color="#C5399A" />
+                <ActivityIndicator style={{ paddingVertical: 12 }} size="small" color={C.brand} />
               ) : null
             }
             onScrollToIndexFailed={(info) => {
@@ -5335,7 +5336,7 @@ export default function ChatScreen() {
 
       {showJumpButton && !selectionMode ? (
         <Pressable style={styles.jumpButton} onPress={jumpToLatest}>
-          <Ionicons name="chevron-down" size={20} color="#C34D9C" />
+          <Ionicons name="chevron-down" size={20} color={C.brandSoft} />
 
           {newMessageCount > 0 ? (
             <View style={styles.newMessageBadge}>
@@ -5380,7 +5381,7 @@ export default function ChatScreen() {
                 setEditingMessage(null);
                 setDraft("");
               }}>
-              <Ionicons name="close-circle" size={23} color="#8A8A90" />
+              <Ionicons name="close-circle" size={23} color={C.grey1} />
             </Pressable>
           </View>
         </View>
@@ -5410,7 +5411,7 @@ export default function ChatScreen() {
                 setReplyingTo(null);
                 setDraft("");
               }}>
-              <Ionicons name="close-circle" size={23} color="#8A8A90" />
+              <Ionicons name="close-circle" size={23} color={C.grey1} />
             </Pressable>
           </View>
         </View>
@@ -5423,7 +5424,7 @@ export default function ChatScreen() {
       {/* Figma M14: who your @ mentions will notify */}
       {!selectionMode && (mentionPicks.length > 0 || mentionEveryone) ? (
         <View style={styles.notifyRow}>
-          <Ionicons name="checkmark" size={14} color="#B63D91" />
+          <Ionicons name="checkmark" size={14} color={C.brandDeep} />
           <Text style={styles.notifyText} numberOfLines={1}>
             {mentionEveryone
               ? "Everyone in this chat will be notified"
@@ -5502,7 +5503,7 @@ export default function ChatScreen() {
               hitSlop={6}
               accessibilityRole="button"
               accessibilityLabel="Attach">
-              <Ionicons name="add" size={28} color="#B63D91" />
+              <Ionicons name="add" size={28} color={C.brandDeep} />
             </Pressable>
           ) : null}
 
@@ -5523,7 +5524,7 @@ export default function ChatScreen() {
                   placeholder={
                     editingMessage ? "Edit message" : groupChat ? "Message your group" : "Message"
                   }
-                  placeholderTextColor={ink.text("#66738A")}
+                  placeholderTextColor={ink.text(C.slate)}
                   multiline
                   // Browsers make a multi-line box 2 rows tall by default,
                   // which made the input look too tall on the website.
@@ -5542,7 +5543,7 @@ export default function ChatScreen() {
                     }}
                     accessibilityRole="button"
                     accessibilityLabel="Mention people">
-                    <Ionicons name="at" size={24} color="#B63D91" />
+                    <Ionicons name="at" size={24} color={C.brandDeep} />
                   </Pressable>
                 ) : null}
 
@@ -5551,7 +5552,7 @@ export default function ChatScreen() {
                     hitSlop={6}
                     style={styles.pillIcon}
                     onPress={takePhoto}>
-                    <Ionicons name="camera-outline" size={23} color={ink.text("#8A8A90")} />
+                    <Ionicons name="camera-outline" size={23} color={ink.text(C.grey1)} />
                   </Pressable>
                 ) : null}
               </>
@@ -5566,7 +5567,7 @@ export default function ChatScreen() {
               accessibilityRole="button"
               accessibilityLabel="Hold to record voice message"
               {...micPanResponder.panHandlers}>
-              <Ionicons name="mic-outline" size={24} color={ink.text("#B63D91")} />
+              <Ionicons name="mic-outline" size={24} color={ink.text(C.brandDeep)} />
             </View>
           ) : null}
 
@@ -5591,7 +5592,7 @@ export default function ChatScreen() {
               accessibilityRole="button"
               accessibilityLabel="Hold to record voice message"
               {...micPanResponder.panHandlers}>
-              <Ionicons name="mic-outline" size={24} color="#B63D91" />
+              <Ionicons name="mic-outline" size={24} color={C.brandDeep} />
             </View>
           )}
         </View>
@@ -5678,7 +5679,7 @@ export default function ChatScreen() {
             {attachmentDraft?.kind === "document" ? (
               <View style={styles.documentPreviewCard}>
                 <View style={styles.documentPreviewIcon}>
-                  <Ionicons name="document-text" size={48} color="#C5399A" />
+                  <Ionicons name="document-text" size={48} color={C.brand} />
                 </View>
                 <Text style={styles.documentPreviewName} numberOfLines={3}>
                   {attachmentDraft.name}
@@ -5732,7 +5733,7 @@ export default function ChatScreen() {
             <View style={styles.sheetTitleRow}>
               <Text style={styles.sheetTitle}>Message actions</Text>
               <Pressable onPress={closeMenu} hitSlop={10} accessibilityLabel="Close">
-                <Ionicons name="close" size={24} color="#66738A" />
+                <Ionicons name="close" size={24} color={C.slate} />
               </Pressable>
             </View>
 
@@ -5761,7 +5762,7 @@ export default function ChatScreen() {
                   style={styles.quickReaction}
                   onPress={() => setShowAllReactions(true)}
                   accessibilityLabel="More reactions">
-                  <Ionicons name="add" size={24} color={ink.text("#24283C")} />
+                  <Ionicons name="add" size={24} color={ink.text(C.inkNavy)} />
                 </Pressable>
               ) : null}
             </View>
@@ -6019,7 +6020,7 @@ export default function ChatScreen() {
                           <Ionicons
                             name="trash-outline"
                             size={20}
-                            color="#D64545"
+                            color={C.danger}
                           />
                           <Text style={styles.deleteOptionText}>
                             Delete for everyone
@@ -6031,7 +6032,7 @@ export default function ChatScreen() {
                         <Ionicons
                           name="trash-bin-outline"
                           size={20}
-                          color="#D64545"
+                          color={C.danger}
                         />
                         <Text style={styles.deleteOptionText}>
                           Delete for me
@@ -6072,7 +6073,7 @@ export default function ChatScreen() {
 
             {infoMessage ? (
               <View style={styles.forwardPreview}>
-                <Ionicons name="chatbubble-outline" size={18} color="#C5399A" />
+                <Ionicons name="chatbubble-outline" size={18} color={C.brand} />
 
                 <Text numberOfLines={2} style={styles.forwardPreviewText}>
                   {infoMessage.content ||
@@ -6087,7 +6088,7 @@ export default function ChatScreen() {
             <ScrollView style={styles.sheetScroll}>
               {infoLoading && !seenBy ? (
                 <View style={styles.forwardLoading}>
-                  <ActivityIndicator size="small" color="#C5399A" />
+                  <ActivityIndicator size="small" color={C.brand} />
                 </View>
               ) : !seenBy || seenBy.length === 0 ? (
                 <Text style={styles.noUsersText}>
@@ -6108,7 +6109,7 @@ export default function ChatScreen() {
                           cachePolicy="memory-disk"
                         />
                       ) : (
-                        <Ionicons name="person" size={18} color="#C5399A" />
+                        <Ionicons name="person" size={18} color={C.brand} />
                       )}
                     </View>
 
@@ -6160,7 +6161,7 @@ export default function ChatScreen() {
 
             {forwardMessages.length > 0 ? (
               <View style={styles.forwardPreview}>
-                <Ionicons name="arrow-redo-outline" size={18} color="#C5399A" />
+                <Ionicons name="arrow-redo-outline" size={18} color={C.brand} />
 
                 <Text numberOfLines={2} style={styles.forwardPreviewText}>
                   {forwardPreviewText}
@@ -6172,7 +6173,7 @@ export default function ChatScreen() {
               value={userSearch}
               onChangeText={setUserSearch}
               placeholder="Search people..."
-              placeholderTextColor="#9C9CAA"
+              placeholderTextColor={C.muted}
               style={styles.forwardSearchInput}
               autoCapitalize="none"
               autoCorrect={false}
@@ -6194,7 +6195,7 @@ export default function ChatScreen() {
 
                   {usersLoading ? (
                     <View style={styles.forwardLoading}>
-                      <ActivityIndicator size="small" color="#C5399A" />
+                      <ActivityIndicator size="small" color={C.brand} />
                     </View>
                   ) : searchedUsers.length === 0 ? (
                     <Text style={styles.noUsersText}>No people found.</Text>
@@ -6214,7 +6215,7 @@ export default function ChatScreen() {
                               cachePolicy="memory-disk"
                             />
                           ) : (
-                            <Ionicons name="person" size={18} color="#C5399A" />
+                            <Ionicons name="person" size={18} color={C.brand} />
                           )}
                         </View>
 
@@ -6317,7 +6318,7 @@ export default function ChatScreen() {
                 <Ionicons
                   name="information-circle-outline"
                   size={20}
-                  color="#191922"
+                  color={C.ink}
                 />
                 <Text style={styles.chatMenuText}>Group info</Text>
               </Pressable>
@@ -6328,7 +6329,7 @@ export default function ChatScreen() {
                 <Ionicons
                   name="person-circle-outline"
                   size={20}
-                  color="#191922"
+                  color={C.ink}
                 />
                 <Text style={styles.chatMenuText}>View profile</Text>
               </Pressable>
@@ -6340,7 +6341,7 @@ export default function ChatScreen() {
                 setShowChatMenu(false);
                 setShowWallpaperPicker(true);
               }}>
-              <Ionicons name="image-outline" size={20} color="#191922" />
+              <Ionicons name="image-outline" size={20} color={C.ink} />
               <Text style={styles.chatMenuText}>Wallpaper</Text>
             </Pressable>
 
@@ -6350,13 +6351,13 @@ export default function ChatScreen() {
                   <Ionicons
                     name="checkmark-circle-outline"
                     size={20}
-                    color="#191922"
+                    color={C.ink}
                   />
                   <Text style={styles.chatMenuText}>Unblock</Text>
                 </Pressable>
               ) : (
                 <Pressable style={styles.chatMenuItem} onPress={confirmBlock}>
-                  <Ionicons name="ban-outline" size={20} color="#D64545" />
+                  <Ionicons name="ban-outline" size={20} color={C.danger} />
                   <Text style={[styles.chatMenuText, styles.dangerText]}>
                     Block
                   </Text>
@@ -6486,7 +6487,7 @@ function AttachmentButton({
   return (
     <Pressable style={styles.attachmentButton} onPress={onPress}>
       <View style={styles.attachmentIcon}>
-        <Ionicons name={icon} size={26} color="#C5399A" />
+        <Ionicons name={icon} size={26} color={C.brand} />
       </View>
 
       <Text style={styles.attachmentLabel}>{label}</Text>
@@ -6508,7 +6509,7 @@ const STYLE_PAIR = themedStyles({
     backgroundColor: "#EAF2FB",
   },
 
-  centerText: { fontFamily: FONTS.regular, fontSize: 14, color: "#8A8A90" },
+  centerText: { fontFamily: FONTS.regular, fontSize: 14, color: C.grey1 },
 
   // HEADER
 
@@ -6579,7 +6580,7 @@ const STYLE_PAIR = themedStyles({
   chatMenuText: {
     fontSize: 15,
     fontFamily: FONTS.semibold,
-    color: "#191922",
+    color: C.ink,
   },
 
   blockedBar: {
@@ -6647,13 +6648,13 @@ const STYLE_PAIR = themedStyles({
   slowModeText: {
     fontFamily: FONTS.medium,
     fontSize: 12,
-    color: "#C34D9C",
+    color: C.brandSoft,
   },
 
   blockedText: {
     fontFamily: FONTS.regular,
     fontSize: 13,
-    color: "#6B6B72",
+    color: C.grey3,
     textAlign: "center",
   },
 
@@ -6664,7 +6665,7 @@ const STYLE_PAIR = themedStyles({
     borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#C5399A",
+    backgroundColor: C.brand,
   },
 
   blockedButtonText: {
@@ -6687,13 +6688,13 @@ const STYLE_PAIR = themedStyles({
 
   headerText: { flex: 1, marginLeft: 10, marginRight: 12 },
 
-  headerName: { fontFamily: FONTS.semibold, fontSize: 16, lineHeight: 21, color: "#24283C" },
+  headerName: { fontFamily: FONTS.semibold, fontSize: 16, lineHeight: 21, color: C.inkNavy },
 
   headerStatus: {
     fontFamily: FONTS.regular,
     fontSize: 12,
     lineHeight: 17,
-    color: "#66738A",
+    color: C.slate,
     marginTop: 4,
   },
 
@@ -6702,7 +6703,7 @@ const STYLE_PAIR = themedStyles({
     marginLeft: 18,
     fontSize: 19,
     fontFamily: FONTS.bold,
-    color: "#191922",
+    color: C.ink,
   },
 
   selectionActions: { flexDirection: "row", alignItems: "center", gap: 22 },
@@ -6717,7 +6718,7 @@ const STYLE_PAIR = themedStyles({
     minHeight: 62,
     paddingHorizontal: 18,
     paddingVertical: 12,
-    backgroundColor: "#F0EDF9",
+    backgroundColor: C.lilac,
   },
 
   pinnedBannerText: { flex: 1 },
@@ -6726,14 +6727,14 @@ const STYLE_PAIR = themedStyles({
     fontFamily: FONTS.semibold,
     fontSize: 11,
     lineHeight: 15,
-    color: "#B63D91",
+    color: C.brandDeep,
   },
 
   pinnedBannerBody: {
     fontFamily: FONTS.regular,
     fontSize: 14,
     lineHeight: 20,
-    color: "#24283C",
+    color: C.inkNavy,
     marginTop: 2,
   },
 
@@ -6745,7 +6746,7 @@ const STYLE_PAIR = themedStyles({
     marginTop: 10,
     fontFamily: FONTS.regular,
     fontSize: 13,
-    color: "#8A8A90",
+    color: C.grey1,
   },
 
   emptyChat: {
@@ -6754,7 +6755,7 @@ const STYLE_PAIR = themedStyles({
     paddingVertical: 40,
   },
 
-  emptyChatText: { fontFamily: FONTS.regular, fontSize: 13, color: "#8A8A90" },
+  emptyChatText: { fontFamily: FONTS.regular, fontSize: 13, color: C.grey1 },
 
   // LIST
 
@@ -6779,7 +6780,7 @@ const STYLE_PAIR = themedStyles({
     fontSize: 11,
     lineHeight: 13,
     fontFamily: FONTS.medium,
-    color: "#66738A",
+    color: C.slate,
     letterSpacing: 0.3,
   },
 
@@ -6852,7 +6853,7 @@ const STYLE_PAIR = themedStyles({
     borderRadius: 16,
     padding: 12,
 
-    shadowColor: "#24283C",
+    shadowColor: C.inkNavy,
     shadowOpacity: 0.05,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 2 },
@@ -6873,7 +6874,7 @@ const STYLE_PAIR = themedStyles({
   bubbleMineOnPhoto: { backgroundColor: "#F2C6E3" },
 
   // Someone mentioned you (or everyone): pink edge.
-  bubbleMentionsMe: { borderColor: "#C34D9C", borderWidth: 1.5 },
+  bubbleMentionsMe: { borderColor: C.brandSoft, borderWidth: 1.5 },
 
   tailTheirs: { borderTopLeftRadius: 4 },
 
@@ -6895,12 +6896,12 @@ const STYLE_PAIR = themedStyles({
     backgroundColor: "#FFFFFF",
   },
 
-  notifyText: { flexShrink: 1, fontFamily: FONTS.medium, fontSize: 12.5, color: "#B63D91" },
+  notifyText: { flexShrink: 1, fontFamily: FONTS.medium, fontSize: 12.5, color: C.brandDeep },
 
   // Figma M15: "Your message" / "Restore previous wording" card.
   editCard: { marginTop: 14 },
   editDone: { alignSelf: "flex-end", paddingVertical: 8, paddingHorizontal: 14 },
-  editDoneText: { fontFamily: FONTS.semibold, fontSize: 14, color: "#B63D91" },
+  editDoneText: { fontFamily: FONTS.semibold, fontSize: 14, color: C.brandDeep },
 
   editSection: {
     marginTop: 6,
@@ -6908,7 +6909,7 @@ const STYLE_PAIR = themedStyles({
     fontFamily: FONTS.semibold,
     fontSize: 12,
     letterSpacing: 0.4,
-    color: "#66738A",
+    color: C.slate,
   },
 
   editBox: {
@@ -6920,7 +6921,7 @@ const STYLE_PAIR = themedStyles({
     borderColor: "rgba(36,40,60,0.08)",
   },
 
-  editLabel: { marginBottom: 8, fontFamily: FONTS.semibold, fontSize: 13, color: "#24283C" },
+  editLabel: { marginBottom: 8, fontFamily: FONTS.semibold, fontSize: 13, color: C.inkNavy },
 
   editSaved: {
     padding: 12,
@@ -6929,17 +6930,17 @@ const STYLE_PAIR = themedStyles({
     borderColor: "rgba(102,115,138,0.25)",
   },
 
-  editSavedText: { fontFamily: FONTS.regular, fontSize: 15, lineHeight: 22, color: "#24283C" },
+  editSavedText: { fontFamily: FONTS.regular, fontSize: 15, lineHeight: 22, color: C.inkNavy },
 
-  editNote: { marginTop: 12, padding: 12, borderRadius: 14, backgroundColor: "#F0EDF9" },
+  editNote: { marginTop: 12, padding: 12, borderRadius: 14, backgroundColor: C.lilac },
 
-  editNoteTitle: { fontFamily: FONTS.semibold, fontSize: 13, color: "#B63D91" },
+  editNoteTitle: { fontFamily: FONTS.semibold, fontSize: 13, color: C.brandDeep },
 
-  editNoteText: { marginTop: 4, fontFamily: FONTS.regular, fontSize: 13, color: "#66738A" },
+  editNoteText: { marginTop: 4, fontFamily: FONTS.regular, fontSize: 13, color: C.slate },
 
-  editHint: { fontFamily: FONTS.regular, fontSize: 14, color: "#66738A" },
+  editHint: { fontFamily: FONTS.regular, fontSize: 14, color: C.slate },
 
-  editPrevious: { marginTop: 6, fontFamily: FONTS.regular, fontSize: 15, lineHeight: 22, color: "#24283C" },
+  editPrevious: { marginTop: 6, fontFamily: FONTS.regular, fontSize: 15, lineHeight: 22, color: C.inkNavy },
 
   editButton: {
     marginTop: 12,
@@ -6947,10 +6948,10 @@ const STYLE_PAIR = themedStyles({
     borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#F0EDF9",
+    backgroundColor: C.lilac,
   },
 
-  editButtonText: { fontFamily: FONTS.semibold, fontSize: 15, color: "#B63D91" },
+  editButtonText: { fontFamily: FONTS.semibold, fontSize: 15, color: C.brandDeep },
 
   // Figma M10: "Message actions" as a white bottom sheet.
   sheetBackdrop: {
@@ -6978,12 +6979,12 @@ const STYLE_PAIR = themedStyles({
     marginBottom: 14,
   },
 
-  sheetTitle: { fontFamily: FONTS.semibold, fontSize: 22, lineHeight: 28, color: "#24283C" },
+  sheetTitle: { fontFamily: FONTS.semibold, fontSize: 22, lineHeight: 28, color: C.inkNavy },
 
   sheetReactions: {
     alignSelf: "stretch",
     justifyContent: "space-between",
-    backgroundColor: "#F0EDF9",
+    backgroundColor: C.lilac,
     borderRadius: 28,
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -6997,11 +6998,11 @@ const STYLE_PAIR = themedStyles({
 
   msgNameRow: { flexDirection: "row", alignItems: "center", gap: 6 },
 
-  msgName: { flexShrink: 1, fontFamily: FONTS.semibold, fontSize: 13, lineHeight: 17, color: "#24283C" },
+  msgName: { flexShrink: 1, fontFamily: FONTS.semibold, fontSize: 13, lineHeight: 17, color: C.inkNavy },
 
-  msgRole: { fontFamily: FONTS.semibold, fontSize: 11, lineHeight: 15, color: "#B63D91" },
+  msgRole: { fontFamily: FONTS.semibold, fontSize: 11, lineHeight: 15, color: C.brandDeep },
 
-  avatarInitials: { fontFamily: FONTS.bold, fontSize: 10, lineHeight: 12, color: "#7D356D" },
+  avatarInitials: { fontFamily: FONTS.bold, fontSize: 10, lineHeight: 12, color: C.plum },
 
   // "••• Someone is typing" (indent 38 = avatar 30 + gap 8).
   typingRow: {
@@ -7013,9 +7014,9 @@ const STYLE_PAIR = themedStyles({
     marginTop: 16,
   },
 
-  typingDots: { fontSize: 15, lineHeight: 18, letterSpacing: 3, color: "#B63D91" },
+  typingDots: { fontSize: 15, lineHeight: 18, letterSpacing: 3, color: C.brandDeep },
 
-  typingText: { fontFamily: FONTS.regular, fontSize: 12, lineHeight: 17, color: "#66738A" },
+  typingText: { fontFamily: FONTS.regular, fontSize: 12, lineHeight: 17, color: C.slate },
 
   // Sender name + rank badge + admin badge (group chats).
   senderRow: {
@@ -7031,14 +7032,14 @@ const STYLE_PAIR = themedStyles({
   senderName: {
     fontSize: 12,
     fontFamily: FONTS.bold,
-    color: "#C5399A",
+    color: C.brand,
     marginBottom: 2,
   },
 
   bubbleText: {
     fontFamily: FONTS.regular,
     fontSize: 15,
-    color: "#24283C",
+    color: C.inkNavy,
     lineHeight: 22,
     // Long links / words without spaces wrap INSIDE the bubble instead of
     // running out of it (browsers don't do this by themselves).
@@ -7047,7 +7048,7 @@ const STYLE_PAIR = themedStyles({
       : null),
   },
 
-  bubbleTextMine: { color: "#191922" },
+  bubbleTextMine: { color: C.ink },
 
   metaSpacer: { opacity: 0 },
 
@@ -7066,10 +7067,10 @@ const STYLE_PAIR = themedStyles({
     fontFamily: FONTS.regular,
     fontSize: 11,
     fontStyle: "italic",
-    color: "#8A8A90",
+    color: C.grey1,
   },
 
-  forwardedTextMine: { color: "#6B6B72" },
+  forwardedTextMine: { color: C.grey3 },
 
   // MESSAGE META
 
@@ -7093,7 +7094,7 @@ const STYLE_PAIR = themedStyles({
     paddingVertical: 2,
   },
 
-  bubbleTime: { fontFamily: FONTS.regular, fontSize: 11, lineHeight: 15, color: "#66738A" },
+  bubbleTime: { fontFamily: FONTS.regular, fontSize: 11, lineHeight: 15, color: C.slate },
 
   editedText: { fontFamily: FONTS.regular, fontSize: 10, fontStyle: "italic" },
 
@@ -7106,7 +7107,7 @@ const STYLE_PAIR = themedStyles({
     paddingLeft: 10,
     paddingVertical: 2,
     borderLeftWidth: 2,
-    borderLeftColor: "#B63D91",
+    borderLeftColor: C.brandDeep,
     backgroundColor: "transparent",
   },
 
@@ -7125,13 +7126,13 @@ const STYLE_PAIR = themedStyles({
     marginTop: 1,
   },
 
-  replyPreviewTitle: { fontFamily: FONTS.regular, fontSize: 12, lineHeight: 17, color: "#66738A" /* M14 */ },
+  replyPreviewTitle: { fontFamily: FONTS.regular, fontSize: 12, lineHeight: 17, color: C.slate /* M14 */ },
 
-  replyPreviewTitleMine: { color: "#66738A" /* M14 */ },
+  replyPreviewTitleMine: { color: C.slate /* M14 */ },
 
-  replyPreviewText: { fontFamily: FONTS.regular, fontSize: 12, lineHeight: 17, color: "#66738A" /* M14 */ },
+  replyPreviewText: { fontFamily: FONTS.regular, fontSize: 12, lineHeight: 17, color: C.slate /* M14 */ },
 
-  replyPreviewTextMine: { color: "#66738A" /* M14 */ },
+  replyPreviewTextMine: { color: C.slate /* M14 */ },
 
   // MEDIA
 
@@ -7253,7 +7254,7 @@ const STYLE_PAIR = themedStyles({
     marginTop: 1,
   },
 
-  audioTextMine: { color: "#6B6B72" },
+  audioTextMine: { color: C.grey3 },
 
   // Outer wrapper so the transcript block can sit below the play/wave
   // row while still being one visual unit inside the bubble.
@@ -7286,21 +7287,21 @@ const STYLE_PAIR = themedStyles({
     marginTop: 4,
     fontSize: 12,
     fontFamily: FONTS.bold,
-    color: "#C5399A",
+    color: C.brand,
   },
 
-  transcriptMoreMine: { color: "#C34D9C" },
+  transcriptMoreMine: { color: C.brandSoft },
 
   // The word currently being spoken, highlighted against the rest of
   // the (already-italic, muted) transcript text.
   transcriptWordActive: {
-    color: "#C5399A",
+    color: C.brand,
     fontFamily: FONTS.bold,
     fontStyle: "normal",
   },
 
   transcriptWordActiveMine: {
-    color: "#C34D9C",
+    color: C.brandSoft,
     fontFamily: FONTS.bold,
     fontStyle: "normal",
     textDecorationLine: "underline",
@@ -7315,7 +7316,7 @@ const STYLE_PAIR = themedStyles({
   transcriptLoadingText: {
     fontFamily: FONTS.regular,
     fontSize: 12,
-    color: "#8A8A90",
+    color: C.grey1,
     fontStyle: "italic",
   },
 
@@ -7372,7 +7373,7 @@ const STYLE_PAIR = themedStyles({
     fontFamily: FONTS.regular,
     fontSize: 12,
     fontWeight: "700",
-    color: "#C5399A",
+    color: C.brand,
   },
 
   // DOCUMENT
@@ -7399,18 +7400,18 @@ const STYLE_PAIR = themedStyles({
 
   documentInfo: { flex: 1, marginLeft: 9 },
 
-  documentName: { fontSize: 13, fontFamily: FONTS.bold, color: "#191922" },
+  documentName: { fontSize: 13, fontFamily: FONTS.bold, color: C.ink },
 
-  documentNameMine: { color: "#191922" },
+  documentNameMine: { color: C.ink },
 
   documentLabel: {
     fontFamily: FONTS.regular,
     fontSize: 11,
-    color: "#8A8A90",
+    color: C.grey1,
     marginTop: 2,
   },
 
-  documentLabelMine: { color: "#6B6B72" },
+  documentLabelMine: { color: C.grey3 },
 
   // REACTIONS
 
@@ -7442,7 +7443,7 @@ const STYLE_PAIR = themedStyles({
 
   reactionEmoji: { fontSize: 15 /* M14 */ },
 
-  reactionCount: { fontFamily: FONTS.semibold, fontSize: 13, color: "#B63D91" /* M14 */ },
+  reactionCount: { fontFamily: FONTS.semibold, fontSize: 13, color: C.brandDeep /* M14 */ },
 
   // JUMP BUTTON
 
@@ -7472,7 +7473,7 @@ const STYLE_PAIR = themedStyles({
     height: 20,
     borderRadius: 10,
     paddingHorizontal: 5,
-    backgroundColor: "#C5399A",
+    backgroundColor: C.brand,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -7507,16 +7508,16 @@ const STYLE_PAIR = themedStyles({
     gap: 10,
     padding: 12,
     borderRadius: 16,
-    backgroundColor: "#F0EDF9",
+    backgroundColor: C.lilac,
   },
 
   editingAccent: { width: 0 /* M14 */ },
 
   editingContent: { flex: 1, marginHorizontal: 10, paddingVertical: 8 },
 
-  editingTitle: { fontFamily: FONTS.semibold, fontSize: 12.5, color: "#B63D91" /* M14 */ },
+  editingTitle: { fontFamily: FONTS.semibold, fontSize: 12.5, color: C.brandDeep /* M14 */ },
 
-  editingText: { marginTop: 2, fontFamily: FONTS.regular, fontSize: 14, color: "#24283C" /* M14 */ },
+  editingText: { marginTop: 2, fontFamily: FONTS.regular, fontSize: 14, color: C.inkNavy /* M14 */ },
 
   // COMPOSER
 
@@ -7552,7 +7553,7 @@ const STYLE_PAIR = themedStyles({
     paddingBottom: 8,
     fontFamily: FONTS.regular,
     fontSize: 14,
-    color: "#191922",
+    color: C.ink,
     ...(Platform.OS === "web"
       ? ({ outlineStyle: "none", resize: "none" } as object)
       : null),
@@ -7574,7 +7575,7 @@ const STYLE_PAIR = themedStyles({
   },
 
   // Figma M02: the pink send circle with an up arrow.
-  sendCircle: { backgroundColor: "#B63D91" },
+  sendCircle: { backgroundColor: C.brandDeep },
 
   // The plain mic beside the send circle (groups, Figma M02).
   micBare: { width: 30, marginRight: 4 },
@@ -7604,7 +7605,7 @@ const STYLE_PAIR = themedStyles({
     width: 9,
     height: 9,
     borderRadius: 5,
-    backgroundColor: "#D64545",
+    backgroundColor: C.danger,
     marginRight: 8,
   },
 
@@ -7612,7 +7613,7 @@ const STYLE_PAIR = themedStyles({
     width: 38,
     fontSize: 14,
     fontFamily: FONTS.semibold,
-    color: "#191922",
+    color: C.ink,
   },
 
   recordingWave: {
@@ -7630,7 +7631,7 @@ const STYLE_PAIR = themedStyles({
     minHeight: 4,
     maxHeight: 25,
     borderRadius: 3,
-    backgroundColor: "#C5399A",
+    backgroundColor: C.brand,
     marginHorizontal: 1.2,
   },
 
@@ -7643,7 +7644,7 @@ const STYLE_PAIR = themedStyles({
 
   slideCancelText: {
     fontSize: 12,
-    color: "#8A8A90",
+    color: C.grey1,
     fontFamily: FONTS.semibold,
   },
 
@@ -7715,7 +7716,7 @@ const STYLE_PAIR = themedStyles({
     justifyContent: "center",
   },
 
-  menuMessageInitials: { fontFamily: FONTS.semibold, fontSize: 11, color: "#7D356D" },
+  menuMessageInitials: { fontFamily: FONTS.semibold, fontSize: 11, color: C.plum },
 
   menuMessageBody: { flex: 1, minWidth: 0 },
 
@@ -7728,9 +7729,9 @@ const STYLE_PAIR = themedStyles({
     backgroundColor: "#F0F4F9",
   },
 
-  menuMessageText: { fontFamily: FONTS.regular, fontSize: 14, lineHeight: 20, color: "#24283C" },
+  menuMessageText: { fontFamily: FONTS.regular, fontSize: 14, lineHeight: 20, color: C.inkNavy },
 
-  menuMessageTime: { marginTop: 6, fontFamily: FONTS.regular, fontSize: 11, color: "#66738A" },
+  menuMessageTime: { marginTop: 6, fontFamily: FONTS.regular, fontSize: 11, color: C.slate },
 
   menuScroll: { flexGrow: 0, maxHeight: 330 },
 
@@ -7738,14 +7739,14 @@ const STYLE_PAIR = themedStyles({
     marginTop: 10,
     fontFamily: FONTS.regular,
     fontSize: 12,
-    color: "#66738A",
+    color: C.slate,
   },
 
   menuPreviewText: {
     flex: 1,
     fontFamily: FONTS.regular,
     fontSize: 12,
-    color: "#8A8A90",
+    color: C.grey1,
   },
 
   menuNoticeText: { color: "#1FA855", fontFamily: FONTS.bold },
@@ -7764,7 +7765,7 @@ const STYLE_PAIR = themedStyles({
     fontFamily: FONTS.regular,
     fontSize: 13,
     lineHeight: 19,
-    color: "#6B6B72",
+    color: C.grey3,
     marginBottom: 6,
   },
 
@@ -7780,7 +7781,7 @@ const STYLE_PAIR = themedStyles({
   deleteOptionText: {
     fontSize: 15.5,
     fontFamily: FONTS.bold,
-    color: "#D64545",
+    color: C.danger,
   },
 
   menuItem: {
@@ -7791,9 +7792,9 @@ const STYLE_PAIR = themedStyles({
     paddingVertical: 12,
   },
 
-  menuItemText: { fontSize: 15, color: "#191922", fontFamily: FONTS.semibold },
+  menuItemText: { fontSize: 15, color: C.ink, fontFamily: FONTS.semibold },
 
-  dangerText: { color: "#D64545" },
+  dangerText: { color: C.danger },
 
   // SHEETS
 
@@ -7827,7 +7828,7 @@ const STYLE_PAIR = themedStyles({
   actionTitle: {
     fontSize: 17,
     fontFamily: FONTS.bold,
-    color: "#191922",
+    color: C.ink,
     marginBottom: 8,
   },
 
@@ -7838,7 +7839,7 @@ const STYLE_PAIR = themedStyles({
     gap: 14,
   },
 
-  actionText: { fontSize: 15, color: "#191922", fontFamily: FONTS.semibold },
+  actionText: { fontSize: 15, color: C.ink, fontFamily: FONTS.semibold },
 
   cancelButton: {
     marginTop: 8,
@@ -7877,7 +7878,7 @@ const STYLE_PAIR = themedStyles({
     paddingHorizontal: 14,
     fontFamily: FONTS.regular,
     fontSize: 14,
-    color: "#191922",
+    color: C.ink,
     borderWidth: 1,
     borderColor: "#ECECF0",
     marginBottom: 6,
@@ -7917,7 +7918,7 @@ const STYLE_PAIR = themedStyles({
   forwardUsername: {
     fontFamily: FONTS.regular,
     fontSize: 11,
-    color: "#8A8A90",
+    color: C.grey1,
     marginTop: 2,
   },
 
@@ -7926,7 +7927,7 @@ const STYLE_PAIR = themedStyles({
   noUsersText: {
     fontFamily: FONTS.regular,
     fontSize: 13,
-    color: "#8A8A90",
+    color: C.grey1,
     paddingVertical: 12,
   },
 
@@ -8042,14 +8043,14 @@ const STYLE_PAIR = themedStyles({
   },
 
   documentPreviewName: {
-    color: "#191922",
+    color: C.ink,
     fontSize: 15,
     fontFamily: FONTS.bold,
     textAlign: "center",
   },
 
   documentPreviewHint: {
-    color: "#8A8A90",
+    color: C.grey1,
     fontFamily: FONTS.regular,
     fontSize: 12,
     marginTop: 6,
@@ -8074,14 +8075,14 @@ const STYLE_PAIR = themedStyles({
     paddingVertical: 11,
     fontFamily: FONTS.regular,
     fontSize: 14,
-    color: "#191922",
+    color: C.ink,
   },
 
   attachmentSendButton: {
     width: 46,
     height: 46,
     borderRadius: 23,
-    backgroundColor: "#C5399A",
+    backgroundColor: C.brand,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -8124,7 +8125,7 @@ function ForwardChatList({
                               : "people-outline"
                           }
                           size={20}
-                          color="#C5399A"
+                          color={C.brand}
                         />
                       </View>
 

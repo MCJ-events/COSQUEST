@@ -42,8 +42,9 @@ import MapView, { MapPressEvent, Marker, Region } from "react-native-maps";
 
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { safeBack } from "@/utils/safeBack";
+import { C } from "@/theme/tokens";
 
-const PINK = "#C34D9C";
+const PINK = C.brandSoft;
 
 export default function ContactOptions() {
   const insets = useSafeAreaInsets();
@@ -521,7 +522,7 @@ export default function ContactOptions() {
             style={styles.headerSide}
             accessibilityRole="button"
             accessibilityLabel="Back">
-            <Ionicons name="chevron-back" size={24} color="#191922" />
+            <Ionicons name="chevron-back" size={24} color={C.ink} />
           </Pressable>
 
           <Text style={styles.headerTitle}>Contact options</Text>
@@ -565,7 +566,7 @@ export default function ContactOptions() {
                   textContentType="emailAddress"
                   autoComplete="email"
                   placeholder="you@example.com"
-                  placeholderTextColor="#9C9CAA"
+                  placeholderTextColor={C.muted}
                   style={styles.input}
                 />
               </View>
@@ -591,7 +592,7 @@ export default function ContactOptions() {
                     onSelect={handleCountrySelect}
                     theme={{
                       backgroundColor: "#FFFFFF",
-                      onBackgroundTextColor: "#191922",
+                      onBackgroundTextColor: C.ink,
                       fontSize: 14,
                       fontFamily: FONTS.regular,
                     }}
@@ -599,7 +600,7 @@ export default function ContactOptions() {
 
                   <Text style={styles.callingCode}>+{callingCode}</Text>
 
-                  <Ionicons name="chevron-down" size={14} color="#777780" />
+                  <Ionicons name="chevron-down" size={14} color={C.grey5} />
                 </View>
 
                 <Ionicons
@@ -615,7 +616,7 @@ export default function ContactOptions() {
                   keyboardType="phone-pad"
                   autoCapitalize="none"
                   placeholder="Phone number"
-                  placeholderTextColor="#9C9CAA"
+                  placeholderTextColor={C.muted}
                   style={styles.input}
                 />
               </View>
@@ -643,7 +644,7 @@ export default function ContactOptions() {
                   onChangeText={(text) => update("businessAddress", text)}
                   autoCapitalize="words"
                   placeholder="Enter your address"
-                  placeholderTextColor="#9C9CAA"
+                  placeholderTextColor={C.muted}
                   style={styles.input}
                 />
               </View>
@@ -845,7 +846,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     fontFamily: FONTS.medium,
     fontSize: 12,
-    color: "#7A7A84",
+    color: C.grey4,
   },
 
   field: MILKY_FIELD,
@@ -869,7 +870,7 @@ const styles = StyleSheet.create({
     paddingVertical: 0,
     fontFamily: FONTS.regular,
     fontSize: 14.5,
-    color: "#191922",
+    color: C.ink,
     ...(Platform.OS === "web" ? ({ outlineStyle: "none" } as object) : null),
   },
 
@@ -912,7 +913,7 @@ const styles = StyleSheet.create({
     marginTop: 6,
     fontFamily: FONTS.regular,
     fontSize: 11.5,
-    color: "#7A7A84",
+    color: C.grey4,
   },
 
   mapActions: {
@@ -964,7 +965,7 @@ const styles = StyleSheet.create({
   mapTitle: {
     fontFamily: FONTS.semibold,
     fontSize: 15,
-    color: "#191922",
+    color: C.ink,
   },
 
   mapSubtitle: {
@@ -973,7 +974,7 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.regular,
     fontSize: 12,
     lineHeight: 18,
-    color: "#7A7A84",
+    color: C.grey4,
   },
 
   mapContainer: {
@@ -1011,7 +1012,7 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.regular,
     fontSize: 12.5,
     lineHeight: 18,
-    color: "#7A7A84",
+    color: C.grey4,
   },
 
   marker: {

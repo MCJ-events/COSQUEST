@@ -33,11 +33,12 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { createChat } from "@/store/thunks/chatThunks";
 import { safeBack } from "@/utils/safeBack";
 import { KeyboardAvoidingView } from "@/components/ui/keyboard";
+import { C } from "@/theme/tokens";
 
-const PINK = "#B63D91";
-const INK = "#24283C";
-const MUTED = "#66738A";
-const LILAC = "#F0EDF9";
+const PINK = C.brandDeep;
+const INK = C.inkNavy;
+const MUTED = C.slate;
+const LILAC = C.lilac;
 const LINE = "rgba(36,40,60,0.08)";
 
 const STATUS: Record<string, string> = {
@@ -254,7 +255,7 @@ export default function GroupMembers() {
   ) : null;
 
   return (
-    <LinearGradient colors={["#F6F9FE", "#E3F0FC"]} style={styles.screen}>
+    <LinearGradient colors={[C.skyPale, C.skyPale2]} style={styles.screen}>
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <Pressable onPress={() => safeBack()} hitSlop={10} accessibilityLabel="Back">
           <Ionicons name="chevron-back" size={26} color={INK} />
@@ -278,7 +279,7 @@ export default function GroupMembers() {
             value={search}
             onChangeText={setSearch}
             placeholder="Find a member"
-            placeholderTextColor="#9AA3B5"
+            placeholderTextColor={C.placeholder}
             autoCapitalize="none"
             autoCorrect={false}
             style={styles.searchInput}

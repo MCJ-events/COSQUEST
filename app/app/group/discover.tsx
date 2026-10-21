@@ -38,6 +38,7 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { fetchChats } from "@/store/thunks/chatThunks";
 import { safeBack } from "@/utils/safeBack";
 import { KeyboardAwareScrollView } from "@/components/ui/keyboard";
+import { C } from "@/theme/tokens";
 
 const KIND_LABEL = {
   private: "Private",
@@ -135,7 +136,7 @@ export default function DiscoverGroups() {
             value={link}
             onChangeText={setLink}
             placeholder="Paste it here"
-            placeholderTextColor="#9C9CAA"
+            placeholderTextColor={C.muted}
             autoCapitalize="none"
             autoCorrect={false}
             style={styles.input}
@@ -152,12 +153,12 @@ export default function DiscoverGroups() {
         {/* SEARCH */}
         <SectionLabel>OPEN GROUPS</SectionLabel>
         <View style={styles.linkRow}>
-          <Ionicons name="search" size={18} color="#9C9CAA" />
+          <Ionicons name="search" size={18} color={C.muted} />
           <TextInput
             value={query}
             onChangeText={setQuery}
             placeholder="Search groups"
-            placeholderTextColor="#9C9CAA"
+            placeholderTextColor={C.muted}
             autoCapitalize="none"
             autoCorrect={false}
             style={styles.input}
@@ -167,7 +168,7 @@ export default function DiscoverGroups() {
 
         {!loading && groups.length === 0 ? (
           <View style={styles.empty}>
-            <Ionicons name="people-outline" size={34} color="#9C9CAA" />
+            <Ionicons name="people-outline" size={34} color={C.muted} />
             <Text style={styles.emptyText}>
               {query.trim()
                 ? "No groups found."

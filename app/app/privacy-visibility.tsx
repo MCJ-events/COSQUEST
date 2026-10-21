@@ -22,8 +22,9 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { C } from "@/theme/tokens";
 
-const PINK = "#C34D9C";
+const PINK = C.brandSoft;
 
 type Visibility = PrivacySettings["profileVisibility"];
 type ToggleKey = Exclude<keyof PrivacySettings, "profileVisibility">;
@@ -161,7 +162,7 @@ export default function PrivacyVisibility() {
   return (
     <View style={styles.screen}>
       <LinearGradient
-        colors={["#FFFFFF", "#E1F3FF"]}
+        colors={["#FFFFFF", C.skyWash]}
         locations={[0, 0.6442]}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
@@ -182,7 +183,7 @@ export default function PrivacyVisibility() {
             style={styles.backButton}
             accessibilityRole="button"
             accessibilityLabel="Back">
-            <Ionicons name="arrow-back" size={24} color="#191922" />
+            <Ionicons name="arrow-back" size={24} color={C.ink} />
           </Pressable>
 
           <View style={styles.headerCenter}>
@@ -268,7 +269,7 @@ export default function PrivacyVisibility() {
               </Text>
             </View>
 
-            <Ionicons name="chevron-forward" size={16} color="#8A8A93" />
+            <Ionicons name="chevron-forward" size={16} color={C.grey2} />
           </Pressable>
         </View>
       </ScrollView>
@@ -331,7 +332,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#0000000A",
   },
 
-  headerTitle: { fontFamily: FONTS.semibold, fontSize: 17, color: "#191922" },
+  headerTitle: { fontFamily: FONTS.semibold, fontSize: 17, color: C.ink },
 
   section: { paddingTop: 18, gap: 12 },
 
@@ -339,7 +340,7 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.medium,
     fontSize: 11,
     letterSpacing: 0.4,
-    color: "#7A7A84",
+    color: C.grey4,
   },
 
   visibilitySelector: {
@@ -391,24 +392,24 @@ const styles = StyleSheet.create({
 
   rowTextWrap: { flex: 1, minWidth: 0 },
 
-  rowLabel: { fontFamily: FONTS.regular, fontSize: 13.5, color: "#3B3B42" },
+  rowLabel: { fontFamily: FONTS.regular, fontSize: 13.5, color: C.ink2 },
 
   rowHint: {
     marginTop: 2,
     fontFamily: FONTS.regular,
     fontSize: 11,
     lineHeight: 15,
-    color: "#8A8A93",
+    color: C.grey2,
   },
 
   blockedRow: { minHeight: 62 },
 
-  blockedTitle: { fontFamily: FONTS.regular, fontSize: 11.5, color: "#7A7A84" },
+  blockedTitle: { fontFamily: FONTS.regular, fontSize: 11.5, color: C.grey4 },
 
   blockedSubtitle: {
     fontFamily: FONTS.semibold,
     fontSize: 14,
-    color: "#191922",
+    color: C.ink,
   },
 
   pressed: { opacity: 0.75 },

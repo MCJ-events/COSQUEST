@@ -15,10 +15,11 @@ import { pollIsClosed, votePoll, type PollSummary } from "@/services/polls";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { socketPollUpdated } from "@/store/slices/chatSlice";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
+import { C } from "@/theme/tokens";
 
-const PINK = "#B63D91";
-const INK = "#24283C";
-const MUTED = "#66738A";
+const PINK = C.brandDeep;
+const INK = C.inkNavy;
+const MUTED = C.slate;
 
 export default function PollBubble({
   messageId,

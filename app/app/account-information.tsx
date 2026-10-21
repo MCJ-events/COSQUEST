@@ -24,8 +24,9 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { KeyboardAwareScrollView } from "@/components/ui/keyboard";
+import { C } from "@/theme/tokens";
 
-const PINK = "#C34D9C";
+const PINK = C.brandSoft;
 
 type AccountInfoRowProps = {
   icon: keyof typeof Ionicons.glyphMap;
@@ -331,7 +332,7 @@ export default function AccountInformation() {
     <View style={styles.screen}>
       {/* Figma: linear-gradient(180deg, #FFFFFF 0%, #E1F3FF 64.42%) */}
       <LinearGradient
-        colors={["#FFFFFF", "#E1F3FF"]}
+        colors={["#FFFFFF", C.skyWash]}
         locations={[0, 0.6442]}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
@@ -488,7 +489,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontFamily: FONTS.semibold,
     fontSize: 17,
-    color: "#191922",
+    color: C.ink,
   },
 
   headerSpacer: {
@@ -574,14 +575,14 @@ const styles = StyleSheet.create({
   infoLabel: {
     fontFamily: FONTS.regular,
     fontSize: 11.5,
-    color: "#7A7A84",
+    color: C.grey4,
     marginBottom: 1,
   },
 
   infoValue: {
     fontFamily: FONTS.semibold,
     fontSize: 14,
-    color: "#191922",
+    color: C.ink,
   },
 
   infoInput: {
@@ -589,7 +590,7 @@ const styles = StyleSheet.create({
     margin: 0,
     fontFamily: FONTS.semibold,
     fontSize: 14,
-    color: "#191922",
+    color: C.ink,
     ...(Platform.OS === "web" ? ({ outlineStyle: "none" } as object) : null),
   },
 

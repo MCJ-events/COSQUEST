@@ -21,6 +21,7 @@ import Animated, {
   withSpring,
   withTiming,
 } from "react-native-reanimated";
+import { C } from "@/theme/tokens";
 
 // ==========================================
 // TYPES
@@ -407,7 +408,7 @@ export function FactionModal({
                   <Ionicons
                     name={agreed ? "checkbox" : "square-outline"}
                     size={22}
-                    color={agreed ? "#C5399A" : "#5b5b5e"}
+                    color={agreed ? C.brand : "#5b5b5e"}
                   />
 
                   <View style={styles.agreeContent}>
@@ -483,7 +484,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: "800",
-    color: "#191922",
+    color: C.ink,
     marginBottom: 10,
   },
 
@@ -561,18 +562,18 @@ const styles = StyleSheet.create({
 
   agreeText: {
     fontSize: 13,
-    color: "#191922",
+    color: C.ink,
   },
 
   agreedLabel: {
     marginTop: 5,
     fontSize: 11,
     fontWeight: "700",
-    color: "#C5399A",
+    color: C.brand,
   },
 
   errorText: {
-    color: "#B42318",
+    color: C.dangerInk,
     fontSize: 12,
     fontWeight: "600",
     textAlign: "center",

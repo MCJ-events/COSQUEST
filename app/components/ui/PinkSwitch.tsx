@@ -1,6 +1,7 @@
 ﻿// The Figma switch: pink when on, grey when off, white knob. Drawn by hand so
 // it looks the same on phones and the website.
 import { Pressable, StyleSheet, View } from "react-native";
+import { C } from "@/theme/tokens";
 
 export function PinkSwitch({
   value,
@@ -34,7 +35,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#D3D3D8",
   },
   trackOn: {
-    backgroundColor: "#C34D9C",
+    backgroundColor: C.brandSoft,
   },
   knob: {
     width: 20,

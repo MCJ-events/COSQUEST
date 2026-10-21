@@ -14,12 +14,13 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { FONTS } from "@/constants/fonts";
 import { type Spark } from "@/services/sparks";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
+import { C } from "@/theme/tokens";
 
-const PINK = "#B63D91";
-const TEAL = "#2A8A92";
-const INK = "#24283C";
-const MUTED = "#66738A";
-const LILAC = "#F0EDF9";
+const PINK = C.brandDeep;
+const TEAL = C.teal;
+const INK = C.inkNavy;
+const MUTED = C.slate;
+const LILAC = C.lilac;
 
 const MAX_CIRCLES = 3;
 const MAX_QUIET = 2;
@@ -251,7 +252,7 @@ const STYLE_PAIR = themedStyles({
     borderRadius: 26,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#F3DDED",
+    backgroundColor: C.brandTint,
     borderWidth: 3,
     borderColor: "rgba(182,61,145,0.16)",
   },
@@ -368,7 +369,7 @@ const STYLE_PAIR = themedStyles({
     borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#F3DDED",
+    backgroundColor: C.brandTint,
   },
 
   cardText: { flex: 1, minWidth: 0 },
