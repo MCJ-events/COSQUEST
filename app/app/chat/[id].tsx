@@ -2929,6 +2929,19 @@ export default function ChatScreen() {
   // switching tabs), leaving and returning wouldn't refetch anything and
   // you'd sit looking at stale/blank content until the next 5s poll tick.
 
+  // Leaving the chat with the keyboard up: put it away first. Otherwise
+  // Android hands focus to the next text field in the window (the chat
+  // list's search) and the keyboard stays up over the tab bar.
+  useFocusEffect(
+    useCallback(
+      () => () => {
+        inputRef.current?.blur();
+        Keyboard.dismiss();
+      },
+      [],
+    ),
+  );
+
   useFocusEffect(
     useCallback(() => {
       if (!token || !conversationId) {

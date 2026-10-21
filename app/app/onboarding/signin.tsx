@@ -7,7 +7,7 @@ import { useGoogleAuth } from "@/utils/googleAuth";
 import { router } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Keyboard, Pressable, StyleSheet, Text, View } from "react-native";
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
 import { OnboardingScreen } from "@/components/OnboardingScreen";
 
@@ -59,6 +59,8 @@ export default function Signin() {
   }
 
   async function handleSignin() {
+    // The keyboard goes with the form (it followed focus onto the feed).
+    Keyboard.dismiss();
     if (!validate()) return;
 
     const result = await dispatch(
