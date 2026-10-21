@@ -60,7 +60,7 @@ func setup(cfg: Dictionary, cam: Camera3D) -> bool:
 	_tileset = t as Node3D
 	_georef.name = "CesiumGeoreference"
 	_tileset.name = "Cesium3DTileset"
-	_georef.set("origin_type", 0)
+	_georef.set("origin_type", int(cfg.get("tiles_origin_type", 0)))
 	_georef.set("latitude", float(cfg.get("tiles_lat", 0.0)))
 	_georef.set("longitude", float(cfg.get("tiles_lon", 0.0)))
 	_georef.set("altitude", float(cfg.get("tiles_alt", 0.0)))
@@ -68,7 +68,7 @@ func setup(cfg: Dictionary, cam: Camera3D) -> bool:
 	_tileset.set("url", url)
 	_tileset.set("maximum_screen_space_error", float(cfg.get("tiles_sse", 16.0)))
 	_tileset.set("maximum_simultaneous_tile_loads", 8)
-	_tileset.rotation_degrees = Vector3(90.0, 0.0, 0.0)
+	_tileset.rotation_degrees = Vector3(float(cfg.get("tiles_rot_x", 90.0)), 0.0, 0.0)
 	position.y = float(cfg.get("tiles_y_offset", 0.0))
 	# This node is the georeference's Node3D parent (the credit system attaches there).
 	add_child(_georef)

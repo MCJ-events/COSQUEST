@@ -192,6 +192,8 @@ export type Fight3DConfig = {
   tiles_alt?: number;
   tiles_ground?: boolean;
   tiles_sse?: number;
+  tiles_origin_type?: number;
+  tiles_rot_x?: number;
   seed: number;
   autoplay: boolean;
 };
@@ -230,12 +232,14 @@ export function buildFightConfig(input: {
 
 /**
  * The tiles layer's config from a tileset URL that may end in
- * "#lat,lon,alt[,ground[,sse]]": where the arena stands on the tileset (the
+ * "#lat,lon,alt[,ground[,sse[,origin[,rotx]]]]": where the arena stands on the tileset (the
  * georeference origin); ground 0 keeps the arena's own floor (a tileset that
  * is a landmark beside the fight, not the ground); sse is Cesium's maximum
- * screen space error (detail). The fragment never reaches the server.
+ * screen space error (detail); origin 1 is Cesium's True Origin (engine
+ * coordinates are ECEF, for tilesets with no georeference); rotx turns the
+ * tileset node about X (degrees, default 90: ECEF Z-up to Godot Y-up). The fragment never reaches the server.
  */
-type TilesKeys = "tiles_url" | "tiles_lat" | "tiles_lon" | "tiles_alt" | "tiles_ground" | "tiles_sse";
+type TilesKeys = "tiles_url" | "tiles_lat" | "tiles_lon" | "tiles_alt" | "tiles_ground" | "tiles_sse" | "tiles_origin_type" | "tiles_rot_x";
 export function tilesFields(url: string): Pick<Fight3DConfig, TilesKeys> {
   const [base, frag] = url.trim().split("#", 2);
   const out: Pick<Fight3DConfig, TilesKeys> = { tiles_url: base };
@@ -246,6 +250,8 @@ export function tilesFields(url: string): Pick<Fight3DConfig, TilesKeys> {
     out.tiles_alt = n.length >= 3 ? n[2] : 0;
     if (n.length >= 4) out.tiles_ground = n[3] !== 0;
     if (n.length >= 5 && n[4] > 0) out.tiles_sse = n[4];
+    if (n.length >= 6) out.tiles_origin_type = n[5] === 1 ? 1 : 0;
+    if (n.length >= 7) out.tiles_rot_x = n[6];
   }
   return out;
 }
