@@ -144,6 +144,19 @@ func _ready() -> void:
 	_cam_fwd = Vector3(-_cam_basis.z.x, 0.0, -_cam_basis.z.z).normalized()
 	_cam_right = Vector3(_cam_basis.x.x, 0.0, _cam_basis.x.z).normalized()
 	var t0: int = Time.get_ticks_usec()
+	# 3D drawn at a fraction of the screen's pixels, the HUD at full resolution.
+	# A 1080x2400 phone does not need 2.6 M shaded pixels for this view.
+	var rs: float = clampf(float(cfg.get("render_scale", 0.5)), 0.25, 1.0)
+	get_viewport().scaling_3d_mode = Viewport.SCALING_3D_MODE_BILINEAR
+	get_viewport().scaling_3d_scale = rs
+	# No blocking on vsync (the compositor buffers the surface on Android/iOS, so
+	# no tearing), capped at max_fps: a frame that misses a vsync by 1 ms no
+	# longer waits a whole extra one, which is input latency.
+	if not _headless:
+		if not bool(cfg.get("vsync", false)):
+			DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
+		Engine.max_fps = clampi(int(cfg.get("max_fps", 60)), 15, 120)
+	print("CQ render_scale=%.2f vsync=%s max_fps=%d" % [rs, str(DisplayServer.window_get_vsync_mode()), Engine.max_fps])
 	_build_arena()
 	_build_camera()
 	fx = FxScript.new()

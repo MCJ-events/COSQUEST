@@ -250,6 +250,14 @@ func hurt() -> void:
 
 
 func _process(dt: float) -> void:
+	# The embedded display (react-native-godot) sizes the window after the HUD is
+	# added and the full-rect anchors never hear about it: follow the viewport.
+	var vs: Vector2 = get_viewport().get_visible_rect().size
+	if size != vs:
+		position = Vector2.ZERO
+		size = vs
+		if _stick_id == -999:
+			_knob = _stick_home()
 	for i in _press.size():
 		if _press[i] >= 0.0:
 			_press[i] += dt
@@ -276,24 +284,48 @@ func _process(dt: float) -> void:
 # ------------------------------------------------------------ drawing
 
 func _text(centre: Vector2, s: String, fs: int, col: Color, outline: int = 0) -> void:
-	var base := Vector2(centre.x - 400.0, centre.y + fs * 0.36)
-	if outline > 0:
-		draw_string_outline(_font, base, s, HORIZONTAL_ALIGNMENT_CENTER, 800.0, fs, outline, Color(0, 0, 0, col.a * 0.85))
-	draw_string(_font, base, s, HORIZONTAL_ALIGNMENT_CENTER, 800.0, fs, col)
+	_queue_text(Vector2(centre.x - 400.0, centre.y + fs * 0.36), s, HORIZONTAL_ALIGNMENT_CENTER, 800.0, fs, col, outline)
 
 
 ## Text scaled by a draw transform, so animated sizes do not create new glyph caches per size.
 func _text_scaled(centre: Vector2, s: String, fs: int, col: Color, outline: int, k: float) -> void:
-	draw_set_transform(centre, 0.0, Vector2(k, k))
-	_text(Vector2.ZERO, s, fs, col, outline)
-	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	_queue_text(Vector2(-400.0, fs * 0.36), s, HORIZONTAL_ALIGNMENT_CENTER, 800.0, fs, col, outline, Transform2D(0.0, Vector2(k, k), 0.0, centre))
 
 
 func _text_left(pos: Vector2, s: String, fs: int, col: Color, outline: int = 0) -> void:
-	var base := Vector2(pos.x, pos.y + fs * 0.36)
-	if outline > 0:
-		draw_string_outline(_font, base, s, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, outline, Color(0, 0, 0, col.a * 0.85))
-	draw_string(_font, base, s, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, col)
+	_queue_text(Vector2(pos.x, pos.y + fs * 0.36), s, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, col, outline)
+
+
+# Text is queued and drawn after every shape, grouped by size and outline: the
+# shapes then batch into a few draw calls and each glyph cache texture is bound
+# once, instead of one draw call per shape/text switch. On the software-GPU
+# emulator every draw call costs, so this is frame time (and input latency).
+var _texts: Array = []
+
+
+func _queue_text(base: Vector2, s: String, align: HorizontalAlignment, w: float, fs: int, col: Color, outline: int, xf: Transform2D = Transform2D.IDENTITY) -> void:
+	_texts.append([fs, outline, base, s, align, w, col, xf])
+
+
+func _flush_texts() -> void:
+	_texts.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0] or (a[0] == b[0] and a[1] < b[1]))
+	# outlines first (they sit under the fill), then the fills
+	for pass_i in 2:
+		for t in _texts:
+			var outline: int = t[1]
+			if pass_i == 0 and outline <= 0:
+				continue
+			var xf: Transform2D = t[7]
+			if xf != Transform2D.IDENTITY:
+				draw_set_transform_matrix(xf)
+			var col: Color = t[6]
+			if pass_i == 0:
+				draw_string_outline(_font, t[2], t[3], t[4], t[5], t[0], outline, Color(0, 0, 0, col.a * 0.85))
+			else:
+				draw_string(_font, t[2], t[3], t[4], t[5], t[0], col)
+			if xf != Transform2D.IDENTITY:
+				draw_set_transform_matrix(Transform2D.IDENTITY)
+	_texts.clear()
 
 
 func _bar(r: Rect2, k: float, fill: Color) -> void:
@@ -332,6 +364,7 @@ func _draw() -> void:
 			_text(Vector2(size.x * 0.5, y + 40), _banner_sub, 24, Color(1, 1, 1, 0.9), 6)
 	if loading_text != "":
 		_text(Vector2(size.x * 0.5, size.y * 0.5), loading_text, 30, Color(1, 1, 1, 0.9), 6)
+	_flush_texts()
 
 
 func _draw_overheads() -> void:
