@@ -1,9 +1,9 @@
 // The map lit by the hour (mapStyle.ts), against Map/TimeOfDay.swift and
 // UI/Preferences.swift WorldClock.
 import assert from "node:assert/strict";
-import { describe, it } from "node:test";
+import { describe, it, test } from "node:test";
 
-import { effectiveHour, isWorldClock, mapStyle, timeOfDay, WORLD_CLOCKS } from "../mapStyle.ts";
+import { effectiveHour, hourForScheme, isWorldClock, mapStyle, timeOfDay, WORLD_CLOCKS } from "../mapStyle.ts";
 
 describe("the map by the hour (TimeOfDay.swift)", () => {
   it("buckets the hour as TimeOfDay.now does", () => {
@@ -43,4 +43,11 @@ describe("the map by the hour (TimeOfDay.swift)", () => {
     assert.notEqual(mapStyle(6).land, day.land);
     assert.equal(mapStyle(6).hour, "dawn");
   });
+});
+
+test("dark mode lights the town as at night when the world follows the clock (task 059)", () => {
+  assert.equal(hourForScheme("real", 13, false), 13);
+  assert.equal(hourForScheme("real", 13, true), 22);
+  assert.equal(hourForScheme("real", 23, true), 23);
+  assert.equal(hourForScheme("noon", 13, true), 13);
 });

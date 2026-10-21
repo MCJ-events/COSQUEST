@@ -5,7 +5,7 @@
 // Roam/RoamHomeView.swift PointCard.
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import Animated, { Easing, Keyframe } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -21,6 +21,7 @@ import { HoldLine, SiegeLine, SpawnLine } from "./PointLines";
 import RaidLine from "./RaidLine";
 import { RaidCrown } from "./RaidParts";
 import { GF, GP, realmColor, realmIcon, tierColor } from "./theme";
+import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 /** `.move(edge: .bottom).combined(with: .opacity)` under `.smooth(duration: 0.3)`. */
 const EASE = Easing.inOut(Easing.cubic);
@@ -63,6 +64,7 @@ export default function PointSheet({
   onShare: () => void;
   onClose: () => void;
 }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const insets = useSafeAreaInsets();
   const me = useGame((s) => s.me);
   const [now, setNow] = useState(() => Date.now());
@@ -158,7 +160,7 @@ export default function PointSheet({
   );
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   wrap: { position: "absolute", left: 14, right: 14 },
   head: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
   chips: { flexDirection: "row", gap: 6, flexWrap: "wrap" },

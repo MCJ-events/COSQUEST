@@ -32,6 +32,7 @@ import { announce, GameCoin, GameIconButton, HUD_FONT_SCALE, pressFeedback, with
 import { edgeOf, GF, GP, realmColor, realmIcon, tierColor } from "./theme";
 import WardenBadge from "./WardenBadge";
 import { useWardenMuted, wardenVoice } from "./wardenVoice";
+import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 /** GamePalette.navy.opacity(0.78): the plate behind white type over the map. */
 export const NAVY_PLATE = withAlpha(GP.navy, 0.78);
@@ -59,6 +60,7 @@ export function PlayerChip({
   color: string;
   onPress: () => void;
 }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const s = me?.standing;
   const progress = s ? (s.max_level ? 1 : Math.max(0, Math.min(1, s.into_level / Math.max(1, s.level_span)))) : 0;
   const handle = profile?.handle ?? me?.handle ?? name ?? "Player";
@@ -125,6 +127,7 @@ export function PlayerChip({
 
 /** The top bar's resource chip: coins and the streak sit side by side on one row with the player chip. */
 function ResourceChip({ children }: { children: ReactNode }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   return <View style={styles.resource}>{children}</View>;
 }
 
@@ -146,6 +149,7 @@ export function TopBar({
   /** The Warden's face beside the chip: "Ask the Warden". */
   onAskWarden?: () => void;
 }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const insets = useSafeAreaInsets();
   const coins = me?.coins ?? 0;
   const streak = me?.streak;
@@ -227,6 +231,7 @@ export function Rail({
   onMore: () => void;
   onRecentre: () => void;
 }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const insets = useSafeAreaInsets();
   const muted = useWardenMuted();
   return (
@@ -273,6 +278,7 @@ const PRESS = spring(0.22, 0.6);
 
 /** Cards press in like the game's buttons: a touch you can feel (CardPress). */
 function CardPress({ onPress, label, children }: { onPress: () => void; label: string; children: ReactNode }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const down = useSharedValue(0);
   const style = useAnimatedStyle(() => ({ transform: [{ scale: 1 - 0.05 * down.get() }] }));
   const shade = useAnimatedStyle(() => ({ opacity: 0.04 * down.get() }));
@@ -336,6 +342,7 @@ function NearbyCard({
   newCard: boolean;
   now: number;
 }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const duel = point.challenge === "duel";
   const ready = inReach && !cooling;
   const tint = tierColor(point.tier);
@@ -423,6 +430,7 @@ export function NearbyTray({
   newCard: (p: QuestPoint) => boolean;
   onSelect: (p: QuestPoint) => void;
 }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   // "Ready in 5 min" and "Gone in 12 min" every 30 s (TimelineView .periodic).
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -500,6 +508,7 @@ const BUBBLE_IN = new Keyframe({
  * in GameRoot). The player can always put the Warden away: tap it, or its X.
  */
 export function WardenBubble({ text, color, onClose }: { text: string; color: string; onClose: () => void }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   // iOS has no live regions: say it to VoiceOver as it appears.
   useEffect(() => {
     if (Platform.OS === "ios") announce(`The Warden: ${text}`);
@@ -533,6 +542,7 @@ export function WardenBubble({ text, color, onClose }: { text: string; color: st
 
 /** A test server says so, on the map. */
 export function StagingBadge({ label }: { label: string }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   return (
     <View pointerEvents="none" style={styles.staging}>
       <Text style={styles.stagingText}>{label}</Text>
@@ -540,7 +550,7 @@ export function StagingBadge({ label }: { label: string }) {
   );
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   photo: { width: 40, height: 40, borderRadius: 20, borderWidth: 2, borderColor: "rgba(255,255,255,0.85)" },
   top: {
     position: "absolute",

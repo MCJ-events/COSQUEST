@@ -36,6 +36,7 @@ import { gameStore, useGame } from "@/features/game/runtime";
 
 import { GameButton, GameTitle, ProgressBar } from "./kit";
 import { CHOICE_COLORS, edgeOf, GF, GP } from "./theme";
+import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 /** Metres from the arena's centre to the edge of the drawn field (anchors are 3 to 12 m out). */
 const FIELD_M = 18;
@@ -58,6 +59,7 @@ export default function RoomFight({
   /** Out of the results. */
   onDone: () => void;
 }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const insets = useSafeAreaInsets();
   const fix = useGame((s) => s.fix);
   const { terms, anchors, fight } = state;
@@ -246,6 +248,7 @@ function anchorColor(kind: string): string {
 
 /** The sides, as the server ranks them. */
 function Scores({ state, colorOf }: { state: RoomSessionState; colorOf: (s: string | null | undefined) => string }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const scores = state.fight.factionScores.filter((f) => f.tokens > 0 || f.faction === state.fight.faction).slice(0, 3);
   if (!scores.length) return null;
   const top = Math.max(1, ...scores.map((s) => s.tokens));
@@ -284,6 +287,7 @@ function Field({
   target: Target | null;
   colorOf: (s: string | null | undefined) => string;
 }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const { width, height } = useWindowDimensions();
   const size = Math.min(width - 24, height * 0.46);
   const centre: LatLng | null = state.terms?.venue ? { lat: state.terms.venue.lat, lng: state.terms.venue.lng } : anchors[0] ?? here;
@@ -358,6 +362,7 @@ function Field({
 
 /** Where to go next, when there is nothing to do right here. */
 function Hint({ anchors, here, held, heading }: { anchors: GameAnchor[]; here: LatLng | null; held: boolean; heading: number | null }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   let text: string;
   if (!here) text = "Finding you…";
   else if (!held) {
@@ -374,6 +379,7 @@ function Hint({ anchors, here, held, heading }: { anchors: GameAnchor[]; here: L
 }
 
 function Downed({ state, now, onRespawn }: { state: RoomSessionState; now: number; onRespawn: () => Promise<unknown> }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const [asking, setAsking] = useState(false);
   const left = respawnSecondsLeft(state.fight, now);
   const out = state.fight.state === "eliminated";
@@ -398,6 +404,7 @@ function Downed({ state, now, onRespawn }: { state: RoomSessionState; now: numbe
 }
 
 function MomentToast({ text, tone, feel }: { text: string; tone: "good" | "bad"; feel?: "heavy" | "medium" }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const [shown, setShown] = useState(true);
   useEffect(() => {
     // FieldModel: damage .heavy, a pickup .medium at full intensity, captures .success.
@@ -419,6 +426,7 @@ function MomentToast({ text, tone, feel }: { text: string; tone: "good" | "bad";
 
 /** A chest's question: the answer stays on the server, which judges it. */
 function TriviaPanel({ anchor, onAnswer, onClose }: { anchor: GameAnchor; onAnswer: (i: number) => void; onClose: () => void }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const insets = useSafeAreaInsets();
   return (
     <Animated.View entering={FadeIn} exiting={FadeOut} style={[StyleSheet.absoluteFill, styles.scrim]}>
@@ -443,6 +451,7 @@ function TriviaPanel({ anchor, onAnswer, onClose }: { anchor: GameAnchor; onAnsw
 
 /** How it went, from the server's last scoreboard. */
 function Results({ state, onDone }: { state: RoomSessionState; onDone: () => void }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const insets = useSafeAreaInsets();
   const { fight, terms } = state;
   const place = fight.faction ? fight.factionScores.findIndex((f) => f.faction === fight.faction) + 1 : 0;
@@ -473,7 +482,7 @@ function ordinal(n: number): string {
   return n === 1 ? "first" : n === 2 ? "second" : n === 3 ? "third" : `${n}th`;
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   root: { ...StyleSheet.absoluteFill, backgroundColor: GP.navy, alignItems: "stretch" },
   top: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 14, paddingBottom: 8 },
   leave: { width: 40, height: 40, borderRadius: 20, backgroundColor: GP.berry, alignItems: "center", justifyContent: "center" },

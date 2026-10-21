@@ -28,6 +28,7 @@ import { announce, GameButton, MAX_FONT_SCALE } from "./kit";
 import { RaidHPBar } from "./RaidParts";
 import { RelicArt } from "./RelicArt";
 import { GF, GP, realmColor } from "./theme";
+import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 const GOLD = "#FFC83D";
 
@@ -45,6 +46,7 @@ export default function DuelResult({
   again?: string | null;
   onAgain?: () => void;
 }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const insets = useSafeAreaInsets();
   const reduce = useReducedMotion();
   const o = asFull(outcome);
@@ -122,6 +124,7 @@ function raidMax(start: DuelStart): number | null {
 }
 
 function HpCard({ r, p1, p2 }: { r: DuelResultData; p1: DuelFighterPeek; p2: DuelFighterPeek }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   return (
     <View style={styles.card}>
       <HpRow name={p1.name} hp={r.p1_hp} max={p1.max_hp ?? Math.max(1, r.p1_hp)} faction={p1.faction} />
@@ -132,6 +135,7 @@ function HpCard({ r, p1, p2 }: { r: DuelResultData; p1: DuelFighterPeek; p2: Due
 }
 
 function HpRow({ name, hp, max, faction }: { name: string; hp: number; max: number; faction?: string | null }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const { share, percent } = hpShare(hp, max);
   return (
     <View style={{ gap: 4 }} accessible accessibilityLabel={`${name}, ${percent} percent health left`}>
@@ -149,6 +153,7 @@ function HpRow({ name, hp, max, faction }: { name: string; hp: number; max: numb
 }
 
 function RunPanel({ run }: { run: NonNullable<DuelOutcomeFull["run"]> }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const earned = run.earned ?? 0;
   const s = run.stake_result;
   const label = [`${earned} points`, run.speed_mult && run.speed_mult > 1.01 ? `Speed times ${run.speed_mult.toFixed(2)}` : null, run.surged ? "Surge times 1.5" : null, s ? (s.won ? `Stake won, plus ${s.stake}` : `Stake lost, minus ${s.stake}`) : null]
@@ -174,6 +179,7 @@ function RunPanel({ run }: { run: NonNullable<DuelOutcomeFull["run"]> }) {
 }
 
 function MiniChip({ text }: { text: string }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   return (
     <Text style={styles.miniChip} maxFontSizeMultiplier={MAX_FONT_SCALE}>
       {text}
@@ -182,6 +188,7 @@ function MiniChip({ text }: { text: string }) {
 }
 
 function RaidPanel({ raid, bossMax }: { raid: NonNullable<DuelOutcomeFull["raid"]>; bossMax: number | null }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const left = raid.hp_left ?? 0;
   const max = raid.hp_max ?? bossMax ?? Math.max(1, left);
   return (
@@ -201,6 +208,7 @@ function RaidPanel({ raid, bossMax }: { raid: NonNullable<DuelOutcomeFull["raid"
 }
 
 function PayRow({ pay }: { pay: DuelPay }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const stats: { n: number; label: string }[] = [];
   if ((pay.xp ?? 0) > 0) stats.push({ n: pay.xp ?? 0, label: "XP" });
   if ((pay.faction_points ?? 0) > 0) stats.push({ n: pay.faction_points ?? 0, label: "Faction" });
@@ -218,7 +226,7 @@ function PayRow({ pay }: { pay: DuelPay }) {
   );
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   content: { alignItems: "center", gap: 16, paddingHorizontal: 20 },
   title: { fontFamily: GF.display, fontSize: 56, textShadowColor: "rgba(0,0,0,0.3)", textShadowOffset: { width: 0, height: 4 }, textShadowRadius: 0.1 },
   subtitle: { fontFamily: GF.body, fontSize: 16, color: "rgba(255,255,255,0.8)", textAlign: "center" },

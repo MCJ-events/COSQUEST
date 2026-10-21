@@ -40,6 +40,7 @@ import { playSound } from "./sound";
 import { CHOICE_COLORS, edgeOf, GF, GP } from "./theme";
 import { useOnScreen } from "./useOnScreen";
 import { useRenderCount } from "@/utils/perfMarks";
+import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 /** White type sits straight on the light GameBackdrop (as on iOS): a soft navy shadow keeps it legible. */
 const LEGIBLE = { textShadowColor: "rgba(30,58,76,0.45)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 } as const;
@@ -51,6 +52,7 @@ function featureChanged() {
 }
 
 export default function RaidScreen({ point, parked, onClose }: { point: QuestPoint; parked: boolean; onClose: () => void }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   useRenderCount("RaidScreen");
   const insets = useSafeAreaInsets();
   const onScreen = useOnScreen();
@@ -150,6 +152,7 @@ export default function RaidScreen({ point, parked, onClose }: { point: QuestPoi
 // ---------- phases ----------
 
 function Failed({ name, why, onRetry, onLeave }: { name: string; why: string; onRetry: () => void; onLeave: () => void }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   return (
     <View style={[styles.stack, { paddingTop: 30 }]}>
       <GameTitle text={name} size={32} edge={edgeOf(RAID_COLOR, 0.6)} />
@@ -167,6 +170,7 @@ function Failed({ name, why, onRetry, onLeave }: { name: string; why: string; on
 }
 
 function BossTitle({ s }: { s: RaidState }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const config = useGame((s) => s.config);
   const realm = config?.factions.find((f) => f.id === s.realm)?.name ?? gameStore.factionName(s.realm);
   return (
@@ -179,6 +183,7 @@ function BossTitle({ s }: { s: RaidState }) {
 }
 
 function Lobby({ s, busy, paused, onStart }: { s: RaidState; busy: boolean; paused: boolean; onStart: () => void }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     if (paused) return;
@@ -224,6 +229,7 @@ function Lobby({ s, busy, paused, onStart }: { s: RaidState; busy: boolean; paus
  * so React skips the ticks where the second hasn't changed.
  */
 function FightClock({ snap, paused }: { snap: RaidSnapshot; paused: boolean }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const [left, setLeft] = useState(() => secondsLeft(snap, Date.now()));
   useEffect(() => {
     setLeft(secondsLeft(snap, Date.now()));
@@ -240,6 +246,7 @@ function FightClock({ snap, paused }: { snap: RaidSnapshot; paused: boolean }) {
 }
 
 function Fight({ snap, s, paused, onAnswer }: { snap: RaidSnapshot; s: RaidState; paused: boolean; onAnswer: (q: number, c: number) => void }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   useRenderCount("RaidFight");
   const reduced = useReducedMotion();
   const i = currentQuestion(snap);
@@ -277,6 +284,7 @@ function Fight({ snap, s, paused, onAnswer }: { snap: RaidSnapshot; s: RaidState
 }
 
 function Question({ q, index, total, onPick }: { q: RaidQuestion; index: number; total: number; onPick: (choice: number) => void }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   return (
     <Animated.View entering={FadeInRight.duration(220)} style={styles.stack}>
       <View style={styles.panel}>
@@ -296,6 +304,7 @@ function Question({ q, index, total, onPick }: { q: RaidQuestion; index: number;
 }
 
 function Choice({ text, index, onPress }: { text: string; index: number; onPress: () => void }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const face = CHOICE_COLORS[index % CHOICE_COLORS.length];
   return (
     <Pressable onPressIn={pressFeedback} onPress={onPress} accessibilityRole="button" accessibilityLabel={text}>
@@ -313,6 +322,7 @@ function Choice({ text, index, onPress }: { text: string; index: number; onPress
 }
 
 function CrewDamage({ s }: { s: RaidState }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   return (
     <View style={[styles.panel, { gap: 6 }]}>
       <Text style={styles.panelTitleSmall}>Crew damage</Text>
@@ -329,6 +339,7 @@ function CrewDamage({ s }: { s: RaidState }) {
 }
 
 function Result({ s, onLeave }: { s: RaidState; onLeave: () => void }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const reduced = useReducedMotion();
   const won = s.phase === "won";
   const r = s.reward;
@@ -387,6 +398,7 @@ function Result({ s, onLeave }: { s: RaidState; onLeave: () => void }) {
 }
 
 function RewardRow({ icon, text, color }: { icon: keyof typeof Ionicons.glyphMap; text: string; color: string }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   return (
     <View style={styles.rowGap}>
       <Ionicons name={icon} size={20} color={color} style={{ width: 24 }} />
@@ -395,7 +407,7 @@ function RewardRow({ icon, text, color }: { icon: keyof typeof Ionicons.glyphMap
   );
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   root: { ...StyleSheet.absoluteFill, backgroundColor: GP.ice },
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 18, paddingBottom: 8 },
   content: { paddingHorizontal: 18, gap: 18 },

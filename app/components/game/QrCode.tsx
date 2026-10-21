@@ -2,12 +2,14 @@
 // generator at correction M, drawn 170 pt with 8 pt of white round it).
 // Encoded in TypeScript (features/game/qr.ts), drawn as one SVG path.
 import { useMemo } from "react";
-import { StyleSheet, View } from "react-native";
+import { View } from "react-native";
 import Svg, { Path } from "react-native-svg";
 
 import { encodeQr } from "@/features/game/qr";
+import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 export function QrCode({ text, size = 170 }: { text: string; size?: number }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const path = useMemo(() => {
     const q = encodeQr(text);
     let d = "";
@@ -36,6 +38,6 @@ export function QrCode({ text, size = 170 }: { text: string; size?: number }) {
   );
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   card: { padding: 8, borderRadius: 14, backgroundColor: "#FFFFFF", alignSelf: "center" },
 });

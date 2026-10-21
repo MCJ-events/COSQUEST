@@ -27,7 +27,8 @@ import { toLocal, type LatLng } from "@/features/game/geo";
 import { buildLayers, type MapLayers } from "@/features/game/mapPaths";
 import { groundRaster } from "@/features/game/mapRaster";
 import { spreadPins } from "@/features/game/pinSpread";
-import { effectiveHour, mapStyle, type MapStyle, timeOfDay } from "@/features/game/mapStyle";
+import { effectiveHour, hourForScheme, mapStyle, type MapStyle, timeOfDay } from "@/features/game/mapStyle";
+import { useScheme } from "@/theme/scheme";
 import { raidTint } from "@/features/game/raids";
 import { pinTint } from "@/features/game/siege";
 import type { NearbyRoom } from "@/features/game/rooms";
@@ -38,6 +39,7 @@ import { RaidCrown } from "./RaidParts";
 import RoomBeacon from "./RoomBeacon";
 import { GF, GP, realmColor, realmIcon, tierColor } from "./theme";
 import { useRenderCount } from "@/utils/perfMarks";
+import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 /** Pixels per metre: about 260 m across a phone. */
 export const MAP_SCALE = 1.5;
@@ -55,7 +57,8 @@ function useMapStyle(): MapStyle {
     const t = setInterval(() => setNow(new Date()), 60_000);
     return () => clearInterval(t);
   }, []);
-  const hour = effectiveHour(clock, now);
+  const dark = useScheme() === "dark";
+  const hour = hourForScheme(clock, effectiveHour(clock, now), dark);
   // Only a change of bucket redraws the ground.
   const bucket = timeOfDay(hour);
   return useMemo(() => mapStyle(hour), [bucket]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -79,6 +82,7 @@ type Props = {
 };
 
 export default function WorldMap(props: Props) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const { width, height } = useWindowDimensions();
   const { ground, centre, fix, points } = props;
   const origin = ground?.origin ?? centre ?? fix;
@@ -261,6 +265,7 @@ const PointMarker = memo(function PointMarker({
   cooling: boolean;
   onPress: (p: QuestPoint) => void;
 }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   useRenderCount("PointMarker");
   // RoamHomeView.object: a boss's raid tint, else its holder's colour, else its tier's.
   const color = cooling ? "#9AA7B0" : pinFill(point);
@@ -298,6 +303,7 @@ const PointMarker = memo(function PointMarker({
 
 /** A crowded pin's thin line back to its real spot, with a dot on the spot. */
 function PinLeader({ left, top, dx, dy }: { left: number; top: number; dx: number; dy: number }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   // From the real spot to the moved pin's stem (its bottom centre).
   const length = Math.hypot(dx, dy);
   const angle = Math.atan2(dy, dx);
@@ -316,6 +322,7 @@ function PinLeader({ left, top, dx, dy }: { left: number; top: number; dx: numbe
 }
 
 function PlayerMarker({ x, y, accuracyPx, reachPx, color }: { x: number; y: number; accuracyPx: number; reachPx: number; color: string }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFill}>
       <Svg style={StyleSheet.absoluteFill}>
@@ -329,7 +336,7 @@ function PlayerMarker({ x, y, accuracyPx, reachPx, color }: { x: number; y: numb
   );
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   root: {
     ...StyleSheet.absoluteFill,
     overflow: "hidden",

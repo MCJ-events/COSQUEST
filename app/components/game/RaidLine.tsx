@@ -1,7 +1,7 @@
 // A line on a boss point's sheet: "BOSS RAID · 3 players · 12 min left".
 // Nothing for any other point. costquest-ios Features/RaidsFeature.swift
 // RaidLine, placed in Roam/RoamHomeView.swift PointCard (line ~1240).
-import { StyleSheet, Text, View } from "react-native";
+import { Text, View } from "react-native";
 
 import { isRaidPoint, RAID_COLOR, raidLineText } from "@/features/game/raids";
 import type { QuestPoint } from "@/features/game/wire";
@@ -9,6 +9,7 @@ import type { QuestPoint } from "@/features/game/wire";
 import { useMinuteClock } from "./RaidBanner";
 import { RaidCrown } from "./RaidParts";
 import { GF } from "./theme";
+import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 export default function RaidLine({ point }: { point: QuestPoint }) {
   if (!isRaidPoint(point)) return null;
@@ -16,6 +17,7 @@ export default function RaidLine({ point }: { point: QuestPoint }) {
 }
 
 function Line({ point }: { point: QuestPoint }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const now = useMinuteClock();
   const text = raidLineText(point, now);
   return (
@@ -28,7 +30,7 @@ function Line({ point }: { point: QuestPoint }) {
   );
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   row: { flexDirection: "row", alignItems: "center", gap: 6 },
   text: { flexShrink: 1, fontFamily: GF.bold, fontSize: 14, color: RAID_COLOR },
 });

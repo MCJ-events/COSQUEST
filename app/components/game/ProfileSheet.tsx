@@ -52,6 +52,7 @@ import { SheetFrame } from "./SheetFrame";
 import { playSound } from "./sound";
 import { edgeOf, GF, GP, realmColor } from "./theme";
 import { useWardenMuted, wardenVoice } from "./wardenVoice";
+import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 type Tab = "hero" | "record" | "settings";
 const TABS: { id: Tab; label: string }[] = [
@@ -75,6 +76,7 @@ export default function ProfileSheet(props: ProfileProps) {
 }
 
 function ProfileBody({ close, onCoins, initial = "hero" }: ProfileProps & { close: () => void }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const insets = useSafeAreaInsets();
   const me = useGame((s) => s.me);
   const [tab, setTab] = useState<Tab>(initial);
@@ -183,6 +185,7 @@ function ProfileBody({ close, onCoins, initial = "hero" }: ProfileProps & { clos
 // ---------- Hero ----------
 
 function HeroTab({ tint, handle, onEdit }: { tint: string; handle: string; onEdit: () => void }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const me = useGame((s) => s.me);
   const equipped = equippedOf(me);
   return (
@@ -236,6 +239,7 @@ function HeroTab({ tint, handle, onEdit }: { tint: string; handle: string; onEdi
 // ---------- Record ----------
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   return (
     <View style={{ gap: 10 }}>
       <Text style={styles.sectionLabel} accessibilityRole="header">
@@ -247,6 +251,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 }
 
 function Stat({ value, label, icon, color }: { value: string; label: string; icon: ComponentProps<typeof Ionicons>["name"]; color: string }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   return (
     <GamePanel padding={12} style={{ flex: 1 }}>
       <View accessible accessibilityLabel={`${label}, ${value}`} style={styles.statRow}>
@@ -267,6 +272,7 @@ function Stat({ value, label, icon, color }: { value: string; label: string; ico
 }
 
 function RecordTab({ profile, showAll, onShowAll }: { profile: ProfileFull | null; showAll: boolean; onShowAll: () => void }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const me = useGame((s) => s.me);
   const wall = profile?.wall ?? [];
   const shown = showAll ? wall : wall.slice(0, 4);
@@ -383,6 +389,7 @@ function OnOff({ on, onPress, label }: { on: boolean; onPress: () => void; label
 }
 
 function SettingsTab({ handle, avatar, onEdit }: { handle: string; avatar: ProfileAvatar; onEdit: () => void }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const me = useGame((s) => s.me);
   const haptics = useHapticsOn();
   const muted = useWardenMuted();
@@ -484,6 +491,7 @@ function ProfileEditor({
   onCancel: () => void;
   onSaved: () => void | Promise<void>;
 }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const insets = useSafeAreaInsets();
   const [handle, setHandle] = useState(initialHandle);
   const [avatar, setAvatar] = useState<ProfileAvatar>(initialAvatar);
@@ -593,7 +601,7 @@ function ProfileEditor({
 
 const safe = (hex: string) => (/^#[0-9a-f]{6}$/i.test(hex) ? hex : DEFAULT_AVATAR.tint);
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   top: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 18, paddingBottom: 4 },
   coinPill: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 999, backgroundColor: "rgba(255,255,255,0.6)" },
   coinPillText: { fontFamily: GF.display, fontSize: 15, color: GP.ink },

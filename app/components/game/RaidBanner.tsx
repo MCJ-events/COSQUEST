@@ -4,7 +4,7 @@
 // (where reach is judged). costquest-ios Features/RaidsFeature.swift
 // RaidBanner, placed by Roam/RoamHomeView.swift worldBanners (line ~109).
 import { useEffect, useRef, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import Animated, { FadeInUp, FadeOutUp } from "react-native-reanimated";
 
 import { distanceM, distanceText, type LatLng } from "@/features/game/geo";
@@ -14,6 +14,7 @@ import type { QuestPoint } from "@/features/game/wire";
 import { announce, GameButton, HUD_FONT_SCALE } from "./kit";
 import { RaidBadge, RaidHPBar } from "./RaidParts";
 import { GF } from "./theme";
+import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 /** Re-reads the clock every `ms` (the boss's window is minutes long; iOS ticks every 30 s). */
 export function useMinuteClock(ms = 30000): number {
@@ -37,6 +38,7 @@ export default function RaidBanner({
   /** Opens the boss point's sheet. Omit to show no button. */
   onFight?: (boss: QuestPoint) => void;
 }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const now = useMinuteClock();
   const boss = nearestBoss(points, now);
   // iOS has no live regions: say it once when a boss comes into range.
@@ -77,7 +79,7 @@ export default function RaidBanner({
   );
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   // A block in GameRoot's banner column (under the top bar, left of the rail).
   banner: {
     flexDirection: "row",

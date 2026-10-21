@@ -4,7 +4,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, Text, View } from "react-native";
 
 import { stanceLead, STANCES } from "@/features/game/duelFlow";
 import { gameStore } from "@/features/game/runtime";
@@ -13,8 +13,10 @@ import type { DuelMe } from "@/features/game/wire";
 import { MAX_FONT_SCALE, withAlpha } from "./kit";
 import { impact } from "./prefs";
 import { GF, GP } from "./theme";
+import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 export default function StancePicker({ duel }: { duel: DuelMe }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const [picked, setPicked] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
@@ -77,7 +79,7 @@ export default function StancePicker({ duel }: { duel: DuelMe }) {
   );
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   kicker: { fontFamily: GF.display, fontSize: 13, letterSpacing: 0.8, color: GP.mist },
   lead: { fontFamily: GF.bold, fontSize: 13, color: withAlpha(GP.ink, 0.6) },
   row: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 12 },

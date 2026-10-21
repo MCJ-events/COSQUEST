@@ -7,7 +7,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Linking, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Linking, Text, View } from "react-native";
 import Animated, { FadeIn, ZoomIn, useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withTiming } from "react-native-reanimated";
 
 import { addLabel, nearbyDistanceText, type NearbyPeer, peersOf, searchingLine, tooFar } from "@/features/game/friendsNearby";
@@ -18,8 +18,10 @@ import { GameButton, GamePanel, MAX_FONT_SCALE, withAlpha } from "./kit";
 import { notify } from "./prefs";
 import { playSound } from "./sound";
 import { GF, GP } from "./theme";
+import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 export function HoldPhonesCard() {
+  const styles = useThemedStyles(STYLE_PAIR);
   const model = nearbyFriends;
   const s = useNearbyFriends();
   const fix = useGame((s) => s.fix);
@@ -128,6 +130,7 @@ export function HoldPhonesCard() {
 }
 
 function PeerRow({ p, claiming, onAdd }: { p: NearbyPeer; claiming: string | null; onAdd: () => void }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const far = tooFar(p);
   return (
     <View style={styles.peer}>
@@ -151,7 +154,7 @@ function PeerRow({ p, claiming, onAdd }: { p: NearbyPeer; claiming: string | nul
   );
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   stack: { gap: 14 },
   stackTight: { gap: 8 },
   head: { flexDirection: "row", alignItems: "center", gap: 12 },

@@ -5,7 +5,7 @@
 // WarBar), Features/CodexFeature.swift (CodexSheet).
 import { Ionicons } from "@expo/vector-icons";
 import { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, BackHandler, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, BackHandler, Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import {
@@ -45,6 +45,7 @@ import { SheetFrame } from "./SheetFrame";
 import StepsCard from "./StepsCard";
 import { GF, GP, realmColor, realmIcon } from "./theme";
 import { wardenVoice } from "./wardenVoice";
+import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 type Tab = "today" | "codex" | "war";
 
@@ -69,6 +70,7 @@ export default function Journal(props: JournalProps) {
 }
 
 function JournalSheet({ close, initial = "today", onRecap }: JournalProps & { close: () => void }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const insets = useSafeAreaInsets();
   const [tab, setTab] = useState<Tab>(initial);
   const me = useGame((s) => s.me);
@@ -211,6 +213,7 @@ function CodexBody({
   onRetry: () => void;
   onPick: (card: CodexCard) => void;
 }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const [gridWidth, setGridWidth] = useState(0);
   if (codex) {
     const tile = gridWidth > 0 ? Math.floor((gridWidth - 20) / 3) : 0;
@@ -287,6 +290,7 @@ function CodexBody({
 // ---------- the war ----------
 
 function WarBody({ war, leaders, mine, tried }: { war: FactionWar | null; leaders: GameState["leaders"]; mine: string | null; tried: boolean }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   return (
     <>
       {war ? (
@@ -340,6 +344,7 @@ function WarBody({ war, leaders, mine, tried }: { war: FactionWar | null; leader
 
 /** WarBar: a house against the top one, never thinner than a nub of 10. */
 function WarBar({ standing, top, mine }: { standing: FactionWar["standings"][number]; top: number; mine: boolean }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const [track, setTrack] = useState(0);
   const colour = realmColor(standing.faction);
   return (
@@ -362,6 +367,7 @@ function WarBar({ standing, top, mine }: { standing: FactionWar["standings"][num
 
 /** The Warden's voice on this phone: fetch the model, and what it measures. */
 function WardenCard() {
+  const styles = useThemedStyles(STYLE_PAIR);
   const model = useWardenModel();
   const mb = model.bytes ? Math.round(model.bytes / 1048576) : null;
   const text =
@@ -406,7 +412,7 @@ function WardenCard() {
 
 const INK60 = "rgba(31,59,77,0.6)";
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   head: { paddingHorizontal: 18 },
   tabs: { flexDirection: "row", gap: 6, paddingHorizontal: 16, paddingVertical: 8 },
   tab: { paddingHorizontal: 14, minHeight: 36, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.6)", justifyContent: "center" },

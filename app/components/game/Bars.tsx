@@ -5,10 +5,11 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import type { ComponentProps } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Text, View } from "react-native";
 
 import { MAX_FONT_SCALE } from "./kit";
 import { GF, GP } from "./theme";
+import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 const clamp01 = (n: number) => Math.min(1, Math.max(0, Number.isFinite(n) ? n : 0));
 
@@ -56,6 +57,7 @@ export function HeroStatBar({
   extra?: string;
   progress: number;
 }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   return (
     <View accessible accessibilityLabel={`${name}, ${value}${extra ? ` ${extra}` : ""}`} style={{ gap: 6 }}>
       <View style={styles.statRow}>
@@ -84,7 +86,7 @@ export function HeroStatBar({
   );
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   statRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   statName: { flex: 1, fontFamily: GF.display, fontSize: 15, letterSpacing: 0.6, color: GP.ink },
   statValue: { fontFamily: GF.display, fontSize: 17, color: GP.ink },

@@ -4,15 +4,17 @@
 // sheet through `onPress`; the game root owns the sheet, as it does the journal.
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect } from "react";
-import { Pressable, type StyleProp, StyleSheet, Text, View, type ViewStyle } from "react-native";
+import { Pressable, type StyleProp, Text, View, type ViewStyle } from "react-native";
 
 import { friendsButtonLabel, pendingFromMe } from "@/features/game/friends";
 import { friendsModel, useFriends } from "@/features/game/friendsRuntime";
 import { useGame } from "@/features/game/runtime";
 
 import { edgeOf, GF, GP } from "./theme";
+import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 export default function FriendsButton({ onPress, size = 46, style }: { onPress: () => void; size?: number; style?: StyleProp<ViewStyle> }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const friends = useFriends();
   const me = useGame((s) => s.me);
   // The list's count once it is in; /me's until then.
@@ -40,7 +42,7 @@ export default function FriendsButton({ onPress, size = 46, style }: { onPress: 
   );
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   edge: { backgroundColor: edgeOf(GP.berry) },
   face: { backgroundColor: GP.berry, alignItems: "center", justifyContent: "center" },
   badge: {

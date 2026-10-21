@@ -7,7 +7,7 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Linking, Platform, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Linking, Platform, Text, View } from "react-native";
 
 import { gameStore } from "@/features/game/runtime";
 import {
@@ -27,8 +27,10 @@ import { updateStepsOnPhone } from "@/features/game/stepsDevice";
 import { announce, Chip, GameButton, MAX_FONT_SCALE, ProgressBar } from "./kit";
 import { playSound } from "./sound";
 import { GF, GP } from "./theme";
+import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 export default function StepsCard() {
+  const styles = useThemedStyles(STYLE_PAIR);
   const [view, setView] = useState<StepsView>(EMPTY_STEPS_VIEW);
   const [busy, setBusy] = useState(false);
   const running = useRef(false);
@@ -135,6 +137,7 @@ export default function StepsCard() {
 }
 
 function Progress({ status }: { status: StepsStatus }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const p = progressTo(status);
   return (
     <View style={{ gap: 6 }} accessible accessibilityLabel={p.line}>
@@ -146,6 +149,7 @@ function Progress({ status }: { status: StepsStatus }) {
 
 /** One of the three weekly milestones: done, the one being walked towards, or later. */
 function MilestoneTile({ milestone, state }: { milestone: StepsMilestone; state: MilestoneState }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const color = state === "done" ? GP.mint : state === "next" ? GP.sunDeep : "#8C8C8C";
   const word = state === "done" ? "Done" : state === "next" ? "Next" : "Locked";
   return (
@@ -171,7 +175,7 @@ function MilestoneTile({ milestone, state }: { milestone: StepsMilestone; state:
   );
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   card: { gap: 12, padding: 14, borderRadius: 18, backgroundColor: "#FFF" },
   header: { flexDirection: "row", alignItems: "center", gap: 12 },
   title: { fontFamily: GF.display, fontSize: 20, color: GP.ink },

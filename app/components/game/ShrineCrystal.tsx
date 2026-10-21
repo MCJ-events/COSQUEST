@@ -21,6 +21,7 @@ import Animated, {
 import Svg, { Polygon } from "react-native-svg";
 
 import { PULSE_SCALES, springOf } from "@/features/game/strike";
+import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 export type CrystalHandle = {
   /** One beat of the Strike (0...2): swell, then settle. */
@@ -38,6 +39,7 @@ const SHARDS = 12;
 const MISS_SHARDS = 4;
 
 export function ShrineCrystal({ tint, size = 112, ref }: { tint: string; size?: number; ref?: Ref<CrystalHandle> }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const reduce = useReducedMotion();
   const scale = useSharedValue(reduce ? 1 : 0.01);
   const bob = useSharedValue(0);
@@ -114,6 +116,7 @@ export function ShrineCrystal({ tint, size = 112, ref }: { tint: string; size?: 
 }
 
 function Shard({ index, burst, shards, grey, tint, reach }: { index: number; burst: SharedValue<number>; shards: SharedValue<number>; grey: SharedValue<number>; tint: string; reach: number }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const angle = (index / SHARDS) * Math.PI * 2 + (index % 2 ? 0.2 : 0);
   const distance = reach * (0.55 + (index % 3) * 0.22);
   const animated = useAnimatedStyle(() => {
@@ -129,7 +132,7 @@ function Shard({ index, burst, shards, grey, tint, reach }: { index: number; bur
   return <Animated.View style={[styles.shard, animated]} />;
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   wrap: { alignItems: "center", justifyContent: "center", alignSelf: "center" },
   halo: { position: "absolute" },
   shard: { position: "absolute", width: 10, height: 14, borderRadius: 3, borderWidth: 1, borderColor: "rgba(255,255,255,0.7)" },

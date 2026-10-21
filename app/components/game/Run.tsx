@@ -58,6 +58,7 @@ import { SheetHost } from "./Sheet";
 import { SheetFrame } from "./SheetFrame";
 import { playSound } from "./sound";
 import { challengeName, edgeOf, GF, GP, realmColor, tierColor } from "./theme";
+import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 const STAGE = [GP.navy, GP.navyEdge] as const;
 const timeOfDay = (d: Date) => d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
@@ -68,6 +69,7 @@ const resetAt = () => resetTime(Date.now(), timeOfDay);
 
 /** The headline button on the home screen. */
 export function QuestRunButton({ onPress }: { onPress: () => void }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const face = GP.sun;
   return (
     <Pressable onPressIn={pressFeedback} onPress={onPress} accessibilityRole="button" accessibilityLabel="Start a Quest Run">
@@ -106,6 +108,7 @@ export function RunStartSheet({ onClose }: { onClose: () => void }) {
 }
 
 function RunStartBody({ close }: { close: () => void }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const insets = useSafeAreaInsets();
   const s = useRun();
   const fix = useGame((s) => s.fix);
@@ -174,6 +177,7 @@ function RunStartBody({ close }: { close: () => void }) {
 }
 
 function ModeButton({ title, icon, sub, color, disabled, onPress }: { title: string; icon: "walk" | "cafe"; sub: string; color: string; disabled: boolean; onPress: () => void }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const face = disabled ? "#B8B8B8" : color;
   return (
     <Pressable onPressIn={() => !disabled && pressFeedback()} onPress={onPress} disabled={disabled} accessibilityRole="button" accessibilityLabel={`${title}. ${sub}`} accessibilityState={{ disabled }}>
@@ -200,6 +204,7 @@ function ModeButton({ title, icon, sub, color, disabled, onPress }: { title: str
 
 /** The clock, the score and the two powers, under the top bar. */
 export function RunHUD() {
+  const styles = useThemedStyles(STYLE_PAIR);
   const s = useRun();
   const run = s.run;
   const [now, setNow] = useState(() => Date.now());
@@ -257,6 +262,7 @@ export function RunHUD() {
 }
 
 function Power({ icon, label, left, lit, busy, hint, onPress }: { icon: "radio" | "flash"; label: string; left: number; lit: boolean; busy: boolean; hint: string; onPress: () => void }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const off = left === 0 || busy;
   const tint = lit ? "#FFF" : left > 0 ? GP.ink : withAlpha(GP.mist, 0.5);
   return (
@@ -279,6 +285,7 @@ function Power({ icon, label, left, lit, busy, hint, onPress }: { icon: "radio" 
 
 /** The run's points as cards, best value per metre first, so the route decision is always in front of the player. */
 export function RunTray({ onPick, onEnd, distanceOf, inReach }: { onPick: (p: RunPoint) => void; onEnd: () => void; distanceOf: (p: RunPoint) => number | null; inReach: (p: RunPoint) => boolean }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const s = useRun();
   const run = s.run;
   if (!run) return null;
@@ -318,6 +325,7 @@ export function RunTray({ onPick, onEnd, distanceOf, inReach }: { onPick: (p: Ru
 const PRESS = { stiffness: 816, damping: 34, mass: 1 };
 
 function RunCardButton({ point, distance, inReach, pocket, width, onPress }: { point: RunPoint; distance: number | null; inReach: boolean; pocket: boolean; width: number | null; onPress: () => void }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const down = useSharedValue(0);
   const style = useAnimatedStyle(() => ({ transform: [{ scale: 1 - 0.05 * down.get() }] }));
   const off = point.done || point.hidden;
@@ -342,6 +350,7 @@ function RunCardButton({ point, distance, inReach, pocket, width, onPress }: { p
 }
 
 function RunCard({ point, distance, inReach, width }: { point: RunPoint; distance: number | null; inReach: boolean; width: number | null }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const tint = point.forbidden ? RUN_FORBIDDEN : tierColor(tierOfValue(point.value));
   return (
     <View style={[{ paddingBottom: 4, opacity: point.done ? 0.6 : 1 }, width !== null ? { width } : null]} importantForAccessibility="no-hide-descendants">
@@ -420,6 +429,7 @@ function Stage({ children }: { children: ReactNode }) {
 }
 
 function Header({ point, line, close, closeIcon }: { point: RunPoint; line: string; close: (() => void) | null; closeIcon: "close" | "checkmark" }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   return (
     <View style={styles.qHeader}>
       <View style={{ flex: 1, gap: 2 }}>
@@ -438,6 +448,7 @@ function Header({ point, line, close, closeIcon }: { point: RunPoint; line: stri
 }
 
 function StakeChoice({ point, duel, score, onChoose, onClose }: { point: RunPoint; duel: boolean; score: number; onChoose: (stake: boolean) => void; onClose: () => void }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const stake = stakeOf(score);
   return (
     <Stage>
@@ -455,6 +466,7 @@ function StakeChoice({ point, duel, score, onChoose, onClose }: { point: RunPoin
 }
 
 function RunQuiz({ point, staked: stakedAsked, onDone }: { point: RunPoint; staked: boolean; onDone: () => void }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const reduce = useReducedMotion();
   const [phase, setPhase] = useState<Phase>("opening");
   const [attempt, setAttempt] = useState<RoamAttempt | null>(null);
@@ -626,6 +638,7 @@ function RunQuiz({ point, staked: stakedAsked, onDone }: { point: RunPoint; stak
 
 /** The final score, what it paid, and where it put you on today's board. */
 export function RunResults({ result, board, onClose }: { result: RunFinish; board: RunBoard | null; onClose: () => void }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const [shown, setShown] = useState(0);
   useEffect(() => {
     const target = result.run.score;
@@ -669,6 +682,7 @@ export function RunResults({ result, board, onClose }: { result: RunFinish; boar
 }
 
 function Stat({ n, label }: { n: number; label: string }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   return (
     <View style={{ alignItems: "center", gap: 2 }} accessible accessibilityLabel={`${n} ${label}`}>
       <Text style={styles.statN}>{n}</Text>
@@ -679,6 +693,7 @@ function Stat({ n, label }: { n: number; label: string }) {
 
 /** Today's Bounty Board: the day's best runs in this city. */
 export function BountyBoard({ board }: { board: RunBoard }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   return (
     <View style={styles.bounty}>
       <Text style={styles.bountyTitle} accessibilityRole="header">
@@ -731,7 +746,7 @@ export function runInReach(p: RunPoint): boolean {
 
 export type { RunState };
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   gloss: { position: "absolute", top: 5, left: 10, right: 10, height: 10, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.28)" },
   runButton: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 18, paddingVertical: 12, borderRadius: 22, overflow: "hidden" },
   runButtonTitle: { fontFamily: GF.display, fontSize: 20, letterSpacing: 0.8, color: "#FFF" },

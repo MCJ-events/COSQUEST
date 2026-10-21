@@ -72,6 +72,7 @@ import { CostQuestShrineView, type CostQuestShrineViewHandle, shrineARSupported 
 
 import { setShrineAR, useShrineAR } from "./prefs";
 import { useRenderCount } from "@/utils/perfMarks";
+import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 type Phase = "approach" | "opening" | "playing" | "submitting" | "reveal" | { failed: string };
 
@@ -98,6 +99,7 @@ export default function Encounter({
   onReward: (reward: RewardSummary) => void;
   onClose: () => void;
 }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   useRenderCount("Encounter");
   const insets = useSafeAreaInsets();
   const [phase, setPhaseState] = useState<Phase>("approach");
@@ -560,6 +562,7 @@ export default function Encounter({
 
 /** The Warden's line under the header (WardenBubble); compact while the clock runs. */
 function WardenLine({ text, compact, tint }: { text: string; compact: boolean; tint: string }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   return (
     <Animated.View entering={FadeInDown.duration(220)} exiting={FadeOut.duration(160)} style={styles.bubbleRow} accessibilityLiveRegion="polite">
       <View style={[styles.wardenBadge, { backgroundColor: tint }]} importantForAccessibility="no-hide-descendants">
@@ -604,6 +607,7 @@ function ResultLine({ verdict }: { verdict: RoamVerdict }) {
  * audit B9).
  */
 export function DeadlineBar({ deadline, total }: { deadline: number; total: number }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const leftAt = useCallback((t: number) => (deadline ? Math.max(0, (deadline - t) / 1000) : total), [deadline, total]);
   const [seconds, setSeconds] = useState(() => deadlineView(leftAt(Date.now())).seconds);
   const [hot, setHot] = useState(() => deadlineView(leftAt(Date.now())).hot);
@@ -660,6 +664,7 @@ function HintBar({
   onFifty: () => void;
   onTime: () => void;
 }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   return (
     <View style={[styles.hints, busy && { opacity: 0.6 }]}>
       <HintButton label="50/50" spoken="Fifty fifty" item={bag.fifty ?? 0} cost={prices.fifty} coins={coins} allowed={canFifty} busy={busy} onPress={onFifty} />
@@ -695,6 +700,7 @@ function HintButton({
   busy: boolean;
   onPress: () => void;
 }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const disabled = hintDisabled({ allowed, item, coins, cost, busy });
   const face = disabled ? "#9E9E9E" : PURPLE;
   return (
@@ -741,6 +747,7 @@ const CHOICE_SPRING = springOf(0.35, 0.6);
 
 /** One answer button in one of four fixed colours, so "the blue one" means the same to every player (ChoiceButton). */
 function ChoiceButton({ text, index, state, onPress }: { text: string; index: number; state: ChoiceState; onPress: () => void }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const look = choiceLook(state);
   const face = look.face === "mint" ? GP.mint : look.face === "berry" ? GP.berry : look.face === "grey" ? GREY : CHOICE_COLORS[index % CHOICE_COLORS.length];
   const scale = useSharedValue(look.scale);
@@ -799,6 +806,7 @@ export function TriviaCard({
   voice: boolean;
   onPick: (i: number) => void;
 }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   return (
     <View style={{ gap: 14 }}>
       {question.clue ? (
@@ -837,6 +845,7 @@ export function SequenceCard({
   reveal: string[] | null;
   onTap: (id: string) => void;
 }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const shown = reveal ? reveal.map((id) => beats.find((b) => b.id === id)).filter((b): b is { id: string; text: string } => !!b) : beats;
   return (
     <View style={{ gap: 12 }}>
@@ -888,6 +897,7 @@ export function BlitzCard({
   voice: boolean;
   onPick: (i: number) => void;
 }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   return (
     <View style={{ gap: 12 }}>
       <View style={styles.pips} accessible accessibilityLabel={marks ? `${marks.filter(Boolean).length} of ${questions.length} right` : `Question ${Math.min(showing + 1, questions.length)} of ${questions.length}`}>
@@ -928,7 +938,7 @@ export function BlitzCard({
   );
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   root: { ...StyleSheet.absoluteFill },
   header: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 10, paddingHorizontal: 16, paddingBottom: 4 },
   headRight: { flex: 1, alignItems: "flex-end", gap: 6 },

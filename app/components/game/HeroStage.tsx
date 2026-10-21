@@ -12,6 +12,7 @@ import Svg, { Circle, Defs, Ellipse, G, LinearGradient, Path, RadialGradient, Re
 
 import { withAlpha } from "./kit";
 import { edgeOf, GF, GP } from "./theme";
+import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 export default function HeroStage({ tint, height = 340 }: { tint: string; height?: number }) {
   const figureH = height * 0.78;
@@ -107,6 +108,7 @@ export function HeroFigure({ tint, height }: { tint: string; height: number }) {
 
 /** An equipment slot. Filled with a Relic, or locked until the avatar work gives it something to hold. */
 export function HeroSlot({ label, locked, children, a11y }: { label: string; locked?: boolean; children: ReactNode; a11y?: string }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   return (
     <View accessible accessibilityLabel={a11y ?? (locked ? `${label}, locked` : label)} style={{ alignItems: "center", gap: 6 }}>
       <View style={[styles.slot, { backgroundColor: locked ? "rgba(255,255,255,0.45)" : "rgba(255,255,255,0.9)" }]}>
@@ -128,7 +130,7 @@ export function SlotIcon({ name }: { name: ComponentProps<typeof Ionicons>["name
   return <Ionicons name={name} size={24} color={GP.mist} />;
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   slot: {
     width: 70,
     height: 70,

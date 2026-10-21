@@ -6,12 +6,13 @@
 // GameRoot draws <GameBannerHost/> once, over everything.
 import * as Haptics from "expo-haptics";
 import { useEffect, useSyncExternalStore } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import Animated, { FadeOutUp, ZoomIn } from "react-native-reanimated";
 
 import { announce, GameTitle } from "./kit";
 import { type GameSoundEffect, playSound } from "./sound";
 import { edgeOf, GF, GP } from "./theme";
+import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 export type GameBanner = { id: number; title: string; subtitle?: string | null; color: string };
 
@@ -56,6 +57,7 @@ function useBanner(): GameBanner | null {
 
 /** Drawn once by GameRoot; `top` is where the banner's centre line sits (iOS: 150 below the top). */
 export function GameBannerHost({ top }: { top: number }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const banner = useBanner();
   // A banner left over when the game goes behind the chat should not wait there.
   useEffect(() => () => clearBanner(), []);
@@ -76,7 +78,7 @@ export function GameBannerHost({ top }: { top: number }) {
   );
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   host: { position: "absolute", left: 16, right: 16, alignItems: "center", zIndex: 50 },
   banner: { alignItems: "center", gap: 6 },
   subtitle: { paddingHorizontal: 16, paddingVertical: 6, borderRadius: 999 },

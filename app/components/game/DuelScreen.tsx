@@ -114,6 +114,7 @@ import { playSound } from "./sound";
 import { edgeOf, GF, GP, realmColor, realmIcon, tierColor } from "./theme";
 import { wardenVoice } from "./wardenVoice";
 import { useRenderCount } from "@/utils/perfMarks";
+import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 type Phase =
   | { kind: "briefing" }
@@ -220,6 +221,7 @@ export default function DuelScreen({
   onReward?: (r: RewardSummary) => void;
   onClose: () => void;
 }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   useRenderCount("DuelScreen");
   const mode = duelModeOf(modeProp, raid);
   // A siege fought as a duel and a trial go straight to the opponent: no briefing (DuelView.task).
@@ -624,6 +626,7 @@ function siegeHolderName(start: DuelStart, point: QuestPoint): string {
 }
 
 function PauseButton({ top, onPress }: { top: number; onPress: () => void }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   return (
     <Pressable
       onPress={onPress}
@@ -640,6 +643,7 @@ function PauseButton({ top, onPress }: { top: number; onPress: () => void }) {
 // ---------- the briefing ----------
 
 function Briefing({ point, busy, problem, onFight, onClose }: { point: QuestPoint; busy: boolean; problem: string | null; onFight: () => void; onClose: () => void }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const insets = useSafeAreaInsets();
   const color = realmColor(point.realm);
   const me = gameStore.get().me;
@@ -700,6 +704,7 @@ function Briefing({ point, busy, problem, onFight, onClose }: { point: QuestPoin
 }
 
 function Fact({ label, value, color }: { label: string; value: string; color: string }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   return (
     <View style={styles.fact}>
       <Text style={styles.factLabel} maxFontSizeMultiplier={MAX_FONT_SCALE}>{label}</Text>
@@ -848,6 +853,7 @@ function Arena({
   onOver: (start: DuelStart, runner: DuelRunner, how: "over" | "left") => void;
   onPause: () => void;
 }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   useRenderCount("DuelArena");
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
@@ -1030,6 +1036,7 @@ function Arena({
 
 /** "-12" rising and fading over 0.9 s, animated on the UI thread. */
 function FloatingNumber({ floater, top }: { floater: Floater; top: number }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const age = useSharedValue(0);
   useEffect(() => {
     // Damage shows with "reduce motion" on too (it only rises and fades).
@@ -1040,6 +1047,7 @@ function FloatingNumber({ floater, top }: { floater: Floater; top: number }) {
 }
 
 function Bars({ name, level, f, color, align }: { name: string; level: number; f: FighterLook; color: string; align: "left" | "right" }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const hp = f.hpPct / 100;
   return (
     <View style={[styles.bars, { alignItems: align === "left" ? "flex-start" : "flex-end" }]} accessible accessibilityLabel={`${name}, level ${level}, ${f.hp} of ${f.maxHp} health`}>
@@ -1064,6 +1072,7 @@ function Bars({ name, level, f, color, align }: { name: string; level: number; f
 }
 
 function SpecialButton({ n, label, ready, onPress, disabled }: { n: number; label: string; ready: boolean; onPress: () => void; disabled: boolean }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   return (
     <Pressable
       onPress={onPress}
@@ -1083,6 +1092,7 @@ function SpecialButton({ n, label, ready, onPress, disabled }: { n: number; labe
  * the shield / glow from the discrete look.
  */
 function Fighter({ pose, look, color, guardian }: { pose: SharedValue<Pose>; look: FighterLook; color: string; guardian?: boolean }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const bodyStyle = useAnimatedStyle(() => {
     const p = pose.get();
     return {
@@ -1115,7 +1125,7 @@ function Fighter({ pose, look, color, guardian }: { pose: SharedValue<Pose>; loo
   );
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   root: { ...StyleSheet.absoluteFill, backgroundColor: GP.cream },
   header: { flex: 1, paddingHorizontal: 16, paddingBottom: 26, overflow: "hidden" },
   emblem: { position: "absolute", right: -70, top: 20 },

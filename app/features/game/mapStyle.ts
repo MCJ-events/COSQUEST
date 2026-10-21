@@ -36,6 +36,16 @@ export function timeOfDay(hour: number): TimeOfDay {
   return "night";
 }
 
+/**
+ * Task 059: with the app in dark mode and the world on "Follow the clock",
+ * the town is lit as at night (a fixed clock the player chose wins).
+ */
+export function hourForScheme(clock: WorldClock, hour: number, dark: boolean): number {
+  if (!dark || clock !== "real") return hour;
+  const t = timeOfDay(hour);
+  return t === "night" ? hour : 22;
+}
+
 /** Preferences.effectiveHour: the fixed hour, or the phone's. */
 export function effectiveHour(clock: WorldClock, now: Date): number {
   const fixed = WORLD_CLOCKS.find((c) => c.id === clock)?.hour ?? null;

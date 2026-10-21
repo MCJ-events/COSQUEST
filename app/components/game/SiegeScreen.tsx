@@ -84,6 +84,7 @@ import { playResolve, startStrike } from "./strike";
 import { edgeOf, GF, GP, realmColor, realmIcon } from "./theme";
 import { useWardenSaid, wardenVoice } from "./wardenVoice";
 import { WardenBubble } from "./Hud";
+import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 /** The phone's clock, read in handlers (never during render). */
 const clock = () => Date.now();
@@ -114,6 +115,7 @@ export default function SiegeScreen({
   /** Called once, as the screen closes: true when the point was taken. */
   onDone?: (won: boolean) => void;
 }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   const reduce = useReducedMotion();
@@ -544,6 +546,7 @@ export default function SiegeScreen({
 }
 
 function RuleChip({ icon, text, color }: { icon: "heart" | "timer" | "list"; text: string; color: string }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   return (
     <View style={[styles.ruleChip, { backgroundColor: color }]}>
       <Ionicons name={icon} size={14} color="#FFF" />
@@ -555,6 +558,7 @@ function RuleChip({ icon, text, color }: { icon: "heart" | "timer" | "list"; tex
 }
 
 function StatChip({ icon, text, color }: { icon: React.ComponentProps<typeof Ionicons>["name"]; text: string; color: string }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   return (
     <View style={[styles.statChip, { backgroundColor: color }]}>
       <Ionicons name={icon} size={12} color="#FFF" />
@@ -567,7 +571,7 @@ function StatChip({ icon, text, color }: { icon: React.ComponentProps<typeof Ion
 
 const shadow = { textShadowColor: "rgba(0,0,0,0.5)", textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 0 };
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   root: { ...StyleSheet.absoluteFill, backgroundColor: GP.navy },
   column: { flex: 1, paddingHorizontal: 16 },
   header: { flexDirection: "row", alignItems: "flex-start", gap: 12, paddingTop: 8 },

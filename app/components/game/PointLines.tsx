@@ -5,18 +5,20 @@
 // The words and the rules are features/game/siege.ts.
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { type ReactNode, useEffect, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Text, View } from "react-native";
 
 import { expiresAt, holdLine, siegeOf, spawnLineLabel, spawnLineText } from "@/features/game/siege";
 import type { QuestPoint, RoamMe } from "@/features/game/wire";
 
 import { withAlpha } from "./kit";
 import { GF, GP, realmColor } from "./theme";
+import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 type MeLike = Pick<RoamMe, "faction"> | null | undefined;
 
 /** The round flag / shield badge at the start of a line. */
 function Badge({ color, children }: { color: string; children: ReactNode }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   return (
     <View style={[styles.badge, { backgroundColor: color }]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
       {children}
@@ -26,6 +28,7 @@ function Badge({ color, children }: { color: string; children: ReactNode }) {
 
 /** Who holds this point and how strongly, or that it is there for the taking. */
 export function HoldLine({ point, me, factionName }: { point: QuestPoint; me: MeLike; factionName: (id: string) => string }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const line = holdLine(point, me, factionName);
   if (!line) return null;
   const color = realmColor(line.faction);
@@ -62,6 +65,7 @@ export function HoldLine({ point, me, factionName }: { point: QuestPoint; me: Me
 
 /** A rival's Guardian stands here: whose, and its HP. */
 export function SiegeLine({ point, me, factionName }: { point: QuestPoint; me: MeLike; factionName: (id: string) => string }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const siege = siegeOf(point, me, factionName);
   if (!siege) return null;
   const color = realmColor(siege.faction);
@@ -89,6 +93,7 @@ export function SpawnLine({ point }: { point: QuestPoint }) {
 }
 
 function Ticking({ point }: { point: QuestPoint }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000);
@@ -107,7 +112,7 @@ function Ticking({ point }: { point: QuestPoint }) {
   );
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   row: { flexDirection: "row", alignItems: "center", gap: 8 },
   badge: { width: 26, height: 26, borderRadius: 13, alignItems: "center", justifyContent: "center" },
   heldText: { flex: 1, fontFamily: GF.bold, fontSize: 15, color: GP.ink },

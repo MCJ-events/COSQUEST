@@ -4,15 +4,17 @@
 // places it in its world view at the Room's local offset, like a PointMarker.
 import { Ionicons } from "@expo/vector-icons";
 import { memo } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 
 import type { NearbyRoom } from "@/features/game/rooms";
 
 import { GF, GP } from "./theme";
+import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 const SIZE = 44;
 
 function RoomBeacon({ room, left, top, onPress }: { room: NearbyRoom; left: number; top: number; onPress: (room: NearbyRoom) => void }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const who = room.host_handle || "Someone";
   return (
     <Pressable
@@ -37,7 +39,7 @@ function RoomBeacon({ room, left, top, onPress }: { room: NearbyRoom; left: numb
 
 export default memo(RoomBeacon);
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   marker: { position: "absolute", width: SIZE, height: SIZE + 14, alignItems: "center", zIndex: 2 },
   pin: {
     width: SIZE,

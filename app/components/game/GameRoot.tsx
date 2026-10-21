@@ -68,6 +68,7 @@ import { useOnScreen } from "./useOnScreen";
 import { useWardenSaid, wardenVoice } from "./wardenVoice";
 import WorldMap from "./WorldMap";
 import { useRenderCount } from "@/utils/perfMarks";
+import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 type Screen =
   | { kind: "home" }
@@ -89,6 +90,7 @@ const FIRST_NUDGE_MS = 25000;
 const NUDGE_SHOWN_MS = 12000;
 
 export default function GameRoot({ parked }: { parked: boolean }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   useRenderCount("GameRoot");
   const insets = useSafeAreaInsets();
   // The game's own type (Lilita One, Fredoka); bundled, so this is one frame or two.
@@ -693,6 +695,7 @@ export default function GameRoot({ parked }: { parked: boolean }) {
 }
 
 function FocusBanner({ place, lat, lng, onClose }: { place: string; lat?: number; lng?: number; onClose: () => void }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const fix = useGame((s) => s.fix);
   const there = lat !== undefined && lng !== undefined ? { lat, lng } : null;
   const d = there ? gameStore.distanceTo(there) : null;
@@ -723,7 +726,7 @@ function FocusBanner({ place, lat, lng, onClose }: { place: string; lat?: number
   );
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   root: { flex: 1, backgroundColor: "#E6EFDF" },
   banners: { position: "absolute", left: 14, gap: 6, maxWidth: 560 },
   bottom: { position: "absolute", left: 0, right: 0, gap: 8 },

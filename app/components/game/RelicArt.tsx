@@ -9,7 +9,7 @@
 // Reduce Motion): iOS's angular gradient is a band of white and berry on sun
 // travelling round the outline, drawn here with dashes that slide along it.
 import { useEffect, useId } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import Animated, { cancelAnimation, Easing, useAnimatedProps, useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withTiming } from "react-native-reanimated";
 import Svg, { Circle, Defs, G, LinearGradient, Path, RadialGradient, Rect, Stop } from "react-native-svg";
 
@@ -17,6 +17,7 @@ import { bandOffset, crystalPath, crystalPerimeter } from "@/features/game/cryst
 import { RELIC_MAX_LEVEL } from "@/features/game/relics";
 
 import { edgeOf, GF, GP } from "./theme";
+import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 /** RelicLook.rarityColor. */
 export function rarityColor(rarity: string | null | undefined): string {
@@ -183,6 +184,7 @@ function facetPath(w: number, h: number): string {
  * with a ghost of the weapon and a "?".
  */
 export function RelicArt({ kind, rarity, owned = true, size = 80 }: { kind: string; rarity: string; owned?: boolean; size?: number }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const gid = `ra${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
   const tint = owned ? rarityColor(rarity) : GP.navy;
   const w = size;
@@ -318,6 +320,7 @@ export function RelicSunburst({ color, size = 260 }: { color: string; size?: num
 
 /** RelicPips: ten pips, filled to the level. */
 export function RelicPips({ level, tint, size = 7 }: { level: number; tint: string; size?: number }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   return (
     <View style={[styles.pips, { gap: size * 0.4 }]} accessible accessibilityLabel={`Level ${level} of ${RELIC_MAX_LEVEL}`}>
       {Array.from({ length: RELIC_MAX_LEVEL }, (_, i) => (
@@ -337,7 +340,7 @@ export function RelicPips({ level, tint, size = 7 }: { level: number; tint: stri
   );
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   mark: { position: "absolute", left: 0, right: 0, top: 0, alignItems: "center", justifyContent: "center" },
   pips: { flexDirection: "row", alignItems: "center" },
 });

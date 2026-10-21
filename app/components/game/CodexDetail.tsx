@@ -23,6 +23,7 @@ import type { CodexCard } from "@/features/game/wire";
 
 import { Chip, GameIconButton, GamePanel, MAX_FONT_SCALE } from "./kit";
 import { edgeOf, GF, GP, realmColor, realmIcon, tierColor } from "./theme";
+import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 /** Swift spring(duration: 0.3) has no bounce: response 0.3, damping 1. */
 const SPRING = { stiffness: (2 * Math.PI) ** 2 / 0.3 ** 2, damping: 2 * Math.sqrt((2 * Math.PI) ** 2 / 0.3 ** 2), mass: 1 };
@@ -34,6 +35,7 @@ const SPRING = { stiffness: (2 * Math.PI) ** 2 / 0.3 ** 2, damping: 2 * Math.sqr
  * turns behind the content, which sits inside a face-coloured inset.)
  */
 export function FoilFrame({ radius, lineWidth, face, children }: { radius: number; lineWidth: number; face: string; children: ReactNode }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const reduce = useReducedMotion();
   const [box, setBox] = useState({ w: 0, h: 0 });
   const turn = useSharedValue(0);
@@ -61,6 +63,7 @@ export function FoilFrame({ radius, lineWidth, face, children }: { radius: numbe
 
 /** One card in the grid: the realm's colour, its symbol, the place, the tier. */
 export function CodexTile({ card, width, onPress }: { card: CodexCard; width: number; onPress: () => void }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const colour = realmColor(card.realm);
   const body = (
     <View style={styles.tileBody}>
@@ -100,6 +103,7 @@ export function CodexTile({ card, width, onPress }: { card: CodexCard; width: nu
 
 /** The card, big, over the grid. */
 export default function CodexDetail({ card, onClose }: { card: CodexCard; onClose: () => void }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const reduce = useReducedMotion();
   const colour = realmColor(card.realm);
   const scale = useSharedValue(reduce ? 1 : 0.9);
@@ -151,7 +155,7 @@ export default function CodexDetail({ card, onClose }: { card: CodexCard; onClos
   );
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   glow: { shadowColor: GP.sun, shadowOpacity: 0.6, shadowRadius: 4, shadowOffset: { width: 0, height: 0 }, backgroundColor: GP.cream },
   center: { alignItems: "center", justifyContent: "center" },
   plain: { borderRadius: 16, borderWidth: 2, backgroundColor: GP.cream, overflow: "hidden" },

@@ -5,7 +5,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, Share, Text, TextInput, View } from "react-native";
 import { KeyboardAvoidingView } from "@/components/ui/keyboard";
 import Animated, { SlideInDown, SlideOutDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -27,6 +27,7 @@ import { useGame } from "@/features/game/runtime";
 
 import { Chip, GameButton } from "./kit";
 import { edgeOf, GF, GP, realmColor } from "./theme";
+import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 /** A clock for countdown labels, ticking every `ms`. */
 function useNow(ms: number): number {
@@ -49,6 +50,7 @@ export default function RoomSheet({
   /** A beacon tapped on the map: that Room is outlined. */
   focusGameId?: string | null;
 }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const insets = useSafeAreaInsets();
   const rooms = useRooms();
   const fix = useGame((s) => s.fix);
@@ -193,6 +195,7 @@ export default function RoomSheet({
 }
 
 function Stepper({ icon, label, enabled, onPress }: { icon: "add" | "remove"; label: string; enabled: boolean; onPress: () => void }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   return (
     <Pressable
       onPress={onPress}
@@ -209,6 +212,7 @@ function Stepper({ icon, label, enabled, onPress }: { icon: "add" | "remove"; la
 
 /** The Room is up: the code, big enough to read across a table. */
 function HostingPanel({ room, now, color, onEnter }: { room: RoomCreated; now: number; color: string; onEnter: () => void }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   return (
     <View style={[styles.panel, { alignItems: "center" }]}>
       <View style={[styles.row, { alignSelf: "stretch" }]}>
@@ -241,6 +245,7 @@ function HostingPanel({ room, now, color, onEnter }: { room: RoomCreated; now: n
 }
 
 function RoomRow({ room, now, focused, onPress }: { room: NearbyRoom; now: number; focused: boolean; onPress: () => void }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const who = room.host_handle || "Someone";
   const left = timeLeft(room.ends_at, now);
   const players = room.players ?? 0;
@@ -276,7 +281,7 @@ function RoomRow({ room, now, focused, onPress }: { room: NearbyRoom; now: numbe
   );
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   sheet: { position: "absolute", left: 0, right: 0, bottom: 0, borderTopLeftRadius: 28, borderTopRightRadius: 28, backgroundColor: GP.cream, elevation: 18 },
   head: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 18, paddingTop: 16, paddingBottom: 6 },
   title: { fontFamily: GF.display, fontSize: 26, color: GP.ink },

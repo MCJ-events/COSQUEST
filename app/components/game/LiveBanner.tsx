@@ -6,7 +6,7 @@
 // costquest-ios Features/LiveFeature.swift (LiveBanner, LiveCard).
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 
 import { bannerAt, type LiveCalendar, type LiveClock, nextChange, phoneClock, soonText, times } from "@/features/game/live";
@@ -15,6 +15,7 @@ import { useGame } from "@/features/game/runtime";
 
 import { HUD_FONT_SCALE, pressFeedback } from "./kit";
 import { GF, GP } from "./theme";
+import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 /** The phone's clock (its zone is read per instant, so a zone change still shows). */
 export const LIVE_CLOCK: LiveClock = phoneClock();
@@ -91,6 +92,7 @@ export default function LiveBanner({ parked, onOpen }: { parked: boolean; onOpen
 /** One flat card for "on now" and "starting soon", drawn like the nearby
  * cards: a hard edge, a sun tile, the name, and when (no pulse, no glow). */
 function LiveCard({ title, detail, multiplier, isLive, pressed }: { title: string; detail: string; multiplier: string; isLive: boolean; pressed: boolean }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   return (
     <View style={[styles.edge, { paddingBottom: pressed ? 1 : 3, marginTop: pressed ? 2 : 0 }]}>
       <View style={[styles.card, { borderColor: isLive ? GP.sun : withAlpha(GP.navy, 0.18) }]}>
@@ -111,7 +113,7 @@ function LiveCard({ title, detail, multiplier, isLive, pressed }: { title: strin
   );
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   edge: { borderRadius: 16, backgroundColor: "rgba(0,0,0,0.18)" },
   card: {
     flexDirection: "row",

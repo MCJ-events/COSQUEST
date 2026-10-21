@@ -33,6 +33,7 @@ import { RelicDropExtra } from "./RelicDropCard";
 import { playSound } from "./sound";
 import { GF, GP, realmColor } from "./theme";
 import { wardenVoice } from "./wardenVoice";
+import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 export type RewardSummary = {
   pointName: string;
@@ -120,6 +121,7 @@ export function celebrate(reward: RewardSummary) {
 const LINE_SPRING = springOf(0.35, 0.7);
 
 export default function Reward({ reward, onDone, onShare }: { reward: RewardSummary; onDone: () => void; onShare?: () => void }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const insets = useSafeAreaInsets();
   const before = reward.before ?? reward.after;
   const after = reward.after;
@@ -286,7 +288,7 @@ function extraIcon(x: RoamExtra): keyof typeof Ionicons.glyphMap {
   return name in Ionicons.glyphMap ? (name as keyof typeof Ionicons.glyphMap) : "sparkles";
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   root: { ...StyleSheet.absoluteFill },
   column: { flex: 1 },
   scroll: { flexGrow: 1, justifyContent: "center", gap: 18, paddingVertical: 12 },
@@ -315,6 +317,7 @@ const styles = StyleSheet.create({
 
 /** One pay line: `.move(edge: .leading)` with spring(0.35, 0.7) when its turn comes. */
 function RewardLine({ label, amount, shown }: { label: string; amount: string; shown: boolean }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const t = useSharedValue(shown ? 1 : 0);
   useEffect(() => {
     if (shown) t.set(withSpring(1, LINE_SPRING));

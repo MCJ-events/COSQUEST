@@ -60,10 +60,12 @@ import { SheetHeader } from "./SheetHeader";
 import { playSound } from "./sound";
 import { edgeOf, GF, GP, realmColor, realmIcon } from "./theme";
 import { useOnScreen } from "./useOnScreen";
+import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 type Picked = { kind: "relic"; id: string } | { kind: "forge"; id: string } | null;
 
 export default function RelicsSheet({ onClose }: { onClose: () => void }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const insets = useSafeAreaInsets();
   const me = useGame((s) => s.me);
   const relics = useRelics();
@@ -141,6 +143,7 @@ export default function RelicsSheet({ onClose }: { onClose: () => void }) {
 
 /** A card popping in: scale from 0.88 with a fade, `.spring(response: 0.35, dampingFraction: 0.78)`; a fade under Reduce Motion. */
 function Pop({ children }: { children: ReactNode }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const reduced = useReducedMotion();
   const k = useSharedValue(reduced ? 1 : 0);
   useEffect(() => {
@@ -159,6 +162,7 @@ function Pop({ children }: { children: ReactNode }) {
 
 /** The Relic in hand, big, because it is the one that goes into a siege. */
 function Hero({ payload, onPick }: { payload: RelicsPayload; onPick: (id: string) => void }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const r = equippedRelic(payload);
   if (!r) return null;
   return (
@@ -197,6 +201,7 @@ function Hero({ payload, onPick }: { payload: RelicsPayload; onPick: (id: string
 }
 
 function FactionSection({ faction, payload, mine, onPick }: { faction: string; payload: RelicsPayload; mine: boolean; onPick: (id: string) => void }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const config = useGame((s) => s.config);
   const all = catalogueOf(payload, faction);
   if (!all.length) return null;
@@ -224,6 +229,7 @@ function FactionSection({ faction, payload, mine, onPick }: { faction: string; p
 }
 
 function Tile({ stub: s, relic: r, equipped, onPress }: { stub: RelicStub; relic: RelicFull | null; equipped: boolean; onPress: () => void }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const owned = r !== null;
   return (
     <Pressable
@@ -266,6 +272,7 @@ function Tile({ stub: s, relic: r, equipped, onPress }: { stub: RelicStub; relic
 // ---------- the card ----------
 
 function RelicDetail({ id, stub, onClose }: { id: string; stub: RelicStub | null; onClose: () => void }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const { payload, busy, problem, levelled } = useRelics();
   const config = useGame((s) => s.config);
   const reduced = useReducedMotion();
@@ -397,6 +404,7 @@ function RelicDetail({ id, stub, onClose }: { id: string; stub: RelicStub | null
 }
 
 function ShardBar({ relic: r }: { relic: RelicFull }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const reduced = useReducedMotion();
   const have = r.shards ?? 0;
   const cost = levelCost(r);
@@ -439,6 +447,7 @@ function ShardBar({ relic: r }: { relic: RelicFull }) {
 }
 
 function LockedDetail({ stub, onClose }: { stub: RelicStub | null; onClose: () => void }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   return (
     <View style={styles.lockedWrap}>
       <GamePanel padding={18}>
@@ -462,7 +471,7 @@ function LockedDetail({ stub, onClose }: { stub: RelicStub | null; onClose: () =
   );
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   sheet: { position: "absolute", left: 0, right: 0, bottom: 0, borderTopLeftRadius: 28, borderTopRightRadius: 28, backgroundColor: GP.ice, elevation: 18, overflow: "hidden" },
   head: { paddingHorizontal: 18, paddingTop: 10, paddingBottom: 10 },
   body: { paddingHorizontal: 18, gap: 16 },

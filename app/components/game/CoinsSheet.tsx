@@ -36,6 +36,7 @@ import { SheetFrame } from "./SheetFrame";
 import { SheetHeader } from "./SheetHeader";
 import { playSound } from "./sound";
 import { GF, GP } from "./theme";
+import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 export default function CoinsSheet({ onClose }: { onClose: () => void }) {
   const insets = useSafeAreaInsets();
@@ -47,6 +48,7 @@ export default function CoinsSheet({ onClose }: { onClose: () => void }) {
 }
 
 function CoinsBody({ close }: { close: () => void }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const insets = useSafeAreaInsets();
   const coins = useCoins();
   const packs = coinsStore.packs();
@@ -142,6 +144,7 @@ function CoinsBody({ close }: { close: () => void }) {
 }
 
 function SectionTitle({ text }: { text: string }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   return (
     <Text style={styles.section} accessibilityRole="header" maxFontSizeMultiplier={MAX_FONT_SCALE}>
       {text.toUpperCase()}
@@ -153,6 +156,7 @@ const PRESS = { stiffness: 816, damping: 34, mass: 1 };
 
 /** One pack, as a flat printed card like the Nearby cards (CoinPackCard), pressed in like them (CardPress). */
 function PackCard({ pack, disabled, onPress }: { pack: CoinPack; disabled: boolean; onPress: () => void }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const tag = packTag(pack);
   const down = useSharedValue(0);
   const style = useAnimatedStyle(() => ({ transform: [{ scale: 1 - 0.05 * down.get() }] }));
@@ -200,6 +204,7 @@ function PackCard({ pack, disabled, onPress }: { pack: CoinPack; disabled: boole
 }
 
 function HistoryLine({ row }: { row: CoinHistoryRow }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const up = row.delta >= 0;
   const title = row.label ?? historyTitle(row.kind);
   const [now] = useState(() => Date.now());
@@ -231,6 +236,7 @@ function HistoryLine({ row }: { row: CoinHistoryRow }) {
 
 /** "+1,200 CosCoins added": the count runs up, then settles (CoinsGainedMoment). */
 function GainedMoment({ coins, onDone }: { coins: number; onDone: () => void }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const reduce = useReducedMotion();
   const [step, setStep] = useState(reduce ? COUNT_STEPS : 0);
   const landed = useSharedValue(reduce ? 1 : 0.6);
@@ -265,7 +271,7 @@ function GainedMoment({ coins, onDone }: { coins: number; onDone: () => void }) 
   );
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   body: { paddingHorizontal: 18, gap: 16 },
   balanceRow: { flexDirection: "row", alignItems: "center", gap: 14 },
   balance: { fontFamily: GF.display, fontSize: 34, color: GP.ink, fontVariant: ["tabular-nums"] },

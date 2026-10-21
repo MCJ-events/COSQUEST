@@ -6,13 +6,14 @@
 // sheets cannot be up at once).
 import { Ionicons } from "@expo/vector-icons";
 import { type ReactNode, useRef, useState } from "react";
-import { type LayoutChangeEvent, StyleSheet, Text, View } from "react-native";
+import { type LayoutChangeEvent, Text, View } from "react-native";
 import Animated, { Easing, Keyframe } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { GameIconButton, MAX_FONT_SCALE } from "./kit";
 import { SheetHost } from "./Sheet";
 import { edgeOf, GF, GP } from "./theme";
+import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 export type MoreTile = {
   id: string;
@@ -39,6 +40,7 @@ const PANEL_IN = new Keyframe({
 }).duration(300);
 
 export default function MoreSheet({ tiles, onClose }: { tiles: MoreTile[]; onClose: () => void }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const insets = useSafeAreaInsets();
   const [width, setWidth] = useState(0);
   const next = useRef<(() => void) | null>(null);
@@ -90,6 +92,7 @@ export default function MoreSheet({ tiles, onClose }: { tiles: MoreTile[]; onClo
 }
 
 function TileIcon({ tile, choose }: { tile: MoreTile; choose: () => void }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   if (tile.custom) return <>{tile.custom(choose)}</>;
   if (tile.onPress) {
     return <GameIconButton icon={tile.icon} color={tile.color} diameter={54} badge={tile.badge && tile.badge > 0 ? tile.badge : null} accessibilityLabel={tile.title} onPress={choose} />;
@@ -112,7 +115,7 @@ function TileIcon({ tile, choose }: { tile: MoreTile; choose: () => void }) {
   );
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   sheet: {
     position: "absolute",
     left: 0,

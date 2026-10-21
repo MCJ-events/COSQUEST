@@ -13,6 +13,7 @@ import { SPRING_RAID_HP } from "@/features/game/spring";
 
 import { MAX_FONT_SCALE } from "./kit";
 import { GF, GP } from "./theme";
+import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 export function RaidCrown({ size = 20, color = "#FFFFFF" }: { size?: number; color?: string }) {
   return (
@@ -24,6 +25,7 @@ export function RaidCrown({ size = 20, color = "#FFFFFF" }: { size?: number; col
 
 /** A round badge with the crown on it (the banner's and the map's boss mark). */
 export function RaidBadge({ size = 34 }: { size?: number }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   return (
     <View style={[styles.badge, { width: size, height: size, borderRadius: size / 2 }]}>
       <RaidCrown size={size * 0.56} />
@@ -33,6 +35,7 @@ export function RaidBadge({ size = 34 }: { size?: number }) {
 
 /** The boss's health: a big bar that drains as the crew lands hits. */
 export function RaidHPBar({ hp, maxHp, compact }: { hp: number; maxHp: number; compact?: boolean }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const left = Math.max(0, hp);
   const share = left / Math.max(1, maxHp);
   const reduced = useReducedMotion();
@@ -57,7 +60,7 @@ export function RaidHPBar({ hp, maxHp, compact }: { hp: number; maxHp: number; c
   );
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   badge: { backgroundColor: RAID_COLOR, alignItems: "center", justifyContent: "center" },
   track: { backgroundColor: "rgba(30,58,76,0.6)", borderColor: "rgba(255,255,255,0.7)", overflow: "hidden" },
   fill: { height: "100%", overflow: "hidden" },

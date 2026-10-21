@@ -4,7 +4,7 @@
 // costquest-ios Features/LiveFeature.swift (LiveCalendarSheet).
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect } from "react";
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, ScrollView, Text, View } from "react-native";
 import Animated, { SlideInDown, SlideOutDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -17,6 +17,7 @@ import { Chip, GameButton, GamePanel, MAX_FONT_SCALE } from "./kit";
 import { LIVE_CLOCK, useLiveNow, withAlpha } from "./LiveBanner";
 import { SheetHeader } from "./SheetHeader";
 import { GF, GP } from "./theme";
+import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 function reload() {
   const here = livePlace();
@@ -24,6 +25,7 @@ function reload() {
 }
 
 export default function LiveCalendarSheet({ onClose }: { onClose: () => void }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const insets = useSafeAreaInsets();
   const { calendar, error } = useLiveCalendar();
   const fix = useGame((s) => s.fix);
@@ -83,6 +85,7 @@ function colorFor(e: LiveEvent): string {
 }
 
 function EventRow({ event, badge, color }: { event: LiveEvent; badge: string; color: string }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const when = whenText(event, LIVE_CLOCK);
   return (
     <View style={styles.row} accessible accessibilityLabel={`${event.title}, ${when}, ${badge}`}>
@@ -100,7 +103,7 @@ function EventRow({ event, badge, color }: { event: LiveEvent; badge: string; co
   );
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   sheet: { position: "absolute", left: 0, right: 0, bottom: 0, borderTopLeftRadius: 28, borderTopRightRadius: 28, backgroundColor: GP.ice, overflow: "hidden", elevation: 18 },
   head: { paddingHorizontal: 18, paddingTop: 10, paddingBottom: 10 },
   body: { paddingHorizontal: 18, gap: 14 },

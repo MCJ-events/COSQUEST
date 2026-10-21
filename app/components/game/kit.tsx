@@ -9,6 +9,8 @@ import type { ComponentProps, ReactNode } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { AccessibilityInfo, Platform, Pressable, type StyleProp, StyleSheet, Text, View, type ViewStyle } from "react-native";
 
+import { useInk } from "@/constants/chatTheme";
+
 import { playSound } from "./sound";
 import { edgeOf, GF, GP } from "./theme";
 
@@ -221,18 +223,22 @@ const OUTLINE = Array.from({ length: 8 }, (_, i) => [Math.cos((i * Math.PI) / 4)
 
 /** A heading on a light page (GameHeading): heavy slate type, no outline. */
 export function GameHeading({ text, size = 34 }: { text: string; size?: number }) {
+  // Task 059: follows dark mode like the rest of the game (constants/chatTheme.ts).
+  const ink = useInk();
   return (
     <Text
       accessibilityRole="header"
       maxFontSizeMultiplier={MAX_FONT_SCALE}
-      style={{ fontFamily: GF.display, fontSize: size, color: GP.ink, textShadowColor: "rgba(255,255,255,0.6)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 0.1 }}>
+      style={{ fontFamily: GF.display, fontSize: size, color: ink.text(GP.ink), textShadowColor: ink.dark ? "rgba(0,0,0,0.4)" : "rgba(255,255,255,0.6)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 0.1 }}>
       {text}
     </Text>
   );
 }
 
 /** A raised card (GamePanel): cream face, a thick darker base, a white rim. */
-export function GamePanel({ children, face = GP.cream, padding = 18, style }: { children: ReactNode; face?: string; padding?: number; style?: StyleProp<ViewStyle> }) {
+export function GamePanel({ children, face: rawFace = GP.cream, padding = 18, style }: { children: ReactNode; face?: string; padding?: number; style?: StyleProp<ViewStyle> }) {
+  const ink = useInk();
+  const face = ink.surface(rawFace);
   return (
     <View style={[{ paddingBottom: 6 }, style]}>
       <View style={[StyleSheet.absoluteFill, { top: 6, borderRadius: 24, backgroundColor: withAlpha(edgeOf(face), 0.9) }]} />

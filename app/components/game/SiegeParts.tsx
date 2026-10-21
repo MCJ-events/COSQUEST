@@ -27,6 +27,7 @@ import { springOf } from "@/features/game/spring";
 import { GameTitle, MAX_FONT_SCALE, pressFeedback, withAlpha } from "./kit";
 import { RelicArt } from "./RelicArt";
 import { CHOICE_COLORS, edgeOf, GF, GP } from "./theme";
+import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 const SPRING_PHASE = springOf(0.45, 0.8);
 const SPRING_HP = springOf(0.3, 0.75);
@@ -103,6 +104,7 @@ export function GuardianView({
   /** Whether it may bob (false while the screen is parked). */
   idle: boolean;
 }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const reduce = useReducedMotion();
   const bob = useSharedValue(0);
   const jolt = useSharedValue(0);
@@ -217,6 +219,7 @@ function Eye({ cx, cy, tilt }: { cx: number; cy: number; tilt: number }) {
 
 /** The Guardian breaking: its crystal flies apart in pieces (Shards). */
 function Shards({ color }: { color: string }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const reduce = useReducedMotion();
   const out = useSharedValue(reduce ? 1 : 0);
   useEffect(() => {
@@ -256,6 +259,7 @@ function Shard({ i, color, out }: { i: number; color: string; out: { value: numb
  * the hit you just landed.
  */
 export function HpBar({ share, color }: { share: number; color: string }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const [width, setWidth] = useState(0);
   const target = (w: number) => Math.max(share > 0 ? 18 : 0, w * share);
   const main = useSharedValue(0);
@@ -289,6 +293,7 @@ export function HpBar({ share, color }: { share: number; color: string }) {
 
 /** The player's focus: mint when full, going to berry as it drains (FocusBar). */
 export function FocusBar({ value }: { value: number }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const [width, setWidth] = useState(0);
   const v = Math.min(1, Math.max(0, value));
   const w = useSharedValue(0);
@@ -321,6 +326,7 @@ const STROKE = 6;
 
 /** A countdown ring with the seconds in the middle, red for the last five (RingTimer). */
 export function RingTimer({ deadline, total, paused }: { deadline: number; total: number; paused: boolean }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     if (paused) return;
@@ -368,6 +374,7 @@ export function RingTimer({ deadline, total, paused }: { deadline: number; total
 
 /** A damage number: pops, rises and fades (DamageText). */
 export function DamageText({ text, color, x }: { text: string; color: string; x: number }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const reduce = useReducedMotion();
   const up = useSharedValue(reduce ? 1 : 0);
   useEffect(() => {
@@ -504,6 +511,7 @@ export function SiegeChoice({
   label: string;
   onPress: () => void;
 }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const face = state === "right" ? GP.mint : state === "wrong" ? GP.berry : state === "dim" ? GREY : CHOICE_COLORS[index % CHOICE_COLORS.length];
   const opacityTo = state === "removed" ? 0.22 : state === "dim" ? 0.45 : 1;
   const scaleTo = state === "right" ? 1.03 : 1;
@@ -547,7 +555,7 @@ export function SiegeChoice({
 
 export const SIEGE_PHASE_SPRING = SPRING_PHASE;
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   guardian: { width: W + 60, height: 260, alignItems: "center", justifyContent: "center", alignSelf: "center" },
   shadow: { position: "absolute", top: 235, left: 30 , width: 150, height: 26, borderRadius: 13, backgroundColor: "rgba(0,0,0,0.25)" },
   figure: { position: "absolute", top: 45, left: 30, width: W, height: H },

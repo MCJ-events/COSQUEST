@@ -12,6 +12,7 @@ import type { DuelFighterPeek, DuelStart } from "@/features/game/wire";
 
 import { MAX_FONT_SCALE } from "./kit";
 import { edgeOf, GF, GP, realmColor } from "./theme";
+import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 type IconName = ComponentProps<typeof Ionicons>["name"];
 
@@ -32,6 +33,7 @@ function weaponIcon(w: string | null | undefined): IconName {
 }
 
 export default function DuelVersus({ start }: { start: DuelStart }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const reduce = useReducedMotion();
   const title = versusTitle(start, (id) => gameStore.factionName(id));
   const f = fightersOf(start);
@@ -60,6 +62,7 @@ export default function DuelVersus({ start }: { start: DuelStart }) {
 }
 
 function Side({ f, you }: { f: DuelFighterPeek; you: boolean }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const tint = realmColor(f.faction);
   return (
     <View style={styles.sideWrap}>
@@ -81,7 +84,7 @@ function Side({ f, you }: { f: DuelFighterPeek; you: boolean }) {
   );
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   card: { alignItems: "center", gap: 18, padding: 24, width: "100%" },
   title: { fontFamily: GF.display, fontSize: 14, letterSpacing: 1.6, color: "rgba(255,255,255,0.7)", textAlign: "center" },
   vs: { fontFamily: GF.display, fontSize: 44, color: GP.sun, textShadowColor: edgeOf(GP.sun), textShadowOffset: { width: 0, height: 3 }, textShadowRadius: 0.1 },

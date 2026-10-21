@@ -7,7 +7,7 @@
 // view-capture module is in the app.
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, ScrollView, Share, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, ScrollView, Share, Text, View } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -22,6 +22,7 @@ import { SheetHeader } from "./SheetHeader";
 import { GF, GP, realmColor } from "./theme";
 import WardenBadge from "./WardenBadge";
 import { wardenVoice } from "./wardenVoice";
+import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 export default function RecapSheet({ onClose }: { onClose: () => void }) {
   const insets = useSafeAreaInsets();
@@ -33,6 +34,7 @@ export default function RecapSheet({ onClose }: { onClose: () => void }) {
 }
 
 function RecapBody({ close }: { close: () => void }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const insets = useSafeAreaInsets();
   const me = useGame((s) => s.me);
   const [story, setStory] = useState<string | null>(null);
@@ -108,6 +110,7 @@ export function RecapCard({
   rank: string;
   story: string | null;
 }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   return (
     <GamePanel padding={18}>
       <View style={{ gap: 14 }}>
@@ -160,7 +163,7 @@ export function RecapCard({
   );
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   body: { paddingHorizontal: 18, gap: 18 },
   emptyRow: { flexDirection: "row", alignItems: "center", gap: 14 },
   empty: { flex: 1, fontFamily: GF.bold, fontSize: 17, color: GP.ink },

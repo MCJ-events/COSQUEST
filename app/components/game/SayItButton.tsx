@@ -10,13 +10,14 @@ import { AudioModule } from "expo-audio";
 import * as Haptics from "expo-haptics";
 import * as Speech from "expo-speech";
 import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
-import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { Platform, Pressable, Text, View } from "react-native";
 
 import { type SpeechEngine, VoiceAnswer, voicePrompt } from "@/features/game/voiceAnswer";
 import { nativeHelpers } from "@/modules/costquest-game/src";
 import { store } from "@/store/store";
 
 import { GF, GP } from "./theme";
+import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 /** The phone's recogniser through the game module; null where there is none (web, an older native build). */
 function phoneEngine(): SpeechEngine | null {
@@ -49,6 +50,7 @@ function phoneEngine(): SpeechEngine | null {
 }
 
 export default function SayItButton({ choices, removed, onPick }: { choices: string[]; removed: number[]; onPick: (i: number) => void }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const voice = useMemo(
     () =>
       new VoiceAnswer({
@@ -99,7 +101,7 @@ export default function SayItButton({ choices, removed, onPick }: { choices: str
   );
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   row: { flexDirection: "row", alignItems: "center", gap: 10 },
   mic: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },
   line: { flex: 1, fontFamily: GF.bold, fontSize: 14, color: "#FFF" },

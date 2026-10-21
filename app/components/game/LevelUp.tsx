@@ -22,6 +22,7 @@ import { springOf } from "@/features/game/strike";
 
 import { announce, GameButton, GameTitle, MAX_FONT_SCALE } from "./kit";
 import { edgeOf, GF, GP } from "./theme";
+import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 const SUN = 560;
 const RAYS = 14;
@@ -108,6 +109,7 @@ function ConfettiPiece({ piece, clock, width, height, color }: { piece: Piece; c
 }
 
 export function LevelUp({ level, rank, rankUp, onDone }: { level: number; rank: string; rankUp: boolean; onDone: () => void }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const reduce = useReducedMotion();
   const shown = useSharedValue(reduce ? 1 : 0);
   useEffect(() => {
@@ -154,7 +156,7 @@ export function LevelUp({ level, rank, rankUp, onDone }: { level: number; rank: 
   );
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   root: { ...StyleSheet.absoluteFill, alignItems: "center", justifyContent: "center", overflow: "hidden" },
   sun: { position: "absolute", width: SUN, height: SUN, alignItems: "center", justifyContent: "center" },
   column: { alignItems: "center", gap: 10, paddingHorizontal: 24 },

@@ -38,6 +38,7 @@ import { SheetFrame } from "./SheetFrame";
 import { SheetHeader } from "./SheetHeader";
 import { GF, GP, realmColor } from "./theme";
 import { useOnScreen } from "./useOnScreen";
+import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 export default function FriendsSheet({ onClose }: { onClose: () => void }) {
   const insets = useSafeAreaInsets();
@@ -49,6 +50,7 @@ export default function FriendsSheet({ onClose }: { onClose: () => void }) {
 }
 
 function FriendsBody({ close }: { close: () => void }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const insets = useSafeAreaInsets();
   const friends = useFriends();
   const fix = useGame((s) => s.fix);
@@ -231,6 +233,7 @@ function FriendsBody({ close }: { close: () => void }) {
 
 /** Your live code with its countdown and QR, or the button that makes one. */
 function MyCode() {
+  const styles = useThemedStyles(STYLE_PAIR);
   const friends = useFriends();
   const [now, setNow] = useState(() => Date.now());
   const onScreen = useOnScreen();
@@ -278,6 +281,7 @@ function MyCode() {
 }
 
 function FriendRow({ f, busy, canGift }: { f: FriendEntry; busy: boolean; canGift: boolean }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   return (
     <View style={styles.friend}>
       <View style={[styles.dot, { backgroundColor: realmColor(f.faction) }]} accessibilityElementsHidden importantForAccessibility="no" />
@@ -307,7 +311,7 @@ function FriendRow({ f, busy, canGift }: { f: FriendEntry; busy: boolean; canGif
 
 const MONO = Platform.OS === "android" ? "monospace" : "Menlo";
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   body: { paddingHorizontal: 18, gap: 16 },
   lead: { fontFamily: GF.body, fontSize: 15, color: "#FFFFFF", textShadowColor: "rgba(0,0,0,0.3)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 0 },
   stack: { gap: 14 },

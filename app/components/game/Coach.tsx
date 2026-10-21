@@ -27,6 +27,7 @@ import { announce, GameButton, withAlpha } from "./kit";
 import { GF, GP } from "./theme";
 import WardenBadge from "./WardenBadge";
 import { wardenVoice } from "./wardenVoice";
+import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 // ---------- anchors ----------
 
@@ -76,6 +77,7 @@ export default function CoachOverlay({
   onAction: () => void;
   onLater: () => void;
 }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   const reduce = useReducedMotion();
@@ -173,7 +175,7 @@ export default function CoachOverlay({
   );
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   bubble: {
     position: "absolute",
     left: 14,

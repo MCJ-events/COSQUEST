@@ -10,7 +10,7 @@
 // stamps." with Retry when that read failed.
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Text, View } from "react-native";
 
 import { stampRow, stampsFrom } from "@/features/game/live";
 import { gameStore } from "@/features/game/runtime";
@@ -18,10 +18,12 @@ import type { RoamMe } from "@/features/game/wire";
 
 import { Chip, GameButton, MAX_FONT_SCALE, withAlpha } from "./kit";
 import { GF, GP } from "./theme";
+import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 const NO_STAMPS = { stamps: 0, cards_done: 0, card_size: 7 };
 
 export default function LiveStampCard({ me }: { me: RoamMe | null }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const stamps = me ? (stampsFrom(me) ?? NO_STAMPS) : null;
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
@@ -77,6 +79,7 @@ export default function LiveStampCard({ me }: { me: RoamMe | null }) {
 }
 
 function Stamp({ filled, n, placeholder }: { filled: boolean; n: number; placeholder: boolean }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   if (placeholder) {
     // `.redacted(reason: .placeholder)`: grey discs where the stamps will be.
     return (
@@ -104,7 +107,7 @@ function Stamp({ filled, n, placeholder }: { filled: boolean; n: number; placeho
   );
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   card: { gap: 12, padding: 14, borderRadius: 18, backgroundColor: "#FFF" },
   head: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
   title: { fontFamily: GF.display, fontSize: 24, color: GP.ink },

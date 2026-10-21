@@ -2,13 +2,15 @@
 // near you (costquest-ios Features/RoomsFeature.swift BattleButton). Shaped
 // like the rail's own buttons (Hud.tsx), in berry, so it sits in the rail.
 import { Ionicons } from "@expo/vector-icons";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 
 import { useRooms } from "@/features/game/roomsRuntime";
 
 import { GF, GP } from "./theme";
+import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 export default function RoomButton({ onPress }: { onPress: () => void }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const { nearby } = useRooms();
   const n = nearby.length;
   return (
@@ -28,7 +30,7 @@ export default function RoomButton({ onPress }: { onPress: () => void }) {
   );
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   button: {
     width: 46,
     height: 46,

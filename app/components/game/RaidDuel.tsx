@@ -21,6 +21,7 @@ import { useMinuteClock } from "./RaidBanner";
 import { RaidCrown, RaidHPBar } from "./RaidParts";
 import type { RewardSummary } from "./Reward";
 import { edgeOf, GF, GP } from "./theme";
+import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 /** DuelScreen's reward for a raid fight (typed here so a drift from Reward.tsx fails the typecheck). */
 export function raidDuelRewardSummary(o: DuelOutcome, point: QuestPoint, before: RoamStanding | null, after: RoamStanding | null): RewardSummary {
@@ -41,6 +42,7 @@ export function RaidDuelBriefing({
   onFight: () => void;
   onClose: () => void;
 }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const insets = useSafeAreaInsets();
   const now = useMinuteClock();
   const hp = raidHp(point);
@@ -98,6 +100,7 @@ export function RaidDuelBriefing({
 }
 
 function Fact({ label, value, color }: { label: string; value: string; color: string }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   return (
     <View style={styles.fact} accessible accessibilityLabel={`${label.toLowerCase()}: ${value}`}>
       <Text style={styles.factLabel} maxFontSizeMultiplier={MAX_FONT_SCALE}>{label}</Text>
@@ -108,7 +111,7 @@ function Fact({ label, value, color }: { label: string; value: string; color: st
   );
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   root: { ...StyleSheet.absoluteFill, backgroundColor: GP.cream },
   header: { flex: 1, paddingHorizontal: 16, paddingBottom: 26, overflow: "hidden", backgroundColor: RAID_COLOR },
   emblem: { position: "absolute", right: -60, top: 30 },

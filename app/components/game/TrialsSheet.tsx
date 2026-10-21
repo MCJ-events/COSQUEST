@@ -2,7 +2,7 @@
 // five ladders of faction bosses, playable anywhere. Each rung pays the first
 // time it is cleared; a cleared rung can be replayed.
 import { Ionicons } from "@expo/vector-icons";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { type TrialRequest, trialsOrder } from "@/features/game/duelFlow";
@@ -14,6 +14,7 @@ import { SheetHost } from "./Sheet";
 import { SheetFrame } from "./SheetFrame";
 import { SheetHeader } from "./SheetHeader";
 import { GF, GP, realmColor, realmIcon } from "./theme";
+import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 /** A tile of the track the pips sit on (GamePalette.track). */
 const TRACK = "rgba(31,59,77,0.12)";
@@ -28,6 +29,7 @@ export default function TrialsSheet({ onClose, onFight }: { onClose: () => void;
 }
 
 function TrialsBody({ close, onFight }: { close: () => void; onFight: (t: TrialRequest) => void }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const insets = useSafeAreaInsets();
   const me = useGame((s) => s.me);
   const config = useGame((s) => s.config);
@@ -59,6 +61,7 @@ function TrialsBody({ close, onFight }: { close: () => void; onFight: (t: TrialR
 }
 
 function Ladder({ faction, ladder: t, onFight }: { faction: string; ladder: TrialLadder; onFight: (t: TrialRequest) => void }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const tint = realmColor(faction);
   const name = gameStore.factionName(faction);
   const rungs = Math.max(1, t.rungs);
@@ -112,7 +115,7 @@ function Ladder({ faction, ladder: t, onFight }: { faction: string; ladder: Tria
   );
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   body: { paddingHorizontal: 18, gap: 14 },
   lead: { fontFamily: GF.bold, fontSize: 14, color: withAlpha(GP.ink, 0.65) },
   closed: { paddingTop: 20, fontFamily: GF.bold, fontSize: 15, color: GP.mist },

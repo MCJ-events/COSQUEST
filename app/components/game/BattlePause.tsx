@@ -10,6 +10,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { GameButton, announce, MAX_FONT_SCALE, pressFeedback } from "./kit";
 import { GF, GP } from "./theme";
+import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 export type PauseControl = { name: string; text: string };
 
@@ -33,6 +34,7 @@ export default function BattlePause({
   onResume: () => void;
   onLeave: () => void;
 }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const insets = useSafeAreaInsets();
   const [page, setPage] = useState<Page>("menu");
 
@@ -111,6 +113,7 @@ export default function BattlePause({
 }
 
 function LeaveLink({ title, onPress }: { title: string; onPress: () => void }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   return (
     <Pressable onPressIn={pressFeedback} onPress={onPress} accessibilityRole="button" accessibilityLabel={title} style={styles.leave}>
       <Text style={styles.leaveText} maxFontSizeMultiplier={MAX_FONT_SCALE}>
@@ -120,7 +123,7 @@ function LeaveLink({ title, onPress }: { title: string; onPress: () => void }) {
   );
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   scrim: { ...StyleSheet.absoluteFill, backgroundColor: "rgba(18,38,51,0.9)", zIndex: 20, elevation: 20 },
   center: { flexGrow: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 22 },
   card: { width: "100%", maxWidth: 460, borderRadius: 22, overflow: "hidden", borderWidth: 3, borderColor: GP.navy, backgroundColor: GP.cream },

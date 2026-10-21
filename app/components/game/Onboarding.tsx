@@ -52,6 +52,7 @@ import { playSound } from "./sound";
 import { GF, GP, realmColor, realmIcon } from "./theme";
 import WardenBadge from "./WardenBadge";
 import { useWardenMuted, wardenVoice } from "./wardenVoice";
+import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 const MOTES = motes();
@@ -60,6 +61,7 @@ const MOTES = motes();
 const SHORT_SCREEN = 720;
 
 export default function Onboarding({ suggestedName, onDone }: { suggestedName: string; onDone: () => void }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
   const config = useGame((s) => s.config);
@@ -367,6 +369,7 @@ export default function Onboarding({ suggestedName, onDone }: { suggestedName: s
 
 /** "Tap to continue", faded in 1.5 s after the line has finished. */
 function TapHint({ show }: { show: boolean }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const o = useSharedValue(0);
   const style = useAnimatedStyle(() => ({ opacity: o.get() }));
   // .easeIn(0.8).delay(1.5): a quick tap never flashes it.
@@ -385,6 +388,7 @@ function TapHint({ show }: { show: boolean }) {
 
 /** A line the Warden is saying, arriving word by word; the words not yet said are laid out but clear, so it never reflows. */
 function RevealLine({ text, id, revealed, onRevealed }: { text: string; id: number; revealed: boolean; onRevealed: () => void }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const words = wordsOf(text);
   const [shown, setShown] = useState({ id, n: 0 });
   const n = revealed ? words.length : shown.id === id ? shown.n : 0;
@@ -441,6 +445,7 @@ function Presence({ tint, awake, size }: { tint: string; awake: boolean; size: n
 
 /** One of the five houses, as a glowing orb. */
 function HouseOrb({ id, name, chosen, onPress }: { id: string; name: string; chosen: boolean; onPress: () => void }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const colour = realmColor(id);
   const scale = useSharedValue(chosen ? 1.12 : 1);
   useEffect(() => {
@@ -474,6 +479,7 @@ function HouseOrb({ id, name, chosen, onPress }: { id: string; name: string; cho
 }
 
 function CalmButton({ title, enabled, tint, onPress }: { title: string; enabled: boolean; tint: string; onPress: () => void }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   return (
     <Pressable
       onPress={onPress}
@@ -536,7 +542,7 @@ function MoteDot({ m, t, width, height, color }: { m: (typeof MOTES)[number]; t:
   return <AnimatedCircle r={m.r / 2} fill={color} animatedProps={props} />;
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   root: { ...StyleSheet.absoluteFill, backgroundColor: "#FFFFFF" },
   column: { flex: 1 },
   topBar: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 8 },

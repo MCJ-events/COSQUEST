@@ -29,6 +29,7 @@ import { CostQuestModelView } from "@/modules/costquest-game/src";
 import { Chip, GameHeading, GameIconButton, GamePanel, MAX_FONT_SCALE, pressFeedback, withAlpha } from "./kit";
 import { RelicArt, RelicSunburst, rarityColor, rarityInk } from "./RelicArt";
 import { edgeOf, GF, GP, realmColor } from "./theme";
+import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 /** ForgeLook.accent. */
 export const FORGE_ACCENT = "#F57329";
@@ -53,6 +54,7 @@ function ForgeArt({ weapon, size, width }: { weapon: ForgeElement; size: number;
 }
 
 export function ForgeArmourySection({ onPick }: { onPick: (id: string) => void }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const { weapons, source } = useForge();
   const models = useForgeModels();
   // ForgeCatalogueModel.refresh: bring the models down once the catalogue is in.
@@ -83,6 +85,7 @@ export function ForgeArmourySection({ onPick }: { onPick: (id: string) => void }
 }
 
 function ForgeTile({ weapon: w, has3d, onPress }: { weapon: ForgeElement; has3d: boolean; onPress: () => void }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const rarity = w.rarity ?? "common";
   return (
     <Pressable
@@ -119,6 +122,7 @@ function ForgeTile({ weapon: w, has3d, onPress }: { weapon: ForgeElement; has3d:
 }
 
 export function ForgeWeaponDetail({ id, onClose }: { id: string; onClose: () => void }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const { weapons } = useForge();
   const config = useGame((s) => s.config);
   const models = useForgeModels();
@@ -185,6 +189,7 @@ export function ForgeWeaponDetail({ id, onClose }: { id: string; onClose: () => 
 }
 
 function Stat({ title, value, icon, colour }: { title: string; value: string; icon: keyof typeof Ionicons.glyphMap; colour: string }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   return (
     <View style={[styles.stat, { backgroundColor: `${colour}1F` }]} accessible accessibilityLabel={`${title} ${value}`}>
       <View style={[styles.statIcon, { backgroundColor: colour }]}>
@@ -200,7 +205,7 @@ function Stat({ title, value, icon, colour }: { title: string; value: string; ic
   );
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   section: { gap: 10 },
   head: { flexDirection: "row", alignItems: "center", gap: 8 },
   mark: { width: 32, height: 32, borderRadius: 16, borderWidth: 2, borderColor: "#FFF", alignItems: "center", justifyContent: "center" },

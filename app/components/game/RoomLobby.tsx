@@ -13,8 +13,10 @@ import { gameStore, useGame } from "@/features/game/runtime";
 
 import { Chip, GameButton, GameTitle } from "./kit";
 import { GF, GP } from "./theme";
+import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 export default function RoomLobby({ session, state, onClose }: { session: RoomSession; state: RoomSessionState; onClose: () => void }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const insets = useSafeAreaInsets();
   const me = useGame((s) => s.me);
   const { terms, problem, joining } = state;
@@ -137,6 +139,7 @@ export default function RoomLobby({ session, state, onClose }: { session: RoomSe
 }
 
 function Line({ icon, text }: { icon: "hammer" | "locate" | "flag" | "time"; text: string }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   return (
     <View style={styles.line}>
       <Ionicons name={icon} size={18} color={GP.berry} />
@@ -145,7 +148,7 @@ function Line({ icon, text }: { icon: "hammer" | "locate" | "flag" | "time"; tex
   );
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   root: { ...StyleSheet.absoluteFill, backgroundColor: GP.berry },
   top: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 14, paddingBottom: 8 },
   back: { width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(30,58,76,0.35)", alignItems: "center", justifyContent: "center" },

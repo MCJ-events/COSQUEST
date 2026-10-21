@@ -5,7 +5,7 @@
 // Features/SpawnsFeature.swift NearbyRadar.
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useEffect, useRef, useState } from "react";
-import { StyleSheet, Text } from "react-native";
+import { Text } from "react-native";
 import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 
 import { gameStore } from "@/features/game/runtime";
@@ -14,6 +14,7 @@ import type { QuestPoint } from "@/features/game/wire";
 
 import { MAX_FONT_SCALE } from "./kit";
 import { GF, GP } from "./theme";
+import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 const POLL_MS = 60_000;
 const REDRAW_MS = 20_000;
@@ -27,6 +28,7 @@ export default function NearbyRadar({
   fix: { lat: number; lng: number } | null;
   inReach: (p: QuestPoint) => boolean;
 }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const [nextAt, setNextAt] = useState<number | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const fixRef = useRef(fix);
@@ -82,7 +84,7 @@ export default function NearbyRadar({
   );
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   // GameHUDPanel(padding: 10)
   panel: {
     flexDirection: "row",

@@ -3,7 +3,7 @@
 // (RelicsButton), placed in Roam/RoamHomeView.swift's rail (`rail`, after the
 // daily quests) behind `store.unlocked(.relics)`.
 import { useEffect } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 
 import { equippedFor } from "@/features/game/relics";
 import { forgeStore, relicsStore, useRelics } from "@/features/game/relicsLive";
@@ -11,8 +11,10 @@ import { useGame } from "@/features/game/runtime";
 
 import { WeaponGlyph } from "./RelicArt";
 import { GF, GP } from "./theme";
+import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 export default function RelicsButton({ onPress }: { onPress: () => void }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const me = useGame((s) => s.me);
   const { payload } = useRelics();
   const equipped = equippedFor(payload, me);
@@ -42,7 +44,7 @@ export default function RelicsButton({ onPress }: { onPress: () => void }) {
   );
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   button: {
     width: 46,
     height: 46,

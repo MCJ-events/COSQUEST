@@ -19,6 +19,7 @@ import { GameButton, GameIconButton, GameTitle, MAX_FONT_SCALE, announce, withAl
 import { SheetHost } from "./Sheet";
 import { GF, GP } from "./theme";
 import { wardenVoice } from "./wardenVoice";
+import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 const OPENER_COLORS = [GP.skyDeep, GP.berry, GP.sunDeep, GP.mint];
 const BRASS = "#C9A55C";
@@ -32,6 +33,7 @@ export default function AskWarden({ onClose }: { onClose: () => void }) {
 }
 
 function AskBody({ close }: { close: () => void }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const insets = useSafeAreaInsets();
   const me = useGame((s) => s.me);
   const problem = useGame((s) => s.problem);
@@ -161,7 +163,7 @@ function AskBody({ close }: { close: () => void }) {
   );
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   root: { ...StyleSheet.absoluteFill, backgroundColor: GP.navy },
   header: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 16, paddingBottom: 8 },
   intro: { flex: 1, alignItems: "center", justifyContent: "center", gap: 18 },

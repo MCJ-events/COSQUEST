@@ -8,7 +8,7 @@
 // the Relicdex have it (RelicsModel.noteDrop in RoamHomeView).
 import * as Haptics from "expo-haptics";
 import { useEffect, useId } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withSpring, withTiming } from "react-native-reanimated";
 import Svg, { Defs, RadialGradient, Rect, Stop } from "react-native-svg";
 
@@ -21,8 +21,10 @@ import { MAX_FONT_SCALE } from "./kit";
 import { RelicArt, rarityColor } from "./RelicArt";
 import { playSound } from "./sound";
 import { GF, GP } from "./theme";
+import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 export function RelicDropCard({ drop }: { drop: RelicDrop }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const { relic, isNew, shards } = drop;
   const tint = rarityColor(relic.rarity);
   const reduced = useReducedMotion();
@@ -97,7 +99,7 @@ export function RelicDropExtra({ extra }: { extra: RoamExtra }) {
 
 export default RelicDropCard;
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   card: { flexDirection: "row", alignItems: "center", gap: 14, padding: 10, borderRadius: 18, borderWidth: 2 },
   art: { width: 80, height: 80, alignItems: "center", justifyContent: "center" },
   glow: { position: "absolute", width: 112, height: 112 },
