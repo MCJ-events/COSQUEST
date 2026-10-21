@@ -165,9 +165,10 @@ async function isGroupMember(conversation, user) {
   );
 }
 
+// Ids only (distinct): no Mongoose document is built per row, which matters
+// for groups with 1,000+ members (these run on every chat list and header).
 async function bannedUserIds(conversation) {
-  const bans = await GroupBan.find({ conversation: conversation._id }, 'user');
-  return bans.map((ban) => ban.user);
+  return GroupBan.distinct('user', { conversation: conversation._id });
 }
 
 // owner / admin / member, or null if not in the group.
@@ -198,11 +199,7 @@ function canActOn(actorRole, targetRole) {
 }
 
 async function explicitGroupMemberIds(conversation) {
-  const rows = await ConversationMember.find(
-    { conversation: conversation._id, role: { $in: GROUP_ROLES } },
-    'user'
-  );
-  return rows.map((row) => row.user);
+  return ConversationMember.distinct('user', { conversation: conversation._id, role: { $in: GROUP_ROLES } });
 }
 
 // A User query for "everyone who can be in this chat" - the same rule
@@ -225,8 +222,50 @@ async function memberFilterFor(conversation) {
   return { onboardingComplete: true };
 }
 
-async function countGroupMembers(conversation) {
-  return User.countDocuments(await memberFilterFor(conversation));
+// `filters` (optional Map): keeps the filter it built, keyed by conversation
+// id, so the chat header can reuse it for the online count.
+async function countGroupMembers(conversation, filters) {
+  const filter = await memberFilterFor(conversation);
+  if (filters) filters.set(String(conversation._id), filter);
+  return User.countDocuments(filter);
+}
+
+// countGroupMembers() for several groups at once (the chat list), with the
+// same answer and the same count query per group, but the member and ban
+// lists of all the groups come back in two queries, as one array of ids per
+// group (no document per member row is built in Node). Faction groups
+// (members pulled in by faction) keep their own filter.
+// Returns Map(conversationId -> count).
+async function countGroupsMembers(groups) {
+  const ids = groups.map((group) => group._id);
+  const idsByConversation = (rows) => new Map(rows.map((row) => [String(row._id), row.users]));
+  const [explicitBy, bannedBy] = await Promise.all([
+    ConversationMember.aggregate([
+      { $match: { conversation: { $in: ids }, role: { $in: GROUP_ROLES } } },
+      { $group: { _id: '$conversation', users: { $push: '$user' } } },
+    ]).then(idsByConversation),
+    GroupBan.aggregate([
+      { $match: { conversation: { $in: ids } } },
+      { $group: { _id: '$conversation', users: { $push: '$user' } } },
+    ]).then(idsByConversation),
+  ]);
+
+  const counts = new Map();
+  await Promise.all(
+    groups.map(async (group) => {
+      const id = String(group._id);
+      const explicit = explicitBy.get(id) || [];
+      const banned = bannedBy.get(id) || [];
+      // The same filter memberFilterFor() builds. The ids are ObjectIds
+      // straight from Mongo, so the native driver counts them as they are.
+      const filter =
+        group.group?.kind === 'faction'
+          ? { onboardingComplete: true, $or: [{ faction: group.factionKey }, { _id: { $in: explicit } }], _id: { $nin: banned } }
+          : { _id: { $in: explicit, $nin: banned } };
+      counts.set(id, await User.collection.countDocuments(filter));
+    })
+  );
+  return counts;
 }
 
 // ==========================================================================
@@ -240,9 +279,9 @@ async function countGroupMembers(conversation) {
 const ONLINE_COUNT_MAX = 5000;
 const ONLINE_COUNT_TYPES = ['group', 'faction', 'community'];
 
-async function onlineCountFor(conversation, memberCount) {
+async function onlineCountFor(conversation, memberCount, memberFilter = null) {
   if (!ONLINE_COUNT_TYPES.includes(conversation.type)) return null;
-  const filter = { $and: [await memberFilterFor(conversation), { 'privacy.showOnlineStatus': { $ne: false } }] };
+  const filter = { $and: [memberFilter || (await memberFilterFor(conversation)), { 'privacy.showOnlineStatus': { $ne: false } }] };
 
   const online = await onlineTotal();
   if (!online) return 0;
@@ -458,23 +497,169 @@ function previewMessage(message, viewerId) {
   return message.content;
 }
 
-async function summarizeConversation(conversation, me) {
-  const [lastMessage, member] = await Promise.all([
-    Message.findOne({ conversation: conversation._id, deletedFor: { $ne: me._id } })
-      .sort({ createdAt: -1 })
-      .populate('sender', 'profile.username profile.firstName'),
-    ConversationMember.findOne({ conversation: conversation._id, user: me._id }),
-  ]);
-  const lastReadAt = member?.lastReadAt || EPOCH;
-  const unreadCount = await Message.countDocuments({
-    conversation: conversation._id,
-    createdAt: { $gt: lastReadAt },
-    sender: { $ne: me._id },
-    deletedFor: { $ne: me._id },
-    // "Mute only Sparks / thread activity": replies inside Sparks don't count.
-    ...(member?.sparksMuted ? { postedInSpark: { $ne: true } } : {}),
+// Chat-list rows, built for many conversations at once (GET /api/chats asks
+// for ~10). Everything is fetched in one parallel round of batched queries
+// rather than one chain of queries per chat:
+//  - my ConversationMember rows: one query (or the rows the caller already has)
+//  - last message: ONE aggregate (an indexed "newest first, limit 1" per
+//    chat, joined with $unionWith), senders in ONE query
+//  - unread counts: ONE aggregate ($or of one indexed range per chat)
+//  - member counts: one count per community / faction / group, with the
+//    member and ban lists of all groups fetched together (countGroupsMembers)
+//  - DMs: the other people and their read positions in one query each
+// The row itself is built by buildSummary(), unchanged from the old
+// one-chat-at-a-time version, so the response is byte-for-byte the same.
+//
+// opts.myRows: Map(conversationId -> my ConversationMember row), when the
+// caller already loaded them. opts.memberFilters: a Map that receives each
+// group's member filter (see countGroupMembers).
+const SENDER_FIELDS = 'profile.username profile.displayName profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl faction lastActiveAt privacy.showOnlineStatus expertise pointsBalance rankOverride';
+const LAST_MESSAGE_PROJECTION = { conversation: 1, sender: 1, kind: 1, content: 1, deletedForEveryone: 1, callLog: 1, poll: 1, album: 1, createdAt: 1 };
+const LAST_SENDER_FIELDS = 'profile.username profile.firstName';
+const DM_PEER_FIELDS = `${SENDER_FIELDS} privacy.readReceipts`;
+
+async function summarizeConversations(conversations, me, opts = {}) {
+  if (!conversations.length) return [];
+  const ids = conversations.map((conversation) => conversation._id);
+  const key = (id) => String(id);
+
+  const myRowsPromise = opts.myRows
+    ? Promise.resolve(opts.myRows)
+    : ConversationMember.find({ conversation: { $in: ids }, user: me._id }).then(
+        (rows) => new Map(rows.map((row) => [key(row.conversation), row]))
+      );
+
+  // Newest message per chat, ONE round trip: an indexed "newest first,
+  // limit 1" per chat, glued together with $unionWith. Hydrated like the
+  // findOne() it replaces, so defaults (and so the response) are unchanged.
+  const latestPipeline = (conversation) => [
+    { $match: { conversation: conversation._id, deletedFor: { $ne: me._id } } },
+    { $sort: { createdAt: -1 } },
+    { $limit: 1 },
+    { $project: LAST_MESSAGE_PROJECTION },
+  ];
+  const [firstPipeline, ...otherPipelines] = conversations.map(latestPipeline);
+  const lastMessagesPromise = Message.aggregate([
+    ...firstPipeline,
+    ...otherPipelines.map((pipeline) => ({ $unionWith: { coll: Message.collection.collectionName, pipeline } })),
+  ]).then(async (rows) => {
+    const byConversation = new Map(rows.map((row) => [key(row.conversation), Message.hydrate(row)]));
+    const messages = conversations.map((conversation) => byConversation.get(key(conversation._id)) || null);
+    const senderIds = [...new Set(messages.filter((m) => m?.sender).map((m) => key(m.sender)))];
+    const senders = senderIds.length
+      ? await User.find({ _id: { $in: senderIds } }).select(LAST_SENDER_FIELDS)
+      : [];
+    const byId = new Map(senders.map((user) => [key(user._id), user]));
+    // Same shape populate('sender') gave: the user, or null if they're gone.
+    return messages.map((message) => {
+      if (message) message.sender = message.sender ? byId.get(key(message.sender)) || null : null;
+      return message;
+    });
   });
 
+  const unreadPromise = myRowsPromise.then(async (myRows) => {
+    const clauses = conversations.map((conversation) => {
+      const member = myRows.get(key(conversation._id));
+      return {
+        conversation: conversation._id,
+        createdAt: { $gt: member?.lastReadAt || EPOCH },
+        sender: { $ne: me._id },
+        deletedFor: { $ne: me._id },
+        // "Mute only Sparks / thread activity": replies inside Sparks don't count.
+        ...(member?.sparksMuted ? { postedInSpark: { $ne: true } } : {}),
+      };
+    });
+    const rows = await Message.aggregate([
+      { $match: clauses.length === 1 ? clauses[0] : { $or: clauses } },
+      { $group: { _id: '$conversation', n: { $sum: 1 } } },
+    ]);
+    return new Map(rows.map((row) => [key(row._id), row.n]));
+  });
+
+  // Member counts: one per community / faction / group (not per member).
+  const countsByConversation = new Map();
+  const countJobs = [];
+  if (conversations.some((conversation) => conversation.type === 'community')) {
+    countJobs.push(
+      User.countDocuments({ onboardingComplete: true }).then((n) => {
+        for (const c of conversations) if (c.type === 'community') countsByConversation.set(key(c._id), n);
+      })
+    );
+  }
+  for (const factionKey of new Set(conversations.filter((c) => c.type === 'faction').map((c) => c.factionKey))) {
+    countJobs.push(
+      User.countDocuments({ faction: factionKey }).then((n) => {
+        for (const c of conversations) if (c.type === 'faction' && c.factionKey === factionKey) countsByConversation.set(key(c._id), n);
+      })
+    );
+  }
+  const groups = conversations.filter((c) => c.type === 'group');
+  if (opts.memberFilters) {
+    // The chat header (one chat) needs the member filter again for its online
+    // count, so build it the usual way and keep it.
+    for (const group of groups) {
+      countJobs.push(countGroupMembers(group, opts.memberFilters).then((n) => countsByConversation.set(key(group._id), n)));
+    }
+  } else if (groups.length) {
+    countJobs.push(
+      countGroupsMembers(groups).then((counts) => {
+        for (const [id, n] of counts) countsByConversation.set(id, n);
+      })
+    );
+  }
+
+  // DMs: the other person (profile, privacy) and how far they've read.
+  const dmOther = new Map();
+  for (const conversation of conversations) {
+    if (conversation.type !== 'dm') continue;
+    const otherId = conversation.participants.find((participantId) => String(participantId) !== String(me._id));
+    if (otherId) dmOther.set(key(conversation._id), otherId);
+  }
+  const otherIds = [...new Set([...dmOther.values()].map(key))];
+  const dmPromise = otherIds.length
+    ? Promise.all([
+        User.find({ _id: { $in: otherIds } }).select(DM_PEER_FIELDS),
+        ConversationMember.find({
+          conversation: { $in: conversations.filter((c) => dmOther.has(key(c._id))).map((c) => c._id) },
+          user: { $in: otherIds },
+        }),
+        Promise.all(otherIds.map((id) => isOnline(id))),
+      ]).then(([users, rows, online]) => ({
+        users: new Map(users.map((user) => [key(user._id), user])),
+        rows: new Map(rows.map((row) => [`${key(row.conversation)}:${key(row.user)}`, row])),
+        online: new Map(otherIds.map((id, i) => [id, online[i]])),
+      }))
+    : Promise.resolve({ users: new Map(), rows: new Map(), online: new Map() });
+
+  const [myRows, lastMessages, unread, dm] = await Promise.all([
+    myRowsPromise,
+    lastMessagesPromise,
+    unreadPromise,
+    dmPromise,
+    Promise.all(countJobs),
+  ]);
+
+  return conversations.map((conversation, i) => {
+    const id = key(conversation._id);
+    const otherId = dmOther.get(id);
+    return buildSummary(conversation, me, {
+      lastMessage: lastMessages[i],
+      member: myRows.get(id) || null,
+      unreadCount: unread.get(id) || 0,
+      memberCount: countsByConversation.get(id),
+      otherUser: otherId ? dm.users.get(key(otherId)) || null : null,
+      otherMember: otherId ? dm.rows.get(`${id}:${key(otherId)}`) || null : null,
+      otherOnline: otherId ? Boolean(dm.online.get(key(otherId))) : false,
+    });
+  });
+}
+
+async function summarizeConversation(conversation, me, opts) {
+  const [summary] = await summarizeConversations([conversation], me, opts);
+  return summary;
+}
+
+function buildSummary(conversation, me, { lastMessage, member, unreadCount, memberCount, otherUser, otherMember, otherOnline }) {
   const summary = {
     id: String(conversation._id),
     type: conversation.type,
@@ -499,12 +684,12 @@ async function summarizeConversation(conversation, me) {
 
   if (conversation.type === 'community') {
     summary.title = 'Community';
-    summary.memberCount = await User.countDocuments({ onboardingComplete: true });
+    summary.memberCount = memberCount;
   } else if (conversation.type === 'group') {
     const group = conversation.group || {};
     summary.title = group.name || 'Group';
     summary.factionKey = conversation.factionKey || null;
-    summary.memberCount = await countGroupMembers(conversation);
+    summary.memberCount = memberCount;
     const now = new Date();
     const myRole = GROUP_ROLES.includes(member?.role) ? member.role : 'member';
     const slowModeSeconds = group.slowModeSeconds || 0;
@@ -531,17 +716,8 @@ async function summarizeConversation(conversation, me) {
     const faction = getFaction(conversation.factionKey);
     summary.factionKey = conversation.factionKey;
     summary.title = faction ? faction.name : conversation.factionKey;
-    summary.memberCount = await User.countDocuments({ faction: conversation.factionKey });
+    summary.memberCount = memberCount;
   } else {
-    const otherId = conversation.participants.find((participantId) => String(participantId) !== String(me._id));
-
-    const [otherUser, otherMember] = otherId
-      ? await Promise.all([
-          User.findById(otherId),
-          ConversationMember.findOne({ conversation: conversation._id, user: otherId }),
-        ])
-      : [null, null];
-
     if (otherUser) {
       // Same opt-out userPreview() already uses for lastActiveAt.
       const showsStatus = otherUser.privacy?.showOnlineStatus !== false;
@@ -550,7 +726,7 @@ async function summarizeConversation(conversation, me) {
 
       summary.otherParticipant = {
         ...userPreview(otherUser),
-        isOnline: showsStatus ? await isOnline(otherUser._id) : false,
+        isOnline: showsStatus ? otherOnline : false,
         lastReadAt: otherLastReadAt,
       };
     }
@@ -746,19 +922,40 @@ function forBroadcast(serialized) {
   return { ...serialized, editedAt: null, canRollback: false, previousContent: null };
 }
 
-const SENDER_FIELDS = 'profile.username profile.displayName profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl faction lastActiveAt privacy.showOnlineStatus expertise pointsBalance rankOverride';
-
 // GET /api/chats - "Your Space" (community + faction room) plus every DM.
+// Same rooms, same order and same rows as before; the lookups that don't
+// depend on each other run in parallel, and the rows are built in one batch
+// (summarizeConversations) instead of a chain of queries per chat.
 async function listChats(req, res) {
   const me = req.user;
-  const rooms = [await getOrCreateCommunityConversation()];
-  if (me.faction) rooms.push(await getOrCreateFactionConversation(me.faction));
+  const [community, factionRoom, memberships, factionGroups, myBans] = await Promise.all([
+    getOrCreateCommunityConversation(),
+    me.faction ? getOrCreateFactionConversation(me.faction) : null,
+    ConversationMember.find({ user: me._id }).populate('conversation'),
+    // Faction groups for my faction (members are pulled in automatically).
+    me.faction
+      ? Conversation.find({
+          type: 'group',
+          'group.kind': 'faction',
+          factionKey: me.faction,
+          'group.archived': { $ne: true },
+        })
+      : [],
+    me.faction ? GroupBan.find({ user: me._id }, 'conversation') : [],
+  ]);
 
-  const memberships = await ConversationMember.find({ user: me._id }).populate('conversation');
+  const rooms = [community];
+  if (factionRoom) rooms.push(factionRoom);
+
+  // Every row I have (also read positions in community / faction rooms):
+  // the summaries reuse them instead of asking again per chat.
+  const myRows = new Map();
   const seen = new Set(rooms.map((room) => String(room._id)));
   for (const membership of memberships) {
     const conversation = membership.conversation;
-    if (!conversation || seen.has(String(conversation._id))) continue;
+    if (!conversation) continue;
+    myRows.set(String(conversation._id), membership);
+    if (seen.has(String(conversation._id))) continue;
     const isDm = conversation.type === 'dm';
     const isMyGroup =
       conversation.type === 'group' && !conversation.group?.archived && GROUP_ROLES.includes(membership.role);
@@ -768,28 +965,16 @@ async function listChats(req, res) {
     }
   }
 
-  // Faction groups for my faction (members are pulled in automatically).
-  if (me.faction) {
-    const factionGroups = await Conversation.find({
-      type: 'group',
-      'group.kind': 'faction',
-      factionKey: me.faction,
-      'group.archived': { $ne: true },
-    });
-    const bans = factionGroups.length
-      ? await GroupBan.find({ user: me._id, conversation: { $in: factionGroups.map((group) => group._id) } }, 'conversation')
-      : [];
-    const bannedFrom = new Set(bans.map((ban) => String(ban.conversation)));
-    for (const conversation of factionGroups) {
-      if (bannedFrom.has(String(conversation._id))) continue;
-      if (!seen.has(String(conversation._id))) {
-        rooms.push(conversation);
-        seen.add(String(conversation._id));
-      }
+  const bannedFrom = new Set(myBans.map((ban) => String(ban.conversation)));
+  for (const conversation of factionGroups) {
+    if (bannedFrom.has(String(conversation._id))) continue;
+    if (!seen.has(String(conversation._id))) {
+      rooms.push(conversation);
+      seen.add(String(conversation._id));
     }
   }
 
-  const chats = await Promise.all(rooms.map((conversation) => summarizeConversation(conversation, me)));
+  const chats = await summarizeConversations(rooms, me, { myRows });
   return res.json({ chats });
 }
 
@@ -832,16 +1017,19 @@ async function getConversationDetail(req, res) {
     ) || await Conversation.findById(conversation._id);
   }
 
-  const summary = await summarizeConversation(conversation, req.user);
-  let pinnedMessage = null;
-  if (conversation.pinnedMessage && conversation.pinnedUntil > new Date()) {
-    const pinned = await Message.findById(conversation.pinnedMessage).populate('sender', 'profile.username profile.firstName');
-    if (pinned && !pinned.deletedForEveryone && !hiddenFor(pinned, req.userId)) {
-      pinnedMessage = pinPreview(pinned, conversation);
-    }
-  }
+  // The summary and the pinned message don't depend on each other: in parallel.
+  const memberFilters = new Map();
+  const [summary, pinnedMessage] = await Promise.all([
+    summarizeConversation(conversation, req.user, { memberFilters }),
+    (async () => {
+      if (!(conversation.pinnedMessage && conversation.pinnedUntil > new Date())) return null;
+      const pinned = await Message.findById(conversation.pinnedMessage).populate('sender', 'profile.username profile.firstName');
+      return pinned && !pinned.deletedForEveryone && !hiddenFor(pinned, req.userId) ? pinPreview(pinned, conversation) : null;
+    })(),
+  ]);
   // Group / faction / community only (null for DMs, or when too big to count quickly).
-  const onlineCount = await onlineCountFor(conversation, summary.memberCount);
+  // Groups reuse the member filter the summary just built (no second member lookup).
+  const onlineCount = await onlineCountFor(conversation, summary.memberCount, memberFilters.get(String(conversation._id)));
   return res.json({ chat: { ...summary, pinnedMessage, onlineCount } });
 }
 

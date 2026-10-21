@@ -158,5 +158,9 @@ const userSchema = new mongoose.Schema(
 userSchema.index({ 'profile.usernameNormalized': 1 }, { unique: true, sparse: true });
 userSchema.index({ onboardingComplete: 1, pointsBalance: -1, _id: 1 });
 userSchema.index({ onboardingComplete: 1, interests: 1, pointsBalance: -1, _id: 1 });
+// Faction rooms: the member count in the chat list / header ({ faction })
+// and the member filter of faction rooms and faction groups
+// ({ faction, onboardingComplete }). Without it each is a full users scan.
+userSchema.index({ faction: 1, onboardingComplete: 1 });
 
 module.exports = mongoose.model('User', userSchema);
