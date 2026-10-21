@@ -22,6 +22,10 @@
 #                                         read-only use only)
 #   (--rn-game is still accepted: it is the default now, and implies --staging
 #   as it always did.)
+#   scripts/verify-ios.sh --forge         with --run: Forge in the world (task
+#                                         056): the by-hand list for the 3D
+#                                         runtime (react-native-filament) against
+#                                         a game server with forge_world on
 #   scripts/verify-ios.sh --polish        with --run: also the fit checks of
 #                                         docs/polish (task 058) on three
 #                                         simulators: iPhone SE (home button,
@@ -51,6 +55,7 @@ RUN=0
 NATIVE_GAME=0
 STAGING=0
 POLISH=0
+FORGE=0
 for arg in "$@"; do
   case "$arg" in
     --no-unity) NO_UNITY=1 ;;
@@ -60,6 +65,7 @@ for arg in "$@"; do
     --staging) STAGING=1 ;;
     --rn-game) STAGING=1 ;;
     --polish) POLISH=1; RUN=1 ;;
+    --forge) FORGE=1; RUN=1; STAGING=1 ;;
     -h|--help) sed -n '2,38p' "$0"; exit 0 ;;
     *) echo "unknown option: $arg" >&2; exit 2 ;;
   esac
@@ -198,6 +204,16 @@ grep -q "Pod installation complete" "$LOGS/pod-install.log" || { echo "pod insta
 grep -q "react-native-keyboard-controller" ios/Podfile.lock \
   && echo "    react-native-keyboard-controller pod: ok" \
   || echo "    WARNING: react-native-keyboard-controller is not in Podfile.lock" >&2
+# Forge in the world (task 056): the 3D runtime is react-native-filament
+# (Metal on iOS) with react-native-worklets-core for its render loop.
+for pod in "react-native-filament" "react-native-worklets-core"; do
+  grep -q "$pod" ios/Podfile.lock \
+    && echo "    $pod pod: ok" \
+    || { echo "    MISSING: $pod is not in Podfile.lock (Forge models would show thumbnails only)" >&2; exit 1; }
+done
+ls -d "$APP"/node_modules/react-native-filament/ios/libs/filament/lib/* >/dev/null 2>&1 \
+  && echo "    prebuilt filament libraries shipped in the npm package: ok" \
+  || echo "    WARNING: no prebuilt filament libraries under node_modules/react-native-filament/ios/libs/filament/lib (pod may try to build filament)" >&2
 ran+=("pod install")
 
 WORKSPACE="$(ls -d ios/*.xcworkspace | head -1)"
@@ -275,6 +291,19 @@ if [ "$RUN" = 1 ]; then
   echo "     - xcrun simctl openurl $device 'cosquest://nowhere' shows 'This link doesn't go anywhere' (39dda0c)"
   echo "     - a 1:1 call with Sparks on (sparks-call-audio module), then add a third person: no crash (9034081)"
   ran+=("simulator run" "screenshots")
+
+  # Forge in the world (task 056): what only a phone can show.
+  if [ "$FORGE" = 1 ]; then
+    echo "    By hand, Forge in the world (docs/forge/DROP-IN.md; game server with CQ_FEATURES_ON=forge_world):"
+    echo "     - map: Forge finds show as diamond pins with the item's picture; tap one in reach: the 3D model turns (Metal)"
+    echo "     - Claim: the sunburst, 'Yours now', Equip it; the HUD chip shows the item; the Forge bag lists it"
+    echo "     - Forge bag > Avatar: a hero plays idle; Walk and Celebrate buttons switch clips; Wear puts it on the HUD chip and map marker"
+    echo "     - a duel: the versus card shows your Forge weapon (3D) and a Forge Guardian when the server picked one"
+    echo "     - a point with a Forge station: the station model stands where the shrine was, its environment behind, your avatar beside it"
+    echo "     - win a point: your avatar celebrates on the reward screen"
+    echo "     - Xcode memory gauge with three models on screen: note the number (Android emulator figures in docs/forge/DROP-IN.md)"
+    ran+=("forge by-hand list")
+  fi
 
   # 7. Polish fit checks (task 058, docs/polish/BASELINE.md has the Android side).
   if [ "$POLISH" = 1 ]; then

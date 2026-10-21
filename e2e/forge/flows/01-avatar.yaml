@@ -1,0 +1,47 @@
+# Forge drop-in proof (cq 056) 1/4, characters: pick a Forge hero as your
+# avatar. It plays idle, walk and celebrate (rigged by the Forge's rig stage),
+# then shows on the HUD chip and the map marker. Nothing in the app names it:
+# it is whatever character the server has published with role "hero".
+appId: com.dammy0227.cosquest
+name: F01 Forge avatar
+---
+- runFlow:
+    file: ../../maestro/common/signin.yaml
+    env: { USER: ada, PASS: cosquest-dev-1 }
+- runFlow: ../../maestro/common/game.yaml
+- runFlow: ../../maestro/common/warden-later.yaml
+- extendedWaitUntil:
+    visible:
+      id: "forge-hud-chip"
+    timeout: 60000
+- takeScreenshot: f01-map-chip
+- tapOn:
+    id: "forge-hud-chip"
+- extendedWaitUntil:
+    visible: "Forge bag"
+    timeout: 10000
+- tapOn: "Avatar"
+- extendedWaitUntil:
+    visible: "Wear"
+    timeout: 20000
+# The model downloads (once per version) and starts its idle clip.
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: f01-avatar-idle
+- tapOn: "Walk"
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: f01-avatar-walk
+- tapOn: "Celebrate"
+- waitForAnimationToEnd:
+    timeout: 1500
+- takeScreenshot: f01-avatar-celebrate
+- tapOn: "Wear"
+- extendedWaitUntil:
+    visible: "Take off"
+    timeout: 15000
+- takeScreenshot: f01-avatar-worn
+- tapOn: "Close"
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: f01-map-with-avatar

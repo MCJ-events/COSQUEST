@@ -1,0 +1,41 @@
+# Forge drop-in proof (cq 056) 2/4, items: a Forge weapon found on the map
+# (the server's spawn rules put it there), claimed in reach with the reward
+# moment, equipped, and in the bag. DROP_NAME is the find the phone was
+# walked to (e2e/forge/proof.sh picks the nearest live one).
+appId: com.dammy0227.cosquest
+name: F02 Forge find, claim, equip
+---
+- launchApp
+- runFlow: ../../maestro/common/game.yaml
+- runFlow: ../../maestro/common/warden-later.yaml
+- extendedWaitUntil:
+    visible: "Forge find: ${DROP_NAME}.*"
+    timeout: 90000
+- takeScreenshot: f02-map-find
+- tapOn: "Forge find: ${DROP_NAME}.*"
+- extendedWaitUntil:
+    visible: "Claim this Forge find"
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: f02-find-3d
+- tapOn: "Claim this Forge find"
+- extendedWaitUntil:
+    visible: "YOURS NOW|ANOTHER ONE"
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 2500
+- takeScreenshot: f02-claimed
+- tapOn: "Equip this weapon"
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: f02-equipped-chip
+- tapOn:
+    id: "forge-hud-chip"
+- extendedWaitUntil:
+    visible: "Unequip"
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: f02-bag
+- tapOn: "Close"

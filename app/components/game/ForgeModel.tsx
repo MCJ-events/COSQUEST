@@ -188,6 +188,7 @@ function FilamentModel({
         <F.Camera cameraPosition={eye} cameraTarget={[0, 0, 0]} near={0.05} far={50} />
         <F.DefaultLight />
         <Rigged F={F} uri={uri} entry={entry} animation={animation} onAnimationEnd={onAnimationEnd} spin={spin} unitCube />
+        {FPS_LOG ? <FrameMeter F={F} label={`model:${entry.name}`} /> : null}
       </F.FilamentView>
     </F.FilamentScene>
   );
@@ -247,6 +248,33 @@ function Rigged({
       {spin ? <Spinner F={F} value={rotate} base={rotateY ?? 0} /> : null}
     </F.Model>
   );
+}
+
+/**
+ * Frames drawn by this 3D view, logged every 5 s as `[forge-fps] <label> <fps>`
+ * when EXPO_PUBLIC_WORLD_TIMING=1 (test builds): how the measurements in
+ * docs/forge/DROP-IN.md were taken.
+ */
+const FPS_LOG = process.env.EXPO_PUBLIC_WORLD_TIMING === "1";
+function FrameMeter({ F, label }: { F: Filament; label: string }) {
+  const frames = (ENGINE as { W: Worklets }).W.useSharedValue(0);
+  F.RenderCallbackContext.useRenderCallback(
+    () => {
+      "worklet";
+      frames.value = frames.value + 1;
+    },
+    [frames],
+  );
+  useEffect(() => {
+    let last = frames.value;
+    const t = setInterval(() => {
+      const now = frames.value;
+      console.log(`[forge-fps] ${label} ${((now - last) / 5).toFixed(1)}`);
+      last = now;
+    }, 5000);
+    return () => clearInterval(t);
+  }, [frames, label]);
+  return null;
 }
 
 function Spinner({ F, value, base }: { F: Filament; value: { value: Float3 }; base: number }) {
@@ -316,6 +344,7 @@ export function ForgeStage({
             {items.map((item, i) => (
               <StageModel key={`${item.entry.id}-${i}`} F={F} item={item} />
             ))}
+            {FPS_LOG ? <FrameMeter F={F} label={`stage:${items.length}`} /> : null}
           </F.FilamentView>
         </F.FilamentScene>
       </Boundary>

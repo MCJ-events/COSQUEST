@@ -29,7 +29,14 @@ mkdir -p "$OUT/$label" "$VIDEOS"
 "$here/emu.sh" tunnels
 # The phone's GPS also gets Trafalgar Square again each time (a phone outdoors
 # keeps getting fixes; a lone fix at boot goes stale).
-( while true; do sleep 5; "$here/emu.sh" tunnels >/dev/null 2>&1; adb emu geo fix -0.1278 51.5074 >/dev/null 2>&1; done ) &
+# GEO="<lng> <lat>" parks the phone somewhere else (the Forge proof walks it
+# to a find); GEO_FILE names a file holding that, re-read every 5 s, so a
+# flow's script can move the phone mid-journey.
+: "${GEO:=-0.1278 51.5074}"
+( while true; do sleep 5; "$here/emu.sh" tunnels >/dev/null 2>&1
+    g="$GEO"; [ -n "${GEO_FILE:-}" ] && [ -s "$GEO_FILE" ] && g="$(cat "$GEO_FILE")"
+    # shellcheck disable=SC2086
+    adb emu geo fix $g >/dev/null 2>&1; done ) &
 keeper=$!
 adb shell rm -f "/sdcard/jr-$label-*.mp4" /sdcard/jr-stop >/dev/null 2>&1
 adb shell "i=0; while [ ! -f /sdcard/jr-stop ]; do screenrecord --time-limit 170 --bit-rate 4000000 ${REC_SIZE:+--size $REC_SIZE} /sdcard/jr-$label-\$(printf %02d \$i).mp4 || break; i=\$((i+1)); done" &
