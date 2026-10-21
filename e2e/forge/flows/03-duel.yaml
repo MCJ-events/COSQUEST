@@ -11,7 +11,9 @@ name: F03 duel with a Forge weapon
 - extendedWaitUntil:
     visible: "Test Guardian's Post"
     timeout: 20000
-- tapOn: "Fight"
+- tapOn:
+    text: "Fight"
+    waitToSettleTimeoutMs: 1500
 # The briefing (stance, the Guardian) has its own Fight.
 - extendedWaitUntil:
     visible: ".*against.*|Fight"
@@ -20,16 +22,21 @@ name: F03 duel with a Forge weapon
 - tapOn:
     text: "Fight"
     optional: true
+    waitToSettleTimeoutMs: 1500
 - extendedWaitUntil:
     visible: ".*against.*"
     timeout: 20000
     optional: true
 - takeScreenshot: f03-versus
-- waitForAnimationToEnd:
+- extendedWaitUntil:
+    visible: "never-on-screen-wait"
     timeout: 4000
+    optional: true
 - takeScreenshot: f03-fight
 - extendedWaitUntil:
     visible: "Back to the map"
     timeout: 150000
 - takeScreenshot: f03-result
-- tapOn: "Back to the map"
+- tapOn:
+    text: "Back to the map"
+    waitToSettleTimeoutMs: 1500

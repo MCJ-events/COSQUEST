@@ -12,10 +12,13 @@ name: F05 measure
     commands:
       - tapOn:
           id: "forge-hud-chip"
+          waitToSettleTimeoutMs: 1500
       - extendedWaitUntil:
           visible: "Forge bag"
           timeout: 10000
-      - tapOn: "Avatar"
+      - tapOn:
+          text: "Avatar"
+          waitToSettleTimeoutMs: 1500
       - extendedWaitUntil:
           visible: "Wear|Take off"
           timeout: 20000
@@ -23,7 +26,9 @@ name: F05 measure
           visible: "never-on-screen-wait"
           timeout: 12000
           optional: true
-      - tapOn: "Close"
+      - tapOn:
+          text: "Close"
+          waitToSettleTimeoutMs: 1500
       - extendedWaitUntil:
           visible: "never-on-screen-wait"
           timeout: 6000
@@ -32,7 +37,9 @@ name: F05 measure
 - extendedWaitUntil:
     visible: "Play"
     timeout: 20000
-- tapOn: "Play"
+- tapOn:
+    text: "Play"
+    waitToSettleTimeoutMs: 1500
 - extendedWaitUntil:
     visible: "Tap the shrine.*"
     timeout: 20000

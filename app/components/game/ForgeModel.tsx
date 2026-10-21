@@ -53,6 +53,12 @@ const FILAMENT = ENGINE?.F ?? null;
  * so emulator runs use ANGLE (e2e/emu.sh EMU_GPU=swangle_indirect); vulkan
  * is there too but SwiftShader Vulkan crashed recreating swapchains (cq 056).
  */
+/**
+ * Frames per refresh: 2 is 30 fps on a 60 Hz screen, plenty for a turning
+ * model or an idle clip and half the GPU work (battery). Test builds on the
+ * software-rendered emulator use more (EXPO_PUBLIC_FORGE_FRAME_INTERVAL).
+ */
+const FRAME_RATE = { interval: Math.max(1, Math.min(6, Number(process.env.EXPO_PUBLIC_FORGE_FRAME_INTERVAL) || 2)) };
 const BACKEND = ((v) => (v === "vulkan" || v === "opengl" || v === "metal" ? v : undefined))(process.env.EXPO_PUBLIC_FORGE_BACKEND);
 
 export const FORGE_3D_RUNTIME = FILAMENT !== null;
@@ -198,7 +204,7 @@ function FilamentModel({
   // above; everything else from chest height.
   const eye: Float3 = entry.type === "weapon" ? [0, 0.15, distance] : [0, 0.12, distance];
   return (
-    <F.FilamentScene backend={BACKEND}>
+    <F.FilamentScene backend={BACKEND} frameRateOptions={FRAME_RATE}>
       <F.FilamentView style={styles.fill} enableTransparentRendering>
         <F.Camera cameraPosition={eye} cameraTarget={[0, 0, 0]} near={0.05} far={50} />
         <F.DefaultLight />
@@ -352,7 +358,7 @@ export function ForgeStage({
   return (
     <View style={style}>
       <Boundary fallback={fallback} key={key}>
-        <F.FilamentScene backend={BACKEND}>
+        <F.FilamentScene backend={BACKEND} frameRateOptions={FRAME_RATE}>
           <F.FilamentView style={styles.fill} enableTransparentRendering>
             <F.Camera cameraPosition={eye} cameraTarget={target} near={0.1} far={200} />
             <F.DefaultLight />

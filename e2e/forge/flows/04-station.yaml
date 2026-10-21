@@ -14,22 +14,32 @@ name: F04 Forge station at a point
     visible: "Play"
     timeout: 20000
 - takeScreenshot: f04-point-sheet
-- tapOn: "Play"
+- tapOn:
+    text: "Play"
+    waitToSettleTimeoutMs: 1500
 - extendedWaitUntil:
     visible: "Tap the shrine.*"
     timeout: 20000
-- waitForAnimationToEnd:
+- extendedWaitUntil:
+    visible: "never-on-screen-wait"
     timeout: 10000
+    optional: true
 - takeScreenshot: f04-station-scene
-- tapOn: "Leave"
-- waitForAnimationToEnd:
+- tapOn:
+    text: "Leave"
+    waitToSettleTimeoutMs: 1500
+- extendedWaitUntil:
+    visible: "never-on-screen-wait"
     timeout: 2000
+    optional: true
 # A point the server left plain keeps the built-in shrine.
 - openLink: "cosquest://play?shrine=XQ-trafalgar-trivia"
 - extendedWaitUntil:
     visible: "Play"
     timeout: 20000
-- tapOn: "Play"
+- tapOn:
+    text: "Play"
+    waitToSettleTimeoutMs: 1500
 - extendedWaitUntil:
     visible: "Tap the shrine.*"
     timeout: 20000

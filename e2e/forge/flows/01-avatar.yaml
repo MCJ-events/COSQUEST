@@ -17,10 +17,13 @@ name: F01 Forge avatar
 - takeScreenshot: f01-map-chip
 - tapOn:
     id: "forge-hud-chip"
+    waitToSettleTimeoutMs: 1500
 - extendedWaitUntil:
     visible: "Forge bag"
     timeout: 10000
-- tapOn: "Avatar"
+- tapOn:
+    text: "Avatar"
+    waitToSettleTimeoutMs: 1500
 - extendedWaitUntil:
     visible: "Wear|Take off"
     timeout: 20000
@@ -29,28 +32,46 @@ name: F01 Forge avatar
     when:
       visible: "Take off"
     commands:
-      - tapOn: "Take off"
+      - tapOn:
+          text: "Take off"
+          waitToSettleTimeoutMs: 1500
       - extendedWaitUntil:
           visible: "Wear"
           timeout: 15000
 # The model downloads (once per version) and starts its idle clip.
-- waitForAnimationToEnd:
+- extendedWaitUntil:
+    visible: "never-on-screen-wait"
     timeout: 8000
+    optional: true
 - takeScreenshot: f01-avatar-idle
-- tapOn: "Walk"
-- waitForAnimationToEnd:
+- tapOn:
+    text: "Walk"
+    waitToSettleTimeoutMs: 1500
+- extendedWaitUntil:
+    visible: "never-on-screen-wait"
     timeout: 4000
+    optional: true
 - takeScreenshot: f01-avatar-walk
-- tapOn: "Celebrate"
-- waitForAnimationToEnd:
+- tapOn:
+    text: "Celebrate"
+    waitToSettleTimeoutMs: 1500
+- extendedWaitUntil:
+    visible: "never-on-screen-wait"
     timeout: 1500
+    optional: true
 - takeScreenshot: f01-avatar-celebrate
-- tapOn: "Wear"
+- tapOn:
+    text: "Wear"
+    waitToSettleTimeoutMs: 1500
 - extendedWaitUntil:
     visible: "Take off"
     timeout: 15000
 - takeScreenshot: f01-avatar-worn
-- tapOn: "Close"
-- waitForAnimationToEnd:
+- tapOn:
+    text: "Close"
+    waitToSettleTimeoutMs: 1500
+- extendedWaitUntil:
+    visible: "never-on-screen-wait"
     timeout: 3000
+    optional: true
 - takeScreenshot: f01-map-with-avatar
