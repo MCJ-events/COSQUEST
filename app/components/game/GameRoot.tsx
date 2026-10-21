@@ -38,6 +38,7 @@ import CoinsSheet from "./CoinsSheet";
 import DuelScreen from "./DuelScreen";
 import Encounter, { encounterGuard } from "./Encounter";
 import FriendsButton from "./FriendsButton";
+import { AvatarBadge, ForgeBag, ForgeClaim, ForgeDropsLayer, ForgeHudChip, useForgeOn, useForgeOwnedCount, useForgeWorldPolling, useHasForgeAvatar } from "./ForgeWorld";
 import { GAME_FONTS } from "./fonts";
 import FriendsSheet from "./FriendsSheet";
 import { NearbyTray, Rail, StagingBadge, TopBar, WardenBubble } from "./Hud";
@@ -68,6 +69,7 @@ import { useOnScreen } from "./useOnScreen";
 import { useWardenSaid, wardenVoice } from "./wardenVoice";
 import WorldMap from "./WorldMap";
 import { useRenderCount } from "@/utils/perfMarks";
+import type { ForgeDrop } from "@/features/game/forgeWorld";
 
 type Screen =
   | { kind: "home" }
@@ -79,7 +81,7 @@ type Screen =
   | { kind: "reward"; reward: RewardSummary };
 
 /** What is open over the map (one at a time, closed by Android Back). */
-type Sheet = "dailies" | "codex" | "war" | "more" | "events" | "friends" | "relics" | "battle" | "profile" | "coins" | "recap" | "ask" | "trials" | "runStart";
+type Sheet = "dailies" | "codex" | "war" | "more" | "events" | "friends" | "relics" | "battle" | "profile" | "coins" | "recap" | "ask" | "trials" | "runStart" | "forge";
 
 const NUDGE_EVERY_MS = 150000;
 const LOSS_SEEN_KEY = "cq.holdsLost.seen";
@@ -118,6 +120,12 @@ export default function GameRoot({ parked }: { parked: boolean }) {
   const [runPoint, setRunPoint] = useState<RunPoint | null>(null);
   const [sheet, setSheet] = useState<Sheet | null>(null);
   const [bagCount, setBagCount] = useState<number | null>(null);
+  // Forge in the world (cq 056): finds on the map, the bag, the avatar. Off unless the server says so.
+  useForgeWorldPolling(!parked && !!session);
+  const forgeOn = useForgeOn();
+  const forgeOwned = useForgeOwnedCount();
+  const forgeAvatar = useHasForgeAvatar();
+  const [forgeDrop, setForgeDrop] = useState<ForgeDrop | null>(null);
   const onScreen = useOnScreen();
   /** A Room beacon tapped on the map: the Battle sheet opens on that room. */
   const [roomFocus, setRoomFocus] = useState<string | null>(null);
@@ -335,10 +343,11 @@ export default function GameRoot({ parked }: { parked: boolean }) {
     // itself (it asks before leaving a fight); a sheet's own card or editor
     // takes it before this (the last handler added runs first).
     if (parked || !onScreen || screen.kind === "room") return;
-    const open = screen.kind !== "home" || sheet !== null || selected !== null || runPoint !== null || runState.finished !== null;
+    const open = screen.kind !== "home" || sheet !== null || selected !== null || runPoint !== null || runState.finished !== null || forgeDrop !== null;
     if (!open) return;
     const sub = BackHandler.addEventListener("hardwareBackPress", () => {
-      if (runPoint) setRunPoint(null);
+      if (forgeDrop) setForgeDrop(null);
+      else if (runPoint) setRunPoint(null);
       else if (runState.finished) runModel.close();
       else if (sheet) setSheet(null);
       // A challenge in progress asks before it is left.
@@ -349,7 +358,7 @@ export default function GameRoot({ parked }: { parked: boolean }) {
       return true;
     });
     return () => sub.remove();
-  }, [parked, onScreen, screen.kind, sheet, selectedId, runPoint, runState.finished]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [parked, onScreen, screen.kind, sheet, selectedId, runPoint, runState.finished, forgeDrop]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // A full-screen game screen (not the map): the Chats bubble tucks in so it
   // does not cover answers, titles or rewards (F-38, features/world/bubbleZone.ts).
@@ -448,6 +457,7 @@ export default function GameRoot({ parked }: { parked: boolean }) {
   if (bagCount && bagCount > 0) {
     moreTiles.push({ id: "bag", icon: "bag-handle", color: GP.sky, title: "Bag", badge: bagCount });
   }
+  if (forgeOn) moreTiles.push({ id: "forge", icon: "cube", color: GP.rare, title: "Forge bag", badge: forgeOwned || null, onPress: () => setSheet("forge") });
   moreTiles.push({ id: "live", icon: "calendar", color: GP.navy, title: "Quest Hours", onPress: () => setSheet("events") });
   // The paid venue games in AR stay native on iOS (VenueEventsIsland.swift).
   if (venueEventsAvailable) {
@@ -478,6 +488,8 @@ export default function GameRoot({ parked }: { parked: boolean }) {
         onSelect={onSelectPoint}
         rooms={battleOpen && screen.kind === "home" && !runLive ? rooms.nearby : []}
         onRoom={(r) => openBattle(r.game_id)}
+        overlay={forgeOn && screen.kind === "home" && !runLive ? (place) => <ForgeDropsLayer place={place} onOpen={setForgeDrop} /> : undefined}
+        playerBadge={forgeAvatar ? <AvatarBadge size={34} /> : undefined}
       />
 
       <TopBar me={me} profile={profile} name={gameStore.playerName()} color={color} onProfile={() => setSheet("profile")} onCoins={() => setSheet("coins")} onAskWarden={() => setSheet("ask")} />
@@ -509,6 +521,7 @@ export default function GameRoot({ parked }: { parked: boolean }) {
       {/* Under the top bar, left of the rail: one column, as iOS's worldBanners. */}
       <View style={[styles.banners, { top: insets.top + 72, right: showsRail ? 84 : 14 }]} pointerEvents="box-none">
         {runLive ? <RunHUD /> : null}
+        {forgeOn && screen.kind === "home" && !runLive ? <ForgeHudChip onPress={() => setSheet("forge")} /> : null}
         {permission === "denied" ? (
           <View style={styles.notice}>
             <Text style={styles.noticeText}>{"Location is off, so Quest Points can't find you. Turn it on in Settings to play."}</Text>
@@ -594,6 +607,7 @@ export default function GameRoot({ parked }: { parked: boolean }) {
       {sheet === "friends" ? <FriendsSheet onClose={() => setSheet(null)} /> : null}
       {sheet === "relics" ? <RelicsSheet onClose={() => setSheet(null)} /> : null}
       {sheet === "coins" ? <CoinsSheet onClose={() => setSheet(null)} /> : null}
+      {sheet === "forge" ? <ForgeBag onClose={() => setSheet(null)} /> : null}
       {sheet === "recap" ? <RecapSheet onClose={() => setSheet(null)} /> : null}
       {sheet === "ask" ? <AskWarden onClose={() => setSheet(null)} /> : null}
       {sheet === "trials" ? (
@@ -669,6 +683,8 @@ export default function GameRoot({ parked }: { parked: boolean }) {
           <RunResults result={runState.finished} board={runState.board} onClose={() => runModel.close()} />
         </Animated.View>
       ) : null}
+
+      {forgeDrop ? <ForgeClaim drop={forgeDrop} onClose={() => setForgeDrop(null)} onOpenBag={() => setSheet("forge")} /> : null}
 
       {/* The big moments ("Guardian beaten!", "Quest done!"), over everything. */}
       <GameBannerHost top={insets.top + 150} />

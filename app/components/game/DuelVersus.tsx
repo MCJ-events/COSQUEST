@@ -10,6 +10,7 @@ import { fightersOf, versusSubline, versusTitle } from "@/features/game/duelFlow
 import { gameStore } from "@/features/game/runtime";
 import type { DuelFighterPeek, DuelStart } from "@/features/game/wire";
 
+import { ForgeFighterArt } from "./ForgeWorld";
 import { MAX_FONT_SCALE } from "./kit";
 import { edgeOf, GF, GP, realmColor } from "./theme";
 
@@ -65,6 +66,8 @@ function Side({ f, you }: { f: DuelFighterPeek; you: boolean }) {
     <View style={styles.sideWrap}>
       <View style={[StyleSheet.absoluteFill, { top: 4, borderRadius: 16, backgroundColor: tint }]} />
       <View style={styles.side}>
+        {/* The Forge weapon you hold, or the Forge character the Guardian is (cq 056); else the class icon. */}
+        <ForgeFighterArt fighter={f} size={72} />
         <View style={[styles.icon, { backgroundColor: tint }]}>
           <Ionicons name={weaponIcon(f.weapon_class)} size={22} color="#FFF" />
         </View>

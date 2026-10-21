@@ -23,6 +23,7 @@ import {
 import type { Profile, QuestPoint, RoamMe } from "@/features/game/wire";
 
 import AvatarView from "./AvatarView";
+import { PlayerAvatar } from "./ForgeWorld";
 import { CoachAnchor } from "./Coach";
 import { announce, GameCoin, GameIconButton, HUD_FONT_SCALE, pressFeedback, withAlpha } from "./kit";
 import { edgeOf, GF, GP, realmColor, realmIcon, tierColor } from "./theme";
@@ -86,7 +87,7 @@ export function PlayerChip({
             transform="rotate(-90 27 27)"
           />
         </Svg>
-        <AvatarView avatar={profile?.avatar ?? { face: 1, mark: 1, tint: face }} size={40} />
+        <PlayerAvatar size={40} fallback={<AvatarView avatar={profile?.avatar ?? { face: 1, mark: 1, tint: face }} size={40} />} />
         <View style={styles.level}>
           <Text style={styles.levelText} maxFontSizeMultiplier={1.2}>
             {level}

@@ -64,6 +64,7 @@ import { Pop } from "./Pop";
 import { type RewardSummary, celebrate, rewardFromVerdict } from "./Reward";
 import SayItButton from "./SayItButton";
 import { ShrineCrystal, type CrystalHandle } from "./ShrineCrystal";
+import { ForgePointScene, usePointForge } from "./ForgeWorld";
 import { playSound } from "./sound";
 import { playResolve, startStrike } from "./strike";
 import { CHOICE_COLORS, edgeOf, GF, GP, realmColor, tierColor } from "./theme";
@@ -123,6 +124,10 @@ export default function Encounter({
   const [bag, setBag] = useState<Record<string, number>>({});
   const mounted = useRef(true);
   const crystal2d = useRef<CrystalHandle>(null);
+  // A point with a Forge station (or environment) shows it instead of the built-in shrine (cq 056).
+  const forgeScene = usePointForge(point);
+  const hasForge = !!(forgeScene.station || forgeScene.environment);
+  const Native = hasForge ? null : NativeShrine;
   // One handle for the Strike, whichever shrine is drawn (looked up when called).
   const [crystal] = useState<{ current: CrystalHandle }>(() => ({
     current: {
@@ -194,10 +199,10 @@ export default function Encounter({
 
   // The 2D crystal rises in place, then stands (SimulatedStage: 500 ms).
   useEffect(() => {
-    if (NativeShrine) return;
+    if (Native) return;
     const t = setTimeout(() => onPlaced(false), 500);
     return () => clearTimeout(t);
-  }, [onPlaced]);
+  }, [onPlaced, Native]);
 
   // Tapping the shrine opens the point: the server judges reach and hands out the challenge.
   const begin = useCallback(() => {
@@ -366,8 +371,8 @@ export default function Encounter({
     <View style={[styles.root, { backgroundColor: color }]}>
       {/* EncounterView.statusBarHidden() */}
       <StatusBar hidden animated />
-      {NativeShrine ? (
-        <NativeShrine
+      {Native ? (
+        <Native
           ref={nativeShrine}
           style={StyleSheet.absoluteFill}
           tint={tierColor(point.tier)}
@@ -386,7 +391,7 @@ export default function Encounter({
 
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <GameIconButton icon="close" color={GP.navy} diameter={42} onPress={leave} accessibilityLabel="Leave" />
-        {phase === "approach" && NativeShrine && shrineARSupported ? (
+        {phase === "approach" && Native && shrineARSupported ? (
           <GameIconButton
             icon={arPref ? "cube" : "camera"}
             color={GP.skyDeep}
@@ -410,7 +415,7 @@ export default function Encounter({
 
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 12 }]} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         <View style={styles.stage} pointerEvents="box-none">
-          {NativeShrine ? null : <ShrineCrystal tint={tierColor(point.tier)} ref={crystal2d} />}
+          {Native ? null : hasForge ? <ForgePointScene point={point} style={styles.forgeStage} /> : <ShrineCrystal tint={tierColor(point.tier)} ref={crystal2d} />}
           {phase === "approach" ? (
             <View style={styles.opening} pointerEvents="none">
               {placed ? (
@@ -429,7 +434,7 @@ export default function Encounter({
                 <>
                   <ActivityIndicator color="#FFF" />
                   <Text style={styles.openingText} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-                    {useAR && NativeShrine ? "Point your camera at the ground" : "The shrine is rising…"}
+                    {useAR && Native ? "Point your camera at the ground" : "The shrine is rising…"}
                   </Text>
                 </>
               )}
@@ -948,6 +953,7 @@ const styles = StyleSheet.create({
   bubbleText: { fontFamily: GF.body, fontSize: 15, color: GP.ink },
   content: { flexGrow: 1, paddingHorizontal: 16, paddingTop: 8, gap: 14 },
   stage: { flex: 1, minHeight: 130, alignItems: "center", justifyContent: "center" },
+  forgeStage: { width: "100%", height: 300 },
   opening: { position: "absolute", bottom: 0, alignItems: "center", gap: 8 },
   approach: { alignItems: "center", gap: 6 },
   approachTitle: { fontFamily: GF.display, fontSize: 30, color: "#FFF", textShadowColor: "rgba(0,0,0,0.5)", textShadowRadius: 4 },

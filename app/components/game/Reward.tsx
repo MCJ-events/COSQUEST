@@ -26,6 +26,7 @@ import { dailyMoment } from "@/features/game/warden";
 import type { DuelOutcome, QuestPoint, RoamDaily, RoamExtra, RoamMe, RoamStanding, RoamVerdict } from "@/features/game/wire";
 
 import { showBanner } from "./Banner";
+import { ForgeCelebrate } from "./ForgeWorld";
 import { announce, GameButton, GamePanel, GameTitle, MAX_FONT_SCALE } from "./kit";
 import { LevelUp } from "./LevelUp";
 import { Pop } from "./Pop";
@@ -198,6 +199,8 @@ export default function Reward({ reward, onDone, onShare }: { reward: RewardSumm
         accessibilityElementsHidden={showLevelUp}>
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
           <GameTitle text={reward.win ? "Rewards!" : "For trying"} size={44} />
+          {/* Your Forge avatar celebrates a win (cq 056); nothing without one. */}
+          {reward.win ? <ForgeCelebrate size={130} /> : null}
           <View style={styles.panelWrap}>
             <GamePanel>
               <View style={{ gap: 10 }}>
