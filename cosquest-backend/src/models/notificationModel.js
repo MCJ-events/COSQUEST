@@ -1,6 +1,7 @@
 const User = require('./User');
 const Notification = require('./Notification');
 const { emitToUser, emitToUsers } = require('../realtime/socket');
+const push = require('../utils/push');
 
 const ACTOR_FIELDS = 'profile.username profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl';
 
@@ -26,7 +27,7 @@ async function createForEnabledUsers(message) {
  * sent at signup, before the person has ever set `notificationsEnabled`
  * (it defaults to false and isn't chosen until onboarding step 4).
  */
-async function createForUser(userId, message, { type = 'system', actor, conversation, chatMessage } = {}) {
+async function createForUser(userId, message, { type = 'system', actor, conversation, chatMessage, link, gameKind, push: sendPush = true } = {}) {
   const notification = await Notification.create({
     user: userId,
     message,
@@ -34,10 +35,27 @@ async function createForUser(userId, message, { type = 'system', actor, conversa
     actor: actor || null,
     conversation: conversation || null,
     chatMessage: chatMessage || null,
+    link: link || null,
+    gameKind: gameKind || null,
   });
   if (actor) await notification.populate('actor', ACTOR_FIELDS);
-  emitToUser(String(userId), 'notification:new', sanitize(notification));
+  const clean = sanitize(notification);
+  emitToUser(String(userId), 'notification:new', clean);
+  // Polish: the same notification as a phone push (off unless PUSH_ENABLED=1).
+  if (sendPush && type !== 'system') {
+    void push.sendToUsers([userId], {
+      title: type === 'game' ? 'CosQuest' : type === 'follow' ? 'New follower' : 'CosQuest',
+      body: message,
+      data: { type, notificationId: clean.id, conversationId: clean.conversationId, username: clean.actor?.username || null, link: clean.link },
+      badgeFor: unreadCount,
+    });
+  }
   return notification;
+}
+
+/** Unread notifications for the app badge (pushes carry it). */
+async function unreadCount(userId) {
+  return Notification.countDocuments({ user: userId, read: false });
 }
 
 /**
@@ -69,6 +87,12 @@ async function createMentionNotifications(userIds, { message, actor, conversatio
     // app refetches the list anyway when it opens Notifications).
     const sample = sanitize({ ...docs[0].toObject(), actor: actorDoc });
     emitToUsers(batch, 'notification:new', { ...sample, id: null });
+    // Polish: a phone push for each (off unless PUSH_ENABLED=1).
+    void push.sendToUsers(batch, {
+      title: 'You were mentioned',
+      body: message,
+      data: { type: 'mention', conversationId: sample.conversationId, messageId: sample.messageId },
+    });
   }
 
   return ids.length;
@@ -101,9 +125,11 @@ function sanitize(n) {
     actor,
     conversationId: n.conversation ? String(n.conversation) : null,
     messageId: n.chatMessage ? String(n.chatMessage) : null,
+    link: n.link || null,
+    gameKind: n.gameKind || null,
     read: n.read,
     createdAt: n.createdAt,
   };
 }
 
-module.exports = { createForEnabledUsers, createForUser, createMentionNotifications, listForUser, markAllRead, sanitize };
+module.exports = { createForEnabledUsers, createForUser, createMentionNotifications, listForUser, markAllRead, sanitize, unreadCount };

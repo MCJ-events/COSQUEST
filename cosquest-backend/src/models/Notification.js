@@ -11,7 +11,11 @@ const notificationSchema = new mongoose.Schema(
   {
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     message: { type: String, required: true },
-    type: { type: String, enum: ['system', 'follow', 'mention', 'group'], default: 'system' },
+    type: { type: String, enum: ['system', 'follow', 'mention', 'group', 'game'], default: 'system' },
+    // Polish: game events (raids, bosses, duel invites) carry the game link
+    // the app opens when tapped (cosquest://play?...), and their kind.
+    link: { type: String, default: null },
+    gameKind: { type: String, default: null },
     actor: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     conversation: { type: mongoose.Schema.Types.ObjectId, ref: 'Conversation', default: null },
     chatMessage: { type: mongoose.Schema.Types.ObjectId, ref: 'Message', default: null },

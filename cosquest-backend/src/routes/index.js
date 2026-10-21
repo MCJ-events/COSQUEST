@@ -17,6 +17,9 @@ const expertiseRoutes = require('./expertiseRoutes');
 
 const router = express.Router();
 
+// Polish (task 059): first, so /users/me DELETE and /meta/capabilities are not
+// caught by the routers below.
+router.use('/', require('./safetyRoutes'));
 router.use('/auth', authRoutes); // /api/auth/signup, /api/auth/login
 // Authentication is attached per settings endpoint, leaving onboarding routes usable.
 router.use('/users/me', require('./settingsRoutes'));

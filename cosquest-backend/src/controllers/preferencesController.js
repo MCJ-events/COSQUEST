@@ -1,3 +1,4 @@
+const User = require('../models/User');
 const userModel = require('../models/userModel');
 const { isValidFactionKey } = require('../models/factionModel');
 const { isValidInterestKey } = require('../models/interestModel');
@@ -97,6 +98,9 @@ async function registerDevice(req, res) {
   if (!pushToken || !platform) {
     return res.status(400).json({ error: 'pushToken and platform ("ios" | "android" | "web") are required.' });
   }
+  // Polish: one phone, one owner. Signing in as someone else on the same
+  // phone moves the token, so the last person no longer gets its pushes.
+  await User.updateMany({ _id: { $ne: req.userId }, 'devices.pushToken': pushToken }, { $pull: { devices: { pushToken } } });
   const updated = await userModel.updateUser(req.userId, (user) => {
     const exists = user.devices.some((d) => d.pushToken === pushToken);
     if (!exists) {

@@ -21,6 +21,7 @@ const { transcribeAudio } = require('../utils/transcribeAudio');
 const { buildContentShare } = require('../utils/shareLinks');
 const { isBlockedEitherWay } = require('./publicProfileController');
 const { emitToConversation, emitToConversationExcept, emitToUsers } = require('../realtime/socket');
+const { pushNewMessage } = require('../utils/messagePush');
 const { isOnline } = require('../realtime/presence');
 
 const EPOCH = new Date(0);
@@ -1063,10 +1064,13 @@ async function createMessage(req, res) {
     // chat summary in the event, so the app needn't fetch the chat again.
     // Apps that only read conversationId are unaffected.
     void emitDmPreviews(conversation);
+    // Polish: a phone push to the partner if they are away (PUSH_ENABLED=1).
+    void pushNewMessage(conversation, message, req.user);
   } else if (conversation.type === 'group' && conversation.group?.kind !== 'faction') {
     // Group members' chat lists update live too (unread badge / preview).
     const memberIds = await explicitGroupMemberIds(conversation);
     emitToUsers(memberIds.map(String), 'chat:preview', { conversationId: conversation.id });
+    void pushNewMessage(conversation, message, req.user, { memberIds });
   }
 
   if (message.mentions.length || message.mentionsEveryone) {
