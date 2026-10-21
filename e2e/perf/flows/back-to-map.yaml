@@ -1,10 +1,16 @@
 # From a game screen back to the map (finish or leave).
 appId: com.dammy0227.cosquest
 ---
-# A duel runs on after the measured 15 s: wait for its result (or the map).
+# A duel runs on after the measured 15 s: wait for its result. (The map's
+# label stays in the tree under a game screen, so "map visible" is not proof
+# of being back on it.)
 - extendedWaitUntil:
-    visible: "Back to the map|Map of the streets around you|Leave.*|Nice!"
+    visible: "Back to the map|Leave.*|Nice!"
     timeout: 60000
+    optional: true
+- tapOn:
+    text: "Back to the map"
+    optional: true
 - repeat:
     while:
       notVisible: "Map of the streets around you"
