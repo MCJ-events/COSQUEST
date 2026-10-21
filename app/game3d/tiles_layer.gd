@@ -84,3 +84,30 @@ func _process(_dt: float) -> void:
 	var to_ecef: Variant = _georef.call("get_tx_engine_to_ecef")
 	if to_ecef is Transform3D:
 		_tileset.call("update_tileset", (to_ecef as Transform3D) * _cam.global_transform)
+
+
+var _dbg_t: float = 0.0
+
+
+## Every 3 s: how many tile meshes are in the scene and where they sit (placement check).
+func _physics_process(dt: float) -> void:
+	if not _active or not is_instance_valid(_tileset):
+		return
+	_dbg_t += dt
+	if _dbg_t < 3.0:
+		return
+	_dbg_t = 0.0
+	var n: int = _tileset.get_child_count()
+	var shown: int = 0
+	var box := AABB()
+	var first := true
+	for c in _tileset.get_children():
+		var mi := c as MeshInstance3D
+		if mi == null or mi.mesh == null or not mi.visible:
+			continue
+		shown += 1
+		var b: AABB = mi.global_transform * mi.get_aabb()
+		box = b if first else box.merge(b)
+		first = false
+	var cam_y: float = _cam.global_position.y if _cam != null else 0.0
+	print("CQ tiles children=%d shown=%d box_pos=%s box_size=%s cam_y=%.1f" % [n, shown, str(box.position.round()), str(box.size.round()), cam_y])

@@ -13,6 +13,9 @@
 # Env:
 #   GODOT   the Godot 4.5 editor binary (the same LibGodot tag as the app:
 #           4.5.1.migeran.2), default ~/cq-work/tools/libgodot/src/godot/bin/godot.linuxbsd.editor.x86_64
+#   GODOT_TILES_LIBS  [~/cq-work/game-godot/out-tiles] <abi>/libGodot3DTiles.android.*.so
+#           from game3d/tools/tiles-android/ (optional; without them the
+#           fight runs and the tiles layer reports itself unavailable)
 #   PROJECT [game3d] the Godot project folder (needs export presets named
 #           "Android" and "iOS"; --export-pack needs no export templates)
 #
@@ -23,6 +26,7 @@ cd "$(dirname "$0")/.."
 
 : "${GODOT:=$HOME/cq-work/tools/libgodot/src/godot/bin/godot.linuxbsd.editor.x86_64}"
 : "${PROJECT:=game3d}"
+: "${GODOT_TILES_LIBS:=$HOME/cq-work/game-godot/out-tiles}"
 # Absolute: Godot resolves export paths against the project folder.
 OUT="$PWD/godot-export"
 NAME=game3d
@@ -51,6 +55,16 @@ for p in "${platforms[@]}"; do
       mkdir -p "$OUT/android/$NAME"
       unzip -q "$tmp/$NAME.zip" -d "$OUT/android/$NAME"
       echo "== $OUT/android/$NAME: $(du -sh "$OUT/android/$NAME" | cut -f1), $(find "$OUT/android/$NAME" -type f | wc -l) files"
+      # GDExtension libraries (3D Tiles, game3d/tools/tiles-android/): staged per
+      # ABI for jniLibs when GODOT_TILES_LIBS has them (not in git: 14 MB each).
+      rm -rf "$OUT/android/jniLibs"
+      for abi in x86_64 arm64-v8a; do
+        so=$(ls "$GODOT_TILES_LIBS"/$abi/libGodot3DTiles.android.*.so 2>/dev/null | grep -v unstripped | head -1 || true)
+        if [ -n "$so" ]; then
+          mkdir -p "$OUT/android/jniLibs/$abi" && cp "$so" "$OUT/android/jniLibs/$abi/"
+          echo "== 3D Tiles GDExtension for $abi: $(basename "$so") ($(du -h "$so" | cut -f1))"
+        fi
+      done
       ;;
     ios)
       echo "== export ios $(date -u +%FT%TZ)"

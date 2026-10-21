@@ -14,7 +14,8 @@
 //  3. The exported Godot project (scripts/godot-export.sh, a folder of files)
 //     is copied to android/app/src/main/assets/game3d, which Godot opens with
 //     `--path /game3d`. Expo's template already keeps dot folders in assets
-//     (Godot's .godot/imported lives there).
+//     (Godot's .godot/imported lives there). GDExtension libraries staged in
+//     godot-export/android/jniLibs/<abi>/ (the 3D Tiles plugin) go to jniLibs.
 // iOS:
 //  4. The exported game3d.pck is copied next to the app sources and added to
 //     the bundle's resources (opened with `--main-pack <bundle>/game3d.pck`).
@@ -103,6 +104,12 @@ function withGodotAndroid(config, opts) {
         copyDir(from, to);
       } else {
         console.warn(`withGodot: no exported Godot project at ${from}; run scripts/godot-export.sh. The 3D fight will not open in this build.`);
+      }
+      // GDExtensions (the 3D Tiles plugin, cq 061): native libraries the
+      // export step staged per ABI go to jniLibs; Godot dlopens them by name.
+      const libs = path.join(cfg.modRequest.projectRoot, opts.exportDir, "android", "jniLibs");
+      if (fs.existsSync(libs)) {
+        copyDir(libs, path.join(cfg.modRequest.platformProjectRoot, "app", "src", "main", "jniLibs"));
       }
       return cfg;
     },

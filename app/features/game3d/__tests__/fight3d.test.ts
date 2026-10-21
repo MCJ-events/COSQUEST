@@ -4,6 +4,7 @@ import { test } from "node:test";
 
 import {
   buildFightConfig,
+  tilesFields,
   FIGHT3D_NOTE,
   fight3dFlags,
   fightLod,
@@ -190,4 +191,27 @@ test("the reward for a 3D fight: Godot's numbers, no pay, and it says so", () =>
   assert.equal(lose.headline, "The Guardian held");
   assert.equal(lose.stats?.find((s) => s.id === "time")?.value, "1:15");
   assert.equal(rewardFrom3D(quitResult("full"), { name: "P", realm: "r" }, null).headline, "You left the fight");
+});
+
+test("tilesFields: a #lat,lon,alt fragment places the arena; the URL loses it", () => {
+  assert.deepEqual(tilesFields("http://127.0.0.1:8700/dingo_georef.json#40.04253061,-75.61209431,0"), {
+    tiles_url: "http://127.0.0.1:8700/dingo_georef.json",
+    tiles_lat: 40.04253061,
+    tiles_lon: -75.61209431,
+    tiles_alt: 0,
+  });
+  assert.deepEqual(tilesFields("http://h/t.json"), { tiles_url: "http://h/t.json" });
+  assert.deepEqual(tilesFields("http://h/t.json#nope"), { tiles_url: "http://h/t.json" });
+  assert.deepEqual(tilesFields("http://h/t.json#95,0"), { tiles_url: "http://h/t.json" });
+});
+
+test("tilesFields: ground and detail knobs", () => {
+  assert.deepEqual(tilesFields("http://h/t.json#40,-75,490,0,64"), {
+    tiles_url: "http://h/t.json",
+    tiles_lat: 40,
+    tiles_lon: -75,
+    tiles_alt: 490,
+    tiles_ground: false,
+    tiles_sse: 64,
+  });
 });

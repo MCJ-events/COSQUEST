@@ -182,6 +182,11 @@ export type Fight3DConfig = {
   point_name: string;
   mode: Fight3DMode;
   tiles_url?: string;
+  tiles_lat?: number;
+  tiles_lon?: number;
+  tiles_alt?: number;
+  tiles_ground?: boolean;
+  tiles_sse?: number;
   seed: number;
   autoplay: boolean;
 };
@@ -214,8 +219,30 @@ export function buildFightConfig(input: {
     seed: Math.trunc(Math.abs(input.seed)) % 2147483647,
     autoplay: input.autoplay,
   };
-  if (input.tilesUrl) config.tiles_url = input.tilesUrl;
+  if (input.tilesUrl) Object.assign(config, tilesFields(input.tilesUrl));
   return config;
+}
+
+/**
+ * The tiles layer's config from a tileset URL that may end in
+ * "#lat,lon,alt[,ground[,sse]]": where the arena stands on the tileset (the
+ * georeference origin); ground 0 keeps the arena's own floor (a tileset that
+ * is a landmark beside the fight, not the ground); sse is Cesium's maximum
+ * screen space error (detail). The fragment never reaches the server.
+ */
+type TilesKeys = "tiles_url" | "tiles_lat" | "tiles_lon" | "tiles_alt" | "tiles_ground" | "tiles_sse";
+export function tilesFields(url: string): Pick<Fight3DConfig, TilesKeys> {
+  const [base, frag] = url.trim().split("#", 2);
+  const out: Pick<Fight3DConfig, TilesKeys> = { tiles_url: base };
+  const n = (frag ?? "").split(",").map((v) => Number(v));
+  if (n.length >= 2 && n.every((v) => Number.isFinite(v)) && Math.abs(n[0]) <= 90 && Math.abs(n[1]) <= 180) {
+    out.tiles_lat = n[0];
+    out.tiles_lon = n[1];
+    out.tiles_alt = n.length >= 3 ? n[2] : 0;
+    if (n.length >= 4) out.tiles_ground = n[3] !== 0;
+    if (n.length >= 5 && n[4] > 0) out.tiles_sse = n[4];
+  }
+  return out;
 }
 
 /**

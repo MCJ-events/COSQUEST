@@ -74,6 +74,7 @@ var hud: HudScript
 var fx: FxScript
 var tiles: Node3D
 var _ground: MeshInstance3D
+var plaza: MeshInstance3D
 
 # combat state
 var _atk_cd: float = 0.0
@@ -181,8 +182,10 @@ func _ready() -> void:
 	tiles = TilesScript.new()
 	tiles.name = "Tiles"
 	add_child(tiles)
-	if tiles.call("setup", cfg, cam) == true and _ground != null:
-		_ground.visible = false   # the tileset is the ground now; the plaza disc stays on top
+	if tiles.call("setup", cfg, cam) == true and _ground != null and bool(cfg.get("tiles_ground", true)):
+		_ground.visible = false   # the tileset is the ground now
+		if plaza != null and not bool(cfg.get("tiles_keep_plaza", false)):
+			plaza.visible = false # the place itself under the fight; the medallion marks the centre
 	_log("arena built ms=%.1f mode=%s autoplay=%s duration=%.0f" % [(Time.get_ticks_usec() - t0) / 1000.0, mode, autoplay, duration])
 	if mode == "arena":
 		hud.show_hero_card = false
@@ -270,7 +273,7 @@ func _build_arena() -> void:
 	_ground.mesh = pm
 	_ground.material_override = _mat(Color(0.4, 0.46, 0.36))
 	arena.add_child(_ground)
-	var plaza := MeshInstance3D.new()
+	plaza = MeshInstance3D.new()
 	var cyl := CylinderMesh.new()
 	cyl.top_radius = ARENA_R + 0.5
 	cyl.bottom_radius = ARENA_R + 0.5
