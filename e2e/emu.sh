@@ -8,6 +8,7 @@
 #   e2e/emu.sh adb ...      adb against the journeys' emulator
 #
 # Env: ANDROID_HOME (SDK), AVD [cx054], EMU_MEM [3072], OUT (logs) [e2e/out],
+#      EMU_GPU [swiftshader_indirect] (swangle_indirect: ANGLE, for Filament on GL),
 #      EMU_PORT (console port, e.g. 5600: adb then only talks to emulator-5600,
 #      for a farm where another task's emulator is on the same adb server)
 set -euo pipefail
@@ -41,7 +42,7 @@ case "${1:-}" in
     apk="${2:-$apk_default}"
     if ! adb get-state >/dev/null 2>&1; then
       nohup sg kvm -c "$ANDROID_HOME/emulator/emulator -avd $AVD -no-window -no-audio -no-boot-anim \
-        -gpu swiftshader_indirect -no-snapshot -memory $EMU_MEM -cores 4 $port_arg" > "$OUT/emulator.log" 2>&1 &
+        -gpu ${EMU_GPU:-swiftshader_indirect} -no-snapshot -memory $EMU_MEM -cores 4 $port_arg" > "$OUT/emulator.log" 2>&1 &
       echo $! > "$pidfile"
       echo "emulator launcher pid $(cat "$pidfile")"
     fi

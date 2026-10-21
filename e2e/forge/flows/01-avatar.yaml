@@ -9,7 +9,7 @@ name: F01 Forge avatar
     file: ../../maestro/common/signin.yaml
     env: { USER: ada, PASS: cosquest-dev-1 }
 - runFlow: ../../maestro/common/game.yaml
-- runFlow: ../../maestro/common/warden-later.yaml
+- runFlow: coach-away.yaml
 - extendedWaitUntil:
     visible:
       id: "forge-hud-chip"
@@ -22,8 +22,17 @@ name: F01 Forge avatar
     timeout: 10000
 - tapOn: "Avatar"
 - extendedWaitUntil:
-    visible: "Wear"
+    visible: "Wear|Take off"
     timeout: 20000
+# Worn from an earlier run: take it off first, so wearing it is seen.
+- runFlow:
+    when:
+      visible: "Take off"
+    commands:
+      - tapOn: "Take off"
+      - extendedWaitUntil:
+          visible: "Wear"
+          timeout: 15000
 # The model downloads (once per version) and starts its idle clip.
 - waitForAnimationToEnd:
     timeout: 8000

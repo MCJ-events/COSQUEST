@@ -6,15 +6,24 @@ name: F03 duel with a Forge weapon
 ---
 - launchApp
 - runFlow: ../../maestro/common/game.yaml
-- runFlow: ../../maestro/common/warden-later.yaml
+- runFlow: coach-away.yaml
 - openLink: "cosquest://play?duel=XD-trafalgar-duel"
 - extendedWaitUntil:
     visible: "Test Guardian's Post"
     timeout: 20000
 - tapOn: "Fight"
+# The briefing (stance, the Guardian) has its own Fight.
+- extendedWaitUntil:
+    visible: ".*against.*|Fight"
+    timeout: 20000
+- takeScreenshot: f03-briefing
+- tapOn:
+    text: "Fight"
+    optional: true
 - extendedWaitUntil:
     visible: ".*against.*"
     timeout: 20000
+    optional: true
 - takeScreenshot: f03-versus
 - waitForAnimationToEnd:
     timeout: 4000

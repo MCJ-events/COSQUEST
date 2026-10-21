@@ -46,6 +46,15 @@ const ENGINE: { F: Filament; W: Worklets } | null = (() => {
 })();
 const FILAMENT = ENGINE?.F ?? null;
 
+/**
+ * The GPU API. Filament's default (OpenGL ES on Android, Metal on iOS) unless
+ * the build says otherwise: the Android emulator's software GL reports only
+ * 256 vertex uniform vectors and Filament's lit shader does not link there,
+ * so emulator runs use ANGLE (e2e/emu.sh EMU_GPU=swangle_indirect); vulkan
+ * is there too but SwiftShader Vulkan crashed recreating swapchains (cq 056).
+ */
+const BACKEND = ((v) => (v === "vulkan" || v === "opengl" || v === "metal" ? v : undefined))(process.env.EXPO_PUBLIC_FORGE_BACKEND);
+
 export const FORGE_3D_RUNTIME = FILAMENT !== null;
 
 const TYPE_ICON: Record<string, keyof typeof Ionicons.glyphMap> = {
@@ -141,23 +150,29 @@ export default function ForgeModel(props: ForgeModelProps) {
   const { uri, failed } = useForgeGlb(FILAMENT ? entry : null, props.purpose ?? "closeup", props.lod);
   const [broken, setBroken] = useState(false);
   const label = props.accessibilityLabel ?? (entry ? `${entry.name}, 3D model` : "Forge model");
-  const show3d = !!FILAMENT && !!uri && !broken && !failed;
+  // The engine stays up while the model changes (one engine per view, not
+  // per model: creating engines and swapchains is the expensive, fragile
+  // part); the thumbnail covers it until the new model is on the phone.
+  const [engineUp, setEngineUp] = useState(false);
+  if (!engineUp && FILAMENT && uri && !broken) setEngineUp(true);
+  const show3d = !!FILAMENT && engineUp && !broken;
+  const ready = show3d && !!uri && !failed;
   return (
     <View style={[styles.box, props.style]} accessible accessibilityRole="image" accessibilityLabel={label}>
-      {!show3d ? <Thumb entry={entry} size={size} loading={!!FILAMENT && !!entry && !failed && !broken && !uri} /> : null}
-      {show3d && FILAMENT ? (
+      {show3d && FILAMENT && entry ? (
         <Boundary fallback={<Thumb entry={entry} size={size} loading={false} />} onError={() => setBroken(true)}>
           <FilamentModel
             F={FILAMENT}
-            uri={uri}
-            entry={entry as ForgeEntry}
+            uri={ready ? uri : null}
+            entry={entry}
             animation={props.animation ?? null}
             onAnimationEnd={props.onAnimationEnd}
             spin={!!props.spin}
-            distance={props.distance ?? 2.1}
+            distance={props.distance ?? 2.7}
           />
         </Boundary>
       ) : null}
+      {!ready ? <Thumb entry={entry} size={size} loading={!!FILAMENT && !!entry && !failed && !broken && !uri} /> : null}
     </View>
   );
 }
@@ -172,7 +187,7 @@ function FilamentModel({
   distance,
 }: {
   F: Filament;
-  uri: string;
+  uri: string | null;
   entry: ForgeEntry;
   animation: string | null;
   onAnimationEnd?: () => void;
@@ -183,11 +198,11 @@ function FilamentModel({
   // above; everything else from chest height.
   const eye: Float3 = entry.type === "weapon" ? [0, 0.15, distance] : [0, 0.12, distance];
   return (
-    <F.FilamentScene>
+    <F.FilamentScene backend={BACKEND}>
       <F.FilamentView style={styles.fill} enableTransparentRendering>
         <F.Camera cameraPosition={eye} cameraTarget={[0, 0, 0]} near={0.05} far={50} />
         <F.DefaultLight />
-        <Rigged F={F} uri={uri} entry={entry} animation={animation} onAnimationEnd={onAnimationEnd} spin={spin} unitCube />
+        {uri ? <Rigged key={uri} F={F} uri={uri} entry={entry} animation={animation} onAnimationEnd={onAnimationEnd} spin={spin} unitCube /> : null}
         {FPS_LOG ? <FrameMeter F={F} label={`model:${entry.name}`} /> : null}
       </F.FilamentView>
     </F.FilamentScene>
@@ -337,7 +352,7 @@ export function ForgeStage({
   return (
     <View style={style}>
       <Boundary fallback={fallback} key={key}>
-        <F.FilamentScene>
+        <F.FilamentScene backend={BACKEND}>
           <F.FilamentView style={styles.fill} enableTransparentRendering>
             <F.Camera cameraPosition={eye} cameraTarget={target} near={0.1} far={200} />
             <F.DefaultLight />

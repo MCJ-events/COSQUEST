@@ -7,7 +7,7 @@ name: F02 Forge find, claim, equip
 ---
 - launchApp
 - runFlow: ../../maestro/common/game.yaml
-- runFlow: ../../maestro/common/warden-later.yaml
+- runFlow: coach-away.yaml
 - extendedWaitUntil:
     visible: "Forge find: ${DROP_NAME}.*"
     timeout: 90000

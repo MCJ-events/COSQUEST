@@ -137,7 +137,7 @@ export function PlayerAvatar({ fallback, size, stage }: { fallback: ReactNode; s
   const entry = useForgeEntry(avatar);
   if (!on || !entry) return <>{fallback}</>;
   if (stage) {
-    return <ForgeModel entry={entry} animation="idle" purpose="closeup" style={{ width: size, height: size * 1.4 }} size={size} distance={1.8} />;
+    return <ForgeModel entry={entry} animation="idle" purpose="closeup" style={{ width: size, height: size * 1.4 }} size={size} distance={2.6} />;
   }
   const url = thumbUrl(entry, 128);
   return url ? (
@@ -155,7 +155,7 @@ export function ForgeCelebrate({ size = 150 }: { size?: number }) {
   if (!on || !entry) return null;
   return (
     <Animated.View entering={ZoomIn.delay(250)} style={{ width: size, height: size * 1.3, alignSelf: "center" }} pointerEvents="none">
-      <ForgeModel entry={entry} animation={entry.rigged ? "celebrate" : null} purpose="scene" style={StyleSheet.absoluteFill} size={size} distance={1.9} />
+      <ForgeModel entry={entry} animation={entry.rigged ? "celebrate" : null} purpose="scene" style={StyleSheet.absoluteFill} size={size} distance={2.6} />
     </Animated.View>
   );
 }
@@ -208,7 +208,7 @@ export function ForgeClaim({ drop, onClose, onOpenBag }: { drop: ForgeDrop; onCl
       </View>
       <View style={styles.claimStage}>
         {phase.kind === "won" ? <Sunburst color={ring} /> : null}
-        <ForgeModel id={drop.element_id} purpose="closeup" spin style={StyleSheet.absoluteFill} size={320} distance={phase.kind === "won" ? 1.7 : 2.0} />
+        <ForgeModel id={drop.element_id} purpose="closeup" spin style={StyleSheet.absoluteFill} size={320} distance={phase.kind === "won" ? 2.3 : 2.6} />
       </View>
       {stats && (stats.damage || stats.range_m) ? (
         <View style={styles.statRow}>
@@ -357,7 +357,7 @@ function BagBody({ close, initial }: { close: () => void; initial: "items" | "av
             spin={sel.type !== "character"}
             style={StyleSheet.absoluteFill}
             size={260}
-            distance={sel.type === "character" ? 1.8 : 2.0}
+            distance={sel.type === "character" ? 2.7 : 2.6}
           />
           <Text style={styles.bagName} numberOfLines={1} maxFontSizeMultiplier={MAX_FONT_SCALE}>
             {sel.name}
@@ -454,7 +454,7 @@ export function ForgeFighterArt({ fighter, size = 72 }: { fighter: unknown; size
   if (!entry) return null;
   return (
     <View style={{ width: size, height: size, borderRadius: 14, overflow: "hidden", backgroundColor: "rgba(30,58,76,0.85)" }}>
-      <ForgeModel entry={entry} purpose="thumb" animation={entry.type === "character" ? "idle" : null} spin={entry.type === "weapon"} style={StyleSheet.absoluteFill} size={size} distance={entry.type === "character" ? 1.6 : 1.9} />
+      <ForgeModel entry={entry} purpose="thumb" animation={entry.type === "character" ? "idle" : null} spin={entry.type === "weapon"} style={StyleSheet.absoluteFill} size={size} distance={entry.type === "character" ? 2.5 : 2.4} />
     </View>
   );
 }

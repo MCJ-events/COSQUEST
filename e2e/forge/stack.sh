@@ -81,9 +81,9 @@ case "${1:-}" in
     done
     ;;
   reset)
-    tables=$(docker exec "$PG" psql -U postgres -d costquest -At -c \
+    tables=$(docker exec "$PG" psql -U postgres -d "${RIG_DB:-costquest_rig}" -At -c \
       "select string_agg(distinct table_name, ', ') from information_schema.columns where column_name='device_key' and table_schema='public'")
-    docker exec "$PG" psql -U postgres -d costquest -q -c "TRUNCATE $tables CASCADE"
+    docker exec "$PG" psql -U postgres -d "${RIG_DB:-costquest_rig}" -q -c "TRUNCATE $tables CASCADE"
     echo "game players reset"
     ;;
   down)
