@@ -207,7 +207,7 @@ const GroupRow = memo(function GroupRow({ chat, first, onOpen }: { chat: ChatIte
     : "No messages yet";
 
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={title} onPress={onPress} style={({ pressed }) => [styles.groupRow, first && styles.groupRowCard, pressed && styles.pressed]}>
+    <Pressable accessibilityRole="button" accessibilityLabel={`${title}, ${last}${unread ? `, ${unread} unread` : ""}${muted ? ", muted" : ""}`} onPress={onPress} style={({ pressed }) => [styles.groupRow, first && styles.groupRowCard, pressed && styles.pressed]}>
       {chat.type === "group" && chat.group?.photoUrl ? (
         <GroupAvatar name={title} photoUrl={chat.group.photoUrl} size={48} />
       ) : (

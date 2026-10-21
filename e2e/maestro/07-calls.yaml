@@ -60,10 +60,9 @@ name: J07 1:1 call, group call and voice chat with Sparks on
     visible: "Voice chat · 2 on call.*"
     timeout: 20000
 - takeScreenshot: j07-voice-chat
-# Sparks in a group voice chat is a "coming soon" alert (F-32).
-- tapOn: "Sparks"
+# Sparks in a group voice chat was a "coming soon" alert (F-32); since task
+# 059 the button is hidden unless the build turns it on
+# (EXPO_PUBLIC_CALL_SPARKS): never a dead end.
+- assertNotVisible: "Sparks"
 - takeScreenshot: j07-voice-sparks
-- tapOn:
-    text: "OK"
-    optional: true
 - tapOn: "Leave"
