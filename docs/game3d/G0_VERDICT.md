@@ -14,7 +14,7 @@ for the camera, HUD and FX numbers only.
 |---|---|---|---|
 | 1 | Godot inside the merged Expo app on Android | **GO** | Map point, then "Fight (3D)", then the Godot fight, then the result on the app's reward screen, recorded. 10 open/close cycles without a crash, leaving ~0.3 MB native memory per fight. A leak in the library's worklet bridge (~1.7 MB per JS-to-Godot call, ~7 MB per fight) was found and designed around. |
 | 2 | Combat feel | **GO** | Armstrong (Forge, runtime GLB) on a joystick, slash arc, sparks, WHIRL on a 6 s cooldown, Guardian with a health bar, 45 s timer, reference HUD. Input to motion: thumb on the stick p50 83 ms, Attack p50 82 ms, under 100 ms in 19/21 and 18/21 presses. A drag that starts beside the stick is p50 118 ms. All on a 16 fps software GPU. |
-| 3 | Photoreal 3D Tiles on a phone in Godot | **NO-GO for G1** (the build is a GO, the photoreal product is not) | The 3D Tiles for Godot GDExtension now builds for Android arm64 and x86_64. It loads in the app and streams and renders a public CesiumGS sample tileset inside the fight (recorded). A real textured photogrammetry tileset (NASA Dingo Gap, 5,149 tiles) loads about 90 tiles and then draws nothing. Re-creating the engine with the extension loaded crashes. No iOS build. Google tiles need a billed key, logo and credits, and no caching. |
+| 3 | Photoreal 3D Tiles on a phone in Godot | **Technically GO on Android; NO-GO as the G1 product path** | The 3D Tiles for Godot GDExtension now builds for Android arm64 and x86_64 and loads in the app. It streams and renders inside the fight a public CesiumGS sample and **real textured photogrammetry (NASA Dingo Gap, 5,149 tiles)**, both recorded. Placement and orientation were hand-tuned, re-creating the engine with the extension loaded crashes, and there is no iOS build. Google tiles need a billed key, logo and credits, and no caching. G1 uses stylised OSM + Forge arenas; tiles stay a spike. |
 | 4 | Cost | measured | PSS: map 328 MB, arena 422 MB (+94), with 3 characters 438 MB (+110), with tiles 499 MB (+171). APK: +73 MB raw for Godot (x86_64; arm64 77 MB raw, 25 MB compressed), +14 MB raw for the tiles plugin (4.6 MB compressed). |
 | 5 | iOS | written, **not compiled** | `scripts/verify-ios.sh --godot` for the Mac, plus the untested list below. |
 
@@ -125,7 +125,7 @@ for the camera, HUD and FX numbers only.
 - **What limits it:** the software GPU. The frame loop is paced by react-native-godot's Choreographer callbacks, so frames land on vsync multiples (50, 67 or 83 ms).
 - **Phone check needed:** a mid-range phone should hold 60 fps. G1 has to confirm it on one Adreno and one Mali phone.
 
-## 3. Real places with 3D Tiles (NO-GO for G1; the Android build is done)
+## 3. Real places with 3D Tiles (technically GO on Android; NO-GO as the G1 product path)
 
 **What was done:**
 - **Plugin build:** Battle-Road/3D-Tiles-For-Godot (HEAD a9c4c0b) with cesium-native v0.52.1, built for Android **x86_64 and arm64-v8a**.
@@ -138,20 +138,32 @@ for the camera, HUD and FX numbers only.
 
 **Results on the emulator:**
 - **Renders:** the CesiumGS `3d-tiles-samples` "TilesetWithDiscreteLOD" (the dragon, 3 LODs, glTF in b3dm, public, served from this machine over `adb reverse`) **streams and renders inside the fight**. Video: `out/videos/g02-fight-on-3d-tiles.mp4`, a fight won next to the streamed model, result back in RN.
-- **Doesn't render:** NASA-AMMOS `msl-dingo-gap` (textured JPEG photogrammetry, unlit, 5,149 b3dm, the closest public stand-in for Google's photoreal tiles). It is wrapped into ECEF at the Cesium samples' origin.
-  - The plugin requests ~90 tiles in 3 s and then stops; one empty node is created and **nothing is drawn**. No error is logged.
-  - The same happens at a lower detail level (SSE 128). Not diagnosed. Suspects: the plugin's REPLACE-refinement handling, or its HTTP accessor on worker threads.
-- **Placement:** the georeference placement behaves unexpectedly (heights move non-linearly with latitude changes), so placing a tileset needed trial and error.
+- **Renders, real photogrammetry:** NASA-AMMOS `msl-dingo-gap` (Mars rover photogrammetry: textured JPEG, unlit, 5,149 b3dm, public, no key) **streams and renders under the fighters**. This is the closest public stand-in for Google's photoreal tiles. Video: `out/videos/g03-fight-on-photogrammetry-tiles.mp4`, a 40 s fight won on the terrain, reward back in RN.
+  - About 34 tiles are loaded around the arena, 17 drawn at a time, over 94 HTTP requests.
+  - **Why the first tries showed nothing:**
+    1. The dataset declares `"gltfUpAxis": "z"` in lower case. cesium-native doesn't read that as Z, so the terrain stood on its side. `game3d/tools/tiles-android/make-dingo-z.py` writes a copy with `"Z"`.
+    2. My ECEF wrapper with the plugin's Cartographic-origin mode placed it out of view. The run that works loads the tileset directly in the plugin's **True Origin** mode, with the tileset node turned 180 degrees about X (`torigin=1&trotx=180` on the test link). Before the turn the surfaces faced away and only the textured tile seams showed.
+- **Placement is hand-tuned:**
+  - The Cartographic-origin placement behaves unexpectedly: heights move non-linearly with latitude changes.
+  - The working orientation was found by trial.
+  - Real places need this solved properly: arena origin from lat/lon/height, ground height from the tiles (a ray cast against the tile meshes, which the plugin can build as physics shapes).
 - **Crash on re-create:** re-creating the Godot engine in the same process with the extension loaded crashes (SIGSEGV in the extension's init). The one-engine default avoids it. A later G-stage needs a fix in the plugin (static state) or must keep the engine alive.
-- **Cost:** tiles add **+61 MB PSS** over the character fight (499 vs 438 MB) for a 3-LOD sample. Frame time p50 rises from 67 to 83 ms. A city of photogrammetry will be far heavier.
+- **Cost:**
+  - **Dragon (3 LODs):** **+61 MB PSS** over the character fight (499 vs 438 MB); frame time p50 rises from 67 to 83 ms.
+  - **Photogrammetry:** **+135 to 155 MB PSS** while fighting (571 to 591 vs 438 MB), Godot video memory 98 to 102 MB, 13 to 14 fps (frame p50 67 to 83 ms, p95 ~120 ms).
+  - **At city scale:** a city of photogrammetry will be heavier. It needs LOD/SSE budgets by device class.
 - **No iOS build** of the plugin was attempted. cesium-native supports iOS, but the plugin would need a static or xcframework GDExtension for LibGodot iOS.
 
-**Honest effort to make photoreal places work on phones:**
-- **Debug the Dingo stall:** 1 to 3 days. Trace cesium-native's tile states, the plugin's `render_tile_as_node`, and the accessor's request completion.
-- **Fix placement and re-init:** 1 to 2 days.
-- **iOS build:** 3 to 5 days.
-- **Real photogrammetry on a phone:** a week of performance work. Memory budget, texture compression (KTX2/basis) and LOD/SSE tuning by device class.
-- **Total:** about **3 to 4 weeks** of one engineer before it is a product feature. The plugin itself is young and desktop-first: a fork we own, not a dependency we can update.
+**Honest effort to make photoreal places a phone feature:**
+- **Georeferencing:** proper placement at a lat/lon with Google-style ECEF tiles (Cartographic origin, camera-relative LOD; today LOD is chosen from the georeference origin), ground height under the arena, and no hand rotations. 3 to 5 days.
+- **Plugin re-init crash:** 1 to 2 days. Or keep the engine alive, as now.
+- **iOS build** of the plugin (static/xcframework GDExtension for LibGodot iOS): 3 to 5 days.
+- **Performance on real phones:** about a week. Memory budget, KTX2/basis textures, SSE by device class, frame pacing while tiles stream.
+- **Google specifics:** about a week. Key handling and a proxy, the session, the logo and credits overlay, the cache turned off.
+- **Total:** about **4 weeks** of one engineer. The plugin is young and desktop-first: a fork we own, not a dependency we can update.
+- **Bottom line:**
+  - **Technology:** works on Android. Real textured photogrammetry renders under the fight on a software-GPU emulator at 13 to 14 fps.
+  - **Product path for G1:** a **NO-GO**, because of Google's per-use cost, attribution and no-caching terms, the missing iOS build, and the hand-tuned placement. Keep it as a spike next to the fallback below.
 
 **What a real Google Photorealistic 3D Tiles run needs** (from public docs, nothing signed up for):
 - **Key:** a Google Cloud project with billing and the **Map Tiles API** enabled, plus an API key.
@@ -197,8 +209,9 @@ for the camera, HUD and FX numbers only.
 | fight + 3 characters (2 Forge GLBs + Guardian capsule in this run) | 438 (+110) | 207 | 16 | 67 / 67 / 67 | 74 |
 | full fight with FX | 438 (+110) | 207 | 16 | 67 / 67 / 68 | 74 |
 | full fight + 3D Tiles (dragon) | 499 (+171) | 264 | 13 | 83 / 100 / 117 | 75 |
+| full fight + photogrammetry tiles (Dingo Gap, during the fight, `mem-photogrammetry.tsv`) | 571 to 591 (+243 to 263) | 330 to 347 | 13 to 14 | 67 to 83 / ~120 / ~130 | 82 to 86 |
 
-The emulator reports no "Graphics" PSS (software GL). On a phone, GPU memory shows up there instead. Godot's own `RENDER_VIDEO_MEM_USED` was 33 MB in the arena, 57 MB with characters and 91 MB once the Dingo tiles were requested.
+The emulator reports no "Graphics" PSS (software GL). On a phone, GPU memory shows up there instead. Godot's own `RENDER_VIDEO_MEM_USED` was 33 MB in the arena, 57 MB with characters and 98 to 102 MB on the photogrammetry tiles.
 
 **APK size added:**
 
@@ -258,7 +271,7 @@ No account, key or paid service was used.
 3. **Library maturity:** react-native-godot 1.0.1 has a small community and RN 0.81 as its target. We carry 4 patches for 0.86, and every RN upgrade may need more. Migeran sells support. LibGodot is a fork of Godot 4.5 and will lag upstream.
 4. **APK size:** +25 MB compressed for the full engine. A trimmed engine build is needed to stay reasonable.
 5. **Two 3D runtimes** (Filament for previews, Godot for fights) in one app: two GL contexts and more memory. Long term, use Godot for previews too, or keep Filament out of the fight path (it already is).
-6. **Photoreal tiles:** plugin maturity (desktop-first, a placement issue, a stall on a real photogrammetry set, no iOS), Google costs and terms. Treat as research, not the plan.
+6. **Photoreal tiles:** plugin maturity (desktop-first, hand-tuned placement and orientation, a re-init crash, no iOS), Google costs and terms. It renders photogrammetry on Android, but treat it as a spike, not the plan.
 7. **Fairness:** a client-side 3D fight cannot be judged by today's server (which replays 2D inputs). G3 needs a server-side simulation of the 3D fight rules, or signed input logs.
 8. **Emulator vs phone:** every fps and latency number here is from a software GPU. A real-phone pass on low-end Android is the first G1 gate.
 
@@ -272,7 +285,7 @@ No account, key or paid service was used.
 | **G4 Places** | The OSM + Forge environment arena generator (the fallback above), served as contract-2 environment packs per point, LODs by device class, loaded at runtime. | L (4 weeks) | 50 London and Lagos points with arenas under 2 MB each, loading in under 1 s on the mid phone |
 | **G5 Players together** | The "2/3 players" made real: co-op against the Guardian over the existing realtime stack (LiveKit data channel or socket.io), state sync at 15 to 20 Hz, prediction for your own hero, and an ally that is a real player. | L (5 weeks) | 3 phones in one fight, under 150 ms visible lag, no desync over 45 s |
 
-Photoreal 3D Tiles stay a separate research spike (3 to 4 weeks, see section 3) that can run beside G4. Only adopt them if the spike lands, Google's terms allow the game use, and a phone can carry them.
+Photoreal 3D Tiles stay a separate spike (about 4 weeks, see section 3) that can run beside G4. Only adopt them if the spike lands, Google's terms allow the game use, and a phone can carry them.
 
 ## Reproduce
 
@@ -286,7 +299,8 @@ cd app && LIBGODOT_ANDROID_PATH=~/cq-work/tools/libgodot/out/libgodot-android.zi
 # tiles plugin (optional): app/game3d/tools/tiles-android/build.sh x86_64 ; serve-tiles.sh
 # rig (056's local stack), emulator with ANGLE, then:
 e2e/journey.sh godot/drive/g01-fight.sh g01-fight     # map point -> 3D fight -> reward
-e2e/journey.sh godot/drive/g02-tiles.sh g02-tiles     # the fight on 3D tiles
+e2e/journey.sh godot/drive/g02-tiles.sh g02-tiles     # the fight next to the dragon tileset
+app/game3d/tools/tiles-android/make-dingo-z.py && e2e/journey.sh godot/drive/g03-photogrammetry.sh g03-photogrammetry
 e2e/godot/measure.sh m1                               # PSS + frame times per scene
 e2e/godot/latency.sh 7 run                            # input-to-motion (a fight open)
 adb shell am start -d "cosquest://fight3d?mode=chars&cycle=10&ms=8000&keep=1"   # leak test
