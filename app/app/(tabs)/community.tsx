@@ -17,6 +17,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -28,6 +29,9 @@ const TABS: Tab[] = ["Feeds", "Chats", "Spotlight"];
 
 export default function Community() {
   const insets = useSafeAreaInsets();
+  // Under 360 points wide (the largest display size makes a phone about 320)
+  // the three pills don't fit the Figma padding; tighter padding there only.
+  const narrow = useWindowDimensions().width < 360;
   const dispatch = useAppDispatch();
 
   const [tab, setTab] = useState<Tab>("Feeds");
@@ -94,7 +98,9 @@ export default function Community() {
               <Text style={styles.headerTitle}>Community</Text>
               {/* Figma M01 (chat hub) */}
               {tab === "Chats" ? (
-                <Text style={styles.headerSubtitle}>Your people. Your next adventure.</Text>
+                <Text style={styles.headerSubtitle} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
+                  Your people. Your next adventure.
+                </Text>
               ) : null}
             </View>
 
@@ -116,7 +122,7 @@ export default function Community() {
 
           {/* COMMUNITY TABS - the open one is filled pink, the others are
               raised white pills with a soft shadow (Figma) */}
-          <View style={styles.tabs}>
+          <View style={[styles.tabs, narrow && styles.tabsNarrow]}>
             {TABS.map((key) => {
               const active = tab === key;
 
@@ -125,6 +131,7 @@ export default function Community() {
                   key={key}
                   style={[
                     styles.tab,
+                    narrow && styles.tabNarrow,
                     active ? styles.tabActive : styles.tabInactive,
                   ]}
                   hitSlop={6}
@@ -133,6 +140,7 @@ export default function Community() {
                     numberOfLines={1}
                     adjustsFontSizeToFit
                     minimumFontScale={0.75}
+                    maxFontSizeMultiplier={1.15}
                     style={[styles.tabText, active && styles.tabTextActive]}>
                     {key}
                   </Text>
@@ -199,7 +207,8 @@ const styles = StyleSheet.create({
     color: "#000000",
   },
 
-  headerTitleWrap: { alignItems: "center" },
+  // flexShrink: between the avatar and the bell at the largest sizes.
+  headerTitleWrap: { alignItems: "center", flexShrink: 1 },
 
   headerSubtitle: {
     marginTop: 1,
@@ -260,6 +269,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+
+  tabsNarrow: { paddingHorizontal: 12 },
+
+  tabNarrow: { minWidth: 0, paddingHorizontal: 10 },
 
   tabActive: {
     backgroundColor: PINK,
