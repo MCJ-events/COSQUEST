@@ -25,6 +25,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { KeyboardAwareScrollView } from "@/components/ui/keyboard";
 import { C } from "@/theme/tokens";
+import { useCapabilities } from "@/services/capabilities";
 
 const PINK = C.brandSoft;
 
@@ -78,6 +79,7 @@ function AccountInfoRow({
 
 export default function AccountInformation() {
   const insets = useSafeAreaInsets();
+  const caps = useCapabilities();
   const dispatch = useAppDispatch();
 
   const authUser = useAppSelector((state) => state.auth.user);
@@ -447,12 +449,26 @@ export default function AccountInformation() {
             <Text style={styles.saveButtonText}>Save Changes</Text>
           )}
         </Pressable>
+
+        {/* Task 059: account deletion (where the server supports it). */}
+        {caps.deleteAccount ? (
+          <Pressable
+            onPress={() => router.push("/delete-account")}
+            style={({ pressed }) => [styles.deleteRow, pressed && styles.pressed]}
+            accessibilityRole="button"
+            accessibilityLabel="Delete account"
+            testID="delete-account-row">
+            <Text style={styles.deleteText}>Delete account</Text>
+          </Pressable>
+        ) : null}
       </KeyboardAwareScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  deleteRow: { alignSelf: "center", paddingVertical: 14, paddingHorizontal: 20, marginTop: 8, marginBottom: 24 },
+  deleteText: { fontFamily: FONTS.semibold, fontSize: 14, color: C.danger },
   screen: {
     flex: 1,
     backgroundColor: "#FFFFFF",

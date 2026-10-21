@@ -1,6 +1,6 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { replyQuote } from "@/services/replyQuote";
-import { takeChatFocus } from "@/services/chatFocus";
+import { setOpenChat, takeChatFocus } from "@/services/chatFocus";
 import {
   AudioModule,
   RecordingPresets,
@@ -142,6 +142,8 @@ import { startCall } from "@/store/thunks/callThunks";
 import { ensureCallPermissions } from "@/utils/callHelpers";
 import { safeBack } from "@/utils/safeBack";
 import { C } from "@/theme/tokens";
+import { isOfflineError, isOfflineNow, sendQueue } from "@/services/network";
+import { haptic } from "@/utils/haptics";
 
 type AttachmentDraft = {
   uri: string;
@@ -236,6 +238,8 @@ type Message = {
 
   replyTo?: Message | null;
   pending?: boolean;
+  // Sent while offline: waiting in services/offlineQueue.ts.
+  queued?: boolean;
 
   // Set by the backend on YOUR messages in a DM: true once the other
   // person has opened the chat since it was sent (serializeMessage's
@@ -961,7 +965,7 @@ function MessageMeta({
       ) : null}
 
       <Text style={[styles.bubbleTime, { color }]}>
-        {formatMessageTime(msg.createdAt)}
+        {msg.queued ? "Waiting for network" : formatMessageTime(msg.createdAt)}
       </Text>
 
       {tickState ? (
@@ -2774,6 +2778,10 @@ export default function ChatScreen() {
     setPendingMessages((current) => current.filter((item) => item.id !== id));
   };
 
+  const markPendingQueued = (id: string) => {
+    setPendingMessages((current) => current.map((item) => (item.id === id ? { ...item, queued: true } : item)));
+  };
+
   // ========================================
   // HEADER
   // ========================================
@@ -2941,6 +2949,14 @@ export default function ChatScreen() {
       },
       [],
     ),
+  );
+
+  // This chat is on screen: its pushes need no banner (services/push.ts).
+  useFocusEffect(
+    useCallback(() => {
+      setOpenChat(conversationId ?? null);
+      return () => setOpenChat(null);
+    }, [conversationId]),
   );
 
   useFocusEffect(
@@ -3786,9 +3802,10 @@ export default function ChatScreen() {
       content: text,
       createdAt: new Date().toISOString(),
     });
+    haptic.tap();
 
-    try {
-      await dispatch(
+    const send = () =>
+      dispatch(
         createMessage({
           conversationId,
           token,
@@ -3801,12 +3818,42 @@ export default function ChatScreen() {
         }),
       ).unwrap();
 
+    // Offline (task 059): the bubble stays, marked "Waiting for network",
+    // and the queue sends it when the phone is back online.
+    const queueIt = () => {
+      markPendingQueued(pendingId);
+      sendQueue.enqueue({
+        id: pendingId,
+        scope: conversationId,
+        run: async () => {
+          await send();
+          removePendingMessage(pendingId);
+        },
+        onGiveUp: (error) => {
+          removePendingMessage(pendingId);
+          Alert.alert("Message", error instanceof Error ? error.message : "Unable to send message.");
+        },
+      });
+    };
+
+    if (isOfflineNow()) {
+      queueIt();
+      return;
+    }
+
+    try {
+      await send();
+
       removePendingMessage(pendingId);
 
       startSlowTimer();
 
       scrollToLatestIfNeeded();
     } catch (error) {
+      if (isOfflineError(error)) {
+        queueIt();
+        return;
+      }
       removePendingMessage(pendingId);
 
       // Give the text back so nothing is lost on failure.

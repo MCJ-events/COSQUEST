@@ -44,4 +44,18 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
   return resolved;
 };
 
+// RELEASE BUILDS (task 059): console.log / info / debug calls are dropped by
+// the minifier (dev builds are not minified, so they keep them). Warnings
+// and errors stay, for crash reports and logcat. Test builds with the timing
+// or perf logs on (EXPO_PUBLIC_WORLD_TIMING / EXPO_PUBLIC_PERF_MARKS, which the
+// journeys and docs/polish/BASELINE.md read from logcat) keep them.
+const KEEP_LOGS = process.env.EXPO_PUBLIC_WORLD_TIMING === "1" || process.env.EXPO_PUBLIC_PERF_MARKS === "1";
+config.transformer.minifierConfig = KEEP_LOGS ? config.transformer.minifierConfig : {
+  ...config.transformer.minifierConfig,
+  compress: {
+    ...(config.transformer.minifierConfig?.compress || {}),
+    pure_funcs: ["console.log", "console.info", "console.debug"],
+  },
+};
+
 module.exports = config;

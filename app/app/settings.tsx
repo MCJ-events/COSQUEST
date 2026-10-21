@@ -8,6 +8,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { forgetPushToken } from "@/services/push";
 import { safeBack } from "@/utils/safeBack";
 import { C } from "@/theme/tokens";
 
@@ -54,6 +55,8 @@ export default function Settings() {
   async function handleLogout() {
     try {
       if (token) {
+        // This phone stops getting the account's pushes (task 059).
+        await forgetPushToken(token);
         await logoutApi(token);
       }
     } catch (error) {

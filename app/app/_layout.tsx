@@ -4,6 +4,12 @@ import VoiceRoomOverlay from "@/components/voice/VoiceRoomOverlay";
 import CallBannerFrame from "@/components/calls/CallBannerFrame";
 import IncomingCallListener from "@/components/calls/IncomingCallListener";
 import SessionGate from "@/components/SessionGate";
+import { RootErrorBoundary } from "@/components/ErrorBoundary";
+import ForceUpdateGate from "@/components/ForceUpdateGate";
+import OfflineBanner from "@/components/OfflineBanner";
+import PushBridge from "@/components/PushBridge";
+import ReportSheetHost from "@/components/safety/ReportSheet";
+import { startMonitoring } from "@/services/monitoring";
 import GameBridge from "@/components/world/GameBridge";
 import { KeyboardProvider } from "@/components/ui/keyboard";
 import { UserProvider } from "@/context/UserContext";
@@ -48,6 +54,9 @@ function SocketConnectionGate() {
 // (SessionGate hides it), instead of a blank frame and then a second splash
 // (audit B6). If something hangs, it goes after 6 s anyway.
 void SplashScreen.preventAutoHideAsync().catch(() => {});
+
+// Crash reporting: only with EXPO_PUBLIC_SENTRY_DSN (services/monitoring.ts).
+startMonitoring();
 setTimeout(() => void SplashScreen.hideAsync().catch(() => {}), 6000);
 
 export default function RootLayout() {
@@ -67,6 +76,8 @@ export default function RootLayout() {
   if (!fontsLoaded && !fontsError) return null;
 
   return (
+    <RootErrorBoundary>
+    <ForceUpdateGate>
     <Provider store={store}>
       {/* Stay logged in: loads the saved login before the screens show */}
       <SessionGate>
@@ -123,6 +134,15 @@ export default function RootLayout() {
                 calls, invites to chat, notification links) */}
             <GameBridge />
 
+            {/* Push token, notification taps, waiting links, the badge (task 059) */}
+            <PushBridge />
+
+            {/* The Report sheet any screen opens (task 059) */}
+            <ReportSheetHost />
+
+            {/* "You're offline" and the messages waiting to send */}
+            <OfflineBanner />
+
             {/* Dark icons: most screens are light even when the phone is dark (the chat sets its own). */}
             <StatusBar style="dark" />
           </UserProvider>
@@ -130,5 +150,7 @@ export default function RootLayout() {
         </GestureHandlerRootView>
       </SessionGate>
     </Provider>
+    </ForceUpdateGate>
+    </RootErrorBoundary>
   );
 }

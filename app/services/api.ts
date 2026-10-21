@@ -78,7 +78,8 @@ export async function apiRequest<T>(
       data?.errors?.[0] ||
       "Something went wrong. Please try again.";
 
-    throw new Error(message);
+    // The status rides along for feature detection (services/capabilities.ts).
+    throw Object.assign(new Error(message), { status: response.status });
   }
 
   return data as T;

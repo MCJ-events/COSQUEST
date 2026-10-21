@@ -18,3 +18,15 @@ export function takeChatFocus(conversationId?: string | null): string | null {
   pending.delete(conversationId);
   return messageId;
 }
+
+// The chat on screen right now (task 059): a push for it is not shown as a
+// banner, the messages are already arriving there.
+let openChat: string | null = null;
+
+export function setOpenChat(conversationId: string | null) {
+  openChat = conversationId;
+}
+
+export function openChatId(): string | null {
+  return openChat;
+}

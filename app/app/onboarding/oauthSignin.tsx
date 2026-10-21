@@ -1,8 +1,9 @@
 import { Button } from "@/components/Button";
+import { useAppleAuth } from "@/utils/appleAuth";
 import { useGoogleAuth } from "@/utils/googleAuth";
 import { router } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
-import { ActivityIndicator, Alert, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { OnboardingScreen } from "@/components/OnboardingScreen";
 import { C } from "@/theme/tokens";
 
@@ -14,9 +15,8 @@ export default function AuthSignin() {
   // sign-up: existing accounts go straight to home.
   const { continueWithGoogle, googleLoading } = useGoogleAuth();
 
-  function handleApple() {
-    Alert.alert("Apple sign-in", "Coming soon — we're wiring this up.");
-  }
+  // Apple: behind EXPO_PUBLIC_APPLE_SIGNIN (utils/appleAuth.ts), never a dead button.
+  const { continueWithApple, appleLoading, appleEnabled } = useAppleAuth();
 
   return (
     <OnboardingScreen background="gradient" contentStyle={styles.screen}>
@@ -40,11 +40,14 @@ export default function AuthSignin() {
             disabled={googleLoading}
           />
 
-          <Button
-            label="Sign in with Apple"
-            onPress={handleApple}
-            variant="dark"
-          />
+          {appleEnabled ? (
+            <Button
+              label={appleLoading ? "Connecting to Apple…" : "Sign in with Apple"}
+              onPress={continueWithApple}
+              variant="dark"
+              disabled={appleLoading}
+            />
+          ) : null}
 
           <View style={styles.divider}>
             <View style={styles.dividerLine} />

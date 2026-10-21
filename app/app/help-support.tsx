@@ -1,9 +1,11 @@
 import { FONTS } from "@/constants/fonts";
+import { appConfig } from "@/services/appConfig";
 import { safeBack } from "@/utils/safeBack";
+import * as Application from "expo-application";
+import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import {
-  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -52,12 +54,8 @@ function SupportRow({
 export default function HelpSupport() {
   const insets = useSafeAreaInsets();
 
-  function handleComingSoon(feature: string) {
-    Alert.alert(
-      "Coming Soon",
-      `${feature} will be connected when the required support functionality is available.`,
-    );
-  }
+  // Task 059: every row works (the FAQ shows once it has a URL).
+  const open = (path: string) => router.push(path as any);
 
   return (
     <View style={styles.screen}>
@@ -105,25 +103,27 @@ export default function HelpSupport() {
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>SUPPORT CENTER</Text>
 
-          <SupportRow
-            icon="book-outline"
-            title="FAQ / Knowledge Base"
-            description="Read guides & helpful answers"
-            onPress={() => handleComingSoon("FAQ / Knowledge Base")}
-          />
+          {appConfig.faqUrl ? (
+            <SupportRow
+              icon="book-outline"
+              title="FAQ / Knowledge Base"
+              description="Read guides & helpful answers"
+              onPress={() => open("/legal/faq")}
+            />
+          ) : null}
 
           <SupportRow
             icon="chatbubble-ellipses-outline"
             title="Contact Support"
             description="Chat with our customer team"
-            onPress={() => handleComingSoon("Contact Support")}
+            onPress={() => open("/support?type=support")}
           />
 
           <SupportRow
             icon="bug-outline"
             title="Report a Bug"
             description="Help us improve your experience"
-            onPress={() => handleComingSoon("Report a Bug")}
+            onPress={() => open("/support?type=bug")}
           />
         </View>
 
@@ -134,13 +134,19 @@ export default function HelpSupport() {
           <SupportRow
             icon="document-text-outline"
             title="Terms of Service"
-            onPress={() => handleComingSoon("Terms of Service")}
+            onPress={() => open("/legal/terms")}
           />
 
           <SupportRow
             icon="shield-checkmark-outline"
             title="Privacy Policy"
-            onPress={() => handleComingSoon("Privacy Policy")}
+            onPress={() => open("/legal/privacy")}
+          />
+
+          <SupportRow
+            icon="people-outline"
+            title="Community Guidelines"
+            onPress={() => open("/legal/guidelines")}
           />
         </View>
 
@@ -148,7 +154,10 @@ export default function HelpSupport() {
         <View style={styles.versionContainer}>
           <Text style={styles.appName}>Cosquest App</Text>
 
-          <Text style={styles.versionText}>v2.4.0 (Build 512)</Text>
+          <Text style={styles.versionText}>
+            v{appConfig.appVersion}
+            {Application.nativeBuildVersion ? ` (Build ${Application.nativeBuildVersion})` : ""}
+          </Text>
         </View>
       </ScrollView>
     </View>

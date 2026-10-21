@@ -2,10 +2,11 @@ import { Button } from "@/components/Button";
 import { OnboardingProgress } from "@/components/OnboardingProgress";
 import { Terms } from "@/components/Terms";
 import { ONBOARDING_TOTAL, STEP } from "@/constants/onboarding";
+import { useAppleAuth } from "@/utils/appleAuth";
 import { useGoogleAuth } from "@/utils/googleAuth";
 import { router } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
-import { ActivityIndicator, Alert, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { useAppSelector } from "../../store/hooks";
 import { OnboardingScreen } from "@/components/OnboardingScreen";
 import { C } from "@/theme/tokens";
@@ -18,6 +19,7 @@ export default function AuthSignup() {
   // Same Google flow as the Sign in screen — the backend decides whether
   // it's a new account (-> onboarding) or an existing one (-> home).
   const { continueWithGoogle, googleLoading } = useGoogleAuth();
+  const { continueWithApple, appleLoading, appleEnabled } = useAppleAuth();
 
   return (
     <OnboardingScreen background="gradient" insetTop={false} topGap={0} contentStyle={styles.screen}>
@@ -44,12 +46,15 @@ export default function AuthSignup() {
               disabled={googleLoading || loading}
             />
 
-            <Button
-              label="Sign up with Apple"
-              // Did nothing at all; now says what sign-in's Apple button says.
-              onPress={() => Alert.alert("Apple sign-in", "Coming soon. Use Google or your email for now.")}
-              variant="dark"
-            />
+            {/* Apple: behind EXPO_PUBLIC_APPLE_SIGNIN (utils/appleAuth.ts). */}
+            {appleEnabled ? (
+              <Button
+                label={appleLoading ? "Connecting to Apple…" : "Sign up with Apple"}
+                onPress={continueWithApple}
+                variant="dark"
+                disabled={appleLoading || loading}
+              />
+            ) : null}
 
             <View style={styles.divider}>
               <View style={styles.dividerLine} />

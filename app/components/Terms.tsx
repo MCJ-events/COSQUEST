@@ -8,14 +8,16 @@ export function Terms() {
       By continuing you agree to the{" "}
       <Text
         style={{ color: C.brand }}
-        onPress={() => router.push("/onboarding/oauthSignup")}
+        onPress={() => router.push("/legal/terms")}
+        accessibilityRole="link"
       >
         CosQuest terms
       </Text>{" "}
       & the{" "}
       <Text
         style={{ color: C.brand }}
-        onPress={() => router.push("/onboarding/oauthSignup")}
+        onPress={() => router.push("/legal/guidelines")}
+        accessibilityRole="link"
       >
         community guidelines
       </Text>

@@ -87,6 +87,9 @@ function sanitize(user) {
   safe.id = String(_id);
   // Expertise role ("Front-end") - see expertiseModel.js.
   safe.expertiseLabel = expertiseLabel(obj.expertise);
+  // Polish: whether deleting the account asks for a password (Google / Apple
+  // accounts have none) - never the password itself.
+  safe.hasPassword = Boolean(passwordHash);
   return safe;
 }
 
