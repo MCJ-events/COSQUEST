@@ -2242,8 +2242,11 @@ export default function ChatScreen() {
   // Older history, a page at a time, when you scroll up (audit B4).
   const paging = useAppSelector((state) => state.chat.messagePaging[conversationId]);
   const loadingOlder = !!paging?.loading;
+  // Only once the person has scrolled: FlatList calls onEndReached at once
+  // when what it has rendered is short, which would page in history on open.
+  const scrolledHistory = useRef(false);
   const loadOlder = useStableCallback(() => {
-    if (!token || !paging || !paging.hasMore || paging.loading || messages.length === 0) return;
+    if (!scrolledHistory.current || !token || !paging || !paging.hasMore || paging.loading || messages.length === 0) return;
     dispatch(
       fetchOlderMessages({
         conversationId,
@@ -5137,6 +5140,9 @@ export default function ChatScreen() {
             scrollEventThrottle={16}
             extraData={listExtra}
             onEndReached={loadOlder}
+            onScrollBeginDrag={() => {
+              scrolledHistory.current = true;
+            }}
             onEndReachedThreshold={0.5}
             ListFooterComponent={
               loadingOlder ? (

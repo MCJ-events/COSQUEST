@@ -68,8 +68,15 @@ export function Feeds({
     loadPosts();
   }, [loadPosts]);
 
+  // FlatList calls onEndReached as soon as what it has rendered is short
+  // (4 cards at first), which fetched pages 2 and 3 straight after opening.
+  // The next page waits until the person has scrolled.
+  const scrolled = useRef(false);
+  const onScrollBeginDrag = useCallback(() => {
+    scrolled.current = true;
+  }, []);
   const loadMore = useCallback(() => {
-    if (!token || !hasMore || loading || loadingMore || posts.length === 0) return;
+    if (!scrolled.current || !token || !hasMore || loading || loadingMore || posts.length === 0) return;
     dispatch(fetchMorePosts({ token, page: page + 1 }));
   }, [dispatch, token, hasMore, loading, loadingMore, posts.length, page]);
 
@@ -127,6 +134,7 @@ export function Feeds({
       showsVerticalScrollIndicator={false}
       onEndReached={loadMore}
       onEndReachedThreshold={1.5}
+      onScrollBeginDrag={onScrollBeginDrag}
       viewabilityConfig={viewability}
       onViewableItemsChanged={onViewable}
       // First paint with 4 cards (the fast start); the rest of the page then
