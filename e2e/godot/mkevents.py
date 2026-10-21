@@ -50,7 +50,12 @@ def up():
 STICK = (300, 1950)
 # Attack button: (-44, 50) pt from the bottom-right, 720 px canvas scaled 1.5.
 ATK = (958, 2262)
+# WHIRL, the real skill: slot 2 of the arc (135 degrees, 185 canvas px from Attack).
+SKILL = (762, 2065)
 files = {
+    "up_push.bin": move(STICK[0], STICK[1] - 180),
+    "left_push.bin": move(STICK[0] - 180, STICK[1]),
+    "skill_down.bin": down(*SKILL, 103),
     "down.bin": down(*STICK, 101),
     "move.bin": move(STICK[0] + 180, STICK[1]),
     "up.bin": up(),

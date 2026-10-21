@@ -32,6 +32,13 @@
 #                                         375x667), a Dynamic Island iPhone,
 #                                         and that one at the largest
 #                                         accessibility text size
+#   scripts/verify-ios.sh --godot         with --run: the Godot fight (task 061,
+#                                         docs/game3d/G0_VERDICT.md): LibGodot
+#                                         xcframeworks, the iOS .pck exported and
+#                                         bundled, the borndotcom pod, then the
+#                                         by-hand fight list. Needs a Godot 4.5.1
+#                                         editor (GODOT_EDITOR, default
+#                                         /Applications/Godot.app/...)
 #
 # What the Mac must look at by hand after this passes is the checklist in
 # docs/one-codebase.md, "What the Mac must verify".
@@ -56,6 +63,7 @@ NATIVE_GAME=0
 STAGING=0
 POLISH=0
 FORGE=0
+GODOT=0
 for arg in "$@"; do
   case "$arg" in
     --no-unity) NO_UNITY=1 ;;
@@ -66,7 +74,8 @@ for arg in "$@"; do
     --rn-game) STAGING=1 ;;
     --polish) POLISH=1; RUN=1 ;;
     --forge) FORGE=1; RUN=1; STAGING=1 ;;
-    -h|--help) sed -n '2,38p' "$0"; exit 0 ;;
+    --godot) GODOT=1; RUN=1; STAGING=1 ;;
+    -h|--help) sed -n '2,45p' "$0"; exit 0 ;;
     *) echo "unknown option: $arg" >&2; exit 2 ;;
   esac
 done
@@ -151,6 +160,25 @@ SWIFTC="$(xcrun --find swiftc)" scripts/swift-stub-check.sh 2>&1 | tee "$LOGS/sw
 grep -q "Embed type-checks" "$LOGS/swift-stub-check.log" || echo "    WARNING: stub check did not pass on this Mac (see $LOGS/swift-stub-check.log); the xcodebuild result is what counts" >&2
 ran+=("one-codebase swift stub check")
 
+# Godot fight (task 061): LibGodot xcframeworks and the exported .pck must be in
+# place BEFORE prebuild (the withGodot config plugin copies the pck into the
+# iOS bundle; the pod links the xcframeworks).
+if [ "$GODOT" = 1 ] || [ "${EXPO_PUBLIC_GAME3D:-0}" = 1 ]; then
+  export EXPO_PUBLIC_GAME3D=1
+  step "godot: LibGodot 4.5.1.migeran.2 xcframeworks (download-prebuilt, sha256 checked)"
+  scripts/godot-prebuilt.sh 2>&1 | tee "$LOGS/godot-prebuilt.log" | tail -5
+  for f in libgodot.xcframework libgodot-cpp.xcframework; do
+    ls -d node_modules/@borndotcom/react-native-godot/ios/libs/*/*/"$f" >/dev/null 2>&1 \
+      && echo "    $f: ok" \
+      || { echo "    MISSING: $f under node_modules/@borndotcom/react-native-godot/ios/libs" >&2; exit 1; }
+  done
+  step "godot: export the fight as game3d.pck (iOS preset)"
+  GODOT_EDITOR="${GODOT_EDITOR:-/Applications/Godot.app/Contents/MacOS/Godot}" \
+    scripts/godot-export.sh ios 2>&1 | tee "$LOGS/godot-export.log" | tail -5
+  ls -la game3d-export/ios/game3d.pck 2>/dev/null || { echo "    MISSING: game3d-export/ios/game3d.pck" >&2; exit 1; }
+  ran+=("godot prebuilt + pck")
+fi
+
 # 3. Native project from app.json + the config plugins.
 step "expo prebuild --clean (ios)"
 CI=1 npx expo prebuild --platform ios --clean --no-install 2>&1 | tee "$LOGS/prebuild.log" | tail -5
@@ -214,6 +242,15 @@ done
 ls -d "$APP"/node_modules/react-native-filament/ios/libs/filament/lib/* >/dev/null 2>&1 \
   && echo "    prebuilt filament libraries shipped in the npm package: ok" \
   || echo "    WARNING: no prebuilt filament libraries under node_modules/react-native-filament/ios/libs/filament/lib (pod may try to build filament)" >&2
+if [ "$GODOT" = 1 ]; then
+  grep -q "borndotcom-react-native-godot" ios/Podfile.lock \
+    && echo "    borndotcom-react-native-godot pod: ok" \
+    || { echo "    MISSING: borndotcom-react-native-godot is not in Podfile.lock" >&2; exit 1; }
+  # react-native-godot depends on worklets-core, which Filament also uses: one copy only.
+  [ "$(grep -c '^  - react-native-worklets-core ' ios/Podfile.lock)" -le 1 ] \
+    && echo "    one react-native-worklets-core pod: ok" \
+    || echo "    WARNING: more than one react-native-worklets-core in Podfile.lock" >&2
+fi
 ran+=("pod install")
 
 WORKSPACE="$(ls -d ios/*.xcworkspace | head -1)"
@@ -303,6 +340,23 @@ if [ "$RUN" = 1 ]; then
     echo "     - win a point: your avatar celebrates on the reward screen"
     echo "     - Xcode memory gauge with three models on screen: note the number (Android emulator figures in docs/forge/DROP-IN.md)"
     ran+=("forge by-hand list")
+  fi
+
+  # Godot fight (task 061): what only a Mac / iPhone can show.
+  if [ "$GODOT" = 1 ]; then
+    rel_app="$(ls -d "$APP"/build-logs/DerivedData/Build/Products/Release-iphonesimulator/*.app | head -1)"
+    [ -f "$rel_app/game3d.pck" ] && echo "    game3d.pck is in the app bundle: ok" \
+      || echo "    WARNING: game3d.pck not found in $rel_app (withGodot plugin did not copy it?)" >&2
+    echo "    By hand, the Godot fight (docs/game3d/G0_VERDICT.md; EXPO_PUBLIC_GAME3D=1 build, game server with forge_world on):"
+    echo "     - a duel point: 'Fight (3D)' opens the Godot fight full screen in portrait; no black screen, no crash"
+    echo "     - joystick bottom left moves your Forge hero at once; the camera follows from a high three-quarter view"
+    echo "     - Attack: a slash arc and hit sparks on the Guardian; the skill button shows its cooldown"
+    echo "     - the 0:45 timer, '2/3 players', the minimap, names and health bars over you, the ally and the monster"
+    echo "     - win or lose: Godot closes and the app's reward screen shows win/lose, damage and time"
+    echo "     - open and close the fight 10 times (X button): no crash; the Xcode memory gauge returns to the map level"
+    echo "     - background the app during a fight and come back: the fight resumes or closes cleanly"
+    echo "     - Metal: Godot runs gl_compatibility through LibGodot's iOS build (OpenGL ES on ANGLE/Metal); note the fps in the CQPERF log lines"
+    ran+=("godot by-hand list")
   fi
 
   # 7. Polish fit checks (task 058, docs/polish/BASELINE.md has the Android side).
