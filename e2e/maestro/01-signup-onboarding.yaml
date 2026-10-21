@@ -12,12 +12,10 @@ name: J01 sign up and onboarding
     visible: "Continue"
     timeout: 30000
 - tapOn: "Continue"
-# Apple did nothing at all (F-50); now it says it is coming.
-- tapOn: "Sign up with Apple"
-- extendedWaitUntil:
-    visible: "Coming soon.*"
-    timeout: 5000
-- tapOn: "OK"
+# Apple did nothing at all (F-50), then said "Coming soon"; since task 059 it
+# is hidden unless the build turns it on (EXPO_PUBLIC_APPLE_SIGNIN): never a
+# dead button.
+- assertNotVisible: "Sign up with Apple"
 - tapOn: "Sign up with email"
 - extendedWaitUntil:
     visible: "We have a space.*"

@@ -33,6 +33,10 @@ restart() { # name script log port
 }
 
 rm -f "$here/seed/.peer-state.json"
+# The phone's network on (J16 turns it off; a failed run would leave it off,
+# and the setting survives an emulator restart).
+adb shell svc wifi enable >/dev/null 2>&1
+adb shell svc data enable >/dev/null 2>&1
 # Twice if need be: right after a call journey the old backend can take a
 # while to let go (live sockets), and the first start then fails.
 for attempt in 1 2; do
