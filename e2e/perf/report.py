@@ -56,8 +56,7 @@ ROWS = [
     ("Duel: JS frames over 50 ms", ("duel", "js_long_frames")),
     ("Duel: DuelScreen renders", ("duel", "renders_DuelScreen")),
     ("Duel: arena renders (no counter in the before build)", ("duel", "renders_DuelArena")),
-    ("Quiz 10 s: UI jank %", ("quiz", "janky_pct")),
-    ("Quiz: JS fps", ("quiz", "js_fps")),
+    ("Quiz 10 s: JS fps (gfxinfo does not see the quiz's frames)", ("quiz", "js_fps")),
     ("Quiz: Encounter renders", ("quiz", "renders_Encounter")),
 ]
 
@@ -83,10 +82,15 @@ def main():
             if bv is None and av is None:
                 continue
             print(f"| {label} | {fmt(bv)} | {fmt(av)} |")
-        errs = [f"{run} {k}: {get(d, k, 'error')[:80]}" for run, d in ((before, b), (after, a)) if d
-                for k in ("cold", "feed", "chat", "map", "duel", "quiz") if get(d, k, "error")]
-        if errs:
-            print("\nNot measured: " + "; ".join(e.replace("\n", " ") for e in errs))
+        notes = {}
+        for run, d in ((before, b), (after, a)):
+            for k in ("cold", "feed", "chat", "map", "duel", "quiz"):
+                e = get(d, k, "error") if d else None
+                if e:
+                    msg = e.splitlines()[0][:140] if "maestro" not in e else "the flow could not start it (game state, see BASELINE.md)"
+                    notes.setdefault((run, msg), []).append(k)
+        for (run, msg), ks in notes.items():
+            print(f"\nNot measured, {run} {', '.join(ks)}: {msg}")
         print()
 
 
