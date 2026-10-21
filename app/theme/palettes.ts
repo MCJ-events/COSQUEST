@@ -15,9 +15,9 @@ export type Palette = {
   // --- brand -----------------------------------------------------------
   /** The brand accent: buttons, links, selected tabs, unread dots. */
   brand: string;
-  /** Pressed / darker brand (was #B63D91, collapsed into `brand`). */
+  /** Was #B63D91: now the brand pink in every palette. */
   brandDeep: string;
-  /** A lighter brand line (was #C34D9C, collapsed into `brand`). */
+  /** Was #C34D9C: now the brand pink in every palette. */
   brandSoft: string;
   /** A pale brand wash behind brand icons and chips. */
   brandTint: string;
@@ -85,8 +85,10 @@ export type Palette = {
 /** Today's look, value for value (the token migration changes nothing). */
 const current: Palette = {
   brand: "#C5399A",
-  brandDeep: "#B63D91",
-  brandSoft: "#C34D9C",
+  // Near-duplicates of the brand pink, collapsed into it (audit C): were
+  // #B63D91 (41 uses) and #C34D9C (29 uses).
+  brandDeep: "#C5399A",
+  brandSoft: "#C5399A",
   brandTint: "#F3DDED",
   brandVivid: "#DC179F",
   plum: "#7D356D",
@@ -101,10 +103,11 @@ const current: Palette = {
   muted: "#9C9CAA",
   slate: "#66738A",
   grey1: "#8A8A90",
-  grey2: "#8A8A93",
+  // #8A8A93 (17 uses) collapsed into #8A8A90, #777780 (9) into #7A7A84.
+  grey2: "#8A8A90",
   grey3: "#6B6B72",
   grey4: "#7A7A84",
-  grey5: "#777780",
+  grey5: "#7A7A84",
   placeholder: "#9AA3B5",
 
   danger: "#D64545",
