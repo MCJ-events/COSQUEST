@@ -39,6 +39,7 @@ import {
 import Animated, {
   Easing,
   FadeIn,
+  ReduceMotion,
   type SharedValue,
   useAnimatedStyle,
   useReducedMotion,
@@ -1031,7 +1032,8 @@ function Arena({
 function FloatingNumber({ floater, top }: { floater: Floater; top: number }) {
   const age = useSharedValue(0);
   useEffect(() => {
-    age.set(withTiming(1, { duration: 900, easing: Easing.linear }));
+    // Damage shows with "reduce motion" on too (it only rises and fades).
+    age.set(withTiming(1, { duration: 900, easing: Easing.linear, reduceMotion: ReduceMotion.Never }));
   }, [age]);
   const style = useAnimatedStyle(() => ({ opacity: 1 - age.get(), transform: [{ translateY: -age.get() * 50 }] }));
   return <Animated.Text style={[styles.floater, { left: floater.x - 40, top, color: floater.color }, style]}>{floater.text}</Animated.Text>;

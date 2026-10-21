@@ -23,6 +23,7 @@ import Animated, {
   FadeInDown,
   FadeOut,
   LinearTransition,
+  ReduceMotion,
   SlideInRight,
   SlideOutLeft,
   useAnimatedStyle,
@@ -610,7 +611,8 @@ export function DeadlineBar({ deadline, total }: { deadline: number; total: numb
   useEffect(() => {
     const left = leftAt(Date.now());
     frac.set(total > 0 ? Math.min(1, left / total) : 0);
-    if (deadline && left > 0) frac.set(withTiming(0, { duration: left * 1000, easing: Easing.linear }));
+    // A clock, not decoration: it drains with "reduce motion" on too.
+    if (deadline && left > 0) frac.set(withTiming(0, { duration: left * 1000, easing: Easing.linear, reduceMotion: ReduceMotion.Never }));
     const tick = () => {
       const v = deadlineView(leftAt(Date.now()));
       setSeconds(v.seconds);
