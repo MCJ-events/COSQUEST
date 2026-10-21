@@ -8,6 +8,10 @@ type PostMenuProps = {
   onClose: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  /** Someone else's post (task 059): report it, or block its author. */
+  onReport?: () => void;
+  onBlock?: () => void;
+  authorName?: string;
 };
 
 /*
@@ -22,7 +26,15 @@ export function PostMenu({
   onClose,
   onEdit,
   onDelete,
+  onReport,
+  onBlock,
+  authorName,
 }: PostMenuProps) {
+  const later = (fn?: () => void) => () => {
+    onClose();
+    if (fn) setTimeout(fn, MODAL_CLOSE_DELAY);
+  };
+
   const handleEdit = () => {
     onClose();
     setTimeout(onEdit, MODAL_CLOSE_DELAY);
@@ -60,12 +72,29 @@ export function PostMenu({
                 </Text>
               </Pressable>
             </>
-          ) : null}
+          ) : (
+            <>
+              {onReport ? (
+                <Pressable style={styles.item} onPress={later(onReport)} accessibilityRole="button" accessibilityLabel="Report post">
+                  <Ionicons name="flag-outline" size={21} color={C.ink} />
+                  <Text style={styles.itemText}>Report post</Text>
+                </Pressable>
+              ) : null}
+              {onBlock ? (
+                <Pressable style={styles.item} onPress={later(onBlock)} accessibilityRole="button" accessibilityLabel={`Block ${authorName || "this person"}`}>
+                  <Ionicons name="ban-outline" size={21} color="#D9364F" />
+                  <Text style={[styles.itemText, styles.deleteText]}>Block {authorName || "this person"}</Text>
+                </Pressable>
+              ) : null}
+            </>
+          )}
 
           {/* CANCEL */}
           <Pressable
-            style={[styles.cancel, !isMine && styles.cancelOnly]}
-            onPress={onClose}>
+            style={[styles.cancel, isMine === false && !onReport && !onBlock && styles.cancelOnly]}
+            onPress={onClose}
+            accessibilityRole="button"
+            accessibilityLabel="Cancel">
             <Text style={styles.cancelText}>Cancel</Text>
           </Pressable>
         </Pressable>

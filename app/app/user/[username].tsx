@@ -42,6 +42,9 @@ import { fetchFollowing } from "@/store/thunks/followThunks";
 import { getCloudinaryVideoPoster } from "@/utils/videoPoster";
 import { safeBack } from "@/utils/safeBack";
 import { C } from "@/theme/tokens";
+import { openReport } from "@/components/safety/ReportSheet";
+import { useCapabilities } from "@/services/capabilities";
+import { haptic } from "@/utils/haptics";
 
 type Tab = "Posts" | "Reels" | "Thoughts";
 
@@ -103,6 +106,7 @@ export default function UserProfileScreen() {
   const [blockedByMe, setBlockedByMe] = useState(false);
   const [busy, setBusy] = useState<"follow" | "message" | "block" | null>(null);
   const [menuVisible, setMenuVisible] = useState(false);
+  const caps = useCapabilities();
   const [tab, setTab] = useState<Tab>("Posts");
 
   // Whether I follow them: from the "people I follow" list.
@@ -201,6 +205,7 @@ export default function UserProfileScreen() {
     if (!token || busy) {
       return;
     }
+    haptic.tap();
 
     const wasFollowing = iFollow;
 
@@ -362,6 +367,7 @@ export default function UserProfileScreen() {
           onPress={() => setMenuVisible(true)}
           hitSlop={10}
           style={styles.headerButton}
+          accessibilityRole="button"
           accessibilityLabel="More options">
           <Ionicons name="ellipsis-vertical" size={20} color={C.ink} />
         </Pressable>
@@ -649,9 +655,36 @@ export default function UserProfileScreen() {
               </Pressable>
             )}
 
+            {/* Task 059: report the person (where the server takes reports). */}
+            {caps.reports ? (
+              <Pressable
+                style={styles.menuItem}
+                onPress={() => {
+                  setMenuVisible(false);
+                  setTimeout(
+                    () =>
+                      openReport({
+                        targetType: "user",
+                        targetId: profile?.id ? String(profile.id) : username,
+                        name: `@${username}`,
+                        person: blockedByMe ? null : { username },
+                        onBlocked: () => setBlockedByMe(true),
+                      }),
+                    300,
+                  );
+                }}
+                accessibilityRole="button"
+                accessibilityLabel={`Report @${username}`}>
+                <Ionicons name="flag-outline" size={20} color={C.ink} />
+                <Text style={styles.menuText}>Report @{username}</Text>
+              </Pressable>
+            ) : null}
+
             <Pressable
               style={[styles.menuItem, styles.menuCancel]}
-              onPress={() => setMenuVisible(false)}>
+              onPress={() => setMenuVisible(false)}
+              accessibilityRole="button"
+              accessibilityLabel="Cancel">
               <Text style={styles.menuCancelText}>Cancel</Text>
             </Pressable>
           </View>

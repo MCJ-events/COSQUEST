@@ -80,6 +80,8 @@ import { fetchChats, fetchConversation } from "@/store/thunks/chatThunks";
 import { getAvatarSource } from "@/utils/callHelpers";
 import { safeBack } from "@/utils/safeBack";
 import { C } from "@/theme/tokens";
+import { openReport } from "@/components/safety/ReportSheet";
+import { useCapabilities } from "@/services/capabilities";
 
 const KIND_LABEL = {
   private: "Private group",
@@ -95,6 +97,7 @@ function errorText(error: unknown, fallback: string) {
 }
 
 export default function GroupInfo() {
+  const caps = useCapabilities();
   const insets = useSafeAreaInsets();
   const dispatch = useAppDispatch();
   const { id, manage } = useLocalSearchParams<{ id: string; manage?: string }>();
@@ -950,6 +953,15 @@ export default function GroupInfo() {
             danger
             onPress={confirmLeave}
           />
+          {/* Task 059: report the group (where the server takes reports). */}
+          {caps.reports ? (
+            <GroupRow
+              icon="flag-outline"
+              label="Report group"
+              danger
+              onPress={() => group && openReport({ targetType: "group", targetId: String(group.id), name: group.name, conversationId: String(group.id) })}
+            />
+          ) : null}
         </View>
       </ScrollView>
 

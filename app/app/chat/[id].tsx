@@ -1,6 +1,8 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { replyQuote } from "@/services/replyQuote";
 import { setOpenChat, takeChatFocus } from "@/services/chatFocus";
+import { useCapabilities } from "@/services/capabilities";
+import { openReport } from "@/components/safety/ReportSheet";
 import {
   AudioModule,
   RecordingPresets,
@@ -2208,6 +2210,7 @@ export default function ChatScreen() {
   const styles = useThemedStyles(STYLE_PAIR);
   const ink = useInk();
   const insets = useSafeAreaInsets();
+  const caps = useCapabilities();
 
   const dispatch = useAppDispatch();
 
@@ -4137,6 +4140,7 @@ export default function ChatScreen() {
     if (!token || !conversationId || message.pending) {
       return;
     }
+    haptic.tap();
 
     setShowActions(false);
 
@@ -4742,6 +4746,7 @@ export default function ChatScreen() {
   // call:incoming socket event.
 
   const beginCall = async (type: "audio" | "video") => {
+    haptic.press();
     if (!token || !conversationId || callStarting) {
       return;
     }
@@ -4795,6 +4800,7 @@ export default function ChatScreen() {
   };
 
   const openMessageActions = (message: Message) => {
+    haptic.press();
     if (message.pending) {
       return;
     }
@@ -5979,6 +5985,30 @@ export default function ChatScreen() {
                   () => selectedMessage && selectMessage(selectedMessage),
                 )}
               />
+
+              {/* Task 059: report someone else's message (and block them). */}
+              {!selectedMessageIsMine && caps.reports && selectedMessage && !selectedMessage.pending ? (
+                <MenuItem
+                  icon="flag-outline"
+                  label="Report"
+                  danger
+                  onPress={menuTap(() => {
+                    const m = selectedMessage;
+                    if (!m) return;
+                    setTimeout(
+                      () =>
+                        openReport({
+                          targetType: "message",
+                          targetId: String(m.id),
+                          conversationId: conversationId ?? undefined,
+                          snapshot: m.content?.slice(0, 500),
+                          person: { username: m.sender?.username ?? null, userId: m.sender?.id ?? null },
+                        }),
+                      300,
+                    );
+                  })}
+                />
+              ) : null}
             </View>
             </ScrollView>
 

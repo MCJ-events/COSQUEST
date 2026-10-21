@@ -34,6 +34,9 @@ import { createChat } from "@/store/thunks/chatThunks";
 import { safeBack } from "@/utils/safeBack";
 import { KeyboardAvoidingView } from "@/components/ui/keyboard";
 import { C } from "@/theme/tokens";
+import { openReport } from "@/components/safety/ReportSheet";
+import { useCapabilities } from "@/services/capabilities";
+import { confirmBlock } from "@/components/safety/block";
 
 const PINK = C.brandDeep;
 const INK = C.inkNavy;
@@ -98,6 +101,7 @@ function Separator() {
 }
 
 export default function GroupMembers() {
+  const caps = useCapabilities();
   const insets = useSafeAreaInsets();
   const dispatch = useAppDispatch();
   const listRef = useRef<FlatList<GroupMember>>(null);
@@ -250,6 +254,38 @@ export default function GroupMembers() {
             <Text style={styles.softText}>Manage {firstName(selected)}</Text>
           </Pressable>
         ) : null}
+
+        {/* Task 059: block (and report) someone from the member list. */}
+        {selected.id !== myUserId ? (
+          <View style={styles.safetyRow}>
+            <Pressable
+              style={styles.safetyButton}
+              onPress={() => confirmBlock({ username: selected.username, userId: selected.id }, () => setSelected(null))}
+              accessibilityRole="button"
+              accessibilityLabel={`Block ${firstName(selected)}`}>
+              <Ionicons name="ban-outline" size={16} color={C.danger} />
+              <Text style={styles.safetyText}>Block</Text>
+            </Pressable>
+            {caps.reports ? (
+              <Pressable
+                style={styles.safetyButton}
+                onPress={() =>
+                  openReport({
+                    targetType: "user",
+                    targetId: selected.id,
+                    name: `@${selected.username}`,
+                    person: { username: selected.username, userId: selected.id },
+                    conversationId: groupId,
+                  })
+                }
+                accessibilityRole="button"
+                accessibilityLabel={`Report ${firstName(selected)}`}>
+                <Ionicons name="flag-outline" size={16} color={C.danger} />
+                <Text style={styles.safetyText}>Report</Text>
+              </Pressable>
+            ) : null}
+          </View>
+        ) : null}
       </View>
     </>
   ) : null;
@@ -257,7 +293,7 @@ export default function GroupMembers() {
   return (
     <LinearGradient colors={[C.skyPale, C.skyPale2]} style={styles.screen}>
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        <Pressable onPress={() => safeBack()} hitSlop={10} accessibilityLabel="Back">
+        <Pressable onPress={() => safeBack()} hitSlop={10} accessibilityRole="button" accessibilityLabel="Back">
           <Ionicons name="chevron-back" size={26} color={INK} />
         </Pressable>
         <View style={styles.flex}>
@@ -338,6 +374,9 @@ export default function GroupMembers() {
 }
 
 const styles = StyleSheet.create({
+  safetyRow: { flexDirection: "row", justifyContent: "center", gap: 24, marginTop: 10 },
+  safetyButton: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 8, paddingHorizontal: 6 },
+  safetyText: { fontFamily: FONTS.medium, fontSize: 13, color: C.danger },
   screen: { flex: 1 },
 
   flex: { flex: 1, minWidth: 0 },

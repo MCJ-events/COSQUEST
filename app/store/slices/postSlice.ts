@@ -473,6 +473,18 @@ const postSlice = createSlice({
       state.selectedPost = null;
       state.error = null;
     },
+
+    // Task 059: after blocking someone, their posts leave the feed at once
+    // (the server leaves them out from the next fetch).
+    hidePostsBy(state, action: PayloadAction<string>) {
+      const name = action.payload.trim().toLowerCase();
+      if (!name) return;
+      const by = (p: any) =>
+        String(p?.author?.username || p?.author?.profile?.username || p?.user?.username || p?.user?.profile?.username || p?.handle || "")
+          .replace(/^@/, "")
+          .toLowerCase();
+      state.posts = state.posts.filter((p) => by(p) !== name);
+    },
   },
 
   extraReducers: (builder) => {
@@ -668,7 +680,7 @@ const postSlice = createSlice({
   },
 });
 
-export const { setSelectedPost, clearSelectedPost, clearPosts } =
+export const { setSelectedPost, clearSelectedPost, clearPosts, hidePostsBy } =
   postSlice.actions;
 
 export default postSlice.reducer;

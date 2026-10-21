@@ -34,6 +34,10 @@ import { SharedPostEmbed } from "./SharedPostEmbed";
 import { ShareSheet } from "./ShareSheet";
 import { useRenderCount } from "@/utils/perfMarks";
 import { C } from "@/theme/tokens";
+import { openReport } from "@/components/safety/ReportSheet";
+import { confirmBlock } from "@/components/safety/block";
+import { useCapabilities } from "@/services/capabilities";
+import { hidePostsBy } from "@/store/slices/postSlice";
 
 /* =========================================================
    HELPERS
@@ -186,6 +190,7 @@ function factionColor(faction: string) {
 export const PostCard = memo(function PostCard({ post, token }: { post: any; token: string }) {
   useRenderCount("PostCard");
   const dispatch = useAppDispatch();
+  const caps = useCapabilities();
 
   /* =========================================================
      AUTH USER
@@ -563,9 +568,10 @@ export const PostCard = memo(function PostCard({ post, token }: { post: any; tok
     </View>
   );
 
-  // ⋯ only on your own posts (edit / delete).
+  // ⋯ on your own posts (edit / delete) and, task 059, on everyone else's
+  // (report where the server takes reports, block the author).
   const menuButton = (onPhoto: boolean) =>
-    isMine ? (
+    isMine || postUsername ? (
       <Pressable
         style={[styles.menuButton, onPhoto && styles.menuButtonOnPhoto]}
         onPress={() => setMenuVisible(true)}
@@ -633,6 +639,19 @@ export const PostCard = memo(function PostCard({ post, token }: { post: any; tok
         onClose={() => setMenuVisible(false)}
         onEdit={startEdit}
         onDelete={deletePost}
+        authorName={postUsername ? `@${postUsername}` : undefined}
+        onReport={
+          caps.reports && post?.id
+            ? () =>
+                openReport({
+                  targetType: "post",
+                  targetId: String(post.id),
+                  snapshot: typeof post?.content === "string" ? post.content.slice(0, 500) : undefined,
+                  person: { username: postUsername || null },
+                })
+            : undefined
+        }
+        onBlock={postUsername ? () => confirmBlock({ username: postUsername }, () => dispatch(hidePostsBy(postUsername))) : undefined}
       />
 
       {/* EDIT POST MODAL */}
