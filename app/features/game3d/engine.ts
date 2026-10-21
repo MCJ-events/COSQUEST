@@ -14,8 +14,8 @@
 //
 // Calls into Godot are kept to one per fight: every runOnGodotThread run
 // compiles a new worklet in the Godot thread's runtime and that memory never
-// came back (~1.7 MB a call on the emulator, 300 calls +500 MB, not freed by
-// a GC). Polling get_status and an end_fight call per close had cost ~7 MB a
+// came back (~1.7 MB a call on the emulator: 300 calls, +490 MB native heap,
+// not freed by a GC). Polling get_status and an end_fight call per close had cost ~7 MB a
 // fight.
 //
 // Steps run in order on one queue, so a double tap, a close while the engine
@@ -178,11 +178,9 @@ function createWorklet(args: string[]): boolean {
 }
 
 /**
- * The Bridge node, looked up once per engine and then kept in the Godot
- * thread's runtime. Every RTNGodot.API() walk allocated ~1.2 MB of native
- * memory that was never given back (measured on the emulator: 300 status
- * calls, +380 MB; it was the ~7 MB that each fight open/close left behind),
- * so nothing here walks the API more than once per engine.
+ * The Bridge node, looked up once per engine and kept in the Godot thread's
+ * runtime (one API walk per engine; the runs that need it are rare anyway,
+ * see the header on what each run costs).
  */
 function bridgeWorklet(): any | null {
   "worklet";

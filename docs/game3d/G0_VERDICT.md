@@ -52,7 +52,7 @@ for the camera, HUD and FX numbers only.
 **How the leak was found:**
 - **Long fights are flat:** a single 45 s fight, with or without the bot, stays flat. So do 10 fight restarts inside one Godot view (`selfcycle=10`: 438 to 440 MB) and 8 background/foreground surface cycles.
 - **Godot's own allocator is flat:** `OS.get_static_memory_usage` stays at 58.3 MB across headless restarts with the Forge GLBs. Object counts stay at ~1,490 objects, 9 resources and 50 nodes.
-- **The cause:** 300 `bridge.get_status()` calls from React Native (`statusspam=300`) put **+550 MB** of native heap on the emulator, and a Hermes `gc()` in the Godot thread's runtime frees none of it.
+- **The cause:** 300 `bridge.get_status()` calls from React Native (`statusspam=300`) put **+490 MB** of native heap (+550 MB PSS) on the emulator, and a Hermes `gc()` in the Godot thread's runtime frees none of it.
   - Every `runOnGodotThread(fn)` in react-native-godot 1.0.1 builds a new `JsiWorklet` and `WorkletInvoker`. That means the worklet's source is compiled again in the Godot thread's Hermes runtime, and the memory never comes back.
   - The first bridge polled `get_status` and called `end_fight`, about 4 to 5 runs per fight.
 
