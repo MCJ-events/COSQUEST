@@ -55,7 +55,7 @@ export default function GamePage({
         />
       ) : null}
 
-      {!gamePlayable ? <ComingSoon /> : null}
+      {!gamePlayable ? <NoGameHere /> : null}
 
       <Animated.View
         pointerEvents="none"
@@ -73,19 +73,22 @@ export default function GamePage({
   );
 }
 
-function ComingSoon() {
+function NoGameHere() {
   return (
     <View style={styles.soon}>
       <View style={styles.soonCard}>
         <Ionicons name="planet" size={40} color="#FFFFFF" />
-        <Text style={styles.soonTitle}>The game is coming to Android</Text>
+        {/* Task 059: only builds without the game see this (the website, a
+            test build without the module). Not "coming soon": it says where. */}
+        <Text style={styles.soonTitle}>Play on your phone</Text>
         <Text style={styles.soonText}>
-          Raids, shrines and duels land here soon. Your chats are one swipe away.
+          Raids, shrines and duels are in the CosQuest app for iPhone and Android. Your chats are one swipe away.
         </Text>
         <Pressable
           style={styles.soonButton}
           onPress={() => world.openChat(null)}
-          accessibilityRole="button">
+          accessibilityRole="button"
+          accessibilityLabel="Back to chat">
           <Text style={styles.soonButtonText}>Back to chat</Text>
         </Pressable>
       </View>

@@ -25,6 +25,7 @@ import { fetchChats } from "@/store/thunks/chatThunks";
 import { getPref, setPref } from "@/utils/prefsStorage";
 
 import ShareToChatSheet from "./ShareToChatSheet";
+import { useLinkedFactions } from "./useLinkedFactions";
 
 const HANDLED_PREF = "world.lastPlayNotification";
 
@@ -44,6 +45,8 @@ export default function GameBridge() {
     active ? state.chat.conversationDetails[active.call.conversationId] : undefined,
   );
   const [sharing, setSharing] = useState<GameSharePayload | null>(null);
+  // F-08: one faction for both halves, when the flag says so (task 059).
+  useLinkedFactions();
   const lastSummary = useRef<UnreadSummary | null>(null);
 
   // ---------- one login ----------

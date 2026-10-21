@@ -37,9 +37,6 @@ export const appConfig = {
   /** Sign in with Apple (the backend's Apple web flow: needs APPLE_* keys on the server). Off: no Apple button. */
   appleSignIn: flag(process.env.EXPO_PUBLIC_APPLE_SIGNIN) && Platform.OS !== "web",
 
-  /** One faction choice drives chat and game (docs/polish/DECISIONS.md). Off: two separate choices, as today. */
-  linkedFactions: flag(process.env.EXPO_PUBLIC_LINKED_FACTIONS),
-
   /** Call features that are not built yet: hidden unless turned on for testing. */
   callScreenShare: flag(process.env.EXPO_PUBLIC_CALL_SCREEN_SHARE),
   callSparks: flag(process.env.EXPO_PUBLIC_CALL_SPARKS),

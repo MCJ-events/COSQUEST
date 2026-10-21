@@ -20,6 +20,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { FONTS } from "@/constants/fonts";
 import { C } from "@/theme/tokens";
+import { appConfig } from "@/services/appConfig";
 
 const INK = C.inkNavy;
 const MUTED = C.slate;
@@ -108,7 +109,8 @@ function OrbitCircle({
   faded: boolean;
   label: boolean;
   video: ReactNode;
-  onPress: () => void;
+  /** Task 059: optional (player cards are not built; the circle is not a button then). */
+  onPress?: () => void;
 }) {
   const pos = useRef(new Animated.ValueXY({ x, y })).current;
   const dim = useRef(new Animated.Value(size)).current;
@@ -167,7 +169,9 @@ function OrbitCircle({
 
       <Pressable
         onPress={onPress}
-        accessibilityLabel={person.name}
+        disabled={!onPress}
+        accessibilityRole={onPress ? "button" : "image"}
+        accessibilityLabel={`${person.name}${person.speaking ? ", speaking" : ""}${person.micOff ? ", muted" : ""}`}
         style={[
           styles.circle,
           {
@@ -293,7 +297,6 @@ function OrbitView({
           faded={slot.ring === "outer" && !slot.person.speaking}
           label={slot.ring !== "outer"}
           video={renderVideo(slot.person.id)}
-          onPress={() => Alert.alert(slot.person.isMe ? "You" : slot.person.name, "Player cards and private calls are coming soon.")}
         />
       ))}
 
@@ -378,13 +381,12 @@ export default function OrbitCallScreen({
 }) {
   const insets = useSafeAreaInsets();
   const speaker = people.find((p) => p.speaking && !p.isMe) || people.find((p) => p.speaking);
-  const comingSoon = (what: string) => Alert.alert(what, `${what} is coming soon.`);
 
   return (
     <LinearGradient colors={["#F4F8FD", C.skyPale2]} style={styles.screen}>
       {/* HEADER */}
       <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
-        <Pressable style={styles.roundBtn} onPress={onMinimize} accessibilityLabel="Minimize call">
+        <Pressable style={styles.roundBtn} onPress={onMinimize} accessibilityRole="button" accessibilityLabel="Minimize call">
           <Ionicons name="chevron-back" size={22} color={INK} />
         </Pressable>
         <View style={styles.headerText}>
@@ -398,7 +400,7 @@ export default function OrbitCallScreen({
             {subtitle}
           </Text>
         </View>
-        <Pressable style={[styles.roundBtn, styles.roundBtnPink]} onPress={onPeople} accessibilityLabel="Add people">
+        <Pressable style={[styles.roundBtn, styles.roundBtnPink]} onPress={onPeople} accessibilityRole="button" accessibilityLabel="Add people">
           <Ionicons name="people-outline" size={20} color={PINK} />
         </Pressable>
       </View>
@@ -416,7 +418,7 @@ export default function OrbitCallScreen({
             <Text style={styles.focusTitle}>Focus mode on</Text>
             <Text style={styles.focusText}>Faction voices are off</Text>
           </View>
-          <Pressable style={styles.focusBtn} onPress={onToggleFocus}>
+          <Pressable style={styles.focusBtn} onPress={onToggleFocus} accessibilityRole="button" accessibilityLabel={focusOn ? "Focus on" : "Focus off"}>
             <Text style={styles.focusBtnText}>Hear faction</Text>
           </Pressable>
         </View>
@@ -441,9 +443,10 @@ export default function OrbitCallScreen({
       <View style={[styles.controls, { paddingBottom: insets.bottom + 14 }]}>
         <ControlButton icon={micOn ? "mic-outline" : "mic-off-outline"} label="Mic" active={!micOn} onPress={onToggleMic} disabled={ended} />
         <ControlButton icon={cameraOn ? "videocam" : "videocam-outline"} label="Video" active={cameraOn} onPress={onToggleCamera} disabled={ended} />
-        <ControlButton icon="share-outline" label="Share" onPress={() => comingSoon("Screen sharing")} disabled={ended} />
+        {/* Task 059: screen sharing and Sparks in calls are not built in this app yet: hidden behind flags, never a dead button. */}
+        {appConfig.callScreenShare ? <ControlButton icon="share-outline" label="Share" onPress={() => Alert.alert("Screen sharing", "Turned on for testing only.")} disabled={ended} /> : null}
         <ControlButton icon="headset-outline" label="Focus" active={focusOn} onPress={onToggleFocus} disabled={ended} />
-        <ControlButton icon="sparkles" label="Sparks" kind="sparks" onPress={() => comingSoon("Sparks in calls")} disabled={ended} />
+        {appConfig.callSparks ? <ControlButton icon="sparkles" label="Sparks" kind="sparks" onPress={() => Alert.alert("Sparks in calls", "Turned on for testing only.")} disabled={ended} /> : null}
         <ControlButton icon="close" label="Leave" kind="leave" onPress={onLeave} disabled={ended} />
       </View>
     </LinearGradient>

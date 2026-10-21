@@ -108,7 +108,7 @@ export function HeroFigure({ tint, height }: { tint: string; height: number }) {
 /** An equipment slot. Filled with a Relic, or locked until the avatar work gives it something to hold. */
 export function HeroSlot({ label, locked, children, a11y }: { label: string; locked?: boolean; children: ReactNode; a11y?: string }) {
   return (
-    <View accessible accessibilityLabel={a11y ?? (locked ? `${label}, coming soon` : label)} style={{ alignItems: "center", gap: 6 }}>
+    <View accessible accessibilityLabel={a11y ?? (locked ? `${label}, locked` : label)} style={{ alignItems: "center", gap: 6 }}>
       <View style={[styles.slot, { backgroundColor: locked ? "rgba(255,255,255,0.45)" : "rgba(255,255,255,0.9)" }]}>
         <View style={{ opacity: locked ? 0.35 : 1 }}>{children}</View>
         {locked ? (
