@@ -114,15 +114,18 @@ async function run(baseUrl) {
     check(!(await settle(sent, (m) => m.to === b.pushToken, 600)), 'notificationsEnabled off: no push', sent);
     await User.updateOne({ _id: b.id }, { $set: { 'preferences.notificationsEnabled': true } });
 
-    // Registered by email only (no session): stored, never pushed to.
+    // Registering by email only (no session) is refused and stores nothing.
     const c = await makeUser();
     const byEmail = await request('POST', '/api/users/me/devices', null, { email: c.email, pushToken: c.pushToken, platform: 'android' });
-    check(byEmail.status === 200 && byEmail.data.user.devices.length === 1 && byEmail.data.user.devices[0].authed === false,
-      'email-only registration is stored but not trusted', byEmail.data);
+    const cNow = await User.findById(c.id).lean();
+    check(byEmail.status === 401 && !cNow.devices.some((d) => d.pushToken === c.pushToken),
+      'email-only device registration -> 401, nothing stored', { status: byEmail.status, devices: cNow.devices });
+    // A device row left over from the old email-only path (authed: false) still gets no push.
+    await User.updateOne({ _id: c.id }, { $push: { devices: { pushToken: c.pushToken, platform: 'android', registeredAt: new Date(), authed: false } } });
     sent.length = 0;
     const dmC = (await request('POST', '/api/chats/dm', a.token, { username: c.username })).data.chat.id;
     await request('POST', `/api/chats/${dmC}/messages`, a.token, { content: 'hello c' });
-    check(!(await settle(sent, (m) => m.to === c.pushToken, 600)), 'an email-only device gets no push', sent);
+    check(!(await settle(sent, (m) => m.to === c.pushToken, 600)), 'a legacy unauthenticated device row gets no push', sent);
 
     // One phone, one account: a signed-in registration takes the token over.
     const moved = await register(c, b.pushToken);

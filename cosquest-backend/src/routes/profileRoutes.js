@@ -1,7 +1,7 @@
 const express = require('express');
-const { identifyUser, identifyUserWithPassword } = require('../middleware/identifyUser');
 const { upload } = require('../middleware/upload');
 const { requireAuth, optionalAuth, requireCompletedOnboarding } = require('../middleware/auth');
+const { usernameCheckLimiter } = require('../middleware/rateLimiter');
 const { asyncHandler } = require('../utils/asyncHandler');
 const {
   getMe,
@@ -29,21 +29,22 @@ const { blockUser, unblockUser, listBlockedUsers } = require('../controllers/blo
 
 const router = express.Router();
 
-// email (before login/onboarding) or Bearer token (after login) - see identifyUser
-router.get('/me', asyncHandler(identifyUser), getMe);
-router.patch('/me/profile', asyncHandler(identifyUser), asyncHandler(updateProfile));
-router.get('/check-username', asyncHandler(identifyUser), asyncHandler(checkUsername));
-router.patch('/me/avatar', asyncHandler(identifyUser), asyncHandler(setAvatar));
-// multer has to parse the multipart body first, so req.body.email exists by the time identifyUser runs
-router.post('/me/avatar/photo', upload.single('photo'), asyncHandler(identifyUser), asyncHandler(uploadAvatarPhoto));
+// Every /me route needs a signed-in session (signup and login both return
+// one): requireAuth checks the token, logout (tokenVersion) and the
+// single-device rule (currentSessionId). An email or username is never
+// accepted in place of the token.
+router.get('/me', requireAuth, getMe);
+router.patch('/me/profile', requireAuth, asyncHandler(updateProfile));
+// Public, boolean only ({ username, available }). A token is optional: with
+// one, the caller's own current username counts as available to them.
+router.get('/check-username', usernameCheckLimiter, asyncHandler(optionalAuth), asyncHandler(checkUsername));
+router.patch('/me/avatar', requireAuth, asyncHandler(setAvatar));
+// requireAuth runs before multer, so an unauthenticated upload is rejected
+// before anything is written to disk.
+router.post('/me/avatar/photo', requireAuth, upload.single('photo'), asyncHandler(uploadAvatarPhoto));
 router.get('/me/points', requireAuth, requireCompletedOnboarding, getMyPoints);
-// Contact holds more sensitive PII (phone, business address) than the other
-// onboarding-step fields, so its pre-login branch requires the account's
-// password too, not just the identifier - see identifyUserWithPassword. GET
-// (no body) uses HTTP Basic Auth for this instead of a JSON body, so the
-// password never has to sit in a URL.
-router.get('/me/contact', asyncHandler(identifyUserWithPassword), asyncHandler(getContact));
-router.patch('/me/contact', asyncHandler(identifyUserWithPassword), asyncHandler(updateContact));
+router.get('/me/contact', requireAuth, asyncHandler(getContact));
+router.patch('/me/contact', requireAuth, asyncHandler(updateContact));
 router.get('/me/privacy', requireAuth, requireCompletedOnboarding, getPrivacy);
 router.patch('/me/privacy', requireAuth, requireCompletedOnboarding, asyncHandler(updatePrivacy));
 router.get('/me/blocked', requireAuth, requireCompletedOnboarding, asyncHandler(listBlockedUsers));

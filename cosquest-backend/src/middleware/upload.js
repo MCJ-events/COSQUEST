@@ -10,9 +10,8 @@ const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadDir),
   filename: (req, file, cb) => {
     const ext = path.extname(file.originalname) || '.jpg';
-    // Not user-id-prefixed on purpose: multer has to parse the multipart body
-    // (to find the email field, for pre-login callers) before identifyUser
-    // runs, so req.userId isn't set yet at this point in the route chain.
+    // Random name, not user-id-prefixed: the stored copy is only a staging
+    // file before the hosted upload.
     cb(null, `${crypto.randomUUID()}${ext}`);
   },
 });
