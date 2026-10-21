@@ -19,8 +19,8 @@ import { ActivityIndicator, AppState, BackHandler, Platform, Pressable, StyleShe
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { fightCast } from "@/features/game3d/characters";
-import { closeFight, fightStatus, FightOpenError, godotLib, holdForBackground, openFight } from "@/features/game3d/engine";
-import { buildFightConfig, type Fight3DMode, type Fight3DResult, type Fight3DRun, godotArgs, parseFightResult, parseStatus, quitResult } from "@/features/game3d/fight3d";
+import { closeFight, fightStatus, FightOpenError, godotLib, holdForBackground, onFightState, openFight } from "@/features/game3d/engine";
+import { buildFightConfig, type Fight3DMode, type Fight3DResult, type Fight3DRun, godotArgs, parseFightResult, quitResult } from "@/features/game3d/fight3d";
 import { FIGHT3D } from "@/features/game3d/flags";
 import type { QuestPoint } from "@/features/game/wire";
 
@@ -107,6 +107,9 @@ export default function Fight3D({
           autoplay,
           tilesUrl: FIGHT3D.tilesUrl || null,
         });
+        // Leak probe (test link selfcycle=N): Godot restarts the fight N times in this one view.
+        const probe = FIGHT3D as { selfCycle?: number };
+        if (probe.selfCycle) Object.assign(config, { self_cycle: probe.selfCycle, self_cycle_ms: 6000 });
         await openFight({
           args: godotArgs(Platform.OS, { bundleDir: Platform.OS === "ios" ? Paths.bundle.uri : null }),
           config,
@@ -137,24 +140,27 @@ export default function Fight3D({
     // One fight per mount: the props are read once.
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // The loading card stays until Godot says the fight is on (get_status).
+  // The loading card stays until Godot says the fight is on (its state push).
   useEffect(() => {
     if (phase.kind !== "loading") return;
     let alive = true;
-    const t = setInterval(() => {
-      void fightStatus().then((json) => {
-        const s = parseStatus(json);
-        if (!alive || !s || phaseRef.current.kind !== "loading") return;
-        if (s.state === "fighting") {
-          log(`fighting after_ms=${Date.now() - openedAt.current}`);
-          go({ kind: "fighting" });
-          onFighting?.();
-        }
-      });
-    }, 250);
+    onFightState((st) => {
+      if (!alive || phaseRef.current.kind !== "loading" || st !== "fighting") return;
+      log(`fighting after_ms=${Date.now() - openedAt.current}`);
+      go({ kind: "fighting" });
+      onFighting?.();
+      // Leak probe (test link statusspam=N): N bridge calls in a row, nothing else.
+      const spam = (FIGHT3D as { statusSpam?: number }).statusSpam ?? 0;
+      if (spam > 0) {
+        void (async () => {
+          log(`statusspam start n=${spam}`);
+          for (let k = 0; k < spam; k++) await fightStatus();
+          log(`statusspam done n=${spam}`);
+        })();
+      }
+    });
     return () => {
       alive = false;
-      clearInterval(t);
     };
   }, [phase.kind, go, onFighting]);
 

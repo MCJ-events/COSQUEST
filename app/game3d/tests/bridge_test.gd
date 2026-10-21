@@ -5,6 +5,7 @@ extends SceneTree
 
 var _fail: int = 0
 var _results: Array[String] = []
+var _states: Array[String] = []
 var _signals: Array[String] = []
 
 
@@ -42,7 +43,12 @@ func _run() -> void:
 		root.add_child(bridge)
 		print("CQTEST note: Bridge autoload not present under -s, added by hand")
 	await _wait_frames(2)
-	bridge.call("set_result_callback", func(j: String) -> void: _results.append(j))
+	# Results only; state pushes ({"event": "state"}) are counted apart.
+	bridge.call("set_result_callback", func(j: String) -> void:
+		if j.contains("\"event\""):
+			_states.append(j)
+		else:
+			_results.append(j))
 	bridge.connect("fight_finished", func(j: String) -> void: _signals.append(j))
 	_check(str(_status(bridge).get("state", "")) == "idle", "state idle before any fight")
 
@@ -54,6 +60,7 @@ func _run() -> void:
 	var st: Dictionary = _status(bridge)
 	_check(str(st.get("state", "")) == "fighting", "fighting after restart (got %s)" % str(st))
 	_check(_results.is_empty(), "restart emits no result")
+	_check(not _states.is_empty() and _states[-1].contains("fight_id"), "state pushed with fight_id")
 	_check(int(st.get("hero_hp", 0)) == 1000 and int(st.get("enemy_hp", 0)) == 3000, "status hp fields")
 	var fights: int = 0
 	for n: Node in root.find_children("Fight*", "", true, false):

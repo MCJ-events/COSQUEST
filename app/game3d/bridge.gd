@@ -19,10 +19,23 @@ var _started: bool = false
 var _autotest: bool = false
 var _config_path: String = ""
 var _fights_started: int = 0
+# The app's id for the fight (config fight_id), echoed in every message back so
+# a late message from a replaced fight is ignored. State changes are pushed
+# through the result callback ({"event": "state", ...}) instead of the app
+# polling get_status(): each call from React Native into Godot is a worklet,
+# and every worklet run left ~1.7 MB of native memory behind (measured).
+var _fight_id: int = 0
+var _pushed_state: String = ""
 
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	# Reachable from the React Native thread without walking the scene tree
+	# (Node lookups there are main-thread only): the app calls
+	# Engine.get_singleton("CQBridge").call_deferred("start_fight", json), which
+	# Godot queues thread-safely. That is not a worklet run (see above).
+	if not Engine.has_singleton("CQBridge"):
+		Engine.register_singleton("CQBridge", self)
 	var args: PackedStringArray = OS.get_cmdline_user_args()
 	for a: String in args:
 		if a == "--autotest":
@@ -97,6 +110,8 @@ func start_fight(config_json: String) -> void:
 		_fight.queue_free()
 		_fight = null
 	_fights_started += 1
+	_fight_id = int(cfg.get("fight_id", _fights_started))
+	_pushed_state = ""
 	_fight = FightScript.new()
 	_fight.name = "Fight%d" % _fights_started
 	_fight.configure(cfg)
@@ -106,6 +121,17 @@ func start_fight(config_json: String) -> void:
 		parent = get_tree().root
 	parent.add_child(_fight)
 	_log("start_fight n=%d mode=%s keys=%s" % [_fights_started, _fight.mode, str(cfg.keys())])
+	# Leak probe (tests): restart the fight inside this one engine and view,
+	# self_cycle more times every self_cycle_ms, with no React Native churn.
+	var left: int = int(cfg.get("self_cycle", 0))
+	if left > 0:
+		var again: Dictionary = cfg.duplicate()
+		again["self_cycle"] = left - 1
+		var me: Node3D = _fight
+		get_tree().create_timer(float(cfg.get("self_cycle_ms", 6000)) / 1000.0).timeout.connect(func() -> void:
+			if _fight == me:
+				_log("self_cycle left=%d static_mb=%.1f objects=%d" % [left - 1, OS.get_static_memory_usage() / 1048576.0, int(Performance.get_monitor(Performance.OBJECT_COUNT))])
+				start_fight(JSON.stringify(again)))
 
 
 func set_result_callback(cb: Callable) -> void:
@@ -130,6 +156,7 @@ func end_fight() -> void:
 # ------------------------------------------------------------ result
 
 func _on_finished(result: Dictionary) -> void:
+	result["fight_id"] = _fight_id
 	var json: String = JSON.stringify(result)
 	_log("result " + json)
 	fight_finished.emit(json)
@@ -138,3 +165,17 @@ func _on_finished(result: Dictionary) -> void:
 	if _autotest:
 		print("CQRESULT " + json)
 		get_tree().quit.call_deferred(0)
+
+
+func _exit_tree() -> void:
+	if Engine.has_singleton("CQBridge") and Engine.get_singleton("CQBridge") == self:
+		Engine.unregister_singleton("CQBridge")
+
+
+func _process(_dt: float) -> void:
+	if _fight == null or not is_instance_valid(_fight) or not _cb.is_valid():
+		return
+	var st: String = _fight.state
+	if st != _pushed_state and (st == "fighting" or st == "loading"):
+		_pushed_state = st
+		_cb.call(JSON.stringify({"event": "state", "state": st, "fight_id": _fight_id}))
