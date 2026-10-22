@@ -61,3 +61,20 @@ and the before/after table (`report.py`). Needs a build with
 - Maestro waits for the screen to settle after each step; the quiz and fight
   screens never do, so timed taps go through `phone.js`.
 - `journey.sh` renews the adb tunnels and the GPS fix every 5 s.
+
+## Cohesion journeys and shots (task 059)
+
+- J13-J18 (`maestro/13-...` to `18-...`): delete account, report, block from
+  anywhere, offline send, push tap routing, error boundary. They need a build
+  with `EXPO_PUBLIC_E2E=1` (the emulator build script sets it: it enables the
+  test-only routes `app/dev/crash` and `app/dev/push-test`) and this branch's
+  `cosquest-backend` as `CHAT_BACKEND_DIR` (delete account and reports are new
+  routes there). `seed/phone.js net off|on` and `phone.js shade` drive the
+  network and the notification shade.
+- `polish/shots.sh <run> [light|dark]`: the key screens for
+  `docs/polish/PALETTE.md` (`FLOW=shots-board` for the six-screen board only).
+- On a shared, loaded machine: restart the emulator every 9 journeys or so
+  (qemu grew to 8.8 GB resident over a few hours here, and the task's cgroup
+  was throttled and once OOM-killed it); `journey.sh` gives up on a video join
+  after 5 minutes, `reset.sh` waits up to 3 minutes for the seed and turns the
+  phone's network back on.
