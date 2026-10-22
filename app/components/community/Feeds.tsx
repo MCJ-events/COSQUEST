@@ -20,7 +20,7 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { fetchMorePosts, fetchPosts } from "@/store/thunks/postThunks";
 import { perfMarkOnce, useRenderCount } from "@/utils/perfMarks";
 import { C } from "@/theme/tokens";
-import { useScrollToTop } from "@react-navigation/native";
+import { useScrollToTop } from "expo-router";
 import { ErrorState, SkeletonPosts } from "@/components/kit";
 
 // Facebook-style feed: every post is full width. (The Community screen no

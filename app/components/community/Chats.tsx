@@ -39,7 +39,7 @@ import { createChat, fetchChats } from "@/store/thunks/chatThunks";
 import { fetchFollowing, followUserThunk } from "@/store/thunks/followThunks";
 import { perfStart } from "@/utils/perfMarks";
 import { C } from "@/theme/tokens";
-import { useScrollToTop } from "@react-navigation/native";
+import { useScrollToTop } from "expo-router";
 import { EmptyState, ErrorState, SkeletonRows } from "@/components/kit";
 import { haptic } from "@/utils/haptics";
 
