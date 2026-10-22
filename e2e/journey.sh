@@ -58,11 +58,13 @@ for f in $(adb shell ls "/sdcard/jr-$label-*.mp4" 2>/dev/null | tr -d '\r'); do
 done
 ls "$tmp"/*.mp4 >/dev/null 2>&1 && {
   for f in "$tmp"/*.mp4; do echo "file '$f'"; done > "$tmp/list.txt"
-  ffmpeg -loglevel error -y -f concat -safe 0 -i "$tmp/list.txt" \
+  # Task 059: on a starved machine this join could spin for 20+ min; give up
+  # after 5 (the segments are kept in $tmp.kept for a later encode).
+  timeout -k 10 300 ffmpeg -loglevel error -y -f concat -safe 0 -i "$tmp/list.txt" \
     -f lavfi -i anullsrc=channel_layout=stereo:sample_rate=44100 \
     -map 0:v -map 1:a -c:v libx264 -preset veryfast -crf 30 -vf "scale=540:-2" \
     -c:a aac -shortest "$VIDEOS/$label.mp4"
-  rm -rf "$tmp"
+  [ -s "$VIDEOS/$label.mp4" ] && rm -rf "$tmp" || mv "$tmp" "$tmp.kept"
 }
 result=$([ $status = 0 ] && echo PASS || echo FAIL)
 echo "$label $result ${secs}s" | tee -a "$OUT/results.txt"

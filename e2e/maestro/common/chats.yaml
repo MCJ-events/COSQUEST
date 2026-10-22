@@ -9,6 +9,14 @@ appId: com.dammy0227.cosquest
     commands:
       - back
 - tapOn: "Community"
+# The list may still be scrolled down from before (task 059: a second tap on
+# the tab scrolls to the top, but not when the tab was not focused yet).
+- scrollUntilVisible:
+    element:
+      text: "Chats"
+      index: 0
+    direction: UP
+    timeout: 15000
 - tapOn:
     text: "Chats"
     index: 0

@@ -54,7 +54,7 @@ name: J14 report
 - tapOn: "OK"
 # A post
 - runFlow: common/chats.yaml
-- tapOn: "Community"
+- tapOn: "Feeds"
 - extendedWaitUntil:
     visible: "Create a post|Feed post.*"
     timeout: 20000
