@@ -7,7 +7,7 @@
 // sizes/colours here.
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
-import { router } from "expo-router";
+import { router, useScrollToTop } from "expo-router";
 import { memo, type ReactElement, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -39,7 +39,6 @@ import { createChat, fetchChats } from "@/store/thunks/chatThunks";
 import { fetchFollowing, followUserThunk } from "@/store/thunks/followThunks";
 import { perfStart } from "@/utils/perfMarks";
 import { C } from "@/theme/tokens";
-import { useScrollToTop } from "expo-router";
 import { EmptyState, ErrorState, SkeletonRows } from "@/components/kit";
 import { haptic } from "@/utils/haptics";
 
@@ -493,6 +492,10 @@ export function Chats({
 
   const onOpenChat = useStableCallback(openChat);
 
+  // Task 059: tapping the Community tab again scrolls back to the top.
+  const listRef = useRef<FlatList<any>>(null);
+  useScrollToTop(listRef);
+
   if (!token) {
     // Signed out: just the screen's header (the chats themselves need a login).
     return <View style={contentContainerStyle}>{header}</View>;
@@ -573,10 +576,6 @@ export function Chats({
       </Pressable>
     );
   };
-
-  // Task 059: tapping the Community tab again scrolls back to the top.
-  const listRef = useRef<FlatList<any>>(null);
-  useScrollToTop(listRef);
 
   const groupsShown = showGroups && !(loading && !conversations.length) && !(error && !conversations.length);
 
