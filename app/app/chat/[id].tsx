@@ -5921,6 +5921,30 @@ export default function ChatScreen() {
                 )}
               />
 
+              {/* Task 059: report someone else's message (and block them). */}
+              {!selectedMessageIsMine && caps.reports && selectedMessage && !selectedMessage.pending ? (
+                <MenuItem
+                  icon="flag-outline"
+                  label="Report"
+                  danger
+                  onPress={menuTap(() => {
+                    const m = selectedMessage;
+                    if (!m) return;
+                    setTimeout(
+                      () =>
+                        openReport({
+                          targetType: "message",
+                          targetId: String(m.id),
+                          conversationId: conversationId ?? undefined,
+                          snapshot: m.content?.slice(0, 500),
+                          person: { username: m.sender?.username ?? null, userId: m.sender?.id ?? null },
+                        }),
+                      300,
+                    );
+                  })}
+                />
+              ) : null}
+
               {selectedMessageIsMine && selectedMessage?.canRollback ? (
                 <MenuItem
                   icon="arrow-undo-circle-outline"
@@ -5996,29 +6020,6 @@ export default function ChatScreen() {
                 )}
               />
 
-              {/* Task 059: report someone else's message (and block them). */}
-              {!selectedMessageIsMine && caps.reports && selectedMessage && !selectedMessage.pending ? (
-                <MenuItem
-                  icon="flag-outline"
-                  label="Report"
-                  danger
-                  onPress={menuTap(() => {
-                    const m = selectedMessage;
-                    if (!m) return;
-                    setTimeout(
-                      () =>
-                        openReport({
-                          targetType: "message",
-                          targetId: String(m.id),
-                          conversationId: conversationId ?? undefined,
-                          snapshot: m.content?.slice(0, 500),
-                          person: { username: m.sender?.username ?? null, userId: m.sender?.id ?? null },
-                        }),
-                      300,
-                    );
-                  })}
-                />
-              ) : null}
             </View>
             </ScrollView>
 

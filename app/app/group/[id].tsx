@@ -783,7 +783,9 @@ export default function GroupInfo() {
               <Pressable accessibilityRole="button" accessibilityLabel={`${member.name || member.username}, member options`}
                 key={member.id}
                 style={styles.memberRow}
-                disabled={!g.canEdit || member.id === myUserId}
+                // Task 059: everyone can open a member (view, block, report); the
+                // admin actions inside stay admin-only.
+                disabled={member.id === myUserId}
                 onPress={() => openMemberActions(member)}>
                 <Image
                   source={getAvatarSource(member)}
@@ -1256,7 +1258,7 @@ export default function GroupInfo() {
                     />
                   ) : null}
 
-                  {!canAct && actingOn.role !== "member" ? (
+                  {g.canEdit && !canAct && actingOn.role !== "member" ? (
                     <Text style={styles.sheetHint}>
                       {actingOn.role === "owner"
                         ? "The group's owner can't be changed by admins."

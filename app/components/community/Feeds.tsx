@@ -20,6 +20,7 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { fetchMorePosts, fetchPosts } from "@/store/thunks/postThunks";
 import { perfMarkOnce, useRenderCount } from "@/utils/perfMarks";
 import { C } from "@/theme/tokens";
+import { useScrollToTop } from "@react-navigation/native";
 import { ErrorState, SkeletonPosts } from "@/components/kit";
 
 // Facebook-style feed: every post is full width. (The Community screen no
@@ -109,6 +110,10 @@ export function Feeds({
     [token],
   );
 
+  // Task 059: tapping the Community tab again scrolls back to the top.
+  const listRef = useRef<FlatList<any>>(null);
+  useScrollToTop(listRef);
+
   let state: ReactElement | null = null;
   if (!token) {
     state = (
@@ -127,6 +132,7 @@ export function Feeds({
 
   return (
     <FlatList
+      ref={listRef}
       data={state ? [] : posts}
       keyExtractor={(post) => String(post.id)}
       renderItem={renderPost}

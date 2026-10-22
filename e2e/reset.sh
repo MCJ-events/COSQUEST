@@ -41,7 +41,8 @@ adb shell svc data enable >/dev/null 2>&1
 # while to let go (live sockets), and the first start then fails.
 for attempt in 1 2; do
   restart chat-local e2e/seed/chat-local.js "$OUT/chat-local.log" "$CHAT_PORT"
-  for _ in $(seq 1 60); do grep -q "\[chat-local\] ready\|failed" "$OUT/chat-local.log" 2>/dev/null && break; sleep 1; done
+  # 180 s: on a loaded machine the seed alone can take over a minute.
+  for _ in $(seq 1 180); do grep -q "\[chat-local\] ready\|failed" "$OUT/chat-local.log" 2>/dev/null && break; sleep 1; done
   grep -q "\[chat-local\] ready" "$OUT/chat-local.log" && break
   cp "$OUT/chat-local.log" "$OUT/chat-local.failed-$attempt.log"
   sleep 5
