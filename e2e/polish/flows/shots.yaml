@@ -36,6 +36,11 @@ name: polish key screens
 - waitForAnimationToEnd:
     timeout: 3000
 - takeScreenshot: ${P}-7-notifications
+# One Back, then wait for the tabs (a second Back before they show closes the app).
+- back
+- extendedWaitUntil:
+    visible: "Profile"
+    timeout: 15000
 - runFlow: ../../maestro/common/chats.yaml
 - runFlow: ../../maestro/common/game.yaml
 - runFlow: ../../maestro/common/warden-later.yaml
