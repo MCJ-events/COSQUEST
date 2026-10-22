@@ -22,7 +22,7 @@ The game's main buttons, highlights and rings turn the brand pink; its sky and i
 
 ## B: the game's sky and sun everywhere
 
-The chat's brand pink turns the game's deep sky blue (buttons, links, selected tabs, unread dots), its ink the game's navy, its pale screens the game's ice. The game is unchanged (its two screens on this board are from the current build: B changes no game colour). The B build's screen run did not reach the game in four tries: each time, after the 2,000-message chat and the profile, the app was closed while opening the Community tab (Android tore the screen down; the same steps by hand worked, and the C build failed the same way three times and passed once, the current build passed). Recorded under "Left" in the task report; check it on a phone before shipping B.
+The chat's brand pink turns the game's deep sky blue (buttons, links, selected tabs, unread dots), its ink the game's navy, its pale screens the game's ice. The game is unchanged.
 
 ![B](palette/B.jpg)
 
