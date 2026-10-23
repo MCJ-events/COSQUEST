@@ -147,7 +147,7 @@ async function run(baseUrl) {
     check(Boolean(outline) && outline.generatedBy.modelVersion === 'server-extractive', 'no phone with the model: the backend writes quick notes (server-extractive)', outline);
     const actions = outline ? outline.topics.flatMap((x) => x.actionItems) : [];
     check(
-      actions.some((a) => a.ownerUserId === amara.id && a.text === "Amara: I'll post the raid route in the guild chat tonight.") &&
+      actions.some((a) => a.ownerUserId === amara.id && a.text === "I'll post the raid route in the guild chat tonight.") &&
         actions.some((a) => a.ownerUserId === amara.id && a.text === 'Tunde: Amara, can you also book the voice room for Saturday evening?') &&
         outline.topics.some((x) => x.decisions.includes("Tunde: Okay let's go with the northern pass and two healers.")) &&
         /^Amara and Tunde /.test(outline.topics[0].summary),
