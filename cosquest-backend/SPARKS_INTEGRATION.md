@@ -48,6 +48,8 @@ Upstream guides (cosquest-sparks repo): `docs/guides/BACKEND_INTEGRATION.md` (th
 | `SPARKS_CONFIG` | none | JSON of config overrides, e.g. `{"exitTimeoutMs":900000}`. Every key is in the module's `dist/config.d.ts` |
 | `SPARKS_IMPLICIT_MEMBER_CAP` | 300 | How many engaged members Community and faction rooms report to the module (section 6) |
 | `SPARKS_MODEL_MANIFEST_URL` | none | Where `GET /v1/model` redirects: the model manifest the Sparks team publishes. The app's SDK uses `${API}/v1/model` |
+| `SPARKS_OUTLINE_FALLBACK` | off | `1`: call and voice chat notes appear even when nobody's phone writes them. If no attendee's phone with the Sparks model has written the notes 2 minutes after the call (15 minutes if a phone is still on it), this backend writes "quick notes" from the merged transcript itself: topics from the words said most, points, decisions and action items quoted from the speakers by name. No AI model, no outside service, no extra cost: a few milliseconds of CPU in this process, so it runs on any plan. The app labels them "Quick notes". Module 1.3.3 |
+| `SPARKS_OUTLINE_FALLBACK_AFTER_S` | 120 | With `SPARKS_OUTLINE_FALLBACK=1`: how many seconds phones get to write the notes first |
 | `SPARKS_DEBUG` | off | Logs the module's info lines (job offers) during `npm test` |
 
 `ANTHROPIC_API_KEY` and `SPARKS_AI_MODEL` are only read by the legacy engine.

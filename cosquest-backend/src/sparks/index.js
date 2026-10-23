@@ -48,7 +48,19 @@ function configOverrides() {
   const demo = String(process.env.SPARKS_TIMERS || '').toLowerCase() === 'demo';
   // Voice commands by rank: the module's rank order is CosQuest's faction ladder (members.js).
   const ladder = require('./members').rankLadder();
-  return { ...(demo ? mod.demoOverrides : {}), ...(ladder ? { ranks: ladder } : {}), ...extra };
+  return { ...(demo ? mod.demoOverrides : {}), ...(ladder ? { ranks: ladder } : {}), ...outlineFallback(), ...extra };
+}
+
+/**
+ * Call notes when nobody's phone writes them (module 1.3.3, off unless
+ * SPARKS_OUTLINE_FALLBACK=1): the backend writes "quick notes" from the
+ * merged transcript, without a model and without any outside service.
+ * SPARKS_OUTLINE_FALLBACK_AFTER_S: how long a phone gets first (default 120).
+ */
+function outlineFallback() {
+  if (!['1', 'true', 'on', 'yes'].includes(String(process.env.SPARKS_OUTLINE_FALLBACK || '').toLowerCase())) return {};
+  const after = Number(process.env.SPARKS_OUTLINE_FALLBACK_AFTER_S);
+  return { outlineServerFallback: true, ...(after > 0 ? { outlineFallbackAfterMs: Math.round(after * 1000) } : {}) };
 }
 
 /**
@@ -192,6 +204,7 @@ async function startManual({ userId, chatId, seedMessageId, subject, attachTo = 
 }
 
 module.exports = {
+  _internal: { outlineFallback },
   engine,
   isModule,
   isReady,
