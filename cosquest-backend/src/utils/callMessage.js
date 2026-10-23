@@ -12,7 +12,10 @@
 
 const Conversation = require('../models/Conversation');
 const Message = require('../models/Message');
-const { serializeMessage, SENDER_FIELDS } = require('../controllers/chatController');
+const VoiceRoom = require('../models/VoiceRoom');
+const {
+  serializeMessage, SENDER_FIELDS, groupRolesFor, explicitGroupMemberIds, forBroadcast,
+} = require('../controllers/chatController');
 const { emitToConversation, emitToUsers } = require('../realtime/socket');
 
 const FINISHED_STATUSES = ['declined', 'missed', 'cancelled', 'ended'];
@@ -87,4 +90,62 @@ async function recordCallMessage(call) {
   });
 }
 
-module.exports = { recordCallMessage };
+// The "voice chat ended" entry, saved in the voice chat's own chat (a group,
+// a faction room or the Community room) once it closes - so it stays in the
+// chat and its Sparks notes can be reopened later (callId = the voice chat's
+// id, which is also its Sparks call id: /api/calls/:id/outline). Called from
+// voiceRoomController's closeIfEmpty(), the one place a voice chat closes.
+// Sent by whoever started the voice chat; the same unique index as call
+// entries keeps it to one per voice chat.
+async function recordVoiceChatMessage(roomId) {
+  const room = await VoiceRoom.findById(roomId, 'conversation startedBy createdAt endedAt everJoined active').lean();
+  if (!room || room.active) return;
+  if (await Message.exists({ 'callLog.callId': room._id })) return;
+
+  const endedAt = room.endedAt || new Date();
+  let message;
+  try {
+    message = await Message.create({
+      conversation: room.conversation,
+      sender: room.startedBy,
+      kind: 'call',
+      content: '',
+      callLog: {
+        callId: room._id,
+        type: 'audio',
+        status: 'ended',
+        durationSeconds: Math.max(0, Math.round((new Date(endedAt) - new Date(room.createdAt)) / 1000)),
+        callerId: room.startedBy,
+        groupCall: true,
+        // Voice chats from before everJoined was kept don't know their count.
+        participantCount: room.everJoined?.length || null,
+        voiceChat: true,
+      },
+    });
+  } catch (error) {
+    if (error?.code === 11000) return; // closed twice at the same moment
+    throw error;
+  }
+
+  const conversation = await Conversation.findByIdAndUpdate(room.conversation, { $inc: { messageCount: 1 } }, { new: true });
+  await message.populate('sender', SENDER_FIELDS);
+  const serialized = serializeMessage(message, {
+    viewerId: room.startedBy,
+    conversationType: conversation?.type,
+    otherLastReadAt: null,
+    reactions: [],
+    groupRoles: conversation ? await groupRolesFor(conversation) : undefined,
+  });
+  emitToConversation(String(room.conversation), 'message:new', {
+    conversationId: String(room.conversation),
+    message: forBroadcast(serialized),
+  });
+  // Same rule as a normal message: user-made groups' members get a chat-list
+  // update; faction-wide groups and the big rooms are too big to fan out to.
+  if (conversation?.type === 'group' && conversation.group?.kind !== 'faction') {
+    const memberIds = await explicitGroupMemberIds(conversation);
+    emitToUsers(memberIds.map(String), 'chat:preview', { conversationId: String(room.conversation) });
+  }
+}
+
+module.exports = { recordCallMessage, recordVoiceChatMessage };

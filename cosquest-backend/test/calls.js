@@ -409,6 +409,22 @@ async function run(baseUrl) {
   const lastLeave = await request('POST', `/api/voice/${voiceRoomId}/leave`, caller.token);
   check(lastLeave.data.voiceRoom === null, 'the voice chat closes when the last person leaves', lastLeave);
   check((await request('GET', voicePath, caller.token)).data.voiceRoom === null, 'a closed voice chat is no longer live');
+  const voiceEntry = await waitForCallMessage(voiceRoomId);
+  check(
+    voiceEntry?.kind === 'call' && String(voiceEntry.conversation) === community.id && String(voiceEntry.sender) === caller.id &&
+      String(voiceEntry.callLog?.callId) === voiceRoomId && voiceEntry.callLog.type === 'audio' && voiceEntry.callLog.status === 'ended' &&
+      voiceEntry.callLog.voiceChat === true && voiceEntry.callLog.participantCount === 2 && typeof voiceEntry.callLog.durationSeconds === 'number',
+    'a closed voice chat leaves a "voice chat ended" entry in its chat, sent by whoever started it',
+    voiceEntry
+  );
+  const communityList = await request('GET', `/api/chats/${community.id}/messages`, recipient.token);
+  const shownEntry = communityList.data.messages?.find((m) => m.id === String(voiceEntry?._id));
+  check(shownEntry?.callLog?.voiceChat === true && shownEntry.callLog.callId === voiceRoomId, 'the entry reaches the app with callLog.voiceChat and the voice chat id', shownEntry);
+  check(
+    (await request('POST', `/api/voice/${voiceRoomId}/leave`, caller.token)).status === 200 &&
+      (await Message.countDocuments({ 'callLog.callId': new mongoose.Types.ObjectId(voiceRoomId) })) === 1,
+    'only one entry per voice chat'
+  );
 
   console.log('\n--- group voice chats ---');
   const group = await request('POST', '/api/groups', caller.token, { name: 'Voice Owls', kind: 'private', members: [recipient.id] });
@@ -430,6 +446,14 @@ async function run(baseUrl) {
     (await request('POST', `/api/voice/${groupRoomId}/leave`, caller.token)).data.voiceRoom === null,
     'the group voice chat closes when the last person leaves'
   );
+  const groupEntry = await waitForCallMessage(groupRoomId);
+  check(
+    String(groupEntry?.conversation) === group.data.group.id && groupEntry.callLog?.voiceChat === true && groupEntry.callLog.participantCount === 2,
+    'a group voice chat leaves its entry in the group chat',
+    groupEntry
+  );
+  const groupChats = await request('GET', '/api/chats', recipient.token);
+  check(groupChats.data.chats?.find((chat) => chat.id === group.data.group.id)?.lastMessage?.preview === '🎙️ Voice chat', 'the chat list shows "Voice chat" for it', groupChats.data.chats?.find((chat) => chat.id === group.data.group.id));
 
   return { pass, fail };
 }

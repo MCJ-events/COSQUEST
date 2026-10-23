@@ -58,6 +58,9 @@ const callLogSchema = new mongoose.Schema(
     // actually in the call at some point.
     groupCall: { type: Boolean, default: false },
     participantCount: { type: Number, default: null },
+    // A voice chat in a group or room (callId = the voice chat's id), not a
+    // DM call: the app shows "Voice chat" and its Sparks link.
+    voiceChat: { type: Boolean, default: false },
   },
   { _id: false }
 );

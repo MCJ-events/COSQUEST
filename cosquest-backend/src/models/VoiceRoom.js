@@ -30,6 +30,9 @@ const voiceRoomSchema = new mongoose.Schema(
     factionKey: { type: String, default: null },
     startedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     members: { type: [voiceMemberSchema], default: [] },
+    // Everyone who was in it at some point, for the "voice chat ended" entry's
+    // participant count (src/utils/callMessage.js).
+    everJoined: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], default: [] },
     roomName: { type: String, required: true, unique: true },
     active: { type: Boolean, default: true },
     endedAt: { type: Date, default: null },

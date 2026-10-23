@@ -467,6 +467,7 @@ function callLogPreview(callLog, viewerId) {
   const name = video ? 'Video call' : 'Voice call';
   const lower = video ? 'video call' : 'voice call';
   const isCaller = Boolean(viewerId) && String(callLog?.callerId) === String(viewerId);
+  if (callLog?.voiceChat) return '🎙️ Voice chat';
 
   switch (callLog?.status) {
     case 'ended':

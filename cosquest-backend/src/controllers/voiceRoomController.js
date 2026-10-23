@@ -150,13 +150,18 @@ async function roomView(roomId) {
 // ATOMIC CHANGES
 // ==========================================================================
 
-// The voice chat closes when the last person leaves.
+// The voice chat closes when the last person leaves, and leaves a "voice
+// chat ended" entry in its chat (so its Sparks notes can be reopened later).
 async function closeIfEmpty(roomId, now = new Date()) {
   const closed = await VoiceRoom.updateOne(
     { _id: roomId, active: true, members: { $size: 0 } },
     { $set: { active: false, endedAt: now }, $inc: { __v: 1 } }
   );
-  return closed.modifiedCount > 0;
+  if (!closed.modifiedCount) return false;
+  require('../utils/callMessage').recordVoiceChatMessage(roomId).catch((error) =>
+    console.error('[voice] failed to record the voice chat entry:', error.message)
+  );
+  return true;
 }
 
 // Removes anyone whose app hasn't checked in for 90 seconds (and closes the
@@ -189,7 +194,7 @@ async function addMember(roomId, userId, now = new Date()) {
   const max = limits.voiceRoomMaxMembers();
   const added = await VoiceRoom.updateOne(
     { _id: roomId, active: true, 'members.user': { $ne: userId }, [`members.${max - 1}`]: { $exists: false } },
-    { $push: { members: { user: userId, joinedAt: now, lastSeenAt: now } }, $inc: { __v: 1 } }
+    { $push: { members: { user: userId, joinedAt: now, lastSeenAt: now } }, $addToSet: { everJoined: userId }, $inc: { __v: 1 } }
   );
   if (added.modifiedCount) return { joined: true };
 
@@ -368,6 +373,7 @@ async function joinVoiceRoom(req, res) {
       factionKey: conversation.type === 'faction' ? conversation.factionKey : null,
       startedBy: req.userId,
       members: [{ user: req.userId, joinedAt: now, lastSeenAt: now }],
+      everJoined: [req.userId],
     });
     fresh.roomName = `voice_${fresh._id}`;
 
