@@ -149,18 +149,33 @@ async function run(baseUrl) {
     check(
       actions.some((a) => a.ownerUserId === amara.id && a.text === "I'll post the raid route in the guild chat tonight.") &&
         actions.some((a) => a.ownerUserId === amara.id && a.text === 'Tunde: Amara, can you also book the voice room for Saturday evening?') &&
-        outline.topics.some((x) => x.decisions.includes("Tunde: Okay let's go with the northern pass and two healers.")) &&
-        /^Amara and Tunde /.test(outline.topics[0].summary),
+        outline.topics.some((x) => x.decisions.includes("Tunde: Let's go with the northern pass and two healers.")) &&
+        /^(Amara|Tunde): /.test(outline.topics[0].summary) && outline.summary === 'Amara and Tunde talked about raid route and northern pass.',
       'quick notes: the decision and both action items, by name, owned by the right person (people who only joined the voice chat are named too)',
       outline?.topics
     );
     const read = await request('GET', `/api/calls/${roomId}/outline`, chidi.token);
     check(
-      read.status === 200 && read.data.status === 'ready' && read.data.outline?.generatedBy?.modelVersion === 'server-extractive' &&
+      read.status === 200 && read.data.status === 'ready' && read.data.quickNotes === true && read.data.outline?.generatedBy?.modelVersion === 'server-extractive' &&
         read.data.speakers?.[amara.id]?.name === 'Amara Tester' && read.data.speakers?.[tunde.id]?.name === 'Tunde Tester',
       'GET outline: the quick notes, with names for the speakers and owners',
       read.data
     );
+
+    // 4. A call where nobody had Sparks on: once it is over, GET outline says there will be no notes (the app stops waiting).
+    const quiet = await request('POST', `${voicePath}/join`, chidi.token);
+    const quietId = quiet.data.voiceRoom?.id;
+    await waitFor(async () => (await store.getCall(quietId))?.status === 'active');
+    const during = await request('GET', `/api/calls/${quietId}/outline`, chidi.token);
+    check(during.status === 200 && during.data.status === 'pending', 'GET outline while the call runs: pending', during.data);
+    await request('POST', `/api/voice/${quietId}/leave`, chidi.token);
+    flushUpdates();
+    const none = await waitFor(async () => {
+      await backend.tick();
+      const r = await request('GET', `/api/calls/${quietId}/outline`, chidi.token);
+      return r.data.status === 'none' ? r : null;
+    }, 20000);
+    check(Boolean(none) && none.data.reason === 'no_transcript' && none.data.outline === null, 'GET outline after a call nobody was transcribed on: status none, reason no_transcript', none?.data);
   } catch (error) {
     fail += 1;
     console.log('FAIL - call notes suite threw', error?.stack || error);

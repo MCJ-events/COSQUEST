@@ -81,7 +81,8 @@ function init({ getIO }) {
       const worker = process.env.SPARKS_WORKER !== '0';
       if (worker) backend.start();
       const version = require('@cosquest/sparks-backend/package.json').version;
-      log('info', `module ${version} ready (engine=${engine()}, sweepers ${worker ? 'on' : 'off'})`);
+      const quick = backend.config.outlineServerFallback ? `on, after ${Math.round(backend.config.outlineFallbackAfterMs / 1000)} s` : 'off';
+      log('info', `module ${version} ready (engine=${engine()}, sweepers ${worker ? 'on' : 'off'}, quick call notes ${quick})`);
     } catch (error) {
       backend = null;
       console.error('[sparks] module failed to load - Sparks are off:', error);
