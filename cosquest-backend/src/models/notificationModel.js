@@ -104,6 +104,7 @@ function sanitize(n) {
     actor,
     conversationId: n.conversation ? String(n.conversation) : null,
     messageId: n.chatMessage ? String(n.chatMessage) : null,
+    scheduledCallId: n.scheduledCall ? String(n.scheduledCall) : null,
     read: n.read,
     createdAt: n.createdAt,
   };

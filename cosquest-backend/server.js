@@ -84,6 +84,7 @@ async function startServer() {
   await initSocket(httpServer);
   // Sparks module (ESM, loaded with import()): after Mongo and Socket.IO are up.
   await sparks.init({ getIO });
+  require('./src/utils/meetingNotifications').start();
 
   return new Promise((resolve) => {
     httpServer.listen(PORT, () => {
@@ -111,6 +112,7 @@ function registerGracefulShutdown(httpServer) {
     console.log(`[server] ${signal} received, shutting down...`);
     try {
       sparks.stop();
+      require('./src/utils/meetingNotifications').stop();
       await new Promise((resolve) => httpServer.close(resolve));
       await closeSocket();
       await disconnectRedis();

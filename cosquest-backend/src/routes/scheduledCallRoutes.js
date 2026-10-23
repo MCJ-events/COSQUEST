@@ -1,0 +1,17 @@
+const router = require('express').Router();
+const { requireAuth, requireCompletedOnboarding } = require('../middleware/auth');
+const { asyncHandler: a } = require('../utils/asyncHandler');
+const c = require('../controllers/scheduledCallController');
+router.use(['/groups/:groupId/scheduled-calls', '/groups/:groupId/meet-now', '/scheduled-calls', '/call-invitations'], requireAuth, requireCompletedOnboarding);
+router.post('/groups/:groupId/scheduled-calls', a(c.create));
+router.get('/groups/:groupId/scheduled-calls', a(c.list));
+router.post('/groups/:groupId/meet-now', a(c.create));
+router.get('/call-invitations/:code', a(c.resolveInvite));
+router.get('/scheduled-calls/:callId', a(c.details));
+router.patch('/scheduled-calls/:callId', a(c.update));
+router.post('/scheduled-calls/:callId/cancel', a(c.cancel));
+router.post('/scheduled-calls/:callId/rsvp', a(c.rsvp));
+router.get('/scheduled-calls/:callId/calendar.ics', a(c.exportCalendar));
+router.post('/scheduled-calls/:callId/join', a(c.join));
+router.post('/scheduled-calls/:callId/admission/:userId', a(c.admit));
+module.exports = router;

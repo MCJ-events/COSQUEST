@@ -98,4 +98,13 @@ const albumUpload = multer({
   },
 });
 
-module.exports = { upload, postUpload, chatUpload, albumUpload, uploadDir, DOCUMENT_TYPES };
+const projectUpload = multer({
+  storage,
+  limits: { fileSize: 25 * 1024 * 1024, files: 1, fields: 2 },
+  fileFilter: (req, file, cb) => {
+    const types = [...DOCUMENT_TYPES, 'image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+    cb(types.includes(file.mimetype) ? null : invalidFileType('Upload a PDF, Office document, text, CSV, JPEG, PNG, WEBP, or GIF.'), types.includes(file.mimetype));
+  },
+});
+
+module.exports = { upload, postUpload, chatUpload, albumUpload, projectUpload, uploadDir, DOCUMENT_TYPES };
