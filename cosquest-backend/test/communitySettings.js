@@ -157,7 +157,7 @@ async function run(baseUrl) {
   check((await call('POST', `${chatBase}/messages`, a.token, { content: 'blocked by preference' })).status === 403, 'DM preference also gates messages in existing conversations');
   check((await call('POST', `/api/chats/${forward.data.conversationId}/messages/${forward.data.message.id}/forward`, a.token, { targetConversationId: dm })).status === 403, 'forward by conversation id respects recipient DM preference');
   await call('PATCH', '/api/users/me/privacy', b.token, { allowDirectMessages: true });
-  check(!(await call('GET', `/api/users/me?username=${a.username}`)).data.user.account, 'legacy user serializer excludes private account object');
+  check(!(await call('GET', '/api/users/me', a.token)).data.user.account, 'legacy user serializer excludes private account object');
   check((await call('PATCH', '/api/users/me/account', a.token, { dateOfBirth: '2020-02-31' })).status === 400, 'invalid birth date rejected');
   check((await call('PATCH', '/api/users/me/account', a.token, { email: `updated${suffix}@example.com` })).status === 401, 'login email change requires password');
   const emailUpdate = await call('PATCH', '/api/users/me/account', a.token, { email: `updated${suffix}@example.com`, currentPassword: password });

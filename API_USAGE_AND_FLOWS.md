@@ -32,7 +32,7 @@ Authorization: Bearer {{accessToken}}
 Authentication labels:
 
 - **Public** — no sign-in needed.
-- **Identifier or Bearer** — before onboarding/login, include `email`, `username`, or `identifier` in the body/query. After login, use the Bearer header instead. If both are supplied, Bearer wins.
+- **Bearer** — `Authorization: Bearer <token>`. Signup and login both return a token, so this covers onboarding too. An email, username or identifier is never accepted in its place.
 - **Bearer + completed onboarding** — user must be logged in and have completed onboarding.
 
 Important: creation endpoints correctly return **201**, not 200. A duplicate like/follow/quest registration returns **409** by design. Signup is the one exception: re-signing-up with an email/username whose onboarding was never finished **resumes** that same account (`200`, `resumed: true`) instead of erroring - it's the same person coming back, not a real conflict. Signup only returns `409` when the existing account already finished onboarding.
@@ -113,17 +113,17 @@ OAuth exchange body:
 | `GET /api/factions` | Public | List the six valid factions - `key`, `name`, `color`, `description`, `perks` (a static array of perk strings), a live `memberCount` (onboarded accounts currently in that faction), and a live `activeQuestCount` (published quests tagged to that faction with status `live`/`upcoming`). A quest's faction tag is purely a label - it never restricts who can register. |
 | `GET /api/factions/:key/members?page=1&limit=6` | Public | A small preview page of that faction's onboarded members (e.g. the avatar row on a faction card) - same shape as followers/following. `404` for an invalid key. |
 | `GET /api/interests` | Public | List valid interest keys. |
-| `GET /api/users/me` | Identifier or Bearer | Read the current/in-progress user record. Before login include `?email={{email}}`. |
-| `PATCH /api/users/me/profile` | Identifier or Bearer | Save profile details during onboarding or edit profile later. |
-| `GET /api/users/check-username?username=new_name` | Identifier or Bearer | Check if a username is available. Before login also send `&email={{email}}`. |
-| `PATCH /api/users/me/avatar` | Identifier or Bearer | Set a valid preset avatar. Coexists with an uploaded photo (the real profile UI shows the photo as the main picture with this as a small badge over it) - setting one never clears the other. |
-| `POST /api/users/me/avatar/photo` | Identifier or Bearer | Multipart upload; set form-data `photo` to a local image file and also add `email` before login. Accepts JPEG/PNG/WEBP/GIF even if the client mislabels the file's Content-Type (`image/jpg`, `application/octet-stream`, `text/plain` are all tolerated) - Cloudinary's real content check is the actual gatekeeper, so a genuinely non-image file still fails there with a clear `400`. |
-| `POST /api/users/me/faction` | Identifier or Bearer | Choose/replace faction. A faction is required before onboarding completion. |
-| `PUT /api/users/me/interests` | Identifier or Bearer | Replace the full list of interests. At least one is required before completion. |
-| `PATCH /api/users/me/preferences/notifications` | Identifier or Bearer | Save the master on/off notification choice, and/or `eventReminders` (a per-category push toggle) and/or `emailWeeklyNewsletter` - any subset of the three in one call. At least one field is required. `eventReminders`/`emailWeeklyNewsletter` are preference storage only - no email actually sends yet (no email infrastructure exists in this backend), and no scheduled "event" trigger exists yet either. |
-| `PATCH /api/users/me/preferences/location` | Identifier or Bearer | Save real device coordinates and a discovery radius (5-100 miles, default 50). **Required** before onboarding completion - CosQuest is played in the real world. `lat`/`lng` are required whenever `locationEnabled` is `true`. |
-| `POST /api/users/me/devices` | Identifier or Bearer | Register an iOS, Android, or web push token. |
-| `POST /api/users/me/onboarding/complete` | Identifier or Bearer | Atomic final onboarding submission. Returns `200` only if every required selection is valid, including location. |
+| `GET /api/users/me` | Bearer | Read the current/in-progress user record. Signup and login both return the token. |
+| `PATCH /api/users/me/profile` | Bearer | Save profile details during onboarding or edit profile later. |
+| `GET /api/users/check-username?username=new_name` | Public (Bearer optional) | Returns only `{ username, available }`. Rate-limited per IP. With a Bearer token, your own current username reads as available. |
+| `PATCH /api/users/me/avatar` | Bearer | Set a valid preset avatar. Coexists with an uploaded photo (the real profile UI shows the photo as the main picture with this as a small badge over it) - setting one never clears the other. |
+| `POST /api/users/me/avatar/photo` | Bearer | Multipart upload; set form-data `photo` to a local image file. Accepts JPEG/PNG/WEBP/GIF even if the client mislabels the file's Content-Type (`image/jpg`, `application/octet-stream`, `text/plain` are all tolerated) - Cloudinary's real content check is the actual gatekeeper, so a genuinely non-image file still fails there with a clear `400`. |
+| `POST /api/users/me/faction` | Bearer | Choose/replace faction. A faction is required before onboarding completion. |
+| `PUT /api/users/me/interests` | Bearer | Replace the full list of interests. At least one is required before completion. |
+| `PATCH /api/users/me/preferences/notifications` | Bearer | Save the master on/off notification choice, and/or `eventReminders` (a per-category push toggle) and/or `emailWeeklyNewsletter` - any subset of the three in one call. At least one field is required. `eventReminders`/`emailWeeklyNewsletter` are preference storage only - no email actually sends yet (no email infrastructure exists in this backend), and no scheduled "event" trigger exists yet either. |
+| `PATCH /api/users/me/preferences/location` | Bearer | Save real device coordinates and a discovery radius (5-100 miles, default 50). **Required** before onboarding completion - CosQuest is played in the real world. `lat`/`lng` are required whenever `locationEnabled` is `true`. |
+| `POST /api/users/me/devices` | Bearer | Register an iOS, Android, or web push token. |
+| `POST /api/users/me/onboarding/complete` | Bearer | Atomic final onboarding submission. Returns `200` only if every required selection is valid, including location. |
 
 Profile update body:
 
@@ -203,13 +203,13 @@ If a photo was uploaded first, omit `profile.avatar`; the uploaded photo already
 
 ## My profile, contact, and notifications
 
-All endpoints in this section require a logged-in, fully onboarded account, **except `GET`/`PATCH /api/users/me/contact`** (see below).
+All endpoints in this section require a logged-in, fully onboarded account, **except `GET`/`PATCH /api/users/me/contact`**, which need a Bearer token but also work mid-onboarding.
 
 | Method and URL | Usage |
 | --- | --- |
 | `GET /api/users/me/points` | Read current app points balance. Returns `200` with `{ "points": 0 }` until a future reward system awards points. |
-| `GET /api/users/me/contact` | Read the owner’s editable public contact values. Works two ways: **Bearer token** (post-login), or **pre-login** via standard HTTP Basic Auth - `Authorization: Basic base64(identifier:password)`. A GET has no body, so Basic Auth is used instead of a JSON field, keeping the password out of the URL (which would otherwise leak into browser history and server logs). |
-| `PATCH /api/users/me/contact` | Save public contact fields; does not change login email. Works two ways: **Bearer token** (post-login, same as everything else here), or **pre-login** with `{ email\|username, password, ...contact fields }` in the JSON body - contact holds more sensitive PII (phone, business address) than the other onboarding-step fields, so unlike those (which accept a bare identifier), this requires the account's real password too. Wrong identifier or wrong password both return a generic `401`. |
+| `GET /api/users/me/contact` | Read the owner’s editable public contact values. Bearer token only. |
+| `PATCH /api/users/me/contact` | Save public contact fields; does not change login email. Bearer token only. |
 | `GET /api/users/me/notifications` | List this user’s notifications, including follow notifications. |
 | `PATCH /api/users/me/notifications/read` | Mark every currently unread notification as read. Body not required. |
 | `GET /api/home/dashboard` | Get the dashboard anchored to the user's own saved location (`location.source: "user"`): user preview, unread notification count, live/upcoming/nearby quests. |
@@ -226,26 +226,6 @@ Contact body (post-login, Bearer):
   "businessAddress": "Lekki, Lagos, Nigeria"
 }
 ```
-
-Save contact body (pre-login, no token yet - identifier and password both required):
-
-```json
-{
-  "identifier": "hero@example.com",
-  "password": "Quest@1234",
-  "phone": "+2348148327836",
-  "businessAddress": "Lekki, Lagos, Nigeria"
-}
-```
-
-Read contact pre-login (no token, no body on a GET) - send identifier:password as an HTTP Basic Auth header instead:
-
-```http
-GET /api/users/me/contact
-Authorization: Basic aGVyb0BleGFtcGxlLmNvbTpRdWVzdEAxMjM0
-```
-
-(that's `base64("hero@example.com:Quest@1234")` - every HTTP client library has a helper for Basic Auth, so the frontend rarely needs to build this by hand.)
 
 Privacy body (any subset of these three fields):
 

@@ -17,11 +17,11 @@ Phones get a push for a new DM or group message, an @mention, a follow, a group 
 | Call ringing | the people rung | push lives 45 s |
 | Game event | the user ids the game sends | the `category` switch is off |
 
-Always skipped: `preferences.notificationsEnabled` off, and phones registered without a session. Messages, mentions and calls also skip users with the app connected right now (they see it live); game events do not.
+Always skipped: `preferences.notificationsEnabled` off, and any device row left over from before registration required a session (`authed: false`). Messages, mentions and calls also skip users with the app connected right now (they see it live); game events do not.
 
 ## Devices
 
-- `POST /api/users/me/devices { pushToken, platform }`. With a Bearer session the token is taken off any other account first (one phone, one signed-in account) and marked `authed`. Registered by email only (before login) it is stored but never pushed to: anyone who knows an email could otherwise point that account's notifications at their own phone.
+- `POST /api/users/me/devices { pushToken, platform }` (Bearer only). The token is taken off any other account first (one phone, one signed-in account) and marked `authed`. Requests without a valid session get `401` and store nothing.
 - `DELETE /api/users/me/devices { pushToken }` (Bearer only): the app calls it on sign-out.
 - Tokens Expo reports as `DeviceNotRegistered` are removed.
 

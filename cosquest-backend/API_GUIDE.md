@@ -109,7 +109,7 @@ Response:
 
 ## Step 1 — Profile
 
-**GET** `/api/users/me?email=alex@gmail.com` (or send `Authorization: Bearer <token>` instead, once logged in)
+**GET** `/api/users/me` with `Authorization: Bearer <token>` (signup and login both return the token; every `/api/users/me*` route requires it, and an email or username is never accepted in its place)
 Response:
 ```json
 {
@@ -177,7 +177,7 @@ Response:
 }
 ```
 
-**GET** `/api/users/check-username?username=Ravencaller&email=alex@gmail.com`
+**GET** `/api/users/check-username?username=Ravencaller` (public, rate-limited; with a Bearer token your own current username reads as available)
 Response:
 ```json
 {

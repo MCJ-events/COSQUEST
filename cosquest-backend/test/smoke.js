@@ -95,6 +95,8 @@ async function run(baseUrlArg) {
   const c = (method, path, opts) => call(baseUrl, method, path, opts);
   const email = `hero_${Date.now()}@example.com`;
   const password = 'Quest@1234';
+  // The session token the main fixture onboards with (from its mid-onboarding login below).
+  let onboardingToken;
 
   console.log('\n--- health ---');
   {
@@ -133,10 +135,12 @@ async function run(baseUrlArg) {
       r
     );
     const readByUsername = await c('GET', `/api/users/me?identifier=${username}`);
+    assert(readByUsername.status === 401, 'GET /api/users/me?identifier=username without a token -> 401', readByUsername);
+    const readWithToken = await c('GET', '/api/users/me', { token: r.json.token });
     assert(
-      readByUsername.status === 200 && readByUsername.json.user.profile.username === username,
-      'GET /api/users/me?identifier=username works before sign-in',
-      readByUsername
+      readWithToken.status === 200 && readWithToken.json.user.profile.username === username,
+      'GET /api/users/me with the signup token -> that account',
+      readWithToken
     );
     const duplicate = await c('POST', '/api/auth/signup', {
       body: { identifier: username, password, confirmPassword: password },
@@ -164,6 +168,7 @@ async function run(baseUrlArg) {
     // The token works to continue onboarding, but requireCompletedOnboarding
     // still blocks every real feature - a mid-onboarding token is not a
     // backdoor into the app.
+    onboardingToken = r.json.token;
     const points = await c('GET', '/api/users/me/points', { token: r.json.token });
     assert(points.status === 403, 'GET /api/users/me/points with a mid-onboarding token -> still 403', points);
   }
@@ -171,18 +176,23 @@ async function run(baseUrlArg) {
     const r = await c('GET', '/api/users/me');
     assert(r.status === 401, 'GET /api/users/me with NO email and NO token -> 401', r);
   }
-
-  console.log('\n--- step 1: profile (identified by email - no token exists yet) ---');
   {
     const r = await c('GET', `/api/users/me?email=${email}`);
-    assert(r.status === 200 && r.json.user.email === email, 'GET /api/users/me?email=... -> matches signed-up email', r);
+    assert(r.status === 401 && !r.json.user, 'GET /api/users/me?email=... without a token -> 401, no profile returned', r);
+  }
+
+  console.log('\n--- step 1: profile (signed-in session token from signup/login) ---');
+  {
+    const r = await c('GET', '/api/users/me', { token: onboardingToken });
+    assert(r.status === 200 && r.json.user.email === email, 'GET /api/users/me (Bearer) -> matches signed-up email', r);
   }
   {
-    const r = await c('GET', `/api/users/check-username?username=Ravencaller&email=${email}`);
-    assert(r.status === 200 && r.json.available === true, 'GET check-username (free) -> available:true', r);
+    const r = await c('GET', '/api/users/check-username?username=Ravencaller');
+    assert(r.status === 200 && r.json.available === true, 'GET check-username (free, no token) -> available:true', r);
   }
   {
     const r = await c('PATCH', '/api/users/me/profile', {
+      token: onboardingToken,
       body: { email, firstName: 'Alex', lastName: 'Rivera', username: 'Ravencaller', age: 24, gender: 'Female' },
     });
     assert(
@@ -193,14 +203,15 @@ async function run(baseUrlArg) {
   }
   {
     const emailDuplicateUsername = `duplicate_${Date.now()}@example.com`;
-    await c('POST', '/api/auth/signup', { body: { email: emailDuplicateUsername, password, confirmPassword: password } });
+    const dup = await c('POST', '/api/auth/signup', { body: { email: emailDuplicateUsername, password, confirmPassword: password } });
     const r = await c('PATCH', '/api/users/me/profile', {
+      token: dup.json.token,
       body: { email: emailDuplicateUsername, username: 'Ravencaller' },
     });
     assert(r.status === 409, 'PATCH /api/users/me/profile (duplicate username) -> 409', r);
   }
   {
-    const r = await c('PATCH', '/api/users/me/avatar', { body: { email, avatar: 'green-knight' } });
+    const r = await c('PATCH', '/api/users/me/avatar', { token: onboardingToken, body: { email, avatar: 'green-knight' } });
     assert(
       r.status === 200 && r.json.user.profile.avatarKey === 'green-knight',
       'PATCH /api/users/me/avatar -> saved',
@@ -208,21 +219,21 @@ async function run(baseUrlArg) {
     );
   }
   {
-    const r = await c('PATCH', '/api/users/me/avatar', { body: { email, avatar: 'not-a-real-avatar' } });
+    const r = await c('PATCH', '/api/users/me/avatar', { token: onboardingToken, body: { email, avatar: 'not-a-real-avatar' } });
     assert(r.status === 400, 'PATCH /api/users/me/avatar (invalid key) -> 400', r);
   }
   {
-    // multipart/form-data - email travels as a form field, not JSON, since
-    // there's no token yet; confirms identifyUser reading it after multer parses the body.
+    // multipart/form-data with the session token. The app still adds an
+    // email form field; it is ignored (the token decides whose photo it is).
     const form = new FormData();
     form.append('email', email);
     form.append('photo', new Blob([REAL_PNG_BYTES], { type: 'image/png' }), 'test.png');
-    const r = await c('POST', '/api/users/me/avatar/photo', { body: form, isForm: true });
+    const r = await c('POST', '/api/users/me/avatar/photo', { token: onboardingToken, body: form, isForm: true });
     assert(
         r.status === 200 &&
         typeof r.json.user.profile.avatarPhotoUrl === 'string' &&
         r.json.user.profile.avatarPhotoUrl.includes('res.cloudinary.com'),
-      'POST /api/users/me/avatar/photo (email as a form field, no token) -> Cloudinary URL set',
+      'POST /api/users/me/avatar/photo (Bearer) -> Cloudinary URL set',
       r
     );
   }
@@ -233,7 +244,7 @@ async function run(baseUrlArg) {
     const form = new FormData();
     form.append('email', email);
     form.append('photo', new Blob([REAL_PNG_BYTES], { type: 'image/jpg' }), 'passport.jpg');
-    const r = await c('POST', '/api/users/me/avatar/photo', { body: form, isForm: true });
+    const r = await c('POST', '/api/users/me/avatar/photo', { token: onboardingToken, body: form, isForm: true });
     assert(r.status === 200, 'POST /api/users/me/avatar/photo (.jpg sent as image/jpg, not image/jpeg) -> accepted', r);
   }
   {
@@ -242,7 +253,7 @@ async function run(baseUrlArg) {
     const form = new FormData();
     form.append('email', email);
     form.append('photo', new Blob([REAL_PNG_BYTES], { type: 'application/pdf' }), 'passport.pdf');
-    const r = await c('POST', '/api/users/me/avatar/photo', { body: form, isForm: true });
+    const r = await c('POST', '/api/users/me/avatar/photo', { token: onboardingToken, body: form, isForm: true });
     assert(
       r.status === 400 && typeof r.json.error === 'string' && r.json.error.includes('application/pdf'),
       'POST /api/users/me/avatar/photo (unsupported type) -> 400, names the received mimetype',
@@ -257,7 +268,7 @@ async function run(baseUrlArg) {
     const form = new FormData();
     form.append('email', email);
     form.append('photo', new Blob([REAL_PNG_BYTES], { type: 'application/octet-stream' }), 'photo');
-    const r = await c('POST', '/api/users/me/avatar/photo', { body: form, isForm: true });
+    const r = await c('POST', '/api/users/me/avatar/photo', { token: onboardingToken, body: form, isForm: true });
     assert(r.status === 200, 'POST /api/users/me/avatar/photo (generic application/octet-stream label) -> accepted', r);
   }
   {
@@ -267,14 +278,14 @@ async function run(baseUrlArg) {
     const form = new FormData();
     form.append('email', email);
     form.append('photo', new Blob([REAL_PNG_BYTES], { type: 'text/plain' }), 'photo.jpg');
-    const r = await c('POST', '/api/users/me/avatar/photo', { body: form, isForm: true });
+    const r = await c('POST', '/api/users/me/avatar/photo', { token: onboardingToken, body: form, isForm: true });
     assert(r.status === 200, 'POST /api/users/me/avatar/photo (mislabeled text/plain) -> accepted', r);
   }
   {
     // Regression: the preset avatar (a small badge) and the uploaded photo
     // (the main picture) coexist by design - setting one must not wipe the
     // other, in either direction.
-    const r = await c('PATCH', '/api/users/me/avatar', { body: { email, avatar: 'pink-idol' } });
+    const r = await c('PATCH', '/api/users/me/avatar', { token: onboardingToken, body: { email, avatar: 'pink-idol' } });
     assert(
       r.status === 200 &&
         r.json.user.profile.avatarKey === 'pink-idol' &&
@@ -297,50 +308,29 @@ async function run(baseUrlArg) {
     );
   }
 
-  console.log('\n--- contact options (pre-login, identifier + password required either way) ---');
+  console.log('\n--- contact options (signed-in session only) ---');
   {
-    // Missing password entirely - the plain identifyUser pattern (email
-    // alone) is NOT enough for contact, since it holds more sensitive PII
-    // (phone, business address) than the other onboarding-step fields.
-    const r = await c('PATCH', '/api/users/me/contact', { body: { email, phone: '+2348148327836' } });
-    assert(r.status === 401, 'PATCH contact (pre-login, no password) -> 401', r);
-  }
-  {
-    const r = await c('PATCH', '/api/users/me/contact', { body: { email, password: 'wrong-password', phone: '+2348148327836' } });
-    assert(r.status === 401, 'PATCH contact (pre-login, wrong password) -> 401', r);
-  }
-  {
-    const r = await c('PATCH', '/api/users/me/contact', {
-      body: { email, password, phone: '+2348148327836', businessAddress: '14 CosQuest Way, Lagos' },
-    });
-    assert(r.status === 200 && r.json.contact.phone === '+2348148327836', 'PATCH contact (pre-login, correct email + password) -> saved', r);
-  }
-  {
-    // GET has no body to carry identifier+password in, so it uses standard
-    // HTTP Basic Auth instead of a JSON body - this way the password never
-    // has to sit in the URL (which would leak into logs/history).
-    const r = await c('GET', '/api/users/me/contact');
-    assert(r.status === 401, 'GET contact (pre-login, no credentials at all) -> 401', r);
-  }
-  {
-    const r = await c('GET', '/api/users/me/contact', { basicAuth: { identifier: email, password: 'wrong-password' } });
-    assert(r.status === 401, 'GET contact (pre-login, Basic auth with wrong password) -> 401', r);
+    const r = await c('PATCH', '/api/users/me/contact', { body: { email, password, phone: '+2348148327836' } });
+    assert(r.status === 401, 'PATCH contact with email + password in the body, no token -> 401', r);
   }
   {
     const r = await c('GET', '/api/users/me/contact', { basicAuth: { identifier: email, password } });
-    assert(r.status === 200 && r.json.contact.phone === '+2348148327836', 'GET contact (pre-login, Basic auth with correct email + password) -> saved values', r);
+    assert(r.status === 401, 'GET contact with HTTP Basic email:password, no token -> 401', r);
   }
   {
-    // Regression: this app's own password policy allows a colon as the
-    // "special character" (e.g. "Quest@12:34"). Basic Auth packs
-    // identifier:password into one base64 blob, so decoding must split on
-    // the FIRST colon only - a naive split(':') would silently truncate the
-    // password right here and always fail a legitimate user.
-    const colonEmail = `colonpw_${Date.now()}@example.com`;
-    const colonPassword = 'Quest@12:34';
-    await c('POST', '/api/auth/signup', { body: { email: colonEmail, password: colonPassword, confirmPassword: colonPassword } });
-    const r = await c('GET', '/api/users/me/contact', { basicAuth: { identifier: colonEmail, password: colonPassword } });
-    assert(r.status === 200, 'GET contact (pre-login, Basic auth, password contains a colon) -> still authenticates correctly', r);
+    const r = await c('GET', '/api/users/me/contact');
+    assert(r.status === 401, 'GET contact with no credentials -> 401', r);
+  }
+  {
+    const r = await c('PATCH', '/api/users/me/contact', {
+      token: onboardingToken,
+      body: { email, phone: '+2348148327836', businessAddress: '14 CosQuest Way, Lagos' },
+    });
+    assert(r.status === 200 && r.json.contact.phone === '+2348148327836', 'PATCH contact (Bearer, mid-onboarding) -> saved', r);
+  }
+  {
+    const r = await c('GET', '/api/users/me/contact', { token: onboardingToken });
+    assert(r.status === 200 && r.json.contact.phone === '+2348148327836', 'GET contact (Bearer, mid-onboarding) -> saved values', r);
   }
 
   console.log('\n--- step 2: faction ---');
@@ -349,15 +339,15 @@ async function run(baseUrlArg) {
     assert(r.status === 200 && r.json.factions.length === 6 && !r.json.factionless, 'GET /api/factions -> 6 required factions', r);
   }
   {
-    const r = await c('POST', '/api/users/me/faction', { body: { email, factionKey: 'ascendants' } });
+    const r = await c('POST', '/api/users/me/faction', { token: onboardingToken, body: { email, factionKey: 'ascendants' } });
     assert(r.status === 200 && r.json.user.faction === 'ascendants', 'POST faction "ascendants" -> saved', r);
   }
   {
-    const r = await c('POST', '/api/users/me/faction', { body: { email, factionKey: 'bogus' } });
+    const r = await c('POST', '/api/users/me/faction', { token: onboardingToken, body: { email, factionKey: 'bogus' } });
     assert(r.status === 400, 'POST faction (invalid key) -> 400', r);
   }
   {
-    const r = await c('POST', '/api/users/me/faction', { body: { email, factionKey: 'none' } });
+    const r = await c('POST', '/api/users/me/faction', { token: onboardingToken, body: { email, factionKey: 'none' } });
     assert(r.status === 400, 'POST faction "none" -> 400 (a faction is required)', r);
   }
 
@@ -368,18 +358,20 @@ async function run(baseUrlArg) {
   }
   {
     const r = await c('PUT', '/api/users/me/interests', {
+      token: onboardingToken,
       body: { email, interests: ['anime', 'comic', 'cosplay'] },
     });
     assert(r.status === 200 && r.json.user.interests.length === 3, 'PUT interests -> saved 3', r);
   }
   {
-    const r = await c('PUT', '/api/users/me/interests', { body: { email, interests: ['not-a-real-key'] } });
+    const r = await c('PUT', '/api/users/me/interests', { token: onboardingToken, body: { email, interests: ['not-a-real-key'] } });
     assert(r.status === 400, 'PUT interests (invalid key) -> 400', r);
   }
 
   console.log('\n--- step 4: notification preferences ---');
   {
     const r = await c('PATCH', '/api/users/me/preferences/notifications', {
+      token: onboardingToken,
       body: { email, notificationsEnabled: true },
     });
     assert(
@@ -390,6 +382,7 @@ async function run(baseUrlArg) {
   }
   {
     const r = await c('POST', '/api/users/me/devices', {
+      token: onboardingToken,
       body: { email, pushToken: 'fake-fcm-token-123', platform: 'web' },
     });
     assert(r.status === 200 && r.json.user.devices.length === 1, 'POST devices -> registered 1 device', r);
@@ -399,6 +392,7 @@ async function run(baseUrlArg) {
   let token;
   {
     const r = await c('POST', '/api/users/me/onboarding/complete', {
+      token: onboardingToken,
       body: { email, location: { locationEnabled: true, radiusMiles: 50, lat: 6.5244, lng: 3.3792 } },
     });
     assert(r.status === 200 && r.json.user.onboardingComplete === true, 'POST onboarding/complete -> true', r);
@@ -406,11 +400,11 @@ async function run(baseUrlArg) {
   {
     // Now that onboarding is genuinely finished, a repeat signup is a real
     // conflict again - not a resume.
-    const r = await c('POST', '/api/auth/signup', { body: { email, password, confirmPassword: password } });
+    const r = await c('POST', '/api/auth/signup', { token: onboardingToken, body: { email, password, confirmPassword: password } });
     assert(r.status === 409, 'POST /api/auth/signup (email, onboarding already finished) -> 409, a real duplicate', r);
   }
   {
-    const r = await c('GET', `/api/users/me?email=${email}`);
+    const r = await c('GET', '/api/users/me', { token: onboardingToken });
     const u = r.json.user;
     assert(
       u.profile.username === 'Ravencaller' &&
@@ -418,12 +412,12 @@ async function run(baseUrlArg) {
         u.interests.length === 3 &&
         u.onboardingComplete === true &&
         u.passwordHash === undefined,
-      'GET /api/users/me?email=... (final) -> full onboarded state, no passwordHash leaked',
+      'GET /api/users/me (final) -> full onboarded state, no passwordHash leaked',
       u
     );
   }
   {
-    const r = await c('POST', '/api/auth/login', { body: { email, password } });
+    const r = await c('POST', '/api/auth/login', { token: onboardingToken, body: { email, password } });
     assert(
       r.status === 200 && r.json.token && r.json.message === 'Logged in successfully.',
       'POST /api/auth/login (onboarding now complete) -> 200 + token + success message',
@@ -698,9 +692,10 @@ async function run(baseUrlArg) {
   {
     const email2 = `hero2_${Date.now()}@example.com`;
     username2 = `Jamie${Date.now()}`.slice(0, 20);
-    await c('POST', '/api/auth/signup', { body: { email: email2, password, confirmPassword: password } });
+    const signup2 = await c('POST', '/api/auth/signup', { body: { email: email2, password, confirmPassword: password } });
 
     const r = await c('POST', '/api/users/me/onboarding/complete', {
+      token: signup2.json.token,
       body: {
         email: email2,
         profile: { firstName: 'Jamie', lastName: 'Cruz', username: username2, age: 29, gender: 'Male', avatar: 'caped-champion' },
@@ -726,9 +721,10 @@ async function run(baseUrlArg) {
   }
   {
     const email3 = `hero3_${Date.now()}@example.com`;
-    await c('POST', '/api/auth/signup', { body: { email: email3, password, confirmPassword: password } });
+    const signup3 = await c('POST', '/api/auth/signup', { body: { email: email3, password, confirmPassword: password } });
 
     const r = await c('POST', '/api/users/me/onboarding/complete', {
+      token: signup3.json.token,
       body: { email: email3, profile: { username: 'ab' }, faction: 'not-a-real-faction' }, // username too short + bad faction key
     });
     assert(
@@ -737,7 +733,7 @@ async function run(baseUrlArg) {
       r.json
     );
 
-    const check = await c('GET', `/api/users/me?email=${email3}`);
+    const check = await c('GET', '/api/users/me', { token: signup3.json.token });
     assert(
       check.json.user.onboardingComplete === false && check.json.user.faction === null,
       'invalid combined payload applied NOTHING - onboarding stays incomplete, faction untouched',
@@ -1014,12 +1010,13 @@ async function run(baseUrlArg) {
       preferences: { notificationsEnabled: false },
       location: { locationEnabled: true, radiusMiles: 50, lat: 6.5244, lng: 3.3792 },
     });
+    const signupTokens = {};
     for (const email of [emailP, emailS, emailF]) {
-      await c('POST', '/api/auth/signup', { body: { email, password, confirmPassword: password } });
+      signupTokens[email] = (await c('POST', '/api/auth/signup', { body: { email, password, confirmPassword: password } })).json.token;
     }
-    await c('POST', '/api/users/me/onboarding/complete', { body: onboardBody(emailP, usernameP) });
-    await c('POST', '/api/users/me/onboarding/complete', { body: onboardBody(emailS, usernameS) });
-    await c('POST', '/api/users/me/onboarding/complete', { body: onboardBody(emailF, usernameF) });
+    await c('POST', '/api/users/me/onboarding/complete', { token: signupTokens[emailP], body: onboardBody(emailP, usernameP) });
+    await c('POST', '/api/users/me/onboarding/complete', { token: signupTokens[emailS], body: onboardBody(emailS, usernameS) });
+    await c('POST', '/api/users/me/onboarding/complete', { token: signupTokens[emailF], body: onboardBody(emailF, usernameF) });
     tokenP = (await c('POST', '/api/auth/login', { body: { email: emailP, password } })).json.token;
     tokenS = (await c('POST', '/api/auth/login', { body: { email: emailS, password } })).json.token;
     tokenF = (await c('POST', '/api/auth/login', { body: { email: emailF, password } })).json.token;
@@ -1439,8 +1436,9 @@ async function run(baseUrlArg) {
     // `token`'s user has notificationsEnabled=true (step 4 above); the one-shot user does too;
     // this 4th user completes onboarding with notifications disabled - a real negative case.
     const email4 = `hero4_${Date.now()}@example.com`;
-    await c('POST', '/api/auth/signup', { body: { email: email4, password, confirmPassword: password } });
+    const signup4 = await c('POST', '/api/auth/signup', { body: { email: email4, password, confirmPassword: password } });
     await c('POST', '/api/users/me/onboarding/complete', {
+      token: signup4.json.token,
       body: {
         email: email4,
         profile: { firstName: 'Taylor', lastName: 'Reed', username: `Taylor${Date.now()}`.slice(0, 20), age: 28, gender: 'Female', avatar: 'adventurer' },
@@ -1512,6 +1510,13 @@ async function run(baseUrlArg) {
   {
     const r = await c('GET', '/api/users/me', { token });
     assert(r.status === 200, 'GET /api/users/me with the fresh post-logout token -> 200', r);
+  }
+
+  // /api/users/me* session-token enforcement (kept in its own file).
+  {
+    const meAuth = await require('./usersMeAuth').run(baseUrl);
+    pass += meAuth.pass;
+    fail += meAuth.fail;
   }
 
   console.log(`\n${pass} passed, ${fail} failed\n`);

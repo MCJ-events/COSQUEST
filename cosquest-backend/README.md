@@ -69,14 +69,14 @@ Runs correctly today as a single server process. If this is ever deployed as mor
 | POST | `/api/auth/login` | public, rate-limited | `{ identifier, password }` (or legacy `{ email, password }`) | `identifier` may be the email or username; 401 on bad credentials; **403 if `onboardingComplete` is still false**; 10 req / 2 hours / IP, else 429 |
 | POST | `/api/auth/logout` | Bearer token | — | bumps `tokenVersion`, invalidating this (and every other) existing token |
 
-### Step 1 — Profile (identify with `email` in the body/query before login, or a Bearer token after)
+### Step 1 — Profile (every `/api/users/me*` route needs `Authorization: Bearer <token>`; signup and login both return one)
 | Method | Path | Body | Notes |
 |---|---|---|---|
-| GET | `/api/users/me` | — (`?email=` or Bearer) | full current user (no `passwordHash`) |
+| GET | `/api/users/me` | — (Bearer) | full current user (no `passwordHash`) |
 | PATCH | `/api/users/me/profile` | `{ email, firstName, lastName, username, age, gender, bio, category, showCategoryOnProfile }` | all fields optional/independent; bio is 500 characters max; category must come from the public category list; username 3-20 chars `[a-zA-Z0-9_]`, must be unique; age 13-120 |
-| GET | `/api/users/check-username?username=&email=` | — | `{ available: boolean }` |
+| GET | `/api/users/check-username?username=` | — (public, rate-limited; Bearer optional) | `{ username, available }`; with a token your own current username reads as available |
 | PATCH | `/api/users/me/avatar` | `{ email, avatar }` | `avatar` is a key from `GET /api/meta/avatars` (100 illustrated characters); clears any uploaded photo |
-| POST | `/api/users/me/avatar/photo` | multipart: `photo` file + `email` field | jpeg/png/webp/gif, 5MB max |
+| POST | `/api/users/me/avatar/photo` | multipart: `photo` file | jpeg/png/webp/gif, 5MB max |
 | GET | `/api/meta/avatars` | — (public) | the 100 illustrated avatar options (`key`, `label`, `imageUrl`) |
 | GET | `/api/meta/profile-categories` | — (public) | searchable list for the Category picker |
 | GET | `/api/users/me/contact` | Bearer token | the user's public contact details for editing |
@@ -177,48 +177,49 @@ curl -s -X POST $BASE_URL/api/auth/login \
 { "error": "Please complete onboarding before logging in." }
 ```
 
-### 3. Complete onboarding with the signup token (legacy email examples below)
+### 3. Complete onboarding with the signup token
 
 ```bash
+# TOKEN is the `token` from the signup response.
 # Step 1: profile
 curl -s -X PATCH $BASE_URL/api/users/me/profile \
-  -H "Content-Type: application/json" \
-  -d "{\"email\":\"$EMAIL\",\"firstName\":\"Alex\",\"lastName\":\"Rivera\",\"username\":\"Ravencaller\",\"age\":24,\"gender\":\"Female\"}"
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d "{\"firstName\":\"Alex\",\"lastName\":\"Rivera\",\"username\":\"Ravencaller\",\"age\":24,\"gender\":\"Female\"}"
 
 curl -s -X PATCH $BASE_URL/api/users/me/avatar \
-  -H "Content-Type: application/json" \
-  -d "{\"email\":\"$EMAIL\",\"avatar\":\"green-knight\"}"
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d "{\"avatar\":\"green-knight\"}"
 
 curl -s -X POST $BASE_URL/api/users/me/avatar/photo \
-  -F "email=$EMAIL" -F "photo=@/path/to/photo.jpg"
+  -H "Authorization: Bearer $TOKEN" -F "photo=@/path/to/photo.jpg"
 
 # Step 2: faction
 curl -s $BASE_URL/api/factions
 
 curl -s -X POST $BASE_URL/api/users/me/faction \
-  -H "Content-Type: application/json" \
-  -d "{\"email\":\"$EMAIL\",\"factionKey\":\"ascendants\"}"
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d "{\"factionKey\":\"ascendants\"}"
 
 # Step 3: interests
 curl -s $BASE_URL/api/interests
 
 curl -s -X PUT $BASE_URL/api/users/me/interests \
-  -H "Content-Type: application/json" \
-  -d "{\"email\":\"$EMAIL\",\"interests\":[\"anime\",\"comic\",\"cosplay\"]}"
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d "{\"interests\":[\"anime\",\"comic\",\"cosplay\"]}"
 
 # Step 4: notifications
 curl -s -X PATCH $BASE_URL/api/users/me/preferences/notifications \
-  -H "Content-Type: application/json" \
-  -d "{\"email\":\"$EMAIL\",\"notificationsEnabled\":true}"
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d "{\"notificationsEnabled\":true}"
 
 curl -s -X POST $BASE_URL/api/users/me/devices \
-  -H "Content-Type: application/json" \
-  -d "{\"email\":\"$EMAIL\",\"pushToken\":\"fcm-token-abc123\",\"platform\":\"web\"}"
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d "{\"pushToken\":\"fcm-token-abc123\",\"platform\":\"web\"}"
 
 # Finish
 curl -s -X POST $BASE_URL/api/users/me/onboarding/complete \
-  -H "Content-Type: application/json" \
-  -d "{\"email\":\"$EMAIL\"}"
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d "{}"
 ```
 
 ### 4. Optional returning-user login — new signups already have a token

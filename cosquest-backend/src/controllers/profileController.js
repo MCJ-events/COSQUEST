@@ -84,10 +84,13 @@ async function updateContact(req, res) {
   return res.json({ contact: updated.contact });
 }
 
-// GET /api/users/check-username?username=xyz
+// GET /api/users/check-username?username=xyz  (public; answers only "is it free")
+// req.userId is set only when a valid session token came with the request
+// (optionalAuth), so a signed-in user's own current name reads as available.
 async function checkUsername(req, res) {
   const { username } = req.query;
-  if (!username) return res.status(400).json({ error: 'username query param is required.' });
+  if (!username || typeof username !== 'string') return res.status(400).json({ error: 'username query param is required.' });
+  if (username.length > 50) return res.status(400).json({ error: 'username is too long.' });
   const taken = await userModel.isUsernameTaken(username, req.userId);
   return res.json({ username, available: !taken });
 }

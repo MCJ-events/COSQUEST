@@ -92,16 +92,13 @@ async function updateLocationPrefs(req, res) {
   return res.json({ user: userModel.sanitize(updated) });
 }
 
-function hasBearer(req) {
-  return /^Bearer \S+/.test(req.headers.authorization || '');
-}
-
 // POST /api/users/me/devices  (register a push token, only meaningful once notificationsEnabled is true)
 //
-// With a Bearer session the phone is this account's for pushes: the same
-// token is taken off any other account first (one phone, one signed-in
-// account). Registered by email only (before login), it is stored but gets
-// no pushes until the signed-in app registers it again.
+// Signed-in session only (requireAuth on the route). The phone is this
+// account's for pushes: the same token is taken off any other account first
+// (one phone, one signed-in account). `authed` stays on the record because
+// older device rows registered without a session have it false, and those
+// never get pushes (see utils/push.js).
 async function registerDevice(req, res) {
   const { pushToken, platform } = req.body;
   if (!pushToken || !platform) {
@@ -110,18 +107,15 @@ async function registerDevice(req, res) {
   if (typeof pushToken !== 'string' || pushToken.length > 300 || typeof platform !== 'string' || platform.length > 20) {
     return res.status(400).json({ error: 'pushToken and platform must be short strings.' });
   }
-  const authed = hasBearer(req);
-  if (authed) {
-    await User.updateMany(
-      { _id: { $ne: req.userId }, 'devices.pushToken': pushToken },
-      { $pull: { devices: { pushToken } } }
-    );
-  }
+  await User.updateMany(
+    { _id: { $ne: req.userId }, 'devices.pushToken': pushToken },
+    { $pull: { devices: { pushToken } } }
+  );
   const updated = await userModel.updateUser(req.userId, (user) => {
     const existing = user.devices.find((d) => d.pushToken === pushToken);
     if (!existing) {
-      user.devices.push({ pushToken, platform, registeredAt: new Date(), authed });
-    } else if (authed && !existing.authed) {
+      user.devices.push({ pushToken, platform, registeredAt: new Date(), authed: true });
+    } else if (!existing.authed) {
       existing.authed = true;
       existing.platform = platform;
       existing.registeredAt = new Date();
@@ -132,7 +126,6 @@ async function registerDevice(req, res) {
 
 // DELETE /api/users/me/devices  { pushToken }  (sign-out: this phone stops getting this account's pushes)
 async function unregisterDevice(req, res) {
-  if (!hasBearer(req)) return res.status(401).json({ error: 'Sign in to remove a device.' });
   const { pushToken } = req.body || {};
   if (typeof pushToken !== 'string' || !pushToken) return res.status(400).json({ error: 'pushToken is required.' });
   const updated = await userModel.updateUser(req.userId, (user) => {

@@ -80,4 +80,17 @@ const forgotPasswordLimiter = rateLimit({
   store: redisStore('rl:forgot:'),
 });
 
-module.exports = { loginLimiter, signupLimiter, forgotPasswordLimiter };
+// GET /api/users/check-username is public (it has to work for a name typed
+// during signup). It only returns a boolean, but this caps how fast one
+// address can probe it.
+const usernameCheckLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 60, // 60 checks per IP per window
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many username checks. Please try again in a few minutes.' },
+  skip: skipInTest,
+  store: redisStore('rl:usercheck:'),
+});
+
+module.exports = { loginLimiter, signupLimiter, forgotPasswordLimiter, usernameCheckLimiter };
