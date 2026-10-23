@@ -89,6 +89,8 @@ Scheduling (replace IDs and date with real group data and a future date):
 }
 ```
 
+Each linked Spark in `GET /projects/:projectId` (`sparks[]`) carries `latestMessage` for the subject card's preview line ("Maya: Yes! Meet by the mural at 10?"): `{ id, senderId, senderName, kind, text, createdAt }`, or `null` when the Spark has no messages yet. Messages deleted for everyone, deleted by this viewer for themselves, Sparks bot posts and call entries are skipped. `text` is empty for non-text kinds (`image`, `file`...), which the app labels by `kind`.
+
 Optional context: `projectId`, `subjectId`, `sparkId`. A subject needs its project. These may be set to null to unlink. A call's Spark must belong to the group; it need not already be linked to the project.
 
 Provide either `date` + `startTime` (local wall time in `timeZone`) or `startsAt` (ISO timestamp with an explicit UTC offset). Duration is 5–480 minutes. First scheduling date is within one year. `none`, `daily`, and `weekly` repeats materialize 1–52 independent occurrences with a shared `seriesId`. Weekly/daily calls retain wall time across daylight-saving changes. Nonexistent local times are rejected. For an ambiguous repeated hour, supply `startsAt` with the intended offset. Editing/cancellation/calendar export affect one occurrence; whole-series editing/export is not implemented. Editing time resets RSVPs and the reminder.

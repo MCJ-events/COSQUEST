@@ -3,6 +3,7 @@ const Project = require('../models/Project');
 const ProjectFile = require('../models/ProjectFile');
 const ScheduledCall = require('../models/ScheduledCall');
 const ConversationMember = require('../models/ConversationMember');
+const Message = require('../models/Message');
 const { storeChatMedia, deleteChatMedia } = require('../utils/imageHost');
 const { fail, objectId, text, groupFor, projectFor, subjectFor, sparkFor } = require('../utils/projectAccess');
 const { emitToConversation } = require('../realtime/socket');
@@ -11,6 +12,28 @@ const fileJson = (f) => ({ id: String(f._id), subjectId: f.subjectId, uploadedBy
 function projectJson(p, fileCount = 0) {
   return { id: String(p._id), conversationId: p.conversation, createdBy: p.createdBy, name: p.name, description: p.description, location: p.location, dueAt: p.dueAt, archived: p.archived,
     subjects: p.subjects.map(s => ({ id: String(s._id), name: s.name, description: s.description })), subjectCount: p.subjects.length, fileCount, sparkCount: p.sparkLinks.length, updatedAt: p.updatedAt };
+}
+// The newest message in a linked Spark, for the subject card's preview line
+// ("Maya: Yes! Meet by the mural at 10?"). Module Sparks tag their messages
+// with `sparkId` (ordered by `seq`); legacy Sparks with `spark`. Messages
+// deleted for everyone, or that this viewer deleted for themselves, are skipped.
+async function latestSparkMessage(link, viewerId) {
+  const filter = { deletedForEveryone: { $ne: true }, deletedFor: { $ne: viewerId }, kind: { $nin: ['sparks_bot', 'call'] } };
+  const message = link.engine === 'module'
+    ? await Message.findOne({ ...filter, sparkId: link.sparkId }).sort({ seq: -1 })
+      .select('sender kind content createdAt').populate('sender', 'profile.username profile.displayName profile.firstName profile.lastName')
+    : await Message.findOne({ ...filter, spark: link.sparkId }).sort({ createdAt: -1, _id: -1 })
+      .select('sender kind content createdAt').populate('sender', 'profile.username profile.displayName profile.firstName profile.lastName');
+  if (!message) return null;
+  const profile = message.sender?.profile || {};
+  return {
+    id: String(message._id),
+    senderId: message.sender ? String(message.sender._id) : null,
+    senderName: profile.displayName || [profile.firstName, profile.lastName].filter(Boolean).join(' ') || profile.username || 'User',
+    kind: message.kind, // non-text kinds (image, file...) have no text; the app labels them
+    text: (message.content || '').slice(0, 200),
+    createdAt: message.createdAt,
+  };
 }
 function changed(project) { emitToConversation(String(project.conversation), 'project:updated', { projectId: String(project._id) }); }
 function dueDate(value) {
@@ -47,7 +70,10 @@ async function getProject(req, res) {
     ProjectFile.find({ project: project._id }).sort({ createdAt: -1 }).limit(500),
     ScheduledCall.find({ projectId: project._id, cancelledAt: null, endsAt: { $gt: new Date() } }).sort({ startsAt: 1 }).limit(10).select('topic startsAt endsAt timeZone subjectId sparkId'),
     Promise.all(project.sparkLinks.map(async link => {
-      try { return { ...await sparkFor(project.conversation, link.sparkId, link.engine), subjectId: link.subjectId, fileId: link.fileId }; }
+      try {
+        const spark = await sparkFor(project.conversation, link.sparkId, link.engine);
+        return { ...spark, subjectId: link.subjectId, fileId: link.fileId, latestMessage: await latestSparkMessage(link, req.userId) };
+      }
       catch (e) { if (e.status === 404) return null; throw e; }
     })),
   ]);

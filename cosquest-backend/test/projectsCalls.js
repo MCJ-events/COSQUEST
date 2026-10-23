@@ -4,6 +4,7 @@ const User = require('../src/models/User');
 const Conversation = require('../src/models/Conversation');
 const Member = require('../src/models/ConversationMember');
 const Spark = require('../src/models/Spark');
+const Message = require('../src/models/Message');
 const ProjectFile = require('../src/models/ProjectFile');
 const ScheduledCall = require('../src/models/ScheduledCall');
 const Notification = require('../src/models/Notification');
@@ -65,6 +66,18 @@ async function runPlanning(baseUrl) {
     assert.equal((await req('POST', `/projects/${project.id}/sparks`, 1, { sparkId: foreign.id })).status, 404);
     const detail = await req('GET', `/projects/${project.id}`, 1);
     assert.equal(detail.data.sparks[0].fileId, file.id); assert.equal(detail.data.project.fileCount, 1);
+  });
+  await check('linked Sparks show their latest message, skipping deleted ones', async () => {
+    assert.equal((await req('GET', `/projects/${project.id}`, 1)).data.sparks[0].latestMessage, null);
+    const at = (s) => new Date(Date.now() - 60000 + s * 1000);
+    await Message.create({ conversation: group._id, sender: host._id, content: 'Where do we meet?', spark: spark._id, createdAt: at(1) });
+    await Message.create({ conversation: group._id, sender: member._id, content: 'Yes! Meet by the mural at 10?', spark: spark._id, createdAt: at(2) });
+    await Message.create({ conversation: group._id, sender: host._id, content: 'Hidden for the member', spark: spark._id, deletedFor: [member._id], createdAt: at(3) });
+    await Message.create({ conversation: group._id, sender: host._id, content: 'Deleted for everyone', spark: spark._id, deletedForEveryone: true, createdAt: at(4) });
+    const latest = (await req('GET', `/projects/${project.id}`, 1)).data.sparks[0].latestMessage;
+    assert.equal(latest.text, 'Yes! Meet by the mural at 10?'); assert.equal(latest.senderId, member.id);
+    assert.equal(latest.senderName, 'Planner 1'); assert.equal(latest.kind, 'text');
+    assert.equal((await req('GET', `/projects/${project.id}`, 0)).data.sparks[0].latestMessage.text, 'Hidden for the member');
   });
   await check('only creator/admin can archive, archive blocks uploads, restore keeps files', async () => {
     assert.equal((await req('PATCH', `/projects/${project.id}`, 1, { archived: true })).status, 403);
@@ -164,6 +177,9 @@ async function runPlanning(baseUrl) {
       assert.equal((await req('POST', `/projects/${project.id}/sparks`, 1, { sparkId, subjectId: subject.id })).status, 200);
       const detail = await req('GET', `/projects/${project.id}`);
       assert.equal(detail.status, 200); assert.equal(detail.data.sparks.length, 2);
+      await Message.create({ conversation: group._id, sender: member._id, content: "I'll bring water for everyone.", sparkId });
+      const moduleSpark = (await req('GET', `/projects/${project.id}`)).data.sparks.find((s) => s.id === sparkId);
+      assert.equal(moduleSpark.latestMessage.text, "I'll bring water for everyone."); assert.equal(moduleSpark.latestMessage.senderId, member.id);
       const scheduled = await req('POST', gp + '/scheduled-calls', 0, { ...body(), sparkId });
       assert.equal(scheduled.status, 201, JSON.stringify(scheduled)); assert.equal(scheduled.data.call.sparkId, sparkId);
       await engine.store.patchSpark(sparkId, { state: 'deleted' });
