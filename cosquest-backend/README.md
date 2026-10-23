@@ -2,6 +2,8 @@
 
 > Current signup, comments/replies, chat links/files, Spotlight, and Settings contract: [COMMUNITY_SETTINGS_API.md](../COMMUNITY_SETTINGS_API.md). That guide supersedes older examples and deferred-feature notes below for these features.
 
+Projects, subject files, linked Sparks and scheduled calls are documented in [PROJECTS_AND_SCHEDULING.md](../PROJECTS_AND_SCHEDULING.md). Run `npm run test:planning` for their focused integration tests.
+
 If this backend already has a MongoDB database from before username-only registration was added, run `npm run migrate:username-signup` once before deploying. It safely updates the unique email index so multiple accounts without an email are allowed.
 
 Login sessions do not expire on a timer. They stay active until the user logs out, at which point every previous token for that account is invalidated; the next sign-in issues a fresh token.

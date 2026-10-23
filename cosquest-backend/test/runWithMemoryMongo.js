@@ -72,6 +72,9 @@ async function main() {
     const groups = await require('./groups').run(`http://localhost:${process.env.PORT}`);
     result.pass += groups.pass;
     result.fail += groups.fail;
+    const planning = await require('./projectsCalls').run(`http://localhost:${process.env.PORT}`);
+    result.pass += planning.pass;
+    result.fail += planning.fail;
     const groupExtras = await require('./groupExtras').run(`http://localhost:${process.env.PORT}`);
     result.pass += groupExtras.pass;
     result.fail += groupExtras.fail;
@@ -133,6 +136,7 @@ async function main() {
     result.fail += pushRun.fail;
   } finally {
     require('../src/sparks').stop();
+    require('../src/utils/meetingNotifications').stop();
     require('../src/sparks/voiceRooms').stopSweep();
     await new Promise((resolve) => server.close(resolve));
     await closeSocket(); // quits the adapter's dedicated pub/sub Redis connections - see socket.js

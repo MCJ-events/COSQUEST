@@ -15,9 +15,12 @@ const notificationSchema = new mongoose.Schema(
     actor: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     conversation: { type: mongoose.Schema.Types.ObjectId, ref: 'Conversation', default: null },
     chatMessage: { type: mongoose.Schema.Types.ObjectId, ref: 'Message', default: null },
+    scheduledCall: { type: mongoose.Schema.Types.ObjectId, ref: 'ScheduledCall', default: null },
+    deliveryKey: { type: String },
     read: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
 
+notificationSchema.index({ deliveryKey: 1 }, { unique: true, sparse: true });
 module.exports = mongoose.model('Notification', notificationSchema);

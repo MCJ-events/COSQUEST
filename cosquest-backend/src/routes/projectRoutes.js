@@ -1,0 +1,16 @@
+const router = require('express').Router();
+const { requireAuth, requireCompletedOnboarding } = require('../middleware/auth');
+const { asyncHandler: a } = require('../utils/asyncHandler');
+const { projectUpload } = require('../middleware/upload');
+const c = require('../controllers/projectController');
+router.use(['/groups/:groupId/projects', '/projects'], requireAuth, requireCompletedOnboarding);
+router.get('/groups/:groupId/projects', a(c.listProjects));
+router.post('/groups/:groupId/projects', a(c.createProject));
+router.get('/projects/:projectId', a(c.getProject));
+router.patch('/projects/:projectId', a(c.updateProject));
+router.post('/projects/:projectId/subjects', a(c.addSubject));
+router.get('/projects/:projectId/files', a(c.listFiles));
+router.post(['/projects/:projectId/files', '/projects/:projectId/subjects/:subjectId/files'], a(c.authorizeUpload), projectUpload.single('file'), a(c.uploadFile));
+router.delete('/projects/:projectId/files/:fileId', a(c.deleteFile));
+router.post('/projects/:projectId/sparks', a(c.linkSpark));
+module.exports = router;

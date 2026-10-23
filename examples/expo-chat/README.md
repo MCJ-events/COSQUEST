@@ -1,5 +1,7 @@
 # Expo chat integration
 
+Projects, subject documents, linked Sparks and scheduled calls: see [PROJECTS_AND_SCHEDULING.md](../../PROJECTS_AND_SCHEDULING.md). `ProjectsAndCalls.js` supplies integration screens and `projectsCallsApi.js` supplies the API client.
+
 These files are integration code for the existing iOS/Android Expo app. This folder is not a runnable Expo project; do not replace the app's package.json with the small module marker in this folder. The backend is implemented in `cosquest-backend`. See [CHAT_ATTACHMENTS_API.md](../../CHAT_ATTACHMENTS_API.md) for the API contract.
 
 ## Install in the mobile app
