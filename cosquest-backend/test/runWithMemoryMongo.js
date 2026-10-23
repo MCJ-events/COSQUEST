@@ -84,6 +84,9 @@ async function main() {
     const chatPages = await require('./chatPages').run(`http://localhost:${process.env.PORT}`);
     result.pass += chatPages.pass;
     result.fail += chatPages.fail;
+    const chatsList = await require('./chatsList').run(`http://localhost:${process.env.PORT}`);
+    result.pass += chatsList.pass;
+    result.fail += chatsList.fail;
     // The stand-in keyword engine's own suite: it is the rollback path now,
     // so it runs with SPARKS_ENGINE=legacy (read per request).
     process.env.SPARKS_ENGINE = 'legacy';
