@@ -150,7 +150,7 @@ async function run(baseUrl) {
       actions.some((a) => a.ownerUserId === amara.id && a.text === "I'll post the raid route in the guild chat tonight.") &&
         actions.some((a) => a.ownerUserId === amara.id && a.text === 'Tunde: Amara, can you also book the voice room for Saturday evening?') &&
         outline.topics.some((x) => x.decisions.includes("Tunde: Let's go with the northern pass and two healers.")) &&
-        /^(Amara|Tunde): /.test(outline.topics[0].summary) && outline.summary === 'Amara and Tunde talked about raid route and northern pass.',
+        /^(Amara|Tunde): /.test(outline.topics[0].summary) && outline.summary === 'Amara and Tunde talked about Raid Route and Northern Pass.',
       'quick notes: the decision and both action items, by name, owned by the right person (people who only joined the voice chat are named too)',
       outline?.topics
     );
