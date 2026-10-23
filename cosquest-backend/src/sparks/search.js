@@ -103,7 +103,7 @@ async function searchSpark(req, res) {
     seq: { $type: 'number' },
     deletedForEveryone: { $ne: true },
     deletedFor: { $ne: req.userId },
-    kind: { $ne: 'call' },
+    kind: { $nin: ['call', 'scheduled_call'] },
     ...(q ? { $or: [{ content: new RegExp(escapeRegex(q), 'i') }, { 'media.transcript': new RegExp(escapeRegex(q), 'i') }] } : {}),
     ...(era === null ? {} : era === 0 ? { sparkRevivalIndex: { $in: [0, null] } } : { sparkRevivalIndex: era }),
   };

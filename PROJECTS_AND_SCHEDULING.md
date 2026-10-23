@@ -47,15 +47,67 @@ All routes below start with `/api` and require a completed, authenticated accoun
 | POST | `/projects/:projectId/subjects/:subjectId/files` | Upload to a subject. Multipart field **`file`**. |
 | DELETE | `/projects/:projectId/files/:fileId` | Remove a file and clear attachment pointers from Spark links. |
 | POST | `/projects/:projectId/sparks` | Link/update `{ sparkId, subjectId?, fileId? }`. An attached file must be in the selected subject (or at project level when no subject is selected). |
+| GET/POST | `/chats/:conversationId/scheduled-calls` | The app's Calls tab (below). GET returns `{ calls }`: every upcoming call soonest first (cancelled ones included), then the 50 most recent past ones. |
 | GET/POST | `/groups/:groupId/scheduled-calls` | List/create calls. GET: `view=upcoming\|past\|cancelled`, `offset`. |
 | POST | `/groups/:groupId/meet-now` | Same creation fields, with current start time and no repeat. |
 | GET/PATCH | `/scheduled-calls/:callId` | Details or host edit of one upcoming occurrence. |
-| POST | `/scheduled-calls/:callId/rsvp` | `{ "response": "accepted" }` or `declined`. |
-| POST | `/scheduled-calls/:callId/cancel` | Cancel one occurrence and notify participants. |
+| POST | `/scheduled-calls/:callId/rsvp` | `{ "status": "accepted" }` or `declined` (`response` also accepted). |
+| POST | `/scheduled-calls/:callId/cancel` | Cancel the call (a whole repeating series, or one occurrence of an older per-occurrence series) and notify participants. |
 | GET | `/scheduled-calls/:callId/calendar.ics` | Authenticated calendar download for one occurrence, with a ten-minute alarm. |
 | GET | `/call-invitations/:code` | Resolve a shared invitation after login. |
 | POST | `/scheduled-calls/:callId/join` | `{ "passcode": "123456" }`; host does not need a passcode. |
 | POST | `/scheduled-calls/:callId/admission/:userId` | Host sets `{ "status": "admitted" }` or `denied`. |
+
+### The app's Calls tab (`services/scheduledCalls.ts`)
+
+`POST /chats/:conversationId/scheduled-calls` (group members only; the host is the signed-in user):
+
+```json
+{
+  "topic": "CosQuest planning call",
+  "description": "Confirm the route, costumes and Saturday's meetup",
+  "spark": { "id": "spk_...", "subject": "Next CosQuest" },
+  "startsAt": "2026-10-10T01:00:00.000Z",
+  "durationMin": 30,
+  "timeZone": "America/Los_Angeles",
+  "repeat": "none",
+  "participantIds": ["<userId>"],
+  "hostVideo": true,
+  "participantVideo": false,
+  "whoCanJoin": "invited",
+  "waitingRoom": true
+}
+```
+
+`repeat` is `none`, `daily`, `weekly` or `monthly`. `whoCanJoin` is `invited` or `members`. `spark` may be `null`; its subject is taken from the Spark itself. `PATCH /scheduled-calls/:callId` takes any of the same fields (host only).
+
+Every call endpoint returns `{ call }` (the list: `{ calls }`):
+
+```json
+{
+  "id": "…", "conversationId": "…", "topic": "CosQuest planning call", "description": "…",
+  "spark": { "id": "spk_...", "subject": "Next CosQuest" },
+  "startsAt": "2026-10-10T01:00:00.000Z", "endsAt": "…", "durationMin": 30, "timeZone": "America/Los_Angeles", "repeat": "none",
+  "host": { "id": "…", "username": "sarthak", "name": "Sarthak", "avatarKey": "…", "avatarPhotoUrl": null },
+  "participants": [{ "id": "…", "username": "maya", "name": "Maya Chen", "avatarKey": "…", "avatarPhotoUrl": null, "status": "accepted" }],
+  "hostVideo": true, "participantVideo": false, "whoCanJoin": "invited", "waitingRoom": true,
+  "meetingCode": "824 109 263", "passcode": "091026", "inviteUrl": "https://cosquest.vercel.app/call/scheduled/<id>",
+  "status": "scheduled", "timing": "upcoming", "createdAt": "…"
+}
+```
+
+- `status` is `scheduled` or `cancelled`. `timing` is `upcoming`, `ongoing`, `past` or `cancelled`.
+- `passcode` and `inviteUrl` are `null` for a member who may not join (an invited-only call they are not invited to).
+- `inviteUrl` uses `APP_WEB_URL` when set, otherwise `https://cosquest.vercel.app`.
+- Older field names stay alongside for existing clients: `hostId`, `durationMinutes`, `sparkId`, `projectId`, `subjectId`, `participants[].userId` / `.response`, `canManage`, `canJoin`, `admission`.
+
+**Repeating calls are one record per series.** `startsAt`/`endsAt` are always the next occurrence, moved forward once each one ends, at the same local time in the call's time zone (DST-correct). Monthly calls keep their day of the month, or use the month's last day when it is shorter. RSVPs are for the series. Cancel cancels the series; edits apply to the series. (Sending `occurrences` > 1 instead still creates one record per occurrence, as the first version did; not with `monthly`.)
+
+**Chat card.** Scheduling posts a message with `kind: "scheduled_call"` in the group chat, sent by the host, with `scheduledCall: { id, topic, startsAt, durationMin, hostId, status: "scheduled" }`; cancelling posts another with `status: "cancelled"`. Both arrive as `message:new`, update the chat list preview ("📅 Call scheduled: …" / "📅 Call cancelled: …"), cannot be edited or forwarded, and are ignored by Sparks and message search.
+
+**Notifications.** Push + in-app notification to each invitee on create and on edits; on cancel to every invitee who hasn't declined. The server reminder 10 minutes before goes to the host and everyone who accepted (the phone also sets its own local reminder).
+
+**Live updates.** `scheduled-call:updated` `{ callId, conversationId, call }` on create, edit, cancel, RSVP and when a series moves to its next occurrence: to everyone with the group chat open, and to each notified person. This `call` has no `passcode` or `inviteUrl` (it goes to the whole group); fetch `GET /scheduled-calls/:callId` for those.
 
 Project creation:
 
@@ -93,7 +145,7 @@ Each linked Spark in `GET /projects/:projectId` (`sparks[]`) carries `latestMess
 
 Optional context: `projectId`, `subjectId`, `sparkId`. A subject needs its project. These may be set to null to unlink. A call's Spark must belong to the group; it need not already be linked to the project.
 
-Provide either `date` + `startTime` (local wall time in `timeZone`) or `startsAt` (ISO timestamp with an explicit UTC offset). Duration is 5–480 minutes. First scheduling date is within one year. `none`, `daily`, and `weekly` repeats materialize 1–52 independent occurrences with a shared `seriesId`. Weekly/daily calls retain wall time across daylight-saving changes. Nonexistent local times are rejected. For an ambiguous repeated hour, supply `startsAt` with the intended offset. Editing/cancellation/calendar export affect one occurrence; whole-series editing/export is not implemented. Editing time resets RSVPs and the reminder.
+Provide either `date` + `startTime` (local wall time in `timeZone`) or `startsAt` (ISO timestamp with an explicit UTC offset). Duration is 5–480 minutes. First scheduling date is within one year. A repeating call (`daily`, `weekly`, `monthly`) is one record for the series, as described above. Only when `occurrences` (2–52) is sent are `daily`/`weekly` repeats materialized as independent occurrences with a shared `seriesId`; editing, cancelling and calendar export then affect one occurrence. Repeats retain wall time across daylight-saving changes. Nonexistent local times are rejected when scheduling (a later occurrence that lands in one moves an hour later). For an ambiguous repeated hour, supply `startsAt` with the intended offset. The calendar export covers the next occurrence. Editing time resets RSVPs and the reminder.
 
 Lists return up to 50 records and `nextOffset`. Project details preview up to 500 files and 10 upcoming calls; use the paginated file/call lists for the rest. Projects support up to 100 subjects and 500 Spark links; calls support up to 100 explicit invitees.
 

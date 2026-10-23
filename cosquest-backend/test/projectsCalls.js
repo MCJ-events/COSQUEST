@@ -9,7 +9,7 @@ const ProjectFile = require('../src/models/ProjectFile');
 const ScheduledCall = require('../src/models/ScheduledCall');
 const Notification = require('../src/models/Notification');
 const { signToken } = require('../src/utils/token');
-const { localStart, occurrences } = require('../src/utils/meetingTime');
+const { localStart, occurrences, nthOccurrence } = require('../src/utils/meetingTime');
 const { remindDue } = require('../src/utils/meetingNotifications');
 
 async function runPlanning(baseUrl) {
@@ -99,8 +99,10 @@ async function runPlanning(baseUrl) {
     assert.equal(rsvp.data.call.participants[0].response, 'accepted');
     const ics = await req('GET', `/scheduled-calls/${call.id}/calendar.ics`, 1);
     assert.match(ics.data, /BEGIN:VCALENDAR\r\n/); assert.match(ics.data, /TRIGGER:-PT10M/); assert.match(ics.data, /SUMMARY:CosQuest planning call/);
-    assert.equal((await req('GET', `/call-invitations/${call.inviteUrl.split('/').pop()}`, 1)).data.call.id, call.id);
-    assert.equal((await req('GET', `/call-invitations/${call.inviteUrl.split('/').pop()}`, 2)).status, 403);
+    assert.match(call.inviteUrl, new RegExp(`/call/scheduled/${call.id}$`));
+    const { inviteCode } = await ScheduledCall.findById(call.id);
+    assert.equal((await req('GET', `/call-invitations/${inviteCode}`, 1)).data.call.id, call.id);
+    assert.equal((await req('GET', `/call-invitations/${inviteCode}`, 2)).status, 403);
   });
   await check('call validation and invited-only credentials', async () => {
     for (const patch of [{ timeZone: 'Bad/Zone' }, { startsAt: '2020-01-01T00:00:00Z' }, { durationMinutes: -5 }, { participantIds: [outsider.id] }, { hostVideo: 'true' }, { repeat: 'weekly', occurrences: 53 }]) {
@@ -108,7 +110,7 @@ async function runPlanning(baseUrl) {
     }
     assert.equal((await req('GET', `/scheduled-calls/${call.id}`, 2)).status, 403);
     const seen = await req('GET', `/scheduled-calls/${call.id}`, 3);
-    assert.equal(seen.data.call.passcode, undefined); assert.equal(seen.data.call.inviteUrl, undefined);
+    assert.equal(seen.data.call.passcode, null); assert.equal(seen.data.call.inviteUrl, null);
     assert.equal((await req('POST', `/scheduled-calls/${call.id}/join`, 3, { passcode: call.passcode })).status, 403);
     assert.equal((await req('POST', `/scheduled-calls/${call.id}/join`, 1, { passcode: call.passcode })).status, 409);
     assert.equal((await req('PATCH', `/scheduled-calls/${call.id}`, 1, { topic: 'Hijack' })).status, 403);
@@ -149,11 +151,70 @@ async function runPlanning(baseUrl) {
     assert.equal((await req('POST', `/scheduled-calls/${m.id}/join`, 1, { passcode: m.passcode })).status, 403);
     await Member.create({ conversation: group._id, user: member._id, role: 'member' });
   });
-  await check('ten-minute reminders are durable and do not duplicate on a second sweep', async () => {
-    const r = await req('POST', gp + '/scheduled-calls', 0, { ...body(), startsAt: new Date(Date.now() + 5 * 60000).toISOString() });
+  await check('ten-minute reminders go to the host and accepted people, durably and once', async () => {
+    const r = await req('POST', gp + '/scheduled-calls', 0, { ...body(), participantIds: [member.id, observer.id], startsAt: new Date(Date.now() + 5 * 60000).toISOString() });
+    assert.equal((await req('POST', `/scheduled-calls/${r.data.call.id}/rsvp`, 1, { status: 'accepted' })).status, 200);
     await remindDue(); await remindDue();
     assert.equal(await Notification.countDocuments({ scheduledCall: r.data.call.id, user: member._id, message: /starts in 10 minutes/ }), 1);
+    assert.equal(await Notification.countDocuments({ scheduledCall: r.data.call.id, user: host._id, message: /starts in 10 minutes/ }), 1);
+    assert.equal(await Notification.countDocuments({ scheduledCall: r.data.call.id, user: observer._id, message: /starts in 10 minutes/ }), 0); // still pending
     assert.ok((await ScheduledCall.findById(r.data.call.id)).reminderSentAt);
+  });
+  await check('app routes: chat calls in the app shape, chat cards, monthly series that roll forward', async () => {
+    const cp = `/chats/${group.id}/scheduled-calls`;
+    const appBody = { topic: 'Mural walk debrief', description: 'How did it go?', spark: { id: spark.id, subject: 'ignored' }, startsAt: new Date(Date.now() + 2 * 86400000).toISOString(), durationMin: 45, timeZone: 'America/Los_Angeles', repeat: 'monthly', participantIds: [member.id], hostVideo: true, participantVideo: false, whoCanJoin: 'members', waitingRoom: true };
+    assert.equal((await req('POST', cp, 2, appBody)).status, 403);
+    assert.equal((await req('POST', cp, 0, { ...appBody, occurrences: 3 })).status, 400);
+    const r = await req('POST', cp, 0, appBody);
+    assert.equal(r.status, 201, JSON.stringify(r)); const c = r.data.call;
+    assert.equal(c.host.id, host.id); assert.equal(c.host.name, 'Planner 0');
+    assert.deepEqual(c.participants.map((p) => [p.id, p.name, p.status]), [[member.id, 'Planner 1', 'pending']]);
+    assert.equal(c.durationMin, 45); assert.equal(c.repeat, 'monthly'); assert.equal(c.whoCanJoin, 'members'); assert.equal(c.status, 'scheduled');
+    assert.deepEqual(c.spark, { id: spark.id, subject: 'Meet by the mural?' }); // the Spark's real subject
+    assert.match(c.meetingCode, /^\d{3} \d{3} \d{3}$/); assert.match(c.passcode, /^\d{6}$/);
+    assert.match(c.inviteUrl, new RegExp(`/call/scheduled/${c.id}$`)); assert.ok(c.createdAt);
+    assert.equal((await req('GET', cp, 2)).status, 403);
+    assert.ok((await req('GET', cp, 1)).data.calls.some((x) => x.id === c.id));
+
+    // The invitation card in the group chat ("View call"), as the chat API serializes it.
+    const cardFor = async (status) => {
+      for (let i = 0; i < 40; i++) {
+        const found = await Message.findOne({ conversation: group._id, kind: 'scheduled_call', 'scheduledCall.callId': c.id, 'scheduledCall.status': status });
+        if (found) return found;
+        await new Promise((resolve) => setTimeout(resolve, 25));
+      }
+      return null;
+    };
+    const card = await cardFor('scheduled');
+    assert.ok(card, 'scheduled_call card posted');
+    assert.equal(String(card.sender), host.id);
+    const { serializeMessage } = require('../src/controllers/chatController');
+    const shown = serializeMessage(card, { viewerId: member.id, conversationType: 'group', otherLastReadAt: null, reactions: [] }).scheduledCall;
+    assert.deepEqual({ ...shown, startsAt: new Date(shown.startsAt).toISOString() }, { id: c.id, topic: 'Mural walk debrief', startsAt: new Date(c.startsAt).toISOString(), durationMin: 45, hostId: host.id, status: 'scheduled' });
+
+    const accepted = await req('POST', `/scheduled-calls/${c.id}/rsvp`, 1, { status: 'accepted' });
+    assert.equal(accepted.data.call.participants[0].status, 'accepted');
+    const edited = await req('PATCH', `/scheduled-calls/${c.id}`, 0, { durationMin: 60, whoCanJoin: 'invited', spark: null });
+    assert.equal(edited.status, 200, JSON.stringify(edited));
+    assert.equal(edited.data.call.durationMin, 60); assert.equal(edited.data.call.whoCanJoin, 'invited'); assert.equal(edited.data.call.spark, null);
+
+    // A monthly series anchored on Jan 31 at 18:00 LA time, long past: reading
+    // it moves it to the next occurrence, still 18:00 LA on the 31st (or the
+    // month's last day).
+    const anchor = localStart('2026-01-31', '18:00', 'America/Los_Angeles');
+    await ScheduledCall.collection.updateOne({ _id: new mongoose.Types.ObjectId(c.id) }, { $set: { anchorStartsAt: anchor, startsAt: anchor, endsAt: new Date(anchor.getTime() + 3600000), occurrence: 1 } });
+    const rolled = (await req('GET', `/scheduled-calls/${c.id}`, 1)).data.call;
+    const starts = new Date(rolled.startsAt);
+    assert.ok(starts > new Date(), rolled.startsAt);
+    const la = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: 'America/Los_Angeles', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', hourCycle: 'h23' }).formatToParts(starts).map((p) => [p.type, p.value]));
+    assert.equal(`${la.hour}:${la.minute}`, '18:00');
+    assert.equal(Number(la.day), Math.min(31, new Date(Date.UTC(Number(la.year), Number(la.month), 0)).getUTCDate()));
+    assert.equal(nthOccurrence(localStart('2027-01-31', '18:00', 'America/Los_Angeles'), 'America/Los_Angeles', 'monthly', 2).toISOString(), '2027-03-01T02:00:00.000Z');
+    assert.equal(nthOccurrence(localStart('2027-01-31', '18:00', 'America/Los_Angeles'), 'America/Los_Angeles', 'monthly', 3).toISOString(), '2027-04-01T01:00:00.000Z');
+
+    const cancelled = await req('POST', `/scheduled-calls/${c.id}/cancel`, 0);
+    assert.equal(cancelled.data.call.status, 'cancelled');
+    assert.ok(await cardFor('cancelled'), 'cancellation card posted');
   });
   await check('file deletion is restricted and removes stale Spark attachment pointers', async () => {
     assert.equal((await req('DELETE', `/projects/${project.id}/files/${file.id}`, 3)).status, 403);

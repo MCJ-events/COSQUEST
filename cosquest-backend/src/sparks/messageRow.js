@@ -26,7 +26,7 @@ function idOf(value) {
 function textOf(doc) {
   if (doc.deletedForEveryone) return ''; // never hand a deleted message's words to a phone
   if (doc.kind === 'audio') return doc.media?.transcript || doc.content || '';
-  if (doc.kind === 'call') return '';
+  if (doc.kind === 'call' || doc.kind === 'scheduled_call') return '';
   return doc.content || '';
 }
 

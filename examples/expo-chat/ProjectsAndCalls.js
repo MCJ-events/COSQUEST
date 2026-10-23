@@ -172,7 +172,7 @@ export function ScheduleCallForm({ api, groupId, initial = {}, immediate = false
       memberPage > 1 && h(Button, { title: 'Previous members', secondary: true, onPress: () => setMemberPage(p => p - 1) }),
       members.data?.pagination.hasMore && h(Button, { title: 'More members', secondary: true, onPress: () => setMemberPage(p => p + 1) })),
     card(label('Video & meeting access', s.heading), h(Toggle, { title: 'Host camera starts on', value: hostVideo, onChange: setHostVideo }), h(Toggle, { title: 'Participants can use cameras', value: participantVideo, onChange: setParticipantVideo }),
-      h(Choices, { title: 'Who can join', value: whoCanJoin, choices: [['invited', 'Invited members'], ['group', 'All group members']], onChange: setWhoCanJoin }), h(Toggle, { title: 'Waiting room', value: waitingRoom, onChange: setWaitingRoom })),
+      h(Choices, { title: 'Who can join', value: whoCanJoin, choices: [['invited', 'Invited members'], ['members', 'All group members']], onChange: setWhoCanJoin }), h(Toggle, { title: 'Waiting room', value: waitingRoom, onChange: setWaitingRoom })),
     task.feedback,
     h(Button, { title: task.busy ? 'Saving…' : initial.id ? 'Save changes' : immediate ? 'Create meeting' : 'Schedule call', disabled: task.busy || !topic.trim(), onPress: () => task.run(async () => {
       const body = { topic, description, date, startTime: time, timeZone, durationMinutes: Number(duration), participantIds: selected, hostVideo, participantVideo, waitingRoom, whoCanJoin, projectId, subjectId: projectId === initial.projectId ? initial.subjectId || null : null, sparkId,
@@ -203,10 +203,10 @@ export function ScheduledCallDetail({ api, callId, onBack, onEdit, onJoin, onOpe
   useEffect(() => { const timer = setInterval(r.refresh, 15000); return () => clearInterval(timer); }, [callId]);
   if (!c) return h(Page, { title: 'Call details', onBack }, r.feedback);
   const name = id => r.data.people.find(p => p.id === String(id))?.name || 'Group member';
-  const active = !['past', 'cancelled'].includes(c.status);
+  const active = !['past', 'cancelled'].includes(c.timing);
   const invitation = `${c.topic}\n${when(c)} · ${c.timeZone}\n${c.inviteUrl}\nPasscode: ${c.passcode}`;
   return h(Page, { title: 'Call details', onBack }, r.feedback, task.feedback,
-    card(label(c.status === 'cancelled' ? 'Call cancelled' : c.status === 'past' ? 'Past call' : 'Call scheduled', s.pink), label(c.topic, s.title), label(c.description), label(`${when(c)} · ${c.durationMinutes} minutes`), label(c.timeZone, s.caption), label(`Hosted by ${name(c.hostId)}`, s.caption),
+    card(label(c.timing === 'cancelled' ? 'Call cancelled' : c.timing === 'past' ? 'Past call' : 'Call scheduled', s.pink), label(c.topic, s.title), label(c.description), label(`${when(c)} · ${c.durationMinutes} minutes`), label(c.timeZone, s.caption), label(`Hosted by ${name(c.hostId)}`, s.caption),
       c.repeat !== 'none' && label(`${c.repeat} series · occurrence ${c.occurrence}`, s.caption),
       c.sparkId && h(Button, { title: 'Open linked Spark', secondary: true, disabled: !onOpenSpark, onPress: () => onOpenSpark(c.sparkId, c.conversationId) })),
     c.canJoin && card(label('Invitation', s.heading), label(c.inviteUrl), label(`Passcode: ${c.passcode}`, s.caption),
@@ -223,7 +223,7 @@ export function ScheduledCallDetail({ api, callId, onBack, onEdit, onJoin, onOpe
       file.create({ overwrite: true }); file.write(ics);
       try { await Sharing.shareAsync(file.uri, { mimeType: 'text/calendar', UTI: 'public.calendar-event' }); } finally { file.delete(); }
     }) }),
-    c.canManage && c.status === 'upcoming' && h(Button, { title: 'Edit this call / manage participants', secondary: true, onPress: () => onEdit(c) }),
+    c.canManage && c.timing === 'upcoming' && h(Button, { title: 'Edit this call / manage participants', secondary: true, onPress: () => onEdit(c) }),
     c.canManage && active && h(Button, { title: 'Cancel this call', secondary: true, disabled: task.busy, onPress: () => Alert.alert('Cancel this call?', 'Participants will receive an update.', [{ text: 'Keep call', style: 'cancel' }, { text: 'Cancel call', style: 'destructive', onPress: () => task.run(async () => { await api.cancelCall(callId); r.refresh(); }) }]) }));
 }
 

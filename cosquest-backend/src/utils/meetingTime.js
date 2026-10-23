@@ -46,6 +46,51 @@ function occurrences(first, repeat, count) {
     return { ...first, startsAt, endsAt: new Date(startsAt.getTime() + first.durationMinutes * 60000) };
   });
 }
+// The nth occurrence (1 = the anchor itself) of a repeating call, at the same
+// local wall time in its time zone. Monthly calls keep the anchor's day of the
+// month, or the month's last day when it is shorter (31st -> Feb 28/29). A
+// local time skipped by a clock change moves an hour later instead of failing.
+function nthOccurrence(anchorStartsAt, timeZone, repeat, n) {
+  if (n <= 1 || repeat === 'none') return new Date(anchorStartsAt);
+  const wall = new Date(wallTime(new Date(anchorStartsAt), timeZone));
+  let target;
+  if (repeat === 'monthly') {
+    const months = wall.getUTCMonth() + (n - 1);
+    const year = wall.getUTCFullYear() + Math.floor(months / 12);
+    const month = months % 12;
+    const lastDay = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+    target = Date.UTC(year, month, Math.min(wall.getUTCDate(), lastDay), wall.getUTCHours(), wall.getUTCMinutes());
+  } else {
+    target = wall.getTime() + (n - 1) * (repeat === 'weekly' ? 7 : 1) * 86400000;
+  }
+  try { return fromWallTime(target, timeZone); }
+  catch { return fromWallTime(target + 3600000, timeZone); }
+}
+
+// Moves a repeating series (rollsForward) to its next occurrence once the
+// current one has ended. Each new occurrence gets a fresh reminder and an
+// empty waiting room; RSVPs are for the series and stay. Returns whether
+// anything changed (the caller saves).
+function rollForward(call, now = new Date()) {
+  if (!call.rollsForward || call.repeat === 'none' || call.cancelledAt || call.endsAt > now) return false;
+  const anchor = call.anchorStartsAt || call.startsAt;
+  let n = call.occurrence || 1;
+  let startsAt = call.startsAt;
+  // Daily calls left unopened for years still finish quickly; the cap only
+  // guards against a corrupt record.
+  for (let i = 0; i < 5000 && startsAt.getTime() + call.durationMinutes * 60000 <= now.getTime(); i++) {
+    n += 1;
+    startsAt = nthOccurrence(anchor, call.timeZone, call.repeat, n);
+  }
+  call.anchorStartsAt = anchor;
+  call.occurrence = n;
+  call.startsAt = startsAt;
+  call.endsAt = new Date(startsAt.getTime() + call.durationMinutes * 60000);
+  call.reminderSentAt = null;
+  call.admission = [];
+  return true;
+}
+
 function calendar(call, url) {
   const stamp = d => new Date(d).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
   const escape = s => String(s || '').replace(/\\/g, '\\\\').replace(/\r?\n/g, '\\n').replace(/,/g, '\\,').replace(/;/g, '\\;');
@@ -61,4 +106,4 @@ function calendar(call, url) {
     `STATUS:${call.cancelledAt ? 'CANCELLED' : 'CONFIRMED'}`, `SEQUENCE:${call.__v || 0}`,
     'BEGIN:VALARM', 'TRIGGER:-PT10M', 'ACTION:DISPLAY', 'DESCRIPTION:Call starts in 10 minutes', 'END:VALARM', 'END:VEVENT', 'END:VCALENDAR', ''].map(fold).join('\r\n');
 }
-module.exports = { timing, occurrences, calendar, localStart };
+module.exports = { timing, occurrences, calendar, localStart, nthOccurrence, rollForward };

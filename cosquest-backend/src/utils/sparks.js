@@ -429,7 +429,7 @@ function continuingSpark(sparks, words) {
  */
 async function detectAndAssign(conversation, message, { sparkId = null } = {}) {
   if (!SPARK_CHAT_TYPES.includes(conversation.type)) return null;
-  if (message.kind === 'call') return null;
+  if (message.kind === 'call' || message.kind === 'scheduled_call') return null;
 
   if (sparkId) {
     const spark = await Spark.findOne({ _id: sparkId, conversation: conversation._id, deletedAt: null });

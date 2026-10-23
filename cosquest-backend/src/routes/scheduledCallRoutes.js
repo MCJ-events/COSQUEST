@@ -2,7 +2,10 @@ const router = require('express').Router();
 const { requireAuth, requireCompletedOnboarding } = require('../middleware/auth');
 const { asyncHandler: a } = require('../utils/asyncHandler');
 const c = require('../controllers/scheduledCallController');
-router.use(['/groups/:groupId/scheduled-calls', '/groups/:groupId/meet-now', '/scheduled-calls', '/call-invitations'], requireAuth, requireCompletedOnboarding);
+router.use(['/chats/:conversationId/scheduled-calls', '/groups/:groupId/scheduled-calls', '/groups/:groupId/meet-now', '/scheduled-calls', '/call-invitations'], requireAuth, requireCompletedOnboarding);
+// The app's Calls tab (services/scheduledCalls.ts): the group chat's calls.
+router.get('/chats/:conversationId/scheduled-calls', a(c.listForChat));
+router.post('/chats/:conversationId/scheduled-calls', a(c.create));
 router.post('/groups/:groupId/scheduled-calls', a(c.create));
 router.get('/groups/:groupId/scheduled-calls', a(c.list));
 router.post('/groups/:groupId/meet-now', a(c.create));

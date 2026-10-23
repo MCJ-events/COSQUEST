@@ -136,7 +136,7 @@ async function searchMessages(req, res) {
     conversation: conversation._id,
     deletedForEveryone: { $ne: true },
     deletedFor: { $ne: req.userId },
-    kind: { $ne: 'call' },
+    kind: { $nin: ['call', 'scheduled_call'] },
     $or: [{ content: pattern }, { 'media.transcript': pattern }],
   };
   if (from || to) filter.createdAt = { ...(from ? { $gte: from } : {}), ...(to ? { $lte: to } : {}) };

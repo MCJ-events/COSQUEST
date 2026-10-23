@@ -487,6 +487,9 @@ function previewMessage(message, viewerId) {
   if (message.deletedForEveryone) return 'This message was deleted';
   if (message.kind === 'sparks_bot') return message.content; // the Sparks bot's headline
   if (message.kind === 'call') return callLogPreview(message.callLog, viewerId);
+  if (message.kind === 'scheduled_call') {
+    return `📅 ${message.scheduledCall?.status === 'cancelled' ? 'Call cancelled' : 'Call scheduled'}: ${message.scheduledCall?.topic || ''}`;
+  }
   if (message.kind === 'poll') return `📊 Poll: ${message.poll?.question || message.content}`;
   if (message.kind === 'album') return albumPreview(message.album);
   if (message.kind === 'image') return 'Sent a photo';
@@ -514,7 +517,7 @@ function previewMessage(message, viewerId) {
 // caller already loaded them. opts.memberFilters: a Map that receives each
 // group's member filter (see countGroupMembers).
 const SENDER_FIELDS = 'profile.username profile.displayName profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl faction lastActiveAt privacy.showOnlineStatus expertise pointsBalance rankOverride';
-const LAST_MESSAGE_PROJECTION = { conversation: 1, sender: 1, kind: 1, content: 1, deletedForEveryone: 1, callLog: 1, poll: 1, album: 1, createdAt: 1 };
+const LAST_MESSAGE_PROJECTION = { conversation: 1, sender: 1, kind: 1, content: 1, deletedForEveryone: 1, callLog: 1, scheduledCall: 1, poll: 1, album: 1, createdAt: 1 };
 const LAST_SENDER_FIELDS = 'profile.username profile.firstName';
 const DM_PEER_FIELDS = `${SENDER_FIELDS} privacy.readReceipts`;
 
@@ -855,6 +858,7 @@ function serializeMessage(message, { viewerId, conversationType, otherLastReadAt
       deletedByAdmin: Boolean(message.deletedByAdmin),
       media: null,
       callLog: null,
+      scheduledCall: null,
       sender: message.kind === 'sparks_bot' ? botPosts().botSender() : message.sender?.profile ? userPreview(message.sender) : undefined,
       senderGroupRole: groupRoles?.get(String(senderId)) || null,
       replyTo: null,
@@ -879,6 +883,8 @@ function serializeMessage(message, { viewerId, conversationType, otherLastReadAt
     content: message.content,
     media: message.media || null,
     callLog: message.callLog || null,
+    // kind 'scheduled_call': the card for a call scheduled (or cancelled) in this group.
+    scheduledCall: scheduledCallCard(message.scheduledCall),
     sender: message.kind === 'sparks_bot' ? botPosts().botSender() : message.sender?.profile ? userPreview(message.sender) : undefined,
     senderGroupRole: groupRoles?.get(String(senderId)) || null,
     replyTo: replyPreview(message.replyTo, viewerId),
@@ -918,6 +924,18 @@ function serializeMessage(message, { viewerId, conversationType, otherLastReadAt
 
 // The copy of a message sent live to EVERYONE in the room: never shows that
 // it was edited (the author's own app gets that from the REST response).
+function scheduledCallCard(card) {
+  if (!card?.callId) return null;
+  return {
+    id: String(card.callId),
+    topic: card.topic,
+    startsAt: card.startsAt,
+    durationMin: card.durationMin,
+    hostId: String(card.hostId),
+    status: card.status,
+  };
+}
+
 function forBroadcast(serialized) {
   return { ...serialized, editedAt: null, canRollback: false, previousContent: null };
 }
@@ -1367,7 +1385,7 @@ async function editMessage(req, res) {
   if (String(message.sender) !== String(req.userId)) return res.status(403).json({ error: 'You can only edit your own message.' });
   if (message.deletedForEveryone) return res.status(400).json({ error: 'This message was deleted and cannot be edited.' });
   // Call entries are a record of what happened - not editable.
-  if (message.kind === 'call') return res.status(400).json({ error: 'Call entries cannot be edited.' });
+  if (message.kind === 'call' || message.kind === 'scheduled_call') return res.status(400).json({ error: 'Call entries cannot be edited.' });
   if (message.kind === 'poll') return res.status(400).json({ error: 'Polls cannot be edited.' });
 
   const content = typeof req.body.content === 'string' ? req.body.content.trim() : '';
@@ -1619,7 +1637,7 @@ async function forwardMessage(req, res) {
   }
   // A call entry belongs to the call it records - it can't be copied into
   // another chat.
-  if (original.kind === 'call') return res.status(400).json({ error: 'Call entries cannot be forwarded.' });
+  if (original.kind === 'call' || original.kind === 'scheduled_call') return res.status(400).json({ error: 'Call entries cannot be forwarded.' });
   if (original.kind === 'poll') return res.status(400).json({ error: 'Polls cannot be forwarded.' });
   if (original.kind === 'sparks_bot') return res.status(400).json({ error: 'Sparks bot posts cannot be forwarded.' });
 
@@ -1731,7 +1749,7 @@ async function bulkForwardMessages(req, res) {
   const originals = await Message.find({ _id: { $in: ids }, conversation: conversation._id, deletedForEveryone: false, deletedFor: { $ne: req.userId } }).sort({ createdAt: 1, _id: 1 });
   if (originals.length !== ids.length) return res.status(404).json({ error: 'One or more selected messages are unavailable in this conversation.' });
   // Same rule as single forward: call entries stay in their own chat.
-  if (originals.some((original) => original.kind === 'call' || original.kind === 'poll' || original.kind === 'sparks_bot')) {
+  if (originals.some((original) => ['call', 'scheduled_call', 'poll', 'sparks_bot'].includes(original.kind))) {
     return res.status(400).json({ error: 'Call entries and polls cannot be forwarded. Unselect them and try again.' });
   }
 

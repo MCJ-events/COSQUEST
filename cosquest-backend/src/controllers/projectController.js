@@ -18,7 +18,7 @@ function projectJson(p, fileCount = 0) {
 // with `sparkId` (ordered by `seq`); legacy Sparks with `spark`. Messages
 // deleted for everyone, or that this viewer deleted for themselves, are skipped.
 async function latestSparkMessage(link, viewerId) {
-  const filter = { deletedForEveryone: { $ne: true }, deletedFor: { $ne: viewerId }, kind: { $nin: ['sparks_bot', 'call'] } };
+  const filter = { deletedForEveryone: { $ne: true }, deletedFor: { $ne: viewerId }, kind: { $nin: ['sparks_bot', 'call', 'scheduled_call'] } };
   const message = link.engine === 'module'
     ? await Message.findOne({ ...filter, sparkId: link.sparkId }).sort({ seq: -1 })
       .select('sender kind content createdAt').populate('sender', 'profile.username profile.displayName profile.firstName profile.lastName')

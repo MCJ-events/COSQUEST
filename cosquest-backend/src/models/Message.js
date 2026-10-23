@@ -62,6 +62,20 @@ const callLogSchema = new mongoose.Schema(
   { _id: false }
 );
 
+// kind 'scheduled_call': the chat card posted when a call is scheduled in a
+// group, and again when it is cancelled ("View call" opens the call).
+const scheduledCallCardSchema = new mongoose.Schema(
+  {
+    callId: { type: mongoose.Schema.Types.ObjectId, ref: 'ScheduledCall', required: true },
+    topic: { type: String, required: true },
+    startsAt: { type: Date, required: true },
+    durationMin: { type: Number, required: true },
+    hostId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    status: { type: String, enum: ['scheduled', 'cancelled'], required: true },
+  },
+  { _id: false }
+);
+
 const messageSchema = new mongoose.Schema(
   {
     conversation: { type: mongoose.Schema.Types.ObjectId, ref: 'Conversation', required: true, index: true },
@@ -75,10 +89,11 @@ const messageSchema = new mongoose.Schema(
       default: null,
       index: true,
     },
-    kind: { type: String, enum: ['text', 'image', 'video', 'audio', 'file', 'sticker', 'call', 'album', 'poll', 'sparks_bot'], default: 'text' },
+    kind: { type: String, enum: ['text', 'image', 'video', 'audio', 'file', 'sticker', 'call', 'album', 'poll', 'sparks_bot', 'scheduled_call'], default: 'text' },
     content: { type: String, default: '', trim: true, maxlength: 2000 },
     media: { type: messageMediaSchema, default: null },
     callLog: { type: callLogSchema, default: null },
+    scheduledCall: { type: scheduledCallCardSchema, default: null },
     // kind 'poll': the question, options and settings (votes: PollVote).
     poll: { type: pollSchema, default: null },
 
