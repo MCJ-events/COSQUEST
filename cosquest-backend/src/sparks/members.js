@@ -13,9 +13,10 @@
  *  - community, faction rooms (implicit membership: everyone onboarded /
  *               everyone in the faction): the module needs a concrete list
  *               (it seals it into AI jobs and picks worker phones from it),
- *               so these use the ENGAGED members: people who opened the
- *               chat (a ConversationMember row) or wrote in it in the last
- *               30 days, most recent first, capped at SPARKS_IMPLICIT_MEMBER_CAP
+ *               so these use the ENGAGED members: people who were in the
+ *               room's voice chat in the last day, opened the chat (a
+ *               ConversationMember row) or wrote in it in the last 30 days,
+ *               most recent first, capped at SPARKS_IMPLICIT_MEMBER_CAP
  *               (default 300), still filtered by the room's access rule.
  *               Nobody is an admin there (same as before: nobody can pin,
  *               merge or delete Sparks in Community or faction rooms).
@@ -37,6 +38,7 @@ const ConversationMember = require('../models/ConversationMember');
 const GroupBan = require('../models/GroupBan');
 const Message = require('../models/Message');
 const User = require('../models/User');
+const VoiceRoom = require('../models/VoiceRoom');
 const { expertiseLabel } = require('../models/expertiseModel');
 
 const GROUP_ROLES = ['owner', 'admin', 'member'];
@@ -104,10 +106,16 @@ async function loadConversation(chatId) {
   return cached(`conv:${chatId}`, () => Conversation.findById(chatId).lean());
 }
 
-// People recently engaged with an implicit-membership room.
+// People recently engaged with an implicit-membership room: in its voice chat in the last day, opened it, or wrote in it.
 async function engagedUserIds(conversation) {
   const cap = implicitCap();
-  const [rows, senders] = await Promise.all([
+  const [voice, rows, senders] = await Promise.all([
+    // People who only joined the voice chat (never opened or wrote in the room) are on its Sparks call: they need
+    // their names in its transcript, live topics and notes like everyone else.
+    VoiceRoom.find({ conversation: conversation._id, $or: [{ active: true }, { endedAt: { $gte: new Date(Date.now() - 86_400_000) } }] }, 'everJoined')
+      .sort({ updatedAt: -1 })
+      .limit(20)
+      .lean(),
     ConversationMember.find({ conversation: conversation._id }, 'user').sort({ updatedAt: -1 }).limit(cap).lean(),
     Message.aggregate([
       { $match: { conversation: conversation._id, createdAt: { $gte: new Date(Date.now() - 30 * 86_400_000) } } },
@@ -120,7 +128,7 @@ async function engagedUserIds(conversation) {
   ]);
   const ids = [];
   const seen = new Set();
-  for (const id of [...senders.map((s) => s._id), ...rows.map((r) => r.user)]) {
+  for (const id of [...voice.flatMap((v) => v.everJoined || []), ...senders.map((s) => s._id), ...rows.map((r) => r.user)]) {
     const key = String(id);
     if (!seen.has(key)) {
       seen.add(key);

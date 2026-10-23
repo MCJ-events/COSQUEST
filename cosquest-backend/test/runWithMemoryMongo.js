@@ -125,6 +125,10 @@ async function main() {
       const sparksVoiceRooms = await require('./sparksVoiceRooms').run(`http://localhost:${process.env.PORT}`);
       result.pass += sparksVoiceRooms.pass;
       result.fail += sparksVoiceRooms.fail;
+      // Whose lines are in a call's transcript, and quick notes when no phone writes them (SPARKS_OUTLINE_FALLBACK).
+      const sparksCallNotes = await require('./sparksCallNotes').run(`http://localhost:${process.env.PORT}`);
+      result.pass += sparksCallNotes.pass;
+      result.fail += sparksCallNotes.fail;
     } finally {
       delete process.env.SPARKS_ENGINE;
     }

@@ -65,6 +65,8 @@ function sync(call) {
 
 // GET /api/calls/:callId/outline - the post-call outline (OPEN_QUESTIONS Q9
 // reference rule: people who were on the call, and the chat's admins).
+// status: 'pending' (being written), 'ready' (outline), 'none' (the call is
+// over and nobody's speech was transcribed: there will be no notes).
 async function getOutline(req, res) {
   if (!host.isModule() || !host.isReady()) return res.status(503).json({ error: 'Sparks are unavailable right now.' });
   const call = await host.store.getCall(String(req.params.callId));
@@ -72,7 +74,13 @@ async function getOutline(req, res) {
   if (!call.everAttended.includes(String(req.userId)) && !(await members.isAdmin(String(req.userId), call.chatId))) {
     return res.status(403).json({ error: 'Only people who were on the call can read its outline.' });
   }
-  return res.json((await host.store.getOutline(call.callId)) || { status: 'pending', outline: null });
+  let stored = (await host.store.getOutline(call.callId)) || { status: 'pending', outline: null };
+  // A finished call with nothing transcribed never gets notes: say so, so the app stops waiting.
+  if (call.status === 'ready' && !stored.outline) stored = { status: 'none', outline: null, reason: 'no_transcript' };
+  // Names for the outline's speakers and action-item owners (group calls too, not only the other person in a DM).
+  const ids = stored.outline ? stored.outline.topics.flatMap((t) => [...(t.speakerIds || []), ...(t.actionItems || []).map((a) => a.ownerUserId).filter(Boolean)]) : [];
+  // quickNotes: the server writes notes itself when no phone does (SPARKS_OUTLINE_FALLBACK), so the app can say when to expect them.
+  return res.json({ ...stored, quickNotes: Boolean(host.backend.config?.outlineServerFallback), speakers: await speakerPreviews([...ids, ...call.everAttended]) });
 }
 
 const fail = (res, error) => {
@@ -95,7 +103,9 @@ const unavailable = (res) => res.status(503).json({ error: 'Sparks are unavailab
 // speaker, start and end (ms since the call started), the topic each fell
 // under, plus the topic markers. Same rule as the outline (OPEN_QUESTIONS Q9:
 // attendees and the chat's admins). `speakers` has a name and avatar for every
-// userId on the page.
+// userId on the page and, on the first page, everyone in `participants`
+// (module 1.3.3: who was on the call and why someone has no lines, such as
+// no Sparks on their phone yet).
 async function getTranscript(req, res) {
   if (!host.isModule() || !host.isReady()) return unavailable(res);
   if (typeof host.backend.transcript !== 'function') return res.status(501).json({ error: 'Sparks needs an update for this.', reason: 'module without transcript()' });
@@ -108,7 +118,10 @@ async function getTranscript(req, res) {
   } catch (error) {
     return fail(res, error);
   }
-  return res.json({ ...page, kind: (await voiceRooms().isVoiceRoom(page.callId)) ? 'voice_room' : 'call', speakers: await speakerPreviews(page.segments.map((s) => s.userId)) });
+  const speakers = await speakerPreviews([...page.segments.map((s) => s.userId), ...(page.participants || []).map((p) => p.userId)]);
+  // People outside the chat (added to a DM call) have no chat name in the module: use their profile's.
+  const participants = page.participants && page.participants.map((p) => ({ ...p, displayName: p.displayName || speakers[p.userId]?.name || null }));
+  return res.json({ ...page, ...(participants ? { participants } : {}), kind: (await voiceRooms().isVoiceRoom(page.callId)) ? 'voice_room' : 'call', speakers });
 }
 
 // POST /api/calls/:callId/outline/share - post the finished outline into the

@@ -74,6 +74,8 @@ async function syncNow(roomId, view, left) {
   }
   const now = new Set(view.memberIds);
   const same = existing.attendees.length === now.size && existing.attendees.every((u) => now.has(u));
+  // Someone new in the voice chat is a member of the room for Sparks from now on (members.js): no stale cached list.
+  if ([...now, ...missed].some((u) => !existing.everAttended.includes(u))) require('./members').invalidate(existing.chatId);
   if (!same) await backend.onCallMembership(roomId, [...now]);
 }
 

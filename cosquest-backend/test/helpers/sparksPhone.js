@@ -129,11 +129,11 @@ function runJob(input) {
 // ---------------- the phone ----------------
 
 /**
- * connectPhone(baseUrl, { userId, token, tier })
+ * connectPhone(baseUrl, { userId, token, tier, transcription })
  * tier 'full' = model loaded, takes jobs and sends hints; 'none' = no model
  * (still registers, still receives Spark events, never works).
  */
-async function connectPhone(baseUrl, { userId, token, tier = 'full', deviceId = `dev_${randomUUID().slice(0, 12)}`, log = () => {} }) {
+async function connectPhone(baseUrl, { userId, token, tier = 'full', transcription = false, deviceId = `dev_${randomUUID().slice(0, 12)}`, log = () => {} }) {
   const cs = await suite();
   const keys = await cs.kem.generateKeyPair();
   const publicKey = b64url(await cs.kem.serializePublicKey(keys.publicKey));
@@ -232,7 +232,7 @@ async function connectPhone(baseUrl, { userId, token, tier = 'full', deviceId = 
 
   const registerAck = await send('device.register', {
     deviceId, userId, sessionId: `s_${randomUUID().slice(0, 8)}`, platform: 'ios', osVersion: '18.0', appVersion: '1.0.0',
-    sdkVersion: '1.2.0-mock', tier, modelVersion: hasModel ? 'mock-1' : null, transcription: false, publicKey, kid,
+    sdkVersion: '1.2.0-mock', tier, modelVersion: hasModel ? 'mock-1' : null, transcription, publicKey, kid,
   });
   const registered = registerAck?.ok ? await until(() => frames.find((f) => f.type === 'device.registered'), 5000, 'device.registered') : null;
   if (registered) await heartbeat();
