@@ -26,3 +26,36 @@ BAG_TILE2="467 1594"
 MAP_ME="540 1310"
 CLAIM_MAIN="540 1758"; CLAIM_OPEN_BAG="540 1923"; CLAIM_CLOSE_WON="540 2046"
 SHEET_PLAY="771 2139"
+
+# cq 076: find buttons by their words, and check what is on screen, so a
+# moved button or a wrong screen fails the step instead of passing it.
+# Only for plain RN screens: over a live 3D view uiautomator may not settle.
+ui_dump() { timeout 40 adb exec-out uiautomator dump /dev/tty 2>/dev/null | sed 's/UI hierchary dumped.*//'; }
+# ui_find "<words>": "x y" of the centre of the node whose text or
+# content-desc is exactly <words> (accessibility labels may add after a
+# comma), nothing when it is not on screen.
+ui_find() {
+  ui_dump | python3 -c '
+import re, sys, xml.etree.ElementTree as ET
+want = sys.argv[1]
+try: root = ET.fromstring(sys.stdin.read())
+except Exception: sys.exit(0)
+for n in root.iter("node"):
+    for v in (n.get("text") or "", n.get("content-desc") or ""):
+        if v == want or v.split(",")[0].strip() == want:
+            b = re.findall(r"\d+", n.get("bounds") or "")
+            if len(b) == 4:
+                x1, y1, x2, y2 = map(int, b); print((x1 + x2) // 2, (y1 + y2) // 2); sys.exit(0)
+' "$1"
+}
+# tap_label "<words>" [x y]: tap it by its words; the spot is the fallback.
+tap_label() {
+  local xy; xy=$(ui_find "$1")
+  if [ -n "$xy" ]; then tap ${xy% *} ${xy#* } "$1"
+  elif [ $# -ge 3 ]; then say "label '$1' not found, tapping the spot"; tap "$2" "$3" "$1"
+  else say "FAIL: no '$1' on screen"; return 1; fi
+}
+# expect "<text>" / expect_not "<text>": the screen (all node text and
+# labels) contains it / does not; a FAIL line and status 1 otherwise.
+expect() { ui_dump | grep -qF -- "$1" && say "ok: '$1' on screen" || { say "FAIL: expected '$1' on screen"; return 1; }; }
+expect_not() { ui_dump | grep -qF -- "$1" && { say "FAIL: '$1' should not be on screen"; return 1; } || say "ok: no '$1'"; }

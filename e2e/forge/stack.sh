@@ -48,8 +48,10 @@ case "${1:-}" in
     else
       # cd first, on its own: `cd && nohup ... &` would background a subshell
       # (the pid file would name it, and it would hold this script's stdout).
-      (cd "$here/.."; PORT=$CHAT_PORT MEDIA_BASE_URL=http://localhost:4120 SEED_OUT="$RIG/chat-seed.json" \
-        nohup node seed/chat-local.js > "$RIG/chat.log" 2>&1 < /dev/null & echo $! > "$RIG/chat.pid")
+      # From the repo root, so the command line says e2e/seed/ and e2e/reset.sh
+      # recognises it as the rig's own chat backend and can restart it (cq 076).
+      (cd "$here/../.."; PORT=$CHAT_PORT MEDIA_BASE_URL=http://localhost:4120 SEED_OUT="$RIG/chat-seed.json" \
+        nohup node e2e/seed/chat-local.js > "$RIG/chat.log" 2>&1 < /dev/null & echo $! > "$RIG/chat.pid")
       for _ in $(seq 1 60); do grep -q "ready" "$RIG/chat.log" 2>/dev/null && break; sleep 1; done
       echo "chat backend on :$CHAT_PORT (pid $(cat "$RIG/chat.pid"))"
     fi
@@ -81,9 +83,9 @@ case "${1:-}" in
     done
     ;;
   reset)
-    tables=$(docker exec "$PG" psql -U postgres -d "${RIG_DB:-costquest_rig}" -At -c \
+    tables=$(docker exec "$PG" psql -U postgres -d "${RIG_DB:-${GAME_PG_DB:-costquest_rig}}" -At -c \
       "select string_agg(distinct table_name, ', ') from information_schema.columns where column_name='device_key' and table_schema='public'")
-    docker exec "$PG" psql -U postgres -d "${RIG_DB:-costquest_rig}" -q -c "TRUNCATE $tables CASCADE"
+    docker exec "$PG" psql -U postgres -d "${RIG_DB:-${GAME_PG_DB:-costquest_rig}}" -q -c "TRUNCATE $tables CASCADE"
     echo "game players reset"
     ;;
   down)

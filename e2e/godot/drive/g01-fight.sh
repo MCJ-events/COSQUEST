@@ -12,7 +12,7 @@ link "cosquest://play?duel=XD-trafalgar-duel"; wait_s 8
 shot g01-1-point
 tap 772 2142 "Fight (point sheet)"; wait_s 6
 shot g01-2-briefing
-tap 540 2196 "Fight (3D)"
+tap_label "Fight (3D)" 540 2196 || exit 1
 for i in 1 2 3 4 5 6; do sleep 1.5; shot "g01-3-open-$i"; done
 # Play: walk up to the Guardian, then strike; WHIRL whenever it is ready.
 # Stop playing the moment Godot reports the end (the reward screen comes next;
@@ -34,4 +34,8 @@ wait_s 3
 shot g01-5-result
 alive || exit 1
 wait_s 5; shot g01-6-reward
-wait_s 4; tap 540 2194 "Back to the map"; wait_s 4; shot g01-7-map
+# The result came back to React Native's reward screen, marked as practice.
+expect "practice fight" || exit 1
+say "godot: $(adb logcat -d -s godot | grep -o 'CQ fight_end.*' | tail -1)"
+wait_s 4; tap_label "Back to the map" 540 2194; wait_s 4; shot g01-7-map
+alive || exit 1
