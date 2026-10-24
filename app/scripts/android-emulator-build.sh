@@ -18,7 +18,8 @@
 #                                           (http://localhost:PORT with
 #                                           `adb reverse tcp:PORT tcp:PORT`)
 #   GAME_UI        [rn]                     the React Native game
-#   ABI            [x86_64]                 arm64-v8a for a phone
+#   ABI            [x86_64]                 arm64-v8a for a phone; a comma list
+#                                           (x86_64,arm64-v8a) makes one APK for both
 #   UNLOCK_ALL     [0]                      1: every feature open whatever the
 #                                           player's level (screens on a new
 #                                           player; refused on production)
@@ -72,11 +73,13 @@ if [ -d node_modules/@borndotcom/react-native-godot ]; then
     scripts/godot-prebuilt.sh
   fi
   aar=$(find "$GODOT_LIBS/libgodot-android" -name '*.aar' | head -1)
-  if ! unzip -l "$aar" | grep -q "jni/$ABI/libgodot_android.so" ||
-    [ ! -f "$(find "$GODOT_LIBS/libgodot-cpp-android" -path "*/$ABI/libgodot-cpp.a" | head -1)" ]; then
-    echo "LibGodot has no $ABI build installed; point LIBGODOT_ANDROID_PATH / LIBGODOT_CPP_ANDROID_PATH at zips that do" >&2
-    exit 2
-  fi
+  for abi in ${ABI//,/ }; do
+    if ! unzip -l "$aar" | grep -q "jni/$abi/libgodot_android.so" ||
+      [ ! -f "$(find "$GODOT_LIBS/libgodot-cpp-android" -path "*/$abi/libgodot-cpp.a" | head -1)" ]; then
+      echo "LibGodot has no $abi build installed; point LIBGODOT_ANDROID_PATH / LIBGODOT_CPP_ANDROID_PATH at zips that do" >&2
+      exit 2
+    fi
+  done
   # GODOT_EXPORT=1: export game3d/ first (scripts/godot-export.sh android).
   if [ "${GODOT_EXPORT:-0}" = 1 ]; then scripts/godot-export.sh android; fi
 fi

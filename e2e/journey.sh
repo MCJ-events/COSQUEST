@@ -39,6 +39,7 @@ mkdir -p "$OUT/$label" "$VIDEOS"
     adb emu geo fix $g >/dev/null 2>&1; done ) &
 keeper=$!
 adb shell rm -f "/sdcard/jr-$label-*.mp4" /sdcard/jr-stop >/dev/null 2>&1
+[ "${REC:-1}" = 0 ] && adb shell touch /sdcard/jr-stop >/dev/null 2>&1
 adb shell "i=0; while [ ! -f /sdcard/jr-stop ]; do screenrecord --time-limit 170 --bit-rate 4000000 ${REC_SIZE:+--size $REC_SIZE} /sdcard/jr-$label-\$(printf %02d \$i).mp4 || break; i=\$((i+1)); done" &
 rec=$!
 sleep 1
