@@ -4,11 +4,14 @@
 # the peer server is up.
 #
 # Env: OUT [e2e/out] (pid files, logs), GAME_PG [cx054-game-pg],
-#      CHAT_PORT [4120] (the port here; the phone still uses 4120 via adb reverse)
+#      GAME_PG_USER [costquest], GAME_PG_DB [the user's own] (cq 056's rig:
+#      cq056-pg, postgres, costquest_rig), CHAT_PORT [4120] (the port here; the phone still uses 4120 via adb reverse)
 set -uo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 : "${OUT:=$here/out}"
 : "${GAME_PG:=cx054-game-pg}"
+: "${GAME_PG_USER:=costquest}"
+GAME_PG_DB_ARG=${GAME_PG_DB:+-d $GAME_PG_DB}
 : "${CHAT_PORT:=4120}"
 export PORT="$CHAT_PORT" CHAT_API="http://localhost:$CHAT_PORT" MEDIA_BASE_URL="${MEDIA_BASE_URL:-http://localhost:4120}"
 mkdir -p "$OUT"
@@ -55,8 +58,8 @@ if ! curl -s -m 2 -o /dev/null -X POST http://127.0.0.1:4130/run; then
 fi
 
 if docker ps --format '{{.Names}}' | grep -qx "$GAME_PG"; then
-  tables=$(docker exec "$GAME_PG" psql -U costquest -At -c \
+  tables=$(docker exec "$GAME_PG" psql -U "$GAME_PG_USER" $GAME_PG_DB_ARG -At -c \
     "select string_agg(distinct table_name, ', ') from information_schema.columns where column_name='device_key' and table_schema='public'")
-  [ -n "$tables" ] && docker exec "$GAME_PG" psql -U costquest -q -c "TRUNCATE $tables CASCADE" 2>/dev/null
+  [ -n "$tables" ] && docker exec "$GAME_PG" psql -U "$GAME_PG_USER" $GAME_PG_DB_ARG -q -c "TRUNCATE $tables CASCADE" 2>/dev/null
 fi
 echo "reset: chat seeded, game players cleared"

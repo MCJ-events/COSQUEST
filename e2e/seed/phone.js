@@ -25,7 +25,9 @@ const path = require('path');
 const ADB = path.join(process.env.ANDROID_HOME || path.join(process.env.HOME || '', 'cq-work/tools/android-sdk'), 'platform-tools/adb');
 const PG = process.env.GAME_PG_CONTAINER || 'cx054-game-pg';
 const adb = (...args) => execFileSync(ADB, args, { encoding: 'utf8' });
-const sql = (q) => execFileSync('docker', ['exec', PG, 'psql', '-U', 'costquest', '-At', '-c', q], { encoding: 'utf8' }).trim();
+// GAME_PG_USER / GAME_PG_DB for a rig with its own database (cq 056: cq056-pg, postgres, costquest_rig).
+const PG_ARGS = ['-U', process.env.GAME_PG_USER || 'costquest', ...(process.env.GAME_PG_DB ? ['-d', process.env.GAME_PG_DB] : [])];
+const sql = (q) => execFileSync('docker', ['exec', PG, 'psql', ...PG_ARGS, '-At', '-c', q], { encoding: 'utf8' }).trim();
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // Answer rows on the quiz screen (components/game/Encounter.tsx, one-codebase

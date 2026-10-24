@@ -11,7 +11,7 @@
 // The whole world is one view that slides under a fixed player marker, so a
 // new fix is one animated translate, and the paths are built once per ground.
 import { Ionicons } from "@expo/vector-icons";
-import { memo, useEffect, useMemo, useState } from "react";
+import { memo, type ReactNode, useEffect, useMemo, useState } from "react";
 import { PixelRatio, Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import Animated, {
   Easing,
@@ -79,6 +79,10 @@ type Props = {
   /** Public Rooms near you (Battle unlocked), as beacons. */
   rooms?: NearbyRoom[];
   onRoom?: (room: NearbyRoom) => void;
+  /** More things on the board (Forge finds, cq 056), placed with the board's own projection. */
+  overlay?: (place: (p: LatLng) => { left: number; top: number }) => ReactNode;
+  /** A face in the player's marker (their Forge avatar). */
+  playerBadge?: ReactNode;
 };
 
 export default function WorldMap(props: Props) {
@@ -154,6 +158,10 @@ export default function WorldMap(props: Props) {
               <RoomBeacon key={r.game_id} room={r} left={(local.x + extent) * MAP_SCALE} top={(extent - local.z) * MAP_SCALE} onPress={(room) => props.onRoom?.(room)} />
             );
           })}
+          {props.overlay?.((p) => {
+            const local = toLocal(origin, p);
+            return { left: (local.x + extent) * MAP_SCALE, top: (extent - local.z) * MAP_SCALE };
+          })}
         </Animated.View>
       ) : (
         <View style={[StyleSheet.absoluteFill, { backgroundColor: look.land }]} />
@@ -166,6 +174,7 @@ export default function WorldMap(props: Props) {
           accuracyPx={Math.min(120, Math.max(10, fix.accuracy * MAP_SCALE))}
           reachPx={props.reachM * MAP_SCALE}
           color={props.factionColor}
+          badge={props.playerBadge}
         />
       ) : null}
 
@@ -321,7 +330,7 @@ function PinLeader({ left, top, dx, dy }: { left: number; top: number; dx: numbe
   );
 }
 
-function PlayerMarker({ x, y, accuracyPx, reachPx, color }: { x: number; y: number; accuracyPx: number; reachPx: number; color: string }) {
+function PlayerMarker({ x, y, accuracyPx, reachPx, color, badge }: { x: number; y: number; accuracyPx: number; reachPx: number; color: string; badge?: ReactNode }) {
   const styles = useThemedStyles(STYLE_PAIR);
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFill}>
@@ -329,9 +338,13 @@ function PlayerMarker({ x, y, accuracyPx, reachPx, color }: { x: number; y: numb
         <Circle cx={x} cy={y} r={reachPx} fill={color} fillOpacity={0.08} stroke={color} strokeOpacity={0.45} strokeWidth={2} strokeDasharray="6 6" />
         <Circle cx={x} cy={y} r={accuracyPx} fill={GP.skyDeep} fillOpacity={0.14} />
       </Svg>
-      <View style={[styles.player, { left: x - 13, top: y - 13, backgroundColor: color }]}>
-        <View style={styles.playerDot} />
-      </View>
+      {badge ? (
+        <View style={[styles.playerBadge, { left: x - 20, top: y - 20, borderColor: color }]}>{badge}</View>
+      ) : (
+        <View style={[styles.player, { left: x - 13, top: y - 13, backgroundColor: color }]}>
+          <View style={styles.playerDot} />
+        </View>
+      )}
     </View>
   );
 }
@@ -408,6 +421,18 @@ const STYLE_PAIR = themedStyles({
     shadowOpacity: 0.3,
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 },
+  },
+  playerBadge: {
+    position: "absolute",
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 3,
+    overflow: "hidden",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FFFFFF",
+    elevation: 6,
   },
   playerDot: {
     width: 8,

@@ -39,6 +39,7 @@ import { gameStore, useGame } from "@/features/game/runtime";
 import type { ProfileAvatar } from "@/features/game/wire";
 
 import AvatarView from "./AvatarView";
+import { PlayerAvatar } from "./ForgeWorld";
 import { HeroStatBar, XPBar } from "./Bars";
 import HeroStage, { HeroSlot, SlotIcon } from "./HeroStage";
 import { WORLD_CLOCKS } from "@/features/game/mapStyle";
@@ -400,7 +401,7 @@ function SettingsTab({ handle, avatar, onEdit }: { handle: string; avatar: Profi
       <Pressable onPress={onEdit} accessibilityRole="button" accessibilityLabel={handle ? `${handle}, level ${me?.standing.level ?? 1}. Edit name and emblem.` : "Set up your profile"}>
         <GamePanel padding={16}>
           <View style={styles.identity}>
-            <AvatarView avatar={avatar} size={72} />
+            <PlayerAvatar stage size={72} fallback={<AvatarView avatar={avatar} size={72} />} />
             <View style={{ flex: 1, gap: 4 }}>
               <Text style={styles.identityName} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6} maxFontSizeMultiplier={MAX_FONT_SCALE}>
                 {handle || "Set up your profile"}

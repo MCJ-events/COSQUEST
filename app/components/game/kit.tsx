@@ -53,6 +53,7 @@ export function GameButton({
   style,
   accessibilityLabel,
   accessibilityHint,
+  testID,
 }: {
   title: string;
   color?: string;
@@ -65,6 +66,8 @@ export function GameButton({
   style?: StyleProp<ViewStyle>;
   accessibilityLabel?: string;
   accessibilityHint?: string;
+  /** For Maestro / adb drivers (e.g. "fight3d-open"). */
+  testID?: string;
 }) {
   const s = SIZES[size ?? (small ? "small" : "large")];
   const face = disabled ? DISABLED_FACE : color;
@@ -80,6 +83,7 @@ export function GameButton({
       accessibilityLabel={accessibilityLabel ?? title}
       accessibilityHint={accessibilityHint}
       accessibilityState={{ disabled: !!disabled }}
+      testID={testID}
       style={style}>
       {({ pressed }) => (
         <View style={{ paddingBottom: s.depth, transform: [{ translateY: pressed ? 1 : 0 }] }}>

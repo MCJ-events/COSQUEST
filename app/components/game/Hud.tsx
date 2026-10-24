@@ -27,6 +27,7 @@ import { Image } from "expo-image";
 import { useMyPicture } from "@/components/world/useMyPicture";
 
 import AvatarView from "./AvatarView";
+import { PlayerAvatar } from "./ForgeWorld";
 import { CoachAnchor } from "./Coach";
 import { announce, GameCoin, GameIconButton, HUD_FONT_SCALE, pressFeedback, withAlpha } from "./kit";
 import { edgeOf, GF, GP, realmColor, realmIcon, tierColor } from "./theme";
@@ -93,12 +94,18 @@ export function PlayerChip({
             transform="rotate(-90 27 27)"
           />
         </Svg>
-        {/* Task 059: the person's own photo / chat avatar, the same face as in the chat. */}
-        {picture ? (
-          <Image source={picture} style={styles.photo} contentFit="cover" accessibilityIgnoresInvertColors />
-        ) : (
-          <AvatarView avatar={profile?.avatar ?? { face: 1, mark: 1, tint: face }} size={40} />
-        )}
+        {/* Task 059: the person's own photo / chat avatar, the same face as in the chat.
+            Task 056: a worn Forge hero shows first when forge_world is on. */}
+        <PlayerAvatar
+          size={40}
+          fallback={
+            picture ? (
+              <Image source={picture} style={styles.photo} contentFit="cover" accessibilityIgnoresInvertColors />
+            ) : (
+              <AvatarView avatar={profile?.avatar ?? { face: 1, mark: 1, tint: face }} size={40} />
+            )
+          }
+        />
         <View style={styles.level}>
           <Text style={styles.levelText} maxFontSizeMultiplier={1.2}>
             {level}

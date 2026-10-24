@@ -202,6 +202,7 @@ export default function DuelScreen({
   mode: modeProp,
   trial,
   run,
+  onFight3D,
   onClose,
 }: {
   point: QuestPoint;
@@ -219,6 +220,8 @@ export default function DuelScreen({
   run?: RunDuelRequest;
   /** Unused since the verdict is DuelResult now (Swift goes back to the map); kept so callers still compile. */
   onReward?: (r: RewardSummary) => void;
+  /** Offer the 3D fight (cq 061, EXPO_PUBLIC_GAME3D=1) on the briefing; the caller opens it. */
+  onFight3D?: () => void;
   onClose: () => void;
 }) {
   const styles = useThemedStyles(STYLE_PAIR);
@@ -512,7 +515,7 @@ export default function DuelScreen({
     return (
       <>
         <StatusBar hidden animated />
-        <Brief point={point} busy={phase.kind === "starting"} problem={phase.kind === "failed" ? phase.message : null} onFight={fight} onClose={onClose} />
+        <Brief point={point} busy={phase.kind === "starting"} problem={phase.kind === "failed" ? phase.message : null} onFight={fight} onFight3D={onFight3D} onClose={onClose} />
       </>
     );
   }
@@ -642,7 +645,21 @@ function PauseButton({ top, onPress }: { top: number; onPress: () => void }) {
 
 // ---------- the briefing ----------
 
-function Briefing({ point, busy, problem, onFight, onClose }: { point: QuestPoint; busy: boolean; problem: string | null; onFight: () => void; onClose: () => void }) {
+function Briefing({
+  point,
+  busy,
+  problem,
+  onFight,
+  onFight3D,
+  onClose,
+}: {
+  point: QuestPoint;
+  busy: boolean;
+  problem: string | null;
+  onFight: () => void;
+  onFight3D?: () => void;
+  onClose: () => void;
+}) {
   const styles = useThemedStyles(STYLE_PAIR);
   const insets = useSafeAreaInsets();
   const color = realmColor(point.realm);
@@ -696,7 +713,13 @@ function Briefing({ point, busy, problem, onFight, onClose }: { point: QuestPoin
         {busy ? (
           <ActivityIndicator color={GP.navy} accessibilityLabel="Finding your opponent" />
         ) : (
-          <GameButton title="Fight" color={GP.sun} onPress={onFight} icon={<Ionicons name="flash" size={20} color="#FFF" />} />
+          <>
+            <GameButton title="Fight" color={GP.sun} onPress={onFight} icon={<Ionicons name="flash" size={20} color="#FFF" />} testID="duel-fight" />
+            {/* The 3D fight in Godot (cq 061): a practice fight, not judged by the server. */}
+            {onFight3D ? (
+              <GameButton title="Fight (3D)" color={GP.navy} onPress={onFight3D} testID="fight3d-open" icon={<Ionicons name="cube" size={20} color="#FFF" />} accessibilityHint="A practice fight in 3D. The server does not judge it." />
+            ) : null}
+          </>
         )}
       </View>
     </View>

@@ -8,12 +8,14 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "lint": "expo lint",
-    "test": "node --test \"services/__tests__/*.test.ts\" \"features/world/__tests__/*.test.ts\" \"features/game/__tests__/*.test.ts\" \"features/game/duel/__tests__/*.test.ts\" \"modules/costquest-game/plugin/__tests__/*.test.js\"",
+    "test": "node --test \"services/__tests__/*.test.ts\" \"features/world/__tests__/*.test.ts\" \"features/game/__tests__/*.test.ts\" \"features/game/duel/__tests__/*.test.ts\" \"features/game3d/__tests__/*.test.ts\" \"modules/costquest-game/plugin/__tests__/*.test.js\" \"plugins/__tests__/*.test.js\"",
     "typecheck": "tsc --noEmit -p .",
     "eas-build-pre-install": "node scripts/check-release-env.js",
-    "check:a11y": "node scripts/a11y-buttons.js --check"
+    "check:a11y": "node scripts/a11y-buttons.js --check",
+    "postinstall": "patch-package"
   },
   "dependencies": {
+    "@borndotcom/react-native-godot": "1.0.1",
     "@config-plugins/react-native-webrtc": "^15.0.2",
     "@cosquest/sparks-sdk": "file:vendor/cosquest-sparks-sdk-1.2.7.tgz",
     "@expo-google-fonts/poppins": "^0.4.1",
@@ -68,6 +70,7 @@
     "react-dom": "19.2.3",
     "react-native": "0.86.3",
     "react-native-country-picker-modal": "^3.0.0",
+    "react-native-filament": "^1.11.0",
     "react-native-gesture-handler": "~2.32.0",
     "react-native-keyboard-controller": "1.21.9",
     "react-native-maps": "1.27.2",
@@ -78,6 +81,7 @@
     "react-native-web": "~0.21.0",
     "react-native-webview": "13.16.1",
     "react-native-worklets": "0.10.1",
+    "react-native-worklets-core": "^1.6.3",
     "react-redux": "^9.3.0",
     "socket.io-client": "^4.8.3"
   },
@@ -85,7 +89,13 @@
     "@types/react": "~19.2.4",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~57.0.2",
+    "patch-package": "^8.0.1",
     "typescript": "~6.0.3"
   },
-  "private": true
+  "private": true,
+  "overrides": {
+    "@borndotcom/react-native-godot": {
+      "react-native-worklets-core": "$react-native-worklets-core"
+    }
+  }
 }

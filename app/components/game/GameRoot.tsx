@@ -36,8 +36,10 @@ import { GameBannerHost, showBanner } from "./Banner";
 import CoachOverlay from "./Coach";
 import CoinsSheet from "./CoinsSheet";
 import DuelScreen from "./DuelScreen";
+import { Fight3DHost } from "./Fight3D";
 import Encounter, { encounterGuard } from "./Encounter";
 import FriendsButton from "./FriendsButton";
+import { AvatarBadge, ForgeBag, ForgeClaim, ForgeDropsLayer, ForgeHudChip, useForgeOn, useForgeOwnedCount, useForgeWorldPolling, useHasForgeAvatar } from "./ForgeWorld";
 import { GAME_FONTS } from "./fonts";
 import FriendsSheet from "./FriendsSheet";
 import { NearbyTray, Rail, StagingBadge, TopBar, WardenBubble } from "./Hud";
@@ -69,6 +71,10 @@ import { useWardenSaid, wardenVoice } from "./wardenVoice";
 import WorldMap from "./WorldMap";
 import { useRenderCount } from "@/utils/perfMarks";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
+import type { ForgeDrop } from "@/features/game/forgeWorld";
+import { type Fight3DRun, rewardFrom3D } from "@/features/game3d/fight3d";
+import { FIGHT3D, fight3dAvailable } from "@/features/game3d/flags";
+import { takeFight3DRequest, useFight3DRequestSerial } from "@/features/game3d/request";
 
 type Screen =
   | { kind: "home" }
@@ -77,10 +83,12 @@ type Screen =
   | { kind: "raid"; point: QuestPoint }
   | { kind: "siege"; point: QuestPoint }
   | { kind: "room"; gameId: string }
+  /** The 3D fight in Godot (cq 061): from a duel's briefing, or a test run (point null). */
+  | { kind: "fight3d"; point: QuestPoint | null; run: Fight3DRun }
   | { kind: "reward"; reward: RewardSummary };
 
 /** What is open over the map (one at a time, closed by Android Back). */
-type Sheet = "dailies" | "codex" | "war" | "more" | "events" | "friends" | "relics" | "battle" | "profile" | "coins" | "recap" | "ask" | "trials" | "runStart";
+type Sheet = "dailies" | "codex" | "war" | "more" | "events" | "friends" | "relics" | "battle" | "profile" | "coins" | "recap" | "ask" | "trials" | "runStart" | "forge";
 
 const NUDGE_EVERY_MS = 150000;
 const LOSS_SEEN_KEY = "cq.holdsLost.seen";
@@ -120,6 +128,12 @@ export default function GameRoot({ parked }: { parked: boolean }) {
   const [runPoint, setRunPoint] = useState<RunPoint | null>(null);
   const [sheet, setSheet] = useState<Sheet | null>(null);
   const [bagCount, setBagCount] = useState<number | null>(null);
+  // Forge in the world (cq 056): finds on the map, the bag, the avatar. Off unless the server says so.
+  useForgeWorldPolling(!parked && !!session);
+  const forgeOn = useForgeOn();
+  const forgeOwned = useForgeOwnedCount();
+  const forgeAvatar = useHasForgeAvatar();
+  const [forgeDrop, setForgeDrop] = useState<ForgeDrop | null>(null);
   const onScreen = useOnScreen();
   /** A Room beacon tapped on the map: the Battle sheet opens on that room. */
   const [roomFocus, setRoomFocus] = useState<string | null>(null);
@@ -336,11 +350,12 @@ export default function GameRoot({ parked }: { parked: boolean }) {
     // behind the chat, and Back there is the chat's. RoomScreen takes Back
     // itself (it asks before leaving a fight); a sheet's own card or editor
     // takes it before this (the last handler added runs first).
-    if (parked || !onScreen || screen.kind === "room") return;
-    const open = screen.kind !== "home" || sheet !== null || selected !== null || runPoint !== null || runState.finished !== null;
+    if (parked || !onScreen || screen.kind === "room" || screen.kind === "fight3d") return;
+    const open = screen.kind !== "home" || sheet !== null || selected !== null || runPoint !== null || runState.finished !== null || forgeDrop !== null;
     if (!open) return;
     const sub = BackHandler.addEventListener("hardwareBackPress", () => {
-      if (runPoint) setRunPoint(null);
+      if (forgeDrop) setForgeDrop(null);
+      else if (runPoint) setRunPoint(null);
       else if (runState.finished) runModel.close();
       else if (sheet) setSheet(null);
       // A challenge in progress asks before it is left.
@@ -351,7 +366,7 @@ export default function GameRoot({ parked }: { parked: boolean }) {
       return true;
     });
     return () => sub.remove();
-  }, [parked, onScreen, screen.kind, sheet, selectedId, runPoint, runState.finished]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [parked, onScreen, screen.kind, sheet, selectedId, runPoint, runState.finished, forgeDrop]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // A full-screen game screen (not the map): the Chats bubble tucks in so it
   // does not cover answers, titles or rewards (F-38, features/world/bubbleZone.ts).
@@ -365,6 +380,25 @@ export default function GameRoot({ parked }: { parked: boolean }) {
     setSelectedId(null);
     setScreen({ kind: "home" });
   };
+
+  // The 3D fight (cq 061). Test builds may open it as soon as the game is up
+  // (EXPO_PUBLIC_GAME3D_AUTOSTART=<mode>, with EXPO_PUBLIC_GAME3D_CYCLE=N for the leak test).
+  const fight3d = (point: QuestPoint | null, run?: Partial<Fight3DRun>) =>
+    setScreen({ kind: "fight3d", point, run: { mode: "full", cycle: 0, cycleMs: FIGHT3D.cycleMs, autoplay: FIGHT3D.autoplay, ...run } });
+  const autostarted = useRef(false);
+  const autostartReady = !!session && (fontsReady || !!fontsError) && !gameStore.needsOnboarding && !onboarding && screen.kind === "home";
+  useEffect(() => {
+    if (!autostartReady || autostarted.current || !FIGHT3D.autostart || !fight3dAvailable()) return;
+    autostarted.current = true;
+    fight3d(null, { mode: FIGHT3D.autostart, cycle: FIGHT3D.cycle, autoplay: FIGHT3D.autoplay || FIGHT3D.cycle > 0 });
+  }, [autostartReady]);
+  // The test link (cosquest://fight3d?..., app/fight3d.tsx): opened once the game is up.
+  const fight3dAsked = useFight3DRequestSerial();
+  useEffect(() => {
+    if (!autostartReady || !fight3dAsked) return;
+    const run = takeFight3DRequest();
+    if (run && fight3dAvailable()) fight3d(null, run);
+  }, [autostartReady, fight3dAsked]);
 
   const play = (p: QuestPoint) => {
     setSelectedId(null);
@@ -450,6 +484,7 @@ export default function GameRoot({ parked }: { parked: boolean }) {
   if (bagCount && bagCount > 0) {
     moreTiles.push({ id: "bag", icon: "bag-handle", color: GP.sky, title: "Bag", badge: bagCount });
   }
+  if (forgeOn) moreTiles.push({ id: "forge", icon: "cube", color: GP.rare, title: "Forge bag", badge: forgeOwned || null, onPress: () => setSheet("forge") });
   moreTiles.push({ id: "live", icon: "calendar", color: GP.navy, title: "Quest Hours", onPress: () => setSheet("events") });
   // The paid venue games in AR stay native on iOS (VenueEventsIsland.swift).
   if (venueEventsAvailable) {
@@ -480,6 +515,8 @@ export default function GameRoot({ parked }: { parked: boolean }) {
         onSelect={onSelectPoint}
         rooms={battleOpen && screen.kind === "home" && !runLive ? rooms.nearby : []}
         onRoom={(r) => openBattle(r.game_id)}
+        overlay={forgeOn && screen.kind === "home" && !runLive ? (place) => <ForgeDropsLayer place={place} onOpen={setForgeDrop} /> : undefined}
+        playerBadge={forgeAvatar ? <AvatarBadge size={34} /> : undefined}
       />
 
       <TopBar me={me} profile={profile} name={gameStore.playerName()} color={color} onProfile={() => setSheet("profile")} onCoins={() => setSheet("coins")} onAskWarden={() => setSheet("ask")} />
@@ -511,6 +548,7 @@ export default function GameRoot({ parked }: { parked: boolean }) {
       {/* Under the top bar, left of the rail: one column, as iOS's worldBanners. */}
       <View style={[styles.banners, { top: insets.top + 72, right: showsRail ? 84 : 14 }]} pointerEvents="box-none">
         {runLive ? <RunHUD /> : null}
+        {forgeOn && screen.kind === "home" && !runLive ? <ForgeHudChip onPress={() => setSheet("forge")} /> : null}
         {permission === "denied" ? (
           <View style={styles.notice}>
             <Text style={styles.noticeText}>{"Location is off, so Quest Points can't find you. Turn it on in Settings to play."}</Text>
@@ -596,6 +634,7 @@ export default function GameRoot({ parked }: { parked: boolean }) {
       {sheet === "friends" ? <FriendsSheet onClose={() => setSheet(null)} /> : null}
       {sheet === "relics" ? <RelicsSheet onClose={() => setSheet(null)} /> : null}
       {sheet === "coins" ? <CoinsSheet onClose={() => setSheet(null)} /> : null}
+      {sheet === "forge" ? <ForgeBag onClose={() => setSheet(null)} /> : null}
       {sheet === "recap" ? <RecapSheet onClose={() => setSheet(null)} /> : null}
       {sheet === "ask" ? <AskWarden onClose={() => setSheet(null)} /> : null}
       {sheet === "trials" ? (
@@ -626,7 +665,14 @@ export default function GameRoot({ parked }: { parked: boolean }) {
       ) : null}
       {screen.kind === "duel" ? (
         <Animated.View entering={FadeIn.duration(220)} exiting={FadeOut.duration(160)} style={StyleSheet.absoluteFill}>
-          <DuelScreen point={screen.point} mode={screen.mode} trial={screen.trial} parked={parked} onClose={home} />
+          <DuelScreen
+            point={screen.point}
+            mode={screen.mode}
+            trial={screen.trial}
+            parked={parked}
+            onFight3D={(screen.mode === "point" || screen.mode === "raid") && fight3dAvailable() ? () => fight3d(screen.point) : undefined}
+            onClose={home}
+          />
         </Animated.View>
       ) : null}
       {screen.kind === "raid" ? (
@@ -649,6 +695,22 @@ export default function GameRoot({ parked }: { parked: boolean }) {
       {screen.kind === "room" ? (
         <Animated.View entering={FadeIn.duration(220)} exiting={FadeOut.duration(160)} style={StyleSheet.absoluteFill}>
           <RoomScreen gameId={screen.gameId} onClose={home} />
+        </Animated.View>
+      ) : null}
+      {screen.kind === "fight3d" ? (
+        <Animated.View entering={FadeIn.duration(220)} exiting={FadeOut.duration(160)} style={StyleSheet.absoluteFill}>
+          <Fight3DHost
+            point={screen.point}
+            run={screen.run}
+            parked={parked}
+            onResult={(r) =>
+              setScreen({
+                kind: "reward",
+                reward: rewardFrom3D(r, screen.point ?? { name: "Test arena", realm: me?.faction ?? "" }, gameStore.get().me?.standing ?? null),
+              })
+            }
+            onClose={home}
+          />
         </Animated.View>
       ) : null}
       {screen.kind === "reward" ? (
@@ -687,6 +749,8 @@ export default function GameRoot({ parked }: { parked: boolean }) {
           <RunResults result={runState.finished} board={runState.board} onClose={() => runModel.close()} />
         </Animated.View>
       ) : null}
+
+      {forgeDrop ? <ForgeClaim drop={forgeDrop} onClose={() => setForgeDrop(null)} onOpenBag={() => setSheet("forge")} /> : null}
 
       {/* The big moments ("Guardian beaten!", "Quest done!"), over everything. */}
       <GameBannerHost top={insets.top + 150} />
