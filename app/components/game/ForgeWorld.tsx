@@ -472,9 +472,18 @@ export function ForgeFighterArt({ fighter, size = 72 }: { fighter: unknown; size
   const id = on ? (character?.element_id ?? weapon?.element_id ?? null) : null;
   const entry = useForgeEntry(id);
   if (!entry) return null;
+  // The versus card is up for 1.8 s: a 3D view that size could not start in
+  // time (the Guardian's slot stayed empty, cq 056), so it shows the
+  // element's own thumbnail, which is cached and on screen at once (cq 076).
+  // 3D stays where people linger: claim, bag, encounter, the 3D fight.
+  const url = thumbUrl(entry, 256);
   return (
     <View style={{ width: size, height: size, borderRadius: 14, overflow: "hidden", backgroundColor: "rgba(30,58,76,0.85)" }}>
-      <ForgeModel entry={entry} purpose="thumb" animation={entry.type === "character" ? "idle" : null} spin={entry.type === "weapon"} style={StyleSheet.absoluteFill} size={size} distance={entry.type === "character" ? 2.5 : 2.4} />
+      {url ? (
+        <Image source={{ uri: url }} style={StyleSheet.absoluteFill} contentFit="cover" accessibilityLabel={entry.name} />
+      ) : (
+        <ForgeModel entry={entry} purpose="thumb" animation={entry.type === "character" ? "idle" : null} spin={entry.type === "weapon"} style={StyleSheet.absoluteFill} size={size} distance={entry.type === "character" ? 2.5 : 2.4} />
+      )}
     </View>
   );
 }

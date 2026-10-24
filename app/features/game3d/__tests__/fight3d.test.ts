@@ -99,8 +99,12 @@ test("the ally is another hero, by name; the cast prefers the duel's own opponen
   assert.deepEqual([cast.hero?.id, cast.ally?.id, cast.enemy?.id], ["a-1", "b-2", "d-4"]);
   const none = pickCast([], { avatarId: "a-1", role: "guardian", key: null });
   assert.deepEqual([none.hero, none.ally, none.enemy], [null, null, null]);
-  // A weapon id is not a character.
-  assert.equal(pickCast(entries, { avatarId: "w-1", role: "guardian", key: null }).hero, null);
+  // A weapon id is not a character: you fight as the first hero by name instead.
+  const weapon = pickCast(entries, { avatarId: "w-1", role: "guardian", key: null });
+  assert.deepEqual([weapon.hero?.id, weapon.ally?.id], ["a-1", "b-2"]);
+  // Nothing worn (a new player): the first hero, never the placeholder capsule.
+  const fresh = pickCast(entries, { avatarId: null, role: "guardian", key: null });
+  assert.deepEqual([fresh.hero?.id, fresh.ally?.id], ["a-1", "b-2"]);
 });
 
 test("file URIs become absolute paths; anything else is empty", () => {

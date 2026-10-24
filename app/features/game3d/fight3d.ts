@@ -143,14 +143,16 @@ export function pickAlly<T extends CharacterPick>(entries: readonly T[], heroId:
 /**
  * The three characters of a fight: your worn avatar, an ally hero, and the
  * opponent (the server's own pick when a duel start named one, else the same
- * pick the server would make for this point).
+ * pick the server would make for this point). With no avatar worn (a new
+ * player, or a worn one that was unpublished) you fight as the first
+ * wearable hero by name, never as Godot's placeholder capsule (cq 076).
  */
 export function pickCast<T extends CharacterPick>(
   entries: readonly T[],
   opts: { avatarId: string | null; enemyId?: string | null; role: "guardian" | "boss"; key: string | null },
 ): { hero: T | null; ally: T | null; enemy: T | null } {
   const byId = (id: string | null | undefined) => (id ? (entries.find((e) => e.id === id && e.type === "character") ?? null) : null);
-  const hero = byId(opts.avatarId);
+  const hero = byId(opts.avatarId) ?? pickAlly(entries, null);
   const enemy = byId(opts.enemyId) ?? (opts.key ? pickOpponent(entries, opts.role, opts.key) : null);
   return { hero, ally: pickAlly(entries, hero?.id ?? null), enemy };
 }
