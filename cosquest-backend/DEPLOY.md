@@ -45,6 +45,12 @@ Optional. Without them, calls take up to 1,000 people at once and voice chats up
 
 Calls of a few hundred people or more also need LiveKit sized for them: see "Big calls and LiveKit" in the pull request that added these (about one CPU core per 100 listeners with 10 people talking; 1,000 people needs its own LiveKit server).
 
+## LiveKit webhook
+
+So the backend hears at once when a phone drops out of a call or voice chat (API_GUIDE.md, "Call controls"), point LiveKit's webhook at `https://<API address>/api/livekit/webhook`: LiveKit Cloud, Settings > Webhooks; self-hosted, `webhook.urls` in the LiveKit server config, with `webhook.api_key` set to the same key as `LIVEKIT_API_KEY`. The backend checks LiveKit's signature with `LIVEKIT_API_KEY` / `LIVEKIT_API_SECRET`; nothing else to set. Without it everything still works, with the slower 90-second check-in rule for voice chats and no automatic clean-up of crashed phones in calls.
+
+The same keys are used for LiveKit's server API (muting, removing, screen-share permission, ending a voice chat), at the HTTPS form of `LIVEKIT_URL`.
+
 ## Secrets this workflow uses
 
 | Secret | What it is |

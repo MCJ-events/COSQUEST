@@ -143,6 +143,40 @@ async function shareOutline(req, res) {
 
 const voiceRooms = () => require('./voiceRooms');
 
+// For join responses (a call or a voice chat, by its id): whether calls are
+// transcribed here (the Sparks notice applies), and this person's latest
+// decision on it for this call or a standing "always" one - so the app can
+// show the notice before they connect, and skip it once they have decided.
+//   { on: false } (Sparks off) | { on: true, consent: 'accepted'|'declined'|null, scope: 'call'|'always'|null }
+async function transcriptionFor(callId, userId) {
+  if (!host.isModule() || !host.isReady()) return { on: false };
+  const decision = await host.store.latestConsent(String(userId), String(callId)).catch(() => null);
+  return { on: true, consent: decision?.decision || null, scope: decision?.scope || null };
+}
+
+// GET /api/calls/:callId/notes - can this person open the call's Sparks notes
+// (outline and full transcript), and are there any? Takes a call id or a voice
+// chat id. Rule (OPEN_QUESTIONS Q9): people who were on it, and the chat's
+// admins. Notes are kept until deleted (no retention period is set), so a
+// call entry's "Sparks" link keeps working.
+async function getNotes(req, res) {
+  if (!host.isModule() || !host.isReady()) return unavailable(res);
+  const call = await host.store.getCall(String(req.params.callId));
+  if (!call) return res.status(404).json({ error: 'No notes for this call.' });
+  const attended = call.everAttended.includes(String(req.userId));
+  const admin = !attended && (await members.isAdmin(String(req.userId), call.chatId));
+  const stored = await host.store.getOutline(call.callId);
+  const outline = stored?.outline ? 'ready' : call.status === 'ready' ? 'none' : 'pending';
+  return res.json({
+    callId: call.callId,
+    kind: (await voiceRooms().isVoiceRoom(call.callId)) ? 'voice_room' : 'call',
+    canOpen: attended || admin,
+    reason: attended ? 'attended' : admin ? 'chat_admin' : 'not_on_call',
+    outline,
+    kept: 'until_deleted',
+  });
+}
+
 async function speakerPreviews(userIds) {
   const ids = [...new Set(userIds)].filter((id) => mongoose.isValidObjectId(id));
   if (!ids.length) return {};
@@ -162,4 +196,4 @@ async function serializedMessage(messageId, viewerId) {
   return serializeMessage(message, { viewerId, conversationType: conversation?.type, otherLastReadAt: null, reactions: [] });
 }
 
-module.exports = { sync, getOutline, getTranscript, shareOutline };
+module.exports = { sync, getOutline, getTranscript, shareOutline, getNotes, transcriptionFor };

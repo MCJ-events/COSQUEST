@@ -19,6 +19,8 @@ const router = express.Router();
 
 router.use('/auth', authRoutes); // /api/auth/signup, /api/auth/login
 router.use('/internal', require('./internalRoutes')); // /api/internal/push (game server -> phones)
+// LiveKit webhooks: signed by LiveKit (no user token), raw body for the signature check.
+router.post('/livekit/webhook', express.raw({ type: () => true, limit: '1mb' }), require('../utils/asyncHandler').asyncHandler(require('../controllers/livekitWebhookController').receive));
 // Authentication is attached per settings endpoint, leaving onboarding routes usable.
 router.use('/users/me', require('./settingsRoutes'));
 router.use('/users', profileRoutes); // /api/users/me, /api/users/check-username, avatar routes

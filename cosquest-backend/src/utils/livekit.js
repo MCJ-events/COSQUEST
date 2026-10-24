@@ -16,7 +16,10 @@ function getLivekitConfig() {
   return { url, apiKey, apiSecret };
 }
 
-async function createCallToken({ userId, username, name, roomName }) {
+// `sources`: what this person may publish (src/utils/callRoom.js sourcesFor).
+// By default microphone and camera; screen sharing is granted only to the one
+// person sharing (POST .../screen-share/start), so two can't share at once.
+async function createCallToken({ userId, username, name, roomName, sources }) {
   const { apiKey, apiSecret } = getLivekitConfig();
   const accessToken = new AccessToken(apiKey, apiSecret, {
     identity: String(userId),
@@ -29,6 +32,8 @@ async function createCallToken({ userId, username, name, roomName }) {
     room: roomName,
     canPublish: true,
     canSubscribe: true,
+    canPublishData: true,
+    canPublishSources: sources || require('./callRoom').sourcesFor(),
   });
 
   return accessToken.toJwt();

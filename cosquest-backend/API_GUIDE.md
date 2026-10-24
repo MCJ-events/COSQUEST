@@ -653,6 +653,28 @@ All need login and chat membership.
 - `POST /api/chats/:conversationId/album` (multipart) — `media` ×1-10 (photos JPEG/PNG/WEBP/GIF up to 10 MB each, videos MP4/MOV/WEBM up to 50 MB each), optional `content` caption, `replyTo`, `sparkId`. Returns `{ message }` with `kind: "album"` and `album: [{ url, publicId, resourceType, kind, ... }]`. Albums can be forwarded; the chat-list preview reads `📷 3 photos` / `🎥 2 videos` / `📷 4 photos & videos`.
 - Messages now carry `album` (null unless `kind` is `album`) and `previousContent`: for the author only, the wording an undo (`POST .../rollback`) would restore; always null for everyone else and in live broadcasts.
 
+## Call controls (joining, screen sharing, ending, moderation)
+
+**Joining.** Every response that hands out a LiveKit token (`POST /api/chats/:id/voice/join`, starting, answering or rejoining a call, a private call) and `GET /api/chats/:id/voice` / `GET /api/calls/incoming` (before connecting or answering) also carry:
+- `media: { cameraStartsOn }`: `false` for voice chats, audio calls and private calls, `true` only for video calls. Everyone may still turn their camera on.
+- `transcription: { on, consent, scope }`: `on` = calls are transcribed here (the Sparks notice applies); `consent` = this person's latest decision for this call or a standing one (`"accepted"`, `"declined"` or `null` = not decided yet: show the notice before connecting), `scope` = `"call"` or `"always"`. Sparks off: `{ on: false }`.
+- Voice chats only: `canModerate` (an owner or admin of the group) and `canEnd` (started it, or a group admin).
+
+Tokens allow the microphone and camera. The screen only for the person sharing (below), and no microphone for someone an admin muted.
+
+**Sparks notes.** `GET /api/calls/:callId/notes` (a call id or a voice chat id): `{ callId, kind: "call"|"voice_room", canOpen, reason: "attended"|"chat_admin"|"not_on_call", outline: "pending"|"ready"|"none", kept: "until_deleted" }`. Who can open the outline and transcript: people who were on it and the chat's admins. Notes are kept until deleted (no retention period is set). `404` no notes for that id, `503` Sparks off.
+
+**Screen sharing (one person at a time).** `POST /api/calls/:callId/screen-share/start` and `/stop`; `POST /api/voice/:roomId/screen-share/start` and `/stop`. Start, then publish the screen track: LiveKit only allows it to the person sharing. `409 { reason: "someone_sharing", screenShare }` while someone else shares; starting again is safe. The share ends by itself when the sharer leaves or the call ends. Stop: the sharer; in a group voice chat a group admin can also stop someone's share. Who is sharing: `screenShare: { userId, startedAt } | null` on the call (`call:updated`) and the voice chat (`voice:updated`).
+
+**Ending a voice chat for everyone.** `POST /api/voice/:roomId/end`: whoever started it, or an owner/admin of the group (`403` otherwise). Everyone is disconnected, `voice:updated` carries `voiceRoom: null`, the people in it get `voice:ended { roomId, conversationId, endedBy }`, and the "voice chat ended" entry is posted. Nobody ending it: it still ends when the last person leaves or goes quiet.
+
+**Moderation (group voice chats).** Owners and admins of the group, by the group's rule (admins act on members, only the owner acts on admins, nobody on the owner). Voice chats in Community and faction rooms have no admins.
+- `POST /api/voice/:roomId/members/:userId/mute`: their microphone is muted and stays off (they can't unmute) until `.../unmute`. `voiceRoom.members[].mutedByAdmin`; they get `voice:moderated { roomId, conversationId, action: "muted"|"unmuted", by }`.
+- `POST /api/voice/:roomId/members/:userId/remove`: out of the voice chat and LiveKit, and kept out of this voice chat: joining again answers `403 { reason: "removed", error: "An admin removed you from this voice chat. You can join the next one." }`. They get `voice:removed { roomId, conversationId, by }`. `.../allow` lets them back in. The next voice chat starts clean.
+- Errors: `403` not an admin / acting on the owner or (as an admin) on another admin, `400` acting on yourself, `404` they are not in it, `410` it has ended.
+
+**Dropped phones (LiveKit webhook).** With the webhook set up (DEPLOY.md), someone whose phone drops out of LiveKit and doesn't reconnect within 20 seconds is taken out: of a voice chat (count right within seconds instead of after the 90-second check-in window), or of a call (marked left, so a one-to-one call ends instead of staying "busy"). A network switch or a server restart reconnects within that and changes nothing.
+
 ## Expertise roles, regional groups, join introductions, Spark-only mute
 
 - `GET /api/expertise` — public list `[{ key, label }]` (edit it in `src/models/expertiseModel.js`; no app update needed). `PATCH /api/expertise/me` with `{ "expertise": "front_end" }` sets yours, `{ "expertise": null }` clears it (the field must be sent). People in chat (`sender`, member pickers, seen-by) carry `expertise`: the label ("Front-end") or null. Expertise is a label only, not a rank and gives no powers.

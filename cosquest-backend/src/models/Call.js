@@ -43,6 +43,9 @@ const callMemberSchema = new mongoose.Schema(
     invitedAt: { type: Date, default: Date.now },
     joinedAt: { type: Date, default: null },
     leftAt: { type: Date, default: null },
+    // LiveKit says they dropped out (webhook); cleared when they reconnect.
+    // Still gone after a short grace period: they have left the call.
+    disconnectedAt: { type: Date, default: null },
   },
   { _id: false }
 );
@@ -88,6 +91,11 @@ const callSchema = new mongoose.Schema(
       default: [],
     },
     roomName: { type: String, required: true, unique: true },
+    // Who is sharing their screen (one person at a time), or null.
+    screenShare: {
+      type: new mongoose.Schema({ user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, startedAt: Date }, { _id: false }),
+      default: null,
+    },
     answeredAt: { type: Date, default: null },
     endedAt: { type: Date, default: null },
   },
@@ -106,6 +114,12 @@ callSchema.pre('validate', function keepActiveStateConsistent(next) {
         .filter((member) => ['ringing', 'joined'].includes(member.status))
         .map((member) => member.user?._id || member.user)
     : [];
+  // A screen share ends when the call ends or the person sharing leaves it.
+  if (this.screenShare?.user) {
+    const sharer = String(this.screenShare.user?._id || this.screenShare.user);
+    const stillIn = this.members.some((member) => String(member.user?._id || member.user) === sharer && member.status === 'joined');
+    if (!this.active || !stillIn) this.screenShare = null;
+  }
   next();
 });
 

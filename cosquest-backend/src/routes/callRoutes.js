@@ -12,12 +12,21 @@ const {
   inviteToCall,
   startPrivateCall,
   startPrivateVoiceCall,
+  startScreenShare,
+  stopScreenShare,
 } = require('../controllers/callController');
 const {
   getVoiceRoom,
   joinVoiceRoom,
   pingVoiceRoom,
   leaveVoiceRoom,
+  endVoiceRoom,
+  startScreenShare: startVoiceScreenShare,
+  stopScreenShare: stopVoiceScreenShare,
+  muteMember,
+  unmuteMember,
+  removeMemberByAdmin,
+  allowMember,
 } = require('../controllers/voiceRoomController');
 
 const router = express.Router();
@@ -38,6 +47,8 @@ router.get('/calls/:callId/outline', asyncHandler(require('../sparks/calls').get
 // Sparks: the full transcript (same access as the outline), and sharing the outline into the chat.
 // Both take a call id or a voice chat id (voiceRoom.id).
 router.get('/calls/:callId/transcript', asyncHandler(require('../sparks/calls').getTranscript));
+// Can I open this call's (or voice chat's) Sparks notes, and are there any?
+router.get('/calls/:callId/notes', asyncHandler(require('../sparks/calls').getNotes));
 router.post('/calls/:callId/outline/share', asyncHandler(require('../sparks/calls').shareOutline));
 // Sparks voice commands: what this user can target from this call (the SDK's CommandContext).
 router.get('/calls/:callId/command-context', asyncHandler(require('../sparks/targetedCalls').getCommandContext));
@@ -50,6 +61,9 @@ router.post('/calls/:callId/invite', asyncHandler(inviteToCall));
 router.post('/calls/:callId/join', asyncHandler(rejoinCall));
 // Private call on top: a one-to-one call with someone in this call ({ userId }).
 router.post('/calls/:callId/private', asyncHandler(startPrivateCall));
+// Screen sharing: one person at a time.
+router.post('/calls/:callId/screen-share/start', asyncHandler(startScreenShare));
+router.post('/calls/:callId/screen-share/stop', asyncHandler(stopScreenShare));
 
 // Voice chats (Community, faction and group rooms - nobody's phone rings)
 router.get('/chats/:conversationId/voice', asyncHandler(getVoiceRoom));
@@ -58,5 +72,15 @@ router.post('/voice/:roomId/ping', asyncHandler(pingVoiceRoom));
 router.post('/voice/:roomId/leave', asyncHandler(leaveVoiceRoom));
 // Private call on top, from a voice chat ({ userId }).
 router.post('/voice/:roomId/private', asyncHandler(startPrivateVoiceCall));
+// End for everyone (whoever started it, or a group admin).
+router.post('/voice/:roomId/end', asyncHandler(endVoiceRoom));
+// Screen sharing: one person at a time.
+router.post('/voice/:roomId/screen-share/start', asyncHandler(startVoiceScreenShare));
+router.post('/voice/:roomId/screen-share/stop', asyncHandler(stopVoiceScreenShare));
+// Moderation by the group's owner/admins.
+router.post('/voice/:roomId/members/:userId/mute', asyncHandler(muteMember));
+router.post('/voice/:roomId/members/:userId/unmute', asyncHandler(unmuteMember));
+router.post('/voice/:roomId/members/:userId/remove', asyncHandler(removeMemberByAdmin));
+router.post('/voice/:roomId/members/:userId/allow', asyncHandler(allowMember));
 
 module.exports = router;

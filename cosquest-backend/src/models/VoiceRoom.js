@@ -33,6 +33,18 @@ const voiceRoomSchema = new mongoose.Schema(
     // Everyone who was in it at some point, for the "voice chat ended" entry's
     // participant count (src/utils/callMessage.js).
     everJoined: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], default: [] },
+    // Who is sharing their screen (one person at a time), or null.
+    screenShare: {
+      type: new mongoose.Schema({ user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, startedAt: Date }, { _id: false }),
+      default: null,
+    },
+    // Moderation by the group's owner/admins, for this voice chat only (a new
+    // voice chat starts clean): muted people can't turn their microphone on,
+    // removed people can't join again.
+    mutedUsers: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], default: [] },
+    removedUsers: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], default: [] },
+    // Ended for everyone (POST /api/voice/:roomId/end) rather than emptied.
+    endedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     roomName: { type: String, required: true, unique: true },
     active: { type: Boolean, default: true },
     endedAt: { type: Date, default: null },

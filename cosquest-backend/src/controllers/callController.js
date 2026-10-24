@@ -4,6 +4,7 @@ const VoiceRoom = require('../models/VoiceRoom');
 const User = require('../models/User');
 const userModel = require('../models/userModel');
 const { createCallToken, getLivekitUrl } = require('../utils/livekit');
+const { sourcesFor, setSources } = require('../utils/callRoom');
 const { isBlockedEitherWay } = require('./publicProfileController');
 const { loadConversationForUser } = require('./chatController');
 const Block = require('../models/Block');
@@ -259,6 +260,8 @@ function buildCallJson(call) {
     // The app shows these: how many people can be in the call at once, and
     // how many can be added in one go (CALL_MAX_IN_CALL /
     // CALL_MAX_INVITES_PER_REQUEST).
+    // Who is sharing their screen right now (one person at a time).
+    screenShare: call.screenShare?.user ? { userId: idOf(call.screenShare.user), startedAt: call.screenShare.startedAt } : null,
     maxParticipants: limits.maxInCall(),
     maxInvitesPerRequest: limits.maxInvitesPerRequest(),
     createdAt: call.createdAt,
@@ -367,11 +370,32 @@ async function announceAway(privateCall) {
 }
 
 // Applies the 45-second rule to a call right now (and sends any change).
+// How long someone who dropped out of LiveKit (webhook) has to reconnect
+// before they count as having left the call - so a phone that crashed or
+// lost signal doesn't keep the call (and their "busy") going forever.
+const RECONNECT_GRACE_MS = 20 * 1000;
+
+function expireDisconnected(call, now = new Date()) {
+  let changed = false;
+  call.members.forEach((member) => {
+    if (member.status === 'joined' && member.disconnectedAt && now - new Date(member.disconnectedAt) >= RECONNECT_GRACE_MS) {
+      member.status = 'left';
+      member.leftAt = now;
+      member.disconnectedAt = null;
+      changed = true;
+    }
+  });
+  return changed;
+}
+
 async function refreshCall(callId) {
   const { call, changed } = await mutateCall(callId, (current) => {
     if (!isActive(current)) return false;
-    if (!expireRinging(current)) return false;
-    settle(current);
+    const now = new Date();
+    const rang = expireRinging(current, now);
+    const dropped = expireDisconnected(current, now);
+    if (!rang && !dropped) return false;
+    settle(current, now);
     return true;
   });
 
@@ -460,13 +484,23 @@ async function busyAmong(userIds, exceptCallId = null) {
   return busy;
 }
 
+// What the app needs to connect: the LiveKit token (screen sharing only for
+// the person sharing), whether the camera starts on (only in video calls -
+// audio calls and private calls start with it off), and whether the Sparks
+// transcription notice applies.
 async function joinExtras(call, user) {
   const token = await createCallToken({
     userId: user._id,
     name: displayName(user),
     roomName: call.roomName,
+    sources: sourcesFor({ screenShare: idOf(call.screenShare?.user) === String(user._id) }),
   });
-  return { token, livekitUrl: getLivekitUrl() };
+  return {
+    token,
+    livekitUrl: getLivekitUrl(),
+    media: { cameraStartsOn: call.type === 'video' },
+    transcription: await require('../sparks/calls').transcriptionFor(idOf(call), user._id),
+  };
 }
 
 // Is this person part of the call? Asks the database directly instead of
@@ -605,7 +639,7 @@ async function getIncomingCall(req, res) {
     ? await User.findById(mine.invitedBy).select(USER_FIELDS).lean()
     : null;
   const invitedBy = inviter ? userPreview(inviter) : userPreview(call.caller);
-  return sendCall(res, 200, call, { invitedBy });
+  return sendCall(res, 200, call, { invitedBy, transcription: await require('../sparks/calls').transcriptionFor(idOf(call), req.userId) });
 }
 
 // GET /api/calls/:callId
@@ -637,6 +671,7 @@ async function acceptCall(req, res) {
 
     mine.status = 'joined';
     mine.joinedAt = now;
+    mine.disconnectedAt = null;
     mine.leftAt = null;
     settle(current, now);
     return true;
@@ -743,6 +778,7 @@ async function rejoinCall(req, res) {
 
     mine.status = 'joined';
     mine.joinedAt = now;
+    mine.disconnectedAt = null;
     mine.leftAt = null;
     settle(current, now);
     return true;
@@ -1126,8 +1162,93 @@ async function startPrivateVoiceCall(req, res) {
   return sendCall(res, 201, started.call, started.extras);
 }
 
+// ==========================================================================
+// SCREEN SHARING (one person at a time)
+// ==========================================================================
+
+// POST /api/calls/:callId/screen-share/start - share your screen in a call
+// you are in. 409 while someone else is sharing. Then publish the screen
+// track (LiveKit only allows it to the person sharing).
+async function startScreenShare(req, res) {
+  const found = await findCallForUser(req.params.callId, req.userId);
+  if (found.error) return res.status(found.status).json({ error: found.error });
+  const userId = String(req.userId);
+  const { call, changed, error } = await mutateCall(found.callId, (current) => {
+    if (!isActive(current)) return { error: { status: 410, message: 'This call has ended.' } };
+    if (memberOf(current, userId)?.status !== 'joined') return { error: { status: 403, message: 'Join the call first.' } };
+    const sharer = idOf(current.screenShare?.user);
+    if (sharer === userId) return false; // already sharing
+    if (sharer) return { error: { status: 409, reason: 'someone_sharing', message: 'Someone else is already sharing their screen.' } };
+    current.screenShare = { user: req.userId, startedAt: new Date() };
+    return true;
+  });
+  if (error) {
+    const sharer = error.reason ? call?.members?.find((member) => idOf(member.user) === idOf(call.screenShare?.user))?.user : null;
+    return res.status(error.status).json({
+      error: sharer ? `${displayName(sharer)} is already sharing their screen.` : error.message,
+      ...(error.reason ? { reason: error.reason, screenShare: toCallJson(call).screenShare } : {}),
+    });
+  }
+  if (changed) {
+    await setSources(call.roomName, userId, sourcesFor({ screenShare: true }));
+    broadcastCallUpdate(call);
+  }
+  return sendCall(res, 200, call);
+}
+
+// POST /api/calls/:callId/screen-share/stop - stop your share. (It also ends
+// by itself when you leave the call or the call ends.)
+async function stopScreenShare(req, res) {
+  const found = await findCallForUser(req.params.callId, req.userId);
+  if (found.error) return res.status(found.status).json({ error: found.error });
+  const userId = String(req.userId);
+  const { call, changed, error } = await mutateCall(found.callId, (current) => {
+    const sharer = idOf(current.screenShare?.user);
+    if (!sharer) return false;
+    if (sharer !== userId) return { error: { status: 403, message: 'Only the person sharing can stop their screen share.' } };
+    current.screenShare = null;
+    return true;
+  });
+  if (error) return res.status(error.status).json({ error: error.message });
+  if (changed) {
+    await setSources(call.roomName, userId, sourcesFor());
+    broadcastCallUpdate(call);
+  }
+  return sendCall(res, 200, call);
+}
+
+// ==========================================================================
+// LIVEKIT WEBHOOKS (src/controllers/livekitWebhookController.js)
+// ==========================================================================
+
+// They dropped out of the call's LiveKit room: unless they reconnect within
+// RECONNECT_GRACE_MS they have left (expireDisconnected).
+async function participantLeft(callId, userId, now = new Date()) {
+  const { call, changed } = await mutateCall(callId, (current) => {
+    const mine = memberOf(current, userId);
+    if (!isActive(current) || mine?.status !== 'joined' || mine.disconnectedAt) return false;
+    mine.disconnectedAt = now;
+    return true;
+  });
+  if (!call || !changed) return;
+  setTimeout(() => refreshCall(callId).catch((error) => console.error('[calls] refresh after leave failed:', error.message)), RECONNECT_GRACE_MS + 1000).unref?.();
+}
+
+async function participantJoined(callId, userId) {
+  await mutateCall(callId, (current) => {
+    const mine = memberOf(current, userId);
+    if (!mine?.disconnectedAt) return false;
+    mine.disconnectedAt = null;
+    return true;
+  });
+}
+
 module.exports = {
   startCall,
+  startScreenShare,
+  stopScreenShare,
+  participantLeft,
+  participantJoined,
   startPrivateCall,
   startPrivateVoiceCall,
   awayIn,
@@ -1143,5 +1264,5 @@ module.exports = {
   startCallFor,
   toCallJson,
   // Exported for tests.
-  _internal: { expireRinging, settle, ensureMembers, flushUpdates: () => callUpdates.flushAll() },
+  _internal: { expireRinging, expireDisconnected, settle, ensureMembers, refreshCall, flushUpdates: () => callUpdates.flushAll() },
 };
