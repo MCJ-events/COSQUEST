@@ -11,10 +11,10 @@
 // Anything missing (no Forge, offline, a download that fails or is slow) is
 // an empty path, and Godot stands a mannequin in its place.
 import { type ForgeEntry, forgeWorldOf, pickGlb } from "@/features/game/forgeWorld";
-import { DEVICE_CLASS, ensureFile, forgeWorld, refreshCatalogue } from "@/features/game/forgeWorldDevice";
+import { DEVICE_CLASS, ensureFile, forgeWorld, refreshCatalogue, refreshInventory } from "@/features/game/forgeWorldDevice";
 import { gameStore } from "@/features/game/runtime";
 
-import { fightLod, pickCast } from "./fight3d";
+import { fightLod, pickCast, wornAvatarId } from "./fight3d";
 
 export type CastMember = { path: string | null; name: string | null; id: string | null };
 export type Cast = { hero: CastMember; ally: CastMember; enemy: CastMember; lod: number };
@@ -55,9 +55,11 @@ export async function fightCast(opts: {
   waitMs?: number;
 }): Promise<Cast> {
   const wait = opts.waitMs ?? 15000;
-  await within(refreshCatalogue(), Math.min(wait, 5000), undefined);
+  // The catalogue and the bag, both fresh: the hero you wear now (a Wear a
+  // moment ago, or on another phone) is the one you fight as.
+  await within(Promise.all([refreshCatalogue(), refreshInventory()]), Math.min(wait, 5000), undefined);
   const s = forgeWorld.get();
-  const avatarId = s.inventory?.equipped.avatar ?? forgeWorldOf(gameStore.get().me).equipped.avatar;
+  const avatarId = wornAvatarId(s.inventory, forgeWorldOf(gameStore.get().me));
   const { hero, ally, enemy } = pickCast(s.entries, { avatarId, enemyId: opts.enemyId, role: opts.role, key: opts.pointId });
   const lod = fightLod(DEVICE_CLASS, opts.lodOverride);
   const [heroPath, allyPath, enemyPath] = await within(Promise.all([fileOf(hero, lod), fileOf(ally, lod), fileOf(enemy, lod)]), wait, [null, null, null] as (string | null)[]);

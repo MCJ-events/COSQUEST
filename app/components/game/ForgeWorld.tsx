@@ -50,6 +50,10 @@ import { GF, GP } from "./theme";
 export const CLAIM_REACH_M = 40;
 
 const RARITY_COLOR = ["#9AA7B0", GP.skyDeep, GP.rare, GP.sun];
+/** The bag stage's bottom band for the name, under the model's feet. */
+const NAME_BAND = 40;
+/** A bag tile that is neither looked at nor worn. */
+const TILE_EDGE = "rgba(31,59,77,0.14)";
 export const rarityColor = (r: string | null | undefined) => RARITY_COLOR[Math.max(0, rarityRank(r))] ?? RARITY_COLOR[0];
 
 /** Whether the server has Forge in the world switched on for this player. */
@@ -146,6 +150,29 @@ export function PlayerAvatar({ fallback, size, stage }: { fallback: ReactNode; s
     <>{fallback}</>
   );
 }
+
+/**
+ * The profile's hero stage when you wear a Forge hero: that hero, idling (its
+ * thumbnail until the model is on the phone), where the house-colour
+ * placeholder figure would stand. Null when none is worn, so the caller keeps
+ * its own stage (cq 076: one identity on the HUD, the profile and the fight).
+ */
+export function ForgeHeroStage({ tint, height }: { tint: string; height: number }) {
+  const on = useForgeOn();
+  const { avatar } = useEquipped();
+  const entry = useForgeEntry(avatar);
+  if (!on || !entry) return null;
+  return (
+    <View style={{ height, alignItems: "center", justifyContent: "flex-end" }} accessible accessibilityLabel={`Your hero, ${entry.name}`}>
+      <View style={[hero.floor, { backgroundColor: tint }]} pointerEvents="none" />
+      <ForgeModel entry={entry} purpose="closeup" animation={entry.rigged ? "idle" : null} style={{ width: "100%", height: height * 0.94 }} size={height * 0.8} distance={2.5} />
+    </View>
+  );
+}
+
+const hero = StyleSheet.create({
+  floor: { position: "absolute", bottom: 8, width: 240, height: 46, borderRadius: 120, opacity: 0.28 },
+});
 
 /** On a reward: the avatar (if any) plays its celebrate clip once. */
 export function ForgeCelebrate({ size = 150 }: { size?: number }) {
@@ -308,10 +335,14 @@ function BagBody({ close, initial }: { close: () => void; initial: "items" | "av
   const [tab, setTab] = useState<"items" | "avatar">(initial);
   const inventory = useForgeWorld((s) => s.inventory);
   const entries = useForgeWorld((s) => s.entries);
-  const equipped = useEquipped();
+  const stored = useEquipped();
   const [pick, setPick] = useState<string | null>(null);
   const [clip, setClip] = useState<string>("idle");
   const [problem, setProblem] = useState<string | null>(null);
+  // Wear / Equip shows at once (the tick, the border, "Take off"), not when
+  // the server answers; a refusal puts it back (cq 076).
+  const [pending, setPending] = useState<{ slot: "weapon" | "avatar"; id: string | null } | null>(null);
+  const equipped = pending ? { ...stored, [pending.slot]: pending.id } : stored;
   useEffect(() => {
     void refreshInventory();
   }, []);
@@ -324,14 +355,18 @@ function BagBody({ close, initial }: { close: () => void; initial: "items" | "av
   const isOn = sel ? equipped[slot] === sel.id : false;
 
   const toggle = async () => {
-    if (!sel) return;
+    if (!sel || pending) return;
+    const next = isOn ? null : sel.id;
     setProblem(null);
+    setPending({ slot, id: next });
+    if (slot === "avatar" && next) setClip("celebrate");
     try {
-      await equip(slot, isOn ? null : sel.id);
+      await equip(slot, next);
       playSound("coin");
-      if (slot === "avatar" && !isOn) setClip("celebrate");
     } catch (e) {
       setProblem(refusalText(e));
+    } finally {
+      setPending(null);
     }
   };
 
@@ -349,19 +384,30 @@ function BagBody({ close, initial }: { close: () => void; initial: "items" | "av
       </View>
       {sel ? (
         <View style={styles.bagStage}>
+          {/* The model stands above the name band, so the name never covers its feet. */}
           <ForgeModel
             entry={sel}
             purpose="closeup"
             animation={sel.type === "character" ? clip : null}
             onAnimationEnd={() => setClip("idle")}
             spin={sel.type !== "character"}
-            style={StyleSheet.absoluteFill}
-            size={260}
+            style={styles.bagModel}
+            size={230}
             distance={sel.type === "character" ? 2.7 : 2.6}
           />
-          <Text style={styles.bagName} numberOfLines={1} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-            {sel.name}
-          </Text>
+          <View style={styles.bagNameBand}>
+            <Text style={styles.bagName} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+              {sel.name}
+            </Text>
+            {isOn ? (
+              <View style={styles.wornChip}>
+                <Ionicons name="checkmark-circle" size={14} color="#FFF" />
+                <Text style={styles.wornText} maxFontSizeMultiplier={1.2}>
+                  {slot === "avatar" ? "Worn" : "Equipped"}
+                </Text>
+              </View>
+            ) : null}
+          </View>
         </View>
       ) : (
         <View style={[styles.bagStage, styles.centre]}>
@@ -385,6 +431,9 @@ function BagBody({ close, initial }: { close: () => void; initial: "items" | "av
           if (!e) return null;
           const url = thumbUrl(e, 256);
           const on = equipped[slot] === id;
+          // One meaning per colour: navy is the one you are looking at, mint
+          // the one you wear; rarity is the small dot, not the border (cq 076).
+          const border = id === selected ? GP.navy : on ? GP.mint : TILE_EDGE;
           return (
             <Pressable
               key={id}
@@ -392,17 +441,24 @@ function BagBody({ close, initial }: { close: () => void; initial: "items" | "av
                 setPick(id);
                 setClip("idle");
               }}
-              style={[styles.tile, { borderColor: id === selected ? GP.navy : rarityColor(e.rarity) }]}
+              style={[styles.tile, { borderColor: border }]}
               accessibilityRole="button"
+              accessibilityState={{ selected: id === selected }}
               accessibilityLabel={`${e.name}${on ? ", equipped" : ""}`}>
               {url ? <Image source={{ uri: url }} style={styles.tileImg} contentFit="contain" /> : <Ionicons name="cube" size={34} color={GP.mist} />}
-              <Text style={styles.tileName} numberOfLines={1} maxFontSizeMultiplier={1.2}>
+              <Text style={styles.tileName} numberOfLines={2} maxFontSizeMultiplier={1.2}>
                 {e.name}
               </Text>
+              <View style={[styles.tileRarity, { backgroundColor: rarityColor(e.rarity) }]} />
               {on ? <Ionicons name="checkmark-circle" size={20} color={GP.mint} style={styles.tileBadge} /> : count && count > 1 ? <Text style={styles.tileCount}>×{count}</Text> : null}
             </Pressable>
           );
         })}
+        {list.length === 0 ? (
+          <Text style={styles.emptyHint} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+            {tab === "items" ? "Weapons you claim land here. Equip one to fight with it in duels." : "Heroes the Forge publishes show up here to wear."}
+          </Text>
+        ) : null}
       </ScrollView>
     </SheetFrame>
   );
@@ -431,36 +487,40 @@ export function ForgePointScene({ point, style, celebrate }: { point: unknown; s
   if (!station && !environment) return null;
   const backdrop = environment?.gameplay.placement === "backdrop";
   // Layers, each its own small 3D view with a transparent background: the
-  // environment behind (or beside, as a prop), the station in the middle,
-  // your avatar at its foot. One model per view is the pattern measured to
-  // hold up on the emulator (see ForgeStage).
+  // environment behind (or a prop at the back), the station forward and to
+  // the right, your avatar at the left. One model per view is the pattern
+  // measured to hold up on the emulator (see ForgeStage). The backdrop's
+  // camera stands far enough back that the whole of it fits its view (a
+  // closer one cut it off in a hard rectangle at the view's edges), and the
+  // three views do not cover each other's middles, so all three read (cq 076).
   return (
     <View style={[{ width: "100%", height: 300 }, style]} pointerEvents="none">
       {environment ? (
         <ForgeModel
           entry={environment}
           purpose="scene"
-          style={backdrop ? StyleSheet.absoluteFill : { position: "absolute", right: 0, bottom: 0, width: "45%", height: "55%" }}
+          style={backdrop ? SCENE.backdrop : SCENE.prop}
           size={300}
-          distance={backdrop ? 1.9 : 2.2}
+          distance={backdrop ? 3.1 : 2.6}
         />
       ) : null}
-      {station ? (
-        <ForgeModel entry={station} purpose="scene" style={{ position: "absolute", left: "20%", right: "20%", top: 0, bottom: 0 }} size={300} distance={1.9} />
-      ) : null}
-      {me ? (
-        <ForgeModel
-          entry={me}
-          purpose="scene"
-          animation={celebrate ? "celebrate" : "idle"}
-          style={{ position: "absolute", left: 0, bottom: 0, width: "34%", height: "62%" }}
-          size={150}
-          distance={2.4}
-        />
-      ) : null}
+      {station ? <ForgeModel entry={station} purpose="scene" style={SCENE.station} size={220} distance={2.1} /> : null}
+      {me ? <ForgeModel entry={me} purpose="scene" animation={celebrate ? "celebrate" : "idle"} style={SCENE.avatar} size={150} distance={2.4} /> : null}
     </View>
   );
 }
+
+/** Where each layer of a point's Forge scene stands, as parts of the scene's box. */
+const SCENE = StyleSheet.create({
+  // The whole box; its camera distance keeps the model inside it.
+  backdrop: { position: "absolute", left: 0, right: 0, top: 0, bottom: 0 },
+  // A prop environment at the back, between the avatar and the station.
+  prop: { position: "absolute", left: "30%", right: "30%", top: 0, height: "55%" },
+  // Forward (lower on screen, over the backdrop's floor) and to the right.
+  station: { position: "absolute", right: "3%", width: "42%", top: "16%", bottom: 0 },
+  // At the left, clear of the station.
+  avatar: { position: "absolute", left: "2%", bottom: 0, width: "34%", height: "64%" },
+});
 
 // ---------- duels ----------
 
@@ -527,14 +587,20 @@ const styles = StyleSheet.create({
   tabOn: { backgroundColor: GP.navy },
   tabText: { fontFamily: GF.body, fontSize: 14, color: GP.ink },
   bagStage: { height: 270, marginHorizontal: 18, marginTop: 10, borderRadius: 20, backgroundColor: GP.navy, overflow: "hidden" },
-  bagName: { position: "absolute", left: 14, bottom: 10, fontFamily: GF.display, fontSize: 20, color: "#FFF" },
+  bagModel: { position: "absolute", left: 0, right: 0, top: 0, bottom: NAME_BAND },
+  bagNameBand: { position: "absolute", left: 0, right: 0, bottom: 0, height: NAME_BAND, flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 14, backgroundColor: "rgba(0,0,0,0.22)" },
+  bagName: { flexShrink: 1, fontFamily: GF.display, fontSize: 20, color: "#FFF" },
+  wornChip: { flexDirection: "row", alignItems: "center", gap: 3, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, backgroundColor: GP.mint },
+  wornText: { fontFamily: GF.display, fontSize: 12, color: "#FFF" },
   bagActions: { flexDirection: "row", flexWrap: "wrap", gap: 8, paddingHorizontal: 18, paddingTop: 10, justifyContent: "center" },
   centre: { alignItems: "center", justifyContent: "center", padding: 20 },
   empty: { fontFamily: GF.body, fontSize: 15, color: "rgba(255,255,255,0.85)", textAlign: "center", paddingHorizontal: 18 },
   grid: { flexDirection: "row", flexWrap: "wrap", gap: 10, padding: 18 },
-  tile: { width: 100, height: 118, borderRadius: 16, borderWidth: 3, backgroundColor: "#FFF", alignItems: "center", justifyContent: "center", padding: 6 },
-  tileImg: { width: 76, height: 76 },
-  tileName: { fontFamily: GF.body, fontSize: 12, color: GP.ink },
+  emptyHint: { width: "100%", fontFamily: GF.body, fontSize: 14, color: GP.mist, textAlign: "center", paddingHorizontal: 12 },
+  tile: { width: 100, height: 132, borderRadius: 16, borderWidth: 3, backgroundColor: "#FFF", alignItems: "center", justifyContent: "center", padding: 6 },
+  tileImg: { width: 72, height: 72 },
+  tileName: { fontFamily: GF.body, fontSize: 12, lineHeight: 14, color: GP.ink, textAlign: "center" },
+  tileRarity: { position: "absolute", top: 7, left: 7, width: 10, height: 10, borderRadius: 5 },
   tileBadge: { position: "absolute", top: 4, right: 4 },
   tileCount: { position: "absolute", top: 4, right: 6, fontFamily: GF.display, fontSize: 13, color: GP.ink },
 });

@@ -38,7 +38,7 @@ import {
   pickGlb,
   wantedLod,
 } from "./forgeWorld.ts";
-import { gameStore, GAME_SERVER } from "./runtime.ts";
+import { gameStore, GAME_SERVER, useGame } from "./runtime.ts";
 
 /** The catalogue is cacheable for 60 s on the server; asking more often only costs 304s. */
 const CATALOGUE_EVERY_MS = 60_000;
@@ -194,7 +194,9 @@ export async function equip(slot: "weapon" | "avatar", elementId: string | null)
 /** The equipped ids: the bag when loaded, else /me's block. */
 export function useEquipped(): { weapon: string | null; avatar: string | null } {
   const inv = useForgeWorld((s) => s.inventory);
-  const me = forgeWorldOf(gameStore.get().me);
+  // Subscribed, so the HUD, the profile and the bag follow a fresh /me too
+  // (before the bag has loaded, /me is the only answer).
+  const me = forgeWorldOf(useGame((s) => s.me));
   return inv?.equipped ?? me.equipped;
 }
 

@@ -39,7 +39,7 @@ import { gameStore, useGame } from "@/features/game/runtime";
 import type { ProfileAvatar } from "@/features/game/wire";
 
 import AvatarView from "./AvatarView";
-import { PlayerAvatar } from "./ForgeWorld";
+import { ForgeHeroStage, PlayerAvatar, useHasForgeAvatar } from "./ForgeWorld";
 import { HeroStatBar, XPBar } from "./Bars";
 import HeroStage, { HeroSlot, SlotIcon } from "./HeroStage";
 import { WORLD_CLOCKS } from "@/features/game/mapStyle";
@@ -189,9 +189,11 @@ function HeroTab({ tint, handle, onEdit }: { tint: string; handle: string; onEdi
   const styles = useThemedStyles(STYLE_PAIR);
   const me = useGame((s) => s.me);
   const equipped = equippedOf(me);
+  // A worn Forge hero stands on the stage; else the house-colour figure.
+  const forgeHero = useHasForgeAvatar();
   return (
     <View>
-      <HeroStage tint={tint} height={330} />
+      {forgeHero ? <ForgeHeroStage tint={tint} height={330} /> : <HeroStage tint={tint} height={330} />}
       <View style={styles.heroCard}>
         <View style={styles.nameRow}>
           <Pressable onPress={onEdit} accessibilityRole="button" accessibilityLabel="Edit name and emblem" style={styles.nameButton}>

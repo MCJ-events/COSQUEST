@@ -11,7 +11,7 @@ import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { getPref, setPref } from "@/utils/prefsStorage";
-import { COACH_DONE_KEY, coachStepFor, type CoachStep, parseIdList, UNLOCKS_INTRODUCED_KEY, unlockOfStep } from "@/features/game/coach";
+import { COACH_DONE_KEY, coachStepFor, type CoachStep, parseIdList, starterKindOf, UNLOCKS_INTRODUCED_KEY, unlockOfStep } from "@/features/game/coach";
 import { bearingDeg, distanceM, distanceText } from "@/features/game/geo";
 import { hasTrials, type TrialRequest, trialPoint } from "@/features/game/duelFlow";
 import { relativeBearing, suggestedId } from "@/features/game/guide";
@@ -213,6 +213,7 @@ export default function GameRoot({ parked }: { parked: boolean }) {
           me,
           playerName: gameStore.playerName(),
           hasStarter: points.some((p) => p.source === "starter"),
+          starterKind: starterKindOf(points.find((p) => p.source === "starter"), me),
           hasSiege: points.some((p) => isSiege(p, me)),
           done: coachDone,
           introduced,
@@ -370,7 +371,9 @@ export default function GameRoot({ parked }: { parked: boolean }) {
 
   // A full-screen game screen (not the map): the Chats bubble tucks in so it
   // does not cover answers, titles or rewards (F-38, features/world/bubbleZone.ts).
-  const fullScreen = gameStore.needsOnboarding || onboarding || screen.kind !== "home" || runPoint !== null || runState.finished !== null;
+  // The 3D sheets count too: the Forge bag, the game profile and a claim.
+  const fullScreen = gameStore.needsOnboarding || onboarding || screen.kind !== "home" || runPoint !== null || runState.finished !== null
+    || sheet === "forge" || sheet === "profile" || forgeDrop !== null;
   useEffect(() => {
     world.setGameFocus(fullScreen);
   }, [fullScreen]);
