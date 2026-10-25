@@ -133,7 +133,7 @@ function RolePingCard({
       </View>
 
       <View style={styles.pending}>
-        <Text style={styles.pendingTitle}>Concept — requirements pending</Text>
+        <Text style={styles.pendingTitle}>Concept: requirements pending</Text>
         <Text style={styles.pendingText}>Earlier-message retrieval · Mark Jones to specify the requirements.</Text>
       </View>
     </View>

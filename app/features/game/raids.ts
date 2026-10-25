@@ -17,6 +17,7 @@
 // Pure: no React Native. The client, the clock and the timer are injected
 // (tested in features/game/__tests__/raids.test.ts).
 import { type GameClient, GameError } from "./client.ts";
+import { HELD_LINE } from "./duelFlow.ts";
 import type { DuelOutcome, DuelStart, QuestPoint, RoamExtra, RoamMe, RoamStanding } from "./wire.ts";
 import { parseServerDate } from "./wire.ts";
 
@@ -577,7 +578,7 @@ export function raidDuelReward(
   const defeated = raid?.defeated === true;
   const boss = point.name;
   let note: string;
-  if (held) note = o.message ?? "The server couldn't confirm this fight, so it paid nothing.";
+  if (held) note = HELD_LINE;  // our own words: the server's "being checked" read as an accusation
   else {
     const said = defeated
       ? `${boss} is down. Everyone who landed a hit is paid.`
@@ -589,7 +590,7 @@ export function raidDuelReward(
     pointName: boss,
     realm: point.realm,
     win: defeated || o.status === "won",
-    headline: held ? "Fight held" : defeated ? "Boss down!" : o.status === "won" ? "Knocked out!" : "The boss stands",
+    headline: held ? "Checking the score" : defeated ? "Boss down!" : o.status === "won" ? "Knocked out!" : "The boss stands",
     xp: pay?.xp ?? 0,
     // CosCoins are bought, not earned: like iOS and rewardFromDuel, never shown as pay.
     coins: 0,

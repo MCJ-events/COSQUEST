@@ -20,7 +20,7 @@ import { C } from "@/theme/tokens";
 type Fix = { time: string; lat: number; lng: number };
 
 export default function GpsDemo() {
-  const [status, setStatus] = useState("Idle — tap Start");
+  const [status, setStatus] = useState("Idle: tap Start");
   const [running, setRunning] = useState(false);
   const [count, setCount] = useState(0);
   const [log, setLog] = useState<Fix[]>([]);
@@ -45,7 +45,7 @@ export default function GpsDemo() {
       setStatus("Location permission denied");
       return;
     }
-    setStatus("Tracking — now lock your screen for ~30s, then unlock");
+    setStatus("Tracking: now lock your screen for ~30s, then unlock");
     setRunning(true);
     lastFixAt.current = Date.now();
 
@@ -100,7 +100,7 @@ export default function GpsDemo() {
         </View>
         <View style={styles.stat}>
           <Text style={[styles.statValue, stale && styles.statStale]}>
-            {running ? `${sinceSec}s` : "—"}
+            {running ? `${sinceSec}s` : "-"}
           </Text>
           <Text style={styles.statLabel}>since last fix</Text>
         </View>
@@ -108,7 +108,7 @@ export default function GpsDemo() {
 
       {stale ? (
         <Text style={styles.frozen}>
-          ⚠️ No location update for {sinceSec}s — tracking is frozen.
+          ⚠️ No location update for {sinceSec}s, tracking is frozen.
         </Text>
       ) : null}
 
@@ -128,7 +128,7 @@ export default function GpsDemo() {
         ) : (
           log.map((f, i) => (
             <Text key={i} style={styles.logLine}>
-              {f.time} — {f.lat.toFixed(5)}, {f.lng.toFixed(5)}
+              {f.time}: {f.lat.toFixed(5)}, {f.lng.toFixed(5)}
             </Text>
           ))
         )}

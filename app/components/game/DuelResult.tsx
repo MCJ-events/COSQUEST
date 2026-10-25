@@ -14,6 +14,10 @@ import {
   dropOf,
   extraLines,
   fightersOf,
+  fightTimeText,
+  HP_CARD_TITLE,
+  hpPercentText,
+  hpRowName,
   hpShare,
   payIsEmpty,
   payOf,
@@ -127,9 +131,15 @@ function HpCard({ r, p1, p2 }: { r: DuelResultData; p1: DuelFighterPeek; p2: Due
   const styles = useThemedStyles(STYLE_PAIR);
   return (
     <View style={styles.card}>
-      <HpRow name={p1.name} hp={r.p1_hp} max={p1.max_hp ?? Math.max(1, r.p1_hp)} faction={p1.faction} />
+      {/* Says what the bars measure: "ada 0%" alone read as a score. */}
+      <Text style={styles.cardTitle} accessibilityRole="header" maxFontSizeMultiplier={MAX_FONT_SCALE}>
+        {HP_CARD_TITLE.toUpperCase()}
+      </Text>
+      <HpRow name={hpRowName(p1.name, true)} hp={r.p1_hp} max={p1.max_hp ?? Math.max(1, r.p1_hp)} faction={p1.faction} />
       <HpRow name={p2.name} hp={r.p2_hp} max={p2.max_hp ?? Math.max(1, r.p2_hp)} faction={p2.faction} />
-      <Text style={styles.seconds} maxFontSizeMultiplier={MAX_FONT_SCALE}>{`${Math.floor(r.ticks / 60)} s`}</Text>
+      <Text style={styles.seconds} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+        {fightTimeText(r.ticks)}
+      </Text>
     </View>
   );
 }
@@ -143,7 +153,9 @@ function HpRow({ name, hp, max, faction }: { name: string; hp: number; max: numb
         <Text style={styles.hpName} numberOfLines={1} maxFontSizeMultiplier={MAX_FONT_SCALE}>
           {name}
         </Text>
-        <Text style={styles.hpPct} maxFontSizeMultiplier={MAX_FONT_SCALE}>{`${percent}%`}</Text>
+        <Text style={styles.hpPct} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+          {hpPercentText(percent)}
+        </Text>
       </View>
       <View style={styles.track}>
         <View style={{ width: `${Math.min(1, share) * 100}%`, height: 10, borderRadius: 5, backgroundColor: realmColor(faction) }} />
@@ -231,6 +243,7 @@ const STYLE_PAIR = themedStyles({
   title: { fontFamily: GF.display, fontSize: 56, textShadowColor: "rgba(0,0,0,0.3)", textShadowOffset: { width: 0, height: 4 }, textShadowRadius: 0.1 },
   subtitle: { fontFamily: GF.body, fontSize: 16, color: "rgba(255,255,255,0.8)", textAlign: "center" },
   card: { width: "100%", maxWidth: 460, gap: 10, padding: 14, borderRadius: 16, backgroundColor: GP.cream },
+  cardTitle: { fontFamily: GF.display, fontSize: 12, letterSpacing: 1.2, color: GP.mist },
   hpHead: { flexDirection: "row", justifyContent: "space-between", gap: 8 },
   hpName: { flex: 1, fontFamily: GF.display, fontSize: 15, color: GP.ink },
   hpPct: { fontFamily: GF.display, fontSize: 15, color: GP.ink },

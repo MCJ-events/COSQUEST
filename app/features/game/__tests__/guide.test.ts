@@ -3,7 +3,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { coachStepFor, parseIdList, unlockOfStep, unlockStep } from "../coach.ts";
+import { coachStepFor, firstShrineLine, parseIdList, starterKindOf, unlockOfStep, unlockStep } from "../coach.ts";
 import {
   bestNext,
   cardLabel,
@@ -173,6 +173,21 @@ describe("coach", () => {
     assert.match(coachStepFor({ ...base, me: m })?.line ?? "", /^Sam, your first Guardian/);
     assert.equal(coachStepFor({ ...base, me: m, hasStarter: false }), null);
     assert.equal(coachStepFor({ ...base, me: null }), null);
+  });
+
+  it("the first point's verb matches what its card does", () => {
+    const m = me(1, { tutorial_done: false });
+    assert.equal(coachStepFor({ ...base, me: m, starterKind: "duel" })?.line, "Sam, your first Guardian is right beside you. Tap its card to fight.");
+    assert.equal(coachStepFor({ ...base, me: m, starterKind: "trivia" })?.line, "Sam, your first Quest Point is right beside you. Tap its card to answer.");
+    assert.equal(firstShrineLine("Sam", "rebus"), "Sam, your first Quest Point is right beside you. Tap its card to answer.");
+    assert.equal(firstShrineLine("Sam", "blitz"), "Sam, your first Quest Point is right beside you. Tap its card to play.");
+    assert.equal(firstShrineLine("Sam", "sequence"), "Sam, your first Quest Point is right beside you. Tap its card to play.");
+    // The kind as a tap plays it: the server's point_mode can turn any point into a duel, or a duel into a quiz.
+    const starter = pt("s", { source: "starter", challenge: "trivia" });
+    assert.equal(starterKindOf(starter, m), "trivia");
+    assert.equal(starterKindOf(starter, me(1, { tutorial_done: false, features: { duel: { point_mode: "duel" } } } as Partial<RoamMe>)), "duel");
+    assert.equal(starterKindOf(pt("d", { source: "starter", challenge: "duel" }), me(1, { features: { duel: { point_mode: "quiz" } } } as Partial<RoamMe>)), "trivia");
+    assert.equal(starterKindOf(null, m), null);
   });
 
   it("then each unlock once, in order, then the siege", () => {

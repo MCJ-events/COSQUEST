@@ -740,8 +740,10 @@ struct RoamHomeView: View {
         guard selected == nil, encounter == nil, !onboarding, !run.live, store.centre != nil,
               let me = store.me else { return nil }
         if !me.tutorial_done, !CoachMemory.done("first-shrine") {
-            guard store.points.contains(where: { $0.source == "starter" }) else { return nil }
-            return .firstShrine(name: store.playerName)
+            guard let starter = store.points.first(where: { $0.source == "starter" }) else { return nil }
+            // The verb as a tap plays it: the server can turn points into duels.
+            let kind = DuelModes.point(starter, store) ? "duel" : (starter.challenge == "duel" ? "trivia" : starter.challenge)
+            return .firstShrine(name: store.playerName, kind: kind)
         }
         if let u = RoamUnlock.pending(at: store.level) { return .unlock(u) }
         if !CoachMemory.done(CoachStep.siege.id), store.unlocked(.war),

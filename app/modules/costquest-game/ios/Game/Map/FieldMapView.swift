@@ -388,7 +388,7 @@ private struct FieldStatusBar: View {
 
     private var stateLine: String {
         switch session.state {
-        case "downed": "Downed — respawn to rejoin"
+        case "downed": "Downed: respawn to rejoin"
         case "respawning": "Respawning"
         case "eliminated": "Eliminated"
         default: session.gameStatus == "finished" ? "Game over" : "In play"

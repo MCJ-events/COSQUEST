@@ -70,7 +70,7 @@ enum ForgeLook {
     }
 
     static func number(_ v: Double?) -> String {
-        guard let v else { return "—" }
+        guard let v else { return "-" }
         return v.rounded() == v ? String(Int(v)) : String(format: "%.1f", v)
     }
 

@@ -98,7 +98,7 @@ export default function Interests() {
         <Text style={styles.headline}>What Are You Into?</Text>
 
         <Text style={styles.sub}>
-          Pick a few — we&apos;ll surface the quests, posts, and people that
+          Pick a few and we&apos;ll surface the quests, posts, and people that
           match. You can change these anytime.
         </Text>
 

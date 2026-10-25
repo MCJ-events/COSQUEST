@@ -18,6 +18,7 @@ import {
   pickCast,
   pickOpponent,
   quitResult,
+  wornAvatarId,
   rewardFrom3D,
   runFromParams,
 } from "../fight3d.ts";
@@ -107,6 +108,19 @@ test("the ally is another hero, by name; the cast prefers the duel's own opponen
   assert.deepEqual([fresh.hero?.id, fresh.ally?.id], ["a-1", "b-2"]);
 });
 
+test("the fight casts the hero you wear, not the first one (cq 076)", () => {
+  const me = (avatar: string | null) => ({ equipped: { avatar } });
+  // Wearing the second hero by name: you are it, the first is your ally.
+  const worn = pickCast(entries, { avatarId: wornAvatarId({ equipped: { avatar: "b-2" } }, me(null)), role: "guardian", key: null });
+  assert.deepEqual([worn.hero?.id, worn.ally?.id], ["b-2", "a-1"]);
+  // The bag is the truth once loaded, even "none" after Take off (a stale /me does not win).
+  assert.equal(wornAvatarId({ equipped: { avatar: null } }, me("b-2")), null);
+  assert.equal(wornAvatarId({ equipped: { avatar: "a-1" } }, me("b-2")), "a-1");
+  // Before the bag loads, /me's block.
+  assert.equal(wornAvatarId(null, me("b-2")), "b-2");
+  assert.equal(wornAvatarId(undefined, me(null)), null);
+});
+
 test("file URIs become absolute paths; anything else is empty", () => {
   assert.equal(localPath("file:///data/user/0/com.x/cache/forge/a%20b/1/m.glb"), "/data/user/0/com.x/cache/forge/a b/1/m.glb");
   assert.equal(localPath("/abs/path.glb"), "/abs/path.glb");
@@ -181,6 +195,10 @@ test("the reward for a 3D fight: Godot's numbers, no pay, and it says so", () =>
   assert.equal(win.before, standing);
   assert.equal(win.after, standing);
   assert.equal(win.note, FIGHT3D_NOTE);
+  assert.equal(win.practice, true);
+  // e2e/godot/drive/g01-fight.sh looks for "practice fight" on the reward screen.
+  assert.match(FIGHT3D_NOTE, /practice fight/);
+  assert.match(FIGHT3D_NOTE, /XP comes from the regular Fight/);
   assert.deepEqual(
     win.stats?.map((s) => [s.id, s.value]),
     [

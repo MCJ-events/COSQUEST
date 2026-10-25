@@ -97,7 +97,7 @@ function ChatTabs() {
           },
         }}
         options={{
-          title: "Cosquest",
+          title: "CosQuest",
           tabBarIcon: ({ color, focused }) => (
             <TabIcon focused={focused}>
               <IconSymbol size={26} name="mappin.and.ellipse" color={color} />

@@ -1,6 +1,7 @@
 // Boss raids (features/game/raids.ts): the wire, the look, the routes and the
 // polling session, against a fake roam_raids server (no network). The live
 // staging check is raids.live.test.ts.
+import { HELD_LINE } from "../duelFlow.ts";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
@@ -464,7 +465,7 @@ describe("raids: a boss fought as a duel", () => {
     assert.deepEqual([down.headline, down.xp, down.coins, down.factionPoints], ["Boss down!", 350, 0, 50]);
     assert.match(down.note ?? "", /Ink Colossus is down/);
     const held = raidDuelReward({ ...outcome, status: "held", message: "This fight is being checked." } as DuelOutcome, point(), null, null);
-    assert.deepEqual([held.headline, held.win, held.note], ["Fight held", false, "This fight is being checked."]);
+    assert.deepEqual([held.headline, held.win, held.note], ["Checking the score", false, HELD_LINE]);
   });
 
   it("the briefing line counts the crew", () => {

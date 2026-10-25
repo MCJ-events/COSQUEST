@@ -17,11 +17,17 @@ import {
   extraLines,
   fightersOf,
   guardianName,
+  fightTimeText,
+  HELD_LINE,
+  HP_CARD_TITLE,
+  hpPercentText,
+  hpRowName,
   hpShare,
   parseCue,
   parseFinished,
   pausePlace,
   pauseTitle,
+  practiceNote,
   payIsEmpty,
   payOf,
   resultSubtitle,
@@ -177,8 +183,9 @@ describe("the result", () => {
     assert.equal(resultSubtitle(out({}), s, name), "Final Guard is beaten. Big Ben answers to your faction.");
     assert.equal(resultSubtitle(out({ status: "lost" }), s, name), "Final Guard holds Big Ben. It rests for 10 minutes, then you can go again.");
     assert.equal(resultSubtitle(out({ status: "lost" }), null, name), "Its Guardian holds this place. It rests for 10 minutes, then you can go again.");
-    assert.equal(resultSubtitle(out({ status: "held" }), s, name), "This fight is being checked. If it was fair, it will count.");
-    assert.equal(resultSubtitle(out({ status: "held", message: "Looks odd." }), s, name), "Looks odd.");
+    assert.equal(resultSubtitle(out({ status: "held" }), s, name), "Result on its way. We are confirming the score.");
+    // The server's held message reads as an accusation: the client's own words win.
+    assert.equal(resultSubtitle(out({ status: "held", message: "This fight is being checked. If it was fair, it will count." }), s, name), HELD_LINE);
     assert.equal(resultSubtitle(out({ mode: "run" }), s, name), "Point taken at full value.");
     assert.equal(resultSubtitle(out({ mode: "run", status: "lost" }), s, name), "The Guardian held, but every hit still scored.");
     assert.equal(resultSubtitle(out({ mode: "raid", raid: { defeated: true } }), s, name), "The boss is down. Everyone who landed a hit is paid.");
@@ -197,6 +204,22 @@ describe("the result", () => {
     assert.deepEqual(hpShare(-5, 100), { share: 0, percent: 0 });
     assert.deepEqual(hpShare(5, 0), { share: 5, percent: 500 });
     assert.equal(hpShare(1, 3).percent, 33);
+  });
+
+  it("says the 3D fight is practice and the main button counts", () => {
+    assert.equal(practiceNote("Fight"), 'A practice round, just for fun. "Fight" is the one that counts.');
+    assert.match(practiceNote("Fight the boss"), /"Fight the boss" is the one that counts/);
+    // e2e/forge/drive/f03-duel.sh taps "Fight" by its exact label: the note must not be that.
+    assert.notEqual(practiceNote("Fight"), "Fight");
+  });
+
+  it("labels the HP card: what the bars are, whose row is yours, how long it took", () => {
+    assert.equal(HP_CARD_TITLE, "Health left");
+    assert.equal(hpRowName("ada", true), "ada (you)");
+    assert.equal(hpRowName("Keeper", false), "Keeper");
+    assert.equal(hpPercentText(0), "0% health");
+    assert.equal(fightTimeText(2700), "Fight time 45 s");
+    assert.equal(fightTimeText(-3), "Fight time 0 s");
   });
 
   it("finds the pay, wherever the verdict puts it", () => {

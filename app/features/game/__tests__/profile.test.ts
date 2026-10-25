@@ -61,8 +61,8 @@ describe("profile: hero", () => {
     assert.equal(bars[2].value, "75%");
     assert.equal(bars[3].extra, "days");
     const bare = statBars(me({ features: null, today: null }));
-    assert.equal(bare[1].value, "—");
-    assert.equal(bare[2].value, "—");
+    assert.equal(bare[1].value, "-");
+    assert.equal(bare[2].value, "-");
     assert.equal(bare[2].progress, 0);
     const max = statBars(me({ standing: { ...me().standing, max_level: true } }));
     assert.equal(max[0].value, "MAX");

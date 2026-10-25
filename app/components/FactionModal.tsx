@@ -413,7 +413,7 @@ export function FactionModal({
 
                   <View style={styles.agreeContent}>
                     <Text style={styles.agreeText}>
-                      Got it — I understand my faction shapes my rank, and
+                      Got it, I understand my faction shapes my rank, and
                       switching later has a cost.
                     </Text>
 

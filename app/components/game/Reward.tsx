@@ -11,6 +11,7 @@ import { ScrollView, StyleSheet, Text, View } from "react-native";
 import Animated, { Easing, FadeIn, FadeOut, useAnimatedStyle, useSharedValue, withSpring, withTiming } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { HELD_LINE } from "@/features/game/duelFlow";
 import { gameStore } from "@/features/game/runtime";
 import {
   ceremonyTimeline,
@@ -59,6 +60,8 @@ export type RewardSummary = {
   speakLevel?: () => void;
   /** A fight's own numbers (the 3D fight, cq 061): shown as rows, each with testID `reward-<id>`. */
   stats?: { id: string; label: string; value: string }[];
+  /** A practice round (the 3D fight): no XP line, "Practice" instead of "+0 XP". */
+  practice?: boolean;
 };
 
 export function rewardFromVerdict(v: RoamVerdict, point: QuestPoint, me?: RoamMe | null): RewardSummary {
@@ -89,7 +92,7 @@ export function rewardFromDuel(o: DuelOutcome, point: QuestPoint, before: RoamSt
     pointName: point.name,
     realm: point.realm,
     win: won,
-    headline: o.status === "held" ? "Fight held" : won ? "Guardian down!" : "The Guardian held",
+    headline: o.status === "held" ? "Checking the score" : won ? "Guardian down!" : "The Guardian held",
     xp: pay?.xp ?? o.reward?.xp ?? 0,
     coins: 0,
     factionPoints: pay?.faction_points ?? o.reward?.faction_points ?? 0,
@@ -100,7 +103,7 @@ export function rewardFromDuel(o: DuelOutcome, point: QuestPoint, before: RoamSt
     rankUp: !!before && !!after && after.rank !== before.rank,
     dailiesCompleted: [],
     extras: o.point?.extras ?? [],
-    note: o.status === "held" ? o.message ?? "The server couldn't confirm this fight, so it paid nothing." : null,
+    note: o.status === "held" ? HELD_LINE : null,
   };
 }
 
@@ -226,14 +229,14 @@ export default function Reward({ reward, onDone, onShare }: { reward: RewardSumm
                   <RewardLine key={`${l.label}-${i}`} label={l.label} amount={lineAmount(l)} shown={i < shownLines} />
                 ))}
                 <View style={styles.divider} />
-                <View style={styles.levelRow} accessible accessibilityLabel={`Level ${barLevel}${after ? `, ${after.rank}` : ""}, plus ${reward.xp} XP`}>
+                <View style={styles.levelRow} accessible accessibilityLabel={`Level ${barLevel}${after ? `, ${after.rank}` : ""}, ${reward.practice ? "practice round" : `plus ${reward.xp} XP`}`}>
                   <Text style={styles.level} maxFontSizeMultiplier={MAX_FONT_SCALE}>
                     Level {barLevel}
                   </Text>
                   {after ? <Text style={styles.rank}>{after.rank}</Text> : null}
                   <View style={{ flex: 1 }} />
                   <Text style={styles.xpCount} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-                    +{xpCounted} XP
+                    {reward.practice ? "Practice" : `+${xpCounted} XP`}
                   </Text>
                 </View>
                 <View style={styles.track} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>

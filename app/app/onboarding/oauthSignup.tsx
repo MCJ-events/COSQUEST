@@ -31,7 +31,7 @@ export default function AuthSignup() {
           </Text>
 
           <Text style={styles.sub}>
-            CosQuest turns your city into a fandom playground — real-world
+            CosQuest turns your city into a fandom playground: real-world
             quests, your people, one leaderboard. Let&apos;s get you set up.
           </Text>
 

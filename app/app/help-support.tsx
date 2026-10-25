@@ -152,7 +152,7 @@ export default function HelpSupport() {
 
         {/* APP VERSION */}
         <View style={styles.versionContainer}>
-          <Text style={styles.appName}>Cosquest App</Text>
+          <Text style={styles.appName}>CosQuest</Text>
 
           <Text style={styles.versionText}>
             v{appConfig.appVersion}

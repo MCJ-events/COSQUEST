@@ -4,7 +4,7 @@
 // (cq.coach.done, cq.unlocks.introduced) is kept by the component, and the
 // order is tested in features/game/__tests__/guide.test.ts.
 import { pendingUnlock, type Unlock, unlocked } from "./unlocks.ts";
-import type { RoamMe } from "./wire.ts";
+import { pointPlaysAsDuel, type QuestPoint, type RoamMe } from "./wire.ts";
 
 export type CoachStep = {
   id: string;
@@ -18,10 +18,36 @@ export type CoachStep = {
 export const COACH_DONE_KEY = "cq.coach.done";
 export const UNLOCKS_INTRODUCED_KEY = "cq.unlocks.introduced";
 
-export function firstShrineStep(name: string): CoachStep {
+/**
+ * The first point's line, in the words of what its card does when tapped: a
+ * duel is a Guardian to fight, a blitz or a sequence is played, anything else
+ * (trivia, rebus) is answered. `kind` is the starter's challenge as it will
+ * play (see pointPlaysAsDuel); without one, the Guardian line as before.
+ */
+export function firstShrineLine(name: string, kind?: string | null): string {
+  switch (kind ?? "duel") {
+    case "duel":
+      return `${name}, your first Guardian is right beside you. Tap its card to fight.`;
+    case "blitz":
+    case "sequence":
+      return `${name}, your first Quest Point is right beside you. Tap its card to play.`;
+    default:
+      return `${name}, your first Quest Point is right beside you. Tap its card to answer.`;
+  }
+}
+
+/** The starter's challenge as a tap will play it: a duel when the server fights points, else its own kind. */
+export function starterKindOf(p: QuestPoint | null | undefined, me: RoamMe | null | undefined): string | null {
+  if (!p) return null;
+  if (pointPlaysAsDuel(p, me)) return "duel";
+  // A duel point the server plays as a quiz (point_mode "quiz") is answered.
+  return p.challenge === "duel" ? "trivia" : p.challenge;
+}
+
+export function firstShrineStep(name: string, kind?: string | null): CoachStep {
   return {
     id: "first-shrine",
-    line: `${name}, your first Guardian is right beside you. Tap its card to fight.`,
+    line: firstShrineLine(name, kind),
     target: "starter",
     action: "Show me",
     later: "",
@@ -97,6 +123,8 @@ export function coachStepFor(input: {
   me: RoamMe | null | undefined;
   playerName: string;
   hasStarter: boolean;
+  /** The starter's challenge as it will play ("duel", "trivia", "blitz", ...), for the Warden's verb. */
+  starterKind?: string | null;
   hasSiege: boolean;
   done: ReadonlySet<string>;
   introduced: ReadonlySet<string>;
@@ -104,7 +132,7 @@ export function coachStepFor(input: {
   const { me } = input;
   if (!me) return null;
   if (!me.tutorial_done && !input.done.has("first-shrine")) {
-    return input.hasStarter ? firstShrineStep(input.playerName) : null;
+    return input.hasStarter ? firstShrineStep(input.playerName, input.starterKind) : null;
   }
   const u = pendingUnlock(me, input.introduced);
   if (u) return unlockStep(u);

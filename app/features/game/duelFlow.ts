@@ -36,6 +36,15 @@ export async function siegeDuelStart(
   return client.duelStart({ mode: "siege", target: point.id, lat: fix.lat, lng: fix.lng, accuracy_m: fix.accuracy });
 }
 
+/**
+ * The line under the briefing's "Fight (3D)" button: the 3D fight is a
+ * practice round (the server does not judge it), and the main button is the
+ * one that counts. `main` is that button's label ("Fight", "Fight the boss").
+ */
+export function practiceNote(main: string): string {
+  return `A practice round, just for fun. "${main}" is the one that counts.`;
+}
+
 /** DuelModes.difficulty: the Guardian is below, level with or above you. */
 export function duelDifficulty(tier: string): string {
   return tier === "epic" ? "Hard" : tier === "rare" ? "Even" : "Easy";
@@ -236,10 +245,17 @@ export function resultTitle(status: string): string {
   return status === "won" ? "VICTORY" : status === "held" ? "CHECKING" : "DEFEAT";
 }
 
+/**
+ * The line under a held fight. The server's own message for it ("This fight
+ * is being checked. If it was fair, it will count.") read as an accusation,
+ * so the client says it in its own, warmer words.
+ */
+export const HELD_LINE = "Result on its way. We are confirming the score.";
+
 /** DuelResultView.subtitle: the line under the title, by mode. */
 export function resultSubtitle(o: DuelOutcomeFull, start: DuelStart | null | undefined, factionName: (id: string) => string): string | null {
   const won = o.status === "won";
-  if (o.status === "held") return o.message ?? "This fight is being checked. If it was fair, it will count.";
+  if (o.status === "held") return HELD_LINE;
   if (o.mode === "point") {
     const place = start?.point?.point_name ?? "this place";
     const guardian = start?.point?.guardian ?? "Its Guardian";
@@ -270,6 +286,21 @@ export function resultSubtitle(o: DuelOutcomeFull, start: DuelStart | null | und
 export function hpShare(hp: number, max: number): { share: number; percent: number } {
   const share = Math.max(0, hp) / Math.max(1, max);
   return { share, percent: Math.round(share * 100) };
+}
+
+/** The result's health card: what its bars measure, each fighter's row, and how long it took. */
+export const HP_CARD_TITLE = "Health left";
+
+export function hpRowName(name: string, you: boolean): string {
+  return you ? `${name} (you)` : name;
+}
+
+export function hpPercentText(percent: number): string {
+  return `${percent}% health`;
+}
+
+export function fightTimeText(ticks: number): string {
+  return `Fight time ${Math.floor(Math.max(0, ticks) / 60)} s`;
 }
 
 /** DuelOutcome.pay: whatever this fight paid, from whichever part of the verdict carries it. */

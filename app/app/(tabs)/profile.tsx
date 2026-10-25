@@ -118,6 +118,11 @@ function Stat({
   return <View style={[styles.stat, { alignItems: align }]}>{content}</View>;
 }
 
+/** "1 Quest", "0 Quests": the stat pill's word follows its number. */
+function plural(n: number, one: string, many: string): string {
+  return n === 1 ? one : many;
+}
+
 function GameStat({ value, label }: { value: number; label: string }) {
   return (
     <View style={styles.gameStat}>
@@ -714,9 +719,9 @@ export default function Profile() {
 
         {/* Slim pink pills */}
         <View style={styles.gameStatsRow}>
-          <GameStat value={quests} label="Quest" />
-          <GameStat value={wins} label="Wins" />
-          <GameStat value={points} label="Points" />
+          <GameStat value={quests} label={plural(quests, "Quest", "Quests")} />
+          <GameStat value={wins} label={plural(wins, "Win", "Wins")} />
+          <GameStat value={points} label={plural(points, "Point", "Points")} />
         </View>
 
         {/* ABOUT */}

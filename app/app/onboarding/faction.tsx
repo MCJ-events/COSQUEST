@@ -271,7 +271,7 @@ export default function Faction() {
         <Text style={styles.headline}>Start or Join Faction</Text>
 
         <Text style={styles.sub}>
-          Your faction is your people — a badge you carry into every CosQuest.
+          Your faction is your people: a badge you carry into every CosQuest.
         </Text>
 
         <View style={styles.list}>

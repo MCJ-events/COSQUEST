@@ -90,7 +90,7 @@ export function holdLine(
     return {
       kind: "held",
       faction: hold.holderFaction,
-      text: ours ? "Held by your faction — defend it" : `Held by ${name}`,
+      text: ours ? "Held by your faction: defend it" : `Held by ${name}`,
       accessibilityLabel: ours
         ? `Held by your faction, strength ${hold.strength} of 100. Play it to defend it.`
         : `Held by ${name}, strength ${hold.strength} of 100.`,
@@ -98,7 +98,7 @@ export function holdLine(
     };
   }
   if (p.source === "starter" || !mine) return null;
-  const text = `Unclaimed — take it for ${factionName(mine)}`;
+  const text = `Unclaimed: take it for ${factionName(mine)}`;
   return { kind: "unclaimed", faction: mine, text, accessibilityLabel: text, strength: null };
 }
 

@@ -46,7 +46,7 @@ const FACTION_DETAILS: Record<string, FactionDetails> = {
     members: "3.2K",
     activeQuests: "18",
     about:
-      "The Ascendants celebrate anime culture — from shonen legends to slice-of-life gems. Cosplay your favorite characters, compete in anime trivia quests, and connect with otaku worldwide.",
+      "The Ascendants celebrate anime culture, from shonen legends to slice-of-life gems. Cosplay your favorite characters, compete in anime trivia quests, and connect with otaku worldwide.",
     perks: [
       "Early access to anime convention meetups",
       "Exclusive anime-themed rank badges",
@@ -61,7 +61,7 @@ const FACTION_DETAILS: Record<string, FactionDetails> = {
     members: "2.8K",
     activeQuests: "15",
     about:
-      "Icons live and breathe comics — Marvel, DC, indie, manga crossovers, you name it. Build your hero identity, join comic-con quests, and rise through the ranks with every quest.",
+      "Icons live and breathe comics: Marvel, DC, indie, manga crossovers, you name it. Build your hero identity, join comic-con quests, and rise through the ranks with every quest.",
     perks: [
       "Comic-con squad matching program",
       "Exclusive superhero rank badges",
@@ -91,7 +91,7 @@ const FACTION_DETAILS: Record<string, FactionDetails> = {
     members: "2.5K",
     activeQuests: "14",
     about:
-      "Blockbusters live for the big screen — from superhero epics to indie darlings. Cosplay iconic movie characters, join film-themed quests, and debate the greatest performances of all time.",
+      "Blockbusters live for the big screen, from superhero epics to indie darlings. Cosplay iconic movie characters, join film-themed quests, and debate the greatest performances of all time.",
     perks: [
       "Movie premiere watch parties",
       "Exclusive cinema-themed rank badges",
@@ -121,7 +121,7 @@ const FACTION_DETAILS: Record<string, FactionDetails> = {
     members: "2.1K",
     activeQuests: "13",
     about:
-      "Celestials explore the cosmos of imagination — Star Wars, Star Trek, cyberpunk, and beyond. Build futuristic cosplays, solve sci-fi mystery quests, and connect with visionaries across the galaxy.",
+      "Celestials explore the cosmos of imagination: Star Wars, Star Trek, cyberpunk, and beyond. Build futuristic cosplays, solve sci-fi mystery quests, and connect with visionaries across the galaxy.",
     perks: [
       "Sci-fi convention squad matching",
       "Exclusive galactic rank badges",

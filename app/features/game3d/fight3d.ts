@@ -141,6 +141,19 @@ export function pickAlly<T extends CharacterPick>(entries: readonly T[], heroId:
 }
 
 /**
+ * The hero the player wears, for the fight: the bag's answer once it has
+ * loaded (even "none", after Take off), else /me's block. The same rule as
+ * the HUD chip and the profile (forgeWorldDevice useEquipped), so the fight
+ * casts the face the map shows (cq 076).
+ */
+export function wornAvatarId(
+  inventory: { equipped: { avatar: string | null } } | null | undefined,
+  me: { equipped: { avatar: string | null } },
+): string | null {
+  return inventory ? inventory.equipped.avatar : me.equipped.avatar;
+}
+
+/**
  * The three characters of a fight: your worn avatar, an ally hero, and the
  * opponent (the server's own pick when a duel start named one, else the same
  * pick the server would make for this point). With no avatar worn (a new
@@ -350,7 +363,7 @@ const HEADLINES: Record<Fight3DOutcome, string> = {
   quit: "You left the fight",
 };
 
-export const FIGHT3D_NOTE = "A 3D practice fight: the server did not judge it, so it paid no XP.";
+export const FIGHT3D_NOTE = "That was a 3D practice fight, just for fun. Your XP comes from the regular Fight.";
 
 /**
  * The reward screen for a 3D fight. The game server judges a duel by
@@ -376,6 +389,7 @@ export function rewardFrom3D(r: Fight3DResult, point: { name: string; realm: str
     dailiesCompleted: [],
     extras: [],
     note: FIGHT3D_NOTE,
+    practice: true,
     stats: [
       { id: "outcome", label: "Result", value: HEADLINES[r.outcome] },
       { id: "damage-dealt", label: "Damage dealt", value: String(r.damage_dealt) },

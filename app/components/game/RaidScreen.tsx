@@ -208,7 +208,7 @@ function Lobby({ s, busy, paused, onStart }: { s: RaidState; busy: boolean; paus
             <Text style={[styles.player, p.you && styles.you]}>{p.you ? `${p.handle} (you)` : p.handle}</Text>
           </View>
         ))}
-        <Text style={styles.small}>Bosses need a crew — or try it solo. Everyone standing here can join before you start.</Text>
+        <Text style={styles.small}>Bosses need a crew, or try it solo. Everyone standing here can join before you start.</Text>
       </View>
       <Text style={[styles.white, { textAlign: "center" }]}>{rulesText(s)}</Text>
       <GameButton

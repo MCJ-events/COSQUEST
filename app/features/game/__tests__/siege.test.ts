@@ -99,7 +99,7 @@ describe("holds", () => {
   });
   it("words the line as HoldLine does", () => {
     const ours = holdLine(point(), { faction: "anime" }, factionName);
-    assert.equal(ours?.text, "Held by your faction — defend it");
+    assert.equal(ours?.text, "Held by your faction: defend it");
     assert.equal(ours?.accessibilityLabel, "Held by your faction, strength 72 of 100. Play it to defend it.");
     assert.equal(ours?.strength, 72);
     const theirs = holdLine(point(), { faction: "dc" }, factionName);
@@ -107,7 +107,7 @@ describe("holds", () => {
     assert.equal(theirs?.accessibilityLabel, "Held by Anime, strength 72 of 100.");
     assert.equal(theirs?.faction, "anime");
     const open = holdLine(point({ extra: {} }), { faction: "dc" }, factionName);
-    assert.deepEqual([open?.kind, open?.text, open?.faction, open?.strength], ["unclaimed", "Unclaimed — take it for DC", "dc", null]);
+    assert.deepEqual([open?.kind, open?.text, open?.faction, open?.strength], ["unclaimed", "Unclaimed: take it for DC", "dc", null]);
     assert.equal(holdLine(point({ extra: {}, source: "starter" }), { faction: "dc" }, factionName), null, "a starter is never held");
     assert.equal(holdLine(point({ extra: {} }), { faction: null }, factionName), null, "no faction, nothing to take it for");
   });

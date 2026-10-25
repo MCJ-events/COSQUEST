@@ -57,7 +57,7 @@ struct HoldLine: View {
         return VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
                 flag(color)
-                Text(ours ? "Held by your faction — defend it" : "Held by \(name)")
+                Text(ours ? "Held by your faction: defend it" : "Held by \(name)")
                     .font(GameFont.body(15, weight: .bold))
                     .foregroundStyle(GamePalette.ink)
                     .lineLimit(2)
@@ -79,7 +79,7 @@ struct HoldLine: View {
         let color = RoamStyle.realmColor(mine)
         return HStack(spacing: 8) {
             flag(GamePalette.ink.opacity(0.35))
-            Text("Unclaimed — take it for \(store.factionName(mine))")
+            Text("Unclaimed: take it for \(store.factionName(mine))")
                 .font(GameFont.body(15, weight: .semibold))
                 .foregroundStyle(color)
                 .lineLimit(2)

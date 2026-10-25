@@ -859,34 +859,75 @@ private struct VersusCard: View {
         return "Duel"
     }
 
+    /// One fighter, face to face with the other: a big portrait in a frame of
+    /// the house colour (your avatar; the Guardian's weapon), a weapon badge on
+    /// it, the name and the subline. The Guardian's card is mirrored.
     private func side(_ f: DuelFighter, you: Bool) -> some View {
         let tint = RoamStyle.realmColor(f.faction)
-        return HStack(spacing: 14) {
-            Image(systemName: DuelLook.weaponSymbol(f.weapon_class))
-                .font(.system(size: 22, weight: .heavy))
-                .foregroundStyle(.white)
-                .frame(width: 52, height: 52)
-                .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(tint))
-            VStack(alignment: .leading, spacing: 3) {
-                Text(you ? "\(f.name) (you)" : f.name)
-                    .font(GameFont.display(22))
-                    .foregroundStyle(GamePalette.ink)
-                    .lineLimit(1).minimumScaleFactor(0.7)
-                Text(subline(f).uppercased())
-                    .font(GameFont.body(11, weight: .heavy)).tracking(0.4)
-                    .foregroundStyle(GamePalette.ink.opacity(0.55))
-                    .lineLimit(1).minimumScaleFactor(0.7)
+        return HStack(spacing: 16) {
+            if you {
+                portrait(f, you: true, tint: tint)
+                words(f, you: true, tint: tint)
+            } else {
+                words(f, you: false, tint: tint)
+                portrait(f, you: false, tint: tint)
             }
-            Spacer(minLength: 0)
         }
         .padding(14)
-        .frame(maxWidth: 360)
+        .frame(maxWidth: 380)
         .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .fill(GamePalette.cream)
-                .background(RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .background(RoundedRectangle(cornerRadius: 18, style: .continuous)
                     .fill(tint).offset(y: 4))
         )
+    }
+
+    private func portrait(_ f: DuelFighter, you: Bool, tint: Color) -> some View {
+        let size: CGFloat = 104
+        return ZStack(alignment: you ? .bottomTrailing : .bottomLeading) {
+            Group {
+                if you {
+                    AvatarView(avatar: store.profile?.avatar ?? .init(), size: size * 0.7)
+                } else {
+                    Image(systemName: DuelLook.weaponSymbol(f.weapon_class))
+                        .font(.system(size: size * 0.4, weight: .heavy))
+                        .foregroundStyle(.white.opacity(0.9))
+                }
+            }
+            .frame(width: size - 6, height: size - 6)
+            .background(RoundedRectangle(cornerRadius: 15, style: .continuous).fill(tint))
+            .padding(3)
+            .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(tint, lineWidth: 3))
+            Image(systemName: DuelLook.weaponSymbol(f.weapon_class))
+                .font(.system(size: 17, weight: .heavy))
+                .foregroundStyle(.white)
+                .frame(width: 38, height: 38)
+                .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(tint))
+                .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .strokeBorder(GamePalette.cream, lineWidth: 2))
+                .offset(x: you ? 10 : -10, y: 8)
+        }
+        .frame(width: size, height: size)
+    }
+
+    private func words(_ f: DuelFighter, you: Bool, tint: Color) -> some View {
+        VStack(alignment: you ? .leading : .trailing, spacing: 3) {
+            Text(you ? "YOU" : "OPPONENT")
+                .font(GameFont.display(12)).tracking(1.4)
+                .foregroundStyle(tint)
+            Text(f.name)
+                .font(GameFont.display(22))
+                .foregroundStyle(GamePalette.ink)
+                .multilineTextAlignment(you ? .leading : .trailing)
+                .lineLimit(2).minimumScaleFactor(0.7)
+            Text(subline(f).uppercased())
+                .font(GameFont.body(11, weight: .heavy)).tracking(0.4)
+                .foregroundStyle(GamePalette.ink.opacity(0.55))
+                .multilineTextAlignment(you ? .leading : .trailing)
+                .lineLimit(2).minimumScaleFactor(0.7)
+        }
+        .frame(maxWidth: .infinity, alignment: you ? .leading : .trailing)
     }
 
     private func subline(_ f: DuelFighter) -> String {
@@ -971,7 +1012,8 @@ struct DuelResultView: View {
     }
 
     private var subtitle: String? {
-        if held { return outcome.message ?? "This fight is being checked. If it was fair, it will count." }
+        // The server's held message reads as an accusation: the client's own words.
+        if held { return "Result on its way. We are confirming the score." }
         if outcome.mode == "point" {
             let place = start?.point?.point_name ?? "this place"
             let guardian = start?.point?.guardian ?? "Its Guardian"
@@ -1005,9 +1047,15 @@ struct DuelResultView: View {
 
     private func hpCard(_ r: DuelResult, _ f: DuelStart.Peek) -> some View {
         VStack(spacing: 10) {
-            hpRow(f.p1.name, hp: r.p1_hp, max: f.p1.max_hp ?? max(1, r.p1_hp), faction: f.p1.faction)
+            // Says what the bars measure: "ada 0%" alone read as a score.
+            Text("HEALTH LEFT")
+                .font(GameFont.display(12)).tracking(1.2)
+                .foregroundStyle(GamePalette.mist)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityAddTraits(.isHeader)
+            hpRow("\(f.p1.name) (you)", hp: r.p1_hp, max: f.p1.max_hp ?? max(1, r.p1_hp), faction: f.p1.faction)
             hpRow(f.p2.name, hp: r.p2_hp, max: f.p2.max_hp ?? max(1, r.p2_hp), faction: f.p2.faction)
-            Text("\(r.ticks / 60) s")
+            Text("Fight time \(max(0, r.ticks) / 60) s")
                 .font(GameFont.body(12, weight: .heavy))
                 .foregroundStyle(GamePalette.mist)
                 .frame(maxWidth: .infinity, alignment: .trailing)
@@ -1022,7 +1070,7 @@ struct DuelResultView: View {
             HStack {
                 Text(name).font(GameFont.display(15)).foregroundStyle(GamePalette.ink).lineLimit(1)
                 Spacer()
-                Text("\(Int((share * 100).rounded()))%")
+                Text("\(Int((share * 100).rounded()))% health")
                     .font(GameFont.display(15).monospacedDigit())
                     .foregroundStyle(GamePalette.ink)
             }

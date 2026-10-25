@@ -204,13 +204,13 @@ struct ProfileView: View {
                     progress: s.max_level ? 1 : s.progress)
         let p = equipped?.power_now ?? equipped?.power ?? 0
         HeroStatBar(symbol: "burst", name: "Relic power",
-                    value: equipped == nil ? "—" : "\(Int(p.rounded()))",
+                    value: equipped == nil ? "-" : "\(Int(p.rounded()))",
                     extra: equipped.map { "Lv \($0.level ?? 1)" },
                     progress: p / 42)
         let played = r.today?.points_played ?? 0
         let right = r.today?.correct ?? 0
         HeroStatBar(symbol: "scope", name: "Accuracy today",
-                    value: played == 0 ? "—" : "\(Int((Double(right) / Double(played) * 100).rounded()))%",
+                    value: played == 0 ? "-" : "\(Int((Double(right) / Double(played) * 100).rounded()))%",
                     progress: played == 0 ? 0 : Double(right) / Double(played))
         HeroStatBar(symbol: "flame", name: "Best streak",
                     value: "\(r.streak.best)", extra: r.streak.best == 1 ? "day" : "days",

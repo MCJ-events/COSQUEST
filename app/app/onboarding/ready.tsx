@@ -173,7 +173,7 @@ export default function Ready() {
     // logged-in flows use it.
     if (!token) {
       console.log(
-        "No auth token yet — continuing with email-based identification, same as every prior onboarding step.",
+        "No auth token yet; continuing with email-based identification, same as every prior onboarding step.",
       );
     }
 

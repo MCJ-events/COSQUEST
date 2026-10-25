@@ -121,7 +121,7 @@ describe("forge: look", () => {
   it("prints stats as iOS does", () => {
     assert.equal(forgeNumber(15), "15");
     assert.equal(forgeNumber(2.5), "2.5");
-    assert.equal(forgeNumber(null), "—");
+    assert.equal(forgeNumber(null), "-");
   });
   it("builds the thumbnail URL against the server, with a width", () => {
     const w = parseForgeElement({ ...EMBER, thumbnail: { file: "t.png", url: "/v1/catalogue/files/x/1/t.png" } })!;

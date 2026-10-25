@@ -155,11 +155,11 @@ export function statBars(me: RoamMe): StatBar[] {
       extra: s.max_level ? undefined : `/${s.level_span} XP`,
       progress: s.max_level ? 1 : clamp01(progress),
     },
-    { icon: "flash", name: "Relic power", value: e ? String(Math.round(p)) : "—", extra: e ? `Lv ${e.level ?? 1}` : undefined, progress: clamp01(p / 42) },
+    { icon: "flash", name: "Relic power", value: e ? String(Math.round(p)) : "-", extra: e ? `Lv ${e.level ?? 1}` : undefined, progress: clamp01(p / 42) },
     {
       icon: "locate",
       name: "Accuracy today",
-      value: played === 0 ? "—" : `${Math.round((right / played) * 100)}%`,
+      value: played === 0 ? "-" : `${Math.round((right / played) * 100)}%`,
       progress: played === 0 ? 0 : clamp01(right / played),
     },
     { icon: "flame", name: "Best streak", value: String(me.streak.best), extra: me.streak.best === 1 ? "day" : "days", progress: clamp01(me.streak.best / 30) },

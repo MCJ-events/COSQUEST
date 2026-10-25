@@ -76,6 +76,7 @@ import {
   guardianName,
   pausePlace,
   pauseTitle,
+  practiceNote,
   SCENE_WAIT_MS,
   siegeDuelStart,
   trialAgainLabel,
@@ -715,9 +716,25 @@ function Briefing({
         ) : (
           <>
             <GameButton title="Fight" color={GP.sun} onPress={onFight} icon={<Ionicons name="flash" size={20} color="#FFF" />} testID="duel-fight" />
-            {/* The 3D fight in Godot (cq 061): a practice fight, not judged by the server. */}
+            {/* The 3D fight in Godot (cq 061): a practice round, not judged by the server, so it
+                sits under "Fight" as the smaller, secondary choice, and says that "Fight" is the one
+                that counts. The e2e drivers tap it by its label "Fight (3D)". */}
             {onFight3D ? (
-              <GameButton title="Fight (3D)" color={GP.navy} onPress={onFight3D} testID="fight3d-open" icon={<Ionicons name="cube" size={20} color="#FFF" />} accessibilityHint="A practice fight in 3D. The server does not judge it." />
+              <View style={styles.practice}>
+                <GameButton
+                  title="Fight (3D)"
+                  color={GP.navy}
+                  size="small"
+                  onPress={onFight3D}
+                  testID="fight3d-open"
+                  icon={<Ionicons name="cube" size={16} color="#FFF" />}
+                  accessibilityHint="A practice round in 3D, just for fun. XP comes from the regular Fight."
+                  style={styles.practiceButton}
+                />
+                <Text style={styles.practiceNote} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+                  {practiceNote("Fight")}
+                </Text>
+              </View>
             ) : null}
           </>
         )}
@@ -1177,6 +1194,9 @@ const STYLE_PAIR = themedStyles({
   blurb: { fontFamily: GF.body, fontSize: 15, color: "rgba(30,58,76,0.7)" },
   howto: { fontFamily: GF.regular, fontSize: 12, color: GP.mist },
   problem: { fontFamily: GF.body, fontSize: 14, color: GP.berry },
+  practice: { alignItems: "center", gap: 6 },
+  practiceButton: { alignSelf: "center", minWidth: 180 },
+  practiceNote: { fontFamily: GF.regular, fontSize: 12, color: GP.mist, textAlign: "center" },
   arena: { ...StyleSheet.absoluteFill, overflow: "hidden" },
   sky: { ...StyleSheet.absoluteFill, bottom: "40%" },
   ground: { position: "absolute", left: 0, right: 0, bottom: 0 },

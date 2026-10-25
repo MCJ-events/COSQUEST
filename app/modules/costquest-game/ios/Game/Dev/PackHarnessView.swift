@@ -64,7 +64,7 @@ struct PackHarnessView: View {
                         }
                         if let failed = pack.manifest.failed_assets, !failed.isEmpty {
                             ForEach(failed, id: \.name) { f in
-                                Text("\(f.name) — not built (\(f.stage))")
+                                Text("\(f.name): not built (\(f.stage))")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }

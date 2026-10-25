@@ -122,7 +122,7 @@ export function forgeKind(name: string): string {
 
 /** 15 → "15", 2.5 → "2.5", nothing → "—" (ForgeLook.number). */
 export function forgeNumber(v: number | null | undefined): string {
-  if (v === null || v === undefined || !Number.isFinite(v)) return "—";
+  if (v === null || v === undefined || !Number.isFinite(v)) return "-";
   return Math.round(v) === v ? String(v) : v.toFixed(1);
 }
 

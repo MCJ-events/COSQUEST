@@ -17,10 +17,21 @@ struct CoachStep: Equatable, Identifiable {
 }
 
 extension CoachStep {
-    static func firstShrine(name: String) -> CoachStep {
-        CoachStep(id: "first-shrine",
-                  line: "\(name), your first Guardian is right beside you. Tap its card to fight.",
-                  target: "starter", action: "Show me", later: "")
+    /// The first point's line, in the words of what its card does when
+    /// tapped: a duel is a Guardian to fight, a blitz or a sequence is played,
+    /// anything else (trivia, rebus) is answered.
+    static func firstShrine(name: String, kind: String = "duel") -> CoachStep {
+        let line: String
+        switch kind {
+        case "duel":
+            line = "\(name), your first Guardian is right beside you. Tap its card to fight."
+        case "blitz", "sequence":
+            line = "\(name), your first Quest Point is right beside you. Tap its card to play."
+        default:
+            line = "\(name), your first Quest Point is right beside you. Tap its card to answer."
+        }
+        return CoachStep(id: "first-shrine", line: line,
+                         target: "starter", action: "Show me", later: "")
     }
 
     static func unlock(_ u: RoamUnlock) -> CoachStep {

@@ -467,7 +467,7 @@ struct RaidView: View {
                             Spacer()
                         }
                     }
-                    Text("Bosses need a crew — or try it solo. Everyone standing here can join before you start.")
+                    Text("Bosses need a crew, or try it solo. Everyone standing here can join before you start.")
                         .font(GameFont.body(14))
                         .foregroundStyle(GamePalette.ink.opacity(0.7))
                         .fixedSize(horizontal: false, vertical: true)
