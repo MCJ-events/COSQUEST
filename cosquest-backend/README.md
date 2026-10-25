@@ -45,6 +45,7 @@ socket.on('chat:preview', ({ conversationId }) => { /* DM chat list changed - re
 socket.on('typing:start', ({ conversationId, userId }) => { /* ... */ });
 socket.on('typing:stop', ({ conversationId, userId }) => { /* ... */ });
 socket.on('notification:new', (notification) => { /* same shape as GET /api/users/me/notifications */ });
+socket.on('banner', ({ id, title, body, data, channel, actor, at }) => { /* app open: show an in-app banner (the push it replaces). data: { type, chatId?, messageId?, postId?, commentId?, scheduledCallId? }; see examples/expo-chat/InAppNotifications.js */ });
 socket.on('presence:online', ({ userId }) => { /* a DM partner just connected */ });
 socket.on('presence:offline', ({ userId, lastActiveAt }) => { /* a DM partner's last connection just closed; lastActiveAt drives "last seen" */ });
 socket.on('call:incoming', ({ call, invitedBy, privateOf, privateOfType }) => { /* someone is calling you - show the ringing screen. privateOf is set for a private call (below) */ });

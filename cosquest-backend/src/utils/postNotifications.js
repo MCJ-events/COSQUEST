@@ -45,7 +45,7 @@ async function notifyOne({ recipient, actor, type, message, post, comment = null
   if (!result?.upsertedCount) return;
   const doc = await Notification.findById(result.upsertedId).populate('actor', ACTOR_FIELDS);
   emitToUser(String(recipient), 'notification:new', notificationModel.sanitize(doc));
-  push.notifyFromNotification([String(recipient)], { type, message, post, comment });
+  push.notifyFromNotification([String(recipient)], { type, message, post, comment, actor });
 }
 
 function run(task) {
@@ -122,7 +122,7 @@ function newPost(post, authorId, original = null) {
       const sample = notificationModel.sanitize({ ...docs[0].toObject(), actor: author });
       const delivered = docs.map((doc) => String(doc.user));
       emitToUsers(delivered, 'notification:new', { ...sample, id: null });
-      push.notifyFromNotification(delivered, { type: 'post', message, post: post._id });
+      push.notifyFromNotification(delivered, { type: 'post', message, post: post._id, actor: author });
     }
   });
 }

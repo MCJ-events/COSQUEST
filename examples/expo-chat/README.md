@@ -308,3 +308,38 @@ What arrives how:
 ## Verification boundary
 
 `sparks.js` is checked for syntax and its backend protocol is covered end to end by `cosquest-backend` tests (mock-SDK phones over Socket.IO), but it has not run inside the app with the real SDK here. JavaScript syntax is checked and the matching backend APIs have automated integration coverage. This repository has no Expo app or mobile build environment, so these components have not been bundled or run on iOS/Android here. Verify permissions, camera/gallery/cloud-file selection, cancel paths, microphone interruption, playback, foreground/background transitions, and production Cloudinary uploads in the actual app before release.
+
+## In-app notifications (banners while the app is open)
+
+With the app open, iOS and Android hand pushes to the app silently, so the backend doesn't send a push to someone whose app is connected. It sends the same title, text and data over the socket as the `banner` event. `InAppNotifications.js` shows it Instagram-style: it slides down from the top, a tap opens the thing, a swipe up dismisses it, it hides after 4 seconds, and the next one follows. With the app in the background or closed, the normal push arrives instead.
+
+```sh
+npx expo install expo-notifications
+```
+
+```js
+import { InAppNotifications, showPushesWhileOpen, usePushTaps } from './InAppNotifications.js';
+
+showPushesWhileOpen(); // once, at startup: pushes that still arrive while open (game events) show too
+
+// Where a notification opens. Same data in a banner and in a tapped push.
+function openFromNotification(data) {
+  if (data.chatId && data.type === 'message') return navigation.navigate('Chat', { chatId: data.chatId, messageId: data.messageId });
+  if (data.postId) return navigation.navigate('Post', { postId: data.postId, commentId: data.commentId });
+  if (data.scheduledCallId) return navigation.navigate('ScheduledCall', { callId: data.scheduledCallId });
+  if (data.type === 'follow') return navigation.navigate('Notifications');
+  if (data.chatId) return navigation.navigate('Chat', { chatId: data.chatId }); // mentions, group notices
+  return navigation.navigate('Notifications');
+}
+
+function Root() {
+  usePushTaps(openFromNotification); // tapping a push, including one that opened the app
+  return h(View, { style: { flex: 1 } },
+    h(AppNavigator),
+    h(InAppNotifications, { socket, onOpen: openFromNotification, currentChatId: openChatId }));
+}
+```
+
+What pops up (`banner.data.type`): `message` (a chat message: `title` is the sender or the group, `body` the message), `mention`, `follow`, `like` (a post, or a comment with `commentId`), `comment` (a comment or a reply), `repost`, `post` (someone you follow posted or reposted), `group`, `scheduled-call` (invitations, changes, the 10-minute reminder). `call` banners are skipped because the ringing screen (`call:incoming`) shows calls. A chat's messages don't pop up while that chat is on screen (`currentChatId`). `banner.actor` is who did it (`username`, `name`, `avatarKey`, `avatarPhotoUrl`): the default picture is their photo or initials; pass `renderAvatar(actor)` to draw the app's avatar for `avatarKey`. Kinds switched off in notification settings (e.g. Friend activity) don't pop up either.
+
+The inbox still updates from `notification:new` as before; a banner is only the pop-up.

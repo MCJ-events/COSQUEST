@@ -63,6 +63,9 @@ async function main() {
     const calls = await require('./calls').run(`http://localhost:${process.env.PORT}`);
     result.pass += calls.pass;
     result.fail += calls.fail;
+    const inAppBanners = await require('./inAppBanners').run(`http://localhost:${process.env.PORT}`);
+    result.pass += inAppBanners.pass;
+    result.fail += inAppBanners.fail;
     const socialActivity = await require('./socialActivity').run(`http://localhost:${process.env.PORT}`);
     result.pass += socialActivity.pass;
     result.fail += socialActivity.fail;

@@ -11,9 +11,12 @@
  *   - only users with `preferences.notificationsEnabled` on;
  *   - `category` (a key of `notificationCategories`, e.g. friendActivity) must
  *     not be switched off;
- *   - `skipOnline`: not users with the app connected right now (they see it
- *     live already). Used for messages, mentions and calls; game events go
- *     to everyone, because the game is not this socket.
+ *   - `skipOnline`: not users with the app connected right now. They get the
+ *     same title, text and data over the socket instead, as a `banner` event
+ *     the app shows as an in-app banner (like Instagram's), so nothing is
+ *     silent while the app is open. Used for messages, mentions, calls, post
+ *     activity and scheduled calls; game events go to everyone as a push,
+ *     because the game is not this socket.
  *
  * Never throws into a request: every entry point is fire-and-forget and logs
  * its own failures. Tokens Expo reports as DeviceNotRegistered are removed.
@@ -25,6 +28,7 @@
  *                       "enhanced push security".
  *   EXPO_PUSH_URL       optional override (tests, a proxy).
  */
+const crypto = require('crypto');
 const User = require('../models/User');
 const { isOnline } = require('../realtime/presence');
 
@@ -71,8 +75,7 @@ function clip(text, max) {
 }
 
 /** The phones that should hear about this, as [{ userId, token }]. */
-async function recipients(userIds, { category, skipOnline }) {
-  const ids = [...new Set((userIds || []).map(String))].filter(Boolean);
+async function recipients(ids, { category }) {
   if (!ids.length) return [];
   const filter = { _id: { $in: ids }, 'preferences.notificationsEnabled': true, 'devices.0': { $exists: true } };
   if (category && CATEGORIES.includes(category)) filter[`notificationCategories.${category}`] = { $ne: false };
@@ -80,15 +83,40 @@ async function recipients(userIds, { category, skipOnline }) {
   const out = [];
   for (const user of users) {
     const userId = String(user._id);
-    if (skipOnline) {
-      const online = await isOnline(userId).catch(() => false);
-      if (online) continue;
-    }
     for (const device of user.devices || []) {
       if (device.authed && isExpoToken(device.pushToken)) out.push({ userId, token: device.pushToken });
     }
   }
   return out;
+}
+
+async function onlineAmong(ids) {
+  const online = await Promise.all(ids.map((id) => isOnline(id).catch(() => false)));
+  return new Set(ids.filter((id, i) => online[i]));
+}
+
+// The in-app version of a push, for people with the app open: socket event
+// `banner` { id, title, body, data, channel, actor, at }. Same rules as the
+// push about the kind of notification (a category switched off in settings
+// means no banner either); it does not need push permission or a device.
+async function bannerTo(ids, note) {
+  let to = ids;
+  if (note.category && CATEGORIES.includes(note.category)) {
+    const off = await User.find({ _id: { $in: ids }, [`notificationCategories.${note.category}`]: false }, '_id').lean();
+    const muted = new Set(off.map((user) => String(user._id)));
+    to = ids.filter((id) => !muted.has(id));
+  }
+  if (!to.length) return;
+  const { emitToUsers } = require('../realtime/socket');
+  emitToUsers(to, 'banner', {
+    id: crypto.randomUUID(),
+    title: note.title ? clip(note.title, 80) : null,
+    body: clip(note.body, 180),
+    data: note.data || {},
+    channel: CHANNELS.includes(note.channel) ? note.channel : 'default',
+    actor: note.actor || null,
+    at: new Date().toISOString(),
+  });
 }
 
 async function removeTokens(tokens) {
@@ -103,12 +131,23 @@ async function removeTokens(tokens) {
  * @param {string[]} userIds
  * @param {{ title?: string, body: string, data?: object, channel?: string,
  *           category?: string, skipOnline?: boolean, ttl?: number,
- *           priority?: 'default'|'normal'|'high', collapseId?: string }} note
+ *           priority?: 'default'|'normal'|'high', collapseId?: string,
+ *           actor?: object }} note  (actor: { id, username, name, avatarKey,
+ *           avatarPhotoUrl } - for the in-app banner's picture only)
  */
 async function sendToUsers(userIds, note) {
   try {
-    if (!enabled() || !note || !note.body) return 0;
-    const phones = await recipients(userIds, note);
+    if (!note || !note.body) return 0;
+    let ids = [...new Set((userIds || []).map(String))].filter(Boolean);
+    if (note.skipOnline && ids.length) {
+      const online = await onlineAmong(ids);
+      if (online.size) {
+        await bannerTo([...online], note);
+        ids = ids.filter((id) => !online.has(id));
+      }
+    }
+    if (!enabled()) return 0;
+    const phones = await recipients(ids, note);
     if (!phones.length) return 0;
     const channelId = CHANNELS.includes(note.channel) ? note.channel : 'default';
     const messages = phones.map(({ token }) => ({
@@ -150,6 +189,19 @@ function notify(userIds, note) {
 
 // ---------- the moments that send a push ----------
 
+// The person behind a notification, for the in-app banner's picture.
+function actorPreview(user) {
+  if (!user) return null;
+  const p = user.profile || {};
+  return {
+    id: String(user._id || user.id || ''),
+    username: p.username || user.username || null,
+    name: p.displayName || [p.firstName, p.lastName].filter(Boolean).join(' ') || p.username || user.name || null,
+    avatarKey: p.avatarKey || user.avatarKey || null,
+    avatarPhotoUrl: p.avatarPhotoUrl || user.avatarPhotoUrl || null,
+  };
+}
+
 function displayName(user) {
   const p = user?.profile || {};
   // A user document, or a preview ({ username, name }) as calls carry.
@@ -183,6 +235,7 @@ function notifyNewMessage({ conversation, message, sender, recipientIds, groupNa
     channel: 'messages',
     skipOnline: true,
     collapseId: `chat-${conversation._id}`,
+    actor: actorPreview(sender),
   });
 }
 
@@ -191,7 +244,7 @@ function notifyNewMessage({ conversation, message, sender, recipientIds, groupNa
 const SOCIAL_TYPES = ['follow', 'like', 'comment', 'repost', 'post'];
 
 /** In-app notifications (mention, group, follows and post activity) mirrored as a push. */
-function notifyFromNotification(userIds, { type, message, conversation, post, comment }) {
+function notifyFromNotification(userIds, { type, message, conversation, post, comment, actor }) {
   if (!['mention', 'group', ...SOCIAL_TYPES].includes(type)) return;
   notify(userIds, {
     body: message,
@@ -205,6 +258,7 @@ function notifyFromNotification(userIds, { type, message, conversation, post, co
     category: SOCIAL_TYPES.includes(type) ? 'friendActivity' : undefined,
     skipOnline: true,
     ...(post ? { collapseId: `${type}-${post}` } : {}),
+    actor: actorPreview(actor),
   });
 }
 
@@ -219,6 +273,7 @@ function notifyIncomingCall(userIds, { call, caller }) {
     skipOnline: true,
     ttl: 45,
     priority: 'high',
+    actor: actorPreview(caller),
   });
 }
 
@@ -243,6 +298,7 @@ module.exports = {
   notifyFromNotification,
   notifyIncomingCall,
   isExpoToken,
+  actorPreview,
   CATEGORIES,
   captureForTests,
   resetForTests,

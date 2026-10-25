@@ -6,6 +6,7 @@ const { emitToUser, emitToConversation } = require('../realtime/socket');
 const { peopleFor, publicCallJson } = require('./scheduledCallJson');
 const { rollForward } = require('./meetingTime');
 const push = require('./push');
+const notificationModel = require('../models/notificationModel');
 
 const REMINDER = 'starts in 10 minutes or less';
 
@@ -31,8 +32,10 @@ async function notifyMeeting(call, action, userIds = null) {
     catch (e) { if (e.code === 11000) return; throw e; } // another worker delivered it
     if (!result.upsertedCount) return;
     emitToUser(user.id, 'scheduled-call:updated', { callId: json.id, conversationId: json.conversationId, action, call: json });
-    emitToUser(user.id, 'notification:new', { message, scheduledCallId: String(call._id) });
-    push.sendToUsers([user.id], { title: 'CosQuest calls', body: message, category: 'eventReminders', channel: 'calls', data: { type: 'scheduled-call', scheduledCallId: String(call._id), conversationId: String(call.conversation) } });
+    const host = people.get(String(call.host));
+    emitToUser(user.id, 'notification:new', notificationModel.sanitize({ _id: result.upsertedId, type: 'group', message, actor: host, conversation: call.conversation, scheduledCall: call._id, read: false, createdAt: new Date() }));
+    // Open app: an in-app banner instead of a push (push.js skipOnline).
+    push.sendToUsers([user.id], { title: 'CosQuest calls', body: message, category: 'eventReminders', channel: 'calls', skipOnline: true, actor: push.actorPreview(host), data: { type: 'scheduled-call', scheduledCallId: String(call._id), conversationId: String(call.conversation) } });
   }));
 }
 

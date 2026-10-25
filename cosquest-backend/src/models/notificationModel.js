@@ -38,7 +38,7 @@ async function createForUser(userId, message, { type = 'system', actor, conversa
   });
   if (actor) await notification.populate('actor', ACTOR_FIELDS);
   emitToUser(String(userId), 'notification:new', sanitize(notification));
-  push.notifyFromNotification([String(userId)], { type, message, conversation });
+  push.notifyFromNotification([String(userId)], { type, message, conversation, actor: notification.actor?.profile ? notification.actor : null });
   return notification;
 }
 
@@ -71,7 +71,7 @@ async function createMentionNotifications(userIds, { message, actor, conversatio
     // app refetches the list anyway when it opens Notifications).
     const sample = sanitize({ ...docs[0].toObject(), actor: actorDoc });
     emitToUsers(batch, 'notification:new', { ...sample, id: null });
-    push.notifyFromNotification(batch, { type: 'mention', message, conversation });
+    push.notifyFromNotification(batch, { type: 'mention', message, conversation, actor: actorDoc });
   }
 
   return ids.length;
