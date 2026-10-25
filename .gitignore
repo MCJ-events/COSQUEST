@@ -1,2 +1,18 @@
 # Google App Engine generated folder
 appengine-generated/
+
+# Secrets - never commit these. Firebase / Google service-account keys,
+# private keys and env files. Put the values in the server's or Expo's
+# credentials instead (DEPLOY.md).
+*firebase-adminsdk*.json
+serviceAccount*.json
+service-account*.json
+*-service-account*.json
+*.p8
+*.p12
+*.pem
+*.key
+secrets/
+.env
+.env.*
+!.env.example
