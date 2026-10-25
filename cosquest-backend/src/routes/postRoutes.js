@@ -26,9 +26,9 @@ const {
 
 const router = express.Router();
 
-router.get('/posts', asyncHandler(listPosts));
+router.get('/posts', asyncHandler(optionalAuth), asyncHandler(listPosts));
 router.post('/posts', requireAuth, requireCompletedOnboarding, postUpload.array('media', 8), asyncHandler(createPost));
-router.get('/posts/:postId', asyncHandler(getPost));
+router.get('/posts/:postId', asyncHandler(optionalAuth), asyncHandler(getPost));
 router.get('/posts/:postId/share', asyncHandler(getPostShareLink));
 router.patch('/posts/:postId', requireAuth, requireCompletedOnboarding, asyncHandler(updatePost));
 router.delete('/posts/:postId', requireAuth, requireCompletedOnboarding, asyncHandler(deletePost));

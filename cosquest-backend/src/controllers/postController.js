@@ -16,6 +16,12 @@ const { canViewProfile, canViewActivityFeed, isBlockedEitherWay } = require('./p
 // only ever lazily requires chatController, never postController, so
 // this can be a normal top-level require.
 const { emitToPost } = require('../realtime/socket');
+const notifyPosts = require('../utils/postNotifications');
+
+// A thought (text post) is up to 2,000 characters; captions on photos and
+// reels up to 2,200.
+const THOUGHT_MAX = 2000;
+const CAPTION_MAX = 2200;
 
 // Types a person can CREATE with POST /api/posts.
 const POST_TYPES = ['image', 'reel', 'thought'];
@@ -100,13 +106,30 @@ function serializePost(post) {
   };
 }
 
+// For a signed-in viewer: which of these posts they have liked, bookmarked
+// and reposted (three queries for the whole page), so hearts and bookmark
+// icons show filled straight away. Signed out: no `viewer`.
+async function serializeForViewer(posts, viewerId) {
+  const items = posts.map(serializePost);
+  if (!viewerId || !items.length) return items;
+  const ids = posts.map((post) => post._id);
+  const [likes, bookmarks, shares] = await Promise.all([
+    PostLike.find({ user: viewerId, post: { $in: ids } }, 'post').lean(),
+    PostBookmark.find({ user: viewerId, post: { $in: ids } }, 'post').lean(),
+    PostShare.find({ user: viewerId, post: { $in: ids } }, 'post').lean(),
+  ]);
+  const has = (rows) => new Set(rows.map((row) => String(row.post)));
+  const [liked, bookmarked, reposted] = [has(likes), has(bookmarks), has(shares)];
+  return items.map((item) => ({ ...item, viewer: { liked: liked.has(item.id), bookmarked: bookmarked.has(item.id), reposted: reposted.has(item.id) } }));
+}
+
 function validatePostInput(type, content, files) {
   if (!POST_TYPES.includes(type)) return 'type must be image, reel, or thought.';
   if (typeof content !== 'string') return 'content must be text.';
-  if (type === 'thought' && (!content.trim() || content.trim().length > 300)) {
-    return 'A thought must contain 1 to 300 characters.';
+  if (type === 'thought' && (!content.trim() || content.trim().length > THOUGHT_MAX)) {
+    return 'A thought must contain 1 to 2,000 characters.';
   }
-  if (type !== 'thought' && content.trim().length > 2200) return 'Post captions must be at most 2,200 characters.';
+  if (type !== 'thought' && content.trim().length > CAPTION_MAX) return 'Post captions must be at most 2,200 characters.';
   if (type === 'thought' && files.length) return 'Thoughts cannot include media.';
   if (type === 'image') {
     if (files.length < 1 || files.length > 8) return 'An image post must contain between 1 and 8 images.';
@@ -148,7 +171,9 @@ async function createPost(req, res) {
     }
     const post = await Post.create({ author: req.userId, type, content: content.trim(), media });
     await post.populate('author', AUTHOR_FIELDS);
-    return res.status(201).json({ post: serializePost(post) });
+    res.status(201).json({ post: serializePost(post) });
+    notifyPosts.newPost(post, req.userId); // followers: "X posted a new photo"
+    return undefined;
   } catch (error) {
     if (media.length) await deletePostMedia(media);
     throw error;
@@ -170,7 +195,7 @@ async function listPosts(req, res) {
       .limit(limit),
     Post.countDocuments(query),
   ]);
-  return res.json({ posts: posts.map(serializePost), pagination: { page, limit, total, hasMore: page * limit < total } });
+  return res.json({ posts: await serializeForViewer(posts, req.userId), pagination: { page, limit, total, hasMore: page * limit < total } });
 }
 
 async function listUserPosts(req, res) {
@@ -196,13 +221,13 @@ async function listUserPosts(req, res) {
       .limit(limit),
     Post.countDocuments(query),
   ]);
-  return res.json({ posts: posts.map(serializePost), pagination: { page, limit, total, hasMore: page * limit < total } });
+  return res.json({ posts: await serializeForViewer(posts, req.userId), pagination: { page, limit, total, hasMore: page * limit < total } });
 }
 
 async function getPost(req, res) {
   const post = await loadPost(req.params.postId);
   if (!post) return res.status(404).json({ error: 'Post not found.' });
-  return res.json({ post: serializePost(post) });
+  return res.json({ post: (await serializeForViewer([post], req.userId))[0] });
 }
 
 async function updatePost(req, res) {
@@ -213,9 +238,9 @@ async function updatePost(req, res) {
     return res.status(400).json({ error: 'content is required.' });
   }
   const content = req.body.content.trim();
-  const maxLength = post.type === 'thought' ? 300 : 2200;
+  const maxLength = post.type === 'thought' ? THOUGHT_MAX : CAPTION_MAX;
   if ((post.type === 'thought' && !content) || content.length > maxLength) {
-    return res.status(400).json({ error: `content must be ${post.type === 'thought' ? '1 to 300' : 'at most 2,200'} characters.` });
+    return res.status(400).json({ error: `content must be ${post.type === 'thought' ? '1 to 2,000' : 'at most 2,200'} characters.` });
   }
   post.content = content;
   post.editedAt = new Date();
@@ -236,6 +261,7 @@ async function deletePost(req, res) {
     Post.deleteOne({ _id: post._id }),
   ]);
   await deletePostMedia(post.media);
+  notifyPosts.postDeleted(post._id);
 
   // Deleting your shared post takes your share back off the original.
   if (post.type === 'share' && post.sharedPost?._id) {
@@ -251,13 +277,15 @@ async function deletePost(req, res) {
 async function likePost(req, res) {
   const post = await loadPost(req.params.postId);
   if (!post) return res.status(404).json({ error: 'Post not found.' });
+  // Liking again (a double tap, a retry) is not an error: same answer.
   try {
     await PostLike.create({ post: post._id, user: req.userId });
   } catch (error) {
-    if (error?.code === 11000) return res.status(409).json({ error: 'You already liked this post.' });
+    if (error?.code === 11000) return res.json({ liked: true, likeCount: post.likeCount });
     throw error;
   }
   const updated = await Post.findByIdAndUpdate(post._id, { $inc: { likeCount: 1 } }, { new: true });
+  notifyPosts.postLiked(post, req.user);
   return res.status(201).json({ liked: true, likeCount: updated.likeCount });
 }
 
@@ -265,7 +293,7 @@ async function unlikePost(req, res) {
   const post = await loadPost(req.params.postId);
   if (!post) return res.status(404).json({ error: 'Post not found.' });
   const removed = await PostLike.deleteOne({ post: post._id, user: req.userId });
-  if (!removed.deletedCount) return res.status(404).json({ error: 'You have not liked this post.' });
+  if (!removed.deletedCount) return res.json({ liked: false, likeCount: Math.max(0, post.likeCount) });
   const updated = await Post.findByIdAndUpdate(post._id, { $inc: { likeCount: -1 } }, { new: true });
   return res.json({ liked: false, likeCount: Math.max(0, updated.likeCount) });
 }
@@ -280,6 +308,7 @@ async function sharePost(req, res) {
     throw error;
   }
   const updated = await Post.findByIdAndUpdate(post._id, { $inc: { shareCount: 1 } }, { new: true });
+  notifyPosts.reposted(post.type === 'share' && post.sharedPost?._id ? post.sharedPost : post, req.user);
   return res.status(201).json({ shared: true, shareCount: updated.shareCount });
 }
 
@@ -303,7 +332,7 @@ async function shareToFeed(req, res) {
   }
 
   const content = typeof req.body?.content === 'string' ? req.body.content.trim() : '';
-  if (content.length > 2200) return res.status(400).json({ error: 'Your caption must be at most 2,200 characters.' });
+  if (content.length > CAPTION_MAX) return res.status(400).json({ error: 'Your caption must be at most 2,200 characters.' });
 
   const post = await Post.create({ author: req.userId, type: 'share', content, sharedPost: original._id });
 
@@ -319,7 +348,10 @@ async function shareToFeed(req, res) {
 
   await post.populate('author', AUTHOR_FIELDS);
   await post.populate(SHARED_POST_POPULATE);
-  return res.status(201).json({ post: serializePost(post), originalPostId: String(original._id), shareCount });
+  res.status(201).json({ post: serializePost(post), originalPostId: String(original._id), shareCount });
+  notifyPosts.reposted(original, req.user); // the original's author
+  notifyPosts.newPost(post, req.userId, original); // followers: "X reposted Y's post"
+  return undefined;
 }
 
 async function unsharePost(req, res) {
@@ -337,7 +369,7 @@ async function bookmarkPost(req, res) {
   try {
     await PostBookmark.create({ post: post._id, user: req.userId });
   } catch (error) {
-    if (error?.code === 11000) return res.status(409).json({ error: 'You already bookmarked this post.' });
+    if (error?.code === 11000) return res.json({ bookmarked: true, bookmarkCount: post.bookmarkCount });
     throw error;
   }
   const updated = await Post.findByIdAndUpdate(post._id, { $inc: { bookmarkCount: 1 } }, { new: true });
@@ -348,7 +380,7 @@ async function unbookmarkPost(req, res) {
   const post = await loadPost(req.params.postId);
   if (!post) return res.status(404).json({ error: 'Post not found.' });
   const removed = await PostBookmark.deleteOne({ post: post._id, user: req.userId });
-  if (!removed.deletedCount) return res.status(404).json({ error: 'You have not bookmarked this post.' });
+  if (!removed.deletedCount) return res.json({ bookmarked: false, bookmarkCount: Math.max(0, post.bookmarkCount) });
   const updated = await Post.findByIdAndUpdate(post._id, { $inc: { bookmarkCount: -1 } }, { new: true });
   return res.json({ bookmarked: false, bookmarkCount: Math.max(0, updated.bookmarkCount) });
 }
@@ -372,7 +404,7 @@ async function listMyBookmarks(req, res) {
     PostBookmark.countDocuments(query),
   ]);
   return res.json({
-    posts: bookmarks.filter((bookmark) => bookmark.post).map((bookmark) => serializePost(bookmark.post)),
+    posts: await serializeForViewer(bookmarks.filter((bookmark) => bookmark.post).map((bookmark) => bookmark.post), req.userId),
     pagination: { page, limit, total, hasMore: page * limit < total },
   });
 }
@@ -483,6 +515,7 @@ async function createComment(req, res) {
     rootId ? PostComment.updateOne({ _id: rootId }, { $inc: { replyCount: 1 } }) : Promise.resolve(),
   ]);
   await comment.populate('author', AUTHOR_FIELDS);
+  notifyPosts.commented(post, comment, req.user, parent);
 
   // Fire-and-forget, same as chat's voice notes - nobody waits on Deepgram
   // before their voice comment finishes posting.
@@ -550,6 +583,7 @@ async function setCommentLike(req, res) {
     } catch (error) {
       if (error.code !== 11000) throw error;
     }
+    notifyPosts.commentLiked(comment, req.user);
   } else {
     await CommentLike.deleteOne(query);
   }

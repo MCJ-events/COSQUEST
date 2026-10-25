@@ -104,6 +104,30 @@ async function findTarget(username) {
   return userModel.findByUsername(username);
 }
 
+// For the signed-in viewer: which of these people they follow, and which
+// follow them back, in two queries. Map(userId -> { following, followedBy }).
+async function relationshipsWith(viewerId, userIds) {
+  const ids = userIds.map(String);
+  if (!viewerId || !ids.length) return new Map();
+  const [mine, theirs] = await Promise.all([
+    Follow.find({ follower: viewerId, following: { $in: ids } }, 'following').lean(),
+    Follow.find({ follower: { $in: ids }, following: viewerId }, 'follower').lean(),
+  ]);
+  const following = new Set(mine.map((row) => String(row.following)));
+  const followedBy = new Set(theirs.map((row) => String(row.follower)));
+  return new Map(ids.map((id) => [id, { following: following.has(id), followedBy: followedBy.has(id) }]));
+}
+
+// The counts both screens show right after a follow/unfollow, so the app
+// can update at once without asking for the profile again.
+async function followCounts(targetId, viewerId) {
+  const [followerCount, followingCount] = await Promise.all([
+    Follow.countDocuments({ following: targetId }),
+    Follow.countDocuments({ follower: viewerId }),
+  ]);
+  return { followerCount, followingCount };
+}
+
 // GET /api/users/:username/profile - public unless the owner set it to
 // friends-only or private (see privacyController.js), and never visible
 // across a block in either direction.
@@ -111,10 +135,16 @@ async function getPublicProfile(req, res) {
   const user = await findTarget(req.params.username);
   if (!user || !(await canViewProfile(user, req.userId))) return res.status(404).json({ error: 'Profile not found.' });
 
-  const stats = await statsFor(user);
+  const self = req.userId && String(req.userId) === String(user._id);
+  const [stats, relationships] = await Promise.all([
+    statsFor(user),
+    self ? new Map() : relationshipsWith(req.userId, [user._id]),
+  ]);
   return res.json({
     profile: {
       ...previewUser(user),
+      // Signed in and not your own profile: do you follow them, do they follow you.
+      relationship: relationships.get(String(user._id)) || null,
       bio: user.profile.bio || '',
       category: user.profile.showCategoryOnProfile ? user.profile.category : null,
       contact: {
@@ -178,28 +208,39 @@ async function followUser(req, res) {
     return res.status(404).json({ error: 'Profile not found.' });
   }
 
+  // Following again is not an error (a double tap, a retry): same answer.
+  let created = true;
   try {
     await Follow.create({ follower: req.userId, following: target._id });
   } catch (error) {
-    if (error?.code === 11000) return res.status(409).json({ error: 'You already follow this profile.' });
-    throw error;
+    if (error?.code !== 11000) throw error;
+    created = false;
   }
 
-  const actorName = req.user.profile.username || req.user.profile.firstName || 'Someone';
-  await notificationModel.createForUser(target._id, `${actorName} started following you.`, {
-    type: 'follow',
-    actor: req.userId,
+  const counts = await followCounts(target._id, req.userId);
+  res.status(created ? 201 : 200).json({ message: 'Following profile.', following: true, ...counts });
+
+  // After answering, so the button flips at once. One follow notification
+  // per person per day: follow/unfollow/follow doesn't notify three times.
+  if (created) notifyFollow(target._id, req.user).catch((error) => console.error('[follow] notification failed:', error.message));
+}
+
+async function notifyFollow(targetId, actor) {
+  const recent = await require('../models/Notification').exists({
+    user: targetId, actor: actor._id, type: 'follow', createdAt: { $gt: new Date(Date.now() - 24 * 60 * 60 * 1000) },
   });
-  return res.status(201).json({ message: 'Following profile.', following: true });
+  if (recent) return;
+  const actorName = actor.profile.username || actor.profile.firstName || 'Someone';
+  await notificationModel.createForUser(targetId, `${actorName} started following you.`, { type: 'follow', actor: actor._id });
 }
 
 async function unfollowUser(req, res) {
   const target = await findTarget(req.params.username);
   if (!target) return res.status(404).json({ error: 'Profile not found.' });
 
-  const result = await Follow.deleteOne({ follower: req.userId, following: target._id });
-  if (!result.deletedCount) return res.status(404).json({ error: 'You do not follow this profile.' });
-  return res.json({ message: 'Unfollowed profile.', following: false });
+  // Unfollowing someone you don't follow is not an error either: same answer.
+  await Follow.deleteOne({ follower: req.userId, following: target._id });
+  return res.json({ message: 'Unfollowed profile.', following: false, ...(await followCounts(target._id, req.userId)) });
 }
 
 async function listRelationship(req, res, field) {
@@ -226,8 +267,9 @@ async function listRelationship(req, res, field) {
         .limit(limit),
       Follow.countDocuments(query),
     ]);
+    const people = rows.filter((row) => row[populatedField]).map((row) => row[populatedField]);
     return res.json({
-      users: rows.filter((row) => row[populatedField]).map((row) => previewUser(row[populatedField])),
+      users: await withRelationships(people, req.userId),
       pagination: { page, limit, total, hasMore: page * limit < total },
     });
   }
@@ -257,9 +299,16 @@ async function listRelationship(req, res, field) {
 
   const total = result.totalCount[0]?.count || 0;
   return res.json({
-    users: result.rows.map((row) => previewUser(row.user)),
+    users: await withRelationships(result.rows.map((row) => row.user), req.userId),
     pagination: { page, limit, total, hasMore: page * limit < total },
   });
+}
+
+// Follower/following list rows, each with whether the signed-in viewer
+// follows that person (the row's Follow / Following button).
+async function withRelationships(users, viewerId) {
+  const relationships = await relationshipsWith(viewerId, users.map((user) => user._id));
+  return users.map((user) => ({ ...previewUser(user), relationship: relationships.get(String(user._id)) || null }));
 }
 
 // GET /api/users/search?search=jamie - find people to start a DM/forward with,

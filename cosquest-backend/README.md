@@ -137,7 +137,7 @@ The Quest count means every quest that the user registered for. The future quest
 | GET/POST | `/api/posts/:postId/comments` | GET public; POST Bearer token | read or add public comments |
 | DELETE | `/api/posts/:postId/comments/:commentId` | Bearer token | comment author can delete their own comment |
 
-An image post requires 1-8 JPEG/PNG/WEBP/GIF files (10MB each maximum). A reel requires exactly one MP4/MOV/WEBM file and Cloudinary verifies it is 30 seconds or shorter. A thought has no media and must contain 1-300 characters. Image/reel captions are optional and limited to 2,200 characters.
+An image post requires 1-8 JPEG/PNG/WEBP/GIF files (10MB each maximum). A reel requires exactly one MP4/MOV/WEBM file and Cloudinary verifies it is 30 seconds or shorter. A thought has no media and must contain 1-2,000 characters. Image/reel captions are optional and limited to 2,200 characters.
 
 ### Home Dashboard and quests
 

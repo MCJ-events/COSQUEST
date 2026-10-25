@@ -536,7 +536,20 @@ Response:
 }
 ```
 
-Follow notifications appear in the same inbox with `"type": "follow"` and an `actor` containing the follower's public profile preview.
+Follow notifications appear in the same inbox with `"type": "follow"` and an `actor` containing the follower's public profile preview (one per person per day, so follow/unfollow/follow doesn't notify again).
+
+Post activity is in the same inbox, live (`notification:new`) and as a push (the "Friend activity" setting). Each has `postId` (and `commentId` for comments) to open; never about yourself, never across a block, never twice for the same thing (like, unlike, like = one):
+
+| `type` | When | Who gets it | Message |
+|---|---|---|---|
+| `like` | A post is liked | The post's author | "Bea liked your post." |
+| `like` (with `commentId`) | A comment is liked | The commenter | "Bea liked your comment." |
+| `comment` | A comment on a post | The post's author | "Bea commented on your post: \"I'll be there\"" |
+| `comment` | A reply to a comment | The person replied to (and the post's author, if someone else) | "Cal replied to your comment: \"Same\"" |
+| `repost` | A post is reposted (share to feed, or the share count) | The post's author | "Bea reposted your post." |
+| `post` | Someone you follow posts or reposts | Their followers who may see their posts (everyone for a public profile; mutual followers for friends-only or "Show Activity Feed" off; nobody for a private profile) | "Author posted a new thought: \"Meet at the mural\"", "Bea reposted Author's post." |
+
+Deleting a post removes its notifications. Push data: `{ type, postId, commentId? }`.
 
 ## Public profile, follows, quest history, and points
 
@@ -585,11 +598,24 @@ Returns the user's quest registrations, newest first. Omit `status` for all; all
 
 **POST** `/api/users/Ravencaller/follow` — Bearer token required, no body
 
-Follows the public profile and creates a follow notification for Ravencaller. `DELETE` on the same path unfollows it. A duplicate follow returns `409`.
+Follows the public profile and notifies Ravencaller. Answers at once with the new counts, so the button and the numbers can change without asking for the profile again:
+
+```json
+{ "message": "Following profile.", "following": true, "followerCount": 13, "followingCount": 5 }
+```
+
+`followerCount` is Ravencaller's, `followingCount` yours. `201` the first time, `200` if you already follow them (a double tap is not an error). `DELETE` on the same path unfollows, with the same counts and `"following": false` (also `200` if you didn't follow them).
+
+Signed in, `GET /api/users/:username/profile` includes `"relationship": { "following": true, "followedBy": false }` (do you follow them, do they follow you; `null` on your own profile or signed out), and every row of the followers/following lists has the same `relationship`.
 
 **GET** `/api/users/Ravencaller/followers?page=1&limit=20` and **GET** `/api/users/Ravencaller/following?page=1&limit=20` are public paginated lists.
 
 ## Posts, reels, thoughts, likes, and comments
+
+**Your state on each post.** Signed in, every post (`GET /api/posts`, `GET /api/posts/:postId`, `GET /api/users/:username/posts`, bookmarks) has `"viewer": { "liked": true, "bookmarked": false, "reposted": false }`, so hearts and bookmark icons show filled straight away. Signed out there is no `viewer`.
+
+**Likes and bookmarks.** `POST` / `DELETE /api/posts/:postId/likes` → `{ liked, likeCount }`; `POST` / `DELETE /api/posts/:postId/bookmarks` → `{ bookmarked, bookmarkCount }`. Repeating one (a double tap, a retry) is not an error: `200` with the same state. Bookmarks are stored per person (`PostBookmark`) and listed newest first with **GET** `/api/users/me/bookmarks?page=1&limit=20` → `{ posts, pagination }` (Bearer token; only you see your bookmarks).
+
 
 **POST** `/api/posts` — Bearer token required; use `multipart/form-data`.
 
@@ -597,7 +623,7 @@ Follows the public profile and creates a follow notification for Ravencaller. `D
 |---|---|---|
 | `image` | `type=image`, one or more `media` files | 1-8 JPEG, PNG, WEBP, or GIF files; maximum 10MB each |
 | `reel` | `type=reel`, one `media` file | exactly one MP4, MOV, or WEBM; Cloudinary must report 30 seconds or shorter |
-| `thought` | `type=thought`, `content` | no media; content must be 1-300 characters |
+| `thought` | `type=thought`, `content` | no media; content must be 1-2,000 characters |
 
 `content` is optional for image posts/reels (a caption) and limited to 2,200 characters. Uploaded image posts go to `CLOUDINARY_POST_IMAGE_FOLDER` (default `cosquest/posts`); reels go to `CLOUDINARY_REEL_FOLDER` (default `cosquest/reels`). The existing Cloudinary credentials are used—no frontend Cloudinary secret is needed.
 

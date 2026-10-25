@@ -186,15 +186,25 @@ function notifyNewMessage({ conversation, message, sender, recipientIds, groupNa
   });
 }
 
-/** In-app notifications (mention, follow, group) mirrored as a push. */
-function notifyFromNotification(userIds, { type, message, conversation }) {
-  if (!['mention', 'follow', 'group'].includes(type)) return;
+// People and their posts (follows, likes, comments, reposts, new posts by
+// people you follow): the Friend activity switch in notification settings.
+const SOCIAL_TYPES = ['follow', 'like', 'comment', 'repost', 'post'];
+
+/** In-app notifications (mention, group, follows and post activity) mirrored as a push. */
+function notifyFromNotification(userIds, { type, message, conversation, post, comment }) {
+  if (!['mention', 'group', ...SOCIAL_TYPES].includes(type)) return;
   notify(userIds, {
     body: message,
-    data: { type, ...(conversation ? { chatId: String(conversation) } : {}) },
+    data: {
+      type,
+      ...(conversation ? { chatId: String(conversation) } : {}),
+      ...(post ? { postId: String(post) } : {}),
+      ...(comment ? { commentId: String(comment) } : {}),
+    },
     channel: type === 'mention' ? 'messages' : 'default',
-    category: type === 'follow' ? 'friendActivity' : undefined,
+    category: SOCIAL_TYPES.includes(type) ? 'friendActivity' : undefined,
     skipOnline: true,
+    ...(post ? { collapseId: `${type}-${post}` } : {}),
   });
 }
 
