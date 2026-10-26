@@ -1102,12 +1102,26 @@ async function listChatMembers(req, res) {
   });
 }
 
+// How many messages one GET .../messages returns at most. With no `limit`
+// (or `limit=all`) the app gets the whole chat, like WhatsApp, up to
+// CHAT_HISTORY_MAX (default 1000) newest messages; past that it pages
+// (`page=2`, ...). A smaller `limit` still works for paged lists.
+function historyMax() {
+  const max = Number(process.env.CHAT_HISTORY_MAX);
+  return Number.isInteger(max) && max >= 100 ? max : 1000;
+}
+
+function historyLimit(value) {
+  const limit = Number(value);
+  return Number.isInteger(limit) && limit > 0 ? Math.min(limit, historyMax()) : historyMax();
+}
+
 // GET /api/chats/:conversationId/messages
 async function listMessages(req, res) {
   const { conversation, error } = await loadConversationForUser(req.params.conversationId, req.user);
   if (error) return res.status(error.status).json({ error: error.message });
 
-  const limit = parseLimit(req.query.limit);
+  const limit = historyLimit(req.query.limit);
   const page = parsePage(req.query.page);
   const [messages, total, otherLastReadAt] = await Promise.all([
     Message.find({ conversation: conversation._id, deletedFor: { $ne: req.userId } })

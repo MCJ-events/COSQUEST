@@ -228,6 +228,18 @@ async function run(baseUrl) {
   const roleSearch = await request('GET', `/api/chats/${groupId}/search?q=owner`, d.token);
   check(roleSearch.data.results?.[0]?.message?.senderGroupRole === 'owner', 'search results carry it too', roleSearch.data);
 
+  // ---------- the whole chat at once, like WhatsApp ----------
+  const dayMs = 24 * 60 * 60 * 1000;
+  await Message.insertMany(Array.from({ length: 45 }, (_, i) => ({
+    conversation: groupId, sender: c.id, content: `older ${i}`, createdAt: new Date(Date.now() - (i + 1) * dayMs / 3),
+  })));
+  const whole = await request('GET', `/api/chats/${groupId}/messages`, d.token);
+  const wholeList = whole.data.messages || [];
+  check(whole.data.pagination?.total > 45 && wholeList.length === whole.data.pagination.total && whole.data.pagination.hasMore === false && wholeList.some((m) => m.content === 'older 44'),
+    'no limit: every message in the chat comes back at once, days old ones too', whole.data.pagination);
+  const paged = await request('GET', `/api/chats/${groupId}/messages?limit=10`, d.token);
+  check(paged.data.messages?.length === 10 && paged.data.pagination.hasMore === true, 'a limit still pages', paged.data.pagination);
+
   return { pass, fail };
 }
 
