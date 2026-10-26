@@ -245,8 +245,8 @@ async function connectPhone(baseUrl, { userId, token, tier = 'full', transcripti
     /** The transcription notice for a call (or a voice chat): accepted or declined, as the SDK's recordConsent sends it. */
     consent: (callId, decision = 'accepted', scope = 'call') =>
       send('call.consent', { userId, noticeVersion: 2, decision, scope, callId, decidedAt: new Date().toISOString() }),
-    /** One final line of this user's speech, as the SDK posts it after transcribing (segmentId: as SDK 1.2.7 numbered it, to replay its ids). */
-    speak: (callId, text, startMs, endMs = startMs + 1500, segmentId = `seg_${randomUUID().slice(0, 12)}`) =>
+    /** One final line of this user's speech, as the SDK posts it after transcribing (segmentId: as SDK 1.2.7 numbered it, to replay its ids). Lasts as long as the words take to say (about 0.4 s each): the server drops text too fast for its audio (module 1.3.4). */
+    speak: (callId, text, startMs, endMs = startMs + Math.max(1500, String(text).split(/\s+/).length * 400), segmentId = `seg_${randomUUID().slice(0, 12)}`) =>
       send('call.segment', { segment: { segmentId, callId, userId, deviceId, startMs, endMs, text, final: true, locale: 'en-GB', engine: 'moonshine-base' } }),
     /** SDK 1.2.8's call.listening report: how long this phone listened on the call, with the mic on, and its lines. */
     listening: (callId, { state = 'off', listenedMs = 0, unmutedMs = 0, lines = 0 } = {}) =>
