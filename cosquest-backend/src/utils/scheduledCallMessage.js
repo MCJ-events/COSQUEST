@@ -1,8 +1,8 @@
 // Posts the "scheduled call" card in the chat (a group, the Community room or
 // a faction room) when a call is scheduled, and again when it is cancelled,
 // and sends it live like any new message (message:new to the chat room, plus
-// chat:preview to a group's members). The
-// host is the sender. The app shows it as a card with "View call".
+// chat:preview to a group's members). The host is the sender. The app shows
+// it as a card with "View call".
 //
 // Like call entries, these cards cannot be edited or forwarded, are skipped
 // by Sparks and by message search, and never notify (the invitation itself
