@@ -1,6 +1,7 @@
-// Posts the "scheduled call" card in the group chat when a call is scheduled,
-// and again when it is cancelled, and sends it live like any new message
-// (message:new to the chat room + chat:preview to the group's members). The
+// Posts the "scheduled call" card in the chat (a group, the Community room or
+// a faction room) when a call is scheduled, and again when it is cancelled,
+// and sends it live like any new message (message:new to the chat room, plus
+// chat:preview to a group's members). The
 // host is the sender. The app shows it as a card with "View call".
 //
 // Like call entries, these cards cannot be edited or forwarded, are skipped
@@ -34,15 +35,15 @@ async function postScheduledCallMessage(call, status) {
   await message.populate('sender', SENDER_FIELDS);
   const serialized = serializeMessage(message, {
     viewerId: call.host,
-    conversationType: 'group',
+    conversationType: conversation?.type || 'group',
     otherLastReadAt: null,
     reactions: [],
     groupRoles: conversation ? await groupRolesFor(conversation) : undefined,
   });
   emitToConversation(String(call.conversation), 'message:new', { conversationId: String(call.conversation), message: forBroadcast(serialized) });
-  // Same rule as a normal group message: faction-wide groups are too big to
-  // fan out chat-list updates to.
-  if (conversation && conversation.group?.kind !== 'faction') {
+  // Same rule as a normal message: faction-wide groups and the Community and
+  // faction rooms are too big to fan out chat-list updates to.
+  if (conversation?.type === 'group' && conversation.group?.kind !== 'faction') {
     const memberIds = await explicitGroupMemberIds(conversation);
     emitToUsers(memberIds.map(String), 'chat:preview', { conversationId: String(call.conversation) });
   }

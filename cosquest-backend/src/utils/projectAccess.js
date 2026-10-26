@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const Project = require('../models/Project');
-const { loadConversationForUser, groupRoleOf, isAdminRole } = require('../controllers/chatController');
+const { loadConversationForUser } = require('../controllers/chatController');
+const { roleIn, isAdminRole } = require('./roomRoles');
 
 function fail(status, message) { throw Object.assign(new Error(message), { status }); }
 function objectId(value, label = 'ID') {
@@ -11,11 +12,16 @@ function text(value, label, max, required = false) {
   if (typeof value !== 'string' || value.trim().length > max || (required && !value.trim())) fail(400, `${label} must be ${required ? '1' : '0'}-${max} characters.`);
   return value.trim();
 }
+// Projects and scheduled calls live in a group, the Community room or a
+// faction room. Any member of the room may use them (loadConversationForUser:
+// a group's members, everyone for Community, the faction's people for a
+// faction room). DMs have neither.
+const ROOM_TYPES = ['group', 'community', 'faction'];
 async function groupFor(id, user) {
   objectId(id, 'group ID');
   const { conversation, error } = await loadConversationForUser(id, user);
   if (error) fail(error.status, error.message);
-  if (conversation.type !== 'group') fail(400, 'Projects and scheduled calls belong to a group.');
+  if (!ROOM_TYPES.includes(conversation.type)) fail(400, 'Projects and scheduled calls belong to a group, the Community room or a faction room.');
   return conversation;
 }
 async function projectFor(id, user, { write = false, manage = false } = {}) {
@@ -23,7 +29,8 @@ async function projectFor(id, user, { write = false, manage = false } = {}) {
   const project = await Project.findById(id);
   if (!project) fail(404, 'Project not found.');
   const group = await groupFor(String(project.conversation), user);
-  if (manage && String(project.createdBy) !== String(user._id) && !isAdminRole(await groupRoleOf(group, user))) fail(403, 'Only the project creator or a group admin can edit this project.');
+  // A group's owner/admins, or a Community/faction room's admins (scripts/setRoomAdmin.js).
+  if (manage && String(project.createdBy) !== String(user._id) && !isAdminRole(await roleIn(group, user))) fail(403, 'Only the project creator or an admin can edit this project.');
   if (write && project.archived) fail(409, 'Restore the archived project before making changes.');
   return project;
 }

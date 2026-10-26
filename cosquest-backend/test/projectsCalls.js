@@ -248,6 +248,50 @@ async function runPlanning(baseUrl) {
       assert.equal((await req('POST', gp + '/scheduled-calls', 0, { ...body(), sparkId })).status, 404);
     } finally { process.env.SPARKS_ENGINE = 'legacy'; }
   });
+  await check('Community and faction rooms: any member schedules calls and creates projects, admins manage', async () => {
+    const factionKey = `plan${suffix}`;
+    const people = await Promise.all([0, 1, 2, 3].map(i => User.create({ profile: { username: `Roomer${i}${suffix}`, usernameNormalized: `roomer${i}${suffix}`, firstName: 'Roomer', lastName: String(i), avatarKey: 'green-knight' }, onboardingComplete: true, faction: i === 3 ? `${factionKey}x` : factionKey })));
+    const [creator, guest, roomAdmin, otherFaction] = people;
+    const t = people.map(u => signToken(u.id, u.tokenVersion));
+    const as = (i, method, path, body) => fetch(baseUrl + '/api' + path, { method, headers: { Authorization: `Bearer ${t[i]}`, ...(body ? { 'Content-Type': 'application/json' } : {}) }, body: body ? JSON.stringify(body) : undefined }).then(async r => ({ status: r.status, data: await r.json().catch(() => null) }));
+    const room = await Conversation.create({ type: 'faction', factionKey });
+    await Member.create({ conversation: room._id, user: roomAdmin._id, role: 'admin' });
+    const when = { startsAt: new Date(Date.now() + 3600000).toISOString(), timeZone: 'Africa/Lagos', durationMinutes: 30 };
+
+    // Scheduled calls: the invitee check accepts anyone in the room, and only them.
+    const scheduled = await as(1, 'POST', `/chats/${room.id}/scheduled-calls`, { topic: 'Faction raid plan', ...when, participantIds: [creator.id] });
+    assert.equal(scheduled.status, 201, JSON.stringify(scheduled));
+    const callId = scheduled.data.call.id;
+    assert.ok(await Notification.exists({ user: creator._id, scheduledCall: callId }), 'the invitee is notified');
+    let card = null;
+    for (let i = 0; i < 40 && !card; i++) { card = await Message.findOne({ conversation: room._id, kind: 'scheduled_call', 'scheduledCall.callId': callId }); if (!card) await new Promise(r => setTimeout(r, 25)); }
+    assert.ok(card, 'the chat card is posted in the faction room');
+    assert.equal((await as(1, 'POST', `/chats/${room.id}/scheduled-calls`, { topic: 'Wrong faction', ...when, participantIds: [otherFaction.id] })).status, 403);
+    assert.equal((await as(3, 'GET', `/chats/${room.id}/scheduled-calls`)).status, 403);
+    const open = await as(0, 'POST', `/chats/${room.id}/scheduled-calls`, { topic: 'Everyone welcome', ...when, whoCanJoin: 'members' });
+    assert.equal(open.status, 201, JSON.stringify(open));
+    const seen = await as(2, 'GET', `/scheduled-calls/${open.data.call.id}`);
+    assert.equal(seen.status, 200); assert.equal(seen.data.call.canJoin, true, 'everyone in the room can join');
+    assert.equal((await as(1, 'GET', `/chats/${room.id}/scheduled-calls`)).data.calls.length, 2);
+
+    // Projects: any member creates; the creator or the room's admins edit and archive.
+    const made = await as(1, 'POST', `/groups/${room.id}/projects`, { name: 'Faction meetup' });
+    assert.equal(made.status, 201, JSON.stringify(made));
+    assert.equal((await as(0, 'PATCH', `/projects/${made.data.project.id}`, { archived: true })).status, 403);
+    assert.equal((await as(2, 'PATCH', `/projects/${made.data.project.id}`, { archived: true })).data.project.archived, true);
+    assert.equal((await as(1, 'PATCH', `/projects/${made.data.project.id}`, { archived: false })).status, 200);
+    assert.equal((await as(3, 'GET', `/groups/${room.id}/projects`)).status, 403);
+
+    // The Community room: everyone, any faction.
+    const community = (await Conversation.findOne({ type: 'community' })) || (await Conversation.create({ type: 'community' }));
+    assert.equal((await as(3, 'POST', `/groups/${community.id}/projects`, { name: 'Community cleanup' })).status, 201);
+    const communityCall = await as(3, 'POST', `/chats/${community.id}/scheduled-calls`, { topic: 'Town hall', ...when, participantIds: [creator.id] });
+    assert.equal(communityCall.status, 201, JSON.stringify(communityCall));
+
+    // DMs still have neither.
+    const dm = await Conversation.create({ type: 'dm', participants: [creator._id, guest._id] });
+    assert.equal((await as(0, 'POST', `/groups/${dm.id}/projects`, { name: 'Nope' })).status, 400);
+  });
   console.log(`[projects/calls] ${pass} passed, ${fail} failed`);
   return { pass, fail };
 }

@@ -8,7 +8,7 @@ The full mobile application is not in this repository. These screens must be mou
 
 ## Flow and fields
 
-Group → Projects → project → subject → files and related Sparks. A project also lists upcoming calls. Calls can link to a project, subject and/or existing group Spark.
+Group, Community room or faction room → Projects → project → subject → files and related Sparks. A project also lists upcoming calls. Calls can link to a project, subject and/or existing group Spark.
 
 | Screen/action | Fields and behavior |
 | --- | --- |
@@ -26,11 +26,11 @@ Useful project arrangements include event planning (route, costumes, supplies), 
 
 ## Permissions
 
-- Current group members can create/read projects, add subjects/files, link Sparks and schedule meetings. Existing group access rules also apply to faction groups and archived groups.
-- Project creator and group admins can edit metadata or archive/restore. Uploaders can remove their own files; creator/admins can remove any project file.
+- Projects and scheduled calls work in groups, the Community room and faction rooms (not DMs). Anyone who can use the room can create/read projects, add subjects/files, link Sparks and schedule meetings: a group's members, everyone for the Community room, the faction's members for a faction room. Existing group access rules also apply to faction groups and archived groups. The `/groups/:groupId/...` routes take a Community or faction room id too.
+- Project creator and admins (a group's owner/admins, or a Community/faction room's admins set with `scripts/setRoomAdmin.js`) can edit metadata or archive/restore. Uploaders can remove their own files; creator/admins can remove any project file.
 - Archived projects remain readable. Restore before adding subjects/files/Sparks or scheduling a linked call.
 - Project, subject, file and Spark references are checked against their parent group/project. Spark IDs are opaque strings; both engines are supported and the engine is recorded with the link.
-- Only the meeting host edits/cancels or admits waiting participants. Invited users RSVP. Every join checks current group membership again.
+- Only the meeting host edits/cancels or admits waiting participants. Invited users RSVP. Invitees must be able to use the room (for a faction room: that faction). Every join checks current room membership again.
 - A group member who is not invited to an invited-only call can see the group planning card but cannot retrieve its invitation/passcode, export its calendar entry, or join. Sharing a link does not bypass group membership.
 
 ## API

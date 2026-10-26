@@ -50,7 +50,7 @@ async function load(req, { host = false, active = false } = {}) {
   return c;
 }
 async function participants(groupId, ids, hostId, previous = []) {
-  if (!Array.isArray(ids) || ids.length > 100) fail(400, 'Choose up to 100 group members.');
+  if (!Array.isArray(ids) || ids.length > 100) fail(400, 'Choose up to 100 people from this chat.');
   const unique = [...new Set(ids.map(id => objectId(id, 'participant ID')))].filter(id => id !== String(hostId));
   const users = await User.find({ _id: { $in: unique }, onboardingComplete: true });
   if (users.length !== unique.length) fail(400, 'One or more participants are unavailable.');
@@ -212,7 +212,7 @@ async function resolveInvite(req, res) {
   let c = await ScheduledCall.findOne({ inviteCode: req.params.code }).select('+passcode');
   if (!c) fail(404, 'Invitation not found.');
   await groupFor(String(c.conversation), req.user);
-  if (!canJoin(c, req.userId)) fail(403, 'This invitation is for selected group members.');
+  if (!canJoin(c, req.userId)) fail(403, 'This invitation is for selected people.');
   c = await fresh(c);
   res.json({ call: callJson(c, req.userId, await peopleFor([c])) });
 }
@@ -223,7 +223,7 @@ async function exportCalendar(req, res) {
 }
 async function join(req, res) {
   const c = await load(req, { active: true });
-  if (!canJoin(c, req.userId)) fail(403, 'Only invited group members can join.');
+  if (!canJoin(c, req.userId)) fail(403, 'Only invited people can join.');
   if (c.startsAt.getTime() - Date.now() > 10 * 60000) fail(409, 'Joining opens 10 minutes before the call.');
   const host = isHost(c, req.userId);
   if (!host && (typeof req.body?.passcode !== 'string' || req.body.passcode !== c.passcode)) fail(403, 'Incorrect meeting passcode.');
