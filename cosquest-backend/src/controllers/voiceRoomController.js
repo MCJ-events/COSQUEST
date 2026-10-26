@@ -3,7 +3,8 @@ const VoiceRoom = require('../models/VoiceRoom');
 const User = require('../models/User');
 const { createCallToken, getLivekitUrl } = require('../utils/livekit');
 const { sourcesFor, setSources, muteMicrophone, removeFromRoom, closeRoom } = require('../utils/callRoom');
-const { loadConversationForUser, groupRoleOf, isAdminRole, canActOn } = require('./chatController');
+const { loadConversationForUser } = require('./chatController');
+const { roleIn, isAdminRole, canActOn } = require('../utils/roomRoles');
 const { emitToRooms, emitToUser } = require('../realtime/socket');
 const { transcriptionFor } = require('../sparks/calls');
 const limits = require('../config/callLimits');
@@ -92,8 +93,20 @@ function awayIn(roomId) {
   return require('./callController').awayIn(roomId);
 }
 
+// On a stage, who may talk: the speakers. Off a stage, everyone.
+function isSpeaker(room, userId) {
+  return !room.stage || (room.speakers || []).some((id) => idOf(id) === String(userId));
+}
+
+function activeAlertOf(holder) {
+  const a = holder?.activeAlert;
+  if (!a?.user || new Date(a.expiresAt) <= new Date()) return null;
+  return { alertId: idOf(a.alert), userId: idOf(a.user), at: a.at, expiresAt: a.expiresAt };
+}
+
 function toVoiceJson(room, previews, away = new Set()) {
   const muted = new Set((room.mutedUsers || []).map(idOf));
+  const hands = new Set((room.raisedHands || []).map(idOf));
   return {
     id: idOf(room),
     conversationId: idOf(room.conversation),
@@ -111,8 +124,16 @@ function toVoiceJson(room, previews, away = new Set()) {
       away: away.has(idOf(member.user)),
       // An admin muted them: they can't turn their microphone on.
       mutedByAdmin: muted.has(idOf(member.user)),
+      // speaker (may talk) or listener (stage on, only hears).
+      role: isSpeaker(room, idOf(member.user)) ? 'speaker' : 'listener',
+      handRaised: Boolean(room.stage) && hands.has(idOf(member.user)),
     })),
     memberCount: room.members.length,
+    // Stage (town hall): only speakers talk. speakerCount = how many may talk.
+    stage: Boolean(room.stage),
+    speakerCount: room.members.filter((member) => isSpeaker(room, idOf(member.user))).length,
+    // A "faction in danger" alert sent from here: the flare on that circle.
+    alert: activeAlertOf(room),
     maxMembers: limits.voiceRoomMaxMembers(),
     // Who is sharing their screen right now (one person at a time).
     screenShare: room.screenShare?.user ? { userId: idOf(room.screenShare.user), startedAt: room.screenShare.startedAt } : null,
@@ -122,6 +143,7 @@ function toVoiceJson(room, previews, away = new Set()) {
 // What this person may publish in this voice chat right now.
 function sourcesIn(room, userId) {
   return sourcesFor({
+    listener: !isSpeaker(room, userId),
     microphone: !(room.mutedUsers || []).some((id) => idOf(id) === String(userId)),
     screenShare: idOf(room.screenShare?.user) === String(userId),
   });
@@ -131,10 +153,12 @@ function sourcesIn(room, userId) {
 // Sparks notice applies (transcription), the camera starts off (voice chats
 // are audio first), and what they may do.
 async function viewerExtras(room, conversation, user) {
-  const role = conversation.type === 'group' ? await groupRoleOf(conversation, user) : null;
+  const role = await roleIn(conversation, user);
   return {
     canModerate: isAdminRole(role),
     canEnd: isAdminRole(role) || idOf(room.startedBy) === String(user._id),
+    // Switch the stage on/off and promote/demote speakers: same people as canEnd.
+    canManageStage: isAdminRole(role) || idOf(room.startedBy) === String(user._id),
     media: { cameraStartsOn: false },
     transcription: await transcriptionFor(idOf(room), user._id),
   };
@@ -450,7 +474,7 @@ async function joinVoiceRoom(req, res) {
   if (changed) broadcastVoiceUpdate(roomId);
 
   const view = await roomView(roomId);
-  const room = await VoiceRoom.findById(roomId, 'roomName startedBy mutedUsers screenShare').lean();
+  const room = await VoiceRoom.findById(roomId, 'roomName startedBy mutedUsers screenShare stage speakers').lean();
   if (!view?.active || !room) {
     return res.status(410).json({ error: 'This voice chat has ended. Try again.' });
   }
@@ -505,25 +529,25 @@ async function leaveVoiceRoom(req, res) {
 async function loadForAction(req, select = '') {
   const found = await findVoiceRoomForUser(req.params.roomId);
   if (found.error) return { error: { status: found.status, message: found.error } };
-  const room = await VoiceRoom.findById(found.room._id, `conversation startedBy roomName active members.user mutedUsers removedUsers screenShare ${select}`).lean();
+  const room = await VoiceRoom.findById(found.room._id, `conversation startedBy roomName active members.user mutedUsers removedUsers screenShare stage speakers raisedHands ${select}`).lean();
   const { conversation, error } = await loadConversationForUser(String(room.conversation), req.user);
   if (error) return { error };
   if (!room.active) return { error: { status: 410, message: 'This voice chat has ended.' } };
-  const role = conversation.type === 'group' ? await groupRoleOf(conversation, req.user) : null;
+  const role = await roleIn(conversation, req.user);
   return { room, conversation, role };
 }
 
 const send = (res, error) => res.status(error.status).json({ error: error.message, ...(error.reason ? { reason: error.reason } : {}) });
 
 // POST /api/voice/:roomId/end - end the voice chat for everyone. Whoever
-// started it, or an owner/admin of the group. (Otherwise it ends when the
+// started it, or an admin. (Otherwise it ends when the
 // last person leaves or goes quiet.)
 async function endVoiceRoom(req, res) {
   const loaded = await loadForAction(req);
   if (loaded.error) return send(res, loaded.error);
   const { room, role } = loaded;
   if (idOf(room.startedBy) !== String(req.userId) && !isAdminRole(role)) {
-    return send(res, { status: 403, message: 'Only the person who started this voice chat or a group admin can end it.' });
+    return send(res, { status: 403, message: 'Only the person who started this voice chat or an admin can end it.' });
   }
   const memberIds = room.members.map((member) => idOf(member.user));
   const ended = await VoiceRoom.updateOne(
@@ -550,13 +574,14 @@ async function startScreenShare(req, res) {
   const { room } = loaded;
   const userId = String(req.userId);
   if (!room.members.some((member) => idOf(member.user) === userId)) return send(res, { status: 403, message: 'Join the voice chat first.' });
+  if (!isSpeaker(room, userId)) return send(res, { status: 403, message: 'Only speakers can share their screen.' });
   // Already sharing: nothing changes (safe to retry).
   const taken = idOf(room.screenShare?.user) === userId
     ? room
     : await VoiceRoom.findOneAndUpdate(
       { _id: room._id, active: true, screenShare: null },
       { $set: { screenShare: { user: req.userId, startedAt: new Date() } }, $inc: { __v: 1 } },
-      { new: true, projection: 'screenShare mutedUsers roomName' }
+      { new: true, projection: 'screenShare mutedUsers roomName stage speakers' }
     ).lean();
   if (!taken) {
     const current = await VoiceRoom.findById(room._id, 'screenShare').lean();
@@ -569,7 +594,7 @@ async function startScreenShare(req, res) {
 }
 
 // POST /api/voice/:roomId/screen-share/stop - stop sharing (the sharer), or
-// stop someone else's share (a group admin).
+// stop someone else's share (an admin).
 async function stopScreenShare(req, res) {
   const loaded = await loadForAction(req);
   if (loaded.error) return send(res, loaded.error);
@@ -577,13 +602,13 @@ async function stopScreenShare(req, res) {
   const sharer = idOf(room.screenShare?.user);
   if (!sharer) return res.json({ screenShare: null });
   if (sharer !== String(req.userId)) {
-    const sharerRole = conversation.type === 'group' ? await groupRoleOf(conversation, sharer) : null;
-    if (!canActOn(role, sharerRole)) return send(res, { status: 403, message: 'Only the person sharing or a group admin can stop this screen share.' });
+    const sharerRole = await roleIn(conversation, sharer);
+    if (!canActOn(role, sharerRole)) return send(res, { status: 403, message: 'Only the person sharing or an admin can stop this screen share.' });
   }
   const stopped = await VoiceRoom.findOneAndUpdate(
     { _id: room._id, 'screenShare.user': room.screenShare.user },
     { $set: { screenShare: null }, $inc: { __v: 1 } },
-    { new: true, projection: 'screenShare mutedUsers roomName' }
+    { new: true, projection: 'screenShare mutedUsers roomName stage speakers' }
   ).lean();
   if (stopped) {
     await setSources(stopped.roomName, sharer, sourcesIn(stopped, sharer));
@@ -592,9 +617,10 @@ async function stopScreenShare(req, res) {
   return res.json({ screenShare: null });
 }
 
-// Moderation (owner/admins of the group, by the group's own rule: admins act
-// on members, only the owner acts on admins, nobody on the owner). Voice
-// chats in Community and faction rooms have no admins.
+// Moderation by admins (src/utils/roomRoles.js): a group's owner/admins, by
+// the group's own rule (admins act on members, only the owner acts on
+// admins, nobody on the owner), or a Community/faction room's admins
+// (scripts/setRoomAdmin.js). Rank alone never gives these powers.
 async function loadModeration(req) {
   const loaded = await loadForAction(req);
   if (loaded.error) return loaded;
@@ -602,9 +628,9 @@ async function loadModeration(req) {
   if (!mongoose.isValidObjectId(targetId)) return { error: { status: 400, message: 'Invalid user ID.' } };
   if (targetId === String(req.userId)) return { error: { status: 400, message: 'You cannot do this to yourself.' } };
   const { conversation, role } = loaded;
-  const targetRole = conversation.type === 'group' ? await groupRoleOf(conversation, targetId) : null;
+  const targetRole = await roleIn(conversation, targetId);
   if (!canActOn(role, targetRole)) {
-    return { error: { status: 403, message: isAdminRole(role) ? 'Only the group owner can do this to an admin.' : 'Only group admins can mute or remove people.' } };
+    return { error: { status: 403, message: isAdminRole(role) ? 'Only the owner can do this to an admin.' : 'Only admins can mute or remove people.' } };
   }
   return { ...loaded, targetId };
 }
@@ -619,7 +645,7 @@ async function muteMember(req, res) {
   const updated = await VoiceRoom.findOneAndUpdate(
     { _id: room._id, active: true },
     { $addToSet: { mutedUsers: targetId }, $inc: { __v: 1 } },
-    { new: true, projection: 'mutedUsers screenShare roomName' }
+    { new: true, projection: 'mutedUsers screenShare roomName stage speakers' }
   ).lean();
   await muteMicrophone(updated.roomName, targetId);
   await setSources(updated.roomName, targetId, sourcesIn(updated, targetId));
@@ -637,7 +663,7 @@ async function unmuteMember(req, res) {
   const updated = await VoiceRoom.findOneAndUpdate(
     { _id: room._id, active: true },
     { $pull: { mutedUsers: targetId }, $inc: { __v: 1 } },
-    { new: true, projection: 'mutedUsers screenShare roomName' }
+    { new: true, projection: 'mutedUsers screenShare roomName stage speakers' }
   ).lean();
   await setSources(updated.roomName, targetId, sourcesIn(updated, targetId));
   broadcastVoiceUpdate(room._id, [], { immediate: true });
@@ -666,6 +692,92 @@ async function allowMember(req, res) {
   if (loaded.error) return send(res, loaded.error);
   await VoiceRoom.updateOne({ _id: loaded.room._id, active: true }, { $pull: { removedUsers: loaded.targetId }, $inc: { __v: 1 } });
   return res.json({ allowed: true });
+}
+
+// ==========================================================================
+// STAGE (town hall: speakers and listeners)
+// ==========================================================================
+
+// Whoever started the voice chat, or an admin, runs the stage.
+function managesStage(loaded, userId) {
+  return isAdminRole(loaded.role) || idOf(loaded.room.startedBy) === String(userId);
+}
+
+// LiveKit: what each of these people may publish now (in small batches - a
+// stage switch can touch hundreds of people).
+async function applySources(room, userIds) {
+  for (let i = 0; i < userIds.length; i += 20) {
+    await Promise.all(userIds.slice(i, i + 20).map((id) => setSources(room.roomName, id, sourcesIn(room, id))));
+  }
+}
+
+// POST /api/voice/:roomId/stage { on: true|false } - turn the stage on (only
+// speakers talk; the person turning it on and the starter are speakers,
+// everyone else - and everyone joining later - listens) or off (everyone talks).
+async function setStage(req, res) {
+  const loaded = await loadForAction(req);
+  if (loaded.error) return send(res, loaded.error);
+  if (!managesStage(loaded, req.userId)) return send(res, { status: 403, message: 'Only the person who started this voice chat or an admin can run the stage.' });
+  if (typeof req.body?.on !== 'boolean') return send(res, { status: 400, message: 'on must be true or false.' });
+  const { room } = loaded;
+  const update = req.body.on
+    ? { $set: { stage: true }, $addToSet: { speakers: { $each: [req.userId, room.startedBy] } }, $inc: { __v: 1 } }
+    : { $set: { stage: false, raisedHands: [] }, $inc: { __v: 1 } };
+  const updated = await VoiceRoom.findOneAndUpdate({ _id: room._id, active: true }, update, { new: true, projection: 'members.user mutedUsers screenShare stage speakers roomName' }).lean();
+  if (!updated) return send(res, { status: 410, message: 'This voice chat has ended.' });
+  // A listener can't be sharing their screen.
+  if (updated.stage && updated.screenShare?.user && !isSpeaker(updated, idOf(updated.screenShare.user))) {
+    await VoiceRoom.updateOne({ _id: room._id }, { $set: { screenShare: null }, $inc: { __v: 1 } });
+    updated.screenShare = null;
+  }
+  await applySources(updated, updated.members.map((member) => idOf(member.user)));
+  broadcastVoiceUpdate(room._id, [], { immediate: true });
+  return res.json({ voiceRoom: (await roomView(room._id))?.json || null });
+}
+
+// POST /api/voice/:roomId/members/:userId/role { role: 'speaker'|'listener' }
+// - promote a listener to speaker (their raised hand comes down) or move a
+// speaker back to the audience. The stage must be on.
+async function setMemberRole(req, res) {
+  const loaded = await loadForAction(req);
+  if (loaded.error) return send(res, loaded.error);
+  if (!managesStage(loaded, req.userId)) return send(res, { status: 403, message: 'Only the person who started this voice chat or an admin can choose speakers.' });
+  const { room, conversation, role } = loaded;
+  const targetId = req.params.userId;
+  const newRole = req.body?.role;
+  if (!mongoose.isValidObjectId(targetId)) return send(res, { status: 400, message: 'Invalid user ID.' });
+  if (!['speaker', 'listener'].includes(newRole)) return send(res, { status: 400, message: 'role must be speaker or listener.' });
+  if (!room.stage) return send(res, { status: 409, message: 'Turn the stage on first: everyone can talk right now.' });
+  if (!room.members.some((member) => idOf(member.user) === targetId)) return send(res, { status: 404, message: 'That person is not in this voice chat.' });
+  if (newRole === 'listener' && targetId !== String(req.userId) && isAdminRole(await roleIn(conversation, targetId)) && !canActOn(role, await roleIn(conversation, targetId))) {
+    return send(res, { status: 403, message: 'Only the owner can move an admin to the audience.' });
+  }
+  const update = newRole === 'speaker'
+    ? { $addToSet: { speakers: targetId }, $pull: { raisedHands: targetId }, $inc: { __v: 1 } }
+    : { $pull: { speakers: targetId }, $inc: { __v: 1 } };
+  let updated = await VoiceRoom.findOneAndUpdate({ _id: room._id, active: true }, update, { new: true, projection: 'mutedUsers screenShare stage speakers roomName' }).lean();
+  if (newRole === 'listener' && idOf(updated.screenShare?.user) === targetId) {
+    updated = await VoiceRoom.findOneAndUpdate({ _id: room._id }, { $set: { screenShare: null }, $inc: { __v: 1 } }, { new: true, projection: 'mutedUsers screenShare stage speakers roomName' }).lean();
+  }
+  await setSources(updated.roomName, targetId, sourcesIn(updated, targetId));
+  broadcastVoiceUpdate(room._id, [], { immediate: true });
+  emitToUser(targetId, 'voice:role', { roomId: idOf(room), conversationId: idOf(room.conversation), role: newRole, by: String(req.userId) });
+  return res.json({ voiceRoom: (await roomView(room._id))?.json || null });
+}
+
+// POST /api/voice/:roomId/hand { raised: true|false } - a listener asks to
+// speak (or changes their mind). The stage's managers see members[].handRaised.
+async function raiseHand(req, res) {
+  const loaded = await loadForAction(req);
+  if (loaded.error) return send(res, loaded.error);
+  const { room } = loaded;
+  const userId = String(req.userId);
+  if (typeof req.body?.raised !== 'boolean') return send(res, { status: 400, message: 'raised must be true or false.' });
+  if (!room.members.some((member) => idOf(member.user) === userId)) return send(res, { status: 403, message: 'Join the voice chat first.' });
+  if (!room.stage || isSpeaker(room, userId)) return send(res, { status: 409, message: 'You can already speak.' });
+  await VoiceRoom.updateOne({ _id: room._id, active: true }, { [req.body.raised ? '$addToSet' : '$pull']: { raisedHands: req.userId }, $inc: { __v: 1 } });
+  broadcastVoiceUpdate(room._id);
+  return res.json({ handRaised: req.body.raised });
 }
 
 // ==========================================================================
@@ -705,6 +817,13 @@ module.exports = {
   unmuteMember,
   removeMemberByAdmin,
   allowMember,
+  setStage,
+  setMemberRole,
+  raiseHand,
+  // For alerts and tests.
+  isSpeaker,
+  activeAlertOf,
+  broadcastVoiceUpdate,
   // LiveKit webhooks.
   participantLeft,
   participantJoined,

@@ -4,7 +4,7 @@ const VoiceRoom = require('../models/VoiceRoom');
 const User = require('../models/User');
 const userModel = require('../models/userModel');
 const { createCallToken, getLivekitUrl } = require('../utils/livekit');
-const { sourcesFor, setSources } = require('../utils/callRoom');
+const { sourcesFor, setSources, muteMicrophone, removeFromRoom } = require('../utils/callRoom');
 const { isBlockedEitherWay } = require('./publicProfileController');
 const { loadConversationForUser } = require('./chatController');
 const Block = require('../models/Block');
@@ -65,6 +65,26 @@ function participantIds(call) {
 
 function isActive(call) {
   return !TERMINAL_STATUSES.includes(call.status);
+}
+
+// The call's moderator muted / removed them (POST .../members/:userId/...).
+function isMuted(call, userId) {
+  return (call.mutedUsers || []).some((id) => idOf(id) === String(userId));
+}
+function isRemoved(call, userId) {
+  return (call.removedUsers || []).some((id) => idOf(id) === String(userId));
+}
+
+// What they may publish in this call: no microphone while muted by the
+// moderator, screen share only while they are the one sharing.
+function callSources(call, userId) {
+  return sourcesFor({ microphone: !isMuted(call, userId), screenShare: idOf(call.screenShare?.user) === String(userId) });
+}
+
+const REMOVED_ERROR = { status: 403, reason: 'removed', message: 'You were removed from this call.' };
+
+function sendError(res, error, extra = {}) {
+  return res.status(error.status).json({ error: error.message, ...(error.reason ? { reason: error.reason } : {}), ...extra });
 }
 
 // People ringing or in the call right now. (Counted from `members`, not
@@ -252,6 +272,8 @@ function buildCallJson(call) {
       status: member.status,
       // In one of this call's private calls right now.
       away: away.has(idOf(member.user)),
+      // The call's moderator muted them: they can't turn their microphone on.
+      mutedByAdmin: isMuted(call, idOf(member.user)),
       invitedBy: member.invitedBy ? idOf(member.invitedBy) : null,
       invitedAt: member.invitedAt || null,
       joinedAt: member.joinedAt || null,
@@ -262,6 +284,13 @@ function buildCallJson(call) {
     // CALL_MAX_INVITES_PER_REQUEST).
     // Who is sharing their screen right now (one person at a time).
     screenShare: call.screenShare?.user ? { userId: idOf(call.screenShare.user), startedAt: call.screenShare.startedAt } : null,
+    // Who can mute and remove people in this call: whoever started it.
+    moderatorId: idOf(call.caller),
+    // A "faction in danger" alert sent from this call (the flare on that
+    // person's circle) until expiresAt. src/controllers/alertController.js.
+    alert: call.activeAlert?.user && new Date(call.activeAlert.expiresAt) > new Date()
+      ? { alertId: idOf(call.activeAlert.alert), userId: idOf(call.activeAlert.user), at: call.activeAlert.at, expiresAt: call.activeAlert.expiresAt }
+      : null,
     maxParticipants: limits.maxInCall(),
     maxInvitesPerRequest: limits.maxInvitesPerRequest(),
     createdAt: call.createdAt,
@@ -493,7 +522,7 @@ async function joinExtras(call, user) {
     userId: user._id,
     name: displayName(user),
     roomName: call.roomName,
-    sources: sourcesFor({ screenShare: idOf(call.screenShare?.user) === String(user._id) }),
+    sources: callSources(call, user._id),
   });
   return {
     token,
@@ -663,6 +692,7 @@ async function acceptCall(req, res) {
 
     const mine = memberOf(current, req.userId);
     if (!mine) return { error: { status: 403, message: 'You are not part of this call.' } };
+    if (isRemoved(current, req.userId)) return { error: REMOVED_ERROR };
     if (mine.status === 'joined') return expired ? true : false; // already in it
     if (!isActive(current) || mine.status !== 'ringing') {
       // Save the expiry (if any) but report that this call is over for them.
@@ -677,7 +707,7 @@ async function acceptCall(req, res) {
     return true;
   });
 
-  if (error) return res.status(error.status).json({ error: error.message });
+  if (error) return sendError(res, error);
   if (changed) broadcastCallUpdate(call);
 
   const mine = memberOf(call, req.userId);
@@ -769,6 +799,7 @@ async function rejoinCall(req, res) {
 
     const mine = memberOf(current, req.userId);
     if (!mine) return { error: { status: 403, message: 'You are not part of this call.' } };
+    if (isRemoved(current, req.userId)) return { error: REMOVED_ERROR };
     if (mine.status === 'joined') return false;
 
     const maxInCall = limits.maxInCall();
@@ -784,7 +815,7 @@ async function rejoinCall(req, res) {
     return true;
   });
 
-  if (error) return res.status(error.status).json({ error: error.message });
+  if (error) return sendError(res, error);
   if (changed) broadcastCallUpdate(call);
   return sendCall(res, 200, call, await joinExtras(call, req.user));
 }
@@ -900,6 +931,10 @@ async function inviteUsers(callId, inviter, { userIds = [], usernames = [] } = {
 
       if (existing && ['ringing', 'joined'].includes(existing.status)) {
         lateSkipped.push({ userId, username, reason: 'already_in_call' });
+        continue;
+      }
+      if (isRemoved(current, userId)) {
+        lateSkipped.push({ userId, username, reason: 'removed' });
         continue;
       }
       if (active >= maxInCall) {
@@ -1190,7 +1225,7 @@ async function startScreenShare(req, res) {
     });
   }
   if (changed) {
-    await setSources(call.roomName, userId, sourcesFor({ screenShare: true }));
+    await setSources(call.roomName, userId, callSources(call, userId));
     broadcastCallUpdate(call);
   }
   return sendCall(res, 200, call);
@@ -1211,10 +1246,159 @@ async function stopScreenShare(req, res) {
   });
   if (error) return res.status(error.status).json({ error: error.message });
   if (changed) {
-    await setSources(call.roomName, userId, sourcesFor());
+    await setSources(call.roomName, userId, callSources(call, userId));
     broadcastCallUpdate(call);
   }
   return sendCall(res, 200, call);
+}
+
+// ==========================================================================
+// MODERATION (whoever started the call)
+// ==========================================================================
+
+// A call always starts in a DM, so it has no group admins: whoever started it
+// moderates it. They can't act on themselves.
+async function moderate(req, mutator) {
+  const found = await findCallForUser(req.params.callId, req.userId);
+  if (found.error) return { error: { status: found.status, message: found.error } };
+  const targetId = req.params.userId;
+  if (!mongoose.isValidObjectId(targetId)) return { error: { status: 400, message: 'Invalid user ID.' } };
+  if (targetId === String(req.userId)) return { error: { status: 400, message: 'You cannot do this to yourself.' } };
+  return mutateCall(found.callId, (current) => {
+    if (!isActive(current)) return { error: { status: 410, message: 'This call has ended.' } };
+    if (idOf(current.caller) !== String(req.userId)) {
+      return { error: { status: 403, message: 'Only the person who started this call can mute or remove people.' } };
+    }
+    const target = memberOf(current, targetId);
+    if (!target) return { error: { status: 404, message: 'That person is not part of this call.' } };
+    return mutator(current, target, targetId);
+  });
+}
+
+function moderationReply(res, { call, changed, error }) {
+  if (error) return sendError(res, error);
+  if (changed) broadcastCallUpdate(call);
+  return sendCall(res, 200, call);
+}
+
+// POST /api/calls/:callId/members/:userId/mute - their microphone is muted
+// and stays off (they can't turn it on) until .../unmute.
+async function muteCallMember(req, res) {
+  const targetId = req.params.userId;
+  const outcome = await moderate(req, (current) => {
+    if (isMuted(current, targetId)) return false;
+    current.mutedUsers.push(targetId);
+    return true;
+  });
+  if (outcome.changed) {
+    await muteMicrophone(outcome.call.roomName, targetId);
+    await setSources(outcome.call.roomName, targetId, callSources(outcome.call, targetId));
+    emitToUsers([targetId], 'call:moderated', { callId: idOf(outcome.call), action: 'muted', by: String(req.userId) });
+  }
+  return moderationReply(res, outcome);
+}
+
+// POST /api/calls/:callId/members/:userId/unmute - they may turn their
+// microphone on again (it stays off until they do).
+async function unmuteCallMember(req, res) {
+  const targetId = req.params.userId;
+  const outcome = await moderate(req, (current) => {
+    if (!isMuted(current, targetId)) return false;
+    current.mutedUsers = current.mutedUsers.filter((id) => idOf(id) !== targetId);
+    return true;
+  });
+  if (outcome.changed) {
+    await setSources(outcome.call.roomName, targetId, callSources(outcome.call, targetId));
+    emitToUsers([targetId], 'call:moderated', { callId: idOf(outcome.call), action: 'unmuted', by: String(req.userId) });
+  }
+  return moderationReply(res, outcome);
+}
+
+// POST /api/calls/:callId/members/:userId/remove - out of the call and its
+// LiveKit room, and kept out: answering, rejoining or being added again is
+// refused (403, reason 'removed') until .../allow.
+async function removeCallMember(req, res) {
+  const targetId = req.params.userId;
+  const outcome = await moderate(req, (current, target) => {
+    if (isRemoved(current, targetId)) return false;
+    const now = new Date();
+    current.removedUsers.push(targetId);
+    if (['ringing', 'joined'].includes(target.status)) {
+      target.status = target.status === 'ringing' ? 'declined' : 'left';
+      target.leftAt = now;
+    }
+    settle(current, now);
+    return true;
+  });
+  if (outcome.changed) {
+    await removeFromRoom(outcome.call.roomName, targetId);
+    emitToUsers([targetId], 'call:removed', { callId: idOf(outcome.call), by: String(req.userId) });
+  }
+  return moderationReply(res, outcome);
+}
+
+// POST /api/calls/:callId/members/:userId/allow - a removed person may be
+// added to this call again (someone in it still has to add them).
+async function allowCallMember(req, res) {
+  const targetId = req.params.userId;
+  const outcome = await moderate(req, (current) => {
+    if (!isRemoved(current, targetId)) return false;
+    current.removedUsers = current.removedUsers.filter((id) => idOf(id) !== targetId);
+    return true;
+  });
+  return moderationReply(res, outcome);
+}
+
+// ==========================================================================
+// FACTION ALERTS (src/controllers/alertController.js)
+// ==========================================================================
+
+// Shows (or, with null, clears) the alert's flare on this call. Clearing
+// with `onlyAlertId` leaves a newer alert alone.
+async function setCallAlert(callId, activeAlert, onlyAlertId = null) {
+  const { call, changed } = await mutateCall(callId, (current) => {
+    if (!activeAlert && (!current.activeAlert || (onlyAlertId && idOf(current.activeAlert.alert) !== String(onlyAlertId)))) return false;
+    if (activeAlert && !isActive(current)) return false;
+    current.activeAlert = activeAlert;
+    return true;
+  });
+  if (call && changed) broadcastCallUpdate(call);
+  return call;
+}
+
+// "Respond" to an alert sent from this call: straight into the call, without
+// ringing. The call's own rules still apply (removed people stay out, the
+// size limit, one call at a time). Returns { call, extras } or { error }.
+async function joinFromAlert(callId, user, senderId) {
+  const userId = String(user._id);
+  if (await isBusy(userId, callId)) return { error: { status: 409, message: 'You are already on another call.' } };
+  const { call, changed, error } = await mutateCall(callId, (current) => {
+    const now = new Date();
+    if (expireRinging(current, now)) settle(current, now);
+    if (!isActive(current)) return { error: { status: 410, message: 'This call has ended.' } };
+    if (isRemoved(current, userId)) return { error: REMOVED_ERROR };
+    const mine = memberOf(current, userId);
+    if (mine?.status === 'joined') return false;
+    const maxInCall = limits.maxInCall();
+    const full = { error: { status: 409, message: `This call is full (${maxInCall} people).` } };
+    if (mine?.status !== 'ringing' && activeCount(current) >= maxInCall) return full;
+    if (!mine && current.participants.length >= limits.maxEverInvited()) return full;
+    if (mine) {
+      mine.status = 'joined';
+      mine.joinedAt = now;
+      mine.leftAt = null;
+      mine.disconnectedAt = null;
+    } else {
+      current.members.push({ user: userId, status: 'joined', invitedBy: senderId, invitedAt: now, joinedAt: now });
+      if (!current.participants.some((participant) => idOf(participant) === userId)) current.participants.push(userId);
+    }
+    current.isGroup = true;
+    settle(current, now);
+    return true;
+  });
+  if (error) return { error };
+  if (changed) broadcastCallUpdate(call);
+  return { call, extras: await joinExtras(call, user) };
 }
 
 // ==========================================================================
@@ -1245,6 +1429,13 @@ async function participantJoined(callId, userId) {
 
 module.exports = {
   startCall,
+  muteCallMember,
+  unmuteCallMember,
+  removeCallMember,
+  allowCallMember,
+  isRemoved,
+  setCallAlert,
+  joinFromAlert,
   startScreenShare,
   stopScreenShare,
   participantLeft,

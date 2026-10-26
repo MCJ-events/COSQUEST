@@ -38,7 +38,7 @@ const EXPO_TOKEN = /^Expo(nent)?PushToken\[[^\]]{1,200}\]$/;
 const CATEGORIES = ['eventReminders', 'questUpdates', 'factionNews', 'friendActivity', 'rankChanges'];
 
 /** Android notification channels, created by the app (components/PushRegistration.tsx). */
-const CHANNELS = ['default', 'messages', 'calls', 'game'];
+const CHANNELS = ['default', 'messages', 'calls', 'game', 'alerts'];
 
 // The transport is swappable so tests can see what would be sent.
 let transport = defaultTransport;
@@ -130,7 +130,7 @@ async function removeTokens(tokens) {
  *
  * @param {string[]} userIds
  * @param {{ title?: string, body: string, data?: object, channel?: string,
- *           category?: string, skipOnline?: boolean, ttl?: number,
+ *           category?: string, skipOnline?: boolean, noBanner?: boolean, ttl?: number,
  *           priority?: 'default'|'normal'|'high', collapseId?: string,
  *           actor?: object }} note  (actor: { id, username, name, avatarKey,
  *           avatarPhotoUrl } - for the in-app banner's picture only)
@@ -142,7 +142,8 @@ async function sendToUsers(userIds, note) {
     if (note.skipOnline && ids.length) {
       const online = await onlineAmong(ids);
       if (online.size) {
-        await bannerTo([...online], note);
+        // noBanner: the caller sent online users its own socket event.
+        if (!note.noBanner) await bannerTo([...online], note);
         ids = ids.filter((id) => !online.has(id));
       }
     }

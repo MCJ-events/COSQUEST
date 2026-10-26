@@ -72,6 +72,9 @@ async function main() {
     const callControls = await require('./callControls').run(`http://localhost:${process.env.PORT}`);
     result.pass += callControls.pass;
     result.fail += callControls.fail;
+    const callModeration = await require('./callModerationStage').run(`http://localhost:${process.env.PORT}`);
+    result.pass += callModeration.pass;
+    result.fail += callModeration.fail;
     const callLimits = await require('./callLimits').run(`http://localhost:${process.env.PORT}`);
     result.pass += callLimits.pass;
     result.fail += callLimits.fail;

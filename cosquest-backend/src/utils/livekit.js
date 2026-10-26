@@ -30,7 +30,8 @@ async function createCallToken({ userId, username, name, roomName, sources }) {
   accessToken.addGrant({
     roomJoin: true,
     room: roomName,
-    canPublish: true,
+    // No sources (a listener on a stage): can't publish at all, only receive.
+    canPublish: !sources || sources.length > 0,
     canSubscribe: true,
     canPublishData: true,
     canPublishSources: sources || require('./callRoom').sourcesFor(),

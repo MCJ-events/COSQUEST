@@ -91,6 +91,16 @@ const callSchema = new mongoose.Schema(
       default: [],
     },
     roomName: { type: String, required: true, unique: true },
+    // Moderation by whoever started the call: muted people can't turn their
+    // microphone on; removed people can't come back into this call.
+    mutedUsers: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], default: [] },
+    removedUsers: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], default: [] },
+    // A "faction in danger" alert sent from here (the flare on the sender's
+    // circle), until expiresAt. src/controllers/alertController.js.
+    activeAlert: {
+      type: new mongoose.Schema({ alert: { type: mongoose.Schema.Types.ObjectId, ref: 'FactionAlert' }, user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, at: Date, expiresAt: Date }, { _id: false }),
+      default: null,
+    },
     // Who is sharing their screen (one person at a time), or null.
     screenShare: {
       type: new mongoose.Schema({ user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, startedAt: Date }, { _id: false }),

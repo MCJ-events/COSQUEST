@@ -38,11 +38,25 @@ const voiceRoomSchema = new mongoose.Schema(
       type: new mongoose.Schema({ user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, startedAt: Date }, { _id: false }),
       default: null,
     },
-    // Moderation by the group's owner/admins, for this voice chat only (a new
+    // Moderation by admins (a group's owner/admins, a Community or faction
+    // room's admins - src/utils/roomRoles.js), for this voice chat only (a new
     // voice chat starts clean): muted people can't turn their microphone on,
     // removed people can't join again.
     mutedUsers: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], default: [] },
     removedUsers: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], default: [] },
+    // Stage (town hall): only speakers may talk; everyone else listens (their
+    // LiveKit token can't publish, so their phone only receives the speakers).
+    // Off: everyone may talk. The starter and admins switch it and promote or
+    // demote people; listeners can raise a hand.
+    stage: { type: Boolean, default: false },
+    speakers: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], default: [] },
+    raisedHands: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], default: [] },
+    // A "faction in danger" alert sent from here (the flare on the sender's
+    // circle), until expiresAt. src/controllers/alertController.js.
+    activeAlert: {
+      type: new mongoose.Schema({ alert: { type: mongoose.Schema.Types.ObjectId, ref: 'FactionAlert' }, user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, at: Date, expiresAt: Date }, { _id: false }),
+      default: null,
+    },
     // Ended for everyone (POST /api/voice/:roomId/end) rather than emptied.
     endedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     roomName: { type: String, required: true, unique: true },

@@ -43,8 +43,10 @@ async function run(action, details, fn) {
 }
 
 // What someone may publish: always data; microphone unless an admin muted
-// them; camera; screen share only while they are the one sharing.
-function sourcesFor({ microphone = true, camera = true, screenShare = false } = {}) {
+// them; camera; screen share only while they are the one sharing. A listener
+// on a stage publishes nothing (listener: true).
+function sourcesFor({ microphone = true, camera = true, screenShare = false, listener = false } = {}) {
+  if (listener) return [];
   return [
     ...(microphone ? [TrackSource.MICROPHONE] : []),
     ...(camera ? [TrackSource.CAMERA] : []),
@@ -55,7 +57,7 @@ function sourcesFor({ microphone = true, camera = true, screenShare = false } = 
 function setSources(roomName, identity, sources) {
   return run('setSources', { roomName, identity: String(identity), sources }, (api) =>
     api.updateParticipant(roomName, String(identity), {
-      permission: { canSubscribe: true, canPublish: true, canPublishData: true, canPublishSources: sources },
+      permission: { canSubscribe: true, canPublish: sources.length > 0, canPublishData: true, canPublishSources: sources },
     })
   );
 }

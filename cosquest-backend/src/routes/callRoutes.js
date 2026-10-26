@@ -14,7 +14,12 @@ const {
   startPrivateVoiceCall,
   startScreenShare,
   stopScreenShare,
+  muteCallMember,
+  unmuteCallMember,
+  removeCallMember,
+  allowCallMember,
 } = require('../controllers/callController');
+const { alertFromCall, alertFromVoice, getAlert, respondToAlert } = require('../controllers/alertController');
 const {
   getVoiceRoom,
   joinVoiceRoom,
@@ -27,6 +32,9 @@ const {
   unmuteMember,
   removeMemberByAdmin,
   allowMember,
+  setStage,
+  setMemberRole,
+  raiseHand,
 } = require('../controllers/voiceRoomController');
 
 const router = express.Router();
@@ -35,7 +43,7 @@ const router = express.Router();
 // so an unscoped router.use would also run on every /api/chats request and
 // look the user up again before chatRoutes does its own check.
 router.use(
-  ['/calls', '/chats/:conversationId/calls', '/voice', '/chats/:conversationId/voice'],
+  ['/calls', '/chats/:conversationId/calls', '/voice', '/chats/:conversationId/voice', '/alerts'],
   requireAuth,
   requireCompletedOnboarding
 );
@@ -64,6 +72,13 @@ router.post('/calls/:callId/private', asyncHandler(startPrivateCall));
 // Screen sharing: one person at a time.
 router.post('/calls/:callId/screen-share/start', asyncHandler(startScreenShare));
 router.post('/calls/:callId/screen-share/stop', asyncHandler(stopScreenShare));
+// Moderation by whoever started the call.
+router.post('/calls/:callId/members/:userId/mute', asyncHandler(muteCallMember));
+router.post('/calls/:callId/members/:userId/unmute', asyncHandler(unmuteCallMember));
+router.post('/calls/:callId/members/:userId/remove', asyncHandler(removeCallMember));
+router.post('/calls/:callId/members/:userId/allow', asyncHandler(allowCallMember));
+// "Faction in danger" from this call ({ message? }).
+router.post('/calls/:callId/alert', asyncHandler(alertFromCall));
 
 // Voice chats (Community, faction and group rooms - nobody's phone rings)
 router.get('/chats/:conversationId/voice', asyncHandler(getVoiceRoom));
@@ -77,10 +92,20 @@ router.post('/voice/:roomId/end', asyncHandler(endVoiceRoom));
 // Screen sharing: one person at a time.
 router.post('/voice/:roomId/screen-share/start', asyncHandler(startVoiceScreenShare));
 router.post('/voice/:roomId/screen-share/stop', asyncHandler(stopVoiceScreenShare));
-// Moderation by the group's owner/admins.
+// Moderation by the group's owner/admins, or a Community/faction room's admins.
 router.post('/voice/:roomId/members/:userId/mute', asyncHandler(muteMember));
 router.post('/voice/:roomId/members/:userId/unmute', asyncHandler(unmuteMember));
 router.post('/voice/:roomId/members/:userId/remove', asyncHandler(removeMemberByAdmin));
 router.post('/voice/:roomId/members/:userId/allow', asyncHandler(allowMember));
+// Stage (speakers and listeners): { on }, { role: 'speaker'|'listener' }, { raised }.
+router.post('/voice/:roomId/stage', asyncHandler(setStage));
+router.post('/voice/:roomId/members/:userId/role', asyncHandler(setMemberRole));
+router.post('/voice/:roomId/hand', asyncHandler(raiseHand));
+// "Faction in danger" from this voice chat ({ message? }).
+router.post('/voice/:roomId/alert', asyncHandler(alertFromVoice));
+
+// Faction alerts: what the push opens, and "Respond" (join that call or voice chat).
+router.get('/alerts/:alertId', asyncHandler(getAlert));
+router.post('/alerts/:alertId/respond', asyncHandler(respondToAlert));
 
 module.exports = router;
