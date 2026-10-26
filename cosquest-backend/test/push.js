@@ -93,6 +93,7 @@ async function run(baseUrl) {
     const toB = sent.find((m) => m.to === b.pushToken);
     check(got && toB.data.chatId === dm && toB.data.type === 'message' && toB.channelId === 'messages',
       'new DM pushes to the other person with chatId and the messages channel', toB);
+    check(toB?.priority === 'high', 'every push goes out at high priority (a chat message too)', toB);
     check(toB?.title === a.username && toB?.body === 'Meet at the shrine at six', 'DM push: sender as title, message as body', toB);
     check(!sent.some((m) => m.to === a.pushToken), 'the sender gets no push for their own message', sent);
 
@@ -140,6 +141,11 @@ async function run(baseUrl) {
       'DELETE /me/devices removes the token', removed.data);
     const removedNoSession = await request('DELETE', '/api/users/me/devices', null, { email: c.email, pushToken: c.pushToken });
     check(removedNoSession.status === 401, 'DELETE /me/devices needs a session', removedNoSession);
+    // The token in the address: DELETE /me/devices/:pushToken (the app's sign-out call).
+    await register(c, `ExponentPushToken[path-${c.id}]`);
+    const byPath = await request('DELETE', `/api/users/me/devices/${encodeURIComponent(`ExponentPushToken[path-${c.id}]`)}`, c.token);
+    check(byPath.status === 200 && !byPath.data.user.devices.some((d) => d.pushToken === `ExponentPushToken[path-${c.id}]`),
+      'DELETE /me/devices/:pushToken removes that token', byPath.data);
 
     // A mention: the mention push, not a second message push.
     sent.length = 0;

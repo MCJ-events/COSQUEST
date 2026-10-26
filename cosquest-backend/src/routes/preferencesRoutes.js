@@ -18,6 +18,7 @@ router.patch('/me/preferences/notifications', requireAuth, asyncHandler(updateNo
 router.patch('/me/preferences/location', requireAuth, asyncHandler(updateLocationPrefs));
 router.post('/me/devices', requireAuth, asyncHandler(registerDevice));
 router.delete('/me/devices', requireAuth, asyncHandler(unregisterDevice));
+router.delete('/me/devices/:pushToken', requireAuth, asyncHandler(unregisterDevice));
 router.post('/me/onboarding/complete', requireAuth, asyncHandler(completeOnboarding));
 
 module.exports = router;

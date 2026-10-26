@@ -124,9 +124,10 @@ async function registerDevice(req, res) {
   return res.json({ user: userModel.sanitize(updated) });
 }
 
-// DELETE /api/users/me/devices  { pushToken }  (sign-out: this phone stops getting this account's pushes)
+// DELETE /api/users/me/devices/:pushToken, or DELETE /api/users/me/devices
+// { pushToken }  (sign-out: this phone stops getting this account's pushes)
 async function unregisterDevice(req, res) {
-  const { pushToken } = req.body || {};
+  const pushToken = req.params.pushToken || req.body?.pushToken;
   if (typeof pushToken !== 'string' || !pushToken) return res.status(400).json({ error: 'pushToken is required.' });
   const updated = await userModel.updateUser(req.userId, (user) => {
     user.devices = user.devices.filter((d) => d.pushToken !== pushToken);

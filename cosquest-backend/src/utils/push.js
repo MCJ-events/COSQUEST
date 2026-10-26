@@ -131,7 +131,7 @@ async function removeTokens(tokens) {
  * @param {string[]} userIds
  * @param {{ title?: string, body: string, data?: object, channel?: string,
  *           category?: string, skipOnline?: boolean, noBanner?: boolean, ttl?: number,
- *           priority?: 'default'|'normal'|'high', collapseId?: string,
+ *           collapseId?: string,
  *           actor?: object }} note  (actor: { id, username, name, avatarKey,
  *           avatarPhotoUrl } - for the in-app banner's picture only)
  */
@@ -158,7 +158,9 @@ async function sendToUsers(userIds, note) {
       data: note.data || {},
       sound: 'default',
       channelId,
-      priority: note.priority || 'high',
+      // Every notification goes out at high priority, so phones in battery
+      // saving (Android doze) still show it at once.
+      priority: 'high',
       ...(note.ttl ? { ttl: note.ttl } : {}),
       ...(note.collapseId ? { collapseId: note.collapseId } : {}),
     }));

@@ -22,7 +22,8 @@ Always skipped: `preferences.notificationsEnabled` off, and any device row left 
 ## Devices
 
 - `POST /api/users/me/devices { pushToken, platform }` (Bearer only). The token is taken off any other account first (one phone, one signed-in account) and marked `authed`. Requests without a valid session get `401` and store nothing.
-- `DELETE /api/users/me/devices { pushToken }` (Bearer only): the app calls it on sign-out.
+- `DELETE /api/users/me/devices/:pushToken` (or `DELETE /api/users/me/devices { pushToken }`), Bearer only: the app calls it on sign-out.
+- Every push goes out at high priority, so a phone in battery saving still shows it at once.
 - Tokens Expo reports as `DeviceNotRegistered` are removed.
 
 ## Taps

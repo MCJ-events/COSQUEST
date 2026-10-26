@@ -35,7 +35,7 @@ async function notifyMeeting(call, action, userIds = null) {
     const host = people.get(String(call.host));
     emitToUser(user.id, 'notification:new', notificationModel.sanitize({ _id: result.upsertedId, type: 'group', message, actor: host, conversation: call.conversation, scheduledCall: call._id, read: false, createdAt: new Date() }));
     // Open app: an in-app banner instead of a push (push.js skipOnline).
-    push.sendToUsers([user.id], { title: 'CosQuest calls', body: message, category: 'eventReminders', channel: 'calls', skipOnline: true, actor: push.actorPreview(host), data: { type: 'scheduled-call', scheduledCallId: String(call._id), conversationId: String(call.conversation) } });
+    push.sendToUsers([user.id], { title: 'CosQuest calls', body: message, category: 'eventReminders', channel: 'calls', skipOnline: true, actor: push.actorPreview(host), data: { type: 'scheduled-call', scheduledCallId: String(call._id), chatId: String(call.conversation), conversationId: String(call.conversation) } });
   }));
 }
 
