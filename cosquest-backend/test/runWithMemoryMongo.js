@@ -141,6 +141,14 @@ async function main() {
       const sparksCallNotes = await require('./sparksCallNotes').run(`http://localhost:${process.env.PORT}`);
       result.pass += sparksCallNotes.pass;
       result.fail += sparksCallNotes.fail;
+      // 25 Oct: a restarted phone's lines (reused segment ids) and why someone has no lines (call.listening).
+      const sparksMissingSide = await require('./sparksMissingSide').run(`http://localhost:${process.env.PORT}`);
+      result.pass += sparksMissingSide.pass;
+      result.fail += sparksMissingSide.fail;
+      // 26 Oct: texts sent during a call are sorted into Sparks while a phone holds the call's scribe (module 1.3.5).
+      const sparksTextsDuringCall = await require('./sparksTextsDuringCall').run(`http://localhost:${process.env.PORT}`);
+      result.pass += sparksTextsDuringCall.pass;
+      result.fail += sparksTextsDuringCall.fail;
     } finally {
       delete process.env.SPARKS_ENGINE;
     }

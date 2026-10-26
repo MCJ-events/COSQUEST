@@ -5,7 +5,7 @@
  *
  * - Sparks' own state lives in collections prefixed `sparks_` (devices,
  *   outcomes, sparks, sessions, seams, pings, jobs, calls, segments, topics,
- *   outlines, consents). Rows are stored as plain documents with the row's
+ *   outlines, consents, listening). Rows are stored as plain documents with the row's
  *   fields (ms timestamps stay numbers) and `_id` = the row's key, through the
  *   native driver (no Mongoose casting, so a row comes back exactly as the
  *   module wrote it).
@@ -40,6 +40,8 @@ const NAMES = {
   // Live topic summaries (module 1.3.1): the latest per (call, topic).
   topicSummaries: 'sparks_topic_summaries',
   consents: 'sparks_consents',
+  // Whether a phone was listening on a call (module 1.3.4, SDK 1.2.8 call.listening).
+  listening: 'sparks_listening',
   mergeSuggestions: 'sparks_merge_suggestions',
 };
 
@@ -93,6 +95,7 @@ class MongoSparksStore {
       c.topics.createIndex({ callId: 1, idx: 1 }),
       c.topicSummaries.createIndex({ callId: 1, firstAt: 1 }),
       c.consents.createIndex({ userId: 1, decidedAt: -1 }),
+      c.listening.createIndex({ callId: 1 }),
       // Proposed merges (module 1.3): one row per pair of Sparks, ever.
       c.mergeSuggestions.createIndex({ pairKey: 1 }, { unique: true }),
       c.mergeSuggestions.createIndex({ chatId: 1, status: 1, createdAt: -1 }),
@@ -300,8 +303,12 @@ class MongoSparksStore {
   async jobsOfCall(callId, type) {
     return (await this.c.jobs.find({ callId, type }).sort({ createdAt: 1 }).toArray()).map((d) => strip(d, ['endedAt']));
   }
-  async activeJobDeviceIds() {
-    const ids = await this.c.jobs.distinct('leaseDeviceId', { status: { $in: ['offered', 'leased'] } });
+  // Module 1.3.5 passes exceptTypes ['call.scribe'] when it offers any other job: the scribe's lease
+  // lasts the whole call, and the phone takes chat jobs beside it.
+  async activeJobDeviceIds(options = {}) {
+    const filter = { status: { $in: ['offered', 'leased'] } };
+    if (Array.isArray(options.exceptTypes) && options.exceptTypes.length) filter.type = { $nin: options.exceptTypes };
+    const ids = await this.c.jobs.distinct('leaseDeviceId', filter);
     return new Set(ids.filter(Boolean));
   }
 
@@ -403,6 +410,22 @@ class MongoSparksStore {
   async latestConsent(userId, callId) {
     const d = await this.c.consents.find({ userId, $or: [{ callId }, { scope: 'always' }] }).sort({ decidedAt: -1, _id: -1 }).limit(1).next();
     return strip(d);
+  }
+
+  // Listening reports (module 1.3.4, optional store methods): one row per
+  // (call, phone), the totals only grow (a late, older report never lowers them).
+  async saveListening(r) {
+    await this.c.listening.updateOne(
+      { _id: `${r.callId}:${r.deviceId}` },
+      {
+        $set: { callId: r.callId, userId: r.userId, deviceId: r.deviceId, state: r.state, updatedAt: r.updatedAt },
+        $max: { listenedMs: r.listenedMs, unmutedMs: r.unmutedMs, lines: r.lines },
+      },
+      { upsert: true },
+    );
+  }
+  async listeningOfCall(callId) {
+    return (await this.c.listening.find({ callId }).toArray()).map((d) => strip(d));
   }
 
   // ---------- proposed merges (module 1.3) ----------
