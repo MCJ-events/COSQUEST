@@ -132,8 +132,10 @@ function runJob(input) {
  * connectPhone(baseUrl, { userId, token, tier, transcription })
  * tier 'full' = model loaded, takes jobs and sends hints; 'none' = no model
  * (still registers, still receives Spark events, never works).
+ * keepScribe: hold a call's scribe lease until the backend cancels it, as the
+ * SDK does (default: release it, the scribe is not simulated).
  */
-async function connectPhone(baseUrl, { userId, token, tier = 'full', transcription = false, deviceId = `dev_${randomUUID().slice(0, 12)}`, sdkVersion = '1.2.0-mock', log = () => {} }) {
+async function connectPhone(baseUrl, { userId, token, tier = 'full', transcription = false, deviceId = `dev_${randomUUID().slice(0, 12)}`, sdkVersion = '1.2.0-mock', keepScribe = false, log = () => {} }) {
   const cs = await suite();
   const keys = await cs.kem.generateKeyPair();
   const publicKey = b64url(await cs.kem.serializePublicKey(keys.publicKey));
@@ -150,6 +152,8 @@ async function connectPhone(baseUrl, { userId, token, tier = 'full', transcripti
   const legacy = []; // the app's socket events: spark:updated / spark:messages / spark:deleted, message:new / message:edited
   const sparks = new Map(); // sparkId -> latest Spark (wire shape), from spark.event / spark.snapshot
   const results = []; // { jobId, type, verdict }
+  const scribes = []; // call.scribe jobs held (keepScribe)
+  const scribeTimers = [];
   const waiters = new Set();
   const notify = () => {
     for (const w of [...waiters]) w();
@@ -176,6 +180,13 @@ async function connectPhone(baseUrl, { userId, token, tier = 'full', transcripti
       return;
     }
     await send('job.ack', { jobId: p.jobId, leaseToken: p.leaseToken, accepted: true });
+    if (input.type === 'call.scribe' && keepScribe) {
+      // Like the SDK: the scribe runs until the call ends (the backend cancels it), the lease kept alive by progress.
+      scribes.push(p.jobId);
+      const keep = setInterval(() => send('job.progress', { jobId: p.jobId, leaseToken: p.leaseToken, progress: 0 }).catch(() => {}), 20_000);
+      scribeTimers.push(keep);
+      return;
+    }
     const output = runJob(input);
     if (!output) {
       await send('job.release', { jobId: p.jobId, leaseToken: p.leaseToken, reason: 'error' });
@@ -239,7 +250,7 @@ async function connectPhone(baseUrl, { userId, token, tier = 'full', transcripti
   const beat = setInterval(() => heartbeat().catch(() => {}), 2000);
 
   return {
-    userId, deviceId, socket, frames, legacy, sparks, results, registerAck, registered, until, send, heartbeat,
+    userId, deviceId, socket, frames, legacy, sparks, results, scribes, registerAck, registered, until, send, heartbeat,
     /** Join the app's conversation room (to receive the old spark:* events too). */
     join: (conversationId) => socket.timeout(5000).emitWithAck('conversation:join', conversationId),
     /** The transcription notice for a call (or a voice chat): accepted or declined, as the SDK's recordConsent sends it. */
@@ -260,6 +271,7 @@ async function connectPhone(baseUrl, { userId, token, tier = 'full', transcripti
     },
     close() {
       clearInterval(beat);
+      scribeTimers.forEach(clearInterval);
       socket.close();
     },
   };
