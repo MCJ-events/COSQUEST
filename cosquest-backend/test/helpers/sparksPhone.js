@@ -133,7 +133,7 @@ function runJob(input) {
  * tier 'full' = model loaded, takes jobs and sends hints; 'none' = no model
  * (still registers, still receives Spark events, never works).
  */
-async function connectPhone(baseUrl, { userId, token, tier = 'full', transcription = false, deviceId = `dev_${randomUUID().slice(0, 12)}`, log = () => {} }) {
+async function connectPhone(baseUrl, { userId, token, tier = 'full', transcription = false, deviceId = `dev_${randomUUID().slice(0, 12)}`, sdkVersion = '1.2.0-mock', log = () => {} }) {
   const cs = await suite();
   const keys = await cs.kem.generateKeyPair();
   const publicKey = b64url(await cs.kem.serializePublicKey(keys.publicKey));
@@ -232,7 +232,7 @@ async function connectPhone(baseUrl, { userId, token, tier = 'full', transcripti
 
   const registerAck = await send('device.register', {
     deviceId, userId, sessionId: `s_${randomUUID().slice(0, 8)}`, platform: 'ios', osVersion: '18.0', appVersion: '1.0.0',
-    sdkVersion: '1.2.0-mock', tier, modelVersion: hasModel ? 'mock-1' : null, transcription, publicKey, kid,
+    sdkVersion, tier, modelVersion: hasModel ? 'mock-1' : null, transcription, publicKey, kid,
   });
   const registered = registerAck?.ok ? await until(() => frames.find((f) => f.type === 'device.registered'), 5000, 'device.registered') : null;
   if (registered) await heartbeat();
@@ -245,9 +245,12 @@ async function connectPhone(baseUrl, { userId, token, tier = 'full', transcripti
     /** The transcription notice for a call (or a voice chat): accepted or declined, as the SDK's recordConsent sends it. */
     consent: (callId, decision = 'accepted', scope = 'call') =>
       send('call.consent', { userId, noticeVersion: 2, decision, scope, callId, decidedAt: new Date().toISOString() }),
-    /** One final line of this user's speech, as the SDK posts it after transcribing. */
-    speak: (callId, text, startMs, endMs = startMs + 1500) =>
-      send('call.segment', { segment: { segmentId: `seg_${randomUUID().slice(0, 12)}`, callId, userId, deviceId, startMs, endMs, text, final: true, locale: 'en-GB', engine: 'moonshine-base' } }),
+    /** One final line of this user's speech, as the SDK posts it after transcribing (segmentId: as SDK 1.2.7 numbered it, to replay its ids). */
+    speak: (callId, text, startMs, endMs = startMs + 1500, segmentId = `seg_${randomUUID().slice(0, 12)}`) =>
+      send('call.segment', { segment: { segmentId, callId, userId, deviceId, startMs, endMs, text, final: true, locale: 'en-GB', engine: 'moonshine-base' } }),
+    /** SDK 1.2.8's call.listening report: how long this phone listened on the call, with the mic on, and its lines. */
+    listening: (callId, { state = 'off', listenedMs = 0, unmutedMs = 0, lines = 0 } = {}) =>
+      send('call.listening', { callId, userId, state, listenedMs, unmutedMs, lines, at: new Date().toISOString() }),
     /** The author's own hint for a message it just sent (SDK 1.2 'model' method). */
     hint(message, chatId) {
       if (!hasModel) return Promise.resolve();

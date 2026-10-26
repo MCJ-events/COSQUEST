@@ -157,7 +157,7 @@ New routes: `GET /api/chats/:id/sparks/native` (the module's own Spark objects, 
 
 ## 9. Data
 
-New collections: `sparks_devices`, `sparks_outcomes` (2-day TTL), `sparks_sparks`, `sparks_sessions`, `sparks_seams`, `sparks_pings`, `sparks_jobs` (finished jobs kept 7 days, input cleared when done), `sparks_calls`, `sparks_segments`, `sparks_topics`, `sparks_outlines`, `sparks_consents` (append-only), `message_seq_counters`. New `messages` indexes: unique `(conversation, seq)` and `(sparkId, seq)`, both partial (old rows without the fields are not indexed).
+New collections: `sparks_devices`, `sparks_outcomes` (2-day TTL), `sparks_sparks`, `sparks_sessions`, `sparks_seams`, `sparks_pings`, `sparks_jobs` (finished jobs kept 7 days, input cleared when done), `sparks_calls`, `sparks_segments`, `sparks_topics`, `sparks_outlines`, `sparks_consents` (append-only), `sparks_listening` (module 1.3.4: one row per call and phone, whether that phone was listening, from SDK 1.2.8's `call.listening`), `message_seq_counters`. New `messages` indexes: unique `(conversation, seq)` and `(sparkId, seq)`, both partial (old rows without the fields are not indexed).
 
 Call transcripts (`sparks_segments`) and outlines are kept until you delete them; decide a retention period before calls go live.
 
