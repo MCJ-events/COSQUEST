@@ -139,7 +139,7 @@ async function run(baseUrl) {
     // 4. Consent: a accepts the notice, b declines; only a's speech is kept and relayed.
     check((await pa.consent(roomId, 'accepted'))?.ok === true && (await pb.consent(roomId, 'declined'))?.ok === true, 'consent decisions for the voice chat are recorded');
     const lines = ['The quest board needs new bounties this week.', 'Dragon quest bounties go up on the quest board tonight.', 'Agreed, raid route skips the north checkpoint.', 'I will post the raid route tonight.'];
-    for (let i = 0; i < lines.length; i += 1) await pa.speak(roomId, lines[i], 1000 + i * 2000);
+    for (let i = 0; i < lines.length; i += 1) await pa.speak(roomId, lines[i], 1000 + i * 2000, 1000 + i * 2000 + 1500);
     await pb.speak(roomId, 'This should never be stored.', 2500);
     const stored = await waitFor(async () => ((await store.segments(roomId)).length === 4 ? store.segments(roomId) : null));
     check(Boolean(stored) && stored.every((s) => s.userId === a.id), 'segments: a\'s four lines stored, nothing from b (declined)', (await store.segments(roomId)).map((s) => s.userId));

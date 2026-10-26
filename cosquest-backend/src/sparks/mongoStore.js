@@ -303,8 +303,12 @@ class MongoSparksStore {
   async jobsOfCall(callId, type) {
     return (await this.c.jobs.find({ callId, type }).sort({ createdAt: 1 }).toArray()).map((d) => strip(d, ['endedAt']));
   }
-  async activeJobDeviceIds() {
-    const ids = await this.c.jobs.distinct('leaseDeviceId', { status: { $in: ['offered', 'leased'] } });
+  // Module 1.3.5 passes exceptTypes ['call.scribe'] when it offers any other job: the scribe's lease
+  // lasts the whole call, and the phone takes chat jobs beside it.
+  async activeJobDeviceIds(options = {}) {
+    const filter = { status: { $in: ['offered', 'leased'] } };
+    if (Array.isArray(options.exceptTypes) && options.exceptTypes.length) filter.type = { $nin: options.exceptTypes };
+    const ids = await this.c.jobs.distinct('leaseDeviceId', filter);
     return new Set(ids.filter(Boolean));
   }
 
