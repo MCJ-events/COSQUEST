@@ -112,4 +112,9 @@ function sanitize(n) {
   };
 }
 
-module.exports = { createForEnabledUsers, createForUser, createMentionNotifications, listForUser, markAllRead, sanitize };
+// The welcome notification every new account gets, however it signed up
+// (email and password, Google or Apple).
+const WELCOME_MESSAGE =
+  "🎉 Welcome to CosQuest! 🥷✨ Your account is officially live. This is your new home for everything you love — real-world quests, your faction, your people, all in one place. 🗺️💜 So glad you're here — let's go make some legendary memories. 🏆";
+
+module.exports = { createForEnabledUsers, createForUser, createMentionNotifications, listForUser, markAllRead, sanitize, WELCOME_MESSAGE };

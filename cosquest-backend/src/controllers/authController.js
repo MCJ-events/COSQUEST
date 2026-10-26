@@ -8,9 +8,6 @@ const { revokeSession } = require('../realtime/socket');
 const { sendEmail } = require('../utils/mailer');
 const { isValidEmail, isValidUsername, passwordError } = require('../utils/validation');
 
-const WELCOME_MESSAGE =
-  "🎉 Welcome to CosQuest! 🥷✨ Your account is officially live. This is your new home for everything you love — real-world quests, your faction, your people, all in one place. 🗺️💜 So glad you're here — let's go make some legendary memories. 🏆";
-
 const RESET_CODE_TTL_MS = 5 * 60 * 1000;
 const MAX_RESET_ATTEMPTS = 5;
 
@@ -148,7 +145,7 @@ async function signup(req, res) {
     passwordHash,
   });
 
-  await notificationModel.createForUser(user._id, WELCOME_MESSAGE);
+  await notificationModel.createForUser(user._id, notificationModel.WELCOME_MESSAGE);
 
   const sessionId = generateSessionId();
   user.currentSessionId = sessionId;

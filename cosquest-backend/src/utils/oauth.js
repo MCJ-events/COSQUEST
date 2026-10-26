@@ -8,7 +8,6 @@ const { signToken, generateSessionId } = require('./token');
 const { revokeSession } = require('../realtime/socket');
 
 const GOOGLE_ISSUERS = ['https://accounts.google.com', 'accounts.google.com'];
-const WELCOME_MESSAGE = 'Welcome to CosQuest! Your account is officially live.';
 const codeLifetimeMs = 10 * 60 * 1000;
 let joseModulePromise;
 let googleJwks;
@@ -198,7 +197,7 @@ async function findOrCreateUser(provider, payload, name = {}) {
     await OAuthIdentity.create({ provider, subject, user: user.id });
   }
 
-  if (created) await notificationModel.createForUser(user.id, WELCOME_MESSAGE);
+  if (created) await notificationModel.createForUser(user.id, notificationModel.WELCOME_MESSAGE);
   return user;
 }
 
