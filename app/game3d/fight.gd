@@ -294,9 +294,10 @@ func _ready() -> void:
 		hud.show_hero_card = false
 		_begin_fight()
 		return
-	hero = _spawn(str(cfg.get("hero_name", "You")), 0, HERO_HP, Color(0.3, 0.75, 0.35), Vector3(0.3, 0, 3.6), PI, "hero")
+	# hero_hp / enemy_hp: test and capture knobs (a quick win or loss); the app never sends them
+	hero = _spawn(str(cfg.get("hero_name", "You")), 0, int(cfg.get("hero_hp", HERO_HP)), Color(0.3, 0.75, 0.35), Vector3(0.3, 0, 3.6), PI, "hero")
 	ally = _spawn(str(cfg.get("ally_name", "Ally")), 0, ALLY_HP, Color(0.3, 0.65, 0.9), Vector3(3.0, 0, 4.4), PI, "ally")
-	enemy = _spawn(str(cfg.get("enemy_name", "Guardian")), 1, ENEMY_HP, Color(0.85, 0.3, 0.25), Vector3(-0.4, 0, -0.6), 0.0, "boss")
+	enemy = _spawn(str(cfg.get("enemy_name", "Guardian")), 1, int(cfg.get("enemy_hp", ENEMY_HP)), Color(0.85, 0.3, 0.25), Vector3(-0.4, 0, -0.6), 0.0, "boss")
 	_skill_area = HitArea.new()
 	_skill_area.name = "SkillArea"
 	var sbox := BoxShape3D.new()

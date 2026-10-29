@@ -14,6 +14,8 @@ var _fight: Node
 var _shots: Array = []
 var _events: Array = []
 var _done: bool = false
+var _t: float = 0.0          # fight seconds; keeps counting after the fight ends (banners)
+var _started: bool = false
 
 
 func setup(s: Dictionary) -> void:
@@ -32,13 +34,17 @@ func attach(f: Node) -> void:
 	_fight = f
 
 
-func _process(_dt: float) -> void:
+func _process(dt: float) -> void:
 	if _done or _fight == null or not is_instance_valid(_fight):
 		return
 	var st: String = _fight.get("state")
 	if st == "loading" or st == "idle":
 		return
-	var t: float = float(_fight.get("fight_time"))
+	if not _started:
+		_started = true
+	else:
+		_t += dt
+	var t: float = maxf(_t, float(_fight.get("fight_time")))
 	var hud: Node = _fight.get("hud")
 	while not _events.is_empty() and float(_events[0][0]) <= t:
 		_fire(hud, _events.pop_front())
@@ -81,4 +87,4 @@ func _save(t_ref: float) -> void:
 	var img: Image = get_viewport().get_texture().get_image()
 	var path: String = "%s/%s_%.1fs.png" % [str(spec.get("dir")), str(spec.get("prefix", "shot")), t_ref]
 	img.save_png(path)
-	print("CQCAPTURE shot t=%.1f fight_t=%.2f path=%s" % [t_ref, float(_fight.get("fight_time")), path])
+	print("CQCAPTURE shot t=%.1f fight_t=%.2f path=%s" % [t_ref, _t, path])
