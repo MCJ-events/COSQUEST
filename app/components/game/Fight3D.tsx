@@ -18,7 +18,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, AppState, BackHandler, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { fightCast } from "@/features/game3d/characters";
+import { castWeapons, fightCast } from "@/features/game3d/characters";
 import { closeFight, fightStatus, FightOpenError, godotLib, holdForBackground, onFightState, openFight } from "@/features/game3d/engine";
 import { buildFightConfig, type Fight3DMode, type Fight3DResult, type Fight3DRun, godotArgs, parseFightResult, quitResult } from "@/features/game3d/fight3d";
 import { FIGHT3D } from "@/features/game3d/flags";
@@ -107,6 +107,10 @@ export default function Fight3D({
           autoplay,
           tilesUrl: FIGHT3D.tilesUrl || null,
         });
+        // Weapons in hand (cq 234): the cast's weapons, as files, with their grips.
+        const weapons = await castWeapons(cast);
+        Object.assign(config, weapons);
+        log(`weapons ${Object.keys(weapons).join(",") || "-"}`);
         // Leak probe (test link selfcycle=N): Godot restarts the fight N times in this one view.
         const probe = FIGHT3D as { selfCycle?: number };
         if (probe.selfCycle) Object.assign(config, { self_cycle: probe.selfCycle, self_cycle_ms: 6000 });

@@ -365,7 +365,7 @@ export function readGlb(bytes: Uint8Array): { json: Gltf; bin: Uint8Array } {
   if (bytes.byteLength < 20 || dv.getUint32(0, true) !== GLB_MAGIC) throw new Error("not a GLB");
   let off = 12;
   let json: Gltf | null = null;
-  let bin = new Uint8Array(0);
+  let bin: Uint8Array = new Uint8Array(0);
   while (off + 8 <= bytes.byteLength) {
     const n = dv.getUint32(off, true);
     const type = dv.getUint32(off + 4, true);

@@ -11,6 +11,9 @@ const path = require("path");
 
 const config = getDefaultConfig(__dirname);
 
+// The bundled default weapons (assets/weapons/*.glb, cq 234) ship as assets.
+if (!config.resolver.assetExts.includes("glb")) config.resolver.assetExts.push("glb");
+
 const WEB_STUBS = {
   "react-native-maps": path.resolve(__dirname, "web-stubs/react-native-maps.tsx"),
   "react-native-filament": path.resolve(__dirname, "web-stubs/forge-3d.tsx"),

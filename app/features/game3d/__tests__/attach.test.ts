@@ -1,0 +1,259 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { test } from "node:test";
+
+import {
+  type AttachManifest,
+  characterKey,
+  computeAttach,
+  findHandBones,
+  type Gltf,
+  globalMatrices,
+  GRIP_CLASSES,
+  gripClassOf,
+  gripFor,
+  IDENTITY,
+  invert,
+  mergeWeaponGlb,
+  mul,
+  nodeMatrix,
+  poseAt,
+  readGlb,
+  staticAttach,
+  writeGlb,
+} from "../attach.ts";
+import { catalogueFlag, catalogueOn, catalogueTwin, heldFor, isPlaceholderWeapon, ownWeapon, realWeapons, starterSet } from "../held.ts";
+
+const manifest = JSON.parse(readFileSync(new URL("../../../game3d/data/attach.json", import.meta.url), "utf8")) as AttachManifest;
+
+const near = (a: number[], b: number[], eps = 1e-4) => a.every((x, i) => Math.abs(x - b[i]) < eps);
+
+/** A tiny skinned rig facing +Z: hips, a right arm hanging down-out, a left arm. */
+function rig(): Gltf {
+  return {
+    scene: 0,
+    scenes: [{ nodes: [0, 7] }],
+    nodes: [
+      { name: "Armature", children: [1] },
+      { name: "Hips", translation: [0, 1, 0], children: [2, 4] },
+      { name: "RightForeArm", translation: [-0.3, 0.2, 0], children: [3] },
+      { name: "RightHand", translation: [-0.1, -0.25, 0], rotation: [0, 0, -0.9238795, 0.3826834] },
+      { name: "LeftForeArm", translation: [0.3, 0.2, 0], children: [5] },
+      { name: "LeftHand", translation: [0.1, -0.25, 0] },
+      { name: "unused" },
+      { name: "mesh", mesh: 0, skin: 0 },
+    ],
+    skins: [{ joints: [1, 2, 3, 4, 5] }],
+    meshes: [{ primitives: [{ attributes: { POSITION: 0 } }] }],
+  };
+}
+
+test("grip class: name words first, then the backend kind", () => {
+  assert.equal(gripClassOf("Hunter's Crossbow", "bow"), "crossbow");
+  assert.equal(gripClassOf("Repeater Rifle", "bow"), "rifle");
+  assert.equal(gripClassOf("Knight's Round Shield", "gauntlet"), "shield");
+  assert.equal(gripClassOf("Crown Greatsword", "blade"), "greatsword");
+  assert.equal(gripClassOf("Storm Throwing Axe", "axe"), "axe");
+  assert.equal(gripClassOf("Moonlit Katana", "blade"), "sword");
+  assert.equal(gripClassOf("Something", "staff"), "staff");
+  assert.equal(gripClassOf("Star Gauntlet Shield", "gauntlet"), "shield");
+  assert.equal(gripClassOf(null, null), "sword");
+});
+
+test("character keys match the manifest's", () => {
+  assert.equal(characterKey("Nebul-X"), "nebulx");
+  assert.equal(characterKey("Cat-Boy"), "catboy");
+  assert.equal(characterKey("Crystal-Z"), "crystalz");
+  for (const k of Object.keys(manifest.characters)) assert.equal(characterKey(manifest.characters[k].name), k);
+});
+
+test("matrices: TRS, multiply, inverse", () => {
+  const m = nodeMatrix({ translation: [1, 2, 3], rotation: [0, 0.7071068, 0, 0.7071068], scale: [2, 2, 2] });
+  assert.ok(near(mul(m, invert(m)), IDENTITY));
+  assert.ok(near(mul(IDENTITY, m), m));
+});
+
+test("hand bones are found by Mixamo and common names, joints only", () => {
+  assert.deepEqual(findHandBones(rig()), { r: 3, l: 5 });
+  const g = rig();
+  g.nodes![3].name = "mixamorig:RightHand";
+  g.nodes![5].name = "hand.L";
+  assert.deepEqual(findHandBones(g), { r: 3, l: 5 });
+  g.skins = [{ joints: [1, 2, 4] }];
+  assert.equal(findHandBones(g).r, null);
+});
+
+test("every class gets a grip; the weapon keeps real size and sits at the palm", () => {
+  const g = rig();
+  const a = computeAttach(g, "Test", manifest.classes);
+  assert.ok(a);
+  assert.equal(a!.bone_r, "RightHand");
+  assert.equal(a!.bone_l, "LeftHand");
+  for (const c of GRIP_CLASSES) assert.ok(a!.grips[c], c);
+  const H = globalMatrices(g).get(3)!;
+  const W = mul(H, a!.grips.sword!.matrix);
+  // unit axes (no scale) and the origin at the palm
+  for (const c of [0, 1, 2]) assert.ok(Math.abs(Math.hypot(W[c * 4], W[c * 4 + 1], W[c * 4 + 2]) - 1) < 1e-4);
+  assert.ok(near([W[12], W[13], W[14]], a!.palm_r!, 1e-3));
+  // a staff stands up (its +Y close to world up)
+  const S = mul(H, a!.grips.staff!.matrix);
+  assert.ok(S[5] > 0.95, `staff up ${S[5]}`);
+  // a sword points forward (+Z) more than sideways, and up a little
+  assert.ok(W[6] > 0.7 && W[5] > 0.2, `sword ${W.slice(4, 7)}`);
+  // the shield is on the left hand
+  assert.equal(a!.grips.shield!.bone, "LeftHand");
+});
+
+test("swapping the main hand puts one-handed weapons on the left", () => {
+  const a = computeAttach(rig(), "Test", manifest.classes, "t", null, "l");
+  assert.equal(a!.grips.sword!.bone, "LeftHand");
+  assert.equal(a!.grips.shield!.bone, "RightHand");
+});
+
+test("static models hold at a point on the model", () => {
+  const a = staticAttach("Hoof", [-0.45, 0.8, 0.03], manifest.classes);
+  assert.equal(a.grips.staff!.bone, "");
+  assert.ok(near(a.grips.staff!.matrix.slice(12, 15), [-0.45, 0.8, 0.03]));
+  assert.equal(a.grips.shield, undefined);
+});
+
+test("the manifest covers the cast and nothing else", () => {
+  assert.deepEqual(Object.keys(manifest.characters).sort(), ["armstrong", "bobo", "catboy", "crystalz", "elvis", "hoof", "nebulx", "vanessa"]);
+  for (const k of ["commando", "blade", "killua", "pmon"]) assert.equal(manifest.characters[k], undefined);
+  for (const [k, c] of Object.entries(manifest.characters)) {
+    assert.ok(c.grips.sword?.matrix.length === 16, k);
+    if (c.default_weapon) assert.ok(manifest.weapons[c.default_weapon], `${k} default ${c.default_weapon}`);
+  }
+  assert.ok(Object.keys(manifest.weapons).length >= 8);
+  for (const c of ["sword", "hammer", "staff", "rifle"]) assert.ok(Object.values(manifest.weapons).some((w) => w.grip === c), c);
+  assert.equal(gripFor(manifest, "Armstrong", "hammer")?.bone, "RightHand");
+  assert.equal(gripFor(manifest, "Nobody", "hammer"), null);
+  assert.equal(gripFor(manifest, "Nobody", "hammer", rig())?.bone, "RightHand");
+});
+
+/** A GLB with one float accessor (positions) and a JSON body. */
+function glb(json: Gltf, floats: number[]): Uint8Array {
+  const bin = new Uint8Array(new Float32Array(floats).buffer);
+  return writeGlb({ ...json, buffers: [{ byteLength: bin.length }] }, bin);
+}
+
+test("GLB read/write round trip", () => {
+  const b = glb({ asset: { version: "2.0" }, nodes: [{ name: "a" }] }, [1, 2, 3]);
+  const r = readGlb(b);
+  assert.equal(r.json.nodes![0].name, "a");
+  assert.deepEqual(Array.from(new Float32Array(r.bin.slice().buffer)), [1, 2, 3]);
+  assert.throws(() => readGlb(new Uint8Array(20)));
+});
+
+test("the idle clip's first frame poses the rig", () => {
+  const g = rig();
+  g.accessors = [{ bufferView: 0, componentType: 5126, type: "VEC4" }];
+  g.bufferViews = [{ buffer: 0, byteOffset: 0, byteLength: 16 }];
+  g.animations = [{ name: "idle", channels: [{ sampler: 0, target: { node: 3, path: "rotation" } }], samplers: [{ input: 0, output: 0 }] }];
+  const bin = new Uint8Array(new Float32Array([0, 0, 0, 1]).buffer);
+  const posed = poseAt(g, bin);
+  assert.deepEqual(posed.nodes![3].rotation, [0, 0, 0, 1]);
+  assert.deepEqual(g.nodes![3].rotation, [0, 0, -0.9238795, 0.3826834]);
+  assert.equal(poseAt(g, null), g);
+});
+
+test("merging puts the weapon under the hand bone with its own buffers", () => {
+  const ch = glb(
+    { asset: { version: "2.0" }, scene: 0, scenes: [{ nodes: [0] }], nodes: [{ name: "Root", children: [1] }, { name: "RightHand" }],
+      accessors: [{ bufferView: 0, componentType: 5126, count: 1, type: "VEC3" }], bufferViews: [{ buffer: 0, byteOffset: 0, byteLength: 12 }],
+      meshes: [{ primitives: [{ attributes: { POSITION: 0 } }] }] },
+    [0, 0, 0],
+  );
+  const wp = glb(
+    { asset: { version: "2.0" }, scene: 0, scenes: [{ nodes: [0] }], nodes: [{ name: "grip", children: [1] }, { name: "blade", mesh: 0 }],
+      accessors: [{ bufferView: 0, componentType: 5126, count: 1, type: "VEC3" }], bufferViews: [{ buffer: 0, byteOffset: 0, byteLength: 12 }],
+      images: [{ bufferView: 0, mimeType: "image/png" }], textures: [{ source: 0, sampler: 0 }], samplers: [{}],
+      materials: [{ pbrMetallicRoughness: { baseColorTexture: { index: 0 } } }],
+      meshes: [{ primitives: [{ attributes: { POSITION: 0 }, material: 0 }] }] },
+    [7, 8, 9],
+  );
+  const m = [...IDENTITY];
+  m[13] = 0.05;
+  const out = readGlb(mergeWeaponGlb(ch, wp, "RightHand", m));
+  const j = out.json;
+  const hand = j.nodes![1];
+  const holder = j.nodes![hand.children![0]];
+  assert.equal(holder.name, "weapon_attach");
+  assert.deepEqual(holder.matrix, m);
+  assert.equal(j.nodes![holder.children![0]].name, "grip");
+  const blade = j.nodes!.find((n) => n.name === "blade")!;
+  assert.equal(blade.mesh, 1);
+  const prim = (j.meshes as { primitives: { attributes: { POSITION: number }; material: number }[] }[])[1].primitives[0];
+  assert.equal(prim.attributes.POSITION, 1);
+  assert.equal(prim.material, 0);
+  const acc = (j.accessors as { bufferView: number }[])[1];
+  const view = (j.bufferViews as { byteOffset: number }[])[acc.bufferView];
+  assert.deepEqual(Array.from(new Float32Array(out.bin.slice(view.byteOffset, view.byteOffset + 12).buffer)), [7, 8, 9]);
+  assert.equal((j.textures as { source: number }[])[0].source, 0);
+  assert.throws(() => mergeWeaponGlb(ch, wp, "LeftHand", m));
+  // a static model: the weapon becomes a scene root
+  const st = readGlb(mergeWeaponGlb(ch, wp, "", m)).json;
+  assert.equal(st.scenes![0].nodes!.length, 2);
+});
+
+// ---------- held.ts ----------
+
+const weapon = (over: Partial<Record<string, unknown>> = {}) =>
+  ({
+    id: "w1", type: "weapon", name: "Moonlit Katana", version: 1, files: [], contract: 2, bounds_m: null, height_m: null, pivot: "grip",
+    animations: [], skeleton: null, updated_at: null, gameplay: { kind: "blade" },
+    thumbnail: { file: "t.png", url: "/t.png" },
+    lods: [0, 1, 2].map((lod) => ({ lod, usdz: null, glb: { file: `k${lod}.glb`, url: `/k${lod}.glb`, bytes: 90000 - lod * 1000, sha256: `s${lod}` } })),
+    ...over,
+  }) as never;
+
+test("the link needs both switches; the flag reads 1/true/on", () => {
+  assert.equal(catalogueFlag("1"), true);
+  assert.equal(catalogueFlag("on"), true);
+  assert.equal(catalogueFlag(undefined), false);
+  assert.equal(catalogueFlag("0"), false);
+  assert.equal(catalogueOn(true, true), true);
+  assert.equal(catalogueOn(true, false), false);
+  assert.equal(catalogueOn(false, true), false);
+});
+
+test("the untextured placeholder blade is hidden; real weapons are not", () => {
+  const ember = weapon({
+    name: "Ember Blade", thumbnail: null,
+    lods: [0, 1, 2].map((lod) => ({ lod, usdz: null, glb: { file: `e${lod}.glb`, url: "/e", bytes: 9760, sha256: "bc73" } })),
+  });
+  assert.equal(isPlaceholderWeapon(ember), true);
+  assert.equal(isPlaceholderWeapon(weapon({ thumbnail: null, lods: [{ lod: 0, usdz: null, glb: { file: "x", url: "/x", bytes: 9000, sha256: "a" } }] })), true);
+  assert.equal(isPlaceholderWeapon(weapon({ lods: [] })), true);
+  assert.equal(isPlaceholderWeapon(weapon()), false);
+  assert.equal(isPlaceholderWeapon(weapon({ type: "character", lods: [] })), false);
+  assert.deepEqual(realWeapons([ember, weapon()]).map((e: { name: string }) => e.name), ["Moonlit Katana"]);
+  assert.equal(catalogueTwin([weapon()], "Moonlit Katana") !== null, true);
+});
+
+test("who holds what", () => {
+  // the cast hold their own: Armstrong the deck's hammer, Vanessa the rifle
+  assert.equal(heldFor(manifest, { characterName: "Armstrong", mine: false, equipped: null, linkOn: true }).main?.cls, "hammer");
+  assert.equal(heldFor(manifest, { characterName: "Vanessa", mine: false, equipped: null, linkOn: true }).main?.cls, "rifle");
+  // someone the manifest doesn't know: a sword
+  assert.equal(ownWeapon(manifest, "Street Kid")?.slug, "knight_sword");
+  // the player's equipped Forge weapon, only with the link on
+  const mineOn = heldFor(manifest, { characterName: "Armstrong", mine: true, equipped: weapon(), linkOn: true });
+  assert.equal(mineOn.main?.source, "catalogue");
+  assert.equal(mineOn.main?.cls, "sword");
+  const mineOff = heldFor(manifest, { characterName: "Armstrong", mine: true, equipped: weapon(), linkOn: false });
+  assert.equal(mineOff.main?.slug, "forge_warhammer");
+  // someone else's avatar never shows my weapon
+  assert.equal(heldFor(manifest, { characterName: "Armstrong", mine: false, equipped: weapon(), linkOn: true }).main?.source, "default");
+  // a placeholder is never held
+  const ember = weapon({ thumbnail: null, lods: [{ lod: 0, usdz: null, glb: { file: "e", url: "/e", bytes: 9760, sha256: "x" } }] });
+  assert.equal(heldFor(manifest, { characterName: "Bobo", mine: true, equipped: ember, linkOn: true }).main?.slug, "war_axe");
+  // the starter set pick, and a shield goes in the off hand with a one-hander
+  assert.equal(heldFor(manifest, { characterName: "Bobo", mine: true, equipped: null, linkOn: false, localPick: "arcane_staff" }).main?.cls, "staff");
+  const sh = heldFor(manifest, { characterName: "Bobo", mine: true, equipped: null, linkOn: false, localPick: "knight_shield" });
+  assert.equal(sh.offhand?.cls, "shield");
+  assert.equal(sh.main?.slug, "war_axe");
+  const sh2 = heldFor(manifest, { characterName: "Armstrong", mine: true, equipped: null, linkOn: false, localPick: "knight_shield" });
+  assert.equal(sh2.main?.slug, "knight_sword");
+  assert.equal(starterSet(manifest).length, Object.keys(manifest.weapons).length);
+});

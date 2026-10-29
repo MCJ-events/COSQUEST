@@ -26,7 +26,8 @@ import { ActivityIndicator, Platform, StyleSheet, View, type StyleProp, type Vie
 
 import { resolveIslandsOff } from "@/features/game/config";
 import { clipIndex, type ForgeEntry, type ForgePurpose } from "@/features/game/forgeWorld";
-import { ensureFile, forgeWorld, glbFor, thumbUrl, useForgeWorld } from "@/features/game/forgeWorldDevice";
+import { ensureFile, forgeWorld, glbFor, thumbUrl, useEquipped, useForgeWorld } from "@/features/game/forgeWorldDevice";
+import { bundledFile, bundledThumb, useHeldUri } from "@/features/game3d/heldDevice";
 
 import { GP } from "./theme";
 
@@ -86,12 +87,20 @@ class Boundary extends Component<{ fallback: ReactNode; children: ReactNode; onE
   }
 }
 
+/** The thumbnail as an image source: the server's, or the app's own for a starter weapon ("bundle:<slug>"). */
+export function thumbSource(entry: ForgeEntry | null | undefined, width: 128 | 256 | 512 = 256): number | { uri: string } | null {
+  const u = entry?.thumbnail?.url;
+  if (u?.startsWith("bundle:")) return bundledThumb(u.slice(7));
+  const url = thumbUrl(entry, width);
+  return url ? { uri: url } : null;
+}
+
 function Thumb({ entry, size, loading }: { entry: ForgeEntry | null; size: number; loading: boolean }) {
-  const url = thumbUrl(entry, size > 200 ? 512 : 256);
+  const src = thumbSource(entry, size > 200 ? 512 : 256);
   return (
     <View style={styles.fill} pointerEvents="none">
-      {url ? (
-        <Image source={{ uri: url }} style={styles.fill} contentFit="contain" transition={150} accessibilityIgnoresInvertColors />
+      {src ? (
+        <Image source={src} style={styles.fill} contentFit="contain" transition={150} accessibilityIgnoresInvertColors />
       ) : (
         <View style={[styles.fill, styles.centre]}>
           <Ionicons name={TYPE_ICON[entry?.type ?? ""] ?? "cube"} size={Math.max(24, size * 0.35)} color="rgba(255,255,255,0.75)" />
@@ -114,7 +123,7 @@ export function useForgeGlb(entry: ForgeEntry | null, purpose: ForgePurpose, lod
   useEffect(() => {
     if (!entry || !file || !key) return;
     let alive = true;
-    void ensureFile(entry, file).then((uri) => {
+    void (file.url.startsWith("bundle:") ? bundledFile(file.url.slice(7)) : ensureFile(entry, file)).then((uri) => {
       if (alive) setGot({ key, uri, failed: uri === null });
     });
     return () => {
@@ -145,6 +154,11 @@ export type ForgeModelProps = {
   /** For the box's size hint (thumbnail resolution). */
   size?: number;
   accessibilityLabel?: string;
+  /**
+   * A character holds its weapon (cq 234): the player's equipped one on their
+   * own avatar, else its own (features/game3d/held.ts). false: empty-handed.
+   */
+  held?: boolean;
 };
 
 export function useForgeEntry(id: string | null | undefined, given?: ForgeEntry | null): ForgeEntry | null {
@@ -155,7 +169,13 @@ export function useForgeEntry(id: string | null | undefined, given?: ForgeEntry 
 export default function ForgeModel(props: ForgeModelProps) {
   const entry = useForgeEntry(props.id, props.entry);
   const size = props.size ?? 220;
-  const { uri, failed } = useForgeGlb(FILAMENT ? entry : null, props.purpose ?? "closeup", props.lod);
+  const { uri: bare, failed } = useForgeGlb(FILAMENT ? entry : null, props.purpose ?? "closeup", props.lod);
+  // A character with its weapon in hand: the weapon is merged into its GLB
+  // under the hand bone, so its clips carry it (features/game3d/heldDevice).
+  const worn = useEquipped().avatar;
+  const isCharacter = entry?.type === "character";
+  const held = useHeldUri(isCharacter ? entry : null, bare, !!entry && worn === entry.id, props.held !== false && isCharacter);
+  const uri = isCharacter ? held : bare;
   const [broken, setBroken] = useState(false);
   const label = props.accessibilityLabel ?? (entry ? `${entry.name}, 3D model` : "Forge model");
   // The engine stays up while the model changes (one engine per view, not

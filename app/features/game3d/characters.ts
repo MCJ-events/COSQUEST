@@ -14,7 +14,8 @@ import { type ForgeEntry, forgeWorldOf, pickGlb } from "@/features/game/forgeWor
 import { DEVICE_CLASS, ensureFile, forgeWorld, refreshCatalogue, refreshInventory } from "@/features/game/forgeWorldDevice";
 import { gameStore } from "@/features/game/runtime";
 
-import { fightLod, pickCast, wornAvatarId } from "./fight3d";
+import { fightLod, localPath, pickCast, wornAvatarId } from "./fight3d";
+import { fightWeapons, heldInputs } from "./heldDevice";
 
 export type CastMember = { path: string | null; name: string | null; id: string | null };
 export type Cast = { hero: CastMember; ally: CastMember; enemy: CastMember; lod: number };
@@ -70,4 +71,28 @@ export async function fightCast(opts: {
     enemy: { path: enemyPath, name: opts.enemyName ?? enemy?.name ?? null, id: enemy?.id ?? null },
     lod,
   };
+}
+
+/**
+ * Weapons in hand (cq 234): each fighter's <role>_weapon / <role>_offhand for
+ * the Godot config ({glb, class, bone, matrix}, see app/game3d/fight.gd). The
+ * hero holds the player's choice; the ally and the Guardian their own. Never
+ * throws and never waits long: a fighter with nothing here fights
+ * empty-handed, as before.
+ */
+export async function castWeapons(cast: Cast, waitMs = 4000): Promise<Record<string, unknown>> {
+  const work = (async () => {
+    const inputs = await heldInputs();
+    const s = forgeWorld.get();
+    const equipped = s.inventory?.equipped.weapon ?? forgeWorldOf(gameStore.get().me).equipped.weapon;
+    const out: Record<string, unknown> = {};
+    for (const role of ["hero", "ally", "enemy"] as const) {
+      const m = cast[role];
+      const w = await fightWeapons(forgeWorld.entry(m.id), m.path, role === "hero", { equipped, ...inputs }).catch(() => ({}) as Awaited<ReturnType<typeof fightWeapons>>);
+      if (w.main) out[`${role}_weapon`] = { ...w.main, glb: localPath(w.main.glb) };
+      if (w.offhand) out[`${role}_offhand`] = { ...w.offhand, glb: localPath(w.offhand.glb) };
+    }
+    return out;
+  })();
+  return within(work, waitMs, {});
 }

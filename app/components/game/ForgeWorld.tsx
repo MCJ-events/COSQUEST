@@ -38,7 +38,10 @@ import {
 import { claim, equip, refreshInventory, startForgeWorld, thumbUrl, absUrl, useEquipped, useForgeWorld } from "@/features/game/forgeWorldDevice";
 import { gameStore, useGame } from "@/features/game/runtime";
 
-import ForgeModel, { useForgeEntry } from "./ForgeModel";
+import { isPlaceholderWeapon, realWeapons, starterSet } from "@/features/game3d/held";
+import { MANIFEST, setLocalPick, STARTER, starterEntry, useCatalogueOn, useLocalPick } from "@/features/game3d/heldDevice";
+
+import ForgeModel, { thumbSource, useForgeEntry } from "./ForgeModel";
 import { GameButton, MAX_FONT_SCALE } from "./kit";
 import { SheetHost } from "./Sheet";
 import { SheetFrame } from "./SheetFrame";
@@ -82,11 +85,15 @@ export function useForgeWorldPolling(active: boolean) {
 export function ForgeDropsLayer({ place, onOpen }: { place: (p: LatLng) => { left: number; top: number }; onOpen: (d: ForgeDrop) => void }) {
   const on = useForgeOn();
   const drops = useForgeWorld((s) => s.drops);
+  // With the catalogue link on, a placeholder weapon never drops (cq 234).
+  const linkOn = useCatalogueOn();
+  const entries = useForgeWorld((s) => s.entries);
+  const fake = useMemo(() => new Set(entries.filter(isPlaceholderWeapon).map((e) => e.id)), [entries]);
   if (!on) return null;
   return (
     <>
       {drops
-        .filter((d) => !d.claimed)
+        .filter((d) => !d.claimed && !(linkOn && fake.has(d.element_id)))
         .map((d) => {
           const at = place(d);
           return <DropPin key={d.id} drop={d} left={at.left} top={at.top} onPress={onOpen} />;
@@ -346,16 +353,39 @@ function BagBody({ close, initial }: { close: () => void; initial: "items" | "av
   useEffect(() => {
     void refreshInventory();
   }, []);
-  const owned = useMemo(() => (inventory?.owned ?? []).filter((o) => entries.some((e) => e.id === o.element_id)), [inventory, entries]);
+  // The catalogue link (cq 234: EXPO_PUBLIC_FORGE_CATALOGUE and the server's
+  // forge_world): placeholder weapons hidden, and the app's starter set
+  // listed after what you own, so the bag always has real weapons. Off: as before.
+  const linkOn = useCatalogueOn();
+  const localPick = useLocalPick();
+  const starters = useMemo(() => (linkOn ? starterSet(MANIFEST).map((w) => starterEntry(w.slug)).filter((e): e is ForgeEntry => !!e) : []), [linkOn]);
+  const all = useMemo(() => (starters.length ? [...entries, ...starters] : entries), [entries, starters]);
+  const real = useMemo(() => new Set(realWeapons(entries).map((e) => e.id)), [entries]);
+  const owned = useMemo(
+    () => (inventory?.owned ?? []).filter((o) => entries.some((e) => e.id === o.element_id && (!linkOn || e.type !== "weapon" || real.has(e.id)))),
+    [inventory, entries, linkOn, real],
+  );
   const heroes = useMemo(() => avatarChoices(entries), [entries]);
-  const list: { id: string; count?: number }[] = tab === "items" ? owned.map((o) => ({ id: o.element_id, count: o.count })) : heroes.map((h) => ({ id: h.id }));
+  const list: { id: string; count?: number }[] =
+    tab === "items" ? [...owned.map((o) => ({ id: o.element_id, count: o.count })), ...starters.map((e) => ({ id: e.id }))] : heroes.map((h) => ({ id: h.id }));
   const selected = pick && list.some((x) => x.id === pick) ? pick : (list[0]?.id ?? null);
-  const sel = entries.find((e) => e.id === selected) ?? null;
+  const sel = all.find((e) => e.id === selected) ?? null;
   const slot = tab === "items" ? "weapon" : "avatar";
-  const isOn = sel ? equipped[slot] === sel.id : false;
+  const starterSlug = sel?.id.startsWith(STARTER) ? sel.id.slice(STARTER.length) : null;
+  const isOn = sel ? (starterSlug ? localPick === starterSlug && !equipped.weapon : equipped[slot] === sel.id) : false;
 
   const toggle = async () => {
     if (!sel || pending) return;
+    if (starterSlug) {
+      // A starter weapon is held on this phone (the 3D fight is practice); a
+      // Forge weapon equipped on the server comes off so this one shows.
+      setProblem(null);
+      setLocalPick(isOn ? null : starterSlug);
+      if (!isOn && equipped.weapon) await equip("weapon", null).catch(() => undefined);
+      playSound("coin");
+      return;
+    }
+    if (slot === "weapon" && !isOn) setLocalPick(null);
     const next = isOn ? null : sel.id;
     setProblem(null);
     setPending({ slot, id: next });
@@ -378,7 +408,7 @@ function BagBody({ close, initial }: { close: () => void; initial: "items" | "av
       <View style={styles.tabs}>
         {(["items", "avatar"] as const).map((t) => (
           <Pressable key={t} onPress={() => setTab(t)} style={[styles.tab, tab === t && styles.tabOn]} accessibilityRole="tab" accessibilityState={{ selected: tab === t }}>
-            <Text style={[styles.tabText, tab === t && { color: "#FFF" }]}>{t === "items" ? `Items (${owned.length})` : "Avatar"}</Text>
+            <Text style={[styles.tabText, tab === t && { color: "#FFF" }]}>{t === "items" ? `Items (${owned.length + starters.length})` : "Avatar"}</Text>
           </Pressable>
         ))}
       </View>
@@ -403,7 +433,7 @@ function BagBody({ close, initial }: { close: () => void; initial: "items" | "av
               <View style={styles.wornChip}>
                 <Ionicons name="checkmark-circle" size={14} color="#FFF" />
                 <Text style={styles.wornText} maxFontSizeMultiplier={1.2}>
-                  {slot === "avatar" ? "Worn" : "Equipped"}
+                  {slot === "avatar" ? "Worn" : starterSlug ? "Held" : "Equipped"}
                 </Text>
               </View>
             ) : null}
@@ -421,16 +451,16 @@ function BagBody({ close, initial }: { close: () => void; initial: "items" | "av
           {sel.type === "character" && sel.rigged
             ? (["idle", "walk", "celebrate"] as const).map((c) => <GameButton key={c} title={c[0].toUpperCase() + c.slice(1)} small color={clip === c ? GP.sun : GP.slate} onPress={() => setClip(c)} />)
             : null}
-          <GameButton title={isOn ? (slot === "avatar" ? "Take off" : "Unequip") : slot === "avatar" ? "Wear" : "Equip"} small color={isOn ? GP.berry : GP.mint} onPress={() => void toggle()} />
+          <GameButton title={isOn ? (slot === "avatar" ? "Take off" : starterSlug ? "Put down" : "Unequip") : slot === "avatar" ? "Wear" : starterSlug ? "Hold" : "Equip"} small color={isOn ? GP.berry : GP.mint} onPress={() => void toggle()} />
         </View>
       ) : null}
       {problem ? <Text style={[styles.empty, { color: GP.berry }]}>{problem}</Text> : null}
       <ScrollView contentContainerStyle={[styles.grid, { paddingBottom: insets.bottom + 24 }]}>
         {list.map(({ id, count }) => {
-          const e = entries.find((x) => x.id === id);
+          const e = all.find((x) => x.id === id);
           if (!e) return null;
-          const url = thumbUrl(e, 256);
-          const on = equipped[slot] === id;
+          const src = thumbSource(e, 256);
+          const on = id.startsWith(STARTER) ? localPick === id.slice(STARTER.length) && !equipped.weapon : equipped[slot] === id;
           // One meaning per colour: navy is the one you are looking at, mint
           // the one you wear; rarity is the small dot, not the border (cq 076).
           const border = id === selected ? GP.navy : on ? GP.mint : TILE_EDGE;
@@ -445,7 +475,7 @@ function BagBody({ close, initial }: { close: () => void; initial: "items" | "av
               accessibilityRole="button"
               accessibilityState={{ selected: id === selected }}
               accessibilityLabel={`${e.name}${on ? ", equipped" : ""}`}>
-              {url ? <Image source={{ uri: url }} style={styles.tileImg} contentFit="contain" /> : <Ionicons name="cube" size={34} color={GP.mist} />}
+              {src ? <Image source={src} style={styles.tileImg} contentFit="contain" /> : <Ionicons name="cube" size={34} color={GP.mist} />}
               <Text style={styles.tileName} numberOfLines={2} maxFontSizeMultiplier={1.2}>
                 {e.name}
               </Text>
