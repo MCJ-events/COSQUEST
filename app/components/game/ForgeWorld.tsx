@@ -366,8 +366,11 @@ function BagBody({ close, initial }: { close: () => void; initial: "items" | "av
     [inventory, entries, linkOn, real],
   );
   const heroes = useMemo(() => avatarChoices(entries), [entries]);
+  // A starter weapon you also own from the Forge (the same pack, imported) is listed once, as yours.
+  const ownedNames = useMemo(() => new Set(owned.map((o) => entries.find((e) => e.id === o.element_id)?.name)), [owned, entries]);
+  const startersLeft = useMemo(() => starters.filter((e) => !ownedNames.has(e.name)), [starters, ownedNames]);
   const list: { id: string; count?: number }[] =
-    tab === "items" ? [...owned.map((o) => ({ id: o.element_id, count: o.count })), ...starters.map((e) => ({ id: e.id }))] : heroes.map((h) => ({ id: h.id }));
+    tab === "items" ? [...owned.map((o) => ({ id: o.element_id, count: o.count })), ...startersLeft.map((e) => ({ id: e.id }))] : heroes.map((h) => ({ id: h.id }));
   const selected = pick && list.some((x) => x.id === pick) ? pick : (list[0]?.id ?? null);
   const sel = all.find((e) => e.id === selected) ?? null;
   const slot = tab === "items" ? "weapon" : "avatar";
@@ -408,7 +411,7 @@ function BagBody({ close, initial }: { close: () => void; initial: "items" | "av
       <View style={styles.tabs}>
         {(["items", "avatar"] as const).map((t) => (
           <Pressable key={t} onPress={() => setTab(t)} style={[styles.tab, tab === t && styles.tabOn]} accessibilityRole="tab" accessibilityState={{ selected: tab === t }}>
-            <Text style={[styles.tabText, tab === t && { color: "#FFF" }]}>{t === "items" ? `Items (${owned.length + starters.length})` : "Avatar"}</Text>
+            <Text style={[styles.tabText, tab === t && { color: "#FFF" }]}>{t === "items" ? `Items (${owned.length + startersLeft.length})` : "Avatar"}</Text>
           </Pressable>
         ))}
       </View>

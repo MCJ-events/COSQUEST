@@ -111,5 +111,5 @@ cd android
 # Lint-vital is skipped: this is a test build, and it is the slowest step.
 ./gradlew :app:assembleRelease -x lintVitalRelease --no-daemon -PreactNativeArchitectures="$ABI" \
   -Dorg.gradle.workers.max="${GRADLE_WORKERS:-4}" -Dorg.gradle.jvmargs="-Xmx${GRADLE_XMX:-3g} -XX:MaxMetaspaceSize=768m" \
-  -Dkotlin.daemon.jvm.options=-Xmx1536m --console=plain
+  -Dkotlin.daemon.jvm.options=-Xmx1536m ${GRADLE_EXTRA:-} --console=plain
 echo "== done $(date -u +%FT%TZ): $(ls -la app/build/outputs/apk/release/*.apk)"
