@@ -9,7 +9,7 @@ extends SceneTree
 ##   "hold_enemy": false, "quit_s": 9.0}
 ## t is seconds after the fight starts (state "fighting"), counted in frames at --fixed-fps.
 ## "close" frames the fighter's right hand (its hand_r socket when it has one, else the
-## chest) from "front" | "side" | "back" | "top" | "full".
+## chest) from "front" | "side" | "back" | "top"; "full" / "fullside" frame the whole fighter.
 
 var plan: Dictionary = {}
 var out_dir: String = ""
@@ -86,8 +86,11 @@ func _process(_dt: float) -> bool:
 
 func _hand_point(fighter: Node3D) -> Vector3:
 	var socket: Node = fighter.find_child("weapon_r", true, false)
-	if socket == null:
-		socket = fighter.find_child("hand_r", true, false)
+	if socket is Node3D:
+		# between the hand and the middle of the weapon: both in frame
+		var g: Transform3D = (socket as Node3D).global_transform
+		return g.origin + g.basis.y.normalized() * 0.2
+	socket = fighter.find_child("hand_r", true, false)
 	if socket is Node3D:
 		return (socket as Node3D).global_position
 	for n: Node in fighter.find_children("*", "Skeleton3D", true, false):
@@ -111,7 +114,7 @@ func _take(s: Dictionary, f: Node) -> void:
 		var target: Vector3 = _hand_point(who)
 		var fwd: Vector3 = Vector3(sin(who.yaw), 0, cos(who.yaw))
 		var right: Vector3 = Vector3(fwd.z, 0, -fwd.x)
-		var dist: float = float(s.get("dist", 1.1))
+		var dist: float = float(s.get("dist", 1.5))
 		var eye: Vector3
 		match close:
 			"side":
@@ -123,6 +126,9 @@ func _take(s: Dictionary, f: Node) -> void:
 			"full":
 				target = who.global_position + Vector3(0, 0.95, 0)
 				eye = target + fwd * 3.2 + right * 0.6 + Vector3(0, 0.4, 0)
+			"fullside":
+				target = who.global_position + Vector3(0, 0.95, 0)
+				eye = target - right * 3.2 + fwd * 0.4 + Vector3(0, 0.3, 0)
 			_:
 				eye = target + fwd * dist - right * 0.25 + Vector3(0, 0.2, 0)
 		_cam.look_at_from_position(eye, target, Vector3.UP)
