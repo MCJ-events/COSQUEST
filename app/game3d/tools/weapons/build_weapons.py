@@ -11,6 +11,7 @@ For each weapon in weapons.json it writes <out>/packs/<slug>/:
   <slug>__lod0.glb          full mesh, texture embedded (one atlas per weapon)
   <slug>__lod1.glb          ~60 % of the triangles, texture at 512
   <slug>__lod2.glb          ~30 % of the triangles, texture at 256
+  <slug>__lod{0,1,2}.usdz   the same, for iOS
   <slug>__thumb.png         512 px, transparent, Cycles CPU
 and <out>/views/<slug>_contract.png, a side view in the contract frame
 (tip up, edge/head/top to the left) to check the axes by eye.
@@ -232,6 +233,12 @@ def export(ob, slug, path, tex_size):
                               export_image_format="AUTO", export_yup=True, export_apply=True,
                               export_texcoords=True, export_normals=True, export_materials="EXPORT",
                               export_extras=False, export_animations=False)
+    # USDZ beside it for iOS's native views (the pack check warns without one)
+    try:
+        bpy.ops.wm.usd_export(filepath=path[:-4] + ".usdz", selected_objects_only=True, export_textures=True,
+                              export_materials=True, export_animation=False, generate_preview_surface=True)
+    except Exception as e:  # an older Blender: the GLB is enough (iOS falls back to it)
+        print("USDZ skipped:", e)
     ob.parent = None
     return lo, hi
 

@@ -28,6 +28,7 @@
 #                  [official]               LibGodot zips (scripts/godot-prebuilt.sh);
 #                                           the official ones have no x86_64
 #   GODOT_EXPORT   [0]                      1: export game3d/ first (scripts/godot-export.sh)
+#   GRADLE_WORKERS [4] / GRADLE_XMX [3g]     Gradle's workers and heap (a shared machine: 2 / 2g)
 #
 # The release build is signed with the debug key (the Expo template's
 # default) and is for testing only. When the chat URL is plain http, this
@@ -109,6 +110,6 @@ echo "== gradle assembleRelease ($ABI) $(date -u +%FT%TZ)"
 cd android
 # Lint-vital is skipped: this is a test build, and it is the slowest step.
 ./gradlew :app:assembleRelease -x lintVitalRelease --no-daemon -PreactNativeArchitectures="$ABI" \
-  -Dorg.gradle.workers.max=4 -Dorg.gradle.jvmargs="-Xmx3g -XX:MaxMetaspaceSize=768m" \
+  -Dorg.gradle.workers.max="${GRADLE_WORKERS:-4}" -Dorg.gradle.jvmargs="-Xmx${GRADLE_XMX:-3g} -XX:MaxMetaspaceSize=768m" \
   -Dkotlin.daemon.jvm.options=-Xmx1536m --console=plain
 echo "== done $(date -u +%FT%TZ): $(ls -la app/build/outputs/apk/release/*.apk)"

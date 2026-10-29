@@ -27,8 +27,9 @@ here="$(cd "$(dirname "$0")" && pwd)"
 if [ -x "$BACKEND/.venv/bin/uvicorn" ]; then : "${VENV:=$BACKEND/.venv}"; else : "${VENV:=$HOME/cq-work/cx-journeys/game-backend/.venv}"; fi
 : "${PACKS:=/opt/cq/tasks/056-game-forge-in-world-v2/out/packs}"
 : "${PG:=cq056-pg}"
-GAME_PORT=8599
-CHAT_PORT=4320
+# Ports here (the APK still talks to 8599/4120 on the phone; adb reverse maps them)
+: "${GAME_PORT:=8599}"
+: "${CHAT_PORT:=4320}"
 mkdir -p "$RIG/packcache" "$RIG/forge-import"
 
 genv() {

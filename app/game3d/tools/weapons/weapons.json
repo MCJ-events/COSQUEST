@@ -22,7 +22,7 @@
      "src": "kaykit_adv/staff.gltf", "tip": [0, 0, 1], "edge": [1, 0, 0], "grip_at": [0, 0, 0], "length_m": 1.6,
      "licence": "CC0 1.0", "author": "Kay Lousberg (KayKit)", "url": "https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0"},
     {"slug": "rogue_dagger", "name": "Rogue's Dagger", "rarity": "common", "kind": "blade", "grip": "dagger",
-     "stats": {"damage": 13, "range_m": 1.5, "cooldown_s": 2.0},
+     "stats": {"damage": 13, "range_m": 1.5, "cooldown_s": 3.0},
      "src": "kaykit_adv/dagger.gltf", "tip": [0, 0, 1], "edge": [1, 0, 0], "grip_at": [0, 0, 0], "length_m": 0.45,
      "licence": "CC0 1.0", "author": "Kay Lousberg (KayKit)", "url": "https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0"},
     {"slug": "hunter_crossbow", "name": "Hunter's Crossbow", "rarity": "rare", "kind": "bow", "grip": "crossbow",
