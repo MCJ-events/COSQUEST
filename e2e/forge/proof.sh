@@ -45,7 +45,7 @@ echo "published $(grep -c ' published$' "$OUT/$run-published.txt") elements" | t
 journey ../drive/f01-avatar.sh f01-avatar
 
 # Walk the phone to the nearest live find (the spawn rules decide where).
-drop=$(python3 "$here/nearest_drop.py")
+drop=$(python3 "$here/nearest_drop.py" --base "http://127.0.0.1:${GAME_PORT:-8599}")
 if [ -n "$drop" ]; then
   echo "${drop%%|*}" > "$GEO_FILE"
   rest="${drop#*|}"
