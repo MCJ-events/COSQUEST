@@ -1,51 +1,145 @@
 extends Node3D
-## One fighter: a runtime GLB (or a capsule mannequin), its clip map, HP and the
-## faked attack motion (no attack clip exists, so the body lunges / spins / leans).
-## The model faces +Z (glTF convention); the fighter's yaw turns +Z to the facing.
+## One fighter (cq 061, reworked in cq 233): a runtime GLB (or a capsule mannequin), its
+## CombatAnimator (clips when the GLB has them, procedural poses when not), a hurtbox, a
+## weapon arc hitbox on a pivot, the hit flash and team rim, knockback, the SHIELD barrier
+## and the RALLY buff. The model faces +Z (glTF convention); yaw turns +Z to the facing.
 
-const HEIGHT: float = 1.8
+const HitArea := preload("res://hit_area.gd")
+const Animator := preload("res://combat_animator.gd")
+const FLASH_SHADER := preload("res://vfx/flash.gdshader")
+const DOME_SHADER := preload("res://vfx/dome.gdshader")
+
+const HEIGHT: float = 2.3             # a touch over life size: reads at phone size, as on the reference
 
 var display_name: String = ""
 var team: int = 0                # 0 = hero side, 1 = enemy
+var role: String = "hero"        # hero | ally | boss
 var max_hp: int = 1000
 var hp: int = 1000
 var radius: float = 0.45
+var size_k: float = 1.0          # the boss stands taller
 var colour: Color = Color.WHITE
 var body: Node3D
 var model: Node3D
-var anim: AnimationPlayer
-var clips: Dictionary = {}       # "idle" / "walk" / "celebrate" -> clip name in the player
-var cur_clip: String = ""
+var anim: Animator = Animator.new()
 var model_info: String = "capsule"
+var bind_info: Dictionary = {}
 var yaw: float = 0.0
 var speed_now: float = 0.0
 var dead: bool = false
 var celebrating: bool = false
 var anim_freeze: bool = false
-var walk_rate: float = 1.0
 
-var _lunge_t: float = -1.0
-var _lunge_len: float = 0.22
-var _lunge_dist: float = 0.4
-var _spin_t: float = -1.0
-var _spin_len: float = 0.4
-var _lean_t: float = -1.0
-var _lean_len: float = 0.6
+# combat state the fight reads and writes
+var kb_vel: Vector3 = Vector3.ZERO
+var iframes: float = 0.0
+var stagger: float = 0.0
+var guarding: bool = false
+var guard_t: float = 0.0         # seconds since guard went up
+var shield_hp: int = 0
+var shield_t: float = 0.0
+var buff_t: float = 0.0
+var buff_mult: float = 1.0
+
+var hurtbox: Area3D
+var weapon_pivot: Node3D
+var weapon: HitArea
+var weapon_reach: float = 2.2
+
+var _overlay: ShaderMaterial
+var _flash: float = 0.0
+var _dome: MeshInstance3D
+var _dome_mat: ShaderMaterial
+var _dome_hit: float = 0.0
+var _aura: MeshInstance3D
+
+# procedural body motion (stands in for clip root motion)
+var _motion: String = ""
+var _mt: float = 0.0
+var _mlen: float = 0.0
 var _pop_t: float = -1.0
 var _death_t: float = -1.0
 var _cele_t: float = 0.0
+var _spin_dir: float = 1.0
 
 
-func setup(n: String, t: int, hp_max: int, c: Color) -> void:
+func setup(n: String, t: int, hp_max: int, c: Color, r: String = "hero") -> void:
 	display_name = n
 	team = t
+	role = r
 	max_hp = hp_max
 	hp = hp_max
 	colour = c
+	size_k = 1.4 if role == "boss" else 1.0
+	radius = 0.8 if role == "boss" else 0.5
 	body = Node3D.new()
 	body.name = "Body"
 	add_child(body)
+	_overlay = ShaderMaterial.new()
+	_overlay.shader = FLASH_SHADER
+	var rim: Color = Color(1.0, 0.35, 0.3) if team == 1 else (Color(0.55, 1.0, 0.6) if role == "hero" else Color(0.5, 0.85, 1.0))
+	_overlay.set_shader_parameter("rim_color", rim)
+	_overlay.set_shader_parameter("rim_amount", 0.55 if role == "boss" else 0.4)
+	_build_boxes()
+	_build_shadow()
 	set_capsule()
+
+
+func _build_shadow() -> void:
+	# a soft contact shadow: grounds the fighters on the bright paving at no real cost
+	var sh := MeshInstance3D.new()
+	sh.name = "BlobShadow"
+	var q := PlaneMesh.new()
+	q.size = Vector2(1.5, 1.5) * size_k
+	sh.mesh = q
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.albedo_texture = preload("res://art/fx/vfx_glow.png")
+	m.albedo_color = Color(0.08, 0.04, 0.12, 0.75)
+	m.disable_receive_shadows = true
+	sh.material_override = m
+	sh.position.y = 0.045
+	sh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(sh)
+
+
+func _build_boxes() -> void:
+	hurtbox = Area3D.new()
+	hurtbox.name = "Hurtbox"
+	hurtbox.collision_layer = HitArea.hurt_layer(team)
+	hurtbox.collision_mask = 0
+	hurtbox.monitoring = false
+	hurtbox.monitorable = true
+	hurtbox.set_meta("fighter", self)
+	var cs := CollisionShape3D.new()
+	var cap := CapsuleShape3D.new()
+	cap.radius = radius
+	cap.height = HEIGHT * size_k
+	cs.shape = cap
+	cs.position.y = HEIGHT * size_k * 0.5
+	hurtbox.add_child(cs)
+	add_child(hurtbox)
+	# the weapon arc: a box from the chest out to the reach, on a pivot the fight sweeps
+	weapon_pivot = Node3D.new()
+	weapon_pivot.name = "WeaponPivot"
+	weapon_pivot.position.y = HEIGHT * size_k * 0.55
+	add_child(weapon_pivot)
+	weapon = HitArea.new()
+	weapon.name = "WeaponArc"
+	var box := BoxShape3D.new()
+	box.size = Vector3(0.5, 1.4 * size_k, 1.0)
+	weapon.setup(1 - team, box)
+	weapon_pivot.add_child(weapon)
+	set_reach(weapon_reach)
+
+
+## The arc's box runs from 0.35 m out to `reach` in front of the pivot.
+func set_reach(reach: float, width: float = 0.5) -> void:
+	weapon_reach = reach
+	var box := weapon.shape_node.shape as BoxShape3D
+	box.size = Vector3(width, 1.4 * size_k, reach - 0.35)
+	weapon.position = Vector3(0, 0, 0.35 + (reach - 0.35) * 0.5)
 
 
 func forward() -> Vector3:
@@ -64,11 +158,32 @@ func face(dir: Vector3, dt: float, rate: float = 18.0) -> void:
 
 
 func head_pos() -> Vector3:
-	return global_position + Vector3(0.0, HEIGHT + 0.35, 0.0)
+	return global_position + Vector3(0.0, HEIGHT * size_k + 0.3, 0.0)
 
 
 func chest_pos() -> Vector3:
-	return global_position + Vector3(0.0, HEIGHT * 0.6, 0.0)
+	return global_position + Vector3(0.0, HEIGHT * size_k * 0.6, 0.0)
+
+
+## The right-hand attach point (BoneAttachment3D on the hand bone, or a stand-in node at
+## the right hip when the model has no skeleton). The weapons task parents weapons here.
+func hand_r() -> Node3D:
+	return anim.hand_r
+
+
+## Puts `weapon_node` in the right hand (replacing any weapon there). A child named "tip"
+## (if any) marks the blade's end; reach, when given, also resizes the arc hitbox.
+func attach_weapon(weapon_node: Node3D, reach: float = -1.0) -> void:
+	var h: Node3D = hand_r()
+	if h == null:
+		return
+	for c: Node in h.get_children():
+		if c.is_in_group("cq_weapon"):
+			c.queue_free()
+	weapon_node.add_to_group("cq_weapon")
+	h.add_child(weapon_node)
+	if reach > 0.0:
+		set_reach(reach)
 
 
 # ---------------------------------------------------------------- models
@@ -77,9 +192,6 @@ func _clear_model() -> void:
 	if model != null:
 		model.queue_free()
 	model = null
-	anim = null
-	clips = {}
-	cur_clip = ""
 
 
 func set_capsule() -> void:
@@ -106,13 +218,16 @@ func set_capsule() -> void:
 	nose.position = Vector3(0.0, 1.55, 0.3)
 	nose.material_override = mat
 	root.add_child(nose)
+	root.scale = Vector3.ONE * size_k
 	model = root
 	body.add_child(root)
 	model_info = "capsule"
+	bind_info = anim.bind(root, body)
+	_apply_overlay(root)
 
 
-## Takes ownership of a generated GLTF scene. Normalises it to HEIGHT from its AABB,
-## puts its feet on y=0 and centres it, then maps the idle/walk/celebrate clips.
+## Takes ownership of a generated GLTF scene. Normalises it to HEIGHT (x size_k) from its
+## AABB, puts its feet on y=0 and centres it, then binds the CombatAnimator.
 func set_model(node: Node3D) -> Dictionary:
 	_clear_model()
 	var holder := Node3D.new()
@@ -121,34 +236,26 @@ func set_model(node: Node3D) -> Dictionary:
 	var aabb: AABB = _model_aabb(holder)
 	var s: float = 1.0
 	if aabb.size.y > 0.01:
-		s = HEIGHT / aabb.size.y
+		s = HEIGHT * size_k / aabb.size.y
 	holder.scale = Vector3.ONE * s
 	var c: Vector3 = aabb.get_center()
 	holder.position = Vector3(-c.x * s, -aabb.position.y * s, -c.z * s)
 	body.add_child(holder)
 	model = holder
-	var players: Array[Node] = holder.find_children("*", "AnimationPlayer", true, false)
-	var names: PackedStringArray = PackedStringArray()
-	if players.size() > 0:
-		anim = players[0] as AnimationPlayer
-		names = anim.get_animation_list()
-		for key: String in ["idle", "walk", "celebrate"]:
-			for n: String in names:
-				if n.to_lower().contains(key):
-					clips[key] = n
-					break
-		for key: String in ["idle", "walk"]:
-			if clips.has(key):
-				var a: Animation = anim.get_animation(clips[key])
-				if a != null:
-					a.loop_mode = Animation.LOOP_LINEAR
-		if clips.has("celebrate"):
-			var ca: Animation = anim.get_animation(clips["celebrate"])
-			if ca != null:
-				ca.loop_mode = Animation.LOOP_NONE
 	model_info = "glb"
-	play("idle")
-	return {"scale": s, "height_raw": aabb.size.y, "anims": names, "mapped": clips}
+	bind_info = anim.bind(holder, body)
+	anim.play("idle")
+	_apply_overlay(holder)
+	var names: PackedStringArray = anim.player.get_animation_list() if anim.player != null else PackedStringArray()
+	return {"scale": s, "height_raw": aabb.size.y, "anims": names, "mapped": bind_info.get("clips", {}),
+		"bones": bind_info.get("bones", 0), "hand": bind_info.get("hand", "")}
+
+
+func _apply_overlay(root: Node) -> void:
+	for n: Node in root.find_children("*", "MeshInstance3D", true, false):
+		(n as MeshInstance3D).material_overlay = _overlay
+	if root is MeshInstance3D:
+		(root as MeshInstance3D).material_overlay = _overlay
 
 
 static func _model_aabb(root: Node3D) -> AABB:
@@ -173,36 +280,100 @@ static func _model_aabb(root: Node3D) -> AABB:
 	return out
 
 
-# ---------------------------------------------------------------- animation
+# ---------------------------------------------------------------- actions
 
-func play(key: String, blend: float = 0.15) -> void:
-	if anim == null or not clips.has(key):
-		cur_clip = key
+## Plays a combat state for `length` seconds: the clip if the GLB has one, else the
+## procedural pose plus a body motion. Returns true when a clip plays it.
+func act(state: String, length: float) -> bool:
+	var clip: bool = anim.play(state, length)
+	_motion = state
+	_mt = 0.0
+	_mlen = length
+	_spin_dir = 1.0
+	return clip
+
+
+func set_guard(on: bool) -> void:
+	if on == guarding:
 		return
-	if cur_clip == key and anim.is_playing():
-		return
-	cur_clip = key
-	anim.play(clips[key], blend)
+	guarding = on
+	guard_t = 0.0
+	if on:
+		anim.play("guard")
+	elif anim.state == "guard":
+		anim.state = "_"
 
 
-func lunge(dist: float = 0.4, length: float = 0.22) -> void:
-	_lunge_t = 0.0
-	_lunge_dist = dist
-	_lunge_len = length
-
-
-func spin(length: float = 0.4) -> void:
-	_spin_t = 0.0
-	_spin_len = length
-
-
-func lean_back(length: float) -> void:
-	_lean_t = 0.0
-	_lean_len = length
+func flash(amount: float = 1.0) -> void:
+	_flash = maxf(_flash, amount)
 
 
 func hurt_pop() -> void:
 	_pop_t = 0.0
+
+
+func knock(dir: Vector3, metres: float) -> void:
+	# an impulse that travels about `metres` under the 9/s friction in tick_physics
+	var d: Vector3 = Vector3(dir.x, 0.0, dir.z)
+	if d.length_squared() < 0.0001:
+		d = -forward()
+	kb_vel = d.normalized() * metres * 9.0
+
+
+func give_shield(amount: int, seconds: float) -> void:
+	shield_hp = amount
+	shield_t = seconds
+	if _dome == null:
+		_dome = MeshInstance3D.new()
+		var sm := SphereMesh.new()
+		sm.radius = 1.0
+		sm.height = 1.0           # a half-height sphere: a dome
+		sm.radial_segments = 24
+		sm.rings = 8
+		sm.is_hemisphere = true
+		_dome.mesh = sm
+		_dome_mat = ShaderMaterial.new()
+		_dome_mat.shader = DOME_SHADER
+		_dome.material_override = _dome_mat
+		_dome.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(_dome)
+	var r: float = 1.15 * size_k
+	_dome.scale = Vector3(r, HEIGHT * size_k * 0.75, r)
+	_dome.visible = true
+
+
+## Damage through the barrier first. Returns what is left for the HP.
+func absorb(amount: int) -> int:
+	if shield_hp <= 0:
+		return amount
+	var took: int = mini(shield_hp, amount)
+	shield_hp -= took
+	_dome_hit = 1.0
+	if shield_hp <= 0:
+		shield_t = minf(shield_t, 0.25)
+	return amount - took
+
+
+func give_buff(mult: float, seconds: float) -> void:
+	buff_mult = mult
+	buff_t = seconds
+	if _aura == null:
+		_aura = MeshInstance3D.new()
+		var q := PlaneMesh.new()
+		q.size = Vector2(2.2, 2.2) * size_k
+		_aura.mesh = q
+		var m := StandardMaterial3D.new()
+		m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+		m.albedo_texture = preload("res://art/fx/magic_02.png")
+		m.albedo_color = Color(1.0, 0.75, 0.3, 0.9)
+		m.disable_receive_shadows = true
+		_aura.material_override = m
+		_aura.position.y = 0.06
+		_aura.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(_aura)
+	_aura.visible = true
 
 
 func die() -> void:
@@ -211,71 +382,130 @@ func die() -> void:
 	dead = true
 	hp = 0
 	_death_t = 0.0
-	if anim != null:
-		anim.pause()
+	set_guard(false)
+	shield_t = 0.0
+	buff_t = 0.0
+	act("death", 1.2)
+	hurtbox.monitorable = false
 
 
 func celebrate() -> void:
 	celebrating = true
 	_cele_t = 0.0
-	if clips.has("celebrate"):
-		play("celebrate", 0.1)
-	else:
-		play("idle")
+	set_guard(false)
+	act("victory", 1.4)
 
 
-## Visual tick: clip choice and the procedural lunge / spin / lean / hurt pop.
+## Timers that run with game logic (frozen in hit-stop).
+func tick_logic(dt: float) -> void:
+	iframes = maxf(0.0, iframes - dt)
+	stagger = maxf(0.0, stagger - dt)
+	if guarding:
+		guard_t += dt
+	if shield_t > 0.0:
+		shield_t -= dt
+		if shield_t <= 0.0:
+			shield_hp = 0
+	if buff_t > 0.0:
+		buff_t -= dt
+		if buff_t <= 0.0:
+			buff_mult = 1.0
+	if kb_vel.length_squared() > 0.0001:
+		position += kb_vel * dt
+		kb_vel = kb_vel * exp(-9.0 * dt)
+		if kb_vel.length() < 0.05:
+			kb_vel = Vector3.ZERO
+
+
+## Visual tick: animator, procedural body motion, flash, dome, aura.
 func tick_visual(dt: float) -> void:
-	if anim != null:
-		anim.speed_scale = 0.0 if anim_freeze else (walk_rate if cur_clip == "walk" else 1.0)
-	if not dead and not celebrating:
-		if speed_now > 0.2:
-			walk_rate = clampf(speed_now / 2.6, 0.8, 1.9)
-			play("walk")
-		else:
-			play("idle")
+	anim.frozen = anim_freeze
+	anim.update(dt, speed_now, dead or celebrating)
+	var vdt: float = 0.0 if anim_freeze else dt
 	var pos := Vector3.ZERO
 	var rot := Vector3.ZERO
 	var sc: float = 1.0
-	if _lunge_t >= 0.0:
-		_lunge_t += dt
-		var k: float = _lunge_t / _lunge_len
-		if k >= 1.0:
-			_lunge_t = -1.0
-		else:
-			# fast out (first 30%), eased back
-			var f: float = k / 0.3 if k < 0.3 else 1.0 - ease((k - 0.3) / 0.7, 0.6)
-			pos.z += _lunge_dist * f
-			rot.x += 0.28 * f
-	if _spin_t >= 0.0:
-		_spin_t += dt
-		var ks: float = _spin_t / _spin_len
-		if ks >= 1.0:
-			_spin_t = -1.0
-		else:
-			rot.y += TAU * ease(ks, 0.7)
-	if _lean_t >= 0.0:
-		_lean_t += dt
-		var kl: float = _lean_t / _lean_len
-		if kl >= 1.0:
-			_lean_t = -1.0
-		else:
-			rot.x -= 0.3 * sin(kl * PI * 0.5)
-			pos.z -= 0.15 * kl
+	var clip: bool = anim.has_clip(_motion)
+	if _motion != "" and _mlen > 0.0:
+		_mt += vdt
+		var k: float = _mt / _mlen
+		if k >= 1.0 and _motion != "death" and _motion != "victory":
+			_motion = ""
+		elif not clip:
+			_body_motion(_motion, clampf(k, 0.0, 1.0), pos, rot)
+			pos = _bm_pos
+			rot = _bm_rot
 	if _pop_t >= 0.0:
-		_pop_t += dt
+		_pop_t += vdt
 		if _pop_t > 0.15:
 			_pop_t = -1.0
 		else:
 			sc = 1.0 + 0.08 * (1.0 - _pop_t / 0.15)
-	if dead and _death_t >= 0.0:
-		_death_t += dt
+	if dead and _death_t >= 0.0 and not anim.has_clip("death"):
+		_death_t += vdt
 		var kd: float = clampf(_death_t / 0.6, 0.0, 1.0)
 		rot.x = -PI * 0.5 * ease(kd, 0.5)
 		pos.y = -0.25 * kd
-	if celebrating and not clips.has("celebrate"):
-		_cele_t += dt
-		pos.y += absf(sin(_cele_t * 7.0)) * 0.35
+	if celebrating and not anim.has_clip("victory"):
+		_cele_t += vdt
+		pos.y += absf(sin(_cele_t * 7.0)) * 0.3
+	if guarding and not anim.has_clip("guard"):
+		pos.y -= 0.06
 	body.position = pos
 	body.rotation = rot
 	body.scale = Vector3.ONE * sc
+	# hit flash
+	if _flash > 0.0:
+		_flash = maxf(0.0, _flash - dt * 7.0)
+	_overlay.set_shader_parameter("flash", _flash)
+	if _dome != null:
+		var on: bool = shield_t > 0.0 and not dead
+		_dome.visible = on
+		if on:
+			_dome_hit = maxf(0.0, _dome_hit - dt * 4.0)
+			var fade: float = clampf(shield_t / 0.4, 0.0, 1.0)
+			_dome_mat.set_shader_parameter("alpha", fade)
+			_dome_mat.set_shader_parameter("hit", _dome_hit)
+	if _aura != null:
+		_aura.visible = buff_t > 0.0 and not dead
+		if _aura.visible:
+			_aura.rotation.y += dt * 1.6
+			(_aura.material_override as StandardMaterial3D).albedo_color.a = 0.85 * clampf(buff_t / 0.5, 0.0, 1.0)
+
+
+var _bm_pos: Vector3
+var _bm_rot: Vector3
+
+
+## Root-motion stand-ins per state; k is the state's phase 0..1.
+func _body_motion(st: String, k: float, pos: Vector3, rot: Vector3) -> void:
+	match st:
+		"attack_1", "attack_2":
+			var f: float = k / 0.3 if k < 0.3 else 1.0 - ease((k - 0.3) / 0.7, 0.6)
+			pos.z += 0.3 * f
+			rot.x += 0.14 * f
+		"attack_3", "heavy":
+			var f3: float = k / 0.45 if k < 0.45 else 1.0 - ease((k - 0.45) / 0.55, 0.6)
+			pos.z += 0.5 * f3
+			pos.y += 0.25 * sin(clampf(k / 0.45, 0.0, 1.0) * PI)
+			rot.x += 0.22 * f3
+		"skill_whirl":
+			rot.y += TAU * 2.0 * ease(k, 0.8) * _spin_dir
+		"skill_charge":
+			rot.x += 0.35 * sin(k * PI)
+		"skill_split":
+			pos.y += 0.9 * sin(clampf(k / 0.45, 0.0, 1.0) * PI) if k < 0.45 else 0.0
+			if k >= 0.45 and k < 0.7:
+				pos.y -= 0.12 * sin((k - 0.45) / 0.25 * PI)
+		"skill_rally", "skill_shield":
+			pos.y += 0.12 * sin(k * PI)
+		"hit":
+			pos.z -= 0.18 * sin(k * PI)
+			rot.x -= 0.18 * sin(k * PI)
+		"parry":
+			rot.y += 0.35 * sin(k * PI)
+		"dodge":
+			rot.x += 0.55 * sin(k * PI)
+			pos.y -= 0.25 * sin(k * PI)
+	_bm_pos = pos
+	_bm_rot = rot
