@@ -204,6 +204,7 @@ func _ready() -> void:
 			_load_queue.append({"f": pair[0], "path": p, "role": str(pair[1]).trim_suffix("_glb")})
 		else:
 			_log("load role=%s skipped (no path), capsule" % str(pair[1]).trim_suffix("_glb"))
+	_queue_weapons()
 	if _load_queue.is_empty():
 		_begin_fight()
 	else:
@@ -374,10 +375,56 @@ func _poll_loading() -> void:
 		_finish_load(_loader.load_glb(path))   # one model per frame on the main thread
 
 
+## Weapons in hand (cq 234). Per fighter the config may name
+##   <role>_weapon / <role>_offhand: {"glb": path, "class": "sword", "bone": "RightHand",
+##     "matrix": [16 floats]}  (bone + matrix as in data/attach.json; when they are
+##     missing they are read from that manifest by "character" or <role>_key)
+## and they load after the three characters.
+const ATTACH_JSON: String = "res://data/attach.json"
+var _attach: Dictionary = {}
+
+
+func _attach_manifest() -> Dictionary:
+	if _attach.is_empty() and FileAccess.file_exists(ATTACH_JSON):
+		var d: Variant = JSON.parse_string(FileAccess.get_file_as_string(ATTACH_JSON))
+		if d is Dictionary:
+			_attach = d
+	return _attach
+
+
+func _queue_weapons() -> void:
+	for pair: Array in [[hero, "hero"], [ally, "ally"], [enemy, "enemy"]]:
+		for slot: Array in [["_weapon", "r"], ["_offhand", "l"]]:
+			var w: Variant = cfg.get(str(pair[1]) + str(slot[0]))
+			if not (w is Dictionary):
+				continue
+			var wd: Dictionary = w
+			var path: String = LoaderScript.clean_path(str(wd.get("glb", "")))
+			var cls: String = str(wd.get("class", "sword"))
+			var att: Dictionary = {}
+			if wd.has("matrix"):
+				att = {"bone": str(wd.get("bone", "")), "matrix": wd["matrix"]}
+			else:
+				var key: String = str(wd.get("character", cfg.get(str(pair[1]) + "_key", "")))
+				var ch: Dictionary = (_attach_manifest().get("characters", {}) as Dictionary).get(key, {})
+				att = (ch.get("grips", {}) as Dictionary).get(cls, {})
+			if path == "" or att.is_empty():
+				_log("weapon role=%s side=%s skipped path=%s attach=%s" % [pair[1], slot[1], path, str(not att.is_empty())])
+				continue
+			_load_queue.append({"f": pair[0], "path": path, "role": str(pair[1]) + "_weapon_" + str(slot[1]), "weapon": slot[1], "att": att, "class": cls})
+
+
 func _finish_load(r: Dictionary) -> void:
 	var f: FighterScript = _loading_role["f"]
 	var role: String = _loading_role["role"]
 	var t_add: int = Time.get_ticks_usec()
+	if _loading_role.has("weapon"):
+		if bool(r.get("ok", false)):
+			var why: String = f.attach_weapon(r["node"] as Node3D, _loading_role["att"], str(_loading_role["weapon"]), str(_loading_role["class"]))
+			_log("weapon role=%s class=%s bone=%s ok=%s %s parse_ms=%.1f path=%s" % [role, str(_loading_role["class"]), str(_loading_role["att"].get("bone", "")), str(why == ""), why, float(r["parse_ms"]), str(r["path"])])
+		else:
+			_log("weapon role=%s ok=false error=%s path=%s" % [role, str(r.get("error", "?")), str(r.get("path", ""))])
+		return
 	if bool(r.get("ok", false)):
 		var info: Dictionary = f.set_model(r["node"] as Node3D)
 		_log("load role=%s ok=true parse_ms=%.1f gen_ms=%.1f add_ms=%.1f scale=%.3f raw_h=%.3f anims=%s mapped=%s path=%s" % [

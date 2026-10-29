@@ -23,6 +23,7 @@ var dead: bool = false
 var celebrating: bool = false
 var anim_freeze: bool = false
 var walk_rate: float = 1.0
+var weapons: Dictionary = {}      # "r" / "l" -> {node, class, bone} (weapons in hand, cq 234)
 
 var _lunge_t: float = -1.0
 var _lunge_len: float = 0.22
@@ -77,6 +78,7 @@ func _clear_model() -> void:
 	if model != null:
 		model.queue_free()
 	model = null
+	weapons = {}
 	anim = null
 	clips = {}
 	cur_clip = ""
@@ -171,6 +173,62 @@ static func _model_aabb(root: Node3D) -> AABB:
 		else:
 			out = out.merge(box)
 	return out
+
+
+# ---------------------------------------------------------------- weapons in hand (cq 234)
+
+## Puts a loaded weapon scene in a hand. `att` is {bone, matrix} from
+## data/attach.json (or the app's fight config): bone is the skeleton's hand
+## bone ("" for a static model: the weapon goes on the model itself) and
+## matrix the weapon root's transform in that bone's space (16 floats,
+## column-major). The socket is a BoneAttachment3D named hand_r / hand_l on
+## the hand bone, so the idle, walk and attack motion carry the weapon.
+## Returns "" or why it could not.
+func attach_weapon(weapon: Node3D, att: Dictionary, side: String, cls: String) -> String:
+	if model == null or model_info != "glb":
+		weapon.free()
+		return "no model"
+	var m: Array = att.get("matrix", [])
+	if m.size() != 16:
+		weapon.free()
+		return "no grip matrix"
+	var xf := Transform3D(Basis(Vector3(m[0], m[1], m[2]), Vector3(m[4], m[5], m[6]), Vector3(m[8], m[9], m[10])), Vector3(m[12], m[13], m[14]))
+	var bone: String = str(att.get("bone", ""))
+	var socket: Node3D
+	if bone == "":
+		# static model: the GLB's own root (under the size-normalising holder)
+		socket = Node3D.new()
+		model.get_child(0).add_child(socket)
+	else:
+		var sk: Skeleton3D = null
+		for n: Node in model.find_children("*", "Skeleton3D", true, false):
+			if (n as Skeleton3D).find_bone(bone) >= 0:
+				sk = n
+				break
+		if sk == null:
+			weapon.free()
+			return "no bone " + bone
+		var ba := BoneAttachment3D.new()
+		ba.bone_name = bone
+		sk.add_child(ba)
+		socket = ba
+	socket.name = "hand_" + side
+	var holder := Node3D.new()
+	holder.name = "weapon_" + side
+	holder.transform = xf
+	socket.add_child(holder)
+	holder.add_child(weapon)
+	if weapons.has(side):
+		(weapons[side]["socket"] as Node).queue_free()
+	weapons[side] = {"socket": socket, "node": holder, "class": cls, "bone": bone}
+	return ""
+
+
+## The weapon's grip point (the hand) in the world, or Vector3.INF.
+func grip_point(side: String = "r") -> Vector3:
+	if weapons.has(side):
+		return (weapons[side]["node"] as Node3D).global_position
+	return Vector3.INF
 
 
 # ---------------------------------------------------------------- animation
