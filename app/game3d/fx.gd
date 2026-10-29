@@ -22,7 +22,7 @@ const T_CIRCLE := preload("res://art/fx/circle_05.png")
 
 const SLASH_LIFE: float = 0.22
 const RING_LIFE: float = 0.4
-const TRAIL_LIFE: float = 0.16
+const TRAIL_LIFE: float = 0.22
 
 var _slash_mesh: ArrayMesh
 var _ring_mesh: ArrayMesh
@@ -272,7 +272,7 @@ func slash(at: Vector3, yaw: float, tint: Color, size: float, tilt: float) -> Me
 
 
 ## Adds the current hilt/tip pair to `key`'s trail. Call every frame of a swing.
-func trail_push(key: String, base: Vector3, tip: Vector3, tint: Color) -> void:
+func trail_push(key: String, base: Vector3, tip: Vector3, tint: Color, t_back: float = 0.0) -> void:
 	var tr: Dictionary = _trails.get(key, {})
 	if tr.is_empty():
 		var mi := MeshInstance3D.new()
@@ -297,7 +297,7 @@ func trail_push(key: String, base: Vector3, tip: Vector3, tint: Color) -> void:
 		for i in steps:
 			var u: float = float(i + 1) / float(steps + 1)
 			s.append([lerpf(float(last[0]), _clock, u), lb.lerp(base, u), lt.lerp(tip, u)])
-	s.append([_clock, base, tip])
+	s.append([_clock - t_back, base, tip])
 	((tr["mi"] as MeshInstance3D).material_override as ShaderMaterial).set_shader_parameter("tint", tint)
 
 

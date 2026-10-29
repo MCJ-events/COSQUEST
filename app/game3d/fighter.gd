@@ -70,7 +70,7 @@ func setup(n: String, t: int, hp_max: int, c: Color, r: String = "hero") -> void
 	max_hp = hp_max
 	hp = hp_max
 	colour = c
-	size_k = 1.4 if role == "boss" else 1.0
+	size_k = 1.55 if role == "boss" else 1.0
 	radius = 0.8 if role == "boss" else 0.5
 	body = Node3D.new()
 	body.name = "Body"
@@ -120,26 +120,48 @@ func _build_boxes() -> void:
 	cs.position.y = HEIGHT * size_k * 0.5
 	hurtbox.add_child(cs)
 	add_child(hurtbox)
-	# the weapon arc: a box from the chest out to the reach, on a pivot the fight sweeps
+	# the weapon arc: a fan from the chest out to the reach, rebuilt every frame of a swing
+	# to cover the arc the weapon swept since the last frame (sweep_arc)
 	weapon_pivot = Node3D.new()
 	weapon_pivot.name = "WeaponPivot"
 	weapon_pivot.position.y = HEIGHT * size_k * 0.55
 	add_child(weapon_pivot)
 	weapon = HitArea.new()
 	weapon.name = "WeaponArc"
-	var box := BoxShape3D.new()
-	box.size = Vector3(0.5, 1.4 * size_k, 1.0)
-	weapon.setup(1 - team, box)
+	var fan := ConvexPolygonShape3D.new()
+	fan.points = PackedVector3Array([Vector3(-0.2, -0.5, 0.3), Vector3(0.2, -0.5, 0.3), Vector3(-0.2, 0.5, 0.3), Vector3(0.2, 0.5, 0.3),
+		Vector3(-0.2, -0.5, 1.5), Vector3(0.2, -0.5, 1.5), Vector3(-0.2, 0.5, 1.5), Vector3(0.2, 0.5, 1.5)])
+	weapon.setup(1 - team, fan)
 	weapon_pivot.add_child(weapon)
-	set_reach(weapon_reach)
+	sweep_arc(-10.0, 10.0)
 
 
-## The arc's box runs from 0.35 m out to `reach` in front of the pivot.
-func set_reach(reach: float, width: float = 0.5) -> void:
+## The arc's reach (m) for the next swings.
+func set_reach(reach: float, _width: float = 0.5) -> void:
 	weapon_reach = reach
-	var box := weapon.shape_node.shape as BoxShape3D
-	box.size = Vector3(width, 1.4 * size_k, reach - 0.35)
-	weapon.position = Vector3(0, 0, 0.35 + (reach - 0.35) * 0.5)
+
+
+## Shapes the weapon hitbox as the fan between two yaw angles (deg, + is its left), from
+## 0.3 m out to the reach and from knee to above the head: everything the blade swept.
+func sweep_arc(a0_deg: float, a1_deg: float) -> void:
+	var lo: float = minf(a0_deg, a1_deg)
+	var hi: float = maxf(a0_deg, a1_deg)
+	if hi - lo < 12.0:
+		var mid: float = (lo + hi) * 0.5
+		lo = mid - 6.0
+		hi = mid + 6.0
+	hi = minf(hi, lo + 170.0)   # a fan under 180 degrees stays convex
+	var y0: float = -HEIGHT * size_k * 0.45
+	var y1: float = HEIGHT * size_k * 0.6
+	var pts := PackedVector3Array()
+	var n: int = clampi(int((hi - lo) / 15.0) + 1, 1, 12)
+	for i in n + 1:
+		var a: float = deg_to_rad(lerpf(lo, hi, float(i) / float(n)))
+		var d := Vector3(sin(a), 0, cos(a))
+		for y: float in [y0, y1]:
+			pts.append(d * 0.3 + Vector3(0, y, 0))
+			pts.append(d * weapon_reach + Vector3(0, y, 0))
+	(weapon.shape_node.shape as ConvexPolygonShape3D).points = pts
 
 
 func forward() -> Vector3:

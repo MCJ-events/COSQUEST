@@ -61,7 +61,7 @@ func _run() -> void:
 	_check(str(st.get("state", "")) == "fighting", "fighting after restart (got %s)" % str(st))
 	_check(_results.is_empty(), "restart emits no result")
 	_check(not _states.is_empty() and _states[-1].contains("fight_id"), "state pushed with fight_id")
-	_check(int(st.get("hero_hp", 0)) == 1000 and int(st.get("enemy_hp", 0)) == 3000, "status hp fields")
+	_check(int(st.get("hero_hp", 0)) == 1000 and int(st.get("enemy_hp", 0)) == 6500, "status hp fields")
 	var fights: int = 0
 	for n: Node in root.find_children("Fight*", "", true, false):
 		if not n.is_queued_for_deletion():
@@ -92,6 +92,7 @@ func _run() -> void:
 		_check(str(r2.get("outcome", "")) in ["win", "lose", "timeout"], "outcome is win/lose/timeout")
 		_check(int(r2.get("damage_taken", 0)) > 0, "damage taken > 0")
 		_check(int(r2.get("hits", 0)) > 0, "hits > 0")
+		_check(int(r2.get("combo_max", 0)) == 3, "the bot chained a full 3-hit combo (cq 233)")
 
 	# 4. bad JSON still starts a default fight; then quit it
 	bridge.call("start_fight", "this is not json")
@@ -100,6 +101,30 @@ func _run() -> void:
 	bridge.call("end_fight")
 	await _wait_frames(2)
 	_check(_results.size() == 3, "third result delivered")
+
+	# 5. the loss path (cq 233): a hero who does nothing loses to the boss, sped up 4x
+	Engine.time_scale = 4.0
+	bridge.call("start_fight", JSON.stringify({"duration_s": 45, "autoplay": true, "bot": "idle", "seed": 9}))
+	await _wait_results(4, 40.0)
+	Engine.time_scale = 1.0
+	_check(_results.size() == 4, "idle-bot fight finished")
+	if _results.size() >= 4:
+		var r4: Dictionary = JSON.parse_string(_results[3])
+		print("CQTEST result " + _results[3])
+		_check(str(r4.get("outcome", "")) == "lose", "a hero who never fights loses (got %s)" % str(r4.get("outcome", "")))
+		_check(int(r4.get("hits", -1)) == 0, "the idle hero landed no hits")
+
+	# 6. the fighting bot wins (cq 233), sped up 4x
+	Engine.time_scale = 4.0
+	bridge.call("start_fight", JSON.stringify({"duration_s": 45, "autoplay": true, "seed": 11}))
+	await _wait_results(5, 40.0)
+	Engine.time_scale = 1.0
+	_check(_results.size() == 5, "bot fight finished")
+	if _results.size() >= 5:
+		var r5: Dictionary = JSON.parse_string(_results[4])
+		print("CQTEST result " + _results[4])
+		_check(str(r5.get("outcome", "")) == "win", "the fighting bot wins (got %s)" % str(r5.get("outcome", "")))
+		_check(int(r5.get("skill_uses", 0)) >= 3, "the bot used skills")
 
 	print("CQTEST done failures=%d" % _fail)
 	quit(_fail)

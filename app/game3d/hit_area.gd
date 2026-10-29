@@ -40,26 +40,47 @@ func close() -> void:
 	active = false
 
 
-## Checks the overlaps now (the physics state of the last step). The fight calls this from
-## its own tick as well, so a hitbox opened and closed between two physics steps still lands.
+## Checks for hurtboxes under this Area3D's shape right now: an immediate shape query of
+## the area's own shape at its current transform (areas only, this hitbox's mask). Unlike
+## get_overlapping_areas() it does not lag a physics step, so a hitbox opened, moved and
+## closed between two physics steps (a fast swing on a 15 fps phone) still lands.
 func scan() -> void:
-	if not active:
+	if not active or shape_node == null or shape_node.shape == null or not is_inside_tree():
 		return
-	for a: Area3D in get_overlapping_areas():
-		var f: Variant = a.get_meta("fighter", null)
-		if f == null or not is_instance_valid(f):
-			continue
-		var id: int = (f as Node).get_instance_id()
-		if _hit.has(id):
-			continue
-		if bool((f as Node).get("dead")):
-			continue
-		_hit[id] = true
-		struck.emit(f, self)
+	var space: PhysicsDirectSpaceState3D = get_world_3d().direct_space_state
+	if space == null:
+		return
+	var q := PhysicsShapeQueryParameters3D.new()
+	q.shape = shape_node.shape
+	q.transform = shape_node.global_transform
+	q.collision_mask = collision_mask
+	q.collide_with_areas = true
+	q.collide_with_bodies = false
+	for r: Dictionary in space.intersect_shape(q, 16):
+		var a: Object = r.get("collider")
+		if a is Area3D:
+			_consider(a as Area3D)
+
+
+func _consider(a: Area3D) -> void:
+	var f: Variant = a.get_meta("fighter", null)
+	if f == null or not is_instance_valid(f):
+		return
+	var id: int = (f as Node).get_instance_id()
+	if _hit.has(id):
+		return
+	if bool((f as Node).get("dead")):
+		return
+	_hit[id] = true
+	struck.emit(f, self)
 
 
 func _physics_process(_dt: float) -> void:
-	scan()
+	# the physics server's own overlap list as a second path (same once-per-opening rule)
+	if not active:
+		return
+	for a: Area3D in get_overlapping_areas():
+		_consider(a)
 
 
 func hit_count() -> int:

@@ -29,7 +29,7 @@ const HERO_HP: int = 1000
 const ALLY_HP: int = 800
 const ENEMY_HP: int = 6500
 const HERO_SPEED: float = 4.6            # m/s, no acceleration ramp: moves on the first frame
-const ARENA_HALF_X: float = 8.2         # the street between the kerbs
+const ARENA_HALF_X: float = 5.8         # the street between the kerbs
 const ARENA_Z: Vector2 = Vector2(-18.0, 12.0)
 
 # ---- the hero's combo. len: swing length; open/close: the hitbox's live window (s);
@@ -91,14 +91,14 @@ const ENRAGE_AT: float = 0.35
 
 # ---- the ally (a caster: bolts from range)
 const ALLY_SPEED: float = 4.2
-const ALLY_RANGE: float = 4.6
+const ALLY_RANGE: float = 4.0
 const ALLY_DMG: Vector2i = Vector2i(40, 60)
 const BOLT_SPEED: float = 14.0
 
 # ---- camera (cq 233: closer and steeper than G0, to match the reference's framing:
 # fighters ~1/7 of the screen high, the action on the middle third)
 const CAM_PITCH: float = 50.0
-const CAM_YAW: float = 15.0
+const CAM_YAW: float = 0.0
 const CAM_FOV: float = 58.0
 const CAM_DIST: float = 15.0
 const CAM_AHEAD: float = 0.6
@@ -150,6 +150,8 @@ var _skill_from: Vector3 = Vector3.ZERO
 var _skill_area: HitArea
 var _dodge_dir: Vector3 = Vector3.ZERO
 var _guard_wanted: bool = false
+var _skill_buffer: int = -1
+var _skill_buffer_t: float = 0.0
 var _hitstop: float = 0.0
 
 # boss
@@ -463,6 +465,9 @@ func _on_skill_pressed(slot: int, _t_in: float, _ticks_in: int, src: String) -> 
 			hud.toast("%ds" % int(ceil(_skill_cd[slot])), hud.skill_centre(slot) + Vector2(0, -hud.SKILL_R - 22))
 		return
 	if not _can_cast():
+		# pressed during another move: remembered briefly and cast the moment it ends
+		_skill_buffer = slot
+		_skill_buffer_t = 0.4
 		return
 	_cast(slot)
 
@@ -569,6 +574,15 @@ func _tick_hero(dt: float, real_dt: float) -> void:
 			_end_action()
 			if was == "dodge" and _guard_wanted:
 				hero.set_guard(true)
+	# a skill pressed during the last move
+	if _skill_buffer >= 0:
+		_skill_buffer_t -= dt
+		if _skill_buffer_t <= 0.0:
+			_skill_buffer = -1
+		elif _can_cast() and _skill_cd[_skill_buffer] <= 0.0:
+			var b: int = _skill_buffer
+			_skill_buffer = -1
+			_cast(b)
 	# attack input: buffered presses and a held button
 	var want_attack: bool = _attack_buffer > 0.0 or hud.attack_held
 	if want_attack and not hero.guarding:
@@ -624,7 +638,6 @@ func _swing() -> void:
 	hero.act(str(_atk_data["state"]), _act_len)
 	hero.set_reach(float(_atk_data["reach"]), 0.6 if bool(_atk_data["heavy"]) else 0.45)
 	var sweep: Vector2 = _atk_data["sweep"]
-	hero.weapon_pivot.rotation = Vector3(0, deg_to_rad(sweep.x), 0)
 	var heavy: bool = _atk_data["heavy"]
 	var tint: Color = Color(1.0, 0.72, 0.2, 1.0) if heavy else Color(0.35, 0.72, 1.0, 1.0)
 	var tilt: float = [0.3, -0.3, 1.25][_combo_i]
@@ -635,6 +648,9 @@ func _swing() -> void:
 	sfx.play("swing_heavy" if heavy else "swing", 1.0 - 0.06 * _combo_i)
 
 
+var _swing_prev_deg: float = 0.0
+
+
 func _tick_swing(_dt: float) -> void:
 	var d: Dictionary = _atk_data
 	var open: float = d["open"]
@@ -643,23 +659,33 @@ func _tick_swing(_dt: float) -> void:
 	var lift: Vector2 = d["lift"]
 	var k: float = clampf((_act_t - open) / maxf(0.01, close - open), 0.0, 1.0)
 	var yaw_deg: float = lerpf(sweep.x, sweep.y, ease(k, 0.6))
-	hero.weapon_pivot.rotation.y = deg_to_rad(yaw_deg)
-	if _act_t >= open and _act_t <= close:
+	var live: bool = _act_t >= open and (_act_t <= close or hero.weapon.active)
+	if live:
 		if not hero.weapon.active:
 			hero.weapon.open({"src": hero, "kind": "melee", "dmg": d["dmg"], "kb": d["kb"], "stop": d["stop"],
 				"heavy": d["heavy"], "combo": _combo_i})
+			_swing_prev_deg = sweep.x
+		# the hitbox is the fan the weapon swept since the last frame (frame-rate proof)
+		hero.sweep_arc(_swing_prev_deg, yaw_deg)
 		hero.weapon.scan()
-	elif hero.weapon.active and _act_t > close:
-		hero.weapon.close()
-	# the trail follows the arc (hilt at 0.45 m, tip at the reach), a little ahead of the box
-	if _act_t >= open - 0.03 and _act_t <= close + 0.03:
+		if _act_t > close:
+			hero.weapon.close()
+	# the trail follows the arc (hilt at 0.45 m, tip at the reach), filled in between frames
+	if _act_t >= open - 0.03 and (_act_t <= close + 0.03 or live):
 		var reach: float = d["reach"]
-		var a: float = hero.yaw + deg_to_rad(yaw_deg)
-		var dir := Vector3(sin(a), 0, cos(a))
-		var h: float = 1.05 + lerpf(lift.x, lift.y, k)
-		var base: Vector3 = hero.position + Vector3(0, 1.05 + lerpf(lift.x, lift.y, k) * 0.4, 0) + dir * 0.45
-		var tip: Vector3 = hero.position + Vector3(0, h, 0) + dir * reach
-		fx.trail_push("hero", base, tip, Color(1.0, 0.62, 0.15) if bool(d["heavy"]) else Color(0.25, 0.65, 1.0))
+		var from_deg: float = _swing_prev_deg if live else yaw_deg
+		var steps: int = clampi(int(absf(yaw_deg - from_deg) / 10.0), 0, 10)
+		for i in steps + 1:
+			var u: float = float(i + 1) / float(steps + 1)
+			var a_deg: float = lerpf(from_deg, yaw_deg, u)
+			var kk: float = clampf(k - (1.0 - u) * 0.15, 0.0, 1.0) if steps > 0 else k
+			var a: float = hero.yaw + deg_to_rad(a_deg)
+			var dir := Vector3(sin(a), 0, cos(a))
+			var h: float = 1.15 + lerpf(lift.x, lift.y, kk)
+			var base: Vector3 = hero.position + Vector3(0, 1.15 + lerpf(lift.x, lift.y, kk) * 0.4, 0) + dir * 0.45
+			var tip: Vector3 = hero.position + Vector3(0, h, 0) + dir * reach
+			fx.trail_push("hero", base, tip, Color(1.0, 0.62, 0.15) if bool(d["heavy"]) else Color(0.25, 0.65, 1.0), (1.0 - u) * _dt)
+	_swing_prev_deg = yaw_deg
 	# chain: a buffered press (or a held button) starts the next hit at COMBO_CHAIN_AT
 	if (_attack_buffer > 0.0 or hud.attack_held) and _act_t >= _act_len * COMBO_CHAIN_AT and _combo_i < COMBO.size() - 1:
 		_attack_buffer = 0.0
@@ -845,7 +871,7 @@ func _apply_hit(src: FighterScript, dst: FighterScript, info: Dictionary) -> voi
 	var amount: int = rng.randi_range(r.x, r.y)
 	amount = int(round(amount * src.buff_mult))
 	var away: Vector3 = _flat(dst.position - src.position)
-	var pop_at: Vector3 = dst.chest_pos() + Vector3(0, 0.55 * dst.size_k, 0)
+	var pop_at: Vector3 = dst.head_pos() + Vector3(0, 0.5, 0)   # above the name and bar
 	# dodge: i-frames
 	if dst.iframes > 0.0:
 		hud.pop(pop_at, "DODGE", "dodge")
@@ -1133,7 +1159,7 @@ func _tick_ally(dt: float) -> void:
 		if from_enemy.length() < 0.01:
 			from_enemy = Vector3(1, 0, 0)
 		var side: Vector3 = Vector3(-from_enemy.z, 0, from_enemy.x).normalized()
-		goal = enemy.position + (from_enemy.normalized() * 0.6 + side * 0.8).normalized() * ALLY_RANGE
+		goal = enemy.position + (from_enemy.normalized() * 0.8 + side * 0.6).normalized() * ALLY_RANGE
 		if _enemy_state == "windup" and _enemy_kind == "slam" and _flat(ally.position - _enemy_at).length() < SLAM_R + 0.6:
 			goal = _enemy_at + _flat(ally.position - _enemy_at).normalized() * (SLAM_R + 1.5)
 	else:

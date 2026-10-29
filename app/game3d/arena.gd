@@ -12,7 +12,7 @@ const T_POOL := preload("res://art/street/light_pool.png")
 
 const BUILDINGS: Array[String] = ["building-a", "building-b", "building-c", "building-d", "building-e",
 	"building-f", "building-g", "building-h", "building-k", "building-l"]
-const STREET_HALF: float = 9.5       # kerb to kerb half width (fight.gd clamps at 8.2 m)
+const STREET_HALF: float = 6.8       # kerb to kerb half width (fight.gd clamps at 5.8 m)
 const SHOP_W: float = 7.0
 
 var ground: MeshInstance3D
@@ -80,8 +80,7 @@ func build(cfg: Dictionary) -> void:
 	cm.albedo_texture = T_CIRCUIT
 	cm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	cm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	cm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
-	cm.albedo_color = Color(1, 1, 1, 0.85)
+	cm.albedo_color = Color(1, 1, 1, 0.9)
 	cm.disable_receive_shadows = true
 	for i in 2:
 		var c := MeshInstance3D.new()
