@@ -63,6 +63,12 @@ const DODGE_IFRAMES: float = 0.3
 # ---- skills: slot order CHARGE SPLIT WHIRL RALLY SHIELD (hud.SKILL_NAMES)
 const SKILL_CD: Array[float] = [5.0, 8.0, 6.0, 14.0, 12.0]
 const SKILL_LEN: Array[float] = [0.42, 0.72, 0.5, 0.6, 0.5]
+# when each skill's strike (or cast) lands, seconds in: a clip's contact frame is lined up with
+# it (cq 012; the frames are data in data/anim_clips.json). WHIRL's two hits span its spin, so
+# its clip is stretched evenly (-1).
+const SKILL_HIT_AT: Array[float] = [0.18, 0.34, -1.0, 0.25, 0.2]
+const PARRY_HIT_AT: float = 0.12   # the parry's riposte
+const BOLT_HIT_AT: float = 0.06    # the ally's cast, the bolt leaves at once
 const CHARGE_DIST: float = 6.0
 const CHARGE_DMG: Vector2i = Vector2i(110, 140)
 const SPLIT_LEN_M: float = 7.0
@@ -320,6 +326,12 @@ func _ready() -> void:
 	_focus = hero.position + _cam_fwd * CAM_AHEAD
 	_apply_camera(0.0)
 	for pair: Array in [[hero, "hero_glb"], [ally, "ally_glb"], [enemy, "enemy_glb"]]:
+		# the cast clip library and the weapon set (cq 012): by <role>_key when the config
+		# has it (else the skeleton is recognised) and the held weapon's class
+		var role: String = str(pair[1]).trim_suffix("_glb")
+		var wcfg: Variant = cfg.get(role + "_weapon")
+		(pair[0] as FighterScript).anim_opts = {"key": str(cfg.get(role + "_key", "")),
+			"class": str((wcfg as Dictionary).get("class", "")) if wcfg is Dictionary else ""}
 		var p: String = LoaderScript.clean_path(str(cfg.get(pair[1], "")))
 		if p != "":
 			(pair[0] as FighterScript).visible = false
@@ -471,6 +483,12 @@ func _finish_load(r: Dictionary) -> void:
 	var t_add: int = Time.get_ticks_usec()
 	if _loading_role.has("weapon"):
 		if bool(r.get("ok", false)):
+			# a fighter playing the cast clips holds the weapon the way the clips were made
+			# for (attach.json clip_grips, cq 012); else the idle-fitted grip
+			if f.anim.lib_key != "":
+				var cg: Dictionary = ((_attach_manifest().get("characters", {}) as Dictionary).get(f.anim.lib_key, {}) as Dictionary).get("clip_grips", {})
+				if cg.has(str(_loading_role["class"])):
+					_loading_role["att"] = cg[str(_loading_role["class"])]
 			var why: String = f.hold_weapon(r["node"] as Node3D, _loading_role["att"], str(_loading_role["weapon"]), str(_loading_role["class"]))
 			_log("weapon role=%s class=%s bone=%s ok=%s %s parse_ms=%.1f path=%s" % [role, str(_loading_role["class"]), str(_loading_role["att"].get("bone", "")), str(why == ""), why, float(r["parse_ms"]), str(r["path"])])
 		else:
@@ -478,9 +496,9 @@ func _finish_load(r: Dictionary) -> void:
 		return
 	if bool(r.get("ok", false)):
 		var info: Dictionary = f.set_model(r["node"] as Node3D)
-		_log("load role=%s ok=true parse_ms=%.1f gen_ms=%.1f add_ms=%.1f scale=%.3f raw_h=%.3f anims=%s mapped=%s bones=%d hand=%s path=%s" % [
+		_log("load role=%s ok=true parse_ms=%.1f gen_ms=%.1f add_ms=%.1f scale=%.3f raw_h=%.3f library=%s anims=%d mapped=%s bones=%d hand=%s path=%s" % [
 			role, float(r["parse_ms"]), float(r["gen_ms"]), (Time.get_ticks_usec() - t_add) / 1000.0,
-			float(info["scale"]), float(info["height_raw"]), str(info["anims"]), JSON.stringify(info["mapped"]),
+			float(info["scale"]), float(info["height_raw"]), str(info.get("library", "")), (info["anims"] as PackedStringArray).size(), JSON.stringify(info["mapped"]),
 			int(info["bones"]), str(info["hand"]), str(r["path"])])
 	else:
 		f.set_capsule()
@@ -698,7 +716,7 @@ func _swing() -> void:
 		if to.length() < SOFT_LOCK:
 			hero.face(to, 0.0, 0.0)
 	fx.trail_cut("hero%d" % _combo_i)
-	hero.act(str(_atk_data["state"]), _act_len)
+	hero.act(str(_atk_data["state"]), _act_len, (float(_atk_data["open"]) + float(_atk_data["close"])) * 0.5)
 	hero.set_reach(float(_atk_data["reach"]), 0.6 if bool(_atk_data["heavy"]) else 0.45)
 	var sweep: Vector2 = _atk_data["sweep"]
 	var heavy: bool = _atk_data["heavy"]
@@ -784,7 +802,7 @@ func _cast(slot: int) -> void:
 	(stats["skills"] as Array)[slot] = int((stats["skills"] as Array)[slot]) + 1
 	_combo_next = 0
 	var names: Array[String] = ["skill_charge", "skill_split", "skill_whirl", "skill_rally", "skill_shield"]
-	hero.act(names[slot], _act_len)
+	hero.act(names[slot], _act_len, SKILL_HIT_AT[slot])
 	# aim: the stick if pushed, else the boss if near, else the facing
 	var aim: Vector3 = _stick_world()
 	if aim.length() < 0.3 and enemy != null and not enemy.dead and _flat(enemy.position - hero.position).length() < 9.0:
@@ -1059,7 +1077,7 @@ func _parry(src: FighterScript) -> void:
 	sfx.play("parry")
 	fx.sparks(hero.chest_pos() + hero.forward() * 0.5, Color(1.0, 0.9, 0.5), 220, true)
 	fx.ring(hero.position, 2.2, Color(1.0, 0.9, 0.5, 0.95))
-	hero.act("parry", 0.35)
+	hero.act("parry", 0.35, PARRY_HIT_AT)
 	hero.flash(0.6)
 	_hitstop = maxf(_hitstop, 0.16)
 	_shake_cam(0.1, 0.2)
@@ -1171,7 +1189,7 @@ func _enemy_begin(kind: String, target: FighterScript) -> void:
 	_enemy_windup = (SWIPE_WINDUP if kind == "swipe" else SLAM_WINDUP) * k
 	enemy.face(_flat(target.position - enemy.position), 0.0, 0.0)
 	_enemy_yaw = enemy.yaw
-	enemy.act("heavy", _enemy_windup / 0.72)
+	enemy.act("heavy", _enemy_windup / 0.72, _enemy_windup)
 	if kind == "swipe":
 		_boss_area.shape_node.shape = _swipe_shape
 		_boss_area.shape_node.position = Vector3.ZERO
@@ -1248,7 +1266,7 @@ func _tick_ally(dt: float) -> void:
 	if engage and _ally_cd <= 0.0 and _flat(enemy.position - ally.position).length() < ALLY_RANGE + 2.5:
 		_ally_cd = rng.randf_range(1.6, 2.6)
 		ally.face(_flat(enemy.position - ally.position), 0.0, 0.0)
-		ally.act("attack_2", 0.36)
+		ally.act("attack_2", 0.36, BOLT_HIT_AT)
 		_fire_bolt()
 
 

@@ -12,6 +12,12 @@ extends RefCounted
 ## character, name the action in the GLB after the state (Blender action "attack_1").
 
 const PoseLayer := preload("res://pose_layer.gd")
+const AnimLib := preload("res://anim_library.gd")
+
+# crossfades (s): into a one-shot, back to a loop, into a hit react
+const BLEND_ACT: float = 0.08
+const BLEND_LOOP: float = 0.15
+const BLEND_HIT: float = 0.08
 
 const STATES: Array[String] = ["idle", "walk", "run", "attack_1", "attack_2", "attack_3", "heavy",
 	"hit", "guard", "parry", "dodge", "skill_charge", "skill_split", "skill_whirl", "skill_rally",
@@ -81,16 +87,29 @@ var length: float = 0.0          # game length of the current one-shot state (0 
 var frozen: bool = false
 var walk_rate: float = 1.0
 var hand_r: Node3D               # the right-hand attach point (BoneAttachment3D or a stand-in)
+var lib_key: String = ""         # the cast key whose clip library is bound ("" = none)
+var timing: Dictionary = {}      # state -> {clip, frames, fps, contact, in, out, body} from anim_clips.json
+var _warp: Array = []            # [clip time at the hit, speed before it, speed after it, game time of the hit]
+var _clip_t: float = 0.0         # where the one-shot clip should be (seconds into the clip)
+var hip_h: float = 0.9           # the model's hip height in metres (locomotion rate)
 
 
 ## Finds the AnimationPlayer and Skeleton3D under `model`, maps clips to states, adds the
 ## pose layer and the hand_r attach point. `body` hosts the stand-in hand if there is no
-## skeleton. Returns {clips: {state: clip}, procedural: [states], bones: n, hand: "bone"|"standin"}.
-func bind(model: Node3D, body: Node3D) -> Dictionary:
+## skeleton. `opts`: {key: cast key hint, class: weapon class}; when the skeleton is a cast
+## character with a clip library (anim_library.gd), the library's clips for that weapon
+## class take every state they cover. Returns {clips: {state: clip}, procedural: [states],
+## bones: n, hand: "bone"|"standin", library: key}.
+func bind(model: Node3D, body: Node3D, opts: Dictionary = {}) -> Dictionary:
 	clips.clear()
+	timing.clear()
+	lib_key = ""
 	player = null
 	skeleton = null
 	layer = null
+	var skels: Array[Node] = model.find_children("*", "Skeleton3D", true, false)
+	if skels.size() > 0:
+		skeleton = skels[0] as Skeleton3D
 	var players: Array[Node] = model.find_children("*", "AnimationPlayer", true, false)
 	if players.size() > 0:
 		player = players[0] as AnimationPlayer
@@ -99,14 +118,15 @@ func bind(model: Node3D, body: Node3D) -> Dictionary:
 			var c: String = _match(names, st)
 			if c != "":
 				clips[st] = c
+	if skeleton != null:
+		_bind_library(model, str(opts.get("key", "")), str(opts.get("class", "")))
+	if player != null:
 		for st: String in clips:
 			var a: Animation = player.get_animation(clips[st])
 			if a != null:
 				a.loop_mode = Animation.LOOP_LINEAR if st in LOOPING else Animation.LOOP_NONE
-	var skels: Array[Node] = model.find_children("*", "Skeleton3D", true, false)
 	var nb: int = 0
-	if skels.size() > 0:
-		skeleton = skels[0] as Skeleton3D
+	if skeleton != null:
 		layer = PoseLayer.new()
 		layer.name = "CombatPose"
 		layer.frame_root = model
@@ -118,6 +138,68 @@ func bind(model: Node3D, body: Node3D) -> Dictionary:
 		if not clips.has(st):
 			proc.append(st)
 	return {"clips": clips.duplicate(), "procedural": proc, "bones": nb, "hand": str(hand_r.get_meta("kind", "standin"))}
+
+
+## The cast clip library (cq 012): adds it to the model's AnimationPlayer (made if the GLB has
+## none) and maps the weapon class's set onto the states. A looping state gets its own copy
+## of a clip that a one-shot state also uses, so the loop flag never fights.
+func _bind_library(model: Node3D, hint: String, cls: String) -> void:
+	var key: String = AnimLib.key_for(skeleton, hint)
+	if key == "":
+		return
+	var lib: AnimationLibrary = AnimLib.library(key)
+	if lib == null:
+		return
+	if player == null:
+		player = AnimationPlayer.new()
+		player.name = "AnimationPlayer"
+		model.add_child(player)
+		player.root_node = player.get_path_to(model)
+	AnimLib.apply(player, skeleton, lib)
+	if cls == "":
+		# nothing in hand: the character's own prop decides (Nebul-X's staff is part of her model)
+		cls = str(((AnimLib.data().get("characters", {}) as Dictionary).get(key, {}) as Dictionary).get("default_class", ""))
+	var st_map: Dictionary = AnimLib.states_for(cls, key)
+	var used: Dictionary = {}
+	for st: String in st_map:
+		var name: String = AnimLib.LIB_NAME + "/" + str(st_map[st]["clip"])
+		if not player.has_animation(name):
+			continue
+		if st in LOOPING and used.has(name):
+			name = _loop_copy(name)
+		elif st in LOOPING:
+			name = _loop_copy(name)
+		used[name] = true
+		clips[st] = name
+		timing[st] = st_map[st]
+	lib_key = key
+	var hb: int = skeleton.find_bone("Hips")
+	if hb >= 0:
+		hip_h = skeleton.get_bone_global_rest(hb).origin.y * model.scale.y
+
+
+## The locomotion clip's playback rate for a ground speed (m/s): the planted foot moves at
+## the body's speed, so the feet do not slide.
+func _loco_rate(st: String, speed_now: float) -> float:
+	var gs: float = float((timing.get(st, {}) as Dictionary).get("ground_speed_per_hip", 0.0)) * hip_h
+	if gs <= 0.01:
+		return clampf(speed_now / 2.6, 0.8, 1.9)
+	return clampf(speed_now / gs, 0.5, 2.4)
+
+
+func _loop_copy(name: String) -> String:
+	var copy: String = name + "__loop"
+	var lib: AnimationLibrary = player.get_animation_library(AnimLib.LIB_NAME)
+	if not lib.has_animation(copy.get_slice("/", 1)):
+		var a: Animation = player.get_animation(name).duplicate(true)
+		a.loop_mode = Animation.LOOP_LINEAR
+		lib.add_animation(copy.get_slice("/", 1), a)
+	return copy
+
+
+## True when the state's clip wants the procedural body motion on top (data: "body": true).
+func body_with_clip(st: String) -> bool:
+	return bool((timing.get(st, {}) as Dictionary).get("body", false))
 
 
 static func _norm(s: String) -> String:
@@ -169,25 +251,45 @@ func has_clip(st: String) -> bool:
 
 
 ## Plays a state. `game_len` > 0 makes it a one-shot of that many seconds (a clip is
-## time-stretched to fit); 0 makes it a loop. Returns true when a clip plays it.
-func play(st: String, game_len: float = 0.0, blend: float = 0.08) -> bool:
+## time-stretched to fit); 0 makes it a loop. `hit_at` (seconds into the state, when the
+## gameplay strike lands): a clip with a contact frame in the data is time-warped in two
+## pieces so that frame shows exactly then (the hitbox and the art agree). Returns true when
+## a clip plays it.
+func play(st: String, game_len: float = 0.0, hit_at: float = -1.0, blend: float = -1.0) -> bool:
 	var restart: bool = game_len > 0.0
 	if st == state and not restart:
 		return clips.has(st)
+	var was: String = state
 	state = st
 	t = 0.0
 	length = game_len
+	_warp = []
 	if player == null or not clips.has(st):
 		# no clip: idle/walk still come from the clip map when it has them
 		return false
 	var clip: String = clips[st]
 	var a: Animation = player.get_animation(clip)
-	var speed: float = 1.0
-	if restart and a != null and a.length > 0.01:
-		speed = a.length / game_len
-	player.play(clip, blend, speed)
-	if restart:
-		player.seek(0.0, true)
+	if blend < 0.0:
+		blend = BLEND_HIT if st == "hit" else (BLEND_ACT if restart else BLEND_LOOP)
+		if was == "_" or was in LOOPING:
+			blend = BLEND_ACT if restart else BLEND_LOOP
+	var m: Dictionary = timing.get(st, {})
+	var fps: float = float(m.get("fps", 30.0))
+	var t_in: float = float(m.get("in", 0)) / fps
+	var t_out: float = a.length if a != null else 0.0
+	if m.has("out"):
+		t_out = minf(t_out, float(m["out"]) / fps)
+	if restart and a != null and t_out - t_in > 0.01:
+		var c_t: float = float(m.get("contact", -1)) / fps
+		if hit_at > 0.02 and hit_at < game_len - 0.02 and c_t > t_in and c_t < t_out:
+			_warp = [c_t, (c_t - t_in) / hit_at, (t_out - c_t) / (game_len - hit_at), hit_at]
+		else:
+			_warp = [t_out, (t_out - t_in) / game_len, (t_out - t_in) / game_len, game_len]
+	_clip_t = t_in
+	player.play(clip, blend, 1.0)
+	player.seek(t_in, true)
+	if not _warp.is_empty():
+		player.speed_scale = 0.0 if frozen else float(_warp[1])
 	return true
 
 
@@ -199,17 +301,23 @@ func update(dt: float, speed_now: float, dead: bool) -> void:
 		var base: float = 1.0
 		if state in ["walk", "run"]:
 			base = walk_rate
+		elif not _warp.is_empty():
+			base = float(_warp[1]) if t < float(_warp[3]) else float(_warp[2])
 		player.speed_scale = 0.0 if frozen else base
 	if length > 0.0 and t >= length and not (state in HOLD_LAST):
 		length = 0.0
 		state = "_"
+		_warp = []
 	if length <= 0.0 and not dead and not (state in HOLD_LAST) and state != "guard":
 		var want: String = "idle"
-		if speed_now > 3.2:
+		# run once a walk would have to play much faster than it was made
+		var walk_gs: float = float((timing.get("walk", {}) as Dictionary).get("ground_speed_per_hip", 0.0)) * hip_h
+		var run_at: float = walk_gs * 1.8 if walk_gs > 0.01 and clips.has("run") else 3.2
+		if speed_now > run_at:
 			want = "run" if clips.has("run") else "walk"
 		elif speed_now > 0.2:
 			want = "walk"
-		walk_rate = clampf(speed_now / 2.6, 0.8, 1.9)
+		walk_rate = _loco_rate(want if clips.has(want) else "walk", speed_now)
 		if want != state:
 			if not play(want):
 				# no clip for it: fall back to whichever locomotion clip exists

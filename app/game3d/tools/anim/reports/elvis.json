@@ -1,0 +1,2145 @@
+{
+ "key": "elvis",
+ "target": "cast/pose/elvis/lod1.glb",
+ "source": "dl/kaykit_adv_chars/Knight.glb",
+ "hip_scale": 2.2222855659271077,
+ "damp": {
+  "LeftUpLeg": 0.55,
+  "RightUpLeg": 0.55,
+  "LeftLeg": 0.55,
+  "RightLeg": 0.55
+ },
+ "unmapped": [],
+ "capsules": [
+  [
+   "Hips",
+   "Neck",
+   0.327
+  ],
+  [
+   "Neck",
+   "HeadTop_End",
+   0.033
+  ],
+  [
+   "LeftUpLeg",
+   "LeftLeg",
+   0.054
+  ],
+  [
+   "RightUpLeg",
+   "RightLeg",
+   0.046
+  ],
+  [
+   "LeftLeg",
+   "LeftFoot",
+   0.049
+  ],
+  [
+   "RightLeg",
+   "RightFoot",
+   0.042
+  ]
+ ],
+ "clips": {
+  "1H_Melee_Attack_Chop": {
+   "src": "1H_Melee_Attack_Chop",
+   "frames": 33,
+   "fps": 30.0,
+   "length_s": 1.067,
+   "contact": 18,
+   "root": "inplace",
+   "root_end_raw_m": [
+    0.0,
+    -0.03,
+    0.0
+   ],
+   "sway_max_m": 0.096,
+   "feet_min_m": -0.0,
+   "feet_max_m": 0.158,
+   "planted_slide_mps": 2.041,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.0094,
+   "tear_p99": 2.427,
+   "tears": true,
+   "tear_where": {
+    "Hips": 24,
+    "RightArm": 2,
+    "LeftLeg": 5,
+    "LeftFoot": 28,
+    "RightLeg": 2,
+    "RightFoot": 43
+   },
+   "weapon": {
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 1.054
+    },
+    "dagger": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 1.054
+    },
+    "axe": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 1.054
+    }
+   }
+  },
+  "1H_Melee_Attack_Slice_Diagonal": {
+   "src": "1H_Melee_Attack_Slice_Diagonal",
+   "frames": 31,
+   "fps": 30.0,
+   "length_s": 1.0,
+   "contact": 12,
+   "root": "inplace",
+   "root_end_raw_m": [
+    0.0,
+    -0.03,
+    0.0
+   ],
+   "sway_max_m": 0.402,
+   "feet_min_m": -0.0,
+   "feet_max_m": 0.021,
+   "planted_slide_mps": 7.593,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00976,
+   "tear_p99": 2.431,
+   "tears": true,
+   "tear_where": {
+    "Hips": 33,
+    "Spine1": 2,
+    "LeftArm": 2,
+    "LeftLeg": 2,
+    "LeftFoot": 19,
+    "RightLeg": 2,
+    "RightFoot": 48
+   },
+   "weapon": {
+    "sword": {
+     "pen_max_m": 0.038,
+     "pen_frames": 2,
+     "frames": 31,
+     "lhand_to_shaft_m_p50": 1.043
+    },
+    "dagger": {
+     "pen_max_m": 0.039,
+     "pen_frames": 2,
+     "frames": 31,
+     "lhand_to_shaft_m_p50": 1.043
+    },
+    "axe": {
+     "pen_max_m": 0.039,
+     "pen_frames": 2,
+     "frames": 31,
+     "lhand_to_shaft_m_p50": 1.043
+    }
+   }
+  },
+  "1H_Melee_Attack_Slice_Horizontal": {
+   "src": "1H_Melee_Attack_Slice_Horizontal",
+   "frames": 33,
+   "fps": 30.0,
+   "length_s": 1.067,
+   "contact": 8,
+   "root": "inplace",
+   "root_end_raw_m": [
+    0.0,
+    -0.03,
+    0.0
+   ],
+   "sway_max_m": 0.327,
+   "feet_min_m": -0.0,
+   "feet_max_m": 0.029,
+   "planted_slide_mps": 5.459,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.01518,
+   "tear_p99": 2.876,
+   "tears": true,
+   "tear_where": {
+    "Hips": 58,
+    "Spine1": 3,
+    "LeftArm": 2,
+    "LeftUpLeg": 9,
+    "LeftLeg": 20,
+    "LeftFoot": 50,
+    "RightLeg": 2,
+    "RightFoot": 24
+   },
+   "weapon": {
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 1.014
+    },
+    "dagger": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 1.014
+    },
+    "axe": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 1.014
+    }
+   }
+  },
+  "1H_Melee_Attack_Stab": {
+   "src": "1H_Melee_Attack_Stab",
+   "frames": 49,
+   "fps": 30.0,
+   "length_s": 1.6,
+   "contact": 12,
+   "root": "inplace",
+   "root_end_raw_m": [
+    0.0,
+    -0.03,
+    0.0
+   ],
+   "sway_max_m": 0.293,
+   "feet_min_m": -0.0,
+   "feet_max_m": 0.018,
+   "planted_slide_mps": 5.861,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.01482,
+   "tear_p99": 2.876,
+   "tears": true,
+   "tear_where": {
+    "Hips": 53,
+    "LeftLeg": 10,
+    "LeftFoot": 34,
+    "RightLeg": 8,
+    "RightFoot": 59
+   },
+   "weapon": {
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 49,
+     "lhand_to_shaft_m_p50": 1.1
+    },
+    "dagger": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 49,
+     "lhand_to_shaft_m_p50": 1.1
+    },
+    "axe": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 49,
+     "lhand_to_shaft_m_p50": 1.1
+    }
+   }
+  },
+  "2H_Melee_Attack_Chop": {
+   "src": "2H_Melee_Attack_Chop",
+   "frames": 50,
+   "fps": 30.0,
+   "length_s": 1.633,
+   "contact": 24,
+   "root": "inplace",
+   "root_end_raw_m": [
+    0.019,
+    -0.061,
+    -0.0
+   ],
+   "sway_max_m": 0.374,
+   "feet_min_m": -0.0,
+   "feet_max_m": 0.0,
+   "planted_slide_mps": 6.644,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.02305,
+   "tear_p99": 3.173,
+   "tears": true,
+   "tear_where": {
+    "Hips": 94,
+    "Spine": 15,
+    "RightArm": 2,
+    "LeftUpLeg": 18,
+    "LeftLeg": 22,
+    "LeftFoot": 39,
+    "RightLeg": 7,
+    "RightFoot": 58
+   },
+   "weapon": {
+    "hammer": {
+     "pen_max_m": 0.081,
+     "pen_frames": 14,
+     "frames": 50,
+     "lhand_to_shaft_m_p50": 0.483
+    },
+    "greatsword": {
+     "pen_max_m": 0.08,
+     "pen_frames": 14,
+     "frames": 50,
+     "lhand_to_shaft_m_p50": 0.483
+    },
+    "staff": {
+     "pen_max_m": 0.079,
+     "pen_frames": 14,
+     "frames": 50,
+     "lhand_to_shaft_m_p50": 0.483
+    },
+    "sword": {
+     "pen_max_m": 0.08,
+     "pen_frames": 14,
+     "frames": 50,
+     "lhand_to_shaft_m_p50": 0.483
+    }
+   }
+  },
+  "2H_Melee_Attack_Slice": {
+   "src": "2H_Melee_Attack_Slice",
+   "frames": 34,
+   "fps": 30.0,
+   "length_s": 1.1,
+   "contact": 12,
+   "root": "inplace",
+   "root_end_raw_m": [
+    0.019,
+    -0.061,
+    -0.0
+   ],
+   "sway_max_m": 0.354,
+   "feet_min_m": -0.0,
+   "feet_max_m": -0.0,
+   "planted_slide_mps": 5.641,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.02639,
+   "tear_p99": 3.564,
+   "tears": true,
+   "tear_where": {
+    "Hips": 102,
+    "Spine": 14,
+    "RightArm": 14,
+    "LeftUpLeg": 11,
+    "LeftLeg": 25,
+    "LeftFoot": 36,
+    "RightUpLeg": 5,
+    "RightLeg": 21,
+    "RightFoot": 64
+   },
+   "weapon": {
+    "hammer": {
+     "pen_max_m": 0.085,
+     "pen_frames": 8,
+     "frames": 34,
+     "lhand_to_shaft_m_p50": 0.422
+    },
+    "greatsword": {
+     "pen_max_m": 0.085,
+     "pen_frames": 8,
+     "frames": 34,
+     "lhand_to_shaft_m_p50": 0.422
+    },
+    "staff": {
+     "pen_max_m": 0.085,
+     "pen_frames": 8,
+     "frames": 34,
+     "lhand_to_shaft_m_p50": 0.422
+    }
+   }
+  },
+  "2H_Melee_Attack_Spin": {
+   "src": "2H_Melee_Attack_Spin",
+   "frames": 73,
+   "fps": 30.0,
+   "length_s": 2.4,
+   "contact": 21,
+   "root": "inplace",
+   "root_end_raw_m": [
+    0.019,
+    -0.061,
+    -0.0
+   ],
+   "sway_max_m": 0.374,
+   "feet_min_m": -0.0,
+   "feet_max_m": 0.0,
+   "planted_slide_mps": 7.652,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.03001,
+   "tear_p99": 3.687,
+   "tears": true,
+   "tear_where": {
+    "Hips": 143,
+    "Spine1": 2,
+    "LeftArm": 4,
+    "RightArm": 4,
+    "LeftUpLeg": 17,
+    "LeftLeg": 27,
+    "LeftFoot": 57,
+    "RightUpLeg": 3,
+    "RightLeg": 18,
+    "RightFoot": 57
+   },
+   "weapon": {
+    "hammer": {
+     "pen_max_m": 0.069,
+     "pen_frames": 5,
+     "frames": 73,
+     "lhand_to_shaft_m_p50": 0.514
+    }
+   }
+  },
+  "2H_Melee_Attack_Spinning": {
+   "src": "2H_Melee_Attack_Spinning",
+   "frames": 21,
+   "fps": 30.0,
+   "length_s": 0.667,
+   "contact": 8,
+   "root": "inplace",
+   "root_end_raw_m": [
+    0.031,
+    -0.132,
+    -0.334
+   ],
+   "sway_max_m": 0.671,
+   "feet_min_m": -0.0,
+   "feet_max_m": -0.0,
+   "planted_slide_mps": 9.32,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.03362,
+   "tear_p99": 3.612,
+   "tears": true,
+   "tear_where": {
+    "Hips": 160,
+    "Spine1": 6,
+    "Spine2": 1,
+    "LeftArm": 11,
+    "RightArm": 8,
+    "LeftUpLeg": 21,
+    "LeftLeg": 30,
+    "LeftFoot": 55,
+    "RightUpLeg": 6,
+    "RightLeg": 20,
+    "RightFoot": 54
+   },
+   "weapon": {
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 21,
+     "lhand_to_shaft_m_p50": 0.432
+    },
+    "greatsword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 21,
+     "lhand_to_shaft_m_p50": 0.432
+    },
+    "staff": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 21,
+     "lhand_to_shaft_m_p50": 0.432
+    },
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 21,
+     "lhand_to_shaft_m_p50": 0.432
+    }
+   }
+  },
+  "2H_Melee_Attack_Stab": {
+   "src": "2H_Melee_Attack_Stab",
+   "frames": 49,
+   "fps": 30.0,
+   "length_s": 1.6,
+   "contact": 12,
+   "root": "inplace",
+   "root_end_raw_m": [
+    0.019,
+    -0.061,
+    -0.0
+   ],
+   "sway_max_m": 0.339,
+   "feet_min_m": -0.0,
+   "feet_max_m": -0.0,
+   "planted_slide_mps": 6.091,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.03118,
+   "tear_p99": 3.654,
+   "tears": true,
+   "tear_where": {
+    "Hips": 127,
+    "Spine": 29,
+    "RightArm": 20,
+    "LeftUpLeg": 16,
+    "LeftLeg": 27,
+    "LeftFoot": 44,
+    "RightUpLeg": 3,
+    "RightLeg": 17,
+    "RightFoot": 62
+   },
+   "weapon": {
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 49,
+     "lhand_to_shaft_m_p50": 0.436
+    },
+    "greatsword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 49,
+     "lhand_to_shaft_m_p50": 0.436
+    },
+    "staff": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 49,
+     "lhand_to_shaft_m_p50": 0.436
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 49,
+     "lhand_to_shaft_m_p50": 0.532
+    }
+   }
+  },
+  "2H_Melee_Idle": {
+   "src": "2H_Melee_Idle",
+   "frames": 33,
+   "fps": 30.0,
+   "length_s": 1.067,
+   "contact": null,
+   "root": "inplace",
+   "root_end_raw_m": [
+    0.019,
+    -0.061,
+    -0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": -0.0,
+   "feet_max_m": -0.0,
+   "planted_slide_mps": 0.047,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00597,
+   "tear_p99": 2.236,
+   "tears": true,
+   "tear_where": {
+    "Hips": 19,
+    "LeftFoot": 18,
+    "RightLeg": 4,
+    "RightFoot": 25
+   },
+   "weapon": {
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.437
+    },
+    "greatsword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.437
+    },
+    "staff": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.437
+    }
+   }
+  },
+  "2H_Ranged_Aiming": {
+   "src": "2H_Ranged_Aiming",
+   "frames": 49,
+   "fps": 30.0,
+   "length_s": 1.6,
+   "contact": null,
+   "root": "inplace",
+   "root_end_raw_m": [
+    0.0,
+    -0.03,
+    -0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": -0.006,
+   "feet_max_m": -0.0,
+   "planted_slide_mps": 1.272,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.01003,
+   "tear_p99": 2.484,
+   "tears": true,
+   "tear_where": {
+    "Hips": 18,
+    "Spine": 6,
+    "Spine1": 8,
+    "Spine2": 2,
+    "RightArm": 6,
+    "LeftLeg": 6,
+    "LeftFoot": 16,
+    "RightLeg": 4,
+    "RightFoot": 45
+   },
+   "weapon": {
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 49,
+     "lhand_to_shaft_m_p50": 0.515
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 49,
+     "lhand_to_shaft_m_p50": 0.515
+    }
+   }
+  },
+  "2H_Ranged_Shoot": {
+   "src": "2H_Ranged_Shoot",
+   "frames": 33,
+   "fps": 30.0,
+   "length_s": 1.067,
+   "contact": 4,
+   "root": "inplace",
+   "root_end_raw_m": [
+    0.0,
+    -0.03,
+    -0.0
+   ],
+   "sway_max_m": 0.234,
+   "feet_min_m": -0.006,
+   "feet_max_m": -0.0,
+   "planted_slide_mps": 3.8,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.01003,
+   "tear_p99": 2.484,
+   "tears": true,
+   "tear_where": {
+    "Hips": 18,
+    "Spine": 6,
+    "Spine1": 8,
+    "Spine2": 2,
+    "RightArm": 6,
+    "LeftLeg": 6,
+    "LeftFoot": 16,
+    "RightLeg": 4,
+    "RightFoot": 45
+   },
+   "weapon": {
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.515
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.515
+    }
+   }
+  },
+  "Block": {
+   "src": "Block",
+   "frames": 33,
+   "fps": 30.0,
+   "length_s": 1.067,
+   "contact": null,
+   "root": "inplace",
+   "root_end_raw_m": [
+    0.0,
+    -0.072,
+    0.216
+   ],
+   "sway_max_m": 0.149,
+   "feet_min_m": -0.0,
+   "feet_max_m": -0.0,
+   "planted_slide_mps": 1.195,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00949,
+   "tear_p99": 2.477,
+   "tears": true,
+   "tear_where": {
+    "Hips": 35,
+    "Spine": 7,
+    "Spine1": 5,
+    "LeftArm": 1,
+    "LeftLeg": 5,
+    "LeftFoot": 18,
+    "RightFoot": 34
+   },
+   "weapon": {
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 1.035
+    },
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 1.035
+    }
+   }
+  },
+  "Block_Attack": {
+   "src": "Block_Attack",
+   "frames": 33,
+   "fps": 30.0,
+   "length_s": 1.067,
+   "contact": 13,
+   "root": "inplace",
+   "root_end_raw_m": [
+    0.0,
+    -0.072,
+    0.216
+   ],
+   "sway_max_m": 0.376,
+   "feet_min_m": -0.0,
+   "feet_max_m": 0.084,
+   "planted_slide_mps": 5.764,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.01338,
+   "tear_p99": 2.66,
+   "tears": true,
+   "tear_where": {
+    "Hips": 50,
+    "Spine": 7,
+    "LeftUpLeg": 8,
+    "LeftLeg": 14,
+    "LeftFoot": 29,
+    "RightLeg": 4,
+    "RightFoot": 36
+   },
+   "weapon": {
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.995
+    },
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.995
+    }
+   }
+  },
+  "Block_Hit": {
+   "src": "Block_Hit",
+   "frames": 33,
+   "fps": 30.0,
+   "length_s": 1.067,
+   "contact": null,
+   "root": "inplace",
+   "root_end_raw_m": [
+    0.0,
+    -0.072,
+    0.216
+   ],
+   "sway_max_m": 0.289,
+   "feet_min_m": -0.0,
+   "feet_max_m": -0.0,
+   "planted_slide_mps": 1.887,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.01537,
+   "tear_p99": 2.756,
+   "tears": true,
+   "tear_where": {
+    "Hips": 52,
+    "Spine": 3,
+    "Spine1": 2,
+    "RightArm": 2,
+    "LeftUpLeg": 8,
+    "LeftLeg": 20,
+    "LeftFoot": 35,
+    "RightLeg": 6,
+    "RightFoot": 42
+   },
+   "weapon": {
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 1.038
+    }
+   }
+  },
+  "Blocking": {
+   "src": "Blocking",
+   "frames": 33,
+   "fps": 30.0,
+   "length_s": 1.067,
+   "contact": null,
+   "root": "inplace",
+   "root_end_raw_m": [
+    0.0,
+    -0.072,
+    0.216
+   ],
+   "sway_max_m": 0.006,
+   "feet_min_m": -0.0,
+   "feet_max_m": -0.0,
+   "planted_slide_mps": 0.077,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00949,
+   "tear_p99": 2.476,
+   "tears": true,
+   "tear_where": {
+    "Hips": 35,
+    "Spine": 7,
+    "Spine1": 5,
+    "LeftArm": 1,
+    "LeftLeg": 5,
+    "LeftFoot": 18,
+    "RightFoot": 34
+   },
+   "weapon": {
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 1.028
+    },
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 1.028
+    }
+   }
+  },
+  "Cheer": {
+   "src": "Cheer",
+   "frames": 51,
+   "fps": 30.0,
+   "length_s": 1.667,
+   "contact": null,
+   "root": "inplace",
+   "root_end_raw_m": [
+    0.0,
+    -0.03,
+    0.0
+   ],
+   "sway_max_m": 0.023,
+   "feet_min_m": -0.0,
+   "feet_max_m": -0.0,
+   "planted_slide_mps": 0.383,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00859,
+   "tear_p99": 2.432,
+   "tears": true,
+   "tear_where": {
+    "Hips": 20,
+    "Spine": 2,
+    "Spine1": 6,
+    "LeftArm": 5,
+    "RightArm": 11,
+    "LeftLeg": 4,
+    "LeftFoot": 18,
+    "RightLeg": 4,
+    "RightFoot": 25
+   },
+   "weapon": {
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 51,
+     "lhand_to_shaft_m_p50": 1.09
+    },
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 51,
+     "lhand_to_shaft_m_p50": 1.09
+    }
+   }
+  },
+  "Death_A": {
+   "src": "Death_A",
+   "frames": 25,
+   "fps": 30.0,
+   "length_s": 0.8,
+   "contact": null,
+   "root": "inplace",
+   "root_end_raw_m": [
+    -0.0,
+    -0.583,
+    -0.999
+   ],
+   "sway_max_m": 0.39,
+   "feet_min_m": -0.0,
+   "feet_max_m": 0.417,
+   "planted_slide_mps": 1.566,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.0273,
+   "tear_p99": 3.5,
+   "tears": true,
+   "tear_where": {
+    "Hips": 135,
+    "LeftUpLeg": 5,
+    "LeftLeg": 31,
+    "LeftFoot": 52,
+    "RightLeg": 16,
+    "RightFoot": 63
+   },
+   "weapon": {
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 25,
+     "lhand_to_shaft_m_p50": 1.096
+    },
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 25,
+     "lhand_to_shaft_m_p50": 1.096
+    }
+   }
+  },
+  "Death_B": {
+   "src": "Death_B",
+   "frames": 80,
+   "fps": 30.0,
+   "length_s": 2.633,
+   "contact": null,
+   "root": "inplace",
+   "root_end_raw_m": [
+    0.015,
+    -0.421,
+    0.519
+   ],
+   "sway_max_m": 0.217,
+   "feet_min_m": -0.133,
+   "feet_max_m": 0.129,
+   "planted_slide_mps": 2.324,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.02079,
+   "tear_p99": 3.221,
+   "tears": true,
+   "tear_where": {
+    "Hips": 90,
+    "Spine1": 2,
+    "LeftUpLeg": 14,
+    "LeftLeg": 27,
+    "LeftFoot": 36,
+    "RightUpLeg": 3,
+    "RightLeg": 18,
+    "RightFoot": 40
+   },
+   "weapon": {
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 80,
+     "lhand_to_shaft_m_p50": 1.066
+    }
+   }
+  },
+  "Dodge_Forward": {
+   "src": "Dodge_Forward",
+   "frames": 13,
+   "fps": 30.0,
+   "length_s": 0.4,
+   "contact": null,
+   "root": "inplace",
+   "root_end_raw_m": [
+    0.0,
+    -0.03,
+    0.74
+   ],
+   "sway_max_m": 0.259,
+   "feet_min_m": -0.0,
+   "feet_max_m": 0.032,
+   "planted_slide_mps": 1.931,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.0207,
+   "tear_p99": 3.215,
+   "tears": true,
+   "tear_where": {
+    "Hips": 100,
+    "LeftUpLeg": 8,
+    "LeftLeg": 14,
+    "LeftFoot": 36,
+    "RightUpLeg": 6,
+    "RightLeg": 24,
+    "RightFoot": 41
+   },
+   "weapon": {
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 13,
+     "lhand_to_shaft_m_p50": 1.177
+    },
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 13,
+     "lhand_to_shaft_m_p50": 1.177
+    }
+   }
+  },
+  "Hit_A": {
+   "src": "Hit_A",
+   "frames": 21,
+   "fps": 30.0,
+   "length_s": 0.667,
+   "contact": null,
+   "root": "inplace",
+   "root_end_raw_m": [
+    0.0,
+    -0.03,
+    0.0
+   ],
+   "sway_max_m": 0.333,
+   "feet_min_m": -0.0,
+   "feet_max_m": 0.0,
+   "planted_slide_mps": 1.859,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.01157,
+   "tear_p99": 2.598,
+   "tears": true,
+   "tear_where": {
+    "Hips": 41,
+    "LeftLeg": 4,
+    "LeftFoot": 28,
+    "RightLeg": 6,
+    "RightFoot": 49
+   },
+   "weapon": {
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 21,
+     "lhand_to_shaft_m_p50": 1.088
+    },
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 21,
+     "lhand_to_shaft_m_p50": 1.088
+    }
+   }
+  },
+  "Hit_B": {
+   "src": "Hit_B",
+   "frames": 27,
+   "fps": 30.0,
+   "length_s": 0.867,
+   "contact": null,
+   "root": "inplace",
+   "root_end_raw_m": [
+    0.0,
+    -0.03,
+    0.0
+   ],
+   "sway_max_m": 0.528,
+   "feet_min_m": -0.0,
+   "feet_max_m": 0.0,
+   "planted_slide_mps": 2.995,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00786,
+   "tear_p99": 2.336,
+   "tears": true,
+   "tear_where": {
+    "Hips": 25,
+    "RightArm": 4,
+    "RightLeg": 9,
+    "RightFoot": 49
+   },
+   "weapon": {
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 27,
+     "lhand_to_shaft_m_p50": 1.037
+    }
+   }
+  },
+  "Idle": {
+   "src": "Idle",
+   "frames": 33,
+   "fps": 30.0,
+   "length_s": 1.067,
+   "contact": null,
+   "root": "inplace",
+   "root_end_raw_m": [
+    0.0,
+    -0.03,
+    0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": -0.0,
+   "feet_max_m": -0.0,
+   "planted_slide_mps": 0.067,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00497,
+   "tear_p99": 2.164,
+   "tears": false,
+   "tear_where": {
+    "Hips": 10,
+    "LeftFoot": 18,
+    "RightLeg": 2,
+    "RightFoot": 25
+   },
+   "weapon": {
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 1.04
+    },
+    "dagger": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 1.04
+    },
+    "axe": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 1.04
+    }
+   }
+  },
+  "Jump_Full_Short": {
+   "src": "Jump_Full_Short",
+   "frames": 36,
+   "fps": 30.0,
+   "length_s": 1.167,
+   "contact": null,
+   "root": "inplace",
+   "root_end_raw_m": [
+    0.0,
+    -0.03,
+    0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": -0.0,
+   "feet_max_m": 0.286,
+   "planted_slide_mps": 0.736,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.01491,
+   "tear_p99": 2.73,
+   "tears": true,
+   "tear_where": {
+    "Hips": 64,
+    "Spine": 1,
+    "Spine1": 5,
+    "LeftArm": 1,
+    "RightArm": 3,
+    "LeftUpLeg": 11,
+    "LeftLeg": 13,
+    "LeftFoot": 28,
+    "RightUpLeg": 6,
+    "RightLeg": 16,
+    "RightFoot": 17
+   },
+   "weapon": {
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 36,
+     "lhand_to_shaft_m_p50": 1.08
+    }
+   }
+  },
+  "Running_A": {
+   "src": "Running_A",
+   "frames": 25,
+   "fps": 30.0,
+   "length_s": 0.8,
+   "contact": null,
+   "root": "inplace",
+   "root_end_raw_m": [
+    0.0,
+    0.181,
+    0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": -0.047,
+   "feet_max_m": 0.568,
+   "planted_slide_mps": 6.11,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.02431,
+   "tear_p99": 3.715,
+   "tears": true,
+   "tear_where": {
+    "Hips": 117,
+    "LeftUpLeg": 8,
+    "LeftLeg": 8,
+    "LeftFoot": 29,
+    "RightUpLeg": 8,
+    "RightLeg": 27,
+    "RightFoot": 72
+   },
+   "weapon": {
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 25,
+     "lhand_to_shaft_m_p50": 1.063
+    }
+   }
+  },
+  "Running_B": {
+   "src": "Running_B",
+   "frames": 33,
+   "fps": 30.0,
+   "length_s": 1.067,
+   "contact": null,
+   "root": "inplace",
+   "root_end_raw_m": [
+    0.0,
+    0.026,
+    0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": -0.041,
+   "feet_max_m": 0.449,
+   "planted_slide_mps": 2.736,
+   "ground_speed_mps": 2.397,
+   "tear_share": 0.02413,
+   "tear_p99": 3.64,
+   "tears": true,
+   "tear_where": {
+    "Hips": 118,
+    "LeftUpLeg": 8,
+    "LeftLeg": 11,
+    "LeftFoot": 29,
+    "RightUpLeg": 8,
+    "RightLeg": 27,
+    "RightFoot": 66
+   },
+   "weapon": {
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 1.086
+    }
+   }
+  },
+  "Spellcast_Long": {
+   "src": "Spellcast_Long",
+   "frames": 77,
+   "fps": 30.0,
+   "length_s": 2.533,
+   "contact": null,
+   "root": "inplace",
+   "root_end_raw_m": [
+    0.0,
+    -0.03,
+    0.0
+   ],
+   "sway_max_m": 0.282,
+   "feet_min_m": -0.0,
+   "feet_max_m": -0.0,
+   "planted_slide_mps": 0.711,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00985,
+   "tear_p99": 2.486,
+   "tears": true,
+   "tear_where": {
+    "Hips": 34,
+    "LeftLeg": 2,
+    "LeftFoot": 18,
+    "RightLeg": 6,
+    "RightFoot": 49
+   },
+   "weapon": {
+    "staff": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 77,
+     "lhand_to_shaft_m_p50": 1.109
+    },
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 77,
+     "lhand_to_shaft_m_p50": 1.109
+    },
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 77,
+     "lhand_to_shaft_m_p50": 1.109
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 77,
+     "lhand_to_shaft_m_p50": 1.108
+    }
+   }
+  },
+  "Spellcast_Raise": {
+   "src": "Spellcast_Raise",
+   "frames": 64,
+   "fps": 30.0,
+   "length_s": 2.1,
+   "contact": null,
+   "root": "inplace",
+   "root_end_raw_m": [
+    0.0,
+    -0.03,
+    0.0
+   ],
+   "sway_max_m": 0.036,
+   "feet_min_m": -0.0,
+   "feet_max_m": -0.0,
+   "planted_slide_mps": 0.433,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00497,
+   "tear_p99": 2.164,
+   "tears": false,
+   "tear_where": {
+    "Hips": 10,
+    "LeftFoot": 18,
+    "RightLeg": 2,
+    "RightFoot": 25
+   },
+   "weapon": {
+    "staff": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 64,
+     "lhand_to_shaft_m_p50": 1.143
+    },
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 64,
+     "lhand_to_shaft_m_p50": 1.143
+    }
+   }
+  },
+  "Spellcast_Shoot": {
+   "src": "Spellcast_Shoot",
+   "frames": 29,
+   "fps": 30.0,
+   "length_s": 0.933,
+   "contact": 3,
+   "root": "inplace",
+   "root_end_raw_m": [
+    0.0,
+    -0.03,
+    0.0
+   ],
+   "sway_max_m": 0.224,
+   "feet_min_m": -0.0,
+   "feet_max_m": -0.0,
+   "planted_slide_mps": 1.662,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00615,
+   "tear_p99": 2.28,
+   "tears": true,
+   "tear_where": {
+    "Hips": 16,
+    "LeftFoot": 18,
+    "RightLeg": 2,
+    "RightFoot": 32
+   },
+   "weapon": {
+    "staff": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 29,
+     "lhand_to_shaft_m_p50": 1.04
+    }
+   }
+  },
+  "UAL_Dance": {
+   "src": "Dance_Loop",
+   "frames": 31,
+   "fps": 30.0,
+   "length_s": 1.0,
+   "contact": null,
+   "root": "inplace",
+   "root_end_raw_m": [
+    -0.054,
+    -0.02,
+    -0.016
+   ],
+   "sway_max_m": 0.135,
+   "feet_min_m": -0.001,
+   "feet_max_m": 0.0,
+   "planted_slide_mps": 0.351,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.03389,
+   "tear_p99": 4.121,
+   "tears": true,
+   "tear_where": {
+    "Hips": 144,
+    "Spine1": 2,
+    "LeftUpLeg": 23,
+    "LeftLeg": 33,
+    "LeftFoot": 66,
+    "RightUpLeg": 7,
+    "RightLeg": 27,
+    "RightFoot": 73
+   },
+   "weapon": {
+    "sword": {
+     "pen_max_m": 0.145,
+     "pen_frames": 23,
+     "frames": 31,
+     "lhand_to_shaft_m_p50": 0.627
+    },
+    "hammer": {
+     "pen_max_m": 0.143,
+     "pen_frames": 23,
+     "frames": 31,
+     "lhand_to_shaft_m_p50": 0.627
+    }
+   }
+  },
+  "UAL_Death": {
+   "src": "Death01",
+   "frames": 72,
+   "fps": 30.0,
+   "length_s": 2.375,
+   "contact": null,
+   "root": "inplace",
+   "root_end_raw_m": [
+    0.01,
+    -0.84,
+    -0.488
+   ],
+   "sway_max_m": 0.291,
+   "feet_min_m": -0.005,
+   "feet_max_m": 0.572,
+   "planted_slide_mps": 3.695,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.02684,
+   "tear_p99": 3.357,
+   "tears": true,
+   "tear_where": {
+    "Hips": 113,
+    "Spine": 9,
+    "Spine1": 6,
+    "Spine2": 5,
+    "Head": 2,
+    "LeftArm": 6,
+    "RightArm": 20,
+    "RightForeArm": 2,
+    "LeftUpLeg": 1,
+    "LeftLeg": 30,
+    "LeftFoot": 32,
+    "RightLeg": 20,
+    "RightFoot": 51
+   },
+   "weapon": {
+    "sword": {
+     "pen_max_m": 0.192,
+     "pen_frames": 23,
+     "frames": 72,
+     "lhand_to_shaft_m_p50": 0.738
+    },
+    "hammer": {
+     "pen_max_m": 0.196,
+     "pen_frames": 23,
+     "frames": 72,
+     "lhand_to_shaft_m_p50": 0.738
+    }
+   }
+  },
+  "UAL_Hit_Chest": {
+   "src": "Hit_Chest",
+   "frames": 11,
+   "fps": 30.0,
+   "length_s": 0.333,
+   "contact": null,
+   "root": "inplace",
+   "root_end_raw_m": [
+    0.005,
+    -0.039,
+    -0.036
+   ],
+   "sway_max_m": 0.002,
+   "feet_min_m": -0.001,
+   "feet_max_m": -0.001,
+   "planted_slide_mps": 0.062,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00904,
+   "tear_p99": 2.398,
+   "tears": true,
+   "tear_where": {
+    "Hips": 24,
+    "LeftLeg": 4,
+    "LeftFoot": 32,
+    "RightLeg": 2,
+    "RightFoot": 38
+   },
+   "weapon": {
+    "sword": {
+     "pen_max_m": 0.041,
+     "pen_frames": 4,
+     "frames": 11,
+     "lhand_to_shaft_m_p50": 0.635
+    },
+    "hammer": {
+     "pen_max_m": 0.041,
+     "pen_frames": 4,
+     "frames": 11,
+     "lhand_to_shaft_m_p50": 0.635
+    }
+   }
+  },
+  "UAL_Idle": {
+   "src": "Idle_Loop",
+   "frames": 76,
+   "fps": 30.0,
+   "length_s": 2.5,
+   "contact": null,
+   "root": "inplace",
+   "root_end_raw_m": [
+    0.005,
+    -0.039,
+    -0.036
+   ],
+   "sway_max_m": 0.008,
+   "feet_min_m": -0.001,
+   "feet_max_m": -0.001,
+   "planted_slide_mps": 0.014,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00967,
+   "tear_p99": 2.457,
+   "tears": true,
+   "tear_where": {
+    "Hips": 31,
+    "LeftLeg": 4,
+    "LeftFoot": 32,
+    "RightLeg": 2,
+    "RightFoot": 38
+   },
+   "weapon": {
+    "sword": {
+     "pen_max_m": 0.043,
+     "pen_frames": 76,
+     "frames": 76,
+     "lhand_to_shaft_m_p50": 0.618
+    },
+    "hammer": {
+     "pen_max_m": 0.043,
+     "pen_frames": 76,
+     "frames": 76,
+     "lhand_to_shaft_m_p50": 0.618
+    }
+   }
+  },
+  "UAL_Jog": {
+   "src": "Jog_Fwd_Loop",
+   "frames": 29,
+   "fps": 30.0,
+   "length_s": 0.917,
+   "contact": null,
+   "root": "inplace",
+   "root_end_raw_m": [
+    0.018,
+    -0.064,
+    -0.006
+   ],
+   "sway_max_m": 0.035,
+   "feet_min_m": -0.016,
+   "feet_max_m": 0.291,
+   "planted_slide_mps": 9.513,
+   "ground_speed_mps": 4.01,
+   "tear_share": 0.03073,
+   "tear_p99": 3.878,
+   "tears": true,
+   "tear_where": {
+    "Hips": 89,
+    "Spine1": 35,
+    "Spine2": 19,
+    "LeftArm": 2,
+    "LeftUpLeg": 27,
+    "LeftLeg": 37,
+    "LeftFoot": 76,
+    "RightFoot": 55
+   },
+   "weapon": {
+    "sword": {
+     "pen_max_m": 0.255,
+     "pen_frames": 29,
+     "frames": 29,
+     "lhand_to_shaft_m_p50": 0.639
+    },
+    "hammer": {
+     "pen_max_m": 0.257,
+     "pen_frames": 29,
+     "frames": 29,
+     "lhand_to_shaft_m_p50": 0.639
+    }
+   }
+  },
+  "UAL_Roll": {
+   "src": "Roll",
+   "frames": 45,
+   "fps": 30.0,
+   "length_s": 1.458,
+   "contact": null,
+   "root": "inplace",
+   "root_end_raw_m": [
+    0.003,
+    -0.039,
+    -0.035
+   ],
+   "sway_max_m": 0.266,
+   "feet_min_m": -0.077,
+   "feet_max_m": 0.936,
+   "planted_slide_mps": 5.247,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.07131,
+   "tear_p99": 8.999,
+   "tears": true,
+   "tear_where": {
+    "Hips": 331,
+    "Spine1": 26,
+    "Spine2": 22,
+    "Head": 1,
+    "LeftArm": 3,
+    "LeftUpLeg": 59,
+    "LeftLeg": 66,
+    "LeftFoot": 98,
+    "RightUpLeg": 32,
+    "RightLeg": 50,
+    "RightFoot": 101
+   },
+   "weapon": {
+    "sword": {
+     "pen_max_m": 0.302,
+     "pen_frames": 37,
+     "frames": 45,
+     "lhand_to_shaft_m_p50": 0.584
+    },
+    "hammer": {
+     "pen_max_m": 0.298,
+     "pen_frames": 37,
+     "frames": 45,
+     "lhand_to_shaft_m_p50": 0.584
+    }
+   }
+  },
+  "UAL_Spell_Shoot": {
+   "src": "Spell_Simple_Shoot",
+   "frames": 16,
+   "fps": 30.0,
+   "length_s": 0.5,
+   "contact": null,
+   "root": "inplace",
+   "root_end_raw_m": [
+    0.028,
+    -0.039,
+    -0.034
+   ],
+   "sway_max_m": 0.019,
+   "feet_min_m": -0.001,
+   "feet_max_m": -0.001,
+   "planted_slide_mps": 0.093,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00967,
+   "tear_p99": 2.453,
+   "tears": true,
+   "tear_where": {
+    "Hips": 19,
+    "Spine1": 10,
+    "Spine2": 1,
+    "LeftArm": 14,
+    "LeftFoot": 17,
+    "RightLeg": 6,
+    "RightFoot": 40
+   },
+   "weapon": {
+    "sword": {
+     "pen_max_m": 0.038,
+     "pen_frames": 4,
+     "frames": 16,
+     "lhand_to_shaft_m_p50": 0.896
+    },
+    "hammer": {
+     "pen_max_m": 0.038,
+     "pen_frames": 4,
+     "frames": 16,
+     "lhand_to_shaft_m_p50": 0.896
+    }
+   }
+  },
+  "UAL_Sprint": {
+   "src": "Sprint_Loop",
+   "frames": 21,
+   "fps": 30.0,
+   "length_s": 0.667,
+   "contact": null,
+   "root": "inplace",
+   "root_end_raw_m": [
+    0.019,
+    -0.048,
+    -0.024
+   ],
+   "sway_max_m": 0.035,
+   "feet_min_m": -0.055,
+   "feet_max_m": 0.213,
+   "planted_slide_mps": 5.661,
+   "ground_speed_mps": 5.474,
+   "tear_share": 0.03661,
+   "tear_p99": 4.645,
+   "tears": true,
+   "tear_where": {
+    "Hips": 190,
+    "LeftUpLeg": 34,
+    "LeftLeg": 32,
+    "LeftFoot": 30,
+    "RightUpLeg": 10,
+    "RightLeg": 31,
+    "RightFoot": 78
+   },
+   "weapon": {
+    "sword": {
+     "pen_max_m": 0.255,
+     "pen_frames": 21,
+     "frames": 21,
+     "lhand_to_shaft_m_p50": 0.626
+    },
+    "hammer": {
+     "pen_max_m": 0.257,
+     "pen_frames": 21,
+     "frames": 21,
+     "lhand_to_shaft_m_p50": 0.626
+    }
+   }
+  },
+  "UAL_Sword_Attack": {
+   "src": "Sword_Attack",
+   "frames": 46,
+   "fps": 30.0,
+   "length_s": 1.5,
+   "contact": 13,
+   "root": "inplace",
+   "root_end_raw_m": [
+    0.038,
+    -0.171,
+    -0.058
+   ],
+   "sway_max_m": 0.107,
+   "feet_min_m": -0.019,
+   "feet_max_m": 0.004,
+   "planted_slide_mps": 5.676,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.04131,
+   "tear_p99": 4.108,
+   "tears": true,
+   "tear_where": {
+    "Hips": 114,
+    "Spine": 15,
+    "Spine1": 110,
+    "Spine2": 72,
+    "LeftArm": 24,
+    "RightArm": 22,
+    "RightForeArm": 2,
+    "RightUpLeg": 10,
+    "RightLeg": 27,
+    "RightFoot": 61
+   },
+   "weapon": {
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 46,
+     "lhand_to_shaft_m_p50": 1.187
+    },
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 46,
+     "lhand_to_shaft_m_p50": 1.187
+    }
+   }
+  },
+  "UAL_Sword_Idle": {
+   "src": "Sword_Idle",
+   "frames": 51,
+   "fps": 30.0,
+   "length_s": 1.667,
+   "contact": null,
+   "root": "inplace",
+   "root_end_raw_m": [
+    0.055,
+    -0.185,
+    -0.059
+   ],
+   "sway_max_m": 0.056,
+   "feet_min_m": -0.001,
+   "feet_max_m": -0.001,
+   "planted_slide_mps": 0.049,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.01021,
+   "tear_p99": 2.506,
+   "tears": true,
+   "tear_where": {
+    "Hips": 33,
+    "Spine1": 15,
+    "Spine2": 3,
+    "LeftFoot": 14,
+    "RightUpLeg": 3,
+    "RightLeg": 11,
+    "RightFoot": 34
+   },
+   "weapon": {
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 51,
+     "lhand_to_shaft_m_p50": 1.064
+    },
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 51,
+     "lhand_to_shaft_m_p50": 1.064
+    }
+   }
+  },
+  "UAL_Walk": {
+   "src": "Walk_Loop",
+   "frames": 41,
+   "fps": 30.0,
+   "length_s": 1.333,
+   "contact": null,
+   "root": "inplace",
+   "root_end_raw_m": [
+    -0.018,
+    -0.045,
+    0.0
+   ],
+   "sway_max_m": 0.057,
+   "feet_min_m": -0.001,
+   "feet_max_m": 0.014,
+   "planted_slide_mps": 3.17,
+   "ground_speed_mps": 0.811,
+   "tear_share": 0.01952,
+   "tear_p99": 3.109,
+   "tears": true,
+   "tear_where": {
+    "Hips": 79,
+    "LeftUpLeg": 5,
+    "LeftLeg": 15,
+    "LeftFoot": 35,
+    "RightUpLeg": 6,
+    "RightLeg": 20,
+    "RightFoot": 56
+   },
+   "weapon": {
+    "sword": {
+     "pen_max_m": 0.012,
+     "pen_frames": 0,
+     "frames": 41,
+     "lhand_to_shaft_m_p50": 0.632
+    },
+    "hammer": {
+     "pen_max_m": 0.012,
+     "pen_frames": 0,
+     "frames": 41,
+     "lhand_to_shaft_m_p50": 0.632
+    }
+   }
+  },
+  "Walking_A": {
+   "src": "Walking_A",
+   "frames": 33,
+   "fps": 30.0,
+   "length_s": 1.067,
+   "contact": null,
+   "root": "inplace",
+   "root_end_raw_m": [
+    0.0,
+    -0.101,
+    0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": -0.041,
+   "feet_max_m": 0.138,
+   "planted_slide_mps": 2.873,
+   "ground_speed_mps": 0.906,
+   "tear_share": 0.01681,
+   "tear_p99": 3.15,
+   "tears": true,
+   "tear_where": {
+    "Hips": 94,
+    "RightArm": 2,
+    "LeftLeg": 6,
+    "LeftFoot": 23,
+    "RightUpLeg": 8,
+    "RightLeg": 25,
+    "RightFoot": 28
+   },
+   "weapon": {
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 1.029
+    }
+   }
+  },
+  "Walking_B": {
+   "src": "Walking_B",
+   "frames": 33,
+   "fps": 30.0,
+   "length_s": 1.067,
+   "contact": null,
+   "root": "inplace",
+   "root_end_raw_m": [
+    0.0,
+    -0.101,
+    0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": -0.023,
+   "feet_max_m": 0.138,
+   "planted_slide_mps": 2.366,
+   "ground_speed_mps": 0.843,
+   "tear_share": 0.01735,
+   "tear_p99": 3.117,
+   "tears": true,
+   "tear_where": {
+    "Hips": 82,
+    "LeftUpLeg": 34,
+    "LeftLeg": 32,
+    "LeftFoot": 30,
+    "RightFoot": 14
+   },
+   "weapon": {
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 1.015
+    }
+   }
+  }
+ },
+ "grips": {
+  "sword": {
+   "bone": "RightHand",
+   "matrix": [
+    0.998501,
+    0.011032,
+    0.053613,
+    0.0,
+    -0.054635,
+    0.141215,
+    0.98847,
+    0.0,
+    0.003334,
+    -0.989918,
+    0.141606,
+    0.0,
+    0.000107,
+    0.042595,
+    -0.001022,
+    1.0
+   ]
+  },
+  "greatsword": {
+   "bone": "RightHand",
+   "matrix": [
+    0.998501,
+    0.011032,
+    0.053613,
+    0.0,
+    -0.054635,
+    0.141215,
+    0.98847,
+    0.0,
+    0.003334,
+    -0.989918,
+    0.141606,
+    0.0,
+    0.000107,
+    0.042595,
+    -0.001022,
+    1.0
+   ]
+  },
+  "axe": {
+   "bone": "RightHand",
+   "matrix": [
+    0.998501,
+    0.011032,
+    0.053613,
+    0.0,
+    -0.054635,
+    0.141215,
+    0.98847,
+    0.0,
+    0.003334,
+    -0.989918,
+    0.141606,
+    0.0,
+    0.000107,
+    0.042595,
+    -0.001022,
+    1.0
+   ]
+  },
+  "hammer": {
+   "bone": "RightHand",
+   "matrix": [
+    0.998501,
+    0.011032,
+    0.053613,
+    0.0,
+    -0.054635,
+    0.141215,
+    0.98847,
+    0.0,
+    0.003334,
+    -0.989918,
+    0.141606,
+    0.0,
+    0.000107,
+    0.042595,
+    -0.001022,
+    1.0
+   ]
+  },
+  "staff": {
+   "bone": "RightHand",
+   "matrix": [
+    0.998501,
+    0.011032,
+    0.053613,
+    0.0,
+    -0.054635,
+    0.141215,
+    0.98847,
+    0.0,
+    0.003334,
+    -0.989918,
+    0.141606,
+    0.0,
+    0.000107,
+    0.042595,
+    -0.001022,
+    1.0
+   ]
+  },
+  "dagger": {
+   "bone": "RightHand",
+   "matrix": [
+    0.998501,
+    0.011032,
+    0.053613,
+    0.0,
+    -0.054635,
+    0.141215,
+    0.98847,
+    0.0,
+    0.003334,
+    -0.989918,
+    0.141606,
+    0.0,
+    0.000107,
+    0.042595,
+    -0.001022,
+    1.0
+   ]
+  },
+  "crossbow": {
+   "bone": "RightHand",
+   "matrix": [
+    0.998501,
+    0.011032,
+    0.053613,
+    0.0,
+    -0.003334,
+    0.989918,
+    -0.141606,
+    0.0,
+    -0.054635,
+    0.141215,
+    0.98847,
+    0.0,
+    0.000107,
+    0.042595,
+    -0.001022,
+    1.0
+   ]
+  },
+  "rifle": {
+   "bone": "RightHand",
+   "matrix": [
+    0.998501,
+    0.011032,
+    0.053613,
+    0.0,
+    -0.003334,
+    0.989918,
+    -0.141606,
+    0.0,
+    -0.054635,
+    0.141215,
+    0.98847,
+    0.0,
+    0.000107,
+    0.042595,
+    -0.001022,
+    1.0
+   ]
+  },
+  "shield": {
+   "bone": "LeftHand",
+   "matrix": [
+    -0.142701,
+    -0.97566,
+    0.166503,
+    0.0,
+    0.060487,
+    0.159314,
+    0.985373,
+    0.0,
+    -0.987916,
+    0.150684,
+    0.03628,
+    0.0,
+    -0.04955,
+    0.044985,
+    0.006213,
+    1.0
+   ]
+  }
+ },
+ "fingerprint": {
+  "Hips": [
+   -0.0836,
+   0.9015,
+   0.1679
+  ],
+  "RightHand": [
+   -0.4627,
+   0.9903,
+   0.108
+  ],
+  "LeftFoot": [
+   0.2184,
+   0.081,
+   -0.0373
+  ]
+ }
+}

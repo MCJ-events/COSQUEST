@@ -24,6 +24,7 @@ var model: Node3D
 var anim: Animator = Animator.new()
 var model_info: String = "capsule"
 var bind_info: Dictionary = {}
+var anim_opts: Dictionary = {}   # {key, class}: picks the cast clip library and the weapon set (cq 012)
 var yaw: float = 0.0
 var speed_now: float = 0.0
 var dead: bool = false
@@ -269,12 +270,12 @@ func set_model(node: Node3D) -> Dictionary:
 	body.add_child(holder)
 	model = holder
 	model_info = "glb"
-	bind_info = anim.bind(holder, body)
+	bind_info = anim.bind(holder, body, anim_opts)
 	anim.play("idle")
 	_apply_overlay(holder)
 	var names: PackedStringArray = anim.player.get_animation_list() if anim.player != null else PackedStringArray()
 	return {"scale": s, "height_raw": aabb.size.y, "anims": names, "mapped": bind_info.get("clips", {}),
-		"bones": bind_info.get("bones", 0), "hand": bind_info.get("hand", "")}
+		"bones": bind_info.get("bones", 0), "hand": bind_info.get("hand", ""), "library": anim.lib_key}
 
 
 ## The overlay is a second pass over every (skinned) vertex of the model: on a software GPU
@@ -381,9 +382,10 @@ func grip_point(side: String = "r") -> Vector3:
 # ---------------------------------------------------------------- actions
 
 ## Plays a combat state for `length` seconds: the clip if the GLB has one, else the
-## procedural pose plus a body motion. Returns true when a clip plays it.
-func act(state: String, length: float) -> bool:
-	var clip: bool = anim.play(state, length)
+## procedural pose plus a body motion. `hit_at`: when the strike lands (seconds into the
+## state); a clip's contact frame is lined up with it. Returns true when a clip plays it.
+func act(state: String, length: float, hit_at: float = -1.0) -> bool:
+	var clip: bool = anim.play(state, length, hit_at)
 	_motion = state
 	_mt = 0.0
 	_mlen = length
@@ -523,7 +525,7 @@ func tick_visual(dt: float) -> void:
 	var pos := Vector3.ZERO
 	var rot := Vector3.ZERO
 	var sc: float = 1.0
-	var clip: bool = anim.has_clip(_motion)
+	var clip: bool = anim.has_clip(_motion) and not anim.body_with_clip(_motion)
 	if _motion != "" and _mlen > 0.0:
 		_mt += vdt
 		var k: float = _mt / _mlen

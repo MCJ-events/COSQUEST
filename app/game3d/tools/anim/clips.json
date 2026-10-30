@@ -1,0 +1,1251 @@
+{
+ "_doc": "Source clips for retarget.py (cq 012), KayKit Adventurers 1.0 (CC0). root: inplace = horizontal root motion stripped (a clip ends where it starts), in-place sway kept. strike: find the contact frame (the weapon tip's fastest frame inside strike_window, as a share of the clip). classes: the weapon classes the clip is checked with. holds: how the source holds each class (slot bone, the weapon node's rotation in it, and the source reference weapon's own tip/edge axes, Blender axes).",
+ "clips": {
+  "Idle": {
+   "src": "Idle",
+   "classes": [
+    "sword",
+    "dagger",
+    "axe"
+   ]
+  },
+  "2H_Melee_Idle": {
+   "src": "2H_Melee_Idle",
+   "classes": [
+    "hammer",
+    "greatsword",
+    "staff"
+   ]
+  },
+  "2H_Ranged_Aiming": {
+   "src": "2H_Ranged_Aiming",
+   "classes": [
+    "rifle",
+    "crossbow"
+   ]
+  },
+  "Walking_A": {
+   "src": "Walking_A",
+   "classes": [
+    "sword"
+   ],
+   "loop": true,
+   "damp_legs": {
+    "bones": [
+     "LeftUpLeg",
+     "RightUpLeg",
+     "LeftLeg",
+     "RightLeg"
+    ],
+    "f": 0.6
+   }
+  },
+  "Walking_B": {
+   "src": "Walking_B",
+   "classes": [
+    "hammer"
+   ],
+   "loop": true,
+   "damp_legs": {
+    "bones": [
+     "LeftUpLeg",
+     "RightUpLeg",
+     "LeftLeg",
+     "RightLeg"
+    ],
+    "f": 0.6
+   }
+  },
+  "Running_A": {
+   "src": "Running_A",
+   "classes": [
+    "sword"
+   ],
+   "loop": true,
+   "damp_legs": {
+    "bones": [
+     "LeftUpLeg",
+     "RightUpLeg",
+     "LeftLeg",
+     "RightLeg"
+    ],
+    "f": 0.5
+   },
+   "ground_speed_per_hip": 1.43
+  },
+  "Running_B": {
+   "src": "Running_B",
+   "classes": [
+    "hammer"
+   ],
+   "loop": true,
+   "damp_legs": {
+    "bones": [
+     "LeftUpLeg",
+     "RightUpLeg",
+     "LeftLeg",
+     "RightLeg"
+    ],
+    "f": 0.5
+   },
+   "ground_speed_per_hip": 1.43
+  },
+  "1H_Melee_Attack_Slice_Diagonal": {
+   "src": "1H_Melee_Attack_Slice_Diagonal",
+   "classes": [
+    "sword",
+    "dagger",
+    "axe"
+   ],
+   "strike": true,
+   "strike_window": [
+    0.2,
+    0.8
+   ]
+  },
+  "1H_Melee_Attack_Slice_Horizontal": {
+   "src": "1H_Melee_Attack_Slice_Horizontal",
+   "classes": [
+    "sword",
+    "dagger",
+    "axe"
+   ],
+   "strike": true,
+   "strike_window": [
+    0.2,
+    0.8
+   ]
+  },
+  "1H_Melee_Attack_Chop": {
+   "src": "1H_Melee_Attack_Chop",
+   "classes": [
+    "sword",
+    "dagger",
+    "axe"
+   ],
+   "strike": true,
+   "strike_window": [
+    0.2,
+    0.8
+   ]
+  },
+  "1H_Melee_Attack_Stab": {
+   "src": "1H_Melee_Attack_Stab",
+   "classes": [
+    "sword",
+    "dagger",
+    "axe"
+   ],
+   "strike": true,
+   "strike_window": [
+    0.2,
+    0.8
+   ]
+  },
+  "2H_Melee_Attack_Slice": {
+   "src": "2H_Melee_Attack_Slice",
+   "classes": [
+    "hammer",
+    "greatsword",
+    "staff"
+   ],
+   "strike": true,
+   "strike_window": [
+    0.2,
+    0.8
+   ],
+   "damp_legs": {
+    "bones": [
+     "LeftUpLeg",
+     "RightUpLeg",
+     "LeftLeg",
+     "RightLeg"
+    ],
+    "f": 0.35
+   }
+  },
+  "2H_Melee_Attack_Stab": {
+   "src": "2H_Melee_Attack_Stab",
+   "classes": [
+    "hammer",
+    "greatsword",
+    "staff",
+    "rifle"
+   ],
+   "strike": true,
+   "strike_window": [
+    0.2,
+    0.8
+   ],
+   "damp_legs": {
+    "bones": [
+     "LeftUpLeg",
+     "RightUpLeg",
+     "LeftLeg",
+     "RightLeg"
+    ],
+    "f": 0.35
+   }
+  },
+  "2H_Melee_Attack_Chop": {
+   "src": "2H_Melee_Attack_Chop",
+   "classes": [
+    "hammer",
+    "greatsword",
+    "staff",
+    "sword"
+   ],
+   "strike": true,
+   "strike_window": [
+    0.2,
+    0.8
+   ],
+   "damp_legs": {
+    "bones": [
+     "LeftUpLeg",
+     "RightUpLeg",
+     "LeftLeg",
+     "RightLeg"
+    ],
+    "f": 0.35
+   }
+  },
+  "2H_Melee_Attack_Spinning": {
+   "src": "2H_Melee_Attack_Spinning",
+   "classes": [
+    "hammer",
+    "greatsword",
+    "staff",
+    "sword"
+   ],
+   "strike": true,
+   "strike_window": [
+    0.0,
+    1.0
+   ],
+   "damp_legs": {
+    "bones": [
+     "LeftUpLeg",
+     "RightUpLeg",
+     "LeftLeg",
+     "RightLeg"
+    ],
+    "f": 0.35
+   }
+  },
+  "2H_Melee_Attack_Spin": {
+   "src": "2H_Melee_Attack_Spin",
+   "classes": [
+    "hammer"
+   ],
+   "strike": true,
+   "strike_window": [
+    0.2,
+    0.9
+   ],
+   "damp_legs": {
+    "bones": [
+     "LeftUpLeg",
+     "RightUpLeg",
+     "LeftLeg",
+     "RightLeg"
+    ],
+    "f": 0.35
+   }
+  },
+  "2H_Ranged_Shoot": {
+   "src": "2H_Ranged_Shoot",
+   "classes": [
+    "rifle",
+    "crossbow"
+   ],
+   "strike": true,
+   "strike_window": [
+    0.0,
+    0.6
+   ]
+  },
+  "Spellcast_Shoot": {
+   "src": "Spellcast_Shoot",
+   "classes": [
+    "staff"
+   ],
+   "strike": true,
+   "strike_window": [
+    0.1,
+    0.8
+   ]
+  },
+  "Spellcast_Raise": {
+   "src": "Spellcast_Raise",
+   "classes": [
+    "staff",
+    "hammer"
+   ]
+  },
+  "Spellcast_Long": {
+   "src": "Spellcast_Long",
+   "classes": [
+    "staff",
+    "hammer",
+    "sword",
+    "rifle"
+   ]
+  },
+  "Hit_A": {
+   "src": "Hit_A",
+   "classes": [
+    "sword",
+    "hammer"
+   ]
+  },
+  "Hit_B": {
+   "src": "Hit_B",
+   "classes": [
+    "sword"
+   ]
+  },
+  "Blocking": {
+   "src": "Blocking",
+   "classes": [
+    "sword",
+    "hammer"
+   ]
+  },
+  "Block": {
+   "src": "Block",
+   "classes": [
+    "sword",
+    "hammer"
+   ]
+  },
+  "Block_Attack": {
+   "src": "Block_Attack",
+   "classes": [
+    "sword",
+    "hammer"
+   ],
+   "strike": true,
+   "strike_window": [
+    0.2,
+    0.8
+   ],
+   "damp_legs": {
+    "bones": [
+     "LeftUpLeg",
+     "RightUpLeg",
+     "LeftLeg",
+     "RightLeg"
+    ],
+    "f": 0.35
+   }
+  },
+  "Block_Hit": {
+   "src": "Block_Hit",
+   "classes": [
+    "sword"
+   ]
+  },
+  "Dodge_Forward": {
+   "src": "Dodge_Forward",
+   "classes": [
+    "sword",
+    "hammer"
+   ],
+   "damp_legs": {
+    "bones": [
+     "LeftUpLeg",
+     "RightUpLeg",
+     "LeftLeg",
+     "RightLeg"
+    ],
+    "f": 0.35
+   }
+  },
+  "Cheer": {
+   "src": "Cheer",
+   "classes": [
+    "sword",
+    "hammer"
+   ]
+  },
+  "Death_A": {
+   "src": "Death_A",
+   "classes": [
+    "sword",
+    "hammer"
+   ],
+   "damp_legs": {
+    "bones": [
+     "LeftUpLeg",
+     "RightUpLeg",
+     "LeftLeg",
+     "RightLeg"
+    ],
+    "f": 0.35
+   }
+  },
+  "Death_B": {
+   "src": "Death_B",
+   "classes": [
+    "sword"
+   ]
+  },
+  "Jump_Full_Short": {
+   "src": "Jump_Full_Short",
+   "classes": [
+    "hammer"
+   ]
+  },
+  "UAL_Walk": {
+   "src": "Walk_Loop",
+   "lib": "ual",
+   "classes": [
+    "sword",
+    "hammer"
+   ],
+   "loop": true,
+   "damp_legs": {
+    "bones": [
+     "LeftUpLeg",
+     "RightUpLeg",
+     "LeftLeg",
+     "RightLeg"
+    ],
+    "f": 0.6
+   }
+  },
+  "UAL_Jog": {
+   "src": "Jog_Fwd_Loop",
+   "lib": "ual",
+   "classes": [
+    "sword",
+    "hammer"
+   ],
+   "loop": true,
+   "damp_legs": {
+    "bones": [
+     "LeftUpLeg",
+     "RightUpLeg",
+     "LeftLeg",
+     "RightLeg"
+    ],
+    "f": 0.5
+   },
+   "ground_speed_per_hip": 1.54
+  },
+  "UAL_Idle": {
+   "src": "Idle_Loop",
+   "lib": "ual",
+   "classes": [
+    "sword",
+    "hammer"
+   ]
+  },
+  "UAL_Sprint": {
+   "src": "Sprint_Loop",
+   "lib": "ual",
+   "classes": [
+    "sword",
+    "hammer"
+   ],
+   "loop": true,
+   "damp_legs": {
+    "bones": [
+     "LeftUpLeg",
+     "RightUpLeg",
+     "LeftLeg",
+     "RightLeg"
+    ],
+    "f": 0.5
+   },
+   "ground_speed_per_hip": 1.98
+  },
+  "UAL_Hit_Chest": {
+   "src": "Hit_Chest",
+   "lib": "ual",
+   "classes": [
+    "sword",
+    "hammer"
+   ]
+  },
+  "UAL_Death": {
+   "src": "Death01",
+   "lib": "ual",
+   "classes": [
+    "sword",
+    "hammer"
+   ]
+  },
+  "UAL_Roll": {
+   "src": "Roll",
+   "lib": "ual",
+   "classes": [
+    "sword",
+    "hammer"
+   ]
+  },
+  "UAL_Sword_Attack": {
+   "src": "Sword_Attack",
+   "lib": "ual",
+   "classes": [
+    "sword",
+    "hammer"
+   ],
+   "strike": true,
+   "strike_window": [
+    0.2,
+    0.8
+   ]
+  },
+  "UAL_Sword_Idle": {
+   "src": "Sword_Idle",
+   "lib": "ual",
+   "classes": [
+    "sword",
+    "hammer"
+   ]
+  },
+  "UAL_Spell_Shoot": {
+   "src": "Spell_Simple_Shoot",
+   "lib": "ual",
+   "classes": [
+    "sword",
+    "hammer"
+   ]
+  },
+  "UAL_Dance": {
+   "src": "Dance_Loop",
+   "lib": "ual",
+   "classes": [
+    "sword",
+    "hammer"
+   ]
+  }
+ },
+ "holds": {
+  "sword": {
+   "slot": "handslot.r",
+   "slot_rot": [
+    0,
+    -1,
+    0,
+    0
+   ],
+   "ref_tip": [
+    0,
+    0,
+    1
+   ],
+   "ref_edge": [
+    1,
+    0,
+    0
+   ]
+  },
+  "greatsword": {
+   "slot": "handslot.r",
+   "slot_rot": [
+    0,
+    -1,
+    0,
+    0
+   ],
+   "ref_tip": [
+    0,
+    0,
+    1
+   ],
+   "ref_edge": [
+    1,
+    0,
+    0
+   ]
+  },
+  "dagger": {
+   "slot": "handslot.r",
+   "slot_rot": [
+    0,
+    -1,
+    0,
+    0
+   ],
+   "ref_tip": [
+    0,
+    0,
+    1
+   ],
+   "ref_edge": [
+    1,
+    0,
+    0
+   ]
+  },
+  "axe": {
+   "slot": "handslot.r",
+   "slot_rot": [
+    0,
+    -1,
+    0,
+    0
+   ],
+   "ref_tip": [
+    0,
+    0,
+    1
+   ],
+   "ref_edge": [
+    1,
+    0,
+    0
+   ]
+  },
+  "hammer": {
+   "slot": "handslot.r",
+   "slot_rot": [
+    0,
+    -1,
+    0,
+    0
+   ],
+   "ref_tip": [
+    0,
+    0,
+    1
+   ],
+   "ref_edge": [
+    1,
+    0,
+    0
+   ]
+  },
+  "staff": {
+   "slot": "handslot.r",
+   "slot_rot": [
+    0,
+    -1,
+    0,
+    0
+   ],
+   "ref_tip": [
+    0,
+    0,
+    1
+   ],
+   "ref_edge": [
+    1,
+    0,
+    0
+   ]
+  },
+  "crossbow": {
+   "slot": "handslot.r",
+   "slot_rot": [
+    0,
+    0.70710678,
+    0,
+    0.70710678
+   ],
+   "ref_tip": [
+    0,
+    -1,
+    0
+   ],
+   "ref_edge": [
+    0,
+    0,
+    1
+   ]
+  },
+  "rifle": {
+   "slot": "handslot.r",
+   "slot_rot": [
+    0,
+    0.70710678,
+    0,
+    0.70710678
+   ],
+   "ref_tip": [
+    0,
+    -1,
+    0
+   ],
+   "ref_edge": [
+    0,
+    0,
+    1
+   ]
+  },
+  "shield": {
+   "slot": "handslot.l",
+   "slot_rot": [
+    0,
+    0,
+    0,
+    1
+   ],
+   "ref_tip": [
+    0,
+    0,
+    1
+   ],
+   "ref_edge": [
+    0,
+    -1,
+    0
+   ]
+  }
+ },
+ "class_set": {
+  "sword": "blade",
+  "dagger": "blade",
+  "axe": "blade",
+  "knife": "blade",
+  "hammer": "heavy",
+  "greatsword": "heavy",
+  "staff": "staff",
+  "rifle": "gun",
+  "crossbow": "gun",
+  "shield": "blade",
+  "_default": "blade"
+ },
+ "sets": {
+  "blade": {
+   "hit": {
+    "clip": "Hit_A",
+    "alt": [
+     "UAL_Hit_Chest",
+     "Hit_B"
+    ]
+   },
+   "guard": {
+    "clip": "Blocking",
+    "alt": [
+     "Block",
+     "2H_Melee_Idle"
+    ]
+   },
+   "parry": {
+    "clip": "Block_Attack",
+    "alt": [
+     "Block_Hit",
+     "1H_Melee_Attack_Stab"
+    ]
+   },
+   "dodge": {
+    "clip": "Dodge_Forward",
+    "alt": [
+     "Jump_Full_Short"
+    ]
+   },
+   "skill_rally": {
+    "clip": "Cheer",
+    "alt": [
+     "Spellcast_Raise"
+    ]
+   },
+   "death": {
+    "clip": "Death_A",
+    "alt": [
+     "UAL_Death",
+     "Death_B"
+    ]
+   },
+   "victory": {
+    "clip": "Cheer",
+    "alt": [
+     "Spellcast_Raise"
+    ]
+   },
+   "heavy": {
+    "clip": "2H_Melee_Attack_Chop",
+    "alt": [
+     "1H_Melee_Attack_Chop"
+    ]
+   },
+   "idle": {
+    "clip": "Idle",
+    "alt": [
+     "UAL_Idle",
+     "2H_Melee_Idle"
+    ]
+   },
+   "walk": {
+    "clip": "Walking_A",
+    "alt": [
+     "UAL_Walk",
+     "Walking_B"
+    ]
+   },
+   "run": {
+    "clip": "Running_A",
+    "alt": [
+     "UAL_Jog",
+     "Running_B",
+     "UAL_Sprint"
+    ]
+   },
+   "attack_1": {
+    "clip": "1H_Melee_Attack_Slice_Diagonal",
+    "alt": [
+     "1H_Melee_Attack_Stab"
+    ]
+   },
+   "attack_2": {
+    "clip": "1H_Melee_Attack_Slice_Horizontal",
+    "alt": [
+     "1H_Melee_Attack_Stab"
+    ]
+   },
+   "attack_3": {
+    "clip": "1H_Melee_Attack_Chop",
+    "alt": [
+     "2H_Melee_Attack_Chop"
+    ]
+   },
+   "skill_charge": {
+    "clip": "1H_Melee_Attack_Stab",
+    "alt": [
+     "2H_Melee_Attack_Stab"
+    ]
+   },
+   "skill_split": {
+    "clip": "2H_Melee_Attack_Chop",
+    "body": true,
+    "alt": [
+     "1H_Melee_Attack_Chop"
+    ]
+   },
+   "skill_whirl": {
+    "clip": "2H_Melee_Attack_Spinning",
+    "alt": [
+     "2H_Melee_Attack_Spin",
+     "1H_Melee_Attack_Slice_Horizontal"
+    ]
+   },
+   "skill_shield": {
+    "clip": "Spellcast_Long",
+    "alt": [
+     "Spellcast_Raise",
+     "Block"
+    ]
+   }
+  },
+  "heavy": {
+   "hit": {
+    "clip": "Hit_A",
+    "alt": [
+     "UAL_Hit_Chest",
+     "Hit_B"
+    ]
+   },
+   "guard": {
+    "clip": "Blocking",
+    "alt": [
+     "Block",
+     "2H_Melee_Idle"
+    ]
+   },
+   "parry": {
+    "clip": "Block_Attack",
+    "alt": [
+     "Block_Hit",
+     "1H_Melee_Attack_Stab"
+    ]
+   },
+   "dodge": {
+    "clip": "Dodge_Forward",
+    "alt": [
+     "Jump_Full_Short"
+    ]
+   },
+   "skill_rally": {
+    "clip": "Spellcast_Raise",
+    "alt": [
+     "Cheer"
+    ]
+   },
+   "death": {
+    "clip": "Death_A",
+    "alt": [
+     "UAL_Death",
+     "Death_B"
+    ]
+   },
+   "victory": {
+    "clip": "Cheer",
+    "alt": [
+     "Spellcast_Raise"
+    ]
+   },
+   "heavy": {
+    "clip": "2H_Melee_Attack_Chop",
+    "alt": [
+     "1H_Melee_Attack_Chop"
+    ]
+   },
+   "idle": {
+    "clip": "2H_Melee_Idle",
+    "alt": [
+     "UAL_Idle",
+     "Idle"
+    ]
+   },
+   "walk": {
+    "clip": "Walking_B",
+    "alt": [
+     "UAL_Walk",
+     "Walking_A"
+    ]
+   },
+   "run": {
+    "clip": "Running_B",
+    "alt": [
+     "UAL_Jog",
+     "Running_A",
+     "UAL_Sprint"
+    ]
+   },
+   "attack_1": {
+    "clip": "2H_Melee_Attack_Slice",
+    "alt": [
+     "1H_Melee_Attack_Slice_Diagonal"
+    ]
+   },
+   "attack_2": {
+    "clip": "2H_Melee_Attack_Stab",
+    "alt": [
+     "1H_Melee_Attack_Slice_Horizontal"
+    ]
+   },
+   "attack_3": {
+    "clip": "2H_Melee_Attack_Chop",
+    "alt": [
+     "1H_Melee_Attack_Chop"
+    ]
+   },
+   "skill_charge": {
+    "clip": "2H_Melee_Attack_Stab",
+    "alt": [
+     "1H_Melee_Attack_Stab"
+    ]
+   },
+   "skill_split": {
+    "clip": "2H_Melee_Attack_Chop",
+    "body": true,
+    "alt": [
+     "1H_Melee_Attack_Chop"
+    ]
+   },
+   "skill_whirl": {
+    "clip": "2H_Melee_Attack_Spinning",
+    "alt": [
+     "2H_Melee_Attack_Spin",
+     "1H_Melee_Attack_Slice_Horizontal"
+    ]
+   },
+   "skill_shield": {
+    "clip": "Spellcast_Long",
+    "alt": [
+     "Spellcast_Raise",
+     "Block"
+    ]
+   }
+  },
+  "staff": {
+   "hit": {
+    "clip": "Hit_A",
+    "alt": [
+     "UAL_Hit_Chest",
+     "Hit_B"
+    ]
+   },
+   "guard": {
+    "clip": "Blocking",
+    "alt": [
+     "Block",
+     "2H_Melee_Idle"
+    ]
+   },
+   "parry": {
+    "clip": "Block_Attack",
+    "alt": [
+     "Block_Hit",
+     "1H_Melee_Attack_Stab"
+    ]
+   },
+   "dodge": {
+    "clip": "Dodge_Forward",
+    "alt": [
+     "Jump_Full_Short"
+    ]
+   },
+   "skill_rally": {
+    "clip": "Spellcast_Raise",
+    "alt": [
+     "Cheer"
+    ]
+   },
+   "death": {
+    "clip": "Death_A",
+    "alt": [
+     "UAL_Death",
+     "Death_B"
+    ]
+   },
+   "victory": {
+    "clip": "Cheer",
+    "alt": [
+     "Spellcast_Raise"
+    ]
+   },
+   "heavy": {
+    "clip": "2H_Melee_Attack_Chop",
+    "alt": [
+     "1H_Melee_Attack_Chop"
+    ]
+   },
+   "idle": {
+    "clip": "2H_Melee_Idle",
+    "alt": [
+     "UAL_Idle",
+     "Idle"
+    ]
+   },
+   "walk": {
+    "clip": "Walking_B",
+    "alt": [
+     "UAL_Walk",
+     "Walking_A"
+    ]
+   },
+   "run": {
+    "clip": "Running_B",
+    "alt": [
+     "UAL_Jog",
+     "Running_A",
+     "UAL_Sprint"
+    ]
+   },
+   "attack_1": {
+    "clip": "2H_Melee_Attack_Slice",
+    "alt": [
+     "1H_Melee_Attack_Slice_Diagonal"
+    ]
+   },
+   "attack_2": {
+    "clip": "Spellcast_Shoot",
+    "alt": [
+     "UAL_Spell_Shoot",
+     "1H_Melee_Attack_Slice_Horizontal"
+    ]
+   },
+   "attack_3": {
+    "clip": "2H_Melee_Attack_Chop",
+    "alt": [
+     "1H_Melee_Attack_Chop"
+    ]
+   },
+   "skill_charge": {
+    "clip": "2H_Melee_Attack_Stab",
+    "alt": [
+     "1H_Melee_Attack_Stab"
+    ]
+   },
+   "skill_split": {
+    "clip": "2H_Melee_Attack_Chop",
+    "body": true,
+    "alt": [
+     "1H_Melee_Attack_Chop"
+    ]
+   },
+   "skill_whirl": {
+    "clip": "2H_Melee_Attack_Spinning",
+    "alt": [
+     "2H_Melee_Attack_Spin",
+     "1H_Melee_Attack_Slice_Horizontal"
+    ]
+   },
+   "skill_shield": {
+    "clip": "Spellcast_Long",
+    "alt": [
+     "Spellcast_Raise",
+     "Block"
+    ]
+   }
+  },
+  "gun": {
+   "hit": {
+    "clip": "Hit_A",
+    "alt": [
+     "UAL_Hit_Chest",
+     "Hit_B"
+    ]
+   },
+   "guard": {
+    "clip": "Blocking",
+    "alt": [
+     "Block",
+     "2H_Melee_Idle"
+    ]
+   },
+   "parry": {
+    "clip": "Block_Attack",
+    "alt": [
+     "Block_Hit",
+     "1H_Melee_Attack_Stab"
+    ]
+   },
+   "dodge": {
+    "clip": "Dodge_Forward",
+    "alt": [
+     "Jump_Full_Short"
+    ]
+   },
+   "skill_rally": {
+    "clip": "Cheer",
+    "alt": [
+     "Spellcast_Raise"
+    ]
+   },
+   "death": {
+    "clip": "Death_A",
+    "alt": [
+     "UAL_Death",
+     "Death_B"
+    ]
+   },
+   "victory": {
+    "clip": "Cheer",
+    "alt": [
+     "Spellcast_Raise"
+    ]
+   },
+   "heavy": {
+    "clip": "2H_Melee_Attack_Chop",
+    "alt": [
+     "1H_Melee_Attack_Chop"
+    ]
+   },
+   "idle": {
+    "clip": "2H_Ranged_Aiming",
+    "alt": [
+     "UAL_Idle",
+     "Idle",
+     "2H_Melee_Idle"
+    ]
+   },
+   "walk": {
+    "clip": "Walking_B",
+    "alt": [
+     "UAL_Walk",
+     "Walking_A"
+    ]
+   },
+   "run": {
+    "clip": "Running_B",
+    "alt": [
+     "UAL_Jog",
+     "Running_A",
+     "UAL_Sprint"
+    ]
+   },
+   "attack_1": {
+    "clip": "2H_Ranged_Shoot",
+    "alt": [
+     "1H_Melee_Attack_Stab"
+    ]
+   },
+   "attack_2": {
+    "clip": "2H_Ranged_Shoot",
+    "alt": [
+     "1H_Melee_Attack_Stab"
+    ]
+   },
+   "attack_3": {
+    "clip": "2H_Melee_Attack_Stab",
+    "alt": [
+     "1H_Melee_Attack_Stab"
+    ]
+   },
+   "skill_charge": {
+    "clip": "2H_Melee_Attack_Stab",
+    "alt": [
+     "1H_Melee_Attack_Stab"
+    ]
+   },
+   "skill_split": {
+    "clip": "2H_Melee_Attack_Chop",
+    "body": true,
+    "alt": [
+     "1H_Melee_Attack_Chop"
+    ]
+   },
+   "skill_whirl": {
+    "clip": "2H_Melee_Attack_Spinning",
+    "alt": [
+     "2H_Melee_Attack_Spin",
+     "1H_Melee_Attack_Slice_Horizontal"
+    ]
+   },
+   "skill_shield": {
+    "clip": "Spellcast_Long",
+    "alt": [
+     "Spellcast_Raise",
+     "Block"
+    ]
+   }
+  }
+ },
+ "default_class": {
+  "nebulx": "staff"
+ },
+ "damp": {
+  "elvis": [
+   {
+    "bones": [
+     "LeftUpLeg",
+     "RightUpLeg",
+     "LeftLeg",
+     "RightLeg"
+    ],
+    "f": 0.55
+   }
+  ],
+  "bobo": [
+   {
+    "bones": [
+     "LeftUpLeg",
+     "RightUpLeg",
+     "LeftLeg",
+     "RightLeg"
+    ],
+    "f": 0.55
+   }
+  ],
+  "crystalz": [
+   {
+    "bones": [
+     "LeftUpLeg",
+     "RightUpLeg",
+     "LeftLeg",
+     "RightLeg"
+    ],
+    "f": 0.55
+   }
+  ]
+ },
+ "_doc_damp": "damp: per character, bones that take only a share f of the source's rotation (long robes, skirts and baggy trousers stretch between the legs on wide stances; cq 060's rig weights)",
+ "_doc_alt": "alt: in order, the clips tried when the set's clip stretches a character's mesh past the gate (cq 060's tear measure); none left: a loop keeps the character's own cq 060 clip, a one-shot the procedural pose",
+ "core_states": [
+  "idle",
+  "attack_1",
+  "attack_2",
+  "attack_3",
+  "hit"
+ ],
+ "gate_by_state": {
+  "run": 0.01
+ },
+ "_doc_gate": "gate_by_state: a looser gate for run: a walk sped past 2x skates visibly, a run's short stretch at speed does not show at the fight camera (measured per clip in tools/anim/reports)"
+}

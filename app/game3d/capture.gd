@@ -85,6 +85,7 @@ func _fire(hud: Node, e: Array) -> void:
 func _save(t_ref: float) -> void:
 	await RenderingServer.frame_post_draw
 	var img: Image = get_viewport().get_texture().get_image()
-	var path: String = "%s/%s_%.1fs.png" % [str(spec.get("dir")), str(spec.get("prefix", "shot")), t_ref]
+	# "decimals" (default 1): 2 or 3 for clip frames closer together than 0.1 s
+	var path: String = ("%s/%s_%." + str(int(spec.get("decimals", 1))) + "fs.png") % [str(spec.get("dir")), str(spec.get("prefix", "shot")), t_ref]
 	img.save_png(path)
 	print("CQCAPTURE shot t=%.1f fight_t=%.2f path=%s" % [t_ref, _t, path])
