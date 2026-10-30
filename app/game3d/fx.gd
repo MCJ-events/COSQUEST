@@ -123,6 +123,27 @@ func _ready() -> void:
 	for k: String in _parts:
 		for p: CPUParticles3D in _parts[k]:
 			p.set_meta("r0", p.emission_sphere_radius)
+	_warm.call_deferred()
+
+
+## Draws every effect material once, fully transparent, on the first frames (during loading),
+## so their shaders compile then and not on the first SPLIT or crit (a hitch on a phone).
+func _warm() -> void:
+	var clear := Color(1, 1, 1, 0)
+	var at := Vector3(0, 1.0, 0)
+	card(GLOW, at, clear, 0.1, 0.1, 0.1)
+	card(GLOW, at, clear, 0.1, 0.1, 0.1, {"top": true})
+	card(GLOW, at, clear, 0.1, 0.1, 0.1, {"flat": true, "decal": true})
+	var arc := slash(at, 0.0, [clear, clear], 0.1, 0.0, 0.1)
+	(arc.material_override as ShaderMaterial).set_shader_parameter("alpha", 0.0)
+	var b := beam(at, 0.1, 0.1, clear, clear, 0.1)
+	(b.material_override as ShaderMaterial).set_shader_parameter("alpha", 0.0)
+	trail_push("warm", at, at + Vector3(0, 0.1, 0), [clear, clear])
+	trail_push("warm", at + Vector3(0.1, 0, 0), at + Vector3(0.1, 0.1, 0), [clear, clear])
+	for k: String in _parts:
+		_emit(k, at, clear)
+	var t := telegraph(at, 0.0, 0.1, 180.0, 0.1, clear)
+	telegraph_end(t, false)
 
 
 func _card_mat(cell: int, add: float, billboard: int = 1, top: bool = false) -> ShaderMaterial:
