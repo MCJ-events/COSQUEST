@@ -20,6 +20,7 @@ const BUILDINGS: Array[String] = ["building-a", "building-b", "building-c", "bui
 	"building-f", "building-g", "building-h", "building-k", "building-l"]
 const STREET_HALF: float = 5.6       # kerb to kerb half width (fight.gd clamps at 4.7 m)
 const SHOP_W: float = 7.0
+const NEAR_FADE: Vector2 = Vector2(13.0, 15.5)   # lamps fade out nearer the camera than this (m)
 const MERGE_CHUNK: float = 12.0      # metres of street per merged mesh (culling)
 
 var ground: MeshInstance3D
@@ -144,6 +145,8 @@ func _piece(n: String, width: float, at: Vector3, yaw_deg: float) -> Node3D:
 		(mi as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		if n.begins_with("building"):
 			mi.set_meta("facade", true)
+		elif n in ["planter", "tree-small", "stall-bench"]:
+			mi.set_meta("near_fade", true)
 	return holder
 
 
@@ -321,12 +324,15 @@ func _commit_glows() -> void:
 	var neon_m := _glow_mat(T_NEON, Color(1.15, 1.15, 1.15, 1.0), false)   # mixed: added on the pale paving it washes to white
 	var shop_m := _glow_mat(T_SHOP, Color(1.0, 0.8, 0.55, 0.75))
 	var lamp_m := _glow_mat(T_LAMP, Color(1.0, 0.9, 0.7, 1.0))
+	_near_fade(lamp_m, true)
+	var cone_m := _glow_mat(T_CONE, Color(1.0, 0.82, 0.55, 0.95))
+	_near_fade(cone_m, true)
 	var out: Array = []
 	for side in 2:
 		out.append([_neon_st[side], neon_m])
 		out.append([_shop_st[side], shop_m])
 	out.append([_lamps_st, lamp_m])
-	out.append([_cones_st, _glow_mat(T_CONE, Color(1.0, 0.82, 0.55, 0.95))])
+	out.append([_cones_st, cone_m])
 	for pair: Array in out:
 		var mesh: ArrayMesh = (pair[0] as SurfaceTool).commit()
 		if mesh.get_surface_count() == 0:
@@ -360,11 +366,11 @@ func _merge_dressing() -> void:
 		var chunk: String = "%d%s" % [floori(at.z / MERGE_CHUNK), "l" if at.x < 0.0 else "r"] if facade else ""
 		for si in mi.mesh.get_surface_count():
 			var mat: Material = mi.get_active_material(si)
-			var key: String = "%s_c%s%s" % [_mat_key(mat), chunk, "f" if facade else ""]
+			var key: String = "%s_c%s%s%s" % [_mat_key(mat), chunk, "f" if facade else "", "n" if mi.has_meta("near_fade") else ""]
 			if not groups.has(key):
 				var st := SurfaceTool.new()
 				st.begin(Mesh.PRIMITIVE_TRIANGLES)
-				groups[key] = {"st": st, "mat": _facade_mat(mat) if facade else (_dark(mat) if mi.has_meta("lamp") else _opaque(mat))}
+				groups[key] = {"st": st, "mat": _facade_mat(mat) if facade else (_dark(mat) if mi.has_meta("lamp") else (_faded(mat) if mi.has_meta("near_fade") else _opaque(mat)))}
 			(groups[key]["st"] as SurfaceTool).append_from(mi.mesh, si, xf)
 	var merged := Node3D.new()
 	merged.name = "StreetMerged"
@@ -403,7 +409,25 @@ func _dark(mat: Material) -> Material:
 	if m is BaseMaterial3D:
 		m = (m as BaseMaterial3D).duplicate()
 		(m as BaseMaterial3D).albedo_color = Color(0.3, 0.27, 0.36)
+		_near_fade(m as BaseMaterial3D, false)
 	return m
+
+
+func _faded(mat: Material) -> Material:
+	var m: Material = _opaque(mat)
+	if m is BaseMaterial3D:
+		m = (m as BaseMaterial3D).duplicate()
+		_near_fade(m as BaseMaterial3D, false)
+	return m
+
+
+## Lamps close to the camera stand at the bottom of the screen, tall, behind the controls:
+## fade them out there.
+func _near_fade(m: BaseMaterial3D, alpha: bool) -> void:
+	# alpha, not dither: a dithered lamp arm reads as noise at phone size
+	m.distance_fade_mode = BaseMaterial3D.DISTANCE_FADE_PIXEL_ALPHA
+	m.distance_fade_min_distance = NEAR_FADE.x
+	m.distance_fade_max_distance = NEAR_FADE.y
 
 
 var _facades: Dictionary = {}   # atlas texture -> the facade ShaderMaterial (one per atlas)
