@@ -357,6 +357,12 @@ func _ready() -> void:
 		(pair[0] as FighterScript).anim_opts = {"key": str(cfg.get(role + "_key", "")),
 			"class": str((wcfg as Dictionary).get("class", "")) if wcfg is Dictionary else ""}
 		var p: String = LoaderScript.clean_path(str(cfg.get(pair[1], "")))
+		if p != "" and bool(cfg.get("rig_fixes", true)):
+			var fx: Array = LoaderScript.rig_fix(p)
+			if str(fx[1]) != "":
+				_log("rigfix role=%s key=%s from=%s to=%s" % [role, str(fx[1]), p, str(fx[0])])
+				p = str(fx[0])
+		(pair[0] as FighterScript).anim_opts["secondary"] = bool(cfg.get("secondary", true))
 		if p != "":
 			(pair[0] as FighterScript).visible = false
 			_load_queue.append({"f": pair[0], "path": p, "role": str(pair[1]).trim_suffix("_glb")})

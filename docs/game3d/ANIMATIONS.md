@@ -10,16 +10,21 @@ Commando, Blade, Killua and P-Mon are out of scope and are not touched.
 
 ## Who plays what
 
-| character | status | why |
-|---|---|---|
-| Armstrong | clips | all states but death (Death_A stretches 0.53 %, just over the gate; the procedural fall plays) |
-| Bobo | clips, partial | idle, the 1H combo, hit, parry, CHARGE, SPLIT, RALLY, SHIELD, victory; guard, walk, run, dodge, death and WHIRL tear his rig, so those stay on his own cq 060 walk and the procedural poses |
-| Cat-Boy | clips | every state |
-| Crystal-Z | procedural | rig tears: no clip under the gate for attacks 1 to 3 with her staff |
-| Elvis | procedural | rig tears: no clip under the gate for idle, any attack or the hit react (long robe and wings) |
-| Hoof | procedural | no skeleton (cq 060's auto-rig rejected the model) |
-| Nebul-X | clips | every state (staff set: she holds her own staff) |
-| Vanessa | clips | every state with her rifle; with a hammer or staff attack 1 stays procedural |
+| character | status | weapon set | states on clips | falls back |
+|---|---|---|---|---|
+| Armstrong | clips | heavy (warhammer) | 18 of 18 | none (cq 014's trouser weights: Death_A 0.07 %, the two-handed swings pass) |
+| Bobo | clips | blade (war axe) | 18 of 18 | none (cq 014's rig: walk, run, guard, dodge, death and WHIRL now pass) |
+| Cat-Boy | clips | blade (dagger) | 18 of 18 | none |
+| Crystal-Z | clips (cq 014 rig) | staff | 17 of 18 | WHIRL: no spin or slice under the gate (best 0.92 %), so the procedural spin plays |
+| Elvis | clips (cq 014 rig) | heavy (greatsword) | 17 of 18 | WHIRL (best 0.56 %): procedural spin |
+| Hoof | clips (cq 014 skeleton) | staff | 17 of 18 | WHIRL (best 0.66 %): procedural spin |
+| Nebul-X | clips | staff (her own) | 18 of 18 | none |
+| Vanessa | clips | gun (rifle) | 18 of 18 | none |
+
+All eight cast play clips. Elvis, Crystal-Z and Hoof use the rigs from cq 014 (the fixed
+skeletons, weights and their robe, coat, skirt and wing chains, driven by the secondary sim): see
+RIGS.md. The game swaps cq 060's catalogue files for them by sha256 until they are published in the
+Forge. Every state's clip and tear, BEFORE and AFTER, is in cq 014's tear table (task evidence).
 
 "Procedural" is combat's CombatAnimator fallback: the character's own cq 060 idle/walk/celebrate
 clips plus the procedural spine and arm poses and the body motion (lunge, hop, spin, lean).
@@ -82,7 +87,9 @@ Other rules:
 ## The tear gate (cq 060's)
 
 Each clip is skinned on the character's own mesh (numpy linear blend skinning, every third
-frame), on LOD0, LOD1 and LOD2, and the worst of the three counts. A clip "tears" when more than **0.5 %** of triangles have an edge stretched past
+frame), on LOD0, LOD1 and LOD2, and the worst of the three counts. On a rig with secondary chains
+(cq 014: robes, coats, skirts, wings) the chains move as the game moves them (the secondary sim's
+numpy twin, RIGS.md); the number with the chains rigid is kept beside it in the reports. A clip "tears" when more than **0.5 %** of triangles have an edge stretched past
 2.5x. This is cq 060's own measure, and it reproduces 060's numbers to within 0.04 %. Run
 clips get **1.0 %**: a walk sped past 2x skates visibly, while a run's brief stretch at speed
 does not read at the fight camera.
@@ -158,4 +165,4 @@ $BPY app/game3d/tools/anim/build_all.py --src <KayKit>/Knight.glb \
   --src_ual <UAL>/AnimationLibrary_Godot_Standard.gltf --cast <cq 060 models dir>
 ```
 
-It takes about 1 minute on the CPU for the seven rigged characters.
+It takes about 5 minutes on the CPU for the eight characters (25 under the load of a second task); `--cast` takes the fixed rigs from cq 014 (`pose/<key>/lod*.glb` + `rig.json` per character, see RIGS.md).

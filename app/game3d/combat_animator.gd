@@ -13,6 +13,7 @@ extends RefCounted
 
 const PoseLayer := preload("res://pose_layer.gd")
 const AnimLib := preload("res://anim_library.gd")
+const SecondaryMotion := preload("res://secondary_motion.gd")
 
 # crossfades (s): into a one-shot, back to a loop, into a hit react
 const BLEND_ACT: float = 0.08
@@ -79,6 +80,7 @@ const POSES: Dictionary = {
 
 var player: AnimationPlayer
 var skeleton: Skeleton3D
+var secondary: Node              # SecondaryMotion (cq 014) when the rig has chains
 var layer: PoseLayer
 var clips: Dictionary = {}       # state -> clip name in the player
 var state: String = "idle"
@@ -107,6 +109,7 @@ func bind(model: Node3D, body: Node3D, opts: Dictionary = {}) -> Dictionary:
 	player = null
 	skeleton = null
 	layer = null
+	secondary = null
 	var skels: Array[Node] = model.find_children("*", "Skeleton3D", true, false)
 	if skels.size() > 0:
 		skeleton = skels[0] as Skeleton3D
@@ -132,6 +135,17 @@ func bind(model: Node3D, body: Node3D, opts: Dictionary = {}) -> Dictionary:
 		layer.frame_root = model
 		skeleton.add_child(layer)
 		nb = layer.bind_bones()
+		# robes, coats, skirts, wings, flames (cq 014): after the pose layer, so they hang from
+		# the final pose
+		secondary = null
+		if bool(opts.get("secondary", true)):
+			var sm := SecondaryMotion.new()
+			sm.name = "SecondaryMotion"
+			if sm.setup(skeleton) > 0:
+				skeleton.add_child(sm)
+				secondary = sm
+			else:
+				sm.free()
 	hand_r = _make_hand(body)
 	var proc: Array[String] = []
 	for st: String in STATES:

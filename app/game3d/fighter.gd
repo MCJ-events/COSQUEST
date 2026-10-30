@@ -513,6 +513,11 @@ func grip_point(side: String = "r") -> Vector3:
 ## procedural pose plus a body motion. `hit_at`: when the strike lands (seconds into the
 ## state); a clip's contact frame is lined up with it. Returns true when a clip plays it.
 func act(state: String, length: float, hit_at: float = -1.0) -> bool:
+	if dead and state != "death":
+		# a hit landing after the killing blow (a bolt in flight) must not stand a clip
+		# character back up out of its held death pose (cq 014: the boss and the Guardian
+		# have clips now)
+		return anim.has_clip("death")
 	var clip: bool = anim.play(state, length, hit_at)
 	_motion = state
 	_mt = 0.0
