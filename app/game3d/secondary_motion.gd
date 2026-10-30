@@ -173,7 +173,8 @@ func _process_modification_with_delta(delta: float) -> void:
 	for c in _caps_r.size():
 		_ca[c] = sk.get_bone_global_pose(_caps[2 * c]).origin
 		_cb[c] = sk.get_bone_global_pose(_caps[2 * c + 1]).origin
-	if not cloth_mats.is_empty() and _caps_r.size() == 4:
+	# not in the tree yet (a fight starting): no world transform, the shader keeps last frame's
+	if not cloth_mats.is_empty() and _caps_r.size() == 4 and sk.is_inside_tree():
 		var xf: Transform3D = sk.global_transform
 		var sc: float = xf.basis.get_scale().x
 		for c in 4:
