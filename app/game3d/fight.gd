@@ -48,6 +48,19 @@ const COMBO_RESET: float = 0.55          # seconds after a swing before the chai
 const ATK_BUFFER: float = 0.3            # a press this early is remembered
 const CRIT_CHANCE: float = 0.14
 const CRIT_MULT: float = 1.6
+
+# ---- effect colours (cq 013): [body, glow] for fx.gd's layered arcs and trails
+const CHARGE_COLS: Array = [Color(0.2, 0.95, 0.9), Color(0.6, 1.0, 0.95)]
+const WHIRL_COLS: Array = [Color(1.0, 0.55, 0.12), Color(1.0, 0.82, 0.4)]
+const WHIRL_COLS_2: Array = [Color(1.0, 0.4, 0.75), Color(1.0, 0.75, 0.9)]
+const BOSS_COLS: Array = [Color(0.9, 0.12, 0.1), Color(1.0, 0.45, 0.3)]
+
+# ---- camera impact (cq 013): trauma adds up per event (capped at 1), decays, and the
+# offset is trauma squared, so light hits barely move the view and big ones kick it.
+const TRAUMA_DECAY: float = 2.2          # per second
+const SHAKE_MAX_M: float = 0.32          # offset at full trauma (the HUD and hero stay readable)
+const SHAKE_MAX_ROLL: float = 0.035      # radians of roll at full trauma
+const FOV_KICK_DECAY: float = 14.0       # degrees per second back to the base FOV
 const SOFT_LOCK: float = 4.5             # face the boss on a swing if it is this close
 
 # ---- guard, parry, dodge
@@ -199,6 +212,13 @@ var _look: Vector3 = Vector3.ZERO
 var _shake: float = 0.0
 var _shake_t: float = 0.0
 var _punch: float = 0.0
+var _trauma: float = 0.0
+var _draws_peak: int = 0
+var _base_fov: float = 55.0
+var _fov_kick: float = 0.0
+var _kick: Vector3 = Vector3.ZERO
+var _shake_clock: float = 0.0
+var _reduce_motion: bool = false
 var _cam_dist: float = CAM_DIST
 
 # loading
@@ -249,6 +269,7 @@ func _ready() -> void:
 	_headless = DisplayServer.get_name() == "headless"
 	# cam_* overrides are for review captures (close-ups); the game uses the constants
 	_cam_dist = float(cfg.get("cam_dist", CAM_DIST))
+	_reduce_motion = bool(cfg.get("reduce_motion", false))   # the app's Reduce motion setting: a quarter of the shake, no zoom punch
 	_cam_basis = Basis.from_euler(Vector3(deg_to_rad(-float(cfg.get("cam_pitch", CAM_PITCH))), deg_to_rad(float(cfg.get("cam_yaw", CAM_YAW))), 0.0))
 	_cam_fwd = Vector3(-_cam_basis.z.x, 0.0, -_cam_basis.z.z).normalized()
 	_cam_right = Vector3(_cam_basis.x.x, 0.0, _cam_basis.x.z).normalized()
@@ -325,6 +346,7 @@ func _ready() -> void:
 	hero.add_child(_skill_area)
 	for f: FighterScript in fighters:
 		f.weapon.struck.connect(_on_struck)
+		f.shield_ended.connect(func(at: Vector3, r: float) -> void: fx.shatter(at, r, Color(0.45, 0.8, 1.0)))
 	_focus = hero.position + _cam_fwd * CAM_AHEAD
 	_apply_camera(0.0)
 	for pair: Array in [[hero, "hero_glb"], [ally, "ally_glb"], [enemy, "enemy_glb"]]:
@@ -370,6 +392,7 @@ func _build_camera() -> void:
 	cam = Camera3D.new()
 	cam.name = "Camera"
 	cam.fov = float(cfg.get("cam_fov", CAM_FOV))
+	_base_fov = cam.fov
 	cam.near = 0.5
 	cam.far = 160.0
 	add_child(cam)
@@ -746,14 +769,25 @@ func _swing() -> void:
 		if to.length() < SOFT_LOCK:
 			hero.face(to, 0.0, 0.0)
 	fx.trail_cut("hero%d" % _combo_i)
+	_tip_prev = {}
+	_hero_wclass = _wclass(hero)
 	hero.act(str(_atk_data["state"]), _act_len, (float(_atk_data["open"]) + float(_atk_data["close"])) * 0.5)
 	hero.set_reach(float(_atk_data["reach"]), 0.6 if bool(_atk_data["heavy"]) else 0.45)
 	var sweep: Vector2 = _atk_data["sweep"]
 	var heavy: bool = _atk_data["heavy"]
-	var tint: Color = Color(1.0, 0.72, 0.2, 1.0) if heavy else Color(0.35, 0.72, 1.0, 1.0)
-	var tilt: float = [0.3, -0.3, 1.25][_combo_i]
-	# the crescent shows on the press frame (that is what the latency rig times)
-	var node: MeshInstance3D = fx.slash(hero.position + Vector3(0, 1.0, 0) + hero.forward() * 0.2, hero.yaw, Color(tint.r, tint.g, tint.b, 0.85), 1.2 if heavy else 1.0, tilt)
+	var cols: Array = _swing_cols(heavy)
+	var tilt: float = [0.3, -0.3, 0.75][_combo_i]   # the overhead third hit leans so the camera sees its face, not its edge
+	# the crescent (or a gun's muzzle flash) shows on the press frame: that is what the
+	# latency rig times. Sized to the swing: the edge sits near the hitbox reach.
+	var node: MeshInstance3D
+	if _hero_wclass == "gun" and enemy != null:
+		var muzzle: Vector3 = _weapon_tip(hero)
+		if muzzle == Vector3.INF:
+			muzzle = hero.chest_pos() + hero.forward() * 0.8
+		node = fx.muzzle(muzzle, enemy.chest_pos(), cols)
+	else:
+		var reach: float = float(_atk_data["reach"])
+		node = fx.slash(hero.position + Vector3(0, 1.0, 0) + hero.forward() * 0.1, hero.yaw, cols, reach * (1.05 if heavy else 0.92), tilt, 0.3 if heavy else 0.24)
 	if not _lat_atk.is_empty() and _lat_atk["node"] == null:
 		_lat_atk["node"] = node
 	sfx.play("swing_heavy" if heavy else "swing", 1.0 - 0.06 * _combo_i)
@@ -781,8 +815,13 @@ func _tick_swing(_dt: float) -> void:
 		hero.weapon.scan()
 		if _act_t > close:
 			hero.weapon.close()
-	# the trail follows the arc (hilt at 0.45 m, tip at the reach), filled in between frames
-	if _act_t >= open - 0.03 and (_act_t <= close + 0.03 or live):
+	# the ribbon follows the weapon tip when a clip plays it (cq 012), else the procedural arc
+	# (hilt at 0.42 of the reach, tip at the reach), filled in between frames
+	if _hero_wclass == "gun":
+		pass
+	elif _tip_trail_ok() and _act_t >= open - 0.07 and _act_t <= close + 0.05:
+		_push_tip_trail("hero%d" % _combo_i, _swing_cols(bool(d["heavy"])), float(d["reach"]), _dt)
+	elif not _tip_trail_ok() and _act_t >= open - 0.03 and (_act_t <= close + 0.03 or live):
 		var reach: float = d["reach"]
 		var from_deg: float = _swing_prev_deg if live else yaw_deg
 		var steps: int = clampi(int(absf(yaw_deg - from_deg) / 10.0), 0, 10)
@@ -795,7 +834,7 @@ func _tick_swing(_dt: float) -> void:
 			var h: float = 1.15 + lerpf(lift.x, lift.y, kk)
 			var base: Vector3 = hero.position + Vector3(0, 1.15 + lerpf(lift.x, lift.y, kk) * 0.4, 0) + dir * (reach * 0.42)
 			var tip: Vector3 = hero.position + Vector3(0, h, 0) + dir * reach
-			fx.trail_push("hero%d" % _combo_i, base, tip, Color(1.0, 0.5, 0.05) if bool(d["heavy"]) else Color(0.05, 0.5, 1.0), (1.0 - u) * _dt)
+			fx.trail_push("hero%d" % _combo_i, base, tip, _swing_cols(bool(d["heavy"])), (1.0 - u) * _dt, 0.45)
 	_swing_prev_deg = yaw_deg
 	# chain: a buffered press (or a held button) starts the next hit at COMBO_CHAIN_AT
 	if (_attack_buffer > 0.0 or hud.attack_held) and _act_t >= _act_len * COMBO_CHAIN_AT and _combo_i < COMBO.size() - 1:
@@ -806,6 +845,97 @@ func _tick_swing(_dt: float) -> void:
 		_swing()
 	elif _act_t >= _act_len and _combo_i == COMBO.size() - 1:
 		_combo_next = 0
+
+
+# ------------------------------------------------------------ slash look (cq 013)
+
+var _hero_wclass: String = "blade"
+var _tip_prev: Dictionary = {}
+
+
+## The held weapon's effect class: blade (sword, dagger, axe), heavy (hammer, greatsword),
+## staff, or gun (rifle, crossbow: a muzzle flash and tracer instead of an arc).
+func _wclass(f: FighterScript) -> String:
+	if f == null or not f.weapons.has("r"):
+		return "blade"
+	var c: String = str((f.weapons["r"] as Dictionary).get("class", ""))
+	if c in ["hammer", "greatsword", "warhammer", "mace"]:
+		return "heavy"
+	if c in ["staff", "wand"]:
+		return "staff"
+	if c in ["rifle", "crossbow", "gun", "pistol", "bow"]:
+		return "gun"
+	return "blade"
+
+
+func _swing_cols(heavy: bool) -> Array:
+	if heavy:
+		return fx.GOLD
+	return fx.CLASS_COLS.get(_hero_wclass, fx.CLASS_COLS["blade"])
+
+
+## The weapon's far end in the world (the end of its mesh's longest axis away from the
+## grip), or Vector3.INF. The local point is measured once per weapon.
+func _weapon_tip(f: FighterScript) -> Vector3:
+	if f == null or not f.weapons.has("r"):
+		return Vector3.INF
+	var w: Dictionary = f.weapons["r"]
+	var holder := w["node"] as Node3D
+	if holder == null or not is_instance_valid(holder) or not holder.is_inside_tree():
+		return Vector3.INF
+	if not w.has("tip_local"):
+		var box := AABB()
+		var first: bool = true
+		var inv: Transform3D = holder.global_transform.affine_inverse()
+		for n: Node in holder.find_children("*", "MeshInstance3D", true, false):
+			var mi := n as MeshInstance3D
+			var bb: AABB = (inv * mi.global_transform) * mi.get_aabb()
+			box = bb if first else box.merge(bb)
+			first = false
+		if first:
+			w["tip_local"] = Vector3.INF
+		else:
+			var ax: int = box.get_longest_axis_index()
+			var lo: Vector3 = box.get_center()
+			var hi: Vector3 = lo
+			lo[ax] = box.position[ax]
+			hi[ax] = box.end[ax]
+			w["tip_local"] = hi if hi.length() > lo.length() else lo
+	var tl: Vector3 = w["tip_local"]
+	if tl == Vector3.INF:
+		return tl
+	return holder.global_transform * tl
+
+
+## True when the hero's swing plays a real clip with a weapon in hand (cq 012).
+func _tip_trail_ok() -> bool:
+	return hero.weapons.has("r") and hero.anim.has_clip(str(_atk_data.get("state", ""))) and _weapon_tip(hero) != Vector3.INF
+
+
+## One frame of the weapon ribbon along the real tip path. The ribbon runs out from the
+## chest through the tip (inner edge at 58 % of the outer), pushed out to at least 85 % of
+## the hitbox reach so the arc is about a fighter's height across, as on the reference.
+## Between frames it is filled in round the chest (polar), so a fast swing stays an arc.
+func _push_tip_trail(key: String, cols: Array, reach: float, frame_dt: float) -> void:
+	var tip: Vector3 = _weapon_tip(hero)
+	var c: Vector3 = hero.position + Vector3(0, 1.05, 0)
+	var off: Vector3 = tip - c
+	var r: float = off.length()
+	if r < 0.05:
+		return
+	var dir: Vector3 = off / r
+	var r_out: float = maxf(r * 1.15, reach * 0.85)
+	if not _tip_prev.is_empty() and str(_tip_prev["key"]) == key:
+		var pd: Vector3 = _tip_prev["dir"]
+		var pr: float = _tip_prev["r"]
+		var steps: int = clampi(int(pd.angle_to(dir) / deg_to_rad(7.0)), 0, 10)
+		for i in steps:
+			var u: float = float(i + 1) / float(steps + 1)
+			var dd: Vector3 = pd.slerp(dir, u).normalized()
+			var ro: float = lerpf(pr, r_out, u)
+			fx.trail_push(key, c + dd * ro * 0.58, c + dd * ro, cols, (1.0 - u) * frame_dt, 0.45)
+	fx.trail_push(key, c + dir * r_out * 0.58, c + dir * r_out, cols, 0.0, 0.45)
+	_tip_prev = {"key": key, "dir": dir, "r": r_out}
 
 
 # ------------------------------------------------------------ skills
@@ -848,7 +978,7 @@ func _cast(slot: int) -> void:
 	match slot:
 		0:
 			hero.iframes = 0.34
-			fx.dust(hero.position)
+			fx.charge_start(hero.position, _skill_dir, CHARGE_COLS[0])
 			sfx.play("dash")
 			_skill_area_shape(Vector3(1.8, 2.0, 1.6), Vector3(0, 1.0, 0.6))
 			_skill_area.open({"src": hero, "kind": "charge", "dmg": CHARGE_DMG, "kb": 1.8, "stop": 5.0 / 60.0, "heavy": true})
@@ -883,21 +1013,22 @@ func _tick_skill(dt: float) -> void:
 			if t >= 0.05 and t <= 0.31:
 				hero.position += _skill_dir * (CHARGE_DIST / 0.26) * dt
 				_skill_area.scan()
-				fx.trail_push("charge", hero.position + Vector3(0, 0.25, 0), hero.position + Vector3(0, 1.75, 0), Color(0.35, 1.0, 0.9))
+				# the energy trail: a tall ribbon behind the hero, plus speed streaks
+				fx.trail_push("charge", hero.position + Vector3(0, 0.15, 0), hero.position + Vector3(0, 1.9, 0), CHARGE_COLS, 0.0, 0.5)
+				if Engine.get_process_frames() % 2 == 0:
+					var side: Vector3 = Vector3(_skill_dir.z, 0, -_skill_dir.x) * randf_range(-0.7, 0.7)
+					fx.speed_line(hero.position + Vector3(0, randf_range(0.4, 1.6), 0) + side - _skill_dir * 0.6, _skill_dir, CHARGE_COLS[1])
 			elif t > 0.31 and _fire_once("end"):
 				_skill_area.close()
-				fx.ring(hero.position, 1.6, Color(0.4, 1.0, 0.9, 0.9))
-				fx.dust(hero.position)
+				fx.charge_end(hero.position, _skill_dir, CHARGE_COLS[0])
+				_impact_cam(0.35, 1.5)
 		1:   # SPLIT: hop, slam, a crack that runs 7 m ahead
 			if t >= 0.34 and _fire_once("slam"):
 				_shake_cam(0.2, 0.3)
 				_punch = maxf(_punch, 0.7)
 				sfx.play("slam")
-				fx.ring(hero.position, 2.4, Color(1.0, 0.6, 0.25, 0.95))
-				fx.ring(hero.position, 3.6, Color(1.0, 0.9, 0.6, 0.8), 0.5)
-				fx.pillar(hero.position + _skill_dir * 0.5, 9.0, 3.4, Color(0.75, 0.9, 1.0, 1.0), 0.55)
-				fx.pillar(hero.position + _skill_dir * 0.5, 10.0, 1.4, Color(1.0, 1.0, 1.0, 1.0), 0.42)
-				fx.dust(hero.position)
+				fx.split_slam(hero.position + _skill_dir * 0.5, _skill_dir)
+				_impact_cam(0.6, 4.0)
 				fx.ground_split(hero.position + _skill_dir * 0.8, _skill_dir, SPLIT_LEN_M, 0.25, Color(1.0, 0.55, 0.2))
 				hero.remove_child(_skill_area)
 				add_child(_skill_area)
@@ -917,13 +1048,9 @@ func _tick_skill(dt: float) -> void:
 			for hit_i in 2:
 				var at_t: float = [0.08, 0.3][hit_i]
 				if t >= at_t and _fire_once("w%d" % hit_i):
-					fx.swirl(hero.position, WHIRL_RADIUS, Color(1.0, 0.62, 0.82, 0.95))
-					fx.ring(hero.position, WHIRL_RADIUS, Color(1.0, 0.75, 0.3, 0.9))
-					fx.ring(hero.position, WHIRL_RADIUS * 1.35, Color(1.0, 0.95, 0.75, 0.7), 0.5)
-					fx.swirl(hero.position, WHIRL_RADIUS * 0.8, Color(1.0, 0.95, 0.7, 0.9), 0.4, 0.4)
-					fx.slash(hero.position + Vector3(0, 0.9, 0), hero.yaw + hit_i * PI * 0.5, Color(1.0, 0.8, 0.35, 0.9), 1.6, 0.0)
-					fx.slash(hero.position + Vector3(0, 0.9, 0), hero.yaw + PI + hit_i * PI * 0.5, Color(1.0, 0.8, 0.35, 0.9), 1.6, 0.0)
+					fx.whirl(hero.position, WHIRL_RADIUS, WHIRL_COLS if hit_i == 0 else WHIRL_COLS_2, 1.0, hit_i == 1)
 					_shake_cam(0.12, 0.25)
+					_impact_cam(0.3, 0.0)
 					_punch = maxf(_punch, 0.4)
 					sfx.play("swing_heavy", 1.1)
 					var cyl := CylinderShape3D.new()
@@ -954,7 +1081,7 @@ func _tick_skill(dt: float) -> void:
 					if f == null or f.dead or _flat(f.position - hero.position).length() > SUPPORT_RANGE:
 						continue
 					f.give_shield(SHIELD_HP, SHIELD_SECS)
-					fx.ring(f.position, 1.8, Color(0.5, 0.85, 1.0, 0.9))
+					fx.shield_up(f.position, 1.3 * f.size_k, Color(0.45, 0.8, 1.0))
 
 
 func _start_dodge(dir: Vector3) -> void:
@@ -968,6 +1095,7 @@ func _start_dodge(dir: Vector3) -> void:
 	hero.face(dir, 0.0, 0.0)
 	hero.act("dodge", DODGE_LEN)
 	fx.dust(hero.position)
+	fx.speed_line(hero.position + Vector3(0, 0.9, 0), dir, Color(0.75, 0.9, 1.0))
 	sfx.play("dash", 1.2)
 
 
@@ -1023,6 +1151,7 @@ func _apply_hit(src: FighterScript, dst: FighterScript, info: Dictionary) -> voi
 	var left: int = dst.absorb(amount)
 	if left < amount:
 		hud.pop(pop_at + Vector3(0, 0.35, 0), "ABSORB %d" % (amount - left), "absorbed")
+		fx.shock(dst.position, 1.25 * dst.size_k, Color(0.45, 0.8, 1.0), 0.3)
 		sfx.play("block", 1.4)
 	if left > 0:
 		_take(dst, left, src, crit)
@@ -1039,7 +1168,15 @@ func _apply_hit(src: FighterScript, dst: FighterScript, info: Dictionary) -> voi
 		tint = Color(0.6, 0.85, 1.0)
 	if dst.team == 0:
 		tint = Color(1.0, 0.35, 0.25)
-	fx.sparks(dst.chest_pos() - away.normalized() * 0.25 * dst.size_k, tint, amount, crit)
+	var contact: Vector3 = dst.chest_pos() - away.normalized() * 0.45 * dst.size_k   # on the body's surface, facing the blow
+	fx.sparks(contact, tint, amount, crit, away)
+	if heavy and src == hero:
+		fx.dust(dst.position, amount >= 140)
+	if crit:
+		fx.decal(fx.SCORCH, dst.position + away.normalized() * 0.3, 1.1 + 0.3 * dst.size_k, Color(0.12, 0.08, 0.07, 0.6), 3.0)
+	if src == hero or dst == hero:
+		var big: bool = crit or amount >= 140 or (src == enemy and heavy)
+		_impact_cam(0.42 if crit else (0.32 if big else 0.14), (1.6 if crit else (1.2 if big else 0.0)), away)
 	var stop: float = float(info.get("stop", 3.0 / 60.0))
 	if src == hero or dst == hero:
 		_hitstop = maxf(_hitstop, stop * (1.4 if crit else 1.0))
@@ -1080,7 +1217,10 @@ func _apply_hit(src: FighterScript, dst: FighterScript, info: Dictionary) -> voi
 	if dst.hp <= 0 and not dst.dead:
 		dst.die()
 		sfx.play("ko")
-		fx.ring(dst.position, 2.5 * dst.size_k, Color(1, 1, 1, 0.7))
+		fx.ko_burst(dst.position, dst.size_k, Color(1.0, 0.85, 0.45) if dst.team == 1 else Color(0.7, 0.85, 1.0))
+		if dst == enemy:
+			fx.coin_burst(dst.position + Vector3(0, 1.0 * dst.size_k, 0), 6)
+			_impact_cam(0.7, 2.5)
 		if dst == ally:
 			_update_players()
 
@@ -1105,8 +1245,9 @@ func _parry(src: FighterScript) -> void:
 	hud.pop(hero.chest_pos() + Vector3(0, 0.9, 0), "PARRY!", "parry")
 	hud.callout("PARRY!", Color(1.0, 0.92, 0.45))
 	sfx.play("parry")
-	fx.sparks(hero.chest_pos() + hero.forward() * 0.5, Color(1.0, 0.9, 0.5), 220, true)
-	fx.ring(hero.position, 2.2, Color(1.0, 0.9, 0.5, 0.95))
+	fx.clash(hero.chest_pos() + hero.forward() * 0.55 + Vector3(0, 0.15, 0))
+	fx.shock(hero.position, 2.2, Color(1.0, 0.88, 0.45), 0.4)
+	_impact_cam(0.4, 1.2)
 	hero.act("parry", 0.35, PARRY_HIT_AT)
 	hero.flash(0.6)
 	_hitstop = maxf(_hitstop, 0.16)
@@ -1246,18 +1387,21 @@ func _enemy_strike() -> void:
 		fx.telegraph_end(_tele, true)
 		_tele = null
 	if _enemy_kind == "swipe":
-		fx.slash(enemy.position + Vector3(0, 1.4, 0), _enemy_yaw, Color(1.0, 0.3, 0.25, 0.95), 2.0, 0.25)
-		for i in 6:
-			var a: float = _enemy_yaw + deg_to_rad(lerpf(SWIPE_HALF, -SWIPE_HALF, float(i) / 5.0))
+		fx.slash(enemy.position + Vector3(0, 1.4, 0), _enemy_yaw, BOSS_COLS, SWIPE_R * 0.95, 0.25, 0.32)
+		fx.trail_cut("boss")
+		for i in 9:
+			var a: float = _enemy_yaw + deg_to_rad(lerpf(SWIPE_HALF, -SWIPE_HALF, float(i) / 8.0))
 			var dir := Vector3(sin(a), 0, cos(a))
-			fx.trail_push("boss", enemy.position + Vector3(0, 1.5, 0) + dir * 0.8, enemy.position + Vector3(0, 1.2, 0) + dir * SWIPE_R, Color(1.0, 0.35, 0.3))
+			fx.trail_push("boss", enemy.position + Vector3(0, 1.5, 0) + dir * 0.9, enemy.position + Vector3(0, 1.2, 0) + dir * SWIPE_R, BOSS_COLS, (8 - i) * 0.012, 0.5)
+		_impact_cam(0.35, 1.2)
 		sfx.play("swing_heavy", 0.75)
 	else:
-		fx.ring(_enemy_at, SLAM_R * 1.2, Color(1.0, 0.45, 0.2, 0.95))
+		fx.shock(_enemy_at, SLAM_R * 1.1, Color(1.0, 0.45, 0.2), 0.45)
 		fx.sparks(_enemy_at + Vector3(0, 0.3, 0), Color(1.0, 0.55, 0.25), 200)
-		fx.scorch(_enemy_at, SLAM_R * 1.4)
-		fx.dust(_enemy_at)
+		fx.crack(_enemy_at, SLAM_R * 1.3)
+		fx.dust(_enemy_at, true)
 		_shake_cam(0.16, 0.3)
+		_impact_cam(0.55, 2.5)
 		sfx.play("slam", 0.85)
 	_enemy_state = "recover"
 	_enemy_t = 0.0
@@ -1533,6 +1677,7 @@ func status() -> Dictionary:
 func _shake_cam(amount: float, seconds: float) -> void:
 	_shake = maxf(_shake, amount)
 	_shake_t = maxf(_shake_t, seconds)
+	_trauma = minf(1.0, _trauma + amount * 1.6)
 
 
 func _follow_camera(dt: float) -> void:
@@ -1576,10 +1721,37 @@ func _apply_camera(dt: float) -> void:
 	if _shake_t > 0.0:
 		_shake_t -= dt
 		var s: float = _shake * clampf(_shake_t / 0.18, 0.0, 1.0)
-		pos += _cam_basis * Vector3(rng.randf_range(-s, s), rng.randf_range(-s, s), 0.0)
+		# cq 013: the view now moves by trauma (below). These two draws stay so the fight's
+		# seeded RNG advances exactly as before (crits and the boss's choices are unchanged).
+		var _legacy := Vector2(rng.randf_range(-s, s), rng.randf_range(-s, s))
 		if _shake_t <= 0.0:
 			_shake = 0.0
-	cam.transform = Transform3D(_cam_basis, pos)
+	var basis: Basis = _cam_basis
+	_shake_clock += dt
+	_trauma = maxf(0.0, _trauma - TRAUMA_DECAY * dt)
+	var tr2: float = _trauma * _trauma * (0.3 if _reduce_motion else 1.0)
+	if tr2 > 0.0:
+		var t: float = _shake_clock
+		var nx: float = sin(t * 47.0) * 0.6 + sin(t * 83.0 + 1.3) * 0.4
+		var ny: float = sin(t * 53.0 + 2.1) * 0.6 + sin(t * 97.0 + 0.4) * 0.4
+		var nr: float = sin(t * 41.0 + 0.7)
+		pos += _cam_basis * Vector3(nx, ny, 0.0) * SHAKE_MAX_M * tr2
+		basis = basis * Basis(Vector3(0, 0, 1), nr * SHAKE_MAX_ROLL * tr2)
+	# the kick: a short push of the view along the blow, springing back
+	_kick = _kick.lerp(Vector3.ZERO, 1.0 - exp(-dt * 12.0))
+	pos += _kick * (0.3 if _reduce_motion else 1.0)
+	_fov_kick = move_toward(_fov_kick, 0.0, FOV_KICK_DECAY * dt)
+	cam.fov = _base_fov - (0.0 if _reduce_motion else _fov_kick)
+	cam.transform = Transform3D(basis, pos)
+
+
+## Camera impact for a hit or a skill (cq 013): trauma 0..1 (shake), fov_kick degrees of
+## zoom punch, and an optional push along `dir` (the blow). Hit-stop is separate.
+func _impact_cam(trauma: float, fov_kick: float = 0.0, dir: Vector3 = Vector3.ZERO) -> void:
+	_trauma = minf(1.0, _trauma + trauma)
+	_fov_kick = minf(4.0, maxf(_fov_kick, fov_kick))
+	if dir != Vector3.ZERO:
+		_kick += _flat(dir).normalized() * 0.12 * trauma
 
 
 # ------------------------------------------------------------ hud sync
@@ -1635,6 +1807,7 @@ func _perf_sample(_dt: float) -> void:
 		return
 	_ft.append((now - _perf_last_us) / 1000.0)
 	_perf_last_us = now
+	_draws_peak = maxi(_draws_peak, int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)))
 	_dyn_res(now)
 	if now - _perf_win_us < 2000000:
 		return
@@ -1643,14 +1816,16 @@ func _perf_sample(_dt: float) -> void:
 	s.sort()
 	var n: int = s.size()
 	var pick := func(q: float) -> float: return s[clampi(int(ceil(q * n)) - 1, 0, n - 1)]
-	print("CQPERF fps=%d ft_p50=%.2f ft_p95=%.2f ft_p99=%.2f ft_max=%.2f n=%d mem_static_mb=%.1f vmem_mb=%.1f draws=%d objs=%d mode=%s gd_objects=%d gd_resources=%d gd_nodes=%d proc_ms=%.2f phys_ms=%.2f" % [
+	print("CQPERF fps=%d ft_p50=%.2f ft_p95=%.2f ft_p99=%.2f ft_max=%.2f n=%d mem_static_mb=%.1f vmem_mb=%.1f draws=%d objs=%d mode=%s gd_objects=%d gd_resources=%d gd_nodes=%d proc_ms=%.2f phys_ms=%.2f draws_peak=%d fx_pool=%d fx_peak_live=%d fx_peak_parts=%d" % [
 		int(Engine.get_frames_per_second()), pick.call(0.5), pick.call(0.95), pick.call(0.99), s[n - 1], n,
 		Performance.get_monitor(Performance.MEMORY_STATIC) / 1048576.0,
 		Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / 1048576.0,
 		int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)),
 		int(Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME)), mode, int(Performance.get_monitor(Performance.OBJECT_COUNT)), int(Performance.get_monitor(Performance.OBJECT_RESOURCE_COUNT)), int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT)),
-		Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0, Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0])
+		Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0, Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0,
+		_draws_peak, int(fx.budget()["pooled"]), int(fx.budget()["peak_live"]), int(fx.budget()["peak_parts"])])
 	_ft.clear()
+	_draws_peak = 0
 
 
 ## Dynamic 3D resolution: when real frames are slow (a software GPU, an old phone), the 3D is

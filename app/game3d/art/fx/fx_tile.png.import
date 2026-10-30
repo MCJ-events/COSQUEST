@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://blc2dipcsmp8c"
-path="res://.godot/imported/vfx_pillar.png-f58687086aef36fb98d2d7298b9664c1.ctex"
+uid="uid://44xlfxqm4lmt"
+path="res://.godot/imported/fx_tile.png-0d14a09a520e5b65f80c529661439012.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://art/fx/vfx_pillar.png"
-dest_files=["res://.godot/imported/vfx_pillar.png-f58687086aef36fb98d2d7298b9664c1.ctex"]
+source_file="res://art/fx/fx_tile.png"
+dest_files=["res://.godot/imported/fx_tile.png-0d14a09a520e5b65f80c529661439012.ctex"]
 
 [params]
 
@@ -23,7 +23,7 @@ compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
 compress/normal_map=0
 compress/channel_pack=0
-mipmaps/generate=false
+mipmaps/generate=true
 mipmaps/limit=-1
 roughness/mode=0
 roughness/src_normal=""

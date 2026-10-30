@@ -55,6 +55,10 @@ var _overlay_on: bool = false
 var _dome: MeshInstance3D
 var _dome_mat: ShaderMaterial
 var _dome_hit: float = 0.0
+var _dome_age: float = 0.0          # cq 013: pop-in when the barrier goes up
+var _shatter_t: float = -1.0        # cq 013: >= 0 while the dome breaks up
+## cq 013: the barrier broke or ran out (fx shards it)
+signal shield_ended(at: Vector3, radius: float)
 var _aura: MeshInstance3D
 
 # procedural body motion (stands in for clip root motion)
@@ -440,6 +444,10 @@ func give_shield(amount: int, seconds: float) -> void:
 	var r: float = 1.15 * size_k
 	_dome.scale = Vector3(r, HEIGHT * size_k * 0.75, r)
 	_dome.visible = true
+	_dome_age = 0.0
+	_shatter_t = -1.0
+	_dome_mat.set_shader_parameter("shatter", 0.0)
+	_dome_mat.set_shader_parameter("tile", preload("res://art/fx/fx_tile.png"))
 
 
 ## Damage through the barrier first. Returns what is left for the HP.
@@ -561,12 +569,28 @@ func tick_visual(dt: float) -> void:
 	_set_overlay(_flash > 0.0)
 	if _dome != null:
 		var on: bool = shield_t > 0.0 and not dead
-		_dome.visible = on
+		if not on and _dome.visible and _shatter_t < 0.0:
+			_shatter_t = 0.0
+			shield_ended.emit(global_position, 1.15 * size_k)
+		if _shatter_t >= 0.0:
+			# the dome breaks up cell by cell over 0.3 s (fx throws the shards)
+			_shatter_t += dt
+			_dome_mat.set_shader_parameter("shatter", clampf(_shatter_t / 0.3, 0.0, 1.0))
+			_dome_mat.set_shader_parameter("hit", 1.0)
+			if _shatter_t >= 0.3:
+				_shatter_t = -1.0
+				_dome.visible = false
+		else:
+			_dome.visible = on
 		if on:
+			_dome_age += dt
 			_dome_hit = maxf(0.0, _dome_hit - dt * 4.0)
 			var fade: float = clampf(shield_t / 0.4, 0.0, 1.0)
-			_dome_mat.set_shader_parameter("alpha", fade)
-			_dome_mat.set_shader_parameter("hit", _dome_hit)
+			_dome_mat.set_shader_parameter("alpha", maxf(fade, 0.6))
+			_dome_mat.set_shader_parameter("hit", _dome_hit + maxf(0.0, 1.0 - _dome_age / 0.25))
+			var pop: float = 1.0 + 0.12 * sin(clampf(_dome_age / 0.22, 0.0, 1.0) * PI) - 0.25 * maxf(0.0, 1.0 - _dome_age / 0.1)
+			var r: float = 1.15 * size_k
+			_dome.scale = Vector3(r, HEIGHT * size_k * 0.75, r) * pop
 	if _aura != null:
 		_aura.visible = buff_t > 0.0 and not dead
 		if _aura.visible:

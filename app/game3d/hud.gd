@@ -19,6 +19,7 @@ const T_STICK_BASE := preload("res://art/hud/stick_base.png")
 const T_STICK_KNOB := preload("res://art/hud/stick_knob.png")
 const T_BTN_BASE := preload("res://art/hud/btn_base.png")
 const T_DISC := preload("res://art/hud/disc.png")   # a white disc (cq 011), tinted per use
+const T_FX_ATLAS := preload("res://art/fx/fx_atlas.png")   # cq 013: the crit flash behind a number
 const T_BTN_RING := preload("res://art/hud/btn_ring.png")
 const T_BTN_ULT := preload("res://art/hud/btn_ring_ult.png")
 const T_ATTACK := preload("res://art/hud/icon_attack.png")
@@ -355,7 +356,9 @@ func pop(world: Vector3, text: String, style: String) -> void:
 		_pops.remove_at(0)
 	# numbers fan out to alternate sides of the head so a combo does not stack on one spot
 	_pop_side = -_pop_side
-	_pops.append({"w": world, "t": 0.0, "s": text, "style": style, "dx": _pop_side * randf_range(30.0, 70.0), "dy": randf_range(-10.0, 14.0)})
+	# cq 013: a slight random tilt per number (more on a crit), cosmetic randf only
+	var tilt: float = randf_range(0.06, 0.2 if style == "crit" else 0.13) * (-_pop_side)
+	_pops.append({"w": world, "t": 0.0, "s": text, "style": style, "dx": _pop_side * randf_range(30.0, 70.0), "dy": randf_range(-10.0, 14.0), "rot": tilt})
 
 
 func callout(text: String, col: Color) -> void:
@@ -442,8 +445,8 @@ func _text(centre: Vector2, s: String, fs: int, col: Color, outline: int = 0, oc
 
 
 ## Text scaled by a draw transform, so animated sizes do not create new glyph caches per size.
-func _text_scaled(centre: Vector2, s: String, fs: int, col: Color, outline: int, k: float, ocol: Color = Color(0, 0, 0, 0)) -> void:
-	_queue_text(Vector2(-400.0, fs * 0.36), s, HORIZONTAL_ALIGNMENT_CENTER, 800.0, fs, col, outline, Transform2D(0.0, Vector2(k, k), 0.0, centre), ocol)
+func _text_scaled(centre: Vector2, s: String, fs: int, col: Color, outline: int, k: float, ocol: Color = Color(0, 0, 0, 0), rot: float = 0.0) -> void:
+	_queue_text(Vector2(-400.0, fs * 0.36), s, HORIZONTAL_ALIGNMENT_CENTER, 800.0, fs, col, outline, Transform2D(rot, Vector2(k, k), 0.0, centre), ocol)
 
 
 func _text_left(pos: Vector2, s: String, fs: int, col: Color, outline: int = 0) -> void:
@@ -615,10 +618,14 @@ func _draw_pops() -> void:
 			continue
 		var t: float = d["t"]
 		var style: String = d["style"]
-		var rise: float = 58.0 if style != "crit" else 44.0
-		var p: Vector2 = cam.unproject_position(w) + Vector2(float(d["dx"]) * minf(1.0, t / 0.12 + 0.4), float(d.get("dy", 0.0)) - 6.0 - rise * ease(t / 0.95, 0.4))
-		var a: float = 1.0 - clampf((t - 0.6) / 0.35, 0.0, 1.0)
-		var punch: float = 1.0 + 0.6 * maxf(0.0, 1.0 - t / 0.1)
+		# cq 013 punch: the number flies out on a little arc (fast up, easing over), pops in
+		# past full size and settles (scale overshoot), sits at a slight tilt, and fades fast
+		var v0: float = 230.0 if style != "crit" else 170.0
+		var arc_y: float = v0 * t - 150.0 * t * t
+		var p: Vector2 = cam.unproject_position(w) + Vector2(float(d["dx"]) * minf(1.0, t / 0.18 + 0.3), float(d.get("dy", 0.0)) - 6.0 - arc_y)
+		var a: float = 1.0 - clampf((t - 0.52) / 0.28, 0.0, 1.0)
+		var peak: float = 1.75 if style == "crit" else (1.5 if style == "heavy" else 1.38)
+		var punch: float = _pop_punch(t, peak) * lerpf(1.0, 0.82, clampf((t - 0.52) / 0.28, 0.0, 1.0))
 		# sized like the reference's numbers: a jab still reads at phone size
 		var fs: int = 42
 		var col: Color = Color(1.0, 0.97, 0.86, a)
@@ -635,7 +642,12 @@ func _draw_pops() -> void:
 				col = Color(1.0, 0.42, 0.12, a)
 				ocol = Color(0.3, 0.02, 0.06, a)
 				ol = 12
-				punch = 1.0 + 1.0 * maxf(0.0, 1.0 - t / 0.12)
+				# a hot flash behind a crit for its first moments
+				if t < 0.26:
+					var fk: float = 1.0 - t / 0.26
+					var fsz: float = 230.0 * (0.6 + 0.6 * ease(t / 0.26, 0.4))
+					draw_texture_rect_region(T_FX_ATLAS, Rect2(p - Vector2(fsz, fsz) * 0.5, Vector2(fsz, fsz)), Rect2(512, 0, 256, 256), Color(1.0, 0.85, 0.45, 0.85 * fk))
+					draw_texture_rect_region(T_FX_ATLAS, Rect2(p - Vector2(fsz, fsz) * 0.3, Vector2(fsz, fsz) * 0.6), Rect2(0, 0, 256, 256), Color(1.0, 0.95, 0.8, 0.7 * fk))
 			"blocked":
 				fs = 26
 				col = Color(0.7, 0.8, 0.95, a)
@@ -663,7 +675,19 @@ func _draw_pops() -> void:
 			"ally":
 				fs = 28
 				col = Color(0.7, 0.92, 1.0, a)
-		_text_scaled(p, str(d["s"]), fs, col, ol, punch, ocol)
+		_text_scaled(p, str(d["s"]), fs, col, ol, punch, ocol, float(d.get("rot", 0.0)))
+
+
+## cq 013: the number's scale over its life: pops in from small to `peak` in 0.06 s, drops
+## just under full size, settles at 1.
+static func _pop_punch(t: float, peak: float) -> float:
+	if t < 0.06:
+		return lerpf(0.45, peak, 1.0 - pow(1.0 - t / 0.06, 2.0))
+	if t < 0.16:
+		return lerpf(peak, 0.93, smoothstep(0.0, 1.0, (t - 0.06) / 0.1))
+	if t < 0.24:
+		return lerpf(0.93, 1.0, (t - 0.16) / 0.08)
+	return 1.0
 
 
 # ------------------------------------------------------------ top bar and minimap
