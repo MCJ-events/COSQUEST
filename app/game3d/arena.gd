@@ -25,6 +25,7 @@ var ground: MeshInstance3D
 var plaza: MeshInstance3D
 var _dressing: Node3D
 var _scenes: Dictionary = {}
+var map_blocks: Array[Rect2] = []   # building footprints (x, z in metres) for the minimap
 
 
 func build(cfg: Dictionary) -> void:
@@ -177,6 +178,8 @@ func _build_street() -> void:
 			var h: Node3D = _piece(n, SHOP_W, Vector3(x, 0, z), 90.0 if side == 0 else -90.0)
 			if h != null:
 				_dress_front(h, sx, i * 2 + side)
+				var wb: AABB = h.transform * _aabb(h)
+				map_blocks.append(Rect2(wb.position.x, wb.position.z, wb.size.x, wb.size.z))
 		z -= SHOP_W + 0.4
 		i += 1
 	# kerbs: a slightly raised strip in front of the shops

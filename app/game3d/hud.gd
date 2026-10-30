@@ -61,7 +61,10 @@ const GUARD_FROM_ATTACK: Vector2 = Vector2(-10.0, -165.0) # unused when the arc 
 const REAL_SLOT: int = 2
 const MAP_R: float = 76.0
 const MAP_CENTRE_FROM_TR: Vector2 = Vector2(96.0, 118.0)
-const MAP_METRES: float = 30.0
+var map_blocks: Array[Rect2] = []          # building footprints (x, z metres), from the arena
+var _map_disc: PackedVector2Array = PackedVector2Array()
+var _map_disc_at: Vector2 = Vector2(-1, -1)
+const MAP_METRES: float = 20.0   # across the disc
 
 const C_HERO: Color = Color(0.42, 0.93, 0.38)
 const C_ALLY: Color = Color(0.36, 0.86, 0.98)
@@ -689,33 +692,62 @@ func _draw_top() -> void:
 			_text_left(hr.position + Vector2(146, 54), "ATK+", 14, Color(1.0, 0.8, 0.3))
 
 
+## The minimap, as on the reference: centred on the hero, the street and the blocks round it
+## (clipped to the disc), the hero's view cone, the three fighters with their facing.
 func _draw_minimap() -> void:
 	var c: Vector2 = _map_centre()
-	draw_circle(c, MAP_R, Color(0.13, 0.11, 0.22, 0.88))
-	var k: float = (MAP_R * 2.0 / 0.95) / MAP_METRES
-	# the street running up-screen and the plaza ring
-	draw_rect(Rect2(c + Vector2(-10.0 * k * 0.25, -MAP_R + 4), Vector2(5.0 * k * 0.25 * 2.0, MAP_R * 2 - 8)), Color(0.32, 0.3, 0.42, 0.7))
-	draw_arc(c, minf(12.0 * k, MAP_R - 4), 0, TAU, 40, Color(1, 1, 1, 0.22), 2.0)
-	draw_circle(c, 3.0 * k, Color(0.55, 0.45, 0.4, 0.45))
+	var k: float = (MAP_R * 2.0) / MAP_METRES
+	var me: Vector2 = Vector2.ZERO
 	for m: Dictionary in map_points:
-		var v: Vector2 = (m["p"] as Vector2) * k   # metres, already turned so up = camera forward
+		if m["kind"] == "hero":
+			me = m["p"]
+	if _map_disc.is_empty() or _map_disc_at != c:
+		_map_disc_at = c
+		_map_disc = PackedVector2Array()
+		for j in 40:
+			_map_disc.append(c + Vector2.from_angle(TAU * j / 40.0) * (MAP_R - 1.0))
+	draw_circle(c, MAP_R, Color(0.43, 0.41, 0.56, 0.92))   # the street (and anything not built)
+	var reach: float = MAP_R / k + 8.0
+	for r: Rect2 in map_blocks:
+		if absf(r.get_center().y - me.y) > reach + r.size.y or absf(r.get_center().x - me.x) > reach + r.size.x:
+			continue
+		var q := PackedVector2Array([c + (r.position - me) * k, c + (Vector2(r.end.x, r.position.y) - me) * k,
+			c + (r.end - me) * k, c + (Vector2(r.position.x, r.end.y) - me) * k])
+		for poly: PackedVector2Array in Geometry2D.intersect_polygons(q, _map_disc):
+			draw_colored_polygon(poly, Color(0.14, 0.12, 0.24, 0.96))
+	# the medallion where the fight began
+	var mc: Vector2 = c + (Vector2.ZERO - me) * k
+	if mc.distance_to(c) < MAP_R - 3.6 * k:
+		draw_circle(mc, 3.6 * k, Color(0.62, 0.5, 0.48, 0.55))
+		draw_arc(mc, 3.6 * k, 0, TAU, 28, Color(1, 0.85, 0.7, 0.45), 1.5)
+	for m: Dictionary in map_points:
+		var v: Vector2 = ((m["p"] as Vector2) - me) * k
 		v = v.limit_length(MAP_R - 9)
 		var kind: String = m["kind"]
 		var col: Color = C_HERO
-		var r: float = 7.0
+		var r: float = 5.0
 		if kind == "ally":
 			col = C_ALLY
-			r = 6.0
+			r = 4.5
 		elif kind == "enemy":
 			col = Color(0.95, 0.25, 0.22)
-			r = 9.0
+			r = 6.5
 		var p: Vector2 = c + v
 		var f: Vector2 = m.get("facing", Vector2.ZERO)
+		if kind == "hero":
+			# the view cone: what the camera sees (up the screen), glowing like the reference's
+			var cone := PackedVector2Array([p])
+			var cols := PackedColorArray([Color(0.6, 0.97, 1.0, 0.85)])
+			for j in 9:
+				var a: float = -PI * 0.5 + deg_to_rad(-34.0 + 68.0 * j / 8.0)
+				cone.append(p + Vector2.from_angle(a) * 46.0)
+				cols.append(Color(0.55, 0.95, 1.0, 0.0))
+			draw_polygon(cone, cols)
 		if f != Vector2.ZERO:
 			# the facing wedge
 			var fn: Vector2 = f.normalized()
 			var side: Vector2 = Vector2(-fn.y, fn.x)
-			draw_colored_polygon(PackedVector2Array([p + fn * (r + 9.0), p + side * (r * 0.8), p - side * (r * 0.8)]), Color(col.r, col.g, col.b, 0.85))
+			draw_colored_polygon(PackedVector2Array([p + fn * (r + 8.0), p + side * (r * 0.85), p - side * (r * 0.85)]), Color(col.r, col.g, col.b, 0.9))
 		draw_circle(p, r + 2.5, Color(0.02, 0.02, 0.05, 0.85))
 		draw_circle(p, r, col)
 		draw_circle(p + Vector2(-r * 0.3, -r * 0.3), r * 0.35, Color(1, 1, 1, 0.45))
