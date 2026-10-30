@@ -823,7 +823,7 @@ func _tick_skill(dt: float) -> void:
 			for hit_i in 2:
 				var at_t: float = [0.08, 0.3][hit_i]
 				if t >= at_t and _fire_once("w%d" % hit_i):
-					fx.swirl(hero.position, WHIRL_RADIUS, Color(1.0, 0.8, 0.4, 0.95))
+					fx.swirl(hero.position, WHIRL_RADIUS, Color(1.0, 0.62, 0.82, 0.95))
 					fx.ring(hero.position, WHIRL_RADIUS, Color(1.0, 0.75, 0.3, 0.9))
 					fx.ring(hero.position, WHIRL_RADIUS * 1.35, Color(1.0, 0.95, 0.75, 0.7), 0.5)
 					fx.swirl(hero.position, WHIRL_RADIUS * 0.8, Color(1.0, 0.95, 0.7, 0.9), 0.4, 0.4)

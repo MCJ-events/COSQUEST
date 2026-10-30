@@ -62,7 +62,9 @@ func _ready() -> void:
 		rm.blend_mode = BaseMaterial3D.BLEND_MODE_MIX   # reads on the light paving
 		_rings.append(_make_mi(_ring_mesh, rm))
 	for i in 4:
-		_bands.append(_make_mi(_band_mesh, _additive(T_SWIRL)))
+		var bm := _additive(T_SWIRL)
+		bm.blend_mode = BaseMaterial3D.BLEND_MODE_MIX   # added, the swirl washes out on the light paving
+		_bands.append(_make_mi(_band_mesh, bm))
 	for i in 8:
 		_flares.append(_make_mi(_quad(1.0), _additive(T_FLARE, true)))
 	for i in 6:
