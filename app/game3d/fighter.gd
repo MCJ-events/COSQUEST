@@ -184,7 +184,7 @@ static func _model_aabb(root: Node3D) -> AABB:
 ## column-major). The socket is a BoneAttachment3D named hand_r / hand_l on
 ## the hand bone, so the idle, walk and attack motion carry the weapon.
 ## Returns "" or why it could not.
-func attach_weapon(weapon: Node3D, att: Dictionary, side: String, cls: String) -> String:
+func hold_weapon(weapon: Node3D, att: Dictionary, side: String, cls: String) -> String:
 	if model == null or model_info != "glb":
 		weapon.free()
 		return "no model"

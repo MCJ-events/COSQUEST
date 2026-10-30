@@ -13,7 +13,7 @@ Commando, Blade, Killua and P-Mon are out of scope and have no entry: they are n
 | who holds what, the catalogue link, placeholders, the bag's Items list (`bagItems`), map drops (`dropShown`) | `app/features/game3d/held.ts` (pure), `app/features/game3d/heldDevice.ts` (files) |
 | the catalogue link against a LOCAL stack, both flag states | `app/features/game3d/__tests__/catalogue.local.test.ts` |
 | headless fight plans for both flag states | `e2e/forge/flag_fight_plans.ts` |
-| Godot socket | `app/game3d/fighter.gd` `attach_weapon()`, loaded by `app/game3d/fight.gd` `_queue_weapons()` |
+| Godot socket | `app/game3d/fighter.gd` `hold_weapon()`, loaded by `app/game3d/fight.gd` `_queue_weapons()` |
 | class poses (hand-tuned) | `app/game3d/tools/weapons/grips.json` |
 | the weapon set (sources, sizes, licences) | `app/game3d/tools/weapons/weapons.json` |
 | pack builder (Blender 4.2, CPU) | `app/game3d/tools/weapons/build_weapons.py` |
@@ -99,7 +99,7 @@ A shield is an off-hand item: with a shield, the main hand holds the character's
 "hero_weapon": {"glb": "/data/.../forge_warhammer.glb", "class": "hammer", "bone": "RightHand", "matrix": [16 floats]}
 ```
 
-When `bone`/`matrix` are missing it looks them up in `res://data/attach.json` by `character` (or `<role>_key`) and `class`. Weapons load after the three characters (GLTFDocument at run time, one per frame on the loader thread). `fighter.gd attach_weapon()` adds a `BoneAttachment3D` named `hand_r` / `hand_l` on the hand bone (or a plain node on the model for a static model) and under it `weapon_r` / `weapon_l` with the matrix. `fighter.grip_point(side)` gives the grip in world space (for trails and hit effects).
+When `bone`/`matrix` are missing it looks them up in `res://data/attach.json` by `character` (or `<role>_key`) and `class`. Weapons load after the three characters (GLTFDocument at run time, one per frame on the loader thread). `fighter.gd hold_weapon()` adds a `BoneAttachment3D` named `hand_r` / `hand_l` on the hand bone (or a plain node on the model for a static model) and under it `weapon_r` / `weapon_l` with the matrix. `fighter.grip_point(side)` gives the grip in world space (for trails and hit effects).
 
 For the animation task: new clips must keep the bone names `RightHand` / `LeftHand`. If a clip changes the hand's orientation a lot (a two-handed overhead swing), the weapon simply follows the right hand; a second-hand IK target can use `weapon_r`'s transform. The idle-fitted matrices stay valid as long as the idle clip's first frame is not changed; if it is, rerun `make_attach.ts`.
 
@@ -126,6 +126,13 @@ node e2e/forge/flag_fight_plans.ts --base http://127.0.0.1:47699 --dl <dir> --ou
 ```
 
 It checks: the placeholder is recognised and hidden; a new player's bag is the starter set; every bundled weapon embeds its texture and is byte-identical to the catalogue's LOD0; each cast character's file from the server takes its weapon under the hand bone with the manifest's matrix; a claimed and equipped real weapon is held with the link on and not with it off; with the server's forge_world off the Forge routes answer 404 and the bag is as before.
+
+## Merging with game-quality/combat
+
+A local trial merge of this branch with `game-quality/combat` (7e60689) builds and renders (headless fight timeline with the weapons in hand at the combat camera: cq 010 evidence `preview_with_combat/`). Three files conflict; the resolution used:
+- `app/game3d/fighter.gd`: keep both blocks of fields (this branch's `weapons` dictionary and combat's combat state); in `_clear_model()` add `weapons = {}`; keep this branch's `hold_weapon()` and `grip_point()` and combat's "actions" section (combat replaces the old `play()` / `lunge()` / `spin()` with its CombatAnimator, so drop those). Combat also has an `attach_weapon(node, reach)` on `anim.hand_r` that nothing calls; this branch's entry point is `hold_weapon()` (renamed from `attach_weapon` so the two do not clash). A follow-up can call combat's `set_reach()` with the held weapon's length.
+- `app/game3d/export_presets.cfg`: `include_filter="data/*.json"` (the attach manifest must ship) and combat's `exclude_filter="tests/*, tools/*"`.
+- `docs/game3d/LICENSES.md`: both files' sections, combat's first, then "Weapons (cq 234)".
 
 ## Rebuild everything
 
