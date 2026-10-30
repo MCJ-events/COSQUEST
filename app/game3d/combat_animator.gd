@@ -1,0 +1,255 @@
+extends RefCounted
+## CombatAnimator (cq 233): one per fighter. The fight asks for a named state; if the
+## loaded GLB has a clip for it, the clip plays (time-stretched to the gameplay length, so
+## the hit timings never depend on the art); if not, a procedural pose on the skeleton
+## (pose_layer.gd) and the body motion in fighter.gd stand in. See docs/game3d/COMBAT.md.
+##
+## States: idle walk run attack_1 attack_2 attack_3 heavy hit guard parry dodge
+##         skill_charge skill_split skill_whirl skill_rally skill_shield death victory
+##
+## A clip is found by its exact state name first ("attack_1"), then by the aliases below,
+## case-insensitive, ignoring "|" library prefixes and separators. To add a clip for a
+## character, name the action in the GLB after the state (Blender action "attack_1").
+
+const PoseLayer := preload("res://pose_layer.gd")
+
+const STATES: Array[String] = ["idle", "walk", "run", "attack_1", "attack_2", "attack_3", "heavy",
+	"hit", "guard", "parry", "dodge", "skill_charge", "skill_split", "skill_whirl", "skill_rally",
+	"skill_shield", "death", "victory"]
+const LOOPING: Array[String] = ["idle", "walk", "run", "guard"]
+const HOLD_LAST: Array[String] = ["death", "victory"]
+
+const ALIASES: Dictionary = {
+	"idle": ["idle", "idle_loop", "breathing_idle"],
+	"walk": ["walk", "walking", "walk_loop", "walk_forward"],
+	"run": ["run", "running", "run_loop", "sprint", "jog"],
+	"attack_1": ["attack1", "attack_a", "slash1", "sword_attack", "sword_slash", "punch_jab", "melee_attack"],
+	"attack_2": ["attack2", "attack_b", "slash2", "sword_attack2", "punch_cross"],
+	"attack_3": ["attack3", "attack_c", "slash3", "heavy_attack", "sword_heavy"],
+	"heavy": ["heavy", "heavy_attack", "attack_heavy", "smash", "slam"],
+	"hit": ["hit", "hit_react", "hitreact", "hurt", "take_damage", "damage"],
+	"guard": ["guard", "block", "block_idle", "defend", "shield_block"],
+	"parry": ["parry", "block_hit", "deflect", "counter"],
+	"dodge": ["dodge", "roll", "dodge_roll", "evade"],
+	"skill_charge": ["charge", "dash", "dash_attack", "lunge"],
+	"skill_split": ["split", "ground_slam", "slam", "jump_attack"],
+	"skill_whirl": ["whirl", "spin_attack", "spin", "whirlwind"],
+	"skill_rally": ["rally", "buff", "cheer", "shout", "cast"],
+	"skill_shield": ["shield", "barrier", "cast_shield", "spell"],
+	"death": ["death", "die", "dying", "defeat", "ko"],
+	"victory": ["victory", "celebrate", "win", "cheer", "dance"],
+}
+
+# Procedural stand-ins: keyframes of [phase 0..1, {channel: degrees}] (pose_layer.gd channels).
+# A missing channel is 0 (the clip's own pose). The phase runs over the state's game length.
+const POSES: Dictionary = {
+	"attack_1": [[0.0, {}], [0.16, {"spine_yaw": -32, "r_side": 80, "r_fwd": -15, "r_bend": 35}],
+		[0.42, {"spine_yaw": 34, "spine_lean": 10, "r_side": 70, "r_fwd": 85, "r_bend": 5}], [1.0, {}]],
+	"attack_2": [[0.0, {}], [0.16, {"spine_yaw": 30, "r_fwd": 70, "r_side": 5, "r_bend": 75}],
+		[0.42, {"spine_yaw": -36, "spine_lean": 8, "r_side": 85, "r_fwd": 35, "r_bend": 0}], [1.0, {}]],
+	"attack_3": [[0.0, {}], [0.28, {"spine_lean": -16, "r_fwd": 165, "l_fwd": 150, "r_bend": 30, "l_bend": 30}],
+		[0.5, {"spine_lean": 32, "r_fwd": 55, "l_fwd": 50, "r_bend": 5, "l_bend": 5}],
+		[0.8, {"spine_lean": 22, "r_fwd": 45, "l_fwd": 40}], [1.0, {}]],
+	"heavy": [[0.0, {}], [0.3, {"spine_lean": -16, "r_fwd": 165, "l_fwd": 150, "r_bend": 30, "l_bend": 30}],
+		[0.52, {"spine_lean": 32, "r_fwd": 55, "l_fwd": 50}], [1.0, {}]],
+	"hit": [[0.0, {}], [0.18, {"spine_lean": -24, "spine_yaw": 12, "r_side": 28, "l_side": 28, "r_bend": 30, "l_bend": 30}], [1.0, {}]],
+	"guard": [[0.0, {"r_fwd": 78, "r_bend": 105, "l_fwd": 78, "l_bend": 105, "spine_lean": 12}]],
+	"parry": [[0.0, {"r_fwd": 78, "r_bend": 105, "l_fwd": 78, "l_bend": 105}], [0.25, {"r_fwd": 100, "r_side": 45, "r_bend": 20, "spine_yaw": -22}],
+		[0.6, {"r_fwd": 55, "r_side": 75, "spine_yaw": 24}], [1.0, {}]],
+	"dodge": [[0.0, {}], [0.2, {"spine_lean": 50, "r_fwd": 45, "l_fwd": 45, "r_bend": 70, "l_bend": 70}],
+		[0.8, {"spine_lean": 40, "r_fwd": 35, "l_fwd": 35, "r_bend": 60, "l_bend": 60}], [1.0, {}]],
+	"skill_charge": [[0.0, {}], [0.12, {"spine_lean": 35, "r_fwd": -45, "r_side": 25, "l_fwd": -35}],
+		[0.7, {"spine_lean": 30, "r_fwd": 70, "r_side": 40, "l_fwd": -30}], [1.0, {}]],
+	"skill_split": [[0.0, {}], [0.3, {"spine_lean": -22, "r_fwd": 175, "l_fwd": 175, "r_bend": 15, "l_bend": 15}],
+		[0.48, {"spine_lean": 48, "r_fwd": 35, "l_fwd": 35}], [0.85, {"spine_lean": 40, "r_fwd": 30, "l_fwd": 30}], [1.0, {}]],
+	"skill_whirl": [[0.0, {}], [0.12, {"r_side": 88, "l_side": 65, "spine_lean": 10}], [0.85, {"r_side": 88, "l_side": 65, "spine_lean": 10}], [1.0, {}]],
+	"skill_rally": [[0.0, {}], [0.25, {"spine_lean": -12, "l_side": 165, "l_bend": 10, "r_side": 35}],
+		[0.8, {"spine_lean": -10, "l_side": 165, "l_bend": 10, "r_side": 35}], [1.0, {}]],
+	"skill_shield": [[0.0, {}], [0.2, {"r_fwd": 85, "r_bend": 95, "l_fwd": 85, "l_bend": 95, "spine_lean": 10}],
+		[0.8, {"r_fwd": 85, "r_side": 30, "l_fwd": 85, "l_side": 30, "spine_lean": -8}], [1.0, {}]],
+	"death": [[0.0, {}], [0.3, {"spine_lean": -28, "r_side": 55, "l_side": 55}], [1.0, {"spine_lean": -28, "r_side": 70, "l_side": 70}]],
+	"victory": [[0.0, {}], [0.25, {"r_fwd": 170, "r_bend": 10, "spine_lean": -8}], [1.0, {"r_fwd": 170, "r_bend": 10, "spine_lean": -8}]],
+}
+
+var player: AnimationPlayer
+var skeleton: Skeleton3D
+var layer: PoseLayer
+var clips: Dictionary = {}       # state -> clip name in the player
+var state: String = "idle"
+var t: float = 0.0
+var length: float = 0.0          # game length of the current one-shot state (0 = looping)
+var frozen: bool = false
+var walk_rate: float = 1.0
+var hand_r: Node3D               # the right-hand attach point (BoneAttachment3D or a stand-in)
+
+
+## Finds the AnimationPlayer and Skeleton3D under `model`, maps clips to states, adds the
+## pose layer and the hand_r attach point. `body` hosts the stand-in hand if there is no
+## skeleton. Returns {clips: {state: clip}, procedural: [states], bones: n, hand: "bone"|"standin"}.
+func bind(model: Node3D, body: Node3D) -> Dictionary:
+	clips.clear()
+	player = null
+	skeleton = null
+	layer = null
+	var players: Array[Node] = model.find_children("*", "AnimationPlayer", true, false)
+	if players.size() > 0:
+		player = players[0] as AnimationPlayer
+		var names: PackedStringArray = player.get_animation_list()
+		for st: String in STATES:
+			var c: String = _match(names, st)
+			if c != "":
+				clips[st] = c
+		for st: String in clips:
+			var a: Animation = player.get_animation(clips[st])
+			if a != null:
+				a.loop_mode = Animation.LOOP_LINEAR if st in LOOPING else Animation.LOOP_NONE
+	var skels: Array[Node] = model.find_children("*", "Skeleton3D", true, false)
+	var nb: int = 0
+	if skels.size() > 0:
+		skeleton = skels[0] as Skeleton3D
+		layer = PoseLayer.new()
+		layer.name = "CombatPose"
+		layer.frame_root = model
+		skeleton.add_child(layer)
+		nb = layer.bind_bones()
+	hand_r = _make_hand(body)
+	var proc: Array[String] = []
+	for st: String in STATES:
+		if not clips.has(st):
+			proc.append(st)
+	return {"clips": clips.duplicate(), "procedural": proc, "bones": nb, "hand": str(hand_r.get_meta("kind", "standin"))}
+
+
+static func _norm(s: String) -> String:
+	var n: String = s.to_lower()
+	if n.contains("|"):
+		n = n.get_slice("|", n.get_slice_count("|") - 1)
+	return n.replace(" ", "_").replace("-", "_").replace(".", "_")
+
+
+func _match(names: PackedStringArray, st: String) -> String:
+	for n: String in names:
+		if _norm(n) == st:
+			return n
+	for alias: String in ALIASES.get(st, []):
+		for n: String in names:
+			if _norm(n) == alias:
+				return n
+	if st in ["idle", "walk", "victory"]:   # the 056/060 packs name them loosely ("celebrate", "Idle_A")
+		for alias: String in ALIASES.get(st, []):
+			for n: String in names:
+				if _norm(n).contains(alias):
+					return n
+	return ""
+
+
+const HAND_BONES: Array = ["RightHand", "hand_r", "hand.R", "Hand_R", "RightHandMiddle1", "mixamorig:RightHand"]
+
+
+func _make_hand(body: Node3D) -> Node3D:
+	if skeleton != null:
+		var b: int = PoseLayer.find_bone(skeleton, HAND_BONES)
+		if b >= 0:
+			var ba := BoneAttachment3D.new()
+			ba.name = "hand_r"
+			ba.bone_name = skeleton.get_bone_name(b)
+			ba.set_meta("kind", "bone")
+			skeleton.add_child(ba)
+			return ba
+	var n := Node3D.new()
+	n.name = "hand_r"
+	n.position = Vector3(-0.38, 1.0, 0.18)   # its right side (+X is its left), waist high, a little forward
+	n.set_meta("kind", "standin")
+	body.add_child(n)
+	return n
+
+
+func has_clip(st: String) -> bool:
+	return clips.has(st)
+
+
+## Plays a state. `game_len` > 0 makes it a one-shot of that many seconds (a clip is
+## time-stretched to fit); 0 makes it a loop. Returns true when a clip plays it.
+func play(st: String, game_len: float = 0.0, blend: float = 0.08) -> bool:
+	var restart: bool = game_len > 0.0
+	if st == state and not restart:
+		return clips.has(st)
+	state = st
+	t = 0.0
+	length = game_len
+	if player == null or not clips.has(st):
+		# no clip: idle/walk still come from the clip map when it has them
+		return false
+	var clip: String = clips[st]
+	var a: Animation = player.get_animation(clip)
+	var speed: float = 1.0
+	if restart and a != null and a.length > 0.01:
+		speed = a.length / game_len
+	player.play(clip, blend, speed)
+	if restart:
+		player.seek(0.0, true)
+	return true
+
+
+## Locomotion and the procedural pose. `busy` = a one-shot owns the body.
+func update(dt: float, speed_now: float, dead: bool) -> void:
+	if not frozen:
+		t += dt
+	if player != null:
+		var base: float = 1.0
+		if state in ["walk", "run"]:
+			base = walk_rate
+		player.speed_scale = 0.0 if frozen else base
+	if length > 0.0 and t >= length and not (state in HOLD_LAST):
+		length = 0.0
+		state = "_"
+	if length <= 0.0 and not dead and not (state in HOLD_LAST) and state != "guard":
+		var want: String = "idle"
+		if speed_now > 3.2:
+			want = "run" if clips.has("run") else "walk"
+		elif speed_now > 0.2:
+			want = "walk"
+		walk_rate = clampf(speed_now / 2.6, 0.8, 1.9)
+		if want != state:
+			if not play(want):
+				# no clip for it: fall back to whichever locomotion clip exists
+				if player != null:
+					var alt: String = "walk" if want == "run" else want
+					if clips.has(alt):
+						player.play(clips[alt], 0.15)
+				state = want
+	if layer != null:
+		layer.pose = _pose_now() if not clips.has(state) else {}
+
+
+func phase() -> float:
+	if length <= 0.0:
+		return 0.0
+	return clampf(t / length, 0.0, 1.0)
+
+
+func _pose_now() -> Dictionary:
+	if not POSES.has(state):
+		return {}
+	var keys: Array = POSES[state]
+	var k: float = phase() if length > 0.0 else 0.0
+	if keys.size() == 1:
+		return keys[0][1]
+	for i in range(keys.size() - 1):
+		var a: Array = keys[i]
+		var b: Array = keys[i + 1]
+		if k <= float(b[0]):
+			var u: float = (k - float(a[0])) / maxf(0.0001, float(b[0]) - float(a[0]))
+			u = u * u * (3.0 - 2.0 * u)
+			return _lerp_pose(a[1], b[1], u)
+	return keys[-1][1]
+
+
+static func _lerp_pose(a: Dictionary, b: Dictionary, u: float) -> Dictionary:
+	var out: Dictionary = {}
+	for k: String in a:
+		out[k] = lerpf(float(a[k]), float(b.get(k, 0.0)), u)
+	for k: String in b:
+		if not out.has(k):
+			out[k] = lerpf(0.0, float(b[k]), u)
+	return out

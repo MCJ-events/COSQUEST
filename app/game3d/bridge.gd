@@ -11,7 +11,8 @@ extends Node
 signal fight_finished(result_json: String)
 
 const FightScript := preload("res://fight.gd")
-const TEST_PACKS: String = "/opt/cq/tasks/056-game-forge-in-world-v2/out/packs/"
+# the deck cast from cq 060 (farm only; a missing file falls back to a mannequin)
+const TEST_MODELS: String = "/opt/cq/tasks/060-forge-match-the-deck/out/models/"
 
 var _cb: Callable = Callable()
 var _fight: FightScript
@@ -26,6 +27,7 @@ var _fights_started: int = 0
 # and every worklet run left ~1.7 MB of native memory behind (measured).
 var _fight_id: int = 0
 var _pushed_state: String = ""
+var _capture: Node = null   # review captures (capture.gd), only with -- --capture=<json>
 
 
 func _ready() -> void:
@@ -42,6 +44,13 @@ func _ready() -> void:
 			_autotest = true
 		elif a.begins_with("--config="):
 			_config_path = a.substr(9)
+		elif a.begins_with("--capture="):
+			var spec: Variant = JSON.parse_string(FileAccess.get_file_as_string(a.substr(10)))
+			if spec is Dictionary:
+				_capture = (load("res://capture.gd") as GDScript).new()
+				_capture.call("setup", spec)
+				add_child(_capture)
+				_start_capture.call_deferred(spec)
 	var headless: bool = DisplayServer.get_name() == "headless"
 	if headless:
 		Engine.max_fps = 60   # headless has no vsync: keep the box quiet and the timing phone-like
@@ -53,6 +62,14 @@ func _ready() -> void:
 	get_tree().create_timer(1.5).timeout.connect(_on_startup_timeout)
 	if _autotest:
 		get_tree().create_timer(300.0).timeout.connect(_on_watchdog)
+
+
+func _start_capture(spec: Dictionary) -> void:
+	var c: Dictionary = spec.get("config", {})
+	if not c.has("dyn_res"):
+		c["dyn_res"] = false   # review frames at a fixed render scale, whatever the box's load
+	start_fight(JSON.stringify(c))
+	_capture.call("attach", _fight)
 
 
 func _on_watchdog() -> void:
@@ -81,9 +98,12 @@ func _on_startup_timeout() -> void:
 		return
 	_log("autotest: no start_fight within 1.5 s, starting the test fight")
 	start_fight(JSON.stringify({
-		"hero_glb": TEST_PACKS + "armstrong/armstrong__lod1.glb",
-		"ally_glb": TEST_PACKS + "knight_woman/knight_woman__lod1.glb",
-		"enemy_glb": TEST_PACKS + "old_samurai/old_samurai__lod1.glb",
+		"hero_glb": TEST_MODELS + "pose/armstrong/lod1.glb",
+		"ally_glb": TEST_MODELS + "pose/nebulx/lod1.glb",
+		"enemy_glb": TEST_MODELS + "deck/hoof/lod1.glb",
+		"hero_name": "Armstrong",
+		"ally_name": "Nebul-X",
+		"enemy_name": "Hoof",
 		"point_name": "Autotest Plaza",
 		"autoplay": true,
 		"seed": 61,
