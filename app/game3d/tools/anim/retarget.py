@@ -282,6 +282,84 @@ def native_q(tip_b, edge_b):
     return mat_to_q(m)
 
 
+def clip_frames(rt, cfg, cc, damp, anims_lib, grips, lib):
+    """The target pose of every frame of one clip (cq 012's retarget, unchanged; shared with
+    tools/rig so the rig tools measure exactly what the gate measures). Returns
+    (times, n, length, mode, off, raw_end, frames, Gs_t, ikw)."""
+    tgt = rt.tgt
+    t_rhand = tgt.names.index("RightHand")
+    # a clip may damp the legs harder (wide stances, spins), on top of the character's own
+    rt.damp = dict(damp)
+    for b in cc.get("damp_legs", {}).get("bones", []):
+        rt.damp[b] = min(rt.damp.get(b, 1.0), cc["damp_legs"]["f"])
+    src = rt.src
+    rig = rt.rig
+    an = anims_lib[cc["src"]]
+    length = an["length"]
+    n = max(2, int(round(length * FPS)) + 1)
+    times = np.linspace(0.0, length, n)
+    if cc.get("range"):
+        # a held pose cut from a clip (frames at 30 fps), ping-ponged into a seamless loop
+        f0, f1 = cc["range"]
+        seg = np.arange(f0, f1 + 1) / FPS
+        src_times = np.concatenate([seg, seg[-2:0:-1]]) if cc.get("pingpong") else seg
+        n = len(src_times) + (1 if cc.get("pingpong") else 0)
+        if cc.get("pingpong"):
+            src_times = np.append(src_times, seg[0])
+        times = src_times
+    # source hips path (world), for root-motion stripping
+    sG = []
+    for t in times:
+        sG.append(rt.sp.globals_of(rt.sp.locals_at(an, t)))
+    hip = np.array([gpos(G, rt.s_hips) for G in sG]) - gpos(rt.s_rest_G, rt.s_hips)
+    off = hip * rt.hip_scale
+    raw_end = off[-1].copy()
+    drift = np.outer(times / max(1e-6, length), off[-1] - off[0]) + off[0]
+    mode = cc.get("root", "inplace")
+    if mode == "inplace":
+        off[:, 0] -= drift[:, 0]
+        off[:, 2] -= drift[:, 2]
+    elif mode == "zero":
+        off[:, 0] = 0.0
+        off[:, 2] = 0.0
+    off[:, 1] += float(cc.get("lift", 0.0))
+    frames = []
+    Gs_t = []
+    ikw = []
+    s_feet = [src.names.index(x) for x in rig["feet"][1]]
+    t_feet = [tgt.names.index(x) for x in rig["feet"][0]]
+    s_floor = min(gpos(rt.s_rest_G, i)[1] for i in s_feet)
+    t_floor = min(gpos(rt.t_rest_G, i)[1] for i in t_feet)
+    for k, t in enumerate(times):
+        loc, G = rt.frame(sG[k], off[k])
+        if cc.get("ground", True):
+            # the lowest foot sits where the source's lowest foot does (scaled): no sinking
+            # into the floor or floating from the different leg proportions
+            want = (min(gpos(sG[k], i)[1] for i in s_feet) - s_floor) * rt.hip_scale
+            got = min(gpos(G, i)[1] for i in t_feet) - t_floor
+            off[k][1] += want - got
+            loc, G = rt.frame(sG[k], off[k])
+        ik = cc.get("lhand_ik")
+        if ik and ik["class"] in grips and lib == "kaykit":
+            # where the source's left hand is along its own weapon (both hands on it?)
+            h = cfg["holds"][ik["class"]]
+            Ls = qmul(np.array(h["slot_rot"], float), native_q(h["ref_tip"], h["ref_edge"]))
+            slot = sG[k][src.names.index("handslot.r")]
+            ax = qrot(qmul(mat_to_q(slot[:3, :3]), Ls), [0, 1, 0])
+            lh = gpos(sG[k], src.names.index("handslot.l")) - slot[:3, 3]
+            dperp = float(np.linalg.norm(lh - ax * float(lh @ ax)))
+            w = float(np.clip((ik.get("d_off", 0.36) - dperp) / 0.12, 0.0, 1.0))
+            ikw.append(w)
+            if w > 0.0:
+                gm = np.array(grips[ik["class"]]["matrix"], float).reshape(4, 4).T
+                Wm = G[t_rhand] @ gm
+                P = (Wm @ np.array([0, ik.get("s", 0.25), 0, 1.0]))[:3]
+                loc, G = left_hand_ik(rt, loc, G, P, w)
+        frames.append(loc)
+        Gs_t.append(G)
+    return times, n, length, mode, off, raw_end, frames, Gs_t, ikw
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--src", required=True)
@@ -365,75 +443,7 @@ def main():
         if lib not in rts:
             continue
         rt = rts[lib]
-        # a clip may damp the legs harder (wide stances, spins), on top of the character's own
-        rt.damp = dict(damp)
-        for b in cc.get("damp_legs", {}).get("bones", []):
-            rt.damp[b] = min(rt.damp.get(b, 1.0), cc["damp_legs"]["f"])
-        src = rt.src
-        rig = rt.rig
-        an = anims[lib][cc["src"]]
-        length = an["length"]
-        n = max(2, int(round(length * FPS)) + 1)
-        times = np.linspace(0.0, length, n)
-        if cc.get("range"):
-            # a held pose cut from a clip (frames at 30 fps), ping-ponged into a seamless loop
-            f0, f1 = cc["range"]
-            seg = np.arange(f0, f1 + 1) / FPS
-            src_times = np.concatenate([seg, seg[-2:0:-1]]) if cc.get("pingpong") else seg
-            n = len(src_times) + (1 if cc.get("pingpong") else 0)
-            if cc.get("pingpong"):
-                src_times = np.append(src_times, seg[0])
-            times = src_times
-        # source hips path (world), for root-motion stripping
-        sG = []
-        for t in times:
-            sG.append(rt.sp.globals_of(rt.sp.locals_at(an, t)))
-        hip = np.array([gpos(G, rt.s_hips) for G in sG]) - gpos(rt.s_rest_G, rt.s_hips)
-        off = hip * rt.hip_scale
-        raw_end = off[-1].copy()
-        drift = np.outer(times / max(1e-6, length), off[-1] - off[0]) + off[0]
-        mode = cc.get("root", "inplace")
-        if mode == "inplace":
-            off[:, 0] -= drift[:, 0]
-            off[:, 2] -= drift[:, 2]
-        elif mode == "zero":
-            off[:, 0] = 0.0
-            off[:, 2] = 0.0
-        off[:, 1] += float(cc.get("lift", 0.0))
-        frames = []
-        Gs_t = []
-        ikw = []
-        s_feet = [src.names.index(x) for x in rig["feet"][1]]
-        t_feet = [tgt.names.index(x) for x in rig["feet"][0]]
-        s_floor = min(gpos(rt.s_rest_G, i)[1] for i in s_feet)
-        t_floor = min(gpos(rt.t_rest_G, i)[1] for i in t_feet)
-        for k, t in enumerate(times):
-            loc, G = rt.frame(sG[k], off[k])
-            if cc.get("ground", True):
-                # the lowest foot sits where the source's lowest foot does (scaled): no sinking
-                # into the floor or floating from the different leg proportions
-                want = (min(gpos(sG[k], i)[1] for i in s_feet) - s_floor) * rt.hip_scale
-                got = min(gpos(G, i)[1] for i in t_feet) - t_floor
-                off[k][1] += want - got
-                loc, G = rt.frame(sG[k], off[k])
-            ik = cc.get("lhand_ik")
-            if ik and ik["class"] in grips and lib == "kaykit":
-                # where the source's left hand is along its own weapon (both hands on it?)
-                h = cfg["holds"][ik["class"]]
-                Ls = qmul(np.array(h["slot_rot"], float), native_q(h["ref_tip"], h["ref_edge"]))
-                slot = sG[k][src.names.index("handslot.r")]
-                ax = qrot(qmul(mat_to_q(slot[:3, :3]), Ls), [0, 1, 0])
-                lh = gpos(sG[k], src.names.index("handslot.l")) - slot[:3, 3]
-                dperp = float(np.linalg.norm(lh - ax * float(lh @ ax)))
-                w = float(np.clip((ik.get("d_off", 0.36) - dperp) / 0.12, 0.0, 1.0))
-                ikw.append(w)
-                if w > 0.0:
-                    gm = np.array(grips[ik["class"]]["matrix"], float).reshape(4, 4).T
-                    Wm = G[t_rhand] @ gm
-                    P = (Wm @ np.array([0, ik.get("s", 0.25), 0, 1.0]))[:3]
-                    loc, G = left_hand_ik(rt, loc, G, P, w)
-            frames.append(loc)
-            Gs_t.append(G)
+        times, n, length, mode, off, raw_end, frames, Gs_t, ikw = clip_frames(rt, cfg, cc, damp, anims[lib], grips, lib)
         # --- checks
         feet_low = []
         for G in Gs_t:

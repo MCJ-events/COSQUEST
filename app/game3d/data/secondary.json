@@ -1,0 +1,58 @@
+{
+ "_doc": "Secondary motion for the cast's robes, coats, skirts, wings and flames (cq 014), see docs/game3d/RIGS.md. A chain is any run of bones named <Prefix><n>_0 .. _k plus <Prefix><n>_end (or <Prefix>_<L|R>_0 ..) under the hips or spine, added by app/game3d/tools/rig. The retargeted clips never animate them; secondary_motion.gd does, every frame, and tools/rig/rigcheck.py runs the same maths for the tear gate. Per group: follow = how much of the thighs' swing (relative to the hips) the chain's target takes, split left/right by where the chain hangs; stiffness = the share of the way to the target each 1/60 s step; damping = velocity lost per step; max_deg = the most a bone may turn away from its target; legs = collide with capsules on the thighs and shins (radius = r_thigh / r_shin, m, plus the joint's radius).",
+ "step_s": 0.0166667,
+ "groups": {
+  "robe": {
+   "follow": 0.4,
+   "stiffness": 0.35,
+   "damping": 0.25,
+   "max_deg": 35,
+   "legs": true,
+   "joint_r": 0.02
+  },
+  "coat": {
+   "follow": 0.4,
+   "stiffness": 0.3,
+   "damping": 0.25,
+   "max_deg": 40,
+   "legs": true,
+   "joint_r": 0.02
+  },
+  "skirt": {
+   "follow": 0.4,
+   "stiffness": 0.35,
+   "damping": 0.25,
+   "max_deg": 35,
+   "legs": true,
+   "joint_r": 0.02
+  },
+  "wing": {
+   "follow": 0.0,
+   "stiffness": 0.25,
+   "damping": 0.3,
+   "max_deg": 20,
+   "legs": false,
+   "joint_r": 0.02
+  },
+  "flame": {
+   "follow": 0.0,
+   "stiffness": 0.2,
+   "damping": 0.2,
+   "max_deg": 30,
+   "legs": false,
+   "joint_r": 0.01
+  }
+ },
+ "prefixes": {
+  "Robe": "robe",
+  "Coat": "coat",
+  "Skirt": "skirt",
+  "Wing": "wing",
+  "Flame": "flame"
+ },
+ "legs": {
+  "r_thigh": 0.09,
+  "r_shin": 0.065
+ },
+ "characters": {}
+}
