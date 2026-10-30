@@ -380,6 +380,10 @@ func _merge_dressing() -> void:
 	_dressing.queue_free()
 	_dressing = merged
 	add_child(_dressing)
+	# the kit scenes are no longer needed: each GLB embeds its own copy of the shared atlas,
+	# so keeping them would hold ~15 duplicate textures in video memory
+	_scenes.clear()
+	_tex_hash.clear()
 	print("CQ street merged %d mesh instances into %d (%.0f m chunks)" % [n_in, groups.size(), MERGE_CHUNK])
 
 
