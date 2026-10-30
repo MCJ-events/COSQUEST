@@ -141,6 +141,8 @@ static func states_for(cls: String, key: String = "") -> Dictionary:
 			m.merge(e, true)    # in / out / body belong to the set's own clip
 		elif e.has("body"):
 			m["body"] = e["body"]
+		if name != str(e.get("clip", "")) and bool(e.get("body_alt", false)):
+			m["body"] = true    # an alternate without the set clip's motion (no spin): the body motion adds it
 		m["clip"] = name
 		out[st] = m
 	return out

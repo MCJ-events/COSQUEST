@@ -297,12 +297,14 @@
     0.0,
     0.6
    ],
-   "out": 14,
+   "out": 30,
    "lhand_ik": {
     "class": "rifle",
     "s": 0.32,
     "d_off": 0.45
-   }
+   },
+   "in": 12,
+   "contact": 14
   },
   "Spellcast_Shoot": {
    "src": "Spellcast_Shoot",
@@ -593,6 +595,23 @@
      "RightLeg"
     ],
     "f": 0.35
+   }
+  },
+  "Aim_Hold": {
+   "src": "2H_Ranged_Aiming",
+   "range": [
+    12,
+    48
+   ],
+   "pingpong": true,
+   "classes": [
+    "rifle",
+    "crossbow"
+   ],
+   "lhand_ik": {
+    "class": "rifle",
+    "s": 0.32,
+    "d_off": 0.45
    }
   }
  },
@@ -894,7 +913,8 @@
     "alt": [
      "2H_Melee_Attack_Spin",
      "1H_Melee_Attack_Slice_Horizontal"
-    ]
+    ],
+    "body_alt": true
    },
    "skill_shield": {
     "clip": "Spellcast_Long",
@@ -1015,7 +1035,8 @@
     "alt": [
      "2H_Melee_Attack_Spin",
      "1H_Melee_Attack_Slice_Horizontal"
-    ]
+    ],
+    "body_alt": true
    },
    "skill_shield": {
     "clip": "Spellcast_Long",
@@ -1137,7 +1158,8 @@
     "alt": [
      "2H_Melee_Attack_Spin",
      "1H_Melee_Attack_Slice_Horizontal"
-    ]
+    ],
+    "body_alt": true
    },
    "skill_shield": {
     "clip": "Spellcast_Long",
@@ -1201,11 +1223,10 @@
     ]
    },
    "idle": {
-    "clip": "2H_Ranged_Aiming",
+    "clip": "Aim_Hold",
     "alt": [
-     "UAL_Idle",
-     "Idle",
-     "2H_Melee_Idle"
+     "2H_Ranged_Aiming",
+     "Idle"
     ]
    },
    "walk": {
@@ -1259,7 +1280,8 @@
     "alt": [
      "2H_Melee_Attack_Spin",
      "1H_Melee_Attack_Slice_Horizontal"
-    ]
+    ],
+    "body_alt": true
    },
    "skill_shield": {
     "clip": "Spellcast_Long",
@@ -1321,5 +1343,6 @@
   "run": 0.01
  },
  "_doc_gate": "gate_by_state: a looser gate for run: a walk sped past 2x skates visibly, a run's short stretch at speed does not show at the fight camera (measured per clip in tools/anim/reports)",
- "_doc_ik": "lhand_ik: on frames where the source's left hand is on its weapon (within d_off of the weapon's axis, fading over 12 cm), a two-bone IK puts the target's left hand on the held weapon, s metres along it from the grip (the grip of the given class)"
+ "_doc_ik": "lhand_ik: on frames where the source's left hand is on its weapon (within d_off of the weapon's axis, fading over 12 cm), a two-bone IK puts the target's left hand on the held weapon, s metres along it from the grip (the grip of the given class)",
+ "_doc_body": "body: the fight's procedural body motion (hop, spin, lunge) plays on top of the clip; body_alt: only when an alternate stands in (a WHIRL without a spin clip still spins)"
 }

@@ -999,7 +999,7 @@
    "frames": 33,
    "fps": 30.0,
    "length_s": 1.067,
-   "contact": 4,
+   "contact": 14,
    "root": "inplace",
    "root_end_raw_m": [
     0.0,
@@ -1079,6 +1079,95 @@
      "pen_max_m": 0.0,
      "pen_frames": 0,
      "frames": 33,
+     "lhand_to_shaft_m_p50": 0.36
+    }
+   }
+  },
+  "Aim_Hold": {
+   "src": "2H_Ranged_Aiming",
+   "frames": 73,
+   "fps": 30.0,
+   "length_s": 1.6,
+   "contact": null,
+   "root": "inplace",
+   "root_end_raw_m": [
+    0.0,
+    -0.031,
+    -0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": -0.006,
+   "feet_max_m": -0.006,
+   "planted_slide_mps": 0.329,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00248,
+   "tear_p99": 1.857,
+   "tears": false,
+   "tear_where": {
+    "Hips": 3,
+    "Spine1": 1,
+    "Spine2": 1,
+    "LeftHand": 2,
+    "RightArm": 2,
+    "RightForeArm": 2,
+    "RightHand": 6,
+    "LeftUpLeg": 8,
+    "LeftLeg": 3
+   },
+   "lhand_ik_frames": 73,
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 73,
+     "lhand_to_shaft_m_p50": 0.36
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 73,
+     "lhand_to_shaft_m_p50": 0.151
+    },
+    "dagger": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 73,
+     "lhand_to_shaft_m_p50": 0.36
+    },
+    "greatsword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 73,
+     "lhand_to_shaft_m_p50": 0.36
+    },
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 73,
+     "lhand_to_shaft_m_p50": 0.36
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 73,
+     "lhand_to_shaft_m_p50": 0.151
+    },
+    "shield": {
+     "pen_max_m": 0.084,
+     "pen_frames": 73,
+     "frames": 73,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 73,
+     "lhand_to_shaft_m_p50": 0.36
+    },
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 73,
      "lhand_to_shaft_m_p50": 0.36
     }
    }

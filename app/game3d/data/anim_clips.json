@@ -127,7 +127,8 @@
     "alt": [
      "2H_Melee_Attack_Spin",
      "1H_Melee_Attack_Slice_Horizontal"
-    ]
+    ],
+    "body_alt": true
    },
    "skill_shield": {
     "clip": "Spellcast_Long",
@@ -248,7 +249,8 @@
     "alt": [
      "2H_Melee_Attack_Spin",
      "1H_Melee_Attack_Slice_Horizontal"
-    ]
+    ],
+    "body_alt": true
    },
    "skill_shield": {
     "clip": "Spellcast_Long",
@@ -370,7 +372,8 @@
     "alt": [
      "2H_Melee_Attack_Spin",
      "1H_Melee_Attack_Slice_Horizontal"
-    ]
+    ],
+    "body_alt": true
    },
    "skill_shield": {
     "clip": "Spellcast_Long",
@@ -434,11 +437,10 @@
     ]
    },
    "idle": {
-    "clip": "2H_Ranged_Aiming",
+    "clip": "Aim_Hold",
     "alt": [
-     "UAL_Idle",
-     "Idle",
-     "2H_Melee_Idle"
+     "2H_Ranged_Aiming",
+     "Idle"
     ]
    },
    "walk": {
@@ -492,7 +494,8 @@
     "alt": [
      "2H_Melee_Attack_Spin",
      "1H_Melee_Attack_Slice_Horizontal"
-    ]
+    ],
+    "body_alt": true
    },
    "skill_shield": {
     "clip": "Spellcast_Long",
@@ -592,8 +595,15 @@
    "lib": "kaykit",
    "frames": 33,
    "fps": 30.0,
-   "contact": 4,
-   "out": 14
+   "contact": 14,
+   "in": 12,
+   "out": 30
+  },
+  "Aim_Hold": {
+   "src": "2H_Ranged_Aiming",
+   "lib": "kaykit",
+   "frames": 73,
+   "fps": 30.0
   },
   "Block": {
    "src": "Block",
@@ -875,7 +885,7 @@
      "death": "",
      "victory": "Cheer",
      "heavy": "2H_Melee_Attack_Chop",
-     "idle": "2H_Ranged_Aiming",
+     "idle": "Aim_Hold",
      "walk": "UAL_Walk",
      "run": "Running_B",
      "attack_1": "2H_Ranged_Shoot",
@@ -1003,7 +1013,7 @@
      "death": "",
      "victory": "Spellcast_Raise",
      "heavy": "1H_Melee_Attack_Chop",
-     "idle": "UAL_Idle",
+     "idle": "Idle",
      "walk": "",
      "run": "",
      "attack_1": "1H_Melee_Attack_Stab",
@@ -1044,6 +1054,7 @@
     "2H_Melee_Idle",
     "2H_Ranged_Aiming",
     "2H_Ranged_Shoot",
+    "Aim_Hold",
     "Block",
     "Block_Attack",
     "Block_Hit",
@@ -1145,7 +1156,7 @@
      "death": "Death_A",
      "victory": "Cheer",
      "heavy": "2H_Melee_Attack_Chop",
-     "idle": "2H_Ranged_Aiming",
+     "idle": "Aim_Hold",
      "walk": "Walking_B",
      "run": "Running_B",
      "attack_1": "2H_Ranged_Shoot",
@@ -1272,7 +1283,7 @@
      "death": "Death_B",
      "victory": "Cheer",
      "heavy": "2H_Melee_Attack_Chop",
-     "idle": "2H_Ranged_Aiming",
+     "idle": "Aim_Hold",
      "walk": "Walking_B",
      "run": "Running_B",
      "attack_1": "2H_Ranged_Shoot",
@@ -1390,7 +1401,7 @@
      "death": "Death_A",
      "victory": "Cheer",
      "heavy": "2H_Melee_Attack_Chop",
-     "idle": "2H_Ranged_Aiming",
+     "idle": "Aim_Hold",
      "walk": "Walking_B",
      "run": "Running_B",
      "attack_1": "2H_Ranged_Shoot",
