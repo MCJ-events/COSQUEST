@@ -442,7 +442,35 @@ func _finish_load(r: Dictionary) -> void:
 		_log("load role=%s ok=false error=%s path=%s (capsule fallback)" % [role, str(r.get("error", "?")), str(r.get("path", ""))])
 
 
+## The hero card's portrait, as on the reference: the loaded hero's face, rendered once by a
+## small camera into a 128 px image (the SubViewport shares the fight's world, then goes).
+func _make_portrait() -> void:
+	if hero == null or _headless or not bool(cfg.get("portrait", true)):
+		return
+	var vp := SubViewport.new()
+	vp.name = "Portrait"
+	vp.size = Vector2i(128, 128)
+	vp.render_target_update_mode = SubViewport.UPDATE_ONCE
+	var c := Camera3D.new()
+	c.fov = 21.0
+	vp.add_child(c)
+	add_child(vp)
+	var fwd: Vector3 = hero.global_transform.basis.z.normalized()
+	var face: Vector3 = hero.global_position + Vector3(0, FighterScript.HEIGHT * hero.size_k * 0.9, 0)
+	c.look_at_from_position(face + fwd * 1.6 + Vector3(0, 0.2, 0), face, Vector3.UP)
+	c.current = true
+	await RenderingServer.frame_post_draw
+	await RenderingServer.frame_post_draw
+	if not is_instance_valid(vp):
+		return
+	var img: Image = vp.get_texture().get_image()
+	vp.queue_free()
+	if img != null and hud != null:
+		hud.portrait = ImageTexture.create_from_image(img)
+
+
 func _begin_fight() -> void:
+	_make_portrait()
 	state = "fighting"
 	fight_time = 0.0
 	t_left = duration

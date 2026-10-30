@@ -81,6 +81,7 @@ var hero_name: String = "You"
 var hero_hp: int = 0
 var hero_max: int = 1
 var show_hero_card: bool = true
+var portrait: Texture2D = null   # the hero's face (fight.gd renders it once at the start)
 var units: Array[Dictionary] = []      # {id, name, hp, max, team, head: Vector3, is_hero, shield, buff, stagger, level}
 var map_points: Array[Dictionary] = [] # {p: Vector2 metres (x right, y down-screen), kind, facing: Vector2}
 var skill_cd: Array[float] = [0.0, 0.0, 0.0, 0.0, 0.0]
@@ -691,7 +692,18 @@ func _draw_top() -> void:
 		draw_style_box(_card, hr)
 		_disc(hr.position + Vector2(30, 32), 21.0, Color(0.95, 0.72, 0.25))
 		_disc(hr.position + Vector2(30, 32), 18.0, Color(0.16, 0.12, 0.26))
-		_text(hr.position + Vector2(30, 31), hero_name.substr(0, 1).to_upper(), 24, Color(1, 0.86, 0.45))
+		if portrait != null:
+			# the hero's face in the round frame (a textured circle)
+			var pc: Vector2 = hr.position + Vector2(30, 32)
+			var pts := PackedVector2Array()
+			var uvs := PackedVector2Array()
+			for j in 24:
+				var d: Vector2 = Vector2.from_angle(TAU * j / 24.0)
+				pts.append(pc + d * 18.0)
+				uvs.append(Vector2(0.5, 0.5) + d * 0.5)
+			draw_polygon(pts, PackedColorArray([Color.WHITE]), uvs, portrait)
+		else:
+			_text(hr.position + Vector2(30, 31), hero_name.substr(0, 1).to_upper(), 24, Color(1, 0.86, 0.45))
 		_text_left(hr.position + Vector2(60, 18), hero_name, 20, Color.WHITE)
 		_rbar(Rect2(hr.position + Vector2(60, 34), Vector2(122, 12)), float(hero_hp) / maxf(1.0, float(hero_max)), C_HERO)
 		_text_left(hr.position + Vector2(60, 54), "%d / %d" % [hero_hp, hero_max], 14, Color(1, 1, 1, 0.8))

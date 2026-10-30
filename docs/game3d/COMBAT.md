@@ -176,6 +176,11 @@ Holds a casting spot 4 m from the boss on the hero's side, fires a bolt every 1.
   `arena.map_blocks`) clipped to the disc, the medallion, the hero's view cone, dots with
   facing wedges (hero green, ally blue, boss red).
 - **Damage numbers** pop on the target's body (chest height) and rise ~60 px.
+- **Hero card** (top left): the hero's face, rendered once at the fight's start by a small
+  camera in a 128 px SubViewport that shares the fight's world, copied to an image and
+  freed (config `portrait: false` turns it off; the card then shows the initial).
+- **Near fade:** lamps, planters, trees and benches fade out 13 to 15.5 m from the camera,
+  so none stands tall behind the controls at the bottom of the screen.
 
 ## Frame cost on a software GPU
 Frame time is input latency on the emulator (SwiftShader), so the fight is built to stay
