@@ -1,5 +1,5 @@
 {
-  "_doc": "The CosQuest default weapon set (cq 234). Built into contract-2 Forge packs by build_weapons.py (Blender 4.2, headless, CPU). src is relative to the download dir; tip/edge are the source model's axes (Blender, Z up) along the blade/haft/barrel and towards the cutting edge/head/top; grip is the source point the hand closes on (source units); length_m is the real-world size along the tip axis; girth (optional, default 1) scales the cross-section. kind is the backend's weapon kind (blade, axe, hammer, gauntlet, staff, bow); grip is the hand pose class in app/game3d/data/attach.json.",
+  "_doc": "The CosQuest default weapon set (cq 234). Built into contract-2 Forge packs by build_weapons.py (Blender 4.2, headless, CPU). src is relative to the download dir; tip/edge are the source model's axes (Blender, Z up) along the blade/haft/barrel and towards the cutting edge/head/top; grip is the source point the hand closes on (source units); length_m is the real-world size along the tip axis; girth (optional, default 1) scales the cross-section; recolour (optional) moves faces from one swatch of a palette atlas to another ([col, row] of 16 x 4, glTF UV space). kind is the backend's weapon kind (blade, axe, hammer, gauntlet, staff, bow); grip is the hand pose class in app/game3d/data/attach.json.",
   "weapons": [
     {"slug": "knight_sword", "name": "Knight's Arming Sword", "rarity": "common", "kind": "blade", "grip": "sword",
      "stats": {"damage": 15, "range_m": 2.2, "cooldown_s": 3.0},
@@ -32,6 +32,7 @@
     {"slug": "repeater_rifle", "name": "Repeater Rifle", "rarity": "epic", "kind": "bow", "grip": "rifle",
      "stats": {"damage": 16, "range_m": 10.0, "cooldown_s": 3.0},
      "src": "kenney_fps/blaster-repeater.glb", "tip": [0, -1, 0], "edge": [0, 0, 1], "grip_at": [0, 0.12, 0.1], "length_m": 0.8, "girth": 0.6,
+     "recolour": [{"from": [5, 3], "to": [9, 3]}, {"from": [7, 3], "to": [1, 2]}],
      "licence": "CC0 1.0", "author": "Kenney (kenney.nl), Blaster Kit model shipped in Starter-Kit-FPS", "url": "https://github.com/KenneyNL/Starter-Kit-FPS"},
     {"slug": "knight_shield", "name": "Knight's Round Shield", "rarity": "rare", "kind": "gauntlet", "grip": "shield",
      "stats": {"damage": 12, "range_m": 1.5, "cooldown_s": 3.0},

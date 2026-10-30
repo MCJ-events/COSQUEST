@@ -28,7 +28,7 @@ Commando, Blade, Killua and P-Mon are out of scope and have no entry: they are n
 Each weapon GLB:
 - origin at the grip (where the hand closes);
 - +Y (glTF) along the blade, haft or barrel, to the tip; +Z towards the cutting edge, the head of an axe or hammer, the top of a gun, the face of a shield;
-- real-world metres (length along +Y): sword 0.95, greatsword 1.4, axe 0.8, warhammer 1.05, staff 1.6, dagger 0.45, crossbow 0.8, rifle 0.8, shield 0.6 across (the rifle's cross-section is slimmed to 60 % with `girth` in weapons.json: Kenney's blaster is a chunky toy at its own proportions);
+- real-world metres (length along +Y): sword 0.95, greatsword 1.4, axe 0.8, warhammer 1.05, staff 1.6, dagger 0.45, crossbow 0.8, rifle 0.8, shield 0.6 across (the rifle's cross-section is slimmed to 60 % with `girth` in weapons.json, since Kenney's blaster is a chunky toy at its own proportions, and its pale grey body is moved to the atlas's copper-wood and gold swatches with `recolour`, so it matches the KayKit wood-and-steel set);
 - scene root is an empty named `grip` at the origin; under it the mesh and an empty named `tip`;
 - one texture per weapon, embedded (KayKit and Kenney palette atlases), LOD0/1/2 (100/60/30 % of the triangles, texture 1024/512/256), USDZ per LOD, a 512 px thumbnail;
 - `pack.json` carries `stats.kind` (the backend's kinds), `sockets.grip` [0,0,0] and `sockets.tip`.
@@ -155,5 +155,5 @@ xvfb-run -a -s "-screen 0 720x1280x24" godot --path app/game3d --rendering-drive
 
 - No finger bones in the cast's rigs: the hand cannot close; the handle passes through the hand mesh where the fist is. Close-ups show it from three angles (cq 234 evidence).
 - Hoof is static, so his staff does not move except with his whole body.
-- The Kenney repeater is a chunky toy blaster; it reads as a rifle at fight distance, less so in a close-up.
+- The Kenney repeater is a slimmed, recoloured toy blaster; it reads as a rifle at fight and card distance, less so in a close-up.
 - USDZ files are exported (Blender's USD exporter, Z-up stage) but not tried on iOS.

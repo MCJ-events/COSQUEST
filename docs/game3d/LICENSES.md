@@ -19,7 +19,7 @@ Every downloaded asset used by the 3D game, with its source and licence. Only CC
 
 Notes:
 - kenney.nl answers 403 to scripted downloads from this machine, so the Kenney model came from Kenney's own GitHub starter kit, which ships the same Blaster Kit models.
-- The Repeater Rifle is the Kenney model with its cross-section slimmed to 60 % (`girth` in weapons.json), so the chunky toy blaster reads as a rifle; CC0 allows changes.
+- The Repeater Rifle is the Kenney model with its cross-section slimmed to 60 % (`girth` in weapons.json), so the chunky toy blaster reads as a rifle, and recoloured within its own palette atlas (`recolour` in weapons.json moves the pale grey body faces to the atlas's copper-wood swatch and the white trim to its gold swatch; no new texture), so it sits with the KayKit wood-and-steel set; CC0 allows changes.
 - Crediting Kay Lousberg and Kenney is not required by CC0; they are named here as thanks.
 
 ## Characters

@@ -196,6 +196,31 @@ def to_contract(ob, w):
     return s
 
 
+def recolour(ob, w):
+    """Move faces from one palette swatch to another on the same atlas (Kenney's
+    colormap is a grid of flat swatches, 16 across and 4 down in glTF UV space,
+    v = 0 at the top). `recolour`: [{"from": [col, row], "to": [col, row]}]."""
+    swaps = {tuple(r["from"]): tuple(r["to"]) for r in w.get("recolour", [])}
+    if not swaps:
+        return
+    uv = ob.data.uv_layers.active.data
+    moved = 0
+    for poly in ob.data.polygons:
+        us = [uv[i].uv for i in poly.loop_indices]
+        cu = sum(p.x for p in us) / len(us)
+        cv = 1.0 - sum(p.y for p in us) / len(us)          # Blender's v is flipped
+        key = (int(cu * 16), int(cv * 4))
+        if key not in swaps:
+            continue
+        to = swaps[key]
+        du, dv = (to[0] - key[0]) / 16.0, (to[1] - key[1]) / 4.0
+        for p in us:
+            p.x += du
+            p.y -= dv
+        moved += 1
+    print(f"recolour {w['slug']}: {moved} faces")
+
+
 def decimated_copy(ob, ratio, name):
     c = ob.copy()
     c.data = ob.data.copy()
@@ -325,6 +350,7 @@ def main():
         else:
             ob = import_src(os.path.join(SRC, w["src"]))
         s = to_contract(ob, w)
+        recolour(ob, w)
         d = os.path.join(OUT, "packs", slug)
         os.makedirs(d, exist_ok=True)
         tris = {}
