@@ -13,6 +13,7 @@ const RIM_BOSS: float = 1.8
 const RIM_TEAM: float = 0.45
 const FLASH_SHADER := preload("res://vfx/flash.gdshader")
 const LIT_SHADER := preload("res://vfx/char_lit.gdshader")
+const ArenaScript := preload("res://arena.gd")
 const DOME_SHADER := preload("res://vfx/dome.gdshader")
 
 const HEIGHT: float = 2.3             # a touch over life size: reads at phone size, as on the reference
@@ -62,7 +63,9 @@ var _overlay_on: bool = false
 ## the same pass). The overlay above is only kept for a surface that cannot be converted.
 var _lit_mats: Array[ShaderMaterial] = []
 var _lit_flash: float = -1.0
-var rim_on: bool = true                                  # set by fight.gd from the look
+var rim_on: bool = true                                  # set by fight.gd from the look ("rim": false = the old material + overlay)
+var look: Dictionary = {}                                # the arena's look (set by fight.gd)
+var sun_blob: bool = true                                # set by fight.gd from the look ("ao")
 var key_dir: Vector3 = Vector3(0.65, -0.56, 0.51)       # the key light's direction (arena.gd)
 var _rim_team: Color = Color(0.5, 0.85, 1.0)
 var _dome: MeshInstance3D
@@ -73,7 +76,7 @@ var _shatter_t: float = -1.0        # cq 013: >= 0 while the dome breaks up
 ## cq 013: the barrier broke or ran out (fx shards it)
 signal shield_ended(at: Vector3, radius: float)
 var _aura: MeshInstance3D
-var _cast: MeshInstance3D       # cq 015: the sun-cast soft shadow (top level: it keeps the sun's heading)
+var _cast: MeshInstance3D       # cq 015: the blob with its sun-cast tail (top level: it keeps the sun's heading)
 var _cast_off: Vector3 = Vector3.ZERO
 var _cast_yaw: float = 0.0
 
@@ -127,23 +130,51 @@ func _build_shadow() -> void:
 	sh.position.y = 0.045
 	sh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(sh)
-	# cq 015: the low key light's shadow, faked: a long soft blob leaning away from the sun
-	# (arena.gd KEY_ROT), one more small quad, so the fighters stand on the street, not over it
+	# cq 015: the low key light's shadow, faked in the same quad: the contact blob and a long
+	# soft tail leaning away from the sun (arena.gd KEY_ROT) in one texture, on a longer quad that
+	# keeps the sun's heading as the fighter turns (top level). Still one draw a fighter.
 	var ld := Vector3(key_dir.x, 0.0, key_dir.z)
-	if ld.length() > 0.05:
-		_cast = MeshInstance3D.new()
-		_cast.name = "SunShadow"
-		var cq := PlaneMesh.new()
-		cq.size = Vector2(1.1, 2.6) * size_k
-		_cast.mesh = cq
-		var cm := m.duplicate() as StandardMaterial3D
-		cm.albedo_color = Color(0.16, 0.12, 0.3, 0.5)
-		_cast.material_override = cm
-		_cast.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		_cast.top_level = true
-		_cast_off = ld.normalized() * 1.0 * size_k
+	if sun_blob and ld.length() > 0.05:
+		q.size = Vector2(SUN_BLOB.x, SUN_BLOB.y) * size_k
+		m.albedo_texture = _sun_blob_tex()
+		m.albedo_color = Color.WHITE
+		sh.top_level = true
+		_cast = sh
+		# the quad's centre sits ahead of the feet along the sun (the texture's feet are at SUN_FEET)
+		_cast_off = ld.normalized() * (SUN_BLOB.y * (0.5 - SUN_FEET)) * size_k
 		_cast_yaw = atan2(ld.x, ld.z)
-		add_child(_cast)
+
+
+## The sun-cast blob's quad (width, length in metres at size 1) and where the feet sit along it (0-1).
+const SUN_BLOB: Vector2 = Vector2(1.5, 3.4)
+const SUN_FEET: float = 0.22
+static var _sun_tex: ImageTexture
+
+
+## The contact blob plus the sun's soft tail, drawn once into a 64 x 128 texture (v runs along the sun).
+static func _sun_blob_tex() -> ImageTexture:
+	if _sun_tex != null:
+		return _sun_tex
+	var img := Image.create(64, 128, false, Image.FORMAT_RGBA8)
+	var contact := Color(0.08, 0.04, 0.12)
+	var tail := Color(0.16, 0.12, 0.3)
+	for y in 128:
+		for x in 64:
+			var u: float = (x + 0.5) / 64.0 - 0.5
+			var v: float = (y + 0.5) / 128.0
+			# contact: a 0.75 m radius disc round the feet, like the old blob (alpha 0.75)
+			var dc: float = Vector2(u / 0.5, (v - SUN_FEET) * SUN_BLOB.y / SUN_BLOB.x / 0.5).length()
+			var ac: float = 0.75 * pow(clampf(1.0 - dc, 0.0, 1.0), 1.6)
+			# tail: a soft ellipse 1 m ahead, 2.6 m long, 1.1 m wide (alpha 0.5)
+			var dt: Vector2 = Vector2(u / 0.37, (v - (SUN_FEET + 1.0 / SUN_BLOB.y)) / (1.3 / SUN_BLOB.y))
+			var at: float = 0.5 * pow(clampf(1.0 - dt.length(), 0.0, 1.0), 1.2)
+			var a: float = ac + at * (1.0 - ac)
+			var c: Color = tail.lerp(contact, ac / maxf(a, 0.001))
+			c.a = a
+			img.set_pixel(x, y, c)
+	img.generate_mipmaps()
+	_sun_tex = ImageTexture.create_from_image(img)
+	return _sun_tex
 
 
 func _build_boxes() -> void:
@@ -329,7 +360,7 @@ func _apply_overlay(root: Node) -> void:
 	if root is MeshInstance3D:
 		meshes.append(root)
 	for n: Node in meshes:
-		if not _light_mesh(n as MeshInstance3D):
+		if not rim_on or not _light_mesh(n as MeshInstance3D):
 			_overlay_meshes.append(n)
 	_overlay_on = false
 	if not _overlay_meshes.is_empty():
@@ -384,6 +415,7 @@ func _lit_material(m: Material) -> ShaderMaterial:
 	sm.set_shader_parameter("rim_team", _rim_team)
 	sm.set_shader_parameter("rim_amount", (RIM_BOSS if role == "boss" else RIM_AMOUNT) if rim_on else 0.0)
 	sm.set_shader_parameter("team_amount", RIM_TEAM)
+	ArenaScript.set_hemi(sm, look)
 	_lit_mats.append(sm)
 	return sm
 

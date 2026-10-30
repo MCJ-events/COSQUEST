@@ -26,6 +26,17 @@ uniform vec3 rim_team : source_color = vec3(0.5, 0.85, 1.0); // the sky side, ti
 uniform float rim_amount = 0.0;                              // 0 = no rim (look "rim": false)
 uniform float team_amount = 0.35;
 uniform float flash = 0.0;
+// cq 015: the dusk sky's hemisphere ambient over the flat sky-up ambient the environment gives
+// (arena.gd SKY_*, set_hemi): walls get the lilac horizon, undersides the warm bounce. ALU only.
+uniform vec3 hemi_up : source_color = vec3(0.54, 0.6, 0.98);
+uniform vec3 hemi_horizon : source_color = vec3(0.8, 0.74, 0.9);
+uniform vec3 hemi_ground : source_color = vec3(0.6, 0.48, 0.5);
+uniform float hemi_energy = 0.0;
+
+vec3 hemi_extra(vec3 nw) {
+	vec3 c = nw.y > 0.0 ? mix(hemi_horizon, hemi_up, nw.y) : mix(hemi_horizon, hemi_ground, -nw.y);
+	return (c - hemi_up) * hemi_energy;
+}
 
 void vertex() {
 	UV = UV * uv1_scale.xy + uv1_offset.xy;
@@ -48,5 +59,6 @@ void fragment() {
 	float body = smoothstep(0.35, 1.0, flash);
 	vec3 hit = vec3(1.0, 0.97, 0.92) * flash * (0.6 * body + 0.75 * pow(f, 1.5))
 		+ vec3(1.0, 0.85, 0.6) * flash * f3 * 0.6;
-	EMISSION = rim + hit;
+	vec3 nw = (INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz;
+	EMISSION = rim + hit + ALBEDO * hemi_extra(nw) * (1.0 - METALLIC);
 }

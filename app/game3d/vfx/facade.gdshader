@@ -17,6 +17,18 @@ uniform float sat = 1.1;
 uniform float ao_height = 1.6;
 uniform float ao_min = 0.55;
 
+// cq 015: the dusk sky's hemisphere ambient over the flat sky-up ambient the environment gives
+// (arena.gd SKY_*, set_hemi): walls get the lilac horizon, undersides the warm bounce. ALU only.
+uniform vec3 hemi_up : source_color = vec3(0.54, 0.6, 0.98);
+uniform vec3 hemi_horizon : source_color = vec3(0.8, 0.74, 0.9);
+uniform vec3 hemi_ground : source_color = vec3(0.6, 0.48, 0.5);
+uniform float hemi_energy = 0.0;
+
+vec3 hemi_extra(vec3 nw) {
+	vec3 c = nw.y > 0.0 ? mix(hemi_horizon, hemi_up, nw.y) : mix(hemi_horizon, hemi_ground, -nw.y);
+	return (c - hemi_up) * hemi_energy;
+}
+
 varying float wy;
 
 void vertex() {
@@ -32,4 +44,5 @@ void fragment() {
 	ALBEDO = mix(s * tint * ao, vec3(0.08, 0.06, 0.1), glass * 0.7);
 	EMISSION = window_col * glass * window_k * (0.75 + 0.5 * l) + s * tint * lift * ao * (1.0 - glass);
 	ROUGHNESS = 0.9;
+	EMISSION += ALBEDO * hemi_extra((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz) * ao;
 }

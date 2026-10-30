@@ -33,12 +33,15 @@ var map_blocks: Array[Rect2] = []   # building footprints (x, z in metres) for t
 ## The look (cq 015, docs/game3d/LOOK.md): every piece can be switched off from the fight
 ## config ("look": {"sky": false, ...}) to measure what it costs.
 const LOOK_DEFAULTS: Dictionary = {
-	"sky": true,        # ambient from a dusk sky gradient (cool above, warm bounce below), not flat
+	"sky": true,        # dusk sky ambient (cool above, lilac horizon, warm bounce below), not flat grey;
+	                    # true: a flat sky-up ambient + the hemisphere term in the fighter and facade
+	                    # shaders (ALU only); "cube": Godot's sky radiance (two cubemap reads a pixel)
 	"fog": true,        # warm haze up the far street, sun-scattered
 	"glow": false,      # Godot glow (post pass): bloom on what is brighter than white. Off: see below
 	"grade": false,     # BCS + a split-tone LUT (post pass). Off: see below
 	"rim": true,        # the fighters' key-side rim light (in their own pass, fighter.gd)
 	"ao": true,         # soft dark where the shop walls meet the paving
+	"halos": true,      # soft coloured halos round signs and lamp heads (bloom faked on the light)
 	"shadows": false,   # real directional shadows (the blob shadows are always on)
 	"tonemap": "aces",  # aces | filmic | agx (all in the scene shader, no extra pass)
 }
@@ -51,6 +54,13 @@ const LOOK_DEFAULTS: Dictionary = {
 const KEY_ROT: Vector3 = Vector3(-34.0, -128.0, 0.0)
 const KEY_COLOR: Color = Color(1.0, 0.78, 0.52)
 const KEY_ENERGY: float = 1.2
+## The dusk sky that lights the shade (look "sky"): straight up, at the horizon, and the bounce
+## off the warm paving from below. The paving faces up, so it gets SKY_UP; the walls and the
+## fighters add the rest of the gradient in their shaders (hemi_* uniforms).
+const SKY_UP: Color = Color(0.7, 0.7, 0.94)
+const SKY_HORIZON: Color = Color(0.8, 0.74, 0.9)
+const SKY_GROUND: Color = Color(0.6, 0.48, 0.5)
+const SKY_ENERGY: float = 0.95
 
 var look: Dictionary = {}
 var sun: DirectionalLight3D
@@ -70,6 +80,16 @@ static func look_opts(cfg: Dictionary) -> Dictionary:
 	return out
 
 
+## The hemisphere ambient's extra over the flat sky-up ambient, for a shader with hemi_* uniforms
+## (char_lit, facade). Zero when the look's sky is off or the real sky cube is used.
+static func set_hemi(sm: ShaderMaterial, l: Dictionary) -> void:
+	var on: bool = str(l.get("sky", true)) == "true"
+	sm.set_shader_parameter("hemi_up", SKY_UP)
+	sm.set_shader_parameter("hemi_horizon", SKY_HORIZON)
+	sm.set_shader_parameter("hemi_ground", SKY_GROUND)
+	sm.set_shader_parameter("hemi_energy", SKY_ENERGY if on else 0.0)
+
+
 ## The direction the key light travels (world space), for the fighters' rim.
 static func key_dir() -> Vector3:
 	return Basis.from_euler(KEY_ROT * (PI / 180.0)) * Vector3(0, 0, -1)
@@ -80,7 +100,12 @@ func build(cfg: Dictionary) -> void:
 	env = Environment.new()
 	env.background_mode = Environment.BG_COLOR
 	env.background_color = Color(0.2, 0.2, 0.36)
-	if bool(look["sky"]):
+	if str(look["sky"]) == "true":
+		env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+		env.ambient_light_color = SKY_UP
+		env.ambient_light_energy = SKY_ENERGY
+		env.background_color = SKY_HORIZON * 0.6   # what the (rare) metal reflects
+	elif str(look["sky"]) == "cube":
 		# ambient from a sky (never seen: the camera looks down): surfaces facing up get the
 		# blue-violet dusk sky, walls the warm horizon, undersides the warm paving's bounce.
 		# A 32 px radiance map, filtered once at load; one cubemap read per pixel.
@@ -100,7 +125,7 @@ func build(cfg: Dictionary) -> void:
 		env.sky = sky
 		env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
 		env.ambient_light_sky_contribution = 1.0
-		env.ambient_light_energy = 0.85
+		env.ambient_light_energy = SKY_ENERGY
 		env.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
 	else:
 		env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
@@ -220,8 +245,6 @@ func build(cfg: Dictionary) -> void:
 		var st2 := SurfaceTool.new()
 		st2.begin(Mesh.PRIMITIVE_TRIANGLES)
 		_shop_st.append(st2)
-	_lamps_st = SurfaceTool.new()
-	_lamps_st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	_cones_st = SurfaceTool.new()
 	_cones_st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	_halo_st = SurfaceTool.new()
@@ -229,6 +252,8 @@ func build(cfg: Dictionary) -> void:
 	_shade_st = SurfaceTool.new()
 	_shade_st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	_build_street()
+	if bool(look["ao"]):
+		_bake_ground()
 	_commit_glows()
 	if bool(cfg.get("merge_street", true)):
 		_merge_dressing()
@@ -352,8 +377,10 @@ func _build_street() -> void:
 				var wb: AABB = lamp.transform * _aabb(lamp)
 				var head_x: float = wb.position.x if sx > 0.0 else wb.end.x
 				var head := Vector3(head_x + sx * 0.25, wb.end.y - 0.35, lamp.position.z)
-				_glow_quad(_lamps_st, head, 2.2, 2.2, Rect2(0, 0, 1, 1), true)
-				_halo(head, 3.0, Color(1.0, 0.72, 0.4, 0.42))
+				# the head itself, in the halo mesh (same texture, one draw for both)
+				_halo_st.set_color(Color(1.0, 0.885, 0.69) )
+				_glow_quad(_halo_st, head, 2.2, 2.2, Rect2(0, 0, 1, 1), true)
+				_halo(head, 2.4, Color(1.0, 0.72, 0.4, 0.45))
 				# the light falling from the head to its pool, as on the reference's dusk street
 				_cone(_cones_st, head - Vector3(0, 0.2, 0), Vector3(head.x, 0.05, head.z + 0.6), 0.4, 4.0)
 				if sx < 0.0 and bool(look.get("ao", true)):
@@ -380,7 +407,6 @@ func _build_street() -> void:
 # the street (a handful of draw calls, unshaded and additive), not one node per sign.
 var _neon_st: Array[SurfaceTool] = []
 var _shop_st: Array[SurfaceTool] = []
-var _lamps_st: SurfaceTool
 var _cones_st: SurfaceTool
 var _halo_st: SurfaceTool    # cq 015: soft coloured halos behind signs and lamp heads (bloom faked on the light)
 var _shade_st: SurfaceTool   # cq 015: baked sun shade and contact darkening where the walls meet the paving
@@ -389,6 +415,7 @@ const SIGN_HALO: Array[Color] = [Color(1.0, 0.3, 0.7), Color(0.25, 0.8, 1.0), Co
 const SHADE_COL: Color = Color(0.6, 0.62, 0.86)   # multiplied into the paving: the sky-lit shade
 const AO_COL: Color = Color(0.5, 0.47, 0.62)       # the contact darkening at the foot of a wall
 const KERB_TOP: float = 0.185
+const HALO_GAIN: float = 1.3   # the halo mesh's material gain: vertex colours stop at 1, lamp heads need 1.3
 var _cam_facing: Basis = Basis.from_euler(Vector3(deg_to_rad(-44.0), 0.0, 0.0))   # fight.gd CAM_PITCH
 
 
@@ -412,39 +439,108 @@ func _dress_front(h: Node3D, sx: float, n: int) -> void:
 		_glow_quad(_neon_st[side], at, w, w * 0.375, Rect2(0, float(k) / NEON_SIGNS, 1, 1.0 / NEON_SIGNS), true)
 		var hc: Color = SIGN_HALO[k]
 		hc.a = 0.5
-		_halo(at, w * 2.0, hc, 0.6)
+		_halo(at, w * 1.7, hc, 0.6)
 
 
 ## A soft coloured halo round a light, facing the camera (vertex colour x the lamp glow).
 func _halo(c: Vector3, size: float, col: Color, aspect: float = 1.0) -> void:
-	_halo_st.set_color(col)
+	if not bool(look.get("halos", true)):
+		return
+	_halo_st.set_color(Color(col.r / HALO_GAIN, col.g / HALO_GAIN, col.b / HALO_GAIN, col.a))
 	_glow_quad(_halo_st, c, size, size * aspect, Rect2(0, 0, 1, 1), true)
 
 
 ## The paving at the foot of a shop front: a contact darkening 0.9 m out on every wall, and on the
-## street's left side (the low sun comes from the left, KEY_ROT) the block's shade, as wide as a
-## third of its height and leaning along the sun, fading out softly. Vertex colours multiplied into
-## the paving; the strip over the kerb sits on the kerb's top.
+## street's left side (the low sun comes from the left, KEY_ROT) the block's shade, as wide as
+## half its height (2.5 to 4.5 m), leaning along the sun, fading out softly. The paving's share is
+## baked into the ground mesh's vertex colours (`_bake_ground`, no extra draw, no overdraw); the
+## kerb's top gets a thin multiplied strip.
 func _wall_shade(front_x: float, sx: float, z0: float, z1: float, h: float) -> void:
+	var w: float = clampf(h * 0.5, 2.5, 4.5) if sx < 0.0 else 0.0
+	_blocks.append([sx, front_x, z0, z1, w])
 	var kerb_in: float = STREET_HALF - 0.55       # the kerb's street-side edge (|x|)
+	var xk: float = sx * kerb_in
+	var lean: float = _lean() if sx < 0.0 else 0.0
+	var ck: Color = _shade_at(xk + sx * 0.01, (z0 + z1) * 0.5 + lean * absf(xk - front_x))
+	var c0: Color = _shade_at(front_x - sx * 0.01, (z0 + z1) * 0.5)
+	_shade_quad(Vector3(front_x, KERB_TOP, z0), Vector3(xk, KERB_TOP, z0 + lean * absf(xk - front_x)), z1 - z0, c0, ck)
+
+
+var _blocks: Array = []   # [sx, front_x, z0, z1, shade width] per shop block
+
+
+## Metres along the street the sun's shade moves per metre across it.
+static func _lean() -> float:
 	var d: Vector3 = key_dir()
-	var lean: float = d.z / maxf(0.05, absf(d.x))  # metres along the street per metre across
-	var bands: Array = [[0.9, AO_COL, 0.0]]
-	if sx < 0.0:
-		var w: float = clampf(h * 0.5, 2.5, 4.5)
-		bands.push_front([w, SHADE_COL, lean])
-	for b: Array in bands:
-		var w: float = b[0]
-		var col: Color = b[1]
-		var ln: float = b[2]
-		var x0: float = front_x
-		var x1: float = front_x - sx * w
-		# kerb part (from the wall to the kerb's edge), then the street part, both fading out to x1
-		var xk: float = sx * kerb_in
-		var k_at: float = clampf(absf(xk - x0) / w, 0.0, 1.0)
-		var ck: Color = col.lerp(Color.WHITE, k_at)
-		_shade_quad(Vector3(x0, KERB_TOP, z0), Vector3(xk, KERB_TOP, z0 + ln * absf(xk - x0)), z1 - z0, col, ck)
-		_shade_quad(Vector3(xk, 0.03, z0 + ln * absf(xk - x0)), Vector3(x1, 0.03, z0 + ln * w), z1 - z0, ck, Color.WHITE)
+	return d.z / maxf(0.05, absf(d.x))
+
+
+## The baked shade multiplier at a point of the paving (white = none).
+func _shade_at(x: float, z: float) -> Color:
+	var c := Color.WHITE
+	var lean: float = _lean()
+	for b: Array in _blocks:
+		var sx: float = b[0]
+		var dist: float = (x - float(b[1])) * -sx    # metres out from the wall into the street
+		if dist < 0.0 or dist > 4.6:
+			continue
+		var zb: float = z - (lean * dist if sx < 0.0 else 0.0)
+		if zb < float(b[2]) - 0.2 or zb > float(b[3]) + 0.2:
+			continue
+		# soft ends where the blocks' gaps let the sun through
+		var edge: float = clampf(minf(zb - float(b[2]) + 0.2, float(b[3]) + 0.2 - zb) / 0.6, 0.0, 1.0)
+		if dist < 0.9:
+			c *= AO_COL.lerp(Color.WHITE, lerpf(1.0, dist / 0.9, edge))
+		var w: float = b[4]
+		if w > 0.0 and dist < w:
+			c *= SHADE_COL.lerp(Color.WHITE, lerpf(1.0, smoothstep(0.0, 1.0, dist / w), edge))
+	return c
+
+
+## The ground with the shade baked in: a grid over the street whose vertex colours multiply the
+## paving, dense only near the walls (0.3 m) and open in the middle, 1.4 m along the street over
+## the stretch the camera can see, and plain quads out to the old 160 m plate. Few triangles: on a
+## software GPU every triangle has a set-up cost (a 0.35 x 0.7 m grid, ~6k triangles, cost more
+## than the multiplied overlay it replaced).
+func _bake_ground() -> void:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var hx: float = STREET_HALF + 0.35
+	var zmin: float = -44.8
+	var zmax: float = 21.0
+	var xs: Array[float] = []
+	for d: float in [-0.35, 0.0, 0.3, 0.6, 0.9, 1.4, 2.0, 2.7, 3.5, 4.5]:
+		xs.append(-STREET_HALF + d)
+	for d: float in [4.5, 2.0, 0.9, 0.45, 0.0, -0.35]:
+		xs.append(STREET_HALF - d)
+	var nz: int = int(ceil((zmax - zmin) / 1.4))
+	var cols: Array = []
+	for j in nz + 1:
+		var row: Array = []
+		for x: float in xs:
+			row.append(_shade_at(x, zmin + j * ((zmax - zmin) / nz)))
+		cols.append(row)
+	for j in nz:
+		var z0: float = zmin + j * ((zmax - zmin) / nz)
+		var z1: float = zmin + (j + 1) * ((zmax - zmin) / nz)
+		for i in xs.size() - 1:
+			_ground_cell(st, xs[i], z0, xs[i + 1], z1, [cols[j][i], cols[j][i + 1], cols[j + 1][i + 1], cols[j + 1][i]])
+	var w := Color.WHITE
+	for r: Array in [[-80.0, -80.0, 80.0, zmin], [-80.0, zmax, 80.0, 80.0], [-80.0, zmin, -hx, zmax], [hx, zmin, 80.0, zmax]]:
+		_ground_cell(st, r[0], r[1], r[2], r[3], [w, w, w, w])
+	ground.mesh = st.commit()
+	(ground.material_override as StandardMaterial3D).vertex_color_use_as_albedo = true
+	(ground.material_override as StandardMaterial3D).uv1_scale = Vector3.ONE
+
+
+func _ground_cell(st: SurfaceTool, x0: float, z0: float, x1: float, z1: float, c: Array) -> void:
+	# UVs as the old PlaneMesh x 40: one paving repeat every 4 m, same phase
+	var p := [Vector3(x0, 0, z0), Vector3(x1, 0, z0), Vector3(x1, 0, z1), Vector3(x0, 0, z1)]
+	for idx: int in [0, 1, 2, 0, 2, 3]:
+		st.set_color(c[idx])
+		st.set_normal(Vector3.UP)
+		st.set_uv(Vector2((p[idx].x + 80.0) / 4.0, (p[idx].z + 80.0) / 4.0))
+		st.add_vertex(p[idx])
 
 
 ## A lamp post's long thin shadow across the paving, leaning away from the low sun.
@@ -524,8 +620,7 @@ func _commit_glows() -> void:
 	# cq 015: brighter than white (the ACES tonemap rolls the peak off), so signs read as lit tubes
 	var neon_m := _glow_mat(T_NEON, Color(1.7, 1.7, 1.7, 1.0), false)   # mixed: added on the pale paving it washes to white
 	var shop_m := _glow_mat(T_SHOP, Color(1.0, 0.78, 0.5, 0.6))
-	var lamp_m := _glow_mat(T_LAMP, Color(1.3, 1.15, 0.9, 1.0))
-	var halo_m := _glow_mat(T_LAMP, Color(1, 1, 1, 1))
+	var halo_m := _glow_mat(T_LAMP, Color(HALO_GAIN, HALO_GAIN, HALO_GAIN, 1))
 	halo_m.vertex_color_use_as_albedo = true
 	halo_m.render_priority = -1   # under the signs and lamp heads, not over them
 	_near_fade(halo_m, true)
@@ -537,14 +632,13 @@ func _commit_glows() -> void:
 	shade_m.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
 	shade_m.disable_receive_shadows = true
 	shade_m.disable_fog = true
-	_near_fade(lamp_m, true)
+	shade_m.cull_mode = BaseMaterial3D.CULL_DISABLED   # the strips are wound either way
 	var cone_m := _glow_mat(T_CONE, Color(1.0, 0.82, 0.55, 0.95))
 	_near_fade(cone_m, true)
 	var out: Array = []
 	for side in 2:
 		out.append([_neon_st[side], neon_m])
 		out.append([_shop_st[side], shop_m])
-	out.append([_lamps_st, lamp_m])
 	out.append([_cones_st, cone_m])
 	out.append([_halo_st, halo_m])
 	out.append([_shade_st, shade_m])
@@ -657,6 +751,7 @@ func _facade_mat(mat: Material) -> Material:
 		var sm := ShaderMaterial.new()
 		sm.shader = FACADE_SHADER
 		sm.set_shader_parameter("atlas", tex)
+		set_hemi(sm, look)
 		_facades[key] = sm
 	return _facades[key]
 

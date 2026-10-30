@@ -430,6 +430,8 @@ func _spawn(n: String, team: int, hp_max: int, c: Color, at: Vector3, yaw: float
 	# cq 015: the fighters' rim light follows the arena's key light (docs/game3d/LOOK.md)
 	f.rim_on = bool((arena.get("look") as Dictionary).get("rim", true)) if arena != null else true
 	f.key_dir = ArenaScript.key_dir()
+	f.look = arena.get("look") if arena != null else {}
+	f.sun_blob = bool((arena.get("look") as Dictionary).get("ao", true)) if arena != null else true
 	f.setup(n, team, hp_max, c, r)
 	f.position = at
 	f.yaw = yaw
