@@ -260,9 +260,11 @@ func _dress_front(h: Node3D, sx: float, n: int) -> void:
 	var length: float = wb.size.z
 	var side: int = 0 if sx < 0.0 else 1
 	_ground_quad(_shop_st[side], Vector3(front_x - sx * 1.0, 0.04, zc), 2.0, length * 0.8, Rect2(0, 0, 1, 1))
-	if n % 3 != 2:
+	# signs only up the street (z < -3): the camera's focus never goes past z = -6
+	# (CAM_BOUNDS), so they stay in the top half of the screen, never among the controls
+	if n % 3 != 2 and zc < -3.0:
 		var k: int = (n * 5 + 1) % NEON_SIGNS
-		var w: float = 2.3
+		var w: float = 2.0
 		_glow_quad(_neon_st[side], Vector3(front_x - sx * (w * 0.5 + 0.15), 3.3 + 0.4 * float(n % 2), zc + (1.2 if n % 2 == 0 else -1.2)),
 			w, w * 0.375, Rect2(0, float(k) / NEON_SIGNS, 1, 1.0 / NEON_SIGNS), true)
 
