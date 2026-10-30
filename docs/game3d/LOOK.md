@@ -111,8 +111,9 @@ glow, from a tiny picture:
   ground rings; `fx.bloom_layer`). The arcs and the big WHIRL/SPLIT ground rings carry their own halo:
   bloomed as well, they whited the fighters out inside a WHIRL.
 - A second camera, copied from the fight camera every frame (after it moves: `process_priority`),
-  draws only that layer into a SubViewport of 1/6 of the screen (black background, linear, no
-  tonemap). A canvas pass blurs it (13 taps) into a 1/12 one.
+  draws only that layer into a SubViewport of 1/8 of the screen (black background, linear, no
+  tonemap). A canvas pass blurs it (13 taps) into a 1/16 one. (1/6 and 1/12 looked the same and
+  cost 5.6 %; `SRC_DIV`, `BLUR_DIV`.)
 - A quad in front of the fight camera (`BloomAdd`, a full-screen triangle pair in its vertex shader,
   additive, no depth test, drawn last, under the HUD) adds them back at the 3D resolution:
   `max(tight - threshold) * 0.3 + max(wide - threshold / 2) * 1.3`, saturation kept (x1.5 around the
@@ -123,11 +124,11 @@ glow, from a tiny picture:
 - Nothing occludes the bloom view (the fighters are not drawn into it), so a sign directly behind a
   fighter glows a little round them. The sources are on the walls and the effects mostly over the
   fighters, so it is rare.
-- **Cost** (4 interleaved rounds, 1-thread llvmpipe): +4.2 % frame p50 (37.4 vs 35.9 ms with it off);
-  +10 to 16 draws (the bloom view's own, tiny).
+- **Cost** (4 interleaved rounds, 1-thread llvmpipe, final build): +3.2 % frame p50 (36.8 vs 35.7 ms
+  with it off); +10 to 16 draws (the bloom view's own, tiny).
 - **The full post stack is one switch for real devices:** `"look": {"post": true}` turns on Godot's
-  glow and the grade (the cheap bloom then steps aside): +70 % frame p50 on the software GPU (58.3 vs
-  34.2 ms), likely 1 to 3 ms on a phone GPU. `glow`, `grade` and `fog` stay separate switches.
+  glow and the grade (the cheap bloom then steps aside): +71 % frame p50 on the software GPU (58.4 vs
+  34.1 ms), likely 1 to 3 ms on a phone GPU. `glow`, `grade` and `fog` stay separate switches.
 
 ## Composition (cq 016)
 The reference looks along the street at lit shop fronts, awnings, cars and crossings; cq 011's camera
@@ -151,7 +152,9 @@ looked down at the paving. Now:
   parasols by the shops beyond the fight's reach; the trees moved beyond the junction.
 - Kit pieces: Kenney Car Kit, City Kit (Roads) and (Commercial), CC0 (LICENSES.md), merged per
   material like the rest of the street, except the two moving cars.
-- **Cost:** the street and camera +5 % frame p50 (35.9 vs 34.2 ms, bloom off), +10 to 14 draws.
+- **Cost:** the street, camera and cloth push together +4.4 % frame p50 (35.7 vs 34.1 ms, bloom off); the
+  cloth push alone about 1.6 % (37.6 vs 37.0 ms with `cloth_push: false`), so the street and camera about
+  2.5 %; +10 to 14 draws.
 
 ## How to tune
 - Warmer or cooler evening: `KEY_COLOR` and the sky colours; brighter or darker: `KEY_ENERGY` and

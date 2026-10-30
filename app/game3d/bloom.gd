@@ -15,8 +15,8 @@ extends Node
 ## Off with look {"bloom": false}; the full post stack (glow + grade) stays opt-in (look "post").
 
 const BLOOM_LAYER: int = 1 << 10     # visual layer 11
-const SRC_DIV: int = 6
-const BLUR_DIV: int = 12
+const SRC_DIV: int = 8
+const BLUR_DIV: int = 16
 
 var main_cam: Camera3D
 var src: SubViewport
@@ -32,7 +32,7 @@ shader_type canvas_item;
 uniform sampler2D src : filter_linear, repeat_disable;
 uniform vec2 px;
 void fragment() {
-	// a 13-tap wide blur from the 1/6 view into the 1/12 one (bilinear taps between texels)
+	// a 13-tap wide blur from the 1/8 view into the 1/16 one (bilinear taps between texels)
 	vec2 uv = SCREEN_UV;
 	vec3 c = texture(src, uv).rgb * 0.2;
 	vec2 o1 = px * 1.5;
