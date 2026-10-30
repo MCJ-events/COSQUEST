@@ -26,14 +26,22 @@ const T_PERSON := preload("res://art/hud/icon_person.png")
 const T_MAP_FRAME := preload("res://art/hud/minimap_frame.png")
 const T_PILL_TIMER := preload("res://art/hud/pill_timer.png")
 const T_PILL_SQUAD := preload("res://art/hud/pill_squad.png")
+# one distinct, bright icon per skill from the reference sheet's kit (CC0), and a desaturated
+# copy of each (made from it) for the cooldown
 const SKILL_ICONS: Array[Texture2D] = [
 	preload("res://art/hud/icon_dodge.png"),            # CHARGE: the dash chevrons
 	preload("res://art/hud/icon_ultimate.png"),         # SPLIT: the sword into the ground ring
-	preload("res://art/hud/icon_skill_shockwave.png"),  # WHIRL: the golden ring
-	preload("res://art/hud/coin_heal.png"),             # RALLY
-	preload("res://art/hud/coin_shield.png"),           # SHIELD
+	preload("res://art/hud/icon_skill_crescent.png"),   # WHIRL: the spinning crescent
+	preload("res://art/hud/icon_skill_shockwave.png"),  # RALLY: the golden burst
+	preload("res://art/hud/icon_skill_arcane.png"),     # SHIELD: the barrier circle
 ]
-const SKILL_ICONS_OFF: Array = [null, null, null, preload("res://art/hud/coin_heal_off.png"), preload("res://art/hud/coin_shield_off.png")]
+const SKILL_ICONS_OFF: Array[Texture2D] = [
+	preload("res://art/hud/icon_dodge_off.png"),
+	preload("res://art/hud/icon_ultimate_off.png"),
+	preload("res://art/hud/icon_skill_crescent_off.png"),
+	preload("res://art/hud/icon_skill_shockwave_off.png"),
+	preload("res://art/hud/icon_skill_arcane_off.png"),
+]
 const FONT := preload("res://art/fonts/LilitaOne-Regular.ttf")
 
 const STICK_BASE_R: float = 86.0
@@ -43,6 +51,7 @@ const STICK_DEAD: float = 0.12                       # 12% dead zone
 const STICK_HOME_FROM_BL: Vector2 = Vector2(150.0, 205.0)
 const ATTACK_R: float = 62.0
 const SKILL_R: float = 37.0
+const ICON_K: Array[float] = [0.86, 0.9, 0.86, 0.9, 0.88]   # icon size in the disc (the art has its own margins)
 const GUARD_R: float = 33.0
 const ATTACK_FROM_BR: Vector2 = Vector2(98.0, 150.0)
 const SKILL_ARC_R: float = 150.0
@@ -756,14 +765,13 @@ func _draw_controls() -> void:
 		var r: float = SKILL_R * s
 		var cd: float = skill_cd[i]
 		var ok: bool = skill_ok[i] and cd <= 0.0
-		draw_circle(c, r + 3.0, Color(0.05, 0.03, 0.1, 0.55))
-		var icon: Texture2D = SKILL_ICONS[i]
-		if cd > 0.0 and SKILL_ICONS_OFF[i] != null:
-			icon = SKILL_ICONS_OFF[i]
-		var mod: Color = Color.WHITE if ok else (Color(0.5, 0.5, 0.55, 0.9) if cd > 0.0 else Color(0.75, 0.75, 0.8, 0.8))
-		_tex(icon, c, r * (1.12 if i < 3 else 1.0), mod)
+		# the reference's button: a translucent light disc, the icon on it
+		_tex(T_BTN_BASE, c, r + 4.0, Color(1, 1, 1, 0.9))
+		var icon: Texture2D = SKILL_ICONS_OFF[i] if cd > 0.0 or not skill_ok[i] else SKILL_ICONS[i]
+		var mod: Color = Color.WHITE if ok else (Color(0.85, 0.85, 0.9, 0.95) if cd > 0.0 else Color(0.8, 0.8, 0.85, 0.75))
+		_tex(icon, c, r * ICON_K[i], mod)
 		if cd > 0.0:
-			_pie(c, r, cd / maxf(skill_cd_max[i], 0.01), Color(0.02, 0.0, 0.06, 0.62))
+			_pie(c, r, cd / maxf(skill_cd_max[i], 0.01), Color(0.04, 0.02, 0.1, 0.45))
 			draw_arc(c, r + 1.5, -PI * 0.5, -PI * 0.5 + TAU * (1.0 - cd / maxf(skill_cd_max[i], 0.01)), 32, Color(1.0, 0.8, 0.35, 0.9), 3.0, true)
 			_text(c, ("%.1f" % cd) if cd < 1.0 else ("%d" % int(ceil(cd))), 28, Color.WHITE, 7)
 		if _ready_pulse[i] >= 0.0:

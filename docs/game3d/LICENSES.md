@@ -16,6 +16,9 @@ checkout on the farm (`~/cq-work/game-godot/ext/unity-ref`, cq 061's read-only c
 - Source: the project's own HUD kit, procedurally painted by `hud_src/icons.py` and
   `hud_src/kit.py` (numpy + PIL). These are the icons on the reference sheet
   `hud_icon_sheet.png`. Licence: **CC0 1.0** (own work; no third-party pixels).
+- icon_dodge_off, icon_ultimate_off, icon_skill_crescent_off, icon_skill_shockwave_off,
+  icon_skill_arcane_off (.png): the cooldown copies of those icons, desaturated with
+  ImageMagick (`-modulate 92,12`) (cq 011). **CC0 1.0**.
 
 ## Fonts (art/fonts/)
 - LilitaOne-Regular.ttf: Lilita One by Juan Montoreano, **SIL Open Font License 1.1**,
@@ -42,6 +45,10 @@ checkout on the farm (`~/cq-work/game-godot/ext/unity-ref`, cq 061's read-only c
 - street_pavers, medallion, circuit_run, light_pool (.png): the project's own ground and
   light passes (`assets/ground/src/*.py`, `assets/light/make_textures.py`; numpy + PIL),
   **CC0 1.0**.
+- neon_atlas.png (six neon shop signs stacked: RAMEN, ARCADE, CAFE, 24H, GYM, NOODLE),
+  shop_glow.png, lamp_glow.png: drawn with ImageMagick 7 for cq 011 (rounded-rectangle
+  strokes, blurs and radial gradients; the sign words are set in Lilita One, OFL 1.1, which
+  allows rendered glyphs in artwork). Own work, **CC0 1.0**.
 
 ## City kit (art/city/)
 - building-a, -b, -c, -d, -e, -f, -g, -h, -k, -l, detail-awning, detail-awning-wide (.glb):
@@ -53,7 +60,7 @@ checkout on the farm (`~/cq-work/game-godot/ext/unity-ref`, cq 061's read-only c
   `tools/fbx2glb.py` (cq 233). The licence files are in `art/city/LICENSE-*`.
 
 ## Code-made (no files)
-- Telegraph, shield dome, hit flash / rim and weapon trail shaders (`vfx/*.gdshader`), the
+- Telegraph, shield dome, hit flash / rim, weapon trail and shop-front (`facade`) shaders (`vfx/*.gdshader`), the
   swing crescents, rings, blob shadows, the minimap and every HUD shape drawn in `hud.gd`:
   own work, CC0 1.0.
 

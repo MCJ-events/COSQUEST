@@ -29,7 +29,7 @@ const HERO_HP: int = 1000
 const ALLY_HP: int = 800
 const ENEMY_HP: int = 6500
 const HERO_SPEED: float = 4.6            # m/s, no acceleration ramp: moves on the first frame
-const ARENA_HALF_X: float = 5.8         # the street between the kerbs
+const ARENA_HALF_X: float = 4.7         # the street between the kerbs
 const ARENA_Z: Vector2 = Vector2(-18.0, 12.0)
 
 # ---- the hero's combo. len: swing length; open/close: the hitbox's live window (s);
@@ -97,10 +97,10 @@ const BOLT_SPEED: float = 14.0
 
 # ---- camera (cq 233: closer and steeper than G0, to match the reference's framing:
 # fighters ~1/7 of the screen high, the action on the middle third)
-const CAM_PITCH: float = 50.0
+const CAM_PITCH: float = 44.0
 const CAM_YAW: float = 0.0
-const CAM_FOV: float = 58.0
-const CAM_DIST: float = 15.0
+const CAM_FOV: float = 55.0
+const CAM_DIST: float = 16.5
 const CAM_AHEAD: float = 0.6
 const CAM_SMOOTH: float = 0.16
 const CAM_LOOK: float = 0.7
@@ -1493,7 +1493,8 @@ func _sync_hud() -> void:
 	hud.t_left = t_left
 	for i in 5:
 		hud.skill_cd[i] = _skill_cd[i]
-		hud.skill_ok[i] = hero != null and state == "fighting" and _can_cast()
+		# disabled only when a press cannot count: during a swing or another skill it is buffered
+		hud.skill_ok[i] = hero != null and state == "fighting" and not hero.dead and hero.stagger <= 0.0
 	hud.attack_cd_k = 0.0
 	if _action == "attack":
 		hud.attack_cd_k = clampf(1.0 - _act_t / maxf(0.01, _act_len), 0.0, 1.0)
