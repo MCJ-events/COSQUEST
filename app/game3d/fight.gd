@@ -30,7 +30,7 @@ const ALLY_HP: int = 800
 const ENEMY_HP: int = 6500
 const HERO_SPEED: float = 4.6            # m/s, no acceleration ramp: moves on the first frame
 const ARENA_HALF_X: float = 4.7         # the street between the kerbs
-const ARENA_Z: Vector2 = Vector2(-18.0, 12.0)
+const ARENA_Z: Vector2 = Vector2(-9.0, 9.0)   # along the street: the camera (CAM_BOUNDS) keeps the whole fight framed
 
 # ---- the hero's combo. len: swing length; open/close: the hitbox's live window (s);
 # sweep: the arc's yaw from/to (deg, + is the hero's left); lift: the trail's height
@@ -104,7 +104,8 @@ const CAM_DIST: float = 16.5
 const CAM_AHEAD: float = 0.6
 const CAM_SMOOTH: float = 0.16
 const CAM_LOOK: float = 0.7
-const CAM_BOUNDS: float = 6.0
+const CAM_BOUNDS: float = 6.0          # along the street
+const CAM_BOUNDS_X: float = 2.2        # across it: the street stays centred, the shop walls at the edges
 
 const TEST_PACKS: String = "/opt/cq/tasks/056-game-forge-in-world-v2/out/packs/"
 
@@ -1451,7 +1452,7 @@ func _follow_camera(dt: float) -> void:
 		target = hero.position + _cam_fwd * CAM_AHEAD + _look
 		if enemy != null and not enemy.dead:
 			target = target.lerp((hero.position + enemy.position) * 0.5, 0.5)
-	target.x = clampf(target.x, -CAM_BOUNDS, CAM_BOUNDS)
+	target.x = clampf(target.x, -CAM_BOUNDS_X, CAM_BOUNDS_X)
 	target.z = clampf(target.z, -CAM_BOUNDS, CAM_BOUNDS)
 	target.y = 0.0
 	_focus = _smooth_damp(_focus, target, CAM_SMOOTH, 40.0, dt)
