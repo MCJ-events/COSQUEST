@@ -87,3 +87,17 @@ Notes:
 ## Engines and libraries
 
 See `docs/game3d/G0_VERDICT.md` (Godot MIT, LibGodot, react-native-godot) and `docs/forge/DROP-IN.md` (react-native-filament MIT, Filament Apache-2.0).
+
+## Animation clips (cq 012)
+
+The clips in `app/game3d/anim/<key>.glb` are retargeted copies of the clips below. Only rotations and the hips' motion are kept, mapped onto each cast character's own skeleton (see `docs/game3d/ANIMATIONS.md`). No meshes or textures from these packs are shipped.
+
+| asset | used as | author | source | licence | checked |
+|---|---|---|---|---|---|
+| Knight.glb (animations of the KayKit rig: 1H/2H melee attacks, 2H ranged aim/shoot, Block, Blocking, Block_Attack, Block_Hit, Dodge_Forward, Hit_A/B, Death_A/B, Cheer, Spellcast_Long/Raise/Shoot, Idle, 2H_Melee_Idle, Walking_A/B, Running_A/B, Jump_Full_Short) | combat clips | Kay Lousberg (KayKit) | https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0 (addons/kaykit_character_pack_adventures/Characters/gltf/Knight.glb) | CC0 1.0 (LICENSE.txt in the repo: "License: (Creative Commons Zero, CC0)") | 2026-10-30 |
+| Rogue.glb, Mage.glb, Barbarian.glb (read only for the hand-slot transforms of the crossbow, staff and axe; nothing shipped) | grip reference | Kay Lousberg (KayKit) | same | CC0 1.0 | 2026-10-30 |
+| AnimationLibrary_Godot_Standard.gltf (Idle_Loop, Walk_Loop, Jog_Fwd_Loop, Sprint_Loop, Hit_Chest, Death01, Roll, Sword_Attack, Sword_Idle, Spell_Simple_Shoot, Dance_Loop) | realistic locomotion and alternates | Quaternius (Universal Animation Library, standard free version, itch.io 2025-06-10) | https://github.com/J-Ponzo/gltf-universal-animation-library (glTF/; a mirror of https://quaternius.itch.io/universal-animation-library) | CC0 1.0 (LICENSE in the repo and the pack's own licence) | 2026-10-30 |
+
+Notes:
+- Nothing comes from Mixamo or any non-CC0 source.
+- The UAL mirror is a third party's copy of Quaternius's free pack. It states CC0 and carries the pack's licence text, and Quaternius publishes the pack as CC0. quaternius.com/itch.io downloads need a browser, so the mirror was used.

@@ -146,6 +146,11 @@ Holds a casting spot 4 m from the boss on the hero's side, fires a bolt every 1.
 - **To add a state:** add it to `STATES` (and `LOOPING` / `HOLD_LAST` if needed), give
   it aliases and a `POSES` entry, then call `fighter.act("<state>", seconds)` from the fight.
 
+**Cast clips (cq 012):** the rigged cast characters now bring their own clip library
+(`app/game3d/anim/<key>.glb`, `anim_library.gd`), picked per weapon class, time-warped so
+each clip's contact frame (data) lands on the hit moment that `fighter.act(state, length,
+hit_at)` passes. See `docs/game3d/ANIMATIONS.md`.
+
 ## hand_r (for the weapons task)
 - `fighter.hand_r()` returns the right-hand attach point:
   - a `BoneAttachment3D` named `hand_r` on the first bone matching `RightHand`, `hand_r`,
