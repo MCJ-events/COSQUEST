@@ -48,7 +48,7 @@ const entries: ForgeEntry[] = (await fetchCatalogue(client, FORGE_TYPES, null)).
 const now = Date.now();
 const drops = (await fetchDrops(client, 51.5074, -0.1278, 1000)).filter((d) => {
   const e = entries.find((x) => x.id === d.element_id);
-  return e && e.type === "weapon" && !isPlaceholderWeapon(e) && !/hammer/i.test(e.name) && (!d.expires_at || Date.parse(d.expires_at) > now + 10_000);
+  return e && e.type === "weapon" && !isPlaceholderWeapon(e) && !/hammer|shield/i.test(e.name) && (!d.expires_at || Date.parse(d.expires_at) > now + 10_000);
 });
 if (!drops.length) throw new Error("no real weapon drops near Trafalgar right now");
 await claimDrop(client, drops[0].id, drops[0].lat, drops[0].lng);

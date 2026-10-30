@@ -187,6 +187,11 @@ def to_contract(ob, w):
     lo, hi = bounds(ob)
     s = w["length_m"] / max(1e-6, hi.z - lo.z)
     ob.data.transform(Matrix.Scale(s, 4))
+    # girth < 1 slims the cross-section (a chunky toy gun into a rifle); the
+    # texture is a flat palette atlas, so the colours do not stretch.
+    gth = float(w.get("girth", 1.0))
+    if gth != 1.0:
+        ob.data.transform(Matrix.Diagonal((gth, gth, 1.0, 1.0)))
     ob.data.update()
     return s
 

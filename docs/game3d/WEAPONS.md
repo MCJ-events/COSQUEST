@@ -10,7 +10,9 @@ Commando, Blade, Killua and P-Mon are out of scope and have no entry: they are n
 |---|---|
 | attach manifest (machine-readable) | `app/game3d/data/attach.json` |
 | the maths (hand bones, hand frame, grips, GLB merge) | `app/features/game3d/attach.ts` (tests: `app/features/game3d/__tests__/attach.test.ts`) |
-| who holds what, the catalogue link, placeholders | `app/features/game3d/held.ts` (pure), `app/features/game3d/heldDevice.ts` (files) |
+| who holds what, the catalogue link, placeholders, the bag's Items list (`bagItems`), map drops (`dropShown`) | `app/features/game3d/held.ts` (pure), `app/features/game3d/heldDevice.ts` (files) |
+| the catalogue link against a LOCAL stack, both flag states | `app/features/game3d/__tests__/catalogue.local.test.ts` |
+| headless fight plans for both flag states | `e2e/forge/flag_fight_plans.ts` |
 | Godot socket | `app/game3d/fighter.gd` `attach_weapon()`, loaded by `app/game3d/fight.gd` `_queue_weapons()` |
 | class poses (hand-tuned) | `app/game3d/tools/weapons/grips.json` |
 | the weapon set (sources, sizes, licences) | `app/game3d/tools/weapons/weapons.json` |
@@ -26,7 +28,7 @@ Commando, Blade, Killua and P-Mon are out of scope and have no entry: they are n
 Each weapon GLB:
 - origin at the grip (where the hand closes);
 - +Y (glTF) along the blade, haft or barrel, to the tip; +Z towards the cutting edge, the head of an axe or hammer, the top of a gun, the face of a shield;
-- real-world metres (length along +Y): sword 0.95, greatsword 1.4, axe 0.8, warhammer 1.05, staff 1.6, dagger 0.45, crossbow 0.8, rifle 0.75, shield 0.6 across;
+- real-world metres (length along +Y): sword 0.95, greatsword 1.4, axe 0.8, warhammer 1.05, staff 1.6, dagger 0.45, crossbow 0.8, rifle 0.8, shield 0.6 across (the rifle's cross-section is slimmed to 60 % with `girth` in weapons.json: Kenney's blaster is a chunky toy at its own proportions);
 - scene root is an empty named `grip` at the origin; under it the mesh and an empty named `tip`;
 - one texture per weapon, embedded (KayKit and Kenney palette atlases), LOD0/1/2 (100/60/30 % of the triangles, texture 1024/512/256), USDZ per LOD, a 512 px thumbnail;
 - `pack.json` carries `stats.kind` (the backend's kinds), `sockets.grip` [0,0,0] and `sockets.tip`.
@@ -80,11 +82,11 @@ Class poses today:
 | sword | right | 0.9 f + 0.45 u | down | forward, a little raised |
 | greatsword | right | 0.55 f + 0.85 u | forward | raised in front |
 | dagger | right | f + 0.2 u | down | forward |
-| axe | right | 0.6 f + 0.8 u | forward | haft up, head forward |
+| axe | right | 0.8 f + 0.55 u + 0.2 o | forward | haft forward and up, away from the body, head out in front (clear of the arm) |
 | hammer | right | 0.9 u + 0.35 f + 0.1 o | forward | haft up the arm to the shoulder |
 | staff | right | world up + 0.15 f | forward | upright beside the body |
 | crossbow | right | f | world up | at the hip, pointing forward |
-| rifle | right | f | world up | at the hip, pointing forward |
+| rifle | right | 0.8 f - 0.5 w + 0.12 o | world up | low ready: barrel forward and down, clear of the leg |
 | shield | left | world up | o + 0.6 f | on the forearm, face out and forward |
 
 A shield is an off-hand item: with a shield, the main hand holds the character's own one-handed weapon, or the Knight's Arming Sword.
@@ -111,11 +113,25 @@ For the animation task: new clips must keep the bone names `RightHand` / `LeftHa
 - On: the player's own avatar holds the Forge weapon they equipped (a real one); placeholder weapons (one file served as every LOD, or no thumbnail and under 16 KB: the untextured Ember Blade v1) are hidden from the bag and the map; the bag's Items list adds the app's starter set (the nine bundled weapons, "Hold" keeps one in hand on this phone, since the 3D fight is practice).
 - Every other character holds its own default weapon (table above), from the bundled files, so a fresh install with an empty or placeholder-only catalogue still shows real weapons.
 
+## Proving the flag without a phone
+
+```
+# a LOCAL game backend with forge_world ON (and one with it OFF, same database), packs imported with tools/forge_import.py
+CQ_LOCAL_GAME=http://127.0.0.1:47699 CQ_LOCAL_GAME_OFF=http://127.0.0.1:47698 CQ_LOCAL_EXPECT=full \
+  node --test app/features/game3d/__tests__/catalogue.local.test.ts
+# a fresh database with only the untextured Ember Blade imported:
+CQ_LOCAL_GAME=http://127.0.0.1:47697 CQ_LOCAL_EXPECT=placeholder-only node --test app/features/game3d/__tests__/catalogue.local.test.ts
+# the Godot fight in both states (a new player claims and equips a real weapon; app flag on vs off)
+node e2e/forge/flag_fight_plans.ts --base http://127.0.0.1:47699 --dl <dir> --out <plans> --cast <cq060 models>
+```
+
+It checks: the placeholder is recognised and hidden; a new player's bag is the starter set; every bundled weapon embeds its texture and is byte-identical to the catalogue's LOD0; each cast character's file from the server takes its weapon under the hand bone with the manifest's matrix; a claimed and equipped real weapon is held with the link on and not with it off; with the server's forge_world off the Forge routes answer 404 and the bag is as before.
+
 ## Rebuild everything
 
 ```
 # weapons (Blender 4.2 headless, CPU, ~10 s)
-blender -b --factory-startup -noaudio --python app/game3d/tools/weapons/build_weapons.py -- \
+env -u LD_LIBRARY_PATH blender -b --factory-startup -noaudio --python app/game3d/tools/weapons/build_weapons.py -- \
   --spec app/game3d/tools/weapons/weapons.json --src <downloads> --out <out>
 cp <out>/packs/<slug>/<slug>__lod0.glb app/assets/weapons/<slug>.glb   # and the thumbnail at 256 px
 # manifest (from app/)

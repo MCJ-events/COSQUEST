@@ -134,10 +134,13 @@ describe("the Forge catalogue link on a LOCAL stack", { skip: !local && "set CQ_
     assert.equal(me.equipped.weapon, d.element_id);
     const equipped = entries.find((e) => e.id === d.element_id)!;
     const on = heldFor(manifest, { characterName: "Armstrong", mine: true, equipped, linkOn: catalogueOn(true, me.on) });
-    assert.equal(on.main?.source, "catalogue");
-    assert.equal(on.main?.entry?.id, equipped.id);
+    // a shield goes in the off hand (with a sword in the main hand); anything else in the main hand
+    const held = /shield/i.test(equipped.name) ? on.offhand : on.main;
+    assert.equal(held?.source, "catalogue");
+    assert.equal(held?.entry?.id, equipped.id);
     const off = heldFor(manifest, { characterName: "Armstrong", mine: true, equipped, linkOn: catalogueOn(false, me.on) });
     assert.equal(off.main?.slug, "forge_warhammer", "app flag off: his own hammer, as before");
+    assert.equal(off.offhand, null);
     const bagOn = bagItems(manifest, { entries, owned: inv.owned, linkOn: true });
     assert.equal(bagOn.list[0].id, equipped.id, "what you own first");
     assert.ok(!bagOn.starters.some((s) => s.name === equipped.name), "its starter twin is not listed twice");
