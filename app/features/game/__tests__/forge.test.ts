@@ -27,6 +27,7 @@ import {
   forgeWeapons,
   hexOf,
   sizeOk,
+  cachedSizeOk,
   parseForgeCatalogue,
   parseForgeElement,
 } from "../forge.ts";
@@ -231,6 +232,15 @@ describe("the 3D model rules", () => {
     assert.equal(sizeOk(64 * 1024 * 1024 + 1), false);
     assert.equal(sizeOk(100, 64 * 1024 * 1024 + 1), false);
     assert.equal(sizeOk(100, 100), true);
+  });
+
+  it("a cached file is whole only when it is not empty and has the catalogue's size", () => {
+    assert.equal(cachedSizeOk(1766956, 1766956), true);
+    assert.equal(cachedSizeOk(1766956, 0), false);
+    assert.equal(cachedSizeOk(null, 0), false);
+    assert.equal(cachedSizeOk(1766956, 1000), false);
+    assert.equal(cachedSizeOk(null, 1000), true);
+    assert.equal(cachedSizeOk(undefined, undefined), false);
   });
 
   it("shows 3D only with the native view, the island on, and a model", () => {

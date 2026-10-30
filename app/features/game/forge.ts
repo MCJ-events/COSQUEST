@@ -258,6 +258,17 @@ export function sizeOk(bytes: number | null | undefined, actual?: number): boole
 }
 
 /**
+ * Whether a cached file that was checked when it landed is still whole: not empty, and the
+ * catalogue's size when it gives one. A crash or power loss right after the download can
+ * leave the "checked" marker on disk while the file's data never made it (seen on the
+ * emulator: 0-byte GLBs with their markers, loaded as capsules). Costs a stat, not a hash.
+ */
+export function cachedSizeOk(bytes: number | null | undefined, onDisk: number | null | undefined): boolean {
+  if (!onDisk || onDisk <= 0) return false;
+  return bytes == null || bytes <= 0 || onDisk === bytes;
+}
+
+/**
  * Whether this weapon's card shows the 3D model: the native view exists on
  * this build, its island is not turned off (EXPO_PUBLIC_GAME_2D), and the
  * weapon has a model to fetch.

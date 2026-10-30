@@ -15,7 +15,7 @@ import { Dimensions, PixelRatio } from "react-native";
 
 import { getPref, setPref } from "@/utils/prefsStorage";
 
-import { digestOk, forgeComponent, forgeFileUrl, forgeHostOf, hexOf, sizeOk } from "./forge.ts";
+import { cachedSizeOk, digestOk, forgeComponent, forgeFileUrl, forgeHostOf, hexOf, sizeOk } from "./forge.ts";
 import {
   claimDrop,
   type DeviceClass,
@@ -250,10 +250,11 @@ export function ensureFile(entry: Pick<ForgeEntry, "id" | "version">, f: ForgeFi
       const dir = new Directory(root(), forgeComponent(entry.id), String(entry.version));
       const dest = new File(dir, forgeComponent(f.file));
       const marker = new File(dir, `${forgeComponent(f.file)}.${(f.sha256 ?? "nosha").slice(0, 16)}.ok`);
-      if (dest.exists && marker.exists) {
+      if (dest.exists && marker.exists && cachedSizeOk(f.bytes, dest.size)) {
         ready.set(key, dest.uri);
         return dest.uri;
       }
+      if (marker.exists) marker.delete();
       if (!sizeOk(f.bytes)) return null;
       if (!dir.exists) dir.create({ intermediates: true, idempotent: true });
       if (dest.exists) dest.delete();
