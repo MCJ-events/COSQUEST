@@ -95,8 +95,8 @@ As with cq 014's rigs: `data/rig_fixes.json` maps the sha256 of each cq 060 cata
 `res://cast/<key>_lod<n>.glb`. The look pass now covers all 8: Cat-Boy, Nebul-X and Vanessa are
 new entries, on cq 060's own rigs. A newer Forge version of a character loads as it is. The
 contract-2 packs (task `out/packs/cast_<key>/`) pass the backend's publish-time check
-(`tools/forge_import.py --dry-run`: ok; one warning each, no USDZ, so iOS uses the GLB). They are not
-published: Subomi approves the visuals first. The app's Filament previews read the catalogue, so
+(`tools/forge_import.py --dry-run`: ok, no warnings; USDZ for every LOD by `tools/look/usdz.py`,
+Blender headless). They are not published: Subomi approves the visuals first. The app's Filament previews read the catalogue, so
 they show the new look only once the packs are published.
 
 ## Rerun on a new Forge model
@@ -113,6 +113,7 @@ $PY app/game3d/tools/look/retex.py --glb <lodN.glb> --out <looks>/<key>/lodN.glb
 # 4. ship: MR as JPEG, smooth normals, res://cast + rig_fixes.json, packs
 $PY app/game3d/tools/look/ship_look.py --looks <looks> --orig <key>=<catalogue dir> ... --packs <out> --base <catalogue packs>
 $PY app/game3d/tools/look/same_rig.py --allow-normals <before.glb> <after.glb> ...
+blender -b --factory-startup --python app/game3d/tools/look/usdz.py -- <out>/cast_<key>   # USDZ for iOS
 # look sheets and the "fight did not change" check
 godot --path app/game3d --rendering-driver opengl3 --resolution 720x1280 -s res://tools/turntable.gd -- --glb=<lod.glb> --out=<prefix>
 godot --path app/game3d --fixed-fps 30 -s res://tests/seeded_fight.gd -- --hero=... --ally=... --enemy=...
