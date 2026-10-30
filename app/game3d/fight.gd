@@ -787,7 +787,7 @@ func _swing() -> void:
 		node = fx.muzzle(muzzle, enemy.chest_pos(), cols)
 	else:
 		var reach: float = float(_atk_data["reach"])
-		node = fx.slash(hero.position + Vector3(0, 1.0, 0) + hero.forward() * 0.1, hero.yaw, cols, reach * (1.05 if heavy else 0.92), tilt, 0.3 if heavy else 0.24)
+		node = fx.slash(hero.position + Vector3(0, 1.0, 0) + hero.forward() * 0.1, hero.yaw, cols, reach * (1.2 if heavy else 1.05), tilt, 0.4 if heavy else 0.32, true)
 	if not _lat_atk.is_empty() and _lat_atk["node"] == null:
 		_lat_atk["node"] = node
 	sfx.play("swing_heavy" if heavy else "swing", 1.0 - 0.06 * _combo_i)

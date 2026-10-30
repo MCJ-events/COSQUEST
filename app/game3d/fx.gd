@@ -23,7 +23,7 @@ const T_COIN := preload("res://art/fx/vfx_coin.png")
 # fx_atlas.png cells (tools/fx/make_fx_art.py)
 enum { GLOW, STAR4, BURST, SPARKLE, STREAK, RING, PUFF, SCORCH, CRACK, SWIRL, LINES, HALO, PLUS, SHARD, FLAME, DOT }
 
-const TRAIL_LIFE: float = 0.3
+const TRAIL_LIFE: float = 0.36
 const WHITE_HOT := Color(1.0, 0.98, 0.92)
 
 ## Slash colours per weapon class: [body, glow]. The heavy third hit is always gold.
@@ -37,7 +37,7 @@ const GOLD := [Color(1.0, 0.62, 0.08), Color(1.0, 0.86, 0.4)]
 
 ## Pool sizes = the per-effect budget (docs/game3d/EFFECTS.md). A pool reuses its oldest
 ## node when every one is busy, so a flurry can never grow the scene.
-const N_ARCS := 10
+const N_ARCS := 12
 const N_CARDS := 48
 const N_TOP := 20
 const N_DECALS := 12
@@ -120,6 +120,9 @@ func _ready() -> void:
 			arr.append(_make_parts(int(spec[1]), mesh))
 		_parts[spec[0]] = arr
 	_tune_parts()
+	for k: String in _parts:
+		for p: CPUParticles3D in _parts[k]:
+			p.set_meta("r0", p.emission_sphere_radius)
 
 
 func _card_mat(cell: int, add: float, billboard: int = 1, top: bool = false) -> ShaderMaterial:
@@ -290,6 +293,8 @@ func _emit(kind: String, at: Vector3, col: Color, dir: Vector3 = Vector3.ZERO, s
 		p.direction = dir.normalized()
 	if spread >= 0.0:
 		p.spread = spread
+	if p.has_meta("r0"):
+		p.emission_sphere_radius = float(p.get_meta("r0"))   # a caller may widen it for one burst
 	p.visible = true
 	p.restart()
 	p.emitting = true
@@ -372,11 +377,11 @@ func card(cell: int, at: Vector3, tint: Color, life: float, s0: float, s1: float
 ## of its life, then the tail catches up. cols = [body, glow] (CLASS_COLS / GOLD); a bare
 ## Color tint (older callers) gets a lighter glow. Returns the node (the latency rig times
 ## the press frame on it).
-func slash(at: Vector3, yaw: float, tint: Variant, size: float, tilt: float, life: float = 0.26, mirror: bool = false) -> MeshInstance3D:
+func slash(at: Vector3, yaw: float, tint: Variant, size: float, tilt: float, life: float = 0.26, echo: bool = false) -> MeshInstance3D:
 	var cols: Array = tint if tint is Array else [tint, (tint as Color).lerp(Color.WHITE, 0.45)]
 	var mi: MeshInstance3D = _pick(_arcs, "arc")
 	mi.position = at
-	mi.basis = Basis(Vector3.UP, yaw) * Basis(Vector3(0, 0, 1), tilt) * (Basis(Vector3.UP, PI) * Basis(Vector3.FORWARD, PI) if mirror else Basis.IDENTITY)
+	mi.basis = Basis(Vector3.UP, yaw) * Basis(Vector3(0, 0, 1), tilt)
 	mi.scale = Vector3.ONE * size
 	var m := mi.material_override as ShaderMaterial
 	m.set_shader_parameter("tint", cols[0])
@@ -385,10 +390,28 @@ func slash(at: Vector3, yaw: float, tint: Variant, size: float, tilt: float, lif
 	m.set_shader_parameter("tail_len", 1.2)
 	m.set_shader_parameter("alpha", 1.0)
 	m.set_shader_parameter("core", 1.0)
-	m.set_shader_parameter("halo", 1.0)
-	m.set_shader_parameter("body", 0.9)
+	m.set_shader_parameter("halo", 1.3)
+	m.set_shader_parameter("body", 0.95)
 	mi.visible = true
 	_start(mi, life, "arc", size, cols[0], {"spin": 0.0})
+	if echo:
+		# a thin bright stroke just outside the crescent, a beat behind it (the reference's
+		# concentric strokes): core and halo only, no body
+		var e: MeshInstance3D = _pick(_arcs, "arc")
+		e.position = at + Vector3(0, 0.08, 0)
+		e.basis = mi.basis * Basis(Vector3.UP, -0.12)
+		e.scale = Vector3.ONE * size * 1.14
+		var em := e.material_override as ShaderMaterial
+		em.set_shader_parameter("tint", cols[1])
+		em.set_shader_parameter("glow", cols[1])
+		em.set_shader_parameter("head", 0.0)
+		em.set_shader_parameter("tail_len", 1.2)
+		em.set_shader_parameter("alpha", 1.0)
+		em.set_shader_parameter("core", 0.8)
+		em.set_shader_parameter("halo", 0.7)
+		em.set_shader_parameter("body", 0.0)
+		e.visible = true
+		_start(e, life * 1.15, "arc", size * 1.14, cols[1], {"spin": 0.0})
 	return mi
 
 
@@ -562,14 +585,15 @@ func split_slam(at: Vector3, dir: Vector3) -> void:
 	var blue := Color(0.35, 0.68, 1.0)
 	var ice := Color(0.6, 0.88, 1.0)
 	var gold := Color(1.0, 0.62, 0.15)
-	var outer := beam(at, 14.0, 3.2, Color(0.12, 0.45, 1.0), Color(0.25, 0.55, 1.0), 0.75)
+	var outer := beam(at, 16.0, 4.2, Color(0.12, 0.45, 1.0), Color(0.25, 0.55, 1.0), 0.8)
 	(outer.material_override as ShaderMaterial).set_shader_parameter("sheath", 0.95)
 	(outer.material_override as ShaderMaterial).set_shader_parameter("sheath_w", 0.32)
-	beam(at, 15.0, 1.1, Color(0.4, 0.8, 1.0), Color(0.5, 0.85, 1.0), 0.55)
+	beam(at, 17.0, 1.5, Color(0.4, 0.8, 1.0), Color(0.5, 0.85, 1.0), 0.6)
 	# the downward spike of light the reference's beam ends in
-	card(STREAK, at + Vector3(0, 0.1, 0) + dir * 1.6, ice, 0.45, 1.0, 1.0, {"flat": true, "add": 0.6, "hot": 0.8, "aspect": Vector2(1.6, 6.5),
+	card(STREAK, at + Vector3(0, 0.1, 0) + dir * 2.6, ice, 0.5, 1.0, 1.0, {"flat": true, "add": 0.6, "hot": 0.8, "aspect": Vector2(2.2, 10.0),
 		"rot": atan2(dir.x, dir.z) + PI, "sp": 0.3})
-	card(GLOW, at + Vector3(0, 0.6, 0), ice, 0.4, 3.0, 5.0, {"add": 1.0})
+	card(GLOW, at + Vector3(0, 0.6, 0), ice, 0.45, 4.0, 6.5, {"add": 1.0})
+	card(GLOW, at + Vector3(0, 0.1, 0), Color(1.0, 0.72, 0.35), 0.6, 6.0, 10.0, {"flat": true, "add": 0.85, "fin": 0.02, "intensity": 0.8})
 	card(STAR4, at + Vector3(0, 0.5, 0), WHITE_HOT, 0.2, 2.0, 4.0, {"add": 0.9, "hot": 1.0})
 	shock(at, 3.0, gold, 0.5)
 	card(SWIRL, at + Vector3(0, 0.1, 0), gold, 0.7, 3.5, 8.5, {"flat": true, "add": 0.35, "spin": 4.0, "rand_rot": true, "sp": 0.3, "intensity": 1.2})
@@ -616,6 +640,8 @@ func whirl(at: Vector3, radius: float, cols: Array, spin_dir: float = 1.0, secon
 	card(HALO, at + Vector3(0, 0.1, 0), Color(1.0, 0.4, 0.75), 0.6, radius * 1.4, radius * 2.8, {"flat": true, "add": 0.3, "sp": 0.4, "intensity": 0.8})
 	card(SWIRL, at + Vector3(0, 0.08, 0), cols[0], 0.6, radius * 1.2, radius * 2.0, {"flat": true, "add": 0.15, "spin": -spin_dir * 7.0, "rand_rot": true, "sp": 0.35})
 	shock(at, radius, cols[1], 0.4)
+	var sp := _emit("sparkle", at + Vector3(0, 0.8, 0), cols[1].lerp(Color.WHITE, 0.4))
+	sp.emission_sphere_radius = radius * 0.9
 	for i in 2:
 		var a: float = randf() * TAU
 		_emit("spark_m", at + Vector3(sin(a) * radius * 0.8, 0.9, cos(a) * radius * 0.8), cols[1].lerp(Color.WHITE, 0.3), Vector3(sin(a), 0.25, cos(a)), 50.0)
@@ -845,7 +871,7 @@ func _process(dt: float) -> void:
 			"arc":
 				var m2 := mi.material_override as ShaderMaterial
 				# sweep in over the first 35 %, the tail catches up over the rest
-				var head: float = clampf(k / 0.35, 0.0, 1.0)
+				var head: float = clampf(k / 0.3, 0.0, 1.0)
 				head = 1.0 - (1.0 - head) * (1.0 - head)
 				m2.set_shader_parameter("head", head)
 				m2.set_shader_parameter("tail_len", lerpf(1.2, 0.25, clampf((k - 0.3) / 0.7, 0.0, 1.0)))
@@ -857,7 +883,7 @@ func _process(dt: float) -> void:
 			"beam":
 				var mb := mi.material_override as ShaderMaterial
 				# flares wide fast, holds, then thins and fades
-				var wk: float = lerpf(0.3, 1.0, ease(minf(k / 0.12, 1.0), 0.4)) * lerpf(1.0, 0.25, ease(maxf(0.0, (k - 0.35) / 0.65), 1.5))
+				var wk: float = lerpf(0.55, 1.0, ease(minf(k / 0.06, 1.0), 0.4)) * lerpf(1.0, 0.25, ease(maxf(0.0, (k - 0.35) / 0.65), 1.5))
 				mi.scale = Vector3(size * wk, float(d["h"]) * lerpf(0.75, 1.05, ease(k, 0.3)), 1.0)
 				mb.set_shader_parameter("alpha", 1.0 - ease(maxf(0.0, (k - 0.3) / 0.7), 1.8))
 			"coin":
