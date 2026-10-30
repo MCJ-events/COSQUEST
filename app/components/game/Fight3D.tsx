@@ -98,7 +98,8 @@ export default function Fight3D({
     void (async () => {
       try {
         const role = point?.source === "raid" ? "boss" : "guardian";
-        const cast = await fightCast({ pointId: point?.id ?? null, role, enemyId, enemyName: point?.extra?.guardian ?? null, lodOverride: FIGHT3D.lod });
+        // No point (the test link's Test arena): a fixed key, so the opponent is a published Guardian, not the capsule.
+        const cast = await fightCast({ pointId: point?.id ?? "test-arena", role, enemyId, enemyName: point?.extra?.guardian ?? null, lodOverride: FIGHT3D.lod });
         if (!alive || done.current) return;
         log(`cast lod=${cast.lod} hero_id=${cast.hero.id ?? "-"} hero=${cast.hero.path ? "glb" : "-"} ally=${cast.ally.path ? "glb" : "-"} enemy=${cast.enemy.path ? "glb" : "-"} after_ms=${Date.now() - openedAt.current}`);
         go({ kind: "loading", step: "Opening the arena" });
