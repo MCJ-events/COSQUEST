@@ -569,6 +569,31 @@
     "sword",
     "hammer"
    ]
+  },
+  "Guard_2H": {
+   "src": "2H_Melee_Attack_Chop",
+   "range": [
+    9,
+    14
+   ],
+   "pingpong": true,
+   "classes": [
+    "hammer"
+   ],
+   "lhand_ik": {
+    "class": "hammer",
+    "s": 0.28,
+    "d_off": 0.36
+   },
+   "damp_legs": {
+    "bones": [
+     "LeftUpLeg",
+     "RightUpLeg",
+     "LeftLeg",
+     "RightLeg"
+    ],
+    "f": 0.35
+   }
   }
  },
  "holds": {
@@ -888,17 +913,17 @@
     ]
    },
    "guard": {
-    "clip": "Blocking",
+    "clip": "Guard_2H",
     "alt": [
-     "Block",
-     "2H_Melee_Idle"
+     "Blocking",
+     "Block"
     ]
    },
    "parry": {
-    "clip": "Block_Attack",
+    "clip": "1H_Melee_Attack_Slice_Horizontal",
     "alt": [
-     "Block_Hit",
-     "1H_Melee_Attack_Stab"
+     "Block_Attack",
+     "Block_Hit"
     ]
    },
    "dodge": {
@@ -1009,17 +1034,17 @@
     ]
    },
    "guard": {
-    "clip": "Blocking",
+    "clip": "Guard_2H",
     "alt": [
-     "Block",
-     "2H_Melee_Idle"
+     "Blocking",
+     "Block"
     ]
    },
    "parry": {
-    "clip": "Block_Attack",
+    "clip": "1H_Melee_Attack_Slice_Horizontal",
     "alt": [
-     "Block_Hit",
-     "1H_Melee_Attack_Stab"
+     "Block_Attack",
+     "Block_Hit"
     ]
    },
    "dodge": {

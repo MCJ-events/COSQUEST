@@ -375,6 +375,15 @@ def main():
         length = an["length"]
         n = max(2, int(round(length * FPS)) + 1)
         times = np.linspace(0.0, length, n)
+        if cc.get("range"):
+            # a held pose cut from a clip (frames at 30 fps), ping-ponged into a seamless loop
+            f0, f1 = cc["range"]
+            seg = np.arange(f0, f1 + 1) / FPS
+            src_times = np.concatenate([seg, seg[-2:0:-1]]) if cc.get("pingpong") else seg
+            n = len(src_times) + (1 if cc.get("pingpong") else 0)
+            if cc.get("pingpong"):
+                src_times = np.append(src_times, seg[0])
+            times = src_times
         # source hips path (world), for root-motion stripping
         sG = []
         for t in times:
@@ -501,7 +510,7 @@ def main():
             "tear_share": round(tear_share, 5), "tear_p99": round(tear_p99, 3), "tears": tear_share > 0.005,
             "tear_where": tear_where, "lhand_ik_frames": int(sum(1 for x in ikw if x > 0.5)),
             "weapon": wchk}
-        lib_anims.append((cname, times, frames))
+        lib_anims.append((cname, np.arange(len(frames)) / FPS if cc.get("range") else times, frames))
         print("CLIP %-22s n=%3d tear=%.4f %s p99=%.2f feet=[%.3f,%.3f] slide=%.2f contact=%s weapon=%s" % (
             cname, n, tear_share, json.dumps(tear_where), tear_p99, feet_low.min(), feet_low.max(), slide, contact,
             json.dumps({k: (v["pen_max_m"], v["pen_frames"], v["lhand_to_shaft_m_p50"]) for k, v in wchk.items()})), flush=True)

@@ -105,7 +105,7 @@ func _initialize() -> void:
 	var clips: Array = []
 	var cls: String = str(plan.get("class", "sword"))
 	if str(plan.get("clips", "")) == "states":
-		var st: Dictionary = AnimLib.states_for(cls)
+		var st: Dictionary = AnimLib.states_for(cls, key)
 		for s: String in Animator.STATES:
 			if st.has(s):
 				clips.append([s, AnimLib.LIB_NAME + "/" + str(st[s]["clip"]), st[s]])
@@ -133,6 +133,11 @@ func _initialize() -> void:
 	for c: Array in clips:
 		if c[0] == "idle":
 			idle = c[1]
+	if idle == "" and _player != null:
+		for n: String in _player.get_animation_list():
+			if n.to_lower().contains("idle"):
+				idle = n
+				break
 	for k in turn:
 		_jobs.append(["turn", idle, 0.0, "front", k, 360.0 * k / turn])
 
