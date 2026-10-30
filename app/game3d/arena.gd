@@ -489,10 +489,13 @@ func _build_crossroad(kerb_mat: Material) -> void:
 	var j: int = 0
 	for sgn: float in [-1.0, 1.0]:
 		var x: float = STREET_HALF + 1.2 + SHOP_W * 0.5
-		while x < 36.0:
-			var n: String = BUILDINGS[(j * 7 + 3) % BUILDINGS.size()]
+		while x < 26.0:
+			# the corner shops in full detail, the rest of the cross street in the kit's low-detail blocks
+			var n: String = BUILDINGS[(j * 7 + 3) % BUILDINGS.size()] if x < 16.0 else FAR_BUILDINGS[(j + 2) % FAR_BUILDINGS.size()]
 			var h: Node3D = _piece(n, SHOP_W, Vector3(sgn * x, 0, CROSS_Z.y - 0.6 - SHOP_W * 0.5), 0.0)
 			if h != null:
+				if x >= 16.0:
+					_set_meta_all(h, "facade")
 				var wb: AABB = h.transform * _aabb(h)
 				map_blocks.append(Rect2(wb.position.x, wb.position.z, wb.size.x, wb.size.z))
 				if absf(x) < 16.0:
@@ -517,8 +520,8 @@ func _build_crossroad(kerb_mat: Material) -> void:
 			_halo(top, 0.9, Color(1.0, 0.3, 0.25, 0.7))
 	# parked cars along both kerbs, clear of the junction
 	var pk: int = 0
-	for spot: Array in [[-10.5, CROSS_Z.y + 1.25], [-16.0, CROSS_Z.y + 1.25], [11.0, CROSS_Z.y + 1.25], [17.5, CROSS_Z.y + 1.25],
-			[-13.0, CROSS_Z.x - 1.25], [14.5, CROSS_Z.x - 1.25], [24.0, CROSS_Z.x - 1.25]]:
+	for spot: Array in [[-10.5, CROSS_Z.y + 1.25], [11.0, CROSS_Z.y + 1.25], [17.5, CROSS_Z.y + 1.25],
+			[-13.0, CROSS_Z.x - 1.25], [14.5, CROSS_Z.x - 1.25]]:
 		var car: Node3D = _piece(CARS[pk % CARS.size()], 4.3, Vector3(float(spot[0]), 0, float(spot[1])), 90.0 if pk % 2 == 0 else -90.0)
 		pk += 1
 		if car == null:

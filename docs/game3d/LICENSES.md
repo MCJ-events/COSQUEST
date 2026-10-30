@@ -67,6 +67,19 @@ checkout on the farm (`~/cq-work/game-godot/ext/unity-ref`, cq 061's read-only c
 - lantern, stall-bench (.glb): Kenney "Fantasy Town Kit" 2.0, https://kenney.nl/assets/fantasy-town-kit, **CC0 1.0**.
 - Converted from the kits' FBX to GLB (texture embedded) by Blender 4.2 headless with
   `tools/fbx2glb.py` (cq 233). The licence files are in `art/city/LICENSE-*`.
+- cq 016 (the cross street up the screen, docs/game3d/LOOK.md "Composition"), the kits' own GLB files
+  as shipped, unchanged, each kit in its own folder with its `Textures/colormap.png` and licence file:
+  - `art/city/cars/`: sedan, taxi, van, suv, hatchback-sports, police, delivery (.glb): Kenney
+    "Car Kit" 3.1, https://kenney.nl/assets/car-kit, **CC0 1.0** (`LICENSE-Kenney-CarKit-CC0.txt`).
+  - `art/city/roads/`: traffic-light, traffic-light-hanging, road-sign-street (.glb): Kenney
+    "City Kit (Roads)" 2.2, https://kenney.nl/assets/city-kit-roads, **CC0 1.0**.
+  - `art/city/commercial/`: detail-parasol-a, -b, detail-awning, detail-awning-wide,
+    detail-overhang-wide, low-detail-building-a .. -f, low-detail-building-wide-a, -b,
+    building-skyscraper-a, -c (.glb): Kenney "City Kit (Commercial)" 2.1, **CC0 1.0**.
+  - Downloaded 2026-10-30 from Kenney's own uploads on OpenGameArt
+    (https://opengameart.org/content/car-kit, /city-kit-roads, /city-kit-commercial; each page
+    and each zip's License.txt says CC0 1.0): kenney.nl answers 403 to scripted downloads.
+  - The asphalt, zebra crossings and lane marks are code-made quads (`arena.gd _build_crossroad`).
 
 ## Code-made (no files)
 - Telegraph, shield dome, hit flash / rim, weapon trail and shop-front (`facade`) shaders (`vfx/*.gdshader`), the
