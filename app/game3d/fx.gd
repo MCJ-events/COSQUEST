@@ -16,6 +16,7 @@ const T_SLASH := preload("res://art/fx/slash_02.png")
 const T_TRAIL := preload("res://art/fx/vfx_blade_trail.png")
 const T_SWIRL := preload("res://art/fx/vfx_swirl.png")
 const T_GLOW := preload("res://art/fx/vfx_glow.png")
+const T_PILLAR := preload("res://art/fx/vfx_pillar.png")
 const T_RING := preload("res://art/fx/vfx_ring_fire.png")
 const T_COIN := preload("res://art/fx/vfx_coin.png")
 const T_SCORCH := preload("res://art/fx/scorch_01.png")
@@ -67,7 +68,9 @@ func _ready() -> void:
 	for i in 6:
 		_impacts.append(_make_mi(_quad(1.0), _additive(T_STAR, true)))
 	for i in 4:
-		var pm := _additive(T_GLOW)
+		# mixed, not added: an added column washes to white on the light paving; mixed, the
+		# beam keeps its blue edges and white core, as on the reference's SPLIT
+		var pm := _alpha(T_PILLAR)
 		pm.billboard_mode = BaseMaterial3D.BILLBOARD_FIXED_Y
 		pm.billboard_keep_scale = true
 		var pq := QuadMesh.new()
