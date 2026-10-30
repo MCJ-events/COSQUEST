@@ -211,6 +211,8 @@ export type Fight3DConfig = {
   tiles_rot_x?: number;
   seed: number;
   autoplay: boolean;
+  /** The app's Reduce motion setting (cq 013): a quarter of the camera shake, no zoom punch. Sent only when on. */
+  reduce_motion?: boolean;
 };
 
 export const FIGHT_SECONDS = 45;
@@ -226,6 +228,7 @@ export function buildFightConfig(input: {
   tilesUrl?: string | null;
   durationS?: number;
   playersText?: string;
+  reduceMotion?: boolean;
 }): Fight3DConfig {
   const config: Fight3DConfig = {
     hero_glb: localPath(input.hero.path),
@@ -242,6 +245,7 @@ export function buildFightConfig(input: {
     autoplay: input.autoplay,
   };
   if (input.tilesUrl) Object.assign(config, tilesFields(input.tilesUrl));
+  if (input.reduceMotion) config.reduce_motion = true;
   return config;
 }
 

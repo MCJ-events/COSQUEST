@@ -423,6 +423,7 @@ func trail_push(key: String, base: Vector3, tip: Vector3, tint: Variant, t_back:
 	var trm := (tr["mi"] as MeshInstance3D).material_override as ShaderMaterial
 	trm.set_shader_parameter("tint", cols[0])
 	trm.set_shader_parameter("glow", cols[1])
+	trm.set_shader_parameter("core", 0.45 if cols.size() > 2 else 1.0)   # a third entry: a softer core (CHARGE)
 
 
 func _draw_trails() -> void:
@@ -460,12 +461,15 @@ func _draw_trails() -> void:
 func muzzle(at: Vector3, to: Vector3, cols: Array) -> MeshInstance3D:
 	var mi := card(STAR4, at, cols[1], 0.12, 0.9, 1.4, {"top": true, "add": 0.9, "hot": 1.0, "rand_rot": true})
 	card(GLOW, at, cols[0], 0.16, 0.8, 1.6, {"top": true, "add": 1.0})
+	# the tracer: a thin ribbon along the shot, newest at the target end, fading back to the barrel
 	var dir: Vector3 = to - at
-	var n: int = 5
-	for i in n:
-		var u0: float = float(i) / n
-		var u1: float = float(i + 1) / n
-		trail_push("tracer", at + dir * u0, at + dir * u1 + Vector3(0, 0.05, 0), cols, 0.0, 0.1)
+	var side: Vector3 = dir.cross(Vector3.UP).normalized() * 0.1
+	var n: int = 6
+	trail_cut("tracer")
+	for i in n + 1:
+		var p: Vector3 = at + dir * (float(i) / n)
+		trail_push("tracer", p - side, p + side, cols, float(n - i) / n * 0.12, 0.12)
+	card(GLOW, to, cols[1], 0.18, 0.6, 1.2, {"top": true, "add": 1.0})
 	return mi
 
 
@@ -483,8 +487,8 @@ func sparks(at: Vector3, tint: Color, dmg: int, crit: bool = false, away: Vector
 	_emit(key, at, tint.lerp(Color.WHITE, 0.3), dir, 75.0 if away != Vector3.ZERO else 180.0)
 	var k: float = [1.15, 1.5, 1.85][tier] * (1.2 if crit else 1.0)
 	var flash_col: Color = tint.lerp(WHITE_HOT, 0.5)
-	card(STAR4, at, flash_col, 0.16, 0.7 * k, 1.5 * k, {"top": true, "add": 0.85, "hot": 1.0, "sp": 0.3, "fin": 0.05, "rand_rot": true})
-	card(GLOW, at, tint, 0.22, 0.9 * k, 1.9 * k, {"top": true, "add": 1.0, "sp": 0.4, "intensity": 0.9})
+	card(STAR4, at, flash_col, 0.15, 0.6 * k, 1.25 * k, {"top": true, "add": 0.85, "hot": 1.0, "sp": 0.3, "fin": 0.05, "rand_rot": true})
+	card(GLOW, at, tint, 0.2, 0.6 * k, 1.3 * k, {"top": true, "add": 1.0, "sp": 0.4, "intensity": 0.65})
 	if tier >= 1 or crit:
 		card(RING, at, tint.lerp(Color.WHITE, 0.4), 0.2, 0.4 * k, 1.8 * k, {"top": true, "add": 0.8, "sp": 0.35})
 	if crit:
@@ -692,7 +696,7 @@ func scorch(at: Vector3, size: float) -> void:
 ## Ground cracks: a dark decal that lingers and a glowing copy that cools in a moment.
 func crack(at: Vector3, size: float) -> void:
 	decal(SCORCH, at, size * 0.8, Color(0.14, 0.09, 0.08, 0.55), 4.5)
-	decal(CRACK, at, size, Color(0.2, 0.12, 0.1, 0.5), 4.0)
+	decal(CRACK, at, size, Color(0.22, 0.14, 0.12, 0.38), 3.5)
 	card(CRACK, at + Vector3(0, 0.06, 0), Color(1.0, 0.65, 0.25), 0.9, size, size, {"flat": true, "add": 1.0, "fin": 0.02, "fp": 0.6, "intensity": 1.3})
 
 
@@ -859,7 +863,7 @@ func _process(dt: float) -> void:
 			"coin":
 				var from: Vector3 = d["from"]
 				var cv: Vector3 = d["vel"]
-				var up: float = 1.4 * sin(minf(k * 1.4, 1.0) * PI * 0.5) if cv == Vector3.ZERO else 2.4 * t - 4.5 * t * t
+				var up: float = 1.4 * sin(minf(k * 1.4, 1.0) * PI * 0.5) if cv == Vector3.ZERO else 5.5 * t - 5.5 * t * t
 				mi.position = from + cv * t + Vector3(0, maxf(up, -0.3), 0)
 				mi.scale = Vector3(absf(cos(t * 9.0)) * 0.9 + 0.1, 1, 1)
 				(mi.material_override as StandardMaterial3D).albedo_color = Color(1, 1, 1, 1.0 - ease(maxf(0.0, k - 0.6) / 0.4, 1.0))

@@ -50,7 +50,7 @@ const CRIT_CHANCE: float = 0.14
 const CRIT_MULT: float = 1.6
 
 # ---- effect colours (cq 013): [body, glow] for fx.gd's layered arcs and trails
-const CHARGE_COLS: Array = [Color(0.2, 0.95, 0.9), Color(0.6, 1.0, 0.95)]
+const CHARGE_COLS: Array = [Color(0.05, 0.85, 0.85), Color(0.35, 1.0, 0.92), "soft"]
 const WHIRL_COLS: Array = [Color(1.0, 0.55, 0.12), Color(1.0, 0.82, 0.4)]
 const WHIRL_COLS_2: Array = [Color(1.0, 0.4, 0.75), Color(1.0, 0.75, 0.9)]
 const BOSS_COLS: Array = [Color(0.9, 0.12, 0.1), Color(1.0, 0.45, 0.3)]
@@ -1156,7 +1156,7 @@ func _apply_hit(src: FighterScript, dst: FighterScript, info: Dictionary) -> voi
 	if left > 0:
 		_take(dst, left, src, crit)
 	# feedback
-	dst.flash(1.0 if heavy or crit else 0.75)
+	dst.flash(0.85 if crit else (0.7 if heavy else 0.55))   # cq 013: a short white pop that keeps the body readable
 	dst.hurt_pop()
 	var kb: float = float(info.get("kb", 0.3))
 	if dst == enemy:

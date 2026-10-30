@@ -22,6 +22,7 @@ import { castWeapons, fightCast } from "@/features/game3d/characters";
 import { closeFight, fightStatus, FightOpenError, godotLib, holdForBackground, onFightState, openFight } from "@/features/game3d/engine";
 import { buildFightConfig, type Fight3DMode, type Fight3DResult, type Fight3DRun, godotArgs, parseFightResult, quitResult } from "@/features/game3d/fight3d";
 import { FIGHT3D } from "@/features/game3d/flags";
+import { useAppSelector } from "@/store/hooks";
 import type { QuestPoint } from "@/features/game/wire";
 
 import { GameButton, MAX_FONT_SCALE } from "./kit";
@@ -62,6 +63,10 @@ export default function Fight3D({
   const [phase, setPhase] = useState<Phase>({ kind: "loading", step: "Getting the fighters ready" });
   const phaseRef = useRef(phase);
   const done = useRef(false);
+  // The app's Reduce motion setting (cq 013): read when the fight opens (a ref, so a change never reopens it).
+  const reduceMotionSetting = useAppSelector((state) => Boolean(state.settings.appearance?.reduceMotion));
+  const reduceMotion = useRef(reduceMotionSetting);
+  reduceMotion.current = reduceMotionSetting;
   const openedAt = useRef(Date.now());
   const go = useCallback((p: Phase) => {
     phaseRef.current = p;
@@ -106,6 +111,7 @@ export default function Fight3D({
           seed: Math.floor(Math.random() * 2147483647),
           autoplay,
           tilesUrl: FIGHT3D.tilesUrl || null,
+          reduceMotion: reduceMotion.current,
         });
         // Weapons in hand (cq 234): the cast's weapons, as files, with their grips.
         const weapons = await castWeapons(cast);

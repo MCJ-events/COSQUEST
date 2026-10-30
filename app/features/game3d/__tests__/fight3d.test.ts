@@ -156,6 +156,9 @@ test("the config Godot gets: paths, names with fallbacks, 45 s, 2/3 players", ()
   assert.equal(buildFightConfig({ hero: { path: null, name: null }, ally: { path: null, name: null }, enemy: { path: null, name: null }, pointName: "p", mode: "arena", seed: 1, autoplay: true, tilesUrl: "https://t/{z}/{x}/{y}.png" }).tiles_url, "https://t/{z}/{x}/{y}.png");
   // JSON round trip (what start_fight receives).
   assert.equal(JSON.parse(JSON.stringify(c)).hero_glb, "/c/hero.glb");
+  // Reduce motion (cq 013): sent only when the setting is on.
+  assert.equal("reduce_motion" in c, false);
+  assert.equal(buildFightConfig({ hero: { path: null, name: null }, ally: { path: null, name: null }, enemy: { path: null, name: null }, pointName: "p", mode: "full", seed: 1, autoplay: false, reduceMotion: true }).reduce_motion, true);
 });
 
 test("Godot's arguments: the asset folder on Android, the bundle's pack on iOS", () => {

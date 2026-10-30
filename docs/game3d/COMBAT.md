@@ -12,7 +12,7 @@ numbers, and for the two hooks the sister tasks fill: **CombatAnimator** (clips)
 | `combat_animator.gd` | **CombatAnimator**: named states, clip lookup, procedural fallback, the `hand_r` attach point |
 | `pose_layer.gd` | A `SkeletonModifier3D` that turns the spine and arms for the procedural poses |
 | `hit_area.gd` | A hitbox: an `Area3D` that reports each hurtbox it touches once per opening |
-| `fx.gd` | Trails, crescents, sparks, rings, swirls, telegraphs, ground bursts, coins, bolts (pooled) |
+| `fx.gd` | Every effect: slash arcs and weapon ribbons, hit sparks and flashes, skill set pieces, decals, coins, telegraphs, bolts (pooled; cq 013, see EFFECTS.md) |
 | `sfx.gd` | Sounds (Kenney CC0) |
 | `hud.gd` | Joystick, attack, 5 skills, guard, timer, squad pill, minimap, overhead bars, damage numbers |
 | `arena.gd` | The street plaza |
@@ -213,3 +213,8 @@ The spec gives the fight config, a timeline of inputs (`stick`, `attack`, `skill
 `guard`), the shot times and an output folder. `--fixed-fps 30` makes every frame 1/30 s
 of fight time, so the same spec gives the same frames on a slow software renderer. The
 config keys `cam_dist`, `cam_fov` and `cam_pitch` override the camera for close-ups.
+
+## Effects (cq 013)
+The skill and hit effects, the camera impact and the damage-number punch are described in
+[EFFECTS.md](EFFECTS.md): each effect and its layers, why glow is drawn on the effects (no bloom pass
+in the Compatibility renderer), the per-effect budget, and how to tune them.
