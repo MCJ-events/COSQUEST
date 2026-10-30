@@ -198,7 +198,7 @@ func build(cfg: Dictionary) -> void:
 	var gm := StandardMaterial3D.new()
 	gm.albedo_texture = T_PAVERS
 	gm.uv1_scale = Vector3(40, 40, 1)
-	gm.albedo_color = Color(0.74, 0.72, 0.76)
+	gm.albedo_color = Color(0.66, 0.63, 0.69)
 	gm.roughness = 0.95
 	# plain trilinear: anisotropic filtering costs ~1.7 ms a frame on a software GPU
 	gm.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
