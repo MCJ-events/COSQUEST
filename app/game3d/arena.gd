@@ -97,6 +97,8 @@ func build(cfg: Dictionary) -> void:
 	_dressing.name = "Street"
 	add_child(_dressing)
 	_build_street()
+	if bool(cfg.get("merge_street", true)):
+		_merge_dressing()
 
 
 func _scene(n: String) -> PackedScene:
@@ -204,6 +206,54 @@ func _build_street() -> void:
 		li += 1
 	for side in 2:
 		_piece("tree-small", 2.6, Vector3((STREET_HALF - 1.2) * (-1.0 if side == 0 else 1.0), 0, -24.0 + side * 4.0), 0.0)
+
+
+## Bakes the whole street (about 90 mesh instances) into one mesh per material: the Kenney
+## kits share a colour atlas, so the street draws in a handful of calls instead of ~90.
+## On the emulator's software GPU each draw call is frame time, and frame time is input latency.
+func _merge_dressing() -> void:
+	var groups: Dictionary = {}     # key -> {st: SurfaceTool, mat: Material}
+	var n_in: int = 0
+	var inv: Transform3D = _dressing.global_transform.affine_inverse()
+	for node: Node in _dressing.find_children("*", "MeshInstance3D", true, false):
+		var mi := node as MeshInstance3D
+		if mi.mesh == null:
+			continue
+		n_in += 1
+		var xf: Transform3D = inv * mi.global_transform
+		for si in mi.mesh.get_surface_count():
+			var mat: Material = mi.get_active_material(si)
+			var key: String = _mat_key(mat)
+			if not groups.has(key):
+				var st := SurfaceTool.new()
+				st.begin(Mesh.PRIMITIVE_TRIANGLES)
+				groups[key] = {"st": st, "mat": mat}
+			(groups[key]["st"] as SurfaceTool).append_from(mi.mesh, si, xf)
+	var merged := Node3D.new()
+	merged.name = "StreetMerged"
+	for key: String in groups:
+		var st: SurfaceTool = groups[key]["st"]
+		var mesh: ArrayMesh = st.commit()
+		var out := MeshInstance3D.new()
+		out.mesh = mesh
+		out.material_override = groups[key]["mat"]
+		out.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		merged.add_child(out)
+	remove_child(_dressing)
+	_dressing.queue_free()
+	_dressing = merged
+	add_child(_dressing)
+	print("CQ street merged %d mesh instances into %d" % [n_in, groups.size()])
+
+
+static func _mat_key(mat: Material) -> String:
+	# the kits' GLBs each embed their own copy of the same atlas: key them by the pixels
+	if mat is BaseMaterial3D and (mat as BaseMaterial3D).albedo_texture != null:
+		var bm := mat as BaseMaterial3D
+		var img: Image = bm.albedo_texture.get_image()
+		var h: int = img.get_data().hash() if img != null else bm.albedo_texture.get_instance_id()
+		return "tex%d_%d_%s" % [h, bm.transparency, str(bm.albedo_color)]
+	return "mat%d" % (mat.get_instance_id() if mat != null else 0)
 
 
 ## With a 3D Tiles ground, the tileset is the floor: hide ours (and the plaza unless kept).
