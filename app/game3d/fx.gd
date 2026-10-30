@@ -678,11 +678,16 @@ func speed_line(at: Vector3, dir: Vector3, tint: Color) -> void:
 
 ## RALLY: a rising heal column, motes and sparkles on each ally, a glow ring at the feet.
 func heal(at: Vector3, tint: Color) -> void:
-	var b := beam(at, 4.2, 1.9, Color(0.25, 0.9, 0.3), Color(0.7, 1.0, 0.5), 1.0)
+	var b := beam(at, 5.0, 2.4, Color(0.2, 0.85, 0.25), Color(0.6, 1.0, 0.45), 1.1)
 	var m := b.material_override as ShaderMaterial
-	m.set_shader_parameter("core_w", 0.16)
-	m.set_shader_parameter("sheath_w", 0.4)
-	m.set_shader_parameter("sheath", 0.85)
+	m.set_shader_parameter("core_w", 0.2)
+	m.set_shader_parameter("sheath_w", 0.45)
+	m.set_shader_parameter("sheath", 1.0)
+	# flame tongues rising round the ally, gold-green
+	for i in 3:
+		var a: float = TAU * float(i) / 3.0 + randf() * 0.6
+		card(FLAME, at + Vector3(sin(a) * 0.55, 0.6, cos(a) * 0.55), Color(0.55, 1.0, 0.35), 0.8, 0.9, 1.4,
+			{"bb": 3, "add": 0.6, "hot": 0.5, "aspect": Vector2(0.7, 1.8), "fin": 0.15, "vel": Vector3(0, 1.6, 0)})
 	m.set_shader_parameter("speed", -1.6)
 	m.set_shader_parameter("top_fade", 0.25)
 	_emit("mote", at + Vector3(0, 0.1, 0), tint.lerp(Color.WHITE, 0.25))
