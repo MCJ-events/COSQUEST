@@ -785,6 +785,9 @@ func _tick_skill(dt: float) -> void:
 				_punch = maxf(_punch, 0.7)
 				sfx.play("slam")
 				fx.ring(hero.position, 2.4, Color(1.0, 0.6, 0.25, 0.95))
+				fx.ring(hero.position, 3.6, Color(1.0, 0.9, 0.6, 0.8), 0.5)
+				fx.pillar(hero.position + _skill_dir * 0.5, 7.0, 2.6, Color(1.0, 0.7, 0.3, 1.0), 0.5)
+				fx.pillar(hero.position + _skill_dir * 0.5, 8.0, 1.1, Color(1.0, 0.97, 0.85, 1.0), 0.4)
 				fx.dust(hero.position)
 				fx.ground_split(hero.position + _skill_dir * 0.8, _skill_dir, SPLIT_LEN_M, 0.25, Color(1.0, 0.55, 0.2))
 				hero.remove_child(_skill_area)
@@ -807,6 +810,8 @@ func _tick_skill(dt: float) -> void:
 				if t >= at_t and _fire_once("w%d" % hit_i):
 					fx.swirl(hero.position, WHIRL_RADIUS, Color(1.0, 0.8, 0.4, 0.95))
 					fx.ring(hero.position, WHIRL_RADIUS, Color(1.0, 0.75, 0.3, 0.9))
+					fx.ring(hero.position, WHIRL_RADIUS * 1.35, Color(1.0, 0.95, 0.75, 0.7), 0.5)
+					fx.swirl(hero.position, WHIRL_RADIUS * 0.8, Color(1.0, 0.95, 0.7, 0.9), 0.4, 0.4)
 					fx.slash(hero.position + Vector3(0, 0.9, 0), hero.yaw + hit_i * PI * 0.5, Color(1.0, 0.8, 0.35, 0.9), 1.6, 0.0)
 					fx.slash(hero.position + Vector3(0, 0.9, 0), hero.yaw + PI + hit_i * PI * 0.5, Color(1.0, 0.8, 0.35, 0.9), 1.6, 0.0)
 					_shake_cam(0.12, 0.25)

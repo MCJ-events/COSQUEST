@@ -516,7 +516,7 @@ func _draw() -> void:
 		var kp: float = 1.0 + 0.5 * maxf(0.0, 1.0 - _callout_t / 0.12)
 		var cc := _callout_col
 		cc.a = ka
-		_text_scaled(Vector2(size.x * 0.5, size.y * 0.27), _callout, 56, cc, 12, kp, Color(0.12, 0.04, 0.1, ka))
+		_text_scaled(Vector2(size.x * 0.5, size.y * 0.64), _callout, 48, cc, 12, kp, Color(0.12, 0.04, 0.1, ka))
 	if _banner != "":
 		var k: float = clampf(_banner_t / 0.15, 0.0, 1.0)
 		var y: float = size.y * 0.36

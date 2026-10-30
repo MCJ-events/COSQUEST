@@ -26,7 +26,7 @@ func build(cfg: Dictionary) -> void:
 	env.background_mode = Environment.BG_COLOR
 	env.background_color = Color(0.2, 0.2, 0.36)
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color(0.78, 0.72, 0.9)
+	env.ambient_light_color = Color(0.62, 0.64, 0.92)
 	env.ambient_light_energy = 0.5
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	env.tonemap_white = 6.0
@@ -38,9 +38,9 @@ func build(cfg: Dictionary) -> void:
 	we.environment = env
 	add_child(we)
 	var sun := DirectionalLight3D.new()
-	sun.rotation_degrees = Vector3(-50.0, 40.0, 0.0)
-	sun.light_energy = 1.25
-	sun.light_color = Color(1.0, 0.86, 0.72)
+	sun.rotation_degrees = Vector3(-42.0, 40.0, 0.0)
+	sun.light_energy = 1.15
+	sun.light_color = Color(1.0, 0.8, 0.62)
 	sun.shadow_enabled = bool(cfg.get("shadows", false))
 	add_child(sun)
 	var fill := DirectionalLight3D.new()
@@ -56,7 +56,7 @@ func build(cfg: Dictionary) -> void:
 	var gm := StandardMaterial3D.new()
 	gm.albedo_texture = T_PAVERS
 	gm.uv1_scale = Vector3(40, 40, 1)
-	gm.albedo_color = Color(0.74, 0.6, 0.66)
+	gm.albedo_color = Color(0.64, 0.56, 0.62)
 	gm.roughness = 0.95
 	gm.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
 	ground.material_override = gm

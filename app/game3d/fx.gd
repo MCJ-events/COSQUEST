@@ -33,6 +33,7 @@ var _rings: Array[MeshInstance3D] = []
 var _bands: Array[MeshInstance3D] = []
 var _flares: Array[MeshInstance3D] = []
 var _impacts: Array[MeshInstance3D] = []   # the star-shaped contact flash
+var _pillars: Array[MeshInstance3D] = []   # skill light columns (SPLIT)
 var _decals: Array[MeshInstance3D] = []
 var _coins: Array[MeshInstance3D] = []
 var _teles: Array[MeshInstance3D] = []
@@ -65,6 +66,14 @@ func _ready() -> void:
 		_flares.append(_make_mi(_quad(1.0), _additive(T_FLARE, true)))
 	for i in 6:
 		_impacts.append(_make_mi(_quad(1.0), _additive(T_STAR, true)))
+	for i in 4:
+		var pm := _additive(T_GLOW)
+		pm.billboard_mode = BaseMaterial3D.BILLBOARD_FIXED_Y
+		pm.billboard_keep_scale = true
+		var pq := QuadMesh.new()
+		pq.size = Vector2(1.0, 1.0)
+		pq.center_offset = Vector3(0, 0.5, 0)   # grows up from the ground
+		_pillars.append(_make_mi(pq, pm))
 	for i in 10:
 		_decals.append(_make_mi(_flat_quad(1.0), _alpha(T_SCORCH)))
 	for i in 4:
@@ -117,6 +126,7 @@ static func _additive(tex: Texture2D, billboard: bool = false) -> StandardMateri
 		m.albedo_texture = tex
 	if billboard:
 		m.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+		m.billboard_keep_scale = true   # without it the node's scale is dropped (every flash 1 m)
 	return m
 
 
@@ -129,6 +139,7 @@ static func _alpha(tex: Texture2D, billboard: bool = false) -> StandardMaterial3
 	m.albedo_texture = tex
 	if billboard:
 		m.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+		m.billboard_keep_scale = true   # without it the node's scale is dropped (every flash 1 m)
 	return m
 
 
@@ -352,7 +363,7 @@ func sparks(at: Vector3, tint: Color, dmg: int, crit: bool = false) -> void:
 	p.emitting = true
 	var fl: MeshInstance3D = _pick(_flares, "flare")
 	fl.position = at
-	var fs: float = clampf(1.2 + float(dmg) / 100.0, 1.4, 3.8) * (1.3 if crit else 1.0)
+	var fs: float = clampf(0.8 + float(dmg) / 200.0, 0.9, 2.0) * (1.25 if crit else 1.0)
 	fl.scale = Vector3.ONE * fs
 	(fl.material_override as StandardMaterial3D).albedo_color = tint.lerp(Color.WHITE, 0.4)
 	fl.visible = true
@@ -360,7 +371,7 @@ func sparks(at: Vector3, tint: Color, dmg: int, crit: bool = false) -> void:
 	# a star-shaped flash on contact, turned a little each hit so repeats do not look stamped
 	var im: MeshInstance3D = _pick(_impacts, "impact")
 	im.position = at + Vector3(0, 0.05, 0)
-	var is_: float = clampf(0.9 + float(dmg) / 140.0, 1.0, 2.6) * (1.35 if crit else 1.0)
+	var is_: float = clampf(0.7 + float(dmg) / 250.0, 0.8, 1.8) * (1.3 if crit else 1.0)
 	im.rotation = Vector3(0, 0, randf() * TAU)
 	im.scale = Vector3.ONE * is_
 	var ic: Color = Color(1.0, 0.92, 0.6) if crit or dmg >= 140 else tint.lerp(Color.WHITE, 0.55)
@@ -384,6 +395,22 @@ func ring(at: Vector3, radius: float, tint: Color, life: float = RING_LIFE) -> v
 	(mi.material_override as StandardMaterial3D).albedo_color = tint
 	mi.visible = true
 	_start(mi, life, "ring", radius, tint)
+
+
+## A column of light standing on the ground (SPLIT's slam): flares wide, then thins and fades.
+func pillar(at: Vector3, height: float, width: float, tint: Color, life: float = 0.45) -> void:
+	var mi: MeshInstance3D = _pick(_pillars, "pillar")
+	mi.position = at
+	mi.scale = Vector3(width, height, 1.0)
+	(mi.material_override as StandardMaterial3D).albedo_color = tint
+	mi.visible = true
+	_start(mi, life, "pillar", width, tint, {"h": height})
+	var fl: MeshInstance3D = _pick(_flares, "flare")
+	fl.position = at + Vector3(0, 0.6, 0)
+	fl.scale = Vector3.ONE * width * 1.1
+	(fl.material_override as StandardMaterial3D).albedo_color = tint.lerp(Color.WHITE, 0.5)
+	fl.visible = true
+	_start(fl, 0.3, "flare", width * 1.1, tint.lerp(Color.WHITE, 0.5))
 
 
 ## The WHIRL swirl: a textured band that spins and widens round the hero.
@@ -470,6 +497,8 @@ func ground_split(from: Vector3, dir: Vector3, length: float, secs: float, tint:
 
 func _burst(p: Vector3, tint: Color, big: bool) -> void:
 	ring(p, 1.3 if big else 0.9, tint, 0.35)
+	if big:
+		pillar(p, 4.5, 1.6, tint.lerp(Color.WHITE, 0.25), 0.4)
 	sparks(p + Vector3(0, 0.3, 0), tint, 200 if big else 100)
 	scorch(p, 1.6 if big else 1.1)
 	dust(p)
@@ -529,6 +558,11 @@ func _process(dt: float) -> void:
 				var mat4 := mi.material_override as StandardMaterial3D
 				mi.scale = Vector3.ONE * size * lerpf(0.6, 1.2, k)
 				mat4.albedo_color = Color(tint.r, tint.g, tint.b, 1.0 - k)
+			"pillar":
+				var mp := mi.material_override as StandardMaterial3D
+				var wk: float = lerpf(0.4, 1.0, ease(minf(k / 0.2, 1.0), 0.4)) * lerpf(1.0, 0.35, maxf(0.0, (k - 0.2) / 0.8))
+				mi.scale = Vector3(size * wk, float(d["h"]) * lerpf(0.6, 1.1, ease(k, 0.3)), 1.0)
+				mp.albedo_color = Color(tint.r, tint.g, tint.b, tint.a * (1.0 - ease(k, 2.2)))
 			"impact":
 				var mat6 := mi.material_override as StandardMaterial3D
 				mi.scale = Vector3.ONE * size * lerpf(0.5, 1.25, ease(k, 0.35))
