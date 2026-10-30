@@ -8,7 +8,7 @@
    "damping": 0.25,
    "max_deg": 35,
    "legs": true,
-   "joint_r": 0.02
+   "joint_r": 0.07
   },
   "coat": {
    "follow": 0.4,
@@ -16,7 +16,7 @@
    "damping": 0.25,
    "max_deg": 40,
    "legs": true,
-   "joint_r": 0.02
+   "joint_r": 0.07
   },
   "skirt": {
    "follow": 0.4,
@@ -24,7 +24,7 @@
    "damping": 0.25,
    "max_deg": 35,
    "legs": true,
-   "joint_r": 0.02
+   "joint_r": 0.07
   },
   "wing": {
    "follow": 0.0,

@@ -88,15 +88,13 @@
    "feet_max_m": 0.154,
    "planted_slide_mps": 1.075,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00119,
+   "tear_share": 0.00134,
    "tear_p99": 1.705,
    "tears": false,
    "tear_where": {
-    "LeftUpLeg": 1,
     "RightUpLeg": 1,
-    "Skirt1_0": 1,
-    "Skirt6_0": 3,
-    "Skirt7_0": 2,
+    "Skirt6_0": 2,
+    "Skirt7_0": 3,
     "Skirt7_1": 2
    },
    "tear_share_chains_rigid": 0.00018,
@@ -158,7 +156,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00119,
+    "lod0": 0.00134,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -180,15 +178,17 @@
    "feet_max_m": 0.02,
    "planted_slide_mps": 6.483,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00324,
-   "tear_p99": 1.953,
+   "tear_share": 0.00471,
+   "tear_p99": 2.084,
    "tears": false,
    "tear_where": {
-    "LeftUpLeg": 16,
+    "LeftUpLeg": 27,
     "RightUpLeg": 1,
-    "Skirt0_2": 1,
-    "Skirt1_0": 3,
-    "Skirt6_0": 1,
+    "Skirt0_2": 3,
+    "Skirt1_0": 6,
+    "Skirt1_1": 9,
+    "Skirt6_0": 3,
+    "Skirt7_0": 2,
     "Skirt7_1": 2
    },
    "tear_share_chains_rigid": 0.0016,
@@ -250,10 +250,9 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00324,
+    "lod0": 0.00384,
     "lod2": 0.00073
-   },
-   "tear_worst_lod": "lod0"
+   }
   },
   "1H_Melee_Attack_Slice_Horizontal": {
    "src": "1H_Melee_Attack_Slice_Horizontal",
@@ -272,19 +271,21 @@
    "feet_max_m": 0.028,
    "planted_slide_mps": 3.771,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00659,
-   "tear_p99": 2.049,
+   "tear_share": 0.00655,
+   "tear_p99": 2.113,
    "tears": false,
    "tear_where": {
     "Spine2": 2,
     "LeftArm": 2,
-    "LeftUpLeg": 20,
-    "LeftLeg": 4,
+    "LeftUpLeg": 18,
+    "LeftLeg": 5,
+    "RightUpLeg": 1,
     "Skirt0_2": 2,
     "Skirt1_0": 2,
-    "Skirt1_1": 6,
-    "Skirt3_2": 3,
-    "Skirt5_0": 2
+    "Skirt1_1": 4,
+    "Skirt3_2": 4,
+    "Skirt6_0": 3,
+    "Skirt7_0": 2
    },
    "tear_share_chains_rigid": 0.00213,
    "lhand_ik_frames": 0,
@@ -345,8 +346,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00659,
-    "lod2": 0.00073
+    "lod0": 0.00655,
+    "lod2": 0.00146
    },
    "tear_worst_lod": "lod0"
   },
@@ -367,11 +368,11 @@
    "feet_max_m": 0.018,
    "planted_slide_mps": 5.216,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00146,
-   "tear_p99": 1.764,
+   "tear_share": 0.00164,
+   "tear_p99": 1.809,
    "tears": false,
    "tear_where": {
-    "LeftUpLeg": 1,
+    "LeftUpLeg": 5,
     "RightUpLeg": 1,
     "Skirt1_0": 1,
     "Skirt6_0": 4,
@@ -437,10 +438,10 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00115,
+    "lod0": 0.00164,
     "lod2": 0.00146
    },
-   "tear_worst_lod": "lod2"
+   "tear_worst_lod": "lod0"
   },
   "2H_Melee_Attack_Chop": {
    "src": "2H_Melee_Attack_Chop",
@@ -459,8 +460,8 @@
    "feet_max_m": 0.0,
    "planted_slide_mps": 5.571,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00253,
-   "tear_p99": 1.806,
+   "tear_share": 0.00261,
+   "tear_p99": 1.81,
    "tears": false,
    "tear_where": {
     "Spine": 2,
@@ -527,7 +528,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00253,
+    "lod0": 0.00261,
     "lod2": 0.00146
    },
    "tear_worst_lod": "lod0"
@@ -549,8 +550,8 @@
    "feet_max_m": -0.0,
    "planted_slide_mps": 5.862,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00424,
-   "tear_p99": 1.958,
+   "tear_share": 0.00443,
+   "tear_p99": 1.994,
    "tears": false,
    "tear_where": {
     "Spine1": 1,
@@ -561,7 +562,7 @@
     "Skirt1_0": 2,
     "Skirt4_1": 1,
     "Skirt6_0": 4,
-    "Skirt7_0": 4
+    "Skirt7_0": 6
    },
    "tear_share_chains_rigid": 0.00213,
    "lhand_ik_frames": 34,
@@ -622,8 +623,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00424,
-    "lod2": 0.00218
+    "lod0": 0.00443,
+    "lod2": 0.00255
    },
    "tear_worst_lod": "lod0"
   },
@@ -644,27 +645,27 @@
    "feet_max_m": 0.0,
    "planted_slide_mps": 6.665,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.0198,
-   "tear_p99": 2.921,
+   "tear_share": 0.02122,
+   "tear_p99": 2.947,
    "tears": true,
    "tear_where": {
     "Hips": 2,
     "Spine": 18,
-    "LeftUpLeg": 47,
+    "LeftUpLeg": 50,
     "LeftLeg": 5,
-    "RightUpLeg": 18,
+    "RightUpLeg": 20,
     "Skirt0_0": 3,
     "Skirt0_2": 1,
-    "Skirt1_0": 37,
-    "Skirt1_1": 15,
+    "Skirt1_0": 38,
+    "Skirt1_1": 21,
     "Skirt2_2": 1,
     "Skirt3_2": 6,
     "Skirt4_0": 6,
     "Skirt4_1": 12,
     "Skirt5_0": 14,
     "Skirt6_0": 4,
-    "Skirt7_0": 23,
-    "Skirt7_1": 11
+    "Skirt7_0": 26,
+    "Skirt7_1": 12
    },
    "tear_share_chains_rigid": 0.01349,
    "lhand_ik_frames": 0,
@@ -725,7 +726,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.01702,
+    "lod0": 0.01787,
     "lod2": 0.00328
    }
   },
@@ -746,8 +747,8 @@
    "feet_max_m": -0.0,
    "planted_slide_mps": 7.859,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.01749,
-   "tear_p99": 2.848,
+   "tear_share": 0.0182,
+   "tear_p99": 2.816,
    "tears": true,
    "tear_where": {
     "Hips": 2,
@@ -757,13 +758,13 @@
     "Skirt0_0": 3,
     "Skirt0_2": 1,
     "Skirt1_0": 38,
-    "Skirt1_1": 10,
+    "Skirt1_1": 18,
     "Skirt4_0": 6,
     "Skirt4_1": 10,
-    "Skirt5_0": 11,
+    "Skirt5_0": 10,
     "Skirt6_0": 4,
     "Skirt7_0": 26,
-    "Skirt7_1": 10
+    "Skirt7_1": 11
    },
    "tear_share_chains_rigid": 0.01225,
    "lhand_ik_frames": 0,
@@ -824,8 +825,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.01482,
-    "lod2": 0.00437
+    "lod0": 0.01508,
+    "lod2": 0.004
    }
   },
   "2H_Melee_Attack_Stab": {
@@ -845,8 +846,8 @@
    "feet_max_m": -0.0,
    "planted_slide_mps": 5.89,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.0076,
-   "tear_p99": 2.19,
+   "tear_share": 0.00782,
+   "tear_p99": 2.187,
    "tears": false,
    "tear_where": {
     "Hips": 1,
@@ -917,7 +918,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.0076,
+    "lod0": 0.00782,
     "lod2": 0.00291
    },
    "tear_worst_lod": "lod0"
@@ -939,8 +940,8 @@
    "feet_max_m": -0.0,
    "planted_slide_mps": 0.042,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00101,
-   "tear_p99": 1.519,
+   "tear_share": 0.00108,
+   "tear_p99": 1.547,
    "tears": false,
    "tear_where": {},
    "tear_share_chains_rigid": 0.0,
@@ -1002,7 +1003,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00101,
+    "lod0": 0.00108,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -1024,14 +1025,13 @@
    "feet_max_m": -0.0,
    "planted_slide_mps": 1.469,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00235,
-   "tear_p99": 1.723,
+   "tear_share": 0.00268,
+   "tear_p99": 1.745,
    "tears": false,
    "tear_where": {
     "RightArm": 2,
-    "LeftUpLeg": 3,
+    "LeftUpLeg": 5,
     "Skirt0_2": 1,
-    "Skirt1_0": 2,
     "Skirt7_0": 2
    },
    "tear_share_chains_rigid": 0.00133,
@@ -1093,7 +1093,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00235,
+    "lod0": 0.00268,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -1115,13 +1115,13 @@
    "feet_max_m": -0.0,
    "planted_slide_mps": 3.537,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00235,
-   "tear_p99": 1.731,
+   "tear_share": 0.00261,
+   "tear_p99": 1.798,
    "tears": false,
    "tear_where": {
     "RightArm": 2,
-    "LeftUpLeg": 6,
-    "Skirt0_2": 2,
+    "LeftUpLeg": 7,
+    "Skirt0_2": 1,
     "Skirt7_0": 2
    },
    "tear_share_chains_rigid": 0.00151,
@@ -1183,7 +1183,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00235,
+    "lod0": 0.00261,
     "lod2": 0.00073
    },
    "tear_worst_lod": "lod0"
@@ -1205,14 +1205,13 @@
    "feet_max_m": -0.006,
    "planted_slide_mps": 0.282,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00235,
-   "tear_p99": 1.721,
+   "tear_share": 0.00268,
+   "tear_p99": 1.746,
    "tears": false,
    "tear_where": {
     "RightArm": 2,
-    "LeftUpLeg": 3,
+    "LeftUpLeg": 5,
     "Skirt0_2": 1,
-    "Skirt1_0": 2,
     "Skirt7_0": 2
    },
    "tear_share_chains_rigid": 0.00133,
@@ -1274,7 +1273,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00235,
+    "lod0": 0.00268,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -1296,8 +1295,8 @@
    "feet_max_m": -0.0,
    "planted_slide_mps": 1.5,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00119,
-   "tear_p99": 1.625,
+   "tear_share": 0.00127,
+   "tear_p99": 1.632,
    "tears": false,
    "tear_where": {
     "RightUpLeg": 2,
@@ -1362,7 +1361,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00119,
+    "lod0": 0.00127,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -1384,15 +1383,15 @@
    "feet_max_m": 0.082,
    "planted_slide_mps": 5.811,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00168,
-   "tear_p99": 1.733,
+   "tear_share": 0.0016,
+   "tear_p99": 1.783,
    "tears": false,
    "tear_where": {
-    "LeftUpLeg": 3,
+    "LeftUpLeg": 5,
     "RightUpLeg": 3,
     "Skirt1_0": 1,
     "Skirt6_0": 1,
-    "Skirt7_0": 3
+    "Skirt7_0": 5
    },
    "tear_share_chains_rigid": 0.00036,
    "lhand_ik_frames": 0,
@@ -1453,8 +1452,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00168,
-    "lod2": 0.0
+    "lod0": 0.0016,
+    "lod2": 0.00073
    },
    "tear_worst_lod": "lod0"
   },
@@ -1476,7 +1475,7 @@
    "planted_slide_mps": 0.831,
    "ground_speed_mps": 0.0,
    "tear_share": 0.0022,
-   "tear_p99": 1.698,
+   "tear_p99": 1.684,
    "tears": false,
    "tear_where": {
     "RightUpLeg": 2,
@@ -1563,8 +1562,8 @@
    "feet_max_m": -0.0,
    "planted_slide_mps": 0.082,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00119,
-   "tear_p99": 1.628,
+   "tear_share": 0.00127,
+   "tear_p99": 1.633,
    "tears": false,
    "tear_where": {
     "RightUpLeg": 2,
@@ -1629,7 +1628,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00119,
+    "lod0": 0.00127,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -1651,11 +1650,12 @@
    "feet_max_m": -0.0,
    "planted_slide_mps": 0.381,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00112,
-   "tear_p99": 1.516,
+   "tear_share": 0.00123,
+   "tear_p99": 1.544,
    "tears": false,
    "tear_where": {
-    "RightArm": 2
+    "RightArm": 2,
+    "LeftUpLeg": 2
    },
    "tear_share_chains_rigid": 0.00036,
    "lhand_ik_frames": 0,
@@ -1716,7 +1716,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00112,
+    "lod0": 0.00123,
     "lod2": 0.00073
    },
    "tear_worst_lod": "lod0"
@@ -1738,16 +1738,16 @@
    "feet_max_m": 0.407,
    "planted_slide_mps": 1.135,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00201,
-   "tear_p99": 1.724,
+   "tear_share": 0.00257,
+   "tear_p99": 1.879,
    "tears": false,
    "tear_where": {
-    "LeftUpLeg": 2,
+    "LeftUpLeg": 15,
     "RightUpLeg": 1,
     "Skirt0_2": 1,
-    "Skirt1_0": 3,
-    "Skirt6_0": 2,
-    "Skirt7_0": 2
+    "Skirt1_0": 5,
+    "Skirt6_0": 3,
+    "Skirt7_0": 4
    },
    "tear_share_chains_rigid": 0.00408,
    "lhand_ik_frames": 0,
@@ -1808,10 +1808,9 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00201,
+    "lod0": 0.00249,
     "lod2": 0.00073
-   },
-   "tear_worst_lod": "lod0"
+   }
   },
   "Death_B": {
    "src": "Death_B",
@@ -1830,13 +1829,13 @@
    "feet_max_m": 0.126,
    "planted_slide_mps": 1.306,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00231,
-   "tear_p99": 1.684,
+   "tear_share": 0.00279,
+   "tear_p99": 1.731,
    "tears": false,
    "tear_where": {
-    "LeftUpLeg": 4,
+    "LeftUpLeg": 6,
     "LeftLeg": 2,
-    "Skirt3_2": 2
+    "Skirt3_2": 4
    },
    "tear_share_chains_rigid": 0.00355,
    "lhand_ik_frames": 0,
@@ -1897,7 +1896,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00231,
+    "lod0": 0.00279,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -1919,14 +1918,16 @@
    "feet_max_m": 0.031,
    "planted_slide_mps": 1.03,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00127,
-   "tear_p99": 1.659,
+   "tear_share": 0.00133,
+   "tear_p99": 1.726,
    "tears": false,
    "tear_where": {
-    "Spine": 3,
-    "Skirt4_1": 2,
-    "Skirt5_0": 4,
-    "Skirt7_0": 1
+    "LeftUpLeg": 5,
+    "RightUpLeg": 1,
+    "Skirt1_0": 1,
+    "Skirt6_0": 2,
+    "Skirt7_0": 3,
+    "Skirt7_1": 3
    },
    "tear_share_chains_rigid": 0.00089,
    "lhand_ik_frames": 0,
@@ -1989,8 +1990,7 @@
    "tear_by_lod": {
     "lod0": 0.00127,
     "lod2": 0.00073
-   },
-   "tear_worst_lod": "lod0"
+   }
   },
   "Guard_2H": {
    "src": "2H_Melee_Attack_Chop",
@@ -2010,7 +2010,7 @@
    "planted_slide_mps": 0.49,
    "ground_speed_mps": 0.0,
    "tear_share": 0.0003,
-   "tear_p99": 1.439,
+   "tear_p99": 1.478,
    "tears": false,
    "tear_where": {},
    "tear_share_chains_rigid": 0.0,
@@ -2094,8 +2094,8 @@
    "feet_max_m": 0.0,
    "planted_slide_mps": 1.167,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00048,
-   "tear_p99": 1.455,
+   "tear_share": 0.00034,
+   "tear_p99": 1.497,
    "tears": false,
    "tear_where": {},
    "tear_share_chains_rigid": 0.0,
@@ -2157,7 +2157,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00048,
+    "lod0": 0.00034,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -2179,12 +2179,13 @@
    "feet_max_m": 0.0,
    "planted_slide_mps": 0.735,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00346,
-   "tear_p99": 1.699,
+   "tear_share": 0.00387,
+   "tear_p99": 1.762,
    "tears": false,
    "tear_where": {
     "LeftUpLeg": 6,
     "LeftLeg": 3,
+    "Skirt2_2": 1,
     "Skirt3_2": 6,
     "Skirt4_1": 2,
     "Skirt5_0": 4
@@ -2248,7 +2249,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00346,
+    "lod0": 0.00387,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -2271,7 +2272,7 @@
    "planted_slide_mps": 0.062,
    "ground_speed_mps": 0.0,
    "tear_share": 0.00052,
-   "tear_p99": 1.404,
+   "tear_p99": 1.459,
    "tears": false,
    "tear_where": {},
    "tear_share_chains_rigid": 0.0,
@@ -2355,19 +2356,19 @@
    "feet_max_m": 0.28,
    "planted_slide_mps": 0.664,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00432,
-   "tear_p99": 1.86,
+   "tear_share": 0.00469,
+   "tear_p99": 1.934,
    "tears": false,
    "tear_where": {
     "Spine": 3,
-    "LeftUpLeg": 4,
-    "LeftLeg": 2,
-    "RightUpLeg": 1,
-    "Skirt3_2": 2,
+    "LeftUpLeg": 7,
+    "RightUpLeg": 8,
+    "Skirt1_0": 1,
     "Skirt4_1": 2,
-    "Skirt6_0": 4,
+    "Skirt5_0": 4,
+    "Skirt6_0": 2,
     "Skirt7_0": 4,
-    "Skirt7_1": 2
+    "Skirt7_1": 4
    },
    "tear_share_chains_rigid": 0.00453,
    "lhand_ik_frames": 0,
@@ -2428,8 +2429,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00432,
-    "lod2": 0.00146
+    "lod0": 0.00469,
+    "lod2": 0.00182
    },
    "tear_worst_lod": "lod0"
   },
@@ -2450,13 +2451,17 @@
    "feet_max_m": 0.546,
    "planted_slide_mps": 4.824,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00227,
-   "tear_p99": 1.782,
+   "tear_share": 0.0029,
+   "tear_p99": 1.858,
    "tears": false,
    "tear_where": {
     "Spine": 3,
+    "LeftUpLeg": 1,
+    "RightUpLeg": 1,
+    "Skirt1_0": 1,
     "Skirt4_1": 4,
-    "Skirt5_0": 8,
+    "Skirt5_0": 6,
+    "Skirt6_0": 1,
     "Skirt7_0": 1
    },
    "tear_share_chains_rigid": 0.00328,
@@ -2518,8 +2523,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00227,
-    "lod2": 0.0
+    "lod0": 0.0029,
+    "lod2": 0.00073
    },
    "tear_worst_lod": "lod0"
   },
@@ -2540,14 +2545,15 @@
    "feet_max_m": 0.43,
    "planted_slide_mps": 2.176,
    "ground_speed_mps": 1.884,
-   "tear_share": 0.00186,
-   "tear_p99": 1.708,
+   "tear_share": 0.00223,
+   "tear_p99": 1.72,
    "tears": false,
    "tear_where": {
-    "Spine": 3,
     "Skirt4_1": 2,
     "Skirt5_0": 4,
-    "Skirt7_0": 1
+    "Skirt6_0": 1,
+    "Skirt7_0": 1,
+    "Skirt7_1": 2
    },
    "tear_share_chains_rigid": 0.00302,
    "lhand_ik_frames": 0,
@@ -2608,8 +2614,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00186,
-    "lod2": 0.0
+    "lod0": 0.00223,
+    "lod2": 0.00073
    },
    "tear_worst_lod": "lod0"
   },
@@ -2630,10 +2636,11 @@
    "feet_max_m": -0.0,
    "planted_slide_mps": 0.783,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00141,
-   "tear_p99": 1.637,
+   "tear_share": 0.00175,
+   "tear_p99": 1.701,
    "tears": false,
    "tear_where": {
+    "RightArm": 2,
     "LeftUpLeg": 3,
     "Skirt0_2": 1,
     "Skirt1_0": 2
@@ -2697,7 +2704,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00141,
+    "lod0": 0.00175,
     "lod2": 0.00073
    },
    "tear_worst_lod": "lod0"
@@ -2719,8 +2726,8 @@
    "feet_max_m": -0.0,
    "planted_slide_mps": 0.51,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00093,
-   "tear_p99": 1.618,
+   "tear_share": 0.00108,
+   "tear_p99": 1.635,
    "tears": false,
    "tear_where": {
     "Spine": 2,
@@ -2785,7 +2792,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00093,
+    "lod0": 0.00108,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -2808,15 +2815,14 @@
    "planted_slide_mps": 1.489,
    "ground_speed_mps": 0.0,
    "tear_share": 0.00209,
-   "tear_p99": 1.828,
+   "tear_p99": 1.856,
    "tears": false,
    "tear_where": {
-    "LeftUpLeg": 4,
+    "LeftUpLeg": 13,
     "RightUpLeg": 1,
     "Skirt0_2": 1,
     "Skirt1_0": 4,
-    "Skirt6_0": 1,
-    "Skirt7_1": 2
+    "Skirt6_0": 1
    },
    "tear_share_chains_rigid": 0.00115,
    "lhand_ik_frames": 0,
@@ -2899,14 +2905,14 @@
    "feet_max_m": 0.0,
    "planted_slide_mps": 0.274,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00123,
-   "tear_p99": 1.646,
+   "tear_share": 0.00119,
+   "tear_p99": 1.666,
    "tears": false,
    "tear_where": {
     "RightUpLeg": 1,
     "Skirt4_1": 2,
     "Skirt6_0": 4,
-    "Skirt7_0": 1
+    "Skirt7_0": 3
    },
    "tear_share_chains_rigid": 0.00213,
    "lhand_ik_frames": 0,
@@ -2967,7 +2973,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00123,
+    "lod0": 0.00119,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -2989,18 +2995,18 @@
    "feet_max_m": 0.486,
    "planted_slide_mps": 3.49,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.0064,
-   "tear_p99": 2.148,
+   "tear_share": 0.00681,
+   "tear_p99": 2.17,
    "tears": false,
    "tear_where": {
-    "Spine": 8,
+    "Spine": 6,
     "RightArm": 2,
-    "LeftUpLeg": 7,
+    "LeftUpLeg": 9,
     "LeftLeg": 2,
     "RightUpLeg": 2,
     "Skirt0_2": 1,
     "Skirt3_2": 2,
-    "Skirt4_1": 7,
+    "Skirt4_1": 5,
     "Skirt5_0": 8,
     "Skirt6_0": 4,
     "Skirt7_0": 5,
@@ -3065,7 +3071,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.0064,
+    "lod0": 0.00681,
     "lod2": 0.00218
    },
    "tear_worst_lod": "lod0"
@@ -3087,8 +3093,8 @@
    "feet_max_m": -0.001,
    "planted_slide_mps": 0.063,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00037,
-   "tear_p99": 1.389,
+   "tear_share": 0.00052,
+   "tear_p99": 1.401,
    "tears": false,
    "tear_where": {},
    "tear_share_chains_rigid": 0.0,
@@ -3150,7 +3156,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00037,
+    "lod0": 0.00052,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -3173,7 +3179,7 @@
    "planted_slide_mps": 0.01,
    "ground_speed_mps": 0.0,
    "tear_share": 0.00045,
-   "tear_p99": 1.414,
+   "tear_p99": 1.44,
    "tears": false,
    "tear_where": {},
    "tear_share_chains_rigid": 0.00018,
@@ -3257,16 +3263,19 @@
    "feet_max_m": 0.284,
    "planted_slide_mps": 4.567,
    "ground_speed_mps": 3.234,
-   "tear_share": 0.00223,
-   "tear_p99": 1.703,
+   "tear_share": 0.0024,
+   "tear_p99": 1.73,
    "tears": false,
    "tear_where": {
     "Spine": 3,
-    "RightUpLeg": 4,
+    "RightUpLeg": 5,
     "Skirt4_1": 4,
-    "Skirt5_0": 6,
-    "Skirt6_0": 1,
-    "Skirt7_0": 2
+    "Skirt5_0": 4,
+    "Skirt6_0": 2,
+    "Skirt6_1": 1,
+    "Skirt7_0": 4,
+    "Skirt7_1": 3,
+    "Skirt7_2": 1
    },
    "tear_share_chains_rigid": 0.00444,
    "lhand_ik_frames": 0,
@@ -3328,9 +3337,8 @@
    },
    "tear_by_lod": {
     "lod0": 0.00223,
-    "lod2": 0.00073
-   },
-   "tear_worst_lod": "lod0"
+    "lod2": 0.00146
+   }
   },
   "UAL_Roll": {
    "src": "Roll",
@@ -3349,18 +3357,18 @@
    "feet_max_m": 0.878,
    "planted_slide_mps": 7.66,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.03258,
-   "tear_p99": 3.644,
+   "tear_share": 0.03249,
+   "tear_p99": 3.665,
    "tears": true,
    "tear_where": {
     "Spine": 31,
-    "LeftUpLeg": 89,
+    "LeftUpLeg": 87,
     "LeftLeg": 43,
-    "RightUpLeg": 18,
+    "RightUpLeg": 22,
     "Skirt0_1": 1,
     "Skirt0_2": 3,
     "Skirt1_0": 22,
-    "Skirt1_1": 49,
+    "Skirt1_1": 46,
     "Skirt2_2": 6,
     "Skirt3_2": 29,
     "Skirt4_0": 7,
@@ -3429,8 +3437,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.02822,
-    "lod2": 0.0131
+    "lod0": 0.02811,
+    "lod2": 0.01164
    }
   },
   "UAL_Spell_Shoot": {
@@ -3450,8 +3458,8 @@
    "feet_max_m": -0.001,
    "planted_slide_mps": 0.022,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00067,
-   "tear_p99": 1.356,
+   "tear_share": 0.00074,
+   "tear_p99": 1.396,
    "tears": false,
    "tear_where": {
     "LeftUpLeg": 1,
@@ -3516,7 +3524,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00067,
+    "lod0": 0.00074,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -3538,17 +3546,19 @@
    "feet_max_m": 0.208,
    "planted_slide_mps": 5.14,
    "ground_speed_mps": 4.627,
-   "tear_share": 0.00346,
-   "tear_p99": 1.858,
+   "tear_share": 0.0038,
+   "tear_p99": 1.892,
    "tears": false,
    "tear_where": {
     "Spine": 3,
-    "LeftUpLeg": 2,
-    "RightUpLeg": 5,
-    "Skirt4_1": 2,
-    "Skirt6_0": 4,
-    "Skirt7_0": 4,
-    "Skirt7_1": 3
+    "RightUpLeg": 1,
+    "Skirt4_1": 4,
+    "Skirt5_0": 8,
+    "Skirt6_0": 2,
+    "Skirt6_1": 1,
+    "Skirt7_0": 8,
+    "Skirt7_1": 2,
+    "Skirt7_2": 1
    },
    "tear_share_chains_rigid": 0.00728,
    "lhand_ik_frames": 0,
@@ -3609,8 +3619,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00346,
-    "lod2": 0.00146
+    "lod0": 0.0038,
+    "lod2": 0.00182
    },
    "tear_worst_lod": "lod0"
   },
@@ -3631,20 +3641,20 @@
    "feet_max_m": 0.004,
    "planted_slide_mps": 6.815,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00748,
-   "tear_p99": 2.24,
+   "tear_share": 0.00752,
+   "tear_p99": 2.241,
    "tears": false,
    "tear_where": {
-    "Spine": 5,
-    "RightArm": 2,
-    "LeftUpLeg": 3,
-    "RightUpLeg": 8,
+    "Spine": 8,
+    "RightArm": 4,
+    "LeftUpLeg": 5,
+    "RightUpLeg": 5,
     "Skirt0_2": 1,
-    "Skirt4_1": 9,
+    "Skirt4_1": 10,
     "Skirt5_0": 8,
     "Skirt6_0": 4,
-    "Skirt7_0": 9,
-    "Skirt7_1": 5
+    "Skirt7_0": 7,
+    "Skirt7_1": 2
    },
    "tear_share_chains_rigid": 0.00719,
    "lhand_ik_frames": 0,
@@ -3705,7 +3715,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00748,
+    "lod0": 0.00752,
     "lod2": 0.00437
    },
    "tear_worst_lod": "lod0"
@@ -3727,11 +3737,11 @@
    "feet_max_m": -0.001,
    "planted_slide_mps": 0.018,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00171,
-   "tear_p99": 1.568,
+   "tear_share": 0.0019,
+   "tear_p99": 1.626,
    "tears": false,
    "tear_where": {
-    "LeftUpLeg": 3,
+    "LeftUpLeg": 5,
     "Skirt0_2": 1
    },
    "tear_share_chains_rigid": 0.00222,
@@ -3793,7 +3803,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00171,
+    "lod0": 0.0019,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -3815,8 +3825,8 @@
    "feet_max_m": 0.014,
    "planted_slide_mps": 2.301,
    "ground_speed_mps": 0.636,
-   "tear_share": 0.00078,
-   "tear_p99": 1.507,
+   "tear_share": 0.00101,
+   "tear_p99": 1.537,
    "tears": false,
    "tear_where": {
     "Skirt4_1": 2
@@ -3880,7 +3890,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00078,
+    "lod0": 0.00101,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -3902,8 +3912,8 @@
    "feet_max_m": 0.134,
    "planted_slide_mps": 2.156,
    "ground_speed_mps": 0.77,
-   "tear_share": 0.00316,
-   "tear_p99": 1.793,
+   "tear_share": 0.00331,
+   "tear_p99": 1.803,
    "tears": false,
    "tear_where": {
     "Spine": 3,
@@ -3911,7 +3921,7 @@
     "Skirt4_1": 4,
     "Skirt5_0": 6,
     "Skirt6_0": 1,
-    "Skirt7_0": 2
+    "Skirt7_0": 4
    },
    "tear_share_chains_rigid": 0.00515,
    "lhand_ik_frames": 0,
@@ -3972,8 +3982,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00316,
-    "lod2": 0.00073
+    "lod0": 0.00331,
+    "lod2": 0.00146
    },
    "tear_worst_lod": "lod0"
   },
@@ -3994,14 +4004,15 @@
    "feet_max_m": 0.134,
    "planted_slide_mps": 2.118,
    "ground_speed_mps": 0.66,
-   "tear_share": 0.00305,
-   "tear_p99": 1.752,
+   "tear_share": 0.00316,
+   "tear_p99": 1.787,
    "tears": false,
    "tear_where": {
     "Spine": 3,
     "Skirt4_1": 4,
     "Skirt5_0": 6,
-    "Skirt7_0": 1
+    "Skirt6_0": 1,
+    "Skirt7_0": 2
    },
    "tear_share_chains_rigid": 0.00515,
    "lhand_ik_frames": 0,
@@ -4062,7 +4073,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00305,
+    "lod0": 0.00316,
     "lod2": 0.00073
    },
    "tear_worst_lod": "lod0"

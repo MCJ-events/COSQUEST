@@ -1258,7 +1258,7 @@
      -0.0732
     ]
    },
-   "tear_worst": 0.0334,
+   "tear_worst": 0.033,
    "clips_over_gate": [
     "1H_Melee_Attack_Slice_Horizontal",
     "2H_Melee_Attack_Chop",
@@ -1273,7 +1273,9 @@
     "Jump_Full_Short",
     "Running_B",
     "UAL_Death",
+    "UAL_Jog",
     "UAL_Roll",
+    "UAL_Sprint",
     "UAL_Sword_Attack"
    ],
    "hip_scale": 2.057,
@@ -1355,8 +1357,8 @@
      "idle": "Aim_Hold",
      "walk": "Walking_B",
      "run": "Running_B",
-     "attack_1": "2H_Ranged_Shoot",
-     "attack_2": "2H_Ranged_Shoot",
+     "attack_1": "1H_Melee_Attack_Stab",
+     "attack_2": "1H_Melee_Attack_Stab",
      "attack_3": "1H_Melee_Attack_Stab",
      "skill_charge": "1H_Melee_Attack_Stab",
      "skill_split": "2H_Melee_Attack_Chop",
@@ -1389,17 +1391,21 @@
     "2H_Melee_Attack_Spin",
     "2H_Melee_Attack_Spinning",
     "2H_Melee_Attack_Stab",
+    "2H_Ranged_Shoot",
     "Block_Attack",
+    "Death_B",
     "Hit_B",
     "Running_A",
+    "Running_B",
     "UAL_Death",
     "UAL_Jog",
     "UAL_Roll",
     "UAL_Sprint",
-    "UAL_Sword_Attack"
+    "UAL_Sword_Attack",
+    "UAL_Sword_Idle"
    ],
    "hip_scale": 2.222,
-   "clips_in_library": 22
+   "clips_in_library": 21
   },
   "hoof": {
    "status": "clips",
@@ -1504,7 +1510,7 @@
      0.2569
     ]
    },
-   "tear_worst": 0.0326,
+   "tear_worst": 0.0325,
    "clips_over_gate": [
     "1H_Melee_Attack_Slice_Horizontal",
     "2H_Melee_Attack_Spin",

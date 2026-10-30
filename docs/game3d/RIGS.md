@@ -98,9 +98,18 @@ chains rigid (`tear_share_chains_rigid`).
 
 **Tuning** (`app/game3d/data/secondary.json`, per group): `follow` 0.4 for robes, coats and skirts
 was the best of 0 / 0.4 / 0.85 / 1.0 for the tear gate (more follow drags the hem across the
-shins, less leaves the cloth behind the legs); `stiffness` 0.3 to 0.35 and `damping` 0.25 give a
-short lag that settles about 0.5 s after a dodge; wings are stiffer (`max_deg` 20) and do not
-collide. Raise `joint_r` to keep cloth further off the legs (costs tear on tight robes).
+shins, less leaves the cloth behind the legs). `joint_r` 0.07 m (the cloth joints keep 7 cm off
+the leg capsules) halves the cloth inside the legs against 0.02 m with every clip still under the
+gate. `stiffness` 0.3 to 0.35 and `damping` 0.25 give a short lag that settles about 0.45 s after a
+dodge. Wings are stiffer (`max_deg` 20) and do not collide. The spring's targets are pushed out of
+the legs too, so spring and collision never fight (that was a 4 mm jitter at rest before).
+
+Measured with `secondary_check.py` on LOD1 (`evidence/secondary/` in the task workdir): rest
+jitter under 0.5 mm a frame after 0.5 s; a 0.15 s hit-stop freeze changes nothing (no jump); the
+chains come to rest 0.43 to 0.47 s after a dodge; robe/coat/skirt vertices inside the leg
+capsules on the worst frame drop from 1 to 15 % with rigid chains to 0 to 4 % with the sim (idle,
+hit and chop near 0; walks 1.2 to 4.0 %; deaths about 2 to 3 %, lying on the floor). It is not
+zero: a robe fused to the legs cannot be kept entirely off them by a few joints.
 
 ## How the game gets the fixed rigs
 
