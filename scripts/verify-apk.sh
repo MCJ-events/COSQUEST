@@ -17,14 +17,16 @@ ok() { echo "PASS $*"; }
 bad() { echo "FAIL $*"; fail=1; }
 [ -f "$APK" ] || { echo "FAIL no APK at $APK"; exit 1; }
 LIST=$(unzip -l "$APK")
+[ -z "${JAVA_HOME:-}" ] && [ -d "$HOME/cq-work/tools/jdk17" ] && JAVA_HOME=$HOME/cq-work/tools/jdk17
+[ -n "${JAVA_HOME:-}" ] && export PATH="$JAVA_HOME/bin:$PATH"
 SIGNER=$(ls "${ANDROID_HOME:-$HOME/cq-work/tools/android-sdk}"/build-tools/*/apksigner 2>/dev/null | sort -V | tail -1)
 if [ -n "$SIGNER" ]; then
   if "$SIGNER" verify "$APK" >/dev/null 2>&1; then ok "signature (apksigner verify)"; else bad "apksigner verify"; fi
 else
   echo "SKIP apksigner (no Android SDK build-tools)"
 fi
-echo "$LIST" | grep -q "lib/$ABI/libgodot_android.so" && ok "LibGodot for $ABI" || bad "no lib/$ABI/libgodot_android.so"
-echo "$LIST" | grep -q "assets/game3d/" && ok "Godot export in assets/game3d/" || bad "no assets/game3d/"
+grep -q "lib/$ABI/libgodot_android.so" <<<"$LIST" && ok "LibGodot for $ABI" || bad "no lib/$ABI/libgodot_android.so"
+grep -q "assets/game3d/" <<<"$LIST" && ok "Godot export in assets/game3d/" || bad "no assets/game3d/"
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 unzip -q -o "$APK" "assets/game3d/data/*" "assets/game3d/cast/*" -d "$TMP" 2>/dev/null
