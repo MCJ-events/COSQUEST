@@ -13,13 +13,13 @@ Commando, Blade, Killua and P-Mon are out of scope and are not touched.
 | character | status | why |
 |---|---|---|
 | Armstrong | clips | all states but death (Death_A stretches 0.53 %, just over the gate; the procedural fall plays) |
-| Bobo | clips, partial | idle, the 1H combo, hit, guard, parry, the skills but WHIRL; walk, run, dodge, death and WHIRL tear his rig, so those stay on his own cq 060 walk and the procedural poses |
+| Bobo | clips, partial | idle, the 1H combo, hit, parry, CHARGE, SPLIT, RALLY, SHIELD, victory; guard, walk, run, dodge, death and WHIRL tear his rig, so those stay on his own cq 060 walk and the procedural poses |
 | Cat-Boy | clips | every state |
-| Crystal-Z | procedural | rig tears: no clip under the gate for attack 1 and 3 with her staff |
-| Elvis | procedural | rig tears: no clip under the gate for any attack or the hit react (long robe and wings) |
+| Crystal-Z | procedural | rig tears: no clip under the gate for attacks 1 to 3 with her staff |
+| Elvis | procedural | rig tears: no clip under the gate for idle, any attack or the hit react (long robe and wings) |
 | Hoof | procedural | no skeleton (cq 060's auto-rig rejected the model) |
 | Nebul-X | clips | every state (staff set: she holds her own staff) |
-| Vanessa | clips | every state |
+| Vanessa | clips | every state with her rifle; with a hammer or staff attack 1 stays procedural |
 
 "Procedural" is combat's CombatAnimator fallback: the character's own cq 060 idle/walk/celebrate
 clips plus the procedural spine and arm poses and the body motion (lunge, hop, spin, lean).
@@ -82,7 +82,7 @@ Other rules:
 ## The tear gate (cq 060's)
 
 Each clip is skinned on the character's own mesh (numpy linear blend skinning, every third
-frame). A clip "tears" when more than **0.5 %** of triangles have an edge stretched past
+frame), on LOD0, LOD1 and LOD2, and the worst of the three counts. A clip "tears" when more than **0.5 %** of triangles have an edge stretched past
 2.5x. This is cq 060's own measure, and it reproduces 060's numbers to within 0.04 %. Run
 clips get **1.0 %**: a walk sped past 2x skates visibly, while a run's brief stretch at speed
 does not read at the fight camera.
@@ -107,6 +107,11 @@ uses it instead of the idle-fitted grip whenever the fighter plays library clips
 per class (slot, rotation, reference axes, an optional extra rotation or offset) are in
 `clips.json` `holds`. Every pack shares one frame (+Y tip, +Z edge), so a class holds its
 weapon the way KayKit holds its sword (melee, staff) or crossbow (rifle, crossbow).
+
+A class's hold can be turned a little to keep a big swing clear of the body. The hammer,
+axe and dagger are tilted 10 degrees back about their own X, and the rifle is turned 20
+degrees about its top axis. With that, no character's own weapon goes more than 3 cm into
+its body in any state it plays (`evidence/tests/weapon_clipping.txt` in the task workdir).
 
 Checks per clip and class are in the reports: the deepest point of the weapon inside the
 body (capsules fitted to the mesh), the frames past 3 cm, and the left hand's distance to the

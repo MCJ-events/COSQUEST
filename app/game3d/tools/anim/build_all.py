@@ -63,6 +63,28 @@ def main():
             print(r.stdout[-2000:], r.stderr[-4000:])
             raise SystemExit("retarget failed for " + key)
         rep = json.load(open(rep_path))
+        # the gate holds on every LOD the app may load: the worst tear of LOD0, 1 and 2
+        for lod in ("lod0.glb", "lod2.glb"):
+            lp = os.path.join(a.cast, "pose", key, lod)
+            if lod == a.lod or not os.path.exists(lp):
+                continue
+            c2 = list(cmd)
+            c2[c2.index("--target") + 1] = lp
+            c2[c2.index("--out") + 1] = out + ".lodcheck.glb"
+            c2[c2.index("--report") + 1] = rep_path + ".lod.json"
+            r3 = subprocess.run(c2, capture_output=True, text=True)
+            if r3.returncode != 0:
+                raise SystemExit("lod check failed for %s %s: %s" % (key, lod, r3.stderr[-2000:]))
+            lr = json.load(open(rep_path + ".lod.json"))
+            for cn, v in lr["clips"].items():
+                cur = rep["clips"][cn]
+                cur.setdefault("tear_by_lod", {})[lod[:4]] = v["tear_share"]
+                if v["tear_share"] > cur["tear_share"]:
+                    cur["tear_share"] = v["tear_share"]
+                    cur["tear_worst_lod"] = lod[:4]
+            os.remove(rep_path + ".lod.json")
+            os.remove(out + ".lodcheck.glb")
+        json.dump(rep, open(rep_path, "w"), indent=1)
         torn = sorted(c for c, v in rep["clips"].items() if v["tear_share"] > a.gate)
         worst = max(v["tear_share"] for v in rep["clips"].values())
         for c, v in rep["clips"].items():

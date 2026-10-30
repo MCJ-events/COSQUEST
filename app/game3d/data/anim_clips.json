@@ -915,7 +915,7 @@
      0.0699
     ]
    },
-   "tear_worst": 0.0417,
+   "tear_worst": 0.0438,
    "clips_over_gate": [
     "2H_Melee_Attack_Slice",
     "2H_Melee_Attack_Spin",
@@ -924,6 +924,7 @@
     "Block_Hit",
     "Death_A",
     "Death_B",
+    "Hit_B",
     "Jump_Full_Short",
     "Running_A",
     "Running_B",
@@ -1043,7 +1044,7 @@
      0.0379
     ]
    },
-   "tear_worst": 0.0811,
+   "tear_worst": 0.0858,
    "clips_over_gate": [
     "1H_Melee_Attack_Slice_Horizontal",
     "2H_Melee_Attack_Chop",
@@ -1076,6 +1077,7 @@
     "UAL_Spell_Shoot",
     "UAL_Sprint",
     "UAL_Sword_Attack",
+    "UAL_Sword_Idle",
     "UAL_Walk",
     "Walking_A",
     "Walking_B"
@@ -1186,24 +1188,26 @@
      0.0022
     ]
    },
-   "tear_worst": 0.0082,
+   "tear_worst": 0.0109,
    "clips_over_gate": [
-    "UAL_Roll"
+    "UAL_Death",
+    "UAL_Roll",
+    "UAL_Sword_Attack"
    ],
    "hip_scale": 1.908,
    "clips_in_library": 26
   },
   "crystalz": {
    "status": "procedural",
-   "why": "rig tears: no clip under the gate for attack_1, attack_3 with its staff (staff set); worst clip stretches 4.3 % of triangles past 2.5x",
+   "why": "rig tears: no clip under the gate for attack_1, attack_2, attack_3 with its staff (staff set); worst clip stretches 4.3 % of triangles past 2.5x",
    "fallback": "its own cq 060 idle/walk/celebrate and the procedural poses and body motion",
    "tear_worst": 0.0434
   },
   "elvis": {
    "status": "procedural",
-   "why": "rig tears: no clip under the gate for attack_1, attack_2, attack_3, hit with its greatsword (heavy set); worst clip stretches 7.1 % of triangles past 2.5x",
+   "why": "rig tears: no clip under the gate for idle, attack_1, attack_2, attack_3, hit with its greatsword (heavy set); worst clip stretches 7.6 % of triangles past 2.5x",
    "fallback": "its own cq 060 idle/walk/celebrate and the procedural poses and body motion",
-   "tear_worst": 0.0713
+   "tear_worst": 0.0756
   },
   "hoof": {
    "status": "procedural",
@@ -1317,6 +1321,7 @@
    "clips_over_gate": [
     "2H_Melee_Attack_Stab",
     "Death_A",
+    "Jump_Full_Short",
     "UAL_Death",
     "UAL_Jog",
     "UAL_Roll",
@@ -1344,7 +1349,7 @@
      "idle": "Idle",
      "walk": "Walking_A",
      "run": "Running_A",
-     "attack_1": "1H_Melee_Attack_Slice_Diagonal",
+     "attack_1": "1H_Melee_Attack_Stab",
      "attack_2": "1H_Melee_Attack_Slice_Horizontal",
      "attack_3": "1H_Melee_Attack_Chop",
      "skill_charge": "1H_Melee_Attack_Stab",
@@ -1364,7 +1369,7 @@
      "idle": "2H_Melee_Idle",
      "walk": "Walking_B",
      "run": "Running_B",
-     "attack_1": "2H_Melee_Attack_Slice",
+     "attack_1": "",
      "attack_2": "1H_Melee_Attack_Slice_Horizontal",
      "attack_3": "2H_Melee_Attack_Chop",
      "skill_charge": "1H_Melee_Attack_Stab",
@@ -1384,7 +1389,7 @@
      "idle": "2H_Melee_Idle",
      "walk": "Walking_B",
      "run": "Running_B",
-     "attack_1": "2H_Melee_Attack_Slice",
+     "attack_1": "",
      "attack_2": "Spellcast_Shoot",
      "attack_3": "2H_Melee_Attack_Chop",
      "skill_charge": "1H_Melee_Attack_Stab",
@@ -1431,18 +1436,22 @@
      0.0535
     ]
    },
-   "tear_worst": 0.0183,
+   "tear_worst": 0.0312,
    "clips_over_gate": [
+    "1H_Melee_Attack_Slice_Diagonal",
+    "2H_Melee_Attack_Slice",
     "2H_Melee_Attack_Stab",
     "Death_B",
     "UAL_Death",
     "UAL_Jog",
     "UAL_Roll",
     "UAL_Spell_Shoot",
-    "UAL_Sword_Attack"
+    "UAL_Sprint",
+    "UAL_Sword_Attack",
+    "UAL_Sword_Idle"
    ],
    "hip_scale": 2.411,
-   "clips_in_library": 25
+   "clips_in_library": 23
   }
  }
 }

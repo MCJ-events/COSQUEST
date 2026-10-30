@@ -669,7 +669,14 @@
     1,
     0,
     0
-   ]
+   ],
+   "extra_rot": [
+    -0.087156,
+    0,
+    0,
+    0.996195
+   ],
+   "_why": "tilted 10 deg back about its own X: the tip clears the thigh in the 2H chop (SPLIT)"
   },
   "axe": {
    "slot": "handslot.r",
@@ -688,7 +695,14 @@
     1,
     0,
     0
-   ]
+   ],
+   "extra_rot": [
+    -0.087156,
+    -0.0,
+    -0.0,
+    0.996195
+   ],
+   "_why": "tilted 10 deg back about its own X: the diagonal slice's wind-up no longer passes the head through the shoulder (weapon_clipping.txt)"
   },
   "hammer": {
    "slot": "handslot.r",
@@ -707,7 +721,14 @@
     1,
     0,
     0
-   ]
+   ],
+   "extra_rot": [
+    -0.087156,
+    -0.0,
+    -0.0,
+    0.996195
+   ],
+   "_why": "tilted 10 deg back about its own X: the diagonal slice's wind-up no longer passes the head through the shoulder (weapon_clipping.txt)"
   },
   "staff": {
    "slot": "handslot.r",
@@ -764,7 +785,14 @@
     0,
     0,
     1
-   ]
+   ],
+   "extra_rot": [
+    -0.0,
+    -0.0,
+    -0.173648,
+    0.984808
+   ],
+   "_why": "turned 20 deg about its top axis: the stock clears the chest in the 2H chop (SPLIT)"
   },
   "shield": {
    "slot": "handslot.l",
