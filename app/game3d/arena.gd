@@ -441,11 +441,11 @@ func _dress_front(h: Node3D, sx: float, n: int) -> void:
 	# (fight.gd CAM_BOUNDS), so they stay up the screen, never among the controls
 	if n % 3 != 2 and zc < -5.0:
 		var k: int = (n * 5 + 1) % NEON_SIGNS
-		var w: float = 2.4
-		var at := Vector3(front_x - sx * (w * 0.5 + 0.5), 4.7 + 0.35 * float(n % 2), zc + (1.2 if n % 2 == 0 else -1.2))
+		var w: float = 2.2
+		var at := Vector3(front_x - sx * (w * 0.5 + 0.1), 4.7 + 0.35 * float(n % 2), zc + (1.2 if n % 2 == 0 else -1.2))
 		_glow_quad(_neon_st[side], at, w, w * 0.375, Rect2(0, float(k) / NEON_SIGNS, 1, 1.0 / NEON_SIGNS), true)
 		var hc: Color = SIGN_HALO[k]
-		hc.a = 0.5
+		hc.a = 0.3
 		_halo(at, w * 1.7, hc, 0.6)
 
 
@@ -634,7 +634,7 @@ func _glow_mat(tex: Texture2D, col: Color, add: bool = true) -> StandardMaterial
 
 func _commit_glows() -> void:
 	# cq 015: brighter than white (the ACES tonemap rolls the peak off), so signs read as lit tubes
-	var neon_m := _glow_mat(T_NEON, Color(1.7, 1.7, 1.7, 1.0), false)   # mixed: added on the pale paving it washes to white
+	var neon_m := _glow_mat(T_NEON, Color(1.35, 1.35, 1.35, 1.0), false)   # mixed: added on the pale paving it washes to white
 	var shop_m := _glow_mat(T_SHOP, Color(1.0, 0.78, 0.5, 0.6))
 	var halo_m := _glow_mat(T_LAMP, Color(HALO_GAIN, HALO_GAIN, HALO_GAIN, 1))
 	halo_m.vertex_color_use_as_albedo = true
