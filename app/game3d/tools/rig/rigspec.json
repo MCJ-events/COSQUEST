@@ -68,8 +68,8 @@
   "upper_band": 0.06,
   "leg_power": 2,
   "armpit_band": [
-   0.045,
-   0.15
+   0.04,
+   0.2
   ]
  },
  "hoof": {

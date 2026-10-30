@@ -650,7 +650,14 @@
     1,
     0,
     0
-   ]
+   ],
+   "extra_rot": [
+    -0.087156,
+    0,
+    0,
+    0.996195
+   ],
+   "_why": "tilted 10 deg back about its own X (cq 014, as 012 did for the hammer): the two-handed guard and chop keep the blade/shaft out of the robe (weapon_depth.txt)"
   },
   "dagger": {
    "slot": "handslot.r",
@@ -747,7 +754,14 @@
     1,
     0,
     0
-   ]
+   ],
+   "extra_rot": [
+    -0.087156,
+    0,
+    0,
+    0.996195
+   ],
+   "_why": "tilted 10 deg back about its own X (cq 014, as 012 did for the hammer): the two-handed guard and chop keep the blade/shaft out of the robe (weapon_depth.txt)"
   },
   "crossbow": {
    "slot": "handslot.r",
