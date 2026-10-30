@@ -209,6 +209,22 @@ class Builder:
             p[b] = q
         return {b: [round(float(v), 4) for v in q] for b, q in moved.items()}
 
+    def junctions(self, P):
+        """Points in the bands where differently moving parts meet (armpits, neck, arm to
+        robe/coat): no seeds there, the harmonic fill blends across."""
+        sp = self.spec
+        free = np.zeros(len(P), bool)
+        ab = sp.get("armpit_band")
+        if ab:
+            d_up = self.dist_to(["LeftArm", "RightArm"], P).min(1)
+            free |= (d_up > ab[0]) & (d_up < ab[1])
+        if sp.get("neck_band"):
+            free |= self.dist_to(["Neck"], P).min(1) < sp["neck_band"]
+        if sp.get("skirt") or sp.get("wings"):
+            d_arm = self.dist_to(ARM["Left"][1:] + ARM["Right"][1:], P).min(1)
+            free |= (d_arm > sp.get("r_arm", 0.08)) & (d_arm < sp.get("junction", 0.14))
+        return free
+
     # --- segments of the main bones
     def seg(self, b):
         a = self.pos[b]
@@ -327,7 +343,8 @@ class Builder:
         if sp.get("torso", True):
             sb = ["Hips", "Spine", "Spine1", "Spine2"]
             hy = np.array([self.pos[b][1] for b in sb])
-            torso = (part == "body") & (self.d_arm > sp.get("r_arm", 0.08)) & (self.d_head > sp.get("r_head", 0.1)) & (P[:, 1] >= self.y_waist)
+            torso = (part == "body") & (self.d_arm > sp.get("r_arm", 0.08)) & (self.d_head > sp.get("r_head", 0.1)) & (P[:, 1] >= self.y_waist) \
+                & (P[:, 1] < self.pos["Neck"][1])
             f = np.interp(P[torso, 1], hy, np.arange(len(sb), dtype=float))
             w = np.maximum(0.0, 1.0 - np.abs(f[:, None] - np.arange(len(sb))[None, :]))
             w /= w.sum(1, keepdims=True)
@@ -342,6 +359,10 @@ class Builder:
         seed |= upper & ~getattr(self, "free_band", np.zeros(m.nw, bool))
         # around the upper arms (armpits, shoulders, sleeves fused to the body): no seeds, the
         # fill blends the arm into the torso so a raised arm stretches a band, not a seam
+        nb_r = sp.get("neck_band")
+        if nb_r:
+            # the neck: head and torso blend over the fill, not at a seam
+            seed &= ~(self.dist_to(["Neck"], P).min(1) < nb_r)
         ab = sp.get("armpit_band")
         if ab:
             d_up = self.dist_to(["LeftArm", "RightArm"], P).min(1)
@@ -544,10 +565,20 @@ def main():
     ap.add_argument("--src", required=True, help="dir with lod0.glb lod1.glb lod2.glb (cq 060 pose model)")
     ap.add_argument("--out", required=True)
     ap.add_argument("--spec", default=os.path.join(HERE, "rigspec.json"))
+    ap.add_argument("--init_weights", default="", help="n x 25 float weights for lod0 (heat_weights.py) instead of the GLB's")
     a = ap.parse_args()
     spec = json.load(open(a.spec))[a.key]
     os.makedirs(a.out, exist_ok=True)
     m0 = Model(os.path.join(a.src, "lod0.glb"))
+    if a.init_weights:
+        Wi = np.load(a.init_weights).astype(float)
+        ok = Wi.sum(1) > 1e-6
+        idx = np.argsort(-Wi, 1)[:, :4]
+        w = np.take_along_axis(Wi, idx, 1)
+        w /= np.maximum(1e-9, w.sum(1, keepdims=True))
+        m0.J[ok] = idx[ok]
+        m0.W[ok] = w[ok]
+        print("initial weights: bone heat for %d of %d vertices, the rest nearest bones" % (ok.sum(), len(ok)))
     b = Builder(m0, spec)
     names, Wall = b.build()
     idx, w = top4(Wall)
@@ -568,6 +599,11 @@ def main():
             Wp = Wc
         else:
             Wp = transfer(m0, Wc, m)
+            # the junction bands again, on this LOD's own (coarser) surface: its large triangles
+            # bridge arm and torso, so the blend is refilled over them
+            free = b.junctions(m.Pw)
+            g = Graph(m.edges, m.nw)
+            Wp = harmonic(Wp, g, ~free, spec.get("lod_fill_iters", 150))
             Wp = smooth(Wp, m.edges, 2, 0.5, np.ones(m.nw, bool))
         Wv = Wp[m.weld]
         write_model(m, names, b.chains, Wv, os.path.join(a.out, lod + ".glb"), b.moved)

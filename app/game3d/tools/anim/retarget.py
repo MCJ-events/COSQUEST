@@ -40,6 +40,9 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from gltf import (Glb, Pose, mat_to_q, q_from_to, qinv, qmul, qnorm, qrot, qslerp,  # noqa: E402
                   write_glb)
 
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "rig"))
+from secondary import Secondary  # noqa: E402
+
 FPS = 30.0
 
 
@@ -393,6 +396,9 @@ def main():
     if a.src_ual:
         rts["ual"] = Retarget(Glb(a.src_ual), tgt, rigs["ual_to_mixamo"], damp)
     body = Body(tgt, rt)
+    # secondary chains (cq 014): measured as the game moves them; none on cq 060's own rigs
+    sec = Secondary(tgt, rt.t_rest_G)
+    sec = sec if sec.chains else None
     caps = body.capsules(BODY_SEGS)
     anims = {"kaykit": src.animations()}
     if "ual" in rts:
@@ -421,6 +427,10 @@ def main():
         m[:3, :3] = q_to_mat(gq)
         if old.get("matrix"):
             om = np.array(old["matrix"], float).reshape(4, 4).T
+            if not old.get("bone"):
+                # a grip made for the static model (cq 010, Hoof before cq 014's rig): its
+                # palm point is in model space, the hand bone's rest frame takes it
+                om = np.linalg.inv(rt.t_rest_G[tgt.names.index(hand)]) @ om
             m[:3, 3] = om[:3, 3]
         m[:3, 3] += np.array(hold.get("offset", [0, 0, 0]), float)
         grips[cls] = {"bone": hand, "matrix": [round(float(x), 6) for x in m.T.reshape(-1)]}
@@ -467,11 +477,15 @@ def main():
                 if planted[k] and planted[k - 1]:
                     slide = max(slide, float(np.linalg.norm((p[k] - p[k - 1])[[0, 2]])) * FPS)
         tears = []
+        tears_rigid = []
+        Gs_chk = sec.run(Gs_t, FPS) if sec is not None else Gs_t
         ks = list(range(0, n, max(1, a.check_every)))
         if (n - 1) not in ks:
             ks.append(n - 1)
         for k in ks:
-            tears.append(body.tear(Gs_t[k]))
+            tears.append(body.tear(Gs_chk[k]))
+            if sec is not None:
+                tears_rigid.append(body.tear(Gs_t[k])[0])
         tear_share = max(x[0] for x in tears)
         tear_p99 = max(x[1] for x in tears)
         tear_where = max(tears, key=lambda x: x[0])[3]
@@ -518,7 +532,8 @@ def main():
             "feet_min_m": round(float(feet_low.min()), 3), "feet_max_m": round(float(feet_low.max()), 3),
             "planted_slide_mps": round(slide, 3), "ground_speed_mps": round(ground_speed, 3),
             "tear_share": round(tear_share, 5), "tear_p99": round(tear_p99, 3), "tears": tear_share > 0.005,
-            "tear_where": tear_where, "lhand_ik_frames": int(sum(1 for x in ikw if x > 0.5)),
+            "tear_where": tear_where, "tear_share_chains_rigid": round(max(tears_rigid), 5) if tears_rigid else None,
+            "lhand_ik_frames": int(sum(1 for x in ikw if x > 0.5)),
             "weapon": wchk}
         lib_anims.append((cname, np.arange(len(frames)) / FPS if cc.get("range") else times, frames))
         print("CLIP %-22s n=%3d tear=%.4f %s p99=%.2f feet=[%.3f,%.3f] slide=%.2f contact=%s weapon=%s" % (
