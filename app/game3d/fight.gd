@@ -206,10 +206,17 @@ var _load_threaded: bool = true
 # instrumentation
 var _ft: PackedFloat32Array = PackedFloat32Array()
 var _perf_last_us: int = 0
+const DYN_RES_SLOW_MS: float = 36.0   # under ~28 fps: fewer 3D pixels
+const DYN_RES_FAST_MS: float = 22.0   # over ~45 fps: back up towards render_scale
+const DYN_RES_STEP: float = 0.07
+const DYN_RES_MIN: float = 0.36
+var _dyn_on: bool = false
+var _dyn_base: float = 0.5
+var _dyn_next_us: int = 0
 var _perf_win_us: int = 0
 var _lat_move: Dictionary = {}
 var _lat_atk: Dictionary = {}
-var _lat_printed: Dictionary = {"move": 0, "attack": 0}
+var _lat_printed: Dictionary = {"move": 0, "attack": 0, "move_blocked": 0}
 var _headless: bool = false
 
 
@@ -244,6 +251,8 @@ func _ready() -> void:
 	var rs: float = clampf(float(cfg.get("render_scale", 0.5)), 0.25, 1.0)
 	get_viewport().scaling_3d_mode = Viewport.SCALING_3D_MODE_BILINEAR
 	get_viewport().scaling_3d_scale = rs
+	_dyn_base = rs
+	_dyn_on = bool(cfg.get("dyn_res", true)) and not _headless
 	# No blocking on vsync (the compositor buffers the surface on Android/iOS, so
 	# no tearing), capped at max_fps: a frame that misses a vsync by 1 ms no
 	# longer waits a whole extra one, which is input latency.
@@ -445,7 +454,11 @@ func _begin_fight() -> void:
 func _on_move_started(t_in: float, ticks_in: int, src: String) -> void:
 	if hero == null or state != "fighting":
 		return
-	_lat_move = {"t_in": t_in, "ticks_in": ticks_in, "frame_in": Engine.get_process_frames(), "pos0": hero.global_position, "src": src}
+	# a push while the hero cannot move (a skill, a dodge, hit stun, hit-stop) waits for the move to
+	# end by design: logged as move_blocked, so "move" stays the input-to-motion latency
+	var free: bool = (_action == "" or _action == "attack") and _hitstop <= 0.0 and hero.stagger <= 0.0 and not hero.dead
+	_lat_move = {"t_in": t_in, "ticks_in": ticks_in, "frame_in": Engine.get_process_frames(), "pos0": hero.global_position, "src": src,
+		"kind": "move" if free else "move_blocked"}
 
 
 func _on_attack_pressed(t_in: float, ticks_in: int, src: String) -> void:
@@ -1526,6 +1539,7 @@ func _perf_sample(_dt: float) -> void:
 		return
 	_ft.append((now - _perf_last_us) / 1000.0)
 	_perf_last_us = now
+	_dyn_res(now)
 	if now - _perf_win_us < 2000000:
 		return
 	_perf_win_us = now
@@ -1543,6 +1557,28 @@ func _perf_sample(_dt: float) -> void:
 	_ft.clear()
 
 
+## Dynamic 3D resolution: when real frames are slow (a software GPU, an old phone), the 3D is
+## drawn at fewer pixels, in steps, down to DYN_RES_MIN of the screen; it steps back up when
+## frames are fast again. The HUD stays at full resolution. Frame time is input latency.
+func _dyn_res(now: int) -> void:
+	if not _dyn_on or now < _dyn_next_us or _ft.size() < 12:
+		return
+	_dyn_next_us = now + 750000
+	var tail: PackedFloat32Array = _ft.slice(_ft.size() - 12)
+	tail.sort()
+	var med: float = tail[6]
+	var vp: Viewport = get_viewport()
+	var sc: float = vp.scaling_3d_scale
+	var want: float = sc
+	if med > DYN_RES_SLOW_MS and sc > DYN_RES_MIN + 0.001:
+		want = maxf(DYN_RES_MIN, sc - DYN_RES_STEP)
+	elif med < DYN_RES_FAST_MS and sc < _dyn_base - 0.001:
+		want = minf(_dyn_base, sc + DYN_RES_STEP)
+	if want != sc:
+		vp.scaling_3d_scale = want
+		print("CQ dynres scale %.2f -> %.2f (frame p50 %.1f ms)" % [sc, want, med])
+
+
 func _on_post_draw() -> void:
 	_check_latency("post_draw")
 
@@ -1550,7 +1586,7 @@ func _on_post_draw() -> void:
 func _check_latency(hook: String) -> void:
 	if not _lat_move.is_empty() and hero != null:
 		if hero.global_position.distance_squared_to(_lat_move["pos0"]) > 1e-8:
-			_print_lat("move", _lat_move, hook)
+			_print_lat(str(_lat_move.get("kind", "move")), _lat_move, hook)
 			_lat_move = {}
 	if not _lat_atk.is_empty():
 		var node: Variant = _lat_atk["node"]

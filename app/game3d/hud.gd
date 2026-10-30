@@ -118,6 +118,9 @@ var _card: StyleBoxFlat
 func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# the 256 px kit art is drawn at 40 to 130 px: sample its mipmaps (smoother edges, and far
+	# cheaper texture reads on a software GPU)
+	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	_font = FONT
 	_pill = StyleBoxFlat.new()
 	_pill.bg_color = Color(0.09, 0.08, 0.16, 0.82)

@@ -1,7 +1,7 @@
 extends Node3D
 ## One fighter (cq 061, reworked in cq 233): a runtime GLB (or a capsule mannequin), its
 ## CombatAnimator (clips when the GLB has them, procedural poses when not), a hurtbox, a
-## weapon arc hitbox on a pivot, the hit flash and team rim, knockback, the SHIELD barrier
+## weapon arc hitbox on a pivot, the hit flash (with a team rim while it shows), knockback, the SHIELD barrier
 ## and the RALLY buff. The model faces +Z (glTF convention); yaw turns +Z to the facing.
 
 const HitArea := preload("res://hit_area.gd")
@@ -48,6 +48,8 @@ var weapon_reach: float = 2.2
 
 var _overlay: ShaderMaterial
 var _flash: float = 0.0
+var _overlay_meshes: Array[MeshInstance3D] = []
+var _overlay_on: bool = false
 var _dome: MeshInstance3D
 var _dome_mat: ShaderMaterial
 var _dome_hit: float = 0.0
@@ -273,11 +275,27 @@ func set_model(node: Node3D) -> Dictionary:
 		"bones": bind_info.get("bones", 0), "hand": bind_info.get("hand", "")}
 
 
+## The overlay is a second pass over every (skinned) vertex of the model: on a software GPU
+## that is ~1 ms a fighter a frame. It is only attached while a flash is showing (the first
+## frames after load too, so its shader is compiled before the fight starts).
 func _apply_overlay(root: Node) -> void:
+	_overlay_meshes.clear()
 	for n: Node in root.find_children("*", "MeshInstance3D", true, false):
-		(n as MeshInstance3D).material_overlay = _overlay
+		_overlay_meshes.append(n)
 	if root is MeshInstance3D:
-		(root as MeshInstance3D).material_overlay = _overlay
+		_overlay_meshes.append(root)
+	_overlay_on = false
+	_flash = maxf(_flash, 0.02)   # on for the first frame: compiles the shader during loading
+	_set_overlay(true)
+
+
+func _set_overlay(on: bool) -> void:
+	if on == _overlay_on:
+		return
+	_overlay_on = on
+	for mi: MeshInstance3D in _overlay_meshes:
+		if is_instance_valid(mi):
+			mi.material_overlay = _overlay if on else null
 
 
 static func _model_aabb(root: Node3D) -> AABB:
@@ -480,6 +498,7 @@ func tick_visual(dt: float) -> void:
 	if _flash > 0.0:
 		_flash = maxf(0.0, _flash - dt * 7.0)
 	_overlay.set_shader_parameter("flash", _flash)
+	_set_overlay(_flash > 0.0)
 	if _dome != null:
 		var on: bool = shield_t > 0.0 and not dead
 		_dome.visible = on

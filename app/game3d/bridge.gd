@@ -65,7 +65,10 @@ func _ready() -> void:
 
 
 func _start_capture(spec: Dictionary) -> void:
-	start_fight(JSON.stringify(spec.get("config", {})))
+	var c: Dictionary = spec.get("config", {})
+	if not c.has("dyn_res"):
+		c["dyn_res"] = false   # review frames at a fixed render scale, whatever the box's load
+	start_fight(JSON.stringify(c))
 	_capture.call("attach", _fight)
 
 

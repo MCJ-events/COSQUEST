@@ -14,6 +14,7 @@ const BUILDINGS: Array[String] = ["building-a", "building-b", "building-c", "bui
 	"building-f", "building-g", "building-h", "building-k", "building-l"]
 const STREET_HALF: float = 6.8       # kerb to kerb half width (fight.gd clamps at 5.8 m)
 const SHOP_W: float = 7.0
+const MERGE_CHUNK: float = 12.0      # metres of street per merged mesh (culling)
 
 var ground: MeshInstance3D
 var plaza: MeshInstance3D
@@ -27,7 +28,7 @@ func build(cfg: Dictionary) -> void:
 	env.background_color = Color(0.2, 0.2, 0.36)
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color = Color(0.62, 0.64, 0.92)
-	env.ambient_light_energy = 0.5
+	env.ambient_light_energy = 0.66
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	env.tonemap_white = 6.0
 	env.fog_enabled = bool(cfg.get("fog", false))
@@ -43,11 +44,8 @@ func build(cfg: Dictionary) -> void:
 	sun.light_color = Color(1.0, 0.8, 0.62)
 	sun.shadow_enabled = bool(cfg.get("shadows", false))
 	add_child(sun)
-	var fill := DirectionalLight3D.new()
-	fill.rotation_degrees = Vector3(-35.0, -150.0, 0.0)
-	fill.light_energy = 0.35
-	fill.light_color = Color(0.6, 0.65, 1.0)
-	add_child(fill)
+	# no second (fill) light: each directional light is shaded on every pixel, ~2 ms a frame
+	# on the software GPU; the bluer, stronger ambient does its job
 	# the street floor, paved
 	ground = MeshInstance3D.new()
 	var pm := PlaneMesh.new()
@@ -58,7 +56,8 @@ func build(cfg: Dictionary) -> void:
 	gm.uv1_scale = Vector3(40, 40, 1)
 	gm.albedo_color = Color(0.64, 0.56, 0.62)
 	gm.roughness = 0.95
-	gm.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
+	# plain trilinear: anisotropic filtering costs ~1.7 ms a frame on a software GPU
+	gm.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	ground.material_override = gm
 	add_child(ground)
 	# the medallion at the centre: where the fight stands
@@ -221,13 +220,16 @@ func _merge_dressing() -> void:
 			continue
 		n_in += 1
 		var xf: Transform3D = inv * mi.global_transform
+		# one chunk per stretch of street and side, so the camera culls what it cannot see
+		var at: Vector3 = xf * mi.get_aabb().get_center()
+		var chunk: String = "%d%s" % [floori(at.z / MERGE_CHUNK), "l" if at.x < 0.0 else "r"]
 		for si in mi.mesh.get_surface_count():
 			var mat: Material = mi.get_active_material(si)
-			var key: String = _mat_key(mat)
+			var key: String = "%s_c%s" % [_mat_key(mat), chunk]
 			if not groups.has(key):
 				var st := SurfaceTool.new()
 				st.begin(Mesh.PRIMITIVE_TRIANGLES)
-				groups[key] = {"st": st, "mat": mat}
+				groups[key] = {"st": st, "mat": _opaque(mat)}
 			(groups[key]["st"] as SurfaceTool).append_from(mi.mesh, si, xf)
 	var merged := Node3D.new()
 	merged.name = "StreetMerged"
@@ -243,7 +245,17 @@ func _merge_dressing() -> void:
 	_dressing.queue_free()
 	_dressing = merged
 	add_child(_dressing)
-	print("CQ street merged %d mesh instances into %d" % [n_in, groups.size()])
+	print("CQ street merged %d mesh instances into %d (%.0f m chunks)" % [n_in, groups.size(), MERGE_CHUNK])
+
+
+## The kits' GLBs import as alpha blended with a depth pre-pass (drawn twice, blended, sorted)
+## though every pixel is opaque: draw the shop fronts, lamps and benches as plain opaque.
+func _opaque(mat: Material) -> Material:
+	if mat is BaseMaterial3D and (mat as BaseMaterial3D).transparency == BaseMaterial3D.TRANSPARENCY_ALPHA_DEPTH_PRE_PASS:
+		var m := (mat as BaseMaterial3D).duplicate() as BaseMaterial3D
+		m.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
+		return m
+	return mat
 
 
 var _tex_hash: Dictionary = {}   # texture instance id -> pixel hash (one hash per texture)
