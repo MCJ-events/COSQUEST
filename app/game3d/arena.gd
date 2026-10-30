@@ -36,7 +36,8 @@ const LOOK_DEFAULTS: Dictionary = {
 	"sky": true,        # dusk sky ambient (cool above, lilac horizon, warm bounce below), not flat grey;
 	                    # true: a flat sky-up ambient + the hemisphere term in the fighter and facade
 	                    # shaders (ALU only); "cube": Godot's sky radiance (two cubemap reads a pixel)
-	"fog": true,        # warm haze up the far street, sun-scattered
+	"fog": false,       # warm haze up the far street, sun-scattered: ~3 % of the frame on the
+	                    # software GPU for a faint effect at the top of the screen, so opt-in
 	"glow": false,      # Godot glow (post pass): bloom on what is brighter than white. Off: see below
 	"grade": false,     # BCS + a split-tone LUT (post pass). Off: see below
 	"rim": true,        # the fighters' key-side rim light (in their own pass, fighter.gd)
@@ -52,15 +53,15 @@ const LOOK_DEFAULTS: Dictionary = {
 ## The key light: a low warm evening sun from up the street on the left (the reference's
 ## haze sits top left), so the fighters are side-lit and the street's right walls catch it.
 const KEY_ROT: Vector3 = Vector3(-34.0, -128.0, 0.0)
-const KEY_COLOR: Color = Color(1.0, 0.78, 0.52)
-const KEY_ENERGY: float = 1.2
+const KEY_COLOR: Color = Color(1.0, 0.74, 0.46)
+const KEY_ENERGY: float = 1.35
 ## The dusk sky that lights the shade (look "sky"): straight up, at the horizon, and the bounce
 ## off the warm paving from below. The paving faces up, so it gets SKY_UP; the walls and the
 ## fighters add the rest of the gradient in their shaders (hemi_* uniforms).
-const SKY_UP: Color = Color(0.7, 0.7, 0.94)
+const SKY_UP: Color = Color(0.6, 0.66, 1.0)
 const SKY_HORIZON: Color = Color(0.8, 0.74, 0.9)
 const SKY_GROUND: Color = Color(0.6, 0.48, 0.5)
-const SKY_ENERGY: float = 0.95
+const SKY_ENERGY: float = 0.85
 
 var look: Dictionary = {}
 var sun: DirectionalLight3D
@@ -197,7 +198,7 @@ func build(cfg: Dictionary) -> void:
 	var gm := StandardMaterial3D.new()
 	gm.albedo_texture = T_PAVERS
 	gm.uv1_scale = Vector3(40, 40, 1)
-	gm.albedo_color = Color(0.74, 0.69, 0.74)
+	gm.albedo_color = Color(0.74, 0.72, 0.76)
 	gm.roughness = 0.95
 	# plain trilinear: anisotropic filtering costs ~1.7 ms a frame on a software GPU
 	gm.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
@@ -252,6 +253,11 @@ func build(cfg: Dictionary) -> void:
 	_shade_st = SurfaceTool.new()
 	_shade_st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	_build_street()
+	# the low sun's glare up the street, as on the reference (its bloom): one big warm pool on the
+	# far paving, in the halo mesh, so no extra draw
+	if bool(look.get("halos", true)):
+		_halo_st.set_color(Color(1.0 / HALO_GAIN, 0.74 / HALO_GAIN, 0.48 / HALO_GAIN, 0.85))
+		_ground_quad(_halo_st, SUN_GLARE, 15.0, 20.0, Rect2(0, 0, 1, 1))
 	if bool(look["ao"]):
 		_bake_ground()
 	_commit_glows()
@@ -359,7 +365,7 @@ func _build_street() -> void:
 	pool_m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	pool_m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	pool_m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
-	pool_m.albedo_color = Color(1.0, 0.72, 0.42, 0.24)
+	pool_m.albedo_color = Color(1.0, 0.68, 0.36, 0.42)
 	pool_m.disable_receive_shadows = true
 	var lz: float = 10.0
 	var li: int = 0
@@ -387,7 +393,7 @@ func _build_street() -> void:
 					_post_shadow(Vector3(lamp.position.x, 0.0, lamp.position.z), wb.size.y)
 			var pool := MeshInstance3D.new()
 			var pq := PlaneMesh.new()
-			pq.size = Vector2(7.0, 7.0)
+			pq.size = Vector2(8.0, 8.0)
 			pool.mesh = pq
 			pool.material_override = pool_m
 			pool.position = Vector3(sx * (STREET_HALF - 3.0), 0.035, lz + side * 3.0)
@@ -415,6 +421,7 @@ const SIGN_HALO: Array[Color] = [Color(1.0, 0.3, 0.7), Color(0.25, 0.8, 1.0), Co
 const SHADE_COL: Color = Color(0.6, 0.62, 0.86)   # multiplied into the paving: the sky-lit shade
 const AO_COL: Color = Color(0.5, 0.47, 0.62)       # the contact darkening at the foot of a wall
 const KERB_TOP: float = 0.185
+const SUN_GLARE: Vector3 = Vector3(-2.0, 0.06, -19.0)   # a warm pool of low sun on the far paving
 const HALO_GAIN: float = 1.3   # the halo mesh's material gain: vertex colours stop at 1, lamp heads need 1.3
 var _cam_facing: Basis = Basis.from_euler(Vector3(deg_to_rad(-44.0), 0.0, 0.0))   # fight.gd CAM_PITCH
 
@@ -498,7 +505,7 @@ func _shade_at(x: float, z: float) -> Color:
 
 
 ## The ground with the shade baked in: a grid over the street whose vertex colours multiply the
-## paving, dense only near the walls (0.3 m) and open in the middle, 1.4 m along the street over
+## paving, dense only near the walls (0.3 m) and open in the middle, 2.2 m along the street over
 ## the stretch the camera can see, and plain quads out to the old 160 m plate. Few triangles: on a
 ## software GPU every triangle has a set-up cost (a 0.35 x 0.7 m grid, ~6k triangles, cost more
 ## than the multiplied overlay it replaced).
@@ -513,7 +520,7 @@ func _bake_ground() -> void:
 		xs.append(-STREET_HALF + d)
 	for d: float in [4.5, 2.0, 0.9, 0.45, 0.0, -0.35]:
 		xs.append(STREET_HALF - d)
-	var nz: int = int(ceil((zmax - zmin) / 1.4))
+	var nz: int = int(ceil((zmax - zmin) / 2.2))
 	var cols: Array = []
 	for j in nz + 1:
 		var row: Array = []
