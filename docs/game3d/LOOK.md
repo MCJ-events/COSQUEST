@@ -42,7 +42,8 @@ gameplay, camera and frame budget.
     8 m pool on the paving (alpha 0.42);
   - the low sun: a big warm pool on the far paving (`SUN_GLARE`, in the halo mesh), the reference's
     glare at the top of the street;
-  - neon blade signs: the sign (unshaded, 1.7x so the tube reads as lit after the tonemap) and a
+  - neon blade signs: the sign (unshaded, 1.35x so the tube reads as lit after the tonemap; brighter
+    washes the words to white) and a
     halo in its own colour behind it (`SIGN_HALO`), drawn first (`render_priority` -1);
   - shop windows: the facade shader's glass emission (`window_k` 3.0) and the warm spill on the
     paving (`shop_glow`).
@@ -99,6 +100,9 @@ The interleaved logs are in the task's evidence (`lat_fin2_*`, `lat_v*_*`).
 ## How to tune
 - Warmer or cooler evening: `KEY_COLOR` and the sky colours; brighter or darker: `KEY_ENERGY` and
   `ambient_light_energy` (the tonemap's exposure moves everything, effects too).
+- The paving's tint (`gm.albedo_color` in `build`, `(0.66, 0.63, 0.69)`): lighter matches the
+  reference's average brightness but takes contrast from the effects' additive glow (EFFECTS.md); this
+  value keeps both.
 - Rim: `RIM_AMOUNT` / `RIM_BOSS` / `RIM_TEAM` in `fighter.gd`; its width is the `fr` exponent in
   `char_lit.gdshader`. Turn it off with `"look": {"rim": false}`.
 - Shade on the street: `SHADE_COL` / `AO_COL` (closer to white is lighter), the width rule in
