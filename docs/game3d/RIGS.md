@@ -6,6 +6,9 @@ fell back in a few states. This page says what was wrong, how the scripted fixes
 run them on a new Forge model, and how the secondary motion (robes, coats, skirts, wings) is
 driven and tuned. The clips themselves are in ANIMATIONS.md.
 
+(cq 239 later changed the look on top of these rigs, textures and shading normals only, and
+extended the swap to all 8: CHARACTERS.md.)
+
 Nothing here changes how a character looks: the meshes, normals, UVs, materials and textures are
 the same bytes, only the skeleton, the skin weights and a few added bones change (proof below).
 

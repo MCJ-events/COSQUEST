@@ -10,11 +10,12 @@ static func clean_path(p: String) -> String:
 	return s
 
 
-## The cast rigs fixed by cq 014 (Elvis, Crystal-Z, Hoof): when `path` is one of the exact
-## files cq 060 published to the Forge catalogue (matched by sha256, so any newer version of
-## the character is left alone), the game loads the same model with the fixed skeleton and
-## weights from res://cast/ instead (data/rig_fixes.json, written by tools/rig/ship.py; the
-## meshes and textures are byte-identical). Returns the path to load and the fix's key.
+## The cast rigs fixed by cq 014 and the cast look pass of cq 239 (all 8): when `path` is one
+## of the exact files cq 060 published to the Forge catalogue (matched by sha256, so any newer
+## version of the character is left alone), the game loads the same model with the fixed
+## skeleton and weights (cq 014) and the new textures and normals (cq 239) from res://cast/
+## instead (data/rig_fixes.json, written by tools/rig/ship.py then tools/look/ship_look.py;
+## the meshes, UVs and skins are byte-identical). Returns the path to load and the fix's key.
 const RIG_FIXES_JSON: String = "res://data/rig_fixes.json"
 static var _fixes: Dictionary = {}
 
@@ -64,6 +65,40 @@ func load_glb(path: String) -> Dictionary:
 			node.free()
 		out["error"] = "generate_scene returned no Node3D"
 		return out
+	var t2: int = Time.get_ticks_usec()
+	out["mip_textures"] = add_mipmaps(node)
+	out["mip_ms"] = (Time.get_ticks_usec() - t2) / 1000.0
 	out["node"] = node
 	out["ok"] = true
 	return out
+
+
+## GLTFDocument's runtime load gives the embedded textures no mipmaps, so at the fight camera
+## (a character ~60 px tall) every screen pixel samples one texel of the many-island atlas
+## and the character sparkles with noise (cq 239). Builds the mip chain once, at load, for
+## every texture of the model's materials. Returns how many textures got mipmaps.
+static func add_mipmaps(model: Node) -> int:
+	var done: Dictionary = {}
+	for n: Node in model.find_children("*", "MeshInstance3D", true, false):
+		var mesh: Mesh = (n as MeshInstance3D).mesh
+		if mesh == null:
+			continue
+		for s: int in mesh.get_surface_count():
+			var m := mesh.surface_get_material(s) as BaseMaterial3D
+			if m == null:
+				continue
+			for p: int in [BaseMaterial3D.TEXTURE_ALBEDO, BaseMaterial3D.TEXTURE_METALLIC,
+					BaseMaterial3D.TEXTURE_ROUGHNESS, BaseMaterial3D.TEXTURE_NORMAL,
+					BaseMaterial3D.TEXTURE_EMISSION, BaseMaterial3D.TEXTURE_AMBIENT_OCCLUSION]:
+				var t := m.get_texture(p) as ImageTexture
+				if t == null:
+					continue
+				if done.has(t):
+					continue
+				done[t] = true
+				var img: Image = t.get_image()
+				if img == null or img.has_mipmaps() or img.is_compressed():
+					continue
+				img.generate_mipmaps()
+				t.set_image(img)
+	return done.size()
