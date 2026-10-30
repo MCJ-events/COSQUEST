@@ -181,12 +181,15 @@ Holds a casting spot 4 m from the boss on the hero's side, fires a bolt every 1.
 Frame time is input latency on the emulator (SwiftShader), so the fight is built to stay
 near the trunk's cost there:
 - 3D at half the screen's pixels (`render_scale` 0.5), the HUD at full resolution.
-- **Dynamic resolution:** when the median of the last 12 real frames is over 36 ms, the
-  3D steps down by 0.07 to at least 0.36 of the screen; under 22 ms it steps back up to
-  `render_scale`. The log line is `CQ dynres scale a -> b`. Review captures pin the
+- **Dynamic resolution:** when the median of the last 12 real frames is over 30 ms, the
+  3D steps down by 0.07 to at least 0.3 of the screen; under 18 ms it steps back up to
+  `render_scale`. A phone at 60 fps never steps down; the emulator's software GPU does. The log line is `CQ dynres scale a -> b`. Review captures pin the
   scale (`dyn_res: false` is the capture default). Config `dyn_res: false` turns it off.
 - One directional light; plain trilinear paving; mipmapped HUD art; the hit-flash overlay
   (a second pass over every skinned vertex) only attached while a flash shows.
+- Draw calls: the HUD's circles are quads of one disc texture (they batch; `draw_circle`
+  is one draw call each); the street's small props are one mesh per material, only the
+  shop fronts are chunked for culling.
 - Latency logs: `CQLAT kind=move|attack|move_blocked`. `move_blocked` is a push while the
   hero cannot move (a skill, a dodge, hit stun, hit-stop); it waits for the move to end by
   design and is not input latency.

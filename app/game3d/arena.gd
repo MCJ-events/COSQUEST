@@ -354,10 +354,12 @@ func _merge_dressing() -> void:
 		var xf: Transform3D = inv * mi.global_transform
 		# one chunk per stretch of street and side, so the camera culls what it cannot see
 		var at: Vector3 = xf * mi.get_aabb().get_center()
-		var chunk: String = "%d%s" % [floori(at.z / MERGE_CHUNK), "l" if at.x < 0.0 else "r"]
+		var facade: bool = mi.has_meta("facade")
+		# the shop fronts (most of the vertices) in chunks the camera can cull; the small
+		# props one mesh per material (each extra mesh is a draw call)
+		var chunk: String = "%d%s" % [floori(at.z / MERGE_CHUNK), "l" if at.x < 0.0 else "r"] if facade else ""
 		for si in mi.mesh.get_surface_count():
 			var mat: Material = mi.get_active_material(si)
-			var facade: bool = mi.has_meta("facade")
 			var key: String = "%s_c%s%s" % [_mat_key(mat), chunk, "f" if facade else ""]
 			if not groups.has(key):
 				var st := SurfaceTool.new()

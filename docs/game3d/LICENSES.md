@@ -19,6 +19,7 @@ checkout on the farm (`~/cq-work/game-godot/ext/unity-ref`, cq 061's read-only c
 - icon_dodge_off, icon_ultimate_off, icon_skill_crescent_off, icon_skill_shockwave_off,
   icon_skill_arcane_off (.png): the cooldown copies of those icons, desaturated with
   ImageMagick (`-modulate 92,12`) (cq 011). **CC0 1.0**.
+- disc.png: a white disc drawn with ImageMagick (cq 011), tinted per use. **CC0 1.0**.
 
 ## Fonts (art/fonts/)
 - LilitaOne-Regular.ttf: Lilita One by Juan Montoreano, **SIL Open Font License 1.1**,

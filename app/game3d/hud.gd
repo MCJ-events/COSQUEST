@@ -18,6 +18,7 @@ signal guard_changed(on: bool, t_in: float, ticks_in: int, src: String)
 const T_STICK_BASE := preload("res://art/hud/stick_base.png")
 const T_STICK_KNOB := preload("res://art/hud/stick_knob.png")
 const T_BTN_BASE := preload("res://art/hud/btn_base.png")
+const T_DISC := preload("res://art/hud/disc.png")   # a white disc (cq 011), tinted per use
 const T_BTN_RING := preload("res://art/hud/btn_ring.png")
 const T_BTN_ULT := preload("res://art/hud/btn_ring_ult.png")
 const T_ATTACK := preload("res://art/hud/icon_attack.png")
@@ -482,6 +483,12 @@ func _flush_texts() -> void:
 	_texts.clear()
 
 
+## A filled circle as a textured quad: draw_circle is a polygon, one draw call each on the
+## Compatibility renderer; quads of one texture drawn back to back batch into one.
+func _disc(c: Vector2, r: float, col: Color) -> void:
+	draw_texture_rect(T_DISC, Rect2(c - Vector2(r, r), Vector2(r, r) * 2.0), false, col)
+
+
 func _tex(t: Texture2D, c: Vector2, r: float, mod: Color = Color.WHITE) -> void:
 	draw_texture_rect(t, Rect2(c - Vector2(r, r), Vector2(r, r) * 2.0), false, mod)
 
@@ -586,8 +593,8 @@ func _draw_overheads() -> void:
 		if not boss:
 			# level badge, as on the reference's hero bar
 			var bc: Vector2 = r.position + Vector2(-12, h * 0.5)
-			draw_circle(bc, 12.0, Color(0.1, 0.07, 0.14, 0.95))
-			draw_circle(bc, 10.0, Color(0.95, 0.72, 0.25))
+			_disc(bc, 12.0, Color(0.1, 0.07, 0.14, 0.95))
+			_disc(bc, 10.0, Color(0.95, 0.72, 0.25))
 			_text(bc + Vector2(0, -1), str(int(u.get("level", 1))), 14, Color(0.25, 0.12, 0.02))
 		var name_col: Color = Color(0.86, 0.72, 1.0) if boss else (Color(0.72, 1.0, 0.62) if bool(u["is_hero"]) else Color(0.7, 0.93, 1.0))
 		_text(p + Vector2(0, -15), str(u["name"]), 22 if boss else 19, name_col, 6)
@@ -682,8 +689,8 @@ func _draw_top() -> void:
 	if show_hero_card:
 		var hr := Rect2(Vector2(16, 26), Vector2(196, 64))
 		draw_style_box(_card, hr)
-		draw_circle(hr.position + Vector2(30, 32), 21.0, Color(0.95, 0.72, 0.25))
-		draw_circle(hr.position + Vector2(30, 32), 18.0, Color(0.16, 0.12, 0.26))
+		_disc(hr.position + Vector2(30, 32), 21.0, Color(0.95, 0.72, 0.25))
+		_disc(hr.position + Vector2(30, 32), 18.0, Color(0.16, 0.12, 0.26))
 		_text(hr.position + Vector2(30, 31), hero_name.substr(0, 1).to_upper(), 24, Color(1, 0.86, 0.45))
 		_text_left(hr.position + Vector2(60, 18), hero_name, 20, Color.WHITE)
 		_rbar(Rect2(hr.position + Vector2(60, 34), Vector2(122, 12)), float(hero_hp) / maxf(1.0, float(hero_max)), C_HERO)
@@ -706,7 +713,7 @@ func _draw_minimap() -> void:
 		_map_disc = PackedVector2Array()
 		for j in 40:
 			_map_disc.append(c + Vector2.from_angle(TAU * j / 40.0) * (MAP_R - 1.0))
-	draw_circle(c, MAP_R, Color(0.43, 0.41, 0.56, 0.92))   # the street (and anything not built)
+	_disc(c, MAP_R, Color(0.43, 0.41, 0.56, 0.92))   # the street (and anything not built)
 	var reach: float = MAP_R / k + 8.0
 	for r: Rect2 in map_blocks:
 		if absf(r.get_center().y - me.y) > reach + r.size.y or absf(r.get_center().x - me.x) > reach + r.size.x:
@@ -718,8 +725,9 @@ func _draw_minimap() -> void:
 	# the medallion where the fight began
 	var mc: Vector2 = c + (Vector2.ZERO - me) * k
 	if mc.distance_to(c) < MAP_R - 3.6 * k:
-		draw_circle(mc, 3.6 * k, Color(0.62, 0.5, 0.48, 0.55))
+		_disc(mc, 3.6 * k, Color(0.62, 0.5, 0.48, 0.55))
 		draw_arc(mc, 3.6 * k, 0, TAU, 28, Color(1, 0.85, 0.7, 0.45), 1.5)
+	var dots: Array = []
 	for m: Dictionary in map_points:
 		var v: Vector2 = ((m["p"] as Vector2) - me) * k
 		v = v.limit_length(MAP_R - 9)
@@ -748,9 +756,13 @@ func _draw_minimap() -> void:
 			var fn: Vector2 = f.normalized()
 			var side: Vector2 = Vector2(-fn.y, fn.x)
 			draw_colored_polygon(PackedVector2Array([p + fn * (r + 8.0), p + side * (r * 0.85), p - side * (r * 0.85)]), Color(col.r, col.g, col.b, 0.9))
-		draw_circle(p, r + 2.5, Color(0.02, 0.02, 0.05, 0.85))
-		draw_circle(p, r, col)
-		draw_circle(p + Vector2(-r * 0.3, -r * 0.3), r * 0.35, Color(1, 1, 1, 0.45))
+		dots.append([p, r, col])
+	for d: Array in dots:
+		var p: Vector2 = d[0]
+		var r: float = d[1]
+		_disc(p, r + 2.5, Color(0.02, 0.02, 0.05, 0.85))
+		_disc(p, r, d[2])
+		_disc(p + Vector2(-r * 0.3, -r * 0.3), r * 0.35, Color(1, 1, 1, 0.45))
 	draw_texture_rect(T_MAP_FRAME, Rect2(c - Vector2(MAP_R + 9, MAP_R + 9), Vector2(MAP_R + 9, MAP_R + 9) * 2.0), false)
 
 
@@ -787,8 +799,8 @@ func _draw_controls() -> void:
 		var pa: float = deg_to_rad(-90.0 - 22.0 + 22.0 * j)
 		var pp: Vector2 = ac + Vector2(cos(pa), sin(pa)) * (ATTACK_R + 13.0)
 		var lit: bool = j < combo_step
-		draw_circle(pp, 6.5, Color(0.05, 0.03, 0.08, 0.85))
-		draw_circle(pp, 4.5, Color(1.0, 0.75, 0.25) if lit else Color(1, 1, 1, 0.28))
+		_disc(pp, 6.5, Color(0.05, 0.03, 0.08, 0.85))
+		_disc(pp, 4.5, Color(1.0, 0.75, 0.25) if lit else Color(1, 1, 1, 0.28))
 	# skills
 	for i in SKILL_ANGLES.size():
 		var c: Vector2 = skill_centre(i)
@@ -812,9 +824,9 @@ func _draw_controls() -> void:
 	# guard
 	var gc: Vector2 = guard_centre()
 	var gs: float = 0.9 if guard_on else 1.0
-	draw_circle(gc, GUARD_R + 3.0, Color(0.05, 0.03, 0.1, 0.55))
+	_disc(gc, GUARD_R + 3.0, Color(0.05, 0.03, 0.1, 0.55))
 	if guard_on:
-		draw_circle(gc, GUARD_R + 7.0, Color(0.5, 0.85, 1.0, 0.35))
+		_disc(gc, GUARD_R + 7.0, Color(0.5, 0.85, 1.0, 0.35))
 	_tex(T_GUARD, gc, GUARD_R * gs, Color.WHITE if guard_on else Color(1, 1, 1, 0.85))
 	if _press[6] >= 0.0:
 		var kg: float = _press[6] / 0.3

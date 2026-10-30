@@ -207,10 +207,10 @@ var _load_threaded: bool = true
 # instrumentation
 var _ft: PackedFloat32Array = PackedFloat32Array()
 var _perf_last_us: int = 0
-const DYN_RES_SLOW_MS: float = 36.0   # under ~28 fps: fewer 3D pixels
-const DYN_RES_FAST_MS: float = 22.0   # over ~45 fps: back up towards render_scale
+const DYN_RES_SLOW_MS: float = 30.0   # under ~33 fps: fewer 3D pixels
+const DYN_RES_FAST_MS: float = 18.0   # over ~55 fps: back up towards render_scale
 const DYN_RES_STEP: float = 0.07
-const DYN_RES_MIN: float = 0.36
+const DYN_RES_MIN: float = 0.3
 var _dyn_on: bool = false
 var _dyn_base: float = 0.5
 var _dyn_next_us: int = 0
