@@ -57,14 +57,14 @@ glow, star4, burst, sparkle, streak, ring, puff, scorch, crack, swirl, lines, ha
 beams), hex edges (G) and hex ids (B, the shatter order) for the dome, and noise (A).
 Both are drawn by `tools/fx/make_fx_art.py` (numpy + Pillow, fixed seeds): edit a `cell_*`
 function and run `python tools/fx/make_fx_art.py art/fx` from `app/game3d`.
-The atlas imports VRAM-compressed with mipmaps (about 1.3 MB on the GPU with mips); the tile is
-lossless (about 0.34 MB). The HUD reuses the atlas for the crit flash behind a number.
+The atlas imports VRAM-compressed with mipmaps (ETC2 on phones, S3TC on desktop: 1.4 MB with
+mips); the tile is lossless with mipmaps (about 0.35 MB). The HUD reuses the atlas for the crit flash behind a number.
 
 ## Each effect
 | Effect | Layers | Budget (nodes / particles / life) |
 |---|---|---|
-| Slash arc (combo hit 1, 2) | A crescent (`slash`, `fx_arc`) at chest height, edge radius 0.92 x the hitbox reach (about 2.2 m, more than a fighter's height), thick in the middle and pointed at the ends; it sweeps in over the first third of its life, then the tail catches up. Plus a **ribbon along the real weapon tip** (`_push_tip_trail`) while a cq 012 clip plays (procedural sweep when there is no clip). Both have a white-hot core on the edge, a saturated body, an additive halo and energy streaks. | 1 arc + 1 ribbon; 0.24 s arc, 0.3 s ribbon |
-| Heavy third hit | The same, 1.05 x reach, **gold**, tilted so the camera sees its face; dust on contact | 1 arc + 1 ribbon + dust |
+| Slash arc (combo hit 1, 2) | A crescent (`slash`, `fx_arc`) at chest height, edge radius 1.05 x the hitbox reach (about 2.5 m, more than a fighter's height), thick in the middle and pointed at the ends; it sweeps in over the first 30 % of its life, then the tail catches up. A thin bright **echo stroke** follows just outside it (the reference's concentric strokes). Plus a **ribbon along the real weapon tip** (`_push_tip_trail`) while a cq 012 clip plays (procedural sweep when there is no clip). Both have a white-hot core on the edge, a saturated body, an additive halo and energy streaks. | 2 arcs + 1 ribbon; 0.32 s arc, 0.36 s ribbon |
+| Heavy third hit | The same, 1.2 x reach (about 3.4 m), **gold**, 0.4 s, tilted so the camera sees its face; dust on contact | 2 arcs + 1 ribbon + dust |
 | Per weapon class | blade (sword, dagger, axe) blue; heavy (hammer, greatsword) orange; staff violet; **gun** (rifle, crossbow): a muzzle flash and a tracer to the target instead of an arc | `_wclass` in fight.gd, `CLASS_COLS` in fx.gd |
 | Hit spark (`sparks`) | Tier by damage (under 110, under 190, more): velocity-aligned streak sparks thrown away from the attacker (10 / 18 / 30), a white-hot star flash and a glow at the contact point on the body's surface; tiers 2 and 3 add a ring | 2 to 3 cards + 1 system, 0.15 to 0.32 s |
 | Crit | A tier up, plus a spiky burst, radial speed streaks and glints; a small scorch decal under the target; camera trauma + 1.6 deg zoom punch | +2 cards + 1 system |
@@ -72,11 +72,12 @@ lossless (about 0.34 MB). The HUD reuses the atlas for the crit flash behind a n
 | Parry (`clash`) | Two crossed white/gold stars, a glow, radial streaks, big spark burst, glints, a gold shock ring | 5 cards + 2 systems |
 | KO (`ko_burst` + `coin_burst`) | A burst, glow, streaks, shock ring, sparkles, sparks, big dust; six coins thrown up in arcs with glints (pure visuals) | 6 cards + 3 systems + 6 coins |
 | CHARGE | Start: speed-line burst, glow, ground ring, dust. Dash: a tall cyan energy ribbon and speed streaks flying back. End: star flash, glow, shock ring, sparks, dust, camera kick | about 12 cards over 0.4 s + 1 ribbon |
-| SPLIT (`split_slam`) | Two beams (a deep blue sheath 3.2 m wide, 14 m tall, and a 1.1 m bright core), scrolling energy, a light spike along the ground, a big glow and star, a gold swirl and halo and shock ring on the ground, a glowing crack that cools into a scorch, dust, embers; then 5 bursts run 7 m along the split (flame tongue, glow, glowing crack, scorch, sparks) | 2 beams + about 9 cards + 3 systems, then 5 x (3 cards + 1 decal + 1 system) |
+| SPLIT (`split_slam`) | Two beams (a deep blue sheath 4.2 m wide, 16 m tall, and a 1.5 m bright core) that flare to full width in a few frames, scrolling energy, a 10 m light spike along the ground, a big glow and star, a 10 m warm ground flash, a gold swirl and halo and shock ring on the ground, a glowing crack that cools into a scorch, dust, embers; then 5 bursts run 7 m along the split (flame tongue, glow, glowing crack, scorch, sparks) | 2 beams + about 9 cards + 3 systems, then 5 x (3 cards + 1 decal + 1 system) |
 | WHIRL (`whirl`, per hit) | Four swept arcs spinning round the hero at blade height (gold, then pink on the second hit), a spinning blade-ring swirl, a ring, a pink halo, a ground swirl, a shock ring, sparks thrown outward | 4 arcs + 6 cards + 2 systems, 0.45 to 0.6 s |
 | SHIELD | Going up: shock ring, glow, glints, the dome pops in. The dome: fresnel rim, a bright hem, hex pattern drifting up, a pulse on every absorbed hit (plus a ring), and a 0.3 s shatter (hex cells drop out with hot edges, glass shards, flash, ring) when it breaks or runs out | the dome (1 per fighter) + 3 to 4 cards + 1 system |
-| RALLY (`heal`, per ally) | A rising green column (`fx_beam`, flowing up), plus motes rising from a ring, sparkles, a shock ring, a halo at the feet and a rising plus | 1 beam + 3 cards + 2 systems, 1 s |
+| RALLY (`heal`, per ally) | A rising green column (`fx_beam`, 2.4 x 5 m, flowing up), three flame tongues rising round the ally, motes rising from a ring, sparkles, a shock ring, a halo at the feet and a rising plus | 1 beam + 6 cards + 2 systems, 1.1 s |
 | Boss strike | A big red crescent and a red ribbon across the swipe; the slam gets a shock ring, sparks, a glowing crack + scorch and dust | as above |
+| Boss telegraph (`telegraph.gdshader`) | Drawn as light, not paint: a faint fill that thickens towards the advancing front, a glowing front line and a glowing rim. Same shape and timing: the strike lands when the front meets the rim | 1 node per telegraph (4 pooled) |
 | Ground decals | Scorch (SPLIT, slam, crits), cracks (SPLIT, slam), dust puffs (big hits, KO); flat cards in their own pool of **12**, fading out over 3 to 4.5 s (the oldest is reused) | 12 max |
 | Dust | Puff particles (blended, warm grey), big ones add a faint dust ring decal: dashes, dodges, landings, heavy hits, KO | 5 systems x 10 |
 | Coins | A spinning coin with a glint and sparkles when a big hit lands on the boss (as before), plus the KO burst | 6 coins |
@@ -99,12 +100,14 @@ lossless (about 0.34 MB). The HUD reuses the atlas for the crit flash behind a n
   They keep the seeded RNG advancing exactly as before, so crits and the boss's choices are unchanged.
 
 ## Budget (measured; see cq 013's REPORT.md for the runs)
-- Pooled once: 10 arcs, 48 cards, 20 top cards, 12 decals, 4 beams, 6 coins, 4 telegraphs,
+- Pooled once: 12 arcs, 48 cards, 20 top cards, 12 decals, 4 beams, 6 coins, 4 telegraphs,
   29 particle systems (454 particles allocated at most), plus one ribbon per trail key (at most 10).
-- In the scripted review fight the peak was about 47 live effect nodes and about 150 live particles.
+- In the autoplay fight (10 runs) the peak was 45 to 51 live effect nodes and 168 to 194 live particles;
+  `fx_pool` (pooled nodes + particle systems) is 141.
 - Draw calls: the fight's per-frame draws, idle versus the busiest effect frames, are in the REPORT's
   frame-time table. A hidden pooled node costs nothing.
-- Texture memory for the new art: about 1.7 MB (atlas VRAM-compressed with mips, plus the tile).
+- Texture memory for the new art: about 1.75 MB (atlas 1.4 MB, tile 0.35 MB). Twelve old effect textures
+  were removed.
 - To cut cost on a slow device: drop the second SPLIT beam, the WHIRL ground swirl, or a spark tier's
   count (`_ready()` spec table). Each of those is one draw or a few dozen particles.
 
