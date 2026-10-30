@@ -607,8 +607,8 @@ func _draw_pops() -> void:
 			continue
 		var t: float = d["t"]
 		var style: String = d["style"]
-		var rise: float = 80.0 if style != "crit" else 60.0
-		var p: Vector2 = cam.unproject_position(w) + Vector2(float(d["dx"]) * minf(1.0, t / 0.12 + 0.4), float(d.get("dy", 0.0)) - 30.0 - rise * ease(t / 0.95, 0.4))
+		var rise: float = 58.0 if style != "crit" else 44.0
+		var p: Vector2 = cam.unproject_position(w) + Vector2(float(d["dx"]) * minf(1.0, t / 0.12 + 0.4), float(d.get("dy", 0.0)) - 6.0 - rise * ease(t / 0.95, 0.4))
 		var a: float = 1.0 - clampf((t - 0.6) / 0.35, 0.0, 1.0)
 		var punch: float = 1.0 + 0.6 * maxf(0.0, 1.0 - t / 0.1)
 		# sized like the reference's numbers: a jab still reads at phone size

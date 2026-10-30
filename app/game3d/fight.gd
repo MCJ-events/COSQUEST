@@ -701,7 +701,7 @@ func _tick_swing(_dt: float) -> void:
 			var h: float = 1.15 + lerpf(lift.x, lift.y, kk)
 			var base: Vector3 = hero.position + Vector3(0, 1.15 + lerpf(lift.x, lift.y, kk) * 0.4, 0) + dir * (reach * 0.42)
 			var tip: Vector3 = hero.position + Vector3(0, h, 0) + dir * reach
-			fx.trail_push("hero%d" % _combo_i, base, tip, Color(1.0, 0.58, 0.1) if bool(d["heavy"]) else Color(0.12, 0.72, 1.0), (1.0 - u) * _dt)
+			fx.trail_push("hero%d" % _combo_i, base, tip, Color(1.0, 0.5, 0.05) if bool(d["heavy"]) else Color(0.05, 0.5, 1.0), (1.0 - u) * _dt)
 	_swing_prev_deg = yaw_deg
 	# chain: a buffered press (or a held button) starts the next hit at COMBO_CHAIN_AT
 	if (_attack_buffer > 0.0 or hud.attack_held) and _act_t >= _act_len * COMBO_CHAIN_AT and _combo_i < COMBO.size() - 1:
@@ -894,7 +894,7 @@ func _apply_hit(src: FighterScript, dst: FighterScript, info: Dictionary) -> voi
 	var amount: int = rng.randi_range(r.x, r.y)
 	amount = int(round(amount * src.buff_mult))
 	var away: Vector3 = _flat(dst.position - src.position)
-	var pop_at: Vector3 = dst.head_pos() + Vector3(0, 0.5, 0)   # above the name and bar
+	var pop_at: Vector3 = dst.chest_pos() + Vector3(0, 0.25 * dst.size_k, 0)   # on the target's body, as on the reference
 	# dodge: i-frames
 	if dst.iframes > 0.0:
 		hud.pop(pop_at, "DODGE", "dodge")
