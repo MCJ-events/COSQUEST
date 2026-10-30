@@ -6,7 +6,13 @@ extends Node3D
 
 const HitArea := preload("res://hit_area.gd")
 const Animator := preload("res://combat_animator.gd")
+## cq 015 rim (char_lit.gdshader): strength on the key light's side, and the share of it the
+## team-coloured sky-side rim gets
+const RIM_AMOUNT: float = 1.7
+const RIM_BOSS: float = 1.8
+const RIM_TEAM: float = 0.45
 const FLASH_SHADER := preload("res://vfx/flash.gdshader")
+const LIT_SHADER := preload("res://vfx/char_lit.gdshader")
 const DOME_SHADER := preload("res://vfx/dome.gdshader")
 
 const HEIGHT: float = 2.3             # a touch over life size: reads at phone size, as on the reference
@@ -52,6 +58,13 @@ var _overlay: ShaderMaterial
 var _flash: float = 0.0
 var _overlay_meshes: Array[MeshInstance3D] = []
 var _overlay_on: bool = false
+## cq 015: the fighter's own materials, rebuilt on char_lit.gdshader (rim + hit flash in
+## the same pass). The overlay above is only kept for a surface that cannot be converted.
+var _lit_mats: Array[ShaderMaterial] = []
+var _lit_flash: float = -1.0
+var rim_on: bool = true                                  # set by fight.gd from the look
+var key_dir: Vector3 = Vector3(0.65, -0.56, 0.51)       # the key light's direction (arena.gd)
+var _rim_team: Color = Color(0.5, 0.85, 1.0)
 var _dome: MeshInstance3D
 var _dome_mat: ShaderMaterial
 var _dome_hit: float = 0.0
@@ -60,6 +73,9 @@ var _shatter_t: float = -1.0        # cq 013: >= 0 while the dome breaks up
 ## cq 013: the barrier broke or ran out (fx shards it)
 signal shield_ended(at: Vector3, radius: float)
 var _aura: MeshInstance3D
+var _cast: MeshInstance3D       # cq 015: the sun-cast soft shadow (top level: it keeps the sun's heading)
+var _cast_off: Vector3 = Vector3.ZERO
+var _cast_yaw: float = 0.0
 
 # procedural body motion (stands in for clip root motion)
 var _motion: String = ""
@@ -88,6 +104,7 @@ func setup(n: String, t: int, hp_max: int, c: Color, r: String = "hero") -> void
 	var rim: Color = Color(1.0, 0.35, 0.3) if team == 1 else (Color(0.55, 1.0, 0.6) if role == "hero" else Color(0.5, 0.85, 1.0))
 	_overlay.set_shader_parameter("rim_color", rim)
 	_overlay.set_shader_parameter("rim_amount", 0.55 if role == "boss" else 0.4)
+	_rim_team = rim
 	_build_boxes()
 	_build_shadow()
 	set_capsule()
@@ -110,6 +127,23 @@ func _build_shadow() -> void:
 	sh.position.y = 0.045
 	sh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(sh)
+	# cq 015: the low key light's shadow, faked: a long soft blob leaning away from the sun
+	# (arena.gd KEY_ROT), one more small quad, so the fighters stand on the street, not over it
+	var ld := Vector3(key_dir.x, 0.0, key_dir.z)
+	if ld.length() > 0.05:
+		_cast = MeshInstance3D.new()
+		_cast.name = "SunShadow"
+		var cq := PlaneMesh.new()
+		cq.size = Vector2(1.1, 2.6) * size_k
+		_cast.mesh = cq
+		var cm := m.duplicate() as StandardMaterial3D
+		cm.albedo_color = Color(0.16, 0.12, 0.3, 0.5)
+		_cast.material_override = cm
+		_cast.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		_cast.top_level = true
+		_cast_off = ld.normalized() * 1.0 * size_k
+		_cast_yaw = atan2(ld.x, ld.z)
+		add_child(_cast)
 
 
 func _build_boxes() -> void:
@@ -282,18 +316,76 @@ func set_model(node: Node3D) -> Dictionary:
 		"bones": bind_info.get("bones", 0), "hand": bind_info.get("hand", ""), "library": anim.lib_key}
 
 
-## The overlay is a second pass over every (skinned) vertex of the model: on a software GPU
-## that is ~1 ms a fighter a frame. It is only attached while a flash is showing (the first
-## frames after load too, so its shader is compiled before the fight starts).
+## cq 015: each surface's material is rebuilt on char_lit.gdshader, which draws the same
+## textures plus the rim and the hit flash in the one pass. The old overlay (a second pass over
+## every skinned vertex, ~1 ms a fighter a frame on a software GPU) is only kept for a surface
+## that cannot be converted (not a plain opaque BaseMaterial3D); it is attached only while a
+## flash shows, and for the first frame after load so its shader compiles during loading.
 func _apply_overlay(root: Node) -> void:
 	_overlay_meshes.clear()
-	for n: Node in root.find_children("*", "MeshInstance3D", true, false):
-		_overlay_meshes.append(n)
+	_lit_mats.clear()
+	_lit_flash = -1.0
+	var meshes: Array[Node] = root.find_children("*", "MeshInstance3D", true, false)
 	if root is MeshInstance3D:
-		_overlay_meshes.append(root)
+		meshes.append(root)
+	for n: Node in meshes:
+		if not _light_mesh(n as MeshInstance3D):
+			_overlay_meshes.append(n)
 	_overlay_on = false
-	_flash = maxf(_flash, 0.02)   # on for the first frame: compiles the shader during loading
-	_set_overlay(true)
+	if not _overlay_meshes.is_empty():
+		_flash = maxf(_flash, 0.02)   # on for the first frame: compiles the shader during loading
+		_set_overlay(true)
+
+
+## Swaps every surface of `mi` to the lit fighter material; false if one cannot be converted.
+func _light_mesh(mi: MeshInstance3D) -> bool:
+	if mi.mesh == null:
+		return false
+	if mi.material_override != null:
+		var o: ShaderMaterial = _lit_material(mi.material_override)
+		if o == null:
+			return false
+		mi.material_override = o
+		return true
+	var subs: Array = []
+	for si in mi.mesh.get_surface_count():
+		var sm: ShaderMaterial = _lit_material(mi.get_active_material(si))
+		if sm == null:
+			return false
+		subs.append(sm)
+	for si in subs.size():
+		mi.set_surface_override_material(si, subs[si])
+	return true
+
+
+func _lit_material(m: Material) -> ShaderMaterial:
+	if not (m is BaseMaterial3D):
+		return null
+	var b := m as BaseMaterial3D
+	if b.transparency != BaseMaterial3D.TRANSPARENCY_DISABLED or b.shading_mode != BaseMaterial3D.SHADING_MODE_PER_PIXEL \
+			or b.cull_mode != BaseMaterial3D.CULL_BACK or b.vertex_color_use_as_albedo or b.normal_enabled \
+			or b.emission_enabled or b.uv1_triplanar:
+		return null
+	var sm := ShaderMaterial.new()
+	sm.shader = LIT_SHADER
+	sm.set_shader_parameter("albedo_tex", b.albedo_texture)
+	sm.set_shader_parameter("albedo", b.albedo_color)
+	var orm: Texture2D = b.roughness_texture if b.roughness_texture != null else b.metallic_texture
+	sm.set_shader_parameter("orm_tex", orm)
+	var ch: Array[Vector4] = [Vector4(1, 0, 0, 0), Vector4(0, 1, 0, 0), Vector4(0, 0, 1, 0), Vector4(0, 0, 0, 1), Vector4(0.3, 0.59, 0.11, 0)]
+	sm.set_shader_parameter("orm_channel_r", ch[b.roughness_texture_channel] if b.roughness_texture != null else Vector4(0, 0, 0, 1))
+	sm.set_shader_parameter("orm_channel_m", ch[b.metallic_texture_channel] if b.metallic_texture != null else Vector4(0, 0, 0, 1))
+	sm.set_shader_parameter("roughness", b.roughness)
+	sm.set_shader_parameter("metallic", b.metallic)
+	sm.set_shader_parameter("specular", b.metallic_specular)
+	sm.set_shader_parameter("uv1_scale", b.uv1_scale)
+	sm.set_shader_parameter("uv1_offset", b.uv1_offset)
+	sm.set_shader_parameter("key_dir", key_dir)
+	sm.set_shader_parameter("rim_team", _rim_team)
+	sm.set_shader_parameter("rim_amount", (RIM_BOSS if role == "boss" else RIM_AMOUNT) if rim_on else 0.0)
+	sm.set_shader_parameter("team_amount", RIM_TEAM)
+	_lit_mats.append(sm)
+	return sm
 
 
 func _set_overlay(on: bool) -> void:
@@ -562,11 +654,18 @@ func tick_visual(dt: float) -> void:
 	body.position = pos
 	body.rotation = rot
 	body.scale = Vector3.ONE * sc
+	if _cast != null:
+		_cast.visible = visible
+		_cast.global_transform = Transform3D(Basis(Vector3.UP, _cast_yaw), global_position + _cast_off + Vector3(0, 0.04, 0))
 	# hit flash
 	if _flash > 0.0:
 		_flash = maxf(0.0, _flash - dt * 7.0)
 	_overlay.set_shader_parameter("flash", _flash)
-	_set_overlay(_flash > 0.0)
+	_set_overlay(_flash > 0.0 and not _overlay_meshes.is_empty())
+	if _flash != _lit_flash:
+		_lit_flash = _flash
+		for m: ShaderMaterial in _lit_mats:
+			m.set_shader_parameter("flash", _flash)
 	if _dome != null:
 		var on: bool = shield_t > 0.0 and not dead
 		if not on and _dome.visible and _shatter_t < 0.0:

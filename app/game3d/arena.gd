@@ -30,30 +30,140 @@ var _scenes: Dictionary = {}
 var map_blocks: Array[Rect2] = []   # building footprints (x, z in metres) for the minimap
 
 
+## The look (cq 015, docs/game3d/LOOK.md): every piece can be switched off from the fight
+## config ("look": {"sky": false, ...}) to measure what it costs.
+const LOOK_DEFAULTS: Dictionary = {
+	"sky": true,        # ambient from a dusk sky gradient (cool above, warm bounce below), not flat
+	"fog": true,        # warm haze up the far street, sun-scattered
+	"glow": false,      # Godot glow (post pass): bloom on what is brighter than white. Off: see below
+	"grade": false,     # BCS + a split-tone LUT (post pass). Off: see below
+	"rim": true,        # the fighters' key-side rim light (in their own pass, fighter.gd)
+	"ao": true,         # soft dark where the shop walls meet the paving
+	"shadows": false,   # real directional shadows (the blob shadows are always on)
+	"tonemap": "aces",  # aces | filmic | agx (all in the scene shader, no extra pass)
+}
+# "glow" and "grade" each turn on the Compatibility renderer's post pass, which runs over the
+# whole screen at full resolution: on the 1-thread software GPU it doubled the frame (LOOK.md).
+# Instead the lamps, signs and windows carry their own halo cards (the effects do the same), and
+# the grade is in the light and material colours. Turn them on for a device that can pay.
+## The key light: a low warm evening sun from up the street on the left (the reference's
+## haze sits top left), so the fighters are side-lit and the street's right walls catch it.
+const KEY_ROT: Vector3 = Vector3(-34.0, -128.0, 0.0)
+const KEY_COLOR: Color = Color(1.0, 0.78, 0.52)
+const KEY_ENERGY: float = 1.2
+
+var look: Dictionary = {}
+var sun: DirectionalLight3D
+var env: Environment
+
+
+static func look_opts(cfg: Dictionary) -> Dictionary:
+	var out: Dictionary = LOOK_DEFAULTS.duplicate()
+	var l: Variant = cfg.get("look", {})
+	if l is Dictionary:
+		for k: String in (l as Dictionary):
+			out[k] = l[k]
+	if cfg.has("shadows"):
+		out["shadows"] = bool(cfg["shadows"])
+	if cfg.has("fog"):
+		out["fog"] = bool(cfg["fog"])
+	return out
+
+
+## The direction the key light travels (world space), for the fighters' rim.
+static func key_dir() -> Vector3:
+	return Basis.from_euler(KEY_ROT * (PI / 180.0)) * Vector3(0, 0, -1)
+
+
 func build(cfg: Dictionary) -> void:
-	var env := Environment.new()
+	look = look_opts(cfg)
+	env = Environment.new()
 	env.background_mode = Environment.BG_COLOR
 	env.background_color = Color(0.2, 0.2, 0.36)
-	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color(0.62, 0.64, 0.92)
-	env.ambient_light_energy = 0.66
-	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+	if bool(look["sky"]):
+		# ambient from a sky (never seen: the camera looks down): surfaces facing up get the
+		# blue-violet dusk sky, walls the warm horizon, undersides the warm paving's bounce.
+		# A 32 px radiance map, filtered once at load; one cubemap read per pixel.
+		var sm := ProceduralSkyMaterial.new()
+		sm.sky_top_color = Color(0.46, 0.56, 1.0)
+		sm.sky_horizon_color = Color(0.78, 0.74, 0.92)
+		sm.sky_curve = 0.12
+		sm.ground_horizon_color = Color(0.82, 0.68, 0.72)
+		sm.ground_bottom_color = Color(0.55, 0.44, 0.48)
+		sm.ground_curve = 0.06
+		sm.sun_angle_max = 40.0
+		sm.sun_curve = 0.2
+		var sky := Sky.new()
+		sky.sky_material = sm
+		sky.radiance_size = Sky.RADIANCE_SIZE_32
+		sky.process_mode = Sky.PROCESS_MODE_QUALITY
+		env.sky = sky
+		env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
+		env.ambient_light_sky_contribution = 1.0
+		env.ambient_light_energy = 0.85
+		env.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
+	else:
+		env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+		env.ambient_light_color = Color(0.62, 0.64, 0.92)
+		env.ambient_light_energy = 0.66
+	env.tonemap_mode = {"filmic": Environment.TONE_MAPPER_FILMIC, "agx": Environment.TONE_MAPPER_AGX}.get(str(look["tonemap"]), Environment.TONE_MAPPER_ACES)
+	env.tonemap_exposure = 1.0
 	env.tonemap_white = 6.0
-	env.fog_enabled = bool(cfg.get("fog", false))
-	env.fog_light_color = Color(0.55, 0.48, 0.7)
-	env.fog_density = 0.006
-	env.fog_sky_affect = 0.0
+	env.fog_enabled = bool(look["fog"])
+	if env.fog_enabled:
+		# depth fog: nothing near the fight, a warm lilac haze up the far street, brighter
+		# towards the sun (the reference's sunlit haze top left)
+		env.fog_mode = Environment.FOG_MODE_DEPTH
+		env.fog_light_color = Color(0.86, 0.66, 0.74)
+		env.fog_light_energy = 1.0
+		env.fog_sun_scatter = 0.5
+		env.fog_density = 0.85
+		env.fog_depth_begin = 21.0
+		env.fog_depth_end = 64.0
+		env.fog_depth_curve = 1.6
+		env.fog_sky_affect = 0.0
+	if bool(look["glow"]):
+		# bloom only on what is brighter than white (lit windows, neon, lamp heads); the
+		# effects peak near white and keep their own glow (EFFECTS.md), so the threshold
+		# sits above them
+		env.glow_enabled = true
+		env.glow_normalized = false
+		env.glow_intensity = 0.9
+		env.glow_strength = 1.0
+		env.glow_bloom = 0.0
+		env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SCREEN
+		env.glow_hdr_threshold = 1.15
+		env.glow_hdr_scale = 2.0
+		for i in 7:
+			env.set_glow_level(i, 0.0)
+		env.set_glow_level(1, 0.6)
+		env.set_glow_level(2, 1.0)
+		env.set_glow_level(3, 0.7)
+	if bool(look["grade"]):
+		# a warm evening grade: a touch more contrast and colour, and a split-tone curve
+		# (violet shadows, gold highlights) as a 256 px colour-correction ramp
+		env.adjustment_enabled = true
+		env.adjustment_brightness = 1.0
+		env.adjustment_contrast = 1.04
+		env.adjustment_saturation = 0.9
+		env.adjustment_color_correction = _grade_ramp()
 	var we := WorldEnvironment.new()
 	we.environment = env
 	add_child(we)
-	var sun := DirectionalLight3D.new()
-	sun.rotation_degrees = Vector3(-42.0, 40.0, 0.0)
-	sun.light_energy = 1.15
-	sun.light_color = Color(1.0, 0.8, 0.62)
-	sun.shadow_enabled = bool(cfg.get("shadows", false))
+	sun = DirectionalLight3D.new()
+	sun.rotation_degrees = KEY_ROT
+	sun.light_energy = KEY_ENERGY
+	sun.light_color = KEY_COLOR
+	sun.shadow_enabled = bool(look["shadows"])
+	if sun.shadow_enabled:
+		# the fighters only (the street casts nothing): one orthogonal split close in
+		sun.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
+		sun.directional_shadow_max_distance = 30.0
+		sun.shadow_blur = 2.0
+		sun.shadow_opacity = 0.7
 	add_child(sun)
 	# no second (fill) light: each directional light is shaded on every pixel, ~2 ms a frame
-	# on the software GPU; the bluer, stronger ambient does its job
+	# on the software GPU; the sky ambient is the fill
 	# the street floor, paved
 	ground = MeshInstance3D.new()
 	var pm := PlaneMesh.new()
@@ -62,7 +172,7 @@ func build(cfg: Dictionary) -> void:
 	var gm := StandardMaterial3D.new()
 	gm.albedo_texture = T_PAVERS
 	gm.uv1_scale = Vector3(40, 40, 1)
-	gm.albedo_color = Color(0.64, 0.56, 0.62)
+	gm.albedo_color = Color(0.74, 0.69, 0.74)
 	gm.roughness = 0.95
 	# plain trilinear: anisotropic filtering costs ~1.7 ms a frame on a software GPU
 	gm.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
@@ -114,10 +224,28 @@ func build(cfg: Dictionary) -> void:
 	_lamps_st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	_cones_st = SurfaceTool.new()
 	_cones_st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	_halo_st = SurfaceTool.new()
+	_halo_st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	_shade_st = SurfaceTool.new()
+	_shade_st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	_build_street()
 	_commit_glows()
 	if bool(cfg.get("merge_street", true)):
 		_merge_dressing()
+
+
+## The grade's colour curve, per channel (input level -> output level): shadows lean violet,
+## highlights gold, as on the reference's evening street.
+static func _grade_ramp() -> GradientTexture1D:
+	var g := Gradient.new()
+	g.offsets = PackedFloat32Array([0.0, 0.22, 0.5, 0.78, 1.0])
+	g.colors = PackedColorArray([Color(0.07, 0.06, 0.12), Color(0.25, 0.24, 0.3), Color(0.505, 0.495, 0.5),
+		Color(0.81, 0.775, 0.72), Color(1.0, 0.97, 0.9)])
+	g.interpolation_mode = Gradient.GRADIENT_INTERPOLATE_CUBIC
+	var t := GradientTexture1D.new()
+	t.gradient = g
+	t.width = 256
+	return t
 
 
 func _scene(n: String) -> PackedScene:
@@ -206,7 +334,7 @@ func _build_street() -> void:
 	pool_m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	pool_m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	pool_m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
-	pool_m.albedo_color = Color(1.0, 0.75, 0.45, 0.35)
+	pool_m.albedo_color = Color(1.0, 0.72, 0.42, 0.24)
 	pool_m.disable_receive_shadows = true
 	var lz: float = 10.0
 	var li: int = 0
@@ -225,8 +353,11 @@ func _build_street() -> void:
 				var head_x: float = wb.position.x if sx > 0.0 else wb.end.x
 				var head := Vector3(head_x + sx * 0.25, wb.end.y - 0.35, lamp.position.z)
 				_glow_quad(_lamps_st, head, 2.2, 2.2, Rect2(0, 0, 1, 1), true)
+				_halo(head, 3.0, Color(1.0, 0.72, 0.4, 0.42))
 				# the light falling from the head to its pool, as on the reference's dusk street
 				_cone(_cones_st, head - Vector3(0, 0.2, 0), Vector3(head.x, 0.05, head.z + 0.6), 0.4, 4.0)
+				if sx < 0.0 and bool(look.get("ao", true)):
+					_post_shadow(Vector3(lamp.position.x, 0.0, lamp.position.z), wb.size.y)
 			var pool := MeshInstance3D.new()
 			var pq := PlaneMesh.new()
 			pq.size = Vector2(7.0, 7.0)
@@ -251,6 +382,13 @@ var _neon_st: Array[SurfaceTool] = []
 var _shop_st: Array[SurfaceTool] = []
 var _lamps_st: SurfaceTool
 var _cones_st: SurfaceTool
+var _halo_st: SurfaceTool    # cq 015: soft coloured halos behind signs and lamp heads (bloom faked on the light)
+var _shade_st: SurfaceTool   # cq 015: baked sun shade and contact darkening where the walls meet the paving
+const SIGN_HALO: Array[Color] = [Color(1.0, 0.3, 0.7), Color(0.25, 0.8, 1.0), Color(1.0, 0.7, 0.25),
+	Color(0.65, 0.35, 1.0), Color(0.3, 1.0, 0.55), Color(1.0, 0.35, 0.45)]   # the neon atlas's six signs
+const SHADE_COL: Color = Color(0.6, 0.62, 0.86)   # multiplied into the paving: the sky-lit shade
+const AO_COL: Color = Color(0.5, 0.47, 0.62)       # the contact darkening at the foot of a wall
+const KERB_TOP: float = 0.185
 var _cam_facing: Basis = Basis.from_euler(Vector3(deg_to_rad(-44.0), 0.0, 0.0))   # fight.gd CAM_PITCH
 
 
@@ -263,13 +401,75 @@ func _dress_front(h: Node3D, sx: float, n: int) -> void:
 	var length: float = wb.size.z
 	var side: int = 0 if sx < 0.0 else 1
 	_ground_quad(_shop_st[side], Vector3(front_x - sx * 1.0, 0.04, zc), 2.0, length * 0.8, Rect2(0, 0, 1, 1))
+	if bool(look.get("ao", true)):
+		_wall_shade(front_x, sx, wb.position.z, wb.end.z, wb.end.y)
 	# signs only up the street (z < -5): the camera's focus never goes past z = -8
 	# (fight.gd CAM_BOUNDS), so they stay up the screen, never among the controls
 	if n % 3 != 2 and zc < -5.0:
 		var k: int = (n * 5 + 1) % NEON_SIGNS
-		var w: float = 2.0
-		_glow_quad(_neon_st[side], Vector3(front_x - sx * (w * 0.5 + 0.1), 4.7 + 0.35 * float(n % 2), zc + (1.2 if n % 2 == 0 else -1.2)),
-			w, w * 0.375, Rect2(0, float(k) / NEON_SIGNS, 1, 1.0 / NEON_SIGNS), true)
+		var w: float = 2.4
+		var at := Vector3(front_x - sx * (w * 0.5 + 0.5), 4.7 + 0.35 * float(n % 2), zc + (1.2 if n % 2 == 0 else -1.2))
+		_glow_quad(_neon_st[side], at, w, w * 0.375, Rect2(0, float(k) / NEON_SIGNS, 1, 1.0 / NEON_SIGNS), true)
+		var hc: Color = SIGN_HALO[k]
+		hc.a = 0.5
+		_halo(at, w * 2.0, hc, 0.6)
+
+
+## A soft coloured halo round a light, facing the camera (vertex colour x the lamp glow).
+func _halo(c: Vector3, size: float, col: Color, aspect: float = 1.0) -> void:
+	_halo_st.set_color(col)
+	_glow_quad(_halo_st, c, size, size * aspect, Rect2(0, 0, 1, 1), true)
+
+
+## The paving at the foot of a shop front: a contact darkening 0.9 m out on every wall, and on the
+## street's left side (the low sun comes from the left, KEY_ROT) the block's shade, as wide as a
+## third of its height and leaning along the sun, fading out softly. Vertex colours multiplied into
+## the paving; the strip over the kerb sits on the kerb's top.
+func _wall_shade(front_x: float, sx: float, z0: float, z1: float, h: float) -> void:
+	var kerb_in: float = STREET_HALF - 0.55       # the kerb's street-side edge (|x|)
+	var d: Vector3 = key_dir()
+	var lean: float = d.z / maxf(0.05, absf(d.x))  # metres along the street per metre across
+	var bands: Array = [[0.9, AO_COL, 0.0]]
+	if sx < 0.0:
+		var w: float = clampf(h * 0.5, 2.5, 4.5)
+		bands.push_front([w, SHADE_COL, lean])
+	for b: Array in bands:
+		var w: float = b[0]
+		var col: Color = b[1]
+		var ln: float = b[2]
+		var x0: float = front_x
+		var x1: float = front_x - sx * w
+		# kerb part (from the wall to the kerb's edge), then the street part, both fading out to x1
+		var xk: float = sx * kerb_in
+		var k_at: float = clampf(absf(xk - x0) / w, 0.0, 1.0)
+		var ck: Color = col.lerp(Color.WHITE, k_at)
+		_shade_quad(Vector3(x0, KERB_TOP, z0), Vector3(xk, KERB_TOP, z0 + ln * absf(xk - x0)), z1 - z0, col, ck)
+		_shade_quad(Vector3(xk, 0.03, z0 + ln * absf(xk - x0)), Vector3(x1, 0.03, z0 + ln * w), z1 - z0, ck, Color.WHITE)
+
+
+## A lamp post's long thin shadow across the paving, leaning away from the low sun.
+func _post_shadow(base: Vector3, h: float) -> void:
+	var d: Vector3 = key_dir()
+	var run := Vector3(d.x, 0.0, d.z) / maxf(0.2, -d.y) * h * 0.8
+	var side: Vector3 = Vector3(-run.z, 0.0, run.x).normalized() * 0.11
+	var a := Vector3(base.x, 0.03, base.z)
+	var b := a + run
+	var p := [a - side, a + side, b + side * 2.5, b - side * 2.5]
+	var col: Array[Color] = [SHADE_COL, SHADE_COL, Color.WHITE, Color.WHITE]
+	for idx: int in [0, 1, 2, 0, 2, 3]:
+		_shade_st.set_color(col[idx])
+		_shade_st.set_normal(Vector3.UP)
+		_shade_st.add_vertex(p[idx])
+
+
+## A strip from the line `a` (length `len` along +z) to the line `b`, colour ca at a, cb at b.
+func _shade_quad(a: Vector3, b: Vector3, len: float, ca: Color, cb: Color) -> void:
+	var p := [a, b, b + Vector3(0, 0, len), a + Vector3(0, 0, len)]
+	var c := [ca, cb, cb, ca]
+	for idx: int in [0, 1, 2, 0, 2, 3]:
+		_shade_st.set_color(c[idx])
+		_shade_st.set_normal(Vector3.UP)
+		_shade_st.add_vertex(p[idx])
 
 
 ## A flat quad on the ground: `wx` across the street (x), `wz` along it.
@@ -321,9 +521,22 @@ func _glow_mat(tex: Texture2D, col: Color, add: bool = true) -> StandardMaterial
 
 
 func _commit_glows() -> void:
-	var neon_m := _glow_mat(T_NEON, Color(1.15, 1.15, 1.15, 1.0), false)   # mixed: added on the pale paving it washes to white
-	var shop_m := _glow_mat(T_SHOP, Color(1.0, 0.8, 0.55, 0.75))
-	var lamp_m := _glow_mat(T_LAMP, Color(1.0, 0.9, 0.7, 1.0))
+	# cq 015: brighter than white (the ACES tonemap rolls the peak off), so signs read as lit tubes
+	var neon_m := _glow_mat(T_NEON, Color(1.7, 1.7, 1.7, 1.0), false)   # mixed: added on the pale paving it washes to white
+	var shop_m := _glow_mat(T_SHOP, Color(1.0, 0.78, 0.5, 0.6))
+	var lamp_m := _glow_mat(T_LAMP, Color(1.3, 1.15, 0.9, 1.0))
+	var halo_m := _glow_mat(T_LAMP, Color(1, 1, 1, 1))
+	halo_m.vertex_color_use_as_albedo = true
+	halo_m.render_priority = -1   # under the signs and lamp heads, not over them
+	_near_fade(halo_m, true)
+	var shade_m := StandardMaterial3D.new()
+	shade_m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	shade_m.vertex_color_use_as_albedo = true
+	shade_m.blend_mode = BaseMaterial3D.BLEND_MODE_MUL
+	shade_m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	shade_m.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
+	shade_m.disable_receive_shadows = true
+	shade_m.disable_fog = true
 	_near_fade(lamp_m, true)
 	var cone_m := _glow_mat(T_CONE, Color(1.0, 0.82, 0.55, 0.95))
 	_near_fade(cone_m, true)
@@ -333,6 +546,8 @@ func _commit_glows() -> void:
 		out.append([_shop_st[side], shop_m])
 	out.append([_lamps_st, lamp_m])
 	out.append([_cones_st, cone_m])
+	out.append([_halo_st, halo_m])
+	out.append([_shade_st, shade_m])
 	for pair: Array in out:
 		var mesh: ArrayMesh = (pair[0] as SurfaceTool).commit()
 		if mesh.get_surface_count() == 0:
