@@ -13,6 +13,7 @@ const FACADE_SHADER := preload("res://vfx/facade.gdshader")
 const T_NEON := preload("res://art/street/neon_atlas.png")     # 6 signs stacked, self-drawn
 const T_SHOP := preload("res://art/street/shop_glow.png")
 const T_LAMP := preload("res://art/street/lamp_glow.png")
+const T_CONE := preload("res://art/street/lamp_cone.png")
 const NEON_SIGNS: int = 6
 
 const BUILDINGS: Array[String] = ["building-a", "building-b", "building-c", "building-d", "building-e",
@@ -110,6 +111,8 @@ func build(cfg: Dictionary) -> void:
 		_shop_st.append(st2)
 	_lamps_st = SurfaceTool.new()
 	_lamps_st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	_cones_st = SurfaceTool.new()
+	_cones_st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	_build_street()
 	_commit_glows()
 	if bool(cfg.get("merge_street", true)):
@@ -217,7 +220,10 @@ func _build_street() -> void:
 				# the lamp head: the end of the arm, over the street
 				var wb: AABB = lamp.transform * _aabb(lamp)
 				var head_x: float = wb.position.x if sx > 0.0 else wb.end.x
-				_glow_quad(_lamps_st, Vector3(head_x + sx * 0.25, wb.end.y - 0.35, lamp.position.z), 2.2, 2.2, Rect2(0, 0, 1, 1), true)
+				var head := Vector3(head_x + sx * 0.25, wb.end.y - 0.35, lamp.position.z)
+				_glow_quad(_lamps_st, head, 2.2, 2.2, Rect2(0, 0, 1, 1), true)
+				# the light falling from the head to its pool, as on the reference's dusk street
+				_cone(_cones_st, head - Vector3(0, 0.2, 0), Vector3(head.x, 0.05, head.z + 0.6), 0.4, 4.0)
 			var pool := MeshInstance3D.new()
 			var pq := PlaneMesh.new()
 			pq.size = Vector2(7.0, 7.0)
@@ -241,6 +247,7 @@ func _build_street() -> void:
 var _neon_st: Array[SurfaceTool] = []
 var _shop_st: Array[SurfaceTool] = []
 var _lamps_st: SurfaceTool
+var _cones_st: SurfaceTool
 var _cam_facing: Basis = Basis.from_euler(Vector3(deg_to_rad(-44.0), 0.0, 0.0))   # fight.gd CAM_PITCH
 
 
@@ -277,6 +284,15 @@ func _glow_quad(st: SurfaceTool, c: Vector3, w: float, h: float, uv: Rect2, _fac
 	_quad(st, c, _cam_facing.x * (w * 0.5), _cam_facing.y * (h * 0.5), uv)
 
 
+## A light cone: a vertical trapezoid facing the camera's side of the street (+z).
+func _cone(st: SurfaceTool, top: Vector3, bottom: Vector3, top_w: float, bottom_w: float) -> void:
+	var p := [bottom - Vector3(bottom_w * 0.5, 0, 0), bottom + Vector3(bottom_w * 0.5, 0, 0), top + Vector3(top_w * 0.5, 0, 0), top - Vector3(top_w * 0.5, 0, 0)]
+	var t := [Vector2(0, 1), Vector2(1, 1), Vector2(1, 0), Vector2(0, 0)]
+	for idx: int in [0, 1, 2, 0, 2, 3]:
+		st.set_uv(t[idx])
+		st.add_vertex(p[idx])
+
+
 func _quad(st: SurfaceTool, c: Vector3, right: Vector3, up: Vector3, uv: Rect2) -> void:
 	var p := [c - right - up, c + right - up, c + right + up, c - right + up]
 	var t := [Vector2(uv.position.x, uv.end.y), Vector2(uv.end.x, uv.end.y), Vector2(uv.end.x, uv.position.y), uv.position]
@@ -308,6 +324,7 @@ func _commit_glows() -> void:
 		out.append([_neon_st[side], neon_m])
 		out.append([_shop_st[side], shop_m])
 	out.append([_lamps_st, lamp_m])
+	out.append([_cones_st, _glow_mat(T_CONE, Color(1.0, 0.82, 0.55, 0.95))])
 	for pair: Array in out:
 		var mesh: ArrayMesh = (pair[0] as SurfaceTool).commit()
 		if mesh.get_surface_count() == 0:
