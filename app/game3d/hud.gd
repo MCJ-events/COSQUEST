@@ -596,17 +596,19 @@ func _draw_pops() -> void:
 		var p: Vector2 = cam.unproject_position(w) + Vector2(float(d["dx"]) * minf(1.0, t / 0.12 + 0.4), float(d.get("dy", 0.0)) - 30.0 - rise * ease(t / 0.95, 0.4))
 		var a: float = 1.0 - clampf((t - 0.6) / 0.35, 0.0, 1.0)
 		var punch: float = 1.0 + 0.6 * maxf(0.0, 1.0 - t / 0.1)
-		var fs: int = 34
-		var col: Color = Color(1, 1, 1, a)
-		var ocol: Color = Color(0.1, 0.05, 0.12, a)
-		var ol: int = 8
+		# sized like the reference's numbers: a jab still reads at phone size
+		var fs: int = 42
+		var col: Color = Color(1.0, 0.97, 0.86, a)
+		var ocol: Color = Color(0.16, 0.06, 0.14, a)
+		var ol: int = 9
 		match style:
 			"heavy":
-				fs = 40
-				col = Color(1.0, 0.86, 0.3, a)
+				fs = 52
+				col = Color(1.0, 0.84, 0.28, a)
 				ocol = Color(0.35, 0.12, 0.02, a)
+				ol = 11
 			"crit":
-				fs = 56
+				fs = 68
 				col = Color(1.0, 0.42, 0.12, a)
 				ocol = Color(0.3, 0.02, 0.06, a)
 				ol = 12

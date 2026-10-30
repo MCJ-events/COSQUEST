@@ -8,6 +8,7 @@ extends Node3D
 
 const TELEGRAPH_SHADER := preload("res://vfx/telegraph.gdshader")
 const TRAIL_SHADER := preload("res://vfx/trail.gdshader")
+const TRAIL_GLOW_SHADER := preload("res://vfx/trail_glow.gdshader")
 const T_SPARK := preload("res://art/fx/spark_04.png")
 const T_STAR := preload("res://art/fx/star_06.png")
 const T_FLARE := preload("res://art/fx/flare_01.png")
@@ -22,7 +23,7 @@ const T_CIRCLE := preload("res://art/fx/circle_05.png")
 
 const SLASH_LIFE: float = 0.22
 const RING_LIFE: float = 0.4
-const TRAIL_LIFE: float = 0.22
+const TRAIL_LIFE: float = 0.28
 
 var _slash_mesh: ArrayMesh
 var _ring_mesh: ArrayMesh
@@ -31,6 +32,7 @@ var _slashes: Array[MeshInstance3D] = []
 var _rings: Array[MeshInstance3D] = []
 var _bands: Array[MeshInstance3D] = []
 var _flares: Array[MeshInstance3D] = []
+var _impacts: Array[MeshInstance3D] = []   # the star-shaped contact flash
 var _decals: Array[MeshInstance3D] = []
 var _coins: Array[MeshInstance3D] = []
 var _teles: Array[MeshInstance3D] = []
@@ -61,6 +63,8 @@ func _ready() -> void:
 		_bands.append(_make_mi(_band_mesh, _additive(T_SWIRL)))
 	for i in 8:
 		_flares.append(_make_mi(_quad(1.0), _additive(T_FLARE, true)))
+	for i in 6:
+		_impacts.append(_make_mi(_quad(1.0), _additive(T_STAR, true)))
 	for i in 10:
 		_decals.append(_make_mi(_flat_quad(1.0), _alpha(T_SCORCH)))
 	for i in 4:
@@ -72,9 +76,10 @@ func _ready() -> void:
 		mi.material_override = sm
 		_teles.append(mi)
 	for i in 4:
-		(_sparks["s"] as Array).append(_make_sparks(8, T_SPARK, 0.08, Vector2(3.0, 7.0)))
-		(_sparks["m"] as Array).append(_make_sparks(16, T_SPARK, 0.11, Vector2(4.0, 9.0)))
-		(_sparks["l"] as Array).append(_make_sparks(30, T_SPARK, 0.14, Vector2(5.0, 12.0)))
+		# sized to read at phone size from the high camera (a spark is ~10 px at 0.15 m)
+		(_sparks["s"] as Array).append(_make_sparks(12, T_SPARK, 0.17, Vector2(3.0, 7.5)))
+		(_sparks["m"] as Array).append(_make_sparks(22, T_SPARK, 0.22, Vector2(4.0, 9.5)))
+		(_sparks["l"] as Array).append(_make_sparks(36, T_SPARK, 0.28, Vector2(5.0, 12.5)))
 		_stars.append(_make_sparks(6, T_STAR, 0.35, Vector2(1.5, 3.0)))
 	for i in 2:
 		var h := _make_sparks(26, T_STAR, 0.2, Vector2(1.0, 2.5))
@@ -271,6 +276,12 @@ func slash(at: Vector3, yaw: float, tint: Color, size: float, tilt: float) -> Me
 	return mi
 
 
+## Starts `key`'s trail afresh (a new swing never joins the last one's ribbon).
+func trail_cut(key: String) -> void:
+	if _trails.has(key):
+		(_trails[key]["samples"] as Array).clear()
+
+
 ## Adds the current hilt/tip pair to `key`'s trail. Call every frame of a swing.
 func trail_push(key: String, base: Vector3, tip: Vector3, tint: Color, t_back: float = 0.0) -> void:
 	var tr: Dictionary = _trails.get(key, {})
@@ -281,6 +292,9 @@ func trail_push(key: String, base: Vector3, tip: Vector3, tint: Color, t_back: f
 		var sm := ShaderMaterial.new()
 		sm.shader = TRAIL_SHADER
 		sm.set_shader_parameter("tex", T_TRAIL)
+		var glow := ShaderMaterial.new()
+		glow.shader = TRAIL_GLOW_SHADER
+		sm.next_pass = glow
 		mi.material_override = sm
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		add_child(mi)
@@ -298,7 +312,9 @@ func trail_push(key: String, base: Vector3, tip: Vector3, tint: Color, t_back: f
 			var u: float = float(i + 1) / float(steps + 1)
 			s.append([lerpf(float(last[0]), _clock, u), lb.lerp(base, u), lt.lerp(tip, u)])
 	s.append([_clock - t_back, base, tip])
-	((tr["mi"] as MeshInstance3D).material_override as ShaderMaterial).set_shader_parameter("tint", tint)
+	var trm := (tr["mi"] as MeshInstance3D).material_override as ShaderMaterial
+	trm.set_shader_parameter("tint", tint)
+	(trm.next_pass as ShaderMaterial).set_shader_parameter("tint", tint)
 
 
 func _draw_trails() -> void:
@@ -336,11 +352,21 @@ func sparks(at: Vector3, tint: Color, dmg: int, crit: bool = false) -> void:
 	p.emitting = true
 	var fl: MeshInstance3D = _pick(_flares, "flare")
 	fl.position = at
-	var fs: float = clampf(0.9 + float(dmg) / 120.0, 1.0, 3.2) * (1.3 if crit else 1.0)
+	var fs: float = clampf(1.2 + float(dmg) / 100.0, 1.4, 3.8) * (1.3 if crit else 1.0)
 	fl.scale = Vector3.ONE * fs
 	(fl.material_override as StandardMaterial3D).albedo_color = tint.lerp(Color.WHITE, 0.4)
 	fl.visible = true
-	_start(fl, 0.16, "flare", fs, tint.lerp(Color.WHITE, 0.4))
+	_start(fl, 0.2, "flare", fs, tint.lerp(Color.WHITE, 0.4))
+	# a star-shaped flash on contact, turned a little each hit so repeats do not look stamped
+	var im: MeshInstance3D = _pick(_impacts, "impact")
+	im.position = at + Vector3(0, 0.05, 0)
+	var is_: float = clampf(0.9 + float(dmg) / 140.0, 1.0, 2.6) * (1.35 if crit else 1.0)
+	im.rotation = Vector3(0, 0, randf() * TAU)
+	im.scale = Vector3.ONE * is_
+	var ic: Color = Color(1.0, 0.92, 0.6) if crit or dmg >= 140 else tint.lerp(Color.WHITE, 0.55)
+	(im.material_override as StandardMaterial3D).albedo_color = ic
+	im.visible = true
+	_start(im, 0.18, "impact", is_, ic)
 	if crit or dmg >= 170:
 		var st: CPUParticles3D = _pick(_stars, "star")
 		st.position = at
@@ -503,6 +529,10 @@ func _process(dt: float) -> void:
 				var mat4 := mi.material_override as StandardMaterial3D
 				mi.scale = Vector3.ONE * size * lerpf(0.6, 1.2, k)
 				mat4.albedo_color = Color(tint.r, tint.g, tint.b, 1.0 - k)
+			"impact":
+				var mat6 := mi.material_override as StandardMaterial3D
+				mi.scale = Vector3.ONE * size * lerpf(0.5, 1.25, ease(k, 0.35))
+				mat6.albedo_color = Color(tint.r, tint.g, tint.b, 1.0 - ease(k, 2.0))
 			"decal":
 				var mat5 := mi.material_override as StandardMaterial3D
 				mat5.albedo_color = Color(tint.r, tint.g, tint.b, tint.a * (1.0 - ease(k, 3.0)))

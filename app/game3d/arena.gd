@@ -246,13 +246,19 @@ func _merge_dressing() -> void:
 	print("CQ street merged %d mesh instances into %d" % [n_in, groups.size()])
 
 
-static func _mat_key(mat: Material) -> String:
+var _tex_hash: Dictionary = {}   # texture instance id -> pixel hash (one hash per texture)
+
+
+func _mat_key(mat: Material) -> String:
 	# the kits' GLBs each embed their own copy of the same atlas: key them by the pixels
 	if mat is BaseMaterial3D and (mat as BaseMaterial3D).albedo_texture != null:
 		var bm := mat as BaseMaterial3D
-		var img: Image = bm.albedo_texture.get_image()
-		var h: int = img.get_data().hash() if img != null else bm.albedo_texture.get_instance_id()
-		return "tex%d_%d_%s" % [h, bm.transparency, str(bm.albedo_color)]
+		var tex: Texture2D = bm.albedo_texture
+		var id: int = tex.get_instance_id()
+		if not _tex_hash.has(id):
+			var img: Image = tex.get_image()
+			_tex_hash[id] = hash(img.get_data()) if img != null else id
+		return "tex%d_%d_%s" % [_tex_hash[id], bm.transparency, str(bm.albedo_color)]
 	return "mat%d" % (mat.get_instance_id() if mat != null else 0)
 
 

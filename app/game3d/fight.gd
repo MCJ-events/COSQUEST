@@ -636,6 +636,7 @@ func _swing() -> void:
 		var to: Vector3 = _flat(enemy.position - hero.position)
 		if to.length() < SOFT_LOCK:
 			hero.face(to, 0.0, 0.0)
+	fx.trail_cut("hero%d" % _combo_i)
 	hero.act(str(_atk_data["state"]), _act_len)
 	hero.set_reach(float(_atk_data["reach"]), 0.6 if bool(_atk_data["heavy"]) else 0.45)
 	var sweep: Vector2 = _atk_data["sweep"]
@@ -683,15 +684,16 @@ func _tick_swing(_dt: float) -> void:
 			var a: float = hero.yaw + deg_to_rad(a_deg)
 			var dir := Vector3(sin(a), 0, cos(a))
 			var h: float = 1.15 + lerpf(lift.x, lift.y, kk)
-			var base: Vector3 = hero.position + Vector3(0, 1.15 + lerpf(lift.x, lift.y, kk) * 0.4, 0) + dir * 0.45
+			var base: Vector3 = hero.position + Vector3(0, 1.15 + lerpf(lift.x, lift.y, kk) * 0.4, 0) + dir * (reach * 0.42)
 			var tip: Vector3 = hero.position + Vector3(0, h, 0) + dir * reach
-			fx.trail_push("hero", base, tip, Color(1.0, 0.62, 0.15) if bool(d["heavy"]) else Color(0.25, 0.65, 1.0), (1.0 - u) * _dt)
+			fx.trail_push("hero%d" % _combo_i, base, tip, Color(1.0, 0.58, 0.1) if bool(d["heavy"]) else Color(0.12, 0.72, 1.0), (1.0 - u) * _dt)
 	_swing_prev_deg = yaw_deg
 	# chain: a buffered press (or a held button) starts the next hit at COMBO_CHAIN_AT
 	if (_attack_buffer > 0.0 or hud.attack_held) and _act_t >= _act_len * COMBO_CHAIN_AT and _combo_i < COMBO.size() - 1:
 		_attack_buffer = 0.0
 		hero.weapon.close()
 		_action = ""
+		_since_swing = 0.0   # a chained hit is never a fresh start (the reset check in _swing)
 		_swing()
 	elif _act_t >= _act_len and _combo_i == COMBO.size() - 1:
 		_combo_next = 0
