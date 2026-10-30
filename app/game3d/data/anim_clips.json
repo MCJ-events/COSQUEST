@@ -692,14 +692,14 @@
    "lib": "kaykit",
    "frames": 25,
    "fps": 30.0,
-   "ground_speed_per_hip": 1.43
+   "ground_speed_per_hip": 2.3
   },
   "Running_B": {
    "src": "Running_B",
    "lib": "kaykit",
    "frames": 33,
    "fps": 30.0,
-   "ground_speed_per_hip": 1.43
+   "ground_speed_per_hip": 2.365
   },
   "Spellcast_Long": {
    "src": "Spellcast_Long",
@@ -754,7 +754,7 @@
    "lib": "ual",
    "frames": 29,
    "fps": 30.0,
-   "ground_speed_per_hip": 1.54
+   "ground_speed_per_hip": 4.0
   },
   "UAL_Roll": {
    "src": "Roll",
@@ -773,7 +773,7 @@
    "lib": "ual",
    "frames": 21,
    "fps": 30.0,
-   "ground_speed_per_hip": 1.98
+   "ground_speed_per_hip": 5.615
   },
   "UAL_Sword_Attack": {
    "src": "Sword_Attack",

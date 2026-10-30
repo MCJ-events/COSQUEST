@@ -81,7 +81,8 @@
     ],
     "f": 0.5
    },
-   "ground_speed_per_hip": 1.43
+   "ground_speed_per_hip": 2.3,
+   "_note": "no planted frame registers in this run (both feet leave the floor), so its ground speed is set to Running_B's measured one"
   },
   "Running_B": {
    "src": "Running_B",
@@ -97,8 +98,7 @@
      "RightLeg"
     ],
     "f": 0.5
-   },
-   "ground_speed_per_hip": 1.43
+   }
   },
   "1H_Melee_Attack_Slice_Diagonal": {
    "src": "1H_Melee_Attack_Slice_Diagonal",
@@ -480,8 +480,7 @@
      "RightLeg"
     ],
     "f": 0.5
-   },
-   "ground_speed_per_hip": 1.54
+   }
   },
   "UAL_Idle": {
    "src": "Idle_Loop",
@@ -507,8 +506,7 @@
      "RightLeg"
     ],
     "f": 0.5
-   },
-   "ground_speed_per_hip": 1.98
+   }
   },
   "UAL_Hit_Chest": {
    "src": "Hit_Chest",
