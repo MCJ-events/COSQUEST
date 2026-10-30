@@ -103,6 +103,20 @@ export function runFromParams(q: Record<string, string | string[] | undefined>, 
   };
 }
 
+/**
+ * The test link's look switches (cosquest://fight3d?look=post, look=glow,grade, look=-bloom):
+ * Godot's `look` config keys (arena.gd LOOK_DEFAULTS), comma-separated, a leading "-" for off.
+ * The opt-in post stack (glow + grade) is measured on a device this way. Unknown words are dropped.
+ */
+export function lookFromParam(raw: string | undefined): Record<string, boolean> | null {
+  const out: Record<string, boolean> = {};
+  for (const w of (raw ?? "").split(",")) {
+    const m = /^(-?)([a-z_]{2,20})$/.exec(w.trim());
+    if (m) out[m[2]] = m[1] !== "-";
+  }
+  return Object.keys(out).length ? out : null;
+}
+
 // ---------- the characters ----------
 
 /** The characters' LOD in the fight: 1 on low and mid phones (and the emulator), 0 on high ones. */

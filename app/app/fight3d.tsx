@@ -1,4 +1,4 @@
-// cosquest://fight3d?mode=full|arena|chars&cycle=N&ms=8000&autoplay=1&keep=0|1&tiles=<url>&tlat=&tlon=&talt=&tground=0|1&tsse=&torigin=0|1&trotx=&selfcycle=N
+// cosquest://fight3d?mode=full|arena|chars&cycle=N&ms=8000&autoplay=1&keep=0|1&tiles=<url>&tlat=&tlon=&talt=&tground=0|1&tsse=&torigin=0|1&trotx=&selfcycle=N&look=post|glow,grade|-bloom
 // Test builds only (EXPO_PUBLIC_GAME3D=1): opens the 3D fight (cq 061) with no
 // point, in a given mode, once or N times for the leak test. Like
 // cosquest://play, it hands the request to the game and gets out of the way;
@@ -8,7 +8,7 @@
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect } from "react";
 
-import { runFromParams } from "@/features/game3d/fight3d";
+import { lookFromParam, runFromParams } from "@/features/game3d/fight3d";
 import { FIGHT3D, fight3dAvailable } from "@/features/game3d/flags";
 import { requestFight3D } from "@/features/game3d/request";
 import { world } from "@/features/world/worldState";
@@ -25,6 +25,8 @@ export default function Fight3DLink() {
       if (one("keep") !== undefined) flags.keep = one("keep") === "1";
       if (one("statusspam") !== undefined) (flags as { statusSpam?: number }).statusSpam = Number(one("statusspam")) || 0;
       if (one("selfcycle") !== undefined) (flags as { selfCycle?: number }).selfCycle = Number(one("selfcycle")) || 0;
+      // Every link sets the look switches afresh (none: the shipped look).
+      (flags as { look?: Record<string, boolean> | null }).look = lookFromParam(one("look"));
       // The arena's place on the tileset as tlat/tlon/talt (a "#" in a link is cut off).
       if (one("tiles") !== undefined) {
         const at = one("tlat") !== undefined && one("tlon") !== undefined ? `#${[one("tlat"), one("tlon"), one("talt") ?? 0, one("tground"), one("tsse"), one("torigin"), one("trotx")].filter((v) => v !== undefined).join(",")}` : "";

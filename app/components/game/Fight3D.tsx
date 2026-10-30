@@ -118,8 +118,10 @@ export default function Fight3D({
         Object.assign(config, weapons);
         log(`weapons ${Object.keys(weapons).join(",") || "-"}`);
         // Leak probe (test link selfcycle=N): Godot restarts the fight N times in this one view.
-        const probe = FIGHT3D as { selfCycle?: number };
+        const probe = FIGHT3D as { selfCycle?: number; look?: Record<string, boolean> | null };
         if (probe.selfCycle) Object.assign(config, { self_cycle: probe.selfCycle, self_cycle_ms: 6000 });
+        // Look switches (test link look=post etc.): the opt-in post stack on a device.
+        if (probe.look) Object.assign(config, { look: probe.look });
         await openFight({
           args: godotArgs(Platform.OS, { bundleDir: Platform.OS === "ios" ? Paths.bundle.uri : null }),
           config,

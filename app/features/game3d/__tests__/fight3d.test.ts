@@ -21,6 +21,7 @@ import {
   wornAvatarId,
   rewardFrom3D,
   runFromParams,
+  lookFromParam,
 } from "../fight3d.ts";
 
 const android = { os: "android", version: 35 };
@@ -56,6 +57,15 @@ test("the test link's parameters, with the build's knobs as defaults", () => {
   assert.deepEqual(runFromParams({ mode: "arena", cycle: "10", ms: "6000" }, flags), { mode: "arena", cycle: 10, cycleMs: 6000, autoplay: true });
   assert.deepEqual(runFromParams({}, flags), { mode: "full", cycle: 0, cycleMs: 8000, autoplay: false });
   assert.deepEqual(runFromParams({ mode: ["chars"], autoplay: "0", cycle: "3" }, flags), { mode: "chars", cycle: 3, cycleMs: 8000, autoplay: false });
+});
+
+test("the test link's look switches: words on, a leading minus off, junk dropped", () => {
+  assert.deepEqual(lookFromParam("post"), { post: true });
+  assert.deepEqual(lookFromParam("glow,grade"), { glow: true, grade: true });
+  assert.deepEqual(lookFromParam(" -bloom , fog"), { bloom: false, fog: true });
+  assert.equal(lookFromParam(undefined), null);
+  assert.equal(lookFromParam(""), null);
+  assert.equal(lookFromParam("<x>,1,"), null);
 });
 
 test("LOD 1 on low and mid phones (the emulator), 0 on high ones, the knob wins", () => {
