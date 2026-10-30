@@ -125,9 +125,11 @@ func _take(s: Dictionary, f: Node) -> void:
 				eye = target + fwd * dist * 0.5 + Vector3(0, dist, 0)
 			"full":
 				# Half-way towards the held hand, far enough back that a long weapon held out stays in frame.
+				# "zoom" (default 1) scales the framing for a bigger fighter (a boss at 2x).
+				var zk: float = float(s.get("zoom", 1.0))
 				var off: Vector3 = (target - who.global_position) * 0.5
-				target = who.global_position + Vector3(off.x, 0.95, off.z)
-				eye = target + fwd * 3.9 + right * 0.6 + Vector3(0, 0.4, 0)
+				target = who.global_position + Vector3(off.x, 0.95 * zk, off.z)
+				eye = target + fwd * 3.9 * zk + right * 0.6 * zk + Vector3(0, 0.4 * zk, 0)
 			"fullside":
 				target = who.global_position + Vector3(0, 0.95, 0)
 				eye = target - right * 3.2 + fwd * 0.4 + Vector3(0, 0.3, 0)
@@ -140,7 +142,17 @@ func _take(s: Dictionary, f: Node) -> void:
 		(f.get("cam") as Camera3D).current = true
 	if hud_layer != null:
 		hud_layer.visible = bool(s.get("hud", close == ""))
+	# "solo": only the framed fighter is drawn (the others hidden for this frame).
+	var hidden: Array[Node3D] = []
+	if bool(s.get("solo", false)):
+		for k: String in ["hero", "ally", "enemy"]:
+			var o: Node3D = f.get(k)
+			if o != null and o != who and o.visible:
+				o.visible = false
+				hidden.append(o)
 	await RenderingServer.frame_post_draw
+	for o: Node3D in hidden:
+		o.visible = true
 	var img: Image = root.get_viewport().get_texture().get_image()
 	var p: String = out_dir.path_join(str(s["name"]) + ".png")
 	img.save_png(p)
