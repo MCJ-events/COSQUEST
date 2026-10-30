@@ -69,6 +69,7 @@ func _ready() -> void:
 		am.shader = ARC_SHADER
 		am.set_shader_parameter("tile", T_TILE)
 		_arcs.append(_make_mi(_arc_mesh, am))
+		_arcs[-1].set_meta("no_bloom", true)   # cq 016: the arcs carry their own halo; bloomed they white out the fighters
 	var q := QuadMesh.new()
 	q.size = Vector2(1.0, 1.0)
 	for i in N_CARDS:
@@ -154,6 +155,10 @@ func _card_mat(cell: int, add: float, billboard: int = 1, top: bool = false) -> 
 	m.set_shader_parameter("add", add)
 	m.set_shader_parameter("billboard", billboard)
 	return m
+
+
+## cq 016: the cheap bloom's visual layer (bloom.gd sets it); 0 = no bloom.
+var bloom_layer: int = 0
 
 
 func _make_mi(mesh: Mesh, mat: Material) -> MeshInstance3D:
@@ -378,6 +383,10 @@ func card(cell: int, at: Vector3, tint: Color, life: float, s0: float, s1: float
 	m.set_shader_parameter("spin", spin0)
 	m.set_shader_parameter("tint", tint)
 	mi.position = at
+	if bloom_layer != 0:
+		# cq 016: the cheap bloom takes the standing cards (flashes, bursts, glows), not the big
+		# flat ground rings and swirls (under the fighters: blooming them washes the fighters out)
+		mi.layers = 1 | (0 if flat else bloom_layer)
 	var aspect: Vector2 = opts.get("aspect", Vector2.ONE)
 	if flat:
 		mi.basis = Basis(Vector3.UP, spin0) * Basis(Vector3.RIGHT, -PI * 0.5)

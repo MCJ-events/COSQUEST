@@ -22,6 +22,15 @@ const STREET_HALF: float = 5.6       # kerb to kerb half width (fight.gd clamps 
 const SHOP_W: float = 7.0
 const NEAR_FADE: Vector2 = Vector2(13.0, 15.5)   # lamps fade out nearer the camera than this (m)
 const MERGE_CHUNK: float = 12.0      # metres of street per merged mesh (culling)
+## cq 016 composition: the street runs on past the fight to a lit cross street (zebra crossings,
+## traffic lights, parked and passing cars), then on again between lower-detail blocks.
+const CROSS_Z: Vector2 = Vector2(-18.0, -28.0)   # the cross street's near and far kerb (z, m)
+const STREET_END: float = -64.0
+const FAR_Z: float = -40.0                       # beyond this the blocks are the kit's low-detail ones
+const FAR_BUILDINGS: Array[String] = ["commercial/low-detail-building-a", "commercial/low-detail-building-b",
+	"commercial/low-detail-building-c", "commercial/low-detail-building-d", "commercial/low-detail-building-e",
+	"commercial/low-detail-building-f"]
+const CARS: Array[String] = ["cars/sedan", "cars/taxi", "cars/van", "cars/suv", "cars/hatchback-sports", "cars/delivery", "cars/police"]
 
 var ground: MeshInstance3D
 var plaza: MeshInstance3D
@@ -45,6 +54,10 @@ const LOOK_DEFAULTS: Dictionary = {
 	"halos": true,      # soft coloured halos round signs and lamp heads (bloom faked on the light)
 	"shadows": false,   # real directional shadows (the blob shadows are always on)
 	"tonemap": "aces",  # aces | filmic | agx (all in the scene shader, no extra pass)
+	"bloom": true,      # cq 016: the cheap bloom (bloom.gd): lit street + effects only, from a tiny
+	                    # view, added back at the 3D resolution; ~5 % of the frame on the software GPU
+	"post": false,      # cq 016: the full post stack for a real device: Godot glow + the grade
+	                    # (turns "glow" and "grade" on; the cheap bloom then steps aside)
 }
 # "glow" and "grade" each turn on the Compatibility renderer's post pass, which runs over the
 # whole screen at full resolution: on the 1-thread software GPU it doubled the frame (LOOK.md).
@@ -83,6 +96,9 @@ static func look_opts(cfg: Dictionary) -> Dictionary:
 		out["shadows"] = bool(cfg["shadows"])
 	if cfg.has("fog"):
 		out["fog"] = bool(cfg["fog"])
+	if bool(out.get("post", false)):
+		out["glow"] = true
+		out["grade"] = true
 	return out
 
 
@@ -340,13 +356,21 @@ func _build_street() -> void:
 	# shop fronts down both sides of the street, facing in
 	var i: int = 0
 	var z: float = 16.0
-	while z > -42.0:
+	while z > STREET_END:
+		if z - SHOP_W * 0.5 < CROSS_Z.x and z + SHOP_W * 0.5 > CROSS_Z.y:
+			z = CROSS_Z.y - SHOP_W * 0.5 - 0.6   # cq 016: the cross street (_build_crossroad)
+			continue
 		for side in 2:
 			var sx: float = -1.0 if side == 0 else 1.0
 			var x: float = (STREET_HALF + SHOP_W * 0.5) * sx
+			var far: bool = z < FAR_Z
 			var n: String = BUILDINGS[(i * 3 + side * 5) % BUILDINGS.size()]
+			if far:
+				n = FAR_BUILDINGS[(i * 3 + side * 5) % FAR_BUILDINGS.size()]
 			var h: Node3D = _piece(n, SHOP_W, Vector3(x, 0, z), 90.0 if side == 0 else -90.0)
 			if h != null:
+				if far:
+					_set_meta_all(h, "facade")
 				_dress_front(h, sx, i * 2 + side)
 				var wb: AABB = h.transform * _aabb(h)
 				map_blocks.append(Rect2(wb.position.x, wb.position.z, wb.size.x, wb.size.z))
@@ -357,13 +381,15 @@ func _build_street() -> void:
 	km.albedo_color = Color(0.62, 0.55, 0.6)
 	km.roughness = 0.95
 	for side in 2:
-		var k := MeshInstance3D.new()
-		var b := BoxMesh.new()
-		b.size = Vector3(0.5, 0.18, 62.0)
-		k.mesh = b
-		k.material_override = km
-		k.position = Vector3((STREET_HALF - 0.3) * (-1.0 if side == 0 else 1.0), 0.09, -13.0)
-		_dressing.add_child(k)
+		# cq 016: broken by the cross street
+		for seg: Vector2 in [Vector2(18.0, CROSS_Z.x), Vector2(CROSS_Z.y, STREET_END - 4.0)]:
+			var k := MeshInstance3D.new()
+			var b := BoxMesh.new()
+			b.size = Vector3(0.5, 0.18, seg.x - seg.y)
+			k.mesh = b
+			k.material_override = km
+			k.position = Vector3((STREET_HALF - 0.3) * (-1.0 if side == 0 else 1.0), 0.09, (seg.x + seg.y) * 0.5)
+			_dressing.add_child(k)
 	# street lamps with warm pools, planters and benches along the kerbs
 	var pool_m := StandardMaterial3D.new()
 	pool_m.albedo_texture = T_POOL
@@ -374,9 +400,11 @@ func _build_street() -> void:
 	pool_m.disable_receive_shadows = true
 	var lz: float = 10.0
 	var li: int = 0
-	while lz > -36.0:
+	while lz > STREET_END + 6.0:
 		for side in 2:
 			var sx: float = -1.0 if side == 0 else 1.0
+			if lz + side * 3.0 < CROSS_Z.x + 2.5 and lz + side * 3.0 > CROSS_Z.y - 2.5:
+				continue   # cq 016: no lamp in the cross street
 			var lamp := _piece("light-curved", 1.6, Vector3(sx * (STREET_HALF - 0.55), 0, lz + side * 3.0), 90.0 if side == 0 else -90.0)
 			if lamp != null:
 				var aabb: AABB = _aabb(lamp)
@@ -411,7 +439,184 @@ func _build_street() -> void:
 		lz -= 9.0
 		li += 1
 	for side in 2:
-		_piece("tree-small", 2.6, Vector3((STREET_HALF - 1.2) * (-1.0 if side == 0 else 1.0), 0, -24.0 + side * 4.0), 0.0)
+		_piece("tree-small", 2.6, Vector3((STREET_HALF - 1.2) * (-1.0 if side == 0 else 1.0), 0, CROSS_Z.y - 3.0 - side * 4.0), 0.0)
+	_build_crossroad(km)
+	_build_cafes()
+
+
+## cq 016: the cross street up the screen, as on the reference: asphalt with zebra crossings and
+## lane marks (one vertex-coloured mesh), kerbs, traffic lights on the corners, cars parked along
+## it and two passing through (each car one mesh; they move in _process, nothing in gameplay).
+func _build_crossroad(kerb_mat: Material) -> void:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var asphalt := Color(0.25, 0.24, 0.31)
+	var paint := Color(0.86, 0.84, 0.88)
+	_flat_rect(st, Vector2(-80.0, CROSS_Z.y), Vector2(80.0, CROSS_Z.x), 0.012, asphalt)
+	# zebra crossings across the mouth of the street, both sides of the junction
+	for zc: float in [CROSS_Z.x - 1.6, CROSS_Z.y + 1.6]:
+		var x: float = -STREET_HALF + 0.8
+		while x < STREET_HALF - 1.0:
+			_flat_rect(st, Vector2(x, zc - 1.2), Vector2(x + 0.5, zc + 1.2), 0.02, paint)
+			x += 1.0
+	# a dashed centre line and the stop lines, outside the junction
+	var mid: float = (CROSS_Z.x + CROSS_Z.y) * 0.5
+	for sgn: float in [-1.0, 1.0]:
+		var x0: float = STREET_HALF + 1.2
+		while x0 < 70.0:
+			_flat_rect(st, Vector2(sgn * x0 - 0.9, mid - 0.08), Vector2(sgn * x0 + 0.9, mid + 0.08), 0.02, paint)
+			x0 += 3.6
+	var mi := MeshInstance3D.new()
+	mi.name = "Crossroad"
+	mi.mesh = st.commit()
+	var m := StandardMaterial3D.new()
+	m.vertex_color_use_as_albedo = true
+	m.roughness = 0.85
+	mi.material_override = m
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(mi)
+	# the cross street's kerbs, either side of the main street
+	for zk: float in [CROSS_Z.x + 0.25, CROSS_Z.y - 0.25]:
+		for sgn: float in [-1.0, 1.0]:
+			var k := MeshInstance3D.new()
+			var b := BoxMesh.new()
+			b.size = Vector3(60.0, 0.18, 0.5)
+			k.mesh = b
+			k.material_override = kerb_mat
+			k.position = Vector3(sgn * (STREET_HALF + 30.0), 0.09, zk)
+			_dressing.add_child(k)
+	# the blocks along the cross street: the far side faces the camera, the near side its back
+	var j: int = 0
+	for sgn: float in [-1.0, 1.0]:
+		var x: float = STREET_HALF + 1.2 + SHOP_W * 0.5
+		while x < 36.0:
+			var n: String = BUILDINGS[(j * 7 + 3) % BUILDINGS.size()]
+			var h: Node3D = _piece(n, SHOP_W, Vector3(sgn * x, 0, CROSS_Z.y - 0.6 - SHOP_W * 0.5), 0.0)
+			if h != null:
+				var wb: AABB = h.transform * _aabb(h)
+				map_blocks.append(Rect2(wb.position.x, wb.position.z, wb.size.x, wb.size.z))
+				if absf(x) < 16.0:
+					_cross_sign(Vector3(sgn * x, 0, wb.end.z), j)
+			var h2: Node3D = _piece(FAR_BUILDINGS[j % FAR_BUILDINGS.size()], SHOP_W, Vector3(sgn * x, 0, CROSS_Z.x + 0.6 + SHOP_W * 0.5), 180.0)
+			if h2 != null:
+				_set_meta_all(h2, "facade")
+				var wb2: AABB = h2.transform * _aabb(h2)
+				map_blocks.append(Rect2(wb2.position.x, wb2.position.z, wb2.size.x, wb2.size.z))
+			x += SHOP_W + 0.4
+			j += 1
+	# traffic lights on the four corners, turned to the junction
+	for c: Array in [[-1.0, CROSS_Z.x + 0.4, 90.0], [1.0, CROSS_Z.x + 0.4, -90.0], [-1.0, CROSS_Z.y - 0.4, 90.0], [1.0, CROSS_Z.y - 0.4, -90.0]]:
+		var tl: Node3D = _piece("roads/traffic-light", 1.0, Vector3(float(c[0]) * (STREET_HALF + 0.2), 0, float(c[1])), float(c[2]))
+		if tl != null:
+			var hgt: float = _aabb(tl).size.y
+			tl.scale = Vector3.ONE * (4.2 / maxf(0.1, hgt))
+			for m2: Node in tl.find_children("*", "MeshInstance3D", true, false):
+				m2.set_meta("lamp", true)
+			# the lamp's glow: red for the cars, so the walk signal reads to the street
+			var top: Vector3 = Vector3(float(c[0]) * (STREET_HALF + 0.2), 3.7, float(c[1]))
+			_halo(top, 0.9, Color(1.0, 0.3, 0.25, 0.7))
+	# parked cars along both kerbs, clear of the junction
+	var pk: int = 0
+	for spot: Array in [[-10.5, CROSS_Z.y + 1.25], [-16.0, CROSS_Z.y + 1.25], [11.0, CROSS_Z.y + 1.25], [17.5, CROSS_Z.y + 1.25],
+			[-13.0, CROSS_Z.x - 1.25], [14.5, CROSS_Z.x - 1.25], [24.0, CROSS_Z.x - 1.25]]:
+		var car: Node3D = _piece(CARS[pk % CARS.size()], 4.3, Vector3(float(spot[0]), 0, float(spot[1])), 90.0 if pk % 2 == 0 else -90.0)
+		pk += 1
+		if car == null:
+			continue
+	# two cars passing through the junction (one draw each)
+	for lane in 2:
+		var car_mi: MeshInstance3D = _solid_piece(CARS[(lane * 3 + 1) % CARS.size()], 4.3)
+		if car_mi == null:
+			continue
+		var dirx: float = 1.0 if lane == 0 else -1.0
+		car_mi.position = Vector3(-30.0 * dirx + lane * 23.0, 0.0, mid + (1.4 if lane == 0 else -1.4))
+		car_mi.rotation_degrees.y = 90.0 * dirx
+		car_mi.set_meta("vx", dirx * (6.5 if lane == 0 else 5.0))
+		add_child(car_mi)
+		_moving.append(car_mi)
+
+
+var _moving: Array[MeshInstance3D] = []
+
+
+func _process(dt: float) -> void:
+	for car: MeshInstance3D in _moving:
+		var vx: float = car.get_meta("vx")
+		car.position.x += vx * dt
+		if car.position.x > 45.0:
+			car.position.x -= 90.0
+		elif car.position.x < -45.0:
+			car.position.x += 90.0
+
+
+## A neon sign on a cross-street shop front, facing down the street (in the sign mesh).
+func _cross_sign(front: Vector3, n: int) -> void:
+	var k: int = (n * 3 + 2) % NEON_SIGNS
+	var w: float = 2.4
+	var side: int = 0 if front.x < 0.0 else 1
+	var at := Vector3(front.x, 4.4, front.z + 0.15)
+	var q_right := Vector3(1, 0, 0) * w * 0.5
+	var q_up := Vector3(0, 1, 0) * w * 0.375 * 0.5
+	_quad(_neon_st[side], at, q_right, q_up, Rect2(0, float(k) / NEON_SIGNS, 1, 1.0 / NEON_SIGNS))
+	var hc: Color = SIGN_HALO[k]
+	hc.a = 0.3
+	_halo(at + Vector3(0, 0, 0.05), w * 1.7, hc, 0.6)
+
+
+## cq 016: café parasols and awnings on the shop fronts up the street (beyond the fight's reach).
+func _build_cafes() -> void:
+	for p: Array in [[-1.0, -11.2, "commercial/detail-parasol-a"], [1.0, -12.4, "commercial/detail-parasol-b"]]:
+		var ps: Node3D = _piece(str(p[2]), 1.4, Vector3(float(p[0]) * (STREET_HALF - 0.75), 0, float(p[1])), 0.0)
+		if ps != null:
+			_set_meta_all(ps, "near_fade")
+
+
+func _set_meta_all(root: Node, key: String) -> void:
+	for mi: Node in root.find_children("*", "MeshInstance3D", true, false):
+		mi.set_meta(key, true)
+
+
+## A kit piece baked into one mesh (one draw), `length` metres long, standing on y = 0.
+func _solid_piece(n: String, length: float) -> MeshInstance3D:
+	var ps: PackedScene = _scene(n)
+	if ps == null:
+		return null
+	var inst: Node3D = ps.instantiate() as Node3D
+	var aabb: AABB = _aabb(inst)
+	var s: float = length / maxf(0.01, maxf(aabb.size.x, aabb.size.z))
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var mat: Material = null
+	for node: Node in inst.find_children("*", "MeshInstance3D", true, false):
+		var mi := node as MeshInstance3D
+		if mi.mesh == null:
+			continue
+		var xf: Transform3D = Transform3D.IDENTITY
+		var p: Node = mi
+		while p != null and p != inst:
+			if p is Node3D:
+				xf = (p as Node3D).transform * xf
+			p = p.get_parent()
+		xf = Transform3D(Basis.IDENTITY.scaled(Vector3.ONE * s), Vector3(-aabb.get_center().x * s, -aabb.position.y * s, -aabb.get_center().z * s)) * xf
+		for si in mi.mesh.get_surface_count():
+			if mat == null:
+				mat = _opaque(mi.get_active_material(si))
+			st.append_from(mi.mesh, si, xf)
+	inst.free()
+	var out := MeshInstance3D.new()
+	out.mesh = st.commit()
+	out.material_override = mat
+	out.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	return out
+
+
+func _flat_rect(st: SurfaceTool, a: Vector2, b: Vector2, y: float, col: Color) -> void:
+	var p := [Vector3(a.x, y, a.y), Vector3(b.x, y, a.y), Vector3(b.x, y, b.y), Vector3(a.x, y, b.y)]
+	for idx: int in [0, 1, 2, 0, 2, 3]:
+		st.set_color(col)
+		st.set_normal(Vector3.UP)
+		st.set_uv(Vector2(p[idx].x, p[idx].z) * 0.25)
+		st.add_vertex(p[idx])
 
 
 # ---- the lit street: neon signs, shop windows, lamp heads. Each kind is one mesh per side of
@@ -428,7 +633,7 @@ const AO_COL: Color = Color(0.5, 0.47, 0.62)       # the contact darkening at th
 const KERB_TOP: float = 0.185
 const SUN_GLARE: Vector3 = Vector3(-4.5, 0.06, -18.0)   # a warm pool of low sun on the far paving
 const HALO_GAIN: float = 1.3   # the halo mesh's material gain: vertex colours stop at 1, lamp heads need 1.3
-var _cam_facing: Basis = Basis.from_euler(Vector3(deg_to_rad(-44.0), 0.0, 0.0))   # fight.gd CAM_PITCH
+var _cam_facing: Basis = Basis.from_euler(Vector3(deg_to_rad(-34.0), deg_to_rad(12.0), 0.0))   # fight.gd CAM_PITCH, CAM_YAW
 
 
 ## A shop front: warm light spilling from its windows onto the pavement, and on most a neon
@@ -442,6 +647,12 @@ func _dress_front(h: Node3D, sx: float, n: int) -> void:
 	_ground_quad(_shop_st[side], Vector3(front_x - sx * 1.0, 0.04, zc), 2.0, length * 0.8, Rect2(0, 0, 1, 1))
 	if bool(look.get("ao", true)):
 		_wall_shade(front_x, sx, wb.position.z, wb.end.z, wb.end.y)
+	# cq 016: a shop awning over the ground floor on most fronts, as on the reference's street
+	if n % 4 != 3 and zc > FAR_Z:
+		var aw: Node3D = _piece("detail-awning-wide" if n % 2 == 0 else "detail-awning", 3.4 if n % 2 == 0 else 2.4,
+			Vector3(front_x - sx * 0.45, 2.3, zc + (0.9 if n % 3 == 0 else -0.9)), 90.0 if sx < 0.0 else -90.0)
+		if aw != null:
+			_set_meta_all(aw, "facade")
 	# signs only up the street (z < -5): the camera's focus never goes past z = -8
 	# (fight.gd CAM_BOUNDS), so they stay up the screen, never among the controls
 	if n % 3 != 2 and zc < -5.0:
@@ -659,11 +870,11 @@ func _commit_glows() -> void:
 	_near_fade(cone_m, true)
 	var out: Array = []
 	for side in 2:
-		out.append([_neon_st[side], neon_m])
-		out.append([_shop_st[side], shop_m])
-	out.append([_cones_st, cone_m])
-	out.append([_halo_st, halo_m])
-	out.append([_shade_st, shade_m])
+		out.append([_neon_st[side], neon_m, true])
+		out.append([_shop_st[side], shop_m, true])
+	out.append([_cones_st, cone_m, false])
+	out.append([_halo_st, halo_m, true])
+	out.append([_shade_st, shade_m, false])
 	for pair: Array in out:
 		var mesh: ArrayMesh = (pair[0] as SurfaceTool).commit()
 		if mesh.get_surface_count() == 0:
@@ -673,6 +884,8 @@ func _commit_glows() -> void:
 		mi.mesh = mesh
 		mi.material_override = pair[1]
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		if pair[2]:
+			mi.set_meta("bloom", true)   # cq 016: the cheap bloom's sources (bloom.gd)
 		add_child(mi)
 
 

@@ -23,6 +23,7 @@ const HitArea := preload("res://hit_area.gd")
 const LoaderScript := preload("res://char_loader.gd")
 const TilesScript := preload("res://tiles_layer.gd")
 const ArenaScript := preload("res://arena.gd")
+const BloomScript := preload("res://bloom.gd")
 
 # ---- fighters
 const HERO_HP: int = 1000
@@ -116,11 +117,11 @@ const BOLT_SPEED: float = 14.0
 
 # ---- camera (cq 233: closer and steeper than G0, to match the reference's framing:
 # fighters ~1/7 of the screen high, the action on the middle third)
-const CAM_PITCH: float = 44.0
-const CAM_YAW: float = 0.0
-const CAM_FOV: float = 55.0
-const CAM_DIST: float = 16.5
-const CAM_AHEAD: float = 0.6
+const CAM_PITCH: float = 34.0     # cq 016: lower, looking along the street (was 44)
+const CAM_YAW: float = 12.0       # cq 016: turned a little left, so the left shop fronts face the camera
+const CAM_FOV: float = 52.0
+const CAM_DIST: float = 20.0
+const CAM_AHEAD: float = 3.0      # cq 016: the fight in the lower half, the street and the cross street above it
 const CAM_SMOOTH: float = 0.16
 const CAM_LOOK: float = 0.7
 const CAM_BOUNDS: float = 8.0          # along the street (the fight keeps within ARENA_Z = +-9)
@@ -146,6 +147,7 @@ var fighters: Array[FighterScript] = []
 var cam: Camera3D
 var hud: HudScript
 var fx: FxScript
+var bloom: BloomScript
 var sfx: SfxScript
 var tiles: Node3D
 var arena: Node3D
@@ -206,6 +208,10 @@ var stats: Dictionary = {"damage_dealt": 0, "damage_taken": 0, "hits": 0, "skill
 var _cam_basis: Basis
 var _cam_fwd: Vector3
 var _cam_right: Vector3
+# cq 016: the bot and the ally steer in the street's own frame (the old camera's, yaw 0), not the
+# camera's: turning the camera must not change a seeded fight (float rounding through the stick)
+var _play_fwd: Vector3
+var _play_right: Vector3
 var _focus: Vector3 = Vector3.ZERO
 var _focus_vel: Vector3 = Vector3.ZERO
 var _look: Vector3 = Vector3.ZERO
@@ -220,6 +226,7 @@ var _kick: Vector3 = Vector3.ZERO
 var _shake_clock: float = 0.0
 var _reduce_motion: bool = false
 var _cam_dist: float = CAM_DIST
+var _cam_ahead: float = CAM_AHEAD
 
 # loading
 var _loader: LoaderScript = LoaderScript.new()
@@ -269,10 +276,14 @@ func _ready() -> void:
 	_headless = DisplayServer.get_name() == "headless"
 	# cam_* overrides are for review captures (close-ups); the game uses the constants
 	_cam_dist = float(cfg.get("cam_dist", CAM_DIST))
+	_cam_ahead = float(cfg.get("cam_ahead", CAM_AHEAD))
 	_reduce_motion = bool(cfg.get("reduce_motion", false))   # the app's Reduce motion setting: a quarter of the shake, no zoom punch
 	_cam_basis = Basis.from_euler(Vector3(deg_to_rad(-float(cfg.get("cam_pitch", CAM_PITCH))), deg_to_rad(float(cfg.get("cam_yaw", CAM_YAW))), 0.0))
 	_cam_fwd = Vector3(-_cam_basis.z.x, 0.0, -_cam_basis.z.z).normalized()
 	_cam_right = Vector3(_cam_basis.x.x, 0.0, _cam_basis.x.z).normalized()
+	var play_basis: Basis = Basis.from_euler(Vector3(deg_to_rad(-44.0), 0.0, 0.0))
+	_play_fwd = Vector3(-play_basis.z.x, 0.0, -play_basis.z.z).normalized()
+	_play_right = Vector3(play_basis.x.x, 0.0, play_basis.x.z).normalized()
 	var t0: int = Time.get_ticks_usec()
 	# 3D drawn at a fraction of the screen's pixels, the HUD at full resolution.
 	# A 1080x2400 phone does not need 2.6 M shaded pixels for this view.
@@ -299,6 +310,17 @@ func _ready() -> void:
 	fx = FxScript.new()
 	fx.name = "Fx"
 	add_child(fx)
+	var lk: Dictionary = arena.get("look")
+	if bool(lk.get("bloom", true)) and not bool(lk.get("glow", false)):
+		# cq 016: the cheap bloom (lit street + effects only, a tiny view, LOOK.md)
+		bloom = BloomScript.new()
+		bloom.name = "Bloom"
+		add_child(bloom)
+		bloom.setup(cam, Vector2i(get_viewport().get_visible_rect().size), lk)
+		bloom.add_source(fx)
+		for g: Node in arena.find_children("*", "MeshInstance3D", false, false):
+			if g.has_meta("bloom"):
+				(g as VisualInstance3D).layers |= BloomScript.BLOOM_LAYER
 	sfx = SfxScript.new()
 	sfx.name = "Sfx"
 	sfx.enabled = bool(cfg.get("sound", true))
@@ -347,7 +369,7 @@ func _ready() -> void:
 	for f: FighterScript in fighters:
 		f.weapon.struck.connect(_on_struck)
 		f.shield_ended.connect(func(at: Vector3, r: float) -> void: fx.shatter(at, r, Color(0.45, 0.8, 1.0)))
-	_focus = hero.position + _cam_fwd * CAM_AHEAD
+	_focus = hero.position + _cam_fwd * _cam_ahead
 	_apply_camera(0.0)
 	for pair: Array in [[hero, "hero_glb"], [ally, "ally_glb"], [enemy, "enemy_glb"]]:
 		# the cast clip library and the weapon set (cq 012): by <role>_key when the config
@@ -634,6 +656,8 @@ func _on_guard_changed(on: bool, _t_in: float, _ticks_in: int, _src: String) -> 
 func _stick_world() -> Vector3:
 	var s: Vector2 = hud.stick
 	var w: Vector3 = _cam_right * s.x + _cam_fwd * s.y
+	if autoplay:
+		w = _play_right * s.x + _play_fwd * s.y   # the bot's stick is in the street's frame (bot_stick below)
 	return w.limit_length(1.0)
 
 
@@ -1435,7 +1459,7 @@ func _tick_ally(dt: float) -> void:
 		if _enemy_state == "windup" and _enemy_kind == "slam" and _flat(ally.position - _enemy_at).length() < SLAM_R + 0.6:
 			goal = _enemy_at + _flat(ally.position - _enemy_at).normalized() * (SLAM_R + 1.5)
 	else:
-		goal = hero.position + _cam_right * 1.6 - _cam_fwd * 0.8
+		goal = hero.position + _play_right * 1.6 - _play_fwd * 0.8
 	var to: Vector3 = _flat(goal - ally.position)
 	var d: float = to.length()
 	if d > 0.3:
@@ -1556,7 +1580,7 @@ func _bot(dt: float) -> void:
 			if from_ring.length() < SLAM_R + 0.4:
 				threat = true
 				if rng.seed % 2 == 0 or left > 0.25:
-					want = from_ring.normalized() if from_ring.length() > 0.05 else _cam_right
+					want = from_ring.normalized() if from_ring.length() > 0.05 else _play_right
 		elif d < SWIPE_R + 0.3 and left < 0.16 and left > 0.02 and _bot_guard_t <= 0.0:
 			threat = true
 			hud.bot_stick(Vector2.ZERO)
@@ -1572,7 +1596,7 @@ func _bot(dt: float) -> void:
 			want = to.normalized()
 	if want != Vector3.ZERO:
 		want = want.normalized()
-	hud.bot_stick(Vector2(want.dot(_cam_right), want.dot(_cam_fwd)))
+	hud.bot_stick(Vector2(want.dot(_play_right), want.dot(_play_fwd)))
 	if threat:
 		return
 	_bot_next_skill -= dt
@@ -1698,7 +1722,7 @@ func _follow_camera(dt: float) -> void:
 	if hero != null:
 		var mv: Vector3 = _cam_right * hud.stick.x + _cam_fwd * hud.stick.y
 		_look = _look.lerp(mv * CAM_LOOK, 1.0 - exp(-dt * 2.5))
-		target = hero.position + _cam_fwd * CAM_AHEAD + _look
+		target = hero.position + _cam_fwd * _cam_ahead + _look
 		if enemy != null and not enemy.dead:
 			target = target.lerp((hero.position + enemy.position) * 0.5, 0.5)
 	target.x = clampf(target.x, -CAM_BOUNDS_X, CAM_BOUNDS_X)
