@@ -15,14 +15,24 @@
     "hammer",
     "greatsword",
     "staff"
-   ]
+   ],
+   "lhand_ik": {
+    "class": "hammer",
+    "s": 0.28,
+    "d_off": 0.36
+   }
   },
   "2H_Ranged_Aiming": {
    "src": "2H_Ranged_Aiming",
    "classes": [
     "rifle",
     "crossbow"
-   ]
+   ],
+   "lhand_ik": {
+    "class": "rifle",
+    "s": 0.32,
+    "d_off": 0.45
+   }
   },
   "Walking_A": {
    "src": "Walking_A",
@@ -101,7 +111,8 @@
    "strike_window": [
     0.2,
     0.8
-   ]
+   ],
+   "out": 22
   },
   "1H_Melee_Attack_Slice_Horizontal": {
    "src": "1H_Melee_Attack_Slice_Horizontal",
@@ -114,7 +125,8 @@
    "strike_window": [
     0.2,
     0.8
-   ]
+   ],
+   "out": 18
   },
   "1H_Melee_Attack_Chop": {
    "src": "1H_Melee_Attack_Chop",
@@ -127,7 +139,8 @@
    "strike_window": [
     0.2,
     0.8
-   ]
+   ],
+   "out": 28
   },
   "1H_Melee_Attack_Stab": {
    "src": "1H_Melee_Attack_Stab",
@@ -140,7 +153,8 @@
    "strike_window": [
     0.2,
     0.8
-   ]
+   ],
+   "out": 22
   },
   "2H_Melee_Attack_Slice": {
    "src": "2H_Melee_Attack_Slice",
@@ -162,6 +176,12 @@
      "RightLeg"
     ],
     "f": 0.35
+   },
+   "out": 22,
+   "lhand_ik": {
+    "class": "hammer",
+    "s": 0.28,
+    "d_off": 0.36
    }
   },
   "2H_Melee_Attack_Stab": {
@@ -185,6 +205,12 @@
      "RightLeg"
     ],
     "f": 0.35
+   },
+   "out": 22,
+   "lhand_ik": {
+    "class": "hammer",
+    "s": 0.28,
+    "d_off": 0.36
    }
   },
   "2H_Melee_Attack_Chop": {
@@ -208,6 +234,12 @@
      "RightLeg"
     ],
     "f": 0.35
+   },
+   "out": 34,
+   "lhand_ik": {
+    "class": "hammer",
+    "s": 0.28,
+    "d_off": 0.36
    }
   },
   "2H_Melee_Attack_Spinning": {
@@ -251,7 +283,8 @@
      "RightLeg"
     ],
     "f": 0.35
-   }
+   },
+   "out": 31
   },
   "2H_Ranged_Shoot": {
    "src": "2H_Ranged_Shoot",
@@ -263,7 +296,13 @@
    "strike_window": [
     0.0,
     0.6
-   ]
+   ],
+   "out": 14,
+   "lhand_ik": {
+    "class": "rifle",
+    "s": 0.32,
+    "d_off": 0.45
+   }
   },
   "Spellcast_Shoot": {
    "src": "Spellcast_Shoot",
@@ -274,14 +313,17 @@
    "strike_window": [
     0.1,
     0.8
-   ]
+   ],
+   "out": 13
   },
   "Spellcast_Raise": {
    "src": "Spellcast_Raise",
    "classes": [
     "staff",
     "hammer"
-   ]
+   ],
+   "contact": 14,
+   "out": 40
   },
   "Spellcast_Long": {
    "src": "Spellcast_Long",
@@ -290,7 +332,9 @@
     "hammer",
     "sword",
     "rifle"
-   ]
+   ],
+   "contact": 20,
+   "out": 46
   },
   "Hit_A": {
    "src": "Hit_A",
@@ -338,7 +382,8 @@
      "RightLeg"
     ],
     "f": 0.35
-   }
+   },
+   "out": 23
   },
   "Block_Hit": {
    "src": "Block_Hit",
@@ -367,7 +412,9 @@
    "classes": [
     "sword",
     "hammer"
-   ]
+   ],
+   "contact": 15,
+   "out": 50
   },
   "Death_A": {
    "src": "Death_A",
@@ -496,7 +543,8 @@
    "strike_window": [
     0.2,
     0.8
-   ]
+   ],
+   "out": 23
   },
   "UAL_Sword_Idle": {
    "src": "Sword_Idle",
@@ -1247,5 +1295,6 @@
  "gate_by_state": {
   "run": 0.01
  },
- "_doc_gate": "gate_by_state: a looser gate for run: a walk sped past 2x skates visibly, a run's short stretch at speed does not show at the fight camera (measured per clip in tools/anim/reports)"
+ "_doc_gate": "gate_by_state: a looser gate for run: a walk sped past 2x skates visibly, a run's short stretch at speed does not show at the fight camera (measured per clip in tools/anim/reports)",
+ "_doc_ik": "lhand_ik: on frames where the source's left hand is on its weapon (within d_off of the weapon's axis, fading over 12 cm), a two-bone IK puts the target's left hand on the held weapon, s metres along it from the grip (the grip of the given class)"
 }

@@ -134,6 +134,37 @@ class Retarget:
         return loc, G
 
 
+def left_hand_ik(rt, loc, G, P, w):
+    """Two-bone IK of the left arm so the left hand reaches P (world), blended by w (0..1).
+    The elbow stays in the plane it was in; the hand turns with the forearm."""
+    tn = rt.tgt.names
+    ia, ie, ih = tn.index("LeftArm"), tn.index("LeftForeArm"), tn.index("LeftHand")
+    S, E, H = gpos(G, ia), gpos(G, ie), gpos(G, ih)
+    a = np.linalg.norm(E - S)
+    b = np.linalg.norm(H - E)
+    d = P - S
+    c = float(np.clip(np.linalg.norm(d), abs(a - b) + 1e-3, a + b - 1e-3))
+    u = d / max(1e-9, np.linalg.norm(d))
+    Pc = S + u * c
+    pole = (E - S) - u * float((E - S) @ u)
+    if np.linalg.norm(pole) < 1e-6:
+        pole = np.array([0, -1.0, 0]) - u * (-u[1])
+    n = pole / np.linalg.norm(pole)
+    ca = (a * a + c * c - b * b) / (2 * a * c)
+    E2 = S + u * ca * a + n * np.sqrt(max(0.0, 1 - ca * ca)) * a
+    ident = np.array([0, 0, 0, 1.0])
+    R1 = qslerp(ident, q_from_to(E - S, E2 - S), w)
+    E2w = S + qrot(R1, E - S)
+    R2 = qslerp(ident, q_from_to(qrot(R1, H - E), Pc - E2w), w)
+    world = {ia: qmul(R1, grot(G, ia)), ie: qmul(R2, qmul(R1, grot(G, ie))), ih: qmul(R2, qmul(R1, grot(G, ih)))}
+    for i in (ia, ie, ih):
+        p = rt.tgt.parent[i]
+        pr = world.get(p, grot(G, p))
+        loc[i][1] = qnorm(qmul(qinv(pr), world[i]))
+        G = rt.tp.globals_of(loc)
+    return loc, G
+
+
 # ------------------------------------------------------------------ mesh checks
 
 class Body:
@@ -362,6 +393,7 @@ def main():
         off[:, 1] += float(cc.get("lift", 0.0))
         frames = []
         Gs_t = []
+        ikw = []
         s_feet = [src.names.index(x) for x in rig["feet"][1]]
         t_feet = [tgt.names.index(x) for x in rig["feet"][0]]
         s_floor = min(gpos(rt.s_rest_G, i)[1] for i in s_feet)
@@ -375,6 +407,22 @@ def main():
                 got = min(gpos(G, i)[1] for i in t_feet) - t_floor
                 off[k][1] += want - got
                 loc, G = rt.frame(sG[k], off[k])
+            ik = cc.get("lhand_ik")
+            if ik and ik["class"] in grips and lib == "kaykit":
+                # where the source's left hand is along its own weapon (both hands on it?)
+                h = cfg["holds"][ik["class"]]
+                Ls = qmul(np.array(h["slot_rot"], float), native_q(h["ref_tip"], h["ref_edge"]))
+                slot = sG[k][src.names.index("handslot.r")]
+                ax = qrot(qmul(mat_to_q(slot[:3, :3]), Ls), [0, 1, 0])
+                lh = gpos(sG[k], src.names.index("handslot.l")) - slot[:3, 3]
+                dperp = float(np.linalg.norm(lh - ax * float(lh @ ax)))
+                w = float(np.clip((ik.get("d_off", 0.36) - dperp) / 0.12, 0.0, 1.0))
+                ikw.append(w)
+                if w > 0.0:
+                    gm = np.array(grips[ik["class"]]["matrix"], float).reshape(4, 4).T
+                    Wm = G[t_rhand] @ gm
+                    P = (Wm @ np.array([0, ik.get("s", 0.25), 0, 1.0]))[:3]
+                    loc, G = left_hand_ik(rt, loc, G, P, w)
             frames.append(loc)
             Gs_t.append(G)
         # --- checks
@@ -410,7 +458,7 @@ def main():
         tear_where = max(tears, key=lambda x: x[0])[3]
         # weapon checks for the classes this clip is used by
         wchk = {}
-        for cls in cc.get("classes", []):
+        for cls in sorted(grips):
             if cls not in grips:
                 continue
             gm = np.array(grips[cls]["matrix"], float).reshape(4, 4).T
@@ -451,7 +499,7 @@ def main():
             "feet_min_m": round(float(feet_low.min()), 3), "feet_max_m": round(float(feet_low.max()), 3),
             "planted_slide_mps": round(slide, 3), "ground_speed_mps": round(ground_speed, 3),
             "tear_share": round(tear_share, 5), "tear_p99": round(tear_p99, 3), "tears": tear_share > 0.005,
-            "tear_where": tear_where,
+            "tear_where": tear_where, "lhand_ik_frames": int(sum(1 for x in ikw if x > 0.5)),
             "weapon": wchk}
         lib_anims.append((cname, times, frames))
         print("CLIP %-22s n=%3d tear=%.4f %s p99=%.2f feet=[%.3f,%.3f] slide=%.2f contact=%s weapon=%s" % (

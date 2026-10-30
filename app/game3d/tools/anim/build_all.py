@@ -96,8 +96,18 @@ def main():
             chars[key] = {"status": "procedural", "why": "rig tears: no clip under the gate for %s with its %s (%s set); worst clip stretches %.1f %% of triangles past 2.5x" % (", ".join(missing), own_cls, own_set, worst * 100),
                           "fallback": "its own cq 060 idle/walk/celebrate and the procedural poses and body motion", "tear_worst": round(worst, 4)}
             os.remove(out)
+            os.remove(out + ".import")
             print("TEARS", key, missing)
             continue
+        # the library ships only the clips this character plays
+        used = sorted({v for sp in pick.values() for v in sp.values() if v})
+        r2 = subprocess.run(cmd[:-2] + [rep_path + ".pruned.json", "--only", ",".join(used)] if not a.src_ual else
+                            cmd[:cmd.index("--report") + 1] + [rep_path + ".pruned.json"] + cmd[cmd.index("--report") + 2:] + ["--only", ",".join(used)],
+                            capture_output=True, text=True)
+        if r2.returncode != 0:
+            raise SystemExit("prune failed for %s: %s" % (key, r2.stderr[-2000:]))
+        os.remove(rep_path + ".pruned.json")
+        chars[key]["clips_in_library"] = len(used)
         if key in cfg.get("default_class", {}):
             chars[key]["default_class"] = cfg["default_class"][key]
         ch = attach["characters"].setdefault(key, {})
