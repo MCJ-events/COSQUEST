@@ -2,26 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 
-import {
-  type AttachManifest,
-  characterKey,
-  computeAttach,
-  findHandBones,
-  type Gltf,
-  globalMatrices,
-  GRIP_CLASSES,
-  gripClassOf,
-  gripFor,
-  IDENTITY,
-  invert,
-  mergeWeaponGlb,
-  mul,
-  nodeMatrix,
-  poseAt,
-  readGlb,
-  staticAttach,
-  writeGlb,
-} from "../attach.ts";
+import { characterKey, computeAttach, findHandBones, globalMatrices, GRIP_CLASSES, gripClassOf, gripFor, IDENTITY, invert, mergeWeaponGlb, mul, nodeMatrix, poseAt, readGlb, sceneBox, staticAttach, type AttachManifest, type Gltf, writeGlb } from "../attach.ts";
 import { bagItems, catalogueFlag, catalogueOn, catalogueTwin, dropShown, heldFor, isPlaceholderWeapon, ownWeapon, realWeapons, STARTER, starterEntry, starterSet } from "../held.ts";
 
 const manifest = JSON.parse(readFileSync(new URL("../../../game3d/data/attach.json", import.meta.url), "utf8")) as AttachManifest;
@@ -289,4 +270,38 @@ test("the bag: link off lists what you own, as before; link on hides placeholder
   assert.equal(dropShown({ claimed: false, element_id: "ember" }, entries, true), false);
   assert.equal(dropShown({ claimed: false, element_id: "ks" }, entries, true), true);
   assert.equal(dropShown({ claimed: true, element_id: "ks" }, entries, false), false);
+});
+
+test("a held weapon does not move or shrink the character in a preview (the box Filament fits stays centred)", () => {
+  // a 1.8 m character (box x -0.3..0.3, y 0..1.8) and a 1 m weapon along its +Y
+  const ch = glb(
+    { asset: { version: "2.0" }, scene: 0, scenes: [{ nodes: [0] }], nodes: [{ name: "Root", children: [1, 2] }, { name: "RightHand", translation: [-0.3, 0.9, 0] }, { name: "body", mesh: 0 }],
+      accessors: [{ bufferView: 0, componentType: 5126, count: 2, type: "VEC3", min: [-0.3, 0, -0.15], max: [0.3, 1.8, 0.15] }], bufferViews: [{ buffer: 0, byteOffset: 0, byteLength: 24 }],
+      materials: [{}], meshes: [{ primitives: [{ attributes: { POSITION: 0 }, material: 0 }] }] },
+    [-0.3, 0, -0.15, 0.3, 1.8, 0.15],
+  );
+  const wp = glb(
+    { asset: { version: "2.0" }, scene: 0, scenes: [{ nodes: [0] }], nodes: [{ name: "grip", children: [1] }, { name: "blade", mesh: 0 }],
+      accessors: [{ bufferView: 0, componentType: 5126, count: 2, type: "VEC3", min: [-0.05, -0.1, -0.02], max: [0.05, 0.6, 0.02] }], bufferViews: [{ buffer: 0, byteOffset: 0, byteLength: 24 }],
+      materials: [{}], meshes: [{ primitives: [{ attributes: { POSITION: 0 }, material: 0 }] }] },
+    [-0.05, -0.1, -0.02, 0.05, 0.6, 0.02],
+  );
+  const before = sceneBox(readGlb(ch).json)!;
+  // a long weapon held far to one side and forward
+  const m = [1, 0, 0, 0, 0, 0, 1, 0, 0, -1, 0, 0, -0.3, 0, 0.1, 1]; // pointing forward (+Z) from the hand
+  const out = readGlb(mergeWeaponGlb(ch, wp, "RightHand", m)).json;
+  const raw = sceneBox(readGlb(mergeWeaponGlb(ch, wp, "RightHand", m)).json)!;
+  assert.ok(raw.hi[2] > before.hi[2] + 0.4, "the weapon reaches forward past the body");
+  const after = sceneBox(out)!;
+  for (const k of [0, 2]) assert.ok(Math.abs((after.lo[k] + after.hi[k]) / 2 - (before.lo[k] + before.hi[k]) / 2) < 1e-4, `centre on axis ${k}`);
+  assert.ok(Math.abs(after.hi[1] - after.lo[1] - 1.8) < 1e-4, "the height is untouched");
+  // a reach so long that mirroring it would make the box longer than the character is tall: capped, nothing shrinks
+  const far = [1, 0, 0, 0, 0, 0, 1, 0, 0, -1, 0, 0, -0.3, 0, 1.4, 1];
+  const capped = sceneBox(readGlb(mergeWeaponGlb(ch, wp, "RightHand", far)).json)!;
+  const longest = (b: { lo: number[]; hi: number[] }) => Math.max(...[0, 1, 2].map((k) => b.hi[k] - b.lo[k]));
+  assert.ok(Math.abs(longest(capped) - Math.max(1.8, 1.4 + 0.6 + 0.15)) < 1e-3, "the longest side is the weapon's own reach, not more");
+  const bal = out.nodes!.find((n) => n.name === "weapon_balance");
+  assert.ok(bal, "the balance node is there");
+  // zero-area: two of its three corners are the same point
+  assert.equal((out.meshes as { primitives: { mode: number }[] }[]).at(-1)!.primitives[0].mode, 4);
 });

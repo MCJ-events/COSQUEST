@@ -13,6 +13,8 @@ const config = getDefaultConfig(__dirname);
 
 // The bundled default weapons (assets/weapons/*.glb, cq 234) ship as assets.
 if (!config.resolver.assetExts.includes("glb")) config.resolver.assetExts.push("glb");
+// A shared build machine: METRO_MAX_WORKERS caps the bundler (by default one worker per core).
+if (process.env.METRO_MAX_WORKERS) config.maxWorkers = Number(process.env.METRO_MAX_WORKERS);
 
 const WEB_STUBS = {
   "react-native-maps": path.resolve(__dirname, "web-stubs/react-native-maps.tsx"),

@@ -411,6 +411,81 @@ type Arr = Record<string, unknown>[];
 const arr = (j: Gltf, k: string): Arr => (Array.isArray(j[k]) ? (j[k] as Arr) : []);
 
 /**
+ * The rest-pose box of a glTF's meshes, from the accessors' min/max and the
+ * nodes' transforms: what Filament's FilamentAsset.getBoundingBox() gives
+ * and what the previews' transformToUnitCube fits into the view.
+ */
+export function sceneBox(g: Gltf): { lo: Vec3; hi: Vec3 } | null {
+  const gm = globalMatrices(g);
+  const meshes = arr(g, "meshes");
+  const acc = arr(g, "accessors");
+  const lo: Vec3 = [Infinity, Infinity, Infinity];
+  const hi: Vec3 = [-Infinity, -Infinity, -Infinity];
+  (g.nodes ?? []).forEach((n, i) => {
+    const M = gm.get(i);
+    if (n.mesh === undefined || !M) return;
+    for (const pr of (meshes[n.mesh]?.primitives as { attributes?: Record<string, number> }[] | undefined) ?? []) {
+      const a = acc[pr.attributes?.POSITION ?? -1] as { min?: number[]; max?: number[] } | undefined;
+      if (!a?.min || !a.max) continue;
+      for (const x of [a.min[0], a.max[0]])
+        for (const y of [a.min[1], a.max[1]])
+          for (const z of [a.min[2], a.max[2]])
+            for (let k = 0; k < 3; k++) {
+              const v = M[k] * x + M[4 + k] * y + M[8 + k] * z + M[12 + k];
+              lo[k] = Math.min(lo[k], v);
+              hi[k] = Math.max(hi[k], v);
+            }
+    }
+  });
+  return lo[0] <= hi[0] ? { lo, hi } : null;
+}
+
+/**
+ * A held weapon widens the model's box, and the previews fit the whole box
+ * into the view, so the character would shrink a little and slide off
+ * centre (up to a tenth of its height for a rifle held forward). An
+ * invisible, zero-area triangle at the weapon's reach mirrored about the
+ * character's centre keeps the box centred on the character, across and in
+ * depth, as far as it can without making the box's longest side longer (a
+ * weapon above the head still widens the box upwards: it is shown).
+ */
+function balanceBox(j: Gltf, before: { lo: Vec3; hi: Vec3 } | null, bin: Uint8Array): Uint8Array {
+  const after = sceneBox(j);
+  if (!before || !after) return bin;
+  const c = [0, 1, 2].map((k) => (before.lo[k] + before.hi[k]) / 2);
+  // Across and in depth only (a staff above the head stays in the picture),
+  // and never past the box's longest side, so nothing gets smaller for it.
+  const longest = Math.max(...[0, 1, 2].map((k) => after.hi[k] - after.lo[k]));
+  const lo = [...after.lo];
+  const hi = [...after.hi];
+  for (const k of [0, 2]) {
+    lo[k] = Math.max(Math.min(after.lo[k], 2 * c[k] - after.hi[k]), after.hi[k] - longest);
+    hi[k] = Math.min(Math.max(after.hi[k], 2 * c[k] - after.lo[k]), after.lo[k] + longest);
+  }
+  if ([0, 1, 2].every((k) => Math.abs(lo[k] - after.lo[k]) < 1e-4 && Math.abs(hi[k] - after.hi[k]) < 1e-4)) return bin;
+  const at = bin.length + ((4 - (bin.length % 4)) % 4);
+  const out = new Uint8Array(at + 72);
+  out.set(bin, 0);
+  new Float32Array(out.buffer, at, 18).set([...lo, ...hi, ...hi, 0, 1, 0, 0, 1, 0, 0, 1, 0]);
+  const f32 = (v: number[]) => [...new Float32Array(v)];
+  const bv = arr(j, "bufferViews").length;
+  j.bufferViews = [...arr(j, "bufferViews"), { buffer: 0, byteOffset: at, byteLength: 36 }, { buffer: 0, byteOffset: at + 36, byteLength: 36 }];
+  const ac = arr(j, "accessors").length;
+  j.accessors = [
+    ...arr(j, "accessors"),
+    { bufferView: bv, componentType: 5126, count: 3, type: "VEC3", min: f32(lo), max: f32(hi) },
+    { bufferView: bv + 1, componentType: 5126, count: 3, type: "VEC3" },
+  ];
+  j.meshes = [...arr(j, "meshes"), { name: "weapon_balance", primitives: [{ attributes: { POSITION: ac, NORMAL: ac + 1 }, mode: 4, ...(arr(j, "materials").length ? { material: 0 } : {}) }] }];
+  j.nodes = [...(j.nodes ?? []), { name: "weapon_balance", mesh: arr(j, "meshes").length - 1 }];
+  const scenes = j.scenes && j.scenes.length ? j.scenes : [{ nodes: [] }];
+  const si = j.scene ?? 0;
+  scenes[si] = { ...scenes[si], nodes: [...(scenes[si]?.nodes ?? []), j.nodes.length - 1] };
+  j.scenes = scenes;
+  return out;
+}
+
+/**
  * One GLB holding the character with the weapon in its hand: the weapon's
  * meshes, materials, textures and buffers appended, its scene put under the
  * hand bone's node with `matrix` (gripMatrix). The character's clips move
@@ -488,9 +563,10 @@ export function mergeWeaponGlb(character: Uint8Array, weapon: Uint8Array, bone: 
     scenes[si] = { ...scenes[si], nodes: [...(scenes[si]?.nodes ?? []), holderIndex] };
     j.scenes = scenes;
   }
-  const bin = new Uint8Array(binOffset + w.bin.length);
+  let bin: Uint8Array = new Uint8Array(binOffset + w.bin.length);
   bin.set(c.bin, 0);
   bin.set(w.bin, binOffset);
+  bin = balanceBox(j, sceneBox(c.json), bin);
   const buffers = arr(j, "buffers");
   j.buffers = [{ ...(buffers[0] ?? {}), byteLength: bin.length }];
   const used = new Set([...(Array.isArray(j.extensionsUsed) ? (j.extensionsUsed as string[]) : []), ...(Array.isArray(wj.extensionsUsed) ? (wj.extensionsUsed as string[]) : [])]);
