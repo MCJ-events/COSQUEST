@@ -29,10 +29,17 @@ vec3 hemi_extra(vec3 nw) {
 	return (c - hemi_up) * hemi_energy;
 }
 
+// cq 015: dusk depth, the fronts up the street cool towards the dusk (arena.gd DUSK_*); lit windows don't
+uniform vec3 dusk_col : source_color = vec3(1.0);
+uniform vec2 dusk_z = vec2(-6.0, -30.0);
+
 varying float wy;
+varying float wz;
 
 void vertex() {
-	wy = (MODEL_MATRIX * vec4(VERTEX, 1.0)).y;
+	vec3 wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	wy = wp.y;
+	wz = wp.z;
 }
 
 void fragment() {
@@ -41,8 +48,9 @@ void fragment() {
 	vec3 s = mix(vec3(l), c, sat);
 	float glass = smoothstep(0.12, 0.26, c.b - max(c.r, c.g));
 	float ao = mix(ao_min, 1.0, smoothstep(0.0, ao_height, wy));
-	ALBEDO = mix(s * tint * ao, vec3(0.08, 0.06, 0.1), glass * 0.7);
-	EMISSION = window_col * glass * window_k * (0.75 + 0.5 * l) + s * tint * lift * ao * (1.0 - glass);
+	vec3 dusk = mix(vec3(1.0), dusk_col, smoothstep(dusk_z.x, dusk_z.y, wz));
+	ALBEDO = mix(s * tint * ao * dusk, vec3(0.08, 0.06, 0.1), glass * 0.7);
+	EMISSION = window_col * glass * window_k * (0.75 + 0.5 * l) + s * tint * lift * ao * dusk * (1.0 - glass);
 	ROUGHNESS = 0.9;
 	EMISSION += ALBEDO * hemi_extra((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz) * ao;
 }

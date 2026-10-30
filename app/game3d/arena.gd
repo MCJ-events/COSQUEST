@@ -62,6 +62,11 @@ const SKY_UP: Color = Color(0.6, 0.66, 1.0)
 const SKY_HORIZON: Color = Color(0.8, 0.74, 0.9)
 const SKY_GROUND: Color = Color(0.6, 0.48, 0.5)
 const SKY_ENERGY: float = 0.85
+## Dusk depth: up the street (beyond the fight) the paving and the shop fronts cool towards the
+## blue-violet dusk, so the warm lamps and signs stand out there as on the reference. Baked into the
+## ground's vertex colours and a term in facade.gdshader; no extra pass.
+const DUSK_COL: Color = Color(0.48, 0.53, 0.92)
+const DUSK_Z: Vector2 = Vector2(-4.0, -24.0)   # starts cooling at z -4, full at z -24
 
 var look: Dictionary = {}
 var sun: DirectionalLight3D
@@ -257,7 +262,7 @@ func build(cfg: Dictionary) -> void:
 	# far paving, in the halo mesh, so no extra draw
 	if bool(look.get("halos", true)):
 		_halo_st.set_color(Color(1.0 / HALO_GAIN, 0.74 / HALO_GAIN, 0.48 / HALO_GAIN, 0.85))
-		_ground_quad(_halo_st, SUN_GLARE, 15.0, 20.0, Rect2(0, 0, 1, 1))
+		_ground_quad(_halo_st, SUN_GLARE, 12.0, 18.0, Rect2(0, 0, 1, 1))
 	if bool(look["ao"]):
 		_bake_ground()
 	_commit_glows()
@@ -421,7 +426,7 @@ const SIGN_HALO: Array[Color] = [Color(1.0, 0.3, 0.7), Color(0.25, 0.8, 1.0), Co
 const SHADE_COL: Color = Color(0.6, 0.62, 0.86)   # multiplied into the paving: the sky-lit shade
 const AO_COL: Color = Color(0.5, 0.47, 0.62)       # the contact darkening at the foot of a wall
 const KERB_TOP: float = 0.185
-const SUN_GLARE: Vector3 = Vector3(-2.0, 0.06, -19.0)   # a warm pool of low sun on the far paving
+const SUN_GLARE: Vector3 = Vector3(-4.5, 0.06, -18.0)   # a warm pool of low sun on the far paving
 const HALO_GAIN: float = 1.3   # the halo mesh's material gain: vertex colours stop at 1, lamp heads need 1.3
 var _cam_facing: Basis = Basis.from_euler(Vector3(deg_to_rad(-44.0), 0.0, 0.0))   # fight.gd CAM_PITCH
 
@@ -484,7 +489,7 @@ static func _lean() -> float:
 
 ## The baked shade multiplier at a point of the paving (white = none).
 func _shade_at(x: float, z: float) -> Color:
-	var c := Color.WHITE
+	var c: Color = Color.WHITE.lerp(DUSK_COL, smoothstep(DUSK_Z.x, DUSK_Z.y, z))
 	var lean: float = _lean()
 	for b: Array in _blocks:
 		var sx: float = b[0]
@@ -769,6 +774,8 @@ func _facade_mat(mat: Material) -> Material:
 		sm.shader = FACADE_SHADER
 		sm.set_shader_parameter("atlas", tex)
 		set_hemi(sm, look)
+		sm.set_shader_parameter("dusk_col", DUSK_COL if bool(look["ao"]) else Color.WHITE)
+		sm.set_shader_parameter("dusk_z", DUSK_Z)
 		_facades[key] = sm
 	return _facades[key]
 
