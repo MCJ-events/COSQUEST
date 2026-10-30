@@ -104,7 +104,7 @@ const CAM_DIST: float = 16.5
 const CAM_AHEAD: float = 0.6
 const CAM_SMOOTH: float = 0.16
 const CAM_LOOK: float = 0.7
-const CAM_BOUNDS: float = 6.0          # along the street
+const CAM_BOUNDS: float = 8.0          # along the street (the fight keeps within ARENA_Z = +-9)
 const CAM_BOUNDS_X: float = 2.2        # across it: the street stays centred, the shop walls at the edges
 
 const TEST_PACKS: String = "/opt/cq/tasks/056-game-forge-in-world-v2/out/packs/"
