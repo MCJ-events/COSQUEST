@@ -101,7 +101,7 @@
    "key": "elvis",
    "lod": 0,
    "glb": "res://cast/elvis_lod0.glb",
-   "sha256": "0f830a5ba8308bd4abe1c7a9f73569392c13386793988dfc984a3e54aeecbdb5",
+   "sha256": "3407751486baf118b82cd475104e4bfbb3855d09221fc8b2aee8b251bda92bc5",
    "from": "cq 060 pose/elvis/lod0.glb",
    "look": "cq 239 textures (tools/look) on cq 014's rig"
   },
@@ -109,7 +109,7 @@
    "key": "elvis",
    "lod": 1,
    "glb": "res://cast/elvis_lod1.glb",
-   "sha256": "69bc8c476be481deaa15c556ff56709b1deb4cc559dd82d8333d6d371647a355",
+   "sha256": "2e791a71d1db77fa099423c40da22f3ae4c3bddf8b98be2ccbdeab632b0c310c",
    "from": "cq 060 pose/elvis/lod1.glb",
    "look": "cq 239 textures (tools/look) on cq 014's rig"
   },
@@ -117,7 +117,7 @@
    "key": "elvis",
    "lod": 2,
    "glb": "res://cast/elvis_lod2.glb",
-   "sha256": "59974052677eef040f6c9e3df8108b79e7b5d9170c75703048f1620fc3a2fd7d",
+   "sha256": "febf2ec8cc68deb9b35745fc4bae3d26a7b0f6b6431a38570e4e9259f394e3c3",
    "from": "cq 060 pose/elvis/lod2.glb",
    "look": "cq 239 textures (tools/look) on cq 014's rig"
   },

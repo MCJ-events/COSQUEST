@@ -18,7 +18,7 @@ fight at the game's camera and render scale, a victory close-up, and `contact_sh
 | 1 | **The fight camera sparkles with noise** | all 8 | `GLTFDocument` at runtime gives the embedded textures **no mipmaps** (`has_mipmaps() == false`). At ~60 px tall every screen pixel samples one texel of an atlas cut into 5,000 to 10,000 islands, so the characters shimmer and read as speckle. |
 | 2 | **Faces are smudges** at the select screen and victory close-ups | Armstrong, Bobo, Crystal-Z, Elvis, Nebul-X, Vanessa | The lift's texture is a sample of a 1024³ voxel colour volume, so eyes and mouths are 2 to 4 texel blobs. Armstrong had red smears across the cheeks, Vanessa black eyeliner shapes without eyes, Elvis no eyes at all. |
 | 3 | **Crystal-Z renders black** (the deck: teal starfield) | Crystal-Z (Nebul-X, Bobo, Vanessa partly) | The metal map says 97 % of Crystal-Z is metal at roughness 0.36. The fight has no reflection environment, so metal shows only the sun's highlight and dark "metal" cloth goes black. Nebul-X: 31 % metal, half of it on dark cloth. |
-| 4 | **Elvis is slate-blue** (the deck: charcoal and gold) | Elvis | Robe texels are mid-grey (Lab L 51) and blue-grey (b −7.4) where the deck is charcoal and black (L 33 and 12); the arena's bluish ambient pushes them further to blue. |
+| 4 | **Elvis is slate-blue and light-skinned** (the deck: charcoal and gold, dark brown skin) | Elvis | Robe texels are mid-grey (Lab L 51) and blue-grey (b −7.4) where the deck is charcoal and black (L 33 and 12); the arena's bluish ambient pushes them further to blue. Skin is L 52 to 62 against the deck's 44. |
 | 5 | **Blocky shading** ("Armstrong reads blocky") | all, most on Armstrong, Elvis, Vanessa | The lift's normals are split at most corners: on Armstrong's LOD1, 74 % of vertices are more than 15° off the smooth normal at their position (Elvis 80 %, Vanessa 84 %). Hoodies, faces and capes shade as flat facets. |
 | 6 | Blotchy, noisy albedo | Elvis, Hoof, Crystal-Z | Voxel stair-steps (2 to 4 texel blocks) and speckle in the atlas. |
 | 7 | Silhouettes and proportions | Elvis (long face), Crystal-Z (orb halo as scattered beads), Hoof (flames and skirt one sheet), Vanessa (shredded hair) | From the lift's geometry (cq 060's report). Not fixed here, see "Still short". |
@@ -54,8 +54,11 @@ Per character (BEFORE):
    registration (silhouette IoU, masked NCC, ECC, optical flow) was tried first and locked onto
    shoulders and crowns. cq 057 rejected a whole-body projection (smears), so this is the head only.
 4. **Palette fix toward the deck** (`looks.json` `recolor`, Elvis only): his mid-grey robe goes to
-   charcoal (L × 0.62, chroma × 0.5) and his blue-grey to neutral dark. Texels skinned to cq 014's
-   `Wing_*` chains are excluded, because his wings are cream in the deck.
+   charcoal (L × 0.62, chroma × 0.5) and his blue-grey to neutral dark. His skin goes darker brown:
+   the deck's Elvis is Lab L 44, but the A-pose concept edit had lightened him to L 52 to 62 (cq 060
+   noted that klein edits lighten skin), and the hands and ears were a greyed pink. Texels skinned to
+   cq 014's `Wing_*` chains are excluded, because his wings are cream in the deck. His face ellipse
+   is shorter (`faces.json` `ry`), because his long face put the concept's jaw line on his neck.
 5. **Island-aware cleanup** of the base colour: 2 passes of an edge-preserving bilateral in Lab
    that never reads across UV islands (cq 057's E2 failure was island bleed), and push-pull gutters,
    so mips do not pull in black.
