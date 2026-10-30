@@ -1,4 +1,4 @@
-# The 3D fight: combat, animation hooks and weapons (cq 233)
+# The 3D fight: combat, animation hooks and weapons (cq 233, cq 011)
 
 The Godot project is `app/game3d`. This page is the reference for the fight's rules and
 numbers, and for the two hooks the sister tasks fill: **CombatAnimator** (clips) and
@@ -25,9 +25,12 @@ numbers, and for the two hooks the sister tasks fill: **CombatAnimator** (clips)
 - **ATTACK** (bottom right): tap or hold. A press while the hero is free starts the swing
   on that frame. A press during a swing is buffered for 0.3 s. Holding the button chains.
   The three pips above it show the combo step.
-- **Skills** (the arc round ATTACK): CHARGE, SPLIT, WHIRL, RALLY, SHIELD. A dark sweep and
-  the seconds left show the cooldown. A dimmed icon means the hero cannot cast right now.
-  A press during another move is buffered for 0.4 s. A ring pulses when a skill is ready.
+- **Skills** (the arc round ATTACK): CHARGE (dash chevrons), SPLIT (sword in the ring),
+  WHIRL (crescent), RALLY (golden burst), SHIELD (arcane circle), each on the reference's
+  light disc. On cooldown the icon turns grey under a dark sweep with the seconds left.
+  A greyed, dimmed icon with no number means the hero cannot act (staggered or down).
+  A press during a swing or another skill is buffered for 0.4 s, so the buttons stay lit
+  then. A ring pulses when a skill comes off cooldown.
 - **GUARD** (the shield button left of the arc): hold to block; press just before a hit
   to parry; press with the stick pushed to dodge.
 
@@ -159,6 +162,34 @@ Holds a casting spot 4 m from the boss on the hero's side, fires a bolt every 1.
   towards the fingers in Mixamo rigs), and an optional child `tip` at the blade's end.
 - The hitbox is the swept arc (above), not the weapon's own mesh, so a weapon never
   changes the combat numbers unless you pass `reach`.
+
+## The street and the HUD frame
+- **Camera:** pitch 44 deg, 16.5 m out, FOV 55 (`CAM_*` in `fight.gd`), the hero a little
+  below the centre, the street running up the screen as on the reference.
+- **Street** (`arena.gd`): 11.2 m between the kerbs (fighters keep 4.7 m either side of
+  the centre line), Kenney shop fronts with the `facade` shader (glass swatches glow warm,
+  walls lifted), neon blade signs, light spilling from the shops, dark lamp posts with
+  glowing heads and light cones. The signs, spills, heads and cones are one mesh per kind
+  and side; the kit pieces are merged per material in 12 m chunks per side, so the camera
+  culls what it cannot see.
+- **Minimap:** centred on the hero, 20 m across, the street and the shop blocks (from
+  `arena.map_blocks`) clipped to the disc, the medallion, the hero's view cone, dots with
+  facing wedges (hero green, ally blue, boss red).
+- **Damage numbers** pop on the target's body (chest height) and rise ~60 px.
+
+## Frame cost on a software GPU
+Frame time is input latency on the emulator (SwiftShader), so the fight is built to stay
+near the trunk's cost there:
+- 3D at half the screen's pixels (`render_scale` 0.5), the HUD at full resolution.
+- **Dynamic resolution:** when the median of the last 12 real frames is over 36 ms, the
+  3D steps down by 0.07 to at least 0.36 of the screen; under 22 ms it steps back up to
+  `render_scale`. The log line is `CQ dynres scale a -> b`. Review captures pin the
+  scale (`dyn_res: false` is the capture default). Config `dyn_res: false` turns it off.
+- One directional light; plain trilinear paving; mipmapped HUD art; the hit-flash overlay
+  (a second pass over every skinned vertex) only attached while a flash shows.
+- Latency logs: `CQLAT kind=move|attack|move_blocked`. `move_blocked` is a push while the
+  hero cannot move (a skill, a dodge, hit stun, hit-stop); it waits for the move to end by
+  design and is not input latency.
 
 ## Capture rig (review images)
 ```
