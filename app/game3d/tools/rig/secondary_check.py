@@ -23,7 +23,7 @@ sys.path.insert(0, HERE)
 from rigcheck import RigCheck  # noqa: E402
 from secondary import Secondary, seg_closest  # noqa: E402
 
-W = os.path.expanduser("~/cq-work/cosquest-quality-rigs")
+W = os.path.expanduser(os.environ.get("CQ_RIG_WORK", "~/cq-work/cosquest-quality-rigs"))
 
 
 def chain_speed(sec, Gsim):
@@ -77,8 +77,37 @@ def main():
         ("LeftUpLeg", "LeftLeg", "r_thigh"), ("LeftLeg", "LeftFoot", "r_shin"),
         ("RightUpLeg", "RightLeg", "r_thigh"), ("RightLeg", "RightFoot", "r_shin"))]
 
-    def inside(G):
-        V = b.skin(G)[driven]
+    # cq 016: the fighters' vertex shader pushes cloth vertices out of the leg capsules (char_lit.gdshader,
+    # radius secondary.json "cloth_push"); its twin, to measure what the game draws
+    push_r = dict(sec.cfg.get("cloth_push", {}))
+    caps_push = [(n.index(x), n.index(y), push_r.get(r, sec.legs_r[r] + 0.015)) for x, y, r in (
+        ("LeftUpLeg", "LeftLeg", "r_thigh"), ("LeftLeg", "LeftFoot", "r_shin"),
+        ("RightUpLeg", "RightLeg", "r_thigh"), ("RightLeg", "RightFoot", "r_shin"))]
+    cw_all = (b.wts * on_chain).sum(1)
+    k_push = np.clip((cw_all - 0.02) / 0.48, 0, 1)
+    k_push = k_push * k_push * (3 - 2 * k_push)
+
+    def gpu_push(G, V):
+        sel = cw_all > 0.02
+        P = V[sel].copy()
+        for ia, ib, r in caps_push:
+            pa, pb = G[ia][:3, 3], G[ib][:3, 3]
+            ab = pb - pa
+            t = np.clip(((P - pa) @ ab) / max(1e-12, ab @ ab), 0, 1)
+            c = pa + t[:, None] * ab
+            d = P - c
+            dn = np.linalg.norm(d, axis=1)
+            m = (dn < r) & (dn > 1e-5)
+            P[m] = c[m] + d[m] * (r / dn[m])[:, None]
+        out = V.copy()
+        out[sel] = V[sel] + (P - V[sel]) * k_push[sel][:, None]
+        return out
+
+    def inside(G, push=False):
+        V = b.skin(G)
+        if push:
+            V = gpu_push(G, V)
+        V = V[driven]
         hit = np.zeros(len(V), bool)
         for ia, ib, r in caps_def:
             pa, pb = G[ia][:3, 3], G[ib][:3, 3]
@@ -94,10 +123,11 @@ def main():
         Gsim = sec.run(Gs)
         ks = rc.checked(nfr)
         rep["through_legs"][c] = {"sim": round(max(inside(Gsim[k]) for k in ks) * 100, 3),
+                                  "sim_gpu_push": round(max(inside(Gsim[k], True) for k in ks) * 100, 3),
                                   "rigid": round(max(inside(Gs[k]) for k in ks) * 100, 3),
                                   "max_lag_m": round(float(chain_lag(sec, Gs, Gsim).max()), 3)}
-        print("through legs %-32s sim %.3f %% rigid %.3f %% (of %d driven vertices), max lag %.3f m" % (
-            c, rep["through_legs"][c]["sim"], rep["through_legs"][c]["rigid"], driven.sum(), rep["through_legs"][c]["max_lag_m"]))
+        print("through legs %-32s sim %.3f %% sim+gpu push %.3f %% rigid %.3f %% (of %d driven vertices), max lag %.3f m" % (
+            c, rep["through_legs"][c]["sim"], rep["through_legs"][c]["sim_gpu_push"], rep["through_legs"][c]["rigid"], driven.sum(), rep["through_legs"][c]["max_lag_m"]))
     # the rest pose held 3 s: the joints must come to a stop (no jitter)
     G0 = rt.t_rest_G
     Gs = [G0] * 90

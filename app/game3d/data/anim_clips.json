@@ -125,6 +125,7 @@
    "skill_whirl": {
     "clip": "2H_Melee_Attack_Spinning",
     "alt": [
+     "Whirl_Spin",
      "2H_Melee_Attack_Spin",
      "1H_Melee_Attack_Slice_Horizontal"
     ],
@@ -248,6 +249,7 @@
    "skill_whirl": {
     "clip": "2H_Melee_Attack_Spinning",
     "alt": [
+     "Whirl_Spin",
      "2H_Melee_Attack_Spin",
      "1H_Melee_Attack_Slice_Horizontal"
     ],
@@ -263,8 +265,9 @@
   },
   "staff": {
    "hit": {
-    "clip": "Hit_A",
+    "clip": "Staff_Hit",
     "alt": [
+     "Hit_A",
      "UAL_Hit_Chest",
      "Hit_B"
     ]
@@ -315,22 +318,25 @@
     ]
    },
    "idle": {
-    "clip": "2H_Melee_Idle",
+    "clip": "Staff_Idle",
     "alt": [
+     "2H_Melee_Idle",
      "UAL_Idle",
      "Idle"
     ]
    },
    "walk": {
-    "clip": "Walking_B",
+    "clip": "Staff_Walk",
     "alt": [
+     "Walking_B",
      "UAL_Walk",
      "Walking_A"
     ]
    },
    "run": {
-    "clip": "Running_B",
+    "clip": "Staff_Run",
     "alt": [
+     "Running_B",
      "UAL_Jog",
      "Running_A",
      "UAL_Sprint"
@@ -371,6 +377,7 @@
    "skill_whirl": {
     "clip": "2H_Melee_Attack_Spinning",
     "alt": [
+     "Whirl_Spin",
      "2H_Melee_Attack_Spin",
      "1H_Melee_Attack_Slice_Horizontal"
     ],
@@ -493,6 +500,7 @@
    "skill_whirl": {
     "clip": "2H_Melee_Attack_Spinning",
     "alt": [
+     "Whirl_Spin",
      "2H_Melee_Attack_Spin",
      "1H_Melee_Attack_Slice_Horizontal"
     ],
@@ -726,6 +734,32 @@
    "contact": 3,
    "out": 13
   },
+  "Staff_Hit": {
+   "src": "Hit_A",
+   "lib": "kaykit",
+   "frames": 21,
+   "fps": 30.0
+  },
+  "Staff_Idle": {
+   "src": "2H_Melee_Idle",
+   "lib": "kaykit",
+   "frames": 33,
+   "fps": 30.0
+  },
+  "Staff_Run": {
+   "src": "Running_B",
+   "lib": "kaykit",
+   "frames": 33,
+   "fps": 30.0,
+   "ground_speed_per_hip": 2.365
+  },
+  "Staff_Walk": {
+   "src": "Walking_B",
+   "lib": "kaykit",
+   "frames": 33,
+   "fps": 30.0,
+   "ground_speed_per_hip": 0.856
+  },
   "UAL_Dance": {
    "src": "Dance_Loop",
    "lib": "ual",
@@ -810,6 +844,14 @@
    "frames": 33,
    "fps": 30.0,
    "ground_speed_per_hip": 0.856
+  },
+  "Whirl_Spin": {
+   "src": "2H_Melee_Attack_Spinning",
+   "lib": "kaykit",
+   "frames": 21,
+   "fps": 30.0,
+   "contact": 8,
+   "spin": true
   }
  },
  "characters": {
@@ -858,7 +900,7 @@
      "skill_shield": "Spellcast_Long"
     },
     "staff": {
-     "hit": "Hit_A",
+     "hit": "Staff_Hit",
      "guard": "Guard_2H",
      "parry": "1H_Melee_Attack_Slice_Horizontal",
      "dodge": "Dodge_Forward",
@@ -866,9 +908,9 @@
      "death": "Death_A",
      "victory": "Cheer",
      "heavy": "2H_Melee_Attack_Chop",
-     "idle": "2H_Melee_Idle",
-     "walk": "Walking_B",
-     "run": "Running_B",
+     "idle": "Staff_Idle",
+     "walk": "Staff_Walk",
+     "run": "Staff_Run",
      "attack_1": "2H_Melee_Attack_Slice",
      "attack_2": "Spellcast_Shoot",
      "attack_3": "2H_Melee_Attack_Chop",
@@ -922,7 +964,7 @@
     "UAL_Sword_Attack"
    ],
    "hip_scale": 2.145,
-   "clips_in_library": 26
+   "clips_in_library": 30
   },
   "bobo": {
    "status": "clips",
@@ -969,7 +1011,7 @@
      "skill_shield": "Spellcast_Long"
     },
     "staff": {
-     "hit": "Hit_A",
+     "hit": "Staff_Hit",
      "guard": "Blocking",
      "parry": "1H_Melee_Attack_Slice_Horizontal",
      "dodge": "Dodge_Forward",
@@ -977,9 +1019,9 @@
      "death": "Death_A",
      "victory": "Cheer",
      "heavy": "1H_Melee_Attack_Chop",
-     "idle": "2H_Melee_Idle",
-     "walk": "Walking_B",
-     "run": "Running_B",
+     "idle": "Staff_Idle",
+     "walk": "Staff_Walk",
+     "run": "Staff_Run",
      "attack_1": "1H_Melee_Attack_Slice_Diagonal",
      "attack_2": "Spellcast_Shoot",
      "attack_3": "1H_Melee_Attack_Chop",
@@ -1041,7 +1083,7 @@
     "UAL_Sword_Attack"
    ],
    "hip_scale": 2.322,
-   "clips_in_library": 20
+   "clips_in_library": 24
   },
   "catboy": {
    "status": "clips",
@@ -1088,7 +1130,7 @@
      "skill_shield": "Spellcast_Long"
     },
     "staff": {
-     "hit": "Hit_A",
+     "hit": "Staff_Hit",
      "guard": "Guard_2H",
      "parry": "1H_Melee_Attack_Slice_Horizontal",
      "dodge": "Dodge_Forward",
@@ -1096,9 +1138,9 @@
      "death": "Death_A",
      "victory": "Cheer",
      "heavy": "2H_Melee_Attack_Chop",
-     "idle": "2H_Melee_Idle",
-     "walk": "Walking_B",
-     "run": "Running_B",
+     "idle": "Staff_Idle",
+     "walk": "Staff_Walk",
+     "run": "Staff_Run",
      "attack_1": "2H_Melee_Attack_Slice",
      "attack_2": "Spellcast_Shoot",
      "attack_3": "2H_Melee_Attack_Chop",
@@ -1153,7 +1195,7 @@
     "UAL_Sword_Attack"
    ],
    "hip_scale": 1.908,
-   "clips_in_library": 26
+   "clips_in_library": 30
   },
   "crystalz": {
    "status": "clips",
@@ -1176,7 +1218,7 @@
      "attack_3": "1H_Melee_Attack_Chop",
      "skill_charge": "1H_Melee_Attack_Stab",
      "skill_split": "1H_Melee_Attack_Chop",
-     "skill_whirl": "",
+     "skill_whirl": "Whirl_Spin",
      "skill_shield": "Spellcast_Long"
     },
     "heavy": {
@@ -1196,11 +1238,11 @@
      "attack_3": "1H_Melee_Attack_Chop",
      "skill_charge": "1H_Melee_Attack_Stab",
      "skill_split": "1H_Melee_Attack_Chop",
-     "skill_whirl": "",
+     "skill_whirl": "Whirl_Spin",
      "skill_shield": "Spellcast_Long"
     },
     "staff": {
-     "hit": "Hit_A",
+     "hit": "Staff_Hit",
      "guard": "Blocking",
      "parry": "Block_Attack",
      "dodge": "Dodge_Forward",
@@ -1208,15 +1250,15 @@
      "death": "Death_A",
      "victory": "Cheer",
      "heavy": "1H_Melee_Attack_Chop",
-     "idle": "2H_Melee_Idle",
-     "walk": "Walking_B",
-     "run": "Running_B",
+     "idle": "Staff_Idle",
+     "walk": "Staff_Walk",
+     "run": "Staff_Run",
      "attack_1": "1H_Melee_Attack_Slice_Diagonal",
      "attack_2": "Spellcast_Shoot",
      "attack_3": "1H_Melee_Attack_Chop",
      "skill_charge": "1H_Melee_Attack_Stab",
      "skill_split": "1H_Melee_Attack_Chop",
-     "skill_whirl": "",
+     "skill_whirl": "Whirl_Spin",
      "skill_shield": "Spellcast_Long"
     },
     "gun": {
@@ -1236,7 +1278,7 @@
      "attack_3": "1H_Melee_Attack_Stab",
      "skill_charge": "1H_Melee_Attack_Stab",
      "skill_split": "1H_Melee_Attack_Chop",
-     "skill_whirl": "",
+     "skill_whirl": "Whirl_Spin",
      "skill_shield": "Spellcast_Long"
     }
    },
@@ -1258,7 +1300,7 @@
      -0.0732
     ]
    },
-   "tear_worst": 0.033,
+   "tear_worst": 0.034,
    "clips_over_gate": [
     "1H_Melee_Attack_Slice_Horizontal",
     "2H_Melee_Attack_Chop",
@@ -1272,6 +1314,7 @@
     "Guard_2H",
     "Jump_Full_Short",
     "Running_B",
+    "Staff_Run",
     "UAL_Death",
     "UAL_Jog",
     "UAL_Roll",
@@ -1279,7 +1322,7 @@
     "UAL_Sword_Attack"
    ],
    "hip_scale": 2.057,
-   "clips_in_library": 18
+   "clips_in_library": 23
   },
   "elvis": {
    "status": "clips",
@@ -1302,7 +1345,7 @@
      "attack_3": "1H_Melee_Attack_Chop",
      "skill_charge": "1H_Melee_Attack_Stab",
      "skill_split": "2H_Melee_Attack_Chop",
-     "skill_whirl": "",
+     "skill_whirl": "Whirl_Spin",
      "skill_shield": "Spellcast_Long"
     },
     "heavy": {
@@ -1322,11 +1365,11 @@
      "attack_3": "2H_Melee_Attack_Chop",
      "skill_charge": "1H_Melee_Attack_Stab",
      "skill_split": "2H_Melee_Attack_Chop",
-     "skill_whirl": "",
+     "skill_whirl": "Whirl_Spin",
      "skill_shield": "Spellcast_Long"
     },
     "staff": {
-     "hit": "Hit_A",
+     "hit": "Staff_Hit",
      "guard": "Guard_2H",
      "parry": "Block_Hit",
      "dodge": "Dodge_Forward",
@@ -1334,15 +1377,15 @@
      "death": "Death_A",
      "victory": "Cheer",
      "heavy": "2H_Melee_Attack_Chop",
-     "idle": "2H_Melee_Idle",
-     "walk": "Walking_B",
-     "run": "Running_B",
+     "idle": "Staff_Idle",
+     "walk": "Staff_Walk",
+     "run": "Staff_Run",
      "attack_1": "1H_Melee_Attack_Slice_Diagonal",
      "attack_2": "Spellcast_Shoot",
      "attack_3": "2H_Melee_Attack_Chop",
      "skill_charge": "1H_Melee_Attack_Stab",
      "skill_split": "2H_Melee_Attack_Chop",
-     "skill_whirl": "",
+     "skill_whirl": "Whirl_Spin",
      "skill_shield": "Spellcast_Long"
     },
     "gun": {
@@ -1362,7 +1405,7 @@
      "attack_3": "1H_Melee_Attack_Stab",
      "skill_charge": "1H_Melee_Attack_Stab",
      "skill_split": "2H_Melee_Attack_Chop",
-     "skill_whirl": "",
+     "skill_whirl": "Whirl_Spin",
      "skill_shield": "Spellcast_Long"
     }
    },
@@ -1384,7 +1427,7 @@
      -0.0373
     ]
    },
-   "tear_worst": 0.0508,
+   "tear_worst": 0.0505,
    "clips_over_gate": [
     "1H_Melee_Attack_Slice_Horizontal",
     "2H_Melee_Attack_Slice",
@@ -1397,6 +1440,7 @@
     "Hit_B",
     "Running_A",
     "Running_B",
+    "Staff_Run",
     "UAL_Death",
     "UAL_Jog",
     "UAL_Roll",
@@ -1405,7 +1449,7 @@
     "UAL_Sword_Idle"
    ],
    "hip_scale": 2.222,
-   "clips_in_library": 21
+   "clips_in_library": 26
   },
   "hoof": {
    "status": "clips",
@@ -1424,17 +1468,17 @@
      "walk": "Walking_A",
      "run": "Running_A",
      "attack_1": "1H_Melee_Attack_Slice_Diagonal",
-     "attack_2": "1H_Melee_Attack_Stab",
+     "attack_2": "1H_Melee_Attack_Slice_Horizontal",
      "attack_3": "1H_Melee_Attack_Chop",
      "skill_charge": "1H_Melee_Attack_Stab",
      "skill_split": "2H_Melee_Attack_Chop",
-     "skill_whirl": "",
+     "skill_whirl": "Whirl_Spin",
      "skill_shield": "Spellcast_Long"
     },
     "heavy": {
      "hit": "Hit_A",
      "guard": "Guard_2H",
-     "parry": "Block_Attack",
+     "parry": "1H_Melee_Attack_Slice_Horizontal",
      "dodge": "Dodge_Forward",
      "skill_rally": "Spellcast_Raise",
      "death": "Death_A",
@@ -1444,31 +1488,31 @@
      "walk": "Walking_B",
      "run": "Running_B",
      "attack_1": "2H_Melee_Attack_Slice",
-     "attack_2": "1H_Melee_Attack_Stab",
+     "attack_2": "1H_Melee_Attack_Slice_Horizontal",
      "attack_3": "2H_Melee_Attack_Chop",
      "skill_charge": "1H_Melee_Attack_Stab",
      "skill_split": "2H_Melee_Attack_Chop",
-     "skill_whirl": "",
+     "skill_whirl": "Whirl_Spin",
      "skill_shield": "Spellcast_Long"
     },
     "staff": {
-     "hit": "Hit_A",
+     "hit": "Staff_Hit",
      "guard": "Guard_2H",
-     "parry": "Block_Attack",
+     "parry": "1H_Melee_Attack_Slice_Horizontal",
      "dodge": "Dodge_Forward",
      "skill_rally": "Spellcast_Raise",
      "death": "Death_A",
      "victory": "Cheer",
      "heavy": "2H_Melee_Attack_Chop",
-     "idle": "2H_Melee_Idle",
-     "walk": "Walking_B",
-     "run": "Running_B",
+     "idle": "Staff_Idle",
+     "walk": "Staff_Walk",
+     "run": "Staff_Run",
      "attack_1": "2H_Melee_Attack_Slice",
      "attack_2": "Spellcast_Shoot",
      "attack_3": "2H_Melee_Attack_Chop",
      "skill_charge": "1H_Melee_Attack_Stab",
      "skill_split": "2H_Melee_Attack_Chop",
-     "skill_whirl": "",
+     "skill_whirl": "Whirl_Spin",
      "skill_shield": "Spellcast_Long"
     },
     "gun": {
@@ -1488,7 +1532,7 @@
      "attack_3": "1H_Melee_Attack_Stab",
      "skill_charge": "1H_Melee_Attack_Stab",
      "skill_split": "2H_Melee_Attack_Chop",
-     "skill_whirl": "",
+     "skill_whirl": "Whirl_Spin",
      "skill_shield": "Spellcast_Long"
     }
    },
@@ -1510,9 +1554,8 @@
      0.2569
     ]
    },
-   "tear_worst": 0.0325,
+   "tear_worst": 0.0313,
    "clips_over_gate": [
-    "1H_Melee_Attack_Slice_Horizontal",
     "2H_Melee_Attack_Spin",
     "2H_Melee_Attack_Spinning",
     "2H_Melee_Attack_Stab",
@@ -1521,7 +1564,7 @@
     "UAL_Sword_Attack"
    ],
    "hip_scale": 2.169,
-   "clips_in_library": 23
+   "clips_in_library": 29
   },
   "nebulx": {
    "status": "clips",
@@ -1568,7 +1611,7 @@
      "skill_shield": "Spellcast_Long"
     },
     "staff": {
-     "hit": "Hit_A",
+     "hit": "Staff_Hit",
      "guard": "Guard_2H",
      "parry": "1H_Melee_Attack_Slice_Horizontal",
      "dodge": "Dodge_Forward",
@@ -1576,9 +1619,9 @@
      "death": "Death_B",
      "victory": "Cheer",
      "heavy": "2H_Melee_Attack_Chop",
-     "idle": "2H_Melee_Idle",
-     "walk": "Walking_B",
-     "run": "Running_B",
+     "idle": "Staff_Idle",
+     "walk": "Staff_Walk",
+     "run": "Staff_Run",
      "attack_1": "2H_Melee_Attack_Slice",
      "attack_2": "Spellcast_Shoot",
      "attack_3": "2H_Melee_Attack_Chop",
@@ -1639,7 +1682,7 @@
     "UAL_Sword_Idle"
    ],
    "hip_scale": 2.167,
-   "clips_in_library": 25,
+   "clips_in_library": 29,
    "default_class": "staff"
   },
   "vanessa": {
@@ -1687,7 +1730,7 @@
      "skill_shield": "Spellcast_Long"
     },
     "staff": {
-     "hit": "Hit_A",
+     "hit": "Staff_Hit",
      "guard": "Guard_2H",
      "parry": "1H_Melee_Attack_Slice_Horizontal",
      "dodge": "Dodge_Forward",
@@ -1695,9 +1738,9 @@
      "death": "Death_A",
      "victory": "Cheer",
      "heavy": "2H_Melee_Attack_Chop",
-     "idle": "2H_Melee_Idle",
-     "walk": "Walking_B",
-     "run": "Running_B",
+     "idle": "Staff_Idle",
+     "walk": "Staff_Walk",
+     "run": "Staff_Run",
      "attack_1": "",
      "attack_2": "Spellcast_Shoot",
      "attack_3": "2H_Melee_Attack_Chop",
@@ -1760,7 +1803,7 @@
     "UAL_Sword_Idle"
    ],
    "hip_scale": 2.411,
-   "clips_in_library": 23
+   "clips_in_library": 27
   }
  }
 }

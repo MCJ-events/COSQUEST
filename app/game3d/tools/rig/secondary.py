@@ -90,17 +90,39 @@ class Secondary:
         out = [[x.copy() for x in G] for G in Gs]
         state = {}
         seq = [0] * preroll + list(range(len(Gs)))
+        yaw0 = None
+        spin_w = 0.0
         for si, k in enumerate(seq):
             G = Gs[k]
             dh = self.delta(G, self.ih)
             dl = qmul(self.delta(G, self.il), qinv(dh))
             dr = qmul(self.delta(G, self.ir), qinv(dh))
             caps = [(G[a][:3, 3], G[b][:3, 3], self.legs_r[r]) for a, b, r in self.legs]
+            # cq 016, spin-aware (secondary_motion.gd): the hips' turn since the last frame carries
+            # the chains round; the turn rate flares them out
+            hf = q_to_mat(dh) @ np.array([0, 0, 1.0])
+            yaw = float(np.arctan2(hf[0], hf[2]))
+            dyaw = 0.0 if yaw0 is None else float((yaw - yaw0 + np.pi) % (2 * np.pi) - np.pi)
+            yaw0 = yaw
+            spin_w += 0.5 * (abs(dyaw) * fps - spin_w)
+            hips_o = G[self.ih][:3, 3]
+            cy, sy = np.cos(dyaw), np.sin(dyaw)
+            carry = np.array([[cy, 0, sy], [0, 1, 0], [-sy, 0, cy]])
             for base, s in self.spec.items():
                 idx = s["idx"]
                 T = np.array([G[i][:3, 3] for i in idx])
                 qf = qmul(qslerp(np.array([0, 0, 0, 1.0]), dl, s["wl"]), qslerp(np.array([0, 0, 0, 1.0]), dr, s["wr"]))
                 Rf = q_to_mat(qf)
+                grp = s["grp"]
+                if grp.get("spin_carry"):
+                    flare = min(np.radians(grp.get("flare_max_deg", 0.0)), np.radians(grp.get("flare_deg_per_rad_s", 0.0)) * spin_w)
+                    r = np.array([T[0][0] - hips_o[0], 0.0, T[0][2] - hips_o[2]])
+                    if flare > 0.001 and float(r @ r) > 1e-8:
+                        ax = np.cross([0, -1.0, 0], r / np.linalg.norm(r))
+                        ax = ax / np.linalg.norm(ax)
+                        Rf = q_to_mat(np.append(ax * np.sin(flare / 2), np.cos(flare / 2))) @ Rf
+                    if base in state and dyaw != 0.0:
+                        state[base] = [hips_o + (x - hips_o) @ carry.T for x in state[base]]
                 T = T[0] + (T - T[0]) @ Rf.T
                 if s["grp"]["legs"]:
                     # the targets themselves outside the legs: the spring then has a point at

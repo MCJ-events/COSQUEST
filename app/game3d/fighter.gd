@@ -342,6 +342,7 @@ func set_model(node: Node3D) -> Dictionary:
 	bind_info = anim.bind(holder, body, anim_opts)
 	anim.play("idle")
 	_apply_overlay(holder)
+	_wire_cloth(holder)
 	var names: PackedStringArray = anim.player.get_animation_list() if anim.player != null else PackedStringArray()
 	return {"scale": s, "height_raw": aabb.size.y, "anims": names, "mapped": bind_info.get("clips", {}),
 		"bones": bind_info.get("bones", 0), "hand": bind_info.get("hand", ""), "library": anim.lib_key}
@@ -366,6 +367,50 @@ func _apply_overlay(root: Node) -> void:
 	if not _overlay_meshes.is_empty():
 		_flash = maxf(_flash, 0.02)   # on for the first frame: compiles the shader during loading
 		_set_overlay(true)
+
+
+## cq 016: cloth off the legs. The robe, coat and skirt vertices (skinned to the cq 014 secondary
+## chains, whose skin binds the rig appends after the body's) are pushed out of the leg capsules in
+## the fighter's own vertex shader (char_lit.gdshader); the secondary sim feeds it the capsules.
+func _wire_cloth(root: Node) -> void:
+	var sm: Variant = anim.secondary if anim != null else null
+	var skel: Skeleton3D = anim.skeleton if anim != null else null
+	if sm == null or skel == null or _lit_mats.is_empty():
+		return
+	var re := RegEx.new()
+	re.compile("^(Robe|Coat|Skirt|Wing|Flame).*_(\\d+|end)$")
+	var mats: Array[ShaderMaterial] = []
+	for n: Node in root.find_children("*", "MeshInstance3D", true, false):
+		var mi := n as MeshInstance3D
+		if mi.mesh == null or mi.skin == null:
+			continue
+		# the first chain bind; every bind after it must be a chain too (else this mesh is left alone)
+		var first: int = -1
+		var ok: bool = true
+		for b in mi.skin.get_bind_count():
+			var nm: String = str(mi.skin.get_bind_name(b))
+			if nm == "" and mi.skin.get_bind_bone(b) >= 0:
+				nm = skel.get_bone_name(mi.skin.get_bind_bone(b))
+			var chain: bool = re.search(nm) != null
+			if chain and first < 0:
+				first = b
+			elif not chain and first >= 0:
+				ok = false
+		if first < 0 or not ok:
+			continue
+		var surf: Array[Material] = []
+		if mi.material_override != null:
+			surf.append(mi.material_override)
+		else:
+			for si in mi.mesh.get_surface_count():
+				surf.append(mi.get_surface_override_material(si))
+		for m: Material in surf:
+			if m is ShaderMaterial and _lit_mats.has(m):
+				(m as ShaderMaterial).set_shader_parameter("cloth_bind0", first)
+				mats.append(m as ShaderMaterial)
+	sm.set("cloth_mats", mats)
+	if not mats.is_empty():
+		print("CQ cloth push: %d surfaces" % mats.size())
 
 
 ## Swaps every surface of `mi` to the lit fighter material; false if one cannot be converted.

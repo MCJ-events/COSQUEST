@@ -27,6 +27,9 @@ class Chain:
 	var cosmax: float
 	var sinmax: float
 	var legs: bool
+	var spin: bool                          # cq 016: carried round with the hips' turn, flares out in a spin
+	var flare_k: float
+	var flare_max: float
 	var jr: float
 	var wl: float
 	var wr: float
@@ -47,6 +50,15 @@ var _rest_r: Basis
 var _ca: PackedVector3Array = PackedVector3Array()
 var _cb: PackedVector3Array = PackedVector3Array()
 var cost_us: int = 0                    # the last frame's cost, for the budget check
+var _yaw: float = 0.0                   # cq 016: the hips' heading last frame (skeleton space)
+var _yaw_init: bool = false
+var _spin_w: float = 0.0                # the hips' turn rate, rad/s, smoothed
+## cq 016: the fighter's materials (char_lit.gdshader) whose cloth vertices are pushed out of the leg
+## capsules on the GPU; this node feeds them the capsules (world space) every frame
+var cloth_mats: Array[ShaderMaterial] = []
+var _push_r: PackedFloat32Array = PackedFloat32Array()
+const _LA: Array[StringName] = [&"la0", &"la1", &"la2", &"la3"]
+const _LB: Array[StringName] = [&"lb0", &"lb1", &"lb2", &"lb3"]
 
 
 static func config() -> Dictionary:
@@ -87,6 +99,7 @@ func setup(skel: Skeleton3D) -> int:
 	var legs_r: Dictionary = cfg.get("legs", {})
 	_caps = PackedInt32Array()
 	_caps_r = PackedFloat32Array()
+	_push_r = PackedFloat32Array()
 	for pair: Array in [["LeftUpLeg", "LeftLeg", "r_thigh"], ["LeftLeg", "LeftFoot", "r_shin"],
 			["RightUpLeg", "RightLeg", "r_thigh"], ["RightLeg", "RightFoot", "r_shin"]]:
 		var a: int = skel.find_bone(str(pair[0]))
@@ -95,6 +108,7 @@ func setup(skel: Skeleton3D) -> int:
 			_caps.append(a)
 			_caps.append(c)
 			_caps_r.append(float(legs_r.get(str(pair[2]), 0.08)))
+			_push_r.append(float((cfg.get("cloth_push", {}) as Dictionary).get(str(pair[2]), float(legs_r.get(str(pair[2]), 0.08)) + 0.015)))
 	_ca.resize(_caps_r.size())
 	_cb.resize(_caps_r.size())
 	var hips_rest: Vector3 = skel.get_bone_global_rest(_hips).origin
@@ -131,6 +145,9 @@ func setup(skel: Skeleton3D) -> int:
 		ch.cosmax = cos(deg_to_rad(float(g.get("max_deg", 35.0))))
 		ch.sinmax = sqrt(1.0 - ch.cosmax * ch.cosmax)
 		ch.legs = bool(g.get("legs", false))
+		ch.spin = bool(g.get("spin_carry", false))
+		ch.flare_k = deg_to_rad(float(g.get("flare_deg_per_rad_s", 0.0)))
+		ch.flare_max = deg_to_rad(float(g.get("flare_max_deg", 0.0)))
 		ch.jr = float(g.get("joint_r", 0.02))
 		# which side it hangs on: the thigh on that side swings it
 		var tip: Vector3 = skel.get_bone_global_rest(ch.bones[ch.bones.size() - 1]).origin
@@ -156,12 +173,44 @@ func _process_modification_with_delta(delta: float) -> void:
 	for c in _caps_r.size():
 		_ca[c] = sk.get_bone_global_pose(_caps[2 * c]).origin
 		_cb[c] = sk.get_bone_global_pose(_caps[2 * c + 1]).origin
+	if not cloth_mats.is_empty() and _caps_r.size() == 4:
+		var xf: Transform3D = sk.global_transform
+		var sc: float = xf.basis.get_scale().x
+		for c in 4:
+			var a: Vector3 = xf * _ca[c]
+			var b: Vector3 = xf * _cb[c]
+			var r: float = _push_r[c] * sc
+			for m: ShaderMaterial in cloth_mats:
+				m.set_shader_parameter(_LA[c], Vector4(a.x, a.y, a.z, r))
+				m.set_shader_parameter(_LB[c], Vector4(b.x, b.y, b.z, r))
+	# cq 016, spin-aware: the hips' turn since last frame (a WHIRL turns them a full circle in
+	# half a second). Spring-lagging behind that turn stretched the robes; the chains are carried
+	# round with it instead, and flare outwards with the turn rate.
+	var hf: Vector3 = dh * Vector3(0, 0, 1)
+	var yaw: float = atan2(hf.x, hf.z)
+	var dyaw: float = wrapf(yaw - _yaw, -PI, PI) if _yaw_init else 0.0
+	_yaw = yaw
+	_yaw_init = true
+	if delta > 0.0:
+		_spin_w = lerpf(_spin_w, absf(dyaw) / delta, 0.5)
+	var hips_o: Vector3 = sk.get_bone_global_pose(_hips).origin
+	var carry := Basis(Vector3.UP, dyaw)
 	for ch: Chain in chains:
 		var pg: Transform3D = sk.get_bone_global_pose(ch.parent)
 		var qf: Quaternion = Quaternion.IDENTITY.slerp(dl, ch.wl) * Quaternion.IDENTITY.slerp(dr, ch.wr)
 		var bf := Basis(qf)
 		var n: int = ch.bones.size()
 		var root: Vector3 = (pg * ch.rel[0]).origin
+		if ch.spin:
+			var flare: float = minf(ch.flare_max, ch.flare_k * _spin_w)
+			if flare > 0.001:
+				var r: Vector3 = Vector3(root.x - hips_o.x, 0.0, root.z - hips_o.z)
+				if r.length_squared() > 1e-8:
+					bf = Basis(Vector3.DOWN.cross(r.normalized()).normalized(), flare) * bf
+			if ch.init and dyaw != 0.0:
+				for j in n:
+					ch.p[j] = hips_o + carry * (ch.p[j] - hips_o)
+					ch.pp[j] = hips_o + carry * (ch.pp[j] - hips_o)
 		for j in n:
 			ch.t[j] = root + bf * ((pg * ch.rel[j]).origin - root)
 			if ch.legs and j > 0:

@@ -611,6 +611,100 @@
     "s": 0.32,
     "d_off": 0.45
    }
+  },
+  "Whirl_Spin": {
+   "src": "2H_Melee_Attack_Spinning",
+   "classes": [
+    "hammer",
+    "greatsword",
+    "staff",
+    "sword"
+   ],
+   "strike": true,
+   "strike_window": [
+    0.0,
+    1.0
+   ],
+   "damp_legs": {
+    "bones": [
+     "LeftUpLeg",
+     "RightUpLeg",
+     "LeftLeg",
+     "RightLeg"
+    ],
+    "f": 0.0
+   },
+   "damp_rel": true,
+   "spin": true,
+   "_why": "cq 016: the spinning attack retargeted for robes: the legs and spine are damped relative to the hips (not the world), so the whole body turns with the hips instead of twisting against them; with the spin-aware secondary sim it passes the gate on Elvis, Crystal-Z and Hoof"
+  },
+  "Staff_Idle": {
+   "src": "2H_Melee_Idle",
+   "classes": [
+    "staff"
+   ],
+   "staff_up": {
+    "fwd": 0.25,
+    "out": 0.12,
+    "forearm": 0.35
+   },
+   "_why": "cq 016: the staff hold: the source clip with the right forearm and hand turned so the staff stands orb-up (retarget.py staff_upright); the staff set only, so no other class changes; one-handed: the left hand on the upright shaft stretched Crystal-Z's left arm past the gate (0.75 %), so the left hand stays where the source keeps it, by the right"
+  },
+  "Staff_Walk": {
+   "src": "Walking_B",
+   "classes": [
+    "staff"
+   ],
+   "loop": true,
+   "damp_legs": {
+    "bones": [
+     "LeftUpLeg",
+     "RightUpLeg",
+     "LeftLeg",
+     "RightLeg"
+    ],
+    "f": 0.6
+   },
+   "staff_up": {
+    "fwd": 0.25,
+    "out": 0.12,
+    "forearm": 0.35
+   },
+   "_why": "cq 016: the staff hold: the source clip with the right forearm and hand turned so the staff stands orb-up (retarget.py staff_upright); the staff set only, so no other class changes"
+  },
+  "Staff_Run": {
+   "src": "Running_B",
+   "classes": [
+    "staff"
+   ],
+   "loop": true,
+   "damp_legs": {
+    "bones": [
+     "LeftUpLeg",
+     "RightUpLeg",
+     "LeftLeg",
+     "RightLeg"
+    ],
+    "f": 0.5
+   },
+   "staff_up": {
+    "fwd": 0.25,
+    "out": 0.12,
+    "forearm": 0.35
+   },
+   "_why": "cq 016: the staff hold: the source clip with the right forearm and hand turned so the staff stands orb-up (retarget.py staff_upright); the staff set only, so no other class changes"
+  },
+  "Staff_Hit": {
+   "src": "Hit_A",
+   "classes": [
+    "staff"
+   ],
+   "staff_up": {
+    "fwd": 0.25,
+    "out": 0.12,
+    "forearm": 0.35
+   },
+   "_why": "cq 016: the staff hold: the source clip with the right forearm and hand turned so the staff stands orb-up (retarget.py staff_upright); the staff set only, so no other class changes"
   }
  },
  "holds": {
@@ -951,6 +1045,7 @@
    "skill_whirl": {
     "clip": "2H_Melee_Attack_Spinning",
     "alt": [
+     "Whirl_Spin",
      "2H_Melee_Attack_Spin",
      "1H_Melee_Attack_Slice_Horizontal"
     ],
@@ -1074,6 +1169,7 @@
    "skill_whirl": {
     "clip": "2H_Melee_Attack_Spinning",
     "alt": [
+     "Whirl_Spin",
      "2H_Melee_Attack_Spin",
      "1H_Melee_Attack_Slice_Horizontal"
     ],
@@ -1089,8 +1185,9 @@
   },
   "staff": {
    "hit": {
-    "clip": "Hit_A",
+    "clip": "Staff_Hit",
     "alt": [
+     "Hit_A",
      "UAL_Hit_Chest",
      "Hit_B"
     ]
@@ -1141,22 +1238,25 @@
     ]
    },
    "idle": {
-    "clip": "2H_Melee_Idle",
+    "clip": "Staff_Idle",
     "alt": [
+     "2H_Melee_Idle",
      "UAL_Idle",
      "Idle"
     ]
    },
    "walk": {
-    "clip": "Walking_B",
+    "clip": "Staff_Walk",
     "alt": [
+     "Walking_B",
      "UAL_Walk",
      "Walking_A"
     ]
    },
    "run": {
-    "clip": "Running_B",
+    "clip": "Staff_Run",
     "alt": [
+     "Running_B",
      "UAL_Jog",
      "Running_A",
      "UAL_Sprint"
@@ -1197,6 +1297,7 @@
    "skill_whirl": {
     "clip": "2H_Melee_Attack_Spinning",
     "alt": [
+     "Whirl_Spin",
      "2H_Melee_Attack_Spin",
      "1H_Melee_Attack_Slice_Horizontal"
     ],
@@ -1319,6 +1420,7 @@
    "skill_whirl": {
     "clip": "2H_Melee_Attack_Spinning",
     "alt": [
+     "Whirl_Spin",
      "2H_Melee_Attack_Spin",
      "1H_Melee_Attack_Slice_Horizontal"
     ],

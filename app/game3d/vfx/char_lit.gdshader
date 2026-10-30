@@ -38,8 +38,40 @@ vec3 hemi_extra(vec3 nw) {
 	return (c - hemi_up) * hemi_energy;
 }
 
+// cq 016: cloth off the legs. Robe, coat and skirt vertices (skinned to the secondary chains: skin
+// binds from cloth_bind0 on) are pushed out of the four leg capsules (world space, xyz = the ends,
+// w = radius; set every frame by secondary_motion.gd). The chain joints already keep off the legs;
+// this keeps every cloth vertex off them, on wide strides and lying dead. Off: cloth_bind0 = 100000.
+uniform int cloth_bind0 = 100000;
+uniform vec4 la0; uniform vec4 lb0;
+uniform vec4 la1; uniform vec4 lb1;
+uniform vec4 la2; uniform vec4 lb2;
+uniform vec4 la3; uniform vec4 lb3;
+
+vec3 cap_push(vec3 p, vec4 a, vec4 b) {
+	vec3 ab = b.xyz - a.xyz;
+	float u = clamp(dot(p - a.xyz, ab) / max(dot(ab, ab), 1e-8), 0.0, 1.0);
+	vec3 c = a.xyz + ab * u;
+	vec3 d = p - c;
+	float dn = length(d);
+	return (dn < a.w && dn > 1e-5) ? c + d * (a.w / dn) : p;
+}
+
 void vertex() {
 	UV = UV * uv1_scale.xy + uv1_offset.xy;
+	if (cloth_bind0 < 100000) {
+		ivec4 bi = ivec4(BONE_INDICES);
+		float cw = (bi.x >= cloth_bind0 ? BONE_WEIGHTS.x : 0.0) + (bi.y >= cloth_bind0 ? BONE_WEIGHTS.y : 0.0)
+			+ (bi.z >= cloth_bind0 ? BONE_WEIGHTS.z : 0.0) + (bi.w >= cloth_bind0 ? BONE_WEIGHTS.w : 0.0);
+		if (cw > 0.02) {
+			vec3 w = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+			vec3 p = cap_push(cap_push(cap_push(cap_push(w, la0, lb0), la1, lb1), la2, lb2), la3, lb3);
+			if (p != w) {
+				// a vertex partly on the body (the waistband) moves only by its cloth share
+				VERTEX = (inverse(MODEL_MATRIX) * vec4(mix(w, p, smoothstep(0.02, 0.5, cw)), 1.0)).xyz;
+			}
+		}
+	}
 }
 
 void fragment() {

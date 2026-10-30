@@ -150,7 +150,7 @@ def main():
             clips_out[c]["contact"] = override
         elif cs:
             clips_out[c]["contact"] = cs[len(cs) // 2]
-        for k in ("in", "out"):
+        for k in ("in", "out", "spin"):   # cq 016: spin = the clip turns the body itself (no procedural spin on top)
             if k in cfg["clips"][c]:
                 clips_out[c][k] = cfg["clips"][c][k]
     data = {

@@ -57,6 +57,7 @@ def grot(G, i):
 class Retarget:
     def __init__(self, src, tgt, rig, damp=None):
         self.damp = damp or {}       # target bone -> share of the source's rotation it takes (robes: legs)
+        self.damp_rel = False        # cq 016: damp relative to the hips (a clip's "damp_rel")
         self.src = src
         self.tgt = tgt
         self.sp = Pose(src)
@@ -122,7 +123,14 @@ class Retarget:
                 d = self.src_delta(Gs, self.map[i])
                 f = self.damp.get(self.tgt.names[i])
                 if f is not None:
-                    d = qslerp(np.array([0, 0, 0, 1.0]), d, f)
+                    if self.damp_rel and i != self.t_hips:
+                        # cq 016: damp the bone's turn relative to the hips, not the world (a spin
+                        # turns the hips a full circle; a world-damped leg or spine would twist
+                        # against them and tear the robe)
+                        dh = self.src_delta(Gs, self.map[self.t_hips])
+                        d = qmul(dh, qslerp(np.array([0, 0, 0, 1.0]), qmul(qinv(dh), d), f))
+                    else:
+                        d = qslerp(np.array([0, 0, 0, 1.0]), d, f)
                 want = qmul(qmul(d, self.A[i]), grot(self.t_rest_G, i))
                 pr = np.array([0, 0, 0, 1.0]) if p < 0 else grot(G, p)
                 loc[i][1] = qnorm(qmul(qinv(pr), want))
@@ -285,6 +293,33 @@ def native_q(tip_b, edge_b):
     return mat_to_q(m)
 
 
+def staff_upright(rt, loc, G, grip, su):
+    """cq 016: a staff-hold clip (clips.json "staff_up"): the right forearm and hand turn so the
+    staff in the hand (the grip's +Y, the orb end) stands up beside the body, a little forward and
+    out, instead of hanging orb-down the way the source holds its two-handed sword. The forearm
+    takes a share of the turn so the wrist does not break."""
+    tn = rt.tgt.names
+    ih, ie = tn.index("RightHand"), tn.index("RightForeArm")
+    ihip = rt.t_hips
+    gm = np.array(grip["matrix"], float).reshape(4, 4).T
+    axis_h = gm[:3, :3] @ np.array([0, 1.0, 0])
+    dq = qmul(grot(G, ihip), qinv(grot(rt.t_rest_G, ihip)))
+    fwd = qrot(dq, [0, 0, 1.0])
+    fwd = np.array([fwd[0], 0.0, fwd[2]])
+    fwd = fwd / max(1e-9, np.linalg.norm(fwd))
+    right = np.cross(fwd, [0, 1.0, 0])
+    want = np.array([0, 1.0, 0]) + fwd * su.get("fwd", 0.25) + right * su.get("out", 0.12)
+    want = want / np.linalg.norm(want)
+    ident = np.array([0, 0, 0, 1.0])
+    for i, share in ((ie, su.get("forearm", 0.35)), (ih, 1.0)):
+        cur = qrot(grot(G, ih), axis_h)
+        q = qslerp(ident, q_from_to(cur, want), share * su.get("w", 1.0))
+        p = rt.tgt.parent[i]
+        loc[i][1] = qnorm(qmul(qinv(grot(G, p)), qmul(q, grot(G, i))))
+        G = rt.tp.globals_of(loc)
+    return loc, G
+
+
 def clip_frames(rt, cfg, cc, damp, anims_lib, grips, lib):
     """The target pose of every frame of one clip (cq 012's retarget, unchanged; shared with
     tools/rig so the rig tools measure exactly what the gate measures). Returns
@@ -293,6 +328,7 @@ def clip_frames(rt, cfg, cc, damp, anims_lib, grips, lib):
     t_rhand = tgt.names.index("RightHand")
     # a clip may damp the legs harder (wide stances, spins), on top of the character's own
     rt.damp = dict(damp)
+    rt.damp_rel = bool(cc.get("damp_rel", False))
     for b in cc.get("damp_legs", {}).get("bones", []):
         rt.damp[b] = min(rt.damp.get(b, 1.0), cc["damp_legs"]["f"])
     src = rt.src
@@ -342,6 +378,9 @@ def clip_frames(rt, cfg, cc, damp, anims_lib, grips, lib):
             got = min(gpos(G, i)[1] for i in t_feet) - t_floor
             off[k][1] += want - got
             loc, G = rt.frame(sG[k], off[k])
+        su = cc.get("staff_up")
+        if su and "staff" in grips:
+            loc, G = staff_upright(rt, loc, G, grips["staff"], su)
         ik = cc.get("lhand_ik")
         if ik and ik["class"] in grips and lib == "kaykit":
             # where the source's left hand is along its own weapon (both hands on it?)
