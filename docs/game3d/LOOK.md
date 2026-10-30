@@ -75,6 +75,10 @@ gameplay, camera and frame budget.
   sparse grid over the street (0.3 m steps near the walls, open in the middle, 2.2 m along the
   street). A first, denser grid (0.35 x 0.7 m, ~6k triangles) cost more than a multiplied overlay
   on the software GPU (every triangle has a set-up cost there), hence the sparse one.
+- **Dusk depth:** up the street (z -4 to -24, beyond the fight) the paving and the shop fronts cool
+  towards `DUSK_COL` (blue-violet), baked into the same ground vertex colours and a term in
+  `facade.gdshader` (`dusk_col`, `dusk_z`), so the far street reads as dusk while the lamps, signs
+  and the warm low-sun pool (moved to the left) stay warm, as on the reference. No extra pass.
 - **Kerbs and lamp posts:** one small multiply-blended mesh (vertex colours, one draw) shades the
   kerb tops by the blocks and lays the left lamp posts' long thin shadows across the street.
 - **Real shadow maps:** `look.shadows` (off). See Costs.
@@ -86,7 +90,7 @@ The look's pieces can each be switched off from the config to measure them (`"lo
 
 | Piece | Frame cost on the software GPU | Shipped? |
 |---|---|---|
-| Whole look, final (8 interleaved pairs, load 1 to 2) | +6 % vs the effects head 0acfd79 (32.0 -> 33.9 ms), +10 % vs 5bd7f4f; draws 117 vs 120 | yes |
+| Whole look, final (5 interleaved rounds, load 1) | +7 % vs the effects head 0acfd79 (31.8 -> 33.9 ms), +12 % vs 5bd7f4f (30.6 ms); draws 114 vs 118 | yes |
 | Glow, or the BCS + LUT grade (either turns on the post pass) | about 2x the frame (a run with either on took 2.2 to 2.7x the CPU of the same run with both off) | no: opt-in `glow` / `grade` |
 | Real directional shadow map (one split, 30 m) | +58 % (467 vs 295 ms frame p50 in a loaded pair) | no: opt-in `shadows`; the blob shadows carry the sun's direction instead |
 | Godot's sky ambient (radiance cubemap, two reads a pixel) | not separable from noise in wall time; replaced by the ALU hemisphere term, which looks the same | `"sky": "cube"` opt-in |
