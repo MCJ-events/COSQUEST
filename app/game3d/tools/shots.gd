@@ -124,8 +124,10 @@ func _take(s: Dictionary, f: Node) -> void:
 			"top":
 				eye = target + fwd * dist * 0.5 + Vector3(0, dist, 0)
 			"full":
-				target = who.global_position + Vector3(0, 0.95, 0)
-				eye = target + fwd * 3.2 + right * 0.6 + Vector3(0, 0.4, 0)
+				# Half-way towards the held hand, far enough back that a long weapon held out stays in frame.
+				var off: Vector3 = (target - who.global_position) * 0.5
+				target = who.global_position + Vector3(off.x, 0.95, off.z)
+				eye = target + fwd * 3.9 + right * 0.6 + Vector3(0, 0.4, 0)
 			"fullside":
 				target = who.global_position + Vector3(0, 0.95, 0)
 				eye = target - right * 3.2 + fwd * 0.4 + Vector3(0, 0.3, 0)

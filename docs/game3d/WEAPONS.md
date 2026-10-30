@@ -81,12 +81,12 @@ Class poses today:
 |---|---|---|---|---|
 | sword | right | 0.9 f + 0.45 u | down | forward, a little raised |
 | greatsword | right | 0.55 f + 0.85 u | forward | raised in front |
-| dagger | right | f + 0.2 u | down | forward |
-| axe | right | 0.8 f + 0.55 u + 0.2 o | forward | haft forward and up, away from the body, head out in front (clear of the arm) |
+| dagger | right | 0.75 f + 0.45 o + 0.3 u | down | forward and a little out (shows in a front-on card) |
+| axe | right | 0.55 f + 0.75 u + 0.3 o | o + 0.35 f | haft forward and up, away from the body, head turned out (the blade shows its profile in a front-on card) |
 | hammer | right | 0.9 u + 0.35 f + 0.1 o | forward | haft up the arm to the shoulder |
 | staff | right | world up + 0.15 f | forward | upright beside the body |
 | crossbow | right | f | world up | at the hip, pointing forward |
-| rifle | right | 0.8 f - 0.5 w + 0.12 o | world up | low ready: barrel forward and down, clear of the leg |
+| rifle | right | 0.6 f + 0.3 o - 0.75 w | world up | low ready: barrel down, forward and a little out, clear of the leg |
 | shield | left | world up | o + 0.6 f | on the forearm, face out and forward |
 
 A shield is an off-hand item: with a shield, the main hand holds the character's own one-handed weapon, or the Knight's Arming Sword.
