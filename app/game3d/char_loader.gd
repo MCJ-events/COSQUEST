@@ -10,11 +10,12 @@ static func clean_path(p: String) -> String:
 	return s
 
 
-## The cast rigs fixed by cq 014 (Elvis, Crystal-Z, Hoof): when `path` is one of the exact
-## files cq 060 published to the Forge catalogue (matched by sha256, so any newer version of
-## the character is left alone), the game loads the same model with the fixed skeleton and
-## weights from res://cast/ instead (data/rig_fixes.json, written by tools/rig/ship.py; the
-## meshes and textures are byte-identical). Returns the path to load and the fix's key.
+## The cast rigs fixed by cq 014 and the cast look pass of cq 239 (all 8): when `path` is one
+## of the exact files cq 060 published to the Forge catalogue (matched by sha256, so any newer
+## version of the character is left alone), the game loads the same model with the fixed
+## skeleton and weights (cq 014) and the new textures and normals (cq 239) from res://cast/
+## instead (data/rig_fixes.json, written by tools/rig/ship.py then tools/look/ship_look.py;
+## the meshes, UVs and skins are byte-identical). Returns the path to load and the fix's key.
 const RIG_FIXES_JSON: String = "res://data/rig_fixes.json"
 static var _fixes: Dictionary = {}
 
