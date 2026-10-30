@@ -18,6 +18,7 @@ signal guard_changed(on: bool, t_in: float, ticks_in: int, src: String)
 const T_STICK_BASE := preload("res://art/hud/stick_base.png")
 const T_STICK_KNOB := preload("res://art/hud/stick_knob.png")
 const T_BTN_BASE := preload("res://art/hud/btn_base.png")
+const T_DISC := preload("res://art/hud/disc.png")   # a white disc (cq 011), tinted per use
 const T_BTN_RING := preload("res://art/hud/btn_ring.png")
 const T_BTN_ULT := preload("res://art/hud/btn_ring_ult.png")
 const T_ATTACK := preload("res://art/hud/icon_attack.png")
@@ -26,14 +27,22 @@ const T_PERSON := preload("res://art/hud/icon_person.png")
 const T_MAP_FRAME := preload("res://art/hud/minimap_frame.png")
 const T_PILL_TIMER := preload("res://art/hud/pill_timer.png")
 const T_PILL_SQUAD := preload("res://art/hud/pill_squad.png")
+# one distinct, bright icon per skill from the reference sheet's kit (CC0), and a desaturated
+# copy of each (made from it) for the cooldown
 const SKILL_ICONS: Array[Texture2D] = [
 	preload("res://art/hud/icon_dodge.png"),            # CHARGE: the dash chevrons
 	preload("res://art/hud/icon_ultimate.png"),         # SPLIT: the sword into the ground ring
-	preload("res://art/hud/icon_skill_shockwave.png"),  # WHIRL: the golden ring
-	preload("res://art/hud/coin_heal.png"),             # RALLY
-	preload("res://art/hud/coin_shield.png"),           # SHIELD
+	preload("res://art/hud/icon_skill_crescent.png"),   # WHIRL: the spinning crescent
+	preload("res://art/hud/icon_skill_shockwave.png"),  # RALLY: the golden burst
+	preload("res://art/hud/icon_skill_arcane.png"),     # SHIELD: the barrier circle
 ]
-const SKILL_ICONS_OFF: Array = [null, null, null, preload("res://art/hud/coin_heal_off.png"), preload("res://art/hud/coin_shield_off.png")]
+const SKILL_ICONS_OFF: Array[Texture2D] = [
+	preload("res://art/hud/icon_dodge_off.png"),
+	preload("res://art/hud/icon_ultimate_off.png"),
+	preload("res://art/hud/icon_skill_crescent_off.png"),
+	preload("res://art/hud/icon_skill_shockwave_off.png"),
+	preload("res://art/hud/icon_skill_arcane_off.png"),
+]
 const FONT := preload("res://art/fonts/LilitaOne-Regular.ttf")
 
 const STICK_BASE_R: float = 86.0
@@ -43,6 +52,7 @@ const STICK_DEAD: float = 0.12                       # 12% dead zone
 const STICK_HOME_FROM_BL: Vector2 = Vector2(150.0, 205.0)
 const ATTACK_R: float = 62.0
 const SKILL_R: float = 37.0
+const ICON_K: Array[float] = [0.86, 0.9, 0.86, 0.9, 0.88]   # icon size in the disc (the art has its own margins)
 const GUARD_R: float = 33.0
 const ATTACK_FROM_BR: Vector2 = Vector2(98.0, 150.0)
 const SKILL_ARC_R: float = 150.0
@@ -52,7 +62,10 @@ const GUARD_FROM_ATTACK: Vector2 = Vector2(-10.0, -165.0) # unused when the arc 
 const REAL_SLOT: int = 2
 const MAP_R: float = 76.0
 const MAP_CENTRE_FROM_TR: Vector2 = Vector2(96.0, 118.0)
-const MAP_METRES: float = 30.0
+var map_blocks: Array[Rect2] = []          # building footprints (x, z metres), from the arena
+var _map_disc: PackedVector2Array = PackedVector2Array()
+var _map_disc_at: Vector2 = Vector2(-1, -1)
+const MAP_METRES: float = 20.0   # across the disc
 
 const C_HERO: Color = Color(0.42, 0.93, 0.38)
 const C_ALLY: Color = Color(0.36, 0.86, 0.98)
@@ -68,6 +81,7 @@ var hero_name: String = "You"
 var hero_hp: int = 0
 var hero_max: int = 1
 var show_hero_card: bool = true
+var portrait: Texture2D = null   # the hero's face (fight.gd renders it once at the start)
 var units: Array[Dictionary] = []      # {id, name, hp, max, team, head: Vector3, is_hero, shield, buff, stagger, level}
 var map_points: Array[Dictionary] = [] # {p: Vector2 metres (x right, y down-screen), kind, facing: Vector2}
 var skill_cd: Array[float] = [0.0, 0.0, 0.0, 0.0, 0.0]
@@ -470,6 +484,12 @@ func _flush_texts() -> void:
 	_texts.clear()
 
 
+## A filled circle as a textured quad: draw_circle is a polygon, one draw call each on the
+## Compatibility renderer; quads of one texture drawn back to back batch into one.
+func _disc(c: Vector2, r: float, col: Color) -> void:
+	draw_texture_rect(T_DISC, Rect2(c - Vector2(r, r), Vector2(r, r) * 2.0), false, col)
+
+
 func _tex(t: Texture2D, c: Vector2, r: float, mod: Color = Color.WHITE) -> void:
 	draw_texture_rect(t, Rect2(c - Vector2(r, r), Vector2(r, r) * 2.0), false, mod)
 
@@ -574,8 +594,8 @@ func _draw_overheads() -> void:
 		if not boss:
 			# level badge, as on the reference's hero bar
 			var bc: Vector2 = r.position + Vector2(-12, h * 0.5)
-			draw_circle(bc, 12.0, Color(0.1, 0.07, 0.14, 0.95))
-			draw_circle(bc, 10.0, Color(0.95, 0.72, 0.25))
+			_disc(bc, 12.0, Color(0.1, 0.07, 0.14, 0.95))
+			_disc(bc, 10.0, Color(0.95, 0.72, 0.25))
 			_text(bc + Vector2(0, -1), str(int(u.get("level", 1))), 14, Color(0.25, 0.12, 0.02))
 		var name_col: Color = Color(0.86, 0.72, 1.0) if boss else (Color(0.72, 1.0, 0.62) if bool(u["is_hero"]) else Color(0.7, 0.93, 1.0))
 		_text(p + Vector2(0, -15), str(u["name"]), 22 if boss else 19, name_col, 6)
@@ -595,8 +615,8 @@ func _draw_pops() -> void:
 			continue
 		var t: float = d["t"]
 		var style: String = d["style"]
-		var rise: float = 80.0 if style != "crit" else 60.0
-		var p: Vector2 = cam.unproject_position(w) + Vector2(float(d["dx"]) * minf(1.0, t / 0.12 + 0.4), float(d.get("dy", 0.0)) - 30.0 - rise * ease(t / 0.95, 0.4))
+		var rise: float = 58.0 if style != "crit" else 44.0
+		var p: Vector2 = cam.unproject_position(w) + Vector2(float(d["dx"]) * minf(1.0, t / 0.12 + 0.4), float(d.get("dy", 0.0)) - 6.0 - rise * ease(t / 0.95, 0.4))
 		var a: float = 1.0 - clampf((t - 0.6) / 0.35, 0.0, 1.0)
 		var punch: float = 1.0 + 0.6 * maxf(0.0, 1.0 - t / 0.1)
 		# sized like the reference's numbers: a jab still reads at phone size
@@ -670,9 +690,20 @@ func _draw_top() -> void:
 	if show_hero_card:
 		var hr := Rect2(Vector2(16, 26), Vector2(196, 64))
 		draw_style_box(_card, hr)
-		draw_circle(hr.position + Vector2(30, 32), 21.0, Color(0.95, 0.72, 0.25))
-		draw_circle(hr.position + Vector2(30, 32), 18.0, Color(0.16, 0.12, 0.26))
-		_text(hr.position + Vector2(30, 31), hero_name.substr(0, 1).to_upper(), 24, Color(1, 0.86, 0.45))
+		_disc(hr.position + Vector2(30, 32), 21.0, Color(0.95, 0.72, 0.25))
+		_disc(hr.position + Vector2(30, 32), 18.0, Color(0.16, 0.12, 0.26))
+		if portrait != null:
+			# the hero's face in the round frame (a textured circle)
+			var pc: Vector2 = hr.position + Vector2(30, 32)
+			var pts := PackedVector2Array()
+			var uvs := PackedVector2Array()
+			for j in 24:
+				var d: Vector2 = Vector2.from_angle(TAU * j / 24.0)
+				pts.append(pc + d * 18.0)
+				uvs.append(Vector2(0.5, 0.5) + d * 0.5)
+			draw_polygon(pts, PackedColorArray([Color.WHITE]), uvs, portrait)
+		else:
+			_text(hr.position + Vector2(30, 31), hero_name.substr(0, 1).to_upper(), 24, Color(1, 0.86, 0.45))
 		_text_left(hr.position + Vector2(60, 18), hero_name, 20, Color.WHITE)
 		_rbar(Rect2(hr.position + Vector2(60, 34), Vector2(122, 12)), float(hero_hp) / maxf(1.0, float(hero_max)), C_HERO)
 		_text_left(hr.position + Vector2(60, 54), "%d / %d" % [hero_hp, hero_max], 14, Color(1, 1, 1, 0.8))
@@ -680,36 +711,70 @@ func _draw_top() -> void:
 			_text_left(hr.position + Vector2(146, 54), "ATK+", 14, Color(1.0, 0.8, 0.3))
 
 
+## The minimap, as on the reference: centred on the hero, the street and the blocks round it
+## (clipped to the disc), the hero's view cone, the three fighters with their facing.
 func _draw_minimap() -> void:
 	var c: Vector2 = _map_centre()
-	draw_circle(c, MAP_R, Color(0.13, 0.11, 0.22, 0.88))
-	var k: float = (MAP_R * 2.0 / 0.95) / MAP_METRES
-	# the street running up-screen and the plaza ring
-	draw_rect(Rect2(c + Vector2(-10.0 * k * 0.25, -MAP_R + 4), Vector2(5.0 * k * 0.25 * 2.0, MAP_R * 2 - 8)), Color(0.32, 0.3, 0.42, 0.7))
-	draw_arc(c, minf(12.0 * k, MAP_R - 4), 0, TAU, 40, Color(1, 1, 1, 0.22), 2.0)
-	draw_circle(c, 3.0 * k, Color(0.55, 0.45, 0.4, 0.45))
+	var k: float = (MAP_R * 2.0) / MAP_METRES
+	var me: Vector2 = Vector2.ZERO
 	for m: Dictionary in map_points:
-		var v: Vector2 = (m["p"] as Vector2) * k   # metres, already turned so up = camera forward
+		if m["kind"] == "hero":
+			me = m["p"]
+	if _map_disc.is_empty() or _map_disc_at != c:
+		_map_disc_at = c
+		_map_disc = PackedVector2Array()
+		for j in 40:
+			_map_disc.append(c + Vector2.from_angle(TAU * j / 40.0) * (MAP_R - 1.0))
+	_disc(c, MAP_R, Color(0.43, 0.41, 0.56, 0.92))   # the street (and anything not built)
+	var reach: float = MAP_R / k + 8.0
+	for r: Rect2 in map_blocks:
+		if absf(r.get_center().y - me.y) > reach + r.size.y or absf(r.get_center().x - me.x) > reach + r.size.x:
+			continue
+		var q := PackedVector2Array([c + (r.position - me) * k, c + (Vector2(r.end.x, r.position.y) - me) * k,
+			c + (r.end - me) * k, c + (Vector2(r.position.x, r.end.y) - me) * k])
+		for poly: PackedVector2Array in Geometry2D.intersect_polygons(q, _map_disc):
+			draw_colored_polygon(poly, Color(0.14, 0.12, 0.24, 0.96))
+	# the medallion where the fight began
+	var mc: Vector2 = c + (Vector2.ZERO - me) * k
+	if mc.distance_to(c) < MAP_R - 3.6 * k:
+		_disc(mc, 3.6 * k, Color(0.62, 0.5, 0.48, 0.55))
+		draw_arc(mc, 3.6 * k, 0, TAU, 28, Color(1, 0.85, 0.7, 0.45), 1.5)
+	var dots: Array = []
+	for m: Dictionary in map_points:
+		var v: Vector2 = ((m["p"] as Vector2) - me) * k
 		v = v.limit_length(MAP_R - 9)
 		var kind: String = m["kind"]
 		var col: Color = C_HERO
-		var r: float = 7.0
+		var r: float = 5.0
 		if kind == "ally":
 			col = C_ALLY
-			r = 6.0
+			r = 4.5
 		elif kind == "enemy":
 			col = Color(0.95, 0.25, 0.22)
-			r = 9.0
+			r = 6.5
 		var p: Vector2 = c + v
 		var f: Vector2 = m.get("facing", Vector2.ZERO)
+		if kind == "hero":
+			# the view cone: what the camera sees (up the screen), glowing like the reference's
+			var cone := PackedVector2Array([p])
+			var cols := PackedColorArray([Color(0.6, 0.97, 1.0, 0.85)])
+			for j in 9:
+				var a: float = -PI * 0.5 + deg_to_rad(-34.0 + 68.0 * j / 8.0)
+				cone.append(p + Vector2.from_angle(a) * 46.0)
+				cols.append(Color(0.55, 0.95, 1.0, 0.0))
+			draw_polygon(cone, cols)
 		if f != Vector2.ZERO:
 			# the facing wedge
 			var fn: Vector2 = f.normalized()
 			var side: Vector2 = Vector2(-fn.y, fn.x)
-			draw_colored_polygon(PackedVector2Array([p + fn * (r + 9.0), p + side * (r * 0.8), p - side * (r * 0.8)]), Color(col.r, col.g, col.b, 0.85))
-		draw_circle(p, r + 2.5, Color(0.02, 0.02, 0.05, 0.85))
-		draw_circle(p, r, col)
-		draw_circle(p + Vector2(-r * 0.3, -r * 0.3), r * 0.35, Color(1, 1, 1, 0.45))
+			draw_colored_polygon(PackedVector2Array([p + fn * (r + 8.0), p + side * (r * 0.85), p - side * (r * 0.85)]), Color(col.r, col.g, col.b, 0.9))
+		dots.append([p, r, col])
+	for d: Array in dots:
+		var p: Vector2 = d[0]
+		var r: float = d[1]
+		_disc(p, r + 2.5, Color(0.02, 0.02, 0.05, 0.85))
+		_disc(p, r, d[2])
+		_disc(p + Vector2(-r * 0.3, -r * 0.3), r * 0.35, Color(1, 1, 1, 0.45))
 	draw_texture_rect(T_MAP_FRAME, Rect2(c - Vector2(MAP_R + 9, MAP_R + 9), Vector2(MAP_R + 9, MAP_R + 9) * 2.0), false)
 
 
@@ -746,8 +811,8 @@ func _draw_controls() -> void:
 		var pa: float = deg_to_rad(-90.0 - 22.0 + 22.0 * j)
 		var pp: Vector2 = ac + Vector2(cos(pa), sin(pa)) * (ATTACK_R + 13.0)
 		var lit: bool = j < combo_step
-		draw_circle(pp, 6.5, Color(0.05, 0.03, 0.08, 0.85))
-		draw_circle(pp, 4.5, Color(1.0, 0.75, 0.25) if lit else Color(1, 1, 1, 0.28))
+		_disc(pp, 6.5, Color(0.05, 0.03, 0.08, 0.85))
+		_disc(pp, 4.5, Color(1.0, 0.75, 0.25) if lit else Color(1, 1, 1, 0.28))
 	# skills
 	for i in SKILL_ANGLES.size():
 		var c: Vector2 = skill_centre(i)
@@ -756,14 +821,13 @@ func _draw_controls() -> void:
 		var r: float = SKILL_R * s
 		var cd: float = skill_cd[i]
 		var ok: bool = skill_ok[i] and cd <= 0.0
-		draw_circle(c, r + 3.0, Color(0.05, 0.03, 0.1, 0.55))
-		var icon: Texture2D = SKILL_ICONS[i]
-		if cd > 0.0 and SKILL_ICONS_OFF[i] != null:
-			icon = SKILL_ICONS_OFF[i]
-		var mod: Color = Color.WHITE if ok else (Color(0.5, 0.5, 0.55, 0.9) if cd > 0.0 else Color(0.75, 0.75, 0.8, 0.8))
-		_tex(icon, c, r * (1.12 if i < 3 else 1.0), mod)
+		# the reference's button: a translucent light disc, the icon on it
+		_tex(T_BTN_BASE, c, r + 4.0, Color(1, 1, 1, 0.9))
+		var icon: Texture2D = SKILL_ICONS_OFF[i] if cd > 0.0 or not skill_ok[i] else SKILL_ICONS[i]
+		var mod: Color = Color.WHITE if ok else (Color(0.85, 0.85, 0.9, 0.95) if cd > 0.0 else Color(0.8, 0.8, 0.85, 0.75))
+		_tex(icon, c, r * ICON_K[i], mod)
 		if cd > 0.0:
-			_pie(c, r, cd / maxf(skill_cd_max[i], 0.01), Color(0.02, 0.0, 0.06, 0.62))
+			_pie(c, r, cd / maxf(skill_cd_max[i], 0.01), Color(0.04, 0.02, 0.1, 0.45))
 			draw_arc(c, r + 1.5, -PI * 0.5, -PI * 0.5 + TAU * (1.0 - cd / maxf(skill_cd_max[i], 0.01)), 32, Color(1.0, 0.8, 0.35, 0.9), 3.0, true)
 			_text(c, ("%.1f" % cd) if cd < 1.0 else ("%d" % int(ceil(cd))), 28, Color.WHITE, 7)
 		if _ready_pulse[i] >= 0.0:
@@ -772,9 +836,9 @@ func _draw_controls() -> void:
 	# guard
 	var gc: Vector2 = guard_centre()
 	var gs: float = 0.9 if guard_on else 1.0
-	draw_circle(gc, GUARD_R + 3.0, Color(0.05, 0.03, 0.1, 0.55))
+	_disc(gc, GUARD_R + 3.0, Color(0.05, 0.03, 0.1, 0.55))
 	if guard_on:
-		draw_circle(gc, GUARD_R + 7.0, Color(0.5, 0.85, 1.0, 0.35))
+		_disc(gc, GUARD_R + 7.0, Color(0.5, 0.85, 1.0, 0.35))
 	_tex(T_GUARD, gc, GUARD_R * gs, Color.WHITE if guard_on else Color(1, 1, 1, 0.85))
 	if _press[6] >= 0.0:
 		var kg: float = _press[6] / 0.3

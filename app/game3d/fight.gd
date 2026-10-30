@@ -29,8 +29,8 @@ const HERO_HP: int = 1000
 const ALLY_HP: int = 800
 const ENEMY_HP: int = 6500
 const HERO_SPEED: float = 4.6            # m/s, no acceleration ramp: moves on the first frame
-const ARENA_HALF_X: float = 5.8         # the street between the kerbs
-const ARENA_Z: Vector2 = Vector2(-18.0, 12.0)
+const ARENA_HALF_X: float = 4.7         # the street between the kerbs
+const ARENA_Z: Vector2 = Vector2(-9.0, 9.0)   # along the street: the camera (CAM_BOUNDS) keeps the whole fight framed
 
 # ---- the hero's combo. len: swing length; open/close: the hitbox's live window (s);
 # sweep: the arc's yaw from/to (deg, + is the hero's left); lift: the trail's height
@@ -103,14 +103,15 @@ const BOLT_SPEED: float = 14.0
 
 # ---- camera (cq 233: closer and steeper than G0, to match the reference's framing:
 # fighters ~1/7 of the screen high, the action on the middle third)
-const CAM_PITCH: float = 50.0
+const CAM_PITCH: float = 44.0
 const CAM_YAW: float = 0.0
-const CAM_FOV: float = 58.0
-const CAM_DIST: float = 15.0
+const CAM_FOV: float = 55.0
+const CAM_DIST: float = 16.5
 const CAM_AHEAD: float = 0.6
 const CAM_SMOOTH: float = 0.16
 const CAM_LOOK: float = 0.7
-const CAM_BOUNDS: float = 6.0
+const CAM_BOUNDS: float = 8.0          # along the street (the fight keeps within ARENA_Z = +-9)
+const CAM_BOUNDS_X: float = 2.2        # across it: the street stays centred, the shop walls at the edges
 
 const TEST_PACKS: String = "/opt/cq/tasks/056-game-forge-in-world-v2/out/packs/"
 
@@ -212,10 +213,10 @@ var _load_threaded: bool = true
 # instrumentation
 var _ft: PackedFloat32Array = PackedFloat32Array()
 var _perf_last_us: int = 0
-const DYN_RES_SLOW_MS: float = 36.0   # under ~28 fps: fewer 3D pixels
-const DYN_RES_FAST_MS: float = 22.0   # over ~45 fps: back up towards render_scale
+const DYN_RES_SLOW_MS: float = 30.0   # under ~33 fps: fewer 3D pixels
+const DYN_RES_FAST_MS: float = 18.0   # over ~55 fps: back up towards render_scale
 const DYN_RES_STEP: float = 0.07
-const DYN_RES_MIN: float = 0.36
+const DYN_RES_MIN: float = 0.3
 var _dyn_on: bool = false
 var _dyn_base: float = 0.5
 var _dyn_next_us: int = 0
@@ -289,6 +290,7 @@ func _ready() -> void:
 	hud.name = "Hud"
 	layer.add_child(hud)
 	hud.cam = cam
+	hud.map_blocks = arena.get("map_blocks")
 	hud.visible = not bool(cfg.get("prof_no_hud", false))   # profiling only: the 3D cost alone
 	hud.players_text = str(cfg.get("players_text", "2/3")).replace(" players", "").replace(" player", "")
 	hud.point_name = str(cfg.get("point_name", ""))
@@ -505,7 +507,35 @@ func _finish_load(r: Dictionary) -> void:
 		_log("load role=%s ok=false error=%s path=%s (capsule fallback)" % [role, str(r.get("error", "?")), str(r.get("path", ""))])
 
 
+## The hero card's portrait, as on the reference: the loaded hero's face, rendered once by a
+## small camera into a 128 px image (the SubViewport shares the fight's world, then goes).
+func _make_portrait() -> void:
+	if hero == null or _headless or not bool(cfg.get("portrait", true)):
+		return
+	var vp := SubViewport.new()
+	vp.name = "Portrait"
+	vp.size = Vector2i(128, 128)
+	vp.render_target_update_mode = SubViewport.UPDATE_ONCE
+	var c := Camera3D.new()
+	c.fov = 21.0
+	vp.add_child(c)
+	add_child(vp)
+	var fwd: Vector3 = hero.global_transform.basis.z.normalized()
+	var face: Vector3 = hero.global_position + Vector3(0, FighterScript.HEIGHT * hero.size_k * 0.9, 0)
+	c.look_at_from_position(face + fwd * 1.6 + Vector3(0, 0.2, 0), face, Vector3.UP)
+	c.current = true
+	await RenderingServer.frame_post_draw
+	await RenderingServer.frame_post_draw
+	if not is_instance_valid(vp):
+		return
+	var img: Image = vp.get_texture().get_image()
+	vp.queue_free()
+	if img != null and hud != null:
+		hud.portrait = ImageTexture.create_from_image(img)
+
+
 func _begin_fight() -> void:
+	_make_portrait()
 	state = "fighting"
 	fight_time = 0.0
 	t_left = duration
@@ -765,7 +795,7 @@ func _tick_swing(_dt: float) -> void:
 			var h: float = 1.15 + lerpf(lift.x, lift.y, kk)
 			var base: Vector3 = hero.position + Vector3(0, 1.15 + lerpf(lift.x, lift.y, kk) * 0.4, 0) + dir * (reach * 0.42)
 			var tip: Vector3 = hero.position + Vector3(0, h, 0) + dir * reach
-			fx.trail_push("hero%d" % _combo_i, base, tip, Color(1.0, 0.58, 0.1) if bool(d["heavy"]) else Color(0.12, 0.72, 1.0), (1.0 - u) * _dt)
+			fx.trail_push("hero%d" % _combo_i, base, tip, Color(1.0, 0.5, 0.05) if bool(d["heavy"]) else Color(0.05, 0.5, 1.0), (1.0 - u) * _dt)
 	_swing_prev_deg = yaw_deg
 	# chain: a buffered press (or a held button) starts the next hit at COMBO_CHAIN_AT
 	if (_attack_buffer > 0.0 or hud.attack_held) and _act_t >= _act_len * COMBO_CHAIN_AT and _combo_i < COMBO.size() - 1:
@@ -865,8 +895,8 @@ func _tick_skill(dt: float) -> void:
 				sfx.play("slam")
 				fx.ring(hero.position, 2.4, Color(1.0, 0.6, 0.25, 0.95))
 				fx.ring(hero.position, 3.6, Color(1.0, 0.9, 0.6, 0.8), 0.5)
-				fx.pillar(hero.position + _skill_dir * 0.5, 7.0, 2.6, Color(1.0, 0.7, 0.3, 1.0), 0.5)
-				fx.pillar(hero.position + _skill_dir * 0.5, 8.0, 1.1, Color(1.0, 0.97, 0.85, 1.0), 0.4)
+				fx.pillar(hero.position + _skill_dir * 0.5, 9.0, 3.4, Color(0.75, 0.9, 1.0, 1.0), 0.55)
+				fx.pillar(hero.position + _skill_dir * 0.5, 10.0, 1.4, Color(1.0, 1.0, 1.0, 1.0), 0.42)
 				fx.dust(hero.position)
 				fx.ground_split(hero.position + _skill_dir * 0.8, _skill_dir, SPLIT_LEN_M, 0.25, Color(1.0, 0.55, 0.2))
 				hero.remove_child(_skill_area)
@@ -887,7 +917,7 @@ func _tick_skill(dt: float) -> void:
 			for hit_i in 2:
 				var at_t: float = [0.08, 0.3][hit_i]
 				if t >= at_t and _fire_once("w%d" % hit_i):
-					fx.swirl(hero.position, WHIRL_RADIUS, Color(1.0, 0.8, 0.4, 0.95))
+					fx.swirl(hero.position, WHIRL_RADIUS, Color(1.0, 0.62, 0.82, 0.95))
 					fx.ring(hero.position, WHIRL_RADIUS, Color(1.0, 0.75, 0.3, 0.9))
 					fx.ring(hero.position, WHIRL_RADIUS * 1.35, Color(1.0, 0.95, 0.75, 0.7), 0.5)
 					fx.swirl(hero.position, WHIRL_RADIUS * 0.8, Color(1.0, 0.95, 0.7, 0.9), 0.4, 0.4)
@@ -958,7 +988,7 @@ func _apply_hit(src: FighterScript, dst: FighterScript, info: Dictionary) -> voi
 	var amount: int = rng.randi_range(r.x, r.y)
 	amount = int(round(amount * src.buff_mult))
 	var away: Vector3 = _flat(dst.position - src.position)
-	var pop_at: Vector3 = dst.head_pos() + Vector3(0, 0.5, 0)   # above the name and bar
+	var pop_at: Vector3 = dst.chest_pos() + Vector3(0, 0.25 * dst.size_k, 0)   # on the target's body, as on the reference
 	# dodge: i-frames
 	if dst.iframes > 0.0:
 		hud.pop(pop_at, "DODGE", "dodge")
@@ -1515,7 +1545,7 @@ func _follow_camera(dt: float) -> void:
 		target = hero.position + _cam_fwd * CAM_AHEAD + _look
 		if enemy != null and not enemy.dead:
 			target = target.lerp((hero.position + enemy.position) * 0.5, 0.5)
-	target.x = clampf(target.x, -CAM_BOUNDS, CAM_BOUNDS)
+	target.x = clampf(target.x, -CAM_BOUNDS_X, CAM_BOUNDS_X)
 	target.z = clampf(target.z, -CAM_BOUNDS, CAM_BOUNDS)
 	target.y = 0.0
 	_focus = _smooth_damp(_focus, target, CAM_SMOOTH, 40.0, dt)
@@ -1558,7 +1588,8 @@ func _sync_hud() -> void:
 	hud.t_left = t_left
 	for i in 5:
 		hud.skill_cd[i] = _skill_cd[i]
-		hud.skill_ok[i] = hero != null and state == "fighting" and _can_cast()
+		# disabled only when a press cannot count: during a swing or another skill it is buffered
+		hud.skill_ok[i] = hero != null and state == "fighting" and not hero.dead and hero.stagger <= 0.0
 	hud.attack_cd_k = 0.0
 	if _action == "attack":
 		hud.attack_cd_k = clampf(1.0 - _act_t / maxf(0.01, _act_len), 0.0, 1.0)

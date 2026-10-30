@@ -9,17 +9,25 @@ const T_PAVERS := preload("res://art/street/street_pavers.png")
 const T_MEDALLION := preload("res://art/street/medallion.png")
 const T_CIRCUIT := preload("res://art/street/circuit_run.png")
 const T_POOL := preload("res://art/street/light_pool.png")
+const FACADE_SHADER := preload("res://vfx/facade.gdshader")
+const T_NEON := preload("res://art/street/neon_atlas.png")     # 6 signs stacked, self-drawn
+const T_SHOP := preload("res://art/street/shop_glow.png")
+const T_LAMP := preload("res://art/street/lamp_glow.png")
+const T_CONE := preload("res://art/street/lamp_cone.png")
+const NEON_SIGNS: int = 6
 
 const BUILDINGS: Array[String] = ["building-a", "building-b", "building-c", "building-d", "building-e",
 	"building-f", "building-g", "building-h", "building-k", "building-l"]
-const STREET_HALF: float = 6.8       # kerb to kerb half width (fight.gd clamps at 5.8 m)
+const STREET_HALF: float = 5.6       # kerb to kerb half width (fight.gd clamps at 4.7 m)
 const SHOP_W: float = 7.0
+const NEAR_FADE: Vector2 = Vector2(13.0, 15.5)   # lamps fade out nearer the camera than this (m)
 const MERGE_CHUNK: float = 12.0      # metres of street per merged mesh (culling)
 
 var ground: MeshInstance3D
 var plaza: MeshInstance3D
 var _dressing: Node3D
 var _scenes: Dictionary = {}
+var map_blocks: Array[Rect2] = []   # building footprints (x, z in metres) for the minimap
 
 
 func build(cfg: Dictionary) -> void:
@@ -95,7 +103,19 @@ func build(cfg: Dictionary) -> void:
 	_dressing = Node3D.new()
 	_dressing.name = "Street"
 	add_child(_dressing)
+	for k in 2:
+		var st := SurfaceTool.new()
+		st.begin(Mesh.PRIMITIVE_TRIANGLES)
+		_neon_st.append(st)
+		var st2 := SurfaceTool.new()
+		st2.begin(Mesh.PRIMITIVE_TRIANGLES)
+		_shop_st.append(st2)
+	_lamps_st = SurfaceTool.new()
+	_lamps_st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	_cones_st = SurfaceTool.new()
+	_cones_st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	_build_street()
+	_commit_glows()
 	if bool(cfg.get("merge_street", true)):
 		_merge_dressing()
 
@@ -123,6 +143,10 @@ func _piece(n: String, width: float, at: Vector3, yaw_deg: float) -> Node3D:
 	_dressing.add_child(holder)
 	for mi: Node in inst.find_children("*", "MeshInstance3D", true, false):
 		(mi as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		if n.begins_with("building"):
+			mi.set_meta("facade", true)
+		elif n in ["planter", "tree-small", "stall-bench"]:
+			mi.set_meta("near_fade", true)
 	return holder
 
 
@@ -154,9 +178,14 @@ func _build_street() -> void:
 	var z: float = 16.0
 	while z > -42.0:
 		for side in 2:
-			var x: float = (STREET_HALF + SHOP_W * 0.5) * (-1.0 if side == 0 else 1.0)
+			var sx: float = -1.0 if side == 0 else 1.0
+			var x: float = (STREET_HALF + SHOP_W * 0.5) * sx
 			var n: String = BUILDINGS[(i * 3 + side * 5) % BUILDINGS.size()]
-			_piece(n, SHOP_W, Vector3(x, 0, z), 90.0 if side == 0 else -90.0)
+			var h: Node3D = _piece(n, SHOP_W, Vector3(x, 0, z), 90.0 if side == 0 else -90.0)
+			if h != null:
+				_dress_front(h, sx, i * 2 + side)
+				var wb: AABB = h.transform * _aabb(h)
+				map_blocks.append(Rect2(wb.position.x, wb.position.z, wb.size.x, wb.size.z))
 		z -= SHOP_W + 0.4
 		i += 1
 	# kerbs: a slightly raised strip in front of the shops
@@ -184,11 +213,20 @@ func _build_street() -> void:
 	while lz > -36.0:
 		for side in 2:
 			var sx: float = -1.0 if side == 0 else 1.0
-			var lamp := _piece("light-curved", 1.6, Vector3(sx * (STREET_HALF - 1.0), 0, lz + side * 3.0), 90.0 if side == 0 else -90.0)
+			var lamp := _piece("light-curved", 1.6, Vector3(sx * (STREET_HALF - 0.55), 0, lz + side * 3.0), 90.0 if side == 0 else -90.0)
 			if lamp != null:
 				var aabb: AABB = _aabb(lamp)
 				var h: float = aabb.size.y
 				lamp.scale = Vector3.ONE * (5.5 / maxf(0.1, h))
+				for mi: Node in lamp.find_children("*", "MeshInstance3D", true, false):
+					mi.set_meta("lamp", true)
+				# the lamp head: the end of the arm, over the street
+				var wb: AABB = lamp.transform * _aabb(lamp)
+				var head_x: float = wb.position.x if sx > 0.0 else wb.end.x
+				var head := Vector3(head_x + sx * 0.25, wb.end.y - 0.35, lamp.position.z)
+				_glow_quad(_lamps_st, head, 2.2, 2.2, Rect2(0, 0, 1, 1), true)
+				# the light falling from the head to its pool, as on the reference's dusk street
+				_cone(_cones_st, head - Vector3(0, 0.2, 0), Vector3(head.x, 0.05, head.z + 0.6), 0.4, 4.0)
 			var pool := MeshInstance3D.new()
 			var pq := PlaneMesh.new()
 			pq.size = Vector2(7.0, 7.0)
@@ -207,6 +245,106 @@ func _build_street() -> void:
 		_piece("tree-small", 2.6, Vector3((STREET_HALF - 1.2) * (-1.0 if side == 0 else 1.0), 0, -24.0 + side * 4.0), 0.0)
 
 
+# ---- the lit street: neon signs, shop windows, lamp heads. Each kind is one mesh per side of
+# the street (a handful of draw calls, unshaded and additive), not one node per sign.
+var _neon_st: Array[SurfaceTool] = []
+var _shop_st: Array[SurfaceTool] = []
+var _lamps_st: SurfaceTool
+var _cones_st: SurfaceTool
+var _cam_facing: Basis = Basis.from_euler(Vector3(deg_to_rad(-44.0), 0.0, 0.0))   # fight.gd CAM_PITCH
+
+
+## A shop front: warm light spilling from its windows onto the pavement, and on most a neon
+## blade sign sticking out over the pavement (turned to the fight camera, so it reads).
+func _dress_front(h: Node3D, sx: float, n: int) -> void:
+	var wb: AABB = h.transform * _aabb(h)
+	var front_x: float = wb.end.x if sx < 0.0 else wb.position.x
+	var zc: float = wb.get_center().z
+	var length: float = wb.size.z
+	var side: int = 0 if sx < 0.0 else 1
+	_ground_quad(_shop_st[side], Vector3(front_x - sx * 1.0, 0.04, zc), 2.0, length * 0.8, Rect2(0, 0, 1, 1))
+	# signs only up the street (z < -5): the camera's focus never goes past z = -8
+	# (fight.gd CAM_BOUNDS), so they stay up the screen, never among the controls
+	if n % 3 != 2 and zc < -5.0:
+		var k: int = (n * 5 + 1) % NEON_SIGNS
+		var w: float = 2.0
+		_glow_quad(_neon_st[side], Vector3(front_x - sx * (w * 0.5 + 0.1), 4.7 + 0.35 * float(n % 2), zc + (1.2 if n % 2 == 0 else -1.2)),
+			w, w * 0.375, Rect2(0, float(k) / NEON_SIGNS, 1, 1.0 / NEON_SIGNS), true)
+
+
+## A flat quad on the ground: `wx` across the street (x), `wz` along it.
+func _ground_quad(st: SurfaceTool, c: Vector3, wx: float, wz: float, uv: Rect2) -> void:
+	_quad(st, c, Vector3(0, 0, wz * 0.5), Vector3(wx * 0.5, 0, 0), uv)
+
+
+## A quad on a wall facing the street (the wall's normal is -sx along x).
+func _wall_quad(st: SurfaceTool, c: Vector3, sx: float, w: float, h: float, uv: Rect2) -> void:
+	var right: Vector3 = Vector3(0, 0, sx) * (w * 0.5)   # reads left to right from the street
+	var up: Vector3 = Vector3(0, h * 0.5, 0)
+	_quad(st, c, right, up, uv)
+
+
+## A quad that faces the (fixed-angle) fight camera: a glow without a billboard node.
+func _glow_quad(st: SurfaceTool, c: Vector3, w: float, h: float, uv: Rect2, _face_cam: bool) -> void:
+	_quad(st, c, _cam_facing.x * (w * 0.5), _cam_facing.y * (h * 0.5), uv)
+
+
+## A light cone: a vertical trapezoid facing the camera's side of the street (+z).
+func _cone(st: SurfaceTool, top: Vector3, bottom: Vector3, top_w: float, bottom_w: float) -> void:
+	var p := [bottom - Vector3(bottom_w * 0.5, 0, 0), bottom + Vector3(bottom_w * 0.5, 0, 0), top + Vector3(top_w * 0.5, 0, 0), top - Vector3(top_w * 0.5, 0, 0)]
+	var t := [Vector2(0, 1), Vector2(1, 1), Vector2(1, 0), Vector2(0, 0)]
+	for idx: int in [0, 1, 2, 0, 2, 3]:
+		st.set_uv(t[idx])
+		st.add_vertex(p[idx])
+
+
+func _quad(st: SurfaceTool, c: Vector3, right: Vector3, up: Vector3, uv: Rect2) -> void:
+	var p := [c - right - up, c + right - up, c + right + up, c - right + up]
+	var t := [Vector2(uv.position.x, uv.end.y), Vector2(uv.end.x, uv.end.y), Vector2(uv.end.x, uv.position.y), uv.position]
+	for idx: int in [0, 1, 2, 0, 2, 3]:
+		st.set_uv(t[idx])
+		st.add_vertex(p[idx])
+
+
+func _glow_mat(tex: Texture2D, col: Color, add: bool = true) -> StandardMaterial3D:
+	var m := StandardMaterial3D.new()
+	m.albedo_texture = tex
+	m.albedo_color = col
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD if add else BaseMaterial3D.BLEND_MODE_MIX
+	m.cull_mode = BaseMaterial3D.CULL_DISABLED
+	m.disable_receive_shadows = true
+	m.no_depth_test = false
+	m.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
+	return m
+
+
+func _commit_glows() -> void:
+	var neon_m := _glow_mat(T_NEON, Color(1.15, 1.15, 1.15, 1.0), false)   # mixed: added on the pale paving it washes to white
+	var shop_m := _glow_mat(T_SHOP, Color(1.0, 0.8, 0.55, 0.75))
+	var lamp_m := _glow_mat(T_LAMP, Color(1.0, 0.9, 0.7, 1.0))
+	_near_fade(lamp_m, true)
+	var cone_m := _glow_mat(T_CONE, Color(1.0, 0.82, 0.55, 0.95))
+	_near_fade(cone_m, true)
+	var out: Array = []
+	for side in 2:
+		out.append([_neon_st[side], neon_m])
+		out.append([_shop_st[side], shop_m])
+	out.append([_lamps_st, lamp_m])
+	out.append([_cones_st, cone_m])
+	for pair: Array in out:
+		var mesh: ArrayMesh = (pair[0] as SurfaceTool).commit()
+		if mesh.get_surface_count() == 0:
+			continue
+		var mi := MeshInstance3D.new()
+		mi.name = "Glow"
+		mi.mesh = mesh
+		mi.material_override = pair[1]
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(mi)
+
+
 ## Bakes the whole street (about 90 mesh instances) into one mesh per material: the Kenney
 ## kits share a colour atlas, so the street draws in a handful of calls instead of ~90.
 ## On the emulator's software GPU each draw call is frame time, and frame time is input latency.
@@ -222,14 +360,17 @@ func _merge_dressing() -> void:
 		var xf: Transform3D = inv * mi.global_transform
 		# one chunk per stretch of street and side, so the camera culls what it cannot see
 		var at: Vector3 = xf * mi.get_aabb().get_center()
-		var chunk: String = "%d%s" % [floori(at.z / MERGE_CHUNK), "l" if at.x < 0.0 else "r"]
+		var facade: bool = mi.has_meta("facade")
+		# the shop fronts (most of the vertices) in chunks the camera can cull; the small
+		# props one mesh per material (each extra mesh is a draw call)
+		var chunk: String = "%d%s" % [floori(at.z / MERGE_CHUNK), "l" if at.x < 0.0 else "r"] if facade else ""
 		for si in mi.mesh.get_surface_count():
 			var mat: Material = mi.get_active_material(si)
-			var key: String = "%s_c%s" % [_mat_key(mat), chunk]
+			var key: String = "%s_c%s%s%s" % [_mat_key(mat), chunk, "f" if facade else "", "n" if mi.has_meta("near_fade") else ""]
 			if not groups.has(key):
 				var st := SurfaceTool.new()
 				st.begin(Mesh.PRIMITIVE_TRIANGLES)
-				groups[key] = {"st": st, "mat": _opaque(mat)}
+				groups[key] = {"st": st, "mat": _facade_mat(mat) if facade else (_dark(mat) if mi.has_meta("lamp") else (_faded(mat) if mi.has_meta("near_fade") else _opaque(mat)))}
 			(groups[key]["st"] as SurfaceTool).append_from(mi.mesh, si, xf)
 	var merged := Node3D.new()
 	merged.name = "StreetMerged"
@@ -245,6 +386,10 @@ func _merge_dressing() -> void:
 	_dressing.queue_free()
 	_dressing = merged
 	add_child(_dressing)
+	# the kit scenes are no longer needed: each GLB embeds its own copy of the shared atlas,
+	# so keeping them would hold ~15 duplicate textures in video memory
+	_scenes.clear()
+	_tex_hash.clear()
 	print("CQ street merged %d mesh instances into %d (%.0f m chunks)" % [n_in, groups.size(), MERGE_CHUNK])
 
 
@@ -256,6 +401,49 @@ func _opaque(mat: Material) -> Material:
 		m.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
 		return m
 	return mat
+
+
+## Lamp posts: dark iron, so the glowing heads carry them (the kit's are pale grey).
+func _dark(mat: Material) -> Material:
+	var m: Material = _opaque(mat)
+	if m is BaseMaterial3D:
+		m = (m as BaseMaterial3D).duplicate()
+		(m as BaseMaterial3D).albedo_color = Color(0.3, 0.27, 0.36)
+		_near_fade(m as BaseMaterial3D, false)
+	return m
+
+
+func _faded(mat: Material) -> Material:
+	var m: Material = _opaque(mat)
+	if m is BaseMaterial3D:
+		m = (m as BaseMaterial3D).duplicate()
+		_near_fade(m as BaseMaterial3D, false)
+	return m
+
+
+## Lamps close to the camera stand at the bottom of the screen, tall, behind the controls:
+## fade them out there.
+func _near_fade(m: BaseMaterial3D, alpha: bool) -> void:
+	# alpha, not dither: a dithered lamp arm reads as noise at phone size
+	m.distance_fade_mode = BaseMaterial3D.DISTANCE_FADE_PIXEL_ALPHA
+	m.distance_fade_min_distance = NEAR_FADE.x
+	m.distance_fade_max_distance = NEAR_FADE.y
+
+
+var _facades: Dictionary = {}   # atlas texture -> the facade ShaderMaterial (one per atlas)
+
+
+func _facade_mat(mat: Material) -> Material:
+	if not (mat is BaseMaterial3D) or (mat as BaseMaterial3D).albedo_texture == null:
+		return _opaque(mat)
+	var tex: Texture2D = (mat as BaseMaterial3D).albedo_texture
+	var key: String = _mat_key(mat)
+	if not _facades.has(key):
+		var sm := ShaderMaterial.new()
+		sm.shader = FACADE_SHADER
+		sm.set_shader_parameter("atlas", tex)
+		_facades[key] = sm
+	return _facades[key]
 
 
 var _tex_hash: Dictionary = {}   # texture instance id -> pixel hash (one hash per texture)

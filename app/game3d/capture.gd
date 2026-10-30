@@ -4,7 +4,9 @@ extends Node
 ##    "lead": 2.0, "times": [0.5, 1.3, ...],
 ##    "timeline": [[t, "stick", x, y], [t, "attack"], [t, "attack_hold", 0|1],
 ##                 [t, "skill", slot], [t, "guard", 0|1]],
-##    "quit_after": 9.0}
+##    "quit_after": 9.0,
+##    "on_style": ["parry", "blocked", "crit"]}   # also a shot 0.1 s after the first damage
+##                                                # number of each style: <prefix>_<style>.png
 ## Times are fight seconds (fight.fight_time). Saves <dir>/<prefix>_<t>s.png at lead + t
 ## for each t in times. Run with --fixed-fps 30 so every frame is 1/30 s of fight time
 ## whatever the software renderer manages, and the moments are the same run to run.
@@ -16,6 +18,8 @@ var _events: Array = []
 var _done: bool = false
 var _t: float = 0.0          # fight seconds; keeps counting after the fight ends (banners)
 var _started: bool = false
+var _style_seen: Dictionary = {}
+var _style_due: Array = []
 
 
 func setup(s: Dictionary) -> void:
@@ -46,15 +50,38 @@ func _process(dt: float) -> void:
 		_t += dt
 	var t: float = maxf(_t, float(_fight.get("fight_time")))
 	var hud: Node = _fight.get("hud")
+	_watch_styles(hud, t)
 	while not _events.is_empty() and float(_events[0][0]) <= t:
 		_fire(hud, _events.pop_front())
 	if not _shots.is_empty() and t >= float(_shots[0][0]):
 		var s: Array = _shots.pop_front()
 		_save.call_deferred(float(s[1]))
+	if not _style_due.is_empty() and t >= float(_style_due[0][0]):
+		var sd: Array = _style_due.pop_front()
+		_save_named.call_deferred(str(sd[1]))
 	if _shots.is_empty() and t >= float(spec.get("quit_after", 1e9)):
 		_done = true
 		print("CQCAPTURE done")
 		get_tree().quit.call_deferred(0)
+
+
+func _watch_styles(hud: Node, t: float) -> void:
+	var want: Array = spec.get("on_style", [])
+	if want.is_empty() or hud == null:
+		return
+	for d: Dictionary in hud.get("_pops"):
+		var st: String = str(d.get("style", ""))
+		if st in want and not _style_seen.has(st):
+			_style_seen[st] = true
+			_style_due.append([t + 0.1, st])
+
+
+func _save_named(tag: String) -> void:
+	await RenderingServer.frame_post_draw
+	var img: Image = get_viewport().get_texture().get_image()
+	var path: String = "%s/%s_%s.png" % [spec.get("dir", "/tmp/cq-capture"), spec.get("prefix", "cap"), tag]
+	img.save_png(path)
+	print("CQCAPTURE style=%s path=%s" % [tag, path])
 
 
 func _fire(hud: Node, e: Array) -> void:

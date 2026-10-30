@@ -16,6 +16,7 @@ const T_SLASH := preload("res://art/fx/slash_02.png")
 const T_TRAIL := preload("res://art/fx/vfx_blade_trail.png")
 const T_SWIRL := preload("res://art/fx/vfx_swirl.png")
 const T_GLOW := preload("res://art/fx/vfx_glow.png")
+const T_PILLAR := preload("res://art/fx/vfx_pillar.png")
 const T_RING := preload("res://art/fx/vfx_ring_fire.png")
 const T_COIN := preload("res://art/fx/vfx_coin.png")
 const T_SCORCH := preload("res://art/fx/scorch_01.png")
@@ -61,13 +62,17 @@ func _ready() -> void:
 		rm.blend_mode = BaseMaterial3D.BLEND_MODE_MIX   # reads on the light paving
 		_rings.append(_make_mi(_ring_mesh, rm))
 	for i in 4:
-		_bands.append(_make_mi(_band_mesh, _additive(T_SWIRL)))
+		var bm := _additive(T_SWIRL)
+		bm.blend_mode = BaseMaterial3D.BLEND_MODE_MIX   # added, the swirl washes out on the light paving
+		_bands.append(_make_mi(_band_mesh, bm))
 	for i in 8:
 		_flares.append(_make_mi(_quad(1.0), _additive(T_FLARE, true)))
 	for i in 6:
 		_impacts.append(_make_mi(_quad(1.0), _additive(T_STAR, true)))
 	for i in 4:
-		var pm := _additive(T_GLOW)
+		# mixed, not added: an added column washes to white on the light paving; mixed, the
+		# beam keeps its blue edges and white core, as on the reference's SPLIT
+		var pm := _alpha(T_PILLAR)
 		pm.billboard_mode = BaseMaterial3D.BILLBOARD_FIXED_Y
 		pm.billboard_keep_scale = true
 		var pq := QuadMesh.new()
