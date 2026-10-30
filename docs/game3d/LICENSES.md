@@ -72,6 +72,12 @@ checkout on the farm (`~/cq-work/game-godot/ext/unity-ref`, cq 061's read-only c
 - Telegraph, shield dome, hit flash / rim, weapon trail and shop-front (`facade`) shaders (`vfx/*.gdshader`), the
   swing crescents, rings, blob shadows, the minimap and every HUD shape drawn in `hud.gd`:
   own work, CC0 1.0.
+- cq 015 (the look, docs/game3d/LOOK.md): the fighter material `vfx/char_lit.gdshader`, the facade
+  shader's contact shade and hemisphere term, the sun-cast blob texture (drawn at load in
+  `fighter.gd _sun_blob_tex`), the baked street shade (ground vertex colours), the kerb and lamp-post
+  shade strips, the sign and lamp halos and the far sun pool (they reuse `art/street/lamp_glow.png`), and
+  the optional grade ramp (a `Gradient` in `arena.gd`): own work, CC0 1.0. No new files were
+  downloaded for cq 015.
 
 ## Characters
 - Not in `art/`. The fight loads the player's Forge GLBs at runtime (cq 056 cache). The farm

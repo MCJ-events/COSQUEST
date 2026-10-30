@@ -79,7 +79,22 @@ gameplay, camera and frame budget.
 - **Real shadow maps:** `look.shadows` (off). See Costs.
 
 ## Costs (1-thread llvmpipe, the fight at 720x1280, render scale 0.5)
-COSTS_TABLE
+Measured as cq 011 does: real-time autoplay fight, `LP_NUM_THREADS=1`, dynamic resolution on (it
+settles at 0.3 of the screen within seconds on this software GPU), interleaved runs, frame p50.
+The look's pieces can each be switched off from the config to measure them (`"look": {...}`).
+
+| Piece | Frame cost on the software GPU | Shipped? |
+|---|---|---|
+| Whole look, final (8 interleaved pairs, load 1 to 2) | +6 % vs the effects head 0acfd79 (32.0 -> 33.9 ms), +10 % vs 5bd7f4f; draws 117 vs 120 | yes |
+| Glow, or the BCS + LUT grade (either turns on the post pass) | about 2x the frame (a run with either on took 2.2 to 2.7x the CPU of the same run with both off) | no: opt-in `glow` / `grade` |
+| Real directional shadow map (one split, 30 m) | +58 % (467 vs 295 ms frame p50 in a loaded pair) | no: opt-in `shadows`; the blob shadows carry the sun's direction instead |
+| Godot's sky ambient (radiance cubemap, two reads a pixel) | not separable from noise in wall time; replaced by the ALU hemisphere term, which looks the same | `"sky": "cube"` opt-in |
+| Depth fog with sun scatter | about 3 % | no: opt-in `fog` |
+| Baked shade (ground grid vertex colours, kerb strips, lamp-post shadows, sun-cast blob tails) | about 5 % with a dense 0.35 x 0.7 m grid (~6k triangles); the sparse grid shipped is part of the final +6 % | yes |
+| Sign and lamp halos, the far sun pool | 0 to 2 % (inside the noise) | yes |
+| Fighter material with rim and hit flash (`char_lit`) | none measurable (no slower than the old material + overlay) | yes |
+
+The interleaved logs are in the task's evidence (`lat_fin2_*`, `lat_v*_*`).
 
 ## How to tune
 - Warmer or cooler evening: `KEY_COLOR` and the sky colours; brighter or darker: `KEY_ENERGY` and
@@ -97,4 +112,27 @@ COSTS_TABLE
   windows, signs and lamp heads (threshold 1.15, above the effects' peak) and the split-tone grade.
 
 ## What llvmpipe captures cannot show
-LLVMPIPE_NOTE
+The review captures run headless under xvfb on Mesa's llvmpipe (a CPU OpenGL), with the same
+**Compatibility renderer** the phones run (the log line reads `OpenGL API 4.5 ... Compatibility -
+Using Device: Mesa - llvmpipe`). So every piece above (rim, halos, baked shade, blob tails, colours)
+is drawn the way a phone draws it. What the captures cannot show:
+- **Resolution and sharpness.** Captures are 720x1280 with the 3D at half that (360x640). A phone
+  at 1080x2340 draws the 3D at 540x1170, 2.25x the pixels, so edges, rims and sign letters are
+  sharper on device. Dynamic resolution only steps down on a GPU too slow for 30 ms frames.
+- **Precision.** llvmpipe runs every shader in 32-bit float. Phone GPUs run `mediump` maths in 16-bit,
+  so soft gradients (halos, the sun pool, blob tails, the baked shade) may band slightly on device.
+- **Texture formats.** Desktop exports use S3TC/BPTC; the APK carries ETC2/ASTC. Block artefacts in
+  the paving and the characters' textures differ a little.
+- **Frame time.** llvmpipe is 10x or more slower than a phone GPU and its costs fall differently: on
+  the CPU, ALU per pixel and per-triangle set-up are expensive (the dense shade grid cost more than an
+  overlay); on a phone, blended overdraw and bandwidth are what costs. So on device, watch the halos
+  and light pools (blended), not the triangles. On-device frame time is pending an emulator or phone.
+- **Glow / HDR.** The post stack (glow, grade, fog) is off by default because of its cost here. A phone
+  GPU would likely pay 1 to 3 ms for it at 1080p (not measured). Turned on, it renders the same on
+  llvmpipe as on a device; the captures under `evidence/post/` show it.
+- **MSAA.** Off in the project (`msaa_3d=0`) for phones and captures alike; aliasing looks worse in the
+  captures only because of their lower resolution.
+- **Cross-check on lavapipe.** One frame rendered with the **Mobile** renderer (Vulkan) on Mesa's
+  lavapipe (CPU Vulkan; the loader was limited to the lavapipe ICD, the log reads `Using Device #0:
+  llvmpipe`) looks almost the same as the Compatibility frame, with and without the post stack. The
+  gap to the reference is the scene and the art, not the software renderer.
