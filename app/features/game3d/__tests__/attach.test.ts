@@ -22,7 +22,7 @@ import {
   staticAttach,
   writeGlb,
 } from "../attach.ts";
-import { catalogueFlag, catalogueOn, catalogueTwin, heldFor, isPlaceholderWeapon, ownWeapon, realWeapons, starterSet } from "../held.ts";
+import { bagItems, catalogueFlag, catalogueOn, catalogueTwin, dropShown, heldFor, isPlaceholderWeapon, ownWeapon, realWeapons, STARTER, starterEntry, starterSet } from "../held.ts";
 
 const manifest = JSON.parse(readFileSync(new URL("../../../game3d/data/attach.json", import.meta.url), "utf8")) as AttachManifest;
 
@@ -249,11 +249,44 @@ test("who holds what", () => {
   const ember = weapon({ thumbnail: null, lods: [{ lod: 0, usdz: null, glb: { file: "e", url: "/e", bytes: 9760, sha256: "x" } }] });
   assert.equal(heldFor(manifest, { characterName: "Bobo", mine: true, equipped: ember, linkOn: true }).main?.slug, "war_axe");
   // the starter set pick, and a shield goes in the off hand with a one-hander
-  assert.equal(heldFor(manifest, { characterName: "Bobo", mine: true, equipped: null, linkOn: false, localPick: "arcane_staff" }).main?.cls, "staff");
-  const sh = heldFor(manifest, { characterName: "Bobo", mine: true, equipped: null, linkOn: false, localPick: "knight_shield" });
+  assert.equal(heldFor(manifest, { characterName: "Bobo", mine: true, equipped: null, linkOn: true, localPick: "arcane_staff" }).main?.cls, "staff");
+  // with the link off the starter set is not listed, so an old pick does not count
+  assert.equal(heldFor(manifest, { characterName: "Bobo", mine: true, equipped: null, linkOn: false, localPick: "arcane_staff" }).main?.slug, "war_axe");
+  const sh = heldFor(manifest, { characterName: "Bobo", mine: true, equipped: null, linkOn: true, localPick: "knight_shield" });
   assert.equal(sh.offhand?.cls, "shield");
   assert.equal(sh.main?.slug, "war_axe");
-  const sh2 = heldFor(manifest, { characterName: "Armstrong", mine: true, equipped: null, linkOn: false, localPick: "knight_shield" });
+  const sh2 = heldFor(manifest, { characterName: "Armstrong", mine: true, equipped: null, linkOn: true, localPick: "knight_shield" });
   assert.equal(sh2.main?.slug, "knight_sword");
   assert.equal(starterSet(manifest).length, Object.keys(manifest.weapons).length);
+});
+
+test("the bag: link off lists what you own, as before; link on hides placeholders and adds the starter set", () => {
+  const ember = weapon({
+    id: "ember", name: "Ember Blade", thumbnail: null,
+    lods: [0, 1, 2].map((lod) => ({ lod, usdz: null, glb: { file: `e${lod}.glb`, url: "/e", bytes: 9760, sha256: "bc73" } })),
+  });
+  const sword = weapon({ id: "ks", name: "Knight's Arming Sword" });
+  const hero = weapon({ id: "h1", type: "character", name: "Armstrong", lods: [] });
+  const entries = [ember, sword, hero];
+  const owned = [{ element_id: "ember", count: 1 }, { element_id: "ks", count: 2 }, { element_id: "h1", count: 1 }, { element_id: "gone", count: 1 }];
+  const off = bagItems(manifest, { entries, owned, linkOn: false });
+  assert.deepEqual(off.list, [{ id: "ember", count: 1 }, { id: "ks", count: 2 }, { id: "h1", count: 1 }]);
+  assert.equal(off.starters.length, 0);
+  const on = bagItems(manifest, { entries, owned, linkOn: true });
+  assert.deepEqual(on.owned.map((o) => o.element_id), ["ks", "h1"]);
+  // nine starters less the sword you own from the Forge
+  const n = starterSet(manifest).length;
+  assert.equal(on.starters.length, n - 1);
+  assert.ok(on.starters.every((e) => e.id.startsWith(STARTER) && e.type === "weapon" && e.name !== "Knight's Arming Sword"));
+  assert.equal(on.list.length, 2 + n - 1);
+  // a fresh install, placeholder-only catalogue: real weapons all the same
+  const fresh = bagItems(manifest, { entries: [ember], owned: [{ element_id: "ember", count: 1 }], linkOn: true });
+  assert.equal(fresh.list.length, n);
+  assert.ok(fresh.starters.every((e) => !isPlaceholderWeapon(e)), "a starter is never mistaken for a placeholder");
+  assert.equal(starterEntry(manifest, "nope"), null);
+  // drops: placeholders never drop with the link on; off, as before
+  assert.equal(dropShown({ claimed: false, element_id: "ember" }, entries, false), true);
+  assert.equal(dropShown({ claimed: false, element_id: "ember" }, entries, true), false);
+  assert.equal(dropShown({ claimed: false, element_id: "ks" }, entries, true), true);
+  assert.equal(dropShown({ claimed: true, element_id: "ks" }, entries, false), false);
 });

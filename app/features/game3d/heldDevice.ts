@@ -15,7 +15,7 @@ import { getPref, setPref } from "@/utils/prefsStorage";
 
 import ATTACH from "../../game3d/data/attach.json";
 import { type AttachManifest, type Gltf, gripFor, mergeWeaponGlb, readGlb } from "./attach";
-import { catalogueFlag, catalogueOn, type Held, type HeldPair, heldFor } from "./held";
+import { catalogueFlag, catalogueOn, type Held, type HeldPair, heldFor, starterEntry as starterEntryOf } from "./held";
 
 export const MANIFEST = ATTACH as unknown as AttachManifest;
 
@@ -67,26 +67,10 @@ export async function heldFile(h: Held | null): Promise<string | null> {
   return null;
 }
 
-/** "starter:<slug>": the bag's id for a starter-set weapon (never a catalogue id). */
-export const STARTER = "starter:";
+export { STARTER } from "./held";
 
-/**
- * A starter-set weapon as a catalogue-shaped entry, so the bag and the 3D
- * view treat it like any other: its file and thumbnail are "bundle:<slug>"
- * (ForgeModel resolves those from the app, not the server).
- */
-export function starterEntry(slug: string): ForgeEntry | null {
-  const w = MANIFEST.weapons[slug];
-  if (!w) return null;
-  const glb = { file: `${slug}.glb`, url: `bundle:${slug}`, bytes: null, sha256: null };
-  return {
-    id: STARTER + slug, type: "weapon", name: w.name, version: 1, rarity: "common", files: [],
-    thumbnail: { file: `${slug}.png`, url: `bundle:${slug}` },
-    contract: 2, lods: [0, 1, 2].map((lod) => ({ lod, glb, usdz: null })), bounds_m: null, height_m: w.length_m,
-    pivot: "grip", animations: [], skeleton: null, updated_at: null, rigged: false,
-    gameplay: { kind: w.kind },
-  };
-}
+/** A starter-set weapon as a catalogue-shaped entry (held.ts starterEntry). */
+export const starterEntry = (slug: string): ForgeEntry | null => starterEntryOf(MANIFEST, slug);
 
 // ---------- the player's pick from the starter set ----------
 

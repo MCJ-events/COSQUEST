@@ -38,6 +38,8 @@ export function isPlaceholderWeapon(e: Pick<ForgeEntry, "type" | "lods" | "thumb
   if (e.type !== "weapon") return false;
   const glbs = e.lods.map((l) => l.glb).filter((g): g is NonNullable<typeof g> => !!g);
   if (!glbs.length) return true;
+  // The app's own starter set (bundled, textured) serves one file for every LOD on purpose.
+  if (glbs.every((g) => g.url.startsWith("bundle:"))) return false;
   const shas = new Set(glbs.map((g) => g.sha256 ?? g.file));
   if (glbs.length > 1 && shas.size === 1) return true;
   const smallest = Math.min(...glbs.map((g) => g.bytes ?? Infinity));
@@ -81,7 +83,7 @@ export function ownWeapon(m: AttachManifest, characterName: string | null | unde
 /**
  * What a character holds. `mine`: it is the player's avatar, so the player's
  * choice counts: the equipped Forge weapon (link on, a real weapon), else a
- * default weapon held from the bag's starter set (`localPick`), else its own.
+ * default weapon held from the bag's starter set (`localPick`, link on), else its own.
  * A shield goes in the off hand, with the character's own one-handed weapon
  * (or a sword) in the main hand.
  */
@@ -93,7 +95,9 @@ export function heldFor(
   if (input.mine && input.linkOn && input.equipped && input.equipped.type === "weapon" && !isPlaceholderWeapon(input.equipped)) {
     const e = input.equipped;
     pick = { source: "catalogue", slug: null, entry: e, name: e.name, cls: gripClassOf(e.name, e.gameplay?.kind ?? null) };
-  } else if (input.mine && input.localPick) {
+  } else if (input.mine && input.linkOn && input.localPick) {
+    // The starter set is only listed with the link on, so a pick made then
+    // does not linger (unseen, unremovable) once the link is off.
     pick = bundled(m, input.localPick);
   }
   const own = ownWeapon(m, input.characterName);
@@ -111,4 +115,69 @@ export function heldFor(
 /** The starter set as the bag lists it: every bundled weapon, in the manifest's order. */
 export function starterSet(m: AttachManifest): { slug: string; name: string; cls: GripClass }[] {
   return Object.entries(m.weapons).map(([slug, w]) => ({ slug, name: w.name, cls: w.grip }));
+}
+
+/** "starter:<slug>": the bag's id for a starter-set weapon (never a catalogue id). */
+export const STARTER = "starter:";
+
+/**
+ * A starter-set weapon as a catalogue-shaped entry, so the bag and the 3D
+ * view treat it like any other: its file and thumbnail are "bundle:<slug>"
+ * (ForgeModel resolves those from the app, not the server).
+ */
+export function starterEntry(m: AttachManifest, slug: string): ForgeEntry | null {
+  const w = m.weapons[slug];
+  if (!w) return null;
+  const glb = { file: `${slug}.glb`, url: `bundle:${slug}`, bytes: null, sha256: null };
+  return {
+    id: STARTER + slug, type: "weapon", name: w.name, version: 1, rarity: "common", files: [],
+    thumbnail: { file: `${slug}.png`, url: `bundle:${slug}` },
+    contract: 2, lods: [0, 1, 2].map((lod) => ({ lod, glb, usdz: null })), bounds_m: null, height_m: w.length_m,
+    pivot: "grip", animations: [], skeleton: null, updated_at: null, rigged: false,
+    gameplay: { kind: w.kind },
+  };
+}
+
+export type BagOwned = { element_id: string; count: number };
+export type BagItems = {
+  /** what the server says you own, as the Items tab lists it */
+  owned: BagOwned[];
+  /** the starter weapons listed after them (none with the link off) */
+  starters: ForgeEntry[];
+  /** the Items tab, in order */
+  list: { id: string; count?: number }[];
+};
+
+/**
+ * The bag's Items tab. Link off: exactly as before cq 234 (every owned
+ * element the catalogue knows, nothing filtered or added). Link on:
+ * placeholder weapons hidden, then the starter set, less any you also own
+ * from the Forge under the same name (the same pack, imported).
+ */
+export function bagItems(m: AttachManifest, input: { entries: readonly ForgeEntry[]; owned: readonly BagOwned[]; linkOn: boolean }): BagItems {
+  const { entries, linkOn } = input;
+  const byId = new Map(entries.map((e) => [e.id, e]));
+  const owned = input.owned.filter((o) => {
+    const e = byId.get(o.element_id);
+    return !!e && (!linkOn || !isPlaceholderWeapon(e));
+  });
+  const ownedNames = new Set(owned.map((o) => byId.get(o.element_id)?.name));
+  const starters = linkOn
+    ? starterSet(m)
+        .map((w) => starterEntry(m, w.slug))
+        .filter((e): e is ForgeEntry => !!e && !ownedNames.has(e.name))
+    : [];
+  return {
+    owned,
+    starters,
+    list: [...owned.map((o) => ({ id: o.element_id, count: o.count })), ...starters.map((e) => ({ id: e.id }))],
+  };
+}
+
+/** A Forge drop on the map: placeholders never drop with the link on. */
+export function dropShown(d: { claimed: boolean; element_id: string }, entries: readonly ForgeEntry[], linkOn: boolean): boolean {
+  if (d.claimed) return false;
+  if (!linkOn) return true;
+  const e = entries.find((x) => x.id === d.element_id);
+  return !(e && isPlaceholderWeapon(e));
 }

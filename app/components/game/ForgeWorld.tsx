@@ -38,8 +38,8 @@ import {
 import { claim, equip, refreshInventory, startForgeWorld, thumbUrl, absUrl, useEquipped, useForgeWorld } from "@/features/game/forgeWorldDevice";
 import { gameStore, useGame } from "@/features/game/runtime";
 
-import { isPlaceholderWeapon, realWeapons, starterSet } from "@/features/game3d/held";
-import { MANIFEST, setLocalPick, STARTER, starterEntry, useCatalogueOn, useLocalPick } from "@/features/game3d/heldDevice";
+import { bagItems, dropShown, STARTER } from "@/features/game3d/held";
+import { MANIFEST, setLocalPick, useCatalogueOn, useLocalPick } from "@/features/game3d/heldDevice";
 
 import ForgeModel, { thumbSource, useForgeEntry } from "./ForgeModel";
 import { GameButton, MAX_FONT_SCALE } from "./kit";
@@ -88,12 +88,11 @@ export function ForgeDropsLayer({ place, onOpen }: { place: (p: LatLng) => { lef
   // With the catalogue link on, a placeholder weapon never drops (cq 234).
   const linkOn = useCatalogueOn();
   const entries = useForgeWorld((s) => s.entries);
-  const fake = useMemo(() => new Set(entries.filter(isPlaceholderWeapon).map((e) => e.id)), [entries]);
   if (!on) return null;
   return (
     <>
       {drops
-        .filter((d) => !d.claimed && !(linkOn && fake.has(d.element_id)))
+        .filter((d) => dropShown(d, entries, linkOn))
         .map((d) => {
           const at = place(d);
           return <DropPin key={d.id} drop={d} left={at.left} top={at.top} onPress={onOpen} />;
@@ -358,19 +357,10 @@ function BagBody({ close, initial }: { close: () => void; initial: "items" | "av
   // listed after what you own, so the bag always has real weapons. Off: as before.
   const linkOn = useCatalogueOn();
   const localPick = useLocalPick();
-  const starters = useMemo(() => (linkOn ? starterSet(MANIFEST).map((w) => starterEntry(w.slug)).filter((e): e is ForgeEntry => !!e) : []), [linkOn]);
-  const all = useMemo(() => (starters.length ? [...entries, ...starters] : entries), [entries, starters]);
-  const real = useMemo(() => new Set(realWeapons(entries).map((e) => e.id)), [entries]);
-  const owned = useMemo(
-    () => (inventory?.owned ?? []).filter((o) => entries.some((e) => e.id === o.element_id && (!linkOn || e.type !== "weapon" || real.has(e.id)))),
-    [inventory, entries, linkOn, real],
-  );
+  const bag = useMemo(() => bagItems(MANIFEST, { entries, owned: inventory?.owned ?? [], linkOn }), [entries, inventory, linkOn]);
+  const all = useMemo(() => (bag.starters.length ? [...entries, ...bag.starters] : entries), [entries, bag]);
   const heroes = useMemo(() => avatarChoices(entries), [entries]);
-  // A starter weapon you also own from the Forge (the same pack, imported) is listed once, as yours.
-  const ownedNames = useMemo(() => new Set(owned.map((o) => entries.find((e) => e.id === o.element_id)?.name)), [owned, entries]);
-  const startersLeft = useMemo(() => starters.filter((e) => !ownedNames.has(e.name)), [starters, ownedNames]);
-  const list: { id: string; count?: number }[] =
-    tab === "items" ? [...owned.map((o) => ({ id: o.element_id, count: o.count })), ...startersLeft.map((e) => ({ id: e.id }))] : heroes.map((h) => ({ id: h.id }));
+  const list: { id: string; count?: number }[] = tab === "items" ? bag.list : heroes.map((h) => ({ id: h.id }));
   const selected = pick && list.some((x) => x.id === pick) ? pick : (list[0]?.id ?? null);
   const sel = all.find((e) => e.id === selected) ?? null;
   const slot = tab === "items" ? "weapon" : "avatar";
@@ -411,7 +401,7 @@ function BagBody({ close, initial }: { close: () => void; initial: "items" | "av
       <View style={styles.tabs}>
         {(["items", "avatar"] as const).map((t) => (
           <Pressable key={t} onPress={() => setTab(t)} style={[styles.tab, tab === t && styles.tabOn]} accessibilityRole="tab" accessibilityState={{ selected: tab === t }}>
-            <Text style={[styles.tabText, tab === t && { color: "#FFF" }]}>{t === "items" ? `Items (${owned.length + startersLeft.length})` : "Avatar"}</Text>
+            <Text style={[styles.tabText, tab === t && { color: "#FFF" }]}>{t === "items" ? `Items (${bag.list.length})` : "Avatar"}</Text>
           </Pressable>
         ))}
       </View>
@@ -591,7 +581,9 @@ export function boardPlacer(origin: LatLng, extent: number, scale: number) {
 
 /** The live counter for the More tile badge. */
 export function useForgeOwnedCount(): number {
-  return useForgeWorld((s) => s.inventory?.owned.length ?? 0);
+  // With the catalogue link on, a hidden placeholder is not counted (cq 234).
+  const linkOn = useCatalogueOn();
+  return useForgeWorld((s) => (linkOn ? bagItems(MANIFEST, { entries: s.entries, owned: s.inventory?.owned ?? [], linkOn }).owned.length : (s.inventory?.owned.length ?? 0)));
 }
 
 export const forgePlayerName = () => gameStore.playerName();
