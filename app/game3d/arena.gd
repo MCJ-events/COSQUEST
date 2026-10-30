@@ -560,9 +560,18 @@ func _post_shadow(base: Vector3, h: float) -> void:
 	var p := [a - side, a + side, b + side * 2.5, b - side * 2.5]
 	var col: Array[Color] = [SHADE_COL, SHADE_COL, Color.WHITE, Color.WHITE]
 	for idx: int in [0, 1, 2, 0, 2, 3]:
-		_shade_st.set_color(col[idx])
+		_shade_st.set_color(_ink(col[idx]))
 		_shade_st.set_normal(Vector3.UP)
 		_shade_st.add_vertex(p[idx])
+
+
+## The shade multiplier `c` (white = none) as an alpha-blended ink of the same darkness.
+const SHADE_INK: Color = Color(0.16, 0.15, 0.36)
+
+
+static func _ink(c: Color) -> Color:
+	var k: float = 1.0 - (c.r * 0.3 + c.g * 0.55 + c.b * 0.15)
+	return Color(SHADE_INK.r, SHADE_INK.g, SHADE_INK.b, clampf(k * 1.15, 0.0, 1.0))
 
 
 ## A strip from the line `a` (length `len` along +z) to the line `b`, colour ca at a, cb at b.
@@ -570,7 +579,7 @@ func _shade_quad(a: Vector3, b: Vector3, len: float, ca: Color, cb: Color) -> vo
 	var p := [a, b, b + Vector3(0, 0, len), a + Vector3(0, 0, len)]
 	var c := [ca, cb, cb, ca]
 	for idx: int in [0, 1, 2, 0, 2, 3]:
-		_shade_st.set_color(c[idx])
+		_shade_st.set_color(_ink(c[idx]))
 		_shade_st.set_normal(Vector3.UP)
 		_shade_st.add_vertex(p[idx])
 
@@ -634,7 +643,8 @@ func _commit_glows() -> void:
 	var shade_m := StandardMaterial3D.new()
 	shade_m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	shade_m.vertex_color_use_as_albedo = true
-	shade_m.blend_mode = BaseMaterial3D.BLEND_MODE_MUL
+	# alpha-blended towards a dusk ink, not multiplied: with a post pass on (look glow / grade) the
+	# 3D buffer is scaled by a luminance multiplier and a multiply blend goes black
 	shade_m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	shade_m.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
 	shade_m.disable_receive_shadows = true
