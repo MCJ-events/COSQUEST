@@ -636,7 +636,8 @@
    },
    "damp_rel": true,
    "spin": true,
-   "_why": "cq 016: the spinning attack retargeted for robes: the legs and spine are damped relative to the hips (not the world), so the whole body turns with the hips instead of twisting against them; with the spin-aware secondary sim it passes the gate on Elvis, Crystal-Z and Hoof"
+   "_why": "cq 016: the spinning attack retargeted for robes: the legs and spine are damped relative to the hips (not the world), so the whole body turns with the hips instead of twisting against them; with the spin-aware secondary sim it passes the gate on Elvis, Crystal-Z and Hoof",
+   "root": "zero"
   },
   "Staff_Idle": {
    "src": "2H_Melee_Idle",
@@ -1137,7 +1138,8 @@
    "attack_1": {
     "clip": "2H_Melee_Attack_Slice",
     "alt": [
-     "1H_Melee_Attack_Slice_Diagonal"
+     "1H_Melee_Attack_Slice_Diagonal",
+     "1H_Melee_Attack_Stab"
     ]
    },
    "attack_2": {
@@ -1265,7 +1267,8 @@
    "attack_1": {
     "clip": "2H_Melee_Attack_Slice",
     "alt": [
-     "1H_Melee_Attack_Slice_Diagonal"
+     "1H_Melee_Attack_Slice_Diagonal",
+     "1H_Melee_Attack_Stab"
     ]
    },
    "attack_2": {

@@ -375,7 +375,7 @@ func _apply_overlay(root: Node) -> void:
 func _wire_cloth(root: Node) -> void:
 	var sm: Variant = anim.secondary if anim != null else null
 	var skel: Skeleton3D = anim.skeleton if anim != null else null
-	if sm == null or skel == null or _lit_mats.is_empty():
+	if sm == null or skel == null or _lit_mats.is_empty() or not bool(anim_opts.get("cloth_push", true)):
 		return
 	var re := RegEx.new()
 	re.compile("^(Robe|Coat|Skirt|Wing|Flame).*_(\\d+|end)$")

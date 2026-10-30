@@ -111,6 +111,48 @@ capsules on the worst frame drop from 1 to 15 % with rigid chains to 0 to 4 % wi
 hit and chop near 0; walks 1.2 to 4.0 %; deaths about 2 to 3 %, lying on the floor). It is not
 zero: a robe fused to the legs cannot be kept entirely off them by a few joints.
 
+## cq 016: spin-aware sim and cloth off the legs
+
+**Spin-aware.** A WHIRL turns the hips a full circle in half a second. The chains sprang after that
+turn with a lag of up to 0.7 m, which stretched the robes past the tear gate (it was one reason no
+spin clip passed on the robed three). Each frame the sim now measures the hips' turn about the
+vertical since the last frame and carries every chain's state round the hips by it (`spin_carry` in
+`secondary.json`, both `secondary_motion.gd` and its numpy twin). The spring then only answers the
+thighs and the body's own sway. A flare (the hem swinging out with the turn rate,
+`flare_deg_per_rad_s`, `flare_max_deg`) is built in but **off**: even 12 deg took Elvis's LOD0 spin
+from 0.42 % to 0.57 % torn. Rest jitter, the hit-stop freeze and the dodge settle are unchanged
+(0.4 mm, no jump, 0.43 to 0.47 s).
+
+**Cloth off the legs (the vertex shader).** The chain joints keep 7 cm off the legs, but between the
+joints 1 to 4 % of the robe/coat/skirt vertices still went through the thighs on wide strides and
+lying dead. Now every such vertex is pushed out of the leg capsules on the GPU:
+- `char_lit.gdshader` (the fighters' own material) reads each vertex's skin binds
+  (`BONE_INDICES` / `BONE_WEIGHTS`); the chain bones' binds come after the body's (`fix_rig.py`
+  appends them), so a vertex's cloth share is its weight on binds >= `cloth_bind0`.
+- A vertex with a cloth share is moved out of four capsules (thighs and shins; world space, set
+  every frame by `secondary_motion.gd` from the leg bones; radius `secondary.json cloth_push`:
+  thigh 0.11 m, shin 0.09 m, about the legs' own fitted capsules), by its cloth share (a waistband
+  vertex half on the hips moves half).
+- `fighter.gd _wire_cloth` finds `cloth_bind0` per mesh from its Skin (only when every bind after
+  the first chain bind is a chain) and hands the materials to the sim. Off: fight config
+  `"cloth_push": false`.
+- Measured with `secondary_check.py` (its `sim_gpu_push` column is the shader's twin), LOD1, worst
+  frame, share of the chain-driven vertices inside the leg capsules:
+
+| clip | Elvis sim / + push | Crystal-Z sim / + push | Hoof sim / + push |
+|---|---|---|---|
+| Walking_A | 2.58 / 0 % | 1.31 / 0 % | 3.90 / 0 % |
+| Walking_B | 1.77 / 0 % | 1.23 / 0 % | 3.97 / 0 % |
+| Running_B | 2.48 / 0 % | 1.31 / 0 % | 1.12 / 0 % |
+| Death_A | 2.19 / 0 % | 3.12 / 0 % | 2.26 / 0 % |
+| 1H diagonal | 0.34 / 0 % | 0 / 0 % (was 1.60) | 2.17 / 0 % |
+| Whirl_Spin | 0 / 0 % | 0.15 / 0 % | 0.27 / 0 % |
+
+  The capsule measure is zero by construction once pushed; what it does not see is a leg mesh wider
+  than its capsule, so the zoomed review sheets are the real check (task evidence).
+- The push moves vertices, so a pushed band can stretch a little where it is pushed hardest (a
+  wide stride); it is drawn, not gated (the tear gate measures the skin before the shader).
+
 ## How the game gets the fixed rigs
 
 The cast reaches the game through the Forge catalogue (cq 056's cache hands Godot a file path);

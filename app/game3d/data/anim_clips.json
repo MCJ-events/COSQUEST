@@ -217,7 +217,8 @@
    "attack_1": {
     "clip": "2H_Melee_Attack_Slice",
     "alt": [
-     "1H_Melee_Attack_Slice_Diagonal"
+     "1H_Melee_Attack_Slice_Diagonal",
+     "1H_Melee_Attack_Stab"
     ]
    },
    "attack_2": {
@@ -345,7 +346,8 @@
    "attack_1": {
     "clip": "2H_Melee_Attack_Slice",
     "alt": [
-     "1H_Melee_Attack_Slice_Diagonal"
+     "1H_Melee_Attack_Slice_Diagonal",
+     "1H_Melee_Attack_Stab"
     ]
    },
    "attack_2": {
@@ -1721,7 +1723,7 @@
      "idle": "2H_Melee_Idle",
      "walk": "Walking_B",
      "run": "Running_B",
-     "attack_1": "",
+     "attack_1": "1H_Melee_Attack_Stab",
      "attack_2": "1H_Melee_Attack_Slice_Horizontal",
      "attack_3": "2H_Melee_Attack_Chop",
      "skill_charge": "1H_Melee_Attack_Stab",
@@ -1741,7 +1743,7 @@
      "idle": "Staff_Idle",
      "walk": "Staff_Walk",
      "run": "Staff_Run",
-     "attack_1": "",
+     "attack_1": "1H_Melee_Attack_Stab",
      "attack_2": "Spellcast_Shoot",
      "attack_3": "2H_Melee_Attack_Chop",
      "skill_charge": "1H_Melee_Attack_Stab",

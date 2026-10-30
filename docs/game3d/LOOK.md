@@ -101,6 +101,58 @@ The look's pieces can each be switched off from the config to measure them (`"lo
 
 The interleaved logs are in the task's evidence (`lat_fin2_*`, `lat_v*_*`).
 
+## Bloom (cq 016, `bloom.gd`)
+The reference's whole frame blooms. Godot's glow is a full-screen post pass (about 1.7x the frame on
+the 1-thread software GPU, measured again in cq 016), so the shipped bloom only blooms what is meant to
+glow, from a tiny picture:
+- **Sources** sit on visual layer 11 (`BloomScript.BLOOM_LAYER`) as well as their own: the sign tubes,
+  shop-window spills and the lamp heads/halos (the arena's glow meshes with meta `bloom`), and the
+  effects (`fx.gd`: every pooled node except the slash arcs, and the standing cards only, not the flat
+  ground rings; `fx.bloom_layer`). The arcs and the big WHIRL/SPLIT ground rings carry their own halo:
+  bloomed as well, they whited the fighters out inside a WHIRL.
+- A second camera, copied from the fight camera every frame (after it moves: `process_priority`),
+  draws only that layer into a SubViewport of 1/6 of the screen (black background, linear, no
+  tonemap). A canvas pass blurs it (13 taps) into a 1/12 one.
+- A quad in front of the fight camera (`BloomAdd`, a full-screen triangle pair in its vertex shader,
+  additive, no depth test, drawn last, under the HUD) adds them back at the 3D resolution:
+  `max(tight - threshold) * 0.3 + max(wide - threshold / 2) * 1.3`, saturation kept (x1.5 around the
+  luma, so a blurred white core stays coloured), times `strength`, soft-capped at `cap`
+  (`c * cap / (cap + c)`), so a big effect hazes round a fighter instead of whiting it out.
+- Defaults: strength 0.8, threshold 0.45, cap 0.35 (`look` keys `bloom_strength`, `bloom_threshold`,
+  `bloom_cap`). Off: `"look": {"bloom": false}`.
+- Nothing occludes the bloom view (the fighters are not drawn into it), so a sign directly behind a
+  fighter glows a little round them. The sources are on the walls and the effects mostly over the
+  fighters, so it is rare.
+- **Cost** (4 interleaved rounds, 1-thread llvmpipe): +4.2 % frame p50 (37.4 vs 35.9 ms with it off);
+  +10 to 16 draws (the bloom view's own, tiny).
+- **The full post stack is one switch for real devices:** `"look": {"post": true}` turns on Godot's
+  glow and the grade (the cheap bloom then steps aside): +70 % frame p50 on the software GPU (58.3 vs
+  34.2 ms), likely 1 to 3 ms on a phone GPU. `glow`, `grade` and `fog` stay separate switches.
+
+## Composition (cq 016)
+The reference looks along the street at lit shop fronts, awnings, cars and crossings; cq 011's camera
+looked down at the paving. Now:
+- **Camera** (`fight.gd CAM_*`): pitch 44 -> 34 deg, distance 16.5 -> 20 m, FOV 55 -> 52, yaw 0 -> 12 deg
+  (turned a little left, so the left-hand shop fronts face the camera, as on the reference), and the
+  focus 3 m ahead of the fight (`CAM_AHEAD`, was 0.6) so the fight sits in the lower half and the street
+  and the cross street fill the upper half. `arena.gd _cam_facing` (the camera-facing sign and halo
+  quads) follows the same pitch and yaw.
+- **Gameplay is untouched by the camera:** the autoplay bot's stick and the ally's spot were computed in
+  the camera's axes, so turning the camera changed seeded fights by float rounding. They now use the
+  street's own frame (`_play_right` / `_play_fwd`, the old yaw-0 axes); a player's stick stays
+  camera-relative.
+- **The cross street** (`arena.gd _build_crossroad`, `CROSS_Z` = z -18 to -28, beyond the fight's
+  z -9): asphalt, zebra crossings across the mouth of the street, a dashed centre line (one
+  vertex-coloured mesh), kerbs, traffic lights on the four corners with a red glow, neon signs on the
+  corner shops facing down the street, five parked cars, and two cars driving through the junction
+  (each one mesh, moved in `arena._process`; nothing in gameplay).
+- **Up the street**: the shop rows continue past the junction to z -64, low-detail kit blocks beyond
+  z -40 and along the cross street beyond the corner shops; awnings over most shop fronts; two café
+  parasols by the shops beyond the fight's reach; the trees moved beyond the junction.
+- Kit pieces: Kenney Car Kit, City Kit (Roads) and (Commercial), CC0 (LICENSES.md), merged per
+  material like the rest of the street, except the two moving cars.
+- **Cost:** the street and camera +5 % frame p50 (35.9 vs 34.2 ms, bloom off), +10 to 14 draws.
+
 ## How to tune
 - Warmer or cooler evening: `KEY_COLOR` and the sky colours; brighter or darker: `KEY_ENERGY` and
   `ambient_light_energy` (the tonemap's exposure moves everything, effects too).

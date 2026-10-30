@@ -4437,24 +4437,21 @@
    "fps": 30.0,
    "length_s": 0.667,
    "contact": 8,
-   "root": "inplace",
+   "root": "zero",
    "root_end_raw_m": [
     0.03,
     -0.129,
     -0.326
    ],
-   "sway_max_m": 0.655,
+   "sway_max_m": 0.0,
    "feet_min_m": -0.0,
    "feet_max_m": -0.0,
-   "planted_slide_mps": 3.919,
+   "planted_slide_mps": 1.453,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00041,
-   "tear_p99": 1.503,
+   "tear_share": 0.00022,
+   "tear_p99": 1.446,
    "tears": false,
-   "tear_where": {
-    "LeftUpLeg": 1,
-    "Skirt1_0": 1
-   },
+   "tear_where": {},
    "tear_share_chains_rigid": 0.0,
    "lhand_ik_frames": 0,
    "weapon": {
@@ -4514,7 +4511,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00041,
+    "lod0": 0.00022,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"

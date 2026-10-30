@@ -4430,23 +4430,23 @@
    "fps": 30.0,
    "length_s": 0.667,
    "contact": 8,
-   "root": "inplace",
+   "root": "zero",
    "root_end_raw_m": [
     0.029,
     -0.122,
     -0.309
    ],
-   "sway_max_m": 0.621,
+   "sway_max_m": 0.0,
    "feet_min_m": -0.0,
    "feet_max_m": -0.0,
-   "planted_slide_mps": 2.75,
+   "planted_slide_mps": 1.501,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00356,
-   "tear_p99": 1.999,
+   "tear_share": 0.00337,
+   "tear_p99": 1.975,
    "tears": false,
    "tear_where": {
     "Spine1": 4,
-    "LeftArm": 29,
+    "LeftArm": 27,
     "RightArm": 2,
     "Coat2_0": 3
    },
@@ -4509,7 +4509,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00313,
+    "lod0": 0.00302,
     "lod2": 0.00319
    }
   }

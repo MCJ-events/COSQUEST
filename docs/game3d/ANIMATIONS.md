@@ -15,11 +15,11 @@ Commando, Blade, Killua and P-Mon are out of scope and are not touched.
 | Armstrong | clips | heavy (warhammer) | 18 of 18 | none (cq 014's trouser weights: Death_A 0.07 %, the two-handed swings pass) |
 | Bobo | clips | blade (war axe) | 18 of 18 | none (cq 014's rig: walk, run, guard, dodge, death and WHIRL now pass) |
 | Cat-Boy | clips | blade (dagger) | 18 of 18 | none |
-| Crystal-Z | clips (cq 014 rig) | staff | 17 of 18 | WHIRL: no spin or slice under the gate (best 0.92 %), so the procedural spin plays |
-| Elvis | clips (cq 014 rig) | heavy (greatsword) | 17 of 18 | WHIRL (best 0.56 %): procedural spin |
-| Hoof | clips (cq 014 skeleton) | staff | 17 of 18 | WHIRL (best 0.66 %): procedural spin |
+| Crystal-Z | clips (cq 014 rig) | staff | 18 of 18 | none (cq 016: WHIRL on `Whirl_Spin`, 0.34 %) |
+| Elvis | clips (cq 014 rig) | heavy (greatsword) | 18 of 18 | none (cq 016: WHIRL on `Whirl_Spin`, 0.40 %) |
+| Hoof | clips (cq 014 skeleton) | staff | 18 of 18 | none (cq 016: WHIRL on `Whirl_Spin`, 0.02 %) |
 | Nebul-X | clips | staff (her own) | 18 of 18 | none |
-| Vanessa | clips | gun (rifle) | 18 of 18 | none |
+| Vanessa | clips | gun (rifle) | 18 of 18 | none (cq 016: her heavy and staff sets had no attack_1 that passes, now `1H_Melee_Attack_Stab`, a last alternate in those sets) |
 
 All eight cast play clips. Elvis, Crystal-Z and Hoof use the rigs from cq 014 (the fixed
 skeletons, weights and their robe, coat, skirt and wing chains, driven by the secondary sim): see
@@ -30,6 +30,29 @@ Forge. Every state's clip and tear, BEFORE and AFTER, is in cq 014's tear table 
 clips plus the procedural spine and arm poses and the body motion (lunge, hop, spin, lean).
 The full per-character, per-set, per-state pick is in `app/game3d/data/anim_clips.json`
 (`characters.<key>.pick`). Every clip's checks are in `app/game3d/tools/anim/reports/<key>.json`.
+
+### cq 016: WHIRL on a real spin, and the staff hold
+- **`Whirl_Spin`** (clips.json): the KayKit spinning attack, retargeted with `damp_rel`: the bones a
+  clip or character damps (Elvis's and Crystal-Z's spine at 0.65, the legs at 0 for this clip) take
+  their share of the turn **relative to the hips**, not the world. A world-damped leg or spine stays
+  behind while the hips turn a full circle and tears the robe (that was the 1.5 to 4.4 % every spin
+  clip measured); relative to the hips, the whole body turns with them. With the spin-aware secondary
+  sim (RIGS.md) it passes on every LOD: Elvis 0.40 %, Crystal-Z 0.34 %, Hoof 0.02 %. Its hips are
+  pinned (`root: zero`): the source sways the hips 0.67 m sideways through the turn, which with the
+  legs turning with the hips slid the whole fighter across the street mid-WHIRL (foot slide 3.3 m/s,
+  now 1.3 to 1.5). It is the first
+  alternate of every set's WHIRL, so a character whose set clip passes (Armstrong, Bobo, Cat-Boy,
+  Nebul-X, Vanessa) is unchanged. It carries `spin: true`, so the procedural body spin (`body_alt`)
+  does not turn the body a second time on top.
+- **The staff hold** (`Staff_Idle`, `Staff_Walk`, `Staff_Run`, `Staff_Hit`, the staff set only):
+  KayKit holds a two-handed sword point-down in idle, so a staff in that grip hung orb-down. These
+  clips are the same sources with the right forearm and hand turned (`retarget.py staff_upright`) so
+  the staff's orb end (the grip's +Y) stands up beside the body, 0.25 forward and 0.12 out, the forearm
+  taking 35 % of the turn so the wrist does not break. The grip itself is unchanged, so the attacks
+  and skills keep their swing, and no other weapon class changes. Every staff user plays them: Hoof
+  and Crystal-Z (Arcane Staff) and Nebul-X (her own staff, modelled in her right hand: the hand turns
+  it). A left hand on the upright shaft (two-handed) was tried: it stretched Crystal-Z's left arm past
+  the gate (0.75 %), so the idle is one-handed with the left hand by the right, as the source keeps it.
 
 ## Files
 

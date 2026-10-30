@@ -310,6 +310,7 @@ func _ready() -> void:
 	fx = FxScript.new()
 	fx.name = "Fx"
 	add_child(fx)
+	fx.visible = bool(cfg.get("fx_visible", true))   # review captures of the characters only (cq 016)
 	var lk: Dictionary = arena.get("look")
 	if bool(lk.get("bloom", true)) and not bool(lk.get("glow", false)):
 		# cq 016: the cheap bloom (lit street + effects only, a tiny view, LOOK.md)
@@ -359,6 +360,10 @@ func _ready() -> void:
 	hero = _spawn(str(cfg.get("hero_name", "You")), 0, int(cfg.get("hero_hp", HERO_HP)), Color(0.3, 0.75, 0.35), Vector3(0.3, 0, 3.6), PI, "hero")
 	ally = _spawn(str(cfg.get("ally_name", "Ally")), 0, ALLY_HP, Color(0.3, 0.65, 0.9), Vector3(3.0, 0, 4.4), PI, "ally")
 	enemy = _spawn(str(cfg.get("enemy_name", "Guardian")), 1, int(cfg.get("enemy_hp", ENEMY_HP)), Color(0.85, 0.3, 0.25), Vector3(-0.4, 0, -0.6), 0.0, "boss")
+	if bool(cfg.get("rev_solo", false)):
+		# review captures of the hero alone (cq 016): the ally and the boss stand well out of shot
+		ally.position = Vector3(9.0, 0, 16.0)
+		enemy.position = Vector3(-9.0, 0, -16.0)
 	_skill_area = HitArea.new()
 	_skill_area.name = "SkillArea"
 	var sbox := BoxShape3D.new()
@@ -385,6 +390,7 @@ func _ready() -> void:
 				_log("rigfix role=%s key=%s from=%s to=%s" % [role, str(fx[1]), p, str(fx[0])])
 				p = str(fx[0])
 		(pair[0] as FighterScript).anim_opts["secondary"] = bool(cfg.get("secondary", true))
+		(pair[0] as FighterScript).anim_opts["cloth_push"] = bool(cfg.get("cloth_push", true))   # cq 016
 		if p != "":
 			(pair[0] as FighterScript).visible = false
 			_load_queue.append({"f": pair[0], "path": p, "role": str(pair[1]).trim_suffix("_glb")})
@@ -1319,6 +1325,8 @@ func _update_players() -> void:
 # ------------------------------------------------------------ the boss
 
 func _tick_enemy(dt: float) -> void:
+	if bool(cfg.get("boss_passive", false)):
+		return   # review captures of the characters only (cq 016): the boss stands still
 	if enemy == null or enemy.dead:
 		if enemy != null:
 			enemy.speed_now = 0.0
@@ -1445,6 +1453,8 @@ func _enemy_strike() -> void:
 # ------------------------------------------------------------ the ally
 
 func _tick_ally(dt: float) -> void:
+	if bool(cfg.get("rev_solo", false)):
+		return   # review captures of the hero alone (cq 016)
 	if ally == null or ally.dead:
 		return
 	var goal: Vector3
@@ -1723,7 +1733,7 @@ func _follow_camera(dt: float) -> void:
 		var mv: Vector3 = _cam_right * hud.stick.x + _cam_fwd * hud.stick.y
 		_look = _look.lerp(mv * CAM_LOOK, 1.0 - exp(-dt * 2.5))
 		target = hero.position + _cam_fwd * _cam_ahead + _look
-		if enemy != null and not enemy.dead:
+		if enemy != null and not enemy.dead and not bool(cfg.get("cam_hero_only", false)):
 			target = target.lerp((hero.position + enemy.position) * 0.5, 0.5)
 	target.x = clampf(target.x, -CAM_BOUNDS_X, CAM_BOUNDS_X)
 	target.z = clampf(target.z, -CAM_BOUNDS, CAM_BOUNDS)

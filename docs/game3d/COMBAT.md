@@ -169,8 +169,11 @@ hit_at)` passes. See `docs/game3d/ANIMATIONS.md`.
   changes the combat numbers unless you pass `reach`.
 
 ## The street and the HUD frame
-- **Camera:** pitch 44 deg, 16.5 m out, FOV 55 (`CAM_*` in `fight.gd`), the hero a little
-  below the centre, the street running up the screen as on the reference.
+- **Camera:** pitch 34 deg, 20 m out, FOV 52, turned 12 deg left, the focus 3 m ahead of the fight
+  (`CAM_*` in `fight.gd`; cq 016, was pitch 44, 16.5 m, FOV 55, yaw 0, 0.6 m ahead): the fight in the
+  lower half, the street, its shop fronts and the cross street up the screen as on the reference
+  (LOOK.md "Composition"). The autoplay bot and the ally steer in the street's own frame
+  (`_play_right` / `_play_fwd`), so the camera never changes a seeded fight.
 - **Street** (`arena.gd`): 11.2 m between the kerbs (fighters keep 4.7 m either side of
   the centre line), Kenney shop fronts with the `facade` shader (glass swatches glow warm,
   walls lifted), neon blade signs, light spilling from the shops, dark lamp posts with
@@ -213,7 +216,10 @@ xvfb-run -s "-screen 0 1080x2340x24" godot --path app/game3d --rendering-driver 
 The spec gives the fight config, a timeline of inputs (`stick`, `attack`, `skill`,
 `guard`), the shot times and an output folder. `--fixed-fps 30` makes every frame 1/30 s
 of fight time, so the same spec gives the same frames on a slow software renderer. The
-config keys `cam_dist`, `cam_fov` and `cam_pitch` override the camera for close-ups.
+config keys `cam_dist`, `cam_fov`, `cam_pitch`, `cam_yaw` and `cam_ahead` override the camera for
+close-ups; `prof_no_hud` hides the HUD and `fx_visible: false` the effects (character review sheets); `boss_passive` stops the
+boss, `rev_solo` puts the ally and the boss out of shot and stops the ally, `cam_hero_only` frames the hero
+alone, `cloth_push: false` turns the cloth-off-the-legs shader push off (all review/measure switches, off by default).
 
 ## Effects (cq 013)
 The skill and hit effects, the camera impact and the damage-number punch are described in

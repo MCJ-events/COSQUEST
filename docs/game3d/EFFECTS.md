@@ -20,6 +20,12 @@ gameplay; this file is the look, the budget and how to tune it.
 | `hud.gd` | The damage-number punch (`_draw_pops`, `_pop_punch`) |
 
 ## How it is drawn (and why there is no bloom pass)
+**cq 016:** there is now a cheap bloom (LOOK.md "Bloom", `bloom.gd`) that takes the effects as
+sources: every pooled node except the slash arcs (`no_bloom` meta), and of the cards only the standing
+ones (`card()` sets the layer by `flat`). The arcs and the flat WHIRL/SPLIT ground rings keep only their
+own halo, as below: bloomed as well they whited out the fighters inside a WHIRL. The notes below are
+cq 013's and still hold for the effects themselves.
+
 - The app runs Godot's **Compatibility renderer** on devices: `godotArgs` in
   `features/game3d/fight3d.ts` passes `--rendering-driver opengl3 --rendering-method gl_compatibility`
   on Android and iOS (only the iOS simulator uses Metal/mobile), and `project.godot` sets
