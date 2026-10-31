@@ -1,6 +1,8 @@
 const express = require('express');
 const { requireAuth } = require('../middleware/auth');
 const { asyncHandler } = require('../utils/asyncHandler');
+const { validate } = require('../middleware/validate');
+const rules = require('../validators/misc');
 const userModel = require('../models/userModel');
 const { EXPERTISE, isValidExpertise } = require('../models/expertiseModel');
 
@@ -14,6 +16,7 @@ router.get('/expertise', (req, res) => res.json({ expertise: EXPERTISE }));
 router.patch(
   '/expertise/me',
   requireAuth,
+  validate(rules.setExpertise),
   asyncHandler(async (req, res) => {
     if (!req.body || !Object.prototype.hasOwnProperty.call(req.body, 'expertise')) {
       return res.status(400).json({ error: 'Send expertise: a role key, or null to clear it.' });

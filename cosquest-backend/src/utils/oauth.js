@@ -9,6 +9,7 @@ const { revokeSession } = require('../realtime/socket');
 
 const GOOGLE_ISSUERS = ['https://accounts.google.com', 'accounts.google.com'];
 const codeLifetimeMs = 10 * 60 * 1000;
+const MAX_NAME_LENGTH = 50;
 let joseModulePromise;
 let googleJwks;
 let appleJwks;
@@ -74,7 +75,11 @@ function takeAuthorizationSession(req, res, provider) {
 
 function verifyAuthorization(session, state) {
   if (!session) throw new Error('OAuth session expired or was blocked. Please try again.');
-  if (!state || typeof session.state !== 'string' || state.length !== session.state.length || !crypto.timingSafeEqual(Buffer.from(state), Buffer.from(session.state))) {
+  // Compared as bytes: a state of the right length in characters but not in
+  // bytes (non-ASCII) would otherwise make timingSafeEqual throw.
+  const given = typeof state === 'string' ? Buffer.from(state) : null;
+  const expected = typeof session.state === 'string' ? Buffer.from(session.state) : null;
+  if (!given || !expected || !given.length || given.length !== expected.length || !crypto.timingSafeEqual(given, expected)) {
     throw new Error('OAuth state check failed. Please try again.');
   }
   return session.nonce;
@@ -169,9 +174,13 @@ async function findOrCreateUser(provider, payload, name = {}) {
       user = await userModel.createUser({ email, passwordHash: undefined });
       created = true;
       const userId = user?.id || user?._id;
+      // Names come from the provider (Apple's arrive in the callback form, so
+      // they're whatever was posted): text only, at most 50 characters like
+      // every other name.
+      const cleanName = (value) => (typeof value === 'string' ? value.trim().slice(0, MAX_NAME_LENGTH) : '');
       await userModel.updateUser(userId, (document) => {
-        if (name.firstName) document.profile.firstName = String(name.firstName).trim();
-        if (name.lastName) document.profile.lastName = String(name.lastName).trim();
+        if (cleanName(name.firstName)) document.profile.firstName = cleanName(name.firstName);
+        if (cleanName(name.lastName)) document.profile.lastName = cleanName(name.lastName);
       });
       user = await userModel.findById(userId);
     } catch (error) {

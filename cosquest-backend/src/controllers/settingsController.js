@@ -127,7 +127,8 @@ function getDataUsage(req, res) { return res.json({ dataUsage: req.user.dataUsag
 function updateSection(section, rules) {
   return async (req, res) => {
     const keys = Object.keys(req.body);
-    if (!keys.length || keys.some((key) => !rules[key])) return res.status(400).json({ error: `Provide supported fields: ${Object.keys(rules).join(', ')}.` });
+    // Own keys only: "__proto__" or "constructor" must not find Object's own methods.
+    if (!keys.length || keys.some((key) => !Object.prototype.hasOwnProperty.call(rules, key))) return res.status(400).json({ error: `Provide supported fields: ${Object.keys(rules).join(', ')}.` });
     for (const key of keys) {
       if (!rules[key](req.body[key])) return res.status(400).json({ error: `Invalid ${key}.` });
     }

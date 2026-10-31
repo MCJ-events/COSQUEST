@@ -1,8 +1,10 @@
 const router = require('express').Router();
 const { requireAuth, requireCompletedOnboarding } = require('../middleware/auth');
 const { asyncHandler } = require('../utils/asyncHandler');
+const { validate } = require('../middleware/validate');
+const rules = require('../validators/misc');
 const { leaderboard, realms } = require('../controllers/spotlightController');
 router.use(requireAuth, requireCompletedOnboarding);
-router.get('/leaderboard', asyncHandler(leaderboard));
+router.get('/leaderboard', validate(rules.leaderboard), asyncHandler(leaderboard));
 router.get('/realms', realms);
 module.exports = router;

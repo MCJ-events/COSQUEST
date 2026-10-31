@@ -33,6 +33,8 @@ function buildApp() {
   app.use(cors());
   app.use(express.json());
   app.use(express.urlencoded({ extended: false })); // Apple OAuth callback uses form_post.
+  // No MongoDB operators ("$ne", "$regex", ...) as field names, anywhere.
+  app.use(require('./src/middleware/requestGuard').rejectOperatorKeys);
   app.use(cookieParser(process.env.OAUTH_COOKIE_SECRET || process.env.JWT_SECRET));
 
   app.get('/health', (req, res) => res.json({ ok: true, service: 'cosquest-backend' }));
