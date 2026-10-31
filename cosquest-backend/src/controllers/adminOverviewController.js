@@ -55,7 +55,7 @@ function reportPreview(report) {
 async function newSparksCount(w) {
   // Legacy engine only for now; the Sparks module's count comes with the Sparks page.
   try {
-    if (require('../sparks').isModule()) return null;
+    if (require('../sparks').isModule()) return await require('./adminSparksController').newSparksBetween(w);
     return await require('../models/Spark').countDocuments(stats.inWindow(w));
   } catch {
     return null;

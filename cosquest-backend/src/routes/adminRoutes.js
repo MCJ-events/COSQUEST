@@ -21,6 +21,7 @@ const groups = require('../controllers/adminGroupsController');
 const roles = require('../controllers/adminRolesController');
 const settings = require('../controllers/adminSettingsController');
 const audit = require('../controllers/adminAuditController');
+const sparks = require('../controllers/adminSparksController');
 
 const router = express.Router();
 
@@ -82,6 +83,11 @@ router.patch('/groups/:groupId/settings', validate(rules.groupSettings), a(group
 router.post('/groups/:groupId/requests/:requestId/:decision', validate(rules.groupRequest), a(groups.decideRequest));
 router.post('/groups/:groupId/archive', validate(rules.groupArchive), a(groups.archive));
 router.post('/groups/:groupId/restore', validate(rules.groupArchive), a(groups.restore));
+
+// Sparks (read-only; the module's sparks_sparks, never DMs)
+router.get('/sparks/stats', validate(rules.sparkStats), a(sparks.sparkStats));
+router.get('/sparks', validate(rules.listSparks), a(sparks.listSparks));
+router.get('/sparks/:sparkId', validate(rules.sparkId), a(sparks.sparkDetail));
 
 // Roles & permissions
 router.get('/roles', a(roles.overview));

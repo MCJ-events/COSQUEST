@@ -1,4 +1,4 @@
-// Rules for /api/admin routes (Phases 1-3 and 5) (src/routes/adminRoutes.js) and member reports
+// Rules for /api/admin routes (Phases 1-5) (src/routes/adminRoutes.js) and member reports
 // (src/routes/reportRoutes.js). Types and limits only; the controllers check
 // who may do what and anything that needs the database.
 const { string, boolean, number, object, isoDate, objectId, oneOfValues, scalarQuery } = require('../middleware/validate');
@@ -131,4 +131,14 @@ module.exports = {
     string('action', { in: 'query', max: 80, label: 'action' }),
   ],
   auditId: [objectId('eventId', { in: 'param', label: 'event ID' })],
+
+  // Phase 4: Sparks
+  sparkStats: window,
+  listSparks: [
+    ...page,
+    ...scalarQuery('tab', 'group'),
+    oneOfValues('tab', ['all', 'active', 'quiet', 'dormant'], { in: 'query', label: 'tab' }),
+    objectId('group', { in: 'query', required: false, label: 'group' }),
+  ],
+  sparkId: [string('sparkId', { in: 'param', required: true, min: 1, max: 100, label: 'Spark ID' })],
 };

@@ -80,6 +80,8 @@ class MongoSparksStore {
       c.outcomes.createIndex({ createdAt: 1 }, { expireAfterSeconds: 2 * 86400 }),
       c.sparks.createIndex({ chatId: 1, lastMessageAt: -1 }),
       c.sparks.createIndex({ state: 1 }),
+      // Admin dashboard (Sparks page): every chat, latest reply first.
+      c.sparks.createIndex({ state: 1, lastMessageAt: -1 }),
       c.sessions.createIndex({ sparkId: 1, sessionIndex: 1 }),
       c.seams.createIndex({ sparkId: 1, addedAt: 1 }),
       c.pings.createIndex({ sparkId: 1, at: -1 }),
