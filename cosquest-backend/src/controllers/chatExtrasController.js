@@ -232,6 +232,7 @@ async function messageContext(req, res) {
 // images or videos), content (caption), replyTo?, sparkId?
 // ==========================================================================
 async function createAlbum(req, res) {
+  if (require('../utils/communityRestrictions').refuseIfMuted(req, res)) return undefined; // album
   const files = Array.isArray(req.files) ? req.files : [];
   const { conversation, error } = await loadConversationForUser(req.params.conversationId, req.user);
   if (error) {

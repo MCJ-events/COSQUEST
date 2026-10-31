@@ -1163,6 +1163,7 @@ async function listMessages(req, res) {
 // Optional @ mentions: `mentions` (user ids: array, JSON string, or
 // comma-separated) and/or `mentionsEveryone` (true / "true").
 async function createMessage(req, res) {
+  if (require('../utils/communityRestrictions').refuseIfMuted(req, res)) return undefined; // message
   const { conversation, error } = await loadConversationForUser(req.params.conversationId, req.user);
   if (error) {
     cleanUpLocalFile(req.file);
@@ -1392,6 +1393,7 @@ async function respondWithChangedMessage(req, res, conversation, message) {
 // PATCH /api/chats/:conversationId/messages/:messageId - sender-only, text edits.
 // The previous text is kept (editHistory) so the author can undo the edit.
 async function editMessage(req, res) {
+  if (require('../utils/communityRestrictions').refuseIfMuted(req, res)) return undefined; // message edit
   const { conversation, error } = await loadConversationForUser(req.params.conversationId, req.user);
   if (error) return res.status(error.status).json({ error: error.message });
 
@@ -1641,6 +1643,7 @@ async function removeReaction(req, res) {
 // Copies content/media into a brand-new message rather than moving or
 // re-uploading anything; deleting or editing the original never touches it.
 async function forwardMessage(req, res) {
+  if (require('../utils/communityRestrictions').refuseIfMuted(req, res)) return undefined; // forward
   const { conversation: sourceConversation, error: sourceError } = await loadConversationForUser(req.params.conversationId, req.user);
   if (sourceError) return res.status(sourceError.status).json({ error: sourceError.message });
 
@@ -1751,6 +1754,7 @@ async function bulkDeleteMessages(req, res) {
 }
 
 async function bulkForwardMessages(req, res) {
+  if (require('../utils/communityRestrictions').refuseIfMuted(req, res)) return undefined; // forward
   const ids = selectedIds(req.body.messageIds);
   if (!ids) return res.status(400).json({ error: 'Provide 1-50 valid messageIds.' });
   let targets = req.body.targets;

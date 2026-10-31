@@ -150,6 +150,17 @@ const userSchema = new mongoose.Schema(
     // The admin dashboard's own session (src/utils/adminToken.js), separate
     // from currentSessionId so the dashboard never signs the phone out.
     adminSessionId: { type: String, default: null },
+    // CosQuest-wide restrictions set by super admins (Members page;
+    // src/utils/communityRestrictions.js). Muted: can read, can't post,
+    // comment or send messages. Suspended: can't use CosQuest.
+    moderation: {
+      mutedUntil: { type: Date, default: null },
+      mutedReason: { type: String, default: null },
+      mutedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+      suspendedUntil: { type: Date, default: null },
+      suspendedReason: { type: String, default: null },
+      suspendedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    },
 
     // Best-effort "last seen" signal for chat presence ("Active 7h ago").
     // Touched by requireAuth, throttled there so it isn't a write on every request.
@@ -175,5 +186,8 @@ userSchema.index({ onboardingComplete: 1, interests: 1, pointsBalance: -1, _id: 
 userSchema.index({ faction: 1, onboardingComplete: 1 });
 // Roles & permissions: the list of super admins (a handful of rows).
 userSchema.index({ platformRole: 1 }, { partialFilterExpression: { platformRole: 'admin' } });
+// Members page: the Muted and Suspended tabs.
+userSchema.index({ 'moderation.mutedUntil': 1 }, { partialFilterExpression: { 'moderation.mutedUntil': { $type: 'date' } } });
+userSchema.index({ 'moderation.suspendedUntil': 1 }, { partialFilterExpression: { 'moderation.suspendedUntil': { $type: 'date' } } });
 
 module.exports = mongoose.model('User', userSchema);

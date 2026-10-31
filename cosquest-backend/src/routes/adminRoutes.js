@@ -16,6 +16,8 @@ const { overview } = require('../controllers/adminOverviewController');
 const reports = require('../controllers/adminReportsController');
 const feeds = require('../controllers/adminFeedsController');
 const chats = require('../controllers/adminChatsController');
+const members = require('../controllers/adminMembersController');
+const groups = require('../controllers/adminGroupsController');
 
 const router = express.Router();
 
@@ -53,5 +55,23 @@ router.post('/chats/conversations/:conversationId/members/:userId/mute', validat
 router.post('/chats/conversations/:conversationId/members/:userId/unmute', validate(rules.memberUnmute), a(chats.unmuteMember));
 router.post('/chats/conversations/:conversationId/members/:userId/remove', validate(rules.memberRemove), a(chats.removeMember));
 router.post('/chats/conversations/:conversationId/members/:userId/ban', validate(rules.memberRemove), a(chats.banMember));
+
+// Members (community-wide restrictions; group-only ones are in Chats / Groups)
+router.get('/members/stats', validate(rules.memberStats), a(members.memberStats));
+router.get('/members', validate(rules.listMembers), a(members.listMembers));
+router.get('/members/:userId', validate(rules.memberId), a(members.memberDetail));
+router.post('/members/:userId/mute', validate(rules.communityMute), a(members.mute));
+router.post('/members/:userId/unmute', validate(rules.memberLift), a(members.unmute));
+router.post('/members/:userId/suspend', validate(rules.memberSuspend), a(members.suspend));
+router.post('/members/:userId/unsuspend', validate(rules.memberLift), a(members.unsuspend));
+
+// Groups
+router.get('/groups/stats', validate(rules.groupStats), a(groups.groupStats));
+router.get('/groups', validate(rules.listGroups), a(groups.listGroups));
+router.get('/groups/:groupId', validate(rules.groupId), a(groups.groupDetail));
+router.patch('/groups/:groupId/settings', validate(rules.groupSettings), a(groups.updateSettings));
+router.post('/groups/:groupId/requests/:requestId/:decision', validate(rules.groupRequest), a(groups.decideRequest));
+router.post('/groups/:groupId/archive', validate(rules.groupArchive), a(groups.archive));
+router.post('/groups/:groupId/restore', validate(rules.groupArchive), a(groups.restore));
 
 module.exports = router;

@@ -153,6 +153,7 @@ async function loadPost(postId) {
 }
 
 async function createPost(req, res) {
+  if (require('../utils/communityRestrictions').refuseIfMuted(req, res)) return undefined; // post
   const type = String(req.body.type || '').trim().toLowerCase();
   const content = req.body.content === undefined ? '' : req.body.content;
   const files = req.files || [];
@@ -231,6 +232,7 @@ async function getPost(req, res) {
 }
 
 async function updatePost(req, res) {
+  if (require('../utils/communityRestrictions').refuseIfMuted(req, res)) return undefined; // post edit
   const post = await loadPost(req.params.postId);
   if (!post) return res.status(404).json({ error: 'Post not found.' });
   if (String(post.author._id) !== String(req.userId)) return res.status(403).json({ error: 'You can only edit your own post.' });
@@ -317,6 +319,7 @@ async function sharePost(req, res) {
 // (sharing a share shares its original). The original's shareCount goes up
 // once per person - same rule as POST /posts/:postId/shares.
 async function shareToFeed(req, res) {
+  if (require('../utils/communityRestrictions').refuseIfMuted(req, res)) return undefined; // share to feed
   const target = await loadPost(req.params.postId);
   if (!target) return res.status(404).json({ error: 'Post not found.' });
 
@@ -466,6 +469,7 @@ async function listComments(req, res) {
 // existing comment or reply. Store every reply under the root thread. A
 // comment needs body text, a voice attachment, or both.
 async function createComment(req, res) {
+  if (require('../utils/communityRestrictions').refuseIfMuted(req, res)) return undefined; // comment
   const file = req.file || null;
   const post = await loadPost(req.params.postId);
   if (!post) {

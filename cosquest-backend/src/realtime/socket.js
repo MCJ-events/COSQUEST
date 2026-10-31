@@ -91,6 +91,8 @@ async function initSocket(httpServer) {
       if (!user) return next(new Error('User no longer exists'));
       if (decoded.tokenVersion !== user.tokenVersion) return next(new Error('Session logged out'));
       if (!isCurrentSession(decoded, user)) return next(new Error('Signed in on another device'));
+      // Suspended by CosQuest's admins (src/utils/communityRestrictions.js).
+      if (require('../utils/communityRestrictions').suspendedAnswer(user)) return next(new Error('Account suspended'));
 
       socket.userId = String(user._id);
       next();

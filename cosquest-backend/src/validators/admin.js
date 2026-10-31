@@ -1,4 +1,4 @@
-// Rules for /api/admin routes (src/routes/adminRoutes.js) and member reports
+// Rules for /api/admin routes (Phases 1-3) (src/routes/adminRoutes.js) and member reports
 // (src/routes/reportRoutes.js). Types and limits only; the controllers check
 // who may do what and anything that needs the database.
 const { string, boolean, number, isoDate, objectId, oneOfValues, scalarQuery } = require('../middleware/validate');
@@ -69,4 +69,41 @@ module.exports = {
   ],
   memberUnmute: [objectId('conversationId', { in: 'param', label: 'conversation ID' }), objectId('userId', { in: 'param', label: 'user ID' }), reason(false)],
   memberRemove: [objectId('conversationId', { in: 'param', label: 'conversation ID' }), objectId('userId', { in: 'param', label: 'user ID' }), reason()],
+  // Phase 3: Members
+  memberStats: window,
+  listMembers: [
+    ...page,
+    ...scalarQuery('tab', 'role', 'group'),
+    oneOfValues('tab', ['all', 'pending', 'muted', 'suspended'], { in: 'query', label: 'tab' }),
+    oneOfValues('role', ['admin', 'member'], { in: 'query', label: 'role' }),
+  ],
+  memberId: [objectId('userId', { in: 'param', label: 'member ID' })],
+  // (Not memberMute: that name is the group mute in Chats, above.)
+  communityMute: [objectId('userId', { in: 'param', label: 'member ID' }), oneOfValues('duration', ['1h', '1d', '1w', '30d', 'forever'], { required: true, label: 'duration' }), reason()],
+  memberSuspend: [objectId('userId', { in: 'param', label: 'member ID' }), oneOfValues('duration', ['1d', '1w', '30d', 'forever'], { required: true, label: 'duration' }), reason()],
+  memberLift: [objectId('userId', { in: 'param', label: 'member ID' }), reason(false)],
+
+  // Phase 3: Groups
+  groupStats: window,
+  listGroups: [
+    ...page,
+    ...scalarQuery('tab', 'kind'),
+    oneOfValues('tab', ['all', 'active', 'attention', 'archived'], { in: 'query', label: 'tab' }),
+    oneOfValues('kind', ['open', 'private', 'faction'], { in: 'query', label: 'kind' }),
+  ],
+  groupId: [objectId('groupId', { in: 'param', label: 'group ID' })],
+  groupSettings: [
+    objectId('groupId', { in: 'param', label: 'group ID' }),
+    oneOfValues('joinMode', ['instant', 'approval'], { label: 'joinMode' }),
+    oneOfValues('whoCanAdd', ['members', 'admins'], { label: 'whoCanAdd' }),
+    oneOfValues('memberListVisibility', ['members', 'admins'], { label: 'memberListVisibility' }),
+    reason(false),
+  ],
+  groupRequest: [
+    objectId('groupId', { in: 'param', label: 'group ID' }),
+    objectId('requestId', { in: 'param', label: 'request ID' }),
+    oneOfValues('decision', ['approve', 'decline'], { in: 'param', required: true, label: 'decision' }),
+    reason(false),
+  ],
+  groupArchive: [objectId('groupId', { in: 'param', label: 'group ID' }), reason()],
 };

@@ -85,6 +85,7 @@ async function loadPoll(req, res) {
 // Body: { question, options: [text, ...] (2-12), multiple?, anonymous?,
 //         closesIn?: "1h" | "1d" | "1w" (omit = no end), replyTo? }
 async function createPoll(req, res) {
+  if (require('../utils/communityRestrictions').refuseIfMuted(req, res)) return undefined; // poll
   const { conversation, error } = await loadConversationForUser(req.params.conversationId, req.user);
   if (error) return res.status(error.status).json({ error: error.message });
 

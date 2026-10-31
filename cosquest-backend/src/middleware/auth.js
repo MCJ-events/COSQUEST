@@ -37,6 +37,9 @@ async function requireAuth(req, res, next) {
     if (!isCurrentSession(decoded, user)) {
       return res.status(401).json({ error: 'This account was signed in on another device. Please log in again.' });
     }
+    // Suspended by CosQuest's admins (src/utils/communityRestrictions.js).
+    const suspended = require('../utils/communityRestrictions').suspendedAnswer(user);
+    if (suspended) return res.status(403).json(suspended);
     req.userId = user.id;
     req.user = user;
 
