@@ -76,7 +76,7 @@ async function main() {
     result.pass += callModeration.pass;
     result.fail += callModeration.fail;
     // Request validation (src/middleware/validate.js, src/validators/*), one suite per area.
-    for (const suite of ['validation', 'validationAccount', 'validationChat', 'validationCalls', 'validationGroupsPosts', 'admin', 'adminPhase2', 'adminPhase3', 'adminPhase4', 'adminPhase5']) {
+    for (const suite of ['validation', 'validationAccount', 'validationChat', 'validationCalls', 'validationGroupsPosts', 'admin', 'adminPhase2', 'adminPhase3', 'adminPhase4', 'adminPhase5', 'adminPhase6']) {
       const checked = await require(`./${suite}`).run(`http://localhost:${process.env.PORT}`);
       result.pass += checked.pass;
       result.fail += checked.fail;

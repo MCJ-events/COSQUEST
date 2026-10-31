@@ -1,4 +1,4 @@
-// Rules for /api/admin routes (Phases 1-5) (src/routes/adminRoutes.js) and member reports
+// Rules for /api/admin routes (Phases 1-6) (src/routes/adminRoutes.js) and member reports
 // (src/routes/reportRoutes.js). Types and limits only; the controllers check
 // who may do what and anything that needs the database.
 const { string, boolean, number, object, isoDate, objectId, oneOfValues, scalarQuery } = require('../middleware/validate');
@@ -141,4 +141,18 @@ module.exports = {
     objectId('group', { in: 'query', required: false, label: 'group' }),
   ],
   sparkId: [string('sparkId', { in: 'param', required: true, min: 1, max: 100, label: 'Spark ID' })],
+
+  // Phase 6: finishing touches
+  search: [...scalarQuery('q'), string('q', { in: 'query', max: 100, label: 'q' })],
+  createGroup: [
+    string('name', { required: true, min: 2, max: 80, trim: true, label: 'name', message: 'A group name needs 2-80 characters.' }),
+    string('description', { max: 500, label: 'description' }),
+    oneOfValues('kind', ['open', 'private'], { required: true, label: 'kind' }),
+    oneOfValues('joinMode', ['instant', 'approval'], { label: 'joinMode' }),
+  ],
+  contactOwner: [
+    objectId('groupId', { in: 'param', label: 'group ID' }),
+    string('message', { required: true, min: 3, max: 500, trim: true, label: 'message', message: 'Write a message of 3-500 characters.' }),
+  ],
+  createPost: [string('content', { required: true, min: 1, max: 2000, trim: true, label: 'content', message: 'A post needs 1-2,000 characters.' })],
 };

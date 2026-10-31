@@ -22,6 +22,7 @@ const roles = require('../controllers/adminRolesController');
 const settings = require('../controllers/adminSettingsController');
 const audit = require('../controllers/adminAuditController');
 const sparks = require('../controllers/adminSparksController');
+const extras = require('../controllers/adminExtrasController');
 
 const router = express.Router();
 
@@ -40,9 +41,16 @@ router.use(a(requireSuperAdmin));
 router.get('/auth/me', a(auth.me));
 router.post('/auth/logout', a(auth.logout));
 router.get('/overview', validate(rules.overview), a(overview));
+router.get('/overview/export', validate(rules.overview), a(extras.exportOverview));
+
+// Top bar: search and the bell
+router.get('/search', validate(rules.search), a(extras.search));
+router.get('/alerts', a(extras.alerts));
 
 // Moderation
 router.get('/reports/stats', a(reports.stats));
+router.get('/reports/triage', a(extras.triage));
+router.get('/reports/export', validate(rules.listReports), a(extras.exportReports));
 router.get('/reports', validate(rules.listReports), a(reports.list));
 router.get('/reports/:reportId', validate(rules.reportId), a(reports.detail));
 router.post('/reports/:reportId/assign', validate(rules.assignReport), a(reports.assign));
@@ -50,6 +58,8 @@ router.post('/reports/:reportId/decision', validate(rules.decideReport), a(repor
 
 // Feeds
 router.get('/feeds/stats', validate(rules.feedStats), a(feeds.feedStats));
+router.get('/feeds/posts/export', validate(rules.listPosts), a(extras.exportPosts));
+router.post('/feeds/posts', validate(rules.createPost), a(extras.createPost));
 router.get('/feeds/posts', validate(rules.listPosts), a(feeds.listPosts));
 router.get('/feeds/posts/:postId', validate(rules.postId), a(feeds.getPost));
 router.post('/feeds/posts/:postId/remove', validate(rules.removePost), a(feeds.removePost));
@@ -68,6 +78,7 @@ router.post('/chats/conversations/:conversationId/members/:userId/ban', validate
 
 // Members (community-wide restrictions; group-only ones are in Chats / Groups)
 router.get('/members/stats', validate(rules.memberStats), a(members.memberStats));
+router.get('/members/export', validate(rules.listMembers), a(extras.exportMembers));
 router.get('/members', validate(rules.listMembers), a(members.listMembers));
 router.get('/members/:userId', validate(rules.memberId), a(members.memberDetail));
 router.post('/members/:userId/mute', validate(rules.communityMute), a(members.mute));
@@ -77,6 +88,9 @@ router.post('/members/:userId/unsuspend', validate(rules.memberLift), a(members.
 
 // Groups
 router.get('/groups/stats', validate(rules.groupStats), a(groups.groupStats));
+router.get('/groups/export', validate(rules.listGroups), a(extras.exportGroups));
+router.post('/groups', validate(rules.createGroup), a(extras.createGroup));
+router.post('/groups/:groupId/contact-owner', validate(rules.contactOwner), a(extras.contactOwner));
 router.get('/groups', validate(rules.listGroups), a(groups.listGroups));
 router.get('/groups/:groupId', validate(rules.groupId), a(groups.groupDetail));
 router.patch('/groups/:groupId/settings', validate(rules.groupSettings), a(groups.updateSettings));
