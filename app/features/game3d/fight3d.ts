@@ -454,6 +454,18 @@ export function fightSeed(seedText: string): number | null {
   return Number((n < 0n ? -n : n) % 2147483647n);
 }
 
+/**
+ * Why a judged start cannot be fought in 3D, in the player's words, or null when it can: the server
+ * resumed another fight still on at this point (a 2D one started moments ago), or this server plays the
+ * point as the 2D fight, or the seed is unreadable.
+ */
+export function judgedStartProblem(start: { seed_text: string; resumed?: boolean | null; setup: { kind?: string } }): string | null {
+  if (start.setup.kind !== "fight3d") {
+    return start.resumed ? "Your other fight at this point is still on. Finish it first." : "This point's fight is the regular Fight right now.";
+  }
+  return fightSeed(start.seed_text) === null ? "The 3D fight could not start." : null;
+}
+
 /** The /v1/duel/finish fields for a judged fight: the duel's result block from the fight's numbers, and the record (the server's finish_fields). */
 export function finishFrom3D(r: Fight3DResult): DuelFinished & { fight3d: Record<string, unknown> | null } {
   return {

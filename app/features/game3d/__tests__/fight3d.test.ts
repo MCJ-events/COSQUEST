@@ -340,3 +340,13 @@ test("a fight with a place asks Godot for the place arena; without one it is the
   assert.equal(s.arena, undefined);
   assert.equal(s.ground_json, undefined);
 });
+
+import { judgedStartProblem } from "../fight3d.ts";
+
+test("a judged start that is not a 3D fight says why: another fight still on here, or the 2D fight on this server", () => {
+  const ok = { seed_text: "239", resumed: false, setup: { kind: "fight3d" } };
+  assert.equal(judgedStartProblem(ok), null);
+  assert.match(judgedStartProblem({ ...ok, resumed: true, setup: {} }) ?? "", /still on/);
+  assert.match(judgedStartProblem({ ...ok, setup: {} }) ?? "", /regular Fight/);
+  assert.match(judgedStartProblem({ ...ok, seed_text: "x" }) ?? "", /could not start/);
+});

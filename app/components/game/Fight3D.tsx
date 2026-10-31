@@ -20,7 +20,18 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { castWeapons, fightCast } from "@/features/game3d/characters";
 import { closeFight, fightStatus, FightOpenError, godotLib, holdForBackground, onFightState, openFight } from "@/features/game3d/engine";
-import { buildFightConfig, type Fight3DMode, type Fight3DResult, type Fight3DRun, fightSeed, godotArgs, parseFightResult, placeFrom, quitResult } from "@/features/game3d/fight3d";
+import {
+  buildFightConfig,
+  type Fight3DMode,
+  type Fight3DResult,
+  type Fight3DRun,
+  fightSeed,
+  godotArgs,
+  judgedStartProblem,
+  parseFightResult,
+  placeFrom,
+  quitResult,
+} from "@/features/game3d/fight3d";
 import { FIGHT3D } from "@/features/game3d/flags";
 import { useAppSelector } from "@/store/hooks";
 import { gameStore } from "@/features/game/runtime";
@@ -131,8 +142,9 @@ export default function Fight3D({
         if (judged && point) {
           const start = await gameStore.duelStart(point, { fight3d: true });
           if (!alive || done.current) return;
-          seed = start.setup.kind === "fight3d" ? fightSeed(start.seed_text) : null;
-          if (seed === null) throw new Error("This point's fight is the regular Fight right now.");
+          const problem = judgedStartProblem(start);
+          if (problem) throw new Error(problem);
+          seed = fightSeed(start.seed_text);
           duel.current = start;
           log(`judged duel=${start.duel_id} seed=${seed}`);
         }
