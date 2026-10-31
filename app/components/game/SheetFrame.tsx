@@ -4,9 +4,10 @@
 // and put <SheetHeader> (SheetHeader.tsx) at its top.
 import type { ReactNode } from "react";
 import { View } from "react-native";
-import Animated, { FadeIn, SlideInDown, useReducedMotion } from "react-native-reanimated";
+import Animated from "react-native-reanimated";
 
 import { GameBackdrop } from "./GameBackdrop";
+import { useSheetMotion } from "./sheetMotion";
 import { GP } from "./theme";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
@@ -16,9 +17,9 @@ import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
  */
 export function SheetFrame({ children, top, full }: { children: ReactNode; top: number; full?: boolean }) {
   const styles = useThemedStyles(STYLE_PAIR);
-  const reduce = useReducedMotion();
+  const motion = useSheetMotion();
   return (
-    <Animated.View entering={reduce ? FadeIn.duration(120) : SlideInDown.springify().damping(20)} style={[styles.sheet, { top }, full && styles.full]}>
+    <Animated.View entering={motion.entering} style={[styles.sheet, { top }, full && styles.full]}>
       <GameBackdrop />
       {full ? null : <View style={styles.grabber} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden />}
       {children}

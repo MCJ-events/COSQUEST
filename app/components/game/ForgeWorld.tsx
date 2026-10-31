@@ -20,7 +20,7 @@ import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import Animated, { FadeIn, FadeInDown, useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming, ZoomIn } from "react-native-reanimated";
+import Animated, { Easing, FadeIn, FadeInDown, useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withSequence, withTiming, ZoomIn } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { distanceM, distanceText, toLocal, type LatLng } from "@/features/game/geo";
@@ -43,6 +43,7 @@ import { MANIFEST, setLocalPick, useCatalogueOn, useLocalPick } from "@/features
 
 import ForgeModel, { thumbSource, useForgeEntry } from "./ForgeModel";
 import { GameButton, MAX_FONT_SCALE } from "./kit";
+import { MapPin, PIN_SPOT } from "./mapCamera";
 import { SheetHost } from "./Sheet";
 import { SheetFrame } from "./SheetFrame";
 import { SheetHeader } from "./SheetHeader";
@@ -80,7 +81,8 @@ export function useForgeWorldPolling(active: boolean) {
 
 /**
  * The finds on the map. `place` turns a spot into board pixels (WorldMap's
- * own projection), so the pins slide with the streets.
+ * own projection), so the pins slide with the streets; MapPin keeps each one
+ * upright and screen-sized as the map turns and zooms.
  */
 export function ForgeDropsLayer({ place, onOpen }: { place: (p: LatLng) => { left: number; top: number }; onOpen: (d: ForgeDrop) => void }) {
   const on = useForgeOn();
@@ -95,7 +97,11 @@ export function ForgeDropsLayer({ place, onOpen }: { place: (p: LatLng) => { lef
         .filter((d) => dropShown(d, entries, linkOn))
         .map((d) => {
           const at = place(d);
-          return <DropPin key={d.id} drop={d} left={at.left} top={at.top} onPress={onOpen} />;
+          return (
+            <MapPin key={d.id} left={at.left} top={at.top} zIndex={4}>
+              <DropPin drop={d} left={PIN_SPOT.left} top={PIN_SPOT.top} onPress={onOpen} />
+            </MapPin>
+          );
         })}
     </>
   );
@@ -298,9 +304,10 @@ export function ForgeClaim({ drop, onClose, onOpenBag }: { drop: ForgeDrop; onCl
 
 function Sunburst({ color }: { color: string }) {
   const spin = useSharedValue(0);
+  const still = useReducedMotion();
   useEffect(() => {
-    spin.set(withRepeat(withTiming(1, { duration: 9000 }), -1));
-  }, [spin]);
+    if (!still) spin.set(withRepeat(withTiming(1, { duration: 9000, easing: Easing.linear }), -1));
+  }, [spin, still]);
   const style = useAnimatedStyle(() => ({ transform: [{ rotate: `${spin.get() * 360}deg` }] }));
   return (
     <Animated.View style={[styles.burst, style]} pointerEvents="none">
@@ -565,7 +572,7 @@ export function ForgeFighterArt({ fighter, size = 72 }: { fighter: unknown; size
       {url ? (
         <Image source={{ uri: url }} style={StyleSheet.absoluteFill} contentFit="cover" accessibilityLabel={entry.name} />
       ) : (
-        <ForgeModel entry={entry} purpose="thumb" animation={entry.type === "character" ? "idle" : null} spin={entry.type === "weapon"} style={StyleSheet.absoluteFill} size={size} distance={entry.type === "character" ? 2.5 : 2.4} />
+        <ForgeModel entry={entry} purpose="thumb" animation={entry.type === "character" ? "idle" : null} style={StyleSheet.absoluteFill} size={size} distance={entry.type === "character" ? 2.5 : 2.4} />
       )}
     </View>
   );

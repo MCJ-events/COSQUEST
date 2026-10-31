@@ -6,7 +6,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
 import { Text, View } from "react-native";
-import Animated, { Easing, Keyframe } from "react-native-reanimated";
+import Animated from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { distanceText } from "@/features/game/geo";
@@ -20,19 +20,10 @@ import { Chip, GameButton, GameIconButton, GamePanel, MAX_FONT_SCALE, withAlpha 
 import { HoldLine, SiegeLine, SpawnLine } from "./PointLines";
 import RaidLine from "./RaidLine";
 import { RaidCrown } from "./RaidParts";
+import { useCardMotion } from "./sheetMotion";
 import { GF, GP, realmColor, realmIcon, tierColor } from "./theme";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
-/** `.move(edge: .bottom).combined(with: .opacity)` under `.smooth(duration: 0.3)`. */
-const EASE = Easing.inOut(Easing.cubic);
-const CARD_IN = new Keyframe({
-  from: { opacity: 0, transform: [{ translateY: 90 }] },
-  to: { opacity: 1, transform: [{ translateY: 0 }], easing: EASE },
-}).duration(300);
-const CARD_OUT = new Keyframe({
-  from: { opacity: 1, transform: [{ translateY: 0 }] },
-  to: { opacity: 0, transform: [{ translateY: 90 }], easing: EASE },
-}).duration(300);
 
 /** Color(white: 0.6): the face of a button that cannot be pressed yet. */
 const WAIT_FACE = "#999999";
@@ -66,6 +57,7 @@ export default function PointSheet({
 }) {
   const styles = useThemedStyles(STYLE_PAIR);
   const insets = useSafeAreaInsets();
+  const card = useCardMotion();
   const me = useGame((s) => s.me);
   const [now, setNow] = useState(() => Date.now());
   // The spin's rest ends on its own: tick while it runs.
@@ -83,8 +75,8 @@ export default function PointSheet({
 
   return (
     <Animated.View
-      entering={CARD_IN}
-      exiting={CARD_OUT}
+      entering={card.entering}
+      exiting={card.exiting}
       style={[styles.wrap, { bottom: insets.bottom + 14 }]}>
       <GamePanel>
         <View style={{ gap: 12 }}>

@@ -15,8 +15,6 @@ import { ActivityIndicator, BackHandler, Pressable, ScrollView, StyleSheet, Text
 import Animated, {
   FadeIn,
   FadeOut,
-  SlideInDown,
-  SlideOutDown,
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
@@ -25,6 +23,8 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+import { useSheetMotion } from "./sheetMotion";
 
 import {
   abilityIcon,
@@ -68,6 +68,7 @@ type Picked = { kind: "relic"; id: string } | { kind: "forge"; id: string } | nu
 export default function RelicsSheet({ onClose }: { onClose: () => void }) {
   const styles = useThemedStyles(STYLE_PAIR);
   const insets = useSafeAreaInsets();
+  const motion = useSheetMotion();
   const me = useGame((s) => s.me);
   const relics = useRelics();
   const [picked, setPicked] = useState<Picked>(null);
@@ -95,7 +96,7 @@ export default function RelicsSheet({ onClose }: { onClose: () => void }) {
   const p = relics.payload;
 
   return (
-    <Animated.View entering={SlideInDown.springify().damping(20)} exiting={SlideOutDown.duration(180)} style={[styles.sheet, { top: insets.top + 40 }]}>
+    <Animated.View entering={motion.entering} exiting={motion.exiting} style={[styles.sheet, { top: insets.top + 40 }]}>
       <GameBackdrop />
       <View style={styles.head}>
         <SheetHeader title="Relics" onClose={onClose} closeLabel="Close the Relics" />

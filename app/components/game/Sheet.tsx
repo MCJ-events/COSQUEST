@@ -6,7 +6,9 @@
 import { type ReactNode, useCallback } from "react";
 import { Pressable, StyleSheet, useWindowDimensions } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
-import Animated, { Easing, FadeIn, interpolate, runOnJS, useAnimatedStyle, useSharedValue, withSpring, withTiming } from "react-native-reanimated";
+import Animated, { FadeIn, interpolate, runOnJS, useAnimatedStyle, useReducedMotion, useSharedValue, withSpring, withTiming } from "react-native-reanimated";
+
+import { SHEET_CLOSE_MS, SHEET_EASE_IN, SHEET_SNAP_BACK } from "./sheetMotion";
 
 /** Where a drag may start: a strip of the screen (the sheet's header), or anywhere ("any", for short sheets). */
 export type DragBand = { top: number; height: number } | "any";
@@ -28,7 +30,10 @@ export function SheetHost({
   children: (close: () => void) => ReactNode;
 }) {
   const { height } = useWindowDimensions();
+  const reduce = useReducedMotion();
   const ty = useSharedValue(0);
+  // Reduce Motion: the sheet fades away instead of sliding.
+  const fade = useSharedValue(1);
   const startX = useSharedValue(0);
   const startY = useSharedValue(0);
   const closing = useSharedValue(false);
@@ -38,12 +43,13 @@ export function SheetHost({
   const close = useCallback(() => {
     if (closing.get()) return;
     closing.set(true);
-    ty.set(
-      withTiming(height, { duration: 220, easing: Easing.in(Easing.cubic) }, (finished) => {
-        if (finished) runOnJS(onClose)();
-      }),
-    );
-  }, [closing, height, onClose, ty]);
+    const done = (finished?: boolean) => {
+      "worklet";
+      if (finished) runOnJS(onClose)();
+    };
+    if (reduce) fade.set(withTiming(0, { duration: 120 }, done));
+    else ty.set(withTiming(height, { duration: SHEET_CLOSE_MS, easing: SHEET_EASE_IN }, done));
+  }, [closing, fade, height, onClose, reduce, ty]);
 
   const pan = Gesture.Pan()
     .manualActivation(true)
@@ -71,11 +77,11 @@ export function SheetHost({
     })
     .onEnd((e) => {
       if (e.translationY > DISMISS_DISTANCE || e.velocityY > DISMISS_VELOCITY) runOnJS(close)();
-      else ty.set(withSpring(0, { stiffness: 400, damping: 30, mass: 1 }));
+      else ty.set(withSpring(0, SHEET_SNAP_BACK));
     });
 
-  const sheetStyle = useAnimatedStyle(() => ({ transform: [{ translateY: ty.get() }] }));
-  const scrimStyle = useAnimatedStyle(() => ({ opacity: interpolate(ty.get(), [0, height], [1, 0], "clamp") }));
+  const sheetStyle = useAnimatedStyle(() => ({ opacity: fade.get(), transform: [{ translateY: ty.get() }] }));
+  const scrimStyle = useAnimatedStyle(() => ({ opacity: fade.get() * interpolate(ty.get(), [0, height], [1, 0], "clamp") }));
 
   return (
     <Animated.View entering={FadeIn.duration(200)} style={StyleSheet.absoluteFill} pointerEvents="box-none">

@@ -7,11 +7,12 @@
 import { Ionicons } from "@expo/vector-icons";
 import { type ReactNode, useRef, useState } from "react";
 import { type LayoutChangeEvent, Text, View } from "react-native";
-import Animated, { Easing, Keyframe } from "react-native-reanimated";
+import Animated from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { GameIconButton, MAX_FONT_SCALE } from "./kit";
 import { SheetHost } from "./Sheet";
+import { SHEET_CLOSE_MS, useSheetMotion } from "./sheetMotion";
 import { edgeOf, GF, GP } from "./theme";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
@@ -27,21 +28,17 @@ export type MoreTile = {
   custom?: (press: () => void) => ReactNode;
 };
 
-/** A drag of the sheet closes it; the slide is 220 ms (SheetHost), the next sheet waits 380. */
-const SLIDE_MS = 220;
+/** A drag of the sheet closes it; the slide is SHEET_CLOSE_MS (SheetHost), the next sheet waits 380. */
+const SLIDE_MS = SHEET_CLOSE_MS;
 const NEXT_SHEET_MS = 380;
 const MIN_TILE = 84;
 const SPACING = 14;
 
-const EASE = Easing.inOut(Easing.cubic);
-const PANEL_IN = new Keyframe({
-  from: { transform: [{ translateY: 320 }] },
-  to: { transform: [{ translateY: 0 }], easing: EASE },
-}).duration(300);
 
 export default function MoreSheet({ tiles, onClose }: { tiles: MoreTile[]; onClose: () => void }) {
   const styles = useThemedStyles(STYLE_PAIR);
   const insets = useSafeAreaInsets();
+  const motion = useSheetMotion();
   const [width, setWidth] = useState(0);
   const next = useRef<(() => void) | null>(null);
 
@@ -67,7 +64,7 @@ export default function MoreSheet({ tiles, onClose }: { tiles: MoreTile[]; onClo
           close();
         };
         return (
-          <Animated.View entering={PANEL_IN} style={[styles.sheet, { paddingBottom: insets.bottom + 20 }]}>
+          <Animated.View entering={motion.entering} style={[styles.sheet, { paddingBottom: insets.bottom + 20 }]}>
             <View style={styles.grabber} />
             <View style={styles.head}>
               <Text style={styles.title} accessibilityRole="header" maxFontSizeMultiplier={MAX_FONT_SCALE}>

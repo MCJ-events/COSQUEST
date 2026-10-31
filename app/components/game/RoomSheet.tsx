@@ -7,8 +7,10 @@ import * as Haptics from "expo-haptics";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, Share, Text, TextInput, View } from "react-native";
 import { KeyboardAvoidingView } from "@/components/ui/keyboard";
-import Animated, { SlideInDown, SlideOutDown } from "react-native-reanimated";
+import Animated from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+import { useSheetMotion } from "./sheetMotion";
 
 import { distanceText } from "@/features/game/geo";
 import {
@@ -52,6 +54,7 @@ export default function RoomSheet({
 }) {
   const styles = useThemedStyles(STYLE_PAIR);
   const insets = useSafeAreaInsets();
+  const motion = useSheetMotion();
   const rooms = useRooms();
   const fix = useGame((s) => s.fix);
   const me = useGame((s) => s.me);
@@ -89,7 +92,7 @@ export default function RoomSheet({
   };
 
   return (
-    <Animated.View entering={SlideInDown.springify().damping(20)} exiting={SlideOutDown.duration(180)} style={[styles.sheet, { top: insets.top + 40 }]}>
+    <Animated.View entering={motion.entering} exiting={motion.exiting} style={[styles.sheet, { top: insets.top + 40 }]}>
       <View style={styles.head}>
         <Text style={styles.title} accessibilityRole="header">
           Battle

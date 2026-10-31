@@ -230,6 +230,29 @@ async function sha256Of(file: File): Promise<string> {
   return hexOf(new Uint8Array(digest));
 }
 
+/**
+ * A model download that has not finished in this long is given up (the box
+ * then offers a retry). expo-file-system's download has no timeout of its
+ * own, so a stalled connection left the 3D box loading for ever.
+ */
+export const DOWNLOAD_TIMEOUT_MS = 25_000;
+
+function withTimeout<T>(work: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error(`timed out after ${ms} ms`)), ms);
+    work.then(
+      (v) => {
+        clearTimeout(t);
+        resolve(v);
+      },
+      (e) => {
+        clearTimeout(t);
+        reject(e);
+      },
+    );
+  });
+}
+
 const inFlight = new Map<string, Promise<string | null>>();
 const ready = new Map<string, string>();
 
@@ -258,7 +281,7 @@ export function ensureFile(entry: Pick<ForgeEntry, "id" | "version">, f: ForgeFi
       if (!sizeOk(f.bytes)) return null;
       if (!dir.exists) dir.create({ intermediates: true, idempotent: true });
       if (dest.exists) dest.delete();
-      await File.downloadFileAsync(forgeFileUrl(GAME_SERVER, f.url), dest);
+      await withTimeout(File.downloadFileAsync(forgeFileUrl(GAME_SERVER, f.url), dest, { idempotent: true }), DOWNLOAD_TIMEOUT_MS);
       if (!sizeOk(f.bytes, dest.size) || (f.sha256 && !digestOk(await sha256Of(dest), f.sha256))) {
         dest.delete();
         return null;
@@ -266,7 +289,8 @@ export function ensureFile(entry: Pick<ForgeEntry, "id" | "version">, f: ForgeFi
       marker.create({ overwrite: true });
       ready.set(key, dest.uri);
       return dest.uri;
-    } catch {
+    } catch (e) {
+      if (__DEV__) console.warn(`[forge] ${f.file}: ${e instanceof Error ? e.message : String(e)}`);
       return null;
     } finally {
       inFlight.delete(key);

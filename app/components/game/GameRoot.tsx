@@ -68,7 +68,7 @@ import { GF, GP, realmColor } from "./theme";
 import { useHeading } from "./useHeading";
 import { useOnScreen } from "./useOnScreen";
 import { useWardenSaid, wardenVoice } from "./wardenVoice";
-import WorldMap from "./WorldMap";
+import WorldMap, { BackToMe } from "./WorldMap";
 import { useRenderCount } from "@/utils/perfMarks";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 import type { ForgeDrop } from "@/features/game/forgeWorld";
@@ -137,7 +137,9 @@ export default function GameRoot({ parked }: { parked: boolean }) {
   const onScreen = useOnScreen();
   /** A Room beacon tapped on the map: the Battle sheet opens on that room. */
   const [roomFocus, setRoomFocus] = useState<string | null>(null);
-  const [, recentre] = useState(0);
+  // The rail's Centre on me and the map's "Back to me" fly the map's camera home.
+  const [recentreTick, recentre] = useState(0);
+  const [mapFollowing, setMapFollowing] = useState(true);
   const [onboarding, setOnboarding] = useState(false);
   const needsOnboarding = !!session && gameStore.needsOnboarding;
   if (needsOnboarding && !onboarding) setOnboarding(true);
@@ -540,6 +542,8 @@ export default function GameRoot({ parked }: { parked: boolean }) {
         onRoom={(r) => openBattle(r.game_id)}
         overlay={forgeOn && screen.kind === "home" && !runLive ? (place) => <ForgeDropsLayer place={place} onOpen={setForgeDrop} /> : undefined}
         playerBadge={forgeAvatar ? <AvatarBadge size={34} /> : undefined}
+        recentreSignal={recentreTick}
+        onFollowChange={setMapFollowing}
       />
 
       <TopBar me={me} profile={profile} name={gameStore.playerName()} color={color} onProfile={() => setSheet("profile")} onCoins={() => setSheet("coins")} onAskWarden={() => setSheet("ask")} />
@@ -604,6 +608,7 @@ export default function GameRoot({ parked }: { parked: boolean }) {
       {/* The lower half: the Warden's line, the radar and the Nearby tray (RoamHomeView.bottom). */}
       {!selected && screen.kind === "home" ? (
         <View style={[styles.bottom, { bottom: insets.bottom + 10 }]} pointerEvents="box-none">
+          {fix && !mapFollowing ? <BackToMe onPress={() => recentre((n) => n + 1)} /> : null}
           {showBubble ? <WardenBubble text={said.text} color={color} onClose={() => wardenVoice.quiet()} /> : null}
           {runLive ? (
             <RunTray onPick={setRunPoint} onEnd={() => void runModel.finish()} distanceOf={runDistance} inReach={runInReach} />

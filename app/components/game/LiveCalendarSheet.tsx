@@ -5,8 +5,10 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect } from "react";
 import { ActivityIndicator, ScrollView, Text, View } from "react-native";
-import Animated, { SlideInDown, SlideOutDown } from "react-native-reanimated";
+import Animated from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+import { useSheetMotion } from "./sheetMotion";
 
 import { liveAt, type LiveEvent, times, upcomingAfter, whenText } from "@/features/game/live";
 import { liveCalendar, livePlace, useLiveCalendar } from "@/features/game/liveRuntime";
@@ -27,6 +29,7 @@ function reload() {
 export default function LiveCalendarSheet({ onClose }: { onClose: () => void }) {
   const styles = useThemedStyles(STYLE_PAIR);
   const insets = useSafeAreaInsets();
+  const motion = useSheetMotion();
   const { calendar, error } = useLiveCalendar();
   const fix = useGame((s) => s.fix);
   const centre = useGame((s) => s.centre);
@@ -42,7 +45,7 @@ export default function LiveCalendarSheet({ onClose }: { onClose: () => void }) 
   const next = calendar ? upcomingAfter(calendar, now) : [];
 
   return (
-    <Animated.View entering={SlideInDown.springify().damping(20)} exiting={SlideOutDown.duration(180)} style={[styles.sheet, { top: insets.top + 40 }]}>
+    <Animated.View entering={motion.entering} exiting={motion.exiting} style={[styles.sheet, { top: insets.top + 40 }]}>
       <GameBackdrop />
       <View style={styles.head}>
         <SheetHeader title="Events" onClose={onClose} closeLabel="Close" />
