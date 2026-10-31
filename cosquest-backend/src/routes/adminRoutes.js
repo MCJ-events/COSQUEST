@@ -18,12 +18,21 @@ const feeds = require('../controllers/adminFeedsController');
 const chats = require('../controllers/adminChatsController');
 const members = require('../controllers/adminMembersController');
 const groups = require('../controllers/adminGroupsController');
+const roles = require('../controllers/adminRolesController');
+const settings = require('../controllers/adminSettingsController');
+const audit = require('../controllers/adminAuditController');
 
 const router = express.Router();
 
 // Signing in (no admin token yet). Same attempt limit as the app's login.
 router.post('/auth/login', adminLoginLimiter, validate(rules.login), a(auth.login));
 router.post('/auth/exchange', requireAuth, a(auth.exchange));
+
+// An invited person answers their invitation with their APP session (they
+// aren't an admin yet, so this sits before the super admin guard).
+router.get('/invitations/mine', requireAuth, a(roles.myInvitations));
+router.post('/invitations/:invitationId/accept', requireAuth, validate(rules.invitationId), a(roles.acceptMine));
+router.post('/invitations/:invitationId/decline', requireAuth, validate(rules.invitationId), a(roles.declineMine));
 
 // Everything else: a super admin with a dashboard session.
 router.use(a(requireSuperAdmin));
@@ -73,5 +82,23 @@ router.patch('/groups/:groupId/settings', validate(rules.groupSettings), a(group
 router.post('/groups/:groupId/requests/:requestId/:decision', validate(rules.groupRequest), a(groups.decideRequest));
 router.post('/groups/:groupId/archive', validate(rules.groupArchive), a(groups.archive));
 router.post('/groups/:groupId/restore', validate(rules.groupArchive), a(groups.restore));
+
+// Roles & permissions
+router.get('/roles', a(roles.overview));
+router.post('/roles/invitations', validate(rules.invite), a(roles.invite));
+router.post('/roles/invitations/:invitationId/resend', validate(rules.invitationId), a(roles.resend));
+router.post('/roles/invitations/:invitationId/revoke', validate(rules.revokeInvitation), a(roles.revokeInvitation));
+router.post('/roles/admins/:userId/revoke', validate(rules.revokeAdmin), a(roles.revokeAdmin));
+router.post('/roles/review', validate(rules.review), a(roles.review));
+
+// Settings
+router.get('/settings', a(settings.getSettings));
+router.patch('/settings', validate(rules.settings), a(settings.updateSettings));
+
+// Audit log (export before /:eventId)
+router.get('/audit/stats', a(audit.auditStats));
+router.get('/audit/export', validate(rules.audit), a(audit.exportAudit));
+router.get('/audit', validate(rules.audit), a(audit.listAudit));
+router.get('/audit/:eventId', validate(rules.auditId), a(audit.auditDetail));
 
 module.exports = router;

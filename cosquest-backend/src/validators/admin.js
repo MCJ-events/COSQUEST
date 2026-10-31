@@ -1,7 +1,7 @@
-// Rules for /api/admin routes (Phases 1-3) (src/routes/adminRoutes.js) and member reports
+// Rules for /api/admin routes (Phases 1-3 and 5) (src/routes/adminRoutes.js) and member reports
 // (src/routes/reportRoutes.js). Types and limits only; the controllers check
 // who may do what and anything that needs the database.
-const { string, boolean, number, isoDate, objectId, oneOfValues, scalarQuery } = require('../middleware/validate');
+const { string, boolean, number, object, isoDate, objectId, oneOfValues, scalarQuery } = require('../middleware/validate');
 const Report = require('../models/Report');
 
 const window = [...scalarQuery('from', 'to'), isoDate('from', { in: 'query', label: 'from' }), isoDate('to', { in: 'query', label: 'to' })];
@@ -106,4 +106,29 @@ module.exports = {
     reason(false),
   ],
   groupArchive: [objectId('groupId', { in: 'param', label: 'group ID' }), reason()],
+
+  // Phase 5: Roles & permissions
+  invite: [string('member', { required: true, min: 2, max: 254, trim: true, label: 'member', message: 'Enter a member\'s @username or email.' }), reason()],
+  invitationId: [objectId('invitationId', { in: 'param', label: 'invitation ID' })],
+  revokeInvitation: [objectId('invitationId', { in: 'param', label: 'invitation ID' }), reason()],
+  revokeAdmin: [objectId('userId', { in: 'param', label: 'admin ID' }), reason()],
+  review: [string('note', { max: 1000, label: 'note' })],
+
+  // Phase 5: Settings
+  settings: [
+    number('version', { required: true, integer: true, min: 1, label: 'version' }),
+    object('changes', { required: true, label: 'changes' }),
+    reason(false),
+  ],
+
+  // Phase 5: Audit log
+  audit: [
+    ...page,
+    ...window,
+    ...scalarQuery('actor', 'area', 'action'),
+    objectId('actor', { in: 'query', required: false, label: 'actor' }),
+    oneOfValues('area', ['moderation', 'feeds', 'chats', 'members', 'groups', 'sparks', 'roles', 'settings', 'auth'], { in: 'query', label: 'area' }),
+    string('action', { in: 'query', max: 80, label: 'action' }),
+  ],
+  auditId: [objectId('eventId', { in: 'param', label: 'event ID' })],
 };
