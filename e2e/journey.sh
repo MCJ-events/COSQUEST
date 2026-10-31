@@ -10,6 +10,8 @@
 # adb screenrecord stops after 3 minutes, so the phone records 170 s segments
 # back to back and they are joined afterwards. REC_SIZE (e.g. 720x1560)
 # records at that size, for screens the encoder refuses at full size.
+# VIDEO_W (default 540) and VIDEO_CRF (default 30) set the joined video's
+# width and quality (a showcase cut: VIDEO_W=720 VIDEO_CRF=20).
 set -uo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 : "${ANDROID_HOME:=$HOME/cq-work/tools/android-sdk}"
@@ -77,7 +79,7 @@ ls "$tmp"/*.mp4 >/dev/null 2>&1 && {
   # after 5 (the segments are kept in $tmp.kept for a later encode).
   timeout -k 10 300 ffmpeg -loglevel error -y -f concat -safe 0 -i "$tmp/list.txt" \
     -f lavfi -i anullsrc=channel_layout=stereo:sample_rate=44100 \
-    -map 0:v -map 1:a -c:v libx264 -preset veryfast -crf 30 -vf "scale=540:-2" \
+    -map 0:v -map 1:a -c:v libx264 -preset veryfast -crf "${VIDEO_CRF:-30}" -vf "scale=${VIDEO_W:-540}:-2" \
     -c:a aac -shortest "$VIDEOS/$label.mp4"
   [ -s "$VIDEOS/$label.mp4" ] && rm -rf "$tmp" || mv "$tmp" "$tmp.kept"
 }
