@@ -31,11 +31,28 @@ const postSchema = new mongoose.Schema(
     // an edit can be shown to viewers ("edited") without conflating it with
     // any other future field that might touch this document.
     editedAt: { type: Date, default: null },
+    // Removed by a super admin (admin dashboard): hidden from everyone, but
+    // kept as evidence (the author's own delete still erases it).
+    removedAt: { type: Date, default: null },
+    removedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    removedReason: { type: String, default: null, maxlength: 1000 },
   },
   { timestamps: true }
 );
 
 postSchema.index({ author: 1, createdAt: -1 });
 postSchema.index({ type: 1, createdAt: -1 });
+// The admin Feeds page: removed posts, newest first.
+postSchema.index({ removedAt: 1, createdAt: -1 });
+
+// Removed posts are hidden from EVERY query (feeds, profiles, a post by id,
+// counts, likes and comments updating it) without changing those queries.
+// Only the admin dashboard sees them: .setOptions({ includeRemoved: true }).
+// Aggregations aren't covered: add { removedAt: null } to any $match on posts.
+function hideRemoved() {
+  if (this.getOptions().includeRemoved) return;
+  if (this.getQuery().removedAt === undefined) this.where({ removedAt: null });
+}
+postSchema.pre(['find', 'findOne', 'countDocuments', 'findOneAndUpdate', 'updateOne', 'updateMany'], hideRemoved);
 
 module.exports = mongoose.model('Post', postSchema);
