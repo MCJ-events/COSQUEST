@@ -10,6 +10,7 @@ const T_MEDALLION := preload("res://art/street/medallion.png")
 const T_CIRCUIT := preload("res://art/street/circuit_run.png")
 const T_POOL := preload("res://art/street/light_pool.png")
 const FACADE_SHADER := preload("res://vfx/facade.gdshader")
+const PlaceScript := preload("res://place.gd")
 const T_NEON := preload("res://art/street/neon_atlas.png")     # 6 signs stacked, self-drawn
 const T_SHOP := preload("res://art/street/shop_glow.png")
 const T_LAMP := preload("res://art/street/lamp_glow.png")
@@ -246,7 +247,8 @@ func build(cfg: Dictionary) -> void:
 	cm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	cm.albedo_color = Color(1, 1, 1, 0.9)
 	cm.disable_receive_shadows = true
-	for i in 2:
+	var place_mode: bool = str(cfg.get("arena", "street")) == "place"
+	for i in (0 if place_mode else 2):   # cq 019: no street neon in a real place
 		var c := MeshInstance3D.new()
 		var cq := PlaneMesh.new()
 		cq.size = Vector2(2.4, 9.6)
@@ -256,6 +258,9 @@ func build(cfg: Dictionary) -> void:
 		c.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		add_child(c)
 	if str(cfg.get("arena", "street")) == "plain":
+		return
+	# cq 019: the real place round the Quest Point (OpenStreetMap ground), else the street
+	if str(cfg.get("arena", "street")) == "place" and _build_place(cfg):
 		return
 	_dressing = Node3D.new()
 	_dressing.name = "Street"
@@ -284,6 +289,39 @@ func build(cfg: Dictionary) -> void:
 	_commit_glows()
 	if bool(cfg.get("merge_street", true)):
 		_merge_dressing()
+
+
+var place: Node3D   # the real place (cq 019), when the fight has one
+
+
+## The real place round the fight (place.gd, docs/game3d/PLACE.md) from `ground_json` (the game server's
+## /v1/map/ground answer, or the Overpass tool's), with the Quest Point at `place_at` [x, z] metres from
+## its origin. False (and the street is built instead) when the file is missing or unreadable.
+func _build_place(cfg: Dictionary) -> bool:
+	var path: String = str(cfg.get("ground_json", ""))
+	if path == "" or not FileAccess.file_exists(path):
+		print("CQ place none path=%s" % path)
+		return false
+	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
+	if not (parsed is Dictionary) or not (parsed as Dictionary).has("buildings"):
+		print("CQ place unreadable path=%s" % path)
+		return false
+	var at_raw: Variant = cfg.get("place_at", [0.0, 0.0])
+	var at: Vector2 = Vector2.ZERO
+	if at_raw is Array and (at_raw as Array).size() == 2:
+		at = Vector2(float(at_raw[0]), float(at_raw[1]))
+	# the city reaches past the street's 160 m floor: a bigger floor, the same paver size
+	(ground.mesh as PlaneMesh).size = Vector2(640, 640)
+	(ground.material_override as StandardMaterial3D).uv1_scale = Vector3(160, 160, 1)
+	place = PlaceScript.new()
+	place.name = "Place"
+	add_child(place)
+	place.call("build", parsed, at, float(cfg.get("cam_yaw", 12.0)), float(cfg.get("place_yaw", NAN)), look,
+		Callable(self, "set_hemi"))
+	for r: Rect2 in place.get("map_blocks"):
+		map_blocks.append(r)
+	print("CQ place " + JSON.stringify(place.get("info")))
+	return true
 
 
 ## The grade's colour curve, per channel (input level -> output level): shadows lean violet,

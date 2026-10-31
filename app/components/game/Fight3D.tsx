@@ -12,7 +12,7 @@
 // through closeFight, which is safe while loading and safe twice.
 // testIDs: fight3d-view, fight3d-close, fight3d-loading, fight3d-error.
 import { Ionicons } from "@expo/vector-icons";
-import { Paths } from "expo-file-system";
+import { File, Paths } from "expo-file-system";
 import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, AppState, BackHandler, Platform, Pressable, StyleSheet, Text, View } from "react-native";
@@ -20,7 +20,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { castWeapons, fightCast } from "@/features/game3d/characters";
 import { closeFight, fightStatus, FightOpenError, godotLib, holdForBackground, onFightState, openFight } from "@/features/game3d/engine";
-import { buildFightConfig, type Fight3DMode, type Fight3DResult, type Fight3DRun, fightSeed, godotArgs, parseFightResult, quitResult } from "@/features/game3d/fight3d";
+import { buildFightConfig, type Fight3DMode, type Fight3DResult, type Fight3DRun, fightSeed, godotArgs, parseFightResult, placeFrom, quitResult } from "@/features/game3d/fight3d";
 import { FIGHT3D } from "@/features/game3d/flags";
 import { useAppSelector } from "@/store/hooks";
 import { gameStore } from "@/features/game/runtime";
@@ -32,6 +32,26 @@ import { GF, GP } from "./theme";
 type Phase = { kind: "loading"; step: string } | { kind: "fighting" } | { kind: "closing" } | { kind: "failed"; message: string };
 
 const log = (line: string) => console.log(`[fight3d] ${line}`);
+
+/**
+ * cq 019: the real place round the point. The map's own ground (the store's /v1/map/ground answer) is
+ * written to a cache file for Godot (place.gd); null keeps the street (no ground, not covered, off it).
+ */
+function placeFile(point: QuestPoint | null): { groundPath: string; at: [number, number] } | null {
+  if (!point || !FIGHT3D.place) return null;
+  const ground = gameStore.get().ground;
+  const spot = placeFrom(ground, point);
+  if (!spot || !ground) return null;
+  try {
+    const f = new File(Paths.cache, "fight3d-ground.json");
+    f.create({ overwrite: true });
+    f.write(JSON.stringify(ground));
+    return { groundPath: f.uri, at: spot.at };
+  } catch (e) {
+    log(`place file failed: ${(e as Error).message}`);
+    return null;
+  }
+}
 
 export default function Fight3D({
   point,
@@ -132,7 +152,9 @@ export default function Fight3D({
           autoplay,
           tilesUrl: FIGHT3D.tilesUrl || null,
           reduceMotion: reduceMotion.current,
+          place: placeFile(point),
         });
+        log(`arena ${config.arena ?? "street"}${config.place_at ? ` at=${config.place_at.join(",")}` : ""}`);
         // Weapons in hand (cq 234): the cast's weapons, as files, with their grips.
         const weapons = await castWeapons(cast);
         Object.assign(config, weapons);

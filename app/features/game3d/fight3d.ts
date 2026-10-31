@@ -15,7 +15,8 @@ import { bytesToHex, utf8ToBytes } from "@noble/hashes/utils.js";
 
 import type { RewardSummary } from "../../components/game/Reward.tsx";
 import type { ForgeEntry } from "../game/forgeWorld.ts";
-import type { DuelFinished, RoamStanding } from "../game/wire.ts";
+import { toLocal } from "../game/geo.ts";
+import type { DuelFinished, GroundGeometry, RoamStanding } from "../game/wire.ts";
 
 // ---------- switches ----------
 
@@ -49,6 +50,8 @@ export type Fight3DFlags = {
   tilesUrl: string;
   /** EXPO_PUBLIC_GAME3D_LOD=0|1|2: the characters' LOD, else by device class (fightLod). */
   lod: number | null;
+  /** cq 019: fight in the real place round the point when the map has its ground; EXPO_PUBLIC_GAME3D_PLACE=0 keeps the street. */
+  place: boolean;
 };
 
 export type Fight3DEnv = {
@@ -60,6 +63,7 @@ export type Fight3DEnv = {
   EXPO_PUBLIC_GAME3D_AUTOPLAY?: string;
   EXPO_PUBLIC_GAME3D_TILES_URL?: string;
   EXPO_PUBLIC_GAME3D_LOD?: string;
+  EXPO_PUBLIC_GAME3D_PLACE?: string;
 };
 
 /** The Godot host draws through SurfaceControl, which is Android 10 (API 29) and up. */
@@ -83,6 +87,7 @@ export function fight3dFlags(env: Fight3DEnv, platform: { os: string; version: n
     autoplay: env.EXPO_PUBLIC_GAME3D_AUTOPLAY === "1",
     tilesUrl: (env.EXPO_PUBLIC_GAME3D_TILES_URL ?? "").trim(),
     lod: lod < 0 ? null : lod,
+    place: env.EXPO_PUBLIC_GAME3D_PLACE !== "0",
   };
 }
 
@@ -227,7 +232,27 @@ export type Fight3DConfig = {
   autoplay: boolean;
   /** The app's Reduce motion setting (cq 013): a quarter of the camera shake, no zoom punch. Sent only when on. */
   reduce_motion?: boolean;
+  /** cq 019: the real place round the point (place.gd) instead of the street, from this ground file. */
+  arena?: "place";
+  ground_json?: string;
+  /** The point, in the ground's metres (x east, z north of its origin). */
+  place_at?: [number, number];
 };
+
+/**
+ * Where the fight stands on the ground the map already has (the store's /v1/map/ground answer):
+ * the point's metres east and north of the ground's origin. Null when there is no ground, no archive
+ * covers it, it has no buildings, or the point is off it; the fight then keeps the street.
+ */
+export function placeFrom(
+  ground: Pick<GroundGeometry, "origin" | "radius_m" | "covered" | "buildings"> | null | undefined,
+  point: { lat: number; lng: number },
+): { at: [number, number] } | null {
+  if (!ground || ground.covered === false || !ground.buildings?.length) return null;
+  const p = toLocal(ground.origin, point);
+  if (Math.hypot(p.x, p.z) > ground.radius_m * 0.8) return null;
+  return { at: [Math.round(p.x * 10) / 10, Math.round(p.z * 10) / 10] };
+}
 
 export const FIGHT_SECONDS = 45;
 
@@ -243,6 +268,8 @@ export function buildFightConfig(input: {
   durationS?: number;
   playersText?: string;
   reduceMotion?: boolean;
+  /** The real place: the ground written to a file, and the point on it (placeFrom). */
+  place?: { groundPath: string; at: [number, number] } | null;
 }): Fight3DConfig {
   const config: Fight3DConfig = {
     hero_glb: localPath(input.hero.path),
@@ -262,6 +289,8 @@ export function buildFightConfig(input: {
   };
   if (input.tilesUrl) Object.assign(config, tilesFields(input.tilesUrl));
   if (input.reduceMotion) config.reduce_motion = true;
+  const groundJson = localPath(input.place?.groundPath);
+  if (input.place && groundJson) Object.assign(config, { arena: "place", ground_json: groundJson, place_at: input.place.at });
   return config;
 }
 

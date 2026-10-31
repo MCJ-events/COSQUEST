@@ -313,3 +313,30 @@ test("the fight's own numbers are rows on any reward screen, judged or practice"
     ],
   );
 });
+
+// ---------- the real place round the fight (cq 019) ----------
+
+import { placeFrom } from "../fight3d.ts";
+
+const ground = { origin: { lat: 51.508, lng: -0.128 }, covered: true, radius_m: 600, attribution: "© OpenStreetMap contributors", roads: [], water: [], green: [], buildings: [{ h: 20, p: [[0, 0], [1, 0], [1, 1], [0, 0]] }] };
+
+test("the fight stands where the point is on the map's own ground (metres east and north of its origin)", () => {
+  const at = placeFrom(ground, { lat: 51.508 - 4 / 111320, lng: -0.128 + 5 / (111320 * Math.cos((51.508 * Math.PI) / 180)) });
+  assert.ok(at);
+  assert.ok(Math.abs(at.at[0] - 5) < 0.01 && Math.abs(at.at[1] + 4) < 0.01);
+  assert.equal(placeFrom(null, { lat: 51.508, lng: -0.128 }), null);
+  assert.equal(placeFrom({ ...ground, covered: false }, { lat: 51.508, lng: -0.128 }), null); // no archive holds it
+  assert.equal(placeFrom({ ...ground, buildings: [] }, { lat: 51.508, lng: -0.128 }), null); // nothing to build
+  assert.equal(placeFrom(ground, { lat: 51.515, lng: -0.128 }), null); // the point is off this ground (780 m north)
+});
+
+test("a fight with a place asks Godot for the place arena; without one it is the street as before", () => {
+  const base = { hero: { path: null, name: null }, ally: { path: null, name: null }, enemy: { path: null, name: null }, pointName: "Trafalgar Square", mode: "full" as const, seed: 1, autoplay: false };
+  const c = buildFightConfig({ ...base, place: { groundPath: "file:///cache/fight3d-ground.json", at: [4.9, -4] } });
+  assert.equal(c.arena, "place");
+  assert.equal(c.ground_json, "/cache/fight3d-ground.json");
+  assert.deepEqual(c.place_at, [4.9, -4]);
+  const s = buildFightConfig(base);
+  assert.equal(s.arena, undefined);
+  assert.equal(s.ground_json, undefined);
+});

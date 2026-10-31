@@ -219,9 +219,10 @@ var _end_t: float = 0.0
 var _end_delay: float = 1.0
 # every row starts [t, lt]: the round's clock and the moves' clock (lt stops during hit-stop, as
 # buffs, staggers, skills and the AI's timers do). hits [t, lt, target, source, amount, dealt, flags];
-# casts [t, lt, slot]; heals [t, lt, who, amount]; staggers [t, lt, length (1/100 s), parried];
+# casts [t, lt, slot, frame]; heals [t, lt, who, amount]; staggers [t, lt, length (1/100 s), parried];
 # presses [t, lt, slot]; guards [t, lt, on]
 var _logic_time: float = 0.0
+var _frame_dt: float = 0.0   # this frame's length: a skill cast mid-frame has its cooldown shortened by it
 var _jlog: Dictionary = {"hits": [], "casts": [], "heals": [], "staggers": [], "presses": [], "guards": []}
 var stats: Dictionary = {"damage_dealt": 0, "damage_taken": 0, "hits": 0, "skill_uses": 0, "ally_damage": 0,
 	"parries": 0, "blocks": 0, "dodges": 0, "crits": 0, "combo_max": 0, "skills": [0, 0, 0, 0, 0]}
@@ -376,7 +377,7 @@ func _ready() -> void:
 	_log("arena built ms=%.1f mode=%s autoplay=%s duration=%.0f" % [(Time.get_ticks_usec() - t0) / 1000.0, mode, autoplay, duration])
 	if mode == "arena":
 		hud.show_hero_card = false
-		_begin_fight()
+		_begin_or_intro()
 		return
 	# hero_hp / enemy_hp: test and capture knobs (a quick win or loss); the app never sends them
 	hero = _spawn(str(cfg.get("hero_name", "You")), 0, int(cfg.get("hero_hp", HERO_HP)), Color(0.3, 0.75, 0.35), Vector3(0.3, 0, 3.6), PI, "hero")
@@ -420,7 +421,7 @@ func _ready() -> void:
 			_log("load role=%s skipped (no path), capsule" % str(pair[1]).trim_suffix("_glb"))
 	_queue_weapons()
 	if _load_queue.is_empty():
-		_begin_fight()
+		_begin_or_intro()
 	else:
 		state = "loading"
 		hud.loading_text = "Loading fighters..."
@@ -511,7 +512,7 @@ func _poll_loading() -> void:
 		hud.loading_text = ""
 		for f: FighterScript in fighters:
 			f.visible = true
-		_begin_fight()
+		_begin_or_intro()
 		return
 	_loading_role = _load_queue.pop_front()
 	var path: String = _loading_role["path"]
@@ -618,6 +619,50 @@ func _make_portrait() -> void:
 		hud.portrait = ImageTexture.create_from_image(img)
 
 
+## cq 019: at a real place (arena "place"), a short fly-in from the landmark down to the fight camera
+## before the clock starts, so the place reads; the fight itself starts after it exactly as before.
+## Config intro: false skips it. The app sees "fighting" from its first frame (bridge.gd).
+const INTRO_LEN: float = 3.4
+var _intro_t: float = -1.0
+var _intro_from: Transform3D
+
+
+func _begin_or_intro() -> void:
+	var pl: Node3D = arena.get("place") if arena != null else null
+	if pl == null or not bool(cfg.get("intro", true)):
+		_begin_fight()
+		return
+	var info: Dictionary = pl.get("info")
+	var lm: Vector3 = info.get("landmark_at", Vector3(0, 0, -30))
+	var h: float = float(info.get("landmark_h", 12.0))
+	# from behind the fight, low, looking up at the landmark over the fighters' heads
+	var back: Vector3 = Vector3(_cam_basis.z.x, 0.0, _cam_basis.z.z).normalized()
+	var from: Vector3 = back * 36.0 + Vector3.UP * 9.0
+	var look: Vector3 = lm + Vector3.UP * minf(h * 0.45, 24.0)
+	_intro_from = Transform3D(Basis.looking_at(look - from, Vector3.UP), from)
+	cam.far = 420.0
+	_intro_t = 0.0
+	state = "intro"
+	hud.banner(str(cfg.get("point_name", "")).to_upper(), str(info.get("landmark", "")), Color(1.0, 0.86, 0.5), INTRO_LEN - 0.4)
+	_log("intro landmark=%s" % str(info.get("landmark", "")))
+
+
+func _tick_intro(dt: float) -> void:
+	_intro_t += dt
+	if _intro_t >= INTRO_LEN:
+		_intro_t = -1.0
+		cam.far = 160.0
+		_begin_fight()
+
+
+func _intro_camera() -> void:
+	if _intro_t < 0.0:
+		return
+	var k: float = smoothstep(0.25, 1.0, _intro_t / INTRO_LEN)
+	var to: Transform3D = cam.global_transform
+	cam.global_transform = Transform3D(_intro_from.basis.slerp(to.basis.orthonormalized(), k), _intro_from.origin.lerp(to.origin, k))
+
+
 func _begin_fight() -> void:
 	_make_portrait()
 	state = "fighting"
@@ -694,12 +739,15 @@ func _stick_world() -> Vector3:
 # ------------------------------------------------------------ frame
 
 func _process(dt: float) -> void:
+	_frame_dt = dt
 	if state == "fighting" or state == "ending":
 		_perf_sample(dt)
 	if state == "loading":
 		_poll_loading()
 	elif state == "fighting":
 		_tick_fight(dt)
+	elif state == "intro":
+		_tick_intro(dt)
 	elif state == "ending":
 		_end_t += dt
 		if _end_t >= _end_delay:
@@ -711,6 +759,7 @@ func _process(dt: float) -> void:
 		f.anim_freeze = frozen
 		f.tick_visual(dt)
 	_follow_camera(dt)
+	_intro_camera()
 	_sync_hud()
 	if _headless and (not _lat_move.is_empty() or not _lat_atk.is_empty()):
 		_check_latency.call_deferred("deferred")
@@ -1024,7 +1073,7 @@ func _cast(slot: int) -> void:
 	_act_len = SKILL_LEN[slot]
 	_skill_fired = {}
 	_skill_cd[slot] = SKILL_CD[slot]
-	(_jlog["casts"] as Array).append([_jt(), _jl(), slot])
+	(_jlog["casts"] as Array).append([_jt(), _jl(), slot, int(round(_frame_dt * 100.0))])
 	stats["skill_uses"] = int(stats["skill_uses"]) + 1
 	(stats["skills"] as Array)[slot] = int((stats["skills"] as Array)[slot]) + 1
 	_combo_next = 0
@@ -1803,7 +1852,7 @@ func abort() -> void:
 
 func status() -> Dictionary:
 	var st: String = state
-	if st == "ending":
+	if st == "ending" or st == "intro":
 		st = "fighting"
 	return {
 		"state": st,

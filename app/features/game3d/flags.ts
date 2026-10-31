@@ -16,6 +16,7 @@ export const FIGHT3D = fight3dFlags(
     EXPO_PUBLIC_GAME3D_AUTOPLAY: process.env.EXPO_PUBLIC_GAME3D_AUTOPLAY,
     EXPO_PUBLIC_GAME3D_TILES_URL: process.env.EXPO_PUBLIC_GAME3D_TILES_URL,
     EXPO_PUBLIC_GAME3D_LOD: process.env.EXPO_PUBLIC_GAME3D_LOD,
+    EXPO_PUBLIC_GAME3D_PLACE: process.env.EXPO_PUBLIC_GAME3D_PLACE,
   },
   { os: Platform.OS, version: Platform.Version },
 );

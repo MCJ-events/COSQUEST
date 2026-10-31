@@ -196,6 +196,8 @@ func _process(_dt: float) -> void:
 	if _fight == null or not is_instance_valid(_fight) or not _cb.is_valid():
 		return
 	var st: String = _fight.state
+	if st == "intro":
+		st = "fighting"   # cq 019: the place's fly-in is on screen, so the app's loading card goes
 	if st != _pushed_state and (st == "fighting" or st == "loading"):
 		_pushed_state = st
 		_cb.call(JSON.stringify({"event": "state", "state": st, "fight_id": _fight_id}))
