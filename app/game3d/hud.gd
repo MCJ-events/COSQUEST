@@ -75,7 +75,7 @@ const C_ENEMY: Color = Color(0.72, 0.36, 0.95)
 # ---- view model, written by fight.gd every frame
 var cam: Camera3D
 var t_left: float = 45.0
-var players_text: String = "2/3"
+var players_text: String = "2/2"   # cq 019: you and the AI ally (fighters standing / squad)
 var point_name: String = ""
 var loading_text: String = ""
 var hero_name: String = "You"

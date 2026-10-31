@@ -252,7 +252,9 @@ export function buildFightConfig(input: {
     ally_name: input.ally.name?.trim() || "Ally",
     enemy_name: input.enemy.name?.trim() || "Guardian",
     duration_s: input.durationS ?? FIGHT_SECONDS,
-    players_text: input.playersText ?? "2/3 players",
+    // The squad pill: fighters standing on your side / its size. You and the AI ally are two; "2/3"
+    // read as a third player who was never there (cq 019, docs/SCOPE-CHECK.md).
+    players_text: input.playersText ?? "2/2",
     point_name: input.pointName,
     mode: input.mode,
     seed: Math.trunc(Math.abs(input.seed)) % 2147483647,

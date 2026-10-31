@@ -139,7 +139,7 @@ test("file URIs become absolute paths; anything else is empty", () => {
   assert.equal(localPath(null), "");
 });
 
-test("the config Godot gets: paths, names with fallbacks, 45 s, 2/3 players", () => {
+test("the config Godot gets: paths, names with fallbacks, 45 s, a squad of 2 (you and the AI ally)", () => {
   const c = buildFightConfig({
     hero: { path: "file:///c/hero.glb", name: "Ada" },
     ally: { path: null, name: null },
@@ -157,7 +157,7 @@ test("the config Godot gets: paths, names with fallbacks, 45 s, 2/3 players", ()
     ally_name: "Ally",
     enemy_name: "Guardian",
     duration_s: 45,
-    players_text: "2/3 players",
+    players_text: "2/2",
     point_name: "Trafalgar",
     mode: "full",
     seed: 42,

@@ -358,7 +358,7 @@ func _ready() -> void:
 	hud.cam = cam
 	hud.map_blocks = arena.get("map_blocks")
 	hud.visible = not bool(cfg.get("prof_no_hud", false))   # profiling only: the 3D cost alone
-	hud.players_text = str(cfg.get("players_text", "2/3")).replace(" players", "").replace(" player", "")
+	hud.players_text = str(cfg.get("players_text", "2/2")).replace(" players", "").replace(" player", "")
 	hud.point_name = str(cfg.get("point_name", ""))
 	hud.hero_name = str(cfg.get("hero_name", "You"))
 	hud.skill_cd_max = SKILL_CD.duplicate()
