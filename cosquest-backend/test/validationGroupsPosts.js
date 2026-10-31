@@ -135,6 +135,7 @@ async function run(baseUrl) {
   check(is(await request('POST', `/api/posts/${badId}/likes`, owner.token), 404, 'Post not found.'), 'likes: same');
   check(is(await request('PATCH', `/api/posts/${postId}`, owner.token, {}), 400, 'content is required.'), 'edit: content is required');
   check(is(await request('PATCH', `/api/posts/${postId}`, owner.token, { content: ['x'] }), 400, 'content is required.'), 'edit: content must be text (same message)');
+  check(said(await request('PATCH', `/api/posts/${postId}`, owner.token, { content: 'x'.repeat(10001) }), 400, 'content must be 1 to 2,000 characters.'), 'edit: the length is still the controller\'s answer');
   check((await request('PATCH', `/api/posts/${postId}`, owner.token, { content: 'Edited' })).status === 200, 'edit: a good request still works');
   check(is(await request('POST', `/api/posts/${postId}/share-to-feed`, other.token, { content: { a: 1 } }), 400, 'Your caption must be text.'), 'share-to-feed: the caption must be text');
   check(is(await request('POST', `/api/posts/${postId}/share-to-feed`, other.token, { content: 'x'.repeat(2201) }), 400, 'Your caption must be at most 2,200 characters.'), 'share-to-feed: the length keeps its message');

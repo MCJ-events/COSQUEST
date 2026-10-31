@@ -2,7 +2,7 @@ const express = require('express');
 const { requireAuth, optionalAuth, requireCompletedOnboarding } = require('../middleware/auth');
 const { postUpload, chatUpload } = require('../middleware/upload');
 const { asyncHandler } = require('../utils/asyncHandler');
-const { validate } = require('../middleware/validate');
+const { validate, validateUpload } = require('../middleware/validate');
 const rules = require('../validators/posts');
 const { getPostShareLink } = require('../controllers/contentShareController');
 const {
@@ -31,7 +31,7 @@ const router = express.Router();
 router.get('/posts', asyncHandler(optionalAuth), validate(rules.listPosts), asyncHandler(listPosts));
 // Multipart routes validate after multer (the fields only exist then); a
 // refused request's staged files are deleted.
-router.post('/posts', requireAuth, requireCompletedOnboarding, postUpload.array('media', 8), rules.validateUpload(rules.createPost), asyncHandler(createPost));
+router.post('/posts', requireAuth, requireCompletedOnboarding, postUpload.array('media', 8), validateUpload(rules.createPost), asyncHandler(createPost));
 router.get('/posts/:postId', asyncHandler(optionalAuth), validate(rules.postId), asyncHandler(getPost));
 router.get('/posts/:postId/share', validate(rules.postId), asyncHandler(getPostShareLink));
 router.patch('/posts/:postId', requireAuth, requireCompletedOnboarding, validate(rules.updatePost), asyncHandler(updatePost));
@@ -47,7 +47,7 @@ router.post('/posts/:postId/bookmarks', requireAuth, requireCompletedOnboarding,
 router.delete('/posts/:postId/bookmarks', requireAuth, requireCompletedOnboarding, validate(rules.postId), asyncHandler(unbookmarkPost));
 router.get('/users/me/bookmarks', requireAuth, requireCompletedOnboarding, validate(rules.paging), asyncHandler(listMyBookmarks));
 router.get('/posts/:postId/comments', asyncHandler(optionalAuth), validate(rules.listComments), asyncHandler(listComments));
-router.post('/posts/:postId/comments', requireAuth, requireCompletedOnboarding, chatUpload.single('media'), rules.validateUpload(rules.createComment), asyncHandler(createComment));
+router.post('/posts/:postId/comments', requireAuth, requireCompletedOnboarding, chatUpload.single('media'), validateUpload(rules.createComment), asyncHandler(createComment));
 router.delete('/posts/:postId/comments/:commentId', requireAuth, requireCompletedOnboarding, validate(rules.commentPath), asyncHandler(deleteComment));
 router.post('/posts/:postId/comments/:commentId/likes', requireAuth, requireCompletedOnboarding, validate(rules.commentPath), asyncHandler(setCommentLike));
 router.delete('/posts/:postId/comments/:commentId/likes', requireAuth, requireCompletedOnboarding, validate(rules.commentPath), asyncHandler(setCommentLike));

@@ -3,7 +3,7 @@ const { requireAuth, requireCompletedOnboarding } = require('../middleware/auth'
 const { upload } = require('../middleware/upload');
 const { asyncHandler } = require('../utils/asyncHandler');
 const { validate } = require('../middleware/validate');
-const { validateUpload } = require('../validators/posts');
+const { validateUpload } = require('../middleware/validate');
 const rules = require('../validators/groups');
 const {
   createGroup,

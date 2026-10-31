@@ -1,9 +1,9 @@
-const fs = require('fs');
 const express = require('express');
 const { requireAuth, requireCompletedOnboarding } = require('../middleware/auth');
 const { chatUpload, albumUpload } = require('../middleware/upload');
 const { asyncHandler } = require('../utils/asyncHandler');
 const { validate } = require('../middleware/validate');
+const { validateUpload } = require('../middleware/validate');
 const rules = require('../validators/chat');
 const {
   listChats,
@@ -44,23 +44,8 @@ const router = express.Router();
 router.use('/chats', requireAuth, requireCompletedOnboarding);
 
 // Request rules (src/validators/chat.js) run after the login check and, on
-// multipart routes, after the upload. A refused upload also removes the
-// uploaded temp file(s), as the controllers do on their own errors.
-function validateUpload(...chains) {
-  const steps = validate(...chains);
-  const respond = steps.pop();
-  return [
-    ...steps,
-    (req, res, next) => {
-      let passed = false;
-      respond(req, res, () => { passed = true; });
-      if (passed) return next();
-      for (const file of [req.file, ...(Array.isArray(req.files) ? req.files : [])]) {
-        if (file?.path) fs.unlink(file.path, () => {});
-      }
-    },
-  ];
-}
+// multipart routes, after the upload (validateUpload also removes the staged
+// file(s) when it refuses the request).
 
 router.get('/chats', asyncHandler(listChats));
 router.post('/chats/dm', validate(rules.startDirectMessage), asyncHandler(startDirectMessage));

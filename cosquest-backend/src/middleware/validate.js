@@ -14,6 +14,7 @@
 // Rules check types and limits only; they never change the request (no
 // sanitizers), so controllers see exactly what was sent. Controllers keep
 // their own checks (who may do what, things that need the database).
+const fs = require('fs');
 const { body, param, query, oneOf, validationResult } = require('express-validator');
 
 /** A validation message with its own status code. */
@@ -39,6 +40,24 @@ function validate(...rules) {
       });
     },
   ];
+}
+
+/**
+ * validate() for routes behind multer's disk storage: when a rule fails, the
+ * staged upload(s) are deleted before the 400 (the controllers do the same
+ * for their own refusals), so nothing is left in UPLOAD_DIR. Goes after the
+ * upload middleware.
+ */
+function validateUpload(...rules) {
+  const steps = validate(...rules);
+  const removeStagedFiles = (req, res, next) => {
+    if (!validationResult(req).isEmpty()) {
+      const files = [req.file, ...(Array.isArray(req.files) ? req.files : Object.values(req.files || {}).flat())];
+      files.forEach((file) => file?.path && fs.unlink(file.path, () => {}));
+    }
+    next();
+  };
+  return [...steps.slice(0, -1), removeStagedFiles, steps[steps.length - 1]];
 }
 
 const where = { body, param, query };
@@ -146,7 +165,7 @@ function scalarQuery(...names) {
 }
 
 module.exports = {
-  validate, fail, field, objectId, string, boolean, number, oneOfValues, array, object, isoDate, scalarQuery,
+  validate, validateUpload, fail, field, objectId, string, boolean, number, oneOfValues, array, object, isoDate, scalarQuery,
   // Raw express-validator builders, for the rare rule the helpers don't cover.
   body, param, query, oneOf,
   isPlainObject,

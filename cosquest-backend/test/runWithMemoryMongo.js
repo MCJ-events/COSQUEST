@@ -75,6 +75,12 @@ async function main() {
     const callModeration = await require('./callModerationStage').run(`http://localhost:${process.env.PORT}`);
     result.pass += callModeration.pass;
     result.fail += callModeration.fail;
+    // Request validation (src/middleware/validate.js, src/validators/*), one suite per area.
+    for (const suite of ['validation', 'validationAccount', 'validationChat', 'validationCalls', 'validationGroupsPosts']) {
+      const checked = await require(`./${suite}`).run(`http://localhost:${process.env.PORT}`);
+      result.pass += checked.pass;
+      result.fail += checked.fail;
+    }
     const callLimits = await require('./callLimits').run(`http://localhost:${process.env.PORT}`);
     result.pass += callLimits.pass;
     result.fail += callLimits.fail;

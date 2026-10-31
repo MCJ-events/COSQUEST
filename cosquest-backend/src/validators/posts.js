@@ -1,30 +1,11 @@
 // Request rules for src/routes/postRoutes.js (see src/middleware/validate.js).
 // Messages match the controller's own, so the app sees the same answers.
-const fs = require('fs');
-const { validationResult } = require('express-validator');
-const { validate, string, field, fail } = require('../middleware/validate');
+const { validateUpload, string, field, fail } = require('../middleware/validate');
 const common = require('./common');
 
 const POST_TYPES = ['image', 'reel', 'thought'];
 const LIST_TYPES = [...POST_TYPES, 'share'];
 const isHexId = (v) => typeof v === 'string' && /^[a-f\d]{24}$/i.test(v);
-
-/**
- * validate() for routes behind multer's disk storage: when a rule fails, the
- * staged upload(s) are deleted before the 400 (the controllers do the same
- * for their own refusals), so nothing is left in UPLOAD_DIR.
- */
-function validateUpload(...rules) {
-  const steps = validate(...rules);
-  const removeStagedFiles = (req, res, next) => {
-    if (!validationResult(req).isEmpty()) {
-      const files = [req.file, ...(Array.isArray(req.files) ? req.files : Object.values(req.files || {}).flat())];
-      files.forEach((file) => file?.path && fs.unlink(file.path, () => {}));
-    }
-    next();
-  };
-  return [...steps.slice(0, -1), removeStagedFiles, steps[steps.length - 1]];
-}
 
 /**
  * Optional text with its own message for "not text" (`typeMessage`) and the
@@ -78,8 +59,8 @@ const createPost = [
 ];
 
 // PATCH /api/posts/:postId { content }. The length depends on the post's type
-// (the controller checks it).
-const updatePost = [postId, string('content', { required: true, message: 'content is required.' })];
+// (the controller checks it, with its own message, so no cap here).
+const updatePost = [postId, string('content', { required: true, max: Infinity, message: 'content is required.' })];
 
 // POST /api/posts/:postId/share-to-feed { content? }
 const shareToFeed = [

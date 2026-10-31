@@ -10,6 +10,33 @@ Registration requires a unique, valid email address. Usernames are required duri
 
 Profile fields also include an optional editable `bio` (500 characters maximum), a category with a `showCategoryOnProfile` display switch, and every user has a `pointsBalance` which starts at `0`. Public profile APIs return only safe public information; they never return an account email address, age, or gender. A separately saved contact email is public because the Contact options screen has no visibility switches.
 
+## Request validation (every endpoint)
+
+Every route checks its input before the controller runs (express-validator; rules in `src/validators/<area>.js`, the shared helpers in `src/middleware/validate.js`). A refused request answers:
+
+```json
+{ "error": "<the first problem, ready to show>", "errors": [{ "field": "pushToken", "location": "body", "message": "..." }] }
+```
+
+- Status `400` for bad input. A malformed id in the path keeps the status and message it always had (usually `404 "<thing> not found."`).
+- Messages are the same ones the endpoints gave before; `errors` lists every field that failed (the first one is `error`).
+- Types are checked strictly: text must be a JSON string, lists arrays, switches real `true`/`false`, ids 24 hex characters. Stored text has a length limit (for example names 50, messages 2000, comments 500).
+- Query values must be single values (`?limit=1&limit=2` is refused); paging values that were read leniently still fall back to their defaults.
+- On every route: field names starting with `# CosQuest Backend — API Guide
+
+> Current signup, comments/replies, chat links/files, Spotlight, and Settings contract: [COMMUNITY_SETTINGS_API.md](../COMMUNITY_SETTINGS_API.md). That guide supersedes older examples and deferred-feature notes below for these features.
+
+Base URL: `http://localhost:6893` (match your `.env`'s `PORT`). Every response below is the **complete** object exactly as the codebase returns it (matches `src/models/User.js`'s schema field-for-field, run through `userModel.sanitize()`, which is why `passwordHash`/`tokenVersion`/`_id` never appear and `id` does instead).
+
+Signup signs the user in immediately and returns a token. Save it and use Bearer authorization throughout onboarding. Completion unlocks the app using the same token; no extra login is needed. Returning users can also log in before completion and resume onboarding. Legacy identifier-based onboarding examples below remain supported.
+
+Registration requires a unique, valid email address. Usernames are required during the profile step and are also unique without regard to letter case (for example, `Hero` and `hero` cannot both exist). Passwords must be at least eight characters and include an uppercase letter, lowercase letter, number, and special character.
+
+Profile fields also include an optional editable `bio` (500 characters maximum), a category with a `showCategoryOnProfile` display switch, and every user has a `pointsBalance` which starts at `0`. Public profile APIs return only safe public information; they never return an account email address, age, or gender. A separately saved contact email is public because the Contact options screen has no visibility switches.
+
+ (MongoDB operators such as `{"$ne": null}`) are refused with 400, a body that isn't valid JSON answers `400 "The request body is not valid JSON."`, and unexpected server errors answer `500 "Something went wrong on our side. Please try again."` without internal details.
+- Validation runs after the login check (401) and before permission checks, so a malformed request gets 400 even from someone who couldn't do it anyway.
+
 ## Auth
 
 **POST** `/api/auth/signup`
