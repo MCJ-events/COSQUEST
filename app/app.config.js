@@ -56,5 +56,12 @@ module.exports = ({ config }) => {
         : p,
     ),
     android: { ...config.android, package: env.COSQUEST_DEV_ANDROID_PACKAGE || "com.subomi.cosquest.dev" },
+    // iOS: the same side-by-side dev app (COSQUEST_DEV_BUNDLE_ID, signed by
+    // COSQUEST_DEV_TEAM when set).
+    ios: {
+      ...config.ios,
+      bundleIdentifier: env.COSQUEST_DEV_BUNDLE_ID || "com.subomi.cosquest.dev",
+      ...(env.COSQUEST_DEV_TEAM ? { appleTeamId: env.COSQUEST_DEV_TEAM } : {}),
+    },
   };
 };

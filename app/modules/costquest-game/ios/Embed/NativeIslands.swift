@@ -214,6 +214,9 @@ public final class CostQuestUnityView: ExpoView {
     poll?.invalidate()
     pollTries = 0
     poll = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] timer in
+      // Scheduled on the main run loop, so the timer never leaves the main
+      // thread (Swift 6 cannot see that and refuses to send it).
+      nonisolated(unsafe) let timer = timer
       MainActor.assumeIsolated {
         guard let self, self.window != nil, self.pollTries < 100 else { timer.invalidate(); return }
         self.pollTries += 1
