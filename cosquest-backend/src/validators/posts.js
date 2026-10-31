@@ -26,6 +26,16 @@ function validateUpload(...rules) {
   return [...steps.slice(0, -1), removeStagedFiles, steps[steps.length - 1]];
 }
 
+/**
+ * Optional text with its own message for "not text" (`typeMessage`) and the
+ * controller's message for the length (counted after trimming, as stored).
+ */
+function text(name, { max, typeMessage, message, nullable = true }) {
+  return field(name, { nullable })
+    .custom((v) => typeof v === 'string').withMessage(typeMessage).bail()
+    .custom((v) => v.trim().length <= max).withMessage(message);
+}
+
 const postId = common.pathId('postId', 'Post not found.');
 // Comment routes have always answered "Comment not found." for a bad post id too.
 const commentPath = [
@@ -74,7 +84,7 @@ const updatePost = [postId, string('content', { required: true, message: 'conten
 // POST /api/posts/:postId/share-to-feed { content? }
 const shareToFeed = [
   postId,
-  string('content', { nullable: true, trim: true, max: 2200, message: 'Your caption must be at most 2,200 characters.' }),
+  text('content', { max: 2200, typeMessage: 'Your caption must be text.', message: 'Your caption must be at most 2,200 characters.' }),
 ];
 
 // GET /api/posts/:postId/comments?parentComment=&page=&limit=
@@ -83,12 +93,13 @@ const listComments = [postId, parentComment('query'), common.paging()];
 // POST /api/posts/:postId/comments (multipart: optional voice `media`) { body?, parentComment? }
 const createComment = [
   postId,
-  string('body', { nullable: true, trim: true, max: 500, message: 'A comment must be at most 500 characters.' }),
+  text('body', { max: 500, typeMessage: 'A comment must be text.', message: 'A comment must be at most 500 characters.' }),
   parentComment('body'),
 ];
 
 module.exports = {
   validateUpload,
+  text,
   postId,
   commentPath,
   listPosts,

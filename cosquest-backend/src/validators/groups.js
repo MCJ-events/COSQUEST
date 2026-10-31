@@ -4,6 +4,7 @@
 // field is text: numbers and lists may come as strings.
 const { string, oneOfValues, field, fail } = require('../middleware/validate');
 const common = require('./common');
+const { text } = require('./posts');
 
 const KINDS = ['faction', 'open', 'private'];
 const JOIN_MODES = ['instant', 'approval'];
@@ -15,6 +16,7 @@ const groupId = common.pathId('groupId', 'Group not found.');
 const userId = common.pathId('userId', 'Person not found.');
 const nameMessage = 'Give the group a name (up to 80 characters).';
 const descriptionMessage = 'The description can be up to 500 characters.';
+const descriptionType = 'The description must be text.';
 
 // People to add: a list of ids/usernames, or (multipart) a JSON list or a
 // comma list as text. Unknown ids/usernames still come back in `skipped`.
@@ -26,13 +28,13 @@ const people = (name) => field(name, { nullable: true })
 
 // The introduction when asking to join (the controller keeps the first 200
 // characters) and a ban reason (same): text, with a cap on what is sent.
-const shortNote = (name) => string(name, { nullable: true, max: 1000, message: `${name} must be text of at most 1000 characters.` });
+const shortNote = (name) => string(name, { nullable: true, max: 1000, message: `${name} must be text of at most 1,000 characters.` });
 
 // POST /api/groups (multipart: optional `photo`). joinMode, sizeLimit,
 // memberListVisibility and whoCanAdd fall back to defaults in the controller.
 const createGroup = [
   string('name', { required: true, trim: true, min: 1, max: 80, message: nameMessage }),
-  string('description', { nullable: true, trim: true, max: 500, message: descriptionMessage }),
+  text('description', { max: 500, typeMessage: descriptionType, message: descriptionMessage }),
   oneOfValues('kind', KINDS, { required: true, message: 'kind must be faction, open or private.' }),
   string('factionKey', { nullable: true, max: 50, message: 'Choose a valid faction.' }),
   people('members'),
@@ -44,7 +46,7 @@ const createGroup = [
 const updateGroup = [
   groupId,
   string('name', { trim: true, min: 1, max: 80, message: nameMessage }),
-  string('description', { trim: true, max: 500, message: descriptionMessage }),
+  text('description', { max: 500, nullable: false, typeMessage: descriptionType, message: descriptionMessage }),
   oneOfValues('joinMode', JOIN_MODES, { message: 'joinMode must be instant or approval.' }),
   oneOfValues('memberListVisibility', VISIBILITY, { message: 'memberListVisibility must be members or admins.' }),
   oneOfValues('whoCanAdd', VISIBILITY, { message: 'whoCanAdd must be members or admins.' }),
