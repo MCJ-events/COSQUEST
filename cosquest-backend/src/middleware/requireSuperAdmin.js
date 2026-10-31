@@ -1,0 +1,35 @@
+const User = require('../models/User');
+const { verifyAdminToken } = require('../utils/adminToken');
+const { isSuperAdmin } = require('../utils/superAdmin');
+
+/**
+ * Every /api/admin route (except signing in): a valid ADMIN token
+ * (src/utils/adminToken.js) from someone who is STILL a super admin.
+ *
+ *   Authorization: Bearer <admin token>
+ *
+ * On success: req.admin (the user document), req.adminId.
+ * 401 for a missing, expired or signed-out token; 403 when the person is no
+ * longer a super admin (the role was revoked after the token was issued).
+ */
+async function requireSuperAdmin(req, res, next) {
+  const header = req.headers.authorization || '';
+  const [scheme, token] = header.split(' ');
+  if (scheme !== 'Bearer' || !token) {
+    return res.status(401).json({ error: 'Sign in to the admin dashboard.', code: 'admin_signin' });
+  }
+  const decoded = verifyAdminToken(token);
+  if (!decoded) return res.status(401).json({ error: 'Your admin session has expired. Sign in again.', code: 'admin_signin' });
+
+  const user = await User.findById(decoded.sub);
+  if (!user || decoded.tokenVersion !== user.tokenVersion || !user.adminSessionId || decoded.adminSessionId !== user.adminSessionId) {
+    return res.status(401).json({ error: 'Your admin session has ended. Sign in again.', code: 'admin_signin' });
+  }
+  if (!isSuperAdmin(user)) return res.status(403).json({ error: 'Your super admin access has been removed.', code: 'not_admin' });
+
+  req.admin = user;
+  req.adminId = String(user._id);
+  return next();
+}
+
+module.exports = { requireSuperAdmin };

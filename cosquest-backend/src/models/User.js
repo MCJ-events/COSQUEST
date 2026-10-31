@@ -140,6 +140,17 @@ const userSchema = new mongoose.Schema(
       },
     ],
 
+    // PLATFORM SUPER ADMIN (the admin dashboard; src/utils/superAdmin.js).
+    // 'admin' = super admin of all of CosQuest; null = everyone else. Given
+    // only by an existing super admin or scripts/setSuperAdmin.js - never by
+    // faction rank, group roles or room roles.
+    platformRole: { type: String, enum: ['admin', null], default: null },
+    adminSince: { type: Date, default: null },
+    adminAssignedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    // The admin dashboard's own session (src/utils/adminToken.js), separate
+    // from currentSessionId so the dashboard never signs the phone out.
+    adminSessionId: { type: String, default: null },
+
     // Best-effort "last seen" signal for chat presence ("Active 7h ago").
     // Touched by requireAuth, throttled there so it isn't a write on every request.
     lastActiveAt: { type: Date, default: Date.now },
@@ -162,5 +173,7 @@ userSchema.index({ onboardingComplete: 1, interests: 1, pointsBalance: -1, _id: 
 // and the member filter of faction rooms and faction groups
 // ({ faction, onboardingComplete }). Without it each is a full users scan.
 userSchema.index({ faction: 1, onboardingComplete: 1 });
+// Roles & permissions: the list of super admins (a handful of rows).
+userSchema.index({ platformRole: 1 }, { partialFilterExpression: { platformRole: 'admin' } });
 
 module.exports = mongoose.model('User', userSchema);

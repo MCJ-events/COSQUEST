@@ -17,7 +17,12 @@ function signToken(userId, tokenVersion, sessionId) {
 }
 
 function verifyToken(token) {
-  return jwt.verify(token, process.env.JWT_SECRET);
+  const decoded = jwt.verify(token, process.env.JWT_SECRET);
+  // An admin dashboard token (src/utils/adminToken.js) only opens /api/admin.
+  // It carries no app sessionId, so without this it would pass
+  // isCurrentSession for an account that has no app session yet.
+  if (decoded?.scope) throw new Error('Not an app session token.');
+  return decoded;
 }
 
 /**

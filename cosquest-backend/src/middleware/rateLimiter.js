@@ -48,6 +48,18 @@ const loginLimiter = rateLimit({
   store: redisStore('rl:login:'),
 });
 
+// The admin dashboard's password sign-in (POST /api/admin/auth/login): same
+// limits as the app's login, with its own counter so the two don't share one.
+const adminLoginLimiter = rateLimit({
+  windowMs: 2 * 60 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many sign-in attempts. Please try again in a couple of hours.' },
+  skip: skipInTest,
+  store: redisStore('rl:adminlogin:'),
+});
+
 const signupLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10, // 10 account creations per IP per window
@@ -93,4 +105,4 @@ const usernameCheckLimiter = rateLimit({
   store: redisStore('rl:usercheck:'),
 });
 
-module.exports = { loginLimiter, signupLimiter, forgotPasswordLimiter, usernameCheckLimiter };
+module.exports = { loginLimiter, adminLoginLimiter, signupLimiter, forgotPasswordLimiter, usernameCheckLimiter };

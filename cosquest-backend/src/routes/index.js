@@ -18,6 +18,8 @@ const expertiseRoutes = require('./expertiseRoutes');
 const router = express.Router();
 
 router.use('/auth', authRoutes); // /api/auth/signup, /api/auth/login
+router.use('/admin', require('./adminRoutes')); // /api/admin/* (super admin dashboard)
+router.use('/', require('./reportRoutes')); // /api/reports (members report content)
 router.use('/internal', require('./internalRoutes')); // /api/internal/push (game server -> phones)
 // LiveKit webhooks: signed by LiveKit (no user token), raw body for the signature check.
 router.post('/livekit/webhook', express.raw({ type: () => true, limit: '1mb' }), require('../utils/asyncHandler').asyncHandler(require('../controllers/livekitWebhookController').receive));
