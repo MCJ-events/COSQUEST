@@ -24,6 +24,7 @@ const LoaderScript := preload("res://char_loader.gd")
 const TilesScript := preload("res://tiles_layer.gd")
 const ArenaScript := preload("res://arena.gd")
 const BloomScript := preload("res://bloom.gd")
+const CoopScript := preload("res://coop.gd")
 
 # ---- fighters
 const HERO_HP: int = 1000
@@ -222,6 +223,9 @@ var _end_delay: float = 1.0
 # casts [t, lt, slot, frame]; heals [t, lt, who, amount]; staggers [t, lt, length (1/100 s), parried];
 # presses [t, lt, slot]; guards [t, lt, on]
 var _logic_time: float = 0.0
+# cq 019: co-op (a proof, coop.gd): the server's shared Guardian pool, clock and end
+var coop: Node
+var _coop_won: bool = false
 var _frame_dt: float = 0.0   # this frame's length: a skill cast mid-frame has its cooldown shortened by it
 var _jlog: Dictionary = {"hits": [], "casts": [], "heals": [], "staggers": [], "presses": [], "guards": []}
 var stats: Dictionary = {"damage_dealt": 0, "damage_taken": 0, "hits": 0, "skill_uses": 0, "ally_damage": 0,
@@ -383,6 +387,8 @@ func _ready() -> void:
 	hero = _spawn(str(cfg.get("hero_name", "You")), 0, int(cfg.get("hero_hp", HERO_HP)), Color(0.3, 0.75, 0.35), Vector3(0.3, 0, 3.6), PI, "hero")
 	ally = _spawn(str(cfg.get("ally_name", "Ally")), 0, ALLY_HP, Color(0.3, 0.65, 0.9), Vector3(3.0, 0, 4.4), PI, "ally")
 	enemy = _spawn(str(cfg.get("enemy_name", "Guardian")), 1, int(cfg.get("enemy_hp", ENEMY_HP)), Color(0.85, 0.3, 0.25), Vector3(-0.4, 0, -0.6), 0.0, "boss")
+	if cfg.get("coop") is Dictionary:
+		_start_coop(cfg["coop"])
 	if bool(cfg.get("rev_solo", false)):
 		# review captures of the hero alone (cq 016): the ally and the boss stand well out of shot
 		ally.position = Vector3(9.0, 0, 16.0)
@@ -419,6 +425,11 @@ func _ready() -> void:
 			_load_queue.append({"f": pair[0], "path": p, "role": str(pair[1]).trim_suffix("_glb")})
 		else:
 			_log("load role=%s skipped (no path), capsule" % str(pair[1]).trim_suffix("_glb"))
+	if coop != null and coop.get("peer") != null and str((cfg["coop"] as Dictionary).get("peer_glb", "")) != "":
+		var peer_f: FighterScript = coop.get("peer")
+		peer_f.anim_opts = {"key": str((cfg["coop"] as Dictionary).get("peer_key", "")), "class": "", "secondary": true, "cloth_push": true}
+		peer_f.visible = false
+		_load_queue.append({"f": peer_f, "path": LoaderScript.clean_path(str((cfg["coop"] as Dictionary)["peer_glb"])), "role": "peer"})
 	_queue_weapons()
 	if _load_queue.is_empty():
 		_begin_or_intro()
@@ -663,6 +674,36 @@ func _intro_camera() -> void:
 	cam.global_transform = Transform3D(_intro_from.basis.slerp(to.basis.orthonormalized(), k), _intro_from.origin.lerp(to.origin, k))
 
 
+## Co-op (coop.gd): the connection, and the other hero, drawn but outside the fight's rules (no hurtbox,
+## not in `fighters`: the AI, the separation and the hits never see it).
+func _start_coop(c: Dictionary) -> void:
+	coop = CoopScript.new()
+	coop.name = "Coop"
+	add_child(coop)
+	var pf: FighterScript = _spawn(str(c.get("peer_name", "Hero 2")), 0, HERO_HP, Color(0.9, 0.75, 0.3), Vector3(-2.5, 0, 4.0), PI, "ally")
+	fighters.erase(pf)
+	pf.hurtbox.collision_layer = 0
+	pf.weapon.monitoring = false
+	coop.set("peer", pf)
+	coop.call("setup", self, c)
+	duration = maxf(duration, 300.0)   # the server's clock ends the round
+	t_left = duration
+
+
+## The server ended the shared fight (coop.gd).
+func coop_end(outcome: String) -> void:
+	if state != "fighting":
+		return
+	if outcome == "win":
+		_coop_won = true
+		if enemy != null and not enemy.dead:
+			enemy.hp = 0
+			enemy.die()
+		_end("win")
+	elif outcome == "timeout":
+		_end("timeout")
+
+
 func _begin_fight() -> void:
 	_make_portrait()
 	state = "fighting"
@@ -786,15 +827,21 @@ func _tick_fight(dt: float) -> void:
 		_separate()
 		for f: FighterScript in fighters:
 			_clamp_arena(f)
+	if coop != null:
+		# the shared pool (less this phone's hits on their way); the Guardian stands until the server says
+		if enemy != null and not _coop_won:
+			enemy.hp = maxi(1, int(coop.call("boss_hp_local", enemy.max_hp)))
+		if float(coop.get("server_t_left")) >= 0.0:
+			t_left = float(coop.get("server_t_left"))
 	# outcomes
 	if mode == "full":
-		if enemy != null and enemy.hp <= 0:
+		if enemy != null and enemy.hp <= 0 and coop == null:
 			_end("win")
 			return
 		if hero != null and hero.hp <= 0:
 			_end("lose")
 			return
-	if t_left <= 0.0:
+	if t_left <= 0.0 and coop == null:
 		_end("timeout")
 
 
@@ -1355,6 +1402,8 @@ func _take(dst: FighterScript, amount: int, src: FighterScript, _crit: bool) -> 
 		dst.hp = maxi(1, dst.hp - amount)
 	elif not invulnerable:
 		dst.hp = maxi(0, dst.hp - amount)
+		if coop != null and dst == enemy and not _coop_won:
+			dst.hp = maxi(1, dst.hp)   # co-op: only the server's pool brings the Guardian down
 	if dst == hero:
 		stats["damage_taken"] = int(stats["damage_taken"]) + amount
 	elif src == hero:
@@ -1771,7 +1820,8 @@ func result() -> Dictionary:
 		"combo_max": int(stats["combo_max"]),
 		"skills": stats["skills"],
 		"judge": judge_log(),
-	}
+	}.merged({"coop": (coop.get("stats") as Dictionary).merged({"seat": coop.get("seat"), "ended": coop.get("ended"),
+		"server_hp": coop.get("server_hp")})} if coop != null else {})
 
 
 ## What the game server checks (docs/game3d/XP.md): the rules this build fights by, the seed it used,
@@ -1832,7 +1882,10 @@ func _jhit(dst: FighterScript, src: FighterScript, info: Dictionary, amount: int
 	var code: int = 1 + int(info.get("combo", 0)) if kind == "melee" else int(J_SRC.get(kind, 0))
 	if src == ally and kind == "melee":
 		code = 0   # the ally never swings; kept apart so a log cannot pass its hits off as the hero's
-	(_jlog["hits"] as Array).append([_jt(), _jl(), _jwho(dst), code, amount, dealt, flags])
+	var row: Array = [_jt(), _jl(), _jwho(dst), code, amount, dealt, flags]
+	(_jlog["hits"] as Array).append(row)
+	if coop != null and dst == enemy:
+		coop.call("send_hit", row)
 
 
 func _emit_result() -> void:
@@ -1973,7 +2026,10 @@ func _sync_hud() -> void:
 	var units: Array[Dictionary] = []
 	var pts: Array[Dictionary] = []
 	if state != "loading":
-		for f: FighterScript in fighters:
+		var shown: Array[FighterScript] = fighters.duplicate()
+		if coop != null and coop.get("peer") != null and (coop.get("peer") as Node3D).visible:
+			shown.append(coop.get("peer"))   # the other player's hero: its name and bar, a dot on the minimap
+		for f: FighterScript in shown:
 			units.append({"id": f.get_instance_id(), "name": f.display_name, "hp": f.hp, "max": f.max_hp, "team": f.team,
 				"head": f.head_pos(), "is_hero": f == hero, "shield": float(f.shield_hp) / float(SHIELD_HP) if f.shield_t > 0.0 else 0.0,
 				"buff": f.buff_t, "level": 1})
