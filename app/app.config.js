@@ -32,11 +32,29 @@ module.exports = ({ config }) => {
         }
       : { enabled: false };
 
-  return {
+  const out = {
     ...config,
     plugins,
     updates,
     // OTA updates only reach builds with the same runtime version.
     runtimeVersion: { policy: "appVersion" },
+  };
+  // COSQUEST_DEV=1: the side-by-side developer build "CosQuest Dev" for a
+  // personal Android phone (as on merged-app-push-android, b4e41ed/49f2d46):
+  // its own application id (COSQUEST_DEV_ANDROID_PACKAGE, default
+  // com.subomi.cosquest.dev) so it installs next to the team's app, and the
+  // game on the STAGING game server. Unset: app.json as is.
+  if (env.COSQUEST_DEV !== "1") return out;
+  const STAGING_GAME_SERVER = "https://costquest-staging.204.168.162.79.sslip.io";
+  const GAME_PLUGIN = "./modules/costquest-game/plugin/withCostQuestGame";
+  return {
+    ...out,
+    name: "CosQuest Dev",
+    plugins: out.plugins.map((p) =>
+      Array.isArray(p) && p[0] === GAME_PLUGIN
+        ? [GAME_PLUGIN, { ...p[1], nfc: false, serverUrl: STAGING_GAME_SERVER }]
+        : p,
+    ),
+    android: { ...config.android, package: env.COSQUEST_DEV_ANDROID_PACKAGE || "com.subomi.cosquest.dev" },
   };
 };
