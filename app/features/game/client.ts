@@ -309,10 +309,13 @@ export class GameClient {
     stake?: boolean;
     /** This build can play the fantasy battle scene: a point fight may come back as kind "battle" (server knob point_battle). */
     battle?: boolean;
+    /** The 3D fight, judged by the server: a point fight comes back as kind "fight3d" (server knob point_fight3d, cq 019). */
+    fight3d?: boolean;
   }): Promise<DuelStart> {
     // Absent rather than null: the server's accuracy_m is a number with a default.
     const payload: Record<string, unknown> = { device_key: this.deviceKey(), mode: body.mode, target: body.target };
     if (body.battle) payload.battle = true;
+    if (body.fight3d) payload.fight3d = true;
     if (body.lat != null && body.lng != null) {
       payload.lat = body.lat;
       payload.lng = body.lng;
@@ -330,14 +333,16 @@ export class GameClient {
   }
 
   /** Idempotent on duel_id: a lost reply is asked again and answered with the first verdict. */
-  async duelFinish(duelId: string, finished: DuelFinished): Promise<DuelOutcome> {
-    const body = {
+  async duelFinish(duelId: string, finished: DuelFinished & { fight3d?: Record<string, unknown> | null }): Promise<DuelOutcome> {
+    const body: Record<string, unknown> = {
       device_key: this.deviceKey(),
       duel_id: duelId,
       inputs: finished.inputs,
       result: finished.result,
       hash: finished.hash,
     };
+    // A 3D fight's whole record (fight3d.ts finishFrom3D), judged by the server.
+    if (finished.fight3d) body.fight3d = finished.fight3d;
     return this.retrying(() => this.request("POST", "v1/duel/finish", { body, signed: true }));
   }
 

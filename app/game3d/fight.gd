@@ -129,6 +129,22 @@ const CAM_BOUNDS_X: float = 2.2        # across it: the street stays centred, th
 
 const TEST_PACKS: String = "/opt/cq/tasks/056-game-forge-in-world-v2/out/packs/"
 
+# ---- the server's judge (cq 019, docs/game3d/XP.md): the fight records what happened, the game server
+# checks it against these rules (costquest-backend app/roam_fight3d.py) and pays XP like any point fight.
+# Recording only: nothing here draws a random number or changes a fight. Times are in 1/100 s.
+const RULES_VERSION: int = 1
+const J_HERO: int = 0
+const J_ALLY: int = 1
+const J_BOSS: int = 2
+# hit sources: 1..3 the combo's hits, then the skills that strike, the ally's bolt, the boss's two strikes
+const J_SRC: Dictionary = {"charge": 4, "split": 5, "whirl": 6, "bolt": 7, "swipe": 8, "slam": 9}
+const JF_CRIT: int = 1
+const JF_STAGGERED: int = 2
+const JF_BUFFED: int = 4
+const JF_BLOCKED: int = 8
+const JF_PARRIED: int = 16
+const JF_DODGED: int = 32
+
 var cfg: Dictionary = {}
 var mode: String = "full"
 var autoplay: bool = false
@@ -201,6 +217,12 @@ var _bot_next_skill: float = 0.0
 
 var _end_t: float = 0.0
 var _end_delay: float = 1.0
+# every row starts [t, lt]: the round's clock and the moves' clock (lt stops during hit-stop, as
+# buffs, staggers, skills and the AI's timers do). hits [t, lt, target, source, amount, dealt, flags];
+# casts [t, lt, slot]; heals [t, lt, who, amount]; staggers [t, lt, length (1/100 s), parried];
+# presses [t, lt, slot]; guards [t, lt, on]
+var _logic_time: float = 0.0
+var _jlog: Dictionary = {"hits": [], "casts": [], "heals": [], "staggers": [], "presses": [], "guards": []}
 var stats: Dictionary = {"damage_dealt": 0, "damage_taken": 0, "hits": 0, "skill_uses": 0, "ally_damage": 0,
 	"parries": 0, "blocks": 0, "dodges": 0, "crits": 0, "combo_max": 0, "skills": [0, 0, 0, 0, 0]}
 
@@ -632,6 +654,7 @@ func _on_attack_pressed(t_in: float, ticks_in: int, src: String) -> void:
 func _on_skill_pressed(slot: int, _t_in: float, _ticks_in: int, src: String) -> void:
 	if hero == null or state != "fighting" or hero.dead:
 		return
+	(_jlog["presses"] as Array).append([_jt(), _jl(), slot])
 	if _skill_cd[slot] > 0.0:
 		if src != "bot":
 			hud.toast("%ds" % int(ceil(_skill_cd[slot])), hud.skill_centre(slot) + Vector2(0, -hud.SKILL_R - 22))
@@ -648,6 +671,7 @@ func _on_guard_changed(on: bool, _t_in: float, _ticks_in: int, _src: String) -> 
 	_guard_wanted = on
 	if hero == null or state != "fighting" or hero.dead:
 		return
+	(_jlog["guards"] as Array).append([_jt(), _jl(), 1 if on else 0])
 	if on:
 		var w: Vector3 = _stick_world()
 		if w.length() > 0.5 and (_action == "" or (_action == "attack" and _act_t > float(_atk_data.get("close", 0.0)))):
@@ -696,6 +720,7 @@ func _tick_fight(dt: float) -> void:
 	fight_time += dt
 	t_left = maxf(0.0, duration - fight_time)
 	var logic_dt: float = 0.0 if _hitstop > 0.0 else dt
+	_logic_time += logic_dt
 	if hero != null:
 		if autoplay:
 			_bot(dt)
@@ -999,6 +1024,7 @@ func _cast(slot: int) -> void:
 	_act_len = SKILL_LEN[slot]
 	_skill_fired = {}
 	_skill_cd[slot] = SKILL_CD[slot]
+	(_jlog["casts"] as Array).append([_jt(), _jl(), slot])
 	stats["skill_uses"] = int(stats["skill_uses"]) + 1
 	(stats["skills"] as Array)[slot] = int((stats["skills"] as Array)[slot]) + 1
 	_combo_next = 0
@@ -1112,6 +1138,7 @@ func _tick_skill(dt: float) -> void:
 						continue
 					var heal: int = int(round(f.max_hp * RALLY_HEAL))
 					f.hp = mini(f.max_hp, f.hp + heal)
+					(_jlog["heals"] as Array).append([_jt(), _jl(), _jwho(f), heal])
 					f.give_buff(RALLY_MULT, RALLY_SECS)
 					fx.heal(f.position, Color(0.55, 1.0, 0.45))
 					hud.pop(f.chest_pos() + Vector3(0, 0.6, 0), "+%d" % heal, "heal")
@@ -1156,10 +1183,12 @@ func _apply_hit(src: FighterScript, dst: FighterScript, info: Dictionary) -> voi
 	var heavy: bool = bool(info.get("heavy", false))
 	var amount: int = rng.randi_range(r.x, r.y)
 	amount = int(round(amount * src.buff_mult))
+	var jf: int = JF_BUFFED if src.buff_mult != 1.0 else 0
 	var away: Vector3 = _flat(dst.position - src.position)
 	var pop_at: Vector3 = dst.chest_pos() + Vector3(0, 0.25 * dst.size_k, 0)   # on the target's body, as on the reference
 	# dodge: i-frames
 	if dst.iframes > 0.0:
+		_jhit(dst, src, info, amount, 0, jf | JF_DODGED)
 		hud.pop(pop_at, "DODGE", "dodge")
 		if dst == hero:
 			stats["dodges"] = int(stats["dodges"]) + 1
@@ -1168,11 +1197,13 @@ func _apply_hit(src: FighterScript, dst: FighterScript, info: Dictionary) -> voi
 	if dst == hero and hero.guarding and bool(info.get("parryable", false)):
 		var facing_ok: bool = hero.forward().angle_to(-away.normalized()) < deg_to_rad(100.0)
 		if facing_ok and hero.guard_t <= PARRY_WINDOW:
+			_jhit(dst, src, info, amount, 0, jf | JF_PARRIED)
 			_parry(src)
 			return
 		if facing_ok:
 			amount = maxi(1, int(round(amount * GUARD_TAKE)))
 			stats["blocks"] = int(stats["blocks"]) + 1
+			_jhit(dst, src, info, amount, amount, jf | JF_BLOCKED)
 			_take(dst, amount, src, false)
 			hud.pop(pop_at, "BLOCK %d" % amount, "blocked")
 			fx.sparks(hero.chest_pos() + hero.forward() * 0.4, Color(0.7, 0.85, 1.0), 60)
@@ -1186,10 +1217,13 @@ func _apply_hit(src: FighterScript, dst: FighterScript, info: Dictionary) -> voi
 	if src.team == 0 and rng.randf() < CRIT_CHANCE * (1.6 if heavy else 1.0):
 		crit = true
 		amount = int(round(amount * CRIT_MULT))
+		jf |= JF_CRIT
 	if dst == enemy and enemy.stagger > 0.0:
 		amount = int(round(amount * STAGGER_TAKE))
+		jf |= JF_STAGGERED
 	# the barrier soaks first
 	var left: int = dst.absorb(amount)
+	_jhit(dst, src, info, amount, left, jf)
 	if left < amount:
 		hud.pop(pop_at + Vector3(0, 0.35, 0), "ABSORB %d" % (amount - left), "absorbed")
 		fx.shock(dst.position, 1.25 * dst.size_k, Color(0.45, 0.8, 1.0), 0.3)
@@ -1299,6 +1333,7 @@ func _parry(src: FighterScript) -> void:
 
 
 func _stagger_enemy(secs: float, parried: bool) -> void:
+	(_jlog["staggers"] as Array).append([_jt(), _jl(), int(round(secs * 100.0)), 1 if parried else 0])
 	enemy.stagger = maxf(enemy.stagger, secs)
 	if _tele != null:
 		fx.telegraph_end(_tele, false)
@@ -1686,7 +1721,69 @@ func result() -> Dictionary:
 		"crits": int(stats["crits"]),
 		"combo_max": int(stats["combo_max"]),
 		"skills": stats["skills"],
+		"judge": judge_log(),
 	}
+
+
+## What the game server checks (docs/game3d/XP.md): the rules this build fights by, the seed it used,
+## and every hit, cast, heal, stagger, skill press and guard change, on both clocks (1/100 s).
+func judge_log() -> Dictionary:
+	var j: Dictionary = _jlog.duplicate(true)
+	j["v"] = RULES_VERSION
+	j["rules"] = rules_id()
+	j["seed"] = int(cfg["seed"]) if cfg.has("seed") else -1
+	return j
+
+
+## The combat numbers the judge needs, as whole numbers (ms, permille): the server holds the same
+## table, and the sha256 of this one's sorted JSON must match its own (rules_id).
+static func rules_table() -> Dictionary:
+	var combo: Array = []
+	for c: Dictionary in COMBO:
+		combo.append({"len_ms": int(round(float(c["len"]) * 1000.0)), "dmg": [(c["dmg"] as Vector2i).x, (c["dmg"] as Vector2i).y]})
+	var cd: Array = []
+	var ln: Array = []
+	for i in 5:
+		cd.append(int(round(SKILL_CD[i] * 1000.0)))
+		ln.append(int(round(SKILL_LEN[i] * 1000.0)))
+	return {
+		"hp": {"hero": HERO_HP, "ally": ALLY_HP, "boss": ENEMY_HP},
+		"combo": combo, "combo_chain_permille": int(round(COMBO_CHAIN_AT * 1000.0)),
+		"crit_permille": int(round(CRIT_CHANCE * 1000.0)), "crit_mult_permille": int(round(CRIT_MULT * 1000.0)),
+		"guard_take_permille": int(round(GUARD_TAKE * 1000.0)), "parry_window_ms": int(round(PARRY_WINDOW * 1000.0)),
+		"parry_stagger_ms": int(round(PARRY_STAGGER * 1000.0)), "stagger_take_permille": int(round(STAGGER_TAKE * 1000.0)),
+		"skill_cd_ms": cd, "skill_len_ms": ln,
+		"charge_dmg": [CHARGE_DMG.x, CHARGE_DMG.y], "split_dmg": [SPLIT_DMG.x, SPLIT_DMG.y], "whirl_dmg": [WHIRL_DMG.x, WHIRL_DMG.y],
+		"rally_heal_permille": int(round(RALLY_HEAL * 1000.0)), "rally_mult_permille": int(round(RALLY_MULT * 1000.0)),
+		"rally_ms": int(round(RALLY_SECS * 1000.0)), "shield_hp": SHIELD_HP, "shield_ms": int(round(SHIELD_SECS * 1000.0)),
+		"swipe_dmg": [SWIPE_DMG.x, SWIPE_DMG.y], "slam_dmg": [SLAM_DMG.x, SLAM_DMG.y], "boss_cd_ms": int(round(ENEMY_CD * 1000.0)),
+		"ally_dmg": [ALLY_DMG.x, ALLY_DMG.y],
+	}
+
+
+static func rules_id() -> String:
+	var body: String = JSON.stringify(rules_table(), "", true)
+	return "f3d-%d-%s" % [RULES_VERSION, body.sha256_text().left(12)]
+
+
+func _jt() -> int:
+	return int(round(fight_time * 100.0))
+
+
+func _jl() -> int:
+	return int(round(_logic_time * 100.0))
+
+
+func _jwho(f: FighterScript) -> int:
+	return J_HERO if f == hero else (J_ALLY if f == ally else J_BOSS)
+
+
+func _jhit(dst: FighterScript, src: FighterScript, info: Dictionary, amount: int, dealt: int, flags: int) -> void:
+	var kind: String = str(info.get("kind", ""))
+	var code: int = 1 + int(info.get("combo", 0)) if kind == "melee" else int(J_SRC.get(kind, 0))
+	if src == ally and kind == "melee":
+		code = 0   # the ally never swings; kept apart so a log cannot pass its hits off as the hero's
+	(_jlog["hits"] as Array).append([_jt(), _jl(), _jwho(dst), code, amount, dealt, flags])
 
 
 func _emit_result() -> void:

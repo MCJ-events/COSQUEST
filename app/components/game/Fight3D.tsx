@@ -20,10 +20,11 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { castWeapons, fightCast } from "@/features/game3d/characters";
 import { closeFight, fightStatus, FightOpenError, godotLib, holdForBackground, onFightState, openFight } from "@/features/game3d/engine";
-import { buildFightConfig, type Fight3DMode, type Fight3DResult, type Fight3DRun, godotArgs, parseFightResult, quitResult } from "@/features/game3d/fight3d";
+import { buildFightConfig, type Fight3DMode, type Fight3DResult, type Fight3DRun, fightSeed, godotArgs, parseFightResult, quitResult } from "@/features/game3d/fight3d";
 import { FIGHT3D } from "@/features/game3d/flags";
 import { useAppSelector } from "@/store/hooks";
-import type { QuestPoint } from "@/features/game/wire";
+import { gameStore } from "@/features/game/runtime";
+import type { DuelStart, QuestPoint } from "@/features/game/wire";
 
 import { GameButton, MAX_FONT_SCALE } from "./kit";
 import { GF, GP } from "./theme";
@@ -36,6 +37,7 @@ export default function Fight3D({
   point,
   mode,
   autoplay,
+  judged = false,
   enemyId,
   parked = false,
   autoCloseMs,
@@ -47,6 +49,11 @@ export default function Fight3D({
   point: QuestPoint | null;
   mode: Fight3DMode;
   autoplay: boolean;
+  /**
+   * The server judges this fight and it pays (fight3d.ts judgedFight, cq 019): the duel is
+   * started first (/v1/duel/start, fight3d: true) and Godot fights on its seed.
+   */
+  judged?: boolean;
   /** The opponent character a duel start named (else the server's pick for the point). */
   enemyId?: string | null;
   /** The game is behind the chat: Godot stops drawing. */
@@ -54,8 +61,8 @@ export default function Fight3D({
   /** The leak test: close by itself this long after the fight is on. */
   autoCloseMs?: number;
   onFighting?: () => void;
-  /** Godot's verdict. The engine is already closed. */
-  onResult: (r: Fight3DResult) => void;
+  /** Godot's verdict, and the duel it was fought for when judged. The engine is already closed. */
+  onResult: (r: Fight3DResult, start: DuelStart | null) => void;
   /** Closed without a verdict (X, Back, a failure, the leak test). The engine is already closed. */
   onClose: () => void;
 }) {
@@ -68,6 +75,7 @@ export default function Fight3D({
   const reduceMotion = useRef(reduceMotionSetting);
   reduceMotion.current = reduceMotionSetting;
   const openedAt = useRef(Date.now());
+  const duel = useRef<DuelStart | null>(null);
   const go = useCallback((p: Phase) => {
     phaseRef.current = p;
     setPhase(p);
@@ -82,7 +90,7 @@ export default function Fight3D({
       go({ kind: "closing" });
       log(`close outcome=${result?.outcome ?? "none"} after_ms=${Date.now() - openedAt.current}`);
       void closeFight({ keep: FIGHT3D.keep }).then(() => {
-        if (result) onResult(result);
+        if (result) onResult(result, duel.current);
         else onClose();
       });
     },
@@ -97,6 +105,17 @@ export default function Fight3D({
     openedAt.current = Date.now();
     void (async () => {
       try {
+        // A judged fight: the server sets it up (seed, rules, round) before anything loads; a
+        // refusal ("Get closer", the point resting) is shown like any failure to open.
+        let seed: number | null = null;
+        if (judged && point) {
+          const start = await gameStore.duelStart(point, { fight3d: true });
+          if (!alive || done.current) return;
+          seed = start.setup.kind === "fight3d" ? fightSeed(start.seed_text) : null;
+          if (seed === null) throw new Error("This point's fight is the regular Fight right now.");
+          duel.current = start;
+          log(`judged duel=${start.duel_id} seed=${seed}`);
+        }
         const role = point?.source === "raid" ? "boss" : "guardian";
         // No point (the test link's Test arena): a fixed key, so the opponent is a published Guardian, not the capsule.
         const cast = await fightCast({ pointId: point?.id ?? "test-arena", role, enemyId, enemyName: point?.extra?.guardian ?? null, lodOverride: FIGHT3D.lod });
@@ -109,7 +128,7 @@ export default function Fight3D({
           enemy: cast.enemy,
           pointName: point?.name ?? "Test arena",
           mode,
-          seed: Math.floor(Math.random() * 2147483647),
+          seed: seed ?? Math.floor(Math.random() * 2147483647),
           autoplay,
           tilesUrl: FIGHT3D.tilesUrl || null,
           reduceMotion: reduceMotion.current,
@@ -253,6 +272,7 @@ export function Fight3DHost({
   run,
   parked,
   enemyId,
+  judged,
   onResult,
   onClose,
 }: {
@@ -260,7 +280,8 @@ export function Fight3DHost({
   run: Fight3DRun;
   parked?: boolean;
   enemyId?: string | null;
-  onResult: (r: Fight3DResult) => void;
+  judged?: boolean;
+  onResult: (r: Fight3DResult, start: DuelStart | null) => void;
   onClose: () => void;
 }) {
   const [i, setI] = useState(0);
@@ -294,6 +315,7 @@ export function Fight3DHost({
       point={point}
       mode={run.mode}
       autoplay={run.autoplay}
+      judged={!cycling && judged}
       enemyId={enemyId}
       parked={parked}
       autoCloseMs={cycling ? run.cycleMs : undefined}

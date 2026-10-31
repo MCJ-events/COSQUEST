@@ -24,7 +24,7 @@ import { isSiege, siegePlaysAsDuel } from "@/features/game/siege";
 import { noteStepsOnPhone } from "@/features/game/stepsDevice";
 import { unlocked, visiblePoints } from "@/features/game/unlocks";
 import { arriveMoment, legendMoment, nudgeMoment } from "@/features/game/warden";
-import { freshLoss, holdsLostOf, type QuestPoint, spinBanner } from "@/features/game/wire";
+import { type DuelStart, freshLoss, holdsLostOf, type QuestPoint, type RoamStanding, spinBanner } from "@/features/game/wire";
 import { factionVeilColor, world } from "@/features/world/worldState";
 import { resultShareText } from "@/features/world/gameInvite";
 import { openVenueEvents, venueEventsAvailable } from "@/modules/costquest-game/src";
@@ -61,7 +61,7 @@ import RoomScreen from "./RoomScreen";
 import RoomSheet from "./RoomSheet";
 import RelicsButton from "./RelicsButton";
 import RelicsSheet from "./RelicsSheet";
-import Reward, { type RewardSummary } from "./Reward";
+import Reward, { rewardFromDuel, type RewardSummary } from "./Reward";
 import SiegeScreen, { siegeGuard } from "./SiegeScreen";
 import TrialsSheet from "./TrialsSheet";
 import { GF, GP, realmColor } from "./theme";
@@ -72,7 +72,7 @@ import WorldMap from "./WorldMap";
 import { useRenderCount } from "@/utils/perfMarks";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 import type { ForgeDrop } from "@/features/game/forgeWorld";
-import { type Fight3DRun, rewardFrom3D } from "@/features/game3d/fight3d";
+import { type Fight3DResult, type Fight3DRun, fightStats, finishFrom3D, judgedFight, rewardFrom3D } from "@/features/game3d/fight3d";
 import { FIGHT3D, fight3dAvailable } from "@/features/game3d/flags";
 import { takeFight3DRequest, useFight3DRequestSerial } from "@/features/game3d/request";
 
@@ -84,7 +84,7 @@ type Screen =
   | { kind: "siege"; point: QuestPoint }
   | { kind: "room"; gameId: string }
   /** The 3D fight in Godot (cq 061): from a duel's briefing, or a test run (point null). */
-  | { kind: "fight3d"; point: QuestPoint | null; run: Fight3DRun }
+  | { kind: "fight3d"; point: QuestPoint | null; run: Fight3DRun; judged: boolean; before: RoamStanding | null }
   | { kind: "reward"; reward: RewardSummary };
 
 /** What is open over the map (one at a time, closed by Android Back). */
@@ -386,8 +386,28 @@ export default function GameRoot({ parked }: { parked: boolean }) {
 
   // The 3D fight (cq 061). Test builds may open it as soon as the game is up
   // (EXPO_PUBLIC_GAME3D_AUTOSTART=<mode>, with EXPO_PUBLIC_GAME3D_CYCLE=N for the leak test).
+  // cq 019: at a duel point on a server that judges 3D fights, the fight is a real point fight and pays.
   const fight3d = (point: QuestPoint | null, run?: Partial<Fight3DRun>) =>
-    setScreen({ kind: "fight3d", point, run: { mode: "full", cycle: 0, cycleMs: FIGHT3D.cycleMs, autoplay: FIGHT3D.autoplay, ...run } });
+    setScreen({
+      kind: "fight3d",
+      point,
+      run: { mode: "full", cycle: 0, cycleMs: FIGHT3D.cycleMs, autoplay: FIGHT3D.autoplay, ...run },
+      judged: !run?.cycle && judgedFight(gameStore.get().me, point, !!point && gameStore.playsAsDuel(point)),
+      before: gameStore.get().me?.standing ?? null,
+    });
+  // The judged fight's verdict: the server's pay on the reward screen, with the fight's own numbers.
+  const finish3d = async (point: QuestPoint, r: Fight3DResult, start: DuelStart, before: RoamStanding | null) => {
+    try {
+      const out = await gameStore.duelFinish(start, finishFrom3D(r));
+      const after = out.point?.after ?? gameStore.get().me?.standing ?? null;
+      setScreen({ kind: "reward", reward: { ...rewardFromDuel(out, point, out.point?.before ?? before, after), stats: fightStats(r) } });
+    } catch {
+      setScreen({
+        kind: "reward",
+        reward: { ...rewardFrom3D(r, point, before), note: "The game server did not answer, so this fight could not be counted.", practice: false },
+      });
+    }
+  };
   const autostarted = useRef(false);
   const autostartReady = !!session && (fontsReady || !!fontsError) && !gameStore.needsOnboarding && !onboarding && screen.kind === "home";
   useEffect(() => {
@@ -706,11 +726,14 @@ export default function GameRoot({ parked }: { parked: boolean }) {
             point={screen.point}
             run={screen.run}
             parked={parked}
-            onResult={(r) =>
-              setScreen({
-                kind: "reward",
-                reward: rewardFrom3D(r, screen.point ?? { name: "Test arena", realm: me?.faction ?? "" }, gameStore.get().me?.standing ?? null),
-              })
+            judged={screen.judged}
+            onResult={(r, start) =>
+              start && screen.point
+                ? void finish3d(screen.point, r, start, screen.before)
+                : setScreen({
+                    kind: "reward",
+                    reward: rewardFrom3D(r, screen.point ?? { name: "Test arena", realm: me?.faction ?? "" }, gameStore.get().me?.standing ?? null),
+                  })
             }
             onClose={home}
           />

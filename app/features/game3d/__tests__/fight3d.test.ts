@@ -183,7 +183,7 @@ test("the result JSON is checked and cleaned", () => {
   const r = parseFightResult(
     JSON.stringify({ outcome: "win", damage_dealt: 120.6, damage_taken: "40", time_s: 31.26, hits: 9, skill_uses: 2, enemy_hp_left: 0, hero_hp_left: -5, mode: "full" }),
   );
-  assert.deepEqual(r, { outcome: "win", damage_dealt: 121, damage_taken: 40, time_s: 31.3, hits: 9, skill_uses: 2, enemy_hp_left: 0, hero_hp_left: 0, mode: "full" });
+  assert.deepEqual(r, { outcome: "win", damage_dealt: 121, damage_taken: 40, time_s: 31.3, hits: 9, skill_uses: 2, enemy_hp_left: 0, hero_hp_left: 0, mode: "full", record: null });
   assert.equal(parseFightResult({ outcome: "TIMEOUT" })?.outcome, "timeout");
   assert.equal(parseFightResult({ outcome: "draw" }), null);
   assert.equal(parseFightResult("not json"), null);
@@ -201,7 +201,7 @@ test("the status JSON's state", () => {
 
 test("the reward for a 3D fight: Godot's numbers, no pay, and it says so", () => {
   const standing = { level: 4, rank: "Scout", xp: 300, level_floor_xp: 250, next_level_xp: 400, into_level: 50, level_span: 150, max_level: false };
-  const win = rewardFrom3D({ outcome: "win", damage_dealt: 121, damage_taken: 40, time_s: 31.3, hits: 9, skill_uses: 2, enemy_hp_left: 0, hero_hp_left: 60, mode: "full" }, { name: "Trafalgar", realm: "fantasy" }, standing);
+  const win = rewardFrom3D({ outcome: "win", damage_dealt: 121, damage_taken: 40, time_s: 31.3, hits: 9, skill_uses: 2, enemy_hp_left: 0, hero_hp_left: 60, mode: "full", record: null }, { name: "Trafalgar", realm: "fantasy" }, standing);
   assert.equal(win.win, true);
   assert.equal(win.headline, "Guardian down!");
   assert.deepEqual([win.xp, win.coins, win.factionPoints, win.lines.length, win.leveledUp], [0, 0, 0, 0, false]);
@@ -249,4 +249,67 @@ test("tilesFields: ground and detail knobs", () => {
     tiles_ground: false,
     tiles_sse: 64,
   });
+});
+
+// ---------- the judged 3D fight (cq 019): the server sets it up, judges its record and pays ----------
+
+import { finishFrom3D, fightSeed, fightStats, judgedFight } from "../fight3d.ts";
+
+const judgeLog = { v: 1, rules: "f3d-1-21d2cde61ab2", seed: 233, hits: [[57, 57, 2, 1, 66, 66, 0]], casts: [], heals: [], staggers: [], presses: [], guards: [] };
+const godotWin = { outcome: "win", damage_dealt: 6164, damage_taken: 285, time_s: 21.57, hits: 47, skill_uses: 9, enemy_hp_left: 0, hero_hp_left: 715, mode: "full", ally_damage: 511, crits: 9, parries: 2, skills: [3, 3, 3, 0, 0], judge: judgeLog };
+
+test("the fight's whole record rides along when Godot sends one, and only then", () => {
+  const r = parseFightResult(JSON.stringify(godotWin));
+  assert.ok(r);
+  assert.deepEqual(r.record, godotWin);
+  assert.equal(parseFightResult({ ...godotWin, judge: undefined })?.record, null);
+  assert.equal(parseFightResult({ ...godotWin, judge: [1, 2] })?.record, null);
+  assert.equal(quitResult("full").record, null);
+});
+
+test("the seed Godot fights on is the duel's exact seed folded to 31 bits (the server's fight_seed)", () => {
+  assert.equal(fightSeed("239"), 239);
+  // 2**62 - 1, past what a JS number holds exactly: the digits, not the lossy number, are folded.
+  assert.equal(fightSeed("4611686018427387903"), Number(4611686018427387903n % 2147483647n));
+  assert.ok((fightSeed("4611686018427387903") ?? 2 ** 31) < 2 ** 31);
+  assert.equal(fightSeed("-5"), 5);
+  assert.equal(fightSeed("nope"), null);
+  assert.equal(fightSeed(""), null);
+});
+
+test("the finish body for a judged fight is the duel's result block plus the record (the server's finish_fields)", () => {
+  const r = parseFightResult(godotWin)!;
+  assert.deepEqual(finishFrom3D(r), {
+    result: { winner: 1, ticks: 2157, p1_hp: 715, p2_hp: 0, end_reason: "win" },
+    inputs: [],
+    hash: "",
+    fight3d: godotWin,
+  });
+  const lost = finishFrom3D(parseFightResult({ ...godotWin, outcome: "timeout", enemy_hp_left: 900, time_s: 45.0 })!);
+  assert.deepEqual(lost.result, { winner: 2, ticks: 4500, p1_hp: 715, p2_hp: 900, end_reason: "timeout" });
+});
+
+test("a fight is judged only at a duel point, on a server that judges 3D fights, never a raid or the test arena", () => {
+  const on = { features: { duel: { fight3d: true } } };
+  const point = { source: "signal" };
+  assert.equal(judgedFight(on, point, true), true);
+  assert.equal(judgedFight(on, point, false), false); // the point is a quiz on this server
+  assert.equal(judgedFight(on, { source: "raid" }, true), false);
+  assert.equal(judgedFight(on, null, true), false);
+  assert.equal(judgedFight({ features: { duel: { fight3d: false } } }, point, true), false);
+  assert.equal(judgedFight({ features: { duel: {} } }, point, true), false); // an older server
+  assert.equal(judgedFight(null, point, true), false);
+});
+
+test("the fight's own numbers are rows on any reward screen, judged or practice", () => {
+  const r = parseFightResult(godotWin)!;
+  assert.deepEqual(
+    fightStats(r).map((s) => [s.id, s.value]),
+    [
+      ["outcome", "Guardian down!"],
+      ["damage-dealt", "6164"],
+      ["damage-taken", "285"],
+      ["time", "22 s"],
+    ],
+  );
 });

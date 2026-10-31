@@ -15,7 +15,7 @@ import { bytesToHex, utf8ToBytes } from "@noble/hashes/utils.js";
 
 import type { RewardSummary } from "../../components/game/Reward.tsx";
 import type { ForgeEntry } from "../game/forgeWorld.ts";
-import type { RoamStanding } from "../game/wire.ts";
+import type { DuelFinished, RoamStanding } from "../game/wire.ts";
 
 // ---------- switches ----------
 
@@ -319,6 +319,11 @@ export type Fight3DResult = {
   enemy_hp_left: number;
   hero_hp_left: number;
   mode: string;
+  /**
+   * Godot's whole result as it came, when it carries the fight's record (`judge`: the seed, the
+   * rules and every hit, fight.gd judge_log, cq 019). A judged fight sends it to the server as is.
+   */
+  record: Record<string, unknown> | null;
 };
 
 const OUTCOMES: readonly Fight3DOutcome[] = ["win", "lose", "timeout", "quit"];
@@ -351,6 +356,7 @@ export function parseFightResult(json: unknown): Fight3DResult | null {
     enemy_hp_left: Math.round(n0(r.enemy_hp_left)),
     hero_hp_left: Math.round(n0(r.hero_hp_left)),
     mode: typeof r.mode === "string" ? r.mode : "",
+    record: r.judge && typeof r.judge === "object" && !Array.isArray(r.judge) ? r : null,
   };
 }
 
@@ -371,7 +377,7 @@ export function parseStatus(json: unknown): { state: string; raw: Record<string,
 
 /** The "quit" a fight closed before Godot answered is reported as (the X, Android Back). */
 export function quitResult(mode: string, timeS = 0): Fight3DResult {
-  return { outcome: "quit", damage_dealt: 0, damage_taken: 0, time_s: timeS, hits: 0, skill_uses: 0, enemy_hp_left: 0, hero_hp_left: 0, mode };
+  return { outcome: "quit", damage_dealt: 0, damage_taken: 0, time_s: timeS, hits: 0, skill_uses: 0, enemy_hp_left: 0, hero_hp_left: 0, mode, record: null };
 }
 
 const HEADLINES: Record<Fight3DOutcome, string> = {
@@ -383,6 +389,57 @@ const HEADLINES: Record<Fight3DOutcome, string> = {
 
 export const FIGHT3D_NOTE = "That was a 3D practice fight, just for fun. Your XP comes from the regular Fight.";
 
+/** The fight's own numbers, as rows on the reward screen (testID `reward-<id>`), judged or practice. */
+export function fightStats(r: Fight3DResult): { id: string; label: string; value: string }[] {
+  const s = Math.round(r.time_s);
+  return [
+    { id: "outcome", label: "Result", value: HEADLINES[r.outcome] },
+    { id: "damage-dealt", label: "Damage dealt", value: String(r.damage_dealt) },
+    { id: "damage-taken", label: "Damage taken", value: String(r.damage_taken) },
+    { id: "time", label: "Time", value: s >= 60 ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}` : `${s} s` },
+  ];
+}
+
+// ---------- the judged fight (cq 019) ----------
+// With the server's knob point_fight3d on (/me features.duel.fight3d), the 3D fight at a duel point
+// is a real point fight: /v1/duel/start with fight3d: true hands out a "fight3d" setup, Godot fights
+// on its seed and records every hit (fight.gd judge_log), /v1/duel/finish sends that record, and the
+// server (costquest-backend app/roam_fight3d.py) judges it and pays like the 2D duel. docs/game3d/XP.md.
+
+type MeDuel = { features?: { duel?: { fight3d?: boolean | null } | null } | null } | null | undefined;
+
+/** Whether this fight is judged and pays: a duel point (not a raid, not the test arena) on a server that judges 3D fights. */
+export function judgedFight(me: MeDuel, point: { source?: string | null } | null | undefined, playsAsDuel: boolean): boolean {
+  return !!point && point.source !== "raid" && playsAsDuel && me?.features?.duel?.fight3d === true;
+}
+
+/**
+ * The seed Godot fights on: the duel's seed, from its exact digits (DuelStart.seed_text; the number
+ * is lossy past 2^53), folded to 31 bits as the server's roam_fight3d.fight_seed. Null when unreadable.
+ */
+export function fightSeed(seedText: string): number | null {
+  if (!/^-?\d+$/.test(seedText.trim())) return null;
+  const n = BigInt(seedText.trim());
+  return Number((n < 0n ? -n : n) % 2147483647n);
+}
+
+/** The /v1/duel/finish fields for a judged fight: the duel's result block from the fight's numbers, and the record (the server's finish_fields). */
+export function finishFrom3D(r: Fight3DResult): DuelFinished & { fight3d: Record<string, unknown> | null } {
+  return {
+    result: {
+      winner: r.outcome === "win" ? 1 : 2,
+      // the record's own time (Godot's 1/100 s), not the rounded one shown on the reward screen
+      ticks: Math.max(0, Math.min(100_000, Math.round(n0(r.record?.time_s ?? r.time_s) * 100))),
+      p1_hp: r.hero_hp_left,
+      p2_hp: r.enemy_hp_left,
+      end_reason: r.outcome,
+    },
+    inputs: [],
+    hash: "",
+    fight3d: r.record,
+  };
+}
+
 /**
  * The reward screen for a 3D fight. The game server judges a duel by
  * replaying the 2D sim's inputs (POST /v1/duel/finish), which a Godot fight
@@ -390,7 +447,6 @@ export const FIGHT3D_NOTE = "That was a 3D practice fight, just for fun. Your XP
  * pays nothing, and says so. The level bar stays where it is.
  */
 export function rewardFrom3D(r: Fight3DResult, point: { name: string; realm: string }, standing: RoamStanding | null): RewardSummary {
-  const s = Math.round(r.time_s);
   return {
     pointName: point.name,
     realm: point.realm,
@@ -408,11 +464,6 @@ export function rewardFrom3D(r: Fight3DResult, point: { name: string; realm: str
     extras: [],
     note: FIGHT3D_NOTE,
     practice: true,
-    stats: [
-      { id: "outcome", label: "Result", value: HEADLINES[r.outcome] },
-      { id: "damage-dealt", label: "Damage dealt", value: String(r.damage_dealt) },
-      { id: "damage-taken", label: "Damage taken", value: String(r.damage_taken) },
-      { id: "time", label: "Time", value: s >= 60 ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}` : `${s} s` },
-    ],
+    stats: fightStats(r),
   };
 }

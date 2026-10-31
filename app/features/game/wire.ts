@@ -71,6 +71,8 @@ export type DuelMe = {
   point_mode?: string | null;
   raid_mode?: string | null;
   run_mode?: string | null;
+  /** The 3D fight at a duel point is judged and pays (server knob point_fight3d, cq 019). */
+  fight3d?: boolean | null;
   live?: { duel_id: string; mode?: string | null; target?: string | null; expires_at?: string | null } | null;
   /** Guardian Trials: one ladder per faction (DuelMe.trials). */
   trials?: Record<string, TrialLadder> | null;
@@ -380,6 +382,9 @@ export type DuelOutcome = {
     leveled_up?: boolean | null;
     cooling_until?: string | null;
     extras?: RoamExtra[] | null;
+    /** The level bar before and after the pay (roam_duel_modes.close_point). */
+    before?: RoamStanding | null;
+    after?: RoamStanding | null;
   } | null;
   reward?: { xp?: number | null; faction_points?: number | null } | null;
   message?: string | null;

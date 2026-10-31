@@ -116,7 +116,9 @@ Holds a casting spot 4 m from the boss on the hero's side, fires a bolt every 1.
   round ends ("TIME UP", outcome `timeout`).
 - Win: the boss at 0 ("VICTORY", the hero and the ally celebrate). Lose: the hero at 0.
 - The squad pill shows the players alive / the squad size (from `players_text`, "2/3").
-- The result goes to the app unchanged (practice, 0 XP), with extra keys `parries`,
+- The result goes to the app with the fight's record under `judge` (cq 019): at a duel point on a server
+  that judges 3D fights it is sent to the server and pays XP (docs/game3d/XP.md); elsewhere it is a
+  practice fight (0 XP). Extra keys: `parries`,
   `blocks`, `dodges`, `crits`, `combo_max` and `skills` (uses per slot).
 
 ## CombatAnimator (for the animations task)
