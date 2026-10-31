@@ -42,7 +42,8 @@ Photoreal places would be Google 3D Tiles (a billed key, about 4 weeks, no iOS y
 
 ## Numbers (Trafalgar Square, the fight between the column and the fountains)
 - Built in 7 to 9 ms (199 buildings, 181 road pieces, 114 trees, 24 landmarks).
-- Frame time: see the cq 019 REPORT (one-thread software GPU, street against place).
+- Frame time (one-thread software GPU, 4 interleaved rounds each): street p50 median 30.15 ms, place
+  30.95 ms (+2.7 %, budget 10 %); input latency unchanged within noise.
 
 ## Tests
 - Godot `tests/place_test.gd`: the camera faces Nelson's Column, the fight's area is clear, the minimap
