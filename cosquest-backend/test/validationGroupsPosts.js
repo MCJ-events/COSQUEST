@@ -27,7 +27,9 @@ async function run(baseUrl) {
     try { data = JSON.parse(text); } catch { data = text; }
     return { status: response.status, data };
   }
+  // A validator's answer (with `errors`), or the controller's own (`said`).
   const is = (r, status, error) => r.status === status && r.data?.error === error && Array.isArray(r.data.errors);
+  const said = (r, status, error) => r.status === status && r.data?.error === error;
   const stagedFiles = () => fs.readdirSync(uploadDir).length;
   const settle = () => new Promise((resolve) => { setTimeout(resolve, 300); });
 
@@ -123,7 +125,7 @@ async function run(baseUrl) {
   await settle();
   check(is(badPost, 400, 'type must be image, reel, or thought.') && stagedFiles() === beforePost, 'a refused multipart post deletes its staged files', { badPost, beforePost, after: stagedFiles() });
 
-  check(is(await request('GET', '/api/posts?type=bogus'), 400, 'type must be image, reel, or thought, or share.') || is(await request('GET', '/api/posts?type=bogus'), 400, 'type must be image, reel, thought, or share.'), 'list: an unknown type keeps its message');
+  check(is(await request('GET', '/api/posts?type=bogus'), 400, 'type must be image, reel, thought, or share.'), 'list: an unknown type keeps its message');
   check(is(await request('GET', '/api/posts?type=thought&type=reel'), 400, 'type must be image, reel, thought, or share.'), 'list: a repeated type is refused with the same message');
   check((await request('GET', '/api/posts?type=&limit=abc')).status === 200, 'list: an empty type and a lenient limit still work');
   check(is(await request('GET', `/api/users/${owner.username}/posts?type=bogus`), 400, 'type must be image, reel, thought, or share.'), 'profile posts: type keeps its message');
@@ -142,7 +144,7 @@ async function run(baseUrl) {
   const commentsPath = `/api/posts/${postId}/comments`;
   check(is(await request('POST', commentsPath, other.token, { body: ['hi'] }), 400, 'A comment must be text.'), 'a comment body must be text');
   check(is(await request('POST', commentsPath, other.token, { body: 'x'.repeat(501) }), 400, 'A comment must be at most 500 characters.'), 'a long comment keeps its message');
-  check(is(await request('POST', commentsPath, other.token, {}), 400, 'A comment needs text or a voice attachment.'), 'an empty comment is still the controller\'s answer');
+  check(said(await request('POST', commentsPath, other.token, {}), 400, 'A comment needs text or a voice attachment.'), 'an empty comment is still the controller\'s answer');
   check(is(await request('POST', commentsPath, other.token, { body: 'hi', parentComment: badId }), 404, 'Comment not found.'), 'a malformed parentComment is "Comment not found." as before');
   check(is(await request('POST', commentsPath, other.token, { body: 'hi', parentComment: [missingId] }), 404, 'Comment not found.'), 'a list as parentComment is "Comment not found."');
   const comment = await request('POST', commentsPath, other.token, { body: 'Nice', parentComment: '' });
@@ -166,7 +168,7 @@ async function run(baseUrl) {
   check((await request('GET', `/api/quests/${quest.id}`)).status === 200, 'a good quest id still works');
   check(is(await request('GET', '/api/quests?status[a]=b'), 400, 'status must be a single value.'), 'quests: status must be a single value (an object was a 500)');
   check(is(await request('GET', '/api/quests?lat=1&lat=2&lng=3'), 400, 'lat, lng, and radiusMiles must be valid numbers.'), 'quests: a repeated lat gets the controller\'s message');
-  check(is(await request('GET', '/api/quests?lat=abc&lng=3'), 400, 'lat, lng, and radiusMiles must be valid numbers.'), 'quests: a bad lat is still the controller\'s answer');
+  check(said(await request('GET', '/api/quests?lat=abc&lng=3'), 400, 'lat, lng, and radiusMiles must be valid numbers.'), 'quests: a bad lat is still the controller\'s answer');
   const quests = await request('GET', '/api/quests?lat=6.5&lng=3.3&radiusMiles=30&status=upcoming&limit=5');
   check(quests.status === 200 && quests.data.quests.some((item) => item.id === quest.id), 'quests: a good list request still works', quests);
   check(is(await request('GET', '/api/factions/nobody/members'), 404, 'Faction not found.'), 'faction members: an unknown key keeps its answer');
