@@ -120,7 +120,7 @@ func _hero_landmark(ground: Dictionary) -> Dictionary:
 
 func _build_flat(ground: Dictionary) -> void:
 	var layers: Array = [
-		["paved", ground.get("paved", []), Color(0.78, 0.74, 0.76), 0.006],
+		["paved", ground.get("paved", []), Color(0.72, 0.72, 0.7), 0.006],   # env-fixes 2: grey stone, not lilac
 		["green", ground.get("green", []), Color(0.33, 0.5, 0.3), 0.010],
 		["water", ground.get("water", []), Color(0.22, 0.42, 0.62), 0.014],
 	]
@@ -137,9 +137,8 @@ func _build_flat(ground: Dictionary) -> void:
 			var tri: PackedInt32Array = Geometry2D.triangulate_polygon(pts)
 			if tri.is_empty():
 				continue
-			for i in tri:
-				st.set_normal(Vector3.UP)
-				st.add_vertex(Vector3(pts[i].x, float(layer[3]), pts[i].y))
+			for k in range(0, tri.size(), 3):
+				_up_tri(st, pts[tri[k]], pts[tri[k + 1]], pts[tri[k + 2]], float(layer[3]))
 			n += 1
 		info[str(layer[0])] = n
 		if n > 0:
@@ -166,14 +165,24 @@ func _build_flat(ground: Dictionary) -> void:
 			var nrm: Vector2 = Vector2(-dir.y, dir.x) * hw
 			a2 -= dir * hw * 0.5
 			b2 += dir * hw * 0.5
-			var q: Array[Vector2] = [a2 + nrm, b2 + nrm, b2 - nrm, a2 - nrm]
-			for k: int in [0, 1, 2, 0, 2, 3]:
-				rs.set_normal(Vector3.UP)
-				rs.add_vertex(Vector3(q[k].x, 0.018, q[k].y))
+			_up_tri(rs, a2 + nrm, b2 + nrm, b2 - nrm, 0.018)
+			_up_tri(rs, a2 + nrm, b2 - nrm, a2 - nrm, 0.018)
 		nr += 1
 	info["roads"] = nr
 	if nr > 0:
-		_add_mesh(rs.commit(), _flat_mat(Color(0.44, 0.42, 0.47)), "roads")
+		# env-fixes 2: a dark asphalt (was (0.44, 0.42, 0.47): it rendered navy under the blue ambient)
+		_add_mesh(rs.commit(), _flat_mat(Color(0.25, 0.26, 0.28)), "roads")
+
+
+## One flat ground triangle, wound so its front face looks up. env-fixes 2: the flat layers are drawn
+## two-sided, and a triangle wound the other way was lit as a face looking down (ambient only): that
+## is why the roads, and some squares, rendered navy under the blue ambient (audit issue 7).
+func _up_tri(st: SurfaceTool, a: Vector2, b: Vector2, c: Vector2, y: float) -> void:
+	var cross: float = (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)
+	var tri := PackedVector2Array([a, b, c] if cross > 0.0 else [a, c, b])   # clockwise seen from above
+	for p: Vector2 in tri:
+		st.set_normal(Vector3.UP)
+		st.add_vertex(Vector3(p.x, y, p.y))
 
 
 func _flat_mat(c: Color) -> StandardMaterial3D:
@@ -208,10 +217,18 @@ func _wall_texture(wall: Color, seed_i: int) -> ImageTexture:
 	rng.seed = 1931 + seed_i              # fixed: the same city every fight (and no draw from the fight's rng)
 	for by in TEX_BAYS:
 		for bx in TEX_BAYS:
-			var lit: bool = rng.randf() < 0.55
-			var glass: Color = Color(0.16, 0.3, 0.72) if lit else Color(0.24, 0.26, 0.32)
+			# env-fixes 2: a lit window carries its dim level (red) and one of three warm tints (green),
+			# blue high to mark it glass (place_facade.gdshader); some have a drawn curtain (dimmer, amber
+			# top rows). Unlit glass is a dark neutral, not navy.
+			var lit: bool = rng.randf() < 0.5
+			var level: float = rng.randf_range(0.35, 1.0)
+			var pick: float = [0.0, 0.5, 1.0][rng.randi() % 3]
+			var curtain: int = 4 + (3 + rng.randi() % 3 if rng.randf() < 0.35 else 0)
 			for y in range(4, 13):
 				for x in range(4, 12):
+					var glass: Color = Color(0.13, 0.14, 0.17)
+					if lit:
+						glass = Color(level * 0.6 * (0.5 if y < curtain else 1.0), (1.0 if y < curtain else pick) * 0.6, 1.0)
 					img.set_pixel(bx * px + x, by * px + y, glass)
 			# a sill under each window
 			for x in range(3, 13):
@@ -367,7 +384,7 @@ func _stone_mat(c: Color) -> ShaderMaterial:
 	sm.shader = FACADE
 	sm.set_shader_parameter("atlas", ImageTexture.create_from_image(img))
 	sm.set_shader_parameter("roof_dark", 0.95)
-	sm.set_shader_parameter("lift", 0.2)
+	sm.set_shader_parameter("lift", 0.12)   # env-fixes 2: was 0.2 (flat, no shadow side); the landmark faces the camera, often in shade
 	if _hemi.is_valid():
 		_hemi.call(sm, _look)
 	return sm
@@ -375,11 +392,12 @@ func _stone_mat(c: Color) -> ShaderMaterial:
 
 func _build_landmarks(marks: Array) -> void:
 	var stone := _stone_mat(Color(0.74, 0.7, 0.62))
-	var granite := _stone_mat(Color(0.5, 0.5, 0.54))
-	var bronze := _flat_mat(Color(0.2, 0.17, 0.15))
-	bronze.metallic = 0.4
-	bronze.roughness = 0.6
-	bronze.cull_mode = BaseMaterial3D.CULL_BACK
+	var granite := _stone_mat(Color(0.6, 0.59, 0.6))   # env-fixes 2: was (0.5, 0.5, 0.54), a blue-black slab in shade
+	# env-fixes 2 (audit issue 13a): the bronze was albedo 0.2 with metallic 0.4 and no sky to reflect,
+	# so it drew black. Now a lit bronze on the facade shader (its hemisphere ambient and a little lift).
+	var bronze := _stone_mat(Color(0.45, 0.33, 0.22))
+	bronze.set_shader_parameter("lift", 0.1)
+	bronze.set_shader_parameter("roof_dark", 0.85)
 	var water := _flat_mat(Color(0.35, 0.6, 0.85))
 	water.emission_enabled = true
 	water.emission = Color(0.12, 0.25, 0.4)
@@ -456,11 +474,8 @@ func _column(st: SurfaceTool, granite: SurfaceTool, bronze: SurfaceTool, at: Vec
 	var ped: float = h * 0.2
 	_add(granite, _box(Vector3(h * 0.16, ped * 0.25, h * 0.16)), at + Vector3(0, ped * 0.125, 0))
 	_add(granite, _box(Vector3(h * 0.12, ped * 0.75, h * 0.12)), at + Vector3(0, ped * 0.25 + ped * 0.375, 0))
-	# the bronze reliefs on the pedestal's four faces
-	for k in 4:
-		var side: Vector3 = Vector3(sin(k * PI * 0.5), 0, cos(k * PI * 0.5)) * (h * 0.06 + 0.02)
-		_add(bronze, _box(Vector3(h * 0.07, ped * 0.3, 0.05) if k % 2 == 0 else Vector3(0.05, ped * 0.3, h * 0.07)),
-			at + side + Vector3(0, ped * 0.25 + ped * 0.4, 0))
+	# env-fixes 2: the pedestal's bronze reliefs are no longer drawn as solid blocks (they read as
+	# black squares); a landmark kit (audit fix 6b) brings them back as real reliefs
 	if obelisk:
 		_add(st, _cyl(h * 0.02, h * 0.05, h - ped, 4), at + Vector3(0, ped + (h - ped) * 0.5, 0))
 		return

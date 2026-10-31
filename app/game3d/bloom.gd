@@ -23,9 +23,11 @@ var src: SubViewport
 var blur: SubViewport
 var cam: Camera3D
 var quad: MeshInstance3D
-var strength: float = 0.8
+# env-fixes 3 (audit issue 18): 40 % less bloom (was 0.8) and a lower cap (was 0.35), so the halos
+# and the bloom no longer stack into white smears round lamps and signs on a device
+var strength: float = 0.48
 var threshold: float = 0.45
-var cap: float = 0.35
+var cap: float = 0.28
 
 const BLUR_SHADER := """
 shader_type canvas_item;

@@ -46,8 +46,9 @@ const LOOK_DEFAULTS: Dictionary = {
 	"sky": true,        # dusk sky ambient (cool above, lilac horizon, warm bounce below), not flat grey;
 	                    # true: a flat sky-up ambient + the hemisphere term in the fighter and facade
 	                    # shaders (ALU only); "cube": Godot's sky radiance (two cubemap reads a pixel)
-	"fog": false,       # warm haze up the far street, sun-scattered: ~3 % of the frame on the
-	                    # software GPU for a faint effect at the top of the screen, so opt-in
+	"fog": true,        # env-fixes 1: depth fog tinted to the sky's horizon from FOG_BEGIN (60 m) out,
+	                    # so the far city fades into the sky (aerial perspective) and the world never
+	                    # ends in a hard edge. Per pixel in the scene shader (~3 % on the software GPU)
 	"glow": false,      # Godot glow (post pass): bloom on what is brighter than white. Off: see below
 	"grade": false,     # BCS + a split-tone LUT (post pass). Off: see below
 	"rim": true,        # the fighters' key-side rim light (in their own pass, fighter.gd)
@@ -59,6 +60,8 @@ const LOOK_DEFAULTS: Dictionary = {
 	                    # view, added back at the 3D resolution; ~5 % of the frame on the software GPU
 	"post": false,      # cq 016: the full post stack for a real device: Godot glow + the grade
 	                    # (turns "glow" and "grade" on; the cheap bloom then steps aside)
+	"time": "dusk",     # env-fixes 1: "dusk" | "day" (TIMES): the sky, fog, key and ambient presets
+	"sky_draw": true,   # env-fixes 1: draw the sky shader as the background (false: the old flat colour)
 }
 # "glow" and "grade" each turn on the Compatibility renderer's post pass, which runs over the
 # whole screen at full resolution: on the 1-thread software GPU it doubled the frame (LOOK.md).
@@ -66,21 +69,45 @@ const LOOK_DEFAULTS: Dictionary = {
 # the grade is in the light and material colours. Turn them on for a device that can pay.
 ## The key light: a low warm evening sun from up the street on the left (the reference's
 ## haze sits top left), so the fighters are side-lit and the street's right walls catch it.
+## env-fixes 2 (cq 020 audit issue 3): a stronger key over a weaker, less blue ambient, so things
+## have a lit side and a shadow side (was energy 1.35 over a 0.85 blue-lilac ambient).
 const KEY_ROT: Vector3 = Vector3(-34.0, -128.0, 0.0)
-const KEY_COLOR: Color = Color(1.0, 0.74, 0.46)
-const KEY_ENERGY: float = 1.35
+const KEY_COLOR: Color = Color(1.0, 0.84, 0.68)
+const KEY_ENERGY: float = 1.9
 ## The dusk sky that lights the shade (look "sky"): straight up, at the horizon, and the bounce
 ## off the warm paving from below. The paving faces up, so it gets SKY_UP; the walls and the
 ## fighters add the rest of the gradient in their shaders (hemi_* uniforms).
-const SKY_UP: Color = Color(0.6, 0.66, 1.0)
-const SKY_HORIZON: Color = Color(0.8, 0.74, 0.9)
-const SKY_GROUND: Color = Color(0.6, 0.48, 0.5)
-const SKY_ENERGY: float = 0.85
+## env-fixes 2: ambient 0.85 -> 0.45 and much less blue (was (0.6, 0.66, 1.0)): cool shade, real darks.
+const SKY_UP: Color = Color(0.7, 0.74, 0.9)
+const SKY_HORIZON: Color = Color(0.82, 0.76, 0.78)
+const SKY_GROUND: Color = Color(0.66, 0.54, 0.46)
+const SKY_ENERGY: float = 0.45
 ## Dusk depth: up the street (beyond the fight) the paving and the shop fronts cool towards the
 ## blue-violet dusk, so the warm lamps and signs stand out there as on the reference. Baked into the
 ## ground's vertex colours and a term in facade.gdshader; no extra pass.
-const DUSK_COL: Color = Color(0.48, 0.53, 0.92)
+const DUSK_COL: Color = Color(0.6, 0.64, 0.9)
 const DUSK_Z: Vector2 = Vector2(-4.0, -24.0)   # starts cooling at z -4, full at z -24
+
+## env-fixes 1 (audit issues 1, 2): the drawn sky, the fog that ties the far city into it, and the
+## ground out to the horizon. Two presets, chosen by look "time" ("dusk", the default, or "day").
+## `fog` is the colour of the horizon band in the sky AND the depth fog, so far buildings and the
+## ground ring melt into the sky with no seam. All in the scene and sky shaders: no post pass.
+const SKY_SHADER := preload("res://vfx/sky.gdshader")
+const TIMES: Dictionary = {
+	"dusk": {"zenith": Color(0.12, 0.16, 0.36), "upper": Color(0.36, 0.38, 0.64),
+		"horizon": Color(0.9, 0.64, 0.58), "horizon_sun": Color(1.0, 0.7, 0.42), "fog": Color(0.76, 0.66, 0.66),
+		"key_color": Color(1.0, 0.84, 0.68), "key_energy": 1.9,
+		"ambient": Color(0.7, 0.74, 0.9), "ambient_energy": 0.45, "windows": 1.0},
+	"day": {"zenith": Color(0.2, 0.4, 0.82), "upper": Color(0.42, 0.6, 0.92),
+		"horizon": Color(0.8, 0.86, 0.94), "horizon_sun": Color(0.98, 0.94, 0.86), "fog": Color(0.76, 0.81, 0.88),
+		"key_color": Color(1.0, 0.95, 0.86), "key_energy": 2.3,
+		"ambient": Color(0.76, 0.8, 0.9), "ambient_energy": 0.5, "windows": 0.12},
+}
+const FOG_BEGIN: float = 60.0       # m from the camera: never on the fighters (the fight camera is ~21 m off)
+const FOG_END_STREET: float = 220.0
+const FOG_END_PLACE: float = 320.0  # the place is built out to place.gd REACH (260 m)
+const GROUND_HALF: float = 320.0    # the paved floor, both arenas
+const HORIZON_HALF: float = 2400.0  # the ground ring out to the horizon (fogged out long before)
 
 var look: Dictionary = {}
 var sun: DirectionalLight3D
@@ -107,10 +134,17 @@ static func look_opts(cfg: Dictionary) -> Dictionary:
 ## (char_lit, facade). Zero when the look's sky is off or the real sky cube is used.
 static func set_hemi(sm: ShaderMaterial, l: Dictionary) -> void:
 	var on: bool = str(l.get("sky", true)) == "true"
-	sm.set_shader_parameter("hemi_up", SKY_UP)
+	var t: Dictionary = time_preset(l)
+	sm.set_shader_parameter("hemi_up", t["ambient"])
 	sm.set_shader_parameter("hemi_horizon", SKY_HORIZON)
 	sm.set_shader_parameter("hemi_ground", SKY_GROUND)
-	sm.set_shader_parameter("hemi_energy", SKY_ENERGY if on else 0.0)
+	sm.set_shader_parameter("hemi_energy", float(t["ambient_energy"]) if on else 0.0)
+	sm.set_shader_parameter("windows_k_mul", float(t["windows"]))   # the lit windows (facade shaders)
+
+
+## The look's time-of-day preset (TIMES), "dusk" unless the look says "day".
+static func time_preset(l: Dictionary) -> Dictionary:
+	return TIMES.get(str(l.get("time", "dusk")), TIMES["dusk"])
 
 
 ## The direction the key light travels (world space), for the fighters' rim.
@@ -120,56 +154,75 @@ static func key_dir() -> Vector3:
 
 func build(cfg: Dictionary) -> void:
 	look = look_opts(cfg)
+	var tp: Dictionary = time_preset(look)
+	var place_mode: bool = str(cfg.get("arena", "street")) == "place"
 	env = Environment.new()
 	env.background_mode = Environment.BG_COLOR
-	env.background_color = Color(0.2, 0.2, 0.36)
+	env.background_color = tp["fog"]
 	if str(look["sky"]) == "true":
 		env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-		env.ambient_light_color = SKY_UP
-		env.ambient_light_energy = SKY_ENERGY
-		env.background_color = SKY_HORIZON * 0.6   # what the (rare) metal reflects
+		env.ambient_light_color = tp["ambient"]
+		env.ambient_light_energy = float(tp["ambient_energy"])
 	elif str(look["sky"]) == "cube":
 		# ambient from a sky (never seen: the camera looks down): surfaces facing up get the
 		# blue-violet dusk sky, walls the warm horizon, undersides the warm paving's bounce.
 		# A 32 px radiance map, filtered once at load; one cubemap read per pixel.
-		var sm := ProceduralSkyMaterial.new()
-		sm.sky_top_color = Color(0.46, 0.56, 1.0)
-		sm.sky_horizon_color = Color(0.78, 0.74, 0.92)
-		sm.sky_curve = 0.12
-		sm.ground_horizon_color = Color(0.82, 0.68, 0.72)
-		sm.ground_bottom_color = Color(0.55, 0.44, 0.48)
-		sm.ground_curve = 0.06
-		sm.sun_angle_max = 40.0
-		sm.sun_curve = 0.2
-		var sky := Sky.new()
-		sky.sky_material = sm
-		sky.radiance_size = Sky.RADIANCE_SIZE_32
-		sky.process_mode = Sky.PROCESS_MODE_QUALITY
-		env.sky = sky
+		var psm := ProceduralSkyMaterial.new()
+		psm.sky_top_color = Color(0.46, 0.56, 1.0)
+		psm.sky_horizon_color = Color(0.78, 0.74, 0.92)
+		psm.sky_curve = 0.12
+		psm.ground_horizon_color = Color(0.82, 0.68, 0.72)
+		psm.ground_bottom_color = Color(0.55, 0.44, 0.48)
+		psm.ground_curve = 0.06
+		psm.sun_angle_max = 40.0
+		psm.sun_curve = 0.2
+		var csky := Sky.new()
+		csky.sky_material = psm
+		csky.radiance_size = Sky.RADIANCE_SIZE_32
+		csky.process_mode = Sky.PROCESS_MODE_QUALITY
+		env.sky = csky
 		env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
 		env.ambient_light_sky_contribution = 1.0
-		env.ambient_light_energy = SKY_ENERGY
+		env.ambient_light_energy = float(tp["ambient_energy"])
 		env.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
 	else:
 		env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 		env.ambient_light_color = Color(0.62, 0.64, 0.92)
 		env.ambient_light_energy = 0.66
+	# env-fixes 1: the sky, drawn (it was a flat colour). A gradient sky shader, ALU only, one pass
+	# over the background pixels; nothing lights from it (ambient stays the flat colour above, no
+	# radiance map, no reflections), so it costs what the clear did plus a few ALU per sky pixel.
+	if bool(look.get("sky_draw", true)) and str(look["sky"]) != "cube":
+		var ssm := ShaderMaterial.new()
+		ssm.shader = SKY_SHADER
+		for k: String in ["zenith", "upper", "horizon", "horizon_sun", "fog"]:
+			ssm.set_shader_parameter(k, tp[k])
+		ssm.set_shader_parameter("sun_dir", -key_dir())
+		var dsky := Sky.new()
+		dsky.sky_material = ssm
+		dsky.radiance_size = Sky.RADIANCE_SIZE_32
+		dsky.process_mode = Sky.PROCESS_MODE_QUALITY
+		env.sky = dsky
+		env.background_mode = Environment.BG_SKY
+		env.reflected_light_source = Environment.REFLECTION_SOURCE_DISABLED
 	env.tonemap_mode = {"filmic": Environment.TONE_MAPPER_FILMIC, "agx": Environment.TONE_MAPPER_AGX}.get(str(look["tonemap"]), Environment.TONE_MAPPER_ACES)
 	env.tonemap_exposure = 1.0
 	env.tonemap_white = 6.0
 	env.fog_enabled = bool(look["fog"])
 	if env.fog_enabled:
-		# depth fog: nothing near the fight, a warm lilac haze up the far street, brighter
-		# towards the sun (the reference's sunlit haze top left)
+		# env-fixes 1: aerial perspective. Depth fog in the sky's horizon colour: none within
+		# FOG_BEGIN (60 m, or further for a far review camera, so never on the fighters), the far
+		# city fading into the sky's horizon band, fully fogged before the camera's far plane, so
+		# the place never ends in an edge. (Was a uniform lilac haze from 21 m, off by default.)
 		env.fog_mode = Environment.FOG_MODE_DEPTH
-		env.fog_light_color = Color(0.86, 0.66, 0.74)
+		env.fog_light_color = tp["fog"]
 		env.fog_light_energy = 1.0
-		env.fog_sun_scatter = 0.5
-		env.fog_density = 0.85
-		env.fog_depth_begin = 21.0
-		env.fog_depth_end = 64.0
-		env.fog_depth_curve = 1.6
-		env.fog_sky_affect = 0.0
+		env.fog_sun_scatter = 0.0      # the sky's horizon band is one colour; scatter would seam it
+		env.fog_density = 1.0
+		env.fog_depth_begin = maxf(FOG_BEGIN, float(cfg.get("cam_dist", 21.0)) + 25.0)
+		env.fog_depth_end = FOG_END_PLACE if place_mode else FOG_END_STREET
+		env.fog_depth_curve = 1.25
+		env.fog_sky_affect = 0.0       # the sky draws its own horizon band in the fog colour
 	if bool(look["glow"]):
 		# bloom only on what is brighter than white (lit windows, neon, lamp heads); the
 		# effects peak near white and keep their own glow (EFFECTS.md), so the threshold
@@ -200,8 +253,8 @@ func build(cfg: Dictionary) -> void:
 	add_child(we)
 	sun = DirectionalLight3D.new()
 	sun.rotation_degrees = KEY_ROT
-	sun.light_energy = KEY_ENERGY
-	sun.light_color = KEY_COLOR
+	sun.light_energy = float(tp["key_energy"])
+	sun.light_color = tp["key_color"]
 	sun.shadow_enabled = bool(look["shadows"])
 	if sun.shadow_enabled:
 		# the fighters only (the street casts nothing): one orthogonal split close in
@@ -215,17 +268,21 @@ func build(cfg: Dictionary) -> void:
 	# the street floor, paved
 	ground = MeshInstance3D.new()
 	var pm := PlaneMesh.new()
-	pm.size = Vector2(160, 160)
+	# env-fixes 1: the paved floor reaches the fog in the street too (was 160 m: a hard edge to the
+	# background in low and wide views), the same paver size (4 m a tile)
+	pm.size = Vector2(GROUND_HALF * 2.0, GROUND_HALF * 2.0)
 	ground.mesh = pm
 	var gm := StandardMaterial3D.new()
 	gm.albedo_texture = T_PAVERS
-	gm.uv1_scale = Vector3(40, 40, 1)
-	gm.albedo_color = Color(0.66, 0.63, 0.69)
+	gm.uv1_scale = Vector3(GROUND_HALF * 0.5, GROUND_HALF * 0.5, 1)
+	# env-fixes 2: a neutral grey (the key warms it), not pink-lilac (was (0.66, 0.63, 0.69))
+	gm.albedo_color = Color(0.68, 0.67, 0.66)
 	gm.roughness = 0.95
 	# plain trilinear: anisotropic filtering costs ~1.7 ms a frame on a software GPU
 	gm.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	ground.material_override = gm
 	add_child(ground)
+	_build_horizon(gm.albedo_color)
 	# the medallion at the centre: where the fight stands
 	plaza = MeshInstance3D.new()
 	var mq := PlaneMesh.new()
@@ -240,6 +297,11 @@ func build(cfg: Dictionary) -> void:
 	plaza.material_override = mm
 	plaza.position.y = 0.02
 	add_child(plaza)
+	if place_mode and not bool(cfg.get("place_medallion", false)):
+		# env-fixes 4 (audit issue 9): in a real place the 7.2 m Greek-key disc read as a sticker on
+		# the map; a thin, faint ring in the faction's colour marks the fight instead
+		(plaza.mesh as PlaneMesh).size = Vector2(RING_SIZE, RING_SIZE)
+		plaza.material_override = _faction_ring_mat(cfg)
 	# circuit lines down the street, towards the camera, as on the reference
 	var cm := StandardMaterial3D.new()
 	cm.albedo_texture = T_CIRCUIT
@@ -247,7 +309,6 @@ func build(cfg: Dictionary) -> void:
 	cm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	cm.albedo_color = Color(1, 1, 1, 0.9)
 	cm.disable_receive_shadows = true
-	var place_mode: bool = str(cfg.get("arena", "street")) == "place"
 	for i in (0 if place_mode else 2):   # cq 019: no street neon in a real place
 		var c := MeshInstance3D.new()
 		var cq := PlaneMesh.new()
@@ -282,7 +343,7 @@ func build(cfg: Dictionary) -> void:
 	# the low sun's glare up the street, as on the reference (its bloom): one big warm pool on the
 	# far paving, in the halo mesh, so no extra draw
 	if bool(look.get("halos", true)):
-		_halo_st.set_color(Color(1.0 / HALO_GAIN, 0.74 / HALO_GAIN, 0.48 / HALO_GAIN, 0.85))
+		_halo_st.set_color(Color(1.0 / HALO_GAIN, 0.74 / HALO_GAIN, 0.48 / HALO_GAIN, _halo_alpha(0.85)))
 		_ground_quad(_halo_st, SUN_GLARE, 12.0, 18.0, Rect2(0, 0, 1, 1))
 	if bool(look["ao"]):
 		_bake_ground()
@@ -310,9 +371,6 @@ func _build_place(cfg: Dictionary) -> bool:
 	var at: Vector2 = Vector2.ZERO
 	if at_raw is Array and (at_raw as Array).size() == 2:
 		at = Vector2(float(at_raw[0]), float(at_raw[1]))
-	# the city reaches past the street's 160 m floor: a bigger floor, the same paver size
-	(ground.mesh as PlaneMesh).size = Vector2(640, 640)
-	(ground.material_override as StandardMaterial3D).uv1_scale = Vector3(160, 160, 1)
 	place = PlaceScript.new()
 	place.name = "Place"
 	add_child(place)
@@ -324,18 +382,84 @@ func _build_place(cfg: Dictionary) -> bool:
 	return true
 
 
-## The grade's colour curve, per channel (input level -> output level): shadows lean violet,
-## highlights gold, as on the reference's evening street.
+## The grade's colour curve, per channel (input level -> output level). env-fixes 2: warm lights,
+## cool shadows and real darks (the toe pulled down, the shadows a cool slate, not violet). Only used
+## with the post pass on ("grade" / "post", a device knob); the default look carries the same split in
+## its light colours (warm key, cool ambient).
 static func _grade_ramp() -> GradientTexture1D:
 	var g := Gradient.new()
-	g.offsets = PackedFloat32Array([0.0, 0.22, 0.5, 0.78, 1.0])
-	g.colors = PackedColorArray([Color(0.07, 0.06, 0.12), Color(0.25, 0.24, 0.3), Color(0.505, 0.495, 0.5),
-		Color(0.81, 0.775, 0.72), Color(1.0, 0.97, 0.9)])
+	g.offsets = PackedFloat32Array([0.0, 0.2, 0.5, 0.78, 1.0])
+	g.colors = PackedColorArray([Color(0.02, 0.025, 0.045), Color(0.17, 0.19, 0.23), Color(0.5, 0.495, 0.48),
+		Color(0.82, 0.78, 0.7), Color(1.0, 0.97, 0.9)])
 	g.interpolation_mode = Gradient.GRADIENT_INTERPOLATE_CUBIC
 	var t := GradientTexture1D.new()
 	t.gradient = g
 	t.width = 256
 	return t
+
+
+## env-fixes 1: the ground out to the horizon round the paved floor: a square ring from the floor's
+## edge (GROUND_HALF) to HORIZON_HALF, flat, in the paving's colour. The fog has taken it long before its
+## far edge, so the ground meets the sky's horizon band with no visible end. 8 triangles, no texture.
+func _build_horizon(col: Color) -> void:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var a: float = GROUND_HALF - 0.5     # a little under the floor's edge: no crack between them
+	var b: float = HORIZON_HALF
+	# four strips: north and south full width, east and west between them
+	var rects: Array[Rect2] = [Rect2(-b, -b, 2.0 * b, b - a), Rect2(-b, a, 2.0 * b, b - a),
+		Rect2(-b, -a, b - a, 2.0 * a), Rect2(a, -a, b - a, 2.0 * a)]
+	for r: Rect2 in rects:
+		var q: Array[Vector3] = [Vector3(r.position.x, -0.01, r.position.y), Vector3(r.end.x, -0.01, r.position.y),
+			Vector3(r.end.x, -0.01, r.end.y), Vector3(r.position.x, -0.01, r.end.y)]
+		for k: int in [0, 1, 2, 0, 2, 3]:
+			st.set_normal(Vector3.UP)
+			st.add_vertex(q[k])
+	var m := StandardMaterial3D.new()
+	# the paving texture's average under the floor's tint (the pavers average ~0.8 of white)
+	m.albedo_color = Color(col.r * 0.8, col.g * 0.8, col.b * 0.8)
+	m.roughness = 0.95
+	m.cull_mode = BaseMaterial3D.CULL_DISABLED
+	var mi := MeshInstance3D.new()
+	mi.name = "Horizon"
+	mi.mesh = st.commit()
+	mi.material_override = m
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(mi)
+
+
+## env-fixes 4: the fight's mark in a real place, RING_SIZE m across: a thin ring and a faint inner
+## wash in the faction's colour (cfg "faction_color": "#rrggbb" or [r, g, b]; a warm gold by default),
+## at about 40 % opacity, drawn once into a 128 px texture at load.
+const RING_SIZE: float = 5.2
+const RING_COLOR: Color = Color(1.0, 0.82, 0.48)
+
+
+func _faction_ring_mat(cfg: Dictionary) -> StandardMaterial3D:
+	var col: Color = RING_COLOR
+	var fc: Variant = cfg.get("faction_color")
+	if fc is String and Color.html_is_valid(str(fc)):
+		col = Color.html(str(fc))
+	elif fc is Array and (fc as Array).size() >= 3:
+		col = Color(float(fc[0]), float(fc[1]), float(fc[2]))
+	var n: int = 128
+	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
+	for y in n:
+		for x in n:
+			var r: float = Vector2(x + 0.5 - n * 0.5, y + 0.5 - n * 0.5).length() / (n * 0.5)   # 0 centre, 1 edge
+			var ring: float = clampf(1.0 - absf(r - 0.9) / 0.035, 0.0, 1.0)          # the line, ~0.18 m wide
+			var inner: float = clampf(1.0 - absf(r - 0.78) / 0.012, 0.0, 1.0) * 0.5  # a hairline inside it
+			var wash: float = 0.12 * (1.0 - smoothstep(0.55, 0.88, r)) * smoothstep(0.0, 0.5, r)
+			img.set_pixel(x, y, Color(1, 1, 1, clampf(maxf(maxf(ring, inner), wash), 0.0, 1.0)))
+	img.generate_mipmaps()
+	var m := StandardMaterial3D.new()
+	m.albedo_texture = ImageTexture.create_from_image(img)
+	m.albedo_color = Color(col.r, col.g, col.b, 0.42)
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
+	m.disable_receive_shadows = true
+	return m
 
 
 func _scene(n: String) -> PackedScene:
@@ -674,6 +798,15 @@ const AO_COL: Color = Color(0.5, 0.47, 0.62)       # the contact darkening at th
 const KERB_TOP: float = 0.185
 const SUN_GLARE: Vector3 = Vector3(-4.5, 0.06, -18.0)   # a warm pool of low sun on the far paving
 const HALO_GAIN: float = 1.3   # the halo mesh's material gain: vertex colours stop at 1, lamp heads need 1.3
+## env-fixes 3 (audit issue 18): the halos stacked with the cheap bloom into white smears on the
+## emulator. Every halo's alpha is 40 % lower and clamped (they are added, so alpha is their strength).
+const HALO_SCALE: float = 0.6
+const HALO_ALPHA_MAX: float = 0.42
+
+
+static func _halo_alpha(a: float) -> float:
+	return minf(a * HALO_SCALE, HALO_ALPHA_MAX)
+
 var _cam_facing: Basis = Basis.from_euler(Vector3(deg_to_rad(-34.0), deg_to_rad(12.0), 0.0))   # fight.gd CAM_PITCH, CAM_YAW
 
 
@@ -710,7 +843,7 @@ func _dress_front(h: Node3D, sx: float, n: int) -> void:
 func _halo(c: Vector3, size: float, col: Color, aspect: float = 1.0) -> void:
 	if not bool(look.get("halos", true)):
 		return
-	_halo_st.set_color(Color(col.r / HALO_GAIN, col.g / HALO_GAIN, col.b / HALO_GAIN, col.a))
+	_halo_st.set_color(Color(col.r / HALO_GAIN, col.g / HALO_GAIN, col.b / HALO_GAIN, _halo_alpha(col.a)))
 	_glow_quad(_halo_st, c, size, size * aspect, Rect2(0, 0, 1, 1), true)
 
 

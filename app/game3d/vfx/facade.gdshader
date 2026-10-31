@@ -7,10 +7,13 @@ shader_type spatial;
 render_mode cull_back, shadows_disabled;
 
 uniform sampler2D atlas : source_color, filter_linear_mipmap;
-uniform vec3 tint : source_color = vec3(1.0, 0.92, 0.95);
-uniform vec3 window_col : source_color = vec3(1.0, 0.78, 0.45);
-uniform float window_k = 3.0;
-uniform float lift = 0.12;  // light bounced off the lit street: the walls never go black
+// env-fixes 2 (audit issues 3, 6, 11): no pink tint (was (1.0, 0.92, 0.95)), almost no self-lift
+// (was 0.12: it greyed every shadow side), and the windows a clamped warm glow (was 3.0: clipped)
+uniform vec3 tint : source_color = vec3(1.0);
+uniform vec3 window_col : source_color = vec3(1.0, 0.76, 0.46);
+uniform float window_k = 1.6;
+uniform float windows_k_mul = 1.0;  // the time of day (arena.gd TIMES "windows"): lit at dusk, dim by day
+uniform float lift = 0.03;  // light bounced off the lit street: the walls never go fully black
 uniform float sat = 1.1;
 // cq 015: the walls darken softly towards the paving (contact shade, the street's own baked AO
 // strip continues it on the ground); lit windows are not darkened
@@ -50,7 +53,7 @@ void fragment() {
 	float ao = mix(ao_min, 1.0, smoothstep(0.0, ao_height, wy));
 	vec3 dusk = mix(vec3(1.0), dusk_col, smoothstep(dusk_z.x, dusk_z.y, wz));
 	ALBEDO = mix(s * tint * ao * dusk, vec3(0.08, 0.06, 0.1), glass * 0.7);
-	EMISSION = window_col * glass * window_k * (0.75 + 0.5 * l) + s * tint * lift * ao * dusk * (1.0 - glass);
+	EMISSION = min(window_col * glass * window_k * windows_k_mul * (0.75 + 0.5 * l), vec3(1.4)) + s * tint * lift * ao * dusk * (1.0 - glass);
 	ROUGHNESS = 0.9;
 	EMISSION += ALBEDO * hemi_extra((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz) * ao;
 }

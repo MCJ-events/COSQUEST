@@ -193,9 +193,63 @@ is drawn the way a phone draws it. What the captures cannot show:
 - **Glow / HDR.** The post stack (glow, grade, fog) is off by default because of its cost here. A phone
   GPU would likely pay 1 to 3 ms for it at 1080p (not measured). Turned on, it renders the same on
   llvmpipe as on a device; the captures under `evidence/post/` show it.
-- **MSAA.** Off in the project (`msaa_3d=0`) for phones and captures alike; aliasing looks worse in the
-  captures only because of their lower resolution.
+- **MSAA.** Off in the project (`msaa_3d=0`). Since env-fixes 3 a device turns on 2x MSAA at runtime
+  (`fight.gd _quality`); the llvmpipe captures keep it off unless the config says `"quality": "device"`.
 - **Cross-check on lavapipe.** One frame rendered with the **Mobile** renderer (Vulkan) on Mesa's
   lavapipe (CPU Vulkan; the loader was limited to the lavapipe ICD, the log reads `Using Device #0:
   llvmpipe`) looks almost the same as the Compatibility frame, with and without the post stack. The
   gap to the reference is the scene and the art, not the software renderer.
+
+## env-fixes 1 to 4 (31 Oct 2026, from the environment audit)
+The audit (`cosquest-review/env-audit-20261031/AUDIT.md`) ranked four cheap fixes first. What changed:
+
+**1. Sky, fog, horizon** (`arena.gd`, `vfx/sky.gdshader`)
+- The background is now a drawn gradient sky (`vfx/sky.gdshader`, `shader_type sky`): zenith, upper sky,
+  a horizon that warms towards the sun, a soft sun glow, and a haze band that ends in exactly the fog's
+  colour. ALU only: the ambient stays a flat colour, no radiance map, no reflections. `"look": {"sky_draw": false}` gives the old flat colour.
+- Depth fog is on by default, in the sky's horizon colour, from `FOG_BEGIN` 60 m (or the camera distance
+  + 25 m, for far review cameras) to `FOG_END_STREET` 220 m / `FOG_END_PLACE` 320 m, density 1, curve 1.25,
+  no sun scatter (it would seam against the band). The fighters are never in it.
+- The paved floor is 640 m in both arenas (the street's was 160 m) and a flat ring (`_build_horizon`, 8
+  triangles) runs on to 2.4 km, so the ground meets the fogged horizon. The fight camera's far plane is
+  600 m (`CAM_FAR`; was 160 m, and 420 m in the fly-in).
+- Two presets, `TIMES` in `arena.gd`: `"dusk"` (default) and `"day"` (`"look": {"time": "day"}`): sky,
+  fog, key colour and energy, ambient, and the windows' glow. The key's direction is the same in both.
+
+**2. Contrast and colour** (`arena.gd`, `place.gd`, `vfx/facade.gdshader`, `vfx/place_facade.gdshader`)
+- Ambient 0.85 -> 0.45, colour (0.6, 0.66, 1.0) -> (0.7, 0.74, 0.9); key 1.35 -> 1.9, colour (1.0, 0.84, 0.68).
+  Warm light, cool shade, real darks, in the light colours (no post pass).
+- Walls: no tint (was (1, 0.92, 0.95)); lift 0.12 -> 0.03 (street), 0 (places). Paving (0.68, 0.67, 0.66), was
+  pink-lilac; place squares (0.72, 0.72, 0.7); roads (0.25, 0.26, 0.28).
+- **The navy roads were a winding bug**: the flat layers are two-sided, and triangles wound the wrong way
+  were lit as faces looking down (ambient only, which was blue). `place.gd _up_tri` winds every flat triangle
+  to face up.
+- Place windows: the wall texture carries each lit window's dim level and one of three warm tints
+  (`warm_a/b/c`), some with a curtain; glow `window_k` 1.2, clamped at 1.2 (was 2.6, clipped to white). Unlit
+  glass is a dark neutral (was navy). Street windows `window_k` 3.0 -> 1.6, clamped at 1.4.
+- Bronze: albedo (0.45, 0.33, 0.22) on the facade shader (was 0.2 metallic, drew black); the pedestal reliefs
+  are not drawn as blocks. Landmark stone lift 0.12, granite (0.6, 0.59, 0.6).
+- The opt-in grade ramp (`_grade_ramp`, post pass) now has cool slate shadows and a deeper toe.
+
+**3. Resolution, AA, halos** (`fight.gd`, `arena.gd`, `bloom.gd`)
+- `fight.gd _quality()`: `"device"` on a real GPU, `"low"` on a software one (llvmpipe, lavapipe, softpipe,
+  SwiftShader) or headless. Device: `render_scale` 0.75 (`DEVICE_RENDER_SCALE`) and 2x MSAA (`DEVICE_AA`);
+  low: 0.5 and no AA, as before. Dynamic resolution still steps down from either.
+- Fight config knobs: `"quality": "auto" | "device" | "low"`, `"render_scale"`, `"aa": "msaa2" | "msaa4" | "off"`.
+  FXAA is not offered: Godot 4.5.1 Compatibility refuses screen-space AA ("currently unavailable").
+- Halos: every halo's alpha x0.6, clamped at 0.42 (`HALO_SCALE`, `HALO_ALPHA_MAX`). Cheap bloom strength
+  0.8 -> 0.48, cap 0.35 -> 0.28.
+
+**4. The fight camera in a real place** (`fight.gd _place_camera`, `arena.gd _faction_ring_mat`)
+- In a place: the camera orbits at 27 deg (`CAM_PLACE_PITCH`), 21 m, look-ahead 1.5 m, FOV 56, and its
+  view is lifted 7 deg (`CAM_PLACE_TILT`), so the landmark (place.gd already turns the place so it stands on
+  the camera's line) and the skyline fill the top of the frame and the fighters stay where they were on
+  screen. The fly-in ends on this frame, so it ends showing the landmark. Any `cam_*` override in the config
+  wins (review cameras unchanged); `"place_cam": false` keeps the street camera.
+- The 7.2 m medallion is replaced in places by a 5.2 m faction ring (thin line, hairline, faint wash, ~40 %
+  opacity; `"faction_color"`, default gold; `"place_medallion": true` brings the medallion back). The street
+  keeps its medallion.
+- Nothing in gameplay reads the camera: the seeded fights (street and Trafalgar) and their judge logs are
+  byte-identical before and after, and the rules id is still `f3d-1-21d2cde61ab2`.
+
+Captures, side-by-sides and the device checklist: `cosquest-review/env-fixes-1-4/`. Rig: `e2e/env-fixes/`.

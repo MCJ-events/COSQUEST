@@ -127,6 +127,26 @@ const CAM_SMOOTH: float = 0.16
 const CAM_LOOK: float = 0.7
 const CAM_BOUNDS: float = 8.0          # along the street (the fight keeps within ARENA_Z = +-9)
 const CAM_BOUNDS_X: float = 2.2        # across it: the street stays centred, the shop walls at the edges
+## env-fixes 4 (audit issue 16): the fight camera in a real place. At the street's 34 deg the frame
+## was two-thirds paving and the landmark only showed in the fly-in. In a place the camera sits lower
+## (27 deg above the fight) and its view is lifted a few degrees (CAM_PLACE_TILT) so the horizon, the
+## landmark (place.gd turns the place so it stands on the camera's line) and the skyline fill the top
+## of the frame while the fighters stay where they were on screen. The fight's rules never see it.
+const CAM_PLACE_PITCH: float = 27.0
+const CAM_PLACE_TILT: float = 7.0       # the view's lift over the orbit (deg): 0 aims at the fight
+const CAM_PLACE_DIST: float = 21.0
+const CAM_PLACE_AHEAD: float = 1.5
+const CAM_PLACE_FOV: float = 56.0
+const CAM_FAR: float = 600.0            # env-fixes 1: past the fog's end (arena.gd FOG_END_*), so nothing is cut
+## env-fixes 3 (audit issue 17): the 3D resolution and anti-aliasing. A device (a real GPU) draws the
+## 3D at 0.75 of the screen with 2x MSAA; a software GPU (the llvmpipe review captures, SwiftShader
+## emulators) keeps 0.5 and no AA, as before. Dynamic resolution still steps down from either when
+## frames are slow. Knobs (fight config): "quality": "auto" | "device" | "low", "render_scale",
+## "aa": "msaa2" | "msaa4" | "off". (FXAA is not an option: Godot 4.5.1's Compatibility renderer refuses
+## screen-space AA, "Screen space AA is currently unavailable on the Compatibility renderer".)
+const DEVICE_RENDER_SCALE: float = 0.75
+const DEVICE_AA: String = "msaa2"
+const LOW_RENDER_SCALE: float = 0.5
 
 const TEST_PACKS: String = "/opt/cq/tasks/056-game-forge-in-world-v2/out/packs/"
 
@@ -254,6 +274,8 @@ var _shake_clock: float = 0.0
 var _reduce_motion: bool = false
 var _cam_dist: float = CAM_DIST
 var _cam_ahead: float = CAM_AHEAD
+var _view_basis: Basis          # env-fixes 4: the camera's own turn (the orbit _cam_basis plus a tilt)
+var quality: String = "low"     # env-fixes 3: "device" or "low" (software GPU), see DEVICE_*
 
 # loading
 var _loader: LoaderScript = LoaderScript.new()
@@ -306,6 +328,7 @@ func _ready() -> void:
 	_cam_ahead = float(cfg.get("cam_ahead", CAM_AHEAD))
 	_reduce_motion = bool(cfg.get("reduce_motion", false))   # the app's Reduce motion setting: a quarter of the shake, no zoom punch
 	_cam_basis = Basis.from_euler(Vector3(deg_to_rad(-float(cfg.get("cam_pitch", CAM_PITCH))), deg_to_rad(float(cfg.get("cam_yaw", CAM_YAW))), 0.0))
+	_view_basis = _cam_basis
 	_cam_fwd = Vector3(-_cam_basis.z.x, 0.0, -_cam_basis.z.z).normalized()
 	_cam_right = Vector3(_cam_basis.x.x, 0.0, _cam_basis.x.z).normalized()
 	var play_basis: Basis = Basis.from_euler(Vector3(deg_to_rad(-44.0), 0.0, 0.0))
@@ -314,9 +337,12 @@ func _ready() -> void:
 	var t0: int = Time.get_ticks_usec()
 	# 3D drawn at a fraction of the screen's pixels, the HUD at full resolution.
 	# A 1080x2400 phone does not need 2.6 M shaded pixels for this view.
-	var rs: float = clampf(float(cfg.get("render_scale", 0.5)), 0.25, 1.0)
+	quality = _quality()
+	var rs: float = clampf(float(cfg.get("render_scale", DEVICE_RENDER_SCALE if quality == "device" else LOW_RENDER_SCALE)), 0.25, 1.0)
 	get_viewport().scaling_3d_mode = Viewport.SCALING_3D_MODE_BILINEAR
 	get_viewport().scaling_3d_scale = rs
+	var aa: String = str(cfg.get("aa", DEVICE_AA if quality == "device" else "off"))
+	get_viewport().msaa_3d = {"msaa2": Viewport.MSAA_2X, "msaa4": Viewport.MSAA_4X}.get(aa, Viewport.MSAA_DISABLED)
 	_dyn_base = rs
 	_dyn_on = bool(cfg.get("dyn_res", true)) and not _headless
 	# No blocking on vsync (the compositor buffers the surface on Android/iOS, so
@@ -326,11 +352,13 @@ func _ready() -> void:
 		if not bool(cfg.get("vsync", false)):
 			DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
 		Engine.max_fps = clampi(int(cfg.get("max_fps", 60)), 15, 120)
-	print("CQ render_scale=%.2f vsync=%s max_fps=%d" % [rs, str(DisplayServer.window_get_vsync_mode()), Engine.max_fps])
+	print("CQ render_scale=%.2f aa=%s quality=%s gpu=%s vsync=%s max_fps=%d" % [rs, aa, quality,
+		RenderingServer.get_video_adapter_name(), str(DisplayServer.window_get_vsync_mode()), Engine.max_fps])
 	arena = ArenaScript.new()
 	arena.name = "Arena"
 	add_child(arena)
 	arena.call("build", cfg)
+	_place_camera()
 	_ground = arena.get("ground")
 	plaza = arena.get("plaza")
 	_build_camera()
@@ -456,13 +484,47 @@ func _log(s: String) -> void:
 
 # ------------------------------------------------------------ setup
 
+## env-fixes 3: "device" on a real GPU, "low" on a software one (llvmpipe/lavapipe/SwiftShader, the
+## review captures) or headless. Config "quality" forces either.
+func _quality() -> String:
+	var q: String = str(cfg.get("quality", "auto"))
+	if q == "device" or q == "low":
+		return q
+	if _headless:
+		return "low"
+	var gpu: String = (RenderingServer.get_video_adapter_name() + " " + RenderingServer.get_video_adapter_vendor()).to_lower()
+	for sw: String in ["llvmpipe", "lavapipe", "softpipe", "swiftshader", "software"]:
+		if gpu.contains(sw):
+			return "low"
+	return "device"
+
+
+## env-fixes 4: in a real place (the arena built one), the place's camera unless the config sets its
+## own (cam_* review overrides keep working as before). The street keeps its camera exactly.
+func _place_camera() -> void:
+	if arena == null or arena.get("place") == null or not bool(cfg.get("place_cam", true)):
+		return
+	var pitch: float = float(cfg.get("cam_pitch", CAM_PLACE_PITCH))
+	var tilt: float = float(cfg.get("cam_tilt", 0.0 if cfg.has("cam_pitch") else CAM_PLACE_TILT))
+	var yaw: float = deg_to_rad(float(cfg.get("cam_yaw", CAM_YAW)))
+	_cam_dist = float(cfg.get("cam_dist", CAM_PLACE_DIST))
+	_cam_ahead = float(cfg.get("cam_ahead", CAM_PLACE_AHEAD))
+	_cam_basis = Basis.from_euler(Vector3(deg_to_rad(-pitch), yaw, 0.0))
+	_view_basis = Basis.from_euler(Vector3(deg_to_rad(-(pitch - tilt)), yaw, 0.0))
+	_cam_fwd = Vector3(-_cam_basis.z.x, 0.0, -_cam_basis.z.z).normalized()
+	_cam_right = Vector3(_cam_basis.x.x, 0.0, _cam_basis.x.z).normalized()
+	if not cfg.has("cam_fov") and not cfg.has("cam_pitch"):
+		cfg["cam_fov"] = CAM_PLACE_FOV
+	_log("place camera pitch=%.1f tilt=%.1f dist=%.1f ahead=%.1f fov=%.0f" % [pitch, tilt, _cam_dist, _cam_ahead, float(cfg.get("cam_fov", CAM_FOV))])
+
+
 func _build_camera() -> void:
 	cam = Camera3D.new()
 	cam.name = "Camera"
 	cam.fov = float(cfg.get("cam_fov", CAM_FOV))
 	_base_fov = cam.fov
 	cam.near = 0.5
-	cam.far = 160.0
+	cam.far = CAM_FAR
 	add_child(cam)
 	cam.current = true
 	_focus = Vector3(0, 0, 1)
@@ -651,7 +713,6 @@ func _begin_or_intro() -> void:
 	var from: Vector3 = back * 36.0 + Vector3.UP * 9.0
 	var look: Vector3 = lm + Vector3.UP * minf(h * 0.45, 24.0)
 	_intro_from = Transform3D(Basis.looking_at(look - from, Vector3.UP), from)
-	cam.far = 420.0
 	_intro_t = 0.0
 	state = "intro"
 	hud.banner(str(cfg.get("point_name", "")).to_upper(), str(info.get("landmark", "")), Color(1.0, 0.86, 0.5), INTRO_LEN - 0.4)
@@ -662,7 +723,6 @@ func _tick_intro(dt: float) -> void:
 	_intro_t += dt
 	if _intro_t >= INTRO_LEN:
 		_intro_t = -1.0
-		cam.far = 160.0
 		_begin_fight()
 
 
@@ -1970,7 +2030,7 @@ func _apply_camera(dt: float) -> void:
 		var _legacy := Vector2(rng.randf_range(-s, s), rng.randf_range(-s, s))
 		if _shake_t <= 0.0:
 			_shake = 0.0
-	var basis: Basis = _cam_basis
+	var basis: Basis = _view_basis
 	_shake_clock += dt
 	_trauma = maxf(0.0, _trauma - TRAUMA_DECAY * dt)
 	var tr2: float = _trauma * _trauma * (0.3 if _reduce_motion else 1.0)
