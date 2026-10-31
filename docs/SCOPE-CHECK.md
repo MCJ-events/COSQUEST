@@ -45,3 +45,13 @@ Nothing in the three is the team's. Nothing in the three needs Forge or the Ward
   is in the fight.
 - Subomi: turning the 3D fight's XP on (`point_fight3d` knob, off by default) on staging and later
   production; no deploy is done by this task.
+
+## Outcome (cq 019, 31 Oct)
+- **XP from the 3D fight: built** (docs/game3d/XP.md). Behind the server knob `point_fight3d` (off):
+  the server starts the fight, judges the fight's record hit by hit and pays like any point fight.
+- **The place for fights: built** (docs/game3d/PLACE.md). When the map has the ground round the point,
+  the fight happens in the real place (OpenStreetMap), turned to face the nearest landmark; else the
+  street. Stylised, not photoreal.
+- **Multiplayer: designed, with a working 2-player proof on the test stack** (docs/game3d/MULTIPLAYER.md).
+  Behind the server knob `coop3d` (off); not wired into the app's screens.
+- The squad pill reads 2/2 (you and the AI ally).
