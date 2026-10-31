@@ -42,6 +42,11 @@ run on it) and `lt` the moves' clock, which stops during hit-stop (swings, skill
 guard and the AI run on it). The first judge used one clock and held an honest fight whose RALLY buff
 outlasted six seconds of round time by the hit-stops in between; the fix was to record both.
 
+**A cast's frame.** A skill cast after the clocks moved on in that frame (the autoplay bot's casts) starts
+its cooldown one frame short and lands its effect one frame sooner. Each cast row records its frame's
+length (`[t, lt, slot, frame]`) and the judge allows exactly that, capped at 0.5 s. Found by recording
+fights at 15 fps and at an uncapped frame rate: the judge held honest ones before the fix.
+
 ## Changing the combat numbers
 `fight.gd rules_table()` (whole numbers) is hashed into `rules_id()` (`f3d-1-21d2cde61ab2` today), and the
 server's `RULES` must hash to the same id, or every 3D fight is held. `tests/judge_test.gd` pins the id.
@@ -53,7 +58,7 @@ deploy the server before the app.
 - Godot: `tests/judge_test.gd` (rules id pinned; a seeded fight's record adds up).
 - App: `features/game3d/__tests__/fight3d.test.ts` (seed folding, the finish body, which fights are judged).
 - Server: `tests/test_roam_fight3d.py`: the verdict on every recorded bot fight equals the fight's own
-  (wins, losses, timeouts; 30, 15 and 60 fps and uncapped); tampered records are held (a loss called a
+  (337 fights: wins, losses, timeouts; 30, 15 and 60 fps and uncapped); tampered records are held (a loss called a
   win, inflated hits, every hit a crit, buffs and staggers from nowhere, skills under their cooldown or
   never pressed, impossible swing rates, HP that does not add up, a sped-up fight, a malformed record);
   end to end, a 3D point win pays XP once and a forged one pays nothing.
