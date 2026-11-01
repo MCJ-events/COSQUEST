@@ -131,8 +131,36 @@ export function searchingLine(s: NearbyState): string {
 
 // ---------- the model ----------
 
+/**
+ * What a claim posts and how its answer reads. The friend add by default; the
+ * squad-up card (squad.ts) claims the same held phone at its own route.
+ */
+export type NearbyClaimer = {
+  path: string;
+  /** The success line once the server says both phones are in, else null (still waiting). */
+  done(r: Record<string, unknown>, name: string): string | null;
+  /** Both phones are in: the caller's own follow-up (refresh a list, keep a token). */
+  onDone(r: Record<string, unknown>): void;
+  /** The line while the other phone has not claimed yet. */
+  waiting(name: string): string;
+  /** The line when the window ran out. */
+  gaveUp(name: string): string;
+};
+
+export function friendClaimer(onFriend: () => void): NearbyClaimer {
+  return {
+    path: "v1/roam/social/nearby",
+    done: (r, name) => (r.friends ? `You and ${(r as NearbyFriendResult).handle ?? name} are friends` : null),
+    onDone: () => onFriend(),
+    waiting: (name) => `Waiting for ${name} to add you too…`,
+    gaveUp: (name) => `Didn't hear back from ${name}. Make sure they tap Add on their phone too.`,
+  };
+}
+
 export type NearbyDeps = {
   beacon: Beacon;
+  /** Where claims go (default: the friend add, calling onFriend). */
+  claimer?: NearbyClaimer;
   client: () => Pick<GameClient, "deviceKey" | "request">;
   here: () => LatLng | null;
   handle: () => string;
@@ -151,6 +179,7 @@ export function createNearbyFriendModel(deps: NearbyDeps) {
   const clearTimer = deps.clearTimer ?? ((t: unknown) => clearTimeout(t as ReturnType<typeof setTimeout>));
   const timers = new Set<unknown>();
   let unlisten: (() => void) | null = null;
+  const claimer = deps.claimer ?? friendClaimer(deps.onFriend);
   /** Bumped by stop(): a claim loop from an earlier opening stops at its next step. */
   let generation = 0;
 
@@ -204,17 +233,18 @@ export function createNearbyFriendModel(deps: NearbyDeps) {
       if (here) {
         try {
           const client = deps.client();
-          const r = await client.request<NearbyFriendResult>("POST", "v1/roam/social/nearby", {
+          const r = await client.request<Record<string, unknown>>("POST", claimer.path, {
             body: { device_key: client.deviceKey(), peer_key: peer, lat: here.lat, lng: here.lng, distance_m: distance },
             signed: true,
           });
           if (!live()) return;
-          if (r.friends) {
-            set({ claiming: null, status: null, success: `You and ${r.handle ?? name} are friends`, celebrations: state.celebrations + 1 });
-            deps.onFriend();
+          const success = r ? claimer.done(r, name) : null;
+          if (success) {
+            set({ claiming: null, status: null, success, celebrations: state.celebrations + 1 });
+            claimer.onDone(r);
             return;
           }
-          set({ status: `Waiting for ${name} to add you too…` });
+          set({ status: claimer.waiting(name) });
         } catch (error) {
           if (!live()) return;
           if (!(error instanceof GameError) || !error.retryable) {
@@ -234,7 +264,7 @@ export function createNearbyFriendModel(deps: NearbyDeps) {
     }
     if (!live()) return;
     set({
-      status: `Didn't hear back from ${name}. Make sure they tap Add on their phone too.`,
+      status: claimer.gaveUp(name),
       claiming: null,
       autoClaimed: state.autoClaimed.filter((k) => k !== peer),
     });

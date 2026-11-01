@@ -509,7 +509,25 @@ export async function raidDuelStart(
   how: { fight3d?: boolean; fallback2d?: boolean } = {},
 ): Promise<DuelStart> {
   if (!fix) throw new GameError("http", "Waiting for your location.");
-  return client.duelStart({ mode: "raid", target: point.id, lat: fix.lat, lng: fix.lng, accuracy_m: fix.accuracy, ...how });
+  const start = await client.duelStart({ mode: "raid", target: point.id, lat: fix.lat, lng: fix.lng, accuracy_m: fix.accuracy, ...how });
+  for (const l of raidDuelListeners) {
+    try {
+      l(point, start);
+    } catch {
+      // A listener (the lock-screen clock) never breaks the fight.
+    }
+  }
+  return start;
+}
+
+const raidDuelListeners = new Set<(point: QuestPoint, start: DuelStart) => void>();
+
+/** Told of every boss fight that starts (components/game/liveTimers.ts puts its clock on the lock screen). */
+export function onRaidDuelStarted(listener: (point: QuestPoint, start: DuelStart) => void): () => void {
+  raidDuelListeners.add(listener);
+  return () => {
+    raidDuelListeners.delete(listener);
+  };
 }
 
 export type RaidDuelInfo = {

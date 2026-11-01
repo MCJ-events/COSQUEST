@@ -18,6 +18,7 @@ import { hasTrials, type TrialRequest, trialPoint } from "@/features/game/duelFl
 import { suggestedId } from "@/features/game/guide";
 import { isLive, isPocket, type RunPoint, runPointOf, runQuestPoints } from "@/features/game/run";
 import { gameStore, GAME_SERVER, GAME_SERVER_IS_PRODUCTION, useGame, useLocationPermission, startLocation } from "@/features/game/runtime";
+import { useSquad } from "@/features/game/squadRuntime";
 import { nearestFirst } from "@/features/game/store";
 import { useRoomBeacons, useRooms } from "@/features/game/roomsRuntime";
 import { isSiege } from "@/features/game/siege";
@@ -42,6 +43,7 @@ import FriendsButton from "./FriendsButton";
 import { AvatarBadge, ForgeClaim, ForgeDropsLayer, useForgeOn, useForgeWorldPolling, useHasForgeAvatar } from "./ForgeWorld";
 import { GAME_FONTS } from "./fonts";
 import FriendsSheet from "./FriendsSheet";
+import SquadSheet from "./SquadSheet";
 import { Rail, StagingBadge, TopBar, WardenBubble } from "./Hud";
 import { NearbyTray } from "./NearbyTray";
 import Journal from "./Journal";
@@ -58,6 +60,7 @@ import RaidBanner from "./RaidBanner";
 import RecapSheet from "./RecapSheet";
 import { QuestRunButton, RunChallenge, runDistance, RunHUD, runInReach, RunResults, RunStartSheet, RunTray } from "./Run";
 import { runModel, useRun } from "./runModel";
+import { startLiveTimers } from "./liveTimers";
 import RoomScreen from "./RoomScreen";
 import RoomSheet from "./RoomSheet";
 import RelicsButton from "./RelicsButton";
@@ -88,7 +91,7 @@ type Screen =
   | { kind: "reward"; reward: RewardSummary };
 
 /** What is open over the map (one at a time, closed by Android Back). */
-type Sheet = "dailies" | "codex" | "war" | "more" | "events" | "friends" | "collection" | "battle" | "profile" | "coins" | "recap" | "ask" | "trials" | "runStart";
+type Sheet = "dailies" | "codex" | "war" | "more" | "events" | "friends" | "squad" | "collection" | "battle" | "profile" | "coins" | "recap" | "ask" | "trials" | "runStart";
 
 const NUDGE_EVERY_MS = 150000;
 const LOSS_SEEN_KEY = "cq.holdsLost.seen";
@@ -131,6 +134,11 @@ export default function GameRoot({ parked }: { parked: boolean }) {
   const pocketRun = runLive && !!runState.run && isPocket(runState.run);
   const [runPoint, setRunPoint] = useState<RunPoint | null>(null);
   const [sheet, setSheet] = useState<Sheet | null>(null);
+  // Squad up in person: a squad link (cosquest://squad/<code>) opens the sheet, which joins it.
+  const squad = useSquad();
+  useEffect(() => {
+    if (squad.pendingCode) setSheet("squad");
+  }, [squad.pendingCode]);
   const [bagCount, setBagCount] = useState<number | null>(null);
   // Forge in the world (cq 056): finds on the map, the bag, the avatar. Off unless the server says so.
   useForgeWorldPolling(!parked && !!session);
@@ -334,6 +342,8 @@ export default function GameRoot({ parked }: { parked: boolean }) {
   // The run as the server has it: on the way in, and back from the background
   // (it may have ended, or a lost one be found again).
   const sessionKey = session?.playerKey ?? null;
+  // The run and raid clocks on the lock screen / Dynamic Island (liveTimers.ts). Once; app-wide.
+  useEffect(() => startLiveTimers(), []);
   useEffect(() => {
     if (!sessionKey || parked) return;
     void runModel.resume();
@@ -511,6 +521,14 @@ export default function GameRoot({ parked }: { parked: boolean }) {
       onPress: () => setSheet("friends"),
       custom: (press) => <FriendsButton size={58} onPress={press} />,
     });
+    moreTiles.push({
+      id: "squad",
+      icon: "people-circle",
+      color: GP.mint,
+      title: squad.squad ? `Squad: ${squad.squad.ally.handle}` : "Squad up",
+      badge: squad.squad ? 1 : null,
+      onPress: () => setSheet("squad"),
+    });
   }
   // What is in the bag, as a number only (RoamHomeView moreTiles "bag": not a button).
   if (bagCount && bagCount > 0) {
@@ -682,6 +700,7 @@ export default function GameRoot({ parked }: { parked: boolean }) {
       {sheet === "more" ? <MoreSheet tiles={moreTiles} onClose={() => setSheet(null)} /> : null}
       {sheet === "events" ? <LiveCalendarSheet onClose={() => setSheet(null)} /> : null}
       {sheet === "friends" ? <FriendsSheet onClose={() => setSheet(null)} /> : null}
+      {sheet === "squad" ? <SquadSheet onClose={() => setSheet(null)} /> : null}
       {sheet === "collection" ? <CollectionSheet initial={collectionTab} tabs={collectionTabs(collectionAccess)} onClose={() => setSheet(null)} /> : null}
       {sheet === "coins" ? <CoinsSheet onClose={() => setSheet(null)} /> : null}
       {sheet === "recap" ? <RecapSheet onClose={() => setSheet(null)} /> : null}

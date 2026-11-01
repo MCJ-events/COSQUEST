@@ -211,6 +211,22 @@ class CostQuestGameModule : Module() {
       StepCounter.read(context, promise)
     }
 
+    // --- Run and raid clocks (LiveTimers.kt, an ongoing chronometer notification) ---
+
+    Function("liveTimerSupported") { appContext.reactContext?.let { LiveTimers.supported(it) } ?: false }
+
+    AsyncFunction("liveTimerStart") { kind: String, title: String, subtitle: String, link: String, endsAtMs: Double, state: Map<String, Any?>? ->
+      LiveTimers.start(context, kind, title, subtitle, link, endsAtMs, state)
+    }
+
+    AsyncFunction("liveTimerUpdate") { id: String, state: Map<String, Any?>?, endsAtMs: Double? ->
+      LiveTimers.update(context, id, state, endsAtMs)
+    }
+
+    AsyncFunction("liveTimerEnd") { id: String, last: Map<String, Any?>? ->
+      LiveTimers.end(context, id, last)
+    }
+
     // --- UWB ----------------------------------------------------------------
 
     /**

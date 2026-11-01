@@ -118,6 +118,11 @@ export class GameClient {
   private readonly timeoutMs: number;
   private readonly sleep: (ms: number) => Promise<void>;
   private readonly locationFields: (() => FixFields | null) | null;
+  /**
+   * Squad up in person (squad.ts): the live pairing's token, sent with the next 3D fight's start, and
+   * told when the server put the friend in that fight (setup.ally). Set by squadRuntime.ts.
+   */
+  squad: { token(): string | null; used(): void } | null = null;
 
   constructor(options: GameClientOptions) {
     this.baseUrl = options.baseUrl.replace(/\/+$/, "");
@@ -333,8 +338,14 @@ export class GameClient {
     }
     if (body.accuracy_m != null) payload.accuracy_m = Math.min(5000, Math.max(0, body.accuracy_m));
     if (body.stake !== undefined) payload.stake = body.stake;
+    // A friend squadded up in person joins a 3D fight (the server ignores the token anywhere else).
+    const squad = body.fight3d ? (this.squad?.token() ?? null) : null;
+    if (squad) payload.squad = squad;
     const text = await this.request<string>("POST", "v1/duel/start", { body: payload, signed: true, raw: true });
-    return parseDuelStart(text);
+    const start = parseDuelStart(text);
+    const ally = (start.setup as { ally?: unknown } | null | undefined)?.ally;
+    if (squad && ally && typeof ally === "object") this.squad?.used();
+    return start;
   }
 
   /** How this player's hero fights when a rival sieges a point they hold (PUT v1/duel/stance). */

@@ -3,14 +3,15 @@
 // open Friends; each lists the other, and where the radio can measure, the
 // claim fires on its own once the phones touch. The model is
 // features/game/friendsNearby.ts; the radios are FriendBeaconIsland.swift.
-// Not shown where there is no beacon (Android, web).
+// Not shown where there is no beacon (Android, web). The squad-up sheet uses the
+// same card with its own model and words (`use`).
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Linking, Text, View } from "react-native";
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withTiming } from "react-native-reanimated";
 
-import { addLabel, nearbyDistanceText, type NearbyPeer, peersOf, searchingLine, tooFar } from "@/features/game/friendsNearby";
+import { addLabel, nearbyDistanceText, type NearbyFriendModel, type NearbyPeer, type NearbyState, peersOf, searchingLine, tooFar } from "@/features/game/friendsNearby";
 import { nearbyFriends, useNearbyFriends } from "@/features/game/friendsNearbyDevice";
 import { useGame } from "@/features/game/runtime";
 
@@ -21,10 +22,30 @@ import { GF, GP } from "./theme";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 import { POP_FADE, POP_IN } from "./sheetMotion";
 
-export function HoldPhonesCard() {
+/** The squad-up sheet's version of the card (SquadSheet.tsx): the same radios, another route. */
+export type HoldPhonesUse = {
+  model: NearbyFriendModel | null;
+  state: NearbyState;
+  title: string;
+  sub: string;
+  /** The peer row's button when close enough ("Add Mia"). */
+  action: (handle: string) => string;
+  icon?: keyof typeof Ionicons.glyphMap;
+};
+
+export function HoldPhonesCard({ use }: { use?: HoldPhonesUse } = {}) {
+  const friendState = useNearbyFriends();
+  return use ? <HoldPhonesBody use={use} /> : (
+    <HoldPhonesBody
+      use={{ model: nearbyFriends, state: friendState, title: "Add a friend", sub: "Open this on both phones and hold them close.", action: (h) => `Add ${h}` }}
+    />
+  );
+}
+
+function HoldPhonesBody({ use }: { use: HoldPhonesUse }) {
   const styles = useThemedStyles(STYLE_PAIR);
-  const model = nearbyFriends;
-  const s = useNearbyFriends();
+  const model = use.model;
+  const s = use.state;
   const fix = useGame((s) => s.fix);
   const reduce = useReducedMotion();
 
@@ -69,14 +90,14 @@ export function HoldPhonesCard() {
       <View style={styles.stack}>
         <View style={styles.head}>
           <Animated.View style={iconStyle} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-            <Ionicons name="phone-portrait" size={34} color={GP.berry} />
+            <Ionicons name={use.icon ?? "phone-portrait"} size={34} color={GP.berry} />
           </Animated.View>
           <View style={styles.headText}>
             <Text style={styles.title} accessibilityRole="header" maxFontSizeMultiplier={MAX_FONT_SCALE}>
-              Add a friend
+              {use.title}
             </Text>
             <Text style={styles.sub} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-              Open this on both phones and hold them close.
+              {use.sub}
             </Text>
           </View>
         </View>
@@ -115,7 +136,7 @@ export function HoldPhonesCard() {
               </View>
             ) : null}
             {peers.map((p) => (
-              <PeerRow key={p.key} p={p} claiming={s.claiming} onAdd={() => model.claim(p.key)} />
+              <PeerRow key={p.key} p={p} claiming={s.claiming} label={tooFar(p) ? addLabel(p) : use.action(p.handle)} onAdd={() => model.claim(p.key)} />
             ))}
           </>
         )}
@@ -130,7 +151,7 @@ export function HoldPhonesCard() {
   );
 }
 
-function PeerRow({ p, claiming, onAdd }: { p: NearbyPeer; claiming: string | null; onAdd: () => void }) {
+function PeerRow({ p, claiming, label, onAdd }: { p: NearbyPeer; claiming: string | null; label: string; onAdd: () => void }) {
   const styles = useThemedStyles(STYLE_PAIR);
   const far = tooFar(p);
   return (
@@ -147,9 +168,9 @@ function PeerRow({ p, claiming, onAdd }: { p: NearbyPeer; claiming: string | nul
         ) : null}
       </View>
       {claiming === p.key ? (
-        <ActivityIndicator color={GP.ink} accessibilityLabel={`Adding ${p.handle}`} />
+        <ActivityIndicator color={GP.ink} accessibilityLabel={`Waiting for ${p.handle}`} />
       ) : (
-        <GameButton title={addLabel(p)} size="small" color={GP.mint} onPress={onAdd} disabled={far || claiming !== null} />
+        <GameButton title={label} size="small" color={GP.mint} onPress={onAdd} disabled={far || claiming !== null} />
       )}
     </View>
   );

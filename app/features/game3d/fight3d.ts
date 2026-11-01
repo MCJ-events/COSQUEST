@@ -179,18 +179,21 @@ export function wornAvatarId(
 /**
  * The three characters of a fight: your worn avatar, an ally hero, and the
  * opponent (the server's own pick when a duel start named one, else the same
- * pick the server would make for this point). With no avatar worn (a new
+ * pick the server would make for this point). The ally is a squadded-up
+ * friend's worn hero when the duel start has one (setup.ally), else another
+ * wearable hero. With no avatar worn (a new
  * player, or a worn one that was unpublished) you fight as the first
  * wearable hero by name, never as Godot's placeholder capsule (cq 076).
  */
 export function pickCast<T extends CharacterPick>(
   entries: readonly T[],
-  opts: { avatarId: string | null; enemyId?: string | null; role: "guardian" | "boss"; key: string | null },
+  opts: { avatarId: string | null; enemyId?: string | null; allyId?: string | null; role: "guardian" | "boss"; key: string | null },
 ): { hero: T | null; ally: T | null; enemy: T | null } {
   const byId = (id: string | null | undefined) => (id ? (entries.find((e) => e.id === id && e.type === "character") ?? null) : null);
   const hero = byId(opts.avatarId) ?? pickAlly(entries, null);
   const enemy = byId(opts.enemyId) ?? (opts.key ? pickOpponent(entries, opts.role, opts.key) : null);
-  return { hero, ally: pickAlly(entries, hero?.id ?? null), enemy };
+  // A friend squadded up in person (setup.ally): their worn hero, even when it is the same as yours.
+  return { hero, ally: byId(opts.allyId) ?? pickAlly(entries, hero?.id ?? null), enemy };
 }
 
 /**
@@ -467,7 +470,16 @@ export function fightStats(r: Fight3DResult): { id: string; label: string; value
 /** What Godot needs from a duel start: its seed, round, modifiers, look and opponent. Null when the setup is not a 3D fight. */
 export function fightFromStart(
   start: Pick<DuelStart, "seed_text" | "setup">,
-): { seed: number; durationS: number; mods: FightMods; look: GuardianLook | null; enemyId: string | null; guardianName: string | null } | null {
+): {
+  seed: number;
+  durationS: number;
+  mods: FightMods;
+  look: GuardianLook | null;
+  enemyId: string | null;
+  guardianName: string | null;
+  /** A friend squadded up in person (setup.ally, cosmetic: the ally's rules are the same). */
+  ally: { id: string | null; name: string } | null;
+} | null {
   const s = start.setup as Record<string, unknown> & { kind?: string };
   if (s.kind !== "fight3d") return null;
   const seed = fightSeed(start.seed_text);
@@ -485,7 +497,16 @@ export function fightFromStart(
     look,
     enemyId: enemy,
     guardianName: typeof s.guardian_name === "string" ? s.guardian_name : null,
+    ally: allyOf(s.ally),
   };
+}
+
+function allyOf(raw: unknown): { id: string | null; name: string } | null {
+  if (!raw || typeof raw !== "object") return null;
+  const a = raw as { handle?: unknown; avatar?: unknown };
+  const name = typeof a.handle === "string" ? a.handle.trim().slice(0, 40) : "";
+  if (!name) return null;
+  return { id: typeof a.avatar === "string" && a.avatar ? a.avatar : null, name };
 }
 
 const TIER_WORD: Record<string, string> = { starter: "First", common: "Common", rare: "Rare", epic: "Epic" };
@@ -495,6 +516,13 @@ const TIER_WORD: Record<string, string> = { starter: "First", common: "Common", 
  * worth, from the duel start's own blocks. Shown while Godot loads; there is no other briefing.
  */
 export function fightCard(start: Pick<DuelStart, "setup"> | null, pointName: string): { kicker: string; title: string; line: string | null } {
+  const card = modeCard(start, pointName);
+  // A friend squadded up in person fights beside you.
+  const ally = allyOf((start?.setup as { ally?: unknown } | undefined)?.ally);
+  return ally ? { ...card, line: `${card.line ? `${card.line} ` : ""}${ally.name} fights beside you.` } : card;
+}
+
+function modeCard(start: Pick<DuelStart, "setup"> | null, pointName: string): { kicker: string; title: string; line: string | null } {
   const s = (start?.setup ?? {}) as Record<string, unknown>;
   const title = (typeof s.guardian_name === "string" && s.guardian_name) || (s.p2 as { name?: string } | undefined)?.name || "The Guardian";
   const raid = s.raid as { hp_left?: number; hp_max?: number } | undefined;

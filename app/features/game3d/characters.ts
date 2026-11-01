@@ -4,7 +4,8 @@
 // choices themselves are pure (fight3d.ts pickCast, fightLod).
 //
 //   hero   the Forge avatar the player wears
-//   ally   another published hero
+//   ally   a squadded-up friend's worn hero (setup.ally), else another
+//          published hero
 //   enemy  the point's Guardian (a boss for a raid): the character a duel
 //          start named, else the one the server would name for this point
 //
@@ -52,6 +53,8 @@ export async function fightCast(opts: {
   role: "guardian" | "boss";
   enemyId?: string | null;
   enemyName?: string | null;
+  /** A friend squadded up in person: their worn hero and their name over it. */
+  ally?: { id: string | null; name: string } | null;
   lodOverride: number | null;
   waitMs?: number;
 }): Promise<Cast> {
@@ -61,13 +64,13 @@ export async function fightCast(opts: {
   await within(Promise.all([refreshCatalogue(), refreshInventory()]), Math.min(wait, 5000), undefined);
   const s = forgeWorld.get();
   const avatarId = wornAvatarId(s.inventory, forgeWorldOf(gameStore.get().me));
-  const { hero, ally, enemy } = pickCast(s.entries, { avatarId, enemyId: opts.enemyId, role: opts.role, key: opts.pointId });
+  const { hero, ally, enemy } = pickCast(s.entries, { avatarId, enemyId: opts.enemyId, allyId: opts.ally?.id, role: opts.role, key: opts.pointId });
   const lod = fightLod(DEVICE_CLASS, opts.lodOverride);
   const [heroPath, allyPath, enemyPath] = await within(Promise.all([fileOf(hero, lod), fileOf(ally, lod), fileOf(enemy, lod)]), wait, [null, null, null] as (string | null)[]);
   const player = gameStore.playerName?.() || null;
   return {
     hero: { path: heroPath, name: player ?? hero?.name ?? null, id: hero?.id ?? null },
-    ally: { path: allyPath, name: ally?.name ?? null, id: ally?.id ?? null },
+    ally: { path: allyPath, name: opts.ally?.name ?? ally?.name ?? null, id: ally?.id ?? null },
     enemy: { path: enemyPath, name: opts.enemyName ?? enemy?.name ?? null, id: enemy?.id ?? null },
     lod,
   };

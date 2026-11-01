@@ -272,6 +272,25 @@ public final class CostQuestGameModule: Module {
       MainActor.assumeIsolated { FriendBeaconIsland.stop() }
     }.runOnQueue(.main)
 
+    // MARK: Run and raid clocks on the lock screen (LiveTimers.swift, ActivityKit).
+
+    Function("liveTimerSupported") { () -> Bool in
+      LiveTimers.supported
+    }
+
+    AsyncFunction("liveTimerStart") { (kind: String, title: String, subtitle: String, link: String, endsAtMs: Double, state: LiveTimerStateRecord?) async -> String? in
+      await LiveTimers.start(kind: kind, title: title, subtitle: subtitle, link: link,
+                             endsAtMs: endsAtMs, state: LiveTimerState(state))
+    }
+
+    AsyncFunction("liveTimerUpdate") { (id: String, state: LiveTimerStateRecord?, endsAtMs: Double?) async -> Bool in
+      await LiveTimers.update(id, endsAtMs: endsAtMs, state: LiveTimerState(state))
+    }
+
+    AsyncFunction("liveTimerEnd") { (id: String, final: LiveTimerStateRecord?) async in
+      await LiveTimers.end(id, final: final.map { LiveTimerState($0) })
+    }
+
     // MARK: Venue Events (VenueEventsIsland.swift): native, over the RN game.
 
     /// Presents the native Events flow full screen; `onVenueEventsClosed` follows.

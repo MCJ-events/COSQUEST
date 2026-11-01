@@ -26,6 +26,7 @@ import {
   verdictAnnouncement,
 } from "@/features/game/duelFlow";
 import { gameStore } from "@/features/game/runtime";
+import { paidLine, squadPaid } from "@/features/game/squad";
 import type { DuelFighterPeek, DuelOutcome, DuelPay, DuelResult as DuelResultData, DuelStart } from "@/features/game/wire";
 
 import { announce, GameButton, MAX_FONT_SCALE } from "./kit";
@@ -63,6 +64,8 @@ export default function DuelResult({
   const pay = payOf(o);
   const drop = dropOf(o);
   const extras = extraLines(o);
+  // Squadded up in person: what fighting together paid (outcome.squad).
+  const together = held ? null : squadPaid(o);
 
   useEffect(() => {
     announce(verdictAnnouncement(o, start, factionName));
@@ -91,6 +94,15 @@ export default function DuelResult({
         {o.run && !held ? <RunPanel run={o.run} /> : null}
         {o.raid && !held ? <RaidPanel raid={o.raid} bossMax={start ? raidMax(start) : null} /> : null}
         {pay && !held && !payIsEmpty(pay) ? <PayRow pay={pay} /> : null}
+
+        {together ? (
+          <View style={styles.extra} accessible accessibilityLabel={paidLine(together)}>
+            <Ionicons name="people" size={16} color={GP.sun} />
+            <Text style={styles.extraText} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+              {paidLine(together)}
+            </Text>
+          </View>
+        ) : null}
 
         {extras.map((line) => (
           <View key={line} style={styles.extra} accessible accessibilityLabel={line}>

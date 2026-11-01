@@ -117,6 +117,16 @@ export type NativeOnly = {
   stopFriendBeacon?(): Promise<void>;
   addListener?(event: "onFriendBeacon", listener: (e: FriendBeaconEvent) => void): Subscription;
 
+  // Run and raid clocks on the lock screen: iOS Live Activity (ios/Embed/LiveTimers.swift and the
+  // CosQuestLiveActivity widget extension), Android an ongoing chronometer notification (LiveTimers.kt).
+  // features/game/liveTimer.ts decides what they show.
+  liveTimerSupported?(): boolean;
+  /** The clock's id (one per kind: an older one of the same kind ends), or null when it can't be shown. */
+  liveTimerStart?(kind: "run" | "raid", title: string, subtitle: string, link: string, endsAtMs: number, state: LiveTimerNativeState): Promise<string | null>;
+  liveTimerUpdate?(id: string, state: LiveTimerNativeState, endsAtMs: number | null): Promise<boolean>;
+  /** By id, kind or "all"; with a final state the result stays a couple of minutes. */
+  liveTimerEnd?(id: string, final: LiveTimerNativeState | null): Promise<void>;
+
   // Venue Events (iOS: ios/Embed/VenueEventsIsland.swift), the native ARKit flow.
   venueEventsAvailable?: boolean;
   /** The SwiftUI game's anonymous key (iOS), for features/game/store.ts to adopt once. */
@@ -128,6 +138,15 @@ export type NativeOnly = {
   addListener?(event: "onVenueEventsClosed", listener: () => void): Subscription;
 };
 
+
+/** A lock-screen clock's words besides the time (LiveTimerStateRecord / LiveTimers.kt). */
+export type LiveTimerNativeState = {
+  line: string;
+  hpPercent?: number | null;
+  fighters?: number | null;
+  finished?: boolean;
+  headline?: string | null;
+};
 
 /** The hold-phones beacon (FriendBeaconIsland.swift), as features/game/friendsNearby.ts reads it. */
 export type FriendBeaconEvent = BeaconEvent;

@@ -17,6 +17,11 @@ module.exports = ({ config }) => {
   if (env.EXPO_PUBLIC_GAME3D === undefined) env.EXPO_PUBLIC_GAME3D = "1";
   // One copy of BouncyCastle (expo-updates and the Sparks SDK both bring one).
   const plugins = [...(config.plugins || []), "./plugins/withBouncyCastleDedupe"];
+  // Run and raid clocks on the lock screen (iOS Live Activity widget extension,
+  // plugins/withLiveActivity.js). The extension needs its own bundle id
+  // (<app>.LiveActivity) registered under the signing team, so it is on for the
+  // dev build (COSQUEST_DEV=1) and wherever LIVE_ACTIVITY=1 says the id exists.
+  if (env.COSQUEST_DEV === "1" || env.LIVE_ACTIVITY === "1") plugins.push("./plugins/withLiveActivity");
 
   if (env.SENTRY_ORG && env.SENTRY_PROJECT) {
     plugins.push(["@sentry/react-native", { organization: env.SENTRY_ORG, project: env.SENTRY_PROJECT }]);
