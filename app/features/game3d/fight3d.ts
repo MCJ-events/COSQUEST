@@ -236,6 +236,8 @@ export type Fight3DConfig = {
   autoplay: boolean;
   /** The app's Reduce motion setting (cq 013): a quarter of the camera shake, no zoom punch. Sent only when on. */
   reduce_motion?: boolean;
+  /** Hit haptics (haptics.ts): the player's in-game choice. Godot sends no touches unless this is true. */
+  haptics?: boolean;
   /** cq 019: the real place round the point (place.gd) instead of the street, from this ground file. */
   arena?: "place";
   ground_json?: string;
@@ -282,6 +284,8 @@ export function buildFightConfig(input: {
   durationS?: number;
   playersText?: string;
   reduceMotion?: boolean;
+  /** The player's haptics choice (prefs.ts hapticsOn()); on unless false. */
+  haptics?: boolean;
   /** The real place: the ground written to a file, and the point on it (placeFrom). */
   place?: { groundPath: string; at: [number, number] } | null;
   /** The server's modifiers and look, as the duel's setup gave them (fightFromStart). */
@@ -303,6 +307,7 @@ export function buildFightConfig(input: {
     mode: input.mode,
     seed: Math.trunc(Math.abs(input.seed)) % 2147483647,
     autoplay: input.autoplay,
+    haptics: input.haptics !== false,
   };
   if (input.tilesUrl) Object.assign(config, tilesFields(input.tilesUrl));
   if (input.reduceMotion) config.reduce_motion = true;

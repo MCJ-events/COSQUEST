@@ -9,6 +9,7 @@
 // Pure: no React Native imports. The client, the key storage, randomness and
 // the clock are injected (tested in features/game/__tests__).
 import { GameClient, GameError } from "./client.ts";
+import { fixFields } from "./fixInfo.ts";
 import { distanceM, type LatLng, reachM } from "./geo.ts";
 import { Identity, SEED_HEX } from "./identity.ts";
 import type {
@@ -37,7 +38,12 @@ export type KeyStorage = {
   remove(key: string): Promise<void>;
 };
 
-export type Fix = LatLng & { accuracy: number; at: number };
+/**
+ * One fix from the phone. `at` is when the OS took it (epoch ms); mocked
+ * (Android) and simulated (iOS) are sent to the server as evidence only,
+ * never a reason to refuse (fixInfo.ts).
+ */
+export type Fix = LatLng & { accuracy: number; at: number; mocked?: boolean | null; simulated?: boolean | null };
 
 export type GameState = {
   /** Who is playing: the account's player (one login) or this phone's own key. */
@@ -120,7 +126,13 @@ export function createGameStore(deps: GameStoreDeps) {
   const listeners = new Set<() => void>();
   const now = deps.now ?? (() => Date.now());
   const log = deps.log ?? (() => {});
-  const client = new GameClient({ baseUrl: deps.baseUrl, identity: () => identity, fetch: deps.fetch });
+  const client = new GameClient({
+    baseUrl: deps.baseUrl,
+    identity: () => identity,
+    fetch: deps.fetch,
+    // Every located request says how good and how old its fix is (fixInfo.ts).
+    locationFields: () => (state.fix ? fixFields(state.fix, now()) : null),
+  });
   let pointsFetchedAt: LatLng | null = null;
   let pointsFetchedTime = 0;
   let starterAsked = false;

@@ -203,6 +203,13 @@ public final class CostQuestGameModule: Module {
       LegacyDeviceKey.read()
     }
 
+    /// iOS 15+ CLLocationSourceInformation.isSimulatedBySoftware for the
+    /// current fix (GameHelpers.swift LocationSourceProbe), or null when
+    /// unknown. Sent to the game server as `simulated`: evidence, never a refusal.
+    AsyncFunction("locationSimulated") { () async -> Bool? in
+      await LocationSourceProbe.shared.simulated(maxAgeS: 30)
+    }
+
     // MARK: Unity (NativeIslands.swift), the Android names.
 
     /// DuelBridge.StartDuel(setupJson): boots Unity if needed, then starts the fight.

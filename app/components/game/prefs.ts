@@ -12,6 +12,7 @@
 import * as Haptics from "expo-haptics";
 import { useSyncExternalStore } from "react";
 
+import { arShrineDevFor } from "@/features/game/config";
 import { isWorldClock, type WorldClock } from "@/features/game/mapStyle";
 import { getPref, setPref } from "@/utils/prefsStorage";
 
@@ -112,8 +113,11 @@ export function useWorldClock(): WorldClock {
 
 const SHRINE_AR_PREF = "game.shrineAR";
 
-/** Off by default, as on iOS: AR drains the battery and is awkward one-handed. */
-let shrineAR = false;
+/** Test builds only (features/game/config.ts arShrineDevFor): the AR shrine on by default and in More. */
+export const AR_SHRINE_DEV = arShrineDevFor(process.env.EXPO_PUBLIC_AR_SHRINE, process.env.EXPO_PUBLIC_E2E);
+
+/** Off by default, as on iOS: AR drains the battery and is awkward one-handed. On in a test build with AR_SHRINE_DEV. */
+let shrineAR = AR_SHRINE_DEV;
 
 getPref(SHRINE_AR_PREF)
   .then((v) => {

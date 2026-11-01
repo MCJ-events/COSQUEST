@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle, Path } from "react-native-svg";
 
 import { distanceText, toLocal, type LatLng } from "@/features/game/geo";
+import type { Fix } from "@/features/game/store";
 import {
   aimTargets,
   ANCHOR_REACH_M,
@@ -80,9 +81,10 @@ export default function RoomFight({
 
   // Position on the live link: on every new fix, and every two seconds while
   // standing still so the live map keeps you (the session throttles to 1 Hz).
-  const latest = useRef<{ fix: LatLng | null; heading: number | null }>({ fix: null, heading: null });
+  // The whole fix, so the server is told how good and how old it is (fixInfo.ts).
+  const latest = useRef<{ fix: Fix | null; heading: number | null }>({ fix: null, heading: null });
   useEffect(() => {
-    latest.current = { fix: fix ? { lat: fix.lat, lng: fix.lng } : null, heading };
+    latest.current = { fix: fix ?? null, heading };
     session.setPosition(latest.current.fix, heading);
   }, [fix, heading, session]);
   useEffect(() => {

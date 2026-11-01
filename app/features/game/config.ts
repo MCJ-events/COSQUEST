@@ -97,4 +97,21 @@ export function resolveIslandsOff(raw: string | undefined | null): ReadonlySet<N
   return new Set(NATIVE_ISLANDS.filter((n) => names.includes(n)));
 }
 
+/**
+ * Test builds only: the iOS shrine through the camera (ShrineIsland.swift,
+ * ARKit) on by default and one tap away, so the AR island can be proved on a
+ * real phone (phone-hardware design, Phase 2 step 0, 1 Nov 2026). With it on:
+ * the shrine opens through the camera at a quiz point unless the player chose
+ * the 3D stage, the camera switch shows at a Forge-station point too, and More
+ * has an "AR shrine" tile (app/dev/ar-shrine.tsx, cosquest://dev/ar-shrine).
+ *
+ * `EXPO_PUBLIC_AR_SHRINE=1` turns it on, `0` off; unset follows the test-build
+ * flag `EXPO_PUBLIC_E2E=1`. A store build sets neither, so it is off there.
+ */
+export function arShrineDevFor(flag: string | undefined | null, e2e: string | undefined | null): boolean {
+  if (flag === "1") return true;
+  if (flag === "0") return false;
+  return e2e === "1";
+}
+
 

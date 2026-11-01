@@ -1,4 +1,5 @@
 import AVFoundation
+import CoreLocation
 import CoreMotion
 import CoreNFC
 import ExpoModulesCore
@@ -489,5 +490,68 @@ enum LegacyDeviceKey {
     guard SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess,
           let data = item as? Data, data.count == 32 else { return nil }
     return data.map { String(format: "%02x", $0) }.joined()
+  }
+}
+
+// MARK: - Simulated location (cut from the Linux stub check, like the key above)
+
+/// iOS's own word on whether the phone's location is made up by software
+/// (Xcode's simulated location, a spoofing tool): CLLocationSourceInformation
+/// .isSimulatedBySoftware (iOS 15+). expo-location does not pass it on, so the
+/// RN game asks here and sends it as `simulated` (features/game/fixInfo.ts).
+/// The server only records it as evidence; it never refuses a player for it.
+///
+/// Cheap: it reads the fix iOS already holds for the app (the game's own watch
+/// keeps it fresh); only when there is none recent does it ask once for a
+/// coarse one. No permission of its own: nil until the game has location.
+@MainActor
+final class LocationSourceProbe: NSObject, CLLocationManagerDelegate {
+  static let shared = LocationSourceProbe()
+
+  private let manager = CLLocationManager()
+  private var waiters: [CheckedContinuation<Bool?, Never>] = []
+  private var timeout: Task<Void, Never>?
+
+  override private init() {
+    super.init()
+    manager.delegate = self
+    manager.desiredAccuracy = kCLLocationAccuracyHundredMeters
+  }
+
+  /// true / false from the latest fix no older than `maxAgeS`, or from one
+  /// asked for now (10 s at most); nil when unknown or not permitted.
+  func simulated(maxAgeS: Double) async -> Bool? {
+    let status = manager.authorizationStatus
+    guard status == .authorizedWhenInUse || status == .authorizedAlways else { return nil }
+    if let loc = manager.location, -loc.timestamp.timeIntervalSinceNow <= maxAgeS {
+      return loc.sourceInformation?.isSimulatedBySoftware
+    }
+    return await withCheckedContinuation { (c: CheckedContinuation<Bool?, Never>) in
+      waiters.append(c)
+      guard waiters.count == 1 else { return }
+      manager.requestLocation()
+      timeout = Task { @MainActor [weak self] in
+        try? await Task.sleep(nanoseconds: 10_000_000_000)
+        guard !Task.isCancelled else { return }
+        self?.finish(nil)
+      }
+    }
+  }
+
+  private func finish(_ value: Bool?) {
+    timeout?.cancel()
+    timeout = nil
+    let ready = waiters
+    waiters = []
+    for w in ready { w.resume(returning: value) }
+  }
+
+  nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+    let value = locations.last?.sourceInformation?.isSimulatedBySoftware
+    Task { @MainActor in self.finish(value) }
+  }
+
+  nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: any Error) {
+    Task { @MainActor in self.finish(nil) }
   }
 }

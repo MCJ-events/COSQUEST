@@ -75,5 +75,9 @@ struct VenueEventsOptions: Sendable { init(_ r: VenueEventsOptionsRecord) {} }
 @MainActor enum VenueEventsIsland { static var sink: GameEventSink?; static func open(_ o: VenueEventsOptions) throws {}; static func close() {} }
 public final class CostQuestGameView: ExpoView { var parked = false }
 enum LegacyDeviceKey { static func read() -> String? { nil } }
+@MainActor final class LocationSourceProbe {
+  static let shared = LocationSourceProbe()
+  func simulated(maxAgeS: Double) async -> Bool? { nil }
+}
 func cq_phys_footprint() -> UInt64 { 0 }
 func os_proc_available_memory() -> Int { 0 }

@@ -5,6 +5,11 @@ extends Node
 ##   get_status() -> String                       {state, t_left, hero_hp, enemy_hp, fps}
 ##   end_fight() -> void                          abort, outcome "quit"
 ##   signal fight_finished(result_json: String)
+## Pushed through the result callback besides the result (each with the fight's fight_id):
+##   {"event":"state","state":..}            the fight loading / on screen
+##   {"event":"haptic","k":kind,"s":0..1}    a touch to play (fight.gd _buzz, haptics.gd; only
+##                                           when the config says "haptics": true; rm=1 under
+##                                           the app's Reduce motion)
 ## Every event is printed with a "CQ " prefix (Android logcat tag "godot").
 ## User args (after "--"): --autotest, --config=<json file path>.
 
@@ -126,6 +131,7 @@ func start_fight(config_json: String) -> void:
 	if _fight != null and is_instance_valid(_fight):
 		_log("restart previous_state=%s" % _fight.state)
 		_fight.finished.disconnect(_on_finished)
+		_fight.haptic.disconnect(_on_haptic)
 		_fight.get_parent().remove_child(_fight)
 		_fight.queue_free()
 		_fight = null
@@ -136,6 +142,7 @@ func start_fight(config_json: String) -> void:
 	_fight.name = "Fight%d" % _fights_started
 	_fight.configure(cfg)
 	_fight.finished.connect(_on_finished)
+	_fight.haptic.connect(_on_haptic)
 	var parent: Node = get_tree().current_scene
 	if parent == null:
 		parent = get_tree().root
@@ -185,6 +192,15 @@ func _on_finished(result: Dictionary) -> void:
 	if _autotest:
 		print("CQRESULT " + json)
 		get_tree().quit.call_deferred(0)
+
+
+func _on_haptic(kind: String, strength: float) -> void:
+	if _autotest or not _cb.is_valid():
+		return
+	var m: Dictionary = {"event": "haptic", "k": kind, "s": snappedf(strength, 0.01), "fight_id": _fight_id}
+	if bool(_fight.cfg.get("reduce_motion", false)):
+		m["rm"] = 1
+	_cb.call(JSON.stringify(m))
 
 
 func _exit_tree() -> void:

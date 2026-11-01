@@ -6,7 +6,7 @@
 import * as Location from "expo-location";
 import { useEffect, useState, useSyncExternalStore } from "react";
 
-import { gameStore } from "./runtime.ts";
+import { gameStore, refreshFix } from "./runtime.ts";
 import { createRoomSession, createRoomsModel, type RoomSession, type RoomSessionState, type RoomsState, type SocketLike } from "./roomsSession.ts";
 
 export const roomsModel = createRoomsModel({
@@ -50,6 +50,8 @@ export function newRoomSession(gameId: string): RoomSession {
     client: gameStore.client,
     gameId,
     openSocket: (url) => new WebSocket(url) as unknown as SocketLike,
+    // A fresh fix before a located action when the last is old (fixInfo.ts).
+    freshFix: refreshFix,
   });
 }
 

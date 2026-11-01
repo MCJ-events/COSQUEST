@@ -9,8 +9,9 @@ import { useSyncExternalStore } from "react";
 import { Platform } from "react-native";
 
 import { type GameUi, isProductionServer, resolveGameServer } from "./config.ts";
+import { shouldProbeSimulated } from "./fixInfo.ts";
 import { LOCATION_WATCH } from "./locationWatch.ts";
-import { createGameStore, type GameState, type KeyStorage } from "./store.ts";
+import { createGameStore, type Fix, type GameState, type KeyStorage } from "./store.ts";
 
 /** Metro inlines EXPO_PUBLIC_* at bundle time (direct dotted access only). */
 export const GAME_SERVER = resolveGameServer(process.env.EXPO_PUBLIC_GAME_SERVER);
@@ -92,6 +93,74 @@ export function useLocationPermission(): LocationPermission {
   );
 }
 
+// What the server is told about each fix (fixInfo.ts): Android says whether a
+// fix is mocked (expo-location `mocked`); iOS says whether the location is
+// simulated by software only through the game module (LocationSourceProbe),
+// asked at most once a minute. Evidence for the server, never a refusal: a
+// phone whose location Xcode simulates plays as before.
+let simulated: boolean | null = null;
+let simulatedAskedAt: number | null = null;
+
+function probeSimulated() {
+  if (Platform.OS !== "ios") return;
+  const now = Date.now();
+  if (!shouldProbeSimulated(simulatedAskedAt, now)) return;
+  simulatedAskedAt = now;
+  const native = requireOptionalNativeModule<{ locationSimulated?: () => Promise<boolean | null> }>("CostQuestGame");
+  native
+    ?.locationSimulated?.()
+    .then((v) => {
+      const next = typeof v === "boolean" ? v : null;
+      if (next === simulated) return;
+      simulated = next;
+      const fix = gameStore.get().fix;
+      if (fix) gameStore.setFix({ ...fix, simulated: next });
+    })
+    .catch(() => {});
+}
+
+function fixOf(pos: Location.LocationObject, fallbackAccuracy: number): Fix {
+  return {
+    lat: pos.coords.latitude,
+    lng: pos.coords.longitude,
+    accuracy: pos.coords.accuracy ?? fallbackAccuracy,
+    at: pos.timestamp,
+    mocked: typeof pos.mocked === "boolean" ? pos.mocked : null,
+    simulated,
+  };
+}
+
+let refreshing: Promise<Fix | null> | null = null;
+
+/**
+ * A fresh fix now, for an action the server judges by where it happens: the
+ * watch sends nothing while the phone stands still (5 m filter), so a fix can
+ * be minutes old (and a Room refuses one older than 30 s). Up to 8 s; shared
+ * by callers asking at once; null when there is none (no permission, no signal).
+ */
+export function refreshFix(): Promise<Fix | null> {
+  if (refreshing) return refreshing;
+  const work = (async (): Promise<Fix | null> => {
+    try {
+      if (permission !== "granted") return null;
+      const timeout = new Promise<null>((r) => setTimeout(() => r(null), 8000));
+      const pos = await Promise.race([Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High }), timeout]);
+      if (!pos) return null;
+      const fix = fixOf(pos, 30);
+      gameStore.setFix(fix);
+      probeSimulated();
+      return fix;
+    } catch {
+      return null;
+    }
+  })();
+  refreshing = work;
+  void work.finally(() => {
+    if (refreshing === work) refreshing = null;
+  });
+  return work;
+}
+
 /** Start following the phone. `ask`: show the system prompt if never asked. */
 export async function startLocation(ask: boolean): Promise<LocationPermission> {
   if (watch || starting) return permission;
@@ -103,20 +172,16 @@ export async function startLocation(ask: boolean): Promise<LocationPermission> {
     if (status !== "granted") return permission;
     // A last-known fix draws the world at once; the watch refines it.
     const last = await Location.getLastKnownPositionAsync().catch(() => null);
-    if (last) {
-      gameStore.setFix({ lat: last.coords.latitude, lng: last.coords.longitude, accuracy: last.coords.accuracy ?? 50, at: last.timestamp });
-    }
+    if (last) gameStore.setFix(fixOf(last, 50));
+    probeSimulated();
     watch = await Location.watchPositionAsync(
       // High (not BestForNavigation), 5 s / 5 m: accurate enough for the 40 m
       // reach (locationWatch.test.ts), less battery and fewer map renders (audit B8).
       { accuracy: Location.Accuracy.High, distanceInterval: LOCATION_WATCH.distanceIntervalM, timeInterval: LOCATION_WATCH.timeIntervalMs },
-      (pos) =>
-        gameStore.setFix({
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-          accuracy: pos.coords.accuracy ?? 30,
-          at: pos.timestamp,
-        }),
+      (pos) => {
+        gameStore.setFix(fixOf(pos, 30));
+        probeSimulated();
+      },
     );
     return permission;
   } catch (error) {

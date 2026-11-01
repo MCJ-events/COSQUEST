@@ -20,7 +20,7 @@
 // face stay upright and screen-sized (mapCamera.tsx MapPin).
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { memo, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { memo, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PixelRatio, Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
@@ -143,6 +143,10 @@ type Props = {
   mapBusy?: SharedValue<boolean>;
   /** Fly the camera to a spot (bump `n` for each flight); it lands a little above the middle, clear of a sheet. */
   flyTo?: { lat: number; lng: number; n: number } | null;
+  /** Heading up is on (useHeadingUp turns camRot): "Centre on me" keeps the turn instead of going north up. */
+  headingUp?: boolean;
+  /** A two-finger twist turned the map by hand (heading up lets go). */
+  onTwist?: () => void;
 };
 
 export default function WorldMap(props: Props) {
@@ -248,15 +252,22 @@ export default function WorldMap(props: Props) {
     }
   }, [boardKey, fix?.lat, fix?.lng, size, extent]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Back to the player: north up, centred, the zoom kept.
+  // Back to the player: north up (unless heading up holds the turn), centred, the zoom kept.
+  const headingUp = useRef(!!props.headingUp);
+  headingUp.current = !!props.headingUp;
+  const onTwist = useRef(props.onTwist);
+  onTwist.current = props.onTwist;
+  const twisted = useCallback(() => onTwist.current?.(), []);
   const recentre = () => {
     const timing = { duration: reduceMotion ? 0 : RECENTRE_MS, easing: Easing.inOut(Easing.cubic) };
     cancelAnimation(camX);
     cancelAnimation(camY);
-    cancelAnimation(rot);
-    // The short way round to north.
-    rot.set(shortAngle(rot.get()));
-    rot.set(withTiming(0, timing));
+    if (!headingUp.current) {
+      cancelAnimation(rot);
+      // The short way round to north.
+      rot.set(shortAngle(rot.get()));
+      rot.set(withTiming(0, timing));
+    }
     camX.set(withTiming(meX.get(), timing));
     camY.set(withTiming(meY.get(), timing));
     follow.set(true);
@@ -414,6 +425,7 @@ export default function WorldMap(props: Props) {
           twisting.set(true);
           mark(4, true);
           runOnJS(Haptics.selectionAsync)();
+          runOnJS(twisted)();
           return;
         }
         ops.twistBy(e.anchorX, e.anchorY, e.rotationChange);
@@ -431,7 +443,7 @@ export default function WorldMap(props: Props) {
         ops.doubleTap(e.x, e.y);
       });
     return Gesture.Simultaneous(pan, pinch, twist, doubleTap);
-  }, [ops, rot, twisting, multiAt, moving, busy]);
+  }, [ops, rot, twisting, multiAt, moving, busy, twisted]);
 
   // Fly to a spot (the Nearby tray): it lands at FLY_Y of the screen, above
   // where a point's sheet rises, and the camera stops following the player.

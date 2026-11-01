@@ -5,9 +5,10 @@
 // costquest-ios Roam/RoamHomeView.swift is the reference for the loop.
 import { Ionicons } from "@expo/vector-icons";
 import { useFonts } from "expo-font";
+import { router } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AppState, BackHandler, Pressable, StyleSheet, Text, View } from "react-native";
-import Animated, { FadeIn, FadeOut, useSharedValue } from "react-native-reanimated";
+import Animated, { FadeIn, FadeOut, useReducedMotion, useSharedValue } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { getPref, setPref } from "@/utils/prefsStorage";
@@ -26,7 +27,7 @@ import { arriveMoment, legendMoment, nudgeMoment } from "@/features/game/warden"
 import { freshLoss, holdsLostOf, type QuestPoint, spinBanner } from "@/features/game/wire";
 import { factionVeilColor, world } from "@/features/world/worldState";
 import { resultShareText } from "@/features/world/gameInvite";
-import { openVenueEvents, venueEventsAvailable } from "@/modules/costquest-game/src";
+import { CostQuestShrineView, openVenueEvents, venueEventsAvailable } from "@/modules/costquest-game/src";
 import { emitGameEvent } from "@/modules/costquest-game/src/rnGame";
 import { useAppSelector } from "@/store/hooks";
 
@@ -51,6 +52,7 @@ import MoreSheet, { type MoreTile } from "./MoreSheet";
 import NearbyRadar from "./NearbyRadar";
 import Onboarding from "./Onboarding";
 import PointSheet from "./PointSheet";
+import { AR_SHRINE_DEV } from "./prefs";
 import ProfileSheet from "./ProfileSheet";
 import RaidBanner from "./RaidBanner";
 import RecapSheet from "./RecapSheet";
@@ -66,6 +68,8 @@ import { GF, GP, realmColor } from "./theme";
 import { useOnScreen } from "./useOnScreen";
 import { useWardenSaid, wardenVoice } from "./wardenVoice";
 import WorldMap, { BackToMe } from "./WorldMap";
+import { CompassButton } from "./CompassButton";
+import { useHeadingUp } from "./useHeadingUp";
 import { useRenderCount } from "@/utils/perfMarks";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 import { type CollectionOpener, type CollectionTab, collectionOpen, collectionTabFor, collectionTabs } from "@/features/game/collection";
@@ -201,6 +205,9 @@ export default function GameRoot({ parked }: { parked: boolean }) {
   // tray on the UI thread; and where the tray last asked the map to fly.
   const mapRot = useSharedValue(0);
   const mapBusy = useSharedValue(false);
+  // Heading up (the rail's compass): the map turns as the phone turns, only while the map is in front.
+  const reduceMotion = useReducedMotion();
+  const headingUp = useHeadingUp(mapRot, !parked && onScreen && screen.kind === "home" && fix !== null, reduceMotion);
   const [flyTo, setFlyTo] = useState<{ lat: number; lng: number; n: number } | null>(null);
   const suggested = useMemo(
     () => suggestedId({ points, me, distanceOf: (p) => (fix ? distanceM(fix, p) : null) }),
@@ -518,6 +525,10 @@ export default function GameRoot({ parked }: { parked: boolean }) {
   // Always there, so More is never a sheet with one button in it.
   moreTiles.push({ id: "warden", icon: "chatbubble-ellipses", color, title: "Ask the Warden", onPress: () => setSheet("ask") });
   moreTiles.push({ id: "profile", icon: "person-circle", color: GP.skyDeep, title: "Profile", onPress: () => setSheet("profile") });
+  // Test builds only (AR_SHRINE_DEV): the AR shrine on its own, to prove the iOS AR island on a phone.
+  if (AR_SHRINE_DEV && CostQuestShrineView) {
+    moreTiles.push({ id: "ar-shrine", icon: "camera", color: GP.berry, title: "AR shrine", onPress: () => router.push("/dev/ar-shrine") });
+  }
   const focusAway = focus && !focusId && focus.lat !== undefined && focus.lng !== undefined ? focus : null;
   const focusMissing = focus && focusId && !focusPoint ? focus : null;
   // The pocket board is full width; the rail would sit on its tiles.
@@ -547,6 +558,8 @@ export default function GameRoot({ parked }: { parked: boolean }) {
         camRot={mapRot}
         mapBusy={mapBusy}
         flyTo={flyTo}
+        headingUp={headingUp.mode === "heading"}
+        onTwist={headingUp.twisted}
       />
 
       <TopBar me={me} profile={profile} name={gameStore.playerName()} color={color} onProfile={() => setSheet("profile")} onCoins={() => setSheet("coins")} onAskWarden={() => setSheet("ask")} />
@@ -568,6 +581,7 @@ export default function GameRoot({ parked }: { parked: boolean }) {
               .then((b) => setBagCount(Object.values(b.bag).reduce((n, v) => n + (v > 0 ? v : 0), 0)))
               .catch(() => {});
           }}
+          compass={headingUp.available ? <CompassButton rot={mapRot} mode={headingUp.mode} calibrate={headingUp.calibrate} onPress={headingUp.toggle} /> : undefined}
           onRecentre={() => {
             recentre((n) => n + 1);
             void gameStore.refreshPoints(true);

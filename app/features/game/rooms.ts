@@ -111,6 +111,9 @@ export type Verdict = {
   /** A capture's notes (engine.py): the shrine, and the side that now holds it. */
   anchor?: string | null;
   faction?: string | null;
+  /** A refusal's code, e.g. "need_location" with retry true: no usable fix, nothing judged, safe to send again (fixInfo.ts). */
+  code?: string | null;
+  retry?: boolean | null;
 };
 
 export type EventKind = "pickup" | "hit" | "capture" | "trivia_answer" | "respawn";
@@ -227,6 +230,8 @@ export function parseVerdict(raw: unknown): Verdict | null {
     duplicate: top.duplicate === true ? true : null,
     ...(typeof r.anchor === "string" ? { anchor: r.anchor } : {}),
     ...(typeof r.faction === "string" ? { faction: r.faction } : {}),
+    ...(typeof r.code === "string" ? { code: r.code } : {}),
+    ...(typeof r.retry === "boolean" ? { retry: r.retry } : {}),
   };
 }
 

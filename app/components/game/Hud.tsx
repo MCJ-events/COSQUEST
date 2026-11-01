@@ -210,6 +210,7 @@ export function Rail({
   onTrials,
   onMore,
   onRecentre,
+  compass,
 }: {
   dailiesLeft: number;
   codexCount: number | null;
@@ -222,6 +223,8 @@ export function Rail({
   onTrials?: () => void;
   onMore: () => void;
   onRecentre: () => void;
+  /** The map's compass (north up / heading up), when this phone has one. */
+  compass?: ReactNode;
 }) {
   const styles = useThemedStyles(STYLE_PAIR);
   const insets = useSafeAreaInsets();
@@ -256,6 +259,7 @@ export function Rail({
           accessibilityLabel={muted ? "Warden voice off" : "Warden voice on"}
           onPress={() => wardenVoice.setMuted(!muted)}
         />
+        {compass}
         <GameIconButton icon="locate" color={GP.navy} diameter={38} accessibilityLabel="Centre on me" onPress={onRecentre} />
       </View>
     </Animated.View>

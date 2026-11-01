@@ -70,7 +70,7 @@ import { CHOICE_COLORS, edgeOf, GF, GP, realmColor, tierColor } from "./theme";
 import { useWardenSaid, wardenVoice } from "./wardenVoice";
 import { CostQuestShrineView, type CostQuestShrineViewHandle, shrineARSupported } from "@/modules/costquest-game/src";
 
-import { setShrineAR, useShrineAR } from "./prefs";
+import { AR_SHRINE_DEV, setShrineAR, useShrineAR } from "./prefs";
 import { useRenderCount } from "@/utils/perfMarks";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 import { SHEET_EASE_OUT, SHEET_OPEN_MS } from "./sheetMotion";
@@ -130,7 +130,10 @@ export default function Encounter({
   // A point with a Forge station (or environment) shows it instead of the built-in shrine (cq 056).
   const forgeScene = usePointForge(point);
   const hasForge = !!(forgeScene.station || forgeScene.environment);
-  const Native = hasForge ? null : NativeShrine;
+  // A test build (AR_SHRINE_DEV) may still put the shrine through the camera at a Forge point, so
+  // the AR island can be tried anywhere; with AR off there it keeps the Forge scene.
+  const Native = hasForge && !(AR_SHRINE_DEV && useAR) ? null : NativeShrine;
+  const arSwitch = !!NativeShrine && shrineARSupported && (!!Native || AR_SHRINE_DEV);
   // One handle for the Strike, whichever shrine is drawn (looked up when called).
   const [crystal] = useState<{ current: CrystalHandle }>(() => ({
     current: {
@@ -393,7 +396,7 @@ export default function Encounter({
 
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <GameIconButton icon="close" color={GP.navy} diameter={42} onPress={leave} accessibilityLabel="Leave" />
-        {phase === "approach" && Native && shrineARSupported ? (
+        {phase === "approach" && arSwitch ? (
           <GameIconButton
             icon={arPref ? "cube" : "camera"}
             color={GP.skyDeep}

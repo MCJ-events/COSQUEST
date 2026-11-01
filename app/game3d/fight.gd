@@ -14,6 +14,8 @@ extends Node3D
 ##    SHIELD barrier; the boss telegraphs every strike with a ring or cone that fills.
 
 signal finished(result: Dictionary)
+## A touch for the phone to play (haptics.gd): kind, strength 0..1. bridge.gd forwards it to the app.
+signal haptic(kind: String, strength: float)
 
 const FighterScript := preload("res://fighter.gd")
 const HudScript := preload("res://hud.gd")
@@ -25,6 +27,7 @@ const TilesScript := preload("res://tiles_layer.gd")
 const ArenaScript := preload("res://arena.gd")
 const BloomScript := preload("res://bloom.gd")
 const CoopScript := preload("res://coop.gd")
+const HapticsScript := preload("res://haptics.gd")
 
 # ---- fighters
 const HERO_HP: int = 1000
@@ -193,6 +196,8 @@ var hud: HudScript
 var fx: FxScript
 var bloom: BloomScript
 var sfx: SfxScript
+var _haptics: HapticsScript = HapticsScript.new()
+var _haptics_on: bool = false   # config "haptics": the app sends its in-game toggle; off when absent
 var tiles: Node3D
 var arena: Node3D
 var _ground: MeshInstance3D
@@ -342,6 +347,9 @@ func _ready() -> void:
 	_cam_dist = float(cfg.get("cam_dist", CAM_DIST))
 	_cam_ahead = float(cfg.get("cam_ahead", CAM_AHEAD))
 	_reduce_motion = bool(cfg.get("reduce_motion", false))   # the app's Reduce motion setting: a quarter of the shake, no zoom punch
+	# Off unless the app asks: an older app build reads any message without "event" handling as
+	# the result, and review captures and headless runs have no phone to buzz.
+	_haptics_on = bool(cfg.get("haptics", false)) and not _headless
 	_cam_basis = Basis.from_euler(Vector3(deg_to_rad(-float(cfg.get("cam_pitch", CAM_PITCH))), deg_to_rad(float(cfg.get("cam_yaw", CAM_YAW))), 0.0))
 	_view_basis = _cam_basis
 	_cam_fwd = Vector3(-_cam_basis.z.x, 0.0, -_cam_basis.z.z).normalized()
@@ -1219,6 +1227,7 @@ func _cast(slot: int) -> void:
 		hero.face(_skill_dir, 0.0, 0.0)
 	var cols: Array[Color] = [Color(0.4, 0.95, 0.9), Color(1.0, 0.6, 0.25), Color(1.0, 0.82, 0.35), Color(0.5, 1.0, 0.5), Color(0.5, 0.85, 1.0)]
 	hud.callout(hud.SKILL_NAMES[slot], cols[slot])
+	_buzz("cast", 0.4)
 	match slot:
 		0:
 			hero.iframes = 0.34
@@ -1269,6 +1278,7 @@ func _tick_skill(dt: float) -> void:
 		1:   # SPLIT: hop, slam, a crack that runs 7 m ahead
 			if t >= 0.34 and _fire_once("slam"):
 				_shake_cam(0.2, 0.3)
+				_buzz("slam", 0.8)
 				_punch = maxf(_punch, 0.7)
 				sfx.play("slam")
 				fx.split_slam(hero.position + _skill_dir * 0.5, _skill_dir)
@@ -1294,6 +1304,7 @@ func _tick_skill(dt: float) -> void:
 				if t >= at_t and _fire_once("w%d" % hit_i):
 					fx.whirl(hero.position, WHIRL_RADIUS, WHIRL_COLS if hit_i == 0 else WHIRL_COLS_2, 1.0, hit_i == 1)
 					_shake_cam(0.12, 0.25)
+					_buzz("hit", 0.5)
 					_impact_cam(0.3, 0.0)
 					_punch = maxf(_punch, 0.4)
 					sfx.play("swing_heavy", 1.1)
@@ -1388,6 +1399,7 @@ func _apply_hit(src: FighterScript, dst: FighterScript, info: Dictionary) -> voi
 			hero.knock(away, 0.5)
 			_hitstop = maxf(_hitstop, 3.0 / 60.0)
 			_shake_cam(0.06, 0.12)
+			_buzz("block", 0.5)
 			return
 	# crits (the hero's side)
 	var crit: bool = false
@@ -1445,6 +1457,9 @@ func _apply_hit(src: FighterScript, dst: FighterScript, info: Dictionary) -> voi
 		hud.pop(pop_at, ("%d!" % left) if crit else str(left), style)
 	if heavy or crit:
 		_shake_cam(0.1 if dst.team == 1 else 0.14, 0.2)
+	# Touch: the hero's own blows and blows on the hero (an ally's or the boss's on the ally stay quiet).
+	if src == hero and dst == enemy:
+		_buzz("hit_heavy" if heavy or crit else "hit", 1.0 if crit else (0.8 if heavy else 0.4))
 		if dst == enemy and (crit or amount >= 170):
 			fx.coin(enemy.head_pos() + Vector3(rng.randf_range(-0.6, 0.6), 0.0, 0.0))
 	sfx.play("hit_heavy" if heavy or crit else "hit", 0.9 if dst == enemy else 1.1)
@@ -1453,6 +1468,7 @@ func _apply_hit(src: FighterScript, dst: FighterScript, info: Dictionary) -> voi
 	if dst == hero and left > 0:
 		hud.hurt()
 		_shake_cam(0.14, 0.2)
+		_buzz("hit_heavy" if heavy or crit else "hurt", 0.9 if heavy or crit else 0.6)
 		sfx.play("hurt")
 		if _action == "attack" or _action == "":
 			_end_action()
@@ -1469,6 +1485,8 @@ func _apply_hit(src: FighterScript, dst: FighterScript, info: Dictionary) -> voi
 	if dst.hp <= 0 and not dst.dead:
 		dst.die()
 		sfx.play("ko")
+		if dst == enemy or dst == hero:
+			_buzz("ko", 1.0)
 		fx.ko_burst(dst.position, dst.size_k, Color(1.0, 0.85, 0.45) if dst.team == 1 else Color(0.7, 0.85, 1.0))
 		if dst == enemy:
 			fx.coin_burst(dst.position + Vector3(0, 1.0 * dst.size_k, 0), 6)
@@ -1506,6 +1524,7 @@ func _parry(src: FighterScript) -> void:
 	hero.flash(0.6)
 	_hitstop = maxf(_hitstop, 0.16)
 	_shake_cam(0.1, 0.2)
+	_buzz("parry", 1.0)
 	_punch = maxf(_punch, 0.6)
 	if src == enemy:
 		_stagger_enemy(PARRY_STAGGER, true)
@@ -1553,6 +1572,7 @@ func _tick_enemy(dt: float) -> void:
 		hud.callout("ENRAGED!", Color(1.0, 0.4, 0.3))
 		enemy.flash(1.0)
 		_shake_cam(0.12, 0.3)
+		_buzz("slam", 0.6)
 	var target: FighterScript = _enemy_target if (_enemy_target != null and not _enemy_target.dead) else hero
 	var to: Vector3 = _flat(target.position - enemy.position)
 	var d: float = to.length()
@@ -1658,6 +1678,7 @@ func _enemy_strike() -> void:
 		fx.crack(_enemy_at, SLAM_R * 1.3)
 		fx.dust(_enemy_at, true)
 		_shake_cam(0.16, 0.3)
+		_buzz("slam", 0.9)
 		_impact_cam(0.55, 2.5)
 		sfx.play("slam", 0.85)
 	_enemy_state = "recover"
@@ -1869,6 +1890,7 @@ func _end(o: String) -> void:
 			_hitstop = 0.15            # BattleRunner Guardian kill: hit-stop 0.15, punch 1, shake 0.14 / 0.35
 			_punch = 1.0
 			_shake_cam(0.14, 0.35)
+			_buzz("ko", 1.0)   # one rumble with the Guardian's fall (haptics.gd); a co-op win (no fall here) gets it now
 			hud.banner("VICTORY", str(cfg.get("enemy_name", "Guardian")) + " defeated", Color(1.0, 0.82, 0.35), 0.0)
 		"lose":
 			_end_delay = 1.4
@@ -2019,6 +2041,14 @@ func status() -> Dictionary:
 
 
 # ------------------------------------------------------------ camera
+
+## A touch for the phone (haptics.gd decides whether it is sent; the app plays it).
+func _buzz(kind: String, strength: float) -> void:
+	if not _haptics_on or (state != "fighting" and state != "ending"):
+		return
+	if _haptics.allow(kind, Time.get_ticks_msec()):
+		haptic.emit(kind, clampf(strength, 0.0, 1.0))
+
 
 func _shake_cam(amount: float, seconds: float) -> void:
 	_shake = maxf(_shake, amount)

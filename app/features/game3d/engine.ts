@@ -9,7 +9,8 @@
 //                      this one), or with EXPO_PUBLIC_GODOT_KEEP=0 destroy it
 //
 // Godot talks back through that one callback: {"event": "state", ...} while a
-// fight loads and starts, then the result. Each message carries the config's
+// fight loads and starts, {"event": "haptic", ...} touches during it (haptics.ts),
+// then the result. Each message carries the config's
 // fight_id, so a message from a fight already replaced is dropped.
 //
 // Calls into Godot are kept to one per fight: every runOnGodotThread run
@@ -30,6 +31,8 @@ import type { ComponentType } from "react";
 import { Platform } from "react-native";
 
 import { ANDROID_MIN_API, type Fight3DConfig } from "./fight3d";
+import { routeBridgeMessage } from "./haptics";
+import { playFightHaptic, resetFightHaptics } from "./hapticsPlayer";
 
 type GodotModule = {
   createInstance(args: string[]): unknown;
@@ -148,15 +151,10 @@ const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
  * Only the fight that is still open takes it (fight_id = its generation).
  */
 function deliver(json: string) {
-  let m: { event?: string; state?: string; fight_id?: number } | null = null;
-  try {
-    m = JSON.parse(json);
-  } catch {
-    m = null;
-  }
-  if (!m || m.fight_id !== generation) return;
-  if (m.event === "state") fightStateListener?.(String(m.state ?? ""));
-  else listener?.(json);
+  const r = routeBridgeMessage(json, generation);
+  if (r.to === "state") fightStateListener?.(r.state);
+  else if (r.to === "haptic") playFightHaptic(r.haptic);
+  else if (r.to === "result") listener?.(json);
 }
 
 /** The open fight's state pushes from Godot ("loading", "fighting"). */
@@ -246,6 +244,7 @@ export function openFight(opts: { args: string[]; config: Fight3DConfig; keep: b
   const g = godotLib();
   if (!g || !worklets) return Promise.reject(new FightOpenError("Godot is not in this build."));
   const mine = ++generation;
+  resetFightHaptics();
   const run = g.runOnGodotThread;
   listener = opts.onResult;
   if (!deliverOnJs) deliverOnJs = worklets.Worklets.createRunOnJS(deliver);

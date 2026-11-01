@@ -12,6 +12,7 @@
 // (tested in features/game/__tests__/rooms.test.ts). The app's instances live
 // in roomsRuntime.ts.
 import { type GameClient, GameError } from "./client.ts";
+import { type FixInfo, fixFields, fixIsFresh, isNeedLocation, nextLocationRetry, WAITING_FOR_LOCATION } from "./fixInfo.ts";
 import {
   createRoom,
   type DeviceEvent,
@@ -302,12 +303,27 @@ export type RoomSessionState = {
   fight: FightState;
 };
 
+/** A fix as the session keeps it: where, and (when known) how good, how old, mocked or simulated. */
+export type RoomFix = { lat: number; lng: number } & Partial<FixInfo>;
+
+/** accuracy_m, fix_age_s, mocked, simulated for a fix: only what it knows (fixInfo.ts). */
+export function locatedFields(fix: RoomFix, now: number) {
+  return fixFields({ accuracy: fix.accuracy ?? NaN, at: fix.at ?? NaN, mocked: fix.mocked, simulated: fix.simulated }, now);
+}
+
 export type RoomSessionDeps = {
   client: GameClient;
   gameId: string;
   openSocket: (url: string) => SocketLike;
   clock?: Clock;
   verdictWaitMs?: number;
+  /**
+   * A fresh fix now (runtime.ts refreshFix): asked before a located action
+   * when the last one is older than FIX_FRESH_S (a phone standing still gets
+   * no new fixes from the watch), and before resending an action the server
+   * refused with need_location. Null: none to be had.
+   */
+  freshFix?: () => Promise<RoomFix | null>;
 };
 
 /** Position telemetry at a walking pace (LiveLink.sendPosition: once a second). */
@@ -328,7 +344,7 @@ export function createRoomSession(deps: RoomSessionDeps) {
   let reconnect: Timer | null = null;
   let backoff = 500;
   let lastPositionAt = -Infinity;
-  let here: { lat: number; lng: number } | null = null;
+  let here: RoomFix | null = null;
   let boardAskedAt = -Infinity;
 
   /**
@@ -395,12 +411,42 @@ export function createRoomSession(deps: RoomSessionDeps) {
     };
   }
 
-  /** Attach where the player is, so the server can apply the venue geofence. Omitted, never faked. */
-  const located = (payload: Record<string, unknown>) => (here ? { ...payload, lat: here.lat, lng: here.lng } : payload);
+  /**
+   * Attach where the player is, so the server can judge where the action
+   * happens, with how good and how old that fix is (fixInfo.ts). Omitted,
+   * never faked.
+   */
+  const located = (payload: Record<string, unknown>) => (here ? { ...payload, lat: here.lat, lng: here.lng, ...locatedFields(here, clock.now()) } : payload);
+
+  /** A fresh fix, when the last one is old (or for a resend). Never throws. */
+  async function refreshHere(force: boolean): Promise<void> {
+    if (!deps.freshFix || (!force && here && fixIsFresh(here, clock.now()))) return;
+    try {
+      const f = await deps.freshFix();
+      if (f) here = f;
+    } catch {
+      // keep the last fix; the server says if it is too old
+    }
+  }
 
   async function act(kind: EventKind, payload: Record<string, unknown>, extra: { weapon?: HeldWeapon; target?: string } = {}): Promise<Verdict> {
     const sentAt = clock.now();
-    const v = await outbox.submit(kind, located(payload));
+    if (kind !== "respawn") await refreshHere(false);
+    let v = await outbox.submit(kind, located(payload));
+    // No usable fix on the server's side: nothing was judged or journalled,
+    // so get a fresh fix and send the same action again, a few times at most.
+    if (isNeedLocation(v)) {
+      setFight(onVerdict(fight(), kind, { client_seq: v.client_seq, ok: false, reason: WAITING_FOR_LOCATION }, sentAt, clock.now(), extra));
+      const first = clock.now();
+      for (let attempt = 1; isNeedLocation(v); attempt++) {
+        const wait = nextLocationRetry(attempt, clock.now() - first);
+        if (wait === null) break;
+        await new Promise<void>((r) => clock.setTimeout(r, wait));
+        await refreshHere(true);
+        if (!here) continue;
+        v = await outbox.submit(kind, located(payload));
+      }
+    }
     setFight(onVerdict(fight(), kind, v, sentAt, clock.now(), extra));
     return v;
   }
@@ -463,14 +509,15 @@ export function createRoomSession(deps: RoomSessionDeps) {
     },
 
     /** Where the phone is; sent on the link at a walking pace for the live map. */
-    setPosition(fix: { lat: number; lng: number } | null, heading: number | null) {
-      here = fix ? { lat: fix.lat, lng: fix.lng } : null;
+    setPosition(fix: RoomFix | null, heading: number | null) {
+      here = fix ? { ...fix } : null;
       if (!fix || !socket || !fight().connected) return;
       const t = clock.now();
       if (t - lastPositionAt < POSITION_EVERY_MS) return;
       lastPositionAt = t;
       try {
-        socket.send(JSON.stringify({ t: "pos", lat: fix.lat, lng: fix.lng, alt: 0, heading: heading ?? 0 }));
+        // accuracy_m, fix_age_s, mocked/simulated ride along (the server ignores what it does not read).
+        socket.send(JSON.stringify({ t: "pos", lat: fix.lat, lng: fix.lng, alt: 0, heading: heading ?? 0, ...locatedFields(fix, t) }));
       } catch {
         // Telemetry: dropped, the next one is a second away.
       }

@@ -11,6 +11,7 @@ import {
   PRODUCTION_GAME_SERVER,
   resolveGameServer,
   resolveIslandsOff,
+  arShrineDevFor,
   NATIVE_ISLANDS,
   STAGING_GAME_SERVER,
 } from "../config.ts";
@@ -347,5 +348,16 @@ describe("nearestFirst", () => {
   });
   it("keeps the server's order with no fix", () => {
     assert.deepEqual(nearestFirst([far, near], null).map((p) => p.id), ["far", "near"]);
+  });
+});
+
+describe("AR shrine in test builds (arShrineDevFor)", () => {
+  it("is on only when asked for, or in a test build", () => {
+    assert.equal(arShrineDevFor(undefined, undefined), false); // a store build
+    assert.equal(arShrineDevFor(undefined, "0"), false);
+    assert.equal(arShrineDevFor(undefined, "1"), true); // EXPO_PUBLIC_E2E=1 test build
+    assert.equal(arShrineDevFor("1", undefined), true);
+    assert.equal(arShrineDevFor("0", "1"), false); // a test build can still turn it off
+    assert.equal(arShrineDevFor("yes", undefined), false);
   });
 });

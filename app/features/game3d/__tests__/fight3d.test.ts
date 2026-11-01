@@ -164,6 +164,7 @@ test("the config Godot gets: paths, names with fallbacks, 45 s, a squad of 2 (yo
     mode: "full",
     seed: 42,
     autoplay: false,
+    haptics: true,
   });
   assert.equal(buildFightConfig({ hero: { path: null, name: null }, ally: { path: null, name: null }, enemy: { path: null, name: null }, pointName: "p", mode: "arena", seed: 1, autoplay: true, tilesUrl: "https://t/{z}/{x}/{y}.png" }).tiles_url, "https://t/{z}/{x}/{y}.png");
   // JSON round trip (what start_fight receives).

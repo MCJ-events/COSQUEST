@@ -7,6 +7,7 @@
 //   - Retries are safe where the server is idempotent (answers, duel finish),
 //     and a stale nonce is the one 401 worth retrying.
 // Pure: fetch and the identity are injected (tested in features/game/__tests__).
+import { type FixFields, withFixFields } from "./fixInfo.ts";
 import { type Identity, utf8ToBytes } from "./identity.ts";
 import type {
   CodexPayload,
@@ -87,6 +88,11 @@ export type GameClientOptions = {
   /** ms before a request is given up (iOS: 15 s). */
   timeoutMs?: number;
   sleep?: (ms: number) => Promise<void>;
+  /**
+   * The latest fix's accuracy_m / fix_age_s / mocked / simulated (fixInfo.ts),
+   * added to every request body that carries a lat and lng (sensors audit R3).
+   */
+  locationFields?: () => FixFields | null;
 };
 
 type Query = Record<string, string | number | undefined | (string | number)[]>;
@@ -111,6 +117,7 @@ export class GameClient {
   private readonly fetcher: FetchLike;
   private readonly timeoutMs: number;
   private readonly sleep: (ms: number) => Promise<void>;
+  private readonly locationFields: (() => FixFields | null) | null;
 
   constructor(options: GameClientOptions) {
     this.baseUrl = options.baseUrl.replace(/\/+$/, "");
@@ -118,6 +125,7 @@ export class GameClient {
     this.fetcher = options.fetch ?? (globalThis.fetch as unknown as FetchLike);
     this.timeoutMs = options.timeoutMs ?? 15000;
     this.sleep = options.sleep ?? defaultSleep;
+    this.locationFields = options.locationFields ?? null;
   }
 
   /** The player's public key, or a GameError when nobody is in. */
@@ -138,7 +146,10 @@ export class GameClient {
     path: string,
     opts: { body?: unknown; query?: Query; signed?: boolean; raw?: boolean } = {},
   ): Promise<T> {
-    const bodyText = opts.body === undefined ? undefined : JSON.stringify(opts.body);
+    // A body that says where the player is also says how good and how old
+    // that fix is, decorated before signing so the signature covers it.
+    const body = opts.body !== undefined && this.locationFields ? withFixFields(opts.body, this.locationFields()) : opts.body;
+    const bodyText = body === undefined ? undefined : JSON.stringify(body);
     const headers: Record<string, string> = { Accept: "application/json" };
     if (bodyText !== undefined) headers["Content-Type"] = "application/json";
     if (opts.signed) {
