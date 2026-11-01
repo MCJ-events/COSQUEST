@@ -13,6 +13,7 @@ Downloaded 1 Nov 2026; the licence was read on each source page that day.
 | ko_chime (jingles_PIZZI16, a rising fifth) | Kenney "Music Jingles", https://kenney.nl/assets/music-jingles | CC0 1.0 (`License_Kenney_MusicJingles.txt`) | renamed |
 | sting_victory (jingles_STEEL10, rising D E F# G) | Kenney "Music Jingles", as above | CC0 1.0 | renamed |
 | sting_defeat (jingles_STEEL07, falling F E D# D) | Kenney "Music Jingles", as above | CC0 1.0 | renamed |
+| guardian_grunt | the project's own, synthesised by `tools/fx/make_grunt.py` (numpy: a glottal buzz, three formants, a growl) | CC0 1.0 (ours) | made by look-fight |
 | music_battle ("Battle Theme A") | cynicmusic, OpenGameArt, https://opengameart.org/content/battle-theme-a | CC0 1.0 (the page's licence field: "CC0") | loudness normalised to -16 LUFS integrated (EBU R128, ffmpeg loudnorm, true peak -1.5 dBTP), Vorbis q1, looped in sfx.gd |
 
 Mix (sfx.gd): effects peak under -3 dBFS through the per-cue volumes; the music plays 9 dB under

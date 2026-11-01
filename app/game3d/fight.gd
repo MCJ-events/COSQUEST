@@ -1558,6 +1558,7 @@ func _parry(src: FighterScript) -> void:
 	_punch = maxf(_punch, 0.6)
 	if src == enemy:
 		_stagger_enemy(PARRY_STAGGER, true)
+		sfx.play("grunt", 1.18)
 
 
 func _stagger_enemy(secs: float, parried: bool) -> void:
@@ -1669,6 +1670,7 @@ func _enemy_begin(kind: String, target: FighterScript) -> void:
 	enemy.face(_flat(target.position - enemy.position), 0.0, 0.0)
 	_enemy_yaw = enemy.yaw
 	enemy.act("heavy", _enemy_windup / 0.72, _enemy_windup)
+	sfx.play("grunt", 0.95 if kind == "swipe" else 0.82)   # look-fight: the Guardian's voice on the wind-up
 	if kind == "swipe":
 		_boss_area.shape_node.shape = _swipe_shape
 		_boss_area.shape_node.position = Vector3.ZERO
@@ -1925,7 +1927,7 @@ func _end(o: String) -> void:
 			_punch = 1.0
 			_shake_cam(0.14, 0.35)
 			_buzz("ko", 1.0)   # one rumble with the Guardian's fall (haptics.gd); a co-op win (no fall here) gets it now
-			_banner_later(beat, ["VICTORY", str(cfg.get("enemy_name", "Guardian")) + " defeated", "win"])
+			_banner_later(beat, ["VICTORY", str(cfg.get("enemy_name", "Guardian")).to_upper() + " DEFEATED", "win"])
 		"lose":
 			_end_delay = beat + LOSS_HOLD_S
 			_banner_later(beat, ["DEFEATED", "", "lose"])
@@ -2177,7 +2179,7 @@ func _impact_cam(trauma: float, fov_kick: float = 0.0, dir: Vector3 = Vector3.ZE
 
 const FRAME_NEAR_M: float = 5.0        # engaged: the hero within this of the Guardian
 const FRAME_IN: float = 0.07           # the view comes this much closer when engaged
-const BANNER_HOLD_S: float = 1.25      # VICTORY over the frame before the app's reward sheet
+const BANNER_HOLD_S: float = 1.2       # VICTORY over the frame before the app's reward sheet
 const LOSS_HOLD_S: float = 1.05        # DEFEATED: calm, the buttons under 2 s after the fall
 
 

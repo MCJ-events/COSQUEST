@@ -196,9 +196,10 @@ export default function Reward({ reward, onDone, onShare }: { reward: RewardSumm
   const dailies = reward.dailiesInfo ?? dailiesDone(reward.dailiesCompleted, null);
 
   return (
-    <View style={[styles.root, { backgroundColor: realmColor(reward.realm) }]}>
-      <LinearGradient colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.7)"]} style={StyleSheet.absoluteFill} pointerEvents="none" />
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0,0,0,0.55)" }]} pointerEvents="none" />
+    // look-fight (art direction 7): the light screen colour, not the darkened realm backdrop; the
+    // realm keeps a soft wash at the top so the place still colours the moment
+    <View style={[styles.root, { backgroundColor: "#F4EEE2" }]}>
+      <LinearGradient colors={[`${realmColor(reward.realm)}33`, "rgba(244,238,226,0)"]} style={StyleSheet.absoluteFill} pointerEvents="none" />
       <Animated.View
         style={[styles.column, { paddingTop: insets.top + 12 }, panelStyle]}
         pointerEvents={showLevelUp ? "none" : "auto"}
@@ -206,7 +207,7 @@ export default function Reward({ reward, onDone, onShare }: { reward: RewardSumm
         accessibilityElementsHidden={showLevelUp}>
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false} testID="reward-screen">
           <View testID={reward.win ? "reward-win" : "reward-lose"}>
-            <GameTitle text={reward.win ? "Rewards!" : "For trying"} size={44} />
+            <GameTitle text={reward.win ? "Rewards!" : "For trying"} size={44} color={reward.win ? GP.sun : "#FFFDF8"} edge="#1C2B3A" />
           </View>
           {/* Your Forge avatar celebrates a win (cq 056); nothing without one. */}
           {reward.win ? <ForgeCelebrate size={130} /> : null}
@@ -241,7 +242,7 @@ export default function Reward({ reward, onDone, onShare }: { reward: RewardSumm
                 </View>
                 <View style={styles.track} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
                   <Animated.View style={[styles.fill, barStyle]}>
-                    <LinearGradient colors={[GP.sky, GP.skyDeep]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill} />
+                    <LinearGradient colors={["#FFC54D", "#F59E2A"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill} />
                     <View style={styles.gloss} />
                   </Animated.View>
                 </View>

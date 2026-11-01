@@ -9,6 +9,8 @@ extends Node
 ##   ("crack", Kenney impactGeneric/impactGlass light); the swing before it is the whoosh.
 ## - The KO: a deep boom (two Kenney impacts pitched down, art/sfx/ko_boom.ogg) and a rising
 ##   two-note chime (Kenney Music Jingles PIZZI16); the music ducks 6 dB under it.
+## - The Guardian's grunt layer on its wind-ups and when it reels (art/sfx/guardian_grunt.ogg,
+##   synthesised by tools/fx/make_grunt.py: the project's own sound).
 ## - Stings: victory (Music Jingles STEEL10, rising D E F# G) and defeat (STEEL07, falling).
 ## - Music: a light combat loop, "Battle Theme A" by cynicmusic (OpenGameArt, CC0), loudness
 ##   normalised to -16 LUFS integrated (art/sfx/CREDITS.md), faded in under the intro.
@@ -32,12 +34,13 @@ const CUES: Dictionary = {
 	"ko_boom": ["ko_boom"],
 	"ko_chime": ["ko_chime"],
 	"hurt": ["impactPunch_heavy_000"],
+	"grunt": ["guardian_grunt"],
 	"sting_win": ["sting_victory"],
 	"sting_lose": ["sting_defeat"],
 }
 const VOLUME_DB: Dictionary = {"swing": -9.0, "hit": -5.0, "hit_heavy": -3.0, "crack": -13.0, "crack_crit": -9.0,
 	"block": -5.0, "parry": -3.0, "skill": -6.0, "slam": -3.0, "dash": -5.0, "rally": -6.0, "ko": -4.0, "hurt": -6.0,
-	"swing_heavy": -6.0, "ko_boom": -3.0, "ko_chime": -8.0, "sting_win": -6.0, "sting_lose": -8.0}
+	"swing_heavy": -6.0, "ko_boom": -3.0, "ko_chime": -8.0, "sting_win": -6.0, "sting_lose": -8.0, "grunt": -9.0}
 const MUSIC_DB: float = -9.0          # under the effects: the loop is at -16 LUFS already
 const MUSIC_FADE_IN_S: float = 1.6
 const DUCK_DB: float = -6.0           # the music under the KO
