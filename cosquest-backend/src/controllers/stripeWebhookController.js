@@ -34,8 +34,22 @@ async function handle(event) {
       if (order) await tickets.releaseHold(order, 'expired', event.type);
       return order?._id || null;
     }
+    // Paid in the app's payment sheet (also arrives for Stripe's page; fulfil runs once).
+    case 'payment_intent.succeeded': {
+      const order = (object.metadata?.orderId && (await Order.findById(object.metadata.orderId).catch(() => null))) || (await Order.findOne({ 'stripe.paymentIntentId': object.id }));
+      if (!order) return null;
+      await tickets.fulfil(order, { paymentIntentId: object.id, amountTotal: object.amount_received || object.amount, currency: object.currency, via: event.type });
+      return order._id;
+    }
+    case 'payment_intent.canceled': {
+      // Only the payment sheet's own PaymentIntent: Stripe's page puts the
+      // order id on its payments too, and its own events close it.
+      const order = await Order.findOne({ 'stripe.paymentIntentId': object.id, method: 'sheet', status: 'pending' });
+      if (order) await tickets.releaseHold(order, 'expired', event.type);
+      return order?._id || null;
+    }
     case 'payment_intent.payment_failed': {
-      // The person can try another card on Stripe's page until it expires.
+      // The person can try another card (Stripe's page or the payment sheet) until it expires.
       const orderId = object.metadata?.orderId;
       if (orderId) await Order.updateOne({ _id: orderId }, { $push: { history: { at: new Date(), event: 'card_declined', detail: object.last_payment_error?.message?.slice(0, 200) || '' } } });
       return orderId || null;

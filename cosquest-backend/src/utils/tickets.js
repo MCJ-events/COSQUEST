@@ -15,7 +15,10 @@
 //
 // WHEN THINGS GO WRONG
 //  - Network drop after "Get ticket": a retry returns the SAME pending order
-//    and Stripe page (one open order per person per quest).
+//    and Stripe page / payment sheet (one open order per person per quest).
+//  - Two ways to pay: Stripe's page (website, method 'checkout') or the
+//    payment sheet inside the app (method 'sheet', a PaymentIntent). Both
+//    are only marked paid by Stripe's signed webhook or by asking Stripe.
 //  - Stripe unreachable when starting: the hold is released, nothing charged.
 //  - Paid but the webhook is late/lost: the app's return page asks
 //    (syncOrder), and the reconciler (every 2 minutes) asks Stripe about
@@ -159,7 +162,7 @@ function checkAtVenue(quest, status, position) {
   }
 }
 
-async function startCheckout({ user, questId, ticketTypeId, position = null }) {
+async function startCheckout({ user, questId, ticketTypeId, position = null, method = 'checkout' }) {
   const now = new Date();
   const quest = await Quest.findOne({ _id: questId, isPublished: true });
   if (!quest) fail(404, 'Quest not found.');
@@ -175,7 +178,12 @@ async function startCheckout({ user, questId, ticketTypeId, position = null }) {
   const open = await Order.findOne({ user: user._id, quest: quest._id, status: 'pending' });
   if (open) {
     const sameType = !ticketTypeId || String(open.ticketType) === String(ticketTypeId);
-    if (sameType && open.holdExpiresAt > new Date(now.getTime() + 60 * 1000) && open.stripe.checkoutUrl) return { order: open, reused: true };
+    const fresh = sameType && (open.method || 'checkout') === method && open.holdExpiresAt > new Date(now.getTime() + 60 * 1000);
+    if (fresh && method === 'checkout' && open.stripe.checkoutUrl) return { order: open, reused: true };
+    if (fresh && method === 'sheet') {
+      const clientSecret = await openSheetSecret(open);
+      if (clientSecret) return { order: open, reused: true, clientSecret };
+    }
     // Otherwise close it (and its Stripe page) before starting again.
     await reconcileOrder(open, { force: true });
     const still = await Order.findById(open._id);
@@ -206,6 +214,7 @@ async function startCheckout({ user, questId, ticketTypeId, position = null }) {
       ticketType: type._id,
       amount: { amount: type.price.amount, currency: type.price.currency },
       status: 'pending',
+      method,
       holding: true,
       holdExpiresAt: new Date(now.getTime() + HOLD_MS),
       history: [step('created', `${type.name} · ${type.price.amount} ${type.price.currency}`)],
@@ -215,7 +224,12 @@ async function startCheckout({ user, questId, ticketTypeId, position = null }) {
     if (error?.code === 11000) {
       // Two taps at once: the other one won; hand that order back.
       const other = await Order.findOne({ user: user._id, quest: quest._id, status: 'pending' });
-      if (other) return { order: other, reused: true };
+      if (other && method === 'checkout') return { order: other, reused: true };
+      // The payment sheet needs its client secret, which the other tap may
+      // still be getting (or the payment is already going through).
+      const clientSecret = other && (await openSheetSecret(other));
+      if (clientSecret) return { order: other, reused: true, clientSecret };
+      if (other) fail(409, 'Your payment is still going through. Please check again in a moment.', 'payment_in_progress');
     }
     throw error;
   }
@@ -224,6 +238,33 @@ async function startCheckout({ user, questId, ticketTypeId, position = null }) {
   if (!type.price.amount) {
     const done = await fulfil(order, { via: 'free' });
     return { order: done.order, ticket: done.ticket };
+  }
+
+  // In the app: a PaymentIntent for Stripe's payment sheet (card, Google Pay).
+  if (method === 'sheet') {
+    try {
+      const pi = await payments.stripe().paymentIntents.create(
+        {
+          amount: payments.toMinor(type.price.amount, type.price.currency),
+          currency: type.price.currency.toLowerCase(),
+          automatic_payment_methods: { enabled: true },
+          description: `${quest.title} · ${type.name}`.slice(0, 200),
+          metadata: { orderId: String(order._id), questId: String(quest._id), userId: String(user._id) },
+          ...(user.email ? { receipt_email: user.email } : {}),
+        },
+        { idempotencyKey: `pi-${order._id}` }
+      );
+      order = await Order.findByIdAndUpdate(
+        order._id,
+        { $set: { 'stripe.paymentIntentId': pi.id }, $push: { history: step('payment_sheet_opened', pi.id) } },
+        { new: true }
+      );
+      return { order, clientSecret: pi.client_secret };
+    } catch (error) {
+      await releaseHold(order, 'failed', `Stripe: ${error.message}`);
+      console.error(`[tickets] ${orderLabel(order)}: could not create the payment:`, error.message);
+      fail(502, "Couldn't reach the payment service. Nothing was charged. Please try again.", 'payment_service_unreachable');
+    }
   }
 
   try {
@@ -264,8 +305,29 @@ async function startCheckout({ user, questId, ticketTypeId, position = null }) {
   }
 }
 
+/** The payment sheet's client secret, while its PaymentIntent can still be paid. */
+async function openSheetSecret(order) {
+  if ((order.method || 'checkout') !== 'sheet' || !order.stripe.paymentIntentId) return null;
+  const pi = await payments.stripe().paymentIntents.retrieve(order.stripe.paymentIntentId).catch(() => null);
+  return pi && !['canceled', 'succeeded', 'processing'].includes(pi.status) ? pi.client_secret : null;
+}
+
 /** Closes a pending order that will not be paid (expires its Stripe page). */
 async function closePending(order, why) {
+  if ((order.method || 'checkout') === 'sheet' && order.stripe.paymentIntentId) {
+    // Unlike Stripe's page, a PaymentIntent never expires by itself: the seat
+    // goes back only once Stripe has cancelled it, or the app could still pay
+    // for a seat sold again.
+    const id = order.stripe.paymentIntentId;
+    const pi = await payments
+      .stripe()
+      .paymentIntents.cancel(id)
+      .catch(() => payments.stripe().paymentIntents.retrieve(id).catch((error) => (error.statusCode === 404 ? { status: 'canceled' } : null)));
+    if (pi?.status === 'succeeded') return fulfil(order, { paymentIntentId: pi.id, amountTotal: pi.amount_received || pi.amount, currency: pi.currency, via: 'close_check' });
+    // Processing, or Stripe unreachable: the reconciler tries again.
+    if (pi?.status !== 'canceled') return order;
+    return releaseHold(order, 'expired', why);
+  }
   if (order.stripe.checkoutSessionId) {
     try {
       await payments.stripe().checkout.sessions.expire(order.stripe.checkoutSessionId);
@@ -482,6 +544,24 @@ async function reconcileOrder(order, { force = false } = {}) {
   if (order.status !== 'pending') return order;
   if (!force && order.lastCheckedAt && Date.now() - order.lastCheckedAt.getTime() < 10 * 1000) return order;
   await Order.updateOne({ _id: order._id }, { $set: { lastCheckedAt: new Date() } });
+  // Paid in the app: ask Stripe about the PaymentIntent.
+  if ((order.method || 'checkout') === 'sheet' && order.stripe.paymentIntentId) {
+    let pi;
+    try {
+      pi = await payments.stripe().paymentIntents.retrieve(order.stripe.paymentIntentId);
+    } catch (error) {
+      console.warn(`[tickets] ${orderLabel(order)}: could not ask Stripe:`, error.message);
+      return order;
+    }
+    if (pi.status === 'succeeded') {
+      await fulfil(order, { paymentIntentId: pi.id, amountTotal: pi.amount_received || pi.amount, currency: pi.currency, via: 'reconciled' });
+    } else if (pi.status === 'canceled') {
+      await releaseHold(order, 'expired', 'payment canceled');
+    } else if (order.holdExpiresAt <= new Date() && pi.status !== 'processing') {
+      await closePending(order, 'hold ended');
+    }
+    return Order.findById(order._id);
+  }
   if (!order.stripe.checkoutSessionId) {
     // Never got a Stripe page (crashed between steps): release once the hold ends.
     if (order.holdExpiresAt <= new Date()) await releaseHold(order, 'expired', 'no checkout session');

@@ -116,6 +116,61 @@ async function run(baseUrl) {
   const memberCheckin = await request('POST', '/api/admin/checkin', ana.token, { code: one.data.ticket.code });
   check(memberCheckin.status === 401, 'only admins check people in', memberCheckin.status);
 
+  console.log('\n--- paying inside the app (payment sheet) ---');
+  const sheetQuest = await makeQuest('Sheet Show', 15, 3);
+  const sheet = await request('POST', `/api/quests/${sheetQuest.id}/payment-sheet`, ana.token, {});
+  check(sheet.status === 201 && /_secret_/.test(sheet.data.paymentIntentClientSecret || '') && sheet.data.order.status === 'pending', 'the app gets a payment sheet (client secret), order pending', sheet.data);
+  const sheetAgain = await request('POST', `/api/quests/${sheetQuest.id}/payment-sheet`, ana.token, {});
+  check(sheetAgain.status === 200 && sheetAgain.data.reused && sheetAgain.data.order.id === sheet.data.order.id && sheetAgain.data.paymentIntentClientSecret === sheet.data.paymentIntentClientSecret, 'a retry reuses the same payment (no double charge)', sheetAgain.data);
+  const sheetOrder = await Order.findById(sheet.data.order.id);
+  const paidIntent = fake._payIntent(sheetOrder.stripe.paymentIntentId);
+  const piWebhook = await webhook('payment_intent.succeeded', paidIntent);
+  const sheetPaid = await Order.findById(sheet.data.order.id);
+  check(piWebhook.status === 200 && sheetPaid.status === 'paid' && (await Ticket.findOne({ order: sheetPaid._id }))?.status === 'valid', 'payment_intent.succeeded: paid, ticket issued', sheetPaid?.status);
+  const sheetBen = await request('POST', `/api/quests/${sheetQuest.id}/payment-sheet`, ben.token, {});
+  fake._payIntent((await Order.findById(sheetBen.data.order.id)).stripe.paymentIntentId);
+  const sheetSynced = await request('GET', `/api/orders/${sheetBen.data.order.id}`, ben.token);
+  check(sheetSynced.data.order.status === 'paid', 'webhook late: the app asks, the server checks Stripe and finishes it', sheetSynced.data);
+  const sheetQuest2 = await makeQuest('Sheet Expire', 15, 1);
+  const abandoned = await request('POST', `/api/quests/${sheetQuest2.id}/payment-sheet`, ana.token, {});
+  await Order.updateOne({ _id: abandoned.data.order.id }, { $set: { holdExpiresAt: new Date(Date.now() - 1000) } });
+  await tickets.reconcileDue();
+  const abandonedOrder = await Order.findById(abandoned.data.order.id);
+  check(abandonedOrder.status === 'expired' && fake._intents.get(abandonedOrder.stripe.paymentIntentId).status === 'canceled' && (await TicketType.findOne({ quest: sheetQuest2._id })).held === 0, 'an abandoned payment is cancelled and the seat released', abandonedOrder.status);
+  const sheetRefund = await request('POST', `/api/admin/orders/${sheet.data.order.id}/refund`, adminToken, { reason: 'Test refund' });
+  check(sheetRefund.status === 200 && sheetRefund.data.order.status === 'refunded', 'in-app payments refund like the others', sheetRefund.data);
+
+  const gus = await makeUser('Gus');
+  const hal = await makeUser('Hal');
+  const offlineQuest = await makeQuest('Sheet Offline', 15, 1);
+  const offline = await request('POST', `/api/quests/${offlineQuest.id}/payment-sheet`, gus.token, {});
+  await Order.updateOne({ _id: offline.data.order.id }, { $set: { holdExpiresAt: new Date(Date.now() - 1000) } });
+  const realCancel = fake.paymentIntents.cancel;
+  fake.paymentIntents.cancel = async () => { throw Object.assign(new Error('Network error (fake)'), { type: 'StripeConnectionError' }); };
+  await tickets.reconcileDue();
+  fake.paymentIntents.cancel = realCancel;
+  check((await Order.findById(offline.data.order.id)).status === 'pending' && (await TicketType.findOne({ quest: offlineQuest._id })).held === 1, "Stripe unreachable at the hold's end: the seat stays held (a payment sheet doesn't expire by itself)", null);
+  await tickets.reconcileDue();
+  const offlineClosed = await Order.findById(offline.data.order.id);
+  check(offlineClosed.status === 'expired' && fake._intents.get(offlineClosed.stripe.paymentIntentId).status === 'canceled' && (await TicketType.findOne({ quest: offlineQuest._id })).held === 0, '...and goes back once Stripe has cancelled the payment', offlineClosed.status);
+
+  const goingThrough = await makeQuest('Sheet Processing', 15, 2);
+  const halSheet = await request('POST', `/api/quests/${goingThrough.id}/payment-sheet`, hal.token, {});
+  const halIntent = fake._intents.get((await Order.findById(halSheet.data.order.id)).stripe.paymentIntentId);
+  halIntent.status = 'processing';
+  const halAgain = await request('POST', `/api/quests/${goingThrough.id}/payment-sheet`, hal.token, {});
+  check(halAgain.status === 409 && halAgain.data.code === 'payment_in_progress' && (await Order.findById(halSheet.data.order.id)).status === 'pending' && (await TicketType.findOne({ quest: goingThrough._id })).held === 1, 'a payment going through: another tap waits (409 payment_in_progress), no second order', halAgain.data);
+  await webhook('payment_intent.succeeded', fake._payIntent(halIntent.id));
+  check((await Order.findById(halSheet.data.order.id)).status === 'paid', '...then it is paid', null);
+
+  const pageQuest = await makeQuest('Page Open', 15, 3);
+  const pageOpen = await request('POST', `/api/quests/${pageQuest.id}/checkout`, gus.token, {});
+  const stray = await webhook('payment_intent.canceled', { id: 'pi_stray_test', object: 'payment_intent', status: 'canceled', metadata: { orderId: pageOpen.data.order.id } });
+  check(stray.status === 200 && (await Order.findById(pageOpen.data.order.id)).status === 'pending', "payment_intent.canceled doesn't close someone's open Stripe page", stray.data);
+  const dashSheet = await request('POST', `/api/quests/${pageQuest.id}/payment-sheet`, hal.token, {});
+  await webhook('payment_intent.canceled', await fake.paymentIntents.cancel((await Order.findById(dashSheet.data.order.id)).stripe.paymentIntentId));
+  check((await Order.findById(dashSheet.data.order.id)).status === 'expired' && (await TicketType.findOne({ quest: pageQuest._id })).held === 1, '...but a payment sheet cancelled in Stripe gives its seat back', null);
+
   console.log('\n--- be at the venue (live quests) ---');
   const venueQuest = await Quest.create({ slug: `venue-${suffix}`, title: 'Venue Hunt', status: 'upcoming', isPublished: true, startsAt: new Date(Date.now() - hour), endsAt: new Date(Date.now() + 2 * hour), location: venue, prizePool: { amount: 0, currency: 'USD' }, entryFee: { amount: 10, currency: 'USD' }, maxParticipants: 10, requireAtVenue: true, venueRadiusMeters: 200 });
   const noPlace = await request('POST', `/api/quests/${venueQuest.id}/checkout`, ben.token, {});

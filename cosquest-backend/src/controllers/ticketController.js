@@ -3,6 +3,7 @@
 //   GET  /api/quests/:questId/ticket-types       (public)  what's on sale, seats left
 //   POST /api/quests/:questId/checkout           { ticketTypeId?, position?: { lat, lng, accuracy } } -> free: the ticket; paid: { order, checkoutUrl }
 //                                                (position: needed to join a LIVE quest that requires being at the venue)
+//   POST /api/quests/:questId/payment-sheet      same, for the app: { order, paymentIntentClientSecret } (Stripe's payment sheet: card, Google Pay)
 //   GET  /api/orders/:orderId                    the order's state; asks Stripe if still pending (the app's return page)
 //   GET  /api/me/tickets?scope=upcoming|past
 //   GET  /api/me/tickets/:ticketId               with the QR code value
@@ -42,6 +43,24 @@ async function checkout(req, res) {
     return res.status(status).json({
       order: tickets.orderJson(result.order, result.ticket),
       checkoutUrl: result.order.status === 'pending' ? result.order.stripe.checkoutUrl : null,
+      ticket: result.ticket ? { id: String(result.ticket._id) } : null,
+      reused: Boolean(result.reused),
+    });
+  } catch (error) {
+    return answer(res, error);
+  }
+}
+
+// The app: Stripe's payment sheet (card, Google Pay) instead of Stripe's page.
+async function paymentSheet(req, res) {
+  try {
+    if (!mongoose.isValidObjectId(req.params.questId)) return res.status(404).json({ error: 'Quest not found.' });
+    const p = req.body?.position;
+    const position = p && typeof p === 'object' ? { lat: p.lat, lng: p.lng, accuracy: p.accuracy } : null;
+    const result = await tickets.startCheckout({ user: req.user, questId: req.params.questId, ticketTypeId: req.body?.ticketTypeId, position, method: 'sheet' });
+    return res.status(result.reused ? 200 : 201).json({
+      order: tickets.orderJson(result.order, result.ticket),
+      paymentIntentClientSecret: result.order.status === 'pending' ? result.clientSecret || null : null,
       ticket: result.ticket ? { id: String(result.ticket._id) } : null,
       reused: Boolean(result.reused),
     });
@@ -110,4 +129,4 @@ async function cancelMyTicket(req, res) {
   }
 }
 
-module.exports = { listTicketTypes, checkout, getOrder, myTickets, myTicket, cancelMyTicket, ticketJson };
+module.exports = { listTicketTypes, checkout, paymentSheet, getOrder, myTickets, myTicket, cancelMyTicket, ticketJson };

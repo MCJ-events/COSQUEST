@@ -11,6 +11,11 @@ A quest with `requireAtVenue` checks the phone's position at checkout **while th
 ## Quests near you
 `GET /api/quests?lat&lng&radiusMiles` asks the database only for quests in a box around the point, measures each, and keeps the nearest (`limit`, default 20). Before, it took the first 20 worldwide by start time and then filtered by distance, so nearby quests were cut off. Without lat/lng: the soonest, as before.
 
+## Paying inside the app (payment sheet)
+`POST /api/quests/:id/payment-sheet { ticketTypeId?, position? }` (members): the same rules as checkout, but a Stripe **PaymentIntent** for the app's payment sheet (card, Google Pay): `{ order, paymentIntentClientSecret }` (free: `{ ticket }`). One open order per person per quest: a retry returns the same client secret. Paid only by the webhook `payment_intent.succeeded` (amount and currency checked) or by the server asking Stripe (`GET /api/orders/:id`, reconciler). An abandoned one is **cancelled** in Stripe after the 31-minute hold and the seat released. Orders have `method: checkout | sheet`.
+
+**Stripe dashboard:** add `payment_intent.succeeded` and `payment_intent.canceled` to the webhook endpoint, and turn on **Google Pay** in Settings > Payment methods.
+
 ## Deleting quests
 `DELETE /api/admin/quests/:questId { reason }` deletes a quest for good, with its ticket types: only when nobody is registered and no order was ever paid, refunded, free or in checkout (otherwise 409 `has_registrations` / `has_orders`: cancel it instead). It is unpublished while it is checked, so no checkout can start meanwhile, and a refused delete leaves it as it was. Recorded as `quest.delete` with a snapshot.
 
@@ -18,7 +23,7 @@ A quest with `requireAtVenue` checks the phone's position at checkout **while th
 `STRIPE_SECRET_KEY` (sk_test_...), `STRIPE_WEBHOOK_SECRET` (whsec_...), `APP_WEB_URL` (https://cosquest.vercel.app). Optional: `REFUND_CUTOFF_HOURS` (default 24), `TICKETS_WORKER=0` on all but one instance if there are several, `QUEST_CURRENCY` (USD).
 
 ## How it stays safe
-- **Card details never reach us**: Stripe Checkout (Stripe's page).
+- **Card details never reach us**: Stripe Checkout (Stripe's page) on the website, Stripe's payment sheet in the app.
 - **Prices from our database**, never the app; the webhook **checks amount and currency** (a mismatch is refunded, never ticketed).
 - **Only a signed webhook** (raw body, `STRIPE_WEBHOOK_SECRET`, 5-minute tolerance) or the reconciler asking Stripe can mark an order paid. The app's return page proves nothing.
 - **Seats held atomically** (`sold + held < quantity`, one `findOneAndUpdate`) for 31 minutes; then released.

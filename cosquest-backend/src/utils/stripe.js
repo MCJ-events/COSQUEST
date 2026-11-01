@@ -90,7 +90,38 @@ function createFake() {
       Object.assign(s, { status: 'complete', payment_status: 'paid', payment_intent: s.payment_intent || id('pi') });
       return s;
     },
+    _intents: new Map(),
+    /** Test helper: the person paid in the app's payment sheet. */
+    _payIntent(intentId) {
+      const pi = fake._intents.get(intentId);
+      Object.assign(pi, { status: 'succeeded', amount_received: pi.amount });
+      return pi;
+    },
     _failNext: false,
+    paymentIntents: {
+      create: async (params, opts) => {
+        if (fake._failNext) {
+          fake._failNext = false;
+          throw Object.assign(new Error('Network error (fake)'), { type: 'StripeConnectionError' });
+        }
+        return once(opts, () => {
+          const pi = { id: id('pi'), object: 'payment_intent', client_secret: `${id('pi')}_secret_${crypto.randomBytes(6).toString('hex')}`, status: 'requires_payment_method', amount: params.amount, amount_received: 0, currency: params.currency, metadata: params.metadata };
+          fake._intents.set(pi.id, pi);
+          return pi;
+        });
+      },
+      retrieve: async (intentId) => {
+        const pi = fake._intents.get(intentId);
+        if (!pi) throw Object.assign(new Error('No such payment_intent'), { statusCode: 404 });
+        return pi;
+      },
+      cancel: async (intentId) => {
+        const pi = fake._intents.get(intentId);
+        if (pi.status === 'succeeded' || pi.status === 'processing') throw Object.assign(new Error(`already ${pi.status}`), { statusCode: 400 });
+        pi.status = 'canceled';
+        return pi;
+      },
+    },
     checkout: {
       sessions: {
         create: async (params, opts) => {
