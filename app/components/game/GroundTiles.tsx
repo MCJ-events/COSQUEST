@@ -24,9 +24,10 @@ import Animated, {
 import Svg from "react-native-svg";
 
 import { fromLocal, type LatLng } from "@/features/game/geo";
+import { benchCount } from "@/features/game/mapBench";
 import { buildLayers, type MapLayers } from "@/features/game/mapPaths";
 import type { MapStyle } from "@/features/game/mapStyle";
-import { cellRect, cellsCovering, cellViewBox, coverRadiusM, gridFor, rasterDensity, type Cell } from "@/features/game/mapTiles";
+import { cellRect, cellsCovering, cellViewBox, coverRadiusM, gridFor, rasterDensity, rasterDensityKeeping, type Cell } from "@/features/game/mapTiles";
 import type { GroundGeometry } from "@/features/game/wire";
 
 import { GroundPaths } from "./GroundPaths";
@@ -82,7 +83,10 @@ function pump(load: LoadGround) {
     inflight.add(cell.key);
     load(cell.centre.lat, cell.centre.lng, cell.requestM)
       .then((g) => {
-        remember(cell.key, { origin: g.origin, layers: g.covered === false ? null : buildLayers(g) });
+        remember(cell.key, {
+          origin: g.origin,
+          layers: g.covered === false ? null : buildLayers(g),
+        });
         failedAt.delete(cell.key);
       })
       .catch(() => {
@@ -121,8 +125,12 @@ type Props = {
   anchorY: number;
 };
 
+/** New or redrawn tiles are drawn at most one per this long: drawing one is a long frame, several at once a stall. */
+const DRAW_EVERY_MS = 40;
+
 export default function GroundTiles({ origin, extent, scale, look, load, camX, camY, zoom, width, height, anchorX, anchorY }: Props) {
   const reduceMotion = useReducedMotion();
+  benchCount("tilesRender");
   const loadRef = useRef(load);
   loadRef.current = load;
   const [, bump] = useReducer((n: number) => n + 1, 0);
@@ -133,45 +141,108 @@ export default function GroundTiles({ origin, extent, scale, look, load, camX, c
     };
   }, []);
 
-  // The camera, quantised: centre in VIEW_STEP points, zoom rounded down to
-  // 0.05 (down, so the cover radius errs wide).
-  const [view, setView] = useState(() => ({ x: camX.get(), y: camY.get(), zoom: Math.floor(zoom.get() * 20) / 20 }));
+  const grid = useMemo(() => gridFor(origin.lat), [origin.lat]);
+  const pixelRatio = PixelRatio.get();
+
+  // What the camera can see, worked out on the JS side only when the camera
+  // crosses a VIEW_STEP (or a 0.05 zoom step), and committed to React only
+  // when the set of cells on screen actually changes: a pan re-renders this
+  // layer a handful of times, not every few frames.
+  const cover = (x: number, y: number, z: number) => {
+    const centre = fromLocal(origin, {
+      x: x / scale - extent,
+      z: extent - y / scale,
+    });
+    const radius = coverRadiusM(width, height, anchorX, anchorY, Math.max(z, 0.05), scale);
+    return {
+      cells: cellsCovering(grid, centre, radius),
+      ahead: cellsCovering(grid, centre, radius + PREFETCH_M),
+    };
+  };
+  const [cells, setCells] = useState<Cell[]>(() => cover(camX.get(), camY.get(), Math.floor(zoom.get() * 20) / 20).cells);
+  const cellsKey = useRef(cells.map((c) => c.key).join(","));
+  const wantedKey = useRef("");
+  // The density tiles are drawn at: follows the zoom with hysteresis, and only
+  // once the camera has stopped (a redraw mid-gesture is a dropped frame).
+  const [density, setDensity] = useState(() => rasterDensity(zoom.get(), pixelRatio));
+  const densityRef = useRef(density);
+  densityRef.current = density;
+  const lastZoom = useRef(zoom.get());
+  const settle = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const onView = (x: number, y: number, z: number) => {
+    const { cells: now, ahead } = cover(x, y, z);
+    const key = now.map((c) => c.key).join(",");
+    if (key !== cellsKey.current) {
+      cellsKey.current = key;
+      setCells(now);
+    }
+    const wanted = ahead.map((c) => c.key).join(",");
+    if (wanted !== wantedKey.current) {
+      wantedKey.current = wanted;
+      want(ahead, loadRef.current);
+    }
+    lastZoom.current = z;
+    if (settle.current) clearTimeout(settle.current);
+    settle.current = setTimeout(() => {
+      settle.current = null;
+      const next = rasterDensityKeeping(lastZoom.current, pixelRatio, densityRef.current);
+      if (next !== densityRef.current) setDensity(next);
+    }, DENSITY_SETTLE_MS);
+  };
+  useEffect(() => {
+    onView(camX.get(), camY.get(), zoom.get());
+    return () => {
+      if (settle.current) clearTimeout(settle.current);
+    };
+  }, [origin, extent, scale, width, height, anchorX, anchorY]); // eslint-disable-line react-hooks/exhaustive-deps
+
   useAnimatedReaction(
-    () => ({ qx: Math.round(camX.get() / VIEW_STEP), qy: Math.round(camY.get() / VIEW_STEP), qz: Math.floor(zoom.get() * 20) }),
+    () => ({
+      qx: Math.round(camX.get() / VIEW_STEP),
+      qy: Math.round(camY.get() / VIEW_STEP),
+      qz: Math.floor(zoom.get() * 20),
+    }),
     (now, before) => {
       if (before && now.qx === before.qx && now.qy === before.qy && now.qz === before.qz) return;
-      runOnJS(setView)({ x: now.qx * VIEW_STEP, y: now.qy * VIEW_STEP, zoom: now.qz / 20 });
+      runOnJS(onView)(now.qx * VIEW_STEP, now.qy * VIEW_STEP, zoom.get());
     },
   );
 
-  // Drawing density follows the zoom once it has settled.
-  const pixelRatio = PixelRatio.get();
-  const [density, setDensity] = useState(() => rasterDensity(view.zoom, pixelRatio));
+  // Which cells are drawn, and at what density. A loaded cell is drawn (or
+  // redrawn at a new density) one at a time, DRAW_EVERY_MS apart, and kept
+  // drawn at its old density until its turn: no stall when many tiles land
+  // together or the zoom changes level.
+  const drawn = useRef(new Map<string, number>());
+  const [, tick] = useReducer((n: number) => n + 1, 0);
+  const visible = new Set(cells.map((c) => c.key));
+  for (const k of [...drawn.current.keys()]) if (!visible.has(k)) drawn.current.delete(k);
+  let budget = 1;
+  let behind = false;
+  const items = cells.map((cell) => {
+    const tile = touch(cell.key);
+    let d = drawn.current.get(cell.key);
+    if (tile && d !== density) {
+      if (budget > 0) {
+        budget -= 1;
+        d = density;
+        drawn.current.set(cell.key, d);
+      } else behind = true;
+    }
+    return { cell, tile, d };
+  });
   useEffect(() => {
-    const next = rasterDensity(view.zoom, pixelRatio);
-    if (next === density) return;
-    const t = setTimeout(() => setDensity(next), DENSITY_SETTLE_MS);
+    if (!behind) return;
+    const t = setTimeout(tick, DRAW_EVERY_MS);
     return () => clearTimeout(t);
-  }, [view.zoom, pixelRatio, density]);
-
-  const grid = useMemo(() => gridFor(origin.lat), [origin.lat]);
-  const centre = useMemo(() => fromLocal(origin, { x: view.x / scale - extent, z: extent - view.y / scale }), [origin, view.x, view.y, scale, extent]);
-  const radius = coverRadiusM(width, height, anchorX, anchorY, Math.max(view.zoom, 0.05), scale);
-  const cells = useMemo(() => cellsCovering(grid, centre, radius), [grid, centre, radius]);
-  const ahead = useMemo(() => cellsCovering(grid, centre, radius + PREFETCH_M), [grid, centre, radius]);
-
-  const wantedKey = ahead.map((c) => c.key).join(",");
-  useEffect(() => {
-    want(ahead, loadRef.current);
-  }, [wantedKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  });
 
   return (
     <>
-      {cells.map((cell) => {
+      {items.map(({ cell, tile, d }) => {
         const rect = cellRect(cell, origin, extent, scale);
-        const tile = touch(cell.key);
-        return tile ? (
-          <TileView key={cell.key} cell={cell} tile={tile} rect={rect} look={look} density={density} />
+        return tile && d !== undefined ? (
+          <TileView key={cell.key} cell={cell} tile={tile} rect={rect} look={look} density={d} />
         ) : (
           <Placeholder key={cell.key} rect={rect} tint={look.grid} still={reduceMotion} />
         );
@@ -186,6 +257,7 @@ const TileView = memo(
   function TileView({ cell, tile, rect, look, density }: { cell: Cell; tile: Tile; rect: Rect; look: MapStyle; density: number }) {
     // Drawn at `density` pixels a board point, then stretched to the cell
     // (react-native-svg's bitmap is the view's own size).
+    benchCount("tileDraw");
     const pr = Math.max(1, PixelRatio.get());
     const k = Math.max(1, pr / density);
     const w = rect.width / k;
@@ -193,11 +265,21 @@ const TileView = memo(
     return (
       <Animated.View entering={TILE_IN} pointerEvents="none" style={[styles.cell, rect]}>
         <Svg
+          // Rasterised off the main thread (patches/react-native-svg+*.patch): a
+          // tile landing mid-gesture does not stall the frame. It fades in over
+          // the land, so the moment before it is drawn reads as part of the fade.
+          nativeID="svg-async-tile"
           width={w}
           height={h}
           viewBox={cellViewBox(cell, tile.origin)}
           preserveAspectRatio="none"
-          style={{ position: "absolute", left: (rect.width - w) / 2, top: (rect.height - h) / 2, transform: [{ scale: k }] }}>
+          style={{
+            position: "absolute",
+            left: (rect.width - w) / 2,
+            top: (rect.height - h) / 2,
+            transform: [{ scale: k }],
+          }}
+        >
           <GroundPaths layers={tile.layers} look={look} />
         </Svg>
       </Animated.View>
@@ -213,15 +295,18 @@ const TileView = memo(
 );
 
 /** Where a cell is still loading: the land, breathing faintly, so it reads as "coming" rather than empty. */
-function Placeholder({ rect, tint, still }: { rect: Rect; tint: string; still: boolean }) {
-  const t = useSharedValue(0);
-  useEffect(() => {
-    if (still) return;
-    t.set(withRepeat(withSequence(withTiming(1, { duration: 700 }), withTiming(0, { duration: 700 })), -1));
-  }, [still, t]);
-  const style = useAnimatedStyle(() => ({ opacity: 0.25 + 0.35 * t.get() }));
-  return <Animated.View pointerEvents="none" style={[styles.cell, rect, { backgroundColor: tint }, style]} />;
-}
+const Placeholder = memo(
+  function Placeholder({ rect, tint, still }: { rect: Rect; tint: string; still: boolean }) {
+    const t = useSharedValue(0);
+    useEffect(() => {
+      if (still) return;
+      t.set(withRepeat(withSequence(withTiming(1, { duration: 700 }), withTiming(0, { duration: 700 })), -1));
+    }, [still, t]);
+    const style = useAnimatedStyle(() => ({ opacity: 0.25 + 0.35 * t.get() }));
+    return <Animated.View pointerEvents="none" style={[styles.cell, rect, { backgroundColor: tint }, style]} />;
+  },
+  (a, b) => a.tint === b.tint && a.still === b.still && Math.abs(a.rect.left - b.rect.left) < 0.01 && Math.abs(a.rect.top - b.rect.top) < 0.01,
+);
 
 const TILE_IN = FadeIn.duration(220);
 

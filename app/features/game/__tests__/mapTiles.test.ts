@@ -139,3 +139,17 @@ test("tile bitmaps stay within budget at every zoom", () => {
   assert.ok(rasterDensity(1, 3) < rasterDensity(2, 3));
   assert.equal(rasterDensity(2, 2), 2);
 });
+
+test("the drawing density only changes once the zoom is clearly past a level's edge", async () => {
+  const { rasterDensityKeeping, rasterDensity: rd } = await import("../mapTiles.ts");
+  const at1 = rd(1, 3);
+  // Just under the 0.85 edge: still drawn as at zoom 1.
+  assert.equal(rasterDensityKeeping(0.84, 3, at1), at1);
+  // Well under: the coarser level.
+  assert.equal(rasterDensityKeeping(0.7, 3, at1), rd(0.7, 3));
+  // Just over the 1.4 edge from zoom 1's level: kept; well over: finer.
+  assert.equal(rasterDensityKeeping(1.42, 3, at1), at1);
+  assert.equal(rasterDensityKeeping(1.7, 3, at1), rd(1.7, 3));
+  // Coming back down from the finer level near the edge: kept finer.
+  assert.equal(rasterDensityKeeping(1.38, 3, rd(1.7, 3)), rd(1.7, 3));
+});

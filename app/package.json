@@ -97,5 +97,10 @@
     "@borndotcom/react-native-godot": {
       "react-native-worklets-core": "$react-native-worklets-core"
     }
+  },
+  "reanimated": {
+    "staticFeatureFlags": {
+      "IOS_SYNCHRONOUSLY_UPDATE_UI_PROPS": true
+    }
   }
 }

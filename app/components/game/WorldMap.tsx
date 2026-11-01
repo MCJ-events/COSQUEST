@@ -54,6 +54,7 @@ import type { GroundGeometry, QuestPoint } from "@/features/game/wire";
 
 import { GroundPaths } from "./GroundPaths";
 import GroundTiles, { type LoadGround } from "./GroundTiles";
+import { useMapBench } from "./mapBenchRunner";
 import { MapCameraContext, MapPin, PIN_SPOT, useUpright } from "./mapCamera";
 import { useWorldClock } from "./prefs";
 import { RaidCrown } from "./RaidParts";
@@ -74,6 +75,10 @@ export const ZOOM_MAX = 2.2;
 const TWIST_START = 0.14;
 /** How fast a flung map slows (Reanimated withDecay; closer to 1 glides further). */
 const DECELERATION = 0.994;
+/** A pan that ends this soon (ms) after a pinch or twist moved does not glide: lifting two fingers unevenly is not a fling. */
+const NO_FLING_AFTER_MULTI_MS = 150;
+/** The fastest a fling may glide, screen points a second. */
+const FLING_MAX = 5000;
 /** Following you to a new fix, and flying back to you. */
 const FOLLOW_MS = 900;
 const RECENTRE_MS = 480;
@@ -160,6 +165,10 @@ export default function WorldMap(props: Props) {
   const meX = useSharedValue(size / 2);
   const meY = useSharedValue(size / 2);
   const twisting = useSharedValue(false);
+  // When a pinch or twist last moved the camera (ms), so a pan ending just after it does not fling.
+  const multiAt = useSharedValue(-1e9);
+  // The screen spot a double tap zooms about while its zoom animates (null when none).
+  const tapFocal = useSharedValue<{ x: number; y: number } | null>(null);
   const camera = useMemo(() => ({ zoom, rot }), [zoom, rot]);
 
   // Mirrored to JS for the "Back to me" button (GameRoot shows it).
@@ -245,7 +254,9 @@ export default function WorldMap(props: Props) {
     recentre();
   }, [signal]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const gesture = useMemo(() => {
+  // What a finger does to the camera, as worklets: the gestures call these,
+  // and so does the scripted bench (mapBenchRunner.tsx).
+  const ops = useMemo(() => {
     // Keeps the board point under the focal point (screen fx, fy) fixed while
     // the zoom or the turn changes from (s0, r0) to (s1, r1). While the camera
     // follows the player, zoom and turn are about the player instead, so the
@@ -262,37 +273,106 @@ export default function WorldMap(props: Props) {
       cancelAnimation(camX);
       cancelAnimation(camY);
     };
+    // A double tap's zoom stops when fingers take over.
+    const stopTapZoom = () => {
+      "worklet";
+      if (tapFocal.get() === null) return;
+      tapFocal.set(null);
+      cancelAnimation(zoom);
+    };
+    const touchDown = () => {
+      "worklet";
+      stopGlide();
+      stopTapZoom();
+      cancelAnimation(rot);
+      follow.set(false);
+    };
+    const panBy = (dx: number, dy: number) => {
+      "worklet";
+      const c = panned({ x: camX.get(), y: camY.get(), zoom: zoom.get(), rot: rot.get() }, dx, dy);
+      camX.set(Math.max(panLo, Math.min(panHi, c.x)));
+      camY.set(Math.max(panLo, Math.min(panHi, c.y)));
+    };
+    const fling = (vx: number, vy: number) => {
+      "worklet";
+      // Momentum: the fling's speed carried on in board points, slowing.
+      // (panned() on a velocity gives the camera's own velocity, from 0.)
+      if (Date.now() - multiAt.get() < NO_FLING_AFTER_MULTI_MS) return;
+      const speed = Math.hypot(vx, vy);
+      const k = speed > FLING_MAX ? FLING_MAX / speed : 1;
+      const v = panned({ x: 0, y: 0, zoom: zoom.get(), rot: rot.get() }, vx * k, vy * k);
+      camX.set(withDecay({ velocity: v.x, deceleration: DECELERATION, clamp: [panLo, panHi] }));
+      camY.set(withDecay({ velocity: v.y, deceleration: DECELERATION, clamp: [panLo, panHi] }));
+    };
+    const pinchBy = (fx: number, fy: number, scaleChange: number) => {
+      "worklet";
+      stopTapZoom();
+      multiAt.set(Date.now());
+      const s0 = zoom.get();
+      const s1 = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, s0 * scaleChange));
+      if (s1 === s0) return;
+      const r = rot.get();
+      about(fx, fy, s0, r, s1, r);
+      zoom.set(s1);
+    };
+    const twistBy = (x: number, y: number, rotChange: number) => {
+      "worklet";
+      multiAt.set(Date.now());
+      const s = zoom.get();
+      const r0 = rot.get();
+      const r1 = r0 + rotChange;
+      about(x, y, s, r0, s, r1);
+      rot.set(r1);
+    };
+    const doubleTap = (x: number, y: number) => {
+      "worklet";
+      const s0 = zoom.get();
+      const s1 = Math.min(ZOOM_MAX, s0 * 1.6);
+      if (s1 === s0) return;
+      // The camera follows the zoom frame by frame (the reaction below), so the
+      // tapped spot stays under the finger the whole way, not just at the end.
+      tapFocal.set({ x, y });
+      zoom.set(
+        withTiming(s1, { duration: 220, easing: Easing.out(Easing.cubic) }, (finished) => {
+          // Not when a newer double tap took over (it has its own spot).
+          if (finished) tapFocal.set(null);
+        }),
+      );
+    };
+    return { about, stopGlide, touchDown, panBy, fling, pinchBy, twistBy, doubleTap };
+  }, [ax, ay, panLo, panHi, camX, camY, zoom, rot, follow, multiAt, tapFocal]);
+
+  useAnimatedReaction(
+    () => zoom.get(),
+    (now, before) => {
+      const f = tapFocal.get();
+      if (f === null || before === null || now === before) return;
+      const r = rot.get();
+      ops.about(f.x, f.y, before, r, now, r);
+    },
+    [ops],
+  );
+
+  const gesture = useMemo(() => {
     const pan = Gesture.Pan()
       .minDistance(8)
       .maxPointers(2)
       .onStart(() => {
-        stopGlide();
-        cancelAnimation(rot);
-        follow.set(false);
+        ops.touchDown();
       })
       .onChange((e) => {
-        const c = panned({ x: camX.get(), y: camY.get(), zoom: zoom.get(), rot: rot.get() }, e.changeX, e.changeY);
-        camX.set(Math.max(panLo, Math.min(panHi, c.x)));
-        camY.set(Math.max(panLo, Math.min(panHi, c.y)));
+        ops.panBy(e.changeX, e.changeY);
       })
       .onEnd((e) => {
-        // Momentum: the fling's speed carried on in board points, slowing.
-        // (panned() on a velocity gives the camera's own velocity, from 0.)
-        const v = panned({ x: 0, y: 0, zoom: zoom.get(), rot: rot.get() }, e.velocityX, e.velocityY);
-        camX.set(withDecay({ velocity: v.x, deceleration: DECELERATION, clamp: [panLo, panHi] }));
-        camY.set(withDecay({ velocity: v.y, deceleration: DECELERATION, clamp: [panLo, panHi] }));
+        ops.fling(e.velocityX, e.velocityY);
       });
     const pinch = Gesture.Pinch()
       .onStart(() => {
-        stopGlide();
+        ops.stopGlide();
+        multiAt.set(Date.now());
       })
       .onChange((e) => {
-        const s0 = zoom.get();
-        const s1 = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, s0 * e.scaleChange));
-        if (s1 === s0) return;
-        const r = rot.get();
-        about(e.focalX, e.focalY, s0, r, s1, r);
-        zoom.set(s1);
+        ops.pinchBy(e.focalX, e.focalY, e.scaleChange);
       });
     const twist = Gesture.Rotation()
       .onStart(() => {
@@ -306,11 +386,7 @@ export default function WorldMap(props: Props) {
           runOnJS(Haptics.selectionAsync)();
           return;
         }
-        const s = zoom.get();
-        const r0 = rot.get();
-        const r1 = r0 + e.rotationChange;
-        about(e.anchorX, e.anchorY, s, r0, s, r1);
-        rot.set(r1);
+        ops.twistBy(e.anchorX, e.anchorY, e.rotationChange);
       })
       .onFinalize(() => {
         twisting.set(false);
@@ -321,15 +397,12 @@ export default function WorldMap(props: Props) {
       .maxDelay(250)
       .onEnd((e, ok) => {
         if (!ok) return;
-        const s0 = zoom.get();
-        const s1 = Math.min(ZOOM_MAX, s0 * 1.6);
-        if (s1 === s0) return;
-        const r = rot.get();
-        about(e.x, e.y, s0, r, s1, r);
-        zoom.set(withTiming(s1, { duration: 220, easing: Easing.out(Easing.cubic) }));
+        ops.doubleTap(e.x, e.y);
       });
     return Gesture.Simultaneous(pan, pinch, twist, doubleTap);
-  }, [ax, ay, panLo, panHi, camX, camY, zoom, rot, follow, twisting]);
+  }, [ops, rot, twisting, multiAt]);
+
+  useMapBench(ops, width, height, !!origin, recentre, () => ({ pins: points.length, rooms: (props.rooms ?? []).length }));
 
   const worldStyle = useAnimatedStyle(() => ({
     // A point p on the board lands at anchor + R(rot) * zoom * (p - cam).

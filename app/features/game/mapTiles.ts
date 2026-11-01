@@ -141,3 +141,20 @@ export function viewBitmapBytes(tiles: number, zoom: number, pixelRatio: number,
   const side = CELL_M * ptsPerM * rasterDensity(zoom, pixelRatio);
   return tiles * side * side * 4;
 }
+
+/** How far past a level's edge the zoom must go before the drawing density follows it (a share of the edge). */
+export const DENSITY_HYSTERESIS = 0.08;
+
+/**
+ * rasterDensity with hysteresis: the density being drawn (`current`) is kept
+ * until the zoom is clearly into another level, so a zoom resting near an
+ * edge (0.85, 1.4) does not redraw every tile back and forth.
+ */
+export function rasterDensityKeeping(zoom: number, pixelRatio: number, current: number): number {
+  const next = rasterDensity(zoom, pixelRatio);
+  if (next === current) return current;
+  const lo = rasterDensity(zoom * (1 - DENSITY_HYSTERESIS), pixelRatio);
+  const hi = rasterDensity(zoom * (1 + DENSITY_HYSTERESIS), pixelRatio);
+  // Still within reach of the current level on either side: keep it.
+  return lo === current || hi === current ? current : next;
+}
