@@ -22,7 +22,8 @@ import { detailRows, FOIL_STOPS, FOIL_TURN_MS, tierName, tileLabel } from "@/fea
 import type { CodexCard } from "@/features/game/wire";
 
 import { Chip, GameIconButton, GamePanel, MAX_FONT_SCALE } from "./kit";
-import { edgeOf, GF, GP, realmColor, realmIcon, tierColor } from "./theme";
+import { ELEVATION, labelOn, RADIUS, SURFACES, useLook } from "./look";
+import { GF, GP, realmColor, realmIcon, tierColor } from "./theme";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 /** Swift spring(duration: 0.3) has no bounce: response 0.3, damping 1. */
@@ -65,6 +66,7 @@ export function FoilFrame({ radius, lineWidth, face, children }: { radius: numbe
 export function CodexTile({ card, width, onPress }: { card: CodexCard; width: number; onPress: () => void }) {
   const styles = useThemedStyles(STYLE_PAIR);
   const colour = realmColor(card.realm);
+  const look = useLook();
   const body = (
     <View style={styles.tileBody}>
       <View style={[styles.symbol, { backgroundColor: colour }]}>
@@ -75,7 +77,7 @@ export function CodexTile({ card, width, onPress }: { card: CodexCard; width: nu
       </Text>
       <View style={styles.tierRow}>
         <View style={[styles.tier, { backgroundColor: tierColor(card.tier) }]}>
-          <Text style={styles.tierText} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+          <Text style={[styles.tierText, { color: labelOn(tierColor(card.tier)) }]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
             {tierName(card.tier).toUpperCase()}
           </Text>
         </View>
@@ -88,10 +90,9 @@ export function CodexTile({ card, width, onPress }: { card: CodexCard; width: nu
     </View>
   );
   return (
-    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={tileLabel(card)} accessibilityHint="Shows the card" style={{ width, paddingBottom: 4 }}>
-      <View style={[StyleSheet.absoluteFill, { top: 4, borderRadius: 16, backgroundColor: edgeOf(colour) }]} />
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={tileLabel(card)} accessibilityHint="Shows the card" style={({ pressed }) => [{ width, borderRadius: RADIUS.button, transform: [{ scale: pressed ? 0.96 : 1 }] }, !look.dark && ELEVATION.low]}>
       {card.foil ? (
-        <FoilFrame radius={16} lineWidth={4} face={GP.cream}>
+        <FoilFrame radius={RADIUS.button} lineWidth={4} face={look.surface}>
           {body}
         </FoilFrame>
       ) : (
@@ -126,7 +127,7 @@ export default function CodexDetail({ card, onClose }: { card: CodexCard; onClos
               {card.foil ? <Chip text="Foil" color={GP.sunDeep} /> : null}
               <Chip text={tierName(card.tier)} color={tierColor(card.tier)} />
               <View style={{ flex: 1 }} />
-              <GameIconButton icon="close" color={GP.berry} diameter={38} onPress={onClose} accessibilityLabel="Close card" />
+              <GameIconButton icon="close" diameter={38} onPress={onClose} accessibilityLabel="Close the card" />
             </View>
             <View importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
               {card.foil ? (
@@ -155,23 +156,39 @@ export default function CodexDetail({ card, onClose }: { card: CodexCard; onClos
   );
 }
 
-const STYLE_PAIR = themedStyles({
-  glow: { shadowColor: GP.sun, shadowOpacity: 0.6, shadowRadius: 4, shadowOffset: { width: 0, height: 0 }, backgroundColor: GP.cream },
-  center: { alignItems: "center", justifyContent: "center" },
-  plain: { borderRadius: 16, borderWidth: 2, backgroundColor: GP.cream, overflow: "hidden" },
-  tileBody: { padding: 8, gap: 6 },
-  symbol: { minHeight: 50, borderRadius: 12, alignItems: "center", justifyContent: "center" },
-  tileName: { minHeight: 34, fontFamily: GF.bold, fontSize: 13, color: GP.ink, textAlign: "center", textAlignVertical: "center" },
-  tierRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4 },
-  tier: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 999 },
-  tierText: { fontFamily: GF.display, fontSize: 10, color: "#FFFFFF" },
-  times: { fontFamily: GF.bold, fontSize: 11, color: "rgba(31,59,77,0.6)" },
-  overlay: { backgroundColor: "rgba(0,0,0,0.45)", alignItems: "center", justifyContent: "center", padding: 24 },
-  detail: { width: "100%", maxWidth: 360 },
-  detailHead: { flexDirection: "row", alignItems: "center", gap: 8 },
-  art: { minHeight: 130, borderRadius: 20, alignItems: "center", justifyContent: "center" },
-  detailName: { fontFamily: GF.display, fontSize: 26, color: GP.ink, textAlign: "center" },
-  row: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 8 },
-  rowLabel: { fontFamily: GF.body, fontSize: 15, color: "rgba(31,59,77,0.65)" },
-  rowValue: { fontFamily: GF.bold, fontSize: 15, color: GP.ink, flexShrink: 1, textAlign: "right" },
-});
+const L = SURFACES.light;
+const D = SURFACES.dark;
+
+const STYLE_PAIR = themedStyles(
+  {
+    glow: { shadowColor: GP.sun, shadowOpacity: 0.6, shadowRadius: 4, shadowOffset: { width: 0, height: 0 }, backgroundColor: L.surface },
+    center: { alignItems: "center", justifyContent: "center" },
+    plain: { borderRadius: RADIUS.button, borderWidth: 2, backgroundColor: L.surface, overflow: "hidden" },
+    tileBody: { padding: 8, gap: 6 },
+    symbol: { minHeight: 50, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+    tileName: { minHeight: 34, fontFamily: GF.bold, fontSize: 13, lineHeight: 16, color: L.text, textAlign: "center", textAlignVertical: "center" },
+    tierRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4 },
+    tier: { paddingHorizontal: 7, paddingVertical: 1, borderRadius: RADIUS.chip },
+    tierText: { fontFamily: GF.bold, fontSize: 12, lineHeight: 15, letterSpacing: 0.4 },
+    times: { fontFamily: GF.bold, fontSize: 12, color: L.textMuted },
+    overlay: { backgroundColor: L.scrim, alignItems: "center", justifyContent: "center", padding: 24 },
+    detail: { width: "100%", maxWidth: 360 },
+    detailHead: { flexDirection: "row", alignItems: "center", gap: 8 },
+    art: { minHeight: 130, borderRadius: RADIUS.card, alignItems: "center", justifyContent: "center" },
+    detailName: { fontFamily: GF.display, fontSize: 28, lineHeight: 32, color: L.text, textAlign: "center" },
+    row: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 8, paddingVertical: 6, borderTopWidth: 1, borderTopColor: L.hairline },
+    rowLabel: { fontFamily: GF.regular, fontSize: 15, color: L.textMuted },
+    rowValue: { fontFamily: GF.body, fontSize: 15, color: L.text, flexShrink: 1, textAlign: "right" },
+  },
+  {
+    glow: { backgroundColor: D.surface },
+    plain: { backgroundColor: D.surface },
+    tileName: { color: D.text },
+    times: { color: D.textMuted },
+    overlay: { backgroundColor: D.scrim },
+    detailName: { color: D.text },
+    row: { borderTopColor: D.hairline },
+    rowLabel: { color: D.textMuted },
+    rowValue: { color: D.text },
+  },
+);

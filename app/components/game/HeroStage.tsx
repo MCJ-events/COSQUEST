@@ -11,6 +11,7 @@ import Animated, { cancelAnimation, Easing, useAnimatedStyle, useReducedMotion, 
 import Svg, { Circle, Defs, Ellipse, G, LinearGradient, Path, RadialGradient, Rect, Stop } from "react-native-svg";
 
 import { withAlpha } from "./kit";
+import { ELEVATION, RADIUS, SURFACES, useLook } from "./look";
 import { edgeOf, GF, GP } from "./theme";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
@@ -111,11 +112,11 @@ export function HeroSlot({ label, locked, children, a11y }: { label: string; loc
   const styles = useThemedStyles(STYLE_PAIR);
   return (
     <View accessible accessibilityLabel={a11y ?? (locked ? `${label}, locked` : label)} style={{ alignItems: "center", gap: 6 }}>
-      <View style={[styles.slot, { backgroundColor: locked ? "rgba(255,255,255,0.45)" : "rgba(255,255,255,0.9)" }]}>
+      <View style={[styles.slot, locked && styles.slotLocked]}>
         <View style={{ opacity: locked ? 0.35 : 1 }}>{children}</View>
         {locked ? (
           <View style={styles.lock}>
-            <Ionicons name="lock-closed" size={11} color={GP.mist} />
+            <Ionicons name="lock-closed" size={11} color={SURFACES.light.textMuted} />
           </View>
         ) : null}
       </View>
@@ -127,22 +128,32 @@ export function HeroSlot({ label, locked, children, a11y }: { label: string; loc
 }
 
 export function SlotIcon({ name }: { name: ComponentProps<typeof Ionicons>["name"] }) {
-  return <Ionicons name={name} size={24} color={GP.mist} />;
+  const look = useLook();
+  return <Ionicons name={name} size={24} color={look.textMuted} />;
 }
 
-const STYLE_PAIR = themedStyles({
-  slot: {
-    width: 70,
-    height: 70,
-    borderRadius: 18,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: GP.navy,
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 1,
+const L = SURFACES.light;
+const D = SURFACES.dark;
+
+const STYLE_PAIR = themedStyles(
+  {
+    slot: {
+      width: 70,
+      height: 70,
+      borderRadius: RADIUS.card,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: L.surface,
+      ...ELEVATION.low,
+    },
+    slotLocked: { backgroundColor: L.surfaceAlt, shadowOpacity: 0, elevation: 0, boxShadow: "none" },
+    lock: { position: "absolute", top: 4, right: 4, padding: 4, borderRadius: 10, backgroundColor: L.surface },
+    slotLabel: { fontFamily: GF.bold, fontSize: 12, lineHeight: 15, letterSpacing: 0.6, color: L.textMuted },
   },
-  lock: { position: "absolute", top: 4, right: 4, padding: 5, borderRadius: 12, backgroundColor: "#FFFFFF" },
-  slotLabel: { fontFamily: GF.display, fontSize: 10, letterSpacing: 0.8, color: GP.mist },
-});
+  {
+    slot: { backgroundColor: D.surface, borderWidth: 1, borderColor: D.hairline, shadowOpacity: 0, elevation: 0, boxShadow: "none" },
+    slotLocked: { backgroundColor: D.surfaceAlt },
+    lock: { backgroundColor: D.surface },
+    slotLabel: { color: D.textMuted },
+  },
+);

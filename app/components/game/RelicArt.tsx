@@ -16,27 +16,24 @@ import Svg, { Circle, Defs, G, LinearGradient, Path, RadialGradient, Rect, Stop 
 import { bandOffset, crystalPath, crystalPerimeter } from "@/features/game/crystal";
 import { RELIC_MAX_LEVEL } from "@/features/game/relics";
 
+import { contrast, edgeColor, RARITY, rarityOf, SURFACES, useLook } from "./look";
 import { edgeOf, GF, GP } from "./theme";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
-/** RelicLook.rarityColor. */
+/** A rarity's colour: the art direction's one set (lookTokens.ts RARITY), the same on the map, the bag and the drop beam. */
 export function rarityColor(rarity: string | null | undefined): string {
-  switch (rarity) {
-    case "legendary":
-      return "#FF6B33";
-    case "epic":
-      return GP.sun;
-    case "rare":
-      return GP.rare;
-    default:
-      return GP.sky;
-  }
+  return RARITY[rarityOf(rarity)];
 }
 
 /** The rarity's colour for text on cream (the sun is too light there). */
 export function rarityInk(rarity: string | null | undefined): string {
+  // The rarity's colour, darkened until it reads as text on cream paper (AA).
   const c = rarityColor(rarity);
-  return c === GP.sun ? GP.sunDeep : c === GP.sky ? GP.skyDeep : c;
+  for (let by = 1; by > 0.3; by -= 0.06) {
+    const ink = by === 1 ? c : edgeColor(c, by);
+    if (contrast(ink, SURFACES.light.surface) >= 4.5) return ink;
+  }
+  return SURFACES.light.text;
 }
 
 /** The shard purple. */
@@ -186,7 +183,10 @@ function facetPath(w: number, h: number): string {
 export function RelicArt({ kind, rarity, owned = true, size = 80 }: { kind: string; rarity: string; owned?: boolean; size?: number }) {
   const styles = useThemedStyles(STYLE_PAIR);
   const gid = `ra${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
-  const tint = owned ? rarityColor(rarity) : GP.navy;
+  const look = useLook();
+  // Not found yet: a dim crystal in the paper's own shade, not a navy hole.
+  const dim = look.dark ? "#2E3A52" : "#CFC6B6";
+  const tint = owned ? rarityColor(rarity) : dim;
   const w = size;
   const h = size * 1.08;
   const base = size * 0.05;
@@ -209,7 +209,7 @@ export function RelicArt({ kind, rarity, owned = true, size = 80 }: { kind: stri
                   <Stop key="1" offset="0.5" stopColor={tint} stopOpacity={1} />,
                   <Stop key="2" offset="1" stopColor={edgeOf(tint)} stopOpacity={1} />,
                 ]
-              : [<Stop key="0" offset="0" stopColor={GP.navy} stopOpacity={0.9} />, <Stop key="1" offset="1" stopColor={GP.navyEdge} stopOpacity={1} />]}
+              : [<Stop key="0" offset="0" stopColor={dim} stopOpacity={0.9} />, <Stop key="1" offset="1" stopColor={edgeOf(dim, 0.85)} stopOpacity={1} />]}
           </LinearGradient>
           <LinearGradient id={`${gid}m`} x1="0" y1="0" x2="1" y2="1">
             <Stop offset="0" stopColor={GP.cream} stopOpacity={1} />
@@ -235,12 +235,12 @@ export function RelicArt({ kind, rarity, owned = true, size = 80 }: { kind: stri
             <WeaponLayers kind={kind} fill="#FFFFFF" ink={GP.ink} lw={0} opacity={0.13} />
           )}
         </G>
-        <Path d={frame} fill="none" stroke={GP.ink} strokeOpacity={owned ? 0.9 : 0.5} strokeWidth={outer} />
+        <Path d={frame} fill="none" stroke={GP.ink} strokeOpacity={owned ? 0.9 : 0.25} strokeWidth={outer} />
         {owned && rarity === "legendary" ? <LegendaryRim frame={frame} perimeter={crystalPerimeter(outer / 2, outer / 2, w - outer, h - outer)} size={size} /> : null}
       </Svg>
       {owned ? null : (
         <View style={[styles.mark, { height: h }]}>
-          <Text style={{ fontFamily: GF.display, fontSize: size * 0.3, color: "rgba(255,255,255,0.5)" }}>?</Text>
+          <Text style={{ fontFamily: GF.display, fontSize: size * 0.3, color: look.dark ? "rgba(255,255,255,0.45)" : "rgba(28,43,58,0.4)" }}>?</Text>
         </View>
       )}
     </View>

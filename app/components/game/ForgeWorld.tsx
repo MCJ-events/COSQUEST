@@ -43,20 +43,24 @@ import { bagItems, dropShown, STARTER } from "@/features/game3d/held";
 import { MANIFEST, setLocalPick, useCatalogueOn, useLocalPick } from "@/features/game3d/heldDevice";
 
 import ForgeModel, { thumbSource, useForgeEntry } from "./ForgeModel";
+import { GameBackdrop } from "./GameBackdrop";
 import { GameButton, MAX_FONT_SCALE } from "./kit";
 import { SummonButton } from "./SummonAR";
 import { MapPin, PIN_SPOT } from "./mapCamera";
 import { playSound } from "./sound";
+import { ACCENT, ELEVATION, RADIUS, RARITY, SURFACES, TEXT_ON_DARK, TEXT_ON_LIGHT, useLook } from "./look";
+import { rarityInk } from "./RelicArt";
 import { GF, GP } from "./theme";
 
 /** How close a find must be to claim it; the server has the last word (its own reach). */
 export const CLAIM_REACH_M = 40;
 
-const RARITY_COLOR = ["#9AA7B0", GP.skyDeep, GP.rare, GP.sun];
+/** By rank (common, rare, epic, legendary): the art direction's one rarity set (lookTokens.ts). */
+const RARITY_COLOR = [RARITY.common, RARITY.rare, RARITY.epic, RARITY.legendary];
 /** The bag stage's bottom band for the name, under the model's feet. */
 const NAME_BAND = 40;
 /** A bag tile that is neither looked at nor worn. */
-const TILE_EDGE = "rgba(31,59,77,0.14)";
+const TILE_EDGE = "transparent";
 export const rarityColor = (r: string | null | undefined) => RARITY_COLOR[Math.max(0, rarityRank(r))] ?? RARITY_COLOR[0];
 
 /** Whether the server has Forge in the world switched on for this player. */
@@ -110,9 +114,11 @@ function DropPin({ drop, left, top, onPress }: { drop: ForgeDrop; left: number; 
   const ring = rarityColor(drop.rarity);
   const bob = useSharedValue(0);
   useEffect(() => {
-    bob.set(withRepeat(withSequence(withTiming(1, { duration: 900 }), withTiming(0, { duration: 900 })), -1));
+    // A slow 1.6 s glow and bob in the find's rarity colour (art direction 6.4).
+    bob.set(withRepeat(withSequence(withTiming(1, { duration: 800 }), withTiming(0, { duration: 800 })), -1));
   }, [bob]);
   const style = useAnimatedStyle(() => ({ transform: [{ translateY: -4 * bob.get() }, { rotate: "45deg" }] }));
+  const glow = useAnimatedStyle(() => ({ opacity: 0.18 + 0.22 * bob.get(), transform: [{ translateY: -4 * bob.get() }, { rotate: "45deg" }, { scale: 1.1 + 0.12 * bob.get() }] }));
   const url = absUrl(drop.thumbnail_url);
   return (
     <Pressable
@@ -122,12 +128,13 @@ function DropPin({ drop, left, top, onPress }: { drop: ForgeDrop; left: number; 
       accessibilityRole="button"
       accessibilityLabel={`Forge find: ${drop.name}, ${drop.rarity ?? "common"}`}
       testID={`forge-drop-${drop.element_id.slice(0, 8)}`}>
+      <Animated.View pointerEvents="none" style={[styles.dropGlow, { backgroundColor: ring }, glow]} />
       <Animated.View style={[styles.dropDiamond, { borderColor: ring }, style]}>
         <View style={{ transform: [{ rotate: "-45deg" }], width: 40, height: 40 }}>
           {url ? <Image source={{ uri: url }} style={{ width: 40, height: 40 }} contentFit="contain" /> : <Ionicons name="flash" size={26} color={ring} style={{ margin: 7 }} />}
         </View>
       </Animated.View>
-      <View style={[styles.dropShadow, { backgroundColor: ring }]} />
+      <View style={styles.dropShadow} />
     </Pressable>
   );
 }
@@ -211,6 +218,8 @@ export function ForgeClaim({ drop, onClose, onOpenBag }: { drop: ForgeDrop; onCl
   const near = away !== null && away <= CLAIM_REACH_M;
   const ring = rarityColor(drop.rarity);
   const stats = entry?.gameplay;
+  const look = useLook();
+  const ink = look.dark ? ring : rarityInk(drop.rarity);
 
   const doClaim = async () => {
     setPhase({ kind: "claiming" });
@@ -235,12 +244,13 @@ export function ForgeClaim({ drop, onClose, onOpenBag }: { drop: ForgeDrop; onCl
   };
 
   return (
-    <Animated.View entering={FadeIn.duration(200)} style={[StyleSheet.absoluteFill, styles.claimRoot, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 16 }]}>
+    <Animated.View entering={FadeIn.duration(200)} style={[StyleSheet.absoluteFill, styles.claimRoot, { backgroundColor: look.screen, paddingTop: insets.top + 16, paddingBottom: insets.bottom + 16 }]}>
+      <GameBackdrop tint={ring} />
       <View style={styles.claimTop}>
-        <Text style={[styles.kicker, { color: ring }]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+        <Text style={[styles.kicker, { color: ink }]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
           {phase.kind === "won" ? (phase.got.duplicate ? "ANOTHER ONE" : "YOURS NOW") : `FORGE FIND · ${(drop.rarity ?? "common").toUpperCase()}`}
         </Text>
-        <Text style={styles.claimName} numberOfLines={2} adjustsFontSizeToFit maxFontSizeMultiplier={MAX_FONT_SCALE} accessibilityRole="header">
+        <Text style={[styles.claimName, { color: look.text }]} numberOfLines={2} adjustsFontSizeToFit maxFontSizeMultiplier={MAX_FONT_SCALE} accessibilityRole="header">
           {drop.name}
         </Text>
       </View>
@@ -259,23 +269,23 @@ export function ForgeClaim({ drop, onClose, onOpenBag }: { drop: ForgeDrop; onCl
       <View style={styles.claimActions}>
         {phase.kind === "look" || phase.kind === "claiming" ? (
           <>
-            <Text style={styles.claimHint} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-              {near ? "It's right here. Take it!" : away !== null ? `${distanceText(away)} away. Walk closer to claim it.` : "Finding you…"}
+            <Text style={[styles.claimHint, { color: look.text }]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+              {near ? "It's right here. Claim it." : away !== null ? `${distanceText(away)} away. Walk closer to claim it.` : "Finding you…"}
             </Text>
             <GameButton title={phase.kind === "claiming" ? "Claiming…" : "Claim"} color={ring} disabled={!near || phase.kind === "claiming"} onPress={() => void doClaim()} accessibilityLabel="Claim this Forge find" />
             <SummonButton entry={entry} />
           </>
         ) : phase.kind === "won" ? (
           <Animated.View entering={FadeInDown} style={{ gap: 10, width: "100%", alignItems: "center" }}>
-            <Text style={styles.claimHint} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+            <Text style={[styles.claimHint, { color: look.text }]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
               {phase.got.duplicate ? `You had one already: +${phase.got.coins} coins.` : "It's in your Collection, under Forge."}
             </Text>
-            {drop.type === "weapon" ? <GameButton title="Equip it" color={GP.mint} onPress={() => void doEquip()} accessibilityLabel="Equip this weapon" /> : null}
+            {drop.type === "weapon" ? <GameButton title="Equip it" color={ACCENT.mint.fill} onPress={() => void doEquip()} accessibilityLabel="Equip this weapon" /> : null}
             <SummonButton entry={entry} />
             <GameButton
               title="Open Collection"
               small
-              color={GP.skyDeep}
+              color={ACCENT.sky.fill}
               onPress={() => {
                 onClose();
                 onOpenBag();
@@ -284,14 +294,14 @@ export function ForgeClaim({ drop, onClose, onOpenBag }: { drop: ForgeDrop; onCl
           </Animated.View>
         ) : (
           <>
-            <Text style={[styles.claimHint, { color: "#FFD0D0" }]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+            <Text style={[styles.claimHint, { color: look.dark ? TEXT_ON_DARK.danger : TEXT_ON_LIGHT.danger }]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
               {phase.reason}
             </Text>
-            <GameButton title="Try again" small color={GP.skyDeep} onPress={() => setPhase({ kind: "look" })} />
+            <GameButton title="Try again" small color={ACCENT.sky.fill} onPress={() => setPhase({ kind: "look" })} />
           </>
         )}
-        <Pressable onPress={onClose} hitSlop={10} accessibilityRole="button" accessibilityLabel="Close">
-          <Text style={styles.claimClose}>Close</Text>
+        <Pressable onPress={onClose} hitSlop={10} accessibilityRole="button" accessibilityLabel="Leave it and go back to the map">
+          <Text style={[styles.claimClose, { color: look.textMuted }]}>Back to the map</Text>
         </Pressable>
       </View>
       {phase.kind === "won" ? (
@@ -320,13 +330,14 @@ function Sunburst({ color }: { color: string }) {
 }
 
 function Stat({ label, value, unit, text }: { label: string; value?: number | null; unit?: string; text?: string }) {
+  const look = useLook();
   if (text === undefined && (value === null || value === undefined)) return null;
   return (
-    <View style={styles.stat}>
-      <Text style={styles.statValue} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+    <View style={[styles.stat, { backgroundColor: look.surface }, look.dark ? { borderWidth: 1, borderColor: look.hairline } : ELEVATION.low]}>
+      <Text style={[styles.statValue, { color: look.text }]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
         {text ?? `${Math.round((value as number) * 10) / 10}${unit ?? ""}`}
       </Text>
-      <Text style={styles.statLabel} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+      <Text style={[styles.statLabel, { color: look.textMuted }]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
         {label}
       </Text>
     </View>
@@ -343,6 +354,7 @@ function Stat({ label, value, unit, text }: { label: string; value?: number | nu
  */
 export function ForgeBagPanel({ initial = "items" }: { initial?: "items" | "avatar" }) {
   const insets = useSafeAreaInsets();
+  const look = useLook();
   const [tab, setTab] = useState<"items" | "avatar">(initial);
   const inventory = useForgeWorld((s) => s.inventory);
   const entries = useForgeWorld((s) => s.entries);
@@ -406,15 +418,15 @@ export function ForgeBagPanel({ initial = "items" }: { initial?: "items" | "avat
               Haptics.selectionAsync().catch(() => {});
               setTab(t);
             }}
-            style={[styles.tab, tab === t && styles.tabOn]}
+            style={[styles.tab, { backgroundColor: tab === t ? look.text : look.surfaceAlt }]}
             accessibilityRole="tab"
             accessibilityState={{ selected: tab === t }}>
-            <Text style={[styles.tabText, tab === t && { color: "#FFF" }]}>{t === "items" ? `Weapons (${bag.list.length})` : "Characters"}</Text>
+            <Text style={[styles.tabText, { color: tab === t ? look.surface : look.text }]} maxFontSizeMultiplier={MAX_FONT_SCALE}>{t === "items" ? `Weapons (${bag.list.length})` : "Characters"}</Text>
           </Pressable>
         ))}
       </View>
       {sel ? (
-        <View style={styles.bagStage}>
+        <View style={[styles.bagStage, { backgroundColor: look.surfaceAlt }]}>
           {/* The model stands above the name band, so the name never covers its feet. */}
           <ForgeModel
             entry={sel}
@@ -426,8 +438,8 @@ export function ForgeBagPanel({ initial = "items" }: { initial?: "items" | "avat
             size={230}
             distance={sel.type === "character" ? 2.7 : 2.6}
           />
-          <View style={styles.bagNameBand}>
-            <Text style={styles.bagName} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+          <View style={[styles.bagNameBand, { backgroundColor: look.dark ? "rgba(18,26,38,0.72)" : "rgba(255,253,248,0.88)" }]}>
+            <Text style={[styles.bagName, { color: look.text }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} maxFontSizeMultiplier={MAX_FONT_SCALE}>
               {sel.name}
             </Text>
             {isOn ? (
@@ -441,23 +453,26 @@ export function ForgeBagPanel({ initial = "items" }: { initial?: "items" | "avat
           </View>
         </View>
       ) : (
-        <View style={[styles.bagStage, styles.centre]}>
-          <Text style={styles.empty} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-            {tab === "items" ? "Nothing yet. Forge finds glow on the map: walk up and claim one." : "No characters to wear yet."}
+        <View style={[styles.bagStage, styles.centre, { backgroundColor: look.surfaceAlt }]}>
+          <Ionicons name={tab === "items" ? "map" : "person"} size={28} color={look.textMuted} />
+          <Text style={[styles.empty, { color: look.text }]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+            {tab === "items"
+              ? "No weapons yet. Forge finds glow on the map: walk up to one and claim it, then equip it here to fight with it."
+              : "No heroes to wear yet. New ones arrive from the Forge."}
           </Text>
         </View>
       )}
       {sel ? (
         <View style={styles.bagActions}>
           {sel.type === "character" && sel.rigged
-            ? (["idle", "walk", "celebrate"] as const).map((c) => <GameButton key={c} title={c[0].toUpperCase() + c.slice(1)} small color={clip === c ? GP.sun : GP.slate} onPress={() => setClip(c)} />)
+            ? (["idle", "walk", "celebrate"] as const).map((c) => <GameButton key={c} title={c[0].toUpperCase() + c.slice(1)} small color={clip === c ? ACCENT.sky.fill : look.surfaceAlt} onPress={() => setClip(c)} accessibilityLabel={`Play ${c}`} />)
             : null}
-          <GameButton title={isOn ? (slot === "avatar" ? "Take off" : starterSlug ? "Put down" : "Unequip") : slot === "avatar" ? "Wear" : starterSlug ? "Hold" : "Equip"} small color={isOn ? GP.berry : GP.mint} onPress={() => void toggle()} />
+          <GameButton title={isOn ? (slot === "avatar" ? "Take off" : starterSlug ? "Put down" : "Unequip") : slot === "avatar" ? "Wear" : starterSlug ? "Hold" : "Equip"} small color={isOn ? ACCENT.berry.fill : ACCENT.mint.fill} onPress={() => void toggle()} />
           {/* "See it here": in the room through the camera (iOS; Android later). */}
           <SummonButton entry={sel} />
         </View>
       ) : null}
-      {problem ? <Text style={[styles.empty, { color: GP.berry }]}>{problem}</Text> : null}
+      {problem ? <Text style={[styles.empty, { color: look.dark ? TEXT_ON_DARK.danger : TEXT_ON_LIGHT.danger, marginTop: 8 }]}>{problem}</Text> : null}
       <ScrollView contentContainerStyle={[styles.grid, { paddingBottom: insets.bottom + 24 }]}>
         {list.map(({ id, count }) => {
           const e = all.find((x) => x.id === id);
@@ -466,7 +481,7 @@ export function ForgeBagPanel({ initial = "items" }: { initial?: "items" | "avat
           const on = id.startsWith(STARTER) ? localPick === id.slice(STARTER.length) && !equipped.weapon : equipped[slot] === id;
           // One meaning per colour: navy is the one you are looking at, mint
           // the one you wear; rarity is the small dot, not the border (cq 076).
-          const border = id === selected ? GP.navy : on ? GP.mint : TILE_EDGE;
+          const border = id === selected ? look.text : on ? ACCENT.mint.fill : TILE_EDGE;
           return (
             <Pressable
               key={id}
@@ -474,24 +489,20 @@ export function ForgeBagPanel({ initial = "items" }: { initial?: "items" | "avat
                 setPick(id);
                 setClip("idle");
               }}
-              style={[styles.tile, { borderColor: border }]}
+              style={[styles.tile, { borderColor: border, backgroundColor: look.surface }, !look.dark && ELEVATION.low]}
               accessibilityRole="button"
               accessibilityState={{ selected: id === selected }}
               accessibilityLabel={`${e.name}${on ? ", equipped" : ""}`}>
-              {src ? <Image source={src} style={styles.tileImg} contentFit="contain" /> : <Ionicons name="cube" size={34} color={GP.mist} />}
-              <Text style={styles.tileName} numberOfLines={2} maxFontSizeMultiplier={1.2}>
+              {src ? <Image source={src} style={styles.tileImg} contentFit="contain" /> : <Ionicons name="cube" size={34} color={look.textMuted} />}
+              <Text style={[styles.tileName, { color: look.text }]} numberOfLines={2} maxFontSizeMultiplier={1.2}>
                 {e.name}
               </Text>
               <View style={[styles.tileRarity, { backgroundColor: rarityColor(e.rarity) }]} />
-              {on ? <Ionicons name="checkmark-circle" size={20} color={GP.mint} style={styles.tileBadge} /> : count && count > 1 ? <Text style={styles.tileCount}>×{count}</Text> : null}
+              {on ? <Ionicons name="checkmark-circle" size={20} color={ACCENT.mint.fill} style={styles.tileBadge} /> : count && count > 1 ? <Text style={[styles.tileCount, { color: look.text }]}>×{count}</Text> : null}
             </Pressable>
           );
         })}
-        {list.length === 0 ? (
-          <Text style={styles.emptyHint} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-            {tab === "items" ? "Weapons you claim land here. Equip one to fight with it in duels." : "Heroes the Forge publishes show up here to wear."}
-          </Text>
-        ) : null}
+
       </ScrollView>
     </View>
   );
@@ -600,45 +611,45 @@ export const forgePlayerName = () => gameStore.playerName();
 
 const styles = StyleSheet.create({
   dropPin: { position: "absolute", width: 48, height: 60, alignItems: "center", zIndex: 4 },
-  dropDiamond: { width: 44, height: 44, borderRadius: 10, borderWidth: 3, backgroundColor: "rgba(255,255,255,0.95)", alignItems: "center", justifyContent: "center", elevation: 6 },
-  dropShadow: { width: 18, height: 5, borderRadius: 3, opacity: 0.45, marginTop: 6 },
-  claimRoot: { backgroundColor: "rgba(16,30,40,0.97)", alignItems: "center", paddingHorizontal: 20, zIndex: 50 },
+  dropGlow: { position: "absolute", top: 0, width: 44, height: 44, borderRadius: 12 },
+  dropDiamond: { width: 44, height: 44, borderRadius: 10, borderWidth: 3, backgroundColor: SURFACES.light.surface, alignItems: "center", justifyContent: "center", ...ELEVATION.low },
+  dropShadow: { width: 18, height: 6, borderRadius: 9, marginTop: 6, backgroundColor: "rgba(16,24,40,0.2)" },
+  claimRoot: { alignItems: "center", paddingHorizontal: 20, zIndex: 50 },
   claimTop: { alignItems: "center", gap: 4 },
-  kicker: { fontFamily: GF.display, fontSize: 14, letterSpacing: 1.6 },
-  claimName: { fontFamily: GF.display, fontSize: 34, color: "#FFF", textAlign: "center" },
+  kicker: { fontFamily: GF.bold, fontSize: 13, lineHeight: 16, letterSpacing: 1 },
+  claimName: { fontFamily: GF.display, fontSize: 40, lineHeight: 44, textAlign: "center" },
   claimStage: { width: "100%", flex: 1, maxHeight: 420, alignItems: "center", justifyContent: "center" },
   burst: { position: "absolute", width: 10, height: 10, alignItems: "center", justifyContent: "center" },
   ray: { position: "absolute", width: 18, height: 160, borderRadius: 9, opacity: 0.18 },
   statRow: { flexDirection: "row", gap: 10, marginVertical: 8 },
-  stat: { alignItems: "center", paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, backgroundColor: "rgba(255,255,255,0.08)" },
-  statValue: { fontFamily: GF.display, fontSize: 20, color: "#FFF" },
-  statLabel: { fontFamily: GF.regular, fontSize: 11, color: "rgba(255,255,255,0.7)" },
+  stat: { alignItems: "center", paddingHorizontal: 12, paddingVertical: 8, borderRadius: RADIUS.chip },
+  statValue: { fontFamily: GF.display, fontSize: 20, lineHeight: 24 },
+  statLabel: { fontFamily: GF.regular, fontSize: 12, lineHeight: 16 },
   claimActions: { width: "100%", alignItems: "center", gap: 10 },
-  claimHint: { fontFamily: GF.body, fontSize: 15, color: "rgba(255,255,255,0.9)", textAlign: "center" },
-  claimClose: { fontFamily: GF.body, fontSize: 15, color: "rgba(255,255,255,0.6)", padding: 6 },
+  claimHint: { fontFamily: GF.body, fontSize: 15, lineHeight: 21, textAlign: "center" },
+  claimClose: { fontFamily: GF.bold, fontSize: 15, padding: 8 },
   claimAvatar: { position: "absolute", left: 8, bottom: 90 },
   tabs: { flexDirection: "row", gap: 8, paddingHorizontal: 18, marginTop: 4 },
-  tab: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 16, backgroundColor: "rgba(122,140,153,0.16)" },
-  tabOn: { backgroundColor: GP.navy },
-  // Mist reads on the ice backdrop and the dark one alike (ink vanished in dark mode).
-  tabText: { fontFamily: GF.body, fontSize: 14, color: GP.mist },
-  bagStage: { height: 270, marginHorizontal: 18, marginTop: 10, borderRadius: 20, backgroundColor: GP.navy, overflow: "hidden" },
+  // Weapons / Characters: small filter chips under the Collection's own tabs (ink when chosen).
+  tab: { paddingHorizontal: 14, minHeight: 34, justifyContent: "center", borderRadius: RADIUS.chip },
+  tabText: { fontFamily: GF.body, fontSize: 14, lineHeight: 18 },
+  // The paper's well, warm by day and ink by dusk (no navy void behind the model).
+  bagStage: { height: 270, marginHorizontal: 18, marginTop: 10, borderRadius: RADIUS.card, overflow: "hidden" },
   bagModel: { position: "absolute", left: 0, right: 0, top: 0, bottom: NAME_BAND },
-  bagNameBand: { position: "absolute", left: 0, right: 0, bottom: 0, height: NAME_BAND, flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 14, backgroundColor: "rgba(0,0,0,0.22)" },
-  bagName: { flexShrink: 1, fontFamily: GF.display, fontSize: 20, color: "#FFF" },
-  wornChip: { flexDirection: "row", alignItems: "center", gap: 3, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, backgroundColor: GP.mint },
-  wornText: { fontFamily: GF.display, fontSize: 12, color: "#FFF" },
+  bagNameBand: { position: "absolute", left: 0, right: 0, bottom: 0, height: NAME_BAND, flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 14 },
+  bagName: { flexShrink: 1, fontFamily: GF.display, fontSize: 20, lineHeight: 24 },
+  wornChip: { flexDirection: "row", alignItems: "center", gap: 3, paddingHorizontal: 8, paddingVertical: 2, borderRadius: RADIUS.chip, backgroundColor: ACCENT.mint.fill },
+  wornText: { fontFamily: GF.bold, fontSize: 12, lineHeight: 15, color: "#FFFFFF" },
   bagActions: { flexDirection: "row", flexWrap: "wrap", gap: 8, paddingHorizontal: 18, paddingTop: 10, justifyContent: "center" },
-  centre: { alignItems: "center", justifyContent: "center", padding: 20 },
-  empty: { fontFamily: GF.body, fontSize: 15, color: "rgba(255,255,255,0.85)", textAlign: "center", paddingHorizontal: 18 },
+  centre: { alignItems: "center", justifyContent: "center", padding: 20, gap: 10 },
+  empty: { fontFamily: GF.body, fontSize: 15, lineHeight: 21, textAlign: "center", paddingHorizontal: 18 },
   grid: { flexDirection: "row", flexWrap: "wrap", gap: 10, padding: 18 },
-  emptyHint: { width: "100%", fontFamily: GF.body, fontSize: 14, color: GP.mist, textAlign: "center", paddingHorizontal: 12 },
-  tile: { width: 100, height: 132, borderRadius: 16, borderWidth: 3, backgroundColor: "#FFF", alignItems: "center", justifyContent: "center", padding: 6 },
+  tile: { width: 100, height: 132, borderRadius: RADIUS.button, borderWidth: 2, alignItems: "center", justifyContent: "center", padding: 6 },
   tileImg: { width: 72, height: 72 },
-  tileName: { fontFamily: GF.body, fontSize: 12, lineHeight: 14, color: GP.ink, textAlign: "center" },
+  tileName: { fontFamily: GF.body, fontSize: 12, lineHeight: 15, textAlign: "center" },
   tileRarity: { position: "absolute", top: 7, left: 7, width: 10, height: 10, borderRadius: 5 },
   tileBadge: { position: "absolute", top: 4, right: 4 },
-  tileCount: { position: "absolute", top: 4, right: 6, fontFamily: GF.display, fontSize: 13, color: GP.ink },
+  tileCount: { position: "absolute", top: 4, right: 6, fontFamily: GF.display, fontSize: 13 },
 });
 
 /** Whether the player wears a Forge avatar the catalogue can show (for the map marker). */
