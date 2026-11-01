@@ -164,6 +164,19 @@ async function run(baseUrl) {
       'a call rings the other phone with a short-lived push', { status: started.status, ring });
     if (started.data?.call?.id) await request('POST', `/api/calls/${started.data.call.id}/end`, a.token);
 
+    // Still "online" (phone just locked: its socket is open for a while yet):
+    // a call must ring anyway, as a push.
+    const presence = require('../src/realtime/presence');
+    await presence.markOnline(b.id);
+    sent.length = 0;
+    const whileOnline = await request('POST', `/api/chats/${dm}/calls`, a.token, { type: 'video' });
+    await settle(sent, (m) => m.to === b.pushToken && m.data.type === 'call');
+    const ringOnline = sent.find((m) => m.to === b.pushToken && m.data.type === 'call');
+    check(whileOnline.status === 201 && ringOnline && ringOnline.body === 'Incoming video call',
+      'a call still pushes to a phone whose socket is open (locked or in the background)', { status: whileOnline.status, ringOnline });
+    if (whileOnline.data?.call?.id) await request('POST', `/api/calls/${whileOnline.data.call.id}/end`, a.token);
+    await presence.markOffline(b.id);
+
     // Expo says a token is dead: it is removed.
     sent.length = 0;
     push.resetForTests();

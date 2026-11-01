@@ -265,7 +265,17 @@ function notifyFromNotification(userIds, { type, message, conversation, post, co
   });
 }
 
-/** A call ringing. Short-lived: a call nobody answers in 45 s is over. */
+/**
+ * A call ringing. Short-lived: a call nobody answers in 45 s is over.
+ *
+ * Always a push, even to people who look online. "Online" means a socket is
+ * open, and a phone that was just locked or put in the background keeps its
+ * socket for a while (Socket.IO notices a dead one only after ~45 s, the
+ * whole ring; Android often keeps a live one longer). Skipping them left
+ * calls silent: the app in the background can't ring from the socket's
+ * call:incoming. With the app open, the app shows its own call screen from
+ * call:incoming and leaves this push unshown (data.type 'call').
+ */
 function notifyIncomingCall(userIds, { call, caller }) {
   const video = call?.type === 'video';
   notify(userIds, {
@@ -273,7 +283,7 @@ function notifyIncomingCall(userIds, { call, caller }) {
     body: video ? 'Incoming video call' : 'Incoming call',
     data: { type: 'call', callId: String(call?.id || call?._id || ''), ...(call?.conversationId ? { chatId: String(call.conversationId) } : {}) },
     channel: 'calls',
-    skipOnline: true,
+    skipOnline: false,
     ttl: 45,
     priority: 'high',
     actor: actorPreview(caller),

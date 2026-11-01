@@ -64,7 +64,10 @@ function startAuthorization(req, res, provider) {
 // Reads and clears the OAuth cookie. Returns null if it is missing or unreadable.
 function takeAuthorizationSession(req, res, provider) {
   const cookie = req.signedCookies?.[`oauth_${provider}`];
-  res.clearCookie(`oauth_${provider}`, cookieOptions(provider));
+  // Same path / sameSite / secure so the browser clears this cookie, but no
+  // maxAge (Express deprecates it on clearCookie: clearing always expires it).
+  const { maxAge, ...clearOptions } = cookieOptions(provider);
+  res.clearCookie(`oauth_${provider}`, clearOptions);
   if (!cookie) return null;
   try {
     return JSON.parse(cookie);
