@@ -18,13 +18,12 @@ import { suggestedId } from "@/features/game/guide";
 import { isLive, isPocket, type RunPoint, runPointOf, runQuestPoints } from "@/features/game/run";
 import { gameStore, GAME_SERVER, GAME_SERVER_IS_PRODUCTION, useGame, useLocationPermission, startLocation } from "@/features/game/runtime";
 import { nearestFirst } from "@/features/game/store";
-import { raidPlaysAsDuel } from "@/features/game/raids";
 import { useRoomBeacons, useRooms } from "@/features/game/roomsRuntime";
-import { isSiege, siegePlaysAsDuel } from "@/features/game/siege";
+import { isSiege } from "@/features/game/siege";
 import { noteStepsOnPhone } from "@/features/game/stepsDevice";
 import { unlocked, visiblePoints } from "@/features/game/unlocks";
 import { arriveMoment, legendMoment, nudgeMoment } from "@/features/game/warden";
-import { type DuelStart, freshLoss, holdsLostOf, type QuestPoint, type RoamStanding, spinBanner } from "@/features/game/wire";
+import { freshLoss, holdsLostOf, type QuestPoint, spinBanner } from "@/features/game/wire";
 import { factionVeilColor, world } from "@/features/world/worldState";
 import { resultShareText } from "@/features/world/gameInvite";
 import { openVenueEvents, venueEventsAvailable } from "@/modules/costquest-game/src";
@@ -54,7 +53,6 @@ import Onboarding from "./Onboarding";
 import PointSheet from "./PointSheet";
 import ProfileSheet from "./ProfileSheet";
 import RaidBanner from "./RaidBanner";
-import RaidScreen from "./RaidScreen";
 import RecapSheet from "./RecapSheet";
 import { QuestRunButton, RunChallenge, runDistance, RunHUD, runInReach, RunResults, RunStartSheet, RunTray } from "./Run";
 import { runModel, useRun } from "./runModel";
@@ -62,8 +60,7 @@ import RoomScreen from "./RoomScreen";
 import RoomSheet from "./RoomSheet";
 import RelicsButton from "./RelicsButton";
 import CollectionSheet from "./CollectionSheet";
-import Reward, { rewardFromDuel, type RewardSummary } from "./Reward";
-import SiegeScreen, { siegeGuard } from "./SiegeScreen";
+import Reward, { type RewardSummary } from "./Reward";
 import TrialsSheet from "./TrialsSheet";
 import { GF, GP, realmColor } from "./theme";
 import { useOnScreen } from "./useOnScreen";
@@ -73,19 +70,17 @@ import { useRenderCount } from "@/utils/perfMarks";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 import { type CollectionOpener, type CollectionTab, collectionOpen, collectionTabFor, collectionTabs } from "@/features/game/collection";
 import type { ForgeDrop } from "@/features/game/forgeWorld";
-import { type Fight3DResult, type Fight3DRun, fightStats, finishFrom3D, judgedFight, rewardFrom3D } from "@/features/game3d/fight3d";
-import { FIGHT3D, fight3dAvailable } from "@/features/game3d/flags";
+import { type Fight3DRun, rewardFrom3D } from "@/features/game3d/fight3d";
+import { FIGHT3D, fight3dAvailable, ROOMS_ON } from "@/features/game3d/flags";
 import { takeFight3DRequest, useFight3DRequestSerial } from "@/features/game3d/request";
 
 type Screen =
   | { kind: "home" }
   | { kind: "encounter"; point: QuestPoint }
   | { kind: "duel"; point: QuestPoint; mode: "point" | "raid" | "siege" | "trial"; trial?: TrialRequest }
-  | { kind: "raid"; point: QuestPoint }
-  | { kind: "siege"; point: QuestPoint }
   | { kind: "room"; gameId: string }
-  /** The 3D fight in Godot (cq 061): from a duel's briefing, or a test run (point null). */
-  | { kind: "fight3d"; point: QuestPoint | null; run: Fight3DRun; judged: boolean; before: RoamStanding | null }
+  /** The 3D fight's test run (cq 061: the dev link, EXPO_PUBLIC_GAME3D_AUTOSTART). Real fights open in DuelScreen. */
+  | { kind: "fight3d"; point: null; run: Fight3DRun }
   | { kind: "reward"; reward: RewardSummary };
 
 /** What is open over the map (one at a time, closed by Android Back). */
@@ -173,7 +168,9 @@ export default function GameRoot({ parked }: { parked: boolean }) {
   // memoises on what the callback reads, so reading the store here would
   // freeze the list at its first (empty) value.
   const nearby = useMemo(() => nearestFirst(points, fix), [points, fix]);
-  const battleOpen = unlocked(me, "battle");
+  // Rooms (the 2D overhead shooter) is hidden until a 3D Rooms exists (battle-3d-only, 1 Nov 2026):
+  // no tile, no beacons, no coach unlock. EXPO_PUBLIC_ROOMS=1 brings it back; the code stays.
+  const battleOpen = ROOMS_ON && unlocked(me, "battle");
   const rooms = useRooms();
   useRoomBeacons(!parked && battleOpen && screen.kind !== "room");
   const openBattle = (focus: string | null) => {
@@ -235,7 +232,8 @@ export default function GameRoot({ parked }: { parked: boolean }) {
           starterKind: starterKindOf(points.find((p) => p.source === "starter"), me),
           hasSiege: points.some((p) => isSiege(p, me)),
           done: coachDone,
-          introduced,
+          // Rooms hidden: its unlock is never announced.
+          introduced: ROOMS_ON ? introduced : new Set([...introduced, "battle"]),
         })
       : null;
   const markCoach = (step: CoachStep) => {
@@ -380,7 +378,6 @@ export default function GameRoot({ parked }: { parked: boolean }) {
       else if (sheet) setSheet(null);
       // A challenge in progress asks before it is left.
       else if (screen.kind === "encounter" && encounterGuard.current) return encounterGuard.current();
-      else if (screen.kind === "siege" && siegeGuard.current) return siegeGuard.current();
       else if (screen.kind !== "home") setScreen({ kind: "home" });
       else closeSheet();
       return true;
@@ -403,30 +400,15 @@ export default function GameRoot({ parked }: { parked: boolean }) {
     setScreen({ kind: "home" });
   };
 
-  // The 3D fight (cq 061). Test builds may open it as soon as the game is up
-  // (EXPO_PUBLIC_GAME3D_AUTOSTART=<mode>, with EXPO_PUBLIC_GAME3D_CYCLE=N for the leak test).
-  // cq 019: at a duel point on a server that judges 3D fights, the fight is a real point fight and pays.
-  const fight3d = (point: QuestPoint | null, run?: Partial<Fight3DRun>) =>
+  // The 3D fight's test run (cq 061): test builds may open it as soon as the game is up
+  // (EXPO_PUBLIC_GAME3D_AUTOSTART=<mode>, with EXPO_PUBLIC_GAME3D_CYCLE=N for the leak test), or the
+  // dev link. Every real fight opens in DuelScreen, judged by the server.
+  const fight3d = (point: null, run?: Partial<Fight3DRun>) =>
     setScreen({
       kind: "fight3d",
       point,
       run: { mode: "full", cycle: 0, cycleMs: FIGHT3D.cycleMs, autoplay: FIGHT3D.autoplay, ...run },
-      judged: !run?.cycle && judgedFight(gameStore.get().me, point, !!point && gameStore.playsAsDuel(point)),
-      before: gameStore.get().me?.standing ?? null,
     });
-  // The judged fight's verdict: the server's pay on the reward screen, with the fight's own numbers.
-  const finish3d = async (point: QuestPoint, r: Fight3DResult, start: DuelStart, before: RoamStanding | null) => {
-    try {
-      const out = await gameStore.duelFinish(start, finishFrom3D(r));
-      const after = out.point?.after ?? gameStore.get().me?.standing ?? null;
-      setScreen({ kind: "reward", reward: { ...rewardFromDuel(out, point, out.point?.before ?? before, after), stats: fightStats(r) } });
-    } catch {
-      setScreen({
-        kind: "reward",
-        reward: { ...rewardFrom3D(r, point, before), note: "The game server did not answer, so this fight could not be counted.", practice: false },
-      });
-    }
-  };
   const autostarted = useRef(false);
   const autostartReady = !!session && (fontsReady || !!fontsError) && !gameStore.needsOnboarding && !onboarding && screen.kind === "home";
   useEffect(() => {
@@ -445,10 +427,11 @@ export default function GameRoot({ parked }: { parked: boolean }) {
   const play = (p: QuestPoint) => {
     setSelectedId(null);
     gameStore.setFocus(null);
-    // A boss first: the server would refuse it as a point duel (RoamHomeView.swift 239-255).
-    if (p.source === "raid") setScreen(raidPlaysAsDuel(p, me) ? { kind: "duel", point: p, mode: "raid" } : { kind: "raid", point: p });
-    // A rival's hold: a fight with its Guardian when the server says so, the quiz Siege otherwise.
-    else if (isSiege(p, me)) setScreen(siegePlaysAsDuel(me) ? { kind: "duel", point: p, mode: "siege" } : { kind: "siege", point: p });
+    // battle-3d-only: every fight is the 3D fight (DuelScreen opens it directly). A boss is always
+    // fought (Boss Trivia is retired), and so is a rival's hold (the quiz Siege is retired). A Quest
+    // Point that plays as a quiz stays a quiz: a challenge, not a battle.
+    if (p.source === "raid") setScreen({ kind: "duel", point: p, mode: "raid" });
+    else if (isSiege(p, me)) setScreen({ kind: "duel", point: p, mode: "siege" });
     else setScreen(gameStore.playsAsDuel(p) ? { kind: "duel", point: p, mode: "point" } : { kind: "encounter", point: p });
   };
 
@@ -722,25 +705,7 @@ export default function GameRoot({ parked }: { parked: boolean }) {
             mode={screen.mode}
             trial={screen.trial}
             parked={parked}
-            onFight3D={(screen.mode === "point" || screen.mode === "raid") && fight3dAvailable() ? () => fight3d(screen.point) : undefined}
             onClose={home}
-          />
-        </Animated.View>
-      ) : null}
-      {screen.kind === "raid" ? (
-        <Animated.View entering={FadeIn.duration(220)} exiting={FadeOut.duration(160)} style={StyleSheet.absoluteFill}>
-          <RaidScreen point={screen.point} parked={parked} onClose={home} />
-        </Animated.View>
-      ) : null}
-      {screen.kind === "siege" ? (
-        <Animated.View entering={FadeIn.duration(220)} exiting={FadeOut.duration(160)} style={StyleSheet.absoluteFill}>
-          <SiegeScreen
-            point={screen.point}
-            parked={parked}
-            onClose={home}
-            onDone={(won) => {
-              if (won) showBanner("Taken!", { subtitle: screen.point.name, color: realmColor(me?.faction), sound: "fanfare" });
-            }}
           />
         </Animated.View>
       ) : null}
@@ -755,14 +720,8 @@ export default function GameRoot({ parked }: { parked: boolean }) {
             point={screen.point}
             run={screen.run}
             parked={parked}
-            judged={screen.judged}
-            onResult={(r, start) =>
-              start && screen.point
-                ? void finish3d(screen.point, r, start, screen.before)
-                : setScreen({
-                    kind: "reward",
-                    reward: rewardFrom3D(r, screen.point ?? { name: "Test arena", realm: me?.faction ?? "" }, gameStore.get().me?.standing ?? null),
-                  })
+            onResult={(r) =>
+              setScreen({ kind: "reward", reward: rewardFrom3D(r, { name: "Test arena", realm: me?.faction ?? "" }, gameStore.get().me?.standing ?? null) })
             }
             onClose={home}
           />

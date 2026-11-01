@@ -176,6 +176,13 @@ var t_left: float = 45.0
 var fight_time: float = 0.0
 var outcome: String = ""
 var rng := RandomNumberGenerator.new()
+## The server's per-fight tweaks (battle-3d-only, docs/game3d/XP.md "Modifiers"), from config `mods`:
+## the Guardian's HP and the weight of its strikes, in permille. They sit beside the rules table, never
+## in it, so rules_id() stays the same; the judge log records them and the server checks them against
+## the setup it handed out. Identity (1000, 1000) leaves a fight exactly as it was.
+var mods: Dictionary = {}
+var boss_hp_permille: int = 1000
+var boss_dmg_permille: int = 1000
 
 var hero: FighterScript
 var ally: FighterScript
@@ -312,6 +319,14 @@ func configure(c: Dictionary) -> void:
 	if duration <= 0.0:
 		duration = 45.0
 	t_left = duration
+	mods = {}
+	boss_hp_permille = 1000
+	boss_dmg_permille = 1000
+	var m: Variant = c.get("mods")
+	if m is Dictionary:
+		boss_hp_permille = clampi(int((m as Dictionary).get("boss_hp_permille", 1000)), 200, 5000)
+		boss_dmg_permille = clampi(int((m as Dictionary).get("boss_dmg_permille", 1000)), 200, 3000)
+		mods = {"boss_hp_permille": boss_hp_permille, "boss_dmg_permille": boss_dmg_permille}
 	autoplay = bool(c.get("autoplay", false))
 	bot_kind = str(c.get("bot", "fight"))
 	_load_threaded = bool(c.get("load_thread", true))
@@ -414,7 +429,8 @@ func _ready() -> void:
 	# hero_hp / enemy_hp: test and capture knobs (a quick win or loss); the app never sends them
 	hero = _spawn(str(cfg.get("hero_name", "You")), 0, int(cfg.get("hero_hp", HERO_HP)), Color(0.3, 0.75, 0.35), Vector3(0.3, 0, 3.6), PI, "hero")
 	ally = _spawn(str(cfg.get("ally_name", "Ally")), 0, ALLY_HP, Color(0.3, 0.65, 0.9), Vector3(3.0, 0, 4.4), PI, "ally")
-	enemy = _spawn(str(cfg.get("enemy_name", "Guardian")), 1, int(cfg.get("enemy_hp", ENEMY_HP)), Color(0.85, 0.3, 0.25), Vector3(-0.4, 0, -0.6), 0.0, "boss")
+	enemy = _spawn(str(cfg.get("enemy_name", "Guardian")), 1, int(cfg.get("enemy_hp", boss_hp())), Color(0.85, 0.3, 0.25), Vector3(-0.4, 0, -0.6), 0.0, "boss",
+		clampf(float(_guardian_look().get("size_permille", 1000)) / 1000.0, 0.7, 1.5))
 	if cfg.get("coop") is Dictionary:
 		_start_coop(cfg["coop"])
 	if bool(cfg.get("rev_solo", false)):
@@ -553,8 +569,9 @@ func _build_boss_area() -> void:
 	add_child(_boss_area)
 
 
-func _spawn(n: String, team: int, hp_max: int, c: Color, at: Vector3, yaw: float, r: String) -> FighterScript:
+func _spawn(n: String, team: int, hp_max: int, c: Color, at: Vector3, yaw: float, r: String, size_mult: float = 1.0) -> FighterScript:
 	var f := FighterScript.new()
+	f.size_mult = size_mult
 	f.name = n.validate_node_name()
 	add_child(f)
 	# cq 015: the fighters' rim light follows the arena's key light (docs/game3d/LOOK.md)
@@ -715,7 +732,11 @@ func _begin_or_intro() -> void:
 	_intro_from = Transform3D(Basis.looking_at(look - from, Vector3.UP), from)
 	_intro_t = 0.0
 	state = "intro"
-	hud.banner(str(cfg.get("point_name", "")).to_upper(), str(info.get("landmark", "")), Color(1.0, 0.86, 0.5), INTRO_LEN - 0.4)
+	var title: String = str(_guardian_look().get("title", ""))
+	var sub: String = str(info.get("landmark", ""))
+	if title != "":
+		sub = title if sub == "" else "%s · %s" % [title, sub]
+	hud.banner(str(cfg.get("point_name", "")).to_upper(), sub, Color(1.0, 0.86, 0.5), INTRO_LEN - 0.4)
 	_log("intro landmark=%s" % str(info.get("landmark", "")))
 
 
@@ -1614,7 +1635,7 @@ func _enemy_begin(kind: String, target: FighterScript) -> void:
 
 
 func _enemy_strike() -> void:
-	var dmg: Vector2i = SWIPE_DMG if _enemy_kind == "swipe" else SLAM_DMG
+	var dmg: Vector2i = boss_dmg(SWIPE_DMG if _enemy_kind == "swipe" else SLAM_DMG)
 	_boss_area.open({"src": enemy, "kind": _enemy_kind, "dmg": dmg, "kb": 1.4 if _enemy_kind == "swipe" else 2.2,
 		"stop": 5.0 / 60.0, "heavy": true, "parryable": true})
 	_boss_area.scan()
@@ -1891,7 +1912,28 @@ func judge_log() -> Dictionary:
 	j["v"] = RULES_VERSION
 	j["rules"] = rules_id()
 	j["seed"] = int(cfg["seed"]) if cfg.has("seed") else -1
+	if not mods.is_empty():
+		j["mods"] = mods.duplicate()
 	return j
+
+
+## The Guardian's HP for this fight: the rules' ENEMY_HP x boss_hp_permille (the server's roam_fight3d.boss_hp).
+func boss_hp() -> int:
+	return ENEMY_HP if boss_hp_permille == 1000 else int(round(ENEMY_HP * (boss_hp_permille / 1000.0)))
+
+
+## A boss strike's damage range x boss_dmg_permille, each end rounded (the server's roam_fight3d._boss_range).
+func boss_dmg(r: Vector2i) -> Vector2i:
+	if boss_dmg_permille == 1000:
+		return r
+	var m: float = boss_dmg_permille / 1000.0
+	return Vector2i(int(round(r.x * m)), int(round(r.y * m)))
+
+
+## The setup's look (cosmetic, never judged): {size_permille, title}.
+func _guardian_look() -> Dictionary:
+	var lk: Variant = cfg.get("guardian_look")
+	return lk if lk is Dictionary else {}
 
 
 ## The combat numbers the judge needs, as whole numbers (ms, permille): the server holds the same

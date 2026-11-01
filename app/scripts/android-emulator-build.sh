@@ -53,6 +53,8 @@ esac
 export EXPO_PUBLIC_API_URL="$CHAT_API_URL"
 export EXPO_PUBLIC_GAME_SERVER="$GAME_SERVER"
 export EXPO_PUBLIC_GAME_UI="$GAME_UI"
+# battle-3d-only: the 3D fight is in every build (EXPO_PUBLIC_GAME3D=0 to leave it out).
+export EXPO_PUBLIC_GAME3D="${EXPO_PUBLIC_GAME3D:-1}"
 export EXPO_PUBLIC_WORLD_TIMING=1
 # Test-only routes (app/dev/crash, app/dev/push-test): task 059 journeys.
 export EXPO_PUBLIC_E2E=1

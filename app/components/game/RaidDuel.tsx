@@ -11,7 +11,6 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-nati
 import Animated, { FadeIn } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { practiceNote } from "@/features/game/duelFlow";
 import { distanceM, distanceText } from "@/features/game/geo";
 import { RAID_COLOR, raidDuelBlurb, raidDuelReward, raidHp, raidLineText } from "@/features/game/raids";
 import { gameStore, useGame } from "@/features/game/runtime";
@@ -35,15 +34,12 @@ export function RaidDuelBriefing({
   busy,
   problem,
   onFight,
-  onFight3D,
   onClose,
 }: {
   point: QuestPoint;
   busy: boolean;
   problem: string | null;
   onFight: () => void;
-  /** The 3D fight in Godot (cq 061, EXPO_PUBLIC_GAME3D=1): a second button. */
-  onFight3D?: () => void;
   onClose: () => void;
 }) {
   const styles = useThemedStyles(STYLE_PAIR);
@@ -96,27 +92,7 @@ export function RaidDuelBriefing({
         {busy ? (
           <ActivityIndicator color={GP.navy} />
         ) : (
-          <>
-            <GameButton title="Fight the boss" color={RAID_COLOR} onPress={onFight} icon={<RaidCrown size={20} />} testID="duel-fight" />
-            {/* The 3D fight is a practice round: smaller, under the real one, and it says so. */}
-            {onFight3D ? (
-              <View style={styles.practice}>
-                <GameButton
-                  title="Fight (3D)"
-                  color={GP.navy}
-                  size="small"
-                  onPress={onFight3D}
-                  testID="fight3d-open"
-                  icon={<Ionicons name="cube" size={16} color="#FFF" />}
-                  accessibilityHint="A practice round in 3D, just for fun. XP and boss damage come from Fight the boss."
-                  style={styles.practiceButton}
-                />
-                <Text style={styles.practiceNote} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-                  {practiceNote("Fight the boss")}
-                </Text>
-              </View>
-            ) : null}
-          </>
+<GameButton title="Fight the boss" color={RAID_COLOR} onPress={onFight} icon={<RaidCrown size={20} />} testID="duel-fight" />
         )}
       </View>
     </View>
@@ -163,7 +139,4 @@ const STYLE_PAIR = themedStyles({
   blurb: { fontFamily: GF.body, fontSize: 15, color: "rgba(30,58,76,0.7)" },
   howto: { fontFamily: GF.regular, fontSize: 12, color: GP.mist },
   problem: { fontFamily: GF.body, fontSize: 14, color: GP.berry },
-  practice: { alignItems: "center", gap: 6 },
-  practiceButton: { alignSelf: "center", minWidth: 180 },
-  practiceNote: { fontFamily: GF.regular, fontSize: 12, color: GP.mist, textAlign: "center" },
 });

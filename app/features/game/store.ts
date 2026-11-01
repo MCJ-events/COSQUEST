@@ -372,10 +372,10 @@ export function createGameStore(deps: GameStoreDeps) {
     // ---------- playing a duel point ----------
 
     /** `battle`: this build can play the fantasy battle scene (DuelModel.start: body.battle on point fights). */
-    async duelStart(p: QuestPoint, opts?: { battle?: boolean; fight3d?: boolean }): Promise<DuelStart> {
+    async duelStart(p: QuestPoint, opts?: { fight3d?: boolean; fallback2d?: boolean }): Promise<DuelStart> {
       const here = state.fix;
       if (!here) throw new GameError("http", "Waiting for your location.");
-      return client.duelStart({ mode: "point", target: p.id, lat: here.lat, lng: here.lng, accuracy_m: here.accuracy, battle: opts?.battle, fight3d: opts?.fight3d });
+      return client.duelStart({ mode: "point", target: p.id, lat: here.lat, lng: here.lng, accuracy_m: here.accuracy, ...opts });
     },
 
     async duelFinish(start: DuelStart, finished: DuelFinished & { fight3d?: Record<string, unknown> | null }): Promise<DuelOutcome> {

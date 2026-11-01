@@ -25,6 +25,8 @@ var max_hp: int = 1000
 var hp: int = 1000
 var radius: float = 0.45
 var size_k: float = 1.0          # the boss stands taller
+## The fight setup's look (battle-3d-only): the boss's height x this (a raid boss stands taller still). Set before setup().
+var size_mult: float = 1.0
 var colour: Color = Color.WHITE
 var body: Node3D
 var model: Node3D
@@ -97,7 +99,7 @@ func setup(n: String, t: int, hp_max: int, c: Color, r: String = "hero") -> void
 	max_hp = hp_max
 	hp = hp_max
 	colour = c
-	size_k = 1.55 if role == "boss" else 1.0
+	size_k = (1.55 if role == "boss" else 1.0) * size_mult
 	radius = 0.8 if role == "boss" else 0.5
 	body = Node3D.new()
 	body.name = "Body"

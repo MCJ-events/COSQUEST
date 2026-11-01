@@ -32,20 +32,14 @@ export function isProductionServer(url: string): boolean {
 }
 
 /**
- * The game's UI on this build:
- *   rn      the shared React Native game in components/game: Android, and iOS
- *           by default since the one-codebase work (docs/one-codebase.md)
- *   native  the costquest-ios SwiftUI game embedded by the native module.
- *           iOS only, kept compiling as the fallback: EXPO_PUBLIC_GAME_UI=native
- * Anything else (unset, a typo) is rn; Android is always rn.
+ * The game's UI: the shared React Native game in components/game, on every
+ * platform (docs/one-codebase.md). The embedded SwiftUI game
+ * (EXPO_PUBLIC_GAME_UI=native, its own copies of the 2D duel, Siege, raids and
+ * quizzes) was taken out of the build on 1 Nov 2026 (battle-3d-only): its
+ * native islands (Venue Events, the AR shrine, the Forge model view, the
+ * hold-phones beacon) are still drawn inside the RN screens.
  */
-export type GameUi = "native" | "rn";
-
-export function resolveGameUi(os: string, raw: string | undefined | null): GameUi {
-  const value = (raw ?? "").trim();
-  if (value === "native" && os === "ios") return "native";
-  return "rn";
-}
+export type GameUi = "rn";
 
 /**
  * The game's screens, one id each, for the parity table (docs/one-codebase.md)
@@ -86,11 +80,11 @@ export type GameScreen = (typeof GAME_SCREENS)[number];
  *               (ShrineIsland.swift)                                         -> 2D crystal
  *   (FriendBeaconIsland.swift has no 2D twin: where it is missing the hold-phones card is not shown.)
  */
-export const NATIVE_ISLANDS = ["forgeModel", "unityDuel", "unityBattle", "venueEvents", "arShrine"] as const;
+export const NATIVE_ISLANDS = ["forgeModel", "venueEvents", "arShrine"] as const;
 export type NativeIsland = (typeof NATIVE_ISLANDS)[number];
 
 /**
- * Which islands this build turns OFF: `EXPO_PUBLIC_GAME_2D=forgeModel,unityDuel`
+ * Which islands this build turns OFF: `EXPO_PUBLIC_GAME_2D=forgeModel,arShrine`
  * (or `all`) draws those parts in 2D even where the native view exists, as a
  * fallback if one misbehaves on a phone. Unknown names are ignored.
  */
@@ -103,14 +97,4 @@ export function resolveIslandsOff(raw: string | undefined | null): ReadonlySet<N
   return new Set(NATIVE_ISLANDS.filter((n) => names.includes(n)));
 }
 
-/**
- * Where the duel is drawn:
- *   rn      the TypeScript port of costquest-duel, drawn in 2D (features/game/duel)
- *   unity   the Unity Duel scene (needs the Unity export in the build; Android: unityLibrary)
- * Unity is used only when the build has it AND the flag asks for it.
- */
-export type DuelRenderer = "rn" | "unity";
 
-export function resolveDuelRenderer(raw: string | undefined | null, hasUnity: boolean): DuelRenderer {
-  return (raw ?? "").trim() === "unity" && hasUnity ? "unity" : "rn";
-}

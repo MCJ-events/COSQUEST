@@ -60,7 +60,7 @@ export type RewardSummary = {
   speakLevel?: () => void;
   /** A fight's own numbers (the 3D fight, cq 061): shown as rows, each with testID `reward-<id>`. */
   stats?: { id: string; label: string; value: string }[];
-  /** A practice round (the 3D fight): no XP line, "Practice" instead of "+0 XP". */
+  /** A fight the server did not count (the test arena, an unanswered finish): "Not counted" instead of "+0 XP". */
   practice?: boolean;
 };
 
@@ -229,14 +229,14 @@ export default function Reward({ reward, onDone, onShare }: { reward: RewardSumm
                   <RewardLine key={`${l.label}-${i}`} label={l.label} amount={lineAmount(l)} shown={i < shownLines} />
                 ))}
                 <View style={styles.divider} />
-                <View style={styles.levelRow} accessible accessibilityLabel={`Level ${barLevel}${after ? `, ${after.rank}` : ""}, ${reward.practice ? "practice round" : `plus ${reward.xp} XP`}`}>
+                <View style={styles.levelRow} accessible accessibilityLabel={`Level ${barLevel}${after ? `, ${after.rank}` : ""}, ${reward.practice ? "not counted" : `plus ${reward.xp} XP`}`}>
                   <Text style={styles.level} maxFontSizeMultiplier={MAX_FONT_SCALE}>
                     Level {barLevel}
                   </Text>
                   {after ? <Text style={styles.rank}>{after.rank}</Text> : null}
                   <View style={{ flex: 1 }} />
                   <Text style={styles.xpCount} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-                    {reward.practice ? "Practice" : `+${xpCounted} XP`}
+                    {reward.practice ? "Not counted" : `+${xpCounted} XP`}
                   </Text>
                 </View>
                 <View style={styles.track} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>

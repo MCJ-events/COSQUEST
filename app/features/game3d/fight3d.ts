@@ -16,7 +16,7 @@ import { bytesToHex, utf8ToBytes } from "@noble/hashes/utils.js";
 import type { RewardSummary } from "../../components/game/Reward.tsx";
 import type { ForgeEntry } from "../game/forgeWorld.ts";
 import { toLocal } from "../game/geo.ts";
-import type { DuelFinished, GroundGeometry, RoamStanding } from "../game/wire.ts";
+import type { DuelFinished, DuelStart, GroundGeometry, RoamStanding } from "../game/wire.ts";
 
 // ---------- switches ----------
 
@@ -29,7 +29,11 @@ export function parseMode(raw: unknown): Fight3DMode | null {
 }
 
 export type Fight3DFlags = {
-  /** EXPO_PUBLIC_GAME3D=1, on a platform that can run it (iOS, Android 10+). */
+  /**
+   * The 3D fight is in this build, on a platform that can run it (iOS, Android 10+). On by default
+   * since battle-3d-only (1 Nov 2026: it is every mode's fight); EXPO_PUBLIC_GAME3D=0 builds without it,
+   * and such a build (or a phone below Android 10) plays the 2D duel fallback.
+   */
   on: boolean;
   /**
    * Keep one engine for the app's life (pause/resume between fights), the
@@ -76,7 +80,7 @@ function intIn(raw: string | undefined, lo: number, hi: number, fallback: number
 
 export function fight3dFlags(env: Fight3DEnv, platform: { os: string; version: number | string }): Fight3DFlags {
   const supported = platform.os === "ios" || (platform.os === "android" && Number(platform.version) >= ANDROID_MIN_API);
-  const on = env.EXPO_PUBLIC_GAME3D === "1" && supported;
+  const on = (env.EXPO_PUBLIC_GAME3D ?? "1").trim() !== "0" && supported;
   const lod = intIn(env.EXPO_PUBLIC_GAME3D_LOD, 0, 2, -1);
   return {
     on,
@@ -237,7 +241,17 @@ export type Fight3DConfig = {
   ground_json?: string;
   /** The point, in the ground's metres (x east, z north of its origin). */
   place_at?: [number, number];
+  /**
+   * The server's modifiers for this fight (battle-3d-only): the Guardian's HP and strike weight in
+   * permille. Godot applies them and records them; the judge checks them against the stored setup.
+   */
+  mods?: FightMods;
+  /** The setup's look (cosmetic): the Guardian's height in permille, a title on the intro banner. */
+  guardian_look?: GuardianLook;
 };
+
+export type FightMods = { boss_hp_permille: number; boss_dmg_permille: number };
+export type GuardianLook = { size_permille?: number; title?: string };
 
 /**
  * Where the fight stands on the ground the map already has (the store's /v1/map/ground answer):
@@ -270,6 +284,9 @@ export function buildFightConfig(input: {
   reduceMotion?: boolean;
   /** The real place: the ground written to a file, and the point on it (placeFrom). */
   place?: { groundPath: string; at: [number, number] } | null;
+  /** The server's modifiers and look, as the duel's setup gave them (fightFromStart). */
+  mods?: FightMods | null;
+  guardianLook?: GuardianLook | null;
 }): Fight3DConfig {
   const config: Fight3DConfig = {
     hero_glb: localPath(input.hero.path),
@@ -289,6 +306,8 @@ export function buildFightConfig(input: {
   };
   if (input.tilesUrl) Object.assign(config, tilesFields(input.tilesUrl));
   if (input.reduceMotion) config.reduce_motion = true;
+  if (input.mods) config.mods = { ...input.mods };
+  if (input.guardianLook) config.guardian_look = { ...input.guardianLook };
   const groundJson = localPath(input.place?.groundPath);
   if (input.place && groundJson) Object.assign(config, { arena: "place", ground_json: groundJson, place_at: input.place.at });
   return config;
@@ -418,9 +437,10 @@ const HEADLINES: Record<Fight3DOutcome, string> = {
   quit: "You left the fight",
 };
 
-export const FIGHT3D_NOTE = "That was a 3D practice fight, just for fun. Your XP comes from the regular Fight.";
+/** The test arena's fight (the dev link, no point): nothing was sent to the server. */
+export const FIGHT3D_NOTE = "Test arena: this fight was not sent to the game server.";
 
-/** The fight's own numbers, as rows on the reward screen (testID `reward-<id>`), judged or practice. */
+/** The fight's own numbers, as rows on the reward screen (testID `reward-<id>`). */
 export function fightStats(r: Fight3DResult): { id: string; label: string; value: string }[] {
   const s = Math.round(r.time_s);
   return [
@@ -431,17 +451,61 @@ export function fightStats(r: Fight3DResult): { id: string; label: string; value
   ];
 }
 
-// ---------- the judged fight (cq 019) ----------
-// With the server's knob point_fight3d on (/me features.duel.fight3d), the 3D fight at a duel point
-// is a real point fight: /v1/duel/start with fight3d: true hands out a "fight3d" setup, Godot fights
-// on its seed and records every hit (fight.gd judge_log), /v1/duel/finish sends that record, and the
-// server (costquest-backend app/roam_fight3d.py) judges it and pays like the 2D duel. docs/game3d/XP.md.
+// ---------- the judged fight (cq 019, battle-3d-only) ----------
+// Every fight is the 3D fight now (battle-3d-only, 1 Nov 2026): a point's, a Trials rung's, a
+// Siege's, a raid boss's and a Quest Run point's. The app asks /v1/duel/start with fight3d: true, the
+// server hands out a "fight3d" setup (the seed, the rules id, the round, and this mode's modifiers),
+// Godot fights on it and records every hit (fight.gd judge_log), /v1/duel/finish sends the record, and
+// the server (costquest-backend app/roam_fight3d.py) judges it and pays through the mode's own payer.
+// A phone that cannot run Godot asks with fallback2d: true and plays the 2D duel. docs/game3d/XP.md.
 
-type MeDuel = { features?: { duel?: { fight3d?: boolean | null } | null } | null } | null | undefined;
+/** What Godot needs from a duel start: its seed, round, modifiers, look and opponent. Null when the setup is not a 3D fight. */
+export function fightFromStart(
+  start: Pick<DuelStart, "seed_text" | "setup">,
+): { seed: number; durationS: number; mods: FightMods; look: GuardianLook | null; enemyId: string | null; guardianName: string | null } | null {
+  const s = start.setup as Record<string, unknown> & { kind?: string };
+  if (s.kind !== "fight3d") return null;
+  const seed = fightSeed(start.seed_text);
+  if (seed === null) return null;
+  const m = (s.mods ?? {}) as Record<string, unknown>;
+  const whole = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? Math.round(v) : 1000);
+  const look = s.guardian_look && typeof s.guardian_look === "object" ? (s.guardian_look as GuardianLook) : null;
+  const p2 = (s.p2 ?? {}) as { character?: { element_id?: unknown } | null };
+  const enemy = p2.character && typeof p2.character.element_id === "string" ? p2.character.element_id : null;
+  const dur = Number(s.duration_s);
+  return {
+    seed,
+    durationS: Number.isFinite(dur) && dur > 0 ? dur : FIGHT_SECONDS,
+    mods: { boss_hp_permille: whole(m.boss_hp_permille), boss_dmg_permille: whole(m.boss_dmg_permille) },
+    look,
+    enemyId: enemy,
+    guardianName: typeof s.guardian_name === "string" ? s.guardian_name : null,
+  };
+}
 
-/** Whether this fight is judged and pays: a duel point (not a raid, not the test arena) on a server that judges 3D fights. */
-export function judgedFight(me: MeDuel, point: { source?: string | null } | null | undefined, playsAsDuel: boolean): boolean {
-  return !!point && point.source !== "raid" && playsAsDuel && me?.features?.duel?.fight3d === true;
+const TIER_WORD: Record<string, string> = { starter: "First", common: "Common", rare: "Rare", epic: "Epic" };
+
+/**
+ * The 3D fight's loading card (the pre-fight card): who you face, what kind of fight, and what it is
+ * worth, from the duel start's own blocks. Shown while Godot loads; there is no other briefing.
+ */
+export function fightCard(start: Pick<DuelStart, "setup"> | null, pointName: string): { kicker: string; title: string; line: string | null } {
+  const s = (start?.setup ?? {}) as Record<string, unknown>;
+  const title = (typeof s.guardian_name === "string" && s.guardian_name) || (s.p2 as { name?: string } | undefined)?.name || "The Guardian";
+  const raid = s.raid as { hp_left?: number; hp_max?: number } | undefined;
+  const trial = s.trial as { rung?: number; rungs?: number; first_clear?: boolean } | undefined;
+  const siege = s.siege as { faction_attacked_name?: string } | undefined;
+  const run = s.run as { value?: number; stake?: number } | undefined;
+  const point = s.point as { tier?: string } | undefined;
+  if (raid) {
+    const pct = raid.hp_max ? Math.round((100 * (raid.hp_left ?? 0)) / raid.hp_max) : null;
+    return { kicker: "RAID BOSS", title, line: pct === null ? "Your damage goes into the crew's pool." : `Boss at ${pct}%. Your damage goes into the crew's pool.` };
+  }
+  if (trial) return { kicker: `GUARDIAN TRIAL · RUNG ${trial.rung ?? 1} OF ${trial.rungs ?? 8}`, title, line: trial.first_clear === false ? "A replay: no XP this time." : "First clear pays XP." };
+  if (siege) return { kicker: "SIEGE", title, line: `Beat it to take ${pointName} from ${siege.faction_attacked_name ?? "its holders"}.` };
+  if (run) return { kicker: "QUEST RUN", title, line: `Worth ${run.value ?? 0} points${run.stake ? `, ${run.stake} staked` : ""}. Win fast for a bonus.` };
+  const tier = point?.tier ? TIER_WORD[point.tier] : null;
+  return { kicker: tier ? `${tier.toUpperCase()} GUARDIAN` : "GUARDIAN", title, line: `Win to take ${pointName} for your faction.` };
 }
 
 /**
@@ -452,18 +516,6 @@ export function fightSeed(seedText: string): number | null {
   if (!/^-?\d+$/.test(seedText.trim())) return null;
   const n = BigInt(seedText.trim());
   return Number((n < 0n ? -n : n) % 2147483647n);
-}
-
-/**
- * Why a judged start cannot be fought in 3D, in the player's words, or null when it can: the server
- * resumed another fight still on at this point (a 2D one started moments ago), or this server plays the
- * point as the 2D fight, or the seed is unreadable.
- */
-export function judgedStartProblem(start: { seed_text: string; resumed?: boolean | null; setup: { kind?: string } }): string | null {
-  if (start.setup.kind !== "fight3d") {
-    return start.resumed ? "Your other fight at this point is still on. Finish it first." : "This point's fight is the regular Fight right now.";
-  }
-  return fightSeed(start.seed_text) === null ? "The 3D fight could not start." : null;
 }
 
 /** The /v1/duel/finish fields for a judged fight: the duel's result block from the fight's numbers, and the record (the server's finish_fields). */
@@ -484,10 +536,8 @@ export function finishFrom3D(r: Fight3DResult): DuelFinished & { fight3d: Record
 }
 
 /**
- * The reward screen for a 3D fight. The game server judges a duel by
- * replaying the 2D sim's inputs (POST /v1/duel/finish), which a Godot fight
- * does not have, so nothing is sent: the screen shows Godot's own numbers,
- * pays nothing, and says so. The level bar stays where it is.
+ * The reward screen for a 3D fight the server never saw: the test arena (the dev link), or a finish
+ * the server did not answer. It shows Godot's own numbers, pays nothing, and says so.
  */
 export function rewardFrom3D(r: Fight3DResult, point: { name: string; realm: string }, standing: RoamStanding | null): RewardSummary {
   return {

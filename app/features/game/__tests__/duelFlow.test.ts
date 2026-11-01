@@ -1,5 +1,5 @@
 // The duel's flow (features/game/duelFlow.ts): copy, cues, the result's words,
-// the Unity decision and its JSON (the 62-bit seed trap).
+// and the starts' fight3d / fallback2d asks (battle-3d-only).
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
@@ -8,7 +8,6 @@ import {
   asFull,
   backLabel,
   bannerAfter,
-  chooseDuelRenderer,
   cueFor,
   cueForSimEvent,
   duelDifficulty,
@@ -23,18 +22,13 @@ import {
   hpPercentText,
   hpRowName,
   hpShare,
-  parseCue,
-  parseFinished,
   pausePlace,
   pauseTitle,
-  practiceNote,
   payIsEmpty,
   payOf,
   resultSubtitle,
   resultTitle,
   siegeDuelStart,
-  unityDuelAction,
-  unitySetupJson,
   versusSubline,
   versusTitle,
   verdictCue,
@@ -130,6 +124,13 @@ describe("a siege fought as a duel", () => {
     assert.deepEqual(calls, [{ mode: "siege", target: "p9", lat: 1, lng: 2, accuracy_m: 12 }]);
     await assert.rejects(() => siegeDuelStart(client, { id: "p9" }, null), /location/);
     assert.equal(calls.length, 1);
+    // battle-3d-only: the 3D fight is asked for, or the 2D fallback is said
+    await siegeDuelStart(client, { id: "p9" }, { lat: 1, lng: 2, accuracy: 12 }, { fight3d: true });
+    await siegeDuelStart(client, { id: "p9" }, { lat: 1, lng: 2, accuracy: 12 }, { fallback2d: true });
+    assert.deepEqual(calls.slice(1), [
+      { mode: "siege", target: "p9", lat: 1, lng: 2, accuracy_m: 12, fight3d: true },
+      { mode: "siege", target: "p9", lat: 1, lng: 2, accuracy_m: 12, fallback2d: true },
+    ]);
   });
 });
 
@@ -206,13 +207,6 @@ describe("the result", () => {
     assert.equal(hpShare(1, 3).percent, 33);
   });
 
-  it("says the 3D fight is practice and the main button counts", () => {
-    assert.equal(practiceNote("Fight"), 'A practice round, just for fun. "Fight" is the one that counts.');
-    assert.match(practiceNote("Fight the boss"), /"Fight the boss" is the one that counts/);
-    // e2e/forge/drive/f03-duel.sh taps "Fight" by its exact label: the note must not be that.
-    assert.notEqual(practiceNote("Fight"), "Fight");
-  });
-
   it("labels the HP card: what the bars are, whose row is yours, how long it took", () => {
     assert.equal(HP_CARD_TITLE, "Health left");
     assert.equal(hpRowName("ada", true), "ada (you)");
@@ -258,71 +252,6 @@ describe("the result", () => {
   });
 });
 
-describe("Unity on the device", () => {
-  const unity = { hasView: true, hasBridge: true };
-
-  it("chooses Unity only when everything agrees", () => {
-    assert.equal(chooseDuelRenderer({ rendererFlag: "unity", islandsOffRaw: undefined, unity }), "unity");
-    // The 2D path is the default: no flag, no Unity.
-    assert.equal(chooseDuelRenderer({ rendererFlag: undefined, islandsOffRaw: undefined, unity }), "rn");
-    assert.equal(chooseDuelRenderer({ rendererFlag: "rn", islandsOffRaw: undefined, unity }), "rn");
-    // No Unity in the build.
-    assert.equal(chooseDuelRenderer({ rendererFlag: "unity", islandsOffRaw: undefined, unity: { hasView: false, hasBridge: true } }), "rn");
-    assert.equal(chooseDuelRenderer({ rendererFlag: "unity", islandsOffRaw: undefined, unity: { hasView: true, hasBridge: false } }), "rn");
-    // The island is turned off.
-    assert.equal(chooseDuelRenderer({ rendererFlag: "unity", islandsOffRaw: "unityDuel", unity }), "rn");
-    assert.equal(chooseDuelRenderer({ rendererFlag: "unity", islandsOffRaw: "all", unity }), "rn");
-    assert.equal(chooseDuelRenderer({ rendererFlag: "unity", islandsOffRaw: "forgeModel", unity }), "unity");
-    assert.equal(chooseDuelRenderer({ rendererFlag: " unity ", islandsOffRaw: " , ", unity }), "unity");
-  });
-
-  it("keeps the 62-bit seed exact in the setup text", () => {
-    const s = start();
-    // The parsed number is rounded: this is the trap.
-    assert.notEqual(String(s.setup.seed), "4611686018427387847");
-    const text = unitySetupJson(s);
-    assert.match(text, /"seed":4611686018427387847[,}]/);
-    // And the rest of the setup is what the server sent.
-    const rest = JSON.parse(text.replace(/"seed":4611686018427387847/, '"seed":0'));
-    assert.equal(rest.p1.name, "Ada");
-    assert.equal(rest.p2.ai.stance, "counter");
-    assert.equal(rest.p1.relic.kind, "sword");
-  });
-
-  it("puts a seed in a setup that had none, and refuses a bad one", () => {
-    const s = { ...start(), setup: { p1: { name: "A" }, p2: { name: "B" } } } as DuelStart;
-    assert.match(unitySetupJson(s), /"seed":4611686018427387847/);
-    assert.throws(() => unitySetupJson({ ...s, seed_text: "12x" }));
-    assert.throws(() => unitySetupJson({ ...s, seed_text: undefined as unknown as string }));
-  });
-
-  const finished = { result: { winner: 1, ticks: 900, p1_hp: 40, p2_hp: 0 }, inputs: [[3, 1], [10, 8, 20]], hash: "00ff00ff00ff00ff" };
-
-  it("reads the finish body", () => {
-    assert.deepEqual(parseFinished(JSON.stringify(finished)), finished);
-    assert.equal(parseFinished("not json"), null);
-    assert.equal(parseFinished("{}"), null);
-    assert.equal(parseFinished(JSON.stringify({ ...finished, hash: 5 })), null);
-    assert.equal(parseFinished(JSON.stringify({ ...finished, inputs: [["a"]] })), null);
-    assert.equal(parseFinished(JSON.stringify({ ...finished, result: { winner: 1 } })), null);
-  });
-
-  it("reads the scene's events", () => {
-    const ev = (kind: string, json = "") => ({ scene: "duel", kind, json });
-    assert.deepEqual(unityDuelAction(ev("ready")), { kind: "ready" });
-    assert.deepEqual(unityDuelAction(ev("sfx", "hit_heavy")), { kind: "sfx", cue: "hit_heavy" });
-    assert.deepEqual(unityDuelAction(ev("sfx", '{"name":"block"}')), { kind: "sfx", cue: "block" });
-    assert.deepEqual(unityDuelAction(ev("sfx", '{"cue":"ko"}')), { kind: "sfx", cue: "ko" });
-    assert.deepEqual(unityDuelAction(ev("finished", JSON.stringify(finished))), { kind: "finished", payload: finished });
-    assert.deepEqual(unityDuelAction(ev("finished", "junk")), { kind: "finished", payload: null });
-    assert.deepEqual(unityDuelAction(ev("quit", JSON.stringify(finished))), { kind: "quit", payload: finished });
-    assert.deepEqual(unityDuelAction(ev("quit", "")), { kind: "quit", payload: null });
-    assert.equal(unityDuelAction(ev("other")), null);
-    assert.equal(unityDuelAction({ scene: "world", kind: "ready", json: "" }), null);
-    assert.equal(parseCue('"x"'), "x");
-  });
-});
-
 import { hasTrials, trialAgainLabel, trialPoint, trialsOrder, trialTarget } from "../duelFlow.ts";
 
 describe("guardian trials", () => {
@@ -363,52 +292,4 @@ describe("guardian stance", () => {
   });
 });
 
-import { isBattleSetup, parseBattleFinished, SCENE_TIMEOUT_TEXT, unityBattleAction, wantsBattle } from "../duelFlow.ts";
 
-describe("the fantasy battle (BattleWire.swift, UnityBattleHost.swift)", () => {
-  const ok = { renderer: "unity" as const, hasBattleScene: true, hasStart: true, islandsOffRaw: "" };
-
-  it("asks for it only when Unity draws, the export has the scene, and the island is on", () => {
-    assert.equal(wantsBattle(ok), true);
-    assert.equal(wantsBattle({ ...ok, renderer: "rn" }), false);
-    assert.equal(wantsBattle({ ...ok, hasBattleScene: false }), false);
-    assert.equal(wantsBattle({ ...ok, hasStart: false }), false);
-    assert.equal(wantsBattle({ ...ok, islandsOffRaw: "unityBattle" }), false);
-    assert.equal(wantsBattle({ ...ok, islandsOffRaw: "all" }), false);
-    assert.equal(wantsBattle({ ...ok, islandsOffRaw: "unityDuel" }), true);
-  });
-
-  it("tells a battle setup from a duel's by its kind", () => {
-    const battle = parseDuelStart('{"duel_id":"d1","mode":"point","target":"p","seed":4611686018427387903,"setup":{"kind":"battle","seed":4611686018427387903,"hero":{"name":"Ada","class":"mage","level":3}}}');
-    assert.equal(isBattleSetup(battle), true);
-    assert.equal(battle.seed_text, "4611686018427387903");
-    assert.equal(isBattleSetup({ setup: { p1: { name: "a" }, p2: { name: "b" } } }), false);
-  });
-
-  it("reports the battle's result in the duel's finish shape (BattleFinished.asDuelFinished)", () => {
-    const won = { result: { won: true, end_reason: "GuardianDefeated", ticks: 900, hero_hp: 41, kills: 7 }, inputs: [[3, 1], [40, 2, 5]], hash: "00ff00ff00ff00ff" };
-    assert.deepEqual(parseBattleFinished(JSON.stringify(won)), {
-      result: { winner: 1, ticks: 900, p1_hp: 41, p2_hp: 0, end_reason: "GuardianDefeated", kills: 7 },
-      inputs: [[3, 1], [40, 2, 5]],
-      hash: "00ff00ff00ff00ff",
-    });
-    const lost = { ...won, result: { ...won.result, won: false, end_reason: "HeroDefeated", hero_hp: 0 } };
-    assert.deepEqual(parseBattleFinished(JSON.stringify(lost))?.result, { winner: 2, ticks: 900, p1_hp: 0, p2_hp: 1, end_reason: "HeroDefeated", kills: 7 });
-    assert.equal(parseBattleFinished("junk"), null);
-    assert.equal(parseBattleFinished(JSON.stringify({ ...won, result: { ...won.result, won: "yes" } })), null);
-    assert.equal(parseBattleFinished(JSON.stringify({ ...won, inputs: [[1, "x"]] })), null);
-  });
-
-  it("reads only the battle scene's events; its quit has nothing to report", () => {
-    const ev = (kind: string, json = "") => ({ scene: "battle", kind, json });
-    const fin = { result: { won: true, end_reason: "Timeout", ticks: 2400, hero_hp: 5, kills: 2 }, inputs: [], hash: "0123456789abcdef" };
-    assert.deepEqual(unityBattleAction(ev("ready")), { kind: "ready" });
-    assert.deepEqual(unityBattleAction(ev("sfx", '{"name":"hit_heavy","haptic":"heavy"}')), { kind: "sfx", cue: "hit_heavy" });
-    assert.equal(unityBattleAction(ev("finished", JSON.stringify(fin)))?.kind, "finished");
-    assert.deepEqual(unityBattleAction(ev("finished", "junk")), { kind: "quit", payload: null });
-    assert.deepEqual(unityBattleAction(ev("quit", JSON.stringify(fin))), { kind: "quit", payload: null });
-    assert.equal(unityBattleAction({ scene: "duel", kind: "ready", json: "" }), null);
-    assert.equal(unityBattleAction(ev("other")), null);
-    assert.match(SCENE_TIMEOUT_TEXT, /arena didn't open/);
-  });
-});

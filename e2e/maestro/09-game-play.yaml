@@ -3,6 +3,9 @@
 # Trafalgar Square (local game backend); links open them, as a chat invite does.
 # Timed taps (start, answer, strike) go through seed/phone.js: Maestro waits
 # for the screen to settle after a tap, and the quiz timer never settles.
+# battle-3d-only: every fight is the 3D fight, opened straight from the sheet
+# (no briefing, no versus card). The build needs EXPO_PUBLIC_GAME3D_AUTOPLAY=1
+# so the hero fights by itself; the server judges the fight and pays.
 appId: com.dammy0227.cosquest
 name: J09 find a point, a quiz, a duel, a raid, rewards
 ---
@@ -40,40 +43,32 @@ name: J09 find a point, a quiz, a duel, a raid, rewards
     visible: "Test Guardian's Post"
     timeout: 15000
 - tapOn: "Fight"
-- runScript:
-    file: scripts/peer.js
-    env: { ARGS: "phone|taps|150|--after|3", BG: "true" }
-- tapOn:
-    text: "Fight"
-    optional: true
+# The 3D fight's loading card (who, what kind of fight, what it is worth), then Godot.
+- extendedWaitUntil:
+    visible:
+      id: "fight3d-card"
+    timeout: 20000
+- takeScreenshot: j09-duel-card
 - extendedWaitUntil:
     visible: "Back to the map"
-    timeout: 90000
+    timeout: 120000
 - takeScreenshot: j09-duel-result
 - tapOn: "Back to the map"
 - runFlow: common/warden-later.yaml
 # Boss raid (a duel boss), from the raid banner
 - tapOn: "Fight the boss: .*"
 # The boss's sheet (the banner's own button says the same, so pick the one
-# under the sheet's title), then the versus screen's Fight.
+# under the sheet's title): the 3D boss fight opens straight away.
 - tapOn:
     text: "Fight the boss"
     below:
       text: "Test Boss \\(Duel\\)"
-# The raid's briefing
 - extendedWaitUntil:
-    visible: "HP [0-9]+ / [0-9]+"
-    timeout: 15000
-- tapOn: "Fight the boss"
-- runScript:
-    file: scripts/peer.js
-    env: { ARGS: "phone|taps|150|--after|3", BG: "true" }
-- tapOn:
-    text: "Fight"
-    optional: true
+    visible: "RAID BOSS"
+    timeout: 20000
 - extendedWaitUntil:
     visible: "Back to the map"
-    timeout: 90000
+    timeout: 150000
 - takeScreenshot: j09-raid-result
 - tapOn: "Back to the map"
 - runFlow: common/warden-later.yaml

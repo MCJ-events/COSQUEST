@@ -372,7 +372,7 @@ export function ForgeBagPanel({ initial = "items" }: { initial?: "items" | "avat
   const toggle = async () => {
     if (!sel || pending) return;
     if (starterSlug) {
-      // A starter weapon is held on this phone (the 3D fight is practice); a
+      // A starter weapon is held on this phone (the server never sees it); a
       // Forge weapon equipped on the server comes off so this one shows.
       setProblem(null);
       setLocalPick(isOn ? null : starterSlug);

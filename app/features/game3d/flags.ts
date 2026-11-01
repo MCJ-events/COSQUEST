@@ -25,3 +25,10 @@ export const FIGHT3D = fight3dFlags(
 export function fight3dAvailable(): boolean {
   return FIGHT3D.on && godotLib() !== null;
 }
+
+/**
+ * Rooms (the 2D overhead shooter) is hidden until a 3D Rooms exists (battle-3d-only, 1 Nov 2026):
+ * no More tile, no map beacons, no coach unlock. EXPO_PUBLIC_ROOMS=1 shows it again; the code and the
+ * server routes are kept.
+ */
+export const ROOMS_ON = process.env.EXPO_PUBLIC_ROOMS === "1";

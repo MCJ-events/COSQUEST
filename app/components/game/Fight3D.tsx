@@ -1,6 +1,9 @@
 // The 3D fight (cq 061, "Godot G0"): Godot draws the fight full screen inside
 // the app (RTNGodotView), with a small close button over it and a loading
-// card until Godot says the fight is on. The engine itself is
+// card until Godot says the fight is on. Since battle-3d-only (1 Nov 2026) it is
+// every mode's fight: DuelScreen starts the duel with the server (fight3d: true)
+// and hands the start here; Godot fights on its seed, round and modifiers, and
+// the loading card is the pre-fight card (who, what kind of fight, what it is worth). The engine itself is
 // features/game3d/engine.ts; the rules (config, result, reward) fight3d.ts.
 //
 //   <Fight3D point mode onResult onClose />   one fight
@@ -25,9 +28,9 @@ import {
   type Fight3DMode,
   type Fight3DResult,
   type Fight3DRun,
-  fightSeed,
+  fightCard,
+  fightFromStart,
   godotArgs,
-  judgedStartProblem,
   parseFightResult,
   placeFrom,
   quitResult,
@@ -68,7 +71,7 @@ export default function Fight3D({
   point,
   mode,
   autoplay,
-  judged = false,
+  start = null,
   enemyId,
   parked = false,
   autoCloseMs,
@@ -81,10 +84,10 @@ export default function Fight3D({
   mode: Fight3DMode;
   autoplay: boolean;
   /**
-   * The server judges this fight and it pays (fight3d.ts judgedFight, cq 019): the duel is
-   * started first (/v1/duel/start, fight3d: true) and Godot fights on its seed.
+   * The duel the server started for this fight (a "fight3d" setup): Godot fights on its seed, round and
+   * modifiers, and the record goes back with it. Null only for the test arena (the dev link).
    */
-  judged?: boolean;
+  start?: DuelStart | null;
   /** The opponent character a duel start named (else the server's pick for the point). */
   enemyId?: string | null;
   /** The game is behind the chat: Godot stops drawing. */
@@ -106,7 +109,9 @@ export default function Fight3D({
   const reduceMotion = useRef(reduceMotionSetting);
   reduceMotion.current = reduceMotionSetting;
   const openedAt = useRef(Date.now());
-  const duel = useRef<DuelStart | null>(null);
+  const duel = useRef<DuelStart | null>(start);
+  const fightOf = start ? fightFromStart(start) : null;
+  const card = fightCard(start, point?.name ?? "this place");
   const go = useCallback((p: Phase) => {
     phaseRef.current = p;
     setPhase(p);
@@ -136,31 +141,32 @@ export default function Fight3D({
     openedAt.current = Date.now();
     void (async () => {
       try {
-        // A judged fight: the server sets it up (seed, rules, round) before anything loads; a
-        // refusal ("Get closer", the point resting) is shown like any failure to open.
-        let seed: number | null = null;
-        if (judged && point) {
-          const start = await gameStore.duelStart(point, { fight3d: true });
-          if (!alive || done.current) return;
-          const problem = judgedStartProblem(start);
-          if (problem) throw new Error(problem);
-          seed = fightSeed(start.seed_text);
-          duel.current = start;
-          log(`judged duel=${start.duel_id} seed=${seed}`);
-        }
-        const role = point?.source === "raid" ? "boss" : "guardian";
+        // The server set this fight up already (DuelScreen started the duel): its seed, round and modifiers.
+        if (start && !fightOf) throw new Error("The 3D fight could not start.");
+        if (fightOf) log(`judged duel=${start?.duel_id} seed=${fightOf.seed} mods=${fightOf.mods.boss_hp_permille}/${fightOf.mods.boss_dmg_permille} round=${fightOf.durationS}`);
+        const role = point?.source === "raid" || start?.mode === "raid" ? "boss" : "guardian";
         // No point (the test link's Test arena): a fixed key, so the opponent is a published Guardian, not the capsule.
-        const cast = await fightCast({ pointId: point?.id ?? "test-arena", role, enemyId, enemyName: point?.extra?.guardian ?? null, lodOverride: FIGHT3D.lod });
+        const cast = await fightCast({
+          pointId: point?.id ?? "test-arena",
+          role,
+          enemyId: fightOf?.enemyId ?? enemyId,
+          enemyName: fightOf?.guardianName ?? point?.extra?.guardian ?? null,
+          lodOverride: FIGHT3D.lod,
+        });
         if (!alive || done.current) return;
         log(`cast lod=${cast.lod} hero_id=${cast.hero.id ?? "-"} hero=${cast.hero.path ? "glb" : "-"} ally=${cast.ally.path ? "glb" : "-"} enemy=${cast.enemy.path ? "glb" : "-"} after_ms=${Date.now() - openedAt.current}`);
         go({ kind: "loading", step: "Opening the arena" });
         const config = buildFightConfig({
           hero: cast.hero,
           ally: cast.ally,
-          enemy: cast.enemy,
+          // The Guardian's name is the server's (a Trials rung, a Siege's holder, a raid boss).
+          enemy: fightOf?.guardianName ? { ...cast.enemy, name: fightOf.guardianName } : cast.enemy,
           pointName: point?.name ?? "Test arena",
           mode,
-          seed: seed ?? Math.floor(Math.random() * 2147483647),
+          seed: fightOf?.seed ?? Math.floor(Math.random() * 2147483647),
+          durationS: fightOf?.durationS,
+          mods: fightOf?.mods ?? null,
+          guardianLook: fightOf?.look ?? null,
           autoplay,
           tilesUrl: FIGHT3D.tilesUrl || null,
           reduceMotion: reduceMotion.current,
@@ -262,6 +268,21 @@ export default function Fight3D({
 
       {phase.kind === "loading" || phase.kind === "closing" ? (
         <View style={styles.cover} testID="fight3d-loading" accessible accessibilityLabel={phase.kind === "loading" ? phase.step : "Closing"}>
+          {start && phase.kind === "loading" ? (
+            <View style={styles.card} testID="fight3d-card" accessible accessibilityLabel={`${card.kicker}. ${card.title}. ${card.line ?? ""}`}>
+              <Text style={styles.cardKicker} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+                {card.kicker}
+              </Text>
+              <Text style={styles.cardTitle} numberOfLines={2} adjustsFontSizeToFit maxFontSizeMultiplier={MAX_FONT_SCALE}>
+                {card.title}
+              </Text>
+              {card.line ? (
+                <Text style={styles.coverSub} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+                  {card.line}
+                </Text>
+              ) : null}
+            </View>
+          ) : null}
           <ActivityIndicator color="#FFF" size="large" />
           <Text style={styles.coverText} maxFontSizeMultiplier={MAX_FONT_SCALE}>
             {phase.kind === "loading" ? `${phase.step}…` : "Closing…"}
@@ -289,7 +310,7 @@ export default function Fight3D({
         hitSlop={10}
         testID="fight3d-close"
         accessibilityRole="button"
-        accessibilityLabel="Close the 3D fight">
+        accessibilityLabel="Leave the fight">
         <Ionicons name="close" size={22} color="#FFF" />
       </Pressable>
     </View>
@@ -306,7 +327,6 @@ export function Fight3DHost({
   run,
   parked,
   enemyId,
-  judged,
   onResult,
   onClose,
 }: {
@@ -314,7 +334,6 @@ export function Fight3DHost({
   run: Fight3DRun;
   parked?: boolean;
   enemyId?: string | null;
-  judged?: boolean;
   onResult: (r: Fight3DResult, start: DuelStart | null) => void;
   onClose: () => void;
 }) {
@@ -349,7 +368,6 @@ export function Fight3DHost({
       point={point}
       mode={run.mode}
       autoplay={run.autoplay}
-      judged={!cycling && judged}
       enemyId={enemyId}
       parked={parked}
       autoCloseMs={cycling ? run.cycleMs : undefined}
@@ -364,6 +382,9 @@ const styles = StyleSheet.create({
   root: { ...StyleSheet.absoluteFill, backgroundColor: "#000" },
   cover: { ...StyleSheet.absoluteFill, alignItems: "center", justifyContent: "center", gap: 14, padding: 24, backgroundColor: GP.navy },
   coverText: { fontFamily: GF.display, fontSize: 20, color: "#FFF", textAlign: "center" },
-  coverSub: { fontFamily: GF.body, fontSize: 14, color: "rgba(255,255,255,0.7)" },
+  coverSub: { fontFamily: GF.body, fontSize: 14, color: "rgba(255,255,255,0.7)", textAlign: "center" },
+  card: { alignItems: "center", gap: 6, marginBottom: 18, maxWidth: 360 },
+  cardKicker: { fontFamily: GF.display, fontSize: 13, letterSpacing: 1.5, color: GP.sun },
+  cardTitle: { fontFamily: GF.display, fontSize: 30, color: "#FFF", textAlign: "center" },
   close: { position: "absolute", left: 14, width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(0,0,0,0.45)", alignItems: "center", justifyContent: "center" },
 });

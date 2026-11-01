@@ -502,9 +502,14 @@ export type RaidSession = ReturnType<typeof createRaidSession>;
 // ---------- a boss fought as a duel (raid_duel on) ----------
 
 /** Start the boss fight: mode "raid", the boss point's id, where you stand. */
-export async function raidDuelStart(client: GameClient, point: QuestPoint, fix: RaidFix | null): Promise<DuelStart> {
+export async function raidDuelStart(
+  client: GameClient,
+  point: QuestPoint,
+  fix: RaidFix | null,
+  how: { fight3d?: boolean; fallback2d?: boolean } = {},
+): Promise<DuelStart> {
   if (!fix) throw new GameError("http", "Waiting for your location.");
-  return client.duelStart({ mode: "raid", target: point.id, lat: fix.lat, lng: fix.lng, accuracy_m: fix.accuracy });
+  return client.duelStart({ mode: "raid", target: point.id, lat: fix.lat, lng: fix.lng, accuracy_m: fix.accuracy, ...how });
 }
 
 export type RaidDuelInfo = {

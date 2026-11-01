@@ -1,17 +1,18 @@
-// A Quest Point's Guardian Duel in the React Native game: the briefing
-// (costquest-ios Roam/PointDuelView.swift), then the fight, then the verdict
-// (Features/DuelFeature.swift DuelView: starting, VS card, fighting, judging,
-// result), with the pause page (BattlePauseView.swift) over the fight.
+// Every fight in the React Native game: a Quest Point's Guardian, a Trials
+// rung, a Siege, a raid boss, a Quest Run point. Then the verdict
+// (Features/DuelFeature.swift DuelView: starting, fighting, judging, result).
 //
-// The fight is drawn one of two ways, the same simulation either way, so the
-// server judges both the same:
-//   - Unity, on a device build that has it and asks for it
-//     (EXPO_PUBLIC_DUEL_RENDERER=unity, island "unityDuel" not turned off):
-//     CostQuestUnityView, started with DuelBridge.StartDuel and reporting
-//     {result, inputs, hash} when it finishes.
-//   - the TypeScript port of costquest-duel (features/game/duel), drawn
-//     side-on in 2D. The default, and where there is no Unity.
+// battle-3d-only (1 Nov 2026): the fight is the 3D fight (Godot, Fight3D.tsx),
+// opened directly: no briefing, no versus card. The duel is started with the
+// server (fight3d: true), Godot fights on the server's seed, round and this
+// mode's modifiers, the record goes back to /v1/duel/finish and the server
+// judges it and pays through the mode's own payer.
 //
+// A phone that cannot run the 3D fight (no engine in the build, Android below
+// 10) says so to the server (fallback2d: true) and plays the 2D duel instead,
+// judged and paid as before: the briefing, the VS card, then the TypeScript
+// port of costquest-duel (features/game/duel) drawn side-on, with the pause
+// page (BattlePauseView.swift) over it.
 //   2D: tap: strike · hold: block (keep holding to charge, let go to throw the heavy)
 //       flick toward: dash · flick away: dodge · drag: walk · the two buttons: specials
 //
@@ -64,19 +65,14 @@ import {
 import {
   asFull,
   bannerAfter,
-  chooseDuelRenderer,
-  cueFor,
   type DuelCue,
   type DuelMode,
   DUEL_CONTROLS_2D,
-  DUEL_CONTROLS_UNITY,
   duelDifficulty,
   duelModeOf,
   guardianName,
   pausePlace,
   pauseTitle,
-  practiceNote,
-  SCENE_WAIT_MS,
   siegeDuelStart,
   trialAgainLabel,
   type TrialRequest,
@@ -84,29 +80,25 @@ import {
   type RunDuelRequest,
   runDuelTarget,
   cueForSimEvent,
-  isBattleSetup,
-  SCENE_TIMEOUT_TEXT,
-  unityBattleAction,
-  unityDuelAction,
-  unitySetupJson,
   verdictCue,
   versusTitle,
   VERSUS_MS,
-  wantsBattle,
 } from "@/features/game/duelFlow";
 import { distanceText } from "@/features/game/geo";
 import { RAID_COLOR, raidDuelStart } from "@/features/game/raids";
-import { DUEL_RENDERER_FLAG, gameStore } from "@/features/game/runtime";
+import { gameStore } from "@/features/game/runtime";
 import { siegeMoment } from "@/features/game/siegeFlow";
 import { levelMoment, reactionMoment } from "@/features/game/warden";
 import type { DuelFinished, DuelOutcome, DuelStart, QuestPoint, RoamStanding } from "@/features/game/wire";
-import { CostQuestUnityView, nativeHelpers } from "@/modules/costquest-game/src";
+import { finishFrom3D } from "@/features/game3d/fight3d";
+import { FIGHT3D, fight3dAvailable } from "@/features/game3d/flags";
 
 import { showBanner } from "./Banner";
 import BattlePause from "./BattlePause";
 import DuelResult from "./DuelResult";
 import { runModel } from "./runModel";
 import DuelVersus from "./DuelVersus";
+import Fight3D from "./Fight3D";
 import { announce, GameButton, MAX_FONT_SCALE, ProgressBar } from "./kit";
 import { RaidDuelBriefing } from "./RaidDuel";
 import type { RewardSummary } from "./Reward";
@@ -123,45 +115,11 @@ type Phase =
   | { kind: "versus"; start: DuelStart }
   | { kind: "countdown"; start: DuelStart; n: number }
   | { kind: "fighting"; start: DuelStart }
+  /** The 3D fight (Godot) on the server's setup. */
+  | { kind: "fight3d"; start: DuelStart }
   | { kind: "judging"; start: DuelStart; end: { won: boolean; reason: string } | null }
   | { kind: "result"; start: DuelStart; outcome: DuelOutcome }
   | { kind: "failed"; message: string; afterStart: boolean };
-
-/**
- * Unity draws the fight only when the build has the view and the bridge, asks
- * for it (the config.resolveDuelRenderer flag) and the island is not turned
- * off. Decided once: none of it changes while the app runs.
- */
-const USE_UNITY =
-  chooseDuelRenderer({
-    rendererFlag: DUEL_RENDERER_FLAG,
-    islandsOffRaw: process.env.EXPO_PUBLIC_GAME_2D,
-    unity: {
-      hasView: CostQuestUnityView != null,
-      hasBridge: typeof nativeHelpers?.unityStartDuel === "function" && typeof nativeHelpers?.addListener === "function",
-    },
-  }) === "unity";
-
-/**
- * Point fights may come back as the fantasy battle (UnityBattleHost) when
- * Unity draws them and the export has the Battle scene (iOS reports it;
- * Android leaves it out, so Android never asks).
- */
-const ASK_BATTLE = wantsBattle({
-  renderer: USE_UNITY ? "unity" : "rn",
-  hasBattleScene: nativeHelpers?.hasBattleScene === true,
-  hasStart: typeof nativeHelpers?.unityStartBattle === "function",
-  islandsOffRaw: process.env.EXPO_PUBLIC_GAME_2D,
-});
-
-/** BattleBridge's own pause (UnityBattleHost.setPaused) and Quit. Never throws. */
-function battleSend(method: "SetPaused" | "Quit", message: string) {
-  try {
-    nativeHelpers?.unitySend?.("BattleBridge", method, message)?.catch(() => {});
-  } catch {
-    // a build without it
-  }
-}
 
 /** The sound and the haptic of one cue (DuelSFX.play). */
 function playCue(c: DuelCue) {
@@ -187,15 +145,6 @@ function playCue(c: DuelCue) {
   }
 }
 
-/** Unity paused or resumed (DuelHost.setPaused / close). Never throws. */
-function unityPause(on: boolean) {
-  try {
-    nativeHelpers?.unityPause?.(on)?.catch(() => {});
-  } catch {
-    // a build without it
-  }
-}
-
 export default function DuelScreen({
   point,
   parked,
@@ -203,7 +152,6 @@ export default function DuelScreen({
   mode: modeProp,
   trial,
   run,
-  onFight3D,
   onClose,
 }: {
   point: QuestPoint;
@@ -221,27 +169,21 @@ export default function DuelScreen({
   run?: RunDuelRequest;
   /** Unused since the verdict is DuelResult now (Swift goes back to the map); kept so callers still compile. */
   onReward?: (r: RewardSummary) => void;
-  /** Offer the 3D fight (cq 061, EXPO_PUBLIC_GAME3D=1) on the briefing; the caller opens it. */
-  onFight3D?: () => void;
   onClose: () => void;
 }) {
   const styles = useThemedStyles(STYLE_PAIR);
   useRenderCount("DuelScreen");
   const mode = duelModeOf(modeProp, raid);
-  // A siege fought as a duel and a trial go straight to the opponent: no briefing (DuelView.task).
-  const direct = mode === "siege" || mode === "trial" || mode === "run";
+  // The 3D fight opens directly in every mode. The 2D fallback keeps the briefing for points and raids.
+  const use3D = useMemo(() => fight3dAvailable(), []);
+  const direct = use3D || mode === "siege" || mode === "trial" || mode === "run";
   const [phase, setPhase] = useState<Phase>(direct ? { kind: "starting" } : { kind: "briefing" });
   const phaseRef = useRef<Phase>(phase);
   const [paused, setPaused] = useState(false);
-  const [renderer, setRenderer] = useState<"unity" | "rn">(USE_UNITY ? "unity" : "rn");
   const before = useRef<RoamStanding | null>(null);
   const alive = useRef(true);
-  const sceneReady = useRef(false);
-  /** This fight is the fantasy battle (a setup of kind "battle"), played only by Unity. */
-  const battle = useRef(false);
   const startedOnce = useRef(false);
   const runnerRef = useRef<DuelRunner | null>(null);
-  const unitySub = useRef<{ remove: () => void } | null>(null);
   const timers = useRef(new Set<ReturnType<typeof setTimeout>>());
   const ctx = () => ({ me: gameStore.get().me, playerName: gameStore.playerName() });
 
@@ -261,8 +203,6 @@ export default function DuelScreen({
       alive.current = false;
       pending.forEach(clearTimeout);
       pending.clear();
-      unitySub.current?.remove();
-      unitySub.current = null;
     };
   }, []);
 
@@ -292,29 +232,16 @@ export default function DuelScreen({
     if (parked && (phase.kind === "versus" || phase.kind === "countdown" || phase.kind === "fighting")) setPaused(true);
   }
 
-  // Unity keeps running unless told otherwise: freeze it under the pause page.
-  const unityOn = renderer === "unity" && phase.kind === "fighting";
-  // The battle freezes itself behind the pause page (BattleBridge.SetPaused);
-  // the runtime stops only while the game is behind the chat.
-  useEffect(() => {
-    if (!unityOn) return;
-    if (battle.current) {
-      battleSend("SetPaused", paused || parked ? "1" : "0");
-      unityPause(parked);
-    } else unityPause(paused || parked);
-  }, [unityOn, paused, parked]);
-
   // The verdict: sounds and haptics from the SERVER's word, then the Warden.
   const report = useCallback(
     async (start: DuelStart, f: DuelFinished, end: { won: boolean; reason: string } | null) => {
       const k = phaseRef.current.kind;
-      if (k !== "fighting" && k !== "countdown") return;
+      if (k !== "fighting" && k !== "countdown" && k !== "fight3d") return;
       go({ kind: "judging", start, end });
       announce(end ? `${end.reason} Counting the blows` : "Counting the blows");
       try {
         const outcome = await gameStore.duelFinish(start, f);
         if (!alive.current) return;
-        unityPause(true);
         go({ kind: "result", start, outcome });
         playCue(verdictCue(outcome.status));
         const won = outcome.status === "won";
@@ -335,7 +262,6 @@ export default function DuelScreen({
         });
       } catch (error) {
         if (!alive.current) return;
-        unityPause(true);
         go({ kind: "failed", message: `Couldn't send the fight: ${(error as Error).message}`, afterStart: true });
       }
     },
@@ -352,41 +278,17 @@ export default function DuelScreen({
     [report],
   );
 
-  const abandon = () => {
-    unityPause(true);
-    onClose();
-  };
-
   // Leaving reports the fight as it stands; the server judges it a loss.
   const leave = () => {
     const cur = phaseRef.current;
     if (cur.kind !== "fighting" && cur.kind !== "countdown") return onClose();
     setPaused(false);
-    if (renderer === "unity" && cur.kind === "fighting") {
-      unityPause(false);
-      // The scene answers with `quit` and the fight as it stood. If it never does, leave anyway.
-      if (battle.current) battleSend("Quit", "");
-      else void nativeHelpers?.unityQuit?.()?.catch(() => {});
-      void wait(3000).then(() => {
-        if (alive.current && phaseRef.current.kind === "fighting") abandon();
-      });
-      return;
-    }
     const r = runnerRef.current;
     if (!r) return onClose();
     finished(cur.start, r, "left");
   };
 
-  const onUnity = (start: DuelStart, e: { scene: string; kind: string; json: string }) => {
-    const a = battle.current ? unityBattleAction(e) : unityDuelAction(e);
-    if (!a) return;
-    if (a.kind === "ready") sceneReady.current = true;
-    else if (a.kind === "sfx") playCue(cueFor(a.cue));
-    else if (a.payload) void report(start, a.payload, null);
-    else abandon();
-  };
-
-  /** The 2D fight: a short 3-2-1 (Unity has its own intro), announced. */
+  /** The 2D fight: a short 3-2-1, announced. */
   const countdownThenFight = async (start: DuelStart) => {
     for (let n = 3; n >= 1; n--) {
       go({ kind: "countdown", start, n });
@@ -402,76 +304,42 @@ export default function DuelScreen({
     go({ kind: "starting" });
     announce("Finding your opponent");
     before.current = gameStore.get().me?.standing ?? null;
-    sceneReady.current = false;
-    battle.current = false;
-    let unity = USE_UNITY;
-    setRenderer(unity ? "unity" : "rn");
+    // Ask for the 3D fight; a phone that cannot run it says so and keeps the 2D duel.
+    const how = use3D ? { fight3d: true } : { fallback2d: true };
     try {
       const fix = gameStore.get().fix;
       const start =
         mode === "raid"
-          ? await raidDuelStart(gameStore.client, point, fix)
+          ? await raidDuelStart(gameStore.client, point, fix, how)
           : mode === "siege"
-            ? await siegeDuelStart(gameStore.client, point, fix)
+            ? await siegeDuelStart(gameStore.client, point, fix, how)
             : mode === "trial" && trial
-              ? await gameStore.client.duelStart({ mode: "trial", target: trialTarget(trial) })
+              ? await gameStore.client.duelStart({ mode: "trial", target: trialTarget(trial), ...how })
               : mode === "run" && run
                 ? // A pocket run has no location; a daily run is judged for reach.
-                  await gameStore.client.duelStart({ mode: "run", target: runDuelTarget(run), lat: fix?.lat, lng: fix?.lng, accuracy_m: fix?.accuracy, stake: run.stake })
-                : await gameStore.duelStart(point, { battle: ASK_BATTLE });
+                  await gameStore.client.duelStart({ mode: "run", target: runDuelTarget(run), lat: fix?.lat, lng: fix?.lng, accuracy_m: fix?.accuracy, stake: run.stake, ...how })
+                : await gameStore.duelStart(point, how);
       if (!alive.current) return;
-      battle.current = isBattleSetup(start);
+      if (use3D && start.setup.kind === "fight3d") {
+        // The 3D fight: straight in. Its loading card says who and what it is worth.
+        playSound("whoosh");
+        announce(`${versusTitle(start, (id) => gameStore.factionName(id))}. Loading the fight`);
+        go({ kind: "fight3d", start });
+        return;
+      }
+      // The 2D duel: this phone's fallback, or a server that hands out the 2D fight for this mode.
       go({ kind: "versus", start });
       playSound("whoosh");
       announce(versusTitle(start, (id) => gameStore.factionName(id)));
-      if (unity) {
-        // The VS card holds for a beat while the arena loads behind it.
-        try {
-          unitySub.current?.remove();
-          unitySub.current = nativeHelpers?.addListener?.("onUnityEvent", (e) => onUnity(start, e)) ?? null;
-          if (battle.current) await nativeHelpers?.unityStartBattle?.(unitySetupJson(start));
-          else await nativeHelpers?.unityStartDuel?.(unitySetupJson(start));
-        } catch {
-          // A battle has no 2D arena: say so, as DuelView does when its scene never opens.
-          if (battle.current) {
-            unitySub.current?.remove();
-            unitySub.current = null;
-            if (alive.current) go({ kind: "failed", message: SCENE_TIMEOUT_TEXT, afterStart: true });
-            return;
-          }
-          // Unity would not start: the 2D arena plays this same fight.
-          unity = false;
-          unitySub.current?.remove();
-          unitySub.current = null;
-          setRenderer("rn");
-        }
-      }
       await wait(VERSUS_MS);
       if (!alive.current) return;
-      if (!unity) return void (await countdownThenFight(start));
-      go({ kind: "fighting", start });
-      // The scene says `ready` once it is drawing. If it never does, play the fight in 2D.
-      await wait(SCENE_WAIT_MS);
-      if (alive.current && !sceneReady.current && phaseRef.current.kind === "fighting") {
-        unitySub.current?.remove();
-        unitySub.current = null;
-        if (battle.current) {
-          battleSend("Quit", "");
-          unityPause(true);
-          go({ kind: "failed", message: SCENE_TIMEOUT_TEXT, afterStart: true });
-          return;
-        }
-        void nativeHelpers?.unityQuit?.()?.catch(() => {});
-        unityPause(true);
-        setRenderer("rn");
-        await countdownThenFight(start);
-      }
+      await countdownThenFight(start);
     } catch (error) {
       if (alive.current) go({ kind: "failed", message: (error as Error).message, afterStart: false });
     }
   };
 
-  // A siege fought as a duel, or a trial, goes straight to the opponent: no briefing (DuelView.task).
+  // The 3D fight (and a 2D siege, trial or run point) goes straight to the opponent: no briefing.
   useEffect(() => {
     if (!direct || startedOnce.current) return;
     startedOnce.current = true;
@@ -507,8 +375,6 @@ export default function DuelScreen({
     onClose();
   };
 
-  const unity = renderer === "unity" && !!CostQuestUnityView;
-  const insets = useSafeAreaInsets();
 
   if (phase.kind === "briefing" || (phase.kind === "starting" && !direct) || (phase.kind === "failed" && !phase.afterStart && !direct)) {
     const Brief = mode === "raid" ? RaidDuelBriefing : Briefing;
@@ -516,12 +382,11 @@ export default function DuelScreen({
     return (
       <>
         <StatusBar hidden animated />
-        <Brief point={point} busy={phase.kind === "starting"} problem={phase.kind === "failed" ? phase.message : null} onFight={fight} onFight3D={onFight3D} onClose={onClose} />
+        <Brief point={point} busy={phase.kind === "starting"} problem={phase.kind === "failed" ? phase.message : null} onFight={fight} onClose={onClose} />
       </>
     );
   }
 
-  const UnityView = CostQuestUnityView;
   const inFight = phase.kind === "countdown" || phase.kind === "fighting" || phase.kind === "judging";
   const pauseProps =
     phase.kind === "fighting"
@@ -556,7 +421,26 @@ export default function DuelScreen({
         </View>
       ) : null}
 
-      {inFight && !unity ? (
+      {phase.kind === "fight3d" ? (
+        <Fight3D
+          key={phase.start.duel_id}
+          point={point}
+          mode="full"
+          autoplay={FIGHT3D.autoplay}
+          start={phase.start}
+          parked={parked}
+          onResult={(r, s) => {
+            const st = s ?? phase.start;
+            const end = r.outcome === "quit" ? null : { won: r.outcome === "win", reason: r.outcome === "timeout" ? "Time!" : r.outcome === "win" ? "K.O.!" : "Down!" };
+            void report(st, finishFrom3D(r), end);
+          }}
+          // Left before the end (the X, Android Back): the server counts it as a loss when it runs
+          // out of time, as it does any fight walked away from.
+          onClose={onClose}
+        />
+      ) : null}
+
+      {inFight ? (
         <Arena
           key={phase.start.duel_id}
           point={point}
@@ -569,13 +453,6 @@ export default function DuelScreen({
           onOver={finished}
           onPause={() => setPaused(true)}
         />
-      ) : null}
-
-      {(phase.kind === "fighting" || phase.kind === "judging") && unity && UnityView ? (
-        <>
-          <UnityView style={StyleSheet.absoluteFill} paused={paused || parked || phase.kind === "judging"} accessibilityLabel="The arena" />
-          {phase.kind === "fighting" ? <PauseButton top={insets.top + 8} onPress={() => setPaused(true)} /> : null}
-        </>
       ) : null}
 
       {phase.kind === "judging" ? (
@@ -614,7 +491,7 @@ export default function DuelScreen({
       {pauseProps && paused ? (
         <BattlePause
           {...pauseProps}
-          controls={unity ? DUEL_CONTROLS_UNITY : DUEL_CONTROLS_2D}
+          controls={DUEL_CONTROLS_2D}
           onResume={() => setPaused(false)}
           onLeave={leave}
         />
@@ -651,14 +528,12 @@ function Briefing({
   busy,
   problem,
   onFight,
-  onFight3D,
   onClose,
 }: {
   point: QuestPoint;
   busy: boolean;
   problem: string | null;
   onFight: () => void;
-  onFight3D?: () => void;
   onClose: () => void;
 }) {
   const styles = useThemedStyles(STYLE_PAIR);
@@ -701,11 +576,9 @@ function Briefing({
               ? `${holder} holds ${point.name}. Beat its Guardian to take it for your faction.`
               : `Beat it to take ${point.name} for your faction.`}
         </Text>
-        {USE_UNITY ? null : (
-          <Text style={styles.howto} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-            Tap to strike · Hold to block, keep holding to charge · Flick toward to dash, away to dodge · Drag to walk
-          </Text>
-        )}
+        <Text style={styles.howto} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+          Tap to strike · Hold to block, keep holding to charge · Flick toward to dash, away to dodge · Drag to walk
+        </Text>
         {problem ? (
           <Text style={styles.problem} accessibilityLiveRegion="polite" maxFontSizeMultiplier={MAX_FONT_SCALE}>
             {problem}
@@ -714,29 +587,7 @@ function Briefing({
         {busy ? (
           <ActivityIndicator color={GP.navy} accessibilityLabel="Finding your opponent" />
         ) : (
-          <>
-            <GameButton title="Fight" color={GP.sun} onPress={onFight} icon={<Ionicons name="flash" size={20} color="#FFF" />} testID="duel-fight" />
-            {/* The 3D fight in Godot (cq 061): a practice round, not judged by the server, so it
-                sits under "Fight" as the smaller, secondary choice, and says that "Fight" is the one
-                that counts. The e2e drivers tap it by its label "Fight (3D)". */}
-            {onFight3D ? (
-              <View style={styles.practice}>
-                <GameButton
-                  title="Fight (3D)"
-                  color={GP.navy}
-                  size="small"
-                  onPress={onFight3D}
-                  testID="fight3d-open"
-                  icon={<Ionicons name="cube" size={16} color="#FFF" />}
-                  accessibilityHint="A practice round in 3D, just for fun. XP comes from the regular Fight."
-                  style={styles.practiceButton}
-                />
-                <Text style={styles.practiceNote} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-                  {practiceNote("Fight")}
-                </Text>
-              </View>
-            ) : null}
-          </>
+<GameButton title="Fight" color={GP.sun} onPress={onFight} icon={<Ionicons name="flash" size={20} color="#FFF" />} testID="duel-fight" />
         )}
       </View>
     </View>
@@ -1194,9 +1045,6 @@ const STYLE_PAIR = themedStyles({
   blurb: { fontFamily: GF.body, fontSize: 15, color: "rgba(30,58,76,0.7)" },
   howto: { fontFamily: GF.regular, fontSize: 12, color: GP.mist },
   problem: { fontFamily: GF.body, fontSize: 14, color: GP.berry },
-  practice: { alignItems: "center", gap: 6 },
-  practiceButton: { alignSelf: "center", minWidth: 180 },
-  practiceNote: { fontFamily: GF.regular, fontSize: 12, color: GP.mist, textAlign: "center" },
   arena: { ...StyleSheet.absoluteFill, overflow: "hidden" },
   sky: { ...StyleSheet.absoluteFill, bottom: "40%" },
   ground: { position: "absolute", left: 0, right: 0, bottom: 0 },

@@ -1,5 +1,14 @@
 # XP from the 3D fight (cq 019)
 
+> **battle-3d-only (1 Nov 2026): the 3D fight is the one battle style.** Every fight entry (a Quest
+> Point's "Fight", "Fight the boss", Siege, Guardian Trials rungs, Quest Run duel points) opens the
+> judged 3D fight directly: no briefing, no versus card, no second button. `DuelScreen` starts the duel
+> with `fight3d: true`; the server's knob per mode (`point_fight3d`, `raid_fight3d`, `siege_fight3d`,
+> `trial_fight3d`, `run_fight3d`) hands out a `fight3d` setup. A phone that cannot run Godot sends
+> `fallback2d: true` and plays the 2D duel (judged and paid as before). Quest Point quizzes stay, as a
+> challenge, not a battle; Boss Trivia, the quiz Siege, Unity and the SwiftUI game are out of the app;
+> Rooms is hidden (`EXPO_PUBLIC_ROOMS=1`). See "Modifiers" below for how the modes differ.
+
 Until cq 019 the Godot fight paid nothing and the reward screen said "Practice": the game server judges
 a 2D duel by checking its inputs and could not judge a 3D fight. Now, at a Quest Point that plays as a
 fight, the 3D fight is a real point fight. The server sets it up, the fight records what happened, the
@@ -62,3 +71,23 @@ deploy the server before the app.
   win, inflated hits, every hit a crit, buffs and staggers from nowhere, skills under their cooldown or
   never pressed, impossible swing rates, HP that does not add up, a sped-up fight, a malformed record);
   end to end, a 3D point win pays XP once and a forged one pays nothing.
+
+## Modifiers (battle-3d-only)
+The modes need different Guardians: a raid boss with more HP and heavier strikes over 60 s, a 30 s
+Quest Run round, a Trials rung's own strength, a Siege Guardian as sturdy as its hold. None of that goes
+in the rules table (that would change `f3d-1-21d2cde61ab2` and hold every fight until both sides ship).
+It goes in the stored setup, beside `duration_s`:
+- `mods.boss_hp_permille`: the Guardian's HP is `ENEMY_HP` x this (`fight.gd boss_hp()`, the server's
+  `roam_fight3d.boss_hp`); `mods.boss_dmg_permille`: each boss strike's damage range x this, each end
+  rounded (`boss_dmg()` / `_boss_range`). Bounds 200..5000 and 200..3000.
+- `guardian_look` (cosmetic, never judged): `size_permille` (the boss's height) and `title` (the intro
+  banner). Each mode's values come from server knobs (`fight3d_*` in `roam_rules.py`).
+
+Godot records the mods in its log (`judge.mods`). The judge holds a record whose mods are not the
+setup's ("the fight ran on other modifiers") and judges HP and strikes at the modded numbers. Identity
+mods, and setups stored before mods existed, judge exactly as before: the seeded review fights are
+byte-identical with identity mods, and the old corpus still passes. Tests: `tests/judge_mods_test.gd`
+(Godot) and the backend's `tests/test_battle_3d_only.py` with `fixtures/fight3d_mods_corpus.jsonl.gz`.
+
+Raid pool damage and Quest Run scores are taken from the judged record, not the phone's summary. Old
+builds (2D only) keep the 2D duel for `duel_2d_grace_days` after `fight3d_since`, then get 426 "update".

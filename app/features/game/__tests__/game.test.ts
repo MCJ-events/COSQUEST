@@ -9,9 +9,7 @@ import { errorFrom, GameClient, GameError, parseDuelStart } from "../client.ts";
 import {
   isProductionServer,
   PRODUCTION_GAME_SERVER,
-  resolveDuelRenderer,
   resolveGameServer,
-  resolveGameUi,
   resolveIslandsOff,
   NATIVE_ISLANDS,
   STAGING_GAME_SERVER,
@@ -46,26 +44,13 @@ describe("config", () => {
     assert.equal(resolveGameServer("http://127.0.0.1:8399/v1"), PRODUCTION_GAME_SERVER);
     assert.equal(isProductionServer(STAGING_GAME_SERVER), false);
   });
-  it("the shared RN game everywhere; the SwiftUI game only on iOS and only when asked", () => {
-    assert.equal(resolveGameUi("ios", undefined), "rn");
-    assert.equal(resolveGameUi("ios", ""), "rn");
-    assert.equal(resolveGameUi("ios", "rn"), "rn");
-    assert.equal(resolveGameUi("ios", " native "), "native");
-    assert.equal(resolveGameUi("ios", "Native"), "rn");
-    assert.equal(resolveGameUi("android", "native"), "rn");
-    assert.equal(resolveGameUi("android", undefined), "rn");
-    assert.equal(resolveGameUi("web", "native"), "rn");
-  });
   it("native islands can be turned off one by one, or all at once", () => {
     assert.deepEqual([...resolveIslandsOff(undefined)], []);
     assert.deepEqual([...resolveIslandsOff("forgeModel")], ["forgeModel"]);
-    assert.deepEqual([...resolveIslandsOff(" unityDuel , nonsense")], ["unityDuel"]);
+    assert.deepEqual([...resolveIslandsOff(" arShrine , nonsense")], ["arShrine"]);
+    // Unity's islands are gone with Unity (battle-3d-only): the names are ignored like any unknown one.
+    assert.deepEqual([...resolveIslandsOff("unityDuel,unityBattle")], []);
     assert.deepEqual([...resolveIslandsOff("all")].sort(), [...NATIVE_ISLANDS].sort());
-  });
-  it("Unity draws the duel only when the build has it and the flag asks", () => {
-    assert.equal(resolveDuelRenderer("unity", false), "rn");
-    assert.equal(resolveDuelRenderer("unity", true), "unity");
-    assert.equal(resolveDuelRenderer(undefined, true), "rn");
   });
 });
 

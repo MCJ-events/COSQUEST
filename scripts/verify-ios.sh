@@ -360,7 +360,7 @@ if [ "$RUN" = 1 ]; then
     [ -f "$rel_app/game3d.pck" ] && echo "    game3d.pck is in the app bundle: ok" \
       || echo "    WARNING: game3d.pck not found in $rel_app (withGodot plugin did not copy it?)" >&2
     echo "    By hand, the Godot fight (docs/game3d/G0_VERDICT.md; EXPO_PUBLIC_GAME3D=1 build, game server with forge_world on):"
-    echo "     - a duel point: 'Fight (3D)' opens the Godot fight full screen in portrait; no black screen, no crash"
+    echo "     - a duel point: 'Fight' opens the Godot fight directly, full screen in portrait (no briefing); no black screen, no crash"
     echo "     - joystick bottom left moves your Forge hero at once; the camera follows from a high three-quarter view"
     echo "     - Attack: a slash arc and hit sparks on the Guardian; the skill button shows its cooldown"
     echo "     - the 0:45 timer, '2/3 players', the minimap, names and health bars over you, the ally and the monster"

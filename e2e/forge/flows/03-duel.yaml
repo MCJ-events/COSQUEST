@@ -1,6 +1,8 @@
-# Forge drop-in proof (cq 056) 3/4, the duel: the equipped Forge weapon is on
-# the versus card in 3D and the server fights with its class and damage; a
-# Forge Guardian character (role "guardian") stands for the Guardian.
+# Forge drop-in proof (cq 056) 3/4, the duel: the equipped Forge weapon is in
+# the hero's hand in the 3D fight and the server fights with its class and
+# damage; a Forge Guardian character (role "guardian") stands for the Guardian.
+# battle-3d-only: the point's Fight opens the 3D fight directly (needs
+# EXPO_PUBLIC_GAME3D_AUTOPLAY=1 for the hero to fight by itself).
 appId: com.dammy0227.cosquest
 name: F03 duel with a Forge weapon
 ---
@@ -14,20 +16,11 @@ name: F03 duel with a Forge weapon
 - tapOn:
     text: "Fight"
     waitToSettleTimeoutMs: 1500
-# The briefing (stance, the Guardian) has its own Fight.
 - extendedWaitUntil:
-    visible: ".*against.*|Fight"
+    visible:
+      id: "fight3d-card"
     timeout: 20000
-- takeScreenshot: f03-briefing
-- tapOn:
-    text: "Fight"
-    optional: true
-    waitToSettleTimeoutMs: 1500
-- extendedWaitUntil:
-    visible: ".*against.*"
-    timeout: 20000
-    optional: true
-- takeScreenshot: f03-versus
+- takeScreenshot: f03-card
 - extendedWaitUntil:
     visible: "never-on-screen-wait"
     timeout: 4000

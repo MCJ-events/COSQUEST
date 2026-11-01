@@ -5,11 +5,10 @@
 //
 // Pure: no React Native. Siblings are imported with the .ts extension.
 import { GameError, type GameClient } from "./client.ts";
-import { resolveDuelRenderer, resolveIslandsOff } from "./config.ts";
 import { DuelEventType } from "./duel/types.ts";
 import type { RunState } from "./run.ts";
 import { type SiegeReward, siegeDrop } from "./siege.ts";
-import type { DuelFighterPeek, DuelFinished, DuelOutcome, DuelPay, DuelStart, QuestPoint, RoamExtra, RoamMe, TrialLadder } from "./wire.ts";
+import type { DuelFighterPeek, DuelOutcome, DuelPay, DuelStart, QuestPoint, RoamExtra, RoamMe, TrialLadder } from "./wire.ts";
 
 // ---------------------------------------------------------------------
 // Modes and copy
@@ -31,21 +30,12 @@ export async function siegeDuelStart(
   client: Pick<GameClient, "duelStart">,
   point: Pick<QuestPoint, "id">,
   fix: { lat: number; lng: number; accuracy: number } | null,
+  how: { fight3d?: boolean; fallback2d?: boolean } = {},
 ): Promise<DuelStart> {
   if (!fix) throw new GameError("http", "Waiting for your location.");
-  return client.duelStart({ mode: "siege", target: point.id, lat: fix.lat, lng: fix.lng, accuracy_m: fix.accuracy });
+  return client.duelStart({ mode: "siege", target: point.id, lat: fix.lat, lng: fix.lng, accuracy_m: fix.accuracy, ...how });
 }
 
-/**
- * The line under the briefing's "Fight (3D)" button: the 3D fight is a
- * practice round (the server does not judge it), and the main button is the
- * one that counts. `main` is that button's label ("Fight", "Fight the boss").
- */
-export function practiceNote(main: string): string {
-  return `A practice round, just for fun. "${main}" is the one that counts.`;
-}
-
-/** DuelModes.difficulty: the Guardian is below, level with or above you. */
 export function duelDifficulty(tier: string): string {
   return tier === "epic" ? "Hard" : tier === "rare" ? "Even" : "Easy";
 }
@@ -146,14 +136,6 @@ export const DUEL_CONTROLS_2D: readonly { name: string; text: string }[] = [
   { name: "Skills", text: "Tap Special or Ultimate once its bar is full. The bar fills from landed hits and blocks." },
 ];
 
-/** BattlePauseView.controls, word for word: how the Unity scene is played. */
-export const DUEL_CONTROLS_UNITY: readonly { name: string; text: string }[] = [
-  { name: "Move", text: "Left thumb, anywhere on the left. Push to the rim to sprint." },
-  { name: "Attack", text: "Tap for a combo. Hold to charge a spin. Attack while sprinting to lunge." },
-  { name: "Dodge", text: "Flick on the right side to roll that way, or tap Dodge. Roll as a red area fires for a perfect dodge." },
-  { name: "Guard", text: "Hold to block. Press it just as a hit lands to parry." },
-  { name: "Skills", text: "Drag from a skill to aim, let go to cast. Ultimate fills from combos, parries and perfect dodges." },
-];
 
 // ---------------------------------------------------------------------
 // Sound and haptics (DuelSFX)
@@ -349,178 +331,6 @@ export function verdictAnnouncement(o: DuelOutcomeFull, start: DuelStart | null 
   return sub ? `${resultTitle(o.status)}. ${sub}` : resultTitle(o.status);
 }
 
-// ---------------------------------------------------------------------
-// Unity on the device
-// ---------------------------------------------------------------------
-
-export type UnityPieces = {
-  /** CostQuestUnityView is non-null (the build has Unity). */
-  hasView: boolean;
-  /** nativeHelpers.unityStartDuel exists, and the module can emit onUnityEvent. */
-  hasBridge: boolean;
-};
-
-/**
- * Which renderer draws this fight. Unity only when the build has all of it
- * (the view and the bridge), the build asks for it (EXPO_PUBLIC_DUEL_RENDERER=unity,
- * config.resolveDuelRenderer) and the island "unityDuel" is not turned off
- * (EXPO_PUBLIC_GAME_2D, config.resolveIslandsOff). Otherwise the 2D sim.
- */
-export function chooseDuelRenderer(i: { rendererFlag: string | null | undefined; islandsOffRaw: string | null | undefined; unity: UnityPieces }): "unity" | "rn" {
-  const hasUnity = i.unity.hasView && i.unity.hasBridge;
-  if (resolveDuelRenderer(i.rendererFlag, hasUnity) !== "unity") return "rn";
-  return resolveIslandsOff(i.islandsOffRaw).has("unityDuel") ? "rn" : "unity";
-}
-
-/**
- * The setup as the JSON text Unity reads, with the 62-bit seed exact: the
- * parsed `setup.seed` is a rounded double, so the digits (`seed_text`) are
- * spliced into the text and never go through a number. Throws on a seed that
- * is not whole digits.
- */
-export function unitySetupJson(start: Pick<DuelStart, "setup" | "seed_text">): string {
-  const digits = start.seed_text;
-  if (typeof digits !== "string" || !/^-?\d+$/.test(digits)) throw new Error("The fight came without an exact seed.");
-  const marker = "@@cq-seed-digits@@";
-  const text = JSON.stringify({ ...start.setup, seed: marker });
-  return text.replace(`"${marker}"`, digits);
-}
-
-// ---------------------------------------------------------------------
-// The fantasy battle (BattleWire.swift, UnityBattleHost.swift)
-// ---------------------------------------------------------------------
-
-/**
- * Whether a point fight may ask the server for the fantasy battle
- * (DuelModel.start: body.battle = true): Unity draws the fight, the export
- * has the Battle scene, and the island "unityBattle" is not turned off.
- */
-export function wantsBattle(i: { renderer: "unity" | "rn"; hasBattleScene: boolean; hasStart: boolean; islandsOffRaw: string | null | undefined }): boolean {
-  return i.renderer === "unity" && i.hasBattleScene && i.hasStart && !resolveIslandsOff(i.islandsOffRaw).has("unityBattle");
-}
-
-/** BattleSetupPeek.isBattle: a setup of kind "battle" is played by the Battle scene, not the duel. */
-export function isBattleSetup(start: Pick<DuelStart, "setup">): boolean {
-  return start.setup?.kind === "battle";
-}
-
-/**
- * BattleFinished.asDuelFinished: the Battle scene's
- * {result: {won, end_reason, ticks, hero_hp, kills}, inputs, hash} as the finish
- * body the server takes. 1 is the player, 2 the Guardian. Null if unreadable.
- */
-export function parseBattleFinished(json: string): DuelFinished | null {
-  let v: unknown;
-  try {
-    v = JSON.parse(json);
-  } catch {
-    return null;
-  }
-  if (!isRec(v) || !isRec(v.result) || !Array.isArray(v.inputs) || typeof v.hash !== "string") return null;
-  const r = v.result;
-  if (typeof r.won !== "boolean" || typeof r.end_reason !== "string" || !isInt(r.ticks) || !isInt(r.hero_hp) || !isInt(r.kills)) return null;
-  const inputs: number[][] = [];
-  for (const row of v.inputs) {
-    if (!Array.isArray(row) || !row.every(isInt)) return null;
-    inputs.push(row as number[]);
-  }
-  return {
-    result: { winner: r.won ? 1 : 2, ticks: r.ticks, p1_hp: r.hero_hp, p2_hp: r.won ? 0 : 1, end_reason: r.end_reason, kills: r.kills },
-    inputs,
-    hash: v.hash,
-  };
-}
-
-/**
- * One Battle scene event (UnityBattleHost.deliver). Unlike the duel, its
- * `quit` carries nothing to report: the server forfeits a fight left running.
- */
-export function unityBattleAction(e: { scene: string; kind: string; json: string }): UnityDuelAction | null {
-  if (e.scene !== "battle") return null;
-  switch (e.kind) {
-    case "ready":
-      return { kind: "ready" };
-    case "sfx":
-      return { kind: "sfx", cue: parseCue(e.json) };
-    case "finished": {
-      const payload = parseBattleFinished(e.json);
-      // Unreadable: Swift quits rather than report nonsense.
-      return payload ? { kind: "finished", payload } : { kind: "quit", payload: null };
-    }
-    case "quit":
-      return { kind: "quit", payload: null };
-    default:
-      return null;
-  }
-}
-
-/** DuelError.sceneTimeout: the battle has no 2D arena to fall back to. */
-export const SCENE_TIMEOUT_TEXT = "The arena didn't open. Close CosQuest and try again.";
-
-/** What one Unity event means to the duel screen. */
-export type UnityDuelAction =
-  | { kind: "ready" }
-  | { kind: "sfx"; cue: string }
-  | { kind: "finished"; payload: DuelFinished | null }
-  | { kind: "quit"; payload: DuelFinished | null };
-
-const isRec = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object" && !Array.isArray(v);
-const isInt = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
-
-/** The finish body Unity writes: {result, inputs: [[tick, code(, arg)]], hash}, or null if unreadable. */
-export function parseFinished(json: string): DuelFinished | null {
-  let v: unknown;
-  try {
-    v = JSON.parse(json);
-  } catch {
-    return null;
-  }
-  if (!isRec(v) || !isRec(v.result) || !Array.isArray(v.inputs) || typeof v.hash !== "string") return null;
-  const r = v.result;
-  if (!isInt(r.winner) || !isInt(r.ticks) || !isInt(r.p1_hp) || !isInt(r.p2_hp)) return null;
-  const inputs: number[][] = [];
-  for (const row of v.inputs) {
-    if (!Array.isArray(row) || !row.every(isInt)) return null;
-    inputs.push(row as number[]);
-  }
-  return { result: { winner: r.winner, ticks: r.ticks, p1_hp: r.p1_hp, p2_hp: r.p2_hp }, inputs, hash: v.hash };
-}
-
-/** A cue is sent bare ("hit_heavy") or as {"name": "..."} / {"cue": "..."}. */
-export function parseCue(json: string): string {
-  try {
-    const v: unknown = JSON.parse(json);
-    if (isRec(v)) {
-      if (typeof v.name === "string") return v.name;
-      if (typeof v.cue === "string") return v.cue;
-    }
-    if (typeof v === "string") return v;
-  } catch {
-    // bare text
-  }
-  return json;
-}
-
-/** An onUnityEvent, as the duel sees it; null for another scene's events and kinds it ignores. */
-export function unityDuelAction(e: { scene: string; kind: string; json: string }): UnityDuelAction | null {
-  if (e.scene !== "duel") return null;
-  switch (e.kind) {
-    case "ready":
-      return { kind: "ready" };
-    case "sfx":
-      return { kind: "sfx", cue: parseCue(e.json) };
-    case "finished":
-      return { kind: "finished", payload: parseFinished(e.json) };
-    case "quit":
-      return { kind: "quit", payload: parseFinished(e.json) };
-    default:
-      return null;
-  }
-}
-
-/** How long Unity may take to say `ready` (40 waits of 250 ms in DuelView.watchForScene). Past it, the fight plays in 2D. */
-export const SCENE_WAIT_MS = 10_000;
-/** The VS card holds this long while the arena loads (DuelView.begin). */
 export const VERSUS_MS = 1800;
 
 // ---------------------------------------------------------------------

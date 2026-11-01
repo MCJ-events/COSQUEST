@@ -1,5 +1,4 @@
-// Page 1 of the world: the game (the native iOS game's view, or the React
-// Native game with gameUi 'rn': Android, and iOS behind the flag), the
+// Page 1 of the world: the game (the React Native game, components/game), the
 // faction veil it fades up out of, and the chat bubble over it.
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect } from "react";
@@ -11,7 +10,7 @@ import type { ViewStyle } from "react-native";
 import { FONTS } from "@/constants/fonts";
 import { world } from "@/features/world/worldState";
 import GameRoot from "@/components/game/GameRoot";
-import { CostQuestGameView, GAME_UI, gamePlayable } from "@/modules/costquest-game/src";
+import { gamePlayable } from "@/modules/costquest-game/src";
 
 import GameBubble from "./GameBubble";
 import { useWorld } from "./useWorld";
@@ -43,16 +42,10 @@ export default function GamePage({
 
   return (
     <View style={styles.page}>
-      {mounted && GAME_UI === "rn" ? (
+      {mounted ? (
         <View style={StyleSheet.absoluteFill} accessibilityLabel="CostQuest game">
           <GameRoot parked={parked} />
         </View>
-      ) : mounted && CostQuestGameView ? (
-        <CostQuestGameView
-          style={StyleSheet.absoluteFill}
-          parked={parked}
-          accessibilityLabel="CostQuest game"
-        />
       ) : null}
 
       {!gamePlayable ? <NoGameHere /> : null}

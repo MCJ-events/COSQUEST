@@ -1,11 +1,10 @@
 // The CostQuest game module, implemented in TypeScript for the React Native
-// game (Android; iOS behind gameUi: 'rn'). Same functions and events as the
+// game (every platform). Same functions and events as the
 // iOS native module (ios/Embed/CostQuestGameModule.swift), so the shell
 // (components/world) and GameBridge cannot tell which game is behind them.
 //
 // The native Android module (android/, Kotlin) still supplies what only the
-// platform knows: RAM for the prewarm policy, whether Unity is linked, and
-// the gesture-exclusion, NFC and speech helpers.
+// platform knows: RAM for the prewarm policy, and the gesture-exclusion, NFC and speech helpers.
 import { parsePlayUrl } from "@/features/world/deepLink";
 import type { GameTarget } from "@/features/world/deepLink";
 import { parseCoinsReturn } from "@/features/game/coins";
@@ -16,7 +15,6 @@ import type { CostQuestGameModule, GameEvents } from "./index";
 type Listener = (event: never) => void;
 
 export type NativeHelpers = {
-  hasUnity?: boolean;
   physicalMemory?: number;
 } | null;
 
@@ -64,7 +62,6 @@ export function createRnGame(native: NativeHelpers): CostQuestGameModule {
 
   return {
     available: true,
-    hasUnity: native?.hasUnity === true,
     physicalMemory: native?.physicalMemory,
 
     async prewarm() {

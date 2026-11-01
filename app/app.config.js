@@ -12,6 +12,9 @@
 //   no entitlement needed; the button shows with EXPO_PUBLIC_APPLE_SIGNIN=1.)
 module.exports = ({ config }) => {
   const env = process.env;
+  // battle-3d-only (1 Nov 2026): the 3D fight is every mode's fight, so every build has it
+  // (features/game3d/flags.ts also treats unset as on). EXPO_PUBLIC_GAME3D=0 builds the 2D-only app.
+  if (env.EXPO_PUBLIC_GAME3D === undefined) env.EXPO_PUBLIC_GAME3D = "1";
   // One copy of BouncyCastle (expo-updates and the Sparks SDK both bring one).
   const plugins = [...(config.plugins || []), "./plugins/withBouncyCastleDedupe"];
 

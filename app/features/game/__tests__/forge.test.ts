@@ -250,7 +250,7 @@ describe("the 3D model rules", () => {
     assert.equal(forgeUses3d(w, { viewAvailable: false, islandsOff: none }), false);
     assert.equal(forgeUses3d(w, { viewAvailable: true, islandsOff: resolveIslandsOff("forgeModel") }), false);
     assert.equal(forgeUses3d(w, { viewAvailable: true, islandsOff: resolveIslandsOff("all") }), false);
-    assert.equal(forgeUses3d(w, { viewAvailable: true, islandsOff: resolveIslandsOff("unityDuel") }), true);
+    assert.equal(forgeUses3d(w, { viewAvailable: true, islandsOff: resolveIslandsOff("arShrine") }), true);
     assert.equal(forgeUses3d(el([]), { viewAvailable: true, islandsOff: none }), false);
   });
 

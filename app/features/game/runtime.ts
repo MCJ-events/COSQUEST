@@ -8,16 +8,15 @@ import * as SecureStore from "expo-secure-store";
 import { useSyncExternalStore } from "react";
 import { Platform } from "react-native";
 
-import { isProductionServer, resolveDuelRenderer, resolveGameServer, resolveGameUi } from "./config.ts";
+import { type GameUi, isProductionServer, resolveGameServer } from "./config.ts";
 import { LOCATION_WATCH } from "./locationWatch.ts";
 import { createGameStore, type GameState, type KeyStorage } from "./store.ts";
 
 /** Metro inlines EXPO_PUBLIC_* at bundle time (direct dotted access only). */
 export const GAME_SERVER = resolveGameServer(process.env.EXPO_PUBLIC_GAME_SERVER);
 export const GAME_SERVER_IS_PRODUCTION = isProductionServer(GAME_SERVER);
-export const GAME_UI = resolveGameUi(Platform.OS, process.env.EXPO_PUBLIC_GAME_UI);
-export const DUEL_RENDERER_FLAG = process.env.EXPO_PUBLIC_DUEL_RENDERER;
-export const duelRenderer = (hasUnity: boolean) => resolveDuelRenderer(DUEL_RENDERER_FLAG, hasUnity);
+/** The React Native game everywhere (config.ts GameUi): the SwiftUI game is out of the build. */
+export const GAME_UI: GameUi = "rn";
 
 const secureStorage: KeyStorage = {
   async get(key) {

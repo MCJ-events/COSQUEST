@@ -27,7 +27,9 @@ import {
 const android = { os: "android", version: 35 };
 
 test("the flag is off unless EXPO_PUBLIC_GAME3D=1, and off below Android 10 and on the web", () => {
-  assert.equal(fight3dFlags({}, android).on, false);
+  // On by default (battle-3d-only): every build has the 3D fight unless built with EXPO_PUBLIC_GAME3D=0.
+  assert.equal(fight3dFlags({}, android).on, true);
+  assert.equal(fight3dFlags({ EXPO_PUBLIC_GAME3D: "0" }, android).on, false);
   assert.equal(fight3dFlags({ EXPO_PUBLIC_GAME3D: "1" }, android).on, true);
   assert.equal(fight3dFlags({ EXPO_PUBLIC_GAME3D: "1" }, { os: "android", version: 28 }).on, false);
   assert.equal(fight3dFlags({ EXPO_PUBLIC_GAME3D: "1" }, { os: "ios", version: "18.0" }).on, true);
@@ -43,7 +45,7 @@ test("knobs: keep, autostart, cycle, lod; autostart and cycle need the flag", ()
     { keep: f.keep, autostart: f.autostart, cycle: f.cycle, cycleMs: f.cycleMs, lod: f.lod },
     { keep: true, autostart: "arena", cycle: 10, cycleMs: 5000, lod: 2 },
   );
-  const off = fight3dFlags({ EXPO_PUBLIC_GAME3D_AUTOSTART: "arena", EXPO_PUBLIC_GAME3D_CYCLE: "10" }, android);
+  const off = fight3dFlags({ EXPO_PUBLIC_GAME3D: "0", EXPO_PUBLIC_GAME3D_AUTOSTART: "arena", EXPO_PUBLIC_GAME3D_CYCLE: "10" }, android);
   assert.equal(off.autostart, null);
   assert.equal(off.cycle, 0);
   const d = fight3dFlags({ EXPO_PUBLIC_GAME3D: "1", EXPO_PUBLIC_GAME3D_AUTOSTART: "bogus", EXPO_PUBLIC_GAME3D_CYCLE: "x" }, android);
@@ -209,9 +211,9 @@ test("the reward for a 3D fight: Godot's numbers, no pay, and it says so", () =>
   assert.equal(win.after, standing);
   assert.equal(win.note, FIGHT3D_NOTE);
   assert.equal(win.practice, true);
-  // e2e/godot/drive/g01-fight.sh looks for "practice fight" on the reward screen.
-  assert.match(FIGHT3D_NOTE, /practice fight/);
-  assert.match(FIGHT3D_NOTE, /XP comes from the regular Fight/);
+  // The test arena's fight was never sent to the server; nothing calls it practice (battle-3d-only).
+  assert.match(FIGHT3D_NOTE, /not sent to the game server/);
+  assert.doesNotMatch(FIGHT3D_NOTE, /practice/i);
   assert.deepEqual(
     win.stats?.map((s) => [s.id, s.value]),
     [
@@ -253,7 +255,7 @@ test("tilesFields: ground and detail knobs", () => {
 
 // ---------- the judged 3D fight (cq 019): the server sets it up, judges its record and pays ----------
 
-import { finishFrom3D, fightSeed, fightStats, judgedFight } from "../fight3d.ts";
+import { fightCard, fightFromStart, finishFrom3D, fightSeed, fightStats } from "../fight3d.ts";
 
 const judgeLog = { v: 1, rules: "f3d-1-21d2cde61ab2", seed: 233, hits: [[57, 57, 2, 1, 66, 66, 0]], casts: [], heals: [], staggers: [], presses: [], guards: [] };
 const godotWin = { outcome: "win", damage_dealt: 6164, damage_taken: 285, time_s: 21.57, hits: 47, skill_uses: 9, enemy_hp_left: 0, hero_hp_left: 715, mode: "full", ally_damage: 511, crits: 9, parries: 2, skills: [3, 3, 3, 0, 0], judge: judgeLog };
@@ -289,19 +291,67 @@ test("the finish body for a judged fight is the duel's result block plus the rec
   assert.deepEqual(lost.result, { winner: 2, ticks: 4500, p1_hp: 715, p2_hp: 900, end_reason: "timeout" });
 });
 
-test("a fight is judged only at a duel point, on a server that judges 3D fights, never a raid or the test arena", () => {
-  const on = { features: { duel: { fight3d: true } } };
-  const point = { source: "signal" };
-  assert.equal(judgedFight(on, point, true), true);
-  assert.equal(judgedFight(on, point, false), false); // the point is a quiz on this server
-  assert.equal(judgedFight(on, { source: "raid" }, true), false);
-  assert.equal(judgedFight(on, null, true), false);
-  assert.equal(judgedFight({ features: { duel: { fight3d: false } } }, point, true), false);
-  assert.equal(judgedFight({ features: { duel: {} } }, point, true), false); // an older server
-  assert.equal(judgedFight(null, point, true), false);
+// ---------- every mode's fight (battle-3d-only) ----------
+
+const start3d = (setup: Record<string, unknown>) => ({ seed_text: "4611686018427387903", setup: { kind: "fight3d", ...setup } });
+
+test("a 3D start hands Godot its seed, round, modifiers, look and opponent", () => {
+  const f = fightFromStart(
+    start3d({
+      duration_s: 60,
+      mods: { boss_hp_permille: 1300, boss_dmg_permille: 1100 },
+      guardian_look: { size_permille: 1150, title: "RAID BOSS" },
+      guardian_name: "Ironhide",
+      p2: { name: "Ironhide", character: { element_id: "boss-7", version: 2, name: "Ironhide" } },
+    }),
+  );
+  assert.ok(f);
+  assert.equal(f.seed, fightSeed("4611686018427387903"));
+  assert.equal(f.durationS, 60);
+  assert.deepEqual(f.mods, { boss_hp_permille: 1300, boss_dmg_permille: 1100 });
+  assert.deepEqual(f.look, { size_permille: 1150, title: "RAID BOSS" });
+  assert.equal(f.enemyId, "boss-7");
+  assert.equal(f.guardianName, "Ironhide");
+  // a setup stored before modifiers: the identity, the 45 s round
+  const old = fightFromStart(start3d({}))!;
+  assert.deepEqual(old.mods, { boss_hp_permille: 1000, boss_dmg_permille: 1000 });
+  assert.equal(old.durationS, 45);
+  assert.equal(old.look, null);
+  // not a 3D fight (the 2D fallback), or an unreadable seed: nothing for Godot
+  assert.equal(fightFromStart({ seed_text: "1", setup: { p1: { name: "a" }, p2: { name: "b" } } }), null);
+  assert.equal(fightFromStart({ seed_text: "x", setup: { kind: "fight3d" } }), null);
 });
 
-test("the fight's own numbers are rows on any reward screen, judged or practice", () => {
+test("the config carries the modifiers and look to Godot only when the server gave them", () => {
+  const base = { hero: { path: null, name: null }, ally: { path: null, name: null }, enemy: { path: null, name: "Ironhide" }, pointName: "Bank", mode: "full" as const, seed: 9, autoplay: false };
+  const c = buildFightConfig({ ...base, durationS: 30, mods: { boss_hp_permille: 650, boss_dmg_permille: 1000 }, guardianLook: { title: "QUEST RUN" } });
+  assert.equal(c.duration_s, 30);
+  assert.deepEqual(c.mods, { boss_hp_permille: 650, boss_dmg_permille: 1000 });
+  assert.deepEqual(c.guardian_look, { title: "QUEST RUN" });
+  const plain = buildFightConfig(base);
+  assert.equal(plain.mods, undefined);
+  assert.equal(plain.guardian_look, undefined);
+  assert.equal(plain.duration_s, 45);
+});
+
+test("the pre-fight card says who, what kind of fight, and what it is worth, per mode", () => {
+  assert.deepEqual(fightCard(start3d({ guardian_name: "Ronin of Jubilee Fountain", point: { tier: "rare" } }), "Jubilee Fountain"), {
+    kicker: "RARE GUARDIAN",
+    title: "Ronin of Jubilee Fountain",
+    line: "Win to take Jubilee Fountain for your faction.",
+  });
+  assert.equal(fightCard(start3d({ guardian_name: "Ironhide", raid: { hp_left: 1500, hp_max: 6000 } }), "x").line, "Boss at 25%. Your damage goes into the crew's pool.");
+  assert.equal(fightCard(start3d({ guardian_name: "Kage", trial: { rung: 3, rungs: 8, first_clear: true } }), "x").kicker, "GUARDIAN TRIAL · RUNG 3 OF 8");
+  assert.match(fightCard(start3d({ guardian_name: "Kage", trial: { rung: 1, rungs: 8, first_clear: false } }), "x").line ?? "", /replay/);
+  assert.equal(fightCard(start3d({ guardian_name: "Ada", siege: { faction_attacked_name: "Anime" } }), "Big Ben").line, "Beat it to take Big Ben from Anime.");
+  assert.match(fightCard(start3d({ guardian_name: "G", run: { value: 400, stake: 0 } }), "x").line ?? "", /Worth 400 points/);
+  // no start (the test arena)
+  assert.equal(fightCard(null, "x").title, "The Guardian");
+  // nothing on the card calls the fight practice
+  for (const c of [fightCard(start3d({ point: { tier: "common" } }), "x"), fightCard(null, "x")]) assert.doesNotMatch(JSON.stringify(c), /practice/i);
+});
+
+test("the fight's own numbers are rows on any reward screen", () => {
   const r = parseFightResult(godotWin)!;
   assert.deepEqual(
     fightStats(r).map((s) => [s.id, s.value]),
@@ -341,12 +391,3 @@ test("a fight with a place asks Godot for the place arena; without one it is the
   assert.equal(s.ground_json, undefined);
 });
 
-import { judgedStartProblem } from "../fight3d.ts";
-
-test("a judged start that is not a 3D fight says why: another fight still on here, or the 2D fight on this server", () => {
-  const ok = { seed_text: "239", resumed: false, setup: { kind: "fight3d" } };
-  assert.equal(judgedStartProblem(ok), null);
-  assert.match(judgedStartProblem({ ...ok, resumed: true, setup: {} }) ?? "", /still on/);
-  assert.match(judgedStartProblem({ ...ok, setup: {} }) ?? "", /regular Fight/);
-  assert.match(judgedStartProblem({ ...ok, seed_text: "x" }) ?? "", /could not start/);
-});

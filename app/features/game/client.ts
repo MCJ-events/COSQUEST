@@ -307,15 +307,15 @@ export class GameClient {
     accuracy_m?: number | null;
     /** A Quest Run's Forbidden Zone: stake half the score on this fight. */
     stake?: boolean;
-    /** This build can play the fantasy battle scene: a point fight may come back as kind "battle" (server knob point_battle). */
-    battle?: boolean;
-    /** The 3D fight, judged by the server: a point fight comes back as kind "fight3d" (server knob point_fight3d, cq 019). */
+    /** The 3D fight, judged by the server: the fight comes back as kind "fight3d" (server knobs <mode>_fight3d, cq 019, battle-3d-only). */
     fight3d?: boolean;
+    /** This phone cannot run the 3D fight: keep the 2D duel, judged and paid as before (battle-3d-only). */
+    fallback2d?: boolean;
   }): Promise<DuelStart> {
     // Absent rather than null: the server's accuracy_m is a number with a default.
     const payload: Record<string, unknown> = { device_key: this.deviceKey(), mode: body.mode, target: body.target };
-    if (body.battle) payload.battle = true;
     if (body.fight3d) payload.fight3d = true;
+    if (body.fallback2d) payload.fallback2d = true;
     if (body.lat != null && body.lng != null) {
       payload.lat = body.lat;
       payload.lng = body.lng;
