@@ -138,6 +138,7 @@ router.post('/quests/:questId/publish', validate(rules.questId), a(quests.publis
 router.post('/quests/:questId/unpublish', validate(rules.questId), a(quests.unpublishQuest));
 router.post('/quests/:questId/duplicate', validate(rules.questId), a(quests.duplicateQuest));
 router.post('/quests/:questId/cancel', validate(rules.cancelQuest), a(quests.cancelQuest));
+router.delete('/quests/:questId', validate(rules.cancelQuest), a(quests.deleteQuest));
 router.get('/geocode', validate(rules.geocode), a(quests.geocode));
 
 // Tickets & Payments

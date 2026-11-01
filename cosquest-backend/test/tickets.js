@@ -211,6 +211,24 @@ async function run(baseUrl) {
   const orders = await request('GET', `/api/admin/orders?quest=${gala.id}`, adminToken);
   check(orders.data.orders?.length === 1 && orders.data.orders[0].status === 'paid', 'orders per quest', orders.data);
 
+  console.log('\n--- deleting quests ---');
+  const unused = await makeQuest('Unused Draft', 10, 5);
+  await request('GET', `/api/quests/${unused.id}/ticket-types`); // makes its default ticket type
+  const noReasonDel = await request('DELETE', `/api/admin/quests/${unused.id}`, adminToken, { reason: '' });
+  check(noReasonDel.status === 400, 'deleting needs a reason', noReasonDel.data);
+  const deleted = await request('DELETE', `/api/admin/quests/${unused.id}`, adminToken, { reason: 'Made by mistake' });
+  check(deleted.status === 200 && !(await Quest.findById(unused._id)) && !(await TicketType.countDocuments({ quest: unused._id })), 'an unused quest is deleted with its ticket types', deleted.data);
+  const withTicket = await request('DELETE', `/api/admin/quests/${gala.id}`, adminToken, { reason: 'Try' });
+  check(withTicket.status === 409 && withTicket.data.code === 'has_registrations', 'a quest with registrations cannot be deleted', withTicket.data);
+  check((await Quest.findById(gala._id)).isPublished === true, '...and a refused delete leaves it published', null);
+  const withMoney = await request('DELETE', `/api/admin/quests/${big.id}`, adminToken, { reason: 'Try' });
+  check(withMoney.status === 409 && withMoney.data.code === 'has_orders', 'a quest with payment history cannot be deleted', withMoney.data);
+  const fay = await makeUser('Fay');
+  const inCheckout = await makeQuest('In Checkout', 10, 5);
+  await request('POST', `/api/quests/${inCheckout.id}/checkout`, fay.token, {});
+  const whilePaying = await request('DELETE', `/api/admin/quests/${inCheckout.id}`, adminToken, { reason: 'Try' });
+  check(whilePaying.status === 409 && whilePaying.data.code === 'has_orders' && (await Quest.findById(inCheckout._id)).isPublished, 'someone on the payment page: not deleted (still published)', whilePaying.data);
+
   console.log('\n--- partial refunds, price edits, refunds owed, webhooks in flight ---');
   const cal = await makeUser('Cal');
   const dee = await makeUser('Dee');

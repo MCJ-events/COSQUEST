@@ -11,6 +11,9 @@ A quest with `requireAtVenue` checks the phone's position at checkout **while th
 ## Quests near you
 `GET /api/quests?lat&lng&radiusMiles` asks the database only for quests in a box around the point, measures each, and keeps the nearest (`limit`, default 20). Before, it took the first 20 worldwide by start time and then filtered by distance, so nearby quests were cut off. Without lat/lng: the soonest, as before.
 
+## Deleting quests
+`DELETE /api/admin/quests/:questId { reason }` deletes a quest for good, with its ticket types: only when nobody is registered and no order was ever paid, refunded, free or in checkout (otherwise 409 `has_registrations` / `has_orders`: cancel it instead). It is unpublished while it is checked, so no checkout can start meanwhile, and a refused delete leaves it as it was. Recorded as `quest.delete` with a snapshot.
+
 ## Render environment (sandbox now, live later)
 `STRIPE_SECRET_KEY` (sk_test_...), `STRIPE_WEBHOOK_SECRET` (whsec_...), `APP_WEB_URL` (https://cosquest.vercel.app). Optional: `REFUND_CUTOFF_HOURS` (default 24), `TICKETS_WORKER=0` on all but one instance if there are several, `QUEST_CURRENCY` (USD).
 

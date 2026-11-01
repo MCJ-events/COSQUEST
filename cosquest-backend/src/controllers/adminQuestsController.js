@@ -7,6 +7,7 @@
 //   PATCH /api/admin/quests/:questId               edit
 //   POST  /api/admin/quests/:questId/publish | unpublish | duplicate
 //   POST  /api/admin/quests/:questId/cancel        { reason }  paid tickets refunded, everyone told
+//   DELETE /api/admin/quests/:questId              { reason }  only with no registrations and no payments ever
 //   POST  /api/admin/quests/cover                  multipart field "cover" -> { url, publicId }
 //   GET   /api/admin/geocode?q=                    address -> places with coordinates (OpenStreetMap)
 //
@@ -17,6 +18,8 @@ const mongoose = require('mongoose');
 const Quest = require('../models/Quest');
 const QuestRegistration = require('../models/QuestRegistration');
 const TicketType = require('../models/TicketType');
+const Order = require('../models/Order');
+const Ticket = require('../models/Ticket');
 const AuditEvent = require('../models/AuditEvent');
 const notificationModel = require('../models/notificationModel');
 const { isValidFactionKey } = require('../models/factionModel');
@@ -400,6 +403,58 @@ async function cancelQuest(req, res) {
   }
 }
 
+/**
+ * Deletes a quest for good: only when nobody is registered and no money was
+ * ever involved (no paid, refunded, free or pending order). Otherwise it must
+ * be cancelled, which tells people, refunds them and keeps the records.
+ *
+ * It is unpublished FIRST, so no checkout can start while it is checked and
+ * deleted (a pending order deleted while someone is on Stripe's page could
+ * not be refunded automatically); a refusal puts it back as it was. Only
+ * orders that never involved money are deleted, so even a checkout that was
+ * already under way keeps its order (and its payment is refunded: a quest
+ * that no longer exists counts as cancelled in src/utils/tickets.js).
+ */
+async function deleteQuest(req, res) {
+  try {
+    const quest = await loadQuest(req.params.questId);
+    const reason = String(req.body.reason || '').trim();
+    if (reason.length < 3) fail(400, 'A reason is required.', 'reason_required');
+    const wasPublished = Boolean(quest.isPublished);
+    if (wasPublished) await Quest.updateOne({ _id: quest._id }, { $set: { isPublished: false } });
+    const [registered, moneyOrders, liveTickets] = await Promise.all([
+      QuestRegistration.countDocuments({ quest: quest._id, status: { $in: ['registered', 'completed', 'winner'] } }),
+      Order.countDocuments({ quest: quest._id, status: { $in: ['paid', 'refunded', 'pending', 'free'] } }),
+      Ticket.countDocuments({ quest: quest._id, status: { $in: ['valid', 'checked_in'] } }),
+    ]);
+    if (registered || liveTickets || moneyOrders) {
+      if (wasPublished) await Quest.updateOne({ _id: quest._id }, { $set: { isPublished: true } });
+      if (registered || liveTickets) fail(409, `${registered || liveTickets} ${(registered || liveTickets) === 1 ? 'person is' : 'people are'} registered: cancel it instead, so they are told.`, 'has_registrations');
+      fail(409, 'It has orders or payment history: cancel it instead, so the records are kept.', 'has_orders');
+    }
+
+    const snapshot = adminQuestJson(quest);
+    await Promise.all([
+      TicketType.deleteMany({ quest: quest._id }),
+      Order.deleteMany({ quest: quest._id, status: { $in: ['expired', 'failed', 'cancelled'] } }),
+      Ticket.deleteMany({ quest: quest._id, status: { $in: ['refunded', 'cancelled'] } }),
+      QuestRegistration.deleteMany({ quest: quest._id }),
+    ]);
+    await Quest.deleteOne({ _id: quest._id });
+    const event = await recordAudit(req.admin, {
+      action: 'quest.delete',
+      area: 'quests',
+      target: { type: 'quest', id: quest._id, label: label(quest) },
+      reason,
+      before: { title: snapshot.title, status: snapshot.status, startsAt: snapshot.startsAt, venue: snapshot.location?.name, entryFee: snapshot.entryFee, isSeedData: snapshot.isSeedData },
+      after: { deleted: true },
+    });
+    return res.json({ deleted: true, auditEvent: `EV-${event.number}` });
+  } catch (error) {
+    return answer(res, error);
+  }
+}
+
 async function uploadCover(req, res) {
   try {
     if (!req.file) fail(400, 'Choose an image (field "cover").');
@@ -428,6 +483,7 @@ module.exports = {
   unpublishQuest: setPublished(false),
   duplicateQuest,
   cancelQuest,
+  deleteQuest,
   uploadCover,
   geocode,
   readFields,
