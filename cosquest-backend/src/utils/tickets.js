@@ -47,6 +47,15 @@ function tell(userId, message, data = {}) {
   notificationModel.createForUser(userId, message, { type: 'system', ...data }).catch(() => {});
 }
 
+// A phone notification that opens the ticket (data.type 'ticket'). `tell`
+// above is in-app only (system notices send no push of their own).
+// category: the person's switch for it (push.CATEGORIES).
+function pushTicket(userId, ticketId, title, body, category) {
+  require('./push').sendToUsers([String(userId)], { title, body, data: { type: 'ticket', ticketId: String(ticketId) }, channel: 'default', category, skipOnline: false }).catch(() => {});
+}
+
+const when = (date) => new Date(date).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: process.env.REMINDER_TIME_ZONE || 'America/Los_Angeles' });
+
 // ---------- ticket types ----------
 
 /** The quest's default ticket type (from its entry fee and places), made once. */
@@ -329,6 +338,7 @@ async function fulfil(order, { paymentIntentId = null, amountTotal = null, curre
   if (!before || before.status !== 'registered') await Quest.updateOne({ _id: claimed.quest }, { $inc: { registrationCount: 1 } });
 
   tell(claimed.user, `Your ticket for ${quest.title} is ready. See it in My tickets.`);
+  pushTicket(claimed.user, ticket._id, 'Your ticket is ready 🎟️', `${quest.title} · ${when(quest.startsAt)}`, 'questUpdates');
   return { order: await Order.findById(order._id), ticket };
 }
 
@@ -491,6 +501,33 @@ async function reconcileDue() {
   }
 }
 
+// ---------- reminders ----------
+
+/**
+ * "Starts in about an hour": once per valid ticket, for quests starting in
+ * 50-70 minutes. reminderSentAt is claimed atomically, so two servers (or
+ * two runs) never send it twice.
+ */
+async function remindersDue(now = new Date()) {
+  const soon = await Quest.find({
+    isPublished: true,
+    status: { $ne: 'cancelled' },
+    startsAt: { $gt: new Date(now.getTime() + 50 * 60 * 1000), $lte: new Date(now.getTime() + 70 * 60 * 1000) },
+  }).select('title startsAt location');
+  let sent = 0;
+  for (const quest of soon) {
+    const due = await Ticket.find({ quest: quest._id, status: 'valid', reminderSentAt: null }).select('_id user').limit(1000);
+    for (const t of due) {
+      const claimed = await Ticket.findOneAndUpdate({ _id: t._id, reminderSentAt: null }, { $set: { reminderSentAt: new Date() } });
+      if (!claimed) continue;
+      tell(t.user, `${quest.title} starts in about an hour. Have your ticket ready.`);
+      pushTicket(t.user, t._id, 'Starts in about an hour', `${quest.title}${quest.location?.name ? ` · ${quest.location.name}` : ''}. Tap to show your ticket.`, 'eventReminders');
+      sent += 1;
+    }
+  }
+  return sent;
+}
+
 let timer = null;
 function start() {
   if (timer || process.env.TICKETS_WORKER === '0' || process.env.NODE_ENV === 'test') return;
@@ -500,6 +537,7 @@ function start() {
     busy = true;
     try {
       await reconcileDue();
+      await remindersDue().catch((error) => console.error('[tickets] reminders failed:', error.message));
     } finally {
       busy = false;
     }
@@ -543,6 +581,7 @@ module.exports = {
   markRefundedFromStripe,
   reconcileOrder,
   reconcileDue,
+  remindersDue,
   releaseHold,
   orderJson,
   orderLabel,

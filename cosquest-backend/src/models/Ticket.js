@@ -15,6 +15,8 @@ const ticketSchema = new mongoose.Schema(
     status: { type: String, enum: ['valid', 'checked_in', 'refunded', 'cancelled'], default: 'valid', index: true },
     checkedInAt: { type: Date, default: null },
     checkedInBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    // "Starts in about an hour" reminder, sent once.
+    reminderSentAt: { type: Date, default: null },
   },
   { timestamps: true }
 );

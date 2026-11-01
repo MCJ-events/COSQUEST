@@ -18,6 +18,10 @@ Builds on the admin dashboard (6 zips) and Quests Phase 1. Needs `npm install st
 - **Tickets**: `CQT-` + 128 random bits; **check-in is one atomic step** (a copied code only gets in once).
 - **Limits**: 8 checkouts per person per 10 minutes; Stripe's minimum 0.50; supported currencies USD/EUR/GBP/CAD/AUD.
 
+## Notifications
+- **"Your ticket is ready 🎟️"**: an in-app notification and a phone push (`data: { type: 'ticket', ticketId }`, opens the ticket) when a ticket is issued.
+- **"Starts in about an hour"**: once per valid ticket, for quests starting in 50-70 minutes (`remindersDue`, run with the reconciler every 2 minutes; `Ticket.reminderSentAt` is claimed atomically). Times in the push use `REMINDER_TIME_ZONE` (default America/Los_Angeles). The ready push follows the person's "Quest updates" switch and the reminder their "Event reminders" switch (`questUpdates` / `eventReminders` in src/utils/push.js).
+
 ## Files
 | | |
 |---|---|
@@ -29,6 +33,7 @@ Builds on the admin dashboard (6 zips) and Quests Phase 1. Needs `npm install st
 | `src/routes/ticketRoutes.js`, `src/validators/tickets.js` **new** | |
 | `src/routes/adminRoutes.js`, `src/validators/admin.js` **replace Quests Phase 1's** | |
 | `test/tickets.js` **new** | 34 checks (register it like the others) |
+| `test/ticketReminders.js` **new** | 4 checks: `require('./ticketReminders').run()` (no server needed) |
 | `apply-tickets.js` | `server.js` (webhook before `express.json()`, reconciler start/stop), `src/routes/index.js` (ticket routes), `questController.js` (register/unregister through tickets) |
 
 ## Member API
