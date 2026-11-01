@@ -66,7 +66,7 @@ Response — the current response additionally includes `token`, `onboardingRequ
     "faction": null,
     "interests": [],
     "preferences": {
-      "notificationsEnabled": false
+      "notificationsEnabled": true
     },
     "devices": [],
     "onboardingComplete": false,
@@ -154,7 +154,7 @@ Response:
     "faction": null,
     "interests": [],
     "preferences": {
-      "notificationsEnabled": false
+      "notificationsEnabled": true
     },
     "devices": [],
     "onboardingComplete": false,
@@ -193,7 +193,7 @@ Response:
     "faction": null,
     "interests": [],
     "preferences": {
-      "notificationsEnabled": false
+      "notificationsEnabled": true
     },
     "devices": [],
     "onboardingComplete": false,
@@ -237,7 +237,7 @@ Response:
     "faction": null,
     "interests": [],
     "preferences": {
-      "notificationsEnabled": false
+      "notificationsEnabled": true
     },
     "devices": [],
     "onboardingComplete": false,
@@ -266,7 +266,7 @@ Response:
     "faction": null,
     "interests": [],
     "preferences": {
-      "notificationsEnabled": false
+      "notificationsEnabled": true
     },
     "devices": [],
     "onboardingComplete": false,
@@ -329,7 +329,7 @@ Response:
     "faction": "ascendants",
     "interests": [],
     "preferences": {
-      "notificationsEnabled": false
+      "notificationsEnabled": true
     },
     "devices": [],
     "onboardingComplete": false,
@@ -387,7 +387,7 @@ Response:
     "faction": "ascendants",
     "interests": ["anime", "comic", "cosplay"],
     "preferences": {
-      "notificationsEnabled": false
+      "notificationsEnabled": true
     },
     "devices": [],
     "onboardingComplete": false,

@@ -1455,8 +1455,12 @@ async function run(baseUrlArg) {
     const login4 = await c('POST', '/api/auth/login', { body: { email: email4, password } });
     const token4 = login4.json.token;
 
+    // Notifications start on, so every account here that hasn't switched
+    // them off is opted in, not just the two that chose on.
+    const optedIn = await User.countDocuments({ 'preferences.notificationsEnabled': true });
     const sentCount = await sendNotification.run('A CosQuest just opened near you!');
-    assert(sentCount === 2, 'sendNotification.run() -> delivered to exactly the 2 opted-in users', sentCount);
+    assert(sentCount === optedIn && optedIn >= 2 && !(await User.exists({ email: email4, 'preferences.notificationsEnabled': true })),
+      'sendNotification.run() -> delivered to everyone opted in (not the one who switched off)', { sentCount, optedIn });
 
     // Every user already has 1 welcome notification from signup - the
     // broadcast adds a 2nd for opted-in users only (newest first). The free

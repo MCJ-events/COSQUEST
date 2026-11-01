@@ -24,8 +24,8 @@ async function createForEnabledUsers(message) {
 
 /**
  * Unconditional single-user version - used for the welcome notification
- * sent at signup, before the person has ever set `notificationsEnabled`
- * (it defaults to false and isn't chosen until onboarding step 4).
+ * sent at signup, before the person has chosen at onboarding step 4
+ * (`notificationsEnabled` starts on; they can switch it off there).
  */
 async function createForUser(userId, message, { type = 'system', actor, conversation, chatMessage } = {}) {
   const notification = await Notification.create({

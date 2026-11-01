@@ -86,7 +86,10 @@ const userSchema = new mongoose.Schema(
     },
 
     preferences: {
-      notificationsEnabled: { type: Boolean, default: false },
+      // On from the start, however the account was made (sign-up, Google or
+      // Apple, an admin): off, calls and messages never reach the phone.
+      // Sign-up's notifications step and Settings can switch it off.
+      notificationsEnabled: { type: Boolean, default: true },
       locationEnabled: { type: Boolean, default: false },
       radiusMiles: { type: Number, default: 50, min: 5, max: 100 },
       // Separate from the master notificationsEnabled switch above - these

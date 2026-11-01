@@ -19,6 +19,8 @@ Phones get a push for a new DM or group message, an @mention, a follow, a group 
 
 Always skipped: `preferences.notificationsEnabled` off, and any device row left over from before registration required a session (`authed: false`). Messages, mentions, post activity and scheduled calls skip users with the app **on screen** (they get the in-app `banner` socket event instead); calls and game events always push.
 
+`notificationsEnabled` starts on for every new account; sign-up's notifications step and Settings can switch it off. Accounts left off from before (the old default, or switched off by accident at sign-up): `node scripts/notificationsOn.js` shows how many and why, `--yes` turns them on (`--yes --never-chose`: only those that never chose).
+
 ## App on screen (`app:state`)
 
 A connected socket doesn't mean the app is on screen: a phone that was just locked or switched away keeps its socket for a while (Socket.IO notices a dead one only after ~45 s; Android often keeps a live one much longer). Skipping the push then loses the notification, because a banner can't show in the background. So the app tells the server:
