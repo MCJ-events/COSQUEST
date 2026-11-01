@@ -1,8 +1,13 @@
-// The Relicdex: every Relic in the game by faction (your own first), the ones
-// you have found with their level, the one in your hand, and the Forge's
-// weapons; tap one for its card, where you equip it or spend shards on a
-// level. costquest-ios Features/RelicsFeature.swift (RelicdexSheet,
-// RelicDetail), opened from the rail (Roam/RoamHomeView.swift `showRelics`).
+// The Collection: everything the player holds, in one sheet behind one rail
+// button. Two tabs:
+// - Relics, the Relicdex: every Relic in the game by faction (your own
+//   first), the ones you have found with their level, the one in your hand;
+//   tap one for its card, where you equip it or spend shards on a level.
+//   costquest-ios Features/RelicsFeature.swift (RelicdexSheet, RelicDetail).
+// - Forge: the Forge finds you own and the characters you may wear, on the 3D
+//   turntable, with one equip button (ForgeWorld.tsx ForgeBagPanel). It used
+//   to be a separate sheet behind a chip under the profile.
+// Which tab an opener lands on: features/game/collection.ts.
 //
 // The server decides what you own, what a level costs and whether you can
 // have it (app/roam_relics.py): a refusal ("Needs 20 shards") is shown in its
@@ -12,16 +17,7 @@ import * as Haptics from "expo-haptics";
 import { type ReactNode, useEffect, useState } from "react";
 import { LinearGradient } from "expo-linear-gradient";
 import { ActivityIndicator, BackHandler, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import Animated, {
-  FadeIn,
-  FadeOut,
-  useAnimatedStyle,
-  useReducedMotion,
-  useSharedValue,
-  withSequence,
-  withSpring,
-  withTiming,
-} from "react-native-reanimated";
+import Animated, { FadeIn, FadeOut, useAnimatedStyle, useReducedMotion, useSharedValue, withSequence, withSpring, withTiming } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useSheetMotion } from "./sheetMotion";
@@ -52,7 +48,10 @@ import { forgeStore, relicsStore, useRelics } from "@/features/game/relicsLive";
 import { useGame } from "@/features/game/runtime";
 import { SPRING_RELIC_DETAIL, SPRING_SHARD_BAR } from "@/features/game/spring";
 
+import type { CollectionTab } from "@/features/game/collection";
+
 import { ForgeArmourySection, ForgeWeaponDetail } from "./ForgeArmoury";
+import { ForgeBagPanel } from "./ForgeWorld";
 import { GameBackdrop } from "./GameBackdrop";
 import { announce, Chip, GameButton, GameHeading, GameIconButton, GamePanel, MAX_FONT_SCALE, pressFeedback, withAlpha } from "./kit";
 import { RelicArt, RelicPips, RelicSunburst, rarityColor, rarityInk, SHARD } from "./RelicArt";
@@ -65,8 +64,11 @@ import { ErrorState } from "@/components/kit";
 
 type Picked = { kind: "relic"; id: string } | { kind: "forge"; id: string } | null;
 
-export default function RelicsSheet({ onClose }: { onClose: () => void }) {
+const TAB_NAMES: Record<CollectionTab, string> = { relics: "Relics", forge: "Forge" };
+
+export default function CollectionSheet({ onClose, initial, tabs }: { onClose: () => void; initial: CollectionTab; tabs: CollectionTab[] }) {
   const styles = useThemedStyles(STYLE_PAIR);
+  const [tab, setTab] = useState<CollectionTab>(tabs.includes(initial) ? initial : (tabs[0] ?? "relics"));
   const insets = useSafeAreaInsets();
   const motion = useSheetMotion();
   const me = useGame((s) => s.me);
@@ -74,9 +76,9 @@ export default function RelicsSheet({ onClose }: { onClose: () => void }) {
   const [picked, setPicked] = useState<Picked>(null);
 
   useEffect(() => {
-    void relicsStore.refresh();
+    if (tabs.includes("relics")) void relicsStore.refresh();
     void forgeStore.refresh();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Back closes the card first (this listener is newer than the game's).
   const onScreen = useOnScreen();
@@ -99,31 +101,58 @@ export default function RelicsSheet({ onClose }: { onClose: () => void }) {
     <Animated.View entering={motion.entering} exiting={motion.exiting} style={[styles.sheet, { top: insets.top + 40 }]}>
       <GameBackdrop />
       <View style={styles.head}>
-        <SheetHeader title="Relics" onClose={onClose} closeLabel="Close the Relics" />
+        <SheetHeader title="Collection" onClose={onClose} closeLabel="Close the Collection" />
       </View>
-      <ScrollView contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + 24 }]}>
-        {p ? (
-          <>
-            <View style={styles.chips}>
-              <Chip text={`${p.owned.length} of ${p.catalogue_size} found`} color={GP.skyDeep} />
-              {totalShards(p) > 0 ? <Chip text={`${totalShards(p)} shards`} color={SHARD} /> : null}
-            </View>
-            <Hero payload={p} onPick={(id) => setPicked({ kind: "relic", id })} />
-            <ForgeArmourySection onPick={(id) => setPicked({ kind: "forge", id })} />
-            {factionsInOrder(me?.faction).map((f) => (
-              <FactionSection key={f} faction={f} payload={p} mine={f === me?.faction} onPick={(id) => setPicked({ kind: "relic", id })} />
-            ))}
-          </>
-        ) : relics.failed ? (
-          <>
-            {/* Task 059: the shared kit's error state, in the game's tone. */}
-            <ErrorState tone="game" compact title="Couldn't load your Relics" onRetry={() => void relicsStore.refresh()} />
-            <ForgeArmourySection onPick={(id) => setPicked({ kind: "forge", id })} />
-          </>
-        ) : (
-          <ActivityIndicator color="#FFF" style={{ marginTop: 40 }} />
-        )}
-      </ScrollView>
+      {tabs.length > 1 ? (
+        <View style={styles.tabs} accessibilityRole="tablist">
+          {tabs.map((t) => (
+            <Pressable
+              key={t}
+              onPress={() => {
+                if (t === tab) return;
+                Haptics.selectionAsync().catch(() => {});
+                setPicked(null);
+                setTab(t);
+              }}
+              style={[styles.tab, tab === t && styles.tabOn]}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: tab === t }}
+              accessibilityLabel={TAB_NAMES[t]}
+            >
+              <Text style={[styles.tabText, tab === t && styles.tabTextOn]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+                {TAB_NAMES[t]}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
+      {tab === "forge" ? (
+        <ForgeBagPanel />
+      ) : (
+        <ScrollView contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + 24 }]}>
+          {p ? (
+            <>
+              <View style={styles.chips}>
+                <Chip text={`${p.owned.length} of ${p.catalogue_size} found`} color={GP.skyDeep} />
+                {totalShards(p) > 0 ? <Chip text={`${totalShards(p)} shards`} color={SHARD} /> : null}
+              </View>
+              <Hero payload={p} onPick={(id) => setPicked({ kind: "relic", id })} />
+              {tabs.includes("forge") ? null : <ForgeArmourySection onPick={(id) => setPicked({ kind: "forge", id })} />}
+              {factionsInOrder(me?.faction).map((f) => (
+                <FactionSection key={f} faction={f} payload={p} mine={f === me?.faction} onPick={(id) => setPicked({ kind: "relic", id })} />
+              ))}
+            </>
+          ) : relics.failed ? (
+            <>
+              {/* Task 059: the shared kit's error state, in the game's tone. */}
+              <ErrorState tone="game" compact title="Couldn't load your Relics" onRetry={() => void relicsStore.refresh()} />
+              {tabs.includes("forge") ? null : <ForgeArmourySection onPick={(id) => setPicked({ kind: "forge", id })} />}
+            </>
+          ) : (
+            <ActivityIndicator color="#FFF" style={{ marginTop: 40 }} />
+          )}
+        </ScrollView>
+      )}
 
       {picked ? (
         <Animated.View entering={FadeIn.duration(160)} exiting={FadeOut.duration(140)} style={[StyleSheet.absoluteFill, styles.scrim]} accessibilityViewIsModal>
@@ -171,7 +200,8 @@ function Hero({ payload, onPick }: { payload: RelicsPayload; onPick: (id: string
       onPress={() => onPick(r.id)}
       style={({ pressed }) => ({ transform: [{ scale: pressed ? 0.95 : 1 }] })}
       accessibilityRole="button"
-      accessibilityLabel={`Equipped: ${r.name}, power ${powerNow(r)}. Shows the Relic.`}>
+      accessibilityLabel={`Equipped: ${r.name}, power ${powerNow(r)}. Shows the Relic.`}
+    >
       <GamePanel padding={14}>
         <View style={styles.hero}>
           <RelicArt kind={r.kind} rarity={r.rarity} size={86} />
@@ -210,7 +240,13 @@ function FactionSection({ faction, payload, mine, onPick }: { faction: string; p
   const name = factionLabel(config?.factions, faction);
   return (
     <View style={{ gap: 10 }}>
-      <View style={styles.row} accessible accessibilityRole="header" accessibilityLabel={`${name}${mine ? ", yours" : ""}: ${have} of ${all.length}`} importantForAccessibility="yes">
+      <View
+        style={styles.row}
+        accessible
+        accessibilityRole="header"
+        accessibilityLabel={`${name}${mine ? ", yours" : ""}: ${have} of ${all.length}`}
+        importantForAccessibility="yes"
+      >
         <View style={[styles.mark, { backgroundColor: colour }]}>
           <Ionicons name={realmIcon(faction)} size={16} color="#FFF" />
         </View>
@@ -237,7 +273,8 @@ function Tile({ stub: s, relic: r, equipped, onPress }: { stub: RelicStub; relic
       onPress={onPress}
       style={({ pressed }) => [styles.tileWrap, { transform: [{ scale: pressed ? 0.95 : 1 }], opacity: pressed ? 0.94 : 1 }]}
       accessibilityRole="button"
-      accessibilityLabel={owned ? `${s.name}, ${s.rarity}, level ${levelNow(r)}${equipped ? ", equipped" : ""}` : `Not found yet, ${s.rarity}`}>
+      accessibilityLabel={owned ? `${s.name}, ${s.rarity}, level ${levelNow(r)}${equipped ? ", equipped" : ""}` : `Not found yet, ${s.rarity}`}
+    >
       <View style={{ paddingBottom: 4 }}>
         <View style={[StyleSheet.absoluteFill, { top: 4, borderRadius: 16, backgroundColor: owned ? edgeOf(GP.cream) : withAlpha(GP.navyEdge, 0.6) }]} />
         <View
@@ -245,7 +282,8 @@ function Tile({ stub: s, relic: r, equipped, onPress }: { stub: RelicStub; relic
             styles.tile,
             { backgroundColor: owned ? GP.cream : withAlpha(GP.navy, 0.55) },
             { borderColor: equipped ? GP.mint : owned ? `${rarityColor(s.rarity)}B3` : "rgba(255,255,255,0.1)", borderWidth: equipped ? 3 : 1.5 },
-          ]}>
+          ]}
+        >
           <RelicArt kind={r?.kind ?? s.kind ?? "blade"} rarity={s.rarity} owned={owned} size={54} />
           {r ? (
             <RelicPips level={levelNow(r)} tint={rarityColor(s.rarity)} size={4} />
@@ -470,51 +508,113 @@ function LockedDetail({ stub, onClose }: { stub: RelicStub | null; onClose: () =
   );
 }
 
-const STYLE_PAIR = themedStyles({
-  sheet: { position: "absolute", left: 0, right: 0, bottom: 0, borderTopLeftRadius: 28, borderTopRightRadius: 28, backgroundColor: GP.ice, elevation: 18, overflow: "hidden" },
-  head: { paddingHorizontal: 18, paddingTop: 10, paddingBottom: 10 },
-  body: { paddingHorizontal: 18, gap: 16 },
-  chips: { flexDirection: "row", gap: 8 },
-  row: { flexDirection: "row", alignItems: "center", gap: 8 },
-  hero: { flexDirection: "row", alignItems: "center", gap: 14 },
-  kicker: { fontFamily: GF.display, fontSize: 12, letterSpacing: 1.2 },
-  heroName: { fontFamily: GF.display, fontSize: 22, color: GP.ink },
-  power: { fontFamily: GF.display, fontSize: 17, color: GP.ink, marginRight: 8 },
-  ability: { fontFamily: GF.bold, fontSize: 15, color: GP.skyDeep },
-  mark: { width: 32, height: 32, borderRadius: 16, borderWidth: 2, borderColor: "#FFF", alignItems: "center", justifyContent: "center" },
-  count: { fontFamily: GF.display, fontSize: 18, color: "#FFF", fontVariant: ["tabular-nums"], textShadowColor: "rgba(0,0,0,0.3)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 0.1 },
-  grid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-  tileWrap: { width: "22.5%", paddingTop: 4 },
-  tile: { alignItems: "center", gap: 4, paddingVertical: 6, borderRadius: 16, minHeight: 82 },
-  lockedRarity: { fontFamily: GF.display, fontSize: 9, letterSpacing: 0.6, color: "rgba(255,255,255,0.6)" },
-  corner: { position: "absolute", top: 0, right: -2, width: 18, height: 18, borderRadius: 9, borderWidth: 1.5, borderColor: "#FFF", alignItems: "center", justifyContent: "center" },
-  failed: { alignItems: "center", gap: 12, padding: 18, borderRadius: 24, backgroundColor: GP.cream },
-  failedText: { fontFamily: GF.bold, fontSize: 16, color: GP.ink },
-  scrim: { backgroundColor: "rgba(0,0,0,0.5)", alignItems: "center", justifyContent: "center", padding: 20 },
-  cardWrap: { width: "100%", alignItems: "center" },
-  panelWrap: { width: "100%", maxWidth: 380 },
-  lockedWrap: { width: "100%", maxWidth: 360 },
-  stack: { gap: 12 },
-  artStage: { height: 160, alignItems: "center", justifyContent: "center" },
-  // 260 square at half strength, masked to a 200 circle.
-  burst: { position: "absolute", width: 200, height: 200, borderRadius: 100, overflow: "hidden", opacity: 0.5, alignItems: "center", justifyContent: "center" },
-  detailName: { fontFamily: GF.display, fontSize: 26, color: GP.ink, textAlign: "center" },
-  detailSub: { fontFamily: GF.body, fontSize: 14, color: GP.mist },
-  stat: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20 },
-  statIcon: { width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center" },
-  statValue: { fontFamily: GF.display, fontSize: 21, color: GP.ink },
-  statTitle: { fontFamily: GF.bold, fontSize: 15, color: GP.ink },
-  abilityText: { fontFamily: GF.body, fontSize: 15, color: GP.ink, textAlign: "center" },
-  lore: { fontFamily: GF.regular, fontStyle: "italic", fontSize: 14, color: GP.mist, textAlign: "center" },
-  shardLabel: { fontFamily: GF.bold, fontSize: 13 },
-  shardCount: { fontFamily: GF.display, fontSize: 15, color: GP.ink },
-  track: { height: 14, borderRadius: 7, backgroundColor: "rgba(31,59,77,0.12)", overflow: "hidden" },
-  fill: { height: 14, borderRadius: 7, overflow: "hidden" },
-  fillShine: { position: "absolute", top: 2, left: 6, right: 6, height: 4, borderRadius: 2, backgroundColor: "rgba(255,255,255,0.3)" },
-  shardNote: { fontFamily: GF.body, fontSize: 12, color: GP.mist },
-  problem: { fontFamily: GF.bold, fontSize: 13, color: GP.berry, textAlign: "center" },
-  actions: { flexDirection: "row", gap: 10 },
-  equippedTag: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, minHeight: 54, borderRadius: 20, backgroundColor: `${GP.mint}99` },
-  equippedText: { fontFamily: GF.display, fontSize: 19, color: "#FFF" },
-  lockedTitle: { fontFamily: GF.bold, fontSize: 15, color: GP.mist },
-});
+const STYLE_PAIR = themedStyles(
+  {
+    sheet: {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      bottom: 0,
+      borderTopLeftRadius: 28,
+      borderTopRightRadius: 28,
+      backgroundColor: GP.ice,
+      elevation: 18,
+      overflow: "hidden",
+    },
+    head: { paddingHorizontal: 18, paddingTop: 10, paddingBottom: 10 },
+    // The Journal's tabs (Journal.tsx): one look for every tabbed game sheet.
+    // One segmented control across the sheet (the Forge's own Weapons / Characters pills sit below it, smaller).
+    tabs: { flexDirection: "row", gap: 4, marginHorizontal: 16, marginBottom: 8, padding: 3, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.45)" },
+    tab: { flex: 1, minHeight: 36, borderRadius: 17, alignItems: "center", justifyContent: "center" },
+    tabOn: { backgroundColor: "#FFFFFF", shadowColor: GP.navy, shadowOpacity: 0.12, shadowRadius: 6, shadowOffset: { width: 0, height: 3 }, elevation: 2 },
+    tabText: { fontFamily: GF.display, fontSize: 14, letterSpacing: 0.4, color: GP.mist },
+    tabTextOn: { color: GP.ink },
+    body: { paddingHorizontal: 18, gap: 16 },
+    chips: { flexDirection: "row", gap: 8 },
+    row: { flexDirection: "row", alignItems: "center", gap: 8 },
+    hero: { flexDirection: "row", alignItems: "center", gap: 14 },
+    kicker: { fontFamily: GF.display, fontSize: 12, letterSpacing: 1.2 },
+    heroName: { fontFamily: GF.display, fontSize: 22, color: GP.ink },
+    power: { fontFamily: GF.display, fontSize: 17, color: GP.ink, marginRight: 8 },
+    ability: { fontFamily: GF.bold, fontSize: 15, color: GP.skyDeep },
+    mark: { width: 32, height: 32, borderRadius: 16, borderWidth: 2, borderColor: "#FFF", alignItems: "center", justifyContent: "center" },
+    count: {
+      fontFamily: GF.display,
+      fontSize: 18,
+      color: "#FFF",
+      fontVariant: ["tabular-nums"],
+      textShadowColor: "rgba(0,0,0,0.3)",
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 0.1,
+    },
+    grid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+    tileWrap: { width: "22.5%", paddingTop: 4 },
+    tile: { alignItems: "center", gap: 4, paddingVertical: 6, borderRadius: 16, minHeight: 82 },
+    lockedRarity: { fontFamily: GF.display, fontSize: 9, letterSpacing: 0.6, color: "rgba(255,255,255,0.6)" },
+    corner: {
+      position: "absolute",
+      top: 0,
+      right: -2,
+      width: 18,
+      height: 18,
+      borderRadius: 9,
+      borderWidth: 1.5,
+      borderColor: "#FFF",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    failed: { alignItems: "center", gap: 12, padding: 18, borderRadius: 24, backgroundColor: GP.cream },
+    failedText: { fontFamily: GF.bold, fontSize: 16, color: GP.ink },
+    scrim: { backgroundColor: "rgba(0,0,0,0.5)", alignItems: "center", justifyContent: "center", padding: 20 },
+    cardWrap: { width: "100%", alignItems: "center" },
+    panelWrap: { width: "100%", maxWidth: 380 },
+    lockedWrap: { width: "100%", maxWidth: 360 },
+    stack: { gap: 12 },
+    artStage: { height: 160, alignItems: "center", justifyContent: "center" },
+    // 260 square at half strength, masked to a 200 circle.
+    burst: {
+      position: "absolute",
+      width: 200,
+      height: 200,
+      borderRadius: 100,
+      overflow: "hidden",
+      opacity: 0.5,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    detailName: { fontFamily: GF.display, fontSize: 26, color: GP.ink, textAlign: "center" },
+    detailSub: { fontFamily: GF.body, fontSize: 14, color: GP.mist },
+    stat: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20 },
+    statIcon: { width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center" },
+    statValue: { fontFamily: GF.display, fontSize: 21, color: GP.ink },
+    statTitle: { fontFamily: GF.bold, fontSize: 15, color: GP.ink },
+    abilityText: { fontFamily: GF.body, fontSize: 15, color: GP.ink, textAlign: "center" },
+    lore: { fontFamily: GF.regular, fontStyle: "italic", fontSize: 14, color: GP.mist, textAlign: "center" },
+    shardLabel: { fontFamily: GF.bold, fontSize: 13 },
+    shardCount: { fontFamily: GF.display, fontSize: 15, color: GP.ink },
+    track: { height: 14, borderRadius: 7, backgroundColor: "rgba(31,59,77,0.12)", overflow: "hidden" },
+    fill: { height: 14, borderRadius: 7, overflow: "hidden" },
+    fillShine: { position: "absolute", top: 2, left: 6, right: 6, height: 4, borderRadius: 2, backgroundColor: "rgba(255,255,255,0.3)" },
+    shardNote: { fontFamily: GF.body, fontSize: 12, color: GP.mist },
+    problem: { fontFamily: GF.bold, fontSize: 13, color: GP.berry, textAlign: "center" },
+    actions: { flexDirection: "row", gap: 10 },
+    equippedTag: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 6,
+      minHeight: 54,
+      borderRadius: 20,
+      backgroundColor: `${GP.mint}99`,
+    },
+    equippedText: { fontFamily: GF.display, fontSize: 19, color: "#FFF" },
+    lockedTitle: { fontFamily: GF.bold, fontSize: 15, color: GP.mist },
+  },
+  {
+    // Dark: the chosen tab lifts (lighter), so it stands out on the dark backdrop.
+    tabs: { backgroundColor: "rgba(255,255,255,0.06)" },
+    tabOn: { backgroundColor: "rgba(255,255,255,0.18)", shadowOpacity: 0 },
+    tabTextOn: { color: "#FFFFFF" },
+  },
+);

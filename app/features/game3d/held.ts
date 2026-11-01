@@ -1,6 +1,6 @@
 // Which weapon a character holds (cq 234), and the app's own default set.
 //
-// Every character on screen holds a weapon: in the 3D fight, the Forge bag,
+// Every character on screen holds a weapon: in the 3D fight, the Collection's Forge tab,
 // the Wear list, the versus card and the avatar. Where it comes from:
 //   - the player's own avatar holds the weapon the player equipped, when the
 //     Forge catalogue link is on (the server's `forge_world` feature AND this

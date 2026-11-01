@@ -7,9 +7,10 @@
 //   with the element's own thumbnail and a rarity ring.
 // - ForgeClaim: walk up, see it in 3D, claim it (POST .../claim), the reward
 //   moment, equip it.
-// - ForgeBag: what you own (equip a weapon: it changes your duels) and the
-//   characters you may wear as your avatar (idle / walk / celebrate).
-// - PlayerAvatar / ForgeCelebrate: your Forge avatar on the HUD chip, the map
+// - ForgeBagPanel: what you own (equip a weapon: it changes your duels) and
+//   the characters you may wear as your avatar (idle / walk / celebrate), the
+//   Forge tab of the Collection (CollectionSheet.tsx).
+// - PlayerAvatar / ForgeCelebrate: your Forge avatar on the map
 //   marker, the profile, and dancing on a reward.
 // - ForgePointScene: a point's Forge station (instead of the built-in shrine)
 //   standing in its Forge environment.
@@ -44,9 +45,6 @@ import { MANIFEST, setLocalPick, useCatalogueOn, useLocalPick } from "@/features
 import ForgeModel, { thumbSource, useForgeEntry } from "./ForgeModel";
 import { GameButton, MAX_FONT_SCALE } from "./kit";
 import { MapPin, PIN_SPOT } from "./mapCamera";
-import { SheetHost } from "./Sheet";
-import { SheetFrame } from "./SheetFrame";
-import { SheetHeader } from "./SheetHeader";
 import { playSound } from "./sound";
 import { GF, GP } from "./theme";
 
@@ -268,11 +266,11 @@ export function ForgeClaim({ drop, onClose, onOpenBag }: { drop: ForgeDrop; onCl
         ) : phase.kind === "won" ? (
           <Animated.View entering={FadeInDown} style={{ gap: 10, width: "100%", alignItems: "center" }}>
             <Text style={styles.claimHint} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-              {phase.got.duplicate ? `You had one already: +${phase.got.coins} coins.` : "It's in your Forge bag."}
+              {phase.got.duplicate ? `You had one already: +${phase.got.coins} coins.` : "It's in your Collection, under Forge."}
             </Text>
             {drop.type === "weapon" ? <GameButton title="Equip it" color={GP.mint} onPress={() => void doEquip()} accessibilityLabel="Equip this weapon" /> : null}
             <GameButton
-              title="Open bag"
+              title="Open Collection"
               small
               color={GP.skyDeep}
               onPress={() => {
@@ -334,16 +332,13 @@ function Stat({ label, value, unit, text }: { label: string; value?: number | nu
 
 // ---------- the bag ----------
 
-export function ForgeBag({ onClose, initial = "items" }: { onClose: () => void; initial?: "items" | "avatar" }) {
-  const insets = useSafeAreaInsets();
-  return (
-    <SheetHost band={{ top: insets.top + 40, height: 90 }} scrimLabel="Close the Forge bag" onClose={onClose}>
-      {(close) => <BagBody close={close} initial={initial} />}
-    </SheetHost>
-  );
-}
-
-function BagBody({ close, initial }: { close: () => void; initial: "items" | "avatar" }) {
+/**
+ * The Forge's half of the Collection (CollectionSheet.tsx, Forge tab): what
+ * you own (equip a weapon: it changes your duels) and the characters you may
+ * wear, on the settled 3D turntable. It used to be its own sheet, the Forge
+ * bag, opened from a chip under the profile.
+ */
+export function ForgeBagPanel({ initial = "items" }: { initial?: "items" | "avatar" }) {
   const insets = useSafeAreaInsets();
   const [tab, setTab] = useState<"items" | "avatar">(initial);
   const inventory = useForgeWorld((s) => s.inventory);
@@ -399,14 +394,19 @@ function BagBody({ close, initial }: { close: () => void; initial: "items" | "av
   };
 
   return (
-    <SheetFrame top={insets.top + 40}>
-      <View style={{ paddingHorizontal: 18, paddingTop: 8 }}>
-        <SheetHeader title="Forge bag" onClose={close} />
-      </View>
+    <View style={{ flex: 1 }}>
       <View style={styles.tabs}>
         {(["items", "avatar"] as const).map((t) => (
-          <Pressable key={t} onPress={() => setTab(t)} style={[styles.tab, tab === t && styles.tabOn]} accessibilityRole="tab" accessibilityState={{ selected: tab === t }}>
-            <Text style={[styles.tabText, tab === t && { color: "#FFF" }]}>{t === "items" ? `Items (${bag.list.length})` : "Avatar"}</Text>
+          <Pressable
+            key={t}
+            onPress={() => {
+              Haptics.selectionAsync().catch(() => {});
+              setTab(t);
+            }}
+            style={[styles.tab, tab === t && styles.tabOn]}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: tab === t }}>
+            <Text style={[styles.tabText, tab === t && { color: "#FFF" }]}>{t === "items" ? `Weapons (${bag.list.length})` : "Characters"}</Text>
           </Pressable>
         ))}
       </View>
@@ -488,7 +488,7 @@ function BagBody({ close, initial }: { close: () => void; initial: "items" | "av
           </Text>
         ) : null}
       </ScrollView>
-    </SheetFrame>
+    </View>
   );
 }
 
@@ -613,9 +613,10 @@ const styles = StyleSheet.create({
   claimClose: { fontFamily: GF.body, fontSize: 15, color: "rgba(255,255,255,0.6)", padding: 6 },
   claimAvatar: { position: "absolute", left: 8, bottom: 90 },
   tabs: { flexDirection: "row", gap: 8, paddingHorizontal: 18, marginTop: 4 },
-  tab: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 16, backgroundColor: "rgba(31,59,77,0.08)" },
+  tab: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 16, backgroundColor: "rgba(122,140,153,0.16)" },
   tabOn: { backgroundColor: GP.navy },
-  tabText: { fontFamily: GF.body, fontSize: 14, color: GP.ink },
+  // Mist reads on the ice backdrop and the dark one alike (ink vanished in dark mode).
+  tabText: { fontFamily: GF.body, fontSize: 14, color: GP.mist },
   bagStage: { height: 270, marginHorizontal: 18, marginTop: 10, borderRadius: 20, backgroundColor: GP.navy, overflow: "hidden" },
   bagModel: { position: "absolute", left: 0, right: 0, top: 0, bottom: NAME_BAND },
   bagNameBand: { position: "absolute", left: 0, right: 0, bottom: 0, height: NAME_BAND, flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 14, backgroundColor: "rgba(0,0,0,0.22)" },
@@ -643,34 +644,4 @@ export function useHasForgeAvatar(): boolean {
   return on && !!entry;
 }
 
-/** The HUD chip: your Forge avatar (or a Forge mark) and how many finds you hold; opens the bag. */
-export function ForgeHudChip({ onPress }: { onPress: () => void }) {
-  const on = useForgeOn();
-  const count = useForgeOwnedCount();
-  const { weapon } = useEquipped();
-  const held = useForgeEntry(weapon);
-  if (!on) return null;
-  return (
-    <Pressable onPress={onPress} style={chip.root} accessibilityRole="button" accessibilityLabel={`Forge bag, ${count} finds${held ? `, holding ${held.name}` : ""}`} testID="forge-hud-chip">
-      <View style={chip.face}>
-        <PlayerAvatar size={30} fallback={<Ionicons name="cube" size={18} color={GP.rare} />} />
-      </View>
-      <Text style={chip.text} maxFontSizeMultiplier={1.2}>
-        {held ? held.name : "Forge"}
-      </Text>
-      <View style={chip.count}>
-        <Text style={chip.countText} maxFontSizeMultiplier={1.2}>
-          {count}
-        </Text>
-      </View>
-    </Pressable>
-  );
-}
 
-const chip = StyleSheet.create({
-  root: { flexDirection: "row", alignItems: "center", alignSelf: "flex-start", gap: 6, paddingLeft: 3, paddingRight: 6, paddingVertical: 3, borderRadius: 20, backgroundColor: "rgba(30,58,76,0.92)" },
-  face: { width: 32, height: 32, borderRadius: 16, backgroundColor: GP.cream, alignItems: "center", justifyContent: "center", overflow: "hidden" },
-  text: { fontFamily: GF.body, fontSize: 13, color: "#FFF", maxWidth: 150 },
-  count: { minWidth: 22, height: 22, borderRadius: 11, paddingHorizontal: 5, backgroundColor: GP.rare, alignItems: "center", justifyContent: "center" },
-  countText: { fontFamily: GF.display, fontSize: 13, color: "#FFF" },
-});
