@@ -1,8 +1,8 @@
 // The game's chunky controls (costquest-ios UI/GameKit.swift): a raised
 // button with a gloss and a darker edge that it sinks into, round icon
 // buttons, outlined titles, chips, panels, a coin and a progress bar.
-// Press feedback is on press-DOWN, as on iOS: the tap sound and a light
-// impact the moment the finger lands, not when it lifts.
+// Press feedback is on press-DOWN, as on iOS: a light impact the moment the
+// finger lands, not when it lifts. Buttons make no sound (game events do).
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import type { ComponentProps, ReactNode } from "react";
@@ -11,12 +11,10 @@ import { AccessibilityInfo, Platform, Pressable, type StyleProp, StyleSheet, Tex
 
 import { useInk } from "@/constants/chatTheme";
 
-import { playSound } from "./sound";
 import { edgeOf, GF, GP } from "./theme";
 
 /** The press-down moment every game control shares (GameButtonStyle.onChange(of: pressed)). */
 export function pressFeedback() {
-  playSound("tap");
   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
 }
 

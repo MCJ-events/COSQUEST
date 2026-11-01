@@ -382,7 +382,6 @@ function BagBody({ close, initial }: { close: () => void; initial: "items" | "av
       setProblem(null);
       setLocalPick(isOn ? null : starterSlug);
       if (!isOn && equipped.weapon) await equip("weapon", null).catch(() => undefined);
-      playSound("coin");
       return;
     }
     if (slot === "weapon" && !isOn) setLocalPick(null);
@@ -392,7 +391,6 @@ function BagBody({ close, initial }: { close: () => void; initial: "items" | "av
     if (slot === "avatar" && next) setClip("celebrate");
     try {
       await equip(slot, next);
-      playSound("coin");
     } catch (e) {
       setProblem(refusalText(e));
     } finally {

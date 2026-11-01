@@ -24,6 +24,7 @@ import { memo, type ReactNode, useEffect, useMemo, useRef, useState } from "reac
 import { PixelRatio, Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
+  type SharedValue,
   cancelAnimation,
   Easing,
   runOnJS,
@@ -55,6 +56,7 @@ import type { GroundGeometry, QuestPoint } from "@/features/game/wire";
 import { GroundPaths } from "./GroundPaths";
 import GroundTiles, { type LoadGround } from "./GroundTiles";
 import { useMapBench } from "./mapBenchRunner";
+import { SHEET_EASE_OUT } from "./sheetMotion";
 import { MapCameraContext, MapPin, PIN_SPOT, useUpright } from "./mapCamera";
 import { useWorldClock } from "./prefs";
 import { RaidCrown } from "./RaidParts";
@@ -82,6 +84,8 @@ const FLING_MAX = 5000;
 /** Following you to a new fix, and flying back to you. */
 const FOLLOW_MS = 900;
 const RECENTRE_MS = 480;
+/** Where a flown-to spot lands, as a share of the screen's height (above a point's sheet). */
+const FLY_Y = 0.34;
 
 /** How far the map may be dragged from where the world was cut, metres (tiles load all the way). */
 export const PAN_LIMIT_M = 1500;
@@ -133,6 +137,12 @@ type Props = {
   recentreSignal?: number;
   /** Whether the camera is following the player (false once the map is dragged away). */
   onFollowChange?: (following: boolean) => void;
+  /** The map's turn (radians), shared out so the HUD can point with it (the Nearby tray's arrows). */
+  camRot?: SharedValue<number>;
+  /** True while a finger pans, pinches or twists the map (the Nearby tray steps aside). */
+  mapBusy?: SharedValue<boolean>;
+  /** Fly the camera to a spot (bump `n` for each flight); it lands a little above the middle, clear of a sheet. */
+  flyTo?: { lat: number; lng: number; n: number } | null;
 };
 
 export default function WorldMap(props: Props) {
@@ -159,7 +169,12 @@ export default function WorldMap(props: Props) {
   const camX = useSharedValue(size / 2);
   const camY = useSharedValue(size / 2);
   const zoom = useSharedValue(1);
-  const rot = useSharedValue(0);
+  const ownRot = useSharedValue(0);
+  const rot = props.camRot ?? ownRot;
+  const ownBusy = useSharedValue(false);
+  const busy = props.mapBusy ?? ownBusy;
+  // Which gestures are moving the camera now (pan 1, pinch 2, twist 4): busy while any is.
+  const moving = useSharedValue(0);
   const follow = useSharedValue(true);
   // The player's spot on the board (eased to each new fix).
   const meX = useSharedValue(size / 2);
@@ -354,11 +369,21 @@ export default function WorldMap(props: Props) {
   );
 
   const gesture = useMemo(() => {
+    const mark = (bit: number, on: boolean) => {
+      "worklet";
+      const m = on ? moving.get() | bit : moving.get() & ~bit;
+      moving.set(m);
+      busy.set(m !== 0);
+    };
     const pan = Gesture.Pan()
       .minDistance(8)
       .maxPointers(2)
       .onStart(() => {
         ops.touchDown();
+        mark(1, true);
+      })
+      .onFinalize(() => {
+        mark(1, false);
       })
       .onChange((e) => {
         ops.panBy(e.changeX, e.changeY);
@@ -370,6 +395,10 @@ export default function WorldMap(props: Props) {
       .onStart(() => {
         ops.stopGlide();
         multiAt.set(Date.now());
+        mark(2, true);
+      })
+      .onFinalize(() => {
+        mark(2, false);
       })
       .onChange((e) => {
         ops.pinchBy(e.focalX, e.focalY, e.scaleChange);
@@ -383,6 +412,7 @@ export default function WorldMap(props: Props) {
         if (!twisting.get()) {
           if (Math.abs(e.rotation) < TWIST_START) return;
           twisting.set(true);
+          mark(4, true);
           runOnJS(Haptics.selectionAsync)();
           return;
         }
@@ -390,6 +420,7 @@ export default function WorldMap(props: Props) {
       })
       .onFinalize(() => {
         twisting.set(false);
+        mark(4, false);
       });
     // A double tap zooms in on the spot, as in every map.
     const doubleTap = Gesture.Tap()
@@ -400,7 +431,25 @@ export default function WorldMap(props: Props) {
         ops.doubleTap(e.x, e.y);
       });
     return Gesture.Simultaneous(pan, pinch, twist, doubleTap);
-  }, [ops, rot, twisting, multiAt]);
+  }, [ops, rot, twisting, multiAt, moving, busy]);
+
+  // Fly to a spot (the Nearby tray): it lands at FLY_Y of the screen, above
+  // where a point's sheet rises, and the camera stops following the player.
+  const fly = props.flyTo;
+  useEffect(() => {
+    if (!fly || !origin) return;
+    const p = toLocal(origin, fly);
+    const bx = (p.x + extent) * MAP_SCALE;
+    const by = (extent - p.z) * MAP_SCALE;
+    // The camera that puts board point (bx, by) at screen (ax, FLY_Y * height).
+    const c = panned({ x: bx, y: by, zoom: zoom.get(), rot: rot.get() }, 0, height * FLY_Y - ay);
+    const timing = { duration: reduceMotion ? 0 : RECENTRE_MS, easing: SHEET_EASE_OUT };
+    cancelAnimation(camX);
+    cancelAnimation(camY);
+    follow.set(false);
+    camX.set(withTiming(Math.max(panLo, Math.min(panHi, c.x)), timing));
+    camY.set(withTiming(Math.max(panLo, Math.min(panHi, c.y)), timing));
+  }, [fly?.n]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useMapBench(ops, width, height, !!origin, recentre, () => ({ pins: points.length, rooms: (props.rooms ?? []).length }));
 

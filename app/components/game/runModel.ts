@@ -172,7 +172,6 @@ export const runModel = {
     set({ busy: true });
     try {
       apply(await runPower(gameStore.client, run.run_id, power));
-      playSound("tap");
       impact(Haptics.ImpactFeedbackStyle.Medium);
     } catch (e) {
       runModel.flash(message(e, "That power didn't work."));

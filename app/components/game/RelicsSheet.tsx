@@ -387,10 +387,9 @@ function RelicDetail({ id, stub, onClose }: { id: string; stub: RelicStub | null
                 disabled={busy}
                 accessibilityLabel={`Equip ${r.name}`}
                 onPress={async () => {
-                  // RelicsModel.equip: the coin cue and a medium impact once the server has taken it.
+                  // RelicsModel.equip: a medium impact once the server has taken it (no sound: a button press is quiet).
                   const ok = await relicsStore.equip(r.id);
                   if (!ok) return;
-                  playSound("coin");
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
                   announce(`${r.name} equipped`);
                 }}

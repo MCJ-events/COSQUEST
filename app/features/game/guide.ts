@@ -204,3 +204,22 @@ export function cardLabel(
   if (o.suggested) parts.push("the Warden's best next move");
   return parts.join(", ");
 }
+
+/** The Nearby tray's one state chip (components/game/NearbyTray.tsx), or none: the pin's colour already says tier and holder. */
+export type TrayChipTone = "rest" | "ready" | "raid" | "event" | "new" | "holder";
+export type TrayChipState = { text: string; tone: TrayChipTone; timer?: boolean; holder?: string };
+
+export function trayChipState(p: QuestPoint, o: { ready: boolean; cooling: boolean; newCard: boolean; now: number }): TrayChipState | null {
+  const rest = parseServerDate(p.cooling_until);
+  if (o.cooling) return rest !== null && rest > o.now ? { text: minutesText(rest, o.now).toUpperCase(), tone: "rest", timer: true } : { text: "RESTING", tone: "rest" };
+  if (o.ready) return { text: "READY", tone: "ready" };
+  const gone = parseServerDate(p.extra?.expires_at);
+  const live = gone !== null && gone > o.now;
+  if (p.source === "raid") return live ? { text: minutesText(gone, o.now).toUpperCase(), tone: "raid", timer: true } : { text: "RAID", tone: "raid" };
+  if (live) return { text: minutesText(gone, o.now).toUpperCase(), tone: "event", timer: true };
+  if (o.newCard) return { text: "NEW", tone: "new" };
+  if (p.source === "starter") return { text: "START", tone: "new" };
+  const holder = p.extra?.holder;
+  if (holder) return { text: (p.extra?.holder_name ?? holder).toUpperCase(), tone: "holder", holder };
+  return null;
+}

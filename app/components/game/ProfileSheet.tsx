@@ -50,7 +50,6 @@ import { SheetHost } from "./Sheet";
 import StancePicker from "./StancePicker";
 import { GameBackdrop } from "./GameBackdrop";
 import { SheetFrame } from "./SheetFrame";
-import { playSound } from "./sound";
 import { edgeOf, GF, GP, realmColor } from "./theme";
 import { useWardenMuted, wardenVoice } from "./wardenVoice";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
@@ -507,7 +506,6 @@ function ProfileEditor({
     setMessage(null);
     try {
       await gameStore.saveProfile(cleanHandle(handle), avatar);
-      playSound("coin");
       notify(Haptics.NotificationFeedbackType.Success);
       await onSaved();
     } catch {

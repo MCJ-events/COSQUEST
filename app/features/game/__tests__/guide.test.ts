@@ -223,3 +223,27 @@ describe("coach", () => {
     assert.deepEqual(parseIdList('{"a":1}'), []);
   });
 });
+
+describe("the Nearby tray's state chip", async () => {
+  const { trayChipState } = await import("../guide.ts");
+  const base: QuestPoint = { id: "x", name: "X", lat: 0, lng: 0, source: "landmark", place_kind: "", tier: "common", realm: "dc", challenge: "trivia" };
+  const now = Date.parse("2026-11-01T12:00:00Z");
+  const o = { ready: false, cooling: false, newCard: false, now };
+  it("shows a rest as minutes left, before anything else", () => {
+    const p = { ...base, cooling_until: "2026-11-01T12:05:30Z", source: "raid" };
+    assert.deepEqual(trayChipState(p, { ...o, cooling: true, ready: true }), { text: "6 MIN", tone: "rest", timer: true });
+  });
+  it("says READY when it can be played now", () => {
+    assert.deepEqual(trayChipState(base, { ...o, ready: true }), { text: "READY", tone: "ready" });
+  });
+  it("times a raid, and names one without a clock", () => {
+    assert.deepEqual(trayChipState({ ...base, source: "raid", extra: { expires_at: "2026-11-01T12:14:00Z" } }, o), { text: "14 MIN", tone: "raid", timer: true });
+    assert.deepEqual(trayChipState({ ...base, source: "raid" }, o), { text: "RAID", tone: "raid" });
+  });
+  it("marks new cards, the starter and holders; a plain point gets no chip", () => {
+    assert.equal(trayChipState(base, { ...o, newCard: true })?.text, "NEW");
+    assert.equal(trayChipState({ ...base, source: "starter" }, o)?.text, "START");
+    assert.deepEqual(trayChipState({ ...base, extra: { holder: "marvel", holder_name: "Marvel" } }, o), { text: "MARVEL", tone: "holder", holder: "marvel" });
+    assert.equal(trayChipState(base, o), null);
+  });
+});

@@ -237,7 +237,6 @@ export default function Encounter({
 
   /** The moment, as a photo: the shrine and the Warden standing in the player's own street. */
   const photo = async () => {
-    playSound("tap");
     const uri = await nativeShrine.current?.photo().catch(() => null);
     if (uri) Share.share({ url: uri, message: `CosQuest at ${point.name}` }).catch(() => {});
   };

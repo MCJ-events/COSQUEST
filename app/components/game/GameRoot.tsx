@@ -7,14 +7,14 @@ import { Ionicons } from "@expo/vector-icons";
 import { useFonts } from "expo-font";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AppState, BackHandler, Pressable, StyleSheet, Text, View } from "react-native";
-import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
+import Animated, { FadeIn, FadeOut, useSharedValue } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { getPref, setPref } from "@/utils/prefsStorage";
 import { COACH_DONE_KEY, coachStepFor, type CoachStep, parseIdList, starterKindOf, UNLOCKS_INTRODUCED_KEY, unlockOfStep } from "@/features/game/coach";
 import { bearingDeg, distanceM, distanceText } from "@/features/game/geo";
 import { hasTrials, type TrialRequest, trialPoint } from "@/features/game/duelFlow";
-import { relativeBearing, suggestedId } from "@/features/game/guide";
+import { suggestedId } from "@/features/game/guide";
 import { isLive, isPocket, type RunPoint, runPointOf, runQuestPoints } from "@/features/game/run";
 import { gameStore, GAME_SERVER, GAME_SERVER_IS_PRODUCTION, useGame, useLocationPermission, startLocation } from "@/features/game/runtime";
 import { nearestFirst } from "@/features/game/store";
@@ -42,7 +42,8 @@ import FriendsButton from "./FriendsButton";
 import { AvatarBadge, ForgeBag, ForgeClaim, ForgeDropsLayer, ForgeHudChip, useForgeOn, useForgeOwnedCount, useForgeWorldPolling, useHasForgeAvatar } from "./ForgeWorld";
 import { GAME_FONTS } from "./fonts";
 import FriendsSheet from "./FriendsSheet";
-import { NearbyTray, Rail, StagingBadge, TopBar, WardenBubble } from "./Hud";
+import { Rail, StagingBadge, TopBar, WardenBubble } from "./Hud";
+import { NearbyTray } from "./NearbyTray";
 import Journal from "./Journal";
 import { GameButton } from "./kit";
 import LiveBanner from "./LiveBanner";
@@ -65,7 +66,6 @@ import Reward, { rewardFromDuel, type RewardSummary } from "./Reward";
 import SiegeScreen, { siegeGuard } from "./SiegeScreen";
 import TrialsSheet from "./TrialsSheet";
 import { GF, GP, realmColor } from "./theme";
-import { useHeading } from "./useHeading";
 import { useOnScreen } from "./useOnScreen";
 import { useWardenSaid, wardenVoice } from "./wardenVoice";
 import WorldMap, { BackToMe } from "./WorldMap";
@@ -191,7 +191,11 @@ export default function GameRoot({ parked }: { parked: boolean }) {
   };
 
   // The compass, only while the tray is up (the arrows on its cards).
-  const heading = useHeading(!parked && onScreen && screen.kind === "home" && !selected);
+  // The map's turn and whether a finger is moving it, shared with the Nearby
+  // tray on the UI thread; and where the tray last asked the map to fly.
+  const mapRot = useSharedValue(0);
+  const mapBusy = useSharedValue(false);
+  const [flyTo, setFlyTo] = useState<{ lat: number; lng: number; n: number } | null>(null);
   const suggested = useMemo(
     () => suggestedId({ points, me, distanceOf: (p) => (fix ? distanceM(fix, p) : null) }),
     [points, me, fix],
@@ -549,6 +553,9 @@ export default function GameRoot({ parked }: { parked: boolean }) {
         recentreSignal={recentreTick}
         onFollowChange={setMapFollowing}
         loadGround={loadGround}
+        camRot={mapRot}
+        mapBusy={mapBusy}
+        flyTo={flyTo}
       />
 
       <TopBar me={me} profile={profile} name={gameStore.playerName()} color={color} onProfile={() => setSheet("profile")} onCoins={() => setSheet("coins")} onAskWarden={() => setSheet("ask")} />
@@ -633,11 +640,17 @@ export default function GameRoot({ parked }: { parked: boolean }) {
             points={nearby}
             suggested={suggested}
             distanceOf={(p) => gameStore.distanceTo(p)}
-            bearingOf={(p) => (fix ? relativeBearing(bearingDeg(fix, p), heading) : null)}
+            bearingOf={(p) => (fix ? bearingDeg(fix, p) : null)}
             inReach={gameStore.inReach}
             cooling={gameStore.isCooling}
             newCard={(p) => codexOpen && p.extra?.codex !== "owned"}
-            onSelect={(p) => setSelectedId(p.id)}
+            onSelect={(p) => {
+              // Fly the map to it (its pin lights as selected) and open it.
+              setFlyTo((f) => ({ lat: p.lat, lng: p.lng, n: (f?.n ?? 0) + 1 }));
+              setSelectedId(p.id);
+            }}
+            mapRot={mapRot}
+            mapBusy={mapBusy}
           />}
         </View>
       ) : null}

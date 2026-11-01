@@ -1,26 +1,16 @@
 // Over the map: the top bar (you, your coins and streak), the rail (the
-// daily quests, Relics, the Codex, More), the Nearby tray with its plate and
-// cards, and the Warden's speech bubble. costquest-ios Roam/RoamHomeView.swift
-// (topBar, PlayerChip, ResourceChip, rail, NearbyTray, NearbyCard, CardPress)
-// and Warden/WardenViews.swift (WardenBubble).
+// daily quests, Relics, the Codex, More) and the Warden's speech bubble.
+// costquest-ios Roam/RoamHomeView.swift (topBar, PlayerChip, ResourceChip,
+// rail) and Warden/WardenViews.swift (WardenBubble). The Nearby tray is
+// NearbyTray.tsx.
 import { Ionicons } from "@expo/vector-icons";
-import { type ReactNode, useEffect, useState } from "react";
-import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import Animated, { Easing, Keyframe, useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated";
+import { type ReactNode, useEffect } from "react";
+import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import Animated, { Easing, Keyframe } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle } from "react-native-svg";
 
-import { distanceText } from "@/features/game/geo";
-import {
-  cardLabel,
-  type CardTone,
-  cardStatus,
-  challengeLabel,
-  difficultyLabel,
-  hereCount,
-  trayOrder,
-} from "@/features/game/guide";
-import type { Profile, QuestPoint, RoamMe } from "@/features/game/wire";
+import type { Profile, RoamMe } from "@/features/game/wire";
 
 import { Image } from "expo-image";
 
@@ -29,12 +19,11 @@ import { useMyPicture } from "@/components/world/useMyPicture";
 import AvatarView from "./AvatarView";
 import { PlayerAvatar } from "./ForgeWorld";
 import { CoachAnchor } from "./Coach";
-import { announce, GameCoin, GameIconButton, HUD_FONT_SCALE, pressFeedback, withAlpha } from "./kit";
-import { edgeOf, GF, GP, realmColor, realmIcon, tierColor } from "./theme";
+import { announce, GameCoin, GameIconButton, HUD_FONT_SCALE, withAlpha } from "./kit";
+import { GF, GP } from "./theme";
 import WardenBadge from "./WardenBadge";
 import { useWardenMuted, wardenVoice } from "./wardenVoice";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
-import { SPRING_PRESS } from "@/features/game/spring";
 
 /** GamePalette.navy.opacity(0.78): the plate behind white type over the map. */
 export const NAVY_PLATE = withAlpha(GP.navy, 0.78);
@@ -273,231 +262,6 @@ export function Rail({
   );
 }
 
-// ---------- the Nearby tray ----------
-
-const CARD_WIDTH = 172;
-const CARD_GAP = 12;
-const PRESS = SPRING_PRESS;
-
-/** Cards press in like the game's buttons: a touch you can feel (CardPress). */
-function CardPress({ onPress, label, children }: { onPress: () => void; label: string; children: ReactNode }) {
-  const styles = useThemedStyles(STYLE_PAIR);
-  const down = useSharedValue(0);
-  const style = useAnimatedStyle(() => ({ transform: [{ scale: 1 - 0.05 * down.get() }] }));
-  const shade = useAnimatedStyle(() => ({ opacity: 0.04 * down.get() }));
-  return (
-    <Pressable
-      onPressIn={() => {
-        pressFeedback();
-        down.set(withSpring(1, PRESS));
-      }}
-      onPressOut={() => down.set(withSpring(0, PRESS))}
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={label}>
-      <Animated.View style={style}>
-        {children}
-        <Animated.View pointerEvents="none" style={[styles.shade, shade]} />
-      </Animated.View>
-    </Pressable>
-  );
-}
-
-function toneColor(tone: CardTone, point: QuestPoint, holder?: string): string {
-  switch (tone) {
-    case "mist":
-      return GP.mist;
-    case "skyDeep":
-      return GP.skyDeep;
-    case "berry":
-      return GP.berry;
-    case "holder":
-      return realmColor(holder);
-    case "sunDeep":
-      return GP.sunDeep;
-    case "ink":
-      return withAlpha(GP.ink, 0.7);
-    case "tier":
-      return edgeOf(tierColor(point.tier));
-  }
-}
-
-const CHALLENGE_ICON = { sequence: "list", rebus: "happy", blitz: "flash", duel: "shield" } as const;
-
-/** A printed card, not a glowing panel: one colour tile for the tier, a hard edge underneath, words only where they carry a fact. */
-function NearbyCard({
-  point,
-  distance,
-  bearing,
-  inReach,
-  cooling,
-  suggested,
-  newCard,
-  now,
-}: {
-  point: QuestPoint;
-  distance: number | null;
-  /** Degrees clockwise from where the phone faces, or null without a heading. */
-  bearing: number | null;
-  inReach: boolean;
-  cooling: boolean;
-  suggested: boolean;
-  newCard: boolean;
-  now: number;
-}) {
-  const styles = useThemedStyles(STYLE_PAIR);
-  const duel = point.challenge === "duel";
-  const ready = inReach && !cooling;
-  const tint = tierColor(point.tier);
-  const edge = ready ? GP.mint : suggested ? GP.sunDeep : GP.slate;
-  const status = cardStatus(point, { now, newCard });
-  const icon = CHALLENGE_ICON[point.challenge as keyof typeof CHALLENGE_ICON] ?? "chatbubble-ellipses";
-  return (
-    <View
-      style={[styles.cardWrap, cooling && { opacity: 0.7, filter: [{ grayscale: 1 }] }]}
-      accessible
-      accessibilityLabel={cardLabel(point, { inReach, distanceText: distanceText(distance), cooling, suggested })}>
-      <View style={[styles.cardEdge, { backgroundColor: edge }]} />
-      <View style={styles.card}>
-        <View style={styles.cardTop}>
-          <View style={[styles.tile, { backgroundColor: tint }]}>
-            <Ionicons name={icon} size={17} color="#FFFFFF" />
-            <View style={styles.realmBadge}>
-              <Ionicons name={realmIcon(point.realm)} size={9} color={realmColor(point.realm)} />
-            </View>
-          </View>
-          {duel ? (
-            <Text style={[styles.difficulty, { color: edgeOf(tint) }]} maxFontSizeMultiplier={HUD_FONT_SCALE}>
-              {difficultyLabel(point.tier).toUpperCase()}
-            </Text>
-          ) : null}
-          <View style={{ flex: 1 }} />
-          {ready ? (
-            <Text style={styles.here} maxFontSizeMultiplier={HUD_FONT_SCALE}>
-              HERE
-            </Text>
-          ) : (
-            <View style={styles.distance}>
-              {bearing !== null ? <Ionicons name="arrow-up" size={11} color={GP.mist} style={{ transform: [{ rotate: `${bearing}deg` }] }} /> : null}
-              <Text style={styles.distanceText} maxFontSizeMultiplier={HUD_FONT_SCALE}>
-                {distanceText(distance)}
-              </Text>
-            </View>
-          )}
-        </View>
-        <View style={{ gap: 3 }}>
-          <Text style={styles.cardName} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.85} maxFontSizeMultiplier={HUD_FONT_SCALE}>
-            {point.name}
-          </Text>
-          <Text style={styles.subline} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} maxFontSizeMultiplier={HUD_FONT_SCALE}>
-            <Text style={{ color: withAlpha(GP.ink, 0.5) }}>{challengeLabel(point.challenge).toUpperCase()}</Text>
-            <Text style={{ color: withAlpha(GP.ink, 0.3) }}>{"  ·  "}</Text>
-            <Text style={{ color: toneColor(status.tone, point, status.holder) }}>{status.fact.toUpperCase()}</Text>
-          </Text>
-        </View>
-      </View>
-      {suggested ? (
-        <View style={styles.nextTab} pointerEvents="none">
-          <Text style={styles.nextText} maxFontSizeMultiplier={1.2}>
-            NEXT
-          </Text>
-        </View>
-      ) : null}
-    </View>
-  );
-}
-
-/**
- * The nearest points, as cards you can thumb through. A map is lovely and a
- * finger on a moving phone is imprecise; this is the reliable way in.
- */
-export function NearbyTray({
-  points,
-  suggested,
-  distanceOf,
-  bearingOf,
-  inReach,
-  cooling,
-  newCard,
-  onSelect,
-}: {
-  /** Every point, nearest first (the tray shows ten). */
-  points: QuestPoint[];
-  /** The Warden's best next move, marked on its card and shown first. */
-  suggested: string | null;
-  distanceOf: (p: QuestPoint) => number | null;
-  /** Degrees clockwise from where the phone faces, or null without a heading. */
-  bearingOf: (p: QuestPoint) => number | null;
-  inReach: (p: QuestPoint) => boolean;
-  cooling: (p: QuestPoint) => boolean;
-  newCard: (p: QuestPoint) => boolean;
-  onSelect: (p: QuestPoint) => void;
-}) {
-  const styles = useThemedStyles(STYLE_PAIR);
-  // "Ready in 5 min" and "Gone in 12 min" every 30 s (TimelineView .periodic).
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 30000);
-    return () => clearInterval(t);
-  }, []);
-  const near = trayOrder(points, suggested);
-  if (near.length === 0) return null;
-  const here = hereCount(points, inReach, now);
-  return (
-    <View style={{ gap: 8 }}>
-      {/* On a plate: bare white type vanished over the pale day board. */}
-      <View style={styles.plate} accessible accessibilityLabel={here > 0 ? `NEARBY, ${here} in reach` : "NEARBY"}>
-        <Text style={styles.plateText} maxFontSizeMultiplier={HUD_FONT_SCALE}>
-          NEARBY
-        </Text>
-        {here > 0 ? (
-          <Text style={[styles.plateText, { color: GP.mint, letterSpacing: 0, fontVariant: ["tabular-nums"] }]} maxFontSizeMultiplier={HUD_FONT_SCALE}>
-            {"·  "}
-            {here} in reach
-          </Text>
-        ) : null}
-      </View>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        snapToInterval={CARD_WIDTH + CARD_GAP}
-        snapToAlignment="start"
-        decelerationRate="fast"
-        contentContainerStyle={styles.trayRow}>
-        {near.map((p) => {
-          const reach = inReach(p);
-          const cool = cooling(p);
-          const next = p.id === suggested;
-          const card = (
-            <CardPress
-              onPress={() => onSelect(p)}
-              label={cardLabel(p, { inReach: reach, distanceText: distanceText(distanceOf(p)), cooling: cool, suggested: next })}>
-              <NearbyCard
-                point={p}
-                distance={distanceOf(p)}
-                bearing={bearingOf(p)}
-                inReach={reach}
-                cooling={cool}
-                suggested={next}
-                newCard={newCard(p)}
-                now={now}
-              />
-            </CardPress>
-          );
-          // The Warden's first coach step lights this card.
-          return p.source === "starter" ? (
-            <CoachAnchor key={p.id} ids={["starter"]}>
-              {card}
-            </CoachAnchor>
-          ) : (
-            <View key={p.id}>{card}</View>
-          );
-        })}
-      </ScrollView>
-    </View>
-  );
-}
-
 // ---------- the Warden ----------
 
 const BUBBLE_OUT = new Keyframe({ from: { opacity: 1 }, to: { opacity: 0 } }).duration(180);
@@ -614,53 +378,6 @@ const STYLE_PAIR = themedStyles({
   rail: { position: "absolute", right: 12, gap: 12, alignItems: "center", width: 50 },
   relics: { width: 50, height: 54, alignItems: "center", justifyContent: "center" },
   extras: { gap: 10, marginTop: 4, alignItems: "center" },
-  plate: {
-    flexDirection: "row",
-    alignItems: "center",
-    alignSelf: "flex-start",
-    gap: 6,
-    marginLeft: 14,
-    height: 24,
-    paddingHorizontal: 10,
-    borderRadius: 12,
-    backgroundColor: NAVY_PLATE,
-  },
-  plateText: { fontFamily: GF.display, fontSize: 13, letterSpacing: 1.4, color: "#FFFFFF" },
-  trayRow: { paddingHorizontal: 14, paddingTop: 10, paddingBottom: 8, gap: CARD_GAP },
-  cardWrap: { width: CARD_WIDTH, paddingBottom: 4 },
-  cardEdge: { position: "absolute", left: 0, right: 0, top: 4, bottom: 0, borderRadius: 14 },
-  card: {
-    gap: 10,
-    padding: 12,
-    borderRadius: 14,
-    backgroundColor: GP.cream,
-    shadowColor: "#000",
-    shadowOpacity: 0.18,
-    shadowRadius: 3,
-    shadowOffset: { width: 0, height: 3 },
-  },
-  cardTop: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
-  tile: { width: 34, height: 34, borderRadius: 9, alignItems: "center", justifyContent: "center" },
-  realmBadge: {
-    position: "absolute",
-    right: -4,
-    bottom: -4,
-    width: 15,
-    height: 15,
-    borderRadius: 8,
-    backgroundColor: GP.cream,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  difficulty: { fontFamily: GF.display, fontSize: 11, letterSpacing: 0.6, paddingTop: 2 },
-  here: { fontFamily: GF.display, fontSize: 15, letterSpacing: 0.6, color: GP.mint },
-  distance: { flexDirection: "row", alignItems: "center", gap: 3 },
-  distanceText: { fontFamily: GF.display, fontSize: 15, color: GP.mist, fontVariant: ["tabular-nums"] },
-  cardName: { fontFamily: GF.display, fontSize: 17, lineHeight: 20, minHeight: 40, color: GP.ink },
-  subline: { fontFamily: GF.bold, fontSize: 11, letterSpacing: 0.4 },
-  nextTab: { position: "absolute", left: 12, top: -8, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 4, backgroundColor: GP.sun },
-  nextText: { fontFamily: GF.display, fontSize: 10, letterSpacing: 1, color: GP.ink },
-  shade: { ...StyleSheet.absoluteFill, borderRadius: 14, backgroundColor: "#000000" },
   bubble: {
     flexDirection: "row",
     alignItems: "flex-start",
