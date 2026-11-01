@@ -208,6 +208,8 @@ export default function DuelScreen({
   const phaseRef = useRef<Phase>(phase);
   const [paused, setPaused] = useState(false);
   const before = useRef<RoamStanding | null>(null);
+  // look-fight: the 3D fight's whole result, for the result screen's highlights (crits, combo, time)
+  const fightRecord = useRef<Record<string, unknown> | null>(null);
   const alive = useRef(true);
   const startedOnce = useRef(false);
   const runnerRef = useRef<DuelRunner | null>(null);
@@ -463,6 +465,7 @@ export default function DuelScreen({
           onResult={(r, s) => {
             const st = s ?? phase.start;
             const end = r.outcome === "quit" ? null : { won: r.outcome === "win", reason: r.outcome === "timeout" ? "Time!" : r.outcome === "win" ? "K.O.!" : "Down!" };
+            fightRecord.current = r.record;
             void report(st, finishFrom3D(r), end);
           }}
           // Left before the end (the X, Android Back): the server counts it as a loss when it runs
@@ -501,6 +504,7 @@ export default function DuelScreen({
         <DuelResult
           outcome={phase.outcome}
           start={phase.start}
+          fight={fightRecord.current}
           onDone={() => done(phase.outcome)}
           again={trialAgainLabel(phase.outcome, trial ? gameStore.get().me?.features?.duel?.trials?.[trial.faction] : null)}
           onAgain={() => {

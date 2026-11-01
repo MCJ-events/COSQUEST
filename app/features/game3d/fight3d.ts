@@ -241,6 +241,8 @@ export type Fight3DConfig = {
   reduce_motion?: boolean;
   /** Hit haptics (haptics.ts): the player's in-game choice. Godot sends no touches unless this is true. */
   haptics?: boolean;
+  /** look-fight: false mutes the fight's sounds and music (sfx.gd); sent false only while a call holds the audio. */
+  sound?: boolean;
   /** cq 019: the real place round the point (place.gd) instead of the street, from this ground file. */
   arena?: "place";
   ground_json?: string;
@@ -289,6 +291,8 @@ export function buildFightConfig(input: {
   reduceMotion?: boolean;
   /** The player's haptics choice (prefs.ts hapticsOn()); on unless false. */
   haptics?: boolean;
+  /** False while a CosQuest call holds the audio: Godot plays no effects and no music. */
+  sound?: boolean;
   /** The real place: the ground written to a file, and the point on it (placeFrom). */
   place?: { groundPath: string; at: [number, number] } | null;
   /** The server's modifiers and look, as the duel's setup gave them (fightFromStart). */
@@ -314,6 +318,7 @@ export function buildFightConfig(input: {
   };
   if (input.tilesUrl) Object.assign(config, tilesFields(input.tilesUrl));
   if (input.reduceMotion) config.reduce_motion = true;
+  if (input.sound === false) config.sound = false;
   if (input.mods) config.mods = { ...input.mods };
   if (input.guardianLook) config.guardian_look = { ...input.guardianLook };
   const groundJson = localPath(input.place?.groundPath);
