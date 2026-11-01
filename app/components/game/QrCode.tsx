@@ -38,6 +38,11 @@ export function QrCode({ text, size = 170 }: { text: string; size?: number }) {
   );
 }
 
-const STYLE_PAIR = themedStyles({
-  card: { padding: 8, borderRadius: 14, backgroundColor: "#FFFFFF", alignSelf: "center" },
-});
+// White in both schemes (the dark copy must not turn it navy: scanners want
+// dark on light), with a quiet zone and the card radius.
+const STYLE_PAIR = themedStyles(
+  {
+    card: { padding: 12, borderRadius: 16, backgroundColor: "#FFFFFF", alignSelf: "center" },
+  },
+  { card: { backgroundColor: "#FFFFFF" } },
+);

@@ -4,7 +4,7 @@
 // costquest-ios Features/LiveFeature.swift (LiveCalendarSheet).
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect } from "react";
-import { ActivityIndicator, ScrollView, Text, View } from "react-native";
+import { ScrollView, Text, View } from "react-native";
 import Animated from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -16,9 +16,10 @@ import { useGame } from "@/features/game/runtime";
 
 import { GameBackdrop } from "./GameBackdrop";
 import { Chip, GameButton, GamePanel, MAX_FONT_SCALE } from "./kit";
-import { LIVE_CLOCK, useLiveNow, withAlpha } from "./LiveBanner";
+import { LIVE_CLOCK, useLiveNow } from "./LiveBanner";
+import { ACCENT, edgeColor, RADIUS, SURFACES } from "./look";
 import { SheetHeader } from "./SheetHeader";
-import { GF, GP } from "./theme";
+import { GF } from "./theme";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 function reload() {
@@ -54,11 +55,11 @@ export default function LiveCalendarSheet({ onClose }: { onClose: () => void }) 
         {calendar ? (
           <>
             {live ? (
-              <GamePanel face={GP.sun} padding={14}>
-                <EventRow event={live} badge="Live now" color={GP.berry} />
+              <GamePanel padding={14}>
+                <EventRow event={live} badge="Live now" color={ACCENT.berry.fill} />
               </GamePanel>
             ) : null}
-            {!live && !next.length ? <Text style={styles.note}>Nothing on the calendar for the next 30 days. Check back soon.</Text> : null}
+            {!live && !next.length ? <Text style={styles.note}>Nothing booked for the next 30 days. Quest Hour is back on Wednesday evening.</Text> : null}
             {next.map((e) => (
               <GamePanel key={`${e.key}@${e.starts_at}`} padding={14}>
                 <EventRow event={e} badge={`${times(e.multiplier)} XP`} color={colorFor(e)} />
@@ -70,13 +71,20 @@ export default function LiveCalendarSheet({ onClose }: { onClose: () => void }) 
           </>
         ) : error ? (
           <View style={{ gap: 10 }}>
-            <Text style={styles.note}>{`Couldn't load events. ${error}`}</Text>
-            <GameButton title="Try again" size="medium" color={GP.sky} onPress={reload} />
+            <Text style={styles.note}>{`The calendar didn't load. ${error}`}</Text>
+            <GameButton title="Try again" size="medium" color={ACCENT.sky.fill} onPress={reload} />
           </View>
         ) : !hasPlace ? (
-          <Text style={styles.note}>Waiting for your location: events run on local time.</Text>
+          <Text style={styles.note}>Finding where you are: events run on your local time.</Text>
         ) : (
-          <ActivityIndicator color="#FFF" style={{ marginTop: 40 }} />
+          <View style={{ gap: 14 }} accessible accessibilityLabel="Loading events">
+            {[0, 1, 2].map((i) => (
+              <View key={i} style={styles.skeleton}>
+                <View style={[styles.skeletonLine, { width: "60%" }]} />
+                <View style={[styles.skeletonLine, { width: "40%", height: 10 }]} />
+              </View>
+            ))}
+          </View>
         )}
       </ScrollView>
     </Animated.View>
@@ -84,7 +92,7 @@ export default function LiveCalendarSheet({ onClose }: { onClose: () => void }) 
 }
 
 function colorFor(e: LiveEvent): string {
-  return e.key === "landmark_day" ? GP.berry : GP.skyDeep;
+  return e.key === "landmark_day" ? ACCENT.berry.fill : ACCENT.sky.fill;
 }
 
 function EventRow({ event, badge, color }: { event: LiveEvent; badge: string; color: string }) {
@@ -92,9 +100,7 @@ function EventRow({ event, badge, color }: { event: LiveEvent; badge: string; co
   const when = whenText(event, LIVE_CLOCK);
   return (
     <View style={styles.row} accessible accessibilityLabel={`${event.title}, ${when}, ${badge}`}>
-      <View style={[styles.icon, { backgroundColor: color }]}>
-        <Ionicons name={event.key === "landmark_day" ? "business" : "flash"} size={22} color="#FFF" />
-      </View>
+      <Ionicons name={event.key === "landmark_day" ? "business" : "flash"} size={24} color={edgeColor(color, 0.85)} />
       <View style={{ flex: 1, gap: 2 }}>
         <Text style={styles.rowTitle} numberOfLines={2} maxFontSizeMultiplier={MAX_FONT_SCALE}>
           {event.title}
@@ -106,22 +112,27 @@ function EventRow({ event, badge, color }: { event: LiveEvent; badge: string; co
   );
 }
 
-const STYLE_PAIR = themedStyles({
-  sheet: { position: "absolute", left: 0, right: 0, bottom: 0, borderTopLeftRadius: 28, borderTopRightRadius: 28, backgroundColor: GP.ice, overflow: "hidden", elevation: 18 },
-  head: { paddingHorizontal: 18, paddingTop: 10, paddingBottom: 10 },
-  body: { paddingHorizontal: 18, gap: 14 },
-  row: { flexDirection: "row", alignItems: "center", gap: 12 },
-  icon: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },
-  rowTitle: { fontFamily: GF.display, fontSize: 21, color: GP.ink },
-  rowWhen: { fontFamily: GF.body, fontSize: 14, color: withAlpha(GP.ink, 0.7) },
-  // White on the light backdrop, as on iOS; a soft shadow keeps it legible.
-  note: {
-    fontFamily: GF.bold,
-    fontSize: 14,
-    color: "rgba(255,255,255,0.95)",
-    paddingHorizontal: 4,
-    textShadowColor: "rgba(30,58,76,0.45)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
+const L = SURFACES.light;
+const D = SURFACES.dark;
+
+const STYLE_PAIR = themedStyles(
+  {
+    sheet: { position: "absolute", left: 0, right: 0, bottom: 0, borderTopLeftRadius: RADIUS.sheet, borderTopRightRadius: RADIUS.sheet, backgroundColor: L.screen, overflow: "hidden", elevation: 18 },
+    head: { paddingHorizontal: 18, paddingTop: 10, paddingBottom: 10 },
+    body: { paddingHorizontal: 18, gap: 14 },
+    row: { flexDirection: "row", alignItems: "center", gap: 12 },
+    rowTitle: { fontFamily: GF.bold, fontSize: 18, lineHeight: 22, color: L.text },
+    rowWhen: { fontFamily: GF.regular, fontSize: 14, lineHeight: 19, color: L.textMuted },
+    note: { fontFamily: GF.regular, fontSize: 14, lineHeight: 20, color: L.textMuted, paddingHorizontal: 4 },
+    skeleton: { gap: 10, padding: 16, borderRadius: RADIUS.card, backgroundColor: L.surface },
+    skeletonLine: { height: 14, borderRadius: 7, backgroundColor: L.surfaceAlt },
   },
-});
+  {
+    sheet: { backgroundColor: D.screen },
+    rowTitle: { color: D.text },
+    rowWhen: { color: D.textMuted },
+    note: { color: D.textMuted },
+    skeleton: { backgroundColor: D.surface },
+    skeletonLine: { backgroundColor: D.surfaceAlt },
+  },
+);

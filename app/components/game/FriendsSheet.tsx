@@ -31,11 +31,12 @@ import { friendsModel, useFriends } from "@/features/game/friendsRuntime";
 import { useGame } from "@/features/game/runtime";
 
 import { HoldPhonesCard } from "./HoldPhonesCard";
-import { Chip, GameButton, GamePanel, MAX_FONT_SCALE, withAlpha } from "./kit";
+import { Chip, GameButton, GamePanel, MAX_FONT_SCALE } from "./kit";
 import { QrCode } from "./QrCode";
 import { SheetHost } from "./Sheet";
 import { SheetFrame } from "./SheetFrame";
 import { SheetHeader } from "./SheetHeader";
+import { labelOn, SURFACES } from "./look";
 import { GF, GP, realmColor } from "./theme";
 import { useOnScreen } from "./useOnScreen";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
@@ -113,7 +114,7 @@ function FriendsBody({ close }: { close: () => void }) {
             )}
             {!fix ? (
               <View style={styles.row}>
-                <ActivityIndicator color={GP.ink} />
+                <ActivityIndicator color={GP.mist} />
                 <Text style={styles.line} maxFontSizeMultiplier={MAX_FONT_SCALE}>
                   Waiting for your location
                 </Text>
@@ -160,7 +161,7 @@ function FriendsBody({ close }: { close: () => void }) {
         </GamePanel>
 
         {friends.message ? (
-          <GamePanel face={withAlpha(GP.sun, 0.95)} padding={14}>
+          <GamePanel padding={14}>
             <Text style={styles.line} accessibilityLiveRegion="polite" maxFontSizeMultiplier={MAX_FONT_SCALE}>
               {friends.message}
             </Text>
@@ -175,7 +176,7 @@ function FriendsBody({ close }: { close: () => void }) {
                   title={`Open gifts (${pending})`}
                   size="medium"
                   color={GP.sun}
-                  icon={<Ionicons name="gift" size={20} color="#FFF" />}
+                  icon={<Ionicons name="gift" size={20} color={labelOn(GP.sun)} />}
                   onPress={() => void claim()}
                   disabled={friends.busy}
                 />
@@ -304,40 +305,57 @@ function FriendRow({ f, busy, canGift }: { f: FriendEntry; busy: boolean; canGif
   );
 }
 
-const MONO = Platform.OS === "android" ? "monospace" : "Menlo";
+const L = SURFACES.light;
+const D = SURFACES.dark;
 
-const STYLE_PAIR = themedStyles({
-  body: { paddingHorizontal: 18, gap: 16 },
-  lead: { fontFamily: GF.body, fontSize: 15, color: "#FFFFFF", textShadowColor: "rgba(0,0,0,0.3)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 0 },
-  stack: { gap: 14 },
-  stackTight: { gap: 12 },
-  addHead: { flexDirection: "row", alignItems: "center", gap: 12 },
-  big: { fontFamily: GF.display, fontSize: 22, color: GP.ink },
-  gifts: { fontFamily: GF.display, fontSize: 20, color: GP.ink },
-  sub: { fontFamily: GF.regular, fontSize: 14, color: withAlpha(GP.ink, 0.7), flexShrink: 1 },
-  line: { fontFamily: GF.body, fontSize: 15, color: GP.ink, flexShrink: 1 },
-  empty: { fontFamily: GF.regular, fontSize: 15, color: withAlpha(GP.ink, 0.7) },
-  label: { fontFamily: GF.bold, fontSize: 15, color: GP.ink },
-  row: { flexDirection: "row", alignItems: "center", gap: 10 },
-  divider: { height: StyleSheet.hairlineWidth, backgroundColor: GP.slate },
-  input: {
-    flex: 1,
-    height: 52,
-    paddingHorizontal: 12,
-    borderRadius: 14,
-    borderWidth: 2,
-    borderColor: "rgba(30,58,76,0.15)",
-    backgroundColor: "#FFF",
-    fontFamily: MONO,
-    fontSize: 24,
-    letterSpacing: 4,
-    color: GP.ink,
+const STYLE_PAIR = themedStyles(
+  {
+    body: { paddingHorizontal: 18, gap: 16 },
+    lead: { fontFamily: GF.body, fontSize: 15, color: L.textMuted },
+    stack: { gap: 14 },
+    stackTight: { gap: 12 },
+    addHead: { flexDirection: "row", alignItems: "center", gap: 12 },
+    big: { fontFamily: GF.display, fontSize: 22, color: L.text },
+    gifts: { fontFamily: GF.display, fontSize: 20, color: L.text },
+    sub: { fontFamily: GF.regular, fontSize: 14, color: L.textMuted, flexShrink: 1 },
+    line: { fontFamily: GF.body, fontSize: 15, color: L.text, flexShrink: 1 },
+    empty: { fontFamily: GF.regular, fontSize: 15, color: L.textMuted },
+    label: { fontFamily: GF.bold, fontSize: 15, color: L.text },
+    row: { flexDirection: "row", alignItems: "center", gap: 10 },
+    divider: { height: StyleSheet.hairlineWidth, backgroundColor: L.hairline },
+    input: {
+      flex: 1,
+      height: 52,
+      paddingHorizontal: 12,
+      borderRadius: 14,
+      borderWidth: 2,
+      borderColor: L.hairline,
+      backgroundColor: L.surface,
+      fontFamily: GF.display,
+      fontSize: 24,
+      letterSpacing: 4,
+      color: L.text,
+    },
+    codeBox: { alignItems: "center", gap: 10 },
+    centre: { alignSelf: "center" },
+    code: { fontFamily: GF.display, fontSize: 46, lineHeight: 52, letterSpacing: 6, color: L.text },
+    friend: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 4 },
+    dot: { width: 14, height: 14, borderRadius: 7 },
+    name: { fontFamily: GF.bold, fontSize: 17, color: L.text },
+    days: { fontFamily: GF.body, fontSize: 13, color: L.textMuted, flexShrink: 1 },
   },
-  codeBox: { alignItems: "center", gap: 10 },
-  centre: { alignSelf: "center" },
-  code: { fontFamily: MONO, fontWeight: "800", fontSize: 46, letterSpacing: 6, color: GP.ink },
-  friend: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 4 },
-  dot: { width: 14, height: 14, borderRadius: 7 },
-  name: { fontFamily: GF.bold, fontSize: 17, color: GP.ink },
-  days: { fontFamily: GF.body, fontSize: 13, color: withAlpha(GP.ink, 0.6), flexShrink: 1 },
-});
+  {
+    lead: { color: D.textMuted },
+    big: { color: D.text },
+    gifts: { color: D.text },
+    sub: { color: D.textMuted },
+    line: { color: D.text },
+    empty: { color: D.textMuted },
+    label: { color: D.text },
+    divider: { backgroundColor: D.hairline },
+    input: { borderColor: D.hairline, backgroundColor: D.surface, color: D.text },
+    code: { color: D.text },
+    name: { color: D.text },
+    days: { color: D.textMuted },
+  },
+);

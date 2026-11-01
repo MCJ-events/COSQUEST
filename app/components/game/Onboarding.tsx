@@ -48,6 +48,7 @@ import { announce, MAX_FONT_SCALE, pressFeedback, withAlpha } from "./kit";
 import { impact, notify } from "./prefs";
 import { RelicArt, rarityColor } from "./RelicArt";
 import { playSound } from "./sound";
+import { ACCENT, edgeColor, labelOn, RADIUS, SURFACES, TEXT_ON_DARK, TEXT_ON_LIGHT, useLook } from "./look";
 import { GF, GP, realmColor, realmIcon } from "./theme";
 import WardenBadge from "./WardenBadge";
 import { useWardenMuted, wardenVoice } from "./wardenVoice";
@@ -62,6 +63,7 @@ const MOTES = motes();
 const SHORT_SCREEN = 720;
 
 export default function Onboarding({ suggestedName, onDone }: { suggestedName: string; onDone: () => void }) {
+  const look = useLook();
   const styles = useThemedStyles(STYLE_PAIR);
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
@@ -286,7 +288,7 @@ export default function Onboarding({ suggestedName, onDone }: { suggestedName: s
             style={styles.topButton}
             accessibilityRole="button"
             accessibilityLabel={muted ? "Let the Warden speak" : "Mute the Warden"}>
-            <Ionicons name={muted ? "volume-mute" : "volume-high"} size={18} color={withAlpha(GP.ink, 0.45)} />
+            <Ionicons name={muted ? "volume-mute" : "volume-high"} size={18} color={look.textMuted} />
           </Pressable>
           {canSkip(beat) ? (
             <Pressable onPress={() => go("askName")} style={styles.skip} accessibilityRole="button">
@@ -319,7 +321,7 @@ export default function Onboarding({ suggestedName, onDone }: { suggestedName: s
                   onSubmitEditing={() => void saveName()}
                   maxLength={24}
                   placeholder="Your name"
-                  placeholderTextColor={withAlpha(GP.ink, 0.25)}
+                  placeholderTextColor={look.textMuted}
                   style={styles.nameInput}
                   accessibilityLabel="Your name"
                 />
@@ -390,6 +392,7 @@ function TapHint({ show }: { show: boolean }) {
 
 /** A line the Warden is saying, arriving word by word; the words not yet said are laid out but clear, so it never reflows. */
 function RevealLine({ text, id, revealed, onRevealed }: { text: string; id: number; revealed: boolean; onRevealed: () => void }) {
+  const look = useLook();
   const styles = useThemedStyles(STYLE_PAIR);
   const words = wordsOf(text);
   const [shown, setShown] = useState({ id, n: 0 });
@@ -410,7 +413,7 @@ function RevealLine({ text, id, revealed, onRevealed }: { text: string; id: numb
   return (
     <Text style={styles.line} maxFontSizeMultiplier={MAX_FONT_SCALE} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
       {words.map((w, i) => (
-        <Text key={i} style={{ color: i < n ? GP.ink : "transparent" }}>
+        <Text key={i} style={{ color: i < n ? look.text : "transparent" }}>
           {i === 0 ? w : ` ${w}`}
         </Text>
       ))}
@@ -448,6 +451,7 @@ function Presence({ tint, awake, size }: { tint: string; awake: boolean; size: n
 /** One of the five houses, as a glowing orb. */
 function HouseOrb({ id, name, chosen, onPress }: { id: string; name: string; chosen: boolean; onPress: () => void }) {
   const styles = useThemedStyles(STYLE_PAIR);
+  const look = useLook();
   const colour = realmColor(id);
   const scale = useSharedValue(chosen ? 1.12 : 1);
   useEffect(() => {
@@ -462,17 +466,16 @@ function HouseOrb({ id, name, chosen, onPress }: { id: string; name: string; cho
             styles.orb,
             {
               backgroundColor: colour,
-              borderColor: chosen ? GP.ink : "rgba(255,255,255,0.6)",
+              borderColor: chosen ? look.text : "#FFFFFF",
               borderWidth: chosen ? 3 : 1.5,
               shadowColor: colour,
               shadowOpacity: chosen ? 0.6 : 0.25,
               shadowRadius: chosen ? 12 : 4,
             },
           ]}>
-          <LinearGradient colors={["rgba(255,255,255,0.25)", "rgba(255,255,255,0)"]} style={[StyleSheet.absoluteFill, { borderRadius: 28 }]} />
-          <Ionicons name={realmIcon(id)} size={22} color="#FFF" />
+          <Ionicons name={realmIcon(id)} size={22} color={labelOn(colour)} />
         </View>
-        <Text style={[styles.orbName, { color: withAlpha(GP.ink, chosen ? 1 : 0.5) }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
+        <Text style={[styles.orbName, chosen && styles.orbNameOn]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
           {name}
         </Text>
       </Animated.View>
@@ -480,27 +483,28 @@ function HouseOrb({ id, name, chosen, onPress }: { id: string; name: string; cho
   );
 }
 
-function CalmButton({ title, enabled, tint, onPress }: { title: string; enabled: boolean; tint: string; onPress: () => void }) {
+/** The step's one action: the kit's primary (flat Sun on its 4 px edge, ink label). `tint` is the house's, kept for the call sites. */
+function CalmButton({ title, enabled, onPress }: { title: string; enabled: boolean; tint: string; onPress: () => void }) {
   const styles = useThemedStyles(STYLE_PAIR);
+  const face = enabled ? ACCENT.sun.fill : "#C9C1B2";
   return (
     <Pressable
       onPress={onPress}
       onPressIn={() => enabled && pressFeedback()}
       disabled={!enabled}
       accessibilityRole="button"
-      accessibilityState={{ disabled: !enabled }}
-      style={({ pressed }) => [
-        styles.calm,
-        {
-          backgroundColor: withAlpha(GP.ink, enabled ? 1 : 0.2),
-          shadowColor: tint,
-          shadowOpacity: enabled ? 0.45 : 0,
-          transform: [{ scale: pressed ? 0.95 : 1 }],
-        },
-      ]}>
-      <Text style={styles.calmText} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-        {title}
-      </Text>
+      accessibilityLabel={title}
+      accessibilityState={{ disabled: !enabled }}>
+      {({ pressed }) => (
+        <View style={{ paddingBottom: 4 }}>
+          <View style={[StyleSheet.absoluteFill, { top: 4, borderRadius: RADIUS.button, backgroundColor: edgeColor(face) }]} />
+          <View style={[styles.calm, { backgroundColor: face, transform: [{ translateY: pressed && enabled ? 3 : 0 }] }]}>
+            <Text style={[styles.calmText, { color: enabled ? ACCENT.sun.label : "#5A6878" }]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+              {title}
+            </Text>
+          </View>
+        </View>
+      )}
     </Pressable>
   );
 }
@@ -509,6 +513,7 @@ function CalmButton({ title, enabled, tint, onPress }: { title: string; enabled:
 function Dawn({ tint, awake }: { tint: string; awake: boolean }) {
   const { width, height } = useWindowDimensions();
   const reduce = useReducedMotion();
+  const look = useLook();
   const t = useSharedValue(0);
   useFrameCallback((f) => {
     if (!reduce) t.set(t.get() + (f.timeSincePreviousFrame ?? 16) / 1000);
@@ -520,7 +525,7 @@ function Dawn({ tint, awake }: { tint: string; awake: boolean }) {
   const field = useAnimatedStyle(() => ({ opacity: wake.get() }));
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
-      <LinearGradient colors={["#FFFFFF", "#FFFFFF", withAlpha(tint, awake ? 0.14 : 0.04)]} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={[look.screen, look.screen, withAlpha(tint, awake ? 0.14 : 0.04)]} style={StyleSheet.absoluteFill} />
       <Animated.View style={[StyleSheet.absoluteFill, field]}>
         <Svg width={width} height={height}>
           {MOTES.map((m, i) => (
@@ -544,24 +549,40 @@ function MoteDot({ m, t, width, height, color }: { m: (typeof MOTES)[number]; t:
   return <AnimatedCircle r={m.r / 2} fill={color} animatedProps={props} />;
 }
 
-const STYLE_PAIR = themedStyles({
-  root: { ...StyleSheet.absoluteFill, backgroundColor: "#FFFFFF" },
-  column: { flex: 1 },
-  topBar: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 8 },
-  topButton: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
-  skip: { height: 44, paddingHorizontal: 16, justifyContent: "center" },
-  skipText: { fontFamily: GF.bold, fontSize: 15, color: withAlpha(GP.ink, 0.5) },
-  line: { fontFamily: GF.display, fontSize: 27, lineHeight: 35, textAlign: "center" },
-  hint: { fontFamily: GF.body, fontSize: 14, color: GP.ink, textAlign: "center" },
-  nameInput: { fontFamily: GF.display, fontSize: 30, color: GP.ink, textAlign: "center", paddingBottom: 8 },
-  nameRule: { height: 2, borderRadius: 1 },
-  problem: { fontFamily: GF.bold, fontSize: 14, color: GP.berry, textAlign: "center" },
-  orbs: { flexDirection: "row", justifyContent: "center", gap: 12 },
-  orb: { width: 56, height: 56, borderRadius: 28, alignItems: "center", justifyContent: "center", shadowOffset: { width: 0, height: 3 }, elevation: 4 },
-  orbName: { fontFamily: GF.bold, fontSize: 12 },
-  gift: { alignItems: "center", gap: 10 },
-  rarity: { fontFamily: GF.display, fontSize: 13, letterSpacing: 1.5 },
-  ability: { fontFamily: GF.bold, fontSize: 14, color: withAlpha(GP.ink, 0.65), textAlign: "center" },
-  calm: { height: 58, borderRadius: 29, alignItems: "center", justifyContent: "center", shadowRadius: 14, shadowOffset: { width: 0, height: 4 }, elevation: 3 },
-  calmText: { fontFamily: GF.display, fontSize: 20, color: "#FFF" },
-});
+const L = SURFACES.light;
+const D = SURFACES.dark;
+
+const STYLE_PAIR = themedStyles(
+  {
+    root: { ...StyleSheet.absoluteFill, backgroundColor: L.screen },
+    column: { flex: 1 },
+    topBar: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 8 },
+    topButton: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
+    skip: { height: 44, paddingHorizontal: 16, justifyContent: "center" },
+    skipText: { fontFamily: GF.bold, fontSize: 15, lineHeight: 19, color: L.textMuted },
+    line: { fontFamily: GF.display, fontSize: 28, lineHeight: 34, textAlign: "center" },
+    hint: { fontFamily: GF.regular, fontSize: 15, lineHeight: 21, color: L.textMuted, textAlign: "center" },
+    nameInput: { fontFamily: GF.display, fontSize: 30, color: L.text, textAlign: "center", paddingBottom: 8 },
+    nameRule: { height: 2, borderRadius: 1 },
+    problem: { fontFamily: GF.body, fontSize: 14, lineHeight: 19, color: TEXT_ON_LIGHT.danger, textAlign: "center" },
+    orbs: { flexDirection: "row", justifyContent: "center", gap: 12 },
+    orb: { width: 56, height: 56, borderRadius: 28, alignItems: "center", justifyContent: "center", shadowOffset: { width: 0, height: 3 }, elevation: 4 },
+    orbName: { fontFamily: GF.body, fontSize: 12, lineHeight: 16, color: L.textMuted },
+    orbNameOn: { fontFamily: GF.bold, color: L.text },
+    gift: { alignItems: "center", gap: 10 },
+    rarity: { fontFamily: GF.bold, fontSize: 13, lineHeight: 17, letterSpacing: 1.2 },
+    ability: { fontFamily: GF.regular, fontSize: 15, lineHeight: 21, color: L.textMuted, textAlign: "center" },
+    calm: { height: 56, borderRadius: RADIUS.button, alignItems: "center", justifyContent: "center" },
+    calmText: { fontFamily: GF.display, fontSize: 20, lineHeight: 24 },
+  },
+  {
+    root: { backgroundColor: D.screen },
+    skipText: { color: D.textMuted },
+    hint: { color: D.textMuted },
+    nameInput: { color: D.text },
+    problem: { color: TEXT_ON_DARK.danger },
+    orbName: { color: D.textMuted },
+    orbNameOn: { color: D.text },
+    ability: { color: D.textMuted },
+  },
+);

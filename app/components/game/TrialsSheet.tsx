@@ -9,15 +9,18 @@ import { type TrialRequest, trialsOrder } from "@/features/game/duelFlow";
 import { gameStore, useGame } from "@/features/game/runtime";
 import type { TrialLadder } from "@/features/game/wire";
 
-import { GameButton, MAX_FONT_SCALE, withAlpha } from "./kit";
+import { GameButton, MAX_FONT_SCALE } from "./kit";
+import { ACCENT, ELEVATION, labelOn, RADIUS, SURFACES } from "./look";
 import { SheetHost } from "./Sheet";
 import { SheetFrame } from "./SheetFrame";
 import { SheetHeader } from "./SheetHeader";
 import { GF, GP, realmColor, realmIcon } from "./theme";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
-/** A tile of the track the pips sit on (GamePalette.track). */
-const TRACK = "rgba(31,59,77,0.12)";
+/** A tile of the track the pips sit on. */
+const TRACK = "rgba(28,43,58,0.12)";
+const L = SURFACES.light;
+const D = SURFACES.dark;
 
 export default function TrialsSheet({ onClose, onFight }: { onClose: () => void; onFight: (t: TrialRequest) => void }) {
   const insets = useSafeAreaInsets();
@@ -45,11 +48,11 @@ function TrialsBody({ close, onFight }: { close: () => void; onFight: (t: TrialR
       <ScrollView contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + 24 }]} showsVerticalScrollIndicator={false}>
         <SheetHeader title="Guardian Trials" onClose={close} />
         <Text style={styles.lead} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-          {"Beat each faction's Guardians in a real fight, one rung at a time. Each rung pays the first time you clear it."}
+          {"Climb each faction's ladder of Guardians, one fight a rung. A rung pays out the first time you clear it."}
         </Text>
         {order.length === 0 ? (
           <Text style={styles.closed} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-            {"The Trials aren't open on this server yet."}
+            {"No ladders open yet. The Warden will call you when the first Guardian takes its rung."}
           </Text>
         ) : null}
         {order.map((f) => (
@@ -67,11 +70,10 @@ function Ladder({ faction, ladder: t, onFight }: { faction: string; ladder: Tria
   const rungs = Math.max(1, t.rungs);
   return (
     <View style={styles.cardWrap}>
-      <View style={styles.cardEdge} />
       <View style={styles.card}>
         <View style={styles.head} accessible accessibilityLabel={`${name}, ${t.cleared} of ${t.rungs} cleared`}>
           <View style={[styles.badge, { backgroundColor: tint }]}>
-            <Ionicons name={realmIcon(faction)} size={16} color="#FFF" />
+            <Ionicons name={realmIcon(faction)} size={16} color={labelOn(tint)} />
           </View>
           <View style={{ flex: 1, gap: 1 }}>
             <Text style={styles.name} maxFontSizeMultiplier={MAX_FONT_SCALE}>
@@ -92,7 +94,7 @@ function Ladder({ faction, ladder: t, onFight }: { faction: string; ladder: Tria
           {t.next ? (
             <>
               <View style={{ flex: 1, gap: 1 }} accessible accessibilityLabel={`Next, rung ${t.next.rung}: ${t.next.name}, level ${t.next.level}`}>
-                <Text style={styles.nextKicker}>{`NEXT · RUNG ${t.next.rung}`}</Text>
+                <Text style={styles.nextKicker} maxFontSizeMultiplier={MAX_FONT_SCALE}>{`NEXT · RUNG ${t.next.rung}`}</Text>
                 <Text style={styles.nextName} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
                   {t.next.name}
                 </Text>
@@ -101,11 +103,11 @@ function Ladder({ faction, ladder: t, onFight }: { faction: string; ladder: Tria
               {t.cleared > 0 ? (
                 <GameButton title="Replay" size="small" color={GP.skyDeep} onPress={() => onFight({ faction, rung: t.cleared })} accessibilityLabel={`Replay rung ${t.cleared}`} />
               ) : null}
-              <GameButton title="Fight" size="small" color={tint} onPress={() => onFight({ faction, rung: null })} accessibilityLabel={`Fight ${t.next.name}`} />
+              <GameButton title="Fight" size="small" color={ACCENT.sun.fill} onPress={() => onFight({ faction, rung: null })} accessibilityLabel={`Fight ${t.next.name}`} />
             </>
           ) : (
             <>
-              <Text style={[styles.nextName, { flex: 1 }]}>Every Guardian beaten.</Text>
+              <Text style={[styles.nextName, { flex: 1 }]} maxFontSizeMultiplier={MAX_FONT_SCALE}>Ladder cleared. Every Guardian beaten.</Text>
               <GameButton title="Replay" size="small" color={GP.skyDeep} onPress={() => onFight({ faction, rung: t.rungs })} accessibilityLabel={`Replay rung ${t.rungs}`} />
             </>
           )}
@@ -115,21 +117,32 @@ function Ladder({ faction, ladder: t, onFight }: { faction: string; ladder: Tria
   );
 }
 
-const STYLE_PAIR = themedStyles({
-  body: { paddingHorizontal: 18, gap: 14 },
-  lead: { fontFamily: GF.bold, fontSize: 14, color: withAlpha(GP.ink, 0.65) },
-  closed: { paddingTop: 20, fontFamily: GF.bold, fontSize: 15, color: GP.mist },
-  cardWrap: { paddingBottom: 4 },
-  cardEdge: { position: "absolute", left: 0, right: 0, top: 4, bottom: 0, borderRadius: 16, backgroundColor: GP.slate },
-  card: { gap: 12, padding: 14, borderRadius: 16, backgroundColor: GP.cream },
-  head: { flexDirection: "row", alignItems: "center", gap: 12 },
-  badge: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },
-  name: { fontFamily: GF.display, fontSize: 19, color: GP.ink },
-  count: { fontFamily: GF.bold, fontSize: 11, letterSpacing: 0.4, color: withAlpha(GP.ink, 0.5) },
-  pips: { flexDirection: "row", gap: 5 },
-  pip: { flex: 1, height: 8, borderRadius: 3 },
-  foot: { flexDirection: "row", alignItems: "center", gap: 10 },
-  nextKicker: { fontFamily: GF.bold, fontSize: 10, letterSpacing: 0.5, color: GP.mist },
-  nextName: { fontFamily: GF.display, fontSize: 16, color: GP.ink },
-  nextLevel: { fontFamily: GF.bold, fontSize: 12, color: withAlpha(GP.ink, 0.6) },
-});
+const STYLE_PAIR = themedStyles(
+  {
+    body: { paddingHorizontal: 18, gap: 14 },
+    lead: { fontFamily: GF.regular, fontSize: 15, lineHeight: 21, color: L.textMuted },
+    closed: { paddingTop: 20, fontFamily: GF.body, fontSize: 15, lineHeight: 21, color: L.textMuted },
+    cardWrap: {},
+    card: { gap: 12, padding: 16, borderRadius: RADIUS.card, backgroundColor: L.surface, ...ELEVATION.low },
+    head: { flexDirection: "row", alignItems: "center", gap: 12 },
+    badge: { width: 36, height: 36, borderRadius: RADIUS.chip, alignItems: "center", justifyContent: "center" },
+    name: { fontFamily: GF.bold, fontSize: 19, lineHeight: 24, color: L.text },
+    count: { fontFamily: GF.body, fontSize: 12, lineHeight: 16, letterSpacing: 0.4, color: L.textMuted },
+    pips: { flexDirection: "row", gap: 5 },
+    pip: { flex: 1, height: 8, borderRadius: 4 },
+    foot: { flexDirection: "row", alignItems: "center", gap: 10 },
+    nextKicker: { fontFamily: GF.body, fontSize: 12, lineHeight: 16, letterSpacing: 0.4, color: L.textMuted },
+    nextName: { fontFamily: GF.display, fontSize: 17, lineHeight: 21, color: L.text },
+    nextLevel: { fontFamily: GF.regular, fontSize: 12, lineHeight: 16, color: L.textMuted },
+  },
+  {
+    lead: { color: D.textMuted },
+    closed: { color: D.textMuted },
+    card: { backgroundColor: D.surface, borderWidth: 1, borderColor: D.hairline, shadowOpacity: 0, elevation: 0, boxShadow: "none" },
+    name: { color: D.text },
+    count: { color: D.textMuted },
+    nextKicker: { color: D.textMuted },
+    nextName: { color: D.text },
+    nextLevel: { color: D.textMuted },
+  },
+);

@@ -6,7 +6,6 @@
 // RunResults with the day's Bounty Board. State: runModel.ts; words: run.ts.
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { LinearGradient } from "expo-linear-gradient";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeIn, FadeOut, useAnimatedStyle, useReducedMotion, useSharedValue, withSpring } from "react-native-reanimated";
@@ -56,13 +55,18 @@ import { impact, notify } from "./prefs";
 import { runModel, useRun } from "./runModel";
 import { SheetHost } from "./Sheet";
 import { SheetFrame } from "./SheetFrame";
+import { GameBackdrop } from "./GameBackdrop";
 import { playSound } from "./sound";
-import { challengeName, edgeOf, GF, GP, realmColor, tierColor } from "./theme";
+import { ACCENT, edgeColor, ELEVATION, labelOn, RADIUS, SURFACES, TEXT_ON_DARK, TEXT_ON_LIGHT, useLook } from "./look";
+import { challengeName, GF, GP, realmColor, tierColor } from "./theme";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 import { POP_FADE, POP_IN_COUNT, POP_IN_SOFT, usePopIn } from "./sheetMotion";
 import { SPRING_PRESS } from "@/features/game/spring";
 
-const STAGE = [GP.navy, GP.navyEdge] as const;
+const L = SURFACES.light;
+const D = SURFACES.dark;
+/** Gold on paper: the run's gold darkened until it reads as text (AA). */
+const GOLD_TEXT = TEXT_ON_LIGHT.warning;
 const timeOfDay = (d: Date) => d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 /** 00:00 UTC on this phone's clock (RunLook.resetTime). */
 const resetAt = () => resetTime(Date.now(), timeOfDay);
@@ -76,21 +80,21 @@ export function QuestRunButton({ onPress }: { onPress: () => void }) {
   return (
     <Pressable onPressIn={pressFeedback} onPress={onPress} accessibilityRole="button" accessibilityLabel="Start a Quest Run">
       {({ pressed }) => (
-        <View style={{ paddingBottom: 6, transform: [{ translateY: pressed ? 1 : 0 }] }}>
-          <View style={[StyleSheet.absoluteFill, { top: 6, borderRadius: 22, backgroundColor: edgeOf(face) }]} />
-          <LinearGradient colors={[withAlpha(face, 0.92), face]} style={[styles.runButton, { transform: [{ translateY: pressed ? 5 : 0 }] }]}>
-            <View pointerEvents="none" style={styles.gloss} />
-            <Ionicons name="flag" size={20} color="#FFF" />
+        <View style={{ paddingBottom: 4 }}>
+          {/* Flat Sun on its 4 px edge (the kit's chunky button), ink on Sun. */}
+          <View style={[StyleSheet.absoluteFill, { top: 4, borderRadius: RADIUS.card, backgroundColor: edgeColor(face) }]} />
+          <View style={[styles.runButton, { backgroundColor: face, transform: [{ translateY: pressed ? 3 : 0 }] }]}>
+            <Ionicons name="flag" size={20} color={labelOn(face)} />
             <View style={{ flex: 1 }}>
-              <Text style={styles.runButtonTitle} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-                QUEST RUN
+              <Text style={[styles.runButtonTitle, { color: labelOn(face) }]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+                Quest Run
               </Text>
-              <Text style={styles.runButtonSub} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-                15 minutes. Ten points. Pick your route.
+              <Text style={[styles.runButtonSub, { color: labelOn(face) }]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+                15 minutes. Ten points. Your route.
               </Text>
             </View>
-            <Ionicons name="chevron-forward" size={16} color="#FFF" />
-          </LinearGradient>
+            <Ionicons name="chevron-forward" size={16} color={labelOn(face)} />
+          </View>
         </View>
       )}
     </Pressable>
@@ -151,7 +155,7 @@ function RunStartBody({ close }: { close: () => void }) {
     <SheetFrame top={insets.top + 120}>
       {counting !== null ? (
         <View style={styles.countdown}>
-          <Animated.Text key={counting} entering={countIn} exiting={FadeOut} style={[styles.countText, { color: counting === 0 ? GP.mint : GP.ink }]}>
+          <Animated.Text key={counting} entering={countIn} exiting={FadeOut} style={[styles.countText, counting === 0 && { color: ACCENT.mint.fill }]}>
             {counting === 0 ? "GO!" : counting}
           </Animated.Text>
         </View>
@@ -161,7 +165,7 @@ function RunStartBody({ close }: { close: () => void }) {
             Quest Run
           </Text>
           <Text style={styles.startLead} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-            Ten Quest Points appear around you, each with its value on it. Close ones are quick. Far ones pay more. You have 15 minutes.
+            Ten Quest Points drop around you, each showing what it pays. Near ones are quick, far ones pay more. 15 minutes on the clock.
           </Text>
           <ModeButton
             title="Daily Run"
@@ -182,22 +186,21 @@ function RunStartBody({ close }: { close: () => void }) {
 
 function ModeButton({ title, icon, sub, color, disabled, onPress }: { title: string; icon: "walk" | "cafe"; sub: string; color: string; disabled: boolean; onPress: () => void }) {
   const styles = useThemedStyles(STYLE_PAIR);
-  const face = disabled ? "#B8B8B8" : color;
+  const face = disabled ? "#C9C1B2" : color;
   return (
     <Pressable onPressIn={() => !disabled && pressFeedback()} onPress={onPress} disabled={disabled} accessibilityRole="button" accessibilityLabel={`${title}. ${sub}`} accessibilityState={{ disabled }}>
       {({ pressed }) => (
-        <View style={{ paddingBottom: 6, transform: [{ translateY: pressed ? 1 : 0 }] }}>
-          <View style={[StyleSheet.absoluteFill, { top: 6, borderRadius: 22, backgroundColor: edgeOf(face) }]} />
-          <LinearGradient colors={[withAlpha(face, 0.92), face]} style={[styles.mode, { transform: [{ translateY: pressed ? 5 : 0 }] }]}>
-            <View pointerEvents="none" style={styles.gloss} />
-            <Ionicons name={icon} size={22} color="#FFF" style={{ width: 30 }} />
+        <View style={{ paddingBottom: 4 }}>
+          <View style={[StyleSheet.absoluteFill, { top: 4, borderRadius: RADIUS.card, backgroundColor: edgeColor(face) }]} />
+          <View style={[styles.mode, { backgroundColor: face, transform: [{ translateY: pressed ? 3 : 0 }] }]}>
+            <Ionicons name={icon} size={22} color={labelOn(face)} style={{ width: 30 }} />
             <View style={{ flex: 1, gap: 2 }}>
-              <Text style={styles.modeTitle}>{title}</Text>
-              <Text style={styles.modeSub} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+              <Text style={[styles.modeTitle, { color: labelOn(face) }]} maxFontSizeMultiplier={MAX_FONT_SCALE}>{title}</Text>
+              <Text style={[styles.modeSub, { color: labelOn(face) }]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
                 {sub}
               </Text>
             </View>
-          </LinearGradient>
+          </View>
         </View>
       )}
     </Pressable>
@@ -268,7 +271,7 @@ export function RunHUD() {
 function Power({ icon, label, left, lit, busy, hint, onPress }: { icon: "radio" | "flash"; label: string; left: number; lit: boolean; busy: boolean; hint: string; onPress: () => void }) {
   const styles = useThemedStyles(STYLE_PAIR);
   const off = left === 0 || busy;
-  const tint = lit ? "#FFF" : left > 0 ? GP.ink : withAlpha(GP.mist, 0.5);
+  const tint = lit ? ACCENT.coin.label : left > 0 ? GP.ink : withAlpha(GP.mist, 0.6);
   return (
     <Pressable
       onPressIn={() => !off && pressFeedback()}
@@ -278,7 +281,7 @@ function Power({ icon, label, left, lit, busy, hint, onPress }: { icon: "radio" 
       accessibilityLabel={label}
       accessibilityValue={{ text: lit ? "armed" : left > 0 ? "1 left" : "used" }}
       accessibilityHint={hint}
-      style={({ pressed }) => [styles.power, { backgroundColor: lit ? RUN_GOLD : withAlpha(GP.ice, left > 0 ? 1 : 0.4), transform: [{ scale: pressed ? 0.95 : 1 }] }]}>
+      style={({ pressed }) => [styles.power, { backgroundColor: lit ? RUN_GOLD : withAlpha(GP.ice, left > 0 ? 1 : 0.5), transform: [{ scale: pressed ? 0.95 : 1 }] }]}>
       <Ionicons name={icon} size={14} color={tint} />
       <Text style={[styles.powerText, { color: tint }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
         {label}
@@ -426,7 +429,8 @@ function Stage({ children }: { children: ReactNode }) {
   const insets = useSafeAreaInsets();
   return (
     <View style={StyleSheet.absoluteFill} accessibilityViewIsModal>
-      <LinearGradient colors={STAGE} style={StyleSheet.absoluteFill} />
+      {/* The run's challenges on the game's paper (it was a navy void). */}
+      <GameBackdrop tint={RUN_GOLD} />
       <View style={{ flex: 1, paddingTop: insets.top + 8, paddingHorizontal: 18, paddingBottom: insets.bottom }}>{children}</View>
     </View>
   );
@@ -434,6 +438,7 @@ function Stage({ children }: { children: ReactNode }) {
 
 function Header({ point, line, close, closeIcon }: { point: RunPoint; line: string; close: (() => void) | null; closeIcon: "close" | "checkmark" }) {
   const styles = useThemedStyles(STYLE_PAIR);
+  const look = useLook();
   return (
     <View style={styles.qHeader}>
       <View style={{ flex: 1, gap: 2 }}>
@@ -444,7 +449,7 @@ function Header({ point, line, close, closeIcon }: { point: RunPoint; line: stri
       </View>
       {close ? (
         <Pressable onPress={close} style={styles.qClose} accessibilityRole="button" accessibilityLabel={closeIcon === "checkmark" ? "Back to the run" : "Leave"}>
-          <Ionicons name={closeIcon} size={18} color="#FFF" />
+          <Ionicons name={closeIcon} size={18} color={look.text} />
         </Pressable>
       ) : null}
     </View>
@@ -470,6 +475,7 @@ function StakeChoice({ point, duel, score, onChoose, onClose }: { point: RunPoin
 }
 
 function RunQuiz({ point, staked: stakedAsked, onDone }: { point: RunPoint; staked: boolean; onDone: () => void }) {
+  const tone = useLook().dark ? TEXT_ON_DARK : TEXT_ON_LIGHT;
   const styles = useThemedStyles(STYLE_PAIR);
   const reduce = useReducedMotion();
   const [phase, setPhase] = useState<Phase>("opening");
@@ -546,7 +552,7 @@ function RunQuiz({ point, staked: stakedAsked, onDone }: { point: RunPoint; stak
       <Header point={point} line={line} close={phase === "submitting" ? null : onDone} closeIcon={phase === "result" ? "checkmark" : "close"} />
       {phase === "opening" ? (
         <View style={styles.center}>
-          <ActivityIndicator color="#FFF" size="large" />
+          <ActivityIndicator color={GP.mist} size="large" />
         </View>
       ) : typeof phase === "object" ? (
         <View style={[styles.center, { gap: 16 }]}>
@@ -557,7 +563,7 @@ function RunQuiz({ point, staked: stakedAsked, onDone }: { point: RunPoint; stak
         <ScrollView contentContainerStyle={{ gap: 14, paddingTop: 14, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
           {phase === "result" && result ? (
             <Animated.View entering={reduce ? POP_FADE : POP_IN_SOFT} style={{ gap: 6 }} accessible>
-              <Text style={[styles.headline, { color: result.earned > 0 ? GP.mint : "#FFF" }]}>{resultHeadline(result)}</Text>
+              <Text style={[styles.headline, { color: result.earned > 0 ? tone.success : undefined }]}>{resultHeadline(result)}</Text>
               <View style={{ flexDirection: "row", gap: 12, flexWrap: "wrap" }}>
                 {resultChips(result).map((c) => (
                   <Text key={c} style={styles.chip}>
@@ -565,13 +571,13 @@ function RunQuiz({ point, staked: stakedAsked, onDone }: { point: RunPoint; stak
                   </Text>
                 ))}
               </View>
-              {result.stake_result ? <Text style={[styles.stakeResult, { color: result.stake_result.won ? RUN_GOLD : GP.berry }]}>{stakeLine(result.stake_result)}</Text> : null}
+              {result.stake_result ? <Text style={[styles.stakeResult, { color: result.stake_result.won ? tone.warning : tone.danger }]}>{stakeLine(result.stake_result)}</Text> : null}
             </Animated.View>
           ) : (
             <DeadlineBar deadline={deadline} total={attempt.seconds} />
           )}
           {attempt.kind === "sequence" && phase === "result" ? (
-            <Text style={[styles.sequenceLine, { color: (result?.reveal.positions_right ?? 0) === (attempt.challenge.beats?.length ?? 4) ? GP.mint : "#FFF" }]}>
+            <Text style={[styles.sequenceLine, { color: (result?.reveal.positions_right ?? 0) === (attempt.challenge.beats?.length ?? 4) ? tone.success : undefined }]}>
               {sequenceLine(result?.reveal.positions_right ?? 0, attempt.challenge.beats?.length ?? 4)}
             </Text>
           ) : attempt.kind === "sequence" ? (
@@ -630,7 +636,7 @@ function RunQuiz({ point, staked: stakedAsked, onDone }: { point: RunPoint; stak
               />
             </>
           ) : null}
-          {phase === "submitting" ? <ActivityIndicator color="#FFF" /> : null}
+          {phase === "submitting" ? <ActivityIndicator color={GP.mist} /> : null}
           {phase === "result" ? <GameButton title="Next point" color={GP.sun} onPress={onDone} /> : null}
         </ScrollView>
       ) : null}
@@ -709,7 +715,7 @@ export function BountyBoard({ board }: { board: RunBoard }) {
       {board.entries.length === 0 ? <Text style={styles.bountyEmpty}>No runs on the board yet today.</Text> : null}
       {board.entries.slice(0, 10).map((e) => (
         <View key={e.place} style={styles.bountyRow} accessible accessibilityLabel={`${e.place}. ${e.handle}${e.you ? ", you" : ""}, ${e.score}`}>
-          <Text style={[styles.bountyPlace, { color: e.place <= 3 ? RUN_GOLD : GP.mist }]}>{e.place}</Text>
+          <Text style={[styles.bountyPlace, { color: e.place <= 3 ? GOLD_TEXT : GP.mist }]}>{e.place}</Text>
           <View style={[styles.dot, { backgroundColor: realmColor(e.faction) }]} />
           <Text style={[styles.bountyHandle, e.you && { fontFamily: GF.display }]} numberOfLines={1}>
             {e.you ? `${e.handle} (you)` : e.handle}
@@ -750,81 +756,128 @@ export function runInReach(p: RunPoint): boolean {
 
 export type { RunState };
 
-const STYLE_PAIR = themedStyles({
-  gloss: { position: "absolute", top: 5, left: 10, right: 10, height: 10, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.28)" },
-  runButton: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 18, paddingVertical: 12, borderRadius: 22, overflow: "hidden" },
-  runButtonTitle: { fontFamily: GF.display, fontSize: 20, letterSpacing: 0.8, color: "#FFF" },
-  runButtonSub: { fontFamily: GF.bold, fontSize: 12, color: "rgba(255,255,255,0.85)" },
-  countdown: { flex: 1, alignItems: "center", justifyContent: "center" },
-  countText: { fontFamily: GF.display, fontSize: 120 },
-  startBody: { padding: 22, gap: 16 },
-  startTitle: { fontFamily: GF.display, fontSize: 30, color: GP.ink },
-  startLead: { fontFamily: GF.bold, fontSize: 15, color: withAlpha(GP.ink, 0.7) },
-  mode: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 18, paddingVertical: 14, borderRadius: 22, overflow: "hidden" },
-  modeTitle: { fontFamily: GF.display, fontSize: 20, color: "#FFF" },
-  modeSub: { fontFamily: GF.bold, fontSize: 12, color: "rgba(255,255,255,0.85)" },
-  problem: { fontFamily: GF.bold, fontSize: 14, color: GP.berry },
-  reset: { fontFamily: GF.bold, fontSize: 12, color: GP.mist },
-  hud: { gap: 6, paddingHorizontal: 14, paddingVertical: 9, borderRadius: 16, backgroundColor: GP.cream, shadowColor: "#000", shadowOpacity: 0.2, shadowRadius: 4, shadowOffset: { width: 0, height: 3 }, elevation: 4 },
-  hudRow: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 10, justifyContent: "space-between" },
-  hudStats: { flexDirection: "row", alignItems: "center", gap: 10 },
-  hudClock: { flexDirection: "row", alignItems: "center", gap: 4 },
-  hudClockText: { fontFamily: GF.display, fontSize: 20, fontVariant: ["tabular-nums"] },
-  divider: { width: 1, height: 22, backgroundColor: withAlpha(GP.ink, 0.15) },
-  hudScore: { fontFamily: GF.display, fontSize: 22, color: GP.ink, fontVariant: ["tabular-nums"] },
-  hudDone: { fontFamily: GF.bold, fontSize: 12, color: GP.mist },
-  hudPowers: { flexDirection: "row", gap: 8 },
-  power: { minWidth: 50, minHeight: 38, paddingHorizontal: 6, borderRadius: 10, alignItems: "center", justifyContent: "center", gap: 1 },
-  powerText: { fontFamily: GF.bold, fontSize: 10 },
-  notice: { flexDirection: "row", alignItems: "center", gap: 6 },
-  noticeText: { flex: 1, fontFamily: GF.bold, fontSize: 13, color: GP.berry },
-  trayHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 18 },
-  trayTitle: { fontFamily: GF.display, fontSize: 13, letterSpacing: 1.4, color: "#FFF", textShadowColor: "rgba(0,0,0,0.55)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 },
-  trayEnd: { fontFamily: GF.bold, fontSize: 13, color: "#FFF", textShadowColor: "rgba(0,0,0,0.55)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 },
-  trayRow: { paddingHorizontal: 14, paddingTop: 10, paddingBottom: 8, gap: 12 },
-  board: { maxHeight: 460, marginHorizontal: 8, borderRadius: 22, backgroundColor: withAlpha(GP.navy, 0.55) },
-  boardGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", rowGap: 12, paddingHorizontal: 14, paddingTop: 10, paddingBottom: 8 },
-  gridCell: { width: "48%" },
-  cardEdge: { position: "absolute", left: 0, right: 0, top: 4, bottom: 0, borderRadius: 14 },
-  card: { gap: 8, padding: 12, borderRadius: 14, backgroundColor: GP.cream, shadowColor: "#000", shadowOpacity: 0.18, shadowRadius: 3, shadowOffset: { width: 0, height: 3 } },
-  cardTop: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: 4 },
-  cardValue: { flexShrink: 1, fontFamily: GF.display, fontSize: 26, fontVariant: ["tabular-nums"] },
-  cardWhere: { fontFamily: GF.display, fontSize: 13, fontVariant: ["tabular-nums"] },
-  cardName: { fontFamily: GF.display, fontSize: 15, lineHeight: 19, color: GP.ink },
-  cardSub: { fontFamily: GF.bold, fontSize: 10, letterSpacing: 0.4 },
-  center: { flex: 1, alignItems: "center", justifyContent: "center" },
-  qHeader: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
-  qName: { fontFamily: GF.display, fontSize: 22, color: "#FFF" },
-  qLine: { fontFamily: GF.bold, fontSize: 13, color: "rgba(255,255,255,0.75)" },
-  qClose: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,0.18)" },
-  stake: { flex: 1, justifyContent: "center", gap: 14 },
-  stakeTitle: { fontFamily: GF.display, fontSize: 34, color: "#FFF" },
-  stakeText: { fontFamily: GF.bold, fontSize: 17, color: "rgba(255,255,255,0.85)" },
-  failed: { fontFamily: GF.display, fontSize: 22, color: "#FFF", textAlign: "center" },
-  headline: { fontFamily: GF.display, fontSize: 44, fontVariant: ["tabular-nums"] },
-  chip: { fontFamily: GF.bold, fontSize: 13, color: "#FFF", paddingHorizontal: 9, paddingVertical: 4, borderRadius: 999, overflow: "hidden", backgroundColor: "rgba(255,255,255,0.16)" },
-  stakeResult: { fontFamily: GF.display, fontSize: 20 },
-  sequenceLine: { fontFamily: GF.display, fontSize: 22 },
-  quoteKicker: { fontFamily: GF.display, fontSize: 13, letterSpacing: 1.2, color: RUN_GOLD },
-  results: { alignItems: "center", gap: 18, paddingBottom: 40 },
-  resultsKicker: { paddingTop: 30, fontFamily: GF.display, fontSize: 15, letterSpacing: 1.6, color: "rgba(255,255,255,0.8)" },
-  resultsScore: { fontFamily: GF.display, fontSize: 84, color: "#FFF", fontVariant: ["tabular-nums"] },
-  resultsDone: { fontFamily: GF.bold, fontSize: 15, color: "rgba(255,255,255,0.8)" },
-  place: { fontFamily: GF.display, fontSize: 22, color: RUN_GOLD },
-  rewards: { flexDirection: "row", gap: 18, paddingVertical: 12, paddingHorizontal: 20, borderRadius: 16, backgroundColor: "rgba(255,255,255,0.14)" },
-  statN: { fontFamily: GF.display, fontSize: 24, color: "#FFF", fontVariant: ["tabular-nums"] },
-  statLabel: { fontFamily: GF.bold, fontSize: 11, color: "rgba(255,255,255,0.7)" },
-  levelUp: { fontFamily: GF.display, fontSize: 28, color: GP.sun },
-  bounty: { alignSelf: "stretch", gap: 10, padding: 16, borderRadius: 18, backgroundColor: GP.cream },
-  bountyTitle: { fontFamily: GF.display, fontSize: 15, letterSpacing: 1.4, color: GP.ink },
-  bountyFoot: { fontFamily: GF.bold, fontSize: 11, color: GP.mist },
-  bountyEmpty: { fontFamily: GF.bold, fontSize: 14, color: GP.mist },
-  bountyRow: { flexDirection: "row", alignItems: "center", gap: 10 },
-  bountyPlace: { width: 26, fontFamily: GF.display, fontSize: 16, fontVariant: ["tabular-nums"] },
-  dot: { width: 10, height: 10, borderRadius: 6 },
-  bountyHandle: { flex: 1, fontFamily: GF.bold, fontSize: 15, color: GP.ink },
-  bountyScore: { fontFamily: GF.display, fontSize: 16, color: GP.ink, fontVariant: ["tabular-nums"] },
-  rule: { height: 1, backgroundColor: withAlpha(GP.ink, 0.1) },
-  factionTotal: { fontFamily: GF.display, fontSize: 13, color: GP.ink },
-  factionName: { fontFamily: GF.bold, fontSize: 9, color: GP.ink },
-});
+const HALO = { textShadowColor: L.surface, textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 3 } as const;
+
+const STYLE_PAIR = themedStyles(
+  {
+    runButton: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 18, paddingVertical: 12, borderRadius: RADIUS.card, overflow: "hidden" },
+    runButtonTitle: { fontFamily: GF.display, fontSize: 20, lineHeight: 24 },
+    runButtonSub: { fontFamily: GF.body, fontSize: 13, lineHeight: 17 },
+    countdown: { flex: 1, alignItems: "center", justifyContent: "center" },
+    countText: { fontFamily: GF.display, fontSize: 120, lineHeight: 132, color: L.text },
+    startBody: { padding: 22, gap: 16 },
+    startTitle: { fontFamily: GF.display, fontSize: 28, lineHeight: 32, color: L.text },
+    startLead: { fontFamily: GF.regular, fontSize: 15, lineHeight: 21, color: L.textMuted },
+    mode: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 18, paddingVertical: 14, borderRadius: RADIUS.card, overflow: "hidden" },
+    modeTitle: { fontFamily: GF.display, fontSize: 20, lineHeight: 24 },
+    modeSub: { fontFamily: GF.body, fontSize: 13, lineHeight: 17 },
+    problem: { fontFamily: GF.body, fontSize: 14, lineHeight: 19, color: TEXT_ON_LIGHT.danger },
+    reset: { fontFamily: GF.regular, fontSize: 12, lineHeight: 16, color: L.textMuted },
+    hud: { gap: 6, paddingHorizontal: 14, paddingVertical: 9, borderRadius: RADIUS.button, backgroundColor: L.surface, borderWidth: 1, borderColor: L.hairline, ...ELEVATION.float },
+    hudRow: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 10, justifyContent: "space-between" },
+    hudStats: { flexDirection: "row", alignItems: "center", gap: 10 },
+    hudClock: { flexDirection: "row", alignItems: "center", gap: 4 },
+    hudClockText: { fontFamily: GF.display, fontSize: 20, lineHeight: 24, fontVariant: ["tabular-nums"] },
+    divider: { width: 1, height: 22, backgroundColor: L.hairline },
+    hudScore: { fontFamily: GF.display, fontSize: 22, lineHeight: 26, color: L.text, fontVariant: ["tabular-nums"] },
+    hudDone: { fontFamily: GF.regular, fontSize: 12, lineHeight: 16, color: L.textMuted },
+    hudPowers: { flexDirection: "row", gap: 8 },
+    power: { minWidth: 54, minHeight: 40, paddingHorizontal: 6, borderRadius: RADIUS.chip, alignItems: "center", justifyContent: "center", gap: 1 },
+    powerText: { fontFamily: GF.bold, fontSize: 12, lineHeight: 15 },
+    notice: { flexDirection: "row", alignItems: "center", gap: 6 },
+    noticeText: { flex: 1, fontFamily: GF.body, fontSize: 13, lineHeight: 17, color: TEXT_ON_LIGHT.danger },
+    trayHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 18 },
+    trayTitle: { fontFamily: GF.bold, fontSize: 13, lineHeight: 17, letterSpacing: 1, color: L.text, ...HALO },
+    trayEnd: { fontFamily: GF.bold, fontSize: 13, lineHeight: 17, color: L.text, ...HALO },
+    trayRow: { paddingHorizontal: 14, paddingTop: 10, paddingBottom: 8, gap: 12 },
+    board: { maxHeight: 460, marginHorizontal: 8, borderRadius: RADIUS.card, backgroundColor: L.surfaceAlt, borderWidth: 1, borderColor: L.hairline },
+    boardGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", rowGap: 12, paddingHorizontal: 14, paddingTop: 10, paddingBottom: 8 },
+    gridCell: { width: "48%" },
+    cardEdge: { position: "absolute", left: 0, right: 0, top: 4, bottom: 0, borderRadius: RADIUS.button },
+    card: { gap: 8, padding: 12, borderRadius: RADIUS.button, backgroundColor: L.surface, ...ELEVATION.low },
+    cardTop: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: 4 },
+    cardValue: { flexShrink: 1, fontFamily: GF.display, fontSize: 26, lineHeight: 30, fontVariant: ["tabular-nums"] },
+    cardWhere: { fontFamily: GF.display, fontSize: 13, lineHeight: 17, fontVariant: ["tabular-nums"] },
+    cardName: { fontFamily: GF.bold, fontSize: 15, lineHeight: 19, color: L.text },
+    cardSub: { fontFamily: GF.body, fontSize: 12, lineHeight: 15, letterSpacing: 0.3 },
+    center: { flex: 1, alignItems: "center", justifyContent: "center" },
+    qHeader: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
+    qName: { fontFamily: GF.display, fontSize: 24, lineHeight: 28, color: L.text },
+    qLine: { fontFamily: GF.body, fontSize: 13, lineHeight: 17, color: L.textMuted },
+    qClose: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", backgroundColor: L.surfaceAlt },
+    stake: { flex: 1, justifyContent: "center", gap: 14 },
+    stakeTitle: { fontFamily: GF.display, fontSize: 34, lineHeight: 38, color: L.text },
+    stakeText: { fontFamily: GF.body, fontSize: 17, lineHeight: 23, color: L.textMuted },
+    failed: { fontFamily: GF.display, fontSize: 22, lineHeight: 26, color: L.text, textAlign: "center" },
+    headline: { fontFamily: GF.display, fontSize: 44, lineHeight: 48, color: L.text, fontVariant: ["tabular-nums"] },
+    chip: { fontFamily: GF.bold, fontSize: 13, lineHeight: 17, color: L.text, paddingHorizontal: 9, paddingVertical: 4, borderRadius: RADIUS.chip, overflow: "hidden", backgroundColor: L.surfaceAlt },
+    stakeResult: { fontFamily: GF.display, fontSize: 20, lineHeight: 24 },
+    sequenceLine: { fontFamily: GF.display, fontSize: 22, lineHeight: 26, color: L.text },
+    quoteKicker: { fontFamily: GF.bold, fontSize: 13, lineHeight: 17, letterSpacing: 1, color: GOLD_TEXT },
+    results: { alignItems: "center", gap: 18, paddingBottom: 40 },
+    resultsKicker: { paddingTop: 30, fontFamily: GF.bold, fontSize: 15, lineHeight: 19, letterSpacing: 1.2, color: L.textMuted },
+    resultsScore: { fontFamily: GF.display, fontSize: 84, lineHeight: 90, color: L.text, fontVariant: ["tabular-nums"] },
+    resultsDone: { fontFamily: GF.body, fontSize: 15, lineHeight: 20, color: L.textMuted },
+    place: { fontFamily: GF.display, fontSize: 22, lineHeight: 26, color: GOLD_TEXT },
+    rewards: { flexDirection: "row", gap: 18, paddingVertical: 12, paddingHorizontal: 20, borderRadius: RADIUS.card, backgroundColor: L.surface, ...ELEVATION.low },
+    statN: { fontFamily: GF.display, fontSize: 24, lineHeight: 28, color: L.text, fontVariant: ["tabular-nums"] },
+    statLabel: { fontFamily: GF.body, fontSize: 12, lineHeight: 16, color: L.textMuted },
+    levelUp: { fontFamily: GF.display, fontSize: 28, lineHeight: 32, color: GOLD_TEXT },
+    bounty: { alignSelf: "stretch", gap: 10, padding: 16, borderRadius: RADIUS.card, backgroundColor: L.surface, ...ELEVATION.low },
+    bountyTitle: { fontFamily: GF.bold, fontSize: 15, lineHeight: 19, letterSpacing: 1, color: L.text },
+    bountyFoot: { fontFamily: GF.regular, fontSize: 12, lineHeight: 16, color: L.textMuted },
+    bountyEmpty: { fontFamily: GF.regular, fontSize: 14, lineHeight: 19, color: L.textMuted },
+    bountyRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+    bountyPlace: { width: 26, fontFamily: GF.display, fontSize: 16, lineHeight: 20, fontVariant: ["tabular-nums"] },
+    dot: { width: 10, height: 10, borderRadius: 6 },
+    bountyHandle: { flex: 1, fontFamily: GF.body, fontSize: 15, lineHeight: 20, color: L.text },
+    bountyScore: { fontFamily: GF.display, fontSize: 16, lineHeight: 20, color: L.text, fontVariant: ["tabular-nums"] },
+    rule: { height: 1, backgroundColor: L.hairline },
+    factionTotal: { fontFamily: GF.display, fontSize: 13, lineHeight: 17, color: L.text },
+    factionName: { fontFamily: GF.bold, fontSize: 12, lineHeight: 15, color: L.text },
+  },
+  {
+    countText: { color: D.text },
+    startTitle: { color: D.text },
+    startLead: { color: D.textMuted },
+    problem: { color: TEXT_ON_DARK.danger },
+    reset: { color: D.textMuted },
+    hud: { backgroundColor: D.surface, borderColor: D.hairline, shadowOpacity: 0, elevation: 0, boxShadow: "none" },
+    divider: { backgroundColor: D.hairline },
+    hudScore: { color: D.text },
+    hudDone: { color: D.textMuted },
+    noticeText: { color: TEXT_ON_DARK.danger },
+    trayTitle: { color: D.text, textShadowColor: D.screen },
+    trayEnd: { color: D.text, textShadowColor: D.screen },
+    board: { backgroundColor: D.surfaceAlt, borderColor: D.hairline },
+    card: { backgroundColor: D.surface, borderWidth: 1, borderColor: D.hairline, shadowOpacity: 0, elevation: 0, boxShadow: "none" },
+    cardName: { color: D.text },
+    qName: { color: D.text },
+    qLine: { color: D.textMuted },
+    qClose: { backgroundColor: D.surfaceAlt },
+    stakeTitle: { color: D.text },
+    stakeText: { color: D.textMuted },
+    failed: { color: D.text },
+    headline: { color: D.text },
+    chip: { color: D.text, backgroundColor: D.surfaceAlt },
+    sequenceLine: { color: D.text },
+    quoteKicker: { color: TEXT_ON_DARK.warning },
+    resultsKicker: { color: D.textMuted },
+    resultsScore: { color: D.text },
+    resultsDone: { color: D.textMuted },
+    place: { color: TEXT_ON_DARK.warning },
+    rewards: { backgroundColor: D.surface, shadowOpacity: 0, elevation: 0, boxShadow: "none" },
+    statN: { color: D.text },
+    statLabel: { color: D.textMuted },
+    levelUp: { color: TEXT_ON_DARK.warning },
+    bounty: { backgroundColor: D.surface, shadowOpacity: 0, elevation: 0, boxShadow: "none" },
+    bountyTitle: { color: D.text },
+    bountyFoot: { color: D.textMuted },
+    bountyEmpty: { color: D.textMuted },
+    bountyHandle: { color: D.text },
+    bountyScore: { color: D.text },
+    rule: { backgroundColor: D.hairline },
+    factionTotal: { color: D.text },
+    factionName: { color: D.text },
+  },
+);

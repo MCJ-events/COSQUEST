@@ -28,6 +28,7 @@ import { roomsModel, useRooms } from "@/features/game/roomsRuntime";
 import { useGame } from "@/features/game/runtime";
 
 import { Chip, GameButton } from "./kit";
+import { labelOn, RADIUS, SURFACES } from "./look";
 import { edgeOf, GF, GP, realmColor } from "./theme";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
@@ -98,7 +99,7 @@ export default function RoomSheet({
           Battle
         </Text>
         <Pressable onPress={onClose} style={styles.close} accessibilityRole="button" accessibilityLabel="Close Battle" hitSlop={8}>
-          <Ionicons name="close" size={20} color={GP.navy} />
+          <Ionicons name="close" size={20} color={GP.ink} />
         </Pressable>
       </View>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
@@ -108,10 +109,7 @@ export default function RoomSheet({
           ) : (
             <View style={styles.panel}>
               <View style={styles.row}>
-                <View style={styles.bigIcon}>
-                  <Ionicons name="flash" size={24} color="#FFF" />
-                </View>
-                <View style={{ flex: 1 }}>
+                <View style={{ flex: 1, gap: 2 }}>
                   <Text style={styles.panelTitle}>Start a Room here</Text>
                   <Text style={styles.muted}>Weapons and shrines drop around you. Anyone near can join.</Text>
                 </View>
@@ -151,14 +149,13 @@ export default function RoomSheet({
 
           <View style={[styles.row, { marginTop: 4 }]}>
             <Text style={[styles.heading, { flex: 1 }]}>Rooms near you</Text>
-            <Pressable onPress={() => roomsModel.refresh()} style={styles.refresh} accessibilityRole="button" accessibilityLabel="Refresh" hitSlop={8}>
+            <Pressable onPress={() => roomsModel.refresh()} style={styles.refresh} accessibilityRole="button" accessibilityLabel="Look again for Rooms near you" hitSlop={8}>
               <Ionicons name="refresh" size={18} color="#FFF" />
             </Pressable>
           </View>
           {list.length === 0 ? (
             <View style={[styles.panel, styles.row]}>
-              <Ionicons name="radio" size={22} color="rgba(30,58,76,0.35)" />
-              <Text style={[styles.muted, { flex: 1 }]}>{rooms.loaded ? "No rooms open nearby. Start one and they'll come to you." : "Looking for rooms…"}</Text>
+              <Text style={[styles.muted, { flex: 1 }]}>{rooms.loaded ? "No Rooms open within reach. Start one and the map shows it to everyone near." : "Looking for Rooms…"}</Text>
             </View>
           ) : (
             list.map((r) => <RoomRow key={r.game_id} room={r} now={now} focused={r.game_id === focusGameId} onPress={() => onEnter(r.game_id)} />)
@@ -171,7 +168,7 @@ export default function RoomSheet({
                 value={code}
                 onChangeText={(v) => setCode(normaliseCode(v))}
                 placeholder="ABC234"
-                placeholderTextColor="rgba(30,58,76,0.3)"
+                placeholderTextColor={GP.mist}
                 autoCapitalize="characters"
                 autoCorrect={false}
                 autoComplete="off"
@@ -229,7 +226,7 @@ function HostingPanel({ room, now, color, onEnter }: { room: RoomCreated; now: n
         {room.code.split("").map((ch, i) => (
           <View key={i} style={[styles.codeEdge, { backgroundColor: edgeOf(color) }]}>
             <View style={[styles.codeFace, { backgroundColor: color }]}>
-              <Text style={styles.codeChar}>{ch}</Text>
+              <Text style={[styles.codeChar, { color: labelOn(color) }]}>{ch}</Text>
             </View>
           </View>
         ))}
@@ -259,9 +256,6 @@ function RoomRow({ room, now, focused, onPress }: { room: NearbyRoom; now: numbe
       accessibilityRole="button"
       accessibilityLabel={`${who}'s Room, ${distanceText(room.distance_m)} away, ${players} ${players === 1 ? "player" : "players"}, ${left}`}
       accessibilityHint="Joins the room">
-      <View style={styles.bigIcon}>
-        <Ionicons name="flash" size={20} color="#FFF" />
-      </View>
       <View style={{ flex: 1, gap: 3 }}>
         <Text style={styles.roomTitle} numberOfLines={1}>
           {who}&apos;s Room
@@ -278,61 +272,81 @@ function RoomRow({ room, now, focused, onPress }: { room: NearbyRoom; now: numbe
         </View>
       </View>
       <View style={styles.joinPill}>
-        <Text style={styles.joinText}>JOIN</Text>
+        <Text style={styles.joinText}>Join</Text>
       </View>
     </Pressable>
   );
 }
 
-const STYLE_PAIR = themedStyles({
-  sheet: { position: "absolute", left: 0, right: 0, bottom: 0, borderTopLeftRadius: 28, borderTopRightRadius: 28, backgroundColor: GP.cream, elevation: 18 },
-  head: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 18, paddingTop: 16, paddingBottom: 6 },
-  title: { fontFamily: GF.display, fontSize: 26, color: GP.ink },
-  close: { width: 36, height: 36, borderRadius: 18, backgroundColor: GP.ice, alignItems: "center", justifyContent: "center" },
-  body: { paddingHorizontal: 16, gap: 14 },
-  panel: { padding: 16, gap: 14, borderRadius: 20, backgroundColor: "#FFF" },
-  row: { flexDirection: "row", alignItems: "center", gap: 12 },
-  bigIcon: { width: 48, height: 48, borderRadius: 24, borderWidth: 3, borderColor: "#FFF", backgroundColor: GP.berry, alignItems: "center", justifyContent: "center", elevation: 3 },
-  panelTitle: { fontFamily: GF.display, fontSize: 21, color: GP.ink },
-  heading: { fontFamily: GF.display, fontSize: 22, color: GP.ink },
-  label: { fontFamily: GF.bold, fontSize: 16, color: GP.ink },
-  muted: { fontFamily: GF.body, fontSize: 13, color: GP.mist },
-  mutedBold: { fontFamily: GF.bold, fontSize: 13, color: GP.mist },
-  minutes: { fontFamily: GF.display, fontSize: 22, color: GP.ink, width: 80, textAlign: "center" },
-  stepper: { width: 38, height: 38, borderRadius: 19, alignItems: "center", justifyContent: "center" },
-  lock: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
-  toggle: { width: 50, height: 30, borderRadius: 15, padding: 3, justifyContent: "center" },
-  knob: { width: 24, height: 24, borderRadius: 12, backgroundColor: "#FFF", elevation: 2 },
-  refresh: { width: 36, height: 36, borderRadius: 18, backgroundColor: GP.skyDeep, alignItems: "center", justifyContent: "center" },
-  caption: { fontFamily: GF.display, fontSize: 12, letterSpacing: 1.6, color: "rgba(30,58,76,0.55)" },
-  codeRow: { flexDirection: "row", gap: 6 },
-  codeEdge: { borderRadius: 12, paddingBottom: 4 },
-  codeFace: { width: 44, height: 58, borderRadius: 12, borderWidth: 2, borderColor: "rgba(255,255,255,0.5)", alignItems: "center", justifyContent: "center" },
-  codeChar: { fontFamily: GF.display, fontSize: 34, color: "#FFF" },
-  share: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 4 },
-  shareText: { fontFamily: GF.bold, fontSize: 15, color: GP.skyDeep },
-  roomRow: { flexDirection: "row", alignItems: "center", gap: 12, padding: 12, borderRadius: 20, backgroundColor: "#FFF", borderWidth: 2, borderColor: "rgba(255,255,255,0.6)" },
-  roomFocused: { borderColor: GP.sun, borderWidth: 3 },
-  roomTitle: { fontFamily: GF.display, fontSize: 18, color: GP.ink },
-  meta: { flexDirection: "row", alignItems: "center", gap: 4 },
-  joinPill: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 18, backgroundColor: GP.mint },
-  joinText: { fontFamily: GF.display, fontSize: 15, color: "#FFF" },
-  code: {
-    flex: 1,
-    height: 52,
-    paddingHorizontal: 14,
-    // Android's default padding clips the display font's tall line in 52 pt.
-    paddingVertical: 0,
-    textAlignVertical: "center",
-    borderRadius: 14,
-    borderWidth: 2,
-    borderColor: "rgba(30,58,76,0.2)",
-    backgroundColor: "#FFF",
-    fontFamily: GF.display,
-    fontSize: 24,
-    letterSpacing: 3,
-    color: GP.ink,
+const L = SURFACES.light;
+const D = SURFACES.dark;
+
+const STYLE_PAIR = themedStyles(
+  {
+    sheet: { position: "absolute", left: 0, right: 0, bottom: 0, borderTopLeftRadius: RADIUS.sheet, borderTopRightRadius: RADIUS.sheet, backgroundColor: L.screen, elevation: 18 },
+    head: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 18, paddingTop: 16, paddingBottom: 6 },
+    title: { fontFamily: GF.display, fontSize: 26, color: L.text },
+    close: { width: 36, height: 36, borderRadius: 18, backgroundColor: L.surfaceAlt, alignItems: "center", justifyContent: "center" },
+    body: { paddingHorizontal: 16, gap: 14 },
+    panel: { padding: 16, gap: 14, borderRadius: 20, backgroundColor: L.surface },
+    row: { flexDirection: "row", alignItems: "center", gap: 12 },
+    panelTitle: { fontFamily: GF.display, fontSize: 21, color: L.text },
+    heading: { fontFamily: GF.display, fontSize: 22, color: L.text },
+    label: { fontFamily: GF.bold, fontSize: 16, color: L.text },
+    muted: { fontFamily: GF.body, fontSize: 13, color: L.textMuted },
+    mutedBold: { fontFamily: GF.bold, fontSize: 13, color: L.textMuted },
+    minutes: { fontFamily: GF.display, fontSize: 22, color: L.text, width: 80, textAlign: "center" },
+    stepper: { width: 38, height: 38, borderRadius: 19, alignItems: "center", justifyContent: "center" },
+    lock: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
+    toggle: { width: 50, height: 30, borderRadius: 15, padding: 3, justifyContent: "center" },
+    knob: { width: 24, height: 24, borderRadius: 12, backgroundColor: L.surface, elevation: 2 },
+    refresh: { width: 36, height: 36, borderRadius: 18, backgroundColor: GP.skyDeep, alignItems: "center", justifyContent: "center" },
+    caption: { fontFamily: GF.display, fontSize: 12, letterSpacing: 1.6, color: L.textMuted },
+    codeRow: { flexDirection: "row", gap: 6 },
+    codeEdge: { borderRadius: 12, paddingBottom: 4 },
+    codeFace: { width: 44, height: 58, borderRadius: 12, borderWidth: 2, alignItems: "center", justifyContent: "center" },
+    codeChar: { fontFamily: GF.display, fontSize: 34, lineHeight: 40 },
+    share: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 4 },
+    shareText: { fontFamily: GF.bold, fontSize: 15, color: GP.skyDeep },
+    roomRow: { flexDirection: "row", alignItems: "center", gap: 12, padding: 12, borderRadius: 20, backgroundColor: L.surface, borderWidth: 2, borderColor: L.hairline },
+    roomFocused: { borderColor: GP.sun, borderWidth: 3 },
+    roomTitle: { fontFamily: GF.display, fontSize: 18, color: L.text },
+    meta: { flexDirection: "row", alignItems: "center", gap: 4 },
+    joinPill: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 18, backgroundColor: GP.mint },
+    joinText: { fontFamily: GF.display, fontSize: 18, lineHeight: 22, color: "#FFFFFF" },
+    code: {
+      flex: 1,
+      height: 52,
+      paddingHorizontal: 14,
+      // Android's default padding clips the display font's tall line in 52 pt.
+      paddingVertical: 0,
+      textAlignVertical: "center",
+      borderRadius: 14,
+      borderWidth: 2,
+      borderColor: L.hairline,
+      backgroundColor: L.surface,
+      fontFamily: GF.display,
+      fontSize: 24,
+      letterSpacing: 3,
+      color: L.text,
+    },
+    problem: { flexDirection: "row", alignItems: "center", gap: 8, alignSelf: "flex-start", paddingHorizontal: 14, paddingVertical: 9, borderRadius: 18, backgroundColor: GP.berry },
+    problemText: { fontFamily: GF.bold, fontSize: 14, color: "#FFF", flexShrink: 1 },
   },
-  problem: { flexDirection: "row", alignItems: "center", gap: 8, alignSelf: "flex-start", paddingHorizontal: 14, paddingVertical: 9, borderRadius: 18, backgroundColor: GP.berry },
-  problemText: { fontFamily: GF.bold, fontSize: 14, color: "#FFF", flexShrink: 1 },
-});
+  {
+    sheet: { backgroundColor: D.screen },
+    title: { color: D.text },
+    close: { backgroundColor: D.surfaceAlt },
+    panel: { backgroundColor: D.surface },
+    panelTitle: { color: D.text },
+    heading: { color: D.text },
+    label: { color: D.text },
+    muted: { color: D.textMuted },
+    mutedBold: { color: D.textMuted },
+    minutes: { color: D.text },
+    knob: { backgroundColor: D.surface },
+    roomRow: { backgroundColor: D.surface },
+    roomTitle: { color: D.text },
+    code: { borderColor: D.hairline, backgroundColor: D.surface, color: D.text },
+  },
+);

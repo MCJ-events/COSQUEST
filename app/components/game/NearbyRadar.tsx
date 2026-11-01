@@ -3,7 +3,7 @@
 // server's public "next spawn" once a minute and redraws every 20 s, so the
 // counts stay true between point refreshes. costquest-ios
 // Features/SpawnsFeature.swift NearbyRadar.
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useRef, useState } from "react";
 import { Text } from "react-native";
 import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
@@ -13,7 +13,8 @@ import { nextAtFrom, radarCounts, radarParts, spawnsNext } from "@/features/game
 import type { QuestPoint } from "@/features/game/wire";
 
 import { MAX_FONT_SCALE } from "./kit";
-import { GF, GP } from "./theme";
+import { ACCENT, ELEVATION, RADIUS, SURFACES } from "./look";
+import { GF } from "./theme";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 const POLL_MS = 60_000;
@@ -73,9 +74,9 @@ export default function NearbyRadar({
   return (
     <Animated.View entering={FadeIn} exiting={FadeOut} style={styles.panel} accessible accessibilityLabel={parts.join(", ")}>
       {wandering > 0 ? (
-        <MaterialCommunityIcons name="weather-windy" size={18} color={GP.sun} />
+        <Ionicons name="footsteps" size={18} color={ACCENT.sun.edge} />
       ) : (
-        <Ionicons name="radio" size={18} color={GP.sun} />
+        <Ionicons name="radio" size={18} color={ACCENT.sun.edge} />
       )}
       <Text style={styles.text} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} maxFontSizeMultiplier={MAX_FONT_SCALE}>
         {parts.join(" · ")}
@@ -84,25 +85,28 @@ export default function NearbyRadar({
   );
 }
 
-const STYLE_PAIR = themedStyles({
-  // GameHUDPanel(padding: 10)
-  panel: {
-    flexDirection: "row",
-    alignItems: "center",
-    alignSelf: "flex-start",
-    gap: 8,
-    marginHorizontal: 14,
-    padding: 10,
-    borderRadius: 18,
-    backgroundColor: "rgba(31,59,77,0.78)",
-    borderWidth: 1.5,
-    borderColor: "rgba(255,255,255,0.18)",
-    shadowColor: "#000",
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
-    maxWidth: "88%",
+// A paper plate over the map, like the rest of the HUD (cream by day, ink by dusk).
+const STYLE_PAIR = themedStyles(
+  {
+    panel: {
+      flexDirection: "row",
+      alignItems: "center",
+      alignSelf: "flex-start",
+      gap: 8,
+      marginHorizontal: 14,
+      paddingVertical: 8,
+      paddingHorizontal: 12,
+      borderRadius: RADIUS.pill,
+      backgroundColor: SURFACES.light.surface,
+      borderWidth: 1,
+      borderColor: SURFACES.light.hairline,
+      ...ELEVATION.float,
+      maxWidth: "88%",
+    },
+    text: { flexShrink: 1, fontFamily: GF.body, fontSize: 14, lineHeight: 18, color: SURFACES.light.text },
   },
-  text: { flexShrink: 1, fontFamily: GF.body, fontSize: 14, color: "#FFFFFF" },
-});
+  {
+    panel: { backgroundColor: SURFACES.dark.surface, borderColor: SURFACES.dark.hairline, shadowOpacity: 0, elevation: 0, boxShadow: "none" },
+    text: { color: SURFACES.dark.text },
+  },
+);
