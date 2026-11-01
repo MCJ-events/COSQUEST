@@ -1,9 +1,12 @@
 // The home map's colours by the hour: the town is lit for the time you are
-// playing in. costquest-ios Map/TimeOfDay.swift (dawn 5-8, day 8-17, dusk
-// 17-20, night) and the Roam board's colours (Map/WorldView.swift
-// Palette.meadow worldStyle, meadowDusk, meadowNight), flattened for the 2D
-// map: the 3D board's light grade is multiplied into the colours, and a
-// building is its roof seen from above with its wall showing below it.
+// playing in. The hours are costquest-ios Map/TimeOfDay.swift (dawn 5-8, day
+// 8-17, dusk 17-20, night); the colours are the art direction's day and dusk
+// maps ("Sunlit Real Places", cosquest-review/art-direction tokens.json `map`):
+// the 3D world's own ground colours (a park on the map is the same green as a
+// park in the fight, a plaza the same stone), lightened toward cream paper by
+// day and shifted toward the dusk sky after it. Dawn and day use the day map,
+// dusk and night the dusk map. A building is its footprint lifted a little
+// off the ground (2.5D), its wall showing below its roof.
 //
 // The player can fix the hour (Profile, "Time in town": UI/Preferences.swift
 // WorldClock), so nobody has to wait until 8pm to see the town at night.
@@ -54,116 +57,110 @@ export function effectiveHour(clock: WorldClock, now: Date): number {
 
 export type MapStyle = {
   hour: TimeOfDay;
+  /** The dusk map (dusk and night): the game's surfaces go dark with it. */
+  dark: boolean;
   land: string;
-  grid: string;
-  green: string;
+  /** Plazas, squares, pedestrian streets, platforms and piers: the fight's plaza stone. */
+  plaza: string;
+  /** Parks, grass, gardens, pitches. */
+  park: string;
+  /** Woods: the park's green a step deeper. */
+  wood: string;
   water: string;
-  paved: string;
-  road: string;
+  /** The water's edge line. */
+  shore: string;
+  sand: string;
+  roadMinor: string;
+  roadMinorCasing: string;
   roadMajor: string;
+  roadMajorCasing: string;
+  /** Footways and paths: a thin pale line. */
   path: string;
-  casing: string;
   rail: string;
-  roof: string;
-  roofEdge: string;
-  wall: string;
-  /** Lit windows after dark (meadowNight.windows); null by day. */
+  buildingTop: string;
+  buildingSide: string;
+  /** The roof's outline: a hair lighter (dusk) or darker (day) than the roof. */
+  buildingEdge: string;
+  /** Landmark footprints. */
+  landmark: string;
+  /** Place names on the map, with a halo of the paper colour. */
+  label: string;
+  labelHalo: string;
+  /** Where a tile is still loading: the land, a shade off. */
+  grid: string;
+  /** The sky at the top of the map: the world's preset `upper` to `horizon`, so the map and the fight share a sky. */
+  skyUpper: string;
+  skyHorizon: string;
+  /** Lit windows after dark; null by day. */
   windows: string | null;
   /** The attribution and other small print over the map. */
   ink: string;
 };
 
-type RGB = [number, number, number];
+type Palette = Omit<MapStyle, "hour" | "dark" | "windows" | "ink">;
 
-const hex = (n: number): RGB => [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => v / 255) as RGB;
-const css = ([r, g, b]: RGB) =>
-  `#${[r, g, b]
-    .map((v) =>
-      Math.round(Math.min(1, Math.max(0, v)) * 255)
-        .toString(16)
-        .padStart(2, "0"),
-    )
-    .join("")
-    .toUpperCase()}`;
-const times = (c: RGB, k: RGB): RGB => [c[0] * k[0], c[1] * k[1], c[2] * k[2]];
-
-/** TimeOfDay.grade: the light's tint, multiplied into every colour on the ground. */
-const GRADE: Record<TimeOfDay, RGB> = {
-  dawn: [0.94, 0.9, 0.86],
-  day: [0.9, 0.9, 0.88],
-  dusk: [1.0, 0.95, 0.92],
-  night: [0.97, 0.98, 1.0],
+/** tokens.json map.day / map.dusk (authoritative), plus the derived wood, path, rail, edge and grid. */
+const DAY: Palette = {
+  land: "#E9E2D2",
+  plaza: "#F1E6CF",
+  park: "#A9D08A",
+  wood: "#93C277",
+  water: "#7CC4E4",
+  shore: "#5AAED6",
+  sand: "#EEDDB4",
+  roadMinor: "#FFFFFF",
+  roadMinorCasing: "#D6CFC0",
+  roadMajor: "#FFE7B0",
+  roadMajorCasing: "#E0C68A",
+  path: "#FBF6EA",
+  rail: "#B9AF9E",
+  buildingTop: "#DCD3C2",
+  buildingSide: "#C4B8A3",
+  buildingEdge: "#CBC0AC",
+  landmark: "#F2D9A6",
+  label: "#5A6878",
+  labelHalo: "#FFFDF8",
+  grid: "#E1D9C7",
+  // world.time.golden.sky
+  skyUpper: "#86AEE0",
+  skyHorizon: "#F2DDC2",
 };
 
-/** The board's own colours: meadow by day (and dawn), meadowDusk, meadowNight. */
-const BOARD: Record<"day" | "dusk" | "night", Record<Exclude<keyof MapStyle, "hour" | "windows" | "ink" | "grid">, number>> = {
-  day: {
-    land: 0xd2dfae,
-    green: 0xa9d67e,
-    water: 0x6ec1e4,
-    paved: 0xe0d7bf,
-    road: 0xfffbf0,
-    roadMajor: 0xfff1cf,
-    path: 0xf7f0de,
-    casing: 0xb9a983,
-    rail: 0xc4bdb3,
-    roof: 0xefddbe,
-    roofEdge: 0xdcc39c,
-    wall: 0xc9a77c,
-  },
-  dusk: {
-    land: 0x6a6384,
-    green: 0x5e8f63,
-    water: 0x4e86bc,
-    paved: 0x7b7290,
-    road: 0xf4dfc0,
-    roadMajor: 0xffd7a1,
-    path: 0xd6c4b9,
-    casing: 0x463e5e,
-    rail: 0x807592,
-    roof: 0xedb99b,
-    roofEdge: 0xffe2cc,
-    wall: 0x675a80,
-  },
-  night: {
-    land: 0x232b47,
-    green: 0x2f6152,
-    water: 0x2a5f93,
-    paved: 0x2f3858,
-    road: 0xc7ae7e,
-    roadMajor: 0xe3c58e,
-    path: 0x8d93bc,
-    casing: 0x1b2140,
-    rail: 0x59607f,
-    roof: 0x6f789f,
-    roofEdge: 0xc3ccff,
-    wall: 0x303656,
-  },
+const DUSK: Palette = {
+  land: "#2B3552",
+  plaza: "#364262",
+  park: "#2F5A4A",
+  wood: "#2A5243",
+  water: "#1C3E66",
+  shore: "#2A527E",
+  sand: "#4A4A5C",
+  roadMinor: "#46557A",
+  roadMinorCasing: "#222B44",
+  roadMajor: "#5A6A94",
+  roadMajorCasing: "#222B44",
+  path: "#3F4D70",
+  rail: "#56607E",
+  buildingTop: "#3A4767",
+  buildingSide: "#2A3550",
+  buildingEdge: "#4A5879",
+  landmark: "#6A5A3A",
+  label: "#A3AFBE",
+  labelHalo: "#121A26",
+  grid: "#323C5B",
+  // world.time.dusk.sky
+  skyUpper: "#56609E",
+  skyHorizon: "#F0A47E",
 };
 
-/** The map's colours for an hour of the day. */
+/** The map's colours for an hour of the day: the day map at dawn and by day, the dusk map at dusk and at night. */
 export function mapStyle(hour: number): MapStyle {
   const t = timeOfDay(hour);
-  const board = BOARD[t === "dawn" ? "day" : t];
-  const grade = GRADE[t];
-  const c = (k: keyof typeof board) => css(times(hex(board[k]), grade));
   const dark = t === "dusk" || t === "night";
   return {
     hour: t,
-    land: c("land"),
-    grid: css(times(hex(board.land), [0.93, 0.93, 0.93])),
-    green: c("green"),
-    water: c("water"),
-    paved: c("paved"),
-    road: c("road"),
-    roadMajor: c("roadMajor"),
-    path: c("path"),
-    casing: c("casing"),
-    rail: c("rail"),
-    roof: c("roof"),
-    roofEdge: c("roofEdge"),
-    wall: c("wall"),
-    windows: dark ? "#FFD37A" : null,
-    ink: dark ? "rgba(255,255,255,0.7)" : "rgba(30,58,76,0.55)",
+    dark,
+    ...(dark ? DUSK : DAY),
+    windows: dark ? "#FFC27A" : null,
+    ink: dark ? "rgba(243,240,232,0.7)" : "rgba(28,43,58,0.6)",
   };
 }
