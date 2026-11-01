@@ -41,14 +41,16 @@ async function run(baseUrl) {
   const venue = { name: `Waterfront Plaza ${suffix}`, address: '1 Harbor Dr', city: 'San Diego', country: 'United States', lat: 32.7157, lng: -117.1611 };
 
   console.log('\n--- quests: create, publish, edit ---');
-  const bad = await request('POST', '/api/admin/quests', adminToken, { title: 'x', startsAt: new Date().toISOString(), endsAt: new Date().toISOString(), location: venue, entryFee: 0, prizePool: 0, maxParticipants: 10 });
-  check(bad.status === 400, 'a short title is refused', bad.data);
-  const backwards = await request('POST', '/api/admin/quests', adminToken, { title: 'Backwards', startsAt: new Date(Date.now() + 5 * hour).toISOString(), endsAt: new Date(Date.now() + hour).toISOString(), location: venue, entryFee: 0, prizePool: 0, maxParticipants: 10 });
-  check(backwards.status === 400, 'it must end after it starts', backwards.data);
+  // A real entry fee in the refusals below, so each is refused for its own reason.
+  const bad = await request('POST', '/api/admin/quests', adminToken, { title: 'x', startsAt: new Date().toISOString(), endsAt: new Date().toISOString(), location: venue, entryFee: 10, prizePool: 0, maxParticipants: 10 });
+  check(bad.status === 400 && /title/.test(bad.data.error), 'a short title is refused', bad.data);
+  const backwards = await request('POST', '/api/admin/quests', adminToken, { title: 'Backwards', startsAt: new Date(Date.now() + 5 * hour).toISOString(), endsAt: new Date(Date.now() + hour).toISOString(), location: venue, entryFee: 10, prizePool: 0, maxParticipants: 10 });
+  check(backwards.status === 400 && /end after it starts/.test(backwards.data.error), 'it must end after it starts', backwards.data);
+  const freeQuest = await request('POST', '/api/admin/quests', adminToken, { title: 'Free for all', startsAt: new Date(Date.now() + hour).toISOString(), endsAt: new Date(Date.now() + 2 * hour).toISOString(), location: venue, entryFee: 0, prizePool: 0, maxParticipants: 10 });
+  check(freeQuest.status === 400 && /at least \$0\.50/.test(freeQuest.data.error), 'every ticket is paid: an entry fee under $0.50 is refused', freeQuest.data);
   const draft = await request('POST', '/api/admin/quests', adminToken, {
     title: `Glow Hunt ${suffix}`, kind: 'event', description: 'Night quest', startsAt: new Date(Date.now() + 2 * hour).toISOString(), endsAt: new Date(Date.now() + 5 * hour).toISOString(),
-    // Free, so the member below can use the register route (paid ones need checkout: test/tickets.js).
-    location: venue, entryFee: { amount: 0 }, prizePool: { amount: 500 }, maxParticipants: 2,
+    location: venue, entryFee: { amount: 10 }, prizePool: { amount: 500 }, maxParticipants: 2,
   });
   const questId = draft.data?.quest?.id;
   check(draft.status === 201 && draft.data.quest.status === 'draft' && draft.data.quest.entryFee.currency === 'USD' && draft.data.quest.kind === 'event', 'create a draft event (USD by default)', draft.data);
@@ -58,8 +60,12 @@ async function run(baseUrl) {
   check(published.status === 200 && published.data.quest.status === 'upcoming' && published.data.quest.isPublished, 'publish: upcoming', published.data);
   const seen = await request('GET', `/api/quests/${questId}`, member.token);
   check(seen.status === 200 && seen.data.quest.isRegistered === false && seen.data.quest.location.city === 'San Diego', 'members see it, with isRegistered', seen.data);
-  const registered = await request('POST', `/api/quests/${questId}/registrations`, member.token);
-  check(registered.status === 201, 'a member registers', registered.data);
+  // Paid events go through Stripe checkout (test/tickets.js); here the
+  // registration is made directly, to test the admin side.
+  await QuestRegistration.create({ quest: questId, user: member.user._id, paymentStatus: 'paid' });
+  await Quest.updateOne({ _id: questId }, { $inc: { registrationCount: 1 } });
+  const paidRoute = await request('POST', `/api/quests/${questId}/registrations`, member.token);
+  check(paidRoute.status === 402 || paidRoute.status === 409, 'paid events are not registered through the old route', paidRoute.data);
   const list = await request('GET', '/api/quests?status=upcoming', member.token);
   check(list.data.quests?.some((q) => q.id === questId && q.isRegistered === true), 'the list says isRegistered', list.data);
   const tooFew = await request('PATCH', `/api/admin/quests/${questId}`, adminToken, { maxParticipants: 0 });

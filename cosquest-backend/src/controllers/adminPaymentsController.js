@@ -55,8 +55,8 @@ function readType(body, { partial = false } = {}) {
     if (!Number.isFinite(amount) || amount < 0 || amount > 100000) fail(400, 'The price must be 0 or more.');
     const currency = String(body.price?.currency || process.env.QUEST_CURRENCY || 'USD').toUpperCase();
     if (amount > 0 && !payments.SUPPORTED.includes(currency)) fail(400, `${currency} isn't supported.`);
-    // Stripe's minimum charge is about 0.50 in these currencies.
-    if (amount > 0 && amount < 0.5) fail(400, 'Paid tickets must cost at least 0.50.');
+    // All tickets are paid (unless ALLOW_FREE_TICKETS=1); Stripe's minimum is about 0.50.
+    if ((amount > 0 || !tickets.freeAllowed()) && amount < 0.5) fail(400, 'Every ticket is paid: the price must be at least $0.50.');
     out.price = { amount: Math.round(amount * 100) / 100, currency };
   }
   if (!partial || has('quantity')) {

@@ -2,6 +2,9 @@
 
 Builds on the admin dashboard (6 zips) and Quests Phase 1. Needs `npm install stripe@17`.
 
+## Paid only
+Every ticket is paid: an entry fee or ticket type below $0.50 is refused in the admin dashboard, and a quest without a price answers `409 not_on_sale` at checkout (its ticket type shows `onSale: false`). `ALLOW_FREE_TICKETS=1` turns free tickets back on.
+
 ## Render environment (sandbox now, live later)
 `STRIPE_SECRET_KEY` (sk_test_...), `STRIPE_WEBHOOK_SECRET` (whsec_...), `APP_WEB_URL` (https://cosquest.vercel.app). Optional: `REFUND_CUTOFF_HOURS` (default 24), `TICKETS_WORKER=0` on all but one instance if there are several, `QUEST_CURRENCY` (USD).
 

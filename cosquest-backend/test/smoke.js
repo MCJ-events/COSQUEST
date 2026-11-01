@@ -610,7 +610,8 @@ async function run(baseUrlArg) {
       isPublished: true,
     };
     const liveQuest = await Quest.create({
-      // Free: the register route below gives a free ticket (paid quests need checkout: test/tickets.js).
+      // Free: the register route below gives a free ticket, with free tickets
+      // switched on around it (CosQuest is paid only; paid quests: test/tickets.js).
       ...questBase, entryFee: { amount: 0, currency: 'NGN' }, slug: `live-test-${Date.now()}`, title: 'Live Test Quest', status: 'live',
       startsAt: new Date(now - 60 * 60 * 1000), endsAt: new Date(now + 60 * 60 * 1000),
     });
@@ -655,6 +656,7 @@ async function run(baseUrlArg) {
       const r = await c('GET', `/api/quests/${liveQuest._id}`);
       assert(r.status === 200 && r.json.quest.id === String(liveQuest._id), 'GET one quest -> public quest details', r);
     }
+    process.env.ALLOW_FREE_TICKETS = '1';
     {
       const r = await c('POST', `/api/quests/${liveQuest._id}/registrations`, { token });
       assert(r.status === 201 && r.json.quest.registrationCount === 1 && r.json.quest.isRegistered, 'POST quest registration -> joined and count updated', r);
@@ -667,6 +669,7 @@ async function run(baseUrlArg) {
       const r = await c('DELETE', `/api/quests/${liveQuest._id}/registrations`, { token });
       assert(r.status === 200 && r.json.quest.registrationCount === 0 && !r.json.quest.isRegistered, 'DELETE quest registration -> cancelled and count updated', r);
     }
+    delete process.env.ALLOW_FREE_TICKETS;
     {
       const r = await c('GET', '/api/users/Ravencaller/quests?status=cancelled');
       assert(r.status === 200 && r.json.quests.some((item) => item.quest.id === String(liveQuest._id)), 'GET public quest history -> registered quest is listed', r);

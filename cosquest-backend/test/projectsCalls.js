@@ -205,7 +205,8 @@ async function runPlanning(baseUrl) {
     await ScheduledCall.collection.updateOne({ _id: new mongoose.Types.ObjectId(c.id) }, { $set: { anchorStartsAt: anchor, startsAt: anchor, endsAt: new Date(anchor.getTime() + 3600000), occurrence: 1 } });
     const rolled = (await req('GET', `/scheduled-calls/${c.id}`, 1)).data.call;
     const starts = new Date(rolled.startsAt);
-    assert.ok(starts > new Date(), rolled.startsAt);
+    // Not ended (an occurrence in progress stays, so the start can be minutes ago).
+    assert.ok(new Date(rolled.endsAt) > new Date(), rolled.endsAt);
     const la = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: 'America/Los_Angeles', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', hourCycle: 'h23' }).formatToParts(starts).map((p) => [p.type, p.value]));
     assert.equal(`${la.hour}:${la.minute}`, '18:00');
     assert.equal(Number(la.day), Math.min(31, new Date(Date.UTC(Number(la.year), Number(la.month), 0)).getUTCDate()));

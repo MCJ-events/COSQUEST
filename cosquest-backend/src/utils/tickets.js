@@ -35,6 +35,8 @@ const payments = require('./stripe');
 
 const HOLD_MS = 31 * 60 * 1000;
 const MAX_CHECKOUTS_PER_10_MIN = 8;
+// CosQuest tickets are all paid. ALLOW_FREE_TICKETS=1 turns free ones back on.
+const freeAllowed = () => process.env.ALLOW_FREE_TICKETS === '1';
 
 const orderLabel = (order) => `ORD-${order.number}`;
 const step = (event, detail = '') => ({ at: new Date(), event, detail: String(detail).slice(0, 300) });
@@ -96,7 +98,7 @@ function ticketTypeJson(tt, now = new Date()) {
     quantity: tt.quantity,
     remaining,
     soldOut: remaining === 0,
-    onSale: tt.active && !notYet && !over && remaining > 0,
+    onSale: tt.active && !notYet && !over && remaining > 0 && (tt.price.amount > 0 || freeAllowed()),
     salesStartAt: tt.salesStartAt,
     salesEndAt: tt.salesEndAt,
   };
@@ -162,6 +164,8 @@ async function startCheckout({ user, questId, ticketTypeId }) {
   const types = await ticketTypesFor(quest);
   const type = ticketTypeId ? types.find((tt) => String(tt._id) === String(ticketTypeId)) : types.length === 1 ? types[0] : null;
   if (!type) fail(400, ticketTypeId ? 'That ticket type is not available.' : 'Choose a ticket type.', 'choose_ticket_type');
+  // Paid only (unless ALLOW_FREE_TICKETS=1): a quest without a price isn't on sale.
+  if (!type.price.amount && !freeAllowed()) fail(409, "Tickets for this aren't on sale yet.", 'not_on_sale');
   if (type.price.amount > 0 && !payments.isConfigured()) fail(503, 'Payments are not set up yet. Please try again later.', 'payments_unavailable');
   if (type.price.amount > 0) payments.toMinor(type.price.amount, type.price.currency); // supported currency?
 
@@ -570,6 +574,7 @@ function orderJson(order, ticket = null) {
 
 module.exports = {
   HOLD_MS,
+  freeAllowed,
   ensureDefaultTicketType,
   ticketTypesFor,
   ticketTypeJson,

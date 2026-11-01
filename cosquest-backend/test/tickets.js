@@ -148,15 +148,26 @@ async function run(baseUrl) {
   const tampered = await Order.findById(tamperOrder.data.order.id);
   check(tampered.status === 'refunded' && !(await Ticket.findOne({ order: tampered._id })) && (await TicketType.findOne({ quest: tamper._id })).held === 0, 'a wrong amount is refunded, never a ticket (seat released)', tampered.status);
 
-  console.log('\n--- free tickets, giving back, refunds, cancelling ---');
+  console.log('\n--- paid only (free tickets off by default) ---');
+  const noFree = await makeQuest('No Free', 0, 3);
+  const refusedFree = await request('POST', `/api/quests/${noFree.id}/checkout`, ana.token, {});
+  check(refusedFree.status === 409 && refusedFree.data.code === 'not_on_sale', 'a quest without a price is not on sale', refusedFree.data);
+  const freeTypes = await request('GET', `/api/quests/${noFree.id}/ticket-types`);
+  check(freeTypes.data.ticketTypes?.[0]?.onSale === false, '...and its ticket type says not on sale', freeTypes.data);
+  const freeType = await request('POST', `/api/admin/quests/${noFree.id}/ticket-types`, adminToken, { name: 'Free', price: { amount: 0 }, quantity: 5 });
+  check(freeType.status === 400, 'admins cannot add a free ticket type', freeType.data);
+
+  console.log('\n--- free tickets (ALLOW_FREE_TICKETS=1), giving back, refunds, cancelling ---');
+  process.env.ALLOW_FREE_TICKETS = '1';
   const free = await makeQuest('Free Jam', 0, 3);
   const freeReg = await request('POST', `/api/quests/${free.id}/registrations`, ana.token);
   check(freeReg.status === 201 && freeReg.data.ticket?.id, 'free: the old register route issues a ticket', freeReg.data);
   const freeAgain = await request('POST', `/api/quests/${free.id}/registrations`, ana.token);
   check(freeAgain.status === 409 && freeAgain.data.error === 'You are already registered for this quest.', 'free: registering twice keeps the old answer', freeAgain.data);
   const freeCancel = await request('DELETE', `/api/quests/${free.id}/registrations`, ana.token);
-  const freeType = await TicketType.findOne({ quest: free._id });
-  check(freeCancel.status === 200 && freeType.sold === 0, 'free: unregistering releases the seat once', { freeCancel: freeCancel.data, freeType });
+  const freeSeat = await TicketType.findOne({ quest: free._id });
+  check(freeCancel.status === 200 && freeSeat.sold === 0, 'free: unregistering releases the seat once', { freeCancel: freeCancel.data, freeSeat });
+  delete process.env.ALLOW_FREE_TICKETS;
 
   const meetupTicket = await Ticket.findOne({ quest: meetup._id, user: ben.user._id });
   const giveBack = await request('POST', `/api/me/tickets/${meetupTicket.id}/cancel`, ben.token);

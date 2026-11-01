@@ -25,6 +25,7 @@ const { effectiveStatus, statusFilter } = require('../utils/questStatus');
 const { recordAudit, auditJson } = require('../utils/audit');
 const { storePostMedia } = require('../utils/imageHost');
 const { searchPlaces } = require('../utils/geocode');
+const { freeAllowed } = require('../utils/tickets');
 const { personJson } = require('./adminOverviewController');
 const stats = require('../utils/adminStats');
 
@@ -111,6 +112,8 @@ function readFields(body, { partial = false, current = null } = {}) {
     if (need(key)) {
       const amount = Number(body[key]?.amount ?? body[key]);
       if (!Number.isFinite(amount) || amount < 0 || amount > 1000000) fail(400, `${key === 'entryFee' ? 'The entry fee' : 'The prize pool'} must be 0 or more.`);
+      // Every ticket is paid (unless ALLOW_FREE_TICKETS=1): Stripe's minimum is about $0.50.
+      if (key === 'entryFee' && amount < 0.5 && !freeAllowed()) fail(400, 'Every ticket is paid: the entry fee must be at least $0.50.');
       // An edit that only changes the amount keeps the quest's own currency.
       const currency = String(body[key]?.currency || current?.[key]?.currency || DEFAULT_CURRENCY()).toUpperCase();
       if (!/^[A-Z]{3}$/.test(currency)) fail(400, 'The currency must be a 3-letter code such as USD.');
