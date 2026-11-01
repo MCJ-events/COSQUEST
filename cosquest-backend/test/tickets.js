@@ -243,6 +243,11 @@ async function run(baseUrl) {
   const settled = await Order.findById(calLate.data.order.id);
   check(settled.status === 'refunded' && !settled.refundDue && !(await Ticket.findOne({ order: settled._id })), '...and the 2-minute check pays it back', { status: settled.status, refundDue: settled.refundDue });
 
+  const racy = await makeQuest('Two At Once', 10, 4);
+  await Promise.all([request('GET', `/api/quests/${racy.id}/ticket-types`), request('GET', `/api/quests/${racy.id}/ticket-types`), request('GET', `/api/quests/${racy.id}/ticket-types`)]);
+  const defaults = await TicketType.countDocuments({ quest: racy._id, isDefault: true });
+  check(defaults === 1, 'opened by several people at once: one default ticket type (the places are not doubled)', defaults);
+
   const inflightPayload = JSON.stringify({ id: `evt_inflight_${suffix}`, type: 'payment_intent.payment_failed', data: { object: { object: 'payment_intent', metadata: {} } } });
   await StripeEvent.create({ _id: `evt_inflight_${suffix}`, type: 'payment_intent.payment_failed', done: false });
   const busy = await replay(inflightPayload);

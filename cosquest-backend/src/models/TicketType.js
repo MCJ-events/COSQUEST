@@ -11,7 +11,9 @@ const mongoose = require('mongoose');
  */
 const ticketTypeSchema = new mongoose.Schema(
   {
-    quest: { type: mongoose.Schema.Types.ObjectId, ref: 'Quest', required: true, index: true },
+    // No `index: true`: { quest, sortOrder } below covers lookups by quest,
+    // and a plain { quest: 1 } took the name the unique index needs.
+    quest: { type: mongoose.Schema.Types.ObjectId, ref: 'Quest', required: true },
     name: { type: String, required: true, trim: true, maxlength: 60 },
     description: { type: String, default: '', trim: true, maxlength: 300 },
     price: {
@@ -35,6 +37,7 @@ const ticketTypeSchema = new mongoose.Schema(
 // A quest's ticket types in order.
 ticketTypeSchema.index({ quest: 1, sortOrder: 1 });
 // At most one default ticket type per quest (created once, even under races).
-ticketTypeSchema.index({ quest: 1 }, { unique: true, partialFilterExpression: { isDefault: true } });
+// Named, so it never clashes with the plain quest_1 index older deploys built.
+ticketTypeSchema.index({ quest: 1 }, { name: 'one_default_per_quest', unique: true, partialFilterExpression: { isDefault: true } });
 
 module.exports = mongoose.model('TicketType', ticketTypeSchema);
