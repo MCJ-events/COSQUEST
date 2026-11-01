@@ -33,6 +33,7 @@ router.use('/users', preferencesRoutes); // /api/users/me/preferences/*, devices
 router.use('/users', notificationRoutes); // /api/users/me/notifications
 router.use('/meta', metaRoutes); // /api/meta/avatars
 router.use('/', questRoutes); // /api/quests
+router.use('/', require('./questFeedRoutes')); // /api/quests/:questId/joins (who just joined)
 router.use('/', require('./ticketRoutes')); // /api/quests/:id/ticket-types|checkout, /api/orders/:id, /api/me/tickets
 router.use('/home', homeRoutes); // /api/home/dashboard
 router.use('/', callRoutes); // /api/calls and /api/chats/:conversationId/calls
