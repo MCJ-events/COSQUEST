@@ -1,4 +1,4 @@
-// Removes the demo quests made by scripts/seedHomeDashboard.js (isSeedData:
+// Removes the demo quests made by the old sample seed script (isSeedData:
 // true) and everything attached to them: registrations, ticket types,
 // orders and tickets. CosQuest shows real quests only.
 //

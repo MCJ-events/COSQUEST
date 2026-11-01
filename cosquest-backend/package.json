@@ -13,7 +13,6 @@
     "notify": "node scripts/sendNotification.js",
     "migrate:username-signup": "node scripts/migrateUsernameSignup.js",
     "migrate:remove-user-location": "node scripts/removeUserLocationPreferences.js",
-    "seed": "node scripts/seedHomeDashboard.js",
     "sparks:smoke": "node scripts/sparksSmoke.js",
     "migrate:message-seq": "node scripts/backfillMessageSeq.js"
   },

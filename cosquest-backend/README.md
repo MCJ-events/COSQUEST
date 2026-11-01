@@ -144,7 +144,7 @@ An image post requires 1-8 JPEG/PNG/WEBP/GIF files (10MB each maximum). A reel r
 
 The Home Dashboard is available after login with `GET /api/home/dashboard` (Bearer token required). It returns the greeting/profile data, unread-notification count, closest live quest, nearby upcoming quests, and the user's registration state. Quests can also be listed with `GET /api/quests`, viewed with `GET /api/quests/:questId`, joined with `POST /api/quests/:questId/registrations`, and cancelled with `DELETE /api/quests/:questId/registrations` (the join/cancel calls require a Bearer token).
 
-Run `npm run seed` to create or update the three sample Lagos quests used by the dashboard. Their location, card limits, titles, prices, capacity, and schedule settings are in `.env`; use [.env.example](.env.example) as the safe configuration reference. The seed command upserts only its named sample quests and does not remove existing data.
+CosQuest has no sample quests: real quests and events are created in the admin dashboard (Quests & Events, see [QUESTS.md](QUESTS.md)). The old Lagos demo quests can be removed from a database with `node scripts/removeSeedQuests.js` (it lists what it would remove; `--yes` removes it). `DASHBOARD_DEFAULT_LAT`, `DASHBOARD_DEFAULT_LNG` and `DASHBOARD_RADIUS_MILES` in `.env` are the dashboard's fallback location for accounts without their own (see [.env.example](.env.example)).
 
 ## Usage examples (curl)
 
