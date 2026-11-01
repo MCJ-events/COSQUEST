@@ -20,14 +20,26 @@ import AvatarView from "./AvatarView";
 import { PlayerAvatar } from "./ForgeWorld";
 import { CoachAnchor } from "./Coach";
 import { announce, GameCoin, GameIconButton, HUD_FONT_SCALE, withAlpha } from "./kit";
+import { ACCENT, contrast, edgeColor, ELEVATION, RADIUS, SURFACES, useLook } from "./look";
 import { GF, GP } from "./theme";
 import WardenBadge from "./WardenBadge";
 import { useWardenMuted, wardenVoice } from "./wardenVoice";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
-/** GamePalette.navy.opacity(0.78): the plate behind white type over the map. */
-export const NAVY_PLATE = withAlpha(GP.navy, 0.78);
-const PLATE_STROKE = "rgba(255,255,255,0.18)";
+/**
+ * The plate under the HUD's words over the map: paper, as the art direction's
+ * floating map controls (cream by day, ink by dusk, a hairline and a soft
+ * float shadow). It used to be a navy plate with white type on the day map.
+ */
+const L = SURFACES.light;
+const D = SURFACES.dark;
+
+/** A colour for words on a plate: the colour itself if it reads (AA), else its edge, else the ink. */
+function readable(color: string, plate: string, ink: string): string {
+  if (contrast(color, plate) >= 4.5) return color;
+  const edge = edgeColor(color, 0.6);
+  return contrast(edge, plate) >= 4.5 ? edge : ink;
+}
 
 
 // ---------- the top bar ----------
@@ -47,6 +59,7 @@ export function PlayerChip({
   onPress: () => void;
 }) {
   const styles = useThemedStyles(STYLE_PAIR);
+  const look = useLook();
   const s = me?.standing;
   const progress = s ? (s.max_level ? 1 : Math.max(0, Math.min(1, s.into_level / Math.max(1, s.level_span)))) : 0;
   const handle = profile?.handle ?? me?.handle ?? name ?? "Player";
@@ -66,7 +79,7 @@ export function PlayerChip({
       accessibilityHint="Opens your profile">
       <View style={styles.ring}>
         <Svg width={54} height={54} style={StyleSheet.absoluteFill}>
-          <Circle cx={27} cy={27} r={R} stroke="rgba(255,255,255,0.25)" strokeWidth={5} fill="none" />
+          <Circle cx={27} cy={27} r={R} stroke={look.dark ? "rgba(255,255,255,0.14)" : "rgba(28,43,58,0.12)"} strokeWidth={5} fill="none" />
           <Circle
             cx={27}
             cy={27}
@@ -142,6 +155,7 @@ export function TopBar({
   onAskWarden?: () => void;
 }) {
   const styles = useThemedStyles(STYLE_PAIR);
+  const look = useLook();
   const insets = useSafeAreaInsets();
   const coins = me?.coins ?? 0;
   const streak = me?.streak;
@@ -166,7 +180,7 @@ export function TopBar({
         {streak && streak.days > 0 ? (
           <View accessible accessibilityLabel={`${streak.days} day streak`}>
             <ResourceChip>
-              <Ionicons name="flame" size={16} color={streak.played_today ? GP.sun : "rgba(255,255,255,0.6)"} />
+              <Ionicons name="flame" size={16} color={streak.played_today ? ACCENT.sun.fill : look.textMuted} />
               <Text style={styles.resourceText} maxFontSizeMultiplier={HUD_FONT_SCALE}>
                 {streak.days}
               </Text>
@@ -280,6 +294,7 @@ const BUBBLE_IN = new Keyframe({
  */
 export function WardenBubble({ text, color, onClose }: { text: string; color: string; onClose: () => void }) {
   const styles = useThemedStyles(STYLE_PAIR);
+  const look = useLook();
   // iOS has no live regions: say it to VoiceOver as it appears.
   useEffect(() => {
     if (Platform.OS === "ios") announce(`The Warden: ${text}`);
@@ -288,7 +303,7 @@ export function WardenBubble({ text, color, onClose }: { text: string; color: st
     <Animated.View entering={BUBBLE_IN} exiting={BUBBLE_OUT}>
       <Pressable
         onPress={onClose}
-        style={[styles.bubble, { borderColor: withAlpha(color, 0.7) }]}
+        style={[styles.bubble, { borderColor: look.dark ? withAlpha(color, 0.5) : look.hairline }]}
         accessible
         accessibilityRole="button"
         accessibilityLabel={`The Warden: ${text}`}
@@ -296,7 +311,7 @@ export function WardenBubble({ text, color, onClose }: { text: string; color: st
         accessibilityLiveRegion={Platform.OS === "android" ? "polite" : undefined}>
         <WardenBadge tint={color} size={36} />
         <View style={{ flex: 1, gap: 3 }}>
-          <Text style={[styles.bubbleLabel, { color }]} maxFontSizeMultiplier={HUD_FONT_SCALE}>
+          <Text style={[styles.bubbleLabel, { color: readable(color, look.surface, look.text) }]} maxFontSizeMultiplier={HUD_FONT_SCALE}>
             THE WARDEN
           </Text>
           <Text style={styles.bubbleText} maxFontSizeMultiplier={HUD_FONT_SCALE}>
@@ -304,7 +319,7 @@ export function WardenBubble({ text, color, onClose }: { text: string; color: st
           </Text>
         </View>
         <Pressable onPress={onClose} hitSlop={9} style={styles.bubbleClose} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-          <Ionicons name="close" size={13} color="rgba(255,255,255,0.7)" />
+          <Ionicons name="close" size={13} color={look.textMuted} />
         </Pressable>
       </Pressable>
     </Animated.View>
@@ -321,86 +336,98 @@ export function StagingBadge({ label }: { label: string }) {
   );
 }
 
-const STYLE_PAIR = themedStyles({
-  photo: { width: 40, height: 40, borderRadius: 20, borderWidth: 2, borderColor: "rgba(255,255,255,0.85)" },
-  top: {
-    position: "absolute",
-    left: 12,
-    right: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
+const STYLE_PAIR = themedStyles(
+  {
+    photo: { width: 40, height: 40, borderRadius: 20, borderWidth: 2, borderColor: "#FFFFFF" },
+    top: {
+      position: "absolute",
+      left: 12,
+      right: 12,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+    },
+    chip: {
+      flexShrink: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      padding: 5,
+      paddingRight: 14,
+      borderRadius: RADIUS.pill,
+      backgroundColor: L.surface,
+      borderWidth: 1,
+      borderColor: L.hairline,
+      ...ELEVATION.float,
+    },
+    ring: { width: 54, height: 54, alignItems: "center", justifyContent: "center" },
+    level: {
+      position: "absolute",
+      right: -4,
+      bottom: -4,
+      minWidth: 22,
+      height: 22,
+      paddingHorizontal: 3,
+      borderRadius: 11,
+      backgroundColor: ACCENT.sky.fill,
+      borderWidth: 2,
+      borderColor: L.surface,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    levelText: { fontFamily: GF.display, fontSize: 13, lineHeight: 16, color: "#FFFFFF" },
+    handle: { fontFamily: GF.display, fontSize: 18, lineHeight: 22, color: L.text },
+    rank: { fontFamily: GF.body, fontSize: 13, lineHeight: 16, color: L.textMuted },
+    redactA: { width: 96, height: 16, borderRadius: 8, backgroundColor: L.surfaceAlt },
+    redactB: { width: 60, height: 12, borderRadius: 6, backgroundColor: L.surfaceAlt },
+    stats: { flexDirection: "row", gap: 6 },
+    resource: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      paddingLeft: 7,
+      paddingRight: 12,
+      height: 36,
+      borderRadius: RADIUS.pill,
+      backgroundColor: L.surface,
+      borderWidth: 1,
+      borderColor: L.hairline,
+      ...ELEVATION.float,
+    },
+    resourceText: { fontFamily: GF.display, fontSize: 17, lineHeight: 21, color: L.text, fontVariant: ["tabular-nums"] },
+    rail: { position: "absolute", right: 12, gap: 12, alignItems: "center", width: 50 },
+    relics: { width: 50, height: 54, alignItems: "center", justifyContent: "center" },
+    extras: { gap: 10, marginTop: 4, alignItems: "center" },
+    bubble: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: 10,
+      marginLeft: 14,
+      marginRight: 76,
+      padding: 14,
+      borderRadius: RADIUS.card,
+      borderWidth: 1,
+      backgroundColor: L.surface,
+      ...ELEVATION.float,
+    },
+    bubbleLabel: { fontFamily: GF.bold, fontSize: 12, lineHeight: 16, letterSpacing: 1 },
+    bubbleText: { fontFamily: GF.body, fontSize: 16, lineHeight: 21, color: L.text },
+    bubbleClose: { width: 26, height: 26, borderRadius: 13, backgroundColor: L.surfaceAlt, alignItems: "center", justifyContent: "center" },
+    staging: { alignSelf: "flex-start", paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, backgroundColor: ACCENT.berry.fill },
+    stagingText: { fontFamily: GF.bold, fontSize: 12, lineHeight: 15, color: "#FFFFFF", letterSpacing: 0.8 },
   },
-  chip: {
-    flexShrink: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    padding: 6,
-    borderRadius: 999,
-    backgroundColor: NAVY_PLATE,
-    borderWidth: 1.5,
-    borderColor: PLATE_STROKE,
-    shadowColor: "#000",
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 3 },
+  {
+    // The dusk map: ink plates with a hairline instead of a shadow.
+    chip: { backgroundColor: D.surface, borderColor: D.hairline, shadowOpacity: 0, elevation: 0, boxShadow: "none" },
+    level: { borderColor: D.surface },
+    handle: { color: D.text },
+    rank: { color: D.textMuted },
+    redactA: { backgroundColor: D.surfaceAlt },
+    redactB: { backgroundColor: D.surfaceAlt },
+    resource: { backgroundColor: D.surface, borderColor: D.hairline, shadowOpacity: 0, elevation: 0, boxShadow: "none" },
+    resourceText: { color: D.text },
+    bubble: { backgroundColor: D.surface, shadowOpacity: 0, elevation: 0, boxShadow: "none" },
+    bubbleText: { color: D.text },
+    bubbleClose: { backgroundColor: D.surfaceAlt },
   },
-  ring: { width: 54, height: 54, alignItems: "center", justifyContent: "center" },
-  level: {
-    position: "absolute",
-    right: -4,
-    bottom: -4,
-    minWidth: 22,
-    height: 22,
-    paddingHorizontal: 3,
-    borderRadius: 11,
-    backgroundColor: GP.skyDeep,
-    borderWidth: 2,
-    borderColor: "#FFFFFF",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  levelText: { fontFamily: GF.display, fontSize: 14, color: "#FFFFFF" },
-  handle: { fontFamily: GF.display, fontSize: 18, color: "#FFFFFF" },
-  rank: { fontFamily: GF.body, fontSize: 13, color: "rgba(255,255,255,0.8)" },
-  redactA: { width: 96, height: 16, borderRadius: 8, backgroundColor: "rgba(255,255,255,0.22)" },
-  redactB: { width: 60, height: 12, borderRadius: 6, backgroundColor: "rgba(255,255,255,0.22)" },
-  stats: { flexDirection: "row", gap: 6 },
-  resource: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    paddingHorizontal: 10,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: NAVY_PLATE,
-    borderWidth: 1.5,
-    borderColor: PLATE_STROKE,
-  },
-  resourceText: { fontFamily: GF.display, fontSize: 16, color: "#FFFFFF", fontVariant: ["tabular-nums"] },
-  rail: { position: "absolute", right: 12, gap: 12, alignItems: "center", width: 50 },
-  relics: { width: 50, height: 54, alignItems: "center", justifyContent: "center" },
-  extras: { gap: 10, marginTop: 4, alignItems: "center" },
-  bubble: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 10,
-    marginLeft: 14,
-    marginRight: 76,
-    padding: 12,
-    borderRadius: 20,
-    borderWidth: 2,
-    backgroundColor: withAlpha(GP.navy, 0.88),
-    shadowColor: "#000",
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 5,
-  },
-  bubbleLabel: { fontFamily: GF.display, fontSize: 12, letterSpacing: 1.2 },
-  bubbleText: { fontFamily: GF.body, fontSize: 15, color: "#FFFFFF" },
-  bubbleClose: { width: 26, height: 26, borderRadius: 13, backgroundColor: "rgba(255,255,255,0.12)", alignItems: "center", justifyContent: "center" },
-  staging: { alignSelf: "flex-start", paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, backgroundColor: GP.berry },
-  stagingText: { fontFamily: GF.bold, fontSize: 10, color: "#FFFFFF", letterSpacing: 1 },
-});
+);
