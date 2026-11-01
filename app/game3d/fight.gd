@@ -135,7 +135,7 @@ const CAM_BOUNDS_X: float = 2.2        # across it: the street stays centred, th
 ## (27 deg above the fight) and its view is lifted a few degrees (CAM_PLACE_TILT) so the horizon, the
 ## landmark (place.gd turns the place so it stands on the camera's line) and the skyline fill the top
 ## of the frame while the fighters stay where they were on screen. The fight's rules never see it.
-const CAM_PLACE_PITCH: float = 27.0
+const CAM_PLACE_PITCH: float = 30.0      # look-world: the art direction asks 30 to 34 deg in places (was 27)
 const CAM_PLACE_TILT: float = 7.0       # the view's lift over the orbit (deg): 0 aims at the fight
 const CAM_PLACE_DIST: float = 21.0
 const CAM_PLACE_AHEAD: float = 1.5
@@ -377,6 +377,7 @@ func _ready() -> void:
 		Engine.max_fps = clampi(int(cfg.get("max_fps", 60)), 15, 120)
 	print("CQ render_scale=%.2f aa=%s quality=%s gpu=%s vsync=%s max_fps=%d" % [rs, aa, quality,
 		RenderingServer.get_video_adapter_name(), str(DisplayServer.window_get_vsync_mode()), Engine.max_fps])
+	cfg["_quality"] = quality   # look-world: the arena picks the device shadow map from it
 	arena = ArenaScript.new()
 	arena.name = "Arena"
 	add_child(arena)
