@@ -155,4 +155,16 @@ module.exports = {
     string('message', { required: true, min: 3, max: 500, trim: true, label: 'message', message: 'Write a message of 3-500 characters.' }),
   ],
   createPost: [string('content', { required: true, min: 1, max: 2000, trim: true, label: 'content', message: 'A post needs 1-2,000 characters.' })],
+  // Quests & Events
+  questStats: window,
+  listAdminQuests: [
+    ...page,
+    ...scalarQuery('tab', 'kind'),
+    oneOfValues('tab', ['all', 'live', 'upcoming', 'draft', 'completed', 'cancelled'], { in: 'query', label: 'tab' }),
+    oneOfValues('kind', ['quest', 'event'], { in: 'query', label: 'kind' }),
+  ],
+  questId: [objectId('questId', { in: 'param', label: 'quest ID' })],
+  questBody: [object('location', { label: 'location' }), boolean('publish', { label: 'publish' }), boolean('requireAtVenue', { label: 'requireAtVenue' })],
+  cancelQuest: [objectId('questId', { in: 'param', label: 'quest ID' }), reason()],
+  geocode: [...scalarQuery('q'), string('q', { in: 'query', required: true, min: 3, max: 200, label: 'q', message: 'Type at least 3 characters of the address.' })],
 };

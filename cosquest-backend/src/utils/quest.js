@@ -1,3 +1,5 @@
+const { effectiveStatus } = require('./questStatus');
+
 function distanceMiles(fromLat, fromLng, toLat, toLng) {
   const earthRadiusMiles = 3958.8;
   const degreesToRadians = (value) => (value * Math.PI) / 180;
@@ -18,7 +20,9 @@ function serializeQuest(quest, { distance, isRegistered } = {}) {
     description: item.description,
     coverImageUrl: item.coverImageUrl,
     hostName: item.hostName,
-    status: item.status,
+    // From the clock (only draft and cancelled are stored decisions).
+    status: effectiveStatus(item),
+    kind: item.kind || 'quest',
     startsAt: item.startsAt,
     endsAt: item.endsAt,
     location: item.location,
@@ -29,6 +33,9 @@ function serializeQuest(quest, { distance, isRegistered } = {}) {
     spacesRemaining: Math.max(0, item.maxParticipants - item.registrationCount),
     interests: item.interests,
     faction: item.faction || null,
+    requireAtVenue: Boolean(item.requireAtVenue),
+    venueRadiusMeters: item.venueRadiusMeters || 200,
+    ...(item.status === 'cancelled' ? { cancelReason: item.cancelReason || null } : {}),
     ...(distance === undefined ? {} : { distanceMiles: Number(distance.toFixed(1)) }),
     ...(isRegistered === undefined ? {} : { isRegistered }),
   };

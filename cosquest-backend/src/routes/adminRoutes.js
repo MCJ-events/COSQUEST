@@ -8,7 +8,7 @@ const express = require('express');
 const { requireAuth } = require('../middleware/auth');
 const { adminLoginLimiter } = require('../middleware/rateLimiter');
 const { requireSuperAdmin } = require('../middleware/requireSuperAdmin');
-const { validate } = require('../middleware/validate');
+const { validate, validateUpload } = require('../middleware/validate');
 const { asyncHandler: a } = require('../utils/asyncHandler');
 const rules = require('../validators/admin');
 const auth = require('../controllers/adminAuthController');
@@ -23,6 +23,8 @@ const settings = require('../controllers/adminSettingsController');
 const audit = require('../controllers/adminAuditController');
 const sparks = require('../controllers/adminSparksController');
 const extras = require('../controllers/adminExtrasController');
+const quests = require('../controllers/adminQuestsController');
+const { upload } = require('../middleware/upload');
 
 const router = express.Router();
 
@@ -120,5 +122,18 @@ router.get('/audit/stats', a(audit.auditStats));
 router.get('/audit/export', validate(rules.audit), a(audit.exportAudit));
 router.get('/audit', validate(rules.audit), a(audit.listAudit));
 router.get('/audit/:eventId', validate(rules.auditId), a(audit.auditDetail));
+
+// Quests & Events (static paths before /quests/:questId)
+router.get('/quests/stats', validate(rules.questStats), a(quests.questStats));
+router.get('/quests', validate(rules.listAdminQuests), a(quests.listAdminQuests));
+router.post('/quests/cover', upload.single('cover'), validateUpload(), a(quests.uploadCover));
+router.post('/quests', validate(rules.questBody), a(quests.createQuest));
+router.get('/quests/:questId', validate(rules.questId), a(quests.questDetail));
+router.patch('/quests/:questId', validate(rules.questId, rules.questBody), a(quests.updateQuest));
+router.post('/quests/:questId/publish', validate(rules.questId), a(quests.publishQuest));
+router.post('/quests/:questId/unpublish', validate(rules.questId), a(quests.unpublishQuest));
+router.post('/quests/:questId/duplicate', validate(rules.questId), a(quests.duplicateQuest));
+router.post('/quests/:questId/cancel', validate(rules.cancelQuest), a(quests.cancelQuest));
+router.get('/geocode', validate(rules.geocode), a(quests.geocode));
 
 module.exports = router;

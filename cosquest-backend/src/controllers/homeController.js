@@ -2,6 +2,7 @@ const Quest = require('../models/Quest');
 const QuestRegistration = require('../models/QuestRegistration');
 const notificationModel = require('../models/notificationModel');
 const { distanceMiles, serializeQuest } = require('../utils/quest');
+const { effectiveStatus, openForRegistration } = require('../utils/questStatus');
 
 // Fallback only - every user who completed onboarding after the location
 // step became required already has their own coordinates (see
@@ -25,7 +26,7 @@ async function getDashboard(req, res) {
     : { ...configuredLocation(), source: 'default' };
 
   const [quests, registrations, notifications] = await Promise.all([
-    Quest.find({ isPublished: true, status: { $in: ['live', 'upcoming'] } }).sort({ startsAt: 1 }),
+    Quest.find({ isPublished: true, ...openForRegistration() }).sort({ startsAt: 1 }),
     QuestRegistration.find({ user: req.userId, status: 'registered' }, 'quest'),
     notificationModel.listForUser(req.userId),
   ]);
@@ -35,7 +36,7 @@ async function getDashboard(req, res) {
     .filter((item) => item.distance <= location.radiusMiles)
     .sort((a, b) => a.distance - b.distance);
   const format = ({ quest, distance }) => serializeQuest(quest, { distance, isRegistered: registrationIds.has(String(quest._id)) });
-  const liveQuest = nearby.find((item) => item.quest.status === 'live');
+  const liveQuest = nearby.find((item) => effectiveStatus(item.quest) === 'live');
   const maxUpcoming = Number(process.env.DASHBOARD_MAX_UPCOMING || 3);
   const maxNearby = Number(process.env.DASHBOARD_MAX_NEARBY || 6);
 
@@ -46,11 +47,13 @@ async function getDashboard(req, res) {
       username: req.user.profile.username,
       avatarKey: req.user.profile.avatarKey,
       avatarPhotoUrl: req.user.profile.avatarPhotoUrl,
+      // CosXP for now (the only balance; CosCoin is not built yet).
+      points: req.user.pointsBalance || 0,
     },
     location,
     unreadNotificationCount: notifications.filter((notification) => !notification.read).length,
     liveQuest: liveQuest ? format(liveQuest) : null,
-    upcomingQuests: nearby.filter((item) => item.quest.status === 'upcoming').slice(0, maxUpcoming).map(format),
+    upcomingQuests: nearby.filter((item) => effectiveStatus(item.quest) === 'upcoming').slice(0, maxUpcoming).map(format),
     nearbyQuests: nearby.slice(0, maxNearby).map(format),
   });
 }

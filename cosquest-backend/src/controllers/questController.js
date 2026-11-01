@@ -1,6 +1,14 @@
 const Quest = require('../models/Quest');
 const QuestRegistration = require('../models/QuestRegistration');
 const { distanceMiles, serializeQuest } = require('../utils/quest');
+const { statusFilter, openForRegistration } = require('../utils/questStatus');
+
+// The signed-in person's registrations among these quests (optionalAuth).
+async function registeredIds(req, quests) {
+  if (!req.userId || !quests.length) return null;
+  const rows = await QuestRegistration.find({ user: req.userId, status: 'registered', quest: { $in: quests.map((q) => q._id) } }, 'quest').lean();
+  return new Set(rows.map((row) => String(row.quest)));
+}
 
 function parseCoordinate(value, min, max) {
   if (value === undefined) return null;
@@ -23,7 +31,10 @@ async function listQuests(req, res) {
   }
 
   const query = { isPublished: true };
-  if (status) query.status = status;
+  // Status from the clock; without one, everything except cancelled.
+  // An unknown ?status= is no filter (it used to list cancelled quests too).
+  const known = ['upcoming', 'live', 'completed', 'cancelled'].includes(status);
+  Object.assign(query, known ? statusFilter(status) : { status: { $ne: 'cancelled' } });
   if (req.query.faction) query.faction = req.query.faction;
   const quests = await Quest.find(query).sort({ startsAt: 1 }).limit(parseLimit(req.query.limit, 20));
   const withDistance = quests.map((quest) => ({
@@ -32,13 +43,15 @@ async function listQuests(req, res) {
   }));
   const filtered = lat === null ? withDistance : withDistance.filter((item) => item.distance <= radiusMiles);
   filtered.sort((a, b) => (a.distance ?? 0) - (b.distance ?? 0));
-  return res.json({ quests: filtered.map(({ quest, distance }) => serializeQuest(quest, { distance })) });
+  const mine = await registeredIds(req, filtered.map(({ quest }) => quest));
+  return res.json({ quests: filtered.map(({ quest, distance }) => serializeQuest(quest, { distance, ...(mine ? { isRegistered: mine.has(String(quest._id)) } : {}) })) });
 }
 
 async function getQuest(req, res) {
   const quest = await Quest.findOne({ _id: req.params.questId, isPublished: true });
   if (!quest) return res.status(404).json({ error: 'Quest not found.' });
-  return res.json({ quest: serializeQuest(quest) });
+  const mine = await registeredIds(req, [quest]);
+  return res.json({ quest: serializeQuest(quest, mine ? { isRegistered: mine.has(String(quest._id)) } : {}) });
 }
 
 async function registerForQuest(req, res) {
@@ -46,7 +59,8 @@ async function registerForQuest(req, res) {
     {
       _id: req.params.questId,
       isPublished: true,
-      status: { $in: ['upcoming', 'live'] },
+      // Open until it ends, unless it's a draft or cancelled (status from the clock).
+      ...openForRegistration(),
       $expr: { $lt: ['$registrationCount', '$maxParticipants'] },
     },
     { $inc: { registrationCount: 1 } },

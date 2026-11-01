@@ -4,7 +4,8 @@ const { FACTION_KEYS } = require('./factionModel');
 const moneySchema = new mongoose.Schema(
   {
     amount: { type: Number, required: true, min: 0 },
-    currency: { type: String, default: 'NGN', trim: true, uppercase: true },
+    // USD unless QUEST_CURRENCY says otherwise (CosQuest is international).
+    currency: { type: String, default: () => (process.env.QUEST_CURRENCY || 'USD').toUpperCase(), trim: true, uppercase: true },
   },
   { _id: false }
 );
@@ -27,6 +28,8 @@ const questSchema = new mongoose.Schema(
     location: {
       name: { type: String, required: true, trim: true },
       address: { type: String, default: '', trim: true },
+      city: { type: String, default: '', trim: true },
+      country: { type: String, default: '', trim: true },
       lat: { type: Number, required: true, min: -90, max: 90 },
       lng: { type: Number, required: true, min: -180, max: 180 },
     },
@@ -41,10 +44,24 @@ const questSchema = new mongoose.Schema(
     faction: { type: String, enum: FACTION_KEYS, default: null, index: true },
     isPublished: { type: Boolean, default: false, index: true },
     isSeedData: { type: Boolean, default: false, index: true },
+    // A quest (game activity, often live) or an event (scheduled, ticketed).
+    kind: { type: String, enum: ['quest', 'event'], default: 'quest', index: true },
+    // Joining / check-in only within venueRadiusMeters of the venue (optional).
+    requireAtVenue: { type: Boolean, default: false },
+    venueRadiusMeters: { type: Number, default: 200, min: 50, max: 5000 },
+    // Admin dashboard bookkeeping. Status: only draft and cancelled are
+    // decisions; upcoming / live / completed come from the clock
+    // (src/utils/questStatus.js).
+    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    cancelledAt: { type: Date, default: null },
+    cancelReason: { type: String, default: null, maxlength: 500 },
   },
   { timestamps: true }
 );
 
 questSchema.index({ isPublished: 1, status: 1, startsAt: 1 });
+// Lists by the clock: published, not ended yet.
+questSchema.index({ isPublished: 1, endsAt: 1 });
 
 module.exports = mongoose.model('Quest', questSchema);

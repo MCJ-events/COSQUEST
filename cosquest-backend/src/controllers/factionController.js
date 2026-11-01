@@ -3,6 +3,7 @@ const userModel = require('../models/userModel');
 const User = require('../models/User');
 const Quest = require('../models/Quest');
 const { previewUser, parseLimit, parsePage } = require('./publicProfileController');
+const { openForRegistration } = require('../utils/questStatus');
 
 // GET /api/factions (public - no auth required, same as the front-end's onboarding step 2 list)
 // memberCount and activeQuestCount are live counts, not stored on the faction.
@@ -15,7 +16,8 @@ async function listFactions(req, res) {
       { $group: { _id: '$faction', count: { $sum: 1 } } },
     ]),
     Quest.aggregate([
-      { $match: { isPublished: true, status: { $in: ['live', 'upcoming'] }, faction: { $ne: null } } },
+      // Active = not ended, not a draft or cancelled (status from the clock).
+      { $match: { isPublished: true, ...openForRegistration(), faction: { $ne: null } } },
       { $group: { _id: '$faction', count: { $sum: 1 } } },
     ]),
   ]);
