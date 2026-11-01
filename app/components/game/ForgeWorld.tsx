@@ -44,6 +44,7 @@ import { MANIFEST, setLocalPick, useCatalogueOn, useLocalPick } from "@/features
 
 import ForgeModel, { thumbSource, useForgeEntry } from "./ForgeModel";
 import { GameButton, MAX_FONT_SCALE } from "./kit";
+import { SummonButton } from "./SummonAR";
 import { MapPin, PIN_SPOT } from "./mapCamera";
 import { playSound } from "./sound";
 import { GF, GP } from "./theme";
@@ -262,6 +263,7 @@ export function ForgeClaim({ drop, onClose, onOpenBag }: { drop: ForgeDrop; onCl
               {near ? "It's right here. Take it!" : away !== null ? `${distanceText(away)} away. Walk closer to claim it.` : "Finding you…"}
             </Text>
             <GameButton title={phase.kind === "claiming" ? "Claiming…" : "Claim"} color={ring} disabled={!near || phase.kind === "claiming"} onPress={() => void doClaim()} accessibilityLabel="Claim this Forge find" />
+            <SummonButton entry={entry} />
           </>
         ) : phase.kind === "won" ? (
           <Animated.View entering={FadeInDown} style={{ gap: 10, width: "100%", alignItems: "center" }}>
@@ -269,6 +271,7 @@ export function ForgeClaim({ drop, onClose, onOpenBag }: { drop: ForgeDrop; onCl
               {phase.got.duplicate ? `You had one already: +${phase.got.coins} coins.` : "It's in your Collection, under Forge."}
             </Text>
             {drop.type === "weapon" ? <GameButton title="Equip it" color={GP.mint} onPress={() => void doEquip()} accessibilityLabel="Equip this weapon" /> : null}
+            <SummonButton entry={entry} />
             <GameButton
               title="Open Collection"
               small
@@ -450,6 +453,8 @@ export function ForgeBagPanel({ initial = "items" }: { initial?: "items" | "avat
             ? (["idle", "walk", "celebrate"] as const).map((c) => <GameButton key={c} title={c[0].toUpperCase() + c.slice(1)} small color={clip === c ? GP.sun : GP.slate} onPress={() => setClip(c)} />)
             : null}
           <GameButton title={isOn ? (slot === "avatar" ? "Take off" : starterSlug ? "Put down" : "Unequip") : slot === "avatar" ? "Wear" : starterSlug ? "Hold" : "Equip"} small color={isOn ? GP.berry : GP.mint} onPress={() => void toggle()} />
+          {/* "See it here": in the room through the camera (iOS; Android later). */}
+          <SummonButton entry={sel} />
         </View>
       ) : null}
       {problem ? <Text style={[styles.empty, { color: GP.berry }]}>{problem}</Text> : null}

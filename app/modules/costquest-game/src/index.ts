@@ -253,6 +253,58 @@ export const CostQuestShrineView: ComponentType<CostQuestShrineViewProps> | null
 /** The phone can put the shrine in the room (ARWorldTrackingConfiguration.isSupported). */
 export const shrineARSupported = (nativeGame as { shrineARSupported?: boolean } | null)?.shrineARSupported === true;
 
+export type CostQuestSummonViewProps = ViewProps & {
+  /** The downloaded .usdz on this phone (file:// URI). */
+  uri: string;
+  kind: "character" | "weapon" | "object";
+  /** For the photo's small mark. */
+  name: string;
+  /** Height to stand at, metres (true scale); 0: the model's own. */
+  heightM?: number;
+  minScale?: number;
+  maxScale?: number;
+  /** The celebrate sparkle's colour, #RRGGBB. */
+  tint?: string;
+  onSummonState?: (e: {
+    nativeEvent: {
+      phase: "looking" | "placed" | "denied" | "failed";
+      ar: boolean;
+      /** The model plays its own idle clip (else a procedural sway). */
+      animated: boolean;
+      lidar: boolean;
+      people: boolean;
+      reason?: string;
+    };
+  }) => void;
+  ref?: Ref<CostQuestSummonViewHandle | null>;
+};
+
+/** The summon view's functions (SummonIsland.swift). */
+export type CostQuestSummonViewHandle = {
+  /** The AR render with a small mark, a JPEG with no metadata (file:// URI); null without a camera. */
+  photo(): Promise<string | null>;
+  /** Starts a clip of the AR render (no audio): "recording", or null when it can't. */
+  startVideo(): Promise<string | null>;
+  /** Ends it: an MP4 with no metadata (file:// URI), or null. */
+  stopVideo(): Promise<string | null>;
+  celebrate(): Promise<void>;
+  /** Stand it in front of the player again. */
+  recenter(): Promise<void>;
+};
+
+/**
+ * iOS only: a Forge model in the room through the camera
+ * (ios/Embed/SummonIsland.swift). Null elsewhere: no "See it here" button
+ * (Android: ARCore + SceneView is Phase 2 step 3).
+ */
+export const CostQuestSummonView: ComponentType<CostQuestSummonViewProps> | null =
+  Platform.OS === "ios" && nativeGame && (nativeGame as { summonViewAvailable?: boolean }).summonViewAvailable === true
+    ? requireNativeView<CostQuestSummonViewProps>("CostQuestGame", "CostQuestSummonView")
+    : null;
+
+/** The phone can do world-tracking AR (else the summon screen is a 3D turntable). */
+export const summonARSupported = (nativeGame as { summonARSupported?: boolean } | null)?.summonARSupported === true;
+
 /** Fire and forget: a game call never throws into the shell. */
 export function callGame<K extends keyof CostQuestGameModule>(
   name: K,

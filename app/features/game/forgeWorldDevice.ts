@@ -39,6 +39,7 @@ import {
   wantedLod,
 } from "./forgeWorld.ts";
 import { gameStore, GAME_SERVER, useGame } from "./runtime.ts";
+import { arLod, pickUsdz } from "./summon.ts";
 
 /** The catalogue is cacheable for 60 s on the server; asking more often only costs 304s. */
 const CATALOGUE_EVERY_MS = 60_000;
@@ -303,6 +304,11 @@ export function ensureFile(entry: Pick<ForgeEntry, "id" | "version">, f: ForgeFi
 /** The GLB for this purpose on this phone, and its LOD. */
 export function glbFor(entry: ForgeEntry, purpose: ForgePurpose, lod?: number) {
   return pickGlb(entry, lod ?? wantedLod(DEVICE_CLASS, purpose));
+}
+
+/** The USDZ for "See it here" on this phone (summon.ts arLod), or null. */
+export function usdzFor(entry: ForgeEntry) {
+  return pickUsdz(entry, arLod(DEVICE_CLASS));
 }
 
 /** The thumbnail's absolute URL (WebP at a width), or null. */

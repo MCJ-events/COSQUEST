@@ -113,7 +113,7 @@ $PY app/game3d/tools/look/retex.py --glb <lodN.glb> --out <looks>/<key>/lodN.glb
 # 4. ship: MR as JPEG, smooth normals, res://cast + rig_fixes.json, packs
 $PY app/game3d/tools/look/ship_look.py --looks <looks> --orig <key>=<catalogue dir> ... --packs <out> --base <catalogue packs>
 $PY app/game3d/tools/look/same_rig.py --allow-normals <before.glb> <after.glb> ...
-blender -b --factory-startup --python app/game3d/tools/look/usdz.py -- <out>/cast_<key>   # USDZ for iOS
+blender -b --factory-startup --python app/game3d/tools/look/usdz.py -- <out>/cast_<key>   # USDZ for iOS (carries the idle clip since 1 Nov 2026)
 # look sheets and the "fight did not change" check
 godot --path app/game3d --rendering-driver opengl3 --resolution 720x1280 -s res://tools/turntable.gd -- --glb=<lod.glb> --out=<prefix>
 godot --path app/game3d --fixed-fps 30 -s res://tests/seeded_fight.gd -- --hero=... --ally=... --enemy=...

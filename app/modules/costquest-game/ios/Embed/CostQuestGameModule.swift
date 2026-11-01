@@ -74,6 +74,10 @@ public final class CostQuestGameModule: Module {
         // this phone can put it in the room through the camera.
         "shrineViewAvailable": true,
         "shrineARSupported": CostQuestShrineView.arSupported,
+        // "See it here": a Forge model in the room (SummonIsland.swift).
+        "summonViewAvailable": true,
+        "summonARSupported": CostQuestSummonView.arSupported,
+        "summonLiDAR": CostQuestSummonView.lidar,
       ]
     }
 
@@ -353,6 +357,40 @@ public final class CostQuestGameModule: Module {
       }
       AsyncFunction("photo") { (view: CostQuestShrineView) async -> String? in
         await view.photo()
+      }
+    }
+
+    // requireNativeView("CostQuestGame", "CostQuestSummonView")
+    View(CostQuestSummonView.self) {
+      Events("onSummonState")
+      Prop("uri") { (view: CostQuestSummonView, uri: String?) in view.uri = uri }
+      Prop("kind") { (view: CostQuestSummonView, kind: String?) in view.kind = kind ?? "character" }
+      Prop("name") { (view: CostQuestSummonView, name: String?) in view.name = name ?? "" }
+      Prop("heightM") { (view: CostQuestSummonView, h: Double?) in view.heightM = Float(h ?? 0) }
+      Prop("minScale") { (view: CostQuestSummonView, v: Double?) in view.minScale = Float(v ?? 0.1) }
+      Prop("maxScale") { (view: CostQuestSummonView, v: Double?) in view.maxScale = Float(v ?? 1.5) }
+      Prop("tint") { (view: CostQuestSummonView, tint: String?) in
+        if let colour = CostQuestModelView.color(tint) { view.tint = colour }
+      }
+      OnViewDidUpdateProps { (view: CostQuestSummonView) in
+        view.propsDone()
+      }
+      AsyncFunction("photo") { (view: CostQuestSummonView) async -> String? in
+        await view.photo()
+      }
+      // "recording", or null when it can't (a String? like photo: a Bool
+      // result picks an overload that needs the view's conformance off the main actor).
+      AsyncFunction("startVideo") { (view: CostQuestSummonView) async -> String? in
+        await view.startVideo() ? "recording" : nil
+      }
+      AsyncFunction("stopVideo") { (view: CostQuestSummonView) async -> String? in
+        await view.stopVideo()
+      }
+      AsyncFunction("celebrate") { (view: CostQuestSummonView) async in
+        await view.celebrate()
+      }
+      AsyncFunction("recenter") { (view: CostQuestSummonView) async in
+        await view.recenter()
       }
     }
 
