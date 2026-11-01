@@ -172,25 +172,7 @@ struct ARGameView: View {
         }
         .statusBarHidden()
         .persistentSystemOverlays(.hidden)
-        .task {
-            // Every fix goes to the game session, which attaches it to events
-            // for the geofence and hands it to the live link for the map. The
-            // link throttles; this does not need to.
-            field.location.onUpdate = { [weak session, field] in
-                session?.coordinate = field.location.coordinate
-                session?.fix = field.location.fix
-                session?.heading = field.location.trueNorth ?? 0
-                session?.altitude = field.location.altitude
-                Task { await session?.reportPosition() }
-            }
-            // A located action with an old fix (or one the server refused
-            // with need_location) asks for a fresh one first.
-            session.refreshFix = { [weak session, field] in
-                await field.location.freshFix()
-                session?.coordinate = field.location.coordinate
-                session?.fix = field.location.fix
-            }
-        }
+        .task { Self.bindLocation(field: field, session: session) }
         .onDisappear { field.shutdown() }
         .onChange(of: scenePhase) { _, phase in
             // Backgrounding an ARSession without pausing it keeps the camera
@@ -327,6 +309,30 @@ struct ARGameView: View {
     private var coachingLine: String? {
         if case .playing = field.phase { return field.session.coachingText }
         return nil
+    }
+
+    /// Every fix goes to the game session, which attaches it to events (with
+    /// how good and how old it is) for the geofence and the anti-cheat, and
+    /// hands it to the live link for the map. The link throttles; this does
+    /// not need to. A located action with an old fix, or one the server
+    /// refused with need_location, asks for a fresh one first (refreshFix).
+    /// Out of `body` so the view's type-check stays cheap.
+    private static func bindLocation(field: FieldModel, session: GameSession) {
+        let location = field.location
+        location.onUpdate = { [weak session, weak location] in
+            guard let session, let location else { return }
+            session.coordinate = location.coordinate
+            session.fix = location.fix
+            session.heading = location.trueNorth ?? 0
+            session.altitude = location.altitude
+            Task { await session.reportPosition() }
+        }
+        session.refreshFix = { [weak session, weak location] in
+            guard let location else { return }
+            await location.freshFix()
+            session?.coordinate = location.coordinate
+            session?.fix = location.fix
+        }
     }
 }
 
