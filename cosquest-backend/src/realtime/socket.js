@@ -104,6 +104,19 @@ async function initSocket(httpServer) {
   io.on('connection', (socket) => {
     socket.join(`user:${socket.userId}`);
 
+    // Is the app on screen? A connected socket alone doesn't say: a phone
+    // that was just locked or switched away keeps its socket open for a
+    // while (Socket.IO notices a dead one only after ~45 s; Android often
+    // keeps a live one much longer). The app says so: handshake
+    // `auth.active` and the `app:state` event { active } on every change.
+    // An app that never says stays "on screen" while connected (as before).
+    // push.js skips pushes only for people whose app is on screen.
+    socket.data.userId = socket.userId;
+    socket.data.foreground = socket.handshake.auth?.active !== false;
+    socket.on('app:state', (state) => {
+      if (typeof state?.active === 'boolean') socket.data.foreground = state.active;
+    });
+
     // Sparks: the SDK's protocol channel (`sparks` event). See src/sparks/index.js.
     require('../sparks').bindSocket(socket);
 
@@ -212,6 +225,18 @@ function emitToUser(userId, event, payload) {
   io?.to(`user:${userId}`).emit(event, payload);
 }
 
+/**
+ * Which of these users have the app on screen right now: a connected socket
+ * whose app hasn't said it went to the background (see the connection
+ * handler). Asks every server instance (fetchSockets goes through the Redis
+ * adapter), so nothing is stored that could go stale.
+ */
+async function foregroundAmong(userIds) {
+  if (!io || !userIds?.length) return new Set();
+  const sockets = await io.in(userIds.map((id) => `user:${id}`)).fetchSockets();
+  return new Set(sockets.filter((s) => s.data?.foreground !== false).map((s) => String(s.data?.userId)));
+}
+
 /** Push the same event to several accounts in one call. */
 function emitToUsers(userIds, event, payload) {
   if (!userIds?.length) return;
@@ -252,4 +277,4 @@ function emitToPost(postId, event, payload) {
   io?.to(`post:${postId}`).emit(event, payload);
 }
 
-module.exports = { initSocket, getIO, closeSocket, emitToConversation, emitToConversationExcept, emitToUser, emitToUsers, emitToRooms, emitToPost, revokeSession };
+module.exports = { initSocket, getIO, closeSocket, emitToConversation, emitToConversationExcept, emitToUser, emitToUsers, emitToRooms, emitToPost, revokeSession, foregroundAmong };

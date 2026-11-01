@@ -1,7 +1,8 @@
 // In-app banners: people with the app open get the `banner` socket event
 // (title, text, who, where to open) instead of a push - for chat messages,
 // mentions, follows, post activity and scheduled calls - and people with the
-// app closed still get the push.
+// app closed, or in the background with its socket still open (app:state),
+// still get the push.
 const { io } = require('socket.io-client');
 const User = require('../src/models/User');
 const push = require('../src/utils/push');
@@ -86,6 +87,33 @@ async function run(baseUrl) {
     await sleep(300);
     check(!banners.slice(before).some((b) => b.data?.type === 'like'), 'a kind switched off in settings doesn\'t pop up', banners.slice(before));
     await User.updateOne({ _id: ben.id }, { $set: { 'notificationCategories.friendActivity': true } });
+
+    console.log('\n--- app in the background, socket still open ---');
+    // A locked phone keeps its socket for a while: the app says it went to
+    // the background, and messages come as a push (a banner can't show).
+    socket.emit('app:state', { active: false });
+    await sleep(150);
+    sent.length = 0;
+    const beforeBackground = banners.length;
+    await request('POST', `/api/chats/${dm}/messages`, ana.token, { content: 'Are you coming?' });
+    const backgroundPush = await waitFor(sent, (m) => m.to === ben.pushToken && m.data?.type === 'message');
+    check(backgroundPush && backgroundPush.body === 'Are you coming?' && !banners.slice(beforeBackground).some((b) => b.data?.type === 'message'),
+      'app in the background (socket still open): the message comes as a push, not a banner', { backgroundPush, banners: banners.slice(beforeBackground) });
+    socket.emit('app:state', { active: true });
+    await sleep(150);
+    sent.length = 0;
+    await request('POST', `/api/chats/${dm}/messages`, ana.token, { content: 'On my way' });
+    const backOnScreen = await waitFor(banners, (b) => b.data?.type === 'message' && b.body === 'On my way');
+    await sleep(150);
+    check(backOnScreen && !sent.some((m) => m.to === ben.pushToken), 'back on screen: a banner again, no push', { backOnScreen, sent });
+    // Connecting while in the background (auth.active false) counts as background.
+    const quiet = io(baseUrl, { auth: { token: cy.token, active: false }, transports: ['websocket'], reconnection: false });
+    await new Promise((resolve, reject) => { quiet.on('connect', resolve); quiet.on('connect_error', reject); });
+    sent.length = 0;
+    await request('POST', `/api/users/${cy.username}/follow`, ana.token);
+    const quietPush = await waitFor(sent, (m) => m.to === cy.pushToken && m.data?.type === 'follow');
+    check(quietPush, 'connected from the background (auth.active false): a push, not a banner', quietPush);
+    quiet.disconnect();
   } finally {
     socket.disconnect();
     push.resetForTests();

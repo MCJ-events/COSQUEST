@@ -17,7 +17,18 @@ Phones get a push for a new DM or group message, an @mention, a follow, a group 
 | Call ringing | the people rung | push lives 45 s |
 | Game event | the user ids the game sends | the `category` switch is off |
 
-Always skipped: `preferences.notificationsEnabled` off, and any device row left over from before registration required a session (`authed: false`). Messages, mentions and calls also skip users with the app connected right now (they see it live); game events do not.
+Always skipped: `preferences.notificationsEnabled` off, and any device row left over from before registration required a session (`authed: false`). Messages, mentions, post activity and scheduled calls skip users with the app **on screen** (they get the in-app `banner` socket event instead); calls and game events always push.
+
+## App on screen (`app:state`)
+
+A connected socket doesn't mean the app is on screen: a phone that was just locked or switched away keeps its socket for a while (Socket.IO notices a dead one only after ~45 s; Android often keeps a live one much longer). Skipping the push then loses the notification, because a banner can't show in the background. So the app tells the server:
+
+- `socket.emit('app:state', { active: false })` when `AppState` changes to `background` or `inactive`, and `{ active: true }` when it comes back to `active`;
+- `active` in the handshake, as a function so every reconnect reads it afresh (a plain `auth` object is reused as it was): `io(url, { auth: (cb) => cb({ token, active: AppState.currentState === 'active' }) })`.
+
+A socket that never says counts as on screen while connected (how older app builds behave). The server asks every instance's live sockets (`foregroundAmong` in `src/realtime/socket.js`), so nothing is stored that could go stale.
+
+Calls always push, even with the app open: the app shows its own call screen from `call:incoming`, so its notification handler should leave pushes with `data.type === 'call'` unshown while the app is active.
 
 ## Devices
 

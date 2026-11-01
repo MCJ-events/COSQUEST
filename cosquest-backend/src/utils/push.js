@@ -11,12 +11,14 @@
  *   - only users with `preferences.notificationsEnabled` on;
  *   - `category` (a key of `notificationCategories`, e.g. friendActivity) must
  *     not be switched off;
- *   - `skipOnline`: not users with the app connected right now. They get the
+ *   - `skipOnline`: not users with the app ON SCREEN right now (connected and
+ *     not reported in the background: socket.js, `app:state`). They get the
  *     same title, text and data over the socket instead, as a `banner` event
  *     the app shows as an in-app banner (like Instagram's), so nothing is
- *     silent while the app is open. Used for messages, mentions, calls, post
- *     activity and scheduled calls; game events go to everyone as a push,
- *     because the game is not this socket.
+ *     silent while the app is open. Used for messages, mentions, post
+ *     activity and scheduled calls. Calls always push (notifyIncomingCall);
+ *     game events go to everyone as a push, because the game is not this
+ *     socket.
  *
  * Never throws into a request: every entry point is fire-and-forget and logs
  * its own failures. Tokens Expo reports as DeviceNotRegistered are removed.
@@ -30,7 +32,6 @@
  */
 const crypto = require('crypto');
 const User = require('../models/User');
-const { isOnline } = require('../realtime/presence');
 
 const EXPO_PUSH_URL = () => process.env.EXPO_PUSH_URL || 'https://exp.host/--/api/v2/push/send';
 const CHUNK = 100;
@@ -90,9 +91,18 @@ async function recipients(ids, { category }) {
   return out;
 }
 
-async function onlineAmong(ids) {
-  const online = await Promise.all(ids.map((id) => isOnline(id).catch(() => false)));
-  return new Set(ids.filter((id, i) => online[i]));
+// People with the app on screen right now (src/realtime/socket.js
+// foregroundAmong): not merely connected, since a locked phone keeps its
+// socket for a while and a push skipped then is a notification lost. If it
+// can't be answered, nobody counts as on screen: a push too many beats one
+// missed.
+async function onScreenAmong(ids) {
+  try {
+    return await require('../realtime/socket').foregroundAmong(ids);
+  } catch (err) {
+    console.warn('[push] could not check who has the app open:', err.message);
+    return new Set();
+  }
 }
 
 // The in-app version of a push, for people with the app open: socket event
@@ -140,7 +150,7 @@ async function sendToUsers(userIds, note) {
     if (!note || !note.body) return 0;
     let ids = [...new Set((userIds || []).map(String))].filter(Boolean);
     if (note.skipOnline && ids.length) {
-      const online = await onlineAmong(ids);
+      const online = await onScreenAmong(ids);
       if (online.size) {
         // noBanner: the caller sent online users its own socket event.
         if (!note.noBanner) await bannerTo([...online], note);
