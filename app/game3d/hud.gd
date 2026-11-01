@@ -120,6 +120,25 @@ var _banner_col: Color = Color.WHITE
 var _banner_t: float = 0.0
 var _banner_dur: float = 0.0
 var _hurt_t: float = 0.0
+# look-fight (art direction 6.3 / 7): screen washes from fight.gd's feel, the end title card,
+# the Guardian's bar along the top
+var tint: Color = Color(0, 0, 0, 0)      # the ultimate's source-colour wash (alpha set per frame)
+var vignette: float = 0.0                # the hurt vignette's alpha (feel.gd: 15 % for 200 ms)
+var _flash_a: float = 0.0
+var _banner_kind: String = ""
+var _boss_shake: float = 0.0
+var _boss_last_hp: int = -1
+const INK := Color("#1C2B3A")
+const CREAM := Color("#FFF8EC")
+const GOLD_HI := Color("#FFE08A")
+const GOLD_LO := Color("#F59E2A")
+const BERRY := Color("#D93840")
+const BOSS_FILL := Color("#FF5FD2")
+const BOSS_DEEP := Color("#8E2BD9")
+const POP_LIFE: float = 0.7              # damagePop: rise 56 pt over 700 ms, fade the last 200 ms
+const POP_MAX: int = 6                   # at most six numbers; the oldest fades first
+const POP_STACK_S: float = 0.3           # a number within 300 ms of the last on a fighter stacks above it
+const PT: float = 1.85                   # HUD px per phone point (720 px across ~390 pt)
 var _clock: float = 0.0
 var _chip: Dictionary = {}             # unit id -> trailing fraction (the chip-away)
 var _chip_hold: Dictionary = {}        # unit id -> seconds before the chip starts falling
@@ -352,13 +371,27 @@ func toast(s: String, at: Vector2) -> void:
 ## A floating number or word over a fighter. style: normal | heavy | crit | blocked |
 ## absorbed | heal | hurt | parry | dodge | ally
 func pop(world: Vector3, text: String, style: String) -> void:
-	if _pops.size() > 24:
-		_pops.remove_at(0)
-	# numbers fan out to alternate sides of the head so a combo does not stack on one spot
+	# look-fight (art direction 7, damage numbers): a new number within 300 ms of the last one on
+	# the same fighter sits 18 pt above it; at most six live, the oldest fades out first
 	_pop_side = -_pop_side
-	# cq 013: a slight random tilt per number (more on a crit), cosmetic randf only
-	var tilt: float = randf_range(0.06, 0.2 if style == "crit" else 0.13) * (-_pop_side)
-	_pops.append({"w": world, "t": 0.0, "s": text, "style": style, "dx": _pop_side * randf_range(30.0, 70.0), "dy": randf_range(-10.0, 14.0), "rot": tilt})
+	var dx: float = _pop_side * randf_range(14.0, 34.0)
+	var dy: float = 0.0
+	for j in range(_pops.size() - 1, -1, -1):
+		var q: Dictionary = _pops[j]
+		if float(q["t"]) < POP_STACK_S and (q["w"] as Vector3).distance_to(world) < 1.2:
+			dy = float(q["dy"]) - 18.0 * PT
+			dx = float(q["dx"]) * 0.4 + _pop_side * 12.0
+			break
+	var live: Array[Dictionary] = []
+	for q: Dictionary in _pops:
+		if not q.has("out"):
+			live.append(q)
+	if live.size() >= POP_MAX:
+		live[0]["out"] = float(live[0]["t"])
+	if _pops.size() > 16:
+		_pops.remove_at(0)
+	var tilt: float = randf_range(0.02, 0.1 if style == "crit" else 0.06) * (-_pop_side)
+	_pops.append({"w": world, "t": 0.0, "s": text, "style": style, "dx": dx, "dy": dy, "rot": tilt})
 
 
 func callout(text: String, col: Color) -> void:
@@ -367,7 +400,10 @@ func callout(text: String, col: Color) -> void:
 	_callout_t = 0.0
 
 
-func banner(text: String, sub: String, col: Color, dur: float) -> void:
+func banner(text: String, sub: String, col: Color, dur: float, kind: String = "") -> void:
+	_banner_kind = kind
+	if kind == "win" or kind == "lose":
+		_pops.clear()   # the title card reads alone
 	_banner = text
 	_banner_sub = sub
 	_banner_col = col
@@ -376,7 +412,13 @@ func banner(text: String, sub: String, col: Color, dur: float) -> void:
 
 
 func hurt() -> void:
-	_hurt_t = 0.3
+	# look-fight: the red vignette is fight.gd's feel now (`vignette`, 15 % for 200 ms)
+	pass
+
+
+## A short cream flash over the frame (the Guardian's KO): never a white-out.
+func flash_screen(a: float) -> void:
+	_flash_a = maxf(_flash_a, minf(a, 0.35))
 
 
 func _process(dt: float) -> void:
@@ -412,11 +454,13 @@ func _process(dt: float) -> void:
 		_banner_t += dt
 		if _banner_dur > 0.0 and _banner_t > _banner_dur:
 			_banner = ""
+	_flash_a = maxf(0.0, _flash_a - dt * 3.0)
+	_boss_shake = maxf(0.0, _boss_shake - dt * 4.0)
 	var i: int = _pops.size() - 1
 	while i >= 0:
 		var d: Dictionary = _pops[i]
 		d["t"] = float(d["t"]) + dt
-		if float(d["t"]) > 0.95:
+		if float(d["t"]) > POP_LIFE or (d.has("out") and float(d["t"]) - float(d["out"]) > 0.12):
 			_pops.remove_at(i)
 		i -= 1
 	# health chip-away: the trailing part waits a moment, then slides down
@@ -467,7 +511,8 @@ func _queue_text(base: Vector2, s: String, align: HorizontalAlignment, w: float,
 
 
 func _flush_texts() -> void:
-	_texts.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0] or (a[0] == b[0] and a[1] < b[1]))
+	# look-fight: within a size, thicker outlines first (a crit's ink ring under its orange ring)
+	_texts.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0] or (a[0] == b[0] and a[1] > b[1]))
 	# outlines first (they sit under the fill), then the fills
 	for pass_i in 2:
 		for t in _texts:
@@ -523,13 +568,21 @@ func _pie(c: Vector2, r: float, k: float, col: Color) -> void:
 
 
 func _draw() -> void:
-	_draw_overheads()
-	_draw_pops()
+	var card: bool = _banner != "" and (_banner_kind == "win" or _banner_kind == "lose")
+	if not card:
+		_draw_overheads()
+		_draw_pops()
 	_draw_top()
+	_draw_boss_bar()
 	_draw_minimap()
-	_draw_controls()
-	if _hurt_t > 0.0:
-		var a: float = _hurt_t / 0.3 * 0.4
+	if not card:   # look-fight: the controls step aside for the end card
+		_draw_controls()
+	if tint.a > 0.004:
+		draw_rect(Rect2(Vector2.ZERO, size), tint)
+	if _flash_a > 0.004:
+		draw_rect(Rect2(Vector2.ZERO, size), Color(CREAM.r, CREAM.g, CREAM.b, _flash_a))
+	if vignette > 0.004:
+		var a: float = vignette
 		for j in 4:
 			var w: float = 26.0 - j * 6.0
 			var col := Color(1, 0.08, 0.08, a * (0.25 + j * 0.2))
@@ -543,7 +596,9 @@ func _draw() -> void:
 		var cc := _callout_col
 		cc.a = ka
 		_text_scaled(Vector2(size.x * 0.5, size.y * 0.64), _callout, 48, cc, 12, kp, Color(0.12, 0.04, 0.1, ka))
-	if _banner != "":
+	if _banner != "" and (_banner_kind == "win" or _banner_kind == "lose"):
+		_draw_title_card()
+	elif _banner != "":
 		var k: float = clampf(_banner_t / 0.15, 0.0, 1.0)
 		var y: float = size.y * 0.36
 		draw_rect(Rect2(Vector2(0, y - 70), Vector2(size.x, 140)), Color(0.04, 0.02, 0.08, 0.55 * k))
@@ -593,7 +648,8 @@ func _draw_overheads() -> void:
 			continue
 		var h: float = 13.0 if boss else 11.0
 		var r := Rect2(p + Vector2(-w * 0.5, 0), Vector2(w, h))
-		_rbar(r, k, fill, float(_chip.get(id, k)), float(u.get("shield", 0.0)))
+		if not boss:   # look-fight: the Guardian's bar is the big one along the top
+			_rbar(r, k, fill, float(_chip.get(id, k)), float(u.get("shield", 0.0)))
 		if not boss:
 			# level badge, as on the reference's hero bar
 			var bc: Vector2 = r.position + Vector2(-12, h * 0.5)
@@ -606,7 +662,7 @@ func _draw_overheads() -> void:
 			_text(p + Vector2(w * 0.5 + 16, 6), "▲", 18, Color(1.0, 0.8, 0.3), 4)
 		if boss and enemy_label != "":
 			var pulse: float = 0.75 + 0.25 * sin(_clock * 10.0)
-			_text(p + Vector2(0, 30), enemy_label, 18, Color(1.0, 0.85, 0.3, pulse), 5)
+			_text(p + Vector2(0, 14), enemy_label, 18, Color(1.0, 0.85, 0.3, pulse), 5)
 
 
 func _draw_pops() -> void:
@@ -618,64 +674,128 @@ func _draw_pops() -> void:
 			continue
 		var t: float = d["t"]
 		var style: String = d["style"]
-		# cq 013 punch: the number flies out on a little arc (fast up, easing over), pops in
-		# past full size and settles (scale overshoot), sits at a slight tilt, and fades fast
-		var v0: float = 230.0 if style != "crit" else 170.0
-		var arc_y: float = v0 * t - 150.0 * t * t
-		var p: Vector2 = cam.unproject_position(w) + Vector2(float(d["dx"]) * minf(1.0, t / 0.18 + 0.3), float(d.get("dy", 0.0)) - 6.0 - arc_y)
-		var a: float = 1.0 - clampf((t - 0.52) / 0.28, 0.0, 1.0)
-		var peak: float = 1.75 if style == "crit" else (1.5 if style == "heavy" else 1.38)
-		var punch: float = _pop_punch(t, peak) * lerpf(1.0, 0.82, clampf((t - 0.52) / 0.28, 0.0, 1.0))
-		# sized like the reference's numbers: a jab still reads at phone size
-		var fs: int = 42
-		var col: Color = Color(1.0, 0.97, 0.86, a)
-		var ocol: Color = Color(0.16, 0.06, 0.14, a)
-		var ol: int = 9
+		# look-fight damagePop (art direction 6.3): 0.6 -> 1.15 -> 1.0 over 180 ms, rises 56 pt over
+		# 700 ms easing out, fades over the last 200 ms (or 120 ms when a seventh number pushes it out)
+		var rise: float = 56.0 * PT * (1.0 - pow(1.0 - clampf(t / POP_LIFE, 0.0, 1.0), 2.0))
+		var p: Vector2 = cam.unproject_position(w) + Vector2(float(d["dx"]), float(d.get("dy", 0.0)) - 10.0 - rise)
+		var a: float = 1.0 - clampf((t - (POP_LIFE - 0.2)) / 0.2, 0.0, 1.0)
+		if d.has("out"):
+			a = minf(a, 1.0 - clampf((t - float(d["out"])) / 0.12, 0.0, 1.0))
+		var punch: float = _damage_pop(t, 1.22 if style == "crit" else 1.15)
+		var fs: int = int(22.0 * PT)
+		var col: Color = Color(1.0, 1.0, 1.0, a)
+		var ocol: Color = Color(INK.r, INK.g, INK.b, a)
+		var ol: int = int(3.0 * PT * 2.0)
 		match style:
 			"heavy":
-				fs = 52
-				col = Color(1.0, 0.84, 0.28, a)
-				ocol = Color(0.35, 0.12, 0.02, a)
-				ol = 11
+				fs = int(30.0 * PT)
 			"crit":
-				fs = 68
-				col = Color(1.0, 0.42, 0.12, a)
-				ocol = Color(0.3, 0.02, 0.06, a)
-				ol = 12
-				# a hot flash behind a crit for its first moments
-				if t < 0.26:
-					var fk: float = 1.0 - t / 0.26
-					var fsz: float = 230.0 * (0.6 + 0.6 * ease(t / 0.26, 0.4))
-					draw_texture_rect_region(T_FX_ATLAS, Rect2(p - Vector2(fsz, fsz) * 0.5, Vector2(fsz, fsz)), Rect2(512, 0, 256, 256), Color(1.0, 0.85, 0.45, 0.85 * fk))
-					draw_texture_rect_region(T_FX_ATLAS, Rect2(p - Vector2(fsz, fsz) * 0.3, Vector2(fsz, fsz) * 0.6), Rect2(0, 0, 256, 256), Color(1.0, 0.95, 0.8, 0.7 * fk))
-			"blocked":
-				fs = 26
-				col = Color(0.7, 0.8, 0.95, a)
-				ocol = Color(0.08, 0.1, 0.2, a)
-			"absorbed":
-				fs = 26
-				col = Color(0.55, 0.88, 1.0, a)
-				ocol = Color(0.03, 0.12, 0.25, a)
-			"heal":
-				fs = 32
-				col = Color(0.45, 1.0, 0.45, a)
-				ocol = Color(0.02, 0.2, 0.05, a)
+				fs = int(34.0 * PT)
+				col = Color(GOLD_HI.r, GOLD_HI.g, GOLD_HI.b, a)
+				# the gold's darker lower edge: an orange ring inside the ink outline
+				_text_scaled(p, str(d["s"]), fs, Color(GOLD_LO.r, GOLD_LO.g, GOLD_LO.b, 0.0), int(ol * 0.55), punch, Color(GOLD_LO.r, GOLD_LO.g, GOLD_LO.b, a), float(d.get("rot", 0.0)))
+				ol = int(ol * 1.25)
+				if t < 0.2:
+					var fk: float = 1.0 - t / 0.2
+					var fsz: float = 200.0 * (0.6 + 0.6 * ease(t / 0.2, 0.4))
+					draw_texture_rect_region(T_FX_ATLAS, Rect2(p - Vector2(fsz, fsz) * 0.5, Vector2(fsz, fsz)), Rect2(512, 0, 256, 256), Color(GOLD_HI.r, GOLD_HI.g, GOLD_HI.b, 0.75 * fk))
 			"hurt":
-				fs = 34
-				col = Color(1.0, 0.32, 0.3, a)
-				ocol = Color(0.25, 0.0, 0.02, a)
+				fs = int(24.0 * PT)
+				col = Color(1.0, 0.29, 0.24, a)   # #FF4A3D
+			"heal":
+				fs = int(22.0 * PT)
+				col = Color(0.42, 0.92, 0.55, a)   # #6BEA8C
+			"blocked", "absorbed":
+				fs = int(16.0 * PT)
+				col = Color(0.56, 0.85, 1.0, a)    # shield mid
 			"parry":
-				fs = 44
-				col = Color(1.0, 0.95, 0.5, a)
-				ocol = Color(0.35, 0.18, 0.0, a)
-				ol = 10
+				fs = int(26.0 * PT)
+				col = Color(GOLD_HI.r, GOLD_HI.g, GOLD_HI.b, a)
 			"dodge":
-				fs = 28
-				col = Color(0.8, 1.0, 1.0, a)
+				fs = int(16.0 * PT)
+				col = Color(0.9, 0.97, 1.0, a)
 			"ally":
-				fs = 28
-				col = Color(0.7, 0.92, 1.0, a)
+				fs = int(17.0 * PT)
+				col = Color(0.5, 0.87, 0.96, a)    # #7FDDF5
 		_text_scaled(p, str(d["s"]), fs, col, ol, punch, ocol, float(d.get("rot", 0.0)))
+
+
+## look-fight damagePop scale: 0.6 to `peak` in 90 ms, back to 1.0 by 180 ms.
+static func _damage_pop(t: float, peak: float) -> float:
+	if t < 0.09:
+		return lerpf(0.6, peak, 1.0 - pow(1.0 - t / 0.09, 2.0))
+	if t < 0.18:
+		return lerpf(peak, 1.0, smoothstep(0.0, 1.0, (t - 0.09) / 0.09))
+	return 1.0
+
+
+## look-fight end title card (art direction 7): VICTORY in gold (#FFE08A over #F59E2A, ink
+## outline) on a dimmed band, or DEFEATED in cream on a Berry band. In over 220 ms.
+func _draw_title_card() -> void:
+	var k: float = clampf(_banner_t / 0.22, 0.0, 1.0)
+	var ke: float = ease(k, 0.35)
+	var y: float = size.y * 0.38
+	var win: bool = _banner_kind == "win"
+	# the frame dims behind the card (the "frozen, slightly blurred" frame, without a post pass)
+	draw_rect(Rect2(Vector2.ZERO, size), Color(INK.r, INK.g, INK.b, 0.28 * ke))
+	var band_h: float = 176.0
+	var band: Color = Color(INK.r, INK.g, INK.b, 0.72 * ke) if win else Color(BERRY.r, BERRY.g, BERRY.b, 0.94 * ke)
+	var bw: float = size.x * lerpf(0.3, 1.0, ke)
+	draw_rect(Rect2(Vector2((size.x - bw) * 0.5, y - band_h * 0.5), Vector2(bw, band_h)), band)
+	if win:
+		draw_rect(Rect2(Vector2((size.x - bw) * 0.5, y - band_h * 0.5), Vector2(bw, 4)), Color(GOLD_LO.r, GOLD_LO.g, GOLD_LO.b, ke))
+		draw_rect(Rect2(Vector2((size.x - bw) * 0.5, y + band_h * 0.5 - 4), Vector2(bw, 4)), Color(GOLD_LO.r, GOLD_LO.g, GOLD_LO.b, ke))
+	var fs: int = int(56.0 * PT)
+	var sc: float = lerpf(1.3, 1.0, ke)
+	var ty: float = y - 16.0
+	if win:
+		_text_scaled(Vector2(size.x * 0.5, ty), _banner, fs, Color(GOLD_LO.r, GOLD_LO.g, GOLD_LO.b, 0.0), 10, sc, Color(GOLD_LO.r, GOLD_LO.g, GOLD_LO.b, ke))
+		_text_scaled(Vector2(size.x * 0.5, ty), _banner, fs, Color(GOLD_HI.r, GOLD_HI.g, GOLD_HI.b, ke), 18, sc, Color(INK.r, INK.g, INK.b, ke))
+	else:
+		_text_scaled(Vector2(size.x * 0.5, ty), _banner, int(48.0 * PT), Color(CREAM.r, CREAM.g, CREAM.b, ke), 12, sc, Color(0.42, 0.07, 0.1, ke))
+	if _banner_sub != "":
+		var ks: float = clampf((_banner_t - 0.15) / 0.2, 0.0, 1.0)
+		_text(Vector2(size.x * 0.5, y + 58), _banner_sub, int(15.0 * PT), Color(CREAM.r, CREAM.g, CREAM.b, ks), 6, Color(INK.r, INK.g, INK.b, ks))
+
+
+## look-fight: the Guardian's bar along the top (delayed drain, the enrage mark at 35 %,
+## a jolt on big hits). The bar over its head goes; its name stays there.
+func _draw_boss_bar() -> void:
+	var u: Dictionary = {}
+	for x: Dictionary in units:
+		if int(x["team"]) == 1:
+			u = x
+			break
+	if u.is_empty() or float(u["hp"]) <= 0.0:
+		return
+	var id: int = int(u.get("id", 0))
+	var hp: int = int(u["hp"])
+	var mx: float = maxf(1.0, float(u["max"]))
+	if _boss_last_hp >= 0 and hp < _boss_last_hp and float(_boss_last_hp - hp) / mx > 0.018:
+		_boss_shake = 1.0
+	_boss_last_hp = hp
+	var k: float = float(hp) / mx
+	var chip: float = float(_chip.get(id, k))
+	var x0: float = 26.0
+	var x1: float = size.x - 194.0
+	var y: float = 132.0
+	var j: Vector2 = Vector2(sin(_clock * 70.0), cos(_clock * 53.0)) * 4.0 * _boss_shake
+	var r := Rect2(Vector2(x0, y) + j, Vector2(x1 - x0, 18.0))
+	draw_rect(r.grow(3.0), Color(INK.r, INK.g, INK.b, 0.9))
+	if chip > k:
+		draw_rect(Rect2(r.position + Vector2(r.size.x * k, 0), Vector2(r.size.x * (clampf(chip, 0.0, 1.0) - k), r.size.y)), CREAM)
+	var fw: float = r.size.x * clampf(k, 0.0, 1.0)
+	draw_rect(Rect2(r.position, Vector2(fw, r.size.y)), BOSS_FILL)
+	draw_rect(Rect2(r.position + Vector2(0, r.size.y * 0.62), Vector2(fw, r.size.y * 0.38)), BOSS_DEEP)
+	draw_rect(Rect2(r.position, Vector2(fw, 4.0)), Color(1, 1, 1, 0.3))
+	if _boss_shake > 0.5:
+		draw_rect(Rect2(r.position, Vector2(fw, r.size.y)), Color(1, 1, 1, 0.35 * (_boss_shake - 0.5) * 2.0))
+	var ex: float = r.position.x + r.size.x * 0.35
+	draw_rect(Rect2(Vector2(ex - 1.5, r.position.y - 3), Vector2(3, r.size.y + 6)), Color(CREAM.r, CREAM.g, CREAM.b, 0.9))
+	_text_left(Vector2(x0, y - 16) + j, str(u["name"]).to_upper(), 22, CREAM, 6)
+	if enemy_label != "":
+		var pulse: float = 0.75 + 0.25 * sin(_clock * 10.0)
+		_queue_text(Vector2(x1 - 300.0, y - 16 + 22 * 0.36) + j, enemy_label, HORIZONTAL_ALIGNMENT_RIGHT, 300.0, 20, Color(GOLD_HI.r, GOLD_HI.g, GOLD_HI.b, pulse), 6)
 
 
 ## cq 013: the number's scale over its life: pops in from small to `peak` in 0.06 s, drops

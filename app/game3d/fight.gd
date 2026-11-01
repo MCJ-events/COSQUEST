@@ -28,6 +28,7 @@ const ArenaScript := preload("res://arena.gd")
 const BloomScript := preload("res://bloom.gd")
 const CoopScript := preload("res://coop.gd")
 const HapticsScript := preload("res://haptics.gd")
+const FeelScript := preload("res://feel.gd")
 
 # ---- fighters
 const HERO_HP: int = 1000
@@ -55,10 +56,11 @@ const CRIT_CHANCE: float = 0.14
 const CRIT_MULT: float = 1.6
 
 # ---- effect colours (cq 013): [body, glow] for fx.gd's layered arcs and trails
-const CHARGE_COLS: Array = [Color(0.05, 0.85, 0.85), Color(0.35, 1.0, 0.92), "soft"]
-const WHIRL_COLS: Array = [Color(1.0, 0.55, 0.12), Color(1.0, 0.82, 0.4)]
-const WHIRL_COLS_2: Array = [Color(1.0, 0.4, 0.75), Color(1.0, 0.75, 0.9)]
-const BOSS_COLS: Array = [Color(0.9, 0.12, 0.1), Color(1.0, 0.45, 0.3)]
+# look-fight: the hero's skills in the hero's colours, the Guardian's in its own (art direction 2.8)
+const CHARGE_COLS: Array = [Color("#FFC54D"), Color("#FFF6D8"), "soft"]
+const WHIRL_COLS: Array = [Color("#FF8A1F"), Color("#FFC54D")]
+const WHIRL_COLS_2: Array = [Color("#FFC54D"), Color("#FFF6D8")]
+const BOSS_COLS: Array = [Color("#FF5FD2"), Color("#FFE3F6")]
 
 # ---- camera impact (cq 013): trauma adds up per event (capped at 1), decays, and the
 # offset is trauma squared, so light hits barely move the view and big ones kick it.
@@ -198,6 +200,12 @@ var bloom: BloomScript
 var sfx: SfxScript
 var _haptics: HapticsScript = HapticsScript.new()
 var _haptics_on: bool = false   # config "haptics": the app sends its in-game toggle; off when absent
+var feel: FeelScript = FeelScript.new()   # look-fight: section 7 of the art direction (presentation only)
+var _ko_dt_real: float = 0.0              # this frame's real length while the KO beat slows time
+var _banner_at: float = -1.0              # the end banner waits for the KO beat (real seconds into "ending")
+var _banner_args: Array = []
+var _env: Environment
+var _frame_k: float = 0.0                 # look-fight dynamic framing: 0 apart .. 1 engaged
 var tiles: Node3D
 var arena: Node3D
 var _ground: MeshInstance3D
@@ -347,6 +355,7 @@ func _ready() -> void:
 	_cam_dist = float(cfg.get("cam_dist", CAM_DIST))
 	_cam_ahead = float(cfg.get("cam_ahead", CAM_AHEAD))
 	_reduce_motion = bool(cfg.get("reduce_motion", false))   # the app's Reduce motion setting: a quarter of the shake, no zoom punch
+	feel.reduce_motion = _reduce_motion
 	# Off unless the app asks: an older app build reads any message without "event" handling as
 	# the result, and review captures and headless runs have no phone to buzz.
 	_haptics_on = bool(cfg.get("haptics", false)) and not _headless
@@ -403,6 +412,7 @@ func _ready() -> void:
 	sfx = SfxScript.new()
 	sfx.name = "Sfx"
 	sfx.enabled = bool(cfg.get("sound", true))
+	sfx.music_on = bool(cfg.get("music", true)) and not _headless
 	add_child(sfx)
 	_build_boss_area()
 	var layer := CanvasLayer.new()
@@ -492,6 +502,7 @@ func _ready() -> void:
 
 
 func _exit_tree() -> void:
+	_restore_time()
 	if RenderingServer.frame_post_draw.is_connected(_on_post_draw):
 		RenderingServer.frame_post_draw.disconnect(_on_post_draw)
 	if _thread != null and _thread.is_started():
@@ -726,6 +737,8 @@ var _intro_from: Transform3D
 
 
 func _begin_or_intro() -> void:
+	if mode == "full":
+		sfx.start_music()   # look-fight: the combat loop fades in under the intro
 	var pl: Node3D = arena.get("place") if arena != null else null
 	if pl == null or not bool(cfg.get("intro", true)):
 		_begin_fight()
@@ -870,6 +883,10 @@ func _stick_world() -> Vector3:
 
 func _process(dt: float) -> void:
 	_frame_dt = dt
+	# look-fight: the KO beat slows Engine.time_scale (only once the fight is over, so the
+	# simulation never sees it); the end beat and the feel timers run on real time
+	var real_dt: float = dt / maxf(0.05, Engine.time_scale)
+	_ko_dt_real = real_dt
 	if state == "fighting" or state == "ending":
 		_perf_sample(dt)
 	if state == "loading":
@@ -879,12 +896,18 @@ func _process(dt: float) -> void:
 	elif state == "intro":
 		_tick_intro(dt)
 	elif state == "ending":
-		_end_t += dt
+		_end_t += real_dt
+		_tick_end_beat()
 		if _end_t >= _end_delay:
 			_emit_result()
-	var frozen: bool = _hitstop > 0.0
+	var frozen: bool = _hitstop > 0.0 or feel.vis_stop > 0.0
 	if _hitstop > 0.0:
 		_hitstop -= dt
+	feel.tick(real_dt, state == "fighting")
+	if feel.ko_active and state == "ending":
+		Engine.time_scale = feel.ko_time_scale(feel.ko_t)
+	hud.tint = Color(feel.tint_col.r, feel.tint_col.g, feel.tint_col.b, feel.tint_alpha())
+	hud.vignette = feel.vignette_alpha()
 	for f: FighterScript in fighters:
 		f.anim_freeze = frozen
 		f.tick_visual(dt)
@@ -1120,9 +1143,10 @@ func _wclass(f: FighterScript) -> String:
 
 
 func _swing_cols(heavy: bool) -> Array:
+	# look-fight: every hero swing in the hero's colours (art direction 2.8), the heavy third hotter
 	if heavy:
-		return fx.GOLD
-	return fx.CLASS_COLS.get(_hero_wclass, fx.CLASS_COLS["blade"])
+		return [FeelScript.HERO_EDGE, FeelScript.HERO_MID]
+	return [FeelScript.HERO_MID, FeelScript.HERO_CORE]
 
 
 ## The weapon's far end in the world (the end of its mesh's longest axis away from the
@@ -1274,7 +1298,7 @@ func _tick_skill(dt: float) -> void:
 			elif t > 0.31 and _fire_once("end"):
 				_skill_area.close()
 				fx.charge_end(hero.position, _skill_dir, CHARGE_COLS[0])
-				_impact_cam(0.35, 1.5)
+				_feel_cam("skill_m", _skill_dir)
 		1:   # SPLIT: hop, slam, a crack that runs 7 m ahead
 			if t >= 0.34 and _fire_once("slam"):
 				_shake_cam(0.2, 0.3)
@@ -1282,8 +1306,9 @@ func _tick_skill(dt: float) -> void:
 				_punch = maxf(_punch, 0.7)
 				sfx.play("slam")
 				fx.split_slam(hero.position + _skill_dir * 0.5, _skill_dir)
-				_impact_cam(0.6, 4.0)
-				fx.ground_split(hero.position + _skill_dir * 0.8, _skill_dir, SPLIT_LEN_M, 0.25, Color(1.0, 0.55, 0.2))
+				_feel_cam("ult")
+				feel.wash("ult", FeelScript.HERO_MID)
+				fx.ground_split(hero.position + _skill_dir * 0.8, _skill_dir, SPLIT_LEN_M, 0.25, FeelScript.HERO_EDGE)
 				hero.remove_child(_skill_area)
 				add_child(_skill_area)
 				_skill_area.global_position = hero.position
@@ -1305,7 +1330,7 @@ func _tick_skill(dt: float) -> void:
 					fx.whirl(hero.position, WHIRL_RADIUS, WHIRL_COLS if hit_i == 0 else WHIRL_COLS_2, 1.0, hit_i == 1)
 					_shake_cam(0.12, 0.25)
 					_buzz("hit", 0.5)
-					_impact_cam(0.3, 0.0)
+					_feel_cam("skill_s")
 					_punch = maxf(_punch, 0.4)
 					sfx.play("swing_heavy", 1.1)
 					var cyl := CylinderShape3D.new()
@@ -1328,7 +1353,7 @@ func _tick_skill(dt: float) -> void:
 					f.hp = mini(f.max_hp, f.hp + heal)
 					(_jlog["heals"] as Array).append([_jt(), _jl(), _jwho(f), heal])
 					f.give_buff(RALLY_MULT, RALLY_SECS)
-					fx.heal(f.position, Color(0.55, 1.0, 0.45))
+					fx.heal(f.position, FeelScript.HEAL_MID)
 					hud.pop(f.chest_pos() + Vector3(0, 0.6, 0), "+%d" % heal, "heal")
 		4:   # SHIELD: a barrier over the hero and a nearby ally
 			if t >= 0.2 and _fire_once("shield"):
@@ -1337,7 +1362,7 @@ func _tick_skill(dt: float) -> void:
 					if f == null or f.dead or _flat(f.position - hero.position).length() > SUPPORT_RANGE:
 						continue
 					f.give_shield(SHIELD_HP, SHIELD_SECS)
-					fx.shield_up(f.position, 1.3 * f.size_k, Color(0.45, 0.8, 1.0))
+					fx.shield_up(f.position, 1.3 * f.size_k, FeelScript.SHIELD_MID)
 
 
 func _start_dodge(dir: Vector3) -> void:
@@ -1399,6 +1424,7 @@ func _apply_hit(src: FighterScript, dst: FighterScript, info: Dictionary) -> voi
 			hero.knock(away, 0.5)
 			_hitstop = maxf(_hitstop, 3.0 / 60.0)
 			_shake_cam(0.06, 0.12)
+			_feel_hit("block", hero, 3.0 / 60.0, away, src)
 			_buzz("block", 0.5)
 			return
 	# crits (the hero's side)
@@ -1427,23 +1453,22 @@ func _apply_hit(src: FighterScript, dst: FighterScript, info: Dictionary) -> voi
 		kb *= 0.45   # the boss is heavy
 	if kb > 0.0:
 		dst.knock(away, kb)
-	var tint: Color = Color(1.0, 0.85, 0.35) if (heavy or crit) else Color(0.8, 0.92, 1.0)
+	# look-fight: colours by source (art direction 2.8), so who hit whom reads without words
+	var tint: Color = FeelScript.CRIT_MID if crit else (FeelScript.HERO_EDGE if heavy else FeelScript.HERO_MID)
 	if src == ally:
-		tint = Color(0.6, 0.85, 1.0)
+		tint = FeelScript.ALLY_MID
 	if dst.team == 0:
-		tint = Color(1.0, 0.35, 0.25)
+		tint = FeelScript.BOSS_MID
 	var contact: Vector3 = dst.chest_pos() - away.normalized() * 0.45 * dst.size_k   # on the body's surface, facing the blow
 	fx.sparks(contact, tint, amount, crit, away)
 	if heavy and src == hero:
 		fx.dust(dst.position, amount >= 140)
 	if crit:
 		fx.decal(fx.SCORCH, dst.position + away.normalized() * 0.3, 1.1 + 0.3 * dst.size_k, Color(0.12, 0.08, 0.07, 0.6), 3.0)
-	if src == hero or dst == hero:
-		var big: bool = crit or amount >= 140 or (src == enemy and heavy)
-		_impact_cam(0.42 if crit else (0.32 if big else 0.14), (1.6 if crit else (1.2 if big else 0.0)), away)
 	var stop: float = float(info.get("stop", 3.0 / 60.0))
 	if src == hero or dst == hero:
 		_hitstop = maxf(_hitstop, stop * (1.4 if crit else 1.0))
+		_feel_hit(_moment_for(src, dst, info, heavy, crit), dst, stop * (1.4 if crit else 1.0), away, src)
 	if left > 0:
 		var style: String = "normal"
 		if dst.team == 0:
@@ -1465,6 +1490,7 @@ func _apply_hit(src: FighterScript, dst: FighterScript, info: Dictionary) -> voi
 	sfx.play("hit_heavy" if heavy or crit else "hit", 0.9 if dst == enemy else 1.1)
 	if crit:
 		stats["crits"] = int(stats["crits"]) + 1
+		sfx.crit()
 	if dst == hero and left > 0:
 		hud.hurt()
 		_shake_cam(0.14, 0.2)
@@ -1490,7 +1516,10 @@ func _apply_hit(src: FighterScript, dst: FighterScript, info: Dictionary) -> voi
 		fx.ko_burst(dst.position, dst.size_k, Color(1.0, 0.85, 0.45) if dst.team == 1 else Color(0.7, 0.85, 1.0))
 		if dst == enemy:
 			fx.coin_burst(dst.position + Vector3(0, 1.0 * dst.size_k, 0), 6)
-			_impact_cam(0.7, 2.5)
+			if mode == "full" and coop == null:
+				_ko_begin("boss_ko", enemy)
+		elif dst == hero and mode == "full":
+			_ko_begin("hero_ko", hero)
 		if dst == ally:
 			_update_players()
 
@@ -1518,8 +1547,9 @@ func _parry(src: FighterScript) -> void:
 	hud.callout("PARRY!", Color(1.0, 0.92, 0.45))
 	sfx.play("parry")
 	fx.clash(hero.chest_pos() + hero.forward() * 0.55 + Vector3(0, 0.15, 0))
-	fx.shock(hero.position, 2.2, Color(1.0, 0.88, 0.45), 0.4)
-	_impact_cam(0.4, 1.2)
+	fx.shock(hero.position, 2.2, FeelScript.CRIT_MID, 0.4)
+	_feel_cam("parry")
+	feel.stop("parry", 0.16)
 	hero.act("parry", 0.35, PARRY_HIT_AT)
 	hero.flash(0.6)
 	_hitstop = maxf(_hitstop, 0.16)
@@ -1572,6 +1602,7 @@ func _tick_enemy(dt: float) -> void:
 		hud.callout("ENRAGED!", Color(1.0, 0.4, 0.3))
 		enemy.flash(1.0)
 		_shake_cam(0.12, 0.3)
+		_feel_cam("enrage")
 		_buzz("slam", 0.6)
 	var target: FighterScript = _enemy_target if (_enemy_target != null and not _enemy_target.dead) else hero
 	var to: Vector3 = _flat(target.position - enemy.position)
@@ -1643,7 +1674,7 @@ func _enemy_begin(kind: String, target: FighterScript) -> void:
 		_boss_area.shape_node.position = Vector3.ZERO
 		_boss_area.global_position = enemy.position
 		_boss_area.rotation = Vector3(0, _enemy_yaw, 0)
-		_tele = fx.telegraph(enemy.position, _enemy_yaw, SWIPE_R, SWIPE_HALF, _enemy_windup)
+		_tele = fx.telegraph(enemy.position, _enemy_yaw, SWIPE_R, SWIPE_HALF, _enemy_windup, FeelScript.TELEGRAPH)
 	else:
 		# the ring lands where the target stands now: move out of it, or parry it
 		_enemy_at = target.position
@@ -1651,7 +1682,7 @@ func _enemy_begin(kind: String, target: FighterScript) -> void:
 		_boss_area.shape_node.position = Vector3(0, 1.3, 0)
 		_boss_area.global_position = _enemy_at
 		_boss_area.rotation = Vector3.ZERO
-		_tele = fx.telegraph(_enemy_at, 0.0, SLAM_R, 180.0, _enemy_windup, Color(1.0, 0.3, 0.1, 1.0))
+		_tele = fx.telegraph(_enemy_at, 0.0, SLAM_R, 180.0, _enemy_windup, FeelScript.TELEGRAPH)
 
 
 func _enemy_strike() -> void:
@@ -1670,16 +1701,16 @@ func _enemy_strike() -> void:
 			var a: float = _enemy_yaw + deg_to_rad(lerpf(SWIPE_HALF, -SWIPE_HALF, float(i) / 8.0))
 			var dir := Vector3(sin(a), 0, cos(a))
 			fx.trail_push("boss", enemy.position + Vector3(0, 1.5, 0) + dir * 0.9, enemy.position + Vector3(0, 1.2, 0) + dir * SWIPE_R, BOSS_COLS, (8 - i) * 0.012, 0.5)
-		_impact_cam(0.35, 1.2)
 		sfx.play("swing_heavy", 0.75)
 	else:
-		fx.shock(_enemy_at, SLAM_R * 1.1, Color(1.0, 0.45, 0.2), 0.45)
-		fx.sparks(_enemy_at + Vector3(0, 0.3, 0), Color(1.0, 0.55, 0.25), 200)
+		fx.shock(_enemy_at, SLAM_R * 1.1, FeelScript.BOSS_MID, 0.45)
+		fx.sparks(_enemy_at + Vector3(0, 0.3, 0), FeelScript.BOSS_MID, 200)
 		fx.crack(_enemy_at, SLAM_R * 1.3)
 		fx.dust(_enemy_at, true)
 		_shake_cam(0.16, 0.3)
 		_buzz("slam", 0.9)
-		_impact_cam(0.55, 2.5)
+		if hero != null and _flat(hero.position - _enemy_at).length() < 6.0:
+			_feel_cam("boss_slam")
 		sfx.play("slam", 0.85)
 	_enemy_state = "recover"
 	_enemy_t = 0.0
@@ -1725,7 +1756,7 @@ func _tick_ally(dt: float) -> void:
 
 
 func _fire_bolt() -> void:
-	var mi: MeshInstance3D = fx.make_bolt(Color(0.65, 0.5, 1.0))
+	var mi: MeshInstance3D = fx.make_bolt(FeelScript.ALLY_MID)
 	var area := HitArea.new()
 	var sph := SphereShape3D.new()
 	sph.radius = 0.35
@@ -1737,7 +1768,7 @@ func _fire_bolt() -> void:
 	area.global_position = p
 	area.open({"src": ally, "kind": "bolt", "dmg": ALLY_DMG, "kb": 0.15, "stop": 0.0, "heavy": false})
 	_bolts.append({"mi": mi, "area": area, "t": 0.0})
-	fx.ring(ally.position, 0.9, Color(0.7, 0.55, 1.0, 0.8), 0.3)
+	fx.ring(ally.position, 0.9, Color(FeelScript.ALLY_MID, 0.8), 0.3)
 
 
 func _tick_bolts(dt: float) -> void:
@@ -1753,11 +1784,11 @@ func _tick_bolts(dt: float) -> void:
 			var step: Vector3 = to.normalized() * minf(BOLT_SPEED * dt, to.length())
 			area.global_position += step
 			mi.global_position = area.global_position
-			fx.trail_push("bolt%d" % (i % 4), area.global_position + Vector3(0, 0.12, 0), area.global_position - Vector3(0, 0.12, 0), Color(0.7, 0.55, 1.0))
+			fx.trail_push("bolt%d" % (i % 4), area.global_position + Vector3(0, 0.12, 0), area.global_position - Vector3(0, 0.12, 0), FeelScript.ALLY_MID)
 			area.scan()
 		if done or area.hit_count() > 0:
 			if area.hit_count() > 0:
-				fx.ring(enemy.position, 1.0, Color(0.7, 0.55, 1.0, 0.8), 0.3)
+				fx.ring(enemy.position, 1.0, Color(FeelScript.ALLY_MID, 0.8), 0.3)
 			area.queue_free()
 			mi.queue_free()
 			_bolts.remove_at(i)
@@ -1881,9 +1912,12 @@ func _end(o: String) -> void:
 	if _tele != null:
 		fx.telegraph_end(_tele, false)
 		_tele = null
+	# look-fight: the end banner waits for the KO beat (feel.gd), then holds 1.2 s over the
+	# slowed, dimmed frame before the result goes to the app (art direction 7, "Win screen")
+	var beat: float = _ko_beat_len()
 	match o:
 		"win":
-			_end_delay = 1.8
+			_end_delay = beat + BANNER_HOLD_S
 			hero.celebrate()
 			if ally != null and not ally.dead:
 				ally.celebrate()
@@ -1891,13 +1925,14 @@ func _end(o: String) -> void:
 			_punch = 1.0
 			_shake_cam(0.14, 0.35)
 			_buzz("ko", 1.0)   # one rumble with the Guardian's fall (haptics.gd); a co-op win (no fall here) gets it now
-			hud.banner("VICTORY", str(cfg.get("enemy_name", "Guardian")) + " defeated", Color(1.0, 0.82, 0.35), 0.0)
+			_banner_later(beat, ["VICTORY", str(cfg.get("enemy_name", "Guardian")) + " defeated", "win"])
 		"lose":
-			_end_delay = 1.4
-			hud.banner("DEFEATED", "", Color(1.0, 0.4, 0.35), 0.0)
+			_end_delay = beat + LOSS_HOLD_S
+			_banner_later(beat, ["DEFEATED", "", "lose"])
 		_:
 			_end_delay = 1.0
 			hud.banner("TIME UP", "", Color(0.85, 0.92, 1.0), 0.0)
+			sfx.end_music(0.8)
 			if enemy != null and not enemy.dead and hero != null and hero.hp > 0 and mode != "full":
 				hero.celebrate()
 	_log("fight_end outcome=%s t=%.2f" % [o, fight_time])
@@ -2016,6 +2051,7 @@ func _emit_result() -> void:
 	if state == "done":
 		return
 	state = "done"
+	_restore_time()
 	finished.emit(result())
 
 
@@ -2051,9 +2087,11 @@ func _buzz(kind: String, strength: float) -> void:
 
 
 func _shake_cam(amount: float, seconds: float) -> void:
+	# look-fight: the view's shake is feel.gd's now (section 7 values, budget, Reduce motion).
+	# These two still run because _apply_camera's legacy draws advance the seeded RNG for as long
+	# as _shake_t lasts: crits and the boss's choices depend on it. Never change them.
 	_shake = maxf(_shake, amount)
 	_shake_t = maxf(_shake_t, seconds)
-	_trauma = minf(1.0, _trauma + amount * 1.6)
 
 
 func _follow_camera(dt: float) -> void:
@@ -2066,9 +2104,15 @@ func _follow_camera(dt: float) -> void:
 		target = hero.position + _cam_fwd * _cam_ahead + _look
 		if enemy != null and not enemy.dead and not bool(cfg.get("cam_hero_only", false)):
 			target = target.lerp((hero.position + enemy.position) * 0.5, 0.5)
+		# look-fight dynamic framing: a little closer while the hero and the Guardian are engaged
+		var engaged: bool = enemy != null and not enemy.dead and _flat(enemy.position - hero.position).length() < FRAME_NEAR_M
+		_frame_k = lerpf(_frame_k, 1.0 if engaged else 0.0, 1.0 - exp(-dt * 1.6))
 	target.x = clampf(target.x, -CAM_BOUNDS_X, CAM_BOUNDS_X)
 	target.z = clampf(target.z, -CAM_BOUNDS, CAM_BOUNDS)
 	target.y = 0.0
+	if feel.ko_active and not _reduce_motion:
+		# the KO beat: the view leans in on the fallen fighter, then comes back
+		target = target.lerp(Vector3(feel.ko_at.x, 0.0, feel.ko_at.z), 0.55 * feel.ko_push(feel.ko_t))
 	_focus = _smooth_damp(_focus, target, CAM_SMOOTH, 40.0, dt)
 	_apply_camera(dt)
 
@@ -2092,8 +2136,11 @@ func _smooth_damp(cur: Vector3, target: Vector3, smooth: float, max_speed: float
 
 func _apply_camera(dt: float) -> void:
 	_punch = move_toward(_punch, 0.0, dt * 3.0)
-	var d: float = _cam_dist * (1.0 - _punch * 0.1)
-	var pos: Vector3 = _focus + Vector3.UP * 0.8 + _cam_basis.z * d
+	var ko_k: float = 0.0 if _reduce_motion else feel.ko_push(feel.ko_t)
+	var ko_m: Dictionary = FeelScript.moment(feel.ko_kind) if feel.ko_active else {}
+	var d: float = _cam_dist * (1.0 - _punch * 0.1) * (1.0 - FRAME_IN * _frame_k) * (1.0 - float(ko_m.get("zoom", 0.0)) * ko_k)
+	var orbit: Basis = Basis(Vector3.UP, deg_to_rad(float(ko_m.get("orbit", 0.0)) * ko_k))
+	var pos: Vector3 = _focus + Vector3.UP * 0.8 + (orbit * _cam_basis.z) * d
 	if _shake_t > 0.0:
 		_shake_t -= dt
 		var s: float = _shake * clampf(_shake_t / 0.18, 0.0, 1.0)
@@ -2102,17 +2149,12 @@ func _apply_camera(dt: float) -> void:
 		var _legacy := Vector2(rng.randf_range(-s, s), rng.randf_range(-s, s))
 		if _shake_t <= 0.0:
 			_shake = 0.0
-	var basis: Basis = _view_basis
-	_shake_clock += dt
-	_trauma = maxf(0.0, _trauma - TRAUMA_DECAY * dt)
-	var tr2: float = _trauma * _trauma * (0.3 if _reduce_motion else 1.0)
-	if tr2 > 0.0:
-		var t: float = _shake_clock
-		var nx: float = sin(t * 47.0) * 0.6 + sin(t * 83.0 + 1.3) * 0.4
-		var ny: float = sin(t * 53.0 + 2.1) * 0.6 + sin(t * 97.0 + 0.4) * 0.4
-		var nr: float = sin(t * 41.0 + 0.7)
-		pos += _cam_basis * Vector3(nx, ny, 0.0) * SHAKE_MAX_M * tr2
-		basis = basis * Basis(Vector3(0, 0, 1), nr * SHAKE_MAX_ROLL * tr2)
+	var basis: Basis = orbit * _view_basis
+	_shake_clock += _ko_dt_real
+	var sh: Vector3 = feel.shake_offset(_shake_clock)
+	if sh != Vector3.ZERO:
+		pos += basis * Vector3(sh.x, sh.y, 0.0)
+		basis = basis * Basis(Vector3(0, 0, 1), sh.z)
 	# the kick: a short push of the view along the blow, springing back
 	_kick = _kick.lerp(Vector3.ZERO, 1.0 - exp(-dt * 12.0))
 	pos += _kick * (0.3 if _reduce_motion else 1.0)
@@ -2124,10 +2166,139 @@ func _apply_camera(dt: float) -> void:
 ## Camera impact for a hit or a skill (cq 013): trauma 0..1 (shake), fov_kick degrees of
 ## zoom punch, and an optional push along `dir` (the blow). Hit-stop is separate.
 func _impact_cam(trauma: float, fov_kick: float = 0.0, dir: Vector3 = Vector3.ZERO) -> void:
-	_trauma = minf(1.0, _trauma + trauma)
+	# kept for older callers; look-fight's moments go through _feel_cam
+	feel.trauma = maxf(feel.trauma, trauma * (0.25 if _reduce_motion else 1.0))
 	_fov_kick = minf(4.0, maxf(_fov_kick, fov_kick))
 	if dir != Vector3.ZERO:
 		_kick += _flat(dir).normalized() * 0.12 * trauma
+
+
+# ------------------------------------------------------------ look-fight: feel (presentation only)
+
+const FRAME_NEAR_M: float = 5.0        # engaged: the hero within this of the Guardian
+const FRAME_IN: float = 0.07           # the view comes this much closer when engaged
+const BANNER_HOLD_S: float = 1.25      # VICTORY over the frame before the app's reward sheet
+const LOSS_HOLD_S: float = 1.05        # DEFEATED: calm, the buttons under 2 s after the fall
+
+
+## The camera side of a moment: shake (with its budget), zoom punch, a push along the blow.
+func _feel_cam(name: String, dir: Vector3 = Vector3.ZERO) -> void:
+	feel.shake(name, fight_time, _action == "dodge")
+	var z: float = feel.zoom(name)
+	if z > 0.0:
+		_fov_kick = maxf(_fov_kick, _base_fov * z)
+	if dir != Vector3.ZERO and not _reduce_motion:
+		_kick += _flat(dir).normalized() * 0.4 * float(FeelScript.moment(name).get("trauma", 0.0))
+
+
+## A blow's feel: the camera, the presentation hit-stop over the simulation's `sim_stop`, the
+## victim's shudder through the freeze, and the screen washes (the ultimate's tint, the hurt vignette).
+func _feel_hit(name: String, dst: FighterScript, sim_stop: float, away: Vector3, src: FighterScript) -> void:
+	_feel_cam(name, away)
+	feel.stop(name, sim_stop)
+	var hold: float = maxf(sim_stop, float(FeelScript.moment(name).get("stop", 0.0)))
+	if dst != null and hold > 0.0:
+		dst.shudder(hold, (0.07 if name in ["crit", "heavy", "ult", "hurt_heavy"] else 0.045) * dst.size_k)
+	feel.wash(name, FeelScript.HURT if dst == hero else (FeelScript.ALLY_MID if src == ally else FeelScript.HERO_MID))
+
+
+## Which section 7 moment a blow is.
+func _moment_for(src: FighterScript, dst: FighterScript, info: Dictionary, heavy: bool, crit: bool) -> String:
+	if dst == hero:
+		return "hurt_heavy" if (crit or str(info.get("kind", "")) == "slam") else "hurt"
+	var kind: String = str(info.get("kind", ""))
+	if src == hero:
+		if kind == "split":
+			return "ult"
+		if crit:
+			return "crit"
+		if kind == "charge":
+			return "skill_m"
+		if kind == "whirl":
+			return "skill_s"
+		return "heavy" if heavy else "light"
+	return "light"
+
+
+## The KO beat starts the moment a fighter falls (the fight ends this same frame): the hit-stop,
+## then slow motion (Engine.time_scale, while state is "ending" only), the camera leaning in.
+func _ko_begin(kind: String, who: FighterScript) -> void:
+	feel.ko(kind, who.position)
+	feel.stop(kind, 0.0)
+	feel.shake(kind, fight_time, false)
+	sfx.ko_beat(kind == "boss_ko")
+	if kind == "boss_ko":
+		hud.flash_screen(0.22)
+
+
+## Real seconds from the KO to the end banner (0 when there was no KO beat: a timeout, co-op).
+func _ko_beat_len() -> float:
+	if not feel.ko_active:
+		return 0.0
+	var m: Dictionary = FeelScript.moment(feel.ko_kind)
+	return float(m.get("stop", 0.0)) + float(m.get("slow_s", 0.0)) + 0.1
+
+
+func _banner_later(at: float, args: Array) -> void:
+	_banner_at = at
+	_banner_args = args
+	if at <= 0.0:
+		_tick_end_beat()
+
+
+var _dissolved: bool = false
+var _env_sat0: float = 1.0
+
+
+## The end beat, per frame in "ending" (real time): the Guardian dissolves into motes and a
+## reward beam, the world desaturates on a loss, the banner and its sting arrive on time.
+func _tick_end_beat() -> void:
+	if feel.ko_active and feel.ko_kind == "boss_ko" and not _dissolved and feel.ko_t >= 0.55 and enemy != null:
+		_dissolved = true
+		enemy.dissolve(0.7)
+		fx.motes(enemy.position, enemy.size_k, _faction_col())
+		fx.pillar(enemy.position, 9.0, 1.1, FeelScript.CRIT_MID, 0.9)
+	if feel.desat > 0.0:
+		_desaturate(feel.desat)
+	if _banner_at >= 0.0 and _end_t >= _banner_at:
+		_banner_at = -1.0
+		var kind: String = str(_banner_args[2])
+		hud.banner(str(_banner_args[0]), str(_banner_args[1]), FeelScript.CRIT_MID if kind == "win" else FeelScript.CREAM, 0.0, kind)
+		sfx.sting(kind == "win")
+		if kind == "win":
+			_buzz("ko", 0.8)
+
+
+func _faction_col() -> Color:
+	var c: Variant = cfg.get("faction_color")
+	if c is String and str(c).begins_with("#"):
+		return Color(str(c))
+	return FeelScript.SUN
+
+
+## The hero's KO: the world's colour drains (art direction 7). A post pass, only for the end beat.
+func _desaturate(k: float) -> void:
+	if _env == null:
+		if arena != null:
+			for n: Node in arena.find_children("*", "WorldEnvironment", true, false):
+				_env = (n as WorldEnvironment).environment
+				break
+		if _env == null and get_viewport().world_3d != null:
+			_env = get_viewport().world_3d.environment
+		if _env == null:
+			return
+		if not _env.adjustment_enabled:
+			_env.adjustment_enabled = true
+			_env.adjustment_brightness = 1.0
+			_env.adjustment_contrast = 1.0
+			_env.adjustment_saturation = 1.0
+		_env_sat0 = _env.adjustment_saturation
+	_env.adjustment_saturation = _env_sat0 * (1.0 - k)
+
+
+func _restore_time() -> void:
+	if Engine.time_scale != 1.0:
+		Engine.time_scale = 1.0
 
 
 # ------------------------------------------------------------ hud sync

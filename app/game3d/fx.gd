@@ -23,7 +23,7 @@ const T_COIN := preload("res://art/fx/vfx_coin.png")
 # fx_atlas.png cells (tools/fx/make_fx_art.py)
 enum { GLOW, STAR4, BURST, SPARKLE, STREAK, RING, PUFF, SCORCH, CRACK, SWIRL, LINES, HALO, PLUS, SHARD, FLAME, DOT }
 
-const TRAIL_LIFE: float = 0.36
+const TRAIL_LIFE: float = 0.18   # look-fight: an arc trail fades over 180 ms (art direction 7)
 const WHITE_HOT := Color(1.0, 0.98, 0.92)
 
 ## Slash colours per weapon class: [body, glow]. The heavy third hit is always gold.
@@ -567,10 +567,22 @@ func ko_burst(at: Vector3, size: float, tint: Color = Color(1.0, 0.85, 0.45)) ->
 	card(BURST, c, tint, 0.45, 1.6 * size, 4.2 * size, {"top": true, "add": 0.8, "hot": 1.0, "sp": 0.3, "rand_rot": true, "spin": 1.2})
 	card(GLOW, c, tint, 0.5, 2.0 * size, 4.0 * size, {"top": true, "add": 1.0})
 	card(LINES, c, Color(1.0, 0.95, 0.75), 0.4, 2.0 * size, 5.0 * size, {"top": true, "add": 0.9, "sp": 0.3, "rand_rot": true})
-	shock(at, 3.2 * size, tint, 0.55)
+	# look-fight: a ring, not a white-out (art direction 7: no halo blobs)
+	card(RING, at + Vector3(0, 0.08, 0), tint, 0.55, 3.2 * size * 0.4, 3.2 * size * 2.0, {"flat": true, "add": 0.55, "sp": 0.35})
 	_emit("sparkle", c, Color(1.0, 0.92, 0.6))
 	_emit("spark_l", c, tint, Vector3.UP, 180.0)
 	dust(at, true)
+
+
+## look-fight KO: the fallen Guardian carried off as motes of the player's faction colour,
+## a soft glow where it stood and a slow ring.
+func motes(at: Vector3, size: float, tint: Color) -> void:
+	var c: Vector3 = at + Vector3(0, 0.9 * size, 0)
+	var p := _emit("mote", at + Vector3(0, 0.2, 0), tint.lerp(Color.WHITE, 0.25))
+	p.emission_ring_radius = 0.9 * size
+	_emit("sparkle", c, tint.lerp(Color.WHITE, 0.5))
+	card(GLOW, c, tint, 0.9, 1.6 * size, 3.2 * size, {"add": 1.0, "intensity": 0.7})
+	shock(at, 2.4 * size, tint, 0.8)
 
 
 ## An expanding ground ring (kept for older callers): a shock ring on the ground.
@@ -612,13 +624,13 @@ func pillar(at: Vector3, height: float, width: float, tint: Color, life: float =
 
 
 func split_slam(at: Vector3, dir: Vector3) -> void:
-	var blue := Color(0.35, 0.68, 1.0)
-	var ice := Color(0.6, 0.88, 1.0)
-	var gold := Color(1.0, 0.62, 0.15)
-	var outer := beam(at, 16.0, 4.2, Color(0.12, 0.45, 1.0), Color(0.25, 0.55, 1.0), 0.8)
+	# look-fight: the hero's ultimate in the hero's colours (art direction 2.8: core, mid, edge)
+	var ice := Color("#FFF6D8")
+	var gold := Color("#FFC54D")
+	var outer := beam(at, 16.0, 4.2, Color("#FF8A1F"), Color("#FFC54D"), 0.8)
 	(outer.material_override as ShaderMaterial).set_shader_parameter("sheath", 0.95)
 	(outer.material_override as ShaderMaterial).set_shader_parameter("sheath_w", 0.32)
-	beam(at, 17.0, 1.5, Color(0.4, 0.8, 1.0), Color(0.5, 0.85, 1.0), 0.6)
+	beam(at, 17.0, 1.5, Color("#FFC54D"), Color("#FFF6D8"), 0.6)
 	# the downward spike of light the reference's beam ends in
 	card(STREAK, at + Vector3(0, 0.1, 0) + dir * 2.6, ice, 0.5, 1.0, 1.0, {"flat": true, "add": 0.6, "hot": 0.8, "aspect": Vector2(2.2, 10.0),
 		"rot": atan2(dir.x, dir.z) + PI, "sp": 0.3})
@@ -665,9 +677,9 @@ func whirl(at: Vector3, radius: float, cols: Array, spin_dir: float = 1.0, secon
 			if d["node"] == mi:
 				d["spin"] = -spin_dir * (16.0 if second else 13.0)
 	# the blade ring: a glowing ring at blade height that spins and widens, a pink halo round it
-	card(SWIRL, at + Vector3(0, 0.75, 0), cols[0], 0.5, radius * 1.6, radius * 2.3, {"flat": true, "add": 0.2, "spin": -spin_dir * 11.0, "rand_rot": true, "sp": 0.35})
+	card(SWIRL, at + Vector3(0, 0.75, 0), cols[0], 0.4, radius * 1.6, radius * 2.3, {"flat": true, "add": 0.2, "spin": -spin_dir * 11.0, "rand_rot": true, "sp": 0.35, "intensity": 0.75})
 	card(RING, at + Vector3(0, 0.8, 0), cols[1], 0.5, radius * 1.7, radius * 2.4, {"flat": true, "add": 0.35, "sp": 0.4})
-	card(HALO, at + Vector3(0, 0.1, 0), Color(1.0, 0.4, 0.75), 0.6, radius * 1.4, radius * 2.8, {"flat": true, "add": 0.3, "sp": 0.4, "intensity": 0.8})
+	card(HALO, at + Vector3(0, 0.1, 0), cols[0], 0.5, radius * 1.4, radius * 2.6, {"flat": true, "add": 0.3, "sp": 0.4, "intensity": 0.55})
 	card(SWIRL, at + Vector3(0, 0.08, 0), cols[0], 0.6, radius * 1.2, radius * 2.0, {"flat": true, "add": 0.15, "spin": -spin_dir * 7.0, "rand_rot": true, "sp": 0.35})
 	shock(at, radius, cols[1], 0.4)
 	var sp := _emit("sparkle", at + Vector3(0, 0.8, 0), cols[1].lerp(Color.WHITE, 0.4))

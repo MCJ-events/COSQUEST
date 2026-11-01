@@ -90,6 +90,13 @@ var _pop_t: float = -1.0
 var _death_t: float = -1.0
 var _cele_t: float = 0.0
 var _spin_dir: float = 1.0
+# look-fight (presentation only): the victim's shudder through a hit-stop, the Guardian's dissolve
+var _shud_t: float = 0.0
+var _shud_len: float = 0.0
+var _shud_amp: float = 0.0
+var _shud_clock: float = 0.0
+var _diss_t: float = -1.0
+var _diss_len: float = 0.7
 
 
 func setup(n: String, t: int, hp_max: int, c: Color, r: String = "hero") -> void:
@@ -592,6 +599,20 @@ func hurt_pop() -> void:
 	_pop_t = 0.0
 
 
+## look-fight: the body shakes side to side for `secs` (the hit-stop), `amp` metres, fading.
+## The body node only: the fighter's position, hurtbox and weapon arc never move.
+func shudder(secs: float, amp: float) -> void:
+	_shud_t = secs
+	_shud_len = maxf(0.001, secs)
+	_shud_amp = amp
+
+
+## look-fight: the fallen Guardian glows and folds away over `secs` (fx.motes carries it off).
+func dissolve(secs: float) -> void:
+	_diss_t = 0.0
+	_diss_len = maxf(0.05, secs)
+
+
 func knock(dir: Vector3, metres: float) -> void:
 	# an impulse that travels about `metres` under the 9/s friction in tick_physics
 	var d: Vector3 = Vector3(dir.x, 0.0, dir.z)
@@ -735,9 +756,25 @@ func tick_visual(dt: float) -> void:
 		pos.y += absf(sin(_cele_t * 7.0)) * 0.3
 	if guarding and not anim.has_clip("guard"):
 		pos.y -= 0.06
+	if _shud_t > 0.0:
+		_shud_t = maxf(0.0, _shud_t - dt)
+		_shud_clock += dt
+		var sk: float = _shud_t / _shud_len
+		pos.x += sin(_shud_clock * 95.0) * _shud_amp * sk
+		pos.z += sin(_shud_clock * 71.0 + 1.1) * _shud_amp * 0.5 * sk
+	var sxz: float = 1.0
+	if _diss_t >= 0.0:
+		_diss_t += dt
+		var kd2: float = clampf(_diss_t / _diss_len, 0.0, 1.0)
+		_flash = maxf(_flash, 0.9 * (1.0 - kd2) + 0.3)
+		sxz = 1.0 - ease(kd2, 2.2)
+		sc *= 1.0 + 0.08 * sin(kd2 * PI)
+		if kd2 >= 1.0:
+			visible = false
+			_diss_t = -1.0
 	body.position = pos
 	body.rotation = rot
-	body.scale = Vector3.ONE * sc
+	body.scale = Vector3(sc * sxz, sc * (1.0 + 0.6 * (1.0 - sxz)) * maxf(0.05, sxz), sc * sxz)
 	if _cast != null:
 		_cast.visible = visible
 		_cast.global_transform = Transform3D(Basis(Vector3.UP, _cast_yaw), global_position + _cast_off + Vector3(0, 0.04, 0))
