@@ -97,6 +97,10 @@ const FIRST_NUDGE_MS = 25000;
 /** A nudge is put away after 12 s if nothing else has spoken since. */
 const NUDGE_SHOWN_MS = 12000;
 
+
+/** The map's ground tiles, from the game server (WorldMap GroundTiles). */
+const loadGround = (lat: number, lng: number, radiusM: number) => gameStore.client.ground(lat, lng, radiusM);
+
 export default function GameRoot({ parked }: { parked: boolean }) {
   const styles = useThemedStyles(STYLE_PAIR);
   useRenderCount("GameRoot");
@@ -544,6 +548,7 @@ export default function GameRoot({ parked }: { parked: boolean }) {
         playerBadge={forgeAvatar ? <AvatarBadge size={34} /> : undefined}
         recentreSignal={recentreTick}
         onFollowChange={setMapFollowing}
+        loadGround={loadGround}
       />
 
       <TopBar me={me} profile={profile} name={gameStore.playerName()} color={color} onProfile={() => setSheet("profile")} onCoins={() => setSheet("coins")} onAskWarden={() => setSheet("ask")} />

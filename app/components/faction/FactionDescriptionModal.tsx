@@ -21,8 +21,10 @@ import Animated, {
       useAnimatedStyle,
       useSharedValue,
       withSpring,
+      withTiming,
 } from "react-native-reanimated";
 import { C } from "@/theme/tokens";
+import { SHEET_EASE_OUT, SHEET_OPEN_MS, SHEET_SNAP_BACK } from "@/components/game/sheetMotion";
 
 type Props = {
   visible: boolean;
@@ -153,10 +155,7 @@ export function FactionDescriptionModal({
     if (visible) {
       translateY.value = SCREEN_HEIGHT;
 
-      translateY.value = withSpring(0, {
-        damping: 24,
-        stiffness: 150,
-      });
+      translateY.value = withTiming(0, { duration: SHEET_OPEN_MS, easing: SHEET_EASE_OUT });
     }
   }, [visible, translateY, SCREEN_HEIGHT]);
 
@@ -172,10 +171,7 @@ export function FactionDescriptionModal({
       if (shouldClose) {
         runOnJS(onClose)();
       } else {
-        translateY.value = withSpring(0, {
-          damping: 22,
-          stiffness: 150,
-        });
+        translateY.value = withSpring(0, SHEET_SNAP_BACK);
       }
     });
 

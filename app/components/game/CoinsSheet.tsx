@@ -37,6 +37,7 @@ import { SheetHeader } from "./SheetHeader";
 import { playSound } from "./sound";
 import { GF, GP } from "./theme";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
+import { settle, SPRING_PRESS } from "@/features/game/spring";
 
 export default function CoinsSheet({ onClose }: { onClose: () => void }) {
   const insets = useSafeAreaInsets();
@@ -152,7 +153,7 @@ function SectionTitle({ text }: { text: string }) {
   );
 }
 
-const PRESS = { stiffness: 816, damping: 34, mass: 1 };
+const PRESS = SPRING_PRESS;
 
 /** One pack, as a flat printed card like the Nearby cards (CoinPackCard), pressed in like them (CardPress). */
 function PackCard({ pack, disabled, onPress }: { pack: CoinPack; disabled: boolean; onPress: () => void }) {
@@ -242,7 +243,7 @@ function GainedMoment({ coins, onDone }: { coins: number; onDone: () => void }) 
   const landed = useSharedValue(reduce ? 1 : 0.6);
   const coinStyle = useAnimatedStyle(() => ({ transform: [{ scale: landed.get() }] }));
   useEffect(() => {
-    landed.set(withSpring(1, { stiffness: 195, damping: 15, mass: 1 }));
+    landed.set(withSpring(1, settle(0.45)));
     announce(`${coins} CosCoins added`);
     let i = reduce ? COUNT_STEPS : 0;
     const t = setInterval(() => {

@@ -33,6 +33,14 @@ export function toLocal(centre: LatLng, p: LatLng): { x: number; z: number } {
   };
 }
 
+/** The point `local` metres east (x) and north (z) of `centre`: toLocal's inverse. */
+export function fromLocal(centre: LatLng, local: { x: number; z: number }): LatLng {
+  return {
+    lat: centre.lat + local.z / M_PER_DEG,
+    lng: centre.lng + local.x / (M_PER_DEG * Math.cos(rad(centre.lat))),
+  };
+}
+
 /** How close the button wants a player: the server's radius plus a capped GPS allowance. */
 export function reachM(openRadiusM: number | undefined, accuracyM: number): number {
   return (openRadiusM ?? 40) + Math.min(Math.max(accuracyM, 0), 25);

@@ -22,18 +22,18 @@ import Animated, {
 import Svg, { Circle, ClipPath, Defs, Ellipse, G, LinearGradient as SvgGradient, Path, RadialGradient, Rect, Stop } from "react-native-svg";
 
 import { crackLevel } from "@/features/game/siegeFlow";
-import { springOf } from "@/features/game/spring";
+import { settle } from "@/features/game/spring";
 
 import { GameTitle, MAX_FONT_SCALE, pressFeedback, withAlpha } from "./kit";
 import { RelicArt } from "./RelicArt";
 import { CHOICE_COLORS, edgeOf, GF, GP } from "./theme";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
-const SPRING_PHASE = springOf(0.45, 0.8);
-const SPRING_HP = springOf(0.3, 0.75);
-const SPRING_FOCUS = springOf(0.4, 0.7);
-const SPRING_CHOICE = springOf(0.35, 0.6);
-const SPRING_POP = springOf(0.35, 0.5);
+const SPRING_PHASE = settle(0.45);
+const SPRING_HP = settle(0.3);
+const SPRING_FOCUS = settle(0.4);
+const SPRING_CHOICE = settle(0.35);
+const SPRING_POP = settle(0.35);
 
 // ---------- the crystal ----------
 
@@ -130,7 +130,7 @@ export function GuardianView({
     if (hitTick === 0) return;
     flash.value = withSequence(withTiming(0.9, { duration: 50 }), withTiming(0, { duration: 300 }));
     if (reduce) return;
-    const bounce = springOf(0.4, 0.55);
+    const bounce = settle(0.4);
     sx.value = withSequence(withTiming(1.18, { duration: 100 }), withSpring(1, bounce));
     sy.value = withSequence(withTiming(0.82, { duration: 100 }), withSpring(1, bounce));
     jolt.value = withSequence(withTiming(14, { duration: 50 }), withTiming(-10, { duration: 70 }), withTiming(6, { duration: 70 }), withTiming(0, { duration: 100 }));

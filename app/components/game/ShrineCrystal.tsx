@@ -20,7 +20,8 @@ import Animated, {
 } from "react-native-reanimated";
 import Svg, { Polygon } from "react-native-svg";
 
-import { PULSE_SCALES, springOf } from "@/features/game/strike";
+import { settle } from "@/features/game/spring";
+import { PULSE_SCALES } from "@/features/game/strike";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 export type CrystalHandle = {
@@ -54,7 +55,7 @@ export function ShrineCrystal({ tint, size = 112, ref }: { tint: string; size?: 
       scale.value = 1;
       return;
     }
-    scale.value = withSpring(1, springOf(0.5, 0.7));
+    scale.value = withSpring(1, settle(0.5));
     bob.value = bobbing();
   }, [reduce, scale, bob]);
 

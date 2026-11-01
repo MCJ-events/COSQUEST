@@ -46,7 +46,6 @@ import Animated, {
   useSharedValue,
   withSequence,
   withTiming,
-  ZoomIn,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -116,6 +115,7 @@ import { edgeOf, GF, GP, realmColor, realmIcon, tierColor } from "./theme";
 import { wardenVoice } from "./wardenVoice";
 import { useRenderCount } from "@/utils/perfMarks";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
+import { POP_FADE, POP_IN, POP_IN_COUNT } from "./sheetMotion";
 
 type Phase =
   | { kind: "briefing" }
@@ -1055,7 +1055,7 @@ function Arena({
 
       {countdown > 0 ? (
         <View style={styles.center} pointerEvents="none">
-          <Animated.Text key={countdown} entering={reduceMotion ? FadeIn.duration(150) : ZoomIn.springify()} style={styles.countdown} importantForAccessibility="no">
+          <Animated.Text key={countdown} entering={reduceMotion ? POP_FADE : POP_IN_COUNT} style={styles.countdown} importantForAccessibility="no">
             {countdown}
           </Animated.Text>
           <Text style={styles.versus} importantForAccessibility="no">
@@ -1065,7 +1065,7 @@ function Arena({
       ) : null}
       {end ? (
         <View style={[styles.center, { justifyContent: "flex-start", paddingTop: height * 0.22 }]} pointerEvents="none">
-          <Animated.Text entering={reduceMotion ? FadeIn.duration(150) : ZoomIn.springify()} style={[styles.countdown, { color: end.won ? GP.sun : "#FFF" }]} importantForAccessibility="no">
+          <Animated.Text entering={reduceMotion ? POP_FADE : POP_IN} style={[styles.countdown, { color: end.won ? GP.sun : "#FFF" }]} importantForAccessibility="no">
             {end.reason}
           </Animated.Text>
         </View>

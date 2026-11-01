@@ -12,7 +12,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import Animated, { FadeIn, FadeInRight, useReducedMotion, ZoomIn } from "react-native-reanimated";
+import Animated, { FadeIn, FadeInRight, useReducedMotion } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import {
@@ -41,6 +41,7 @@ import { CHOICE_COLORS, edgeOf, GF, GP } from "./theme";
 import { useOnScreen } from "./useOnScreen";
 import { useRenderCount } from "@/utils/perfMarks";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
+import { POP_FADE, POP_IN } from "./sheetMotion";
 
 /** White type sits straight on the light GameBackdrop (as on iOS): a soft navy shadow keeps it legible. */
 const LEGIBLE = { textShadowColor: "rgba(30,58,76,0.45)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 } as const;
@@ -264,7 +265,7 @@ function Fight({ snap, s, paused, onAnswer }: { snap: RaidSnapshot; s: RaidState
       {snap.lastHit !== null ? (
         <Animated.Text
           key={snap.swings}
-          entering={reduced ? FadeIn : ZoomIn.springify()}
+          entering={reduced ? POP_FADE : POP_IN}
           style={[styles.flash, { color: snap.lastHit ? GP.sun : "rgba(255,255,255,0.85)" }]}
           maxFontSizeMultiplier={MAX_FONT_SCALE}>
           {snap.lastHit ? `HIT! −${snap.lastDamage}` : "Miss!"}
@@ -359,7 +360,7 @@ function Result({ s, onLeave }: { s: RaidState; onLeave: () => void }) {
   const answers = revealRows(s);
   return (
     <View style={styles.stack}>
-      <Animated.View entering={reduced ? FadeIn : ZoomIn.springify()} style={{ alignItems: "center", paddingTop: 20 }}>
+      <Animated.View entering={reduced ? POP_FADE : POP_IN} style={{ alignItems: "center", paddingTop: 20 }}>
         <GameTitle text={won ? "VICTORY!" : "DEFEATED"} size={50} color={won ? GP.sun : "#FFF"} edge={won ? GP.sunDeep : GP.ink} />
       </Animated.View>
       <Text style={styles.outcome}>{won ? `${s.boss_name} is down!` : `${s.boss_name} got away.`}</Text>

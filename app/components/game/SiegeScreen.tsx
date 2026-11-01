@@ -16,13 +16,11 @@ import Animated, {
   Easing,
   FadeIn,
   FadeOut,
-  SlideInRight,
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
   withSequence,
   withTiming,
-  ZoomIn,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -85,6 +83,7 @@ import { edgeOf, GF, GP, realmColor, realmIcon } from "./theme";
 import { useWardenSaid, wardenVoice } from "./wardenVoice";
 import { WardenBubble } from "./Hud";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
+import { POP_FADE, POP_IN, POP_IN_SOFT, SLIDE_IN_RIGHT } from "./sheetMotion";
 
 /** The phone's clock, read in handlers (never during render). */
 const clock = () => Date.now();
@@ -394,7 +393,7 @@ export default function SiegeScreen({
             <DamageText key={p.id} text={p.text} color={p.color} x={p.x} />
           ))}
           {blocked ? (
-            <Animated.View entering={ZoomIn.springify().stiffness(440).damping(17)} exiting={FadeOut} style={styles.blocked}>
+            <Animated.View entering={reduce ? POP_FADE : POP_IN} exiting={FadeOut} style={styles.blocked}>
               <Ionicons name="shield" size={26} color="#FFF" />
               <Text style={styles.blockedText}>BLOCKED</Text>
             </Animated.View>
@@ -446,7 +445,7 @@ export default function SiegeScreen({
         ) : null}
 
         {fighting && q ? (
-          <Animated.View key={`q${m.round}`} entering={reduce ? FadeIn : SlideInRight.springify().stiffness(175).damping(21)} exiting={FadeOut} style={{ gap: 12 }}>
+          <Animated.View key={`q${m.round}`} entering={reduce ? POP_FADE : SLIDE_IN_RIGHT} exiting={FadeOut} style={{ gap: 12 }}>
             <View style={styles.qRow}>
               <RingTimer deadline={m.deadline} total={m.seconds} paused={m.phase !== "fight" || parked} />
               <View style={{ flex: 1, gap: 4 }}>
@@ -475,7 +474,7 @@ export default function SiegeScreen({
         ) : null}
 
         {m.phase === "result" ? (
-          <Animated.View entering={reduce ? FadeIn : ZoomIn.springify().stiffness(160).damping(19)} style={{ gap: 14 }}>
+          <Animated.View entering={reduce ? POP_FADE : POP_IN_SOFT} style={{ gap: 14 }}>
             {m.won ? (
               <View style={{ alignItems: "center", gap: 6 }}>
                 <View style={styles.sunburst} pointerEvents="none">

@@ -8,9 +8,13 @@
 // game server. The Unity world can replace this once the Android Unity export
 // exists (docs/android-port.md).
 //
+// The ground is loaded as tiles round wherever the camera looks
+// (GroundTiles.tsx, features/game/mapTiles.ts), so zoomed out, turned or
+// dragged far, the screen is always covered.
+//
 // The board is one view under a camera, as in Pokemon GO: drag to look
 // around (with momentum), pinch to zoom, twist to turn, double tap to zoom in.
-// The streets are drawn once; the camera is a transform. Until the map is
+// The streets are drawn once per tile; the camera is a transform. Until the map is
 // moved the camera follows the player; dragged away, it stays put until
 // "Back to me" (or the rail's Centre on me). Pins, beacons and the player's
 // face stay upright and screen-sized (mapCamera.tsx MapPin).
@@ -48,6 +52,8 @@ import { pinTint } from "@/features/game/siege";
 import type { NearbyRoom } from "@/features/game/rooms";
 import type { GroundGeometry, QuestPoint } from "@/features/game/wire";
 
+import { GroundPaths } from "./GroundPaths";
+import GroundTiles, { type LoadGround } from "./GroundTiles";
 import { MapCameraContext, MapPin, PIN_SPOT, useUpright } from "./mapCamera";
 import { useWorldClock } from "./prefs";
 import { RaidCrown } from "./RaidParts";
@@ -72,8 +78,8 @@ const DECELERATION = 0.994;
 const FOLLOW_MS = 900;
 const RECENTRE_MS = 480;
 
-/** How far a building's wall shows below its roof, in metres: the board seen from a little south. */
-const WALL_DROP_M = 3;
+/** How far the map may be dragged from where the world was cut, metres (tiles load all the way). */
+export const PAN_LIMIT_M = 1500;
 
 /** The map's colours for the hour the town is lit for, looked at again each minute. */
 function useMapStyle(): MapStyle {
@@ -112,6 +118,12 @@ type Props = {
   overlay?: (place: (p: LatLng) => { left: number; top: number }) => ReactNode;
   /** A face in the player's marker (their Forge avatar). */
   playerBadge?: ReactNode;
+  /**
+   * Fetches the ground round a point (the game client's /v1/map/ground). With
+   * it the map loads tiles wherever it is looked at; without it, only `ground`
+   * is drawn and the map cannot be dragged past it.
+   */
+  loadGround?: LoadGround;
   /** Bump to fly the camera back to the player (the rail's Centre on me). */
   recentreSignal?: number;
   /** Whether the camera is following the player (false once the map is dragged away). */
@@ -126,11 +138,16 @@ export default function WorldMap(props: Props) {
   const origin = ground?.origin ?? centre ?? fix;
   const extent = ground?.radius_m ?? 600;
   const size = extent * 2 * MAP_SCALE;
-  const layers = useMemo(() => (ground ? buildLayers(ground) : null), [ground]);
+  // Only the untiled board draws the store's single ground answer.
+  const layers = useMemo(() => (ground && !props.loadGround ? buildLayers(ground) : null), [ground, props.loadGround]);
   const look = useMapStyle();
 
   const ax = width / 2;
   const ay = height * PLAYER_Y;
+  const tiled = !!props.loadGround;
+  // How far the camera may go, in board points.
+  const panLo = tiled ? (extent - PAN_LIMIT_M) * MAP_SCALE : 0;
+  const panHi = tiled ? (extent + PAN_LIMIT_M) * MAP_SCALE : size;
 
   // The camera: the board point under the anchor (where the player stands on
   // screen when followed), the zoom and the turn. Board points: 0..size.
@@ -255,15 +272,15 @@ export default function WorldMap(props: Props) {
       })
       .onChange((e) => {
         const c = panned({ x: camX.get(), y: camY.get(), zoom: zoom.get(), rot: rot.get() }, e.changeX, e.changeY);
-        camX.set(Math.max(0, Math.min(size, c.x)));
-        camY.set(Math.max(0, Math.min(size, c.y)));
+        camX.set(Math.max(panLo, Math.min(panHi, c.x)));
+        camY.set(Math.max(panLo, Math.min(panHi, c.y)));
       })
       .onEnd((e) => {
         // Momentum: the fling's speed carried on in board points, slowing.
         // (panned() on a velocity gives the camera's own velocity, from 0.)
         const v = panned({ x: 0, y: 0, zoom: zoom.get(), rot: rot.get() }, e.velocityX, e.velocityY);
-        camX.set(withDecay({ velocity: v.x, deceleration: DECELERATION, clamp: [0, size] }));
-        camY.set(withDecay({ velocity: v.y, deceleration: DECELERATION, clamp: [0, size] }));
+        camX.set(withDecay({ velocity: v.x, deceleration: DECELERATION, clamp: [panLo, panHi] }));
+        camY.set(withDecay({ velocity: v.y, deceleration: DECELERATION, clamp: [panLo, panHi] }));
       });
     const pinch = Gesture.Pinch()
       .onStart(() => {
@@ -312,7 +329,7 @@ export default function WorldMap(props: Props) {
         zoom.set(withTiming(s1, { duration: 220, easing: Easing.out(Easing.cubic) }));
       });
     return Gesture.Simultaneous(pan, pinch, twist, doubleTap);
-  }, [ax, ay, size, camX, camY, zoom, rot, follow, twisting]);
+  }, [ax, ay, panLo, panHi, camX, camY, zoom, rot, follow, twisting]);
 
   const worldStyle = useAnimatedStyle(() => ({
     // A point p on the board lands at anchor + R(rot) * zoom * (p - cam).
@@ -336,7 +353,24 @@ export default function WorldMap(props: Props) {
         <View style={[styles.root, { backgroundColor: look.land }]} accessibilityLabel="Map of the streets around you. Drag to look around, pinch to zoom, twist to turn.">
           {origin ? (
             <Animated.View style={[styles.world, { width: size, height: size }, worldStyle]}>
-              <Ground layers={layers} extent={extent} size={size} look={look} />
+              {props.loadGround && origin ? (
+                <GroundTiles
+                  origin={origin}
+                  extent={extent}
+                  scale={MAP_SCALE}
+                  look={look}
+                  load={props.loadGround}
+                  camX={camX}
+                  camY={camY}
+                  zoom={zoom}
+                  width={width}
+                  height={height}
+                  anchorX={ax}
+                  anchorY={ay}
+                />
+              ) : (
+                <Ground layers={layers} extent={extent} size={size} look={look} />
+              )}
               {/* Your reach and the fix's accuracy, in metres on the ground: they zoom with it. */}
               {fix ? (
                 <Animated.View pointerEvents="none" style={[styles.me, meStyle]}>
@@ -433,41 +467,7 @@ const Ground = memo(function Ground({ layers, extent, size, look }: { layers: Ma
       </Defs>
       <Rect x={-extent} y={-extent} width={extent * 2} height={extent * 2} fill={look.land} />
       {layers ? (
-        <>
-          <Path d={layers.green} fill={look.green} />
-          <Path d={layers.water} fill={look.water} />
-          {layers.waterways.map((w, i) => (
-            <Path key={`ww${i}`} d={w.d} stroke={look.water} strokeWidth={w.width} strokeLinecap="round" strokeLinejoin="round" fill="none" />
-          ))}
-          <Path d={layers.paved} fill={look.paved} />
-          {layers.roads.map((r, i) => (
-            <Path
-              key={`re${i}`}
-              d={r.d}
-              stroke={r.kind === "rail" ? look.rail : look.casing}
-              strokeWidth={r.width + (r.kind === "path" || r.kind === "rail" ? 0.6 : 2)}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              fill="none"
-            />
-          ))}
-          {layers.roads
-            .filter((r) => r.kind !== "rail")
-            .map((r, i) => (
-              <Path
-                key={`r${i}`}
-                d={r.d}
-                stroke={r.kind === "path" ? look.path : r.kind === "major" ? look.roadMajor : look.road}
-                strokeWidth={r.width}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                fill="none"
-              />
-            ))}
-          {/* The wall below each roof, then the roof: buildings stand up off the board. */}
-          <Path d={layers.buildings} fill={look.wall} transform={`translate(0 ${WALL_DROP_M})`} />
-          <Path d={layers.buildings} fill={look.roof} stroke={look.roofEdge} strokeWidth={0.8} />
-        </>
+        <GroundPaths layers={layers} look={look} />
       ) : (
         <Rect x={-extent} y={-extent} width={extent * 2} height={extent * 2} fill="url(#grid)" />
       )}

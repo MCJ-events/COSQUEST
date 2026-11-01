@@ -7,12 +7,13 @@
 import * as Haptics from "expo-haptics";
 import { useEffect, useSyncExternalStore } from "react";
 import { Text, View } from "react-native";
-import Animated, { FadeOutUp, ZoomIn } from "react-native-reanimated";
+import Animated, { FadeOutUp } from "react-native-reanimated";
 
 import { announce, GameTitle } from "./kit";
 import { type GameSoundEffect, playSound } from "./sound";
 import { edgeOf, GF, GP } from "./theme";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
+import { POP_IN_BANNER, usePopIn } from "./sheetMotion";
 
 export type GameBanner = { id: number; title: string; subtitle?: string | null; color: string };
 
@@ -59,12 +60,14 @@ function useBanner(): GameBanner | null {
 export function GameBannerHost({ top }: { top: number }) {
   const styles = useThemedStyles(STYLE_PAIR);
   const banner = useBanner();
+  // Grows in from small and stops dead (sheetMotion.ts); a fade under Reduce Motion.
+  const enter = usePopIn(POP_IN_BANNER);
   // A banner left over when the game goes behind the chat should not wait there.
   useEffect(() => () => clearBanner(), []);
   if (!banner) return null;
   return (
     <View pointerEvents="none" style={[styles.host, { top }]} importantForAccessibility="no-hide-descendants">
-      <Animated.View key={banner.id} entering={ZoomIn.springify().damping(14).stiffness(160).withInitialValues({ transform: [{ scale: 0.3 }] })} exiting={FadeOutUp.duration(260)} style={styles.banner}>
+      <Animated.View key={banner.id} entering={enter} exiting={FadeOutUp.duration(260)} style={styles.banner}>
         <GameTitle text={banner.title} size={46} edge={edgeOf(banner.color)} />
         {banner.subtitle ? (
           <View style={[styles.subtitle, { backgroundColor: banner.color }]}>

@@ -8,7 +8,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Linking, Text, View } from "react-native";
-import Animated, { FadeIn, ZoomIn, useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withTiming } from "react-native-reanimated";
+import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withTiming } from "react-native-reanimated";
 
 import { addLabel, nearbyDistanceText, type NearbyPeer, peersOf, searchingLine, tooFar } from "@/features/game/friendsNearby";
 import { nearbyFriends, useNearbyFriends } from "@/features/game/friendsNearbyDevice";
@@ -19,6 +19,7 @@ import { notify } from "./prefs";
 import { playSound } from "./sound";
 import { GF, GP } from "./theme";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
+import { POP_FADE, POP_IN } from "./sheetMotion";
 
 export function HoldPhonesCard() {
   const styles = useThemedStyles(STYLE_PAIR);
@@ -81,7 +82,7 @@ export function HoldPhonesCard() {
         </View>
 
         {s.success ? (
-          <Animated.View entering={reduce ? FadeIn : ZoomIn.springify()} style={styles.row} accessible accessibilityLabel={s.success}>
+          <Animated.View entering={reduce ? POP_FADE : POP_IN} style={styles.row} accessible accessibilityLabel={s.success}>
             <Ionicons name="sparkles" size={26} color={GP.berry} />
             <Text style={styles.success} maxFontSizeMultiplier={MAX_FONT_SCALE}>
               {s.success}

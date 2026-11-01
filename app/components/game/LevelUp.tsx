@@ -18,7 +18,7 @@ import Animated, {
 } from "react-native-reanimated";
 import Svg, { Defs, Path, RadialGradient, Stop } from "react-native-svg";
 
-import { springOf } from "@/features/game/strike";
+import { settle } from "@/features/game/spring";
 
 import { announce, GameButton, GameTitle, MAX_FONT_SCALE } from "./kit";
 import { edgeOf, GF, GP } from "./theme";
@@ -113,7 +113,7 @@ export function LevelUp({ level, rank, rankUp, onDone }: { level: number; rank: 
   const reduce = useReducedMotion();
   const shown = useSharedValue(reduce ? 1 : 0);
   useEffect(() => {
-    shown.value = reduce ? 1 : withSpring(1, springOf(0.55, 0.6));
+    shown.value = reduce ? 1 : withSpring(1, settle(0.55));
     announce(rankUp ? `Level up! Level ${level}. New rank: ${rank}.` : `Level up! Level ${level}. ${rank}.`);
   }, [reduce, shown, level, rank, rankUp]);
 

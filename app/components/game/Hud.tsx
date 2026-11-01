@@ -34,16 +34,12 @@ import { edgeOf, GF, GP, realmColor, realmIcon, tierColor } from "./theme";
 import WardenBadge from "./WardenBadge";
 import { useWardenMuted, wardenVoice } from "./wardenVoice";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
+import { SPRING_PRESS } from "@/features/game/spring";
 
 /** GamePalette.navy.opacity(0.78): the plate behind white type over the map. */
 export const NAVY_PLATE = withAlpha(GP.navy, 0.78);
 const PLATE_STROKE = "rgba(255,255,255,0.18)";
 
-/** The spring(response r, dampingFraction z) of the Swift, as Reanimated numbers. */
-function spring(response: number, damping: number) {
-  const stiffness = (2 * Math.PI / response) ** 2;
-  return { stiffness, damping: 2 * damping * Math.sqrt(stiffness), mass: 1 };
-}
 
 // ---------- the top bar ----------
 
@@ -281,7 +277,7 @@ export function Rail({
 
 const CARD_WIDTH = 172;
 const CARD_GAP = 12;
-const PRESS = spring(0.22, 0.6);
+const PRESS = SPRING_PRESS;
 
 /** Cards press in like the game's buttons: a touch you can feel (CardPress). */
 function CardPress({ onPress, label, children }: { onPress: () => void; label: string; children: ReactNode }) {

@@ -13,7 +13,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import type { ComponentProps } from "react";
 import { StyleSheet, Text, View } from "react-native";
-import Animated, { FadeIn, useReducedMotion, ZoomIn } from "react-native-reanimated";
+import Animated, { useReducedMotion } from "react-native-reanimated";
 
 import { useMyPicture } from "@/components/world/useMyPicture";
 import { fightersOf, versusSubline, versusTitle } from "@/features/game/duelFlow";
@@ -27,6 +27,7 @@ import { ForgeFighterArt, useForgeOn } from "./ForgeWorld";
 import { MAX_FONT_SCALE } from "./kit";
 import { edgeOf, GF, GP, realmColor } from "./theme";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
+import { POP_FADE, POP_IN_SOFT } from "./sheetMotion";
 
 type IconName = ComponentProps<typeof Ionicons>["name"];
 
@@ -59,7 +60,7 @@ export default function DuelVersus({ start }: { start: DuelStart }) {
   const label = f ? `${title}. ${f.p1.name}, you, against ${f.p2.name}.` : title;
   return (
     <Animated.View
-      entering={reduce ? FadeIn.duration(200) : ZoomIn.springify().stiffness(195).damping(22).withInitialValues({ transform: [{ scale: 0.9 }] })}
+      entering={reduce ? POP_FADE : POP_IN_SOFT}
       style={styles.card}
       accessible
       accessibilityLabel={label}>

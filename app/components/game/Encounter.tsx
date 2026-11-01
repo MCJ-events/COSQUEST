@@ -52,7 +52,6 @@ import {
   resultTitle,
   scrimOpacity,
   secondChanceLabel,
-  springOf,
   tierName,
 } from "@/features/game/strike";
 import { arriveMoment, hintMoment, lateMoment, levelMoment, reactionMoment } from "@/features/game/warden";
@@ -74,6 +73,8 @@ import { CostQuestShrineView, type CostQuestShrineViewHandle, shrineARSupported 
 import { setShrineAR, useShrineAR } from "./prefs";
 import { useRenderCount } from "@/utils/perfMarks";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
+import { SHEET_EASE_OUT, SHEET_OPEN_MS } from "./sheetMotion";
+import { settle } from "@/features/game/spring";
 
 type Phase = "approach" | "opening" | "playing" | "submitting" | "reveal" | { failed: string };
 
@@ -591,11 +592,11 @@ function ResultLine({ verdict }: { verdict: RoamVerdict }) {
   const line = resultTitle(verdict);
   const chip = verdict.grade ? { sun: GP.sun, mint: GP.mint, sky: GP.sky }[gradeColorKey(verdict.grade)] : null;
   return (
-    <Pop from={0.5} response={0.45} damping={0.75} style={{ gap: 4, alignItems: "center" }}>
+    <Pop from={0.5} response={0.45} style={{ gap: 4, alignItems: "center" }}>
       <GameTitle text={line.text} size={line.size} edge={edgeOf(line.win ? GP.mint : GP.berry)} />
       {/* The throw grade: speed as skill. */}
       {verdict.grade && chip ? (
-        <Pop from={0.3} response={0.4} damping={0.7} delayMs={120}>
+        <Pop from={0.3} response={0.4} delayMs={120}>
           <View accessible accessibilityLabel={`Grade: ${verdict.grade}`}>
             <Chip text={verdict.grade} color={chip} />
           </View>
@@ -748,7 +749,7 @@ function HintButton({
   );
 }
 
-const CHOICE_SPRING = springOf(0.35, 0.6);
+const CHOICE_SPRING = settle(0.35);
 
 /** One answer button in one of four fixed colours, so "the blue one" means the same to every player (ChoiceButton). */
 function ChoiceButton({ text, index, state, onPress }: { text: string; index: number; state: ChoiceState; onPress: () => void }) {
@@ -830,7 +831,8 @@ export function TriviaCard({
   );
 }
 
-const REORDER = springOf(0.5, 0.8);
+/** Beats making room for a new one: the sheets' settle, no bounce. */
+const REORDER = LinearTransition.duration(SHEET_OPEN_MS).easing(SHEET_EASE_OUT);
 
 /**
  * Tap the moments in the order they happened. Tapping is more reliable than
@@ -863,7 +865,7 @@ export function SequenceCard({
         const badge = reveal ? (wasRight ? GP.mint : GP.sunDeep) : n ? GP.skyDeep : "#B3B3B3";
         const spoken = reveal ? `${beat.text}, number ${right}, ${wasRight ? "you had it right" : "you had it in the wrong place"}` : `${beat.text}${n ? `, number ${n}` : ""}`;
         return (
-          <Animated.View key={beat.id} layout={LinearTransition.springify().stiffness(REORDER.stiffness).damping(REORDER.damping)}>
+          <Animated.View key={beat.id} layout={REORDER}>
             <Pressable onPress={() => onTap(beat.id)} accessibilityRole="button" accessibilityLabel={spoken} style={styles.beat}>
               <View style={[styles.beatBadge, { backgroundColor: badge }]}>
                 <Text style={styles.beatBadgeText} maxFontSizeMultiplier={MAX_FONT_SCALE}>

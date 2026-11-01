@@ -22,7 +22,7 @@ import {
   lineAmount,
   standingProgress,
 } from "@/features/game/rewardCeremony";
-import { springOf } from "@/features/game/strike";
+import { settle } from "@/features/game/spring";
 import { dailyMoment } from "@/features/game/warden";
 import type { DuelOutcome, QuestPoint, RoamDaily, RoamExtra, RoamMe, RoamStanding, RoamVerdict } from "@/features/game/wire";
 
@@ -124,7 +124,7 @@ export function celebrate(reward: RewardSummary) {
   }
 }
 
-const LINE_SPRING = springOf(0.35, 0.7);
+const LINE_SPRING = settle(0.35);
 
 export default function Reward({ reward, onDone, onShare }: { reward: RewardSummary; onDone: () => void; onShare?: () => void }) {
   const styles = useThemedStyles(STYLE_PAIR);
@@ -249,7 +249,7 @@ export default function Reward({ reward, onDone, onShare }: { reward: RewardSumm
                   x.kind === "relic" && x.relic ? (
                     // Lands after the XP has counted: its own moment, not one more line.
                     xpDone ? (
-                      <Pop key={`${x.kind}-${i}`} from={0.6} response={0.5} damping={0.7}>
+                      <Pop key={`${x.kind}-${i}`} from={0.6} response={0.5}>
                         <RelicDropExtra extra={x} />
                       </Pop>
                     ) : null
@@ -336,7 +336,7 @@ const STYLE_PAIR = themedStyles({
   footer: { paddingHorizontal: 18, paddingTop: 8 },
 });
 
-/** One pay line: `.move(edge: .leading)` with spring(0.35, 0.7) when its turn comes. */
+/** One pay line: `.move(edge: .leading)`, settling in 0.35 s with no bounce when its turn comes. */
 function RewardLine({ label, amount, shown }: { label: string; amount: string; shown: boolean }) {
   const styles = useThemedStyles(STYLE_PAIR);
   const t = useSharedValue(shown ? 1 : 0);

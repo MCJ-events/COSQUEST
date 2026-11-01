@@ -791,7 +791,7 @@ function SwipeToReply({
     Animated.spring(translateX, {
       toValue: 0,
       useNativeDriver: true,
-      bounciness: 6,
+      bounciness: 0,
     }).start();
   };
 

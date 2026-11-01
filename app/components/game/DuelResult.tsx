@@ -4,7 +4,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
-import Animated, { FadeIn, useReducedMotion, ZoomIn } from "react-native-reanimated";
+import Animated, { useReducedMotion } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import {
@@ -33,6 +33,7 @@ import { RaidHPBar } from "./RaidParts";
 import { RelicArt } from "./RelicArt";
 import { GF, GP, realmColor } from "./theme";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
+import { POP_FADE, POP_IN_SOFT } from "./sheetMotion";
 
 const GOLD = "#FFC83D";
 
@@ -71,7 +72,7 @@ export default function DuelResult({
 
   return (
     <Animated.View
-      entering={reduce ? FadeIn.duration(200) : ZoomIn.springify().stiffness(195).damping(22).withInitialValues({ transform: [{ scale: 0.92 }] })}
+      entering={reduce ? POP_FADE : POP_IN_SOFT}
       style={StyleSheet.absoluteFill}>
       <ScrollView
         contentContainerStyle={[styles.content, { paddingTop: insets.top + 50, paddingBottom: insets.bottom + 40 }]}

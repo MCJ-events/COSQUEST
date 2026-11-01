@@ -118,8 +118,8 @@ function OrbitCircle({
 
   useEffect(() => {
     Animated.parallel([
-      Animated.spring(pos, { toValue: { x, y }, useNativeDriver: false, friction: 9, tension: 40 }),
-      Animated.spring(dim, { toValue: size, useNativeDriver: false, friction: 9, tension: 40 }),
+      Animated.spring(pos, { toValue: { x, y }, useNativeDriver: false, friction: 9, tension: 40, overshootClamping: true }),
+      Animated.spring(dim, { toValue: size, useNativeDriver: false, friction: 9, tension: 40, overshootClamping: true }),
     ]).start();
   }, [x, y, size, pos, dim]);
 

@@ -13,7 +13,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, BackHandler, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
-import Animated, { FadeIn, FadeOut, ZoomIn } from "react-native-reanimated";
+import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle, Path } from "react-native-svg";
 
@@ -37,6 +37,7 @@ import { gameStore, useGame } from "@/features/game/runtime";
 import { GameButton, GameTitle, ProgressBar } from "./kit";
 import { CHOICE_COLORS, edgeOf, GF, GP } from "./theme";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
+import { usePopIn } from "./sheetMotion";
 
 /** Metres from the arena's centre to the edge of the drawn field (anchors are 3 to 12 m out). */
 const FIELD_M = 18;
@@ -405,6 +406,7 @@ function Downed({ state, now, onRespawn }: { state: RoomSessionState; now: numbe
 
 function MomentToast({ text, tone, feel }: { text: string; tone: "good" | "bad"; feel?: "heavy" | "medium" }) {
   const styles = useThemedStyles(STYLE_PAIR);
+  const enter = usePopIn();
   const [shown, setShown] = useState(true);
   useEffect(() => {
     // FieldModel: damage .heavy, a pickup .medium at full intensity, captures .success.
@@ -416,7 +418,7 @@ function MomentToast({ text, tone, feel }: { text: string; tone: "good" | "bad";
   if (!shown) return null;
   const color = tone === "good" ? GP.mint : GP.berry;
   return (
-    <Animated.View entering={ZoomIn.springify()} exiting={FadeOut} pointerEvents="none" style={styles.momentWrap}>
+    <Animated.View entering={enter} exiting={FadeOut} pointerEvents="none" style={styles.momentWrap}>
       <View style={[styles.moment, { backgroundColor: color, borderBottomColor: edgeOf(color) }]}>
         <Text style={styles.momentText}>{text}</Text>
       </View>

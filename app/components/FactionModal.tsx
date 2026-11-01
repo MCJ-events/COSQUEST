@@ -22,6 +22,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { C } from "@/theme/tokens";
+import { SHEET_EASE_OUT, SHEET_OPEN_MS, SHEET_SNAP_BACK } from "@/components/game/sheetMotion";
 
 // ==========================================
 // TYPES
@@ -78,10 +79,7 @@ export function FactionModal({
       translateY.value = SCREEN_HEIGHT;
 
       // Animate upward.
-      translateY.value = withSpring(0, {
-        damping: 24,
-        stiffness: 150,
-      });
+      translateY.value = withTiming(0, { duration: SHEET_OPEN_MS, easing: SHEET_EASE_OUT });
 
       setError("");
     } else {
@@ -144,10 +142,7 @@ export function FactionModal({
           },
         );
       } else {
-        translateY.value = withSpring(0, {
-          damping: 20,
-          stiffness: 150,
-        });
+        translateY.value = withSpring(0, SHEET_SNAP_BACK);
       }
     });
 

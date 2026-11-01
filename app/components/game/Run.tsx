@@ -9,7 +9,7 @@ import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import Animated, { FadeIn, FadeOut, useAnimatedStyle, useReducedMotion, useSharedValue, withSpring, ZoomIn } from "react-native-reanimated";
+import Animated, { FadeIn, FadeOut, useAnimatedStyle, useReducedMotion, useSharedValue, withSpring } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { runPlaysAsDuel } from "@/features/game/duelFlow";
@@ -59,6 +59,8 @@ import { SheetFrame } from "./SheetFrame";
 import { playSound } from "./sound";
 import { challengeName, edgeOf, GF, GP, realmColor, tierColor } from "./theme";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
+import { POP_FADE, POP_IN_COUNT, POP_IN_SOFT, usePopIn } from "./sheetMotion";
+import { SPRING_PRESS } from "@/features/game/spring";
 
 const STAGE = [GP.navy, GP.navyEdge] as const;
 const timeOfDay = (d: Date) => d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
@@ -111,6 +113,8 @@ function RunStartBody({ close }: { close: () => void }) {
   const styles = useThemedStyles(STYLE_PAIR);
   const insets = useSafeAreaInsets();
   const s = useRun();
+  // 3-2-1: each number grows in and stops dead (sheetMotion.ts); a fade under Reduce Motion.
+  const countIn = usePopIn(POP_IN_COUNT);
   const fix = useGame((s) => s.fix);
   const [counting, setCounting] = useState<number | null>(null);
   const alive = useRef(true);
@@ -147,7 +151,7 @@ function RunStartBody({ close }: { close: () => void }) {
     <SheetFrame top={insets.top + 120}>
       {counting !== null ? (
         <View style={styles.countdown}>
-          <Animated.Text key={counting} entering={ZoomIn.springify().stiffness(440).damping(10)} exiting={FadeOut} style={[styles.countText, { color: counting === 0 ? GP.mint : GP.ink }]}>
+          <Animated.Text key={counting} entering={countIn} exiting={FadeOut} style={[styles.countText, { color: counting === 0 ? GP.mint : GP.ink }]}>
             {counting === 0 ? "GO!" : counting}
           </Animated.Text>
         </View>
@@ -322,7 +326,7 @@ export function RunTray({ onPick, onEnd, distanceOf, inReach }: { onPick: (p: Ru
   );
 }
 
-const PRESS = { stiffness: 816, damping: 34, mass: 1 };
+const PRESS = SPRING_PRESS;
 
 function RunCardButton({ point, distance, inReach, pocket, width, onPress }: { point: RunPoint; distance: number | null; inReach: boolean; pocket: boolean; width: number | null; onPress: () => void }) {
   const styles = useThemedStyles(STYLE_PAIR);
@@ -552,7 +556,7 @@ function RunQuiz({ point, staked: stakedAsked, onDone }: { point: RunPoint; stak
       ) : attempt ? (
         <ScrollView contentContainerStyle={{ gap: 14, paddingTop: 14, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
           {phase === "result" && result ? (
-            <Animated.View entering={reduce ? FadeIn : ZoomIn.springify().stiffness(250).damping(19)} style={{ gap: 6 }} accessible>
+            <Animated.View entering={reduce ? POP_FADE : POP_IN_SOFT} style={{ gap: 6 }} accessible>
               <Text style={[styles.headline, { color: result.earned > 0 ? GP.mint : "#FFF" }]}>{resultHeadline(result)}</Text>
               <View style={{ flexDirection: "row", gap: 12, flexWrap: "wrap" }}>
                 {resultChips(result).map((c) => (

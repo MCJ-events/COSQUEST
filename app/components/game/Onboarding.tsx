@@ -23,7 +23,6 @@ import Animated, {
   withRepeat,
   withSpring,
   withTiming,
-  ZoomIn,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle } from "react-native-svg";
@@ -53,6 +52,8 @@ import { GF, GP, realmColor, realmIcon } from "./theme";
 import WardenBadge from "./WardenBadge";
 import { useWardenMuted, wardenVoice } from "./wardenVoice";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
+import { usePopIn } from "./sheetMotion";
+import { settle } from "@/features/game/spring";
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 const MOTES = motes();
@@ -67,6 +68,7 @@ export default function Onboarding({ suggestedName, onDone }: { suggestedName: s
   const config = useGame((s) => s.config);
   const profile = useGame((s) => s.profile);
   const me = useGame((s) => s.me);
+  const giftIn = usePopIn();
   const muted = useWardenMuted();
   const [first] = useState(() => {
     const handle = (profile?.handle || suggestedName || "").trim();
@@ -339,7 +341,7 @@ export default function Onboarding({ suggestedName, onDone }: { suggestedName: s
               </View>
             </Animated.View>
           ) : beat === "gift" && relic ? (
-            <Animated.View entering={ZoomIn.springify().damping(14)} style={styles.gift} pointerEvents="none">
+            <Animated.View entering={giftIn} style={styles.gift} pointerEvents="none">
               <View style={{ shadowColor: rarityColor(relic.rarity), shadowOpacity: 0.8, shadowRadius: 24, shadowOffset: { width: 0, height: 0 } }}>
                 <RelicArt kind={relic.kind} rarity={relic.rarity} size={120} />
               </View>
@@ -449,7 +451,7 @@ function HouseOrb({ id, name, chosen, onPress }: { id: string; name: string; cho
   const colour = realmColor(id);
   const scale = useSharedValue(chosen ? 1.12 : 1);
   useEffect(() => {
-    scale.set(withSpring(chosen ? 1.12 : 1, { stiffness: 322, damping: 21.5, mass: 1 }));
+    scale.set(withSpring(chosen ? 1.12 : 1, settle(0.35)));
   }, [chosen, scale]);
   const style = useAnimatedStyle(() => ({ transform: [{ scale: scale.get() }] }));
   return (
