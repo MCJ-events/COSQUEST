@@ -35,12 +35,23 @@ import UniformTypeIdentifiers
 //   metadata, at most ~10.5 s.
 //
 // requireNativeView("CostQuestGame", "CostQuestSummonView"): props uri (a
-// downloaded .usdz, file://), kind, name, heightM, minScale, maxScale, tint;
-// event onSummonState; view functions photo, startVideo, stopVideo,
-// celebrate, recenter.
+// downloaded .usdz, file://), kind, name, heightM, minScale, maxScale, tint,
+// reveal; events onSummonState, onSummonTap; view functions photo,
+// startVideo, stopVideo, celebrate, recenter, hold.
+//
+// reveal (the Guardian reveal before a fight, phone-hardware design 2.5,
+// Phase 2 step 2; components/game/FightReveal.tsx): the same camera, model,
+// occlusion and photo, staged as a short moment instead of a toy. No coaching
+// overlay and no gestures; the Guardian stands ~3 m ahead (a floor found in
+// ~3.5 s, else where one would be), rises out of the ground through an
+// occluder with dust and a ring of sparks, then sways. A tap on it is
+// onSummonTap (the screen's Fight). No haptic here: the screen buzzes on
+// "placed" through the player's haptics setting. hold() pauses the session
+// (the last camera frame stays) while the fight takes over.
 
 public final class CostQuestSummonView: ExpoView {
   let onSummonState = EventDispatcher()
+  let onSummonTap = EventDispatcher()
 
   var uri: String? { didSet { if uri != oldValue { dirty = true } } }
   var kind = "character" { didSet { if kind != oldValue { dirty = true } } }
@@ -50,6 +61,8 @@ public final class CostQuestSummonView: ExpoView {
   var minScale: Float = 0.1
   var maxScale: Float = 1.5
   var tint = UIColor(red: 1.0, green: 0.78, blue: 0.2, alpha: 1)
+  /// The Guardian reveal before a fight (see the header): staged, no gestures.
+  var reveal = false { didSet { if reveal != oldValue { dirty = true } } }
 
   private var dirty = true
   private var asking = false
@@ -77,6 +90,10 @@ public final class CostQuestSummonView: ExpoView {
   private var hopStart: Double?
   private var hoverY: Float = 0
   private var modelHeight: Float = 1.8
+  /// The reveal's rise out of the ground (clock time it began), and what hides the part still below.
+  private var riseStart: Double?
+  private var occluder: ModelEntity?
+  private static let riseSeconds = 1.1
 
   private var isWeapon: Bool { kind == "weapon" }
 
@@ -161,20 +178,25 @@ public final class CostQuestSummonView: ExpoView {
 
     // Apple's coaching overlay: players have seen it in every AR app, and it
     // knows each tracking problem's animation. Only until the model stands.
-    let coach = ARCoachingOverlayView()
-    coach.sessionProvider = view
-    coach.goal = .horizontalPlane
-    coach.activatesAutomatically = true
-    coach.frame = view.bounds
-    coach.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-    view.addSubview(coach)
-    coaching = coach
+    // The reveal is a few seconds long: no lesson, the Guardian just comes.
+    if !reveal {
+      let coach = ARCoachingOverlayView()
+      coach.sessionProvider = view
+      coach.goal = .horizontalPlane
+      coach.activatesAutomatically = true
+      coach.frame = view.bounds
+      coach.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+      view.addSubview(coach)
+      coaching = coach
+    }
 
-    let double = UITapGestureRecognizer(target: self, action: #selector(doubleTapped(_:)))
-    double.numberOfTapsRequired = 2
-    view.addGestureRecognizer(double)
     let tap = UITapGestureRecognizer(target: self, action: #selector(tapped(_:)))
-    tap.require(toFail: double)
+    if !reveal {
+      let double = UITapGestureRecognizer(target: self, action: #selector(doubleTapped(_:)))
+      double.numberOfTapsRequired = 2
+      view.addGestureRecognizer(double)
+      tap.require(toFail: double)
+    }
     view.addGestureRecognizer(tap)
 
     subscriptions.append(view.scene.subscribe(to: SceneEvents.Update.self) { @Sendable [weak self] event in
@@ -255,6 +277,8 @@ public final class CostQuestSummonView: ExpoView {
     placed = false
     dropFrom = nil
     hopStart = nil
+    riseStart = nil
+    occluder = nil
     gesturesOn = false
     lift = Entity()
     sway = Entity()
@@ -300,6 +324,17 @@ public final class CostQuestSummonView: ExpoView {
     body.collision = CollisionComponent(shapes: [
       ShapeResource.generateBox(size: size).offsetBy(translation: [0, hoverY + size.y / 2, 0]),
     ])
+    if reveal && !isWeapon {
+      // The rise out of the ground: an invisible box under the floor hides
+      // the part of the Guardian still below it (the camera image shows through).
+      let w = min(2.0, max(0.8, max(ext.x, ext.z) * scale * 1.6))
+      let h = ext.y * scale + 0.3
+      let box = ModelEntity(mesh: .generateBox(width: w, height: h, depth: w), materials: [OcclusionMaterial()])
+      box.position.y = -h / 2 - 0.002
+      box.isEnabled = false
+      body.addChild(box)
+      occluder = box
+    }
     self.body = body
     model = entity
     if let idleClip, !UIAccessibility.isReduceMotionEnabled {
@@ -351,7 +386,7 @@ public final class CostQuestSummonView: ExpoView {
         if view.session.currentFrame != nil { break }
         try? await Task.sleep(for: .milliseconds(250))
       }
-      for _ in 0..<34 {
+      for _ in 0..<(self?.reveal == true ? 12 : 34) {
         guard let self, let view = self.arView, !Task.isCancelled, !self.placed else { return }
         let centre = CGPoint(x: view.bounds.midX, y: view.bounds.midY * 1.2)
         if let hit = view.raycast(from: centre, allowing: .estimatedPlane, alignment: .horizontal).first,
@@ -370,7 +405,7 @@ public final class CostQuestSummonView: ExpoView {
   }
 
   /// How far ahead the model stands: a whole character in the frame.
-  private var standOff: Float { isWeapon ? 1.2 : 2.2 }
+  private var standOff: Float { isWeapon ? 1.2 : (reveal ? 3.0 : 2.2) }
 
   /// A floor point from a raycast: placed (pushed back so a character fits the frame) unless absurd.
   private func placeOnFloor(_ p4: SIMD4<Float>) -> Bool {
@@ -398,8 +433,8 @@ public final class CostQuestSummonView: ExpoView {
     placed = true
     coaching?.activatesAutomatically = false
     coaching?.setActive(false, animated: true)
-    // Drag, twist, pinch: RealityKit's own gestures on the body.
-    if !gesturesOn {
+    // Drag, twist, pinch: RealityKit's own gestures on the body (not in the reveal).
+    if !gesturesOn && !reveal {
       gesturesOn = true
       for g in view.installGestures([.translation, .rotation, .scale], for: body) {
         if let pinch = g as? EntityScaleGestureRecognizer {
@@ -407,8 +442,18 @@ public final class CostQuestSummonView: ExpoView {
         }
       }
     }
-    // It drops in from a little above and lands with dust.
-    if UIAccessibility.isReduceMotionEnabled {
+    // It drops in from a little above and lands with dust; in the reveal it
+    // rises out of the ground instead.
+    if reveal {
+      if UIAccessibility.isReduceMotionEnabled {
+        lift.position.y = hoverY
+      } else {
+        riseStart = clock
+        lift.position.y = hoverY - modelHeight
+        occluder?.isEnabled = true
+        groundBurst()
+      }
+    } else if UIAccessibility.isReduceMotionEnabled {
       landed()
     } else {
       dropFrom = (clock, 0.45)
@@ -441,6 +486,46 @@ public final class CostQuestSummonView: ExpoView {
     }
   }
 
+  /// The reveal's appearance: dust breaking out of the ground and a ring of
+  /// sparks in the realm's colour rising with the Guardian.
+  private func groundBurst() {
+    guard let body else { return }
+    var dust = ParticleEmitterComponent.Presets.impact
+    dust.mainEmitter.color = .constant(.single(UIColor(white: 0.8, alpha: 0.75)))
+    dust.emitterShape = .torus
+    dust.emitterShapeSize = [0.45, 0.02, 0.45]
+    dust.burstCount = 180
+    dust.speed = 0.35
+    dust.isEmitting = false
+    var ring = ParticleEmitterComponent.Presets.sparks
+    ring.mainEmitter.color = .constant(.single(tint))
+    ring.emitterShape = .torus
+    ring.emitterShapeSize = [0.5, 0.02, 0.5]
+    ring.burstCount = 220
+    ring.speed = 0.7
+    ring.isEmitting = false
+    for preset in [dust, ring] {
+      let e = Entity()
+      e.components.set(preset)
+      e.position.y = 0.02
+      body.addChild(e)
+      if var c = e.components[ParticleEmitterComponent.self] {
+        c.burst()
+        e.components.set(c)
+      }
+      Task { @MainActor [weak e] in
+        try? await Task.sleep(for: .seconds(3))
+        e?.removeFromParent()
+      }
+    }
+  }
+
+  /// The fight is taking over: stop the camera (the last frame stays on screen).
+  func hold() {
+    recorder.cancel()
+    arView?.session.pause()
+  }
+
   // MARK: - Gestures
 
   @objc private func pinched(_ g: EntityScaleGestureRecognizer) {
@@ -453,6 +538,11 @@ public final class CostQuestSummonView: ExpoView {
   @objc private func tapped(_ g: UITapGestureRecognizer) {
     guard let view = arView else { return }
     let at = g.location(in: view)
+    if reveal {
+      // The reveal: a tap on the Guardian is the screen's Fight.
+      if placed, view.entity(at: at) != nil { onSummonTap([:]) }
+      return
+    }
     guard let hit = view.raycast(from: at, allowing: .estimatedPlane, alignment: .horizontal).first else { return }
     let p = hit.worldTransform.columns.3
     if !placed {
@@ -535,6 +625,18 @@ public final class CostQuestSummonView: ExpoView {
         dropFrom = nil
         lift.position.y = hoverY
         landed()
+      }
+    }
+    // The reveal's rise out of the ground (ease out), then the occluder goes.
+    if let rise = riseStart {
+      let p = Float(min(1, (clock - rise) / Self.riseSeconds))
+      let ease = 1 - pow(1 - p, 3)
+      lift.position.y = hoverY - modelHeight * (1 - ease)
+      if p >= 1 {
+        riseStart = nil
+        lift.position.y = hoverY
+        occluder?.removeFromParent()
+        occluder = nil
       }
     }
     // A celebrate with no clip: a hop and a full turn.

@@ -306,6 +306,52 @@ export function openFight(opts: { args: string[]; config: Fight3DConfig; keep: b
 }
 
 /**
+ * Warm the engine before a fight is started (the AR reveal plays over it,
+ * components/game/FightReveal.tsx): the engine created and its scene tree up
+ * (the Bridge there), then paused, so openFight only has to resume it and
+ * call start_fight. Nothing else changes: the fight itself is openFight's,
+ * on the same config. A kept or running engine is left as it is. Never
+ * throws; a warm that fails just leaves openFight to do it all, as before.
+ */
+export function warmFight(opts: { args: string[]; readyTimeoutMs?: number }): Promise<void> {
+  const g = godotLib();
+  if (!g || !worklets) return Promise.resolve();
+  const mine = generation;
+  const run = g.runOnGodotThread;
+  return serial(async () => {
+    if (state !== "none" || mine !== generation) return;
+    setState("starting");
+    callbackSet = false;
+    jsApi = null;
+    jsBridge = null;
+    const ok = await run(() => {
+      "worklet";
+      return createWorklet(opts.args);
+    }).catch(() => false);
+    if (!ok) {
+      setState("none");
+      return;
+    }
+    // The scene tree and its autoloads come up on the first frames.
+    const until = Date.now() + (opts.readyTimeoutMs ?? 6000);
+    while (Date.now() < until && mine === generation) {
+      const up = await run(() => {
+        "worklet";
+        return bridgeWorklet() !== null;
+      }).catch(() => false);
+      if (up) break;
+      await sleep(150);
+    }
+    g.RTNGodot.pause();
+    pausedAt = Date.now();
+    setState("paused");
+    if (__DEV__ || process.env.EXPO_PUBLIC_WORLD_TIMING === "1") console.log("[godot] warmed and paused for the reveal");
+  }).catch((e) => {
+    console.warn(`[godot] warm: ${String(e)}`);
+  });
+}
+
+/**
  * bridge.get_status() as JSON text, or null while there is no engine or Bridge.
  * Tests only (the leak probe): each call is a worklet run, see the header.
  */

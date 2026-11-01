@@ -12,7 +12,7 @@ import Constants from "expo-constants";
 import * as Application from "expo-application";
 import * as Haptics from "expo-haptics";
 import { type ComponentProps, type ReactNode, useCallback, useEffect, useState } from "react";
-import { BackHandler, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { BackHandler, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -44,7 +44,10 @@ import { HeroStatBar, XPBar } from "./Bars";
 import HeroStage, { HeroSlot, SlotIcon } from "./HeroStage";
 import { WORLD_CLOCKS } from "@/features/game/mapStyle";
 import { Chip, GameButton, GameCoin, GameHeading, GameIconButton, GamePanel, MAX_FONT_SCALE, pressFeedback } from "./kit";
-import { notify, setHapticsOn, setWorldClock, useHapticsOn, useWorldClock } from "./prefs";
+import { notify, setFightReveal, setHapticsOn, setWorldClock, useFightReveal, useHapticsOn, useWorldClock } from "./prefs";
+import { REVEAL_ISLAND_OFF } from "./FightReveal";
+import { revealSettingShown } from "@/features/game/reveal";
+import { CostQuestSummonView, summonARSupported } from "@/modules/costquest-game/src";
 import { RelicArt } from "./RelicArt";
 import { SheetHost } from "./Sheet";
 import StancePicker from "./StancePicker";
@@ -396,6 +399,8 @@ function SettingsTab({ handle, avatar, onEdit }: { handle: string; avatar: Profi
   const haptics = useHapticsOn();
   const muted = useWardenMuted();
   const clock = useWorldClock();
+  const reveal = useFightReveal();
+  const revealShown = revealSettingShown({ platform: Platform.OS, nativeView: CostQuestSummonView !== null, arSupported: summonARSupported, islandOff: REVEAL_ISLAND_OFF });
   const version = `${Constants.expoConfig?.version ?? "?"} (${Application.nativeBuildVersion ?? "?"})`;
   return (
     <View style={{ gap: 18 }}>
@@ -452,6 +457,15 @@ function SettingsTab({ handle, avatar, onEdit }: { handle: string; avatar: Profi
                 }}
               />
             </View>
+            {revealShown ? (
+              <View style={styles.prefRow}>
+                <View style={{ flex: 1, gap: 2 }}>
+                  <Text style={styles.prefTitle}>AR reveal before fights</Text>
+                  <Text style={styles.prefNote}>The Guardian appears through your camera for a few seconds, then the fight begins.</Text>
+                </View>
+                <OnOff on={reveal} label="AR reveal before fights" onPress={() => setFightReveal(!reveal)} />
+              </View>
+            ) : null}
             <View style={styles.prefRow}>
               <View style={{ flex: 1, gap: 2 }}>
                 <Text style={styles.prefTitle}>The Warden speaks</Text>

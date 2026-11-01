@@ -265,6 +265,14 @@ export type CostQuestSummonViewProps = ViewProps & {
   maxScale?: number;
   /** The celebrate sparkle's colour, #RRGGBB. */
   tint?: string;
+  /**
+   * The Guardian reveal before a fight (components/game/FightReveal.tsx): no
+   * coaching or gestures, ~3 m ahead, it rises out of the ground; a tap on it
+   * is onSummonTap. No native haptic (the screen buzzes on "placed").
+   */
+  reveal?: boolean;
+  /** reveal: the player tapped the Guardian. */
+  onSummonTap?: () => void;
   onSummonState?: (e: {
     nativeEvent: {
       phase: "looking" | "placed" | "denied" | "failed";
@@ -290,6 +298,8 @@ export type CostQuestSummonViewHandle = {
   celebrate(): Promise<void>;
   /** Stand it in front of the player again. */
   recenter(): Promise<void>;
+  /** Pause the camera (the last frame stays): the fight is taking over. */
+  hold(): Promise<void>;
 };
 
 /**

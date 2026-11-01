@@ -362,8 +362,9 @@ public final class CostQuestGameModule: Module {
 
     // requireNativeView("CostQuestGame", "CostQuestSummonView")
     View(CostQuestSummonView.self) {
-      Events("onSummonState")
+      Events("onSummonState", "onSummonTap")
       Prop("uri") { (view: CostQuestSummonView, uri: String?) in view.uri = uri }
+      Prop("reveal") { (view: CostQuestSummonView, on: Bool?) in view.reveal = on ?? false }
       Prop("kind") { (view: CostQuestSummonView, kind: String?) in view.kind = kind ?? "character" }
       Prop("name") { (view: CostQuestSummonView, name: String?) in view.name = name ?? "" }
       Prop("heightM") { (view: CostQuestSummonView, h: Double?) in view.heightM = Float(h ?? 0) }
@@ -391,6 +392,9 @@ public final class CostQuestGameModule: Module {
       }
       AsyncFunction("recenter") { (view: CostQuestSummonView) async in
         await view.recenter()
+      }
+      AsyncFunction("hold") { (view: CostQuestSummonView) async in
+        await view.hold()
       }
     }
 

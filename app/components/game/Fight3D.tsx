@@ -11,6 +11,11 @@
 //        run.cycle = N opens and closes it N times, run.cycleMs apart,
 //        logging "CQCYCLE i=<n> ..." lines (adb logcat -s ReactNativeJS)
 //
+// hold (the AR reveal is on screen, FightReveal.tsx): everything is prepared
+// (the cast's files, the config, the weapons, the engine warmed and paused)
+// but start_fight waits until hold goes false, so the fight starts the moment
+// the reveal hands over and not a second before.
+//
 // Closing (X, Android Back, the result, leaving the screen) always goes
 // through closeFight, which is safe while loading and safe twice.
 // testIDs: fight3d-view, fight3d-close, fight3d-loading, fight3d-error.
@@ -22,7 +27,7 @@ import { ActivityIndicator, AppState, BackHandler, Platform, Pressable, StyleShe
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { castWeapons, fightCast } from "@/features/game3d/characters";
-import { closeFight, fightStatus, FightOpenError, godotLib, holdForBackground, onFightState, openFight } from "@/features/game3d/engine";
+import { closeFight, fightStatus, FightOpenError, godotLib, holdForBackground, onFightState, openFight, warmFight } from "@/features/game3d/engine";
 import {
   buildFightConfig,
   type Fight3DMode,
@@ -76,7 +81,9 @@ export default function Fight3D({
   enemyId,
   parked = false,
   autoCloseMs,
+  hold = false,
   onFighting,
+  onFailed,
   onResult,
   onClose,
 }: {
@@ -95,7 +102,11 @@ export default function Fight3D({
   parked?: boolean;
   /** The leak test: close by itself this long after the fight is on. */
   autoCloseMs?: number;
+  /** The AR reveal is playing over it: prepare everything, start the fight when this goes false. */
+  hold?: boolean;
   onFighting?: () => void;
+  /** It could not start (its error card is showing). */
+  onFailed?: () => void;
   /** Godot's verdict, and the duel it was fought for when judged. The engine is already closed. */
   onResult: (r: Fight3DResult, start: DuelStart | null) => void;
   /** Closed without a verdict (X, Back, a failure, the leak test). The engine is already closed. */
@@ -118,6 +129,17 @@ export default function Fight3D({
     setPhase(p);
   }, []);
   const View3D = godotLib()?.RTNGodotView ?? null;
+  const holdRef = useRef(hold);
+  holdRef.current = hold;
+  const release = useRef<(() => void) | null>(null);
+  const onFailedRef = useRef(onFailed);
+  onFailedRef.current = onFailed;
+  useEffect(() => {
+    if (hold || !release.current) return;
+    const r = release.current;
+    release.current = null;
+    r();
+  }, [hold]);
 
   /** The one way out: the engine closed first, then the parent told once. */
   const finish = useCallback(
@@ -140,6 +162,9 @@ export default function Fight3D({
   useEffect(() => {
     let alive = true;
     openedAt.current = Date.now();
+    const args = godotArgs(Platform.OS, { bundleDir: Platform.OS === "ios" ? Paths.bundle.uri : null });
+    // The reveal is on: bring the engine up (paused) while the files download.
+    if (holdRef.current) void warmFight({ args });
     void (async () => {
       try {
         // The server set this fight up already (DuelScreen started the duel): its seed, round and modifiers.
@@ -185,8 +210,21 @@ export default function Fight3D({
         if (probe.selfCycle) Object.assign(config, { self_cycle: probe.selfCycle, self_cycle_ms: 6000 });
         // Look switches (test link look=post etc.): the opt-in post stack on a device.
         if (probe.look) Object.assign(config, { look: probe.look });
+        if (holdRef.current) {
+          // Ready under the reveal: wait for its handover.
+          log(`ready, held for the reveal after_ms=${Date.now() - openedAt.current}`);
+          await new Promise<void>((resolve) => {
+            release.current = resolve;
+            if (!holdRef.current) {
+              release.current = null;
+              resolve();
+            }
+          });
+          if (!alive || done.current) return;
+          log(`released after_ms=${Date.now() - openedAt.current}`);
+        }
         await openFight({
-          args: godotArgs(Platform.OS, { bundleDir: Platform.OS === "ios" ? Paths.bundle.uri : null }),
+          args,
           config,
           keep: FIGHT3D.keep,
           onResult: (json) => {
@@ -202,6 +240,7 @@ export default function Fight3D({
         if (e instanceof FightOpenError && (e as FightOpenError & { cancelled?: boolean }).cancelled) return;
         log(`failed: ${(e as Error).message}`);
         go({ kind: "failed", message: (e as Error).message || "The 3D fight could not start." });
+        onFailedRef.current?.();
         void closeFight({ keep: FIGHT3D.keep });
       }
     })();

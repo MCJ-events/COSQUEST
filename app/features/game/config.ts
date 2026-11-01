@@ -81,7 +81,7 @@ export type GameScreen = (typeof GAME_SCREENS)[number];
  *   arSummon    "See it here": a Forge model in the room (SummonIsland.swift) -> no button
  *   (FriendBeaconIsland.swift has no 2D twin: where it is missing the hold-phones card is not shown.)
  */
-export const NATIVE_ISLANDS = ["forgeModel", "venueEvents", "arShrine", "arSummon"] as const;
+export const NATIVE_ISLANDS = ["forgeModel", "venueEvents", "arShrine", "arSummon", "arReveal"] as const;
 export type NativeIsland = (typeof NATIVE_ISLANDS)[number];
 
 /**

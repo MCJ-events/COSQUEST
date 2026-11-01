@@ -150,3 +150,46 @@ export function useShrineAR(): boolean {
     shrineAROn,
   );
 }
+
+// ---------- The AR reveal before a fight (features/game/reveal.ts) ----------
+
+const FIGHT_REVEAL_PREF = "game.fightReveal";
+
+/**
+ * On by default: the reveal itself only happens on a phone that can do AR
+ * (reveal.ts revealWanted), so "on" means on where it can be. One tap turns it
+ * off in the reveal and in Profile; remembered on the phone, never sent.
+ */
+let fightReveal = true;
+
+getPref(FIGHT_REVEAL_PREF)
+  .then((v) => {
+    if (v === "0" || v === "1") {
+      fightReveal = v === "1";
+      notifyAll();
+    }
+  })
+  .catch(() => {});
+
+export function fightRevealOn(): boolean {
+  return fightReveal;
+}
+
+export function setFightReveal(next: boolean) {
+  fightReveal = next;
+  setPref(FIGHT_REVEAL_PREF, next ? "1" : "0").catch(() => {});
+  notifyAll();
+}
+
+export function useFightReveal(): boolean {
+  return useSyncExternalStore(
+    (l) => {
+      listeners.add(l);
+      return () => {
+        listeners.delete(l);
+      };
+    },
+    fightRevealOn,
+    fightRevealOn,
+  );
+}

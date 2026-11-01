@@ -17,7 +17,7 @@ section, and `scripts/verify-ios.sh`.
 | Flag | Values | Default | What it does |
 |---|---|---|---|
 | `EXPO_PUBLIC_GAME_UI` | `rn` / `native` | `rn` on both platforms | `native` brings back the SwiftUI game on iOS (whole game, `CostQuestGameView`), the fallback. Android has only `rn`. `features/game/config.ts resolveGameUi` |
-| `EXPO_PUBLIC_GAME_2D` | comma list of islands, or `all` | none | Turns a native island off so the RN screen draws its 2D fallback: `forgeModel`, `unityDuel`, `unityBattle`, `venueEvents`, `arShrine`. For a phone where an island misbehaves. `config.ts resolveIslandsOff` |
+| `EXPO_PUBLIC_GAME_2D` | comma list of islands, or `all` | none | Turns a native island off so the RN screen draws its 2D fallback: `forgeModel`, `unityDuel`, `unityBattle`, `venueEvents`, `arShrine`, `arSummon` ("See it here"), `arReveal` (the AR Guardian reveal before a fight: straight to the fight). For a phone where an island misbehaves. `config.ts resolveIslandsOff` |
 | `EXPO_PUBLIC_DUEL_RENDERER` | `rn` / `unity` | `rn` | `unity` draws Guardian Duels with the Unity scene where the build has it (device build with UnityFramework, or an Android unityAndroid build). Same simulation either way. |
 
 Why the fallback is whole-game rather than per screen: the SwiftUI game is

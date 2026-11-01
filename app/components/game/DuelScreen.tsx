@@ -16,6 +16,12 @@
 //   2D: tap: strike · hold: block (keep holding to charge, let go to throw the heavy)
 //       flick toward: dash · flick away: dodge · drag: walk · the two buttons: specials
 //
+// The AR reveal (phone-hardware design 2.5, FightReveal.tsx, features/game/
+// reveal.ts): on an AR iPhone with the setting on, the 3D fight opens with a
+// few seconds of the Guardian rising out of the ground through the camera.
+// The duel is started with the server exactly as without it, Fight3D prepares
+// the fight underneath (hold) and starts it when the reveal hands over.
+//
 // The 2D sim steps at a fixed 60 Hz from real time (DuelRunner); this screen
 // draws its state every frame. The phone only reports what happened; the
 // server decides what it pays (POST /v1/duel/finish). Leaving a fight reports
@@ -24,13 +30,14 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { StatusBar } from "expo-status-bar";
-import { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type RefObject, useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   AppState,
   BackHandler,
   type GestureResponderEvent,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -90,6 +97,7 @@ import { gameStore } from "@/features/game/runtime";
 import { siegeMoment } from "@/features/game/siegeFlow";
 import { levelMoment, reactionMoment } from "@/features/game/warden";
 import type { DuelFinished, DuelOutcome, DuelStart, QuestPoint, RoamStanding } from "@/features/game/wire";
+import { revealHoldsFight, revealStep, revealWanted } from "@/features/game/reveal";
 import { finishFrom3D } from "@/features/game3d/fight3d";
 import { FIGHT3D, fight3dAvailable } from "@/features/game3d/flags";
 
@@ -99,6 +107,9 @@ import DuelResult from "./DuelResult";
 import { runModel } from "./runModel";
 import DuelVersus from "./DuelVersus";
 import Fight3D from "./Fight3D";
+import FightReveal, { REVEAL_ISLAND_OFF } from "./FightReveal";
+import { fightRevealOn } from "./prefs";
+import { CostQuestSummonView, summonARSupported } from "@/modules/costquest-game/src";
 import { announce, GameButton, MAX_FONT_SCALE, ProgressBar } from "./kit";
 import { RaidDuelBriefing } from "./RaidDuel";
 import type { RewardSummary } from "./Reward";
@@ -178,6 +189,22 @@ export default function DuelScreen({
   const use3D = useMemo(() => fight3dAvailable(), []);
   const direct = use3D || mode === "siege" || mode === "trial" || mode === "run";
   const [phase, setPhase] = useState<Phase>(direct ? { kind: "starting" } : { kind: "briefing" });
+  // The AR reveal before the 3D fight: decided once, when the screen opens.
+  const revealOn = useMemo(
+    () =>
+      revealWanted({
+        platform: Platform.OS,
+        nativeView: CostQuestSummonView !== null,
+        arSupported: summonARSupported,
+        islandOff: REVEAL_ISLAND_OFF,
+        pref: fightRevealOn(),
+        fight3d: use3D,
+      }),
+    [use3D],
+  );
+  const [reveal, sendReveal] = useReducer(revealStep, revealOn ? "coming" : "done");
+  const revealRef = useRef(reveal);
+  revealRef.current = reveal;
   const phaseRef = useRef<Phase>(phase);
   const [paused, setPaused] = useState(false);
   const before = useRef<RoamStanding | null>(null);
@@ -322,7 +349,8 @@ export default function DuelScreen({
       if (!alive.current) return;
       if (use3D && start.setup.kind === "fight3d") {
         // The 3D fight: straight in. Its loading card says who and what it is worth.
-        playSound("whoosh");
+        // Under the AR reveal: no sound over the camera.
+        if (revealRef.current === "done") playSound("whoosh");
         announce(`${versusTitle(start, (id) => gameStore.factionName(id))}. Loading the fight`);
         go({ kind: "fight3d", start });
         return;
@@ -429,6 +457,9 @@ export default function DuelScreen({
           autoplay={FIGHT3D.autoplay}
           start={phase.start}
           parked={parked}
+          hold={revealHoldsFight(reveal)}
+          onFighting={() => sendReveal("fightShown")}
+          onFailed={() => sendReveal("fightShown")}
           onResult={(r, s) => {
             const st = s ?? phase.start;
             const end = r.outcome === "quit" ? null : { won: r.outcome === "win", reason: r.outcome === "timeout" ? "Time!" : r.outcome === "win" ? "K.O.!" : "Down!" };
@@ -486,6 +517,10 @@ export default function DuelScreen({
           </Text>
           <GameButton title="Back" color={GP.sun} onPress={onClose} style={{ alignSelf: "stretch" }} />
         </View>
+      ) : null}
+
+      {reveal !== "done" && (phase.kind === "starting" || phase.kind === "fight3d") ? (
+        <FightReveal point={point} mode={mode} start={phase.kind === "fight3d" ? phase.start : null} state={reveal} send={sendReveal} />
       ) : null}
 
       {pauseProps && paused ? (
