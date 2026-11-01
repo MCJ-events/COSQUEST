@@ -178,6 +178,7 @@ export default function Fight3D({
           enemyId: fightOf?.enemyId ?? enemyId,
           enemyName: fightOf?.guardianName ?? point?.extra?.guardian ?? null,
           ally: fightOf?.ally ?? null,
+          enemyWeaponId: fightOf?.enemyWeaponId ?? null,
           lodOverride: FIGHT3D.lod,
         });
         if (!alive || done.current) return;

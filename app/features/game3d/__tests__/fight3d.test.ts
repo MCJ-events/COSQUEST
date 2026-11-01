@@ -352,6 +352,52 @@ test("the pre-fight card says who, what kind of fight, and what it is worth, per
   for (const c of [fightCard(start3d({ point: { tier: "common" } }), "x"), fightCard(null, "x")]) assert.doesNotMatch(JSON.stringify(c), /practice/i);
 });
 
+// ---------- a Siege's Guardian is the holder's own hero (server siege-holder-hero) ----------
+
+import { holderLine, possessive, siegeHolder } from "../fight3d.ts";
+
+const holderSiege = (siege: Record<string, unknown>, p2: Record<string, unknown> = {}) =>
+  start3d({
+    guardian_name: "Ada",
+    siege: { faction_attacked_name: "DC", ...siege },
+    p2: { name: "Ada", character: { element_id: "hero-ada", version: 1, name: "Lagos Ranger", holder: true }, forge_weapon: { element_id: "sword-9", version: 1, name: "Night Sword", kind: "sword" }, ...p2 },
+  });
+
+test("a Siege against a holder's hero fights that hero with their weapon", () => {
+  const f = fightFromStart(holderSiege({ holder_name: "Ada", holder_hero: true }))!;
+  assert.equal(f.enemyId, "hero-ada");
+  assert.equal(f.enemyWeaponId, "sword-9");
+  assert.deepEqual(f.holder, { name: "Ada", hero: true });
+  assert.equal(f.guardianName, "Ada");
+  // the published Guardian standing in for a holder with no hero: its own weapon, not a stray one
+  const g = fightFromStart(holderSiege({ holder_name: "Ada", holder_hero: false }, { character: { element_id: "guard-1" }, forge_weapon: null }))!;
+  assert.equal(g.enemyId, "guard-1");
+  assert.equal(g.enemyWeaponId, null);
+  // any other fight: no holder, no weapon
+  const p = fightFromStart(start3d({ p2: { name: "G", forge_weapon: { element_id: "w" } }, point: { tier: "rare" } }))!;
+  assert.equal(p.holder, null);
+  assert.equal(p.enemyWeaponId, null);
+});
+
+test("the pre-fight card says whose hero holds the point", () => {
+  assert.equal(fightCard(holderSiege({ holder_name: "Ada", holder_hero: true }), "Big Ben").line, "Ada's hero holds this point. Beat it to take Big Ben from DC.");
+  assert.equal(fightCard(holderSiege({ holder_name: "James", holder_hero: true }), "Big Ben").line, "James' hero holds this point. Beat it to take Big Ben from DC.");
+  assert.equal(fightCard(holderSiege({ holder_name: null, holder_hero: true }), "Big Ben").line, "A rival's hero holds this point. Beat it to take Big Ben from DC.");
+  // no hero: the Guardian, as before
+  assert.equal(fightCard(holderSiege({ holder_name: "Ada", holder_hero: false }), "Big Ben").line, "Beat it to take Big Ben from DC.");
+  assert.equal(fightCard(start3d({ guardian_name: "G", siege: { faction_attacked_name: "DC" } }), "Big Ben").line, "Beat it to take Big Ben from DC.");
+});
+
+test("the holder's name is read with care", () => {
+  assert.deepEqual(siegeHolder(holderSiege({ holder_name: "  Ada  ", holder_hero: true })), { name: "Ada", hero: true });
+  assert.deepEqual(siegeHolder(holderSiege({ holder_name: 7, holder_hero: "yes" })), { name: null, hero: false });
+  assert.equal(siegeHolder(start3d({ siege: { faction_attacked_name: "DC" } })), null);
+  assert.equal(siegeHolder(null), null);
+  assert.equal(holderLine(holderSiege({ holder_name: "x".repeat(80), holder_hero: true }))?.length, 40 + "'s hero holds this point".length);
+  assert.equal(possessive("Ada"), "Ada's");
+  assert.equal(possessive("Chris"), "Chris'");
+});
+
 test("the fight's own numbers are rows on any reward screen", () => {
   const r = parseFightResult(godotWin)!;
   assert.deepEqual(

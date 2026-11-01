@@ -1,5 +1,5 @@
 // Run by app/scripts/swift-linux-check.sh: the pure Swift (VoiceAnswer.match,
-// WardenCheck) against the same vectors as the TypeScript tests.
+// WardenCheck, FixPolicy) against the same vectors as the TypeScript tests.
 import Foundation
 
 var failures = 0
@@ -49,6 +49,49 @@ for line in ["I\u{2019}m sorry, but I cannot do that for you today.",
 check(WardenCheck.problem("Crest of London, Ada! A duel, and I can feel the pressure!", for: crest), nil, "1.7B arrive")
 check(WardenCheck.problem("That duel was tough, Ada, but you never gave up! Caffè Nero will remember this one.", for: lost), nil, "1.7B result")
 check(WardenCheck.offVoicePhrases.count, 44, "phrase count matches the TS list")
+
+// FixPolicy (venue Events anti-cheat): the same vectors as fixInfo.test.ts.
+let fNow = Date(timeIntervalSince1970: 1_760_000_000)
+func show(_ f: [String: WireValue]) -> String {
+    f.keys.sorted().map { k -> String in
+        switch f[k]! {
+        case .double(let v): return "\(k)=\(v)"
+        case .bool(let v): return "\(k)=\(v)"
+        case .int(let v): return "\(k)=\(v)"
+        case .string(let v): return "\(k)=\(v)"
+        }
+    }.joined(separator: ",")
+}
+check(FixPolicy.ageS(fNow.addingTimeInterval(-12.345), now: fNow), 12.3, "fix_age_s to 0.1 s")
+check(FixPolicy.ageS(fNow.addingTimeInterval(0.8), now: fNow), 0, "fix_age_s never negative")
+check(FixPolicy.ageS(nil, now: fNow), nil, "fix_age_s unknown")
+check(show(FixPolicy.fields(.init(accuracy: 8.5, at: fNow.addingTimeInterval(-2), simulated: true), now: fNow)),
+      "accuracy_m=8.5,fix_age_s=2.0,simulated=true", "fields: all known")
+check(show(FixPolicy.fields(.init(accuracy: 9000, at: fNow, simulated: nil), now: fNow)),
+      "accuracy_m=5000.0,fix_age_s=0.0", "fields: accuracy capped, simulated unknown")
+check(show(FixPolicy.fields(.init(accuracy: .nan, at: nil, simulated: nil), now: fNow)), "", "fields: nothing known")
+check(show(FixPolicy.fields(nil, now: fNow)), "", "fields: no fix")
+check(FixPolicy.isFresh(fNow.addingTimeInterval(-10), now: fNow), true, "fresh at 10 s")
+check(FixPolicy.isFresh(fNow.addingTimeInterval(-16), now: fNow), false, "stale at 16 s")
+check(FixPolicy.isFresh(nil, now: fNow), false, "no fix is not fresh")
+let nl = FixPolicy.needLocationText
+check(FixPolicy.isNeedLocation(ok: false, code: "need_location", retry: true, reason: nl), true, "need_location")
+check(FixPolicy.isNeedLocation(ok: false, code: nil, retry: nil, reason: nl), true, "need_location by its words")
+check(FixPolicy.isNeedLocation(ok: false, code: "need_location", retry: false, reason: nil), false, "retry false")
+check(FixPolicy.isNeedLocation(ok: false, code: "too_far", retry: nil, reason: "out of range of that point (120 m away)"), false, "too_far is not")
+check(FixPolicy.isNeedLocation(ok: true, code: "need_location", retry: nil, reason: nil), false, "ok is not")
+check(FixPolicy.nextRetryWait(attempt: 1, elapsed: 0), 1.5, "retry 1")
+check(FixPolicy.nextRetryWait(attempt: 2, elapsed: 2), 3, "retry 2")
+check(FixPolicy.nextRetryWait(attempt: 3, elapsed: 6), 5, "retry 3")
+check(FixPolicy.nextRetryWait(attempt: 4, elapsed: 12), nil, "no 4th retry")
+check(FixPolicy.nextRetryWait(attempt: 1, elapsed: 19), nil, "over the budget")
+check(FixPolicy.nextRetryWait(attempt: 0, elapsed: 0), nil, "attempt 0")
+check(FixPolicy.nextRetryWait(attempt: 1, elapsed: .nan), nil, "elapsed NaN")
+check(FixPolicy.copy(code: "need_location", distance: nil), "Waiting for your location. Try again in a moment", "copy need_location")
+check(FixPolicy.copy(code: "too_far", distance: 120.4), "Too far from that point (120 m). Get closer", "copy too_far")
+check(FixPolicy.copy(code: "too_far", distance: nil), "Too far from that point. Get closer", "copy too_far no distance")
+check(FixPolicy.copy(code: "hit_gps", distance: nil), "They're too far away. Get closer", "copy hit_gps")
+check(FixPolicy.copy(code: nil, distance: nil), nil, "no code: reason text")
 
 print(failures == 0 ? "ALL PASSED" : "\(failures) FAILED")
 exit(failures == 0 ? 0 : 1)

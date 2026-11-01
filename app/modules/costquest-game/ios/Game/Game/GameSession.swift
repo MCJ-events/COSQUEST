@@ -149,6 +149,15 @@ final class GameSession {
     var coordinate: CLLocationCoordinate2D?
     var heading: CLLocationDirection = 0
     var altitude: Double = 0
+    /// How good and how old that coordinate is, and whether iOS says it is
+    /// simulated: sent beside it as accuracy_m, fix_age_s and simulated
+    /// (FixPolicy), which the server's anti-cheat reads in a paid venue game.
+    var fix: FixPolicy.Fix?
+    /// Asks the location for a fix younger than FixPolicy.fixFreshS (and
+    /// waits a few seconds for it); set by whoever owns location (ARGameView).
+    /// Used before a located action when the last fix is old, and before
+    /// resending one the server refused with need_location.
+    var refreshFix: (@MainActor () async -> Void)?
 
     // MARK: - Machinery
 
@@ -234,7 +243,7 @@ final class GameSession {
     /// ("pickup on cooldown") and is shown as such.
     @discardableResult
     func pickUp(_ weapon: Weapon) async -> Verdict {
-        let verdict = await outbox.submit(.pickup, located(["weapon": .string(weapon.name)]))
+        let verdict = await send(.pickup, ["weapon": .string(weapon.name)])
         if verdict.ok {
             held = weapon
             celebrate("Picked up the \(weapon.name)", symbol: "bolt.horizontal.fill")
@@ -261,8 +270,8 @@ final class GameSession {
     @discardableResult
     func hit(target: String, range: Double) async -> Verdict {
         let sent = Date()
-        let verdict = await outbox.submit(.hit, located([
-            "target": .string(target), "range_m": .double(range)]))
+        let verdict = await send(.hit, [
+            "target": .string(target), "range_m": .double(range)])
         applyOwn(verdict, sentAt: sent, reason: "hit")
         if let drained = verdict.drained, verdict.ok {
             let who = name(of: target)
@@ -278,7 +287,7 @@ final class GameSession {
     @discardableResult
     func capture(anchor: String) async -> Verdict {
         let sent = Date()
-        let verdict = await outbox.submit(.capture, located(["anchor": .string(anchor)]))
+        let verdict = await send(.capture, ["anchor": .string(anchor)])
         applyOwn(verdict, sentAt: sent, reason: "capture")
         if verdict.ok { celebrate("Point captured", symbol: "flag.fill") }
         note(verdict, success: "Captured a point for \(faction ?? "your side").")
@@ -288,8 +297,8 @@ final class GameSession {
     @discardableResult
     func answerTrivia(anchor: String, answer: Int) async -> Verdict {
         let sent = Date()
-        let verdict = await outbox.submit(.trivia, located([
-            "anchor": .string(anchor), "answer": .int(answer)]))
+        let verdict = await send(.trivia, [
+            "anchor": .string(anchor), "answer": .int(answer)])
         applyOwn(verdict, sentAt: sent, reason: "trivia")
         if verdict.ok {
             if verdict.correct == true {
@@ -322,10 +331,43 @@ final class GameSession {
     /// attach. The server treats a payload with no `lat` as making no claim
     /// about where the player was, which is the honest thing to send from a
     /// basement.
+    ///
+    /// With the position go how good and how old the fix is and whether iOS
+    /// says it is simulated (FixPolicy.fields): a paid venue game refuses a
+    /// located action whose fix is older than 30 s.
     private func located(_ payload: [String: WireValue]) -> [String: WireValue] {
         guard let coordinate else { return payload }
-        return payload.merging(["lat": .double(coordinate.latitude),
-                                "lng": .double(coordinate.longitude)]) { a, _ in a }
+        var add: [String: WireValue] = ["lat": .double(coordinate.latitude),
+                                        "lng": .double(coordinate.longitude)]
+        add.merge(FixPolicy.fields(fix, now: Date())) { a, _ in a }
+        return payload.merging(add) { a, _ in a }
+    }
+
+    /// A located action, sent with a fresh fix. Nothing the server refused
+    /// with need_location was judged or journalled, so the same action is
+    /// sent again after a fresh fix, three more times inside 20 s at most
+    /// (FixPolicy.nextRetryWait), with "Waiting for your location" on screen
+    /// meanwhile. Then the last verdict stands, shown in plain words.
+    private func send(_ kind: DeviceEvent.Kind, _ payload: [String: WireValue]) async -> Verdict {
+        if coordinate == nil || !FixPolicy.isFresh(fix?.at, now: Date()) {
+            await refreshFix?()
+        }
+        var verdict = await outbox.submit(kind, located(payload))
+        guard verdict.needsLocation else { return verdict }
+        moment = Moment(text: FixPolicy.waitingForLocation, symbol: "location.circle", tone: .bad)
+        let first = Date()
+        var attempt = 1
+        while verdict.needsLocation,
+              let wait = FixPolicy.nextRetryWait(attempt: attempt,
+                                                 elapsed: Date().timeIntervalSince(first)) {
+            attempt += 1
+            try? await Task.sleep(for: .seconds(wait))
+            await refreshFix?()
+            guard coordinate != nil else { continue }
+            verdict = await outbox.submit(kind, located(payload))
+        }
+        if !verdict.needsLocation, moment?.text == FixPolicy.waitingForLocation { moment = nil }
+        return verdict
     }
 
     // MARK: - Telemetry
@@ -466,8 +508,9 @@ final class GameSession {
     /// reply was lost, and it is shown like any first answer.
     private func note(_ verdict: Verdict, success: String) {
         if !verdict.ok, let reason = verdict.reason { learnStatus(from: reason) }
-        add(verdict.ok ? success : playerCopy(for: verdict.reason),
-            refusal: !verdict.ok)
+        let refusal = FixPolicy.copy(code: verdict.code, distance: verdict.distance_m)
+            ?? playerCopy(for: verdict.reason)
+        add(verdict.ok ? success : refusal, refusal: !verdict.ok)
     }
 
     private func celebrate(_ text: String, symbol: String) {
@@ -525,6 +568,10 @@ final class GameSession {
             return ("You can respawn in \(countdown(until.timeIntervalSince(now)))", until)
         }
         if raw.hasPrefix("queued") { return ("No signal. Sent when you're back online", nil) }
+        if raw.hasPrefix("waiting for your location") {
+            return ("Waiting for your location. Try again in a moment", nil)
+        }
+        if has("out of range of that point") { return ("Too far from that point. Get closer", nil) }
         if has("geofence") || has("outside venue") || has("outside the venue") {
             return ("You're outside the play area", nil)
         }

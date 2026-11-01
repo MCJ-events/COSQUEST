@@ -178,9 +178,17 @@ struct ARGameView: View {
             // link throttles; this does not need to.
             field.location.onUpdate = { [weak session, field] in
                 session?.coordinate = field.location.coordinate
+                session?.fix = field.location.fix
                 session?.heading = field.location.trueNorth ?? 0
                 session?.altitude = field.location.altitude
                 Task { await session?.reportPosition() }
+            }
+            // A located action with an old fix (or one the server refused
+            // with need_location) asks for a fresh one first.
+            session.refreshFix = { [weak session, field] in
+                await field.location.freshFix()
+                session?.coordinate = field.location.coordinate
+                session?.fix = field.location.fix
             }
         }
         .onDisappear { field.shutdown() }

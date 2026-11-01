@@ -423,6 +423,17 @@ final class PlayerLocation: NSObject, CLLocationManagerDelegate {
     /// Horizontal accuracy in metres, so the UI can say "your position is
     /// rough" instead of quietly placing the player in the wrong field.
     private(set) var accuracy: Double = -1
+    /// When the OS took the playable fix above (CLLocation.timestamp), and
+    /// whether iOS says software made it up (iOS 15+ isSimulatedBySoftware).
+    /// Sent with every venue event as fix_age_s and simulated (FixPolicy).
+    private(set) var fixAt: Date?
+    private(set) var simulated: Bool?
+    /// The playable fix as FixPolicy keeps it, or nil when there is none.
+    var fix: FixPolicy.Fix? {
+        coordinate == nil ? nil : FixPolicy.Fix(accuracy: accuracy, at: fixAt, simulated: simulated)
+    }
+    /// Callers of freshFix waiting for the next playable fix.
+    private var fixWaiters: [CheckedContinuation<Bool, Never>] = []
 
     /// Whether the player has said no to location. A location game with no
     /// location has to say so, not spin.
@@ -439,10 +450,14 @@ final class PlayerLocation: NSObject, CLLocationManagerDelegate {
         super.init()
         manager.delegate = self
         manager.desiredAccuracy = kCLLocationAccuracyBest
-        // A player walks. Ten metres of movement is enough to matter to the
-        // geofence and to the map, and filtering here keeps the radio and the
-        // socket quiet the rest of the time.
-        manager.distanceFilter = 5
+        // No distance filter: a player standing still at a capture point or
+        // aiming at a rival still needs a fix younger than 30 s on every
+        // event (the server's anti-cheat refuses an older one with
+        // need_location). With a 5 m filter a still phone got no fixes at
+        // all and its first shot after half a minute was refused. The GPS
+        // runs at best accuracy either way, so this costs only the delegate
+        // calls; the live link throttles what goes on the socket.
+        manager.distanceFilter = kCLDistanceFilterNone
     }
 
     func start() {
@@ -454,6 +469,32 @@ final class PlayerLocation: NSObject, CLLocationManagerDelegate {
     func stop() {
         manager.stopUpdatingLocation()
         manager.stopUpdatingHeading()
+        resolveFixWaiters(false)
+    }
+
+    /// A playable fix younger than FixPolicy.fixFreshS, now: true at once when
+    /// there is one, else restarts the updates (iOS delivers a new fix on a
+    /// restart) and waits for one, `timeout` seconds at most. Never throws.
+    @discardableResult
+    func freshFix(timeout: Double = 6) async -> Bool {
+        if coordinate != nil, FixPolicy.isFresh(fixAt, now: Date()) { return true }
+        guard !denied else { return false }
+        return await withCheckedContinuation { (c: CheckedContinuation<Bool, Never>) in
+            fixWaiters.append(c)
+            guard fixWaiters.count == 1 else { return }
+            manager.stopUpdatingLocation()
+            manager.startUpdatingLocation()
+            Task { @MainActor [weak self] in
+                try? await Task.sleep(for: .seconds(timeout))
+                self?.resolveFixWaiters(false)
+            }
+        }
+    }
+
+    private func resolveFixWaiters(_ value: Bool) {
+        let ready = fixWaiters
+        fixWaiters = []
+        for w in ready { w.resume(returning: value) }
     }
 
     nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
@@ -482,6 +523,8 @@ final class PlayerLocation: NSObject, CLLocationManagerDelegate {
         let coordinate = last.coordinate
         let altitude = last.altitude
         let accuracy = last.horizontalAccuracy
+        let takenAt = last.timestamp
+        let simulated = last.sourceInformation?.isSimulatedBySoftware
         Task { @MainActor in
             // A negative accuracy means the fix is invalid, and a fix worse
             // than about fifty metres would put a player on the wrong side of
@@ -496,6 +539,11 @@ final class PlayerLocation: NSObject, CLLocationManagerDelegate {
             self.coordinate = coordinate
             self.altitude = altitude
             self.accuracy = accuracy
+            self.fixAt = takenAt
+            self.simulated = simulated
+            // A restart can hand back the cached fix first; only a fresh one
+            // answers freshFix.
+            if FixPolicy.isFresh(takenAt, now: Date()) { self.resolveFixWaiters(true) }
             self.onUpdate?()
         }
     }

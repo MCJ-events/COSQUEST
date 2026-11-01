@@ -299,11 +299,25 @@ struct Verdict: Decodable {
     let downed: String?
     let correct: Bool?
     let duplicate: Bool?
+    /// A located refusal's kind (server app/anticheat.py): "need_location"
+    /// (no usable fix: nothing judged, send again with a fresh one),
+    /// "too_far" (out of reach of that point), "hit_gps" (too far apart by GPS).
+    let code: String?
+    /// False only when a need_location refusal must not be sent again.
+    let retry: Bool?
+    /// too_far: how far the player was from the point, metres.
+    let distance_m: Double?
 
     var wasApplied: Bool { ok && duplicate != true }
 
+    /// Refused for want of a usable fix, and worth sending again (FixPolicy).
+    var needsLocation: Bool {
+        FixPolicy.isNeedLocation(ok: ok, code: code, retry: retry, reason: reason)
+    }
+
     init(client_seq: Int, ok: Bool, reason: String?, deltas: [String: Int]?,
-         drained: Int?, downed: String?, correct: Bool?, duplicate: Bool?) {
+         drained: Int?, downed: String?, correct: Bool?, duplicate: Bool?,
+         code: String? = nil, retry: Bool? = nil, distance_m: Double? = nil) {
         self.client_seq = client_seq
         self.ok = ok
         self.reason = reason
@@ -312,10 +326,14 @@ struct Verdict: Decodable {
         self.downed = downed
         self.correct = correct
         self.duplicate = duplicate
+        self.code = code
+        self.retry = retry
+        self.distance_m = distance_m
     }
 
     private enum CodingKeys: String, CodingKey {
         case client_seq, ok, reason, deltas, drained, downed, correct, duplicate, result
+        case code, retry, distance_m
     }
 
     /// A replayed event comes back as `{client_seq, duplicate: true, result:
@@ -334,6 +352,9 @@ struct Verdict: Decodable {
         drained = try? r.decodeIfPresent(Int.self, forKey: .drained)
         downed = try? r.decodeIfPresent(String.self, forKey: .downed)
         correct = try? r.decodeIfPresent(Bool.self, forKey: .correct)
+        code = try? r.decodeIfPresent(String.self, forKey: .code)
+        retry = try? r.decodeIfPresent(Bool.self, forKey: .retry)
+        distance_m = try? r.decodeIfPresent(Double.self, forKey: .distance_m)
     }
 }
 

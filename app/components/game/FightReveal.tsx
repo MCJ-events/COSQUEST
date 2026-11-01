@@ -210,7 +210,7 @@ export default function FightReveal({
           heightM={guardian ? summonHeight(guardian) : 0}
           tint={tint}
           reveal
-          accessibilityLabel={`Camera view. ${plate.name} rises out of the ground ahead of you.`}
+          accessibilityLabel={`Camera view. ${plate.name} rises out of the ground ahead of you.${plate.holds ? ` ${plate.holds}.` : ""}`}
           onSummonTap={() => {
             if (state === "standing") go();
           }}
@@ -276,6 +276,11 @@ export default function FightReveal({
               <Text style={styles.name} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6} maxFontSizeMultiplier={MAX_FONT_SCALE} accessibilityRole="header">
                 {plate.name}
               </Text>
+              {plate.holds ? (
+                <Text style={[styles.holds, { color: tint }]} numberOfLines={2} maxFontSizeMultiplier={MAX_FONT_SCALE} testID="fight-reveal-holds">
+                  {plate.holds}
+                </Text>
+              ) : null}
               <Text style={styles.place} numberOfLines={1} maxFontSizeMultiplier={MAX_FONT_SCALE}>
                 {point.name}
               </Text>
@@ -351,6 +356,7 @@ const styles = StyleSheet.create({
   plate: { alignItems: "center", gap: 2, paddingHorizontal: 18, paddingVertical: 10, borderRadius: 18, borderWidth: 2, backgroundColor: GLASS, maxWidth: 360 },
   kicker: { fontFamily: GF.bold, fontSize: 11, letterSpacing: 1.4 },
   name: { fontFamily: GF.display, fontSize: 26, color: "#FFF" },
+  holds: { fontFamily: GF.bold, fontSize: 13, textAlign: "center" },
   place: { fontFamily: GF.body, fontSize: 12, color: "rgba(255,255,255,0.75)" },
   bottom: { position: "absolute", left: 16, right: 16, bottom: 0, alignItems: "center", gap: 14 },
   hint: { fontFamily: GF.body, fontSize: 14, color: "#FFF", textAlign: "center", textShadowColor: "rgba(0,0,0,0.75)", textShadowRadius: 5, maxWidth: 420 },

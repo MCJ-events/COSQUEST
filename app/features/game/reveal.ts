@@ -16,7 +16,7 @@
 // Godot fight is prepared under the camera, and it starts when the reveal
 // ends. The judge allows a 90 s wall-clock lead for a 3D fight
 // (roam_rules.fight3d_lead_s), so the reveal is capped well inside it.
-import { fightCard, pickOpponent } from "../game3d/fight3d.ts";
+import { fightCard, holderLine, pickOpponent } from "../game3d/fight3d.ts";
 import type { ForgeEntry } from "./forgeWorld.ts";
 import type { DuelStart } from "./wire.ts";
 
@@ -86,17 +86,20 @@ const TIER_WORD: Record<string, string> = { starter: "First", common: "Common", 
 
 /**
  * The nameplate over the camera: the Guardian's name (the server's, as the
- * fight's card has it) and a kicker with the tier or the kind of fight. Before
+ * fight's card has it) and a kicker with the tier or the kind of fight; for a
+ * Siege the holder's own hero guards, "<Holder>'s hero holds this point". Before
  * the duel has started, the point's own words.
  */
 export function revealPlate(
   start: Pick<DuelStart, "setup"> | null,
   point: { name: string; tier?: string | null; extra?: { guardian?: string | null } | null },
-): { kicker: string; name: string } {
+): { kicker: string; name: string; holds?: string } {
   if (start) {
     const card = fightCard(start, point.name);
     const title = card.title === "The Guardian" && point.extra?.guardian ? point.extra.guardian : card.title;
-    return { kicker: card.kicker, name: title };
+    // A Siege against a holder whose own hero guards the point says so.
+    const holds = holderLine(start);
+    return holds ? { kicker: card.kicker, name: title, holds } : { kicker: card.kicker, name: title };
   }
   const tier = point.tier ? TIER_WORD[point.tier] : null;
   return { kicker: tier ? `${tier.toUpperCase()} GUARDIAN` : "GUARDIAN", name: point.extra?.guardian || "The Guardian" };

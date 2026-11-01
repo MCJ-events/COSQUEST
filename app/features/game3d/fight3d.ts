@@ -479,6 +479,10 @@ export function fightFromStart(
   guardianName: string | null;
   /** A friend squadded up in person (setup.ally, cosmetic: the ally's rules are the same). */
   ally: { id: string | null; name: string } | null;
+  /** The Forge weapon the opponent holds: a Siege holder's own equipped one (p2.forge_weapon), else null. */
+  enemyWeaponId: string | null;
+  /** A Siege against a point's holder (setup.siege.holder_name / holder_hero), else null. */
+  holder: SiegeHolder | null;
 } | null {
   const s = start.setup as Record<string, unknown> & { kind?: string };
   if (s.kind !== "fight3d") return null;
@@ -487,8 +491,11 @@ export function fightFromStart(
   const m = (s.mods ?? {}) as Record<string, unknown>;
   const whole = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? Math.round(v) : 1000);
   const look = s.guardian_look && typeof s.guardian_look === "object" ? (s.guardian_look as GuardianLook) : null;
-  const p2 = (s.p2 ?? {}) as { character?: { element_id?: unknown } | null };
+  const p2 = (s.p2 ?? {}) as { character?: { element_id?: unknown } | null; forge_weapon?: { element_id?: unknown } | null };
   const enemy = p2.character && typeof p2.character.element_id === "string" ? p2.character.element_id : null;
+  const holder = siegeHolder(start);
+  // Only a holder's own hero carries their weapon; a cast Guardian holds its own.
+  const weapon = holder?.hero && p2.forge_weapon && typeof p2.forge_weapon.element_id === "string" ? p2.forge_weapon.element_id : null;
   const dur = Number(s.duration_s);
   return {
     seed,
@@ -498,7 +505,34 @@ export function fightFromStart(
     enemyId: enemy,
     guardianName: typeof s.guardian_name === "string" ? s.guardian_name : null,
     ally: allyOf(s.ally),
+    enemyWeaponId: weapon,
+    holder,
   };
+}
+
+/** Who holds a sieged point: their name (null when they never chose one) and whether their own hero guards it. */
+export type SiegeHolder = { name: string | null; hero: boolean };
+
+/** A Siege's holder, from the duel start's setup.siege (server siege-holder-hero), else null. */
+export function siegeHolder(start: Pick<DuelStart, "setup"> | null | undefined): SiegeHolder | null {
+  const siege = (start?.setup as { siege?: unknown } | undefined)?.siege;
+  if (!siege || typeof siege !== "object") return null;
+  const h = siege as { holder_name?: unknown; holder_hero?: unknown };
+  if (h.holder_hero === undefined && h.holder_name === undefined) return null;
+  const name = typeof h.holder_name === "string" ? h.holder_name.trim().slice(0, 40) : "";
+  return { name: name || null, hero: h.holder_hero === true };
+}
+
+/** "Ada's hero holds this point" when the holder's own hero guards a Siege, else null. */
+export function holderLine(start: Pick<DuelStart, "setup"> | null | undefined): string | null {
+  const h = siegeHolder(start);
+  if (!h?.hero) return null;
+  return `${h.name ? possessive(h.name) : "A rival's"} hero holds this point`;
+}
+
+/** "Ada's", "James'": the possessive of a player's name. */
+export function possessive(name: string): string {
+  return /s$/i.test(name) ? `${name}'` : `${name}'s`;
 }
 
 function allyOf(raw: unknown): { id: string | null; name: string } | null {
@@ -535,7 +569,10 @@ function modeCard(start: Pick<DuelStart, "setup"> | null, pointName: string): { 
     return { kicker: "RAID BOSS", title, line: pct === null ? "Your damage goes into the crew's pool." : `Boss at ${pct}%. Your damage goes into the crew's pool.` };
   }
   if (trial) return { kicker: `GUARDIAN TRIAL · RUNG ${trial.rung ?? 1} OF ${trial.rungs ?? 8}`, title, line: trial.first_clear === false ? "A replay: no XP this time." : "First clear pays XP." };
-  if (siege) return { kicker: "SIEGE", title, line: `Beat it to take ${pointName} from ${siege.faction_attacked_name ?? "its holders"}.` };
+  if (siege) {
+    const holds = holderLine(start);
+    return { kicker: "SIEGE", title, line: `${holds ? `${holds}. ` : ""}Beat it to take ${pointName} from ${siege.faction_attacked_name ?? "its holders"}.` };
+  }
   if (run) return { kicker: "QUEST RUN", title, line: `Worth ${run.value ?? 0} points${run.stake ? `, ${run.stake} staked` : ""}. Win fast for a bonus.` };
   const tier = point?.tier ? TIER_WORD[point.tier] : null;
   return { kicker: tier ? `${tier.toUpperCase()} GUARDIAN` : "GUARDIAN", title, line: `Win to take ${pointName} for your faction.` };

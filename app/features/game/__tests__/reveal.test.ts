@@ -115,6 +115,11 @@ describe("AR reveal: the nameplate", () => {
     assert.equal(revealPlate(start({ kind: "fight3d", siege: {} }), point).kicker, "SIEGE");
     assert.equal(revealPlate(start({ kind: "fight3d", run: { value: 3 } }), point).kicker, "QUEST RUN");
   });
+  it("a Siege the holder's own hero guards says so on the nameplate", () => {
+    const siege = (holder_hero: boolean) => start({ kind: "fight3d", guardian_name: "Ada", siege: { faction_attacked_name: "DC", holder_name: "Ada", holder_hero } });
+    assert.deepEqual(revealPlate(siege(true), point), { kicker: "SIEGE", name: "Ada", holds: "Ada's hero holds this point" });
+    assert.deepEqual(revealPlate(siege(false), point), { kicker: "SIEGE", name: "Ada" });
+  });
   it("a start with no name keeps the point's Guardian", () => {
     assert.equal(revealPlate(start({ kind: "fight3d" }), point).name, "Oba of Stone");
   });

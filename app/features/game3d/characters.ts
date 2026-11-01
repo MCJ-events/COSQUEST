@@ -7,7 +7,8 @@
 //   ally   a squadded-up friend's worn hero (setup.ally), else another
 //          published hero
 //   enemy  the point's Guardian (a boss for a raid): the character a duel
-//          start named, else the one the server would name for this point
+//          start named (for a Siege, the holder's own worn hero with the
+//          weapon they equipped), else the one the server would name here
 //
 // Anything missing (no Forge, offline, a download that fails or is slow) is
 // an empty path, and Godot stands a mannequin in its place.
@@ -18,7 +19,8 @@ import { gameStore } from "@/features/game/runtime";
 import { fightLod, localPath, pickCast, wornAvatarId } from "./fight3d";
 import { fightWeapons, heldInputs } from "./heldDevice";
 
-export type CastMember = { path: string | null; name: string | null; id: string | null };
+/** `weaponId`: the Forge weapon this fighter holds (a Siege holder's own equipped one), else its own. */
+export type CastMember = { path: string | null; name: string | null; id: string | null; weaponId?: string | null };
 export type Cast = { hero: CastMember; ally: CastMember; enemy: CastMember; lod: number };
 
 function within<T>(p: Promise<T>, ms: number, fallback: T): Promise<T> {
@@ -55,6 +57,8 @@ export async function fightCast(opts: {
   enemyName?: string | null;
   /** A friend squadded up in person: their worn hero and their name over it. */
   ally?: { id: string | null; name: string } | null;
+  /** The Forge weapon the opponent holds (a Siege holder's own equipped one). */
+  enemyWeaponId?: string | null;
   lodOverride: number | null;
   waitMs?: number;
 }): Promise<Cast> {
@@ -71,7 +75,7 @@ export async function fightCast(opts: {
   return {
     hero: { path: heroPath, name: player ?? hero?.name ?? null, id: hero?.id ?? null },
     ally: { path: allyPath, name: opts.ally?.name ?? ally?.name ?? null, id: ally?.id ?? null },
-    enemy: { path: enemyPath, name: opts.enemyName ?? enemy?.name ?? null, id: enemy?.id ?? null },
+    enemy: { path: enemyPath, name: opts.enemyName ?? enemy?.name ?? null, id: enemy?.id ?? null, weaponId: opts.enemyWeaponId ?? null },
     lod,
   };
 }
@@ -91,7 +95,11 @@ export async function castWeapons(cast: Cast, waitMs = 4000): Promise<Record<str
     const out: Record<string, unknown> = {};
     for (const role of ["hero", "ally", "enemy"] as const) {
       const m = cast[role];
-      const w = await fightWeapons(forgeWorld.entry(m.id), m.path, role === "hero", { equipped, ...inputs }).catch(() => ({}) as Awaited<ReturnType<typeof fightWeapons>>);
+      // A Siege holder's hero holds the weapon they equipped, as the player's own does.
+      const theirs = role === "enemy" && m.weaponId ? m.weaponId : null;
+      const w = await fightWeapons(forgeWorld.entry(m.id), m.path, role === "hero" || !!theirs, theirs ? { equipped: theirs, linkOn: inputs.linkOn, localPick: null } : { equipped, ...inputs }).catch(
+        () => ({}) as Awaited<ReturnType<typeof fightWeapons>>,
+      );
       if (w.main) out[`${role}_weapon`] = { ...w.main, glb: localPath(w.main.glb) };
       if (w.offhand) out[`${role}_offhand`] = { ...w.offhand, glb: localPath(w.offhand.glb) };
     }
