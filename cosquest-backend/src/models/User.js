@@ -137,6 +137,12 @@ const userSchema = new mongoose.Schema(
         // email could otherwise point that account's notifications at
         // their own phone.
         authed: { type: Boolean, default: false },
+        // The phone's call token (expo-callkit-telecom in the app): an APNs
+        // VoIP token on iPhones (voipType APNS_VOIP) or an FCM token on
+        // Android (FCM). Calls ring through it with the phone's own call
+        // screen (src/utils/callPush.js).
+        voipToken: { type: String, default: null },
+        voipType: { type: String, enum: ['APNS_VOIP', 'FCM', null], default: null },
       },
     ],
 

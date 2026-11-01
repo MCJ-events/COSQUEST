@@ -111,17 +111,37 @@ async function registerDevice(req, res) {
     { _id: { $ne: req.userId }, 'devices.pushToken': pushToken },
     { $pull: { devices: { pushToken } } }
   );
+  // The call token (expo-callkit-telecom): sent with the push token once the
+  // app has it; null takes it off. One phone, one account, like pushToken.
+  const voipGiven = req.body.voipToken !== undefined;
+  const voipToken = req.body.voipToken || null;
+  const voipType = voipToken ? req.body.voipType : null;
+  if (voipToken) {
+    await User.updateMany(
+      { 'devices.voipToken': voipToken },
+      { $set: { 'devices.$[phone].voipToken': null, 'devices.$[phone].voipType': null } },
+      { arrayFilters: [{ 'phone.voipToken': voipToken, 'phone.pushToken': { $ne: pushToken } }] }
+    );
+  }
   const updated = await userModel.updateUser(req.userId, (user) => {
-    const existing = user.devices.find((d) => d.pushToken === pushToken);
+    let existing = user.devices.find((d) => d.pushToken === pushToken);
     if (!existing) {
       user.devices.push({ pushToken, platform, registeredAt: new Date(), authed: true });
+      existing = user.devices[user.devices.length - 1];
     } else if (!existing.authed) {
       existing.authed = true;
       existing.platform = platform;
       existing.registeredAt = new Date();
     }
+    if (voipGiven) {
+      existing.voipToken = voipToken;
+      existing.voipType = voipType;
+    }
   });
-  return res.json({ user: userModel.sanitize(updated) });
+  const phone = updated.devices.find((d) => d.pushToken === pushToken);
+  // How this phone's calls ring: 'native' (the phone's own call screen, so
+  // the app doesn't ring itself as well) or 'push' (the ringtone push).
+  return res.json({ user: userModel.sanitize(updated), callRinging: require('../utils/callPush').canRing(phone) ? 'native' : 'push' });
 }
 
 // DELETE /api/users/me/devices/:pushToken, or DELETE /api/users/me/devices

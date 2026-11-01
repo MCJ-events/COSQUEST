@@ -160,8 +160,10 @@ async function run(baseUrl) {
     const started = await request('POST', `/api/chats/${dm}/calls`, a.token, { type: 'audio' });
     await settle(sent, (m) => m.to === b.pushToken && m.data.type === 'call');
     const ring = sent.find((m) => m.to === b.pushToken && m.data.type === 'call');
-    check(started.status === 201 && ring && ring.channelId === 'calls' && ring.ttl === 45 && ring.body === 'Incoming call',
+    check(started.status === 201 && ring && ring.channelId === 'calls' && ring.ttl === 60 && ring.body === 'Incoming call',
       'a call rings the other phone with a short-lived push', { status: started.status, ring });
+    check(ring?.sound === 'ringtone.wav' && ring.interruptionLevel === 'time-sensitive' && toB?.sound === 'default' && !toB.interruptionLevel,
+      'a call push plays the ringtone and is time-sensitive; a message keeps the normal sound', { ring, toB });
     if (started.data?.call?.id) await request('POST', `/api/calls/${started.data.call.id}/end`, a.token);
 
     // Still "online" (phone just locked: its socket is open for a while yet):

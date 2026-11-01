@@ -194,15 +194,26 @@ async function run(baseUrl) {
   const cancelled = await request('POST', `/api/calls/${cancelStart.data.call.id}/end`, caller.token);
   check(cancelled.data.call.status === 'cancelled', 'caller ending a ringing call records cancellation', cancelled);
 
+  // Calls ring for a minute: 50 seconds in, still ringing.
+  const stillStart = await request('POST', callPath, caller.token, { type: 'audio' });
+  await Call.collection.updateOne(
+    { _id: new mongoose.Types.ObjectId(stillStart.data.call.id) },
+    { $set: { createdAt: new Date(Date.now() - 50_000), 'members.$[ringing].invitedAt': new Date(Date.now() - 50_000) } },
+    { arrayFilters: [{ 'ringing.status': 'ringing' }] }
+  );
+  const still = await request('GET', `/api/calls/${stillStart.data.call.id}`, caller.token);
+  check(still.data.call.status === 'ringing', 'still ringing 50 seconds in (calls ring for a minute)', still.data.call?.status);
+  await request('POST', `/api/calls/${stillStart.data.call.id}/end`, caller.token);
+
   const missedStart = await request('POST', callPath, caller.token, { type: 'audio' });
   await Call.collection.updateOne(
     { _id: new mongoose.Types.ObjectId(missedStart.data.call.id) },
     // Each person's ring time is tracked on their own `members` entry.
-    { $set: { createdAt: new Date(Date.now() - 46_000), 'members.$[ringing].invitedAt': new Date(Date.now() - 46_000) } },
+    { $set: { createdAt: new Date(Date.now() - 61_000), 'members.$[ringing].invitedAt': new Date(Date.now() - 61_000) } },
     { arrayFilters: [{ 'ringing.status': 'ringing' }] }
   );
   const missed = await request('GET', `/api/calls/${missedStart.data.call.id}`, caller.token);
-  check(missed.data.call.status === 'missed' && missed.data.call.endedAt, 'unanswered call becomes missed after 45 seconds', missed);
+  check(missed.data.call.status === 'missed' && missed.data.call.endedAt, 'unanswered call becomes missed after a minute', missed);
   check((await request('GET', '/api/calls/incoming', recipient.token)).data.call === null, 'expired call is not returned as incoming');
 
   const concurrent = await Promise.all([

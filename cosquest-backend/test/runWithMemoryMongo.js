@@ -171,6 +171,9 @@ async function main() {
     const pushRun = await require('./push').run(`http://localhost:${process.env.PORT}`);
     result.pass += pushRun.pass;
     result.fail += pushRun.fail;
+    const nativeCalls = await require('./nativeCalls').run(`http://localhost:${process.env.PORT}`);
+    result.pass += nativeCalls.pass;
+    result.fail += nativeCalls.fail;
   } finally {
     require('../src/sparks').stop();
     require('../src/utils/meetingNotifications').stop();

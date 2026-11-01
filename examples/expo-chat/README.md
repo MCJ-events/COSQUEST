@@ -349,3 +349,75 @@ function Root() {
 What pops up (`banner.data.type`): `message` (a chat message: `title` is the sender or the group, `body` the message), `mention`, `follow`, `like` (a post, or a comment with `commentId`), `comment` (a comment or a reply), `repost`, `post` (someone you follow posted or reposted), `group`, `scheduled-call` (invitations, changes, the 10-minute reminder). `call` banners are skipped because the ringing screen (`call:incoming`) shows calls. A chat's messages and mentions don't pop up while that chat is on screen (`currentChatId`). `banner.actor` is who did it (`username`, `name`, `avatarKey`, `avatarPhotoUrl`): the default picture is their photo or initials; pass `renderAvatar(actor)` to draw the app's avatar for `avatarKey`. Kinds switched off in notification settings (e.g. Friend activity) don't pop up either.
 
 The inbox still updates from `notification:new` as before; a banner is only the pop-up.
+
+## Ringing calls (app open, in the background, or locked)
+
+An incoming call rings for **a minute**; after that the backend marks it missed. There are two ways a phone rings:
+
+- **Like a phone call (`NativeCalls.js`):** the phone's own call screen, full screen and on the lock screen too: CallKit on iPhones, the system call screen on Android. It rings for the whole minute, with Answer and Decline, even when the app is closed. This needs the backend's Apple and Firebase keys (`PUSH.md`, "Ringing like a phone call"); until they are set, phones ring the second way.
+- **With the ringtone push (`CallRinging.js`):** every other phone. In the background, locked or closed, the backend's call push rings: iPhones play `ringtone.wav` (29 s; iOS plays at most 30 s) and the backend sends it again at 30 s while the call is still ringing; Android plays the `calls` channel's `ringtone_long.wav` (60 s). The push is time-sensitive, so an iPhone in Focus still rings. With the app open, the app rings itself (the ringtone on a loop, plus vibration) from `call:incoming` until the call is answered, declined, cancelled, missed or over; the call push stays hidden (`showPushesWhileOpen`). Sent to the background mid-ring, it posts a ringing notification instead.
+
+Setup (native: a new build with `eas build`; `eas update` alone is not enough):
+
+1. Copy `assets/sounds/ringtone.wav` (29 s) and `assets/sounds/ringtone_long.wav` (60 s), bell ringtones free to use, into the app's `assets/sounds/`, or use your own with those names (`ringtone.wav` under 30 s).
+2. `app.json`:
+
+```json
+{
+  "expo": {
+    "plugins": [
+      ["expo-notifications", { "sounds": ["./assets/sounds/ringtone.wav", "./assets/sounds/ringtone_long.wav"] }],
+      ["expo-callkit-telecom", {
+        "sounds": ["./assets/sounds/ringtone.wav", "./assets/sounds/ringtone_long.wav"],
+        "defaultRingtoneIos": "ringtone.wav",
+        "defaultRingtoneAndroid": "ringtone_long.wav",
+        "incomingCallTimeout": 65,
+        "supportsVideo": true,
+        "microphonePermission": "$(PRODUCT_NAME) needs the microphone for calls."
+      }]
+    ],
+    "ios": { "entitlements": { "com.apple.developer.usernotifications.time-sensitive": true } },
+    "android": { "googleServicesFile": "./google-services.json" }
+  }
+}
+```
+
+   `npx expo install expo-callkit-telecom`. `google-services.json` comes from the Firebase project (Android app with the app's package name); keep it out of git if the repository is public. `incomingCallTimeout` 65: a little over the backend's minute, so the backend says "missed" first and the call isn't recorded as declined.
+
+3. Create the `calls` channel with the long ringtone, where the app creates its other channels (PushRegistration), in place of the old `calls` settings: `await setUpCallChannel();`. Android fixes a channel's sound when it is first created, so a phone that already has the app keeps the old sound until the app is reinstalled.
+4. Wire it up:
+
+```js
+import { setUpCallChannel, useCallRinging } from './CallRinging.js';
+import { setUpNativeCalls, useNativeCallToken, useNativeCalls } from './NativeCalls.js';
+
+setUpNativeCalls(); // module scope, in the file the app starts from
+
+function Root() {
+  // Registers the push token and the call token together (POST /api/users/me/devices);
+  // callRinging: 'native' once the backend can ring this phone's own call screen.
+  const callRinging = useNativeCallToken({ pushToken, register: (body) => api.post('/api/users/me/devices', body) });
+
+  // Answer / Decline on the call screen, and closing it when the ring is over elsewhere.
+  // joinCall: the app's LiveKit join with the accept answer ({ call, token, livekitUrl, ... }).
+  const { endNativeCall } = useNativeCalls({ socket, userId: me.id, api: (method, path) => api.request(method, path), joinCall });
+  // Hanging up in the app's call screen: endNativeCall(call.id) too, so the system screen closes.
+
+  // The app rings itself only when the phone's own call screen doesn't.
+  const { ringingCall, startRinging, stopRinging } = useCallRinging({
+    socket,
+    userId: me.id,
+    ringtone: require('./assets/sounds/ringtone.wav'),
+    ringInApp: callRinging !== 'native',
+    // Checked on coming back to the app (an iPhone app in the background misses call:updated):
+    fetchIncoming: async () => (await api.get('/api/calls/incoming')).call,
+  });
+  // Show the ringing screen while ringingCall is set; Accept/Decline call stopRinging()
+  // (call:updated stops it too). Opened from a tapped call push: GET /api/calls/incoming
+  // and, if a call is still ringing, startRinging(call).
+}
+```
+
+On Android 14 and later, Google Play grants full-screen calls over the lock screen (USE_FULL_SCREEN_INTENT) only to apps whose core use includes calling or alarms, through the full-screen intent declaration in Play Console. Where it isn't granted, or the person turns it off for the app, the call shows as a heads-up notification that still rings.
+
+`NativeCalls.js` is written against expo-callkit-telecom's documented API and has not run in the app here; check it against the installed version and try a call on a real iPhone and Android phone (both locked) before release.

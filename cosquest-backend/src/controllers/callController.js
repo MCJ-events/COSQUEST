@@ -15,7 +15,7 @@ const limits = require('../config/callLimits');
 const { createMutationQueue } = require('../utils/mutationQueue');
 const { createCoalescer } = require('../utils/coalescer');
 
-const RING_TIMEOUT_MS = 45 * 1000;
+const RING_TIMEOUT_MS = require('../utils/callPush').RING_SECONDS * 1000; // a minute
 const TERMINAL_STATUSES = ['declined', 'missed', 'cancelled', 'ended'];
 const USER_FIELDS =
   'profile.username profile.displayName profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl';
@@ -125,7 +125,7 @@ function ensureMembers(call) {
 // CALL RULES (the same for one-to-one and group calls)
 // ==========================================================================
 
-// Anyone still ringing after 45 seconds has missed it.
+// Anyone still ringing after a minute (RING_TIMEOUT_MS) has missed it.
 function expireRinging(call, now = new Date()) {
   let changed = false;
   const cutoff = ringCutoff(now);
@@ -336,6 +336,9 @@ function sendCallUpdate(callId, call) {
   }
 
   emitToUsers(participantIds(call), 'call:updated', { call: toCallJson(call) });
+  // Android phones ringing with their own call screen stop once that
+  // person's ring is over (push.callRingEnded).
+  push.callRingEnded(call).catch((error) => console.error('[calls] ring end push failed:', error.message));
   // Private calls stay out of Sparks (no transcript or outline) and leave no
   // call entry in the chat.
   if (call.isPrivate) return;

@@ -2,3 +2,11 @@ node_modules/
 uploads/*
 !uploads/.gitkeep
 .env
+
+# Push keys (APNs .p8, Firebase service accounts, google-services.json): never commit.
+*.p8
+*service-account*.json
+firebase-adminsdk*.json
+fcm*.json
+google-services.json
+GoogleService-Info.plist

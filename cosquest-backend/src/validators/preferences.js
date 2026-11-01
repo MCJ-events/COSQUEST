@@ -1,6 +1,6 @@
 // Request rules for src/routes/preferencesRoutes.js (see src/middleware/validate.js).
 // Messages match the controller's own, so the app sees the same answers.
-const { string, boolean, number, array, object, field, body } = require('../middleware/validate');
+const { string, boolean, number, array, object, field, body, oneOfValues } = require('../middleware/validate');
 const common = require('./common');
 
 const NOTIFICATION_SWITCHES = ['notificationsEnabled', 'eventReminders', 'emailWeeklyNewsletter', 'questUpdates', 'factionNews', 'friendActivity', 'rankChanges', 'emailPromotionalEvents'];
@@ -23,14 +23,20 @@ function locationRules(prefix = '') {
 // PATCH /api/users/me/preferences/location
 const location = locationRules();
 
-// POST /api/users/me/devices { pushToken, platform }
+// POST /api/users/me/devices { pushToken, platform, voipToken?, voipType? }
+// voipToken/voipType: the call token from expo-callkit-telecom, together
+// (voipToken null takes it off).
 const missingDevice = 'pushToken and platform ("ios" | "android" | "web") are required.';
 const shortStrings = 'pushToken and platform must be short strings.';
+const voipPair = 'voipToken and voipType ("APNS_VOIP" | "FCM") go together.';
 const registerDevice = [
   body('pushToken').custom(Boolean).withMessage(missingDevice),
   body('platform').custom(Boolean).withMessage(missingDevice),
   string('pushToken', { max: 300, message: shortStrings }),
   string('platform', { max: 20, message: shortStrings }),
+  string('voipToken', { min: 1, max: 1000, nullable: true, message: 'voipToken must be a token of at most 1000 characters.' }),
+  oneOfValues('voipType', ['APNS_VOIP', 'FCM'], { nullable: true, message: voipPair }),
+  body('voipType').custom((type, { req }) => req.body.voipToken == null || Boolean(type)).withMessage(voipPair),
 ];
 
 // DELETE /api/users/me/devices { pushToken }, or /api/users/me/devices/:pushToken

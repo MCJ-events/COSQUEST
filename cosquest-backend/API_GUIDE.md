@@ -435,12 +435,13 @@ Response:
 }
 ```
 
-**POST** `/api/users/me/devices`
+**POST** `/api/users/me/devices` (Bearer). `voipToken` / `voipType` (`APNS_VOIP` on iPhones, `FCM` on Android) are optional: the call token from expo-callkit-telecom, so calls ring on the phone's own call screen; `voipToken: null` takes it off. The response also has `callRinging`: `"native"` or `"push"` (PUSH.md, Ringing).
 ```json
 {
-  "email": "alex@gmail.com",
-  "pushToken": "fcm-token-abc123",
-  "platform": "web"
+  "pushToken": "ExponentPushToken[abc123]",
+  "platform": "ios",
+  "voipToken": "5f1d...apns-voip-token",
+  "voipType": "APNS_VOIP"
 }
 ```
 Response:

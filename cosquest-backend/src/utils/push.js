@@ -41,6 +41,15 @@ const CATEGORIES = ['eventReminders', 'questUpdates', 'factionNews', 'friendActi
 /** Android notification channels, created by the app (components/PushRegistration.tsx). */
 const CHANNELS = ['default', 'messages', 'calls', 'game', 'alerts'];
 
+// The ringtone a call push plays on iPhones: a file the app bundles with the
+// expo-notifications config plugin (`sounds`), 29 s (iOS plays at most 30 s,
+// so the push goes again every CALL_REPEAT_MS while still ringing, for the
+// whole minute). Without the file, iOS plays its default sound. On Android
+// the `calls` channel's own sound rings (the app gives the channel a
+// one-minute ringtone when it creates it).
+const CALL_SOUND = 'ringtone.wav';
+const CALL_REPEAT_MS = () => Number(process.env.CALL_PUSH_REPEAT_MS) || 30 * 1000;
+
 // The transport is swappable so tests can see what would be sent.
 let transport = defaultTransport;
 let sentLog = null;
@@ -75,7 +84,7 @@ function clip(text, max) {
   return s.length > max ? `${s.slice(0, max - 1)}…` : s;
 }
 
-/** The phones that should hear about this, as [{ userId, token }]. */
+/** The phones that should hear about this, as [{ userId, token, platform, voipToken, voipType }]. */
 async function recipients(ids, { category }) {
   if (!ids.length) return [];
   const filter = { _id: { $in: ids }, 'preferences.notificationsEnabled': true, 'devices.0': { $exists: true } };
@@ -85,7 +94,9 @@ async function recipients(ids, { category }) {
   for (const user of users) {
     const userId = String(user._id);
     for (const device of user.devices || []) {
-      if (device.authed && isExpoToken(device.pushToken)) out.push({ userId, token: device.pushToken });
+      if (device.authed && isExpoToken(device.pushToken)) {
+        out.push({ userId, token: device.pushToken, platform: device.platform, voipToken: device.voipToken || null, voipType: device.voipType || null });
+      }
     }
   }
   return out;
@@ -145,8 +156,10 @@ async function removeTokens(tokens) {
  * @param {string[]} userIds
  * @param {{ title?: string, body: string, data?: object, channel?: string,
  *           category?: string, skipOnline?: boolean, noBanner?: boolean, ttl?: number,
- *           collapseId?: string,
- *           actor?: object }} note  (actor: { id, username, name, avatarKey,
+ *           collapseId?: string, sound?: string, interruptionLevel?: string,
+ *           filter?: function, actor?: object }} note  (sound: an app-bundled
+ *           file for iPhones, default 'default'; filter(phone): only the
+ *           phones it keeps)  (actor: { id, username, name, avatarKey,
  *           avatarPhotoUrl } - for the in-app banner's picture only)
  */
 async function sendToUsers(userIds, note) {
@@ -162,7 +175,8 @@ async function sendToUsers(userIds, note) {
       }
     }
     if (!enabled()) return 0;
-    const phones = await recipients(ids, note);
+    let phones = await recipients(ids, note);
+    if (note.filter) phones = phones.filter(note.filter);
     if (!phones.length) return 0;
     const channelId = CHANNELS.includes(note.channel) ? note.channel : 'default';
     const messages = phones.map(({ token }) => ({
@@ -170,7 +184,8 @@ async function sendToUsers(userIds, note) {
       ...(note.title ? { title: clip(note.title, 80) } : {}),
       body: clip(note.body, 180),
       data: note.data || {},
-      sound: 'default',
+      sound: note.sound || 'default',
+      ...(note.interruptionLevel ? { interruptionLevel: note.interruptionLevel } : {}),
       channelId,
       // Every notification goes out at high priority, so phones in battery
       // saving (Android doze) still show it at once.
@@ -280,28 +295,115 @@ function notifyFromNotification(userIds, { type, message, conversation, post, co
 }
 
 /**
- * A call ringing. Short-lived: a call nobody answers in 45 s is over.
+ * A call ringing, for a minute (callPush.RING_SECONDS): a call nobody
+ * answers by then is missed.
+ *
+ * Phones with a call token (expo-callkit-telecom) ring with their own call
+ * screen, like a phone call (callPush.js). The rest, and any that can't be
+ * reached that way, get the ringtone push, again every CALL_REPEAT_MS on
+ * iPhones while still ringing.
  *
  * Always a push, even to people who look online. "Online" means a socket is
  * open, and a phone that was just locked or put in the background keeps its
- * socket for a while (Socket.IO notices a dead one only after ~45 s, the
- * whole ring; Android often keeps a live one longer). Skipping them left
+ * socket for a while (Socket.IO notices a dead one only after ~45 s, most of
+ * the ring; Android often keeps a live one longer). Skipping them left
  * calls silent: the app in the background can't ring from the socket's
  * call:incoming. With the app open, the app shows its own call screen from
  * call:incoming and leaves this push unshown (data.type 'call').
  */
 function notifyIncomingCall(userIds, { call, caller }) {
+  ringPhones(userIds, { call, caller }).catch((err) => console.error('[push] call ring failed:', err.message));
+}
+
+// Who was rung with the Android call screen, per call (Redis, so whichever
+// server instance sees the ring end can stop it), until their ring is over.
+const rungKey = (callId) => `call:rung:${callId}`;
+const OVER = ['declined', 'missed', 'cancelled', 'ended'];
+
+async function ringPhones(userIds, { call, caller }) {
+  const ids = [...new Set((userIds || []).map(String))].filter(Boolean);
+  const callId = String(call?.id || call?._id || '');
+  if (!ids.length || !callId || !enabled()) return;
+  const callPush = require('./callPush');
+  const phones = await recipients(ids, {});
+  const own = await callPush.ring(phones.filter((phone) => callPush.canRing(phone)), { call, caller });
+  const android = [...new Set(phones.filter((phone) => own.has(phone.token) && phone.voipType === 'FCM').map((phone) => phone.userId))];
+  if (android.length) {
+    const key = rungKey(callId);
+    await require('../config/redis').getRedisClient().multi().sadd(key, ...android).expire(key, callPush.RING_SECONDS * 2).exec();
+  }
+
+  const pushed = phones.filter((phone) => !own.has(phone.token));
+  if (!pushed.length) return;
   const video = call?.type === 'video';
-  notify(userIds, {
+  const note = {
     title: displayName(caller),
     body: video ? 'Incoming video call' : 'Incoming call',
-    data: { type: 'call', callId: String(call?.id || call?._id || ''), ...(call?.conversationId ? { chatId: String(call.conversationId) } : {}) },
+    data: { type: 'call', callId, ...(call?.conversationId ? { chatId: String(call.conversationId) } : {}) },
     channel: 'calls',
     skipOnline: false,
-    ttl: 45,
-    priority: 'high',
+    ttl: callPush.RING_SECONDS,
+    // Rings (the ringtone, not the short notification sound), and on iPhones
+    // breaks through Focus like a phone call (the app needs the
+    // time-sensitive notifications entitlement; without it, a normal alert).
+    sound: CALL_SOUND,
+    interruptionLevel: 'time-sensitive',
+    collapseId: `call-${callId}`,
     actor: actorPreview(caller),
-  });
+  };
+  await sendToUsers(ids, { ...note, filter: (phone) => !own.has(phone.token) });
+  const iphones = new Set(pushed.filter((phone) => phone.platform === 'ios').map((phone) => phone.token));
+  if (iphones.size) scheduleRingAgain(callId, note, iphones, CALL_REPEAT_MS());
+}
+
+// iPhones play a push's sound for at most 30 s: while they're still ringing,
+// the ringtone push again, until the minute is up.
+function scheduleRingAgain(callId, note, iphones, after) {
+  const ringMs = require('./callPush').RING_SECONDS * 1000;
+  if (after > ringMs - 5000) return;
+  const timer = setTimeout(() => {
+    ringAgain(callId, note, iphones, after, ringMs).catch((err) => console.error('[push] call ring failed:', err.message));
+  }, after);
+  timer.unref?.();
+}
+
+async function ringAgain(callId, note, iphones, after, ringMs) {
+  if (!enabled()) return;
+  const call = await require('../models/Call').findById(callId, 'status members.user members.status').lean();
+  if (!call || OVER.includes(call.status)) return;
+  const ringing = (call.members || []).filter((member) => member.status === 'ringing').map((member) => String(member.user));
+  if (!ringing.length) return;
+  const ttl = Math.max(1, Math.floor((ringMs - after) / 1000));
+  await sendToUsers(ringing, { ...note, ttl, filter: (phone) => iphones.has(phone.token) });
+  scheduleRingAgain(callId, note, iphones, after + CALL_REPEAT_MS());
+}
+
+/**
+ * A call changed (callController's call:updated): the Android phones rung
+ * with their own call screen stop ringing once that person's ring is over:
+ * declined on another phone, missed, or the call cancelled or over. Not when
+ * they answered: that phone is in the call now, and "call ended" would hang
+ * it up (another phone of theirs rings on until the minute is up). iPhones
+ * stop from the app, which hears call:updated.
+ */
+async function callRingEnded(call) {
+  const callId = String(call?.id || call?._id || '');
+  if (!callId) return;
+  const redis = require('../config/redis').getRedisClient();
+  const rung = await redis.smembers(rungKey(callId));
+  if (!rung.length) return;
+  const over = OVER.includes(call.status);
+  const statusOf = new Map((call.members || []).map((member) => [String(member.user?._id || member.user?.id || member.user), member.status]));
+  for (const userId of rung) {
+    const status = statusOf.get(userId);
+    if (!over && status === 'ringing') continue;
+    if (!(await redis.srem(rungKey(callId), userId))) continue; // another instance told them
+    if (status === 'joined' || status === 'left') continue; // answered
+    let reason = 'remoteEnded'; // the caller hung up, the call ended, or they were taken off it
+    if (status === 'declined' && (!over || call.status === 'declined')) reason = 'declinedElsewhere';
+    else if (call.status === 'missed' || (status === 'missed' && call.status !== 'cancelled')) reason = 'unanswered';
+    await require('./callPush').ringEnded(await recipients([userId], {}), { callId, reason });
+  }
 }
 
 // ---------- tests ----------
@@ -324,6 +426,7 @@ module.exports = {
   notifyNewMessage,
   notifyFromNotification,
   notifyIncomingCall,
+  callRingEnded,
   isExpoToken,
   actorPreview,
   CATEGORIES,

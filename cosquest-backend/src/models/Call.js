@@ -16,7 +16,7 @@ const limits = require('../config/callLimits');
 //   ringing   - their phone is ringing
 //   joined    - they're in the call
 //   declined  - they said no
-//   missed    - they didn't answer within 45 seconds
+//   missed    - they didn't answer within a minute
 //   left      - they were in the call and left (they can join again)
 //
 // Private calls ("private call on top"): two people in a call or a voice
