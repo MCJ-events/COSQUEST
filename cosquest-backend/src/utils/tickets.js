@@ -31,6 +31,7 @@ const Ticket = require('../models/Ticket');
 const Counter = require('../models/Counter');
 const notificationModel = require('../models/notificationModel');
 const { effectiveStatus } = require('./questStatus');
+const { distanceMiles } = require('./quest');
 const payments = require('./stripe');
 
 const HOLD_MS = 31 * 60 * 1000;
@@ -135,13 +136,37 @@ async function releaseHold(order, status, detail) {
 
 // ---------- checkout ----------
 
-async function startCheckout({ user, questId, ticketTypeId }) {
+/**
+ * "Be at the venue": while the quest is LIVE, joining needs the phone's
+ * position within venueRadiusMeters (plus up to 100 m of GPS accuracy).
+ * Tickets for later can be bought anywhere. A phone's GPS can be faked, so
+ * the QR check-in at the door is the real proof; this keeps people from
+ * joining a live quest from home.
+ */
+function checkAtVenue(quest, status, position) {
+  if (!quest.requireAtVenue || status !== 'live') return;
+  const lat = Number(position?.lat);
+  const lng = Number(position?.lng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
+    fail(403, `Be at ${quest.location?.name || 'the venue'} to join: allow location and try again.`, 'location_required');
+  }
+  const accuracy = Math.min(Math.max(Number(position.accuracy) || 0, 0), 100);
+  const distance = distanceMiles(lat, lng, quest.location.lat, quest.location.lng) * 1609.344;
+  const allowed = (quest.venueRadiusMeters || 200) + accuracy;
+  if (distance > allowed) {
+    const away = distance >= 1000 ? `${(distance / 1000).toFixed(1)} km` : `${Math.round(distance)} m`;
+    fail(403, `You need to be at ${quest.location?.name || 'the venue'} to join (you're about ${away} away).`, 'not_at_venue', { distanceMeters: Math.round(distance) });
+  }
+}
+
+async function startCheckout({ user, questId, ticketTypeId, position = null }) {
   const now = new Date();
   const quest = await Quest.findOne({ _id: questId, isPublished: true });
   if (!quest) fail(404, 'Quest not found.');
   const status = effectiveStatus(quest, now);
   if (status === 'cancelled') fail(409, 'This has been cancelled.');
   if (status === 'completed' || quest.endsAt <= now) fail(409, 'This has already ended.');
+  checkAtVenue(quest, status, position);
 
   const live = await Ticket.findOne({ user: user._id, quest: quest._id, status: { $in: ['valid', 'checked_in'] } });
   if (live) fail(409, 'You already have a ticket for this.', 'has_ticket', { ticketId: String(live._id) });

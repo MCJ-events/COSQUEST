@@ -5,6 +5,12 @@ Builds on the admin dashboard (6 zips) and Quests Phase 1. Needs `npm install st
 ## Paid only
 Every ticket is paid: an entry fee or ticket type below $0.50 is refused in the admin dashboard, and a quest without a price answers `409 not_on_sale` at checkout (its ticket type shows `onSale: false`). `ALLOW_FREE_TICKETS=1` turns free tickets back on.
 
+## Be at the venue
+A quest with `requireAtVenue` checks the phone's position at checkout **while the quest is live** (`position: { lat, lng, accuracy }` in the body): within `venueRadiusMeters` plus up to 100 m of GPS accuracy, otherwise `403 not_at_venue` (with `distanceMeters`) or `403 location_required`. Tickets for later can be bought from anywhere. A phone's GPS can be faked; the QR check-in at the door is the real proof.
+
+## Quests near you
+`GET /api/quests?lat&lng&radiusMiles` asks the database only for quests in a box around the point, measures each, and keeps the nearest (`limit`, default 20). Before, it took the first 20 worldwide by start time and then filtered by distance, so nearby quests were cut off. Without lat/lng: the soonest, as before.
+
 ## Render environment (sandbox now, live later)
 `STRIPE_SECRET_KEY` (sk_test_...), `STRIPE_WEBHOOK_SECRET` (whsec_...), `APP_WEB_URL` (https://cosquest.vercel.app). Optional: `REFUND_CUTOFF_HOURS` (default 24), `TICKETS_WORKER=0` on all but one instance if there are several, `QUEST_CURRENCY` (USD).
 

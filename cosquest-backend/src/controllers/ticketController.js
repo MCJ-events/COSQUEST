@@ -1,7 +1,8 @@
 // Members: ticket types, checkout, the order's state, My tickets.
 //
 //   GET  /api/quests/:questId/ticket-types       (public)  what's on sale, seats left
-//   POST /api/quests/:questId/checkout           { ticketTypeId? } -> free: the ticket; paid: { order, checkoutUrl }
+//   POST /api/quests/:questId/checkout           { ticketTypeId?, position?: { lat, lng, accuracy } } -> free: the ticket; paid: { order, checkoutUrl }
+//                                                (position: needed to join a LIVE quest that requires being at the venue)
 //   GET  /api/orders/:orderId                    the order's state; asks Stripe if still pending (the app's return page)
 //   GET  /api/me/tickets?scope=upcoming|past
 //   GET  /api/me/tickets/:ticketId               with the QR code value
@@ -33,7 +34,10 @@ async function listTicketTypes(req, res) {
 async function checkout(req, res) {
   try {
     if (!mongoose.isValidObjectId(req.params.questId)) return res.status(404).json({ error: 'Quest not found.' });
-    const result = await tickets.startCheckout({ user: req.user, questId: req.params.questId, ticketTypeId: req.body?.ticketTypeId });
+    // The phone's position, for quests that need you at the venue (live ones).
+    const p = req.body?.position;
+    const position = p && typeof p === 'object' ? { lat: p.lat, lng: p.lng, accuracy: p.accuracy } : null;
+    const result = await tickets.startCheckout({ user: req.user, questId: req.params.questId, ticketTypeId: req.body?.ticketTypeId, position });
     const status = result.ticket ? 201 : result.reused ? 200 : 201;
     return res.status(status).json({
       order: tickets.orderJson(result.order, result.ticket),

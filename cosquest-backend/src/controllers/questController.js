@@ -21,6 +21,18 @@ function parseLimit(value, fallback) {
   return Number.isInteger(number) && number > 0 ? Math.min(number, 50) : fallback;
 }
 
+// A box around the point, so the database returns only quests in the area
+// (the exact distance is checked after). A degree is about 69 miles on the
+// sphere distanceMiles uses, and a degree of longitude shrinks towards the
+// poles. Near a pole or across the 180° line, only the latitude band is used.
+function nearbyBox(lat, lng, radiusMiles) {
+  const dLat = radiusMiles / 69;
+  const box = { 'location.lat': { $gte: lat - dLat, $lte: lat + dLat } };
+  const dLng = radiusMiles / (69 * Math.cos((lat * Math.PI) / 180));
+  if (Number.isFinite(dLng) && lng - dLng >= -180 && lng + dLng <= 180) box['location.lng'] = { $gte: lng - dLng, $lte: lng + dLng };
+  return box;
+}
+
 async function listQuests(req, res) {
   const { status } = req.query;
   const lat = parseCoordinate(req.query.lat, -90, 90);
@@ -36,13 +48,19 @@ async function listQuests(req, res) {
   const known = ['upcoming', 'live', 'completed', 'cancelled'].includes(status);
   Object.assign(query, known ? statusFilter(status) : { status: { $ne: 'cancelled' } });
   if (req.query.faction) query.faction = req.query.faction;
-  const quests = await Quest.find(query).sort({ startsAt: 1 }).limit(parseLimit(req.query.limit, 20));
+  // With a location: only quests in the area come from the database, each is
+  // measured, and the nearest are kept (nearest first, then the limit). It
+  // used to take the first 20 worldwide by start time and filter after, so
+  // nearby quests were cut off. Without one: the soonest, as before.
+  if (lat !== null) Object.assign(query, nearbyBox(lat, lng, radiusMiles));
+  const quests = await Quest.find(query).sort({ startsAt: 1 }).limit(lat === null ? parseLimit(req.query.limit, 20) : 2000);
   const withDistance = quests.map((quest) => ({
     quest,
     distance: lat === null ? undefined : distanceMiles(lat, lng, quest.location.lat, quest.location.lng),
   }));
   const filtered = lat === null ? withDistance : withDistance.filter((item) => item.distance <= radiusMiles);
   filtered.sort((a, b) => (a.distance ?? 0) - (b.distance ?? 0));
+  if (lat !== null) filtered.splice(parseLimit(req.query.limit, 20));
   const mine = await registeredIds(req, filtered.map(({ quest }) => quest));
   return res.json({ quests: filtered.map(({ quest, distance }) => serializeQuest(quest, { distance, ...(mine ? { isRegistered: mine.has(String(quest._id)) } : {}) })) });
 }

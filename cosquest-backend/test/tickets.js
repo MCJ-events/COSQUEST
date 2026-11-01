@@ -116,6 +116,23 @@ async function run(baseUrl) {
   const memberCheckin = await request('POST', '/api/admin/checkin', ana.token, { code: one.data.ticket.code });
   check(memberCheckin.status === 401, 'only admins check people in', memberCheckin.status);
 
+  console.log('\n--- be at the venue (live quests) ---');
+  const venueQuest = await Quest.create({ slug: `venue-${suffix}`, title: 'Venue Hunt', status: 'upcoming', isPublished: true, startsAt: new Date(Date.now() - hour), endsAt: new Date(Date.now() + 2 * hour), location: venue, prizePool: { amount: 0, currency: 'USD' }, entryFee: { amount: 10, currency: 'USD' }, maxParticipants: 10, requireAtVenue: true, venueRadiusMeters: 200 });
+  const noPlace = await request('POST', `/api/quests/${venueQuest.id}/checkout`, ben.token, {});
+  check(noPlace.status === 403 && noPlace.data.code === 'location_required', 'live + at the venue: a position is needed', noPlace.data);
+  const far = await request('POST', `/api/quests/${venueQuest.id}/checkout`, ben.token, { position: { lat: 32.75, lng: -117.16, accuracy: 20 } });
+  check(far.status === 403 && far.data.code === 'not_at_venue' && far.data.distanceMeters > 3000, '...refused from 3+ km away', far.data);
+  const vague = await request('POST', `/api/quests/${venueQuest.id}/checkout`, ben.token, { position: { lat: 32.7193, lng: -117.1611, accuracy: 5000 } });
+  check(vague.status === 403 && vague.data.code === 'not_at_venue', '...a vague fix 400 m away is refused (GPS accuracy counts up to 100 m)', vague.data);
+  const notObject = await request('POST', `/api/quests/${venueQuest.id}/checkout`, ben.token, { position: '32.7157,-117.1611' });
+  check(notObject.status === 400, '...a position must be { lat, lng, accuracy }', notObject.data);
+  const near = await request('POST', `/api/quests/${venueQuest.id}/checkout`, ben.token, { position: { lat: 32.7166, lng: -117.1611, accuracy: 15 } });
+  check(near.status === 201 && near.data.checkoutUrl, '...allowed within the radius', near.data);
+  const later = await makeQuest('Later Venue', 10, 5);
+  await Quest.updateOne({ _id: later._id }, { $set: { requireAtVenue: true } });
+  const ahead = await request('POST', `/api/quests/${later.id}/checkout`, ben.token, {});
+  check(ahead.status === 201, 'tickets for later can be bought from anywhere', ahead.data);
+
   console.log('\n--- things going wrong ---');
   const meetup = await makeQuest('Late Meetup', 10, 2);
   fake._failNext = true;

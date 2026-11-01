@@ -131,6 +131,16 @@ async function run(baseUrl) {
   const afterSoon = await activeCount();
   check(afterEnded === beforeCount && afterSoon === beforeCount + 1, "a faction's active quests leave out ended ones", { beforeCount, afterEnded, afterSoon });
 
+  console.log('\n--- nearest quests ---');
+  const plain = { status: 'upcoming', isPublished: true, prizePool: { amount: 0 }, entryFee: { amount: 5 }, maxParticipants: 5 };
+  await Quest.insertMany(Array.from({ length: 25 }, (_, i) => ({ ...plain, slug: `far-${i}-${suffix}`, title: `Far ${i} ${suffix}`, startsAt: new Date(Date.now() + 30 * 60 * 1000 + i * 1000), endsAt: new Date(Date.now() + 3 * hour), location: { name: 'Shibuya', lat: 35.6595, lng: 139.7005 } })));
+  const corner = await Quest.create({ ...plain, slug: `corner-${suffix}`, title: `Around the corner ${suffix}`, startsAt: new Date(Date.now() + 20 * hour), endsAt: new Date(Date.now() + 22 * hour), location: venue });
+  const nearMe = await request('GET', '/api/quests?lat=32.7157&lng=-117.1611&radiusMiles=30', member.token);
+  check(nearMe.status === 200 && nearMe.data.quests.some((q) => q.id === corner.id) && !nearMe.data.quests.some((q) => q.title.startsWith('Far ')), 'a nearby quest is not cut off by 20+ sooner ones elsewhere', nearMe.data.quests?.map((q) => q.title));
+  const dateline = await Quest.create({ ...plain, slug: `dateline-${suffix}`, title: `Dateline ${suffix}`, startsAt: new Date(Date.now() + hour), endsAt: new Date(Date.now() + 2 * hour), location: { name: 'Taveuni', lat: -16.8, lng: 179.95 } });
+  const across = await request('GET', '/api/quests?lat=-16.8&lng=-179.95&radiusMiles=30', member.token);
+  check(across.data.quests?.some((q) => q.id === dateline.id), 'nearby across the 180° line is still found', across.data);
+
   const memberAdmin = await request('GET', '/api/admin/quests', member.token);
   check(memberAdmin.status === 401, 'members cannot use the admin quest routes', memberAdmin.status);
 
