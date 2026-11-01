@@ -9,6 +9,7 @@ import { useEffect } from "react";
 import { LogBox, StyleSheet, View } from "react-native";
 
 import GameRoot from "@/components/game/GameRoot";
+import { requestMapBench } from "@/features/game/mapBench";
 import { gameStore, startLocation } from "@/features/game/runtime";
 import { world } from "@/features/world/worldState";
 
@@ -20,6 +21,8 @@ export default function GamePreview() {
     LogBox.ignoreAllLogs(true);
     // For screenshot scripts: drive the store from the page (web only).
     (globalThis as { __cqGame?: unknown }).__cqGame = gameStore;
+    // And the map's scripted smoothness bench (EXPO_PUBLIC_MAP_BENCH=1 builds), as cosquest://mapbench does.
+    (globalThis as { __cqMapBench?: unknown }).__cqMapBench = requestMapBench;
     // A token the game server will not know: it falls back to the device's key.
     // The game is the page on screen (as the world pager says once it settles there).
     world.settled("game");

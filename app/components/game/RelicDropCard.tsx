@@ -18,15 +18,19 @@ import { SPRING_DROP_FLIP } from "@/features/game/spring";
 import type { RoamExtra } from "@/features/game/wire";
 
 import { MAX_FONT_SCALE } from "./kit";
-import { RelicArt, rarityColor } from "./RelicArt";
+import { ACCENT, contrast, edgeColor, RARITY, rarityOf, RADIUS, useLook } from "./look";
+import { RelicArt } from "./RelicArt";
 import { playSound } from "./sound";
-import { GF, GP } from "./theme";
+import { GF } from "./theme";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 export function RelicDropCard({ drop }: { drop: RelicDrop }) {
   const styles = useThemedStyles(STYLE_PAIR);
   const { relic, isNew, shards } = drop;
-  const tint = rarityColor(relic.rarity);
+  // One colour per rarity, the same as the map's pin rings and the drop beam (look.ts RARITY).
+  const tint = RARITY[rarityOf(relic.rarity)];
+  const look = useLook();
+  const tintText = contrast(tint, look.surface) >= 4.5 ? tint : contrast(edgeColor(tint, 0.6), look.surface) >= 4.5 ? edgeColor(tint, 0.6) : look.text;
   const reduced = useReducedMotion();
   const gid = `dg${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
   const flip = useSharedValue(0);
@@ -77,13 +81,13 @@ export function RelicDropCard({ drop }: { drop: RelicDrop }) {
       </View>
       <Animated.View style={[styles.text, textStyle]}>
         <View style={styles.row}>
-          {isNew ? <Text style={styles.newTag} maxFontSizeMultiplier={MAX_FONT_SCALE}>NEW!</Text> : null}
-          <Text style={[styles.kicker, { color: tint === GP.sun ? GP.sunDeep : tint }]} maxFontSizeMultiplier={MAX_FONT_SCALE}>{`${relic.rarity.toUpperCase()} RELIC`}</Text>
+          {isNew ? <Text style={styles.newTag} maxFontSizeMultiplier={MAX_FONT_SCALE}>NEW</Text> : null}
+          <Text style={[styles.kicker, { color: tintText }]} maxFontSizeMultiplier={MAX_FONT_SCALE}>{`${relic.rarity.toUpperCase()} RELIC`}</Text>
         </View>
-        <Text style={styles.name} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.8} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+        <Text style={[styles.name, { color: look.text }]} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.8} maxFontSizeMultiplier={MAX_FONT_SCALE}>
           {relic.name}
         </Text>
-        <Text style={[styles.line, { color: isNew ? GP.sky : "#B9A0FF" }]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+        <Text style={[styles.line, { color: look.textMuted }]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
           {isNew ? `${abilityName(relic.ability)} · power ${powerNow(relic)}` : `+${shards} shards`}
         </Text>
       </Animated.View>
@@ -100,23 +104,24 @@ export function RelicDropExtra({ extra }: { extra: RoamExtra }) {
 export default RelicDropCard;
 
 const STYLE_PAIR = themedStyles({
-  card: { flexDirection: "row", alignItems: "center", gap: 14, padding: 10, borderRadius: 18, borderWidth: 2 },
+  card: { flexDirection: "row", alignItems: "center", gap: 14, padding: 10, borderRadius: RADIUS.card, borderWidth: 2 },
   art: { width: 80, height: 80, alignItems: "center", justifyContent: "center" },
   glow: { position: "absolute", width: 112, height: 112 },
   text: { flex: 1, gap: 3 },
   row: { flexDirection: "row", alignItems: "center", gap: 6 },
   newTag: {
-    fontFamily: GF.display,
-    fontSize: 13,
-    letterSpacing: 1,
-    color: GP.ink,
-    backgroundColor: GP.sun,
+    fontFamily: GF.bold,
+    fontSize: 12,
+    lineHeight: 16,
+    letterSpacing: 0.6,
+    color: ACCENT.sun.label,
+    backgroundColor: ACCENT.sun.fill,
     paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 10,
+    paddingVertical: 1,
+    borderRadius: RADIUS.chip,
     overflow: "hidden",
   },
-  kicker: { fontFamily: GF.display, fontSize: 12, letterSpacing: 1 },
-  name: { fontFamily: GF.display, fontSize: 20, color: "#FFFFFF" },
-  line: { fontFamily: GF.bold, fontSize: 14 },
+  kicker: { fontFamily: GF.bold, fontSize: 12, lineHeight: 16, letterSpacing: 0.8 },
+  name: { fontFamily: GF.display, fontSize: 20, lineHeight: 24 },
+  line: { fontFamily: GF.body, fontSize: 14, lineHeight: 18 },
 });

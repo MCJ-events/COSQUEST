@@ -16,8 +16,9 @@ import { stampRow, stampsFrom } from "@/features/game/live";
 import { gameStore } from "@/features/game/runtime";
 import type { RoamMe } from "@/features/game/wire";
 
-import { Chip, GameButton, MAX_FONT_SCALE, withAlpha } from "./kit";
-import { GF, GP } from "./theme";
+import { Chip, GameButton, MAX_FONT_SCALE } from "./kit";
+import { ACCENT, RADIUS, SURFACES } from "./look";
+import { GF } from "./theme";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 const NO_STAMPS = { stamps: 0, cards_done: 0, card_size: 7 };
@@ -49,15 +50,15 @@ export default function LiveStampCard({ me }: { me: RoamMe | null }) {
         <Text style={styles.title} accessibilityRole="header" maxFontSizeMultiplier={MAX_FONT_SCALE}>
           Stamp card
         </Text>
-        {stamps && stamps.cards_done > 0 ? <Chip text={stamps.cards_done === 1 ? "1 card done" : `${stamps.cards_done} cards done`} color={GP.mint} /> : null}
+        {stamps && stamps.cards_done > 0 ? <Chip text={stamps.cards_done === 1 ? "1 card done" : `${stamps.cards_done} cards done`} color={ACCENT.mint.fill} /> : null}
       </View>
       {showFailed ? (
         <View style={styles.fail}>
-          <Text style={styles.failText}>Couldn&apos;t load your stamps.</Text>
+          <Text style={styles.failText}>Your stamps didn&apos;t load.</Text>
           <GameButton
             title="Try again"
             size="small"
-            color={GP.sky}
+            color={ACCENT.sky.fill}
             onPress={() => {
               setFailed(false);
               setAttempt((n) => n + 1);
@@ -72,7 +73,7 @@ export default function LiveStampCard({ me }: { me: RoamMe | null }) {
         </View>
       )}
       <Text style={styles.note} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-        Play any day to stamp it. 7 stamps = 300 XP
+        Play on any day to stamp it. A full card of 7 pays 300 XP.
       </Text>
     </View>
   );
@@ -93,7 +94,7 @@ function Stamp({ filled, n, placeholder }: { filled: boolean; n: number; placeho
       {filled ? (
         <View style={styles.filledEdge}>
           <View style={styles.filled}>
-            <MaterialCommunityIcons name="seal" size={22} color={GP.sunDeep} />
+            <MaterialCommunityIcons name="seal" size={22} color={ACCENT.sun.label} />
           </View>
         </View>
       ) : (
@@ -107,36 +108,43 @@ function Stamp({ filled, n, placeholder }: { filled: boolean; n: number; placeho
   );
 }
 
-const STYLE_PAIR = themedStyles({
-  card: { gap: 12, padding: 14, borderRadius: 18, backgroundColor: "#FFF" },
-  head: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
-  title: { fontFamily: GF.display, fontSize: 24, color: GP.ink },
-  row: { flexDirection: "row", gap: 6 },
-  fail: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 },
-  failText: { flex: 1, fontFamily: GF.body, fontSize: 14, color: withAlpha(GP.ink, 0.7) },
-  slot: { flex: 1, alignItems: "center" },
-  redacted: { width: "100%", maxWidth: 44, aspectRatio: 1, borderRadius: 22, backgroundColor: withAlpha(GP.ink, 0.12) },
-  filledEdge: { width: "100%", maxWidth: 44, aspectRatio: 1, borderRadius: 22, backgroundColor: GP.sunDeep, paddingBottom: 3 },
-  filled: {
-    flex: 1,
-    borderRadius: 22,
-    borderWidth: 2,
-    borderColor: "rgba(255,255,255,0.7)",
-    backgroundColor: GP.sun,
-    alignItems: "center",
-    justifyContent: "center",
+const L = SURFACES.light;
+const D = SURFACES.dark;
+
+const STYLE_PAIR = themedStyles(
+  {
+    card: { gap: 12, padding: 16, borderRadius: RADIUS.card, backgroundColor: L.surface },
+    head: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
+    title: { fontFamily: GF.display, fontSize: 22, lineHeight: 26, color: L.text },
+    row: { flexDirection: "row", gap: 6 },
+    fail: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 },
+    failText: { flex: 1, fontFamily: GF.body, fontSize: 14, lineHeight: 18, color: L.textMuted },
+    slot: { flex: 1, alignItems: "center" },
+    redacted: { width: "100%", maxWidth: 44, aspectRatio: 1, borderRadius: 22, backgroundColor: L.surfaceAlt },
+    // A laid stamp: a Sun disc sitting on its 3 px edge, the seal in Sun's ink.
+    filledEdge: { width: "100%", maxWidth: 44, aspectRatio: 1, borderRadius: 22, backgroundColor: ACCENT.sun.edge, paddingBottom: 3 },
+    filled: { flex: 1, borderRadius: 22, backgroundColor: ACCENT.sun.fill, alignItems: "center", justifyContent: "center" },
+    empty: {
+      width: "100%",
+      maxWidth: 44,
+      aspectRatio: 1,
+      borderRadius: 22,
+      borderWidth: 2,
+      borderStyle: "dashed",
+      borderColor: "rgba(28,43,58,0.22)",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    number: { fontFamily: GF.display, fontSize: 16, lineHeight: 20, color: L.textMuted },
+    note: { fontFamily: GF.regular, fontSize: 13, lineHeight: 17, color: L.textMuted },
   },
-  empty: {
-    width: "100%",
-    maxWidth: 44,
-    aspectRatio: 1,
-    borderRadius: 22,
-    borderWidth: 2.5,
-    borderStyle: "dashed",
-    borderColor: withAlpha(GP.ink, 0.25),
-    alignItems: "center",
-    justifyContent: "center",
+  {
+    card: { backgroundColor: D.surface, borderWidth: 1, borderColor: D.hairline },
+    title: { color: D.text },
+    failText: { color: D.textMuted },
+    redacted: { backgroundColor: D.surfaceAlt },
+    empty: { borderColor: "rgba(255,255,255,0.22)" },
+    number: { color: D.textMuted },
+    note: { color: D.textMuted },
   },
-  number: { fontFamily: GF.display, fontSize: 16, color: withAlpha(GP.ink, 0.35) },
-  note: { fontFamily: GF.body, fontSize: 14, color: withAlpha(GP.ink, 0.7) },
-});
+);

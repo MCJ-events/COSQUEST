@@ -26,11 +26,13 @@ import { updateStepsOnPhone } from "@/features/game/stepsDevice";
 
 import { announce, Chip, GameButton, MAX_FONT_SCALE, ProgressBar } from "./kit";
 import { playSound } from "./sound";
-import { GF, GP } from "./theme";
+import { ACCENT, labelOn, RADIUS, SURFACES, TEXT_ON_DARK, TEXT_ON_LIGHT, useLook } from "./look";
+import { GF } from "./theme";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 export default function StepsCard() {
   const styles = useThemedStyles(STYLE_PAIR);
+  const look = useLook();
   const [view, setView] = useState<StepsView>(EMPTY_STEPS_VIEW);
   const [busy, setBusy] = useState(false);
   const running = useRef(false);
@@ -75,13 +77,10 @@ export default function StepsCard() {
   return (
     <View style={styles.card}>
       <View style={styles.header}>
-        <Ionicons name="footsteps" size={28} color={GP.grass} accessibilityElementsHidden importantForAccessibility="no" />
-        <View style={{ flex: 1, gap: 2 }}>
-          <Text style={styles.title} accessibilityRole="header" maxFontSizeMultiplier={MAX_FONT_SCALE}>
-            This week: {km(s?.meters ?? 0)} km walked
-          </Text>
-          <Text style={styles.muted} maxFontSizeMultiplier={MAX_FONT_SCALE}>Walk to earn XP and items. Resets Monday.</Text>
-        </View>
+        <Text style={styles.title} accessibilityRole="header" maxFontSizeMultiplier={MAX_FONT_SCALE}>
+          {km(s?.meters ?? 0)} km walked this week
+        </Text>
+        <Text style={styles.muted} maxFontSizeMultiplier={MAX_FONT_SCALE}>Every 5, 25 and 50 km pays out. The count resets on Monday.</Text>
       </View>
       {s ? (
         <>
@@ -93,13 +92,13 @@ export default function StepsCard() {
           </View>
         </>
       ) : busy ? (
-        <ActivityIndicator color={GP.navy} style={{ marginVertical: 8 }} />
+        <ActivityIndicator color={look.textMuted} style={{ marginVertical: 8 }} />
       ) : null}
       {view.newly.length ? (
         <View style={styles.paid} accessible accessibilityLabel={view.newly.map((n) => `${n.km} km reached! ${describeRewards(n.rewards)}`).join(". ")}>
           {view.newly.map((n) => (
             <View key={n.km} style={styles.paidRow}>
-              <Ionicons name="walk" size={18} color={GP.mint} accessibilityElementsHidden importantForAccessibility="no" />
+              <Ionicons name="walk" size={18} color={look.dark ? TEXT_ON_DARK.success : TEXT_ON_LIGHT.success} accessibilityElementsHidden importantForAccessibility="no" />
               <Text style={styles.paidText} maxFontSizeMultiplier={MAX_FONT_SCALE}>
                 {n.km} km reached! {describeRewards(n.rewards)}
               </Text>
@@ -108,14 +107,14 @@ export default function StepsCard() {
         </View>
       ) : null}
       {view.note ? (
-        <Text style={[styles.note, { color: view.noteIsProblem ? GP.berry : GP.mist }]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+        <Text style={[styles.note, { color: view.noteIsProblem ? (look.dark ? TEXT_ON_DARK.danger : TEXT_ON_LIGHT.danger) : look.textMuted }]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
           {view.note}
         </Text>
       ) : null}
       {view.motionDenied ? (
         <GameButton
           title="Open Settings"
-          color={GP.skyDeep}
+          color={ACCENT.sky.fill}
           small
           style={{ alignSelf: "flex-start" }}
           onPress={() => {
@@ -125,9 +124,9 @@ export default function StepsCard() {
         />
       ) : null}
       <GameButton
-        title={busy ? "Counting..." : "Update from your phone"}
-        color={GP.mint}
-        icon={<Ionicons name="walk" size={20} color="#FFF" />}
+        title={busy ? "Counting your steps" : "Count my steps"}
+        color={ACCENT.mint.fill}
+        icon={<Ionicons name="walk" size={20} color={busy ? SURFACES.light.textMuted : labelOn(ACCENT.mint.fill)} />}
         disabled={busy}
         onPress={() => void update(true)}
         accessibilityLabel="Update this week's walk from your phone"
@@ -141,8 +140,8 @@ function Progress({ status }: { status: StepsStatus }) {
   const p = progressTo(status);
   return (
     <View style={{ gap: 6 }} accessible accessibilityLabel={p.line}>
-      <ProgressBar value={p.value} color={p.allDone ? GP.mint : GP.sun} track={GP.track} />
-      <Text style={[styles.line, p.allDone && { color: GP.mint }]} maxFontSizeMultiplier={MAX_FONT_SCALE}>{p.line}</Text>
+      <ProgressBar value={p.value} color={p.allDone ? ACCENT.mint.fill : ACCENT.sun.fill} />
+      <Text style={[styles.line, p.allDone && styles.lineDone]} maxFontSizeMultiplier={MAX_FONT_SCALE}>{p.line}</Text>
     </View>
   );
 }
@@ -150,7 +149,7 @@ function Progress({ status }: { status: StepsStatus }) {
 /** One of the three weekly milestones: done, the one being walked towards, or later. */
 function MilestoneTile({ milestone, state }: { milestone: StepsMilestone; state: MilestoneState }) {
   const styles = useThemedStyles(STYLE_PAIR);
-  const color = state === "done" ? GP.mint : state === "next" ? GP.sunDeep : "#8C8C8C";
+  const color = state === "done" ? ACCENT.mint.fill : state === "next" ? ACCENT.sun.fill : RARITY_COMMON;
   const word = state === "done" ? "Done" : state === "next" ? "Next" : "Locked";
   return (
     <View
@@ -160,7 +159,7 @@ function MilestoneTile({ milestone, state }: { milestone: StepsMilestone; state:
       {state === "done" ? (
         <MaterialCommunityIcons name="check-decagram" size={22} color={color} />
       ) : (
-        <Ionicons name={state === "next" ? "flag" : "lock-closed"} size={20} color={color} />
+        <Ionicons name={state === "next" ? "flag" : "lock-closed"} size={20} color={state === "next" ? ACCENT.sun.edge : color} />
       )}
       <Text style={styles.tileKm} maxFontSizeMultiplier={MAX_FONT_SCALE}>
         {milestone.km} km
@@ -175,18 +174,35 @@ function MilestoneTile({ milestone, state }: { milestone: StepsMilestone; state:
   );
 }
 
-const STYLE_PAIR = themedStyles({
-  card: { gap: 12, padding: 14, borderRadius: 18, backgroundColor: "#FFF" },
-  header: { flexDirection: "row", alignItems: "center", gap: 12 },
-  title: { fontFamily: GF.display, fontSize: 20, color: GP.ink },
-  muted: { fontFamily: GF.body, fontSize: 13, color: GP.mist },
-  line: { fontFamily: GF.bold, fontSize: 13, color: GP.mist },
-  tiles: { flexDirection: "row", gap: 8 },
-  tile: { flex: 1, alignItems: "center", gap: 4, paddingVertical: 8, paddingHorizontal: 4, borderRadius: 16 },
-  tileKm: { fontFamily: GF.display, fontSize: 17, color: GP.ink },
-  tileRewards: { fontFamily: GF.body, fontSize: 11, color: GP.mist, textAlign: "center" },
-  paid: { gap: 6, padding: 10, borderRadius: 14, backgroundColor: "rgba(242,153,46,0.25)" },
-  paidRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  paidText: { flex: 1, fontFamily: GF.bold, fontSize: 14, color: GP.ink },
-  note: { fontFamily: GF.bold, fontSize: 14 },
-});
+const RARITY_COMMON = "#8FA3B5";
+const L = SURFACES.light;
+const D = SURFACES.dark;
+
+const STYLE_PAIR = themedStyles(
+  {
+    card: { gap: 12, padding: 16, borderRadius: RADIUS.card, backgroundColor: L.surface },
+    header: { gap: 2 },
+    title: { fontFamily: GF.display, fontSize: 22, lineHeight: 26, color: L.text },
+    muted: { fontFamily: GF.regular, fontSize: 13, lineHeight: 17, color: L.textMuted },
+    line: { fontFamily: GF.body, fontSize: 13, lineHeight: 17, color: L.textMuted },
+    lineDone: { color: TEXT_ON_LIGHT.success },
+    tiles: { flexDirection: "row", gap: 8 },
+    tile: { flex: 1, alignItems: "center", gap: 4, paddingVertical: 10, paddingHorizontal: 4, borderRadius: 16 },
+    tileKm: { fontFamily: GF.display, fontSize: 17, lineHeight: 21, color: L.text },
+    tileRewards: { fontFamily: GF.regular, fontSize: 12, lineHeight: 15, color: L.textMuted, textAlign: "center" },
+    paid: { gap: 6, padding: 10, borderRadius: 14, backgroundColor: "rgba(245,158,42,0.18)" },
+    paidRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+    paidText: { flex: 1, fontFamily: GF.bold, fontSize: 14, lineHeight: 18, color: L.text },
+    note: { fontFamily: GF.body, fontSize: 14, lineHeight: 18 },
+  },
+  {
+    card: { backgroundColor: D.surface, borderWidth: 1, borderColor: D.hairline },
+    title: { color: D.text },
+    muted: { color: D.textMuted },
+    line: { color: D.textMuted },
+    lineDone: { color: TEXT_ON_DARK.success },
+    tileKm: { color: D.text },
+    tileRewards: { color: D.textMuted },
+    paidText: { color: D.text },
+  },
+);

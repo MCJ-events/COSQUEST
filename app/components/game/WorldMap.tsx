@@ -33,8 +33,6 @@ import Animated, {
   type SharedValue,
   cancelAnimation,
   Easing,
-  FadeIn,
-  Keyframe,
   runOnJS,
   useAnimatedReaction,
   useAnimatedStyle,
@@ -63,7 +61,7 @@ import type { GroundGeometry, QuestPoint } from "@/features/game/wire";
 import { GroundPaths } from "./GroundPaths";
 import GroundTiles, { type LoadGround } from "./GroundTiles";
 import { useMapBench } from "./mapBenchRunner";
-import { SHEET_EASE_OUT } from "./sheetMotion";
+import { REACH_PULSE, SHEET_EASE_OUT, usePinDrop } from "./sheetMotion";
 import { MapCameraContext, MapPin, PIN_SPOT, useUpright } from "./mapCamera";
 import { ACCENT, ELEVATION, FACTION, RADIUS, useLook, useMapLook } from "./look";
 import { RaidCrown } from "./RaidParts";
@@ -646,13 +644,6 @@ export function challengeGlyph(p: QuestPoint): ComponentProps<typeof Ionicons>["
   }
 }
 
-/** Pins drop in from a little above (pinDrop, 320 ms), with no bounce past the ground. */
-const PIN_DROP = new Keyframe({
-  0: { opacity: 0, transform: [{ translateY: -24 }] },
-  100: { opacity: 1, transform: [{ translateY: 0 }], easing: SHEET_EASE_OUT },
-}).duration(320);
-const PIN_FADE = FadeIn.duration(150);
-
 const PointMarker = memo(function PointMarker({
   point,
   selected,
@@ -670,7 +661,7 @@ const PointMarker = memo(function PointMarker({
 }) {
   const styles = useThemedStyles(STYLE_PAIR);
   useRenderCount("PointMarker");
-  const reduceMotion = useReducedMotion();
+  const pinDrop = usePinDrop();
   const cam = useContext(MapCameraContext);
   const color = cooling ? (look.dark ? "#5C667C" : "#B3B9C0") : pinFill(point);
   const band = cooling ? null : holderColor(point);
@@ -683,7 +674,7 @@ const PointMarker = memo(function PointMarker({
     return { opacity: selected ? 1 : Math.max(0, Math.min(1, (z - LABEL_ZOOM) / 0.15)) };
   });
   return (
-    <Animated.View entering={reduceMotion ? PIN_FADE : PIN_DROP} style={StyleSheet.absoluteFill} pointerEvents="box-none">
+    <Animated.View entering={pinDrop} style={StyleSheet.absoluteFill} pointerEvents="box-none">
       {/* The pin's shadow on the ground, under its spot (not a drop shadow); a mint ring round it when it is in reach. */}
       <View pointerEvents="none" style={[styles.groundShadow, { left: PIN_SPOT.left - 9, top: PIN_SPOT.top - 3 }]} />
       <Pressable
@@ -737,9 +728,11 @@ function ReachRing({ radius, color, still }: { radius: number; color: string; st
       t.set(0);
       return;
     }
-    t.set(withRepeat(withTiming(1, { duration: 800, easing: Easing.inOut(Easing.sin) }), -1, true));
+    t.set(withRepeat(withTiming(1, { duration: REACH_PULSE.ms / 2, easing: Easing.inOut(Easing.sin) }), -1, true));
   }, [still, t]);
-  const pulse = useAnimatedStyle(() => ({ opacity: 0.9 - 0.4 * t.get(), transform: [{ scale: 1 + 0.06 * t.get() }] }));
+  const [s0, s1] = REACH_PULSE.scale;
+  const [o0, o1] = REACH_PULSE.opacity;
+  const pulse = useAnimatedStyle(() => ({ opacity: o0 + (o1 - o0) * t.get(), transform: [{ scale: s0 + (s1 - s0) * t.get() }] }));
   return (
     <>
       <View style={[styles.reachFill, { width: radius * 2, height: radius * 2, borderRadius: radius, left: -radius, top: -radius, backgroundColor: color }]} />

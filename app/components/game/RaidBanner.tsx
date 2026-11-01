@@ -13,6 +13,7 @@ import type { QuestPoint } from "@/features/game/wire";
 
 import { announce, GameButton, HUD_FONT_SCALE } from "./kit";
 import { RaidBadge, RaidHPBar } from "./RaidParts";
+import { ELEVATION, RADIUS, SURFACES } from "./look";
 import { GF } from "./theme";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
@@ -66,7 +67,7 @@ export default function RaidBanner({
         {/* Two lines, not shrunk to fit: Android ignores minimumFontScale and
             shrank the name to nothing beside the button. */}
         <Text style={styles.title} numberOfLines={2} maxFontSizeMultiplier={HUD_FONT_SCALE}>
-          {`A boss has appeared: ${boss.name}`}
+          {`Boss out: ${boss.name}`}
         </Text>
         {hp ? <RaidHPBar hp={hp.left} maxHp={hp.max} compact /> : null}
         <Text style={styles.sub} maxFontSizeMultiplier={HUD_FONT_SCALE}>{away}</Text>
@@ -79,19 +80,31 @@ export default function RaidBanner({
   );
 }
 
-const STYLE_PAIR = themedStyles({
-  // A block in GameRoot's banner column (under the top bar, left of the rail).
-  banner: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    padding: 10,
-    borderRadius: 16,
-    backgroundColor: "rgba(30,58,76,0.92)",
-    elevation: 6,
+const L = SURFACES.light;
+const D = SURFACES.dark;
+
+const STYLE_PAIR = themedStyles(
+  {
+    // A block in GameRoot's banner column (under the top bar, left of the rail): a paper plate like the rest of the HUD.
+    banner: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      padding: 10,
+      borderRadius: RADIUS.card,
+      backgroundColor: L.surface,
+      borderWidth: 1,
+      borderColor: L.hairline,
+      ...ELEVATION.float,
+    },
+    body: { flex: 1, gap: 3 },
+    fight: { flexShrink: 0 },
+    title: { fontFamily: GF.display, fontSize: 16, lineHeight: 20, color: L.text },
+    sub: { fontFamily: GF.regular, fontSize: 12, lineHeight: 16, color: L.textMuted, fontVariant: ["tabular-nums"] },
   },
-  body: { flex: 1, gap: 3 },
-  fight: { flexShrink: 0 },
-  title: { fontFamily: GF.display, fontSize: 16, color: "#FFF" },
-  sub: { fontFamily: GF.bold, fontSize: 13, color: "rgba(255,255,255,0.8)" },
-});
+  {
+    banner: { backgroundColor: D.surface, borderColor: D.hairline, shadowOpacity: 0, elevation: 0, boxShadow: "none" },
+    title: { color: D.text },
+    sub: { color: D.textMuted },
+  },
+);

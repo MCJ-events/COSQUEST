@@ -4,7 +4,6 @@
 // buttons and the sunburst behind TAKEN!. Drawn in react-native-svg and
 // Reanimated; every loop and flourish stops under Reduce Motion.
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import { useEffect, useState } from "react";
 import { type LayoutChangeEvent, Pressable, StyleSheet, Text, View } from "react-native";
 import Animated, {
@@ -24,8 +23,9 @@ import Svg, { Circle, ClipPath, Defs, Ellipse, G, LinearGradient as SvgGradient,
 import { crackLevel } from "@/features/game/siegeFlow";
 import { settle } from "@/features/game/spring";
 
-import { GameTitle, MAX_FONT_SCALE, pressFeedback, withAlpha } from "./kit";
+import { GameTitle, MAX_FONT_SCALE, pressFeedback } from "./kit";
 import { RelicArt } from "./RelicArt";
+import { ACCENT, BUTTON, edgeColor, HUD_GLASS, labelOn, RADIUS } from "./look";
 import { CHOICE_COLORS, edgeOf, GF, GP } from "./theme";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
@@ -282,9 +282,7 @@ export function HpBar({ share, color }: { share: number; color: string }) {
   return (
     <View style={styles.hpTrack} onLayout={(e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width)}>
       <Animated.View style={[styles.hpGhost, ghostStyle]} />
-      <Animated.View style={[styles.hpMain, mainStyle]}>
-        <LinearGradient colors={[withAlpha(color, 0.85), color]} style={StyleSheet.absoluteFill} />
-        <View style={styles.hpGloss} />
+      <Animated.View style={[styles.hpMain, { backgroundColor: color }, mainStyle]}>
       </Animated.View>
       <View pointerEvents="none" style={styles.hpRim} />
     </View>
@@ -307,13 +305,11 @@ export function FocusBar({ value }: { value: number }) {
     } else w.value = withSpring(t, SPRING_FOCUS);
   }, [v, width, w, first]);
   const style = useAnimatedStyle(() => ({ width: w.value }));
-  const colors: [string, string] = v > 0.5 ? [GP.mint, GP.grass] : v > 0.25 ? [GP.sun, GP.sunDeep] : [GP.berry, edgeOf(GP.berry)];
+  // One flat colour by how much is left (no gradient): Mint, then Sun, then Berry.
+  const fill = v > 0.5 ? ACCENT.mint.fill : v > 0.25 ? ACCENT.sun.fill : ACCENT.berry.fill;
   return (
     <View style={styles.focusTrack} onLayout={(e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width)}>
-      <Animated.View style={[styles.focusFill, style]}>
-        <LinearGradient colors={colors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill} />
-        <View style={styles.focusGloss} />
-      </Animated.View>
+      <Animated.View style={[styles.focusFill, { backgroundColor: fill }, style]} />
       <View pointerEvents="none" style={styles.focusRim} />
     </View>
   );
@@ -347,23 +343,23 @@ export function RingTimer({ deadline, total, paused }: { deadline: number; total
       accessibilityLabel="Time left"
       accessibilityValue={{ text: `${shown} ${shown === 1 ? "second" : "seconds"}` }}>
       <Svg width={RING} height={RING} style={StyleSheet.absoluteFill}>
-        <Circle cx={RING / 2} cy={RING / 2} r={RING / 2 - 1.25} fill={withAlpha(GP.navy, 0.85)} />
+        <Circle cx={RING / 2} cy={RING / 2} r={RING / 2 - 1.25} fill={HUD_GLASS.fill} />
         <Circle cx={RING / 2} cy={RING / 2} r={r} fill="none" stroke="#FFF" strokeOpacity={0.18} strokeWidth={STROKE} />
         <Circle
           cx={RING / 2}
           cy={RING / 2}
           r={r}
           fill="none"
-          stroke={hot ? GP.berry : GP.sun}
+          stroke={hot ? ACCENT.berry.fill : ACCENT.sun.fill}
           strokeWidth={STROKE}
           strokeLinecap="round"
           strokeDasharray={`${c * frac} ${c}`}
           rotation={-90}
           origin={`${RING / 2}, ${RING / 2}`}
         />
-        <Circle cx={RING / 2} cy={RING / 2} r={RING / 2 - 1.25} fill="none" stroke={GP.ink} strokeWidth={2.5} />
+        <Circle cx={RING / 2} cy={RING / 2} r={RING / 2 - 1.25} fill="none" stroke={HUD_GLASS.border} strokeWidth={1} />
       </Svg>
-      <Text style={[styles.ringText, { color: hot ? GP.berry : "#FFF", transform: [{ scale: pulse ? 1.12 : 1 }] }]} maxFontSizeMultiplier={1.1}>
+      <Text style={[styles.ringText, { color: hot ? "#FF8A8F" : "#FFFFFF", transform: [{ scale: pulse ? 1.12 : 1 }] }]} maxFontSizeMultiplier={1.1}>
         {shown}
       </Text>
     </View>
@@ -512,7 +508,9 @@ export function SiegeChoice({
   onPress: () => void;
 }) {
   const styles = useThemedStyles(STYLE_PAIR);
-  const face = state === "right" ? GP.mint : state === "wrong" ? GP.berry : state === "dim" ? GREY : CHOICE_COLORS[index % CHOICE_COLORS.length];
+  const face = state === "right" ? ACCENT.mint.fill : state === "wrong" ? ACCENT.berry.fill : state === "dim" ? GREY : CHOICE_COLORS[index % CHOICE_COLORS.length];
+  // The label in the face's own ink: never white on the orange answer.
+  const ink = labelOn(face);
   const opacityTo = state === "removed" ? 0.22 : state === "dim" ? 0.45 : 1;
   const scaleTo = state === "right" ? 1.03 : 1;
   const opacity = useSharedValue(opacityTo);
@@ -535,17 +533,16 @@ export function SiegeChoice({
         accessibilityLabel={label}
         accessibilityState={{ disabled: state === "removed", selected: picked || state === "right" }}>
         {({ pressed }) => (
-          <View style={{ paddingBottom: 6, transform: [{ translateY: pressed ? 1 : 0 }] }}>
-            <View style={[StyleSheet.absoluteFill, { top: 6, borderRadius: 20, backgroundColor: edgeOf(face) }]} />
-            <LinearGradient colors={[withAlpha(face, 0.92), face]} style={[styles.choiceFace, { transform: [{ translateY: pressed ? 5 : 0 }] }]}>
-              <View pointerEvents="none" style={styles.choiceGloss} />
-              <Text style={styles.choiceText} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.7} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+          <View style={{ paddingBottom: BUTTON.edge }}>
+            <View style={[StyleSheet.absoluteFill, { top: BUTTON.edge, borderRadius: RADIUS.button, backgroundColor: edgeColor(face) }]} />
+            <View style={[styles.choiceFace, { backgroundColor: face, transform: [{ translateY: pressed ? BUTTON.pressedTranslate : 0 }] }]}>
+              <Text style={[styles.choiceText, { color: ink }]} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.7} maxFontSizeMultiplier={MAX_FONT_SCALE}>
                 {text}
               </Text>
-              {state === "right" ? <Ionicons name="checkmark-circle" size={22} color="#FFF" /> : null}
-              {state === "wrong" ? <Ionicons name="close-circle" size={22} color="#FFF" /> : null}
-              {state === "idle" && picked ? <Ionicons name="checkmark" size={18} color="#FFF" /> : null}
-            </LinearGradient>
+              {state === "right" ? <Ionicons name="checkmark-circle" size={22} color={ink} /> : null}
+              {state === "wrong" ? <Ionicons name="close-circle" size={22} color={ink} /> : null}
+              {state === "idle" && picked ? <Ionicons name="checkmark" size={18} color={ink} /> : null}
+            </View>
           </View>
         )}
       </Pressable>
@@ -560,19 +557,16 @@ const STYLE_PAIR = themedStyles({
   shadow: { position: "absolute", top: 235, left: 30 , width: 150, height: 26, borderRadius: 13, backgroundColor: "rgba(0,0,0,0.25)" },
   figure: { position: "absolute", top: 45, left: 30, width: W, height: H },
   shards: { position: "absolute", left: 30 + W / 2, top: 130, width: 0, height: 0 },
-  hpTrack: { height: 26, borderRadius: 13, backgroundColor: withAlpha(GP.navyEdge, 0.75), overflow: "hidden", justifyContent: "center" },
+  hpTrack: { height: 26, borderRadius: 13, backgroundColor: HUD_GLASS.fill, overflow: "hidden", justifyContent: "center" },
   hpGhost: { position: "absolute", left: 0, top: 0, bottom: 0, borderRadius: 13, backgroundColor: "rgba(255,255,255,0.85)" },
   hpMain: { position: "absolute", left: 0, top: 0, bottom: 0, borderRadius: 13, overflow: "hidden" },
-  hpGloss: { position: "absolute", top: 3, left: 8, right: 8, height: 6, borderRadius: 3, backgroundColor: "rgba(255,255,255,0.35)" },
-  hpRim: { ...StyleSheet.absoluteFill, borderRadius: 13, borderWidth: 3, borderColor: GP.ink },
+  hpRim: { ...StyleSheet.absoluteFill, borderRadius: 13, borderWidth: 1, borderColor: HUD_GLASS.border },
   focusTrack: { height: 16, borderRadius: 8, backgroundColor: "rgba(255,255,255,0.15)", overflow: "hidden" },
   focusFill: { position: "absolute", left: 0, top: 0, bottom: 0, borderRadius: 8, overflow: "hidden" },
-  focusGloss: { position: "absolute", top: 2, left: 6, right: 6, height: 4, borderRadius: 2, backgroundColor: "rgba(255,255,255,0.3)" },
-  focusRim: { ...StyleSheet.absoluteFill, borderRadius: 8, borderWidth: 2, borderColor: withAlpha(GP.ink, 0.8) },
+  focusRim: { ...StyleSheet.absoluteFill, borderRadius: 8, borderWidth: 1, borderColor: HUD_GLASS.border },
   ring: { width: RING, height: RING, alignItems: "center", justifyContent: "center" },
   ringText: { fontFamily: GF.display, fontSize: 22 },
   pop: { position: "absolute", alignSelf: "center" },
-  choiceFace: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, paddingHorizontal: 22, paddingVertical: 12, borderRadius: 20, overflow: "hidden" },
-  choiceGloss: { position: "absolute", top: 5, left: 10, right: 10, height: 10, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.28)" },
-  choiceText: { flex: 1, fontFamily: GF.display, fontSize: 20, color: "#FFF" },
+  choiceFace: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, paddingHorizontal: 22, paddingVertical: 12, borderRadius: RADIUS.button, overflow: "hidden" },
+  choiceText: { flex: 1, fontFamily: GF.display, fontSize: 20, lineHeight: 24 },
 });
