@@ -167,4 +167,17 @@ module.exports = {
   questBody: [object('location', { label: 'location' }), boolean('publish', { label: 'publish' }), boolean('requireAtVenue', { label: 'requireAtVenue' })],
   cancelQuest: [objectId('questId', { in: 'param', label: 'quest ID' }), reason()],
   geocode: [...scalarQuery('q'), string('q', { in: 'query', required: true, min: 3, max: 200, label: 'q', message: 'Type at least 3 characters of the address.' })],
+  // Tickets & Payments
+  ticketTypeBody: [string('name', { max: 60, label: 'name' }), string('description', { max: 300, label: 'description' }), boolean('active', { label: 'active' })],
+  ticketTypeId: [objectId('ticketTypeId', { in: 'param', label: 'ticket type ID' })],
+  paymentStats: window,
+  listOrders: [
+    ...page,
+    ...scalarQuery('status', 'quest'),
+    oneOfValues('status', ['pending', 'paid', 'free', 'expired', 'failed', 'refunded', 'cancelled'], { in: 'query', label: 'status' }),
+    objectId('quest', { in: 'query', required: false, label: 'quest' }),
+  ],
+  orderId: [objectId('orderId', { in: 'param', label: 'order ID' })],
+  refundOrder: [objectId('orderId', { in: 'param', label: 'order ID' }), reason()],
+  checkin: [string('code', { required: true, min: 10, max: 80, trim: true, label: 'code', message: 'Scan or type the ticket code.' }), objectId('questId', { required: false, label: 'questId' })],
 };

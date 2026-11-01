@@ -31,6 +31,8 @@ function buildApp() {
   app.set('trust proxy', trustProxy(process.env.TRUST_PROXY));
 
   app.use(cors());
+  // Stripe signs the exact bytes it sent: this must run before express.json().
+  app.post('/api/stripe/webhook', express.raw({ type: 'application/json', limit: '1mb' }), asyncHandler(require('./src/controllers/stripeWebhookController').receive));
   app.use(express.json());
   app.use(express.urlencoded({ extended: false })); // Apple OAuth callback uses form_post.
   // No MongoDB operators ("$ne", "$regex", ...) as field names, anywhere.
@@ -87,6 +89,8 @@ async function startServer() {
   // Sparks module (ESM, loaded with import()): after Mongo and Socket.IO are up.
   await sparks.init({ getIO });
   require('./src/utils/meetingNotifications').start();
+  // Tickets: asks Stripe about unfinished checkouts every 2 minutes (missed webhooks, expired holds).
+  require('./src/utils/tickets').start();
 
   return new Promise((resolve) => {
     httpServer.listen(PORT, () => {
@@ -115,6 +119,7 @@ function registerGracefulShutdown(httpServer) {
     try {
       sparks.stop();
       require('./src/utils/meetingNotifications').stop();
+      require('./src/utils/tickets').stop();
       await new Promise((resolve) => httpServer.close(resolve));
       await closeSocket();
       await disconnectRedis();

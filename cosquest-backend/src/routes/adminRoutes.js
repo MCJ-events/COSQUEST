@@ -24,6 +24,7 @@ const audit = require('../controllers/adminAuditController');
 const sparks = require('../controllers/adminSparksController');
 const extras = require('../controllers/adminExtrasController');
 const quests = require('../controllers/adminQuestsController');
+const pay = require('../controllers/adminPaymentsController');
 const { upload } = require('../middleware/upload');
 
 const router = express.Router();
@@ -128,6 +129,9 @@ router.get('/quests/stats', validate(rules.questStats), a(quests.questStats));
 router.get('/quests', validate(rules.listAdminQuests), a(quests.listAdminQuests));
 router.post('/quests/cover', upload.single('cover'), validateUpload(), a(quests.uploadCover));
 router.post('/quests', validate(rules.questBody), a(quests.createQuest));
+router.get('/quests/:questId/ticket-types', validate(rules.questId), a(pay.listTypes));
+router.post('/quests/:questId/ticket-types', validate(rules.questId, rules.ticketTypeBody), a(pay.createType));
+router.get('/quests/:questId/checkins', validate(rules.questId), a(pay.checkinSummary));
 router.get('/quests/:questId', validate(rules.questId), a(quests.questDetail));
 router.patch('/quests/:questId', validate(rules.questId, rules.questBody), a(quests.updateQuest));
 router.post('/quests/:questId/publish', validate(rules.questId), a(quests.publishQuest));
@@ -135,5 +139,13 @@ router.post('/quests/:questId/unpublish', validate(rules.questId), a(quests.unpu
 router.post('/quests/:questId/duplicate', validate(rules.questId), a(quests.duplicateQuest));
 router.post('/quests/:questId/cancel', validate(rules.cancelQuest), a(quests.cancelQuest));
 router.get('/geocode', validate(rules.geocode), a(quests.geocode));
+
+// Tickets & Payments
+router.patch('/ticket-types/:ticketTypeId', validate(rules.ticketTypeId, rules.ticketTypeBody), a(pay.updateType));
+router.get('/payments/stats', validate(rules.paymentStats), a(pay.paymentStats));
+router.get('/orders', validate(rules.listOrders), a(pay.listOrders));
+router.get('/orders/:orderId', validate(rules.orderId), a(pay.orderDetail));
+router.post('/orders/:orderId/refund', validate(rules.refundOrder), a(pay.refund));
+router.post('/checkin', validate(rules.checkin), a(pay.checkin));
 
 module.exports = router;

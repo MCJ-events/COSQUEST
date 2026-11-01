@@ -47,7 +47,8 @@ async function run(baseUrl) {
   check(backwards.status === 400, 'it must end after it starts', backwards.data);
   const draft = await request('POST', '/api/admin/quests', adminToken, {
     title: `Glow Hunt ${suffix}`, kind: 'event', description: 'Night quest', startsAt: new Date(Date.now() + 2 * hour).toISOString(), endsAt: new Date(Date.now() + 5 * hour).toISOString(),
-    location: venue, entryFee: { amount: 10 }, prizePool: { amount: 500 }, maxParticipants: 2,
+    // Free, so the member below can use the register route (paid ones need checkout: test/tickets.js).
+    location: venue, entryFee: { amount: 0 }, prizePool: { amount: 500 }, maxParticipants: 2,
   });
   const questId = draft.data?.quest?.id;
   check(draft.status === 201 && draft.data.quest.status === 'draft' && draft.data.quest.entryFee.currency === 'USD' && draft.data.quest.kind === 'event', 'create a draft event (USD by default)', draft.data);

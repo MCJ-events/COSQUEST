@@ -35,6 +35,10 @@ async function main() {
   process.env.LIVEKIT_URL = 'wss://test.livekit.invalid';
   process.env.LIVEKIT_API_KEY = 'test-api-key';
   process.env.LIVEKIT_API_SECRET = 'test-api-secret-with-enough-entropy';
+  // Tickets: the in-memory Stripe fake (src/utils/stripe.js), never the real
+  // sandbox keys from .env. Blank (not deleted) so dotenv doesn't fill them in.
+  process.env.STRIPE_SECRET_KEY = '';
+  process.env.STRIPE_WEBHOOK_SECRET = '';
   // Sparks module: production timers, except the wait for an author's hint
   // (20 s in production) so the end-to-end test does not idle.
   process.env.SPARKS_CONFIG = JSON.stringify({ hintWaitMs: 1500 });
@@ -76,7 +80,7 @@ async function main() {
     result.pass += callModeration.pass;
     result.fail += callModeration.fail;
     // Request validation (src/middleware/validate.js, src/validators/*), one suite per area.
-    for (const suite of ['validation', 'validationAccount', 'validationChat', 'validationCalls', 'validationGroupsPosts', 'admin', 'adminPhase2', 'adminPhase3', 'adminPhase4', 'adminPhase5', 'adminPhase6', 'questsAdmin']) {
+    for (const suite of ['validation', 'validationAccount', 'validationChat', 'validationCalls', 'validationGroupsPosts', 'admin', 'adminPhase2', 'adminPhase3', 'adminPhase4', 'adminPhase5', 'adminPhase6', 'questsAdmin', 'tickets']) {
       const checked = await require(`./${suite}`).run(`http://localhost:${process.env.PORT}`);
       result.pass += checked.pass;
       result.fail += checked.fail;

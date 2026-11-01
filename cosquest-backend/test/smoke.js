@@ -610,7 +610,8 @@ async function run(baseUrlArg) {
       isPublished: true,
     };
     const liveQuest = await Quest.create({
-      ...questBase, slug: `live-test-${Date.now()}`, title: 'Live Test Quest', status: 'live',
+      // Free: the register route below gives a free ticket (paid quests need checkout: test/tickets.js).
+      ...questBase, entryFee: { amount: 0, currency: 'NGN' }, slug: `live-test-${Date.now()}`, title: 'Live Test Quest', status: 'live',
       startsAt: new Date(now - 60 * 60 * 1000), endsAt: new Date(now + 60 * 60 * 1000),
     });
     await Quest.create({
@@ -1455,13 +1456,15 @@ async function run(baseUrlArg) {
     assert(sentCount === 2, 'sendNotification.run() -> delivered to exactly the 2 opted-in users', sentCount);
 
     // Every user already has 1 welcome notification from signup - the
-    // broadcast adds a 2nd for opted-in users only (newest first).
+    // broadcast adds a 2nd for opted-in users only (newest first). The free
+    // ticket from the quest section above adds its own notice, left out here.
+    const notTicket = (list) => list.filter((item) => !item.message.startsWith('Your ticket for'));
     const r1 = await c('GET', '/api/users/me/notifications', { token });
     assert(
       r1.status === 200 &&
-        r1.json.notifications.length === 2 &&
-        r1.json.notifications[0].message === 'A CosQuest just opened near you!' &&
-        r1.json.notifications[0].read === false,
+        notTicket(r1.json.notifications).length === 2 &&
+        notTicket(r1.json.notifications)[0].message === 'A CosQuest just opened near you!' &&
+        notTicket(r1.json.notifications)[0].read === false,
       'GET /api/users/me/notifications (opted-in user) -> welcome + broadcast, broadcast unread',
       r1.json
     );
@@ -1480,7 +1483,7 @@ async function run(baseUrlArg) {
 
     const r3 = await c('GET', '/api/users/me/notifications', { token });
     assert(
-      r3.json.notifications.length === 2 && r3.json.notifications.every((n) => n.read === true),
+      notTicket(r3.json.notifications).length === 2 && r3.json.notifications.every((n) => n.read === true),
       'GET /api/users/me/notifications (after marking read) -> both entries read:true',
       r3.json
     );

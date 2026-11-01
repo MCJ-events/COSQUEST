@@ -6,7 +6,7 @@
 //   POST  /api/admin/quests                        create (a draft, or { publish: true })
 //   PATCH /api/admin/quests/:questId               edit
 //   POST  /api/admin/quests/:questId/publish | unpublish | duplicate
-//   POST  /api/admin/quests/:questId/cancel        { reason }  registrants are told (refunds: tickets phase)
+//   POST  /api/admin/quests/:questId/cancel        { reason }  paid tickets refunded, everyone told
 //   POST  /api/admin/quests/cover                  multipart field "cover" -> { url, publicId }
 //   GET   /api/admin/geocode?q=                    address -> places with coordinates (OpenStreetMap)
 //
@@ -16,6 +16,7 @@ const crypto = require('crypto');
 const mongoose = require('mongoose');
 const Quest = require('../models/Quest');
 const QuestRegistration = require('../models/QuestRegistration');
+const TicketType = require('../models/TicketType');
 const AuditEvent = require('../models/AuditEvent');
 const notificationModel = require('../models/notificationModel');
 const { isValidFactionKey } = require('../models/factionModel');
@@ -267,6 +268,21 @@ async function updateQuest(req, res) {
       quest[key] = value;
     }
     if (!Object.keys(after).length) return res.json({ quest: adminQuestJson(quest), auditEvent: null });
+    // The default ticket type is the entry fee and places as sold: keep it in
+    // step, or people would still pay the old price. Places never go below
+    // what's sold or in someone's checkout (checked in the same update).
+    if (after.entryFee || after.maxParticipants !== undefined) {
+      const set = {
+        ...(after.entryFee ? { price: { amount: quest.entryFee.amount, currency: quest.entryFee.currency } } : {}),
+        ...(after.maxParticipants !== undefined ? { quantity: quest.maxParticipants } : {}),
+      };
+      const filter = { quest: quest._id, isDefault: true };
+      if (set.quantity !== undefined) filter.$expr = { $lte: [{ $add: ['$sold', '$held'] }, set.quantity] };
+      const synced = await TicketType.findOneAndUpdate(filter, { $set: set });
+      if (!synced && set.quantity !== undefined && (await TicketType.exists({ quest: quest._id, isDefault: true }))) {
+        fail(409, "More tickets are sold or being paid for than that: places can't go below it.");
+      }
+    }
     quest.updatedBy = req.admin._id;
     await quest.save();
     let told = 0;
@@ -360,8 +376,11 @@ async function cancelQuest(req, res) {
       { new: true }
     );
     if (!closed) fail(409, 'This is already cancelled.');
-    // Then tell people (their registrations still say "registered") and cancel them.
-    const told = await tellRegistrants(closed, `${closed.title} has been cancelled. ${reason}`);
+    // Then tell people (their registrations still say "registered"), give
+    // every ticket back (paid refunded, free cancelled, open checkouts
+    // closed) and cancel what registrations are left.
+    const told = await tellRegistrants(closed, `${closed.title} has been cancelled. ${reason} Paid tickets are refunded automatically.`);
+    const money = await require('../utils/tickets').refundAllForQuest(closed._id, `Cancelled: ${reason}`.slice(0, 500), req.admin._id);
     await QuestRegistration.updateMany({ quest: closed._id, status: 'registered' }, { $set: { status: 'cancelled' } });
     const event = await recordAudit(req.admin, {
       action: 'quest.cancel',
@@ -370,9 +389,9 @@ async function cancelQuest(req, res) {
       reason,
       before,
       after: { status: 'cancelled' },
-      meta: { registrantsNotified: told },
+      meta: { registrantsNotified: told, refunded: money.refunded, refundsFailed: money.failed },
     });
-    return res.json({ quest: adminQuestJson(closed), registrantsNotified: told, auditEvent: `EV-${event.number}` });
+    return res.json({ quest: adminQuestJson(closed), registrantsNotified: told, refunded: money.refunded, refundsFailed: money.failed, auditEvent: `EV-${event.number}` });
   } catch (error) {
     return answer(res, error);
   }

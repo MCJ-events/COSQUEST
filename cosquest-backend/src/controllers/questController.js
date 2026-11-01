@@ -55,6 +55,29 @@ async function getQuest(req, res) {
 }
 
 async function registerForQuest(req, res) {
+  // Seats are counted by tickets now (src/utils/tickets.js), so this route
+  // goes through them: a paid quest needs checkout, a free one gets a free
+  // ticket (with its QR code). The answers keep their old shape and words.
+  const priced = await Quest.findOne({ _id: req.params.questId, isPublished: true }).select('entryFee').lean();
+  if (priced) {
+    if (priced.entryFee?.amount > 0) {
+      return res.status(402).json({ error: 'This needs a ticket: use checkout.', code: 'checkout_required' });
+    }
+    try {
+      const result = await require('../utils/tickets').startCheckout({ user: req.user, questId: req.params.questId });
+      const fresh = await Quest.findById(req.params.questId);
+      return res.status(201).json({
+        registration: { status: 'registered', paymentStatus: 'not_required' },
+        ticket: result.ticket ? { id: String(result.ticket._id) } : null,
+        quest: serializeQuest(fresh, { isRegistered: true }),
+      });
+    } catch (error) {
+      if (error.code === 'has_ticket') return res.status(409).json({ error: 'You are already registered for this quest.' });
+      if (['sold_out'].includes(error.code) || (error.status === 409 && !error.code)) return res.status(409).json({ error: 'This quest is unavailable or already full.' });
+      if (error.status) return res.status(error.status).json({ error: error.message, ...(error.code ? { code: error.code } : {}) });
+      throw error;
+    }
+  }
   const quest = await Quest.findOneAndUpdate(
     {
       _id: req.params.questId,
@@ -80,6 +103,18 @@ async function registerForQuest(req, res) {
 }
 
 async function cancelRegistration(req, res) {
+  // A ticket held for this quest: a free one is given back here (seat
+  // released once); a paid one is refunded from My tickets.
+  const Ticket = require('../models/Ticket');
+  const ticket = await Ticket.findOne({ user: req.userId, quest: req.params.questId, status: 'valid' }).catch(() => null);
+  if (ticket) {
+    const Order = require('../models/Order');
+    const order = await Order.findById(ticket.order);
+    if (order?.status === 'paid') return res.status(409).json({ error: 'Give paid tickets back from My tickets (a refund).', code: 'use_my_tickets' });
+    await require('../utils/tickets').refundOrder(ticket.order, { reason: 'Registration cancelled', by: req.user._id });
+    const quest = await Quest.findById(req.params.questId);
+    return res.json({ message: 'Quest registration cancelled.', quest: serializeQuest(quest, { isRegistered: false }) });
+  }
   const registration = await QuestRegistration.findOneAndUpdate(
     { quest: req.params.questId, user: req.userId, status: 'registered' },
     { $set: { status: 'cancelled' } },
