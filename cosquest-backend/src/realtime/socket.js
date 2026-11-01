@@ -228,13 +228,22 @@ function emitToUser(userId, event, payload) {
 /**
  * Which of these users have the app on screen right now: a connected socket
  * whose app hasn't said it went to the background (see the connection
- * handler). Asks every server instance (fetchSockets goes through the Redis
- * adapter), so nothing is stored that could go stale.
+ * handler). Map of userId -> the ids of those on-screen sockets (a socket id
+ * is also a room, so an event can go to just them). Asks every server
+ * instance (fetchSockets goes through the Redis adapter), so nothing is
+ * stored that could go stale.
  */
 async function foregroundAmong(userIds) {
-  if (!io || !userIds?.length) return new Set();
+  const onScreen = new Map();
+  if (!io || !userIds?.length) return onScreen;
   const sockets = await io.in(userIds.map((id) => `user:${id}`)).fetchSockets();
-  return new Set(sockets.filter((s) => s.data?.foreground !== false).map((s) => String(s.data?.userId)));
+  for (const s of sockets) {
+    if (s.data?.foreground === false) continue;
+    const userId = String(s.data?.userId);
+    if (!onScreen.has(userId)) onScreen.set(userId, []);
+    onScreen.get(userId).push(s.id);
+  }
+  return onScreen;
 }
 
 /** Push the same event to several accounts in one call. */

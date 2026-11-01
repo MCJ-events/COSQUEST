@@ -311,16 +311,21 @@ What arrives how:
 
 ## In-app notifications (banners while the app is open)
 
-With the app open, iOS and Android hand pushes to the app silently, so the backend doesn't send a push to someone whose app is connected. It sends the same title, text and data over the socket as the `banner` event. `InAppNotifications.js` shows it Instagram-style: it slides down from the top, a tap opens the thing, a swipe up dismisses it, it hides after 4 seconds, and the next one follows. With the app in the background or closed, the normal push arrives instead.
+With the app open, iOS and Android hand pushes to the app silently, so the backend doesn't send a push to someone whose app is on screen. It sends the same title, text and data over the socket as the `banner` event. `InAppNotifications.js` shows it Instagram-style: it slides down from the top, a tap opens the thing, a swipe up dismisses it, it hides after 4 seconds, and the next one follows. With the app in the background or closed, the normal push arrives instead.
+
+The backend only knows the app is on screen if the app says so (`useAppStateReport(socket)`). A locked phone keeps its socket open for a while; without the report it counts as on screen, gets a banner nobody sees, and no push. Calls always push (so a locked phone rings); `showPushesWhileOpen` keeps that push hidden while the app is open, because the ringing screen (`call:incoming`) shows the call.
 
 ```sh
 npx expo install expo-notifications
 ```
 
 ```js
-import { InAppNotifications, showPushesWhileOpen, usePushTaps } from './InAppNotifications.js';
+import { InAppNotifications, showPushesWhileOpen, usePushTaps, useAppStateReport } from './InAppNotifications.js';
 
-showPushesWhileOpen(); // once, at startup: pushes that still arrive while open (game events) show too
+showPushesWhileOpen(); // once, at startup: pushes that still arrive while open (game events) show too; call pushes stay hidden
+
+// The socket: `auth` as a function, so every reconnect sends the current state.
+// const socket = io(url, { auth: (cb) => cb({ token, active: AppState.currentState === 'active' }) });
 
 // Where a notification opens. Same data in a banner and in a tapped push.
 function openFromNotification(data) {
@@ -334,12 +339,13 @@ function openFromNotification(data) {
 
 function Root() {
   usePushTaps(openFromNotification); // tapping a push, including one that opened the app
+  useAppStateReport(socket);          // on screen or not: banners while open, pushes while locked
   return h(View, { style: { flex: 1 } },
     h(AppNavigator),
     h(InAppNotifications, { socket, onOpen: openFromNotification, currentChatId: openChatId }));
 }
 ```
 
-What pops up (`banner.data.type`): `message` (a chat message: `title` is the sender or the group, `body` the message), `mention`, `follow`, `like` (a post, or a comment with `commentId`), `comment` (a comment or a reply), `repost`, `post` (someone you follow posted or reposted), `group`, `scheduled-call` (invitations, changes, the 10-minute reminder). `call` banners are skipped because the ringing screen (`call:incoming`) shows calls. A chat's messages don't pop up while that chat is on screen (`currentChatId`). `banner.actor` is who did it (`username`, `name`, `avatarKey`, `avatarPhotoUrl`): the default picture is their photo or initials; pass `renderAvatar(actor)` to draw the app's avatar for `avatarKey`. Kinds switched off in notification settings (e.g. Friend activity) don't pop up either.
+What pops up (`banner.data.type`): `message` (a chat message: `title` is the sender or the group, `body` the message), `mention`, `follow`, `like` (a post, or a comment with `commentId`), `comment` (a comment or a reply), `repost`, `post` (someone you follow posted or reposted), `group`, `scheduled-call` (invitations, changes, the 10-minute reminder). `call` banners are skipped because the ringing screen (`call:incoming`) shows calls. A chat's messages and mentions don't pop up while that chat is on screen (`currentChatId`). `banner.actor` is who did it (`username`, `name`, `avatarKey`, `avatarPhotoUrl`): the default picture is their photo or initials; pass `renderAvatar(actor)` to draw the app's avatar for `avatarKey`. Kinds switched off in notification settings (e.g. Friend activity) don't pop up either.
 
 The inbox still updates from `notification:new` as before; a banner is only the pop-up.

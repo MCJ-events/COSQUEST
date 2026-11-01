@@ -1,5 +1,5 @@
 import { createElement as h, useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, Image, PanResponder, Platform, Pressable, StatusBar, StyleSheet, Text, View } from 'react-native';
+import { Animated, AppState, Image, PanResponder, Platform, Pressable, StatusBar, StyleSheet, Text, View } from 'react-native';
 import * as Notifications from 'expo-notifications';
 
 // In-app notifications, the way Instagram does it: while the app is open, a
@@ -8,24 +8,27 @@ import * as Notifications from 'expo-notifications';
 // Tap it to open the thing, swipe it up to dismiss; it hides by itself after
 // 4 seconds and the next one follows.
 //
-// Where they come from: with the app open, the backend does NOT send a push
-// (the phone would deliver it silently to the app). It sends the same title,
-// text and data over the socket instead, as the `banner` event:
+// Where they come from: with the app on screen, the backend does NOT send a
+// push (the phone would deliver it silently to the app). It sends the same
+// title, text and data over the socket instead, as the `banner` event:
 //   { id, title, body, data: { type, chatId?, messageId?, postId?, commentId?,
 //     callId?, scheduledCallId?, conversationId? }, channel, actor, at }
 // (actor: { id, username, name, avatarKey, avatarPhotoUrl } - who did it).
 // With the app in the background or closed, the normal push arrives instead.
+// "On screen" is what the app reports (useAppStateReport below): a locked
+// phone keeps its socket open for a while, and without the report its
+// messages would go to a banner nobody sees instead of a push.
 
 // 1. Pushes that do arrive while the app is open (game events) show as a
-//    banner too. Call once at startup, outside any component.
+//    banner too. Calls push even then (so a locked phone rings), but the
+//    ringing screen (call:incoming) shows them, so their push stays hidden.
+//    Call once at startup, outside any component.
 export function showPushesWhileOpen() {
   Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowBanner: true,
-      shouldShowList: true,
-      shouldPlaySound: true,
-      shouldSetBadge: false,
-    }),
+    handleNotification: async (notification) => {
+      const show = notification?.request?.content?.data?.type !== 'call';
+      return { shouldShowBanner: show, shouldShowList: show, shouldPlaySound: show, shouldSetBadge: false };
+    },
   });
 }
 
@@ -88,7 +91,8 @@ export function InAppNotifications({ socket, onOpen, currentChatId = null, topIn
       seen.current.add(banner.id);
       const type = banner.data?.type;
       if (type === 'call') return; // the ringing screen (call:incoming) shows calls
-      if (type === 'message' && banner.data.chatId && banner.data.chatId === chatOnScreen.current) return;
+      // Nothing from the chat you're reading: its messages, or a mention in it.
+      if ((type === 'message' || type === 'mention') && banner.data.chatId && banner.data.chatId === chatOnScreen.current) return;
       queue.current.push(banner);
       if (!showing.current) next();
     };
@@ -127,6 +131,23 @@ export function InAppNotifications({ socket, onOpen, currentChatId = null, topIn
         current.title ? h(Text, { style: s.title, numberOfLines: 1 }, current.title) : null,
         h(Text, { style: s.body, numberOfLines: 2 }, current.body)))
   );
+}
+
+// 4. Tell the backend whether the app is on screen. Mount once, with the
+//    socket, next to InAppNotifications. Reports on every AppState change
+//    and on every (re)connect.
+export function useAppStateReport(socket) {
+  useEffect(() => {
+    if (!socket) return undefined;
+    const report = () => socket.emit('app:state', { active: AppState.currentState === 'active' });
+    const subscription = AppState.addEventListener('change', report);
+    socket.on('connect', report);
+    if (socket.connected) report();
+    return () => {
+      subscription.remove();
+      socket.off('connect', report);
+    };
+  }, [socket]);
 }
 
 function defaultAvatar(actor) {

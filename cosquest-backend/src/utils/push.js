@@ -96,29 +96,33 @@ async function recipients(ids, { category }) {
 // socket for a while and a push skipped then is a notification lost. If it
 // can't be answered, nobody counts as on screen: a push too many beats one
 // missed.
+// Map of userId -> on-screen socket ids.
 async function onScreenAmong(ids) {
   try {
     return await require('../realtime/socket').foregroundAmong(ids);
   } catch (err) {
     console.warn('[push] could not check who has the app open:', err.message);
-    return new Set();
+    return new Map();
   }
 }
 
 // The in-app version of a push, for people with the app open: socket event
-// `banner` { id, title, body, data, channel, actor, at }. Same rules as the
-// push about the kind of notification (a category switched off in settings
-// means no banner either); it does not need push permission or a device.
-async function bannerTo(ids, note) {
-  let to = ids;
+// `banner` { id, title, body, data, channel, actor, at }, to their on-screen
+// sockets only (a second phone of theirs that is locked would otherwise show
+// it, late, when opened). Same rules as the push about the kind of
+// notification (a category switched off in settings means no banner either);
+// it does not need push permission or a device.
+async function bannerTo(onScreen, note) {
+  let ids = [...onScreen.keys()];
   if (note.category && CATEGORIES.includes(note.category)) {
     const off = await User.find({ _id: { $in: ids }, [`notificationCategories.${note.category}`]: false }, '_id').lean();
     const muted = new Set(off.map((user) => String(user._id)));
-    to = ids.filter((id) => !muted.has(id));
+    ids = ids.filter((id) => !muted.has(id));
   }
-  if (!to.length) return;
-  const { emitToUsers } = require('../realtime/socket');
-  emitToUsers(to, 'banner', {
+  const sockets = ids.flatMap((id) => onScreen.get(id));
+  if (!sockets.length) return;
+  const { emitToRooms } = require('../realtime/socket');
+  emitToRooms(sockets, 'banner', {
     id: crypto.randomUUID(),
     title: note.title ? clip(note.title, 80) : null,
     body: clip(note.body, 180),
@@ -150,11 +154,11 @@ async function sendToUsers(userIds, note) {
     if (!note || !note.body) return 0;
     let ids = [...new Set((userIds || []).map(String))].filter(Boolean);
     if (note.skipOnline && ids.length) {
-      const online = await onScreenAmong(ids);
-      if (online.size) {
+      const onScreen = await onScreenAmong(ids);
+      if (onScreen.size) {
         // noBanner: the caller sent online users its own socket event.
-        if (!note.noBanner) await bannerTo([...online], note);
-        ids = ids.filter((id) => !online.has(id));
+        if (!note.noBanner) await bannerTo(onScreen, note);
+        ids = ids.filter((id) => !onScreen.has(id));
       }
     }
     if (!enabled()) return 0;

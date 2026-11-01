@@ -106,6 +106,17 @@ async function run(baseUrl) {
     const backOnScreen = await waitFor(banners, (b) => b.data?.type === 'message' && b.body === 'On my way');
     await sleep(150);
     check(backOnScreen && !sent.some((m) => m.to === ben.pushToken), 'back on screen: a banner again, no push', { backOnScreen, sent });
+    // Ben's second phone, locked: the pop-up goes only to the one on screen
+    // (the locked one would show it, late, when opened).
+    const locked = io(baseUrl, { auth: { token: ben.token, active: false }, transports: ['websocket'], reconnection: false });
+    const lockedBanners = [];
+    locked.on('banner', (banner) => lockedBanners.push(banner));
+    await new Promise((resolve, reject) => { locked.on('connect', resolve); locked.on('connect_error', reject); });
+    await request('POST', `/api/chats/${dm}/messages`, ana.token, { content: 'Which phone?' });
+    const onOpenPhone = await waitFor(banners, (b) => b.data?.type === 'message' && b.body === 'Which phone?');
+    await sleep(150);
+    check(onOpenPhone && !lockedBanners.length, 'a pop-up goes only to the phone with the app on screen, not a locked second one', { onOpenPhone, lockedBanners });
+    locked.disconnect();
     // Connecting while in the background (auth.active false) counts as background.
     const quiet = io(baseUrl, { auth: { token: cy.token, active: false }, transports: ['websocket'], reconnection: false });
     await new Promise((resolve, reject) => { quiet.on('connect', resolve); quiet.on('connect_error', reject); });
