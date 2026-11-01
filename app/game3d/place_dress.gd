@@ -32,11 +32,11 @@ static func h01(v: Vector2, salt: float = 0.0) -> float:
 ## its triangles are wasted (the art direction's 350 k visible-triangle budget).
 const KIND_REACH: Dictionary = {"bollard": 80.0, "bin": 90.0, "bench": 90.0, "hydrant_us": 80.0, "planter": 100.0,
 	"post_box_uk": 100.0, "phone_box_uk": 110.0, "bus_stop": 110.0, "belisha": 120.0,
-	"lamp_uk": 140.0, "lamp_us": 150.0, "lamp_lagos": 140.0, "traffic_light_uk": 130.0, "traffic_light_us": 150.0}
+	"lamp_uk": 125.0, "lamp_us": 135.0, "lamp_lagos": 125.0, "traffic_light_uk": 125.0, "traffic_light_us": 135.0}
 
 
 func _put(kind: String, variant: int, p: Vector2, yaw: float, scale: float = 1.0, cast: bool = true) -> void:
-	if p.length() > float(KIND_REACH.get(kind, 200.0)):
+	if p.length() > float(KIND_REACH.get(kind, 180.0)):
 		return
 	var key: String = "%s:%d" % [kind, variant]
 	if not _xf.has(key):
