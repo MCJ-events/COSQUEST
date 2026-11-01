@@ -1,9 +1,8 @@
-// A sheet's title row (Roam/RoamSheets.swift SheetHeader): the heading and a
-// berry round close button. iOS has no Back button, so every sheet closes here.
+// A sheet's title row (Roam/RoamSheets.swift SheetHeader): the title (Lilita
+// One, the `title` size) and a quiet round close button. iOS has no Back button, so every sheet closes here.
 import { View } from "react-native";
 
 import { GameHeading, GameIconButton } from "./kit";
-import { GP } from "./theme";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 export function SheetHeader({ title, onClose, closeLabel = "Close" }: { title: string; onClose: () => void; closeLabel?: string }) {
@@ -11,9 +10,9 @@ export function SheetHeader({ title, onClose, closeLabel = "Close" }: { title: s
   return (
     <View style={styles.row}>
       <View style={styles.title}>
-        <GameHeading text={title} size={34} />
+        <GameHeading text={title} />
       </View>
-      <GameIconButton icon="close" color={GP.berry} diameter={42} onPress={onClose} accessibilityLabel={closeLabel} />
+      <GameIconButton icon="close" diameter={38} onPress={onClose} accessibilityLabel={closeLabel} />
     </View>
   );
 }

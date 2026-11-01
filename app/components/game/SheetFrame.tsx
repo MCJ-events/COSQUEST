@@ -8,19 +8,20 @@ import Animated from "react-native-reanimated";
 
 import { GameBackdrop } from "./GameBackdrop";
 import { useSheetMotion } from "./sheetMotion";
-import { GP } from "./theme";
+import { RADIUS, useLook } from "./look";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 /**
  * `full` covers the whole screen (the Profile, which has its own top bar);
  * otherwise it stops `top` below the screen's top, like the Journal always has.
  */
-export function SheetFrame({ children, top, full }: { children: ReactNode; top: number; full?: boolean }) {
+export function SheetFrame({ children, top, full, tint }: { children: ReactNode; top: number; full?: boolean; tint?: string }) {
   const styles = useThemedStyles(STYLE_PAIR);
   const motion = useSheetMotion();
+  const look = useLook();
   return (
-    <Animated.View entering={motion.entering} style={[styles.sheet, { top }, full && styles.full]}>
-      <GameBackdrop />
+    <Animated.View entering={motion.entering} style={[styles.sheet, { top, backgroundColor: look.screen }, full && styles.full]}>
+      <GameBackdrop tint={tint} />
       {full ? null : <View style={styles.grabber} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden />}
       {children}
     </Animated.View>
@@ -28,7 +29,7 @@ export function SheetFrame({ children, top, full }: { children: ReactNode; top: 
 }
 
 const STYLE_PAIR = themedStyles({
-  sheet: { position: "absolute", left: 0, right: 0, bottom: 0, borderTopLeftRadius: 28, borderTopRightRadius: 28, overflow: "hidden", backgroundColor: GP.ice, elevation: 18 },
+  sheet: { position: "absolute", left: 0, right: 0, bottom: 0, borderTopLeftRadius: RADIUS.sheet, borderTopRightRadius: RADIUS.sheet, overflow: "hidden", elevation: 18 },
   full: { borderTopLeftRadius: 0, borderTopRightRadius: 0 },
-  grabber: { alignSelf: "center", width: 40, height: 5, borderRadius: 3, marginTop: 8, backgroundColor: "rgba(31,59,77,0.25)" },
+  grabber: { alignSelf: "center", width: 40, height: 5, borderRadius: 3, marginTop: 8, backgroundColor: "rgba(28,43,58,0.22)" },
 });

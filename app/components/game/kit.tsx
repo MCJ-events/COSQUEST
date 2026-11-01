@@ -1,6 +1,8 @@
-// The game's chunky controls (costquest-ios UI/GameKit.swift): a raised
-// button with a gloss and a darker edge that it sinks into, round icon
-// buttons, outlined titles, chips, panels, a coin and a progress bar.
+// The game's controls ("Sunlit Real Places" UI kit, art direction 6.2 and
+// features/game/lookTokens.ts): chunky buttons, a flat fill on a darker 4 px
+// edge they sink into, with a label that always passes contrast (ink on Sun
+// and coins, never white); round map controls on cream paper; chips, panels,
+// headings in Lilita One and Fredoka; a coin and a progress bar.
 // Press feedback is on press-DOWN, as on iOS: a light impact the moment the
 // finger lands, not when it lifts. Buttons make no sound (game events do).
 import * as Haptics from "expo-haptics";
@@ -11,7 +13,8 @@ import { AccessibilityInfo, Platform, Pressable, type StyleProp, StyleSheet, Tex
 
 import { useInk } from "@/constants/chatTheme";
 
-import { edgeOf, GF, GP } from "./theme";
+import { BUTTON, contrast, edgeColor, ELEVATION, labelOn, RADIUS, TYPE, useLook } from "./look";
+import { GF, GP } from "./theme";
 
 /** The press-down moment every game control shares (GameButtonStyle.onChange(of: pressed)). */
 export function pressFeedback() {
@@ -30,14 +33,14 @@ export const MAX_FONT_SCALE = 1.4;
 /** The map's HUD (top bar, rail, Nearby tray, banners) sits in fixed slots over the map: it grows less. */
 export const HUD_FONT_SCALE = 1.2;
 
-const DISABLED_FACE = "#9E9E9E";
+const DISABLED_FACE = "#C9C1B2";
 
 type ButtonSize = "large" | "medium" | "small";
 
-const SIZES: Record<ButtonSize, { font: number; padH: number; padV: number; radius: number; depth: number }> = {
-  large: { font: 24, padH: 22, padV: 16, radius: 20, depth: 6 },
-  medium: { font: 20, padH: 22, padV: 12, radius: 20, depth: 6 },
-  small: { font: 16, padH: 14, padV: 8, radius: 14, depth: 4 },
+const SIZES: Record<ButtonSize, { font: number; padH: number; padV: number; radius: number }> = {
+  large: { font: TYPE.button.fontSize, padH: 22, padV: 14, radius: RADIUS.button },
+  medium: { font: 18, padH: 20, padV: 11, radius: RADIUS.button },
+  small: { font: 15, padH: 14, padV: 8, radius: 12 },
 };
 
 export function GameButton({
@@ -69,7 +72,8 @@ export function GameButton({
 }) {
   const s = SIZES[size ?? (small ? "small" : "large")];
   const face = disabled ? DISABLED_FACE : color;
-  const edge = edgeOf(face);
+  const edge = edgeColor(face);
+  const label = disabled ? "#5A6878" : labelOn(face);
   return (
     <Pressable
       onPressIn={() => {
@@ -83,34 +87,54 @@ export function GameButton({
       accessibilityState={{ disabled: !!disabled }}
       testID={testID}
       style={style}>
-      {({ pressed }) => (
-        <View style={{ paddingBottom: s.depth, transform: [{ translateY: pressed ? 1 : 0 }] }}>
-          <View style={[StyleSheet.absoluteFill, { top: s.depth, borderRadius: s.radius, backgroundColor: edge }]} />
-          <LinearGradient
-            colors={[withAlpha(face, 0.92), face]}
-            style={[
-              styles.face,
-              {
-                borderRadius: s.radius,
-                paddingHorizontal: s.padH,
-                paddingVertical: s.padV,
-                transform: [{ translateY: pressed ? s.depth - 1 : 0 }],
-              },
-            ]}>
-            {/* The gloss that makes it a toy, not a form. */}
-            <View pointerEvents="none" style={[styles.gloss, { borderRadius: s.radius }]} />
-            {icon}
-            <Text style={[styles.title, { fontSize: s.font }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-              {title}
-            </Text>
-          </LinearGradient>
-        </View>
-      )}
+      {({ pressed }) => {
+        // Pressed: it sinks into its edge (4 px of edge left showing becomes 1).
+        const sink = pressed ? BUTTON.pressedTranslate : 0;
+        return (
+          <View style={{ paddingBottom: BUTTON.edge }}>
+            <View style={[StyleSheet.absoluteFill, { top: BUTTON.edge, borderRadius: s.radius, backgroundColor: edge }]} />
+            <View
+              style={[
+                styles.face,
+                {
+                  backgroundColor: face,
+                  borderRadius: s.radius,
+                  paddingHorizontal: s.padH,
+                  paddingVertical: s.padV,
+                  transform: [{ translateY: sink }],
+                },
+              ]}>
+              {icon}
+              <Text
+                style={[styles.title, { fontSize: s.font, lineHeight: Math.round(s.font * 1.2), color: label }]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.7}
+                maxFontSizeMultiplier={MAX_FONT_SCALE}>
+                {title}
+              </Text>
+            </View>
+          </View>
+        );
+      }}
     </Pressable>
   );
 }
 
-/** A round icon button in the same family (GameIconButtonStyle): rail, corners, More tiles. */
+/** Whichever of `color`, its darker edge or the ink reads on `surface` as an icon (3:1, WCAG non-text). */
+function iconOn(color: string, surface: string, ink: string): string {
+  if (contrast(color, surface) >= 3) return color;
+  const edge = edgeColor(color);
+  if (contrast(edge, surface) >= 3) return edge;
+  return ink;
+}
+
+/**
+ * A round control (map rail, corners, More tiles, close buttons): a cream disc
+ * with a hairline and a soft float shadow, its glyph in `color`. `solid` fills
+ * the disc with `color` instead, on a darker edge (skills, the big actions).
+ * Close and back glyphs are quiet: a well-coloured disc, no shadow.
+ */
 export function GameIconButton({
   icon,
   color = GP.navy,
@@ -119,6 +143,7 @@ export function GameIconButton({
   accessibilityLabel,
   accessibilityHint,
   badge,
+  solid,
   style,
 }: {
   icon: ComponentProps<typeof Ionicons>["name"];
@@ -129,8 +154,14 @@ export function GameIconButton({
   accessibilityHint?: string;
   /** A count in a berry capsule at the top right (dailies left, cards). */
   badge?: number | string | null;
+  solid?: boolean;
   style?: StyleProp<ViewStyle>;
 }) {
+  const look = useLook();
+  const quiet = !solid && (icon === "close" || icon === "arrow-back");
+  const face = solid ? color : quiet ? look.surfaceAlt : look.surface;
+  const glyph = solid ? labelOn(color) : quiet ? look.text : iconOn(color, face, look.text);
+  const edge = solid ? edgeColor(color) : null;
   return (
     <Pressable
       onPressIn={pressFeedback}
@@ -141,18 +172,20 @@ export function GameIconButton({
       hitSlop={Math.max(0, (44 - diameter) / 2)}
       style={style}>
       {({ pressed }) => (
-        <View style={{ width: diameter, height: diameter + 4, transform: [{ scale: pressed ? 0.94 : 1 }] }}>
-          <View style={[styles.circle, { width: diameter, height: diameter, borderRadius: diameter / 2, top: 4, backgroundColor: edgeOf(color) }]} />
+        <View style={{ width: diameter, height: diameter + (edge ? 3 : 0), transform: [{ scale: pressed ? 0.94 : 1 }] }}>
+          {edge ? <View style={[styles.circle, { width: diameter, height: diameter, borderRadius: diameter / 2, top: 3, backgroundColor: edge }]} /> : null}
           <View
             style={[
               styles.circle,
               styles.iconFace,
-              { width: diameter, height: diameter, borderRadius: diameter / 2, top: pressed ? 3 : 0, backgroundColor: color },
+              { width: diameter, height: diameter, borderRadius: diameter / 2, top: edge && pressed ? 2 : 0, backgroundColor: face },
+              !solid && !quiet && { borderWidth: 1, borderColor: look.hairline },
+              !solid && !quiet && !look.dark && ELEVATION.float,
             ]}>
-            <Ionicons name={icon} size={diameter * 0.44} color="#FFFFFF" />
+            <Ionicons name={icon} size={Math.round(diameter * (quiet ? 0.42 : 0.46))} color={glyph} />
           </View>
           {badge ? (
-            <View style={styles.badge} pointerEvents="none">
+            <View style={[styles.badge, { borderColor: look.surface }]} pointerEvents="none">
               <Text style={styles.badgeText} maxFontSizeMultiplier={1.2}>
                 {badge}
               </Text>
@@ -164,24 +197,20 @@ export function GameIconButton({
   );
 }
 
-/** A small caps label chip (GameChip): "LIVE", "FREE", "RARE". `light` is the white variant for dark faces. */
+/** A small caps label chip (READY, LIVE, RARE): a flat fill with a label that passes contrast. `light` is the paper variant (the colour as text). */
 export function Chip({ text, color = GP.skyDeep, light }: { text: string; color?: string; light?: boolean }) {
+  const look = useLook();
+  const fg = light ? iconOn(color, look.surface, look.text) : labelOn(color);
   return (
-    <View
-      style={[
-        styles.chip,
-        light
-          ? { backgroundColor: "rgba(255,255,255,0.92)", borderColor: "rgba(255,255,255,0.5)" }
-          : { backgroundColor: color, borderColor: "rgba(255,255,255,0.5)", ...dropEdge(edgeOf(color), 3) },
-      ]}>
-      <Text style={[styles.chipText, { color: light ? color : "#FFFFFF" }]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+    <View style={[styles.chip, { backgroundColor: light ? look.surface : color }, light && { borderWidth: 1, borderColor: look.hairline }]}>
+      <Text style={[styles.chipText, { color: fg }]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
         {text.toUpperCase()}
       </Text>
     </View>
   );
 }
 
-export function ProgressBar({ value, color = GP.sun, track = "rgba(255,255,255,0.25)", height = 8 }: { value: number; color?: string; track?: string; height?: number }) {
+export function ProgressBar({ value, color = GP.sun, track = "rgba(28,43,58,0.12)", height = 8 }: { value: number; color?: string; track?: string; height?: number }) {
   const v = Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0));
   return (
     <View style={{ height, borderRadius: height / 2, backgroundColor: track, overflow: "hidden" }}>
@@ -223,29 +252,27 @@ export function GameTitle({ text, size = 40, color = "#FFFFFF", edge = GP.ink }:
 
 const OUTLINE = Array.from({ length: 8 }, (_, i) => [Math.cos((i * Math.PI) / 4), Math.sin((i * Math.PI) / 4)] as const);
 
-/** A heading on a light page (GameHeading): heavy slate type, no outline. */
-export function GameHeading({ text, size = 34 }: { text: string; size?: number }) {
-  // Task 059: follows dark mode like the rest of the game (constants/chatTheme.ts).
-  const ink = useInk();
+/** A heading on a game page: Lilita One in the page's ink, `title` size unless told otherwise. */
+export function GameHeading({ text, size = TYPE.title.fontSize }: { text: string; size?: number }) {
+  const look = useLook();
   return (
-    <Text
-      accessibilityRole="header"
-      maxFontSizeMultiplier={MAX_FONT_SCALE}
-      style={{ fontFamily: GF.display, fontSize: size, color: ink.text(GP.ink), textShadowColor: ink.dark ? "rgba(0,0,0,0.4)" : "rgba(255,255,255,0.6)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 0.1 }}>
+    <Text accessibilityRole="header" maxFontSizeMultiplier={MAX_FONT_SCALE} style={{ fontFamily: GF.display, fontSize: size, lineHeight: Math.round(size * 1.15), color: look.text }}>
       {text}
     </Text>
   );
 }
 
-/** A raised card (GamePanel): cream face, a thick darker base, a white rim. */
-export function GamePanel({ children, face: rawFace = GP.cream, padding = 18, style }: { children: ReactNode; face?: string; padding?: number; style?: StyleProp<ViewStyle> }) {
+/**
+ * A card (GamePanel): the paper surface, radius 20. On light paper it sits on
+ * a low shadow with no border; on dark paper a hairline replaces the shadow.
+ * A custom `face` (a tinted card) keeps its colour by day and darkens by dusk.
+ */
+export function GamePanel({ children, face: rawFace, padding = 18, style }: { children: ReactNode; face?: string; padding?: number; style?: StyleProp<ViewStyle> }) {
+  const look = useLook();
   const ink = useInk();
-  const face = ink.surface(rawFace);
+  const face = !rawFace || rawFace === GP.cream ? look.surface : ink.surface(rawFace);
   return (
-    <View style={[{ paddingBottom: 6 }, style]}>
-      <View style={[StyleSheet.absoluteFill, { top: 6, borderRadius: 24, backgroundColor: withAlpha(edgeOf(face), 0.9) }]} />
-      <View style={[styles.panel, { backgroundColor: face, padding }]}>{children}</View>
-    </View>
+    <View style={[styles.panel, { backgroundColor: face, padding }, look.dark ? { borderWidth: 1, borderColor: look.hairline } : ELEVATION.low, style]}>{children}</View>
   );
 }
 
@@ -254,7 +281,7 @@ export function GameCoin({ size = 26 }: { size?: number }) {
   return (
     <View style={{ width: size, height: size }} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
       <View style={[StyleSheet.absoluteFill, { top: size * 0.08, borderRadius: size / 2, backgroundColor: GP.coinDeep }]} />
-      <LinearGradient colors={["#FFCC40", GP.coin]} style={[StyleSheet.absoluteFill, { borderRadius: size / 2, alignItems: "center", justifyContent: "center" }]}>
+      <LinearGradient colors={["#FFD772", GP.coin]} style={[StyleSheet.absoluteFill, { borderRadius: size / 2, alignItems: "center", justifyContent: "center" }]}>
         <View
           style={{
             position: "absolute",
@@ -299,23 +326,11 @@ const styles = StyleSheet.create({
     gap: 8,
     overflow: "hidden",
   },
-  gloss: {
-    position: "absolute",
-    top: 5,
-    left: 10,
-    right: 10,
-    height: 10,
-    backgroundColor: "rgba(255,255,255,0.28)",
-  },
   title: {
     fontFamily: GF.display,
-    color: "#FFFFFF",
-    textShadowColor: "rgba(0,0,0,0.28)",
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 0.1,
   },
   circle: { position: "absolute", left: 0 },
-  iconFace: { alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: "rgba(255,255,255,0.35)" },
+  iconFace: { alignItems: "center", justifyContent: "center" },
   badge: {
     position: "absolute",
     top: -4,
@@ -326,26 +341,23 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     backgroundColor: GP.berry,
     borderWidth: 2,
-    borderColor: "#FFFFFF",
     alignItems: "center",
     justifyContent: "center",
   },
-  badgeText: { fontFamily: GF.display, fontSize: 12, color: "#FFFFFF" },
+  badgeText: { fontFamily: GF.display, fontSize: 12, lineHeight: 15, color: "#FFFFFF" },
   chip: {
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 999,
-    borderWidth: 1.5,
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    borderRadius: RADIUS.chip,
     alignSelf: "flex-start",
   },
   chipText: {
-    fontFamily: GF.display,
-    fontSize: 14,
-    letterSpacing: 1,
+    fontFamily: GF.bold,
+    fontSize: 12,
+    lineHeight: 16,
+    letterSpacing: 0.6,
   },
   panel: {
-    borderRadius: 24,
-    borderWidth: 2,
-    borderColor: "rgba(255,255,255,0.6)",
+    borderRadius: RADIUS.card,
   },
 });

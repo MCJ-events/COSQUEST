@@ -1,6 +1,7 @@
 // The game's look, from costquest-ios UI/GameKit.swift (GamePalette) and
 // Roam/RoamStyle.swift, so the React Native game reads as the same game.
 import { FONTS } from "@/constants/fonts";
+import { RARITY, rarityOf, TYPE } from "@/features/game/lookTokens";
 import { C } from "@/theme/tokens";
 
 const rgb = (r: number, g: number, b: number) =>
@@ -71,8 +72,9 @@ export function realmIcon(realm: string | null | undefined): "sparkles" | "shiel
   }
 }
 
+/** A tier's rarity colour: the same on a map pin, a card frame and a drop beam (lookTokens.ts RARITY). */
 export function tierColor(tier: string): string {
-  return tier === "epic" ? GP.sun : tier === "rare" ? GP.rare : GP.sky;
+  return RARITY[rarityOf(tier)];
 }
 
 /** Roam/RoamStyle.swift challengeName: the native game's words. */
@@ -141,6 +143,9 @@ export function edgeOf(hex: string, by = 0.68): string {
  * display = Lilita One, the rest Fredoka by weight. `app*` are the chat
  * app's Poppins, for the few places the game shows the app's own words.
  */
+/** The type scale (lookTokens.ts TYPE): spread one into a Text style, e.g. `[GT.title, { color }]`. */
+export const GT = TYPE;
+
 export const GF = {
   display: "CQ-LilitaOne",
   bold: "CQ-Fredoka-Bold",
