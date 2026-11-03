@@ -120,9 +120,8 @@ function DropPin({ drop, left, top, onPress }: { drop: ForgeDrop; left: number; 
   }, [bob]);
   const style = useAnimatedStyle(() => ({ transform: [{ translateY: -4 * bob.get() }, { rotate: "45deg" }] }));
   const glow = useAnimatedStyle(() => ({ opacity: 0.18 + 0.22 * bob.get(), transform: [{ translateY: -4 * bob.get() }, { rotate: "45deg" }, { scale: 1.1 + 0.12 * bob.get() }] }));
-  // The same render as the bag and the claim card: the catalogue portrait, else the drop's thumbnail.
-  const entry = useForgeEntry(drop.element_id);
-  const url = (entry?.portrait ? thumbUrl(entry, 128) : null) ?? absUrl(drop.thumbnail_url);
+  // The drop's own clear-background thumbnail: an opaque cream portrait would cover the diamond's rarity edge.
+  const url = absUrl(drop.thumbnail_url);
   return (
     <Pressable
       onPress={() => onPress(drop)}
