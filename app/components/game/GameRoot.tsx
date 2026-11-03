@@ -40,7 +40,7 @@ import DuelScreen from "./DuelScreen";
 import { Fight3DHost } from "./Fight3D";
 import Encounter, { encounterGuard } from "./Encounter";
 import FriendsButton from "./FriendsButton";
-import { AvatarBadge, ForgeClaim, ForgeDropsLayer, useForgeOn, useForgeWorldPolling, useHasForgeAvatar } from "./ForgeWorld";
+import { AvatarBadge, AvatarFigure, useHasAvatarFigure, usePinPortraits, ForgeClaim, ForgeDropsLayer, useForgeOn, useForgeWorldPolling, useHasForgeAvatar } from "./ForgeWorld";
 import { GAME_FONTS } from "./fonts";
 import FriendsSheet from "./FriendsSheet";
 import SquadSheet from "./SquadSheet";
@@ -154,6 +154,8 @@ function GameRootInner({ parked }: { parked: boolean }) {
   useForgeWorldPolling(!parked && !!session);
   const forgeOn = useForgeOn();
   const forgeAvatar = useHasForgeAvatar();
+  const forgeFigure = useHasAvatarFigure();
+  const pinPortrait = usePinPortraits();
   const [forgeDrop, setForgeDrop] = useState<ForgeDrop | null>(null);
   // Relics and the Forge share one sheet, the Collection (features/game/collection.ts routes each opener to its tab).
   const [collectionTab, setCollectionTab] = useState<CollectionTab>("relics");
@@ -580,6 +582,8 @@ function GameRootInner({ parked }: { parked: boolean }) {
         onRoom={(r) => openBattle(r.game_id)}
         overlay={forgeOn && screen.kind === "home" && !runLive ? (place) => <ForgeDropsLayer place={place} onOpen={setForgeDrop} /> : undefined}
         playerBadge={forgeAvatar ? <AvatarBadge size={34} /> : undefined}
+        playerFigure={forgeFigure ? <AvatarFigure /> : undefined}
+        pinPortrait={pinPortrait}
         recentreSignal={recentreTick}
         onFollowChange={setMapFollowing}
         loadGround={loadGround}

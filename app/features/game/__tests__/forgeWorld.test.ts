@@ -233,8 +233,8 @@ describe("the world", () => {
   });
 
   it("reads a point's station or environment, and a fighter's Forge art", () => {
-    assert.deepEqual(pointForge({ forge: { station: { element_id: "s", version: 1 } } }), { station: { element_id: "s", version: 1 }, environment: null });
-    assert.deepEqual(pointForge({ id: "p" }), { station: null, environment: null });
+    assert.deepEqual(pointForge({ forge: { station: { element_id: "s", version: 1 } } }), { station: { element_id: "s", version: 1 }, environment: null, guardian: null });
+    assert.deepEqual(pointForge({ id: "p" }), { station: null, environment: null, guardian: null });
     assert.deepEqual(fighterCharacter({ character: { element_id: "c", version: 2, name: "Knight" } }), { element_id: "c", version: 2 });
     assert.equal(fighterCharacter({ character: null }), null);
     assert.deepEqual(fighterWeapon({ forge_weapon: { element_id: "w", version: 1, name: "Axe", kind: "axe" } }), { element_id: "w", version: 1, name: "Axe", kind: "axe" });

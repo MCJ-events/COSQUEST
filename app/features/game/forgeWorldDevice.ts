@@ -37,6 +37,7 @@ import {
   parseForgeEntry,
   pickGlb,
   wantedLod,
+  wantsFullRead,
 } from "./forgeWorld.ts";
 import { gameStore, GAME_SERVER, useGame } from "./runtime.ts";
 import { arLod, pickUsdz } from "./summon.ts";
@@ -86,6 +87,8 @@ export const forgeWorld = {
 
 let loaded = false;
 let lastCatalogue = -Infinity;
+/** When the whole catalogue was last read (wantsFullRead). */
+let lastFullRead = -Infinity;
 let catalogueBusy = false;
 
 async function loadFromDisk() {
@@ -108,9 +111,11 @@ export async function refreshCatalogue(force = false): Promise<void> {
   if (catalogueBusy || (!force && Date.now() - lastCatalogue < CATALOGUE_EVERY_MS)) return;
   catalogueBusy = true;
   try {
-    const since = state.entries.length ? state.cursor : null;
+    const full = wantsFullRead(state.entries, lastFullRead, Date.now());
+    const since = full ? null : state.cursor;
     const update = await fetchCatalogue(gameStore.client, FORGE_TYPES, since);
     lastCatalogue = Date.now();
+    if (since === null) lastFullRead = lastCatalogue;
     const entries = mergeCatalogue(state.entries, update, since === null);
     set({ entries, cursor: update.cursor ?? state.cursor });
     void setPref(CATALOGUE_KEY, JSON.stringify({ entries, cursor: update.cursor ?? state.cursor }));
@@ -311,13 +316,26 @@ export function usdzFor(entry: ForgeEntry) {
   return pickUsdz(entry, arLod(DEVICE_CLASS));
 }
 
-/** The thumbnail's absolute URL (WebP at a width), or null. */
-export function thumbUrl(entry: Pick<ForgeEntry, "thumbnail"> | null | undefined, width: 128 | 256 | 512 | 768 = 256): string | null {
+/**
+ * The model's picture (WebP at a width), or null: its 3/4 portrait when the
+ * server has rendered one (art direction 5: the same render on the map, in
+ * the Collection and on the versus card), else the build's own thumbnail.
+ */
+export function thumbUrl(entry: Pick<ForgeEntry, "thumbnail" | "portrait"> | null | undefined, width: 128 | 256 | 512 | 768 = 256): string | null {
+  const p = entry?.portrait?.url;
+  if (p) return withWidth(forgeFileUrl(GAME_SERVER, p), portraitWidth(width));
   const url = entry?.thumbnail?.url;
   if (!url) return null;
-  const abs = forgeFileUrl(GAME_SERVER, url);
-  return `${abs}${abs.includes("?") ? "&" : "?"}w=${width}`;
+  return withWidth(forgeFileUrl(GAME_SERVER, url), width);
 }
+
+/** The full-body sprite on a clear page (characters with a portrait only), for the map marker. */
+export function figureUrl(entry: Pick<ForgeEntry, "portrait"> | null | undefined, width: 128 | 256 = 256): string | null {
+  const f = entry?.portrait?.full?.url;
+  return f ? withWidth(forgeFileUrl(GAME_SERVER, f), width) : null;
+}
+
+const withWidth = (abs: string, w: number) => `${abs}${abs.includes("?") ? "&" : "?"}w=${w}`;
 
 export function absUrl(url: string | null | undefined): string | null {
   return url ? forgeFileUrl(GAME_SERVER, url) : null;
@@ -338,4 +356,9 @@ export function pruneCache(): void {
   } catch {
     // The cache is the system's to reclaim anyway.
   }
+}
+
+/** The portrait widths the server answers (?w=); a thumbnail's 768 asks for 512. */
+function portraitWidth(w: number): 96 | 128 | 256 | 512 {
+  return w <= 96 ? 96 : w <= 128 ? 128 : w <= 256 ? 256 : 512;
 }

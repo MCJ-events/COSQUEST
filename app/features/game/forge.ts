@@ -21,6 +21,13 @@ import type { NativeIsland } from "./config.ts";
 export type ForgeStats = { damage?: number | null; range_m?: number | null; cooldown_s?: number | null };
 export type ForgeFile = { file: string; lod?: number | null; bytes?: number | null; sha256?: string | null; url: string };
 export type ForgeThumbnail = { file: string; sha256?: string | null; url: string };
+/**
+ * The 3/4 render of the model under the Golden key on cream (day1-ui, art
+ * direction 5 "Same characters everywhere"): `url` a square bust (a weapon:
+ * the whole piece), `full` a characters-only full-body sprite on a clear page.
+ * The server answers ?w=96|128|256|512 as WebP. Absent until it is rendered.
+ */
+export type ForgePortrait = { url: string; sha256?: string | null; full?: { url: string; sha256?: string | null } | null };
 
 export type ForgeElement = {
   id: string;
@@ -37,7 +44,21 @@ export type ForgeElement = {
   stats?: ForgeStats | null;
   files: ForgeFile[];
   thumbnail?: ForgeThumbnail | null;
+  portrait?: ForgePortrait | null;
 };
+
+/** The catalogue's `portrait`, or null when it is missing or odd. */
+export function parsePortrait(v: unknown): ForgePortrait | null {
+  if (!v || typeof v !== "object") return null;
+  const o = v as Record<string, unknown>;
+  if (typeof o.url !== "string" || !o.url) return null;
+  const f = o.full && typeof o.full === "object" ? (o.full as Record<string, unknown>) : null;
+  return {
+    url: o.url,
+    sha256: optStr(o.sha256),
+    full: f && typeof f.url === "string" && f.url ? { url: f.url, sha256: optStr(f.sha256) } : null,
+  };
+}
 
 /** Where the catalogue came from (ForgeCatalogueStore.Source, without the disk cache). */
 export type ForgeSource = "network" | "memory" | "unavailable" | "none";
@@ -76,6 +97,7 @@ export function parseForgeElement(raw: unknown): ForgeElement | null {
     stats: s ? { damage: optNum(s.damage), range_m: optNum(s.range_m), cooldown_s: optNum(s.cooldown_s) } : null,
     files,
     thumbnail: t && typeof t.file === "string" && typeof t.url === "string" ? { file: t.file, url: t.url, sha256: optStr(t.sha256) } : null,
+    portrait: parsePortrait(r.portrait),
   };
 }
 
@@ -128,10 +150,13 @@ export function forgeNumber(v: number | null | undefined): string {
 
 /** The thumbnail's absolute URL (the server answers ?w=128|256|512|768 as WebP), or null. */
 export function forgeThumbnailUrl(baseUrl: string, el: ForgeElement, width?: 128 | 256 | 512 | 768): string | null {
-  const url = el.thumbnail?.url;
+  // The 3/4 portrait first (the same render as the map and the versus card), else the build's thumbnail.
+  const portrait = el.portrait?.url;
+  const url = portrait ?? el.thumbnail?.url;
   if (!url) return null;
   const abs = /^https?:\/\//.test(url) ? url : `${baseUrl.replace(/\/+$/, "")}/${url.replace(/^\/+/, "")}`;
-  return width ? `${abs}${abs.includes("?") ? "&" : "?"}w=${width}` : abs;
+  const w = width && portrait ? Math.min(width, 512) : width;
+  return w ? `${abs}${abs.includes("?") ? "&" : "?"}w=${w}` : abs;
 }
 
 /**

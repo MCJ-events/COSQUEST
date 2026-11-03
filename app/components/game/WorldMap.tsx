@@ -25,6 +25,7 @@
 // the player on a faction puck inside a solid faction reach ring.
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { Image } from "expo-image";
 import { type ComponentProps, memo, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { PixelRatio, Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
@@ -115,8 +116,16 @@ type Props = {
    * own projection. Wrap each in <MapPin> (mapCamera.tsx) so it stays upright.
    */
   overlay?: (place: (p: LatLng) => { left: number; top: number }) => ReactNode;
-  /** A face in the player's marker (their Forge avatar). */
+  /** A face in the player's marker (their Forge avatar), when there is no standing figure. */
   playerBadge?: ReactNode;
+  /**
+   * The player's worn Forge hero standing on the puck (art direction 6.4
+   * "Player marker": the same 3/4 render as everywhere, 64 px tall). Wins over
+   * playerBadge; with neither, the puck alone.
+   */
+  playerFigure?: ReactNode;
+  /** A Guardian pin's 3/4 portrait URL (the character a fight there puts up), or null for the glyph. */
+  pinPortrait?: (p: QuestPoint) => string | null;
   /**
    * Fetches the ground round a point (the game client's /v1/map/ground). With
    * it the map loads tiles wherever it is looked at; without it, only `ground`
@@ -513,7 +522,7 @@ export default function WorldMap(props: Props) {
                 const inReach = props.inReach(p);
                 return (
                   <MapPin key={p.id} left={spot.left + spot.dx} top={spot.top + spot.dy} zIndex={selected ? 3 : inReach ? 2 : 1}>
-                    <PointMarker point={p} selected={selected} inReach={inReach} cooling={props.cooling(p)} onPress={props.onSelect} look={look} />
+                    <PointMarker point={p} selected={selected} inReach={inReach} cooling={props.cooling(p)} onPress={props.onSelect} look={look} portrait={props.pinPortrait?.(p) ?? null} />
                   </MapPin>
                 );
               })}
@@ -531,7 +540,7 @@ export default function WorldMap(props: Props) {
               })}
               {fix ? (
                 <Animated.View pointerEvents="none" style={[styles.me, styles.meTop, meStyle]}>
-                  <PlayerFace color={props.factionColor} badge={props.playerBadge} heading={!!props.headingUp} />
+                  <PlayerFace color={props.factionColor} badge={props.playerBadge} figure={props.playerFigure} heading={!!props.headingUp} />
                 </Animated.View>
               ) : null}
             </Animated.View>
@@ -651,6 +660,7 @@ const PointMarker = memo(function PointMarker({
   cooling,
   onPress,
   look,
+  portrait,
 }: {
   point: QuestPoint;
   selected: boolean;
@@ -658,6 +668,7 @@ const PointMarker = memo(function PointMarker({
   cooling: boolean;
   onPress: (p: QuestPoint) => void;
   look: MapStyle;
+  portrait: string | null;
 }) {
   const styles = useThemedStyles(STYLE_PAIR);
   useRenderCount("PointMarker");
@@ -692,7 +703,14 @@ const PointMarker = memo(function PointMarker({
             // In reach: a Mint ring (and the pin stands taller); chosen: an ink ring.
             { backgroundColor: color, borderColor: selected ? (look.dark ? "#F3F0E8" : "#1C2B3A") : ready ? ACCENT.mint.fill : "#FFFFFF", transform: [{ scale: selected ? 1.12 : 1 }] },
           ]}>
-          {point.source === "raid" ? <RaidCrown size={18} /> : <Ionicons name={challengeGlyph(point)} size={17} color="#FFFFFF" />}
+          {portrait ? (
+            // A Guardian pin (6.4): its 3/4 portrait inside a ring of the point's rarity.
+            <Image source={{ uri: portrait }} style={[styles.pinPortrait, cooling ? styles.pinPortraitCooling : null]} contentFit="cover" recyclingKey={portrait} accessibilityIgnoresInvertColors />
+          ) : point.source === "raid" ? (
+            <RaidCrown size={18} />
+          ) : (
+            <Ionicons name={challengeGlyph(point)} size={17} color="#FFFFFF" />
+          )}
         </View>
         {band ? <View style={[styles.band, { backgroundColor: band }]} /> : null}
         <View style={[styles.stem, { height: STEM + lift - (band ? 6 : 0), backgroundColor: "#FFFFFF" }]} />
@@ -766,7 +784,7 @@ function PinLeader({ left, top, dx, dy }: { left: number; top: number; dx: numbe
  * standing at your spot; your Forge face above it when you wear one; and,
  * with heading up on, a soft cone the way you face (the map turns so that is up).
  */
-function PlayerFace({ color, badge, heading }: { color: string; badge?: ReactNode; heading: boolean }) {
+function PlayerFace({ color, badge, figure, heading }: { color: string; badge?: ReactNode; figure?: ReactNode; heading: boolean }) {
   const styles = useThemedStyles(STYLE_PAIR);
   const upright = useUpright();
   return (
@@ -786,7 +804,12 @@ function PlayerFace({ color, badge, heading }: { color: string; badge?: ReactNod
       <View style={[styles.puck, { backgroundColor: color }]}>
         <View style={styles.puckDot} />
       </View>
-      {badge ? (
+      {figure ? (
+        // The worn hero standing on the puck: a cream card with the full-body render, its feet at the puck.
+        <View style={styles.figureWrap} pointerEvents="none">
+          <View style={[styles.figureCard, { borderColor: color }]}>{figure}</View>
+        </View>
+      ) : badge ? (
         <View style={styles.standing}>
           <View style={[styles.playerBadge, { borderColor: color }]}>{badge}</View>
           <View style={[styles.standingStem, { backgroundColor: color }]} />
@@ -977,6 +1000,33 @@ const STYLE_PAIR = themedStyles({
     left: 0,
     right: 0,
     top: 0,
+  },
+  pinPortrait: {
+    // 3 px of the pin's rarity fill shows round it: the rarity ring.
+    width: TOKEN - 6,
+    height: TOKEN - 6,
+    borderRadius: (TOKEN - 6) / 2,
+    backgroundColor: "#F4EEE2",
+  },
+  pinPortraitCooling: {
+    opacity: 0.45,
+  },
+  figureWrap: {
+    position: "absolute",
+    left: 20 - 22,
+    // the card's foot just over the puck's top edge (puck top = 6)
+    top: 8 - 64,
+    width: 44,
+    alignItems: "center",
+  },
+  figureCard: {
+    width: 40,
+    height: 64,
+    borderRadius: 12,
+    borderWidth: 2,
+    overflow: "hidden",
+    backgroundColor: "#FFFDF8",
+    ...ELEVATION.float,
   },
   playerBadge: {
     width: 44,
