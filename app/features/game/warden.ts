@@ -37,12 +37,15 @@ export class WardenMoment {
   readonly style: WardenStyle;
   readonly facts: [string, string][];
   readonly salt: string;
+  /** A line that is said as written (a Game Warden site's own, from checked facts): no model, no template. */
+  readonly fixed: string | null;
 
-  constructor(kind: string, style: WardenStyle, facts: FactPair[], salt = "") {
+  constructor(kind: string, style: WardenStyle, facts: FactPair[], salt = "", fixed: string | null = null) {
     this.kind = kind;
     this.style = style;
     this.facts = facts.filter((f): f is [string, string] => typeof f[1] === "string" && f[1].length > 0);
     this.salt = salt;
+    this.fixed = fixed;
   }
 
   /** The exact input line the model was fine-tuned on (costquest-qlm/warden/make_inputs.py). */
@@ -88,6 +91,7 @@ export function lineSeed(input: string): number {
 
 /** The authored line for a moment (WardenLines.fallback). */
 export function fallbackLine(m: WardenMoment): string {
+  if (m.fixed) return m.fixed;
   const name = m.fact("name") ?? "traveller";
   const place = m.fact("place") ?? m.fact("nearest") ?? "this place";
   let options: string[];
@@ -102,7 +106,7 @@ export function fallbackLine(m: WardenMoment): string {
             : s === "hype"
               ? [`${place}! This is it, ${name}. Give it everything!`, `You made it to ${place}! I knew you would. Let's go!`]
               : s === "trailer"
-                ? [`One city. One shrine. ${place}. And ${name}, ready.`, `This summer, ${name} arrives at ${place}. Nothing will be the same.`]
+                ? [`One city. One shrine. ${place}. And ${name}, ready.`, `Coming to ${place}: ${name}. Nothing will be the same.`]
                 : s === "quippy"
                   ? [`${place}, ${name}. Try not to make it look too easy.`, `Oh good, ${place}. It's been dying to meet you, ${name}.`]
                   : [`Welcome to ${place}, ${name}. The shrine is listening.`, `${place}. A good place for a challenge, ${name}.`];
@@ -277,6 +281,11 @@ export function dailyMoment(ctx: MomentContext, d: RoamDaily): WardenMoment {
 
 export function hintMoment(ctx: MomentContext, kind: string): WardenMoment {
   return new WardenMoment("hint", styleOf(ctx), [["name", ctx.playerName], ["hint", kind === "fifty" ? "50/50" : "extra time"]]);
+}
+
+/** Arriving at a Game Warden site: the site's own arrive line, as the server wrote it from its facts. */
+export function siteArriveMoment(ctx: MomentContext, p: QuestPoint, line: string): WardenMoment {
+  return new WardenMoment("arrive", styleOf(ctx), [["name", ctx.playerName], ["place", p.name]], p.id, line);
 }
 
 export function legendMoment(ctx: MomentContext, p: QuestPoint): WardenMoment {

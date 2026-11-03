@@ -9,7 +9,7 @@
 // Reduce Motion): iOS's angular gradient is a band of white and berry on sun
 // travelling round the outline, drawn here with dashes that slide along it.
 import { useEffect, useId } from "react";
-import { Text, View } from "react-native";
+import { Platform, Text, View } from "react-native";
 import Animated, { cancelAnimation, Easing, useAnimatedProps, useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withTiming } from "react-native-reanimated";
 import Svg, { Circle, Defs, G, LinearGradient, Path, RadialGradient, Rect, Stop } from "react-native-svg";
 
@@ -154,7 +154,7 @@ function WeaponLayers({ kind, fill, ink, lw, gradientId, shadow, opacity = 1 }: 
 export function WeaponGlyph({ kind, size, fill = GP.cream, ink = GP.ink, lineWidth = 3, flat }: { kind: string; size: number; fill?: string; ink?: string; lineWidth?: number; flat?: boolean }) {
   const gid = `wg${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
   return (
-    <Svg width={size} height={size} viewBox="-6 -6 112 112" accessible={false}>
+    <Svg width={size} height={size} viewBox="-6 -6 112 112" accessible={Platform.OS === "web" ? undefined : false}>
       {flat ? null : (
         <Defs>
           <LinearGradient id={gid} x1="0" y1="0" x2="1" y2="1">

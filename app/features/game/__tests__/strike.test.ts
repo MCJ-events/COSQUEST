@@ -67,6 +67,9 @@ test("the result line", () => {
   assert.deepEqual(resultTitle({ correct: 1, total: 1, late: false, kind: "trivia" }), { text: "Correct!", size: 38, win: true });
   assert.deepEqual(resultTitle({ correct: 0, total: 1, late: false, kind: "trivia" }), { text: "The crystal resisted", size: 30, win: false });
   assert.equal(resultTitle({ correct: 1, total: 1, late: true, kind: "trivia" }).text, "Time's up!");
+  // The clock sent it with nothing given: time's up, not "the crystal resisted" (day1-trivia).
+  assert.equal(resultTitle({ correct: 0, total: 1, late: false, kind: "rebus" }, true).text, "Time's up!");
+  assert.equal(resultTitle({ correct: 2, total: 5, late: false, kind: "blitz" }, true).text, "2 of 5!");
   assert.equal(resultTitle({ correct: 3, total: 5, late: false, kind: "blitz" }).text, "3 of 5!");
 });
 

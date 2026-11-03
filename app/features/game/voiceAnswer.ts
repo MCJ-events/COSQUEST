@@ -48,7 +48,12 @@ export function matchSpokenAnswer(said: string, choices: string[], strict: boole
 
   // "the second one", "B", "the green one".
   const meaningful = heard.filter((w) => !FILLERS.has(w));
-  if (meaningful.length <= 2) {
+  // Not when a choice was named outright: "D.Va" is heard as "d va", not as option D.
+  const named = choices.some((c) => {
+    const w = spokenWords(c);
+    return w.some((x) => !FILLERS.has(x)) && saidInOrder(heard, w);
+  });
+  if (meaningful.length <= 2 && !named) {
     for (let i = 0; i < ORDINALS.length && i < choices.length; i++) {
       const said = ORDINALS[i].some((f) => (f.includes(" ") ? joined.includes(f) : meaningful.includes(f)));
       if (!said) continue;
@@ -60,17 +65,25 @@ export function matchSpokenAnswer(said: string, choices: string[], strict: boole
     }
   }
 
-  // The words themselves. Score by overlap on the words that matter.
+  // The words themselves. Score by overlap on the words that matter; the whole
+  // name said in order (or run together) scores above any overlap, so "One For
+  // All" beats "All For One" and "Mewtwo" beats "Mew" (day1-trivia: 13 of the
+  // bank's 716 answers could not be said before, see voiceBank.test.ts).
   const scores: [number, number][] = [];
   choices.forEach((c, i) => {
     const all = spokenWords(c);
-    const target = all.filter((w) => w.length > 2 || isNumber(w));
-    if (target.length === 0) return;
+    if (all.length === 0) return;
+    // An acronym or a short name ("S.T.A.R.S.", "E.T.", "D.Va") is said as one word.
+    const words = all.length > 1 && all.every((w) => w.length <= 2 && !isNumber(w)) ? [all.join("")] : all;
+    let target = words.filter((w) => w.length > 2 || isNumber(w));
+    // A short answer is all short words ("Up"): then every word matters.
+    if (target.length === 0) target = words;
     const hits = target.filter((t) => heard.some((h) => h === t || (t.length > 4 && h.startsWith(t.slice(0, 5)))));
     let score = hits.length / target.length;
-    if (joined.includes(target.join(" "))) score = 1;
-    // "starlord" for Star-Lord: recognisers often run words together.
-    if (heard.join("").includes(all.join(""))) score = 1;
+    // The whole choice, word for word in order, or run together the way
+    // recognisers often do ("starlord" for Star-Lord, "stars" for S.T.A.R.S.);
+    // never for numbers, where "1 21" glued is "12 1" glued.
+    if (saidInOrder(heard, all) || (all.length > 1 && !all.some(isNumber) && saidRunTogether(heard, all.join("")))) score = 1.5;
     scores.push([i, score]);
   });
   scores.sort((a, b) => b[1] - a[1]);
@@ -79,6 +92,26 @@ export function matchSpokenAnswer(said: string, choices: string[], strict: boole
   const second = scores[1]?.[1] ?? 0;
   const needed = strict ? 0.99 : 0.5;
   return best[1] >= needed && best[1] - second >= (strict ? 0.5 : 0.25) ? best[0] : null;
+}
+
+/** `words` appear in `heard` as a run of whole words, in order. */
+function saidInOrder(heard: string[], words: string[]): boolean {
+  for (let i = 0; i + words.length <= heard.length; i++) {
+    if (words.every((w, k) => heard[i + k] === w)) return true;
+  }
+  return false;
+}
+
+/** Some run of whole heard words, glued together, spells `glued` ("star lord" or "starlord"; never part of a word). */
+function saidRunTogether(heard: string[], glued: string): boolean {
+  for (let i = 0; i < heard.length; i++) {
+    let acc = "";
+    for (let j = i; j < heard.length && acc.length < glued.length; j++) {
+      acc += heard[j];
+      if (acc === glued) return true;
+    }
+  }
+  return false;
 }
 
 // MARK: - The listening session

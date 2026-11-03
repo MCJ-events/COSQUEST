@@ -54,9 +54,15 @@ export function isWin(v: { correct: number; late: boolean }): boolean {
 }
 
 /** The result line (EncounterView.resultLine). */
-export function resultTitle(v: { correct: number; total: number; late: boolean; kind: string }): { text: string; size: number; win: boolean } {
+/**
+ * The verdict's title. `timedOut`: the clock sent the answer with nothing given (the
+ * server marks that as a plain miss, not late, since it arrived in time), so the
+ * player reads "Time's up!" rather than being told the crystal resisted an answer
+ * they never gave.
+ */
+export function resultTitle(v: { correct: number; total: number; late: boolean; kind: string }, timedOut = false): { text: string; size: number; win: boolean } {
   const win = isWin(v);
-  const text = v.late ? "Time's up!" : v.kind === "blitz" ? `${v.correct} of ${v.total}!` : win ? "Correct!" : "The crystal resisted";
+  const text = v.late || (timedOut && !win && v.kind !== "blitz") ? "Time's up!" : v.kind === "blitz" ? `${v.correct} of ${v.total}!` : win ? "Correct!" : "The crystal resisted";
   return { text, size: win ? 38 : 30, win };
 }
 
