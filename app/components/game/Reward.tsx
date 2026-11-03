@@ -30,7 +30,7 @@ import { showBanner } from "./Banner";
 import { ForgeCelebrate } from "./ForgeWorld";
 import { announce, GameButton, GamePanel, GameTitle, MAX_FONT_SCALE } from "./kit";
 import { LevelUp } from "./LevelUp";
-import { ACCENT, SURFACES } from "./look";
+import { ACCENT, useLook } from "./look";
 import { Pop } from "./Pop";
 import { RelicDropExtra } from "./RelicDropCard";
 import { playSound } from "./sound";
@@ -129,6 +129,8 @@ const LINE_SPRING = settle(0.35);
 
 export default function Reward({ reward, onDone, onShare }: { reward: RewardSummary; onDone: () => void; onShare?: () => void }) {
   const styles = useThemedStyles(STYLE_PAIR);
+  // Art direction 6.5: the screen follows the map's day/dusk state (cream by day, ink by dusk).
+  const look = useLook();
   const insets = useSafeAreaInsets();
   const before = reward.before ?? reward.after;
   const after = reward.after;
@@ -198,10 +200,10 @@ export default function Reward({ reward, onDone, onShare }: { reward: RewardSumm
   const dailies = reward.dailiesInfo ?? dailiesDone(reward.dailiesCompleted, null);
 
   return (
-    // look-fight (art direction 7): the light screen colour, not the darkened realm backdrop; the
-    // realm keeps a soft wash at the top so the place still colours the moment
-    <View style={[styles.root, { backgroundColor: "#F4EEE2" }]}>
-      <LinearGradient colors={[`${realmColor(reward.realm)}14`, "rgba(244,238,226,0)"]} style={StyleSheet.absoluteFill} pointerEvents="none" />
+    // look-fight (art direction 7): the screen colour (cream by day, ink by dusk, 6.5), not the darkened
+    // realm backdrop; the realm keeps a soft 8 % wash at the top so the place still colours the moment
+    <View style={[styles.root, { backgroundColor: look.screen }]}>
+      <LinearGradient colors={[`${realmColor(reward.realm)}14`, `${look.screen}00`]} style={StyleSheet.absoluteFill} pointerEvents="none" />
       <Animated.View
         style={[styles.column, { paddingTop: insets.top + 12 }, panelStyle]}
         pointerEvents={showLevelUp ? "none" : "auto"}
@@ -270,7 +272,7 @@ export default function Reward({ reward, onDone, onShare }: { reward: RewardSumm
                 )}
                 {faction ? (
                   <View style={styles.factionRow} accessible accessibilityLabel={faction}>
-                    <Ionicons name="flag" size={16} color="rgba(31,59,77,0.7)" />
+                    <Ionicons name="flag" size={16} color={look.textMuted} />
                     <Text style={styles.faction}>{faction}</Text>
                   </View>
                 ) : null}
@@ -286,7 +288,7 @@ export default function Reward({ reward, onDone, onShare }: { reward: RewardSumm
           </View>
         </ScrollView>
         <View style={[styles.footer, { paddingBottom: insets.bottom + 20 }]}>
-          {onShare ? <GameButton title="Share to a chat" color={SURFACES.light.surfaceAlt} onPress={onShare} style={{ marginBottom: 10 }} /> : null}
+          {onShare ? <GameButton title="Share to a chat" color={look.surfaceAlt} onPress={onShare} style={{ marginBottom: 10 }} /> : null}
           {/* The primary is Sun with an ink label (art direction 2.6, 7 "Win screen"). */}
           <GameButton
             title="Back to the map"

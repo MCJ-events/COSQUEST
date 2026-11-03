@@ -122,8 +122,8 @@ export default function GameBridge() {
       CostQuestGame.addListener("onShareToChat", (payload) => setSharing(payload)),
       CostQuestGame.addListener("onRequestChat", (event) => world.openChat(event.chatId ?? null)),
       CostQuestGame.addListener("onError", (event) => {
-        // The game keeps working on this phone's own identity if one login
-        // fails; nothing to show the person here.
+        // A failed one login is shown over the game (SsoProblemPanel, from
+        // the game store); the player chooses Retry or this phone's key.
         console.warn(`[game] ${event.code}: ${event.message ?? ""}`);
       }),
     ];

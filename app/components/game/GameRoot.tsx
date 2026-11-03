@@ -523,6 +523,10 @@ function GameRootInner({ parked }: { parked: boolean }) {
   // choosing a house clears needsOnboarding halfway through, and following it
   // would close the welcome before the gift and the location question.
   if (gameStore.needsOnboarding || onboarding) {
+    // Not while parked: the game is warmed up behind the chat at sign-in, and
+    // the Warden would talk (and the narrative beats move on by themselves)
+    // over the chat app. The first run starts when the player swipes in.
+    if (parked) return <View style={styles.root} />;
     return <Onboarding suggestedName={chatName} onDone={() => setOnboarding(false)} />;
   }
 

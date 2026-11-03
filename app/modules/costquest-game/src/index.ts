@@ -5,7 +5,7 @@
 // native "islands" inside the RN screens (docs/one-codebase.md). The embedded
 // SwiftUI game (EXPO_PUBLIC_GAME_UI=native) and Unity's fights were taken out of
 // the build on 1 Nov 2026 (battle-3d-only): every fight is the 3D fight.
-// Web: no game (the shell shows the "get the app" page).
+// Web: no game (the shell shows the "get the app" page), except in test builds (WEB_TEST_GAME).
 import { requireNativeView, requireOptionalNativeModule } from "expo";
 import type { ComponentType, Ref } from "react";
 import { Platform, type ViewProps } from "react-native";
@@ -153,8 +153,15 @@ export type FriendBeaconEvent = BeaconEvent;
 
 export { GAME_UI };
 
+/**
+ * Test builds only (EXPO_PUBLIC_E2E=1): the web build plays the RN game too,
+ * so the whole path (sign in, swipe into the game, back to chat) can be played
+ * and recorded in a browser. A release web build still has no game.
+ */
+const WEB_TEST_GAME = Platform.OS === "web" && process.env.EXPO_PUBLIC_E2E === "1";
+
 export const CostQuestGame: CostQuestGameModule | null =
-  Platform.OS === "web" ? null : createRnGame(nativeGame);
+  Platform.OS === "web" && !WEB_TEST_GAME ? null : createRnGame(nativeGame);
 
 /** The native module's own helpers (null on web and Expo Go). */
 export const nativeHelpers: NativeOnly | null = Platform.OS === "web" ? null : nativeGame;

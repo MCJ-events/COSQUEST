@@ -21,6 +21,7 @@ import Svg, { Defs, Path, RadialGradient, Stop } from "react-native-svg";
 import { settle } from "@/features/game/spring";
 
 import { announce, GameButton, GameTitle, MAX_FONT_SCALE } from "./kit";
+import { useLook } from "./look";
 import { edgeOf, GF, GP } from "./theme";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
@@ -110,6 +111,7 @@ function ConfettiPiece({ piece, clock, width, height, color }: { piece: Piece; c
 
 export function LevelUp({ level, rank, rankUp, onDone }: { level: number; rank: string; rankUp: boolean; onDone: () => void }) {
   const styles = useThemedStyles(STYLE_PAIR);
+  const look = useLook();
   const reduce = useReducedMotion();
   const shown = useSharedValue(reduce ? 1 : 0);
   useEffect(() => {
@@ -125,7 +127,7 @@ export function LevelUp({ level, rank, rankUp, onDone }: { level: number; rank: 
     <View style={styles.root} accessibilityViewIsModal>
       {/* look-fight (art direction 7): its own full screen, the burst in sun colours on the light screen colour.
           Opaque enough that the reward panel underneath does not read through the ceremony. */}
-      <LinearGradient colors={["#FFF6E2", "#F4EEE2"]} style={[StyleSheet.absoluteFill, { opacity: 0.98 }]} />
+      <LinearGradient colors={look.dark ? ["#1E2433", look.screen] : ["#FFF6E2", look.screen]} style={[StyleSheet.absoluteFill, { opacity: 0.98 }]} />
       <Animated.View style={[styles.sun, burstStyle]} pointerEvents="none" importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
         <Sunburst spin={!reduce} />
       </Animated.View>
