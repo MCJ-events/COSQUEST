@@ -160,9 +160,10 @@ const styles = StyleSheet.create({
     borderRightWidth: 1,
     borderColor: "rgba(255,255,255,0.2)",
   },
+  // Under the card, so the moving hand never crosses the words (it sat over the title).
   finger: {
     position: "absolute",
     right: -30,
-    top: 18,
+    bottom: -36,
   },
 });

@@ -48,8 +48,13 @@ export type Fix = LatLng & { accuracy: number; at: number; mocked?: boolean | nu
 export type GameState = {
   /** Who is playing: the account's player (one login) or this phone's own key. */
   session: { playerKey: string; source: "account" | "device"; created: boolean } | null;
-  /** Why one login did not work, when it did not (shown nowhere; logged). */
-  ssoProblem: string | null;
+  /**
+   * Why one login did not give the game the account's player, while that is
+   * so (the shell shows it over the game, components/world/SsoProblemPanel).
+   * Never papered over with this phone's own key: the player chooses that
+   * (playOnThisPhone).
+   */
+  ssoProblem: SsoProblem | null;
   config: RoamConfig | null;
   me: RoamMe | null;
   profile: Profile | null;
@@ -73,7 +78,52 @@ export type GameState = {
   focus: { pointId?: string; raidId?: string; duelId?: string; lat?: number; lng?: number; place?: string } | null;
 };
 
+/**
+ * - rejected: the game server did not accept this chat login (401/403). On a
+ *   CosQuest Beta build the chat is the team's live server while the staging
+ *   game checks the TEST chat server, so this is what every Beta tester gets.
+ *   Retrying will not help by itself.
+ * - unavailable: the game server or the chat backend can't do it now (5xx,
+ *   429, the network). Retried on its own from `retryAt`.
+ */
+export type SsoProblem = { kind: "rejected" | "unavailable"; message: string; retryAt?: number };
+
 const DEVICE_KEY_STORE = "cq.game.devicekey";
+/** The account's seed, per chat user, from the last one login that worked on this phone. */
+export const ACCOUNT_KEY_STORE = (subject: string) => `cq.game.accountkey.${subject}`;
+/** This chat user chose to play on this phone's own key when one login failed. */
+export const PLAY_HERE_STORE = (subject: string) => `cq.game.playhere.${subject}`;
+/** Waits between one-login retries; the last one repeats. */
+export const SSO_RETRY_MS = [2000, 5000, 15000, 30000];
+const SUBJECT = /^[A-Za-z0-9_-]{1,64}$/;
+
+/** A JWT's `sub` (or `id` / `userId`), unverified: only for finding what this phone saved for that chat user. */
+export function jwtSubject(token: string): string | null {
+  const part = token.split(".")[1];
+  if (!part) return null;
+  try {
+    const b64 = part.replace(/-/g, "+").replace(/_/g, "/");
+    const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let bits = 0;
+    let value = 0;
+    let json = "";
+    for (const ch of b64) {
+      const index = alphabet.indexOf(ch);
+      if (index < 0) continue;
+      value = (value << 6) | index;
+      bits += 6;
+      if (bits >= 8) {
+        bits -= 8;
+        json += String.fromCharCode((value >> bits) & 0xff);
+      }
+    }
+    const claims = JSON.parse(json) as { sub?: unknown; id?: unknown; userId?: unknown };
+    const sub = [claims.sub, claims.id, claims.userId].find((v) => typeof v === "string");
+    return typeof sub === "string" && SUBJECT.test(sub) ? sub : null;
+  } catch {
+    return null;
+  }
+}
 
 const INITIAL: GameState = {
   session: null,
@@ -111,6 +161,8 @@ export type GameStoreDeps = {
   fetch?: ConstructorParameters<typeof GameClient>[0]["fetch"];
   now?: () => number;
   log?: (message: string) => void;
+  /** Run `work` after `ms` (setTimeout in the app); returns a cancel. */
+  schedule?: (work: () => void, ms: number) => () => void;
 };
 
 /** Points nearest first (as given when there is no fix yet). Pure, so a
@@ -138,6 +190,15 @@ export function createGameStore(deps: GameStoreDeps) {
   let starterAsked = false;
   let groundFor: LatLng | null = null;
   let sessionSerial = 0;
+  let chatToken: string | null = null;
+  let retryCount = 0;
+  let cancelRetry: (() => void) | null = null;
+  const schedule =
+    deps.schedule ??
+    ((work: () => void, ms: number) => {
+      const timer = setTimeout(work, ms);
+      return () => clearTimeout(timer);
+    });
 
   const set = (patch: Partial<GameState>) => {
     state = { ...state, ...patch };
@@ -154,6 +215,78 @@ export function createGameStore(deps: GameStoreDeps) {
     return new Identity(seed, "device");
   }
 
+  /** Make `next` the player (or nobody), starting the world over if that changed. */
+  async function install(next: Identity | null, created: boolean, ssoProblem: SsoProblem | null) {
+    const changed = identity?.publicKeyHex !== next?.publicKeyHex;
+    identity = next;
+    set({
+      session: next ? { playerKey: next.publicKeyHex, source: next.source, created } : null,
+      ssoProblem,
+      ...(changed ? { me: null, profile: null, points: [], codex: null, loadedOnce: false, ready: false } : {}),
+    });
+    if (changed && next) await store.loadBasics();
+  }
+
+  function retryLater(serial: number, ms: number) {
+    cancelRetry?.();
+    cancelRetry = schedule(() => {
+      cancelRetry = null;
+      if (serial === sessionSerial) void oneLogin(++sessionSerial);
+    }, ms);
+  }
+
+  async function oneLogin(serial: number): Promise<void> {
+    const token = chatToken;
+    if (!token) return;
+    const sub = jwtSubject(token);
+    try {
+      const sso = await client.sso(token);
+      if (serial !== sessionSerial) return; // signed out or in again meanwhile
+      retryCount = 0;
+      const subject = SUBJECT.test(sso.subject) ? sso.subject : sub;
+      if (subject) await deps.storage.set(ACCOUNT_KEY_STORE(subject), sso.key.seed_hex).catch(() => {});
+      if (sub && sub !== subject) await deps.storage.set(ACCOUNT_KEY_STORE(sub), sso.key.seed_hex).catch(() => {});
+      await install(new Identity(sso.key.seed_hex, "account", sso.nonce_floor), sso.created, null);
+      return;
+    } catch (error) {
+      if (serial !== sessionSerial) return;
+      const status = error instanceof GameError ? error.status : 0;
+      const message = error instanceof Error ? error.message : String(error);
+      const rejected = status === 401 || status === 403;
+      // The player already chose this phone's key for this chat user.
+      const playHere = sub ? await deps.storage.get(PLAY_HERE_STORE(sub)).catch(() => null) : null;
+      if (serial !== sessionSerial) return;
+      if (playHere === "1") {
+        log(`[game] one login failed (${message}); playing on this phone's key, as chosen`);
+        await install(await deviceIdentity(), false, null);
+        return;
+      }
+      // Down for a moment (not a refusal): the key this phone saved for this
+      // chat user is the same player, so nothing splits.
+      const saved = !rejected && sub ? await deps.storage.get(ACCOUNT_KEY_STORE(sub)).catch(() => null) : null;
+      if (serial !== sessionSerial) return;
+      if (saved && SEED_HEX.test(saved)) {
+        log(`[game] one login unavailable (${message}); using this account's saved key`);
+        await install(new Identity(saved, "account"), false, null);
+        return;
+      }
+      if (rejected) {
+        log(`[game] one login refused (${status} ${message}); waiting for the player`);
+        await install(null, false, { kind: "rejected", message: "The game server didn't accept your CosQuest sign-in." });
+        return;
+      }
+      const waitMs = SSO_RETRY_MS[Math.min(retryCount, SSO_RETRY_MS.length - 1)];
+      retryCount += 1;
+      log(`[game] one login unavailable (${message}); again in ${waitMs} ms`);
+      await install(null, false, {
+        kind: "unavailable",
+        message: status === 429 ? "The game is busy right now." : "Can't reach the game server right now.",
+        retryAt: now() + waitMs,
+      });
+      retryLater(serial, waitMs);
+    }
+  }
+
   const store = {
     client,
     get: () => state,
@@ -167,40 +300,55 @@ export function createGameStore(deps: GameStoreDeps) {
     // ---------- who is playing ----------
 
     /**
-     * One login: trade the chat session for the account's player. If the game
-     * backend cannot do one login (not configured: 503; unreachable), the game
-     * still runs on this phone's own key, as the iOS game does.
-     * `null` signs out: the player is forgotten and the world starts over.
+     * One login: trade the chat session for the account's player. When that
+     * fails the game does NOT quietly switch to this phone's own key (that
+     * splits a person's progress across two players without a word):
+     * - down for a moment (5xx, 429, the network): the account's key saved
+     *   from the last good one login on this phone, if any; otherwise no
+     *   player, ssoProblem "unavailable", retried at 2 s, 5 s, 15 s, then 30 s.
+     * - refused (401/403): no player, ssoProblem "rejected".
+     * Playing on this phone's own key is the player's choice (playOnThisPhone),
+     * remembered for that chat user. `null` signs out: the world starts over.
      */
-    async setSession(chatToken: string | null): Promise<void> {
+    async setSession(token: string | null): Promise<void> {
       const serial = ++sessionSerial;
-      if (!chatToken) {
+      cancelRetry?.();
+      cancelRetry = null;
+      retryCount = 0;
+      chatToken = token;
+      if (!token) {
         identity = null;
         starterAsked = false;
         set({ ...INITIAL, paused: state.paused, fix: state.fix });
         return;
       }
-      let next: Identity;
-      let created = false;
-      let ssoProblem: string | null = null;
-      try {
-        const sso = await client.sso(chatToken);
-        next = new Identity(sso.key.seed_hex, "account", sso.nonce_floor);
-        created = sso.created;
-      } catch (error) {
-        ssoProblem = error instanceof Error ? error.message : String(error);
-        log(`[game] one login unavailable (${ssoProblem}); playing on this phone's key`);
-        next = await deviceIdentity();
-      }
-      if (serial !== sessionSerial) return; // signed out or in again meanwhile
-      const changed = identity?.publicKeyHex !== next.publicKeyHex;
-      identity = next;
-      set({
-        session: { playerKey: next.publicKeyHex, source: next.source, created },
-        ssoProblem,
-        ...(changed ? { me: null, profile: null, points: [], codex: null, loadedOnce: false, ready: false } : {}),
-      });
-      if (changed) await store.loadBasics();
+      await oneLogin(serial);
+    },
+
+    /** Try one login again now (the Retry button). */
+    async retrySession(): Promise<void> {
+      if (!chatToken) return;
+      cancelRetry?.();
+      cancelRetry = null;
+      retryCount = 0;
+      await oneLogin(++sessionSerial);
+    },
+
+    /**
+     * The player chose to play on this phone's own key (progress stays on this
+     * phone). Remembered for the signed-in chat user, so they are not asked
+     * again; a later one login that works still brings their account back.
+     * Also how test pages play with no chat login at all.
+     */
+    async playOnThisPhone(): Promise<void> {
+      const serial = ++sessionSerial;
+      cancelRetry?.();
+      cancelRetry = null;
+      const sub = chatToken ? jwtSubject(chatToken) : null;
+      if (sub) await deps.storage.set(PLAY_HERE_STORE(sub), "1").catch(() => {});
+      const next = await deviceIdentity();
+      if (serial !== sessionSerial) return;
+      await install(next, false, null);
     },
 
     signedIn: () => identity !== null,

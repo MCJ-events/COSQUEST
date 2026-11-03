@@ -84,7 +84,10 @@ export function lineFor(beat: Beat, c: LineContext): string {
     case "askLocation":
       return "One last thing. To find shrines around you, I need to know roughly where you are. Only while you play, and no one else ever sees it.";
     case "farewell":
-      return "There's a Guardian at the shrine right beside you. Your first fight. Let's go.";
+      // Trivia first (3 Nov): the starter point is a quiz, and the map's coach
+      // says so next ("Tap its card to answer"); a fight promised here would be
+      // the first thing the game breaks.
+      return "On your map, shrines are Quest Points. Answer one and it's yours. Let's go.";
   }
 }
 

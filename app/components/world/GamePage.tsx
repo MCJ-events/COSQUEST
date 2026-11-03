@@ -13,6 +13,7 @@ import GameRoot from "@/components/game/GameRoot";
 import { gamePlayable } from "@/modules/costquest-game/src";
 
 import GameBubble from "./GameBubble";
+import SsoProblemPanel from "./SsoProblemPanel";
 import { useWorld } from "./useWorld";
 import { C } from "@/theme/tokens";
 
@@ -60,6 +61,9 @@ export default function GamePage({
           </View>
         ) : null}
       </Animated.View>
+
+      {/* One login failed: the player chooses, the game never switches player silently */}
+      {mounted && gamePlayable ? <SsoProblemPanel /> : null}
 
       <GameBubble makePan={makePan} />
     </View>

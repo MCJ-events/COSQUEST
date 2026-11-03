@@ -89,8 +89,10 @@ export function createRnGame(native: NativeHelpers): CostQuestGameModule {
           handle: s.profile?.handle ?? s.me?.handle ?? null,
           faction: s.me?.faction ?? null,
         });
-        if (s.ssoProblem) emit("onError", { code: "sso_unavailable", message: s.ssoProblem });
       }
+      // No account player (one login refused or down): the shell shows it
+      // over the game (SsoProblemPanel reads the store); this is for the log.
+      if (token && s.ssoProblem) emit("onError", { code: `sso_${s.ssoProblem.kind}`, message: s.ssoProblem.message });
     },
     // The RN game draws the chat bubble and the call bar from the store
     // itself (components/world); nothing to keep here.

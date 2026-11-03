@@ -65,6 +65,7 @@ import { useMapBench } from "./mapBenchRunner";
 import { REACH_PULSE, SHEET_EASE_OUT, usePinDrop } from "./sheetMotion";
 import { MapCameraContext, MapPin, PIN_SPOT, useUpright } from "./mapCamera";
 import { ACCENT, ELEVATION, FACTION, RADIUS, useLook, useMapLook } from "./look";
+import { withAlpha } from "./kit";
 import { RaidCrown } from "./RaidParts";
 import RoomBeacon from "./RoomBeacon";
 import { GF, tierColor } from "./theme";
@@ -787,6 +788,10 @@ function PinLeader({ left, top, dx, dy }: { left: number; top: number; dx: numbe
 function PlayerFace({ color, badge, figure, heading }: { color: string; badge?: ReactNode; figure?: ReactNode; heading: boolean }) {
   const styles = useThemedStyles(STYLE_PAIR);
   const upright = useUpright();
+  // By day the hero stands on a cream card; on the dusk map cream glares, so the
+  // card is the ink surface tinted with the player's faction (art direction 5,
+  // "cream background or faction-tinted card").
+  const look = useLook();
   return (
     <Animated.View style={[styles.face, upright]}>
       {heading ? (
@@ -805,9 +810,14 @@ function PlayerFace({ color, badge, figure, heading }: { color: string; badge?: 
         <View style={styles.puckDot} />
       </View>
       {figure ? (
-        // The worn hero standing on the puck: a cream card with the full-body render, its feet at the puck.
+        // The worn hero standing on the puck: a cream card (dusk: faction-tinted ink) with the full-body render, its feet at the puck.
         <View style={styles.figureWrap} pointerEvents="none">
-          <View style={[styles.figureCard, { borderColor: color }]}>{figure}</View>
+          <View style={[styles.figureCard, { borderColor: color }, look.dark ? { backgroundColor: look.surface } : null]} testID="player-figure-card">
+            {look.dark ? (
+              <LinearGradient colors={[withAlpha(color, 0.5), withAlpha(color, 0.22)]} style={StyleSheet.absoluteFill} pointerEvents="none" />
+            ) : null}
+            {figure}
+          </View>
         </View>
       ) : badge ? (
         <View style={styles.standing}>

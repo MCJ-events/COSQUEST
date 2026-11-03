@@ -260,44 +260,77 @@ const ME = (key: string, faction: string | null = null) => ({
 });
 
 describe("store", () => {
-  it("one login unavailable: plays on this phone's own key, kept across launches", async () => {
+  const configBody = { factions: [{ id: "dc", name: "DC" }], ranks: [], max_level: 40, open_radius_m: 80, cooldown_s: 600 };
+  // A chat JWT whose payload says sub "u1" (the store only reads it to find what this phone saved).
+  const JWT = (sub: string) => `h.${Buffer.from(JSON.stringify({ sub })).toString("base64url")}.s`;
+
+  it("one login down: no player and no silent switch; retried on its own, then the account", async () => {
     const storage = memoryStorage();
+    let down = true;
+    const seed = "44".repeat(32);
+    const pub = new Identity(seed, "account").publicKeyHex;
     const { fetch, calls } = fakeFetch((call) => {
-      if (call.url.endsWith("/v1/sso/cosquest")) return { status: 503, body: { detail: "not configured" } };
-      if (call.url.includes("/v1/roam/config")) return { body: { factions: [{ id: "dc", name: "DC" }], ranks: [], max_level: 40, open_radius_m: 80, cooldown_s: 600 } };
+      if (call.url.endsWith("/v1/sso/cosquest")) {
+        return down ? { status: 503, body: { detail: "not configured" } } : { body: { provider: "cosquest", subject: "u1", created: false, player: { device_key: pub }, key: { alg: "ed25519", seed_hex: seed }, nonce_floor: 0 } };
+      }
+      if (call.url.includes("/v1/roam/config")) return { body: configBody };
       if (call.url.includes("/v1/roam/me")) return { body: ME(call.url.split("device_key=")[1]) };
       return undefined;
     });
-    const store = createGameStore({ baseUrl: "https://g", storage, randomSeedHex: () => randomBytes(32).toString("hex"), fetch });
-    await store.setSession("chat-token");
-    const first = store.get().session;
-    assert.equal(first?.source, "device");
-    assert.equal(store.needsOnboarding, true, "no faction yet: onboarding");
-    assert.ok(calls.some((c) => c.url.endsWith("/v1/sso/cosquest") && c.body === '{"token":"chat-token"}'));
-    const again = createGameStore({ baseUrl: "https://g", storage, randomSeedHex: () => randomBytes(32).toString("hex"), fetch });
-    await again.setSession("chat-token");
-    assert.equal(again.get().session?.playerKey, first?.playerKey, "the same phone key next launch");
+    const scheduled: { work: () => void; ms: number }[] = [];
+    const store = createGameStore({ baseUrl: "https://g", storage, randomSeedHex: () => randomBytes(32).toString("hex"), fetch, now: () => 1000, schedule: (work, ms) => { scheduled.push({ work, ms }); return () => {}; } });
+    await store.setSession(JWT("u1"));
+    assert.equal(store.get().session, null, "never this phone's key without the player choosing it");
+    assert.equal(store.get().ssoProblem?.kind, "unavailable");
+    assert.equal(store.get().ssoProblem?.retryAt, 3000);
+    assert.equal(scheduled[0]?.ms, 2000);
+    assert.ok(calls.some((c) => c.url.endsWith("/v1/sso/cosquest") && c.body === JSON.stringify({ token: JWT("u1") })));
+    down = false;
+    scheduled[0].work();
+    await new Promise((r) => setTimeout(r, 0));
+    await new Promise((r) => setTimeout(r, 0));
+    assert.equal(store.get().session?.source, "account");
+    assert.equal(store.get().session?.playerKey, pub);
+    assert.equal(store.get().ssoProblem, null);
+    // Down again on a later launch: the key saved for this chat user is the same player.
+    down = true;
+    const again = createGameStore({ baseUrl: "https://g", storage, randomSeedHex: () => "00".repeat(32), fetch });
+    await again.setSession(JWT("u1"));
+    assert.equal(again.get().session?.playerKey, pub);
+    assert.equal(again.get().ssoProblem, null);
     await again.setSession(null);
     assert.equal(again.get().session, null);
     assert.equal(again.signedIn(), false);
   });
 
-  it("team sync: a chat login the game server does not know (401) plays on this phone's key", async () => {
+  it("team sync: a chat login the game server does not know (401) asks; this phone only by choice, remembered", async () => {
     // CosQuest Beta builds talk to the team's Render chat API while the staging
     // game's one login checks the TEST chat backend, so it answers 401
-    // "not a valid CosQuest session" (measured 3 Nov 2026). The game must still run.
+    // "not a valid CosQuest session" (measured 3 Nov 2026). The player chooses.
     const storage = memoryStorage();
     const { fetch } = fakeFetch((call) => {
       if (call.url.endsWith("/v1/sso/cosquest")) return { status: 401, body: { detail: "not a valid CosQuest session" } };
-      if (call.url.includes("/v1/roam/config")) return { body: { factions: [{ id: "dc", name: "DC" }], ranks: [], max_level: 40, open_radius_m: 80, cooldown_s: 600 } };
+      if (call.url.includes("/v1/roam/config")) return { body: configBody };
       if (call.url.includes("/v1/roam/me")) return { body: ME(call.url.split("device_key=")[1]) };
       return undefined;
     });
-    const store = createGameStore({ baseUrl: "https://g", storage, randomSeedHex: () => randomBytes(32).toString("hex"), fetch });
-    await store.setSession("render-chat-token");
+    const scheduled: number[] = [];
+    const mk = () => createGameStore({ baseUrl: "https://g", storage, randomSeedHex: () => "55".repeat(32), fetch, schedule: (_w, ms) => { scheduled.push(ms); return () => {}; } });
+    const store = mk();
+    await store.setSession(JWT("u2"));
+    assert.equal(store.get().session, null);
+    assert.equal(store.get().ssoProblem?.kind, "rejected");
+    assert.equal(scheduled.length, 0, "a refusal is not retried by itself");
+    await store.playOnThisPhone();
     assert.equal(store.get().session?.source, "device");
-    assert.ok(store.get().ssoProblem, "the problem is kept for the UI");
+    assert.equal(store.get().ssoProblem, null);
     assert.ok(store.get().me, "the world loads on the phone's key");
+    const next = mk();
+    await next.setSession(JWT("u2"));
+    assert.equal(next.get().session?.playerKey, new Identity("55".repeat(32), "device").publicKeyHex, "the choice is remembered for this chat user");
+    const other = mk();
+    await other.setSession(JWT("u3"));
+    assert.equal(other.get().session, null, "another chat user on this phone is asked again");
   });
 
   it("a player moving from the SwiftUI game keeps the native game's phone key, once", async () => {
@@ -315,14 +348,14 @@ describe("store", () => {
       return legacy.toUpperCase();
     };
     const store = createGameStore({ baseUrl: "https://g", storage, randomSeedHex: () => "00".repeat(32), legacySeedHex, fetch });
-    await store.setSession("chat-token");
+    await store.playOnThisPhone();
     assert.equal(store.get().session?.playerKey, new Identity(legacy, "device").publicKeyHex);
     const again = createGameStore({ baseUrl: "https://g", storage, randomSeedHex: () => "00".repeat(32), legacySeedHex, fetch });
-    await again.setSession("chat-token");
+    await again.playOnThisPhone();
     assert.equal(asked, 1, "adopted once, then the RN key is the phone's key");
     // Junk or a failing native read: a fresh key, not a crash.
     const fresh = createGameStore({ baseUrl: "https://g", storage: memoryStorage(), randomSeedHex: () => "11".repeat(32), legacySeedHex: async () => { throw new Error("keychain"); }, fetch });
-    await fresh.setSession("chat-token");
+    await fresh.playOnThisPhone();
     assert.equal(fresh.get().session?.playerKey, new Identity("11".repeat(32), "device").publicKeyHex);
   });
 

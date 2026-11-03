@@ -26,10 +26,11 @@ export default function GamePreview() {
     (globalThis as { __cqMapBench?: unknown }).__cqMapBench = requestMapBench;
     // And wearing a Forge hero (any published hero may be worn), so the map marker can be shot with one.
     (globalThis as { __cqForge?: unknown }).__cqForge = { equip };
-    // A token the game server will not know: it falls back to the device's key.
-    // The game is the page on screen (as the world pager says once it settles there).
+    // No chat login here: play on this device's own key, as a player who chose
+    // "Play on this phone only" would. The game is the page on screen (as the
+    // world pager says once it settles there).
     world.settled("game");
-    void gameStore.setSession("preview").then(async () => {
+    void gameStore.playOnThisPhone().then(async () => {
       await startLocation(true);
       gameStore.resume();
     });

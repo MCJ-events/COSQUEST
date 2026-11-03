@@ -330,7 +330,7 @@ export function thumbUrl(entry: Pick<ForgeEntry, "thumbnail" | "portrait"> | nul
 }
 
 /** The full-body sprite on a clear page (characters with a portrait only), for the map marker. */
-export function figureUrl(entry: Pick<ForgeEntry, "portrait"> | null | undefined, width: 128 | 256 = 256): string | null {
+export function figureUrl(entry: Pick<ForgeEntry, "portrait"> | null | undefined, width: 128 | 256 | 512 = 256): string | null {
   const f = entry?.portrait?.full?.url;
   return f ? withWidth(forgeFileUrl(GAME_SERVER, f), width) : null;
 }
