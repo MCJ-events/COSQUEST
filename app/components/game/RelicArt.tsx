@@ -154,7 +154,9 @@ function WeaponLayers({ kind, fill, ink, lw, gradientId, shadow, opacity = 1 }: 
 export function WeaponGlyph({ kind, size, fill = GP.cream, ink = GP.ink, lineWidth = 3, flat }: { kind: string; size: number; fill?: string; ink?: string; lineWidth?: number; flat?: boolean }) {
   const gid = `wg${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
   return (
-    <Svg width={size} height={size} viewBox="-6 -6 112 112" accessible={false}>
+    // No accessible={false} on <Svg>: on web it reaches the DOM as an invalid attribute (a red
+    // dev error on every map screen). The glyph is decoration inside a labelled button.
+    <Svg width={size} height={size} viewBox="-6 -6 112 112">
       {flat ? null : (
         <Defs>
           <LinearGradient id={gid} x1="0" y1="0" x2="1" y2="1">

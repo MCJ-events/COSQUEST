@@ -4,6 +4,7 @@
 // server decides (its refusal is shown in its words). costquest-ios
 // Roam/RoamHomeView.swift PointCard.
 import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import { useEffect, useState } from "react";
 import { Text, View } from "react-native";
 import Animated from "react-native-reanimated";
@@ -24,6 +25,7 @@ import { HoldLine, SiegeLine, SpawnLine } from "./PointLines";
 import RaidLine from "./RaidLine";
 import { RaidCrown } from "./RaidParts";
 import { useCardMotion } from "./sheetMotion";
+import { usePinPortraits } from "./ForgeWorld";
 import { GF, realmIcon, tierColor } from "./theme";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
@@ -78,6 +80,8 @@ export default function PointSheet({
   const boss = isRaidPoint(point);
   const siege = siegeOf(point, me, factionName);
   const tint = tierColor(point.tier);
+  // The Guardian it will put up, as on its map pin (art direction 5: the same render everywhere).
+  const guardianPortrait = usePinPortraits()?.(point) ?? null;
 
   return (
     <Animated.View
@@ -111,9 +115,15 @@ export default function PointSheet({
 
           <View style={styles.realm} accessible accessibilityLabel={realmLine(point, factionName)}>
             {/* Realm colours live on chips only: a small realm swatch, the words in the page's muted ink. */}
-            <View style={[styles.realmDot, { backgroundColor: REALM_CHIP[point.realm ?? ""] ?? ACCENT.sky.fill }]}>
-              <Ionicons name={realmIcon(point.realm)} size={12} color="#FFFFFF" />
-            </View>
+            {guardianPortrait ? (
+              <View style={[styles.guardianRing, { backgroundColor: tint }]}>
+                <Image source={{ uri: guardianPortrait }} style={styles.guardianFace} contentFit="cover" accessibilityIgnoresInvertColors />
+              </View>
+            ) : (
+              <View style={[styles.realmDot, { backgroundColor: REALM_CHIP[point.realm ?? ""] ?? ACCENT.sky.fill }]}>
+                <Ionicons name={realmIcon(point.realm)} size={12} color="#FFFFFF" />
+              </View>
+            )}
             <Text style={styles.realmText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
               {realmLine(point, factionName)}
             </Text>
@@ -178,6 +188,9 @@ const STYLE_PAIR = themedStyles(
     legend: { fontFamily: GF.regular, fontSize: 15, lineHeight: 21, fontStyle: "italic", color: L.textMuted },
     realm: { flexDirection: "row", alignItems: "center", gap: 8 },
     realmDot: { width: 20, height: 20, borderRadius: 10, alignItems: "center", justifyContent: "center" },
+    // The Guardian's portrait in a ring of the point's rarity (the pin's own look, larger).
+    guardianRing: { width: 40, height: 40, borderRadius: 20, padding: 3 },
+    guardianFace: { width: 34, height: 34, borderRadius: 17, backgroundColor: "#F4EEE2" },
     buttons: { flexDirection: "row", gap: 10 },
     realmText: { flexShrink: 1, fontFamily: GF.body, fontSize: 13, lineHeight: 16, letterSpacing: 0.2, color: L.textMuted },
   },

@@ -28,6 +28,7 @@
 // it as it stands, and the server judges that as a loss.
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { StatusBar } from "expo-status-bar";
 import { type RefObject, useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
@@ -108,6 +109,7 @@ import { runModel } from "./runModel";
 import DuelVersus from "./DuelVersus";
 import Fight3D from "./Fight3D";
 import FightReveal, { REVEAL_ISLAND_OFF } from "./FightReveal";
+import { useGuardianPortrait } from "./ForgeWorld";
 import { fightRevealOn } from "./prefs";
 import { CostQuestSummonView, summonARSupported } from "@/modules/costquest-game/src";
 import { GameBackdrop } from "./GameBackdrop";
@@ -585,11 +587,13 @@ function Briefing({
   const tintText = readableTint(color, look.screen, look.text);
   const me = gameStore.get().me;
   const holder = point.extra?.holder_name ?? (point.extra?.holder ? gameStore.factionName(point.extra.holder) : null);
+  // The Guardian you are about to fight, as its map pin showed it (art direction 5: one render everywhere).
+  const portrait = useGuardianPortrait(point, 512);
   return (
     <View style={styles.root}>
       <GameBackdrop tint={color} />
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        <Ionicons name="shield" size={300} color={`${color}24`} style={styles.emblem} />
+        {portrait ? null : <Ionicons name="shield" size={300} color={`${color}24`} style={styles.emblem} />}
         <View style={styles.topBar}>
           <GameIconButton icon="close" diameter={42} onPress={onClose} accessibilityLabel={`Leave ${point.name}`} />
           <Text style={styles.placeChip} numberOfLines={1} maxFontSizeMultiplier={MAX_FONT_SCALE}>
@@ -597,6 +601,11 @@ function Briefing({
           </Text>
         </View>
         <View style={{ flex: 1 }} />
+        {portrait ? (
+          <Animated.View entering={FadeIn.duration(400)} style={[styles.portraitCard, { backgroundColor: color }]}>
+            <Image source={{ uri: portrait.url }} style={styles.portraitImage} contentFit="cover" accessibilityLabel={portrait.name} />
+          </Animated.View>
+        ) : null}
         <Animated.View entering={FadeIn.duration(400)} accessible accessibilityLabel={`${gameStore.factionName(point.realm)} Guardian. ${guardianName(point)}`}>
           <Text style={[styles.kicker, { color: tintText }]} maxFontSizeMultiplier={MAX_FONT_SCALE}>{`${gameStore.factionName(point.realm)} Guardian`.toUpperCase()}</Text>
           <Text style={styles.guardian} numberOfLines={3} adjustsFontSizeToFit maxFontSizeMultiplier={MAX_FONT_SCALE}>
@@ -1074,6 +1083,9 @@ const STYLE_PAIR = themedStyles(
   root: { ...StyleSheet.absoluteFill, backgroundColor: L.screen },
   header: { flex: 1, paddingHorizontal: 16, paddingBottom: 22, overflow: "hidden" },
   emblem: { position: "absolute", right: -70, top: 20 },
+  // The Guardian's 3/4 portrait on the cream page in a ring of its rarity (card radius 20 + the ring).
+  portraitCard: { alignSelf: "flex-start", padding: 4, borderRadius: 24, marginBottom: 18, ...ELEVATION.low },
+  portraitImage: { width: 168, height: 168, borderRadius: 20, backgroundColor: "#F4EEE2" },
   topBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 },
   placeChip: {
     maxWidth: "70%",

@@ -185,6 +185,15 @@ export function usePinPortraits(): ((p: QuestPoint) => string | null) | undefine
   }, [on, entries]);
 }
 
+/** One point's Guardian portrait at a card size (the pre-fight briefing), or null. */
+export function useGuardianPortrait(point: QuestPoint | null | undefined, width: 256 | 512 = 512): { url: string; name: string } | null {
+  const on = useForgeOn();
+  const id = on && point ? (pointForge(point).guardian?.element_id ?? null) : null;
+  const entry = useForgeEntry(id);
+  const url = entry?.portrait ? thumbUrl(entry, width) : null;
+  return url && entry ? { url, name: entry.name } : null;
+}
+
 /** Your Forge avatar's face for the map marker and chips: its portrait (or thumbnail), or nothing. */
 export function AvatarBadge({ size = 30 }: { size?: number }) {
   const on = useForgeOn();
