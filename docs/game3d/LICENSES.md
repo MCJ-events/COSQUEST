@@ -49,6 +49,12 @@ checkout on the farm (`~/cq-work/game-godot/ext/unity-ref`, cq 061's read-only c
   impactBell_heavy_000, impactPlate_medium_000, impactGlass_heavy_000,
   impactSoft_heavy_000, impactMining_000 (.ogg): Kenney "Impact Sounds",
   https://kenney.nl/assets/impact-sounds, **CC0 1.0** (`art/sfx/License_Kenney_ImpactSounds.txt`).
+- look-fight (1 Nov 2026): more Kenney "Impact Sounds" variants (impactPunch _002/_003,
+  impactGeneric_light, impactGlass_light, impactSoft_heavy_001, ko_boom made from two of them),
+  Kenney "Music Jingles" (ko_chime, sting_victory, sting_defeat; https://kenney.nl/assets/music-jingles,
+  **CC0 1.0**, `art/sfx/License_Kenney_MusicJingles.txt`) and "Battle Theme A" by cynicmusic
+  (music_battle; https://opengameart.org/content/battle-theme-a, **CC0 1.0**). Every file, its
+  source and what was changed: `art/sfx/CREDITS.md`.
 
 ## Street (art/street/)
 - street_pavers, medallion, circuit_run, light_pool (.png): the project's own ground and

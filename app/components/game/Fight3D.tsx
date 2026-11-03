@@ -47,6 +47,7 @@ import type { DuelStart, QuestPoint } from "@/features/game/wire";
 
 import { GameButton, MAX_FONT_SCALE } from "./kit";
 import { hapticsOn } from "./prefs";
+import { callActive } from "./sound";
 import { GF, GP } from "./theme";
 
 type Phase = { kind: "loading"; step: string } | { kind: "fighting" } | { kind: "closing" } | { kind: "failed"; message: string };
@@ -199,6 +200,8 @@ export default function Fight3D({
           tilesUrl: FIGHT3D.tilesUrl || null,
           reduceMotion: reduceMotion.current,
           haptics: hapticsOn(),
+          // look-fight: the fight's sound and music stay quiet while a CosQuest call holds the audio
+          sound: !callActive(),
           place: placeFile(point),
         });
         log(`arena ${config.arena ?? "street"}${config.place_at ? ` at=${config.place_at.join(",")}` : ""}`);

@@ -123,14 +123,15 @@ export function LevelUp({ level, rank, rankUp, onDone }: { level: number; rank: 
 
   return (
     <View style={styles.root} accessibilityViewIsModal>
-      {/* Opaque enough that the reward panel underneath does not read through the ceremony. */}
-      <LinearGradient colors={[GP.navy, GP.navyEdge]} style={[StyleSheet.absoluteFill, { opacity: 0.96 }]} />
+      {/* look-fight (art direction 7): its own full screen, the burst in sun colours on the light screen colour.
+          Opaque enough that the reward panel underneath does not read through the ceremony. */}
+      <LinearGradient colors={["#FFF6E2", "#F4EEE2"]} style={[StyleSheet.absoluteFill, { opacity: 0.98 }]} />
       <Animated.View style={[styles.sun, burstStyle]} pointerEvents="none" importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
         <Sunburst spin={!reduce} />
       </Animated.View>
       {reduce ? null : <ConfettiBurst colors={[GP.sun, GP.mint, GP.berry, GP.sky, "#FFFFFF"]} />}
       <Animated.View style={[styles.column, contentStyle]}>
-        <GameTitle text="LEVEL UP!" size={50} edge={GP.sunDeep} />
+        <GameTitle text="LEVEL UP!" size={50} color={GP.sun} edge="#1C2B3A" />
         <Animated.View
           style={[styles.badge, badgeStyle]}
           accessible
@@ -145,7 +146,7 @@ export function LevelUp({ level, rank, rankUp, onDone }: { level: number; rank: 
         {rankUp ? (
           <>
             <Text style={styles.newRank}>New rank</Text>
-            <GameTitle text={rank} size={36} color={GP.sun} />
+            <GameTitle text={rank} size={36} color={GP.sun} edge="#1C2B3A" />
           </>
         ) : (
           <Text style={styles.rank}>{rank}</Text>
@@ -171,6 +172,6 @@ const STYLE_PAIR = themedStyles({
     textShadowRadius: 0.1,
     paddingHorizontal: 22,
   },
-  newRank: { fontFamily: GF.body, fontSize: 16, color: "rgba(255,255,255,0.85)" },
-  rank: { fontFamily: GF.display, fontSize: 24, color: "rgba(255,255,255,0.9)" },
+  newRank: { fontFamily: GF.body, fontSize: 16, color: "#5A6878" },
+  rank: { fontFamily: GF.display, fontSize: 24, color: "#1C2B3A" },
 });
