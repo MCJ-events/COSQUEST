@@ -73,6 +73,36 @@ that the merge added is in new files and directories.
 
 Then run `cd app && npm install && npm test && npm run typecheck`.
 
+Team syncs so far (the team's main merged into `app/` with its history):
+
+| Date | Team commit | Merge commit | Notes |
+|---|---|---|---|
+| 20 Oct 2026 | main `0dd7569` + sparks-calls `98627ba` | `5b4a735` | Sparks SDK 1.2.7 |
+| 3 Nov 2026 | main `4b911db` (contains TestFlight build 14 = `d5e4888`) | branch `team-sync-20261103` | 131 commits, 102 conflicted files; see `~/Desktop/cosquest-review/day1-20261103/team-sync/README.md` |
+
+What was done on 3 Nov, and works again next time:
+
+```sh
+git remote add team https://github.com/EngrSammy/Cosquest.git   # fetch only:
+git remote set-url --push team DISABLED-never-push-public        # the repo is PUBLIC
+git fetch team
+git merge -s recursive -Xsubtree=app --no-ff team/main            # = git subtree pull
+cd app && git checkout --ours package-lock.json && npm install --package-lock-only --ignore-scripts
+```
+
+Since 3 Nov the chat side's own pieces are the source of truth for push (the
+token: `components/PushRegistration.tsx`; taps: `components/PushTapHandler.tsx`
+via `utils/openFromNotification.ts`, which leaves `cosquest://play` links to
+`components/world/GameBridge.tsx`), Report (`components/report/reportStore`),
+socket preview refreshes and the Home tab. Our `PushBridge` keeps only the
+waiting links and the badge. In conflicts, take the team's behaviour and fold
+our accessibility, perf and game code back in.
+
+The team's "CosQuest Beta" TestFlight build (App Store Connect app 6824541255,
+bundle com.subomi.cosquest.chat) is `COSQUEST_TESTFLIGHT=1` in `app.config.js`;
+`source app/scripts/cosquest-beta-env.sh` sets the whole environment (chat on
+Render, game on staging, build number 15 unless COSQUEST_BUILD_NUMBER says otherwise).
+
 ### The game (copy + patches)
 
 The game is an Xcode app, not a package, so it is copied rather than merged:

@@ -155,6 +155,15 @@ function cosquestBeta(config, env) {
         NSMicrophoneUsageDescription: "CosQuest uses the microphone for voice and video calls and voice messages.",
         NSPhotoLibraryUsageDescription: "CosQuest needs access to your photos so you can share them in chats or set a profile picture.",
         NSLocationWhenInUseUsageDescription: "CosQuest uses your location to show quests and events near you, and to share it with friends when you choose to.",
+        // Team sync (3 Nov 2026): the plugins' generic "Allow $(PRODUCT_NAME) ..."
+        // texts replaced with what the app really does (the game appends its own line).
+        NSLocationAlwaysAndWhenInUseUsageDescription:
+          "CosQuest uses your location to show quests and events near you, and to share it with friends when you choose to.",
+        NSLocationAlwaysUsageDescription:
+          "CosQuest uses your location to show quests and events near you, and to share it with friends when you choose to.",
+        NSMotionUsageDescription: "CosQuest uses motion while you play.",
+        NSLocalNetworkUsageDescription: "CosQuest uses the local network for calls.",
+        NSFaceIDUsageDescription: "CosQuest uses Face ID to keep your saved sign-in safe on this phone.",
       },
     },
   };
