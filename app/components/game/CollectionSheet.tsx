@@ -248,7 +248,7 @@ function FactionSection({ faction, payload, mine, onPick }: { faction: string; p
         importantForAccessibility="yes"
       >
         <View style={[styles.mark, { backgroundColor: colour }]} />
-        <GameHeading text={name} size={22} />
+        <GameHeading text={name} size={22} inHeader />
         {mine ? <Chip text="Yours" color={colour} /> : null}
         <View style={{ flex: 1 }} />
         <Text style={styles.count} maxFontSizeMultiplier={MAX_FONT_SCALE}>{`${have}/${all.length}`}</Text>
