@@ -492,19 +492,62 @@ func _build_place(cfg: Dictionary, doc: Dictionary, at_override: Variant = null,
 		yaw_override = float(cfg.get("place_yaw", NAN))
 	place = PlaceScript.new()
 	place.name = "Place"
-	add_child(place)
 	place.set("quality", str(cfg.get("_quality", "low")))
-	place.call("build", doc, at, float(cfg.get("cam_yaw", 12.0)), yaw_override, look,
-		Callable(self, "set_hemi"))
-	for r: Rect2 in place.get("map_blocks"):
+	# day1-world: the heavy part of the build runs on a worker while the fighters load (place.gd begin);
+	# the place joins the tree when pump_place() has attached it. place_thread: false builds it here.
+	var threaded: bool = bool(cfg.get("place_thread", true))
+	place.call("begin", doc, at, float(cfg.get("cam_yaw", 12.0)), yaw_override, look, Callable(self, "set_hemi"), threaded)
+	_pending_place = place
+	if not threaded:
+		pump_place(INF)
+
+
+var _pending_place: Node3D
+
+
+## Finishes the place now (waits for the worker if it is still running, attaches what is left): the
+## fight calls it on the frame it begins. info.begin_wait_ms is that frame's cost.
+func finish_place() -> void:
+	if _pending_place == null:
+		return
+	var t0: int = Time.get_ticks_usec()
+	var pl: Node3D = _pending_place
+	pump_place(INF)
+	(pl.get("info") as Dictionary)["begin_wait_ms"] = snappedf((Time.get_ticks_usec() - t0) / 1000.0, 0.1)
+	print("CQ place begin_wait_ms=%.1f" % ((Time.get_ticks_usec() - t0) / 1000.0))
+
+
+## True once the place (or the street) is built and in the tree. Called by the fight every frame while it
+## loads; each call spends at most budget_ms of the main thread on it.
+func pump_place(budget_ms: float = 4.0) -> bool:
+	if _pending_place == null:
+		return true
+	var t0: int = Time.get_ticks_usec()
+	if _pending_place.get_parent() == null and bool(_pending_place.call("work_done")):
+		add_child(_pending_place)   # empty yet: its nodes join it a few a frame (place.gd pump)
+	var add_ms: float = (Time.get_ticks_usec() - t0) / 1000.0
+	if not bool(_pending_place.call("pump", budget_ms)):
+		return false
+	var pl: Node3D = _pending_place
+	_pending_place = null
+	t0 = Time.get_ticks_usec()
+	if pl.get_parent() == null:
+		add_child(pl)
+	for r: Rect2 in pl.get("map_blocks"):
 		map_blocks.append(r)
 	# the place lays its own ground (land use, roads, the bake): the arena's plain floor steps aside, and
 	# the horizon ring takes the place's floor colour
 	ground.visible = false
 	var hz: Node = get_node_or_null("Horizon")
 	if hz != null:
-		((hz as MeshInstance3D).material_override as StandardMaterial3D).albedo_color = place.call("floor_color")
-	print("CQ place " + JSON.stringify(place.get("info")))
+		((hz as MeshInstance3D).material_override as StandardMaterial3D).albedo_color = pl.call("floor_color")
+	var info: Dictionary = pl.get("info")
+	add_ms += (Time.get_ticks_usec() - t0) / 1000.0
+	info["main_ms"] = snappedf(float(info.get("main_ms", 0.0)) + add_ms, 0.1)
+	info["main_max_ms"] = snappedf(maxf(float(info.get("main_max_ms", 0.0)), add_ms), 0.1)
+	info["tree_add_ms"] = snappedf(add_ms, 0.1)
+	print("CQ place " + JSON.stringify(info))
+	return true
 
 
 ## The grade's colour curve, per channel (input level -> output level). env-fixes 2: warm lights,

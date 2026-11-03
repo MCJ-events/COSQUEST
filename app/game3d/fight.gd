@@ -443,7 +443,7 @@ func _ready() -> void:
 	_log("arena built ms=%.1f mode=%s autoplay=%s duration=%.0f" % [(Time.get_ticks_usec() - t0) / 1000.0, mode, autoplay, duration])
 	if mode == "arena":
 		hud.show_hero_card = false
-		_begin_or_intro()
+		_begin_when_built()
 		return
 	# hero_hp / enemy_hp: test and capture knobs (a quick win or loss); the app never sends them
 	hero = _spawn(str(cfg.get("hero_name", "You")), 0, int(cfg.get("hero_hp", HERO_HP)), Color(0.3, 0.75, 0.35), Vector3(0.3, 0, 3.6), PI, "hero")
@@ -495,7 +495,7 @@ func _ready() -> void:
 		_load_queue.append({"f": peer_f, "path": LoaderScript.clean_path(str((cfg["coop"] as Dictionary)["peer_glb"])), "role": "peer"})
 	_queue_weapons()
 	if _load_queue.is_empty():
-		_begin_or_intro()
+		_begin_when_built()
 	else:
 		state = "loading"
 		hud.loading_text = "Loading fighters..."
@@ -609,7 +609,20 @@ func _spawn(n: String, team: int, hp_max: int, c: Color, at: Vector3, yaw: float
 
 # ------------------------------------------------------------ loading
 
+## day1-world: the place builds on a worker while the fighters load (arena.pump_place, place.gd begin);
+## the fly-in and the fight wait for it in "loading", so nothing starts in a half-built place.
+## The fight never waits a frame for it: when the fighters are in, whatever is left (normally nothing; the
+## worker is long done while the fighters load) is finished in that frame (arena.finish_place), so the
+## fight starts on the same frame as with a synchronous build and seeded fights stay byte-identical.
+func _begin_when_built() -> void:
+	if arena != null:
+		arena.call("finish_place")
+	_begin_or_intro()
+
+
 func _poll_loading() -> void:
+	if arena != null:
+		arena.call("pump_place")
 	if _thread != null:
 		if _thread.is_alive():
 			return
@@ -617,6 +630,8 @@ func _poll_loading() -> void:
 		_thread = null
 		_finish_load(r)
 	if _load_queue.is_empty():
+		if arena != null:
+			arena.call("finish_place")
 		load_ms = (Time.get_ticks_usec() - _load_t0) / 1000.0
 		_log("load_total ms=%.1f threaded=%s" % [load_ms, _load_threaded])
 		hud.loading_text = ""
@@ -750,7 +765,9 @@ func _begin_or_intro() -> void:
 	# from behind the fight, low, looking up at the landmark over the fighters' heads
 	var back: Vector3 = Vector3(_cam_basis.z.x, 0.0, _cam_basis.z.z).normalized()
 	var from: Vector3 = back * 36.0 + Vector3.UP * 9.0
-	var look: Vector3 = lm + Vector3.UP * minf(h * 0.45, 24.0)
+	# day1-world: a tall hero landmark (Elizabeth Tower, Hoover Tower) is framed higher, so its clock or
+	# its dome reads in the opening shot
+	var look: Vector3 = lm + Vector3.UP * (minf(h * 0.45, 24.0) if str(info.get("landmark_kind", "")) != "hero" else minf(h * 0.55, 52.0))
 	_intro_from = Transform3D(Basis.looking_at(look - from, Vector3.UP), from)
 	_intro_t = 0.0
 	state = "intro"

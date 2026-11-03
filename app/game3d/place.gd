@@ -25,6 +25,7 @@ const Dress := preload("res://place_dress.gd")
 const Bake := preload("res://place_bake.gd")
 const Life := preload("res://place_life.gd")
 const Landmarks := preload("res://world_landmarks.gd")
+const Heroes := preload("res://world_heroes.gd")
 const GROUND_SHADER := preload("res://vfx/world_ground.gdshader")
 const FACADE_SHADER := preload("res://vfx/world_facade.gdshader")
 const KIT_SHADER := preload("res://vfx/world_kit.gdshader")
@@ -97,17 +98,53 @@ var _green_polys: Array = []
 var _water_polys: Array = []
 var _paved_polys: Array = []
 var bake: RefCounted            # place_bake.gd
+var _heroes: Array = []         # world_heroes.gd: the hero landmarks this place has (begin), built in _work
 var life: Node3D
 
 
 ## ground: the parsed JSON. at: the Quest Point in the ground's metres. cam_yaw_deg: the fight camera's
 ## turn (fight.gd CAM_YAW), so the landmark lands in the middle of the view. yaw_override: degrees, or NAN.
+## Builds the whole place now, on the calling thread (tests, tools). The fight uses begin() + pump().
 func build(ground: Dictionary, at: Vector2, cam_yaw_deg: float, yaw_override: float, look: Dictionary, hemi: Callable) -> void:
+	begin(ground, at, cam_yaw_deg, yaw_override, look, hemi, false)
+	pump(INF)
+
+
+## day1-world (ART-DIRECTION 8, "place build <= 60 ms on device"): the build in two halves.
+##  - begin() on the main thread: the region, the turn towards the landmark and the landmark's spot (the
+##    fight's camera and fly-in need them at once). Cheap.
+##  - _work(): everything heavy (ground triangulation, roads, walls, landmarks, props, trees, the bake's
+##    meshes, MultiMesh buffers, materials) as arrays and resources only. With threaded it runs on a
+##    WorkerThreadPool task while the fighters load; the place node is not in the scene tree yet, and no
+##    node is made off the main thread: every node is queued (_emit) as a small Callable.
+##  - pump(budget_ms) on the main thread, every frame: once the task is done, runs the queued node adds
+##    (a time budget per frame), then the bake's SubViewport and the life layer, then sets `built`.
+## info gets main_ms (all main-thread time spent on the place), main_max_ms (the worst single frame),
+## worker_ms and ms (begin to built, wall clock).
+var built: bool = false
+const NODES_PER_PUMP: int = 6
+signal place_built
+var _queue: Array[Callable] = []
+var _qi: int = 0
+var _deferring: bool = false
+var _task: int = -1
+var _ground: Dictionary = {}
+var _stage: int = 0        # 0 work pending, 1 attaching nodes, 2 done
+var _t_begin: int = 0
+var _main_us: int = 0
+var _main_max_us: int = 0
+var _work_us: int = 0
+var _work_info: Dictionary = {}
+
+
+func begin(ground: Dictionary, at: Vector2, cam_yaw_deg: float, yaw_override: float, look: Dictionary, hemi: Callable, threaded: bool) -> void:
+	var t0: int = Time.get_ticks_usec()
+	_t_begin = t0
 	_at = at
 	_hemi = hemi
 	_look = look
 	_tp = TIMES_OF(look)
-	var t0: int = Time.get_ticks_usec()
+	_ground = ground
 	var o: Dictionary = ground.get("origin", {})
 	region = str(ground.get("region", region_of(float(o.get("lat", 0.0)), float(o.get("lng", 0.0)))))
 	if not REGIONS.has(region):
@@ -118,6 +155,7 @@ func build(ground: Dictionary, at: Vector2, cam_yaw_deg: float, yaw_override: fl
 	var cr: Variant = ground.get("clear", null)
 	if cr is Array and (cr as Array).size() == 4:
 		clear = Rect2(float(cr[0]), float(cr[1]), float(cr[2]), float(cr[3]))
+	_heroes = Heroes.find(ground, at)
 	var lm: Dictionary = _hero_landmark(ground)
 	if not is_nan(yaw_override):
 		_yaw = deg_to_rad(yaw_override)
@@ -127,22 +165,41 @@ func build(ground: Dictionary, at: Vector2, cam_yaw_deg: float, yaw_override: fl
 		var fwd: Vector2 = Vector2(-sin(deg_to_rad(cam_yaw_deg)), -cos(deg_to_rad(cam_yaw_deg)))
 		_yaw = fwd.angle() - d.angle()
 	info = {"landmark": str(lm.get("name", "")), "landmark_kind": str(lm.get("kind", "")),
-		"yaw_deg": snappedf(rad_to_deg(_yaw), 0.1), "region": region, "climate": climate, "time": str(look.get("time", ""))}
+		"yaw_deg": snappedf(rad_to_deg(_yaw), 0.1), "region": region, "climate": climate, "time": str(look.get("time", "")),
+		"threaded": threaded}
 	if not lm.is_empty():
 		var lp: Vector2 = to_fight(Vector2(float(lm["x"]), float(lm["z"])))
 		info["landmark_at"] = Vector3(lp.x, 0.0, lp.y)
 		info["landmark_h"] = float(lm.get("h", 12.0))
+	_main_us += Time.get_ticks_usec() - t0
+	_main_max_us = maxi(_main_max_us, Time.get_ticks_usec() - t0)
+	if threaded:
+		_deferring = true
+		_task = WorkerThreadPool.add_task(_work, false, "place build")
+	else:
+		_work()
+
+
+## The heavy half (see begin). On the worker it touches only this place's own data (the node is outside
+## the tree) and resources; node adds go through _emit.
+func _work() -> void:
+	var t0: int = Time.get_ticks_usec()
+	var ground: Dictionary = _ground
+	var tm: Dictionary = {}
 	bake = Bake.new()
 	bake.call("setup", self, quality)
 	_roads = Roads.new()
-	_roads.call("setup", self, ground.get("roads", []))
-	var tm: Dictionary = {}
 	var t1: int = Time.get_ticks_usec()
+	_roads.call("setup", self, ground.get("roads", []))
 	_build_flat(ground)
 	tm["flat"] = _lap(t1)
 	t1 = Time.get_ticks_usec()
 	_roads.call("build", self)
 	tm["roads"] = _lap(t1)
+	t1 = Time.get_ticks_usec()
+	_build_heroes()
+	_build_bridges()
+	tm["heroes"] = _lap(t1)
 	t1 = Time.get_ticks_usec()
 	_build_buildings(ground.get("buildings", []))
 	tm["buildings"] = _lap(t1)
@@ -153,14 +210,67 @@ func build(ground: Dictionary, at: Vector2, cam_yaw_deg: float, yaw_override: fl
 	var dress: RefCounted = Dress.new()
 	dress.call("build", self, ground)
 	tm["dress"] = _lap(t1)
+	t1 = Time.get_ticks_usec()
+	bake.call("prepare", self)
+	tm["bake"] = _lap(t1)
 	info["ms_parts"] = tm
-	info["ms_before_bake"] = snappedf((Time.get_ticks_usec() - t0) / 1000.0, 0.1)
-	bake.call("commit", self)
-	life = Life.new()
-	life.name = "Life"
-	add_child(life)
-	life.call("build", self, _roads, ground)
-	info["ms"] = snappedf((Time.get_ticks_usec() - t0) / 1000.0, 0.1)
+	_work_us = Time.get_ticks_usec() - t0
+
+
+## Runs a node add now, or (threaded) queues it for pump() on the main thread.
+func _emit(f: Callable) -> void:
+	if _deferring:
+		_queue.append(f)
+	else:
+		f.call()
+
+
+## True once the worker's half is done (the arena may put the place in the tree while pump attaches).
+func work_done() -> bool:
+	return _task < 0 or WorkerThreadPool.is_task_completed(_task)
+
+
+## The main thread's share, once a frame (budget_ms of node adds per call). True once the place is built.
+func pump(budget_ms: float = 4.0) -> bool:
+	if built:
+		return true
+	if _task >= 0:
+		if budget_ms < 1e6 and not WorkerThreadPool.is_task_completed(_task):
+			return false
+		WorkerThreadPool.wait_for_task_completion(_task)
+		_task = -1
+	var t0: int = Time.get_ticks_usec()
+	var lim: int = t0 + int(minf(budget_ms, 1e6) * 1000.0)
+	# a few nodes a frame, so the renderer's first draw of each new material (shader variants, texture
+	# uploads) is spread over the loading frames too, not paid in one
+	var n_max: int = NODES_PER_PUMP if budget_ms < 1e6 else 1 << 30
+	var n: int = 0
+	while _qi < _queue.size() and n < n_max:
+		_queue[_qi].call()
+		_qi += 1
+		n += 1
+		if Time.get_ticks_usec() > lim:
+			break
+	if _qi >= _queue.size():
+		_queue.clear()
+		_deferring = false
+		bake.call("commit", self)
+		life = Life.new()
+		life.name = "Life"
+		add_child(life)
+		life.call("build", self, _roads, _ground)
+		_ground = {}
+		built = true
+	var dt: int = Time.get_ticks_usec() - t0
+	_main_us += dt
+	_main_max_us = maxi(_main_max_us, dt)
+	if built:
+		info["worker_ms"] = snappedf(_work_us / 1000.0, 0.1)
+		info["main_ms"] = snappedf(_main_us / 1000.0, 0.1)
+		info["main_max_ms"] = snappedf(_main_max_us / 1000.0, 0.1)
+		info["ms"] = snappedf((Time.get_ticks_usec() - _t_begin) / 1000.0, 0.1)
+		place_built.emit()
+	return built
 
 
 ## The kit's meshes (world_landmarks.gd, world_props.gd): baked ahead into art/world/kit/*.res by
@@ -184,7 +294,7 @@ static func kit(kind: String, variant: int) -> ArrayMesh:
 	return m
 
 
-const KIT_LANDMARKS: Array[String] = ["column", "obelisk", "statue", "lion", "fountain", "memorial", "clock_tower"]
+const KIT_LANDMARKS: Array[String] = ["column", "obelisk", "statue", "lion", "fountain", "memorial", "clock_tower", "arch", "dome", "spire"]
 
 
 static func _lap(t: int) -> float:
@@ -248,6 +358,14 @@ func floor_color() -> Color:
 
 
 func _hero_landmark(ground: Dictionary) -> Dictionary:
+	# day1-world: a hero landmark (world_heroes.gd) within sight wins: it is the "where am I" shot
+	var hbest: Dictionary = {}
+	for hv: Dictionary in _heroes:
+		var hd: float = Vector2(float(hv["x"]) - _at.x, float(hv["z"]) - _at.y).length()
+		if hd > 12.0 and hd < 220.0 and (hbest.is_empty() or hd < float(hbest["_d"])):
+			hbest = {"x": hv["x"], "z": hv["z"], "name": hv["name"], "kind": "hero", "h": hv["h"], "_d": hd}
+	if not hbest.is_empty():
+		return hbest
 	var best: Dictionary = {}
 	var best_s: float = 0.0
 	for m: Variant in ground.get("landmarks", []):
@@ -321,6 +439,16 @@ func kit_mat(cls: String) -> Material:
 	var m: Material
 	if cls == "water":
 		m = water_mat()
+	elif cls == "screen":
+		# day1-world: the Times Square screens (made-up ads, art/world/misc/screens.png): self-lit, so unshaded,
+		# their brightest texel ~0.85 so they never clip to white; a little brighter at dusk
+		var sc := StandardMaterial3D.new()
+		sc.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		sc.albedo_texture = tex("misc/screens")
+		var lift: float = 0.92 + 0.12 * float(_tp.get("lamps", 0.0))
+		sc.albedo_color = Color(lift, lift, lift)
+		sc.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
+		m = sc
 	elif cls == "clock":
 		var sm0 := StandardMaterial3D.new()
 		sm0.albedo_texture = tex("misc/clock_face")
@@ -375,6 +503,28 @@ func kit_mat(cls: String) -> Material:
 			"glass":
 				k = 0.0
 				rough = 0.2
+			"render":
+				# day1-world (hero landmarks): stone texture, the colour from the vertex colour
+				detail = "misc/stone"
+				k = 0.7
+				mean = 0.8
+				tile = 2.5
+				rough = 0.8
+				sm.set_shader_parameter("tint", Color(1, 1, 1))
+				sm.set_shader_parameter("lift", 0.3)
+			"tile":
+				k = 0.5
+				tile = 0.8
+				rough = 0.8
+				sm.set_shader_parameter("lift", 0.2)
+			"slate":
+				k = 0.35
+				rough = 0.6
+				sm.set_shader_parameter("lift", 0.5)   # slate and painted iron: dark, never black
+			"gilt":
+				k = 0.2
+				rough = 0.45
+				sm.set_shader_parameter("lift", 0.9)
 			"bird":
 				k = 0.0
 				sm.set_shader_parameter("flap", 0.6)
@@ -417,30 +567,82 @@ func water_mat() -> ShaderMaterial:
 	return sm
 
 
-func add_mesh(mesh: Mesh, mat: Material, n: String) -> MeshInstance3D:
+func add_mesh(mesh: Mesh, mat: Material, n: String) -> void:
+	_emit(_mk_mesh.bind(mesh, mat, n))
+
+
+func _mk_mesh(mesh: Mesh, mat: Material, n: String) -> void:
 	var mi := MeshInstance3D.new()
 	mi.name = n
 	mi.mesh = mesh
 	mi.material_override = mat
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(mi)
-	return mi
 
 
 ## A kit mesh (its surfaces named by class) instanced at `xfs`: one MultiMesh, one draw per surface.
 ## cast: kept for callers; the place casts nothing into the shadow map (see below).
-func add_multi(mesh: ArrayMesh, xfs: Array, n: String, cast: bool = false) -> MultiMeshInstance3D:
+func add_multi(mesh: ArrayMesh, xfs: Array, n: String, _cast: bool = false, owned: bool = false) -> void:
 	if xfs.is_empty() or mesh == null:
-		return null
+		return
+	if owned:
+		# a mesh built for this place only (a hero, a bridge): its materials go straight on it
+		for si in mesh.get_surface_count():
+			mesh.surface_set_material(si, kit_mat(mesh.surface_get_name(si)))
+		add_multi_buffer(mesh, xform_buffer(xfs), xfs.size(), n)
+		return
+	# the kit mesh's copy with this place's materials is made on the main thread: ArrayMesh.duplicate()
+	# reads the surfaces back from the RenderingServer, which from a worker waits for the main thread's
+	# next flush (a frame per call)
+	var mats: Array = []
+	for si in mesh.get_surface_count():
+		mats.append(kit_mat(mesh.surface_get_name(si)))
+	_emit(_mk_multi_kit.bind(mesh, mats, xform_buffer(xfs), xfs.size(), n))
+
+
+func _mk_multi_kit(mesh: ArrayMesh, mats: Array, buf: PackedFloat32Array, count: int, n: String) -> void:
 	var m2: ArrayMesh = mesh.duplicate() as ArrayMesh
 	for si in m2.get_surface_count():
-		m2.surface_set_material(si, kit_mat(m2.surface_get_name(si)))
+		m2.surface_set_material(si, mats[si])
+	_mk_multi(m2, buf, count, n)
+
+
+## The MultiMesh's instance data as one buffer (12 floats per instance, Godot's TRANSFORM_3D layout),
+## built off the main thread; the MultiMesh itself is made when its node is (one buffer upload).
+static func xform_buffer(xfs: Array) -> PackedFloat32Array:
+	var buf := PackedFloat32Array()
+	buf.resize(xfs.size() * 12)
+	var k: int = 0
+	for x: Transform3D in xfs:
+		var b: Basis = x.basis
+		buf[k] = b.x.x; buf[k + 1] = b.y.x; buf[k + 2] = b.z.x; buf[k + 3] = x.origin.x
+		buf[k + 4] = b.x.y; buf[k + 5] = b.y.y; buf[k + 6] = b.z.y; buf[k + 7] = x.origin.y
+		buf[k + 8] = b.x.z; buf[k + 9] = b.y.z; buf[k + 10] = b.z.z; buf[k + 11] = x.origin.z
+		k += 12
+	return buf
+
+
+func add_multi_buffer(mesh: Mesh, buf: PackedFloat32Array, count: int, n: String) -> void:
+	_emit(_mk_multi.bind(mesh, buf, count, n))
+
+
+## Parked cars of one Kenney model (place_dress.gd), on the main thread.
+func mk_cars(model: String, xs: Array) -> void:
+	var mi: Array = Dress.car_mesh(self, model)
+	if mi.is_empty():
+		return
+	var xf2: Array = []
+	for x: Transform3D in xs:
+		xf2.append(x * (mi[1] as Transform3D))
+	_mk_multi(mi[0], xform_buffer(xf2), xf2.size(), "cars_" + model.get_file())
+
+
+func _mk_multi(mesh: Mesh, buf: PackedFloat32Array, count: int, n: String) -> void:
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
-	mm.mesh = m2
-	mm.instance_count = xfs.size()
-	for i in xfs.size():
-		mm.set_instance_transform(i, xfs[i])
+	mm.mesh = mesh
+	mm.instance_count = count
+	mm.buffer = buf
 	var mmi := MultiMeshInstance3D.new()
 	mmi.name = n
 	mmi.multimesh = mm
@@ -448,7 +650,6 @@ func add_multi(mesh: ArrayMesh, xfs: Array, n: String, cast: bool = false) -> Mu
 	# MultiMesh casts all its instances, which doubled the triangles in a shadow pass (498 k at Trafalgar)
 	mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(mmi)
-	return mmi
 
 
 # ------------------------------------------------------------ the ground by land use
@@ -569,7 +770,7 @@ func _sheet_for(h: float, area: float, rnd: float) -> String:
 				return "trim_us_modern" if rnd < 0.75 else "trim_us_brownstone"
 			return "trim_us_brownstone" if rnd < 0.85 else "trim_us_modern"
 		"us_west":
-			return "trim_us_modern" if h >= 20.0 else "trim_us_west"
+			return "trim_us_modern" if h >= 30.0 else "trim_us_west"   # day1-world: was 20 m (Stanford read as glass)
 		"west_africa":
 			return "trim_us_modern" if h >= 30.0 else "trim_wa_render"
 	return "trim_us_modern" if h >= 30.0 else "trim_generic"
@@ -667,6 +868,11 @@ func _build_buildings(builds: Array) -> void:
 			cleared += 1
 			continue
 		var h: float = clampf(float(bd["h"]), 3.0, 320.0)
+		var under: Array = _under_hero(p) if not _hero_pts.is_empty() else ["", 0.0]
+		if under[0] == "skip":
+			continue
+		if under[0] == "annex":
+			h = minf(h, float(under[1]))
 		var base: float = clampf(float(bd.get("b", 0.0)), 0.0, h - 1.0)
 		var area: float = absf(_area(p))
 		var rnd: float = _hash2(p[0])
@@ -715,6 +921,9 @@ func _build_buildings(builds: Array) -> void:
 		add_mesh(am, _facade_mat(sheet), "buildings_" + sheet)
 	if built > 0:
 		add_mesh(roof.commit(), ground_mat("roof", "roofs/roof_flat", 4.0, {"use_vcol": 1.0, "tint": Color(1.25, 1.25, 1.25), "crack_k": 0.0}), "roofs")
+	if not _screens.is_empty():
+		add_multi(Landmarks._commit(_screens), [Transform3D.IDENTITY], "canyon_screens", false, true)
+		_screens = {}
 	set_meta("roofs", roofs_list)
 
 
@@ -839,6 +1048,8 @@ func _walls(w: Dictionary, poly: PackedVector2Array, base: float, h: float, tint
 		var shop: bool = h >= 5.0 and ((_roads != null and bool(_roads.call("faces_road", mid, n2))) or in_paved(mid + n2 * 2.5))
 		var narrow: bool = len < 2.4 and not tall_glass
 		var nrm: Vector3 = Vector3(n2.x, 0.0, n2.y)
+		if shop and not _canyon.is_empty():
+			_canyon_screens(a, b, n2, h, fposmod(seed * 7.0 + float(i) * 0.137, 1.0))
 		for band: Array in wall_bands(base, h, shop, narrow):
 			var y0: float = band[0]
 			var y1: float = band[1]
@@ -864,6 +1075,129 @@ func _walls(w: Dictionary, poly: PackedVector2Array, base: float, h: float, tint
 	w["c"] = wc
 	w["uv"] = wu
 	w["uv2"] = wu2
+
+
+# ------------------------------------------------------------ hero landmarks
+
+## day1-world: the hero landmarks this place has (world_heroes.gd find, in begin): each a bespoke mesh at its
+## footprint, turned to the footprint's walls (or its front to the fight); its shade and contact AO baked,
+## its footprint kept clear of props and on the minimap. Times Square also lines the street's walls near by
+## with screens (_walls, _canyon).
+var _hero_pts: Array = []       # [Vector2 fight frame, fp radius, annex_h]
+var _canyon: Array = []         # [Vector2 centre, radius] (Times Square)
+var _screens: Dictionary = {}   # the canyon's wall screens (world_landmarks classes "screen", "render")
+
+
+func _build_heroes() -> void:
+	var n: Array = []
+	for hv: Dictionary in _heroes:
+		var p: Vector2 = to_fight(Vector2(float(hv["x"]), float(hv["z"])))
+		if p.length() > REACH:
+			continue
+		var id: String = str(hv["id"])
+		var yaw: float = atan2(-p.x, -p.y) + PI    # its front (+z) towards the fight
+		if hv.has("heading"):
+			# square to its OSM footprint: the wall heading (ground frame, after the north flip and the turn),
+			# the face nearest the fight's direction
+			var a: float = -float(hv["heading"]) - _yaw
+			var best: float = yaw
+			var bd: float = 9.0
+			for k in 4:
+				var cand: float = a + PI * 0.5 * k
+				var dd: float = absf(wrapf(cand - yaw, -PI, PI))
+				if dd < bd:
+					bd = dd
+					best = cand
+			yaw = best
+		var mesh: ArrayMesh = Heroes.build(id, float(hv.get("r", 0.0)))
+		add_multi(mesh, [Transform3D(Basis(Vector3.UP, yaw), Vector3(p.x, 0.0, p.y))], "hero_" + id, false, true)
+		var r: float = float(hv["r"])
+		_hero_pts.append([p, float(hv["fp"]), float(hv["annex_h"])])
+		_landmark_pts.append([p, r + 1.0])
+		bake.call("landmark", p, r, float(hv["h"]))
+		map_blocks.append(Rect2(p - Vector2(r, r), Vector2(r, r) * 2.0))
+		if hv.has("canyon"):
+			_canyon = [p, float(hv["canyon"])]
+		n.append(id)
+	info["heroes"] = n
+
+
+## day1-world: a bridge piece (world_landmarks.gd bridge) wherever a car road runs over water for 14 m
+## or more: parapets, refuges and lamp standards along the crossing.
+func _build_bridges() -> void:
+	info["bridges"] = 0
+	if _water_polys.is_empty():
+		return
+	var n: int = 0
+	for rd: Dictionary in _roads.get("roads"):
+		if str(rd.get("k", "")) == "path":
+			continue
+		var pp: PackedVector2Array = rd["p"]
+		var run: Array = []   # sample points over water
+		for i in pp.size() - 1:
+			var a: Vector2 = pp[i]
+			var b: Vector2 = pp[i + 1]
+			var steps: int = maxi(1, int(a.distance_to(b) / 2.0))
+			for k in steps + 1:
+				var q: Vector2 = a.lerp(b, float(k) / steps)
+				if q.length() < REACH and in_water(q):
+					run.append(q)
+				elif run.size() > 0:
+					n += _bridge(run, float(rd["hw"]))
+					run = []
+		if run.size() > 0:
+			n += _bridge(run, float(rd["hw"]))
+	info["bridges"] = n
+
+
+func _bridge(run: Array, hw: float) -> int:
+	var a: Vector2 = run[0]
+	var b: Vector2 = run[run.size() - 1]
+	var len: float = a.distance_to(b)
+	if len < 14.0:
+		return 0
+	var d: Vector2 = (b - a) / len
+	a -= d * 3.0
+	b += d * 3.0
+	var mid: Vector2 = (a + b) * 0.5
+	var mesh: ArrayMesh = Landmarks.bridge(len + 6.0, hw * 2.0)
+	var z := Vector3(d.x, 0.0, d.y)
+	var x: Vector3 = Vector3.UP.cross(z).normalized()
+	add_multi(mesh, [Transform3D(Basis(x, Vector3.UP, z), Vector3(mid.x, 0.0, mid.y))], "bridge", false, true)
+	return 1
+
+
+## The OSM building under a hero: "skip" (not built), "annex" (cut to annex_h) or "" (built as mapped).
+func _under_hero(poly: PackedVector2Array) -> Array:
+	for hp: Array in _hero_pts:
+		if Heroes.covers(hp[0], float(hp[1]), poly):
+			return ["annex", float(hp[2])] if float(hp[2]) > 0.0 else ["skip", 0.0]
+	return ["", 0.0]
+
+
+## Times Square's canyon: screens on a wall that faces the street near the square (cells picked by a hash).
+func _canyon_screens(a: Vector2, b: Vector2, n2: Vector2, h: float, seed: float) -> void:
+	var len: float = a.distance_to(b)
+	var mid: Vector2 = (a + b) * 0.5
+	if _canyon.is_empty() or h < 12.0 or len < 7.0 or mid.distance_to(_canyon[0]) > float(_canyon[1]):
+		return
+	if clear.grow(6.0).has_point(mid):
+		return
+	var z := Vector3(n2.x, 0.0, n2.y)
+	var x: Vector3 = Vector3.UP.cross(z).normalized()
+	var xf := Transform3D(Basis(x, Vector3.UP, z), Vector3(mid.x, 0.0, mid.y) + z * 0.45)
+	var cols: int = clampi(int(len / 15.0), 1, 3)
+	var w: float = minf(len * 0.86 / cols, 17.0)
+	var rows: int = 1 if h < 30.0 else 2
+	var y: float = 4.9
+	for r in rows:
+		var hh: float = clampf(w * (0.55 if r == 0 else 0.8), 4.5, minf(13.0, h - y - 2.0))
+		if hh < 3.5:
+			break
+		for k in cols:
+			var cx: float = (float(k) - (cols - 1) * 0.5) * (len / cols)
+			Heroes.screen_quad(_screens, xf, Vector3(cx, y, 0.0), w - 0.8, hh, int(seed * 1000.0) + k * 5 + r * 11)
+		y += hh + 1.6
 
 
 # ------------------------------------------------------------ landmarks
@@ -914,6 +1248,11 @@ func _build_landmarks(marks: Array) -> void:
 						_steps(p, r * 0.9)
 					counts["platform"] = int(counts.get("platform", 0)) + 1
 					continue
+				elif nm.contains("Arch") or nm.contains("Gate"):
+					k2 = "arch"   # day1-world: a monument named an arch or a gate
+					scale = clampf(maxf(h, 10.0) / float(Landmarks.info("arch").get("h", 16.0)), 0.6, 1.5)
+					rad = 8.5 * scale
+					yaw = atan2(-p.x, -p.y) + PI
 				elif nm.contains("Memorial") or nm.contains("Cenotaph") or nm.contains("memorial"):
 					k2 = "memorial"
 					scale = clampf(maxf(h, 8.0) / float(Landmarks.info("memorial").get("h", 10.0)), 0.6, 1.6)
@@ -938,6 +1277,13 @@ func _build_landmarks(marks: Array) -> void:
 				var rr: float = r if r > 0.5 else 1.8
 				scale = clampf(rr / float(Landmarks.info("fountain").get("r", 5.0)), 0.3, 1.6)
 				rad = rr
+			"arch", "gate", "dome", "spire":
+				# day1-world: the generic pieces, by kind when the ground carries them
+				k2 = "arch" if kind == "gate" else kind
+				var ref: float = float(Landmarks.info(k2).get("h", 20.0))
+				scale = clampf((h if h > 3.0 else ref) / ref, 0.5, 2.0)
+				rad = float(Landmarks.info(k2).get("r", 6.0)) * scale
+				yaw = atan2(-p.x, -p.y) + PI
 			"clock":
 				k2 = "clock_tower"
 				scale = clampf(h / float(Landmarks.info("clock_tower").get("h", 40.0)), 0.4, 2.0)
@@ -997,12 +1343,7 @@ func _steps(p: Vector2, size: float) -> void:
 		hgt += 0.22
 	var mesh: ArrayMesh = st.commit()
 	mesh.surface_set_name(0, "granite")
-	mesh.surface_set_material(0, kit_mat("granite"))
-	var mi := MeshInstance3D.new()
-	mi.mesh = mesh
-	mi.name = "platform"
-	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	add_child(mi)
+	add_mesh(mesh, kit_mat("granite"), "platform")
 
 
 static func _bevel_box(st: SurfaceTool, c: Vector3, size: Vector3, col: Color) -> void:

@@ -86,3 +86,12 @@ Their sources would be Gravel023, Concrete034/036 and Ground037 (ambientCG, CC0)
 68 meshes baked by `tools/world/bake_kit.gd` from `world_landmarks.gd` and `world_props.gd`: procedural, own work,
 **CC0 1.0**. No third-party geometry. Parked and moving cars reuse the Kenney Car Kit already in `art/city/cars`
 (CC0 1.0, `art/city/cars/LICENSE-Kenney-CarKit-CC0.txt`).
+
+## Hero landmarks and the Times Square screens (day1-world)
+- Elizabeth Tower, the Times Square screen tower, Hoover Tower, the National Arts Theatre and the generic arch,
+  dome, spire and bridge pieces are built in code at load (`world_heroes.gd`, `world_landmarks.gd`): procedural,
+  own work, **CC0 1.0**. No third-party geometry, no logos.
+- `misc/screens.png`: 16 made-up ads and colour panels drawn by `tools/world/make_screens.py` (own work, **CC0 1.0**).
+  Generic words and shapes only, no real brand, product or person. The words are rasterised from DejaVu Sans Bold
+  (https://dejavu-fonts.github.io/License.html, Bitstream Vera licence: free to use, embed and redistribute);
+  no font file is shipped.
