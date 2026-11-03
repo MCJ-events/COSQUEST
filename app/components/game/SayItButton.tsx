@@ -13,6 +13,7 @@ import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
 import { Platform, Pressable, Text, View } from "react-native";
 
 import { type SpeechEngine, VoiceAnswer, voicePrompt } from "@/features/game/voiceAnswer";
+import { webSpeechEngine } from "@/features/game/webSpeech";
 import { nativeHelpers } from "@/modules/costquest-game/src";
 import { store } from "@/store/store";
 
@@ -50,12 +51,15 @@ function phoneEngine(): SpeechEngine | null {
   };
 }
 
+/** Web test builds only: the browser's recogniser (it is not on-device, so never in a release web build). */
+const WEB_VOICE = Platform.OS === "web" && (process.env.EXPO_PUBLIC_E2E === "1" || __DEV__);
+
 export default function SayItButton({ choices, removed, onPick }: { choices: string[]; removed: number[]; onPick: (i: number) => void }) {
   const styles = useThemedStyles(STYLE_PAIR);
   const voice = useMemo(
     () =>
       new VoiceAnswer({
-        engine: phoneEngine(),
+        engine: phoneEngine() ?? (WEB_VOICE ? webSpeechEngine() : null),
         callActive: () => store.getState().call.active != null,
         setTimeout: (fn, ms) => setTimeout(fn, ms),
         clearTimeout: (h) => clearTimeout(h as ReturnType<typeof setTimeout>),
