@@ -1182,7 +1182,10 @@ const Bubble = memo(function Bubble({
           </View>
         ) : null}
 
-        <Pressable accessibilityRole="button" accessibilityLabel="Open this Spark"
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={msg.content ? String(msg.content).slice(0, 200) : "Message"}
+          accessibilityHint="Long press for message options"
           onPress={() => onPress(msg)}
           onLongPress={() => onLongPress(msg)}
           delayLongPress={300}
@@ -6132,7 +6135,7 @@ export default function ChatScreen() {
       {/* ================================== */}
 
       <MessageActionsSheet visible={showActions && !!selectedMessage} onRequestClose={closeMenu} backdropStyle={[styles.menuBackdrop, styles.sheetBackdrop]} onBackdropPress={menuTap(closeMenu)}>
-          <Pressable accessibilityRole="button" accessibilityLabel="Message actions"
+          <Pressable accessible={false}
             style={[styles.menuColumn, styles.sheetColumn]}
             onPress={(event) => event.stopPropagation()}>
             <View style={styles.sheetTitleRow}>
@@ -6372,7 +6375,7 @@ export default function ChatScreen() {
         transparent
         animationType="slide"
         onRequestClose={() => setDeleteSheet(null)}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Close"
+        <Pressable accessible={false}
           style={styles.modalBackdrop}
           onPress={() => setDeleteSheet(null)}>
           <Pressable accessible={false}
@@ -6482,7 +6485,7 @@ export default function ChatScreen() {
         transparent
         animationType="slide"
         onRequestClose={() => setInfoMessage(null)}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Close"
+        <Pressable accessible={false}
           style={styles.modalBackdrop}
           onPress={() => setInfoMessage(null)}>
           <Pressable accessible={false}
@@ -6572,7 +6575,7 @@ export default function ChatScreen() {
         transparent
         animationType="slide"
         onRequestClose={closeForwardModal}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Close" style={styles.modalBackdrop} onPress={closeForwardModal}>
+        <Pressable accessible={false} style={styles.modalBackdrop} onPress={closeForwardModal}>
           <Pressable accessible={false}
             style={styles.actionSheet}
             onPress={(event) => event.stopPropagation()}>
@@ -6674,7 +6677,7 @@ export default function ChatScreen() {
         transparent
         animationType="slide"
         onRequestClose={() => setShowAttachments(false)}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Close"
+        <Pressable accessible={false}
           style={styles.modalBackdrop}
           onPress={() => setShowAttachments(false)}>
           <View style={styles.attachmentSheet}>
@@ -6730,7 +6733,7 @@ export default function ChatScreen() {
         transparent
         animationType="fade"
         onRequestClose={() => setShowChatMenu(false)}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Group info"
+        <Pressable accessible={false}
           style={styles.chatMenuBackdrop}
           onPress={() => setShowChatMenu(false)}>
           <View style={[styles.chatMenu, { top: insets.top + 52 }]}>

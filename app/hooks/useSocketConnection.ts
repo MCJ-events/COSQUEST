@@ -32,8 +32,6 @@ import { socketFollowerAdded } from "@/store/slices/followSlice";
 import { fetchIncomingCall } from "@/store/thunks/callThunks";
 import { fetchConversation, refreshConversations } from "@/store/thunks/chatThunks";
 
-// Previews within this long are fetched together (audit B5).
-
 // How long someone stays showing as "online" after their connection
 // actually drops — covers a brief app-background/network-blip without
 // flickering the dot, same idea as most chat apps' grace windows.

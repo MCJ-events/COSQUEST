@@ -90,8 +90,8 @@ export function EveryoneSheet({
   );
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable accessibilityRole="button" accessibilityLabel="Close" style={styles.backdrop} onPress={onClose}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Close" style={[styles.sheet, { paddingBottom: insets.bottom + 16 }]} onPress={() => {}}>
+      <Pressable accessible={false} style={styles.backdrop} onPress={onClose}>
+        <Pressable accessible={false} style={[styles.sheet, { paddingBottom: insets.bottom + 16 }]} onPress={() => {}}>
           <View style={styles.sheetHead}>
             <Text style={styles.sheetTitle}>In this call · {people.length}</Text>
             <Pressable onPress={onClose} hitSlop={10} accessibilityLabel="Close">

@@ -16,16 +16,21 @@ import { Linking } from "react-native";
 import { showFactionAlertById } from "@/components/alerts/alertStore";
 import { parsePlayUrl } from "@/features/world/deepLink";
 
-export function openFromNotification(data: any, actor?: { username?: string | null } | null) {
+export function openFromNotification(
+  data: any,
+  actor?: { username?: string | null } | null,
+  options?: { fromPush?: boolean },
+) {
   if (!data || typeof data !== "object") return;
   const type = String(data.type || "");
   if (type === "call") return;
 
   // Game pushes (raids, gifts...): their cosquest://play link. In the merged
   // app GameBridge (components/world/GameBridge.tsx) opens play links on the
-  // game page itself, so they are left to it here (opening both would push
-  // the play route twice).
-  if (typeof data.url === "string" && parsePlayUrl(data.url)) return;
+  // game page itself for a tapped PUSH, so those are left to it here (opening
+  // both would push the play route twice). Banners and the list still open
+  // them below (app/play.tsx hands the link to the game).
+  if (options?.fromPush && typeof data.url === "string" && parsePlayUrl(data.url)) return;
   if (typeof data.url === "string" && data.url.startsWith("cosquest://")) {
     Linking.openURL(data.url).catch(() => {});
     return;

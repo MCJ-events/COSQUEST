@@ -549,7 +549,7 @@ export default function UserProfileScreen() {
           imagePosts.length ? (
             <View style={styles.grid}>
               {imagePosts.map((post) => (
-                <Pressable accessibilityRole="button" accessibilityLabel="Copy"
+                <Pressable accessibilityRole="button" accessibilityLabel="Open post"
                   key={post.id}
                   style={[styles.thumbWrap, { width: column, height: column }]}
                   onPress={() => openPost(post.id)}>
@@ -585,7 +585,7 @@ export default function UserProfileScreen() {
                 );
 
                 return (
-                  <Pressable accessibilityRole="button" accessibilityLabel="Play"
+                  <Pressable accessibilityRole="button" accessibilityLabel="Open reel"
                     key={post.id}
                     style={[styles.thumbWrap, styles.reelThumb, { width: column, height: column * 1.4 }]}
                     onPress={() => openPost(post.id)}>
@@ -653,7 +653,7 @@ export default function UserProfileScreen() {
         transparent
         animationType="fade"
         onRequestClose={() => setMenuVisible(false)}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Close"
+        <Pressable accessible={false}
           style={styles.menuBackdrop}
           onPress={() => setMenuVisible(false)}>
           <View style={styles.menu}>

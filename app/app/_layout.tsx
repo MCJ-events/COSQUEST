@@ -19,7 +19,6 @@ import { RootErrorBoundary } from "@/components/ErrorBoundary";
 import ForceUpdateGate from "@/components/ForceUpdateGate";
 import OfflineBanner from "@/components/OfflineBanner";
 import PushBridge from "@/components/PushBridge";
-import ReportSheetHost from "@/components/safety/ReportSheet";
 import { startMonitoring } from "@/services/monitoring";
 import GameBridge from "@/components/world/GameBridge";
 import { KeyboardProvider } from "@/components/ui/keyboard";
@@ -169,9 +168,6 @@ export default function RootLayout() {
 
             {/* Push token, notification taps, waiting links, the badge (task 059) */}
             <PushBridge />
-
-            {/* The Report sheet any screen opens (task 059) */}
-            <ReportSheetHost />
 
             {/* "You're offline" and the messages waiting to send */}
             <OfflineBanner />
