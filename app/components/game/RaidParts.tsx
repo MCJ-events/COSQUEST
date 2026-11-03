@@ -3,7 +3,7 @@
 // it is a small SVG here) and the big HP bar that drains as the crew lands
 // hits. costquest-ios Features/RaidsFeature.swift (RaidHPBar, RaidLook).
 import { useEffect } from "react";
-import { Text, View } from "react-native";
+import { Platform, Text, View } from "react-native";
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSpring, withTiming } from "react-native-reanimated";
 import Svg, { Path } from "react-native-svg";
 
@@ -15,9 +15,12 @@ import { HUD_GLASS } from "./look";
 import { GF } from "./theme";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
+/** Hidden from screen readers; react-native-svg hands these props to the DOM on the web, where only aria-hidden is valid. */
+const SVG_HIDDEN = Platform.OS === "web" ? { "aria-hidden": true } : { accessibilityElementsHidden: true, importantForAccessibility: "no" as const };
+
 export function RaidCrown({ size = 20, color = "#FFFFFF" }: { size?: number; color?: string }) {
   return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" accessibilityElementsHidden importantForAccessibility="no">
+    <Svg width={size} height={size} viewBox="0 0 24 24" {...SVG_HIDDEN}>
       <Path d="M2.5 7.5 L7.5 12 L12 4 L16.5 12 L21.5 7.5 L19.5 18 H4.5 Z M4.5 19.5 H19.5 V21.5 H4.5 Z" fill={color} />
     </Svg>
   );

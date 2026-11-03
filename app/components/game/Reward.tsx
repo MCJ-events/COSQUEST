@@ -1,6 +1,6 @@
 // What a point paid, counted up where you can see it: "Rewards!" (or "For
-// trying") over the encounter, a cream panel whose lines appear every 280 ms,
-// the XP counting up, the level bar moving from where it was (and a LEVEL UP
+// trying") over the encounter, a cream panel whose lines appear every 90 ms,
+// the XP rolling up over 600 ms (art direction rewardCount), the level bar moving from where it was (and a LEVEL UP
 // ceremony if it crossed a level). The numbers are the server's.
 // costquest-ios Roam/RewardView.swift. Swift never shows coins on a reward.
 import { Ionicons } from "@expo/vector-icons";
@@ -30,6 +30,7 @@ import { showBanner } from "./Banner";
 import { ForgeCelebrate } from "./ForgeWorld";
 import { announce, GameButton, GamePanel, GameTitle, MAX_FONT_SCALE } from "./kit";
 import { LevelUp } from "./LevelUp";
+import { ACCENT, SURFACES } from "./look";
 import { Pop } from "./Pop";
 import { RelicDropExtra } from "./RelicDropCard";
 import { playSound } from "./sound";
@@ -140,13 +141,14 @@ export default function Reward({ reward, onDone, onShare }: { reward: RewardSumm
   const panelOpacity = useSharedValue(1);
   const levelsUp = reward.leveledUp && !!after;
 
-  // RewardView.play(): lines every 280 ms, the XP counted up, then the bar.
+  // Lines every 90 ms, then the XP rolls up (rewardCount) with the bar filling alongside.
   useEffect(() => {
     const t = ceremonyTimeline(reward.lines.length, reward.xp, levelsUp);
     const timers: ReturnType<typeof setTimeout>[] = [];
     const at = (ms: number, fn: () => void) => timers.push(setTimeout(fn, ms));
     const settle = () => {
-      bar.value = withTiming(standingProgress(after), { duration: t.settleMs, easing: Easing.out(Easing.quad) });
+      // rewardCount's curve: the bar fills as the number rolls up.
+      bar.value = withTiming(standingProgress(after), { duration: t.settleMs, easing: Easing.out(Easing.cubic) });
     };
     t.lineAt.forEach((ms, i) =>
       at(ms, () => {
@@ -199,7 +201,7 @@ export default function Reward({ reward, onDone, onShare }: { reward: RewardSumm
     // look-fight (art direction 7): the light screen colour, not the darkened realm backdrop; the
     // realm keeps a soft wash at the top so the place still colours the moment
     <View style={[styles.root, { backgroundColor: "#F4EEE2" }]}>
-      <LinearGradient colors={[`${realmColor(reward.realm)}33`, "rgba(244,238,226,0)"]} style={StyleSheet.absoluteFill} pointerEvents="none" />
+      <LinearGradient colors={[`${realmColor(reward.realm)}14`, "rgba(244,238,226,0)"]} style={StyleSheet.absoluteFill} pointerEvents="none" />
       <Animated.View
         style={[styles.column, { paddingTop: insets.top + 12 }, panelStyle]}
         pointerEvents={showLevelUp ? "none" : "auto"}
@@ -284,11 +286,12 @@ export default function Reward({ reward, onDone, onShare }: { reward: RewardSumm
           </View>
         </ScrollView>
         <View style={[styles.footer, { paddingBottom: insets.bottom + 20 }]}>
-          {onShare ? <GameButton title="Share to a chat" color={GP.navy} onPress={onShare} style={{ marginBottom: 10 }} /> : null}
+          {onShare ? <GameButton title="Share to a chat" color={SURFACES.light.surfaceAlt} onPress={onShare} style={{ marginBottom: 10 }} /> : null}
+          {/* The primary is Sun with an ink label (art direction 2.6, 7 "Win screen"). */}
           <GameButton
             title="Back to the map"
             testID="reward-done"
-            color={GP.mint}
+            color={ACCENT.sun.fill}
             onPress={() => {
               celebrate(reward);
               onDone();

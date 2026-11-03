@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { ceremonyTimeline, dailiesDone, factionLine, ioniconForSymbol, lineAmount, standingProgress } from "../rewardCeremony.ts";
+import { ceremonyTimeline, COUNT_MS, dailiesDone, factionLine, ioniconForSymbol, lineAmount, standingProgress } from "../rewardCeremony.ts";
 
 test("standing progress is the fraction of the level, full at the top", () => {
   assert.equal(standingProgress({ into_level: 30, level_span: 120, max_level: false }), 0.25);
@@ -11,40 +11,41 @@ test("standing progress is the fraction of the level, full at the top", () => {
   assert.equal(standingProgress(null), 0);
 });
 
-test("lines appear a quarter second in, every 280 ms", () => {
+test("lines land every 90 ms from 160 ms (art direction 7), the count a beat after the last", () => {
   const t = ceremonyTimeline(3, 100, false);
-  assert.deepEqual(t.lineAt, [250, 530, 810]);
-  // The XP counts after the last line's 280 ms.
-  assert.equal(t.xp[0].atMs, 250 + 280 * 3);
+  assert.deepEqual(t.lineAt, [160, 250, 340]);
+  assert.equal(t.xp[0].atMs, 160 + 90 * 3 + 60 + 25);
 });
 
-test("XP counts in 20 steps of 30 ms to the total", () => {
+test("XP rolls up over rewardCount (600 ms), easing out, whole numbers, landing on the total", () => {
   const t = ceremonyTimeline(2, 87, false);
-  assert.equal(t.xp.length, 20);
-  assert.equal(t.xp[1].atMs - t.xp[0].atMs, 30);
-  assert.equal(t.xp[19].value, 87);
-  assert.equal(t.xp[0].value, Math.floor(87 / 20));
-  for (let i = 1; i < 20; i++) assert.ok(t.xp[i].value >= t.xp[i - 1].value);
-  assert.equal(t.xpDoneAt, t.xp[0].atMs + 600);
+  assert.equal(t.xp.length, 24);
+  assert.equal(t.xp[23].value, 87);
+  for (let i = 1; i < 24; i++) assert.ok(t.xp[i].value >= t.xp[i - 1].value);
+  for (const s of t.xp) assert.equal(s.value, Math.floor(s.value));
+  // Ease-out: more than half the total in the first half of the time.
+  assert.ok(t.xp[11].value > 87 / 2);
+  assert.equal(t.xpDoneAt - (t.xp[0].atMs - 25), COUNT_MS);
+  assert.equal(COUNT_MS, 600);
 });
 
-test("no level-up: the bar settles as the XP finishes", () => {
+test("no level-up: the bar fills with the count", () => {
   const t = ceremonyTimeline(1, 10, false);
   assert.equal(t.level, null);
-  assert.equal(t.settleAt, t.xpDoneAt);
-  assert.equal(t.settleMs, 600);
+  assert.equal(t.settleAt, t.xpDoneAt - COUNT_MS);
+  assert.equal(t.settleMs, COUNT_MS);
 });
 
-test("level-up: bar fills in 500 ms, the overlay pops 550 ms after the count, the bar settles then", () => {
+test("level-up: bar fills in 450 ms after the count, the overlay pops 250 ms later, the bar settles then", () => {
   const t = ceremonyTimeline(1, 10, true);
-  assert.deepEqual(t.level, { fillAt: t.xpDoneAt, fillMs: 500, popAt: t.xpDoneAt + 550 });
-  assert.equal(t.settleAt, t.xpDoneAt + 550);
+  assert.deepEqual(t.level, { fillAt: t.xpDoneAt, fillMs: 450, popAt: t.xpDoneAt + 700 });
+  assert.equal(t.settleAt, t.xpDoneAt + 700);
 });
 
 test("no lines and no XP still has a timeline", () => {
   const t = ceremonyTimeline(0, 0, false);
   assert.deepEqual(t.lineAt, []);
-  assert.equal(t.xp[19].value, 0);
+  assert.equal(t.xp[23].value, 0);
 });
 
 test("a line shows XP only, never coins", () => {

@@ -16,7 +16,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { StatusBar } from "expo-status-bar";
 import { type ReactNode, useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { ActivityIndicator, Alert, Pressable, ScrollView, Share, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, Share, StyleSheet, Text, View } from "react-native";
 import Animated, {
   Easing,
   FadeIn,
@@ -335,6 +335,14 @@ export default function Encounter({
 
   const leave = () => {
     if (phaseRef.current === "playing") {
+      // react-native-web's Alert.alert does nothing: on the web the browser's own confirm asks instead.
+      if (Platform.OS === "web") {
+        if (globalThis.confirm?.("Leave this challenge? The clock keeps running. You can come back while it does.") ?? true) {
+          wardenVoice.quiet();
+          onClose();
+        }
+        return;
+      }
       Alert.alert("Leave this challenge?", "The clock keeps running. You can come back while it does.", [
         {
           text: "Leave",
@@ -370,6 +378,7 @@ export default function Encounter({
   const total = (attempt?.seconds ?? 20) + (boughtTime ? prices?.time_s ?? 10 : 0);
   const reveal = phase === "reveal" ? verdict?.reveal ?? null : null;
   const phaseName = typeof phase === "object" ? "failed" : phase;
+  const actions = !!attempt && (phase === "reveal" || (phase === "playing" && attempt.kind === "sequence"));
 
   // The scrim under the question: lighter while the shrine is shown, darker once you play.
   const scrim = useSharedValue(scrimOpacity("opening") / 0.7);
@@ -422,11 +431,23 @@ export default function Encounter({
         </View>
       </View>
 
-      {said ? <WardenLine key={said.id} text={said.text} compact={phase === "playing"} tint={ACCENT.sky.fill} /> : null}
+      {/* The Warden's line keeps its room once the question is up: lines come and go (quiet on submit, the
+          reaction after), and the question must not jump up and back under the player's thumb. */}
+      <View style={attempt ? styles.bubbleSlot : null}>
+        {said ? <WardenLine key={said.id} text={said.text} compact={phase === "playing" || phase === "submitting"} tint={ACCENT.sky.fill} /> : null}
+      </View>
 
-      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 12 }]} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-        <View style={styles.stage} pointerEvents="box-none">
-          {Native ? null : hasForge ? <ForgePointScene point={point} style={styles.forgeStage} /> : <ShrineCrystal tint={tierColor(point.tier)} ref={crystal2d} />}
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: actions ? 8 : insets.bottom + 12 }]} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        {/* Once the question is up the shrine steps back (a smaller stage), so the whole question and all its
+            answers fit on a phone without scrolling; the actions sit in the footer below. */}
+        <View style={[styles.stage, attempt && typeof phase !== "object" ? styles.stageCompact : null]} pointerEvents="box-none">
+          {Native ? null : hasForge ? (
+            <ForgePointScene point={point} style={attempt ? styles.forgeStageCompact : styles.forgeStage} />
+          ) : (
+            <StageScale small={!!attempt && typeof phase !== "object"}>
+              <ShrineCrystal tint={tierColor(point.tier)} ref={crystal2d} />
+            </StageScale>
+          )}
           {phase === "approach" ? (
             <View style={styles.opening} pointerEvents="none">
               {placed ? (
@@ -470,7 +491,7 @@ export default function Encounter({
             </View>
           </GamePanel>
         ) : attempt ? (
-          <View style={styles.quiz}>
+          <Animated.View entering={FadeInDown.duration(SHEET_OPEN_MS).easing(SHEET_EASE_OUT)} style={styles.quiz}>
             {phase !== "reveal" ? (
               <>
                 <DeadlineBar deadline={deadline} total={total} />
@@ -484,6 +505,7 @@ export default function Encounter({
                     busy={hinting}
                     onFifty={() => buy("fifty")}
                     onTime={() => buy("time")}
+                    onBroke={(what) => setHintProblem(`No ${what} in your bag. Spin Quest Points to find hints.`)}
                   />
                 ) : null}
                 {hintProblem ? <Text style={styles.hintProblem}>{hintProblem}</Text> : null}
@@ -542,24 +564,36 @@ export default function Encounter({
               />
             ) : null}
 
-            {phase === "playing" && attempt.kind === "sequence" ? (
-              <GameButton title="Lock it in" color={ACCENT.mint.fill} disabled={order.length < (attempt.challenge.beats?.length ?? 4)} onPress={submit} />
-            ) : null}
             {phase === "submitting" ? <ActivityIndicator color={look.textMuted} accessibilityLabel="Marking your answer" /> : null}
-            {phase === "reveal" && verdict?.can_retry ? (
-              <GameButton title={secondChanceLabel(bag.retry ?? 0)} color={PURPLE} onPress={retry} icon={<Ionicons name="refresh" size={18} color={labelOn(PURPLE)} />} />
-            ) : null}
             {phase === "reveal" && inRoom ? (
               <GameButton title="Photo" size="small" color={ACCENT.sky.fill} icon={<Ionicons name="camera" size={16} color={labelOn(ACCENT.sky.fill)} />} onPress={() => void photo()} style={{ alignSelf: "flex-start" }} />
             ) : null}
-            {phase === "reveal" ? (
-              <Animated.View entering={FadeIn.duration(300)}>
-                <GameButton title="Collect" color={ACCENT.sun.fill} onPress={collect} />
-              </Animated.View>
-            ) : null}
-          </View>
+          </Animated.View>
         ) : null}
       </ScrollView>
+
+      {/* The one next step, always on screen (never below the fold): lock in a sequence, or take the reward. */}
+      {actions && attempt ? (
+        <View style={[styles.footer, { paddingBottom: insets.bottom + 12 }]}>
+          {phase === "playing" && attempt.kind === "sequence" ? (
+            <GameButton title="Lock it in" color={ACCENT.sun.fill} disabled={order.length < (attempt.challenge.beats?.length ?? 4)} onPress={submit} />
+          ) : null}
+          {phase === "reveal" ? (
+            <Animated.View entering={FadeIn.duration(300)} style={styles.footerRow}>
+              {verdict?.can_retry ? (
+                <GameButton
+                  title={secondChanceLabel(bag.retry ?? 0)}
+                  color={PURPLE}
+                  onPress={retry}
+                  style={{ flex: 1 }}
+                  icon={<Ionicons name="refresh" size={18} color={labelOn(PURPLE)} />}
+                />
+              ) : null}
+              <GameButton title="Collect" color={ACCENT.sun.fill} onPress={collect} style={{ flex: 1 }} />
+            </Animated.View>
+          ) : null}
+        </View>
+      ) : null}
 
       {/* Over the stage, under the header (Leave and the AR switch stay reachable). */}
       {phase === "approach" && placed ? (
@@ -669,6 +703,7 @@ function HintBar({
   busy,
   onFifty,
   onTime,
+  onBroke,
 }: {
   coins: number;
   prices: { fifty: number; time: number; time_s: number };
@@ -678,12 +713,14 @@ function HintBar({
   busy: boolean;
   onFifty: () => void;
   onTime: () => void;
+  /** A hint the player has neither an item nor the coins for: say how to get one rather than a dead button. */
+  onBroke: (what: string) => void;
 }) {
   const styles = useThemedStyles(STYLE_PAIR);
   return (
     <View style={[styles.hints, busy && { opacity: 0.6 }]}>
-      <HintButton label="50/50" spoken="Fifty fifty" item={bag.fifty ?? 0} cost={prices.fifty} coins={coins} allowed={canFifty} busy={busy} onPress={onFifty} />
-      <HintButton label={`+${prices.time_s}s`} spoken={`Plus ${prices.time_s} seconds`} item={bag.time ?? 0} cost={prices.time} coins={coins} allowed={canTime} busy={busy} onPress={onTime} />
+      <HintButton label="50/50" spoken="Fifty fifty" item={bag.fifty ?? 0} cost={prices.fifty} coins={coins} allowed={canFifty} busy={busy} onPress={onFifty} onBroke={() => onBroke("50/50s")} />
+      <HintButton label={`+${prices.time_s}s`} spoken={`Plus ${prices.time_s} seconds`} item={bag.time ?? 0} cost={prices.time} coins={coins} allowed={canTime} busy={busy} onPress={onTime} onBroke={() => onBroke("extra time")} />
       <View style={{ flex: 1 }} />
       <View style={styles.balance} accessible accessibilityLabel={`${coins} coins`}>
         <GameCoin size={18} />
@@ -705,6 +742,7 @@ function HintButton({
   allowed,
   busy,
   onPress,
+  onBroke,
 }: {
   label: string;
   spoken: string;
@@ -714,9 +752,12 @@ function HintButton({
   allowed: boolean;
   busy: boolean;
   onPress: () => void;
+  onBroke: () => void;
 }) {
   const styles = useThemedStyles(STYLE_PAIR);
   const disabled = hintDisabled({ allowed, item, coins, cost, busy });
+  // Can't pay for it: still tappable, and the tap says where hints come from.
+  const broke = disabled && allowed && !busy && item <= 0 && coins < cost;
   const look = useLook();
   // Help is the quiet button: the well colour with ink words, so it never competes with the answers.
   const face = look.surfaceAlt;
@@ -725,8 +766,8 @@ function HintButton({
       onPressIn={() => {
         if (!disabled) pressFeedback();
       }}
-      onPress={onPress}
-      disabled={disabled}
+      onPress={broke ? onBroke : onPress}
+      disabled={disabled && !broke}
       accessibilityRole="button"
       accessibilityLabel={`Hint: ${spoken}, ${item > 0 ? `${item} in your bag` : `${cost} coins`}`}
       accessibilityState={{ disabled }}>
@@ -825,7 +866,7 @@ export function TriviaCard({
 }) {
   const styles = useThemedStyles(STYLE_PAIR);
   return (
-    <View style={{ gap: 14 }}>
+    <View style={{ gap: 10 }}>
       {question.clue ? (
         <View style={styles.clue} accessible accessibilityLabel={`Emoji clue: ${question.clue}`}>
           <Text style={styles.clueText} maxFontSizeMultiplier={MAX_FONT_SCALE}>
@@ -985,13 +1026,18 @@ const STYLE_PAIR = themedStyles(
       backgroundColor: L.surface,
     },
     chips: { flexDirection: "row", gap: 6 },
+    bubbleSlot: { minHeight: 60 },
     bubbleRow: { flexDirection: "row", alignItems: "flex-start", gap: 8, marginTop: 10, paddingHorizontal: 16 },
     wardenBadge: { width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: "#FFFFFF" },
     bubble: { flex: 1, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16, backgroundColor: L.surface, ...ELEVATION.low },
     bubbleText: { fontFamily: GF.body, fontSize: 15, lineHeight: 20, color: L.text },
     content: { flexGrow: 1, paddingHorizontal: 16, paddingTop: 8, gap: 14 },
     stage: { flex: 1, minHeight: 130, alignItems: "center", justifyContent: "center" },
+    stageCompact: { flex: 0, minHeight: 0, height: 92 },
     forgeStage: { width: "100%", height: 300 },
+    forgeStageCompact: { width: "100%", height: 92 },
+    footer: { paddingHorizontal: 16, paddingTop: 10, gap: 10 },
+    footerRow: { flexDirection: "row", gap: 10 },
     opening: { position: "absolute", bottom: 0, alignItems: "center", gap: 8, paddingHorizontal: 16, paddingVertical: 10, borderRadius: RADIUS.card, backgroundColor: L.surface, ...ELEVATION.low },
     approach: { alignItems: "center", gap: 4 },
     approachTitle: { fontFamily: GF.display, fontSize: 28, lineHeight: 32, color: L.text },
@@ -999,7 +1045,7 @@ const STYLE_PAIR = themedStyles(
     openingText: { fontFamily: GF.bold, fontSize: 17, lineHeight: 22, color: L.text },
     failTitle: { fontFamily: GF.display, fontSize: 28, lineHeight: 32, color: L.text },
     failText: { fontFamily: GF.regular, fontSize: 16, lineHeight: 22, color: L.text },
-    quiz: { gap: 14, padding: 16, borderRadius: RADIUS.sheet, backgroundColor: L.surface, ...ELEVATION.low },
+    quiz: { gap: 12, padding: 14, borderRadius: RADIUS.sheet, backgroundColor: L.surface, ...ELEVATION.low },
     deadline: { flexDirection: "row", alignItems: "center", gap: 8 },
     deadlineTrack: { flex: 1, height: 12, borderRadius: 6, backgroundColor: L.surfaceAlt, overflow: "hidden" },
     deadlineText: { fontFamily: GF.display, fontSize: 18, lineHeight: 22, width: 30, textAlign: "right", fontVariant: ["tabular-nums"] },
@@ -1009,11 +1055,11 @@ const STYLE_PAIR = themedStyles(
     balance: { flexDirection: "row", alignItems: "center", gap: 4 },
     balanceText: { fontFamily: GF.display, fontSize: 16, lineHeight: 20, color: L.text, fontVariant: ["tabular-nums"] },
     hintProblem: { fontFamily: GF.body, fontSize: 13, lineHeight: 17, color: TEXT_ON_LIGHT.danger },
-    clue: { alignItems: "center", paddingVertical: 14, borderRadius: RADIUS.card, backgroundColor: L.surfaceAlt },
-    clueText: { fontSize: 64, lineHeight: 78 },
-    question: { fontFamily: GF.display, fontSize: 26, lineHeight: 32, color: L.text },
+    clue: { alignItems: "center", paddingVertical: 8, borderRadius: RADIUS.card, backgroundColor: L.surfaceAlt },
+    clueText: { fontSize: 54, lineHeight: 66 },
+    question: { fontFamily: GF.display, fontSize: 24, lineHeight: 30, color: L.text },
     sub: { fontFamily: GF.body, fontSize: 15, lineHeight: 21, color: L.textMuted },
-    choiceFace: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 20, paddingVertical: 12, borderRadius: RADIUS.button, overflow: "hidden" },
+    choiceFace: { flexDirection: "row", alignItems: "center", gap: 8, minHeight: 48, paddingHorizontal: 20, paddingVertical: 11, borderRadius: RADIUS.button, overflow: "hidden" },
     choiceText: { flex: 1, fontFamily: GF.display, fontSize: 20, lineHeight: 24, textAlign: "left" },
     beat: { flexDirection: "row", alignItems: "center", gap: 12, padding: 12, marginBottom: 4, borderRadius: RADIUS.card, backgroundColor: L.surfaceAlt },
     beatBadge: { width: 38, height: 38, borderRadius: 19, alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: "#FFFFFF" },
@@ -1050,6 +1096,19 @@ const STYLE_PAIR = themedStyles(
     summaryQ: { color: D.text },
   },
 );
+
+/** The shrine steps back once the question is up: 1.0 -> 0.6 over the sheet's open curve (a fade-free scale; Reduce Motion: at once). */
+function StageScale({ small, children }: { small: boolean; children: ReactNode }) {
+  const reduce = useReducedMotion();
+  const k = useSharedValue(small ? STAGE_SMALL : 1);
+  useEffect(() => {
+    const to = small ? STAGE_SMALL : 1;
+    k.value = reduce ? to : withTiming(to, { duration: SHEET_OPEN_MS, easing: SHEET_EASE_OUT });
+  }, [small, reduce, k]);
+  const style = useAnimatedStyle(() => ({ transform: [{ scale: k.value }] }));
+  return <Animated.View style={style}>{children}</Animated.View>;
+}
+const STAGE_SMALL = 0.6;
 
 /** The tap hand's bounce (.symbolEffect(.bounce, options: .repeating)); still under Reduce Motion. */
 function Bounce({ children }: { children: ReactNode }) {

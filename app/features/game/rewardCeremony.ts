@@ -9,47 +9,56 @@ export function standingProgress(s: { into_level: number; level_span: number; ma
   return Number.isFinite(p) ? Math.min(1, Math.max(0, p)) : 0;
 }
 
-const LINE_START_MS = 250;
-const LINE_EVERY_MS = 280;
-const XP_STEPS = 20;
-const XP_STEP_MS = 30;
-const LEVEL_FILL_MS = 500;
-const LEVEL_HOLD_MS = 550;
-const SETTLE_MS = 600;
+// The art direction's reward motion (6.3 rewardCount, 7 "Win screen"), the same beats as the fight's
+// reward sheet (fightReward.ts): a line every 90 ms, then the XP rolls up over 600 ms, easing out, while
+// the bar fills with it. (It was RewardView.swift's 280 ms lines and a linear 20 x 30 ms count.)
+const LINE_START_MS = 160;
+const LINE_EVERY_MS = 90;
+/** rewardCount: 600 ms, ease-out (cubic). */
+export const COUNT_MS = 600;
+const XP_STEPS = 24;
+const LEVEL_FILL_MS = 450;
+const LEVEL_HOLD_MS = 250;
 
 export type CeremonyTimeline = {
   /** When each reward line appears (one tap sound each). */
   lineAt: number[];
-  /** The XP counter: twenty steps of 30 ms, each a whole number. */
+  /** The XP counter: 24 steps over COUNT_MS on an ease-out curve, each a whole number. */
   xp: { atMs: number; value: number }[];
   /** The XP has counted: extras (the Relic) land now. */
   xpDoneAt: number;
   /** Level-up only: the bar eases to full, then the level changes and the overlay shows. */
   level: { fillAt: number; fillMs: number; popAt: number } | null;
-  /** The bar settles on the new progress (a level-up settles behind the overlay). */
+  /** The bar moves to the new progress: with the count (no level-up), or behind the overlay (level-up). */
   settleAt: number;
   settleMs: number;
 };
 
-/** RewardView.play(): a quarter second, a line every 280 ms, XP in 20 x 30 ms, then the bar. */
+/** The ease-out of rewardCount: fast first, landing softly on the total. */
+function easeOut(k: number): number {
+  const c = Math.min(1, Math.max(0, k));
+  return 1 - (1 - c) ** 3;
+}
+
 export function ceremonyTimeline(lineCount: number, xp: number, leveledUp: boolean): CeremonyTimeline {
   const lines = Math.max(0, Math.floor(lineCount));
   const lineAt = Array.from({ length: lines }, (_, i) => LINE_START_MS + LINE_EVERY_MS * i);
-  const countStart = LINE_START_MS + LINE_EVERY_MS * lines;
+  // The count starts as the last line lands (its slide is ~0.35 s; a small beat after it).
+  const countStart = LINE_START_MS + LINE_EVERY_MS * lines + (lines > 0 ? 60 : 0);
   const total = Math.max(0, Math.floor(xp));
-  const steps = Array.from({ length: XP_STEPS }, (_, i) => ({
-    atMs: countStart + XP_STEP_MS * i,
-    value: Math.floor((total * (i + 1)) / XP_STEPS),
-  }));
-  const xpDoneAt = countStart + XP_STEP_MS * XP_STEPS;
-  const popAt = xpDoneAt + LEVEL_HOLD_MS;
+  const steps = Array.from({ length: XP_STEPS }, (_, i) => {
+    const ms = (COUNT_MS * (i + 1)) / XP_STEPS;
+    return { atMs: Math.round(countStart + ms), value: i + 1 === XP_STEPS ? total : Math.min(total, Math.floor(total * easeOut(ms / COUNT_MS))) };
+  });
+  const xpDoneAt = countStart + COUNT_MS;
+  const popAt = xpDoneAt + LEVEL_FILL_MS + LEVEL_HOLD_MS;
   return {
     lineAt,
     xp: steps,
     xpDoneAt,
     level: leveledUp ? { fillAt: xpDoneAt, fillMs: LEVEL_FILL_MS, popAt } : null,
-    settleAt: leveledUp ? popAt : xpDoneAt,
-    settleMs: SETTLE_MS,
+    settleAt: leveledUp ? popAt : countStart,
+    settleMs: COUNT_MS,
   };
 }
 

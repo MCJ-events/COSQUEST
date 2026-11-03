@@ -102,7 +102,7 @@ export function fallbackLine(m: WardenMoment): string {
             : s === "hype"
               ? [`${place}! This is it, ${name}. Give it everything!`, `You made it to ${place}! I knew you would. Let's go!`]
               : s === "trailer"
-                ? [`One city. One shrine. ${place}. And ${name}, ready.`, `This summer, ${name} arrives at ${place}. Nothing will be the same.`]
+                ? [`One city. One shrine. ${place}. And ${name}, ready.`, `Coming to ${place}: ${name}. Nothing will be the same.`]
                 : s === "quippy"
                   ? [`${place}, ${name}. Try not to make it look too easy.`, `Oh good, ${place}. It's been dying to meet you, ${name}.`]
                   : [`Welcome to ${place}, ${name}. The shrine is listening.`, `${place}. A good place for a challenge, ${name}.`];
