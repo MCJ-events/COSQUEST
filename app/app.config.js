@@ -126,7 +126,7 @@ function cosquestBeta(config, env) {
     plugins,
     extra,
     android: {
-      ...config.android,
+      ...androidWithoutTeamFirebase(config.android, env),
       package: env.COSQUEST_ANDROID_PACKAGE || "com.subomi.cosquest.chat",
       versionCode: Number(env.COSQUEST_ANDROID_VERSION_CODE || buildNumber),
     },
@@ -167,4 +167,17 @@ function cosquestBeta(config, env) {
       },
     },
   };
+}
+
+// The team's google-services.json only has a Firebase client for their own
+// package (com.dammy0227.cosquest), and Gradle refuses to build another
+// package with it. A beta build leaves it out unless
+// COSQUEST_GOOGLE_SERVICES_FILE names one with com.subomi.cosquest.chat in it:
+// without it Android has no FCM, so no push on the beta APK (the app says
+// "Push registration skipped" and carries on).
+function androidWithoutTeamFirebase(android, env) {
+  const out = { ...(android || {}) };
+  if (env.COSQUEST_GOOGLE_SERVICES_FILE) out.googleServicesFile = env.COSQUEST_GOOGLE_SERVICES_FILE;
+  else delete out.googleServicesFile;
+  return out;
 }
