@@ -174,6 +174,12 @@ async function main() {
     const nativeCalls = await require('./nativeCalls').run(`http://localhost:${process.env.PORT}`);
     result.pass += nativeCalls.pass;
     result.fail += nativeCalls.fail;
+    const callNotifications = await require('./callNotifications').run(`http://localhost:${process.env.PORT}`);
+    result.pass += callNotifications.pass;
+    result.fail += callNotifications.fail;
+    const ringOutcome = await require('./ringOutcome').run();
+    result.pass += ringOutcome.pass;
+    result.fail += ringOutcome.fail;
   } finally {
     require('../src/sparks').stop();
     require('../src/utils/meetingNotifications').stop();

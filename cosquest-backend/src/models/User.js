@@ -146,6 +146,10 @@ const userSchema = new mongoose.Schema(
         // screen (src/utils/callPush.js).
         voipToken: { type: String, default: null },
         voipType: { type: String, enum: ['APNS_VOIP', 'FCM', null], default: null },
+        // Android: the app shows its own ringing notification (Answer,
+        // Decline) from a data-only push, so calls send call_incoming /
+        // call_ended / call_missed instead of the ringtone push.
+        dataCalls: { type: Boolean, default: false },
       },
     ],
 

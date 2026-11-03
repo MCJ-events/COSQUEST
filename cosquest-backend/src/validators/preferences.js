@@ -23,9 +23,10 @@ function locationRules(prefix = '') {
 // PATCH /api/users/me/preferences/location
 const location = locationRules();
 
-// POST /api/users/me/devices { pushToken, platform, voipToken?, voipType? }
+// POST /api/users/me/devices { pushToken, platform, voipToken?, voipType?, dataCalls? }
 // voipToken/voipType: the call token from expo-callkit-telecom, together
-// (voipToken null takes it off).
+// (voipToken null takes it off). dataCalls: true when the app rings itself
+// from data-only call pushes (Android).
 const missingDevice = 'pushToken and platform ("ios" | "android" | "web") are required.';
 const shortStrings = 'pushToken and platform must be short strings.';
 const voipPair = 'voipToken and voipType ("APNS_VOIP" | "FCM") go together.';
@@ -37,6 +38,7 @@ const registerDevice = [
   string('voipToken', { min: 1, max: 1000, nullable: true, message: 'voipToken must be a token of at most 1000 characters.' }),
   oneOfValues('voipType', ['APNS_VOIP', 'FCM'], { nullable: true, message: voipPair }),
   body('voipType').custom((type, { req }) => req.body.voipToken == null || Boolean(type)).withMessage(voipPair),
+  boolean('dataCalls', { message: 'dataCalls must be true or false.' }),
 ];
 
 // DELETE /api/users/me/devices { pushToken }, or /api/users/me/devices/:pushToken

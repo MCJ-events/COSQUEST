@@ -435,7 +435,7 @@ Response:
 }
 ```
 
-**POST** `/api/users/me/devices` (Bearer). `voipToken` / `voipType` (`APNS_VOIP` on iPhones, `FCM` on Android) are optional: the call token from expo-callkit-telecom, so calls ring on the phone's own call screen; `voipToken: null` takes it off. The response also has `callRinging`: `"native"` or `"push"` (PUSH.md, Ringing).
+**POST** `/api/users/me/devices` (Bearer). `voipToken` / `voipType` (`APNS_VOIP` on iPhones, `FCM` on Android) are optional: the call token from expo-callkit-telecom, so calls ring on the phone's own call screen; `voipToken: null` takes it off. `dataCalls` (optional, `true` / `false`, Android): the app shows its own ringing notification from data-only call pushes (`call_incoming`, `call_ended`, `call_missed`); left as it was when not sent. The response also has `callRinging`: `"native"`, `"data"` or `"push"` (PUSH.md, Ringing).
 ```json
 {
   "pushToken": "ExponentPushToken[abc123]",

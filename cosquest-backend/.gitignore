@@ -10,3 +10,6 @@ firebase-adminsdk*.json
 fcm*.json
 google-services.json
 GoogleService-Info.plist
+
+# Craft's (the coding agent's) session notes.
+.craft/

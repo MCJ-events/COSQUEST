@@ -14,7 +14,8 @@ Phones get a push for a new DM or group message, an @mention, a follow, a group 
 |---|---|---|
 | New message | the other person in a DM; members of a user-made group | muted chat, blocked either way, @mentioned (the mention push covers it), `@everyone` (sent as mentions), community and faction rooms |
 | @mention, follow, group notice | the people the in-app notification goes to | follow: `notificationCategories.friendActivity` off |
-| Call ringing | the people rung | rings for a minute: the phone's own call screen, or the ringtone push (see Ringing below) |
+| Call ringing | the people rung | rings for a minute: the phone's own call screen, the app's own ringing notification, or the ringtone push (see Ringing below) |
+| Missed call | the people whose ring ran out, or whose caller hung up first | declined or answered (on any of their phones) |
 | Game event | the user ids the game sends | the `category` switch is off |
 
 Always skipped: `preferences.notificationsEnabled` off, and any device row left over from before registration required a session (`authed: false`). Messages, mentions, post activity and scheduled calls skip users with the app **on screen** (they get the in-app `banner` socket event instead); calls and game events always push.
@@ -34,7 +35,7 @@ Calls always push, even with the app open: the app shows its own call screen fro
 
 ## Ringing
 
-A call rings for **a minute**; anyone who hasn't answered by then has missed it (`RING_SECONDS` in `src/utils/callPush.js`). Each phone rings one of two ways.
+A call rings for **a minute**; anyone who hasn't answered by then has missed it (`RING_SECONDS` in `src/utils/callPush.js`). Each phone rings one of three ways, in this order: its own call screen (a call token), the app's own ringing notification (Android with `dataCalls`), or the ringtone push. When a person's ring is over, each of their phones is told once (`callRingEnded` in `src/utils/push.js`, `src/utils/ringOutcome.js`).
 
 ### Like a phone call (the phone's own call screen)
 
@@ -54,6 +55,20 @@ Phones that registered a call token (`voipToken`, from expo-callkit-telecom in t
 
 Each side stays off until its variables are set. Until then the device registration answers `callRinging: 'push'` and calls ring the second way. Never commit the `.p8` or the service account file.
 
+### The app's own ringing notification (Android, data pushes)
+
+An Android phone registered with `dataCalls: true` (and no call token) gets data-only pushes through Expo: no title, text or sound, so Android hands them to the app even when it isn't running (expo-notifications' background task), and the app shows a full-screen ringing notification with Answer and Decline. No new keys are needed. iPhones keep the ringtone push: iOS holds back data-only pushes, so they need CallKit.
+
+| `data.type` | When | Data | The app |
+|---|---|---|---|
+| `call_incoming` | the call rings (priority high, `ttl` 60) | `callId`, `chatId`, `callType` (`audio` \| `video`), `isGroup`, `caller { id, username, name, avatarKey, avatarPhotoUrl }`, `expiresAt` | rings; stops by itself at `expiresAt` if nothing else comes |
+| `call_ended` | their ring is over without a missed call (`ttl` 60) | `callId`, `reason`: `answered` (on any of their phones), `declined` (on any of their phones), `ended` | stops ringing. Never a hang-up: the phone that answered ignores it |
+| `call_missed` | the minute ran out, or the caller hung up while it rang | `callId`, `chatId`, `callType`, `isGroup`, `caller` (whoever rang them) | stops ringing and shows "Missed call" |
+
+- **Answer:** `POST /api/calls/:callId/accept`, then open the call (the answer has the LiveKit token; `410` if it has ended).
+- **Decline:** `POST /api/calls/:callId/decline`. Both use the app's stored session.
+- **Order:** a caller who hangs up at once can make `call_missed` arrive before `call_incoming`. Ignore a `call_incoming` for a call id already ended, or one past its `expiresAt`.
+
 ### With the ringtone push
 
 Every other phone: a push with `sound: 'ringtone.wav'`, `interruptionLevel: 'time-sensitive'`, on the `calls` channel, living for the minute.
@@ -62,18 +77,31 @@ Every other phone: a push with `sound: 'ringtone.wav'`, `interruptionLevel: 'tim
 - **Android:** the sound comes from the `calls` channel, so the app creates `calls` with `ringtone_long.wav` (60 s) and `MAX` importance. Android fixes a channel's sound when the channel is first created: a phone that already has `calls` keeps its old sound until the app is reinstalled.
 - **App open:** the app rings itself from `call:incoming` until `call:updated` shows the call answered, declined, missed or over.
 
+### Missed calls
+
+A missed call (the minute ran out, or the caller hung up while it rang) is told to each phone that doesn't ring itself as a notification: the caller's name, "Missed voice call" or "Missed video call", `data: { type: 'missed_call', callId, chatId }` (the tap opens the chat), on the `default` channel. On iPhones it takes the ringtone notification's place (the same `collapseId`). With the app on screen, it shows as the in-app banner. Phones that ring themselves get `call_missed` instead, so nobody gets two. The missed call also stays in the chat as the call entry.
+
 Ready-made code, the setup and free ringtones: `examples/expo-chat/NativeCalls.js`, `examples/expo-chat/CallRinging.js`, `examples/expo-chat/assets/sounds/`, and "Ringing calls" in `examples/expo-chat/README.md`.
 
 ## Devices
 
-- `POST /api/users/me/devices { pushToken, platform, voipToken?, voipType? }` (Bearer only). The token is taken off any other account first (one phone, one signed-in account) and marked `authed`. Requests without a valid session get `401` and store nothing. `voipToken` / `voipType` (`APNS_VOIP` | `FCM`): the call token from expo-callkit-telecom, sent together; `voipToken: null` takes it off. The answer has `callRinging`: `native` (this phone's calls ring on its own call screen, so the app shouldn't ring itself too) or `push`.
+- `POST /api/users/me/devices { pushToken, platform, voipToken?, voipType?, dataCalls? }` (Bearer only). The token is taken off any other account first (one phone, one signed-in account) and marked `authed`. Requests without a valid session get `401` and store nothing. `voipToken` / `voipType` (`APNS_VOIP` | `FCM`): the call token from expo-callkit-telecom, sent together; `voipToken: null` takes it off. `dataCalls` (`true` / `false`): the app rings itself from data pushes (Android only; left as it was when not sent). The answer has `callRinging`: `native` (this phone's calls ring on its own call screen, so the app shouldn't ring itself too), `data` (the app's own ringing notification) or `push`.
 - `DELETE /api/users/me/devices/:pushToken` (or `DELETE /api/users/me/devices { pushToken }`), Bearer only: the app calls it on sign-out.
 - Every push goes out at high priority, so a phone in battery saving still shows it at once.
 - Tokens Expo reports as `DeviceNotRegistered` are removed.
 
 ## Taps
 
-Every push carries `data.type`. Message, mention and call pushes carry `data.chatId` (the app opens that chat). Game pushes carry `data.url`, a `cosquest://play?...` link (the app opens the game there).
+Every push carries `data.type`. Message, mention, call and missed-call pushes carry `data.chatId` (the app opens that chat). Game pushes carry `data.url`, a `cosquest://play?...` link (the app opens the game there).
+
+### Reply and Mark as read
+
+Message and mention pushes carry `categoryId: 'message'` and `data.messageId`. The app registers that category once with `Notifications.setNotificationCategoryAsync('message', [...])`, with a text-input **Reply** button and a **Mark as read** button. Neither opens the app (`opensAppToForeground: false`). The buttons call, with the app's stored session:
+
+- **Reply:** `POST /api/chats/:chatId/messages { content, replyTo? }`. Sending also marks the chat read for the sender.
+- **Mark as read:** `PATCH /api/chats/:chatId/read`, which marks the whole chat read and sends `chat:read` (unless read receipts are off).
+
+A build that hasn't registered the category shows the plain notification. Other pushes have no buttons (`categoryId` is never set on them).
 
 Android channels: `messages`, `calls`, `game`, `default` (the app creates them).
 

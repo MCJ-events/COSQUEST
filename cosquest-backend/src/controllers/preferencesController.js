@@ -116,6 +116,9 @@ async function registerDevice(req, res) {
   const voipGiven = req.body.voipToken !== undefined;
   const voipToken = req.body.voipToken || null;
   const voipType = voipToken ? req.body.voipType : null;
+  // dataCalls: the app shows its own ringing notification from data-only
+  // call pushes (Android); left as it was when not sent.
+  const dataCalls = typeof req.body.dataCalls === 'boolean' ? req.body.dataCalls : undefined;
   if (voipToken) {
     await User.updateMany(
       { 'devices.voipToken': voipToken },
@@ -137,11 +140,16 @@ async function registerDevice(req, res) {
       existing.voipToken = voipToken;
       existing.voipType = voipType;
     }
+    if (dataCalls !== undefined) existing.dataCalls = dataCalls;
   });
   const phone = updated.devices.find((d) => d.pushToken === pushToken);
   // How this phone's calls ring: 'native' (the phone's own call screen, so
-  // the app doesn't ring itself as well) or 'push' (the ringtone push).
-  return res.json({ user: userModel.sanitize(updated), callRinging: require('../utils/callPush').canRing(phone) ? 'native' : 'push' });
+  // the app doesn't ring itself as well), 'data' (the app's own ringing
+  // notification, from call_incoming) or 'push' (the ringtone push).
+  let callRinging = 'push';
+  if (require('../utils/callPush').canRing(phone)) callRinging = 'native';
+  else if (require('../utils/push').ringsItself(phone)) callRinging = 'data';
+  return res.json({ user: userModel.sanitize(updated), callRinging });
 }
 
 // DELETE /api/users/me/devices/:pushToken, or DELETE /api/users/me/devices

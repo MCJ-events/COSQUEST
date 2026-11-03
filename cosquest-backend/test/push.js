@@ -95,7 +95,14 @@ async function run(baseUrl) {
       'new DM pushes to the other person with chatId and the messages channel', toB);
     check(toB?.priority === 'high', 'every push goes out at high priority (a chat message too)', toB);
     check(toB?.title === a.username && toB?.body === 'Meet at the shrine at six', 'DM push: sender as title, message as body', toB);
+    check(toB?.categoryId === 'message' && /^[a-f0-9]{24}$/.test(toB.data.messageId || ''), 'a message push has the Reply / Mark as read buttons (categoryId message) and the message id', toB);
     check(!sent.some((m) => m.to === a.pushToken), 'the sender gets no push for their own message', sent);
+    // What the buttons do, with the push's chatId and messageId and B's session.
+    const reply = await request('POST', `/api/chats/${toB.data.chatId}/messages`, b.token, { content: 'On my way', replyTo: toB.data.messageId });
+    const read = await request('PATCH', `/api/chats/${toB.data.chatId}/read`, b.token);
+    check(reply.status === 201 && read.status === 200, 'Reply and Mark as read work from the push alone (chatId, messageId)', { reply: reply.status, read: read.status });
+    const noSession = await request('POST', `/api/chats/${toB.data.chatId}/messages`, null, { content: 'no session' });
+    check(noSession.status === 401, 'a reply without the session is refused', noSession);
 
     // Muted chat: nothing.
     sent.length = 0;
@@ -154,6 +161,7 @@ async function run(baseUrl) {
     const forB = sent.filter((m) => m.to === b.pushToken);
     check(forB.length === 1 && forB[0].data.type === 'mention' && forB[0].data.chatId === dm,
       'a mention sends one push (the mention), with the chat', forB);
+    check(forB[0]?.categoryId === 'message' && /^[a-f0-9]{24}$/.test(forB[0].data.messageId || ''), 'a mention push has the message buttons and the message id too', forB[0]);
 
     // A ringing call.
     sent.length = 0;
@@ -164,6 +172,7 @@ async function run(baseUrl) {
       'a call rings the other phone with a short-lived push', { status: started.status, ring });
     check(ring?.sound === 'ringtone.wav' && ring.interruptionLevel === 'time-sensitive' && toB?.sound === 'default' && !toB.interruptionLevel,
       'a call push plays the ringtone and is time-sensitive; a message keeps the normal sound', { ring, toB });
+    check(ring && !ring.categoryId, 'a call push has no message buttons', ring);
     if (started.data?.call?.id) await request('POST', `/api/calls/${started.data.call.id}/end`, a.token);
 
     // Still "online" (phone just locked: its socket is open for a while yet):
