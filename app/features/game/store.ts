@@ -311,6 +311,10 @@ export function createGameStore(deps: GameStoreDeps) {
      * remembered for that chat user. `null` signs out: the world starts over.
      */
     async setSession(token: string | null): Promise<void> {
+      // Signed out while never signed in (the shell's first word when it starts
+      // signed out): nothing to forget, and a player chosen on this phone
+      // (playOnThisPhone, e.g. a test page) stays.
+      if (!token && chatToken === null && identity?.source !== "account") return;
       const serial = ++sessionSerial;
       cancelRetry?.();
       cancelRetry = null;
