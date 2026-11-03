@@ -1,3 +1,4 @@
+import { FONTS } from "@/constants/fonts";
 import { Button } from "@/components/Button";
 import { Field } from "@/components/Field";
 import { requestPasswordReset } from "@/services/auth";
@@ -6,8 +7,10 @@ import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { OnboardingScreen } from "@/components/OnboardingScreen";
 import { C } from "@/theme/tokens";
+import { themedStyles, useInk, useThemedStyles } from "@/constants/chatTheme";
 
 export default function ForgotPassword() {
+  const styles = useThemedStyles(STYLE_PAIR);
   const [form, setForm] = useState({
     email: "",
   });
@@ -90,19 +93,21 @@ export default function ForgotPassword() {
   );
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   screen: {
     flex: 1,
     paddingHorizontal: 25,
     paddingBottom: 70,
   },
   headline: {
+    fontFamily: FONTS.bold,
     fontSize: 35,
     fontWeight: "800",
     textAlign: "center",
     color: C.ink,
   },
   sub: {
+    fontFamily: FONTS.regular,
     fontSize: 14,
     color: C.inkSoft,
     textAlign: "center",

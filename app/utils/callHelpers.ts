@@ -1,8 +1,8 @@
 import { AudioModule } from "expo-audio";
 import * as ImagePicker from "expo-image-picker";
-import { Alert } from "react-native";
+import { Alert, Linking } from "react-native";
 
-import { AVATARS } from "@/constants/avatars";
+import { AVATARS, smallAvatarUrl } from "@/constants/avatars";
 
 import type { CallType } from "@/services/calls";
 
@@ -17,10 +17,10 @@ export async function ensureCallPermissions(type: CallType): Promise<boolean> {
   const mic = await AudioModule.requestRecordingPermissionsAsync();
 
   if (!mic.granted) {
-    Alert.alert(
-      "Microphone permission",
-      "Allow CosQuest to use your microphone to make calls. You can turn it on in Settings.",
-    );
+    Alert.alert("Microphone blocked", "Allow CosQuest to use your microphone to make calls.", [
+      { text: "Not now", style: "cancel" },
+      { text: "Open Settings", onPress: () => Linking.openSettings().catch(() => {}) },
+    ]);
     return false;
   }
 
@@ -28,10 +28,10 @@ export async function ensureCallPermissions(type: CallType): Promise<boolean> {
     const camera = await ImagePicker.requestCameraPermissionsAsync();
 
     if (!camera.granted) {
-      Alert.alert(
-        "Camera permission",
-        "Allow CosQuest to use your camera for video calls. You can turn it on in Settings.",
-      );
+      Alert.alert("Camera blocked", "Your video stays off. Allow CosQuest to use your camera in Settings to turn it on.", [
+        { text: "Not now", style: "cancel" },
+        { text: "Open Settings", onPress: () => Linking.openSettings().catch(() => {}) },
+      ]);
       return false;
     }
   }
@@ -62,7 +62,9 @@ export function getAvatarSource(person?: AvatarPerson) {
     person?.avatar;
 
   if (photo) {
-    return { uri: photo };
+    // A resized copy (Cloudinary): full-size uploads are 140-400 KB each,
+    // 480 px is ~10x smaller and still sharp on the largest call tile.
+    return { uri: smallAvatarUrl(photo, 480) };
   }
 
   const preset = AVATARS.find((avatar) => avatar.id === person?.avatarKey);

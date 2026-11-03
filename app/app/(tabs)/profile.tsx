@@ -11,6 +11,9 @@ import { fetchPosts } from "@/store/thunks/postThunks";
 import { fetchCurrentUser } from "@/store/thunks/userThunks";
 import { RankBadge } from "@/components/chat/RankBadge";
 import { nextRankFor, useRanks, type Rank } from "@/services/ranks";
+import { Spotlight } from "@/components/community/Spotlight";
+import DesktopProfile from "@/components/desktop/DesktopProfile";
+import { useIsDesktop } from "@/hooks/useDesktop";
 
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
@@ -21,30 +24,31 @@ import { useVideoPlayer, VideoView } from "expo-video";
 import { useEffect, useMemo, useState } from "react";
 
 import {
-  RefreshControl,
-  useWindowDimensions,
+  Dimensions,
   Platform,
   Pressable,
+  RefreshControl,
   ScrollView,
   Share,
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
 } from "react-native";
 
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { themedStyles, useInk, useThemedStyles } from "@/constants/chatTheme";
 import { tabBarSpace } from "@/constants/tabBar";
-import { C } from "@/theme/tokens";
 import { SkeletonProfile } from "@/components/kit";
 import { GameProgressRow } from "@/components/world/GameProgressRow";
 import { gameStore } from "@/features/game/runtime";
 
 const refreshGame = () => gameStore.refreshMe();
 
-type Tab = "Posts" | "Reels" | "Thoughts";
+type Tab = "Posts" | "Reels" | "Thoughts" | "Spotlight";
 
 // Figma colours
-const PINK = C.brandSoft;
+const PINK = "#C34D9C";
 const PURPLE = "#7E2167";
 
 // How many faction member avatars to show before the "+N" pill.
@@ -94,6 +98,7 @@ function Stat({
   onPress?: () => void;
   align?: "flex-start" | "center" | "flex-end";
 }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const content = (
     <>
       <Text style={styles.statValue}>{value}</Text>
@@ -124,6 +129,7 @@ function plural(n: number, one: string, many: string): string {
 }
 
 function GameStat({ value, label }: { value: number; label: string }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   return (
     <View style={styles.gameStat}>
       <Text style={styles.gameStatValue}>{value}</Text>
@@ -139,6 +145,7 @@ function ActionButton({
   label: string;
   onPress: () => void;
 }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   return (
     <Pressable
       style={({ pressed }) => [styles.action, pressed && { opacity: 0.7 }]}
@@ -174,6 +181,8 @@ function FactionProfileCard({
   previewMembers: FactionMemberPreview[];
   rankInfo: FactionRankInfo;
 }) {
+  const styles = useThemedStyles(STYLE_PAIR);
+  const ink = useInk();
   // Full bar at the top rank (or a rank set by hand).
   const progress = rankInfo.nextPoints
     ? Math.min(rankInfo.points / rankInfo.nextPoints, 1)
@@ -201,7 +210,7 @@ function FactionProfileCard({
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           style={styles.factionShield}>
-          <Ionicons name="shield-outline" size={24} color="#FFFFFF" />
+          <Ionicons name="shield-outline" size={24} color={ink.text("#FFFFFF")} />
         </LinearGradient>
 
         <View style={styles.factionIdentity}>
@@ -279,6 +288,8 @@ function FactionProfileCard({
 }
 
 function ReelItem({ post }: { post: Post }) {
+  const styles = useThemedStyles(STYLE_PAIR);
+  const ink = useInk();
   const videoUrl = post.image;
 
   const player = useVideoPlayer(videoUrl || "", (player) => {
@@ -288,7 +299,7 @@ function ReelItem({ post }: { post: Post }) {
   if (!videoUrl) {
     return (
       <View style={styles.reelUnavailable}>
-        <Ionicons name="videocam-outline" size={32} color={C.muted} />
+        <Ionicons name="videocam-outline" size={32} color={ink.text("#9C9CAA")} />
         <Text style={styles.reelUnavailableText}>Video unavailable</Text>
       </View>
     );
@@ -315,6 +326,7 @@ function ReelItem({ post }: { post: Post }) {
 }
 
 function ThoughtItem({ post }: { post: Post }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   return (
     <View style={styles.thoughtCard}>
       <Text style={styles.thoughtText}>
@@ -329,6 +341,10 @@ function ThoughtItem({ post }: { post: Post }) {
 }
 
 export default function Profile() {
+  // Computer: your card | your posts, side by side.
+  const desktop = useIsDesktop();
+  const styles = useThemedStyles(STYLE_PAIR);
+  const ink = useInk();
   const { width: windowWidth } = useWindowDimensions();
   const sizes = useMemo(() => heroSizes(windowWidth), [windowWidth]);
   const insets = useSafeAreaInsets();
@@ -358,11 +374,13 @@ export default function Profile() {
 
   const email = authUser?.email || user?.email || "";
 
+  // Wait for the login token (restored a moment after the app opens).
+  const sessionToken = useAppSelector((state) => state.auth.token);
   useEffect(() => {
-    if (email) {
+    if (email && sessionToken) {
       dispatch(fetchCurrentUser(email));
     }
-  }, [dispatch, email]);
+  }, [dispatch, email, sessionToken]);
 
   useEffect(() => {
     if (!token) {
@@ -586,12 +604,64 @@ export default function Profile() {
 
   const profileError = userError || postsError;
 
+  // ---------- computer ----------
+  if (desktop) {
+    return (
+      <DesktopProfile
+        displayName={displayName}
+        username={username}
+        category={category || undefined}
+        about={about || undefined}
+        photoUri={cloudinaryPhoto}
+        avatar={selectedAvatar}
+        followers={followersTotal || 0}
+        following={followingTotal || 0}
+        postCount={postCount}
+        quests={quests}
+        wins={wins}
+        points={points}
+        rankName={(myRank as any)?.name || null}
+        factionName={selectedFaction ? humanize(selectedFaction.id) : null}
+        factionLogo={selectedFaction?.label || null}
+        factionCard={
+          selectedFaction ? (
+            <FactionProfileCard
+              faction={selectedFaction}
+              memberCount={factionMembersState?.pagination.total}
+              memberCountLoading={factionMembersLoading && !factionMembersState}
+              previewMembers={factionMembersState?.users || []}
+              rankInfo={factionRankInfo}
+            />
+          ) : null
+        }
+        tab={tab}
+        onTab={setTab}
+        imagePosts={imagePosts as any}
+        reels={reelPosts.map((post) => <ReelItem key={post.id} post={post} />)}
+        thoughts={thoughtPosts.map((post) => <ThoughtItem key={post.id} post={post} />)}
+        loading={profileLoading}
+        error={profileError || null}
+        onRetry={() => {
+          if (email) dispatch(fetchCurrentUser(email));
+          if (token) dispatch(fetchPosts(token));
+        }}
+        onNewPost={() => router.push("/community")}
+        onEdit={() => router.push("/edit-profile")}
+        onShare={handleShareProfile}
+        onFollowers={() => router.push("/followers")}
+        onFollowing={() => router.push("/following")}
+        onOpenPost={(id) => router.push({ pathname: "/post/[id]", params: { id } })}
+      />
+    );
+  }
+
   return (
     <AppBackground variant="blueGradient">
       <ScrollView
-        refreshControl={<RefreshControl refreshing={pulling} onRefresh={pull} tintColor={C.brand} colors={[C.brand]} />}
+        refreshControl={<RefreshControl refreshing={pulling} onRefresh={pull} tintColor={ink.text(PINK)} colors={[PINK]} />}
         contentContainerStyle={[
           styles.scroll,
+          desktop && styles.scrollWide,
           {
             paddingTop: insets.top + 8,
             paddingBottom: tabBarSpace(insets.bottom),
@@ -599,13 +669,14 @@ export default function Profile() {
         ]}
         showsVerticalScrollIndicator={false}>
         {/* HEADER (Figma: "+" left, pink menu right, no title) */}
+        {!desktop ? (
         <View style={styles.header}>
           <Pressable
             onPress={() => router.push("/community")}
             hitSlop={10}
             accessibilityRole="button"
             accessibilityLabel="Create a post">
-            <Ionicons name="add" size={28} color={C.ink} />
+            <Ionicons name="add" size={28} color={ink.text("#191922")} />
           </Pressable>
 
           <Pressable
@@ -613,9 +684,10 @@ export default function Profile() {
             hitSlop={10}
             accessibilityRole="button"
             accessibilityLabel="Settings">
-            <Ionicons name="menu" size={26} color={PINK} />
+            <Ionicons name="menu" size={26} color={ink.text(PINK)} />
           </Pressable>
         </View>
+        ) : null}
 
         {profileLoading ? <SkeletonProfile /> : null}
 
@@ -638,6 +710,15 @@ export default function Profile() {
           </View>
         ) : null}
 
+        {/* Computer: profile header card */}
+        {desktop ? (
+          <>
+            <View
+              style={[
+                styles.deskHero,
+                { backgroundColor: ink.dark ? "#1D1F2C" : "rgba(255,255,255,0.78)" },
+              ]}>
+              <View style={styles.deskPhoto}>
         {/* PHOTO (Figma): a square photo, with a big pink CIRCLE fading in
             at the bottom, and the avatar sitting in that circle. */}
         <View style={[styles.heroWrap, sizes.heroWrap]}>
@@ -658,16 +739,315 @@ export default function Profile() {
               </View>
             )}
 
-            <View style={[styles.heroCircle, sizes.heroCircle]} pointerEvents="none">
-              {/* Figma: linear-gradient(180deg, rgba(0,0,0,0) 47.87%, #C34D9C 100%) */}
-              <LinearGradient
-                colors={["rgba(0,0,0,0)", PINK]}
-                locations={[0.4787, 1]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 0, y: 1 }}
-                style={StyleSheet.absoluteFill}
+            {/* The photo fades into the page: full width, bottom 30%. */}
+            <LinearGradient
+              colors={ink.dark ? HERO_FADE_DARK : HERO_FADE_LIGHT}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 0, y: 1 }}
+              style={styles.heroFade}
+              pointerEvents="none"
+            />
+          </View>
+
+          {/* Avatar (Figma: 89 x 89): a strong pink circle with a deep
+              shadow, so it looks like it's coming out of the photo. It sits
+              outside the photo's clipping, so the shadow isn't cut off. */}
+          <View style={[styles.avatarShadow, sizes.avatarShadow]} pointerEvents="none">
+            <LinearGradient
+              colors={["#E28BC8", PINK]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 0, y: 1 }}
+              style={[styles.avatarRing, sizes.avatarRing]}>
+              <Image
+                source={selectedAvatar}
+                style={styles.avatarImg}
+                contentFit="cover"
               />
+            </LinearGradient>
+          </View>
+        </View>
+
+              </View>
+              <View style={styles.deskInfo}>
+        {/* NAME + "@username • Category" */}
+        <Text style={styles.name}>{displayName}</Text>
+
+        <Text style={styles.subtitle} numberOfLines={1}>
+          {subtitle}
+        </Text>
+
+        {/* Followers (left) · Following (middle) · Posts (right) */}
+        <View style={styles.statsRow}>
+          <Stat
+            value={compactNumber(followersTotal || 0)}
+            label="Followers"
+            align="flex-start"
+            onPress={() => router.push("/followers")}
+          />
+
+          <Stat
+            value={compactNumber(followingTotal || 0)}
+            label="Following"
+            onPress={() => router.push("/following")}
+          />
+
+          <Stat
+            value={compactNumber(postCount)}
+            label="Posts"
+            align="flex-end"
+          />
+        </View>
+
+        {/* Slim pink pills */}
+        <View style={styles.gameStatsRow}>
+          <GameStat value={quests} label={plural(quests, "Quest", "Quests")} />
+          <GameStat value={wins} label={plural(wins, "Win", "Wins")} />
+          <GameStat value={points} label={plural(points, "Point", "Points")} />
+        </View>
+
+                <View style={styles.deskActions}>
+                  <View style={styles.deskEditShare}>
+        {/* Slim Edit / Share pills */}
+        <View style={styles.actions}>
+          <View style={{ flex: 1 }}>
+            <ActionButton
+              label="Edit Profile"
+              onPress={() => router.push("/edit-profile")}
+            />
+          </View>
+
+          <View style={{ flex: 1 }}>
+            <ActionButton label="Share Profile" onPress={handleShareProfile} />
+          </View>
+
+          <View style={{ flex: 1 }}>
+            <ActionButton label="My Tickets" onPress={() => router.push("/tickets" as any)} />
+          </View>
+        </View>
+
+                  </View>
+                  <Pressable
+                    style={styles.deskNewPost}
+                    onPress={() => router.push("/community")}
+                    accessibilityRole="button"
+                    accessibilityLabel="Create a post">
+                    <Ionicons name="add" size={18} color="#FFFFFF" />
+                    <Text style={styles.deskNewPostText}>New post</Text>
+                  </Pressable>
+                </View>
+        {/* NEW / FACTION highlights */}
+        <View style={styles.highlights}>
+          <View style={styles.highlight}>
+            <View style={styles.highlightNew}>
+              <Ionicons name="add" size={24} color={ink.text("#9899A4")} />
             </View>
+
+            <Text style={styles.highlightLabel}>New</Text>
+          </View>
+
+          {selectedFaction ? (
+            <View style={styles.highlight}>
+              <View style={styles.highlightRing}>
+                <Image
+                  source={selectedFaction.image}
+                  style={styles.highlightImg}
+                  contentFit="contain"
+                />
+              </View>
+
+              <Text style={styles.highlightLabel}>Faction</Text>
+            </View>
+          ) : null}
+        </View>
+
+              </View>
+            </View>
+
+            {/* About + Faction | Posts / Reels / Thoughts */}
+            <View style={styles.wideRow}>
+              <View style={styles.wideLeft}>
+        {/* ABOUT */}
+        {about.trim() ? (
+          <>
+            <Text style={styles.sectionLabel}>About</Text>
+
+            <Text style={styles.about}>{about}</Text>
+          </>
+        ) : null}
+
+        {/* FACTION */}
+        {selectedFaction ? (
+          <View style={styles.factionSection}>
+            <Text style={styles.sectionLabel}>Faction</Text>
+
+            <FactionProfileCard
+              faction={selectedFaction}
+              memberCount={factionMembersState?.pagination.total}
+              memberCountLoading={factionMembersLoading && !factionMembersState}
+              previewMembers={factionMembersState?.users || []}
+              rankInfo={factionRankInfo}
+            />
+          </View>
+        ) : null}
+
+              </View>
+              <View style={styles.wideRight}>
+        {/* TABS (the open one is dark and bold) */}
+        <View style={styles.tabs}>
+          {(["Posts", "Reels", "Thoughts", "Spotlight"] as Tab[]).map((key) => {
+            const active = tab === key;
+
+            return (
+              <Pressable
+                key={key}
+                style={styles.tab}
+                onPress={() => setTab(key)}>
+                <Ionicons
+                  name={
+                    key === "Posts"
+                      ? "grid-outline"
+                      : key === "Reels"
+                        ? "play-circle-outline"
+                        : key === "Thoughts"
+                          ? "person-outline"
+                          : "star-outline"
+                  }
+                  size={18}
+                  color={ink.text(active ? "#191922" : "#9C9CAA")}
+                />
+
+                <Text style={[styles.tabText, active && styles.tabTextActive]}>
+                  {key}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        {/* POSTS */}
+        {tab === "Posts" ? (
+          imagePosts.length > 0 ? (
+            <View style={styles.grid}>
+              {imagePosts.map((post) => (
+                <Pressable
+                  key={post.id}
+                  style={styles.postThumbWrap}
+                  onPress={() => {
+                    router.push({
+                      pathname: "/post/[id]",
+                      params: {
+                        id: post.id,
+                      },
+                    });
+                  }}>
+                  <Image
+                    source={{
+                      uri: post.image!,
+                    }}
+                    style={styles.thumb}
+                    contentFit="cover"
+                  />
+                </Pressable>
+              ))}
+            </View>
+          ) : (
+            <View style={styles.emptyContent}>
+              <Ionicons name="images-outline" size={36} color={ink.text("#9C9CAA")} />
+
+              <Text style={styles.emptyTitle}>No posts yet</Text>
+
+              <Text style={styles.empty}>
+                Your uploaded image posts will appear here.
+              </Text>
+            </View>
+          )
+        ) : null}
+
+        {/* REELS */}
+        {tab === "Reels" ? (
+          reelPosts.length > 0 ? (
+            <View style={styles.reelsList}>
+              {reelPosts.map((post) => (
+                <ReelItem key={post.id} post={post} />
+              ))}
+            </View>
+          ) : (
+            <View style={styles.emptyContent}>
+              <Ionicons name="videocam-outline" size={36} color={ink.text("#9C9CAA")} />
+
+              <Text style={styles.emptyTitle}>No reels yet</Text>
+
+              <Text style={styles.empty}>
+                Your uploaded videos will appear here.
+              </Text>
+            </View>
+          )
+        ) : null}
+
+        {/* THOUGHTS */}
+        {tab === "Thoughts" ? (
+          thoughtPosts.length > 0 ? (
+            <View style={styles.thoughtsList}>
+              {thoughtPosts.map((post) => (
+                <ThoughtItem key={post.id} post={post} />
+              ))}
+            </View>
+          ) : (
+            <View style={styles.emptyContent}>
+              <Ionicons
+                name="chatbubble-ellipses-outline"
+                size={36}
+                color={ink.text("#9C9CAA")}
+              />
+
+              <Text style={styles.emptyTitle}>No thoughts yet</Text>
+
+              <Text style={styles.empty}>
+                Your text-only thoughts will appear here.
+              </Text>
+            </View>
+          )
+        ) : null}
+
+        {/* SPOTLIGHT (moved here from the Community page) */}
+        {tab === "Spotlight" ? (
+          <View style={{ marginTop: 8 }}>
+            <Spotlight />
+          </View>
+        ) : null}
+              </View>
+            </View>
+          </>
+        ) : (
+          <>
+        {/* PHOTO (Figma): a square photo, with a big pink CIRCLE fading in
+            at the bottom, and the avatar sitting in that circle. */}
+        <View style={[styles.heroWrap, sizes.heroWrap]}>
+          <View style={[styles.hero, sizes.hero]}>
+            {cloudinaryPhoto ? (
+              <Image
+                source={{ uri: cloudinaryPhoto }}
+                style={StyleSheet.absoluteFill}
+                contentFit="cover"
+              />
+            ) : (
+              <View style={styles.heroEmpty}>
+                <Ionicons
+                  name="person-outline"
+                  size={56}
+                  color="rgba(255,255,255,0.7)"
+                />
+              </View>
+            )}
+
+            {/* The photo fades into the page: full width, bottom 30%. */}
+            <LinearGradient
+              colors={ink.dark ? HERO_FADE_DARK : HERO_FADE_LIGHT}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 0, y: 1 }}
+              style={styles.heroFade}
+              pointerEvents="none"
+            />
           </View>
 
           {/* Avatar (Figma: 89 x 89): a strong pink circle with a deep
@@ -752,7 +1132,7 @@ export default function Profile() {
         <View style={styles.highlights}>
           <View style={styles.highlight}>
             <View style={styles.highlightNew}>
-              <Ionicons name="add" size={24} color="#9899A4" />
+              <Ionicons name="add" size={24} color={ink.text("#9899A4")} />
             </View>
 
             <Text style={styles.highlightLabel}>New</Text>
@@ -785,11 +1165,15 @@ export default function Profile() {
           <View style={{ flex: 1 }}>
             <ActionButton label="Share Profile" onPress={handleShareProfile} />
           </View>
+
+          <View style={{ flex: 1 }}>
+            <ActionButton label="My Tickets" onPress={() => router.push("/tickets" as any)} />
+          </View>
         </View>
 
         {/* TABS (the open one is dark and bold) */}
         <View style={styles.tabs}>
-          {(["Posts", "Reels", "Thoughts"] as Tab[]).map((key) => {
+          {(["Posts", "Reels", "Thoughts", "Spotlight"] as Tab[]).map((key) => {
             const active = tab === key;
 
             return (
@@ -803,10 +1187,12 @@ export default function Profile() {
                       ? "grid-outline"
                       : key === "Reels"
                         ? "play-circle-outline"
-                        : "person-outline"
+                        : key === "Thoughts"
+                          ? "person-outline"
+                          : "star-outline"
                   }
                   size={18}
-                  color={active ? C.ink : C.muted}
+                  color={ink.text(active ? "#191922" : "#9C9CAA")}
                 />
 
                 <Text style={[styles.tabText, active && styles.tabTextActive]}>
@@ -845,7 +1231,7 @@ export default function Profile() {
             </View>
           ) : (
             <View style={styles.emptyContent}>
-              <Ionicons name="images-outline" size={36} color={C.muted} />
+              <Ionicons name="images-outline" size={36} color={ink.text("#9C9CAA")} />
 
               <Text style={styles.emptyTitle}>No posts yet</Text>
 
@@ -866,7 +1252,7 @@ export default function Profile() {
             </View>
           ) : (
             <View style={styles.emptyContent}>
-              <Ionicons name="videocam-outline" size={36} color={C.muted} />
+              <Ionicons name="videocam-outline" size={36} color={ink.text("#9C9CAA")} />
 
               <Text style={styles.emptyTitle}>No reels yet</Text>
 
@@ -890,7 +1276,7 @@ export default function Profile() {
               <Ionicons
                 name="chatbubble-ellipses-outline"
                 size={36}
-                color={C.muted}
+                color={ink.text("#9C9CAA")}
               />
 
               <Text style={styles.emptyTitle}>No thoughts yet</Text>
@@ -901,6 +1287,15 @@ export default function Profile() {
             </View>
           )
         ) : null}
+
+        {/* SPOTLIGHT (moved here from the Community page) */}
+        {tab === "Spotlight" ? (
+          <View style={{ marginTop: 8 }}>
+            <Spotlight />
+          </View>
+        ) : null}
+          </>
+        )}
       </ScrollView>
     </AppBackground>
   );
@@ -909,14 +1304,24 @@ export default function Profile() {
 const GAP = 1;
 const H_PAD = 16;
 
+const SCREEN_W = Math.min(Dimensions.get("window").width, 640);
+
+// Figma photo: a 316 x 316 square on a 402 wide screen.
+const HERO_SIZE = Math.min(316, SCREEN_W - 2 * 30);
+// The pink circle is a little wider than the photo, and sits at its bottom.
+// The banner's bottom fade, into the page background (light / dark).
+const HERO_FADE_LIGHT = ["rgba(244,248,253,0)", "rgba(244,248,253,0.95)"] as const;
+const HERO_FADE_DARK = ["rgba(23,24,35,0)", "rgba(23,24,35,0.95)"] as const;
+// Figma avatar: 89.21 x 89.21 on the 316 photo.
+const AVATAR_SIZE = Math.round(HERO_SIZE * (89.21 / 316));
+
 // The hero's sizes follow the window (read when the screen renders, so a
-// display-size change or split screen resizes it; it was read once at load).
+// display-size change or split screen resizes it; the constants above are
+// only the first-render defaults).
 function heroSizes(windowWidth: number) {
   const screenW = Math.min(windowWidth, 640);
   // Figma photo: a 316 x 316 square on a 402 wide screen.
   const hero = Math.min(316, screenW - 2 * 30);
-  // The pink circle is a little wider than the photo, and sits at its bottom.
-  const circle = Math.round(hero * 1.06);
   // Figma avatar: 89.21 x 89.21 on the 316 photo.
   const avatar = Math.round(hero * (89.21 / 316));
   return {
@@ -924,7 +1329,6 @@ function heroSizes(windowWidth: number) {
     heroWrap: { width: hero, height: hero },
     avatarRing: { width: avatar, height: avatar, borderRadius: avatar / 2 },
     avatarShadow: { left: (hero - avatar) / 2, width: avatar, height: avatar, borderRadius: avatar / 2 },
-    heroCircle: { width: circle, height: circle, borderRadius: circle / 2, left: (hero - circle) / 2 },
   };
 }
 
@@ -942,7 +1346,35 @@ const MILKY = {
   elevation: Platform.OS === "android" ? 0 : 2,
 } as const;
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
+  // Computer: wider page, two columns.
+  scrollWide: { maxWidth: 1180, paddingHorizontal: 32 },
+  wideRow: { flexDirection: "row", alignItems: "flex-start", gap: 40 },
+  wideLeft: { width: 380 },
+  deskHero: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 40,
+    padding: 24,
+    marginBottom: 26,
+    borderRadius: 28,
+  },
+  deskPhoto: { width: 330, alignItems: "center" },
+  deskInfo: { flex: 1, minWidth: 0 },
+  deskActions: { flexDirection: "row", alignItems: "center", gap: 12, marginTop: 6 },
+  deskEditShare: { flex: 1, minWidth: 0 },
+  deskNewPost: {
+    height: 38,
+    paddingHorizontal: 18,
+    borderRadius: 19,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: PINK,
+  },
+  deskNewPostText: { fontFamily: FONTS.semibold, fontSize: 13.5, color: "#FFFFFF" },
+  wideRight: { flex: 1, minWidth: 0, paddingTop: 12 },
+
   scroll: {
     paddingHorizontal: H_PAD,
     width: "100%",
@@ -983,7 +1415,7 @@ const styles = StyleSheet.create({
   errorText: {
     fontFamily: FONTS.regular,
     fontSize: 12,
-    color: C.dangerInk,
+    color: "#B42318",
     textAlign: "center",
   },
 
@@ -996,6 +1428,8 @@ const styles = StyleSheet.create({
 
   // Straight top edge, round bottom.
   hero: {
+    width: HERO_SIZE,
+    height: HERO_SIZE,
     borderRadius: 6,
     overflow: "hidden",
     backgroundColor: "rgba(178,204,239,0.72)",
@@ -1008,18 +1442,27 @@ const styles = StyleSheet.create({
   },
 
   avatarRing: {
+    width: AVATAR_SIZE,
+    height: AVATAR_SIZE,
+    borderRadius: AVATAR_SIZE / 2,
     overflow: "hidden",
   },
 
   // Holds the photo + the avatar (not clipped, so the avatar's shadow shows).
   heroWrap: {
     alignSelf: "center",
+    width: HERO_SIZE,
+    height: HERO_SIZE,
   },
 
   // Deep shadow under the avatar circle: it "pops out" of the photo.
   avatarShadow: {
     position: "absolute",
+    left: (HERO_SIZE - AVATAR_SIZE) / 2,
     bottom: 6,
+    width: AVATAR_SIZE,
+    height: AVATAR_SIZE,
+    borderRadius: AVATAR_SIZE / 2,
     backgroundColor: PINK,
 
     shadowColor: "#4A0F3B",
@@ -1030,12 +1473,12 @@ const styles = StyleSheet.create({
   },
 
   // The big pink circle at the bottom of the photo.
-  heroCircle: {
+  heroFade: {
     position: "absolute",
-    bottom: -4,
-    overflow: "hidden",
-    alignItems: "center",
-    justifyContent: "flex-end",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: "30%",
   },
 
   // Pink behind the avatar (Figma).
@@ -1055,7 +1498,7 @@ const styles = StyleSheet.create({
     marginTop: 14,
     fontFamily: FONTS.bold,
     fontSize: 20,
-    color: C.ink,
+    color: "#191922",
     textAlign: "center",
   },
 
@@ -1063,7 +1506,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
     fontFamily: FONTS.regular,
     fontSize: 10.5,
-    color: C.grey2,
+    color: "#8A8A93",
     textAlign: "center",
   },
 
@@ -1081,7 +1524,7 @@ const styles = StyleSheet.create({
   statValue: {
     fontFamily: FONTS.semibold,
     fontSize: 15,
-    color: C.ink,
+    color: "#191922",
   },
 
   statLabel: {
@@ -1111,7 +1554,7 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.semibold,
     fontSize: 13,
     lineHeight: 17,
-    color: C.ink,
+    color: "#191922",
   },
 
   gameStatLabel: {
@@ -1125,7 +1568,7 @@ const styles = StyleSheet.create({
     marginTop: 18,
     fontFamily: FONTS.semibold,
     fontSize: 11,
-    color: C.ink,
+    color: "#191922",
   },
 
   about: {
@@ -1157,7 +1600,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.16,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },
-    elevation: MILKY.elevation, // see MILKY: no Android shadow through glass
+    elevation: 0 /* see-through: no Android shadow (grey frame) */,
   },
 
   factionTopRow: {
@@ -1360,12 +1803,12 @@ const styles = StyleSheet.create({
   tabText: {
     fontFamily: FONTS.regular,
     fontSize: 14,
-    color: C.muted,
+    color: "#9C9CAA",
   },
 
   tabTextActive: {
     fontFamily: FONTS.semibold,
-    color: C.ink,
+    color: "#191922",
   },
 
   // Edge to edge, 3 columns.
@@ -1407,7 +1850,7 @@ const styles = StyleSheet.create({
 
   empty: {
     textAlign: "center",
-    color: C.muted,
+    color: "#9C9CAA",
     marginTop: 4,
     fontFamily: FONTS.regular,
     fontSize: 11.5,
@@ -1463,7 +1906,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     fontFamily: FONTS.regular,
     fontSize: 12,
-    color: C.muted,
+    color: "#9C9CAA",
   },
 
   thoughtsList: {
@@ -1492,6 +1935,6 @@ const styles = StyleSheet.create({
     marginTop: 8,
     fontFamily: FONTS.regular,
     fontSize: 10.5,
-    color: C.muted,
+    color: "#9C9CAA",
   },
 });

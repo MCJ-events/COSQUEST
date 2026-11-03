@@ -1,4 +1,4 @@
-﻿// ==========================================
+// ==========================================
 // SPARKS · OPTION B "TOP ORBIT" (Figma M04) + OPTION C "INLINE CARDS" (M05)
 // ==========================================
 // SparksOrbit: a strip under the pinned bar - pulsing circles for active
@@ -198,12 +198,14 @@ const STYLE_PAIR = themedStyles({
     paddingHorizontal: 11,
     paddingVertical: 9,
     borderRadius: 12,
-    backgroundColor: "#FFFFFF",
-    shadowColor: C.inkNavy,
+    backgroundColor: "rgba(235, 248, 255, 0.72)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.72)",
+    shadowColor: "#24283C",
     shadowOpacity: 0.08,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 2 },
-    elevation: 1,
+    elevation: 0 /* see-through: no Android shadow (grey frame) */,
   },
 
   quietTitle: { fontFamily: FONTS.semibold, fontSize: 12, lineHeight: 16, color: INK },
@@ -225,9 +227,9 @@ const STYLE_PAIR = themedStyles({
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderRadius: 16,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "rgba(235, 248, 255, 0.68)",
     borderWidth: 1,
-    borderColor: "rgba(182,61,145,0.12)",
+    borderColor: "rgba(255, 255, 255, 0.72)",
   },
 
   inlineText: { flex: 1, minWidth: 0 },

@@ -96,16 +96,25 @@ export function RankBadge({
 // (1 for Private, 2 for Corporal, 3 for Sergeant and up) + the rank name.
 const TEAL = C.teal;
 
-export function RankLine({ rank }: { rank?: Rank | null }) {
+export function RankLine({
+  rank,
+  groupRole,
+}: {
+  rank?: Rank | null;
+  groupRole?: "owner" | "admin" | null;
+}) {
   const styles = useThemedStyles(STYLE_PAIR);
-  if (!rank) {
-    return null;
-  }
 
-  const count = Math.min(3, Math.max(1, rank.chevrons || 1));
+  const count = groupRole === "owner"
+    ? 3
+    : groupRole === "admin"
+      ? 2
+      : 1;
 
   return (
-    <View style={styles.rankLine} accessibilityLabel={`Rank: ${rank.name}`}>
+    <View
+      style={styles.rankLine}
+      accessibilityLabel={`${groupRole || "user"}${rank?.name ? `, rank: ${rank.name}` : ""}`}>
       <View style={styles.rankChevrons}>
         {Array.from({ length: count }).map((_, index) => (
           <Ionicons
@@ -113,13 +122,15 @@ export function RankLine({ rank }: { rank?: Rank | null }) {
             name="chevron-down"
             size={13}
             color={TEAL}
-            style={{ marginTop: index === 0 ? 0 : -9, height: 9 }}
+            style={{ marginTop: index === 0 ? 0 : -3, height: 9 }}
           />
         ))}
       </View>
-      <Text style={styles.rankLineText} numberOfLines={1}>
-        {rank.name}
-      </Text>
+      {rank?.name ? (
+        <Text style={styles.rankLineText} numberOfLines={1}>
+          {rank.name}
+        </Text>
+      ) : null}
     </View>
   );
 }
@@ -184,3 +195,4 @@ const STYLE_PAIR = themedStyles({
 
   rankLineText: { fontFamily: FONTS.regular, fontSize: 11, lineHeight: 14, color: C.slate },
 });
+

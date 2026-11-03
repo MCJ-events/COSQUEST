@@ -26,6 +26,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { KeyboardAwareScrollView } from "@/components/ui/keyboard";
 import { C } from "@/theme/tokens";
 import { useCapabilities } from "@/services/capabilities";
+import { DARK_SCREEN_GRADIENT, themedStyles, useInk, useThemedStyles } from "@/constants/chatTheme";
 
 const PINK = C.brandSoft;
 
@@ -48,10 +49,12 @@ function AccountInfoRow({
   onChangeText,
   keyboardType = "default",
 }: AccountInfoRowProps) {
+  const styles = useThemedStyles(STYLE_PAIR);
+  const ink = useInk();
   return (
     <View style={styles.infoCard}>
       <View style={styles.infoIcon}>
-        <Ionicons name={icon} size={15} color={PINK} />
+        <Ionicons name={icon} size={15} color={ink.text(PINK)} />
       </View>
 
       <View style={styles.infoContent}>
@@ -67,7 +70,7 @@ function AccountInfoRow({
               keyboardType === "email-address" ? "none" : "sentences"
             }
             placeholder={`Enter ${label.toLowerCase()}`}
-            placeholderTextColor="#A0A0AA"
+            placeholderTextColor={ink.text("#A0A0AA")}
           />
         ) : (
           <Text style={styles.infoValue}>{value || "Not provided"}</Text>
@@ -78,6 +81,8 @@ function AccountInfoRow({
 }
 
 export default function AccountInformation() {
+  const styles = useThemedStyles(STYLE_PAIR);
+  const ink = useInk();
   const insets = useSafeAreaInsets();
   const caps = useCapabilities();
   const dispatch = useAppDispatch();
@@ -127,11 +132,13 @@ export default function AccountInformation() {
 
   const [photo, setPhoto] = useState<string | null>(null);
 
+  // Wait for the login token (restored a moment after the app opens).
+  const sessionToken = useAppSelector((state) => state.auth.token);
   useEffect(() => {
-    if (email) {
+    if (email && sessionToken) {
       dispatch(fetchCurrentUser(email));
     }
-  }, [dispatch, email]);
+  }, [dispatch, email, sessionToken]);
 
   useEffect(() => {
     const fullName = `${firstName} ${lastName}`.trim();
@@ -334,7 +341,7 @@ export default function AccountInformation() {
     <View style={styles.screen}>
       {/* Figma: linear-gradient(180deg, #FFFFFF 0%, #E1F3FF 64.42%) */}
       <LinearGradient
-        colors={["#FFFFFF", C.skyWash]}
+        colors={ink.dark ? [...DARK_SCREEN_GRADIENT] : ["#FFFFFF", "#E1F3FF"]}
         locations={[0, 0.6442]}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
@@ -360,7 +367,7 @@ export default function AccountInformation() {
             style={styles.headerIcon}
             accessibilityRole="button"
             accessibilityLabel="Back">
-            <Ionicons name="person-outline" size={16} color={PINK} />
+            <Ionicons name="person-outline" size={16} color={ink.text(PINK)} />
           </Pressable>
 
           <Text style={styles.headerTitle}>Account Information</Text>
@@ -379,7 +386,7 @@ export default function AccountInformation() {
                   contentFit="cover"
                 />
               ) : (
-                <Ionicons name="person" size={38} color="#A5A5AF" />
+                <Ionicons name="person" size={38} color={ink.text("#A5A5AF")} />
               )}
             </View>
           </View>
@@ -444,7 +451,7 @@ export default function AccountInformation() {
             pressed && !saving && styles.pressed,
           ]}>
           {saving ? (
-            <ActivityIndicator size="small" color="#FFFFFF" />
+            <ActivityIndicator size="small" color={ink.text("#FFFFFF")} />
           ) : (
             <Text style={styles.saveButtonText}>Save Changes</Text>
           )}
@@ -466,7 +473,7 @@ export default function AccountInformation() {
   );
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   deleteRow: { alignSelf: "center", paddingVertical: 14, paddingHorizontal: 20, marginTop: 8, marginBottom: 24 },
   deleteText: { fontFamily: FONTS.semibold, fontSize: 14, color: C.danger },
   screen: {
@@ -571,7 +578,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.09,
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
+    elevation: 0 /* see-through: no Android shadow (grey frame) */,
   },
 
   // Pink icon on a soft pink circle.

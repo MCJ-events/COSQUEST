@@ -1,3 +1,4 @@
+import { FONTS } from "@/constants/fonts";
 import { Button } from "@/components/Button";
 import { OnboardingProgress } from "@/components/OnboardingProgress";
 import { Terms } from "@/components/Terms";
@@ -10,10 +11,13 @@ import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { useAppSelector } from "../../store/hooks";
 import { OnboardingScreen } from "@/components/OnboardingScreen";
 import { C } from "@/theme/tokens";
+import { themedStyles, useInk, useThemedStyles } from "@/constants/chatTheme";
 
 WebBrowser.maybeCompleteAuthSession();
 
 export default function AuthSignup() {
+  const styles = useThemedStyles(STYLE_PAIR);
+  const ink = useInk();
   const { loading } = useAppSelector((state) => state.auth);
 
   // Same Google flow as the Sign in screen — the backend decides whether
@@ -73,7 +77,7 @@ export default function AuthSignup() {
 
           {googleLoading ? (
             <View style={styles.loadingRow}>
-              <ActivityIndicator size="small" color={C.brand} />
+              <ActivityIndicator size="small" color={ink.text("#C5399A")} />
 
               <Text style={styles.loadingText}>
                 Connecting your Google account...
@@ -96,7 +100,7 @@ export default function AuthSignup() {
   );
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   screen: {
     flex: 1,
     paddingHorizontal: 25,
@@ -104,6 +108,7 @@ const styles = StyleSheet.create({
   },
 
   headline: {
+    fontFamily: FONTS.bold,
     fontSize: 35,
     fontWeight: "800",
     textAlign: "center",
@@ -116,6 +121,7 @@ const styles = StyleSheet.create({
   },
 
   sub: {
+    fontFamily: FONTS.regular,
     fontSize: 14,
     color: C.inkSoft,
     textAlign: "center",
@@ -142,6 +148,7 @@ const styles = StyleSheet.create({
   },
 
   dividerText: {
+    fontFamily: FONTS.regular,
     color: "#675656",
     fontSize: 15,
   },
@@ -155,11 +162,13 @@ const styles = StyleSheet.create({
   },
 
   loadingText: {
+    fontFamily: FONTS.regular,
     color: "#777985",
     fontSize: 12,
   },
 
   accountText: {
+    fontFamily: FONTS.regular,
     fontSize: 14,
     color: C.inkSoft,
     textAlign: "center",

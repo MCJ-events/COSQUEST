@@ -36,7 +36,9 @@
         "android.permission.WAKE_LOCK",
         "android.permission.BLUETOOTH"
       ],
-      "package": "com.dammy0227.cosquest"
+      "package": "com.dammy0227.cosquest",
+      "softwareKeyboardLayoutMode": "resize",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "output": "single",
@@ -106,7 +108,14 @@
       ],
       "expo-asset",
       "./plugins/withSceneLifecycle",
-      "./plugins/withGodot"
+      "./plugins/withGodot",
+      [
+        "expo-notifications",
+        {
+          "color": "#C34D9C",
+          "defaultChannel": "default"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

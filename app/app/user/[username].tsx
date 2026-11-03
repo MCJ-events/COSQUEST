@@ -42,9 +42,9 @@ import { fetchFollowing } from "@/store/thunks/followThunks";
 import { getCloudinaryVideoPoster } from "@/utils/videoPoster";
 import { safeBack } from "@/utils/safeBack";
 import { C } from "@/theme/tokens";
-import { openReport } from "@/components/safety/ReportSheet";
-import { useCapabilities } from "@/services/capabilities";
 import { haptic } from "@/utils/haptics";
+import { themedStyles, useInk, useThemedStyles } from "@/constants/chatTheme";
+import { openReport } from "@/components/report/reportStore";
 
 type Tab = "Posts" | "Reels" | "Thoughts";
 
@@ -70,6 +70,7 @@ function avatarSource(profile: PublicProfile | null) {
 }
 
 function Stat({ value, label }: { value?: number; label: string }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   return (
     <View style={styles.stat}>
       <Text style={styles.statValue}>{(value ?? 0).toLocaleString()}</Text>
@@ -80,6 +81,8 @@ function Stat({ value, label }: { value?: number; label: string }) {
 
 export default function UserProfileScreen() {
   const column = gridColumn(useWindowDimensions().width);
+  const styles = useThemedStyles(STYLE_PAIR);
+  const ink = useInk();
   const insets = useSafeAreaInsets();
   const dispatch = useAppDispatch();
 
@@ -106,7 +109,6 @@ export default function UserProfileScreen() {
   const [blockedByMe, setBlockedByMe] = useState(false);
   const [busy, setBusy] = useState<"follow" | "message" | "block" | null>(null);
   const [menuVisible, setMenuVisible] = useState(false);
-  const caps = useCapabilities();
   const [tab, setTab] = useState<Tab>("Posts");
 
   // Whether I follow them: from the "people I follow" list.
@@ -116,6 +118,8 @@ export default function UserProfileScreen() {
 
   const iFollow =
     followingOverride ??
+    // The server says (profile.relationship), else the people I follow.
+    ((profile as any)?.relationship?.following as boolean | undefined) ??
     following.some(
       (person) => person.username?.toLowerCase() === username.toLowerCase(),
     );
@@ -133,6 +137,15 @@ export default function UserProfileScreen() {
     let cancelled = false;
 
     (async () => {
+      // All three requests start together (they used to wait for the block
+      // list first: one extra round trip, ~0.5 s from Lagos, behind the
+      // full-screen spinner). The profile and posts are dropped if blocked.
+      const profileRequest = getPublicProfile(username, token).then(
+        (value) => ({ ok: true as const, value }),
+        (error) => ({ ok: false as const, error }),
+      );
+      const postsRequest = getUserPosts(username, token).catch(() => []);
+
       // Did I block them? (Then the backend hides their profile from me.)
       const blockedNames = await (token && !isMe
         ? getBlockedUsernames(token).catch(() => new Set<string>())
@@ -155,10 +168,16 @@ export default function UserProfileScreen() {
       }
 
       try {
-        const [loadedProfile, loadedPosts] = await Promise.all([
-          getPublicProfile(username, token),
-          getUserPosts(username, token).catch(() => []),
+        const [profileResult, loadedPosts] = await Promise.all([
+          profileRequest,
+          postsRequest,
         ]);
+
+        if (!profileResult.ok) {
+          throw profileResult.error;
+        }
+
+        const loadedProfile = profileResult.value;
 
         if (cancelled) {
           return;
@@ -355,7 +374,7 @@ export default function UserProfileScreen() {
   const header = (
     <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
       <Pressable accessibilityRole="button" accessibilityLabel="Back" onPress={goBack} hitSlop={10} style={styles.headerButton}>
-        <Ionicons name="chevron-back" size={26} color={C.ink} />
+        <Ionicons name="chevron-back" size={26} color={ink.text("#191922")} />
       </Pressable>
 
       <Text style={styles.headerTitle} numberOfLines={1}>
@@ -369,7 +388,7 @@ export default function UserProfileScreen() {
           style={styles.headerButton}
           accessibilityRole="button"
           accessibilityLabel="More options">
-          <Ionicons name="ellipsis-vertical" size={20} color={C.ink} />
+          <Ionicons name="ellipsis-vertical" size={20} color={ink.text("#191922")} />
         </Pressable>
       ) : (
         <View style={styles.headerButton} />
@@ -382,13 +401,13 @@ export default function UserProfileScreen() {
   if (loading) {
     content = (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color={C.brand} />
+        <ActivityIndicator size="large" color={ink.text("#C5399A")} />
       </View>
     );
   } else if (blockedByMe) {
     content = (
       <View style={styles.center}>
-        <Ionicons name="ban-outline" size={42} color={C.grey2} />
+        <Ionicons name="ban-outline" size={42} color={ink.text("#8A8A93")} />
         <Text style={styles.centerTitle}>You blocked @{username}</Text>
         <Text style={styles.centerText}>
           Unblock them to see their profile and message each other again.
@@ -404,7 +423,7 @@ export default function UserProfileScreen() {
   } else if (unavailable || !profile) {
     content = (
       <View style={styles.center}>
-        <Ionicons name="lock-closed-outline" size={42} color={C.grey2} />
+        <Ionicons name="lock-closed-outline" size={42} color={ink.text("#8A8A93")} />
         <Text style={styles.centerTitle}>Profile not available</Text>
         <Text style={styles.centerText}>
           This profile is private, or it no longer exists.
@@ -467,10 +486,11 @@ export default function UserProfileScreen() {
               ]}
               onPress={toggleFollow}
               disabled={!!busy}>
-              {busy === "follow" ? (
+              {/* Follow changes straight away (it changes back if the server says no). */}
+              {false ? (
                 <ActivityIndicator
                   size="small"
-                  color={iFollow ? C.brand : "#FFFFFF"}
+                  color={ink.text(iFollow ? "#C5399A" : "#FFFFFF")}
                 />
               ) : (
                 <Text
@@ -487,7 +507,7 @@ export default function UserProfileScreen() {
               onPress={openMessage}
               disabled={!!busy}>
               {busy === "message" ? (
-                <ActivityIndicator size="small" color={C.brand} />
+                <ActivityIndicator size="small" color={ink.text("#C5399A")} />
               ) : (
                 <Text style={styles.actionGhostText}>Message</Text>
               )}
@@ -514,7 +534,7 @@ export default function UserProfileScreen() {
                         : "chatbubble-ellipses-outline"
                   }
                   size={18}
-                  color={active ? C.brand : C.muted}
+                  color={ink.text(active ? "#C5399A" : "#9C9CAA")}
                 />
                 <Text style={[styles.tabText, active && styles.tabTextActive]}>
                   {key}
@@ -543,7 +563,7 @@ export default function UserProfileScreen() {
                     <Ionicons
                       name="copy-outline"
                       size={16}
-                      color="#FFFFFF"
+                      color={ink.text("#FFFFFF")}
                       style={styles.thumbIcon}
                     />
                   ) : null}
@@ -580,7 +600,7 @@ export default function UserProfileScreen() {
                     <Ionicons
                       name="play"
                       size={22}
-                      color="#FFFFFF"
+                      color={ink.text("#FFFFFF")}
                       style={styles.playIcon}
                     />
                   </Pressable>
@@ -642,40 +662,30 @@ export default function UserProfileScreen() {
                 <Ionicons
                   name="checkmark-circle-outline"
                   size={20}
-                  color={C.ink}
+                  color={ink.text("#191922")}
                 />
                 <Text style={styles.menuText}>Unblock @{username}</Text>
               </Pressable>
             ) : (
               <Pressable accessibilityRole="button" accessibilityLabel="Block" style={styles.menuItem} onPress={block}>
-                <Ionicons name="ban-outline" size={20} color="#D9364F" />
+                <Ionicons name="ban-outline" size={20} color={ink.text("#D9364F")} />
                 <Text style={[styles.menuText, styles.menuDanger]}>
                   Block @{username}
                 </Text>
               </Pressable>
             )}
 
-            {/* Task 059: report the person (where the server takes reports). */}
-            {caps.reports ? (
+            {profile?.id ? (
               <Pressable
                 style={styles.menuItem}
                 onPress={() => {
                   setMenuVisible(false);
-                  setTimeout(
-                    () =>
-                      openReport({
-                        targetType: "user",
-                        targetId: profile?.id ? String(profile.id) : username,
-                        name: `@${username}`,
-                        person: blockedByMe ? null : { username },
-                        onBlocked: () => setBlockedByMe(true),
-                      }),
-                    300,
-                  );
+                  // After the menu closes (iOS drops a modal opened mid-animation).
+                  setTimeout(() => openReport({ targetType: "profile", targetId: String(profile.id), what: `@${username}` }), 300);
                 }}
                 accessibilityRole="button"
                 accessibilityLabel={`Report @${username}`}>
-                <Ionicons name="flag-outline" size={20} color={C.ink} />
+                <Ionicons name="flag-outline" size={20} color={ink.text("#191922")} />
                 <Text style={styles.menuText}>Report @{username}</Text>
               </Pressable>
             ) : null}
@@ -694,7 +704,7 @@ export default function UserProfileScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   header: {
     flexDirection: "row",
     alignItems: "center",

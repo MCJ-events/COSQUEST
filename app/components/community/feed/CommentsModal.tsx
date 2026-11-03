@@ -40,6 +40,8 @@ import { CommentItem } from "./CommentItem";
 
 import { getSocket, joinPost, leavePost } from "@/services/socket";
 import { C } from "@/theme/tokens";
+import { themedStyles, useInk, useThemedStyles } from "@/constants/chatTheme";
+import { useIsDesktop } from "@/hooks/useDesktop";
 
 type LikeState = {
   liked: boolean;
@@ -85,6 +87,9 @@ function RecordingIndicator({
   metering?: number;
   cancelArmed: boolean;
 }) {
+  const styles = useThemedStyles(STYLE_PAIR);
+  const desktop = useIsDesktop();
+  const ink = useInk();
   const [blink] = useState(() => new Animated.Value(1));
 
   useEffect(() => {
@@ -148,7 +153,7 @@ function RecordingIndicator({
         <Ionicons
           name="chevron-back"
           size={14}
-          color={cancelArmed ? C.danger : C.grey1}
+          color={ink.text(cancelArmed ? "#D64545" : "#8A8A90")}
         />
 
         <Text
@@ -183,6 +188,9 @@ export function CommentsModal({
   initialCount: number;
   onCountChange: (count: number) => void;
 }) {
+  const styles = useThemedStyles(STYLE_PAIR);
+  const desktop = useIsDesktop();
+  const ink = useInk();
   const dispatch = useAppDispatch();
 
   /* =========================================================
@@ -1265,15 +1273,15 @@ export function CommentsModal({
     <Modal
       visible={visible}
       transparent
-      animationType="slide"
+      animationType={desktop ? "fade" : "slide"}
       onRequestClose={onClose}>
       <KeyboardAvoidingView
-        style={styles.root}
-        behavior="padding">
+        style={[styles.root, desktop && styles.rootDesk]}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}>
         <Pressable style={styles.overlay} onPress={onClose} />
 
-        <View style={styles.sheet}>
-          <View style={styles.handle} />
+        <View style={[styles.sheet, desktop && styles.sheetDesk]}>
+          {!desktop ? <View style={styles.handle} /> : null}
 
           {/* HEADER */}
 
@@ -1287,7 +1295,7 @@ export function CommentsModal({
             </View>
 
             <Pressable accessibilityRole="button" accessibilityLabel="Close" style={styles.close} onPress={onClose}>
-              <Ionicons name="close" size={23} color={C.ink} />
+              <Ionicons name="close" size={23} color={ink.text("#191922")} />
             </Pressable>
           </View>
 
@@ -1295,7 +1303,7 @@ export function CommentsModal({
 
           {loading ? (
             <View style={styles.loading}>
-              <ActivityIndicator size="large" color={C.brand} />
+              <ActivityIndicator size="large" color={ink.text("#C5399A")} />
 
               <Text style={styles.loadingText}>Loading comments...</Text>
             </View>
@@ -1310,7 +1318,7 @@ export function CommentsModal({
                   <Ionicons
                     name="chatbubble-ellipses-outline"
                     size={42}
-                    color="#B0B0B7"
+                    color={ink.text("#B0B0B7")}
                   />
 
                   <Text style={styles.emptyTitle}>No comments yet</Text>
@@ -1384,8 +1392,8 @@ export function CommentsModal({
                   Replying to @{replyingTo?.author?.username || "user"}
                 </Text>
 
-                <Pressable accessibilityRole="button" accessibilityLabel="Clear" onPress={() => setReplyingTo(null)}>
-                  <Ionicons name="close-circle" size={21} color={C.muted} />
+                <Pressable accessibilityRole="button" accessibilityLabel="Cancel reply" onPress={() => setReplyingTo(null)}>
+                  <Ionicons name="close-circle" size={21} color={ink.text("#9C9CAA")} />
                 </Pressable>
               </View>
             ) : null}
@@ -1439,7 +1447,7 @@ export function CommentsModal({
                         ? `Reply to @${replyingTo?.author?.username || "user"}...`
                         : `Add comment for ${postUsername || "this post"}...`
                     }
-                    placeholderTextColor="#A58FA0"
+                    placeholderTextColor={ink.text("#A58FA0")}
                     style={styles.input}
                     multiline
                     maxLength={500}
@@ -1457,9 +1465,9 @@ export function CommentsModal({
                   accessibilityLabel="Hold to record voice comment"
                   {...micPanResponder.panHandlers}>
                   {sendingVoice ? (
-                    <ActivityIndicator size="small" color={C.brandSoft} />
+                    <ActivityIndicator size="small" color={ink.text("#C34D9C")} />
                   ) : (
-                    <Ionicons name="mic-outline" size={19} color={C.brandSoft} />
+                    <Ionicons name="mic-outline" size={19} color={ink.text("#C34D9C")} />
                   )}
                 </View>
               ) : (
@@ -1471,9 +1479,9 @@ export function CommentsModal({
                   onPress={sendComment}
                   disabled={!commentText.trim() || sending}>
                   {sending ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
+                    <ActivityIndicator size="small" color={ink.text("#FFFFFF")} />
                   ) : (
-                    <Ionicons name="send" size={17} color="#FFFFFF" />
+                    <Ionicons name="send" size={17} color={ink.text("#FFFFFF")} />
                   )}
                 </Pressable>
               )}
@@ -1489,11 +1497,15 @@ export function CommentsModal({
    STYLES
 ========================================================= */
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   root: {
     flex: 1,
     justifyContent: "flex-end",
   },
+
+  // Computer: a centred dialog instead of a bottom sheet.
+  rootDesk: { justifyContent: "center", alignItems: "center", padding: 24 },
+  sheetDesk: { width: "100%", maxWidth: 640, height: "82%", borderRadius: 16 },
 
   overlay: {
     ...StyleSheet.absoluteFill,
@@ -1672,7 +1684,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+    elevation: 0 /* see-through: no Android shadow (grey frame) */,
   },
 
   input: {

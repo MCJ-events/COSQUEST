@@ -1,3 +1,9 @@
+import { showFactionAlert } from "@/components/alerts/alertStore";
+import { pushBanner } from "@/components/notifications/bannerStore";
+import { refreshProject } from "@/store/thunks/projectThunks";
+import { onScheduledAdmission, onScheduledWaiting } from "@/components/calls/scheduled/scheduledCallJoin";
+import { scheduledCallUpdated } from "@/store/slices/scheduledCallSlice";
+import { applyPrivateUpdate, receivePrivateIncoming } from "@/components/calls/privateCall";
 import { useEffect, useRef } from "react";
 import { AppState } from "react-native";
 
@@ -14,7 +20,7 @@ import {
       socketCallIncoming,
       socketCallUpdated,
 } from "@/store/slices/callSlice";
-import { createIdBatcher, previewSummary } from "@/services/idBatcher";
+import { previewSummary } from "@/services/idBatcher";
 import { normalizeChat } from "@/services/chats";
 import {
       socketChatSummaries,
@@ -27,7 +33,6 @@ import { fetchIncomingCall } from "@/store/thunks/callThunks";
 import { fetchConversation, refreshConversations } from "@/store/thunks/chatThunks";
 
 // Previews within this long are fetched together (audit B5).
-const PREVIEW_BATCH_MS = 400;
 
 // How long someone stays showing as "online" after their connection
 // actually drops — covers a brief app-background/network-blip without
@@ -204,32 +209,48 @@ export function useSocketConnection() {
     // fetchConversation.fulfilled reducer update both
     // conversationDetails and the conversations list array, which is
     // what the Direct Message list actually renders from.
-    //
-    // Audit B5: a busy group sends one per message, and each used to fetch
-    // the conversation again. Now previews are collected for 400 ms and
-    // fetched once per chat (several chats: one request for all of them);
-    // a preview that already carries the chat's summary (the backend change
-    // in docs/polish/BACKEND-PORT.md) is used as is, with no fetch.
-    const previews = createIdBatcher(PREVIEW_BATCH_MS, (ids) => {
-      if (ids.length === 1) {
-        dispatch(fetchConversation({ conversationId: ids[0], token }));
-      } else {
-        dispatch(refreshConversations({ ids, token }));
-      }
-    });
+    // A burst of messages in a busy room sends a burst of chat:preview
+    // events; one GET per event (~0.3-0.6 s each from Lagos) piled up on the
+    // server and re-rendered the list each time. At most one request per
+    // conversation is in flight; events during it cause one more fetch at
+    // the end, so the final state is always fetched.
+    const previewInFlight = new Map<string, boolean>();
+    let previewActive = true;
+
+    const refreshPreview = (conversationId: string) => {
+      previewInFlight.set(conversationId, false);
+
+      Promise.resolve(dispatch(fetchConversation({ conversationId, token })))
+        .catch(() => undefined)
+        .finally(() => {
+          const again = previewInFlight.get(conversationId);
+          previewInFlight.delete(conversationId);
+
+          if (again && previewActive) {
+            refreshPreview(conversationId);
+          }
+        });
+    };
 
     const handleChatPreview = (payload: { conversationId: string; chat?: unknown }) => {
       if (!payload?.conversationId) {
         return;
       }
 
+      // A preview that already carries the chat's summary (the backend change
+      // in docs/polish/BACKEND-PORT.md) is used as is, with no fetch.
       const summary = previewSummary(payload);
       if (summary) {
         dispatch(socketChatSummaries([normalizeChat(summary)]));
         return;
       }
 
-      previews.add(payload.conversationId);
+      if (previewInFlight.has(payload.conversationId)) {
+        previewInFlight.set(payload.conversationId, true);
+        return;
+      }
+
+      refreshPreview(payload.conversationId);
     };
 
     // ======================================
@@ -240,13 +261,33 @@ export function useSocketConnection() {
     // Both are sent by callController.js with emitToUsers, to the
     // user:<id> room this socket joins on connect.
 
-    const handleCallIncoming = (payload: { call: any }) => {
+    const handleCallIncoming = (payload: { call: any; privateOf?: string }) => {
+      // A private call: its own small card, the main call keeps going.
+      if (payload?.call && (payload.call.privateOf || payload.privateOf)) {
+        receivePrivateIncoming(normalizeCall({ ...payload.call, privateOf: payload.call.privateOf || payload.privateOf }));
+        return;
+      }
       if (payload?.call) {
         dispatch(socketCallIncoming({ call: normalizeCall(payload.call) }));
       }
     };
 
+    // Scheduled group calls: created / edited / cancelled / RSVP (the call
+    // without passcode or invite link; the slice keeps the ones it has).
+    // Projects: someone changed one (files, subjects, Sparks, archive).
+    const handleProjectUpdated = (payload: { projectId?: string }) => {
+      if (payload?.projectId) dispatch(refreshProject(payload.projectId));
+    };
+
+    const handleScheduledCallUpdated = (payload: { call?: any }) => {
+      if (payload?.call) dispatch(scheduledCallUpdated(payload.call));
+    };
+
     const handleCallUpdated = (payload: { call: any }) => {
+      if (payload?.call?.privateOf) {
+        applyPrivateUpdate(normalizeCall(payload.call));
+        return;
+      }
       if (payload?.call) {
         dispatch(socketCallUpdated({ call: normalizeCall(payload.call) }));
       }
@@ -298,6 +339,9 @@ export function useSocketConnection() {
     );
 
     socket.on("notification:new", handleNotification);
+    // Pop-up banner while the app is open (instead of a push).
+    socket.on("banner", pushBanner);
+    socket.on("alert:faction", showFactionAlert);
     socket.on("presence:online", handlePresenceOnline);
     socket.on("presence:offline", handlePresenceOffline);
     socket.on("typing:start", handleTypingStart);
@@ -305,21 +349,32 @@ export function useSocketConnection() {
     socket.on("chat:preview", handleChatPreview);
     socket.on("call:incoming", handleCallIncoming);
     socket.on("call:updated", handleCallUpdated);
+    socket.on("scheduled-call:updated", handleScheduledCallUpdated);
+    socket.on("project:updated", handleProjectUpdated);
+    socket.on("scheduled-call:waiting", onScheduledWaiting);
+    socket.on("scheduled-call:admission", onScheduledAdmission);
     socket.on("connect", handleConnect);
 
     return () => {
       socket.off("notification:new", handleNotification);
+      socket.off("banner", pushBanner);
+      socket.off("alert:faction", showFactionAlert);
       socket.off("presence:online", handlePresenceOnline);
       socket.off("presence:offline", handlePresenceOffline);
       socket.off("typing:start", handleTypingStart);
       socket.off("typing:stop", handleTypingStop);
       socket.off("chat:preview", handleChatPreview);
-      previews.cancel();
       socket.off("call:incoming", handleCallIncoming);
       socket.off("call:updated", handleCallUpdated);
+      socket.off("scheduled-call:updated", handleScheduledCallUpdated);
+      socket.off("project:updated", handleProjectUpdated);
+      socket.off("scheduled-call:waiting", onScheduledWaiting);
+      socket.off("scheduled-call:admission", onScheduledAdmission);
       socket.off("connect", handleConnect);
 
       appStateSubscription.remove();
+
+      previewActive = false;
 
       // Clear any still-pending offline timers so they don't fire
       // (and dispatch into a socket that's being torn down) after

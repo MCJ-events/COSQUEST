@@ -78,7 +78,7 @@ export async function apiRequest<T>(
       data?.errors?.[0] ||
       "Something went wrong. Please try again.";
 
-    // The status rides along for feature detection (services/capabilities.ts).
+    // The HTTP status rides along, for screens that word each error differently.
     throw Object.assign(new Error(message), { status: response.status });
   }
 

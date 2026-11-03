@@ -10,6 +10,7 @@
 // code isn't used twice.
 
 import { router, useLocalSearchParams } from "expo-router";
+import { FONTS } from "@/constants/fonts";
 import * as WebBrowser from "expo-web-browser";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -29,12 +30,15 @@ import {
 import { safeBack } from "@/utils/safeBack";
 import { OnboardingScreen } from "@/components/OnboardingScreen";
 import { C } from "@/theme/tokens";
+import { themedStyles, useInk, useThemedStyles } from "@/constants/chatTheme";
 
 // Lets a popup-style sign-in (if the browser used one) hand the result
 // back to the page that opened it and close itself.
 WebBrowser.maybeCompleteAuthSession();
 
 export default function GoogleOAuthReturn() {
+  const styles = useThemedStyles(STYLE_PAIR);
+  const ink = useInk();
   const dispatch = useAppDispatch();
   const { update } = useOnboarding();
 
@@ -98,7 +102,7 @@ export default function GoogleOAuthReturn() {
           </>
         ) : (
           <>
-            <ActivityIndicator size="large" color={C.brand} />
+            <ActivityIndicator size="large" color={ink.text("#C5399A")} />
 
             <Text style={styles.text}>Signing you in with Google...</Text>
           </>
@@ -107,7 +111,7 @@ export default function GoogleOAuthReturn() {
   );
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   center: {
     flex: 1,
     alignItems: "center",
@@ -116,6 +120,7 @@ const styles = StyleSheet.create({
   },
 
   title: {
+    fontFamily: FONTS.bold,
     fontSize: 20,
     fontWeight: "800",
     color: C.ink,
@@ -123,6 +128,7 @@ const styles = StyleSheet.create({
   },
 
   text: {
+    fontFamily: FONTS.regular,
     marginTop: 12,
     fontSize: 14,
     lineHeight: 20,
@@ -139,6 +145,7 @@ const styles = StyleSheet.create({
   },
 
   buttonText: {
+    fontFamily: FONTS.bold,
     color: "#FFFFFF",
     fontSize: 15,
     fontWeight: "700",

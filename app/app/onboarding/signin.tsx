@@ -1,3 +1,4 @@
+import { FONTS } from "@/constants/fonts";
 import { Button } from "@/components/Button";
 import { ErrorText } from "@/components/ErrorText";
 import { Field } from "@/components/Field";
@@ -11,10 +12,12 @@ import { Keyboard, Pressable, StyleSheet, Text, View } from "react-native";
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
 import { OnboardingScreen } from "@/components/OnboardingScreen";
 import { C } from "@/theme/tokens";
+import { themedStyles, useInk, useThemedStyles } from "@/constants/chatTheme";
 
 WebBrowser.maybeCompleteAuthSession();
 
 export default function Signin() {
+  const styles = useThemedStyles(STYLE_PAIR);
 
   const dispatch = useAppDispatch();
 
@@ -177,7 +180,7 @@ export default function Signin() {
   );
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   screen: {
     flex: 1,
     paddingHorizontal: 25,
@@ -185,6 +188,7 @@ const styles = StyleSheet.create({
   },
 
   headline: {
+    fontFamily: FONTS.bold,
     fontSize: 35,
     fontWeight: "800",
     textAlign: "center",
@@ -192,6 +196,7 @@ const styles = StyleSheet.create({
   },
 
   sub: {
+    fontFamily: FONTS.regular,
     fontSize: 14,
     color: C.inkSoft,
     textAlign: "center",
@@ -215,6 +220,7 @@ const styles = StyleSheet.create({
   },
 
   dividerText: {
+    fontFamily: FONTS.regular,
     color: "#675656",
     fontSize: 13,
   },
@@ -237,12 +243,14 @@ const styles = StyleSheet.create({
   },
 
   signupText: {
+    fontFamily: FONTS.regular,
     color: "#5e5e5e",
     fontSize: 14,
   },
 
   signupLink: {
-    color: C.brand,
+    fontFamily: FONTS.bold,
+    color: "#C5399A",
     fontSize: 14,
     fontWeight: "700",
   },

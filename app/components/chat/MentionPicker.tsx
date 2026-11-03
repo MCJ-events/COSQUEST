@@ -1,4 +1,4 @@
-// ==========================================
+﻿// ==========================================
 // MENTION MEMBERS (Figma M13 · Checkbox mentions)
 // ==========================================
 // Full screen: "Mention members" with the group's name under it, "Find a
@@ -168,6 +168,7 @@ export default function MentionPicker({
   onClose,
   onDone,
   groupTitle,
+  docked = false,
 }: {
   visible: boolean;
   conversationId: string;
@@ -176,6 +177,8 @@ export default function MentionPicker({
   onDone: (people: MentionPerson[], everyone: boolean) => void;
   // Shown under the title (defaults to the chat's own title).
   groupTitle?: string;
+  // Computer (Figma D4): a column beside the chat instead of a full screen.
+  docked?: boolean;
 }) {
   const styles = useThemedStyles(STYLE_PAIR);
   const screenGradient = useInk().dark ? DARK_SCREEN_GRADIENT : LIGHT_SCREEN_GRADIENT;
@@ -320,8 +323,7 @@ export default function MentionPicker({
 
   const memberCount = total || members.length;
 
-  return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+  const body = (
       <LinearGradient colors={screenGradient} style={styles.screen}>
         {/* HEADER */}
         <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
@@ -428,6 +430,14 @@ export default function MentionPicker({
           </Pressable>
         </View>
       </LinearGradient>
+  );
+
+  // Computer: docked as a column beside the chat (Figma D4).
+  if (docked) return visible ? body : null;
+
+  return (
+    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+      {body}
     </Modal>
   );
 }
@@ -518,4 +528,20 @@ const STYLE_PAIR = themedStyles({
   confirm: { height: 52, borderRadius: 16, alignItems: "center", justifyContent: "center", backgroundColor: PINK },
 
   confirmText: { fontFamily: FONTS.semibold, fontSize: 16, color: "#FFFFFF" },
+}, {
+  // M13 dark-theme overrides; selection behaviour remains unchanged.
+  title: { color: "#F4F5FA" },
+  subtitle: { color: "#B5BBCB" },
+  search: { backgroundColor: "#252837", borderColor: "rgba(255,255,255,0.16)" },
+  searchInput: { color: "#F4F5FA" },
+  everyoneText: { color: "#F4F5FA" },
+  countChip: { backgroundColor: "#343044" },
+  countChipText: { color: "#D5D8E4" },
+  separator: { backgroundColor: "rgba(255,255,255,0.12)" },
+  check: { backgroundColor: "#252837", borderColor: "#737B91" },
+  name: { color: "#F4F5FA" },
+  detail: { color: "#B5BBCB" },
+  empty: { color: "#B5BBCB" },
+  selectedHint: { color: "#B5BBCB" },
 });
+

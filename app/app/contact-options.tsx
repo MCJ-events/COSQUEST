@@ -43,10 +43,18 @@ import MapView, { MapPressEvent, Marker, Region } from "react-native-maps";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { safeBack } from "@/utils/safeBack";
 import { C } from "@/theme/tokens";
+import { DARK_SCREEN_GRADIENT, themedStyles, useInk, useThemedStyles } from "@/constants/chatTheme";
 
 const PINK = C.brandSoft;
 
+import { useContext as usePaneContext } from "react";
+import { PaneClose } from "@/components/desktop/DesktopEditProfile";
+
 export default function ContactOptions() {
+  // Shown in the Edit profile pane (computer): close it instead of going back.
+  const paneClose = usePaneContext(PaneClose);
+  const styles = useThemedStyles(STYLE_PAIR);
+  const ink = useInk();
   const insets = useSafeAreaInsets();
 
   const dispatch = useAppDispatch();
@@ -474,7 +482,7 @@ export default function ContactOptions() {
         [
           {
             text: "OK",
-            onPress: () => safeBack(),
+            onPress: () => (paneClose ? paneClose() : safeBack()),
           },
         ],
       );
@@ -493,6 +501,7 @@ export default function ContactOptions() {
   const formattedPhone = displayedPhone ? phonePreview : "";
 
   const goBack = () => {
+    if (paneClose) return paneClose();
     if (router.canGoBack()) {
       safeBack();
     } else {
@@ -504,7 +513,7 @@ export default function ContactOptions() {
     <View style={styles.screen}>
       {/* Same background as the Figma screens */}
       <LinearGradient
-        colors={["rgba(255,255,255,0.6)", "rgba(184,232,255,0.6)"]}
+        colors={ink.dark ? [...DARK_SCREEN_GRADIENT] : ["rgba(255,255,255,0.6)", "rgba(184,232,255,0.6)"]}
         locations={[0.0459, 0.677]}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
@@ -522,7 +531,7 @@ export default function ContactOptions() {
             style={styles.headerSide}
             accessibilityRole="button"
             accessibilityLabel="Back">
-            <Ionicons name="chevron-back" size={24} color={C.ink} />
+            <Ionicons name="chevron-back" size={24} color={ink.text("#191922")} />
           </Pressable>
 
           <Text style={styles.headerTitle}>Contact options</Text>
@@ -535,7 +544,7 @@ export default function ContactOptions() {
             accessibilityRole="button"
             accessibilityLabel="Save">
             {saving ? (
-              <ActivityIndicator size="small" color={PINK} />
+              <ActivityIndicator size="small" color={ink.text(PINK)} />
             ) : (
               <Text style={styles.save}>Save</Text>
             )}
@@ -556,7 +565,7 @@ export default function ContactOptions() {
               <Text style={styles.label}>Email</Text>
 
               <View style={[styles.field, styles.iconField]}>
-                <Ionicons name="mail-outline" size={19} color={PINK} />
+                <Ionicons name="mail-outline" size={19} color={ink.text(PINK)} />
 
                 <TextInput
                   value={form.email}
@@ -566,7 +575,7 @@ export default function ContactOptions() {
                   textContentType="emailAddress"
                   autoComplete="email"
                   placeholder="you@example.com"
-                  placeholderTextColor={C.muted}
+                  placeholderTextColor={ink.text("#9C9CAA")}
                   style={styles.input}
                 />
               </View>
@@ -600,13 +609,13 @@ export default function ContactOptions() {
 
                   <Text style={styles.callingCode}>+{callingCode}</Text>
 
-                  <Ionicons name="chevron-down" size={14} color={C.grey5} />
+                  <Ionicons name="chevron-down" size={14} color={ink.text("#777780")} />
                 </View>
 
                 <Ionicons
                   name="call-outline"
                   size={18}
-                  color={PINK}
+                  color={ink.text(PINK)}
                   style={styles.phoneIcon}
                 />
 
@@ -616,7 +625,7 @@ export default function ContactOptions() {
                   keyboardType="phone-pad"
                   autoCapitalize="none"
                   placeholder="Phone number"
-                  placeholderTextColor={C.muted}
+                  placeholderTextColor={ink.text("#9C9CAA")}
                   style={styles.input}
                 />
               </View>
@@ -637,14 +646,14 @@ export default function ContactOptions() {
               <Text style={styles.label}>Location / Address</Text>
 
               <View style={[styles.field, styles.iconField]}>
-                <Ionicons name="location-outline" size={19} color={PINK} />
+                <Ionicons name="location-outline" size={19} color={ink.text(PINK)} />
 
                 <TextInput
                   value={form.businessAddress}
                   onChangeText={(text) => update("businessAddress", text)}
                   autoCapitalize="words"
                   placeholder="Enter your address"
-                  placeholderTextColor={C.muted}
+                  placeholderTextColor={ink.text("#9C9CAA")}
                   style={styles.input}
                 />
               </View>
@@ -660,9 +669,9 @@ export default function ContactOptions() {
                 onPress={useCurrentLocation}
                 disabled={gettingLocation}>
                 {gettingLocation ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
+                  <ActivityIndicator size="small" color={ink.text("#FFFFFF")} />
                 ) : (
-                  <Ionicons name="navigate" size={17} color="#FFFFFF" />
+                  <Ionicons name="navigate" size={17} color={ink.text("#FFFFFF")} />
                 )}
 
                 <Text style={styles.primaryActionText}>
@@ -679,9 +688,9 @@ export default function ContactOptions() {
                 onPress={findTypedAddress}
                 disabled={findingAddress}>
                 {findingAddress ? (
-                  <ActivityIndicator size="small" color={PINK} />
+                  <ActivityIndicator size="small" color={ink.text(PINK)} />
                 ) : (
-                  <Ionicons name="search-outline" size={17} color={PINK} />
+                  <Ionicons name="search-outline" size={17} color={ink.text(PINK)} />
                 )}
 
                 <Text style={styles.secondaryActionText}>
@@ -727,14 +736,14 @@ export default function ContactOptions() {
                           await setMapLocation(latitude, longitude);
                         }}>
                         <View style={styles.marker}>
-                          <Ionicons name="location" size={36} color={PINK} />
+                          <Ionicons name="location" size={36} color={ink.text(PINK)} />
                         </View>
                       </Marker>
                     ) : null}
                   </MapView>
                 ) : (
                   <View style={styles.emptyMap}>
-                    <Ionicons name="map-outline" size={38} color={PINK} />
+                    <Ionicons name="map-outline" size={38} color={ink.text(PINK)} />
 
                     <Text style={styles.emptyMapTitle}>
                       No location selected
@@ -749,7 +758,7 @@ export default function ContactOptions() {
 
               {marker ? (
                 <View style={[styles.field, styles.coordinatesBox]}>
-                  <Ionicons name="location-outline" size={16} color={PINK} />
+                  <Ionicons name="location-outline" size={16} color={ink.text(PINK)} />
 
                   <Text style={styles.coordinatesText}>
                     {marker.latitude.toFixed(6)}
@@ -782,10 +791,10 @@ const MILKY_FIELD = {
   shadowOpacity: 0.09,
   shadowRadius: 4,
   shadowOffset: { width: 0, height: 4 },
-  elevation: 2,
+  elevation: 0 /* see-through: no Android shadow (grey frame) */,
 } as const;
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   screen: {
     flex: 1,
     backgroundColor: "#FFFFFF",

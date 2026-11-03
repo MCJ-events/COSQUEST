@@ -19,6 +19,7 @@
       "env": {
         "EXPO_PUBLIC_API_URL": "https://cosquest-1.onrender.com",
         "EXPO_PUBLIC_WEB_URL": "https://cosquest.vercel.app",
+        "EXPO_PUBLIC_SPARKS_ENGINE": "module",
         "EXPO_PUBLIC_GAME3D": "1"
       }
     },
@@ -26,6 +27,9 @@
       "autoIncrement": true,
       "environment": "production",
       "env": {
+        "EXPO_PUBLIC_API_URL": "https://cosquest-1.onrender.com",
+        "EXPO_PUBLIC_WEB_URL": "https://cosquest.vercel.app",
+        "EXPO_PUBLIC_SPARKS_ENGINE": "module",
         "EXPO_PUBLIC_GAME3D": "1"
       }
     }

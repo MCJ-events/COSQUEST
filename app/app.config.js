@@ -47,6 +47,20 @@ module.exports = ({ config }) => {
     // OTA updates only reach builds with the same runtime version.
     runtimeVersion: { policy: "appVersion" },
   };
+  // COSQUEST_TESTFLIGHT=1: the team's "CosQuest Beta" build (App Store Connect
+  // app 6824541255, bundle com.subomi.cosquest.chat, Subomi's team P8M65P9522),
+  // the same overlay the team's TestFlight builds 1 to 14 were made with
+  // (~/Desktop/cosquest-expo/app.config.js, untracked there), now inside the
+  // merged app: name "CosQuest", the square opaque icon, clearer permission
+  // texts, the privacy manifest, no link to the team's EAS project unless
+  // COSQUEST_EAS_PROJECT_ID names one this account can use, and the game on
+  // the STAGING game server. Build numbers: build 14 (31 Oct) was the last
+  // upload, so this branch defaults to 15 (COSQUEST_BUILD_NUMBER overrides;
+  // every upload needs a new one). Android: same id, versionCode 15 (the
+  // team test APK com.subomi.cosquest.chat was versionCode 1).
+  //   scripts/cosquest-beta-env.sh sets the whole environment.
+  if (env.COSQUEST_TESTFLIGHT === "1") return cosquestBeta(out, env);
+
   // COSQUEST_DEV=1: the side-by-side developer build "CosQuest Dev" for a
   // personal Android phone (as on merged-app-push-android, b4e41ed/49f2d46):
   // its own application id (COSQUEST_DEV_ANDROID_PACKAGE, default
@@ -73,3 +87,75 @@ module.exports = ({ config }) => {
     },
   };
 };
+
+const BETA_BUILD_NUMBER = "15";
+const BETA_GAME_SERVER = "https://costquest-staging.204.168.162.79.sslip.io";
+const BETA_GAME_PLUGIN = "./modules/costquest-game/plugin/withCostQuestGame";
+
+function cosquestBeta(config, env) {
+  const extra = { ...(config.extra || {}) };
+  const eas = { ...(extra.eas || {}) };
+  if (env.COSQUEST_EAS_PROJECT_ID) eas.projectId = env.COSQUEST_EAS_PROJECT_ID;
+  else delete eas.projectId;
+  extra.eas = eas;
+  const buildNumber = env.COSQUEST_BUILD_NUMBER || BETA_BUILD_NUMBER;
+
+  // expo-image-picker writes the camera and photo texts itself, so they are set
+  // on its plugin entry (an infoPlist value alone would be overwritten).
+  const plugins = (config.plugins || []).map((plugin) => {
+    if (Array.isArray(plugin) && plugin[0] === "expo-image-picker") {
+      return [
+        "expo-image-picker",
+        {
+          ...plugin[1],
+          photosPermission: "CosQuest needs access to your photos so you can share them in chats or set a profile picture.",
+          cameraPermission:
+            "CosQuest uses the camera for video calls and to take photos to share in chats or as your profile picture.",
+        },
+      ];
+    }
+    if (Array.isArray(plugin) && plugin[0] === BETA_GAME_PLUGIN) {
+      return [BETA_GAME_PLUGIN, { ...plugin[1], nfc: false, serverUrl: env.COSQUEST_GAME_SERVER_URL || BETA_GAME_SERVER }];
+    }
+    return plugin;
+  });
+
+  return {
+    ...config,
+    name: "CosQuest",
+    plugins,
+    extra,
+    android: {
+      ...config.android,
+      package: env.COSQUEST_ANDROID_PACKAGE || "com.subomi.cosquest.chat",
+      versionCode: Number(env.COSQUEST_ANDROID_VERSION_CODE || buildNumber),
+    },
+    ios: {
+      ...config.ios,
+      bundleIdentifier: env.COSQUEST_IOS_BUNDLE_ID || "com.subomi.cosquest.chat",
+      appleTeamId: "P8M65P9522",
+      buildNumber,
+      supportsTablet: false,
+      icon: "./assets/images/app-icon-ios.png",
+      // The Sparks SDK checks free disk space before the model download
+      // (volumeAvailableCapacityForImportantUsage), a required-reason API.
+      privacyManifests: {
+        NSPrivacyAccessedAPITypes: [
+          { NSPrivacyAccessedAPIType: "NSPrivacyAccessedAPICategoryFileTimestamp", NSPrivacyAccessedAPITypeReasons: ["C617.1"] },
+          { NSPrivacyAccessedAPIType: "NSPrivacyAccessedAPICategoryUserDefaults", NSPrivacyAccessedAPITypeReasons: ["CA92.1"] },
+          { NSPrivacyAccessedAPIType: "NSPrivacyAccessedAPICategorySystemBootTime", NSPrivacyAccessedAPITypeReasons: ["35F9.1"] },
+          { NSPrivacyAccessedAPIType: "NSPrivacyAccessedAPICategoryDiskSpace", NSPrivacyAccessedAPITypeReasons: ["E174.1"] },
+        ],
+      },
+      infoPlist: {
+        ...(config.ios && config.ios.infoPlist),
+        ITSAppUsesNonExemptEncryption: false,
+        NSCameraUsageDescription:
+          "CosQuest uses the camera for video calls and to take photos to share in chats or as your profile picture.",
+        NSMicrophoneUsageDescription: "CosQuest uses the microphone for voice and video calls and voice messages.",
+        NSPhotoLibraryUsageDescription: "CosQuest needs access to your photos so you can share them in chats or set a profile picture.",
+        NSLocationWhenInUseUsageDescription: "CosQuest uses your location to show quests and events near you, and to share it with friends when you choose to.",
+      },
+    },
+  };
+}

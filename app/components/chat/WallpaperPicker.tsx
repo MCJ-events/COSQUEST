@@ -29,6 +29,7 @@ import {
 
 import { setAllChatsWallpaper, setChatWallpaper } from "./useChatWallpaper";
 import { C } from "@/theme/tokens";
+import { themedStyles, useInk, useThemedStyles } from "@/constants/chatTheme";
 
 function sameWallpaper(a: Wallpaper | null, b: Wallpaper | null) {
   if (!a || !b || a.kind !== b.kind) {
@@ -49,6 +50,8 @@ function PresetTile({
   selected: boolean;
   onPress: () => void;
 }) {
+  const styles = useThemedStyles(STYLE_PAIR);
+  const ink = useInk();
   return (
     <Pressable accessibilityRole="button" accessibilityLabel="Wallpaper" style={styles.tileWrap} onPress={onPress}>
       <View style={[styles.tile, selected && styles.tileSelected]}>
@@ -82,7 +85,7 @@ function PresetTile({
 
         {selected ? (
           <View style={styles.check}>
-            <Ionicons name="checkmark" size={14} color="#FFFFFF" />
+            <Ionicons name="checkmark" size={14} color={ink.text("#FFFFFF")} />
           </View>
         ) : null}
       </View>
@@ -109,6 +112,8 @@ export function WallpaperPicker({
   onPreview: (wallpaper: Wallpaper | null) => void;
   onClose: () => void;
 }) {
+  const styles = useThemedStyles(STYLE_PAIR);
+  const ink = useInk();
   const insets = useSafeAreaInsets();
 
   const [choice, setChoice] = useState<Wallpaper>(current);
@@ -230,7 +235,7 @@ export function WallpaperPicker({
           <Text style={styles.title}>Chat wallpaper</Text>
 
           <Pressable accessibilityRole="button" accessibilityLabel="Close" style={styles.close} onPress={cancel} hitSlop={8}>
-            <Ionicons name="close" size={22} color={C.ink} />
+            <Ionicons name="close" size={22} color={ink.text("#191922")} />
           </Pressable>
         </View>
 
@@ -257,12 +262,12 @@ export function WallpaperPicker({
                   contentFit="cover"
                 />
               ) : (
-                <Ionicons name="images-outline" size={26} color={C.brand} />
+                <Ionicons name="images-outline" size={26} color={ink.text("#C5399A")} />
               )}
 
               {photoSelected ? (
                 <View style={styles.check}>
-                  <Ionicons name="checkmark" size={14} color="#FFFFFF" />
+                  <Ionicons name="checkmark" size={14} color={ink.text("#FFFFFF")} />
                 </View>
               ) : null}
             </View>
@@ -305,7 +310,7 @@ export function WallpaperPicker({
   );
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   backdrop: {
     flex: 1,
   },

@@ -1,4 +1,4 @@
-﻿// ==========================================
+// ==========================================
 // ADMINISTRATORS (Figma M28 · Promote administrator)
 // ==========================================
 // Current administrators, then choose a member and confirm "Make Diego an
@@ -22,9 +22,11 @@ import {
 import { FONTS } from "@/constants/fonts";
 import { getGroup, getGroupMembers, setMemberRole, type Group, type GroupMember } from "@/services/groups";
 import { useAppSelector } from "@/store/hooks";
-import { C } from "@/theme/tokens";
+import { themedStyles, useInk, useThemedStyles } from "@/constants/chatTheme";
 
 export default function Administrators() {
+  const styles = useThemedStyles(STYLE_PAIR);
+  const ink = useInk();
   const { id } = useLocalSearchParams<{ id: string }>();
   const groupId = Array.isArray(id) ? id[0] : id;
   const token = useAppSelector((state) => state.auth.token);
@@ -126,7 +128,7 @@ export default function Administrators() {
             value={search}
             onChangeText={setSearch}
             placeholder="Find a member"
-            placeholderTextColor={C.placeholder}
+            placeholderTextColor={ink.text("#9AA3B5")}
             autoCapitalize="none"
             style={styles.search}
           />
@@ -174,7 +176,7 @@ export default function Administrators() {
   );
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   search: {
     height: 48,
     paddingHorizontal: 16,

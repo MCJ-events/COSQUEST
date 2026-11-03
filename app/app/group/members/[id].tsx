@@ -1,4 +1,4 @@
-﻿// ==========================================
+// ==========================================
 // GROUP MEMBERS (Figma M26 · Roster & member detail)
 // ==========================================
 // Search, then everyone with their Owner/Admin label and rank line. Tap a
@@ -8,9 +8,8 @@
 // Paged from the server (50 at a time, more as you scroll) so groups of
 // 1,000 people stay smooth.
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
-import { memo, useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useContext, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -25,7 +24,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { RankLine } from "@/components/chat/RankBadge";
-import { PersonAvatar } from "@/components/groups/AdminUi";
+import { AdminEmbedded, PersonAvatar } from "@/components/groups/AdminUi";
 import { FONTS } from "@/constants/fonts";
 import { userIdFromToken } from "@/services/calls";
 import { canActOn, getGroup, getGroupMembers, type Group, type GroupMember } from "@/services/groups";
@@ -34,9 +33,10 @@ import { createChat } from "@/store/thunks/chatThunks";
 import { safeBack } from "@/utils/safeBack";
 import { KeyboardAvoidingView } from "@/components/ui/keyboard";
 import { C } from "@/theme/tokens";
-import { openReport } from "@/components/safety/ReportSheet";
-import { useCapabilities } from "@/services/capabilities";
+import { openReport } from "@/components/report/reportStore";
 import { confirmBlock } from "@/components/safety/block";
+import { ScreenGradient } from "@/components/chat/ui";
+import { themedStyles, useInk, useThemedStyles } from "@/constants/chatTheme";
 
 const PINK = C.brandDeep;
 const INK = C.inkNavy;
@@ -68,6 +68,8 @@ const MemberRow = memo(function MemberRow({
   selected: boolean;
   onPress: (member: GroupMember) => void;
 }) {
+  const styles = useThemedStyles(STYLE_PAIR);
+  const ink = useInk();
   const name = member.name || member.username;
   const expertise = expertiseOf(member);
   const base = expertise || (member.rank ? null : `@${member.username}`);
@@ -91,17 +93,21 @@ const MemberRow = memo(function MemberRow({
           </Text>
         ) : null}
       </View>
-      <Ionicons name="chevron-forward" size={20} color={MUTED} />
+      <Ionicons name="chevron-forward" size={20} color={ink.text(MUTED)} />
     </Pressable>
   );
 });
 
 function Separator() {
+  const styles = useThemedStyles(STYLE_PAIR);
   return <View style={styles.separator} />;
 }
 
 export default function GroupMembers() {
-  const caps = useCapabilities();
+  // Inside a desktop workspace column (Figma D6): no own header.
+  const embedded = useContext(AdminEmbedded);
+  const styles = useThemedStyles(STYLE_PAIR);
+  const ink = useInk();
   const insets = useSafeAreaInsets();
   const dispatch = useAppDispatch();
   const listRef = useRef<FlatList<GroupMember>>(null);
@@ -214,7 +220,7 @@ export default function GroupMembers() {
         <Text style={styles.section}>MEMBER DETAIL</Text>
         {!detailInList ? (
           <Pressable onPress={() => setSelected(null)} hitSlop={10} accessibilityLabel="Close member detail">
-            <Ionicons name="close" size={20} color={MUTED} />
+            <Ionicons name="close" size={20} color={ink.text(MUTED)} />
           </Pressable>
         ) : null}
       </View>
@@ -243,7 +249,7 @@ export default function GroupMembers() {
 
         {selected.id !== myUserId ? (
           <Pressable accessibilityRole="button" accessibilityLabel={`Message ${firstName(selected)}`} style={[styles.soft, messaging && styles.off]} disabled={messaging} onPress={() => message(selected)}>
-            {messaging ? <ActivityIndicator color={PINK} /> : <Text style={styles.softText}>Message {firstName(selected)}</Text>}
+            {messaging ? <ActivityIndicator color={ink.text(PINK)} /> : <Text style={styles.softText}>Message {firstName(selected)}</Text>}
           </Pressable>
         ) : null}
 
@@ -263,27 +269,17 @@ export default function GroupMembers() {
               onPress={() => confirmBlock({ username: selected.username, userId: selected.id }, () => setSelected(null))}
               accessibilityRole="button"
               accessibilityLabel={`Block ${firstName(selected)}`}>
-              <Ionicons name="ban-outline" size={16} color={C.danger} />
+              <Ionicons name="ban-outline" size={16} color={ink.text(C.danger)} />
               <Text style={styles.safetyText}>Block</Text>
             </Pressable>
-            {caps.reports ? (
-              <Pressable
-                style={styles.safetyButton}
-                onPress={() =>
-                  openReport({
-                    targetType: "user",
-                    targetId: selected.id,
-                    name: `@${selected.username}`,
-                    person: { username: selected.username, userId: selected.id },
-                    conversationId: groupId,
-                  })
-                }
-                accessibilityRole="button"
-                accessibilityLabel={`Report ${firstName(selected)}`}>
-                <Ionicons name="flag-outline" size={16} color={C.danger} />
-                <Text style={styles.safetyText}>Report</Text>
-              </Pressable>
-            ) : null}
+            <Pressable
+              style={styles.safetyButton}
+              onPress={() => openReport({ targetType: "profile", targetId: String(selected.id), what: `@${selected.username}` })}
+              accessibilityRole="button"
+              accessibilityLabel={`Report ${firstName(selected)}`}>
+              <Ionicons name="flag-outline" size={16} color={ink.text(C.danger)} />
+              <Text style={styles.safetyText}>Report</Text>
+            </Pressable>
           </View>
         ) : null}
       </View>
@@ -291,10 +287,12 @@ export default function GroupMembers() {
   ) : null;
 
   return (
-    <LinearGradient colors={[C.skyPale, C.skyPale2]} style={styles.screen}>
+    <View style={styles.screen}>
+      {!embedded ? <ScreenGradient /> : null}
+      {!embedded ? (
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <Pressable onPress={() => safeBack()} hitSlop={10} accessibilityRole="button" accessibilityLabel="Back">
-          <Ionicons name="chevron-back" size={26} color={INK} />
+          <Ionicons name="chevron-back" size={26} color={ink.text(INK)} />
         </Pressable>
         <View style={styles.flex}>
           <Text style={styles.title}>Group members</Text>
@@ -304,29 +302,33 @@ export default function GroupMembers() {
           </Text>
         </View>
         <Pressable onPress={() => safeBack()} hitSlop={10} accessibilityLabel="Close">
-          <Ionicons name="close" size={26} color={MUTED} />
+          <Ionicons name="close" size={26} color={ink.text(MUTED)} />
         </Pressable>
       </View>
+      ) : (
+        <Text style={styles.title}>Members · {group?.memberCount || total || members.length}</Text>
+      )}
 
       <View style={styles.top}>
         <View style={styles.search}>
-          <Ionicons name="ellipse-outline" size={16} color={MUTED} />
+          <Ionicons name="ellipse-outline" size={16} color={ink.text(MUTED)} />
           <TextInput
             value={search}
             onChangeText={setSearch}
             placeholder="Find a member"
-            placeholderTextColor={C.placeholder}
+            placeholderTextColor={ink.text("#9AA3B5")}
             autoCapitalize="none"
             autoCorrect={false}
             style={styles.searchInput}
           />
-          {loadingPage === 1 && members.length ? <ActivityIndicator size="small" color={PINK} /> : null}
+          {loadingPage === 1 && members.length ? <ActivityIndicator size="small" color={ink.text(PINK)} /> : null}
         </View>
       </View>
 
       {/* The list ends above the keyboard while searching. */}
       <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
         <FlatList
+          scrollEnabled={embedded !== "inline"}
           ref={listRef}
           style={styles.flex}
           contentContainerStyle={[styles.content, { paddingBottom: detailInList ? insets.bottom + 30 : 16 }]}
@@ -345,14 +347,14 @@ export default function GroupMembers() {
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             loadingPage ? (
-              <ActivityIndicator color={PINK} style={styles.loading} />
+              <ActivityIndicator color={ink.text(PINK)} style={styles.loading} />
             ) : (
               <Text style={styles.empty}>No members found.</Text>
             )
           }
           ListFooterComponent={
             <>
-              {loadingPage > 1 ? <ActivityIndicator color={PINK} style={styles.loading} /> : null}
+              {loadingPage > 1 ? <ActivityIndicator color={ink.text(PINK)} style={styles.loading} /> : null}
               {detailInList ? detailCard : null}
               {detailInList ? (
                 <Text style={styles.footnote}>
@@ -369,11 +371,11 @@ export default function GroupMembers() {
       {!detailInList && selected ? (
         <View style={[styles.docked, { paddingBottom: insets.bottom + 14 }]}>{detailCard}</View>
       ) : null}
-    </LinearGradient>
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   safetyRow: { flexDirection: "row", justifyContent: "center", gap: 24, marginTop: 10 },
   safetyButton: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 8, paddingHorizontal: 6 },
   safetyText: { fontFamily: FONTS.medium, fontSize: 13, color: C.danger },

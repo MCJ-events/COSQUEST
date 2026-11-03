@@ -1,11 +1,14 @@
 import { Ionicons } from "@expo/vector-icons";
 import { StyleSheet, Text, View } from "react-native";
 import { C } from "@/theme/tokens";
+import { themedStyles, useInk, useThemedStyles } from "@/constants/chatTheme";
 
 export function FeedEmptyState() {
+  const styles = useThemedStyles(STYLE_PAIR);
+  const ink = useInk();
   return (
     <View style={styles.container}>
-      <Ionicons name="newspaper-outline" size={44} color={C.muted} />
+      <Ionicons name="newspaper-outline" size={44} color={ink.text("#9C9CAA")} />
 
       <Text style={styles.title}>No posts yet</Text>
 
@@ -16,7 +19,7 @@ export function FeedEmptyState() {
   );
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   container: {
     alignItems: "center",
     paddingVertical: 60,

@@ -1,125 +1,117 @@
-// The Live tab. It was the Expo starter screen ("Edit app/(tabs)/index.tsx
-// to see changes"), shown to everyone who tapped Live. Until the team's Live
-// design lands, it says plainly where live things happen today: voice chats
-// and calls start in a group or a chat, and Quest Hours and raid bosses are
-// in the game, one swipe away.
-import { AppBackground } from "@/components/AppBackground";
-import { FONTS } from "@/constants/fonts";
-import { world } from "@/features/world/worldState";
+// ==========================================
+// LIVE TAB (placeholder)
+// ==========================================
+// Holds the tab's place until the Live design is ready: same background as
+// the dashboard, a short note, and a way back to the quests.
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import type { ComponentProps } from "react";
-import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+import {
+  DARK_SCREEN_GRADIENT,
+  themedStyles,
+  useInk,
+  useThemedStyles,
+} from "@/constants/chatTheme";
+import { FONTS } from "@/constants/fonts";
 import { tabBarSpace } from "@/constants/tabBar";
-import { C } from "@/theme/tokens";
-
-type IconName = ComponentProps<typeof Ionicons>["name"];
-
-function Row({
-  icon,
-  title,
-  body,
-  action,
-  onPress,
-}: {
-  icon: IconName;
-  title: string;
-  body: string;
-  action: string;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
-      accessibilityRole="button"
-      accessibilityLabel={`${title}. ${action}`}>
-      <View style={styles.iconWrap}>
-        <Ionicons name={icon} size={22} color={C.brand} />
-      </View>
-      <View style={styles.cardText}>
-        <Text style={styles.cardTitle}>{title}</Text>
-        <Text style={styles.cardBody}>{body}</Text>
-        <Text style={styles.cardAction}>{action}</Text>
-      </View>
-    </Pressable>
-  );
-}
+import { world } from "@/features/world/worldState";
 
 export default function LiveScreen() {
+  const styles = useThemedStyles(STYLE_PAIR);
+  const ink = useInk();
   const insets = useSafeAreaInsets();
 
   return (
-    <AppBackground variant="blueGradient">
-      <ScrollView
-        contentContainerStyle={[
-          styles.scroll,
-          { paddingTop: Platform.OS === "web" ? 16 : Math.max(insets.top, 52), paddingBottom: tabBarSpace(insets.bottom) },
-        ]}
-        showsVerticalScrollIndicator={false}>
+    <View style={styles.screen}>
+      <LinearGradient
+        colors={ink.dark ? [...DARK_SCREEN_GRADIENT] : ["#FFFFFF", "#F4F8FD", "#D5EAFB"]}
+        locations={ink.dark ? [0, 0.6] : [0, 0.35, 1]}
+        style={styles.fill}
+      />
+
+      <View style={[styles.content, { paddingTop: insets.top + 16, paddingBottom: tabBarSpace(insets.bottom) }]}>
         <Text style={styles.title} accessibilityRole="header">
           Live
         </Text>
-        <Text style={styles.subtitle}>Where live things happen in CosQuest.</Text>
 
-        <Row
-          icon="mic-outline"
-          title="Voice chats and calls"
-          body="Start a voice chat in Community or your faction room, or call someone from a DM. With Sparks on, 1:1 calls can keep notes."
-          action="Go to your chats"
-          onPress={() => router.navigate({ pathname: "/community", params: { tab: "Chats" } })}
-        />
-        <Row
-          icon="flash-outline"
-          title="Quest Hours and raids"
-          body="Double XP hours, raid bosses and duels near you are in the game."
-          action="Open the game"
-          onPress={() => world.openGame(null)}
-        />
-      </ScrollView>
-    </AppBackground>
+        <View style={styles.center}>
+          <View style={styles.iconRing}>
+            <Ionicons name="radio-outline" size={44} color="#B63D91" />
+          </View>
+          <Text style={styles.heading}>Live is coming soon</Text>
+          <Text style={styles.body}>
+            Watch quests as they happen, follow live hunts near you and cheer on your faction. We&apos;re
+            putting the finishing touches on it.
+          </Text>
+          <Pressable style={styles.button} onPress={() => router.navigate("/home")} accessibilityRole="button">
+            <Text style={styles.buttonText}>Explore quests</Text>
+          </Pressable>
+          {/* Quest Hours, raid bosses and duels near you are live in the game today. */}
+          <Pressable
+            style={styles.linkButton}
+            onPress={() => world.openGame(null)}
+            accessibilityRole="button"
+            accessibilityLabel="Quest Hours and raids. Open the game">
+            <Text style={styles.linkText}>Quest Hours and raids are in the game</Text>
+          </Pressable>
+        </View>
+      </View>
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
-  scroll: { paddingHorizontal: 24 },
-  title: {
-    fontFamily: FONTS.semibold,
-    fontSize: 22,
-    color: "#000000",
-    textAlign: "center",
-    marginTop: 12,
+const STYLE_PAIR = themedStyles(
+  {
+    screen: { flex: 1, backgroundColor: "#FFFFFF" },
+    fill: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
+    content: { flex: 1, paddingHorizontal: 24 },
+    title: { fontFamily: FONTS.semibold, fontSize: 26, lineHeight: 34, color: "#191922" },
+    center: { flex: 1, alignItems: "center", justifyContent: "center" },
+    iconRing: {
+      width: 96,
+      height: 96,
+      borderRadius: 48,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: "rgba(230,205,226,0.75)",
+      borderWidth: 1,
+      borderColor: "rgba(255,255,255,0.9)",
+    },
+    heading: {
+      marginTop: 20,
+      textAlign: "center",
+      fontFamily: FONTS.semibold,
+      fontSize: 20,
+      color: "#191922",
+    },
+    body: {
+      marginTop: 8,
+      maxWidth: 300,
+      textAlign: "center",
+      fontFamily: FONTS.regular,
+      fontSize: 14,
+      lineHeight: 21,
+      color: "#66738A",
+    },
+    button: {
+      marginTop: 24,
+      height: 48,
+      paddingHorizontal: 28,
+      alignItems: "center",
+      justifyContent: "center",
+      borderRadius: 24,
+      backgroundColor: "#B63D91",
+    },
+    buttonText: { fontFamily: FONTS.semibold, fontSize: 15, color: "#FFFFFF" },
+    linkButton: { marginTop: 14, paddingVertical: 8, paddingHorizontal: 12 },
+    linkText: { fontFamily: FONTS.medium, fontSize: 14, color: "#B63D91" },
   },
-  subtitle: {
-    fontFamily: FONTS.regular,
-    fontSize: 13,
-    color: C.slate,
-    textAlign: "center",
-    marginTop: 4,
-    marginBottom: 24,
+  {
+    screen: { backgroundColor: "#171823" },
+    // The pastel ring stays light; its icon stays pink.
+    iconRing: { backgroundColor: "rgba(230,205,226,0.85)" },
   },
-  card: {
-    flexDirection: "row",
-    gap: 14,
-    padding: 16,
-    marginBottom: 14,
-    borderRadius: 18,
-    backgroundColor: "rgba(255,255,255,0.72)",
-    borderWidth: 0.5,
-    borderColor: "rgba(255,255,255,0.9)",
-  },
-  cardPressed: { opacity: 0.8 },
-  iconWrap: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(195,77,156,0.14)",
-  },
-  cardText: { flex: 1 },
-  cardTitle: { fontFamily: FONTS.semibold, fontSize: 15, color: C.ink },
-  cardBody: { fontFamily: FONTS.regular, fontSize: 13, color: "#4A4F5C", marginTop: 4, lineHeight: 19 },
-  cardAction: { fontFamily: FONTS.medium, fontSize: 13, color: C.brand, marginTop: 8 },
-});
+);

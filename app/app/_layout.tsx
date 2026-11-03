@@ -1,8 +1,19 @@
+// Android: no grey frames in see-through boxes (must load first).
+import "@/utils/noSeeThroughShadows";
+import "@/utils/hideScrollbars";
 import AvatarCatalogLoader from "@/components/AvatarCatalogLoader";
 import ActiveCallOverlay from "@/components/calls/ActiveCallOverlay";
 import VoiceRoomOverlay from "@/components/voice/VoiceRoomOverlay";
 import CallBannerFrame from "@/components/calls/CallBannerFrame";
+import DesktopShell from "@/components/desktop/DesktopShell";
 import IncomingCallListener from "@/components/calls/IncomingCallListener";
+import PrivateCallLayer from "@/components/calls/PrivateCallLayer";
+import PushTapHandler from "@/components/PushTapHandler";
+import PushRegistration from "@/components/PushRegistration";
+import InAppBanner from "@/components/notifications/InAppBanner";
+import ReportLayer from "@/components/report/ReportLayer";
+import FactionAlertLayer from "@/components/alerts/FactionAlertLayer";
+import ScheduledCallLayer from "@/components/calls/scheduled/ScheduledCallLayer";
 import SessionGate from "@/components/SessionGate";
 import { RootErrorBoundary } from "@/components/ErrorBoundary";
 import ForceUpdateGate from "@/components/ForceUpdateGate";
@@ -90,6 +101,8 @@ export default function RootLayout() {
           <KeyboardProvider statusBarTranslucent navigationBarTranslucent>
             {/* Green "Tap to return to call" bar while a call is minimized */}
             <CallBannerFrame>
+              {/* Computer: top bar + left rail around every screen (D1-D8) */}
+              <DesktopShell>
               <Stack screenOptions={{ headerShown: false }}>
                 <Stack.Screen name="index" />
                 <Stack.Screen name="onboarding" />
@@ -124,6 +137,7 @@ export default function RootLayout() {
                   options={{ gestureEnabled: false, animation: "fade" }}
                 />
               </Stack>
+              </DesktopShell>
             </CallBannerFrame>
 
             {/* The ongoing call - stays mounted, so minimizing never ends it */}
@@ -133,6 +147,22 @@ export default function RootLayout() {
             {/* Ringing screen — shows on top of any screen when someone calls */}
             <IncomingCallListener />
 
+            {/* Private call on top: its ringing card and sheet */}
+            <PrivateCallLayer />
+
+            {/* Tapping a push notification opens what it's about */}
+            <PushTapHandler />
+            <PushRegistration />
+
+            {/* Pop-up banners while the app is open */}
+            <InAppBanner />
+            <ReportLayer />
+
+            {/* Faction in danger */}
+            <FactionAlertLayer />
+
+            {/* Scheduled calls: the waiting room and the call */}
+            <ScheduledCallLayer />
             {/* Merged app: the chat <-> game bridge (one login, unread,
                 calls, invites to chat, notification links) */}
             <GameBridge />

@@ -25,6 +25,11 @@ export type AppNotificationItem = {
   // kind (raid_started, boss_appeared, duel_challenge, ...).
   link?: string | null;
   gameKind?: string | null;
+  // Scheduled-call invitations, changes, cancellations and reminders.
+  scheduledCallId?: string | null;
+  // like / comment / repost / post: the post (and comment) to open.
+  postId?: string | null;
+  commentId?: string | null;
 };
 
 function normalizeActor(raw: any): NotificationActor | null {
@@ -57,6 +62,11 @@ function normalizeNotification(item: any): AppNotificationItem {
     actor: normalizeActor(item?.actor),
     conversationId: item?.conversationId ?? null,
     messageId: item?.messageId ?? null,
+    scheduledCallId: item?.scheduledCallId ?? null,
+    postId: item?.postId ?? null,
+    commentId: item?.commentId ?? null,
+    link: item?.link ?? null,
+    gameKind: item?.gameKind ?? null,
   };
 }
 

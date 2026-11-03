@@ -12,7 +12,7 @@ import * as Clipboard from "expo-clipboard";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { router, useLocalSearchParams } from "expo-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -38,8 +38,13 @@ import {
   OptionSelector,
   PINK,
   SectionLabel,
-  groupStyles,
+  useGroupStyles,
 } from "@/components/groups/GroupUi";
+import { AdminEmbedded } from "@/components/groups/AdminUi";
+import DesktopGroupWorkspace, { GROUP_WORKSPACES } from "@/components/desktop/DesktopGroupWorkspace";
+import { useIsDesktop } from "@/hooks/useDesktop";
+import GroupSettings from "@/app/group/settings/[id]";
+import JoinRequests from "@/app/group/requests/[id]";
 import PeoplePicker, { personKey } from "@/components/groups/PeoplePicker";
 import { FONTS } from "@/constants/fonts";
 import { userIdFromToken } from "@/services/calls";
@@ -80,9 +85,9 @@ import { fetchChats, fetchConversation } from "@/store/thunks/chatThunks";
 import { getAvatarSource } from "@/utils/callHelpers";
 import { safeBack } from "@/utils/safeBack";
 import { C } from "@/theme/tokens";
-import { openReport } from "@/components/safety/ReportSheet";
-import { useCapabilities } from "@/services/capabilities";
+import { openReport } from "@/components/report/reportStore";
 import { confirmBlock } from "@/components/safety/block";
+import { themedStyles, useInk, useThemedStyles } from "@/constants/chatTheme";
 
 const KIND_LABEL = {
   private: "Private group",
@@ -97,8 +102,17 @@ function errorText(error: unknown, fallback: string) {
   return fallback;
 }
 
+// Group info shows the group's details only; its settings are in Group
+// settings (the ⚙). Set to true to show them here again.
+const SHOW_SETTINGS_IN_INFO = false;
+
 export default function GroupInfo() {
-  const caps = useCapabilities();
+  // Computer (Figma D6): group info | settings | join requests side by side.
+  const desktop = useIsDesktop();
+  const embedded = useContext(AdminEmbedded);
+  const gs = useGroupStyles();
+  const styles = useThemedStyles(STYLE_PAIR);
+  const ink = useInk();
   const insets = useSafeAreaInsets();
   const dispatch = useAppDispatch();
   const { id, manage } = useLocalSearchParams<{ id: string; manage?: string }>();
@@ -174,8 +188,12 @@ export default function GroupInfo() {
       if (result.group?.canSeeMembers) {
         loadMembers(1);
       }
+      // Join requests load beside the page instead of holding the
+      // full-screen spinner for another round trip (~0.5 s from Lagos).
       if (result.group?.canEdit && result.group.pendingRequestCount > 0) {
-        setRequests(await getJoinRequests(groupId, token));
+        getJoinRequests(groupId, token)
+          .then(setRequests)
+          .catch(() => undefined);
       } else {
         setRequests([]);
       }
@@ -566,7 +584,7 @@ export default function GroupInfo() {
     return (
       <GroupScreen title="Group info" onBack={() => safeBack()}>
         <View style={styles.center}>
-          <ActivityIndicator color={PINK} />
+          <ActivityIndicator color={ink.text(PINK)} />
         </View>
       </GroupScreen>
     );
@@ -612,16 +630,16 @@ export default function GroupInfo() {
 
           <Pressable accessibilityRole="button" accessibilityLabel="Join group"
             style={[
-              groupStyles.primaryButton,
+              gs.primaryButton,
               (preview.requestPending || busy === "join") &&
-                groupStyles.primaryButtonOff,
+                gs.primaryButtonOff,
             ]}
             onPress={join}
             disabled={preview.requestPending || busy === "join"}>
             {busy === "join" ? (
               <ActivityIndicator color="#FFFFFF" />
             ) : (
-              <Text style={groupStyles.primaryButtonText}>
+              <Text style={gs.primaryButtonText}>
                 {preview.requestPending
                   ? "Request sent"
                   : preview.joinMode === "approval"
@@ -636,6 +654,23 @@ export default function GroupInfo() {
   }
 
   const g = group!;
+
+  if (GROUP_WORKSPACES && desktop && !embedded) {
+    const admin = g.myRole === "owner" || g.myRole === "admin";
+    const role = g.myRole === "owner" ? "Owner" : g.myRole === "admin" ? "Admin" : "Member";
+    return (
+      <DesktopGroupWorkspace
+        title={g.name}
+        subtitle={`${g.memberCount} ${g.memberCount === 1 ? "member" : "members"} · faction rank is not chat authority`}
+        chip={role}
+        columns={[
+          <GroupInfo key="info" />,
+          <GroupSettings key="settings" />,
+          ...(admin ? [<JoinRequests key="requests" />] : []),
+        ]}
+      />
+    );
+  }
 
   return (
     <GroupScreen
@@ -652,16 +687,20 @@ export default function GroupInfo() {
             onPress={() => router.push({ pathname: "/group/settings/[id]", params: { id: g.id } })}
             hitSlop={10}
             accessibilityLabel="Group settings">
-            <Ionicons name="settings-outline" size={22} color={PINK} />
+            <Ionicons name="settings-outline" size={22} color={ink.text(PINK)} />
           </Pressable>
         </View>
       }>
       <ScrollView
         contentContainerStyle={[
           styles.scroll,
+          desktop && styles.scrollWide,
           { paddingBottom: insets.bottom + 40 },
         ]}
         showsVerticalScrollIndicator={false}>
+        {/* Computer: the group | the members, side by side */}
+        <View style={desktop ? styles.wideRow : undefined}>
+        <View style={desktop ? styles.wideLeft : undefined}>
         {/* HERO */}
         <View style={styles.hero}>
           <Pressable accessibilityRole="button" accessibilityLabel="Camera"
@@ -709,12 +748,15 @@ export default function GroupInfo() {
             <Ionicons
               name="chatbubble-ellipses-outline"
               size={16}
-              color={PINK}
+              color={ink.text(PINK)}
             />
             <Text style={styles.messagePillText}>Open chat</Text>
           </Pressable>
         </View>
 
+        {/* Settings, join requests, mute and leave live in Group settings (⚙). */}
+        {SHOW_SETTINGS_IN_INFO ? (
+        <>
         {/* JOIN REQUESTS (admins) */}
         {g.canEdit && requests.length > 0 ? (
           <>
@@ -728,33 +770,36 @@ export default function GroupInfo() {
           </>
         ) : null}
 
+        </>
+        ) : null}{/* end: join requests moved to settings */}
+
         {/* INVITE LINK */}
         {link ? (
           <>
             <SectionLabel>INVITE LINK</SectionLabel>
             <View style={styles.linkBox}>
-              <Ionicons name="link" size={18} color={PINK} />
+              <Ionicons name="link" size={18} color={ink.text(PINK)} />
               <Text style={styles.linkText} numberOfLines={1}>
                 {link}
               </Text>
             </View>
             <View style={styles.linkActions}>
               <Pressable accessibilityRole="button" accessibilityLabel="Copy" style={styles.linkButton} onPress={copyLink}>
-                <Ionicons name="copy-outline" size={16} color={PINK} />
+                <Ionicons name="copy-outline" size={16} color={ink.text(PINK)} />
                 <Text style={styles.linkButtonText}>Copy</Text>
               </Pressable>
               <Pressable accessibilityRole="button" accessibilityLabel="Share" style={styles.linkButton} onPress={shareLink}>
-                <Ionicons name="share-social-outline" size={16} color={PINK} />
+                <Ionicons name="share-social-outline" size={16} color={ink.text(PINK)} />
                 <Text style={styles.linkButtonText}>Share</Text>
               </Pressable>
               {g.canEdit ? (
                 <Pressable accessibilityRole="button" accessibilityLabel="Reset" style={styles.linkButton} onPress={confirmResetLink}>
-                  <Ionicons name="refresh" size={16} color={PINK} />
+                  <Ionicons name="refresh" size={16} color={ink.text(PINK)} />
                   <Text style={styles.linkButtonText}>Reset</Text>
                 </Pressable>
               ) : null}
             </View>
-            <Text style={[groupStyles.hint, styles.hintGap]}>
+            <Text style={[gs.hint, styles.hintGap]}>
               {g.joinMode === "approval"
                 ? "People who open the link ask to join; an admin approves them."
                 : "Anyone with the link can join straight away."}
@@ -762,6 +807,8 @@ export default function GroupInfo() {
           </>
         ) : null}
 
+        </View>
+        <View style={desktop ? styles.wideRight : undefined}>
         {/* MEMBERS */}
         <SectionLabel>
           {g.memberCount} {g.memberCount === 1 ? "MEMBER" : "MEMBERS"}
@@ -847,11 +894,16 @@ export default function GroupInfo() {
             ) : null}
           </View>
         ) : (
-          <Text style={groupStyles.hint}>
+          <Text style={gs.hint}>
             Only admins can see the member list of this group.
           </Text>
         )}
 
+        </View>
+        </View>{/* end of the two columns */}
+
+        {SHOW_SETTINGS_IN_INFO ? (
+        <>
         {/* SETTINGS (admins) */}
         {g.canEdit ? (
           <>
@@ -907,14 +959,14 @@ export default function GroupInfo() {
               onChange={(value) => save({ slowModeSeconds: Number(value) })}
               options={SLOW_MODE_OPTIONS.map((option) => ({ ...option }))}
             />
-            <Text style={[groupStyles.hint, styles.hintGap]}>
+            <Text style={[gs.hint, styles.hintGap]}>
               {g.slowModeSeconds
                 ? `Members can send one message every ${SLOW_MODE_OPTIONS.find((o) => o.value === String(g.slowModeSeconds))?.label || `${g.slowModeSeconds}s`}. Admins aren't limited.`
                 : "Limit how often members can send messages."}
             </Text>
 
             {g.kind !== "faction" ? (
-              <Text style={[groupStyles.hint, styles.hintGap]}>
+              <Text style={[gs.hint, styles.hintGap]}>
                 Size limit: {g.sizeLimit} people (change it with Edit).
               </Text>
             ) : null}
@@ -929,13 +981,13 @@ export default function GroupInfo() {
                 onPress={openBans}
                 right={
                   busy === "bans" ? (
-                    <ActivityIndicator color={PINK} />
+                    <ActivityIndicator color={ink.text(PINK)} />
                   ) : undefined
                 }
               />
             </View>
 
-            <Text style={[groupStyles.hint, styles.hintGap]}>
+            <Text style={[gs.hint, styles.hintGap]}>
               Tap a member to make them admin, mute, remove or ban them.
             </Text>
           </>
@@ -956,16 +1008,9 @@ export default function GroupInfo() {
             danger
             onPress={confirmLeave}
           />
-          {/* Task 059: report the group (where the server takes reports). */}
-          {caps.reports ? (
-            <GroupRow
-              icon="flag-outline"
-              label="Report group"
-              danger
-              onPress={() => group && openReport({ targetType: "group", targetId: String(group.id), name: group.name, conversationId: String(group.id) })}
-            />
-          ) : null}
         </View>
+        </>
+        ) : null}{/* end: settings moved to settings */}
       </ScrollView>
 
       {/* ADD PEOPLE */}
@@ -998,16 +1043,16 @@ export default function GroupInfo() {
           </ScrollView>
           <Pressable accessibilityRole="button" accessibilityLabel="Add people"
             style={[
-              groupStyles.primaryButton,
+              gs.primaryButton,
               (!Object.keys(toAdd).length || busy === "add") &&
-                groupStyles.primaryButtonOff,
+                gs.primaryButtonOff,
             ]}
             disabled={!Object.keys(toAdd).length || busy === "add"}
             onPress={addPeople}>
             {busy === "add" ? (
               <ActivityIndicator color="#FFFFFF" />
             ) : (
-              <Text style={groupStyles.primaryButtonText}>
+              <Text style={gs.primaryButtonText}>
                 {Object.keys(toAdd).length
                   ? `Add ${Object.keys(toAdd).length}`
                   : "Choose people to add"}
@@ -1051,7 +1096,7 @@ export default function GroupInfo() {
                   </Text>
                 </View>
                 {busy === request.id ? (
-                  <ActivityIndicator color={PINK} />
+                  <ActivityIndicator color={ink.text(PINK)} />
                 ) : (
                   <View style={styles.requestActions}>
                     <Pressable
@@ -1102,7 +1147,7 @@ export default function GroupInfo() {
                     : ""}
                 </Text>
               </View>
-              {busy === "member" ? <ActivityIndicator color={PINK} /> : null}
+              {busy === "member" ? <ActivityIndicator color={ink.text(PINK)} /> : null}
             </View>
 
             {(() => {
@@ -1170,28 +1215,19 @@ export default function GroupInfo() {
                       setTimeout(() => confirmBlock(who), 300);
                     }}
                   />
-                  {caps.reports ? (
-                    <GroupRow
-                      icon="flag-outline"
-                      label={`Report ${actingOn.name || actingOn.username}`}
-                      danger
-                      onPress={() => {
-                        const m = actingOn;
-                        setActingOn(null);
-                        setTimeout(
-                          () =>
-                            openReport({
-                              targetType: "user",
-                              targetId: m.id,
-                              name: `@${m.username}`,
-                              person: { username: m.username, userId: m.id },
-                              conversationId: g.id,
-                            }),
-                          300,
-                        );
-                      }}
-                    />
-                  ) : null}
+                  <GroupRow
+                    icon="flag-outline"
+                    label={`Report ${actingOn.name || actingOn.username}`}
+                    danger
+                    onPress={() => {
+                      const m = actingOn;
+                      setActingOn(null);
+                      setTimeout(
+                        () => openReport({ targetType: "profile", targetId: String(m.id), what: `@${m.username}` }),
+                        300,
+                      );
+                    }}
+                  />
 
                   {actingOn.role === "member" &&
                   (myRole === "owner" || myRole === "admin") ? (
@@ -1307,7 +1343,7 @@ export default function GroupInfo() {
                   disabled={busy === `unban-${entry.user.id}`}
                   onPress={() => unban(entry)}>
                   {busy === `unban-${entry.user.id}` ? (
-                    <ActivityIndicator size="small" color={PINK} />
+                    <ActivityIndicator size="small" color={ink.text(PINK)} />
                   ) : (
                     <Text style={styles.unbanText}>Unban</Text>
                   )}
@@ -1334,7 +1370,7 @@ export default function GroupInfo() {
             value={editName}
             onChangeText={setEditName}
             maxLength={80}
-            style={groupStyles.input}
+            style={gs.input}
           />
 
           <Text style={styles.settingLabel}>Description</Text>
@@ -1343,7 +1379,7 @@ export default function GroupInfo() {
             onChangeText={setEditDescription}
             maxLength={500}
             multiline
-            style={[groupStyles.input, styles.editDescription]}
+            style={[gs.input, styles.editDescription]}
           />
 
           {g.kind !== "faction" ? (
@@ -1356,7 +1392,7 @@ export default function GroupInfo() {
                 }
                 keyboardType="number-pad"
                 maxLength={4}
-                style={groupStyles.input}
+                style={gs.input}
               />
             </>
           ) : null}
@@ -1371,17 +1407,17 @@ export default function GroupInfo() {
 
           <Pressable accessibilityRole="button" accessibilityLabel="Save"
             style={[
-              groupStyles.primaryButton,
+              gs.primaryButton,
               styles.saveButton,
               (!editName.trim() || busy === "save") &&
-                groupStyles.primaryButtonOff,
+                gs.primaryButtonOff,
             ]}
             disabled={!editName.trim() || busy === "save"}
             onPress={saveEdit}>
             {busy === "save" ? (
               <ActivityIndicator color="#FFFFFF" />
             ) : (
-              <Text style={groupStyles.primaryButtonText}>Save</Text>
+              <Text style={gs.primaryButtonText}>Save</Text>
             )}
           </Pressable>
         </View>
@@ -1390,7 +1426,13 @@ export default function GroupInfo() {
   );
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
+  // Computer: wider page, two columns.
+  scrollWide: { maxWidth: 1180, paddingHorizontal: 32 },
+  wideRow: { flexDirection: "row", alignItems: "flex-start", gap: 36 },
+  wideLeft: { flex: 1, minWidth: 0 },
+  wideRight: { flex: 1.15, minWidth: 0 },
+
   scroll: {
     paddingHorizontal: 20,
     paddingTop: 4,

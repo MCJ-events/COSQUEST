@@ -102,6 +102,11 @@ function applyIncoming(state: CallState, call: Call | null) {
     return;
   }
 
+  // Private calls ring on their own card (components/calls/privateCall.ts).
+  if ((call as any).privateOf) {
+    return;
+  }
+
   // Added again to a call I declined or left earlier → ring again, but
   // only for an invite NEWER than when I dismissed it (an old, late event
   // must not ring again).
@@ -173,6 +178,12 @@ const callSlice = createSlice({
 
     setCallUserId(state, action: PayloadAction<string | null>) {
       state.myUserId = action.payload;
+    },
+
+    // "Respond" to a faction alert from a call: like accepting it.
+    joinedFromAlert(state, action: PayloadAction<any>) {
+      state.active = { ...action.payload, direction: "incoming" };
+      state.incoming = null;
     },
 
     clearActiveCall(state) {
@@ -293,6 +304,7 @@ export const {
   socketCallIncoming,
   socketCallUpdated,
   setCallUserId,
+  joinedFromAlert,
   clearActiveCall,
   dismissIncomingCall,
   clearCalls,

@@ -1,3 +1,4 @@
+import { FONTS } from "@/constants/fonts";
 import { Button } from "@/components/Button";
 import { ErrorText } from "@/components/ErrorText";
 import { OnboardingProgress } from "@/components/OnboardingProgress";
@@ -12,8 +13,10 @@ import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { OnboardingScreen } from "@/components/OnboardingScreen";
 import { C } from "@/theme/tokens";
+import { themedStyles, useInk, useThemedStyles } from "@/constants/chatTheme";
 
 export default function Interests() {
+  const styles = useThemedStyles(STYLE_PAIR);
   const { data, update } = useOnboarding();
 
   const dispatch = useAppDispatch();
@@ -130,13 +133,14 @@ export default function Interests() {
   );
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   scroll: {
     paddingHorizontal: 24,
     paddingBottom: 60,
   },
 
   headline: {
+    fontFamily: FONTS.bold,
     fontSize: 35,
     fontWeight: "800",
     color: C.ink,
@@ -145,6 +149,7 @@ const styles = StyleSheet.create({
   },
 
   sub: {
+    fontFamily: FONTS.regular,
     fontSize: 14,
     color: C.inkSoft,
     textAlign: "center",

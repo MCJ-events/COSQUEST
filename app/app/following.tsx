@@ -19,6 +19,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { safeBack } from "@/utils/safeBack";
 import { KeyboardAvoidingView } from "@/components/ui/keyboard";
 import { C } from "@/theme/tokens";
+import { themedStyles, useInk, useThemedStyles } from "@/constants/chatTheme";
 
 type User = {
   id: string;
@@ -54,6 +55,7 @@ function FollowingRow({
   onUnfollow: () => void;
   disabled: boolean;
 }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   return (
     <View style={styles.row}>
       <Image
@@ -87,6 +89,8 @@ function FollowingRow({
 }
 
 export default function Following() {
+  const styles = useThemedStyles(STYLE_PAIR);
+  const ink = useInk();
   const insets = useSafeAreaInsets();
   const dispatch = useAppDispatch();
 
@@ -175,18 +179,18 @@ export default function Following() {
       ]}>
       <View style={styles.header}>
         <Pressable onPress={() => safeBack()} hitSlop={10}>
-          <Ionicons name="arrow-back" size={24} color={C.ink} />
+          <Ionicons name="arrow-back" size={24} color={ink.text("#191922")} />
         </Pressable>
 
         <Text style={styles.headerTitle}>Following</Text>
 
         <Pressable onPress={() => searchRef.current?.focus()} hitSlop={10}>
-          <Ionicons name="search" size={22} color={C.ink} />
+          <Ionicons name="search" size={22} color={ink.text("#191922")} />
         </Pressable>
       </View>
 
       <View style={styles.searchRow}>
-        <Ionicons name="search" size={18} color={C.muted} />
+        <Ionicons name="search" size={18} color={ink.text("#9C9CAA")} />
 
         <TextInput
           ref={searchRef}
@@ -194,7 +198,7 @@ export default function Following() {
           value={query}
           onChangeText={setQuery}
           placeholder="Search Following..."
-          placeholderTextColor={C.muted}
+          placeholderTextColor={ink.text("#9C9CAA")}
           autoCapitalize="none"
           autoCorrect={false}
         />
@@ -202,7 +206,7 @@ export default function Following() {
 
       {loading && following.length === 0 ? (
         <View style={styles.loading}>
-          <ActivityIndicator size="small" color={C.brand} />
+          <ActivityIndicator size="small" color={ink.text("#C5399A")} />
 
           <Text style={styles.loadingText}>Loading following...</Text>
         </View>
@@ -259,7 +263,7 @@ export default function Following() {
   );
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   screen: {
     flex: 1,
     backgroundColor: "transparent",

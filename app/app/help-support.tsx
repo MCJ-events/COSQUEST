@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { C } from "@/theme/tokens";
+import { DARK_SCREEN_GRADIENT, themedStyles, useInk, useThemedStyles } from "@/constants/chatTheme";
 
 const PINK = C.brandSoft;
 
@@ -30,6 +31,8 @@ function SupportRow({
   description?: string;
   onPress: () => void;
 }) {
+  const styles = useThemedStyles(STYLE_PAIR);
+  const ink = useInk();
   return (
     <Pressable
       onPress={onPress}
@@ -37,7 +40,7 @@ function SupportRow({
       accessibilityRole="button"
       accessibilityLabel={title}>
       <View style={styles.rowIcon}>
-        <Ionicons name={icon} size={15} color={PINK} />
+        <Ionicons name={icon} size={15} color={ink.text(PINK)} />
       </View>
 
       <View style={styles.rowText}>
@@ -52,6 +55,8 @@ function SupportRow({
 }
 
 export default function HelpSupport() {
+  const styles = useThemedStyles(STYLE_PAIR);
+  const ink = useInk();
   const insets = useSafeAreaInsets();
 
   // Task 059: every row works (the FAQ shows once it has a URL).
@@ -61,7 +66,7 @@ export default function HelpSupport() {
     <View style={styles.screen}>
       {/* Figma: linear-gradient(180deg, #FFFFFF 0%, #E1F3FF 64.42%) */}
       <LinearGradient
-        colors={["#FFFFFF", C.skyWash]}
+        colors={ink.dark ? [...DARK_SCREEN_GRADIENT] : ["#FFFFFF", "#E1F3FF"]}
         locations={[0, 0.6442]}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
@@ -85,12 +90,12 @@ export default function HelpSupport() {
             style={styles.backButton}
             accessibilityRole="button"
             accessibilityLabel="Back">
-            <Ionicons name="arrow-back" size={24} color={C.ink} />
+            <Ionicons name="arrow-back" size={24} color={ink.text("#191922")} />
           </Pressable>
 
           <View style={styles.headerCenter}>
             <View style={styles.headerIcon}>
-              <Ionicons name="help-circle-outline" size={17} color={PINK} />
+              <Ionicons name="help-circle-outline" size={17} color={ink.text(PINK)} />
             </View>
 
             <Text style={styles.headerTitle}>Help & Support</Text>
@@ -164,7 +169,7 @@ export default function HelpSupport() {
   );
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   screen: {
     flex: 1,
     backgroundColor: "#FFFFFF",
@@ -245,7 +250,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.09,
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
+    elevation: 0 /* see-through: no Android shadow (grey frame) */,
   },
 
   // Figma: 34 x 34, radius 100, padding 8, soft pink.

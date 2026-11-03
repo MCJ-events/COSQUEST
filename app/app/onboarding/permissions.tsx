@@ -1,3 +1,4 @@
+import { FONTS } from "@/constants/fonts";
 import { Button } from "@/components/Button";
 import { ErrorText } from "@/components/ErrorText";
 import { OnboardingProgress } from "@/components/OnboardingProgress";
@@ -26,6 +27,7 @@ import {
 } from "react-native";
 import { OnboardingScreen } from "@/components/OnboardingScreen";
 import { C } from "@/theme/tokens";
+import { themedStyles, useInk, useThemedStyles } from "@/constants/chatTheme";
 
 
 const IS_WEB = Platform.OS === "web";
@@ -51,6 +53,7 @@ function Toggle({
   onToggle: () => void;
   label: string;
 }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   return (
     <Pressable
       accessibilityRole="switch"
@@ -118,6 +121,8 @@ function getWebPosition(): Promise<{ lat: number; lng: number }> {
 }
 
 export default function Permissions() {
+  const styles = useThemedStyles(STYLE_PAIR);
+  const ink = useInk();
   const { height: windowHeight } = useWindowDimensions();
   const { data, update } = useOnboarding();
 
@@ -548,7 +553,7 @@ export default function Permissions() {
         <View style={styles.rows}>
           <View style={styles.row}>
             <View style={styles.iconWrap}>
-              <Ionicons name="location" size={22} color={C.brand} />
+              <Ionicons name="location" size={22} color={ink.text("#C5399A")} />
             </View>
 
             <View style={styles.rowText}>
@@ -605,7 +610,7 @@ export default function Permissions() {
 
           <View style={[styles.row, IS_WEB && styles.rowMuted]}>
             <View style={styles.iconWrap}>
-              <Ionicons name="notifications" size={22} color={C.brand} />
+              <Ionicons name="notifications" size={22} color={ink.text("#C5399A")} />
             </View>
 
             <View style={styles.rowText}>
@@ -651,7 +656,7 @@ export default function Permissions() {
   );
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   scroll: {
     paddingHorizontal: 24,
     paddingBottom: 40,
@@ -665,6 +670,7 @@ const styles = StyleSheet.create({
   },
 
   headline: {
+    fontFamily: FONTS.bold,
     fontSize: 35,
     fontWeight: "800",
     color: C.ink,
@@ -673,6 +679,7 @@ const styles = StyleSheet.create({
   },
 
   sub: {
+    fontFamily: FONTS.regular,
     fontSize: 14,
     color: C.inkSoft,
     textAlign: "center",
@@ -719,12 +726,14 @@ const styles = StyleSheet.create({
   },
 
   rowTitle: {
+    fontFamily: FONTS.bold,
     fontSize: 15,
     fontWeight: "700",
     color: C.ink,
   },
 
   rowDetail: {
+    fontFamily: FONTS.regular,
     fontSize: 12,
     color: C.grey3,
     marginTop: 2,
@@ -745,6 +754,7 @@ const styles = StyleSheet.create({
   },
 
   radiusValue: {
+    fontFamily: FONTS.bold,
     fontSize: 14,
     fontWeight: "700",
     color: C.brand,

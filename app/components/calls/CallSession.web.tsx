@@ -49,6 +49,7 @@ import GroupCallMembers, {
 import { useCallTone } from "@/components/calls/useCallTone";
 import VideoGridTile from "@/components/calls/VideoGridTile";
 import OrbitCallScreen, { type OrbitPerson } from "@/components/calls/OrbitCall";
+import { startPrivate, useInPrivateFrom } from "@/components/calls/privateCall";
 import { setCallMinimized } from "@/components/calls/callUi";
 import { otherActiveMembers } from "@/services/calls";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
@@ -413,8 +414,9 @@ export default function CallSession() {
         updateRemoteCount();
 
         // The browser shows its own microphone / camera permission popup here.
-        await room.localParticipant.setMicrophoneEnabled(true);
-        setMicOn(true);
+        // Mic blocked: stay in the call to listen (the call screen explains).
+        const micOk = await room.localParticipant.setMicrophoneEnabled(true).then(() => true, () => false);
+        setMicOn(micOk);
 
         if (isVideoCall) {
           await room.localParticipant.setCameraEnabled(true);
@@ -537,6 +539,25 @@ export default function CallSession() {
       element.muted = focusOn;
     });
   }, [focusOn]);
+
+  // PRIVATE CALL ON TOP: quieter here (25%) and your mic off, while you're
+  // in a private call from this call.
+  const inPrivate = useInPrivateFrom(active?.call.id);
+  const micBeforePrivate = useRef<boolean | null>(null);
+  useEffect(() => {
+    const room = roomRef.current;
+    if (!room) return;
+    room.remoteParticipants.forEach((participant) => participant.setVolume(inPrivate ? 0.25 : 1));
+    if (inPrivate) {
+      micBeforePrivate.current = micOn;
+      room.localParticipant.setMicrophoneEnabled(false).then(() => setMicOn(false)).catch(() => {});
+    } else if (micBeforePrivate.current !== null) {
+      const back = micBeforePrivate.current;
+      micBeforePrivate.current = null;
+      room.localParticipant.setMicrophoneEnabled(back).then(() => setMicOn(back)).catch(() => {});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inPrivate]);
 
   // ---------- controls ----------
 
@@ -732,6 +753,73 @@ export default function CallSession() {
         overlay={addPeopleSheet}
         topExtra={audioTapButton}
       />
+    );
+  }
+
+  // ==========================================
+  // GROUP CALL: ORBITAL VIEW (Group Calls doc, A · Light / B · Night Orbit)
+  // Up to 8 people (bigger calls use the speaker stage above).
+  // ==========================================
+
+  if (isGroup) {
+    const people: OrbitPerson[] = active.call.members
+      .filter((member) => member.status === "joined" || member.status === "ringing")
+      .map((member) => {
+        const isMe = !!myUserId && member.user.id === myUserId;
+        const remote = remotePeople.find((p) => p.identity === member.user.id);
+        return {
+          id: member.user.id,
+          name: member.user.name || member.user.username || "Someone",
+          avatar: getAvatarSource(member.user),
+          speaking: speakingIds.includes(member.user.id),
+          micOff: isMe ? !micOn : remote ? !remote.micOn : false,
+          ringing: member.status === "ringing" && !remote && !isMe,
+          isMe,
+          rankLevel: (member.user as any).rank?.level ?? null,
+          rankName: (member.user as any).rank?.name ?? null,
+          username: member.user.username || null,
+          away: !!member.away,
+          hasVideo: isMe ? !!localVideo : !!remote?.video,
+        };
+      });
+
+    const renderVideo = (id: string) => {
+      if (id === myUserId) {
+        return localVideo ? <WebVideo track={localVideo} mirror={facing === "user"} /> : null;
+      }
+      const remote = remotePeople.find((p) => p.identity === id);
+      return remote?.video ? <WebVideo track={remote.video} /> : null;
+    };
+
+    const onCall = people.filter((person) => !person.ringing).length;
+
+    return (
+      <>
+        <OrbitCallScreen
+          room={roomRef.current}
+          moderation={active?.call ? { kind: "call", call: active.call, onRemoved: () => finish(null, false) } : undefined}
+          title={displayName}
+          subtitle={endMessage ? endMessage : `Group call · ${onCall} on call${answered ? ` · ${formatDuration(elapsed)}` : ""}`}
+          people={people}
+          pinnedId={active.call.caller?.id || null}
+          renderVideo={renderVideo}
+          micOn={micOn}
+          cameraOn={cameraOn}
+          focusOn={focusOn}
+          ended={!!endMessage}
+          onToggleMic={toggleMic}
+          onToggleCamera={toggleCamera}
+          onFlipCamera={flipCamera}
+          onToggleFocus={() => setFocusOn((value) => !value)}
+          onLeave={hangUp}
+          onMinimize={() => setCallMinimized(true)}
+          onPeople={() => setAddPeopleOpen(true)}
+          onSparks={() => Alert.alert("Sparks in calls", "Sparks listens in the CosQuest phone app: it turns what people say into text on their own phones and picks out the topics. Open this call in the app to see Sparks live. After the call, its Sparks notes show in the chat here too.")}
+          onPrivateCall={(person) => startPrivate({ kind: "call", id: active.call.id }, person.id)}
+          extra={audioTapButton}
+        />
+        {addPeopleSheet}
+      </>
     );
   }
 

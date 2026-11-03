@@ -12,6 +12,7 @@ import {
 } from "@/store/thunks/postThunks";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
+import { router } from "expo-router";
 import { memo, useState } from "react";
 import {
   Alert,
@@ -34,11 +35,11 @@ import { SharedPostEmbed } from "./SharedPostEmbed";
 import { ShareSheet } from "./ShareSheet";
 import { useRenderCount } from "@/utils/perfMarks";
 import { C } from "@/theme/tokens";
-import { openReport } from "@/components/safety/ReportSheet";
 import { confirmBlock } from "@/components/safety/block";
-import { useCapabilities } from "@/services/capabilities";
 import { hidePostsBy } from "@/store/slices/postSlice";
 import { haptic } from "@/utils/haptics";
+import { themedStyles, useInk, useThemedStyles } from "@/constants/chatTheme";
+import { openReport } from "@/components/report/reportStore";
 
 /* =========================================================
    HELPERS
@@ -190,8 +191,9 @@ function factionColor(faction: string) {
 // window moves; a card whose post hasn't changed skips that.
 export const PostCard = memo(function PostCard({ post, token }: { post: any; token: string }) {
   useRenderCount("PostCard");
+  const styles = useThemedStyles(STYLE_PAIR);
+  const ink = useInk();
   const dispatch = useAppDispatch();
-  const caps = useCapabilities();
 
   /* =========================================================
      AUTH USER
@@ -208,6 +210,21 @@ export const PostCard = memo(function PostCard({ post, token }: { post: any; tok
   const [commentsVisible, setCommentsVisible] = useState(false);
 
   const [shareVisible, setShareVisible] = useState(false);
+
+  // The comments and share sheets mount the first time they're opened (and
+  // stay, so closing still animates). Mounted for every card, each comments
+  // sheet kept its own audio recorder polled every 500 ms and a blink loop,
+  // so a feed of 20 posts ran 20 of each while nobody was commenting.
+  const [commentsMounted, setCommentsMounted] = useState(false);
+  const [shareMounted, setShareMounted] = useState(false);
+
+  if (commentsVisible && !commentsMounted) {
+    setCommentsMounted(true);
+  }
+
+  if (shareVisible && !shareMounted) {
+    setShareMounted(true);
+  }
 
   const [menuVisible, setMenuVisible] = useState(false);
 
@@ -544,8 +561,19 @@ export const PostCard = memo(function PostCard({ post, token }: { post: any; tok
     .join(" · ");
 
   // The name pill: on the photo (see-through) or on a text card (white).
+  // Tapping the author opens their profile (your own posts open your tab).
+  const openAuthor = () => {
+    if (isMine) router.push("/profile");
+    else if (postUsername)
+      router.push({ pathname: "/user/[username]", params: { username: postUsername } });
+  };
+
   const authorPill = (onPhoto: boolean) => (
-    <View
+    <Pressable
+      onPress={openAuthor}
+      disabled={!isMine && !postUsername}
+      accessibilityRole="button"
+      accessibilityLabel={`Open ${authorName}'s profile`}
       style={[styles.pill, onPhoto ? styles.pillOnPhoto : styles.pillOnCard]}>
       <View style={[styles.ring, { borderColor: factionColor(authorFaction) }]}>
         <Image
@@ -567,13 +595,12 @@ export const PostCard = memo(function PostCard({ post, token }: { post: any; tok
           </Text>
         ) : null}
       </View>
-    </View>
+    </Pressable>
   );
 
-  // ⋯ on your own posts (edit / delete) and, task 059, on everyone else's
-  // (report where the server takes reports, block the author).
+  // ⋯ on every post: edit / delete your own, report other people's.
   const menuButton = (onPhoto: boolean) =>
-    isMine || postUsername ? (
+    isMine || post?.id ? (
       <Pressable
         style={[styles.menuButton, onPhoto && styles.menuButtonOnPhoto]}
         onPress={() => setMenuVisible(true)}
@@ -583,7 +610,7 @@ export const PostCard = memo(function PostCard({ post, token }: { post: any; tok
         <Ionicons
           name="ellipsis-horizontal"
           size={20}
-          color={onPhoto ? "#FFFFFF" : "#65656D"}
+          color={ink.text(onPhoto ? "#FFFFFF" : "#65656D")}
         />
       </Pressable>
     ) : null;
@@ -642,17 +669,7 @@ export const PostCard = memo(function PostCard({ post, token }: { post: any; tok
         onEdit={startEdit}
         onDelete={deletePost}
         authorName={postUsername ? `@${postUsername}` : undefined}
-        onReport={
-          caps.reports && post?.id
-            ? () =>
-                openReport({
-                  targetType: "post",
-                  targetId: String(post.id),
-                  snapshot: typeof post?.content === "string" ? post.content.slice(0, 500) : undefined,
-                  person: { username: postUsername || null },
-                })
-            : undefined
-        }
+        onReport={() => post?.id && openReport({ targetType: "post", targetId: String(post.id), what: "post" })}
         onBlock={postUsername ? () => confirmBlock({ username: postUsername }, () => dispatch(hidePostsBy(postUsername))) : undefined}
       />
 
@@ -703,7 +720,7 @@ export const PostCard = memo(function PostCard({ post, token }: { post: any; tok
               editable={!savingEdit}
               style={styles.editInput}
               placeholder="Write something..."
-              placeholderTextColor={C.muted}
+              placeholderTextColor={ink.text("#9C9CAA")}
             />
 
             <Pressable accessibilityRole="button" accessibilityLabel={savingEdit ? "Saving..." : "Save Changes"}
@@ -722,6 +739,7 @@ export const PostCard = memo(function PostCard({ post, token }: { post: any; tok
       </Modal>
 
       {/* COMMENTS */}
+      {commentsMounted ? (
       <CommentsModal
         visible={commentsVisible}
         onClose={() => setCommentsVisible(false)}
@@ -734,8 +752,10 @@ export const PostCard = memo(function PostCard({ post, token }: { post: any; tok
         initialCount={commentsCount}
         onCountChange={setCommentsCount}
       />
+      ) : null}
 
       {/* SHARE */}
+      {shareMounted ? (
       <ShareSheet
         visible={shareVisible}
         post={post}
@@ -747,6 +767,7 @@ export const PostCard = memo(function PostCard({ post, token }: { post: any; tok
           )
         }
       />
+      ) : null}
     </View>
   );
 });
@@ -755,7 +776,7 @@ export const PostCard = memo(function PostCard({ post, token }: { post: any; tok
    STYLES
 ========================================================= */
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   // One post: the photo card (or text card) + the caption under it.
   post: {
     marginBottom: 26,
@@ -865,7 +886,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.12,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 4 },
-    elevation: 3,
+    elevation: 0 /* see-through: no Android shadow (grey frame) */,
   },
 
   textCardTop: {

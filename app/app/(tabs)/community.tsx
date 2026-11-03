@@ -1,15 +1,18 @@
-import { AppBackground } from "@/components/AppBackground";
+﻿import { AppBackground } from "@/components/AppBackground";
 import { Chats } from "@/components/community/Chats";
+import { useIsDesktop } from "@/hooks/useDesktop";
+import DesktopFeed from "@/components/desktop/DesktopFeed";
 import { Feeds } from "@/components/community/Feeds";
-import { Spotlight } from "@/components/community/Spotlight";
+import { setHubView } from "@/components/community/ChatHub";
 import { AVATARS } from "@/constants/avatars";
 import { FONTS } from "@/constants/fonts";
+import { useChatScheme } from "@/constants/chatTheme";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { fetchCurrentUser } from "@/store/thunks/userThunks";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
-import { router, useLocalSearchParams } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { router, useLocalSearchParams, useScrollToTop } from "expo-router";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Platform,
@@ -24,12 +27,15 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { tabBarSpace } from "@/constants/tabBar";
 import { C } from "@/theme/tokens";
 
-type Tab = "Feeds" | "Chats" | "Spotlight";
+type Tab = "Feeds" | "Chats" | "Community";
 
-const TABS: Tab[] = ["Feeds", "Chats", "Spotlight"];
+const TABS: Tab[] = ["Feeds", "Chats", "Community"];
 
 export default function Community() {
   const insets = useSafeAreaInsets();
+  const chatScheme = useChatScheme();
+  const isDark = chatScheme === "dark";
+  const styles = useMemo(() => createCommunityStyles(isDark), [isDark]);
   // Under 360 points wide (the largest display size makes a phone about 320)
   // the three pills don't fit the Figma padding; tighter padding there only.
   const narrow = useWindowDimensions().width < 360;
@@ -39,8 +45,16 @@ export default function Community() {
   // /community?tab=Chats opens on that pill (the Live tab's "Go to your chats").
   const { tab: tabParam } = useLocalSearchParams<{ tab?: string }>();
   useEffect(() => {
-    if (tabParam === "Feeds" || tabParam === "Chats" || tabParam === "Spotlight") setTab(tabParam);
+    if (tabParam === "Feeds" || tabParam === "Chats" || tabParam === "Community") setTab(tabParam);
   }, [tabParam]);
+  // Computer: the top bar has the avatar and bell, and Chats has its own
+  // workspace (D1: list | chat | Sparks).
+  const desktop = useIsDesktop();
+
+  // Task 059: tapping the Community tab again scrolls back to the top (the
+  // feed's own list does this itself).
+  const scrollRef = useRef<ScrollView>(null);
+  useScrollToTop(scrollRef);
 
   const authUser = useAppSelector((state) => state.auth.user);
 
@@ -50,11 +64,13 @@ export default function Community() {
 
   const email = authUser?.email || user?.email || "";
 
+  // Wait for the login token (restored a moment after the app opens).
+  const sessionToken = useAppSelector((state) => state.auth.token);
   useEffect(() => {
-    if (email) {
+    if (email && sessionToken) {
       dispatch(fetchCurrentUser(email));
     }
-  }, [dispatch, email]);
+  }, [dispatch, email, sessionToken]);
 
   const avatarKey =
     user?.profile?.avatarKey ||
@@ -71,7 +87,8 @@ export default function Community() {
 
   // Figma: the header starts 52 from the top on phones (that includes the
   // status bar). In a browser there's no status bar and the browser has its
-  // own top bar, so only a small gap.
+  // own top bar, so only a small gap. The bottom leaves room for the
+  // floating tab bar above the home indicator.
   const scrollPad = {
     paddingTop: Platform.OS === "web" ? 16 : Math.max(insets.top, 52),
     paddingBottom: tabBarSpace(insets.bottom),
@@ -79,7 +96,8 @@ export default function Community() {
 
   const top = (
     <>
-          {/* HEADER - avatar in a soft pink circle, title, pink bell */}
+          {/* HEADER - avatar in a soft pink circle, title, pink bell (phones) */}
+          {!desktop ? (
           <View style={[styles.header, styles.padded]}>
             <Pressable
               onPress={() => router.push("/profile")}
@@ -113,6 +131,7 @@ export default function Community() {
               <Ionicons name="notifications" size={28} color={C.brand} />
             </Pressable>
           </View>
+          ) : null}{/* end of the phone header */}
 
           {/* LOADING */}
           {loading && !user ? (
@@ -136,7 +155,13 @@ export default function Community() {
                     active ? styles.tabActive : styles.tabInactive,
                   ]}
                   hitSlop={6}
-                  onPress={() => setTab(key)}>
+                  onPress={() => {
+                    // Computers: Chats and Community open the chat page (the list beside the open chat).
+                    if (desktop && key !== "Feeds") {
+                      setHubView(key === "Chats" ? "chats" : "community");
+                      router.navigate("/chat" as any);
+                    } else setTab(key);
+                  }}>
                   <Text
                     numberOfLines={1}
                     adjustsFontSizeToFit
@@ -152,36 +177,47 @@ export default function Community() {
     </>
   );
 
-  return (
+  const feedScreen = (
     <AppBackground variant="blueGradient">
-      {/* The feed and the chats are lists of their own (audit B2/B3), the
-          header scrolling with them; a comfortable width on big computer
-          screens, full width on phones. */}
+      {/* The feed is a list of its own (audit B2), the header scrolling with
+          it; a comfortable width on big computer screens, full width on
+          phones. Chats and Community keep their side padding. */}
       {tab === "Feeds" ? (
         <Feeds header={top} contentContainerStyle={[styles.column, scrollPad]} />
-      ) : tab === "Chats" ? (
-        <Chats header={top} contentContainerStyle={[styles.column, scrollPad]} />
       ) : (
         <ScrollView
+          ref={scrollRef}
           contentContainerStyle={[styles.scroll, scrollPad]}
           showsVerticalScrollIndicator={false}>
           <View style={styles.column}>
             {top}
 
-            {/* CONTENT - spotlight keeps its side padding. */}
-            <View style={styles.padded}>
-              <Spotlight />
-            </View>
+            {/* CONTENT */}
+            {tab === "Chats" ? (
+              <View style={styles.padded}>
+                <Chats view="chats" />
+              </View>
+            ) : (
+              <View style={styles.padded}>
+                <Chats view="community" />
+              </View>
+            )}
           </View>
         </ScrollView>
       )}
     </AppBackground>
   );
+
+  if (!desktop) return feedScreen;
+
+  // Computer: the desktop feed (posts in the middle, your chats on the right).
+  return <DesktopFeed />;
 }
 
 const PINK = C.brandSoft;
 
-const styles = StyleSheet.create({
+function createCommunityStyles(isDark: boolean) { return StyleSheet.create({
+  // The bottom padding (room for the tab bar) comes from the safe area.
   scroll: {},
 
   column: {
@@ -205,7 +241,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontFamily: FONTS.semibold,
     fontSize: 22,
-    color: "#000000",
+    color: isDark ? "#F5F5FA" : "#000000",
   },
 
   // flexShrink: between the avatar and the bell at the largest sizes.
@@ -215,7 +251,7 @@ const styles = StyleSheet.create({
     marginTop: 1,
     fontFamily: FONTS.regular,
     fontSize: 12,
-    color: C.slate,
+    color: isDark ? "#B6B8C8" : "#66738A",
   },
 
   // Figma: a bigger avatar on a soft pink circle.
@@ -232,7 +268,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 2 },
-    elevation: 3,
+    elevation: 0 /* see-through: no Android shadow (grey frame) */,
   },
 
   profileImg: {
@@ -287,9 +323,9 @@ const styles = StyleSheet.create({
 
   // Raised white pill.
   tabInactive: {
-    backgroundColor: "rgba(255,255,255,0.92)",
+    backgroundColor: isDark ? "#292B3A" : "rgba(255,255,255,0.92)",
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.06)",
+    borderColor: isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.06)",
 
     shadowColor: "#000000",
     shadowOpacity: 0.2,
@@ -301,7 +337,7 @@ const styles = StyleSheet.create({
   tabText: {
     fontFamily: FONTS.medium,
     fontSize: 15,
-    color: "#4B4B53",
+    color: isDark ? "#E5E6EF" : "#4B4B53",
     // Poppins sits a little high in its box; this centres it.
     lineHeight: 20,
   },
@@ -310,4 +346,4 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.semibold,
     color: "#FFFFFF",
   },
-});
+}); }

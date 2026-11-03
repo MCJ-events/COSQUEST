@@ -10,6 +10,7 @@ import {
 
 import { AVATARS } from "@/constants/avatars";
 import { C } from "@/theme/tokens";
+import { themedStyles, useInk, useThemedStyles } from "@/constants/chatTheme";
 
 function avatarSource(person: any) {
   if (person?.avatarPhotoUrl) {
@@ -43,6 +44,8 @@ export function SharePerson({
   sending: boolean;
   onPress: () => void;
 }) {
+  const styles = useThemedStyles(STYLE_PAIR);
+  const ink = useInk();
   return (
     <Pressable accessibilityRole="button" accessibilityLabel="Done" style={styles.person} onPress={onPress} disabled={sending}>
       <View style={styles.avatarWrap}>
@@ -54,13 +57,13 @@ export function SharePerson({
 
         {sent ? (
           <View style={styles.badge}>
-            <Ionicons name="checkmark" size={11} color="#FFFFFF" />
+            <Ionicons name="checkmark" size={11} color={ink.text("#FFFFFF")} />
           </View>
         ) : null}
 
         {sending ? (
           <View style={styles.loading}>
-            <ActivityIndicator size="small" color={C.brand} />
+            <ActivityIndicator size="small" color={ink.text("#C5399A")} />
           </View>
         ) : null}
       </View>
@@ -72,7 +75,7 @@ export function SharePerson({
   );
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   person: {
     width: "31%",
     alignItems: "center",

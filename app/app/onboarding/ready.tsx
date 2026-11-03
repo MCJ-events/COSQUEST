@@ -1,3 +1,4 @@
+import { FONTS } from "@/constants/fonts";
 import { Button } from "@/components/Button";
 import { useOnboarding } from "@/context/OnboardingContext";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
@@ -14,11 +15,13 @@ import Animated, {
 } from "react-native-reanimated";
 import { OnboardingScreen } from "@/components/OnboardingScreen";
 import { C } from "@/theme/tokens";
+import { themedStyles, useInk, useThemedStyles } from "@/constants/chatTheme";
 
 
 const AnimatedImage = Animated.createAnimatedComponent(Image);
 
 export default function Ready() {
+  const styles = useThemedStyles(STYLE_PAIR);
   // Read on every render (rotation, split screen, display size), not once at load.
   const { width: SCREEN_W, height: SCREEN_H } = useWindowDimensions();
 
@@ -339,7 +342,7 @@ export default function Ready() {
 // STYLES
 // ============================================
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   screen: {
     flex: 1,
     paddingHorizontal: 24,
@@ -351,6 +354,7 @@ const styles = StyleSheet.create({
   },
 
   small: {
+    fontFamily: FONTS.bold,
     fontSize: 35,
     fontWeight: "800",
     color: C.ink,
@@ -358,6 +362,7 @@ const styles = StyleSheet.create({
   },
 
   big: {
+    fontFamily: FONTS.bold,
     fontSize: 44,
     fontWeight: "900",
     color: C.ink,

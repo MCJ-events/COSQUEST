@@ -1,10 +1,13 @@
+import { FONTS } from "@/constants/fonts";
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { OnboardingScreen, useHeroHeight } from "@/components/OnboardingScreen";
 import { C } from "@/theme/tokens";
+import { themedStyles, useInk, useThemedStyles } from "@/constants/chatTheme";
 
 function Button({ label, onPress }: { label: string; onPress: () => void }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   return (
     <Pressable
       onPress={onPress}
@@ -19,6 +22,7 @@ export default function Welcome() {
   // The picture is 400 high on tall phones and shrinks on short ones (an
   // iPhone SE) so the headline and Continue fit without scrolling.
   const heroHeight = useHeroHeight(400, 300);
+  const styles = useThemedStyles(STYLE_PAIR);
   return (
     <OnboardingScreen background="plain" topGap={0} centered contentStyle={styles.screen}>
         <View style={styles.body}>
@@ -37,12 +41,13 @@ export default function Welcome() {
   );
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   screen: {
     paddingHorizontal: 25,
     paddingBottom: 24,
   },
   headline: {
+    fontFamily: FONTS.bold,
     fontSize: 35,
     fontWeight: "800",
     textAlign: "center",
@@ -59,5 +64,5 @@ const styles = StyleSheet.create({
     backgroundColor: C.brand,
     marginTop: 15,
   },
-  buttonLabel: { fontSize: 17, fontWeight: "600", color: "#FFFFFF" },
+  buttonLabel: { fontFamily: FONTS.semibold, fontSize: 17, fontWeight: "600", color: "#FFFFFF" },
 });

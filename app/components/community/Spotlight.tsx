@@ -6,6 +6,7 @@ import { useEffect } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { DraggableAvatar } from "./DraggableAvatar";
 import { C } from "@/theme/tokens";
+import { themedStyles, useInk, useThemedStyles } from "@/constants/chatTheme";
 
 function getAvatar(entry: any) {
   return (
@@ -26,6 +27,8 @@ function getPoints(entry: any) {
 }
 
 export function Spotlight() {
+  const styles = useThemedStyles(STYLE_PAIR);
+  const ink = useInk();
   const dispatch = useAppDispatch();
 
   const token = useAppSelector((state) => state.auth.token);
@@ -70,7 +73,7 @@ export function Spotlight() {
 
       {loading && leaderboard.length === 0 ? (
         <View style={styles.loading}>
-          <ActivityIndicator size="small" color={C.brand} />
+          <ActivityIndicator size="small" color={ink.text("#C5399A")} />
 
           <Text style={styles.loadingText}>Loading leaderboard...</Text>
         </View>
@@ -80,7 +83,7 @@ export function Spotlight() {
 
       {!loading && error && leaderboard.length === 0 ? (
         <View style={styles.empty}>
-          <Ionicons name="alert-circle-outline" size={28} color={C.brand} />
+          <Ionicons name="alert-circle-outline" size={28} color={ink.text("#C5399A")} />
 
           <Text style={styles.emptyText}>{error}</Text>
         </View>
@@ -90,7 +93,7 @@ export function Spotlight() {
 
       {!loading && !error && leaderboard.length === 0 ? (
         <View style={styles.empty}>
-          <Ionicons name="trophy-outline" size={30} color={C.muted} />
+          <Ionicons name="trophy-outline" size={30} color={ink.text("#9C9CAA")} />
 
           <Text style={styles.emptyText}>No Spotlight rankings yet.</Text>
         </View>
@@ -125,7 +128,7 @@ export function Spotlight() {
                     <Ionicons
                       name="person"
                       size={first ? 34 : 26}
-                      color={C.brand}
+                      color={ink.text("#C5399A")}
                     />
                   </View>
                 )}
@@ -162,7 +165,7 @@ export function Spotlight() {
                   />
                 ) : (
                   <View style={[styles.avatar, styles.avatarFallback]}>
-                    <Ionicons name="person" size={18} color={C.brand} />
+                    <Ionicons name="person" size={18} color={ink.text("#C5399A")} />
                   </View>
                 )}
 
@@ -187,7 +190,7 @@ export function Spotlight() {
   );
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   boardLabel: {
     flexDirection: "row",
     alignItems: "center",
@@ -267,7 +270,7 @@ const styles = StyleSheet.create({
       width: 0,
       height: 2,
     },
-    elevation: 4,
+    elevation: 0 /* see-through: no Android shadow (grey frame) */,
   },
 
   avatarSmall: {
@@ -283,7 +286,7 @@ const styles = StyleSheet.create({
       width: 0,
       height: 2,
     },
-    elevation: 4,
+    elevation: 0 /* see-through: no Android shadow (grey frame) */,
   },
 
   avatarFallback: {
@@ -325,7 +328,7 @@ const styles = StyleSheet.create({
       width: 0,
       height: 3,
     },
-    elevation: 3,
+    elevation: 0 /* see-through: no Android shadow (grey frame) */,
   },
 
   avatar: {

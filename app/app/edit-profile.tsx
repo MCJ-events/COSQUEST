@@ -23,6 +23,10 @@ import {
 import { KeyboardAvoidingView } from "@/components/ui/keyboard";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import DesktopEditProfile from "@/components/desktop/DesktopEditProfile";
+import { useIsDesktop } from "@/hooks/useDesktop";
+import Category from "@/app/category";
+import ContactOptions from "@/app/contact-options";
 import { AVATARS } from "@/constants/avatars";
 import { FONTS } from "@/constants/fonts";
 import { updateProfile } from "@/services/user";
@@ -31,6 +35,7 @@ import { updateAuthUser } from "@/store/slices/authSlice";
 import { updateUser } from "@/store/slices/userSlice";
 import { safeBack } from "@/utils/safeBack";
 import { C } from "@/theme/tokens";
+import { DARK_SCREEN_GRADIENT, themedStyles, useInk, useThemedStyles } from "@/constants/chatTheme";
 
 const PINK = C.brandSoft;
 
@@ -46,6 +51,8 @@ function humanize(value?: string | null) {
 }
 
 export default function EditProfile() {
+  const styles = useThemedStyles(STYLE_PAIR);
+  const ink = useInk();
   const insets = useSafeAreaInsets();
   const dispatch = useAppDispatch();
 
@@ -65,6 +72,9 @@ export default function EditProfile() {
   const [username, setUsername] = useState(startUsername);
   const [bio, setBio] = useState(startBio);
   const [saving, setSaving] = useState(false);
+  // Computer: Category / Contact options open in the right pane.
+  const desktop = useIsDesktop();
+  const [pane, setPane] = useState<null | "category" | "contact">(null);
 
   // Fill the fields once the profile arrives (e.g. after a refresh).
   const loadedKey = `${startName}|${startUsername}|${startBio}`;
@@ -185,13 +195,13 @@ export default function EditProfile() {
     }
   };
 
-  return (
+  const editForm = (
     <View style={styles.screen}>
       {/* Figma background:
           linear-gradient(180deg, rgba(255,255,255,0.6) 4.59%,
                                   rgba(184,232,255,0.6) 67.7%) on white */}
       <LinearGradient
-        colors={["rgba(255,255,255,0.6)", "rgba(184,232,255,0.6)"]}
+        colors={ink.dark ? [...DARK_SCREEN_GRADIENT] : ["rgba(255,255,255,0.6)", "rgba(184,232,255,0.6)"]}
         locations={[0.0459, 0.677]}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
@@ -209,7 +219,7 @@ export default function EditProfile() {
             style={styles.headerSide}
             accessibilityRole="button"
             accessibilityLabel="Back">
-            <Ionicons name="chevron-back" size={24} color={C.ink} />
+            <Ionicons name="chevron-back" size={24} color={ink.text("#191922")} />
           </Pressable>
 
           <Text style={styles.headerTitle}>Edit Profile</Text>
@@ -222,7 +232,7 @@ export default function EditProfile() {
             accessibilityRole="button"
             accessibilityLabel="Save">
             {saving ? (
-              <ActivityIndicator size="small" color={PINK} />
+              <ActivityIndicator size="small" color={ink.text(PINK)} />
             ) : (
               <Text style={styles.save}>Save</Text>
             )}
@@ -267,7 +277,7 @@ export default function EditProfile() {
                 onChangeText={setDisplayName}
                 style={[styles.field, styles.input]}
                 placeholder="Your name"
-                placeholderTextColor={C.muted}
+                placeholderTextColor={ink.text("#9C9CAA")}
                 autoCapitalize="words"
               />
             </View>
@@ -279,7 +289,7 @@ export default function EditProfile() {
                 onChangeText={setUsername}
                 style={[styles.field, styles.input]}
                 placeholder="username"
-                placeholderTextColor={C.muted}
+                placeholderTextColor={ink.text("#9C9CAA")}
                 autoCapitalize="none"
                 autoCorrect={false}
               />
@@ -292,7 +302,7 @@ export default function EditProfile() {
                 onChangeText={setBio}
                 style={[styles.field, styles.input, styles.bioInput]}
                 placeholder="Tell people about yourself"
-                placeholderTextColor={C.muted}
+                placeholderTextColor={ink.text("#9C9CAA")}
                 multiline
                 maxLength={300}
                 textAlignVertical="top"
@@ -306,7 +316,7 @@ export default function EditProfile() {
               {/* Category: a plain row (no box), like the Figma */}
               <Pressable
                 style={styles.plainRow}
-                onPress={() => router.push("/category")}
+                onPress={() => (desktop ? setPane("category") : router.push("/category"))}
                 accessibilityRole="button">
                 <Text style={styles.rowTitle}>Category</Text>
 
@@ -314,7 +324,7 @@ export default function EditProfile() {
                   <Text style={styles.rowValue} numberOfLines={1}>
                     {category || "Not selected"}
                   </Text>
-                  <Ionicons name="chevron-forward" size={16} color={C.grey2} />
+                  <Ionicons name="chevron-forward" size={16} color={ink.text("#8A8A93")} />
                 </View>
               </Pressable>
             </View>
@@ -322,7 +332,7 @@ export default function EditProfile() {
             {/* Contact options: milky box */}
             <Pressable
               style={[styles.field, styles.boxRow]}
-              onPress={() => router.push("/contact-options")}
+              onPress={() => (desktop ? setPane("contact") : router.push("/contact-options"))}
               accessibilityRole="button">
               <Text style={styles.rowTitle}>Contact options</Text>
 
@@ -330,13 +340,31 @@ export default function EditProfile() {
                 <Text style={styles.rowValue} numberOfLines={1}>
                   {contactSummary}
                 </Text>
-                <Ionicons name="chevron-forward" size={16} color={C.grey2} />
+                <Ionicons name="chevron-forward" size={16} color={ink.text("#8A8A93")} />
               </View>
             </Pressable>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </View>
+  );
+
+  if (!desktop) return editForm;
+
+  return (
+    <DesktopEditProfile
+      form={editForm}
+      pane={pane === "category" ? <Category /> : pane === "contact" ? <ContactOptions /> : null}
+      onClosePane={() => setPane(null)}
+      preview={{
+        name: displayName.trim(),
+        username: username.trim(),
+        bio: bio.trim(),
+        category: category || undefined,
+        contact: contactSummary || undefined,
+        avatar: avatarSource as any,
+      }}
+    />
   );
 }
 
@@ -355,10 +383,10 @@ const MILKY_FIELD = {
   shadowOpacity: 0.09,
   shadowRadius: 4,
   shadowOffset: { width: 0, height: 4 },
-  elevation: 2,
+  elevation: 0 /* see-through: no Android shadow (grey frame) */,
 } as const;
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   screen: {
     flex: 1,
     backgroundColor: "#FFFFFF",

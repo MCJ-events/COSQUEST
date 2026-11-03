@@ -5,6 +5,7 @@ import { Pressable, type StyleProp, StyleSheet, Text, type TextStyle, View } fro
 import Svg, { Defs, LinearGradient, Path, Stop } from "react-native-svg";
 import { useFeedClock } from "./feedVisibility";
 import { C } from "@/theme/tokens";
+import { themedStyles, useInk, useThemedStyles } from "@/constants/chatTheme";
 
 // ==========================================
 // FIGMA MEASUREMENTS (card = 355.42 x 384.19)
@@ -83,6 +84,7 @@ function Stat({
   label: string;
   wide: boolean;
 }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   return (
     <Pressable
       style={[styles.stat, wide ? styles.statWide : styles.statNarrow]}
@@ -189,6 +191,7 @@ export function PostActions({
   onBookmark: () => void;
   overlay?: boolean;
 }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   const [panelWidth, setPanelWidth] = useState(0);
 
   const baseColor = overlay ? "#FFFFFF" : C.ink2;
@@ -278,7 +281,7 @@ export function PostActions({
   );
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   // Full width of the photo, anchored to the bottom. The empty right side
   // lets touches through to the photo.
   panel: {

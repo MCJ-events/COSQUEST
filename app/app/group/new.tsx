@@ -4,32 +4,47 @@
 // Step 1 (M20) Choose group type · Step 2 (M21) Group basics · Step 3 (M22)
 // Add contacts · Step 4 (M23) Joining, privacy & notifications · then
 // "Your group is ready" (M24) with the share link and first members.
-// Built from the screenshots for testing - fine-tune sizes/colours here.
+//
+// Built on the shared pieces in components/chat/ui.tsx and the light/dark
+// system in constants/chatTheme.ts, so it follows the same Figma values as
+// the chat sheets (pink #C34D9C, buttons radius 14, cards radius 18, 20px
+// between sections, white -> #D5F1FF background) and switches to dark mode
+// by itself. All the logic is unchanged from the previous version.
 import { Ionicons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
-import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import { useMemo, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   Platform,
   Pressable,
   ScrollView,
   Share,
-  StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
 import { KeyboardAvoidingView } from "@/components/ui/keyboard";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { RankLine } from "@/components/chat/RankBadge";
+import {
+  Card,
+  FieldLabel,
+  PrimaryButton,
+  SecondaryButton,
+  ScreenGradient,
+  SheetHeader,
+  TextField,
+  UI,
+} from "@/components/chat/ui";
 import PeoplePicker, { personKey } from "@/components/groups/PeoplePicker";
+import { themedStyles, useInk, useThemedStyles } from "@/constants/chatTheme";
+import { useIsDesktop } from "@/hooks/useDesktop";
+import DesktopCreateGroup from "@/components/desktop/DesktopCreateGroup";
 import { FONTS } from "@/constants/fonts";
+import { setSparksMuted } from "@/services/chatPrefs";
 import {
   SKIP_REASON_TEXT,
   createGroup,
@@ -46,21 +61,18 @@ import {
 } from "@/services/groups";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { fetchChats } from "@/store/thunks/chatThunks";
-import { setSparksMuted } from "@/services/chatPrefs";
 import { safeBack } from "@/utils/safeBack";
 import { C } from "@/theme/tokens";
-
-const PINK = C.brandDeep;
-const INK = C.inkNavy;
-const MUTED = C.slate;
-const LILAC = C.lilac;
-const PINK_SOFT = "#F7E3F0";
-const LINE = "rgba(36,40,60,0.08)";
 
 type Step = 1 | 2 | 3 | 4;
 type NotifyChoice = "all" | "sparks" | "mute";
 
-const KINDS: { value: GroupKind; icon: keyof typeof Ionicons.glyphMap; title: string; text: string }[] = [
+const KINDS: {
+  value: GroupKind;
+  icon: keyof typeof Ionicons.glyphMap;
+  title: string;
+  text: string;
+}[] = [
   {
     value: "faction",
     icon: "shield-outline",
@@ -98,13 +110,20 @@ const AVATAR_TINTS = ["#E9E1F5", "#DCE8EF", C.brandTint, "#E2F0E8", "#F5E6D8"];
 
 function avatarTint(name?: string) {
   let hash = 0;
-  for (const char of String(name || "")) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
+  for (const char of String(name || ""))
+    hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
   return AVATAR_TINTS[hash % AVATAR_TINTS.length];
 }
 
 function initialsOf(name?: string) {
-  const parts = String(name || "?").trim().split(/\s+/).filter(Boolean);
-  const letters = parts.length > 1 ? parts[0][0] + parts[1][0] : (parts[0] || "?").slice(0, 2);
+  const parts = String(name || "?")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  const letters =
+    parts.length > 1
+      ? parts[0][0] + parts[1][0]
+      : (parts[0] || "?").slice(0, 2);
   return letters.toUpperCase();
 }
 
@@ -117,10 +136,15 @@ function namesOf(people: GroupPerson[]) {
 // ---------- small pieces ----------
 
 function Radio({ on }: { on: boolean }) {
+  const ink = useInk();
   return on ? (
-    <Ionicons name="checkmark-circle-outline" size={24} color={PINK} />
+    <Ionicons
+      name="checkmark-circle-outline"
+      size={24}
+      color={ink.text(UI.PINK)}
+    />
   ) : (
-    <Ionicons name="ellipse-outline" size={24} color={MUTED} />
+    <Ionicons name="ellipse-outline" size={24} color={ink.text(UI.MUTED)} />
   );
 }
 
@@ -139,11 +163,12 @@ function ChoiceRow({
   last?: boolean;
   disabled?: boolean;
 }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   return (
     <Pressable accessibilityLabel={title}
       onPress={onPress}
       disabled={disabled}
-      style={[styles.choiceRow, last && styles.rowLast, disabled && styles.off]}
+      style={[styles.row, last && styles.rowLast, disabled && styles.off]}
       accessibilityRole="radio"
       accessibilityState={{ checked: on, disabled }}>
       <View style={styles.flex}>
@@ -155,26 +180,54 @@ function ChoiceRow({
   );
 }
 
-function LinkRow({ title, value, onPress, last }: { title: string; value: string; onPress: () => void; last?: boolean }) {
+function LinkRow({
+  title,
+  value,
+  onPress,
+  last,
+}: {
+  title: string;
+  value: string;
+  onPress: () => void;
+  last?: boolean;
+}) {
+  const styles = useThemedStyles(STYLE_PAIR);
+  const ink = useInk();
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel="Open" onPress={onPress} style={[styles.choiceRow, last && styles.rowLast]}>
+    <Pressable accessibilityRole="button" accessibilityLabel="Open" onPress={onPress} style={[styles.row, last && styles.rowLast]}>
       <View style={styles.flex}>
         <Text style={styles.rowTitle}>{title}</Text>
         <Text style={styles.rowHint}>{value}</Text>
       </View>
-      <Ionicons name="chevron-forward" size={20} color={MUTED} />
+      <Ionicons name="chevron-forward" size={20} color={ink.text(UI.MUTED)} />
     </Pressable>
   );
 }
 
-function MemberLine({ member, onPress }: { member: GroupMember; onPress: () => void }) {
+function MemberLine({
+  member,
+  onPress,
+}: {
+  member: GroupMember;
+  onPress: () => void;
+}) {
+  const styles = useThemedStyles(STYLE_PAIR);
+  const ink = useInk();
   const name = member.name || member.username;
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={name} onPress={onPress} style={styles.memberRow}>
       {member.avatarPhotoUrl ? (
-        <Image source={{ uri: member.avatarPhotoUrl }} style={styles.memberPhoto} contentFit="cover" />
+        <Image
+          source={{ uri: member.avatarPhotoUrl }}
+          style={styles.memberPhoto}
+          contentFit="cover"
+        />
       ) : (
-        <View style={[styles.memberAvatar, { backgroundColor: avatarTint(name) }]}>
+        <View
+          style={[
+            styles.memberAvatar,
+            { backgroundColor: ink.surface(avatarTint(name)) },
+          ]}>
           <Text style={styles.memberInitials}>{initialsOf(name)}</Text>
         </View>
       )}
@@ -184,13 +237,25 @@ function MemberLine({ member, onPress }: { member: GroupMember; onPress: () => v
             {name}
           </Text>
           {member.role !== "member" ? (
-            <Text style={styles.memberRole}>{member.role === "owner" ? "Owner" : "Admin"}</Text>
+            <Text style={styles.memberRole}>
+              {member.role === "owner" ? "Owner" : "Admin"}
+            </Text>
           ) : null}
         </View>
         <RankLine rank={(member as any).rank} />
       </View>
-      <Ionicons name="chevron-forward" size={20} color={MUTED} />
+      <Ionicons name="chevron-forward" size={20} color={ink.text(UI.MUTED)} />
     </Pressable>
+  );
+}
+
+function InfoBox({ title, children }: { title?: string; children: string }) {
+  const styles = useThemedStyles(STYLE_PAIR);
+  return (
+    <View style={styles.infoBox}>
+      {title ? <Text style={styles.infoTitle}>{title}</Text> : null}
+      <Text style={styles.infoText}>{children}</Text>
+    </View>
   );
 }
 
@@ -199,6 +264,8 @@ function MemberLine({ member, onPress }: { member: GroupMember; onPress: () => v
 // ==========================================
 
 export default function NewGroup() {
+  const styles = useThemedStyles(STYLE_PAIR);
+  const ink = useInk();
   const insets = useSafeAreaInsets();
   const dispatch = useAppDispatch();
 
@@ -206,14 +273,18 @@ export default function NewGroup() {
   const user = useAppSelector((state) => state.user.user) as any;
   const authUser = useAppSelector((state) => state.auth.user) as any;
   const myFaction: string | null = user?.faction || authUser?.faction || null;
-  const myUsername: string = user?.profile?.username || authUser?.profile?.username || "you";
+  const myUsername: string =
+    user?.profile?.username || authUser?.profile?.username || "you";
   // Figma M24: "by Sarthak" - the display name when there is one.
-  const myName = useAppSelector((state) => {
-    const profile = (state.auth.user as any)?.profile;
-    return profile?.displayName || profile?.firstName || "";
-  }) || myUsername;
+  const myName =
+    useAppSelector((state) => {
+      const profile = (state.auth.user as any)?.profile;
+      return profile?.displayName || profile?.firstName || "";
+    }) || myUsername;
 
   const [step, setStep] = useState<Step>(1);
+  // Computer (Figma D5): all four steps side by side, one Create button.
+  const desktop = useIsDesktop();
 
   // Step 1-2
   const [kind, setKind] = useState<GroupKind>("faction");
@@ -233,7 +304,10 @@ export default function NewGroup() {
 
   // Done (M24)
   const [creating, setCreating] = useState(false);
-  const [created, setCreated] = useState<{ group: Group; chatId: string } | null>(null);
+  const [created, setCreated] = useState<{
+    group: Group;
+    chatId: string;
+  } | null>(null);
   const [members, setMembers] = useState<GroupMember[]>([]);
   const [memberTotal, setMemberTotal] = useState(0);
 
@@ -258,7 +332,10 @@ export default function NewGroup() {
   const pickPhoto = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert("Photo permission", "Please allow CosQuest to access your photos.");
+      Alert.alert(
+        "Photo permission",
+        "Please allow CosQuest to access your photos.",
+      );
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -269,12 +346,19 @@ export default function NewGroup() {
     });
     if (result.canceled || !result.assets?.[0]) return;
     const asset = result.assets[0];
-    setPhoto({ uri: asset.uri, name: asset.fileName || "group-photo.jpg", type: asset.mimeType || "image/jpeg" });
+    setPhoto({
+      uri: asset.uri,
+      name: asset.fileName || "group-photo.jpg",
+      type: asset.mimeType || "image/jpeg",
+    });
   };
 
   const next = () => {
     if (step === 1 && kind === "faction" && !myFaction) {
-      Alert.alert("Faction group", "Join a faction first to create a faction group.");
+      Alert.alert(
+        "Faction group",
+        "Join a faction first to create a faction group.",
+      );
       return;
     }
     if (step === 2 && !name.trim()) {
@@ -286,7 +370,10 @@ export default function NewGroup() {
 
   const back = () => {
     if (created) {
-      router.replace({ pathname: "/chat/[id]", params: { id: created.chatId } });
+      router.replace({
+        pathname: "/chat/[id]",
+        params: { id: created.chatId },
+      });
       return;
     }
     if (step > 1) setStep((current) => (current - 1) as Step);
@@ -295,7 +382,10 @@ export default function NewGroup() {
 
   const create = async () => {
     if (!token || creating) return;
-    const limit = Math.min(1024, Math.max(2, Number(sizeLimit.replace(/\D/g, "")) || 100));
+    const limit = Math.min(
+      1024,
+      Math.max(2, Number(sizeLimit.replace(/\D/g, "")) || 100),
+    );
 
     try {
       setCreating(true);
@@ -315,8 +405,7 @@ export default function NewGroup() {
         token,
       );
 
-      // "Mute entire group": muted for me straight away. ("Mute only Sparks"
-      // needs a backend option that isn't there yet, so it stays audible.)
+      // "Mute entire group": muted for me straight away.
       if (notify === "mute") {
         muteGroup(result.group.id, true, "always", token).catch(() => {});
       }
@@ -328,7 +417,10 @@ export default function NewGroup() {
 
       if (result.skipped.length) {
         const lines = result.skipped.map((item) => {
-          const who = picked.find((p) => p.id === item.userId)?.username || item.username || "Someone";
+          const who =
+            picked.find((p) => p.id === item.userId)?.username ||
+            item.username ||
+            "Someone";
           return `@${who} ${SKIP_REASON_TEXT[item.reason] || "couldn't be added"}.`;
         });
         Alert.alert("Some people weren't added", lines.join("\n"));
@@ -342,7 +434,10 @@ export default function NewGroup() {
         })
         .catch(() => {});
     } catch (error) {
-      Alert.alert("Create a group", error instanceof Error ? error.message : "Couldn't create the group.");
+      Alert.alert(
+        "Create a group",
+        error instanceof Error ? error.message : "Couldn't create the group.",
+      );
     } finally {
       setCreating(false);
     }
@@ -359,13 +454,27 @@ export default function NewGroup() {
   const shareLink = async () => {
     if (!link || !created) return;
     try {
-      await Share.share({ message: `Join "${created.group.name}" on CosQuest: ${link}` });
+      await Share.share({
+        message: `Join "${created.group.name}" on CosQuest: ${link}`,
+      });
     } catch {
       // closed
     }
   };
 
-  const kindIcon = KINDS.find((item) => item.value === kind)?.icon || "people-outline";
+  const kindIcon =
+    KINDS.find((item) => item.value === kind)?.icon || "people-outline";
+  const openChat = () =>
+    created &&
+    router.replace({ pathname: "/chat/[id]", params: { id: created.chatId } });
+
+  // ---------- header text ----------
+  const headerTitle = created ? "Your group is ready" : STEP_TITLE[step];
+  const headerSubtitle = created
+    ? `Created ${new Date().toLocaleDateString([], { month: "long", day: "numeric", year: "numeric" })} · by ${myName}`
+    : step === 4
+      ? `${KIND_LABEL[kind]} group`
+      : undefined;
 
   // ---------- footer button ----------
   const nextLabel =
@@ -379,59 +488,128 @@ export default function NewGroup() {
             : "Next · skip for now"
           : `Create ${name.trim() || "group"}`;
 
+
+  // ---------- computer (Figma D5) ----------
+  // Same checks as the phone's Next button, then the same create request.
+  const desktopCreate = () => {
+    if (kind === "faction" && !myFaction) {
+      Alert.alert("Faction group", "Join a faction first to create a faction group.");
+      return;
+    }
+    if (!name.trim()) {
+      Alert.alert("Group name", "Give your group a name.");
+      return;
+    }
+    create();
+  };
+
+  if (desktop && !created) {
+    return (
+      <View style={styles.screen}>
+        <ScreenGradient />
+        <DesktopCreateGroup
+          kinds={KINDS}
+          kind={kind}
+          onKind={changeKind}
+          photoUri={photo?.uri || null}
+          onPickPhoto={pickPhoto}
+          name={name}
+          onName={setName}
+          description={description}
+          onDescription={setDescription}
+          selected={selected}
+          onTogglePerson={togglePerson}
+          pickedCount={picked.length}
+          joinMode={joinMode}
+          onJoinMode={setJoinMode}
+          sizeLimit={sizeLimit}
+          onSizeLimit={setSizeLimit}
+          memberList={memberList}
+          onMemberList={setMemberList}
+          whoCanAdd={whoCanAdd}
+          onWhoCanAdd={setWhoCanAdd}
+          notify={notify}
+          onNotify={setNotify}
+          creating={creating}
+          onCreate={desktopCreate}
+          onBack={safeBack}
+        />
+      </View>
+    );
+  }
   return (
-    <LinearGradient colors={[C.skyPale, C.skyPale2]} style={styles.screen}>
-      <KeyboardAvoidingView style={styles.flex} behavior="padding">
+    <View style={styles.screen}>
+      <ScreenGradient />
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}>
         {/* HEADER */}
-        <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-          <Pressable onPress={back} hitSlop={10} accessibilityLabel="Back">
-            <Ionicons name="chevron-back" size={26} color={INK} />
-          </Pressable>
-          <View style={styles.flex}>
-            <Text style={styles.title} numberOfLines={1}>
-              {created ? "Your group is ready" : STEP_TITLE[step]}
-            </Text>
-            {created ? (
-              <Text style={styles.subtitle}>
-                Created {new Date().toLocaleDateString([], { month: "long", day: "numeric", year: "numeric" })} · by{" "}
-                {myName}
-              </Text>
-            ) : step === 4 ? (
-              <Text style={styles.subtitle}>{KIND_LABEL[kind]}</Text>
-            ) : null}
-          </View>
-          <Pressable
-            onPress={() =>
-              created ? router.replace({ pathname: "/chat/[id]", params: { id: created.chatId } }) : safeBack()
-            }
-            hitSlop={10}
-            accessibilityLabel="Close">
-            <Ionicons name="close" size={26} color={MUTED} />
-          </Pressable>
+        <View style={[styles.headerWrap, { paddingTop: insets.top + 12 }]}>
+          <SheetHeader
+            title={headerTitle}
+            subtitle={headerSubtitle}
+            onBack={back}
+            onClose={created ? openChat : safeBack}
+          />
         </View>
 
         <ScrollView
           style={styles.flex}
-          contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 110 }]}
+          contentContainerStyle={[
+            styles.content,
+            { paddingBottom: desktop && !created ? 24 : insets.bottom + 110 },
+          ]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}>
-          {!created ? (
+          {!created && !desktop ? (
             <>
               {/* PROGRESS */}
               <Text style={styles.stepLabel}>STEP {step} OF 4</Text>
               <View style={styles.progress}>
                 {[1, 2, 3, 4].map((index) => (
-                  <View key={index} style={[styles.progressBar, index <= step && styles.progressOn]} />
+                  <View
+                    key={index}
+                    style={[
+                      styles.progressBar,
+                      index <= step && styles.progressOn,
+                    ]}
+                  />
                 ))}
               </View>
             </>
           ) : null}
 
+          {desktop && !created ? (
+            <View style={styles.deskTabs}>
+              {[
+                { label: "1 · Type", done: true },
+                { label: "2 · Basics", done: !!name.trim() },
+                { label: "3 · Members", done: picked.length > 0 },
+                { label: "4 · Joining & privacy", done: false, on: true },
+              ].map((tab) => (
+                <View key={tab.label} style={[styles.deskTab, tab.on && styles.deskTabOn]}>
+                  <Text style={[styles.deskTabText, (tab.on || tab.done) && styles.deskTabTextOn]}>
+                    {tab.label}
+                    {tab.done ? " ✓" : ""}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
+          <View style={desktop && !created ? styles.deskRow : undefined}>
           {/* ---------- STEP 1 (M20) ---------- */}
-          {!created && step === 1 ? (
-            <>
-              <Text style={styles.bigTitle}>A space for your people.</Text>
-              <Text style={styles.lead}>Choose how your group comes together.</Text>
+          {!created && (step === 1 || desktop) ? (
+            <View style={desktop ? styles.deskCol : undefined}>
+              {desktop ? (
+                <Text style={styles.deskHead}>Group type</Text>
+              ) : (
+                <>
+                  <Text style={styles.bigTitle}>A space for your people.</Text>
+                  <Text style={styles.lead}>
+                    Choose how your group comes together.
+                  </Text>
+                </>
+              )}
 
               {KINDS.map((item) => {
                 const on = kind === item.value;
@@ -444,11 +622,21 @@ export default function NewGroup() {
                     accessibilityState={{ checked: on }}>
                     <View style={styles.typeHead}>
                       <View style={[styles.typeIcon, on && styles.typeIconOn]}>
-                        <Ionicons name={item.icon} size={22} color={PINK} />
+                        <Ionicons
+                          name={item.icon}
+                          size={22}
+                          color={ink.text(UI.PINK)}
+                        />
                       </View>
                       <Text style={styles.typeTitle}>{item.title}</Text>
                       <View style={[styles.checkbox, on && styles.checkboxOn]}>
-                        {on ? <Ionicons name="checkmark" size={16} color="#FFFFFF" /> : null}
+                        {on ? (
+                          <Ionicons
+                            name="checkmark"
+                            size={16}
+                            color="#FFFFFF"
+                          />
+                        ) : null}
                       </View>
                     </View>
                     <Text style={styles.typeText}>{item.text}</Text>
@@ -456,76 +644,99 @@ export default function NewGroup() {
                 );
               })}
 
-              <View style={styles.infoBox}>
-                <Text style={styles.infoTitle}>Local · created by you</Text>
-                <Text style={styles.infoText}>
-                  Groups you create are local. Regional groups such as SoCal Ascendants are created by orchestrators.
-                </Text>
-              </View>
-            </>
+              <InfoBox title="Local · created by you">
+                Groups you create are local. Regional groups such as SoCal
+                Ascendants are created by orchestrators.
+              </InfoBox>
+            </View>
           ) : null}
 
           {/* ---------- STEP 2 (M21) ---------- */}
-          {!created && step === 2 ? (
-            <>
-              <Pressable onPress={pickPhoto} style={styles.photoWrap} accessibilityLabel="Upload photo">
+          {!created && (step === 2 || desktop) ? (
+            <View style={desktop ? styles.deskCol : undefined}>
+              {desktop ? <Text style={styles.deskHead}>Basics</Text> : null}
+              <Pressable
+                onPress={pickPhoto}
+                style={styles.photoWrap}
+                accessibilityLabel="Upload photo">
                 {photo ? (
-                  <Image source={{ uri: photo.uri }} style={styles.photo} contentFit="cover" />
+                  <Image
+                    source={{ uri: photo.uri }}
+                    style={styles.photo}
+                    contentFit="cover"
+                  />
                 ) : (
                   <View style={styles.photoIcon}>
-                    <Ionicons name={kindIcon} size={44} color={PINK} />
+                    <Ionicons
+                      name={kindIcon}
+                      size={44}
+                      color={ink.text(UI.PINK)}
+                    />
                   </View>
                 )}
-                <Text style={styles.photoLink}>{photo ? "Change photo" : "Upload photo or choose icon"}</Text>
+                <Text style={styles.photoLink}>
+                  {photo ? "Change photo" : "Upload photo or choose icon"}
+                </Text>
               </Pressable>
 
               <View style={styles.chip}>
-                <Text style={styles.chipText}>{KIND_LABEL[kind]} · created by you</Text>
+                <Text style={styles.chipText}>
+                  {KIND_LABEL[kind]} · created by you
+                </Text>
               </View>
 
-              <Text style={styles.label}>Group name</Text>
-              <TextInput
+              <FieldLabel>Group name</FieldLabel>
+              <TextField
                 value={name}
                 onChangeText={setName}
                 placeholder="e.g. Barrio Logan Ascendants"
-                placeholderTextColor={C.placeholder}
                 maxLength={60}
-                style={styles.input}
               />
 
-              <Text style={styles.label}>Description</Text>
-              <TextInput
+              <FieldLabel>Description</FieldLabel>
+              <TextField
                 value={description}
                 onChangeText={setDescription}
                 placeholder="What is this group for?"
-                placeholderTextColor={C.placeholder}
                 maxLength={300}
                 multiline
-                style={[styles.input, styles.textArea]}
+                style={styles.textArea}
               />
-              <Text style={styles.hint}>Help people know what to expect in this group.</Text>
-              <Text style={[styles.hint, styles.hintGap]}>
-                Your name and icon appear in chats and invitations. Admins can update these later.
+              <Text style={styles.hint}>
+                Help people know what to expect in this group.
               </Text>
-            </>
+              <Text style={[styles.hint, styles.hintGap]}>
+                Your name and icon appear in chats and invitations. Admins can
+                update these later.
+              </Text>
+            </View>
           ) : null}
 
           {/* ---------- STEP 3 (M22) ---------- */}
-          {!created && step === 3 ? (
-            <>
-              <View style={styles.infoBox}>
-                <Text style={styles.infoTitle}>
-                  {kind === "faction" ? "Faction members join automatically" : "Invite your people"}
+          {!created && (step === 3 || desktop) ? (
+            <View style={desktop ? styles.deskCol : undefined}>
+              {desktop ? (
+                <Text style={styles.deskHead}>
+                  Contacts{picked.length ? ` · ${picked.length} selected` : ""}
                 </Text>
-                <Text style={styles.infoText}>
-                  {kind === "faction"
-                    ? "Eligible members are already included. Selected contacts receive invitations, not admin powers."
-                    : "Selected contacts are added to the group. They don't get admin powers."}
-                </Text>
-              </View>
+              ) : null}
+              <InfoBox
+                title={
+                  kind === "faction"
+                    ? "Faction members join automatically"
+                    : "Invite your people"
+                }>
+                {kind === "faction"
+                  ? "Eligible members are already included. Selected contacts receive invitations, not admin powers."
+                  : "Selected contacts are added to the group. They don't get admin powers."}
+              </InfoBox>
 
-              <View style={styles.pickerWrap}>
-                <PeoplePicker selected={selected} onToggle={togglePerson} max={50} />
+              <View style={[styles.pickerWrap, desktop && styles.pickerDesk]}>
+                <PeoplePicker
+                  selected={selected}
+                  onToggle={togglePerson}
+                  max={50}
+                />
               </View>
 
               {picked.length ? (
@@ -536,19 +747,30 @@ export default function NewGroup() {
 
               <Pressable accessibilityRole="button" accessibilityLabel="Use an invitation link instead" style={styles.inviteRow} onPress={() => setStep(4)}>
                 <View style={styles.flex}>
-                  <Text style={styles.rowTitle}>Use an invitation link instead</Text>
-                  <Text style={styles.rowHint}>Share after your group is created</Text>
+                  <Text style={styles.rowTitle}>
+                    Use an invitation link instead
+                  </Text>
+                  <Text style={styles.rowHint}>
+                    Share after your group is created
+                  </Text>
                 </View>
-                <Ionicons name="link-outline" size={22} color={MUTED} />
+                <Ionicons
+                  name="link-outline"
+                  size={22}
+                  color={ink.text(UI.MUTED)}
+                />
               </Pressable>
-            </>
+            </View>
           ) : null}
 
           {/* ---------- STEP 4 (M23) ---------- */}
-          {!created && step === 4 ? (
-            <>
-              <Text style={styles.section}>INVITE-LINK JOINING</Text>
-              <View style={styles.card}>
+          {!created && (step === 4 || desktop) ? (
+            <View style={desktop ? styles.deskCol : undefined}>
+              {desktop ? <Text style={styles.deskHead}>Joining & privacy</Text> : null}
+              <Text style={[styles.section, styles.sectionFirst]}>
+                INVITE-LINK JOINING
+              </Text>
+              <Card style={styles.listCard}>
                 <ChoiceRow
                   title="Admin approval"
                   hint="Review each shared-link request"
@@ -557,49 +779,65 @@ export default function NewGroup() {
                 />
                 <ChoiceRow
                   title="Instant invitation"
-                  hint={kind === "private" ? "Not for private groups" : "Eligible link holders join without review"}
+                  hint={
+                    kind === "private"
+                      ? "Not for private groups"
+                      : "Eligible link holders join without review"
+                  }
                   on={kind !== "private" && joinMode === "instant"}
                   onPress={() => setJoinMode("instant")}
                   disabled={kind === "private"}
                   last
                 />
-              </View>
+              </Card>
 
-              <Text style={styles.label}>Group size limit</Text>
-              <TextInput
+              <FieldLabel>Group size limit</FieldLabel>
+              <TextField
                 value={sizeLimit}
                 onChangeText={(text) => setSizeLimit(text.replace(/\D/g, ""))}
                 keyboardType="number-pad"
                 maxLength={4}
-                style={styles.input}
               />
-              <Text style={styles.hint}>Your group&apos;s editable limit (members)</Text>
+              <Text style={styles.hint}>
+                Your group&apos;s editable limit (members)
+              </Text>
 
               <Text style={styles.section}>GROUP PRIVACY</Text>
-              <View style={styles.card}>
+              <Card style={styles.listCard}>
                 <LinkRow
                   title="Member list visible to"
                   value={memberList === "members" ? "Members" : "Admins"}
-                  onPress={() => setMemberList((value) => (value === "members" ? "admins" : "members"))}
+                  onPress={() =>
+                    setMemberList((value) =>
+                      value === "members" ? "admins" : "members",
+                    )
+                  }
                 />
                 <LinkRow
                   title="Who can add people"
                   value={whoCanAdd === "admins" ? "Admins" : "Members"}
-                  onPress={() => setWhoCanAdd((value) => (value === "admins" ? "members" : "admins"))}
+                  onPress={() =>
+                    setWhoCanAdd((value) =>
+                      value === "admins" ? "members" : "admins",
+                    )
+                  }
                   last
                 />
-              </View>
+              </Card>
 
-              <View style={styles.infoBox}>
-                <Text style={styles.infoText}>
-                  Eligible faction members join automatically. Approval applies to shared-link requests. Private groups
-                  always use manual invitations.
-                </Text>
-              </View>
+              <InfoBox>
+                Eligible faction members join automatically. Approval applies to
+                shared-link requests. Private groups always use manual
+                invitations.
+              </InfoBox>
 
               <Text style={styles.section}>YOUR NOTIFICATIONS</Text>
-              <View style={styles.card}>
-                <ChoiceRow title="All activity audible" on={notify === "all"} onPress={() => setNotify("all")} />
+              <Card style={styles.listCard}>
+                <ChoiceRow
+                  title="All activity audible"
+                  on={notify === "all"}
+                  onPress={() => setNotify("all")}
+                />
                 <ChoiceRow
                   title="Mute only Sparks / thread activity"
                   hint="Main conversation stays audible"
@@ -613,30 +851,43 @@ export default function NewGroup() {
                   onPress={() => setNotify("mute")}
                   last
                 />
-              </View>
-            </>
+              </Card>
+            </View>
           ) : null}
+          </View>
 
           {/* ---------- DONE (M24) ---------- */}
           {created ? (
             <>
               <View style={styles.readyIconWrap}>
                 {created.group.photoUrl ? (
-                  <Image source={{ uri: created.group.photoUrl }} style={styles.photo} contentFit="cover" />
+                  <Image
+                    source={{ uri: created.group.photoUrl }}
+                    style={styles.photo}
+                    contentFit="cover"
+                  />
                 ) : (
                   <View style={styles.photoIcon}>
-                    <Ionicons name={kindIcon} size={44} color={PINK} />
+                    <Ionicons
+                      name={kindIcon}
+                      size={44}
+                      color={ink.text(UI.PINK)}
+                    />
                   </View>
                 )}
               </View>
               <Text style={styles.readyName}>{created.group.name}</Text>
               <View style={[styles.chip, styles.chipCenter]}>
-                <Text style={styles.chipText}>{KIND_LABEL[created.group.kind]} · user-created</Text>
+                <Text style={styles.chipText}>
+                  {KIND_LABEL[created.group.kind]} · user-created
+                </Text>
               </View>
-              {created.group.description ? <Text style={styles.lead}>{created.group.description}</Text> : null}
+              {created.group.description ? (
+                <Text style={styles.lead}>{created.group.description}</Text>
+              ) : null}
 
               <Text style={styles.section}>SHARE YOUR GROUP</Text>
-              <View style={[styles.card, styles.cardPad]}>
+              <Card>
                 <Text style={styles.linkText} numberOfLines={2}>
                   {link || "Invite link not available"}
                 </Text>
@@ -646,291 +897,432 @@ export default function NewGroup() {
                     : "People with the link join straight away."}
                 </Text>
                 <View style={styles.twoButtons}>
-                  <Pressable accessibilityRole="button" accessibilityLabel="Copy link" style={styles.softButton} onPress={copyLink} disabled={!link}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Copy link"
+                    style={styles.softButton}
+                    onPress={copyLink}
+                    disabled={!link}>
                     <Text style={styles.softButtonText}>Copy link</Text>
                   </Pressable>
-                  <Pressable accessibilityRole="button" accessibilityLabel="Share invite" style={styles.softButton} onPress={shareLink} disabled={!link}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Share invite"
+                    style={styles.softButton}
+                    onPress={shareLink}
+                    disabled={!link}>
                     <Text style={styles.softButtonText}>Share invite</Text>
                   </Pressable>
                 </View>
-              </View>
+              </Card>
 
-              <Text style={styles.section}>{memberTotal || created.group.memberCount || 1} MEMBERS</Text>
-              <View style={[styles.card, styles.cardPad]}>
+              <Text style={styles.section}>
+                {memberTotal || created.group.memberCount || 1} MEMBERS
+              </Text>
+              <Card style={styles.listCard}>
                 {created.group.kind === "faction" ? (
-                  <Text style={styles.rowHint}>Faction members were added automatically.</Text>
+                  <Text style={[styles.rowHint, styles.memberNote]}>
+                    Faction members were added automatically.
+                  </Text>
                 ) : null}
                 {members.slice(0, 3).map((member) => (
                   <MemberLine
                     key={member.id}
                     member={member}
-                    onPress={() => router.push({ pathname: "/group/[id]", params: { id: created.group.id } })}
+                    onPress={() =>
+                      router.push({
+                        pathname: "/group/[id]",
+                        params: { id: created.group.id },
+                      })
+                    }
                   />
                 ))}
-                <Pressable accessibilityRole="button" accessibilityLabel="View all members"
-                  style={[styles.choiceRow, styles.rowLast]}
-                  onPress={() => router.push({ pathname: "/group/[id]", params: { id: created.group.id } })}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="View all members"
+                  style={[styles.row, styles.rowLast]}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/group/[id]",
+                      params: { id: created.group.id },
+                    })
+                  }>
                   <View style={styles.flex}>
                     <Text style={styles.rowTitle}>View all members</Text>
-                    <Text style={styles.rowHint}>Creator: {myUsername} · Owner</Text>
+                    <Text style={styles.rowHint}>
+                      Creator: {myUsername} · Owner
+                    </Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={20} color={MUTED} />
+                  <Ionicons
+                    name="chevron-forward"
+                    size={20}
+                    color={ink.text(UI.MUTED)}
+                  />
                 </Pressable>
-              </View>
+              </Card>
             </>
           ) : null}
         </ScrollView>
 
         {/* FOOTER BUTTON */}
-        <View style={[styles.footer, { paddingBottom: insets.bottom + 14 }]}>
+        <View
+          style={[
+            styles.footer,
+            desktop && !created && styles.footerDesk,
+            { paddingBottom: insets.bottom + 14 },
+          ]}>
+          {desktop && !created ? (
+            <>
+              <Text style={styles.deskSummary} numberOfLines={2}>
+                {kind === "faction"
+                  ? "Your faction's members join automatically"
+                  : "You'll be the owner"}
+                {picked.length
+                  ? `, plus ${picked.length} contact ${picked.length === 1 ? "invitation" : "invitations"}.`
+                  : "."}
+              </Text>
+              <SecondaryButton label="Back" onPress={safeBack} style={styles.deskBack} />
+            </>
+          ) : null}
           {created ? (
-            <Pressable accessibilityRole="button" accessibilityLabel="Open group chat"
-              style={styles.primary}
-              onPress={() => router.replace({ pathname: "/chat/[id]", params: { id: created.chatId } })}>
-              <Text style={styles.primaryText}>Open group chat</Text>
-            </Pressable>
+            <PrimaryButton
+              label="Open group chat"
+              onPress={openChat}
+              style={styles.footerButton}
+            />
           ) : (
-            <Pressable accessibilityRole="button" accessibilityLabel={nextLabel}
-              style={[styles.primary, (creating || (step === 2 && !name.trim())) && styles.off]}
-              disabled={creating || (step === 2 && !name.trim())}
-              onPress={step === 4 ? create : next}>
-              {creating ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <Text style={styles.primaryText} numberOfLines={1}>
-                  {nextLabel}
-                </Text>
-              )}
-            </Pressable>
+            <PrimaryButton
+              label={desktop ? `Create ${name.trim() || "group"}` : nextLabel}
+              onPress={step === 4 || desktop ? create : next}
+              disabled={(desktop || step === 2) && !name.trim()}
+              loading={creating}
+              style={[styles.footerButton, desktop && !created && styles.deskCreate]}
+            />
           )}
         </View>
       </KeyboardAvoidingView>
-    </LinearGradient>
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1 },
+// ---------- styles ----------
 
-  flex: { flex: 1, minWidth: 0 },
+const PINK_WASH = "#F7E6F2";
 
-  off: { opacity: 0.5 },
+const STYLE_PAIR = themedStyles(
+  {
+    screen: { flex: 1, backgroundColor: "transparent" },
+    flex: { flex: 1, minWidth: 0 },
+    off: { opacity: 0.5 },
 
-  // HEADER
-  header: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 18, paddingBottom: 8 },
+    headerWrap: { paddingHorizontal: 18, paddingBottom: 8 },
+    content: { paddingHorizontal: 18, paddingTop: 8 },
+    // Computer: the four steps as columns (Figma D5).
+    deskRow: { flexDirection: "row", alignItems: "flex-start", gap: 18 },
+    deskCol: { flex: 1, minWidth: 0 },
+    deskHead: { marginBottom: 12, fontFamily: FONTS.semibold, fontSize: 17, color: UI.INK },
+    deskTabs: { flexDirection: "row", gap: 14, marginTop: 4, marginBottom: 18 },
+    deskTab: {
+      flex: 1,
+      paddingHorizontal: 14,
+      paddingVertical: 11,
+      borderRadius: 12,
+      backgroundColor: "rgba(255,255,255,0.85)",
+    },
+    deskTabOn: { backgroundColor: "#F3DDED" },
+    deskTabText: { fontFamily: FONTS.medium, fontSize: 13, color: UI.MUTED },
+    deskTabTextOn: { color: UI.PINK },
+    pickerDesk: { maxHeight: 520, overflow: "hidden" },
+    footerDesk: {
+      position: "relative",
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 14,
+      paddingHorizontal: 18,
+      paddingTop: 12,
+    },
+    deskSummary: { flex: 1, fontFamily: FONTS.regular, fontSize: 13, color: UI.MUTED },
+    deskBack: { marginTop: 0, width: 200 },
+    deskCreate: { width: 220 },
 
-  title: { fontFamily: FONTS.semibold, fontSize: 22, lineHeight: 28, color: INK },
+    // PROGRESS
+    stepLabel: {
+      marginTop: 10,
+      fontFamily: FONTS.medium,
+      fontSize: 11,
+      letterSpacing: 0.4,
+      color: UI.MUTED,
+    },
+    progress: {
+      flexDirection: "row",
+      gap: 6,
+      marginTop: 8,
+      marginBottom: UI.GAP,
+    },
+    progressBar: {
+      flex: 1,
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: "#D9DEE8",
+    },
+    progressOn: { backgroundColor: UI.PINK },
 
-  subtitle: { marginTop: 2, fontFamily: FONTS.regular, fontSize: 12, color: MUTED },
+    bigTitle: {
+      fontFamily: FONTS.semibold,
+      fontSize: 20,
+      lineHeight: 26,
+      color: UI.INK,
+    },
+    lead: {
+      marginTop: UI.GAP,
+      marginBottom: UI.GAP,
+      fontFamily: FONTS.regular,
+      fontSize: 14,
+      lineHeight: 21,
+      color: UI.MUTED,
+    },
 
-  content: { paddingHorizontal: 18, paddingTop: 8 },
+    // STEP 1: type cards (Figma: radius 14, padding 12, gap 8)
+    typeCard: {
+      marginBottom: 12,
+      padding: 12,
+      gap: 8,
+      borderRadius: 14,
+      backgroundColor: "rgba(255,255,255,0.94)",
+      borderWidth: 1,
+      borderColor: UI.BORDER,
+    },
+    typeCardOn: { backgroundColor: PINK_WASH, borderColor: "#B63D91" },
+    typeHead: { flexDirection: "row", alignItems: "center", gap: 12 },
+    typeIcon: {
+      width: 40,
+      height: 40,
+      borderRadius: 12,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: UI.LILAC,
+    },
+    typeIconOn: { backgroundColor: "#FFFFFF" },
+    typeTitle: {
+      flex: 1,
+      fontFamily: FONTS.semibold,
+      fontSize: 16,
+      color: UI.INK,
+    },
+    typeText: {
+      fontFamily: FONTS.regular,
+      fontSize: 13,
+      lineHeight: 19,
+      color: UI.MUTED,
+    },
+    checkbox: {
+      width: 24,
+      height: 24,
+      borderRadius: 6,
+      borderWidth: 1.5,
+      borderColor: "#C9CFDB",
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: "#FFFFFF",
+    },
+    checkboxOn: { backgroundColor: UI.PINK, borderColor: UI.PINK },
 
-  // PROGRESS
-  stepLabel: { marginTop: 10, fontFamily: FONTS.medium, fontSize: 11, letterSpacing: 0.4, color: MUTED },
+    infoBox: {
+      marginTop: 4,
+      marginBottom: UI.GAP,
+      padding: 14,
+      borderRadius: 16,
+      backgroundColor: PINK_WASH,
+    },
+    infoTitle: {
+      fontFamily: FONTS.semibold,
+      fontSize: 13,
+      color: UI.PINK,
+      marginBottom: 4,
+    },
+    infoText: {
+      fontFamily: FONTS.regular,
+      fontSize: 12.5,
+      lineHeight: 18,
+      color: UI.MUTED,
+    },
 
-  progress: { flexDirection: "row", gap: 6, marginTop: 8, marginBottom: 14 },
+    // STEP 2
+    photoWrap: { alignItems: "center", marginTop: 6 },
+    photoIcon: {
+      width: 96,
+      height: 96,
+      borderRadius: 24,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: "#F7E3F0",
+    },
+    photo: { width: 96, height: 96, borderRadius: 24 },
+    photoLink: {
+      marginTop: 14,
+      fontFamily: FONTS.semibold,
+      fontSize: 14,
+      color: UI.PINK,
+    },
+    chip: {
+      alignSelf: "flex-start",
+      marginTop: 18,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 12,
+      backgroundColor: "#F3DDED",
+    },
+    chipCenter: { alignSelf: "center", marginTop: 10 },
+    chipText: { fontFamily: FONTS.semibold, fontSize: 11, color: UI.PINK },
+    textArea: { minHeight: 96, paddingVertical: 12, textAlignVertical: "top" },
+    hint: {
+      marginTop: 6,
+      fontFamily: FONTS.regular,
+      fontSize: 11.5,
+      lineHeight: 16,
+      color: UI.MUTED,
+    },
+    hintGap: { marginTop: 14 },
 
-  progressBar: { flex: 1, height: 4, borderRadius: 2, backgroundColor: "#D9DEE8" },
+    // STEP 3
+    pickerWrap: { marginTop: 2 },
+    selectedText: {
+      marginTop: 12,
+      fontFamily: FONTS.semibold,
+      fontSize: 13,
+      color: UI.PINK,
+    },
+    inviteRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+      marginTop: 14,
+      paddingVertical: 14,
+      borderBottomWidth: 1,
+      borderBottomColor: "rgba(36,40,60,0.08)",
+    },
 
-  progressOn: { backgroundColor: PINK },
+    // STEP 4 + shared rows
+    section: {
+      marginTop: UI.GAP,
+      marginBottom: 8,
+      fontFamily: FONTS.semibold,
+      fontSize: 12,
+      letterSpacing: 0.4,
+      color: UI.MUTED,
+    },
+    sectionFirst: { marginTop: 4 },
+    // Rows carry their own padding, so the card keeps only its side padding.
+    listCard: { paddingVertical: 0 },
+    row: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+      paddingVertical: 14,
+      borderBottomWidth: 1,
+      borderBottomColor: "rgba(36,40,60,0.08)",
+    },
+    rowLast: { borderBottomWidth: 0 },
+    rowTitle: { fontFamily: FONTS.semibold, fontSize: 15, color: UI.INK },
+    rowHint: {
+      marginTop: 2,
+      fontFamily: FONTS.regular,
+      fontSize: 12,
+      lineHeight: 17,
+      color: UI.MUTED,
+    },
 
-  bigTitle: { marginTop: 4, fontFamily: FONTS.semibold, fontSize: 21, lineHeight: 28, color: INK },
+    // M24
+    readyIconWrap: { alignItems: "center", marginTop: 10 },
+    readyName: {
+      marginTop: 18,
+      fontFamily: FONTS.semibold,
+      fontSize: 22,
+      color: UI.INK,
+      textAlign: "center",
+    },
+    linkText: { fontFamily: FONTS.semibold, fontSize: 14, color: UI.PINK },
+    twoButtons: { flexDirection: "row", gap: 10, marginTop: 12 },
+    softButton: {
+      flex: 1,
+      height: 48,
+      borderRadius: UI.BUTTON_RADIUS,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: UI.LILAC,
+    },
+    softButtonText: {
+      fontFamily: FONTS.semibold,
+      fontSize: 15,
+      color: UI.PINK,
+    },
+    memberNote: { paddingTop: 14 },
+    memberRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: "rgba(36,40,60,0.08)",
+    },
+    memberAvatar: {
+      width: 42,
+      height: 42,
+      borderRadius: 21,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    memberPhoto: { width: 42, height: 42, borderRadius: 21 },
+    memberInitials: { fontFamily: FONTS.bold, fontSize: 12, color: "#7D356D" },
+    memberNameRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      marginBottom: 3,
+    },
+    memberName: {
+      flexShrink: 1,
+      fontFamily: FONTS.semibold,
+      fontSize: 14,
+      color: UI.INK,
+    },
+    memberRole: { fontFamily: FONTS.semibold, fontSize: 11, color: UI.PINK },
 
-  lead: { marginTop: 8, marginBottom: 14, fontFamily: FONTS.regular, fontSize: 14, lineHeight: 21, color: MUTED },
-
-  // STEP 1
-  typeCard: {
-    marginBottom: 12,
-    padding: 16,
-    borderRadius: 18,
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: LINE,
+    // FOOTER
+    footer: {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      bottom: 0,
+      paddingHorizontal: 18,
+      paddingTop: 10,
+    },
+    footerButton: { marginTop: 0 },
   },
-
-  typeCardOn: { backgroundColor: PINK_SOFT, borderColor: PINK },
-
-  typeHead: { flexDirection: "row", alignItems: "center", gap: 12 },
-
-  typeIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: LILAC,
+  {
+    screen: { backgroundColor: "transparent" },
+    typeCard: {
+      backgroundColor: "#252837",
+      borderColor: "rgba(255,255,255,0.12)",
+    },
+    typeCardOn: { backgroundColor: "#40283B", borderColor: UI.PINK },
+    typeIcon: { backgroundColor: "#343044" },
+    typeIconOn: { backgroundColor: "#252837" },
+    checkbox: { backgroundColor: "#252837", borderColor: "#6E7690" },
+    checkboxOn: { backgroundColor: UI.PINK, borderColor: UI.PINK },
+    infoBox: { backgroundColor: "#40283B" },
+    photoIcon: { backgroundColor: "#40283B" },
+    chip: { backgroundColor: "#40283B" },
+    softButton: { backgroundColor: "#343044" },
+    softButtonText: { color: "#F0A6D7" },
+    memberAvatar: {},
+    progressBar: { backgroundColor: "#343746" },
+    progressOn: { backgroundColor: UI.PINK },
+    deskHead: { color: "#F4F5FA" },
+    deskTab: { backgroundColor: "#252837" },
+    deskTabOn: { backgroundColor: "#40283B" },
+    deskTabText: { color: "#B5BBCB" },
+    deskTabTextOn: { color: "#F0A6D7" },
+    deskSummary: { color: "#B5BBCB" },
   },
-
-  typeIconOn: { backgroundColor: "#FFFFFF" },
-
-  typeTitle: { flex: 1, fontFamily: FONTS.semibold, fontSize: 16, color: INK },
-
-  typeText: { marginTop: 10, fontFamily: FONTS.regular, fontSize: 13, lineHeight: 19, color: MUTED },
-
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 6,
-    borderWidth: 1.5,
-    borderColor: "#C9CFDB",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#FFFFFF",
-  },
-
-  checkboxOn: { backgroundColor: PINK, borderColor: PINK },
-
-  infoBox: { marginTop: 4, marginBottom: 14, padding: 14, borderRadius: 16, backgroundColor: LILAC },
-
-  infoTitle: { fontFamily: FONTS.semibold, fontSize: 13, color: PINK, marginBottom: 4 },
-
-  infoText: { fontFamily: FONTS.regular, fontSize: 12.5, lineHeight: 18, color: MUTED },
-
-  // STEP 2
-  photoWrap: { alignItems: "center", marginTop: 6 },
-
-  photoIcon: {
-    width: 96,
-    height: 96,
-    borderRadius: 24,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: PINK_SOFT,
-  },
-
-  photo: { width: 96, height: 96, borderRadius: 24 },
-
-  photoLink: { marginTop: 14, fontFamily: FONTS.semibold, fontSize: 14, color: PINK },
-
-  chip: {
-    alignSelf: "flex-start",
-    marginTop: 18,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    backgroundColor: C.brandTint,
-  },
-
-  chipCenter: { alignSelf: "center", marginTop: 10 },
-
-  chipText: { fontFamily: FONTS.semibold, fontSize: 11, color: PINK },
-
-  label: { marginTop: 16, marginBottom: 8, fontFamily: FONTS.semibold, fontSize: 13, color: INK },
-
-  input: {
-    minHeight: 50,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderRadius: 14,
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "rgba(102,115,138,0.25)",
-    fontFamily: FONTS.regular,
-    fontSize: 15,
-    color: INK,
-    ...(Platform.OS === "web" ? ({ outlineStyle: "none" } as object) : null),
-  },
-
-  textArea: { minHeight: 96, textAlignVertical: "top" },
-
-  hint: { marginTop: 6, fontFamily: FONTS.regular, fontSize: 11.5, lineHeight: 16, color: MUTED },
-
-  hintGap: { marginTop: 14 },
-
-  // STEP 3
-  pickerWrap: { marginTop: 2 },
-
-  selectedText: { marginTop: 12, fontFamily: FONTS.semibold, fontSize: 13, color: PINK },
-
-  inviteRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    marginTop: 14,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: LINE,
-  },
-
-  // STEP 4
-  section: { marginTop: 20, marginBottom: 8, fontFamily: FONTS.semibold, fontSize: 12, letterSpacing: 0.4, color: MUTED },
-
-  card: {
-    paddingHorizontal: 14,
-    borderRadius: 18,
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: LINE,
-  },
-
-  cardPad: { paddingTop: 14 },
-
-  choiceRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: LINE,
-  },
-
-  rowLast: { borderBottomWidth: 0 },
-
-  rowTitle: { fontFamily: FONTS.semibold, fontSize: 15, color: INK },
-
-  rowHint: { marginTop: 2, fontFamily: FONTS.regular, fontSize: 12, lineHeight: 17, color: MUTED },
-
-  // M24
-  readyIconWrap: { alignItems: "center", marginTop: 10 },
-
-  readyName: { marginTop: 18, fontFamily: FONTS.semibold, fontSize: 22, color: INK, textAlign: "center" },
-
-  linkText: { fontFamily: FONTS.semibold, fontSize: 14, color: PINK },
-
-  twoButtons: { flexDirection: "row", gap: 10, marginTop: 12, marginBottom: 14 },
-
-  softButton: {
-    flex: 1,
-    height: 48,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: LILAC,
-  },
-
-  softButtonText: { fontFamily: FONTS.semibold, fontSize: 15, color: PINK },
-
-  memberRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: LINE,
-  },
-
-  memberAvatar: { width: 42, height: 42, borderRadius: 21, alignItems: "center", justifyContent: "center" },
-
-  memberPhoto: { width: 42, height: 42, borderRadius: 21 },
-
-  memberInitials: { fontFamily: FONTS.bold, fontSize: 12, color: C.plum },
-
-  memberNameRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 3 },
-
-  memberName: { flexShrink: 1, fontFamily: FONTS.semibold, fontSize: 14, color: INK },
-
-  memberRole: { fontFamily: FONTS.semibold, fontSize: 11, color: PINK },
-
-  // FOOTER
-  footer: { position: "absolute", left: 0, right: 0, bottom: 0, paddingHorizontal: 18, paddingTop: 10 },
-
-  primary: {
-    height: 52,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: PINK,
-  },
-
-  primaryText: { fontFamily: FONTS.semibold, fontSize: 16, color: "#FFFFFF" },
-});
+);

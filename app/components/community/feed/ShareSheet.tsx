@@ -30,6 +30,8 @@ import { getPostShareLink } from "@/utils/shareLinks";
 import { ShareAction } from "./ShareAction";
 import { SharePerson } from "./SharePerson";
 import { C } from "@/theme/tokens";
+import { themedStyles, useInk, useThemedStyles } from "@/constants/chatTheme";
+import { useIsDesktop } from "@/hooks/useDesktop";
 
 // How many friends to show before searching.
 const MAX_SUGGESTIONS = 9;
@@ -91,6 +93,9 @@ export function ShareSheet({
   // it, otherwise null (the post then just adds 1).
   onShared?: (newTotal: number | null) => void;
 }) {
+  const styles = useThemedStyles(STYLE_PAIR);
+  const desktop = useIsDesktop();
+  const ink = useInk();
   const authUser = useAppSelector((state) => state.auth.user);
   const user = useAppSelector((state) => state.user.user);
 
@@ -369,35 +374,35 @@ export function ShareSheet({
     <Modal
       visible={visible}
       transparent
-      animationType="slide"
+      animationType={desktop ? "fade" : "slide"}
       onRequestClose={onClose}>
       <KeyboardAvoidingView
-        style={styles.root}
-        behavior="padding">
+        style={[styles.root, desktop && styles.rootDesk]}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <Pressable style={styles.overlay} onPress={onClose} />
 
-        <View style={styles.sheet}>
-          <View style={styles.handle} />
+        <View style={[styles.sheet, desktop && styles.sheetDesk]}>
+          {!desktop ? <View style={styles.handle} /> : null}
 
           {/* HEADER */}
           <View style={styles.header}>
             <Text style={styles.title}>Share</Text>
 
             <Pressable accessibilityRole="button" accessibilityLabel="Close" style={styles.close} onPress={onClose}>
-              <Ionicons name="close" size={23} color={C.ink} />
+              <Ionicons name="close" size={23} color={ink.text("#191922")} />
             </Pressable>
           </View>
 
           {/* SEARCH */}
           <View style={styles.searchRow}>
             <View style={styles.searchBox}>
-              <Ionicons name="search" size={18} color={C.brand} />
+              <Ionicons name="search" size={18} color={ink.text("#C5399A")} />
 
               <TextInput
                 value={searchText}
                 onChangeText={setSearchText}
                 placeholder="Search friends..."
-                placeholderTextColor="#9999A1"
+                placeholderTextColor={ink.text("#9999A1")}
                 style={styles.searchInput}
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -410,7 +415,7 @@ export function ShareSheet({
                 setSearchText("");
                 loadSuggestions();
               }}>
-              <Ionicons name="add" size={25} color="#FFFFFF" />
+              <Ionicons name="add" size={25} color={ink.text("#FFFFFF")} />
             </Pressable>
           </View>
 
@@ -418,11 +423,11 @@ export function ShareSheet({
           <View style={styles.peopleArea}>
             {loadingPeople ? (
               <View style={styles.loading}>
-                <ActivityIndicator size="small" color={C.brand} />
+                <ActivityIndicator size="small" color={ink.text("#C5399A")} />
               </View>
             ) : people.length === 0 ? (
               <View style={styles.noPeople}>
-                <Ionicons name="people-outline" size={30} color="#B0B0B7" />
+                <Ionicons name="people-outline" size={30} color={ink.text("#B0B0B7")} />
 
                 <Text style={styles.noPeopleText}>
                   {searchText.trim()
@@ -494,7 +499,7 @@ export function ShareSheet({
                   hitSlop={10}
                   disabled={sharingToFeed}
                   accessibilityLabel="Close">
-                  <Ionicons name="close" size={22} color={C.ink} />
+                  <Ionicons name="close" size={22} color={ink.text("#191922")} />
                 </Pressable>
               </View>
 
@@ -502,7 +507,7 @@ export function ShareSheet({
                 value={caption}
                 onChangeText={setCaption}
                 placeholder="Say something about this… (optional)"
-                placeholderTextColor={C.muted}
+                placeholderTextColor={ink.text("#9C9CAA")}
                 style={styles.composerInput}
                 multiline
                 maxLength={2200}
@@ -528,7 +533,7 @@ export function ShareSheet({
                   onPress={shareToFeed}
                   disabled={sharingToFeed}>
                   {sharingToFeed ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
+                    <ActivityIndicator size="small" color={ink.text("#FFFFFF")} />
                   ) : (
                     <Text style={styles.composerShareText}>Share</Text>
                   )}
@@ -542,7 +547,7 @@ export function ShareSheet({
   );
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   composerLayer: {
     ...StyleSheet.absoluteFill,
     justifyContent: "flex-end",
@@ -630,6 +635,10 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "flex-end",
   },
+
+  // Computer: a centred dialog instead of a bottom sheet.
+  rootDesk: { justifyContent: "center", alignItems: "center", padding: 24 },
+  sheetDesk: { width: "100%", maxWidth: 580, borderRadius: 16 },
 
   overlay: {
     // Was StyleSheet.absoluteFill, which no longer exists in this

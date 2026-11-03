@@ -282,6 +282,24 @@ describe("store", () => {
     assert.equal(again.signedIn(), false);
   });
 
+  it("team sync: a chat login the game server does not know (401) plays on this phone's key", async () => {
+    // CosQuest Beta builds talk to the team's Render chat API while the staging
+    // game's one login checks the TEST chat backend, so it answers 401
+    // "not a valid CosQuest session" (measured 3 Nov 2026). The game must still run.
+    const storage = memoryStorage();
+    const { fetch } = fakeFetch((call) => {
+      if (call.url.endsWith("/v1/sso/cosquest")) return { status: 401, body: { detail: "not a valid CosQuest session" } };
+      if (call.url.includes("/v1/roam/config")) return { body: { factions: [{ id: "dc", name: "DC" }], ranks: [], max_level: 40, open_radius_m: 80, cooldown_s: 600 } };
+      if (call.url.includes("/v1/roam/me")) return { body: ME(call.url.split("device_key=")[1]) };
+      return undefined;
+    });
+    const store = createGameStore({ baseUrl: "https://g", storage, randomSeedHex: () => randomBytes(32).toString("hex"), fetch });
+    await store.setSession("render-chat-token");
+    assert.equal(store.get().session?.source, "device");
+    assert.ok(store.get().ssoProblem, "the problem is kept for the UI");
+    assert.ok(store.get().me, "the world loads on the phone's key");
+  });
+
   it("a player moving from the SwiftUI game keeps the native game's phone key, once", async () => {
     const legacy = "3c".repeat(32);
     const storage = memoryStorage();

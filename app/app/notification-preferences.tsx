@@ -19,6 +19,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { C } from "@/theme/tokens";
+import { DARK_SCREEN_GRADIENT, themedStyles, useInk, useThemedStyles } from "@/constants/chatTheme";
 
 const PINK = C.brandSoft;
 
@@ -50,11 +51,13 @@ function NotificationToggleRow({
   showIcon?: boolean;
   indented?: boolean;
 }) {
+  const styles = useThemedStyles(STYLE_PAIR);
+  const ink = useInk();
   return (
     <View style={[styles.row, indented && styles.rowIndented]}>
       {showIcon ? (
         <View style={styles.rowIcon}>
-          <Ionicons name="notifications" size={15} color={PINK} />
+          <Ionicons name="notifications" size={15} color={ink.text(PINK)} />
         </View>
       ) : null}
 
@@ -66,6 +69,8 @@ function NotificationToggleRow({
 }
 
 export default function NotificationPreferences() {
+  const styles = useThemedStyles(STYLE_PAIR);
+  const ink = useInk();
   const insets = useSafeAreaInsets();
   const dispatch = useAppDispatch();
 
@@ -204,7 +209,7 @@ export default function NotificationPreferences() {
     <View style={styles.screen}>
       {/* Figma: linear-gradient(180deg, #FFFFFF 0%, #E1F3FF 64.42%) */}
       <LinearGradient
-        colors={["#FFFFFF", C.skyWash]}
+        colors={ink.dark ? [...DARK_SCREEN_GRADIENT] : ["#FFFFFF", "#E1F3FF"]}
         locations={[0, 0.6442]}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
@@ -228,12 +233,12 @@ export default function NotificationPreferences() {
             style={styles.backButton}
             accessibilityRole="button"
             accessibilityLabel="Back">
-            <Ionicons name="arrow-back" size={24} color={C.ink} />
+            <Ionicons name="arrow-back" size={24} color={ink.text("#191922")} />
           </Pressable>
 
           <View style={styles.headerCenter}>
             <View style={styles.headerIcon}>
-              <Ionicons name="notifications-outline" size={16} color={PINK} />
+              <Ionicons name="notifications-outline" size={16} color={ink.text(PINK)} />
             </View>
 
             <Text style={styles.headerTitle}>Notifications</Text>
@@ -342,7 +347,7 @@ export default function NotificationPreferences() {
   );
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   screen: {
     flex: 1,
     backgroundColor: "#FFFFFF",
@@ -423,7 +428,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.09,
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
+    elevation: 0 /* see-through: no Android shadow (grey frame) */,
   },
 
   // Push sub-options sit a little in (Figma).

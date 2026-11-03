@@ -8,7 +8,6 @@ import {
   FlatList,
   RefreshControl,
   type StyleProp,
-  StyleSheet,
   Text,
   View,
   type ViewStyle,
@@ -21,6 +20,7 @@ import { fetchMorePosts, fetchPosts } from "@/store/thunks/postThunks";
 import { perfMarkOnce, useRenderCount } from "@/utils/perfMarks";
 import { C } from "@/theme/tokens";
 import { useScrollToTop } from "expo-router";
+import { themedStyles, useInk, useThemedStyles } from "@/constants/chatTheme";
 import { ErrorState, SkeletonPosts } from "@/components/kit";
 
 // Facebook-style feed: every post is full width. (The Community screen no
@@ -38,6 +38,8 @@ export function Feeds({
   header?: ReactElement;
   contentContainerStyle?: StyleProp<ViewStyle>;
 }) {
+  const styles = useThemedStyles(STYLE_PAIR);
+  const ink = useInk();
   const dispatch = useAppDispatch();
 
   const posts = useAppSelector((state) => state.post.posts);
@@ -163,7 +165,7 @@ export function Feeds({
 
               {loading && posts.length > 0 ? (
                 <View style={styles.refreshing}>
-                  <ActivityIndicator size="small" color={C.brand} />
+                  <ActivityIndicator size="small" color={ink.text("#C5399A")} />
                 </View>
               ) : null}
             </View>
@@ -180,7 +182,7 @@ export function Feeds({
       ListFooterComponent={
         loadingMore ? (
           <View style={styles.refreshing}>
-            <ActivityIndicator size="small" color={C.brand} />
+            <ActivityIndicator size="small" color={ink.text("#C5399A")} />
           </View>
         ) : null
       }
@@ -188,7 +190,7 @@ export function Feeds({
   );
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   feed: {
     width: "100%",
   },

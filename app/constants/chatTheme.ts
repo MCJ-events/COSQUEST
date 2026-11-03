@@ -1,4 +1,5 @@
-// ==========================================
+import { useSegments } from "expo-router";
+﻿// ==========================================
 // CHAT DARK MODE (Figma M06 · Option D · Dark mode)
 // ==========================================
 // The chat screens follow the phone's appearance (or the Appearance
@@ -41,17 +42,25 @@ export function useChatScheme(): ChatScheme {
 /** The phone's (or the Appearance screen's) light or dark, ignoring any SchemeOverride. */
 export function useBaseScheme(): ChatScheme {
   const system = useColorScheme();
+  // Onboarding (sign in, sign up and every step) is designed in light only:
+  // it stays light even when the app is set to dark.
+  const segments = useSegments() as string[];
   const mode = useAppSelector(
     (state) =>
       (state.settings as any)?.appearance?.themeMode ??
       (state.auth.user as any)?.appearance?.themeMode,
   ) as string | undefined;
 
+  if (segments[0] === "onboarding") {
+    return "light";
+  }
+
   if (mode === "light" || mode === "dark") {
     return mode;
   }
 
-  return system === "dark" ? "dark" : "light";
+  // System/default mode resolves to Light in CosQuest.
+  return "light";
 }
 
 // The colour maths lives in theme/dark.ts (shared with the game).
@@ -65,7 +74,10 @@ export function themedStyles<T extends StyleSheet.NamedStyles<T>>(
 ): { light: T; dark: T } {
   const dark: Record<string, any> = {};
   for (const [name, style] of Object.entries(light)) {
-    dark[name] = { ...mapStyle(style as any), ...((overrides as any)[name] || {}) };
+    dark[name] = {
+      ...mapStyle(style as any),
+      ...((overrides as any)[name] || {}),
+    };
   }
   return {
     light: StyleSheet.create(light),
@@ -92,5 +104,9 @@ export function useInk() {
 
 // The pale sheet / screen gradient used by the chat's full-screen pickers,
 // and its dark twin.
-export const LIGHT_SCREEN_GRADIENT = [C.skyPale, C.skyPale2] as const;
+export const LIGHT_SCREEN_GRADIENT = ["#FFFFFF", "#D5F1FF"] as const;
 export const DARK_SCREEN_GRADIENT = [DARK_CHAT_BG_2, DARK_CHAT_BG] as const;
+
+// Where the gradient reaches its second colour (Figma reaches the blue about
+// 45% of the way down). Pass it as `locations` to any LinearGradient.
+export const SCREEN_GRADIENT_LOCATIONS = [0, 0.45] as const;

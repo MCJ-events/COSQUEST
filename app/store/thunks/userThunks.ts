@@ -26,6 +26,18 @@ import {
 // undefined at the moment the slice's extraReducers run, because the
 // module loading order got tangled. Keep it this way.
 
+// Every /api/users/me* call needs the session token (signup and login both
+// return one, and authSlice keeps it in state.auth.token). The backend no
+// longer accepts an email or username in its place, so each thunk sends the
+// token it was given or, failing that, the one in the store.
+function sessionToken(getState: () => unknown, explicit?: string) {
+  return (
+    explicit ||
+    (getState() as { auth?: { token?: string | null } }).auth?.token ||
+    undefined
+  );
+}
+
 // ==========================================
 // CURRENT USER
 // GET /api/users/me
@@ -33,14 +45,20 @@ import {
 
 export const fetchCurrentUser = createAsyncThunk(
   "user/fetchCurrentUser",
-  async (email: string, { rejectWithValue }) => {
+  async (email: string, { getState, rejectWithValue }) => {
     try {
-      return await getCurrentUser(email);
+      return await getCurrentUser(email, sessionToken(getState));
     } catch (error) {
       return rejectWithValue(
         error instanceof Error ? error.message : "Failed to get user",
       );
     }
+  },
+  {
+    // Not signed in yet (token not restored): don't ask. The server needs the
+    // token, and asking without it showed "Missing or malformed Authorization
+    // header". The screens ask again once it's there.
+    condition: (_email, { getState }) => Boolean(sessionToken(getState)),
   },
 );
 
@@ -59,10 +77,10 @@ export const checkUsernameThunk = createAsyncThunk(
       username: string;
       email: string;
     },
-    { rejectWithValue },
+    { getState, rejectWithValue },
   ) => {
     try {
-      return await checkUsername(username, email);
+      return await checkUsername(username, email, sessionToken(getState));
     } catch (error) {
       return rejectWithValue(
         error instanceof Error ? error.message : "Failed to check username",
@@ -87,17 +105,15 @@ export const saveUserProfile = createAsyncThunk(
       age: number;
       gender: string;
       bio?: string;
-      // Optional: this runs during onboarding (pre-login, identified by
-      // email — see CreateProfile.tsx) but the same thunk may also get
-      // used post-login later, so token stays supported without being
-      // required.
+      // Optional: falls back to the session token in the store
+      // (state.auth.token), which signup and login both set.
       token?: string;
     },
-    { rejectWithValue },
+    { getState, rejectWithValue },
   ) => {
     try {
       const { token, ...data } = payload;
-      return await updateProfile(data, token);
+      return await updateProfile(data, sessionToken(getState, token));
     } catch (error) {
       return rejectWithValue(
         error instanceof Error ? error.message : "Failed to update profile",
@@ -120,11 +136,11 @@ export const saveUserCategory = createAsyncThunk(
       showCategoryOnProfile: boolean;
       token?: string;
     },
-    { rejectWithValue },
+    { getState, rejectWithValue },
   ) => {
     try {
       const { token, ...data } = payload;
-      return await updateCategory(data, token);
+      return await updateCategory(data, sessionToken(getState, token));
     } catch (error) {
       return rejectWithValue(
         error instanceof Error ? error.message : "Failed to save category",
@@ -146,11 +162,11 @@ export const saveUserAvatar = createAsyncThunk(
       avatar: string;
       token?: string;
     },
-    { rejectWithValue },
+    { getState, rejectWithValue },
   ) => {
     try {
       const { token, ...data } = payload;
-      return await updateAvatar(data, token);
+      return await updateAvatar(data, sessionToken(getState, token));
     } catch (error) {
       return rejectWithValue(
         error instanceof Error ? error.message : "Failed to update avatar",
@@ -176,10 +192,10 @@ export const saveAvatarPhoto = createAsyncThunk(
       photoUri: string;
       token?: string;
     },
-    { rejectWithValue },
+    { getState, rejectWithValue },
   ) => {
     try {
-      return await uploadAvatarPhoto(email, photoUri, token);
+      return await uploadAvatarPhoto(email, photoUri, sessionToken(getState, token));
     } catch (error) {
       return rejectWithValue(
         error instanceof Error
@@ -203,11 +219,11 @@ export const saveUserFaction = createAsyncThunk(
       factionKey: string;
       token?: string;
     },
-    { rejectWithValue },
+    { getState, rejectWithValue },
   ) => {
     try {
       const { token, ...data } = payload;
-      return await updateFaction(data, token);
+      return await updateFaction(data, sessionToken(getState, token));
     } catch (error) {
       return rejectWithValue(
         error instanceof Error ? error.message : "Failed to update faction",
@@ -229,11 +245,11 @@ export const saveUserInterests = createAsyncThunk(
       interests: string[];
       token?: string;
     },
-    { rejectWithValue },
+    { getState, rejectWithValue },
   ) => {
     try {
       const { token, ...data } = payload;
-      return await updateInterests(data, token);
+      return await updateInterests(data, sessionToken(getState, token));
     } catch (error) {
       return rejectWithValue(
         error instanceof Error ? error.message : "Failed to update interests",
@@ -255,11 +271,11 @@ export const saveNotificationPreference = createAsyncThunk(
       notificationsEnabled: boolean;
       token?: string;
     },
-    { rejectWithValue },
+    { getState, rejectWithValue },
   ) => {
     try {
       const { token, ...data } = payload;
-      return await updateNotificationPreference(data, token);
+      return await updateNotificationPreference(data, sessionToken(getState, token));
     } catch (error) {
       return rejectWithValue(
         error instanceof Error
@@ -286,11 +302,11 @@ export const saveLocationPreference = createAsyncThunk(
       lng: number;
       token?: string;
     },
-    { rejectWithValue },
+    { getState, rejectWithValue },
   ) => {
     try {
       const { token, ...data } = payload;
-      return await updateLocationPreference(data, token);
+      return await updateLocationPreference(data, sessionToken(getState, token));
     } catch (error) {
       return rejectWithValue(
         error instanceof Error
@@ -314,10 +330,10 @@ export const fetchUserContact = createAsyncThunk(
     }: {
       token?: string;
     },
-    { rejectWithValue },
+    { getState, rejectWithValue },
   ) => {
     try {
-      return await getContact(token);
+      return await getContact(sessionToken(getState, token));
     } catch (error) {
       return rejectWithValue(
         error instanceof Error ? error.message : "Failed to load contact",
@@ -341,10 +357,10 @@ export const saveUserContact = createAsyncThunk(
         businessAddress: string;
       };
     },
-    { rejectWithValue },
+    { getState, rejectWithValue },
   ) => {
     try {
-      return await updateContact(token, data);
+      return await updateContact(sessionToken(getState, token), data);
     } catch (error) {
       return rejectWithValue(
         error instanceof Error ? error.message : "Failed to save contact",
@@ -367,11 +383,11 @@ export const registerUserDevice = createAsyncThunk(
       platform: string;
       token?: string;
     },
-    { rejectWithValue },
+    { getState, rejectWithValue },
   ) => {
     try {
       const { token, ...data } = payload;
-      return await registerDevice(data, token);
+      return await registerDevice(data, sessionToken(getState, token));
     } catch (error) {
       return rejectWithValue(
         error instanceof Error ? error.message : "Failed to register device",
@@ -387,15 +403,10 @@ export const registerUserDevice = createAsyncThunk(
 
 export const finishOnboarding = createAsyncThunk(
   "user/finishOnboarding",
-  async (payload: unknown, { rejectWithValue }) => {
+  async (payload: unknown, { getState, rejectWithValue }) => {
     try {
-      // No token here on purpose — the actual call site
-      // (app/onboarding/ready.tsx) dispatches finishOnboarding(payload)
-      // directly, with no wrapper and no token field. The backend's
-      // completeOnboarding accepts an optional token but doesn't require
-      // one — same email-based identification every other onboarding
-      // step already relies on successfully.
-      return await completeOnboarding(payload);
+      // Sent with the session token from signup/login (state.auth.token).
+      return await completeOnboarding(payload, sessionToken(getState));
     } catch (error) {
       return rejectWithValue(
         error instanceof Error

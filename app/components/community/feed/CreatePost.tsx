@@ -4,7 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import * as ImageManipulator from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -29,6 +29,7 @@ import {
   fetchPosts,
 } from "@/store/thunks/postThunks";
 import { C } from "@/theme/tokens";
+import { themedStyles, useInk, useThemedStyles } from "@/constants/chatTheme";
 
 type SelectedFile = {
   uri: string;
@@ -74,7 +75,14 @@ function prepareImageForUpload(
   })();
 }
 
-export function CreatePost() {
+export function CreatePost({
+  renderTrigger,
+}: {
+  // Computer: draw your own post box; it opens this same window.
+  renderTrigger?: (actions: { open: () => void; photo: () => void; video: () => void; avatar: any }) => ReactNode;
+} = {}) {
+  const styles = useThemedStyles(STYLE_PAIR);
+  const ink = useInk();
   const dispatch = useAppDispatch();
 
   const authUser = useAppSelector((state) => state.auth.user);
@@ -341,6 +349,20 @@ export function CreatePost() {
           COMPOSER - the raised pill from the Figma
       ========================================== */}
 
+      {renderTrigger ? (
+        renderTrigger({
+          open: () => setVisible(true),
+          photo: () => {
+            setVisible(true);
+            pickGallery();
+          },
+          video: () => {
+            setVisible(true);
+            pickVideo();
+          },
+          avatar: barAvatar,
+        })
+      ) : (
       <Pressable
         style={styles.composer}
         onPress={() => setVisible(true)}
@@ -358,9 +380,10 @@ export function CreatePost() {
 
         {/* Figma: 22 x 18, radius 4, #C34D9C29 */}
         <View style={styles.composerPlus}>
-          <Ionicons name="add" size={16} color={C.brand} />
+          <Ionicons name="add" size={16} color={ink.text("#C5399A")} />
         </View>
       </Pressable>
+      )}
 
       {/* ==========================================
           CREATE POST MODAL
@@ -393,7 +416,7 @@ export function CreatePost() {
               </View>
 
               <Pressable accessibilityRole="button" accessibilityLabel="Close" style={styles.closeButton} onPress={close}>
-                <Ionicons name="close" size={23} color={C.ink} />
+                <Ionicons name="close" size={23} color={ink.text("#191922")} />
               </Pressable>
             </View>
 
@@ -405,7 +428,7 @@ export function CreatePost() {
               multiline
               textAlignVertical="top"
               placeholder="What's on your mind?"
-              placeholderTextColor="#9999A1"
+              placeholderTextColor={ink.text("#9999A1")}
               style={styles.input}
             />
 
@@ -453,7 +476,7 @@ export function CreatePost() {
 
                     {mode === "video" ? (
                       <View style={styles.previewPlay}>
-                        <Ionicons name="play" size={18} color="#FFFFFF" />
+                        <Ionicons name="play" size={18} color={ink.text("#FFFFFF")} />
                       </View>
                     ) : null}
                   </View>
@@ -503,7 +526,7 @@ export function CreatePost() {
               onPress={handlePost}
               disabled={posting}>
               {posting ? (
-                <ActivityIndicator color="#FFFFFF" />
+                <ActivityIndicator color={ink.text("#FFFFFF")} />
               ) : (
                 <Text style={styles.postButtonText}>Post</Text>
               )}
@@ -530,6 +553,7 @@ function PostOption({
   color: string;
   onPress: () => void;
 }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={label} style={styles.option} onPress={onPress}>
       <View
@@ -551,7 +575,7 @@ function PostOption({
 // STYLES
 // ==========================================
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   // COMPOSER - the raised pill from the Figma.
   // (Side margin / height are estimated from the screenshot.)
   composer: {
@@ -574,7 +598,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.12,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
+    elevation: 0 /* see-through: no Android shadow (grey frame) */,
   },
 
   composerAvatar: {

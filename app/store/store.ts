@@ -11,6 +11,8 @@ import onboardingReducer from "./slices/onboardingSlice";
 import postReducer from "./slices/postSlice";
 import profileReducer from "./slices/profileSlice";
 import questReducer from "./slices/questSlice";
+import scheduledCallReducer from "./slices/scheduledCallSlice";
+import projectReducer from "./slices/projectSlice";
 import settingsReducer from "./slices/settingsSlice";
 import spotlightReducer from "./slices/spotlightSlice";
 import userReducer from "./slices/userSlice";
@@ -31,6 +33,8 @@ export const store = configureStore({
     profile: profileReducer,
     spotlight: spotlightReducer,
     settings: settingsReducer,
+    scheduledCalls: scheduledCallReducer,
+    projects: projectReducer,
   },
 });
 

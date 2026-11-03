@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { C } from "@/theme/tokens";
+import { themedStyles, useInk, useThemedStyles } from "@/constants/chatTheme";
 
 export function ShareAction({
   icon,
@@ -11,10 +12,12 @@ export function ShareAction({
   label: string;
   onPress: () => void;
 }) {
+  const styles = useThemedStyles(STYLE_PAIR);
+  const ink = useInk();
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={label} style={styles.action} onPress={onPress}>
       <View style={styles.icon}>
-        <Ionicons name={icon} size={21} color="#FFFFFF" />
+        <Ionicons name={icon} size={21} color={ink.text("#FFFFFF")} />
       </View>
 
       <Text style={styles.label} numberOfLines={2}>
@@ -24,7 +27,7 @@ export function ShareAction({
   );
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   action: {
     width: "19%",
     alignItems: "center",

@@ -1,7 +1,8 @@
-﻿// The Figma switch: pink when on, grey when off, white knob. Drawn by hand so
+// The Figma switch: pink when on, grey when off, white knob. Drawn by hand so
 // it looks the same on phones and the website.
 import { Pressable, StyleSheet, View } from "react-native";
 import { C } from "@/theme/tokens";
+import { themedStyles, useInk, useThemedStyles } from "@/constants/chatTheme";
 
 export function PinkSwitch({
   value,
@@ -12,6 +13,7 @@ export function PinkSwitch({
   onChange: (value: boolean) => void;
   disabled?: boolean;
 }) {
+  const styles = useThemedStyles(STYLE_PAIR);
   return (
     <Pressable
       onPress={() => !disabled && onChange(!value)}
@@ -25,7 +27,7 @@ export function PinkSwitch({
   );
 }
 
-const styles = StyleSheet.create({
+const STYLE_PAIR = themedStyles({
   track: {
     width: 44,
     height: 24,

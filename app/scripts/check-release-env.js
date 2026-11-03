@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// Task 059: a production build must not carry a raw-IP, Render or plain-http
-// host. Run by EAS before installing (package.json "eas-build-pre-install")
+// Task 059: a production build must not carry a raw-IP or plain-http
+// host (a Render host only warns). Run by EAS before installing (package.json "eas-build-pre-install")
 // and by scripts/verify-ios.sh. Only the production profile is checked; every
 // other build (preview, the emulator builds, dev) passes.
 //
@@ -37,7 +37,9 @@ function check(name, { required }) {
   if (/^\d{1,3}(\.\d{1,3}){3}$/.test(url.hostname) || /\d{1,3}-?\.\d{1,3}\.\d{1,3}\.\d{1,3}\.sslip\.io$/.test(url.hostname) || /sslip\.io$|nip\.io$/.test(url.hostname)) {
     problems.push(`${name} is a raw-IP host (${url.hostname})`);
   }
-  if (/onrender\.com$/.test(url.hostname)) problems.push(`${name} is a Render host (${url.hostname})`);
+  // The team ships its chat API on Render (EngrSammy/Cosquest eas.json), so a
+  // Render host is a warning, not a refusal (team sync, 3 Nov 2026).
+  if (/onrender\.com$/.test(url.hostname)) console.warn(`release env: ${name} is a Render host (${url.hostname})`);
 }
 
 check("EXPO_PUBLIC_API_URL", { required: true });
