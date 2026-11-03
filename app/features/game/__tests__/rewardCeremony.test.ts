@@ -51,7 +51,8 @@ test("no lines and no XP still has a timeline", () => {
 test("a line shows XP only, never coins", () => {
   assert.equal(lineAmount({ xp: 12, factionPoints: 3 }), "+12 XP");
   assert.equal(lineAmount({ xp: 0, factionPoints: 3 }), "+3 FP");
-  assert.equal(lineAmount({ xp: 0, factionPoints: 0 }), "+0 XP");
+  // A line that pays nothing is a note: no "+0 XP".
+  assert.equal(lineAmount({ xp: 0, factionPoints: 0 }), "");
   assert.equal(factionLine(4), "+4 for your faction");
   assert.equal(factionLine(0), null);
 });

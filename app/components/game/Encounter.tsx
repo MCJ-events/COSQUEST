@@ -172,8 +172,11 @@ export default function Encounter({
       .catch(() => {});
   }, []);
 
+  /** The clock sent the answer with nothing given (the verdict then reads "Time's up!"). */
+  const timedOut = useRef(false);
   const startWith = useCallback(
     (a: RoamAttempt) => {
+      timedOut.current = false;
       answersRef.current = { picked: null, order: [], blitz: Array(a.challenge.questions?.length ?? 0).fill(-1) };
       setAttempt(a);
       setVerdict(null);
@@ -276,11 +279,11 @@ export default function Encounter({
       playResolve(win);
       setVerdict(v);
       setPhase("reveal");
-      const line = resultTitle(v);
+      const line = resultTitle(v, timedOut.current);
       announce(v.grade ? `${line.text} ${v.grade}.` : line.text);
       if (v.can_retry) refreshBag();
       if (v.leveled_up) wardenVoice.prepare(levelMoment(ctx(), v.after, v.rank_up));
-      const m = v.late ? lateMoment(ctx(), point) : reactionMoment(ctx(), win, point, attempt.kind, attempt.kind === "blitz" ? v : null);
+      const m = v.late || (timedOut.current && !win) ? lateMoment(ctx(), point) : reactionMoment(ctx(), win, point, attempt.kind, attempt.kind === "blitz" ? v : null);
       wardenVoice.speak(m, 5000).catch(() => {});
     } catch (error) {
       // The answer is safe to send again; say so rather than dropping the player's work.
@@ -292,7 +295,11 @@ export default function Encounter({
   // The server's clock: when it runs out, send whatever was answered.
   useEffect(() => {
     if (phase !== "playing" || !deadline) return;
-    const timer = setTimeout(() => submit(), Math.max(0, deadline - Date.now()));
+    const timer = setTimeout(() => {
+      const a = answersRef.current;
+      timedOut.current = a.picked === null && a.order.length === 0 && a.blitz.every((x) => x < 0);
+      submit();
+    }, Math.max(0, deadline - Date.now()));
     return () => clearTimeout(timer);
   }, [phase, deadline, submit]);
 
@@ -525,7 +532,7 @@ export default function Encounter({
                 {hintProblem ? <Text style={styles.hintProblem}>{hintProblem}</Text> : null}
               </>
             ) : verdict ? (
-              <ResultLine verdict={verdict} />
+              <ResultLine verdict={verdict} timedOut={timedOut.current} />
             ) : null}
 
             {attempt.kind === "sequence" ? (
@@ -593,17 +600,17 @@ export default function Encounter({
             <GameButton title="Lock it in" color={ACCENT.sun.fill} disabled={order.length < (attempt.challenge.beats?.length ?? 4)} onPress={submit} />
           ) : null}
           {phase === "reveal" ? (
-            <Animated.View entering={FadeIn.duration(300)} style={styles.footerRow}>
+            <Animated.View entering={FadeIn.duration(300)} style={{ gap: 10 }}>
+              {/* Stacked, so "Second chance (1 left)" is never cut to "Second ch...". */}
               {verdict?.can_retry ? (
                 <GameButton
                   title={secondChanceLabel(bag.retry ?? 0)}
                   color={PURPLE}
                   onPress={retry}
-                  style={{ flex: 1 }}
                   icon={<Ionicons name="refresh" size={18} color={labelOn(PURPLE)} />}
                 />
               ) : null}
-              <GameButton title="Collect" color={ACCENT.sun.fill} onPress={collect} style={{ flex: 1 }} />
+              <GameButton title="Collect" color={ACCENT.sun.fill} onPress={collect} />
             </Animated.View>
           ) : null}
         </View>
@@ -644,8 +651,8 @@ function WardenLine({ text, compact, tint }: { text: string; compact: boolean; t
   );
 }
 
-function ResultLine({ verdict }: { verdict: RoamVerdict }) {
-  const line = resultTitle(verdict);
+function ResultLine({ verdict, timedOut }: { verdict: RoamVerdict; timedOut: boolean }) {
+  const line = resultTitle(verdict, timedOut);
   const chip = verdict.grade ? { sun: ACCENT.sun.fill, mint: ACCENT.mint.fill, sky: ACCENT.sky.fill }[gradeColorKey(verdict.grade)] : null;
   return (
     <Pop from={0.5} response={0.45} style={{ gap: 4, alignItems: "center" }}>
@@ -1051,7 +1058,6 @@ const STYLE_PAIR = themedStyles(
     forgeStage: { width: "100%", height: 300 },
     forgeStageCompact: { width: "100%", height: 92 },
     footer: { paddingHorizontal: 16, paddingTop: 10, gap: 10 },
-    footerRow: { flexDirection: "row", gap: 10 },
     opening: { position: "absolute", bottom: 0, alignItems: "center", gap: 8, paddingHorizontal: 16, paddingVertical: 10, borderRadius: RADIUS.card, backgroundColor: L.surface, ...ELEVATION.low },
     approach: { alignItems: "center", gap: 4 },
     approachTitle: { fontFamily: GF.display, fontSize: 28, lineHeight: 32, color: L.text },

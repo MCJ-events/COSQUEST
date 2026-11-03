@@ -353,7 +353,7 @@ function RewardLine({ label, amount, shown }: { label: string; amount: string; s
       accessible={shown}
       accessibilityElementsHidden={!shown}
       importantForAccessibility={shown ? "yes" : "no-hide-descendants"}
-      accessibilityLabel={`${label}, ${amount.replace("+", "plus ")}`}
+      accessibilityLabel={amount ? `${label}, ${amount.replace("+", "plus ")}` : label}
       style={[styles.line, style]}>
       <Text style={styles.lineLabel} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.8} maxFontSizeMultiplier={MAX_FONT_SCALE}>
         {label}

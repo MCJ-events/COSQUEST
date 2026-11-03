@@ -64,6 +64,8 @@ export function ceremonyTimeline(lineCount: number, xp: number, leveledUp: boole
 
 /** One reward line's amount: "+N XP" (Swift never shows coins), or the faction points when a line is only that. */
 export function lineAmount(l: { xp: number; factionPoints: number }): string {
+  // A line that pays nothing is a note ("Second chance (half reward)"), not "+0 XP".
+  if (l.xp <= 0 && l.factionPoints <= 0) return "";
   if (l.xp > 0 || l.factionPoints <= 0) return `+${l.xp} XP`;
   return `+${l.factionPoints} FP`;
 }
