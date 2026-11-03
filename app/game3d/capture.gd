@@ -24,6 +24,14 @@ var _style_due: Array = []
 
 func setup(s: Dictionary) -> void:
 	spec = s
+	# look-world: the look follows the device clock ("time": "auto"); review captures are reproducible, so
+	# they take the art direction's default, Golden, unless the spec names a time
+	var cfg0: Variant = spec.get("config", {})
+	if cfg0 is Dictionary:
+		var lk: Dictionary = (cfg0 as Dictionary).get("look", {})
+		if not lk.has("time"):
+			lk["time"] = "golden"
+			(cfg0 as Dictionary)["look"] = lk
 	var lead: float = float(spec.get("lead", 0.0))
 	for t: Variant in spec.get("times", []):
 		_shots.append([lead + float(t), float(t)])
@@ -81,6 +89,7 @@ func _save_named(tag: String) -> void:
 	var img: Image = get_viewport().get_texture().get_image()
 	var path: String = "%s/%s_%s.png" % [spec.get("dir", "/tmp/cq-capture"), spec.get("prefix", "cap"), tag]
 	img.save_png(path)
+	_perf(path)
 	print("CQCAPTURE style=%s path=%s" % [tag, path])
 
 
@@ -116,3 +125,12 @@ func _save(t_ref: float) -> void:
 	var path: String = ("%s/%s_%." + str(int(spec.get("decimals", 1))) + "fs.png") % [str(spec.get("dir")), str(spec.get("prefix", "shot")), t_ref]
 	img.save_png(path)
 	print("CQCAPTURE shot t=%.1f fight_t=%.2f path=%s" % [t_ref, _t, path])
+	_perf(path)
+
+
+func _perf(path: String) -> void:
+	# look-world: the frame's cost as the renderer counts it (draws, primitives, video memory)
+	print("CQPERF shot %s draws=%d prims=%d objects=%d vmem_mb=%.1f tex_mb=%.1f buf_mb=%.1f" % [path.get_file(),
+		Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME), Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME),
+		Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME), Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / 1048576.0,
+		Performance.get_monitor(Performance.RENDER_TEXTURE_MEM_USED) / 1048576.0, Performance.get_monitor(Performance.RENDER_BUFFER_MEM_USED) / 1048576.0])

@@ -253,3 +253,36 @@ The audit (`cosquest-review/env-audit-20261031/AUDIT.md`) ranked four cheap fixe
   byte-identical before and after, and the rules id is still `f3d-1-21d2cde61ab2`.
 
 Captures, side-by-sides and the device checklist: `cosquest-review/env-fixes-1-4/`. Rig: `e2e/env-fixes/`.
+
+## look-world (1 Nov 2026, the art direction "Sunlit Real Places")
+The world now follows `cosquest-review/art-direction/` (v1.0). PLACE.md has the place and street kit.
+
+**Time of day** (`arena.gd TIMES`, tokens `world.time.*`, exactly): `golden` (default by day), `day` (optional
+noon), `dusk` (the hour round sunset; Mark's reference look), `night` (defined; shipped as dusk). Each preset sets
+the sky (zenith, upper, horizon, sun side, fog, sun glow), the key's colour, energy and **elevation** (38, 55, 14,
+40 deg; the heading stays -128), the ambient, the baked shade and contact-AO colours, the windows' emission and
+colour, tonemap exposure, fog curve 1.6 and sun scatter, the cheap bloom (strength, threshold, cap) and the halo
+scale/clamp (no halos by day). `"look": {"time": "auto"}` (the default) follows the device clock at the place
+(`time_of_day`, NOAA sunrise/sunset): golden from sunrise to an hour before sunset, dusk to half an hour after,
+then night (dusk). `"clock_hour"` in the config replaces the clock for tests. The review captures pin Golden
+(`capture.gd`) unless the spec names a time.
+
+**Shadows:** `"shadows": "auto"` (default) turns the directional shadow map on for the device quality profile
+(35 m, 1 split, opacity 0.65, 0.5 at dusk) and keeps it off on software GPUs. Only the fighters cast into it; the
+place's shade is baked (PLACE.md).
+
+**Materials** (all new shaders are one pass, no post): `vfx/world_ground.gdshader` (world-space textures, wear,
+baked shadow removes the sun's direct light in `light()`, AO tints), `vfx/world_facade.gdshader` (trim sheets),
+`vfx/world_kit.gdshader` (props, trees with wind sway, landmarks, birds' wing flap, lamp emission at dusk, a
+small lift so bronze and shade sides never go black), `vfx/world_water.gdshader`, `vfx/world_npc.gdshader`.
+`vfx/place_facade.gdshader` is gone. Vertex colours are authored in sRGB and converted in the shaders.
+
+**The street:** `"look": {"street": "place"}` (default) is the street built by the place kit; `"kit"` keeps the
+cq 016 Kenney street exactly as it was (its neon circuit lines show only at dusk on the new street).
+
+**Camera:** in places the orbit pitch is 30 deg (`CAM_PLACE_PITCH`, the art direction's 30 to 34; was 27).
+
+**Assets:** all CC0 (ambientCG sources through the stylise pass, own procedural meshes, the Kenney Car Kit
+already in the project); every file in `art/world/CREDITS.md`. Mobile pack delta: ~17.4 MB of ETC2 textures with
+mipmaps plus 1.1 MB of kit meshes. Rig: `e2e/look-world/` (mkspec, run, seeded, compose). Captures and the
+before/after stills: `cosquest-review/look-world/`.

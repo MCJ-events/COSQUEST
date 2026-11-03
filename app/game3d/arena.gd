@@ -11,6 +11,7 @@ const T_CIRCUIT := preload("res://art/street/circuit_run.png")
 const T_POOL := preload("res://art/street/light_pool.png")
 const FACADE_SHADER := preload("res://vfx/facade.gdshader")
 const PlaceScript := preload("res://place.gd")
+const StreetLayout := preload("res://street_layout.gd")
 const T_NEON := preload("res://art/street/neon_atlas.png")     # 6 signs stacked, self-drawn
 const T_SHOP := preload("res://art/street/shop_glow.png")
 const T_LAMP := preload("res://art/street/lamp_glow.png")
@@ -54,14 +55,20 @@ const LOOK_DEFAULTS: Dictionary = {
 	"rim": true,        # the fighters' key-side rim light (in their own pass, fighter.gd)
 	"ao": true,         # soft dark where the shop walls meet the paving
 	"halos": true,      # soft coloured halos round signs and lamp heads (bloom faked on the light)
-	"shadows": false,   # real directional shadows (the blob shadows are always on)
+	"shadows": "auto",  # real directional shadows (the blob shadows are always on). look-world: "auto" = on
+	                    # for the device quality profile (the art direction: fighters + near props cast, 35 m,
+	                    # 1 split), off on a software GPU (+58 % there); true/false force it
 	"tonemap": "aces",  # aces | filmic | agx (all in the scene shader, no extra pass)
 	"bloom": true,      # cq 016: the cheap bloom (bloom.gd): lit street + effects only, from a tiny
 	                    # view, added back at the 3D resolution; ~5 % of the frame on the software GPU
 	"post": false,      # cq 016: the full post stack for a real device: Godot glow + the grade
 	                    # (turns "glow" and "grade" on; the cheap bloom then steps aside)
-	"time": "dusk",     # env-fixes 1: "dusk" | "day" (TIMES): the sky, fog, key and ambient presets
+	"time": "auto",     # look-world (art direction "Sunlit Real Places"): "golden" | "day" | "dusk" | "night"
+	                    # (TIMES), or "auto": the player's local clock (time_of_day: golden from 08:00 to an
+	                    # hour before sunset, dusk round sunset, night after; night falls back to dusk)
 	"sky_draw": true,   # env-fixes 1: draw the sky shader as the background (false: the old flat colour)
+	"street": "place",  # look-world: the default street is built by place.gd from a laid-out ground (the same
+	                    # roads, facades, props and light as the real places); "kit" keeps the cq 016 Kenney street
 }
 # "glow" and "grade" each turn on the Compatibility renderer's post pass, which runs over the
 # whole screen at full resolution: on the 1-thread software GPU it doubled the frame (LOOK.md).
@@ -93,16 +100,45 @@ const DUSK_Z: Vector2 = Vector2(-4.0, -24.0)   # starts cooling at z -4, full at
 ## `fog` is the colour of the horizon band in the sky AND the depth fog, so far buildings and the
 ## ground ring melt into the sky with no seam. All in the scene and sky shaders: no post pass.
 const SKY_SHADER := preload("res://vfx/sky.gdshader")
+## look-world: the art direction's presets (cosquest-review/art-direction tokens.json world.time.*), exactly:
+## sky, fog, key (colour, energy, elevation), ambient, the shade and contact-AO colours the bakes multiply in,
+## the lit windows (emission, colour), tonemap exposure, the cheap bloom, and the halo cards' scale and clamp.
+## "golden" is the default by day; "dusk" keeps Mark's reference for the hour round sunset; "night" (later in
+## the art direction) is defined but falls back to dusk in the clock rule.
 const TIMES: Dictionary = {
-	"dusk": {"zenith": Color(0.12, 0.16, 0.36), "upper": Color(0.36, 0.38, 0.64),
-		"horizon": Color(0.9, 0.64, 0.58), "horizon_sun": Color(1.0, 0.7, 0.42), "fog": Color(0.76, 0.66, 0.66),
-		"key_color": Color(1.0, 0.84, 0.68), "key_energy": 1.9,
-		"ambient": Color(0.7, 0.74, 0.9), "ambient_energy": 0.45, "windows": 1.0},
-	"day": {"zenith": Color(0.2, 0.4, 0.82), "upper": Color(0.42, 0.6, 0.92),
-		"horizon": Color(0.8, 0.86, 0.94), "horizon_sun": Color(0.98, 0.94, 0.86), "fog": Color(0.76, 0.81, 0.88),
-		"key_color": Color(1.0, 0.95, 0.86), "key_energy": 2.3,
-		"ambient": Color(0.76, 0.8, 0.9), "ambient_energy": 0.5, "windows": 0.12},
+	"golden": {"zenith": Color(0.227, 0.435, 0.769), "upper": Color(0.525, 0.682, 0.878),
+		"horizon": Color(0.949, 0.867, 0.761), "horizon_sun": Color(1.0, 0.796, 0.557), "fog": Color(0.894, 0.835, 0.769),
+		"sun_glow": 0.55, "key_color": Color(1.0, 0.867, 0.69), "key_energy": 2.2, "key_elev": 38.0,
+		"ambient": Color(0.722, 0.776, 0.863), "ambient_energy": 0.38,
+		"shade": Color(0.49, 0.525, 0.659), "ao": Color(0.42, 0.416, 0.478), "ao_alpha": 0.55,
+		"windows": 0.15, "window_col": Color(1.0, 0.851, 0.627), "exposure": 1.0, "fog_curve": 1.6, "fog_scatter": 0.35,
+		"bloom": [0.5, 0.62, 0.28], "halo_scale": 0.6, "halo_max": 0.55, "lamps": 0.0},
+	"day": {"zenith": Color(0.243, 0.498, 0.839), "upper": Color(0.498, 0.698, 0.918),
+		"horizon": Color(0.863, 0.91, 0.949), "horizon_sun": Color(1.0, 0.937, 0.824), "fog": Color(0.812, 0.863, 0.902),
+		"sun_glow": 0.35, "key_color": Color(1.0, 0.949, 0.871), "key_energy": 2.4, "key_elev": 55.0,
+		"ambient": Color(0.737, 0.796, 0.878), "ambient_energy": 0.42,
+		"shade": Color(0.541, 0.576, 0.69), "ao": Color(0.42, 0.416, 0.478), "ao_alpha": 0.55,
+		"windows": 0.08, "window_col": Color(1.0, 0.851, 0.627), "exposure": 1.0, "fog_curve": 1.6, "fog_scatter": 0.35,
+		"bloom": [0.4, 0.7, 0.25], "halo_scale": 0.0, "halo_max": 0.0, "lamps": 0.0},
+	"dusk": {"zenith": Color(0.122, 0.169, 0.369), "upper": Color(0.337, 0.376, 0.62),
+		"horizon": Color(0.941, 0.643, 0.494), "horizon_sun": Color(1.0, 0.69, 0.4), "fog": Color(0.812, 0.635, 0.596),
+		"sun_glow": 0.7, "key_color": Color(1.0, 0.71, 0.494), "key_energy": 1.6, "key_elev": 14.0,
+		"ambient": Color(0.557, 0.58, 0.761), "ambient_energy": 0.4,
+		"shade": Color(0.369, 0.392, 0.58), "ao": Color(0.306, 0.298, 0.416), "ao_alpha": 0.6,
+		"windows": 1.0, "window_col": Color(1.0, 0.761, 0.478), "exposure": 1.05, "fog_curve": 1.6, "fog_scatter": 0.5,
+		"bloom": [0.8, 0.45, 0.35], "halo_scale": 0.6, "halo_max": 0.55, "lamps": 1.0},
+	"night": {"zenith": Color(0.043, 0.075, 0.188), "upper": Color(0.106, 0.149, 0.314),
+		"horizon": Color(0.227, 0.247, 0.431), "horizon_sun": Color(0.29, 0.29, 0.478), "fog": Color(0.165, 0.184, 0.333),
+		"sun_glow": 0.2, "key_color": Color(0.663, 0.722, 0.91), "key_energy": 0.5, "key_elev": 40.0,
+		"ambient": Color(0.227, 0.267, 0.439), "ambient_energy": 0.35,
+		"shade": Color(0.369, 0.392, 0.58), "ao": Color(0.306, 0.298, 0.416), "ao_alpha": 0.6,
+		"windows": 1.0, "window_col": Color(1.0, 0.761, 0.478), "exposure": 1.05, "fog_curve": 1.6, "fog_scatter": 0.5,
+		"bloom": [0.8, 0.45, 0.35], "halo_scale": 0.6, "halo_max": 0.55, "lamps": 1.0},
 }
+const KEY_YAW: float = -128.0   # the sun's heading (KEY_ROT's yaw); its elevation comes from the preset
+static var _key_elev: float = 38.0
+static var _halo_scale: float = 0.6
+static var _halo_max: float = 0.55
 const FOG_BEGIN: float = 60.0       # m from the camera: never on the fighters (the fight camera is ~21 m off)
 const FOG_END_STREET: float = 220.0
 const FOG_END_PLACE: float = 320.0  # the place is built out to place.gd REACH (260 m)
@@ -127,7 +163,52 @@ static func look_opts(cfg: Dictionary) -> Dictionary:
 	if bool(out.get("post", false)):
 		out["glow"] = true
 		out["grade"] = true
+	if str(out.get("time", "auto")) == "auto" or not TIMES.has(str(out["time"])):
+		var ll: Vector2 = Vector2(float(cfg.get("_lat", 51.5)), float(cfg.get("_lng", -0.13)))
+		out["time"] = time_of_day(ll.x, ll.y, cfg.get("clock_hour", null))
+	if str(out["time"]) == "night":
+		out["time"] = "dusk"   # the art direction: night is defined but not shipped in v1
+	var tp: Dictionary = TIMES[str(out["time"])]
+	# the cheap bloom per preset (tokens world.time.*.bloom) unless the config sets it
+	for i in 3:
+		var k: String = ["bloom_strength", "bloom_threshold", "bloom_cap"][i]
+		if not out.has(k):
+			out[k] = (tp["bloom"] as Array)[i]
 	return out
+
+
+## look-world: the art direction's clock rule (tokens.json time_rule) at a place (lat, lng), on the device's
+## local clock: golden from sunrise (08:00 in the rule; earlier morning light is golden too) to an hour before
+## sunset, dusk from then to half an hour after sunset, night after (shipped as dusk). `hour` (a float, the
+## config's "clock_hour") replaces the clock for tests.
+static func time_of_day(lat: float, lng: float, hour: Variant = null) -> String:
+	var now: Dictionary = Time.get_datetime_dict_from_system()
+	var h: float = float(now["hour"]) + float(now["minute"]) / 60.0
+	if hour != null:
+		h = float(hour)
+	var doy: int = int(Time.get_unix_time_from_datetime_dict({"year": now["year"], "month": now["month"], "day": now["day"]}) / 86400.0) \
+		- int(Time.get_unix_time_from_datetime_dict({"year": now["year"], "month": 1, "day": 1}) / 86400.0) + 1
+	var bias_h: float = float(Time.get_time_zone_from_system().get("bias", 0)) / 60.0
+	var sun: Vector2 = sun_times_utc(lat, lng, doy)
+	var rise: float = fposmod(sun.x + bias_h, 24.0)
+	var sset: float = fposmod(sun.y + bias_h, 24.0)
+	if h >= rise and h < sset - 1.0:
+		return "golden"
+	if h >= sset - 1.0 and h < sset + 0.5:
+		return "dusk"
+	return "night"
+
+
+## Sunrise and sunset in UTC hours for a day of the year (NOAA's approximate equations, a minute or two).
+static func sun_times_utc(lat: float, lng: float, doy: int) -> Vector2:
+	var g: float = TAU / 365.0 * float(doy - 1)
+	var eqt: float = 229.18 * (0.000075 + 0.001868 * cos(g) - 0.032077 * sin(g) - 0.014615 * cos(2.0 * g) - 0.040849 * sin(2.0 * g))
+	var decl: float = 0.006918 - 0.399912 * cos(g) + 0.070257 * sin(g) - 0.006758 * cos(2.0 * g) + 0.000907 * sin(2.0 * g) \
+		- 0.002697 * cos(3.0 * g) + 0.00148 * sin(3.0 * g)
+	var la: float = deg_to_rad(clampf(lat, -89.0, 89.0))
+	var c: float = cos(deg_to_rad(90.833)) / (cos(la) * cos(decl)) - tan(la) * tan(decl)
+	var ha: float = rad_to_deg(acos(clampf(c, -1.0, 1.0)))
+	return Vector2((720.0 - 4.0 * (lng + ha) - eqt) / 60.0, (720.0 - 4.0 * (lng - ha) - eqt) / 60.0)
 
 
 ## The hemisphere ambient's extra over the flat sky-up ambient, for a shader with hemi_* uniforms
@@ -144,18 +225,33 @@ static func set_hemi(sm: ShaderMaterial, l: Dictionary) -> void:
 
 ## The look's time-of-day preset (TIMES), "dusk" unless the look says "day".
 static func time_preset(l: Dictionary) -> Dictionary:
-	return TIMES.get(str(l.get("time", "dusk")), TIMES["dusk"])
+	return TIMES.get(str(l.get("time", "golden")), TIMES["golden"])
 
 
-## The direction the key light travels (world space), for the fighters' rim.
+## The direction the key light travels (world space), for the fighters' rim. look-world: the elevation is
+## the time preset's (build sets it before the fighters spawn); the heading stays KEY_YAW.
 static func key_dir() -> Vector3:
-	return Basis.from_euler(KEY_ROT * (PI / 180.0)) * Vector3(0, 0, -1)
+	return Basis.from_euler(Vector3(-_key_elev, KEY_YAW, 0.0) * (PI / 180.0)) * Vector3(0, 0, -1)
 
 
 func build(cfg: Dictionary) -> void:
+	var place_mode: bool = str(cfg.get("arena", "street")) == "place"
+	# look-world: the place's ground is read first, so the clock rule knows where on Earth the fight is
+	if place_mode:
+		_ground_doc = _read_ground(cfg)
+		if not _ground_doc.is_empty():
+			var o: Dictionary = _ground_doc.get("origin", {})
+			if o.has("lat"):
+				cfg["_lat"] = float(o["lat"])
+				cfg["_lng"] = float(o["lng"])
 	look = look_opts(cfg)
 	var tp: Dictionary = time_preset(look)
-	var place_mode: bool = str(cfg.get("arena", "street")) == "place"
+	_key_elev = float(tp["key_elev"])
+	_halo_scale = float(tp["halo_scale"])
+	_halo_max = float(tp["halo_max"])
+	if str(look.get("shadows", false)) == "auto":
+		look["shadows"] = str(cfg.get("_quality", "low")) == "device"
+	print("CQ look time=%s key_elev=%.0f shadows=%s street=%s" % [look["time"], _key_elev, str(look["shadows"]), str(look.get("street", "place"))])
 	env = Environment.new()
 	env.background_mode = Environment.BG_COLOR
 	env.background_color = tp["fog"]
@@ -195,7 +291,7 @@ func build(cfg: Dictionary) -> void:
 	if bool(look.get("sky_draw", true)) and str(look["sky"]) != "cube":
 		var ssm := ShaderMaterial.new()
 		ssm.shader = SKY_SHADER
-		for k: String in ["zenith", "upper", "horizon", "horizon_sun", "fog"]:
+		for k: String in ["zenith", "upper", "horizon", "horizon_sun", "fog", "sun_glow"]:
 			ssm.set_shader_parameter(k, tp[k])
 		ssm.set_shader_parameter("sun_dir", -key_dir())
 		var dsky := Sky.new()
@@ -206,7 +302,7 @@ func build(cfg: Dictionary) -> void:
 		env.background_mode = Environment.BG_SKY
 		env.reflected_light_source = Environment.REFLECTION_SOURCE_DISABLED
 	env.tonemap_mode = {"filmic": Environment.TONE_MAPPER_FILMIC, "agx": Environment.TONE_MAPPER_AGX}.get(str(look["tonemap"]), Environment.TONE_MAPPER_ACES)
-	env.tonemap_exposure = 1.0
+	env.tonemap_exposure = float(tp["exposure"])
 	env.tonemap_white = 6.0
 	env.fog_enabled = bool(look["fog"])
 	if env.fog_enabled:
@@ -217,11 +313,11 @@ func build(cfg: Dictionary) -> void:
 		env.fog_mode = Environment.FOG_MODE_DEPTH
 		env.fog_light_color = tp["fog"]
 		env.fog_light_energy = 1.0
-		env.fog_sun_scatter = 0.0      # the sky's horizon band is one colour; scatter would seam it
+		env.fog_sun_scatter = float(tp["fog_scatter"])   # look-world: the art direction's sun scatter
 		env.fog_density = 1.0
 		env.fog_depth_begin = maxf(FOG_BEGIN, float(cfg.get("cam_dist", 21.0)) + 25.0)
 		env.fog_depth_end = FOG_END_PLACE if place_mode else FOG_END_STREET
-		env.fog_depth_curve = 1.25
+		env.fog_depth_curve = float(tp["fog_curve"])
 		env.fog_sky_affect = 0.0       # the sky draws its own horizon band in the fog colour
 	if bool(look["glow"]):
 		# bloom only on what is brighter than white (lit windows, neon, lamp heads); the
@@ -252,16 +348,16 @@ func build(cfg: Dictionary) -> void:
 	we.environment = env
 	add_child(we)
 	sun = DirectionalLight3D.new()
-	sun.rotation_degrees = KEY_ROT
+	sun.rotation_degrees = Vector3(-_key_elev, KEY_YAW, 0.0)
 	sun.light_energy = float(tp["key_energy"])
 	sun.light_color = tp["key_color"]
-	sun.shadow_enabled = bool(look["shadows"])
+	sun.shadow_enabled = str(look["shadows"]) == "true"
 	if sun.shadow_enabled:
 		# the fighters only (the street casts nothing): one orthogonal split close in
 		sun.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
-		sun.directional_shadow_max_distance = 30.0
+		sun.directional_shadow_max_distance = 35.0    # look-world: tokens world.time.*.shadow
 		sun.shadow_blur = 2.0
-		sun.shadow_opacity = 0.7
+		sun.shadow_opacity = 0.5 if str(look["time"]) == "dusk" else 0.65
 	add_child(sun)
 	# no second (fill) light: each directional light is shaded on every pixel, ~2 ms a frame
 	# on the software GPU; the sky ambient is the fill
@@ -292,7 +388,7 @@ func build(cfg: Dictionary) -> void:
 	mm.albedo_texture = T_MEDALLION
 	mm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
 	mm.alpha_scissor_threshold = 0.5
-	mm.albedo_color = Color(0.92, 0.78, 0.74)
+	mm.albedo_color = Color(0.96, 0.92, 0.86)   # look-world: plaza stone, not pink (art direction 2.2)
 	mm.roughness = 0.9
 	plaza.material_override = mm
 	plaza.position.y = 0.02
@@ -309,7 +405,8 @@ func build(cfg: Dictionary) -> void:
 	cm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	cm.albedo_color = Color(1, 1, 1, 0.9)
 	cm.disable_receive_shadows = true
-	for i in (0 if place_mode else 2):   # cq 019: no street neon in a real place
+	# cq 019: no street neon in a real place; look-world: on the street only at dusk (neon is not daylight)
+	for i in (0 if place_mode or (str(look.get("street", "place")) == "place" and str(look["time"]) != "dusk") else 2):
 		var c := MeshInstance3D.new()
 		var cq := PlaneMesh.new()
 		cq.size = Vector2(2.4, 9.6)
@@ -321,7 +418,15 @@ func build(cfg: Dictionary) -> void:
 	if str(cfg.get("arena", "street")) == "plain":
 		return
 	# cq 019: the real place round the Quest Point (OpenStreetMap ground), else the street
-	if str(cfg.get("arena", "street")) == "place" and _build_place(cfg):
+	if place_mode and not _ground_doc.is_empty():
+		_build_place(cfg, _ground_doc)
+		return
+	# look-world: the default street is laid out as a ground document (StreetLayout) and built by place.gd
+	# like any real place, so the street and the places share one kit, one light and one material set
+	if str(look.get("street", "place")) == "place":
+		_build_place(cfg, StreetLayout.ground(), Vector2.ZERO, 0.0)
+		street_place = place
+		place = null    # fight.gd: the street keeps the street camera and has no fly-in
 		return
 	_dressing = Node3D.new()
 	_dressing.name = "Street"
@@ -353,33 +458,53 @@ func build(cfg: Dictionary) -> void:
 
 
 var place: Node3D   # the real place (cq 019), when the fight has one
+var street_place: Node3D   # look-world: the default street, built by place.gd from StreetLayout
 
 
 ## The real place round the fight (place.gd, docs/game3d/PLACE.md) from `ground_json` (the game server's
 ## /v1/map/ground answer, or the Overpass tool's), with the Quest Point at `place_at` [x, z] metres from
-## its origin. False (and the street is built instead) when the file is missing or unreadable.
-func _build_place(cfg: Dictionary) -> bool:
+## its origin. Empty (and the street is built instead) when the file is missing or unreadable.
+var _ground_doc: Dictionary = {}
+
+
+func _read_ground(cfg: Dictionary) -> Dictionary:
 	var path: String = str(cfg.get("ground_json", ""))
 	if path == "" or not FileAccess.file_exists(path):
 		print("CQ place none path=%s" % path)
-		return false
+		return {}
 	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
 	if not (parsed is Dictionary) or not (parsed as Dictionary).has("buildings"):
 		print("CQ place unreadable path=%s" % path)
-		return false
-	var at_raw: Variant = cfg.get("place_at", [0.0, 0.0])
+		return {}
+	return parsed
+
+
+## Builds `doc` with place.gd round `at` (default: the config's place_at). yaw_override: degrees (the street
+## passes 0: its layout is already in the fight's frame), else the place turns to its landmark.
+func _build_place(cfg: Dictionary, doc: Dictionary, at_override: Variant = null, yaw_override: float = NAN) -> void:
 	var at: Vector2 = Vector2.ZERO
-	if at_raw is Array and (at_raw as Array).size() == 2:
+	var at_raw: Variant = cfg.get("place_at", [0.0, 0.0])
+	if at_override is Vector2:
+		at = at_override
+	elif at_raw is Array and (at_raw as Array).size() == 2:
 		at = Vector2(float(at_raw[0]), float(at_raw[1]))
+	if is_nan(yaw_override):
+		yaw_override = float(cfg.get("place_yaw", NAN))
 	place = PlaceScript.new()
 	place.name = "Place"
 	add_child(place)
-	place.call("build", parsed, at, float(cfg.get("cam_yaw", 12.0)), float(cfg.get("place_yaw", NAN)), look,
+	place.set("quality", str(cfg.get("_quality", "low")))
+	place.call("build", doc, at, float(cfg.get("cam_yaw", 12.0)), yaw_override, look,
 		Callable(self, "set_hemi"))
 	for r: Rect2 in place.get("map_blocks"):
 		map_blocks.append(r)
+	# the place lays its own ground (land use, roads, the bake): the arena's plain floor steps aside, and
+	# the horizon ring takes the place's floor colour
+	ground.visible = false
+	var hz: Node = get_node_or_null("Horizon")
+	if hz != null:
+		((hz as MeshInstance3D).material_override as StandardMaterial3D).albedo_color = place.call("floor_color")
 	print("CQ place " + JSON.stringify(place.get("info")))
-	return true
 
 
 ## The grade's colour curve, per channel (input level -> output level). env-fixes 2: warm lights,
@@ -805,7 +930,8 @@ const HALO_ALPHA_MAX: float = 0.42
 
 
 static func _halo_alpha(a: float) -> float:
-	return minf(a * HALO_SCALE, HALO_ALPHA_MAX)
+	# look-world: the time preset's halo scale and clamp (tokens halo_gain_scale / halo_alpha_max; none by day)
+	return minf(a * _halo_scale, _halo_max)
 
 var _cam_facing: Basis = Basis.from_euler(Vector3(deg_to_rad(-34.0), deg_to_rad(12.0), 0.0))   # fight.gd CAM_PITCH, CAM_YAW
 
