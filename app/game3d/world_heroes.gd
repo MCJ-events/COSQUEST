@@ -292,11 +292,11 @@ static func _hoover(c: Dictionary) -> void:
 	for f in 4:
 		var xf: Transform3D = L._yaw(90.0 * f)
 		# the entrance arch on the base, window strips up the shaft (dark glass in buff reveals)
-		L._hue = Color("#3C4150")
+		L._hue = Color("#56607A")
 		L._extrude(c, "render", xf, L._arch_pts(1.6, 0.0, 6.4, 8), 8.48, 8.56)
 		for k in 3:
 			var x: float = -3.2 + 3.2 * k
-			L._box(c, "render", xf * Transform3D(Basis(), Vector3(x, 0, 6.95)), 0.55, 0.1, 14.0, 59.0, 0.02)
+			L._box(c, "render", xf * Transform3D(Basis(), Vector3(x, 0, 6.95)), 0.36, 0.1, 14.0, 59.0, 0.02)
 		L._hue = buff
 		for k in 4:   # pilasters between the strips
 			var x: float = -4.8 + 3.2 * k

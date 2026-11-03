@@ -1,5 +1,6 @@
-# compose.py <shots root with before/ and after/> <out dir>: the env audit's numbered stills, BEFORE (game-depth-ios
-# bb291f2, env-fixes 1-4) | AFTER (look-world), each a jpg of 300 KB or less; plus look-world extras from 28 on.
+# compose.py <shots root with before/ and after/> <out dir>: look-world's numbered stills (03 to 33, same specs),
+# BEFORE (integration-20261103 c9eb53b: look-world at its head, with its last three tweaks) | AFTER (day1-world),
+# each a jpg of 300 KB or less; then the hero landmark shots from 34 on.
 import os, sys
 from PIL import Image, ImageDraw, ImageFont
 S=sys.argv[1]; OUT=sys.argv[2]; os.makedirs(OUT, exist_ok=True)
@@ -9,7 +10,7 @@ def font(sz):
     return ImageFont.load_default()
 F=font(22); FS=font(17)
 def load(side,n): return Image.open(f"{S}/{side}/{n}.png").convert("RGB")
-LA="BEFORE (game-depth-ios bb291f2)"; LB="AFTER (look-world)"
+LA="BEFORE (integration c9eb53b)"; LB="AFTER (day1-world)"
 def pair(num,slug,title,a,b,la=LA,lb=LB,crop=None,scale=0.62):
     if crop: a=a.crop(crop); b=b.crop(crop)
     a=a.resize((int(a.width*scale),int(a.height*scale)),Image.LANCZOS); b=b.resize((int(b.width*scale),int(b.height*scale)),Image.LANCZOS)
@@ -70,3 +71,10 @@ pair("32","street-dusk","The street at Dusk",
      load("before","street_fight_4.0s"),load("after","street_dusk_4.0s"),la="BEFORE (dusk was the only look)",lb="AFTER, Dusk")
 pair("33","device-profile","Device profile on the software GPU",
      load("before","traf_fight_dev_4.0s"),load("after","traf_fight_dev_4.0s"))
+
+n=34
+for k,title in [("westminster","Westminster: Elizabeth Tower"),("times_hero","Times Square: the screen tower and canyon"),
+                ("stanford","Stanford: Hoover Tower"),("lagos","Lagos: the National Arts Theatre")]:
+    for shot,what in [("fly_0.3s","fly-in 0.3 s"),("fly_1.8s","fly-in 1.8 s"),("fight_4.0s","fight camera")]:
+        pair(str(n),k+"-"+shot.replace("_","-"),title+", "+what,load("before",k+"_"+shot),load("after",k+"_"+shot))
+        n+=1

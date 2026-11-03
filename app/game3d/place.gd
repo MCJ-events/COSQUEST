@@ -511,7 +511,7 @@ func kit_mat(cls: String) -> Material:
 				tile = 2.5
 				rough = 0.8
 				sm.set_shader_parameter("tint", Color(1, 1, 1))
-				sm.set_shader_parameter("lift", 0.14)
+				sm.set_shader_parameter("lift", 0.3)
 			"tile":
 				k = 0.5
 				tile = 0.8
@@ -770,7 +770,7 @@ func _sheet_for(h: float, area: float, rnd: float) -> String:
 				return "trim_us_modern" if rnd < 0.75 else "trim_us_brownstone"
 			return "trim_us_brownstone" if rnd < 0.85 else "trim_us_modern"
 		"us_west":
-			return "trim_us_modern" if h >= 20.0 else "trim_us_west"
+			return "trim_us_modern" if h >= 30.0 else "trim_us_west"   # day1-world: was 20 m (Stanford read as glass)
 		"west_africa":
 			return "trim_us_modern" if h >= 30.0 else "trim_wa_render"
 	return "trim_us_modern" if h >= 30.0 else "trim_generic"
@@ -1125,6 +1125,7 @@ func _build_heroes() -> void:
 ## day1-world: a bridge piece (world_landmarks.gd bridge) wherever a car road runs over water for 14 m
 ## or more: parapets, refuges and lamp standards along the crossing.
 func _build_bridges() -> void:
+	info["bridges"] = 0
 	if _water_polys.is_empty():
 		return
 	var n: int = 0
