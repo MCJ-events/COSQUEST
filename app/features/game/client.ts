@@ -152,7 +152,7 @@ export class GameClient {
   async request<T>(
     method: string,
     path: string,
-    opts: { body?: unknown; query?: Query; signed?: boolean; raw?: boolean } = {},
+    opts: { body?: unknown; query?: Query; signed?: boolean; raw?: boolean; timeoutMs?: number } = {},
   ): Promise<T> {
     // A body that says where the player is also says how good and how old
     // that fix is, decorated before signing so the signature covers it.
@@ -167,7 +167,7 @@ export class GameClient {
     }
     const url = `${this.baseUrl}/${path}${queryString(opts.query)}`;
     const controller = typeof AbortController === "function" ? new AbortController() : null;
-    const timer = controller ? setTimeout(() => controller.abort(), this.timeoutMs) : null;
+    const timer = controller ? setTimeout(() => controller.abort(), opts.timeoutMs ?? this.timeoutMs) : null;
     let response: Awaited<ReturnType<FetchLike>>;
     try {
       response = await this.fetcher(url, { method, headers, body: bodyText, signal: controller?.signal });
@@ -204,6 +204,34 @@ export class GameClient {
   /** Trade the chat session for the account's player. Unsigned: the token is the proof. */
   async sso(chatToken: string): Promise<SsoSession> {
     return this.request<SsoSession>("POST", "v1/sso/cosquest", { body: { token: chatToken } });
+  }
+
+  // ---------- the Warden's voice ----------
+
+  /**
+   * One Warden line spoken by the server's voice (ElevenLabs, cached there by
+   * what it says). The audio's URL, or null when the server has no voice to
+   * give (204: no key, a daily cap); errors (503, 413, a timeout) throw. Not
+   * retried: the line is wanted now or not at all. Backend app/warden_voice.py.
+   */
+  async wardenVoice(text: string, moment: string, style: string, timeoutMs = 4000): Promise<WardenVoiceLine | null> {
+    const raw = await this.request<string>("POST", "v1/warden/voice", {
+      body: { device_key: this.deviceKey(), text, moment, style },
+      signed: true,
+      raw: true,
+      timeoutMs,
+    });
+    if (!raw) return null;
+    let got: Partial<WardenVoiceLine>;
+    try {
+      got = JSON.parse(raw) as Partial<WardenVoiceLine>;
+    } catch {
+      throw new GameError("decoding", "The server sent something unexpected.", 200);
+    }
+    if (typeof got.url !== "string" || !/^https?:\/\//.test(got.url) || typeof got.key !== "string") {
+      throw new GameError("decoding", "The server sent something unexpected.", 200);
+    }
+    return { url: got.url, key: got.key, cached: !!got.cached };
   }
 
   // ---------- roam ----------
@@ -396,6 +424,8 @@ export class GameClient {
  * (roam_duel.py getrandbits(62)), past what a JS number holds, so it is read
  * from the text as `seed_text` and the sim takes it as a BigInt.
  */
+export type WardenVoiceLine = { url: string; key: string; cached: boolean };
+
 export function parseDuelStart(text: string): DuelStart {
   let parsed: DuelStart;
   try {

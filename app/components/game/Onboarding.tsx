@@ -8,7 +8,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
-import * as Speech from "expo-speech";
 import { useEffect, useRef, useState } from "react";
 import { Keyboard, Platform, Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
 import Animated, {
@@ -93,6 +92,7 @@ export default function Onboarding({ suggestedName, onDone }: { suggestedName: s
   const waitingForGift = useRef(false);
   const relicRef = useRef<RelicFull | null>(null);
   const speaking = useRef(false);
+  const sayingId = useRef(0);
   const beatRef = useRef(beat);
   const savedName = useRef((profile?.handle ?? "").trim());
 
@@ -106,20 +106,16 @@ export default function Onboarding({ suggestedName, onDone }: { suggestedName: s
     setProblem(null);
     setRevealed(false);
     setLineId((n) => n + 1);
-    Speech.stop().catch(() => {});
+    wardenVoice.hush();
     if (!wardenVoice.isMuted() && text) {
+      // The server's voice when it has the line, else the phone's (wardenVoice.say);
+      // only this line's end clears the flag, not the stop of the one before.
+      const mine = ++sayingId.current;
       speaking.current = true;
-      Speech.speak(text, {
-        rate: 1.02,
-        pitch: 0.95,
-        onDone: () => {
-          speaking.current = false;
-        },
-        onStopped: () => {
-          speaking.current = false;
-        },
-        onError: () => {
-          speaking.current = false;
+      wardenVoice.say(text, {
+        moment: "onboarding",
+        done: () => {
+          if (sayingId.current === mine) speaking.current = false;
         },
       });
     }
@@ -150,12 +146,12 @@ export default function Onboarding({ suggestedName, onDone }: { suggestedName: s
       if (t) clearTimeout(t);
       show.remove();
       hide.remove();
-      Speech.stop().catch(() => {});
+      wardenVoice.hush();
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const finish = () => {
-    Speech.stop().catch(() => {});
+    wardenVoice.hush();
     onDone();
   };
 
@@ -282,8 +278,7 @@ export default function Onboarding({ suggestedName, onDone }: { suggestedName: s
             onPress={() => {
               const next = !muted;
               wardenVoice.setMuted(next);
-              if (next) Speech.stop().catch(() => {});
-              else Speech.speak(line, { rate: 1.02, pitch: 0.95 });
+              if (!next) wardenVoice.say(line, { moment: "onboarding" });
             }}
             style={styles.topButton}
             accessibilityRole="button"
