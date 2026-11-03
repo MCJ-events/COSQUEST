@@ -16,6 +16,8 @@ import { GAME_UI } from "@/features/game/runtime";
 import type { GameTarget } from "@/features/world/deepLink";
 import type { GameSharePayload } from "@/features/world/gameInvite";
 
+import { gameStore } from "@/features/game/runtime";
+
 import { createRnGame, currentChatToken } from "./rnGame";
 
 export type GameChatPreview = { chatId: string; title: string; text: string };
@@ -162,6 +164,9 @@ const WEB_TEST_GAME = Platform.OS === "web" && process.env.EXPO_PUBLIC_E2E === "
 
 export const CostQuestGame: CostQuestGameModule | null =
   Platform.OS === "web" && !WEB_TEST_GAME ? null : createRnGame(nativeGame);
+
+// Web test builds: the store, for screenshot and replay scripts (as dev/game-preview does).
+if (WEB_TEST_GAME) (globalThis as { __cqGame?: unknown }).__cqGame = gameStore;
 
 /** The native module's own helpers (null on web and Expo Go). */
 export const nativeHelpers: NativeOnly | null = Platform.OS === "web" ? null : nativeGame;

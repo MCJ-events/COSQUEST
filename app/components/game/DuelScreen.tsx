@@ -109,7 +109,7 @@ import { runModel } from "./runModel";
 import DuelVersus from "./DuelVersus";
 import Fight3D from "./Fight3D";
 import FightReveal, { REVEAL_ISLAND_OFF } from "./FightReveal";
-import { useGuardianPortrait } from "./ForgeWorld";
+import { useGuardianFigure, useGuardianPortrait } from "./ForgeWorld";
 import { fightRevealOn } from "./prefs";
 import { CostQuestSummonView, summonARSupported } from "@/modules/costquest-game/src";
 import { GameBackdrop } from "./GameBackdrop";
@@ -589,6 +589,9 @@ function Briefing({
   const holder = point.extra?.holder_name ?? (point.extra?.holder ? gameStore.factionName(point.extra.holder) : null);
   // The Guardian you are about to fight, as its map pin showed it (art direction 5: one render everywhere).
   const portrait = useGuardianPortrait(point, 512);
+  // Better still, the Guardian standing (its full-body render on a clear page): it fills the
+  // top of the page like a versus card, and never puts a cream square on the dusk page.
+  const figure = useGuardianFigure(point);
   return (
     <View style={styles.root}>
       <GameBackdrop tint={color} />
@@ -600,8 +603,16 @@ function Briefing({
             {point.name.toUpperCase()}
           </Text>
         </View>
-        <View style={{ flex: 1 }} />
-        {portrait ? (
+        {figure ? (
+          <Animated.View entering={FadeIn.duration(400)} style={styles.figureStage} pointerEvents="none">
+            <View style={[styles.figureGlow, { backgroundColor: `${color}2E` }]} />
+            <Image source={{ uri: figure.url }} style={styles.figureImage} contentFit="contain" contentPosition="bottom" accessibilityLabel={figure.name} />
+            <View style={[styles.figureGround, { backgroundColor: `${color}55` }]} />
+          </Animated.View>
+        ) : (
+          <View style={{ flex: 1 }} />
+        )}
+        {portrait && !figure ? (
           <Animated.View entering={FadeIn.duration(400)} style={[styles.portraitCard, { backgroundColor: color }]}>
             <Image source={{ uri: portrait.url }} style={styles.portraitImage} contentFit="cover" accessibilityLabel={portrait.name} />
           </Animated.View>
@@ -1086,6 +1097,11 @@ const STYLE_PAIR = themedStyles(
   // The Guardian's 3/4 portrait on the cream page in a ring of its rarity (card radius 20 + the ring).
   portraitCard: { alignSelf: "flex-start", padding: 4, borderRadius: 24, marginBottom: 18, ...ELEVATION.low },
   portraitImage: { width: 168, height: 168, borderRadius: 20, backgroundColor: "#F4EEE2" },
+  // The standing Guardian: centred, feet on a soft rarity ellipse, a faint rarity glow behind.
+  figureStage: { flex: 1, minHeight: 200, alignItems: "center", justifyContent: "flex-end", marginTop: 8, marginBottom: 14 },
+  figureGlow: { position: "absolute", bottom: 24, width: 260, height: 260, borderRadius: 130, opacity: 0.9 },
+  figureImage: { width: "100%", height: "100%", maxHeight: 380 },
+  figureGround: { position: "absolute", bottom: 0, width: 150, height: 22, borderRadius: 75, transform: [{ scaleY: 0.6 }] },
   topBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 },
   placeChip: {
     maxWidth: "70%",

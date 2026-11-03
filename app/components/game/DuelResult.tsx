@@ -41,6 +41,7 @@ import { paidLine, squadPaid } from "@/features/game/squad";
 import type { DuelFighterPeek, DuelOutcome, DuelResult as DuelResultData, DuelStart } from "@/features/game/wire";
 
 import { announce, GameButton, MAX_FONT_SCALE } from "./kit";
+import { useLook } from "./look";
 import { LevelUp, Sunburst } from "./LevelUp";
 import { impact, notify, selection } from "./prefs";
 import { RaidHPBar } from "./RaidParts";
@@ -88,6 +89,8 @@ export default function DuelResult({
   fight?: Record<string, unknown> | null;
 }) {
   const styles = useThemedStyles(STYLE_PAIR);
+  // The page follows the map's day/dusk state (art direction 6.5): its text and cards already do.
+  const look = useLook();
   const insets = useSafeAreaInsets();
   const reduce = useReducedMotion();
   const o = asFull(outcome);
@@ -171,7 +174,7 @@ export default function DuelResult({
   const barStyle = useAnimatedStyle(() => ({ width: `${Math.max(0, Math.min(1, bar.value)) * 100}%` }));
 
   return (
-    <Animated.View entering={POP_FADE} style={[StyleSheet.absoluteFill, { backgroundColor: SCREEN }]}>
+    <Animated.View entering={POP_FADE} style={[StyleSheet.absoluteFill, { backgroundColor: look.screen }]}>
       <ScrollView
         contentContainerStyle={[styles.content, { paddingTop: insets.top + 28, paddingBottom: insets.bottom + 28 }]}
         showsVerticalScrollIndicator={false}>

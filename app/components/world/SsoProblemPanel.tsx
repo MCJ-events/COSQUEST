@@ -42,6 +42,11 @@ function Panel({ kind, message, retryAt }: { kind: "rejected" | "unavailable"; m
     return () => clearInterval(t);
   }, [retryAt]);
   const waitS = retryAt ? Math.max(0, Math.ceil((retryAt - now) / 1000)) : 0;
+  // The chat bubble tucks in while this is up (it sat over the card); "Back to chat" is here.
+  useEffect(() => {
+    world.setGameFocus(true);
+    return () => world.setGameFocus(false);
+  }, []);
 
   async function retry() {
     setBusy(true);
@@ -53,12 +58,10 @@ function Panel({ kind, message, retryAt }: { kind: "rejected" | "unavailable"; m
   }
 
   const title = kind === "rejected" ? "Your game account didn't load" : "Can't reach your game account";
-  const detail =
+  const body =
     kind === "rejected"
-      ? "Your chats are fine. The game couldn't match your CosQuest sign-in, so it can't load your player."
-      : waitS > 0
-        ? `Trying again in ${waitS} s. Your progress follows your CosQuest account once it's back.`
-        : "Trying again. Your progress follows your CosQuest account once it's back.";
+      ? "Your chats are fine. The game server couldn't match your CosQuest sign-in, so your game player can't load yet."
+      : `${message} ${waitS > 0 ? `Trying again in ${waitS} s.` : "Trying again."} Your progress follows your CosQuest account once it's back.`;
 
   return (
     <View style={[styles.cover, { backgroundColor: look.scrim }]} accessibilityViewIsModal testID="sso-problem">
@@ -70,7 +73,7 @@ function Panel({ kind, message, retryAt }: { kind: "rejected" | "unavailable"; m
           {title}
         </Text>
         <Text style={[styles.text, { color: look.textMuted }]} maxFontSizeMultiplier={1.4}>
-          {message} {detail}
+          {body}
         </Text>
         <View style={styles.actions}>
           {busy ? (

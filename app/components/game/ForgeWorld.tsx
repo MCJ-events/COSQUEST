@@ -193,6 +193,18 @@ export function useGuardianPortrait(point: QuestPoint | null | undefined, width:
   return url && entry ? { url, name: entry.name } : null;
 }
 
+/**
+ * The Guardian standing, full body on a clear page (the same render as its pin
+ * portrait), for the pre-fight briefing; null when it has none (then the portrait card).
+ */
+export function useGuardianFigure(point: QuestPoint | null | undefined): { url: string; name: string } | null {
+  const on = useForgeOn();
+  const id = on && point ? (pointForge(point).guardian?.element_id ?? null) : null;
+  const entry = useForgeEntry(id);
+  const url = entry ? figureUrl(entry, 512) : null;
+  return url && entry ? { url, name: entry.name } : null;
+}
+
 /** Your Forge avatar's face for the map marker and chips: its portrait (or thumbnail), or nothing. */
 export function AvatarBadge({ size = 30 }: { size?: number }) {
   const on = useForgeOn();
