@@ -8,7 +8,8 @@ import { Pressable, Text, View } from "react-native";
 
 import type { NearbyRoom } from "@/features/game/rooms";
 
-import { GF, GP } from "./theme";
+import { ACCENT } from "./look";
+import { GF } from "./theme";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 const SIZE = 44;
@@ -25,7 +26,7 @@ function RoomBeacon({ room, left, top, onPress }: { room: NearbyRoom; left: numb
       accessibilityLabel={`${who}'s Room, ${room.players ?? 0} ${room.players === 1 ? "player" : "players"}`}
       accessibilityHint="Opens the Battle sheet on this room">
       <View style={styles.pin}>
-        <Ionicons name="flash" size={22} color="#FFF" />
+        <Ionicons name="flash" size={20} color="#FFFFFF" />
         {room.players ? (
           <View style={styles.count}>
             <Text style={styles.countText}>{room.players}</Text>
@@ -33,43 +34,45 @@ function RoomBeacon({ room, left, top, onPress }: { room: NearbyRoom; left: numb
         ) : null}
       </View>
       <View style={styles.stem} />
+      <View style={styles.shadow} />
     </Pressable>
   );
 }
 
 export default memo(RoomBeacon);
 
-const STYLE_PAIR = themedStyles({
-  marker: { position: "absolute", width: SIZE, height: SIZE + 14, alignItems: "center", zIndex: 2 },
-  pin: {
-    width: SIZE,
-    height: SIZE,
-    borderRadius: SIZE / 2,
-    borderWidth: 3,
-    borderColor: "#FFF",
-    backgroundColor: GP.berry,
-    alignItems: "center",
-    justifyContent: "center",
-    elevation: 5,
-    shadowColor: "#000",
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
+// Stands like a Quest Point pin (WorldMap PointMarker): a white ring, a 2 px
+// white stem, a soft shadow on the ground; Berry because a Room is a fight.
+const STYLE_PAIR = themedStyles(
+  {
+    marker: { position: "absolute", width: SIZE, height: SIZE + 14, alignItems: "center", zIndex: 2 },
+    pin: {
+      width: SIZE,
+      height: SIZE,
+      borderRadius: SIZE / 2,
+      borderWidth: 3,
+      borderColor: "#FFFFFF",
+      backgroundColor: ACCENT.berry.fill,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    stem: { width: 2, height: 12, borderRadius: 1, backgroundColor: "#FFFFFF" },
+    shadow: { width: 18, height: 6, marginTop: -3, borderRadius: 9, backgroundColor: "rgba(16,24,40,0.2)" },
+    count: {
+      position: "absolute",
+      top: -6,
+      right: -8,
+      minWidth: 20,
+      height: 20,
+      borderRadius: 10,
+      paddingHorizontal: 3,
+      backgroundColor: ACCENT.sun.fill,
+      borderWidth: 2,
+      borderColor: "#FFFFFF",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    countText: { fontFamily: GF.display, fontSize: 12, lineHeight: 15, color: ACCENT.sun.label },
   },
-  stem: { width: 4, height: 14, borderBottomLeftRadius: 2, borderBottomRightRadius: 2, backgroundColor: GP.berry },
-  count: {
-    position: "absolute",
-    top: -6,
-    right: -8,
-    minWidth: 18,
-    height: 18,
-    borderRadius: 9,
-    paddingHorizontal: 3,
-    backgroundColor: GP.sun,
-    borderWidth: 2,
-    borderColor: "#FFF",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  countText: { fontFamily: GF.bold, fontSize: 10, color: GP.ink },
-});
+  { pin: { borderColor: "#FFFFFF" }, stem: { backgroundColor: "#FFFFFF" }, count: { borderColor: "#FFFFFF" }, countText: { color: ACCENT.sun.label } },
+);

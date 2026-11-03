@@ -4,6 +4,7 @@
 // never means hunting for Battle. costquest-ios Warden/WardenCoach.swift
 // (WardenCoachOverlay) with Roam/RoamGuide.swift's railAnchor, here the
 // <CoachAnchor> a button is wrapped in. The step to show is features/game/coach.ts.
+import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as Speech from "expo-speech";
 import { type ReactNode, useEffect, useRef, useState } from "react";
@@ -23,8 +24,9 @@ import Svg, { Path } from "react-native-svg";
 
 import type { CoachStep } from "@/features/game/coach";
 
-import { announce, GameButton, withAlpha } from "./kit";
-import { GF, GP } from "./theme";
+import { announce, GameButton } from "./kit";
+import { ACCENT, contrast, edgeColor, ELEVATION, RADIUS, SURFACES, useLook } from "./look";
+import { GF } from "./theme";
 import WardenBadge from "./WardenBadge";
 import { wardenVoice } from "./wardenVoice";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
@@ -78,6 +80,7 @@ export default function CoachOverlay({
   onLater: () => void;
 }) {
   const styles = useThemedStyles(STYLE_PAIR);
+  const look = useLook();
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   const reduce = useReducedMotion();
@@ -136,7 +139,7 @@ export default function CoachOverlay({
         <>
           <Pressable style={StyleSheet.absoluteFill} onPress={onLater} accessibilityRole="button" accessibilityLabel={step.later || "Close"} />
           <Svg width={width} height={height} style={StyleSheet.absoluteFill} pointerEvents="none">
-            <Path d={spotlightPath(width, height, hole)} fill="rgba(0,0,0,0.55)" fillRule="evenodd" />
+            <Path d={spotlightPath(width, height, hole)} fill="rgba(18,26,38,0.55)" fillRule="evenodd" />
           </Svg>
           <Animated.View
             pointerEvents="none"
@@ -151,16 +154,16 @@ export default function CoachOverlay({
           />
         </>
       ) : null}
-      <Animated.View style={[styles.bubble, { bottom: insets.bottom + 236, right: rightPad, borderColor: withAlpha(tint, 0.8), shadowColor: tint }, bubbleStyle]}>
+      <Animated.View style={[styles.bubble, { bottom: insets.bottom + 236, right: rightPad }, bubbleStyle]}>
         <View style={styles.head} accessible accessibilityLabel={`The Warden: ${step.line}`}>
           <WardenBadge tint={tint} size={38} />
           <View style={{ flex: 1, gap: 4 }}>
-            <Text style={[styles.label, { color: tint }]}>THE WARDEN</Text>
+            <Text style={[styles.label, { color: readableOn(tint, look.surface, look.text) }]}>THE WARDEN</Text>
             <Text style={styles.line}>{step.line}</Text>
           </View>
         </View>
         <Pressable onPress={onLater} hitSlop={9} style={styles.close} accessibilityRole="button" accessibilityLabel="Close">
-          <Text style={styles.closeText}>×</Text>
+          <Ionicons name="close" size={14} color={look.textMuted} />
         </Pressable>
         <View style={styles.buttons}>
           {step.later ? (
@@ -168,44 +171,60 @@ export default function CoachOverlay({
               <Text style={styles.laterText}>{step.later}</Text>
             </Pressable>
           ) : null}
-          <GameButton title={step.action} size="small" color={tint} onPress={onAction} />
+          <GameButton title={step.action} size="small" color={ACCENT.sun.fill} onPress={onAction} />
         </View>
       </Animated.View>
     </View>
   );
 }
 
-const STYLE_PAIR = themedStyles({
-  bubble: {
-    position: "absolute",
-    left: 14,
-    maxWidth: 420,
-    gap: 8,
-    padding: 12,
-    borderRadius: 22,
-    borderWidth: 2,
-    backgroundColor: withAlpha(GP.navy, 0.94),
-    shadowOpacity: 0.35,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 8,
+/** The faction colour for words on paper if it reads (AA), else its darker edge, else the ink. */
+function readableOn(color: string, plate: string, ink: string): string {
+  if (contrast(color, plate) >= 4.5) return color;
+  const edge = edgeColor(color, 0.6);
+  return contrast(edge, plate) >= 4.5 ? edge : ink;
+}
+
+const L = SURFACES.light;
+const D = SURFACES.dark;
+
+// The Warden's bubble is a paper card like the one on the map (Hud.tsx WardenBubble).
+const STYLE_PAIR = themedStyles(
+  {
+    bubble: {
+      position: "absolute",
+      left: 14,
+      maxWidth: 420,
+      gap: 10,
+      padding: 14,
+      borderRadius: RADIUS.card,
+      borderWidth: 1,
+      borderColor: L.hairline,
+      backgroundColor: L.surface,
+      ...ELEVATION.float,
+    },
+    head: { flexDirection: "row", alignItems: "flex-start", gap: 10, paddingRight: 22 },
+    label: { fontFamily: GF.bold, fontSize: 12, lineHeight: 16, letterSpacing: 1 },
+    line: { fontFamily: GF.body, fontSize: 16, lineHeight: 21, color: L.text },
+    close: {
+      position: "absolute",
+      top: 12,
+      right: 12,
+      width: 26,
+      height: 26,
+      borderRadius: 13,
+      backgroundColor: L.surfaceAlt,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    buttons: { flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 10 },
+    later: { height: 40, paddingHorizontal: 12, justifyContent: "center" },
+    laterText: { fontFamily: GF.bold, fontSize: 15, lineHeight: 19, color: L.textMuted },
   },
-  head: { flexDirection: "row", alignItems: "flex-start", gap: 10, paddingRight: 22 },
-  label: { fontFamily: GF.display, fontSize: 12, letterSpacing: 1.2 },
-  line: { fontFamily: GF.body, fontSize: 16, color: "#FFFFFF" },
-  close: {
-    position: "absolute",
-    top: 12,
-    right: 12,
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: "rgba(255,255,255,0.12)",
-    alignItems: "center",
-    justifyContent: "center",
+  {
+    bubble: { backgroundColor: D.surface, borderColor: D.hairline, shadowOpacity: 0, elevation: 0, boxShadow: "none" },
+    line: { color: D.text },
+    close: { backgroundColor: D.surfaceAlt },
+    laterText: { color: D.textMuted },
   },
-  closeText: { fontFamily: GF.display, fontSize: 16, lineHeight: 18, color: "rgba(255,255,255,0.7)" },
-  buttons: { flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 10 },
-  later: { height: 40, paddingHorizontal: 12, justifyContent: "center" },
-  laterText: { fontFamily: GF.bold, fontSize: 15, color: "rgba(255,255,255,0.6)" },
-});
+);

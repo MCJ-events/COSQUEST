@@ -13,7 +13,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { GameIconButton, MAX_FONT_SCALE } from "./kit";
 import { SheetHost } from "./Sheet";
 import { SHEET_CLOSE_MS, useSheetMotion } from "./sheetMotion";
-import { edgeOf, GF, GP } from "./theme";
+import { ELEVATION, edgeColor, RADIUS, SURFACES, useLook } from "./look";
+import { GF, GP } from "./theme";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 export type MoreTile = {
@@ -90,16 +91,17 @@ export default function MoreSheet({ tiles, onClose }: { tiles: MoreTile[]; onClo
 
 function TileIcon({ tile, choose }: { tile: MoreTile; choose: () => void }) {
   const styles = useThemedStyles(STYLE_PAIR);
+  const look = useLook();
   if (tile.custom) return <>{tile.custom(choose)}</>;
   if (tile.onPress) {
     return <GameIconButton icon={tile.icon} color={tile.color} diameter={54} badge={tile.badge && tile.badge > 0 ? tile.badge : null} accessibilityLabel={tile.title} onPress={choose} />;
   }
   // Information only (the bag's count): a button that does nothing would be a lie.
+  // A well-coloured disc (no shadow), so it does not read as a control.
   return (
-    <View style={styles.info} accessible accessibilityLabel={`${tile.title}, ${tile.badge ?? 0}`}>
-      <View style={[styles.infoEdge, { backgroundColor: edgeOf(tile.color) }]} />
-      <View style={[styles.infoFace, { backgroundColor: tile.color }]}>
-        <Ionicons name={tile.icon} size={24} color="#FFFFFF" />
+    <View style={styles.info} accessible accessibilityLabel={`${tile.title}: ${tile.badge ?? 0} in the bag`}>
+      <View style={[styles.infoFace, { backgroundColor: look.surfaceAlt }]}>
+        <Ionicons name={tile.icon} size={24} color={edgeColor(tile.color)} />
       </View>
       {tile.badge && tile.badge > 0 ? (
         <View style={styles.badge}>
@@ -112,41 +114,52 @@ function TileIcon({ tile, choose }: { tile: MoreTile; choose: () => void }) {
   );
 }
 
-const STYLE_PAIR = themedStyles({
-  sheet: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    backgroundColor: GP.cream,
-    elevation: 12,
+const L = SURFACES.light;
+const D = SURFACES.dark;
+
+const STYLE_PAIR = themedStyles(
+  {
+    sheet: {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      bottom: 0,
+      paddingHorizontal: 20,
+      paddingTop: 8,
+      borderTopLeftRadius: RADIUS.sheet,
+      borderTopRightRadius: RADIUS.sheet,
+      backgroundColor: L.screen,
+      ...ELEVATION.float,
+    },
+    grabber: { alignSelf: "center", width: 40, height: 5, borderRadius: 3, backgroundColor: "rgba(28,43,58,0.22)", marginBottom: 8 },
+    head: { marginBottom: 18 },
+    title: { fontFamily: GF.display, fontSize: 28, lineHeight: 32, color: L.text },
+    grid: { flexDirection: "row", flexWrap: "wrap", columnGap: SPACING, rowGap: 20 },
+    tile: { alignItems: "center", gap: 8 },
+    tileTitle: { alignSelf: "stretch", textAlign: "center", fontFamily: GF.body, fontSize: 13, lineHeight: 16, color: L.text },
+    info: { width: 54, height: 54 },
+    infoFace: { width: 54, height: 54, borderRadius: 27, alignItems: "center", justifyContent: "center" },
+    badge: {
+      position: "absolute",
+      top: -4,
+      right: -6,
+      minWidth: 20,
+      height: 20,
+      paddingHorizontal: 5,
+      borderRadius: 10,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: GP.berry,
+      borderWidth: 2,
+      borderColor: L.surface,
+    },
+    badgeText: { fontFamily: GF.display, fontSize: 12, lineHeight: 15, color: "#FFFFFF", fontVariant: ["tabular-nums"] },
   },
-  grabber: { alignSelf: "center", width: 40, height: 5, borderRadius: 3, backgroundColor: "rgba(0,0,0,0.15)", marginBottom: 8 },
-  head: { marginBottom: 16 },
-  title: { fontFamily: GF.display, fontSize: 26, color: GP.ink },
-  grid: { flexDirection: "row", flexWrap: "wrap", columnGap: SPACING, rowGap: 18 },
-  tile: { alignItems: "center", gap: 6 },
-  tileTitle: { alignSelf: "stretch", textAlign: "center", fontFamily: GF.bold, fontSize: 12, color: GP.ink },
-  info: { width: 54, height: 58 },
-  infoEdge: { position: "absolute", left: 0, top: 4, width: 54, height: 54, borderRadius: 27 },
-  infoFace: { width: 54, height: 54, borderRadius: 27, alignItems: "center", justifyContent: "center" },
-  badge: {
-    position: "absolute",
-    top: -4,
-    right: -6,
-    minWidth: 20,
-    height: 20,
-    paddingHorizontal: 5,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: GP.berry,
-    borderWidth: 2,
-    borderColor: "#FFFFFF",
+  {
+    sheet: { backgroundColor: D.screen, shadowOpacity: 0, elevation: 0, boxShadow: "none", borderTopWidth: 1, borderColor: D.hairline },
+    grabber: { backgroundColor: "rgba(255,255,255,0.22)" },
+    title: { color: D.text },
+    tileTitle: { color: D.text },
+    badge: { borderColor: D.surface },
   },
-  badgeText: { fontFamily: GF.display, fontSize: 13, color: "#FFFFFF", fontVariant: ["tabular-nums"] },
-});
+);

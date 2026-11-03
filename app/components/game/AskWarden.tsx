@@ -6,7 +6,7 @@
 // phone held at arm's length outdoors is miserable.
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useRef, useState } from "react";
-import { ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { KeyboardAvoidingView } from "@/components/ui/keyboard";
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -15,14 +15,16 @@ import { askPrompt, type AskContext, OPENERS, plainAnswer, settleAnswer, type Tu
 import { useGame } from "@/features/game/runtime";
 import { askModel, startWardenModel, stopModel, useWardenModel } from "@/features/game/wardenModel";
 
-import { GameButton, GameIconButton, GameTitle, MAX_FONT_SCALE, announce, withAlpha } from "./kit";
+import { GameIconButton, MAX_FONT_SCALE, announce, pressFeedback } from "./kit";
+import { ACCENT, ELEVATION, RADIUS, SURFACES, TEXT_ON_DARK, TEXT_ON_LIGHT, useLook } from "./look";
+import { GameBackdrop } from "./GameBackdrop";
 import { SheetHost } from "./Sheet";
 import { GF, GP } from "./theme";
 import { wardenVoice } from "./wardenVoice";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
-const OPENER_COLORS = [GP.skyDeep, GP.berry, GP.sunDeep, GP.mint];
-const BRASS = "#C9A55C";
+const L = SURFACES.light;
+const D = SURFACES.dark;
 
 export default function AskWarden({ onClose }: { onClose: () => void }) {
   return (
@@ -34,6 +36,7 @@ export default function AskWarden({ onClose }: { onClose: () => void }) {
 
 function AskBody({ close }: { close: () => void }) {
   const styles = useThemedStyles(STYLE_PAIR);
+  const look = useLook();
   const insets = useSafeAreaInsets();
   const me = useGame((s) => s.me);
   const problem = useGame((s) => s.problem);
@@ -87,15 +90,18 @@ function AskBody({ close }: { close: () => void }) {
 
   return (
     <KeyboardAvoidingView behavior="padding" style={[styles.root, { paddingTop: insets.top + 24 }]}>
+      <GameBackdrop tint={ACCENT.sky.fill} />
       <View style={styles.header}>
-        <GameIconButton icon="close" color={GP.berry} diameter={40} onPress={close} accessibilityLabel="Close" />
+        <GameIconButton icon="close" diameter={40} onPress={close} accessibilityLabel="Close Ask the Warden" />
         <View style={{ flex: 1, alignItems: "center" }}>
-          <GameTitle text="ASK THE GAME" size={26} />
+          <Text style={styles.title} accessibilityRole="header" maxFontSizeMultiplier={MAX_FONT_SCALE}>
+            Ask the Warden
+          </Text>
         </View>
         {answering ? (
-          <GameIconButton icon="stop" color={GP.berry} diameter={40} onPress={stopModel} accessibilityLabel="Stop" />
+          <GameIconButton icon="stop" color={GP.berry} diameter={40} onPress={stopModel} accessibilityLabel="Stop the answer" />
         ) : turns.length ? (
-          <GameIconButton icon="refresh" color={GP.skyDeep} diameter={40} onPress={() => setTurns([])} accessibilityLabel="Clear" />
+          <GameIconButton icon="refresh" color={GP.skyDeep} diameter={40} onPress={() => setTurns([])} accessibilityLabel="Clear the conversation" />
         ) : (
           <View style={{ width: 40 }} />
         )}
@@ -103,20 +109,31 @@ function AskBody({ close }: { close: () => void }) {
 
       {turns.length === 0 ? (
         <Animated.View entering={FadeIn} style={styles.intro}>
-          <Ionicons name="cloud-offline" size={34} color={GP.sun} />
+          <Ionicons name={usesModel ? "cloud-offline" : "book"} size={32} color={ACCENT.sun.edge} />
           <View style={{ gap: 6, alignItems: "center" }}>
             <Text style={styles.introTitle} maxFontSizeMultiplier={MAX_FONT_SCALE}>
               {usesModel ? "This runs on your phone" : "Straight from the rulebook"}
             </Text>
             <Text style={styles.introText} maxFontSizeMultiplier={MAX_FONT_SCALE}>
               {usesModel
-                ? "It answers with no network at all, so it still works when the venue's signal does not. The server still judges the game; this only explains it."
-                : "Answers come from the game's own rules while the assistant finishes downloading. The server still judges the game; this only explains it."}
+                ? "No signal needed, so it still answers when the venue's wifi gives up. It explains the rules; the server still referees."
+                : "Answers come from the game's own rules while the Warden's model downloads. It explains; the server still referees."}
             </Text>
           </View>
-          <View style={{ gap: 6, alignSelf: "stretch", paddingHorizontal: 24 }}>
-            {OPENERS.map((o, i) => (
-              <GameButton key={o} title={o} size="medium" color={OPENER_COLORS[i % 4]} onPress={() => void send(o)} />
+          <View style={styles.openers}>
+            {OPENERS.map((o) => (
+              <Pressable
+                key={o}
+                onPressIn={pressFeedback}
+                onPress={() => void send(o)}
+                style={({ pressed }) => [styles.opener, !look.dark && ELEVATION.low, pressed && { transform: [{ scale: 0.98 }] }]}
+                accessibilityRole="button"
+                accessibilityLabel={`Ask: ${o}`}>
+                <Text style={styles.openerText} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+                  {o}
+                </Text>
+                <Ionicons name="arrow-forward" size={18} color={look.textMuted} />
+              </Pressable>
             ))}
           </View>
         </Animated.View>
@@ -126,7 +143,7 @@ function AskBody({ close }: { close: () => void }) {
             <Animated.View key={t.id} entering={FadeInDown.duration(200)} style={[styles.turn, t.fromPlayer ? styles.mine : styles.theirs]}>
               {t.rule ? (
                 <View style={styles.rule} accessible accessibilityLabel={`Rule: ${t.rule}`}>
-                  <Ionicons name="book" size={11} color={BRASS} style={{ marginTop: 2 }} />
+                  <Ionicons name="book" size={13} color={look.dark ? TEXT_ON_DARK.info : TEXT_ON_LIGHT.info} style={{ marginTop: 2 }} />
                   <Text style={styles.ruleText} maxFontSizeMultiplier={MAX_FONT_SCALE}>
                     {t.rule}
                   </Text>
@@ -147,7 +164,7 @@ function AskBody({ close }: { close: () => void }) {
           value={question}
           onChangeText={setQuestion}
           placeholder="Ask about the game"
-          placeholderTextColor="rgba(255,255,255,0.45)"
+          placeholderTextColor={look.textMuted}
           multiline
           style={styles.input}
           returnKeyType="send"
@@ -156,28 +173,47 @@ function AskBody({ close }: { close: () => void }) {
           accessibilityLabel="Ask about the game"
         />
         <View pointerEvents={canSend ? "auto" : "none"} accessibilityState={{ disabled: !canSend }}>
-          <GameIconButton icon="arrow-up" color={canSend ? GP.mint : "#737373"} diameter={44} onPress={() => void send(question)} accessibilityLabel="Send" />
+          <GameIconButton icon="arrow-up" solid color={canSend ? ACCENT.mint.fill : "#C9C1B2"} diameter={44} onPress={() => void send(question)} accessibilityLabel="Send your question" />
         </View>
       </View>
     </KeyboardAvoidingView>
   );
 }
 
-const STYLE_PAIR = themedStyles({
-  root: { ...StyleSheet.absoluteFill, backgroundColor: GP.navy },
-  header: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 16, paddingBottom: 8 },
-  intro: { flex: 1, alignItems: "center", justifyContent: "center", gap: 18 },
-  introTitle: { fontFamily: GF.display, fontSize: 24, color: "#FFF" },
-  introText: { fontFamily: GF.body, fontSize: 15, color: "rgba(255,255,255,0.7)", textAlign: "center", paddingHorizontal: 34 },
-  turns: { padding: 20, gap: 14 },
-  turn: { gap: 6 },
-  mine: { alignItems: "flex-end", paddingLeft: 40 },
-  theirs: { alignItems: "flex-start", paddingRight: 40 },
-  rule: { flexDirection: "row", gap: 7, paddingHorizontal: 14, paddingVertical: 9, borderRadius: 12, backgroundColor: withAlpha(BRASS, 0.1) },
-  ruleText: { flexShrink: 1, fontFamily: GF.regular, fontSize: 12, color: BRASS },
-  bubble: { fontFamily: GF.body, fontSize: 16, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 14, borderWidth: 1.5, borderColor: "rgba(255,255,255,0.18)", overflow: "hidden" },
-  bubbleMine: { color: GP.ink, backgroundColor: GP.sun },
-  bubbleTheirs: { color: "#FFF", backgroundColor: withAlpha(GP.navy, 0.9) },
-  composer: { flexDirection: "row", alignItems: "flex-end", gap: 10, paddingHorizontal: 16, paddingTop: 12 },
-  input: { flex: 1, maxHeight: 110, padding: 12, borderRadius: 12, backgroundColor: "rgba(255,255,255,0.1)", color: "#FFF", fontFamily: GF.body, fontSize: 16 },
-});
+const STYLE_PAIR = themedStyles(
+  {
+    root: { ...StyleSheet.absoluteFill, backgroundColor: L.screen },
+    header: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 16, paddingBottom: 8 },
+    title: { fontFamily: GF.display, fontSize: 28, lineHeight: 32, color: L.text },
+    intro: { flex: 1, alignItems: "center", justifyContent: "center", gap: 18 },
+    introTitle: { fontFamily: GF.bold, fontSize: 22, lineHeight: 26, color: L.text },
+    introText: { fontFamily: GF.regular, fontSize: 15, lineHeight: 21, color: L.textMuted, textAlign: "center", paddingHorizontal: 34 },
+    openers: { gap: 8, alignSelf: "stretch", paddingHorizontal: 20 },
+    opener: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 16, paddingVertical: 14, borderRadius: RADIUS.button, backgroundColor: L.surface },
+    openerText: { flex: 1, fontFamily: GF.body, fontSize: 16, lineHeight: 21, color: L.text },
+    turns: { padding: 20, gap: 14 },
+    turn: { gap: 6 },
+    mine: { alignItems: "flex-end", paddingLeft: 40 },
+    theirs: { alignItems: "flex-start", paddingRight: 40 },
+    rule: { flexDirection: "row", gap: 7, paddingHorizontal: 14, paddingVertical: 9, borderRadius: 12, backgroundColor: L.surfaceAlt },
+    ruleText: { flexShrink: 1, fontFamily: GF.regular, fontSize: 13, lineHeight: 18, color: L.textMuted },
+    bubble: { fontFamily: GF.regular, fontSize: 16, lineHeight: 22, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 16, overflow: "hidden" },
+    bubbleMine: { color: ACCENT.sun.label, backgroundColor: ACCENT.sun.fill },
+    bubbleTheirs: { color: L.text, backgroundColor: L.surface },
+    composer: { flexDirection: "row", alignItems: "flex-end", gap: 10, paddingHorizontal: 16, paddingTop: 12 },
+    input: { flex: 1, maxHeight: 110, padding: 12, borderRadius: RADIUS.button, backgroundColor: L.surface, borderWidth: 1, borderColor: L.hairline, color: L.text, fontFamily: GF.regular, fontSize: 16 },
+  },
+  {
+    root: { backgroundColor: D.screen },
+    title: { color: D.text },
+    introTitle: { color: D.text },
+    introText: { color: D.textMuted },
+    opener: { backgroundColor: D.surface, borderWidth: 1, borderColor: D.hairline },
+    openerText: { color: D.text },
+    rule: { backgroundColor: D.surfaceAlt },
+    ruleText: { color: D.textMuted },
+    bubbleMine: { color: ACCENT.sun.label, backgroundColor: ACCENT.sun.fill },
+    bubbleTheirs: { color: D.text, backgroundColor: D.surface },
+    input: { backgroundColor: D.surface, borderColor: D.hairline, color: D.text },
+  },
+);

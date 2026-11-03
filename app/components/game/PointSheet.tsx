@@ -16,17 +16,23 @@ import { useGame } from "@/features/game/runtime";
 import { siegeOf } from "@/features/game/siege";
 import { type QuestPoint, spinReady } from "@/features/game/wire";
 
-import { Chip, GameButton, GameIconButton, GamePanel, MAX_FONT_SCALE, withAlpha } from "./kit";
+import { GAME_TO_CHAT } from "@/features/world/factionLink";
+
+import { Chip, GameButton, GameIconButton, GamePanel, MAX_FONT_SCALE } from "./kit";
+import { ACCENT, FACTION, labelOn, REALM_CHIP, SURFACES } from "./look";
 import { HoldLine, SiegeLine, SpawnLine } from "./PointLines";
 import RaidLine from "./RaidLine";
 import { RaidCrown } from "./RaidParts";
 import { useCardMotion } from "./sheetMotion";
-import { GF, GP, realmColor, realmIcon, tierColor } from "./theme";
+import { GF, realmIcon, tierColor } from "./theme";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 
-/** Color(white: 0.6): the face of a button that cannot be pressed yet. */
-const WAIT_FACE = "#999999";
+/** The glyph on a waiting (disabled) button: the kit's muted label colour. */
+const WAIT_INK = SURFACES.light.textMuted;
+
+/** A glyph on a button face, in the face's own label colour (never white on Sun). */
+const on = (fill: string) => labelOn(fill);
 
 export default function PointSheet({
   point,
@@ -84,7 +90,7 @@ export default function PointSheet({
             <View style={{ flex: 1, gap: 6 }}>
               <View style={styles.chips}>
                 <Chip text={duel ? difficultyLabel(point.tier) : tierName(point.tier)} color={tint} />
-                <Chip text={challengeLabel(point.challenge)} color={GP.skyDeep} />
+                <Chip text={challengeLabel(point.challenge)} color={ACCENT.sky.fill} light />
               </View>
               <Text style={styles.name} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.7} accessibilityRole="header" maxFontSizeMultiplier={MAX_FONT_SCALE}>
                 {point.name}
@@ -93,8 +99,8 @@ export default function PointSheet({
                 {pointSubtitle(point)}
               </Text>
             </View>
-            <GameIconButton icon="chatbubbles" color={GP.skyDeep} diameter={36} onPress={onShare} accessibilityLabel={`Invite a chat to ${point.name}`} />
-            <GameIconButton icon="close" color="#7D949E" diameter={36} onPress={onClose} accessibilityLabel="Close" />
+            <GameIconButton icon="chatbubbles" color={ACCENT.sky.fill} diameter={36} onPress={onShare} accessibilityLabel={`Invite a chat to ${point.name}`} />
+            <GameIconButton icon="close" diameter={36} onPress={onClose} accessibilityLabel={`Close ${point.name}`} />
           </View>
 
           <SpawnLine point={point} />
@@ -104,46 +110,48 @@ export default function PointSheet({
           {legend ? <Text style={styles.legend}>{legend}</Text> : null}
 
           <View style={styles.realm} accessible accessibilityLabel={realmLine(point, factionName)}>
-            <Ionicons name={realmIcon(point.realm)} size={16} color={realmColor(point.realm)} />
-            <Text style={[styles.realmText, { color: realmColor(point.realm) }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+            {/* Realm colours live on chips only: a small realm swatch, the words in the page's muted ink. */}
+            <View style={[styles.realmDot, { backgroundColor: REALM_CHIP[point.realm ?? ""] ?? ACCENT.sky.fill }]}>
+              <Ionicons name={realmIcon(point.realm)} size={12} color="#FFFFFF" />
+            </View>
+            <Text style={styles.realmText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
               {realmLine(point, factionName)}
             </Text>
           </View>
 
           {cooling ? (
-            <GameButton title={rechargeText(point, now)} color={WAIT_FACE} disabled onPress={() => {}} icon={<Ionicons name="hourglass" size={22} color="#FFFFFF" />} />
+            <GameButton title={rechargeText(point, now)} disabled onPress={() => {}} icon={<Ionicons name="hourglass" size={20} color={WAIT_INK} />} />
           ) : inReach ? (
             <View style={styles.buttons}>
               {onSpin ? (
                 <GameButton
                   title={spinReady(point, now) ? "Spin" : "Resting"}
-                  color={GP.sky}
+                  color={ACCENT.sky.fill}
                   disabled={!spinReady(point, now)}
                   onPress={onSpin}
                   style={{ flex: 1 }}
-                  icon={<Ionicons name="sync" size={22} color="#FFFFFF" />}
+                  icon={<Ionicons name="sync" size={20} color={spinReady(point, now) ? on(ACCENT.sky.fill) : WAIT_INK} />}
                 />
               ) : null}
               <View style={{ flex: 1 }}>
               {siege ? (
               // A rival holds it: one answer won't take it, its Guardian has to be beaten.
-              <GameButton title="Siege" color={realmColor(siege.faction)} onPress={onPlay} icon={<Ionicons name="flag" size={22} color="#FFFFFF" />} />
+              <GameButton title="Siege" color={siegeFill(siege.faction)} onPress={onPlay} icon={<Ionicons name="flag" size={20} color={on(siegeFill(siege.faction))} />} />
             ) : boss ? (
               <GameButton title="Fight the boss" color={RAID_COLOR} onPress={onPlay} icon={<RaidCrown size={22} />} />
             ) : duel ? (
-              <GameButton title="Fight" color={GP.mint} onPress={onPlay} icon={<Ionicons name="flash" size={22} color="#FFFFFF" />} />
+              <GameButton title="Fight" color={ACCENT.sun.fill} onPress={onPlay} icon={<Ionicons name="flash" size={20} color={on(ACCENT.sun.fill)} />} />
             ) : (
-              <GameButton title="Play" color={GP.mint} onPress={onPlay} icon={<Ionicons name="play" size={22} color="#FFFFFF" />} />
+              <GameButton title="Play" color={ACCENT.sun.fill} onPress={onPlay} icon={<Ionicons name="play" size={20} color={on(ACCENT.sun.fill)} />} />
             )}
               </View>
             </View>
           ) : (
             <GameButton
               title={`${distanceText(distance)} away · walk closer`}
-              color={WAIT_FACE}
               disabled
               onPress={() => {}}
-              icon={<Ionicons name="walk" size={22} color="#FFFFFF" />}
+              icon={<Ionicons name="walk" size={20} color={WAIT_INK} />}
             />
           )}
         </View>
@@ -152,14 +160,31 @@ export default function PointSheet({
   );
 }
 
-const STYLE_PAIR = themedStyles({
-  wrap: { position: "absolute", left: 14, right: 14 },
-  head: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
-  chips: { flexDirection: "row", gap: 6, flexWrap: "wrap" },
-  name: { fontFamily: GF.display, fontSize: 26, color: GP.ink },
-  subtitle: { fontFamily: GF.regular, fontSize: 15, color: withAlpha(GP.ink, 0.7) },
-  legend: { fontFamily: GF.regular, fontSize: 15, fontStyle: "italic", color: withAlpha(GP.ink, 0.75) },
-  realm: { flexDirection: "row", alignItems: "center", gap: 8 },
-  buttons: { flexDirection: "row", gap: 10 },
-  realmText: { flexShrink: 1, fontFamily: GF.body, fontSize: 14 },
-});
+/** A siege is fought in the holder's deck-faction colour (realm -> deck faction). */
+function siegeFill(realm: string | null | undefined): string {
+  return FACTION[GAME_TO_CHAT[realm ?? ""] ?? ""]?.fill ?? ACCENT.berry.fill;
+}
+
+const L = SURFACES.light;
+const D = SURFACES.dark;
+
+const STYLE_PAIR = themedStyles(
+  {
+    wrap: { position: "absolute", left: 14, right: 14 },
+    head: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
+    chips: { flexDirection: "row", gap: 6, flexWrap: "wrap" },
+    name: { fontFamily: GF.display, fontSize: 28, lineHeight: 32, color: L.text },
+    subtitle: { fontFamily: GF.regular, fontSize: 15, lineHeight: 21, color: L.textMuted },
+    legend: { fontFamily: GF.regular, fontSize: 15, lineHeight: 21, fontStyle: "italic", color: L.textMuted },
+    realm: { flexDirection: "row", alignItems: "center", gap: 8 },
+    realmDot: { width: 20, height: 20, borderRadius: 10, alignItems: "center", justifyContent: "center" },
+    buttons: { flexDirection: "row", gap: 10 },
+    realmText: { flexShrink: 1, fontFamily: GF.body, fontSize: 13, lineHeight: 16, letterSpacing: 0.2, color: L.textMuted },
+  },
+  {
+    name: { color: D.text },
+    subtitle: { color: D.textMuted },
+    legend: { color: D.textMuted },
+    realmText: { color: D.textMuted },
+  },
+);

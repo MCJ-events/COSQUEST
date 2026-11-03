@@ -29,13 +29,14 @@ import {
 } from "@/features/game/coins";
 
 import { coinsStore, openCheckout, useCoins } from "./coinsModel";
-import { GameButton, GameCoin, GamePanel, MAX_FONT_SCALE, announce, pressFeedback, withAlpha } from "./kit";
+import { GameButton, GameCoin, GamePanel, MAX_FONT_SCALE, announce, pressFeedback } from "./kit";
 import { impact } from "./prefs";
 import { SheetHost } from "./Sheet";
 import { SheetFrame } from "./SheetFrame";
 import { SheetHeader } from "./SheetHeader";
 import { playSound } from "./sound";
-import { GF, GP } from "./theme";
+import { ACCENT, ELEVATION, RADIUS, SURFACES, TEXT_ON_DARK, TEXT_ON_LIGHT, useLook } from "./look";
+import { GF } from "./theme";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 import { settle, SPRING_PRESS } from "@/features/game/spring";
 
@@ -55,6 +56,7 @@ function CoinsBody({ close }: { close: () => void }) {
   const packs = coinsStore.packs();
   const balance = coinsStore.displayBalance();
   const shop = coins.config !== null && packs.length > 0;
+  const look = useLook();
 
   // On open, and back from the browser or the background (willEnterForeground).
   useEffect(() => {
@@ -101,7 +103,7 @@ function CoinsBody({ close }: { close: () => void }) {
             </View>
             {coins.problem ? <Text style={styles.problem}>{coins.problem}</Text> : null}
             <View style={styles.secure}>
-              <Ionicons name="lock-closed" size={11} color={withAlpha(GP.ink, 0.7)} />
+              <Ionicons name="lock-closed" size={12} color={look.textMuted} />
               <Text style={styles.secureText} maxFontSizeMultiplier={MAX_FONT_SCALE}>
                 Payment is handled securely by Stripe.
               </Text>
@@ -111,11 +113,9 @@ function CoinsBody({ close }: { close: () => void }) {
           // Outside the regions where the app may point at the web shop: said plainly, no other route.
           <GamePanel padding={14}>
             <View style={styles.notSold}>
-              <View style={styles.globe}>
-                <Ionicons name="globe" size={18} color="#FFF" />
-              </View>
+              <Ionicons name="globe" size={22} color={ACCENT.sky.fill} />
               <Text style={styles.notSoldText} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-                CosCoins are available in the US.
+                CosCoins are sold in the US only for now.
               </Text>
             </View>
           </GamePanel>
@@ -125,7 +125,7 @@ function CoinsBody({ close }: { close: () => void }) {
           <SectionTitle text="History" />
           {coins.history.length === 0 ? (
             <Text style={styles.empty} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-              Nothing yet. Coins you buy or spend show up here.
+              No coins in or out yet. Every pack you buy and every coin you spend lands here.
             </Text>
           ) : (
             <GamePanel padding={6}>
@@ -148,7 +148,7 @@ function SectionTitle({ text }: { text: string }) {
   const styles = useThemedStyles(STYLE_PAIR);
   return (
     <Text style={styles.section} accessibilityRole="header" maxFontSizeMultiplier={MAX_FONT_SCALE}>
-      {text.toUpperCase()}
+      {text}
     </Text>
   );
 }
@@ -159,6 +159,7 @@ const PRESS = SPRING_PRESS;
 function PackCard({ pack, disabled, onPress }: { pack: CoinPack; disabled: boolean; onPress: () => void }) {
   const styles = useThemedStyles(STYLE_PAIR);
   const tag = packTag(pack);
+  const look = useLook();
   const down = useSharedValue(0);
   const style = useAnimatedStyle(() => ({ transform: [{ scale: 1 - 0.05 * down.get() }] }));
   return (
@@ -177,8 +178,7 @@ function PackCard({ pack, disabled, onPress }: { pack: CoinPack; disabled: boole
       accessibilityLabel={packLabel(pack)}
       accessibilityState={{ disabled }}>
       <Animated.View style={[style, disabled && { opacity: 0.6 }]}>
-        <View style={[styles.packEdge, { backgroundColor: tag === "best_value" ? GP.sunDeep : GP.slate }]} />
-        <View style={styles.pack}>
+        <View style={[styles.pack, tag === "best_value" && styles.packBest, !look.dark && ELEVATION.low]}>
           <View style={styles.packTop}>
             <GameCoin size={30} />
             {tag ? (
@@ -207,14 +207,14 @@ function PackCard({ pack, disabled, onPress }: { pack: CoinPack; disabled: boole
 function HistoryLine({ row }: { row: CoinHistoryRow }) {
   const styles = useThemedStyles(STYLE_PAIR);
   const up = row.delta >= 0;
+  const look = useLook();
+  const ok = look.dark ? TEXT_ON_DARK.success : TEXT_ON_LIGHT.success;
   const title = row.label ?? historyTitle(row.kind);
   const [now] = useState(() => Date.now());
   const when = relativeWhen(row.at, now);
   return (
     <View style={styles.line} accessible accessibilityLabel={`${title}, ${when}, ${up ? "plus" : "minus"} ${Math.abs(row.delta)} CosCoins`}>
-      <View style={styles.lineIcon}>
-        <Ionicons name={historyIcon(row.kind)} size={13} color={up ? GP.mint : GP.mist} />
-      </View>
+      <Ionicons name={historyIcon(row.kind)} size={18} color={up ? ok : look.textMuted} style={{ width: 22 }} />
       <View style={{ flex: 1, gap: 1 }}>
         <Text style={styles.lineTitle} numberOfLines={1} maxFontSizeMultiplier={MAX_FONT_SCALE}>
           {title}
@@ -224,11 +224,11 @@ function HistoryLine({ row }: { row: CoinHistoryRow }) {
         </Text>
       </View>
       {row.receipt_url ? (
-        <Pressable onPress={() => void Linking.openURL(row.receipt_url!)} hitSlop={8} accessibilityRole="link" accessibilityLabel="Receipt">
-          <Ionicons name="document-text" size={15} color={GP.skyDeep} />
+        <Pressable onPress={() => void Linking.openURL(row.receipt_url!)} hitSlop={8} accessibilityRole="link" accessibilityLabel={`Receipt for ${title}`}>
+          <Ionicons name="document-text" size={16} color={look.dark ? TEXT_ON_DARK.info : TEXT_ON_LIGHT.info} />
         </Pressable>
       ) : null}
-      <Text style={[styles.delta, { color: up ? GP.mint : withAlpha(GP.ink, 0.75) }]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+      <Text style={[styles.delta, { color: up ? ok : look.text }]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
         {deltaText(row.delta)}
       </Text>
     </View>
@@ -259,7 +259,7 @@ function GainedMoment({ coins, onDone }: { coins: number; onDone: () => void }) 
   }, [coins, landed, reduce]);
   return (
     <Animated.View entering={FadeIn} exiting={FadeOut} style={styles.moment} accessibilityViewIsModal>
-      <Pressable style={StyleSheet.absoluteFill} onPress={onDone} accessibilityLabel="Close" />
+      <Pressable style={StyleSheet.absoluteFill} onPress={onDone} accessibilityLabel="Close the coins moment" />
       <View style={styles.momentCol} accessible accessibilityLabel={`${coins} CosCoins added`}>
         <Animated.View style={coinStyle}>
           <GameCoin size={84} />
@@ -267,44 +267,66 @@ function GainedMoment({ coins, onDone }: { coins: number; onDone: () => void }) 
         <Text style={styles.momentCount}>+{formatCoins(countAt(coins, step))}</Text>
         <Text style={styles.momentLine}>CosCoins added</Text>
       </View>
-      <GameButton title="Nice" color={GP.sun} onPress={onDone} style={{ alignSelf: "center", marginTop: 6 }} />
+      <GameButton title="Nice" color={ACCENT.sun.fill} onPress={onDone} style={{ alignSelf: "center", marginTop: 6 }} />
     </Animated.View>
   );
 }
 
-const STYLE_PAIR = themedStyles({
-  body: { paddingHorizontal: 18, gap: 16 },
-  balanceRow: { flexDirection: "row", alignItems: "center", gap: 14 },
-  balance: { fontFamily: GF.display, fontSize: 34, color: GP.ink, fontVariant: ["tabular-nums"] },
-  balanceUnit: { fontFamily: GF.bold, fontSize: 14, color: withAlpha(GP.ink, 0.6) },
-  small: { marginTop: 10, fontFamily: GF.bold, fontSize: 12, color: withAlpha(GP.ink, 0.55) },
-  section: { paddingTop: 4, fontFamily: GF.display, fontSize: 13, letterSpacing: 1.4, color: "#FFF", textShadowColor: "rgba(0,0,0,0.4)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 },
-  grid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", rowGap: 12 },
-  packWrap: { width: "48%" },
-  packEdge: { position: "absolute", left: 0, right: 0, top: 4, bottom: -4, borderRadius: 14 },
-  pack: { gap: 8, padding: 12, borderRadius: 14, backgroundColor: GP.cream, shadowColor: "#000", shadowOpacity: 0.18, shadowRadius: 3, shadowOffset: { width: 0, height: 3 } },
-  packTop: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 4 },
-  tag: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, backgroundColor: GP.sun },
-  tagText: { fontFamily: GF.display, fontSize: 10, letterSpacing: 0.8, color: GP.ink },
-  packTotal: { fontFamily: GF.display, fontSize: 24, color: GP.ink, fontVariant: ["tabular-nums"] },
-  packSub: { fontFamily: GF.bold, fontSize: 11, color: withAlpha(GP.ink, 0.55) },
-  price: { alignItems: "center", paddingVertical: 7, borderRadius: 10, backgroundColor: GP.mint },
-  priceText: { fontFamily: GF.display, fontSize: 16, color: "#FFF" },
-  problem: { fontFamily: GF.bold, fontSize: 13, color: GP.sun },
-  secure: { flexDirection: "row", alignItems: "center", gap: 6 },
-  secureText: { fontFamily: GF.bold, fontSize: 12, color: withAlpha(GP.ink, 0.7) },
-  notSold: { flexDirection: "row", alignItems: "center", gap: 12 },
-  globe: { width: 36, height: 36, borderRadius: 9, alignItems: "center", justifyContent: "center", backgroundColor: GP.skyDeep },
-  notSoldText: { flex: 1, fontFamily: GF.display, fontSize: 16, color: GP.ink },
-  empty: { fontFamily: GF.bold, fontSize: 14, color: "rgba(255,255,255,0.9)" },
-  rule: { height: 1, marginHorizontal: 10, backgroundColor: withAlpha(GP.ink, 0.08) },
-  line: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 10, paddingVertical: 9 },
-  lineIcon: { width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: withAlpha(GP.ink, 0.06) },
-  lineTitle: { fontFamily: GF.bold, fontSize: 14, color: GP.ink },
-  lineWhen: { fontFamily: GF.bold, fontSize: 11, color: withAlpha(GP.ink, 0.5) },
-  delta: { fontFamily: GF.display, fontSize: 16, fontVariant: ["tabular-nums"] },
-  moment: { ...StyleSheet.absoluteFill, backgroundColor: "rgba(0,0,0,0.55)", alignItems: "center", justifyContent: "center", padding: 28, gap: 14 },
-  momentCol: { alignItems: "center", gap: 14 },
-  momentCount: { fontFamily: GF.display, fontSize: 56, color: "#FFF", fontVariant: ["tabular-nums"] },
-  momentLine: { fontFamily: GF.display, fontSize: 18, color: "rgba(255,255,255,0.85)" },
-});
+const L = SURFACES.light;
+const D = SURFACES.dark;
+
+const STYLE_PAIR = themedStyles(
+  {
+    body: { paddingHorizontal: 18, gap: 18 },
+    balanceRow: { flexDirection: "row", alignItems: "center", gap: 14 },
+    balance: { fontFamily: GF.display, fontSize: 40, lineHeight: 44, color: L.text, fontVariant: ["tabular-nums"] },
+    balanceUnit: { fontFamily: GF.body, fontSize: 14, color: L.textMuted },
+    small: { marginTop: 10, fontFamily: GF.regular, fontSize: 12, lineHeight: 16, color: L.textMuted },
+    section: { paddingTop: 4, paddingLeft: 4, fontFamily: GF.display, fontSize: 20, lineHeight: 24, color: L.text },
+    grid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", rowGap: 12 },
+    packWrap: { width: "48%" },
+    pack: { gap: 8, padding: 12, borderRadius: RADIUS.card, backgroundColor: L.surface, borderWidth: 2, borderColor: "transparent" },
+    packBest: { borderColor: ACCENT.coin.fill },
+    packTop: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 4 },
+    tag: { paddingHorizontal: 7, paddingVertical: 1, borderRadius: RADIUS.chip, backgroundColor: ACCENT.coin.fill },
+    tagText: { fontFamily: GF.bold, fontSize: 12, lineHeight: 15, letterSpacing: 0.4, color: ACCENT.coin.label },
+    packTotal: { fontFamily: GF.display, fontSize: 26, lineHeight: 30, color: L.text, fontVariant: ["tabular-nums"] },
+    packSub: { fontFamily: GF.regular, fontSize: 12, lineHeight: 16, color: L.textMuted },
+    // The price is the button: Sun with an ink label (never white on Sun).
+    price: { alignItems: "center", paddingVertical: 8, borderRadius: 12, backgroundColor: ACCENT.sun.fill, borderBottomWidth: 3, borderBottomColor: ACCENT.sun.edge },
+    priceText: { fontFamily: GF.display, fontSize: 17, lineHeight: 21, color: ACCENT.sun.label },
+    problem: { fontFamily: GF.bold, fontSize: 14, color: TEXT_ON_LIGHT.danger },
+    secure: { flexDirection: "row", alignItems: "center", gap: 6 },
+    secureText: { fontFamily: GF.regular, fontSize: 12, color: L.textMuted },
+    notSold: { flexDirection: "row", alignItems: "center", gap: 12 },
+    notSoldText: { flex: 1, fontFamily: GF.body, fontSize: 16, lineHeight: 21, color: L.text },
+    empty: { fontFamily: GF.regular, fontSize: 14, lineHeight: 20, color: L.textMuted, paddingHorizontal: 4 },
+    rule: { height: 1, marginHorizontal: 10, backgroundColor: L.hairline },
+    line: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 12, paddingVertical: 10 },
+    lineTitle: { fontFamily: GF.bold, fontSize: 15, color: L.text },
+    lineWhen: { fontFamily: GF.regular, fontSize: 12, color: L.textMuted },
+    delta: { fontFamily: GF.display, fontSize: 17, fontVariant: ["tabular-nums"] },
+    moment: { ...StyleSheet.absoluteFill, backgroundColor: L.scrim, alignItems: "center", justifyContent: "center", padding: 28, gap: 14 },
+    momentCol: { alignItems: "center", gap: 14 },
+    momentCount: { fontFamily: GF.display, fontSize: 56, lineHeight: 60, color: "#FFFFFF", fontVariant: ["tabular-nums"] },
+    momentLine: { fontFamily: GF.bold, fontSize: 18, color: "#F3F0E8" },
+  },
+  {
+    balance: { color: D.text },
+    balanceUnit: { color: D.textMuted },
+    small: { color: D.textMuted },
+    section: { color: D.text },
+    pack: { backgroundColor: D.surface, borderColor: D.hairline },
+    packBest: { borderColor: ACCENT.coin.fill },
+    packTotal: { color: D.text },
+    packSub: { color: D.textMuted },
+    problem: { color: TEXT_ON_DARK.danger },
+    secureText: { color: D.textMuted },
+    notSoldText: { color: D.text },
+    empty: { color: D.textMuted },
+    rule: { backgroundColor: D.hairline },
+    lineTitle: { color: D.text },
+    lineWhen: { color: D.textMuted },
+    moment: { backgroundColor: D.scrim },
+  },
+);

@@ -69,9 +69,11 @@ describe("world store", () => {
 
 describe("faction veil colour", () => {
   it("prefers the game faction, then the chat's, then the sky", () => {
-    assert.equal(factionVeilColor("marvel", "icons"), "#E33636");
-    assert.equal(factionVeilColor(null, "icons"), "#6E80F6");
-    assert.equal(factionVeilColor("nope", "nope"), "#2B99D6");
+    // The deck faction wins; a realm maps to its deck faction; realm colours never tint the map.
+    assert.equal(factionVeilColor("marvel", "icons"), "#7C5CF0");
+    assert.equal(factionVeilColor("anime", null), "#D633A8");
+    assert.equal(factionVeilColor(null, "icons"), "#7C5CF0");
+    assert.equal(factionVeilColor("nope", "nope"), "#1F7FC2");
   });
 });
 

@@ -30,4 +30,25 @@ describe("map layers", () => {
     assert.equal(layers.roads[1].d, "M0 0L0 -20", "the one-point road is dropped");
     assert.equal(layers.extent, 500);
   });
+
+  it("lifts buildings by height (2.5D), splits woods from parks, leaves sidewalks off, draws trees", () => {
+    const layers = buildLayers({
+      ...ground,
+      roads: [...ground.roads, { w: 2, k: "path", d: "sidewalk", p: [[0, 0], [9, 0]] }],
+      green: [
+        { k: "park", p: [[0, 0], [2, 0], [2, 2]] },
+        { k: "wood", p: [[5, 5], [6, 5], [6, 6]] },
+      ],
+      buildings: [
+        { h: 6, p: [[0, 0], [4, 0], [4, 3]] },
+        { h: 40, p: [[10, 0], [14, 0], [14, 3]] },
+      ],
+      trees: [[1, 2, 1, 0]],
+    });
+    assert.deepEqual(layers.blocks.map((b) => b.lift), [1.4, 4]);
+    assert.equal(layers.green, "M0 0L2 0L2 -2Z");
+    assert.equal(layers.wood, "M5 -5L6 -5L6 -6Z");
+    assert.ok(!layers.roads.some((r) => r.d.includes("L9 0")), "the sidewalk is left off");
+    assert.ok(layers.trees.startsWith("M-1.2 -2a2.2 2.2"), layers.trees);
+  });
 });

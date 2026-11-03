@@ -18,11 +18,17 @@
 // moved the camera follows the player; dragged away, it stays put until
 // "Back to me" (or the rail's Centre on me). Pins, beacons and the player's
 // face stay upright and screen-sized (mapCamera.tsx MapPin).
+//
+// The look is the art direction's map ("Sunlit Real Places" 6.4): the 3D
+// world's land use and colours (GroundPaths.tsx), a sky band at the top so the
+// map and the fight share a sky, rarity pins standing on soft ground shadows,
+// the player on a faction puck inside a solid faction reach ring.
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { memo, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type ComponentProps, memo, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { PixelRatio, Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import { LinearGradient } from "expo-linear-gradient";
 import Animated, {
   type SharedValue,
   cancelAnimation,
@@ -36,18 +42,17 @@ import Animated, {
   FadeOutDown,
   withDecay,
   withRepeat,
-  withSequence,
   withTiming,
 } from "react-native-reanimated";
-import Svg, { Defs, Path, Pattern, Rect } from "react-native-svg";
+import Svg, { Defs, LinearGradient as SvgGradient, Path, Pattern, Rect, Stop } from "react-native-svg";
 
 import { toLocal, type LatLng } from "@/features/game/geo";
 import { keepFocal, panned, shortAngle } from "@/features/game/mapCameraMath";
 import { buildLayers, type MapLayers } from "@/features/game/mapPaths";
 import { groundRaster } from "@/features/game/mapRaster";
 import { spreadPins } from "@/features/game/pinSpread";
-import { effectiveHour, hourForScheme, mapStyle, type MapStyle, timeOfDay } from "@/features/game/mapStyle";
-import { useScheme } from "@/theme/scheme";
+import type { MapStyle } from "@/features/game/mapStyle";
+import { GAME_TO_CHAT } from "@/features/world/factionLink";
 import { raidTint } from "@/features/game/raids";
 import { pinTint } from "@/features/game/siege";
 import type { NearbyRoom } from "@/features/game/rooms";
@@ -56,12 +61,12 @@ import type { GroundGeometry, QuestPoint } from "@/features/game/wire";
 import { GroundPaths } from "./GroundPaths";
 import GroundTiles, { type LoadGround } from "./GroundTiles";
 import { useMapBench } from "./mapBenchRunner";
-import { SHEET_EASE_OUT } from "./sheetMotion";
+import { REACH_PULSE, SHEET_EASE_OUT, usePinDrop } from "./sheetMotion";
 import { MapCameraContext, MapPin, PIN_SPOT, useUpright } from "./mapCamera";
-import { useWorldClock } from "./prefs";
+import { ACCENT, ELEVATION, FACTION, RADIUS, useLook, useMapLook } from "./look";
 import { RaidCrown } from "./RaidParts";
 import RoomBeacon from "./RoomBeacon";
-import { GF, GP, realmColor, realmIcon, tierColor } from "./theme";
+import { GF, tierColor } from "./theme";
 import { useRenderCount } from "@/utils/perfMarks";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
@@ -89,21 +94,6 @@ const FLY_Y = 0.34;
 
 /** How far the map may be dragged from where the world was cut, metres (tiles load all the way). */
 export const PAN_LIMIT_M = 1500;
-
-/** The map's colours for the hour the town is lit for, looked at again each minute. */
-function useMapStyle(): MapStyle {
-  const clock = useWorldClock();
-  const [now, setNow] = useState(() => new Date());
-  useEffect(() => {
-    const t = setInterval(() => setNow(new Date()), 60_000);
-    return () => clearInterval(t);
-  }, []);
-  const dark = useScheme() === "dark";
-  const hour = hourForScheme(clock, effectiveHour(clock, now), dark);
-  // Only a change of bucket redraws the ground.
-  const bucket = timeOfDay(hour);
-  return useMemo(() => mapStyle(hour), [bucket]); // eslint-disable-line react-hooks/exhaustive-deps
-}
 
 type Props = {
   ground: GroundGeometry | null;
@@ -159,7 +149,7 @@ export default function WorldMap(props: Props) {
   const size = extent * 2 * MAP_SCALE;
   // Only the untiled board draws the store's single ground answer.
   const layers = useMemo(() => (ground && !props.loadGround ? buildLayers(ground) : null), [ground, props.loadGround]);
-  const look = useMapStyle();
+  const look = useMapLook();
 
   const ax = width / 2;
   const ay = height * PLAYER_Y;
@@ -508,10 +498,8 @@ export default function WorldMap(props: Props) {
               {/* Your reach and the fix's accuracy, in metres on the ground: they zoom with it. */}
               {fix ? (
                 <Animated.View pointerEvents="none" style={[styles.me, meStyle]}>
-                  <View style={[styles.ring, { width: reachPx * 2, height: reachPx * 2, borderRadius: reachPx, left: -reachPx, top: -reachPx, borderColor: props.factionColor }]}>
-                    <View style={[StyleSheet.absoluteFill, { borderRadius: reachPx, backgroundColor: props.factionColor, opacity: 0.08 }]} />
-                  </View>
                   <View style={[styles.accuracy, { width: accuracyPx * 2, height: accuracyPx * 2, borderRadius: accuracyPx, left: -accuracyPx, top: -accuracyPx }]} />
+                  <ReachRing radius={reachPx} color={props.factionColor} still={reduceMotion} />
                 </Animated.View>
               ) : null}
               {points.map((p) => {
@@ -525,7 +513,7 @@ export default function WorldMap(props: Props) {
                 const inReach = props.inReach(p);
                 return (
                   <MapPin key={p.id} left={spot.left + spot.dx} top={spot.top + spot.dy} zIndex={selected ? 3 : inReach ? 2 : 1}>
-                    <PointMarker point={p} selected={selected} inReach={inReach} cooling={props.cooling(p)} onPress={props.onSelect} />
+                    <PointMarker point={p} selected={selected} inReach={inReach} cooling={props.cooling(p)} onPress={props.onSelect} look={look} />
                   </MapPin>
                 );
               })}
@@ -543,7 +531,7 @@ export default function WorldMap(props: Props) {
               })}
               {fix ? (
                 <Animated.View pointerEvents="none" style={[styles.me, styles.meTop, meStyle]}>
-                  <PlayerFace color={props.factionColor} badge={props.playerBadge} />
+                  <PlayerFace color={props.factionColor} badge={props.playerBadge} heading={!!props.headingUp} />
                 </Animated.View>
               ) : null}
             </Animated.View>
@@ -551,6 +539,13 @@ export default function WorldMap(props: Props) {
             <View style={[StyleSheet.absoluteFill, { backgroundColor: look.land }]} />
           )}
 
+          {/* The sky at the top of the map: the world's own (Golden by day, Dusk after), fading into the land. */}
+          <LinearGradient
+            pointerEvents="none"
+            colors={[look.skyUpper, look.skyHorizon, `${look.land}00`]}
+            locations={[0, 0.45, 1]}
+            style={[styles.sky, { height: Math.min(200, height * 0.2) }]}
+          />
           {ground?.attribution ? (
             <Text style={[styles.attribution, { color: look.ink }]} pointerEvents="none">
               {ground.attribution}
@@ -565,6 +560,7 @@ export default function WorldMap(props: Props) {
 /** "Back to me": GameRoot shows it once the map has been moved off the player (WorldMap onFollowChange). */
 export function BackToMe({ onPress }: { onPress: () => void }) {
   const styles = useThemedStyles(STYLE_PAIR);
+  const look = useLook();
   return (
     <Animated.View entering={BACK_IN} exiting={BACK_OUT} pointerEvents="box-none" style={styles.backWrap}>
       <Pressable
@@ -573,11 +569,11 @@ export function BackToMe({ onPress }: { onPress: () => void }) {
           onPress();
         }}
         hitSlop={8}
-        style={({ pressed }) => [styles.back, pressed && { transform: [{ scale: 0.96 }] }]}
+        style={({ pressed }) => [styles.back, { backgroundColor: look.surface, borderColor: look.hairline }, !look.dark && ELEVATION.float, pressed && { transform: [{ scale: 0.96 }] }]}
         accessibilityRole="button"
         accessibilityLabel="Back to me: centre the map on you">
-        <Ionicons name="navigate" size={16} color="#FFFFFF" />
-        <Text style={styles.backText}>Back to me</Text>
+        <Ionicons name="navigate" size={16} color={look.dark ? "#7DBDF0" : ACCENT.sky.fill} />
+        <Text style={[styles.backText, { color: look.text }]}>Back to me</Text>
       </Pressable>
     </Animated.View>
   );
@@ -609,14 +605,43 @@ const Ground = memo(function Ground({ layers, extent, size, look }: { layers: Ma
   );
 });
 
-const MARKER = 46;
+/** A pin's token inside its 3 px white ring (art direction 6.4: 40 pt in all; dense streets need the room). */
+const TOKEN = 34;
+const STEM = 10;
+/** A pin in reach stands this much taller. */
+const LIFT = 6;
+/** The zoom past which every pin carries its name. */
+const LABEL_ZOOM = 1.3;
 
-/** The pin's colour by the rule the iOS world uses: raid > holder > tier (siege.ts pinTint). */
+/** The pin's colour by the rule the iOS world uses: raid > holder > rarity (siege.ts pinTint). */
 export function pinFill(p: QuestPoint): string {
   const tint = pinTint(p);
   if (tint.kind === "raid") return raidTint(p) ?? tierColor(p.tier);
-  if (tint.kind === "holder") return realmColor(tint.faction);
-  return tierColor(tint.tier);
+  return tierColor(p.tier);
+}
+
+/** The deck faction's colour of whoever holds a point (realm -> deck faction), or null. */
+export function holderColor(p: QuestPoint): string | null {
+  const tint = pinTint(p);
+  if (tint.kind !== "holder" || !tint.faction) return null;
+  const deck = GAME_TO_CHAT[tint.faction] ?? tint.faction;
+  return FACTION[deck]?.fill ?? null;
+}
+
+/** What you do there, as a glyph: the same family (Ionicons filled) as the rest of the UI. */
+export function challengeGlyph(p: QuestPoint): ComponentProps<typeof Ionicons>["name"] {
+  switch (p.challenge) {
+    case "duel":
+      return "shield";
+    case "blitz":
+      return "flash";
+    case "sequence":
+      return "list";
+    case "rebus":
+      return "extension-puzzle";
+    default:
+      return "bulb";
+  }
 }
 
 const PointMarker = memo(function PointMarker({
@@ -625,49 +650,96 @@ const PointMarker = memo(function PointMarker({
   inReach,
   cooling,
   onPress,
+  look,
 }: {
   point: QuestPoint;
   selected: boolean;
   inReach: boolean;
   cooling: boolean;
   onPress: (p: QuestPoint) => void;
+  look: MapStyle;
 }) {
   const styles = useThemedStyles(STYLE_PAIR);
   useRenderCount("PointMarker");
-  // RoamHomeView.object: a boss's raid tint, else its holder's colour, else its tier's.
-  const color = cooling ? "#9AA7B0" : pinFill(point);
-  const ring = cooling ? "#C9D1D6" : "#FFFFFF";
-  const pulse = useSharedValue(0);
-  useEffect(() => {
-    if (inReach && !cooling) {
-      pulse.set(withRepeat(withSequence(withTiming(1, { duration: 900 }), withTiming(0, { duration: 0 })), -1));
-    } else {
-      pulse.set(0);
-    }
-  }, [inReach, cooling, pulse]);
-  const pulseStyle = useAnimatedStyle(() => ({
-    opacity: 0.55 * (1 - pulse.get()),
-    transform: [{ scale: 1 + pulse.get() * 0.9 }],
-  }));
+  const pinDrop = usePinDrop();
+  const cam = useContext(MapCameraContext);
+  const color = cooling ? (look.dark ? "#5C667C" : "#B3B9C0") : pinFill(point);
+  const band = cooling ? null : holderColor(point);
+  const ready = inReach && !cooling;
+  const lift = ready ? LIFT : 0;
   const isDuel = point.challenge === "duel";
+  // The name shows when zoomed in, and always on the chosen pin.
+  const labelStyle = useAnimatedStyle(() => {
+    const z = cam ? cam.zoom.get() : 1;
+    return { opacity: selected ? 1 : Math.max(0, Math.min(1, (z - LABEL_ZOOM) / 0.15)) };
+  });
   return (
-    <Pressable
-      onPress={() => onPress(point)}
-      // Small: spread pins sit a little over a pin's width apart (pinSpread.ts),
-      // so a bigger slop would reach into the neighbour's face.
-      hitSlop={4}
-      // Stands on its spot in the MapPin box (the box keeps it upright).
-      style={[styles.marker, { left: PIN_SPOT.left - MARKER / 2, top: PIN_SPOT.top - MARKER }]}
-      accessibilityRole="button"
-      accessibilityLabel={`${point.name}, ${point.tier} ${isDuel ? "Guardian" : point.challenge}${point.extra?.holder ? ", held" : ""}${cooling ? ", recharging" : ""}${inReach ? ", in reach" : ""}`}>
-      {inReach && !cooling ? <Animated.View style={[styles.pulse, { borderColor: color }, pulseStyle]} /> : null}
-      <View style={[styles.pin, { backgroundColor: color, borderColor: selected ? GP.navy : ring, transform: [{ scale: selected ? 1.15 : 1 }] }]}>
-        {point.source === "raid" ? <RaidCrown size={20} /> : <Ionicons name={isDuel ? "shield" : realmIcon(point.realm)} size={20} color="#FFFFFF" />}
-      </View>
-      <View style={[styles.stem, { backgroundColor: selected ? GP.navy : color }]} />
-    </Pressable>
+    <Animated.View entering={pinDrop} style={StyleSheet.absoluteFill} pointerEvents="box-none">
+      {/* The pin's shadow on the ground, under its spot (not a drop shadow); a mint ring round it when it is in reach. */}
+      <View pointerEvents="none" style={[styles.groundShadow, { left: PIN_SPOT.left - 9, top: PIN_SPOT.top - 3 }]} />
+      <Pressable
+        onPress={() => onPress(point)}
+        // Small: spread pins sit a little over a pin's width apart (pinSpread.ts),
+        // so a bigger slop would reach into the neighbour's face.
+        hitSlop={4}
+        // Stands on its spot in the MapPin box (the box keeps it upright).
+        style={[styles.marker, { left: PIN_SPOT.left - TOKEN / 2 - 3, top: PIN_SPOT.top - TOKEN - STEM - lift }]}
+        accessibilityRole="button"
+        accessibilityLabel={`${point.name}, ${point.tier} ${isDuel ? "Guardian" : point.challenge}${point.extra?.holder ? ", held" : ""}${cooling ? ", recharging" : ""}${inReach ? ", in reach" : ""}`}>
+        <View
+          style={[
+            styles.pin,
+            // In reach: a Mint ring (and the pin stands taller); chosen: an ink ring.
+            { backgroundColor: color, borderColor: selected ? (look.dark ? "#F3F0E8" : "#1C2B3A") : ready ? ACCENT.mint.fill : "#FFFFFF", transform: [{ scale: selected ? 1.12 : 1 }] },
+          ]}>
+          {point.source === "raid" ? <RaidCrown size={18} /> : <Ionicons name={challengeGlyph(point)} size={17} color="#FFFFFF" />}
+        </View>
+        {band ? <View style={[styles.band, { backgroundColor: band }]} /> : null}
+        <View style={[styles.stem, { height: STEM + lift - (band ? 6 : 0), backgroundColor: "#FFFFFF" }]} />
+      </Pressable>
+      {ready && selected ? (
+        <View pointerEvents="none" style={[styles.ready, { top: PIN_SPOT.top + 6 }]}>
+          <Text style={styles.readyText} maxFontSizeMultiplier={1.1}>
+            READY
+          </Text>
+        </View>
+      ) : null}
+      <Animated.View pointerEvents="none" style={[styles.labelWrap, { top: PIN_SPOT.top + (ready && selected ? 26 : 6) }, labelStyle]}>
+        <Text
+          numberOfLines={1}
+          maxFontSizeMultiplier={1.1}
+          style={[styles.label, { color: look.label, textShadowColor: look.labelHalo }]}>
+          {point.name}
+        </Text>
+      </Animated.View>
+    </Animated.View>
   );
 });
+
+/**
+ * Your reach, in metres on the ground (it zooms with it): a solid ring in your
+ * faction's colour over an 8 % wash, breathing slowly (reachPulse 1.6 s).
+ */
+function ReachRing({ radius, color, still }: { radius: number; color: string; still: boolean }) {
+  const styles = useThemedStyles(STYLE_PAIR);
+  const t = useSharedValue(0);
+  useEffect(() => {
+    if (still) {
+      t.set(0);
+      return;
+    }
+    t.set(withRepeat(withTiming(1, { duration: REACH_PULSE.ms / 2, easing: Easing.inOut(Easing.sin) }), -1, true));
+  }, [still, t]);
+  const [s0, s1] = REACH_PULSE.scale;
+  const [o0, o1] = REACH_PULSE.opacity;
+  const pulse = useAnimatedStyle(() => ({ opacity: o0 + (o1 - o0) * t.get(), transform: [{ scale: s0 + (s1 - s0) * t.get() }] }));
+  return (
+    <>
+      <View style={[styles.reachFill, { width: radius * 2, height: radius * 2, borderRadius: radius, left: -radius, top: -radius, backgroundColor: color }]} />
+      <Animated.View style={[styles.reachRing, { width: radius * 2, height: radius * 2, borderRadius: radius, left: -radius, top: -radius, borderColor: color }, pulse]} />
+    </>
+  );
+}
 
 /** A crowded pin's thin line back to its real spot, with a dot on the spot. */
 function PinLeader({ left, top, dx, dy }: { left: number; top: number; dx: number; dy: number }) {
@@ -689,19 +761,37 @@ function PinLeader({ left, top, dx, dy }: { left: number; top: number; dx: numbe
   );
 }
 
-/** The player's face (or dot), upright and screen-sized at the centre of their spot. */
-function PlayerFace({ color, badge }: { color: string; badge?: ReactNode }) {
+/**
+ * You (art direction 6.4): a puck in your faction's colour with a white ring,
+ * standing at your spot; your Forge face above it when you wear one; and,
+ * with heading up on, a soft cone the way you face (the map turns so that is up).
+ */
+function PlayerFace({ color, badge, heading }: { color: string; badge?: ReactNode; heading: boolean }) {
   const styles = useThemedStyles(STYLE_PAIR);
   const upright = useUpright();
   return (
     <Animated.View style={[styles.face, upright]}>
+      {heading ? (
+        <Svg width={84} height={60} style={styles.cone} pointerEvents="none">
+          <Defs>
+            <SvgGradient id="cq-cone" x1="0" y1="1" x2="0" y2="0">
+              <Stop offset="0" stopColor={color} stopOpacity={0.3} />
+              <Stop offset="1" stopColor={color} stopOpacity={0} />
+            </SvgGradient>
+          </Defs>
+          {/* 60 degrees wide, from the puck's centre upward. */}
+          <Path d="M42 60 L7.4 0 A70 70 0 0 1 76.6 0 Z" fill="url(#cq-cone)" />
+        </Svg>
+      ) : null}
+      <View style={[styles.puck, { backgroundColor: color }]}>
+        <View style={styles.puckDot} />
+      </View>
       {badge ? (
-        <View style={[styles.playerBadge, { borderColor: color }]}>{badge}</View>
-      ) : (
-        <View style={[styles.player, { backgroundColor: color }]}>
-          <View style={styles.playerDot} />
+        <View style={styles.standing}>
+          <View style={[styles.playerBadge, { borderColor: color }]}>{badge}</View>
+          <View style={[styles.standingStem, { backgroundColor: color }]} />
         </View>
-      )}
+      ) : null}
     </Animated.View>
   );
 }
@@ -723,51 +813,90 @@ const STYLE_PAIR = themedStyles({
   },
   marker: {
     position: "absolute",
-    width: MARKER,
-    height: MARKER + 8,
+    width: TOKEN + 6,
     alignItems: "center",
   },
   pin: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: TOKEN + 6,
+    height: TOKEN + 6,
+    borderRadius: RADIUS.pill,
     borderWidth: 3,
     alignItems: "center",
     justifyContent: "center",
-    elevation: 4,
-    shadowColor: "#000",
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
+  },
+  band: {
+    width: 22,
+    height: 6,
+    borderRadius: 3,
+    marginTop: -3,
+    borderWidth: 1.5,
+    borderColor: "#FFFFFF",
+  },
+  stem: {
+    width: 2,
+    borderRadius: 1,
+  },
+  groundShadow: {
+    position: "absolute",
+    width: 18,
+    height: 6,
+    borderRadius: 9,
+    backgroundColor: "rgba(16,24,40,0.2)",
+  },
+  ready: {
+    position: "absolute",
+    alignSelf: "center",
+    left: PIN_SPOT.left - 26,
+    width: 52,
+    alignItems: "center",
+    paddingVertical: 2,
+    borderRadius: RADIUS.chip,
+    backgroundColor: ACCENT.mint.fill,
+    borderWidth: 1.5,
+    borderColor: "#FFFFFF",
+  },
+  readyText: {
+    fontFamily: GF.bold,
+    fontSize: 11,
+    lineHeight: 14,
+    letterSpacing: 0.6,
+    color: "#FFFFFF",
+  },
+  labelWrap: {
+    position: "absolute",
+    left: PIN_SPOT.left - 80,
+    width: 160,
+    alignItems: "center",
+  },
+  label: {
+    fontFamily: GF.body,
+    fontSize: 12,
+    lineHeight: 15,
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 3,
+  },
+  reachFill: {
+    position: "absolute",
+    opacity: 0.08,
+  },
+  reachRing: {
+    position: "absolute",
+    borderWidth: 2.5,
   },
   leader: {
     position: "absolute",
     height: 2,
     borderRadius: 1,
-    backgroundColor: "rgba(31,59,77,0.45)",
+    backgroundColor: "rgba(28,43,58,0.4)",
   },
   leaderDot: {
     position: "absolute",
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: "rgba(31,59,77,0.6)",
+    backgroundColor: "rgba(28,43,58,0.55)",
     borderWidth: 1.5,
     borderColor: "#FFFFFF",
-  },
-  stem: {
-    width: 4,
-    height: 8,
-    borderBottomLeftRadius: 2,
-    borderBottomRightRadius: 2,
-  },
-  pulse: {
-    position: "absolute",
-    top: 0,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: 3,
   },
   me: {
     position: "absolute",
@@ -779,16 +908,10 @@ const STYLE_PAIR = themedStyles({
   meTop: {
     zIndex: 5,
   },
-  ring: {
-    position: "absolute",
-    borderWidth: 2,
-    borderStyle: "dashed",
-    opacity: 0.6,
-  },
   accuracy: {
     position: "absolute",
-    backgroundColor: GP.skyDeep,
-    opacity: 0.14,
+    backgroundColor: ACCENT.sky.fill,
+    opacity: 0.1,
   },
   face: {
     position: "absolute",
@@ -799,6 +922,39 @@ const STYLE_PAIR = themedStyles({
     alignItems: "center",
     justifyContent: "center",
   },
+  cone: {
+    position: "absolute",
+    left: 20 - 42,
+    top: 20 - 60,
+  },
+  puck: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 3,
+    borderColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+    ...ELEVATION.float,
+  },
+  puckDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#FFFFFF",
+  },
+  standing: {
+    position: "absolute",
+    left: 20 - 22,
+    top: 20 - 62,
+    width: 44,
+    alignItems: "center",
+  },
+  standingStem: {
+    width: 3,
+    height: 10,
+    borderRadius: 1.5,
+  },
   backWrap: {
     alignSelf: "center",
   },
@@ -808,51 +964,30 @@ const STYLE_PAIR = themedStyles({
     gap: 6,
     paddingHorizontal: 16,
     paddingVertical: 10,
-    borderRadius: 22,
-    backgroundColor: GP.navy,
-    borderWidth: 2,
-    borderColor: "#FFFFFF",
-    elevation: 6,
-    shadowColor: "#000",
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 3 },
+    borderRadius: RADIUS.pill,
+    borderWidth: 1,
   },
   backText: {
-    fontFamily: GF.display,
+    fontFamily: GF.bold,
     fontSize: 15,
-    color: "#FFFFFF",
+    lineHeight: 19,
   },
-  player: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    borderWidth: 3,
-    borderColor: "#FFFFFF",
-    alignItems: "center",
-    justifyContent: "center",
-    elevation: 6,
-    shadowColor: "#000",
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
+  sky: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: 0,
   },
   playerBadge: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     borderWidth: 3,
     overflow: "hidden",
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#FFFFFF",
     elevation: 6,
-  },
-  playerDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "#FFFFFF",
   },
   attribution: {
     position: "absolute",

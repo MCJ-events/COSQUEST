@@ -4,7 +4,6 @@
 // could change, so it flips on the minute by the phone's clock without a
 // refetch; the calendar itself is fetched every 5 minutes.
 // costquest-ios Features/LiveFeature.swift (LiveBanner, LiveCard).
-import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
@@ -14,7 +13,8 @@ import { liveCalendar, livePlace, useLiveCalendar } from "@/features/game/liveRu
 import { useGame } from "@/features/game/runtime";
 
 import { HUD_FONT_SCALE, pressFeedback } from "./kit";
-import { GF, GP } from "./theme";
+import { ACCENT, ELEVATION, RADIUS, SURFACES } from "./look";
+import { GF } from "./theme";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 /** The phone's clock (its zone is read per instant, so a zone change still shows). */
@@ -89,54 +89,71 @@ export default function LiveBanner({ parked, onOpen }: { parked: boolean; onOpen
   );
 }
 
-/** One flat card for "on now" and "starting soon", drawn like the nearby
- * cards: a hard edge, a sun tile, the name, and when (no pulse, no glow). */
+/**
+ * One paper plate for "on now" and "starting soon", like the rest of the HUD:
+ * the XP multiplier leads (it is the news), then the event and when. Live
+ * events carry a Sun bar down the left; no icon tile, no pulse, no glow.
+ */
 function LiveCard({ title, detail, multiplier, isLive, pressed }: { title: string; detail: string; multiplier: string; isLive: boolean; pressed: boolean }) {
   const styles = useThemedStyles(STYLE_PAIR);
   return (
-    <View style={[styles.edge, { paddingBottom: pressed ? 1 : 3, marginTop: pressed ? 2 : 0 }]}>
-      <View style={[styles.card, { borderColor: isLive ? GP.sun : withAlpha(GP.navy, 0.18) }]}>
-        <View style={[styles.tile, { backgroundColor: isLive ? GP.sun : withAlpha(GP.sun, 0.22) }]}>
-          <Ionicons name={isLive ? "flash" : "time"} size={20} color={isLive ? "#FFF" : GP.sunDeep} />
-        </View>
-        <View style={styles.text}>
-          <Text style={styles.title} numberOfLines={1} maxFontSizeMultiplier={HUD_FONT_SCALE}>
-            {title.toUpperCase()}
-          </Text>
-          <Text style={styles.detail} numberOfLines={1} maxFontSizeMultiplier={HUD_FONT_SCALE}>
-            {detail}
-          </Text>
-        </View>
-        <Text style={styles.mult} maxFontSizeMultiplier={HUD_FONT_SCALE}>{multiplier} XP</Text>
+    <View style={[styles.card, pressed && styles.pressed]}>
+      {isLive ? <View style={styles.bar} /> : null}
+      <View style={[styles.mult, !isLive && styles.multSoon]}>
+        <Text style={[styles.multText, !isLive && styles.multTextSoon]} maxFontSizeMultiplier={HUD_FONT_SCALE}>
+          {multiplier}
+        </Text>
+        <Text style={[styles.multUnit, !isLive && styles.multTextSoon]} maxFontSizeMultiplier={HUD_FONT_SCALE}>
+          XP
+        </Text>
+      </View>
+      <View style={styles.text}>
+        <Text style={styles.title} numberOfLines={1} maxFontSizeMultiplier={HUD_FONT_SCALE}>
+          {title}
+        </Text>
+        <Text style={styles.detail} numberOfLines={1} maxFontSizeMultiplier={HUD_FONT_SCALE}>
+          {detail}
+        </Text>
       </View>
     </View>
   );
 }
 
-const STYLE_PAIR = themedStyles({
-  edge: { borderRadius: 16, backgroundColor: "rgba(0,0,0,0.18)" },
-  card: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderRadius: 16,
-    borderWidth: 2,
-    backgroundColor: GP.cream,
+const L = SURFACES.light;
+const D = SURFACES.dark;
+
+const STYLE_PAIR = themedStyles(
+  {
+    card: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      paddingLeft: 10,
+      paddingRight: 14,
+      paddingVertical: 8,
+      borderRadius: RADIUS.card,
+      overflow: "hidden",
+      backgroundColor: L.surface,
+      borderWidth: 1,
+      borderColor: L.hairline,
+      ...ELEVATION.float,
+    },
+    pressed: { transform: [{ scale: 0.98 }] },
+    bar: { position: "absolute", left: 0, top: 0, bottom: 0, width: 4, backgroundColor: ACCENT.sun.fill },
+    mult: { minWidth: 48, height: 40, paddingHorizontal: 6, borderRadius: RADIUS.chip, alignItems: "center", justifyContent: "center", backgroundColor: ACCENT.sun.fill },
+    multSoon: { backgroundColor: L.surfaceAlt },
+    multText: { fontFamily: GF.display, fontSize: 18, lineHeight: 20, color: ACCENT.sun.label },
+    multUnit: { fontFamily: GF.bold, fontSize: 12, lineHeight: 13, color: ACCENT.sun.label },
+    multTextSoon: { color: L.text },
+    text: { flex: 1, gap: 1 },
+    title: { fontFamily: GF.display, fontSize: 16, lineHeight: 20, color: L.text },
+    detail: { fontFamily: GF.regular, fontSize: 13, lineHeight: 17, color: L.textMuted },
   },
-  tile: { width: 42, height: 42, borderRadius: 12, alignItems: "center", justifyContent: "center" },
-  text: { flex: 1, gap: 1 },
-  title: { fontFamily: GF.display, fontSize: 16, letterSpacing: 0.6, color: GP.ink },
-  detail: { fontFamily: GF.body, fontSize: 13, color: GP.mist },
-  mult: {
-    fontFamily: GF.display,
-    fontSize: 15,
-    color: GP.sunDeep,
-    paddingHorizontal: 9,
-    paddingVertical: 5,
-    borderRadius: 14,
-    overflow: "hidden",
-    backgroundColor: withAlpha(GP.sun, 0.2),
+  {
+    card: { backgroundColor: D.surface, borderColor: D.hairline, shadowOpacity: 0, elevation: 0, boxShadow: "none" },
+    multSoon: { backgroundColor: D.surfaceAlt },
+    multTextSoon: { color: D.text },
+    title: { color: D.text },
+    detail: { color: D.textMuted },
   },
-});
+);

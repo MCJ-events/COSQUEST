@@ -99,3 +99,33 @@ export function useCardMotion() {
   const reduce = useReducedMotion();
   return reduce ? { entering: FADE_ENTER, exiting: FADE_EXIT } : { entering: CARD_IN, exiting: CARD_OUT };
 }
+
+// ---------- "Sunlit Real Places" motion tokens (art direction 6.3) ----------
+// Reduce Motion: no pulses, no shake, fades only (each hook below falls back to a fade).
+
+/** A pin arriving on the map: drops 24 pt onto its spot, decelerating, no bounce past the ground. */
+export const PIN_DROP_MS = 320;
+export const PIN_DROP = new Keyframe({
+  0: { opacity: 0, transform: [{ translateY: -24 }] },
+  100: { opacity: 1, transform: [{ translateY: 0 }], easing: SHEET_EASE_OUT },
+}).duration(PIN_DROP_MS);
+
+/** The reach ring breathing: 1.0 -> 1.06 scale, 0.9 -> 0.5 opacity, one breath per 1.6 s. */
+export const REACH_PULSE = { ms: 1600, scale: [1, 1.06], opacity: [0.9, 0.5] } as const;
+
+/** A damage number: pops 0.6 -> 1.15 -> 1.0 in 180 ms, rises 56 pt over 700 ms, fades over the last 200 ms. */
+export const DAMAGE_POP = { popMs: 180, scale: [0.6, 1.15, 1], risePx: 56, riseMs: 700, fadeTailMs: 200 } as const;
+
+/** A reward count rolling up (coins, XP): 600 ms, easing out. */
+export const REWARD_COUNT_MS = 600;
+/** Reward rows arriving one after another. */
+export const REWARD_ROW_STAGGER_MS = 90;
+
+/** A title card (VICTORY, a place's name): in 220 ms, hold 480 ms, out 200 ms. */
+export const TITLE_CARD = { inMs: 220, holdMs: 480, outMs: 200 } as const;
+
+/** A pin's arrival, or a short fade under Reduce Motion. */
+export function usePinDrop() {
+  const reduce = useReducedMotion();
+  return reduce ? FADE_ENTER : PIN_DROP;
+}

@@ -129,20 +129,38 @@ export const GAME_FACTION_COLORS: Record<string, string> = {
   gaming: "#33C773",
 };
 
-/** The chat's faction colours (constants/factions.ts glowColour). */
+/**
+ * The deck's faction colours: one set for the reach ring, the puck, territory,
+ * badges and the fight's ground ring ("Sunlit Real Places" 2.7; the clashing
+ * pairs pulled apart: Icons off Controllers' blue, Everborn off Ascendants' magenta).
+ */
 export const CHAT_FACTION_COLORS: Record<string, string> = {
   ascendants: "#D633A8",
-  icons: "#6E80F6",
+  icons: "#7C5CF0",
   controllers: "#2D6ED2",
   blockbusters: "#C8D800",
-  everborn: "#F92896",
-  everborns: "#F92896",
-  celestials: "#50BEF5",
+  everborn: "#F03A5F",
+  everborns: "#F03A5F",
+  celestials: "#35B9E6",
 };
 
-/** The veil colour: the game faction if known, else the chat's, else the game's sky. */
+/** The game's realm -> the deck faction it belongs to (features/world/factionLink.ts GAME_TO_CHAT). */
+const REALM_TO_DECK: Record<string, string> = {
+  anime: "ascendants",
+  marvel: "icons",
+  dc: "icons",
+  gaming: "controllers",
+  movies: "blockbusters",
+};
+
+/**
+ * The veil colour, and the player's colour on the map: the deck (chat) faction
+ * first, else the deck faction the game realm belongs to, else the Sky accent.
+ * Realm colours stay on quiz and codex chips; they never tint the map.
+ */
 export function factionVeilColor(gameFaction?: string | null, chatFaction?: string | null): string {
-  if (gameFaction && GAME_FACTION_COLORS[gameFaction]) return GAME_FACTION_COLORS[gameFaction];
   if (chatFaction && CHAT_FACTION_COLORS[chatFaction]) return CHAT_FACTION_COLORS[chatFaction];
-  return "#2B99D6";
+  const deck = gameFaction ? REALM_TO_DECK[gameFaction] : undefined;
+  if (deck) return CHAT_FACTION_COLORS[deck];
+  return "#1F7FC2";
 }

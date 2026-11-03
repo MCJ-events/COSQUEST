@@ -16,6 +16,7 @@ import { type SpeechEngine, VoiceAnswer, voicePrompt } from "@/features/game/voi
 import { nativeHelpers } from "@/modules/costquest-game/src";
 import { store } from "@/store/store";
 
+import { SURFACES } from "./look";
 import { GF, GP } from "./theme";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
@@ -101,8 +102,12 @@ export default function SayItButton({ choices, removed, onPick }: { choices: str
   );
 }
 
-const STYLE_PAIR = themedStyles({
-  row: { flexDirection: "row", alignItems: "center", gap: 10 },
-  mic: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },
-  line: { flex: 1, fontFamily: GF.bold, fontSize: 14, color: "#FFF" },
-});
+const STYLE_PAIR = themedStyles(
+  {
+    row: { flexDirection: "row", alignItems: "center", gap: 10 },
+    mic: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },
+    // On the quiz's paper (cream by day, ink by dusk).
+    line: { flex: 1, fontFamily: GF.body, fontSize: 14, lineHeight: 19, color: SURFACES.light.text },
+  },
+  { line: { color: SURFACES.dark.text } },
+);

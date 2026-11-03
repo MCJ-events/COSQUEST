@@ -110,11 +110,13 @@ import Fight3D from "./Fight3D";
 import FightReveal, { REVEAL_ISLAND_OFF } from "./FightReveal";
 import { fightRevealOn } from "./prefs";
 import { CostQuestSummonView, summonARSupported } from "@/modules/costquest-game/src";
-import { announce, GameButton, MAX_FONT_SCALE, ProgressBar } from "./kit";
+import { GameBackdrop } from "./GameBackdrop";
+import { announce, GameButton, GameIconButton, MAX_FONT_SCALE, ProgressBar } from "./kit";
+import { ACCENT, contrast, edgeColor, ELEVATION, HUD_GLASS, labelOn, RADIUS, SURFACES, TEXT_ON_DARK, TEXT_ON_LIGHT, useLook } from "./look";
 import { RaidDuelBriefing } from "./RaidDuel";
 import type { RewardSummary } from "./Reward";
 import { playSound } from "./sound";
-import { edgeOf, GF, GP, realmColor, realmIcon, tierColor } from "./theme";
+import { edgeOf, GF, GP, realmColor, tierColor } from "./theme";
 import { wardenVoice } from "./wardenVoice";
 import { useRenderCount } from "@/utils/perfMarks";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
@@ -555,7 +557,7 @@ function PauseButton({ top, onPress }: { top: number; onPress: () => void }) {
       accessibilityRole="button"
       accessibilityLabel="Pause"
       accessibilityHint="Pauses the fight. You can resume, see how to play, or leave.">
-      <Ionicons name="pause" size={18} color="#FFF" />
+      <Ionicons name="pause" size={18} color="#FFFFFF" />
     </Pressable>
   );
 }
@@ -577,24 +579,26 @@ function Briefing({
 }) {
   const styles = useThemedStyles(STYLE_PAIR);
   const insets = useSafeAreaInsets();
-  const color = realmColor(point.realm);
+  const look = useLook();
+  // The Guardian's rarity (art direction 6.5: the page with a faint rarity light at the top; realm colours never tint the fight).
+  const color = tierColor(point.tier);
+  const tintText = readableTint(color, look.screen, look.text);
   const me = gameStore.get().me;
   const holder = point.extra?.holder_name ?? (point.extra?.holder ? gameStore.factionName(point.extra.holder) : null);
   return (
     <View style={styles.root}>
-      <View style={[styles.header, { backgroundColor: color, paddingTop: insets.top + 8 }]}>
-        <Ionicons name={point.realm === "anime" ? "flame" : realmIcon(point.realm)} size={300} color="rgba(0,0,0,0.10)" style={styles.emblem} />
+      <GameBackdrop tint={color} />
+      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+        <Ionicons name="shield" size={300} color={`${color}24`} style={styles.emblem} />
         <View style={styles.topBar}>
-          <Pressable onPress={onClose} style={styles.iconButton} accessibilityRole="button" accessibilityLabel="Leave" hitSlop={8}>
-            <Ionicons name="close" size={22} color="#FFF" />
-          </Pressable>
+          <GameIconButton icon="close" diameter={42} onPress={onClose} accessibilityLabel={`Leave ${point.name}`} />
           <Text style={styles.placeChip} numberOfLines={1} maxFontSizeMultiplier={MAX_FONT_SCALE}>
             {point.name.toUpperCase()}
           </Text>
         </View>
         <View style={{ flex: 1 }} />
         <Animated.View entering={FadeIn.duration(400)} accessible accessibilityLabel={`${gameStore.factionName(point.realm)} Guardian. ${guardianName(point)}`}>
-          <Text style={styles.kicker} maxFontSizeMultiplier={MAX_FONT_SCALE}>{`${gameStore.factionName(point.realm)} Guardian`.toUpperCase()}</Text>
+          <Text style={[styles.kicker, { color: tintText }]} maxFontSizeMultiplier={MAX_FONT_SCALE}>{`${gameStore.factionName(point.realm)} Guardian`.toUpperCase()}</Text>
           <Text style={styles.guardian} numberOfLines={3} adjustsFontSizeToFit maxFontSizeMultiplier={MAX_FONT_SCALE}>
             {guardianName(point)}
           </Text>
@@ -602,11 +606,11 @@ function Briefing({
       </View>
       <View style={[styles.lower, { paddingBottom: insets.bottom + 20 }]}>
         <View style={styles.facts} accessible accessibilityLabel={`Difficulty ${duelDifficulty(point.tier)}. You ${me ? `level ${me.standing.level}` : "unknown level"}. Distance ${distanceText(gameStore.distanceTo(point))}.`}>
-          <Fact label="DIFFICULTY" value={duelDifficulty(point.tier)} color={tierColor(point.tier)} />
+          <Fact label="DIFFICULTY" value={duelDifficulty(point.tier)} color={readableTint(color, look.surface, look.text)} />
           <View style={styles.divider} />
-          <Fact label="YOU" value={me ? `Lv ${me.standing.level}` : "-"} color={GP.ink} />
+          <Fact label="YOU" value={me ? `Lv ${me.standing.level}` : "-"} color={look.text} />
           <View style={styles.divider} />
-          <Fact label="DISTANCE" value={distanceText(gameStore.distanceTo(point))} color={GP.ink} />
+          <Fact label="DISTANCE" value={distanceText(gameStore.distanceTo(point))} color={look.text} />
         </View>
         <Text style={styles.blurb} maxFontSizeMultiplier={MAX_FONT_SCALE}>
           {point.extra?.holder && point.extra.holder === gameStore.get().me?.faction
@@ -624,9 +628,9 @@ function Briefing({
           </Text>
         ) : null}
         {busy ? (
-          <ActivityIndicator color={GP.navy} accessibilityLabel="Finding your opponent" />
+          <ActivityIndicator color={look.textMuted} accessibilityLabel="Finding your opponent" />
         ) : (
-<GameButton title="Fight" color={GP.sun} onPress={onFight} icon={<Ionicons name="flash" size={20} color="#FFF" />} testID="duel-fight" />
+          <GameButton title="Fight" color={ACCENT.sun.fill} onPress={onFight} icon={<Ionicons name="flash" size={20} color={labelOn(ACCENT.sun.fill)} />} testID="duel-fight" />
         )}
       </View>
     </View>
@@ -1055,35 +1059,48 @@ function Fighter({ pose, look, color, guardian }: { pose: SharedValue<Pose>; loo
   );
 }
 
-const STYLE_PAIR = themedStyles({
-  root: { ...StyleSheet.absoluteFill, backgroundColor: GP.cream },
-  header: { flex: 1, paddingHorizontal: 16, paddingBottom: 26, overflow: "hidden" },
+/** A tint as words on the page: itself if it reads (AA), else its darker edge, else the ink. */
+function readableTint(color: string, page: string, ink: string): string {
+  if (contrast(color, page) >= 4.5) return color;
+  const edge = edgeColor(color, 0.6);
+  return contrast(edge, page) >= 4.5 ? edge : ink;
+}
+
+const L = SURFACES.light;
+const D = SURFACES.dark;
+
+const STYLE_PAIR = themedStyles(
+  {
+  root: { ...StyleSheet.absoluteFill, backgroundColor: L.screen },
+  header: { flex: 1, paddingHorizontal: 16, paddingBottom: 22, overflow: "hidden" },
   emblem: { position: "absolute", right: -70, top: 20 },
-  topBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  iconButton: { width: 42, height: 42, borderRadius: 21, backgroundColor: "rgba(30,58,76,0.85)", alignItems: "center", justifyContent: "center" },
+  topBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 },
   placeChip: {
     maxWidth: "70%",
-    fontFamily: GF.display,
+    fontFamily: GF.bold,
     fontSize: 13,
-    letterSpacing: 1.4,
-    color: "#FFF",
+    lineHeight: 16,
+    letterSpacing: 0.6,
+    color: L.text,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 16,
+    borderRadius: RADIUS.chip,
     overflow: "hidden",
-    backgroundColor: "rgba(30,58,76,0.85)",
+    backgroundColor: L.surface,
+    borderWidth: 1,
+    borderColor: L.hairline,
   },
-  kicker: { fontFamily: GF.display, fontSize: 13, letterSpacing: 1.6, color: "rgba(255,255,255,0.9)" },
-  guardian: { fontFamily: GF.display, fontSize: 40, color: "#FFF" },
-  lower: { paddingHorizontal: 16, paddingTop: 22, gap: 16, borderTopWidth: 5, borderTopColor: GP.navy },
-  facts: { flexDirection: "row", alignItems: "center", paddingVertical: 14, borderRadius: 16, backgroundColor: "#FFF", borderWidth: 1.5, borderColor: "rgba(30,58,76,0.12)" },
+  kicker: { fontFamily: GF.bold, fontSize: 13, lineHeight: 16, letterSpacing: 1 },
+  guardian: { fontFamily: GF.display, fontSize: 40, lineHeight: 44, color: L.text },
+  lower: { paddingHorizontal: 16, paddingTop: 18, gap: 14 },
+  facts: { flexDirection: "row", alignItems: "center", paddingVertical: 14, borderRadius: RADIUS.card, backgroundColor: L.surface, ...ELEVATION.low },
   fact: { flex: 1, alignItems: "center", gap: 4 },
-  factLabel: { fontFamily: GF.display, fontSize: 11, letterSpacing: 1.2, color: GP.mist },
-  factValue: { fontFamily: GF.display, fontSize: 20 },
-  divider: { width: 1.5, height: 36, backgroundColor: "rgba(30,58,76,0.12)" },
-  blurb: { fontFamily: GF.body, fontSize: 15, color: "rgba(30,58,76,0.7)" },
-  howto: { fontFamily: GF.regular, fontSize: 12, color: GP.mist },
-  problem: { fontFamily: GF.body, fontSize: 14, color: GP.berry },
+  factLabel: { fontFamily: GF.bold, fontSize: 12, lineHeight: 15, letterSpacing: 0.8, color: L.textMuted },
+  factValue: { fontFamily: GF.display, fontSize: 20, lineHeight: 24 },
+  divider: { width: 1, height: 36, backgroundColor: L.hairline },
+  blurb: { fontFamily: GF.body, fontSize: 15, lineHeight: 21, color: L.text },
+  howto: { fontFamily: GF.regular, fontSize: 12, lineHeight: 16, color: L.textMuted },
+  problem: { fontFamily: GF.body, fontSize: 14, lineHeight: 18, color: TEXT_ON_LIGHT.danger },
   arena: { ...StyleSheet.absoluteFill, overflow: "hidden" },
   sky: { ...StyleSheet.absoluteFill, bottom: "40%" },
   ground: { position: "absolute", left: 0, right: 0, bottom: 0 },
@@ -1093,16 +1110,16 @@ const STYLE_PAIR = themedStyles({
   barName: { fontFamily: GF.display, fontSize: 13, color: "#FFF" },
   meterRow: { gap: 3, width: "70%" },
   meterCell: { flex: 1, height: 6, borderRadius: 3, overflow: "hidden", backgroundColor: "rgba(0,0,0,0.35)" },
-  clock: { width: 48, height: 48, borderRadius: 24, backgroundColor: "rgba(0,0,0,0.4)", alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: "rgba(255,255,255,0.5)" },
+  clock: { width: 48, height: 48, borderRadius: 24, backgroundColor: HUD_GLASS.fill, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: HUD_GLASS.border },
   clockText: { fontFamily: GF.display, fontSize: 20, color: "#FFF" },
   specials: { position: "absolute", right: 14, flexDirection: "row", gap: 10 },
   special: { width: 74, height: 64, borderRadius: 20, alignItems: "center", justifyContent: "center", gap: 2 },
-  specialText: { fontFamily: GF.bold, fontSize: 11 },
-  pause: { position: "absolute", right: 14, width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(0,0,0,0.35)", alignItems: "center", justifyContent: "center" },
+  specialText: { fontFamily: GF.bold, fontSize: 12, lineHeight: 15 },
+  pause: { position: "absolute", right: 14, width: 40, height: 40, borderRadius: 20, backgroundColor: HUD_GLASS.fill, borderWidth: 1, borderColor: HUD_GLASS.border, alignItems: "center", justifyContent: "center" },
   stage: { ...StyleSheet.absoluteFill, backgroundColor: GP.navy },
   centerCol: { ...StyleSheet.absoluteFill, alignItems: "center", justifyContent: "center", gap: 14, padding: 24 },
   statusText: { fontFamily: GF.display, fontSize: 20, color: "#FFF", textAlign: "center" },
-  judging: { alignItems: "center", gap: 12, padding: 24, borderRadius: 20, backgroundColor: "rgba(0,0,0,0.55)" },
+  judging: { alignItems: "center", gap: 12, padding: 24, borderRadius: RADIUS.card, backgroundColor: HUD_GLASS.fill, borderWidth: 1, borderColor: HUD_GLASS.border },
   failed: { fontFamily: GF.display, fontSize: 22, color: "#FFF", textAlign: "center" },
   center: { ...StyleSheet.absoluteFill, alignItems: "center", justifyContent: "center" },
   countdown: { fontFamily: GF.display, fontSize: 84, color: "#FFF", textShadowColor: "rgba(0,0,0,0.4)", textShadowOffset: { width: 0, height: 4 }, textShadowRadius: 0.1 },
@@ -1120,4 +1137,16 @@ const STYLE_PAIR = themedStyles({
   shield: { position: "absolute", top: 20, left: 54, width: 26, height: 84, borderRadius: 14, borderWidth: 5, borderLeftWidth: 0 },
   legs: { flexDirection: "row", gap: 6, marginTop: 0 },
   leg: { width: 14, height: 42, borderRadius: 7, transformOrigin: "50% 0%" },
-});
+  },
+  {
+  root: { backgroundColor: D.screen },
+  placeChip: { color: D.text, backgroundColor: D.surface, borderColor: D.hairline },
+  guardian: { color: D.text },
+  facts: { backgroundColor: D.surface, borderWidth: 1, borderColor: D.hairline, shadowOpacity: 0, elevation: 0, boxShadow: "none" },
+  factLabel: { color: D.textMuted },
+  divider: { backgroundColor: D.hairline },
+  blurb: { color: D.text },
+  howto: { color: D.textMuted },
+  problem: { color: TEXT_ON_DARK.danger },
+  },
+);

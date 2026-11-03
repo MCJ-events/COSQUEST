@@ -15,8 +15,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { type ReactNode, useEffect, useState } from "react";
-import { LinearGradient } from "expo-linear-gradient";
-import { ActivityIndicator, BackHandler, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { BackHandler, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeIn, FadeOut, useAnimatedStyle, useReducedMotion, useSharedValue, withSequence, withSpring, withTiming } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -53,11 +52,12 @@ import type { CollectionTab } from "@/features/game/collection";
 import { ForgeArmourySection, ForgeWeaponDetail } from "./ForgeArmoury";
 import { ForgeBagPanel } from "./ForgeWorld";
 import { GameBackdrop } from "./GameBackdrop";
-import { announce, Chip, GameButton, GameHeading, GameIconButton, GamePanel, MAX_FONT_SCALE, pressFeedback, withAlpha } from "./kit";
+import { announce, Chip, GameButton, GameHeading, GameIconButton, GamePanel, MAX_FONT_SCALE, pressFeedback } from "./kit";
 import { RelicArt, RelicPips, RelicSunburst, rarityColor, rarityInk, SHARD } from "./RelicArt";
 import { SheetHeader } from "./SheetHeader";
 import { playSound } from "./sound";
-import { edgeOf, GF, GP, realmColor, realmIcon } from "./theme";
+import { ACCENT, ELEVATION, labelOn, RADIUS, RARITY, SURFACES, TEXT_ON_DARK, TEXT_ON_LIGHT, useLook } from "./look";
+import { GF, realmColor } from "./theme";
 import { useOnScreen } from "./useOnScreen";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 import { ErrorState } from "@/components/kit";
@@ -99,7 +99,7 @@ export default function CollectionSheet({ onClose, initial, tabs }: { onClose: (
 
   return (
     <Animated.View entering={motion.entering} exiting={motion.exiting} style={[styles.sheet, { top: insets.top + 40 }]}>
-      <GameBackdrop />
+      <GameBackdrop tint={RARITY.epic} />
       <View style={styles.head}>
         <SheetHeader title="Collection" onClose={onClose} closeLabel="Close the Collection" />
       </View>
@@ -133,7 +133,7 @@ export default function CollectionSheet({ onClose, initial, tabs }: { onClose: (
           {p ? (
             <>
               <View style={styles.chips}>
-                <Chip text={`${p.owned.length} of ${p.catalogue_size} found`} color={GP.skyDeep} />
+                <Chip text={`${p.owned.length} of ${p.catalogue_size} found`} color={ACCENT.sky.fill} />
                 {totalShards(p) > 0 ? <Chip text={`${totalShards(p)} shards`} color={SHARD} /> : null}
               </View>
               <Hero payload={p} onPick={(id) => setPicked({ kind: "relic", id })} />
@@ -149,7 +149,7 @@ export default function CollectionSheet({ onClose, initial, tabs }: { onClose: (
               {tabs.includes("forge") ? null : <ForgeArmourySection onPick={(id) => setPicked({ kind: "forge", id })} />}
             </>
           ) : (
-            <ActivityIndicator color="#FFF" style={{ marginTop: 40 }} />
+            <RelicsSkeleton />
           )}
         </ScrollView>
       )}
@@ -213,11 +213,11 @@ function Hero({ payload, onPick }: { payload: RelicsPayload; onPick: (id: string
               {r.name}
             </Text>
             <View style={styles.row}>
-              <Ionicons name="flame" size={15} color={GP.berry} />
+              <Ionicons name="flame" size={15} color={ACCENT.berry.fill} />
               <Text style={styles.power} maxFontSizeMultiplier={MAX_FONT_SCALE}>
                 {powerNow(r)}
               </Text>
-              <Ionicons name={abilityIcon(r.ability)} size={15} color={GP.skyDeep} />
+              <Ionicons name={abilityIcon(r.ability)} size={15} color={ACCENT.sky.fill} />
               <Text style={styles.ability} maxFontSizeMultiplier={MAX_FONT_SCALE}>
                 {abilityName(r.ability)}
               </Text>
@@ -247,10 +247,8 @@ function FactionSection({ faction, payload, mine, onPick }: { faction: string; p
         accessibilityLabel={`${name}${mine ? ", yours" : ""}: ${have} of ${all.length}`}
         importantForAccessibility="yes"
       >
-        <View style={[styles.mark, { backgroundColor: colour }]}>
-          <Ionicons name={realmIcon(faction)} size={16} color="#FFF" />
-        </View>
-        <GameHeading text={name} size={24} />
+        <View style={[styles.mark, { backgroundColor: colour }]} />
+        <GameHeading text={name} size={22} />
         {mine ? <Chip text="Yours" color={colour} /> : null}
         <View style={{ flex: 1 }} />
         <Text style={styles.count} maxFontSizeMultiplier={MAX_FONT_SCALE}>{`${have}/${all.length}`}</Text>
@@ -266,6 +264,7 @@ function FactionSection({ faction, payload, mine, onPick }: { faction: string; p
 
 function Tile({ stub: s, relic: r, equipped, onPress }: { stub: RelicStub; relic: RelicFull | null; equipped: boolean; onPress: () => void }) {
   const styles = useThemedStyles(STYLE_PAIR);
+  const look = useLook();
   const owned = r !== null;
   return (
     <Pressable
@@ -275,13 +274,13 @@ function Tile({ stub: s, relic: r, equipped, onPress }: { stub: RelicStub; relic
       accessibilityRole="button"
       accessibilityLabel={owned ? `${s.name}, ${s.rarity}, level ${levelNow(r)}${equipped ? ", equipped" : ""}` : `Not found yet, ${s.rarity}`}
     >
-      <View style={{ paddingBottom: 4 }}>
-        <View style={[StyleSheet.absoluteFill, { top: 4, borderRadius: 16, backgroundColor: owned ? edgeOf(GP.cream) : withAlpha(GP.navyEdge, 0.6) }]} />
+      <View>
         <View
           style={[
             styles.tile,
-            { backgroundColor: owned ? GP.cream : withAlpha(GP.navy, 0.55) },
-            { borderColor: equipped ? GP.mint : owned ? `${rarityColor(s.rarity)}B3` : "rgba(255,255,255,0.1)", borderWidth: equipped ? 3 : 1.5 },
+            owned ? styles.tileOwned : styles.tileLocked,
+            owned && !look.dark && ELEVATION.low,
+            { borderColor: equipped ? ACCENT.mint.fill : owned ? rarityColor(s.rarity) : "transparent", borderWidth: equipped ? 3 : 1.5 },
           ]}
         >
           <RelicArt kind={r?.kind ?? s.kind ?? "blade"} rarity={s.rarity} owned={owned} size={54} />
@@ -295,12 +294,12 @@ function Tile({ stub: s, relic: r, equipped, onPress }: { stub: RelicStub; relic
         </View>
       </View>
       {equipped ? (
-        <View style={[styles.corner, { backgroundColor: GP.mint }]}>
+        <View style={[styles.corner, { backgroundColor: ACCENT.mint.fill }]}>
           <Ionicons name="checkmark" size={11} color="#FFF" />
         </View>
       ) : r && canLevel(r) ? (
-        <View style={[styles.corner, { backgroundColor: GP.sun }]}>
-          <Ionicons name="arrow-up" size={11} color={GP.ink} />
+        <View style={[styles.corner, { backgroundColor: ACCENT.sun.fill }]}>
+          <Ionicons name="arrow-up" size={11} color={ACCENT.sun.label} />
         </View>
       ) : null}
     </Pressable>
@@ -312,6 +311,7 @@ function Tile({ stub: s, relic: r, equipped, onPress }: { stub: RelicStub; relic
 function RelicDetail({ id, stub, onClose }: { id: string; stub: RelicStub | null; onClose: () => void }) {
   const styles = useThemedStyles(STYLE_PAIR);
   const { payload, busy, problem, levelled } = useRelics();
+  const look = useLook();
   const config = useGame((s) => s.config);
   const reduced = useReducedMotion();
   const r = ownedRelic(payload, id);
@@ -342,7 +342,7 @@ function RelicDetail({ id, stub, onClose }: { id: string; stub: RelicStub | null
             <Chip text={rarityName(r.rarity)} color={tint} />
             <Chip text={r.faction_name ?? factionLabel(config?.factions, r.faction)} color={realmColor(r.faction)} />
             <View style={{ flex: 1 }} />
-            <GameIconButton icon="close" color={withAlpha(GP.ink, 0.55)} diameter={36} onPress={onClose} accessibilityLabel="Close" />
+            <GameIconButton icon="close" diameter={36} onPress={onClose} accessibilityLabel="Close the Relic card" />
           </View>
           <View style={styles.artStage}>
             {/* Sunburst, 260 wide at half strength, masked to a 200 circle. */}
@@ -360,10 +360,8 @@ function RelicDetail({ id, stub, onClose }: { id: string; stub: RelicStub | null
             <Text style={styles.detailSub} maxFontSizeMultiplier={MAX_FONT_SCALE}>{`${kindName(r.kind)} · Level ${levelNow(r)}`}</Text>
           </View>
           <View style={[styles.row, { justifyContent: "center", gap: 10 }]}>
-            <View style={[styles.stat, { backgroundColor: `${GP.berry}1F` }]} accessible accessibilityLabel={`Power ${powerNow(r)}`}>
-              <View style={[styles.statIcon, { backgroundColor: GP.berry }]}>
-                <Ionicons name="flame" size={15} color="#FFF" />
-              </View>
+            <View style={styles.stat} accessible accessibilityLabel={`Power ${powerNow(r)}`}>
+              <Ionicons name="flame" size={18} color={ACCENT.berry.fill} />
               <Text style={styles.statValue} maxFontSizeMultiplier={MAX_FONT_SCALE}>
                 {powerNow(r)}
               </Text>
@@ -371,10 +369,8 @@ function RelicDetail({ id, stub, onClose }: { id: string; stub: RelicStub | null
                 Power
               </Text>
             </View>
-            <View style={[styles.stat, { backgroundColor: `${GP.skyDeep}1F` }]} accessible accessibilityLabel={abilityName(r.ability)}>
-              <View style={[styles.statIcon, { backgroundColor: GP.skyDeep }]}>
-                <Ionicons name={abilityIcon(r.ability)} size={15} color="#FFF" />
-              </View>
+            <View style={styles.stat} accessible accessibilityLabel={abilityName(r.ability)}>
+              <Ionicons name={abilityIcon(r.ability)} size={18} color={ACCENT.sky.fill} />
               <Text style={styles.statTitle} maxFontSizeMultiplier={MAX_FONT_SCALE}>
                 {abilityName(r.ability)}
               </Text>
@@ -391,10 +387,10 @@ function RelicDetail({ id, stub, onClose }: { id: string; stub: RelicStub | null
             {!isMaxed(r) ? (
               <GameButton
                 title="Level up"
-                color={GP.sun}
+                color={ACCENT.sun.fill}
                 size="medium"
                 style={{ flex: 1 }}
-                icon={<Ionicons name="arrow-up-circle" size={20} color="#FFF" />}
+                icon={<Ionicons name="arrow-up-circle" size={20} color={canLevel(r) && !busy ? labelOn(ACCENT.sun.fill) : "#5A6878"} />}
                 disabled={!canLevel(r) || busy}
                 accessibilityLabel={canLevel(r) ? `Level up for ${levelCost(r)} shards` : `Level up: needs ${levelCost(r)} shards`}
                 onPress={async () => {
@@ -409,8 +405,8 @@ function RelicDetail({ id, stub, onClose }: { id: string; stub: RelicStub | null
               />
             ) : null}
             {isEquipped ? (
-              <View style={styles.equippedTag} accessible accessibilityLabel="Equipped">
-                <Ionicons name="checkmark" size={18} color="#FFF" />
+              <View style={styles.equippedTag} accessible accessibilityLabel={`${r.name} is in your hand`}>
+                <Ionicons name="checkmark-circle" size={20} color={look.dark ? TEXT_ON_DARK.success : TEXT_ON_LIGHT.success} />
                 <Text style={styles.equippedText} maxFontSizeMultiplier={MAX_FONT_SCALE}>
                   Equipped
                 </Text>
@@ -418,10 +414,10 @@ function RelicDetail({ id, stub, onClose }: { id: string; stub: RelicStub | null
             ) : (
               <GameButton
                 title="Equip"
-                color={GP.mint}
+                color={ACCENT.mint.fill}
                 size="medium"
                 style={{ flex: 1 }}
-                icon={<Ionicons name="hand-left" size={18} color="#FFF" />}
+                icon={<Ionicons name="hand-left" size={18} color="#FFFFFF" />}
                 disabled={busy}
                 accessibilityLabel={`Equip ${r.name}`}
                 onPress={async () => {
@@ -458,26 +454,18 @@ function ShardBar({ relic: r }: { relic: RelicFull }) {
     <View style={{ gap: 4 }} accessible accessibilityLabel={`Shards ${have} of ${cost}`}>
       <View style={styles.row}>
         <Ionicons name="diamond" size={13} color={SHARD} />
-        <Text style={[styles.shardLabel, { color: SHARD }]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+        <Text style={styles.shardLabel} maxFontSizeMultiplier={MAX_FONT_SCALE}>
           Shards
         </Text>
         <View style={{ flex: 1 }} />
         <Text style={styles.shardCount} maxFontSizeMultiplier={MAX_FONT_SCALE}>{`${have} / ${cost}`}</Text>
       </View>
       <View style={styles.track}>
-        <Animated.View style={[styles.fill, { minWidth: 12 }, fill]}>
-          {/* #B88CFF to #804DE6, or sun to sunDeep when it is full. */}
-          <LinearGradient
-            colors={full ? [GP.sun, GP.sunDeep] : ["#B88CFF", "#804DE6"]}
-            start={{ x: 0, y: 0.5 }}
-            end={{ x: 1, y: 0.5 }}
-            style={StyleSheet.absoluteFill}
-          />
-          <View style={styles.fillShine} />
-        </Animated.View>
+        {/* Shards in the epic colour; Sun once there are enough for a level. */}
+        <Animated.View style={[styles.fill, { minWidth: 12, backgroundColor: full ? ACCENT.sun.fill : SHARD }, fill]} />
       </View>
       <Text style={styles.shardNote} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-        {full ? "Ready to level up: +8% power" : "Duplicates break into shards."}
+        {full ? "Enough shards: level up for +8% power." : "Every duplicate you find breaks into shards."}
       </Text>
     </View>
   );
@@ -492,7 +480,7 @@ function LockedDetail({ stub, onClose }: { stub: RelicStub | null; onClose: () =
           <View style={[styles.row, { alignSelf: "stretch" }]}>
             {stub ? <Chip text={rarityName(stub.rarity)} color={rarityColor(stub.rarity)} /> : null}
             <View style={{ flex: 1 }} />
-            <GameIconButton icon="close" color={withAlpha(GP.ink, 0.55)} diameter={36} onPress={onClose} accessibilityLabel="Close" />
+            <GameIconButton icon="close" diameter={36} onPress={onClose} accessibilityLabel="Close the Relic card" />
           </View>
           <RelicArt kind={stub?.kind ?? "blade"} rarity={stub?.rarity ?? "common"} owned={false} size={120} />
           <Text style={styles.detailName} accessibilityRole="header" maxFontSizeMultiplier={MAX_FONT_SCALE}>
@@ -508,6 +496,25 @@ function LockedDetail({ stub, onClose }: { stub: RelicStub | null; onClose: () =
   );
 }
 
+/** While the Relicdex loads: its shape in the paper's well (the equipped card, a heading, a row of tiles), not a spinner. */
+function RelicsSkeleton() {
+  const styles = useThemedStyles(STYLE_PAIR);
+  return (
+    <View style={{ gap: 16 }} accessible accessibilityLabel="Loading your Relics">
+      <View style={[styles.skel, { height: 116, borderRadius: RADIUS.card }]} />
+      <View style={[styles.skel, { width: 150, height: 22 }]} />
+      <View style={styles.grid}>
+        {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
+          <View key={i} style={[styles.skel, styles.tileWrap, { height: 86, borderRadius: RADIUS.button }]} />
+        ))}
+      </View>
+    </View>
+  );
+}
+
+const L = SURFACES.light;
+const D = SURFACES.dark;
+
 const STYLE_PAIR = themedStyles(
   {
     sheet: {
@@ -515,57 +522,50 @@ const STYLE_PAIR = themedStyles(
       left: 0,
       right: 0,
       bottom: 0,
-      borderTopLeftRadius: 28,
-      borderTopRightRadius: 28,
-      backgroundColor: GP.ice,
+      borderTopLeftRadius: RADIUS.sheet,
+      borderTopRightRadius: RADIUS.sheet,
+      backgroundColor: L.screen,
       elevation: 18,
       overflow: "hidden",
     },
     head: { paddingHorizontal: 18, paddingTop: 10, paddingBottom: 10 },
-    // The Journal's tabs (Journal.tsx): one look for every tabbed game sheet.
-    // One segmented control across the sheet (the Forge's own Weapons / Characters pills sit below it, smaller).
-    tabs: { flexDirection: "row", gap: 4, marginHorizontal: 16, marginBottom: 8, padding: 3, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.45)" },
-    tab: { flex: 1, minHeight: 36, borderRadius: 17, alignItems: "center", justifyContent: "center" },
-    tabOn: { backgroundColor: "#FFFFFF", shadowColor: GP.navy, shadowOpacity: 0.12, shadowRadius: 6, shadowOffset: { width: 0, height: 3 }, elevation: 2 },
-    tabText: { fontFamily: GF.display, fontSize: 14, letterSpacing: 0.4, color: GP.mist },
-    tabTextOn: { color: GP.ink },
-    body: { paddingHorizontal: 18, gap: 16 },
+    // One segmented control across the sheet: a well, the chosen tab lifted on paper (Profile uses the same).
+    tabs: { flexDirection: "row", gap: 4, marginHorizontal: 16, marginBottom: 10, padding: 3, borderRadius: RADIUS.button, backgroundColor: L.surfaceAlt },
+    tab: { flex: 1, minHeight: 36, borderRadius: 13, alignItems: "center", justifyContent: "center" },
+    tabOn: { backgroundColor: L.surface, ...ELEVATION.low },
+    tabText: { fontFamily: GF.body, fontSize: 15, lineHeight: 19, color: L.textMuted },
+    tabTextOn: { fontFamily: GF.bold, color: L.text },
+    body: { paddingHorizontal: 18, gap: 18 },
     chips: { flexDirection: "row", gap: 8 },
     row: { flexDirection: "row", alignItems: "center", gap: 8 },
     hero: { flexDirection: "row", alignItems: "center", gap: 14 },
-    kicker: { fontFamily: GF.display, fontSize: 12, letterSpacing: 1.2 },
-    heroName: { fontFamily: GF.display, fontSize: 22, color: GP.ink },
-    power: { fontFamily: GF.display, fontSize: 17, color: GP.ink, marginRight: 8 },
-    ability: { fontFamily: GF.bold, fontSize: 15, color: GP.skyDeep },
-    mark: { width: 32, height: 32, borderRadius: 16, borderWidth: 2, borderColor: "#FFF", alignItems: "center", justifyContent: "center" },
-    count: {
-      fontFamily: GF.display,
-      fontSize: 18,
-      color: "#FFF",
-      fontVariant: ["tabular-nums"],
-      textShadowColor: "rgba(0,0,0,0.3)",
-      textShadowOffset: { width: 0, height: 1 },
-      textShadowRadius: 0.1,
-    },
+    kicker: { fontFamily: GF.bold, fontSize: 12, lineHeight: 15, letterSpacing: 0.8 },
+    heroName: { fontFamily: GF.display, fontSize: 22, lineHeight: 26, color: L.text },
+    power: { fontFamily: GF.display, fontSize: 17, lineHeight: 21, color: L.text, marginRight: 8, fontVariant: ["tabular-nums"] },
+    ability: { fontFamily: GF.body, fontSize: 15, color: TEXT_ON_LIGHT.info },
+    // A faction's colour as a short rule beside its name (no icon-in-a-circle).
+    mark: { width: 4, height: 22, borderRadius: 2 },
+    count: { fontFamily: GF.display, fontSize: 17, lineHeight: 21, color: L.textMuted, fontVariant: ["tabular-nums"] },
     grid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
     tileWrap: { width: "22.5%", paddingTop: 4 },
-    tile: { alignItems: "center", gap: 4, paddingVertical: 6, borderRadius: 16, minHeight: 82 },
-    lockedRarity: { fontFamily: GF.display, fontSize: 9, letterSpacing: 0.6, color: "rgba(255,255,255,0.6)" },
+    tile: { alignItems: "center", gap: 4, paddingVertical: 6, borderRadius: RADIUS.button, minHeight: 82 },
+    tileOwned: { backgroundColor: L.surface },
+    tileLocked: { backgroundColor: L.surfaceAlt },
+    lockedRarity: { fontFamily: GF.bold, fontSize: 12, lineHeight: 15, letterSpacing: 0.4, color: L.textMuted },
     corner: {
       position: "absolute",
       top: 0,
       right: -2,
-      width: 18,
-      height: 18,
-      borderRadius: 9,
-      borderWidth: 1.5,
-      borderColor: "#FFF",
+      width: 20,
+      height: 20,
+      borderRadius: 10,
+      borderWidth: 2,
+      borderColor: L.surface,
       alignItems: "center",
       justifyContent: "center",
     },
-    failed: { alignItems: "center", gap: 12, padding: 18, borderRadius: 24, backgroundColor: GP.cream },
-    failedText: { fontFamily: GF.bold, fontSize: 16, color: GP.ink },
-    scrim: { backgroundColor: "rgba(0,0,0,0.5)", alignItems: "center", justifyContent: "center", padding: 20 },
+    skel: { backgroundColor: L.surfaceAlt, borderRadius: 8 },
+    scrim: { backgroundColor: L.scrim, alignItems: "center", justifyContent: "center", padding: 20 },
     cardWrap: { width: "100%", alignItems: "center" },
     panelWrap: { width: "100%", maxWidth: 380 },
     lockedWrap: { width: "100%", maxWidth: 360 },
@@ -582,21 +582,19 @@ const STYLE_PAIR = themedStyles(
       alignItems: "center",
       justifyContent: "center",
     },
-    detailName: { fontFamily: GF.display, fontSize: 26, color: GP.ink, textAlign: "center" },
-    detailSub: { fontFamily: GF.body, fontSize: 14, color: GP.mist },
-    stat: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20 },
-    statIcon: { width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center" },
-    statValue: { fontFamily: GF.display, fontSize: 21, color: GP.ink },
-    statTitle: { fontFamily: GF.bold, fontSize: 15, color: GP.ink },
-    abilityText: { fontFamily: GF.body, fontSize: 15, color: GP.ink, textAlign: "center" },
-    lore: { fontFamily: GF.regular, fontStyle: "italic", fontSize: 14, color: GP.mist, textAlign: "center" },
-    shardLabel: { fontFamily: GF.bold, fontSize: 13 },
-    shardCount: { fontFamily: GF.display, fontSize: 15, color: GP.ink },
-    track: { height: 14, borderRadius: 7, backgroundColor: "rgba(31,59,77,0.12)", overflow: "hidden" },
-    fill: { height: 14, borderRadius: 7, overflow: "hidden" },
-    fillShine: { position: "absolute", top: 2, left: 6, right: 6, height: 4, borderRadius: 2, backgroundColor: "rgba(255,255,255,0.3)" },
-    shardNote: { fontFamily: GF.body, fontSize: 12, color: GP.mist },
-    problem: { fontFamily: GF.bold, fontSize: 13, color: GP.berry, textAlign: "center" },
+    detailName: { fontFamily: GF.display, fontSize: 28, lineHeight: 32, color: L.text, textAlign: "center" },
+    detailSub: { fontFamily: GF.regular, fontSize: 14, color: L.textMuted },
+    stat: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, paddingVertical: 7, borderRadius: RADIUS.chip, backgroundColor: L.surfaceAlt },
+    statValue: { fontFamily: GF.display, fontSize: 20, lineHeight: 24, color: L.text, fontVariant: ["tabular-nums"] },
+    statTitle: { fontFamily: GF.body, fontSize: 15, color: L.text },
+    abilityText: { fontFamily: GF.regular, fontSize: 15, lineHeight: 21, color: L.text, textAlign: "center" },
+    lore: { fontFamily: GF.regular, fontStyle: "italic", fontSize: 14, lineHeight: 20, color: L.textMuted, textAlign: "center" },
+    shardLabel: { fontFamily: GF.bold, fontSize: 13, color: "#6A3FC4" },
+    shardCount: { fontFamily: GF.display, fontSize: 15, color: L.text, fontVariant: ["tabular-nums"] },
+    track: { height: 12, borderRadius: 6, backgroundColor: "rgba(28,43,58,0.10)", overflow: "hidden" },
+    fill: { height: 12, borderRadius: 6 },
+    shardNote: { fontFamily: GF.regular, fontSize: 12, lineHeight: 16, color: L.textMuted },
+    problem: { fontFamily: GF.bold, fontSize: 14, color: TEXT_ON_LIGHT.danger, textAlign: "center" },
     actions: { flexDirection: "row", gap: 10 },
     equippedTag: {
       flex: 1,
@@ -604,17 +602,44 @@ const STYLE_PAIR = themedStyles(
       alignItems: "center",
       justifyContent: "center",
       gap: 6,
-      minHeight: 54,
-      borderRadius: 20,
-      backgroundColor: `${GP.mint}99`,
+      minHeight: 50,
+      borderRadius: RADIUS.button,
+      backgroundColor: L.surfaceAlt,
     },
-    equippedText: { fontFamily: GF.display, fontSize: 19, color: "#FFF" },
-    lockedTitle: { fontFamily: GF.bold, fontSize: 15, color: GP.mist },
+    equippedText: { fontFamily: GF.display, fontSize: 18, lineHeight: 22, color: TEXT_ON_LIGHT.success },
+    lockedTitle: { fontFamily: GF.bold, fontSize: 15, color: L.textMuted },
   },
   {
-    // Dark: the chosen tab lifts (lighter), so it stands out on the dark backdrop.
-    tabs: { backgroundColor: "rgba(255,255,255,0.06)" },
-    tabOn: { backgroundColor: "rgba(255,255,255,0.18)", shadowOpacity: 0 },
-    tabTextOn: { color: "#FFFFFF" },
+    // The dusk map: ink paper; the chosen tab lifts by colour, hairlines instead of shadows.
+    sheet: { backgroundColor: D.screen },
+    tabs: { backgroundColor: D.surfaceAlt },
+    tabOn: { backgroundColor: D.surface, shadowOpacity: 0, elevation: 0, boxShadow: "none" },
+    tabText: { color: D.textMuted },
+    tabTextOn: { color: D.text },
+    heroName: { color: D.text },
+    power: { color: D.text },
+    ability: { color: TEXT_ON_DARK.info },
+    count: { color: D.textMuted },
+    tileOwned: { backgroundColor: D.surface },
+    tileLocked: { backgroundColor: D.surfaceAlt },
+    lockedRarity: { color: D.textMuted },
+    corner: { borderColor: D.surface },
+    skel: { backgroundColor: D.surfaceAlt },
+    scrim: { backgroundColor: D.scrim },
+    detailName: { color: D.text },
+    detailSub: { color: D.textMuted },
+    stat: { backgroundColor: D.surfaceAlt },
+    statValue: { color: D.text },
+    statTitle: { color: D.text },
+    abilityText: { color: D.text },
+    lore: { color: D.textMuted },
+    shardLabel: { color: "#C3A6FF" },
+    shardCount: { color: D.text },
+    track: { backgroundColor: "rgba(255,255,255,0.12)" },
+    shardNote: { color: D.textMuted },
+    problem: { color: TEXT_ON_DARK.danger },
+    equippedTag: { backgroundColor: D.surfaceAlt },
+    equippedText: { color: TEXT_ON_DARK.success },
+    lockedTitle: { color: D.textMuted },
   },
 );

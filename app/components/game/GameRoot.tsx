@@ -48,6 +48,7 @@ import { Rail, StagingBadge, TopBar, WardenBubble } from "./Hud";
 import { NearbyTray } from "./NearbyTray";
 import Journal from "./Journal";
 import { GameButton } from "./kit";
+import { GameSchemeProvider } from "./look";
 import LiveBanner from "./LiveBanner";
 import LiveCalendarSheet from "./LiveCalendarSheet";
 import MoreSheet, { type MoreTile } from "./MoreSheet";
@@ -104,7 +105,16 @@ const NUDGE_SHOWN_MS = 12000;
 /** The map's ground tiles, from the game server (WorldMap GroundTiles). */
 const loadGround = (lat: number, lng: number, radiusM: number) => gameStore.client.ground(lat, lng, radiusM);
 
-export default function GameRoot({ parked }: { parked: boolean }) {
+/** The game, drawn light over the day map and dark over the dusk map (look.ts). */
+export default function GameRoot(props: { parked: boolean }) {
+  return (
+    <GameSchemeProvider>
+      <GameRootInner {...props} />
+    </GameSchemeProvider>
+  );
+}
+
+function GameRootInner({ parked }: { parked: boolean }) {
   const styles = useThemedStyles(STYLE_PAIR);
   useRenderCount("GameRoot");
   const insets = useSafeAreaInsets();

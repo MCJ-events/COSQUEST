@@ -5,7 +5,7 @@
 // WarBar), Features/CodexFeature.swift (CodexSheet).
 import { Ionicons } from "@expo/vector-icons";
 import { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, BackHandler, Pressable, ScrollView, Text, View } from "react-native";
+import { BackHandler, Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import {
@@ -45,6 +45,7 @@ import { SheetFrame } from "./SheetFrame";
 import StepsCard from "./StepsCard";
 import { GF, GP, realmColor, realmIcon } from "./theme";
 import { wardenVoice } from "./wardenVoice";
+import { ACCENT, labelOn, RADIUS, SURFACES, TEXT_ON_DARK, TEXT_ON_LIGHT, useLook } from "./look";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 import { ErrorState } from "@/components/kit";
 
@@ -52,7 +53,24 @@ type Tab = "today" | "codex" | "war";
 
 const TITLES: Record<Tab, string> = { today: "Daily quests", codex: "Codex", war: "Faction war" };
 const TAB_NAMES: Record<Tab, string> = { today: "Dailies", codex: "Codex", war: "Faction war" };
-const DONE_FACE = "#DBF7E6";
+const DONE_FACE = "#E3F4EA";
+const L = SURFACES.light;
+const D = SURFACES.dark;
+
+/** While a list loads: its shape in the well colour, not a bare spinner. */
+function Skeleton({ rows = 3 }: { rows?: number }) {
+  const styles = useThemedStyles(STYLE_PAIR);
+  return (
+    <View style={{ gap: 16 }} accessible accessibilityLabel="Loading">
+      {Array.from({ length: rows }, (_, i) => (
+        <View key={i} style={styles.skeleton}>
+          <View style={[styles.skeletonLine, { width: "55%" }]} />
+          <View style={[styles.skeletonLine, { width: "85%", height: 10 }]} />
+        </View>
+      ))}
+    </View>
+  );
+}
 
 type JournalProps = {
   onClose: () => void;
@@ -72,6 +90,7 @@ export default function Journal(props: JournalProps) {
 
 function JournalSheet({ close, initial = "today", onRecap }: JournalProps & { close: () => void }) {
   const styles = useThemedStyles(STYLE_PAIR);
+  const look = useLook();
   const insets = useSafeAreaInsets();
   const [tab, setTab] = useState<Tab>(initial);
   const me = useGame((s) => s.me);
@@ -139,7 +158,7 @@ function JournalSheet({ close, initial = "today", onRecap }: JournalProps & { cl
             <>
               <GamePanel>
                 <View style={styles.streakRow} accessible accessibilityLabel={`${streakTitle(me.streak)}. ${streakLine(me.streak)}${showBestStreak(me.streak) ? ` Best ${me.streak.best}.` : ""}`}>
-                  <Ionicons name="flame" size={34} color={me.streak.days > 0 ? GP.sunDeep : "#999999"} />
+                  <Ionicons name="flame" size={34} color={me.streak.days > 0 ? ACCENT.sun.fill : look.textMuted} />
                   <View style={{ flex: 1, gap: 2 }}>
                     <Text style={styles.streakTitle}>{streakTitle(me.streak)}</Text>
                     <Text style={styles.streakLine}>{streakLine(me.streak)}</Text>
@@ -157,7 +176,7 @@ function JournalSheet({ close, initial = "today", onRecap }: JournalProps & { cl
                 <GamePanel key={d.id} face={d.done ? DONE_FACE : GP.cream}>
                   <View accessible accessibilityLabel={dailyLabel(d)} style={{ gap: 10 }}>
                     <View style={styles.dailyHead}>
-                      <Ionicons name={d.done ? "checkmark-circle" : "locate"} size={24} color={d.done ? GP.mint : GP.skyDeep} />
+                      <Ionicons name={d.done ? "checkmark-circle" : "locate"} size={24} color={d.done ? ACCENT.mint.fill : ACCENT.sky.fill} />
                       <Text style={styles.dailyTitle} maxFontSizeMultiplier={MAX_FONT_SCALE}>
                         {d.title}
                       </Text>
@@ -180,7 +199,7 @@ function JournalSheet({ close, initial = "today", onRecap }: JournalProps & { cl
               ) : null}
             </>
           ) : (
-            <ActivityIndicator color={GP.navy} style={{ marginTop: 40 }} />
+            <Skeleton />
           )
         ) : tab === "codex" ? (
           <CodexBody
@@ -222,7 +241,7 @@ function CodexBody({
       <>
         <View style={styles.chips}>
           {countChips(codex.counts).map((c, i) => (
-            <Chip key={c} text={c} color={i === 0 ? GP.skyDeep : GP.sunDeep} />
+            <Chip key={c} text={c} color={i === 0 ? ACCENT.sky.fill : ACCENT.sun.fill} />
           ))}
         </View>
         {codex.sets.length ? (
@@ -232,7 +251,7 @@ function CodexBody({
               {orderSets(codex.sets).map((s) => (
                 <View key={s.id} accessible accessibilityLabel={setLabel(s)} style={{ gap: 4 }}>
                   <View style={styles.setRow}>
-                    {s.done ? <Ionicons name="checkmark-circle" size={18} color={GP.mint} /> : null}
+                    {s.done ? <Ionicons name="checkmark-circle" size={18} color={ACCENT.mint.fill} /> : null}
                     <Text style={styles.setTitle} maxFontSizeMultiplier={MAX_FONT_SCALE}>
                       {s.title}
                     </Text>
@@ -246,9 +265,10 @@ function CodexBody({
         ) : null}
         {codex.cards.length === 0 ? (
           <GamePanel>
-            <View style={{ alignItems: "center", gap: 10 }}>
-              <Ionicons name="albums" size={40} color={GP.sunDeep} />
-              <Text style={styles.emptyText}>Play a Quest Point to earn your first card.</Text>
+            <View style={{ alignItems: "center", gap: 8 }}>
+              <Ionicons name="albums" size={36} color={ACCENT.sun.edge} />
+              <Text style={styles.emptyText}>No cards yet</Text>
+              <Text style={styles.emptyLine}>Win at any Quest Point and its card lands here, foil if you beat the clock.</Text>
             </View>
           </GamePanel>
         ) : (
@@ -258,7 +278,7 @@ function CodexBody({
               <View key={g.realm} style={{ gap: 10 }}>
                 <View accessible accessibilityRole="header" accessibilityLabel={`${title}, ${g.cards.length}`} style={styles.realmHead}>
                   <View style={[styles.realmDot, { backgroundColor: realmColor(g.realm) }]}>
-                    <Ionicons name={realmIcon(g.realm)} size={18} color="#FFFFFF" />
+                    <Ionicons name={realmIcon(g.realm)} size={17} color={labelOn(realmColor(g.realm))} />
                   </View>
                   <GameHeading text={title} size={24} />
                   <Text style={styles.realmCount}>{g.cards.length}</Text>
@@ -283,13 +303,14 @@ function CodexBody({
       </GamePanel>
     );
   }
-  return <ActivityIndicator color={GP.navy} style={{ marginTop: 40 }} />;
+  return <Skeleton />;
 }
 
 // ---------- the war ----------
 
 function WarBody({ war, leaders, mine, tried }: { war: FactionWar | null; leaders: GameState["leaders"]; mine: string | null; tried: boolean }) {
   const styles = useThemedStyles(STYLE_PAIR);
+  const look = useLook();
   return (
     <>
       {war ? (
@@ -308,9 +329,9 @@ function WarBody({ war, leaders, mine, tried }: { war: FactionWar | null; leader
           </View>
         </GamePanel>
       ) : tried ? (
-        <Text style={styles.footnote}>No war data here yet.</Text>
+        <Text style={styles.footnote}>No war in this region yet. Take a Quest Point and your house starts one.</Text>
       ) : (
-        <ActivityIndicator color={GP.navy} style={{ marginTop: 40 }} />
+        <Skeleton rows={2} />
       )}
       {leaders?.leaders.length ? (
         <GamePanel>
@@ -323,8 +344,8 @@ function WarBody({ war, leaders, mine, tried }: { war: FactionWar | null; leader
                 key={l.place}
                 accessible
                 accessibilityLabel={`${l.place}, ${l.handle}${l.you ? ", you" : ""}, level ${l.level}, ${l.week_xp} XP`}
-                style={[styles.leader, l.you && { backgroundColor: "rgba(242,153,46,0.18)" }]}>
-                <Text style={[styles.place, { color: l.place <= 3 ? GP.sunDeep : "rgba(31,59,77,0.5)" }]}>{l.place}</Text>
+                style={[styles.leader, l.you && styles.leaderYou]}>
+                <Text style={[styles.place, { color: l.place <= 3 ? (look.dark ? TEXT_ON_DARK.warning : TEXT_ON_LIGHT.warning) : look.textMuted }]}>{l.place}</Text>
                 <View style={[styles.dot, { backgroundColor: realmColor(l.faction) }]} />
                 <Text style={styles.leaderName} numberOfLines={1} maxFontSizeMultiplier={MAX_FONT_SCALE}>
                   {l.handle}
@@ -388,16 +409,16 @@ function WardenCard() {
   return (
     <GamePanel padding={14}>
       <View style={styles.wardenRow}>
-        <Ionicons name="eye" size={26} color={GP.skyDeep} />
+        <Ionicons name="eye" size={26} color={ACCENT.sky.fill} />
         <View style={{ flex: 1, gap: 6 }}>
           <Text style={styles.wardenTitle}>{"The Warden's voice"}</Text>
           <Text style={styles.wardenText}>{text}</Text>
-          {model.phase === "downloading" ? <ProgressBar value={model.progress ?? 0} color={GP.skyDeep} track={GP.track} /> : null}
+          {model.phase === "downloading" ? <ProgressBar value={model.progress ?? 0} color={ACCENT.sky.fill} /> : null}
           {model.phase === "off" || model.phase === "failed" ? (
             <GameButton
               title={model.phase === "failed" ? "Try again" : "Download"}
               size="small"
-              color={GP.skyDeep}
+              color={ACCENT.sky.fill}
               accessibilityLabel="Download the Warden's model"
               onPress={() => startWardenModel((w) => wardenVoice.setWriter(w))}
               style={{ alignSelf: "flex-start" }}
@@ -409,50 +430,87 @@ function WardenCard() {
   );
 }
 
-const INK60 = "rgba(31,59,77,0.6)";
-
-const STYLE_PAIR = themedStyles({
-  head: { paddingHorizontal: 18 },
-  tabs: { flexDirection: "row", gap: 6, paddingHorizontal: 16, paddingVertical: 8 },
-  tab: { paddingHorizontal: 14, minHeight: 36, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.6)", justifyContent: "center" },
-  tabOn: { backgroundColor: "#FFFFFF", shadowColor: GP.navy, shadowOpacity: 0.12, shadowRadius: 6, shadowOffset: { width: 0, height: 3 }, elevation: 2 },
-  tabText: { fontFamily: GF.display, fontSize: 14, letterSpacing: 0.4, color: GP.mist },
-  tabTextOn: { color: GP.ink },
-  body: { paddingHorizontal: 18, paddingTop: 6, gap: 16 },
-  streakRow: { flexDirection: "row", alignItems: "center", gap: 14 },
-  streakTitle: { fontFamily: GF.display, fontSize: 24, color: GP.ink },
-  streakLine: { fontFamily: GF.regular, fontSize: 14, color: "rgba(31,59,77,0.7)" },
-  bestNum: { fontFamily: GF.display, fontSize: 20, color: INK60 },
-  bestLabel: { fontFamily: GF.body, fontSize: 12, color: INK60 },
-  dailyHead: { flexDirection: "row", alignItems: "center", gap: 8 },
-  dailyTitle: { flex: 1, fontFamily: GF.display, fontSize: 20, color: GP.ink },
-  dailyXp: { fontFamily: GF.display, fontSize: 16, color: GP.skyDeep },
-  dailyLine: { fontFamily: GF.body, fontSize: 14, color: "rgba(31,59,77,0.65)" },
-  footnote: { fontFamily: GF.body, fontSize: 14, color: GP.ink, paddingHorizontal: 4 },
-  chips: { flexDirection: "row", gap: 10, flexWrap: "wrap" },
-  panelTitle: { fontFamily: GF.display, fontSize: 22, color: GP.ink },
-  setRow: { flexDirection: "row", alignItems: "center", gap: 6 },
-  setTitle: { flex: 1, fontFamily: GF.bold, fontSize: 15, color: GP.ink },
-  setCount: { fontFamily: GF.bold, fontSize: 14, color: "rgba(31,59,77,0.7)" },
-  emptyText: { fontFamily: GF.bold, fontSize: 17, color: GP.ink, textAlign: "center" },
-  realmHead: { flexDirection: "row", alignItems: "center", gap: 8 },
-  realmDot: { width: 34, height: 34, borderRadius: 17, alignItems: "center", justifyContent: "center" },
-  realmCount: { fontFamily: GF.display, fontSize: 18, color: "rgba(31,59,77,0.7)" },
-  grid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-  warHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
-  warRegion: { flexShrink: 1, fontFamily: GF.display, fontSize: 24, color: GP.ink },
-  warEnds: { fontFamily: GF.body, fontSize: 14, color: "rgba(31,59,77,0.65)" },
-  warRow: { flexDirection: "row", alignItems: "center", gap: 6 },
-  warName: { fontFamily: GF.display, fontSize: 17, color: GP.ink },
-  warTrack: { height: 12, borderRadius: 6, backgroundColor: "rgba(31,59,77,0.1)", overflow: "hidden" },
-  warFooter: { fontFamily: GF.regular, fontSize: 14, color: "rgba(31,59,77,0.7)" },
-  leader: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 2 },
-  place: { width: 28, fontFamily: GF.display, fontSize: 18, textAlign: "center" },
-  dot: { width: 12, height: 12, borderRadius: 6 },
-  leaderName: { flexShrink: 1, fontFamily: GF.body, fontSize: 16, color: GP.ink },
-  leaderLevel: { fontFamily: GF.body, fontSize: 13, color: "rgba(31,59,77,0.5)" },
-  leaderXp: { fontFamily: GF.display, fontSize: 16, color: GP.ink },
-  wardenRow: { flexDirection: "row", alignItems: "center", gap: 12 },
-  wardenTitle: { fontFamily: GF.display, fontSize: 17, color: GP.ink },
-  wardenText: { fontFamily: GF.body, fontSize: 13, color: GP.mist },
-});
+const STYLE_PAIR = themedStyles(
+  {
+    head: { paddingHorizontal: 18 },
+    // A segmented control: a well, the chosen tab a paper pill on it.
+    tabs: { flexDirection: "row", gap: 4, marginHorizontal: 16, marginVertical: 8, padding: 4, borderRadius: RADIUS.button, backgroundColor: L.surfaceAlt },
+    tab: { flex: 1, paddingHorizontal: 10, minHeight: 36, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+    tabOn: { backgroundColor: L.surface },
+    tabText: { fontFamily: GF.body, fontSize: 14, lineHeight: 18, letterSpacing: 0.2, color: L.textMuted },
+    tabTextOn: { color: L.text },
+    body: { paddingHorizontal: 18, paddingTop: 6, gap: 16 },
+    skeleton: { gap: 10, padding: 18, borderRadius: RADIUS.card, backgroundColor: L.surface },
+    skeletonLine: { height: 14, borderRadius: 7, backgroundColor: L.surfaceAlt },
+    streakRow: { flexDirection: "row", alignItems: "center", gap: 14 },
+    streakTitle: { fontFamily: GF.display, fontSize: 24, lineHeight: 28, color: L.text },
+    streakLine: { fontFamily: GF.regular, fontSize: 14, lineHeight: 20, color: L.textMuted },
+    bestNum: { fontFamily: GF.display, fontSize: 20, lineHeight: 24, color: L.textMuted },
+    bestLabel: { fontFamily: GF.body, fontSize: 12, lineHeight: 16, color: L.textMuted },
+    dailyHead: { flexDirection: "row", alignItems: "center", gap: 8 },
+    dailyTitle: { flex: 1, fontFamily: GF.bold, fontSize: 18, lineHeight: 22, color: L.text },
+    dailyXp: { fontFamily: GF.display, fontSize: 16, lineHeight: 20, color: TEXT_ON_LIGHT.info },
+    dailyLine: { fontFamily: GF.regular, fontSize: 14, lineHeight: 19, color: L.textMuted },
+    footnote: { fontFamily: GF.regular, fontSize: 14, lineHeight: 20, color: L.textMuted, paddingHorizontal: 4 },
+    chips: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
+    panelTitle: { fontFamily: GF.bold, fontSize: 20, lineHeight: 24, color: L.text },
+    setRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+    setTitle: { flex: 1, fontFamily: GF.body, fontSize: 15, lineHeight: 20, color: L.text },
+    setCount: { fontFamily: GF.display, fontSize: 14, lineHeight: 18, color: L.textMuted, fontVariant: ["tabular-nums"] },
+    emptyText: { fontFamily: GF.bold, fontSize: 18, lineHeight: 22, color: L.text, textAlign: "center" },
+    emptyLine: { fontFamily: GF.regular, fontSize: 15, lineHeight: 21, color: L.textMuted, textAlign: "center" },
+    realmHead: { flexDirection: "row", alignItems: "center", gap: 8 },
+    realmDot: { width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center" },
+    realmCount: { fontFamily: GF.display, fontSize: 18, lineHeight: 22, color: L.textMuted },
+    grid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+    warHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
+    warRegion: { flexShrink: 1, fontFamily: GF.display, fontSize: 24, lineHeight: 28, color: L.text },
+    warEnds: { fontFamily: GF.regular, fontSize: 13, lineHeight: 17, color: L.textMuted },
+    warRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+    warName: { fontFamily: GF.bold, fontSize: 16, lineHeight: 20, color: L.text },
+    warTrack: { height: 12, borderRadius: 6, backgroundColor: "rgba(28,43,58,0.10)", overflow: "hidden" },
+    warFooter: { fontFamily: GF.regular, fontSize: 14, lineHeight: 20, color: L.textMuted },
+    leader: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 4, paddingHorizontal: 4, borderRadius: RADIUS.chip },
+    leaderYou: { backgroundColor: "rgba(245,158,42,0.16)" },
+    place: { width: 28, fontFamily: GF.display, fontSize: 18, lineHeight: 22, textAlign: "center" },
+    dot: { width: 12, height: 12, borderRadius: 6 },
+    leaderName: { flexShrink: 1, fontFamily: GF.body, fontSize: 16, lineHeight: 20, color: L.text },
+    leaderLevel: { fontFamily: GF.regular, fontSize: 13, lineHeight: 17, color: L.textMuted },
+    leaderXp: { fontFamily: GF.display, fontSize: 16, lineHeight: 20, color: L.text, fontVariant: ["tabular-nums"] },
+    wardenRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+    wardenTitle: { fontFamily: GF.bold, fontSize: 17, lineHeight: 22, color: L.text },
+    wardenText: { fontFamily: GF.regular, fontSize: 14, lineHeight: 19, color: L.textMuted },
+  },
+  {
+    tabs: { backgroundColor: D.surfaceAlt },
+    tabOn: { backgroundColor: D.surface },
+    tabText: { color: D.textMuted },
+    tabTextOn: { color: D.text },
+    skeleton: { backgroundColor: D.surface },
+    skeletonLine: { backgroundColor: D.surfaceAlt },
+    streakTitle: { color: D.text },
+    streakLine: { color: D.textMuted },
+    bestNum: { color: D.textMuted },
+    bestLabel: { color: D.textMuted },
+    dailyTitle: { color: D.text },
+    dailyXp: { color: TEXT_ON_DARK.info },
+    dailyLine: { color: D.textMuted },
+    footnote: { color: D.textMuted },
+    panelTitle: { color: D.text },
+    setTitle: { color: D.text },
+    setCount: { color: D.textMuted },
+    emptyText: { color: D.text },
+    emptyLine: { color: D.textMuted },
+    realmCount: { color: D.textMuted },
+    warRegion: { color: D.text },
+    warEnds: { color: D.textMuted },
+    warName: { color: D.text },
+    warTrack: { backgroundColor: "rgba(255,255,255,0.10)" },
+    warFooter: { color: D.textMuted },
+    leaderName: { color: D.text },
+    leaderLevel: { color: D.textMuted },
+    leaderXp: { color: D.text },
+    wardenTitle: { color: D.text },
+    wardenText: { color: D.textMuted },
+  },
+);

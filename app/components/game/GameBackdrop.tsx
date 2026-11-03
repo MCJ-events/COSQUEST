@@ -1,26 +1,25 @@
-// The game's sheet and screen backdrop (UI/GameKit.swift GameBackdrop): slate
-// to ice to pale blue, with two faint mountain slopes. Sits behind a screen's
-// content (absolute fill, ignores touches).
-import { LinearGradient } from "expo-linear-gradient";
+// The game's sheet and screen backdrop ("Sunlit Real Places" 6.5): the page
+// colour (warm cream by day, ink by dusk, following the map) with a faint
+// radial of light at the top, in the sun's colour unless a screen passes its
+// faction or rarity. Sits behind a screen's content (absolute fill, ignores
+// touches). No gradients to navy, no maroon.
 import { StyleSheet, View } from "react-native";
-import Svg, { Line, Polygon } from "react-native-svg";
+import Svg, { Defs, RadialGradient, Rect, Stop } from "react-native-svg";
 
-import { useScheme } from "@/theme/scheme";
+import { ACCENT, useLook } from "./look";
 
-import { GP } from "./theme";
-
-/** Swift GameBackdrop (UI/GameKit.swift): slate to ice to pale blue with two faint mountain slopes. */
-export function GameBackdrop() {
-  // Task 059: in dark mode, the same slopes at night.
-  const dark = useScheme() === "dark";
+export function GameBackdrop({ tint = ACCENT.sun.fill }: { tint?: string }) {
+  const look = useLook();
   return (
-    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-      <LinearGradient colors={dark ? ["#22384A", "#172633", "#121D27"] : [`${GP.slate}D9`, GP.ice, "#DEEDF2"]} style={StyleSheet.absoluteFill} />
+    <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: look.screen }]}>
       <Svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
-        <Polygon points="-10,28 42,62 -10,62" fill="#FFFFFF" fillOpacity={0.12} />
-        <Polygon points="110,30 60,60 110,60" fill="#FFFFFF" fillOpacity={0.12} />
-        <Line x1={-10} y1={28} x2={42} y2={62} stroke={GP.slate} strokeOpacity={0.55} strokeWidth={0.4} />
-        <Line x1={110} y1={30} x2={60} y2={60} stroke={GP.slate} strokeOpacity={0.55} strokeWidth={0.4} />
+        <Defs>
+          <RadialGradient id="cq-backdrop-glow" cx="50" cy="0" rx="75" ry="38" gradientUnits="userSpaceOnUse">
+            <Stop offset="0" stopColor={tint} stopOpacity={look.dark ? 0.12 : 0.08} />
+            <Stop offset="1" stopColor={tint} stopOpacity={0} />
+          </RadialGradient>
+        </Defs>
+        <Rect x="0" y="0" width="100" height="100" fill="url(#cq-backdrop-glow)" />
       </Svg>
     </View>
   );

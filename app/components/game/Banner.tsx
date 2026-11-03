@@ -11,7 +11,8 @@ import Animated, { FadeOutUp } from "react-native-reanimated";
 
 import { announce, GameTitle } from "./kit";
 import { type GameSoundEffect, playSound } from "./sound";
-import { edgeOf, GF, GP } from "./theme";
+import { ACCENT, labelOn } from "./look";
+import { GF } from "./theme";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 import { POP_IN_BANNER, usePopIn } from "./sheetMotion";
 
@@ -25,7 +26,7 @@ const listeners = new Set<() => void>();
 const emit = () => listeners.forEach((l) => l());
 
 export function showBanner(title: string, opts: { subtitle?: string | null; color?: string; sound?: GameSoundEffect } = {}) {
-  const banner: GameBanner = { id: ++seq, title, subtitle: opts.subtitle ?? null, color: opts.color ?? GP.sun };
+  const banner: GameBanner = { id: ++seq, title, subtitle: opts.subtitle ?? null, color: opts.color ?? ACCENT.sun.fill };
   current = banner;
   emit();
   playSound(opts.sound ?? "reward");
@@ -68,10 +69,10 @@ export function GameBannerHost({ top }: { top: number }) {
   return (
     <View pointerEvents="none" style={[styles.host, { top }]} importantForAccessibility="no-hide-descendants">
       <Animated.View key={banner.id} entering={enter} exiting={FadeOutUp.duration(260)} style={styles.banner}>
-        <GameTitle text={banner.title} size={46} edge={edgeOf(banner.color)} />
+        <GameTitle text={banner.title} size={46} />
         {banner.subtitle ? (
           <View style={[styles.subtitle, { backgroundColor: banner.color }]}>
-            <Text style={styles.subtitleText} maxFontSizeMultiplier={1.3}>
+            <Text style={[styles.subtitleText, { color: labelOn(banner.color) }]} maxFontSizeMultiplier={1.3}>
               {banner.subtitle}
             </Text>
           </View>
@@ -84,6 +85,7 @@ export function GameBannerHost({ top }: { top: number }) {
 const STYLE_PAIR = themedStyles({
   host: { position: "absolute", left: 16, right: 16, alignItems: "center", zIndex: 50 },
   banner: { alignItems: "center", gap: 6 },
-  subtitle: { paddingHorizontal: 16, paddingVertical: 6, borderRadius: 999 },
-  subtitleText: { fontFamily: GF.display, fontSize: 20, color: "#FFFFFF" },
+  // A flat label in the moment's colour, its words in that colour's own label ink (never white on Sun).
+  subtitle: { paddingHorizontal: 14, paddingVertical: 5, borderRadius: 10 },
+  subtitleText: { fontFamily: GF.bold, fontSize: 17, lineHeight: 22 },
 });

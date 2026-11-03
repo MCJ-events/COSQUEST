@@ -127,7 +127,9 @@ export class GameClient {
   constructor(options: GameClientOptions) {
     this.baseUrl = options.baseUrl.replace(/\/+$/, "");
     this.identityOf = options.identity;
-    this.fetcher = options.fetch ?? (globalThis.fetch as unknown as FetchLike);
+    // Called through a wrapper, not as `this.fetcher(...)`: a browser's fetch
+    // throws "Illegal invocation" when called as a method of another object.
+    this.fetcher = options.fetch ?? ((url, init) => (globalThis.fetch as unknown as FetchLike)(url, init));
     this.timeoutMs = options.timeoutMs ?? 15000;
     this.sleep = options.sleep ?? defaultSleep;
     this.locationFields = options.locationFields ?? null;

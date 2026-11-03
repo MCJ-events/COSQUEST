@@ -15,10 +15,11 @@ import { addLabel, nearbyDistanceText, type NearbyFriendModel, type NearbyPeer, 
 import { nearbyFriends, useNearbyFriends } from "@/features/game/friendsNearbyDevice";
 import { useGame } from "@/features/game/runtime";
 
-import { GameButton, GamePanel, MAX_FONT_SCALE, withAlpha } from "./kit";
+import { GameButton, GamePanel, MAX_FONT_SCALE } from "./kit";
 import { notify } from "./prefs";
 import { playSound } from "./sound";
-import { GF, GP } from "./theme";
+import { ACCENT, SURFACES, useLook } from "./look";
+import { GF } from "./theme";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 import { POP_FADE, POP_IN } from "./sheetMotion";
 
@@ -44,6 +45,7 @@ export function HoldPhonesCard({ use }: { use?: HoldPhonesUse } = {}) {
 
 function HoldPhonesBody({ use }: { use: HoldPhonesUse }) {
   const styles = useThemedStyles(STYLE_PAIR);
+  const look = useLook();
   const model = use.model;
   const s = use.state;
   const fix = useGame((s) => s.fix);
@@ -86,11 +88,11 @@ function HoldPhonesBody({ use }: { use: HoldPhonesUse }) {
   const peers = peersOf(s, now);
 
   return (
-    <GamePanel face={withAlpha(GP.sun, 0.97)}>
+    <GamePanel>
       <View style={styles.stack}>
         <View style={styles.head}>
           <Animated.View style={iconStyle} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-            <Ionicons name={use.icon ?? "phone-portrait"} size={34} color={GP.berry} />
+            <Ionicons name={use.icon ?? "phone-portrait"} size={34} color={ACCENT.sun.fill} />
           </Animated.View>
           <View style={styles.headText}>
             <Text style={styles.title} accessibilityRole="header" maxFontSizeMultiplier={MAX_FONT_SCALE}>
@@ -104,7 +106,7 @@ function HoldPhonesBody({ use }: { use: HoldPhonesUse }) {
 
         {s.success ? (
           <Animated.View entering={reduce ? POP_FADE : POP_IN} style={styles.row} accessible accessibilityLabel={s.success}>
-            <Ionicons name="sparkles" size={26} color={GP.berry} />
+            <Ionicons name="sparkles" size={26} color={ACCENT.sun.fill} />
             <Text style={styles.success} maxFontSizeMultiplier={MAX_FONT_SCALE}>
               {s.success}
             </Text>
@@ -114,22 +116,22 @@ function HoldPhonesBody({ use }: { use: HoldPhonesUse }) {
         {s.denied ? (
           <View style={styles.stackTight}>
             <Text style={styles.line} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-              CosQuest needs Local Network access to find the other phone.
+              Turn on Local Network for CosQuest so it can find the other phone.
             </Text>
-            <GameButton title="Open Settings" size="small" color={GP.skyDeep} onPress={() => void Linking.openSettings()} style={styles.start} />
+            <GameButton title="Open Settings" size="small" color={ACCENT.sky.fill} onPress={() => void Linking.openSettings()} style={styles.start} />
           </View>
         ) : !fix ? (
           <View style={styles.row}>
-            <ActivityIndicator color={GP.ink} />
+            <ActivityIndicator color={look.textMuted} />
             <Text style={styles.line} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-              Waiting for your location
+              Finding where you are
             </Text>
           </View>
         ) : (
           <>
             {peers.length === 0 ? (
               <View style={styles.row}>
-                <ActivityIndicator color={GP.ink} />
+                <ActivityIndicator color={look.textMuted} />
                 <Text style={styles.line} maxFontSizeMultiplier={MAX_FONT_SCALE}>
                   {searchingLine(s)}
                 </Text>
@@ -153,10 +155,11 @@ function HoldPhonesBody({ use }: { use: HoldPhonesUse }) {
 
 function PeerRow({ p, claiming, label, onAdd }: { p: NearbyPeer; claiming: string | null; label: string; onAdd: () => void }) {
   const styles = useThemedStyles(STYLE_PAIR);
+  const look = useLook();
   const far = tooFar(p);
   return (
     <View style={styles.peer}>
-      <View style={[styles.dot, { backgroundColor: p.linked ? GP.mint : withAlpha(GP.ink, 0.25) }]} accessibilityElementsHidden importantForAccessibility="no" />
+      <View style={[styles.dot, { backgroundColor: p.linked ? ACCENT.mint.fill : look.hairline }]} accessibilityElementsHidden importantForAccessibility="no" />
       <View style={styles.peerText}>
         <Text style={styles.name} numberOfLines={1} maxFontSizeMultiplier={MAX_FONT_SCALE}>
           {p.handle}
@@ -168,29 +171,43 @@ function PeerRow({ p, claiming, label, onAdd }: { p: NearbyPeer; claiming: strin
         ) : null}
       </View>
       {claiming === p.key ? (
-        <ActivityIndicator color={GP.ink} accessibilityLabel={`Waiting for ${p.handle}`} />
+        <ActivityIndicator color={look.textMuted} accessibilityLabel={`Waiting for ${p.handle}`} />
       ) : (
-        <GameButton title={label} size="small" color={GP.mint} onPress={onAdd} disabled={far || claiming !== null} />
+        <GameButton title={label} size="small" color={ACCENT.mint.fill} onPress={onAdd} disabled={far || claiming !== null} />
       )}
     </View>
   );
 }
 
-const STYLE_PAIR = themedStyles({
-  stack: { gap: 14 },
-  stackTight: { gap: 8 },
-  head: { flexDirection: "row", alignItems: "center", gap: 12 },
-  headText: { flex: 1, gap: 4 },
-  title: { fontFamily: GF.display, fontSize: 24, color: GP.ink },
-  sub: { fontFamily: GF.body, fontSize: 15, color: withAlpha(GP.ink, 0.8) },
-  row: { flexDirection: "row", alignItems: "center", gap: 8 },
-  line: { fontFamily: GF.body, fontSize: 15, color: GP.ink, flexShrink: 1 },
-  success: { fontFamily: GF.display, fontSize: 22, color: GP.ink, flexShrink: 1 },
-  status: { fontFamily: GF.body, fontSize: 14, color: withAlpha(GP.ink, 0.75) },
-  start: { alignSelf: "flex-start" },
-  peer: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 4 },
-  dot: { width: 12, height: 12, borderRadius: 6 },
-  peerText: { flex: 1, gap: 2 },
-  name: { fontFamily: GF.bold, fontSize: 17, color: GP.ink },
-  distance: { fontFamily: GF.body, fontSize: 13, color: withAlpha(GP.ink, 0.65), fontVariant: ["tabular-nums"] },
-});
+const L = SURFACES.light;
+const D = SURFACES.dark;
+
+const STYLE_PAIR = themedStyles(
+  {
+    stack: { gap: 14 },
+    stackTight: { gap: 8 },
+    head: { flexDirection: "row", alignItems: "center", gap: 12 },
+    headText: { flex: 1, gap: 4 },
+    title: { fontFamily: GF.display, fontSize: 24, lineHeight: 28, color: L.text },
+    sub: { fontFamily: GF.regular, fontSize: 15, lineHeight: 21, color: L.textMuted },
+    row: { flexDirection: "row", alignItems: "center", gap: 8 },
+    line: { fontFamily: GF.regular, fontSize: 15, lineHeight: 21, color: L.text, flexShrink: 1 },
+    success: { fontFamily: GF.display, fontSize: 22, lineHeight: 26, color: L.text, flexShrink: 1 },
+    status: { fontFamily: GF.regular, fontSize: 14, lineHeight: 19, color: L.textMuted },
+    start: { alignSelf: "flex-start" },
+    peer: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 4 },
+    dot: { width: 12, height: 12, borderRadius: 6 },
+    peerText: { flex: 1, gap: 2 },
+    name: { fontFamily: GF.bold, fontSize: 17, lineHeight: 22, color: L.text },
+    distance: { fontFamily: GF.regular, fontSize: 13, lineHeight: 17, color: L.textMuted, fontVariant: ["tabular-nums"] },
+  },
+  {
+    title: { color: D.text },
+    sub: { color: D.textMuted },
+    line: { color: D.text },
+    success: { color: D.text },
+    status: { color: D.textMuted },
+    name: { color: D.text },
+    distance: { color: D.textMuted },
+  },
+);

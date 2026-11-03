@@ -58,7 +58,7 @@ import { arriveMoment, hintMoment, lateMoment, levelMoment, reactionMoment } fro
 import type { AttemptQuestion, QuestPoint, RoamAnswer, RoamAttempt, RoamVerdict } from "@/features/game/wire";
 import { parseServerDate } from "@/features/game/wire";
 
-import { announce, Chip, dropEdge, GameButton, GameCoin, GameIconButton, GamePanel, GameTitle, MAX_FONT_SCALE, pressFeedback, withAlpha } from "./kit";
+import { announce, Chip, GameButton, GameCoin, GameIconButton, GamePanel, GameTitle, MAX_FONT_SCALE, pressFeedback } from "./kit";
 import { Pop } from "./Pop";
 import { type RewardSummary, celebrate, rewardFromVerdict } from "./Reward";
 import SayItButton from "./SayItButton";
@@ -66,7 +66,8 @@ import { ShrineCrystal, type CrystalHandle } from "./ShrineCrystal";
 import { ForgePointScene, usePointForge } from "./ForgeWorld";
 import { playSound } from "./sound";
 import { playResolve, startStrike } from "./strike";
-import { CHOICE_COLORS, edgeOf, GF, GP, realmColor, tierColor } from "./theme";
+import { ACCENT, BUTTON, edgeColor, ELEVATION, labelOn, RADIUS, SURFACES, TEXT_ON_DARK, TEXT_ON_LIGHT, useLook, useMapLook } from "./look";
+import { CHOICE_COLORS, GF, realmColor, tierColor } from "./theme";
 import { useWardenSaid, wardenVoice } from "./wardenVoice";
 import { CostQuestShrineView, type CostQuestShrineViewHandle, shrineARSupported } from "@/modules/costquest-game/src";
 
@@ -82,8 +83,9 @@ type Phase = "approach" | "opening" | "playing" | "submitting" | "reveal" | { fa
 const NativeShrine = CostQuestShrineView && !resolveIslandsOff(process.env.EXPO_PUBLIC_GAME_2D).has("arShrine") ? CostQuestShrineView : null;
 
 /** Second chance and the hint buttons are this purple in Swift (Color(0.55, 0.36, 0.95)). */
-const PURPLE = "#8C5CF2";
-const GREY = "#8C8C8C";
+/** A second chance: the Sky accent (one accent family, no stray purple). */
+const PURPLE = ACCENT.sky.fill;
+const GREY = "#B3B9C0";
 
 /**
  * Android's hardware Back, for GameRoot to ask first: while the clock runs it
@@ -153,7 +155,11 @@ export default function Encounter({
     setPhaseState(p);
   }, []);
   const ctx = () => ({ me: gameStore.get().me, playerName: gameStore.playerName() });
-  const color = realmColor(attempt?.realm ?? point.realm);
+  // The scene behind the shrine is the world's own sky (Golden by day, Dusk after), not a realm colour:
+  // realm colours stay on chips (art direction 2.7).
+  const map = useMapLook();
+  const look = useLook();
+  const color = map.skyUpper;
 
   const refreshBag = useCallback(() => {
     gameStore.client
@@ -381,25 +387,25 @@ export default function Encounter({
           ref={nativeShrine}
           style={StyleSheet.absoluteFill}
           tint={tierColor(point.tier)}
-          wardenTint={realmColor(gameStore.get().me?.faction)}
+          wardenTint={ACCENT.sky.fill}
           useAR={useAR}
           onPlaced={(e) => onPlaced(e.nativeEvent.ar)}
           accessibilityElementsHidden
           importantForAccessibility="no-hide-descendants"
         />
       ) : (
-        <LinearGradient colors={[color, edgeOf(color)]} style={StyleSheet.absoluteFill} pointerEvents="none" />
+        <LinearGradient colors={[map.skyUpper, map.skyHorizon, map.land]} locations={[0, 0.55, 1]} style={StyleSheet.absoluteFill} pointerEvents="none" />
       )}
       <Animated.View style={[StyleSheet.absoluteFill, scrimStyle]} pointerEvents="none">
-        <LinearGradient colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.7)"]} style={StyleSheet.absoluteFill} />
+        <LinearGradient colors={["rgba(18,26,38,0)", "rgba(18,26,38,0.45)"]} style={StyleSheet.absoluteFill} />
       </Animated.View>
 
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        <GameIconButton icon="close" color={GP.navy} diameter={42} onPress={leave} accessibilityLabel="Leave" />
+        <GameIconButton icon="close" diameter={42} onPress={leave} accessibilityLabel={`Leave ${point.name}`} />
         {phase === "approach" && arSwitch ? (
           <GameIconButton
             icon={arPref ? "cube" : "camera"}
-            color={GP.skyDeep}
+            color={ACCENT.sky.fill}
             diameter={42}
             onPress={switchStage}
             accessibilityLabel={arPref ? "Switch to 3D view" : "Switch to camera view"}
@@ -416,7 +422,7 @@ export default function Encounter({
         </View>
       </View>
 
-      {said ? <WardenLine key={said.id} text={said.text} compact={phase === "playing"} tint={realmColor(gameStore.get().me?.faction)} /> : null}
+      {said ? <WardenLine key={said.id} text={said.text} compact={phase === "playing"} tint={ACCENT.sky.fill} /> : null}
 
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 12 }]} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         <View style={styles.stage} pointerEvents="box-none">
@@ -426,7 +432,7 @@ export default function Encounter({
               {placed ? (
                 <Animated.View entering={FadeIn.duration(250)} style={styles.approach} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
                   <Bounce>
-                    <Ionicons name="hand-left" size={34} color="#FFF" />
+                    <Ionicons name="hand-left" size={30} color={look.text} />
                   </Bounce>
                   <Text style={styles.approachTitle} maxFontSizeMultiplier={MAX_FONT_SCALE}>
                     Tap the shrine
@@ -437,7 +443,7 @@ export default function Encounter({
                 </Animated.View>
               ) : (
                 <>
-                  <ActivityIndicator color="#FFF" />
+                  <ActivityIndicator color={look.text} />
                   <Text style={styles.openingText} maxFontSizeMultiplier={MAX_FONT_SCALE}>
                     {useAR && Native ? "Point your camera at the ground" : "The shrine is rising…"}
                   </Text>
@@ -447,7 +453,7 @@ export default function Encounter({
           ) : null}
           {phase === "opening" ? (
             <View style={styles.opening} accessible accessibilityLabel="The shrine is waking" accessibilityLiveRegion="polite">
-              <ActivityIndicator color="#FFF" size="large" />
+              <ActivityIndicator color={look.text} size="large" />
               <Text style={styles.openingText} maxFontSizeMultiplier={MAX_FONT_SCALE}>
                 The shrine is waking…
               </Text>
@@ -460,11 +466,11 @@ export default function Encounter({
             <View style={{ gap: 12 }}>
               <Text style={styles.failTitle}>Not this time</Text>
               <Text style={styles.failText}>{phase.failed}</Text>
-              <GameButton title="Back to the map" color={GP.sky} onPress={onClose} />
+              <GameButton title="Back to the map" color={ACCENT.sun.fill} onPress={onClose} />
             </View>
           </GamePanel>
         ) : attempt ? (
-          <View style={{ gap: 14 }}>
+          <View style={styles.quiz}>
             {phase !== "reveal" ? (
               <>
                 <DeadlineBar deadline={deadline} total={total} />
@@ -537,18 +543,18 @@ export default function Encounter({
             ) : null}
 
             {phase === "playing" && attempt.kind === "sequence" ? (
-              <GameButton title="Lock it in" color={GP.mint} disabled={order.length < (attempt.challenge.beats?.length ?? 4)} onPress={submit} />
+              <GameButton title="Lock it in" color={ACCENT.mint.fill} disabled={order.length < (attempt.challenge.beats?.length ?? 4)} onPress={submit} />
             ) : null}
-            {phase === "submitting" ? <ActivityIndicator color="#FFF" accessibilityLabel="Marking your answer" /> : null}
+            {phase === "submitting" ? <ActivityIndicator color={look.textMuted} accessibilityLabel="Marking your answer" /> : null}
             {phase === "reveal" && verdict?.can_retry ? (
-              <GameButton title={secondChanceLabel(bag.retry ?? 0)} color={PURPLE} onPress={retry} icon={<Ionicons name="refresh" size={18} color="#FFF" />} />
+              <GameButton title={secondChanceLabel(bag.retry ?? 0)} color={PURPLE} onPress={retry} icon={<Ionicons name="refresh" size={18} color={labelOn(PURPLE)} />} />
             ) : null}
             {phase === "reveal" && inRoom ? (
-              <GameButton title="Photo" size="small" color={GP.skyDeep} icon={<Ionicons name="camera" size={16} color="#FFF" />} onPress={() => void photo()} style={{ alignSelf: "flex-start" }} />
+              <GameButton title="Photo" size="small" color={ACCENT.sky.fill} icon={<Ionicons name="camera" size={16} color={labelOn(ACCENT.sky.fill)} />} onPress={() => void photo()} style={{ alignSelf: "flex-start" }} />
             ) : null}
             {phase === "reveal" ? (
               <Animated.View entering={FadeIn.duration(300)}>
-                <GameButton title="Collect" color={GP.sun} onPress={collect} />
+                <GameButton title="Collect" color={ACCENT.sun.fill} onPress={collect} />
               </Animated.View>
             ) : null}
           </View>
@@ -574,7 +580,7 @@ function WardenLine({ text, compact, tint }: { text: string; compact: boolean; t
   return (
     <Animated.View entering={FadeInDown.duration(220)} exiting={FadeOut.duration(160)} style={styles.bubbleRow} accessibilityLiveRegion="polite">
       <View style={[styles.wardenBadge, { backgroundColor: tint }]} importantForAccessibility="no-hide-descendants">
-        <Ionicons name="eye" size={compact ? 14 : 18} color="#FFF" />
+        <Ionicons name="eye" size={compact ? 14 : 18} color={labelOn(tint)} />
       </View>
       <Pressable
         style={styles.bubble}
@@ -582,7 +588,7 @@ function WardenLine({ text, compact, tint }: { text: string; compact: boolean; t
         accessibilityRole="button"
         accessibilityLabel={`The Warden says: ${text}`}
         accessibilityHint="Double tap to dismiss">
-        <Text style={[styles.bubbleText, compact && { fontSize: 13 }]} numberOfLines={compact ? 2 : 4}>
+        <Text style={[styles.bubbleText, compact && { fontSize: 13, lineHeight: 17 }]} numberOfLines={compact ? 2 : 4}>
           {text}
         </Text>
       </Pressable>
@@ -592,10 +598,10 @@ function WardenLine({ text, compact, tint }: { text: string; compact: boolean; t
 
 function ResultLine({ verdict }: { verdict: RoamVerdict }) {
   const line = resultTitle(verdict);
-  const chip = verdict.grade ? { sun: GP.sun, mint: GP.mint, sky: GP.sky }[gradeColorKey(verdict.grade)] : null;
+  const chip = verdict.grade ? { sun: ACCENT.sun.fill, mint: ACCENT.mint.fill, sky: ACCENT.sky.fill }[gradeColorKey(verdict.grade)] : null;
   return (
     <Pop from={0.5} response={0.45} style={{ gap: 4, alignItems: "center" }}>
-      <GameTitle text={line.text} size={line.size} edge={edgeOf(line.win ? GP.mint : GP.berry)} />
+      <GameTitle text={line.text} size={line.size} edge={line.win ? ACCENT.mint.edge : ACCENT.berry.edge} />
       {/* The throw grade: speed as skill. */}
       {verdict.grade && chip ? (
         <Pop from={0.3} response={0.4} delayMs={120}>
@@ -638,12 +644,13 @@ export function DeadlineBar({ deadline, total }: { deadline: number; total: numb
     if (hot) announce("Under six seconds left.");
   }, [hot]);
   const fill = useAnimatedStyle(() => ({ width: `${frac.get() * 100}%` }));
-  const tint = hot ? GP.berry : "#FFFFFF";
+  const look = useLook();
+  const tint = hot ? (look.dark ? TEXT_ON_DARK.danger : TEXT_ON_LIGHT.danger) : look.text;
   return (
     <View style={styles.deadline} accessible accessibilityRole="timer" accessibilityLabel={`${seconds} seconds left`}>
       <Ionicons name="timer" size={18} color={tint} />
       <View style={styles.deadlineTrack}>
-        <Animated.View style={[{ height: 12, borderRadius: 6, backgroundColor: hot ? GP.berry : GP.sun }, fill]} />
+        <Animated.View style={[{ height: 12, borderRadius: 6, backgroundColor: hot ? ACCENT.berry.fill : ACCENT.sun.fill }, fill]} />
       </View>
       <Text style={[styles.deadlineText, { color: tint }]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
         {seconds}
@@ -710,7 +717,9 @@ function HintButton({
 }) {
   const styles = useThemedStyles(STYLE_PAIR);
   const disabled = hintDisabled({ allowed, item, coins, cost, busy });
-  const face = disabled ? "#9E9E9E" : PURPLE;
+  const look = useLook();
+  // Help is the quiet button: the well colour with ink words, so it never competes with the answers.
+  const face = look.surfaceAlt;
   return (
     <Pressable
       onPressIn={() => {
@@ -722,16 +731,15 @@ function HintButton({
       accessibilityLabel={`Hint: ${spoken}, ${item > 0 ? `${item} in your bag` : `${cost} coins`}`}
       accessibilityState={{ disabled }}>
       {({ pressed }) => (
-        <View style={{ paddingBottom: 4, transform: [{ translateY: pressed ? 1 : 0 }] }}>
-          <View style={[StyleSheet.absoluteFill, { top: 4, borderRadius: 14, backgroundColor: edgeOf(face) }]} />
-          <LinearGradient colors={[withAlpha(face, 0.92), face]} style={[styles.hintFace, { transform: [{ translateY: pressed ? 3 : 0 }] }]}>
-            <View pointerEvents="none" style={styles.hintGloss} />
+        <View style={{ paddingBottom: BUTTON.edge, opacity: disabled ? 0.5 : 1 }}>
+          <View style={[StyleSheet.absoluteFill, { top: BUTTON.edge, borderRadius: 12, backgroundColor: edgeColor(face, 0.85) }]} />
+          <View style={[styles.hintFace, { backgroundColor: face, transform: [{ translateY: pressed ? BUTTON.pressedTranslate : 0 }] }]}>
             <Text style={styles.hintText} maxFontSizeMultiplier={MAX_FONT_SCALE}>
               {label}
             </Text>
             {item > 0 ? (
               <>
-                <Ionicons name="bag" size={12} color="#FFF" />
+                <Ionicons name="bag" size={12} color={look.text} />
                 <Text style={styles.hintText} maxFontSizeMultiplier={MAX_FONT_SCALE}>
                   ×{item}
                 </Text>
@@ -744,7 +752,7 @@ function HintButton({
                 </Text>
               </>
             )}
-          </LinearGradient>
+          </View>
         </View>
       )}
     </Pressable>
@@ -757,7 +765,9 @@ const CHOICE_SPRING = settle(0.35);
 function ChoiceButton({ text, index, state, onPress }: { text: string; index: number; state: ChoiceState; onPress: () => void }) {
   const styles = useThemedStyles(STYLE_PAIR);
   const look = choiceLook(state);
-  const face = look.face === "mint" ? GP.mint : look.face === "berry" ? GP.berry : look.face === "grey" ? GREY : CHOICE_COLORS[index % CHOICE_COLORS.length];
+  const face = look.face === "mint" ? ACCENT.mint.fill : look.face === "berry" ? ACCENT.berry.fill : look.face === "grey" ? GREY : CHOICE_COLORS[index % CHOICE_COLORS.length];
+  // Each answer's words in its own face's ink: never white on the orange one.
+  const ink = labelOn(face);
   const scale = useSharedValue(look.scale);
   const opacity = useSharedValue(look.opacity);
   useEffect(() => {
@@ -779,18 +789,17 @@ function ChoiceButton({ text, index, state, onPress }: { text: string; index: nu
         accessibilityLabel={spoken}
         accessibilityState={{ selected: state === "picked" || state === "right", disabled: state === "removed" }}>
         {({ pressed }) => (
-          <View style={{ paddingBottom: 6, transform: [{ translateY: pressed ? 1 : 0 }] }}>
-            <View style={[StyleSheet.absoluteFill, { top: 6, borderRadius: 20, backgroundColor: edgeOf(face) }]} />
-            <LinearGradient colors={[withAlpha(face, 0.92), face]} style={[styles.choiceFace, { transform: [{ translateY: pressed ? 5 : 0 }] }]}>
-              <View pointerEvents="none" style={styles.choiceGloss} />
-              <Text style={styles.choiceText} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.7} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+          <View style={{ paddingBottom: BUTTON.edge }}>
+            <View style={[StyleSheet.absoluteFill, { top: BUTTON.edge, borderRadius: RADIUS.button, backgroundColor: edgeColor(face) }]} />
+            <View style={[styles.choiceFace, { backgroundColor: face, transform: [{ translateY: pressed ? BUTTON.pressedTranslate : 0 }] }]}>
+              <Text style={[styles.choiceText, { color: ink }]} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.7} maxFontSizeMultiplier={MAX_FONT_SCALE}>
                 {text}
               </Text>
-              {state === "right" ? <Ionicons name="checkmark-circle" size={22} color="#FFF" /> : null}
-              {state === "wrong" ? <Ionicons name="close-circle" size={22} color="#FFF" /> : null}
-              {state === "dim" ? <Ionicons name="ellipse-outline" size={22} color="#FFF" style={{ opacity: 0 }} /> : null}
-              {state === "picked" ? <Ionicons name="checkmark" size={18} color="#FFF" /> : null}
-            </LinearGradient>
+              {state === "right" ? <Ionicons name="checkmark-circle" size={22} color={ink} /> : null}
+              {state === "wrong" ? <Ionicons name="close-circle" size={22} color={ink} /> : null}
+              {state === "dim" ? <Ionicons name="ellipse" size={22} color={ink} style={{ opacity: 0 }} /> : null}
+              {state === "picked" ? <Ionicons name="checkmark" size={18} color={ink} /> : null}
+            </View>
           </View>
         )}
       </Pressable>
@@ -855,6 +864,7 @@ export function SequenceCard({
   onTap: (id: string) => void;
 }) {
   const styles = useThemedStyles(STYLE_PAIR);
+  const look = useLook();
   const shown = reveal ? reveal.map((id) => beats.find((b) => b.id === id)).filter((b): b is { id: string; text: string } => !!b) : beats;
   return (
     <View style={{ gap: 12 }}>
@@ -864,19 +874,19 @@ export function SequenceCard({
         const n = order.indexOf(beat.id) + 1;
         const right = reveal ? reveal.indexOf(beat.id) + 1 : 0;
         const wasRight = !!reveal && n === right;
-        const badge = reveal ? (wasRight ? GP.mint : GP.sunDeep) : n ? GP.skyDeep : "#B3B3B3";
+        const badge = reveal ? (wasRight ? ACCENT.mint.fill : ACCENT.sun.fill) : n ? ACCENT.sky.fill : look.surface;
         const spoken = reveal ? `${beat.text}, number ${right}, ${wasRight ? "you had it right" : "you had it in the wrong place"}` : `${beat.text}${n ? `, number ${n}` : ""}`;
         return (
           <Animated.View key={beat.id} layout={REORDER}>
             <Pressable onPress={() => onTap(beat.id)} accessibilityRole="button" accessibilityLabel={spoken} style={styles.beat}>
               <View style={[styles.beatBadge, { backgroundColor: badge }]}>
-                <Text style={styles.beatBadgeText} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+                <Text style={[styles.beatBadgeText, { color: n || reveal ? labelOn(badge) : look.textMuted }]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
                   {reveal ? right : n || ""}
                 </Text>
               </View>
               <Text style={styles.beatText}>{beat.text}</Text>
               {reveal ? (
-                <Ionicons name={wasRight ? "checkmark-circle" : "arrow-redo-circle"} size={22} color={wasRight ? GP.mint : GP.sunDeep} />
+                <Ionicons name={wasRight ? "checkmark-circle" : "arrow-redo-circle"} size={22} color={wasRight ? (look.dark ? TEXT_ON_DARK.success : TEXT_ON_LIGHT.success) : ACCENT.sun.edge} />
               ) : null}
             </Pressable>
           </Animated.View>
@@ -907,6 +917,9 @@ export function BlitzCard({
   onPick: (i: number) => void;
 }) {
   const styles = useThemedStyles(STYLE_PAIR);
+  const look = useLook();
+  const good = look.dark ? TEXT_ON_DARK.success : TEXT_ON_LIGHT.success;
+  const bad = look.dark ? TEXT_ON_DARK.danger : TEXT_ON_LIGHT.danger;
   return (
     <View style={{ gap: 12 }}>
       <View style={styles.pips} accessible accessibilityLabel={marks ? `${marks.filter(Boolean).length} of ${questions.length} right` : `Question ${Math.min(showing + 1, questions.length)} of ${questions.length}`}>
@@ -916,7 +929,7 @@ export function BlitzCard({
             style={[
               styles.pip,
               {
-                backgroundColor: marks ? (marks[i] ? GP.mint : GP.berry) : i < showing || answers[i] >= 0 ? GP.sun : i === showing ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.25)",
+                backgroundColor: marks ? (marks[i] ? ACCENT.mint.fill : ACCENT.berry.fill) : i < showing || answers[i] >= 0 ? ACCENT.sun.fill : i === showing ? look.textMuted : look.hairline,
               },
             ]}
           />
@@ -929,10 +942,10 @@ export function BlitzCard({
             const right = correct && correct[i] >= 0 && correct[i] < q.choices.length ? q.choices[correct[i]] : null;
             return (
               <View key={q.id} style={styles.summaryRow} accessible accessibilityLabel={`${q.q}${right ? `, answer ${right}` : ""}, ${ok ? "right" : "wrong"}`}>
-                <Ionicons name={ok ? "checkmark-circle" : "close-circle"} size={20} color={ok ? GP.mint : GP.berry} />
+                <Ionicons name={ok ? "checkmark-circle" : "close-circle"} size={20} color={ok ? good : bad} />
                 <View style={{ flex: 1, gap: 2 }}>
                   <Text style={styles.summaryQ}>{q.q}</Text>
-                  {right ? <Text style={[styles.summaryA, { color: ok ? GP.mint : GP.sun }]}>{right}</Text> : null}
+                  {right ? <Text style={[styles.summaryA, { color: ok ? good : look.text }]}>{right}</Text> : null}
                 </View>
               </View>
             );
@@ -947,79 +960,96 @@ export function BlitzCard({
   );
 }
 
-const STYLE_PAIR = themedStyles({
-  root: { ...StyleSheet.absoluteFill },
-  header: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 10, paddingHorizontal: 16, paddingBottom: 4 },
-  headRight: { flex: 1, alignItems: "flex-end", gap: 6 },
-  place: {
-    fontFamily: GF.display,
-    fontSize: 20,
-    color: "#FFF",
-    textAlign: "right",
-    textShadowColor: "rgba(0,0,0,0.6)",
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 3,
+const L = SURFACES.light;
+const D = SURFACES.dark;
+
+// The scene (the world's sky, the shrine) on top; the question and its answers on a paper sheet below
+// (art direction 6.5: cream by day, ink by dusk). Words over the scene sit on paper plates, so they
+// read on the 3D and AR stages too.
+const STYLE_PAIR = themedStyles(
+  {
+    root: { ...StyleSheet.absoluteFill },
+    header: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 10, paddingHorizontal: 16, paddingBottom: 4 },
+    headRight: { flex: 1, alignItems: "flex-end", gap: 6 },
+    place: {
+      maxWidth: "100%",
+      fontFamily: GF.display,
+      fontSize: 20,
+      lineHeight: 24,
+      color: L.text,
+      textAlign: "right",
+      paddingHorizontal: 12,
+      paddingVertical: 5,
+      borderRadius: RADIUS.chip,
+      overflow: "hidden",
+      backgroundColor: L.surface,
+    },
+    chips: { flexDirection: "row", gap: 6 },
+    bubbleRow: { flexDirection: "row", alignItems: "flex-start", gap: 8, marginTop: 10, paddingHorizontal: 16 },
+    wardenBadge: { width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: "#FFFFFF" },
+    bubble: { flex: 1, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16, backgroundColor: L.surface, ...ELEVATION.low },
+    bubbleText: { fontFamily: GF.body, fontSize: 15, lineHeight: 20, color: L.text },
+    content: { flexGrow: 1, paddingHorizontal: 16, paddingTop: 8, gap: 14 },
+    stage: { flex: 1, minHeight: 130, alignItems: "center", justifyContent: "center" },
+    forgeStage: { width: "100%", height: 300 },
+    opening: { position: "absolute", bottom: 0, alignItems: "center", gap: 8, paddingHorizontal: 16, paddingVertical: 10, borderRadius: RADIUS.card, backgroundColor: L.surface, ...ELEVATION.low },
+    approach: { alignItems: "center", gap: 4 },
+    approachTitle: { fontFamily: GF.display, fontSize: 28, lineHeight: 32, color: L.text },
+    approachBlurb: { fontFamily: GF.body, fontSize: 15, lineHeight: 21, color: L.textMuted, textAlign: "center" },
+    openingText: { fontFamily: GF.bold, fontSize: 17, lineHeight: 22, color: L.text },
+    failTitle: { fontFamily: GF.display, fontSize: 28, lineHeight: 32, color: L.text },
+    failText: { fontFamily: GF.regular, fontSize: 16, lineHeight: 22, color: L.text },
+    quiz: { gap: 14, padding: 16, borderRadius: RADIUS.sheet, backgroundColor: L.surface, ...ELEVATION.low },
+    deadline: { flexDirection: "row", alignItems: "center", gap: 8 },
+    deadlineTrack: { flex: 1, height: 12, borderRadius: 6, backgroundColor: L.surfaceAlt, overflow: "hidden" },
+    deadlineText: { fontFamily: GF.display, fontSize: 18, lineHeight: 22, width: 30, textAlign: "right", fontVariant: ["tabular-nums"] },
+    hints: { flexDirection: "row", alignItems: "center", gap: 10 },
+    hintFace: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, overflow: "hidden" },
+    hintText: { fontFamily: GF.display, fontSize: 16, lineHeight: 20, color: L.text },
+    balance: { flexDirection: "row", alignItems: "center", gap: 4 },
+    balanceText: { fontFamily: GF.display, fontSize: 16, lineHeight: 20, color: L.text, fontVariant: ["tabular-nums"] },
+    hintProblem: { fontFamily: GF.body, fontSize: 13, lineHeight: 17, color: TEXT_ON_LIGHT.danger },
+    clue: { alignItems: "center", paddingVertical: 14, borderRadius: RADIUS.card, backgroundColor: L.surfaceAlt },
+    clueText: { fontSize: 64, lineHeight: 78 },
+    question: { fontFamily: GF.display, fontSize: 26, lineHeight: 32, color: L.text },
+    sub: { fontFamily: GF.body, fontSize: 15, lineHeight: 21, color: L.textMuted },
+    choiceFace: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 20, paddingVertical: 12, borderRadius: RADIUS.button, overflow: "hidden" },
+    choiceText: { flex: 1, fontFamily: GF.display, fontSize: 20, lineHeight: 24, textAlign: "left" },
+    beat: { flexDirection: "row", alignItems: "center", gap: 12, padding: 12, marginBottom: 4, borderRadius: RADIUS.card, backgroundColor: L.surfaceAlt },
+    beatBadge: { width: 38, height: 38, borderRadius: 19, alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: "#FFFFFF" },
+    beatBadgeText: { fontFamily: GF.display, fontSize: 20, lineHeight: 24 },
+    beatText: { flex: 1, fontFamily: GF.body, fontSize: 17, lineHeight: 22, color: L.text },
+    pips: { flexDirection: "row", gap: 6 },
+    pip: { flex: 1, height: 8, borderRadius: 4 },
+    summary: { gap: 8, padding: 12, borderRadius: RADIUS.card, backgroundColor: L.surfaceAlt },
+    summaryRow: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
+    summaryQ: { fontFamily: GF.body, fontSize: 14, lineHeight: 19, color: L.text },
+    summaryA: { fontFamily: GF.display, fontSize: 15, lineHeight: 19 },
   },
-  chips: { flexDirection: "row", gap: 6 },
-  bubbleRow: { flexDirection: "row", alignItems: "flex-start", gap: 8, marginTop: 10, paddingHorizontal: 16 },
-  wardenBadge: { width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: "#FFF" },
-  bubble: { flex: 1, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16, backgroundColor: "rgba(255,255,255,0.95)" },
-  bubbleText: { fontFamily: GF.body, fontSize: 15, color: GP.ink },
-  content: { flexGrow: 1, paddingHorizontal: 16, paddingTop: 8, gap: 14 },
-  stage: { flex: 1, minHeight: 130, alignItems: "center", justifyContent: "center" },
-  forgeStage: { width: "100%", height: 300 },
-  opening: { position: "absolute", bottom: 0, alignItems: "center", gap: 8 },
-  approach: { alignItems: "center", gap: 6 },
-  approachTitle: { fontFamily: GF.display, fontSize: 30, color: "#FFF", textShadowColor: "rgba(0,0,0,0.5)", textShadowRadius: 4 },
-  approachBlurb: { fontFamily: GF.body, fontSize: 16, color: "rgba(255,255,255,0.9)", textAlign: "center", textShadowColor: "rgba(0,0,0,0.5)", textShadowRadius: 4 },
-  openingText: { fontFamily: GF.display, fontSize: 20, color: "#FFF", textShadowColor: "rgba(0,0,0,0.5)", textShadowRadius: 4 },
-  failTitle: { fontFamily: GF.display, fontSize: 24, color: GP.ink },
-  failText: { fontFamily: GF.regular, fontSize: 16, color: GP.ink },
-  deadline: { flexDirection: "row", alignItems: "center", gap: 8 },
-  deadlineTrack: { flex: 1, height: 12, borderRadius: 6, backgroundColor: "rgba(255,255,255,0.18)", overflow: "hidden" },
-  deadlineText: { fontFamily: GF.display, fontSize: 18, width: 30, textAlign: "right", fontVariant: ["tabular-nums"] },
-  hints: { flexDirection: "row", alignItems: "center", gap: 10 },
-  hintFace: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 14, overflow: "hidden" },
-  hintGloss: { position: "absolute", top: 5, left: 10, right: 10, height: 10, borderRadius: 14, backgroundColor: "rgba(255,255,255,0.28)" },
-  hintText: { fontFamily: GF.display, fontSize: 16, color: "#FFF", textShadowColor: "rgba(0,0,0,0.28)", textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 0.1 },
-  balance: { flexDirection: "row", alignItems: "center", gap: 4 },
-  balanceText: { fontFamily: GF.display, fontSize: 16, color: "#FFF", fontVariant: ["tabular-nums"] },
-  hintProblem: { fontFamily: GF.body, fontSize: 13, color: GP.sun },
-  clue: { alignItems: "center", paddingVertical: 14, borderRadius: 24, backgroundColor: GP.cream, marginBottom: 5, ...dropEdge(edgeOf(GP.cream), 5) },
-  clueText: { fontSize: 64, lineHeight: 78 },
-  question: {
-    fontFamily: GF.display,
-    fontSize: 26,
-    lineHeight: 32,
-    color: "#FFF",
-    textShadowColor: "rgba(0,0,0,0.35)",
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 0.1,
+  {
+    place: { color: D.text, backgroundColor: D.surface },
+    bubble: { backgroundColor: D.surface, shadowOpacity: 0, elevation: 0, boxShadow: "none" },
+    bubbleText: { color: D.text },
+    opening: { backgroundColor: D.surface, shadowOpacity: 0, elevation: 0, boxShadow: "none" },
+    approachTitle: { color: D.text },
+    approachBlurb: { color: D.textMuted },
+    openingText: { color: D.text },
+    failTitle: { color: D.text },
+    failText: { color: D.text },
+    quiz: { backgroundColor: D.surface, borderWidth: 1, borderColor: D.hairline, shadowOpacity: 0, elevation: 0, boxShadow: "none" },
+    deadlineTrack: { backgroundColor: D.surfaceAlt },
+    hintText: { color: D.text },
+    balanceText: { color: D.text },
+    hintProblem: { color: TEXT_ON_DARK.danger },
+    clue: { backgroundColor: D.surfaceAlt },
+    question: { color: D.text },
+    sub: { color: D.textMuted },
+    beat: { backgroundColor: D.surfaceAlt },
+    beatText: { color: D.text },
+    summary: { backgroundColor: D.surfaceAlt },
+    summaryQ: { color: D.text },
   },
-  sub: { fontFamily: GF.body, fontSize: 15, color: "rgba(255,255,255,0.85)" },
-  choiceFace: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 22, paddingVertical: 12, borderRadius: 20, overflow: "hidden" },
-  choiceGloss: { position: "absolute", top: 5, left: 10, right: 10, height: 10, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.28)" },
-  choiceText: {
-    flex: 1,
-    fontFamily: GF.display,
-    fontSize: 20,
-    color: "#FFF",
-    textAlign: "left",
-    textShadowColor: "rgba(0,0,0,0.28)",
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 0.1,
-  },
-  beat: { flexDirection: "row", alignItems: "center", gap: 12, padding: 12, marginBottom: 4, borderRadius: 18, backgroundColor: GP.cream, ...dropEdge(edgeOf(GP.cream), 4) },
-  beatBadge: { width: 38, height: 38, borderRadius: 19, alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: "rgba(255,255,255,0.7)" },
-  beatBadgeText: { fontFamily: GF.display, fontSize: 20, color: "#FFF" },
-  beatText: { flex: 1, fontFamily: GF.body, fontSize: 17, color: GP.ink },
-  pips: { flexDirection: "row", gap: 6 },
-  pip: { flex: 1, height: 8, borderRadius: 4 },
-  summary: { gap: 8, padding: 12, borderRadius: 18, backgroundColor: withAlpha(GP.navy, 0.7) },
-  summaryRow: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
-  summaryQ: { fontFamily: GF.body, fontSize: 14, color: "#FFF" },
-  summaryA: { fontFamily: GF.display, fontSize: 15 },
-});
+);
 
 /** The tap hand's bounce (.symbolEffect(.bounce, options: .repeating)); still under Reduce Motion. */
 function Bounce({ children }: { children: ReactNode }) {

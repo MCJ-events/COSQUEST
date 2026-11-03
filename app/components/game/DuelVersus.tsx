@@ -25,7 +25,10 @@ import AvatarView from "./AvatarView";
 import { useForgeEntry } from "./ForgeModel";
 import { ForgeFighterArt, useForgeOn } from "./ForgeWorld";
 import { MAX_FONT_SCALE } from "./kit";
-import { edgeOf, GF, GP, realmColor } from "./theme";
+import { GAME_TO_CHAT } from "@/features/world/factionLink";
+
+import { ACCENT, contrast, edgeColor, FACTION, labelOn, RADIUS, SURFACES, useLook } from "./look";
+import { GF } from "./theme";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 import { POP_FADE, POP_IN_SOFT } from "./sheetMotion";
 
@@ -87,15 +90,18 @@ export default function DuelVersus({ start }: { start: DuelStart }) {
 /** One fighter: you on the left of your card, the Guardian mirrored on the right of its own. */
 function Side({ f, you }: { f: DuelFighterPeek; you: boolean }) {
   const styles = useThemedStyles(STYLE_PAIR);
-  const tint = realmColor(f.faction);
+  // The fighter's deck-faction colour (realm -> deck faction): realm colours never tint the fight.
+  const tint = FACTION[GAME_TO_CHAT[f.faction ?? ""] ?? f.faction ?? ""]?.fill ?? (you ? ACCENT.sky.fill : ACCENT.berry.fill);
+  const look = useLook();
+  const tintText = contrast(tint, look.surface) >= 4.5 ? tint : contrast(edgeColor(tint, 0.6), look.surface) >= 4.5 ? edgeColor(tint, 0.6) : look.text;
   return (
     <View style={styles.sideWrap}>
-      <View style={[StyleSheet.absoluteFill, { top: 4, borderRadius: 18, backgroundColor: tint }]} />
+      <View style={[StyleSheet.absoluteFill, { top: 4, borderRadius: RADIUS.card, backgroundColor: edgeColor(tint) }]} />
       <View style={[styles.side, you ? null : styles.sideMirrored]}>
-        <View style={[styles.portrait, { borderColor: tint, backgroundColor: edgeOf(tint) }]}>
+        <View style={[styles.portrait, { borderColor: tint, backgroundColor: edgeColor(tint) }]}>
           {you ? <YourPortrait tint={tint} /> : <GuardianPortrait f={f} />}
           <View style={[styles.badge, you ? styles.badgeRight : styles.badgeLeft, { backgroundColor: tint }]}>
-            <Ionicons name={weaponIcon(f.weapon_class)} size={18} color="#FFF" />
+            <Ionicons name={weaponIcon(f.weapon_class)} size={18} color={labelOn(tint)} />
             {/* Your Forge weapon, over the class icon when you hold one (cq 056). */}
             {you ? (
               <View style={StyleSheet.absoluteFill}>
@@ -105,7 +111,7 @@ function Side({ f, you }: { f: DuelFighterPeek; you: boolean }) {
           </View>
         </View>
         <View style={[styles.words, you ? null : styles.wordsMirrored]}>
-          <Text style={[styles.kicker, { color: tint }]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+          <Text style={[styles.kicker, { color: tintText }]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
             {you ? "YOU" : "OPPONENT"}
           </Text>
           <Text
@@ -165,36 +171,48 @@ function GuardianPortrait({ f }: { f: DuelFighterPeek }) {
   );
 }
 
-const STYLE_PAIR = themedStyles({
-  card: { alignItems: "center", gap: 20, paddingHorizontal: 20, paddingVertical: 24, width: "100%" },
-  title: { fontFamily: GF.display, fontSize: 15, letterSpacing: 1.6, color: "rgba(255,255,255,0.75)", textAlign: "center" },
-  vsRow: { flexDirection: "row", alignItems: "center", gap: 14, width: "100%", maxWidth: 380 },
-  vsRule: { flex: 1, height: 2, borderRadius: 1, backgroundColor: "rgba(255,255,255,0.18)" },
-  vs: { fontFamily: GF.display, fontSize: 48, color: GP.sun, textShadowColor: edgeOf(GP.sun), textShadowOffset: { width: 0, height: 3 }, textShadowRadius: 0.1 },
-  sideWrap: { width: "100%", maxWidth: 380, paddingBottom: 4 },
-  side: { flexDirection: "row", alignItems: "center", gap: 16, padding: 14, borderRadius: 18, backgroundColor: GP.cream },
-  sideMirrored: { flexDirection: "row-reverse" },
-  portrait: { width: PORTRAIT, height: PORTRAIT, borderRadius: 18, borderWidth: 3, overflow: "visible" },
-  portraitImage: { width: PORTRAIT - 6, height: PORTRAIT - 6, borderRadius: 15, overflow: "hidden" },
-  portraitCentre: { alignItems: "center", justifyContent: "center" },
-  badge: {
-    position: "absolute",
-    bottom: -8,
-    width: BADGE,
-    height: BADGE,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: GP.cream,
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
+const L = SURFACES.light;
+const D = SURFACES.dark;
+
+// The versus card sits over the dark fight stage: paper cards for the two fighters, a Sun "VS".
+const STYLE_PAIR = themedStyles(
+  {
+    card: { alignItems: "center", gap: 20, paddingHorizontal: 20, paddingVertical: 24, width: "100%" },
+    title: { fontFamily: GF.bold, fontSize: 15, lineHeight: 19, letterSpacing: 1, color: "rgba(243,240,232,0.8)", textAlign: "center" },
+    vsRow: { flexDirection: "row", alignItems: "center", gap: 14, width: "100%", maxWidth: 380 },
+    vsRule: { flex: 1, height: 2, borderRadius: 1, backgroundColor: "rgba(255,255,255,0.18)" },
+    vs: { fontFamily: GF.display, fontSize: 48, lineHeight: 52, color: ACCENT.sun.fill, textShadowColor: ACCENT.sun.edge, textShadowOffset: { width: 0, height: 3 }, textShadowRadius: 0.1 },
+    sideWrap: { width: "100%", maxWidth: 380, paddingBottom: 4 },
+    side: { flexDirection: "row", alignItems: "center", gap: 16, padding: 14, borderRadius: RADIUS.card, backgroundColor: L.surface },
+    sideMirrored: { flexDirection: "row-reverse" },
+    portrait: { width: PORTRAIT, height: PORTRAIT, borderRadius: 18, borderWidth: 3, overflow: "visible" },
+    portraitImage: { width: PORTRAIT - 6, height: PORTRAIT - 6, borderRadius: 15, overflow: "hidden" },
+    portraitCentre: { alignItems: "center", justifyContent: "center" },
+    badge: {
+      position: "absolute",
+      bottom: -8,
+      width: BADGE,
+      height: BADGE,
+      borderRadius: 12,
+      borderWidth: 2,
+      borderColor: L.surface,
+      alignItems: "center",
+      justifyContent: "center",
+      overflow: "hidden",
+    },
+    badgeRight: { right: -10 },
+    badgeLeft: { left: -10 },
+    words: { flex: 1, gap: 3 },
+    wordsMirrored: { alignItems: "flex-end" },
+    kicker: { fontFamily: GF.bold, fontSize: 12, lineHeight: 15, letterSpacing: 1 },
+    name: { fontFamily: GF.display, fontSize: 22, lineHeight: 26, color: L.text },
+    subline: { fontFamily: GF.regular, fontSize: 12, lineHeight: 16, color: L.textMuted },
+    textRight: { textAlign: "right" },
   },
-  badgeRight: { right: -10 },
-  badgeLeft: { left: -10 },
-  words: { flex: 1, gap: 3 },
-  wordsMirrored: { alignItems: "flex-end" },
-  kicker: { fontFamily: GF.display, fontSize: 12, letterSpacing: 1.4 },
-  name: { fontFamily: GF.display, fontSize: 22, color: GP.ink },
-  subline: { fontFamily: GF.bold, fontSize: 11, letterSpacing: 0.4, color: "rgba(30,58,76,0.55)" },
-  textRight: { textAlign: "right" },
-});
+  {
+    side: { backgroundColor: D.surface, borderWidth: 1, borderColor: D.hairline },
+    badge: { borderColor: D.surface },
+    name: { color: D.text },
+    subline: { color: D.textMuted },
+  },
+);

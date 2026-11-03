@@ -12,7 +12,7 @@
 //   accents           the pinks and teal stay, slightly lifted
 // Both copies are built once, when the file loads, so switching costs
 // nothing at render time.
-import { useMemo } from "react";
+import { createContext, useContext, useMemo } from "react";
 import { StyleSheet, useColorScheme } from "react-native";
 
 import { useAppSelector } from "@/store/hooks";
@@ -25,7 +25,21 @@ export type ChatScheme = "light" | "dark";
 export const DARK_CHAT_BG = "#171823";
 export const DARK_CHAT_BG_2 = "#1D1F2C";
 
+/**
+ * A part of the app that sets its own light or dark (the game: its surfaces
+ * follow the map's day or dusk, components/game/look.ts GameSchemeProvider).
+ * Everything inside it, themedStyles and useInk included, reads this instead.
+ */
+export const SchemeOverride = createContext<ChatScheme | null>(null);
+
 export function useChatScheme(): ChatScheme {
+  const forced = useContext(SchemeOverride);
+  const base = useBaseScheme();
+  return forced ?? base;
+}
+
+/** The phone's (or the Appearance screen's) light or dark, ignoring any SchemeOverride. */
+export function useBaseScheme(): ChatScheme {
   const system = useColorScheme();
   const mode = useAppSelector(
     (state) =>
