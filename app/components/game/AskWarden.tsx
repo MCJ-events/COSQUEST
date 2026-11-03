@@ -52,6 +52,8 @@ function AskBody({ close }: { close: () => void }) {
   // Start loading the model while the player reads the openers, not on their first question.
   useEffect(() => {
     void startWardenModel((w) => wardenVoice.setWriter(w));
+    // Leaving the screen stops an answer being read out.
+    return () => wardenVoice.hush();
   }, []);
 
   const context = (): AskContext => ({
@@ -72,6 +74,7 @@ function AskBody({ close }: { close: () => void }) {
       const answer: Turn = { id: ++serial.current, fromPlayer: false, text: rule };
       setTurns((t) => [...t, asked, answer]);
       announce(rule);
+      wardenVoice.say(rule, { moment: "ask" });
       return;
     }
     // Seeded with the rule, so something true is on screen while the model writes.
@@ -84,6 +87,7 @@ function AskBody({ close }: { close: () => void }) {
     setTurns((t) => t.map((x) => (x.id === id ? { ...x, text: settled.text, rule: settled.rule } : x)));
     setAnswering(false);
     announce(settled.text);
+    wardenVoice.say(settled.text, { moment: "ask" });
   };
 
   const canSend = question.trim().length > 0 && !answering;

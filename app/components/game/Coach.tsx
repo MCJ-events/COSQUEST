@@ -6,7 +6,6 @@
 // <CoachAnchor> a button is wrapped in. The step to show is features/game/coach.ts.
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import * as Speech from "expo-speech";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, useWindowDimensions, View, type ViewStyle } from "react-native";
 import Animated, {
@@ -119,11 +118,11 @@ export default function CoachOverlay({
     if (!reduce) ring.set(withRepeat(withTiming(1, { duration: 1400, easing: Easing.out(Easing.cubic) }), -1, false));
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Soft).catch(() => {});
     announce(`The Warden: ${step.line}`);
-    if (!wardenVoice.isMuted()) Speech.speak(step.line, { rate: 1.02, pitch: 0.95 });
+    wardenVoice.say(step.line, { moment: "coach" });
     return () => {
       cancelAnimation(shown);
       cancelAnimation(ring);
-      Speech.stop().catch(() => {});
+      wardenVoice.hush();
     };
   }, [step.line, reduce, shown, ring]);
 
