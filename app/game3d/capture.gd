@@ -134,3 +134,19 @@ func _perf(path: String) -> void:
 		Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME), Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME),
 		Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME), Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / 1048576.0,
 		Performance.get_monitor(Performance.RENDER_TEXTURE_MEM_USED) / 1048576.0, Performance.get_monitor(Performance.RENDER_BUFFER_MEM_USED) / 1048576.0])
+	# day1-world (art direction 8, "landmark in frame"): where the place's landmark (place.gd info landmark_at,
+	# landmark_h) lands in this frame: its top and base as fractions of the frame height from the top
+	var arena: Node = _fight.get("arena") if _fight != null else null
+	var pl: Node = arena.get("place") if arena != null else null
+	var cam: Camera3D = get_viewport().get_camera_3d()
+	if pl != null and cam != null:
+		var info: Dictionary = pl.get("info")
+		if info.has("landmark_at"):
+			var at: Vector3 = info["landmark_at"]
+			var top: Vector3 = at + Vector3.UP * float(info.get("landmark_h", 12.0))
+			var hgt: float = get_viewport().get_visible_rect().size.y
+			var vis: bool = not cam.is_position_behind(top) and not cam.is_position_behind(at)
+			var yt: float = cam.unproject_position(top).y / hgt
+			var yb: float = cam.unproject_position(at).y / hgt
+			print("CQLANDMARK shot %s name=%s visible=%s top=%.3f base=%.3f h_frac=%.3f" % [path.get_file(), str(info.get("landmark", "")),
+				str(vis), yt, yb, clampf(yb, 0.0, 1.0) - clampf(yt, 0.0, 1.0)])

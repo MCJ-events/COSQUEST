@@ -391,33 +391,20 @@ func _parked_cars(region: String) -> void:
 				s += 6.2
 	var n: int = 0
 	for model: String in groups:
-		var mi: Array = _car_mesh(model)
-		if mi.is_empty():
-			continue
-		var mm := MultiMesh.new()
-		mm.transform_format = MultiMesh.TRANSFORM_3D
-		mm.mesh = mi[0]
-		var xs: Array = groups[model]
-		mm.instance_count = xs.size()
-		for k in xs.size():
-			mm.set_instance_transform(k, (xs[k] as Transform3D) * (mi[1] as Transform3D))
-		var mmi := MultiMeshInstance3D.new()
-		mmi.name = "cars_" + model.get_file()
-		mmi.multimesh = mm
-		mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		_p.add_child(mmi)
-		n += xs.size()
+		# day1-world: the car's mesh (a Kenney GLB merged once, cached for the next fight) and its node are made
+		# on the main thread (place.gd _emit): merging reads the GLB's surfaces back from the RenderingServer
+		_p.call("_emit", Callable(_p, "mk_cars").bind(model, groups[model]))
+		n += (groups[model] as Array).size()
 	_p.get("info")["parked_cars"] = n
 
 
 ## A Kenney car as one mesh (its own atlas material, opaque) and the transform that stands it 4.5 m long
 ## on y = 0, nose to +z. Cached on the place.
-func _car_mesh(model: String) -> Array:
-	return car_mesh(_p, model)
+static var _car_cache: Dictionary = {}
 
 
-static func car_mesh(p: Node3D, model: String) -> Array:
-	var cache: Dictionary = p.get_meta("car_meshes", {})
+static func car_mesh(_p: Node3D, model: String) -> Array:
+	var cache: Dictionary = _car_cache
 	if cache.has(model):
 		return cache[model]
 	var ps: PackedScene = load("res://art/city/%s.glb" % model)
@@ -460,5 +447,4 @@ static func car_mesh(p: Node3D, model: String) -> Array:
 	var xf2 := Transform3D(rot.scaled(Vector3.ONE * s), Vector3.ZERO) * Transform3D(Basis(), Vector3(-c.x, -box.position.y, -c.z))
 	var out: Array = [mesh, xf2]
 	cache[model] = out
-	p.set_meta("car_meshes", cache)
 	return out

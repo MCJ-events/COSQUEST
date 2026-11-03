@@ -16,10 +16,14 @@ extends RefCounted
 const BRONZE: Color = Color(0.478, 0.353, 0.227)       # #7A5A3A
 const PATINA: Color = Color(0.369, 0.549, 0.463)       # #5E8C76
 const BRONZE_MIN: Color = Color(0.227, 0.165, 0.11)    # #3A2A1C
-const CLASSES: Array[String] = ["stone", "granite", "bronze", "water", "clock", "glow"]
-const KINDS: Array[String] = ["column", "obelisk", "statue", "lion", "fountain", "memorial", "clock_tower"]
+const CLASSES: Array[String] = ["stone", "granite", "bronze", "water", "clock", "glow", "render", "tile", "slate", "gilt", "screen"]
+const KINDS: Array[String] = ["column", "obelisk", "statue", "lion", "fountain", "memorial", "clock_tower", "arch", "dome", "spire"]
+const GILT: Color = Color(0.79, 0.63, 0.29)            # #C9A04A, gold leaf
+const SLATE: Color = Color(0.36, 0.4, 0.46)            # #5C6675, slate and painted iron (never black)
 
 static var _dim: float = 1.0   # stone darkened while a void is built (the belfry's bell chamber)
+## day1-world: the albedo of the coloured classes ("render", "tile") while a piece is built (world_heroes.gd)
+static var _hue: Color = Color(1, 1, 1)
 
 
 ## Canonical size of each kind (metres): "h" height, "r" footprint radius (half the widest side for a
@@ -44,6 +48,12 @@ static func info(kind: String) -> Dictionary:
 			return {"h": 10.0, "r": 3.6}
 		"clock_tower":
 			return {"h": 40.0, "r": 4.9, "clock_y": 27.0, "clock_r": 2.3, "clock_out": 4.5}
+		"arch":
+			return {"h": 16.0, "r": 8.5}
+		"dome":
+			return {"h": 26.0, "r": 9.5}
+		"spire":
+			return {"h": 46.0, "r": 4.2}
 	return {}
 
 
@@ -64,6 +74,12 @@ static func build(kind: String, variant: int = 0) -> ArrayMesh:
 			_memorial(c)
 		"clock_tower":
 			_clock_tower(c)
+		"arch":
+			_arch(c)
+		"dome":
+			_dome(c)
+		"spire":
+			_spire(c)
 		_:
 			return ArrayMesh.new()
 	return _commit(c)
@@ -100,8 +116,16 @@ static func _col(cls: String, n: Vector3, ao: float, p: Vector3) -> Color:
 			var pat: float = clampf((1.0 - ao) * 2.6 + maxf(up - 0.25, 0.0) * 0.75 + (hz - 0.5) * 0.3, 0.0, 0.85)
 			var col: Color = BRONZE.lerp(PATINA, pat) * minf(shade, 1.0)
 			return Color(maxf(col.r, BRONZE_MIN.r), maxf(col.g, BRONZE_MIN.g), maxf(col.b, BRONZE_MIN.b))
-		"water", "clock", "glow":
+		"water", "clock", "glow", "screen":
 			return Color(1, 1, 1)
+		"gilt":
+			var g: Color = GILT * clampf(0.75 + 0.3 * ao + 0.15 * maxf(up, 0.0), 0.7, 1.15)
+			return Color(minf(g.r, 1.0), minf(g.g, 1.0), minf(g.b, 1.0))
+		"slate":
+			return SLATE * clampf(shade, 0.75, 1.0)
+		"render", "tile":
+			var vv: float = clampf(shade, 0.3, 1.0) * _dim
+			return Color(_hue.r * vv, _hue.g * vv, _hue.b * vv)
 	var v: float = clampf(shade, 0.12, 1.0) * _dim
 	return Color(v, v, v)
 
@@ -635,3 +659,109 @@ static func _arch_ring_pts(r0: float, r1: float, yc: float, n: int) -> PackedVec
 		var a: float = PI - PI * float(i) / float(n)
 		p.append(Vector2(cos(a) * r0, yc + sin(a) * r0))
 	return p
+
+
+# ------------------------------------------------------------ day1-world: generic arch, dome, spire, bridge
+
+## A triumphal arch / gate: 17 m wide, 6 m deep, 16 m tall; one big arch, two small side arches, columns
+## on the front and back, a cornice and an attic with a bronze figure on top.
+static func _arch(c: Dictionary) -> void:
+	var id := Transform3D.IDENTITY
+	for side: float in [1.0, -1.0]:
+		var xf: Transform3D = _yaw(0.0 if side > 0.0 else 180.0)
+		# the pierced front: the main arch and the two side arches, as one polygon open at the bottom
+		var front := PackedVector2Array([Vector2(-8.5, 0.0), Vector2(-6.6, 0.0), Vector2(-6.6, 4.6)])
+		for i in range(1, 8):
+			var a: float = PI - PI * float(i) / 8.0
+			front.append(Vector2(-5.4 + cos(a) * 1.2, 4.6 + sin(a) * 1.2))
+		front.append_array(PackedVector2Array([Vector2(-4.2, 4.6), Vector2(-4.2, 0.0), Vector2(-3.0, 0.0), Vector2(-3.0, 7.0)]))
+		for i in range(1, 12):
+			var a: float = PI - PI * float(i) / 12.0
+			front.append(Vector2(cos(a) * 3.0, 7.0 + sin(a) * 3.0))
+		front.append_array(PackedVector2Array([Vector2(3.0, 7.0), Vector2(3.0, 0.0), Vector2(4.2, 0.0), Vector2(4.2, 4.6)]))
+		for i in range(1, 8):
+			var a: float = PI - PI * float(i) / 8.0
+			front.append(Vector2(5.4 + cos(a) * 1.2, 4.6 + sin(a) * 1.2))
+		front.append_array(PackedVector2Array([Vector2(6.6, 4.6), Vector2(6.6, 0.0), Vector2(8.5, 0.0), Vector2(8.5, 12.0), Vector2(-8.5, 12.0)]))
+		_extrude(c, "stone", xf, front, 2.2, 3.0)
+		for x: float in [-7.6, -3.6, 3.6, 7.6]:   # columns on pedestals
+			_box(c, "stone", xf * Transform3D(Basis(), Vector3(x, 0, 3.4)), 0.55, 0.55, 0.0, 2.2, 0.05)
+			_lathe(c, "stone", PackedVector2Array([Vector2(0.42, 2.2), Vector2(0.4, 9.8), Vector2(0.55, 10.2), Vector2(0.55, 10.6)]), 12,
+				xf * Transform3D(Basis(), Vector3(x, 0, 3.4)))
+	# the passages' inner walls (they read dark)
+	_dim = 0.55
+	for x: float in [-7.55, -4.8, 4.8, 7.55]:
+		_box(c, "stone", Transform3D(Basis(), Vector3(x, 0, 0)), 0.95 if absf(x) > 6.0 else 0.6, 2.25, 0.0, 12.0, 0.02)
+	_box(c, "stone", id, 8.4, 2.25, 10.0, 12.0, 0.02)
+	_dim = 1.0
+	_block(c, "stone", PackedVector2Array([Vector2(0, 12.0), Vector2(8.9, 12.0), Vector2(9.1, 12.4), Vector2(9.1, 12.8),
+		Vector2(8.6, 13.0), Vector2(8.6, 15.4), Vector2(8.8, 15.6), Vector2(8.8, 16.0), Vector2(0, 16.0)]), 3.6 / 8.9, 0.05)
+	_box(c, "bronze", Transform3D(Basis(), Vector3(0, 0, 3.75)), 4.0, 0.06, 13.3, 15.1, 0.03)
+	_figure(c, "bronze", Transform3D(Basis.from_scale(Vector3.ONE * 2.2), Vector3(0, 16.0, 0)), 0)
+
+
+## A dome on a drum (a church or civic dome): a square base, the colonnaded drum, a lead dome with stone
+## ribs, a lantern.
+static func _dome(c: Dictionary) -> void:
+	var id := Transform3D.IDENTITY
+	_block(c, "stone", PackedVector2Array([Vector2(0, 0), Vector2(9.5, 0), Vector2(9.5, 9.0), Vector2(9.8, 9.3), Vector2(9.8, 9.8), Vector2(0, 9.8)]), 1.0, 0.2)
+	_lathe(c, "stone", PackedVector2Array([Vector2(7.0, 9.8), Vector2(7.0, 15.0), Vector2(7.6, 15.3), Vector2(7.6, 15.8), Vector2(6.9, 16.0)]), 40)
+	for k in 16:   # the drum's columns
+		var a: float = TAU * float(k) / 16.0
+		_cap(c, "stone", id, Vector3(cos(a) * 7.35, 9.8, sin(a) * 7.35), Vector3(cos(a) * 7.35, 15.0, sin(a) * 7.35), 0.32, 0.3, 8)
+	var dome := PackedVector2Array()
+	for i in 9:
+		var t: float = PI * 0.5 * float(i) / 8.0
+		dome.append(Vector2(6.9 * cos(t), 16.0 + 7.0 * sin(t)))
+	_lathe(c, "slate", dome, 40)
+	for k in 12:   # ribs
+		var a: float = TAU * float(k) / 12.0
+		for i in 7:
+			var t0: float = PI * 0.5 * float(i) / 8.0
+			var t1: float = PI * 0.5 * float(i + 1) / 8.0
+			_cap(c, "stone", id, Vector3(cos(a) * 6.95 * cos(t0), 16.0 + 7.05 * sin(t0), sin(a) * 6.95 * cos(t0)),
+				Vector3(cos(a) * 6.95 * cos(t1), 16.0 + 7.05 * sin(t1), sin(a) * 6.95 * cos(t1)), 0.16, 0.16, 5)
+	_lathe(c, "stone", PackedVector2Array([Vector2(1.3, 22.8), Vector2(1.3, 24.4), Vector2(1.5, 24.6), Vector2(0.9, 25.0), Vector2(0, 25.0)]), 12)
+	_lathe(c, "gilt", PackedVector2Array([Vector2(0.18, 25.0), Vector2(0.3, 25.4), Vector2(0.0, 26.0)]), 8)
+
+
+## A church spire: a square tower with arched belfry openings, corner pinnacles, an octagonal spire.
+static func _spire(c: Dictionary) -> void:
+	_block(c, "stone", PackedVector2Array([Vector2(0, 0), Vector2(4.2, 0), Vector2(4.2, 1.0), Vector2(3.8, 1.3), Vector2(3.8, 18.0),
+		Vector2(4.1, 18.3), Vector2(4.1, 18.8), Vector2(0, 18.8)]), 1.0, 0.1)
+	for f in 4:
+		var xf: Transform3D = _yaw(90.0 * f)
+		_dim = 0.3
+		_extrude(c, "stone", xf, _arch_pts(0.8, 12.5, 16.8, 8), 3.78, 3.84)
+		_extrude(c, "stone", xf, _arch_pts(0.5, 4.0, 7.0, 6), 3.78, 3.84)
+		_dim = 1.0
+	for sx: float in [-1.0, 1.0]:
+		for sz: float in [-1.0, 1.0]:
+			_block(c, "stone", PackedVector2Array([Vector2(0, 18.8), Vector2(0.45, 18.8), Vector2(0.45, 20.0), Vector2(0, 22.6)]),
+				1.0, 0.04, Transform3D(Basis(), Vector3(sx * 3.7, 0, sz * 3.7)))
+	_sweep(c, "slate", _sec(_ring(8), false), PackedVector2Array([Vector2(3.4, 18.8), Vector2(3.2, 19.6), Vector2(0.25, 44.6), Vector2(0.0, 45.0)]),
+		Transform3D(Basis(Vector3.UP, PI / 8.0), Vector3.ZERO), 10.0)
+	_lathe(c, "gilt", PackedVector2Array([Vector2(0.12, 44.7), Vector2(0.18, 45.2), Vector2(0.05, 45.6), Vector2(0.0, 46.0)]), 8)
+
+
+## A bridge span `length` m along +z, `width` m wide, centred on the origin, over the place's flat water:
+## the deck's edge, parapets with a coping and a pier refuge (a bump-out with a lamp standard) every
+## ~22 m. Built per bridge (its length varies), not cached.
+static func bridge(length: float, width: float) -> ArrayMesh:
+	var c: Dictionary = {}
+	var hl: float = length * 0.5
+	var hw: float = width * 0.5
+	_box(c, "stone", Transform3D.IDENTITY, hw + 0.45, hl, -0.6, 0.0, 0.06)
+	var n: int = maxi(1, int(round(length / 22.0)))
+	var span: float = length / n
+	for sx: float in [-1.0, 1.0]:
+		var side := Transform3D(Basis(), Vector3(sx * (hw + 0.15), 0, 0))
+		_box(c, "stone", side, 0.28, hl, 0.0, 1.05, 0.05)   # parapet
+		_box(c, "stone", side, 0.36, hl, 1.05, 1.2, 0.04)    # its coping
+		for i in n + 1:
+			var z: float = -hl + span * i
+			var pier := Transform3D(Basis(), Vector3(sx * (hw + 0.7), 0, z))
+			_box(c, "stone", pier, 0.85, 1.4, -0.6, 1.3, 0.08)
+			_cap(c, "slate", Transform3D.IDENTITY, Vector3(sx * (hw + 0.7), 1.3, z), Vector3(sx * (hw + 0.7), 5.2, z), 0.11, 0.08, 6)
+			_ell(c, "glow", Transform3D.IDENTITY, Vector3(sx * (hw + 0.7), 5.45, z), Vector3(0.28, 0.36, 0.28), 8, 5)
+	return _commit(c)

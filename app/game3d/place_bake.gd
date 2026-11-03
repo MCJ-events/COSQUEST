@@ -123,6 +123,21 @@ func _disc(st: SurfaceTool, c: Vector2, r: float, inner: float, outer: float) ->
 		_tri(st, c, p0, p1, inner, outer, outer)
 
 
+## day1-world: the two bake meshes, committed off the main thread (place.gd _work).
+var _meshes: Array = []
+
+
+func prepare(_p: Node3D) -> void:
+	_meshes = []
+	for pair: Array in [[_sh, Color(1, 0, 0)], [_ao, Color(0, 1, 0)]]:
+		var mesh: ArrayMesh = (pair[0] as SurfaceTool).commit()
+		if mesh.get_surface_count() > 0:
+			_meshes.append([mesh, pair[1]])
+	_sh = null
+	_ao = null
+
+
+## On the main thread: the SubViewport that draws the bake once.
 func commit(p: Node3D) -> void:
 	var rect := Vector4(BAKE_CENTER.x - BAKE_SIZE * 0.5, BAKE_CENTER.y - BAKE_SIZE * 0.5, BAKE_SIZE, BAKE_SIZE)
 	viewport = SubViewport.new()
@@ -149,10 +164,10 @@ func commit(p: Node3D) -> void:
 	cam.transform = Transform3D(Basis(Vector3(1, 0, 0), Vector3(0, 0, -1), Vector3(0, 1, 0)), Vector3(BAKE_CENTER.x, 100.0, BAKE_CENTER.y))
 	viewport.add_child(cam)
 	cam.current = true
-	for pair: Array in [[_sh, Color(1, 0, 0)], [_ao, Color(0, 1, 0)]]:
-		var mesh: ArrayMesh = (pair[0] as SurfaceTool).commit()
-		if mesh.get_surface_count() == 0:
-			continue
+	if _sh != null:
+		prepare(p)
+	for pair: Array in _meshes:
+		var mesh: ArrayMesh = pair[0]
 		var m := StandardMaterial3D.new()
 		m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 		m.vertex_color_use_as_albedo = true
