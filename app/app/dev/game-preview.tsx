@@ -9,6 +9,7 @@ import { useEffect } from "react";
 import { LogBox, StyleSheet, View } from "react-native";
 
 import GameRoot from "@/components/game/GameRoot";
+import { equip } from "@/features/game/forgeWorldDevice";
 import { requestMapBench } from "@/features/game/mapBench";
 import { gameStore, startLocation } from "@/features/game/runtime";
 import { world } from "@/features/world/worldState";
@@ -23,6 +24,8 @@ export default function GamePreview() {
     (globalThis as { __cqGame?: unknown }).__cqGame = gameStore;
     // And the map's scripted smoothness bench (EXPO_PUBLIC_MAP_BENCH=1 builds), as cosquest://mapbench does.
     (globalThis as { __cqMapBench?: unknown }).__cqMapBench = requestMapBench;
+    // And wearing a Forge hero (any published hero may be worn), so the map marker can be shot with one.
+    (globalThis as { __cqForge?: unknown }).__cqForge = { equip };
     // A token the game server will not know: it falls back to the device's key.
     // The game is the page on screen (as the world pager says once it settles there).
     world.settled("game");

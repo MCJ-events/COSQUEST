@@ -343,16 +343,33 @@ export function refusalText(e: unknown): string {
   return e instanceof Error && e.message ? e.message : "Something went wrong.";
 }
 
+/** How often a phone re-reads the whole catalogue while a model still waits for its portrait. */
+export const PORTRAIT_REREAD_MS = 10 * 60_000;
+
+/**
+ * Whether the next catalogue poll should be a full read instead of a delta.
+ * A portrait is rendered minutes after a publish (tools/portrait_sync.py) and
+ * does not move the element's published_at, so a `since` poll never brings it:
+ * while a character or weapon has none, the whole list is read again now and
+ * then (it is ~20 entries and a 304 when nothing changed).
+ */
+export function wantsFullRead(entries: readonly Pick<ForgeEntry, "type" | "portrait">[], lastFullAt: number, now: number): boolean {
+  if (!entries.length) return true;
+  const missing = entries.some((e) => (e.type === "character" || e.type === "weapon") && !e.portrait);
+  return missing && now - lastFullAt >= PORTRAIT_REREAD_MS;
+}
+
 /** The Forge model a point carries (annotate: station wins, else a dressing environment). */
 export type ForgeRef = { element_id: string; version: number | null };
-export function pointForge(p: unknown): { station: ForgeRef | null; environment: ForgeRef | null } {
+export function pointForge(p: unknown): { station: ForgeRef | null; environment: ForgeRef | null; guardian: ForgeRef | null } {
   const f = obj(obj(p)?.forge);
   const ref = (v: unknown): ForgeRef | null => {
     const o = obj(v);
     const id = o ? str(o.element_id) : null;
     return o && id ? { element_id: id, version: num(o.version) } : null;
   };
-  return { station: ref(f?.station), environment: ref(f?.environment) };
+  // guardian (day1-ui): the character a fight here puts up, for the pin's portrait.
+  return { station: ref(f?.station), environment: ref(f?.environment), guardian: ref(f?.guardian) };
 }
 
 /** The Forge character an AI fighter (Guardian, boss) is drawn as, when the server picked one. */

@@ -36,7 +36,8 @@ import {
   rarityRank,
   refusalText,
 } from "@/features/game/forgeWorld";
-import { claim, equip, refreshInventory, startForgeWorld, thumbUrl, absUrl, useEquipped, useForgeWorld } from "@/features/game/forgeWorldDevice";
+import { claim, equip, figureUrl, refreshInventory, startForgeWorld, thumbUrl, absUrl, useEquipped, useForgeWorld } from "@/features/game/forgeWorldDevice";
+import type { QuestPoint } from "@/features/game/wire";
 import { gameStore, useGame } from "@/features/game/runtime";
 
 import { bagItems, dropShown, STARTER } from "@/features/game3d/held";
@@ -119,6 +120,7 @@ function DropPin({ drop, left, top, onPress }: { drop: ForgeDrop; left: number; 
   }, [bob]);
   const style = useAnimatedStyle(() => ({ transform: [{ translateY: -4 * bob.get() }, { rotate: "45deg" }] }));
   const glow = useAnimatedStyle(() => ({ opacity: 0.18 + 0.22 * bob.get(), transform: [{ translateY: -4 * bob.get() }, { rotate: "45deg" }, { scale: 1.1 + 0.12 * bob.get() }] }));
+  // The drop's own clear-background thumbnail: an opaque cream portrait would cover the diamond's rarity edge.
   const url = absUrl(drop.thumbnail_url);
   return (
     <Pressable
@@ -139,7 +141,59 @@ function DropPin({ drop, left, top, onPress }: { drop: ForgeDrop; left: number; 
   );
 }
 
-/** Your Forge avatar's face for the map marker and chips: the thumbnail (cheap), or nothing. */
+/**
+ * Your worn Forge hero standing on the map marker's puck (art direction 6.4):
+ * the full-body 3/4 render from the catalogue, or null when the server has not
+ * rendered one yet (the marker then shows AvatarBadge's face).
+ */
+export function AvatarFigure() {
+  const on = useForgeOn();
+  const { avatar } = useEquipped();
+  const entry = useForgeEntry(avatar);
+  const url = on ? figureUrl(entry, 128) : null;
+  if (!url) return null;
+  return <Image source={{ uri: url }} style={{ width: "100%", height: "100%" }} contentFit="contain" contentPosition="bottom" accessibilityLabel={`You, as ${entry?.name ?? "your hero"}`} />;
+}
+
+/** Whether the worn hero has a standing figure (so the marker can choose figure or face). */
+export function useHasAvatarFigure(): boolean {
+  const on = useForgeOn();
+  const { avatar } = useEquipped();
+  const entry = useForgeEntry(avatar);
+  return on && !!figureUrl(entry, 128);
+}
+
+/**
+ * The map's Guardian pins (art direction 6.4): for a point a fight is fought
+ * at, the 3/4 portrait of the character the server says guards it
+ * (point.forge.guardian). Only a rendered portrait: the build's concept
+ * thumbnail is a grey T-pose that reads as nothing at pin size. Undefined
+ * while Forge in the world is off, so the map keeps its glyph pins.
+ */
+export function usePinPortraits(): ((p: QuestPoint) => string | null) | undefined {
+  const on = useForgeOn();
+  const entries = useForgeWorld((s) => s.entries);
+  return useMemo(() => {
+    if (!on) return undefined;
+    const byId = new Map(entries.map((e) => [e.id, e]));
+    return (p: QuestPoint) => {
+      const g = pointForge(p).guardian;
+      const e = g ? byId.get(g.element_id) : undefined;
+      return e?.portrait ? thumbUrl(e, 128) : null;
+    };
+  }, [on, entries]);
+}
+
+/** One point's Guardian portrait at a card size (the pre-fight briefing), or null. */
+export function useGuardianPortrait(point: QuestPoint | null | undefined, width: 256 | 512 = 512): { url: string; name: string } | null {
+  const on = useForgeOn();
+  const id = on && point ? (pointForge(point).guardian?.element_id ?? null) : null;
+  const entry = useForgeEntry(id);
+  const url = entry?.portrait ? thumbUrl(entry, width) : null;
+  return url && entry ? { url, name: entry.name } : null;
+}
+
+/** Your Forge avatar's face for the map marker and chips: its portrait (or thumbnail), or nothing. */
 export function AvatarBadge({ size = 30 }: { size?: number }) {
   const on = useForgeOn();
   const { avatar } = useEquipped();

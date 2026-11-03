@@ -253,10 +253,11 @@ export function GameTitle({ text, size = 40, color = "#FFFFFF", edge = GP.ink }:
 const OUTLINE = Array.from({ length: 8 }, (_, i) => [Math.cos((i * Math.PI) / 4), Math.sin((i * Math.PI) / 4)] as const);
 
 /** A heading on a game page: Lilita One in the page's ink, `title` size unless told otherwise. */
-export function GameHeading({ text, size = TYPE.title.fontSize }: { text: string; size?: number }) {
+export function GameHeading({ text, size = TYPE.title.fontSize, inHeader }: { text: string; size?: number; inHeader?: boolean }) {
   const look = useLook();
+  // inHeader: already inside a row that is the header (no <h1> in an <h1> on web).
   return (
-    <Text accessibilityRole="header" maxFontSizeMultiplier={MAX_FONT_SCALE} style={{ fontFamily: GF.display, fontSize: size, lineHeight: Math.round(size * 1.15), color: look.text }}>
+    <Text accessibilityRole={inHeader ? undefined : "header"} maxFontSizeMultiplier={MAX_FONT_SCALE} style={{ fontFamily: GF.display, fontSize: size, lineHeight: Math.round(size * 1.15), color: look.text }}>
       {text}
     </Text>
   );
