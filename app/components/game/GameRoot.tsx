@@ -250,9 +250,21 @@ function GameRootInner({ parked }: { parked: boolean }) {
     };
   }, []);
 
+  // One unlock introduction per return to the map: a first quiz can pay two or
+  // three levels at once, and the Warden then queued Codex, Relics, walking and
+  // friends back to back, a wall of tutorials between the player and the map.
+  // The next one waits until the player has played something else.
+  const [unlockTurn, setUnlockTurn] = useState(true);
+  const wasHome = useRef(true);
+  useEffect(() => {
+    const home = screen.kind === "home";
+    if (home && !wasHome.current) setUnlockTurn(true);
+    wasHome.current = home;
+  }, [screen.kind]);
+
   // What the Warden has to show next. Nothing while a card, a sheet or a
   // challenge is up: one voice at a time (RoamHomeView.coachStep).
-  const coachStep: CoachStep | null =
+  const nextCoach: CoachStep | null =
     coachDone && !parked && screen.kind === "home" && !selected && sheet === null && fix && !runLive && !runPoint
       ? coachStepFor({
           me,
@@ -265,9 +277,11 @@ function GameRootInner({ parked }: { parked: boolean }) {
           introduced: ROOMS_ON ? introduced : new Set([...introduced, "battle"]),
         })
       : null;
+  const coachStep: CoachStep | null = nextCoach && unlockOfStep(nextCoach.id) && !unlockTurn ? null : nextCoach;
   const markCoach = (step: CoachStep) => {
     const u = unlockOfStep(step.id);
     if (u) {
+      setUnlockTurn(false);
       const next = new Set(introduced).add(u);
       setIntroduced(next);
       void setPref(UNLOCKS_INTRODUCED_KEY, JSON.stringify([...next]));
@@ -435,7 +449,7 @@ function GameRootInner({ parked }: { parked: boolean }) {
   // does not cover answers, titles or rewards (F-38, features/world/bubbleZone.ts).
   // The 3D sheets count too: the Forge bag, the game profile and a claim.
   const fullScreen = gameStore.needsOnboarding || onboarding || screen.kind !== "home" || runPoint !== null || runState.finished !== null
-    || (sheet === "collection" && collectionTab === "forge") || sheet === "profile" || forgeDrop !== null;
+    || sheet === "collection" || sheet === "profile" || forgeDrop !== null;
   useEffect(() => {
     world.setGameFocus(fullScreen);
   }, [fullScreen]);
