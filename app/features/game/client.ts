@@ -7,6 +7,7 @@
 //   - Retries are safe where the server is idempotent (answers, duel finish),
 //     and a stale nonce is the one 401 worth retrying.
 // Pure: fetch and the identity are injected (tested in features/game/__tests__).
+import type { WardenFacts } from "./wardenSite.ts";
 import { type FixFields, withFixFields } from "./fixInfo.ts";
 import { type Identity, utf8ToBytes } from "./identity.ts";
 import type {
@@ -206,6 +207,11 @@ export class GameClient {
   }
 
   // ---------- roam ----------
+
+  /** A published Game Warden site's checked facts and narration (unsigned, the same for everyone). */
+  async wardenFacts(siteId: string): Promise<WardenFacts> {
+    return this.request("GET", "v1/roam/warden/facts", { query: { site_id: siteId } });
+  }
 
   async roamConfig(): Promise<RoamConfig> {
     return this.request("GET", "v1/roam/config");

@@ -15,6 +15,7 @@ import { isRaidPoint, RAID_COLOR } from "@/features/game/raids";
 import { useGame } from "@/features/game/runtime";
 import { siegeOf } from "@/features/game/siege";
 import { type QuestPoint, spinReady } from "@/features/game/wire";
+import { SITE_REALM_LINE, siteIdOf, siteSubtitle } from "@/features/game/wardenSite";
 
 import { GAME_TO_CHAT } from "@/features/world/factionLink";
 
@@ -41,6 +42,7 @@ export default function PointSheet({
   cooling,
   factionName,
   legend,
+  credit,
   onPlay,
   onSpin,
   onShare,
@@ -55,6 +57,8 @@ export default function PointSheet({
   factionName: (id: string) => string;
   /** The Warden's line about the place, once written. */
   legend?: string | null;
+  /** Where a Game Warden site's facts come from (their licences), shown under its facts. */
+  credit?: string | null;
   onPlay: () => void;
   /** Spin the point for items (in reach, not resting). */
   onSpin?: () => void;
@@ -78,6 +82,7 @@ export default function PointSheet({
   const boss = isRaidPoint(point);
   const siege = siegeOf(point, me, factionName);
   const tint = tierColor(point.tier);
+  const site = !!siteIdOf(point);
 
   return (
     <Animated.View
@@ -91,12 +96,13 @@ export default function PointSheet({
               <View style={styles.chips}>
                 <Chip text={duel ? difficultyLabel(point.tier) : tierName(point.tier)} color={tint} />
                 <Chip text={challengeLabel(point.challenge)} color={ACCENT.sky.fill} light />
+                {site ? <Chip text="Warden site" color={ACCENT.sky.fill} /> : null}
               </View>
               <Text style={styles.name} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.7} accessibilityRole="header" maxFontSizeMultiplier={MAX_FONT_SCALE}>
                 {point.name}
               </Text>
               <Text style={styles.subtitle} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-                {pointSubtitle(point)}
+                {site ? siteSubtitle(point) : pointSubtitle(point)}
               </Text>
             </View>
             <GameIconButton icon="chatbubbles" color={ACCENT.sky.fill} diameter={36} onPress={onShare} accessibilityLabel={`Invite a chat to ${point.name}`} />
@@ -107,15 +113,20 @@ export default function PointSheet({
           <HoldLine point={point} me={me} factionName={factionName} />
           <SiegeLine point={point} me={me} factionName={factionName} />
           <RaidLine point={point} />
-          {legend ? <Text style={styles.legend}>{legend}</Text> : null}
+          {legend ? <Text style={site ? styles.fact : styles.legend}>{legend}</Text> : null}
+          {site && credit ? (
+            <Text style={styles.credit} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+              {credit}
+            </Text>
+          ) : null}
 
-          <View style={styles.realm} accessible accessibilityLabel={realmLine(point, factionName)}>
+          <View style={styles.realm} accessible accessibilityLabel={site ? SITE_REALM_LINE : realmLine(point, factionName)}>
             {/* Realm colours live on chips only: a small realm swatch, the words in the page's muted ink. */}
             <View style={[styles.realmDot, { backgroundColor: REALM_CHIP[point.realm ?? ""] ?? ACCENT.sky.fill }]}>
               <Ionicons name={realmIcon(point.realm)} size={12} color="#FFFFFF" />
             </View>
             <Text style={styles.realmText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
-              {realmLine(point, factionName)}
+              {site ? SITE_REALM_LINE : realmLine(point, factionName)}
             </Text>
           </View>
 
@@ -176,6 +187,8 @@ const STYLE_PAIR = themedStyles(
     name: { fontFamily: GF.display, fontSize: 28, lineHeight: 32, color: L.text },
     subtitle: { fontFamily: GF.regular, fontSize: 15, lineHeight: 21, color: L.textMuted },
     legend: { fontFamily: GF.regular, fontSize: 15, lineHeight: 21, fontStyle: "italic", color: L.textMuted },
+    fact: { fontFamily: GF.regular, fontSize: 15, lineHeight: 21, color: L.text },
+    credit: { fontFamily: GF.body, fontSize: 12, lineHeight: 16, color: L.textMuted, marginTop: -6 },
     realm: { flexDirection: "row", alignItems: "center", gap: 8 },
     realmDot: { width: 20, height: 20, borderRadius: 10, alignItems: "center", justifyContent: "center" },
     buttons: { flexDirection: "row", gap: 10 },
@@ -185,6 +198,8 @@ const STYLE_PAIR = themedStyles(
     name: { color: D.text },
     subtitle: { color: D.textMuted },
     legend: { color: D.textMuted },
+    fact: { color: D.text },
+    credit: { color: D.textMuted },
     realmText: { color: D.textMuted },
   },
 );

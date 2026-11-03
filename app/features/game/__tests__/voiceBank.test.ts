@@ -20,7 +20,7 @@ const misses = (said: (q: Q) => string, strict: boolean) =>
   bank.filter((q) => matchSpokenAnswer(said(q), q.c, strict) !== q.a).map((q) => `${q.id}: "${said(q)}"`);
 
 test("the bank is all here", () => {
-  assert.ok(bank.length >= 716, `${bank.length} questions`);
+  assert.ok(bank.length >= 716 + 42, `${bank.length} questions`);
 });
 
 test("saying the answer picks it, on the final result and on a confident partial", () => {
@@ -37,7 +37,14 @@ test("in a sentence: \"I think it is <answer>\"", () => {
 });
 
 test("by position and by colour", () => {
-  assert.deepEqual(misses((q) => ORD[q.a], false), []);
+  // "the first one" beside a choice that itself says "first" is ambiguous too: nothing is picked, never a wrong one.
+  const ordWord = /\b(first|second|third|fourth)\b/i;
+  const ordPlain = bank.filter((q) => !q.c.some((c) => ordWord.test(c)));
+  assert.deepEqual(ordPlain.filter((q) => matchSpokenAnswer(ORD[q.a], q.c, false) !== q.a).map((q) => q.id), []);
+  for (const q of bank.filter((x) => !ordPlain.includes(x))) {
+    const got = matchSpokenAnswer(ORD[q.a], q.c, false);
+    assert.ok(got === q.a || got === null, `${q.id}: ${ORD[q.a]} picked ${got}`);
+  }
   // A colour that is also in a choice ("the green one" beside "Green Arrow") is ambiguous: the
   // player meant the button or the name, so those few are left out (the button names are on screen).
   const colourWord = /\b(blue|red|orange|yellow|green)\b/i;

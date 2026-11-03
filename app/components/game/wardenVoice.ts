@@ -80,12 +80,13 @@ export const wardenVoice = {
 
   /** Start writing a line now so it is ready when wanted (no-op without a model). */
   prepare(moment: WardenMoment) {
+    if (moment.fixed) return;
     void ask(moment);
   },
 
   /** Say a moment's line: the model's if it is ready in time, the authored one otherwise. */
   async speak(moment: WardenMoment, holdMs = 6000): Promise<string> {
-    const fromModel = writer
+    const fromModel = writer && !moment.fixed
       ? await Promise.race([ask(moment), new Promise<null>((r) => setTimeout(() => r(null), MODEL_WAIT_MS))])
       : null;
     const line = fromModel ? { text: fromModel, fromModel: true } : { text: fallbackLine(moment), fromModel: false };

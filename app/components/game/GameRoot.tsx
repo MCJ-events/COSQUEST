@@ -24,7 +24,9 @@ import { useRoomBeacons, useRooms } from "@/features/game/roomsRuntime";
 import { isSiege } from "@/features/game/siege";
 import { noteStepsOnPhone } from "@/features/game/stepsDevice";
 import { unlocked, visiblePoints } from "@/features/game/unlocks";
-import { arriveMoment, legendMoment, nudgeMoment } from "@/features/game/warden";
+import { arriveMoment, legendMoment, nudgeMoment, siteArriveMoment } from "@/features/game/warden";
+import { siteArriveLine, siteAttribution, siteIdOf, siteLegend } from "@/features/game/wardenSite";
+import { siteFacts } from "./wardenSites";
 import { freshLoss, holdsLostOf, type QuestPoint, spinBanner } from "@/features/game/wire";
 import { factionVeilColor, world } from "@/features/world/worldState";
 import { resultShareText } from "@/features/world/gameInvite";
@@ -173,7 +175,7 @@ function GameRootInner({ parked }: { parked: boolean }) {
   const [onboarding, setOnboarding] = useState(false);
   const needsOnboarding = !!session && gameStore.needsOnboarding;
   if (needsOnboarding && !onboarding) setOnboarding(true);
-  const [legendOf, setLegendOf] = useState<{ id: string; text: string } | null>(null);
+  const [legendOf, setLegendOf] = useState<{ id: string; text: string; credit?: string | null } | null>(null);
   const greeted = useRef(new Set<string>());
   // What the coach has said (cq.coach.done, cq.unlocks.introduced), read once.
   const [coachDone, setCoachDone] = useState<Set<string> | null>(null);
@@ -300,7 +302,13 @@ function GameRootInner({ parked }: { parked: boolean }) {
     }
     if (p && !greeted.current.has(p.id)) {
       greeted.current.add(p.id);
-      wardenVoice.speak(arriveMoment(ctx(), p)).catch(() => {});
+      // At a Game Warden site the welcome is the site's own line, from its checked facts.
+      if (siteIdOf(p)) {
+        void siteFacts(p).then((f) => {
+          const line = siteArriveLine(f);
+          wardenVoice.speak(line ? siteArriveMoment(ctx(), p, line) : arriveMoment(ctx(), p)).catch(() => {});
+        });
+      } else wardenVoice.speak(arriveMoment(ctx(), p)).catch(() => {});
     }
   }, [nearby, parked, screen.kind, me?.faction, ctx]);
 
@@ -310,6 +318,15 @@ function GameRootInner({ parked }: { parked: boolean }) {
     if (!selected) return;
     let alive = true;
     const id = selected.id;
+    // A Game Warden site's card tells its checked facts (and credits them), never invented lore.
+    if (siteIdOf(selected)) {
+      void siteFacts(selected).then((f) => {
+        if (alive) setLegendOf({ id, text: siteLegend(f) ?? "", credit: siteAttribution(f) });
+      });
+      return () => {
+        alive = false;
+      };
+    }
     void wardenVoice.line(legendMoment(ctx(), selected), 8000).then((text) => {
       if (alive) setLegendOf({ id, text });
     });
@@ -694,7 +711,8 @@ function GameRootInner({ parked }: { parked: boolean }) {
           inReach={gameStore.inReach(selected)}
           cooling={gameStore.isCooling(selected)}
           factionName={gameStore.factionName}
-          legend={legendOf?.id === selected.id ? legendOf.text : null}
+          legend={legendOf?.id === selected.id ? legendOf.text || null : null}
+          credit={legendOf?.id === selected.id ? legendOf.credit ?? null : null}
           onPlay={() => play(selected)}
           onSpin={() => void spin(selected)}
           onShare={() => share(selected)}

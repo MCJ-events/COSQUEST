@@ -54,7 +54,8 @@ import {
   secondChanceLabel,
   tierName,
 } from "@/features/game/strike";
-import { arriveMoment, hintMoment, lateMoment, levelMoment, reactionMoment } from "@/features/game/warden";
+import { arriveMoment, hintMoment, lateMoment, levelMoment, reactionMoment, siteArriveMoment } from "@/features/game/warden";
+import { siteArriveLine, siteIdOf } from "@/features/game/wardenSite";
 import type { AttemptQuestion, QuestPoint, RoamAnswer, RoamAttempt, RoamVerdict } from "@/features/game/wire";
 import { parseServerDate } from "@/features/game/wire";
 
@@ -69,6 +70,7 @@ import { playResolve, startStrike } from "./strike";
 import { ACCENT, BUTTON, edgeColor, ELEVATION, labelOn, RADIUS, SURFACES, TEXT_ON_DARK, TEXT_ON_LIGHT, useLook, useMapLook } from "./look";
 import { CHOICE_COLORS, GF, realmColor, tierColor } from "./theme";
 import { useWardenSaid, wardenVoice } from "./wardenVoice";
+import { siteFacts } from "./wardenSites";
 import { CostQuestShrineView, type CostQuestShrineViewHandle, shrineARSupported } from "@/modules/costquest-game/src";
 
 import { AR_SHRINE_DEV, setShrineAR, useShrineAR } from "./prefs";
@@ -204,7 +206,14 @@ export default function Encounter({
     (ar: boolean) => {
       setPlaced(true);
       setInRoom(ar);
-      if (phaseRef.current === "approach") wardenVoice.speak(arriveMoment(ctx(), point), 1500).catch(() => {});
+      if (phaseRef.current !== "approach") return;
+      // At a Game Warden site, the site's own line (written from its checked facts).
+      if (siteIdOf(point)) {
+        void siteFacts(point).then((f) => {
+          const line = siteArriveLine(f);
+          if (phaseRef.current === "approach") wardenVoice.speak(line ? siteArriveMoment(ctx(), point, line) : arriveMoment(ctx(), point), 1500).catch(() => {});
+        });
+      } else wardenVoice.speak(arriveMoment(ctx(), point), 1500).catch(() => {});
     },
     [point],
   );
@@ -426,7 +435,12 @@ export default function Encounter({
           </Text>
           <View style={styles.chips}>
             <Chip text={tierName(point.tier)} color={tierColor(point.tier)} />
-            <Chip text={attempt?.realm_name ?? challengeLabel(point.challenge)} color={realmColor(attempt?.realm ?? point.realm)} />
+            {/* A Game Warden site asks about the place itself, not a realm. */}
+            {siteIdOf(point) ? (
+              <Chip text="Warden site" color={ACCENT.sky.fill} />
+            ) : (
+              <Chip text={attempt?.realm_name ?? challengeLabel(point.challenge)} color={realmColor(attempt?.realm ?? point.realm)} />
+            )}
           </View>
         </View>
       </View>
