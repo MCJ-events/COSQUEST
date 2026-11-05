@@ -2,9 +2,11 @@
 // the phone comes back online, queued sends go out (services/offlineQueue.ts).
 import NetInfo, { type NetInfoState } from "@react-native-community/netinfo";
 import { useEffect, useState } from "react";
+import { Platform } from "react-native";
 
 import { isNetworkFailure, OFFLINE_MESSAGE } from "./networkError";
 import { createQueue } from "./offlineQueue";
+import { webReachabilityUrl } from "./reachability";
 
 export function isOfflineError(error: unknown): boolean {
   return isNetworkFailure(error) || (error instanceof Error && error.message === OFFLINE_MESSAGE);
@@ -24,6 +26,14 @@ let started = false;
 function start() {
   if (started) return;
   started = true;
+  if (Platform.OS === "web") {
+    // Not "/" of this origin, which is not this app on every host (services/reachability.ts).
+    NetInfo.configure({
+      reachabilityUrl: webReachabilityUrl(process.env.EXPO_BASE_URL),
+      reachabilityMethod: "HEAD",
+      reachabilityTest: (response) => Promise.resolve(response.status === 200),
+    });
+  }
   NetInfo.addEventListener((state) => {
     const next = offlineFrom(state);
     if (next === offline) return;
