@@ -16,7 +16,7 @@ import { COACH_DONE_KEY, coachStepFor, type CoachStep, parseIdList, starterKindO
 import { bearingDeg, distanceM, distanceText } from "@/features/game/geo";
 import { hasTrials, type TrialRequest, trialPoint } from "@/features/game/duelFlow";
 import { suggestedId } from "@/features/game/guide";
-import { isLive, isPocket, type RunPoint, runPointOf, runQuestPoints } from "@/features/game/run";
+import { isLive, isPocket, type RunPoint, runPointOf, runQuestPoints, TRIVIA_DOOR } from "@/features/game/run";
 import { gameStore, GAME_SERVER, GAME_SERVER_IS_PRODUCTION, useGame, useLocationPermission, startLocation } from "@/features/game/runtime";
 import { useSquad } from "@/features/game/squadRuntime";
 import { nearestFirst } from "@/features/game/store";
@@ -661,12 +661,14 @@ function GameRootInner({ parked }: { parked: boolean }) {
         {runLive ? <RunHUD /> : null}
         {permission === "denied" ? (
           <View style={styles.notice}>
-            <Text style={styles.noticeText}>{"Location is off, so Quest Points can't find you. Turn it on in Settings to play."}</Text>
+            <Text style={styles.noticeText}>{"Location is off, so Quest Points can't find you. Turn it on in Settings to play, or play trivia, which needs no location."}</Text>
             <GameButton title="Try again" small color={GP.skyDeep} onPress={() => startLocation(true)} />
+            {TRIVIA_DOOR && !runLive ? <GameButton title="Play trivia" small color={GP.sun} onPress={() => router.push("/trivia")} testID="game-trivia" /> : null}
           </View>
         ) : !fix ? (
           <View style={styles.notice}>
             <Text style={styles.noticeText}>Finding you…</Text>
+            {TRIVIA_DOOR && !runLive ? <GameButton title="Play trivia meanwhile" small color={GP.sun} onPress={() => router.push("/trivia")} testID="game-trivia" /> : null}
           </View>
         ) : problem ? (
           <View style={styles.notice}>

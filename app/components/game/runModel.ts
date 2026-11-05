@@ -3,11 +3,13 @@
 // The words and the routes are features/game/run.ts; this is the glue.
 import * as Haptics from "expo-haptics";
 import { useSyncExternalStore } from "react";
+import { Platform, Share } from "react-native";
 
 import { GameError } from "@/features/game/client";
 import {
   isLive,
   isPocket,
+  isTrivia,
   type RunBoard,
   runAllowance,
   runAnswer,
@@ -15,6 +17,7 @@ import {
   runCurrent,
   type RunFinish,
   runFinish,
+  type RunMode,
   runOpen,
   type RunOpened,
   type RunPoint,
@@ -22,6 +25,11 @@ import {
   runStart,
   type RunState,
   SERVER_GRACE_S,
+  shareContent,
+  triviaAllowance,
+  triviaBoard,
+  type TriviaShare,
+  triviaShare,
 } from "@/features/game/run";
 import { gameStore } from "@/features/game/runtime";
 import type { RoamAnswer, RoamAttempt } from "@/features/game/wire";
@@ -45,6 +53,9 @@ export type RunModelState = {
   localEnd: number | null;
   dailyLeft: number | null;
   pocketLeft: number | null;
+  triviaLeft: number | null;
+  /** A finished trivia run's share link, once asked for. */
+  share: TriviaShare | null;
 };
 
 const EMPTY: RunModelState = {
@@ -58,6 +69,8 @@ const EMPTY: RunModelState = {
   localEnd: null,
   dailyLeft: null,
   pocketLeft: null,
+  triviaLeft: null,
+  share: null,
 };
 
 let state: RunModelState = EMPTY;
@@ -74,6 +87,12 @@ function apply(r: RunState | null) {
 }
 
 let noticeTimer: ReturnType<typeof setTimeout> | null = null;
+
+/** The board a finished run is shown with: the global one for trivia, the city's for a daily run, none for a Pocket Run. */
+async function boardAfter(f: RunFinish) {
+  if (isTrivia(f.run)) await runModel.loadTriviaBoard(f.board_day);
+  else if (!isPocket(f.run)) await runModel.loadBoard(f.board_day);
+}
 
 export const runModel = {
   subscribe(l: () => void) {
@@ -99,9 +118,9 @@ export const runModel = {
     }
     const held = state.run;
     if (got.settled) {
-      set({ run: got.settled.run, localEnd: null, finished: got.settled });
+      set({ run: got.settled.run, localEnd: null, finished: got.settled, share: null });
       playSound("fanfare");
-      if (!isPocket(got.settled.run)) await runModel.loadBoard(got.settled.board_day);
+      await boardAfter(got.settled);
       void gameStore.refreshMe();
     } else if (held && !state.finished && (got.run?.run_id !== held.run_id || got.run?.finished === true)) {
       // The run this phone held was settled elsewhere: /finish is idempotent
@@ -114,7 +133,7 @@ export const runModel = {
     return true;
   },
 
-  async start(mode: "daily" | "pocket", block: string | null): Promise<boolean> {
+  async start(mode: RunMode, block: string | null): Promise<boolean> {
     if (state.busy) return false;
     set({ busy: true, problem: null });
     try {
@@ -124,7 +143,7 @@ export const runModel = {
       }
       const r = await runStart(gameStore.client, mode, fixOf());
       apply(r);
-      set({ finished: null, openedStakes: {} });
+      set({ finished: null, openedStakes: {}, share: null });
       notify(Haptics.NotificationFeedbackType.Success);
       return true;
     } catch (e) {
@@ -188,9 +207,9 @@ export const runModel = {
     set({ busy: true });
     try {
       const f = await runFinish(gameStore.client, run.run_id);
-      set({ run: f.run, finished: f, localEnd: null });
+      set({ run: f.run, finished: f, localEnd: null, share: null });
       playSound("fanfare");
-      if (!isPocket(f.run)) await runModel.loadBoard(f.board_day);
+      await boardAfter(f);
       void gameStore.refreshMe();
     } catch (e) {
       runModel.flash(`Couldn't end the run: ${message(e, "no connection")}`);
@@ -228,7 +247,7 @@ export const runModel = {
     try {
       const me = await gameStore.client.roamMe();
       const left = runAllowance(me);
-      set({ dailyLeft: left.daily, pocketLeft: left.pocket });
+      set({ dailyLeft: left.daily, pocketLeft: left.pocket, triviaLeft: triviaAllowance(me) });
     } catch {
       // The sheet just doesn't say how many are left.
     }
@@ -244,6 +263,46 @@ export const runModel = {
     }
   },
 
+  /** Today's global trivia board (no location needed): the start screen, and after a trivia run. */
+  async loadTriviaBoard(day?: string | null) {
+    try {
+      const key = gameStore.get().session?.playerKey ?? null;
+      set({ board: await triviaBoard(gameStore.client, day, key) });
+    } catch {
+      set({ board: null });
+    }
+  },
+
+  /**
+   * Share a finished trivia run: the server makes (or hands back) its card,
+   * then the phone's share sheet posts the line and the link. False when the
+   * link could not be made; the share sheet being dismissed is not a failure.
+   */
+  async share(): Promise<boolean> {
+    const f = state.finished;
+    if (!f || !isTrivia(f.run) || state.busy) return false;
+    let link = state.share;
+    if (!link) {
+      // Busy only while the link is made: the share sheet can stay open as long as the player likes.
+      set({ busy: true });
+      try {
+        link = await triviaShare(gameStore.client, f.run.run_id);
+        set({ share: link });
+      } catch (e) {
+        runModel.flash(`Couldn't share: ${message(e, "no connection")}`);
+        return false;
+      } finally {
+        set({ busy: false });
+      }
+    }
+    try {
+      await Share.share(shareContent(link, Platform.OS));
+    } catch {
+      // No share sheet here (a desktop browser): the link is on the results to copy.
+    }
+    return true;
+  },
+
   flash(text: string) {
     set({ notice: text });
     if (noticeTimer) clearTimeout(noticeTimer);
@@ -257,7 +316,7 @@ export const runModel = {
 
   /** Once the results are closed, the run is over for the phone too. */
   close() {
-    set({ finished: null, run: null, localEnd: null, openedStakes: {} });
+    set({ finished: null, run: null, localEnd: null, openedStakes: {}, share: null });
   },
 
   /** A run point fought as a duel comes back with the run as the server now has it. */

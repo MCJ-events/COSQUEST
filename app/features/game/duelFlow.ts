@@ -388,8 +388,13 @@ export function trialAgainLabel(o: Pick<DuelOutcome, "status" | "mode">, ladderA
 /** A run point: a 30 second fight for the point's value. */
 export type RunDuelRequest = { runId: string; idx: number; stake: boolean; name: string; value: number };
 
-/** Run points are fought when the point is a duel or the server fights run points (run_mode). */
-export function runPlaysAsDuel(kind: string | null | undefined, me: RoamMe | null | undefined): boolean {
+/**
+ * Run points are fought when the point is a duel or the server fights run points (run_mode).
+ * A trivia run never fights: the server deals it questions whatever run_mode says, and the
+ * global run_mode alone used to send its tiles into a fight the server then refused.
+ */
+export function runPlaysAsDuel(kind: string | null | undefined, me: RoamMe | null | undefined, trivia = false): boolean {
+  if (trivia) return false;
   return kind === "duel" || me?.features?.duel?.run_mode === "duel";
 }
 

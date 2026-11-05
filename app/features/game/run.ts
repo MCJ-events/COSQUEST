@@ -32,6 +32,8 @@ export type RunState = {
   run_id: string;
   /** daily | pocket */
   mode: string;
+  /** A trivia run (the front door): a Pocket Run with no fights, no location, on the global board. */
+  trivia?: boolean;
   region: string;
   day: string;
   started_at: string;
@@ -83,6 +85,7 @@ export type RunBoard = {
 };
 
 export const isPocket = (r: Pick<RunState, "mode">): boolean => r.mode === "pocket";
+export const isTrivia = (r: Pick<RunState, "trivia"> | null | undefined): boolean => r?.trivia === true;
 export const doneCount = (r: Pick<RunState, "points">): number => r.points.filter((p) => p.done).length;
 export const isLive = (r: RunState | null | undefined): boolean => !!r && !r.finished;
 export const isWorldBoard = (b: Pick<RunBoard, "region">): boolean => b.region === "world";
@@ -97,8 +100,16 @@ export async function runCurrent(client: GameClient): Promise<RunCurrent> {
   return client.request<RunCurrent>("GET", "v1/roam/run/current", { query: { device_key: client.deviceKey() } });
 }
 
-export async function runStart(client: GameClient, mode: "daily" | "pocket", fix: Fix): Promise<RunState> {
-  return client.request<RunState>("POST", "v1/roam/run/start", { body: { device_key: client.deviceKey(), mode, ...near(fix) }, signed: true });
+export type RunMode = "daily" | "pocket" | "trivia";
+
+/** The body /run/start is sent. A trivia run sends no location at all: the server ignores one anyway. */
+export function startBody(deviceKey: string, mode: RunMode, fix: Fix): Record<string, unknown> {
+  if (mode === "trivia") return { device_key: deviceKey, mode: "pocket", trivia: true };
+  return { device_key: deviceKey, mode, ...near(fix) };
+}
+
+export async function runStart(client: GameClient, mode: RunMode, fix: Fix): Promise<RunState> {
+  return client.request<RunState>("POST", "v1/roam/run/start", { body: startBody(client.deviceKey(), mode, fix), signed: true });
 }
 
 export async function runOpen(client: GameClient, runId: string, idx: number, stake: boolean, fix: Fix): Promise<RunOpened> {
@@ -130,6 +141,58 @@ export async function runBoard(client: GameClient, at: { lat: number; lng: numbe
   const query: Record<string, string> = { lat: String(at.lat), lng: String(at.lng), device_key: client.deviceKey() };
   if (day) query.day = day;
   return client.request<RunBoard>("GET", "v1/roam/run/board", { query });
+}
+
+// ---------- the trivia front door (/v1/trivia) ----------
+
+/** Built with EXPO_PUBLIC_TRIVIA=0, the app shows no way into trivia (the server has its own switch). */
+export const TRIVIA_DOOR = process.env.EXPO_PUBLIC_TRIVIA !== "0";
+
+export type TriviaCard = {
+  handle: string;
+  score: number;
+  points_done: number;
+  points_total: number;
+  correct: number;
+  asked: number;
+  day: string;
+  place?: number | null;
+  approx?: boolean | null;
+};
+
+export type TriviaShare = { share_id: string; url: string; image_url: string; text: string; card: TriviaCard; created?: boolean };
+
+/** Today's (or that day's) global trivia board. Public; the key only marks your own row. */
+export async function triviaBoard(client: GameClient, day?: string | null, deviceKey?: string | null): Promise<RunBoard> {
+  const query: Record<string, string> = {};
+  if (deviceKey) query.device_key = deviceKey;
+  if (day) query.day = day;
+  return client.request<RunBoard>("GET", "v1/trivia/board", { query });
+}
+
+/** A share link for a finished trivia run. Asked again, the same link. */
+export async function triviaShare(client: GameClient, runId: string): Promise<TriviaShare> {
+  return client.request<TriviaShare>("POST", "v1/trivia/share", { body: { device_key: client.deviceKey(), run_id: runId }, signed: true });
+}
+
+/**
+ * What the share sheet carries. iOS takes the link as its own item (so a
+ * preview card unfurls) beside the line; Android shares `message` only, so
+ * the link goes on the end of it. Never both, or iOS posts the link twice.
+ */
+export function shareContent(s: Pick<TriviaShare, "text" | "url">, os: string): { message: string; url?: string; title: string } {
+  const title = "CosQuest trivia";
+  return os === "ios" ? { message: s.text, url: s.url, title } : { message: `${s.text} ${s.url}`, title };
+}
+
+/** Today's trivia runs left, from /me's features.trivia; null when the server does not say (or trivia is off there). */
+export function triviaAllowance(me: { features?: Record<string, unknown> | null } | null | undefined): number | null {
+  const t = (me?.features?.trivia ?? null) as { runs_left?: number | null } | null;
+  return t?.runs_left ?? null;
+}
+
+export function triviaSub(left: number | null): string {
+  return left === 0 ? "That's today's trivia runs done. Back tomorrow." : `No walking, no location. On today's global board.${leftToday(left)}`;
 }
 
 /** Today's runs left, from /me's features.run (null when the server does not say). */
@@ -321,6 +384,7 @@ export function boardPlaceText(place: number, o: { approx?: boolean | null; worl
   return o.world ? `${shown} worldwide today` : `${shown} today in your city`;
 }
 
-export function endRunMessage(r: Pick<RunState, "score" | "mode">): string {
+export function endRunMessage(r: Pick<RunState, "score" | "mode" | "trivia">): string {
+  if (isTrivia(r)) return `You keep the ${r.score} points you have, and they go on today's board.`;
   return `You keep the ${r.score} points you have.${isPocket(r) ? "" : " It counts as one of today's runs."}`;
 }

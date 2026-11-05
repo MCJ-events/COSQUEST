@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { OnboardingScreen, useHeroHeight } from "@/components/OnboardingScreen";
 import { C } from "@/theme/tokens";
 import { themedStyles, useInk, useThemedStyles } from "@/constants/chatTheme";
+import { TRIVIA_DOOR } from "@/features/game/run";
 
 function Button({ label, onPress }: { label: string; onPress: () => void }) {
   const styles = useThemedStyles(STYLE_PAIR);
@@ -36,6 +37,18 @@ export default function Welcome() {
             label="Continue"
             onPress={() => router.push("/onboarding/oauthSignup")}
           />
+          {/* The trivia front door: plays with no account and no location (app/trivia.tsx). */}
+          {TRIVIA_DOOR ? (
+            <Pressable
+              onPress={() => router.push("/trivia")}
+              accessibilityRole="button"
+              hitSlop={8}
+              style={({ pressed }) => [styles.trivia, pressed && { opacity: 0.6 }]}
+              testID="welcome-trivia"
+            >
+              <Text style={styles.triviaLabel}>Play trivia now, no sign-up</Text>
+            </Pressable>
+          ) : null}
         </View>
     </OnboardingScreen>
   );
@@ -65,4 +78,6 @@ const STYLE_PAIR = themedStyles({
     marginTop: 15,
   },
   buttonLabel: { fontFamily: FONTS.semibold, fontSize: 17, fontWeight: "600", color: "#FFFFFF" },
+  trivia: { alignItems: "center", paddingVertical: 12 },
+  triviaLabel: { fontFamily: FONTS.semibold, fontSize: 16, fontWeight: "600", color: C.brand, textDecorationLine: "underline" },
 });

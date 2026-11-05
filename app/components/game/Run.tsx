@@ -23,6 +23,7 @@ import {
   doneCount,
   endRunMessage,
   isPocket,
+  isTrivia,
   isWorldBoard,
   orderPoints,
   pocketSub,
@@ -291,7 +292,20 @@ function Power({ icon, label, left, lit, busy, hint, onPress }: { icon: "radio" 
 }
 
 /** The run's points as cards, best value per metre first, so the route decision is always in front of the player. */
-export function RunTray({ onPick, onEnd, distanceOf, inReach }: { onPick: (p: RunPoint) => void; onEnd: () => void; distanceOf: (p: RunPoint) => number | null; inReach: (p: RunPoint) => boolean }) {
+export function RunTray({
+  onPick,
+  onEnd,
+  distanceOf,
+  inReach,
+  fill = false,
+}: {
+  onPick: (p: RunPoint) => void;
+  onEnd: () => void;
+  distanceOf: (p: RunPoint) => number | null;
+  inReach: (p: RunPoint) => boolean;
+  /** The board takes the screen's height (the trivia screen), not a tray's over the map. */
+  fill?: boolean;
+}) {
   const styles = useThemedStyles(STYLE_PAIR);
   const s = useRun();
   const run = s.run;
@@ -308,16 +322,16 @@ export function RunTray({ onPick, onEnd, distanceOf, inReach }: { onPick: (p: Ru
     <RunCardButton key={p.idx} point={p} distance={pocket ? null : distanceOf(p)} inReach={pocket || inReach(p)} pocket={pocket} width={width} onPress={() => onPick(p)} />
   );
   return (
-    <View style={{ gap: 8 }}>
+    <View style={[{ gap: 8 }, fill && { flex: 1 }]}>
       <View style={styles.trayHead}>
-        <Text style={styles.trayTitle}>{pocket ? "POCKET RUN" : "YOUR ROUTE"}</Text>
+        <Text style={styles.trayTitle}>{isTrivia(run) ? "TRIVIA RUN" : pocket ? "POCKET RUN" : "YOUR ROUTE"}</Text>
         <Pressable onPress={end} hitSlop={8} accessibilityRole="button">
           <Text style={styles.trayEnd}>End run</Text>
         </Pressable>
       </View>
       {pocket ? (
         // A Pocket Run is a board of ten tiles, not a route: no map, nothing to walk to.
-        <View style={styles.board}>
+        <View style={[styles.board, fill && { flex: 1, maxHeight: undefined }]}>
           <ScrollView contentContainerStyle={styles.boardGrid}>{ordered.map((p) => card(p, null))}</ScrollView>
         </View>
       ) : (
@@ -393,7 +407,7 @@ type Phase = "stake" | "opening" | "playing" | "submitting" | "result" | { faile
 export function RunChallenge({ point, onDone }: { point: RunPoint; onDone: () => void }) {
   const me = useGame((s) => s.me);
   const s = useRun();
-  const asDuel = runPlaysAsDuel(point.kind, me);
+  const asDuel = runPlaysAsDuel(point.kind, me, isTrivia(s.run));
   const held = s.openedStakes[point.idx];
   // Re-entering a Forbidden Zone already open: the server holds its stake, so there is nothing to choose.
   const [stakeChosen, setStakeChosen] = useState<boolean | null>(held !== undefined ? held > 0 : point.forbidden ? null : false);
@@ -649,6 +663,7 @@ function RunQuiz({ point, staked: stakedAsked, onDone }: { point: RunPoint; stak
 /** The final score, what it paid, and where it put you on today's board. */
 export function RunResults({ result, board, onClose }: { result: RunFinish; board: RunBoard | null; onClose: () => void }) {
   const styles = useThemedStyles(STYLE_PAIR);
+  const s = useRun();
   const [shown, setShown] = useState(0);
   useEffect(() => {
     const target = result.run.score;
@@ -666,10 +681,11 @@ export function RunResults({ result, board, onClose }: { result: RunFinish; boar
   }, [result.run.score]);
   const run = result.run;
   const pocket = isPocket(run);
+  const trivia = isTrivia(run);
   return (
     <Stage>
       <ScrollView contentContainerStyle={styles.results} showsVerticalScrollIndicator={false}>
-        <Text style={styles.resultsKicker}>{pocket ? "POCKET RUN" : "RUN COMPLETE"}</Text>
+        <Text style={styles.resultsKicker}>{trivia ? "TRIVIA RUN" : pocket ? "POCKET RUN" : "RUN COMPLETE"}</Text>
         <Text style={styles.resultsScore} accessibilityLabel={`${run.score} points`}>
           {shown}
         </Text>
@@ -684,8 +700,33 @@ export function RunResults({ result, board, onClose }: { result: RunFinish; boar
           {result.reward.faction_points > 0 ? <Stat n={result.reward.faction_points} label="Faction" /> : null}
         </View>
         {result.leveled_up ? <Text style={styles.levelUp}>Level {result.after.level}!</Text> : null}
-        {!pocket && board ? <BountyBoard board={board} /> : null}
-        <GameButton title="Done" color={GP.sun} onPress={onClose} style={{ alignSelf: "stretch", marginTop: 6 }} />
+        {trivia ? (
+          <>
+            {/* Post the score: the server makes a card (a page with a picture), the phone's share sheet posts it. */}
+            <GameButton
+              title={s.share ? "Share again" : "Share your score"}
+              color={GP.sun}
+              disabled={s.busy}
+              icon={<Ionicons name="share-social" size={20} color={labelOn(GP.sun)} />}
+              onPress={() => void runModel.share()}
+              style={{ alignSelf: "stretch", marginTop: 6 }}
+              testID="trivia-share"
+            />
+            {s.share ? (
+              <Text style={styles.shareLink} selectable accessibilityLabel={`Your link: ${s.share.url}`}>
+                {s.share.url}
+              </Text>
+            ) : null}
+            {s.notice ? <Text style={styles.problem}>{s.notice}</Text> : null}
+            {board ? <BountyBoard board={board} title="TODAY'S TOP PLAYERS" /> : null}
+            <GameButton title="Done" color={GP.skyDeep} onPress={onClose} style={{ alignSelf: "stretch" }} />
+          </>
+        ) : (
+          <>
+            {!pocket && board ? <BountyBoard board={board} /> : null}
+            <GameButton title="Done" color={GP.sun} onPress={onClose} style={{ alignSelf: "stretch", marginTop: 6 }} />
+          </>
+        )}
       </ScrollView>
     </Stage>
   );
@@ -701,29 +742,31 @@ function Stat({ n, label }: { n: number; label: string }) {
   );
 }
 
-/** Today's Bounty Board: the day's best runs in this city. */
-export function BountyBoard({ board }: { board: RunBoard }) {
+/** Today's Bounty Board: the day's best runs in this city (or, for trivia, everyone's). */
+export function BountyBoard({ board, title = "BOUNTY BOARD" }: { board: RunBoard; title?: string }) {
   const styles = useThemedStyles(STYLE_PAIR);
+  const global = board.region === "global";
   return (
     <View style={styles.bounty}>
       <Text style={styles.bountyTitle} accessibilityRole="header">
-        BOUNTY BOARD
+        {title}
       </Text>
       <Text style={styles.bountyFoot}>
-        {isWorldBoard(board) ? "Everyone outside a mapped city shares this board. " : ""}Resets at {resetAt()} your time.
+        {global ? "Everyone plays this board. " : isWorldBoard(board) ? "Everyone outside a mapped city shares this board. " : ""}Resets at {resetAt()} your time.
       </Text>
-      {board.entries.length === 0 ? <Text style={styles.bountyEmpty}>No runs on the board yet today.</Text> : null}
+      {board.entries.length === 0 ? <Text style={styles.bountyEmpty}>{global ? "No one on the board yet today. Be the first." : "No runs on the board yet today."}</Text> : null}
       {board.entries.slice(0, 10).map((e) => (
         <View key={e.place} style={styles.bountyRow} accessible accessibilityLabel={`${e.place}. ${e.handle}${e.you ? ", you" : ""}, ${e.score}`}>
           <Text style={[styles.bountyPlace, { color: e.place <= 3 ? GOLD_TEXT : GP.mist }]}>{e.place}</Text>
-          <View style={[styles.dot, { backgroundColor: realmColor(e.faction) }]} />
+          {global && !e.faction ? null : <View style={[styles.dot, { backgroundColor: realmColor(e.faction) }]} />}
           <Text style={[styles.bountyHandle, e.you && { fontFamily: GF.display }]} numberOfLines={1}>
             {e.you ? `${e.handle} (you)` : e.handle}
           </Text>
           <Text style={styles.bountyScore}>{e.score}</Text>
         </View>
       ))}
-      {board.factions.length ? (
+      {/* The faction war is a city's; the global trivia board is people, not sides. */}
+      {board.factions.length && !global ? (
         <>
           <View style={styles.rule} />
           <View style={{ flexDirection: "row", gap: 12 }}>
@@ -823,6 +866,7 @@ const STYLE_PAIR = themedStyles(
     statN: { fontFamily: GF.display, fontSize: 24, lineHeight: 28, color: L.text, fontVariant: ["tabular-nums"] },
     statLabel: { fontFamily: GF.body, fontSize: 12, lineHeight: 16, color: L.textMuted },
     levelUp: { fontFamily: GF.display, fontSize: 28, lineHeight: 32, color: GOLD_TEXT },
+    shareLink: { fontFamily: GF.body, fontSize: 13, lineHeight: 17, color: L.textMuted, textAlign: "center" },
     bounty: { alignSelf: "stretch", gap: 10, padding: 16, borderRadius: RADIUS.card, backgroundColor: L.surface, ...ELEVATION.low },
     bountyTitle: { fontFamily: GF.bold, fontSize: 15, lineHeight: 19, letterSpacing: 1, color: L.text },
     bountyFoot: { fontFamily: GF.regular, fontSize: 12, lineHeight: 16, color: L.textMuted },
@@ -870,6 +914,7 @@ const STYLE_PAIR = themedStyles(
     statN: { color: D.text },
     statLabel: { color: D.textMuted },
     levelUp: { color: TEXT_ON_DARK.warning },
+    shareLink: { color: D.textMuted },
     bounty: { backgroundColor: D.surface, shadowOpacity: 0, elevation: 0, boxShadow: "none" },
     bountyTitle: { color: D.text },
     bountyFoot: { color: D.textMuted },
