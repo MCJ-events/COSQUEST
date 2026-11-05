@@ -44,3 +44,32 @@ describe("web base path", () => {
     assert.equal(off.experiments.baseUrl, undefined);
   });
 });
+
+// The trivia web build runs in a clean environment (only what it names is
+// inlined into the public page). Its first build left out EXPO_PUBLIC_API_URL,
+// which services/api.ts requires when it is imported, and the page was blank.
+describe("scripts/build-trivia-web.sh", () => {
+  const fs = require("node:fs");
+  const root = path.join(__dirname, "..", "..");
+  const script = fs.readFileSync(path.join(root, "scripts", "build-trivia-web.sh"), "utf8");
+  it("passes every EXPO_PUBLIC_* the app refuses to load without", () => {
+    const required = [];
+    for (const dir of ["services", "features", "components", "app", "constants", "utils", "store"]) {
+      const walk = (d) => {
+        for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+          const f = path.join(d, e.name);
+          if (e.isDirectory()) {
+            if (e.name !== "__tests__" && e.name !== "node_modules") walk(f);
+          } else if (/\.(ts|tsx|js)$/.test(e.name)) {
+            // A module that throws at import time when a variable is unset.
+            const src = fs.readFileSync(f, "utf8");
+            for (const m of src.matchAll(/^\s*throw new Error\(["'`](EXPO_PUBLIC_[A-Z0-9_]+) is not configured/gm)) required.push(m[1]);
+          }
+        }
+      };
+      if (fs.existsSync(path.join(root, dir))) walk(path.join(root, dir));
+    }
+    assert.ok(required.includes("EXPO_PUBLIC_API_URL"), "the scan finds services/api.ts");
+    for (const v of new Set(required)) assert.match(script, new RegExp(`${v}=`), `${v} is not passed to the web build`);
+  });
+});
