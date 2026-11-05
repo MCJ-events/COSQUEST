@@ -70,3 +70,16 @@ describe("the share sheet", () => {
     assert.ok(c.message.endsWith(s.url) && c.message.startsWith(s.text));
   });
 });
+
+describe("the public trivia web page (EXPO_PUBLIC_TRIVIA_WEB=1)", async () => {
+  const { triviaOnlyWeb } = await import("../config.ts");
+  it("is trivia-only on the web build that asks for it, and nowhere else", () => {
+    assert.equal(triviaOnlyWeb("1", "web"), true);
+    assert.equal(triviaOnlyWeb(" 1 ", "web"), true);
+    // The app itself on the web, and every native build, keep the whole app.
+    assert.equal(triviaOnlyWeb(undefined, "web"), false);
+    assert.equal(triviaOnlyWeb("0", "web"), false);
+    assert.equal(triviaOnlyWeb("1", "ios"), false);
+    assert.equal(triviaOnlyWeb("1", "android"), false);
+  });
+});

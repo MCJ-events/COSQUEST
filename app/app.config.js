@@ -47,6 +47,11 @@ module.exports = ({ config }) => {
     // OTA updates only reach builds with the same runtime version.
     runtimeVersion: { policy: "appVersion" },
   };
+  // The public trivia web page is served by the game server's own site under a
+  // path (https://<game server>/play, same origin as the API, so no CORS):
+  // EXPO_WEB_BASE_URL=/play prefixes every route and asset (scripts/build-trivia-web.sh).
+  const webBase = webBaseUrl(env.EXPO_WEB_BASE_URL);
+  if (webBase) out.experiments = { ...(config.experiments || {}), baseUrl: webBase };
   // COSQUEST_TESTFLIGHT=1: the team's "CosQuest Beta" build (App Store Connect
   // app 6824541255, bundle com.subomi.cosquest.chat, Subomi's team P8M65P9522),
   // the same overlay the team's TestFlight builds 1 to 14 were made with
@@ -87,6 +92,13 @@ module.exports = ({ config }) => {
     },
   };
 };
+
+/** "/play" from "/play", "play/" or "/play/"; "" for unset or anything that is not a plain path. */
+function webBaseUrl(raw) {
+  const v = String(raw || "").trim().replace(/^\/+|\/+$/g, "");
+  return /^[a-z0-9][a-z0-9_-]*(\/[a-z0-9][a-z0-9_-]*)*$/i.test(v) ? `/${v}` : "";
+}
+module.exports.webBaseUrl = webBaseUrl;
 
 const BETA_BUILD_NUMBER = "15";
 const BETA_GAME_SERVER = "https://costquest-staging.204.168.162.79.sslip.io";

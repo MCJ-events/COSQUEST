@@ -26,6 +26,15 @@ export function resolveGameServer(raw: string | undefined | null): string {
   return PRODUCTION_GAME_SERVER;
 }
 
+/**
+ * The public trivia web page (EXPO_PUBLIC_TRIVIA_WEB=1, a web build served at
+ * <game server>/play): trivia is the whole site, so the root opens trivia and
+ * the trivia screen has nowhere to close to. Native builds ignore it.
+ */
+export function triviaOnlyWeb(raw: string | undefined | null, platform: string): boolean {
+  return platform === "web" && (raw ?? "").trim() === "1";
+}
+
 /** Anything but production wears a badge, so a test build is never mistaken for the game. */
 export function isProductionServer(url: string): boolean {
   return url === PRODUCTION_GAME_SERVER;

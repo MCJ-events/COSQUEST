@@ -18,10 +18,11 @@ import { useFonts } from "expo-font";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Platform, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { triviaOnlyWeb } from "@/features/game/config";
 import { isLive, isTrivia, type RunPoint, triviaSub } from "@/features/game/run";
 import { gameStore, useGame } from "@/features/game/runtime";
 import { useAppSelector } from "@/store/hooks";
@@ -40,6 +41,8 @@ import { GF, GP } from "./theme";
 
 const L = SURFACES.light;
 const D = SURFACES.dark;
+/** The public web page (<game server>/play): trivia is the whole site, nothing to close to. */
+const TRIVIA_ONLY = triviaOnlyWeb(process.env.EXPO_PUBLIC_TRIVIA_WEB, Platform.OS);
 /** How often the board is read again while you watch it. */
 const WATCH_MS = 20000;
 
@@ -100,7 +103,7 @@ function Door() {
     <View style={styles.fill}>
       <GameBackdrop />
       <View style={[styles.top, { paddingTop: insets.top + 8 }]}>
-        <GameIconButton icon="close" diameter={40} accessibilityLabel="Leave trivia" onPress={leave} />
+        {TRIVIA_ONLY ? null : <GameIconButton icon="close" diameter={40} accessibilityLabel="Leave trivia" onPress={leave} />}
         {live && !otherRun ? (
           <View style={{ flex: 1 }}>
             <RunHUD />
@@ -179,6 +182,9 @@ function StartView() {
     if (want.length >= 2 && want !== saved) {
       try {
         await (profile?.avatar ? gameStore.saveProfile(want.slice(0, 24), profile.avatar) : gameStore.saveProfile(want.slice(0, 24)));
+        // The server keeps the name it may show in public (a rude name or a link
+        // comes back as a neutral one); the field shows that from now on.
+        if (alive.current) setName(null);
       } catch {
         // Plays on as "Player"; the name can be set next time.
       }
