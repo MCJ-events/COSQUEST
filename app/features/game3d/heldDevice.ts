@@ -14,13 +14,13 @@ import { ensureFile, forgeWorld, useEquipped, useForgeWorld } from "@/features/g
 import { getPref, setPref } from "@/utils/prefsStorage";
 
 import ATTACH from "../../game3d/data/attach.json";
-import { type AttachManifest, type Gltf, gripFor, mergeWeaponGlb, readGlb } from "./attach";
-import { catalogueFlag, catalogueOn, type Held, type HeldPair, heldFor, starterEntry as starterEntryOf } from "./held";
+import { type AttachManifest, type Gltf, gripFor, mergeWeaponGlb, previewGripFor, readGlb } from "./attach";
+import { appCatalogueFlag, catalogueOn, type Held, type HeldPair, heldFor, starterEntry as starterEntryOf } from "./held";
 
 export const MANIFEST = ATTACH as unknown as AttachManifest;
 
 /** This build's half of the catalogue link (the server's `forge_world` is the other). */
-export const FORGE_CATALOGUE = catalogueFlag(process.env.EXPO_PUBLIC_FORGE_CATALOGUE);
+export const FORGE_CATALOGUE = appCatalogueFlag(process.env.EXPO_PUBLIC_FORGE_CATALOGUE);
 
 /** The bundled default set (app/assets/weapons, built by game3d/tools/weapons/build_weapons.py). */
 /* eslint-disable @typescript-eslint/no-require-imports -- bundled assets are require()d for Metro */
@@ -128,6 +128,8 @@ export function useHeld(character: ForgeEntry | null, mine: boolean): HeldPair {
 const heldKey = (h: Held | null) => (h ? (h.slug ?? `${h.entry?.id}@${h.entry?.version}`) : "-");
 
 const merged = new Map<string, Promise<string | null>>();
+/** The merged-GLB cache folder; a new name whenever the grip rules change, so old merges are never shown. */
+export const HELD_CACHE_DIR = "forge-held-v2";
 
 /** The character's GLB with its weapons in hand, as a file:// uri; null if it can't be made (show the character alone). */
 export function heldGlb(character: ForgeEntry, characterUri: string, pair: HeldPair): Promise<string | null> {
@@ -136,7 +138,8 @@ export function heldGlb(character: ForgeEntry, characterUri: string, pair: HeldP
   if (p) return p;
   p = (async () => {
     try {
-      const dir = new Directory(Paths.cache, "forge-held");
+      // v2 (build 18): merged with previewGripFor; files merged by builds 15-17 held the blade up past the head.
+      const dir = new Directory(Paths.cache, HELD_CACHE_DIR);
       const name = key.replace(/[^A-Za-z0-9@._-]+/g, "_").slice(0, 180) + ".glb";
       const out = new File(dir, name);
       if (out.exists && (out.size ?? 0) > 0) return out.uri;
@@ -147,7 +150,7 @@ export function heldGlb(character: ForgeEntry, characterUri: string, pair: HeldP
         const wUri = await heldFile(h);
         if (!wUri) continue;
         if (!MANIFEST.characters[characterKeyOf(character)]) glb = glb ?? readGlb(bytes).json;
-        const grip = gripFor(MANIFEST, character.name, h.cls, glb);
+        const grip = previewGripFor(MANIFEST, character.name, h.cls, glb);
         if (!grip) continue;
         bytes = mergeWeaponGlb(bytes, await new File(wUri).bytes(), grip.bone, grip.matrix);
       }

@@ -15,6 +15,12 @@ module.exports = ({ config }) => {
   // battle-3d-only (1 Nov 2026): the 3D fight is every mode's fight, so every build has it
   // (features/game3d/flags.ts also treats unset as on). EXPO_PUBLIC_GAME3D=0 builds the 2D-only app.
   if (env.EXPO_PUBLIC_GAME3D === undefined) env.EXPO_PUBLIC_GAME3D = "1";
+  // The equipped Forge weapon in the hero's hand (cq 234) needs this build's half of the
+  // catalogue link AND the server's `forge_world` feature (features/game3d/held.ts catalogueOn).
+  // Builds 15 to 17 were made without it, so the hero held the starter weapon, not the one the
+  // player equipped. The server's feature is the real switch, so every build has the app's half
+  // on; EXPO_PUBLIC_FORGE_CATALOGUE=0 builds an app that never links.
+  if (env.EXPO_PUBLIC_FORGE_CATALOGUE === undefined) env.EXPO_PUBLIC_FORGE_CATALOGUE = "1";
   // One copy of BouncyCastle (expo-updates and the Sparks SDK both bring one).
   const plugins = [...(config.plugins || []), "./plugins/withBouncyCastleDedupe"];
   // Run and raid clocks on the lock screen (iOS Live Activity widget extension,
@@ -100,7 +106,7 @@ function webBaseUrl(raw) {
 }
 module.exports.webBaseUrl = webBaseUrl;
 
-const BETA_BUILD_NUMBER = "17";
+const BETA_BUILD_NUMBER = "18";
 const BETA_GAME_SERVER = "https://costquest-staging.204.168.162.79.sslip.io";
 const BETA_GAME_PLUGIN = "./modules/costquest-game/plugin/withCostQuestGame";
 

@@ -8,7 +8,8 @@
       "developmentClient": true,
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_GAME3D": "1"
+        "EXPO_PUBLIC_GAME3D": "1",
+        "EXPO_PUBLIC_FORGE_CATALOGUE": "1"
       }
     },
     "preview": {
@@ -20,7 +21,8 @@
         "EXPO_PUBLIC_API_URL": "https://cosquest-1.onrender.com",
         "EXPO_PUBLIC_WEB_URL": "https://cosquest.vercel.app",
         "EXPO_PUBLIC_SPARKS_ENGINE": "module",
-        "EXPO_PUBLIC_GAME3D": "1"
+        "EXPO_PUBLIC_GAME3D": "1",
+        "EXPO_PUBLIC_FORGE_CATALOGUE": "1"
       }
     },
     "production": {
@@ -30,7 +32,8 @@
         "EXPO_PUBLIC_API_URL": "https://cosquest-1.onrender.com",
         "EXPO_PUBLIC_WEB_URL": "https://cosquest.vercel.app",
         "EXPO_PUBLIC_SPARKS_ENGINE": "module",
-        "EXPO_PUBLIC_GAME3D": "1"
+        "EXPO_PUBLIC_GAME3D": "1",
+        "EXPO_PUBLIC_FORGE_CATALOGUE": "1"
       }
     }
   },

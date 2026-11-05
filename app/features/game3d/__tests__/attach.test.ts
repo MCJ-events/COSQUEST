@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 
 import { characterKey, computeAttach, findHandBones, globalMatrices, GRIP_CLASSES, gripClassOf, gripFor, IDENTITY, invert, mergeWeaponGlb, mul, nodeMatrix, poseAt, readGlb, sceneBox, staticAttach, type AttachManifest, type Gltf, writeGlb } from "../attach.ts";
+import * as attachMod from "../attach.ts";
 import { bagItems, catalogueFlag, catalogueOn, catalogueTwin, dropShown, heldFor, isPlaceholderWeapon, ownWeapon, realWeapons, STARTER, starterEntry, starterSet } from "../held.ts";
 
 const manifest = JSON.parse(readFileSync(new URL("../../../game3d/data/attach.json", import.meta.url), "utf8")) as AttachManifest;
@@ -304,4 +305,40 @@ test("a held weapon does not move or shrink the character in a preview (the box 
   assert.ok(bal, "the balance node is there");
   // zero-area: two of its three corners are the same point
   assert.equal((out.meshes as { primitives: { mode: number }[] }[]).at(-1)!.primitives[0].mode, 4);
+});
+
+// Build 18: the Ember Blade (1 m, curved) sat up past Armstrong's head in the
+// Collection preview while the fight showed it in his hand. The preview merged
+// with the idle-fitted grip (tip forward AND up the forearm); the fight holds
+// with clip_grips. The preview now uses the fight's grip on the same bone.
+test("previews hold a weapon as the fight does, and a long blade stays out of the face", () => {
+  const { previewGripFor } = attachMod;
+  for (const [key, ch] of Object.entries(manifest.characters)) {
+    for (const cls of GRIP_CLASSES) {
+      const base = gripFor(manifest, ch.name, cls);
+      const got = previewGripFor(manifest, ch.name, cls);
+      const clip = ch.clip_grips?.[cls];
+      if (clip && base && clip.bone === base.bone) assert.deepEqual(got, clip, `${key} ${cls}`);
+      else assert.deepEqual(got, base, `${key} ${cls} keeps its own grip (other bone or static)`);
+    }
+  }
+  // Armstrong as served by staging (same file as game3d/cast/armstrong_lod0.glb):
+  // a 1.01 m blade in his idle first frame, held with the preview grip.
+  const { json, bin } = readGlb(new Uint8Array(readFileSync(new URL("../../../game3d/cast/armstrong_lod0.glb", import.meta.url))));
+  const posed = poseAt(json, bin);
+  const gm = globalMatrices(posed);
+  const at = (name: string) => gm.get((posed.nodes ?? []).findIndex((n) => n.name === name))!;
+  const tr = (m: number[], p: number[]) => [0, 1, 2].map((i) => m[i] * p[0] + m[4 + i] * p[1] + m[8 + i] * p[2] + m[12 + i]);
+  const headY = tr(at("Head"), [0, 0, 0])[1];
+  const hand = at("RightHand");
+  const rise = (g: { matrix: number[] }) => {
+    const W = mul(hand, g.matrix);
+    return tr(W, [0, 1.01, 0])[1] - tr(W, [0, 0, 0])[1];
+  };
+  const old = gripFor(manifest, "Armstrong", "sword")!;
+  const now = previewGripFor(manifest, "Armstrong", "sword")!;
+  const grip = tr(mul(hand, now.matrix), [0, 0, 0])[1];
+  assert.ok(rise(old) > 0.6, `the old grip raised the tip ${rise(old).toFixed(2)} m (the bug)`);
+  assert.ok(rise(now) < 0.4, `the tip rises ${rise(now).toFixed(2)} m`);
+  assert.ok(grip + rise(now) < headY - 0.4, "the tip stays well below the head");
 });

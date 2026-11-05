@@ -23,6 +23,16 @@ export function catalogueFlag(raw: string | undefined | null): boolean {
   return ["1", "true", "on", "yes"].includes(String(raw ?? "").trim().toLowerCase());
 }
 
+/**
+ * This build's half of the link from its EXPO_PUBLIC_FORGE_CATALOGUE: on unless
+ * the build says otherwise. Unset meant off until build 18, and the TestFlight
+ * builds 15 to 17 never set it, so the hero held the starter weapon instead of
+ * the equipped one. The server's `forge_world` is the real switch (catalogueOn).
+ */
+export function appCatalogueFlag(raw: string | undefined | null): boolean {
+  return raw === undefined || raw === null || String(raw).trim() === "" ? true : catalogueFlag(raw);
+}
+
 /** The link is on when both say so: this build's flag and the server's feature. */
 export function catalogueOn(appFlag: boolean, serverOn: boolean): boolean {
   return appFlag && serverOn;

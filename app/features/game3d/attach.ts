@@ -253,6 +253,8 @@ export type CharacterAttach = {
   palm_l?: Vec3;
   /** class -> {bone, matrix} */
   grips: Partial<Record<GripClass, { bone: string; matrix: Mat4 }>>;
+  /** class -> {bone, matrix} for the cast clips (cq 012): what the 3D fight holds with (fight.gd). */
+  clip_grips?: Partial<Record<GripClass, { bone: string; matrix: Mat4 }>>;
   default_weapon?: string | null;
   /** "l" when the model's right hand is already full (its own staff): one-handed weapons go left. */
   main_hand?: "r" | "l";
@@ -344,6 +346,20 @@ export function staticAttach(name: string, palm: Vec3, classes: Record<GripClass
   const grips: CharacterAttach["grips"] = {};
   for (const c of GRIP_CLASSES) if (classes[c].hand === "r") grips[c] = { bone: "", matrix: gripMatrix(fr, classes[c]) };
   return { name, rig: "static", bone_r: "", bone_l: null, palm_r: palm, grips };
+}
+
+/**
+ * The grip for a 3D preview (the Collection, the Wear list, the avatar): the
+ * one the fight holds with (clip_grips, fight.gd _finish_load) when it is on
+ * the same hand bone, else gripFor's. Until build 18 the previews used the
+ * idle-fitted grip (tip forward AND up the forearm), which in the front-on
+ * preview put a long blade like the Ember Blade (1 m) up past the head, while
+ * the fight showed it held forward in the hand.
+ */
+export function previewGripFor(m: AttachManifest, characterName: string | null | undefined, cls: GripClass, glb?: Gltf | null): { bone: string; matrix: Mat4 } | null {
+  const base = gripFor(m, characterName, cls, glb);
+  const clip = m.characters[characterKey(characterName)]?.clip_grips?.[cls];
+  return clip && base && clip.bone === base.bone ? clip : base;
 }
 
 /** The grip to use: the manifest's for a known character, else computed from the GLB (null when it has no hand bone). */

@@ -7,12 +7,15 @@
 #   npx expo prebuild --platform ios --clean      # (or android)
 #
 # Chat: the team's live chat API on Render (their eas.json preview/production).
-# Game: the STAGING game server. Build 17 (5 Nov 2026) was the last upload;
+# Game: the STAGING game server. Build 18 (5 Nov 2026) was the last upload;
 # set COSQUEST_BUILD_NUMBER to the next free number before every upload.
 export COSQUEST_TESTFLIGHT=1
-export COSQUEST_BUILD_NUMBER="${COSQUEST_BUILD_NUMBER:-17}"
+export COSQUEST_BUILD_NUMBER="${COSQUEST_BUILD_NUMBER:-18}"
 export EXPO_PUBLIC_API_URL="${EXPO_PUBLIC_API_URL:-https://cosquest-1.onrender.com}"
 export EXPO_PUBLIC_WEB_URL="${EXPO_PUBLIC_WEB_URL:-https://cosquest.vercel.app}"
 export EXPO_PUBLIC_SPARKS_ENGINE="${EXPO_PUBLIC_SPARKS_ENGINE:-module}"
 export EXPO_PUBLIC_GAME_SERVER="${EXPO_PUBLIC_GAME_SERVER:-staging}"
 export EXPO_PUBLIC_GAME3D="${EXPO_PUBLIC_GAME3D:-1}"
+# The hero holds the Forge weapon the player equipped (with the server's forge_world on).
+# Missing from builds 15 to 17, so they showed the starter weapon in the fight.
+export EXPO_PUBLIC_FORGE_CATALOGUE="${EXPO_PUBLIC_FORGE_CATALOGUE:-1}"
