@@ -23,7 +23,7 @@ import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { triviaOnlyWeb } from "@/features/game/config";
-import { isLive, isTrivia, type RunPoint, triviaSub } from "@/features/game/run";
+import { isLive, isTrivia, type RunPoint, triviaStage, triviaSub } from "@/features/game/run";
 import { gameStore, useGame } from "@/features/game/runtime";
 import { useAppSelector } from "@/store/hooks";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
@@ -68,6 +68,46 @@ function Door() {
   const s = useRun();
   const live = isLive(s.run);
   const [runPoint, setRunPoint] = useState<RunPoint | null>(null);
+  // The 3-2-1 lives here, not on the start view: the run is live the moment the server starts it, the
+  // board takes the screen, and a count kept on the start view went with it, unseen.
+  const [starting, setStarting] = useState(false);
+  const [counting, setCounting] = useState<number | null>(null);
+  const countIn = usePopIn(POP_IN_COUNT);
+  const alive = useRef(true);
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+    };
+  }, []);
+  const stage = triviaStage({ live, starting, counting: counting !== null });
+
+  /** Starts the run, then counts it in; the board shows after GO. A refused start stays on the door with its reason. */
+  const begin = async (start: () => Promise<boolean>) => {
+    setStarting(true);
+    let ok = false;
+    try {
+      ok = await start();
+    } finally {
+      if (!ok && alive.current) setStarting(false);
+    }
+    if (!ok) return;
+    for (const n of [3, 2, 1]) {
+      if (!alive.current) return;
+      setCounting(n);
+      announce(String(n));
+      playSound("tap");
+      impact(Haptics.ImpactFeedbackStyle.Heavy);
+      await new Promise((r) => setTimeout(r, 650));
+    }
+    if (!alive.current) return;
+    setCounting(0);
+    announce("Go!");
+    await new Promise((r) => setTimeout(r, 450));
+    if (!alive.current) return;
+    setCounting(null);
+    setStarting(false);
+  };
 
   // A guest: no chat login, so this phone's own key is the player.
   useEffect(() => {
@@ -104,7 +144,7 @@ function Door() {
       <GameBackdrop />
       <View style={[styles.top, { paddingTop: insets.top + 8 }]}>
         {TRIVIA_ONLY ? null : <GameIconButton icon="close" diameter={40} accessibilityLabel="Leave trivia" onPress={leave} />}
-        {live && !otherRun ? (
+        {stage === "board" && !otherRun ? (
           <View style={{ flex: 1 }}>
             <RunHUD />
           </View>
@@ -124,12 +164,18 @@ function Door() {
           <Text style={styles.lead}>Finish it in the game first, then come back for trivia.</Text>
           <GameButton title="Back" color={GP.sun} onPress={leave} style={{ alignSelf: "stretch" }} />
         </View>
-      ) : live ? (
+      ) : stage === "count" && counting !== null ? (
+        <View style={styles.center}>
+          <Animated.Text key={counting} entering={countIn} exiting={FadeOut} style={[styles.count, counting === 0 && { color: ACCENT.mint.fill }]}>
+            {counting === 0 ? "GO!" : counting}
+          </Animated.Text>
+        </View>
+      ) : stage === "board" ? (
         <View style={[styles.fill, { paddingTop: 8, paddingBottom: insets.bottom + 8 }]}>
           <RunTray fill onPick={setRunPoint} onEnd={() => void runModel.finish()} distanceOf={() => null} inReach={() => true} />
         </View>
       ) : (
-        <StartView />
+        <StartView onPlay={begin} />
       )}
 
       {runPoint ? (
@@ -153,16 +199,14 @@ function Door() {
   );
 }
 
-/** Play, the name on the board, and today's top players. */
-function StartView() {
+/** Play, the name on the board, and today's top players. `onPlay` starts the run and counts it in (Door). */
+function StartView({ onPlay }: { onPlay: (start: () => Promise<boolean>) => Promise<void> }) {
   const styles = useThemedStyles(STYLE_PAIR);
   const insets = useSafeAreaInsets();
   const look = useLook();
   const s = useRun();
   const profile = useGame((g) => g.profile);
   const [name, setName] = useState<string | null>(null);
-  const [counting, setCounting] = useState<number | null>(null);
-  const countIn = usePopIn(POP_IN_COUNT);
   const alive = useRef(true);
   useEffect(() => {
     alive.current = true;
@@ -189,31 +233,8 @@ function StartView() {
         // Plays on as "Player"; the name can be set next time.
       }
     }
-    if (!(await runModel.start("trivia", null))) return;
-    for (const n of [3, 2, 1]) {
-      if (!alive.current) return;
-      setCounting(n);
-      announce(String(n));
-      playSound("tap");
-      impact(Haptics.ImpactFeedbackStyle.Heavy);
-      await new Promise((r) => setTimeout(r, 650));
-    }
-    if (!alive.current) return;
-    setCounting(0);
-    announce("Go!");
-    await new Promise((r) => setTimeout(r, 450));
-    if (alive.current) setCounting(null);
+    await onPlay(() => runModel.start("trivia", null));
   };
-
-  if (counting !== null) {
-    return (
-      <View style={styles.center}>
-        <Animated.Text key={counting} entering={countIn} exiting={FadeOut} style={[styles.count, counting === 0 && { color: ACCENT.mint.fill }]}>
-          {counting === 0 ? "GO!" : counting}
-        </Animated.Text>
-      </View>
-    );
-  }
 
   return (
     <ScrollView contentContainerStyle={[styles.pad, { gap: 16, paddingBottom: insets.bottom + 32 }]} keyboardShouldPersistTaps="handled">

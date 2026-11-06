@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import { runPlaysAsDuel } from "../duelFlow.ts";
-import { endRunMessage, isTrivia, shareContent, startBody, triviaAllowance, triviaSub } from "../run.ts";
+import { endRunMessage, isTrivia, type RunPoint, shareContent, startBody, triviaAllowance, questionCount, triviaStage, triviaTopic, triviaSub } from "../run.ts";
 import type { RoamMe } from "../wire.ts";
 
 const KEY = "ab".repeat(32);
@@ -54,6 +54,36 @@ describe("trivia words", () => {
     assert.equal(isTrivia(null), false);
     assert.match(endRunMessage({ score: 300, mode: "pocket", trivia: true }), /today's board/);
     assert.equal(endRunMessage({ score: 300, mode: "pocket" }), "You keep the 300 points you have.");
+  });
+});
+
+describe("the 3-2-1 before the board", () => {
+  it("counts in over a run the server has just started, then shows the board", () => {
+    // The run is live as soon as /run/start answers: the count still plays.
+    assert.equal(triviaStage({ live: true, starting: true, counting: true }), "count");
+    assert.equal(triviaStage({ live: true, starting: true, counting: false }), "start");
+    assert.equal(triviaStage({ live: true, starting: false, counting: false }), "board");
+  });
+  it("stays on the door while the start is asked, and when it is refused", () => {
+    assert.equal(triviaStage({ live: false, starting: true, counting: false }), "start");
+    assert.equal(triviaStage({ live: false, starting: false, counting: false }), "start");
+  });
+});
+
+describe("a trivia question's header", () => {
+  const tile = (done: boolean): RunPoint => ({ idx: 0, id: "p", name: "Signal of the Boss Room", value: 400, done, earned: 0, hidden: false, forbidden: false, kind: "trivia" });
+  const run = (played: number) => ({ points: Array.from({ length: 10 }, (_, i) => tile(i < played)) });
+  it("is the question's topic, never the tile's generated name", () => {
+    assert.equal(triviaTopic("Movies"), "Movies");
+    assert.equal(triviaTopic(" "), "Trivia");
+    assert.equal(triviaTopic(null), "Trivia");
+  });
+  it("counts the question in play order, out of the run's tiles", () => {
+    assert.equal(questionCount(run(0), tile(false)), "Question 1 of 10");
+    assert.equal(questionCount(run(2), tile(false)), "Question 3 of 10");
+    // Once answered, the tile counts itself: still "3 of 10", not "4 of 10".
+    assert.equal(questionCount(run(3), tile(true)), "Question 3 of 10");
+    assert.equal(questionCount(run(10), tile(false)), "Question 10 of 10");
   });
 });
 

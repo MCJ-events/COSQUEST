@@ -195,6 +195,33 @@ export function triviaSub(left: number | null): string {
   return left === 0 ? "That's today's trivia runs done. Back tomorrow." : `No walking, no location. On today's global board.${leftToday(left)}`;
 }
 
+/**
+ * What the trivia screen shows. The 3-2-1 plays after the server has started
+ * the run (it can refuse: no runs left), so a live run alone must not mean the
+ * board, or the count is thrown away the moment the run comes back.
+ */
+export function triviaStage(o: { live: boolean; starting: boolean; counting: boolean }): "count" | "board" | "start" {
+  if (o.counting) return "count";
+  return o.live && !o.starting ? "board" : "start";
+}
+
+/**
+ * A trivia question's header. A trivia tile's name is generated ("Signal of
+ * the Boss Room") and says nothing about its question, so the header is the
+ * topic the question was dealt from (the server's realm_name: Movies, Anime)
+ * and where it sits in the run: "Question 3 of 10", counted in play order.
+ */
+export function triviaTopic(topic: string | null | undefined): string {
+  return topic?.trim() || "Trivia";
+}
+
+/** "Question 3 of 10": this tile's place in the order the run has been played (see triviaTopic). */
+export function questionCount(run: Pick<RunState, "points">, p: Pick<RunPoint, "done">): string {
+  const total = run.points.length;
+  const n = Math.min(total, doneCount(run) + (p.done ? 0 : 1));
+  return `Question ${Math.max(1, n)} of ${total}`;
+}
+
 /** Today's runs left, from /me's features.run (null when the server does not say). */
 export function runAllowance(me: { features?: Record<string, unknown> | null } | null | undefined): { daily: number | null; pocket: number | null } {
   const run = (me?.features?.run ?? null) as { daily_runs_left?: number | null; pocket_runs_left?: number | null } | null;

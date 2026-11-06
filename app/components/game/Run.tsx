@@ -27,6 +27,7 @@ import {
   isWorldBoard,
   orderPoints,
   pocketSub,
+  questionCount,
   resetTime,
   resultChips,
   resultHeadline,
@@ -44,6 +45,7 @@ import {
   stakeOf,
   stakeText,
   tierOfValue,
+  triviaTopic,
 } from "@/features/game/run";
 import { gameStore, useGame } from "@/features/game/runtime";
 import type { QuestPoint, RoamAnswer, RoamAttempt } from "@/features/game/wire";
@@ -319,7 +321,7 @@ export function RunTray({
       { text: "End run", style: "destructive", onPress: onEnd },
     ]);
   const card = (p: RunPoint, width: number | null) => (
-    <RunCardButton key={p.idx} point={p} distance={pocket ? null : distanceOf(p)} inReach={pocket || inReach(p)} pocket={pocket} width={width} onPress={() => onPick(p)} />
+    <RunCardButton key={p.idx} point={p} distance={pocket ? null : distanceOf(p)} inReach={pocket || inReach(p)} pocket={pocket} where={!isTrivia(run)} width={width} onPress={() => onPick(p)} />
   );
   return (
     <View style={[{ gap: 8 }, fill && { flex: 1 }]}>
@@ -331,7 +333,9 @@ export function RunTray({
       </View>
       {pocket ? (
         // A Pocket Run is a board of ten tiles, not a route: no map, nothing to walk to.
-        <View style={[styles.board, fill && { flex: 1, maxHeight: undefined }]}>
+        // Over the map it is capped; the trivia screen gives it the screen's height (maxHeight: undefined
+        // does not lift a cap on the web, so the cap is only ever applied, never undone).
+        <View style={[styles.board, fill ? { flex: 1 } : styles.boardCap]}>
           <ScrollView contentContainerStyle={styles.boardGrid}>{ordered.map((p) => card(p, null))}</ScrollView>
         </View>
       ) : (
@@ -345,7 +349,23 @@ export function RunTray({
 
 const PRESS = SPRING_PRESS;
 
-function RunCardButton({ point, distance, inReach, pocket, width, onPress }: { point: RunPoint; distance: number | null; inReach: boolean; pocket: boolean; width: number | null; onPress: () => void }) {
+function RunCardButton({
+  point,
+  distance,
+  inReach,
+  pocket,
+  where,
+  width,
+  onPress,
+}: {
+  point: RunPoint;
+  distance: number | null;
+  inReach: boolean;
+  pocket: boolean;
+  where: boolean;
+  width: number | null;
+  onPress: () => void;
+}) {
   const styles = useThemedStyles(STYLE_PAIR);
   const down = useSharedValue(0);
   const style = useAnimatedStyle(() => ({ transform: [{ scale: 1 - 0.05 * down.get() }] }));
@@ -364,13 +384,14 @@ function RunCardButton({ point, distance, inReach, pocket, width, onPress }: { p
       accessibilityLabel={cardLabel(point, { inReach, pocket, distance, challengeName })}
       accessibilityState={{ disabled: off }}>
       <Animated.View style={style}>
-        <RunCard point={point} distance={distance} inReach={inReach} width={width} />
+        <RunCard point={point} distance={distance} inReach={inReach} where={where} width={width} />
       </Animated.View>
     </Pressable>
   );
 }
 
-function RunCard({ point, distance, inReach, width }: { point: RunPoint; distance: number | null; inReach: boolean; width: number | null }) {
+/** `where`: the HERE / distance label, a walking game's; a trivia tile has no place, so none. */
+function RunCard({ point, distance, inReach, where, width }: { point: RunPoint; distance: number | null; inReach: boolean; where: boolean; width: number | null }) {
   const styles = useThemedStyles(STYLE_PAIR);
   const tint = point.forbidden ? RUN_FORBIDDEN : tierColor(tierOfValue(point.value));
   return (
@@ -383,7 +404,7 @@ function RunCard({ point, distance, inReach, width }: { point: RunPoint; distanc
           </Text>
           {point.hidden ? (
             <Ionicons name="help-circle" size={18} color={GP.mist} />
-          ) : !point.done ? (
+          ) : !point.done && where ? (
             <Text style={[styles.cardWhere, { color: inReach ? GP.mint : GP.mist }]}>{inReach ? "HERE" : distanceText(distance)}</Text>
           ) : null}
         </View>
@@ -409,10 +430,13 @@ export function RunChallenge({ point, onDone }: { point: RunPoint; onDone: () =>
   const s = useRun();
   const asDuel = runPlaysAsDuel(point.kind, me, isTrivia(s.run));
   const held = s.openedStakes[point.idx];
+  // A trivia tile's name is generated and unrelated to its question: the header counts the question instead,
+  // fixed when it opens (answering it moves the run's count on).
+  const [count] = useState(() => (s.run && isTrivia(s.run) ? questionCount(s.run, point) : null));
   // Re-entering a Forbidden Zone already open: the server holds its stake, so there is nothing to choose.
   const [stakeChosen, setStakeChosen] = useState<boolean | null>(held !== undefined ? held > 0 : point.forbidden ? null : false);
   if (stakeChosen === null) {
-    return <StakeChoice point={point} duel={asDuel} score={s.run?.score ?? 0} onChoose={setStakeChosen} onClose={onDone} />;
+    return <StakeChoice point={point} count={count} duel={asDuel} score={s.run?.score ?? 0} onChoose={setStakeChosen} onClose={onDone} />;
   }
   if (asDuel && s.run) {
     const stand: QuestPoint = {
@@ -436,7 +460,7 @@ export function RunChallenge({ point, onDone }: { point: RunPoint; onDone: () =>
       />
     );
   }
-  return <RunQuiz point={point} staked={stakeChosen} onDone={onDone} />;
+  return <RunQuiz point={point} count={count} staked={stakeChosen} onDone={onDone} />;
 }
 
 function Stage({ children }: { children: ReactNode }) {
@@ -450,14 +474,15 @@ function Stage({ children }: { children: ReactNode }) {
   );
 }
 
-function Header({ point, line, close, closeIcon }: { point: RunPoint; line: string; close: (() => void) | null; closeIcon: "close" | "checkmark" }) {
+/** `title`: what heads the screen; the point's name unless the caller has a better one (a trivia question's topic). */
+function Header({ point, title, line, close, closeIcon }: { point: RunPoint; title?: string; line: string; close: (() => void) | null; closeIcon: "close" | "checkmark" }) {
   const styles = useThemedStyles(STYLE_PAIR);
   const look = useLook();
   return (
     <View style={styles.qHeader}>
       <View style={{ flex: 1, gap: 2 }}>
         <Text style={styles.qName} numberOfLines={2} accessibilityRole="header">
-          {point.name}
+          {title ?? point.name}
         </Text>
         <Text style={styles.qLine}>{line}</Text>
       </View>
@@ -470,12 +495,34 @@ function Header({ point, line, close, closeIcon }: { point: RunPoint; line: stri
   );
 }
 
-function StakeChoice({ point, duel, score, onChoose, onClose }: { point: RunPoint; duel: boolean; score: number; onChoose: (stake: boolean) => void; onClose: () => void }) {
+/** `count` ("Question 3 of 10") on a trivia run, whose tiles' names say nothing; null elsewhere. */
+function questionTitle(point: RunPoint, count: string | null, topic: string | null | undefined): { title?: string; lead: string } {
+  if (count === null) return { lead: "" };
+  const fromPoint = point.realm ? gameStore.factionName(point.realm) : null;
+  return { title: triviaTopic(topic || fromPoint), lead: `${count} · ` };
+}
+
+function StakeChoice({
+  point,
+  count,
+  duel,
+  score,
+  onChoose,
+  onClose,
+}: {
+  point: RunPoint;
+  count: string | null;
+  duel: boolean;
+  score: number;
+  onChoose: (stake: boolean) => void;
+  onClose: () => void;
+}) {
   const styles = useThemedStyles(STYLE_PAIR);
   const stake = stakeOf(score);
+  const head = questionTitle(point, count, null);
   return (
     <Stage>
-      <Header point={point} line={`${challengeName(duel ? "duel" : (point.kind ?? "trivia"))} · ${point.value} points`} close={onClose} closeIcon="close" />
+      <Header point={point} title={head.title} line={`${head.lead}${challengeName(duel ? "duel" : (point.kind ?? "trivia"))} · ${point.value} points`} close={onClose} closeIcon="close" />
       <View style={styles.stake}>
         <Text style={styles.stakeTitle}>Forbidden Zone</Text>
         <Text style={styles.stakeText} maxFontSizeMultiplier={MAX_FONT_SCALE}>
@@ -488,7 +535,7 @@ function StakeChoice({ point, duel, score, onChoose, onClose }: { point: RunPoin
   );
 }
 
-function RunQuiz({ point, staked: stakedAsked, onDone }: { point: RunPoint; staked: boolean; onDone: () => void }) {
+function RunQuiz({ point, count, staked: stakedAsked, onDone }: { point: RunPoint; count: string | null; staked: boolean; onDone: () => void }) {
   const tone = useLook().dark ? TEXT_ON_DARK : TEXT_ON_LIGHT;
   const styles = useThemedStyles(STYLE_PAIR);
   const reduce = useReducedMotion();
@@ -558,12 +605,14 @@ function RunQuiz({ point, staked: stakedAsked, onDone }: { point: RunPoint; stak
   }, [phase, deadline]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const kind = attempt?.kind ?? point.kind ?? "trivia";
-  const line = `${challengeName(kind)} · ${point.value} points${staked ? " · STAKED" : ""}`;
+  // The topic is the realm the server dealt the question from, once it has said.
+  const head = questionTitle(point, count, attempt?.realm_name);
+  const line = `${head.lead}${challengeName(kind)} · ${point.value} points${staked ? " · STAKED" : ""}`;
   const reveal = phase === "result" && result && attempt ? runReveal(attempt.kind, result, picked, blitz) : null;
 
   return (
     <Stage>
-      <Header point={point} line={line} close={phase === "submitting" ? null : onDone} closeIcon={phase === "result" ? "checkmark" : "close"} />
+      <Header point={point} title={head.title} line={line} close={phase === "submitting" ? null : onDone} closeIcon={phase === "result" ? "checkmark" : "close"} />
       {phase === "opening" ? (
         <View style={styles.center}>
           <ActivityIndicator color={GP.mist} size="large" />
@@ -833,7 +882,8 @@ const STYLE_PAIR = themedStyles(
     trayTitle: { fontFamily: GF.bold, fontSize: 13, lineHeight: 17, letterSpacing: 1, color: L.text, ...HALO },
     trayEnd: { fontFamily: GF.bold, fontSize: 13, lineHeight: 17, color: L.text, ...HALO },
     trayRow: { paddingHorizontal: 14, paddingTop: 10, paddingBottom: 8, gap: 12 },
-    board: { maxHeight: 460, marginHorizontal: 8, borderRadius: RADIUS.card, backgroundColor: L.surfaceAlt, borderWidth: 1, borderColor: L.hairline },
+    board: { marginHorizontal: 8, borderRadius: RADIUS.card, backgroundColor: L.surfaceAlt, borderWidth: 1, borderColor: L.hairline },
+    boardCap: { maxHeight: 460 },
     boardGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", rowGap: 12, paddingHorizontal: 14, paddingTop: 10, paddingBottom: 8 },
     gridCell: { width: "48%" },
     cardEdge: { position: "absolute", left: 0, right: 0, top: 4, bottom: 0, borderRadius: RADIUS.button },
