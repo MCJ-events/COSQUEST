@@ -22,6 +22,8 @@ function verifyToken(token) {
   // It carries no app sessionId, so without this it would pass
   // isCurrentSession for an account that has no app session yet.
   if (decoded?.scope) throw new Error('Not an app session token.');
+  // Nor a one-purpose pass (a call's decline pass, src/utils/callPush.js).
+  if (decoded?.purpose) throw new Error('Not an app session token.');
   return decoded;
 }
 

@@ -43,6 +43,7 @@ Phones that registered a call token (`voipToken`, from expo-callkit-telecom in t
 
 - **iPhone:** an APNs VoIP push (`apns-push-type: voip`, topic `<bundle id>.voip`, priority 10, expiring with the minute), body `{ incomingCall: { eventId, serverCallId, hasVideo, startedAt, caller: { id, displayName, avatarUrl? }, metadata: { chatId, isGroup, privateOf, username } } }`. `serverCallId` is the call's id.
 - **Android:** an FCM data message (high priority, 60 s), data `{ messageType: 'incomingCall', incomingCall: '<the same event as JSON>' }`. When that person's ring is over (declined on another phone, missed, the caller hung up or the call ended) it gets `{ messageType: 'callEnded', callEnded: '{ eventId, serverCallId, reason }' }` so the call screen closes; not after they answer (it would hang up the phone in the call). iPhones close it from the app, which hears `call:updated`.
+- **Declining with the app closed (Android):** the library hands that decline to the app's native receiver, which can't use the login. So every ring's `metadata` also carries `declinePass` (this call and this person, 2 minutes) and `declineUrl` (`<PUBLIC_BASE_URL or Render's RENDER_EXTERNAL_URL>/api/call-decline/<callId>`, left out when neither is set). The receiver posts `POST /api/call-decline/:callId { pass }`, which declines as that person with no session (`401` for a bad or expired pass). Passes are signed with `CALL_DECLINE_SECRET`, or else a key derived from `JWT_SECRET`, and are never accepted as a login.
 - A phone rung this way gets no ringtone push as well. If Apple or Google refuses, the call rings that phone with the ringtone push instead; a token they say is gone (APNs 410 / `BadDeviceToken`, FCM `UNREGISTERED`) is taken off.
 
 | Variable | |
@@ -52,6 +53,8 @@ Phones that registered a call token (`voipToken`, from expo-callkit-telecom in t
 | `APNS_BUNDLE_ID` | The iOS app's bundle id. |
 | `APNS_PRODUCTION` | `1` for TestFlight and App Store builds; otherwise the sandbox (development builds). A token from the other environment comes back `BadDeviceToken`. |
 | `FCM_SERVICE_ACCOUNT` | The Firebase service account (Project settings > Service accounts > Generate new private key): the JSON itself, or the path to the file (on Render, a secret file such as `/etc/secrets/fcm.json`). |
+| `CALL_DECLINE_SECRET` | Optional: signs decline passes. Default: a key derived from `JWT_SECRET`. |
+| `PUBLIC_BASE_URL` | This server's public address, for `declineUrl`. Not needed on Render (`RENDER_EXTERNAL_URL`). |
 
 Each side stays off until its variables are set. Until then the device registration answers `callRinging: 'push'` and calls ring the second way. Never commit the `.p8` or the service account file.
 

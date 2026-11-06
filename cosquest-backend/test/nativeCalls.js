@@ -189,6 +189,8 @@ async function run(baseUrl) {
       'Android: an FCM data message to Google, high priority, for the minute', ring);
     check(grant?.iss === 'push@test-project.iam.gserviceaccount.com' && grant.scope === 'https://www.googleapis.com/auth/firebase.messaging',
       'the Google token is asked for with the service account', grant);
+    const ringPass = ring ? JSON.parse(ring.message.data.incomingCall).metadata?.declinePass : null;
+    check(callPush.verifyDeclinePass(ringPass, cancelled) === droid.id, 'the ring carries a decline pass for this call and this person (declining with the app closed)', ringPass);
     await sleep(200);
     check(!toPhone(droid).length, 'no ringtone push to that Android phone either', toPhone(droid));
     await request('POST', `/api/calls/${cancelled}/end`, caller.token);

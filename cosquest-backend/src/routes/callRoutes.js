@@ -22,6 +22,7 @@ const {
   allowCallMember,
 } = require('../controllers/callController');
 const { alertFromCall, alertFromVoice, getAlert, respondToAlert } = require('../controllers/alertController');
+const { declineByPass } = require('../controllers/callDeclinePassController');
 const {
   getVoiceRoom,
   joinVoiceRoom,
@@ -68,6 +69,9 @@ router.get('/calls/incoming', asyncHandler(getIncomingCall));
 router.get('/calls/:callId', validate(rules.callId), asyncHandler(getCall));
 router.post('/calls/:callId/accept', validate(rules.callId), asyncHandler(acceptCall));
 router.post('/calls/:callId/decline', validate(rules.callId), asyncHandler(declineCall));
+// Declining from the phone's call screen with CosQuest closed: no session,
+// the pass from the ring push is the proof (callDeclinePassController.js).
+router.post('/call-decline/:callId', validate(rules.callId), asyncHandler(declineByPass));
 router.post('/calls/:callId/end', validate(rules.callId), asyncHandler(endCall));
 router.post('/calls/:callId/invite', validate(rules.inviteToCall), asyncHandler(inviteToCall));
 router.post('/calls/:callId/join', validate(rules.callId), asyncHandler(rejoinCall));

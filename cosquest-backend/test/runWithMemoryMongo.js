@@ -177,6 +177,9 @@ async function main() {
     const callNotifications = await require('./callNotifications').run(`http://localhost:${process.env.PORT}`);
     result.pass += callNotifications.pass;
     result.fail += callNotifications.fail;
+    const callDeclinePass = await require('./callDeclinePass').run(`http://localhost:${process.env.PORT}`);
+    result.pass += callDeclinePass.pass;
+    result.fail += callDeclinePass.fail;
     const ringOutcome = await require('./ringOutcome').run();
     result.pass += ringOutcome.pass;
     result.fail += ringOutcome.fail;

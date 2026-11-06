@@ -22,6 +22,10 @@
  *                              sandbox (development builds)
  *   FCM_SERVICE_ACCOUNT        the Firebase service account JSON, or a path to the file
  *                              (on Render, a secret file such as /etc/secrets/fcm.json)
+ *   CALL_DECLINE_SECRET        optional: signs decline passes (default: a key
+ *                              derived from JWT_SECRET, never JWT_SECRET itself)
+ *   PUBLIC_BASE_URL            this server's public address, for the decline URL
+ *                              (default: RENDER_EXTERNAL_URL, which Render sets)
  *   APNS_URL, FCM_URL, FCM_TOKEN_URL  overrides (tests)
  */
 const crypto = require('crypto');
@@ -210,6 +214,48 @@ function incomingCallEvent(call, caller) {
   };
 }
 
+// Declining with CosQuest fully closed (Android): the library hands that to
+// the app's native receiver, which can't use the app's login. So each ring
+// carries a pass for this call and this person (2 minutes) and the URL to
+// post it to (callDeclinePassController.js), in the event's metadata.
+// Signed with its own key, so a pass can never be taken for a session token.
+const DECLINE_PURPOSE = 'call-decline';
+
+function declineKey() {
+  if (process.env.CALL_DECLINE_SECRET) return process.env.CALL_DECLINE_SECRET;
+  if (!process.env.JWT_SECRET) return null;
+  return crypto.createHmac('sha256', process.env.JWT_SECRET).update(DECLINE_PURPOSE).digest();
+}
+
+function withDeclinePass(event, userId) {
+  const key = declineKey();
+  const base = (process.env.PUBLIC_BASE_URL || process.env.RENDER_EXTERNAL_URL || '').replace(/\/+$/, '');
+  if (!userId || !key) return event;
+  const declinePass = jwt.sign({ sub: String(userId), call: String(event.serverCallId), purpose: DECLINE_PURPOSE }, key, { algorithm: 'HS256', expiresIn: RING_SECONDS * 2 });
+  return {
+    ...event,
+    metadata: {
+      ...event.metadata,
+      declinePass,
+      // No public address set: the app posts to its own API address instead.
+      ...(base ? { declineUrl: `${base}/api/call-decline/${event.serverCallId}` } : {}),
+    },
+  };
+}
+
+/** The user id a decline pass is for, or null (another call, expired, forged). */
+function verifyDeclinePass(pass, callId) {
+  const key = declineKey();
+  if (!key || typeof pass !== 'string' || !pass) return null;
+  try {
+    const claims = jwt.verify(pass, key, { algorithms: ['HS256'] });
+    if (claims.purpose !== DECLINE_PURPOSE || String(claims.call) !== String(callId) || !claims.sub) return null;
+    return String(claims.sub);
+  } catch {
+    return null;
+  }
+}
+
 async function forgetTokens(tokens) {
   if (!tokens.length) return;
   await User.updateMany(
@@ -230,7 +276,7 @@ async function ring(phones, { call, caller }) {
   const apns = apnsConfig();
   const fcm = fcmConfig();
   await Promise.all(phones.map(async (phone) => {
-    const event = incomingCallEvent(call, caller);
+    const event = withDeclinePass(incomingCallEvent(call, caller), phone.userId);
     let result = { ok: false };
     if (phone.voipType === 'APNS_VOIP' && apns) {
       result = await sendApns(apns, phone.voipToken, { incomingCall: event });
@@ -270,4 +316,4 @@ function resetForTests() {
   serviceAccount = { source: undefined, account: null };
 }
 
-module.exports = { canRing, ring, ringEnded, incomingCallEvent, RING_SECONDS, resetForTests };
+module.exports = { canRing, ring, ringEnded, incomingCallEvent, withDeclinePass, verifyDeclinePass, RING_SECONDS, resetForTests };
