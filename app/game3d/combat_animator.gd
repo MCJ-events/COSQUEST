@@ -15,16 +15,41 @@ const PoseLayer := preload("res://pose_layer.gd")
 const AnimLib := preload("res://anim_library.gd")
 const SecondaryMotion := preload("res://secondary_motion.gd")
 
-# crossfades (s): into a one-shot, back to a loop, into a hit react
+# crossfades (s, real time): into a one-shot, back to a loop, into a hit react. fight-anim: Godot
+# advances a crossfade with the player's speed_scale, so a clip warped to 2-3.6x used to finish its
+# 0.08 s fade in one frame (a pose snap); play() now scales the fade by the clip's starting rate.
 const BLEND_ACT: float = 0.08
-const BLEND_LOOP: float = 0.15
-const BLEND_HIT: float = 0.08
+const BLEND_LOOP: float = 0.18
+const BLEND_HIT: float = 0.06
+const BLEND_RECOVER: float = 0.26        # fight-anim: out of a hit reaction, a soft recovery
+const BLEND_VICTORY_IDLE: float = 0.5    # fight-anim: the cheer settles into the idle loop
+
+# fight-anim: the most a clip's wind-up is sped up to land its contact frame on the gameplay hit.
+# A faster wind-up starts later in the clip instead (the crossfade carries the body into it), so a
+# 0.11 s strike no longer squeezes 12 frames of wind-up into 3 (3.6x, the arm snapped).
+const WINDUP_RATE_MAX: float = 1.7
+# fight-anim: a hit reaction plays at most this fast; a short game length shows the reaction's
+# first part (the impact and the recoil) and BLEND_RECOVER carries it back, instead of the whole
+# clip at 2.2-2.4x
+const HIT_RATE_MAX: float = 1.3
+const ONE_SHOTS: Array[String] = ["attack_1", "attack_2", "attack_3", "heavy", "parry", "dodge",
+	"skill_charge", "skill_split", "skill_whirl", "skill_rally", "skill_shield"]
+
+# fight-anim: the additive flinch (pose_layer channels on top of whatever clip plays): a fast
+# recoil away from the blow, then an eased return. Real time on the way in (it shows through the
+# hit-stop), game time on the way back.
+const FLINCH_IN: float = 0.05
+const FLINCH_OUT: float = 0.32
+const FLINCH_LEAN: float = 20.0          # degrees of spine lean at strength 1
+const FLINCH_TILT: float = 12.0
+const FLINCH_YAW: float = 9.0
+const FLINCH_ARMS: float = 14.0
 
 const STATES: Array[String] = ["idle", "walk", "run", "attack_1", "attack_2", "attack_3", "heavy",
 	"hit", "guard", "parry", "dodge", "skill_charge", "skill_split", "skill_whirl", "skill_rally",
 	"skill_shield", "death", "victory"]
 const LOOPING: Array[String] = ["idle", "walk", "run", "guard"]
-const HOLD_LAST: Array[String] = ["death", "victory"]
+const HOLD_LAST: Array[String] = ["death", "victory"]   # victory settles into idle (fight-anim)
 
 const ALIASES: Dictionary = {
 	"idle": ["idle", "idle_loop", "breathing_idle"],
@@ -94,6 +119,11 @@ var timing: Dictionary = {}      # state -> {clip, frames, fps, contact, in, out
 var _warp: Array = []            # [clip time at the hit, speed before it, speed after it, game time of the hit]
 var _clip_t: float = 0.0         # where the one-shot clip should be (seconds into the clip)
 var hip_h: float = 0.9           # the model's hip height in metres (locomotion rate)
+var _after: String = ""          # fight-anim: the one-shot that just ended (picks the blend back)
+var _victory_idle: bool = false  # fight-anim: the cheer has settled into the idle loop
+var _flinch_t: float = -1.0      # fight-anim: seconds into the current flinch (-1 = none)
+var _flinch_k: float = 0.0       # its strength
+var _flinch_dir: Vector3 = Vector3.ZERO   # the push, in the character's own frame (+Z forward)
 
 
 ## Finds the AnimationPlayer and Skeleton3D under `model`, maps clips to states, adds the
@@ -274,10 +304,14 @@ func play(st: String, game_len: float = 0.0, hit_at: float = -1.0, blend: float 
 	if st == state and not restart:
 		return clips.has(st)
 	var was: String = state
+	if was == "_" and _after != "":
+		was = _after
+	_after = ""
 	state = st
 	t = 0.0
 	length = game_len
 	_warp = []
+	_victory_idle = false
 	if player == null or not clips.has(st):
 		# no clip: idle/walk still come from the clip map when it has them
 		return false
@@ -285,32 +319,91 @@ func play(st: String, game_len: float = 0.0, hit_at: float = -1.0, blend: float 
 	var a: Animation = player.get_animation(clip)
 	if blend < 0.0:
 		blend = BLEND_HIT if st == "hit" else (BLEND_ACT if restart else BLEND_LOOP)
-		if was == "_" or was in LOOPING:
+		if was in LOOPING:
 			blend = BLEND_ACT if restart else BLEND_LOOP
+		elif was == "hit" and not restart:
+			blend = BLEND_RECOVER
 	var m: Dictionary = timing.get(st, {})
 	var fps: float = float(m.get("fps", 30.0))
 	var t_in: float = float(m.get("in", 0)) / fps
 	var t_out: float = a.length if a != null else 0.0
 	if m.has("out"):
 		t_out = minf(t_out, float(m["out"]) / fps)
+	if restart and st == "hit" and a != null:
+		# fight-anim: the reaction's opening at a natural speed, not the whole clip squeezed
+		t_out = minf(t_out, t_in + game_len * HIT_RATE_MAX)
 	if restart and a != null and t_out - t_in > 0.01:
 		var c_t: float = float(m.get("contact", -1)) / fps
 		if hit_at > 0.02 and hit_at < game_len - 0.02 and c_t > t_in and c_t < t_out:
+			# fight-anim: cap the wind-up speed; skip into the wind-up instead
+			if (c_t - t_in) / hit_at > WINDUP_RATE_MAX:
+				t_in = c_t - hit_at * WINDUP_RATE_MAX
 			_warp = [c_t, (c_t - t_in) / hit_at, (t_out - c_t) / (game_len - hit_at), hit_at]
 		else:
 			_warp = [t_out, (t_out - t_in) / game_len, (t_out - t_in) / game_len, game_len]
+		# a short strike cannot spend more than ~70 % of its wind-up fading in; a long wind-up (the
+		# Guardian's 0.8 s) fades in over 30 % of it (up to 0.25 s), not 0.08 s: its two-hand chop
+		# starts far from the idle pose (the off forearm swung 100 deg in one frame)
+		if hit_at > 0.02:
+			blend = maxf(minf(blend, hit_at * 0.7), minf(hit_at * 0.3, 0.25))
 	_clip_t = t_in
-	player.play(clip, blend, 1.0)
+	# fight-anim: the fade runs in clip time (speed_scale), so ask for blend x rate to get `blend` s
+	var rate0: float = float(_warp[1]) if not _warp.is_empty() else (walk_rate if st in ["walk", "run"] else 1.0)
+	player.play(clip, blend * maxf(rate0, 0.05), 1.0)
 	player.seek(t_in, true)
 	if not _warp.is_empty():
 		player.speed_scale = 0.0 if frozen else float(_warp[1])
 	return true
 
 
+## fight-anim: an additive recoil on top of whatever plays (the clip keeps running): `push` is the
+## blow's direction in the world, `strength` about 0.5 (blocked or light) to 1.4 (a crit). A new
+## blow restarts it from the current depth, so a flurry stays a recoil, not a twitch.
+func flinch(push: Vector3, strength: float) -> void:
+	if layer == null or layer.frame_root == null or not layer.frame_root.is_inside_tree():
+		return
+	var local: Vector3 = layer.frame_root.global_basis.orthonormalized().inverse() * Vector3(push.x, 0.0, push.z)
+	if local.length_squared() < 0.0001:
+		local = Vector3(0, 0, -1)   # no direction: pushed back
+	_flinch_dir = local.normalized()
+	_flinch_k = maxf(strength, _flinch_k * _flinch_env() if _flinch_t >= 0.0 else 0.0)
+	_flinch_t = 0.0
+
+
+func _flinch_env() -> float:
+	if _flinch_t < 0.0:
+		return 0.0
+	if _flinch_t < FLINCH_IN:
+		var u: float = _flinch_t / FLINCH_IN
+		return u * (2.0 - u)
+	var v: float = clampf((_flinch_t - FLINCH_IN) / FLINCH_OUT, 0.0, 1.0)
+	return 1.0 - v * v * (3.0 - 2.0 * v)
+
+
+func _flinch_pose() -> Dictionary:
+	var e: float = _flinch_env() * _flinch_k
+	if e <= 0.001:
+		return {}
+	# pushed back (-Z) leans the spine back; pushed to its left (+X) tilts it that way and turns it
+	return {"spine_lean": FLINCH_LEAN * e * _flinch_dir.z, "spine_tilt": FLINCH_TILT * e * _flinch_dir.x,
+		"spine_yaw": FLINCH_YAW * e * _flinch_dir.x, "r_side": FLINCH_ARMS * e, "l_side": FLINCH_ARMS * e,
+		"r_bend": FLINCH_ARMS * 0.8 * e, "l_bend": FLINCH_ARMS * 0.8 * e}
+
+
+## True while a one-shot action clip (an attack, skill, parry or dodge) still owns the body.
+func busy_action() -> bool:
+	return length > 0.0 and t < length and state in ONE_SHOTS and clips.has(state)
+
+
 ## Locomotion and the procedural pose. `busy` = a one-shot owns the body.
 func update(dt: float, speed_now: float, dead: bool) -> void:
 	if not frozen:
 		t += dt
+	if _flinch_t >= 0.0 and (not frozen or _flinch_t < FLINCH_IN):
+		_flinch_t += dt
+		if _flinch_t > FLINCH_IN + FLINCH_OUT:
+			_flinch_t = -1.0
+			_flinch_k = 0.0
 	if player != null:
 		var base: float = 1.0
 		if state in ["walk", "run"]:
@@ -318,8 +411,15 @@ func update(dt: float, speed_now: float, dead: bool) -> void:
 		elif not _warp.is_empty():
 			base = float(_warp[1]) if t < float(_warp[3]) else float(_warp[2])
 		player.speed_scale = 0.0 if frozen else base
+	if state == "victory" and length > 0.0 and t >= length and not _victory_idle and player != null and clips.has("idle"):
+		# fight-anim: the cheer used to freeze on its last frame (a statue); it settles into idle
+		_victory_idle = true
+		_warp = []
+		player.play(clips["idle"], BLEND_VICTORY_IDLE, 1.0)
+		player.speed_scale = 0.0 if frozen else 1.0
 	if length > 0.0 and t >= length and not (state in HOLD_LAST):
 		length = 0.0
+		_after = state
 		state = "_"
 		_warp = []
 	if length <= 0.0 and not dead and not (state in HOLD_LAST) and state != "guard":
@@ -341,7 +441,13 @@ func update(dt: float, speed_now: float, dead: bool) -> void:
 						player.play(clips[alt], 0.15)
 				state = want
 	if layer != null:
-		layer.pose = _pose_now() if not clips.has(state) else {}
+		var p: Dictionary = _pose_now() if not clips.has(state) else {}
+		var fl: Dictionary = _flinch_pose()
+		if not fl.is_empty():
+			p = p.duplicate()
+			for k: String in fl:
+				p[k] = float(p.get(k, 0.0)) + float(fl[k])
+		layer.pose = p
 
 
 func phase() -> float:

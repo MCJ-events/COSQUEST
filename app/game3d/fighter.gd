@@ -97,6 +97,12 @@ var _shud_amp: float = 0.0
 var _shud_clock: float = 0.0
 var _diss_t: float = -1.0
 var _diss_len: float = 0.7
+# fight-anim (presentation only): the model's facing eases after the fighter's yaw. The game snaps
+# yaw (soft-lock on a swing, a wind-up's aim, a charge: up to 140 deg in one frame); the yaw, the
+# hurtbox and the weapon hitbox keep snapping exactly as before, only the drawn body follows.
+const TURN_RATE: float = 16.0           # 1/s: most of a snap within 4-5 frames
+const TURN_LAG_MAX: float = 2.618          # 150 deg: a bigger snap catches up the rest at once
+var _vis_yaw: float = NAN
 
 
 func setup(n: String, t: int, hp_max: int, c: Color, r: String = "hero") -> void:
@@ -595,8 +601,26 @@ func flash(amount: float = 1.0) -> void:
 	_flash = maxf(_flash, amount)
 
 
-func hurt_pop() -> void:
+## The hit's pop, and (fight-anim) the additive recoil away from `push` (the blow's direction in
+## the world; zero = pushed back) at `strength` (0.5 light or blocked, 1 heavy, 1.4 crit).
+func hurt_pop(push: Vector3 = Vector3.ZERO, strength: float = 0.8) -> void:
 	_pop_t = 0.0
+	anim.flinch(push, strength)
+
+
+## fight-anim: a blow the body takes without a new clip (a block, a barrier): the recoil only.
+func flinch(push: Vector3, strength: float) -> void:
+	anim.flinch(push, strength)
+
+
+## fight-anim: a hit reaction for `length` seconds, unless an attack or skill clip still owns the
+## body (the Guardian mid-swing): then the recoil already playing on top of it shows the hit, and
+## the swing is not cut into a hit clip (the old 165 deg/frame snap). Presentation only: callers
+## that change the game (the hero's interrupted swing, a stagger) keep calling act("hit").
+func react_hit(length: float) -> void:
+	if anim.busy_action():
+		return
+	act("hit", length)
 
 
 ## look-fight: the body shakes side to side for `secs` (the hit-stop), `amp` metres, fading.
@@ -772,6 +796,24 @@ func tick_visual(dt: float) -> void:
 		if kd2 >= 1.0:
 			visible = false
 			_diss_t = -1.0
+	# fight-anim: the drawn body eases after the yaw (see TURN_RATE)
+	if is_nan(_vis_yaw):
+		_vis_yaw = yaw
+	_vis_yaw = lerp_angle(_vis_yaw, yaw, 1.0 - exp(-dt * TURN_RATE))
+	var lag: float = wrapf(_vis_yaw - yaw, -PI, PI)
+	if absf(lag) > TURN_LAG_MAX:
+		lag = signf(lag) * TURN_LAG_MAX
+		_vis_yaw = yaw + lag
+	rot.y += lag
+	# fight-anim: a knockback shove leans the body with the push and sinks it a little (the feet
+	# are planted while the game slides the fighter back, so the body reads as shoved, not gliding)
+	var kv: float = kb_vel.length()
+	if kv > 1.0 and not dead:
+		var kk: float = clampf((kv - 1.0) / 6.0, 0.0, 1.0)
+		var kl: Vector3 = global_basis.orthonormalized().inverse() * kb_vel.normalized()
+		rot.x += 0.24 * kk * kl.z
+		rot.z -= 0.24 * kk * kl.x
+		pos.y -= 0.05 * kk * size_k
 	body.position = pos
 	body.rotation = rot
 	body.scale = Vector3(sc * sxz, sc * (1.0 + 0.6 * (1.0 - sxz)) * maxf(0.05, sxz), sc * sxz)

@@ -189,3 +189,31 @@ $BPY app/game3d/tools/anim/build_all.py --src <KayKit>/Knight.glb \
 ```
 
 It takes about 5 minutes on the CPU for the eight characters (25 under the load of a second task); `--cast` takes the fixed rigs from cq 014 (`pose/<key>/lod*.glb` + `rig.json` per character, see RIGS.md).
+
+## Playback feel (fight-anim, 7 Nov 2026)
+
+Presentation only: the yaw, positions, hitboxes, timings and the judge record are unchanged
+(five seeded fights byte-identical before and after; rules id `f3d-1-21d2cde61ab2`).
+
+- **Crossfades in real time.** Godot advances a crossfade with `speed_scale`, so a clip warped
+  to 2-3.6x finished its 0.08 s fade in one frame. `play()` asks for `blend x rate`.
+- **Wind-up cap.** A clip's wind-up plays at most `WINDUP_RATE_MAX` (1.7x) to land its contact
+  frame on the gameplay hit; a faster one starts later in the clip and the fade carries the body
+  in. Long wind-ups (the Guardian's 0.8 s) fade in over 30 % of the wind-up, up to 0.25 s.
+- **Hit reactions.** A hit clip plays at most `HIT_RATE_MAX` (1.3x): a short hit shows the
+  impact and recoil, then `BLEND_RECOVER` (0.26 s) returns to the loop. Every blow also adds a
+  recoil on top of whatever plays (`CombatAnimator.flinch`, pose_layer channels, 0.05 s in,
+  0.32 s out, away from the blow). `Fighter.react_hit` never cuts a running attack or skill clip
+  (the Guardian mid-swing, the ally mid-cast): the recoil shows the hit instead.
+- **One-frame snaps in the clips.** `AnimLib.despike` spreads an isolated jump (> 40 deg and 3x
+  its neighbours) over three keys at load: 12 on Armstrong, 7 on Bobo, 6 on Hoof.
+- **Facing.** The drawn body eases after the fighter's yaw (`Fighter.TURN_RATE`, lag at most
+  150 deg); the yaw itself still snaps for the game.
+- **Knockback.** While shoved faster than 1 m/s the body leans with the push and sinks a little.
+- **Victory.** The cheer settles into the idle loop instead of freezing on its last frame.
+
+Measuring: `"anim_probe": "/abs/out.jsonl"` in a review config writes per-frame animation data
+(`tools/anim_probe.gd`, not exported); `tools/anim/probe_report.py` turns it into playback
+rates, pose pops, facing snaps, stance-foot slide and transition pops. `tools/anim/loco_measure.gd`
+measures each character's walk/run ground speed in place (it agrees with `ground_speed_per_hip`
+within about 10 %). Test: `tests/anim_feel_test.gd`.

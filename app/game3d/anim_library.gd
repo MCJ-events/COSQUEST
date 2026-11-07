@@ -81,15 +81,57 @@ static func library(key: String) -> AnimationLibrary:
 		for n: StringName in ap.get_animation_list():
 			var a: Animation = ap.get_animation(n).duplicate(true)
 			# keep only the bone name: the track is pointed at the model's skeleton on apply
+			var fixed: int = 0
 			for i in a.get_track_count():
 				var p: NodePath = a.track_get_path(i)
 				var bone: String = str(p.get_concatenated_subnames())
 				a.track_set_path(i, NodePath(".:" + bone))
+				fixed += despike(a, i)
 			lib.add_animation(n, a)
+			_despiked += fixed
 	root.free()
 	_libs[path] = lib
-	print("CQ anim_library path=%s clips=%d ms=%.1f" % [path, lib.get_animation_list().size(), (Time.get_ticks_usec() - t0) / 1000.0])
+	print("CQ anim_library path=%s clips=%d despiked=%d ms=%.1f" % [path, lib.get_animation_list().size(), _despiked, (Time.get_ticks_usec() - t0) / 1000.0])
+	_despiked = 0
 	return lib
+
+
+static var _despiked: int = 0
+const SPIKE_DEG: float = 40.0     # a one-frame bone turn this big ...
+const SPIKE_RATIO: float = 3.0    # ... and this many times its neighbours' (at least 5 deg) is a snap
+
+
+## fight-anim: the retargeted clips have a few one-frame snaps (both legs 62-67 deg in a single
+## frame of 1H_Melee_Attack_Chop, the off-hand forearm 54 deg in the horizontal slice, the legs
+## 135 deg in 2H_Melee_Attack_Spinning, the forearm 57 deg in Death_A): an isolated jump between
+## keys k and k+1 is spread over keys k-1..k+2 (the same start and end pose, three even steps).
+## Returns how many it spread. Rotation tracks only; a clip with no spike is untouched.
+static func despike(a: Animation, i: int) -> int:
+	if a.track_get_type(i) != Animation.TYPE_ROTATION_3D:
+		return 0
+	var n: int = a.track_get_key_count(i)
+	if n < 5:
+		return 0
+	var q: Array[Quaternion] = []
+	for k in n:
+		q.append(a.track_get_key_value(i, k))
+	var fixed: int = 0
+	var k: int = 1
+	while k < n - 2:
+		var d: float = rad_to_deg(q[k].angle_to(q[k + 1]))
+		var nb: float = maxf(5.0, maxf(rad_to_deg(q[k - 1].angle_to(q[k])), rad_to_deg(q[k + 1].angle_to(q[k + 2]))))
+		if d > SPIKE_DEG and d > SPIKE_RATIO * nb:
+			var q0: Quaternion = q[k - 1]
+			var q3: Quaternion = q[k + 2]
+			q[k] = q0.slerp(q3, 1.0 / 3.0)
+			q[k + 1] = q0.slerp(q3, 2.0 / 3.0)
+			a.track_set_key_value(i, k, q[k])
+			a.track_set_key_value(i, k + 1, q[k + 1])
+			fixed += 1
+			k += 3
+		else:
+			k += 1
+	return fixed
 
 
 ## Adds the library to `player`, its tracks pointed at `skeleton`. Returns the clip names.

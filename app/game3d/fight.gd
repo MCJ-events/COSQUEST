@@ -494,6 +494,12 @@ func _ready() -> void:
 		peer_f.visible = false
 		_load_queue.append({"f": peer_f, "path": LoaderScript.clean_path(str((cfg["coop"] as Dictionary)["peer_glb"])), "role": "peer"})
 	_queue_weapons()
+	# fight-anim review captures only: the per-frame animation probe (tools/ is not exported)
+	if str(cfg.get("anim_probe", "")) != "" and ResourceLoader.exists("res://tools/anim_probe.gd"):
+		var probe: Node = (load("res://tools/anim_probe.gd") as GDScript).new()
+		probe.set("path", str(cfg["anim_probe"]))
+		probe.set("fighters", [["hero", hero], ["ally", ally], ["enemy", enemy]])
+		add_child(probe)
 	if _load_queue.is_empty():
 		_begin_when_built()
 	else:
@@ -1440,6 +1446,7 @@ func _apply_hit(src: FighterScript, dst: FighterScript, info: Dictionary) -> voi
 			fx.sparks(hero.chest_pos() + hero.forward() * 0.4, Color(0.7, 0.85, 1.0), 60)
 			sfx.play("block")
 			hero.knock(away, 0.5)
+			hero.flinch(away, 0.45)   # fight-anim: the guard gives under the blow
 			_hitstop = maxf(_hitstop, 3.0 / 60.0)
 			_shake_cam(0.06, 0.12)
 			_feel_hit("block", hero, 3.0 / 60.0, away, src)
@@ -1465,7 +1472,7 @@ func _apply_hit(src: FighterScript, dst: FighterScript, info: Dictionary) -> voi
 		_take(dst, left, src, crit)
 	# feedback
 	dst.flash(0.85 if crit else (0.7 if heavy else 0.55))   # cq 013: a short white pop that keeps the body readable
-	dst.hurt_pop()
+	dst.hurt_pop(away, 1.4 if crit else (1.0 if heavy else 0.6))   # fight-anim: + the recoil away from the blow
 	var kb: float = float(info.get("kb", 0.3))
 	if dst == enemy:
 		kb *= 0.45   # the boss is heavy
@@ -1521,9 +1528,9 @@ func _apply_hit(src: FighterScript, dst: FighterScript, info: Dictionary) -> voi
 			_act_len = 0.28
 			hero.act("hit", 0.28)
 	elif dst == ally and left > 0 and not ally.dead:
-		ally.act("hit", 0.28)
+		ally.react_hit(0.28)   # fight-anim: not over its own bolt cast (the recoil shows it)
 	elif dst == enemy and (heavy or crit) and _enemy_state != "windup":
-		enemy.act("hit", 0.3)
+		enemy.react_hit(0.3)   # fight-anim: not over its swing's recovery (the recoil shows it)
 	if dst == enemy and info.has("stagger") and not enemy.dead:
 		_stagger_enemy(float(info["stagger"]), false)
 	if dst.hp <= 0 and not dst.dead:
