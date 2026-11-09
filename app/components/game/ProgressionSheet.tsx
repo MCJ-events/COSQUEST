@@ -55,10 +55,12 @@ import {
   tierLabel,
   weaponForTier,
 } from "@/features/game/progression";
+import { type RevealCard, rankReveal, weaponNotice, weaponReveal } from "@/features/game/rewardReveal";
 import { gameStore, useGame } from "@/features/game/runtime";
 
 import { Chip, GameButton, GamePanel, MAX_FONT_SCALE, ProgressBar } from "./kit";
 import { ACCENT, useLook } from "./look";
+import { RewardReveal } from "./RewardReveal";
 import { SheetHost } from "./Sheet";
 import { SheetFrame } from "./SheetFrame";
 import { SheetHeader } from "./SheetHeader";
@@ -499,6 +501,7 @@ function TestRunner({ kind, faction, rank, config, go, reload }: { kind: TestKin
   }
   // result
   const r = flow.result;
+  const promotion = rankReveal(after?.promoted);
   return (
     <View style={{ gap: 12 }} testID={r.passed ? "prog-test-passed" : "prog-test-failed"}>
       <GamePanel>
@@ -520,11 +523,8 @@ function TestRunner({ kind, faction, rank, config, go, reload }: { kind: TestKin
           {after.starter ? <Text style={[txt.body, { color: look.textMuted, marginTop: 4 }]}>{`Starter weapon: ${after.starter}`}</Text> : null}
         </GamePanel>
       ) : null}
-      {after?.promoted?.length ? (
-        <GamePanel>
-          <Text testID="prog-promoted" style={[txt.kicker, { color: look.textMuted }]}>PROMOTED</Text>
-          <Text style={[txt.h2, { color: look.text }]}>{after.promoted[after.promoted.length - 1].name}</Text>
-        </GamePanel>
+      {promotion ? (
+        <RewardReveal key={promotion.title} card={promotion} icon={realmIcon(faction)} tint={realmColor(faction)} testID="prog-reveal-rank" kickerTestID="prog-promoted" />
       ) : r.passed && kind === "rank" ? (
         <Muted text="Clear the other gates to rank up: the XP and the rank weapon." />
       ) : null}
@@ -538,13 +538,15 @@ function TestRunner({ kind, faction, rank, config, go, reload }: { kind: TestKin
 function Ladder({ me, reload, say }: { me: ProgMe; reload: () => Promise<void>; say: (s: string | null) => void }) {
   const look = useLook();
   const [busy, setBusy] = useState<string | null>(null);
+  // The last buy or claim, revealed above the ladder; `n` makes each one a fresh reveal.
+  const [reveal, setReveal] = useState<{ n: number; weapon: RevealCard | null; rank: RevealCard | null } | null>(null);
   const coins = useGame((s) => s.me?.coins ?? null);
   const buy = async (w: LadderWeapon) => {
     setBusy(w.id);
     try {
       const r = await buyWeapon(gameStore.client, w.id);
-      const promoted = r.promoted?.length ? ` Promoted to ${r.promoted[r.promoted.length - 1].name}!` : "";
-      say(`${w.name} is yours.${promoted}`);
+      say(weaponNotice(w.name, r.promoted));
+      setReveal((v) => ({ n: (v?.n ?? 0) + 1, weapon: weaponReveal(w, r), rank: rankReveal(r.promoted) }));
       void gameStore.refreshMe();
       await reload();
     } catch (e) {
@@ -555,6 +557,8 @@ function Ladder({ me, reload, say }: { me: ProgMe; reload: () => Promise<void>; 
   };
   return (
     <View style={{ gap: 10 }} testID="prog-ladder">
+      {reveal?.weapon ? <RewardReveal key={`w${reveal.n}`} card={reveal.weapon} icon="hammer" tint={GP.skyDeep} testID="prog-reveal-weapon" /> : null}
+      {reveal?.rank ? <RewardReveal key={`r${reveal.n}`} card={reveal.rank} icon={realmIcon(me.faction)} tint={realmColor(me.faction)} delayMs={reveal.weapon ? 900 : 0} testID="prog-reveal-rank" kickerTestID="prog-promoted" /> : null}
       {/* The balance only matters when the ladder spends coins; a free claim never shows "You have 0 CosCoins". */}
       <Muted text={`One weapon per rank. A weapon goes on sale when you reach its rank's XP, and it stays with ${me.faction_name ?? "this faction"}.${coins != null && paysInCoins(me.purchase_mode) ? ` You have ${fmt(coins)} CosCoins.` : ""}`} />
       {sortedLadder(me.ladder).map((w) => {
