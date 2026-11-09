@@ -17,7 +17,7 @@ import { bearingDeg, distanceM, distanceText } from "@/features/game/geo";
 import { hasTrials, type TrialRequest, trialPoint } from "@/features/game/duelFlow";
 import { suggestedId } from "@/features/game/guide";
 import { progressionAllowed, progressionOn } from "@/features/game/progression";
-import { isLive, isPocket, type RunPoint, runPointOf, runQuestPoints, TRIVIA_DOOR } from "@/features/game/run";
+import { isLive, isPocket, type RunPoint, runOn, runPointOf, runQuestPoints, TRIVIA_DOOR } from "@/features/game/run";
 import { gameStore, GAME_SERVER, GAME_SERVER_IS_PRODUCTION, useGame, useLocationPermission, startLocation } from "@/features/game/runtime";
 import { useSquad } from "@/features/game/squadRuntime";
 import { nearestFirst } from "@/features/game/store";
@@ -709,9 +709,11 @@ function GameRootInner({ parked }: { parked: boolean }) {
             <RunTray onPick={setRunPoint} onEnd={() => void runModel.finish()} distanceOf={runDistance} inReach={runInReach} />
           ) : me?.tutorial_done ? (
             <>
-              <View style={{ paddingLeft: 14, paddingRight: 76 }}>
-                <QuestRunButton onPress={() => setSheet("runStart")} />
-              </View>
+              {runOn(me) ? (
+                <View style={{ paddingLeft: 14, paddingRight: 76 }}>
+                  <QuestRunButton onPress={() => setSheet("runStart")} />
+                </View>
+              ) : null}
               {fix ? (
                 <View style={{ paddingRight: 62 }}>
                   <NearbyRadar points={nearby} fix={fix} inReach={gameStore.inReach} />

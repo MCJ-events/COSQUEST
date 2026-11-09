@@ -143,3 +143,12 @@ describe("holds lost", () => {
     assert.equal(freshLoss(holdsLostOf(null), new Set()), null);
   });
 });
+
+describe("run: the server's switch", () => {
+  it("shows Quest Runs only when /me carries features.run (production runs with run OFF)", async () => {
+    const { runOn } = await import("../run.ts");
+    assert.equal(runOn({ features: { run: { daily_runs_left: 1 } } }), true);
+    assert.equal(runOn({ features: { trivia: {} } }), false);
+    assert.equal(runOn(null), false);
+  });
+});

@@ -195,6 +195,16 @@ export function triviaSub(left: number | null): string {
   return left === 0 ? "That's today's trivia runs done. Back tomorrow." : `No walking, no location. On today's global board.${leftToday(left)}`;
 }
 
+/**
+ * Whether the server has Quest Runs on: /me carries features.run only then.
+ * Production runs with `run` OFF (CQ_FEATURES_OFF=run), and builds to 18 showed
+ * the Quest Run button anyway, whose start answered "Not Found" (found in the
+ * build 19 production check, 9 Nov 2026).
+ */
+export function runOn(me: { features?: Record<string, unknown> | null } | null | undefined): boolean {
+  return me?.features?.run != null;
+}
+
 /** Today's runs left, from /me's features.run (null when the server does not say). */
 export function runAllowance(me: { features?: Record<string, unknown> | null } | null | undefined): { daily: number | null; pocket: number | null } {
   const run = (me?.features?.run ?? null) as { daily_runs_left?: number | null; pocket_runs_left?: number | null } | null;

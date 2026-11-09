@@ -173,7 +173,7 @@ function PageBody({ page, data, go, reload, say }: { page: Page; data: Data; go:
   const me = data.me!;
   switch (page.id) {
     case "hub":
-      return me.faction ? <RankHub data={data} go={go} /> : <JoinStart me={me} config={config} go={go} />;
+      return me.faction ? <RankHub data={data} go={go} /> : <JoinStart me={me} config={config} tests={data.tests} go={go} />;
     case "pick":
       return <FactionPick config={config} go={go} say={say} reload={reload} />;
     case "test":
@@ -189,9 +189,12 @@ function PageBody({ page, data, go, reload, say }: { page: Page; data: Data; go:
 
 // ---------- not in a faction yet ----------
 
-function JoinStart({ me, config, go }: { me: ProgMe; config: ProgConfig; go: (p: Page) => void }) {
+function JoinStart({ me, config, tests, go }: { me: ProgMe; config: ProgConfig; tests: TestsStatus | null; go: (p: Page) => void }) {
   const look = useLook();
   const pending = me.pending;
+  // After a failed try the server says when the next one may start.
+  const entry = tests?.entry;
+  const wait = entry && !entry.can_start && entry.reason && entry.reason !== "already_passed" ? reasonText(entry.reason, entry.retry_at) : null;
   const name = pending ? (config.factions.find((f) => f.id === pending.faction)?.name ?? pending.faction) : null;
   return (
     <View style={{ gap: 14 }} testID="prog-hub">
@@ -205,7 +208,13 @@ function JoinStart({ me, config, go }: { me: ProgMe; config: ProgConfig; go: (p:
         <GamePanel>
           <Text style={[txt.kicker, { color: look.textMuted }]}>IN PROGRESS</Text>
           <Text style={[txt.h3, { color: look.text, marginTop: 2 }]}>{name}: entry test</Text>
-          <GameButton title="Take the entry test" color={ACCENT.sun.fill} onPress={() => go({ id: "test", kind: "entry", faction: pending.faction })} style={{ marginTop: 12 }} testID="prog-entry-resume" />
+          {wait ? (
+            <Text style={[txt.body, { color: look.textMuted, marginTop: 8 }]} testID="prog-entry-wait">
+              {wait}
+            </Text>
+          ) : (
+            <GameButton title="Take the entry test" color={ACCENT.sun.fill} onPress={() => go({ id: "test", kind: "entry", faction: pending.faction })} style={{ marginTop: 12 }} testID="prog-entry-resume" />
+          )}
         </GamePanel>
       ) : null}
       <GameButton title={pending ? "Pick a different faction" : "Choose a faction"} color={pending ? GP.skyDeep : ACCENT.sun.fill} onPress={() => go({ id: "pick" })} testID="prog-choose" />

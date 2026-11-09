@@ -19,18 +19,42 @@ export const GAME_SERVER_IS_PRODUCTION = isProductionServer(GAME_SERVER);
 /** The React Native game everywhere (config.ts GameUi): the SwiftUI game is out of the build. */
 export const GAME_UI: GameUi = "rn";
 
+/**
+ * Test builds only (EXPO_PUBLIC_E2E=1): when the keychain refuses (an unsigned
+ * simulator build has no keychain entitlement), keep the key in memory for the
+ * app's life, so a recorded walkthrough can play. Store builds never set E2E.
+ */
+const E2E_MEMORY_KEYS = process.env.EXPO_PUBLIC_E2E === "1";
+const memoryKeys = new Map<string, string>();
+
 const secureStorage: KeyStorage = {
   async get(key) {
     if (Platform.OS === "web") return globalThis.localStorage?.getItem(key) ?? null;
-    return SecureStore.getItemAsync(key);
+    if (E2E_MEMORY_KEYS && memoryKeys.has(key)) return memoryKeys.get(key) ?? null;
+    try {
+      return await SecureStore.getItemAsync(key);
+    } catch (e) {
+      if (E2E_MEMORY_KEYS) return null;
+      throw e;
+    }
   },
   async set(key, value) {
     if (Platform.OS === "web") return void globalThis.localStorage?.setItem(key, value);
-    await SecureStore.setItemAsync(key, value, { keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY });
+    try {
+      await SecureStore.setItemAsync(key, value, { keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY });
+    } catch (e) {
+      if (!E2E_MEMORY_KEYS) throw e;
+      memoryKeys.set(key, value);
+    }
   },
   async remove(key) {
     if (Platform.OS === "web") return void globalThis.localStorage?.removeItem(key);
-    await SecureStore.deleteItemAsync(key);
+    memoryKeys.delete(key);
+    try {
+      await SecureStore.deleteItemAsync(key);
+    } catch (e) {
+      if (!E2E_MEMORY_KEYS) throw e;
+    }
   },
 };
 
