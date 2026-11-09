@@ -100,6 +100,11 @@ export type ProgMe = {
   inventory?: ProgWeapon[];
   ladder?: LadderWeapon[];
   purchase_mode?: string | null;
+  /**
+   * The events this player has quest points in, when the server sends them
+   * (asked of progression.py for /me; read if present, never required).
+   */
+  events?: { event_ref: string; title?: string | null; points: number; place?: number | null; open?: boolean | null }[] | null;
 };
 
 export type Promotion = { from: number; to: number; name: string };

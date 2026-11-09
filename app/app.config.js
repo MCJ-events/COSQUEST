@@ -107,7 +107,8 @@ function webBaseUrl(raw) {
 module.exports.webBaseUrl = webBaseUrl;
 
 const BETA_BUILD_NUMBER = "19";
-const BETA_GAME_SERVER = "https://costquest-staging.204.168.162.79.sslip.io";
+// Build 19 on: the beta plays on PRODUCTION (scripts/cosquest-beta-env.sh sets both game-server settings).
+const BETA_GAME_SERVER = "https://costquest.204.168.162.79.sslip.io";
 const BETA_GAME_PLUGIN = "./modules/costquest-game/plugin/withCostQuestGame";
 
 function cosquestBeta(config, env) {

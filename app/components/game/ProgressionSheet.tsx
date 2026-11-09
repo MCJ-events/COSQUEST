@@ -584,6 +584,14 @@ function Season({ data }: { data: Data }) {
         <Text style={[txt.kicker, { color: look.textMuted }]}>EVENT POINTS</Text>
         <Text style={[txt.h2, { color: look.text }]}>Quest points</Text>
         <Text style={[txt.body, { color: look.textMuted, marginTop: 4 }]}>{"Quest points count only inside one CosQuest. They decide that event's leaderboard and prizes, then reset when it ends. They never change your rank."}</Text>
+        {(data.me?.events ?? []).map((e) => (
+          <View key={e.event_ref} style={{ flexDirection: "row", justifyContent: "space-between", paddingTop: 8 }} testID={`prog-event-${e.event_ref}`}>
+            <Text style={[txt.h3, { color: look.text, flex: 1 }]} numberOfLines={1}>
+              {e.title || e.event_ref}
+            </Text>
+            <Text style={[txt.h3, { color: look.text }]}>{`${fmt(e.points)} pts${e.place ? ` · #${e.place}` : ""}`}</Text>
+          </View>
+        ))}
       </GamePanel>
       {live && Object.keys(live.faction_contribution).length ? (
         <GamePanel>

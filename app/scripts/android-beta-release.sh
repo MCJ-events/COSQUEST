@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # The Android twin of the "CosQuest Beta" TestFlight build: the same app id
 # (com.subomi.cosquest.chat), versionCode = the TestFlight build number, the
-# chat on the team's Render API and the game on STAGING, exactly as
-# scripts/cosquest-beta-env.sh sets them for iOS. A release build for real
+# chat on the team's Render API and the game server exactly as
+# scripts/cosquest-beta-env.sh sets it for iOS (PRODUCTION from build 19;
+# EXPO_PUBLIC_GAME_SERVER=staging for a staging test APK). A release build for real
 # phones (arm64-v8a), APK + AAB.
 #
 #   scripts/android-beta-release.sh                prebuild --clean, Godot export, APK + AAB
@@ -34,11 +35,14 @@ export PATH="${JAVA_HOME:?set JAVA_HOME}/bin:$PATH"
 # shellcheck source=cosquest-beta-env.sh
 source scripts/cosquest-beta-env.sh
 export NODE_ENV=production
-case "$EXPO_PUBLIC_GAME_SERVER" in
-  staging | https://costquest-staging.*) ;;
-  *) echo "the beta APK plays on the STAGING game server only (got $EXPO_PUBLIC_GAME_SERVER)" >&2; exit 2 ;;
+# Build 19 moved the beta to PRODUCTION (it was staging-only to 18). The env
+# script has already refused a JS/native mismatch; this names the two hosts
+# the APK may play on, so a typo'd or third server never ships.
+case "$COSQUEST_GAME_SERVER_URL" in
+  https://costquest.204.168.162.79.sslip.io | https://costquest-staging.204.168.162.79.sslip.io) ;;
+  *) echo "the beta APK plays on the production or staging game server only (got $COSQUEST_GAME_SERVER_URL)" >&2; exit 2 ;;
 esac
-echo "== CosQuest Beta Android, build $COSQUEST_BUILD_NUMBER: chat $EXPO_PUBLIC_API_URL, game $EXPO_PUBLIC_GAME_SERVER"
+echo "== CosQuest Beta Android, build $COSQUEST_BUILD_NUMBER: chat $EXPO_PUBLIC_API_URL, game $EXPO_PUBLIC_GAME_SERVER (native $COSQUEST_GAME_SERVER_URL)"
 
 if [ -e /tmp/metro-cache ] && [ ! -w /tmp/metro-cache ]; then
   export TMPDIR="$PWD/node_modules/.cache/tmp"
