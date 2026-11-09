@@ -21,7 +21,9 @@ import {
   buyWeapon,
   checkRankUp,
   connectionsByEvent,
+  entryWait,
   type EventConnection,
+  factionPending,
   fetchConfig,
   fetchEventConnections,
   fetchMe,
@@ -36,7 +38,9 @@ import {
   type ProgConfig,
   type ProgFaction,
   type ProgMe,
+  paysInCoins,
   type Promotion,
+  rankName,
   reasonText,
   refusalText,
   type SeasonMe,
@@ -128,7 +132,8 @@ function Body({ close }: { close: () => void }) {
   }, [load]);
 
   const back = page.id === "hub" ? null : () => setPage({ id: "hub" });
-  const title = page.id === "test" ? (page.kind === "entry" ? "Entry test" : `Rank ${page.rank} test`) : TITLES[page.id];
+  // A rank test is named as the hub's button names it ("Disciple test"), not by its number.
+  const title = page.id === "test" ? (page.kind === "entry" ? "Entry test" : data.config ? `${rankName(data.config, page.rank)} test` : TITLES.test) : TITLES[page.id];
 
   return (
     <SheetFrame top={insets.top + 40}>
@@ -192,9 +197,9 @@ function PageBody({ page, data, go, reload, say }: { page: Page; data: Data; go:
 function JoinStart({ me, config, tests, go }: { me: ProgMe; config: ProgConfig; tests: TestsStatus | null; go: (p: Page) => void }) {
   const look = useLook();
   const pending = me.pending;
-  // After a failed try the server says when the next one may start.
-  const entry = tests?.entry;
-  const wait = entry && !entry.can_start && entry.reason && entry.reason !== "already_passed" ? reasonText(entry.reason, entry.retry_at) : null;
+  // After a failed try the server says when the next one may start: the panel
+  // then reads COOLING DOWN with the wait and the clock time, not IN PROGRESS.
+  const wait = entryWait(tests?.entry);
   const name = pending ? (config.factions.find((f) => f.id === pending.faction)?.name ?? pending.faction) : null;
   return (
     <View style={{ gap: 14 }} testID="prog-hub">
@@ -206,11 +211,11 @@ function JoinStart({ me, config, tests, go }: { me: ProgMe; config: ProgConfig; 
       </GamePanel>
       {pending && name ? (
         <GamePanel>
-          <Text style={[txt.kicker, { color: look.textMuted }]}>IN PROGRESS</Text>
+          <Text style={[txt.kicker, { color: look.textMuted }]}>{wait?.cooling ? "COOLING DOWN" : "IN PROGRESS"}</Text>
           <Text style={[txt.h3, { color: look.text, marginTop: 2 }]}>{name}: entry test</Text>
           {wait ? (
             <Text style={[txt.body, { color: look.textMuted, marginTop: 8 }]} testID="prog-entry-wait">
-              {wait}
+              {wait.text}
             </Text>
           ) : (
             <GameButton title="Take the entry test" color={ACCENT.sun.fill} onPress={() => go({ id: "test", kind: "entry", faction: pending.faction })} style={{ marginTop: 12 }} testID="prog-entry-resume" />
@@ -252,8 +257,10 @@ function FactionPick({ config, go, say, reload }: { config: ProgConfig; go: (p: 
       {config.factions.map((f) => {
         const on = chosen === f.id;
         const tint = realmColor(f.id);
+        // An unfinished faction shows its realm and "Coming soon", never the team's internal note.
+        const soon = factionPending(f);
         return (
-          <Pressable key={f.id} onPress={() => setChosen(f.id)} accessibilityRole="radio" accessibilityState={{ selected: on }} accessibilityLabel={`${f.name}, ${f.realm}`} testID={`prog-faction-${f.id}`}>
+          <Pressable key={f.id} onPress={() => setChosen(f.id)} accessibilityRole="radio" accessibilityState={{ selected: on }} accessibilityLabel={`${f.name}, ${f.realm}${soon ? ", coming soon" : ""}`} testID={`prog-faction-${f.id}`}>
             <GamePanel padding={14} style={on ? { borderWidth: 3, borderColor: tint } : null}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
                 <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: tint, alignItems: "center", justifyContent: "center" }}>
@@ -263,9 +270,10 @@ function FactionPick({ config, go, say, reload }: { config: ProgConfig; go: (p: 
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                     <Text style={[txt.h3, { color: look.text }]}>{f.name}</Text>
                     {suggested(f) ? <Chip text="Your realm" color={GP.mint} /> : null}
+                    {soon ? <Chip text="Coming soon" color={GP.slate} /> : null}
                   </View>
                   <Text style={[txt.small, { color: look.textMuted }]} numberOfLines={2}>
-                    {f.realm} · {f.themes}
+                    {soon ? f.realm : `${f.realm} · ${f.themes}`}
                   </Text>
                 </View>
                 <Ionicons name={on ? "radio-button-on" : "radio-button-off"} size={22} color={on ? tint : look.textMuted} />
@@ -432,14 +440,15 @@ function TestRunner({ kind, faction, rank, config, go, reload }: { kind: TestKin
 
   if (flow.step === "idle") {
     const mark = kind === "entry" ? null : config.ranks.find((r) => r.number === rank)?.pass_mark_pct;
+    const rname = rankName(config, rank);
     return (
       <GamePanel>
         <View testID="prog-test-intro" style={{ gap: 8 }}>
-          <Text style={[txt.h2, { color: look.text }]}>{kind === "entry" ? `${fname} entry test` : `Rite of passage: rank ${rank}`}</Text>
+          <Text style={[txt.h2, { color: look.text }]}>{kind === "entry" ? `${fname} entry test` : `Rite of passage: ${rname}`}</Text>
           <Text style={[txt.body, { color: look.textMuted }]}>
             {kind === "entry"
               ? `Answer ${fname} questions against the clock. Pass and you join as an Initiate with the starter weapon.`
-              : `Answer questions against the clock. You need ${mark ?? "the pass mark"}${mark != null ? "%" : ""} to pass.`}
+              : `Pass to become a ${rname} (rank ${rank}). Answer questions against the clock. You need ${mark ?? "the pass mark"}${mark != null ? "%" : ""} to pass.`}
           </Text>
           <GameButton title="Start" color={ACCENT.sun.fill} onPress={() => void begin()} testID="prog-test-start" style={{ marginTop: 6 }} />
         </View>
@@ -546,7 +555,8 @@ function Ladder({ me, reload, say }: { me: ProgMe; reload: () => Promise<void>; 
   };
   return (
     <View style={{ gap: 10 }} testID="prog-ladder">
-      <Muted text={`One weapon per rank. A weapon goes on sale when you reach its rank's XP, and it stays with ${me.faction_name ?? "this faction"}.${coins != null ? ` You have ${fmt(coins)} CosCoins.` : ""}`} />
+      {/* The balance only matters when the ladder spends coins; a free claim never shows "You have 0 CosCoins". */}
+      <Muted text={`One weapon per rank. A weapon goes on sale when you reach its rank's XP, and it stays with ${me.faction_name ?? "this faction"}.${coins != null && paysInCoins(me.purchase_mode) ? ` You have ${fmt(coins)} CosCoins.` : ""}`} />
       {sortedLadder(me.ladder).map((w) => {
         const a = ladderAction(w, me.purchase_mode);
         const tint = w.state === "owned" ? GP.mint : w.state === "available" ? GP.sun : look.textMuted;
@@ -561,7 +571,7 @@ function Ladder({ me, reload, say }: { me: ProgMe; reload: () => Promise<void>; 
               <Text style={[txt.h3, { color: look.text }]}>{w.name}</Text>
               {w.description ? <Text style={[txt.small, { color: look.textMuted }]}>{w.description}</Text> : null}
               {a.kind === "buy" ? (
-                <GameButton title={busy === w.id ? "Buying..." : a.label} size="small" color={ACCENT.coin.fill} disabled={busy !== null} onPress={() => void buy(w)} testID={`prog-buy-${w.tier}`} style={{ alignSelf: "flex-start", marginTop: 4 }} />
+                <GameButton title={busy === w.id ? (a.price != null ? "Buying..." : "Claiming...") : a.label} size="small" color={a.price != null ? ACCENT.coin.fill : ACCENT.sun.fill} disabled={busy !== null} onPress={() => void buy(w)} testID={`prog-buy-${w.tier}`} style={{ alignSelf: "flex-start", marginTop: 4 }} />
               ) : (
                 <Text style={[txt.small, { color: look.textMuted }]}>{a.label}</Text>
               )}

@@ -41,4 +41,12 @@ describe("world.gameFocus", () => {
     store.setGameFocus(false);
     assert.equal(calls, 2);
   });
+  it("marks a fight apart from other full-screen screens, and forgets it on sign-out", () => {
+    const store = createWorldStore();
+    assert.equal(store.get().gameFight, false);
+    store.setGameFight(true);
+    assert.equal(store.get().gameFight, true);
+    store.reset();
+    assert.equal(store.get().gameFight, false);
+  });
 });

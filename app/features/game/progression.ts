@@ -337,7 +337,8 @@ export function gateRows(g: ProgGates, weaponName?: string | null): GateRow[] {
         ? `${weaponName ?? `Tier ${g.weapon.tier}`} owned`
         : g.weapon.available
           ? `${weaponName ?? `Tier ${g.weapon.tier}`} is on sale now`
-          : `${weaponName ?? `Tier ${g.weapon.tier}`} unlocks at ${fmt(g.xp.need)} XP`,
+          : // The threshold and what is left of it, so it reads the same as the ladder's "N more XP".
+            `${weaponName ?? `Tier ${g.weapon.tier}`} unlocks at ${fmt(g.xp.need)} XP${g.xp.short > 0 ? ` (${fmt(g.xp.short)} to go)` : ""}`,
       ok: g.weapon.ok,
       progress: null,
     },
@@ -359,16 +360,61 @@ export type LadderAction =
   | { kind: "buy"; label: string; price: number | null }
   | { kind: "price_unset"; label: string };
 
-/** What a ladder row offers. A weapon on sale with no price yet cannot be bought unless the server grants without payment (stub mode). */
+/**
+ * What a ladder row offers. Only "coins" takes payment (progression.py
+ * purchase_hook); any other open mode ("stub") grants for free, so the button
+ * says so and carries no price. A coins weapon with no price yet cannot be bought.
+ */
 export function ladderAction(w: LadderWeapon, purchaseMode: string | null | undefined): LadderAction {
   if (w.state === "owned") return { kind: "none", label: w.starter ? "Starter · owned" : "Owned" };
   if (w.state === "locked") {
-    const at = w.xp_needed != null ? `${fmt(w.xp_needed)} XP to unlock` : "Locked";
+    // xp_needed is what is left to earn (threshold minus the player's XP), not the threshold.
+    const at = w.xp_needed != null ? `${fmt(w.xp_needed)} more XP to unlock` : "Locked";
     return { kind: "none", label: at };
   }
   if (purchaseMode === "disabled") return { kind: "none", label: "Unlocked · shop opens soon" };
-  if (purchaseMode === "coins" && w.cc_price == null) return { kind: "price_unset", label: "Unlocked · price not set" };
-  return { kind: "buy", label: w.cc_price != null ? `Buy · ${fmt(w.cc_price)} CC` : "Get it", price: w.cc_price };
+  if (purchaseMode !== "coins") return { kind: "buy", label: "Claim (free)", price: null };
+  if (w.cc_price == null) return { kind: "price_unset", label: "Unlocked · price not set" };
+  return { kind: "buy", label: `Buy · ${fmt(w.cc_price)} CC`, price: w.cc_price };
+}
+
+/** Whether the ladder spends CosCoins at all (only then is the balance worth showing). */
+export function paysInCoins(purchaseMode: string | null | undefined): boolean {
+  return purchaseMode === "coins";
+}
+
+/**
+ * A faction the team has not finished: flagged placeholder by the server, or
+ * themes text that is an internal note ("Not finalized; identity pending team
+ * input"). The picker shows its realm and a "Coming soon" chip, never the note.
+ */
+export function factionPending(f: Pick<ProgFaction, "placeholder" | "themes">): boolean {
+  return !!f.placeholder || /not finali[sz]ed|pending|placeholder|\btbd\b/i.test(f.themes ?? "");
+}
+
+/** A rank's name from the config ("Disciple"), or "Rank 2" when the config has none. */
+export function rankName(config: Pick<ProgConfig, "ranks">, rank: number | null | undefined): string {
+  const name = config.ranks.find((r) => r.number === rank)?.name;
+  return name || `Rank ${rank ?? "?"}`;
+}
+
+/**
+ * The entry test's wait after a failed try, for the hub: a "cooling down"
+ * line with how long and the clock time ("You can try again in 9 min (at
+ * 14:32)."). Null when the player may start now or has passed.
+ */
+export function entryWait(entry: TestStanding | null | undefined, now: Date = new Date()): { cooling: boolean; text: string } | null {
+  if (!entry || entry.can_start || !entry.reason || entry.reason === "already_passed") return null;
+  const text = reasonText(entry.reason, entry.retry_at, now);
+  const at = entry.retry_at ? clockText(entry.retry_at, now) : "";
+  return { cooling: !!entry.retry_at, text: at ? `${text.replace(/\.$/, "")} (at ${at}).` : text };
+}
+
+/** "14:32" in the phone's local time, for a moment still ahead; "" otherwise. */
+export function clockText(iso: string, now: Date = new Date()): string {
+  const t = new Date(iso);
+  if (!Number.isFinite(t.getTime()) || t.getTime() <= now.getTime()) return "";
+  return `${String(t.getHours()).padStart(2, "0")}:${String(t.getMinutes()).padStart(2, "0")}`;
 }
 
 /** Sorted T0..T9, with the label the brief uses ("T3 Rare"). */

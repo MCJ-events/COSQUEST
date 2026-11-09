@@ -8,6 +8,9 @@ import { GameClient, GameError } from "../client.ts";
 import { Identity, signingPayload, utf8ToBytes, verifySignature } from "../identity.ts";
 import {
   buyWeapon,
+  clockText,
+  entryWait,
+  factionPending,
   fetchMe,
   fetchTestsStatus,
   gateRows,
@@ -16,9 +19,11 @@ import {
   joinFaction,
   type LadderWeapon,
   ladderAction,
+  paysInCoins,
   type ProgGates,
   progressionAllowed,
   progressionOn,
+  rankName,
   reasonText,
   refusalText,
   secondsLeft,
@@ -27,6 +32,7 @@ import {
   submitTest,
   type TestFlow,
   type TestPaper,
+  type TestStanding,
   testReducer,
   tierLabel,
   waitText,
@@ -112,7 +118,7 @@ describe("progression: gates and ladder", () => {
     assert.equal(rows[0].detail, "120 of 500 XP · 380 to go");
     assert.equal(rows[0].progress, 0.24);
     assert.equal(rows[1].detail, "Pass mark 70%");
-    assert.equal(rows[2].detail, "Void Kunai unlocks at 500 XP");
+    assert.equal(rows[2].detail, "Void Kunai unlocks at 500 XP (380 to go)");
     assert.equal(gatesDone(gates()), 0);
   });
   it("says a weapon is on sale once the XP is there, and counts gates done", () => {
@@ -125,12 +131,34 @@ describe("progression: gates and ladder", () => {
     assert.equal(gatesDone(g), 2);
   });
   it("offers buy only for an available weapon, by the purchase mode", () => {
-    assert.deepEqual(ladderAction(weapon(), "stub"), { kind: "buy", label: "Buy · 200 CC", price: 200 });
-    assert.deepEqual(ladderAction(weapon({ cc_price: null }), "stub"), { kind: "buy", label: "Get it", price: null });
+    assert.deepEqual(ladderAction(weapon(), "coins"), { kind: "buy", label: "Buy · 200 CC", price: 200 });
+    // stub grants without payment (progression.py purchase_hook): a free claim, no price, whatever cc_price says.
+    assert.deepEqual(ladderAction(weapon(), "stub"), { kind: "buy", label: "Claim (free)", price: null });
+    assert.deepEqual(ladderAction(weapon({ cc_price: null }), "stub"), { kind: "buy", label: "Claim (free)", price: null });
     assert.equal(ladderAction(weapon({ cc_price: null }), "coins").kind, "price_unset");
     assert.equal(ladderAction(weapon(), "disabled").label, "Unlocked · shop opens soon");
     assert.equal(ladderAction(weapon({ state: "owned", starter: true }), "coins").label, "Starter · owned");
-    assert.equal(ladderAction(weapon({ state: "locked", xp_needed: 1380 }), "coins").label, "1,380 XP to unlock");
+    assert.equal(ladderAction(weapon({ state: "locked", xp_needed: 1380 }), "coins").label, "1,380 more XP to unlock");
+    assert.equal(paysInCoins("coins"), true);
+    assert.equal(paysInCoins("stub"), false);
+    assert.equal(paysInCoins(null), false);
+  });
+  it("says the same unlock in both places: the gate's threshold with what is left, the ladder's what is left", () => {
+    // 600 XP of a 1,500 XP threshold: the server sends need 1500 / short 900 on the gate, xp_needed 900 on the ladder.
+    const g = gates({ xp: { ok: false, need: 1500, have: 600, short: 900 } });
+    assert.equal(gateRows(g, "Frostbrand Blade")[2].detail, "Frostbrand Blade unlocks at 1,500 XP (900 to go)");
+    assert.equal(ladderAction(weapon({ state: "locked", xp_needed: 900 }), "coins").label, "900 more XP to unlock");
+  });
+  it("hides an unfinished faction's internal note", () => {
+    assert.equal(factionPending({ themes: "Movies · Not finalized; identity pending team input" }), true);
+    assert.equal(factionPending({ themes: "Not finalised" }), true);
+    assert.equal(factionPending({ themes: "Superheroes, comics", placeholder: true }), true);
+    assert.equal(factionPending({ themes: "Anime, manga, shonen" }), false);
+  });
+  it("names a rank test by the rank's name", () => {
+    const config = { ranks: [{ number: 2, name: "Disciple", xp_threshold: 500, pass_mark_pct: 70, weapon_tier: 1 }] };
+    assert.equal(rankName(config, 2), "Disciple");
+    assert.equal(rankName(config, 3), "Rank 3");
   });
   it("sorts the ladder and labels tiers", () => {
     const l = sortedLadder([weapon({ tier: 3, id: "c" }), weapon({ tier: 0, id: "a" }), weapon({ tier: 1, id: "b" })]);
@@ -152,6 +180,30 @@ describe("progression: words", () => {
     assert.equal(waitText("2026-11-09T11:00:00Z", now), "");
     assert.equal(refusalText(new GameError("http", "bank_not_ready", 503)), "This faction's questions aren't ready yet.");
     assert.equal(refusalText(new Error("x")), "Something went wrong. Try again.");
+  });
+  it("says when a failed entry test may be tried again, with the clock time", () => {
+    const standing = (over: Partial<TestStanding> = {}): TestStanding => ({
+      test: "entry",
+      rank: null,
+      questions: 8,
+      pass_mark: 60,
+      time_limit_s: 240,
+      can_start: true,
+      reason: null,
+      retry_at: null,
+      passed: false,
+      ...over,
+    });
+    const retry = "2026-11-09T12:09:00Z";
+    const w = entryWait(standing({ can_start: false, reason: "cooldown", retry_at: retry }), now);
+    assert.equal(w?.cooling, true);
+    assert.equal(w?.text, `You can try again in 9 min (at ${clockText(retry, now)}).`);
+    assert.match(clockText(retry, now), /^\d\d:\d\d$/);
+    assert.equal(clockText("2026-11-09T11:00:00Z", now), "");
+    assert.equal(entryWait(standing(), now), null);
+    assert.equal(entryWait(standing({ can_start: false, reason: "already_passed", passed: true }), now), null);
+    assert.equal(entryWait(null, now), null);
+    assert.deepEqual(entryWait(standing({ can_start: false, reason: "bank_not_ready" }), now), { cooling: false, text: "This faction's questions aren't ready yet." });
   });
   it("counts the paper's clock down", () => {
     assert.equal(secondsLeft(paper(), now), 300);

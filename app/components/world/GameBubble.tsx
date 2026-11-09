@@ -33,6 +33,8 @@ export default function GameBubble({ makePan }: { makePan: () => GestureType }) 
   const summary = useMemo(() => unreadSummary(conversations), [conversations]);
   const [peek, setPeek] = useState(false);
   const tucked = useWorldSelector((state) => state.gameFocus);
+  // In a fight the sliver goes clear and drops its dot; the gestures stay.
+  const clear = useWorldSelector((state) => state.gameFocus && state.gameFight);
 
   const openPeek = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
@@ -63,7 +65,7 @@ export default function GameBubble({ makePan }: { makePan: () => GestureType }) 
     <>
       <GestureDetector gesture={gesture}>
         <View
-          style={[styles.bubble, { top }, tucked && styles.tucked]}
+          style={[styles.bubble, { top }, tucked && styles.tucked, clear && styles.clear]}
           hitSlop={tucked ? { right: 6, top: 4, bottom: 4 } : undefined}
           accessible
           accessibilityRole="button"
@@ -75,7 +77,7 @@ export default function GameBubble({ makePan }: { makePan: () => GestureType }) 
             else goToChat(null);
           }}>
           {tucked ? (
-            badge ? <View style={styles.tuckedDot} /> : null
+            badge && !clear ? <View style={styles.tuckedDot} /> : null
           ) : (
             <>
               <Ionicons name="chevron-back" size={14} color="rgba(255,255,255,0.75)" />
@@ -167,6 +169,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderTopRightRadius: BUBBLE_TUCKED_WIDTH,
     borderBottomRightRadius: BUBBLE_TUCKED_WIDTH,
+  },
+  clear: {
+    backgroundColor: "transparent",
+    borderWidth: 0,
+    shadowOpacity: 0,
+    elevation: 0,
   },
   tuckedDot: {
     width: 8,

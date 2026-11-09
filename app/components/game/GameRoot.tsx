@@ -452,13 +452,25 @@ function GameRootInner({ parked }: { parked: boolean }) {
 
   // A full-screen game screen (not the map): the Chats bubble tucks in so it
   // does not cover answers, titles or rewards (F-38, features/world/bubbleZone.ts).
-  // The 3D sheets count too: the Forge bag, the game profile and a claim.
+  // Every game sheet counts too (build 19: the full bubble clipped "Lantern
+  // Ronin" in Guardian Trials), as do the Forge bag and a claim.
   const fullScreen = gameStore.needsOnboarding || onboarding || screen.kind !== "home" || runPoint !== null || runState.finished !== null
-    || sheet === "collection" || sheet === "profile" || forgeDrop !== null;
+    || sheet !== null || forgeDrop !== null;
+  // In a fight even the tucked bubble's unread dot goes (build 19: a pink dot through the 3D fight).
+  const fighting = screen.kind === "duel" || screen.kind === "room" || screen.kind === "fight3d";
   useEffect(() => {
     world.setGameFocus(fullScreen);
   }, [fullScreen]);
-  useEffect(() => () => world.setGameFocus(false), []);
+  useEffect(() => {
+    world.setGameFight(fighting);
+  }, [fighting]);
+  useEffect(
+    () => () => {
+      world.setGameFocus(false);
+      world.setGameFight(false);
+    },
+    [],
+  );
 
   const home = () => {
     setSelectedId(null);

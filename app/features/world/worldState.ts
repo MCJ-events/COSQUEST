@@ -30,6 +30,11 @@ export type WorldState = {
    * run), not the map: the Chats bubble tucks in to keep off its content.
    */
   gameFocus: boolean;
+  /**
+   * A fight is on screen (the duel, a room fight, the 3D fight): the tucked
+   * bubble drops its unread dot too, so nothing shows through the arena.
+   */
+  gameFight: boolean;
 };
 
 const INITIAL: WorldState = {
@@ -42,6 +47,7 @@ const INITIAL: WorldState = {
   closeSerial: 0,
   factionColor: null,
   gameFocus: false,
+  gameFight: false,
 };
 
 export function createWorldStore(initial?: Partial<WorldState>) {
@@ -98,6 +104,9 @@ export function createWorldStore(initial?: Partial<WorldState>) {
     },
     setGameFocus(focus: boolean) {
       if (state.gameFocus !== focus) set({ gameFocus: focus });
+    },
+    setGameFight(fight: boolean) {
+      if (state.gameFight !== fight) set({ gameFight: fight });
     },
     /**
      * Sign-out: forget everything but the serials (they only ever grow) and
