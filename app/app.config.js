@@ -106,7 +106,7 @@ function webBaseUrl(raw) {
 }
 module.exports.webBaseUrl = webBaseUrl;
 
-const BETA_BUILD_NUMBER = "18";
+const BETA_BUILD_NUMBER = "19";
 const BETA_GAME_SERVER = "https://costquest-staging.204.168.162.79.sslip.io";
 const BETA_GAME_PLUGIN = "./modules/costquest-game/plugin/withCostQuestGame";
 

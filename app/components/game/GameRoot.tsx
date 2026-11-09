@@ -16,6 +16,7 @@ import { COACH_DONE_KEY, coachStepFor, type CoachStep, parseIdList, starterKindO
 import { bearingDeg, distanceM, distanceText } from "@/features/game/geo";
 import { hasTrials, type TrialRequest, trialPoint } from "@/features/game/duelFlow";
 import { suggestedId } from "@/features/game/guide";
+import { progressionAllowed, progressionOn } from "@/features/game/progression";
 import { isLive, isPocket, type RunPoint, runPointOf, runQuestPoints, TRIVIA_DOOR } from "@/features/game/run";
 import { gameStore, GAME_SERVER, GAME_SERVER_IS_PRODUCTION, useGame, useLocationPermission, startLocation } from "@/features/game/runtime";
 import { useSquad } from "@/features/game/squadRuntime";
@@ -54,6 +55,7 @@ import { GameSchemeProvider } from "./look";
 import LiveBanner from "./LiveBanner";
 import LiveCalendarSheet from "./LiveCalendarSheet";
 import MoreSheet, { type MoreTile } from "./MoreSheet";
+import ProgressionSheet from "./ProgressionSheet";
 import NearbyRadar from "./NearbyRadar";
 import Onboarding from "./Onboarding";
 import PointSheet from "./PointSheet";
@@ -94,7 +96,7 @@ type Screen =
   | { kind: "reward"; reward: RewardSummary };
 
 /** What is open over the map (one at a time, closed by Android Back). */
-type Sheet = "dailies" | "codex" | "war" | "more" | "events" | "friends" | "squad" | "collection" | "battle" | "profile" | "coins" | "recap" | "ask" | "trials" | "runStart";
+type Sheet = "dailies" | "codex" | "war" | "more" | "events" | "friends" | "squad" | "collection" | "battle" | "profile" | "coins" | "recap" | "ask" | "trials" | "runStart" | "ranks";
 
 const NUDGE_EVERY_MS = 150000;
 const LOSS_SEEN_KEY = "cq.holdsLost.seen";
@@ -103,6 +105,9 @@ const FIRST_NUDGE_MS = 25000;
 /** A nudge is put away after 12 s if nothing else has spoken since. */
 const NUDGE_SHOWN_MS = 12000;
 
+
+/** EXPO_PUBLIC_PROGRESSION=0 hides Ranks whatever the server says (inlined by Metro). */
+const PROGRESSION_ALLOWED = progressionAllowed(process.env.EXPO_PUBLIC_PROGRESSION);
 
 /** The map's ground tiles, from the game server (WorldMap GroundTiles). */
 const loadGround = (lat: number, lng: number, radiusM: number) => gameStore.client.ground(lat, lng, radiusM);
@@ -577,6 +582,11 @@ function GameRootInner({ parked }: { parked: boolean }) {
       onPress: () => setSheet("squad"),
     });
   }
+  // The Build Brief's ranks, tests and weapon ladder: only when the server has `progression` on
+  // (and this build has not turned it off with EXPO_PUBLIC_PROGRESSION=0).
+  if (PROGRESSION_ALLOWED && progressionOn(me)) {
+    moreTiles.push({ id: "ranks", icon: "ribbon", color: GP.sunDeep, title: "Ranks", onPress: () => setSheet("ranks") });
+  }
   // What is in the bag, as a number only (RoamHomeView moreTiles "bag": not a button).
   if (bagCount && bagCount > 0) {
     moreTiles.push({ id: "bag", icon: "bag-handle", color: GP.sky, title: "Bag", badge: bagCount });
@@ -755,6 +765,7 @@ function GameRootInner({ parked }: { parked: boolean }) {
       {sheet === "squad" ? <SquadSheet onClose={() => setSheet(null)} /> : null}
       {sheet === "collection" ? <CollectionSheet initial={collectionTab} tabs={collectionTabs(collectionAccess)} onClose={() => setSheet(null)} /> : null}
       {sheet === "coins" ? <CoinsSheet onClose={() => setSheet(null)} /> : null}
+      {sheet === "ranks" ? <ProgressionSheet onClose={() => setSheet(null)} /> : null}
       {sheet === "recap" ? <RecapSheet onClose={() => setSheet(null)} /> : null}
       {sheet === "ask" ? <AskWarden onClose={() => setSheet(null)} /> : null}
       {sheet === "trials" ? (

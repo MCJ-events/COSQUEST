@@ -40,8 +40,20 @@ export const CHOICE_COLORS = ["#2366D1", "#D2364A", "#C2650A", "#1F8A57"];
 
 export function realmColor(realm: string | null | undefined): string {
   switch (realm) {
+    // The Build Brief's six factions (progression.py ids), on the old realm colours where one maps.
+    case "ascendants":
     case "anime":
       return rgb(1, 0.36, 0.6);
+    case "icons":
+      return rgb(0.89, 0.21, 0.21);
+    case "everborns":
+      return rgb(0.55, 0.32, 0.86);
+    case "celestials":
+      return rgb(0.12, 0.62, 0.8);
+    case "blockbusters":
+      return rgb(0.96, 0.62, 0.13);
+    case "controllers":
+      return rgb(0.2, 0.78, 0.45);
     case "marvel":
       return rgb(0.89, 0.21, 0.21);
     case "dc":
@@ -56,8 +68,20 @@ export function realmColor(realm: string | null | undefined): string {
 }
 
 /** Ionicons for the realm marks (the SF Symbols on iOS). */
-export function realmIcon(realm: string | null | undefined): "sparkles" | "shield-half" | "flash" | "film" | "game-controller" | "flag" {
+export function realmIcon(realm: string | null | undefined): "sparkles" | "shield-half" | "flash" | "film" | "game-controller" | "flag" | "moon" | "planet" {
   switch (realm) {
+    case "ascendants":
+      return "sparkles";
+    case "icons":
+      return "shield-half";
+    case "everborns":
+      return "moon";
+    case "celestials":
+      return "planet";
+    case "blockbusters":
+      return "film";
+    case "controllers":
+      return "game-controller";
     case "anime":
       return "sparkles";
     case "marvel":
