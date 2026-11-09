@@ -82,6 +82,11 @@ var hero_name: String = "You"
 var hero_hp: int = 0
 var hero_max: int = 1
 var show_hero_card: bool = true
+## build 20: the phone's safe area over the top of the fight (the app's "hud_top", HUD px). The top
+## bar, the boss bar and the minimap move down by it, so the timer no longer sits under the
+## Dynamic Island and the app's close button sits clear, under the boss bar (fight3d.ts hudLayout).
+var top_shift: float = 0.0
+var _q_off: Vector2 = Vector2.ZERO
 var portrait: Texture2D = null   # the hero's face (fight.gd renders it once at the start)
 var units: Array[Dictionary] = []      # {id, name, hp, max, team, head: Vector3, is_hero, shield, buff, stagger, level}
 var map_points: Array[Dictionary] = [] # {p: Vector2 metres (x right, y down-screen), kind, facing: Vector2}
@@ -507,6 +512,11 @@ var _texts: Array = []
 func _queue_text(base: Vector2, s: String, align: HorizontalAlignment, w: float, fs: int, col: Color, outline: int, xf: Transform2D = Transform2D.IDENTITY, ocol: Color = Color(0, 0, 0, 0)) -> void:
 	if ocol.a <= 0.0:
 		ocol = Color(0.05, 0.03, 0.08, col.a * 0.9)
+	if _q_off != Vector2.ZERO:
+		if xf != Transform2D.IDENTITY:
+			xf.origin += _q_off
+		else:
+			base += _q_off
 	_texts.append([fs, outline, base, s, align, w, col, xf, ocol])
 
 
@@ -572,9 +582,15 @@ func _draw() -> void:
 	if not card:
 		_draw_overheads()
 		_draw_pops()
+	if top_shift > 0.0:
+		draw_set_transform(Vector2(0.0, top_shift))
+		_q_off = Vector2(0.0, top_shift)
 	_draw_top()
 	_draw_boss_bar()
 	_draw_minimap()
+	if top_shift > 0.0:
+		draw_set_transform(Vector2.ZERO)
+		_q_off = Vector2.ZERO
 	if not card:   # look-fight: the controls step aside for the end card
 		_draw_controls()
 	if tint.a > 0.004:

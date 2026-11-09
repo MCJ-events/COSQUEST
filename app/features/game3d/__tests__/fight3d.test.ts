@@ -438,3 +438,30 @@ test("a fight with a place asks Godot for the place arena; without one it is the
   assert.equal(s.ground_json, undefined);
 });
 
+
+import { hudLayout } from "../fight3d.ts";
+
+test("build 20: the fight HUD's top block clears the Dynamic Island and the close button sits under the boss bar", () => {
+  // iPhone 15/16 Pro: 393 x 852 points, a 59 pt safe area (the island)
+  const pro = hudLayout(59, 393, 852);
+  assert.ok(pro.hudTop > 80 && pro.hudTop < 100, `hudTop ${pro.hudTop}`); // 59 pt = 108 HUD px, less the HUD's own 20
+  // the close button's top is under the moved boss bar (HUD 153 + hudTop), in points
+  const k = 720 / 393;
+  assert.ok(pro.closeTop * k >= 153 + pro.hudTop, `closeTop ${pro.closeTop}`);
+  assert.ok(pro.closeTop < 160);
+  // no safe area: the HUD stays where it was, the button still clears the bar
+  const flat = hudLayout(0, 375, 667);
+  assert.equal(flat.hudTop, 0);
+  assert.ok(flat.closeTop * (720 / 375) >= 153);
+  // a small status-bar inset fits the HUD's own top margin
+  assert.equal(hudLayout(10, 393, 852).hudTop, 0);
+  // no window size yet: as build 19 (under the safe area), no shift
+  assert.deepEqual(hudLayout(47, 0, 0), { hudTop: 0, closeTop: 57 });
+});
+
+test("build 20: hud_top goes to Godot only when there is a safe area to clear", () => {
+  const base = { hero: { path: null, name: null }, ally: { path: null, name: null }, enemy: { path: null, name: null }, pointName: "p", mode: "full" as const, seed: 1, autoplay: false };
+  assert.equal(buildFightConfig({ ...base, hudTop: 88.4 }).hud_top, 88);
+  assert.equal(buildFightConfig({ ...base, hudTop: 0 }).hud_top, undefined);
+  assert.equal(buildFightConfig(base).hud_top, undefined);
+});

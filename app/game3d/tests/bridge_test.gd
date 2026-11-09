@@ -1,7 +1,8 @@
 extends SceneTree
 ## Contract check for the Bridge autoload. Run headless:
 ##   godot --headless --path game3d -s res://tests/bridge_test.gd
-## Exits with the number of failed checks (0 = pass). Uses capsule fighters (no GLBs) so it is quick.
+## Exits with the number of failed checks (0 = pass). Uses capsule fighters (no GLBs, and "cast_stand_in":
+## false since build 20 stood cast characters in for missing models) so it is quick.
 
 var _fail: int = 0
 var _results: Array[String] = []
@@ -53,9 +54,9 @@ func _run() -> void:
 	_check(str(_status(bridge).get("state", "")) == "idle", "state idle before any fight")
 
 	# 1. start, then restart on the very next frame
-	bridge.call("start_fight", JSON.stringify({"mode": "arena", "duration_s": 3}))
+	bridge.call("start_fight", JSON.stringify({"cast_stand_in": false, "mode": "arena", "duration_s": 3}))
 	await _wait_frames(1)
-	bridge.call("start_fight", JSON.stringify({"mode": "full", "duration_s": 25, "autoplay": true, "seed": 5}))
+	bridge.call("start_fight", JSON.stringify({"cast_stand_in": false, "mode": "full", "duration_s": 25, "autoplay": true, "seed": 5}))
 	await _wait_frames(3)
 	var st: Dictionary = _status(bridge)
 	_check(str(st.get("state", "")) == "fighting", "fighting after restart (got %s)" % str(st))
@@ -82,7 +83,7 @@ func _run() -> void:
 	_check(_results.size() == 1, "second end_fight does not emit again")
 
 	# 3. a full autoplay fight to its end, with a broken GLB path (capsule fallback)
-	bridge.call("start_fight", JSON.stringify({"duration_s": 30, "autoplay": true, "seed": 7, "hero_glb": "file:///nonexistent/hero.glb"}))
+	bridge.call("start_fight", JSON.stringify({"cast_stand_in": false, "duration_s": 30, "autoplay": true, "seed": 7, "hero_glb": "file:///nonexistent/hero.glb"}))
 	await _wait_results(2, 60.0)
 	_check(_results.size() == 2, "autoplay fight finished")
 	if _results.size() >= 2:
@@ -98,6 +99,10 @@ func _run() -> void:
 	# 4. bad JSON still starts a default fight; then quit it
 	bridge.call("start_fight", "this is not json")
 	await _wait_frames(3)
+	# build 20: the default fight stands cast characters in for the missing models, so it loads first
+	var t_bad: int = Time.get_ticks_msec()
+	while str(_status(bridge).get("state", "")) in ["loading", "intro"] and Time.get_ticks_msec() - t_bad < 10000:
+		await process_frame
 	_check(str(_status(bridge).get("state", "")) == "fighting", "bad json falls back to defaults")
 	bridge.call("end_fight")
 	await _wait_frames(2)
@@ -105,7 +110,7 @@ func _run() -> void:
 
 	# 5. the loss path (cq 233): a hero who does nothing loses to the boss, sped up 4x
 	Engine.time_scale = 4.0
-	bridge.call("start_fight", JSON.stringify({"duration_s": 45, "autoplay": true, "bot": "idle", "seed": 9}))
+	bridge.call("start_fight", JSON.stringify({"cast_stand_in": false, "duration_s": 45, "autoplay": true, "bot": "idle", "seed": 9}))
 	await _wait_results(4, 40.0)
 	Engine.time_scale = 1.0
 	_check(_results.size() == 4, "idle-bot fight finished")
@@ -117,7 +122,7 @@ func _run() -> void:
 
 	# 6. the fighting bot wins (cq 233), sped up 4x
 	Engine.time_scale = 4.0
-	bridge.call("start_fight", JSON.stringify({"duration_s": 45, "autoplay": true, "seed": 11}))
+	bridge.call("start_fight", JSON.stringify({"cast_stand_in": false, "duration_s": 45, "autoplay": true, "seed": 11}))
 	await _wait_results(5, 40.0)
 	Engine.time_scale = 1.0
 	_check(_results.size() == 5, "bot fight finished")

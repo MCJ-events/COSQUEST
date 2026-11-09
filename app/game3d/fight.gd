@@ -131,7 +131,7 @@ const CAM_AHEAD: float = 3.0      # cq 016: the fight in the lower half, the str
 const CAM_SMOOTH: float = 0.16
 const CAM_LOOK: float = 0.7
 const CAM_BOUNDS: float = 8.0          # along the street (the fight keeps within ARENA_Z = +-9)
-const CAM_BOUNDS_X: float = 2.2        # across it: the street stays centred, the shop walls at the edges
+const CAM_BOUNDS_X: float = 3.0        # across it: the street stays centred, the shop walls at the edges (build 20: 2.2 -> 3.0, a fight by the kerb sat at the screen's edge)
 ## env-fixes 4 (audit issue 16): the fight camera in a real place. At the street's 34 deg the frame
 ## was two-thirds paving and the landmark only showed in the fly-in. In a place the camera sits lower
 ## (27 deg above the fight) and its view is lifted a few degrees (CAM_PLACE_TILT) so the horizon, the
@@ -427,6 +427,7 @@ func _ready() -> void:
 	hud.visible = not bool(cfg.get("prof_no_hud", false))   # profiling only: the 3D cost alone
 	hud.players_text = str(cfg.get("players_text", "2/2")).replace(" players", "").replace(" player", "")
 	hud.point_name = str(cfg.get("point_name", ""))
+	hud.top_shift = clampf(float(cfg.get("hud_top", 0.0)), 0.0, 240.0)   # build 20: the safe area (hud.gd)
 	hud.hero_name = str(cfg.get("hero_name", "You"))
 	hud.skill_cd_max = SKILL_CD.duplicate()
 	hud.t_left = duration
@@ -468,6 +469,7 @@ func _ready() -> void:
 		f.shield_ended.connect(func(at: Vector3, r: float) -> void: fx.shatter(at, r, Color(0.45, 0.8, 1.0)))
 	_focus = hero.position + _cam_fwd * _cam_ahead
 	_apply_camera(0.0)
+	var no_model: Array = []
 	for pair: Array in [[hero, "hero_glb"], [ally, "ally_glb"], [enemy, "enemy_glb"]]:
 		# the cast clip library and the weapon set (cq 012): by <role>_key when the config
 		# has it (else the skeleton is recognised) and the held weapon's class
@@ -481,13 +483,23 @@ func _ready() -> void:
 			if str(fx[1]) != "":
 				_log("rigfix role=%s key=%s from=%s to=%s" % [role, str(fx[1]), p, str(fx[0])])
 				p = str(fx[0])
+				_cast_worn[role] = str(fx[1])
 		(pair[0] as FighterScript).anim_opts["secondary"] = bool(cfg.get("secondary", true))
 		(pair[0] as FighterScript).anim_opts["cloth_push"] = bool(cfg.get("cloth_push", true))   # cq 016
 		if p != "":
 			(pair[0] as FighterScript).visible = false
 			_load_queue.append({"f": pair[0], "path": p, "role": str(pair[1]).trim_suffix("_glb")})
 		else:
-			_log("load role=%s skipped (no path), capsule" % str(pair[1]).trim_suffix("_glb"))
+			no_model.append([pair[0], role])
+	# build 20: once every Forge model is known, the roles without one get a cast stand-in
+	for nm: Array in no_model:
+		var sp: String = _cast_stand_in(nm[0] as FighterScript, str(nm[1]))
+		if sp != "":
+			(nm[0] as FighterScript).visible = false
+			_load_queue.append({"f": nm[0], "path": sp, "role": str(nm[1])})
+			_log("load role=%s no path, cast stand-in %s" % [str(nm[1]), sp])
+		else:
+			_log("load role=%s skipped (no path), capsule" % str(nm[1]))
 	if coop != null and coop.get("peer") != null and str((cfg["coop"] as Dictionary).get("peer_glb", "")) != "":
 		var peer_f: FighterScript = coop.get("peer")
 		peer_f.anim_opts = {"key": str((cfg["coop"] as Dictionary).get("peer_key", "")), "class": "", "secondary": true, "cloth_push": true}
@@ -719,8 +731,49 @@ func _finish_load(r: Dictionary) -> void:
 			float(info["scale"]), float(info["height_raw"]), str(info.get("library", "")), (info["anims"] as PackedStringArray).size(), JSON.stringify(info["mapped"]),
 			int(info["bones"]), str(info["hand"]), str(r["path"])])
 	else:
+		var stand_in: String = "" if str(r.get("path", "")).begins_with(CAST_STAND_IN_DIR) else _cast_stand_in(f, role)
+		if stand_in != "":
+			# build 20: a Forge model that fails to load is replaced by a shipped cast character,
+			# next in the queue (before the weapons, which attach to it)
+			_load_queue.push_front({"f": f, "path": stand_in, "role": role})
+			_log("load role=%s ok=false error=%s path=%s (cast stand-in %s)" % [role, str(r.get("error", "?")), str(r.get("path", "")), stand_in])
+			return
 		f.set_capsule()
 		_log("load role=%s ok=false error=%s path=%s (capsule fallback)" % [role, str(r.get("error", "?")), str(r.get("path", ""))])
+
+
+## build 20: a fighter with no model of its own (no Forge catalogue on this server, offline, a
+## download that failed or was slow) used to stand as a coloured capsule. It now plays one of the
+## eight rigged cast characters the pck ships (res://cast, with its clip library res://anim):
+## the hero and the ally the first of two, the Guardian one of four by the fight's seed, never a
+## character another fighter already wears. Presentation only: the rules never read the model
+## (seeded fights with capsules and with stand-ins give the same record). "cast_stand_in": false
+## in the config keeps the capsules. Returns the path to load, or "" for the capsule.
+const CAST_STAND_IN_DIR: String = "res://cast/"
+const CAST_STAND_IN: Dictionary = {"hero": ["armstrong", "vanessa"], "ally": ["bobo", "catboy"], "enemy": ["hoof", "elvis", "nebulx", "crystalz"]}
+var _cast_worn: Dictionary = {}   # role -> the cast key a Forge download turned out to be (rig_fix)
+
+
+func _cast_stand_in(f: FighterScript, role: String) -> String:
+	if not bool(cfg.get("cast_stand_in", true)) or not CAST_STAND_IN.has(role):
+		return ""
+	var taken: Array[String] = []
+	for r: String in ["hero", "ally", "enemy"]:
+		if r != role:
+			taken.append(str(cfg.get(r + "_key", "")))
+			taken.append(str(_cast_worn.get(r, "")))
+	var pool: Array = CAST_STAND_IN[role]
+	var lod: int = clampi(int(cfg.get("lod", 1)), 0, 2)
+	var start: int = (int(absf(float(cfg.get("seed", 0)))) % pool.size()) if role == "enemy" else 0
+	for i in range(pool.size()):
+		var key: String = str(pool[(start + i) % pool.size()])
+		var path: String = "%s%s_lod%d.glb" % [CAST_STAND_IN_DIR, key, lod]
+		if key in taken or not FileAccess.file_exists(path):
+			continue
+		cfg[role + "_key"] = key            # the weapon grips (attach.json) read it too
+		f.anim_opts["key"] = key
+		return path
+	return ""
 
 
 ## The hero card's portrait, as on the reference: the loaded hero's face, rendered once by a
@@ -1768,7 +1821,9 @@ func _tick_ally(dt: float) -> void:
 	if d > 0.3:
 		var step: float = minf(d, ALLY_SPEED * dt)
 		ally.position += to / d * step
-		ally.speed_now = ALLY_SPEED if d > 0.6 else 0.0
+		# build 20: the speed the body really moves at (it read 0 for the last 0.6 m, so the ally
+		# slid into place standing in idle). The animation reads it, the rules never do.
+		ally.speed_now = step / dt if dt > 0.0 else 0.0
 		ally.face(to, dt, 12.0)
 	else:
 		ally.speed_now = 0.0
@@ -2137,6 +2192,15 @@ func _follow_camera(dt: float) -> void:
 	target.x = clampf(target.x, -CAM_BOUNDS_X, CAM_BOUNDS_X)
 	target.z = clampf(target.z, -CAM_BOUNDS, CAM_BOUNDS)
 	target.y = 0.0
+	if state == "ending" and outcome == "win" and hero != null:
+		# build 20: the victory shot. The view used to hold the street's clamp, so a hero who won
+		# by the kerb cheered at the frame's edge behind the VICTORY card; it now eases onto the
+		# hero (who stands under the card) and in
+		_win_k = move_toward(_win_k, 1.0, _ko_dt_real / WIN_FRAME_S)
+		var ht: Vector3 = hero.position + _cam_fwd * WIN_AHEAD
+		ht.x = clampf(ht.x, -WIN_BOUNDS_X, WIN_BOUNDS_X)
+		ht.y = 0.0
+		target = target.lerp(ht, ease(_win_k, -2.0))
 	if feel.ko_active and not _reduce_motion:
 		# the KO beat: the view leans in on the fallen fighter, then comes back
 		target = target.lerp(Vector3(feel.ko_at.x, 0.0, feel.ko_at.z), 0.55 * feel.ko_push(feel.ko_t))
@@ -2166,6 +2230,7 @@ func _apply_camera(dt: float) -> void:
 	var ko_k: float = 0.0 if _reduce_motion else feel.ko_push(feel.ko_t)
 	var ko_m: Dictionary = FeelScript.moment(feel.ko_kind) if feel.ko_active else {}
 	var d: float = _cam_dist * (1.0 - _punch * 0.1) * (1.0 - FRAME_IN * _frame_k) * (1.0 - float(ko_m.get("zoom", 0.0)) * ko_k)
+	d *= 1.0 - WIN_ZOOM * (0.5 if _reduce_motion else 1.0) * ease(_win_k, -2.0)
 	var orbit: Basis = Basis(Vector3.UP, deg_to_rad(float(ko_m.get("orbit", 0.0)) * ko_k))
 	var pos: Vector3 = _focus + Vector3.UP * 0.8 + (orbit * _cam_basis.z) * d
 	if _shake_t > 0.0:
@@ -2205,6 +2270,11 @@ func _impact_cam(trauma: float, fov_kick: float = 0.0, dir: Vector3 = Vector3.ZE
 const FRAME_NEAR_M: float = 5.0        # engaged: the hero within this of the Guardian
 const FRAME_IN: float = 0.07           # the view comes this much closer when engaged
 const BANNER_HOLD_S: float = 1.2       # VICTORY over the frame before the app's reward sheet
+const WIN_FRAME_S: float = 0.9         # build 20: the victory shot eases onto the hero over this (real s)
+const WIN_ZOOM: float = 0.22           # and comes this much closer
+const WIN_BOUNDS_X: float = ARENA_HALF_X   # the hero may stand by the kerb, beyond the fight's view
+const WIN_AHEAD: float = 4.5           # the view looks this far past the hero: the hero stands under the VICTORY card, not behind it
+var _win_k: float = 0.0
 const LOSS_HOLD_S: float = 1.05        # DEFEATED: calm, the buttons under 2 s after the fall
 
 

@@ -255,6 +255,8 @@ export type Fight3DConfig = {
   mods?: FightMods;
   /** The setup's look (cosmetic): the Guardian's height in permille, a title on the intro banner. */
   guardian_look?: GuardianLook;
+  /** build 20: the safe area over the HUD's top block, in HUD px (hudLayout). Sent only when above 0. */
+  hud_top?: number;
 };
 
 export type FightMods = { boss_hp_permille: number; boss_dmg_permille: number };
@@ -277,6 +279,29 @@ export function placeFrom(
 
 export const FIGHT_SECONDS = 45;
 
+// ---------- the fight HUD and the phone's safe area (build 20) ----------
+
+/** Godot's HUD canvas (game3d/project.godot, stretch canvas_items + expand): 720 x 1280 at least. */
+const HUD_W = 720;
+const HUD_H = 1280;
+/** The HUD's own top margin (hud.gd: the top bar starts ~26 px down); a safe area under it costs nothing. */
+const HUD_TOP_FREE = 20;
+/** The bottom of the boss bar in HUD px (hud.gd _draw_boss_bar: y 132, 18 high, a 3 px frame). */
+const HUD_BOSS_BAR_BOTTOM = 153;
+
+/**
+ * Where the fight HUD's top block goes on this screen, and the app's close button under it.
+ * In build 19 the timer sat under the Dynamic Island and the close button over the boss bar.
+ *   hudTop    HUD px the top bar, the boss bar and the minimap move down (config "hud_top")
+ *   closeTop  the close button's top, in screen points: just under the (moved) boss bar
+ */
+export function hudLayout(safeTop: number, width: number, height: number): { hudTop: number; closeTop: number } {
+  if (!(width > 0) || !(height > 0)) return { hudTop: 0, closeTop: Math.max(0, safeTop) + 10 };
+  const k = Math.max(HUD_W / width, HUD_H / height); // HUD px per screen point
+  const hudTop = Math.round(Math.max(0, Math.max(0, safeTop) * k - HUD_TOP_FREE));
+  return { hudTop, closeTop: Math.round((HUD_BOSS_BAR_BOTTOM + hudTop + 14) / k) };
+}
+
 export function buildFightConfig(input: {
   hero: { path: string | null; name: string | null };
   ally: { path: string | null; name: string | null };
@@ -298,6 +323,8 @@ export function buildFightConfig(input: {
   /** The server's modifiers and look, as the duel's setup gave them (fightFromStart). */
   mods?: FightMods | null;
   guardianLook?: GuardianLook | null;
+  /** HUD px the top block moves down for the phone's safe area (hudLayout). */
+  hudTop?: number;
 }): Fight3DConfig {
   const config: Fight3DConfig = {
     hero_glb: localPath(input.hero.path),
@@ -321,6 +348,7 @@ export function buildFightConfig(input: {
   if (input.sound === false) config.sound = false;
   if (input.mods) config.mods = { ...input.mods };
   if (input.guardianLook) config.guardian_look = { ...input.guardianLook };
+  if (input.hudTop && input.hudTop > 0) config.hud_top = Math.round(input.hudTop);
   const groundJson = localPath(input.place?.groundPath);
   if (input.place && groundJson) Object.assign(config, { arena: "place", ground_json: groundJson, place_at: input.place.at });
   return config;

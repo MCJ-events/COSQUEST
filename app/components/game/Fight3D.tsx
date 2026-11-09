@@ -23,7 +23,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { File, Paths } from "expo-file-system";
 import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, AppState, BackHandler, Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, AppState, BackHandler, Platform, Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { castWeapons, fightCast } from "@/features/game3d/characters";
@@ -36,6 +36,7 @@ import {
   fightCard,
   fightFromStart,
   godotArgs,
+  hudLayout,
   parseFightResult,
   placeFrom,
   quitResult,
@@ -114,6 +115,11 @@ export default function Fight3D({
   onClose: () => void;
 }) {
   const insets = useSafeAreaInsets();
+  const win = useWindowDimensions();
+  // build 20: the HUD's top block clears the notch / Dynamic Island, the close button its boss bar
+  const hud = hudLayout(insets.top, win.width, win.height);
+  const hudTop = useRef(hud.hudTop);
+  hudTop.current = hud.hudTop;
   const [phase, setPhase] = useState<Phase>({ kind: "loading", step: "Getting the fighters ready" });
   const phaseRef = useRef(phase);
   const done = useRef(false);
@@ -203,6 +209,7 @@ export default function Fight3D({
           // look-fight: the fight's sound and music stay quiet while a CosQuest call holds the audio
           sound: !callActive(),
           place: placeFile(point),
+          hudTop: hudTop.current,
         });
         log(`arena ${config.arena ?? "street"}${config.place_at ? ` at=${config.place_at.join(",")}` : ""}`);
         // Weapons in hand (cq 234): the cast's weapons, as files, with their grips.
@@ -352,7 +359,7 @@ export default function Fight3D({
 
       <Pressable
         onPress={() => (phase.kind === "failed" ? onClose() : finish(null))}
-        style={[styles.close, { top: insets.top + 10 }]}
+        style={[styles.close, { top: hud.closeTop }]}
         hitSlop={10}
         testID="fight3d-close"
         accessibilityRole="button"
