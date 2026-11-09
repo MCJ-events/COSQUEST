@@ -48,7 +48,14 @@ const FLINCH_ARMS: float = 14.0
 const STATES: Array[String] = ["idle", "walk", "run", "attack_1", "attack_2", "attack_3", "heavy",
 	"hit", "guard", "parry", "dodge", "skill_charge", "skill_split", "skill_whirl", "skill_rally",
 	"skill_shield", "death", "victory"]
-const LOOPING: Array[String] = ["idle", "walk", "run", "guard"]
+const LOOPING: Array[String] = ["idle", "walk", "run", "sprint", "guard"]
+const LOCO: Array[String] = ["walk", "run", "sprint"]
+# autorig: library-only states (anim_clips.json sets; no alias matching on a model's own clips).
+# sprint = a fast run clip above the geometric mean of the run's and the sprint's ground speeds
+# (both play at the same distance from 1x there), so the hero's top speed no longer plays the run
+# at 1.8x; stagger = a backward step while a knockback shoves the
+# body (fighter.gd), so the shove reads as steps, not a slide.
+const STAGGER_RATE_MAX: float = 1.4
 const HOLD_LAST: Array[String] = ["death", "victory"]   # victory settles into idle (fight-anim)
 
 const ALIASES: Dictionary = {
@@ -321,7 +328,7 @@ func play(st: String, game_len: float = 0.0, hit_at: float = -1.0, blend: float 
 		blend = BLEND_HIT if st == "hit" else (BLEND_ACT if restart else BLEND_LOOP)
 		if was in LOOPING:
 			blend = BLEND_ACT if restart else BLEND_LOOP
-		elif was == "hit" and not restart:
+		elif (was == "hit" or was == "stagger") and not restart:
 			blend = BLEND_RECOVER
 	var m: Dictionary = timing.get(st, {})
 	var fps: float = float(m.get("fps", 30.0))
@@ -329,9 +336,9 @@ func play(st: String, game_len: float = 0.0, hit_at: float = -1.0, blend: float 
 	var t_out: float = a.length if a != null else 0.0
 	if m.has("out"):
 		t_out = minf(t_out, float(m["out"]) / fps)
-	if restart and st == "hit" and a != null:
+	if restart and (st == "hit" or st == "stagger") and a != null:
 		# fight-anim: the reaction's opening at a natural speed, not the whole clip squeezed
-		t_out = minf(t_out, t_in + game_len * HIT_RATE_MAX)
+		t_out = minf(t_out, t_in + game_len * (HIT_RATE_MAX if st == "hit" else STAGGER_RATE_MAX))
 	if restart and a != null and t_out - t_in > 0.01:
 		var c_t: float = float(m.get("contact", -1)) / fps
 		if hit_at > 0.02 and hit_at < game_len - 0.02 and c_t > t_in and c_t < t_out:
@@ -348,7 +355,7 @@ func play(st: String, game_len: float = 0.0, hit_at: float = -1.0, blend: float 
 			blend = maxf(minf(blend, hit_at * 0.7), minf(hit_at * 0.3, 0.25))
 	_clip_t = t_in
 	# fight-anim: the fade runs in clip time (speed_scale), so ask for blend x rate to get `blend` s
-	var rate0: float = float(_warp[1]) if not _warp.is_empty() else (walk_rate if st in ["walk", "run"] else 1.0)
+	var rate0: float = float(_warp[1]) if not _warp.is_empty() else (walk_rate if st in LOCO else 1.0)
 	player.play(clip, blend * maxf(rate0, 0.05), 1.0)
 	player.seek(t_in, true)
 	if not _warp.is_empty():
@@ -406,7 +413,7 @@ func update(dt: float, speed_now: float, dead: bool) -> void:
 			_flinch_k = 0.0
 	if player != null:
 		var base: float = 1.0
-		if state in ["walk", "run"]:
+		if state in LOCO:
 			base = walk_rate
 		elif not _warp.is_empty():
 			base = float(_warp[1]) if t < float(_warp[3]) else float(_warp[2])
@@ -429,6 +436,11 @@ func update(dt: float, speed_now: float, dead: bool) -> void:
 		var run_at: float = walk_gs * 1.8 if walk_gs > 0.01 and clips.has("run") else 3.2
 		if speed_now > run_at:
 			want = "run" if clips.has("run") else "walk"
+			if want == "run" and clips.has("sprint"):
+				var run_gs: float = float((timing.get("run", {}) as Dictionary).get("ground_speed_per_hip", 0.0)) * hip_h
+				var spr_gs: float = float((timing.get("sprint", {}) as Dictionary).get("ground_speed_per_hip", 0.0)) * hip_h
+				if run_gs > 0.01 and spr_gs > run_gs and speed_now > sqrt(run_gs * spr_gs):
+					want = "sprint"
 		elif speed_now > 0.2:
 			want = "walk"
 		walk_rate = _loco_rate(want if clips.has(want) else "walk", speed_now)
@@ -436,7 +448,7 @@ func update(dt: float, speed_now: float, dead: bool) -> void:
 			if not play(want):
 				# no clip for it: fall back to whichever locomotion clip exists
 				if player != null:
-					var alt: String = "walk" if want == "run" else want
+					var alt: String = "walk" if want == "run" or want == "sprint" else want
 					if clips.has(alt):
 						player.play(clips[alt], 0.15)
 				state = want

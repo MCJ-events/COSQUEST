@@ -1,7 +1,7 @@
 {
  "key": "armstrong",
- "target": "/home/engineer/cq-work/016-game-quality-r3-polish/cast_fixed/pose/armstrong/lod1.glb",
- "source": "/home/engineer/cq-work/016-game-quality-r3-polish/dl/kaykit_adv_chars/Knight.glb",
+ "target": "/home/engineer/autorig/cast/pose/armstrong/lod1.glb",
+ "source": "/home/engineer/cq-work/243-characters-relift-pod-prep/clipsrc/kaykit/Knight.glb",
  "hip_scale": 2.144635032265373,
  "damp": {},
  "unmapped": [],
@@ -2928,6 +2928,95 @@
    },
    "tear_worst_lod": "lod0"
   },
+  "Staff_Jog": {
+   "src": "Jog_Fwd_Loop",
+   "frames": 29,
+   "fps": 30.0,
+   "length_s": 0.917,
+   "contact": null,
+   "root": "inplace",
+   "root_end_raw_m": [
+    0.018,
+    -0.062,
+    -0.006
+   ],
+   "sway_max_m": 0.034,
+   "feet_min_m": -0.015,
+   "feet_max_m": 0.281,
+   "planted_slide_mps": 5.0,
+   "ground_speed_mps": 3.456,
+   "tear_share": 0.00355,
+   "tear_p99": 1.793,
+   "tears": false,
+   "tear_where": {
+    "Spine1": 5,
+    "Spine2": 7,
+    "LeftHand": 2
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 29,
+     "lhand_to_shaft_m_p50": 0.858
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 29,
+     "lhand_to_shaft_m_p50": 0.849
+    },
+    "dagger": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 29,
+     "lhand_to_shaft_m_p50": 0.858
+    },
+    "greatsword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 29,
+     "lhand_to_shaft_m_p50": 0.858
+    },
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 29,
+     "lhand_to_shaft_m_p50": 0.858
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 29,
+     "lhand_to_shaft_m_p50": 0.837
+    },
+    "shield": {
+     "pen_max_m": 0.134,
+     "pen_frames": 23,
+     "frames": 29,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 29,
+     "lhand_to_shaft_m_p50": 0.858
+    },
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 29,
+     "lhand_to_shaft_m_p50": 0.856
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00304,
+    "lod2": 0.00355
+   },
+   "tear_worst_lod": "lod2"
+  },
   "Staff_Run": {
    "src": "Running_B",
    "frames": 33,
@@ -3012,6 +3101,94 @@
    },
    "tear_by_lod": {
     "lod0": 0.00138,
+    "lod2": 0.0
+   },
+   "tear_worst_lod": "lod0"
+  },
+  "Staff_Sprint": {
+   "src": "Sprint_Loop",
+   "frames": 21,
+   "fps": 30.0,
+   "length_s": 0.667,
+   "contact": null,
+   "root": "inplace",
+   "root_end_raw_m": [
+    0.018,
+    -0.047,
+    -0.023
+   ],
+   "sway_max_m": 0.034,
+   "feet_min_m": -0.053,
+   "feet_max_m": 0.205,
+   "planted_slide_mps": 5.995,
+   "ground_speed_mps": 4.885,
+   "tear_share": 0.00192,
+   "tear_p99": 1.64,
+   "tears": false,
+   "tear_where": {
+    "LeftHand": 2,
+    "LeftUpLeg": 2
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 21,
+     "lhand_to_shaft_m_p50": 0.816
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 21,
+     "lhand_to_shaft_m_p50": 0.815
+    },
+    "dagger": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 21,
+     "lhand_to_shaft_m_p50": 0.816
+    },
+    "greatsword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 21,
+     "lhand_to_shaft_m_p50": 0.816
+    },
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 21,
+     "lhand_to_shaft_m_p50": 0.816
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 21,
+     "lhand_to_shaft_m_p50": 0.799
+    },
+    "shield": {
+     "pen_max_m": 0.135,
+     "pen_frames": 16,
+     "frames": 21,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 21,
+     "lhand_to_shaft_m_p50": 0.816
+    },
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 21,
+     "lhand_to_shaft_m_p50": 0.812
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00192,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -3101,6 +3278,93 @@
    },
    "tear_by_lod": {
     "lod0": 0.00145,
+    "lod2": 0.0
+   },
+   "tear_worst_lod": "lod0"
+  },
+  "Stagger_Back": {
+   "src": "Dodge_Backward",
+   "frames": 13,
+   "fps": 30.0,
+   "length_s": 0.4,
+   "contact": null,
+   "root": "inplace",
+   "root_end_raw_m": [
+    -0.0,
+    -0.041,
+    -1.763
+   ],
+   "sway_max_m": 0.483,
+   "feet_min_m": -0.0,
+   "feet_max_m": 0.02,
+   "planted_slide_mps": 4.343,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00025,
+   "tear_p99": 1.422,
+   "tears": false,
+   "tear_where": {
+    "LeftUpLeg": 1
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 13,
+     "lhand_to_shaft_m_p50": 0.918
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 13,
+     "lhand_to_shaft_m_p50": 0.909
+    },
+    "dagger": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 13,
+     "lhand_to_shaft_m_p50": 0.918
+    },
+    "greatsword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 13,
+     "lhand_to_shaft_m_p50": 0.918
+    },
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 13,
+     "lhand_to_shaft_m_p50": 0.918
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 13,
+     "lhand_to_shaft_m_p50": 0.875
+    },
+    "shield": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 13,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 13,
+     "lhand_to_shaft_m_p50": 0.918
+    },
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 13,
+     "lhand_to_shaft_m_p50": 0.917
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00025,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -4072,6 +4336,95 @@
    "tear_by_lod": {
     "lod0": 0.00058,
     "lod2": 0.0
+   },
+   "tear_worst_lod": "lod0"
+  },
+  "Walk_Back": {
+   "src": "Walking_Backwards",
+   "frames": 33,
+   "fps": 30.0,
+   "length_s": 1.067,
+   "contact": null,
+   "root": "inplace",
+   "root_end_raw_m": [
+    0.0,
+    -0.097,
+    0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": -0.056,
+   "feet_max_m": 0.133,
+   "planted_slide_mps": 2.223,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00141,
+   "tear_p99": 1.499,
+   "tears": false,
+   "tear_where": {
+    "Spine": 2,
+    "LeftHand": 2,
+    "LeftUpLeg": 2
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 1.027
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 1.01
+    },
+    "dagger": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 1.027
+    },
+    "greatsword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 1.027
+    },
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 1.027
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.977
+    },
+    "shield": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 1.027
+    },
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 1.03
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00141,
+    "lod2": 0.00071
    },
    "tear_worst_lod": "lod0"
   },

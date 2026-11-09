@@ -10,6 +10,10 @@ extends SceneTree
 ## 6. The victory cheer settles into the idle loop (no frozen last frame).
 ## 7. A blow on a fighter mid-swing does not cut the swing (react_hit) and the recoil shows.
 ## 8. The flinch is additive and fades out (pose_layer channels back to empty).
+## 9. autorig: a knockback shove plays the stagger clip (a backward step) at most STAGGER_RATE_MAX,
+##    then the body is back in idle; a light shove does not.
+## 10. autorig: at the hero's top speed (4.6 m/s) the jog (or above it the sprint) plays near 1x
+##    (was Running_A at 1.8x), and a medium speed plays the jog.
 ## The byte-identical fight record is e2e (seeded before/after, cosquest-review/fight-anim/NOTES.md).
 ## Prints "CQTEST PASS <name>" / "CQTEST FAIL <name> <why>", then "CQTEST done failures=N".
 
@@ -107,6 +111,32 @@ func _process(dt: float) -> bool:
 		2:
 			if _t > 20:
 				_check("back_to_idle_after_hit", a.state == "idle", a.state)
+				_f.knock(Vector3(0, 0, 1), 0.08)   # a light shove (0.7 m/s): the lean only
+				_step = 4
+				_t = 0
+		4:
+			if _t == 2:
+				_check("light_shove_no_stagger", a.state != "stagger", a.state)
+			if _t > 12:
+				_f.knock(-_f.forward(), 2.2)   # the third combo hit's shove (about 20 m/s)
+				_step = 5
+				_t = 0
+		5:
+			if _t == 1:
+				_check("stagger_plays", a.state == "stagger" and a.player.get_current_animation() == a.clips.get("stagger", "?"),
+					"%s %s" % [a.state, a.player.get_current_animation()])
+				_check("stagger_rate_capped", not a._warp.is_empty() and float(a._warp[1]) <= Animator.STAGGER_RATE_MAX + 0.001, str(a._warp))
+			if _t > 40:
+				_check("back_to_idle_after_stagger", a.state == "idle", a.state)
+				a.update(1.0 / 30.0, 4.6, false)
+				var top_clip: String = a.player.get_current_animation()
+				_check("fast_run_at_top_speed", (a.state == "run" or a.state == "sprint") and not top_clip.contains("Running_")
+					and a.walk_rate > 0.8 and a.walk_rate < 1.3, "%s %s rate=%.2f" % [a.state, top_clip, a.walk_rate])
+				print("CQTEST info hero top-speed loco state=%s clip=%s rate=%.2f" % [a.state, a.player.get_current_animation(), a.walk_rate])
+				a.update(1.0 / 30.0, 3.0, false)
+				_check("jog_at_mid_speed", a.state == "run" and a.walk_rate > 0.6 and a.walk_rate < 1.3,
+					"%s rate=%.2f" % [a.state, a.walk_rate])
+				a.update(1.0 / 30.0, 0.0, false)
 				_f.celebrate()
 				_step = 3
 				_t = 0

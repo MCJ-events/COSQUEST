@@ -217,3 +217,30 @@ Measuring: `"anim_probe": "/abs/out.jsonl"` in a review config writes per-frame 
 rates, pose pops, facing snaps, stance-foot slide and transition pops. `tools/anim/loco_measure.gd`
 measures each character's walk/run ground speed in place (it agrees with `ground_speed_per_hip`
 within about 10 %). Test: `tests/anim_feel_test.gd`.
+
+## Stagger, jog and sprint (autorig, 9 Nov 2026)
+
+Presentation only: the five seeded fights are byte-identical to fight-anim (same md5s) and the rules
+id is unchanged. All clips are CC0 (KayKit Adventurers 1.0, Quaternius UAL).
+
+- **The cast source is back.** `build_all.py --cast` needs `pose/<key>/lod0..2.glb + rig.json`. It
+  was rebuilt from the shipped `res://cast/<key>_lod*.glb` (cq 014 rigs, cq 239 look) plus cq 060's
+  `rig.json` (Hoof's set to `rigged: true`: cq 060 had rejected its first rig, the shipped one is
+  cq 014's). With clips.json unchanged, all eight libraries rebuilt byte-identical and the
+  characters' fingerprints, picks and tears matched the committed data.
+- **Stagger** (`stagger`, new state, every set): `Stagger_Back` = KayKit `Dodge_Backward`
+  (alternate `Walk_Back` = `Walking_Backwards`; Elvis plays it: the hop stretches his mesh 0.57 %, past the 0.5 % gate).
+  `Fighter.tick_visual` plays it when a knockback shoves the body at 3 m/s or more
+  (`STAGGER_V`) and mostly backwards, and no attack or skill clip owns the body. It lasts as long
+  as the shove (the 9/s decay is above 1 m/s for ln(v)/9 s) plus 0.12 s, at most
+  `STAGGER_RATE_MAX` (1.4x), then blends back like a hit (`BLEND_RECOVER`). A light shove keeps
+  only the lean. Root motion is stripped as for every clip: the game still moves the body.
+- **Run = the UAL jog, sprint above it.** `run` is `UAL_Jog` (`Staff_Jog` with the staff hold in
+  the staff set): 4.0 m/s per metre of hip against Running_A's 2.3, so the hero's 4.6 m/s plays it
+  at about 1.03x (Running_A played at 1.8x). `sprint` (new looping state) is `UAL_Sprint` /
+  `Staff_Sprint`, used above the geometric mean of the run's and the sprint's ground speeds (both
+  then play the same distance from 1x). Nebul-X's jog and sprint and Vanessa's jog tear past the
+  run gate, so they keep Running_A/B (Vanessa sprints on `UAL_Sprint`).
+- **Subset builds.** `build_all.py --keys <one key>` (a new character) keeps every other
+  character and the full cast's contact frames and ground speeds; it only adds clips the data does
+  not have yet. A full-cast run recomputes them as before.

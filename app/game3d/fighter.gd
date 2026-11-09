@@ -43,6 +43,10 @@ var weapons: Dictionary = {}      # "r" / "l" -> {node, class, bone} (weapons in
 
 # combat state the fight reads and writes
 var kb_vel: Vector3 = Vector3.ZERO
+# autorig: a shove at least this fast (m/s), mostly backwards, plays the stagger clip (a backward
+# step) for as long as the shove lasts; presentation only (kb_vel and the position are the game's)
+const STAGGER_V: float = 3.0
+var _staggering: bool = false
 var iframes: float = 0.0
 var stagger: float = 0.0
 var guarding: bool = false
@@ -808,6 +812,13 @@ func tick_visual(dt: float) -> void:
 	# fight-anim: a knockback shove leans the body with the push and sinks it a little (the feet
 	# are planted while the game slides the fighter back, so the body reads as shoved, not gliding)
 	var kv: float = kb_vel.length()
+	if kv < 0.05:
+		_staggering = false
+	elif kv >= STAGGER_V and not _staggering and not dead and anim.has_clip("stagger") and not anim.busy_action() \
+			and kb_vel.normalized().dot(forward()) < -0.4:
+		# the shove decays 9/s: it is above 1 m/s for ln(kv)/9 s; the step covers that, then blends back
+		_staggering = true
+		anim.play("stagger", clampf(log(kv) / 9.0 + 0.12, 0.3, 0.6))
 	if kv > 1.0 and not dead:
 		var kk: float = clampf((kv - 1.0) / 6.0, 0.0, 1.0)
 		var kl: Vector3 = global_basis.orthonormalized().inverse() * kb_vel.normalized()

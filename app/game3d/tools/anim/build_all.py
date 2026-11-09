@@ -136,7 +136,12 @@ def main():
         ch["clip_grips"] = rep["grips"]
         print("OK", key, "worst tear %.4f" % worst, "over gate:", len(torn), "bytes", os.path.getsize(out))
     clips_out = data.get("clips", {})
+    # autorig: a run over part of the cast (--keys one_new_character) only adds clips the data
+    # does not have yet; the shared contact frames and ground speeds stay the full cast's medians
+    subset = not set(CAST) <= set(a.keys.split(","))
     for c, m in clip_meta.items():
+        if subset and c in clips_out:
+            continue
         cs = sorted(m["contact"])
         clips_out[c] = {"src": m["src"], "lib": cfg["clips"][c].get("lib", "kaykit"), "frames": m["frames"], "fps": m["fps"]}
         if cfg["clips"][c].get("ground_speed_per_hip"):

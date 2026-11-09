@@ -706,6 +706,86 @@
     "forearm": 0.35
    },
    "_why": "cq 016: the staff hold: the source clip with the right forearm and hand turned so the staff stands orb-up (retarget.py staff_upright); the staff set only, so no other class changes"
+  },
+  "Stagger_Back": {
+   "src": "Dodge_Backward",
+   "classes": [
+    "sword",
+    "hammer"
+   ],
+   "damp_legs": {
+    "bones": [
+     "LeftUpLeg",
+     "RightUpLeg",
+     "LeftLeg",
+     "RightLeg"
+    ],
+    "f": 0.35
+   },
+   "_why": "autorig: the knockback stagger (KayKit Adventurers 1.0, CC0): a backward step played while the shove carries the body (fighter.gd STAGGER_V); root motion stripped like every clip, the game moves the body"
+  },
+  "Walk_Back": {
+   "src": "Walking_Backwards",
+   "classes": [
+    "sword",
+    "hammer"
+   ],
+   "damp_legs": {
+    "bones": [
+     "LeftUpLeg",
+     "RightUpLeg",
+     "LeftLeg",
+     "RightLeg"
+    ],
+    "f": 0.6
+   },
+   "_why": "autorig: the stagger's alternate (KayKit Walking_Backwards, CC0)"
+  },
+  "Staff_Jog": {
+   "src": "Jog_Fwd_Loop",
+   "lib": "ual",
+   "classes": [
+    "staff"
+   ],
+   "loop": true,
+   "damp_legs": {
+    "bones": [
+     "LeftUpLeg",
+     "RightUpLeg",
+     "LeftLeg",
+     "RightLeg"
+    ],
+    "f": 0.5
+   },
+   "staff_up": {
+    "fwd": 0.25,
+    "out": 0.12,
+    "forearm": 0.35
+   },
+   "_why": "autorig: the staff set's run on the UAL jog (Quaternius UAL, CC0) with cq 016's staff hold"
+  },
+  "Staff_Sprint": {
+   "src": "Sprint_Loop",
+   "lib": "ual",
+   "classes": [
+    "staff"
+   ],
+   "loop": true,
+   "damp_legs": {
+    "bones": [
+     "LeftUpLeg",
+     "RightUpLeg",
+     "LeftLeg",
+     "RightLeg"
+    ],
+    "f": 0.5
+   },
+   "staff_up": {
+    "fwd": 0.25,
+    "out": 0.12,
+    "forearm": 0.35
+   },
+   "_why": "autorig: the staff set's sprint on the UAL sprint (Quaternius UAL, CC0) with cq 016's staff hold"
   }
  },
  "holds": {
@@ -1005,11 +1085,10 @@
     ]
    },
    "run": {
-    "clip": "Running_A",
+    "clip": "UAL_Jog",
     "alt": [
-     "UAL_Jog",
-     "Running_B",
-     "UAL_Sprint"
+     "Running_A",
+     "Running_B"
     ]
    },
    "attack_1": {
@@ -1057,6 +1136,16 @@
     "alt": [
      "Spellcast_Raise",
      "Block"
+    ]
+   },
+   "sprint": {
+    "clip": "UAL_Sprint",
+    "alt": []
+   },
+   "stagger": {
+    "clip": "Stagger_Back",
+    "alt": [
+     "Walk_Back"
     ]
    }
   },
@@ -1128,11 +1217,10 @@
     ]
    },
    "run": {
-    "clip": "Running_B",
+    "clip": "UAL_Jog",
     "alt": [
-     "UAL_Jog",
-     "Running_A",
-     "UAL_Sprint"
+     "Running_B",
+     "Running_A"
     ]
    },
    "attack_1": {
@@ -1182,6 +1270,16 @@
     "alt": [
      "Spellcast_Raise",
      "Block"
+    ]
+   },
+   "sprint": {
+    "clip": "UAL_Sprint",
+    "alt": []
+   },
+   "stagger": {
+    "clip": "Stagger_Back",
+    "alt": [
+     "Walk_Back"
     ]
    }
   },
@@ -1256,12 +1354,12 @@
     ]
    },
    "run": {
-    "clip": "Staff_Run",
+    "clip": "Staff_Jog",
     "alt": [
-     "Running_B",
+     "Staff_Run",
      "UAL_Jog",
-     "Running_A",
-     "UAL_Sprint"
+     "Running_B",
+     "Running_A"
     ]
    },
    "attack_1": {
@@ -1311,6 +1409,18 @@
     "alt": [
      "Spellcast_Raise",
      "Block"
+    ]
+   },
+   "sprint": {
+    "clip": "Staff_Sprint",
+    "alt": [
+     "UAL_Sprint"
+    ]
+   },
+   "stagger": {
+    "clip": "Stagger_Back",
+    "alt": [
+     "Walk_Back"
     ]
    }
   },
@@ -1382,11 +1492,10 @@
     ]
    },
    "run": {
-    "clip": "Running_B",
+    "clip": "UAL_Jog",
     "alt": [
-     "UAL_Jog",
-     "Running_A",
-     "UAL_Sprint"
+     "Running_B",
+     "Running_A"
     ]
    },
    "attack_1": {
@@ -1434,6 +1543,16 @@
     "alt": [
      "Spellcast_Raise",
      "Block"
+    ]
+   },
+   "sprint": {
+    "clip": "UAL_Sprint",
+    "alt": []
+   },
+   "stagger": {
+    "clip": "Stagger_Back",
+    "alt": [
+     "Walk_Back"
     ]
    }
   }
@@ -1506,9 +1625,11 @@
   "hit"
  ],
  "gate_by_state": {
-  "run": 0.01
+  "run": 0.01,
+  "sprint": 0.01
  },
  "_doc_gate": "gate_by_state: a looser gate for run: a walk sped past 2x skates visibly, a run's short stretch at speed does not show at the fight camera (measured per clip in tools/anim/reports)",
  "_doc_ik": "lhand_ik: on frames where the source's left hand is on its weapon (within d_off of the weapon's axis, fading over 12 cm), a two-bone IK puts the target's left hand on the held weapon, s metres along it from the grip (the grip of the given class)",
- "_doc_body": "body: the fight's procedural body motion (hop, spin, lunge) plays on top of the clip; body_alt: only when an alternate stands in (a WHIRL without a spin clip still spins)"
+ "_doc_body": "body: the fight's procedural body motion (hop, spin, lunge) plays on top of the clip; body_alt: only when an alternate stands in (a WHIRL without a spin clip still spins)",
+ "_doc_autorig": "autorig (9 Nov 2026): run = the UAL jog (ground speed 4.0 per metre of hip vs 2.3 for Running_A), sprint = the UAL sprint above the geometric mean of the run's and the sprint's ground speeds (combat_animator.update), so the hero's 4.6 m/s plays near 1x; stagger = KayKit Dodge_Backward for knockback shoves. A character whose jog or sprint tears past the run gate keeps the old run (alternates)."
 }
