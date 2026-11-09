@@ -46,8 +46,8 @@ const SKILL_ICONS_OFF: Array[Texture2D] = [
 ]
 const FONT := preload("res://art/fonts/LilitaOne-Regular.ttf")
 
-const STICK_BASE_R: float = 86.0
-const STICK_KNOB_R: float = 38.0
+const STICK_BASE_R: float = 74.0                     # build 20 pass 2: 86 -> 74 (slimmer ring)
+const STICK_KNOB_R: float = 34.0
 const STICK_TRAVEL: float = 70.0
 const STICK_DEAD: float = 0.12                       # 12% dead zone
 const STICK_HOME_FROM_BL: Vector2 = Vector2(150.0, 205.0)
@@ -115,6 +115,7 @@ var _toast: String = ""
 var _toast_t: float = 0.0
 var _toast_at: Vector2 = Vector2.ZERO
 var _pops: Array[Dictionary] = []
+var _plates: Array[Rect2] = []          # build 20 pass 2: this frame's name plates (screen px)
 var _pop_side: float = 1.0
 var _callout: String = ""
 var _callout_col: Color = Color.WHITE
@@ -143,6 +144,7 @@ const BOSS_DEEP := Color("#8E2BD9")
 const POP_LIFE: float = 0.7              # damagePop: rise 56 pt over 700 ms, fade the last 200 ms
 const POP_MAX: int = 6                   # at most six numbers; the oldest fades first
 const POP_STACK_S: float = 0.3           # a number within 300 ms of the last on a fighter stacks above it
+const POP_RISE: float = 44.0             # pt (build 20 pass 2: 56 -> 44, it rose into the name plate)
 const PT: float = 1.85                   # HUD px per phone point (720 px across ~390 pt)
 var _clock: float = 0.0
 var _chip: Dictionary = {}             # unit id -> trailing fraction (the chip-away)
@@ -643,6 +645,7 @@ func _draw_overheads() -> void:
 		var boss: bool = int(u["team"]) == 1
 		var w: float = 150.0 if boss else 108.0
 		boxes.append({"u": u, "p": p, "w": w, "boss": boss})
+	_plates.clear()
 	boxes.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return (a["p"] as Vector2).y > (b["p"] as Vector2).y)
 	for i in boxes.size():
 		for j in i:
@@ -664,6 +667,9 @@ func _draw_overheads() -> void:
 			continue
 		var h: float = 13.0 if boss else 11.0
 		var r := Rect2(p + Vector2(-w * 0.5, 0), Vector2(w, h))
+		# build 20 pass 2: the plate's box (name above the bar, the level badge, the ENRAGED line), so
+		# the damage numbers keep out of it
+		_plates.append(Rect2(p + Vector2(-w * 0.5 - 26.0, -34.0), Vector2(w + 52.0, h + 34.0 + (26.0 if boss and enemy_label != "" else 4.0))))
 		if not boss:   # look-fight: the Guardian's bar is the big one along the top
 			_rbar(r, k, fill, float(_chip.get(id, k)), float(u.get("shield", 0.0)))
 		if not boss:
@@ -692,8 +698,9 @@ func _draw_pops() -> void:
 		var style: String = d["style"]
 		# look-fight damagePop (art direction 6.3): 0.6 -> 1.15 -> 1.0 over 180 ms, rises 56 pt over
 		# 700 ms easing out, fades over the last 200 ms (or 120 ms when a seventh number pushes it out)
-		var rise: float = 56.0 * PT * (1.0 - pow(1.0 - clampf(t / POP_LIFE, 0.0, 1.0), 2.0))
+		var rise: float = POP_RISE * PT * (1.0 - pow(1.0 - clampf(t / POP_LIFE, 0.0, 1.0), 2.0))
 		var p: Vector2 = cam.unproject_position(w) + Vector2(float(d["dx"]), float(d.get("dy", 0.0)) - 10.0 - rise)
+		p.x += _pop_clear(d, p)
 		var a: float = 1.0 - clampf((t - (POP_LIFE - 0.2)) / 0.2, 0.0, 1.0)
 		if d.has("out"):
 			a = minf(a, 1.0 - clampf((t - float(d["out"])) / 0.12, 0.0, 1.0))
@@ -734,6 +741,27 @@ func _draw_pops() -> void:
 				fs = int(17.0 * PT)
 				col = Color(0.5, 0.87, 0.96, a)    # #7FDDF5
 		_text_scaled(p, str(d["s"]), fs, col, ol, punch, ocol, float(d.get("rot", 0.0)))
+
+
+## build 20 pass 2: how far (px, x only) a number at `p` must slide to stay clear of every name
+## plate. A number that sat over "Guardian" slides off to the side it is already on. Its slide only
+## grows over its life, so it never jitters back over the plate.
+func _pop_clear(d: Dictionary, p: Vector2) -> float:
+	var s: String = str(d["s"])
+	var fs: float = 34.0 * PT if str(d["style"]) == "crit" else 26.0 * PT
+	var hw: float = fs * 0.34 * float(s.length()) + 10.0
+	var hh: float = fs * 0.5
+	var px: float = float(d.get("px", 0.0))
+	for r: Rect2 in _plates:
+		var q := Rect2(Vector2(p.x + px - hw, p.y - hh), Vector2(hw * 2.0, hh * 2.0))
+		if not q.intersects(r):
+			continue
+		var right: bool = (p.x + px) >= r.get_center().x
+		var need: float = (r.end.x + hw + 4.0 - p.x) if right else (r.position.x - hw - 4.0 - p.x)
+		if absf(need) > absf(px):
+			px = need
+	d["px"] = px
+	return px
 
 
 ## look-fight damagePop scale: 0.6 to `peak` in 90 ms, back to 1.0 by 180 ms.
@@ -945,12 +973,13 @@ func _draw_controls() -> void:
 	var active: bool = _stick_id != -999 or stick != Vector2.ZERO
 	var base_c: Vector2 = _stick_origin if active else _stick_home()
 	var knob_c: Vector2 = _knob if active else _stick_home()
-	var a: float = 1.0 if active else 0.75
+	# build 20 pass 2: lighter at rest (0.75 -> 0.42) and slimmer, so the fight shows through it
+	var a: float = 0.9 if active else 0.42
 	_tex(T_STICK_BASE, base_c, STICK_BASE_R, Color(1, 1, 1, a))
 	if stick != Vector2.ZERO:
 		var dir: float = atan2(-stick.y, stick.x)
 		draw_arc(base_c, STICK_BASE_R - 5.0, dir - 0.6, dir + 0.6, 16, Color(0.6, 0.95, 1.0, 0.85), 6.0, true)
-	_tex(T_STICK_KNOB, knob_c, STICK_KNOB_R * (1.06 if active else 1.0), Color(1, 1, 1, 0.95 if active else 0.85))
+	_tex(T_STICK_KNOB, knob_c, STICK_KNOB_R * (1.06 if active else 1.0), Color(1, 1, 1, 0.92 if active else 0.62))
 	# attack: big, pressed-state squash and a ring burst, combo pips round the top
 	var ac: Vector2 = attack_centre()
 	var pk: float = _press[0]
@@ -960,7 +989,7 @@ func _draw_controls() -> void:
 	var held: bool = attack_held and pk < 0.0
 	if held:
 		s0 = 0.92
-	_tex(T_BTN_BASE, ac, ATTACK_R * s0, Color(1, 1, 1, 0.95))
+	_tex(T_BTN_BASE, ac, ATTACK_R * s0, Color(1, 1, 1, 0.78))
 	if pk >= 0.0:
 		var kr: float = pk / 0.3
 		_tex(T_BTN_ULT, ac, ATTACK_R * lerpf(1.0, 1.55, kr), Color(1, 0.9, 0.6, 1.0 - kr))
@@ -982,7 +1011,7 @@ func _draw_controls() -> void:
 		var cd: float = skill_cd[i]
 		var ok: bool = skill_ok[i] and cd <= 0.0
 		# the reference's button: a translucent light disc, the icon on it
-		_tex(T_BTN_BASE, c, r + 4.0, Color(1, 1, 1, 0.9))
+		_tex(T_BTN_BASE, c, r + 2.0, Color(1, 1, 1, 0.62))
 		var icon: Texture2D = SKILL_ICONS_OFF[i] if cd > 0.0 or not skill_ok[i] else SKILL_ICONS[i]
 		var mod: Color = Color.WHITE if ok else (Color(0.85, 0.85, 0.9, 0.95) if cd > 0.0 else Color(0.8, 0.8, 0.85, 0.75))
 		_tex(icon, c, r * ICON_K[i], mod)
@@ -996,7 +1025,7 @@ func _draw_controls() -> void:
 	# guard
 	var gc: Vector2 = guard_centre()
 	var gs: float = 0.9 if guard_on else 1.0
-	_disc(gc, GUARD_R + 3.0, Color(0.05, 0.03, 0.1, 0.55))
+	_disc(gc, GUARD_R + 3.0, Color(0.05, 0.03, 0.1, 0.32))
 	if guard_on:
 		_disc(gc, GUARD_R + 7.0, Color(0.5, 0.85, 1.0, 0.35))
 	_tex(T_GUARD, gc, GUARD_R * gs, Color.WHITE if guard_on else Color(1, 1, 1, 0.85))

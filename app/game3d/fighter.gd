@@ -8,9 +8,13 @@ const HitArea := preload("res://hit_area.gd")
 const Animator := preload("res://combat_animator.gd")
 ## cq 015 rim (char_lit.gdshader): strength on the key light's side, and the share of it the
 ## team-coloured sky-side rim gets
-const RIM_AMOUNT: float = 1.7
-const RIM_BOSS: float = 1.8
-const RIM_TEAM: float = 0.45
+## build 20 pass 2 (one look): the rim was a fixed peach at 1.7 with a 0.45 team tint, so the fighters
+## glowed green, cyan and red at the edges against a street lit by a plainer sun. It now takes the time
+## preset's key colour (rim_key, set in _lit_material) and is a little softer, the team tint a hint.
+const RIM_AMOUNT: float = 1.35
+const RIM_BOSS: float = 1.5
+const RIM_TEAM: float = 0.25
+const SHADE_SHARE: float = 0.45       # how much of the street's shade colour the fighters' dark side takes
 const FLASH_SHADER := preload("res://vfx/flash.gdshader")
 const LIT_SHADER := preload("res://vfx/char_lit.gdshader")
 const ArenaScript := preload("res://arena.gd")
@@ -480,8 +484,21 @@ func _lit_material(m: Material) -> ShaderMaterial:
 	sm.set_shader_parameter("rim_amount", (RIM_BOSS if role == "boss" else RIM_AMOUNT) if rim_on else 0.0)
 	sm.set_shader_parameter("team_amount", RIM_TEAM)
 	ArenaScript.set_hemi(sm, look)
+	var tp: Dictionary = ArenaScript.time_preset(look)
+	sm.set_shader_parameter("rim_key", (tp["key_color"] as Color).lerp(Color.WHITE, 0.15))
+	sm.set_shader_parameter("shade_tint", shade_tint(tp))
 	_lit_mats.append(sm)
 	return sm
+
+
+## The fighters' shade multiplier for a time preset: its shade colour brought to the brightness of
+## white (only its hue), SHADE_SHARE of the way. Golden hour: a faint blue-violet on the dark side.
+static func shade_tint(tp: Dictionary) -> Color:
+	var sc: Color = tp.get("shade", Color.WHITE)
+	var mx: float = maxf(sc.r, maxf(sc.g, sc.b))
+	if mx <= 0.0:
+		return Color.WHITE
+	return Color.WHITE.lerp(Color(sc.r / mx, sc.g / mx, sc.b / mx), SHADE_SHARE)
 
 
 func _set_overlay(on: bool) -> void:
@@ -822,18 +839,20 @@ func tick_visual(dt: float) -> void:
 	if kv > 1.0 and not dead:
 		var kk: float = clampf((kv - 1.0) / 6.0, 0.0, 1.0)
 		var kl: Vector3 = global_basis.orthonormalized().inverse() * kb_vel.normalized()
-		rot.x += 0.24 * kk * kl.z
-		rot.z -= 0.24 * kk * kl.x
-		pos.y -= 0.05 * kk * size_k
+		rot.x += 0.32 * kk * kl.z
+		rot.z -= 0.32 * kk * kl.x
+		pos.y -= 0.07 * kk * size_k
 	body.position = pos
 	body.rotation = rot
 	body.scale = Vector3(sc * sxz, sc * (1.0 + 0.6 * (1.0 - sxz)) * maxf(0.05, sxz), sc * sxz)
 	if _cast != null:
 		_cast.visible = visible
 		_cast.global_transform = Transform3D(Basis(Vector3.UP, _cast_yaw), global_position + _cast_off + Vector3(0, 0.04, 0))
+	_tick_feet()
 	# hit flash
-	if _flash > 0.0:
-		_flash = maxf(0.0, _flash - dt * 7.0)
+	if _flash > 0.0 and _shud_t <= 0.0:
+		# build 20 pass 2: the flash holds through the hit-stop (the shudder), then fades
+		_flash = maxf(0.0, _flash - dt * 6.0)
 	_overlay.set_shader_parameter("flash", _flash)
 	_set_overlay(_flash > 0.0 and not _overlay_meshes.is_empty())
 	if _flash != _lit_flash:
@@ -873,6 +892,103 @@ func tick_visual(dt: float) -> void:
 
 var _bm_pos: Vector3
 var _bm_rot: Vector3
+
+# build 20 pass 2: contact shadows under each foot. The sun blob is a broad soft disc round the
+# fighter; on its own it read as a shadow the body floated over. Each foot now has a small, dark,
+# tight shadow right under it (the ankle/toe bones projected to the ground) that fades and widens
+# as the foot lifts, so a planted foot reads as touching the paving. Presentation only.
+const FOOT_SHADOW: Vector2 = Vector2(0.42, 0.62)    # m (across, along the foot) at size 1
+const FOOT_LIFT_FADE: float = 0.32                   # m: a foot this high has no contact shadow
+const FOOT_ALPHA: float = 0.78
+const FOOT_BONES: Array = [["LeftToeBase", "LeftFoot", "foot.L", "Foot_L"], ["RightToeBase", "RightFoot", "foot.R", "Foot_R"]]
+var _feet: Array = []          # [[MeshInstance3D, toe bone, ankle bone], ...]
+var _feet_sk: Skeleton3D = null
+var _feet_mat: StandardMaterial3D
+var foot_shadows: bool = true  # set false by fight.gd from the look ("feet": false)
+static var _foot_tex: ImageTexture
+
+
+## The foot shadow's texture: a soft dark ellipse with a denser core (64 px, drawn once).
+static func _foot_shadow_tex() -> ImageTexture:
+	if _foot_tex != null:
+		return _foot_tex
+	var img := Image.create(64, 64, false, Image.FORMAT_RGBA8)
+	for y in 64:
+		for x in 64:
+			var d: float = Vector2((x + 0.5) / 32.0 - 1.0, (y + 0.5) / 32.0 - 1.0).length()
+			var a: float = clampf(1.0 - d, 0.0, 1.0)
+			a = 0.55 * pow(a, 0.9) + 0.45 * pow(a, 3.0)
+			img.set_pixel(x, y, Color(0.05, 0.03, 0.08, a))
+	img.generate_mipmaps()
+	_foot_tex = ImageTexture.create_from_image(img)
+	return _foot_tex
+
+
+func _bind_feet() -> void:
+	for f: Array in _feet:
+		(f[0] as Node).queue_free()
+	_feet = []
+	_feet_sk = anim.skeleton
+	if _feet_sk == null or not foot_shadows:
+		return
+	if _feet_mat == null:
+		_feet_mat = StandardMaterial3D.new()
+		_feet_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		_feet_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		_feet_mat.albedo_texture = _foot_shadow_tex()
+		_feet_mat.disable_receive_shadows = true
+		_feet_mat.vertex_color_use_as_albedo = false
+	for names: Array in FOOT_BONES:
+		var toe: int = -1
+		var ankle: int = -1
+		for nm: String in names:
+			var b: int = _feet_sk.find_bone(nm)
+			if b < 0:
+				continue
+			if nm.contains("Toe"):
+				toe = b
+			elif ankle < 0:
+				ankle = b
+		if ankle < 0 and toe < 0:
+			continue
+		var mi := MeshInstance3D.new()
+		mi.name = "FootShadow"
+		var q := PlaneMesh.new()
+		q.size = FOOT_SHADOW * size_k
+		mi.mesh = q
+		var m: StandardMaterial3D = _feet_mat.duplicate()
+		mi.material_override = m
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		mi.top_level = true
+		add_child(mi)
+		_feet.append([mi, toe, ankle])
+
+
+func _tick_feet() -> void:
+	if anim.skeleton != _feet_sk:
+		_bind_feet()
+	if _feet.is_empty() or _feet_sk == null or not is_instance_valid(_feet_sk):
+		return
+	var xf: Transform3D = _feet_sk.global_transform
+	var gy: float = global_position.y
+	var fwd: Vector3 = (body.global_basis.z * Vector3(1, 0, 1))
+	var yaw_v: float = atan2(fwd.x, fwd.z) if fwd.length_squared() > 0.0001 else yaw
+	for f: Array in _feet:
+		var mi: MeshInstance3D = f[0]
+		var toe: int = f[1]
+		var ankle: int = f[2]
+		var pa: Vector3 = xf * _feet_sk.get_bone_global_pose(ankle if ankle >= 0 else toe).origin
+		var pt: Vector3 = xf * _feet_sk.get_bone_global_pose(toe).origin if toe >= 0 else pa
+		# the sole's height: the lower of the toe and (the ankle less its own height off the sole)
+		var h: float = maxf(0.0, minf(pt.y - gy - 0.03 * size_k, pa.y - gy - 0.09 * size_k))
+		var k: float = clampf(1.0 - h / (FOOT_LIFT_FADE * size_k), 0.0, 1.0)
+		mi.visible = visible and k > 0.02 and not (dead and _diss_t >= 0.0)
+		if not mi.visible:
+			continue
+		var c: Vector3 = pa.lerp(pt, 0.55)
+		var grow: float = 1.0 + 0.5 * (1.0 - k)
+		mi.global_transform = Transform3D(Basis(Vector3.UP, yaw_v).scaled(Vector3(grow, 1.0, grow)), Vector3(c.x, gy + 0.05, c.z))
+		(mi.material_override as StandardMaterial3D).albedo_color = Color(1, 1, 1, FOOT_ALPHA * k * k)
 
 
 ## Root-motion stand-ins per state; k is the state's phase 0..1.

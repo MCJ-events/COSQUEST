@@ -23,6 +23,7 @@ const BLEND_LOOP: float = 0.18
 const BLEND_HIT: float = 0.06
 const BLEND_RECOVER: float = 0.26        # fight-anim: out of a hit reaction, a soft recovery
 const BLEND_VICTORY_IDLE: float = 0.5    # fight-anim: the cheer settles into the idle loop
+const BLEND_IN_MIN: Dictionary = {"skill_whirl": 0.17, "skill_split": 0.12}   # build 20 pass 2
 
 # fight-anim: the most a clip's wind-up is sped up to land its contact frame on the gameplay hit.
 # A faster wind-up starts later in the clip instead (the crossfade carries the body into it), so a
@@ -330,6 +331,9 @@ func play(st: String, game_len: float = 0.0, hit_at: float = -1.0, blend: float 
 			blend = BLEND_ACT if restart else BLEND_LOOP
 		elif (was == "hit" or was == "stagger") and not restart:
 			blend = BLEND_RECOVER
+		# build 20 pass 2: the spin's first pose is far from any swing's last (the off forearm
+		# turned 148-157 deg in one frame going into the whirl): it fades in over a few frames more
+		blend = maxf(blend, float(BLEND_IN_MIN.get(st, 0.0)))
 	var m: Dictionary = timing.get(st, {})
 	var fps: float = float(m.get("fps", 30.0))
 	var t_in: float = float(m.get("in", 0)) / fps

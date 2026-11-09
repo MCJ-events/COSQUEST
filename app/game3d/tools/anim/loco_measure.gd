@@ -11,7 +11,8 @@ extends SceneTree
 
 const AnimLib := preload("res://anim_library.gd")
 const HEIGHT: float = 2.3
-const CLIPS: Array[String] = ["Walking_A", "Walking_B", "Running_A", "Running_B", "Staff_Walk", "Staff_Run"]
+const CLIPS: Array[String] = ["Walking_A", "Walking_B", "Running_A", "Running_B", "Staff_Walk", "Staff_Run",
+	"UAL_Jog", "UAL_Sprint", "Staff_Jog", "Staff_Sprint"]
 const CONTACT: Array[String] = ["LeftFoot", "LeftToeBase", "RightFoot", "RightToeBase"]
 
 var _keys: Array = []
@@ -111,7 +112,9 @@ func _process(_dt: float) -> bool:
 				var p: Vector3 = xf * _sk.get_bone_global_pose(b).origin
 				if p.y < low.y:
 					low = p
-		_samples.append([low.y, low.z, low.x])
+		var hb: int = _sk.find_bone("Hips")
+		var hy: float = (xf * _sk.get_bone_global_pose(hb).origin).y if hb >= 0 else 0.0
+		_samples.append([low.y, low.z, low.x, hy])
 	var a: Animation = _ap.get_animation("cq/" + str(_clips[_ci]))
 	if _f > 3 + int(a.length * 30.0 * 2.0):
 		_finish_clip()
@@ -133,5 +136,13 @@ func _finish_clip() -> void:
 	var med: float = float(sp[sp.size() / 2]) if not sp.is_empty() else 0.0
 	var key: String = _keys[_ki]
 	(_res[key] as Dictionary)[_clips[_ci]] = snappedf(med / _hip, 0.001)
-	print("CQLOCO key=%s clip=%s stance_frames=%d ground_mps=%.3f per_hip=%.3f hip=%.3f" % [key, _clips[_ci], sp.size(), med, med / _hip, _hip])
+	# build 20 pass 2: how far the body bobs (hips) and how high the lowest foot gets (flight)
+	var hmin: float = INF
+	var hmax: float = -INF
+	var lmax: float = -INF
+	for s2: Array in _samples:
+		hmin = minf(hmin, float(s2[3]))
+		hmax = maxf(hmax, float(s2[3]))
+		lmax = maxf(lmax, float(s2[0]) - miny)
+	print("CQLOCO key=%s clip=%s stance_frames=%d ground_mps=%.3f per_hip=%.3f hip=%.3f bob=%.3f flight=%.3f" % [key, _clips[_ci], sp.size(), med, med / _hip, _hip, hmax - hmin, lmax])
 	_next_clip()

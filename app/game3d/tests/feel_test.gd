@@ -34,15 +34,15 @@ func _check(name: String, ok: bool, why: String = "") -> void:
 func _initialize() -> void:
 	_check("rules_id_unchanged", FightScript.rules_id() == "f3d-1-21d2cde61ab2", FightScript.rules_id())
 	var m: Dictionary = FeelScript.MOMENTS
-	_check("table_light", is_equal_approx(float(m["light"]["stop"]), 0.05) and is_equal_approx(float(m["light"]["trauma"]), 0.04))
-	_check("table_crit", is_equal_approx(float(m["crit"]["stop"]), 0.1) and is_equal_approx(float(m["crit"]["zoom"]), 0.04))
-	_check("table_boss_ko", is_equal_approx(float(m["boss_ko"]["stop"]), 0.16) and is_equal_approx(float(m["boss_ko"]["slow"]), 0.3)
+	_check("table_light", is_equal_approx(float(m["light"]["stop"]), 0.067) and is_equal_approx(float(m["light"]["trauma"]), 0.06))
+	_check("table_crit", is_equal_approx(float(m["crit"]["stop"]), 0.15) and is_equal_approx(float(m["crit"]["zoom"]), 0.05))
+	_check("table_boss_ko", is_equal_approx(float(m["boss_ko"]["stop"]), 0.2) and is_equal_approx(float(m["boss_ko"]["slow"]), 0.3)
 		and is_equal_approx(float(m["boss_ko"]["slow_s"]), 0.5))
 	_check("table_hero_ko", is_equal_approx(float(m["hero_ko"]["slow"]), 0.5) and is_equal_approx(float(m["hero_ko"]["desat"]), 0.6))
 	var f := FeelScript.new()
 	f.reduce_motion = true
 	f.shake("crit", 1.0, false)
-	_check("reduce_motion_quarter_shake", is_equal_approx(f.trauma, 0.04), str(f.trauma))
+	_check("reduce_motion_quarter_shake", is_equal_approx(f.trauma, 0.06), str(f.trauma))
 	_check("reduce_motion_no_zoom", f.zoom("crit") == 0.0)
 	var g := FeelScript.new()
 	g.shake("heavy", 1.0, true)
@@ -55,7 +55,7 @@ func _initialize() -> void:
 	g.shake("ult", 20.0, false)
 	_check("budget_lets_ult_through", g.trauma > 0.0)
 	g.shake("boss_ko", 20.0, false)
-	_check("budget_lets_ko_through", g.trauma >= 0.24)
+	_check("budget_lets_ko_through", g.trauma >= 0.28)
 	var main: Node = load("res://main.tscn").instantiate()
 	root.add_child(main)
 	current_scene = main

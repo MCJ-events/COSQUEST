@@ -23,7 +23,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { File, Paths } from "expo-file-system";
 import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, AppState, BackHandler, Platform, Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { ActivityIndicator, AppState, BackHandler, PixelRatio, Platform, Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { castWeapons, fightCast } from "@/features/game3d/characters";
@@ -221,6 +221,11 @@ export default function Fight3D({
         if (probe.selfCycle) Object.assign(config, { self_cycle: probe.selfCycle, self_cycle_ms: 6000 });
         // Look switches (test link look=post etc.): the opt-in post stack on a device.
         if (probe.look) Object.assign(config, { look: probe.look });
+        // Build 20: the view's size in pixels. Godot keeps the fight in "loading" (this card stays up)
+        // until its window is this size and has drawn a few frames at it, so the player never sees the
+        // blank first frames or a small frame in a corner (fight.gd _begin_when_shown, at most 8 s).
+        const px = PixelRatio.get();
+        Object.assign(config, { view_px: [Math.round(win.width * px), Math.round(win.height * px)] });
         if (holdRef.current) {
           // Ready under the reveal: wait for its handover.
           log(`ready, held for the reveal after_ms=${Date.now() - openedAt.current}`);

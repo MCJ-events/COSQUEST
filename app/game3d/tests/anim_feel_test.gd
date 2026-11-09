@@ -130,11 +130,14 @@ func _process(dt: float) -> bool:
 				_check("back_to_idle_after_stagger", a.state == "idle", a.state)
 				a.update(1.0 / 30.0, 4.6, false)
 				var top_clip: String = a.player.get_current_animation()
+				# build 20 pass 2: the UAL jog/sprint ground speeds are now the measured ones of the damped
+				# stride (2.066 / 2.871 per hip, were 4.0 / 5.615), so the feet hold the ground and the
+				# sprint turns over faster at the same body speed (about 1.45x at 4.6 m/s, was 1.0x skating)
 				_check("fast_run_at_top_speed", (a.state == "run" or a.state == "sprint") and not top_clip.contains("Running_")
-					and a.walk_rate > 0.8 and a.walk_rate < 1.3, "%s %s rate=%.2f" % [a.state, top_clip, a.walk_rate])
+					and a.walk_rate > 0.8 and a.walk_rate < 1.6, "%s %s rate=%.2f" % [a.state, top_clip, a.walk_rate])
 				print("CQTEST info hero top-speed loco state=%s clip=%s rate=%.2f" % [a.state, a.player.get_current_animation(), a.walk_rate])
 				a.update(1.0 / 30.0, 3.0, false)
-				_check("jog_at_mid_speed", a.state == "run" and a.walk_rate > 0.6 and a.walk_rate < 1.3,
+				_check("jog_at_mid_speed", (a.state == "run" or a.state == "sprint") and a.walk_rate > 0.6 and a.walk_rate < 1.3,
 					"%s rate=%.2f" % [a.state, a.walk_rate])
 				a.update(1.0 / 30.0, 0.0, false)
 				_f.celebrate()

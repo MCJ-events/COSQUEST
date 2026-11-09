@@ -21,22 +21,25 @@ extends RefCounted
 ##   slow     after the stop, time runs at this rate for slow_s (KO only).
 ##   orbit    degrees the camera turns round the fallen fighter during the KO beat.
 ##   desat    how far the world desaturates over slow_s (hero KO).
+## build 20 pass 2 (the owner, watching build 19 vs 20: "hits lack weight"): every stop is a frame
+## or two longer and the shake about half again as strong, scaled by how big the blow is. Light hits
+## stay quick (a 4-frame hold), so a combo still flows; heavy, crit, skills and the ultimate land.
 const MOMENTS: Dictionary = {
-	"light": {"stop": 0.050, "trauma": 0.04},
-	"heavy": {"stop": 0.083, "trauma": 0.10},
-	"crit": {"stop": 0.100, "trauma": 0.16, "zoom": 0.04},
-	"skill_s": {"stop": 0.067, "trauma": 0.08},
-	"skill_m": {"stop": 0.067, "trauma": 0.11},
-	"skill_l": {"stop": 0.067, "trauma": 0.14},
-	"ult": {"stop": 0.120, "trauma": 0.20, "tint": 0.10, "tint_s": 0.25},
-	"hurt": {"stop": 0.050, "trauma": 0.10, "vignette": 0.15, "vignette_s": 0.2},
-	"hurt_heavy": {"stop": 0.083, "trauma": 0.18, "vignette": 0.15, "vignette_s": 0.2},
-	"block": {"stop": 0.050, "trauma": 0.04},
-	"parry": {"stop": 0.100, "trauma": 0.16, "zoom": 0.04},
-	"boss_slam": {"stop": 0.0, "trauma": 0.10},
+	"light": {"stop": 0.067, "trauma": 0.06},
+	"heavy": {"stop": 0.117, "trauma": 0.16},
+	"crit": {"stop": 0.15, "trauma": 0.24, "zoom": 0.05},
+	"skill_s": {"stop": 0.083, "trauma": 0.11},
+	"skill_m": {"stop": 0.1, "trauma": 0.15},
+	"skill_l": {"stop": 0.117, "trauma": 0.19},
+	"ult": {"stop": 0.15, "trauma": 0.26, "tint": 0.12, "tint_s": 0.28},
+	"hurt": {"stop": 0.067, "trauma": 0.12, "vignette": 0.18, "vignette_s": 0.22},
+	"hurt_heavy": {"stop": 0.1, "trauma": 0.22, "vignette": 0.2, "vignette_s": 0.25},
+	"block": {"stop": 0.067, "trauma": 0.06},
+	"parry": {"stop": 0.133, "trauma": 0.2, "zoom": 0.05},
+	"boss_slam": {"stop": 0.0, "trauma": 0.12},
 	"enrage": {"stop": 0.0, "trauma": 0.10},
-	"boss_ko": {"stop": 0.160, "trauma": 0.24, "zoom": 0.08, "orbit": 6.0, "slow": 0.3, "slow_s": 0.5},
-	"hero_ko": {"stop": 0.120, "trauma": 0.12, "slow": 0.5, "slow_s": 0.4, "desat": 0.6},
+	"boss_ko": {"stop": 0.2, "trauma": 0.28, "zoom": 0.08, "orbit": 6.0, "slow": 0.3, "slow_s": 0.5},
+	"hero_ko": {"stop": 0.15, "trauma": 0.14, "slow": 0.5, "slow_s": 0.4, "desat": 0.6},
 }
 
 const SHAKE_CAP_M: float = 0.32       # offset at trauma 1

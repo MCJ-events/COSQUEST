@@ -126,8 +126,8 @@ const BOLT_SPEED: float = 14.0
 const CAM_PITCH: float = 34.0     # cq 016: lower, looking along the street (was 44)
 const CAM_YAW: float = 12.0       # cq 016: turned a little left, so the left shop fronts face the camera
 const CAM_FOV: float = 52.0
-const CAM_DIST: float = 20.0
-const CAM_AHEAD: float = 3.0      # cq 016: the fight in the lower half, the street and the cross street above it
+const CAM_DIST: float = 15.0      # build 20 pass 2: 20 -> 15, the fighters a third bigger in the frame
+const CAM_AHEAD: float = 1.2      # cq 016: the fight in the lower half (pass 2: 3.0 -> 1.2, the fight sits above the controls, not among them)
 const CAM_SMOOTH: float = 0.16
 const CAM_LOOK: float = 0.7
 const CAM_BOUNDS: float = 8.0          # along the street (the fight keeps within ARENA_Z = +-9)
@@ -139,8 +139,8 @@ const CAM_BOUNDS_X: float = 3.0        # across it: the street stays centred, th
 ## of the frame while the fighters stay where they were on screen. The fight's rules never see it.
 const CAM_PLACE_PITCH: float = 30.0      # look-world: the art direction asks 30 to 34 deg in places (was 27)
 const CAM_PLACE_TILT: float = 7.0       # the view's lift over the orbit (deg): 0 aims at the fight
-const CAM_PLACE_DIST: float = 21.0
-const CAM_PLACE_AHEAD: float = 1.5
+const CAM_PLACE_DIST: float = 16.0      # build 20 pass 2: 21 -> 16 (as the street)
+const CAM_PLACE_AHEAD: float = 0.6
 const CAM_PLACE_FOV: float = 56.0
 const CAM_FAR: float = 600.0            # env-fixes 1: past the fog's end (arena.gd FOG_END_*), so nothing is cut
 ## env-fixes 3 (audit issue 17): the 3D resolution and anti-aliasing. A device (a real GPU) draws the
@@ -614,6 +614,8 @@ func _spawn(n: String, team: int, hp_max: int, c: Color, at: Vector3, yaw: float
 	add_child(f)
 	# cq 015: the fighters' rim light follows the arena's key light (docs/game3d/LOOK.md)
 	f.rim_on = bool((arena.get("look") as Dictionary).get("rim", true)) if arena != null else true
+	# build 20 pass 2: the per-foot contact shadows (look "feet": false turns them off to measure them)
+	f.foot_shadows = bool((arena.get("look") as Dictionary).get("feet", true)) if arena != null else true
 	f.key_dir = ArenaScript.key_dir()
 	f.look = arena.get("look") if arena != null else {}
 	f.sun_blob = bool((arena.get("look") as Dictionary).get("ao", true)) if arena != null else true
@@ -635,10 +637,13 @@ func _spawn(n: String, team: int, hp_max: int, c: Color, at: Vector3, yaw: float
 func _begin_when_built() -> void:
 	if arena != null:
 		arena.call("finish_place")
-	_begin_or_intro()
+	_begin_when_shown()
 
 
 func _poll_loading() -> void:
+	if _view_wait:
+		_tick_view_gate()
+		return
 	if arena != null:
 		arena.call("pump_place")
 	if _thread != null:
@@ -655,7 +660,7 @@ func _poll_loading() -> void:
 		hud.loading_text = ""
 		for f: FighterScript in fighters:
 			f.visible = true
-		_begin_or_intro()
+		_begin_when_shown()
 		return
 	_loading_role = _load_queue.pop_front()
 	var path: String = _loading_role["path"]
@@ -809,6 +814,59 @@ func _make_portrait() -> void:
 const INTRO_LEN: float = 3.4
 var _intro_t: float = -1.0
 var _intro_from: Transform3D
+
+
+## build 20 pass 2: the first frames on a phone. The app's loading card went as soon as Godot said
+## the fight was on, but the iOS view then showed ~15 s of its blank navy (the first frames, shaders
+## compiling) and a frame drawn at a third of the size in a corner before it filled the screen; on the
+## street the fight's clock was already running under it. With the app's screen size in the config
+## ("view_px": [w, h] in pixels) the fight now stays in "loading" (the card stays up) until the window
+## is that size and VIEW_GATE_FRAMES frames have been drawn at it, at most VIEW_GATE_MAX_S. Without
+## "view_px" (tests, captures, older apps) nothing waits.
+const VIEW_GATE_FRAMES: int = 4
+const VIEW_GATE_MAX_S: float = 8.0
+const VIEW_GATE_TOL: float = 0.12
+var _view_wait: bool = false
+var _view_t0: int = 0
+var _view_frames0: int = -1
+
+
+func _begin_when_shown() -> void:
+	var want: Variant = cfg.get("view_px", null)
+	if not (want is Array) or (want as Array).size() < 2 or float(want[0]) < 1.0 or float(want[1]) < 1.0:
+		_begin_or_intro()
+		return
+	_view_wait = true
+	state = "loading"
+	_view_t0 = Time.get_ticks_msec()
+	_view_frames0 = -1
+	_tick_view_gate()
+
+
+## True when a window of `have` pixels is the app's view of `want` pixels (either way round).
+static func view_size_ok(have: Vector2, want: Vector2) -> bool:
+	if want.x < 1.0 or want.y < 1.0:
+		return true
+	return absf(have.x / want.x - 1.0) <= VIEW_GATE_TOL and absf(have.y / want.y - 1.0) <= VIEW_GATE_TOL
+
+
+func _tick_view_gate() -> void:
+	var want: Array = cfg["view_px"]
+	var have: Vector2 = Vector2(get_window().size) if is_inside_tree() else Vector2.ZERO
+	var waited: float = (Time.get_ticks_msec() - _view_t0) / 1000.0
+	if view_size_ok(have, Vector2(float(want[0]), float(want[1]))):
+		if _view_frames0 < 0:
+			_view_frames0 = Engine.get_frames_drawn()
+		if Engine.get_frames_drawn() - _view_frames0 < VIEW_GATE_FRAMES and waited < VIEW_GATE_MAX_S:
+			return
+	else:
+		_view_frames0 = -1
+		if waited < VIEW_GATE_MAX_S:
+			return
+	_view_wait = false
+	_log("view shown size=%dx%d want=%dx%d waited_ms=%d frames=%d" % [int(have.x), int(have.y), int(want[0]), int(want[1]),
+		int(waited * 1000.0), (Engine.get_frames_drawn() - _view_frames0) if _view_frames0 >= 0 else 0])
+	_begin_or_intro()
 
 
 func _begin_or_intro() -> void:
@@ -988,6 +1046,7 @@ func _process(dt: float) -> void:
 	for f: FighterScript in fighters:
 		f.anim_freeze = frozen
 		f.tick_visual(dt)
+	_skid_dust(dt)
 	_follow_camera(dt)
 	_intro_camera()
 	_sync_hud()
@@ -1524,7 +1583,7 @@ func _apply_hit(src: FighterScript, dst: FighterScript, info: Dictionary) -> voi
 	if left > 0:
 		_take(dst, left, src, crit)
 	# feedback
-	dst.flash(0.85 if crit else (0.7 if heavy else 0.55))   # cq 013: a short white pop that keeps the body readable
+	dst.flash(0.95 if crit else (0.82 if heavy else 0.68))   # cq 013: a short white pop that keeps the body readable (pass 2: held through the stop)
 	dst.hurt_pop(away, 1.4 if crit else (1.0 if heavy else 0.6))   # fight-anim: + the recoil away from the blow
 	var kb: float = float(info.get("kb", 0.3))
 	if dst == enemy:
@@ -2286,6 +2345,31 @@ func _feel_cam(name: String, dir: Vector3 = Vector3.ZERO) -> void:
 		_fov_kick = maxf(_fov_kick, _base_fov * z)
 	if dir != Vector3.ZERO and not _reduce_motion:
 		_kick += _flat(dir).normalized() * 0.4 * float(FeelScript.moment(name).get("trauma", 0.0))
+
+
+## build 20 pass 2: a shove reads as a shove. While a fighter is knocked back faster than
+## SKID_V its feet kick up dust behind it every SKID_EVERY s (presentation only: fx's own randomness).
+const SKID_V: float = 2.5
+const SKID_EVERY: float = 0.07
+var _skid_t: Dictionary = {}
+
+
+func _skid_dust(dt: float) -> void:
+	if fx == null or state != "fighting":
+		return
+	for f: FighterScript in fighters:
+		if f == null or f.dead or not f.visible:
+			continue
+		var kv: float = f.kb_vel.length()
+		var id: int = f.get_instance_id()
+		if kv < SKID_V:
+			_skid_t.erase(id)
+			continue
+		var t: float = float(_skid_t.get(id, 0.0)) - dt
+		if t <= 0.0:
+			t = SKID_EVERY
+			fx.dust(f.position + f.kb_vel.normalized() * -0.2 * f.size_k, false)
+		_skid_t[id] = t
 
 
 ## A blow's feel: the camera, the presentation hit-stop over the simulation's `sim_stop`, the

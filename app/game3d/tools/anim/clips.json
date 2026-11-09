@@ -465,6 +465,9 @@
    }
   },
   "UAL_Jog": {
+   "ground_speed_per_hip": 2.066,
+   "bob": 0.3,
+   "_why_speed": "build 20 pass 2: measured in game (tools/anim/loco_measure.gd) after damp_legs halved the stride; the build measured the undamped clip (4.0 / 5.615 per hip), so the feet skated",
    "src": "Jog_Fwd_Loop",
    "lib": "ual",
    "classes": [
@@ -491,6 +494,9 @@
    ]
   },
   "UAL_Sprint": {
+   "ground_speed_per_hip": 2.871,
+   "bob": 0.3,
+   "_why_speed": "build 20 pass 2: measured in game (tools/anim/loco_measure.gd) after damp_legs halved the stride; the build measured the undamped clip (4.0 / 5.615 per hip), so the feet skated",
    "src": "Sprint_Loop",
    "lib": "ual",
    "classes": [
@@ -742,6 +748,9 @@
    "_why": "autorig: the stagger's alternate (KayKit Walking_Backwards, CC0)"
   },
   "Staff_Jog": {
+   "ground_speed_per_hip": 2.066,
+   "bob": 0.3,
+   "_why_speed": "build 20 pass 2: measured in game (tools/anim/loco_measure.gd) after damp_legs halved the stride; the build measured the undamped clip (4.0 / 5.615 per hip), so the feet skated",
    "src": "Jog_Fwd_Loop",
    "lib": "ual",
    "classes": [
@@ -765,6 +774,9 @@
    "_why": "autorig: the staff set's run on the UAL jog (Quaternius UAL, CC0) with cq 016's staff hold"
   },
   "Staff_Sprint": {
+   "ground_speed_per_hip": 2.871,
+   "bob": 0.3,
+   "_why_speed": "build 20 pass 2: measured in game (tools/anim/loco_measure.gd) after damp_legs halved the stride; the build measured the undamped clip (4.0 / 5.615 per hip), so the feet skated",
    "src": "Sprint_Loop",
    "lib": "ual",
    "classes": [

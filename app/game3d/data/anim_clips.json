@@ -792,7 +792,8 @@
    "lib": "ual",
    "frames": 29,
    "fps": 30.0,
-   "ground_speed_per_hip": 4.0
+   "ground_speed_per_hip": 2.066,
+   "bob": 0.3
   },
   "Staff_Run": {
    "src": "Running_B",
@@ -806,7 +807,8 @@
    "lib": "ual",
    "frames": 21,
    "fps": 30.0,
-   "ground_speed_per_hip": 5.615
+   "ground_speed_per_hip": 2.871,
+   "bob": 0.3
   },
   "Staff_Walk": {
    "src": "Walking_B",
@@ -850,7 +852,8 @@
    "lib": "ual",
    "frames": 29,
    "fps": 30.0,
-   "ground_speed_per_hip": 4.0
+   "ground_speed_per_hip": 2.066,
+   "bob": 0.3
   },
   "UAL_Roll": {
    "src": "Roll",
@@ -869,7 +872,8 @@
    "lib": "ual",
    "frames": 21,
    "fps": 30.0,
-   "ground_speed_per_hip": 5.615
+   "ground_speed_per_hip": 2.871,
+   "bob": 0.3
   },
   "UAL_Sword_Attack": {
    "src": "Sword_Attack",

@@ -150,6 +150,8 @@ def main():
             # metres per second of the planted foot per metre of hip height (a character's own
             # speed is this times its hip height)
             clips_out[c]["ground_speed_per_hip"] = round(sorted(m["speed"])[len(m["speed"]) // 2], 3)
+        if cfg["clips"][c].get("bob"):
+            clips_out[c]["bob"] = cfg["clips"][c]["bob"]   # anim_library.gd debob
         override = cfg["clips"][c].get("contact")
         if override is not None:
             clips_out[c]["contact"] = override

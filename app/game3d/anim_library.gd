@@ -87,6 +87,9 @@ static func library(key: String) -> AnimationLibrary:
 				var bone: String = str(p.get_concatenated_subnames())
 				a.track_set_path(i, NodePath(".:" + bone))
 				fixed += despike(a, i)
+			var cd: Dictionary = (data().get("clips", {}) as Dictionary).get(str(n), {})
+			if cd.has("bob"):
+				debob(a, float(cd["bob"]))
 			lib.add_animation(n, a)
 			_despiked += fixed
 	root.free()
@@ -132,6 +135,31 @@ static func despike(a: Animation, i: int) -> int:
 		else:
 			k += 1
 	return fixed
+
+
+## build 20 pass 2: the UAL jog and sprint were retargeted with their leg swing damped by half
+## (clips.json damp_legs), but not the hips' bounce: the body rose 0.33-0.42 m a stride with both
+## feet off the ground for most of it, so a running fighter floated over its shadow. The hips'
+## height over the clip's lowest is scaled by `k` (the stance keys, at the lowest, stay put).
+## Position track of the Hips only; returns true when it changed the clip.
+static func debob(a: Animation, k: float) -> bool:
+	for i in a.get_track_count():
+		if a.track_get_type(i) != Animation.TYPE_POSITION_3D:
+			continue
+		if str(a.track_get_path(i).get_concatenated_subnames()) != "Hips":
+			continue
+		var n: int = a.track_get_key_count(i)
+		if n < 2:
+			return false
+		var lo: float = INF
+		for j in n:
+			lo = minf(lo, (a.track_get_key_value(i, j) as Vector3).y)
+		for j in n:
+			var v: Vector3 = a.track_get_key_value(i, j)
+			v.y = lo + (v.y - lo) * k
+			a.track_set_key_value(i, j, v)
+		return true
+	return false
 
 
 ## Adds the library to `player`, its tracks pointed at `skeleton`. Returns the clip names.

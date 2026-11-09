@@ -53,6 +53,7 @@ const LOOK_DEFAULTS: Dictionary = {
 	"glow": false,      # Godot glow (post pass): bloom on what is brighter than white. Off: see below
 	"grade": false,     # BCS + a split-tone LUT (post pass). Off: see below
 	"rim": true,        # the fighters' key-side rim light (in their own pass, fighter.gd)
+	"feet": true,       # build 20 pass 2: a small dark contact shadow under each planted foot (fighter.gd)
 	"ao": true,         # soft dark where the shop walls meet the paving
 	"halos": true,      # soft coloured halos round signs and lamp heads (bloom faked on the light)
 	"shadows": "auto",  # real directional shadows (the blob shadows are always on). look-world: "auto" = on
@@ -145,6 +146,7 @@ const FOG_END_PLACE: float = 320.0  # the place is built out to place.gd REACH (
 const GROUND_HALF: float = 320.0    # the paved floor, both arenas
 const HORIZON_HALF: float = 2400.0  # the ground ring out to the horizon (fogged out long before)
 
+const MEDALLION_M: float = 5.6
 var look: Dictionary = {}
 var sun: DirectionalLight3D
 var env: Environment
@@ -382,13 +384,15 @@ func build(cfg: Dictionary) -> void:
 	# the medallion at the centre: where the fight stands
 	plaza = MeshInstance3D.new()
 	var mq := PlaneMesh.new()
-	mq.size = Vector2(7.2, 7.2)
+	mq.size = Vector2(MEDALLION_M, MEDALLION_M)
 	plaza.mesh = mq
 	var mm := StandardMaterial3D.new()
 	mm.albedo_texture = T_MEDALLION
 	mm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
 	mm.alpha_scissor_threshold = 0.5
-	mm.albedo_color = Color(0.96, 0.92, 0.86)   # look-world: plaza stone, not pink (art direction 2.2)
+	# look-world: plaza stone, not pink (art direction 2.2). build 20 pass 2: quieter (0.96 -> 0.8) and
+	# smaller (7.2 -> 5.6 m): under the closer camera the bright copper disc read as the touch controls' ring
+	mm.albedo_color = Color(0.8, 0.77, 0.73)
 	mm.roughness = 0.9
 	plaza.material_override = mm
 	plaza.position.y = 0.02

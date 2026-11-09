@@ -26,6 +26,10 @@ uniform vec3 rim_team : source_color = vec3(0.5, 0.85, 1.0); // the sky side, ti
 uniform float rim_amount = 0.0;                              // 0 = no rim (look "rim": false)
 uniform float team_amount = 0.35;
 uniform float flash = 0.0;
+// build 20 pass 2 (one look): the street multiplies its time preset's shade colour into what faces away
+// from the sun (place bakes, facade.gdshader). The fighters do the same, a little less, so a body in
+// the street's shade is the street's colour of shade, not a separate cooler or brighter one.
+uniform vec3 shade_tint : source_color = vec3(1.0);
 // cq 015: the dusk sky's hemisphere ambient over the flat sky-up ambient the environment gives
 // (arena.gd SKY_*, set_hemi): walls get the lilac horizon, undersides the warm bounce. ALU only.
 uniform vec3 hemi_up : source_color = vec3(0.54, 0.6, 0.98);
@@ -92,5 +96,6 @@ void fragment() {
 	vec3 hit = vec3(1.0, 0.97, 0.92) * flash * (0.6 * body + 0.75 * pow(f, 1.5))
 		+ vec3(1.0, 0.85, 0.6) * flash * f3 * 0.6;
 	vec3 nw = (INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz;
+	ALBEDO *= mix(shade_tint, vec3(1.0), smoothstep(-0.25, 0.35, dot(nw, -key_dir)));
 	EMISSION = rim + hit + ALBEDO * hemi_extra(nw) * (1.0 - METALLIC);
 }

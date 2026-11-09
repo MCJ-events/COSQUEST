@@ -538,12 +538,17 @@ func sparks(at: Vector3, tint: Color, dmg: int, crit: bool = false, away: Vector
 	var key: String = ["spark_s", "spark_m", "spark_l"][tier]
 	var dir: Vector3 = (away.normalized() + Vector3(0, 0.6, 0)) if away != Vector3.ZERO else Vector3.UP
 	_emit(key, at, tint.lerp(Color.WHITE, 0.3), dir, 75.0 if away != Vector3.ZERO else 180.0)
-	var k: float = [1.15, 1.5, 1.85][tier] * (1.2 if crit else 1.0)
+	# build 20 pass 2: the flash grows with the damage itself (was three steps), so a 230 reads
+	# bigger than a 120 and a light 60 stays small
+	var k: float = clampf(0.75 + float(dmg) / 160.0, 1.0, 2.4) * (1.2 if crit else 1.0)
 	var flash_col: Color = tint.lerp(WHITE_HOT, 0.5)
 	card(STAR4, at, flash_col, 0.15, 0.6 * k, 1.25 * k, {"top": true, "add": 0.85, "hot": 1.0, "sp": 0.3, "fin": 0.05, "rand_rot": true})
 	card(GLOW, at, tint, 0.2, 0.6 * k, 1.3 * k, {"top": true, "add": 1.0, "sp": 0.4, "intensity": 0.65})
 	if tier >= 1 or crit:
 		card(RING, at, tint.lerp(Color.WHITE, 0.4), 0.2, 0.4 * k, 1.8 * k, {"top": true, "add": 0.8, "sp": 0.35})
+	if tier >= 2 and not crit:
+		# a big blow: impact lines out from the contact (a crit has its own below)
+		card(LINES, at, tint.lerp(Color.WHITE, 0.5), 0.18, 1.0 * k * 0.6, 2.4 * k * 0.6, {"top": true, "add": 0.85, "sp": 0.3, "rand_rot": true})
 	if crit:
 		card(BURST, at, Color(1.0, 0.82, 0.35), 0.24, 1.0, 2.4, {"top": true, "add": 0.7, "hot": 1.0, "sp": 0.3, "rand_rot": true, "spin": 2.0})
 		card(LINES, at, Color(1.0, 0.92, 0.6), 0.22, 1.4, 3.4, {"top": true, "add": 0.9, "sp": 0.3, "rand_rot": true})
