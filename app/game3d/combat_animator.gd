@@ -152,6 +152,7 @@ var floor_y: float = 0.0         # the paving under the fighter (fighter.gd sets
 ## realism-20261111: state -> the library state whose clip plays it this time (fighter.gd: a shove
 ## from behind plays "stagger_fwd" as the stagger, a KO from behind "death_fwd" as the death)
 var variant: Dictionary = {}
+var natural_rates: bool = false  # realism-20261111: the KO fall and the cheer at a natural speed (opts "natural_rates")
 const DROOP_STATES: Array[String] = ["idle", "_", "walk", "run", "sprint", "hit", "stagger"]
 const DROOP_RATE: float = 8.0            # 1/s: eases in and out round the attacks
 
@@ -198,7 +199,8 @@ func bind(model: Node3D, body: Node3D, opts: Dictionary = {}) -> Dictionary:
 		skeleton.add_child(layer)
 		nb = layer.bind_bones()
 		# foot locking, after the pose layer and before the cloth (device tier, or config "foot_ik")
-		if bool(opts.get("foot_ik", foot_ik_default())) and not clips.is_empty():
+		natural_rates = bool(opts.get("natural_rates", false))
+		if bool(opts.get("foot_ik", false)) and not clips.is_empty():
 			var fl := FootLock.new()
 			fl.name = "FootLock"
 			fl.frame_root = model
@@ -394,7 +396,7 @@ func play(st: String, game_len: float = 0.0, hit_at: float = -1.0, blend: float 
 			_warp = [c_t, (c_t - t_in) / hit_at, (t_out - c_t) / (game_len - hit_at), hit_at]
 		else:
 			_warp = [t_out, (t_out - t_in) / game_len, (t_out - t_in) / game_len, game_len]
-			if st == "death" or st == "victory":
+			if natural_rates and (st == "death" or st == "victory"):
 				# realism-20261111: at a natural speed; the state lasts as long as the clip then takes
 				var cap: float = DEATH_RATE_MAX if st == "death" else VICTORY_RATE_MAX
 				var r: float = clampf((t_out - t_in) / game_len, 0.7, cap)
@@ -505,11 +507,11 @@ func update(dt: float, speed_now: float, dead: bool) -> void:
 					if clips.has(alt):
 						player.play(clips[alt], 0.15)
 				state = want
-	# realism-20261111: no state ever shows the bind pose. A player that has stopped outside a held
-	# end pose (a one-shot that ran out with nothing queued, a clip removed under it) goes back to
-	# the idle loop; a skeleton with no clip at all hangs its arms (pose_layer arm_droop) instead of
+	# realism-20261111: no state ever shows the bind pose. A player that has stopped while the
+	# state is a loop or between states (nothing queued, a clip removed under it) goes back to the
+	# idle loop; a skeleton with no clip at all hangs its arms (pose_layer arm_droop) instead of
 	# standing in its T or A rest pose.
-	if player != null and not player.is_playing() and not (state in HOLD_LAST) and clips.has("idle") and not frozen:
+	if player != null and not player.is_playing() and (state in LOOPING or state == "_") and clips.has("idle") and not frozen:
 		player.play(clips["idle"], BLEND_LOOP, 1.0)
 	if foot != null:
 		foot.dt = 0.0 if frozen else dt

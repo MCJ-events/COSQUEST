@@ -128,7 +128,7 @@ var _vis_yaw: float = NAN
 const AIM_STATES: Array[String] = ["attack_1", "attack_2", "attack_3", "heavy", "skill_charge", "skill_split", "parry"]
 const AIM_RATE: float = 30.0            # 1/s: on the aim by the contact (3 frames), not a one-frame snap
 const AIM_AFTER: float = 0.14           # s the aim is held after the contact
-var aim_hold: bool = true               # config "aim_hold"
+var aim_hold: bool = false              # config "aim_hold" (on with "motion_realism")
 var _aim_yaw: float = 0.0
 var _aim_t: float = 0.0
 ## realism-20261111 (presentation only): weight. The attacker's body leans into the blow round
@@ -138,8 +138,9 @@ const LUNGE_IN: float = 0.07            # s before the contact
 const LUNGE_OUT: float = 0.2            # s after it
 const GIVE_M: float = 0.07              # the victim's hips, back along the blow
 const GIVE_DROP: float = 0.03
-var weight_fx: bool = true              # config "weight"
+var weight_fx: bool = false             # config "weight" (on with "motion_realism")
 var _hit_at: float = -1.0
+var real_speed: bool = false            # config "real_speed" (on with "motion_realism")
 var _trail: Array = []                  # the last few drawn positions (the legs' real speed)
 var _trail_dt: Array = []
 
@@ -822,7 +823,7 @@ func tick_visual(dt: float) -> void:
 	# fighter straight back (the ally "ran" on the spot against the edge, 7 cm forward and back each
 	# frame): over the last 4 frames the net travel caps the speed the legs are animated at.
 	var anim_speed: float = speed_now
-	if dt > 0.0 and not anim_freeze:
+	if real_speed and dt > 0.0 and not anim_freeze:
 		_trail.append(global_position)
 		_trail_dt.append(dt)
 		if _trail.size() > 5:

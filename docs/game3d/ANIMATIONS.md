@@ -247,7 +247,9 @@ id is unchanged. All clips are CC0 (KayKit Adventurers 1.0, Quaternius UAL).
 
 ## Motion capture overlay, foot lock and the motion bar (realism, 11 Nov 2026)
 
-**One switch.** The fight config's `"motion"` is `"classic"` (build 21's KayKit and Quaternius picks) or `"mocap"` (the overlay below on top). Left out, the data's `motion_default` decides (`anim_clips.json`). Both sets ship in the same libraries, so before and after are one flag apart. `anim_library.gd` `motion`, `states_for()`.
+**Off by default.** A fight config with none of the keys below plays build 21 to the frame. `"motion_realism": true` turns the whole of this section on (captured clips, foot lock by device tier, aim hold, weight, natural KO and cheer speeds, legs animated by the ground really covered); each key below overrides its part. The app does not pass it yet.
+
+**One switch for the clips.** The fight config's `"motion"` is `"classic"` (build 21's KayKit and Quaternius picks) or `"mocap"` (the overlay below on top). Left out, the data's `motion_default` decides (`anim_clips.json`). Both sets ship in the same libraries, so before and after are one flag apart. `anim_library.gd` `motion`, `states_for()`.
 
 **The overlay** (`tools/anim/clips.json` `sets_mocap`, copied to `anim_clips.json`): per weapon set and state, a captured or authored clip and its alternates, picked per character under the same tear gate as the classic clips (`characters.<key>.pick_mocap`). A state with no overlay pick keeps its classic clip.
 
