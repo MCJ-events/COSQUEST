@@ -349,11 +349,25 @@ func configure(c: Dictionary) -> void:
 		rng.randomize()
 
 
+## build 21: the fight sideways (config "landscape", the app's flag for 6 GB phones and up). The
+## HUD is designed on 1280 x 720 instead of 720 x 1280, so its buttons keep their size on the
+## phone; the camera narrows its view (the screen is short now) and keeps the fight in the
+## middle, the controls being at the sides. Presentation only: the rules, the seeded RNG and the
+## record are the same either way.
+const LAND_FOV_K: float = 0.7
+const LAND_AHEAD: float = 0.5
+var _landscape: bool = false
+
+
 func _ready() -> void:
 	_headless = DisplayServer.get_name() == "headless"
+	_landscape = bool(cfg.get("landscape", false))
+	var root_win: Window = get_tree().root if get_tree() != null else null
+	if root_win != null:
+		root_win.content_scale_size = Vector2i(1280, 720) if _landscape else Vector2i(720, 1280)
 	# cam_* overrides are for review captures (close-ups); the game uses the constants
 	_cam_dist = float(cfg.get("cam_dist", CAM_DIST))
-	_cam_ahead = float(cfg.get("cam_ahead", CAM_AHEAD))
+	_cam_ahead = float(cfg.get("cam_ahead", LAND_AHEAD if _landscape else CAM_AHEAD))
 	_reduce_motion = bool(cfg.get("reduce_motion", false))   # the app's Reduce motion setting: a quarter of the shake, no zoom punch
 	feel.reduce_motion = _reduce_motion
 	# Off unless the app asks: an older app build reads any message without "event" handling as
@@ -429,6 +443,11 @@ func _ready() -> void:
 	hud.point_name = str(cfg.get("point_name", ""))
 	hud.top_shift = clampf(float(cfg.get("hud_top", 0.0)), 0.0, 240.0)   # build 20: the safe area (hud.gd)
 	hud.panel = "classic" if str(cfg.get("hud_panel", "wale")) == "classic" else "wale"   # build 21: Wale's panel
+	if _landscape:
+		var sd: Variant = cfg.get("hud_side", [0, 0])
+		if sd is Array and (sd as Array).size() == 2:
+			hud.side_l = clampf(float(sd[0]), 0.0, 200.0)
+			hud.side_r = clampf(float(sd[1]), 0.0, 200.0)
 	hud.hero_name = str(cfg.get("hero_name", "You"))
 	hud.skill_cd_max = SKILL_CD.duplicate()
 	hud.t_left = duration
@@ -563,7 +582,7 @@ func _place_camera() -> void:
 	var tilt: float = float(cfg.get("cam_tilt", 0.0 if cfg.has("cam_pitch") else CAM_PLACE_TILT))
 	var yaw: float = deg_to_rad(float(cfg.get("cam_yaw", CAM_YAW)))
 	_cam_dist = float(cfg.get("cam_dist", CAM_PLACE_DIST))
-	_cam_ahead = float(cfg.get("cam_ahead", CAM_PLACE_AHEAD))
+	_cam_ahead = float(cfg.get("cam_ahead", LAND_AHEAD if _landscape else CAM_PLACE_AHEAD))
 	_cam_basis = Basis.from_euler(Vector3(deg_to_rad(-pitch), yaw, 0.0))
 	_view_basis = Basis.from_euler(Vector3(deg_to_rad(-(pitch - tilt)), yaw, 0.0))
 	_cam_fwd = Vector3(-_cam_basis.z.x, 0.0, -_cam_basis.z.z).normalized()
@@ -577,6 +596,8 @@ func _build_camera() -> void:
 	cam = Camera3D.new()
 	cam.name = "Camera"
 	cam.fov = float(cfg.get("cam_fov", CAM_FOV))
+	if _landscape and not cfg.has("cam_fov_fixed"):
+		cam.fov *= LAND_FOV_K
 	_base_fov = cam.fov
 	cam.near = 0.5
 	cam.far = CAM_FAR

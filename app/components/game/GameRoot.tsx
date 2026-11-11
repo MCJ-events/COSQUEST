@@ -41,6 +41,8 @@ import CoachOverlay from "./Coach";
 import CoinsSheet from "./CoinsSheet";
 import DuelScreen from "./DuelScreen";
 import { Fight3DHost } from "./Fight3D";
+import { TiltNotice } from "./TiltNotice";
+import { useMapLandscape } from "./useMapLandscape";
 import Encounter, { encounterGuard } from "./Encounter";
 import FriendsButton from "./FriendsButton";
 import { AvatarBadge, AvatarFigure, useHasAvatarFigure, usePinPortraits, ForgeClaim, ForgeDropsLayer, useForgeOn, useForgeWorldPolling, useHasForgeAvatar } from "./ForgeWorld";
@@ -547,6 +549,8 @@ function GameRootInner({ parked }: { parked: boolean }) {
     [run, runLive],
   );
 
+  // build 21: the map sideways on phones that can take it (the notice first, once a session)
+  const mapLand = useMapLandscape(!parked && onScreen && !!session && !(gameStore.needsOnboarding || onboarding));
   if (!session || (!fontsReady && !fontsError)) {
     return <View style={styles.root} />;
   }
@@ -650,6 +654,9 @@ function GameRootInner({ parked }: { parked: boolean }) {
         headingUp={headingUp.mode === "heading"}
         onTwist={headingUp.twisted}
       />
+
+      {/* build 21: in landscape the HUD keeps clear of the notch / Dynamic Island and the home bar */}
+      <View style={mapLand.land && !fighting ? [StyleSheet.absoluteFill, { left: insets.left, right: insets.right }] : StyleSheet.absoluteFill} pointerEvents="box-none">
 
       <TopBar me={me} profile={profile} name={gameStore.playerName()} color={color} onProfile={() => setSheet("profile")} onCoins={() => setSheet("coins")} onAskWarden={() => setSheet("ask")} />
       {!GAME_SERVER_IS_PRODUCTION ? <StagingBadge label={GAME_SERVER.includes("staging") ? "STAGING" : "TEST SERVER"} /> : null}
@@ -878,6 +885,8 @@ function GameRootInner({ parked }: { parked: boolean }) {
 
       {/* The big moments ("Guardian beaten!", "Quest done!"), over everything. */}
       <GameBannerHost top={insets.top + 150} />
+      </View>
+      {mapLand.tilt ? <TiltNotice what="map" onReady={mapLand.ready} onPortrait={mapLand.portrait} /> : null}
     </View>
   );
 }

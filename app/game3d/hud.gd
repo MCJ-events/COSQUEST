@@ -115,6 +115,10 @@ var show_hero_card: bool = true
 ## bar, the boss bar and the minimap move down by it, so the timer no longer sits under the
 ## Dynamic Island and the app's close button sits clear, under the boss bar (fight3d.ts hudLayout).
 var top_shift: float = 0.0
+## build 21, landscape: HUD px the stick (left) and the attack panel and minimap (right) move in
+## from the screen's sides, for the notch / Dynamic Island and the home bar.
+var side_l: float = 0.0
+var side_r: float = 0.0
 var _q_off: Vector2 = Vector2.ZERO
 var portrait: Texture2D = null   # the hero's face (fight.gd renders it once at the start)
 var units: Array[Dictionary] = []      # {id, name, hp, max, team, head: Vector3, is_hero, shield, buff, stagger, level}
@@ -208,7 +212,7 @@ func _ready() -> void:
 # ------------------------------------------------------------ layout
 
 func attack_centre() -> Vector2:
-	return Vector2(size.x - ATTACK_FROM_BR.x, size.y - ATTACK_FROM_BR.y)
+	return Vector2(size.x - side_r - ATTACK_FROM_BR.x, size.y - ATTACK_FROM_BR.y)
 
 
 func attack_r() -> float:
@@ -251,11 +255,11 @@ func guard_centre() -> Vector2:
 
 
 func _stick_home() -> Vector2:
-	return Vector2(STICK_HOME_FROM_BL.x, size.y - STICK_HOME_FROM_BL.y)
+	return Vector2(side_l + STICK_HOME_FROM_BL.x, size.y - STICK_HOME_FROM_BL.y)
 
 
 func _map_centre() -> Vector2:
-	return Vector2(size.x - MAP_CENTRE_FROM_TR.x, MAP_CENTRE_FROM_TR.y)
+	return Vector2(size.x - side_r - MAP_CENTRE_FROM_TR.x, MAP_CENTRE_FROM_TR.y)
 
 
 # ------------------------------------------------------------ input
@@ -900,7 +904,7 @@ func _draw_boss_bar() -> void:
 	var k: float = float(hp) / mx
 	var chip: float = float(_chip.get(id, k))
 	var x0: float = 26.0
-	var x1: float = size.x - 194.0
+	var x1: float = size.x - side_r - 194.0   # build 21: clear of the minimap, which moves in by side_r
 	var y: float = 132.0
 	var j: Vector2 = Vector2(sin(_clock * 70.0), cos(_clock * 53.0)) * 4.0 * _boss_shake
 	var r := Rect2(Vector2(x0, y) + j, Vector2(x1 - x0, 18.0))

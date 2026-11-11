@@ -23,7 +23,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { File, Paths } from "expo-file-system";
 import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, AppState, BackHandler, PixelRatio, Platform, Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { ActivityIndicator, AppState, BackHandler, Dimensions, PixelRatio, Platform, Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { castWeapons, fightCast } from "@/features/game3d/characters";
@@ -42,6 +42,8 @@ import {
   quitResult,
 } from "@/features/game3d/fight3d";
 import { FIGHT3D } from "@/features/game3d/flags";
+import { hudLandscape, landscapePx } from "@/features/game/landscape";
+import { declineLandscape, holdLandscape, landscapeHeld, landscapeWanted, releaseLandscape } from "@/features/game/orientation";
 import { useAppSelector } from "@/store/hooks";
 import { gameStore } from "@/features/game/runtime";
 import type { DuelStart, QuestPoint } from "@/features/game/wire";
@@ -50,6 +52,7 @@ import { GameButton, MAX_FONT_SCALE } from "./kit";
 import { hapticsOn } from "./prefs";
 import { callActive } from "./sound";
 import { GF, GP } from "./theme";
+import { TiltNotice } from "./TiltNotice";
 
 type Phase = { kind: "loading"; step: string } | { kind: "fighting" } | { kind: "closing" } | { kind: "failed"; message: string };
 
@@ -120,6 +123,16 @@ export default function Fight3D({
   const hud = hudLayout(insets.top, win.width, win.height);
   const hudTop = useRef(hud.hudTop);
   hudTop.current = hud.hudTop;
+  const insetsRef = useRef(insets);
+  insetsRef.current = insets;
+  // build 21: landscape (features/game/landscape.ts). The map may hold the screen sideways already
+  // (no notice then); otherwise the notice asks first, once the reveal (hold) is over.
+  const land = useRef(landscapeHeld() || landscapeWanted());
+  const askTilt = useRef(!landscapeHeld() && landscapeWanted());
+  const heldLand = useRef(false);
+  const [tiltOpen, setTiltOpen] = useState(false);
+  const [isLand, setIsLand] = useState(landscapeHeld());
+  const tiltAnswer = useRef<((sideways: boolean) => void) | null>(null);
   const [phase, setPhase] = useState<Phase>({ kind: "loading", step: "Getting the fighters ready" });
   const phaseRef = useRef(phase);
   const done = useRef(false);
@@ -155,7 +168,11 @@ export default function Fight3D({
       done.current = true;
       go({ kind: "closing" });
       log(`close outcome=${result?.outcome ?? "none"} after_ms=${Date.now() - openedAt.current}`);
-      void closeFight({ keep: FIGHT3D.keep }).then(() => {
+      void closeFight({ keep: FIGHT3D.keep }).then(async () => {
+        if (heldLand.current) {
+          heldLand.current = false;
+          await releaseLandscape("fight");
+        }
         if (result) onResult(result, duel.current);
         else onClose();
       });
@@ -239,6 +256,35 @@ export default function Fight3D({
           if (!alive || done.current) return;
           log(`released after_ms=${Date.now() - openedAt.current}`);
         }
+        // build 21: "turn your phone", then sideways, then the HUD's landscape safe area
+        if (land.current) {
+          if (askTilt.current) {
+            setTiltOpen(true);
+            const sideways = await new Promise<boolean>((resolve) => (tiltAnswer.current = resolve));
+            tiltAnswer.current = null;
+            setTiltOpen(false);
+            if (!alive || done.current) return;
+            land.current = sideways;
+          }
+          if (land.current && !landscapeHeld()) {
+            await holdLandscape("fight");
+            heldLand.current = true;
+            if (!alive || done.current) {
+              heldLand.current = false;
+              void releaseLandscape("fight");
+              return;
+            }
+            await new Promise((r) => setTimeout(r, 120)); // the safe area follows the turn a frame later
+          }
+        }
+        if (land.current) {
+          const d = Dimensions.get("window");
+          const l = hudLandscape(insetsRef.current, d.width, d.height);
+          Object.assign(config, { landscape: true, hud_side: l.side, hud_top: l.top, view_px: landscapePx(d.width, d.height, PixelRatio.get()) });
+          if (!l.top) delete (config as { hud_top?: number }).hud_top;
+          setIsLand(true);
+          log(`landscape side=${l.side.join(",")} view=${(config as { view_px?: number[] }).view_px?.join("x")}`);
+        }
         await openFight({
           args,
           config,
@@ -262,9 +308,14 @@ export default function Fight3D({
     })();
     return () => {
       alive = false;
+      tiltAnswer.current?.(false);
       if (!done.current) {
         done.current = true;
         void closeFight({ keep: FIGHT3D.keep });
+      }
+      if (heldLand.current) {
+        heldLand.current = false;
+        void releaseLandscape("fight");
       }
     };
     // One fight per mount: the props are read once.
@@ -364,13 +415,24 @@ export default function Fight3D({
 
       <Pressable
         onPress={() => (phase.kind === "failed" ? onClose() : finish(null))}
-        style={[styles.close, { top: hud.closeTop }]}
+        style={[styles.close, isLand ? { top: 14, left: hudLandscape(insets, win.width, win.height).closeLeft } : { top: hud.closeTop }]}
         hitSlop={10}
         testID="fight3d-close"
         accessibilityRole="button"
         accessibilityLabel="Leave the fight">
         <Ionicons name="close" size={22} color="#FFF" />
       </Pressable>
+
+      {tiltOpen ? (
+        <TiltNotice
+          what="fight"
+          onReady={() => tiltAnswer.current?.(true)}
+          onPortrait={() => {
+            declineLandscape();
+            tiltAnswer.current?.(false);
+          }}
+        />
+      ) : null}
     </View>
   );
 }

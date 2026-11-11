@@ -257,6 +257,13 @@ export type Fight3DConfig = {
   guardian_look?: GuardianLook;
   /** build 20: the safe area over the HUD's top block, in HUD px (hudLayout). Sent only when above 0. */
   hud_top?: number;
+  /**
+   * build 21: the fight drawn sideways (features/game/landscape.ts): Godot designs the HUD on
+   * 1280 x 720 and reframes the camera. Presentation only; the rules and the record are the same.
+   */
+  landscape?: boolean;
+  /** build 21, landscape: HUD px the stick and the attack panel move in from the left and right edges. */
+  hud_side?: [number, number];
 };
 
 export type FightMods = { boss_hp_permille: number; boss_dmg_permille: number };

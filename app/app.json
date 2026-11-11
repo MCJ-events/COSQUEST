@@ -3,7 +3,7 @@
     "name": "cosquest",
     "slug": "cosquest",
     "version": "1.0.0",
-    "orientation": "portrait",
+    "orientation": "default",
     "icon": "./assets/images/cosquest-logo.png",
     "scheme": "cosquest",
     "userInterfaceStyle": "automatic",
@@ -109,6 +109,8 @@
       "expo-asset",
       "./plugins/withSceneLifecycle",
       "./plugins/withGodot",
+      ["expo-screen-orientation", { "initialOrientation": "PORTRAIT_UP" }],
+      "./plugins/withPortraitAndroid",
       [
         "expo-notifications",
         {

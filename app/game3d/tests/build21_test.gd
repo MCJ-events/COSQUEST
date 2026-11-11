@@ -4,6 +4,8 @@ extends SceneTree
 ## 1. Wale's attack panel (59328): ATTACK, DASH (= CHARGE, slot 0) and SHIELD (slot 4) cast what
 ##    they did; SHOOT and RAIN are locked and send nothing to the fight; GUARD still works; the
 ##    old arc is still there as panel = "classic".
+## 2. Landscape (config "landscape", 1280 x 720 HUD): the stick and the panel move in by the side
+##    insets, nothing overlaps or leaves the screen, and taps still land.
 ## Prints "CQTEST PASS <name>" / "CQTEST FAIL <name> <why>", then "CQTEST done failures=N".
 
 const HudScript := preload("res://hud.gd")
@@ -47,6 +49,7 @@ func _tap(hud: Control, p: Vector2) -> Array:
 
 func _initialize() -> void:
 	_panel()
+	_landscape()
 	print("CQTEST done failures=%d" % _fails)
 	quit(1 if _fails > 0 else 0)
 
@@ -94,3 +97,29 @@ func _panel() -> void:
 	_check("classic_whirl", _tap(old, old.call("skill_centre", 2)) == ["skill", 2])
 	_check("classic_label", str(old.call("skill_label", 0)) == "CHARGE")
 	old.free()
+
+
+func _landscape() -> void:
+	var sz := Vector2(1280, 720)
+	var hud: Control = _hud("wale", sz)
+	hud.set("side_l", 100.0)
+	hud.set("side_r", 70.0)
+	var ac: Vector2 = hud.call("attack_centre")
+	_check("land_attack_moves_in", is_equal_approx(ac.x, 1280.0 - 70.0 - HudScript.ATTACK_FROM_BR.x), str(ac))
+	var st: Vector2 = hud.call("_stick_home")
+	_check("land_stick_moves_in", is_equal_approx(st.x, 100.0 + HudScript.STICK_HOME_FROM_BL.x), str(st))
+	_check("land_attack_tap", _tap(hud, ac) == ["attack"])
+	_check("land_shield_tap", _tap(hud, hud.call("wale_centre", hud.call("wale_button", 4))) == ["skill", 4])
+	var screen := Rect2(Vector2.ZERO, sz)
+	var ok: bool = screen.grow(-1.0).has_point(st + Vector2(-HudScript.STICK_BASE_R, 0)) and st.x - HudScript.STICK_BASE_R >= 100.0
+	for j in HudScript.W_BUTTONS.size():
+		var c: Vector2 = hud.call("wale_centre", j)
+		var r: float = float(HudScript.W_BUTTONS[j]["r"]) * 1.2
+		ok = ok and c.y - r >= 0.0 and c.x + r <= 1280.0 - 70.0 + 1.0
+	var mc: Vector2 = hud.call("_map_centre")
+	ok = ok and mc.x + HudScript.MAP_R <= 1280.0 - 70.0
+	# the panel's top (the shield) stays under the minimap
+	var sh: Vector2 = hud.call("wale_centre", hud.call("wale_button", 4))
+	ok = ok and sh.y - 40.0 > mc.y + HudScript.MAP_R
+	_check("land_all_on_screen_and_clear", ok)
+	hud.free()
