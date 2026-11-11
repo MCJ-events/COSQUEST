@@ -355,7 +355,7 @@ func configure(c: Dictionary) -> void:
 ## middle, the controls being at the sides. Presentation only: the rules, the seeded RNG and the
 ## record are the same either way.
 const LAND_FOV_K: float = 0.7
-const LAND_AHEAD: float = 0.5
+const LAND_AHEAD: float = 2.6   # build 21 review: 0.5 put the Guardian under the top bar
 var _landscape: bool = false
 
 
