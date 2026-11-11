@@ -344,5 +344,11 @@ The fix: the grade is one 33-point 3D table in the renderer's colour-correction 
 than it was given and it is the identity at white (`tools/look/bake_lut.py`). When the look's scale is 1.0,
 neutral adjustments keep the frame on the linear path.
 
+**Costs** (Godot's monitors, the Forge test characters, golden hour; frame time on the 1-thread software GL,
+three noisy rounds, relative only): the real material +1 to +9 % of the frame with its cube read, the skin
+term and the grade table not measurable, LOD0 for two fighters +20 to +40 % and +77 MB of textures (runtime
+GLB textures are not GPU-compressed), render scale 1.0 +28 to +48 %. Video memory: low 113 MB, mid 113 MB,
+high 202 MB. Draw calls unchanged (295). On-device frame time is not measured.
+
 **Tools:** `tools/look_shots.gd` (the same paused moment from the game, side and close cameras, with mask
 renders), `tools/look/measure.py` (BAR.md section D from those frames), `tools/look/judge_crops.py`.
