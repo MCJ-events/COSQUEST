@@ -18,6 +18,7 @@ import { useAppSelector } from "@/store/hooks";
 
 import { announce, GamePanel, MAX_FONT_SCALE } from "./kit";
 import { useLook } from "./look";
+import { RankBadge } from "./RankBadge";
 import { impact } from "./prefs";
 import { GF } from "./theme";
 
@@ -110,9 +111,15 @@ export function RewardReveal({
         <View style={styles.row}>
           <View style={styles.badgeSlot}>
             <Animated.View style={[styles.glow, { backgroundColor: tint }, glowStyle]} pointerEvents="none" />
-            <Animated.View style={[styles.badge, { backgroundColor: tint }, badgeStyle]}>
-              <Ionicons name={icon} size={26} color="#FFFFFF" />
-            </Animated.View>
+            {card.rank ? (
+              <Animated.View style={badgeStyle}>
+                <RankBadge rank={card.rank} size={BADGE} />
+              </Animated.View>
+            ) : (
+              <Animated.View style={[styles.badge, { backgroundColor: tint }, badgeStyle]}>
+                <Ionicons name={icon} size={26} color="#FFFFFF" />
+              </Animated.View>
+            )}
           </View>
           <View style={{ flex: 1 }}>
             <Text testID={kickerTestID} style={[txt.kicker, { color: look.textMuted }]} maxFontSizeMultiplier={MAX_FONT_SCALE}>

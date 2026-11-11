@@ -22,14 +22,16 @@ test("a rank reveal names the rank and its number, and how far a double jump wen
   assert.equal(one.kind, "rank");
   assert.equal(one.kicker, "PROMOTED");
   assert.equal(one.title, "Acolyte");
-  assert.equal(one.detail, "Rank 2");
+  assert.equal(one.detail, "Rank II");
+  assert.equal(one.rank, 2);
   assert.match(one.announce, /Promoted to Acolyte/);
   const two = rankReveal([
     { from: 2, to: 3, name: "Adept" },
     { from: 3, to: 4, name: "Disciple" },
   ])!;
   assert.equal(two.title, "Disciple");
-  assert.equal(two.detail, "Rank 4 · up 2 ranks");
+  assert.equal(two.detail, "Rank IV · up 2 ranks");
+  assert.equal(two.announce.includes("rank 4"), true);
 });
 
 test("a weapon reveal shows the name and tier; a repeat buy reveals nothing", () => {

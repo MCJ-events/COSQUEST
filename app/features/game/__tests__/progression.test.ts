@@ -158,7 +158,7 @@ describe("progression: gates and ladder", () => {
   it("names a rank test by the rank's name", () => {
     const config = { ranks: [{ number: 2, name: "Disciple", xp_threshold: 500, pass_mark_pct: 70, weapon_tier: 1 }] };
     assert.equal(rankName(config, 2), "Disciple");
-    assert.equal(rankName(config, 3), "Rank 3");
+    assert.equal(rankName(config, 3), "Rank III");
   });
   it("sorts the ladder and labels tiers", () => {
     const l = sortedLadder([weapon({ tier: 3, id: "c" }), weapon({ tier: 0, id: "a" }), weapon({ tier: 1, id: "b" })]);

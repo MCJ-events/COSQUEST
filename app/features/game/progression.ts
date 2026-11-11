@@ -17,6 +17,7 @@
 //
 // Pure: the client is injected (tested in features/game/__tests__/progression.test.ts).
 import { type GameClient, GameError } from "./client.ts";
+import { toRoman } from "./roman.ts";
 
 // ---------- wire: progression ----------
 
@@ -392,10 +393,10 @@ export function factionPending(f: Pick<ProgFaction, "placeholder" | "themes">): 
   return !!f.placeholder || /not finali[sz]ed|pending|placeholder|\btbd\b/i.test(f.themes ?? "");
 }
 
-/** A rank's name from the config ("Disciple"), or "Rank 2" when the config has none. */
+/** A rank's name from the config ("Disciple"), or "Rank II" when the config has none. */
 export function rankName(config: Pick<ProgConfig, "ranks">, rank: number | null | undefined): string {
   const name = config.ranks.find((r) => r.number === rank)?.name;
-  return name || `Rank ${rank ?? "?"}`;
+  return name || `Rank ${toRoman(rank)}`;
 }
 
 /**

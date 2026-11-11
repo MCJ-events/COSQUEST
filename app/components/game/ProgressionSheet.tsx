@@ -56,11 +56,13 @@ import {
   weaponForTier,
 } from "@/features/game/progression";
 import { type RevealCard, rankReveal, weaponNotice, weaponReveal } from "@/features/game/rewardReveal";
+import { rankOf, rankSpoken, toRoman } from "@/features/game/roman";
 import { gameStore, useGame } from "@/features/game/runtime";
 
 import { Chip, GameButton, GamePanel, MAX_FONT_SCALE, ProgressBar } from "./kit";
 import { ACCENT, useLook } from "./look";
 import { RewardReveal } from "./RewardReveal";
+import { RankBadge } from "./RankBadge";
 import { SheetHost } from "./Sheet";
 import { SheetFrame } from "./SheetFrame";
 import { SheetHeader } from "./SheetHeader";
@@ -304,11 +306,9 @@ function RankHub({ data, go }: { data: Data; go: (p: Page) => void }) {
     <View style={{ gap: 14 }} testID="prog-hub">
       <GamePanel>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-          <View style={{ width: 52, height: 52, borderRadius: 14, backgroundColor: tint, alignItems: "center", justifyContent: "center" }}>
-            <Ionicons name={realmIcon(me.faction)} size={26} color="#FFFFFF" />
-          </View>
+          <RankBadge rank={me.rank?.number ?? 1} total={total} size={56} testID="prog-rank-badge" />
           <View style={{ flex: 1 }}>
-            <Text style={[txt.kicker, { color: look.textMuted }]}>{`${(me.faction_name ?? me.faction ?? "").toUpperCase()} · RANK ${me.rank?.number ?? 1} OF ${total}`}</Text>
+            <Text style={[txt.kicker, { color: look.textMuted }]} accessibilityLabel={`${me.faction_name ?? me.faction ?? ""}, ${rankSpoken(me.rank?.number, total)}`}>{`${(me.faction_name ?? me.faction ?? "").toUpperCase()} · ${rankOf(me.rank?.number, total)}`}</Text>
             <Text style={[txt.h1, { color: look.text }]} testID="prog-rank-name">
               {me.rank?.name ?? "Initiate"}
             </Text>
@@ -450,7 +450,7 @@ function TestRunner({ kind, faction, rank, config, go, reload }: { kind: TestKin
           <Text style={[txt.body, { color: look.textMuted }]}>
             {kind === "entry"
               ? `Answer ${fname} questions against the clock. Pass and you join as an Initiate with the starter weapon.`
-              : `Pass to become a ${rname} (rank ${rank}). Answer questions against the clock. You need ${mark ?? "the pass mark"}${mark != null ? "%" : ""} to pass.`}
+              : `Pass to become a ${rname} (rank ${toRoman(rank)}). Answer questions against the clock. You need ${mark ?? "the pass mark"}${mark != null ? "%" : ""} to pass.`}
           </Text>
           <GameButton title="Start" color={ACCENT.sun.fill} onPress={() => void begin()} testID="prog-test-start" style={{ marginTop: 6 }} />
         </View>
@@ -569,7 +569,7 @@ function Ladder({ me, reload, say }: { me: ProgMe; reload: () => Promise<void>; 
             <View testID={`prog-weapon-${w.tier}`} style={{ gap: 6 }}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                 <Ionicons name={w.state === "owned" ? "checkmark-circle" : w.state === "available" ? "lock-open" : "lock-closed"} size={20} color={tint} />
-                <Text style={[txt.kicker, { color: look.textMuted, flex: 1 }]}>{`${tierLabel(w).toUpperCase()}${w.unlocks_at_rank ? ` · RANK ${w.unlocks_at_rank}` : ""}`}</Text>
+                <Text style={[txt.kicker, { color: look.textMuted, flex: 1 }]}>{`${tierLabel(w).toUpperCase()}${w.unlocks_at_rank ? ` · RANK ${toRoman(w.unlocks_at_rank)}` : ""}`}</Text>
                 <Chip text={w.state === "owned" ? "Owned" : w.state === "available" ? "Unlocked" : "Locked"} color={w.state === "owned" ? GP.mint : w.state === "available" ? ACCENT.sun.fill : GP.slate} />
               </View>
               <Text style={[txt.h3, { color: look.text }]}>{w.name}</Text>

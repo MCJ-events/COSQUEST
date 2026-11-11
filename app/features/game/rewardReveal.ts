@@ -2,6 +2,7 @@
 // when each beat of the reveal plays. Pure (no react-native) so node tests it;
 // components/game/RewardReveal.tsx draws it.
 import type { Promotion } from "./progression.ts";
+import { toRoman } from "./roman.ts";
 
 export type RevealKind = "rank" | "weapon";
 
@@ -15,6 +16,8 @@ export type RevealCard = {
   detail: string | null;
   /** What VoiceOver / TalkBack says as it lands. */
   announce: string;
+  /** A rank card's rank number: the reveal shows its badge (RankBadge) instead of an icon. */
+  rank?: number;
 };
 
 /** The promotion to show: the highest rank reached (several can land at once), or null when none. */
@@ -38,8 +41,9 @@ export function rankReveal(promoted: Promotion[] | null | undefined): RevealCard
     kind: "rank",
     kicker: "PROMOTED",
     title: p.name,
-    detail: steps > 1 ? `Rank ${p.to} · up ${steps} ranks` : `Rank ${p.to}`,
+    detail: steps > 1 ? `Rank ${toRoman(p.to)} · up ${steps} ranks` : `Rank ${toRoman(p.to)}`,
     announce: `Promoted to ${p.name}, rank ${p.to}.`,
+    rank: p.to,
   };
 }
 
