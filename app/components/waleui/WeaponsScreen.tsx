@@ -226,8 +226,8 @@ export function WeaponDetailScreen({ id }: { id?: string | null }) {
       </At>
       <At x={233} y={629} w={140} h={22} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
         <Ionicons name="shield-outline" size={20} color={W.pink} />
-        <T size={21} weight={400} style={{ lineHeight: 26 }} testID="wale-weapon-health">
-          —
+        <T size={13} weight={500} color={W.inkSoft} style={{ lineHeight: 26 }} testID="wale-weapon-health">
+          Not set
         </T>
       </At>
       <PlaceholderTag x={300} y={636} text="NO SERVER FIELD" />

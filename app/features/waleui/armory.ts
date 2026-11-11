@@ -10,7 +10,7 @@
 // Two of his fields have nothing behind them in the data model, so they are
 // derived or marked as placeholders here, in one place:
 //   - "Complexity n/5": derived from the tier (ten tiers folded into five).
-//   - "Health 20 000" and "Upgrade cores": no server field. Shown as "—" and
+//   - "Health 20 000" and "Upgrade cores": no server field. Shown as "Not set" and
 //     as empty slots, flagged `placeholder`.
 // Wale, 11 Nov: the attack buttons never change with the weapon, so the page
 // shows the one fixed attack panel for every weapon.
