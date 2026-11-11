@@ -2,14 +2,14 @@
  "_doc": "CMU Graphics Lab Motion Capture Database takes cut into game clips (cmu2glb.py). file = subject_take; f0..f1 = source frames at 120 a second; face = how the clip is turned to face +Z (mean / start / a frame number = the pelvis; {aim: frame, hand} = the striking hand's direction at that frame); loop.blend = frames cross-faded to close the cycle. Licence: http://mocap.cs.cmu.edu/ (free for all uses, may be included in commercially-sold products, may not be resold as data).",
  "clips": {
   "CMU_Idle": {
-   "file": "140_06",
-   "f0": 2240,
-   "f1": 2738,
+   "file": "137_28",
+   "f0": 3280,
+   "f1": 3672,
    "face": "mean",
    "loop": {
     "blend": 10
    },
-   "what": "140_06 Idle: a relaxed stand with weight shifts"
+   "what": "137_28 Normal Wait: an upright relaxed stand with small weight shifts (140_06 Idle is a 35 degree forward crouch: tried first, read as a hunch)"
   },
   "CMU_Guard": {
    "file": "76_04",
