@@ -121,6 +121,27 @@ var _diss_len: float = 0.7
 const TURN_RATE: float = 16.0           # 1/s: most of a snap within 4-5 frames
 const TURN_LAG_MAX: float = 2.618          # 150 deg: a bigger snap catches up the rest at once
 var _vis_yaw: float = NAN
+## realism-20261111 (presentation only): a directed attack holds the drawn body on the heading the
+## swing began with until the blow has landed, and turns onto it fast, so no swing goes sideways
+## or backward (the game may turn the fighter's yaw again mid-swing: the ally jogs on while its
+## bolt cast still plays; the yaw, hurtbox and weapon arc are the game's and never move).
+const AIM_STATES: Array[String] = ["attack_1", "attack_2", "attack_3", "heavy", "skill_charge", "skill_split", "parry"]
+const AIM_RATE: float = 30.0            # 1/s: on the aim by the contact (3 frames), not a one-frame snap
+const AIM_AFTER: float = 0.14           # s the aim is held after the contact
+var aim_hold: bool = true               # config "aim_hold"
+var _aim_yaw: float = 0.0
+var _aim_t: float = 0.0
+## realism-20261111 (presentation only): weight. The attacker's body leans into the blow round
+## the contact, the victim's hips give with the flinch (with the feet locked, both read as weight).
+const LUNGE_M: float = 0.11             # m at size 1
+const LUNGE_IN: float = 0.07            # s before the contact
+const LUNGE_OUT: float = 0.2            # s after it
+const GIVE_M: float = 0.07              # the victim's hips, back along the blow
+const GIVE_DROP: float = 0.03
+var weight_fx: bool = true              # config "weight"
+var _hit_at: float = -1.0
+var _trail: Array = []                  # the last few drawn positions (the legs' real speed)
+var _trail_dt: Array = []
 
 
 func setup(n: String, t: int, hp_max: int, c: Color, r: String = "hero") -> void:
@@ -611,7 +632,13 @@ func act(state: String, length: float, hit_at: float = -1.0) -> bool:
 		# character back up out of its held death pose (cq 014: the boss and the Guardian
 		# have clips now)
 		return anim.has_clip("death")
+	if state != "death":
+		anim.variant.erase(state)
 	var clip: bool = anim.play(state, length, hit_at)
+	_hit_at = hit_at
+	if aim_hold and state in AIM_STATES:
+		_aim_yaw = yaw
+		_aim_t = (hit_at if hit_at > 0.0 else length * 0.5) + AIM_AFTER
 	_motion = state
 	_mt = 0.0
 	_mlen = length
@@ -746,6 +773,11 @@ func die() -> void:
 	dead = true
 	hp = 0
 	_death_t = 0.0
+	# realism-20261111: felled from behind, the body falls forward (library state "death_fwd")
+	if kb_vel.length() > 0.5 and kb_vel.normalized().dot(forward()) > 0.3 and anim.has_clip("death_fwd"):
+		anim.variant["death"] = "death_fwd"
+	else:
+		anim.variant.erase("death")
 	set_guard(false)
 	shield_t = 0.0
 	buff_t = 0.0
@@ -784,7 +816,26 @@ func tick_logic(dt: float) -> void:
 ## Visual tick: animator, procedural body motion, flash, dome, aura.
 func tick_visual(dt: float) -> void:
 	anim.frozen = anim_freeze
-	anim.update(dt, speed_now, dead or celebrating)
+	anim.floor_y = global_position.y
+	# realism-20261111: the animation follows the ground the body really covers. The game reports
+	# the speed it asked for (speed_now) even when the arena edge or another body pushes the
+	# fighter straight back (the ally "ran" on the spot against the edge, 7 cm forward and back each
+	# frame): over the last 4 frames the net travel caps the speed the legs are animated at.
+	var anim_speed: float = speed_now
+	if dt > 0.0 and not anim_freeze:
+		_trail.append(global_position)
+		_trail_dt.append(dt)
+		if _trail.size() > 5:
+			_trail.pop_front()
+			_trail_dt.pop_front()
+		if _trail.size() >= 4:
+			var span: float = 0.0
+			for i in range(1, _trail_dt.size()):
+				span += float(_trail_dt[i])
+			var net: Vector3 = (_trail[-1] as Vector3) - (_trail[0] as Vector3)
+			net.y = 0.0
+			anim_speed = minf(speed_now, net.length() / maxf(0.001, span) * 1.1 + 0.15)
+	anim.update(dt, anim_speed, dead or celebrating)
 	var vdt: float = 0.0 if anim_freeze else dt
 	var pos := Vector3.ZERO
 	var rot := Vector3.ZERO
@@ -834,7 +885,11 @@ func tick_visual(dt: float) -> void:
 	# fight-anim: the drawn body eases after the yaw (see TURN_RATE)
 	if is_nan(_vis_yaw):
 		_vis_yaw = yaw
-	_vis_yaw = lerp_angle(_vis_yaw, yaw, 1.0 - exp(-dt * TURN_RATE))
+	if _aim_t > 0.0 and not dead:
+		_aim_t -= vdt
+		_vis_yaw = lerp_angle(_vis_yaw, _aim_yaw, 1.0 - exp(-dt * AIM_RATE))
+	else:
+		_vis_yaw = lerp_angle(_vis_yaw, yaw, 1.0 - exp(-dt * TURN_RATE))
 	var lag: float = wrapf(_vis_yaw - yaw, -PI, PI)
 	if absf(lag) > TURN_LAG_MAX:
 		lag = signf(lag) * TURN_LAG_MAX
@@ -856,9 +911,14 @@ func tick_visual(dt: float) -> void:
 	if kv < 0.05:
 		_staggering = false
 	elif kv >= STAGGER_V and not _staggering and not dead and anim.has_clip("stagger") and not anim.busy_action() \
-			and kb_vel.normalized().dot(forward()) < -0.4:
+			and (kb_vel.normalized().dot(forward()) < -0.4 or (kb_vel.normalized().dot(forward()) > 0.4 and anim.has_clip("stagger_fwd"))):
 		# the shove decays 9/s: it is above 1 m/s for ln(kv)/9 s; the step covers that, then blends back
 		_staggering = true
+		# realism-20261111: shoved from behind, the body stumbles forward (library state "stagger_fwd")
+		if kb_vel.normalized().dot(forward()) > 0.4:
+			anim.variant["stagger"] = "stagger_fwd"
+		else:
+			anim.variant.erase("stagger")
 		anim.play("stagger", clampf(log(kv) / 9.0 + 0.12, 0.3, 0.6))
 	if kv > 1.0 and not dead:
 		var kk: float = clampf((kv - 1.0) / 6.0, 0.0, 1.0)
@@ -866,6 +926,17 @@ func tick_visual(dt: float) -> void:
 		rot.x += 0.32 * kk * kl.z
 		rot.z -= 0.32 * kk * kl.x
 		pos.y -= 0.07 * kk * size_k
+	if weight_fx and not dead:
+		# the attacker leans into the blow round the contact
+		if _hit_at > 0.0 and _motion in AIM_STATES and _mlen > 0.0 and anim.has_clip(_motion):
+			var lt: float = _mt - _hit_at
+			var le: float = clampf(1.0 + lt / LUNGE_IN, 0.0, 1.0) if lt < 0.0 else clampf(1.0 - lt / LUNGE_OUT, 0.0, 1.0)
+			pos.z += LUNGE_M * size_k * le * le * (3.0 - 2.0 * le)
+		# the victim's hips give with the flinch, away from the blow
+		var ge: float = anim._flinch_env() * minf(anim._flinch_k, 1.4)
+		if ge > 0.001:
+			pos += Vector3(anim._flinch_dir.x, 0.0, anim._flinch_dir.z) * GIVE_M * size_k * ge
+			pos.y -= GIVE_DROP * size_k * ge
 	var bscale := Vector3(sc * sxz, sc * (1.0 + 0.6 * (1.0 - sxz)) * maxf(0.05, sxz), sc * sxz)
 	# build 21: the lower foot on the paving, with this frame's lean and offsets (see _plant_target)
 	_plant_y = lerpf(_plant_y, _plant_target(Basis.from_euler(rot).scaled(bscale), pos.y), 1.0 - exp(-dt * PLANT_RATE))

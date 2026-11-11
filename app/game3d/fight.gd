@@ -22,6 +22,7 @@ const HudScript := preload("res://hud.gd")
 const FxScript := preload("res://fx.gd")
 const SfxScript := preload("res://sfx.gd")
 const HitArea := preload("res://hit_area.gd")
+const AnimLib := preload("res://anim_library.gd")
 const LoaderScript := preload("res://char_loader.gd")
 const TilesScript := preload("res://tiles_layer.gd")
 const ArenaScript := preload("res://arena.gd")
@@ -467,6 +468,7 @@ func _ready() -> void:
 		_begin_when_built()
 		return
 	# hero_hp / enemy_hp: test and capture knobs (a quick win or loss); the app never sends them
+	AnimLib.motion = str(cfg.get("motion", ""))
 	hero = _spawn(str(cfg.get("hero_name", "You")), 0, int(cfg.get("hero_hp", HERO_HP)), Color(0.3, 0.75, 0.35), Vector3(0.3, 0, 3.6), PI, "hero")
 	ally = _spawn(str(cfg.get("ally_name", "Ally")), 0, ALLY_HP, Color(0.3, 0.65, 0.9), Vector3(3.0, 0, 4.4), PI, "ally")
 	enemy = _spawn(str(cfg.get("enemy_name", "Guardian")), 1, int(cfg.get("enemy_hp", boss_hp())), Color(0.85, 0.3, 0.25), Vector3(-0.4, 0, -0.6), 0.0, "boss",
@@ -504,6 +506,15 @@ func _ready() -> void:
 				_log("rigfix role=%s key=%s from=%s to=%s" % [role, str(fx[1]), p, str(fx[0])])
 				p = str(fx[0])
 				_cast_worn[role] = str(fx[1])
+		# realism-20261111 (presentation switches; the app passes none of them yet): "motion" classic |
+		# mocap, "foot_ik" (default by device tier), "aim_hold", "weight", "<role>_class" (a weapon
+		# class without a weapon model: "unarmed")
+		if cfg.has(role + "_class"):
+			(pair[0] as FighterScript).anim_opts["class"] = str(cfg[role + "_class"])
+		if cfg.has("foot_ik"):
+			(pair[0] as FighterScript).anim_opts["foot_ik"] = bool(cfg["foot_ik"])
+		(pair[0] as FighterScript).aim_hold = bool(cfg.get("aim_hold", true))
+		(pair[0] as FighterScript).weight_fx = bool(cfg.get("weight", true))
 		(pair[0] as FighterScript).anim_opts["secondary"] = bool(cfg.get("secondary", true))
 		(pair[0] as FighterScript).anim_opts["cloth_push"] = bool(cfg.get("cloth_push", true))   # cq 016
 		if p != "":

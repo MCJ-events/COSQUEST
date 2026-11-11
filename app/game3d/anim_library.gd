@@ -10,6 +10,12 @@ extends RefCounted
 const DATA_JSON: String = "res://data/anim_clips.json"
 const LIB_NAME: String = "cq"
 
+## realism-20261111: which clips the states play. "classic" = the KayKit / Quaternius picks (build 21),
+## "mocap" = the motion-capture overlay on top (anim_clips.json sets_mocap: CMU captures and
+## Mesh2Motion clips; a state with no overlay pick keeps its classic clip), "" = the data's
+## "motion_default". fight.gd sets it from the config ("motion"); one switch for before / after.
+static var motion: String = ""
+
 static var _data: Dictionary = {}
 static var _libs: Dictionary = {}     # path -> AnimationLibrary (track paths relative to the skeleton: ".:Bone")
 
@@ -211,7 +217,14 @@ static func apply(player: AnimationPlayer, skeleton: Skeleton3D, src: AnimationL
 	return out
 
 
-## The clip set for a weapon class ("hammer" -> "heavy"), "" for none.
+## "classic" or "mocap" (see `motion`).
+static func motion_now() -> String:
+	var m: String = motion if motion != "" else str(data().get("motion_default", "classic"))
+	return m if m == "mocap" else "classic"
+
+
+## The clip set for a weapon class ("hammer" -> "heavy"), "" for none. A set that exists only in the
+## motion-capture overlay ("unarmed") falls back to its classic base set when the switch is classic.
 static func set_for(cls: String) -> String:
 	var cs: Dictionary = data().get("class_set", {})
 	return str(cs.get(cls, cs.get("_default", "")))
@@ -220,12 +233,15 @@ static func set_for(cls: String) -> String:
 ## {state: {clip, frames, fps, contact, in, out, body, ground_speed_per_hip}} for a weapon
 ## class on character `key`: the character's pick (the set's clip or the first alternate
 ## that passed the tear gate on its mesh); a state with no pick is left out (the model's own
-## clip or the procedural pose plays it).
+## clip or the procedural pose plays it). With the motion switch on "mocap" the overlay's pick
+## replaces a state's classic one (and adds the overlay-only states: stagger_fwd, death_fwd).
 static func states_for(cls: String, key: String = "") -> Dictionary:
 	var d: Dictionary = data()
 	var sname: String = set_for(cls)
-	var s: Dictionary = (d.get("sets", {}) as Dictionary).get(sname, {})
-	var pick: Dictionary = ((((d.get("characters", {}) as Dictionary).get(key, {}) as Dictionary).get("pick", {}) as Dictionary).get(sname, {}) as Dictionary)
+	var base: String = str((d.get("set_base", {}) as Dictionary).get(sname, sname))
+	var s: Dictionary = (d.get("sets", {}) as Dictionary).get(base, {})
+	var ch: Dictionary = (d.get("characters", {}) as Dictionary).get(key, {})
+	var pick: Dictionary = ((ch.get("pick", {}) as Dictionary).get(base, {}) as Dictionary)
 	var clips: Dictionary = d.get("clips", {})
 	var out: Dictionary = {}
 	for st: String in s:
@@ -243,4 +259,19 @@ static func states_for(cls: String, key: String = "") -> Dictionary:
 			m["body"] = true    # an alternate without the set clip's motion (no spin): the body motion adds it
 		m["clip"] = name
 		out[st] = m
+	if motion_now() == "mocap" and key != "":
+		var so: Dictionary = (d.get("sets_mocap", {}) as Dictionary).get(sname, {})
+		var po: Dictionary = ((ch.get("pick_mocap", {}) as Dictionary).get(sname, {}) as Dictionary)
+		for st: String in so:
+			var name2: String = str(po.get(st, ""))
+			var c2: Dictionary = clips.get(name2, {})
+			if name2 == "" or c2.is_empty():
+				continue
+			var m2: Dictionary = c2.duplicate()
+			var own: Dictionary = ch.get("ground_speed_per_hip", {})
+			if own.has(name2):
+				m2["ground_speed_per_hip"] = own[name2]   # this character's own stride
+			m2["clip"] = name2
+			m2["mocap"] = true
+			out[st] = m2
 	return out

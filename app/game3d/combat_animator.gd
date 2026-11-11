@@ -14,6 +14,7 @@ extends RefCounted
 const PoseLayer := preload("res://pose_layer.gd")
 const AnimLib := preload("res://anim_library.gd")
 const SecondaryMotion := preload("res://secondary_motion.gd")
+const FootLock := preload("res://foot_lock.gd")
 
 # crossfades (s, real time): into a one-shot, back to a loop, into a hit react. fight-anim: Godot
 # advances a crossfade with the player's speed_scale, so a clip warped to 2-3.6x used to finish its
@@ -58,6 +59,14 @@ const LOCO: Array[String] = ["walk", "run", "sprint"]
 # body (fighter.gd), so the shove reads as steps, not a slide.
 const STAGGER_RATE_MAX: float = 1.4
 const HOLD_LAST: Array[String] = ["death", "victory"]   # victory settles into idle (fight-anim)
+# realism-20261111: a KO fall and a cheer are never squeezed to the game length (a captured fall
+# played 1.5 to 2x reads as a dropped doll): they play at most this fast and take the time they take
+const DEATH_RATE_MAX: float = 1.25
+const VICTORY_RATE_MAX: float = 1.2
+# realism-20261111: foot locking (foot_lock.gd) is on from this much reported RAM, the same tier
+# rule as the landscape fight (5 GiB reported = a 6 GB phone); config "foot_ik" overrides
+const FOOT_IK_MIN_RAM: int = 5 * 1024 * 1024 * 1024
+const FOOT_OFF_STATES: Array[String] = ["death", "dodge", "skill_whirl"]
 
 const ALIASES: Dictionary = {
 	"idle": ["idle", "idle_loop", "breathing_idle"],
@@ -137,6 +146,12 @@ var _flinch_dir: Vector3 = Vector3.ZERO   # the push, in the character's own fra
 ## every clip, and its stagger read as a T-pose from the game camera (fighter.gd sets it for a boss).
 var arm_droop: float = 0.0
 var _droop_now: float = 0.0
+## realism-20261111: foot locking (null = off for this device tier or this model has no legs)
+var foot: FootLock
+var floor_y: float = 0.0         # the paving under the fighter (fighter.gd sets it each frame)
+## realism-20261111: state -> the library state whose clip plays it this time (fighter.gd: a shove
+## from behind plays "stagger_fwd" as the stagger, a KO from behind "death_fwd" as the death)
+var variant: Dictionary = {}
 const DROOP_STATES: Array[String] = ["idle", "_", "walk", "run", "sprint", "hit", "stagger"]
 const DROOP_RATE: float = 8.0            # 1/s: eases in and out round the attacks
 
@@ -155,6 +170,8 @@ func bind(model: Node3D, body: Node3D, opts: Dictionary = {}) -> Dictionary:
 	skeleton = null
 	layer = null
 	secondary = null
+	foot = null
+	variant.clear()
 	var skels: Array[Node] = model.find_children("*", "Skeleton3D", true, false)
 	if skels.size() > 0:
 		skeleton = skels[0] as Skeleton3D
@@ -180,6 +197,17 @@ func bind(model: Node3D, body: Node3D, opts: Dictionary = {}) -> Dictionary:
 		layer.frame_root = model
 		skeleton.add_child(layer)
 		nb = layer.bind_bones()
+		# foot locking, after the pose layer and before the cloth (device tier, or config "foot_ik")
+		if bool(opts.get("foot_ik", foot_ik_default())) and not clips.is_empty():
+			var fl := FootLock.new()
+			fl.name = "FootLock"
+			fl.frame_root = model
+			skeleton.add_child(fl)
+			if fl.setup(skeleton) == 2:
+				foot = fl
+			else:
+				skeleton.remove_child(fl)
+				fl.free()
 		# robes, coats, skirts, wings, flames (cq 014): after the pose layer, so they hang from
 		# the final pose
 		secondary = null
@@ -197,6 +225,10 @@ func bind(model: Node3D, body: Node3D, opts: Dictionary = {}) -> Dictionary:
 		if not clips.has(st):
 			proc.append(st)
 	return {"clips": clips.duplicate(), "procedural": proc, "bones": nb, "hand": str(hand_r.get_meta("kind", "standin"))}
+
+
+static func foot_ik_default() -> bool:
+	return int(OS.get_memory_info().get("physical", 0)) >= FOOT_IK_MIN_RAM
 
 
 ## The cast clip library (cq 012): adds it to the model's AnimationPlayer (made if the GLB has
@@ -330,7 +362,10 @@ func play(st: String, game_len: float = 0.0, hit_at: float = -1.0, blend: float 
 	if player == null or not clips.has(st):
 		# no clip: idle/walk still come from the clip map when it has them
 		return false
-	var clip: String = clips[st]
+	var key: String = st
+	if variant.has(st) and clips.has(str(variant[st])):
+		key = str(variant[st])
+	var clip: String = clips[key]
 	var a: Animation = player.get_animation(clip)
 	if blend < 0.0:
 		blend = BLEND_HIT if st == "hit" else (BLEND_ACT if restart else BLEND_LOOP)
@@ -341,7 +376,7 @@ func play(st: String, game_len: float = 0.0, hit_at: float = -1.0, blend: float 
 		# build 20 pass 2: the spin's first pose is far from any swing's last (the off forearm
 		# turned 148-157 deg in one frame going into the whirl): it fades in over a few frames more
 		blend = maxf(blend, float(BLEND_IN_MIN.get(st, 0.0)))
-	var m: Dictionary = timing.get(st, {})
+	var m: Dictionary = timing.get(key, {})
 	var fps: float = float(m.get("fps", 30.0))
 	var t_in: float = float(m.get("in", 0)) / fps
 	var t_out: float = a.length if a != null else 0.0
@@ -359,6 +394,13 @@ func play(st: String, game_len: float = 0.0, hit_at: float = -1.0, blend: float 
 			_warp = [c_t, (c_t - t_in) / hit_at, (t_out - c_t) / (game_len - hit_at), hit_at]
 		else:
 			_warp = [t_out, (t_out - t_in) / game_len, (t_out - t_in) / game_len, game_len]
+			if st == "death" or st == "victory":
+				# realism-20261111: at a natural speed; the state lasts as long as the clip then takes
+				var cap: float = DEATH_RATE_MAX if st == "death" else VICTORY_RATE_MAX
+				var r: float = clampf((t_out - t_in) / game_len, 0.7, cap)
+				_warp = [t_out, r, r, game_len]
+				if st == "victory":
+					length = (t_out - t_in) / r
 		# a short strike cannot spend more than ~70 % of its wind-up fading in; a long wind-up (the
 		# Guardian's 0.8 s) fades in over 30 % of it (up to 0.25 s), not 0.08 s: its two-hand chop
 		# starts far from the idle pose (the off forearm swung 100 deg in one frame)
@@ -463,6 +505,18 @@ func update(dt: float, speed_now: float, dead: bool) -> void:
 					if clips.has(alt):
 						player.play(clips[alt], 0.15)
 				state = want
+	# realism-20261111: no state ever shows the bind pose. A player that has stopped outside a held
+	# end pose (a one-shot that ran out with nothing queued, a clip removed under it) goes back to
+	# the idle loop; a skeleton with no clip at all hangs its arms (pose_layer arm_droop) instead of
+	# standing in its T or A rest pose.
+	if player != null and not player.is_playing() and not (state in HOLD_LAST) and clips.has("idle") and not frozen:
+		player.play(clips["idle"], BLEND_LOOP, 1.0)
+	if foot != null:
+		foot.dt = 0.0 if frozen else dt
+		foot.floor_y = floor_y
+		foot.size = layer.frame_root.scale.y if layer != null and layer.frame_root != null else 1.0
+		foot.loco = state in LOCO
+		foot.pinning = not (state in FOOT_OFF_STATES) and player != null
 	if layer != null:
 		var p: Dictionary = _pose_now() if not clips.has(state) else {}
 		var fl: Dictionary = _flinch_pose()
@@ -472,6 +526,8 @@ func update(dt: float, speed_now: float, dead: bool) -> void:
 				p[k] = float(p.get(k, 0.0)) + float(fl[k])
 		layer.pose = p
 		var dw: float = arm_droop if (state in DROOP_STATES and not dead) else 0.0
+		if clips.is_empty() and state != "death":
+			dw = 1.0   # no clip at all: never the bind pose
 		_droop_now = lerpf(_droop_now, dw, 1.0 - exp(-dt * DROOP_RATE))
 		layer.arm_droop = _droop_now
 
