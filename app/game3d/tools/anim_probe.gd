@@ -136,6 +136,9 @@ func _write_frame() -> void:
 			"yaw": snappedf(float(f.get("yaw")), 0.0001), "vis": f.visible, "hp": int(f.get("hp")),
 			"fs": fstate, "frz": frozen, "kb": snappedf((f.get("kb_vel") as Vector3).length(), 0.001),
 			"size": snappedf(float(f.get("size_k")), 0.001), "team": int(f.get("team"))}
+		var fl: Variant = a.get("foot")
+		if fl != null and (fl as Object).has_method("debug_state"):
+			row["lock"] = (fl as Object).call("debug_state")
 		var model: Variant = f.get("model")
 		if model != null and is_instance_valid(model) and (model as Node3D).is_inside_tree():
 			var fw: Vector3 = (model as Node3D).global_basis.z

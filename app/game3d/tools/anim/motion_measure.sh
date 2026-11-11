@@ -38,6 +38,8 @@ while [ $# -gt 0 ]; do
 done
 [ -n "$OUT" ] || { echo "--out is required" >&2; exit 2; }
 mkdir -p "$OUT"
+OUT="$(cd "$OUT" && pwd)"
+GAME="$(cd "$GAME" && pwd)"
 [ -n "$REPORTS" ] || REPORTS="$GAME/tools/anim/reports"
 if ! cmp -s "$HERE/../anim_probe.gd" "$GAME/tools/anim_probe.gd"; then
   [ -f "$GAME/tools/anim_probe.gd" ] && [ ! -f "$GAME/tools/anim_probe.gd.orig" ] && cp "$GAME/tools/anim_probe.gd" "$GAME/tools/anim_probe.gd.orig"
