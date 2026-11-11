@@ -36,7 +36,10 @@ static func rig_fix(path: String) -> Array:
 
 
 ## Returns {ok, node, parse_ms, gen_ms, error, path}.
-func load_glb(path: String) -> Dictionary:
+## realism: `real` (the "real" look, mid and high tier) also builds tangents for the normal map and reads
+## the Forge skin mask that sits beside the file (lodN_skin.png, named in the material's extras.forge_skin):
+## out.skin_mask (a Texture2D, or absent). Without it the load is exactly as before.
+func load_glb(path: String, real: bool = false) -> Dictionary:
 	var out: Dictionary = {"ok": false, "node": null, "parse_ms": 0.0, "gen_ms": 0.0, "error": "", "path": path}
 	if path == "":
 		out["error"] = "empty path"
@@ -50,9 +53,9 @@ func load_glb(path: String) -> Dictionary:
 	var err: Error
 	if path.begins_with("res://"):
 		# a rig shipped in the pck (cq 014): read as bytes, as anim_library.gd does
-		err = doc.append_from_buffer(FileAccess.get_file_as_bytes(path), "", state)
+		err = doc.append_from_buffer(FileAccess.get_file_as_bytes(path), "", state, GEN_TANGENTS if real else 0)
 	else:
-		err = doc.append_from_file(path, state)
+		err = doc.append_from_file(path, state, GEN_TANGENTS if real else 0)
 	var t1: int = Time.get_ticks_usec()
 	out["parse_ms"] = (t1 - t0) / 1000.0
 	if err != OK:
@@ -68,9 +71,43 @@ func load_glb(path: String) -> Dictionary:
 	var t2: int = Time.get_ticks_usec()
 	out["mip_textures"] = add_mipmaps(node)
 	out["mip_ms"] = (Time.get_ticks_usec() - t2) / 1000.0
+	if real:
+		var mask: Texture2D = skin_mask(path, state)
+		if mask != null:
+			out["skin_mask"] = mask
 	out["node"] = node
 	out["ok"] = true
 	return out
+
+
+const GEN_TANGENTS: int = 8    # EditorSceneFormatImporter.IMPORT_GENERATE_TANGENT_ARRAYS (not named in export builds)
+
+
+## The Forge skin mask of a character file: the PNG the material's extras name (forge_skin.mask_file), else
+## "<file>_skin.png", beside the GLB. Red = skin, in the model's UVs. null when there is none.
+static func skin_mask(path: String, state: GLTFState) -> Texture2D:
+	if path.begins_with("res://"):
+		return null
+	var names: Array[String] = []
+	var mats: Variant = state.json.get("materials", [])
+	if mats is Array:
+		for m: Variant in mats:
+			var ex: Variant = (m as Dictionary).get("extras", {}) if m is Dictionary else {}
+			var fs: Variant = (ex as Dictionary).get("forge_skin", {}) if ex is Dictionary else {}
+			if fs is Dictionary and str((fs as Dictionary).get("mask_file", "")) != "":
+				names.append(str(fs["mask_file"]).get_file())
+	names.append(path.get_file().get_basename() + "_skin.png")
+	for nm: String in names:
+		var p: String = path.get_base_dir().path_join(nm)
+		if not FileAccess.file_exists(p):
+			continue
+		var img := Image.new()
+		if img.load(p) != OK:
+			continue
+		img.convert(Image.FORMAT_R8)
+		img.generate_mipmaps()
+		return ImageTexture.create_from_image(img)
+	return null
 
 
 ## GLTFDocument's runtime load gives the embedded textures no mipmaps, so at the fight camera
