@@ -36,6 +36,7 @@ import type {
   SsoSession,
 } from "./wire.ts";
 import { flattenExtra } from "./wire.ts";
+import { realmReviver } from "./realmNames.ts";
 
 export type GameErrorKind = "http" | "network" | "stale_nonce" | "bad_signature" | "not_signed_in" | "decoding";
 
@@ -180,7 +181,8 @@ export class GameClient {
     if (!response.ok) throw errorFrom(response.status, text);
     if (opts.raw) return text as T;
     try {
-      return JSON.parse(text) as T;
+      // build 21: old realm labels ("Marvel", "DC") never reach the screen (realmNames.ts)
+      return JSON.parse(text, realmReviver) as T;
     } catch {
       throw new GameError("decoding", "The server sent something unexpected.", response.status);
     }

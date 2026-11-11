@@ -16,8 +16,8 @@ describe("onboarding: lines", () => {
   it("speaks the pitch while choosing and the welcome after", () => {
     assert.equal(lineFor("askFaction", ctx({ picked: "gaming" })), pitch("gaming"));
     assert.match(lineFor("askFaction", ctx()), /^Every shrine belongs to one of five houses/);
-    assert.equal(welcome("gaming", "Ada"), "Player Ada has joined Gaming. New quest unlocked.");
-    assert.equal(lineFor("factionAck", ctx({ joined: "anime" })), "Anime it is! I can feel your fighting spirit already, Ada!");
+    assert.equal(welcome("gaming", "Ada"), "Player Ada has joined the Controllers. New quest unlocked.");
+    assert.equal(lineFor("factionAck", ctx({ joined: "anime" })), "Ascendants it is! I can feel your fighting spirit already, Ada!");
     assert.equal(welcome("unknown", "Ada"), "Welcome, Ada.");
     assert.equal(lineFor("nameAck", ctx()), "Ada. I'll remember that.");
   });

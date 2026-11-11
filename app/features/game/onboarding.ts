@@ -30,15 +30,15 @@ export type LineContext = {
 export function pitch(id: string): string {
   switch (id) {
     case "anime":
-      return "Anime. Loud, loyal, and they never, ever give up.";
+      return "Ascendants. Loud, loyal, and they never, ever give up.";
     case "marvel":
-      return "Marvel. Quick with a joke, quicker with a comeback.";
+      return "Icons. Quick with a joke, quicker with a comeback.";
     case "dc":
-      return "DC. Old legends, and they carry themselves like it.";
+      return "Everborns. Old legends, and they carry themselves like it.";
     case "movies":
-      return "Movies. Every story ever told on a big screen, and they know them all.";
+      return "Blockbusters. Every story ever told on a big screen, and they know them all.";
     case "gaming":
-      return "Gaming. They see the world as a map with a boss at the end.";
+      return "Controllers. They see the world as a map with a boss at the end.";
     default:
       return "Choose carefully.";
   }
@@ -48,15 +48,15 @@ export function pitch(id: string): string {
 export function welcome(id: string, name: string): string {
   switch (id) {
     case "anime":
-      return `Anime it is! I can feel your fighting spirit already, ${name}!`;
+      return `Ascendants it is! I can feel your fighting spirit already, ${name}!`;
     case "marvel":
-      return `Marvel. Good choice. I was hoping you'd have taste, ${name}.`;
+      return `Icons. Good choice. I was hoping you'd have taste, ${name}.`;
     case "dc":
       return `Then the legends have a new name among them. Welcome, ${name}.`;
     case "movies":
-      return `In a city full of shrines, one fan chose Movies. Welcome, ${name}.`;
+      return `In a city full of shrines, one fan chose the Blockbusters. Welcome, ${name}.`;
     case "gaming":
-      return `Player ${name} has joined Gaming. New quest unlocked.`;
+      return `Player ${name} has joined the Controllers. New quest unlocked.`;
     default:
       return `Welcome, ${name}.`;
   }

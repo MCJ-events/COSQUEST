@@ -5,6 +5,7 @@
 // Pure: no React Native imports (tested in __tests__/profile.test.ts).
 import type { GameClient } from "./client.ts";
 import type { ProfileAvatar, Relic, RoamMe } from "./wire.ts";
+import { cleanRealmLabel, realmName } from "./realmNames.ts";
 
 // ---------- the avatar ----------
 
@@ -128,10 +129,10 @@ export function heroPower(me: RoamMe | null | undefined): number {
   return me.standing.level * 12 + Math.trunc(relicPower(equippedOf(me)) * 5) + me.streak.best * 2;
 }
 
-/** "SCOUT OF HOUSE MARVEL" (ProfileView.heroTitle). */
+/** "SCOUT OF HOUSE ICONS" (ProfileView.heroTitle); old realm names never show (realmNames.ts). */
 export function heroTitle(me: RoamMe | null | undefined): string {
   if (!me) return "A NEW HERO";
-  const house = me.faction_name || (me.faction ? me.faction.charAt(0).toUpperCase() + me.faction.slice(1) : null);
+  const house = me.faction_name ? cleanRealmLabel(me.faction_name) : me.faction ? realmName(me.faction) : null;
   return house ? `${me.standing.rank.toUpperCase()} OF HOUSE ${house.toUpperCase()}` : me.standing.rank.toUpperCase();
 }
 

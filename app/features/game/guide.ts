@@ -5,6 +5,7 @@
 import { unlocked } from "./unlocks.ts";
 import type { QuestPoint, RoamMe } from "./wire.ts";
 import { isCooling, parseServerDate } from "./wire.ts";
+import { realmName as legacyRealmName } from "./realmNames.ts";
 
 /** How many cards the tray shows (NearbyTray.ordered: prefix(10)). */
 export const TRAY_CARDS = 10;
@@ -145,12 +146,11 @@ export function guardianName(p: Pick<QuestPoint, "name" | "extra">): string {
   return p.extra?.guardian ?? `Keeper of ${p.name}`;
 }
 
-/** The point card's third line: "DC questions", or the Guardian/boss line. */
+/** The point card's third line: "Icons questions", or the Guardian/boss line. */
 export function realmLine(p: QuestPoint, realmName: (id: string) => string): string {
   if (p.source === "raid") return "Boss · fight it with your crew";
   if (p.challenge === "duel") return `${realmName(p.realm)} Guardian · ${guardianName(p)}`;
-  const r = p.realm === "dc" ? "DC" : p.realm.charAt(0).toUpperCase() + p.realm.slice(1);
-  return `${r} questions`;
+  return `${legacyRealmName(p.realm)} questions`;
 }
 
 /** The card's subtitle (PointCard.subtitle). */

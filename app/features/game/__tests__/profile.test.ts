@@ -45,8 +45,8 @@ describe("profile: hero", () => {
     assert.equal(heroPower(null), 0);
   });
   it("titles the hero by rank and house", () => {
-    assert.equal(heroTitle(me()), "SCOUT OF HOUSE MARVEL");
-    assert.equal(heroTitle(me({ faction_name: null, faction: "dc" })), "SCOUT OF HOUSE DC");
+    assert.equal(heroTitle(me()), "SCOUT OF HOUSE ICONS");
+    assert.equal(heroTitle(me({ faction_name: null, faction: "dc" })), "SCOUT OF HOUSE EVERBORNS");
     assert.equal(heroTitle(me({ faction: null, faction_name: null })), "SCOUT");
     assert.equal(heroTitle(null), "A NEW HERO");
   });

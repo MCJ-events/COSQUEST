@@ -65,7 +65,7 @@ const FACTION_DETAILS: Record<string, FactionDetails> = {
     members: "2.8K",
     activeQuests: "15",
     about:
-      "Icons live and breathe comics: Marvel, DC, indie, manga crossovers, you name it. Build your hero identity, join comic-con quests, and rise through the ranks with every quest.",
+      "Icons live and breathe comics: superheroes, indie, manga crossovers, you name it. Build your hero identity, join comic-con quests, and rise through the ranks with every quest.",
     perks: [
       "Comic-con squad matching program",
       "Exclusive superhero rank badges",

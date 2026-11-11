@@ -148,8 +148,8 @@ describe("the card's words", () => {
 
   it("the third line of the card", () => {
     const name = (id: string) => (id === "dc" ? "DC" : id);
-    assert.equal(realmLine(pt("a"), name), "DC questions");
-    assert.equal(realmLine(pt("a", { realm: "marvel" }), name), "Marvel questions");
+    assert.equal(realmLine(pt("a"), name), "Everborns questions");
+    assert.equal(realmLine(pt("a", { realm: "marvel" }), name), "Icons questions");
     assert.equal(realmLine(pt("a", { challenge: "duel", extra: { guardian: "Zed" } }), name), "DC Guardian · Zed");
     assert.equal(realmLine(pt("a", { source: "raid" }), name), "Boss · fight it with your crew");
   });

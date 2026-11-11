@@ -31,6 +31,7 @@ import type {
   RoamVerdict,
 } from "./wire.ts";
 import { isCooling, pointPlaysAsDuel } from "./wire.ts";
+import { realmName } from "./realmNames.ts";
 
 export type KeyStorage = {
   get(key: string): Promise<string | null>;
@@ -591,7 +592,7 @@ export function createGameStore(deps: GameStoreDeps) {
 
     factionName(id: string | null | undefined): string {
       if (!id) return "No faction";
-      return state.config?.factions.find((f) => f.id === id)?.name ?? id.charAt(0).toUpperCase() + id.slice(1);
+      return state.config?.factions.find((f) => f.id === id)?.name ?? realmName(id);
     },
 
     playerName(): string {
