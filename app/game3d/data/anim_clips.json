@@ -13,7 +13,8 @@
   "rifle": "gun",
   "crossbow": "gun",
   "shield": "blade",
-  "_default": "blade"
+  "_default": "blade",
+  "unarmed": "unarmed"
  },
  "sets": {
   "blade": {
@@ -556,6 +557,300 @@
    }
   }
  },
+ "sets_mocap": {
+  "blade": {
+   "hit": {
+    "clip": "M2M_Hit_Chest",
+    "alt": [
+     "M2M_Hit_Head"
+    ]
+   },
+   "stagger": {
+    "clip": "CMU_Stagger_Back",
+    "alt": [
+     "M2M_Hit_Knockback"
+    ]
+   },
+   "stagger_fwd": {
+    "clip": "CMU_Stumble_Fwd",
+    "alt": []
+   },
+   "death": {
+    "clip": "CMU_Fall_Back",
+    "alt": [
+     "M2M_Death_B"
+    ]
+   },
+   "death_fwd": {
+    "clip": "CMU_Fall_Front",
+    "alt": []
+   },
+   "victory": {
+    "clip": "M2M_Victory_Fist_Pump",
+    "alt": [
+     "M2M_Victory"
+    ]
+   },
+   "idle": {
+    "clip": "CMU_Idle",
+    "alt": [
+     "M2M_Idle_Sword"
+    ]
+   },
+   "run": {
+    "clip": "CMU_Jog",
+    "alt": []
+   },
+   "attack_1": {
+    "clip": "CMU_Slash_A",
+    "alt": [
+     "M2M_Sword_Regular_A"
+    ]
+   },
+   "attack_2": {
+    "clip": "CMU_Slash_B",
+    "alt": [
+     "M2M_Sword_Regular_B"
+    ]
+   },
+   "attack_3": {
+    "clip": "CMU_Chop_2H",
+    "alt": [
+     "CMU_Slash_Low"
+    ]
+   },
+   "heavy": {
+    "clip": "CMU_Chop_2H",
+    "alt": [
+     "CMU_Slash_Low"
+    ]
+   },
+   "sprint": {
+    "clip": "CMU_Jog",
+    "alt": []
+   }
+  },
+  "heavy": {
+   "hit": {
+    "clip": "M2M_Hit_Chest",
+    "alt": [
+     "M2M_Hit_Head"
+    ]
+   },
+   "stagger": {
+    "clip": "CMU_Stagger_Back",
+    "alt": [
+     "M2M_Hit_Knockback"
+    ]
+   },
+   "stagger_fwd": {
+    "clip": "CMU_Stumble_Fwd",
+    "alt": []
+   },
+   "death": {
+    "clip": "CMU_Fall_Back",
+    "alt": [
+     "M2M_Death_B"
+    ]
+   },
+   "death_fwd": {
+    "clip": "CMU_Fall_Front",
+    "alt": []
+   },
+   "victory": {
+    "clip": "M2M_Victory_Fist_Pump",
+    "alt": [
+     "M2M_Victory"
+    ]
+   },
+   "heavy": {
+    "clip": "CMU_Chop_2H",
+    "alt": []
+   },
+   "attack_3": {
+    "clip": "CMU_Chop_2H",
+    "alt": []
+   },
+   "run": {
+    "clip": "CMU_Jog",
+    "alt": []
+   },
+   "sprint": {
+    "clip": "CMU_Jog",
+    "alt": []
+   }
+  },
+  "staff": {
+   "hit": {
+    "clip": "M2M_Hit_Chest",
+    "alt": [
+     "M2M_Hit_Head"
+    ]
+   },
+   "stagger": {
+    "clip": "CMU_Stagger_Back",
+    "alt": [
+     "M2M_Hit_Knockback"
+    ]
+   },
+   "stagger_fwd": {
+    "clip": "CMU_Stumble_Fwd",
+    "alt": []
+   },
+   "death": {
+    "clip": "CMU_Fall_Back",
+    "alt": [
+     "M2M_Death_B"
+    ]
+   },
+   "death_fwd": {
+    "clip": "CMU_Fall_Front",
+    "alt": []
+   },
+   "victory": {
+    "clip": "M2M_Victory_Fist_Pump",
+    "alt": [
+     "M2M_Victory"
+    ]
+   },
+   "heavy": {
+    "clip": "CMU_Chop_2H",
+    "alt": []
+   },
+   "run": {
+    "clip": "CMU_Jog",
+    "alt": []
+   },
+   "sprint": {
+    "clip": "CMU_Jog",
+    "alt": []
+   }
+  },
+  "gun": {
+   "hit": {
+    "clip": "M2M_Hit_Chest",
+    "alt": [
+     "M2M_Hit_Head"
+    ]
+   },
+   "stagger": {
+    "clip": "CMU_Stagger_Back",
+    "alt": [
+     "M2M_Hit_Knockback"
+    ]
+   },
+   "stagger_fwd": {
+    "clip": "CMU_Stumble_Fwd",
+    "alt": []
+   },
+   "death": {
+    "clip": "CMU_Fall_Back",
+    "alt": [
+     "M2M_Death_B"
+    ]
+   },
+   "death_fwd": {
+    "clip": "CMU_Fall_Front",
+    "alt": []
+   },
+   "victory": {
+    "clip": "M2M_Victory_Fist_Pump",
+    "alt": [
+     "M2M_Victory"
+    ]
+   },
+   "run": {
+    "clip": "CMU_Jog",
+    "alt": []
+   },
+   "sprint": {
+    "clip": "CMU_Jog",
+    "alt": []
+   }
+  },
+  "unarmed": {
+   "hit": {
+    "clip": "M2M_Hit_Chest",
+    "alt": [
+     "M2M_Hit_Head"
+    ]
+   },
+   "stagger": {
+    "clip": "CMU_Stagger_Back",
+    "alt": [
+     "M2M_Hit_Knockback"
+    ]
+   },
+   "stagger_fwd": {
+    "clip": "CMU_Stumble_Fwd",
+    "alt": []
+   },
+   "death": {
+    "clip": "CMU_Fall_Back",
+    "alt": [
+     "M2M_Death_B"
+    ]
+   },
+   "death_fwd": {
+    "clip": "CMU_Fall_Front",
+    "alt": []
+   },
+   "victory": {
+    "clip": "M2M_Victory_Fist_Pump",
+    "alt": [
+     "M2M_Victory"
+    ]
+   },
+   "idle": {
+    "clip": "CMU_Guard",
+    "alt": [
+     "M2M_Fighting_Idle"
+    ]
+   },
+   "run": {
+    "clip": "CMU_Jog",
+    "alt": []
+   },
+   "attack_1": {
+    "clip": "CMU_Punch_L",
+    "alt": [
+     "M2M_Punch_Jab"
+    ]
+   },
+   "attack_2": {
+    "clip": "CMU_Punch_R",
+    "alt": [
+     "M2M_Punch_Cross"
+    ]
+   },
+   "attack_3": {
+    "clip": "CMU_Strike_Down",
+    "alt": [
+     "M2M_Melee_Hook"
+    ]
+   },
+   "heavy": {
+    "clip": "CMU_Strike_Down",
+    "alt": [
+     "M2M_Melee_Hook"
+    ]
+   },
+   "skill_charge": {
+    "clip": "CMU_Punch_R",
+    "alt": [
+     "M2M_Punch_Cross"
+    ]
+   },
+   "sprint": {
+    "clip": "CMU_Jog",
+    "alt": []
+   }
+  }
+ },
+ "set_base": {
+  "unarmed": "blade"
+ },
+ "motion_default": "classic",
  "clips": {
   "1H_Melee_Attack_Chop": {
    "src": "1H_Melee_Attack_Chop",
@@ -681,6 +976,126 @@
    "frames": 33,
    "fps": 30.0
   },
+  "CMU_Chop_2H": {
+   "src": "CMU_Chop_2H",
+   "lib": "cmu",
+   "frames": 53,
+   "fps": 30.0,
+   "contact": 34,
+   "out": 49,
+   "source": "CMU Graphics Lab Motion Capture Database (captured), 02_07 swordplay"
+  },
+  "CMU_Fall_Back": {
+   "src": "CMU_Fall_Back",
+   "lib": "cmu",
+   "frames": 43,
+   "fps": 30.0,
+   "source": "CMU Graphics Lab Motion Capture Database (captured), 90_18 RugPullFall"
+  },
+  "CMU_Fall_Front": {
+   "src": "CMU_Fall_Front",
+   "lib": "cmu",
+   "frames": 75,
+   "fps": 30.0,
+   "source": "CMU Graphics Lab Motion Capture Database (captured), 90_16 fall on face"
+  },
+  "CMU_Guard": {
+   "src": "CMU_Guard",
+   "lib": "cmu",
+   "frames": 49,
+   "fps": 30.0,
+   "source": "CMU Graphics Lab Motion Capture Database (captured), 76_04 defensive guard pose"
+  },
+  "CMU_Idle": {
+   "src": "CMU_Idle",
+   "lib": "cmu",
+   "frames": 125,
+   "fps": 30.0,
+   "source": "CMU Graphics Lab Motion Capture Database (captured), 140_06 Idle"
+  },
+  "CMU_Jog": {
+   "src": "CMU_Jog",
+   "lib": "cmu",
+   "frames": 25,
+   "fps": 30.0,
+   "ground_speed_per_hip": 2.828,
+   "source": "CMU Graphics Lab Motion Capture Database (captured), 16_35 run/jog"
+  },
+  "CMU_Punch_L": {
+   "src": "CMU_Punch_L",
+   "lib": "cmu",
+   "frames": 17,
+   "fps": 30.0,
+   "contact": 8,
+   "source": "CMU Graphics Lab Motion Capture Database (captured), 144_20 Punch_Sequence (mirrored)"
+  },
+  "CMU_Punch_R": {
+   "src": "CMU_Punch_R",
+   "lib": "cmu",
+   "frames": 18,
+   "fps": 30.0,
+   "contact": 8,
+   "source": "CMU Graphics Lab Motion Capture Database (captured), 144_20 Punch_Sequence"
+  },
+  "CMU_Slash_A": {
+   "src": "CMU_Slash_A",
+   "lib": "cmu",
+   "frames": 36,
+   "fps": 30.0,
+   "contact": 19,
+   "out": 31,
+   "source": "CMU Graphics Lab Motion Capture Database (captured), 02_09 swordplay"
+  },
+  "CMU_Slash_B": {
+   "src": "CMU_Slash_B",
+   "lib": "cmu",
+   "frames": 33,
+   "fps": 30.0,
+   "contact": 11,
+   "out": 27,
+   "source": "CMU Graphics Lab Motion Capture Database (captured), 02_09 swordplay"
+  },
+  "CMU_Slash_C": {
+   "src": "CMU_Slash_C",
+   "lib": "cmu",
+   "frames": 32,
+   "fps": 30.0,
+   "contact": 12,
+   "out": 28,
+   "source": "CMU Graphics Lab Motion Capture Database (captured), 02_09 swordplay"
+  },
+  "CMU_Slash_Low": {
+   "src": "CMU_Slash_Low",
+   "lib": "cmu",
+   "frames": 45,
+   "fps": 30.0,
+   "contact": 25,
+   "out": 38,
+   "source": "CMU Graphics Lab Motion Capture Database (captured), 02_09 swordplay"
+  },
+  "CMU_Stagger_Back": {
+   "src": "CMU_Stagger_Back",
+   "lib": "cmu",
+   "frames": 39,
+   "fps": 30.0,
+   "source": "CMU Graphics Lab Motion Capture Database (captured), 76_11 quick large steps backwards"
+  },
+  "CMU_Strike_Down": {
+   "src": "CMU_Strike_Down",
+   "lib": "cmu",
+   "frames": 43,
+   "fps": 30.0,
+   "contact": 17,
+   "out": 35,
+   "source": "CMU Graphics Lab Motion Capture Database (captured), 02_05 punch/strike"
+  },
+  "CMU_Stumble_Fwd": {
+   "src": "CMU_Stumble_Fwd",
+   "lib": "cmu",
+   "frames": 34,
+   "fps": 30.0,
+   "source": "CMU Graphics Lab Motion Capture Database (captured), 104_13 StumbleWalk"
+  },
   "Cheer": {
    "src": "Cheer",
    "lib": "kaykit",
@@ -736,6 +1151,102 @@
    "lib": "kaykit",
    "frames": 36,
    "fps": 30.0
+  },
+  "M2M_Death_B": {
+   "src": "M2M_Death_B",
+   "lib": "m2m",
+   "frames": 61,
+   "fps": 30.0,
+   "source": "Mesh2Motion (CC0, authored), death-b"
+  },
+  "M2M_Fighting_Idle": {
+   "src": "M2M_Fighting_Idle",
+   "lib": "m2m",
+   "frames": 50,
+   "fps": 30.0,
+   "source": "Mesh2Motion (CC0, authored), fighting-idle"
+  },
+  "M2M_Hit_Chest": {
+   "src": "M2M_Hit_Chest",
+   "lib": "m2m",
+   "frames": 12,
+   "fps": 30.0,
+   "source": "Mesh2Motion (CC0, authored), hit-chest"
+  },
+  "M2M_Hit_Head": {
+   "src": "M2M_Hit_Head",
+   "lib": "m2m",
+   "frames": 16,
+   "fps": 30.0,
+   "source": "Mesh2Motion (CC0, authored), hit-head"
+  },
+  "M2M_Hit_Knockback": {
+   "src": "M2M_Hit_Knockback",
+   "lib": "m2m",
+   "frames": 25,
+   "fps": 30.0,
+   "source": "Mesh2Motion (CC0, authored), hit-knockback"
+  },
+  "M2M_Idle_Sword": {
+   "src": "M2M_Idle_Sword",
+   "lib": "m2m",
+   "frames": 62,
+   "fps": 30.0,
+   "source": "Mesh2Motion (CC0, authored), idle-sword"
+  },
+  "M2M_Melee_Hook": {
+   "src": "M2M_Melee_Hook",
+   "lib": "m2m",
+   "frames": 15,
+   "fps": 30.0,
+   "contact": 8,
+   "source": "Mesh2Motion (CC0, authored), melee-hook"
+  },
+  "M2M_Punch_Cross": {
+   "src": "M2M_Punch_Cross",
+   "lib": "m2m",
+   "frames": 37,
+   "fps": 30.0,
+   "contact": 8,
+   "source": "Mesh2Motion (CC0, authored), punch-cross"
+  },
+  "M2M_Punch_Jab": {
+   "src": "M2M_Punch_Jab",
+   "lib": "m2m",
+   "frames": 32,
+   "fps": 30.0,
+   "contact": 6,
+   "source": "Mesh2Motion (CC0, authored), punch-jab"
+  },
+  "M2M_Sword_Regular_A": {
+   "src": "M2M_Sword_Regular_A",
+   "lib": "m2m",
+   "frames": 13,
+   "fps": 30.0,
+   "contact": 7,
+   "source": "Mesh2Motion (CC0, authored), sword-regular-a"
+  },
+  "M2M_Sword_Regular_B": {
+   "src": "M2M_Sword_Regular_B",
+   "lib": "m2m",
+   "frames": 17,
+   "fps": 30.0,
+   "contact": 8,
+   "source": "Mesh2Motion (CC0, authored), sword-regular-b"
+  },
+  "M2M_Victory": {
+   "src": "M2M_Victory",
+   "lib": "m2m",
+   "frames": 56,
+   "fps": 30.0,
+   "source": "Mesh2Motion (CC0, authored), victory"
+  },
+  "M2M_Victory_Fist_Pump": {
+   "src": "M2M_Victory_Fist_Pump",
+   "lib": "m2m",
+   "frames": 75,
+   "fps": 30.0,
+   "source": "Mesh2Motion (CC0, authored), victory-fist-pump"
   },
   "Running_A": {
    "src": "Running_A",
@@ -1039,11 +1550,81 @@
    },
    "tear_worst": 0.0109,
    "clips_over_gate": [
+    "M2M_Hit_Knockback",
     "UAL_Roll",
     "UAL_Sword_Attack"
    ],
    "hip_scale": 2.145,
-   "clips_in_library": 32
+   "pick_mocap": {
+    "blade": {
+     "hit": "M2M_Hit_Chest",
+     "stagger": "CMU_Stagger_Back",
+     "stagger_fwd": "CMU_Stumble_Fwd",
+     "death": "CMU_Fall_Back",
+     "death_fwd": "CMU_Fall_Front",
+     "victory": "M2M_Victory_Fist_Pump",
+     "idle": "CMU_Idle",
+     "run": "CMU_Jog",
+     "attack_1": "CMU_Slash_A",
+     "attack_2": "CMU_Slash_B",
+     "attack_3": "CMU_Chop_2H",
+     "heavy": "CMU_Chop_2H",
+     "sprint": "CMU_Jog"
+    },
+    "heavy": {
+     "hit": "M2M_Hit_Chest",
+     "stagger": "CMU_Stagger_Back",
+     "stagger_fwd": "CMU_Stumble_Fwd",
+     "death": "CMU_Fall_Back",
+     "death_fwd": "CMU_Fall_Front",
+     "victory": "M2M_Victory_Fist_Pump",
+     "heavy": "CMU_Chop_2H",
+     "attack_3": "CMU_Chop_2H",
+     "run": "CMU_Jog",
+     "sprint": "CMU_Jog"
+    },
+    "staff": {
+     "hit": "M2M_Hit_Chest",
+     "stagger": "CMU_Stagger_Back",
+     "stagger_fwd": "CMU_Stumble_Fwd",
+     "death": "CMU_Fall_Back",
+     "death_fwd": "CMU_Fall_Front",
+     "victory": "M2M_Victory_Fist_Pump",
+     "heavy": "CMU_Chop_2H",
+     "run": "CMU_Jog",
+     "sprint": "CMU_Jog"
+    },
+    "gun": {
+     "hit": "M2M_Hit_Chest",
+     "stagger": "CMU_Stagger_Back",
+     "stagger_fwd": "CMU_Stumble_Fwd",
+     "death": "CMU_Fall_Back",
+     "death_fwd": "CMU_Fall_Front",
+     "victory": "M2M_Victory_Fist_Pump",
+     "run": "CMU_Jog",
+     "sprint": "CMU_Jog"
+    },
+    "unarmed": {
+     "hit": "M2M_Hit_Chest",
+     "stagger": "CMU_Stagger_Back",
+     "stagger_fwd": "CMU_Stumble_Fwd",
+     "death": "CMU_Fall_Back",
+     "death_fwd": "CMU_Fall_Front",
+     "victory": "M2M_Victory_Fist_Pump",
+     "idle": "CMU_Guard",
+     "run": "CMU_Jog",
+     "attack_1": "CMU_Punch_L",
+     "attack_2": "CMU_Punch_R",
+     "attack_3": "CMU_Strike_Down",
+     "heavy": "CMU_Strike_Down",
+     "skill_charge": "CMU_Punch_R",
+     "sprint": "CMU_Jog"
+    }
+   },
+   "clips_in_library": 47,
+   "ground_speed_per_hip": {
+    "CMU_Jog": 2.93
+   }
   },
   "bobo": {
    "status": "clips",
@@ -1156,7 +1737,7 @@
      0.0379
     ]
    },
-   "tear_worst": 0.008,
+   "tear_worst": 0.0212,
    "clips_over_gate": [
     "2H_Melee_Attack_Chop",
     "2H_Melee_Attack_Slice",
@@ -1164,13 +1745,98 @@
     "2H_Ranged_Aiming",
     "2H_Ranged_Shoot",
     "Aim_Hold",
+    "CMU_Chop_2H",
+    "CMU_Fall_Front",
+    "CMU_Guard",
+    "CMU_Punch_L",
+    "CMU_Punch_R",
+    "CMU_Slash_Low",
+    "CMU_Strike_Down",
     "Guard_2H",
+    "M2M_Death_B",
+    "M2M_Hit_Knockback",
+    "M2M_Melee_Hook",
+    "M2M_Punch_Cross",
+    "M2M_Punch_Jab",
+    "M2M_Sword_Regular_A",
+    "M2M_Sword_Regular_B",
+    "M2M_Victory",
+    "M2M_Victory_Fist_Pump",
     "UAL_Death",
     "UAL_Roll",
     "UAL_Sword_Attack"
    ],
    "hip_scale": 2.322,
-   "clips_in_library": 26
+   "pick_mocap": {
+    "blade": {
+     "hit": "M2M_Hit_Chest",
+     "stagger": "CMU_Stagger_Back",
+     "stagger_fwd": "CMU_Stumble_Fwd",
+     "death": "CMU_Fall_Back",
+     "death_fwd": "",
+     "victory": "",
+     "idle": "CMU_Idle",
+     "run": "CMU_Jog",
+     "attack_1": "CMU_Slash_A",
+     "attack_2": "CMU_Slash_B",
+     "attack_3": "",
+     "heavy": "",
+     "sprint": "CMU_Jog"
+    },
+    "heavy": {
+     "hit": "M2M_Hit_Chest",
+     "stagger": "CMU_Stagger_Back",
+     "stagger_fwd": "CMU_Stumble_Fwd",
+     "death": "CMU_Fall_Back",
+     "death_fwd": "",
+     "victory": "",
+     "heavy": "",
+     "attack_3": "",
+     "run": "CMU_Jog",
+     "sprint": "CMU_Jog"
+    },
+    "staff": {
+     "hit": "M2M_Hit_Chest",
+     "stagger": "CMU_Stagger_Back",
+     "stagger_fwd": "CMU_Stumble_Fwd",
+     "death": "CMU_Fall_Back",
+     "death_fwd": "",
+     "victory": "",
+     "heavy": "",
+     "run": "CMU_Jog",
+     "sprint": "CMU_Jog"
+    },
+    "gun": {
+     "hit": "M2M_Hit_Chest",
+     "stagger": "CMU_Stagger_Back",
+     "stagger_fwd": "CMU_Stumble_Fwd",
+     "death": "CMU_Fall_Back",
+     "death_fwd": "",
+     "victory": "",
+     "run": "CMU_Jog",
+     "sprint": "CMU_Jog"
+    },
+    "unarmed": {
+     "hit": "M2M_Hit_Chest",
+     "stagger": "CMU_Stagger_Back",
+     "stagger_fwd": "CMU_Stumble_Fwd",
+     "death": "CMU_Fall_Back",
+     "death_fwd": "",
+     "victory": "",
+     "idle": "M2M_Fighting_Idle",
+     "run": "CMU_Jog",
+     "attack_1": "",
+     "attack_2": "",
+     "attack_3": "",
+     "heavy": "",
+     "skill_charge": "",
+     "sprint": "CMU_Jog"
+    }
+   },
+   "clips_in_library": 35,
+   "ground_speed_per_hip": {
+    "CMU_Jog": 1.803
+   }
   },
   "catboy": {
    "status": "clips",
@@ -1283,14 +1949,95 @@
      0.0022
     ]
    },
-   "tear_worst": 0.0109,
+   "tear_worst": 0.0317,
    "clips_over_gate": [
+    "CMU_Fall_Front",
+    "CMU_Slash_Low",
+    "M2M_Death_B",
+    "M2M_Fighting_Idle",
+    "M2M_Hit_Knockback",
+    "M2M_Melee_Hook",
+    "M2M_Punch_Cross",
+    "M2M_Punch_Jab",
+    "M2M_Sword_Regular_A",
+    "M2M_Sword_Regular_B",
+    "M2M_Victory",
+    "M2M_Victory_Fist_Pump",
     "UAL_Death",
     "UAL_Roll",
     "UAL_Sword_Attack"
    ],
    "hip_scale": 1.908,
-   "clips_in_library": 32
+   "pick_mocap": {
+    "blade": {
+     "hit": "M2M_Hit_Chest",
+     "stagger": "CMU_Stagger_Back",
+     "stagger_fwd": "CMU_Stumble_Fwd",
+     "death": "CMU_Fall_Back",
+     "death_fwd": "",
+     "victory": "",
+     "idle": "CMU_Idle",
+     "run": "CMU_Jog",
+     "attack_1": "CMU_Slash_A",
+     "attack_2": "CMU_Slash_B",
+     "attack_3": "CMU_Chop_2H",
+     "heavy": "CMU_Chop_2H",
+     "sprint": "CMU_Jog"
+    },
+    "heavy": {
+     "hit": "M2M_Hit_Chest",
+     "stagger": "CMU_Stagger_Back",
+     "stagger_fwd": "CMU_Stumble_Fwd",
+     "death": "CMU_Fall_Back",
+     "death_fwd": "",
+     "victory": "",
+     "heavy": "CMU_Chop_2H",
+     "attack_3": "CMU_Chop_2H",
+     "run": "CMU_Jog",
+     "sprint": "CMU_Jog"
+    },
+    "staff": {
+     "hit": "M2M_Hit_Chest",
+     "stagger": "CMU_Stagger_Back",
+     "stagger_fwd": "CMU_Stumble_Fwd",
+     "death": "CMU_Fall_Back",
+     "death_fwd": "",
+     "victory": "",
+     "heavy": "CMU_Chop_2H",
+     "run": "CMU_Jog",
+     "sprint": "CMU_Jog"
+    },
+    "gun": {
+     "hit": "M2M_Hit_Chest",
+     "stagger": "CMU_Stagger_Back",
+     "stagger_fwd": "CMU_Stumble_Fwd",
+     "death": "CMU_Fall_Back",
+     "death_fwd": "",
+     "victory": "",
+     "run": "CMU_Jog",
+     "sprint": "CMU_Jog"
+    },
+    "unarmed": {
+     "hit": "M2M_Hit_Chest",
+     "stagger": "CMU_Stagger_Back",
+     "stagger_fwd": "CMU_Stumble_Fwd",
+     "death": "CMU_Fall_Back",
+     "death_fwd": "",
+     "victory": "",
+     "idle": "CMU_Guard",
+     "run": "CMU_Jog",
+     "attack_1": "CMU_Punch_L",
+     "attack_2": "CMU_Punch_R",
+     "attack_3": "CMU_Strike_Down",
+     "heavy": "CMU_Strike_Down",
+     "skill_charge": "CMU_Punch_R",
+     "sprint": "CMU_Jog"
+    }
+   },
+   "clips_in_library": 45,
+   "ground_speed_per_hip": {
+    "CMU_Jog": 2.898
+   }
   },
   "crystalz": {
    "status": "clips",
@@ -1403,7 +2150,7 @@
      -0.0732
     ]
    },
-   "tear_worst": 0.034,
+   "tear_worst": 0.0379,
    "clips_over_gate": [
     "1H_Melee_Attack_Slice_Horizontal",
     "2H_Melee_Attack_Chop",
@@ -1414,8 +2161,28 @@
     "2H_Ranged_Aiming",
     "2H_Ranged_Shoot",
     "Aim_Hold",
+    "CMU_Chop_2H",
+    "CMU_Fall_Back",
+    "CMU_Fall_Front",
+    "CMU_Guard",
+    "CMU_Jog",
+    "CMU_Punch_L",
+    "CMU_Punch_R",
+    "CMU_Slash_B",
+    "CMU_Slash_C",
+    "CMU_Slash_Low",
+    "CMU_Strike_Down",
+    "CMU_Stumble_Fwd",
     "Guard_2H",
     "Jump_Full_Short",
+    "M2M_Death_B",
+    "M2M_Hit_Knockback",
+    "M2M_Melee_Hook",
+    "M2M_Punch_Jab",
+    "M2M_Sword_Regular_A",
+    "M2M_Sword_Regular_B",
+    "M2M_Victory",
+    "M2M_Victory_Fist_Pump",
     "Running_B",
     "Staff_Jog",
     "Staff_Run",
@@ -1427,7 +2194,76 @@
     "UAL_Sword_Attack"
    ],
    "hip_scale": 2.057,
-   "clips_in_library": 25
+   "pick_mocap": {
+    "blade": {
+     "hit": "M2M_Hit_Chest",
+     "stagger": "CMU_Stagger_Back",
+     "stagger_fwd": "",
+     "death": "",
+     "death_fwd": "",
+     "victory": "",
+     "idle": "CMU_Idle",
+     "run": "CMU_Jog",
+     "attack_1": "CMU_Slash_A",
+     "attack_2": "",
+     "attack_3": "",
+     "heavy": "",
+     "sprint": "CMU_Jog"
+    },
+    "heavy": {
+     "hit": "M2M_Hit_Chest",
+     "stagger": "CMU_Stagger_Back",
+     "stagger_fwd": "",
+     "death": "",
+     "death_fwd": "",
+     "victory": "",
+     "heavy": "",
+     "attack_3": "",
+     "run": "CMU_Jog",
+     "sprint": "CMU_Jog"
+    },
+    "staff": {
+     "hit": "M2M_Hit_Chest",
+     "stagger": "CMU_Stagger_Back",
+     "stagger_fwd": "",
+     "death": "",
+     "death_fwd": "",
+     "victory": "",
+     "heavy": "",
+     "run": "CMU_Jog",
+     "sprint": "CMU_Jog"
+    },
+    "gun": {
+     "hit": "M2M_Hit_Chest",
+     "stagger": "CMU_Stagger_Back",
+     "stagger_fwd": "",
+     "death": "",
+     "death_fwd": "",
+     "victory": "",
+     "run": "CMU_Jog",
+     "sprint": "CMU_Jog"
+    },
+    "unarmed": {
+     "hit": "M2M_Hit_Chest",
+     "stagger": "CMU_Stagger_Back",
+     "stagger_fwd": "",
+     "death": "",
+     "death_fwd": "",
+     "victory": "",
+     "idle": "M2M_Fighting_Idle",
+     "run": "CMU_Jog",
+     "attack_1": "",
+     "attack_2": "M2M_Punch_Cross",
+     "attack_3": "",
+     "heavy": "",
+     "skill_charge": "M2M_Punch_Cross",
+     "sprint": "CMU_Jog"
+    }
+   },
+   "clips_in_library": 32,
+   "ground_speed_per_hip": {
+    "CMU_Jog": 2.019
+   }
   },
   "elvis": {
    "status": "clips",
@@ -1549,8 +2385,28 @@
     "2H_Melee_Attack_Stab",
     "2H_Ranged_Shoot",
     "Block_Attack",
+    "CMU_Chop_2H",
+    "CMU_Fall_Back",
+    "CMU_Fall_Front",
+    "CMU_Guard",
+    "CMU_Punch_L",
+    "CMU_Punch_R",
+    "CMU_Slash_A",
+    "CMU_Slash_B",
+    "CMU_Slash_C",
+    "CMU_Slash_Low",
+    "CMU_Strike_Down",
+    "CMU_Stumble_Fwd",
     "Death_B",
     "Hit_B",
+    "M2M_Death_B",
+    "M2M_Hit_Knockback",
+    "M2M_Melee_Hook",
+    "M2M_Punch_Cross",
+    "M2M_Punch_Jab",
+    "M2M_Sword_Regular_A",
+    "M2M_Sword_Regular_B",
+    "M2M_Victory",
     "Running_A",
     "Running_B",
     "Staff_Jog",
@@ -1565,7 +2421,775 @@
     "UAL_Sword_Idle"
    ],
    "hip_scale": 2.222,
-   "clips_in_library": 28
+   "pick_mocap": {
+    "blade": {
+     "hit": "M2M_Hit_Chest",
+     "stagger": "CMU_Stagger_Back",
+     "stagger_fwd": "",
+     "death": "",
+     "death_fwd": "",
+     "victory": "M2M_Victory_Fist_Pump",
+     "idle": "CMU_Idle",
+     "run": "CMU_Jog",
+     "attack_1": "",
+     "attack_2": "",
+     "attack_3": "",
+     "heavy": "",
+     "sprint": "CMU_Jog"
+    },
+    "heavy": {
+     "hit": "M2M_Hit_Chest",
+     "stagger": "CMU_Stagger_Back",
+     "stagger_fwd": "",
+     "death": "",
+     "death_fwd": "",
+     "victory": "M2M_Victory_Fist_Pump",
+     "heavy": "",
+     "attack_3": "",
+     "run": "CMU_Jog",
+     "sprint": "CMU_Jog"
+    },
+    "staff": {
+     "hit": "M2M_Hit_Chest",
+     "stagger": "CMU_Stagger_Back",
+     "stagger_fwd": "",
+     "death": "",
+     "death_fwd": "",
+     "victory": "M2M_Victory_Fist_Pump",
+     "heavy": "",
+     "run": "CMU_Jog",
+     "sprint": "CMU_Jog"
+    },
+    "gun": {
+     "hit": "M2M_Hit_Chest",
+     "stagger": "CMU_Stagger_Back",
+     "stagger_fwd": "",
+     "death": "",
+     "death_fwd": "",
+     "victory": "M2M_Victory_Fist_Pump",
+     "run": "CMU_Jog",
+     "sprint": "CMU_Jog"
+    },
+    "unarmed": {
+     "hit": "M2M_Hit_Chest",
+     "stagger": "CMU_Stagger_Back",
+     "stagger_fwd": "",
+     "death": "",
+     "death_fwd": "",
+     "victory": "M2M_Victory_Fist_Pump",
+     "idle": "M2M_Fighting_Idle",
+     "run": "CMU_Jog",
+     "attack_1": "",
+     "attack_2": "",
+     "attack_3": "",
+     "heavy": "",
+     "skill_charge": "",
+     "sprint": "CMU_Jog"
+    }
+   },
+   "clips_in_library": 34,
+   "ground_speed_per_hip": {
+    "CMU_Jog": 1.895
+   }
+  },
+  "forge_kade": {
+   "status": "clips",
+   "library": "res://anim/forge_kade.glb",
+   "pick": {
+    "blade": {
+     "hit": "UAL_Hit_Chest",
+     "guard": "",
+     "parry": "",
+     "dodge": "",
+     "skill_rally": "",
+     "death": "",
+     "victory": "",
+     "heavy": "",
+     "idle": "UAL_Idle",
+     "walk": "UAL_Walk",
+     "run": "UAL_Jog",
+     "attack_1": "1H_Melee_Attack_Slice_Diagonal",
+     "attack_2": "1H_Melee_Attack_Slice_Horizontal",
+     "attack_3": "1H_Melee_Attack_Chop",
+     "skill_charge": "",
+     "skill_split": "",
+     "skill_whirl": "",
+     "skill_shield": "",
+     "sprint": "UAL_Sprint",
+     "stagger": ""
+    },
+    "heavy": {
+     "hit": "UAL_Hit_Chest",
+     "guard": "",
+     "parry": "",
+     "dodge": "",
+     "skill_rally": "",
+     "death": "",
+     "victory": "",
+     "heavy": "",
+     "idle": "UAL_Idle",
+     "walk": "UAL_Walk",
+     "run": "UAL_Jog",
+     "attack_1": "1H_Melee_Attack_Slice_Diagonal",
+     "attack_2": "1H_Melee_Attack_Slice_Horizontal",
+     "attack_3": "2H_Melee_Attack_Chop",
+     "skill_charge": "",
+     "skill_split": "",
+     "skill_whirl": "",
+     "skill_shield": "",
+     "sprint": "UAL_Sprint",
+     "stagger": ""
+    },
+    "staff": {
+     "hit": "UAL_Hit_Chest",
+     "guard": "",
+     "parry": "",
+     "dodge": "",
+     "skill_rally": "",
+     "death": "",
+     "victory": "",
+     "heavy": "",
+     "idle": "UAL_Idle",
+     "walk": "UAL_Walk",
+     "run": "Staff_Jog",
+     "attack_1": "1H_Melee_Attack_Slice_Diagonal",
+     "attack_2": "Spellcast_Shoot",
+     "attack_3": "2H_Melee_Attack_Chop",
+     "skill_charge": "",
+     "skill_split": "",
+     "skill_whirl": "",
+     "skill_shield": "",
+     "sprint": "Staff_Sprint",
+     "stagger": ""
+    },
+    "gun": {
+     "hit": "UAL_Hit_Chest",
+     "guard": "",
+     "parry": "",
+     "dodge": "",
+     "skill_rally": "",
+     "death": "",
+     "victory": "",
+     "heavy": "",
+     "idle": "",
+     "walk": "UAL_Walk",
+     "run": "UAL_Jog",
+     "attack_1": "1H_Melee_Attack_Stab",
+     "attack_2": "1H_Melee_Attack_Stab",
+     "attack_3": "1H_Melee_Attack_Stab",
+     "skill_charge": "",
+     "skill_split": "",
+     "skill_whirl": "",
+     "skill_shield": "",
+     "sprint": "UAL_Sprint",
+     "stagger": ""
+    }
+   },
+   "source_lod": "lod1.glb",
+   "fingerprint": {
+    "Hips": [
+     0.003,
+     1.0035,
+     -0.0127
+    ],
+    "RightHand": [
+     -0.3103,
+     0.9445,
+     -0.0167
+    ],
+    "LeftFoot": [
+     0.233,
+     0.1197,
+     -0.0486
+    ]
+   },
+   "tear_worst": 0.0233,
+   "clips_over_gate": [
+    "1H_Melee_Attack_Chop",
+    "1H_Melee_Attack_Slice_Diagonal",
+    "1H_Melee_Attack_Slice_Horizontal",
+    "1H_Melee_Attack_Stab",
+    "2H_Melee_Attack_Chop",
+    "2H_Melee_Attack_Slice",
+    "2H_Melee_Attack_Spin",
+    "2H_Melee_Attack_Spinning",
+    "2H_Melee_Attack_Stab",
+    "2H_Melee_Idle",
+    "2H_Ranged_Aiming",
+    "2H_Ranged_Shoot",
+    "Aim_Hold",
+    "Block",
+    "Block_Attack",
+    "Block_Hit",
+    "Blocking",
+    "CMU_Chop_2H",
+    "CMU_Fall_Front",
+    "CMU_Guard",
+    "CMU_Punch_L",
+    "CMU_Punch_R",
+    "CMU_Slash_A",
+    "CMU_Slash_B",
+    "CMU_Slash_C",
+    "CMU_Slash_Low",
+    "CMU_Stagger_Back",
+    "CMU_Strike_Down",
+    "CMU_Stumble_Fwd",
+    "Cheer",
+    "Death_A",
+    "Death_B",
+    "Dodge_Forward",
+    "Guard_2H",
+    "Hit_A",
+    "Hit_B",
+    "Idle",
+    "Jump_Full_Short",
+    "M2M_Death_B",
+    "M2M_Hit_Knockback",
+    "M2M_Idle_Sword",
+    "M2M_Melee_Hook",
+    "M2M_Punch_Cross",
+    "M2M_Punch_Jab",
+    "M2M_Sword_Regular_A",
+    "M2M_Sword_Regular_B",
+    "M2M_Victory",
+    "M2M_Victory_Fist_Pump",
+    "Running_B",
+    "Spellcast_Long",
+    "Spellcast_Raise",
+    "Spellcast_Shoot",
+    "Staff_Hit",
+    "Staff_Idle",
+    "Staff_Jog",
+    "Staff_Run",
+    "Staff_Sprint",
+    "Staff_Walk",
+    "Stagger_Back",
+    "UAL_Death",
+    "UAL_Jog",
+    "UAL_Roll",
+    "UAL_Spell_Shoot",
+    "UAL_Sprint",
+    "UAL_Sword_Attack",
+    "UAL_Sword_Idle",
+    "Walk_Back",
+    "Walking_A",
+    "Walking_B",
+    "Whirl_Spin"
+   ],
+   "hip_scale": 2.474,
+   "pick_mocap": {
+    "blade": {
+     "hit": "M2M_Hit_Chest",
+     "stagger": "",
+     "stagger_fwd": "",
+     "death": "CMU_Fall_Back",
+     "death_fwd": "",
+     "victory": "",
+     "idle": "CMU_Idle",
+     "run": "CMU_Jog",
+     "attack_1": "CMU_Slash_A",
+     "attack_2": "CMU_Slash_B",
+     "attack_3": "CMU_Slash_Low",
+     "heavy": "",
+     "sprint": "CMU_Jog"
+    },
+    "heavy": {
+     "hit": "M2M_Hit_Chest",
+     "stagger": "",
+     "stagger_fwd": "",
+     "death": "CMU_Fall_Back",
+     "death_fwd": "",
+     "victory": "",
+     "heavy": "",
+     "attack_3": "",
+     "run": "CMU_Jog",
+     "sprint": "CMU_Jog"
+    },
+    "staff": {
+     "hit": "M2M_Hit_Chest",
+     "stagger": "",
+     "stagger_fwd": "",
+     "death": "CMU_Fall_Back",
+     "death_fwd": "",
+     "victory": "",
+     "heavy": "",
+     "run": "CMU_Jog",
+     "sprint": "CMU_Jog"
+    },
+    "gun": {
+     "hit": "M2M_Hit_Chest",
+     "stagger": "",
+     "stagger_fwd": "",
+     "death": "CMU_Fall_Back",
+     "death_fwd": "",
+     "victory": "",
+     "run": "CMU_Jog",
+     "sprint": "CMU_Jog"
+    },
+    "unarmed": {
+     "hit": "M2M_Hit_Chest",
+     "stagger": "",
+     "stagger_fwd": "",
+     "death": "CMU_Fall_Back",
+     "death_fwd": "",
+     "victory": "",
+     "idle": "M2M_Fighting_Idle",
+     "run": "CMU_Jog",
+     "attack_1": "M2M_Punch_Jab",
+     "attack_2": "CMU_Punch_R",
+     "attack_3": "CMU_Strike_Down",
+     "heavy": "",
+     "skill_charge": "",
+     "sprint": "CMU_Jog"
+    }
+   },
+   "gate_attacks": 0.011,
+   "clips_in_library": 24,
+   "ground_speed_per_hip": {
+    "CMU_Jog": 2.792
+   }
+  },
+  "forge_samurai": {
+   "status": "clips",
+   "library": "res://anim/forge_samurai.glb",
+   "pick": {
+    "blade": {
+     "hit": "Hit_A",
+     "guard": "Blocking",
+     "parry": "Block_Attack",
+     "dodge": "Dodge_Forward",
+     "skill_rally": "Cheer",
+     "death": "Death_A",
+     "victory": "Cheer",
+     "heavy": "2H_Melee_Attack_Chop",
+     "idle": "Idle",
+     "walk": "UAL_Walk",
+     "run": "UAL_Jog",
+     "attack_1": "1H_Melee_Attack_Slice_Diagonal",
+     "attack_2": "1H_Melee_Attack_Slice_Horizontal",
+     "attack_3": "1H_Melee_Attack_Chop",
+     "skill_charge": "1H_Melee_Attack_Stab",
+     "skill_split": "2H_Melee_Attack_Chop",
+     "skill_whirl": "Whirl_Spin",
+     "skill_shield": "Spellcast_Long",
+     "sprint": "UAL_Sprint",
+     "stagger": "Stagger_Back"
+    },
+    "heavy": {
+     "hit": "Hit_A",
+     "guard": "Guard_2H",
+     "parry": "1H_Melee_Attack_Slice_Horizontal",
+     "dodge": "Dodge_Forward",
+     "skill_rally": "Spellcast_Raise",
+     "death": "Death_A",
+     "victory": "Cheer",
+     "heavy": "2H_Melee_Attack_Chop",
+     "idle": "2H_Melee_Idle",
+     "walk": "Walking_B",
+     "run": "UAL_Jog",
+     "attack_1": "1H_Melee_Attack_Slice_Diagonal",
+     "attack_2": "2H_Melee_Attack_Stab",
+     "attack_3": "2H_Melee_Attack_Chop",
+     "skill_charge": "2H_Melee_Attack_Stab",
+     "skill_split": "2H_Melee_Attack_Chop",
+     "skill_whirl": "Whirl_Spin",
+     "skill_shield": "Spellcast_Long",
+     "sprint": "UAL_Sprint",
+     "stagger": "Stagger_Back"
+    },
+    "staff": {
+     "hit": "Staff_Hit",
+     "guard": "Guard_2H",
+     "parry": "1H_Melee_Attack_Slice_Horizontal",
+     "dodge": "Dodge_Forward",
+     "skill_rally": "Spellcast_Raise",
+     "death": "Death_A",
+     "victory": "Cheer",
+     "heavy": "2H_Melee_Attack_Chop",
+     "idle": "Staff_Idle",
+     "walk": "Staff_Walk",
+     "run": "Staff_Jog",
+     "attack_1": "1H_Melee_Attack_Slice_Diagonal",
+     "attack_2": "Spellcast_Shoot",
+     "attack_3": "2H_Melee_Attack_Chop",
+     "skill_charge": "2H_Melee_Attack_Stab",
+     "skill_split": "2H_Melee_Attack_Chop",
+     "skill_whirl": "Whirl_Spin",
+     "skill_shield": "Spellcast_Long",
+     "sprint": "Staff_Sprint",
+     "stagger": "Stagger_Back"
+    },
+    "gun": {
+     "hit": "Hit_A",
+     "guard": "Blocking",
+     "parry": "Block_Attack",
+     "dodge": "Dodge_Forward",
+     "skill_rally": "Cheer",
+     "death": "Death_A",
+     "victory": "Cheer",
+     "heavy": "2H_Melee_Attack_Chop",
+     "idle": "Aim_Hold",
+     "walk": "Walking_B",
+     "run": "UAL_Jog",
+     "attack_1": "2H_Ranged_Shoot",
+     "attack_2": "2H_Ranged_Shoot",
+     "attack_3": "2H_Melee_Attack_Stab",
+     "skill_charge": "2H_Melee_Attack_Stab",
+     "skill_split": "2H_Melee_Attack_Chop",
+     "skill_whirl": "Whirl_Spin",
+     "skill_shield": "Spellcast_Long",
+     "sprint": "UAL_Sprint",
+     "stagger": "Stagger_Back"
+    }
+   },
+   "source_lod": "lod1.glb",
+   "fingerprint": {
+    "Hips": [
+     0.0018,
+     0.8048,
+     -0.015
+    ],
+    "RightHand": [
+     -0.3344,
+     1.0292,
+     0.1562
+    ],
+    "LeftFoot": [
+     0.1377,
+     0.081,
+     -0.0816
+    ]
+   },
+   "tear_worst": 0.0217,
+   "clips_over_gate": [
+    "2H_Melee_Attack_Slice",
+    "2H_Melee_Attack_Spin",
+    "2H_Melee_Attack_Spinning",
+    "CMU_Chop_2H",
+    "CMU_Fall_Front",
+    "CMU_Guard",
+    "CMU_Idle",
+    "CMU_Punch_R",
+    "CMU_Slash_Low",
+    "CMU_Strike_Down",
+    "CMU_Stumble_Fwd",
+    "Jump_Full_Short",
+    "M2M_Death_B",
+    "M2M_Hit_Knockback",
+    "M2M_Melee_Hook",
+    "M2M_Sword_Regular_A",
+    "M2M_Sword_Regular_B",
+    "M2M_Victory",
+    "Staff_Run",
+    "Staff_Sprint",
+    "UAL_Death",
+    "UAL_Roll",
+    "UAL_Sprint",
+    "UAL_Sword_Attack",
+    "Walk_Back",
+    "Walking_A"
+   ],
+   "hip_scale": 1.984,
+   "pick_mocap": {
+    "blade": {
+     "hit": "M2M_Hit_Chest",
+     "stagger": "CMU_Stagger_Back",
+     "stagger_fwd": "",
+     "death": "CMU_Fall_Back",
+     "death_fwd": "",
+     "victory": "M2M_Victory_Fist_Pump",
+     "idle": "M2M_Idle_Sword",
+     "run": "CMU_Jog",
+     "attack_1": "CMU_Slash_A",
+     "attack_2": "CMU_Slash_B",
+     "attack_3": "",
+     "heavy": "",
+     "sprint": "CMU_Jog"
+    },
+    "heavy": {
+     "hit": "M2M_Hit_Chest",
+     "stagger": "CMU_Stagger_Back",
+     "stagger_fwd": "",
+     "death": "CMU_Fall_Back",
+     "death_fwd": "",
+     "victory": "M2M_Victory_Fist_Pump",
+     "heavy": "",
+     "attack_3": "",
+     "run": "CMU_Jog",
+     "sprint": "CMU_Jog"
+    },
+    "staff": {
+     "hit": "M2M_Hit_Chest",
+     "stagger": "CMU_Stagger_Back",
+     "stagger_fwd": "",
+     "death": "CMU_Fall_Back",
+     "death_fwd": "",
+     "victory": "M2M_Victory_Fist_Pump",
+     "heavy": "",
+     "run": "CMU_Jog",
+     "sprint": "CMU_Jog"
+    },
+    "gun": {
+     "hit": "M2M_Hit_Chest",
+     "stagger": "CMU_Stagger_Back",
+     "stagger_fwd": "",
+     "death": "CMU_Fall_Back",
+     "death_fwd": "",
+     "victory": "M2M_Victory_Fist_Pump",
+     "run": "CMU_Jog",
+     "sprint": "CMU_Jog"
+    },
+    "unarmed": {
+     "hit": "M2M_Hit_Chest",
+     "stagger": "CMU_Stagger_Back",
+     "stagger_fwd": "",
+     "death": "CMU_Fall_Back",
+     "death_fwd": "",
+     "victory": "M2M_Victory_Fist_Pump",
+     "idle": "M2M_Fighting_Idle",
+     "run": "CMU_Jog",
+     "attack_1": "CMU_Punch_L",
+     "attack_2": "M2M_Punch_Cross",
+     "attack_3": "",
+     "heavy": "",
+     "skill_charge": "M2M_Punch_Cross",
+     "sprint": "CMU_Jog"
+    }
+   },
+   "clips_in_library": 42,
+   "ground_speed_per_hip": {
+    "CMU_Jog": 2.893
+   }
+  },
+  "forge_soldier": {
+   "status": "clips",
+   "library": "res://anim/forge_soldier.glb",
+   "pick": {
+    "blade": {
+     "hit": "Hit_A",
+     "guard": "Blocking",
+     "parry": "Block_Hit",
+     "dodge": "Dodge_Forward",
+     "skill_rally": "",
+     "death": "Death_A",
+     "victory": "",
+     "heavy": "1H_Melee_Attack_Chop",
+     "idle": "Idle",
+     "walk": "Walking_A",
+     "run": "UAL_Jog",
+     "attack_1": "1H_Melee_Attack_Stab",
+     "attack_2": "1H_Melee_Attack_Stab",
+     "attack_3": "1H_Melee_Attack_Chop",
+     "skill_charge": "1H_Melee_Attack_Stab",
+     "skill_split": "1H_Melee_Attack_Chop",
+     "skill_whirl": "",
+     "skill_shield": "Spellcast_Long",
+     "sprint": "UAL_Sprint",
+     "stagger": "Walk_Back"
+    },
+    "heavy": {
+     "hit": "Hit_A",
+     "guard": "Blocking",
+     "parry": "Block_Hit",
+     "dodge": "Dodge_Forward",
+     "skill_rally": "",
+     "death": "Death_A",
+     "victory": "",
+     "heavy": "1H_Melee_Attack_Chop",
+     "idle": "2H_Melee_Idle",
+     "walk": "Walking_B",
+     "run": "UAL_Jog",
+     "attack_1": "1H_Melee_Attack_Stab",
+     "attack_2": "1H_Melee_Attack_Stab",
+     "attack_3": "1H_Melee_Attack_Chop",
+     "skill_charge": "1H_Melee_Attack_Stab",
+     "skill_split": "1H_Melee_Attack_Chop",
+     "skill_whirl": "",
+     "skill_shield": "Spellcast_Long",
+     "sprint": "UAL_Sprint",
+     "stagger": "Walk_Back"
+    },
+    "staff": {
+     "hit": "Staff_Hit",
+     "guard": "Blocking",
+     "parry": "Block_Hit",
+     "dodge": "Dodge_Forward",
+     "skill_rally": "",
+     "death": "Death_A",
+     "victory": "",
+     "heavy": "1H_Melee_Attack_Chop",
+     "idle": "Staff_Idle",
+     "walk": "Staff_Walk",
+     "run": "Staff_Jog",
+     "attack_1": "1H_Melee_Attack_Stab",
+     "attack_2": "Spellcast_Shoot",
+     "attack_3": "1H_Melee_Attack_Chop",
+     "skill_charge": "1H_Melee_Attack_Stab",
+     "skill_split": "1H_Melee_Attack_Chop",
+     "skill_whirl": "",
+     "skill_shield": "Spellcast_Long",
+     "sprint": "Staff_Sprint",
+     "stagger": "Walk_Back"
+    },
+    "gun": {
+     "hit": "Hit_A",
+     "guard": "Blocking",
+     "parry": "Block_Hit",
+     "dodge": "Dodge_Forward",
+     "skill_rally": "",
+     "death": "Death_A",
+     "victory": "",
+     "heavy": "1H_Melee_Attack_Chop",
+     "idle": "Idle",
+     "walk": "Walking_B",
+     "run": "UAL_Jog",
+     "attack_1": "1H_Melee_Attack_Stab",
+     "attack_2": "1H_Melee_Attack_Stab",
+     "attack_3": "1H_Melee_Attack_Stab",
+     "skill_charge": "1H_Melee_Attack_Stab",
+     "skill_split": "1H_Melee_Attack_Chop",
+     "skill_whirl": "",
+     "skill_shield": "Spellcast_Long",
+     "sprint": "UAL_Sprint",
+     "stagger": "Walk_Back"
+    }
+   },
+   "source_lod": "lod1.glb",
+   "fingerprint": {
+    "Hips": [
+     -0.0196,
+     0.9975,
+     0.0188
+    ],
+    "RightHand": [
+     -0.2844,
+     0.9445,
+     -0.2416
+    ],
+    "LeftFoot": [
+     0.3143,
+     0.1272,
+     0.098
+    ]
+   },
+   "tear_worst": 0.0191,
+   "clips_over_gate": [
+    "1H_Melee_Attack_Slice_Diagonal",
+    "1H_Melee_Attack_Slice_Horizontal",
+    "2H_Melee_Attack_Chop",
+    "2H_Melee_Attack_Slice",
+    "2H_Melee_Attack_Spin",
+    "2H_Melee_Attack_Spinning",
+    "2H_Melee_Attack_Stab",
+    "2H_Ranged_Aiming",
+    "2H_Ranged_Shoot",
+    "Aim_Hold",
+    "Block_Attack",
+    "CMU_Chop_2H",
+    "CMU_Fall_Front",
+    "CMU_Guard",
+    "CMU_Punch_L",
+    "CMU_Punch_R",
+    "CMU_Slash_Low",
+    "CMU_Strike_Down",
+    "CMU_Stumble_Fwd",
+    "Cheer",
+    "Death_B",
+    "Guard_2H",
+    "Hit_B",
+    "Jump_Full_Short",
+    "M2M_Death_B",
+    "M2M_Hit_Knockback",
+    "M2M_Melee_Hook",
+    "M2M_Punch_Cross",
+    "M2M_Punch_Jab",
+    "M2M_Sword_Regular_A",
+    "M2M_Sword_Regular_B",
+    "M2M_Victory",
+    "M2M_Victory_Fist_Pump",
+    "Spellcast_Raise",
+    "Staff_Jog",
+    "Staff_Sprint",
+    "Stagger_Back",
+    "UAL_Death",
+    "UAL_Jog",
+    "UAL_Roll",
+    "UAL_Spell_Shoot",
+    "UAL_Sprint",
+    "UAL_Sword_Attack",
+    "Whirl_Spin"
+   ],
+   "hip_scale": 2.459,
+   "pick_mocap": {
+    "blade": {
+     "hit": "M2M_Hit_Chest",
+     "stagger": "CMU_Stagger_Back",
+     "stagger_fwd": "",
+     "death": "CMU_Fall_Back",
+     "death_fwd": "",
+     "victory": "",
+     "idle": "CMU_Idle",
+     "run": "CMU_Jog",
+     "attack_1": "CMU_Slash_A",
+     "attack_2": "CMU_Slash_B",
+     "attack_3": "",
+     "heavy": "",
+     "sprint": "CMU_Jog"
+    },
+    "heavy": {
+     "hit": "M2M_Hit_Chest",
+     "stagger": "CMU_Stagger_Back",
+     "stagger_fwd": "",
+     "death": "CMU_Fall_Back",
+     "death_fwd": "",
+     "victory": "",
+     "heavy": "",
+     "attack_3": "",
+     "run": "CMU_Jog",
+     "sprint": "CMU_Jog"
+    },
+    "staff": {
+     "hit": "M2M_Hit_Chest",
+     "stagger": "CMU_Stagger_Back",
+     "stagger_fwd": "",
+     "death": "CMU_Fall_Back",
+     "death_fwd": "",
+     "victory": "",
+     "heavy": "",
+     "run": "CMU_Jog",
+     "sprint": "CMU_Jog"
+    },
+    "gun": {
+     "hit": "M2M_Hit_Chest",
+     "stagger": "CMU_Stagger_Back",
+     "stagger_fwd": "",
+     "death": "CMU_Fall_Back",
+     "death_fwd": "",
+     "victory": "",
+     "run": "CMU_Jog",
+     "sprint": "CMU_Jog"
+    },
+    "unarmed": {
+     "hit": "M2M_Hit_Chest",
+     "stagger": "CMU_Stagger_Back",
+     "stagger_fwd": "",
+     "death": "CMU_Fall_Back",
+     "death_fwd": "",
+     "victory": "",
+     "idle": "M2M_Fighting_Idle",
+     "run": "CMU_Jog",
+     "attack_1": "",
+     "attack_2": "",
+     "attack_3": "",
+     "heavy": "",
+     "skill_charge": "",
+     "sprint": "CMU_Jog"
+    }
+   },
+   "clips_in_library": 29,
+   "ground_speed_per_hip": {
+    "CMU_Jog": 2.833
+   }
   },
   "hoof": {
    "status": "clips",
@@ -1683,12 +3307,90 @@
     "2H_Melee_Attack_Spin",
     "2H_Melee_Attack_Spinning",
     "2H_Melee_Attack_Stab",
+    "CMU_Fall_Front",
+    "CMU_Slash_Low",
+    "CMU_Strike_Down",
+    "CMU_Stumble_Fwd",
+    "M2M_Death_B",
+    "M2M_Hit_Knockback",
+    "M2M_Melee_Hook",
+    "M2M_Sword_Regular_A",
+    "M2M_Sword_Regular_B",
     "UAL_Death",
     "UAL_Roll",
     "UAL_Sword_Attack"
    ],
    "hip_scale": 2.169,
-   "clips_in_library": 31
+   "pick_mocap": {
+    "blade": {
+     "hit": "M2M_Hit_Chest",
+     "stagger": "CMU_Stagger_Back",
+     "stagger_fwd": "",
+     "death": "CMU_Fall_Back",
+     "death_fwd": "",
+     "victory": "M2M_Victory_Fist_Pump",
+     "idle": "CMU_Idle",
+     "run": "CMU_Jog",
+     "attack_1": "CMU_Slash_A",
+     "attack_2": "CMU_Slash_B",
+     "attack_3": "CMU_Chop_2H",
+     "heavy": "CMU_Chop_2H",
+     "sprint": "CMU_Jog"
+    },
+    "heavy": {
+     "hit": "M2M_Hit_Chest",
+     "stagger": "CMU_Stagger_Back",
+     "stagger_fwd": "",
+     "death": "CMU_Fall_Back",
+     "death_fwd": "",
+     "victory": "M2M_Victory_Fist_Pump",
+     "heavy": "CMU_Chop_2H",
+     "attack_3": "CMU_Chop_2H",
+     "run": "CMU_Jog",
+     "sprint": "CMU_Jog"
+    },
+    "staff": {
+     "hit": "M2M_Hit_Chest",
+     "stagger": "CMU_Stagger_Back",
+     "stagger_fwd": "",
+     "death": "CMU_Fall_Back",
+     "death_fwd": "",
+     "victory": "M2M_Victory_Fist_Pump",
+     "heavy": "CMU_Chop_2H",
+     "run": "CMU_Jog",
+     "sprint": "CMU_Jog"
+    },
+    "gun": {
+     "hit": "M2M_Hit_Chest",
+     "stagger": "CMU_Stagger_Back",
+     "stagger_fwd": "",
+     "death": "CMU_Fall_Back",
+     "death_fwd": "",
+     "victory": "M2M_Victory_Fist_Pump",
+     "run": "CMU_Jog",
+     "sprint": "CMU_Jog"
+    },
+    "unarmed": {
+     "hit": "M2M_Hit_Chest",
+     "stagger": "CMU_Stagger_Back",
+     "stagger_fwd": "",
+     "death": "CMU_Fall_Back",
+     "death_fwd": "",
+     "victory": "M2M_Victory_Fist_Pump",
+     "idle": "CMU_Guard",
+     "run": "CMU_Jog",
+     "attack_1": "CMU_Punch_L",
+     "attack_2": "CMU_Punch_R",
+     "attack_3": "",
+     "heavy": "",
+     "skill_charge": "CMU_Punch_R",
+     "sprint": "CMU_Jog"
+    }
+   },
+   "clips_in_library": 43,
+   "ground_speed_per_hip": {
+    "CMU_Jog": 2.734
+   }
   },
   "nebulx": {
    "status": "clips",
@@ -1804,8 +3506,22 @@
    "tear_worst": 0.0447,
    "clips_over_gate": [
     "2H_Melee_Attack_Stab",
+    "CMU_Chop_2H",
+    "CMU_Fall_Front",
+    "CMU_Guard",
+    "CMU_Idle",
+    "CMU_Punch_R",
+    "CMU_Slash_Low",
+    "CMU_Strike_Down",
+    "CMU_Stumble_Fwd",
     "Death_A",
     "Jump_Full_Short",
+    "M2M_Death_B",
+    "M2M_Hit_Knockback",
+    "M2M_Melee_Hook",
+    "M2M_Sword_Regular_A",
+    "M2M_Sword_Regular_B",
+    "M2M_Victory",
     "Staff_Jog",
     "Staff_Sprint",
     "UAL_Death",
@@ -1816,8 +3532,77 @@
     "UAL_Sword_Idle"
    ],
    "hip_scale": 2.167,
-   "clips_in_library": 30,
-   "default_class": "staff"
+   "pick_mocap": {
+    "blade": {
+     "hit": "M2M_Hit_Chest",
+     "stagger": "CMU_Stagger_Back",
+     "stagger_fwd": "",
+     "death": "CMU_Fall_Back",
+     "death_fwd": "",
+     "victory": "M2M_Victory_Fist_Pump",
+     "idle": "M2M_Idle_Sword",
+     "run": "CMU_Jog",
+     "attack_1": "CMU_Slash_A",
+     "attack_2": "CMU_Slash_B",
+     "attack_3": "",
+     "heavy": "",
+     "sprint": "CMU_Jog"
+    },
+    "heavy": {
+     "hit": "M2M_Hit_Chest",
+     "stagger": "CMU_Stagger_Back",
+     "stagger_fwd": "",
+     "death": "CMU_Fall_Back",
+     "death_fwd": "",
+     "victory": "M2M_Victory_Fist_Pump",
+     "heavy": "",
+     "attack_3": "",
+     "run": "CMU_Jog",
+     "sprint": "CMU_Jog"
+    },
+    "staff": {
+     "hit": "M2M_Hit_Chest",
+     "stagger": "CMU_Stagger_Back",
+     "stagger_fwd": "",
+     "death": "CMU_Fall_Back",
+     "death_fwd": "",
+     "victory": "M2M_Victory_Fist_Pump",
+     "heavy": "",
+     "run": "CMU_Jog",
+     "sprint": "CMU_Jog"
+    },
+    "gun": {
+     "hit": "M2M_Hit_Chest",
+     "stagger": "CMU_Stagger_Back",
+     "stagger_fwd": "",
+     "death": "CMU_Fall_Back",
+     "death_fwd": "",
+     "victory": "M2M_Victory_Fist_Pump",
+     "run": "CMU_Jog",
+     "sprint": "CMU_Jog"
+    },
+    "unarmed": {
+     "hit": "M2M_Hit_Chest",
+     "stagger": "CMU_Stagger_Back",
+     "stagger_fwd": "",
+     "death": "CMU_Fall_Back",
+     "death_fwd": "",
+     "victory": "M2M_Victory_Fist_Pump",
+     "idle": "M2M_Fighting_Idle",
+     "run": "CMU_Jog",
+     "attack_1": "CMU_Punch_L",
+     "attack_2": "M2M_Punch_Cross",
+     "attack_3": "",
+     "heavy": "",
+     "skill_charge": "M2M_Punch_Cross",
+     "sprint": "CMU_Jog"
+    }
+   },
+   "clips_in_library": 41,
+   "default_class": "staff",
+   "ground_speed_per_hip": {
+    "CMU_Jog": 2.828
+   }
   },
   "vanessa": {
    "status": "clips",
@@ -1935,7 +3720,23 @@
     "1H_Melee_Attack_Slice_Diagonal",
     "2H_Melee_Attack_Slice",
     "2H_Melee_Attack_Stab",
+    "CMU_Fall_Front",
+    "CMU_Punch_L",
+    "CMU_Punch_R",
+    "CMU_Slash_A",
+    "CMU_Slash_B",
+    "CMU_Slash_C",
+    "CMU_Slash_Low",
+    "CMU_Stagger_Back",
+    "CMU_Strike_Down",
+    "CMU_Stumble_Fwd",
     "Death_B",
+    "M2M_Death_B",
+    "M2M_Hit_Knockback",
+    "M2M_Melee_Hook",
+    "M2M_Sword_Regular_A",
+    "M2M_Sword_Regular_B",
+    "M2M_Victory",
     "Staff_Jog",
     "Staff_Sprint",
     "UAL_Death",
@@ -1947,7 +3748,76 @@
     "UAL_Sword_Idle"
    ],
    "hip_scale": 2.411,
-   "clips_in_library": 30
+   "pick_mocap": {
+    "blade": {
+     "hit": "M2M_Hit_Chest",
+     "stagger": "",
+     "stagger_fwd": "",
+     "death": "CMU_Fall_Back",
+     "death_fwd": "",
+     "victory": "M2M_Victory_Fist_Pump",
+     "idle": "CMU_Idle",
+     "run": "CMU_Jog",
+     "attack_1": "",
+     "attack_2": "",
+     "attack_3": "CMU_Chop_2H",
+     "heavy": "CMU_Chop_2H",
+     "sprint": "CMU_Jog"
+    },
+    "heavy": {
+     "hit": "M2M_Hit_Chest",
+     "stagger": "",
+     "stagger_fwd": "",
+     "death": "CMU_Fall_Back",
+     "death_fwd": "",
+     "victory": "M2M_Victory_Fist_Pump",
+     "heavy": "CMU_Chop_2H",
+     "attack_3": "CMU_Chop_2H",
+     "run": "CMU_Jog",
+     "sprint": "CMU_Jog"
+    },
+    "staff": {
+     "hit": "M2M_Hit_Chest",
+     "stagger": "",
+     "stagger_fwd": "",
+     "death": "CMU_Fall_Back",
+     "death_fwd": "",
+     "victory": "M2M_Victory_Fist_Pump",
+     "heavy": "CMU_Chop_2H",
+     "run": "CMU_Jog",
+     "sprint": "CMU_Jog"
+    },
+    "gun": {
+     "hit": "M2M_Hit_Chest",
+     "stagger": "",
+     "stagger_fwd": "",
+     "death": "CMU_Fall_Back",
+     "death_fwd": "",
+     "victory": "M2M_Victory_Fist_Pump",
+     "run": "CMU_Jog",
+     "sprint": "CMU_Jog"
+    },
+    "unarmed": {
+     "hit": "M2M_Hit_Chest",
+     "stagger": "",
+     "stagger_fwd": "",
+     "death": "CMU_Fall_Back",
+     "death_fwd": "",
+     "victory": "M2M_Victory_Fist_Pump",
+     "idle": "CMU_Guard",
+     "run": "CMU_Jog",
+     "attack_1": "M2M_Punch_Jab",
+     "attack_2": "M2M_Punch_Cross",
+     "attack_3": "",
+     "heavy": "",
+     "skill_charge": "M2M_Punch_Cross",
+     "sprint": "CMU_Jog"
+    }
+   },
+   "clips_in_library": 39,
+   "ground_speed_per_hip": {
+    "CMU_Jog": 2.882
+   }
   }
  }
 }
