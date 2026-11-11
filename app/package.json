@@ -8,7 +8,7 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "lint": "expo lint",
-    "test": "node --test \"services/__tests__/*.test.ts\" \"features/world/__tests__/*.test.ts\" \"features/game/__tests__/*.test.ts\" \"features/game/duel/__tests__/*.test.ts\" \"features/game3d/__tests__/*.test.ts\" \"modules/costquest-game/plugin/__tests__/*.test.js\" \"plugins/__tests__/*.test.js\"",
+    "test": "node --test \"services/__tests__/*.test.ts\" \"features/world/__tests__/*.test.ts\" \"features/game/__tests__/*.test.ts\" \"features/game/duel/__tests__/*.test.ts\" \"features/game3d/__tests__/*.test.ts\" \"features/waleui/__tests__/*.test.ts\" \"modules/costquest-game/plugin/__tests__/*.test.js\" \"plugins/__tests__/*.test.js\"",
     "typecheck": "tsc --noEmit -p .",
     "eas-build-pre-install": "node scripts/check-release-env.js",
     "check:a11y": "node scripts/a11y-buttons.js --check",
