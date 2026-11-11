@@ -11,6 +11,7 @@ const T_CIRCUIT := preload("res://art/street/circuit_run.png")
 const T_POOL := preload("res://art/street/light_pool.png")
 const FACADE_SHADER := preload("res://vfx/facade.gdshader")
 const PlaceScript := preload("res://place.gd")
+const LookReal := preload("res://look_real.gd")
 const StreetLayout := preload("res://street_layout.gd")
 const T_NEON := preload("res://art/street/neon_atlas.png")     # 6 signs stacked, self-drawn
 const T_SHOP := preload("res://art/street/shop_glow.png")
@@ -71,6 +72,28 @@ const LOOK_DEFAULTS: Dictionary = {
 	"street": "place",  # look-world: the default street is built by place.gd from a laid-out ground (the same
 	                    # roads, facades, props and light as the real places); "kit" keeps the cq 016 Kenney street
 }
+## realism (11 Nov 2026, LOOK.md "The real look"): what a device tier adds to LOOK_DEFAULTS. The tier is
+## the fight config's "tier" (the app's RAM rule, features/game/lookTier.ts: high at 5 GiB reported and
+## up, mid from 3.3 GiB, else low); a config without one is "low". Low adds nothing: today's path, key
+## for key (tests/look_tier_test.gd). Any key can still be set from the config's "look".
+##   real      the fighters on vfx/char_real.gdshader (the model's maps, the street's light)
+##   skin      "full" (wrap + two specular lobes) | "simple" (wrap, one lobe) | "off"
+##   ibl       reflections of the street from the baked cube (look_real.gd)
+##   grade     "base" = the base grade through a 3D table that leaves highlights alone (no glow)
+##   hero_lod  the detail level of the hero and the Guardian (the ally keeps the config's "lod")
+##   scale     the 3D render scale on a real GPU
+const TIER_LOOK: Dictionary = {
+	"low": {},
+	"mid": {"real": true, "skin": "simple", "ibl": true},
+	"high": {"real": true, "skin": "full", "ibl": true, "shadows": true, "grade": "base", "hero_lod": 0, "scale": 1.0},
+}
+
+
+static func tier_of(cfg: Dictionary) -> String:
+	var t: String = str(cfg.get("tier", "low"))
+	return t if TIER_LOOK.has(t) else "low"
+
+
 # "glow" and "grade" each turn on the Compatibility renderer's post pass, which runs over the
 # whole screen at full resolution: on the 1-thread software GPU it doubled the frame (LOOK.md).
 # Instead the lamps, signs and windows carry their own halo cards (the effects do the same), and
@@ -154,6 +177,9 @@ var env: Environment
 
 static func look_opts(cfg: Dictionary) -> Dictionary:
 	var out: Dictionary = LOOK_DEFAULTS.duplicate()
+	var tl: Dictionary = TIER_LOOK[tier_of(cfg)]
+	for k: String in tl:
+		out[k] = tl[k]
 	var l: Variant = cfg.get("look", {})
 	if l is Dictionary:
 		for k: String in (l as Dictionary):
@@ -168,7 +194,7 @@ static func look_opts(cfg: Dictionary) -> Dictionary:
 	if str(out.get("time", "auto")) == "auto" or not TIMES.has(str(out["time"])):
 		var ll: Vector2 = Vector2(float(cfg.get("_lat", 51.5)), float(cfg.get("_lng", -0.13)))
 		out["time"] = time_of_day(ll.x, ll.y, cfg.get("clock_hour", null))
-	if str(out["time"]) == "night":
+	if str(out["time"]) == "night" and not bool(out.get("night", false)):
 		out["time"] = "dusk"   # the art direction: night is defined but not shipped in v1
 	var tp: Dictionary = TIMES[str(out["time"])]
 	# the cheap bloom per preset (tokens world.time.*.bloom) unless the config sets it
@@ -338,7 +364,28 @@ func build(cfg: Dictionary) -> void:
 		env.set_glow_level(1, 0.6)
 		env.set_glow_level(2, 1.0)
 		env.set_glow_level(3, 0.7)
-	if bool(look["grade"]):
+	var grade: String = str(look["grade"])
+	if grade != "true" and grade != "false":
+		# realism (LOOK.md "The grade without blow-out"): the base grade, or a faction's on top of it
+		# (look "faction": "<id>"), as one 3D table in the renderer's own colour-correction slot. No glow
+		# with it (glow moves the whole frame to the HDR path, where the additive effects add up before
+		# the tonemap: that was build 21's white-out), no contrast gain, and the table leaves what is
+		# already bright where it is, so an effect is never pushed to white by the grade.
+		var lut: Texture3D = LookReal.lut_for("faction_" + str(look.get("faction", ""))) if str(look.get("faction", "")) != "" else null
+		if lut == null:
+			lut = LookReal.lut_for(grade)
+		if lut != null:
+			env.adjustment_enabled = true
+			env.adjustment_color_correction = lut
+		print("CQ grade table=%s faction=%s ok=%s" % [grade, str(look.get("faction", "")), str(lut != null)])
+	if not env.adjustment_enabled and float(look.get("scale", 0.0)) >= 0.999:
+		# realism: at render scale 1 the renderer draws straight to the screen and tonemaps in each material,
+		# so everything see-through (effects, halos, light pools, blob shadows) blends in display space and
+		# the frame goes brighter and whiter than the look was tuned for (measured: LOOK.md). The look is
+		# tuned on the path every scale under 1 takes (linear buffer, tonemap after blending); neutral
+		# adjustments keep the full-scale frame on it.
+		env.adjustment_enabled = true
+	if grade == "true":
 		# a warm evening grade: a touch more contrast and colour, and a split-tone curve
 		# (violet shadows, gold highlights) as a 256 px colour-correction ramp
 		env.adjustment_enabled = true

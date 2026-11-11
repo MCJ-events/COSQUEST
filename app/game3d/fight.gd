@@ -384,7 +384,11 @@ func _ready() -> void:
 	# 3D drawn at a fraction of the screen's pixels, the HUD at full resolution.
 	# A 1080x2400 phone does not need 2.6 M shaded pixels for this view.
 	quality = _quality()
-	var rs: float = clampf(float(cfg.get("render_scale", DEVICE_RENDER_SCALE if quality == "device" else LOW_RENDER_SCALE)), 0.25, 1.0)
+	# realism: the high tier draws the 3D at the screen's own resolution on a real GPU (look "scale")
+	var tier_scale: float = float((ArenaScript.TIER_LOOK[ArenaScript.tier_of(cfg)] as Dictionary).get("scale", DEVICE_RENDER_SCALE))
+	if cfg.get("look") is Dictionary and (cfg["look"] as Dictionary).has("scale"):
+		tier_scale = float((cfg["look"] as Dictionary)["scale"])
+	var rs: float = clampf(float(cfg.get("render_scale", tier_scale if quality == "device" else LOW_RENDER_SCALE)), 0.25, 1.0)
 	get_viewport().scaling_3d_mode = Viewport.SCALING_3D_MODE_BILINEAR
 	get_viewport().scaling_3d_scale = rs
 	var aa: String = str(cfg.get("aa", DEVICE_AA if quality == "device" else "off"))
@@ -504,6 +508,7 @@ func _ready() -> void:
 				_log("rigfix role=%s key=%s from=%s to=%s" % [role, str(fx[1]), p, str(fx[0])])
 				p = str(fx[0])
 				_cast_worn[role] = str(fx[1])
+		p = _tier_lod(p, role)
 		(pair[0] as FighterScript).anim_opts["secondary"] = bool(cfg.get("secondary", true))
 		(pair[0] as FighterScript).anim_opts["cloth_push"] = bool(cfg.get("cloth_push", true))   # cq 016
 		if p != "":
@@ -642,6 +647,10 @@ func _spawn(n: String, team: int, hp_max: int, c: Color, at: Vector3, yaw: float
 	f.key_dir = ArenaScript.key_dir()
 	f.look = arena.get("look") if arena != null else {}
 	f.sun_blob = bool((arena.get("look") as Dictionary).get("ao", true)) if arena != null else true
+	# realism: with the real look and a real shadow map, the sun's shadow is the map's; the blob keeps only
+	# its contact disc (two shadows of one fighter read as a mistake)
+	if arena != null and bool(f.look.get("real", false)) and str(f.look.get("shadows", false)) == "true":
+		f.sun_blob = false
 	f.setup(n, team, hp_max, c, r)
 	f.position = at
 	f.yaw = yaw
@@ -687,13 +696,15 @@ func _poll_loading() -> void:
 		return
 	_loading_role = _load_queue.pop_front()
 	var path: String = _loading_role["path"]
+	# realism: a character for the real look loads with tangents and its skin mask (char_loader.gd)
+	var real: bool = arena != null and bool((arena.get("look") as Dictionary).get("real", false)) and not _loading_role.has("weapon")
 	if _load_threaded:
 		_thread = Thread.new()
-		if _thread.start(_loader.load_glb.bind(path)) != OK:
+		if _thread.start(_loader.load_glb.bind(path, real)) != OK:
 			_thread = null
-			_finish_load(_loader.load_glb(path))
+			_finish_load(_loader.load_glb(path, real))
 	else:
-		_finish_load(_loader.load_glb(path))   # one model per frame on the main thread
+		_finish_load(_loader.load_glb(path, real))   # one model per frame on the main thread
 
 
 ## Weapons in hand (cq 234). Per fighter the config may name
@@ -753,6 +764,7 @@ func _finish_load(r: Dictionary) -> void:
 			_log("weapon role=%s ok=false error=%s path=%s" % [role, str(r.get("error", "?")), str(r.get("path", ""))])
 		return
 	if bool(r.get("ok", false)):
+		f.skin_mask = r.get("skin_mask")
 		var info: Dictionary = f.set_model(r["node"] as Node3D)
 		_log("load role=%s ok=true parse_ms=%.1f gen_ms=%.1f add_ms=%.1f scale=%.3f raw_h=%.3f library=%s anims=%d mapped=%s bones=%d hand=%s path=%s" % [
 			role, float(r["parse_ms"]), float(r["gen_ms"]), (Time.get_ticks_usec() - t_add) / 1000.0,
@@ -768,6 +780,23 @@ func _finish_load(r: Dictionary) -> void:
 			return
 		f.set_capsule()
 		_log("load role=%s ok=false error=%s path=%s (capsule fallback)" % [role, str(r.get("error", "?")), str(r.get("path", ""))])
+
+
+## realism: on the high tier (look "hero_lod": 0) the hero and the Guardian load the model's most detailed
+## file when it sits beside the one the app sent (".../lod1.glb" -> ".../lod0.glb", "x_lod1.glb" ->
+## "x_lod0.glb"); the ally keeps what was sent. Without the key, or without the file, the path is unchanged.
+func _tier_lod(p: String, role: String) -> String:
+	var lk: Dictionary = arena.get("look") if arena != null else {}
+	if p == "" or (role != "hero" and role != "enemy") or not lk.has("hero_lod"):
+		return p
+	var want: String = "lod%d.glb" % clampi(int(lk["hero_lod"]), 0, 2)
+	for have: String in ["lod0.glb", "lod1.glb", "lod2.glb"]:
+		if p.ends_with(have) and have != want:
+			var q: String = p.substr(0, p.length() - have.length()) + want
+			if FileAccess.file_exists(q):
+				_log("tier lod role=%s %s -> %s" % [role, have, want])
+				return q
+	return p
 
 
 ## build 20: a fighter with no model of its own (no Forge catalogue on this server, offline, a
@@ -792,6 +821,8 @@ func _cast_stand_in(f: FighterScript, role: String) -> String:
 			taken.append(str(_cast_worn.get(r, "")))
 	var pool: Array = CAST_STAND_IN[role]
 	var lod: int = clampi(int(cfg.get("lod", 1)), 0, 2)
+	if (role == "hero" or role == "enemy") and arena != null and (arena.get("look") as Dictionary).has("hero_lod") and not cfg.has("lod"):
+		lod = clampi(int((arena.get("look") as Dictionary)["hero_lod"]), 0, 2)   # realism: the high tier's hero and Guardian
 	var start: int = (int(absf(float(cfg.get("seed", 0)))) % pool.size()) if role == "enemy" else 0
 	for i in range(pool.size()):
 		var key: String = str(pool[(start + i) % pool.size()])
