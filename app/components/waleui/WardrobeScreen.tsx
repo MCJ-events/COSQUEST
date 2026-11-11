@@ -12,7 +12,7 @@ import { View } from "react-native";
 import { EYE_COLORS, HAIR_COLORS, type Look, OUTFITS, SKIN_TONES, activeLook, lookSummary, randomLook } from "@/features/waleui/look";
 
 import { back, notBuiltYet } from "./go";
-import { At, Band, DesignCanvas, Footer, type IconName, IconTile, PreviewSlot, T, Tap, W, glass } from "./kit";
+import { At, Band, DesignCanvas, Footer, type IconName, IconTile, PreviewSlot, T, Tap, W } from "./kit";
 import { chooseSlot, setLook, useWardrobe } from "./lookStore";
 
 const FW = 403;
