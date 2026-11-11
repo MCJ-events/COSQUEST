@@ -20,7 +20,12 @@ const LIT_SHADER := preload("res://vfx/char_lit.gdshader")
 ## realism (LOOK.md "The real look"): the mid and high tiers' fighter material (look "real")
 const REAL_SHADER := preload("res://vfx/char_real.gdshader")
 const LookReal := preload("res://look_real.gd")
-const REAL_RIM: float = 0.8           # the rim's strength on the real material (it lights the surface's own colour)
+const REAL_RIM: float = 0.6           # the rim's strength on the real material (char_lit's is 1.35)
+## The fill: the street's measured ambient times this, per time of day. At dusk and at night the street's
+## lamps and windows are drawn as cards (light pools on the paving, halos), which light nothing, so the
+## measured light on a fighter is less than the paving shows; without this they are silhouettes at night
+## (measured: LOOK.md). Golden hour and day use the measured light as it is.
+const REAL_FILL: Dictionary = {"golden": 1.0, "day": 1.0, "dusk": 1.35, "night": 2.4}
 const SKIN_GUESS: float = 0.6         # the skin term's strength when it is guessed from colour (no Forge mask)
 const ArenaScript := preload("res://arena.gd")
 const DOME_SHADER := preload("res://vfx/dome.gdshader")
@@ -574,7 +579,7 @@ func _real_material(b: BaseMaterial3D) -> ShaderMaterial:
 		sm.set_shader_parameter("env_lods", e["lods"])
 		sm.set_shader_parameter("amb_cube", e["amb"])
 		sm.set_shader_parameter("env_spec", float(look.get("ibl_k", 1.0)) if bool(look.get("ibl", true)) else 0.0)
-	sm.set_shader_parameter("amb_amount", float(look.get("amb_k", 1.0)))
+	sm.set_shader_parameter("amb_amount", float(look.get("amb_k", REAL_FILL.get(str(look.get("time", "golden")), 1.0))))
 	sm.set_shader_parameter("key_dir", key_dir)
 	sm.set_shader_parameter("rim_team", _rim_team)
 	sm.set_shader_parameter("rim_amount", float(look.get("rim_k", REAL_RIM)) if rim_on else 0.0)

@@ -183,8 +183,9 @@ void fragment() {
 	float fr = f * f * sqrt(f);
 	vec3 to_key = normalize((VIEW_MATRIX * vec4(-key_dir, 0.0)).xyz);
 	float sunward = smoothstep(-0.15, 0.55, dot(NORMAL, to_key));
-	// the rim, as light on the surface (through its own colour) rather than a glow over it
-	vec3 rim = mix(rim_team * team_amount, rim_key, sunward) * fr * rim_amount * mix(vec3(0.35), base * 1.6 + 0.08, 0.7);
+	// the rim: the key light at a grazing angle, where every surface reflects (Fresnel), so it is mostly
+	// the light's colour and a little of the surface's; the team tint on the far side stays a hint
+	vec3 rim = mix(rim_team * team_amount, rim_key, sunward) * fr * rim_amount * mix(vec3(1.0), base * 1.6 + 0.08, 0.35);
 	vec3 hit = vec3(1.0, 0.86, 0.62) * flash * (0.06 + 1.15 * fr);
 	float body = smoothstep(0.35, 1.0, glow);
 	vec3 gl = vec3(1.0, 0.97, 0.92) * glow * (0.6 * body + 0.75 * pow(f, 1.5))
