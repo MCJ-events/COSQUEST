@@ -428,6 +428,7 @@ func _ready() -> void:
 	hud.players_text = str(cfg.get("players_text", "2/2")).replace(" players", "").replace(" player", "")
 	hud.point_name = str(cfg.get("point_name", ""))
 	hud.top_shift = clampf(float(cfg.get("hud_top", 0.0)), 0.0, 240.0)   # build 20: the safe area (hud.gd)
+	hud.panel = "classic" if str(cfg.get("hud_panel", "wale")) == "classic" else "wale"   # build 21: Wale's panel
 	hud.hero_name = str(cfg.get("hero_name", "You"))
 	hud.skill_cd_max = SKILL_CD.duplicate()
 	hud.t_left = duration
@@ -1386,7 +1387,7 @@ func _cast(slot: int) -> void:
 	if slot <= 2:
 		hero.face(_skill_dir, 0.0, 0.0)
 	var cols: Array[Color] = [Color(0.4, 0.95, 0.9), Color(1.0, 0.6, 0.25), Color(1.0, 0.82, 0.35), Color(0.5, 1.0, 0.5), Color(0.5, 0.85, 1.0)]
-	hud.callout(hud.SKILL_NAMES[slot], cols[slot])
+	hud.callout(hud.skill_label(slot), cols[slot])
 	_buzz("cast", 0.4)
 	match slot:
 		0:
