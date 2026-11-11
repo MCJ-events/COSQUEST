@@ -87,6 +87,8 @@ import type { ForgeDrop } from "@/features/game/forgeWorld";
 import { type Fight3DRun, rewardFrom3D } from "@/features/game3d/fight3d";
 import { FIGHT3D, fight3dAvailable, ROOMS_ON } from "@/features/game3d/flags";
 import { takeFight3DRequest, useFight3DRequestSerial } from "@/features/game3d/request";
+import { sheetIntent } from "@/features/waleui/intent";
+import { WALE_UI } from "@/components/waleui/flag";
 
 type Screen =
   | { kind: "home" }
@@ -158,6 +160,17 @@ function GameRootInner({ parked }: { parked: boolean }) {
   useEffect(() => {
     if (squad.pendingCode) setSheet("squad");
   }, [squad.pendingCode]);
+  // Wale's Homepage (app/app/wale/home.tsx, behind WALE_UI) asks for one of the game's own
+  // sheets (Friends, Squad, Coins, Faction war, Ranks) and swipes here; open it once.
+  useEffect(() => {
+    if (!WALE_UI) return;
+    const take = () => {
+      const asked = sheetIntent.take();
+      if (asked) setSheet(asked);
+    };
+    take();
+    return sheetIntent.subscribe(take);
+  }, []);
   const [bagCount, setBagCount] = useState<number | null>(null);
   // Forge in the world (cq 056): finds on the map, the bag, the avatar. Off unless the server says so.
   useForgeWorldPolling(!parked && !!session);
@@ -619,6 +632,10 @@ function GameRootInner({ parked }: { parked: boolean }) {
   // Test builds only (AR_SHRINE_DEV): the AR shrine on its own, to prove the iOS AR island on a phone.
   if (AR_SHRINE_DEV && CostQuestShrineView) {
     moreTiles.push({ id: "ar-shrine", icon: "camera", color: GP.berry, title: "AR shrine", onPress: () => router.push("/dev/ar-shrine") });
+  }
+  // Wale's Figma screens (behind WALE_UI, off in a beta build): the new Homepage, one tap away.
+  if (WALE_UI) {
+    moreTiles.push({ id: "wale-home", icon: "home", color: GP.berry, title: "New home", onPress: () => router.push("/wale/home") });
   }
   const focusAway = focus && !focusId && focus.lat !== undefined && focus.lng !== undefined ? focus : null;
   const focusMissing = focus && focusId && !focusPoint ? focus : null;

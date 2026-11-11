@@ -38,3 +38,7 @@ export EXPO_PUBLIC_GAME3D="${EXPO_PUBLIC_GAME3D:-1}"
 # The hero holds the Forge weapon the player equipped (with the server's forge_world on).
 # Missing from builds 15 to 17, so they showed the starter weapon in the fight.
 export EXPO_PUBLIC_FORGE_CATALOGUE="${EXPO_PUBLIC_FORGE_CATALOGUE:-1}"
+# Wale's Figma screens (app/app/wale/*, features/waleui/flag.ts) are still being checked
+# against his file, so a beta build does not have them: it behaves as build 21 did.
+# Set EXPO_PUBLIC_WALE_UI=1 before sourcing this to put them in a test upload.
+export EXPO_PUBLIC_WALE_UI="${EXPO_PUBLIC_WALE_UI:-0}"
