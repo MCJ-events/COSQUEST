@@ -43,7 +43,7 @@ import {
 } from "@/features/game3d/fight3d";
 import { FIGHT3D } from "@/features/game3d/flags";
 import { hudLandscape, landscapePx } from "@/features/game/landscape";
-import { declineLandscape, holdLandscape, landscapeHeld, landscapeWanted, releaseLandscape } from "@/features/game/orientation";
+import { acceptLandscape, declineLandscape, holdLandscape, landscapeAccepted, landscapeHeld, landscapeWanted, releaseLandscape } from "@/features/game/orientation";
 import { useAppSelector } from "@/store/hooks";
 import { gameStore } from "@/features/game/runtime";
 import type { DuelStart, QuestPoint } from "@/features/game/wire";
@@ -128,7 +128,7 @@ export default function Fight3D({
   // build 21: landscape (features/game/landscape.ts). The map may hold the screen sideways already
   // (no notice then); otherwise the notice asks first, once the reveal (hold) is over.
   const land = useRef(landscapeHeld() || landscapeWanted());
-  const askTilt = useRef(!landscapeHeld() && landscapeWanted());
+  const askTilt = useRef(!landscapeHeld() && landscapeWanted() && !landscapeAccepted());
   const heldLand = useRef(false);
   const [tiltOpen, setTiltOpen] = useState(false);
   const [isLand, setIsLand] = useState(landscapeHeld());
@@ -258,7 +258,8 @@ export default function Fight3D({
         }
         // build 21: "turn your phone", then sideways, then the HUD's landscape safe area
         if (land.current) {
-          if (askTilt.current) {
+          // the map may have turned the screen while this fight was getting ready: no second notice
+          if (askTilt.current && !landscapeHeld()) {
             setTiltOpen(true);
             const sideways = await new Promise<boolean>((resolve) => (tiltAnswer.current = resolve));
             tiltAnswer.current = null;
@@ -426,7 +427,10 @@ export default function Fight3D({
       {tiltOpen ? (
         <TiltNotice
           what="fight"
-          onReady={() => tiltAnswer.current?.(true)}
+          onReady={() => {
+            acceptLandscape();
+            tiltAnswer.current?.(true);
+          }}
           onPortrait={() => {
             declineLandscape();
             tiltAnswer.current?.(false);

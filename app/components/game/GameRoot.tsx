@@ -550,7 +550,7 @@ function GameRootInner({ parked }: { parked: boolean }) {
   );
 
   // build 21: the map sideways on phones that can take it (the notice first, once a session)
-  const mapLand = useMapLandscape(!parked && onScreen && !!session && !(gameStore.needsOnboarding || onboarding));
+  const mapLand = useMapLandscape(!parked && onScreen && !!session && !(gameStore.needsOnboarding || onboarding), !fighting);
   if (!session || (!fontsReady && !fontsError)) {
     return <View style={styles.root} />;
   }

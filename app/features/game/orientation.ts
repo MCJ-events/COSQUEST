@@ -49,6 +49,18 @@ export function landscapeWanted(): boolean {
   return landscapeFlag().on && !declined;
 }
 
+let accepted = false;
+/** Ready on either notice: the map and fights go sideways without asking again this session. */
+export function acceptLandscape(): void {
+  if (accepted) return;
+  accepted = true;
+  listeners.forEach((l) => l());
+}
+
+export function landscapeAccepted(): boolean {
+  return accepted;
+}
+
 export function declineLandscape(): void {
   declined = true;
   listeners.forEach((l) => l());

@@ -5,11 +5,13 @@
 // finds the screen sideways and skips its own notice.
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { declineLandscape, holdLandscape, landscapeWanted, loadLandscapeOverride, onLandscapeChange, releaseLandscape } from "@/features/game/orientation";
+import { acceptLandscape, declineLandscape, holdLandscape, landscapeAccepted, landscapeWanted, loadLandscapeOverride, onLandscapeChange, releaseLandscape } from "@/features/game/orientation";
 
-let acceptedThisSession = false;
-
-export function useMapLandscape(active: boolean): { land: boolean; tilt: boolean; ready: () => void; portrait: () => void } {
+/**
+ * `active`: the game page is in front. `canAsk`: the notice may show now (not while a fight is
+ * the screen: a fight asks for itself, and the map holds landscape over it once accepted).
+ */
+export function useMapLandscape(active: boolean, canAsk = true): { land: boolean; tilt: boolean; ready: () => void; portrait: () => void } {
   const [land, setLand] = useState(false);
   const [tilt, setTilt] = useState(false);
   const [, bump] = useState(0);
@@ -20,9 +22,10 @@ export function useMapLandscape(active: boolean): { land: boolean; tilt: boolean
     return onLandscapeChange(() => bump((n) => n + 1));
   }, []);
   const wanted = landscapeWanted();
+  const accepted = landscapeAccepted();
 
   const go = useCallback(async () => {
-    acceptedThisSession = true;
+    acceptLandscape();
     setTilt(false);
     await holdLandscape("map");
     if (!activeRef.current) {
@@ -34,8 +37,8 @@ export function useMapLandscape(active: boolean): { land: boolean; tilt: boolean
 
   useEffect(() => {
     if (active && wanted) {
-      if (acceptedThisSession) void go();
-      else setTilt(true);
+      if (accepted) void go();
+      else setTilt(canAsk);
       return;
     }
     setTilt(false);
@@ -45,7 +48,7 @@ export function useMapLandscape(active: boolean): { land: boolean; tilt: boolean
     }
     // land is read, not followed: only the map's being in front (and the flag) turn it
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active, wanted, go]);
+  }, [active, wanted, accepted, canAsk, go]);
 
   useEffect(() => () => void releaseLandscape("map"), []);
 
