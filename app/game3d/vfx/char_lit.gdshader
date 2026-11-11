@@ -3,7 +3,8 @@
 // fighters pop off the street as on the reference:
 //  - a rim on the key light's side (warm, the low evening sun) and a fainter one on the other
 //    side in the team colour (the sky side), both fresnel terms;
-//  - the hit flash (cq 013's look: a white-hot core at its peak and a warm rim as it decays).
+//  - the hit flash (build 21: a warm rim and a light tint, never a white body; cq 013's white-hot
+//    body read as a missing texture on the Guardian), and the dissolve's glow (the old white-hot look).
 // It replaces cq 233's overlay, a second pass over every skinned vertex (cq 011 dropped the
 // team rim for that cost): no extra draw call, a handful of ALU per pixel.
 shader_type spatial;
@@ -26,6 +27,7 @@ uniform vec3 rim_team : source_color = vec3(0.5, 0.85, 1.0); // the sky side, ti
 uniform float rim_amount = 0.0;                              // 0 = no rim (look "rim": false)
 uniform float team_amount = 0.35;
 uniform float flash = 0.0;
+uniform float glow = 0.0;     // the fallen Guardian's dissolve (fighter.gd dissolve()): the body glows away
 // build 20 pass 2 (one look): the street multiplies its time preset's shade colour into what faces away
 // from the sun (place bakes, facade.gdshader). The fighters do the same, a little less, so a body in
 // the street's shade is the street's colour of shade, not a separate cooler or brighter one.
@@ -92,10 +94,14 @@ void fragment() {
 	vec3 to_key = normalize((VIEW_MATRIX * vec4(-key_dir, 0.0)).xyz);
 	float sunward = smoothstep(-0.15, 0.55, dot(NORMAL, to_key));
 	vec3 rim = mix(rim_team * team_amount, rim_key, sunward) * fr * rim_amount;
-	float body = smoothstep(0.35, 1.0, flash);
-	vec3 hit = vec3(1.0, 0.97, 0.92) * flash * (0.6 * body + 0.75 * pow(f, 1.5))
-		+ vec3(1.0, 0.85, 0.6) * flash * f3 * 0.6;
+	// build 21: the hit is a warm fresnel rim that hugs the silhouette plus a light warm tint, so
+	// the body keeps its texture and shading at the flash's peak
+	vec3 hit = vec3(1.0, 0.86, 0.62) * flash * (0.06 + 1.15 * fr);
+	float body = smoothstep(0.35, 1.0, glow);
+	vec3 gl = vec3(1.0, 0.97, 0.92) * glow * (0.6 * body + 0.75 * pow(f, 1.5))
+		+ vec3(1.0, 0.85, 0.6) * glow * f3 * 0.6;
 	vec3 nw = (INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz;
 	ALBEDO *= mix(shade_tint, vec3(1.0), smoothstep(-0.25, 0.35, dot(nw, -key_dir)));
-	EMISSION = rim + hit + ALBEDO * hemi_extra(nw) * (1.0 - METALLIC);
+	ALBEDO = mix(ALBEDO, vec3(1.0, 0.9, 0.78), 0.2 * clamp(flash, 0.0, 1.0));
+	EMISSION = rim + hit + gl + ALBEDO * hemi_extra(nw) * (1.0 - METALLIC);
 }

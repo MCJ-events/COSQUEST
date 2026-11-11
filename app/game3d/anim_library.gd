@@ -90,6 +90,8 @@ static func library(key: String) -> AnimationLibrary:
 			var cd: Dictionary = (data().get("clips", {}) as Dictionary).get(str(n), {})
 			if cd.has("bob"):
 				debob(a, float(cd["bob"]))
+			if SOFT_ARMS.has(str(n)):
+				soften_arms(a, float(SOFT_ARMS[str(n)]))
 			lib.add_animation(n, a)
 			_despiked += fixed
 	root.free()
@@ -160,6 +162,32 @@ static func debob(a: Animation, k: float) -> bool:
 			a.track_set_key_value(i, j, v)
 		return true
 	return false
+
+
+## build 21: the stagger (KayKit Dodge_Backward) throws both arms out 85 deg from where they start;
+## on the Guardian's long arms, from the game camera, the backward step read as a T-pose. The arms
+## (shoulders to hands) keep this share of their motion away from the clip's first pose (the arms
+## down, as the idle and the hit react hold them); the legs' step is untouched.
+const SOFT_ARMS: Dictionary = {"Stagger_Back": 0.35}
+const ARM_BONES: Array[String] = ["LeftShoulder", "RightShoulder", "LeftArm", "RightArm", "LeftForeArm",
+	"RightForeArm", "LeftHand", "RightHand"]
+
+
+static func soften_arms(a: Animation, keep: float) -> int:
+	var n_tracks: int = 0
+	for i in a.get_track_count():
+		if a.track_get_type(i) != Animation.TYPE_ROTATION_3D:
+			continue
+		if not (str(a.track_get_path(i).get_concatenated_subnames()) in ARM_BONES):
+			continue
+		var n: int = a.track_get_key_count(i)
+		if n < 2:
+			continue
+		var q0: Quaternion = a.track_get_key_value(i, 0)
+		for j in range(1, n):
+			a.track_set_key_value(i, j, q0.slerp(a.track_get_key_value(i, j) as Quaternion, keep))
+		n_tracks += 1
+	return n_tracks
 
 
 ## Adds the library to `player`, its tracks pointed at `skeleton`. Returns the clip names.

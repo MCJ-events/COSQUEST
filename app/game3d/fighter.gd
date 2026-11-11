@@ -20,6 +20,8 @@ const LIT_SHADER := preload("res://vfx/char_lit.gdshader")
 const ArenaScript := preload("res://arena.gd")
 const DOME_SHADER := preload("res://vfx/dome.gdshader")
 
+## build 21: the boss's arms hang this much closer when it is not attacking (combat_animator arm_droop)
+const BOSS_ARM_DROOP: float = 0.75
 const HEIGHT: float = 2.3             # a touch over life size: reads at phone size, as on the reference
 
 var display_name: String = ""
@@ -67,6 +69,8 @@ var weapon_reach: float = 2.2
 
 var _overlay: ShaderMaterial
 var _flash: float = 0.0
+var _glow: float = 0.0           # build 21: the dissolve's white-hot glow (the hit flash is a rim now)
+var _lit_glow: float = -1.0
 var _overlay_meshes: Array[MeshInstance3D] = []
 var _overlay_on: bool = false
 ## cq 015: the fighter's own materials, rebuilt on char_lit.gdshader (rim + hit flash in
@@ -97,7 +101,13 @@ var _mlen: float = 0.0
 var _pop_t: float = -1.0
 var _death_t: float = -1.0
 var _cele_t: float = 0.0
-var _spin_dir: float = 1.0
+var _spin_dir: float = -1.0
+## build 21 (presentation): while the whirl plays, the yaw towards its target (NAN = none, set by
+## fight.gd each frame). The drawn body turns onto it over the spin's last part, so the spin ends
+## facing the enemy; the fighter's yaw, hurtbox and weapon arc are the game's and never move.
+var face_yaw: float = NAN
+var _face_off: float = 0.0
+const FACE_FROM: float = 0.55           # the share of the spin after which the body turns onto the target
 # look-fight (presentation only): the victim's shudder through a hit-stop, the Guardian's dissolve
 var _shud_t: float = 0.0
 var _shud_len: float = 0.0
@@ -363,6 +373,7 @@ func set_model(node: Node3D) -> Dictionary:
 	model = holder
 	model_info = "glb"
 	bind_info = anim.bind(holder, body, anim_opts)
+	anim.arm_droop = BOSS_ARM_DROOP if role == "boss" else 0.0
 	anim.play("idle")
 	_apply_overlay(holder)
 	_wire_cloth(holder)
@@ -380,6 +391,7 @@ func _apply_overlay(root: Node) -> void:
 	_overlay_meshes.clear()
 	_lit_mats.clear()
 	_lit_flash = -1.0
+	_lit_glow = -1.0
 	var meshes: Array[Node] = root.find_children("*", "MeshInstance3D", true, false)
 	if root is MeshInstance3D:
 		meshes.append(root)
@@ -603,7 +615,9 @@ func act(state: String, length: float, hit_at: float = -1.0) -> bool:
 	_motion = state
 	_mt = 0.0
 	_mlen = length
-	_spin_dir = 1.0
+	# build 21: the procedural spin turns clockwise seen from above, as the whirl clips do (their
+	# hips turn -360 deg) and as fx.whirl's ring and blades turn
+	_spin_dir = -1.0
 	return clip
 
 
@@ -811,7 +825,7 @@ func tick_visual(dt: float) -> void:
 	if _diss_t >= 0.0:
 		_diss_t += dt
 		var kd2: float = clampf(_diss_t / _diss_len, 0.0, 1.0)
-		_flash = maxf(_flash, 0.9 * (1.0 - kd2) + 0.3)
+		_glow = maxf(_glow, 0.9 * (1.0 - kd2) + 0.3)
 		sxz = 1.0 - ease(kd2, 2.2)
 		sc *= 1.0 + 0.08 * sin(kd2 * PI)
 		if kd2 >= 1.0:
@@ -826,6 +840,16 @@ func tick_visual(dt: float) -> void:
 		lag = signf(lag) * TURN_LAG_MAX
 		_vis_yaw = yaw + lag
 	rot.y += lag
+	# build 21: the whirl ends facing its target (the body only; see face_yaw)
+	if _motion == "skill_whirl" and not is_nan(face_yaw) and _mlen > 0.0 and not dead:
+		var fk: float = smoothstep(FACE_FROM, 1.0, clampf(_mt / _mlen, 0.0, 1.0))
+		_face_off = wrapf(face_yaw - yaw, -PI, PI) * fk
+		rot.y += _face_off
+	elif _face_off != 0.0:
+		# the spin is over: the drawn body keeps that heading and eases back onto the yaw (TURN_RATE)
+		_vis_yaw = yaw + _face_off
+		rot.y += _face_off - lag
+		_face_off = 0.0
 	# fight-anim: a knockback shove leans the body with the push and sinks it a little (the feet
 	# are planted while the game slides the fighter back, so the body reads as shoved, not gliding)
 	var kv: float = kb_vel.length()
@@ -842,9 +866,13 @@ func tick_visual(dt: float) -> void:
 		rot.x += 0.32 * kk * kl.z
 		rot.z -= 0.32 * kk * kl.x
 		pos.y -= 0.07 * kk * size_k
+	var bscale := Vector3(sc * sxz, sc * (1.0 + 0.6 * (1.0 - sxz)) * maxf(0.05, sxz), sc * sxz)
+	# build 21: the lower foot on the paving, with this frame's lean and offsets (see _plant_target)
+	_plant_y = lerpf(_plant_y, _plant_target(Basis.from_euler(rot).scaled(bscale), pos.y), 1.0 - exp(-dt * PLANT_RATE))
+	pos.y += _plant_y
 	body.position = pos
 	body.rotation = rot
-	body.scale = Vector3(sc * sxz, sc * (1.0 + 0.6 * (1.0 - sxz)) * maxf(0.05, sxz), sc * sxz)
+	body.scale = bscale
 	if _cast != null:
 		_cast.visible = visible
 		_cast.global_transform = Transform3D(Basis(Vector3.UP, _cast_yaw), global_position + _cast_off + Vector3(0, 0.04, 0))
@@ -853,12 +881,17 @@ func tick_visual(dt: float) -> void:
 	if _flash > 0.0 and _shud_t <= 0.0:
 		# build 20 pass 2: the flash holds through the hit-stop (the shudder), then fades
 		_flash = maxf(0.0, _flash - dt * 6.0)
+	if _glow > 0.0 and _diss_t < 0.0:
+		_glow = maxf(0.0, _glow - dt * 6.0)
 	_overlay.set_shader_parameter("flash", _flash)
-	_set_overlay(_flash > 0.0 and not _overlay_meshes.is_empty())
-	if _flash != _lit_flash:
+	_overlay.set_shader_parameter("glow", _glow)
+	_set_overlay((_flash > 0.0 or _glow > 0.0) and not _overlay_meshes.is_empty())
+	if _flash != _lit_flash or _glow != _lit_glow:
 		_lit_flash = _flash
+		_lit_glow = _glow
 		for m: ShaderMaterial in _lit_mats:
 			m.set_shader_parameter("flash", _flash)
+			m.set_shader_parameter("glow", _glow)
 	if _dome != null:
 		var on: bool = shield_t > 0.0 and not dead
 		if not on and _dome.visible and _shatter_t < 0.0:
@@ -929,7 +962,12 @@ func _bind_feet() -> void:
 		(f[0] as Node).queue_free()
 	_feet = []
 	_feet_sk = anim.skeleton
-	if _feet_sk == null or not foot_shadows:
+	_soles = []
+	_plant_y = 0.0
+	if _feet_sk == null:
+		return
+	_find_soles()
+	if not foot_shadows:
 		return
 	if _feet_mat == null:
 		_feet_mat = StandardMaterial3D.new()
@@ -961,7 +999,7 @@ func _bind_feet() -> void:
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		mi.top_level = true
 		add_child(mi)
-		_feet.append([mi, toe, ankle])
+		_feet.append([mi, toe, ankle, FOOT_BONES.find(names)])
 
 
 func _tick_feet() -> void:
@@ -981,14 +1019,164 @@ func _tick_feet() -> void:
 		var pt: Vector3 = xf * _feet_sk.get_bone_global_pose(toe).origin if toe >= 0 else pa
 		# the sole's height: the lower of the toe and (the ankle less its own height off the sole)
 		var h: float = maxf(0.0, minf(pt.y - gy - 0.03 * size_k, pa.y - gy - 0.09 * size_k))
+		var c: Vector3 = pa.lerp(pt, 0.55)
+		# build 21: where the mesh's sole is known (_soles), the shadow sits under it and fades by
+		# its real height. A hoof's "foot" bone is the hock, high behind the hoof: the old
+		# ankle-to-toe midpoint put the Guardian's shadows behind its hooves (it read as hovering).
+		var fi: int = f[3]
+		if fi >= 0 and fi < _soles.size() and not (_soles[fi] as Array).is_empty():
+			var lo: float = INF
+			var pts: Array[Vector3] = []
+			for mk: Array in _soles[fi]:
+				var w: Vector3 = xf * (_feet_sk.get_bone_global_pose(int(mk[0])) * (mk[1] as Vector3))
+				lo = minf(lo, w.y)
+				pts.append(w)
+			var cs := Vector3.ZERO
+			var nc: int = 0
+			for w: Vector3 in pts:
+				if w.y < lo + 0.06 * size_k:   # the part of the foot that is down
+					cs += w
+					nc += 1
+			c = cs / float(maxi(1, nc))
+			h = maxf(0.0, lo - gy)
 		var k: float = clampf(1.0 - h / (FOOT_LIFT_FADE * size_k), 0.0, 1.0)
 		mi.visible = visible and k > 0.02 and not (dead and _diss_t >= 0.0)
 		if not mi.visible:
 			continue
-		var c: Vector3 = pa.lerp(pt, 0.55)
 		var grow: float = 1.0 + 0.5 * (1.0 - k)
 		mi.global_transform = Transform3D(Basis(Vector3.UP, yaw_v).scaled(Vector3(grow, 1.0, grow)), Vector3(c.x, gy + 0.05, c.z))
 		(mi.material_override as StandardMaterial3D).albedo_color = Color(1, 1, 1, FOOT_ALPHA * k * k)
+
+
+# build 21: planted feet. The retargeted clips put a character's feet where a human's go, and a
+# rig whose proportions differ (the Guardian's hooves and long shins) stood a few centimetres off
+# the paving in its idle and sank up to 35 cm into it in its chop and its stagger. Each foot gets
+# a few sole markers (its lowest mesh vertices in the rest pose, in the foot bone's space); every
+# frame the body (the drawn model only) moves up or down so the lower sole touches the ground,
+# eased, in the states where a foot should be down. Presentation only: the fighter's position,
+# hurtbox and weapon arc are the game's and never move.
+const PLANT_RATE: float = 18.0              # 1/s
+const PLANT_MAX: float = 0.45               # m at size 1: the most the body moves
+const PLANT_STATES: Array[String] = ["idle", "_", "walk", "hit", "stagger", "guard", "parry", "heavy",
+	"attack_1", "attack_2", "skill_charge", "skill_whirl", "skill_rally", "skill_shield"]
+const PLANT_LIFT_ONLY: Array[String] = ["run", "sprint"]   # a stride leaves the ground: only lift a sunk foot
+var foot_plant: bool = true                 # set false by fight.gd from the look ("plant": false)
+var _soles: Array = []                      # per foot (FOOT_BONES order): [[bone, Vector3 in bone space], ...]
+var _plant_y: float = 0.0
+
+
+## The sole markers: per foot, for each of its bones (the foot and the toe), the vertices weighted
+## mostly to that bone that stick out furthest along SOLE_DIRS in the rest pose (the bone's hull
+## seen from below and the sides), kept in the bone's own space. Whatever the clip does to the
+## foot, its lowest point is one of them, at a few transforms a frame.
+const SOLE_DIRS: Array[Vector3] = [Vector3(0, -1, 0), Vector3(1, 0, 0), Vector3(-1, 0, 0), Vector3(0, 0, 1),
+	Vector3(0, 0, -1), Vector3(0.707, -0.707, 0), Vector3(-0.707, -0.707, 0), Vector3(0, -0.707, 0.707),
+	Vector3(0, -0.707, -0.707), Vector3(0.577, -0.577, 0.577), Vector3(-0.577, -0.577, 0.577),
+	Vector3(0.577, -0.577, -0.577), Vector3(-0.577, -0.577, -0.577), Vector3(0.707, 0, 0.707),
+	Vector3(-0.707, 0, 0.707), Vector3(0.707, 0, -0.707), Vector3(-0.707, 0, -0.707)]
+func _find_soles() -> void:
+	_soles = []
+	var sk: Skeleton3D = _feet_sk
+	if sk == null or model == null:
+		return
+	var foot_of: Dictionary = {}    # bone -> foot index
+	for fi in FOOT_BONES.size():
+		for nm: String in FOOT_BONES[fi]:
+			var b: int = sk.find_bone(nm)
+			if b >= 0:
+				foot_of[b] = fi
+	if foot_of.is_empty():
+		return
+	var best: Dictionary = {}       # bone -> [[score, local] per SOLE_DIRS]
+	for n: Node in model.find_children("*", "MeshInstance3D", true, false):
+		var mi := n as MeshInstance3D
+		if mi.skin == null or mi.mesh == null or mi.name == "FootShadow":
+			continue
+		var bind_bone: Dictionary = {}   # bind -> [bone, bind pose, bone rest]
+		for bi in mi.skin.get_bind_count():
+			var bone: int = mi.skin.get_bind_bone(bi)
+			if bone < 0:
+				bone = sk.find_bone(str(mi.skin.get_bind_name(bi)))
+			if foot_of.has(bone):
+				bind_bone[bi] = [bone, mi.skin.get_bind_pose(bi), sk.get_bone_global_rest(bone)]
+		if bind_bone.is_empty():
+			continue
+		for si in mi.mesh.get_surface_count():
+			var arr: Array = mi.mesh.surface_get_arrays(si)
+			var v: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
+			var bi_arr: Variant = arr[Mesh.ARRAY_BONES]
+			var bw_arr: Variant = arr[Mesh.ARRAY_WEIGHTS]
+			if bi_arr == null or bw_arr == null or v.is_empty():
+				continue
+			var bones: PackedInt32Array = bi_arr
+			var weights: PackedFloat32Array = bw_arr
+			var nb: int = bones.size() / v.size()
+			if nb < 1:
+				continue
+			for i in v.size():
+				var top: int = -1
+				var tw: float = 0.0
+				for j in nb:
+					if weights[i * nb + j] > tw:
+						tw = weights[i * nb + j]
+						top = bones[i * nb + j]
+				if tw < 0.5 or not bind_bone.has(top):
+					continue
+				var bb: Array = bind_bone[top]
+				var bone_i: int = bb[0]
+				var local: Vector3 = (bb[1] as Transform3D) * v[i]
+				var rest: Vector3 = (bb[2] as Transform3D) * local
+				if not best.has(bone_i):
+					var init: Array = []
+					for d in SOLE_DIRS.size():
+						init.append([-INF, Vector3.ZERO])
+					best[bone_i] = init
+				var row: Array = best[bone_i]
+				for d in SOLE_DIRS.size():
+					var sc: float = rest.dot(SOLE_DIRS[d])
+					if sc > float(row[d][0]):
+						row[d] = [sc, local]
+	for fi in FOOT_BONES.size():
+		var marks: Array = []
+		for bone_i: int in best:
+			if int(foot_of[bone_i]) != fi:
+				continue
+			var seen: Dictionary = {}
+			for e: Array in best[bone_i]:
+				if float(e[0]) > -INF and not seen.has(e[1]):
+					seen[e[1]] = true
+					marks.append([bone_i, e[1]])
+		_soles.append(marks)
+
+
+## The lower sole's height (m) over the body node's origin when the body is turned and scaled by
+## `b` (the body's own position never feeds back), INF when the model has no sole markers.
+func sole_height(b: Basis = Basis.IDENTITY) -> float:
+	if _soles.is_empty() or _feet_sk == null or not is_instance_valid(_feet_sk) or body == null:
+		return INF
+	var m: Transform3D = Transform3D(b, Vector3.ZERO) * body.global_transform.affine_inverse() * _feet_sk.global_transform
+	var lo: float = INF
+	for marks: Array in _soles:
+		for mk: Array in marks:
+			lo = minf(lo, (m * (_feet_sk.get_bone_global_pose(int(mk[0])) * (mk[1] as Vector3))).y)
+	return lo
+
+
+## How far the body moves (m, up +) so the lower sole touches the ground: `b` is this frame's body
+## turn and scale (a knockback lean), `y0` the body's other offsets this frame (the knockback sink).
+func _plant_target(b: Basis, y0: float) -> float:
+	if not foot_plant or dead or celebrating or _diss_t >= 0.0 or not anim.has_clip(anim.state if anim.state != "_" else "idle"):
+		return 0.0
+	var st: String = anim.state
+	var lift_only: bool = st in PLANT_LIFT_ONLY
+	if not lift_only and not (st in PLANT_STATES):
+		return 0.0
+	var h: float = sole_height(b)
+	if h == INF:
+		return 0.0
+	h += y0
+	var lim: float = PLANT_MAX * size_k
+	return clampf(maxf(-h, 0.0) if lift_only else -h, -lim, lim)
 
 
 ## Root-motion stand-ins per state; k is the state's phase 0..1.

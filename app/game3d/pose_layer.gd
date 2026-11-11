@@ -10,6 +10,10 @@ extends SkeletonModifier3D
 ## plus a few common alternatives). A missing bone just skips its channels.
 
 var pose: Dictionary = {}
+## build 21: 0..1, the share of each upper arm's spread beyond DROOP_FREE deg from hanging that is
+## taken back (CombatAnimator sets it, eased, for a character whose retargeted arms stand out).
+var arm_droop: float = 0.0
+const DROOP_FREE: float = 30.0
 var frame_root: Node3D          # the character's own frame (the model holder)
 var _bones: Dictionary = {}     # role -> bone index
 
@@ -55,13 +59,18 @@ func bind_bones() -> int:
 
 
 func _process_modification_with_delta(_delta: float) -> void:
-	if pose.is_empty() or _bones.is_empty():
+	if (pose.is_empty() and arm_droop <= 0.001) or _bones.is_empty():
 		return
 	var skel: Skeleton3D = get_skeleton()
 	if skel == null or frame_root == null or not frame_root.is_inside_tree():
 		return
 	# s maps skeleton space to the character frame; a frame rotation R is s^-1 R s in skeleton space
 	var s: Basis = (frame_root.global_basis.orthonormalized().inverse() * skel.global_basis.orthonormalized())
+	if arm_droop > 0.001:
+		_droop(skel, "r_arm", "r_fore", s)
+		_droop(skel, "l_arm", "l_fore", s)
+	if pose.is_empty():
+		return
 	var spine := Basis.from_euler(Vector3(deg_to_rad(_c("spine_lean")), deg_to_rad(_c("spine_yaw")), deg_to_rad(_c("spine_tilt"))), EULER_ORDER_YXZ)
 	_turn(skel, "spine", spine.slerp(Basis.IDENTITY, 0.45), s)
 	_turn(skel, "spine2", spine.slerp(Basis.IDENTITY, 0.55), s)
@@ -70,6 +79,29 @@ func _process_modification_with_delta(_delta: float) -> void:
 	_turn(skel, "l_arm", Basis(Vector3.RIGHT, deg_to_rad(-_c("l_fwd"))) * Basis(Vector3.BACK, deg_to_rad(_c("l_side"))), s)
 	_turn(skel, "r_fore", Basis(Vector3.RIGHT, deg_to_rad(-_c("r_bend"))), s)
 	_turn(skel, "l_fore", Basis(Vector3.RIGHT, deg_to_rad(-_c("l_bend"))), s)
+
+
+## build 21: turns the upper arm (about its shoulder) towards hanging straight down, so its angle
+## from down beyond DROOP_FREE shrinks by arm_droop. The forearm and hand follow.
+func _droop(skel: Skeleton3D, arm: String, fore: String, s: Basis) -> void:
+	if not (_bones.has(arm) and _bones.has(fore)):
+		return
+	var b: int = _bones[arm]
+	var g: Transform3D = skel.get_bone_global_pose(b)
+	var dir: Vector3 = skel.get_bone_global_pose(_bones[fore]).origin - g.origin
+	if dir.length_squared() < 1e-10:
+		return
+	dir = dir.normalized()
+	var down: Vector3 = (s.inverse() * Vector3.DOWN).normalized()
+	var ang: float = dir.angle_to(down)
+	var free: float = deg_to_rad(DROOP_FREE)
+	if ang <= free:
+		return
+	var axis: Vector3 = dir.cross(down)
+	if axis.length_squared() < 1e-10:
+		return
+	g.basis = Basis(axis.normalized(), (ang - free) * clampf(arm_droop, 0.0, 1.0)) * g.basis
+	skel.set_bone_global_pose(b, g)
 
 
 func _c(k: String) -> float:

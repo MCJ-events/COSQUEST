@@ -132,6 +132,13 @@ var _victory_idle: bool = false  # fight-anim: the cheer has settled into the id
 var _flinch_t: float = -1.0      # fight-anim: seconds into the current flinch (-1 = none)
 var _flinch_k: float = 0.0       # its strength
 var _flinch_dir: Vector3 = Vector3.ZERO   # the push, in the character's own frame (+Z forward)
+## build 21: how much of its arms' spread a character takes back while it stands, walks, reels or
+## is hit (pose_layer.gd arm_droop; 0 = none). The Guardian's retargeted arms stand out 65 deg in
+## every clip, and its stagger read as a T-pose from the game camera (fighter.gd sets it for a boss).
+var arm_droop: float = 0.0
+var _droop_now: float = 0.0
+const DROOP_STATES: Array[String] = ["idle", "_", "walk", "run", "sprint", "hit", "stagger"]
+const DROOP_RATE: float = 8.0            # 1/s: eases in and out round the attacks
 
 
 ## Finds the AnimationPlayer and Skeleton3D under `model`, maps clips to states, adds the
@@ -464,6 +471,9 @@ func update(dt: float, speed_now: float, dead: bool) -> void:
 			for k: String in fl:
 				p[k] = float(p.get(k, 0.0)) + float(fl[k])
 		layer.pose = p
+		var dw: float = arm_droop if (state in DROOP_STATES and not dead) else 0.0
+		_droop_now = lerpf(_droop_now, dw, 1.0 - exp(-dt * DROOP_RATE))
+		layer.arm_droop = _droop_now
 
 
 func phase() -> float:

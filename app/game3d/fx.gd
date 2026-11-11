@@ -678,6 +678,12 @@ func whirl(at: Vector3, radius: float, cols: Array, spin_dir: float = 1.0, secon
 	var y0: float = randf() * TAU
 	for i in n:
 		var mi := slash(at + Vector3(0, 0.6 + 0.15 * i, 0), y0 + TAU * float(i) / n, cols, radius * (0.8 + 0.08 * i), 0.1 * (i - 1.5), 0.45)
+		# build 21: a crescent's head sweeps counter-clockwise seen from above (its u runs -80 to +80
+		# deg of yaw), against the spin (the blades and the ring turn clockwise, as the whirl clips'
+		# hips do) and against the sword; in slow motion the swing read backwards. Rolled half a turn
+		# about its own forward axis the crescent sweeps clockwise, with everything else.
+		if spin_dir > 0.0:
+			mi.basis = mi.basis * Basis(Vector3(0, 0, 1), PI)
 		for d: Dictionary in _live:
 			if d["node"] == mi:
 				d["spin"] = -spin_dir * (16.0 if second else 13.0)

@@ -638,6 +638,7 @@ func _spawn(n: String, team: int, hp_max: int, c: Color, at: Vector3, yaw: float
 	f.rim_on = bool((arena.get("look") as Dictionary).get("rim", true)) if arena != null else true
 	# build 20 pass 2: the per-foot contact shadows (look "feet": false turns them off to measure them)
 	f.foot_shadows = bool((arena.get("look") as Dictionary).get("feet", true)) if arena != null else true
+	f.foot_plant = bool((arena.get("look") as Dictionary).get("plant", true)) if arena != null else true
 	f.key_dir = ArenaScript.key_dir()
 	f.look = arena.get("look") if arena != null else {}
 	f.sun_blob = bool((arena.get("look") as Dictionary).get("ao", true)) if arena != null else true
@@ -1055,6 +1056,8 @@ func _process(dt: float) -> void:
 	elif state == "ending":
 		_end_t += real_dt
 		_tick_end_beat()
+		if outcome == "win":
+			_tick_ally_step(dt)
 		if _end_t >= _end_delay:
 			_emit_result()
 	var frozen: bool = _hitstop > 0.0 or feel.vis_stop > 0.0
@@ -1065,6 +1068,14 @@ func _process(dt: float) -> void:
 		Engine.time_scale = feel.ko_time_scale(feel.ko_t)
 	hud.tint = Color(feel.tint_col.r, feel.tint_col.g, feel.tint_col.b, feel.tint_alpha())
 	hud.vignette = feel.vignette_alpha()
+	# build 21 (presentation): the whirl's spin ends facing the Guardian (fighter.gd face_yaw: the
+	# drawn body only; the hero's yaw is the game's)
+	if hero != null:
+		hero.face_yaw = NAN
+		if state == "fighting" and _action == "skill" and _skill == 2 and enemy != null and not enemy.dead:
+			var to_e: Vector3 = _flat(enemy.position - hero.position)
+			if to_e.length() > 0.3:
+				hero.face_yaw = atan2(to_e.x, to_e.z)
 	for f: FighterScript in fighters:
 		f.anim_freeze = frozen
 		f.tick_visual(dt)
@@ -2083,7 +2094,9 @@ func _end(o: String) -> void:
 			_end_delay = beat + BANNER_HOLD_S
 			hero.celebrate()
 			if ally != null and not ally.dead:
-				ally.celebrate()
+				_win_ally_step()
+				if _ally_to == Vector3.INF:
+					ally.celebrate()
 			_hitstop = 0.15            # BattleRunner Guardian kill: hit-stop 0.15, punch 1, shake 0.14 / 0.35
 			_punch = 1.0
 			_shake_cam(0.14, 0.35)
@@ -2278,7 +2291,10 @@ func _follow_camera(dt: float) -> void:
 		# by the kerb cheered at the frame's edge behind the VICTORY card; it now eases onto the
 		# hero (who stands under the card) and in
 		_win_k = move_toward(_win_k, 1.0, _ko_dt_real / WIN_FRAME_S)
-		var ht: Vector3 = hero.position + _cam_fwd * WIN_AHEAD
+		# build 21: the shot frames the winners (the hero and the ally beside it), not the Guardian's
+		# scorch mark: WIN_AHEAD was 4.5 m, so the pair stood in the bottom corner under an empty
+		# street centre
+		var ht: Vector3 = _winners_at() + _cam_fwd * WIN_AHEAD
 		ht.x = clampf(ht.x, -WIN_BOUNDS_X, WIN_BOUNDS_X)
 		ht.y = 0.0
 		target = target.lerp(ht, ease(_win_k, -2.0))
@@ -2354,7 +2370,10 @@ const BANNER_HOLD_S: float = 1.2       # VICTORY over the frame before the app's
 const WIN_FRAME_S: float = 0.9         # build 20: the victory shot eases onto the hero over this (real s)
 const WIN_ZOOM: float = 0.22           # and comes this much closer
 const WIN_BOUNDS_X: float = ARENA_HALF_X   # the hero may stand by the kerb, beyond the fight's view
-const WIN_AHEAD: float = 4.5           # the view looks this far past the hero: the hero stands under the VICTORY card, not behind it
+const WIN_AHEAD: float = 1.4           # the view looks this far past the winners: they stand under the VICTORY card, not behind it (build 21: was 4.5)
+const WIN_SPACING: float = 2.1         # build 21: the ally stands this far to the hero's side (across the view) for the victory shot
+const WIN_STEP_V: float = 3.2          # m/s: the ally's walk there
+var _ally_to: Vector3 = Vector3.INF    # where the ally walks for the victory shot (INF = stays)
 var _win_k: float = 0.0
 const LOSS_HOLD_S: float = 1.05        # DEFEATED: calm, the buttons under 2 s after the fall
 
@@ -2453,6 +2472,53 @@ var _dissolved: bool = false
 var _env_sat0: float = 1.0
 
 
+## build 21: the victory shot's spacing. The ally fights at the hero's shoulder, so the two cheered
+## overlapped (Bobo's cape over Armstrong). When the ally stands closer than WIN_SPACING across the
+## view, it walks to WIN_SPACING on its own side (the other side by the kerb) and cheers there.
+## Presentation only: the fight is over and its record is final (positions are not in it).
+func _win_ally_step() -> void:
+	_ally_to = Vector3.INF
+	if ally == null or ally.dead or hero == null:
+		return
+	var rel: Vector3 = _flat(ally.position - hero.position)
+	var across: float = rel.dot(_cam_right)
+	if absf(across) >= WIN_SPACING * 0.85 and absf(rel.dot(_cam_fwd)) < 2.5:
+		return
+	var side: float = 1.0 if across >= 0.0 else -1.0
+	var to: Vector3 = hero.position + _cam_right * side * WIN_SPACING - _cam_fwd * 0.4
+	if absf(to.x) > ARENA_HALF_X:
+		to = hero.position - _cam_right * side * WIN_SPACING - _cam_fwd * 0.4
+	to.x = clampf(to.x, -ARENA_HALF_X, ARENA_HALF_X)
+	to.y = ally.position.y
+	_ally_to = to
+
+
+func _tick_ally_step(dt: float) -> void:
+	if _ally_to == Vector3.INF or ally == null or ally.dead:
+		return
+	var d: Vector3 = _flat(_ally_to - ally.position)
+	if d.length() <= WIN_STEP_V * dt or d.length() < 0.05:
+		ally.position = _ally_to
+		ally.speed_now = 0.0
+		ally.face(_flat(hero.position - ally.position).normalized().lerp(-_cam_fwd, 0.6), 0.0, 0.0)
+		_ally_to = Vector3.INF
+		ally.celebrate()
+		return
+	ally.position += d.normalized() * WIN_STEP_V * dt
+	ally.speed_now = WIN_STEP_V
+	ally.face(d, dt)
+
+
+## Where the victory shot looks: the hero, or between the hero and the ally (where it is going).
+func _winners_at() -> Vector3:
+	var at: Vector3 = hero.position
+	if ally != null and not ally.dead:
+		var ap: Vector3 = _ally_to if _ally_to != Vector3.INF else ally.position
+		if _flat(ap - hero.position).length() < 6.0:
+			at = (hero.position + ap) * 0.5
+	return at
+
+
 ## The end beat, per frame in "ending" (real time): the Guardian dissolves into motes and a
 ## reward beam, the world desaturates on a loss, the banner and its sting arrive on time.
 func _tick_end_beat() -> void:
@@ -2537,7 +2603,7 @@ func _sync_hud() -> void:
 			shown.append(coop.get("peer"))   # the other player's hero: its name and bar, a dot on the minimap
 		for f: FighterScript in shown:
 			units.append({"id": f.get_instance_id(), "name": f.display_name, "hp": f.hp, "max": f.max_hp, "team": f.team,
-				"head": f.head_pos(), "is_hero": f == hero, "shield": float(f.shield_hp) / float(SHIELD_HP) if f.shield_t > 0.0 else 0.0,
+				"head": f.head_pos(), "feet": f.global_position, "chest": f.chest_pos(), "hw": f.radius * 0.85, "is_hero": f == hero, "shield": float(f.shield_hp) / float(SHIELD_HP) if f.shield_t > 0.0 else 0.0,
 				"buff": f.buff_t, "level": 1})
 			var kind: String = "hero" if f == hero else ("enemy" if f.team == 1 else "ally")
 			if not f.dead:

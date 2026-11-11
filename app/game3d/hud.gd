@@ -121,7 +121,7 @@ var side_l: float = 0.0
 var side_r: float = 0.0
 var _q_off: Vector2 = Vector2.ZERO
 var portrait: Texture2D = null   # the hero's face (fight.gd renders it once at the start)
-var units: Array[Dictionary] = []      # {id, name, hp, max, team, head: Vector3, is_hero, shield, buff, stagger, level}
+var units: Array[Dictionary] = []      # {id, name, hp, max, team, head: Vector3, feet, chest, hw (body half width, m), is_hero, shield, buff, stagger, level}
 var map_points: Array[Dictionary] = [] # {p: Vector2 metres (x right, y down-screen), kind, facing: Vector2}
 var skill_cd: Array[float] = [0.0, 0.0, 0.0, 0.0, 0.0]
 var skill_cd_max: Array[float] = [5.0, 8.0, 6.0, 14.0, 12.0]
@@ -149,6 +149,7 @@ var _toast_t: float = 0.0
 var _toast_at: Vector2 = Vector2.ZERO
 var _pops: Array[Dictionary] = []
 var _plates: Array[Rect2] = []          # build 20 pass 2: this frame's name plates (screen px)
+var _bodies: Dictionary = {}            # build 21: unit id -> this frame's body box (screen px), feet to head
 var _pop_side: float = 1.0
 var _callout: String = ""
 var _callout_col: Color = Color.WHITE
@@ -177,6 +178,8 @@ const BOSS_DEEP := Color("#8E2BD9")
 const POP_LIFE: float = 0.7              # damagePop: rise 56 pt over 700 ms, fade the last 200 ms
 const POP_MAX: int = 6                   # at most six numbers; the oldest fades first
 const POP_STACK_S: float = 0.3           # a number within 300 ms of the last on a fighter stacks above it
+const POP_PER_UNIT: int = 3              # build 21: at most three live numbers per fighter (the oldest fades first)
+const POP_BODY_GAP: float = 8.0          # build 21: px between a number and its fighter's body
 const POP_RISE: float = 44.0             # pt (build 20 pass 2: 56 -> 44, it rose into the name plate)
 const PT: float = 1.85                   # HUD px per phone point (720 px across ~390 pt)
 var _clock: float = 0.0
@@ -457,26 +460,52 @@ func toast(s: String, at: Vector2) -> void:
 ## absorbed | heal | hurt | parry | dodge | ally
 func pop(world: Vector3, text: String, style: String) -> void:
 	# look-fight (art direction 7, damage numbers): a new number within 300 ms of the last one on
-	# the same fighter sits 18 pt above it; at most six live, the oldest fades out first
+	# the same fighter sits 18 pt above it; at most six live, the oldest fades out first.
+	# build 21: the numbers keep clear of the fighter's body (they sat on the Guardian's chest, a
+	# stack over its torso): each one belongs to the fighter it is on (uid), alternates sides, slides
+	# out to the body's edge on its side (_body_clear), stacks only over its own side's last number,
+	# and a fighter shows at most POP_PER_UNIT at once.
 	_pop_side = -_pop_side
 	var dx: float = _pop_side * randf_range(14.0, 34.0)
 	var dy: float = 0.0
+	var uid: int = _unit_at(world)
 	for j in range(_pops.size() - 1, -1, -1):
 		var q: Dictionary = _pops[j]
-		if float(q["t"]) < POP_STACK_S and (q["w"] as Vector3).distance_to(world) < 1.2:
+		if float(q["t"]) < POP_STACK_S and (q["w"] as Vector3).distance_to(world) < 1.2 \
+				and signf(float(q["dx"])) == signf(dx) and not q.has("out"):
 			dy = float(q["dy"]) - 18.0 * PT
 			dx = float(q["dx"]) * 0.4 + _pop_side * 12.0
 			break
 	var live: Array[Dictionary] = []
+	var mine: Array[Dictionary] = []
 	for q: Dictionary in _pops:
 		if not q.has("out"):
 			live.append(q)
+			if uid != 0 and int(q.get("uid", 0)) == uid:
+				mine.append(q)
 	if live.size() >= POP_MAX:
 		live[0]["out"] = float(live[0]["t"])
+	if mine.size() >= POP_PER_UNIT and not mine[0].has("out"):
+		mine[0]["out"] = float(mine[0]["t"])
 	if _pops.size() > 16:
 		_pops.remove_at(0)
 	var tilt: float = randf_range(0.02, 0.1 if style == "crit" else 0.06) * (-_pop_side)
-	_pops.append({"w": world, "t": 0.0, "s": text, "style": style, "dx": dx, "dy": dy, "rot": tilt})
+	_pops.append({"w": world, "t": 0.0, "s": text, "style": style, "dx": dx, "dy": dy, "rot": tilt, "uid": uid})
+
+
+## build 21: the fighter a number at `world` is on (its unit id; 0 = none near).
+func _unit_at(world: Vector3) -> int:
+	var best: int = 0
+	var bd: float = 2.5
+	for u: Dictionary in units:
+		if not u.has("feet"):
+			continue
+		var f: Vector3 = u["feet"]
+		var d: float = Vector2(world.x - f.x, world.z - f.z).length()
+		if d < bd:
+			bd = d
+			best = int(u.get("id", 0))
+	return best
 
 
 func callout(text: String, col: Color) -> void:
@@ -729,6 +758,19 @@ func _draw_overheads() -> void:
 		var w: float = 150.0 if boss else 108.0
 		boxes.append({"u": u, "p": p, "w": w, "boss": boss})
 	_plates.clear()
+	_bodies.clear()
+	var cr: Vector3 = cam.global_basis.x
+	for u: Dictionary in units:
+		if not u.has("feet") or float(u["hp"]) <= 0.0:
+			continue
+		var ch: Vector3 = u["chest"]
+		if cam.is_position_behind(ch):
+			continue
+		var pc: Vector2 = cam.unproject_position(ch)
+		var hwp: float = absf(cam.unproject_position(ch + cr * float(u["hw"])).x - pc.x)
+		var top: float = cam.unproject_position(u["head"] as Vector3).y
+		var bot: float = cam.unproject_position(u["feet"] as Vector3).y
+		_bodies[int(u.get("id", 0))] = Rect2(Vector2(pc.x - hwp, minf(top, bot)), Vector2(hwp * 2.0, absf(bot - top)))
 	boxes.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return (a["p"] as Vector2).y > (b["p"] as Vector2).y)
 	for i in boxes.size():
 		for j in i:
@@ -783,6 +825,7 @@ func _draw_pops() -> void:
 		# 700 ms easing out, fades over the last 200 ms (or 120 ms when a seventh number pushes it out)
 		var rise: float = POP_RISE * PT * (1.0 - pow(1.0 - clampf(t / POP_LIFE, 0.0, 1.0), 2.0))
 		var p: Vector2 = cam.unproject_position(w) + Vector2(float(d["dx"]), float(d.get("dy", 0.0)) - 10.0 - rise)
+		p.x += _body_clear(d, p)
 		p.x += _pop_clear(d, p)
 		var a: float = 1.0 - clampf((t - (POP_LIFE - 0.2)) / 0.2, 0.0, 1.0)
 		if d.has("out"):
@@ -845,6 +888,31 @@ func _pop_clear(d: Dictionary, p: Vector2) -> float:
 			px = need
 	d["px"] = px
 	return px
+
+
+## build 21: how far (px, x only) a number at `p` slides to clear its own fighter's body box, out to
+## the side it is on (or the other side when that would leave the screen). Like _pop_clear, the slide
+## only grows over the number's life, so it never jitters back over the body.
+func _body_clear(d: Dictionary, p: Vector2) -> float:
+	var r: Variant = _bodies.get(int(d.get("uid", 0)))
+	var bx: float = float(d.get("bx", 0.0))
+	if r == null:
+		return bx
+	var body: Rect2 = r
+	var s: String = str(d["s"])
+	var fs: float = 34.0 * PT if str(d["style"]) == "crit" else 26.0 * PT
+	var hw: float = fs * 0.34 * float(s.length()) + 6.0
+	var x: float = p.x + bx
+	if x + hw <= body.position.x - POP_BODY_GAP or x - hw >= body.end.x + POP_BODY_GAP:
+		return bx
+	var right: bool = float(d["dx"]) >= 0.0
+	var need: float = (body.end.x + POP_BODY_GAP + hw - p.x) if right else (body.position.x - POP_BODY_GAP - hw - p.x)
+	if p.x + need + hw > size.x - 4.0 or p.x + need - hw < 4.0:
+		need = (body.position.x - POP_BODY_GAP - hw - p.x) if right else (body.end.x + POP_BODY_GAP + hw - p.x)
+	if absf(need) > absf(bx):
+		bx = need
+	d["bx"] = bx
+	return bx
 
 
 ## look-fight damagePop scale: 0.6 to `peak` in 90 ms, back to 1.0 by 180 ms.
