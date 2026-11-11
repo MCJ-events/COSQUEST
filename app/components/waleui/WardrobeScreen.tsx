@@ -63,7 +63,7 @@ export default function WardrobeScreen() {
           YOUR LOOKS
         </T>
       </At>
-      <Tap x={299} y={103} w={90} h={18} label="More options" onPress={() => notBuiltYet("More options")} style={{ flexDirection: "row", justifyContent: "flex-end", gap: 5 }} testID="wale-wardrobe-more">
+      <Tap x={271} y={103} w={115} h={18} label="More options" onPress={() => notBuiltYet("More options")} style={{ flexDirection: "row", justifyContent: "flex-end", gap: 5 }} testID="wale-wardrobe-more">
         <Ionicons name="ellipsis-horizontal" size={12} color={W.ink} />
         <T size={10} weight={700} align="right" testID="wale-wardrobe-more-text">
           More options
@@ -75,7 +75,7 @@ export default function WardrobeScreen() {
         return (
           <Tap key={slot} x={slot === 0 ? 16 : 178} y={138} w={slot === 0 ? 154 : 152.6} h={47.5} label={`Style ${slot + 1}`} selected={on} onPress={() => chooseSlot(slot)} style={{ borderRadius: 10, backgroundColor: on ? "#FFFFFF" : "rgba(255,255,255,0.3)", flexDirection: "row", justifyContent: "flex-start", paddingLeft: 13, gap: 8 }} testID={`wale-wardrobe-style-${slot + 1}`}>
             <Ionicons name={on ? "shirt-outline" : "add"} size={16} color={on ? W.pink : W.inkSoft} />
-            <T size={10} weight={700} color={on ? W.pink : W.inkSoft} spacing={0.4}>{`STYLE ${slot + 1}`}</T>
+            <T size={10.5} weight={700} color={on ? W.pink : W.inkSoft} spacing={0.4}>{`STYLE ${slot + 1}`}</T>
             {on ? <View style={{ width: 2.5, height: 15, borderRadius: 1, backgroundColor: W.pink }} /> : null}
           </Tap>
         );
@@ -123,7 +123,7 @@ export default function WardrobeScreen() {
         ? ROWS.map((r) => (
             <Tap key={r.id} x={34} y={r.y} w={335} h={61} label={r.label} onPress={r.go} style={{ borderRadius: 10, backgroundColor: "#FFFFFF", flexDirection: "row", justifyContent: "flex-start", paddingLeft: 17, gap: 15 }} testID={`wale-wardrobe-row-${r.id}`}>
               <Ionicons name={r.icon} size={22} color={W.pink} />
-              <T size={13.5} weight={700} style={{ flex: 1 }}>
+              <T size={14.5} weight={700} style={{ flex: 1 }}>
                 {r.label}
               </T>
               <Ionicons name="chevron-forward" size={13} color={W.ink} style={{ marginRight: 12 }} />
