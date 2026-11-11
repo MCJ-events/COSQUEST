@@ -6,7 +6,7 @@ import OSLog
 /// Milestone 1 of the agreement is AIM quantized down to a small model and an
 /// inference engine that runs it on the device, and this is where that lands in
 /// the game. The engine is `mote`, written in C and vectorised with ARM NEON;
-/// `Engine/` is a verbatim copy of its sources, built into this target.
+/// In the merged app the engine code is the Sparks SDK's (one copy per app; build 21).
 ///
 /// Two decisions are worth stating because they are not obvious.
 ///

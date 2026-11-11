@@ -1,9 +1,13 @@
-# The mote engine for Android: the same C iOS links (costquest-game/ios/Game/Engine,
-# a verbatim copy of the mote project's src, never edited here) plus warden_jni.c.
+# The mote engine for Android: the Sparks SDK's copy (node_modules/@cosquest/sparks-sdk/cpp/mote),
+# the same C iOS links since build 21, plus warden_jni.c. The game module's own older copy
+# (costquest-game/ios/Game/Engine, .mq v4 only) was removed: on iOS it collided with the SDK's.
 cmake_minimum_required(VERSION 3.22.1)
 project(costquest_warden C)
 
-set(ENGINE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../../../../costquest-game/ios/Game/Engine)
+set(ENGINE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../../../../../node_modules/@cosquest/sparks-sdk/cpp/mote)
+if(NOT EXISTS ${ENGINE_DIR}/mote_lib.c)
+  message(FATAL_ERROR "mote engine not found at ${ENGINE_DIR} (npm install the app first)")
+endif()
 file(GLOB ENGINE_SOURCES ${ENGINE_DIR}/*.c)
 
 add_library(costquest_warden SHARED warden_jni.c ${ENGINE_SOURCES})

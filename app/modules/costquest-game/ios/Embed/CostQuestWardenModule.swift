@@ -10,8 +10,8 @@ import os
 // unchanged on both platforms.
 //
 // It lives in this pod, not in modules/costquest-warden, because the engine
-// does: Game/Engine is the mote C engine and Game/Game/MoteEngine.swift its
-// Swift face, both already built here for the native game. This file only
+// does: Game/Game/MoteEngine.swift is the Swift face of the mote C engine
+// (the Sparks SDK's copy since build 21, the app's only one). This file only
 // adapts MoteEngine's streamed answer to the one-shot `generate` the JS
 // expects. The native game keeps its own engine (ModelStore); the two are
 // never loaded at once because only one game UI runs in a build.

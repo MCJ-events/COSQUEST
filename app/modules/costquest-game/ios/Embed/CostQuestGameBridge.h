@@ -6,9 +6,9 @@
 
 // The whole surface the app links against: one header, one opaque handle.
 //
-// Engine/ is a verbatim copy of the mote project's src/. It is never edited
-// here. Behaviour that has to differ on a phone is selected with a build flag,
-// so the copy can be refreshed from upstream without a merge.
+// mote_lib.h is the Sparks SDK's (Embed/Engine, byte-identical to
+// node_modules/@cosquest/sparks-sdk/cpp/mote); the engine code is the SDK's,
+// the app's one copy. scripts/sync-game-from-ios.sh keeps this note.
 #import "mote_lib.h"
 
 // Registers this app's handler for a tap on a game standing in the Unity

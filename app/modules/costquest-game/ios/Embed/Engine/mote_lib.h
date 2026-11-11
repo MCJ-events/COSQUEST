@@ -40,6 +40,9 @@ typedef struct {
     int dim, hidden_dim, n_layers, n_heads, n_kv_heads, vocab_size, seq_len;
     int quantized;              /* 1 if the model is weight-quantized  */
     int qbits;                  /* weight width when quantized: 8 or 4 */
+    int head_dim;               /* width of one attention head; the KV
+                                   cache is n_layers * seq_len *
+                                   n_kv_heads * head_dim floats, twice */
 } mote_info_t;
 
 void mote_get_info(const mote *m, mote_info_t *out);
@@ -70,6 +73,15 @@ int mote_generate(mote *m, const char *prompt, const mote_params *params,
  * the vector next to what was said, and later retrieve by dot product.
  * Returns dim, or 0 on failure. */
 int mote_embed(mote *m, const char *text, float *out);
+
+/* Tokens the prompt `text` encodes to (byte-level BPE models), or -1 when the
+ * model's tokenizer cannot say. Hosts use it to refuse a prompt that cannot
+ * fit the context before reading it. */
+int mote_count_tokens(mote *m, const char *text);
+
+/* Returned by mote_generate* when the prompt alone fills the model's context:
+ * nothing could be generated, so nothing is read. */
+#define MOTE_ERR_CONTEXT (-5)
 
 /* ---- constrained decoding ------------------------------------------------
  *

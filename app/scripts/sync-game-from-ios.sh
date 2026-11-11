@@ -60,6 +60,13 @@ rsync -a \
   --exclude '.DS_Store' \
   "$SRC/CostQuest/" "$DEST/"
 
+# costquest-ios carries its own copy of the mote engine (Engine/). The merged app
+# must not: the Sparks SDK's engine is the app's one copy, and a second static copy
+# with the same C symbols made the linker keep one silently (build 21: the .mq v5
+# Sparks lite model failed with "unsupported .mq version 5"). The podspec excludes
+# Game/Engine as well; the declarations Swift needs are in Embed/Engine.
+rm -rf "$DEST/Engine"
+
 # The two named colours/images the game draws, as the module's own catalog.
 CAT="$MOD/ios/Resources/CostQuestGame.xcassets"
 rm -rf "$CAT"
