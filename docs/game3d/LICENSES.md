@@ -142,3 +142,17 @@ The clips in `app/game3d/anim/<key>.glb` are retargeted copies of the clips belo
 Notes:
 - Nothing comes from Mixamo or any non-CC0 source.
 - The UAL mirror is a third party's copy of Quaternius's free pack. It states CC0 and carries the pack's licence text, and Quaternius publishes the pack as CC0. quaternius.com/itch.io downloads need a browser, so the mirror was used.
+
+## Motion capture and authored fight clips (realism, 11 Nov 2026)
+
+The motion-capture overlay (`anim_clips.json` `sets_mocap`, the game's `"motion": "mocap"` switch) is retargeted from the sources below, the same way as the cq 012 clips: only rotations and the hips' path are kept, on each character's own skeleton. No source file, mesh or texture is shipped or kept in the repo. The raw takes live on the build machine only (`~/realism-20261111/motion/src`).
+
+| asset | used as | author | source | licence (read at the source on the date given) | checked |
+|---|---|---|---|---|---|
+| CMU takes 02_05, 02_07, 02_09, 16_35, 76_04, 76_11, 90_16, 90_18, 104_13, 140_06, 144_20 (ASF/AMC, fetched one file at a time) | captured idle, guard, jog, sword slashes and overhead cut, punches, backward stagger, forward stumble, KO falls (`CMU_*` clips; frames in `app/game3d/tools/anim/cmu_clips.json`) | Carnegie Mellon University Graphics Lab Motion Capture Database | http://mocap.cs.cmu.edu/ (front page and FAQ; the site's TLS chain is broken, read over plain HTTP) | Custom permissive terms. Front page: "This dataset of motions is free for all uses." and "You may include this data in commercially-sold products, but you may not resell this data directly, even in converted form." FAQ: "The motion capture data may be copied, modified, or redistributed without permission." The site asks for an acknowledgment when results are published: "The data used in this project was obtained from mocap.cs.cmu.edu. The database was created with funding from NSF EIA-0196217." | 2026-11-11 |
+| Mesh2Motion human animations: hit-chest, hit-head, hit-knockback, victory-fist-pump, victory, fighting-idle, idle-sword, death-b, sword-regular-a, sword-regular-b, punch-jab, punch-cross, melee-hook | authored hit reactions, cheer and alternates (`M2M_*` clips) | Mesh2Motion (Scott Petrovic and contributors; the set includes Quaternius clips) | https://github.com/Mesh2Motion/mesh2motion-app (`static/assets/human/animations/`; README, "Licenses") | Code MIT; "The art assets (3d models, rigs, animations) are all licensed under CC0." | 2026-11-11 |
+
+Notes:
+- The CMU terms forbid reselling the data itself, even converted. Shipping retargeted clips baked into the game's pack is "including the data in a commercially-sold product", which the terms allow. Do not publish the raw takes or the converted source library (`cmu.glb`), and do not hand them over as an asset pack.
+- Tools used and not shipped: glTF-Transform and meshoptimizer (both MIT) to decode Mesh2Motion's compressed files.
+- Not used: Mixamo (needs an Adobe sign-in and has its own terms; an option for Subomi), 100STYLE (CC BY 4.0, locomotion only, 1.47 GB, over the download cap), Rokoko and Truebones free packs (terms not verified), LAFAN1, AMASS, Bandai Namco research set (non-commercial).

@@ -244,3 +244,33 @@ id is unchanged. All clips are CC0 (KayKit Adventurers 1.0, Quaternius UAL).
 - **Subset builds.** `build_all.py --keys <one key>` (a new character) keeps every other
   character and the full cast's contact frames and ground speeds; it only adds clips the data does
   not have yet. A full-cast run recomputes them as before.
+
+## Motion capture overlay, foot lock and the motion bar (realism, 11 Nov 2026)
+
+**One switch.** The fight config's `"motion"` is `"classic"` (build 21's KayKit and Quaternius picks) or `"mocap"` (the overlay below on top). Left out, the data's `motion_default` decides (`anim_clips.json`). Both sets ship in the same libraries, so before and after are one flag apart. `anim_library.gd` `motion`, `states_for()`.
+
+**The overlay** (`tools/anim/clips.json` `sets_mocap`, copied to `anim_clips.json`): per weapon set and state, a captured or authored clip and its alternates, picked per character under the same tear gate as the classic clips (`characters.<key>.pick_mocap`). A state with no overlay pick keeps its classic clip.
+
+| state | blade (sword, dagger, axe) | unarmed (new set, `"<role>_class": "unarmed"`) | heavy, staff, gun |
+|---|---|---|---|
+| idle | `CMU_Idle` (captured stand with weight shifts) | `CMU_Guard` (captured guard) | classic (the weapon holds) |
+| run | `CMU_Jog` (captured) | `CMU_Jog` | classic |
+| attack 1, 2 | `CMU_Slash_A`, `CMU_Slash_B` (captured forehand and backhand) | `CMU_Punch_L`, `CMU_Punch_R` | classic |
+| attack 3, heavy | `CMU_Chop_2H` (captured overhead cut) | `CMU_Strike_Down` | `CMU_Chop_2H` for the heavy |
+| hit | `M2M_Hit_Chest` (authored) | same | same |
+| stagger, and from behind | `CMU_Stagger_Back`, `CMU_Stumble_Fwd` (captured) | same | same |
+| KO, and from behind | `CMU_Fall_Back`, `CMU_Fall_Front` (captured) | same | same |
+| victory | `M2M_Victory_Fist_Pump` (authored) | same | same |
+
+`stagger_fwd` and `death_fwd` are library-only states: `fighter.gd` plays them as the stagger or the death when the shove or the killing blow came from behind (`CombatAnimator.variant`).
+
+**Sources.** `tools/anim/cmu2glb.py` turns CMU ASF/AMC takes into a source library (frames per clip in `cmu_clips.json`: cut, 30 frames a second, turned to face +Z by the pelvis or, for a strike, by the striking hand at the contact, floor at the lowest toe, loops closed with a cross-fade). `tools/anim/m2m_merge.py` merges decoded Mesh2Motion clips. `retarget.py --libs cmu=...,m2m=...` reads them with the `cmu_to_mixamo` and `m2m_to_mixamo` maps in `rigs.json`. `tools/anim/build_motion.sh` runs the lot. Licences: `docs/game3d/LICENSES.md`.
+
+**Game side (presentation only; seeded fights are byte-identical with every switch on or off).**
+- **Foot lock** (`foot_lock.gd`, config `"foot_ik"`, default on from 5 GiB of reported RAM, the landscape tier rule): a foot the clip holds down is pinned where it touched, in the world, by a two-bone leg IK; a pin that drifts too far from the clip's foot takes a small lifted step to it.
+- **Aim hold** (`fighter.gd`, config `"aim_hold"`): a directed attack turns the drawn body onto the heading the swing began with inside 2 to 3 frames and holds it until the blow has landed, whatever the game does to the yaw meanwhile.
+- **Weight** (config `"weight"`): the attacker's body leans 11 cm into the blow round the contact; the victim's hips give 7 cm with the flinch.
+- **No bind pose**: a stopped player goes back to the idle loop; a skeleton with no clip at all hangs its arms.
+- A KO fall plays at most 1.25x and a cheer at most 1.2x (they were squeezed to the game length).
+
+**The motion bar in one command** (`BAR.md` section C): `tools/anim/motion_measure.sh --out DIR [--game TREE] [--trio a,b,c | --forge DIR --trio ...] [--extra '"motion":"mocap"']`. It records the seeded win and loss fights headless with `tools/anim_probe.gd` (v2: the final pose after every modifier) and prints `tools/anim/motion_report.py`: foot slide per step and state, foot speed against body speed, attacks off target, bind and T-pose frames, anticipation and follow-through per blow, hips in a stagger, tear per state and LOD. It works on any build from 18 on (it drops its probe into that tree). Tests: `tests/motion_test.gd`.
