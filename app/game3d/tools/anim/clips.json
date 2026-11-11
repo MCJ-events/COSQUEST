@@ -798,6 +798,317 @@
     "forearm": 0.35
    },
    "_why": "autorig: the staff set's sprint on the UAL sprint (Quaternius UAL, CC0) with cq 016's staff hold"
+  },
+  "CMU_Idle": {
+   "src": "CMU_Idle",
+   "lib": "cmu",
+   "classes": [
+    "sword"
+   ],
+   "source": "CMU Graphics Lab Motion Capture Database (captured), 140_06 Idle"
+  },
+  "CMU_Guard": {
+   "src": "CMU_Guard",
+   "lib": "cmu",
+   "classes": [
+    "sword"
+   ],
+   "range": [
+    2,
+    26
+   ],
+   "pingpong": true,
+   "source": "CMU Graphics Lab Motion Capture Database (captured), 76_04 defensive guard pose"
+  },
+  "CMU_Jog": {
+   "src": "CMU_Jog",
+   "lib": "cmu",
+   "classes": [
+    "sword"
+   ],
+   "loop": true,
+   "source": "CMU Graphics Lab Motion Capture Database (captured), 16_35 run/jog"
+  },
+  "CMU_Slash_A": {
+   "src": "CMU_Slash_A",
+   "lib": "cmu",
+   "classes": [
+    "sword",
+    "dagger",
+    "axe"
+   ],
+   "strike": true,
+   "strike_window": [
+    0.35,
+    0.7
+   ],
+   "out": 31,
+   "source": "CMU Graphics Lab Motion Capture Database (captured), 02_09 swordplay"
+  },
+  "CMU_Slash_B": {
+   "src": "CMU_Slash_B",
+   "lib": "cmu",
+   "classes": [
+    "sword",
+    "dagger",
+    "axe"
+   ],
+   "strike": true,
+   "strike_window": [
+    0.25,
+    0.65
+   ],
+   "out": 27,
+   "source": "CMU Graphics Lab Motion Capture Database (captured), 02_09 swordplay"
+  },
+  "CMU_Slash_C": {
+   "src": "CMU_Slash_C",
+   "lib": "cmu",
+   "classes": [
+    "sword",
+    "dagger",
+    "axe"
+   ],
+   "strike": true,
+   "strike_window": [
+    0.3,
+    0.7
+   ],
+   "out": 28,
+   "source": "CMU Graphics Lab Motion Capture Database (captured), 02_09 swordplay"
+  },
+  "CMU_Slash_Low": {
+   "src": "CMU_Slash_Low",
+   "lib": "cmu",
+   "classes": [
+    "sword",
+    "dagger",
+    "axe"
+   ],
+   "strike": true,
+   "strike_window": [
+    0.35,
+    0.7
+   ],
+   "out": 38,
+   "source": "CMU Graphics Lab Motion Capture Database (captured), 02_09 swordplay"
+  },
+  "CMU_Chop_2H": {
+   "src": "CMU_Chop_2H",
+   "lib": "cmu",
+   "classes": [
+    "sword",
+    "hammer",
+    "greatsword",
+    "staff"
+   ],
+   "strike": true,
+   "strike_window": [
+    0.5,
+    0.85
+   ],
+   "out": 49,
+   "source": "CMU Graphics Lab Motion Capture Database (captured), 02_07 swordplay"
+  },
+  "CMU_Punch_R": {
+   "src": "CMU_Punch_R",
+   "lib": "cmu",
+   "classes": [
+    "sword"
+   ],
+   "contact": 8,
+   "source": "CMU Graphics Lab Motion Capture Database (captured), 144_20 Punch_Sequence"
+  },
+  "CMU_Punch_L": {
+   "src": "CMU_Punch_L",
+   "lib": "cmu",
+   "classes": [
+    "sword"
+   ],
+   "contact": 8,
+   "source": "CMU Graphics Lab Motion Capture Database (captured), 144_20 Punch_Sequence (mirrored)"
+  },
+  "CMU_Strike_Down": {
+   "src": "CMU_Strike_Down",
+   "lib": "cmu",
+   "classes": [
+    "sword"
+   ],
+   "strike": true,
+   "strike_window": [
+    0.3,
+    0.7
+   ],
+   "out": 35,
+   "source": "CMU Graphics Lab Motion Capture Database (captured), 02_05 punch/strike"
+  },
+  "CMU_Stagger_Back": {
+   "src": "CMU_Stagger_Back",
+   "lib": "cmu",
+   "classes": [
+    "sword"
+   ],
+   "source": "CMU Graphics Lab Motion Capture Database (captured), 76_11 quick large steps backwards"
+  },
+  "CMU_Stumble_Fwd": {
+   "src": "CMU_Stumble_Fwd",
+   "lib": "cmu",
+   "classes": [
+    "sword"
+   ],
+   "source": "CMU Graphics Lab Motion Capture Database (captured), 104_13 StumbleWalk"
+  },
+  "CMU_Fall_Back": {
+   "src": "CMU_Fall_Back",
+   "lib": "cmu",
+   "classes": [
+    "sword"
+   ],
+   "root": "keep",
+   "source": "CMU Graphics Lab Motion Capture Database (captured), 90_18 RugPullFall"
+  },
+  "CMU_Fall_Front": {
+   "src": "CMU_Fall_Front",
+   "lib": "cmu",
+   "classes": [
+    "sword"
+   ],
+   "root": "keep",
+   "source": "CMU Graphics Lab Motion Capture Database (captured), 90_16 fall on face"
+  },
+  "M2M_Hit_Chest": {
+   "src": "M2M_Hit_Chest",
+   "lib": "m2m",
+   "classes": [
+    "sword"
+   ],
+   "source": "Mesh2Motion (CC0, authored), hit-chest"
+  },
+  "M2M_Hit_Head": {
+   "src": "M2M_Hit_Head",
+   "lib": "m2m",
+   "classes": [
+    "sword"
+   ],
+   "source": "Mesh2Motion (CC0, authored), hit-head"
+  },
+  "M2M_Hit_Knockback": {
+   "src": "M2M_Hit_Knockback",
+   "lib": "m2m",
+   "classes": [
+    "sword"
+   ],
+   "source": "Mesh2Motion (CC0, authored), hit-knockback"
+  },
+  "M2M_Victory_Fist_Pump": {
+   "src": "M2M_Victory_Fist_Pump",
+   "lib": "m2m",
+   "classes": [
+    "sword"
+   ],
+   "source": "Mesh2Motion (CC0, authored), victory-fist-pump"
+  },
+  "M2M_Victory": {
+   "src": "M2M_Victory",
+   "lib": "m2m",
+   "classes": [
+    "sword"
+   ],
+   "source": "Mesh2Motion (CC0, authored), victory"
+  },
+  "M2M_Fighting_Idle": {
+   "src": "M2M_Fighting_Idle",
+   "lib": "m2m",
+   "classes": [
+    "sword"
+   ],
+   "source": "Mesh2Motion (CC0, authored), fighting-idle"
+  },
+  "M2M_Idle_Sword": {
+   "src": "M2M_Idle_Sword",
+   "lib": "m2m",
+   "classes": [
+    "sword"
+   ],
+   "source": "Mesh2Motion (CC0, authored), idle-sword"
+  },
+  "M2M_Death_B": {
+   "src": "M2M_Death_B",
+   "lib": "m2m",
+   "classes": [
+    "sword"
+   ],
+   "root": "keep",
+   "source": "Mesh2Motion (CC0, authored), death-b"
+  },
+  "M2M_Sword_Regular_A": {
+   "src": "M2M_Sword_Regular_A",
+   "lib": "m2m",
+   "classes": [
+    "sword",
+    "dagger",
+    "axe"
+   ],
+   "strike": true,
+   "strike_window": [
+    0.2,
+    0.9
+   ],
+   "source": "Mesh2Motion (CC0, authored), sword-regular-a"
+  },
+  "M2M_Sword_Regular_B": {
+   "src": "M2M_Sword_Regular_B",
+   "lib": "m2m",
+   "classes": [
+    "sword",
+    "dagger",
+    "axe"
+   ],
+   "strike": true,
+   "strike_window": [
+    0.2,
+    0.9
+   ],
+   "source": "Mesh2Motion (CC0, authored), sword-regular-b"
+  },
+  "M2M_Punch_Jab": {
+   "src": "M2M_Punch_Jab",
+   "lib": "m2m",
+   "classes": [
+    "sword"
+   ],
+   "strike": true,
+   "strike_window": [
+    0.1,
+    0.6
+   ],
+   "source": "Mesh2Motion (CC0, authored), punch-jab"
+  },
+  "M2M_Punch_Cross": {
+   "src": "M2M_Punch_Cross",
+   "lib": "m2m",
+   "classes": [
+    "sword"
+   ],
+   "strike": true,
+   "strike_window": [
+    0.1,
+    0.6
+   ],
+   "source": "Mesh2Motion (CC0, authored), punch-cross"
+  },
+  "M2M_Melee_Hook": {
+   "src": "M2M_Melee_Hook",
+   "lib": "m2m",
+   "classes": [
+    "sword"
+   ],
+   "strike": true,
+   "strike_window": [
+    0.2,
+    0.9
+   ],
+   "source": "Mesh2Motion (CC0, authored), melee-hook"
   }
  },
  "holds": {
@@ -1026,7 +1337,8 @@
   "rifle": "gun",
   "crossbow": "gun",
   "shield": "blade",
-  "_default": "blade"
+  "_default": "blade",
+  "unarmed": "unarmed"
  },
  "sets": {
   "blade": {
@@ -1643,5 +1955,300 @@
  "_doc_gate": "gate_by_state: a looser gate for run: a walk sped past 2x skates visibly, a run's short stretch at speed does not show at the fight camera (measured per clip in tools/anim/reports)",
  "_doc_ik": "lhand_ik: on frames where the source's left hand is on its weapon (within d_off of the weapon's axis, fading over 12 cm), a two-bone IK puts the target's left hand on the held weapon, s metres along it from the grip (the grip of the given class)",
  "_doc_body": "body: the fight's procedural body motion (hop, spin, lunge) plays on top of the clip; body_alt: only when an alternate stands in (a WHIRL without a spin clip still spins)",
- "_doc_autorig": "autorig (9 Nov 2026): run = the UAL jog (ground speed 4.0 per metre of hip vs 2.3 for Running_A), sprint = the UAL sprint above the geometric mean of the run's and the sprint's ground speeds (combat_animator.update), so the hero's 4.6 m/s plays near 1x; stagger = KayKit Dodge_Backward for knockback shoves. A character whose jog or sprint tears past the run gate keeps the old run (alternates)."
+ "_doc_autorig": "autorig (9 Nov 2026): run = the UAL jog (ground speed 4.0 per metre of hip vs 2.3 for Running_A), sprint = the UAL sprint above the geometric mean of the run's and the sprint's ground speeds (combat_animator.update), so the hero's 4.6 m/s plays near 1x; stagger = KayKit Dodge_Backward for knockback shoves. A character whose jog or sprint tears past the run gate keeps the old run (alternates).",
+ "sets_mocap": {
+  "blade": {
+   "hit": {
+    "clip": "M2M_Hit_Chest",
+    "alt": [
+     "M2M_Hit_Head"
+    ]
+   },
+   "stagger": {
+    "clip": "CMU_Stagger_Back",
+    "alt": [
+     "M2M_Hit_Knockback"
+    ]
+   },
+   "stagger_fwd": {
+    "clip": "CMU_Stumble_Fwd",
+    "alt": []
+   },
+   "death": {
+    "clip": "CMU_Fall_Back",
+    "alt": [
+     "M2M_Death_B"
+    ]
+   },
+   "death_fwd": {
+    "clip": "CMU_Fall_Front",
+    "alt": []
+   },
+   "victory": {
+    "clip": "M2M_Victory_Fist_Pump",
+    "alt": [
+     "M2M_Victory"
+    ]
+   },
+   "idle": {
+    "clip": "CMU_Idle",
+    "alt": [
+     "M2M_Idle_Sword"
+    ]
+   },
+   "run": {
+    "clip": "CMU_Jog",
+    "alt": []
+   },
+   "attack_1": {
+    "clip": "CMU_Slash_A",
+    "alt": [
+     "M2M_Sword_Regular_A"
+    ]
+   },
+   "attack_2": {
+    "clip": "CMU_Slash_B",
+    "alt": [
+     "M2M_Sword_Regular_B"
+    ]
+   },
+   "attack_3": {
+    "clip": "CMU_Chop_2H",
+    "alt": [
+     "CMU_Slash_Low"
+    ]
+   },
+   "heavy": {
+    "clip": "CMU_Chop_2H",
+    "alt": [
+     "CMU_Slash_Low"
+    ]
+   },
+   "sprint": {
+    "clip": "CMU_Jog",
+    "alt": []
+   }
+  },
+  "heavy": {
+   "hit": {
+    "clip": "M2M_Hit_Chest",
+    "alt": [
+     "M2M_Hit_Head"
+    ]
+   },
+   "stagger": {
+    "clip": "CMU_Stagger_Back",
+    "alt": [
+     "M2M_Hit_Knockback"
+    ]
+   },
+   "stagger_fwd": {
+    "clip": "CMU_Stumble_Fwd",
+    "alt": []
+   },
+   "death": {
+    "clip": "CMU_Fall_Back",
+    "alt": [
+     "M2M_Death_B"
+    ]
+   },
+   "death_fwd": {
+    "clip": "CMU_Fall_Front",
+    "alt": []
+   },
+   "victory": {
+    "clip": "M2M_Victory_Fist_Pump",
+    "alt": [
+     "M2M_Victory"
+    ]
+   },
+   "heavy": {
+    "clip": "CMU_Chop_2H",
+    "alt": []
+   },
+   "attack_3": {
+    "clip": "CMU_Chop_2H",
+    "alt": []
+   },
+   "run": {
+    "clip": "CMU_Jog",
+    "alt": []
+   },
+   "sprint": {
+    "clip": "CMU_Jog",
+    "alt": []
+   }
+  },
+  "staff": {
+   "hit": {
+    "clip": "M2M_Hit_Chest",
+    "alt": [
+     "M2M_Hit_Head"
+    ]
+   },
+   "stagger": {
+    "clip": "CMU_Stagger_Back",
+    "alt": [
+     "M2M_Hit_Knockback"
+    ]
+   },
+   "stagger_fwd": {
+    "clip": "CMU_Stumble_Fwd",
+    "alt": []
+   },
+   "death": {
+    "clip": "CMU_Fall_Back",
+    "alt": [
+     "M2M_Death_B"
+    ]
+   },
+   "death_fwd": {
+    "clip": "CMU_Fall_Front",
+    "alt": []
+   },
+   "victory": {
+    "clip": "M2M_Victory_Fist_Pump",
+    "alt": [
+     "M2M_Victory"
+    ]
+   },
+   "heavy": {
+    "clip": "CMU_Chop_2H",
+    "alt": []
+   },
+   "run": {
+    "clip": "CMU_Jog",
+    "alt": []
+   },
+   "sprint": {
+    "clip": "CMU_Jog",
+    "alt": []
+   }
+  },
+  "gun": {
+   "hit": {
+    "clip": "M2M_Hit_Chest",
+    "alt": [
+     "M2M_Hit_Head"
+    ]
+   },
+   "stagger": {
+    "clip": "CMU_Stagger_Back",
+    "alt": [
+     "M2M_Hit_Knockback"
+    ]
+   },
+   "stagger_fwd": {
+    "clip": "CMU_Stumble_Fwd",
+    "alt": []
+   },
+   "death": {
+    "clip": "CMU_Fall_Back",
+    "alt": [
+     "M2M_Death_B"
+    ]
+   },
+   "death_fwd": {
+    "clip": "CMU_Fall_Front",
+    "alt": []
+   },
+   "victory": {
+    "clip": "M2M_Victory_Fist_Pump",
+    "alt": [
+     "M2M_Victory"
+    ]
+   },
+   "run": {
+    "clip": "CMU_Jog",
+    "alt": []
+   },
+   "sprint": {
+    "clip": "CMU_Jog",
+    "alt": []
+   }
+  },
+  "unarmed": {
+   "hit": {
+    "clip": "M2M_Hit_Chest",
+    "alt": [
+     "M2M_Hit_Head"
+    ]
+   },
+   "stagger": {
+    "clip": "CMU_Stagger_Back",
+    "alt": [
+     "M2M_Hit_Knockback"
+    ]
+   },
+   "stagger_fwd": {
+    "clip": "CMU_Stumble_Fwd",
+    "alt": []
+   },
+   "death": {
+    "clip": "CMU_Fall_Back",
+    "alt": [
+     "M2M_Death_B"
+    ]
+   },
+   "death_fwd": {
+    "clip": "CMU_Fall_Front",
+    "alt": []
+   },
+   "victory": {
+    "clip": "M2M_Victory_Fist_Pump",
+    "alt": [
+     "M2M_Victory"
+    ]
+   },
+   "idle": {
+    "clip": "CMU_Guard",
+    "alt": [
+     "M2M_Fighting_Idle"
+    ]
+   },
+   "run": {
+    "clip": "CMU_Jog",
+    "alt": []
+   },
+   "attack_1": {
+    "clip": "CMU_Punch_L",
+    "alt": [
+     "M2M_Punch_Jab"
+    ]
+   },
+   "attack_2": {
+    "clip": "CMU_Punch_R",
+    "alt": [
+     "M2M_Punch_Cross"
+    ]
+   },
+   "attack_3": {
+    "clip": "CMU_Strike_Down",
+    "alt": [
+     "M2M_Melee_Hook"
+    ]
+   },
+   "heavy": {
+    "clip": "CMU_Strike_Down",
+    "alt": [
+     "M2M_Melee_Hook"
+    ]
+   },
+   "skill_charge": {
+    "clip": "CMU_Punch_R",
+    "alt": [
+     "M2M_Punch_Cross"
+    ]
+   },
+   "sprint": {
+    "clip": "CMU_Jog",
+    "alt": []
+   }
+  }
+ },
+ "set_base": {
+  "unarmed": "blade"
+ },
+ "motion_default": "classic",
+ "_doc_mocap": "realism-20261111: sets_mocap overlays the classic sets per weapon set and state when the game's motion switch is \"mocap\" (config \"motion\", anim_library.gd); a state with no overlay or no pick under the gate keeps its classic clip. set_base: a set that exists only in the overlay (unarmed) takes the rest of its states from this classic set. Sources per clip are in clips.<name>.source; lib cmu = cmu2glb.py, lib m2m = m2m_merge.py. run and sprint both play the captured jog (one cycle, rate = body speed / its ground speed): the UAL sprint was retargeted with its leg swing halved and shuffles."
 }

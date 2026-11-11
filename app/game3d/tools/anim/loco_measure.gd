@@ -12,7 +12,7 @@ extends SceneTree
 const AnimLib := preload("res://anim_library.gd")
 const HEIGHT: float = 2.3
 const CLIPS: Array[String] = ["Walking_A", "Walking_B", "Running_A", "Running_B", "Staff_Walk", "Staff_Run",
-	"UAL_Jog", "UAL_Sprint", "Staff_Jog", "Staff_Sprint"]
+	"UAL_Jog", "UAL_Sprint", "Staff_Jog", "Staff_Sprint", "CMU_Jog"]
 const CONTACT: Array[String] = ["LeftFoot", "LeftToeBase", "RightFoot", "RightToeBase"]
 
 var _keys: Array = []

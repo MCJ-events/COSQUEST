@@ -1,0 +1,133 @@
+{
+ "_doc": "CMU Graphics Lab Motion Capture Database takes cut into game clips (cmu2glb.py). file = subject_take; f0..f1 = source frames at 120 a second; face = how the clip is turned to face +Z (mean / start / a frame number = the pelvis; {aim: frame, hand} = the striking hand's direction at that frame); loop.blend = frames cross-faded to close the cycle. Licence: http://mocap.cs.cmu.edu/ (free for all uses, may be included in commercially-sold products, may not be resold as data).",
+ "clips": {
+  "CMU_Idle": {
+   "file": "140_06",
+   "f0": 2240,
+   "f1": 2738,
+   "face": "mean",
+   "loop": {
+    "blend": 10
+   },
+   "what": "140_06 Idle: a relaxed stand with weight shifts"
+  },
+  "CMU_Guard": {
+   "file": "76_04",
+   "f0": 150,
+   "f1": 262,
+   "face": "mean",
+   "what": "76_04 defensive guard pose: fists up"
+  },
+  "CMU_Jog": {
+   "file": "16_35",
+   "f0": 50,
+   "f1": 146,
+   "face": "mean",
+   "loop": {
+    "blend": 4
+   },
+   "what": "16_35 run/jog: one full stride cycle"
+  },
+  "CMU_Slash_A": {
+   "file": "02_09",
+   "f0": 176,
+   "f1": 316,
+   "face": {
+    "aim": 252
+   },
+   "what": "02_09 swordplay: right-hand slash, outside to inside"
+  },
+  "CMU_Slash_B": {
+   "file": "02_09",
+   "f0": 296,
+   "f1": 424,
+   "face": {
+    "aim": 354
+   },
+   "what": "02_09 swordplay: the backhand return slash"
+  },
+  "CMU_Slash_C": {
+   "file": "02_09",
+   "f0": 440,
+   "f1": 564,
+   "face": {
+    "aim": 504
+   },
+   "what": "02_09 swordplay: second forehand slash, higher"
+  },
+  "CMU_Slash_Low": {
+   "file": "02_09",
+   "f0": 664,
+   "f1": 840,
+   "face": {
+    "aim": 760
+   },
+   "what": "02_09 swordplay: a low slash from a deep stance"
+  },
+  "CMU_Chop_2H": {
+   "file": "02_07",
+   "f0": 40,
+   "f1": 250,
+   "face": {
+    "aim": 180
+   },
+   "what": "02_07 swordplay: two-handed overhead cut"
+  },
+  "CMU_Punch_R": {
+   "file": "144_20",
+   "f0": 612,
+   "f1": 680,
+   "face": {
+    "aim": 644
+   },
+   "what": "144_20 Punch_Sequence: a right straight from guard and back"
+  },
+  "CMU_Punch_L": {
+   "file": "144_20",
+   "f0": 294,
+   "f1": 358,
+   "face": {
+    "aim": 324
+   },
+   "mirror": true,
+   "what": "144_20 Punch_Sequence: a right straight, mirrored to a left jab"
+  },
+  "CMU_Strike_Down": {
+   "file": "02_05",
+   "f0": 1130,
+   "f1": 1300,
+   "face": {
+    "aim": 1212
+   },
+   "what": "02_05 punch/strike: a big right-hand strike"
+  },
+  "CMU_Stagger_Back": {
+   "file": "76_11",
+   "f0": 96,
+   "f1": 250,
+   "face": "start",
+   "what": "76_11 quick large steps backwards"
+  },
+  "CMU_Stumble_Fwd": {
+   "file": "104_13",
+   "f0": 48,
+   "f1": 180,
+   "face": "start",
+   "what": "104_13 StumbleWalk: a forward stumble"
+  },
+  "CMU_Fall_Back": {
+   "file": "90_18",
+   "f0": 60,
+   "f1": 230,
+   "face": "start",
+   "what": "90_18 RugPullFall: falls onto the back"
+  },
+  "CMU_Fall_Front": {
+   "file": "90_16",
+   "f0": 262,
+   "f1": 560,
+   "face": "start",
+   "what": "90_16 fall on face"
+  }
+ }
+}

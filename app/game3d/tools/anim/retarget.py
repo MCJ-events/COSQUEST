@@ -406,6 +406,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--src", required=True)
     ap.add_argument("--src_ual", default="")
+    ap.add_argument("--libs", default="", help="more source libraries: name=/path.glb,name2=/path2.glb (rigs.json <name>_to_mixamo)")
     ap.add_argument("--target", required=True)
     ap.add_argument("--key", required=True)
     ap.add_argument("--clips", required=True)
@@ -434,6 +435,9 @@ def main():
     rts = {"kaykit": rt}
     if a.src_ual:
         rts["ual"] = Retarget(Glb(a.src_ual), tgt, rigs["ual_to_mixamo"], damp)
+    for spec in [x for x in a.libs.split(",") if "=" in x]:
+        lname, lpath = spec.split("=", 1)
+        rts[lname] = Retarget(Glb(lpath), tgt, rigs[lname + "_to_mixamo"], damp)
     body = Body(tgt, rt)
     # secondary chains (cq 014): measured as the game moves them; none on cq 060's own rigs
     sec = Secondary(tgt, rt.t_rest_G)
@@ -442,6 +446,9 @@ def main():
     anims = {"kaykit": src.animations()}
     if "ual" in rts:
         anims["ual"] = rts["ual"].src.animations()
+    for lname in rts:
+        if lname not in anims:
+            anims[lname] = rts[lname].src.animations()
     ch = attach["characters"].get(a.key, {})
 
     # per class: the grip (hand-space matrix) that matches the source's hold

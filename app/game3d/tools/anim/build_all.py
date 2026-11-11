@@ -31,6 +31,8 @@ def main():
     ap.add_argument("--keys", default=",".join(CAST))
     ap.add_argument("--gate", type=float, default=0.005)
     ap.add_argument("--lod", default="lod1.glb")
+    ap.add_argument("--libs", default="", help="more source libraries for retarget.py: cmu=/p/cmu.glb,m2m=/p/m2m.glb")
+    ap.add_argument("--gate_attacks", type=float, default=0.0, help="autorig: a looser gate for the attack states of an auto-rigged Forge character (recorded per character)")
     a = ap.parse_args()
     cfg = json.load(open(os.path.join(HERE, "clips.json")))
     data_path = os.path.join(GAME, "data", "anim_clips.json")
@@ -54,7 +56,7 @@ def main():
                "--target", os.path.join(a.cast, "pose", key, a.lod), "--key", key,
                "--clips", os.path.join(HERE, "clips.json"), "--rigs", os.path.join(HERE, "rigs.json"),
                "--attach", attach_path, "--weapons", os.path.join(GAME, "tools", "weapons", "weapons.json"),
-               "--out", out, "--report", rep_path] + (["--src_ual", a.src_ual] if a.src_ual else [])
+               "--out", out, "--report", rep_path] + (["--libs", a.libs] if a.libs else []) + (["--src_ual", a.src_ual] if a.src_ual else [])
         r = subprocess.run(cmd, capture_output=True, text=True)
         # ship the bytes as they are (GLTFDocument reads them at run time), not as an imported scene
         with open(out + ".import", "w") as f:
@@ -101,14 +103,45 @@ def main():
                 got = ""
                 for cand in [e["clip"]] + e.get("alt", []):
                     v = rep["clips"].get(cand)
-                    if v is not None and v["tear_share"] <= cfg.get("gate_by_state", {}).get(st, a.gate):
+                    g = cfg.get("gate_by_state", {}).get(st, a.gate)
+                    if a.gate_attacks > 0.0 and st.startswith("attack_"):
+                        g = max(g, a.gate_attacks)   # autorig: Forge auto-rigs only, recorded per character
+                    if v is not None and v["tear_share"] <= g:
                         got = cand
                         break
                 pick[sname][st] = got
+        # realism-20261111: the motion-capture overlay (clips.json sets_mocap): per set and state,
+        # the first of the overlay's clip and alternates under the same gate ("" = keep the classic)
+        pick_mocap = {}
+        for sname, sset in cfg.get("sets_mocap", {}).items():
+            pick_mocap[sname] = {}
+            for st, e in sset.items():
+                got = ""
+                gate_st = cfg.get("gate_by_state", {}).get(st, a.gate)
+                if a.gate_attacks > 0.0 and st.startswith("attack_"):
+                    gate_st = max(gate_st, a.gate_attacks)
+                for cand in [e["clip"]] + e.get("alt", []):
+                    v = rep["clips"].get(cand)
+                    if v is not None and v["tear_share"] <= gate_st:
+                        got = cand
+                        break
+                pick_mocap[sname][st] = got
         chars[key] = {"status": "clips", "library": "res://anim/%s.glb" % key, "pick": pick,
                       "source_lod": a.lod, "fingerprint": {b: rep["fingerprint"][b] for b in FP_BONES},
                       "tear_worst": round(worst, 4), "clips_over_gate": torn,
                       "hip_scale": round(rep["hip_scale"], 3)}
+        if pick_mocap:
+            chars[key]["pick_mocap"] = pick_mocap
+            # the overlay's loops keep this character's own ground speed (a robe's damped legs take a
+            # shorter stride than the cast's median: Bobo 1.9 per hip against 2.8), so the feet hold
+            own_gs = {}
+            for c, v in rep["clips"].items():
+                if cfg["clips"][c].get("lib") in ("cmu", "m2m") and v.get("ground_speed_mps"):
+                    own_gs[c] = round(v["ground_speed_mps"] / rep["fingerprint"]["Hips"][1], 3)
+            if own_gs:
+                chars[key]["ground_speed_per_hip"] = own_gs
+        if a.gate_attacks > 0.0:
+            chars[key]["gate_attacks"] = a.gate_attacks
         # a rig that tears in a core state of its own weapon set falls back to the procedural
         # motion for this character only (the brief's rule); the gate is cq 060's
         own_cls = cfg.get("default_class", {}).get(key) or attach["weapons"].get(attach["characters"].get(key, {}).get("default_weapon") or "", {}).get("grip", "sword")
@@ -122,10 +155,10 @@ def main():
             print("TEARS", key, missing)
             continue
         # the library ships only the clips this character plays
-        used = sorted({v for sp in pick.values() for v in sp.values() if v})
-        r2 = subprocess.run(cmd[:-2] + [rep_path + ".pruned.json", "--only", ",".join(used)] if not a.src_ual else
-                            cmd[:cmd.index("--report") + 1] + [rep_path + ".pruned.json"] + cmd[cmd.index("--report") + 2:] + ["--only", ",".join(used)],
-                            capture_output=True, text=True)
+        used = sorted({v for sp in list(pick.values()) + list(pick_mocap.values()) for v in sp.values() if v})
+        c3 = list(cmd)
+        c3[c3.index("--report") + 1] = rep_path + ".pruned.json"
+        r2 = subprocess.run(c3 + ["--only", ",".join(used)], capture_output=True, text=True)
         if r2.returncode != 0:
             raise SystemExit("prune failed for %s: %s" % (key, r2.stderr[-2000:]))
         os.remove(rep_path + ".pruned.json")
@@ -157,15 +190,18 @@ def main():
             clips_out[c]["contact"] = override
         elif cs:
             clips_out[c]["contact"] = cs[len(cs) // 2]
-        for k in ("in", "out", "spin"):   # cq 016: spin = the clip turns the body itself (no procedural spin on top)
+        for k in ("in", "out", "spin", "source"):   # cq 016: spin = the clip turns the body itself (no procedural spin on top)
             if k in cfg["clips"][c]:
                 clips_out[c][k] = cfg["clips"][c][k]
     data = {
         "_doc": "Combat clips for the cast (cq 012), generated by app/game3d/tools/anim/build_all.py; see docs/game3d/ANIMATIONS.md. sets: per weapon set, the clip each CombatAnimator state plays (optional in/out frames trim it). clips: frames at fps, and contact = the frame the weapon strikes; the game time-warps the clip so that frame lands on the hitbox's moment. characters: the clip library per cast character, the skeleton fingerprint that recognises its model, the tear check; status procedural = no clips, the procedural motion stands in.",
         "source": "KayKit Adventurers 1.0 (Kay Lousberg, CC0 1.0), https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0",
-        "gate_tear_share": a.gate,
+        "gate_tear_share": data.get("gate_tear_share", a.gate) if subset else a.gate,
         "class_set": cfg["class_set"],
         "sets": cfg["sets"],
+        "sets_mocap": cfg.get("sets_mocap", {}),
+        "set_base": cfg.get("set_base", {}),
+        "motion_default": cfg.get("motion_default", "classic"),
         "clips": dict(sorted(clips_out.items())),
         "characters": dict(sorted(chars.items())),
     }
