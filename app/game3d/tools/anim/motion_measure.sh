@@ -68,5 +68,11 @@ J
 }
 case ",$RUNS," in *,win,*) run "${NAME}_win" "$SEED" "";; esac
 case ",$RUNS," in *,loss,*) run "${NAME}_loss" "$LSEED" ",\"bot\":\"idle\"";; esac
+# the faction heroes (mid and high tiers): the tree swaps the cast for heroes and says which in its log;
+# name the fighters by what they really wore (the first run's: the hero is the same in both)
+for r in hero ally enemy; do
+  k=$(grep -ho "hero cast role=$r key=[a-z_0-9]*" "${LOGS[0]%.probe.jsonl}.log" 2>/dev/null | head -1 | sed 's/.*key=//') || true
+  if [ -n "$k" ]; then case $r in hero) H=$k;; ally) A=$k;; enemy) E=$k;; esac; fi
+done
 python3 "$HERE/motion_report.py" "${LOGS[@]}" --keys "hero=$H,ally=$A,enemy=$E" --reports "$REPORTS" \
   --json "$OUT/$NAME.motion.json" --md "$OUT/$NAME.motion.md" --label "$NAME (lod$LOD)"
