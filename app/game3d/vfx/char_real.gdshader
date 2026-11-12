@@ -171,10 +171,11 @@ void fragment() {
 	if (normal_amount > 0.0) {
 		// round 3: the baked normal map is noisy on faces (the lift's voxel ripple), and across the key's
 		// terminator that noise drew a jagged dark patch down one side of a face in close shots (measured:
-		// it is there with the shadow map off and gone with the normal map off). On skin the map is read two
-		// mips down and at a third of its strength: the face's form comes from the mesh.
-		vec3 t = texture(normal_tex, UV, 2.0 * skin_area).xyz * 2.0 - 1.0;
-		t.xy *= normal_amount * mix(1.0, 0.3, skin_area);
+		// it is there with the shadow map off and gone with the normal map off). On skin the map is read four
+		// mips down and at 0.15 of its strength (two mips and 0.3 still left a smaller patch): the face's form
+		// comes from the mesh.
+		vec3 t = texture(normal_tex, UV, 4.0 * skin_area).xyz * 2.0 - 1.0;
+		t.xy *= normal_amount * mix(1.0, 0.15, skin_area);
 		t.z = sqrt(max(1.0 - dot(t.xy, t.xy), 0.0));
 		n = normalize(TANGENT * t.x + BINORMAL * t.y + NORMAL * t.z);
 		NORMAL = n;
@@ -230,7 +231,10 @@ void fragment() {
 		vec3 fd = normalize(vec3(-0.35, 0.4, 1.0));
 		float fw = clamp(dot(n, fd) * 0.6 + 0.4, 0.0, 1.0);
 		float sheen = pow(clamp(dot(n, normalize(fd + VIEW)), 0.0, 1.0), mix(24.0, 4.0, rough)) * mix(0.35, 0.11, rough);
-		fill = fill_col * ao * (base * (1.0 - metal) * fw * fw + mix(vec3(1.0), base, metal) * sheen);
+		// the fill is for what the street's light leaves dim: on a pale surface it steps aside (a cream coat
+		// measured 2.75 times the paving at night with the full fill)
+		float pale = 1.0 - 0.75 * smoothstep(0.08, 0.4, dot(base, vec3(0.2126, 0.7152, 0.0722)));
+		fill = fill_col * ao * pale * (base * (1.0 - metal) * fw * fw + mix(vec3(1.0), base, metal) * sheen);
 	}
 	EMISSION = diffuse_amb + spec_amb + fill + rim + hit + gl + texture(emission_tex, UV).rgb * emission;
 	if (debug_view == 3) {
