@@ -647,7 +647,9 @@ func act(state: String, length: float, hit_at: float = -1.0) -> bool:
 	var clip: bool = anim.play(state, length, hit_at)
 	_hit_at = hit_at
 	if aim_hold and state in AIM_STATES:
-		_aim_yaw = yaw
+		# round 2: a clip whose swing lands to one side of its own forward (the classic chop cuts 35
+		# to 55 degrees to the right) is turned by its "aim_yaw_deg" so the blade meets the target
+		_aim_yaw = yaw + deg_to_rad(float((anim.timing.get(state, {}) as Dictionary).get("aim_yaw_deg", 0.0)))
 		_aim_t = (hit_at if hit_at > 0.0 else length * 0.5) + AIM_AFTER
 	_motion = state
 	_mt = 0.0

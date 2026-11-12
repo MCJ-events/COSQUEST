@@ -864,6 +864,9 @@
   "heavy": {
    "heavy": "classic",
    "attack_3": "classic"
+  },
+  "blade": {
+   "attack_3": "classic"
   }
  },
  "clips": {
@@ -873,7 +876,8 @@
    "frames": 33,
    "fps": 30.0,
    "contact": 18,
-   "out": 28
+   "out": 28,
+   "aim_yaw_deg": 35
   },
   "1H_Melee_Attack_Slice_Diagonal": {
    "src": "1H_Melee_Attack_Slice_Diagonal",

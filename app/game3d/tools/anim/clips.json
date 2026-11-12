@@ -140,7 +140,9 @@
     0.2,
     0.8
    ],
-   "out": 28
+   "out": 28,
+   "aim_yaw_deg": 35,
+   "_why_aim": "round 2: its cut lands 34 to 54 degrees to the right of the body's forward (measured arc -74..-34); with the aim hold on, the drawn body turns 35 degrees so the blade meets the target (build 21 and the low tier are untouched)"
   },
   "1H_Melee_Attack_Stab": {
    "src": "1H_Melee_Attack_Stab",
@@ -2264,7 +2266,10 @@
   "heavy": {
    "heavy": "classic",
    "attack_3": "classic"
+  },
+  "blade": {
+   "attack_3": "classic"
   }
  },
- "_doc_hybrid": "round 2: hybrid_states[set][state] = mocap | classic | blend for the game's \"hybrid\" motion (the default with motion_realism). A state not listed plays its overlay clip. From the round 2 runs: the blade's three attacks stay captured (0 swings off target against 13 of 13 for the classic first cut; the judge preferred captured to blend 6 to 2 and to classic 3 to 1); the two-handed heavy stays classic (0 swings off against 1, and the judge preferred build 21's Guardian swing in round 1)."
+ "_doc_hybrid": "round 2: hybrid_states[set][state] = mocap | classic | blend for the game's \"hybrid\" motion (the default with motion_realism). A state not listed plays its overlay clip. From the round 2 runs: the sword's first and second cuts stay captured (0 swings off target against 13 of 13 for the classic first cut; the judge preferred captured on the cast 6 to 0 and 2 to 0); the third cut is the classic chop (the judge preferred build 21's 6 to 2) turned onto the target by its aim_yaw_deg; the two-handed heavy stays classic."
 }
