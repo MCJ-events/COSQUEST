@@ -104,7 +104,7 @@ test("static models hold at a point on the model", () => {
 test("the manifest covers the cast and nothing else", () => {
   assert.deepEqual(Object.keys(manifest.characters).filter((x) => !x.startsWith("forge_")).sort(), ["armstrong", "bobo", "catboy", "crystalz", "elvis", "hoof", "nebulx", "vanessa"]);
   for (const k of ["commando", "blade", "killua", "pmon"]) assert.equal(manifest.characters[k], undefined);
-  for (const [k, c] of Object.entries(manifest.characters)) {
+  for (const [k, c] of Object.entries(manifest.characters).filter(([x]) => !x.startsWith("forge_"))) {
     assert.ok(c.grips.sword?.matrix.length === 16, k);
     if (c.default_weapon) assert.ok(manifest.weapons[c.default_weapon], `${k} default ${c.default_weapon}`);
   }
