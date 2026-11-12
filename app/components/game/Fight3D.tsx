@@ -43,6 +43,8 @@ import {
 } from "@/features/game3d/fight3d";
 import { FIGHT3D } from "@/features/game3d/flags";
 import { hudLandscape, landscapePx } from "@/features/game/landscape";
+import { motionTierDecision } from "@/features/game/motionTier";
+import { CostQuestGame } from "@/modules/costquest-game/src";
 import { acceptLandscape, declineLandscape, holdLandscape, landscapeAccepted, landscapeHeld, landscapeWanted, releaseLandscape } from "@/features/game/orientation";
 import { useAppSelector } from "@/store/hooks";
 import { gameStore } from "@/features/game/runtime";
@@ -243,6 +245,11 @@ export default function Fight3D({
         // blank first frames or a small frame in a corner (fight.gd _begin_when_shown, at most 8 s).
         const px = PixelRatio.get();
         Object.assign(config, { view_px: [Math.round(win.width * px), Math.round(win.height * px)] });
+        // realism: the motion's device tier (features/game/motionTier.ts, the landscape flag's RAM rule).
+        // No keys on the low tier: Godot then plays build 21's motion to the frame.
+        const motion = motionTierDecision({ physicalMemory: CostQuestGame?.physicalMemory, env: process.env.EXPO_PUBLIC_MOTION_TIER ?? null });
+        Object.assign(config, motion.config);
+        log(`motion tier=${motion.tier} (${motion.reason})`);
         if (holdRef.current) {
           // Ready under the reveal: wait for its handover.
           log(`ready, held for the reveal after_ms=${Date.now() - openedAt.current}`);
