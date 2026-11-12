@@ -57,8 +57,9 @@ uniform float recv_shadow = 1.0;           // 0 = the fighter does not take the 
                                            // the close camera the map's steps drew a jagged patch across faces
 uniform float key_sat = 1.0;               // the key's colour on the fighter: under 1 pulls it towards white (dusk's orange)
 // round 4 (replaces round 3's frontal fill)
-uniform vec2 expo = vec2(1.0, 1.0);        // exposure by the surface's own brightness: x lifts near-black cloth (a black suit
-                                           // has to read at dusk), y holds pale cloth down (a cream coat must not outshine the paving)
+uniform vec2 expo = vec2(1.0, 0.0);        // exposure by the surface's own brightness. x: gain on near-black cloth, fading to 1
+                                           // by a luminance of 0.3 (a black suit has to read at night). y: above 0.3 the gain is
+                                           // (0.3 / luminance) ^ y (a cream coat must not outshine the paving)
 uniform vec3 kick_a_dir = vec3(0.0, 1.0, 0.0);   // world: towards the sky-side kicker (behind the fighter, camera's right, high)
 uniform vec3 kick_a_col = vec3(0.0);
 uniform vec3 kick_b_dir = vec3(0.0, 1.0, 0.0);   // world: towards the lamp-side kicker (behind, camera's left, low, warm)
@@ -207,7 +208,7 @@ void fragment() {
 	vec3 f0 = mix(vec3(mix(0.16 * specular * specular, 0.028, skin)), base, metal);
 	// the street's diffuse light: sky above, walls at the sides, the paving's bounce below
 	float blum = dot(base, vec3(0.2126, 0.7152, 0.0722));
-	vec3 lit = base * mix(expo.x, 1.0, smoothstep(0.03, 0.3, blum)) * mix(1.0, expo.y, smoothstep(0.35, 0.75, blum));
+	vec3 lit = base * mix(expo.x, 1.0, smoothstep(0.03, 0.3, blum)) * pow(0.3 / max(blum, 0.3), expo.y);
 	vec3 amb = amb_at(nw) * amb_amount * ao;
 	// a little of the bounce under the skin's surface: the shade side of skin is not dead
 	vec3 diffuse_amb = lit * (1.0 - metal) * amb * (1.0 + skin * vec3(0.06, 0.01, 0.0));

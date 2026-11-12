@@ -28,19 +28,19 @@ const REAL_RIM: float = 0.5           # the rim's strength on the real material 
 ## round 2: with the key turned to the camera's side the fill is smaller (dusk 1.35 -> 1.2, night 2.4 -> 1.9).
 ## round 3: the camera-side fill (the sky's colour times this) and how much of the key's colour the fighters keep
 ## round 4 (replaces round 3's frontal fill, REAL_CAM_FILL): per time of day
-##  expo  [dark gain, pale gain]: exposure by the surface's own brightness (char_real.gdshader `expo`)
+##  expo  [gain on near-black, power above 0.3]: exposure by the surface's own brightness (char_real.gdshader `expo`)
 ##  ka    the sky-side kicker (behind the fighter on the camera's right, high), in the sky's colour
 ##  kb    the lamp-side kicker (behind on the left, low, warm): only when the street's lamps are lit
 ##  bounce the share of the paving's sunlit colour that reaches surfaces facing down
 const REAL_LIGHT: Dictionary = {
-	"golden": {"expo": [1.5, 1.0], "ka": 0.55, "kb": 0.0, "bounce": 0.35},
-	"day": {"expo": [1.4, 1.0], "ka": 0.5, "kb": 0.0, "bounce": 0.35},
-	"dusk": {"expo": [2.3, 0.85], "ka": 0.6, "kb": 0.7, "bounce": 0.3},
-	"night": {"expo": [4.0, 0.45], "ka": 0.45, "kb": 0.8, "bounce": 0.25},
+	"golden": {"expo": [1.5, 0.25], "ka": 0.55, "kb": 0.0, "bounce": 0.35},
+	"day": {"expo": [1.4, 0.2], "ka": 0.5, "kb": 0.0, "bounce": 0.35},
+	"dusk": {"expo": [2.6, 0.4], "ka": 0.6, "kb": 0.7, "bounce": 0.3},
+	"night": {"expo": [4.5, 1.3], "ka": 0.45, "kb": 0.8, "bounce": 0.25},
 }
 const LAMP_COL: Color = Color(1.0, 0.76, 0.48)
 const REAL_KEY_SAT: Dictionary = {"dusk": 0.6}
-const REAL_FILL: Dictionary = {"golden": 1.0, "day": 1.0, "dusk": 1.1, "night": 1.6}
+const REAL_FILL: Dictionary = {"golden": 1.0, "day": 1.0, "dusk": 1.1, "night": 1.7}
 const SKIN_GUESS: float = 0.6         # the skin term's strength when it is guessed from colour (no Forge mask)
 const ArenaScript := preload("res://arena.gd")
 const DOME_SHADER := preload("res://vfx/dome.gdshader")

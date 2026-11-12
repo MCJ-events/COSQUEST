@@ -615,10 +615,10 @@ func _quality() -> String:
 ## shows the hero, the Guardian it is fighting and an ally standing by, inside the HUD's margins: it pulls
 ## back only as far as the fighters are apart, quickly out and slowly in, never past build 21's distance.
 ## A config with cam_dist or cam_pitch (review captures) keeps the camera it asks for.
-const CLOSE_PITCH: float = 20.0          # deg above the fight, portrait
+const CLOSE_PITCH: float = 28.0          # deg above the fight, portrait (round 4: 20 -> 28, see CLOSE_FACE)
 const CLOSE_PITCH_LAND: float = 16.0
-const CLOSE_TILT: float = 6.0            # portrait: the view's extra pitch over the orbit (deg)
-const CLOSE_DIST: float = 5.85            # m: the hero alone, portrait (about a third of the screen's height)
+const CLOSE_TILT: float = 2.0            # portrait: the view's extra pitch over the orbit (deg)
+const CLOSE_DIST: float = 5.4            # m: the hero alone, portrait (about a third of the screen's height)
 const CLOSE_DIST_LAND: float = 7.8       # landscape (about two fifths)
 const CLOSE_PIVOT_H: float = 1.15        # the orbit turns round the hero's chest, not the knees
 const CLOSE_MAX: float = 15.0            # build 21's distance: the furthest it pulls back
@@ -645,9 +645,12 @@ func _close_camera() -> void:
 	# look "close_pitch", "close_tilt", "close_dist", "close_top", "close_lean", "close_face": framing trials (tools/look/cam_probe.gd)
 	var pitch: float = float(lk.get("close_pitch", CLOSE_PITCH_LAND if _landscape else CLOSE_PITCH))
 	var tilt: float = float(lk.get("close_tilt", 0.0 if _landscape else CLOSE_TILT))
-	_close_top = float(lk.get("close_top", CLOSE_MARGIN_LAND_TOP if _landscape else CLOSE_MARGIN.y))
+	_close_top = float(lk.get("close_top", CLOSE_MARGIN_LAND_TOP if _landscape else 0.76))
 	_close_lean = float(lk.get("close_lean", 0.45 if _landscape else 0.3))
-	_close_face = float(lk.get("close_face", 0.9 if _landscape else 0.0))
+	# round 4: portrait keeps the target's face under the top block too. From the old 20 deg orbit that cost
+	# the hero's size (27 % of the screen); from 28 deg the camera is above a tall Guardian's head, so its face
+	# falls lower in the frame and the hero stays at 30 % (trials: experiments/look/round4)
+	_close_face = float(lk.get("close_face", 0.9 if _landscape else 0.87))
 	_cam_basis = Basis.from_euler(Vector3(deg_to_rad(-pitch), yaw, 0.0))
 	# portrait: the view looks a little further down than the orbit, so the fight sits above the controls
 	_view_basis = Basis.from_euler(Vector3(deg_to_rad(-(pitch + tilt)), yaw, 0.0))

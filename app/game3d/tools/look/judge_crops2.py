@@ -33,11 +33,12 @@ def crop(cast, t, v, o, shot, view, who):
     return c if c.width >= 24 and c.height >= 24 else None
 
 
-R3 = "--round3" in sys.argv     # round 3: Forge and asset characters only; game hero, game target, intro, victory; both orientations
+R4 = "--round4" in sys.argv     # round 4: Forge and the two rigged asset casts; score and blocky on the portrait crops
+R3 = "--round3" in sys.argv or R4     # round 3: Forge and asset characters only; game hero, game target, intro, victory; both orientations
 if R3:
     SETS = {o: [("a", "game", "hero"), ("a", "game", "enemy"), ("beats_intro", "game", "hero"), ("beats_win", "game", "hero")] for o in ("port", "land")}
-for cast in (("forgen", "asset") if R3 else ("cast", "forgen", "asset")):
-    name = {"cast": "cast", "forgen": "forge", "asset": "asset"}[cast]
+for cast in (("forgen", "asset", "asset2") if R4 else ("forgen", "asset") if R3 else ("cast", "forgen", "asset")):
+    name = {"cast": "cast", "forgen": "forge", "asset": "asset", "asset2": "assetb"}[cast]
     for t in ("golden", "dusk", "night"):
         for o in ("port", "land"):
             for shot, view, who in SETS[o]:
@@ -55,7 +56,7 @@ for cast in (("forgen", "asset") if R3 else ("cast", "forgen", "asset")):
                 b2.save(os.path.join(out, "img", pid + "_before.jpg"), quality=92)
                 rows.append([pid, "img/%s_after.jpg" % pid, "img/%s_before.jpg" % pid])
                 sizes.append([pid, a.height, b.height, round(ka, 2), round(k, 2)])
-                if R3 or (o == "port" and view == "game" and who == "hero" and shot in ("a", "beats_intro")):
+                if (R3 and not R4) or (R4 and o == "port") or (not R3 and o == "port" and view == "game" and who == "hero" and shot in ("a", "beats_intro")):
                     ours.append("img/%s_after.jpg" % pid)
 with open(os.path.join(out, "pairs.csv"), "w", newline="") as f:
     w = csv.writer(f)
