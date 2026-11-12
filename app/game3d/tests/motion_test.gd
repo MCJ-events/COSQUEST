@@ -11,6 +11,8 @@ extends SceneTree
 ## 5. Foot lock: a foot that is down stays put (under 2 cm) while the body turns on the spot and
 ##    (10 degrees) and through a hit-stop shudder; with the lock off it does not (the test would catch a dead lock).
 ## 6. A skeleton with no clip at all does not stand in its rest pose.
+## 7. Round 2: the hybrid default per state and the blend mode; a cast on the run keeps the run's
+##    legs in one mixed clip; a blow's pause holds the drawing only; the ready pose winds the body up.
 ## Prints "CQTEST PASS <name>" / "CQTEST FAIL <name> <why>", then "CQTEST done failures=N".
 
 const FightScript := preload("res://fight.gd")
@@ -58,6 +60,24 @@ func _initialize() -> void:
 	_check("mocap_brings_stumble_and_forward_fall", m.has("stagger_fwd") and m.has("death_fwd"), str(m.keys()))
 	var u: Dictionary = AnimLib.states_for("unarmed", "armstrong")
 	_check("unarmed_set_punches", str((u.get("attack_2", {}) as Dictionary).get("clip", "")).contains("Punch"), str(u.get("attack_2", {})))
+	# round 2: with no switch set a fighter is build 21's (every motion switch off)
+	var plain := FighterScript.new()
+	_check("no_switch_is_build21", not plain.aim_hold and not plain.weight_fx and not plain.real_speed and not plain.anim.no_bind
+		and not plain.anim.natural_rates and not plain.anim.run_layer and plain.anim.foot == null)
+	plain.free()
+	AnimLib.motion = ""
+	_check("no_switch_plays_the_classic_clips", AnimLib.motion_now() == "classic")
+	# round 2: the hybrid default, state by state
+	AnimLib.motion = "hybrid"
+	var hb: Dictionary = AnimLib.states_for("sword", "armstrong")
+	_check("hybrid_sword_cuts_are_captured", str((hb.get("attack_1", {}) as Dictionary).get("clip", "")).begins_with("CMU_")
+		and str((hb.get("attack_3", {}) as Dictionary).get("clip", "")).begins_with("CMU_"), str(hb.get("attack_1", {})))
+	var hs: Dictionary = AnimLib.states_for("staff", "hoof")
+	_check("hybrid_two_handed_heavy_stays_classic", str((hs.get("heavy", {}) as Dictionary).get("clip", "")) == "2H_Melee_Attack_Chop", str(hs.get("heavy", {})))
+	AnimLib.state_modes = {"attack_1": "blend"}
+	var bl: Dictionary = AnimLib.states_for("sword", "armstrong")
+	_check("blend_mode_carries_the_classic_legs", ((bl.get("attack_1", {}) as Dictionary).get("lower", {}) as Dictionary).get("clip", "") == "1H_Melee_Attack_Slice_Diagonal", str(bl.get("attack_1", {})))
+	AnimLib.state_modes = {}
 	_spawn("classic", true, true)
 
 
@@ -78,7 +98,7 @@ func _spawn(mode: String, foot_ik: bool, clips: bool) -> void:
 			p.free()
 		# no library either: an unknown key and a skeleton the data does not recognise
 		(AnimLib.data()["characters"] as Dictionary)["armstrong"]["status"] = "off"
-	_f.anim_opts = {"key": "armstrong", "class": "sword", "foot_ik": foot_ik, "natural_rates": true, "no_bind": true}
+	_f.anim_opts = {"key": "armstrong", "class": "sword", "foot_ik": foot_ik, "natural_rates": true, "no_bind": true, "run_layer": true}
 	_f.aim_hold = true
 	_f.weight_fx = true
 	_f.real_speed = true
@@ -218,8 +238,30 @@ func _process(dt: float) -> bool:
 					_spawn("classic", false, true)
 				else:
 					_check("unlocked_foot_drifts", _drift > 0.025 and a.foot == null, "%.1f cm" % (_drift * 100.0))
-					_phase = 5
-					_spawn("classic", false, false)
+					_phase = 6
+					_spawn("hybrid", true, true)
+		6:
+			# round 2: a cast on the run keeps the run's legs (one mixed clip), and a blow pauses the drawing
+			_f.speed_now = 4.2 if _t < 40 else 0.0
+			if _t == 2:
+				_f.real_speed = false
+			elif _t == 20:
+				_check("running_before_the_cast", a.state in ["run", "sprint"], a.state)
+				_f.act("attack_2", 0.36, 0.2)
+				_check("cast_on_the_run_keeps_the_run_legs", a.legs_run and str(a.player.current_animation).contains("__mix_"), "%s %s" % [str(a.legs_run), a.player.current_animation])
+			elif _t == 22:
+				_check("lock_uses_the_stride_reach_under_a_cast", a.foot != null and a.foot.loco)
+				_f.hit_pause(0.07)
+			elif _t == 23:
+				_check("hit_pause_holds_the_drawing_only", a.frozen and not _f.anim_freeze)
+			elif _t == 27:
+				_check("hit_pause_ends", not a.frozen)
+			elif _t == 50:
+				a.ready = true
+			elif _t == 70:
+				_check("ready_pose_winds_the_body_up", a._ready_w > 0.8 and float(a.layer.pose.get("r_bend", 0.0)) > 30.0, "%.2f %s" % [a._ready_w, str(a.layer.pose)])
+				_phase = 5
+				_spawn("classic", false, false)
 		5:
 			if _t == 30:
 				_check("no_clip_skeleton_not_in_bind_pose", _bind == 0 and _frames > 20 and a.clips.is_empty(), "bind=%d of %d clips=%d" % [_bind, _frames, a.clips.size()])
