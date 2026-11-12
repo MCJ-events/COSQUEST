@@ -762,15 +762,18 @@ func _beat_camera() -> void:
 const DOF_SHADER := """
 shader_type spatial;
 render_mode unshaded, cull_disabled, shadows_disabled, fog_disabled, depth_draw_never;
-uniform sampler2D screen : hint_screen_texture, filter_linear_mipmap, repeat_disable;
+uniform sampler2D screen : hint_screen_texture, filter_linear, repeat_disable;
 uniform float amount = 0.0;
 void fragment() {
-	vec2 px = 6.0 / VIEWPORT_SIZE;
-	vec3 c = textureLod(screen, SCREEN_UV, 2.0).rgb * 0.36;
-	c += textureLod(screen, SCREEN_UV + vec2(px.x, px.y), 2.5).rgb * 0.16;
-	c += textureLod(screen, SCREEN_UV + vec2(-px.x, px.y), 2.5).rgb * 0.16;
-	c += textureLod(screen, SCREEN_UV + vec2(px.x, -px.y), 2.5).rgb * 0.16;
-	c += textureLod(screen, SCREEN_UV + vec2(-px.x, -px.y), 2.5).rgb * 0.16;
+	// the screen texture has no usable mips here (reading them gave ghost edges), so: 13 taps on two rings
+	vec2 px = 1.0 / VIEWPORT_SIZE;
+	vec3 c = texture(screen, SCREEN_UV).rgb * 0.16;
+	for (int i = 0; i < 6; i++) {
+		float a = float(i) * 1.0472;
+		vec2 d = vec2(cos(a), sin(a));
+		c += texture(screen, SCREEN_UV + d * px * 3.5).rgb * 0.08;
+		c += texture(screen, SCREEN_UV + vec2(d.y, -d.x) * px * 8.0).rgb * 0.06;
+	}
 	ALBEDO = c;
 	ALPHA = amount;
 }

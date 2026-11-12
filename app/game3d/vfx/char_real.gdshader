@@ -183,8 +183,11 @@ void fragment() {
 		// it is there with the shadow map off and gone with the normal map off). On skin the map is read four
 		// mips down and at 0.15 of its strength (two mips and 0.3 still left a smaller patch): the face's form
 		// comes from the mesh.
-		vec3 t = texture(normal_tex, UV, 4.0 * skin_area).xyz * 2.0 - 1.0;
-		t.xy *= normal_amount * mix(1.0, 0.15, skin_area);
+		// round 4: at full strength again, three mips down. The asset track's meshes have hard 30 degree edges
+		// that only the normal map smooths, so a weak map left their faces faceted; the mip level alone takes
+		// the noise out.
+		vec3 t = texture(normal_tex, UV, 3.0 * skin_area).xyz * 2.0 - 1.0;
+		t.xy *= normal_amount;
 		t.z = sqrt(max(1.0 - dot(t.xy, t.xy), 0.0));
 		n = normalize(TANGENT * t.x + BINORMAL * t.y + NORMAL * t.z);
 		NORMAL = n;
