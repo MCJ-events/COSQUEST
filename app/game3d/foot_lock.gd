@@ -162,6 +162,7 @@ func _process_modification_with_delta(_delta: float) -> void:
 			pinned = true
 			l["err_t"] = 0.0
 			l["pin"] = world.orthonormalized()
+			l.erase("pin_toe")
 			l["pin_head"] = head_now
 			# a foot that touches down flat keeps its whole orientation (the toe stays put too); one
 			# caught tilted (toe down in a blend) keeps only its heading and the clip's pitch and roll
@@ -180,6 +181,10 @@ func _process_modification_with_delta(_delta: float) -> void:
 			if not loco:
 				# standing: small offsets are absorbed; a real step waits for the clip to hold still
 				want_step = err.length() > STAND_ABSORB * k and (float(l["err_t"]) > SETTLE_TIME * 0.5 or err.length() > STAND_FAR * k)
+				# ... unless the leg cannot reach its pin even with the hips sunk: then the foot would
+				# be dragged at the end of a straight leg, and a step now is the honest answer
+				if bool(l.get("strain", false)) and err.length() > 0.06 * k:
+					want_step = true
 			# round 2: one foot at a time. While the other foot is in the air this one carries the
 			# body and stays down (the hips sink to reach it), unless it is hopelessly far.
 			if want_step and float(other["step_t"]) >= 0.0 and other != l and err.length() < reach * 2.0:
@@ -215,15 +220,14 @@ func _process_modification_with_delta(_delta: float) -> void:
 				# the ankle swings over it; the pin slides from ankle to ball with the heel's lift.
 				var toe_clip: Vector3 = xf * sk.get_bone_global_pose(int(l["toe"])).origin
 				var toe_off: Vector3 = target.basis * (world.basis.orthonormalized().inverse() * (toe_clip - world.origin))
-				if not l.has("pin_toe") or int(l.get("pin_id", -1)) != int(stats["pins"]) * 2 + li:
+				if not l.has("pin_toe"):     # a new pin of this foot (the other foot's pins do not touch it)
 					l["pin_toe"] = target.origin + toe_off
-					l["pin_id"] = int(stats["pins"]) * 2 + li
 				var heel: float = (world.origin.y - floor_y - float(l["a_h"])) - (toe_clip.y - floor_y - float(l["t_h"]))
-				var c: float = clampf((heel - 0.006 * k) / (0.012 * k), 0.0, 1.0)
-				if c <= 0.0:
-					# heel down: the ball of the foot is wherever the flat foot now has it
-					l["pin_toe"] = target.origin + toe_off
-				elif not bool(l.get("pin_full", false)):
+				# round 3: a pin that does not hold the whole foot holds the ball of the foot, always
+				# (switching between ankle and ball as the heel rose and fell moved the ankle of a
+				# hoofed leg, whose "ankle" is the hock, 20 cm at a time)
+				var c: float = 1.0 if heel > -1.0e9 else 0.0
+				if not bool(l.get("pin_full", false)):
 					var on_toe: Vector3 = (l["pin_toe"] as Vector3) - toe_off
 					target.origin.x = lerpf(target.origin.x, on_toe.x, c)
 					target.origin.z = lerpf(target.origin.z, on_toe.z, c)
@@ -247,6 +251,7 @@ func _process_modification_with_delta(_delta: float) -> void:
 				target.origin = l["drawn"]
 				target.origin.y = world.origin.y
 				l["pin"] = Transform3D(target.basis, target.origin)
+				l.erase("pin_toe")
 				l["pin_full"] = false
 				l["pin_head"] = wrapf(head_now + wrapf(float(l["step_head"]) - head_now, -PI, PI) * (1.0 - e), -PI, PI)
 				stats["pins"] = int(stats["pins"]) + 1
@@ -258,6 +263,7 @@ func _process_modification_with_delta(_delta: float) -> void:
 				l["pinned"] = true
 				l["err_t"] = 0.0
 				l["pin"] = Transform3D(target.basis, target.origin)
+				l.erase("pin_toe")
 				l["pin_full"] = false
 				l["pin_head"] = wrapf(head_now + wrapf(float(l["step_head"]) - head_now, -PI, PI) * (1.0 - e), -PI, PI)
 				stats["pins"] = int(stats["pins"]) + 1
@@ -270,6 +276,7 @@ func _process_modification_with_delta(_delta: float) -> void:
 					l["pinned"] = true
 					l["err_t"] = 0.0
 					l["pin"] = world.orthonormalized()
+					l.erase("pin_toe")
 					l["pin_head"] = head_now
 					l["pin_full"] = false
 					w = 1.0
@@ -300,8 +307,11 @@ func _process_modification_with_delta(_delta: float) -> void:
 			var gw: Vector3 = l["goal_w"]
 			var dx: float = Vector2(gw.x - ha.x, gw.z - ha.z).length()
 			var dy: float = ha.y - gw.y
+			l["strain"] = false
 			if dx * dx + dy * dy > leg * leg and dy > 0.0:
-				need_drop = maxf(need_drop, dy - sqrt(maxf(0.0, leg * leg - dx * dx)))
+				var nd: float = dy - sqrt(maxf(0.0, leg * leg - dx * dx))
+				need_drop = maxf(need_drop, nd)
+				l["strain"] = nd > HIP_DROP_MAX * k * 0.85 or dx >= leg
 	# ---- standing: the hips move over the feet (half the feet's mean offset, slowly)
 	var mean := Vector3.ZERO
 	var n_pin: int = 0
