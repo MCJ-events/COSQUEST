@@ -20,6 +20,10 @@ func _initialize() -> void:
 		"load_thread": false, "render_scale": 0.5}
 	if a.has("tier"):
 		cfg["tier"] = str(a["tier"])    # realism: the same fight on another look tier (the record must not change)
+	if a.has("wait"):
+		cfg["view_px"] = [333, 777]    # no window is this size: the fight starts after the view wait (8 s)
+	if a.has("delay"):
+		cfg["start_delay"] = int(a["delay"])
 	if a.has("look"):
 		cfg["look"] = JSON.parse_string(str(a["look"]))
 	if a.has("land"):

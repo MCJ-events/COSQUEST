@@ -14,6 +14,13 @@ var info: Dictionary = {}       # what the fight needs to resolve the hit (attac
 var active: bool = false
 var _hit: Dictionary = {}
 var shape_node: CollisionShape3D
+## realism round 3: when one opening overlaps several hurtboxes, the physics server lists them in an order
+## that changes with how long it has been running (its tree is re-balanced a little every tick), so which
+## fighter a strike reports first, and with it the fight's random rolls, depended on how many frames passed
+## before the fight began (measured: a fight started 10 frames late and one started 64 frames late gave
+## different records in build 21). With `ordered` (fight.gd, look "hit_order") the hurtboxes found together
+## are reported in the fighters' own order in the scene, whatever the server's order.
+static var ordered: bool = false
 
 
 static func hurt_layer(team: int) -> int:
@@ -56,10 +63,24 @@ func scan() -> void:
 	q.collision_mask = collision_mask
 	q.collide_with_areas = true
 	q.collide_with_bodies = false
+	var found: Array[Area3D] = []
 	for r: Dictionary in space.intersect_shape(q, 16):
 		var a: Object = r.get("collider")
 		if a is Area3D:
-			_consider(a as Area3D)
+			found.append(a as Area3D)
+	_consider_all(found)
+
+
+func _consider_all(found: Array[Area3D]) -> void:
+	if ordered and found.size() > 1:
+		found.sort_custom(func(x: Area3D, y: Area3D) -> bool: return _order_key(x) < _order_key(y))
+	for a: Area3D in found:
+		_consider(a)
+
+
+static func _order_key(a: Area3D) -> int:
+	var f: Variant = a.get_meta("fighter", null)
+	return (f as Node).get_index() if f != null and is_instance_valid(f) else 1 << 30
 
 
 func _consider(a: Area3D) -> void:
@@ -79,8 +100,7 @@ func _physics_process(_dt: float) -> void:
 	# the physics server's own overlap list as a second path (same once-per-opening rule)
 	if not active:
 		return
-	for a: Area3D in get_overlapping_areas():
-		_consider(a)
+	_consider_all(get_overlapping_areas())
 
 
 func hit_count() -> int:

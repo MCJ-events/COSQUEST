@@ -237,6 +237,17 @@ func _air(p: Node3D) -> void:
 		m.albedo_color = Color(0.72, 0.45, 0.2)
 		m.vertex_color_use_as_albedo = true
 		ps.color_ramp = _leaf_ramp()
+		var lk: Variant = p.get("_look")
+		if lk is Dictionary and str((lk as Dictionary).get("cam", "")) == "close":
+			# realism round 3: at the close camera a leaf drifting past the lens was a flat orange rectangle
+			# a hand wide. It gets a leaf's outline and a midrib, and fades out within 4 m of the camera.
+			m.albedo_color = Color.WHITE
+			m.albedo_texture = _leaf_tex()
+			m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
+			m.alpha_scissor_threshold = 0.5
+			m.distance_fade_mode = BaseMaterial3D.DISTANCE_FADE_PIXEL_DITHER
+			m.distance_fade_min_distance = 2.5
+			m.distance_fade_max_distance = 4.5
 	else:
 		m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
@@ -246,6 +257,27 @@ func _air(p: Node3D) -> void:
 	ps.mesh = q
 	add_child(ps)
 	info["air"] = ps.name
+
+
+static var _leaf_t: ImageTexture
+
+
+## A leaf's silhouette (pointed oval, stalk, darker midrib and edge), 32 px, drawn once.
+static func _leaf_tex() -> ImageTexture:
+	if _leaf_t != null:
+		return _leaf_t
+	var img := Image.create(32, 32, false, Image.FORMAT_RGBA8)
+	for y in 32:
+		for x in 32:
+			var u: float = (x + 0.5) / 16.0 - 1.0
+			var v: float = (y + 0.5) / 16.0 - 1.0
+			var half: float = 0.62 * pow(maxf(1.0 - u * u, 0.0), 0.8) * (1.0 - 0.25 * u)
+			var inside: bool = absf(v) < half or (u > 0.85 and absf(v) < 0.06)
+			var shade: float = 1.0 - 0.3 * smoothstep(0.0, 0.07, 0.07 - absf(v)) - 0.25 * smoothstep(half - 0.15, half, absf(v))
+			img.set_pixel(x, y, Color(shade, shade, shade, 1.0 if inside else 0.0))
+	img.generate_mipmaps()
+	_leaf_t = ImageTexture.create_from_image(img)
+	return _leaf_t
 
 
 static func _leaf_ramp() -> Gradient:
