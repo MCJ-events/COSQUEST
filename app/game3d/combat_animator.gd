@@ -513,6 +513,30 @@ func _mix(upper: String, lower: String, t_in: float, t_out: float, phase0: float
 			else:
 				mix.position_track_insert_key(i, tau, la.position_track_interpolate(li, lt))
 			tau += step
+	# the upper body keeps the orientation the upper clip gives it in the world: the spine's turn
+	# is re-expressed on the new hips (a captured swordsman stands side-on; on the run's
+	# forward-facing hips his slash would otherwise go 80 degrees wide)
+	var hp: NodePath = NodePath()
+	var sp_i: int = -1
+	for i in mix.get_track_count():
+		if mix.track_get_type(i) != Animation.TYPE_ROTATION_3D:
+			continue
+		var bn: String = str(mix.track_get_path(i).get_concatenated_subnames())
+		if bn == "Hips":
+			hp = mix.track_get_path(i)
+		elif bn == "Spine":
+			sp_i = i
+	var uh: int = ua.find_track(hp, Animation.TYPE_ROTATION_3D) if hp != NodePath() else -1
+	var mh: int = mix.find_track(hp, Animation.TYPE_ROTATION_3D) if hp != NodePath() else -1
+	var us: int = ua.find_track(mix.track_get_path(sp_i), Animation.TYPE_ROTATION_3D) if sp_i >= 0 else -1
+	if uh >= 0 and mh >= 0 and us >= 0:
+		for k in range(mix.track_get_key_count(sp_i) - 1, -1, -1):
+			mix.track_remove_key(sp_i, k)
+		var tau2: float = t_in
+		while tau2 <= t_out + 0.0001:
+			var q: Quaternion = mix.rotation_track_interpolate(mh, tau2).inverse() * ua.rotation_track_interpolate(uh, tau2) * ua.rotation_track_interpolate(us, tau2)
+			mix.rotation_track_insert_key(sp_i, tau2, q.normalized())
+			tau2 += step
 	var lib: AnimationLibrary = player.get_animation_library(AnimLib.LIB_NAME)
 	var name: String = "__mix_" + st
 	if lib.has_animation(name):

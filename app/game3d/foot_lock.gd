@@ -16,16 +16,17 @@ extends SkeletonModifier3D
 
 const LEGS: Array = [["LeftUpLeg", "LeftLeg", "LeftFoot", "LeftToeBase"], ["RightUpLeg", "RightLeg", "RightFoot", "RightToeBase"]]
 const DOWN_H: float = 0.030        # m at size 1: a foot this close to its standing height is down
-const UP_H: float = 0.055          # ... and this far over it has left the ground (hysteresis)
+const UP_H: float = 0.07          # ... and this far over it has left the ground (hysteresis)
 const REACH: float = 0.16          # m at size 1: the pin lets go when the clip's foot is this far from it
 const REACH_LOCO: float = 0.34     # the same while walking or running (a stride carries the foot back)
 const STEP_TIME: float = 0.12      # s: the shortest step to the clip's place (a longer one takes up to 2.2x)
-const STEP_LIFT: float = 0.06      # m at size 1: how high that step lifts
+const STEP_LIFT: float = 0.09      # m at size 1: how high that step lifts
 const BLEND_IN: float = 0.05       # s: a pin that is dropped (not stepped) eases off
 const PIN_SPEED: float = 0.45      # m/s at size 1: the settle clock only runs while the clip holds the foot this still
 const SETTLE_ERR: float = 0.10     # m at size 1: a standing pin this far from the clip's foot ...
 const SETTLE_TIME: float = 0.35    # ... for this long takes a step to it (the stance follows a turn)
-const FLOOR_CREEP: float = 0.03    # m/s at size 1: how fast a foot's learnt floor rises again
+const DOWN_REL: float = 0.045      # m at size 1: ... or this close to the floor it has learnt for itself
+const FLOOR_CREEP: float = 0.20    # m/s at size 1: how fast a foot's learnt floor rises again (one dip is forgotten in a quarter of a second)
 const FLOOR_MAX: float = 0.12      # m at size 1: a foot higher than this over its rest height is never "down"
 const HIP_DROP_MAX: float = 0.14   # m at size 1: the most the hips sink to let a planted leg reach
 const HIP_RISE: float = 0.5        # m/s at size 1: how fast they come back up
@@ -56,7 +57,8 @@ func offset(i: int) -> Vector3:
 func debug_state() -> Array:
 	var out: Array = []
 	for l: Dictionary in _legs:
-		out.append([1 if bool(l["pinned"]) else 0, 1 if float(l["step_t"]) >= 0.0 else 0, snappedf(float(l.get("err", 0.0)), 0.001)])
+		out.append([1 if bool(l["pinned"]) else 0, 1 if float(l["step_t"]) >= 0.0 else 0, snappedf(float(l.get("err", 0.0)), 0.001),
+			snappedf(float(l.get("dbg_h", 0.0)), 0.001), snappedf(float(l.get("base", 0.0)), 0.001), 1 if pinning else 0, snappedf(float(l.get("w", 0.0)), 0.01)])
 	return out
 
 
@@ -117,11 +119,12 @@ func _process_modification_with_delta(_delta: float) -> void:
 		# round 2: each foot's own floor. A captured clip holds one foot 3 to 5 cm higher than the
 		# other (marker offsets), so against the rest height that foot never counted as down and
 		# was left to drift. The floor is the lowest the clip has held this foot lately (it creeps
-		# up 3 cm a second, so a new clip's stance is learnt in a second or two).
+		# up 10 cm a second, so one dip is forgotten and a new clip's stance is learnt within a second).
 		var base: float = minf(h, float(l.get("base", h)) + FLOOR_CREEP * k * dt)
 		l["base"] = base
-		var hr: float = h - maxf(base, -0.02 * k)
-		var is_down: bool = hr < DOWN_H * k and h < FLOOR_MAX * k
+		var hr: float = h - base
+		var is_down: bool = (hr < DOWN_REL * k or h < DOWN_H * k) and h < FLOOR_MAX * k
+		l["dbg_h"] = h
 		l["cool"] = maxf(0.0, float(l["cool"]) - dt)
 		# how fast the clip moves this foot under the body (skeleton space)
 		var sp: float = 0.0
@@ -135,7 +138,7 @@ func _process_modification_with_delta(_delta: float) -> void:
 		if not pinning:
 			pinned = false
 			l["step_t"] = -1.0
-		elif pinned and hr > UP_H * k:
+		elif pinned and hr > UP_H * k and h > DOWN_H * k:
 			# the clip lifts the foot (a real step): ease from the pin to the clip's foot, no extra lift
 			pinned = false
 			l["step_t"] = 0.0
@@ -189,15 +192,48 @@ func _process_modification_with_delta(_delta: float) -> void:
 				target.basis = (l["pin"] as Transform3D).basis
 			else:
 				target.basis = Basis(Vector3.UP, wrapf(float(l["pin_head"]) - head_now, -PI, PI)) * world.basis.orthonormalized()
+			if int(l["toe"]) >= 0:
+				# round 2: the contact point is pinned, not always the ankle. When the clip raises
+				# the heel (a weight shift, a toe-off) the ball of the foot is what stays put, and
+				# the ankle swings over it; the pin slides from ankle to ball with the heel's lift.
+				var toe_clip: Vector3 = xf * sk.get_bone_global_pose(int(l["toe"])).origin
+				var toe_off: Vector3 = target.basis * (world.basis.orthonormalized().inverse() * (toe_clip - world.origin))
+				if not l.has("pin_toe") or int(l.get("pin_id", -1)) != int(stats["pins"]) * 2 + li:
+					l["pin_toe"] = target.origin + toe_off
+					l["pin_id"] = int(stats["pins"]) * 2 + li
+				var heel: float = (world.origin.y - floor_y - float(l["a_h"])) - (toe_clip.y - floor_y - float(l["t_h"]))
+				var c: float = clampf((heel - 0.006 * k) / (0.012 * k), 0.0, 1.0)
+				if c <= 0.0:
+					# heel down: the ball of the foot is wherever the flat foot now has it
+					l["pin_toe"] = target.origin + toe_off
+				elif not bool(l.get("pin_full", false)):
+					var on_toe: Vector3 = (l["pin_toe"] as Vector3) - toe_off
+					target.origin.x = lerpf(target.origin.x, on_toe.x, c)
+					target.origin.z = lerpf(target.origin.z, on_toe.z, c)
 		elif float(l["step_t"]) >= 0.0:
 			var st: float = float(l["step_t"]) + dt
 			var u: float = clampf(st / float(l.get("step_len", STEP_TIME)), 0.0, 1.0)
-			var e: float = u * u * (3.0 - 2.0 * u)
+			# across by 70 % of the step, then straight down: the foot is over its place before it is low
+			var ua: float = minf(1.0, u / 0.7)
+			var e: float = ua * ua * (3.0 - 2.0 * ua)
 			target.origin = (l["step_from"] as Vector3).lerp(world.origin, e)
 			target.origin.y = world.origin.y + sin(u * PI) * float(l.get("step_lift", 0.0)) * k
 			target.basis = Basis(Vector3.UP, wrapf(float(l["step_head"]) - head_now, -PI, PI) * (1.0 - e)) * world.basis.orthonormalized()
 			w = 1.0
-			if u > 0.5 and u < 1.0 and target.origin.y - floor_y - float(l["a_h"]) - maxf(base, -0.02 * k) < DOWN_H * k and pinning:
+			if float(l.get("step_lift", 0.0)) <= 0.0 and is_down and pinning and l.has("drawn") and u < 1.0:
+				# an unlifted ease (the clip had raised the foot) and the clip has put the foot down
+				# again before it finished: the foot stays where it was drawn last frame, and a
+				# lifted step takes up whatever is left (it never eases along the ground)
+				l["step_t"] = -1.0
+				l["pinned"] = true
+				l["err_t"] = 0.0
+				target.origin = l["drawn"]
+				target.origin.y = world.origin.y
+				l["pin"] = Transform3D(target.basis, target.origin)
+				l["pin_full"] = false
+				l["pin_head"] = wrapf(head_now + wrapf(float(l["step_head"]) - head_now, -PI, PI) * (1.0 - e), -PI, PI)
+				stats["pins"] = int(stats["pins"]) + 1
+			elif u > 0.5 and u < 1.0 and target.origin.y - floor_y - float(l["a_h"]) - base < DOWN_REL * k and pinning:
 				# the stepping foot has come down: it lands here, whatever the clip's foot still does
 				# (a foot never travels along the ground; the next step takes up what is left)
 				l["step_t"] = -1.0
@@ -228,11 +264,13 @@ func _process_modification_with_delta(_delta: float) -> void:
 		l["off"] = Vector3.ZERO
 		l["ww"] = 0.0
 		if w <= 0.001:
+			l["drawn"] = world.origin
 			continue
 		var ww: float = w * clampf(strength, 0.0, 1.0)
 		l["ww"] = ww
 		l["off"] = (target.origin - world.origin) * ww    # where the foot really is, for its contact shadow
 		l["goal_w"] = world.origin.lerp(target.origin, ww)
+		l["drawn"] = l["goal_w"]
 		l["tbasis"] = target.basis
 		l["g0"] = g
 		# round 2: can the leg reach it? If not, the hips sink (a weight shift) rather than the

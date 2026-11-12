@@ -853,6 +853,8 @@ func tick_visual(dt: float) -> void:
 			var net: Vector3 = (_trail[-1] as Vector3) - (_trail[0] as Vector3)
 			net.y = 0.0
 			anim_speed = minf(speed_now, net.length() / maxf(0.001, span) * 1.1 + 0.15)
+			if anim_speed < 0.45:
+				anim_speed = 0.0    # a creep is a stand (and the state does not flicker between idle and walk)
 			# how much of the last frames' travel was there-and-back
 			var path: float = 0.0
 			for i in range(1, _trail.size()):

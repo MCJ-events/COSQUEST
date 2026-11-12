@@ -336,13 +336,15 @@ def weight(rows, hits, acts_by_role):
         i = idx.get(h["fr"])
         e = {"fr": h["fr"], "src": src, "dst": dst, "kind": h.get("kind", ""), "ko": h.get("ko", False)}
         act = None
-        if i is not None:
+        if i is not None and h.get("kind") != "bolt":
             for a in acts_by_role[src]:
                 if a["i0"] <= i <= a["i1"]:
                     act = a
         if act is None:
             # a ranged blow (the bolt lands after the cast): the cast before it stands for the swing
-            prev = [a for a in acts_by_role[src] if i is not None and a["i1"] < i and i - a["i1"] < 45]
+            # a bolt belongs to the cast that released it: the latest cast whose release is before the hit
+            prev = [a for a in acts_by_role[src] if i is not None and i - a["i0"] < 60 and
+                    (a["i1"] < i or (h.get("kind") == "bolt" and a["hit_at"] > 0 and rs[i]["t"] >= a["hit_at"] and a["i0"] <= i))]
             if prev:
                 a = prev[-1]
                 ic = a["i1"]
@@ -351,7 +353,7 @@ def weight(rows, hits, acts_by_role):
                         ic = j
                         break
                 e.update({"ranged": True, "st": a["st"], "antic": ic - a["i0"], "follow": a["i1"] - ic,
-                          "windup_s": round(float(rs[ic]["t"]), 4)})
+                          "windup_s": round(float(a["hit_at"]) if a["hit_at"] > 0 else float(rs[ic]["t"]), 4)})
             else:
                 e.update({"ranged": True, "st": "", "antic": None, "follow": None})
         else:
