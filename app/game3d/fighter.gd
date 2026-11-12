@@ -26,6 +26,9 @@ const REAL_RIM: float = 0.5           # the rim's strength on the real material 
 ## measured light on a fighter is less than the paving shows; without this they are silhouettes at night
 ## (measured: LOOK.md). Golden hour and day use the measured light as it is.
 ## round 2: with the key turned to the camera's side the fill is smaller (dusk 1.35 -> 1.2, night 2.4 -> 1.9).
+## round 3: the camera-side fill (the sky's colour times this) and how much of the key's colour the fighters keep
+const REAL_CAM_FILL: Dictionary = {"golden": 0.0, "day": 0.0, "dusk": 0.45, "night": 0.4}
+const REAL_KEY_SAT: Dictionary = {"dusk": 0.6}
 const REAL_FILL: Dictionary = {"golden": 1.0, "day": 1.0, "dusk": 1.2, "night": 1.9}
 const SKIN_GUESS: float = 0.6         # the skin term's strength when it is guessed from colour (no Forge mask)
 const ArenaScript := preload("res://arena.gd")
@@ -590,6 +593,15 @@ func _real_material(b: BaseMaterial3D) -> ShaderMaterial:
 	sm.set_shader_parameter("rim_amount", float(look.get("rim_k", REAL_RIM)) if rim_on else 0.0)
 	sm.set_shader_parameter("team_amount", RIM_TEAM)
 	sm.set_shader_parameter("rim_key", (tp["key_color"] as Color).lerp(Color.WHITE, 0.15))
+	# round 3: no shadow-map shadow on the fighter itself (look "self_shadow"), the key's colour toned at dusk,
+	# and the camera-side fill at dusk and night in the sky's colour
+	var tm: String = str(look.get("time", "golden"))
+	sm.set_shader_parameter("recv_shadow", 1.0 if bool(look.get("self_shadow", true)) else 0.0)
+	sm.set_shader_parameter("key_sat", float(look.get("key_sat", REAL_KEY_SAT.get(tm, 1.0))))
+	var fk: float = float(look.get("fill_k", REAL_CAM_FILL.get(tm, 0.0)))
+	var sky: Color = tp["ambient"]
+	var smax: float = maxf(sky.r, maxf(sky.g, sky.b))
+	sm.set_shader_parameter("fill_col", Vector3(sky.r, sky.g, sky.b) / maxf(smax, 0.001) * fk)
 	sm.set_shader_parameter("debug_view", int(look.get("real_debug", 0)))
 	_lit_mats.append(sm)
 	return sm

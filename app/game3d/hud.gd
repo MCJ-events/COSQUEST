@@ -115,6 +115,9 @@ var show_hero_card: bool = true
 ## bar, the boss bar and the minimap move down by it, so the timer no longer sits under the
 ## Dynamic Island and the app's close button sits clear, under the boss bar (fight3d.ts hudLayout).
 var top_shift: float = 0.0
+## realism round 3: with the close camera a tall Guardian's head is often behind the top block, and its name
+## plate was drawn under the block. Plates are kept below this many HUD px from the top (0 = as before).
+var plate_min_y: float = 0.0
 ## build 21, landscape: HUD px the stick (left) and the attack panel and minimap (right) move in
 ## from the screen's sides, for the notch / Dynamic Island and the home bar.
 var side_l: float = 0.0
@@ -754,6 +757,8 @@ func _draw_overheads() -> void:
 		if cam.is_position_behind(head):
 			continue
 		var p: Vector2 = cam.unproject_position(head)
+		if plate_min_y > 0.0:
+			p.y = maxf(p.y, plate_min_y + top_shift)
 		var boss: bool = int(u["team"]) == 1
 		var w: float = 150.0 if boss else 108.0
 		boxes.append({"u": u, "p": p, "w": w, "boss": boss})

@@ -98,9 +98,9 @@ const REAL_KEY_ELEV_MIN: float = 24.0
 const REAL_GROUND_K: Dictionary = {"golden": 0.62, "day": 0.62, "dusk": 0.85, "night": 1.0}
 const TIER_LOOK: Dictionary = {
 	"low": {},
-	"mid": {"real": true, "skin": "simple", "ibl": true, "cam": "close", "beats": true, "hit_order": true, "key_yaw": REAL_KEY_YAW, "key_elev_min": REAL_KEY_ELEV_MIN, "ground_k": "auto"},
+	"mid": {"real": true, "skin": "simple", "ibl": true, "cam": "close", "beats": true, "hit_order": true, "self_shadow": false, "key_yaw": REAL_KEY_YAW, "key_elev_min": REAL_KEY_ELEV_MIN, "ground_k": "auto"},
 	"high": {"real": true, "skin": "full", "ibl": true, "shadows": true, "grade": "base", "hero_lod": 0, "scale": 1.0,
-		"cam": "close", "beats": true, "hit_order": true, "key_yaw": REAL_KEY_YAW, "key_elev_min": REAL_KEY_ELEV_MIN, "ground_k": "auto", "soft_shadows": true},
+		"cam": "close", "beats": true, "hit_order": true, "self_shadow": false, "key_yaw": REAL_KEY_YAW, "key_elev_min": REAL_KEY_ELEV_MIN, "ground_k": "auto", "soft_shadows": true},
 }
 
 

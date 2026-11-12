@@ -443,6 +443,8 @@ func _ready() -> void:
 	hud.name = "Hud"
 	layer.add_child(hud)
 	hud.cam = cam
+	if _close:
+		hud.plate_min_y = 196.0     # realism round 3: name plates stay under the top block
 	hud.map_blocks = arena.get("map_blocks")
 	hud.visible = not bool(cfg.get("prof_no_hud", false))   # profiling only: the 3D cost alone
 	hud.players_text = str(cfg.get("players_text", "2/2")).replace(" players", "").replace(" player", "")

@@ -52,6 +52,11 @@ uniform float env_spec = 1.0;              // 0 = no reflections (look "ibl": fa
 uniform vec3 amb_cube[6];                  // +x -x +y -y +z -z: the cube's diffuse light, in the street's units
 uniform float amb_amount = 1.0;
 
+// round 3
+uniform float recv_shadow = 1.0;           // 0 = the fighter does not take the shadow map's shadow (it still casts): at
+                                           // the close camera the map's steps drew a jagged patch across faces
+uniform float key_sat = 1.0;               // the key's colour on the fighter: under 1 pulls it towards white (dusk's orange)
+uniform vec3 fill_col = vec3(0.0);         // a soft fill from the camera's side in the sky's colour (dusk and night)
 uniform vec3 key_dir = vec3(0.65, -0.56, 0.51);
 uniform vec3 rim_key : source_color = vec3(1.0, 0.8, 0.55);
 uniform vec3 rim_team : source_color = vec3(0.5, 0.85, 1.0);
@@ -131,12 +136,15 @@ void fragment() {
 	float rough = clamp(dot(orm, orm_channel_r) * roughness, 0.06, 1.0);
 	float metal = clamp(dot(orm, orm_channel_m) * metallic, 0.0, 1.0);
 	float skin = 0.0;
+	float skin_area = 0.0;     // where skin is, before the colour check (beard and brow texels fail the check)
 	if (skin_mode == 1) {
 		// the mask, checked against the colour: Forge's mask also marks red and brown armour as skin
 		// (measured on the Kade test character), and armour must not get the skin's wrap
-		skin = texture(skin_tex, UV).r * mix(0.1, 1.0, skin_guess(base));
+		skin_area = texture(skin_tex, UV).r;
+		skin = skin_area * mix(0.1, 1.0, skin_guess(base));
 	} else if (skin_mode == 2) {
 		skin = skin_guess(base);
+		skin_area = skin;
 	}
 	skin *= skin_amount * (1.0 - metal);
 	float hair = 0.0;
@@ -161,8 +169,12 @@ void fragment() {
 	v_skin = skin;
 	vec3 n = NORMAL;
 	if (normal_amount > 0.0) {
-		vec3 t = texture(normal_tex, UV).xyz * 2.0 - 1.0;
-		t.xy *= normal_amount;
+		// round 3: the baked normal map is noisy on faces (the lift's voxel ripple), and across the key's
+		// terminator that noise drew a jagged dark patch down one side of a face in close shots (measured:
+		// it is there with the shadow map off and gone with the normal map off). On skin the map is read two
+		// mips down and at a third of its strength: the face's form comes from the mesh.
+		vec3 t = texture(normal_tex, UV, 2.0 * skin_area).xyz * 2.0 - 1.0;
+		t.xy *= normal_amount * mix(1.0, 0.3, skin_area);
 		t.z = sqrt(max(1.0 - dot(t.xy, t.xy), 0.0));
 		n = normalize(TANGENT * t.x + BINORMAL * t.y + NORMAL * t.z);
 		NORMAL = n;
@@ -211,7 +223,16 @@ void fragment() {
 	ROUGHNESS = rough;
 	METALLIC = metal;
 	SPECULAR = specular;
-	EMISSION = diffuse_amb + spec_amb + rim + hit + gl + texture(emission_tex, UV).rgb * emission;
+	// round 3: the fill. A broad soft source over the camera's left shoulder: half-Lambert on the surface's
+	// colour, and a wide sheen so a near-black suit still reads (dark cloth shows by its sheen, not its colour)
+	vec3 fill = vec3(0.0);
+	if (fill_col.r + fill_col.g + fill_col.b > 0.0) {
+		vec3 fd = normalize(vec3(-0.35, 0.4, 1.0));
+		float fw = clamp(dot(n, fd) * 0.6 + 0.4, 0.0, 1.0);
+		float sheen = pow(clamp(dot(n, normalize(fd + VIEW)), 0.0, 1.0), mix(24.0, 4.0, rough)) * mix(0.35, 0.11, rough);
+		fill = fill_col * ao * (base * (1.0 - metal) * fw * fw + mix(vec3(1.0), base, metal) * sheen);
+	}
+	EMISSION = diffuse_amb + spec_amb + fill + rim + hit + gl + texture(emission_tex, UV).rgb * emission;
 	if (debug_view == 3) {
 		ALBEDO = vec3(0.0);
 		EMISSION = vec3(skin, skin * 0.4, v_hair);
@@ -236,16 +257,18 @@ void light() {
 	float fres = pow(1.0 - ldh, 5.0);
 	vec3 f0 = mix(vec3(mix(0.16 * SPECULAR_AMOUNT * SPECULAR_AMOUNT, 0.028, v_skin)), ALBEDO, METALLIC);
 	vec3 fr = f0 + (1.0 - f0) * fres;
+	float att = LIGHT_IS_DIRECTIONAL ? mix(1.0, ATTENUATION, recv_shadow) : ATTENUATION;
+	vec3 lcol = mix(vec3(dot(LIGHT_COLOR, vec3(0.2126, 0.7152, 0.0722))), LIGHT_COLOR, LIGHT_IS_DIRECTIONAL ? key_sat : 1.0);
 	// diffuse: Lambert, wrapped past the terminator on skin (red furthest), less what the specular took.
 	// The engine multiplies it by the surface's colour and by (1 - metal).
 	vec3 w = skin_wrap * v_skin;
 	vec3 d = clamp((vec3(ndl) + w) / (1.0 + w), 0.0, 1.0);
-	DIFFUSE_LIGHT += LIGHT_COLOR * ATTENUATION * d * (1.0 - fr) * (1.0 / PI);
+	DIFFUSE_LIGHT += lcol * att * d * (1.0 - fr) * (1.0 / PI);
 	if (v_skin > 0.0 && skin_back > 0.0) {
 		// no thickness map: only where the body is thin from here (the silhouette) and the light is behind it
 		float thin = (1.0 - ndv) * (1.0 - ndv);
 		float behind = pow(clamp(dot(VIEW, -LIGHT), 0.0, 1.0), 3.0);
-		DIFFUSE_LIGHT += LIGHT_COLOR * ATTENUATION * vec3(1.0, 0.3, 0.14) * (thin * behind * skin_back * v_skin / PI);
+		DIFFUSE_LIGHT += lcol * att * vec3(1.0, 0.3, 0.14) * (thin * behind * skin_back * v_skin / PI);
 	}
 	// specular: GGX, with a second tighter lobe on skin (the sheen over the soft one)
 	float al = ROUGHNESS * ROUGHNESS;
@@ -267,5 +290,5 @@ void light() {
 		float strand = pow(sqrt(max(1.0 - th * th, 0.0)), 48.0);
 		spec = mix(spec, vec3(strand * 0.22 * smoothstep(-0.1, 0.4, ndl)) * mix(vec3(1.0), ALBEDO * 3.0 + 0.1, 0.6), v_hair);
 	}
-	SPECULAR_LIGHT += LIGHT_COLOR * ATTENUATION * spec;
+	SPECULAR_LIGHT += lcol * att * spec;
 }

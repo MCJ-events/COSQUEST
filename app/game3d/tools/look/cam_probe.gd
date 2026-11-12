@@ -14,6 +14,7 @@ var n: int = 0
 var n_target: int = 0
 var n_off: int = 0
 var n_hud: int = 0
+var n_head: int = 0       # round 3: the hero's or the target's head under a HUD control
 var _done: bool = false
 
 
@@ -71,6 +72,25 @@ func _process(_dt: float) -> bool:
 		var near := Vector2(clampf(cc.x, box.position.x, box.end.x), clampf(cc.y, box.position.y, box.end.y))
 		if near.distance_to(cc) < float(c[1]):
 			over = 1
+	# round 3: the heads. The hero's and the target's head point against the same controls
+	var heads: Array[Vector3] = [hero.global_position + Vector3.UP * 2.1 * float(hero.get("size_k"))]
+	if enemy != null and not enemy.get("dead"):
+		heads.append(enemy.global_position + Vector3.UP * 2.1 * float(enemy.get("size_k")))
+	var head_over: int = 0
+	for hp: Vector3 in heads:
+		if cam.is_position_behind(hp):
+			continue
+		var q2: Vector2 = cam.unproject_position(hp)
+		if q2.x < 0.0 or q2.x > vs.x or q2.y < 0.0 or q2.y > vs.y:
+			continue
+		if q2.y < (float(hud.get("top_shift")) + (112.0 if land else 150.0)):
+			head_over = 1
+		if q2.distance_to(hud.call("_stick_home")) < 118.0 or q2.distance_to(hud.call("attack_centre")) < float(hud.call("attack_r")) * 1.9:
+			head_over = 1
+		var mc: Vector2 = hud.call("_map_centre")
+		if q2.distance_to(mc) < 100.0:
+			head_over = 1
+	n_head += head_over
 	n += 1
 	n_hud += over
 	heights.append(h)
@@ -86,7 +106,7 @@ func _finish(j: String) -> void:
 		fa.store_string("\n".join(rows) + "\n")
 		fa.close()
 	var vs: Vector2 = root.get_viewport().get_visible_rect().size
-	print("CQCAM frames=%d screen=%dx%d hero_h_median=%.3f hero_h_p10=%.3f hero_px_median=%d hero_px_p10=%d target_off_pct=%.2f hud_over_pct=%.2f outcome=%s time=%s" % [n, int(vs.x), int(vs.y),
+	print("CQCAM frames=%d screen=%dx%d hero_h_median=%.3f hero_h_p10=%.3f hero_px_median=%d hero_px_p10=%d target_off_pct=%.2f hud_over_pct=%.2f head_under_hud_pct=%.2f outcome=%s time=%s" % [n, int(vs.x), int(vs.y),
 		heights[n / 2] if n > 0 else 0.0, heights[n / 10] if n > 0 else 0.0, int(heights[n / 2] * vs.y) if n > 0 else 0, int(heights[n / 10] * vs.y) if n > 0 else 0,
-		100.0 * n_off / maxf(n_target, 1), 100.0 * n_hud / maxf(n, 1), str(r.get("outcome", "?")), str(r.get("fight_s", r.get("duration_s", "?")))])
+		100.0 * n_off / maxf(n_target, 1), 100.0 * n_hud / maxf(n, 1), 100.0 * n_head / maxf(n, 1), str(r.get("outcome", "?")), str(r.get("fight_s", r.get("duration_s", "?")))])
 	quit(0)
