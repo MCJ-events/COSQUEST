@@ -42,6 +42,7 @@ uniform float skin_lobe2 = 0.18;           // the share of the second, tighter s
 // highlight that runs across the strands (they hang down the head) instead of the round GGX one
 uniform bool hair_on = false;
 uniform sampler2D hair_tex : hint_default_black, filter_linear_mipmap, repeat_enable;
+uniform float hair_all = 0.0;              // 1: the whole surface is hair (a separate hair material: fringe shells)
 uniform float skin_back = 0.22;            // light through thin skin at the silhouette when the key is behind (ears, fingers)
 
 // the street's light at this time of day (look_real.gd)
@@ -156,9 +157,9 @@ void fragment() {
 		skin_area = skin;
 	}
 	skin *= skin_amount * (1.0 - metal);
-	float hair = 0.0;
-	if (hair_on) {
-		hair = texture(hair_tex, UV).r;
+	float hair = hair_all;
+	if (hair_on || hair_all > 0.0) {
+		hair = max(hair, hair_on ? texture(hair_tex, UV).r : 0.0);
 		skin *= 1.0 - hair;
 		rough = mix(rough, max(rough, 0.5), hair);
 		metal *= 1.0 - hair;
@@ -247,6 +248,7 @@ void fragment() {
 		+ vec3(1.0, 0.85, 0.6) * glow * f3 * 0.6;
 	base = mix(base, vec3(1.0, 0.9, 0.78), 0.2 * clamp(flash, 0.0, 1.0));
 	ALBEDO = mix(lit, base, metal);     // the key's diffuse goes through the exposure-corrected colour too
+	// ALPHA_HOOK (fighter.gd builds the alpha-tested variant for hair shells from this line)
 	ROUGHNESS = rough;
 	METALLIC = metal;
 	SPECULAR = specular;

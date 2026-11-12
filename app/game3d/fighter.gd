@@ -575,11 +575,17 @@ func _lit_material(m: Material) -> ShaderMaterial:
 ## key light through the shader's own light(), the street's baked cube and ambient colours for this time
 ## of day, the skin term from the Forge mask (or a colour guess). null if it cannot be converted.
 func _real_material(b: BaseMaterial3D) -> ShaderMaterial:
-	if b.transparency != BaseMaterial3D.TRANSPARENCY_DISABLED or b.shading_mode != BaseMaterial3D.SHADING_MODE_PER_PIXEL \
-			or b.cull_mode != BaseMaterial3D.CULL_BACK or b.vertex_color_use_as_albedo or b.uv1_triplanar:
+	if b.shading_mode != BaseMaterial3D.SHADING_MODE_PER_PIXEL or b.cull_mode == BaseMaterial3D.CULL_FRONT \
+			or b.vertex_color_use_as_albedo or b.uv1_triplanar:
 		return null
+	# round 4: two-sided surfaces (a donor head's shell) and see-through hair shells take the same shading through
+	# variants of the shader: no culling, and the hair's alpha as a cut-out (blended hair sorts badly on a fighter)
+	var two_sided: bool = b.cull_mode == BaseMaterial3D.CULL_DISABLED
+	var cut: bool = b.transparency != BaseMaterial3D.TRANSPARENCY_DISABLED
 	var sm := ShaderMaterial.new()
-	sm.shader = REAL_SHADER
+	sm.shader = _real_variant(two_sided, cut)
+	if cut or b.resource_name.to_lower().contains("hair"):
+		sm.set_shader_parameter("hair_all", 1.0)
 	sm.set_shader_parameter("albedo_tex", b.albedo_texture)
 	sm.set_shader_parameter("albedo", b.albedo_color)
 	var orm: Texture2D = b.roughness_texture if b.roughness_texture != null else b.metallic_texture
@@ -668,6 +674,25 @@ func _real_material(b: BaseMaterial3D) -> ShaderMaterial:
 	sm.set_shader_parameter("debug_view", int(look.get("real_debug", 0)))
 	_lit_mats.append(sm)
 	return sm
+
+
+static var _real_variants: Dictionary = {}
+
+
+static func _real_variant(two_sided: bool, cut: bool) -> Shader:
+	if not two_sided and not cut:
+		return REAL_SHADER
+	var key: String = "%s%s" % [two_sided, cut]
+	if not _real_variants.has(key):
+		var code: String = REAL_SHADER.code
+		if two_sided:
+			code = code.replace("render_mode cull_back,", "render_mode cull_disabled,")
+		if cut:
+			code = code.replace("// ALPHA_HOOK", "ALPHA = a.a; ALPHA_SCISSOR_THRESHOLD = 0.35; // ALPHA_HOOK")
+		var sh := Shader.new()
+		sh.code = code
+		_real_variants[key] = sh
+	return _real_variants[key]
 
 
 ## The fighters' shade multiplier for a time preset: its shade colour brought to the brightness of
