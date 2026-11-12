@@ -37,8 +37,8 @@ R4 = "--round4" in sys.argv     # round 4: Forge and the two rigged asset casts;
 R3 = "--round3" in sys.argv or R4     # round 3: Forge and asset characters only; game hero, game target, intro, victory; both orientations
 if R3:
     SETS = {o: [("a", "game", "hero"), ("a", "game", "enemy"), ("beats_intro", "game", "hero"), ("beats_win", "game", "hero")] for o in ("port", "land")}
-for cast in (("forgen", "asset", "asset2") if R4 else ("forgen", "asset") if R3 else ("cast", "forgen", "asset")):
-    name = {"cast": "cast", "forgen": "forge", "asset": "asset", "asset2": "assetb"}[cast]
+for cast in (("forgen", "asset", "asset2", "heroes", "heroes2") if R4 else ("forgen", "asset") if R3 else ("cast", "forgen", "asset")):
+    name = {"cast": "cast", "forgen": "forge", "asset": "asset", "asset2": "assetb", "heroes": "heroes", "heroes2": "heroesb"}[cast]
     for t in ("golden", "dusk", "night"):
         for o in ("port", "land"):
             for shot, view, who in SETS[o]:
