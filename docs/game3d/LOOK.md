@@ -358,10 +358,11 @@ After the first judge run (6 wins in 30) the coordinator ruled that size on scre
 the levers. All of it is on the mid and high tiers only (`TIER_LOOK`); the low tier is unchanged.
 
 - **Close camera** (`look.cam: "close"`, `fight.gd CLOSE_*`): pitch 20 deg in portrait and 16 in landscape
-  (was 34), distance from 6.0 m (portrait) or 7.8 m (landscape) instead of 15 m, orbit round the chest. The
+  (was 34), distance from 5.85 m (portrait) or 7.8 m (landscape) instead of 15 m, orbit round the chest; in
+  portrait the view looks 6 deg further down than the orbit so the fight sits above the controls. The
   heading is the old one, so the stick's axes, the bot and the ally's spot do not move: the seeded fight's
   record is the same as on the low tier. Each frame the distance is the closest that keeps the hero whole,
-  the target from knees to head and an ally at the hero's side inside the HUD's margins (`_close_fit`, a
+  the target's chest and face and an ally at the hero's side inside the HUD's margins (`_close_fit`, a
   short search), eased quickly out and slowly in, never past 15 m. A config with `cam_dist` or `cam_pitch`
   keeps the camera it asks for.
 - **Beats** (`look.beats`): the hero's shot before the clock (`BEAT_LEN` 1.8 s: the hero turns to the
@@ -385,3 +386,5 @@ the levers. All of it is on the mid and high tiers only (`TIER_LOOK`); the low t
   stepped self-shadow on faces).
 - `tools/look/cam_probe.gd` measures the hero's height on screen, the target on screen and HUD overlap over
   a whole fight; `tools/look/judge_crops2.py` cuts the round 2 judge pairs.
+- Measured (`cosquest-review/realism-20261111/experiments/look/round2/`): hero height 15 % to about 30 % of the
+  screen in portrait, 23 % to 47 to 49 % in landscape; target off screen under 1 % of frames.
