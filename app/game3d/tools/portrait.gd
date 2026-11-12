@@ -134,8 +134,13 @@ func _pose_library(m: Node3D, key: String, cls: String) -> void:
 		return
 	var st: Dictionary = AnimLib.call("states_for", cls, key)
 	var clip: String = str((st.get("idle", {}) as Dictionary).get("clip", ""))
+	if lib.has_animation("CMU_Idle"):
+		clip = "CMU_Idle"       # the captured stand: the arms hang (the still has no pose layer to lower them)
 	if clip == "":
 		return
+	for own: Node in m.find_children("*", "AnimationPlayer", true, false):
+		(own as AnimationPlayer).stop()
+		(own as AnimationPlayer).active = false
 	var ap := AnimationPlayer.new()
 	m.add_child(ap)
 	ap.root_node = ap.get_path_to(m)
@@ -229,7 +234,8 @@ func _process(_dt: float) -> bool:
 		root.transparent_bg = full
 		_env.background_mode = Environment.BG_CLEAR_COLOR if full else Environment.BG_COLOR
 		RenderingServer.set_default_clear_color(Color(0, 0, 0, 0))
-		root.size = Vector2i(384, 576) if full else Vector2i(512, 512)
+		var fpx: Array = it.get("full_px", [384, 576])      # "full_px": [768, 1152] for the app's hero slot
+		root.size = Vector2i(int(fpx[0]), int(fpx[1])) if full else Vector2i(512, 512)
 		_frame(kind, shot)
 	_wait += 1
 	if _wait < 5:

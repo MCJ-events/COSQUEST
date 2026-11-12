@@ -22,6 +22,7 @@ import { useEquipped } from "@/features/game/forgeWorldDevice";
 
 import { useProgMe, useWaleProfile } from "./data";
 import { notBuiltYet, openGameSheet, openMap } from "./go";
+import { useFactionHero } from "./heroArt";
 import { At, DesignCanvas, type IconName, PlaceholderTag, PreviewSlot, T, Tap, W, glass } from "./kit";
 
 export const HOME_W = 403;
@@ -52,6 +53,7 @@ export default function HomeScreen({ menuOpen = false }: { menuOpen?: boolean })
   const p = useWaleProfile();
   const prog = useProgMe();
   const equipped = useEquipped();
+  const fh = useFactionHero();
   const rank = prog?.rank?.number ?? null;
   const ratio = xpRatio(p.xpHave, p.xpNeed);
   return (
@@ -61,7 +63,7 @@ export default function HomeScreen({ menuOpen = false }: { menuOpen?: boolean })
         {equipped.avatar ? (
           <ForgeModel id={equipped.avatar} held spin style={{ width: 164, height: 417 }} size={417} accessibilityLabel="Your hero" />
         ) : (
-          <PreviewSlot w={164} h={417} shape="body" label="Your hero (placeholder figure)" />
+          <PreviewSlot w={164} h={417} shape="body" image={fh?.full} label={fh ? `Your hero: ${fh.name}` : "Your hero (placeholder figure)"} />
         )}
       </At>
 

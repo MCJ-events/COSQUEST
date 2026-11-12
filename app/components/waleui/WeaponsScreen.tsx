@@ -21,6 +21,7 @@ import { fight3dAvailable } from "@/features/game3d/flags";
 
 import { useArmory } from "./data";
 import { back, notBuiltYet } from "./go";
+import { useFactionHero } from "./heroArt";
 import { At, Band, DesignCanvas, Footer, type IconName, IconTile, PlaceholderTag, PreviewSlot, T, Tap, W, glass } from "./kit";
 
 const FW = 403;
@@ -151,6 +152,7 @@ const PANEL: { id: string; cx: number; cy: number; d: number; color: string; ico
 export function WeaponDetailScreen({ id }: { id?: string | null }) {
   const a: Armory = useArmory();
   const w = findWeapon(a, id);
+  const fh = useFactionHero();
   const equipped = useEquipped();
   if (!w) return <DesignCanvas width={FW} height={946} testID="wale-weapon">{null}</DesignCanvas>;
   const owned = w.state === "owned";
@@ -191,7 +193,7 @@ export function WeaponDetailScreen({ id }: { id?: string | null }) {
 
       {/* the hero with the weapon */}
       <At x={62} y={205} w={210} h={395} testID="wale-weapon-hero">
-        {equipped.avatar ? <ForgeModel id={equipped.avatar} held spin style={{ width: 210, height: 395 }} size={395} accessibilityLabel={`Your hero holding ${w.name}`} /> : <PreviewSlot w={210} h={395} shape="body" label={`Your hero holding ${w.name} (placeholder figure)`} />}
+        {equipped.avatar ? <ForgeModel id={equipped.avatar} held spin style={{ width: 210, height: 395 }} size={395} accessibilityLabel={`Your hero holding ${w.name}`} /> : <PreviewSlot w={210} h={395} shape="body" image={fh?.full} label={fh ? `Your hero ${fh.name} with ${w.name}` : `Your hero holding ${w.name} (placeholder figure)`} />}
       </At>
       {!equipped.avatar ? (
         <At x={170} y={250} w={90} h={90} pointerEvents="none">

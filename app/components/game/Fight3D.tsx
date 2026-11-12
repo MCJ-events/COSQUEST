@@ -49,6 +49,7 @@ import { lookTierDecision } from "@/features/game/lookTier";
 import { acceptLandscape, declineLandscape, holdLandscape, landscapeAccepted, landscapeHeld, landscapeWanted, releaseLandscape } from "@/features/game/orientation";
 import { useAppSelector } from "@/store/hooks";
 import { gameStore } from "@/features/game/runtime";
+import { factionId } from "@/features/waleui/heroCast";
 import type { DuelStart, QuestPoint } from "@/features/game/wire";
 
 import { GameButton, MAX_FONT_SCALE } from "./kit";
@@ -256,6 +257,11 @@ export default function Fight3D({
         const motion = motionTierDecision({ physicalMemory: CostQuestGame?.physicalMemory, env: process.env.EXPO_PUBLIC_MOTION_TIER ?? null });
         Object.assign(config, motion.config);
         log(`motion tier=${motion.tier} (${motion.reason})`);
+        // realism: the player's faction, so Godot plays their faction hero where the fighter has no
+        // character of their own (fight.gd _hero_cast; mid and high look tiers only, the low tier
+        // keeps the built-in cast). No key when the faction is unknown: Godot then picks by the seed.
+        const faction = factionId(gameStore.get().me?.faction ?? null);
+        if (faction) Object.assign(config, { faction: faction === "everborn" ? "everborns" : faction });
         if (holdRef.current) {
           // Ready under the reveal: wait for its handover.
           log(`ready, held for the reveal after_ms=${Date.now() - openedAt.current}`);

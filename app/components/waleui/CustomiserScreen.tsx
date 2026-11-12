@@ -28,6 +28,7 @@ import { View } from "react-native";
 import { EYE_COLORS, FACES, HAIR_COLORS, HAIR_STYLES, HEADWEAR, type Look, type LookKey, OUTFITS, SKIN_TONES, type Swatch, activeLook, equippedLine, lookSummary, randomLook, setPart } from "@/features/waleui/look";
 
 import { back } from "./go";
+import { useFactionHero } from "./heroArt";
 import { At, Band, Check, DesignCanvas, type IconName, IconTile, PreviewSlot, T, Tap, W } from "./kit";
 import { setLook, useLookSaved, useWardrobe } from "./lookStore";
 import { tintOf } from "./WardrobeScreen";
@@ -85,6 +86,7 @@ export default function CustomiserScreen({ initialTab = "faces", previewModel, p
   const [tab, setTab] = useState<CustomTab>(initialTab);
   const wardrobe = useWardrobe();
   const saved = useLookSaved();
+  const fh = useFactionHero();
   const look = activeLook(wardrobe);
   const tint = tintOf(look);
   const pick = (key: LookKey, i: number) => setLook(setPart(look, key, i));
@@ -124,7 +126,7 @@ export default function CustomiserScreen({ initialTab = "faces", previewModel, p
       {/* the look */}
       <LinearGradient colors={outfits ? ["#E3F1F7", "#EAF5FA"] : ["#B3D8E5", "#E9F5FA"]} start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }} style={{ position: "absolute", left: 0, top: 71, width: FW, height: 328 }} />
       <At x={outfits ? 140 : 60} y={outfits ? 82 : 96} w={outfits ? 150 : 310} h={outfits ? 310 : 303} testID="wale-custom-preview">
-        <PreviewSlot w={outfits ? 150 : 310} h={outfits ? 310 : 303} shape={outfits ? "body" : "bust"} tint={tint} headwear={look.headwear} model={previewModel} image={previewImage} label={`Your look: ${lookSummary(look)} (placeholder figure)`} />
+        <PreviewSlot w={outfits ? 150 : 310} h={outfits ? 310 : 303} shape={outfits ? "body" : "bust"} tint={tint} headwear={look.headwear} model={previewModel} image={previewImage ?? (fh ? (outfits ? fh.full : fh.bust) : null)} label={fh && !previewImage && !previewModel ? `Your hero: ${fh.name}` : `Your look: ${lookSummary(look)} (placeholder figure)`} />
       </At>
       <At x={16} y={85.6} w={86} h={24} style={{ borderRadius: 5, backgroundColor: W.chip, alignItems: "center", justifyContent: "center" }} testID="wale-custom-yourlook">
         <T size={8.5} weight={700} color="#FFFFFF" spacing={1.2} style={{ lineHeight: 12 }}>
