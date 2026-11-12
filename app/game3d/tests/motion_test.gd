@@ -70,8 +70,13 @@ func _initialize() -> void:
 	# round 2: the hybrid default, state by state
 	AnimLib.motion = "hybrid"
 	var hb: Dictionary = AnimLib.states_for("sword", "armstrong")
-	_check("hybrid_sword_cuts_are_captured", str((hb.get("attack_1", {}) as Dictionary).get("clip", "")).begins_with("CMU_")
-		and str((hb.get("attack_3", {}) as Dictionary).get("clip", "")).begins_with("CMU_"), str(hb.get("attack_1", {})))
+	_check("hybrid_first_cuts_are_captured", str((hb.get("attack_1", {}) as Dictionary).get("clip", "")).begins_with("CMU_")
+		and str((hb.get("attack_2", {}) as Dictionary).get("clip", "")).begins_with("CMU_"), str(hb.get("attack_1", {})))
+	_check("hybrid_third_cut_is_the_classic_chop_turned_onto_the_target", str((hb.get("attack_3", {}) as Dictionary).get("clip", "")) == "1H_Melee_Attack_Chop"
+		and float((hb.get("attack_3", {}) as Dictionary).get("aim_yaw_deg", 0.0)) > 20.0, str(hb.get("attack_3", {})))
+	_check("hybrid_idle_and_victory_are_classic", str((hb.get("idle", {}) as Dictionary).get("clip", "")) == "Idle"
+		and str((hb.get("victory", {}) as Dictionary).get("clip", "")) == "Cheer" and str((hb.get("run", {}) as Dictionary).get("clip", "")) == "CMU_Jog",
+		"%s %s %s" % [str((hb.get("idle", {}) as Dictionary).get("clip", "")), str((hb.get("victory", {}) as Dictionary).get("clip", "")), str((hb.get("run", {}) as Dictionary).get("clip", ""))])
 	var hs: Dictionary = AnimLib.states_for("staff", "hoof")
 	_check("hybrid_two_handed_heavy_stays_classic", str((hs.get("heavy", {}) as Dictionary).get("clip", "")) == "2H_Melee_Attack_Chop", str(hs.get("heavy", {})))
 	AnimLib.state_modes = {"attack_1": "blend"}

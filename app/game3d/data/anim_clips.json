@@ -859,14 +859,24 @@
  "motion_default": "classic",
  "hybrid_states": {
   "staff": {
-   "heavy": "classic"
+   "heavy": "classic",
+   "victory": "classic"
   },
   "heavy": {
    "heavy": "classic",
-   "attack_3": "classic"
+   "attack_3": "classic",
+   "victory": "classic"
   },
   "blade": {
-   "attack_3": "classic"
+   "attack_3": "classic",
+   "victory": "classic",
+   "idle": "classic"
+  },
+  "gun": {
+   "victory": "classic"
+  },
+  "unarmed": {
+   "victory": "classic"
   }
  },
  "clips": {

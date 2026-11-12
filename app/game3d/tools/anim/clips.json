@@ -2261,15 +2261,25 @@
  "_doc_mocap": "realism-20261111: sets_mocap overlays the classic sets per weapon set and state when the game's motion switch is \"mocap\" (config \"motion\", anim_library.gd); a state with no overlay or no pick under the gate keeps its classic clip. set_base: a set that exists only in the overlay (unarmed) takes the rest of its states from this classic set. Sources per clip are in clips.<name>.source; lib cmu = cmu2glb.py, lib m2m = m2m_merge.py. run and sprint both play the captured jog (one cycle, rate = body speed / its ground speed): the UAL sprint was retargeted with its leg swing halved and shuffles.",
  "hybrid_states": {
   "staff": {
-   "heavy": "classic"
+   "heavy": "classic",
+   "victory": "classic"
   },
   "heavy": {
    "heavy": "classic",
-   "attack_3": "classic"
+   "attack_3": "classic",
+   "victory": "classic"
   },
   "blade": {
-   "attack_3": "classic"
+   "attack_3": "classic",
+   "victory": "classic",
+   "idle": "classic"
+  },
+  "gun": {
+   "victory": "classic"
+  },
+  "unarmed": {
+   "victory": "classic"
   }
  },
- "_doc_hybrid": "round 2: hybrid_states[set][state] = mocap | classic | blend for the game's \"hybrid\" motion (the default with motion_realism). A state not listed plays its overlay clip. From the round 2 runs: the sword's first and second cuts stay captured (0 swings off target against 13 of 13 for the classic first cut; the judge preferred captured on the cast 6 to 0 and 2 to 0); the third cut is the classic chop (the judge preferred build 21's 6 to 2) turned onto the target by its aim_yaw_deg; the two-handed heavy stays classic."
+ "_doc_hybrid": "hybrid_states[set][state] = mocap | classic | blend for the game's \"hybrid\" motion (the default with motion_realism). A state not listed plays its overlay clip. As judged in rounds 2 and 3: the sword's first and second cuts are captured (the second beat build 21 3 to 0 and the classic 6 to 0); the third cut is the classic chop turned onto the target by its aim_yaw_deg (captured lost to build 21 2 to 6); the two-handed heavy is classic; the sword idle is classic (it beat build 21 7 to 0 once a standing fighter stood still, and the captured idle 10 to 2); the victory is classic (Mesh2Motion's did not beat it: 1 to 1, 4 undecided)."
 }
