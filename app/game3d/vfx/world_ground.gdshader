@@ -27,6 +27,7 @@ uniform vec3 ao_col : source_color = vec3(0.42, 0.416, 0.478);
 uniform float ao_alpha = 0.55;
 uniform float roughness = 0.92;
 uniform float uv_world_y = 0.0;        // 1: tile on (x+z, y) for vertical faces (kerb fronts)
+uniform float expose = 1.0;            // realism round 2: the paving's exposure (look "ground_k"; 1 = as before)
 
 varying vec3 wpos;
 varying float vshadow;
@@ -57,7 +58,7 @@ void fragment() {
 		}
 	}
 	vshadow = sh;
-	ALBEDO = a;
+	ALBEDO = a * expose;
 	ROUGHNESS = roughness;
 }
 

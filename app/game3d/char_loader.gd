@@ -75,6 +75,9 @@ func load_glb(path: String, real: bool = false) -> Dictionary:
 		var mask: Texture2D = skin_mask(path, state)
 		if mask != null:
 			out["skin_mask"] = mask
+		var hair: Texture2D = skin_mask(path, state, "hair")
+		if hair != null:
+			out["hair_mask"] = hair
 	out["node"] = node
 	out["ok"] = true
 	return out
@@ -85,7 +88,8 @@ const GEN_TANGENTS: int = 8    # EditorSceneFormatImporter.IMPORT_GENERATE_TANGE
 
 ## The Forge skin mask of a character file: the PNG the material's extras name (forge_skin.mask_file), else
 ## "<file>_skin.png", beside the GLB. Red = skin, in the model's UVs. null when there is none.
-static func skin_mask(path: String, state: GLTFState) -> Texture2D:
+## `kind` "hair": the hair mask the same way (extras.forge_hair, "<file>_hair.png"; realism round 2).
+static func skin_mask(path: String, state: GLTFState, kind: String = "skin") -> Texture2D:
 	if path.begins_with("res://"):
 		return null
 	var names: Array[String] = []
@@ -93,10 +97,12 @@ static func skin_mask(path: String, state: GLTFState) -> Texture2D:
 	if mats is Array:
 		for m: Variant in mats:
 			var ex: Variant = (m as Dictionary).get("extras", {}) if m is Dictionary else {}
-			var fs: Variant = (ex as Dictionary).get("forge_skin", {}) if ex is Dictionary else {}
+			var fs: Variant = (ex as Dictionary).get("forge_" + kind, {}) if ex is Dictionary else {}
 			if fs is Dictionary and str((fs as Dictionary).get("mask_file", "")) != "":
 				names.append(str(fs["mask_file"]).get_file())
-	names.append(path.get_file().get_basename() + "_skin.png")
+			elif fs is String and str(fs) != "":
+				names.append(str(fs).get_file())     # the 11 Nov asset builds name the file directly
+	names.append(path.get_file().get_basename() + "_" + kind + ".png")
 	for nm: String in names:
 		var p: String = path.get_base_dir().path_join(nm)
 		if not FileAccess.file_exists(p):

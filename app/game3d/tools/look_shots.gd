@@ -24,6 +24,8 @@ var _t0_usec: int = 0
 var _frame_ms: Array[float] = []
 var _last_usec: int = 0
 var _cam: Camera3D
+var _intro_done: bool = false
+var _win_done: bool = false
 
 
 func _initialize() -> void:
@@ -57,6 +59,20 @@ func _process(_dt: float) -> bool:
 	var f: Node = _fight()
 	if f == null or not is_instance_valid(f) or _busy:
 		return false
+	# round 2: "beat_shot": seconds into the hero's intro shot (a tier without one: the fight's first frame);
+	# "win_shot": seconds after the fight ends in a win. Both from the game camera only.
+	if plan.has("beat_shot") and not _intro_done:
+		var bt: float = float(f.get("_beat_t"))
+		if (f.state == "intro" and bt >= float(plan["beat_shot"])) or f.state == "fighting":
+			_intro_done = true
+			_busy = true
+			_take.call_deferred({"name": "intro", "game_only": true}, f)
+			return false
+	if plan.has("win_shot") and not _win_done and f.state == "ending" and float(f.get("_end_t")) >= float(plan["win_shot"]):
+		_win_done = true
+		_busy = true
+		_take.call_deferred({"name": "win", "game_only": true, "then_quit": true}, f)
+		return false
 	if _fight_frames < 0:
 		if f.state == "fighting":
 			_fight_frames = 0
@@ -82,7 +98,7 @@ func _process(_dt: float) -> bool:
 	if not _shots.is_empty() and float(_shots[0]["t"]) <= t:
 		_busy = true
 		_take.call_deferred(_shots.pop_front(), f)
-	elif _shots.is_empty() and t >= float(plan.get("quit_s", 0.0)):
+	elif _shots.is_empty() and ((t >= float(plan.get("quit_s", 0.0)) and not plan.has("win_shot")) or _win_done or f.state == "done" or t > 44.0):
 		_done = true
 		quit.call_deferred(0)
 	return false
@@ -137,9 +153,9 @@ func _take(s: Dictionary, f: Node) -> void:
 		Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME), Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME),
 		Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME)])
 	var views: Array = [["game", {}]]
-	if plan.has("side"):
+	if plan.has("side") and not bool(s.get("game_only", false)):
 		views.append(["side", plan["side"]])
-	if plan.has("close"):
+	if plan.has("close") and not bool(s.get("game_only", false)):
 		views.append(["close", plan["close"]])
 	var meta: Dictionary = {"prefix": prefix, "shot": name, "views": {}}
 	for v: Array in views:
@@ -180,6 +196,9 @@ func _take(s: Dictionary, f: Node) -> void:
 	print("CQLOOK shot %s_%s t=%.2f" % [prefix, name, _fight_frames / 30.0])
 	paused = false
 	_busy = false
+	if bool(s.get("then_quit", false)):
+		_done = true
+		quit.call_deferred(0)
 
 
 ## The fighter's box on the screen [x0, y0, x1, y1] in pixels of the saved image.

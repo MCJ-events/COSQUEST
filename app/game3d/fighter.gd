@@ -20,12 +20,13 @@ const LIT_SHADER := preload("res://vfx/char_lit.gdshader")
 ## realism (LOOK.md "The real look"): the mid and high tiers' fighter material (look "real")
 const REAL_SHADER := preload("res://vfx/char_real.gdshader")
 const LookReal := preload("res://look_real.gd")
-const REAL_RIM: float = 0.6           # the rim's strength on the real material (char_lit's is 1.35)
+const REAL_RIM: float = 0.5           # the rim's strength on the real material (char_lit's is 1.35)
 ## The fill: the street's measured ambient times this, per time of day. At dusk and at night the street's
 ## lamps and windows are drawn as cards (light pools on the paving, halos), which light nothing, so the
 ## measured light on a fighter is less than the paving shows; without this they are silhouettes at night
 ## (measured: LOOK.md). Golden hour and day use the measured light as it is.
-const REAL_FILL: Dictionary = {"golden": 1.0, "day": 1.0, "dusk": 1.35, "night": 2.4}
+## round 2: with the key turned to the camera's side the fill is smaller (dusk 1.35 -> 1.2, night 2.4 -> 1.9).
+const REAL_FILL: Dictionary = {"golden": 1.0, "day": 1.0, "dusk": 1.2, "night": 1.9}
 const SKIN_GUESS: float = 0.6         # the skin term's strength when it is guessed from colour (no Forge mask)
 const ArenaScript := preload("res://arena.gd")
 const DOME_SHADER := preload("res://vfx/dome.gdshader")
@@ -89,6 +90,7 @@ var _lit_mats: Array[ShaderMaterial] = []
 var _lit_flash: float = -1.0
 var rim_on: bool = true                                  # set by fight.gd from the look ("rim": false = the old material + overlay)
 var look: Dictionary = {}                                # the arena's look (set by fight.gd)
+var hair_mask: Texture2D = null                          # realism round 2: the model's Forge hair mask
 var skin_mask: Texture2D = null                          # realism: the model's Forge skin mask (fight.gd, before set_model)
 var _surf_tangents: bool = false                         # the surface being converted has tangents (normal map)
 var sun_blob: bool = true                                # set by fight.gd from the look ("ao")
@@ -562,6 +564,9 @@ func _real_material(b: BaseMaterial3D) -> ShaderMaterial:
 		sm.set_shader_parameter("skin_mode", 2)
 		sm.set_shader_parameter("skin_amount", SKIN_GUESS)
 	sm.set_shader_parameter("skin_lobe2", 0.18 if skin == "full" else 0.0)
+	if hair_mask != null and bool(look.get("hair", true)):
+		sm.set_shader_parameter("hair_on", true)
+		sm.set_shader_parameter("hair_tex", hair_mask)
 	# the street's light at this time of day
 	var tp: Dictionary = ArenaScript.time_preset(look)
 	var e: Dictionary = LookReal.env_for(str(look.get("time", "golden")))

@@ -36,8 +36,12 @@ uniform float ao_amount = 0.0;             // the model's occlusion (the packed 
 uniform int skin_mode = 0;
 uniform sampler2D skin_tex : hint_default_black, filter_linear_mipmap, repeat_enable;
 uniform float skin_amount = 1.0;
-uniform vec3 skin_wrap = vec3(0.32, 0.13, 0.05);   // how far the light wraps past the terminator, per channel
+uniform vec3 skin_wrap = vec3(0.22, 0.08, 0.03);   // how far the light wraps past the terminator, per channel
 uniform float skin_lobe2 = 0.18;           // the share of the second, tighter specular lobe (0 = one lobe)
+// hair (round 2): the Forge hair mask (red). Hair is never skin, keeps a rough base, and takes a strand
+// highlight that runs across the strands (they hang down the head) instead of the round GGX one
+uniform bool hair_on = false;
+uniform sampler2D hair_tex : hint_default_black, filter_linear_mipmap, repeat_enable;
 uniform float skin_back = 0.22;            // light through thin skin at the silhouette when the key is behind (ears, fingers)
 
 // the street's light at this time of day (look_real.gd)
@@ -65,6 +69,7 @@ uniform vec4 la2; uniform vec4 lb2;
 uniform vec4 la3; uniform vec4 lb3;
 
 varying float v_skin;
+varying float v_hair;
 
 vec3 cap_push(vec3 p, vec4 a, vec4 b) {
 	vec3 ab = b.xyz - a.xyz;
@@ -129,11 +134,19 @@ void fragment() {
 	if (skin_mode == 1) {
 		// the mask, checked against the colour: Forge's mask also marks red and brown armour as skin
 		// (measured on the Kade test character), and armour must not get the skin's wrap
-		skin = texture(skin_tex, UV).r * mix(0.25, 1.0, skin_guess(base));
+		skin = texture(skin_tex, UV).r * mix(0.1, 1.0, skin_guess(base));
 	} else if (skin_mode == 2) {
 		skin = skin_guess(base);
 	}
 	skin *= skin_amount * (1.0 - metal);
+	float hair = 0.0;
+	if (hair_on) {
+		hair = texture(hair_tex, UV).r;
+		skin *= 1.0 - hair;
+		rough = mix(rough, max(rough, 0.5), hair);
+		metal *= 1.0 - hair;
+	}
+	v_hair = hair;
 	if (debug_view == 1) {
 		base = vec3(0.5);     // one mid-grey for every fighter: the light alone (measure.py, the grey test)
 		metal = 0.0;
@@ -172,6 +185,9 @@ void fragment() {
 		vec3 e = textureLod(env_cube, r, rough * env_lods).rgb;
 		e = e * e * env_scale;
 		vec2 ab = env_brdf(rough, nov);
+		// round 2: a rough, non-metal surface at a grazing angle mirrored the bright sky as a grey haze
+		// (the top of dark hair): its edge reflection fades with roughness
+		ab.y *= mix(1.0 - 0.75 * rough, 1.0, metal);
 		// what the body itself hides: no bright sky in a crease or under the chin
 		float so = clamp(pow(nov + ao, exp2(-16.0 * rough - 1.0)) - 1.0 + ao, 0.0, 1.0);
 		// single scattering loses energy on rough metal (it goes dark): give back the multiple-scatter share
@@ -185,7 +201,7 @@ void fragment() {
 	float sunward = smoothstep(-0.15, 0.55, dot(NORMAL, to_key));
 	// the rim: the key light at a grazing angle, where every surface reflects (Fresnel), so it is mostly
 	// the light's colour and a little of the surface's; the team tint on the far side stays a hint
-	vec3 rim = mix(rim_team * team_amount, rim_key, sunward) * fr * rim_amount * mix(vec3(1.0), base * 1.6 + 0.08, 0.35);
+	vec3 rim = mix(rim_team * team_amount, rim_key, sunward) * fr * rim_amount * mix(vec3(1.0), base * 1.6 + 0.04, 0.7);
 	vec3 hit = vec3(1.0, 0.86, 0.62) * flash * (0.06 + 1.15 * fr);
 	float body = smoothstep(0.35, 1.0, glow);
 	vec3 gl = vec3(1.0, 0.97, 0.92) * glow * (0.6 * body + 0.75 * pow(f, 1.5))
@@ -198,7 +214,7 @@ void fragment() {
 	EMISSION = diffuse_amb + spec_amb + rim + hit + gl + texture(emission_tex, UV).rgb * emission;
 	if (debug_view == 3) {
 		ALBEDO = vec3(0.0);
-		EMISSION = vec3(skin, skin * 0.4, 0.05);
+		EMISSION = vec3(skin, skin * 0.4, v_hair);
 	} else if (debug_view == 4) {
 		ALBEDO = vec3(0.0);
 		EMISSION = nw * 0.5 + 0.5;
@@ -242,5 +258,14 @@ void light() {
 	float vis = 0.5 / max(mix(2.0 * cndl * ndv, cndl + ndv, al), 0.0001);
 	vec2 ab = env_brdf(ROUGHNESS, ndv);
 	vec3 ms = 1.0 + f0 * (1.0 / max(ab.x + ab.y, 0.2) - 1.0);
-	SPECULAR_LIGHT += LIGHT_COLOR * ATTENUATION * cndl * dd * vis * fr * ms;
+	vec3 spec = cndl * dd * vis * fr * ms;
+	if (v_hair > 0.0) {
+		// Kajiya-Kay on a solid sculpt: the strands run down the head (the view's up, laid on the surface)
+		vec3 up = normalize((VIEW_MATRIX * vec4(0.0, 1.0, 0.0, 0.0)).xyz);
+		vec3 t = normalize(up - NORMAL * dot(NORMAL, up) + NORMAL * 0.08);
+		float th = dot(t, h);
+		float strand = pow(sqrt(max(1.0 - th * th, 0.0)), 48.0);
+		spec = mix(spec, vec3(strand * 0.22 * smoothstep(-0.1, 0.4, ndl)) * mix(vec3(1.0), ALBEDO * 3.0 + 0.1, 0.6), v_hair);
+	}
+	SPECULAR_LIGHT += LIGHT_COLOR * ATTENUATION * spec;
 }

@@ -18,6 +18,12 @@ func _initialize() -> void:
 		"hero_glb": str(a.get("hero", "")), "ally_glb": str(a.get("ally", "")), "enemy_glb": str(a.get("enemy", "")),
 		"hero_key": keys[0], "ally_key": keys[1] if keys.size() > 1 else "", "enemy_key": keys[2] if keys.size() > 2 else "",
 		"load_thread": false, "render_scale": 0.5}
+	if a.has("tier"):
+		cfg["tier"] = str(a["tier"])    # realism: the same fight on another look tier (the record must not change)
+	if a.has("look"):
+		cfg["look"] = JSON.parse_string(str(a["look"]))
+	if a.has("land"):
+		cfg["landscape"] = true
 	var main: Node = load("res://main.tscn").instantiate()
 	root.add_child(main)
 	current_scene = main

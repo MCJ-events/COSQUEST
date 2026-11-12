@@ -50,6 +50,7 @@ func _process(_dt: float) -> bool:
 			return true
 		var cfg: Dictionary = {"mode": "full", "duration_s": 45, "autoplay": false, "seed": 1, "load_thread": false, "place_thread": false,
 			"quality": "low", "render_scale": 0.5, "dyn_res": false, "music": false, "sound": false, "intro": false,
+			"tier": "mid",    # the street as the real look draws it (round 2: the turned key, the paving's exposure)
 			"look": {"time": times[_ti], "night": true, "bloom": false, "shadows": false}}
 		root.get_node("Bridge").start_fight.call_deferred(JSON.stringify(cfg))
 		_state = "load"

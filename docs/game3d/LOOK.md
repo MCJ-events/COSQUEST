@@ -352,3 +352,36 @@ high 202 MB. Draw calls unchanged (295). On-device frame time is not measured.
 
 **Tools:** `tools/look_shots.gd` (the same paused moment from the game, side and close cameras, with mask
 renders), `tools/look/measure.py` (BAR.md section D from those frames), `tools/look/judge_crops.py`.
+
+### Round 2 (12 Nov): camera, beats, light direction
+After the first judge run (6 wins in 30) the coordinator ruled that size on screen and light direction are
+the levers. All of it is on the mid and high tiers only (`TIER_LOOK`); the low tier is unchanged.
+
+- **Close camera** (`look.cam: "close"`, `fight.gd CLOSE_*`): pitch 20 deg in portrait and 16 in landscape
+  (was 34), distance from 6.0 m (portrait) or 7.8 m (landscape) instead of 15 m, orbit round the chest. The
+  heading is the old one, so the stick's axes, the bot and the ally's spot do not move: the seeded fight's
+  record is the same as on the low tier. Each frame the distance is the closest that keeps the hero whole,
+  the target from knees to head and an ally at the hero's side inside the HUD's margins (`_close_fit`, a
+  short search), eased quickly out and slowly in, never past 15 m. A config with `cam_dist` or `cam_pitch`
+  keeps the camera it asks for.
+- **Beats** (`look.beats`): the hero's shot before the clock (`BEAT_LEN` 1.8 s: the hero turns to the
+  camera, chest-up, then the camera pulls back as the hero turns to the Guardian; a tap on ATTACK skips it;
+  the HUD is hidden for it; config `"intro": false` turns it off), a closer victory shot (the winner turns
+  to the camera, 4.4 m, 9 deg), and a harder push-in on heavy hits. The fight's clock is untouched, but the
+  seeded record is NOT the same with the beat: build 21's own record changes whenever the fight starts a
+  few frames later (measured with its view wait), so the record depends on what runs before the clock.
+- **Light** (`look.key_yaw` -25, `look.key_elev_min` 24, `look.ground_k`): the sun comes from behind the
+  camera's left shoulder instead of from up the street, so the side of a fighter the camera sees is the lit
+  side, the shadows fall up the street, and the fill factors are smaller (`REAL_FILL` dusk 1.2, night 1.9).
+  The sun is never lower than 24 deg (at dusk's 14 one fighter's shadow lay across the next one's face).
+  The paving's exposure is 0.62 at golden hour and by day, 0.85 at dusk, 1.0 at night
+  (`vfx/world_ground.gdshader expose`, the street floor and the medallion). The street's cube was baked
+  again with this light (`tools/look/env_capture.gd` now captures on the mid tier).
+- **Faces and hair**: narrower skin wrap, the skin mask's floor on non-skin colours 0.1, rough non-metal
+  surfaces no longer mirror the sky at grazing angles (the grey haze on dark hair), the rim follows the
+  surface's colour more. A Forge hair mask (`lodN_hair.png`, `extras.forge_hair`) gives hair its own path:
+  never skin, rough base, a strand highlight (Kajiya-Kay on the solid sculpt).
+- **Shadows**: the renderer's 13-tap soft filter on the high tier, blur 3, bias 0.2 (the low sun drew
+  stepped self-shadow on faces).
+- `tools/look/cam_probe.gd` measures the hero's height on screen, the target on screen and HUD overlap over
+  a whole fight; `tools/look/judge_crops2.py` cuts the round 2 judge pairs.
