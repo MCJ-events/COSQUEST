@@ -588,8 +588,8 @@ func _quality() -> String:
 ## A config with cam_dist or cam_pitch (review captures) keeps the camera it asks for.
 const CLOSE_PITCH: float = 20.0          # deg above the fight, portrait
 const CLOSE_PITCH_LAND: float = 16.0
-const CLOSE_TILT: float = 2.0            # portrait: the view's extra pitch over the orbit (deg)
-const CLOSE_DIST: float = 6.0            # m: the hero alone, portrait (about a third of the screen's height)
+const CLOSE_TILT: float = 6.0            # portrait: the view's extra pitch over the orbit (deg)
+const CLOSE_DIST: float = 5.85            # m: the hero alone, portrait (about a third of the screen's height)
 const CLOSE_DIST_LAND: float = 7.8       # landscape (about two fifths)
 const CLOSE_PIVOT_H: float = 1.15        # the orbit turns round the hero's chest, not the knees
 const CLOSE_MAX: float = 15.0            # build 21's distance: the furthest it pulls back
@@ -629,9 +629,10 @@ func _close_fit() -> float:
 	var pivot: Vector3 = _focus + Vector3.UP * CLOSE_PIVOT_H
 	var pts: Array[Vector3] = [hero.position, hero.position + Vector3.UP * (FighterScript.HEIGHT * hero.size_k + 0.15)]
 	if enemy != null and not enemy.dead:
-		# the target from the knees to the head (a boss is half as tall again: its feet may leave the frame)
-		pts.append(enemy.position + Vector3.UP * 0.6 * enemy.size_k)
-		pts.append(enemy.position + Vector3.UP * (FighterScript.HEIGHT * enemy.size_k * 0.85))
+		# the target's chest and face (a boss is half as tall again, and a target standing between the hero
+		# and the camera is very large: its legs and the top of its head may leave the frame)
+		pts.append(enemy.position + Vector3.UP * (FighterScript.HEIGHT * enemy.size_k * 0.55))
+		pts.append(enemy.position + Vector3.UP * (FighterScript.HEIGHT * enemy.size_k * 0.78))
 	if ally != null and not ally.dead and ally.visible and _flat(ally.position - hero.position).length() < (3.0 if _landscape else 1.6):
 		# a third fighter in the brawl beside the hero: its body's middle stays in the frame
 		pts.append(ally.position + Vector3.UP * 1.2)
@@ -2457,10 +2458,11 @@ func _follow_camera(dt: float) -> void:
 		if enemy != null and not enemy.dead and not bool(cfg.get("cam_hero_only", false)):
 			target = target.lerp((hero.position + enemy.position) * 0.5, 0.5)
 		if _close:
-			# the close camera stays with the hero and leans nearly half way to its target
+			# the close camera stays with the hero and leans towards its target (less in portrait: a hero nearer
+			# the camera than the focus drops under the controls)
 			target = hero.position + _look * 0.5
 			if enemy != null and not enemy.dead and not bool(cfg.get("cam_hero_only", false)):
-				target = target.lerp(enemy.position, 0.45 if _landscape else 0.5)
+				target = target.lerp(enemy.position, 0.45 if _landscape else 0.3)
 		# look-fight dynamic framing: a little closer while the hero and the Guardian are engaged
 		var engaged: bool = enemy != null and not enemy.dead and _flat(enemy.position - hero.position).length() < FRAME_NEAR_M
 		_frame_k = lerpf(_frame_k, 1.0 if engaged else 0.0, 1.0 - exp(-dt * 1.6))
