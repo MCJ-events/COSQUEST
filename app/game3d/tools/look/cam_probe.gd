@@ -73,9 +73,9 @@ func _process(_dt: float) -> bool:
 		if near.distance_to(cc) < float(c[1]):
 			over = 1
 	# round 3: the heads. The hero's and the target's head point against the same controls
-	var heads: Array[Vector3] = [hero.global_position + Vector3.UP * 2.1 * float(hero.get("size_k"))]
+	var heads: Array[Vector3] = [hero.global_position + Vector3.UP * 2.0 * float(hero.get("size_k"))]
 	if enemy != null and not enemy.get("dead"):
-		heads.append(enemy.global_position + Vector3.UP * 2.1 * float(enemy.get("size_k")))
+		heads.append(enemy.global_position + Vector3.UP * 2.0 * float(enemy.get("size_k")))
 	var head_over: int = 0
 	for hp: Vector3 in heads:
 		if cam.is_position_behind(hp):

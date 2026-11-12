@@ -596,7 +596,8 @@ const CLOSE_DIST: float = 5.85            # m: the hero alone, portrait (about a
 const CLOSE_DIST_LAND: float = 7.8       # landscape (about two fifths)
 const CLOSE_PIVOT_H: float = 1.15        # the orbit turns round the hero's chest, not the knees
 const CLOSE_MAX: float = 15.0            # build 21's distance: the furthest it pulls back
-const CLOSE_MARGIN: Vector3 = Vector3(0.94, 0.72, 0.8)   # across, above, below: the share of the half screen fighters may use
+const CLOSE_MARGIN: Vector3 = Vector3(0.94, 0.72, 0.8)
+const CLOSE_MARGIN_LAND_TOP: float = 0.70    # landscape: the top block is 112 of 720 HUD px
 const CLOSE_BOUNDS_X: float = 4.2
 const CLOSE_WIN_DIST: float = 4.4        # the victory shot: the winner from the knees up
 const CLOSE_WIN_DIST_LAND: float = 5.2
@@ -636,6 +637,10 @@ func _close_fit() -> float:
 		# and the camera is very large: its legs and the top of its head may leave the frame)
 		pts.append(enemy.position + Vector3.UP * (FighterScript.HEIGHT * enemy.size_k * 0.55))
 		pts.append(enemy.position + Vector3.UP * (FighterScript.HEIGHT * enemy.size_k * 0.78))
+		if _landscape:
+			# round 3: landscape has room to spare (the hero is well over the target size), so the target's
+			# whole head stays below the top block; portrait cannot afford it (the hero drops to a quarter)
+			pts.append(enemy.position + Vector3.UP * (FighterScript.HEIGHT * enemy.size_k * 0.9))
 	if ally != null and not ally.dead and ally.visible and _flat(ally.position - hero.position).length() < (3.0 if _landscape else 1.6):
 		# a third fighter in the brawl beside the hero: its body's middle stays in the frame
 		pts.append(ally.position + Vector3.UP * 1.2)
@@ -662,7 +667,7 @@ func _close_ok(pts: Array[Vector3], pivot: Vector3, d: float, tv: float, th: flo
 		if depth < 0.6:
 			return false
 		var y: float = r.dot(_view_basis.y)
-		if absf(r.dot(_view_basis.x)) > depth * th * CLOSE_MARGIN.x or y > depth * tv * CLOSE_MARGIN.y or -y > depth * tv * CLOSE_MARGIN.z:
+		if absf(r.dot(_view_basis.x)) > depth * th * CLOSE_MARGIN.x or y > depth * tv * (CLOSE_MARGIN_LAND_TOP if _landscape else CLOSE_MARGIN.y) or -y > depth * tv * CLOSE_MARGIN.z:
 			return false
 	return true
 
