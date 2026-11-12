@@ -388,3 +388,18 @@ the levers. All of it is on the mid and high tiers only (`TIER_LOOK`); the low t
   a whole fight; `tools/look/judge_crops2.py` cuts the round 2 judge pairs.
 - Measured (`cosquest-review/realism-20261111/experiments/look/round2/`): hero height 15 % to about 30 % of the
   screen in portrait, 23 % to 47 to 49 % in landscape; target off screen under 1 % of frames.
+
+### Round 3 (12 Nov): what blocked shipping the close camera
+Evidence: `cosquest-review/realism-20261111/experiments/look/round3/README.md`.
+- **Face patch:** the baked normal map is noisy on faces; on skin it is read four mips down at 0.15 strength
+  (`char_real.gdshader`). Fighters do not take the shadow map's shadow on themselves (`look.self_shadow: false`).
+- **Fill:** `fighter.gd REAL_CAM_FILL` (dusk 0.5, night 0.6, the sky's colour, from the camera's left shoulder, with a
+  wide sheen) and `REAL_KEY_SAT` (dusk 0.6). Pale surfaces take less of it. Open: a cream coat is still 2.84 times
+  the paving at night.
+- **Hit order:** `hit_area.gd ordered` (`look.hit_order`, mid and high): fighters struck by one opening are reported
+  in scene order. Build 21 reports them in the physics server's order, which changes with how long it has run, so
+  its seeded record depends on when the fight starts. Test hook: config `start_delay` (frames), `tests/seeded_fight.gd
+  --delay= --tier= --look=`.
+- **HUD:** name plates stay below the top block (`hud.gd plate_min_y`); in landscape the camera keeps the target's
+  face below the block. `tools/look/cam_probe.gd` reports heads under HUD controls.
+- **Leaves:** with the close camera, place_life's leaves have a leaf outline and fade within 4 m of the camera.
