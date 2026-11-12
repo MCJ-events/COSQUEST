@@ -106,6 +106,22 @@ var rim_on: bool = true                                  # set by fight.gd from 
 var look: Dictionary = {}                                # the arena's look (set by fight.gd)
 var hair_mask: Texture2D = null                          # realism round 2: the model's Forge hair mask
 var skin_mask: Texture2D = null                          # realism: the model's Forge skin mask (fight.gd, before set_model)
+var surface_kinds: Dictionary = {}                       # realism round 5: material name -> "skin" | "hair" (char_loader.surface_kinds)
+static var _white_tex: ImageTexture = null
+## realism round 5 (13 Nov): per time of day, the key's colour on skin pulled towards white (the street keeps its colour)
+const SKIN_KEY_DESAT: Dictionary = {"golden": 0.45, "day": 0.2, "dusk": 0.35, "night": 0.2}
+const SKIN_ROUGH_MIN: float = 0.5
+## skin's colour balance per time of day: the golden street light and the golden grade together turned faces orange
+## (measured on game frames against the concept's skin: b* 44 against 24). Linear multipliers on skin's base colour.
+const SKIN_WB: Dictionary = {"golden": [0.8, 0.83, 1.17]}
+const NORMAL_FADE: float = 1.5            # texels per screen pixel where the detail normal starts to fade
+## the face fill (fight.gd set_face_fill): colour x strength; close = the intro beat and the victory shot
+const FACE_FILL_COL: Color = Color(1.0, 0.82, 0.74)    # warm: the street is warm, a white fill read as a flash
+const FACE_FILL_CLOSE: float = 0.25
+const FACE_FILL_FIGHT: float = 0.08
+var _face_fill_k: float = -1.0
+const FaceLifeScript := preload("res://face_life.gd")
+var face_life: RefCounted = null                         # realism round 5: blinks and gaze (face_life.gd), heroes with the shape keys
 var _surf_tangents: bool = false                         # the surface being converted has tangents (normal map)
 var sun_blob: bool = true                                # set by fight.gd from the look ("ao")
 var key_dir: Vector3 = Vector3(0.65, -0.56, 0.51)       # the key light's direction (arena.gd)
@@ -383,6 +399,7 @@ func _clear_model() -> void:
 	if model != null:
 		model.queue_free()
 	model = null
+	face_life = null
 	weapons = {}
 
 
@@ -439,6 +456,7 @@ func set_model(node: Node3D) -> Dictionary:
 	anim.arm_droop = BOSS_ARM_DROOP if role == "boss" else 0.0
 	anim.play("idle")
 	_apply_overlay(holder)
+	face_life = FaceLifeScript.attach(holder, display_name.hash() + team) if bool(look.get("real", false)) and bool(look.get("face_life", true)) else null
 	_wire_cloth(holder)
 	var names: PackedStringArray = anim.player.get_animation_list() if anim.player != null else PackedStringArray()
 	return {"scale": s, "height_raw": aabb.size.y, "anims": names, "mapped": bind_info.get("clips", {}),
@@ -609,8 +627,21 @@ func _real_material(b: BaseMaterial3D) -> ShaderMaterial:
 		sm.set_shader_parameter("ao_amount", 1.0)
 	# skin: the Forge mask when the model came with one, else a guess from the colour at part strength
 	var skin: String = str(look.get("skin", "full"))
+	var kind: String = str(surface_kinds.get(b.resource_name, ""))
 	if skin == "off" or skin == "false":
 		sm.set_shader_parameter("skin_mode", 0)
+	elif kind == "skin":
+		# a fitted head: the whole surface is skin, the colour check still leaves out brows, lashes, the eyes and the scalp
+		if _white_tex == null:
+			var wimg := Image.create(1, 1, false, Image.FORMAT_R8)
+			wimg.fill(Color.WHITE)
+			_white_tex = ImageTexture.create_from_image(wimg)
+		sm.set_shader_parameter("skin_mode", 1)
+		sm.set_shader_parameter("skin_tex", _white_tex)
+		sm.set_shader_parameter("skin_amount", 1.0)
+	elif kind == "hair":
+		sm.set_shader_parameter("skin_mode", 0)
+		sm.set_shader_parameter("hair_all", 1.0)
 	elif skin_mask != null:
 		sm.set_shader_parameter("skin_mode", 1)
 		sm.set_shader_parameter("skin_tex", skin_mask)
@@ -619,7 +650,7 @@ func _real_material(b: BaseMaterial3D) -> ShaderMaterial:
 		sm.set_shader_parameter("skin_mode", 2)
 		sm.set_shader_parameter("skin_amount", SKIN_GUESS)
 	sm.set_shader_parameter("skin_lobe2", 0.18 if skin == "full" else 0.0)
-	if hair_mask != null and bool(look.get("hair", true)):
+	if hair_mask != null and bool(look.get("hair", true)) and kind == "":
 		sm.set_shader_parameter("hair_on", true)
 		sm.set_shader_parameter("hair_tex", hair_mask)
 	# the street's light at this time of day
@@ -672,8 +703,29 @@ func _real_material(b: BaseMaterial3D) -> ShaderMaterial:
 		sm.set_shader_parameter("rim_amount", float(look.get("rim_k", REAL_RIM)) * 1.5 if rim_on else 0.0)
 		sm.set_shader_parameter("team_amount", 0.6)
 	sm.set_shader_parameter("debug_view", int(look.get("real_debug", 0)))
+	# round 5: faces under the game's light (look "skin_key_desat", "skin_rough_min", "normal_fade" for trials)
+	sm.set_shader_parameter("skin_key_desat", float(look.get("skin_key_desat", SKIN_KEY_DESAT.get(tm, 0.0))))
+	sm.set_shader_parameter("skin_rough_min", float(look.get("skin_rough_min", SKIN_ROUGH_MIN)))
+	sm.set_shader_parameter("normal_fade", float(look.get("normal_fade", NORMAL_FADE)))
+	var wb: Array = look.get("skin_wb", SKIN_WB.get(tm, [1.0, 1.0, 1.0]))
+	sm.set_shader_parameter("skin_wb", Vector3(float(wb[0]), float(wb[1]), float(wb[2])))
 	_lit_mats.append(sm)
 	return sm
+
+
+## realism round 5: the soft face fill. k 0 = off, 1 = the close shots' strength; `to_fill` is the world direction
+## towards the fill (fight.gd: from the camera, above it, a little to its left). Only the real look's materials take it.
+func set_face_fill(k: float, to_fill: Vector3) -> void:
+	if _lit_mats.is_empty() or not bool(look.get("real", false)) or not bool(look.get("face_fill", true)):
+		return
+	if absf(k - _face_fill_k) < 0.004 and k > 0.0 and _lit_mats[0].get_shader_parameter("face_fill_dir") == to_fill:
+		return
+	_face_fill_k = k
+	var fc: Array = look.get("face_fill_col", [FACE_FILL_COL.r, FACE_FILL_COL.g, FACE_FILL_COL.b])
+	var c: Vector3 = Vector3(float(fc[0]), float(fc[1]), float(fc[2])) * k * float(look.get("face_fill_k", 1.0))
+	for m: ShaderMaterial in _lit_mats:
+		m.set_shader_parameter("face_fill_col", c)
+		m.set_shader_parameter("face_fill_dir", to_fill)
 
 
 static var _real_variants: Dictionary = {}
@@ -998,6 +1050,8 @@ func tick_visual(dt: float) -> void:
 		_vis_pause = maxf(0.0, _vis_pause - dt)
 	anim.frozen = anim_freeze or _vis_pause > 0.0
 	anim.floor_y = global_position.y
+	if face_life != null:
+		face_life.tick(dt, anim.frozen or dead)
 	# realism-20261111: the animation follows the ground the body really covers. The game reports
 	# the speed it asked for (speed_now) even when the arena edge or another body pushes the
 	# fighter straight back (the ally "ran" on the spot against the edge, 7 cm forward and back each

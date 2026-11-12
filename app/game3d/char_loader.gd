@@ -78,6 +78,9 @@ func load_glb(path: String, real: bool = false) -> Dictionary:
 		var hair: Texture2D = skin_mask(path, state, "hair")
 		if hair != null:
 			out["hair_mask"] = hair
+		var kinds: Dictionary = surface_kinds(state)
+		if not kinds.is_empty():
+			out["surface_kinds"] = kinds
 	out["node"] = node
 	out["ok"] = true
 	return out
@@ -119,6 +122,22 @@ static func skin_mask(path: String, state: GLTFState, kind: String = "skin") -> 
 		img.generate_mipmaps()
 		return ImageTexture.create_from_image(img)
 	return null
+
+
+## realism round 5: what each material of a multi-material character is, from its extras.cq_surface ("skin": the whole
+## surface is skin, such as a fitted head; "hair": hair cards). Keyed by the material's name. A material named here does
+## not take the model-wide masks (they are in the body's UVs). Empty for the one-material Forge characters.
+static func surface_kinds(state: GLTFState) -> Dictionary:
+	var out: Dictionary = {}
+	var mats: Variant = state.json.get("materials", [])
+	if mats is Array:
+		for m: Variant in mats:
+			if not (m is Dictionary):
+				continue
+			var ex: Variant = (m as Dictionary).get("extras", {})
+			if ex is Dictionary and str((ex as Dictionary).get("cq_surface", "")) != "":
+				out[str((m as Dictionary).get("name", ""))] = str(ex["cq_surface"])
+	return out
 
 
 ## GLTFDocument's runtime load gives the embedded textures no mipmaps, so at the fight camera

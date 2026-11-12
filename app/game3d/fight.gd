@@ -816,6 +816,38 @@ var _dof: MeshInstance3D
 var _dof_k: float = 0.0
 
 
+## realism round 5 (13 Nov): the soft face fill on the real look (mid and high tier). Full in the hero's intro beat and
+## the victory shot (the camera moments that show faces), FACE_FILL_FIGHT of it at fight distance. It lights the
+## fighters only (their material), never the street, and comes from the camera's side, above it and a little left.
+func _face_fill_update() -> void:
+	if arena == null or cam == null or not bool((arena.get("look") as Dictionary).get("real", false)):
+		return
+	var close: float = 0.0
+	if _beat_t >= 0.0:
+		close = 1.0 - smoothstep(BEAT_LEN - BEAT_OUT, BEAT_LEN, _beat_t)
+	elif state == "ending" and outcome == "win":
+		close = ease(_win_k, -2.0)
+	var k: float = lerpf(FighterScript.FACE_FILL_FIGHT, FighterScript.FACE_FILL_CLOSE, close)
+	var cb: Basis = cam.global_transform.basis
+	var to_fill: Vector3 = (cb.z + cb.y * 0.45 - cb.x * 0.3).normalized()
+	for f: FighterScript in fighters:
+		f.set_face_fill(k, to_fill)
+		if f.face_life != null and not bool(f.face_life.get("pinned")):
+			# the gaze: the camera in the close shots (the hero is turned to it), else the nearest living opponent's face
+			var tgt: Vector3 = Vector3.INF
+			if close > 0.5 and f == hero:
+				tgt = cam.global_position
+			else:
+				var best: float = INF
+				for o: FighterScript in fighters:
+					if o.team != f.team and not o.dead:
+						var dd: float = o.position.distance_to(f.position)
+						if dd < best:
+							best = dd
+							tgt = o.global_position + Vector3.UP * (FighterScript.HEIGHT * o.size_k * 0.9)
+			f.face_life.target = tgt
+
+
 func _dof_update() -> void:
 	if arena == null or cam == null or hero == null or not bool((arena.get("look") as Dictionary).get("dof", false)):
 		return
@@ -1056,6 +1088,7 @@ func _finish_load(r: Dictionary) -> void:
 	if bool(r.get("ok", false)):
 		f.skin_mask = r.get("skin_mask")
 		f.hair_mask = r.get("hair_mask")
+		f.surface_kinds = r.get("surface_kinds", {})
 		var info: Dictionary = f.set_model(r["node"] as Node3D)
 		_log("load role=%s ok=true parse_ms=%.1f gen_ms=%.1f add_ms=%.1f scale=%.3f raw_h=%.3f library=%s anims=%d mapped=%s bones=%d hand=%s path=%s" % [
 			role, float(r["parse_ms"]), float(r["gen_ms"]), (Time.get_ticks_usec() - t_add) / 1000.0,
@@ -1491,6 +1524,7 @@ func _process(dt: float) -> void:
 	_intro_camera()
 	_beat_camera()
 	_dof_update()
+	_face_fill_update()
 	_sync_hud()
 	if _headless and (not _lat_move.is_empty() or not _lat_atk.is_empty()):
 		_check_latency.call_deferred("deferred")

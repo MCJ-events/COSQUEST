@@ -74,7 +74,16 @@ uniform float rim_amount = 0.0;
 uniform float team_amount = 0.35;
 uniform float flash = 0.0;
 uniform float glow = 0.0;
-uniform int debug_view = 0;                // review only: 1 grey albedo, 2 mirror, 3 skin weight, 4 normals
+uniform int debug_view = 0;
+// round 5 (13 Nov, faces): a soft fill from the camera's side for faces in close shots, a skin-only toning of the key's
+// colour, softer specular on skin, and the detail normal fading out where it would only shimmer or draw dots
+uniform vec3 face_fill_col = vec3(0.0);   // 0 = off. fight.gd raises it in the intro beat and the victory shot, a little at fight distance
+uniform vec3 face_fill_dir = vec3(0.0, 0.3, 1.0);   // world: towards the fill (from the camera, above, a little to its left)
+uniform float face_fill_body = 0.35;      // the share of the fill the rest of the fighter takes (skin takes all of it)
+uniform float skin_key_desat = 0.0;       // how far the key's colour is pulled towards white on skin (golden hour's orange)
+uniform float skin_rough_min = 0.0;       // skin's specular never sharper than this roughness (a wet sheen read as plastic)
+uniform float normal_fade = 0.0;
+uniform vec3 skin_wb = vec3(1.0);         // skin's colour balance under this time of day's light and grade (fighter.gd SKIN_WB)          // > 0: the normal map fades as one screen pixel covers more texels than this                // review only: 1 grey albedo, 2 mirror, 3 skin weight, 4 normals
 
 // cq 016: cloth off the legs (char_lit.gdshader has the notes). Off: cloth_bind0 = 100000.
 uniform int cloth_bind0 = 100000;
@@ -157,6 +166,8 @@ void fragment() {
 		skin_area = skin;
 	}
 	skin *= skin_amount * (1.0 - metal);
+	rough = mix(rough, max(rough, skin_rough_min), clamp(skin * 1.6, 0.0, 1.0));
+	base = mix(base, base * skin_wb, clamp(skin * 1.6, 0.0, 1.0));
 	float hair = hair_all;
 	if (hair_on || hair_all > 0.0) {
 		hair = max(hair, hair_on ? texture(hair_tex, UV).r : 0.0);
@@ -188,7 +199,13 @@ void fragment() {
 		// that only the normal map smooths, so a weak map left their faces faceted; the mip level alone takes
 		// the noise out.
 		vec3 t = texture(normal_tex, UV, 3.0 * skin_area).xyz * 2.0 - 1.0;
-		t.xy *= normal_amount;
+		float namt = normal_amount;
+		if (normal_fade > 0.0) {
+			vec2 ts = vec2(textureSize(normal_tex, 0));
+			float fp = max(length(dFdx(UV * ts)), length(dFdy(UV * ts)));
+			namt *= 1.0 - 0.75 * smoothstep(normal_fade, normal_fade * 4.0, fp);
+		}
+		t.xy *= namt;
 		t.z = sqrt(max(1.0 - dot(t.xy, t.xy), 0.0));
 		n = normalize(TANGENT * t.x + BINORMAL * t.y + NORMAL * t.z);
 		NORMAL = n;
@@ -270,6 +287,11 @@ void fragment() {
 	}
 	float under = clamp(0.5 - 0.5 * nw.y, 0.0, 1.0);
 	kick += bounce_col * lit * (1.0 - metal) * under * under * ao;
+	if (face_fill_col.r + face_fill_col.g + face_fill_col.b > 0.0) {
+		// a large soft source: wrapped diffuse, so it opens the shade side of a face without a second terminator
+		float wf = clamp((dot(nw, face_fill_dir) + 0.5) / 1.5, 0.0, 1.0);
+		kick += face_fill_col * lit * (1.0 - metal) * wf * wf * ao * mix(face_fill_body, 1.0, clamp(v_skin * 1.6, 0.0, 1.0));
+	}
 	EMISSION = diffuse_amb + spec_amb + kick + rim + hit + gl + texture(emission_tex, UV).rgb * emission;
 	if (debug_view == 3) {
 		ALBEDO = vec3(0.0);
@@ -296,7 +318,8 @@ void light() {
 	vec3 f0 = mix(vec3(mix(0.16 * SPECULAR_AMOUNT * SPECULAR_AMOUNT, 0.028, v_skin)), ALBEDO, METALLIC);
 	vec3 fr = f0 + (1.0 - f0) * fres;
 	float att = LIGHT_IS_DIRECTIONAL ? mix(1.0, ATTENUATION, recv_shadow) : ATTENUATION;
-	vec3 lcol = mix(vec3(dot(LIGHT_COLOR, vec3(0.2126, 0.7152, 0.0722))), LIGHT_COLOR, LIGHT_IS_DIRECTIONAL ? key_sat : 1.0);
+	float ksat = LIGHT_IS_DIRECTIONAL ? key_sat * (1.0 - skin_key_desat * clamp(v_skin * 1.6, 0.0, 1.0)) : 1.0;
+	vec3 lcol = mix(vec3(dot(LIGHT_COLOR, vec3(0.2126, 0.7152, 0.0722))), LIGHT_COLOR, ksat);
 	// diffuse: Lambert, wrapped past the terminator on skin (red furthest), less what the specular took.
 	// The engine multiplies it by the surface's colour and by (1 - metal).
 	vec3 w = skin_wrap * v_skin;
