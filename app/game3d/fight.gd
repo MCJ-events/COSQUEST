@@ -24,6 +24,7 @@ const SfxScript := preload("res://sfx.gd")
 const HitArea := preload("res://hit_area.gd")
 const AnimLib := preload("res://anim_library.gd")
 const AnimatorScript := preload("res://combat_animator.gd")
+var _ready_pose: bool = true            # config "ready_pose" (with "weight"): the wound-up stand near an opponent
 const READY_RANGE: float = 4.5          # m at size 1: an opponent this close winds the body up (presentation)
 const LoaderScript := preload("res://char_loader.gd")
 const TilesScript := preload("res://tiles_layer.gd")
@@ -477,6 +478,7 @@ func _ready() -> void:
 	# hero_hp / enemy_hp: test and capture knobs (a quick win or loss); the app never sends them
 	AnimLib.motion = str(cfg.get("motion", "hybrid" if bool(cfg.get("motion_realism", false)) else "classic"))
 	AnimLib.state_modes = (cfg["motion_states"] as Dictionary) if cfg.get("motion_states") is Dictionary else {}
+	_ready_pose = bool(cfg.get("ready_pose", true))
 	hero = _spawn(str(cfg.get("hero_name", "You")), 0, int(cfg.get("hero_hp", HERO_HP)), Color(0.3, 0.75, 0.35), Vector3(0.3, 0, 3.6), PI, "hero")
 	ally = _spawn(str(cfg.get("ally_name", "Ally")), 0, ALLY_HP, Color(0.3, 0.65, 0.9), Vector3(3.0, 0, 4.4), PI, "ally")
 	enemy = _spawn(str(cfg.get("enemy_name", "Guardian")), 1, int(cfg.get("enemy_hp", boss_hp())), Color(0.85, 0.3, 0.25), Vector3(-0.4, 0, -0.6), 0.0, "boss",
@@ -1277,7 +1279,7 @@ func _process(dt: float) -> void:
 		f.anim_freeze = frozen
 		# realism round 2 (presentation): wound up while a living opponent stands within reach
 		var rdy: bool = false
-		if state == "fighting" and f.weight_fx and not f.dead:
+		if state == "fighting" and f.weight_fx and _ready_pose and not f.dead:
 			for o: FighterScript in fighters:
 				if o.team != f.team and not o.dead and _flat(o.position - f.position).length() < READY_RANGE * maxf(f.size_k, o.size_k):
 					rdy = true

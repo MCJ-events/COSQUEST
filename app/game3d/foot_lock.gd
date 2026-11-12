@@ -23,8 +23,8 @@ const STEP_TIME: float = 0.12      # s: the shortest step to the clip's place (a
 const STEP_LIFT: float = 0.09      # m at size 1: how high that step lifts
 const BLEND_IN: float = 0.05       # s: a pin that is dropped (not stepped) eases off
 const PIN_SPEED: float = 0.45      # m/s at size 1: the settle clock only runs while the clip holds the foot this still
-const SETTLE_ERR: float = 0.10     # m at size 1: a standing pin this far from the clip's foot ...
-const SETTLE_TIME: float = 0.35    # ... for this long takes a step to it (the stance follows a turn)
+const SETTLE_ERR: float = 0.15     # m at size 1: a standing pin this far from the clip's foot ...
+const SETTLE_TIME: float = 0.6    # ... for this long takes a step to it (the stance follows a turn)
 const DOWN_REL: float = 0.045      # m at size 1: ... or this close to the floor it has learnt for itself
 const FLOOR_CREEP: float = 0.20    # m/s at size 1: how fast a foot's learnt floor rises again (one dip is forgotten in a quarter of a second)
 const FLOOR_MAX: float = 0.12      # m at size 1: a foot higher than this over its rest height is never "down"
@@ -233,7 +233,8 @@ func _process_modification_with_delta(_delta: float) -> void:
 				l["pin_full"] = false
 				l["pin_head"] = wrapf(head_now + wrapf(float(l["step_head"]) - head_now, -PI, PI) * (1.0 - e), -PI, PI)
 				stats["pins"] = int(stats["pins"]) + 1
-			elif u > 0.5 and u < 1.0 and target.origin.y - floor_y - float(l["a_h"]) - base < DOWN_REL * k and pinning:
+			elif u > 0.5 and u < 1.0 and h + sin(u * PI) * float(l.get("step_lift", 0.0)) * k - base < DOWN_REL * k and pinning:
+				# (the lower of ankle and toe: a foot that comes down toe first has landed too)
 				# the stepping foot has come down: it lands here, whatever the clip's foot still does
 				# (a foot never travels along the ground; the next step takes up what is left)
 				l["step_t"] = -1.0

@@ -276,3 +276,26 @@ id is unchanged. All clips are CC0 (KayKit Adventurers 1.0, Quaternius UAL).
 - A KO fall plays at most 1.25x and a cheer at most 1.2x (they were squeezed to the game length).
 
 **The motion bar in one command** (`BAR.md` section C): `tools/anim/motion_measure.sh --out DIR [--game TREE] [--trio a,b,c | --forge DIR --trio ...] [--extra '"motion":"mocap"']`. It records the seeded win and loss fights headless with `tools/anim_probe.gd` (v2: the final pose after every modifier) and prints `tools/anim/motion_report.py`: foot slide per step and state, foot speed against body speed, attacks off target, bind and T-pose frames, anticipation and follow-through per blow, hips in a stagger, tear per state and LOD. It works on any build from 18 on (it drops its probe into that tree). Tests: `tests/motion_test.gd`.
+
+### Round 2 (12 Nov 2026)
+
+**Tiers.** The app sets the switches by device tier (`app/features/game/motionTier.ts`, the look tier's RAM lines): high (5 GiB reported and up) sends `"motion_realism": true, "foot_ik": true`; mid (3.3 GiB and up) sends `"motion_realism": true`; low, or unknown memory, sends nothing. With nothing sent the fight is build 21's motion frame for frame (checked field by field on both seeded fights). `EXPO_PUBLIC_MOTION_TIER` = `high`, `mid`, `low` forces a tier.
+
+| | low | mid | high |
+|---|---|---|---|
+| clips | classic (build 21) | hybrid | hybrid |
+| foot lock | off | off | on |
+| aim hold, weight (lean, hips give, hit pause, ready pose) | off | on | on |
+| run legs under a cast, natural KO and cheer speed, no bind pose, legs by ground covered | off | on | on |
+
+**Hybrid** (`"motion": "hybrid"`, the default with `motion_realism`): the overlay state by state, as `anim_clips.json` `hybrid_states` says (`mocap`, `classic` or `blend`; a state not listed plays its overlay clip). From the round 2 runs the sword's three cuts are captured, idle and jog are captured, staggers and KO falls are captured, hit reactions and the cheer are Mesh2Motion's, and the two-handed heavy stays classic. `"motion_states": {"attack_1": "classic"}` in the config overrides single states for A/B runs.
+
+**The upper-body layer** (`combat_animator.gd` `_mix`, opts `run_layer`): when a one-shot starts while the body runs, one mixed clip is built on the spot: the action's upper body on the run's hips and legs, the run carried on from its phase at its rate; the spine is re-expressed so the upper body keeps the orientation the action gives it in the world. The same function builds `blend` states (a captured upper body on the classic clip's lunge, the two contact frames lined up). The foot lock uses its stride reach while such a clip plays.
+
+**Foot lock, round 2** (`foot_lock.gd`): each foot learns its own floor (a captured clip holds one foot a few centimetres higher than the other); the contact point is pinned, not always the ankle (when the heel lifts, the ball of the foot stays and the ankle swings over it); when a planted leg cannot reach, the hips sink (up to 14 cm) instead of the foot being dragged; corrective steps go one foot at a time, cross first and then come down, longer for longer distances; an ease that the clip interrupts never travels along the ground.
+
+**Weight in presentation** (no rules change): a ready pose while a living opponent is within 4.5 m (the sword arm loaded, the trunk coiled 12 degrees), so the first frames of a swing start wound up; an animation-only pause on both bodies on every blow, 25 to 90 ms by damage, on top of the game's own hit-stop; the lean into the blow and the victim's hips giving from round 1.
+
+**Forge and the tear gate.** Auto-rigged Forge characters are held to the strict 0.5 % for attacks too (`build_motion.sh`, `build_all.py --soft_core`: an attack with no clip under the gate falls back to the procedural swing, the character keeps its library). Kade loses all three attacks; Soldier and Samurai lose none.
+
+**The bar's exclusions** (`motion_report.py`): a step is left out of the planted-feet gate when any of its frames has a knockback speed over 1 m/s or is in the stagger, the dodge, CHARGE, WHIRL or SPLIT. Wind-up is scored in seconds: 0.05 s for the first two cuts, 0.10 s for heavy and skill attacks.

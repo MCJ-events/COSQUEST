@@ -857,6 +857,18 @@
   "unarmed": "blade"
  },
  "motion_default": "classic",
+ "hybrid_states": {
+  "staff": {
+   "heavy": "classic"
+  },
+  "heavy": {
+   "heavy": "classic",
+   "attack_3": "classic"
+  },
+  "blade": {
+   "attack_3": "classic"
+  }
+ },
  "clips": {
   "1H_Melee_Attack_Chop": {
    "src": "1H_Melee_Attack_Chop",
@@ -864,7 +876,8 @@
    "frames": 33,
    "fps": 30.0,
    "contact": 18,
-   "out": 28
+   "out": 28,
+   "aim_yaw_deg": 35
   },
   "1H_Melee_Attack_Slice_Diagonal": {
    "src": "1H_Melee_Attack_Slice_Diagonal",
@@ -1842,7 +1855,7 @@
    "ground_speed_per_hip": {
     "CMU_Jog": 1.793
    },
-   "clips_in_library": 35
+   "clips_in_library": 36
   },
   "catboy": {
    "status": "clips",
@@ -2752,7 +2765,7 @@
    "ground_speed_per_hip": {
     "CMU_Jog": 2.768
    },
-   "clips_in_library": 24
+   "clips_in_library": 12
   },
   "forge_samurai": {
    "status": "clips",
@@ -2962,7 +2975,7 @@
    "ground_speed_per_hip": {
     "CMU_Jog": 2.828
    },
-   "clips_in_library": 42
+   "clips_in_library": 43
   },
   "forge_soldier": {
    "status": "clips",
@@ -3192,7 +3205,7 @@
    "ground_speed_per_hip": {
     "CMU_Jog": 2.811
    },
-   "clips_in_library": 29
+   "clips_in_library": 30
   },
   "hoof": {
    "status": "clips",
@@ -3603,7 +3616,7 @@
    "ground_speed_per_hip": {
     "CMU_Jog": 2.805
    },
-   "clips_in_library": 41,
+   "clips_in_library": 42,
    "default_class": "staff"
   },
   "vanessa": {
@@ -3820,15 +3833,6 @@
     "CMU_Jog": 2.854
    },
    "clips_in_library": 39
-  }
- },
- "hybrid_states": {
-  "staff": {
-   "heavy": "classic"
-  },
-  "heavy": {
-   "heavy": "classic",
-   "attack_3": "classic"
   }
  }
 }
