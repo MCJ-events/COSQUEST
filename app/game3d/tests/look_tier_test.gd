@@ -85,6 +85,7 @@ func _initialize() -> void:
 	var high: Dictionary = ArenaScript.look_opts({"tier": "high", "look": {"time": "golden"}})
 	_check("high_real_full", bool(high.get("real", false)) and str(high.get("skin")) == "full" and str(high["grade"]) == "base"
 		and int(high.get("hero_lod", 1)) == 0 and float(high.get("scale", 0.0)) == 1.0 and str(high["shadows"]) == "true" and not bool(high["glow"]))
+	_check("mid_high_hit_order", bool(mid.get("hit_order", false)) and bool(high.get("hit_order", false)))
 	_check("mid_high_round2", str(mid.get("cam")) == "close" and str(high.get("cam")) == "close" and bool(mid.get("beats", false))
 		and float(high.get("key_yaw", 0.0)) == ArenaScript.REAL_KEY_YAW and float(high.get("ground_k", 0.0)) == 0.62)
 	var over: Dictionary = ArenaScript.look_opts({"tier": "high", "look": {"time": "golden", "real": false, "grade": false}})

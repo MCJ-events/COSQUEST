@@ -411,6 +411,7 @@ func _ready() -> void:
 	arena.call("build", cfg)
 	_place_camera()
 	_close_camera()
+	HitArea.ordered = bool((arena.get("look") as Dictionary).get("hit_order", false))   # realism round 3 (hit_area.gd)
 	_ground = arena.get("ground")
 	plaza = arena.get("plaza")
 	_build_camera()
@@ -806,6 +807,13 @@ func _poll_loading() -> void:
 	if _view_wait:
 		_tick_view_gate()
 		return
+	if _start_delay > 0:
+		# tests only (config "start_delay": frames): the fight starts this many frames later, so a record can
+		# be compared with and without the hero's intro shot from the same late start
+		_start_delay -= 1
+		if _start_delay == 0:
+			_begin_or_intro()
+		return
 	if arena != null:
 		arena.call("pump_place")
 	if _thread != null:
@@ -1016,7 +1024,14 @@ var _view_t0: int = 0
 var _view_frames0: int = -1
 
 
+var _start_delay: int = 0
+
+
 func _begin_when_shown() -> void:
+	if int(cfg.get("start_delay", 0)) > 0 and _start_delay == 0:
+		_start_delay = int(cfg["start_delay"])
+		state = "loading"
+		return
 	var want: Variant = cfg.get("view_px", null)
 	if not (want is Array) or (want as Array).size() < 2 or float(want[0]) < 1.0 or float(want[1]) < 1.0:
 		_begin_or_intro()

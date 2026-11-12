@@ -85,6 +85,8 @@ const LOOK_DEFAULTS: Dictionary = {
 ## round 2 (12 Nov, the coordinator's rulings after the first judge run):
 ##   cam       "close" = the closer, lower fight camera (fight.gd CLOSE_*): the hero a third of the screen
 ##   beats     the hero's intro shot before the clock, the closer victory shot (fight.gd)
+##   hit_order fighters struck by the same opening are reported in a fixed order (hit_area.gd): without it
+##             the record depends on how many frames pass before the clock starts, so the intro shot changed it
 ##   key_yaw   the sun's heading: from behind the camera's left shoulder, so the side of a fighter the
 ##             camera sees is the lit side (build 21's sun is up the street, behind the fighters)
 ##   key_elev_min  the sun no lower than this (deg): at dusk's 14 deg one fighter's shadow lies across the next
@@ -96,9 +98,9 @@ const REAL_KEY_ELEV_MIN: float = 24.0
 const REAL_GROUND_K: Dictionary = {"golden": 0.62, "day": 0.62, "dusk": 0.85, "night": 1.0}
 const TIER_LOOK: Dictionary = {
 	"low": {},
-	"mid": {"real": true, "skin": "simple", "ibl": true, "cam": "close", "beats": true, "key_yaw": REAL_KEY_YAW, "key_elev_min": REAL_KEY_ELEV_MIN, "ground_k": "auto"},
+	"mid": {"real": true, "skin": "simple", "ibl": true, "cam": "close", "beats": true, "hit_order": true, "key_yaw": REAL_KEY_YAW, "key_elev_min": REAL_KEY_ELEV_MIN, "ground_k": "auto"},
 	"high": {"real": true, "skin": "full", "ibl": true, "shadows": true, "grade": "base", "hero_lod": 0, "scale": 1.0,
-		"cam": "close", "beats": true, "key_yaw": REAL_KEY_YAW, "key_elev_min": REAL_KEY_ELEV_MIN, "ground_k": "auto", "soft_shadows": true},
+		"cam": "close", "beats": true, "hit_order": true, "key_yaw": REAL_KEY_YAW, "key_elev_min": REAL_KEY_ELEV_MIN, "ground_k": "auto", "soft_shadows": true},
 }
 
 
