@@ -4,13 +4,16 @@
 //
 // The shared 3D lobby itself (other players walking about) does not exist in
 // the game yet: it is a multiplayer presence feature with no server behind
-// it. The picture in his frame is a screenshot of another game, so the view
-// here is a plain placeholder panel in the same place, and the stick moves a
-// dot on it so the control can be felt. Everything around it is wired.
+// it. The picture in his frame is a screenshot of another game and is NOT
+// copied: the view is a quiet panel in his palette in the same place, with one
+// line saying the shared lobby comes later. Everything around it is wired.
+//
+// Build 23: his line icons (the Lucide set) are drawn from the same paths
+// (kit.tsx LineIcon), each at the size it has in his frame.
 //
 // Over the Figma (Wale, 11 Nov): no gems. His third counter is drawn as
 // coins, so it shows CosCoin.
-import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import { useRef, useState } from "react";
 import { PanResponder, View } from "react-native";
@@ -22,16 +25,16 @@ import { useAppSelector } from "@/store/hooks";
 
 import { useWaleProfile } from "./data";
 import { notBuiltYet, openGameSheet } from "./go";
-import { At, DesignCanvas, type IconName, PlaceholderTag, T, Tap, W } from "./kit";
+import { At, DesignCanvas, LineIcon, type LineIconName, T, Tap, W } from "./kit";
 
 const FW = 430;
 
-const TABS: { id: string; label: string; icon: IconName; cx: number; go: () => void }[] = [
-  { id: "friends", label: "Friends", icon: "people-outline", cx: 52, go: () => openGameSheet("friends") },
-  { id: "emotes", label: "Emotes", icon: "accessibility-outline", cx: 132.5, go: () => notBuiltYet("Emotes") },
-  { id: "chat", label: "Chat", icon: "chatbox-outline", cx: 213, go: () => router.push("/chat") },
-  { id: "wardrobe", label: "Wardrobe", icon: "shirt-outline", cx: 295, go: () => router.push("/wale/wardrobe") },
-  { id: "club", label: "Club", icon: "shield-outline", cx: 377, go: () => router.push("/group/discover") },
+const TABS: { id: string; label: string; icon: LineIconName; cx: number; go: () => void }[] = [
+  { id: "friends", label: "Friends", icon: "users", cx: 52, go: () => openGameSheet("friends") },
+  { id: "emotes", label: "Emotes", icon: "person-standing", cx: 132.5, go: () => notBuiltYet("Emotes") },
+  { id: "chat", label: "Chat", icon: "message-square", cx: 213, go: () => router.push("/chat") },
+  { id: "wardrobe", label: "Wardrobe", icon: "shirt", cx: 295, go: () => router.push("/wale/wardrobe") },
+  { id: "club", label: "Club", icon: "shield", cx: 377, go: () => router.push("/group/discover") },
 ];
 
 export default function LobbyScreen() {
@@ -42,19 +45,15 @@ export default function LobbyScreen() {
   const total = standing ? standing.xp : null;
   const next = standing ? standing.next_level_xp : null;
   const ratio = xpRatio(total, next);
-  // the stick: a knob that follows the thumb inside its ring, and a dot it moves on the lobby panel
+  // the stick: a knob that follows the thumb inside its ring (nothing to move yet: the shared lobby is not built)
   const [knob, setKnob] = useState({ x: 0, y: 0 });
-  const [dot, setDot] = useState({ x: 215, y: 180 });
   const drag = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onPanResponderMove: (_e, g) => {
         const len = Math.hypot(g.dx, g.dy) || 1;
         const k = Math.min(1, 29 / len);
-        const x = g.dx * k;
-        const y = g.dy * k;
-        setKnob({ x, y });
-        setDot((d) => ({ x: Math.max(12, Math.min(418, d.x + x * 0.12)), y: Math.max(12, Math.min(340, d.y + y * 0.12)) }));
+        setKnob({ x: g.dx * k, y: g.dy * k });
       },
       onPanResponderRelease: () => setKnob({ x: 0, y: 0 }),
       onPanResponderTerminate: () => setKnob({ x: 0, y: 0 }),
@@ -87,18 +86,18 @@ export default function LobbyScreen() {
         <View style={{ width: 286 * ratio, height: 4, borderRadius: 2, backgroundColor: W.pink }} />
       </At>
       <Tap x={371} y={37.5} w={43.5} h={45} label="Menu" onPress={() => router.push("/wale/settings")} style={{ borderRadius: 10, backgroundColor: "rgba(255,255,255,0.7)" }} testID="wale-lobby-menu">
-        <Ionicons name="menu" size={22} color={W.ink} />
+        <LineIcon name="menu" size={23} />
       </Tap>
       <View style={{ position: "absolute", left: 0, top: 96, width: FW, height: 1, backgroundColor: "rgba(255,255,255,0.8)" }} />
 
       {/* counters */}
       {[
-        { id: "tickets", x: 16, w: 128, icon: "ticket-outline" as IconName, value: "0", go: () => router.push("/tickets"), ph: true },
-        { id: "outfits", x: 151, w: 127, icon: "shirt-outline" as IconName, value: `${OUTFITS.length}`, go: () => router.push("/wale/wardrobe"), ph: false },
-        { id: "coins", x: 286, w: 129, icon: "logo-bitcoin" as IconName, value: spaced(p.coins ?? 0), go: () => openGameSheet("coins"), ph: p.coins === null },
+        { id: "tickets", x: 16, w: 128, icon: "ticket" as LineIconName, value: "0", go: () => router.push("/tickets") },
+        { id: "outfits", x: 151, w: 127, icon: "shirt" as LineIconName, value: `${OUTFITS.length}`, go: () => router.push("/wale/wardrobe") },
+        { id: "coins", x: 286, w: 129, icon: "coins" as LineIconName, value: spaced(p.coins ?? 0), go: () => openGameSheet("coins") },
       ].map((c) => (
         <Tap key={c.id} x={c.x} y={102.5} w={c.w} h={35} label={`${c.id}: ${c.value}`} onPress={c.go} style={{ borderRadius: 10, backgroundColor: "rgba(255,255,255,0.7)", flexDirection: "row", gap: 9 }} testID={`wale-lobby-counter-${c.id}`}>
-          <Ionicons name={c.id === "coins" ? "ellipse-outline" : c.icon} size={17} color={W.pink} />
+          <LineIcon name={c.icon} size={22} color={W.pink} />
           <T size={12.5} weight={700} style={{ lineHeight: 17 }}>
             {c.value}
           </T>
@@ -108,7 +107,7 @@ export default function LobbyScreen() {
 
       {/* event banner, portal, free shop */}
       <Tap x={12} y={151} w={260} h={48.5} label={event?.title ? `Event: ${event.title}` : "No event running"} onPress={() => router.push("/quests")} style={{ borderRadius: 10, backgroundColor: "#FFFFFF", flexDirection: "row", justifyContent: "flex-start", paddingLeft: 12, gap: 10 }} testID="wale-lobby-event">
-        <Ionicons name="flag-outline" size={18} color={W.pink} />
+        <LineIcon name="flag" size={24} color={W.pink} stroke={1.8} />
         <View style={{ flex: 1 }}>
           <T size={9} weight={700} italic upper style={{ lineHeight: 13 }}>
             {event?.title ?? "No event running"}
@@ -135,21 +134,13 @@ export default function LobbyScreen() {
         </T>
       </Tap>
 
-      {/* the lobby view (placeholder) */}
-      <At x={0} y={208} w={FW} h={353} style={{ backgroundColor: "#8FA9B5", overflow: "hidden" }} testID="wale-lobby-view">
-        {[0, 1, 2, 3, 4, 5, 6].map((i) => (
-          <View key={`h${i}`} style={{ position: "absolute", left: 0, top: 30 + i * 50, width: FW, height: 1, backgroundColor: "rgba(255,255,255,0.18)" }} />
-        ))}
-        {[0, 1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-          <View key={`v${i}`} style={{ position: "absolute", top: 0, left: 15 + i * 50, width: 1, height: 351, backgroundColor: "rgba(255,255,255,0.18)" }} />
-        ))}
-        <View style={{ position: "absolute", left: dot.x - 9, top: dot.y - 9, width: 18, height: 18, borderRadius: 9, backgroundColor: W.pink, borderWidth: 2, borderColor: "#FFFFFF" }} />
-        <View style={{ position: "absolute", left: 0, top: 150, width: FW, alignItems: "center" }}>
-          <T size={11} weight={700} color="#FFFFFF" spacing={0.6}>
-            SHARED 3D LOBBY: NOT BUILT YET
-          </T>
-          <T size={9} weight={500} color="rgba(255,255,255,0.85)">
-            Placeholder view. The stick moves the dot.
+      {/* the lobby view: not built, so a quiet panel in his palette (his picture is another game's screenshot) */}
+      <At x={0} y={208} w={FW} h={353} style={{ overflow: "hidden" }} testID="wale-lobby-view">
+        <LinearGradient colors={["#C9DFEA", "#D9D3EC", "#EBD3E6"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ position: "absolute", left: 0, top: 0, width: FW, height: 353 }} />
+        <LinearGradient colors={["rgba(255,255,255,0)", "rgba(255,255,255,0.55)"]} style={{ position: "absolute", left: 0, top: 200, width: FW, height: 153 }} />
+        <View style={{ position: "absolute", left: 0, top: 166, width: FW, alignItems: "center" }}>
+          <T size={10.5} weight={500} color={W.inkSoft} testID="wale-lobby-view-note">
+            The shared lobby opens in a later build
           </T>
         </View>
       </At>
@@ -157,7 +148,7 @@ export default function LobbyScreen() {
         <T size={8.5} weight={700} style={{ lineHeight: 12 }}>
           FREE SHOP
         </T>
-        <Ionicons name="location-outline" size={11} color={W.pink} />
+        <LineIcon name="map-pin" size={12} color={W.pink} />
       </Tap>
 
       <At x={16} y={579} style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
@@ -177,7 +168,7 @@ export default function LobbyScreen() {
         testID="wale-lobby-stick-knob"
         style={{ position: "absolute", left: 52 + knob.x, top: 672.5 + knob.y, width: 51, height: 51, borderRadius: 26, backgroundColor: "#FFFFFF", borderWidth: 2, borderColor: W.pink, alignItems: "center", justifyContent: "center" }}
       >
-        <Ionicons name="move" size={22} color={W.ink} />
+        <LineIcon name="move" size={26} stroke={1.8} />
       </View>
       <Tap x={182} y={683.5} w={69.5} h={69.5} label="View profile" onPress={() => router.push("/profile")} style={{ borderRadius: 34, borderWidth: 2, borderColor: "#FFFFFF", backgroundColor: "rgba(255,255,255,0.3)" }} testID="wale-lobby-view-profile">
         <T size={8.5} weight={800} italic align="center" lines={2} style={{ lineHeight: 11 }}>
@@ -196,7 +187,7 @@ export default function LobbyScreen() {
         const on = t.id === "wardrobe";
         return (
           <Tap key={t.id} x={t.cx - 37.25} y={813.5} w={75} h={72.5} label={t.label} onPress={t.go} style={{ borderRadius: 12, backgroundColor: on ? "#FFFFFF" : "rgba(255,255,255,0.35)", gap: 6 }} testID={`wale-lobby-tab-${t.id}`}>
-            <Ionicons name={t.icon} size={24} color={on ? W.pink : W.ink} />
+            <LineIcon name={t.icon} size={25} color={on ? W.pink : W.ink} />
             <T size={9.5} weight={700} color={on ? W.pink : W.ink} style={{ lineHeight: 13 }} testID={`wale-lobby-tablabel-${t.id}`}>
               {t.label}
             </T>
@@ -206,13 +197,14 @@ export default function LobbyScreen() {
 
       {/* chat bar */}
       <Tap x={12} y={905} w={406} h={46} label="Tap to chat" onPress={() => router.push("/chat")} style={{ flexDirection: "row", justifyContent: "flex-start", paddingLeft: 5, gap: 13 }} testID="wale-lobby-chatbar">
-        <Ionicons name="chatbubble-outline" size={18} color={W.inkSoft} />
+        <LineIcon name="message-circle" size={21} color={W.inkSoft} />
         <T size={11} weight={400} color={W.inkSoft} style={{ flex: 1 }} testID="wale-lobby-chat-text">
           Tap to chat...
         </T>
-        <Ionicons name="paper-plane-outline" size={18} color={W.pink} style={{ marginRight: 4 }} />
+        <View style={{ marginRight: 4 }}>
+          <LineIcon name="send" size={19} color={W.pink} />
+        </View>
       </Tap>
-      {p.placeholder ? <PlaceholderTag x={150} y={24} text="NOT SIGNED IN: PLACEHOLDER NUMBERS" /> : null}
     </DesignCanvas>
   );
 }

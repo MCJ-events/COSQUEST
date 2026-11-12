@@ -11,7 +11,6 @@
 //
 // His frame draws each slider's pink fill running past the thumb. A slider
 // cannot work that way, so the fill ends at the thumb here.
-import { Ionicons } from "@expo/vector-icons";
 import * as Application from "expo-application";
 import Constants from "expo-constants";
 import { router } from "expo-router";
@@ -22,7 +21,7 @@ import { setHapticsOn, useHapticsOn } from "@/components/game/prefs";
 import { getPref, setPref } from "@/utils/prefsStorage";
 
 import { back, notBuiltYet } from "./go";
-import { At, DesignCanvas, T, Tap, W, glass } from "./kit";
+import { At, DesignCanvas, LineIcon, T, Tap, W, glass } from "./kit";
 
 const FW = 430;
 const TRACK_X = 24;
@@ -85,7 +84,7 @@ function Slider({ y, value, onChange, label, testID }: { y: number; value: numbe
 
 function Switch({ y, on, onChange, label, testID }: { y: number; on: boolean; onChange: (v: boolean) => void; label: string; testID: string }) {
   return (
-    <Tap x={on ? 348.75 : 355.5} y={y} w={on ? 57 : 43} h={36.5} label={label} selected={on} onPress={() => onChange(!on)} style={{ borderRadius: 18, backgroundColor: on ? W.pinkDeep : "rgba(255,255,255,0.35)", flexDirection: on ? "row" : "row-reverse", justifyContent: "space-between", paddingHorizontal: on ? 7 : 5 }} testID={testID}>
+    <Tap x={348.75} y={y} w={57} h={36.5} label={label} selected={on} onPress={() => onChange(!on)} style={{ borderRadius: 18, backgroundColor: on ? W.pinkDeep : "rgba(255,255,255,0.35)", flexDirection: on ? "row" : "row-reverse", justifyContent: "space-between", paddingLeft: on ? 7 : 8, paddingRight: on ? 7 : 5 }} testID={testID}>
       <View style={{ width: 18, height: 25, borderRadius: 9, backgroundColor: on ? "#FFFFFF" : "#587482" }} />
       <T size={9} weight={700} color={on ? "#FFFFFF" : W.ink} style={{ lineHeight: 12 }}>
         {on ? "On" : "Off"}
@@ -121,7 +120,7 @@ export default function SettingsScreen() {
         </T>
       </At>
       <Tap x={362} y={26} w={43.6} h={43} label="Close" onPress={() => back()} style={glass(10, "rgba(255,255,255,0.3)")} testID="wale-settings-close">
-        <Ionicons name="close" size={22} color={W.ink} />
+        <LineIcon name="x" size={25} stroke={2.7} />
       </Tap>
 
       <At x={24} y={96}>
@@ -165,7 +164,7 @@ export default function SettingsScreen() {
         <T size={13} weight={700} style={{ lineHeight: 20 }}>
           English
         </T>
-        <Ionicons name="chevron-down" size={12} color={W.ink} />
+        <LineIcon name="chevron-down" size={17} stroke={2.8} />
       </Tap>
 
       {LINKS.map((l, i) => (

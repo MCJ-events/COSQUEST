@@ -32,7 +32,8 @@ export function notBuiltYet(what: string) {
   else Alert.alert(what, msg);
 }
 
-export function back(fallback: "/wale/home" | "/wale/wardrobe" | "/wale/weapons" = "/wale/home") {
+/** Back one screen; opened cold (a link), to the given screen, else the Home tab, which is his Homepage. */
+export function back(fallback: "/home" | "/wale/home" | "/wale/wardrobe" | "/wale/weapons" = "/home") {
   if (router.canGoBack()) router.back();
   else router.replace(fallback);
 }

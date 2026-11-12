@@ -633,9 +633,12 @@ function GameRootInner({ parked }: { parked: boolean }) {
   if (AR_SHRINE_DEV && CostQuestShrineView) {
     moreTiles.push({ id: "ar-shrine", icon: "camera", color: GP.berry, title: "AR shrine", onPress: () => router.push("/dev/ar-shrine") });
   }
-  // Wale's Figma screens (behind WALE_UI, off in a beta build): the new Homepage, one tap away.
+  // Wale's screens (WALE_UI, on from build 23): his Homepage is the Home tab; his other screens
+  // are one tap away from the game too.
   if (WALE_UI) {
-    moreTiles.push({ id: "wale-home", icon: "home", color: GP.berry, title: "New home", onPress: () => router.push("/wale/home") });
+    moreTiles.push({ id: "wale-weapons", icon: "flash", color: GP.berry, title: "Armory", onPress: () => router.push("/wale/weapons") });
+    moreTiles.push({ id: "wale-wardrobe", icon: "shirt", color: GP.sky, title: "Wardrobe", onPress: () => router.push("/wale/wardrobe") });
+    moreTiles.push({ id: "wale-lobby", icon: "people", color: GP.navy, title: "Lobby", onPress: () => router.push("/wale/lobby") });
   }
   const focusAway = focus && !focusId && focus.lat !== undefined && focus.lng !== undefined ? focus : null;
   const focusMissing = focus && focusId && !focusPoint ? focus : null;

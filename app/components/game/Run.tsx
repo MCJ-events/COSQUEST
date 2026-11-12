@@ -401,7 +401,7 @@ function RunCard({ point, distance, inReach, width }: { point: RunPoint; distanc
 
 // ---------- one point ----------
 
-type Phase = "stake" | "opening" | "playing" | "submitting" | "result" | { failed: string };
+export type Phase = "stake" | "opening" | "playing" | "submitting" | "result" | { failed: string };
 
 /** A run's challenge: quick, no shrine ceremony, because the clock is running. */
 export function RunChallenge({ point, onDone }: { point: RunPoint; onDone: () => void }) {
@@ -488,10 +488,12 @@ function StakeChoice({ point, duel, score, onChoose, onClose }: { point: RunPoin
   );
 }
 
-function RunQuiz({ point, staked: stakedAsked, onDone }: { point: RunPoint; staked: boolean; onDone: () => void }) {
-  const tone = useLook().dark ? TEXT_ON_DARK : TEXT_ON_LIGHT;
-  const styles = useThemedStyles(STYLE_PAIR);
-  const reduce = useReducedMotion();
+/**
+ * One run point's challenge as state: open it, the clock, the picks, the
+ * answer and the verdict. RunQuiz draws it in the game's look; the trivia
+ * screens (TriviaPlay.tsx) draw the same state in Wale's.
+ */
+export function useRunQuiz(point: RunPoint, stakedAsked: boolean) {
   const [phase, setPhase] = useState<Phase>("opening");
   const [attempt, setAttempt] = useState<RoamAttempt | null>(null);
   const [result, setResult] = useState<RunAnswerResult | null>(null);
@@ -558,8 +560,43 @@ function RunQuiz({ point, staked: stakedAsked, onDone }: { point: RunPoint; stak
   }, [phase, deadline]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const kind = attempt?.kind ?? point.kind ?? "trivia";
-  const line = `${challengeName(kind)} · ${point.value} points${staked ? " · STAKED" : ""}`;
   const reveal = phase === "result" && result && attempt ? runReveal(attempt.kind, result, picked, blitz) : null;
+
+  /** One answer for a one-question challenge: it goes straight in. */
+  const pickOne = (i: number) => {
+    if (phaseRef.current !== "playing" || picked !== null) return;
+    setPicked(i);
+    answers.current = { ...answers.current, picked: i };
+    submit();
+  };
+  /** A beat tapped in a sequence; tapping a numbered one takes it and those after it back. */
+  const tapBeat = (id: string) => {
+    if (phaseRef.current !== "playing") return;
+    pressFeedback();
+    const next = order.includes(id) ? order.slice(0, order.indexOf(id)) : [...order, id];
+    setOrder(next);
+    answers.current = { ...answers.current, order: next };
+  };
+  /** A blitz answer: on to the next question, or in with all of them after the last. */
+  const pickBlitz = (i: number) => {
+    if (phaseRef.current !== "playing" || !attempt) return;
+    const next = [...blitz];
+    next[showing] = i;
+    setBlitz(next);
+    answers.current = { ...answers.current, blitz: next };
+    if (showing + 1 < (attempt.challenge.questions?.length ?? 0)) setShowing(showing + 1);
+    else submit();
+  };
+
+  return { phase, attempt, result, deadline, picked, order, blitz, showing, staked, kind, reveal, submit, pickOne, tapBeat, pickBlitz };
+}
+
+function RunQuiz({ point, staked: stakedAsked, onDone }: { point: RunPoint; staked: boolean; onDone: () => void }) {
+  const tone = useLook().dark ? TEXT_ON_DARK : TEXT_ON_LIGHT;
+  const styles = useThemedStyles(STYLE_PAIR);
+  const reduce = useReducedMotion();
+  const { phase, attempt, result, deadline, picked, order, blitz, showing, staked, kind, reveal, submit, pickOne, tapBeat, pickBlitz } = useRunQuiz(point, stakedAsked);
+  const line = `${challengeName(kind)} · ${point.value} points${staked ? " · STAKED" : ""}`;
 
   return (
     <Stage>
@@ -601,13 +638,7 @@ function RunQuiz({ point, staked: stakedAsked, onDone }: { point: RunPoint; stak
                 beats={attempt.challenge.beats ?? []}
                 order={order}
                 reveal={null}
-                onTap={(id) => {
-                  if (phaseRef.current !== "playing") return;
-                  pressFeedback();
-                  const next = order.includes(id) ? order.slice(0, order.indexOf(id)) : [...order, id];
-                  setOrder(next);
-                  answers.current = { ...answers.current, order: next };
-                }}
+                onTap={tapBeat}
               />
               {phase === "playing" ? (
                 <GameButton title="Lock it in" color={GP.mint} disabled={order.length < (attempt.challenge.beats?.length ?? 4)} onPress={submit} />
@@ -622,15 +653,7 @@ function RunQuiz({ point, staked: stakedAsked, onDone }: { point: RunPoint; stak
               marks={reveal?.marks ?? null}
               correct={reveal?.correct ?? null}
               voice={phase === "playing"}
-              onPick={(i) => {
-                if (phaseRef.current !== "playing") return;
-                const next = [...blitz];
-                next[showing] = i;
-                setBlitz(next);
-                answers.current = { ...answers.current, blitz: next };
-                if (showing + 1 < (attempt.challenge.questions?.length ?? 0)) setShowing(showing + 1);
-                else submit();
-              }}
+              onPick={pickBlitz}
             />
           ) : attempt.challenge.questions?.[0] ? (
             <>
@@ -641,12 +664,7 @@ function RunQuiz({ point, staked: stakedAsked, onDone }: { point: RunPoint; stak
                 removed={[]}
                 correct={reveal ? (reveal.correct[0] ?? -1) : null}
                 voice={phase === "playing"}
-                onPick={(i) => {
-                  if (phaseRef.current !== "playing" || picked !== null) return;
-                  setPicked(i);
-                  answers.current = { ...answers.current, picked: i };
-                  submit();
-                }}
+                onPick={pickOne}
               />
             </>
           ) : null}

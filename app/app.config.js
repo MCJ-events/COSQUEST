@@ -21,6 +21,9 @@ module.exports = ({ config }) => {
   // player equipped. The server's feature is the real switch, so every build has the app's half
   // on; EXPO_PUBLIC_FORGE_CATALOGUE=0 builds an app that never links.
   if (env.EXPO_PUBLIC_FORGE_CATALOGUE === undefined) env.EXPO_PUBLIC_FORGE_CATALOGUE = "1";
+  // Build 23 (12 Nov 2026): Wale's Figma screens are the app's look (features/waleui/flag.ts
+  // also treats unset as on). EXPO_PUBLIC_WALE_UI=0 builds the app with the old screens.
+  if (env.EXPO_PUBLIC_WALE_UI === undefined) env.EXPO_PUBLIC_WALE_UI = "1";
   // One copy of BouncyCastle (expo-updates and the Sparks SDK both bring one).
   const plugins = [...(config.plugins || []), "./plugins/withBouncyCastleDedupe"];
   // Run and raid clocks on the lock screen (iOS Live Activity widget extension,

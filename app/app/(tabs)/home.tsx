@@ -14,6 +14,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, FlatList, Platform, Pressable, RefreshControl, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { WALE_UI } from "@/components/waleui/flag";
+import WaleHomeScreen from "@/components/waleui/HomeScreen";
 import HeroQuest, { RED_PIN } from "@/components/dashboard/HeroQuest";
 import SeeAllLink from "@/components/dashboard/SeeAllLink";
 import { useRecentJoins } from "@/services/questFeed";
@@ -73,7 +75,15 @@ function useCity(lat?: number | null, lng?: number | null) {
   return city;
 }
 
-export default function HomeScreen() {
+// Build 23: with Wale's UI on (the default) the Home tab is his Homepage
+// (components/waleui/HomeScreen.tsx); the dashboard below is the Home tab when
+// the app is built with EXPO_PUBLIC_WALE_UI=0. Its quests stay one tap away
+// either way (ENTER QUEST opens /quests).
+export default function HomeTab() {
+  return WALE_UI ? <WaleHomeScreen /> : <TeamHomeScreen />;
+}
+
+function TeamHomeScreen() {
   const styles = useThemedStyles(STYLE_PAIR);
   const ink = useInk();
   const insets = useSafeAreaInsets();

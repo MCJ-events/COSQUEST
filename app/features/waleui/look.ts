@@ -8,9 +8,9 @@
 //
 // A look is a set of indexes into the option lists below. It is saved on the
 // phone (components/waleui/lookStore.ts); the server has no field for it yet
-// (listed in the screens README as a missing endpoint). The art for every
-// option is a neutral placeholder until the hyper-real characters arrive from
-// the realism track, so an option is a name and a colour, never a picture.
+// (listed in the screens README as a missing endpoint). The pictures for the
+// options are Wale's own art (components/waleui/custArt.tsx), in the same
+// order as the lists below; this file stays pictures-free so it can be tested.
 //
 // Pure (tested in features/waleui/__tests__/look.test.ts).
 

@@ -22,13 +22,15 @@ import {
   withActiveLook,
 } from "../look.ts";
 
-test("flag: 1 and 0 win, unset follows a dev or test build", () => {
+test("flag: on unless it is set to 0 (build 23)", () => {
   assert.equal(waleUiFor("1", undefined, false), true);
   assert.equal(waleUiFor("0", "1", true), false);
   assert.equal(waleUiFor(undefined, "1", false), true);
   assert.equal(waleUiFor(undefined, undefined, true), true);
-  assert.equal(waleUiFor(undefined, undefined, false), false);
-  assert.equal(waleUiFor("", "0", false), false);
+  assert.equal(waleUiFor(undefined, undefined, false), true);
+  assert.equal(waleUiFor("", "0", false), true);
+  assert.equal(waleUiFor("0", undefined, false), false);
+  assert.equal(waleUiFor(" 0 ", "1", true), false);
 });
 
 test("snapshot: six factions, ten ranks, ten weapons each, real names", () => {

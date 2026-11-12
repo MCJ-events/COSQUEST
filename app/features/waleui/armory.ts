@@ -16,7 +16,7 @@
 // shows the one fixed attack panel for every weapon.
 //
 // Pure (tested in features/waleui/__tests__/armory.test.ts).
-import type { LadderWeapon, ProgMe, ProgWeapon, WeaponState } from "../game/progression.ts";
+import { ladderAction, type LadderWeapon, type ProgMe, type ProgWeapon, type WeaponState } from "../game/progression.ts";
 import { SNAPSHOT_FACTIONS, SNAPSHOT_WEAPONS } from "./ladderSnapshot.ts";
 
 export type ArmoryWeapon = {
@@ -33,7 +33,24 @@ export type ArmoryWeapon = {
   /** 1..5 */
   complexity: number;
   equipped: boolean;
+  /**
+   * What the left button on the weapon page does (build 23). "buy" calls the server
+   * (/v1/progression/weapons/buy): a claim when the ladder is free, a CosCoin purchase when
+   * it charges. Everything else is a label only.
+   */
+  button: WeaponButton;
 };
+
+export type WeaponButton = { kind: "equipped" | "owned" | "locked" | "soon"; label: string } | { kind: "buy"; label: string; price: number | null };
+
+/** The left button of the weapon page, from the same rule the game's Ranks sheet uses (ladderAction). */
+export function weaponButton(w: LadderWeapon, equipped: boolean, purchaseMode: string | null | undefined, fromServer: boolean): WeaponButton {
+  if (w.state === "owned") return equipped ? { kind: "equipped", label: "EQUIPPED" } : { kind: "owned", label: "OWNED" };
+  if (w.state === "locked" || !fromServer) return { kind: "locked", label: "LOCKED" };
+  const a = ladderAction(w, purchaseMode);
+  if (a.kind !== "buy") return { kind: "soon", label: "SOON" };
+  return { kind: "buy", label: a.price == null ? "CLAIM" : `BUY ${spaced(a.price)}`, price: a.price };
+}
 
 export type Armory = {
   factionId: string;
@@ -56,7 +73,7 @@ export function statusText(state: WeaponState, w: { unlocks_at_rank?: number | n
   return w.unlocks_at_rank ? `UNLOCKS AT RANK ${w.unlocks_at_rank}` : "NOT OWNED";
 }
 
-function shape(w: ProgWeapon & { state: WeaponState; unlocks_at_rank?: number | null }, equippedId: string | null): ArmoryWeapon {
+function shape(w: ProgWeapon & { state: WeaponState; unlocks_at_rank?: number | null }, equippedId: string | null, purchaseMode: string | null | undefined = null, fromServer = false): ArmoryWeapon {
   const label = (w.tier_label ?? "").trim() || `Tier ${w.tier}`;
   return {
     id: w.id,
@@ -69,6 +86,7 @@ function shape(w: ProgWeapon & { state: WeaponState; unlocks_at_rank?: number | 
     tagline: (w.description ?? "").trim(),
     complexity: complexityForTier(w.tier),
     equipped: w.id === equippedId,
+    button: weaponButton(w as LadderWeapon, w.id === equippedId, purchaseMode, fromServer),
   };
 }
 
@@ -93,13 +111,13 @@ export function snapshotLadder(factionId: string): LadderWeapon[] {
  * is the faction to show from the snapshot when the server gives no ladder
  * (the chat profile's faction, else the first faction).
  */
-export function buildArmory(me: Pick<ProgMe, "faction" | "faction_name" | "ladder"> | null | undefined, fallbackFaction?: string | null): Armory {
+export function buildArmory(me: Pick<ProgMe, "faction" | "faction_name" | "ladder" | "purchase_mode"> | null | undefined, fallbackFaction?: string | null): Armory {
   const serverLadder = me?.ladder && me.ladder.length > 0 ? me.ladder : null;
   const known = (id: string | null | undefined) => !!id && SNAPSHOT_FACTIONS.some((f) => f.id === id);
   const factionId = serverLadder ? (me?.faction ?? serverLadder[0].faction) : known(me?.faction) ? (me!.faction as string) : known(fallbackFaction) ? (fallbackFaction as string) : SNAPSHOT_FACTIONS[0].id;
   const ladder = (serverLadder ?? snapshotLadder(factionId)).slice().sort((a, b) => a.tier - b.tier);
   const eq = equippedWeaponId(ladder);
-  const all = ladder.map((w) => shape(w, eq));
+  const all = ladder.map((w) => shape(w, eq, me?.purchase_mode, !!serverLadder));
   return {
     factionId,
     factionName: (serverLadder && me?.faction_name) || factionName(factionId),

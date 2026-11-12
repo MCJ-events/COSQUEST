@@ -38,6 +38,8 @@ import { runModel, useRun } from "./runModel";
 import { POP_IN_COUNT, usePopIn } from "./sheetMotion";
 import { playSound } from "./sound";
 import { GF, GP } from "./theme";
+import TriviaWaleDoor from "./TriviaWaleDoor";
+import { WALE_UI } from "@/components/waleui/flag";
 
 const L = SURFACES.light;
 const D = SURFACES.dark;
@@ -47,6 +49,8 @@ const TRIVIA_ONLY = triviaOnlyWeb(process.env.EXPO_PUBLIC_TRIVIA_WEB, Platform.O
 const WATCH_MS = 20000;
 
 export default function TriviaFrontDoor() {
+  // Build 23: Wale's trivia screens when his UI is on; everything below is the build 22 door.
+  if (WALE_UI) return <TriviaWaleDoor />;
   return (
     <GameSchemeProvider>
       <Door />

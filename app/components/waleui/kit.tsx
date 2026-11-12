@@ -12,10 +12,11 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image, type ImageSource } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
+import { useGlobalSearchParams } from "expo-router";
 import type { ComponentProps, ReactNode } from "react";
 import { Pressable, ScrollView, type StyleProp, Text, type TextStyle, View, type ViewStyle, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Svg, { Circle, Ellipse, Path, Rect } from "react-native-svg";
+import Svg, { Circle, Ellipse, Path, Polygon, Rect } from "react-native-svg";
 
 import { FONTS } from "@/constants/fonts";
 
@@ -159,14 +160,20 @@ export const glass = (radius: number, fill: string = W.card): ViewStyle => ({ ba
  * screen scroll. `fixedBottom` is drawn over the bottom edge and does not
  * scroll (not used by his frames today; kept for the footer if he asks).
  */
+const SHOTS = process.env.EXPO_PUBLIC_E2E === "1";
+
 export function DesignCanvas({ width, height, children, colors, horizontal, testID }: { width: number; height: number; children: ReactNode; colors?: readonly [string, string, ...string[]]; horizontal?: boolean; testID?: string }) {
   const win = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const scale = win.width / width;
   const grad = colors ?? ([W.bgTop, W.bgLight] as const);
+  // Test builds only: `?shotY=<frame px>` opens a tall frame already scrolled there, so the
+  // measuring tools can photograph a whole frame in steps (experiments/build23-ui/tools).
+  const { shotY } = useGlobalSearchParams<{ shotY?: string }>();
+  const startY = SHOTS && shotY ? Math.max(0, Number(shotY) || 0) * scale : 0;
   return (
     <View style={{ flex: 1, backgroundColor: grad[0] }}>
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingTop: insets.top, paddingBottom: insets.bottom }} bounces={false} showsVerticalScrollIndicator={false} testID={testID ? `${testID}-scroll` : undefined}>
+      <ScrollView key={startY} contentOffset={{ x: 0, y: startY }} style={{ flex: 1 }} contentContainerStyle={{ paddingTop: insets.top, paddingBottom: insets.bottom }} bounces={false} showsVerticalScrollIndicator={false} testID={testID ? `${testID}-scroll` : undefined}>
         <View style={{ width: win.width, height: height * scale, overflow: "hidden" }}>
           <View testID={testID} style={{ position: "absolute", left: 0, top: 0, width, height, transformOrigin: "top left", transform: [{ scale }] }}>
             <LinearGradient colors={grad} start={horizontal ? { x: 0, y: 0.5 } : { x: 0.5, y: 0 }} end={horizontal ? { x: 1, y: 0.5 } : { x: 0.5, y: 1 }} style={{ position: "absolute", left: 0, top: 0, width, height }} />
@@ -309,5 +316,86 @@ export function PlaceholderTag({ x, y, text = "PLACEHOLDER" }: { x: number; y: n
         {text}
       </T>
     </At>
+  );
+}
+
+// ---------- Wale's own art (build 23) ----------
+
+/**
+ * A picture cut out of Wale's Figma (assets/images/waleui), at its measured box. Decoration only: it never takes a
+ * tap, so the button under or around it keeps working.
+ */
+export function Art({ x, y, w, h, source, testID, opacity }: { x: number; y: number; w: number; h: number; source: ImageSource | number; testID?: string; opacity?: number }) {
+  return (
+    <View testID={testID} pointerEvents="none" style={{ position: "absolute", left: x, top: y, width: w, height: h, opacity }}>
+      <Image source={source} style={{ width: w, height: h }} contentFit="fill" />
+    </View>
+  );
+}
+
+/** The same picture inside a row (a button's icon), at its Figma size. */
+export function ArtIcon({ w, h, source, style }: { w: number; h: number; source: ImageSource | number; style?: StyleProp<ViewStyle> }) {
+  return (
+    <View pointerEvents="none" style={[{ width: w, height: h }, style]}>
+      <Image source={source} style={{ width: w, height: h }} contentFit="fill" />
+    </View>
+  );
+}
+
+/**
+ * The line icons in his Armory, weapon page and Social lobby frames are the Lucide set (ISC licence,
+ * lucide.dev), which the app does not ship as a font, so the few he uses are drawn here from the same
+ * 24 px paths. Each entry: paths, then circles as [cx, cy, r], then rects as [x, y, w, h, rx].
+ */
+const LUCIDE = {
+  users: { d: ["M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2", "M22 21v-2a4 4 0 0 0-3-3.87", "M16 3.13a4 4 0 0 1 0 7.75"], c: [[9, 7, 4]] },
+  "person-standing": { d: ["m9 20 3-6 3 6", "m6 8 6 2 6-2", "M12 10v4"], c: [[12, 5, 1]] },
+  "message-square": { d: ["M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"] },
+  "message-circle": { d: ["M7.9 20A9 9 0 1 0 4 16.1L2 22Z"] },
+  shirt: { d: ["M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"] },
+  shield: { d: ["M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"] },
+  send: { d: ["m22 2-7 20-4-9-9-4Z", "M22 2 11 13"] },
+  "map-pin": { d: ["M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"], c: [[12, 10, 3]] },
+  flag: { d: ["M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z", "M4 22v-7"] },
+  ticket: { d: ["M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z", "M13 5v2", "M13 17v2", "M13 11v2"] },
+  // his frame has the coin with the "1" on the right, so this is the Lucide drawing mirrored (the 1 kept the right way round)
+  coins: { d: ["M5.91 10.37A6 6 0 1 0 13.66 18", "M15 6h1v4", "m7.29 13.88-.7.71 2.82 2.82"], c: [[16, 8, 6]] },
+  move: { d: ["M12 2v20", "m15 19-3 3-3-3", "m19 9 3 3-3 3", "M2 12h20", "m5 9-3 3 3 3", "m9 5 3-3 3 3"] },
+  menu: { d: ["M4 6h16", "M4 12h16", "M4 18h16"] },
+  x: { d: ["M18 6 6 18", "m6 6 12 12"] },
+  "check-circle": { d: ["m9 12 2 2 4-4"], c: [[12, 12, 10]] },
+  "arrow-right": { d: ["M5 12h14", "m12 5 7 7-7 7"] },
+  "arrow-up": { d: ["m5 12 7-7 7 7", "M12 19V5"] },
+  "chevron-right": { d: ["m9 18 6-6-6-6"] },
+  "chevron-down": { d: ["m6 9 6 6 6-6"] },
+  wifi: { d: ["M12 20h.01", "M2 8.82a15 15 0 0 1 20 0", "M5 12.859a10 10 0 0 1 14 0", "M8.5 16.429a5 5 0 0 1 7 0"] },
+  lock: { d: ["M7 11V7a5 5 0 0 1 10 0v4"], r: [[3, 11, 18, 11, 2]] },
+} as const satisfies Record<string, { d: readonly string[]; c?: readonly (readonly number[])[]; r?: readonly (readonly number[])[] }>;
+
+export type LineIconName = keyof typeof LUCIDE;
+
+export function LineIcon({ name, size, color = W.ink, stroke = 2 }: { name: LineIconName; size: number; color?: string; stroke?: number }) {
+  const g: { d: readonly string[]; c?: readonly (readonly number[])[]; r?: readonly (readonly number[])[] } = LUCIDE[name];
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      {g.d.map((d, i) => (
+        <Path key={`p${i}`} d={d} stroke={color} strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      ))}
+      {(g.c ?? []).map((c, i) => (
+        <Circle key={`c${i}`} cx={c[0]} cy={c[1]} r={c[2]} stroke={color} strokeWidth={stroke} fill="none" />
+      ))}
+      {(g.r ?? []).map((r, i) => (
+        <Rect key={`r${i}`} x={r[0]} y={r[1]} width={r[2]} height={r[3]} rx={r[4]} stroke={color} strokeWidth={stroke} fill="none" />
+      ))}
+    </Svg>
+  );
+}
+
+/** The outlined hexagon beside ENTER QUEST (a plain outline in his file, so it is drawn, not a picture). */
+export function Hexagon({ w, h, color = "#FFFFFF", stroke = 2 }: { w: number; h: number; color?: string; stroke?: number }) {
+  return (
+    <Svg width={w} height={h} viewBox="0 0 20 22">
+      <Polygon points="10,1.6 18,6.2 18,15.8 10,20.4 2,15.8 2,6.2" stroke={color} strokeWidth={stroke * (20 / w)} strokeLinejoin="round" fill="none" />
+    </Svg>
   );
 }
