@@ -229,7 +229,8 @@ void fragment() {
 	vec3 f0 = mix(vec3(mix(0.16 * specular * specular, 0.028, skin)), base, metal);
 	// the street's diffuse light: sky above, walls at the sides, the paving's bounce below
 	float blum = dot(base, vec3(0.2126, 0.7152, 0.0722));
-	vec3 lit = base * mix(expo.x, 1.0, smoothstep(0.03, 0.3, blum)) * pow(0.3 / max(blum, 0.3), expo.y);
+	// round 5: hair is meant to be dark: the near-black gain (for black suits at night) turned black hair grey
+	vec3 lit = base * mix(mix(expo.x, 1.0, clamp(hair * 1.5, 0.0, 1.0)), 1.0, smoothstep(0.03, 0.3, blum)) * pow(0.3 / max(blum, 0.3), expo.y);
 	vec3 amb = amb_at(nw) * amb_amount * ao;
 	// a little of the bounce under the skin's surface: the shade side of skin is not dead
 	vec3 diffuse_amb = lit * (1.0 - metal) * amb * (1.0 + skin * vec3(0.06, 0.01, 0.0));

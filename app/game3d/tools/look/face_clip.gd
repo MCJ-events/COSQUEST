@@ -10,6 +10,19 @@ extends SceneTree
 var plan: Dictionary = {}
 var _cam: Camera3D
 var _t: float = -1.0
+var _stills_done: bool = false
+
+
+func _stills(fl: RefCounted) -> void:
+	paused = true
+	for w: float in [0.0, 0.5, 1.0]:
+		fl.set("force_blink", w)
+		fl.call("tick", 0.0001, false)
+		await RenderingServer.frame_post_draw
+		await RenderingServer.frame_post_draw
+		root.get_viewport().get_texture().get_image().save_png(str(plan["still_dir"]).path_join("blink_%d.png" % int(w * 100)))
+	fl.set("force_blink", -1.0)
+	paused = false
 
 
 func _initialize() -> void:
@@ -49,15 +62,21 @@ func _process(dt: float) -> bool:
 	_t += dt
 	var hero: Node3D = f.get("hero")
 	var fl: RefCounted = hero.get("face_life")
-	var y: float = deg_to_rad(float(plan.get("yaw", 20.0)))
-	var fwd := Vector3(sin(float(hero.get("yaw"))), 0.0, cos(float(hero.get("yaw"))))
-	var dir: Vector3 = fwd.rotated(Vector3.UP, y)
+	# the intro beat's camera side (fight.gd _beat_camera): the hero turned to the view, the camera a little to its right
+	var cf: Vector3 = f.get("_cam_fwd")
+	hero.set("yaw", atan2(-cf.x, -cf.z))
+	hero.rotation.y = float(hero.get("yaw"))
+	var dir: Vector3 = (-cf).rotated(Vector3.UP, deg_to_rad(float(plan.get("yaw", 20.0))))
 	var face: Vector3 = hero.global_position + Vector3.UP * (2.3 * float(hero.get("size_k")) * 0.915)
 	_cam.global_transform = Transform3D(Basis.looking_at(-dir, Vector3.UP), face + dir * float(plan.get("dist", 1.1)))
 	if fl != null:
 		fl.set("pinned", _t < float(plan.get("look_cam_s", 2.5)))
 		if bool(fl.get("pinned")):
 			fl.set("target", _cam.global_position)
+	# stills with the lids held open and shut at the same moment, so the shape keys are seen working
+	if fl != null and plan.has("still_at") and _t >= float(plan["still_at"]) and not _stills_done:
+		_stills_done = true
+		_stills.call_deferred(fl)
 	if _t >= float(plan.get("secs", 5.0)):
 		print("CQFACE done t=%.2f blinks=%d" % [_t, int(fl.get("blinks")) if fl != null else -1])
 		quit.call_deferred(0)

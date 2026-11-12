@@ -827,6 +827,8 @@ func _face_fill_update() -> void:
 		close = 1.0 - smoothstep(BEAT_LEN - BEAT_OUT, BEAT_LEN, _beat_t)
 	elif state == "ending" and outcome == "win":
 		close = ease(_win_k, -2.0)
+	if bool(cfg.get("face_close", false)):
+		close = 1.0      # review tools (tools/look/face_clip.gd): the close shots' light and gaze throughout
 	var k: float = lerpf(FighterScript.FACE_FILL_FIGHT, FighterScript.FACE_FILL_CLOSE, close)
 	var cb: Basis = cam.global_transform.basis
 	var to_fill: Vector3 = (cb.z + cb.y * 0.45 - cb.x * 0.3).normalized()

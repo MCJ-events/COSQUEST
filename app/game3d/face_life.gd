@@ -28,6 +28,7 @@ var _sacc: Vector2 = Vector2.ZERO
 var _gaze: Vector2 = Vector2.ZERO      # degrees: x to the character's left (+x), y up
 var target: Vector3 = Vector3.INF      # world point to look at (INF: straight ahead)
 var pinned: bool = false               # a review tool holds the target (fight.gd leaves it alone)
+var force_blink: float = -1.0          # review tools: the lids held at this weight (-1: off)
 var blinks: int = 0                    # counted, for tests
 
 
@@ -106,6 +107,8 @@ func tick(dt: float, frozen: bool) -> void:
 	if _sacc_in <= 0.0:
 		_sacc_in = _rng.randf_range(SACCADE_GAP.x, SACCADE_GAP.y)
 		_sacc = Vector2(_rng.randf_range(-1.0, 1.0), _rng.randf_range(-0.6, 0.6)) * SACCADE_DEG
+	if force_blink >= 0.0:
+		w_blink = force_blink
 	want += _sacc
 	want.x = clampf(want.x, -EYE_MAX_X, EYE_MAX_X)
 	want.y = clampf(want.y, -EYE_MAX_Y, EYE_MAX_Y)
