@@ -1842,7 +1842,9 @@
    "ground_speed_per_hip": {
     "CMU_Jog": 2.875
    },
-   "clips_in_library": 47
+   "clips_in_library": 47,
+   "arm_droop": 0.9,
+   "arm_free_deg": 14.0
   },
   "bobo": {
    "status": "clips",
@@ -2443,7 +2445,9 @@
    "ground_speed_per_hip": {
     "CMU_Jog": 2.84
    },
-   "clips_in_library": 47
+   "clips_in_library": 47,
+   "arm_droop": 0.9,
+   "arm_free_deg": 14.0
   },
   "controllers_tavo": {
    "status": "clips",
@@ -2673,7 +2677,9 @@
    "ground_speed_per_hip": {
     "CMU_Jog": 2.943
    },
-   "clips_in_library": 26
+   "clips_in_library": 26,
+   "arm_droop": 0.9,
+   "arm_free_deg": 14.0
   },
   "crystalz": {
    "status": "clips",
@@ -3314,7 +3320,9 @@
    "ground_speed_per_hip": {
     "CMU_Jog": 2.873
    },
-   "clips_in_library": 47
+   "clips_in_library": 47,
+   "arm_droop": 0.9,
+   "arm_free_deg": 14.0
   },
   "forge_kade": {
    "status": "clips",
@@ -4421,7 +4429,9 @@
    "ground_speed_per_hip": {
     "CMU_Jog": 2.825
    },
-   "clips_in_library": 39
+   "clips_in_library": 39,
+   "arm_droop": 0.9,
+   "arm_free_deg": 14.0
   },
   "nebulx": {
    "status": "clips",

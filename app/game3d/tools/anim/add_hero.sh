@@ -19,6 +19,8 @@
 #  4. unless --no-pack: writes a run-time sidecar to $HERO_OUT/<key>/ (anim.glb + anim.json), which
 #     anim_library.gd registers when it sits beside a downloaded model (register_sidecar), so a
 #     Forge catalogue character needs nothing inside the pck.
+# The character is marked "arm_droop" 0.9 (ARM_DROOP=0 for a stylised body): the classic clips carry
+# the upper arms 55 to 65 degrees out, which the game takes back on a realistic body.
 # Prints the picks, what was lost to the gate, and the worst tear.
 set -euo pipefail
 key=$1; src=$2; pack=1; [ "${3:-}" = "--no-pack" ] && pack=0
@@ -34,4 +36,4 @@ echo "{\"rigged\": true, \"skeleton\": \"humanoid-mixamo\", \"source\": \"$src\"
 [ -s "$MOTION/lib/cmu.glb" ] && [ -s "$MOTION/lib/m2m.glb" ] || { echo "source libraries missing: run tools/anim/build_motion.sh once (it builds $MOTION/lib/cmu.glb and m2m.glb)" >&2; exit 2; }
 nice -n 10 "$BPY" tools/anim/build_all.py --src "$S/kaykit/Knight.glb" --src_ual "$S/ual/AnimationLibrary_Godot_Standard.gltf" \
   --libs "cmu=$MOTION/lib/cmu.glb,m2m=$MOTION/lib/m2m.glb" --cast "$HERO_CAST" --keys "$key" --soft_core | tail -3
-python3 tools/anim/hero_sidecar.py "$key" $([ $pack = 1 ] && echo "--out $HERO_OUT/$key")
+python3 tools/anim/hero_sidecar.py "$key" --droop "${ARM_DROOP:-0.9}" $([ $pack = 1 ] && echo "--out $HERO_OUT/$key")

@@ -24,6 +24,11 @@ def main():
     if ch.get("status") != "clips":
         print("HERO %s status=%s why=%s" % (key, ch.get("status"), ch.get("why", "")))
         return
+    if "--droop" in sys.argv:
+        # a realistic body: the stylised clips' arms-out carriage is taken back in the game
+        ch["arm_droop"] = float(sys.argv[sys.argv.index("--droop") + 1])
+        ch["arm_free_deg"] = 14.0
+        json.dump(data, open(os.path.join(GAME, "data", "anim_clips.json"), "w"), indent=1)
     rep = json.load(open(os.path.join(HERE, "reports", key + ".json")))["clips"]
     lost = []
     for kind, picks, sets in (("classic", ch["pick"], cfg["sets"]), ("captured", ch.get("pick_mocap", {}), cfg.get("sets_mocap", {}))):

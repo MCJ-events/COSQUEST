@@ -146,6 +146,8 @@ var _flinch_dir: Vector3 = Vector3.ZERO   # the push, in the character's own fra
 ## every clip, and its stagger read as a T-pose from the game camera (fighter.gd sets it for a boss).
 var arm_droop: float = 0.0
 var _droop_now: float = 0.0
+var char_droop: float = 0.0             # the bound character's own arm droop (see _bind_library)
+var char_droop_free: float = 30.0
 ## realism-20261111: foot locking (null = off for this device tier or this model has no legs)
 var foot: FootLock
 var floor_y: float = 0.0         # the paving under the fighter (fighter.gd sets it each frame)
@@ -189,6 +191,7 @@ func bind(model: Node3D, body: Node3D, opts: Dictionary = {}) -> Dictionary:
 	clips.clear()
 	timing.clear()
 	lib_key = ""
+	char_droop = 0.0
 	player = null
 	skeleton = null
 	layer = null
@@ -290,6 +293,13 @@ func _bind_library(model: Node3D, hint: String, cls: String) -> void:
 		clips[st] = name
 		timing[st] = st_map[st]
 	lib_key = key
+	# realism (12 Nov 2026): a realistic body under the stylised clips. The classic clips hold the
+	# upper arms 55 to 65 degrees out from hanging (made for chunky figures); on a hero that reads
+	# as "arms out". A character's "arm_droop" (anim_clips.json, written by add_hero.sh) takes that
+	# spread back in the standing, moving and reeling states, down to "arm_free_deg" from hanging.
+	var chd: Dictionary = (AnimLib.data().get("characters", {}) as Dictionary).get(key, {})
+	char_droop = float(chd.get("arm_droop", 0.0))
+	char_droop_free = float(chd.get("arm_free_deg", PoseLayer.DROOP_FREE))
 	var hb: int = skeleton.find_bone("Hips")
 	if hb >= 0:
 		hip_h = skeleton.get_bone_global_rest(hb).origin.y * model.scale.y
@@ -661,7 +671,8 @@ func update(dt: float, speed_now: float, dead: bool) -> void:
 			for k: String in fl:
 				p[k] = float(p.get(k, 0.0)) + float(fl[k])
 		layer.pose = p
-		var dw: float = arm_droop if (state in DROOP_STATES and not dead) else 0.0
+		var dw: float = maxf(arm_droop, char_droop) if (state in DROOP_STATES and not dead) else 0.0
+		layer.droop_free = char_droop_free if char_droop > arm_droop else PoseLayer.DROOP_FREE
 		if no_bind and clips.is_empty() and state != "death":
 			dw = 1.0   # no clip at all: never the bind pose
 		_droop_now = lerpf(_droop_now, dw, 1.0 - exp(-dt * DROOP_RATE))

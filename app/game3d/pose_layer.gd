@@ -14,6 +14,9 @@ var pose: Dictionary = {}
 ## taken back (CombatAnimator sets it, eased, for a character whose retargeted arms stand out).
 var arm_droop: float = 0.0
 const DROOP_FREE: float = 30.0
+## realism (12 Nov 2026): the angle from hanging an arm keeps untouched, per character (a hero's
+## arms hang 14 degrees out; the Guardian's long arms keep the old 30)
+var droop_free: float = DROOP_FREE
 var frame_root: Node3D          # the character's own frame (the model holder)
 var _bones: Dictionary = {}     # role -> bone index
 
@@ -94,7 +97,7 @@ func _droop(skel: Skeleton3D, arm: String, fore: String, s: Basis) -> void:
 	dir = dir.normalized()
 	var down: Vector3 = (s.inverse() * Vector3.DOWN).normalized()
 	var ang: float = dir.angle_to(down)
-	var free: float = deg_to_rad(DROOP_FREE)
+	var free: float = deg_to_rad(droop_free)
 	if ang <= free:
 		return
 	var axis: Vector3 = dir.cross(down)
