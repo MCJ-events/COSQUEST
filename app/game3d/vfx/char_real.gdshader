@@ -56,7 +56,15 @@ uniform float amb_amount = 1.0;
 uniform float recv_shadow = 1.0;           // 0 = the fighter does not take the shadow map's shadow (it still casts): at
                                            // the close camera the map's steps drew a jagged patch across faces
 uniform float key_sat = 1.0;               // the key's colour on the fighter: under 1 pulls it towards white (dusk's orange)
-uniform vec3 fill_col = vec3(0.0);         // a soft fill from the camera's side in the sky's colour (dusk and night)
+// round 4 (replaces round 3's frontal fill)
+uniform vec2 expo = vec2(1.0, 1.0);        // exposure by the surface's own brightness: x lifts near-black cloth (a black suit
+                                           // has to read at dusk), y holds pale cloth down (a cream coat must not outshine the paving)
+uniform vec3 kick_a_dir = vec3(0.0, 1.0, 0.0);   // world: towards the sky-side kicker (behind the fighter, camera's right, high)
+uniform vec3 kick_a_col = vec3(0.0);
+uniform vec3 kick_b_dir = vec3(0.0, 1.0, 0.0);   // world: towards the lamp-side kicker (behind, camera's left, low, warm)
+uniform vec3 kick_b_col = vec3(0.0);
+uniform vec3 bounce_col = vec3(0.0);       // the sunlit paving's light on surfaces that face down
+uniform float occ_k = 0.0;                 // the occlusion stand-in: creases (screen-space curvature) and the ground under the body
 uniform vec3 key_dir = vec3(0.65, -0.56, 0.51);
 uniform vec3 rim_key : source_color = vec3(1.0, 0.8, 0.55);
 uniform vec3 rim_team : source_color = vec3(0.5, 0.85, 1.0);
@@ -181,18 +189,28 @@ void fragment() {
 		NORMAL = n;
 	}
 	float ao = mix(1.0, orm.r, ao_amount);
+	if (occ_k > 0.0) {
+		// round 4: no ambient occlusion pass in this renderer. Two cheap stand-ins on the ambient and the
+		// reflections: creases (where the mesh's normal converges across neighbouring pixels: armpits, the
+		// neck under the chin, between the legs, folds) and the ground's own shade on what faces down near it.
+		vec3 gn = NORMAL;
+		float den = dot(dFdx(VERTEX), dFdx(VERTEX)) + dot(dFdy(VERTEX), dFdy(VERTEX)) + 0.000001;
+		float curv = (dot(dFdx(gn), dFdx(VERTEX)) + dot(dFdy(gn), dFdy(VERTEX))) / den;
+		float crease = clamp(1.0 + curv * 0.012, 0.5, 1.0);
+		float wy = (INV_VIEW_MATRIX * vec4(VERTEX, 1.0)).y;
+		float gnd = mix(1.0, mix(0.55, 1.0, smoothstep(0.0, 0.5, wy)), clamp(0.7 - (INV_VIEW_MATRIX * vec4(gn, 0.0)).y, 0.0, 1.0));
+		ao *= mix(1.0, crease * gnd, occ_k);
+	}
 	float nov = clamp(dot(n, VIEW), 0.0, 1.0);
 	vec3 nw = normalize((INV_VIEW_MATRIX * vec4(n, 0.0)).xyz);
 	vec3 vw = normalize((INV_VIEW_MATRIX * vec4(VIEW, 0.0)).xyz);
 	vec3 f0 = mix(vec3(mix(0.16 * specular * specular, 0.028, skin)), base, metal);
 	// the street's diffuse light: sky above, walls at the sides, the paving's bounce below
-	// round 3: the extra fill (the ambient's factor over 1 at dusk and night, and the camera-side fill below)
-	// is for what the street's light leaves dim; on a pale surface it steps aside (a cream coat measured
-	// 2.75 times the paving at night with the full fill)
-	float pale = 1.0 - 0.75 * smoothstep(0.3, 0.7, dot(base, vec3(0.2126, 0.7152, 0.0722)));
-	vec3 amb = amb_at(nw) * (1.0 + (amb_amount - 1.0) * pale) * ao;
+	float blum = dot(base, vec3(0.2126, 0.7152, 0.0722));
+	vec3 lit = base * mix(expo.x, 1.0, smoothstep(0.03, 0.3, blum)) * mix(1.0, expo.y, smoothstep(0.35, 0.75, blum));
+	vec3 amb = amb_at(nw) * amb_amount * ao;
 	// a little of the bounce under the skin's surface: the shade side of skin is not dead
-	vec3 diffuse_amb = base * (1.0 - metal) * amb * (1.0 + skin * vec3(0.06, 0.01, 0.0));
+	vec3 diffuse_amb = lit * (1.0 - metal) * amb * (1.0 + skin * vec3(0.06, 0.01, 0.0));
 	// the street reflected: sharper on metal and wet-looking skin, a blur on cloth
 	vec3 spec_amb = vec3(0.0);
 	if (env_spec > 0.0) {
@@ -224,20 +242,29 @@ void fragment() {
 	vec3 gl = vec3(1.0, 0.97, 0.92) * glow * (0.6 * body + 0.75 * pow(f, 1.5))
 		+ vec3(1.0, 0.85, 0.6) * glow * f3 * 0.6;
 	base = mix(base, vec3(1.0, 0.9, 0.78), 0.2 * clamp(flash, 0.0, 1.0));
-	ALBEDO = base;
+	ALBEDO = mix(lit, base, metal);     // the key's diffuse goes through the exposure-corrected colour too
 	ROUGHNESS = rough;
 	METALLIC = metal;
 	SPECULAR = specular;
-	// round 3: the fill. A broad soft source over the camera's left shoulder: half-Lambert on the surface's
-	// colour, and a wide sheen so a near-black suit still reads (dark cloth shows by its sheen, not its colour)
-	vec3 fill = vec3(0.0);
-	if (fill_col.r + fill_col.g + fill_col.b > 0.0) {
-		vec3 fd = normalize(vec3(-0.35, 0.4, 1.0));
-		float fw = clamp(dot(n, fd) * 0.6 + 0.4, 0.0, 1.0);
-		float sheen = pow(clamp(dot(n, normalize(fd + VIEW)), 0.0, 1.0), mix(24.0, 4.0, rough)) * mix(0.35, 0.11, rough);
-		fill = fill_col * ao * pale * (base * (1.0 - metal) * fw * fw + mix(vec3(1.0), base, metal) * sheen);
+	// round 4: light with a direction instead of the frontal fill. Two kickers from behind the fighter (the
+	// sky on one side, the street's lamps on the other at dusk and night) light the edges turned away from
+	// the camera and give dark cloth a sheen along its outline; the sunlit paving bounces up under chins,
+	// arms and capes. All three go through the surface's (exposure-corrected) colour.
+	vec3 kick = vec3(0.0);
+	float edge = 0.25 + 0.75 * (1.0 - nov) * (1.0 - nov);
+	if (kick_a_col.r + kick_a_col.g + kick_a_col.b > 0.0) {
+		float wa = pow(clamp(dot(nw, kick_a_dir), 0.0, 1.0), 1.2) * edge;
+		float sa = pow(clamp(dot(nw, normalize(kick_a_dir + vw)), 0.0, 1.0), mix(48.0, 6.0, rough)) * mix(0.5, 0.08, rough);
+		kick += kick_a_col * ao * (lit * (1.0 - metal) * wa + mix(vec3(0.6), base, metal) * sa);
 	}
-	EMISSION = diffuse_amb + spec_amb + fill + rim + hit + gl + texture(emission_tex, UV).rgb * emission;
+	if (kick_b_col.r + kick_b_col.g + kick_b_col.b > 0.0) {
+		float wb = pow(clamp(dot(nw, kick_b_dir), 0.0, 1.0), 1.2) * edge;
+		float sb = pow(clamp(dot(nw, normalize(kick_b_dir + vw)), 0.0, 1.0), mix(48.0, 6.0, rough)) * mix(0.5, 0.08, rough);
+		kick += kick_b_col * ao * (lit * (1.0 - metal) * wb + mix(vec3(0.6), base, metal) * sb);
+	}
+	float under = clamp(0.5 - 0.5 * nw.y, 0.0, 1.0);
+	kick += bounce_col * lit * (1.0 - metal) * under * under * ao;
+	EMISSION = diffuse_amb + spec_amb + kick + rim + hit + gl + texture(emission_tex, UV).rgb * emission;
 	if (debug_view == 3) {
 		ALBEDO = vec3(0.0);
 		EMISSION = vec3(skin, skin * 0.4, v_hair);

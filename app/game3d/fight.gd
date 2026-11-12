@@ -416,6 +416,9 @@ func _ready() -> void:
 	_place_camera()
 	_close_camera()
 	HitArea.ordered = bool((arena.get("look") as Dictionary).get("hit_order", false))   # realism round 3 (hit_area.gd)
+	# realism round 4: how much the effect cards add (project.godot shader_globals; 1 and no cap unless the tier says)
+	RenderingServer.global_shader_parameter_set("cq_fx_gain", float((arena.get("look") as Dictionary).get("fx_gain", 1.0)))
+	RenderingServer.global_shader_parameter_set("cq_fx_cap", float((arena.get("look") as Dictionary).get("fx_cap", 100.0)))
 	_ground = arena.get("ground")
 	plaza = arena.get("plaza")
 	_build_camera()
@@ -628,6 +631,9 @@ const CLOSE_WIN_PITCH: float = 9.0
 var _close: bool = false
 var _close_d: float = CAM_DIST
 var _close_win_basis: Basis
+var _close_top: float = 0.72
+var _close_lean: float = 0.3
+var _close_face: float = 0.0     # the share of the target's height that must stay under the top margin (0 = only the 0.78 point)
 
 
 func _close_camera() -> void:
@@ -636,11 +642,17 @@ func _close_camera() -> void:
 		return
 	_close = true
 	var yaw: float = atan2(_cam_basis.z.x, _cam_basis.z.z)    # the heading stays: _cam_fwd and _cam_right do not move
-	_cam_basis = Basis.from_euler(Vector3(deg_to_rad(-(CLOSE_PITCH_LAND if _landscape else CLOSE_PITCH)), yaw, 0.0))
+	# look "close_pitch", "close_tilt", "close_dist", "close_top", "close_lean", "close_face": framing trials (tools/look/cam_probe.gd)
+	var pitch: float = float(lk.get("close_pitch", CLOSE_PITCH_LAND if _landscape else CLOSE_PITCH))
+	var tilt: float = float(lk.get("close_tilt", 0.0 if _landscape else CLOSE_TILT))
+	_close_top = float(lk.get("close_top", CLOSE_MARGIN_LAND_TOP if _landscape else CLOSE_MARGIN.y))
+	_close_lean = float(lk.get("close_lean", 0.45 if _landscape else 0.3))
+	_close_face = float(lk.get("close_face", 0.9 if _landscape else 0.0))
+	_cam_basis = Basis.from_euler(Vector3(deg_to_rad(-pitch), yaw, 0.0))
 	# portrait: the view looks a little further down than the orbit, so the fight sits above the controls
-	_view_basis = _cam_basis if _landscape else Basis.from_euler(Vector3(deg_to_rad(-(CLOSE_PITCH + CLOSE_TILT)), yaw, 0.0))
+	_view_basis = Basis.from_euler(Vector3(deg_to_rad(-(pitch + tilt)), yaw, 0.0))
 	_close_win_basis = Basis.from_euler(Vector3(deg_to_rad(-CLOSE_WIN_PITCH), yaw, 0.0))
-	_cam_dist = CLOSE_DIST_LAND if _landscape else CLOSE_DIST
+	_cam_dist = float(lk.get("close_dist", CLOSE_DIST_LAND if _landscape else CLOSE_DIST))
 	_cam_ahead = 0.0
 	_close_d = _cam_dist
 	_log("close camera pitch=%.0f dist=%.1f" % [CLOSE_PITCH_LAND if _landscape else CLOSE_PITCH, _cam_dist])
@@ -660,10 +672,10 @@ func _close_fit() -> float:
 		# and the camera is very large: its legs and the top of its head may leave the frame)
 		pts.append(enemy.position + Vector3.UP * (FighterScript.HEIGHT * enemy.size_k * 0.55))
 		pts.append(enemy.position + Vector3.UP * (FighterScript.HEIGHT * enemy.size_k * 0.78))
-		if _landscape:
+		if _close_face > 0.0:
 			# round 3: landscape has room to spare (the hero is well over the target size), so the target's
 			# whole head stays below the top block; portrait cannot afford it (the hero drops to a quarter)
-			pts.append(enemy.position + Vector3.UP * (FighterScript.HEIGHT * enemy.size_k * 0.9))
+			pts.append(enemy.position + Vector3.UP * (FighterScript.HEIGHT * enemy.size_k * _close_face))
 	if ally != null and not ally.dead and ally.visible and _flat(ally.position - hero.position).length() < (3.0 if _landscape else 1.6):
 		# a third fighter in the brawl beside the hero: its body's middle stays in the frame
 		pts.append(ally.position + Vector3.UP * 1.2)
@@ -690,7 +702,7 @@ func _close_ok(pts: Array[Vector3], pivot: Vector3, d: float, tv: float, th: flo
 		if depth < 0.6:
 			return false
 		var y: float = r.dot(_view_basis.y)
-		if absf(r.dot(_view_basis.x)) > depth * th * CLOSE_MARGIN.x or y > depth * tv * (CLOSE_MARGIN_LAND_TOP if _landscape else CLOSE_MARGIN.y) or -y > depth * tv * CLOSE_MARGIN.z:
+		if absf(r.dot(_view_basis.x)) > depth * th * CLOSE_MARGIN.x or y > depth * tv * _close_top or -y > depth * tv * CLOSE_MARGIN.z:
 			return false
 	return true
 
@@ -737,6 +749,66 @@ func _beat_camera() -> void:
 	var from: Vector3 = face - _cam_fwd * dist + _cam_right * 0.5 + Vector3.UP * 0.12
 	var k: float = smoothstep(BEAT_LEN - BEAT_OUT, BEAT_LEN, _beat_t)
 	cam.global_transform = Transform3D(Basis.looking_at(face - from, Vector3.UP).slerp(to.basis.orthonormalized(), k), from.lerp(to.origin, k))
+
+
+## realism round 4 (look "dof", the high tier): a stand-in for a shallow depth of field in the hero's intro
+## shot and the victory shot. This renderer has no depth of field. A plate stands a little behind the hero,
+## facing the camera, and draws the picture behind it again from the screen texture's small mips (a soft
+## version of the street): what is in front of the plate (the hero, an ally beside it) stays sharp, what is
+## behind goes soft. One screen copy and one quad, only while a beat shows; nothing in gameplay.
+const DOF_SHADER := """
+shader_type spatial;
+render_mode unshaded, cull_disabled, shadows_disabled, fog_disabled, depth_draw_never;
+uniform sampler2D screen : hint_screen_texture, filter_linear_mipmap, repeat_disable;
+uniform float amount = 0.0;
+void fragment() {
+	vec2 px = 6.0 / VIEWPORT_SIZE;
+	vec3 c = textureLod(screen, SCREEN_UV, 2.0).rgb * 0.36;
+	c += textureLod(screen, SCREEN_UV + vec2(px.x, px.y), 2.5).rgb * 0.16;
+	c += textureLod(screen, SCREEN_UV + vec2(-px.x, px.y), 2.5).rgb * 0.16;
+	c += textureLod(screen, SCREEN_UV + vec2(px.x, -px.y), 2.5).rgb * 0.16;
+	c += textureLod(screen, SCREEN_UV + vec2(-px.x, -px.y), 2.5).rgb * 0.16;
+	ALBEDO = c;
+	ALPHA = amount;
+}
+"""
+var _dof: MeshInstance3D
+var _dof_k: float = 0.0
+
+
+func _dof_update() -> void:
+	if arena == null or cam == null or hero == null or not bool((arena.get("look") as Dictionary).get("dof", false)):
+		return
+	var want: float = 0.0
+	if _beat_t >= 0.0:
+		want = 1.0 - smoothstep(BEAT_LEN - BEAT_OUT, BEAT_LEN - 0.15, _beat_t)
+	elif _close and state == "ending" and outcome == "win":
+		want = ease(_win_k, -2.0)
+	_dof_k = want if _beat_t >= 0.0 else move_toward(_dof_k, want, 0.08)
+	if _dof_k <= 0.01:
+		if _dof != null:
+			_dof.visible = false
+		return
+	if _dof == null:
+		_dof = MeshInstance3D.new()
+		_dof.name = "DofPlate"
+		_dof.mesh = QuadMesh.new()
+		_dof.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		var sm := ShaderMaterial.new()
+		var sh := Shader.new()
+		sh.code = DOF_SHADER
+		sm.shader = sh
+		sm.render_priority = -100     # before the effects and the halos: they stay sharp over it
+		_dof.material_override = sm
+		_dof.set_meta("no_bloom", true)
+		cam.add_child(_dof)
+	var d: float = cam.global_position.distance_to(hero.global_position + Vector3.UP * 1.2) + 1.1 * hero.size_k
+	var h: float = 2.0 * d * tan(deg_to_rad(cam.fov) * 0.5) * 1.3
+	var vs: Vector2 = get_viewport().get_visible_rect().size
+	(_dof.mesh as QuadMesh).size = Vector2(h * vs.x / maxf(vs.y, 1.0), h)
+	_dof.position = Vector3(0.0, 0.0, -d)
+	_dof.visible = true
+	(_dof.material_override as ShaderMaterial).set_shader_parameter("amount", _dof_k)
 
 
 ## env-fixes 4: in a real place (the arena built one), the place's camera unless the config sets its
@@ -1311,6 +1383,7 @@ func _process(dt: float) -> void:
 	_follow_camera(dt)
 	_intro_camera()
 	_beat_camera()
+	_dof_update()
 	_sync_hud()
 	if _headless and (not _lat_move.is_empty() or not _lat_atk.is_empty()):
 		_check_latency.call_deferred("deferred")
@@ -2520,7 +2593,7 @@ func _follow_camera(dt: float) -> void:
 			# the camera than the focus drops under the controls)
 			target = hero.position + _look * 0.5
 			if enemy != null and not enemy.dead and not bool(cfg.get("cam_hero_only", false)):
-				target = target.lerp(enemy.position, 0.45 if _landscape else 0.3)
+				target = target.lerp(enemy.position, _close_lean)
 		# look-fight dynamic framing: a little closer while the hero and the Guardian are engaged
 		var engaged: bool = enemy != null and not enemy.dead and _flat(enemy.position - hero.position).length() < FRAME_NEAR_M
 		_frame_k = lerpf(_frame_k, 1.0 if engaged else 0.0, 1.0 - exp(-dt * 1.6))

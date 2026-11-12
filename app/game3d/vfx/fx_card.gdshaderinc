@@ -8,6 +8,10 @@ uniform float hot = 0.0;
 uniform float intensity = 1.0;
 uniform int billboard = 1;
 uniform float spin = 0.0;
+// realism round 4: on the close camera a hit burst covers the fighter it lands on. A global gain and a cap
+// on what one card can add (fight.gd sets them per tier; 1 and no cap on the low tier: as before).
+global uniform float cq_fx_gain;
+global uniform float cq_fx_cap;
 
 void vertex() {
 	vec3 sx = MODEL_MATRIX[0].xyz;
@@ -35,6 +39,6 @@ void fragment() {
 	vec4 col = tint * COLOR;
 	float al = a * col.a;
 	vec3 rgb = mix(col.rgb, vec3(1.0, 0.99, 0.95), hot * smoothstep(0.5, 1.0, a)) * intensity;
-	ALBEDO = rgb * al;
-	ALPHA = al * (1.0 - add);
+	ALBEDO = min(rgb * al * cq_fx_gain, vec3(cq_fx_cap));
+	ALPHA = al * (1.0 - add) * min(cq_fx_gain, 1.0);
 }

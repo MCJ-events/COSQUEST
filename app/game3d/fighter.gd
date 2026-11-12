@@ -27,9 +27,20 @@ const REAL_RIM: float = 0.5           # the rim's strength on the real material 
 ## (measured: LOOK.md). Golden hour and day use the measured light as it is.
 ## round 2: with the key turned to the camera's side the fill is smaller (dusk 1.35 -> 1.2, night 2.4 -> 1.9).
 ## round 3: the camera-side fill (the sky's colour times this) and how much of the key's colour the fighters keep
-const REAL_CAM_FILL: Dictionary = {"golden": 0.0, "day": 0.0, "dusk": 0.5, "night": 0.6}
+## round 4 (replaces round 3's frontal fill, REAL_CAM_FILL): per time of day
+##  expo  [dark gain, pale gain]: exposure by the surface's own brightness (char_real.gdshader `expo`)
+##  ka    the sky-side kicker (behind the fighter on the camera's right, high), in the sky's colour
+##  kb    the lamp-side kicker (behind on the left, low, warm): only when the street's lamps are lit
+##  bounce the share of the paving's sunlit colour that reaches surfaces facing down
+const REAL_LIGHT: Dictionary = {
+	"golden": {"expo": [1.5, 1.0], "ka": 0.55, "kb": 0.0, "bounce": 0.35},
+	"day": {"expo": [1.4, 1.0], "ka": 0.5, "kb": 0.0, "bounce": 0.35},
+	"dusk": {"expo": [2.3, 0.85], "ka": 0.6, "kb": 0.7, "bounce": 0.3},
+	"night": {"expo": [4.0, 0.45], "ka": 0.45, "kb": 0.8, "bounce": 0.25},
+}
+const LAMP_COL: Color = Color(1.0, 0.76, 0.48)
 const REAL_KEY_SAT: Dictionary = {"dusk": 0.6}
-const REAL_FILL: Dictionary = {"golden": 1.0, "day": 1.0, "dusk": 1.2, "night": 1.9}
+const REAL_FILL: Dictionary = {"golden": 1.0, "day": 1.0, "dusk": 1.1, "night": 1.6}
 const SKIN_GUESS: float = 0.6         # the skin term's strength when it is guessed from colour (no Forge mask)
 const ArenaScript := preload("res://arena.gd")
 const DOME_SHADER := preload("res://vfx/dome.gdshader")
@@ -206,6 +217,10 @@ func _build_shadow() -> void:
 	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	m.albedo_texture = preload("res://art/fx/vfx_glow.png")
 	m.albedo_color = Color(0.08, 0.04, 0.12, 0.75)
+	if bool(look.get("real", false)):
+		# round 4: a firmer contact disc under the body on the real look (the judge read "weak contact shadow")
+		m.albedo_color = Color(0.05, 0.035, 0.07, 0.92)
+		q.size = Vector2(1.8, 1.8) * size_k
 	m.disable_receive_shadows = true
 	sh.material_override = m
 	sh.position.y = 0.045
@@ -629,10 +644,27 @@ func _real_material(b: BaseMaterial3D) -> ShaderMaterial:
 	var tm: String = str(look.get("time", "golden"))
 	sm.set_shader_parameter("recv_shadow", 1.0 if bool(look.get("self_shadow", true)) else 0.0)
 	sm.set_shader_parameter("key_sat", float(look.get("key_sat", REAL_KEY_SAT.get(tm, 1.0))))
-	var fk: float = float(look.get("fill_k", REAL_CAM_FILL.get(tm, 0.0)))
+	var rl: Dictionary = REAL_LIGHT.get(tm, REAL_LIGHT["golden"])
 	var sky: Color = tp["ambient"]
 	var smax: float = maxf(sky.r, maxf(sky.g, sky.b))
-	sm.set_shader_parameter("fill_col", Vector3(sky.r, sky.g, sky.b) / maxf(smax, 0.001) * fk)
+	var ex: Array = look.get("expo", rl["expo"])
+	sm.set_shader_parameter("expo", Vector2(float(ex[0]), float(ex[1])))
+	# the kickers stand behind the fighter as the fight camera sees it (the camera's heading in the street)
+	var cb: Basis = Basis.from_euler(Vector3(0.0, deg_to_rad(12.0), 0.0))
+	var fwd: Vector3 = -cb.z
+	var right: Vector3 = cb.x
+	sm.set_shader_parameter("kick_a_dir", (fwd * 0.55 + right * 0.65 + Vector3.UP * 0.5).normalized())
+	sm.set_shader_parameter("kick_a_col", Vector3(sky.r, sky.g, sky.b) / maxf(smax, 0.001) * float(look.get("kick_a", rl["ka"])))
+	sm.set_shader_parameter("kick_b_dir", (fwd * 0.5 - right * 0.75 + Vector3.UP * 0.25).normalized())
+	sm.set_shader_parameter("kick_b_col", Vector3(LAMP_COL.r, LAMP_COL.g, LAMP_COL.b) * float(look.get("kick_b", rl["kb"])) * float(tp.get("lamps", 0.0)))
+	var kc: Color = tp["key_color"]
+	var down: float = float(tp["key_energy"]) * sin(deg_to_rad(maxf(float(tp["key_elev"]), float(look.get("key_elev_min", 0.0))))) * 0.5 * float(look.get("ground_k", 1.0))
+	sm.set_shader_parameter("bounce_col", Vector3(kc.r, kc.g * 0.92, kc.b * 0.82) * down * float(look.get("bounce_k", rl["bounce"])))
+	sm.set_shader_parameter("occ_k", float(look.get("occ_k", 1.0)))
+	# round 4: the current target keeps a readable rim (the team's colour) through the effects
+	if team == 1:
+		sm.set_shader_parameter("rim_amount", float(look.get("rim_k", REAL_RIM)) * 1.5 if rim_on else 0.0)
+		sm.set_shader_parameter("team_amount", 0.6)
 	sm.set_shader_parameter("debug_view", int(look.get("real_debug", 0)))
 	_lit_mats.append(sm)
 	return sm
@@ -1261,7 +1293,7 @@ func _tick_feet() -> void:
 			continue
 		var grow: float = 1.0 + 0.5 * (1.0 - k)
 		mi.global_transform = Transform3D(Basis(Vector3.UP, yaw_v).scaled(Vector3(grow, 1.0, grow)), Vector3(c.x, gy + 0.05, c.z))
-		(mi.material_override as StandardMaterial3D).albedo_color = Color(1, 1, 1, FOOT_ALPHA * k * k)
+		(mi.material_override as StandardMaterial3D).albedo_color = Color(1, 1, 1, (0.95 if bool(look.get("real", false)) else FOOT_ALPHA) * k * k)
 
 
 # build 21: planted feet. The retargeted clips put a character's feet where a human's go, and a

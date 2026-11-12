@@ -85,6 +85,9 @@ const LOOK_DEFAULTS: Dictionary = {
 ## round 2 (12 Nov, the coordinator's rulings after the first judge run):
 ##   cam       "close" = the closer, lower fight camera (fight.gd CLOSE_*): the hero a third of the screen
 ##   beats     the hero's intro shot before the clock, the closer victory shot (fight.gd)
+##   fx_gain, fx_cap  round 4: effect cards add less, and one card never adds more than the cap (vfx/fx_card.gdshaderinc):
+##             on the close camera a hit burst buried the fighter it landed on
+##   dof       round 4: in the intro and victory shots the street behind the hero is drawn soft (fight.gd _dof)
 ##   hit_order fighters struck by the same opening are reported in a fixed order (hit_area.gd): without it
 ##             the record depends on how many frames pass before the clock starts, so the intro shot changed it
 ##   key_yaw   the sun's heading: from behind the camera's left shoulder, so the side of a fighter the
@@ -98,9 +101,11 @@ const REAL_KEY_ELEV_MIN: float = 24.0
 const REAL_GROUND_K: Dictionary = {"golden": 0.62, "day": 0.62, "dusk": 0.85, "night": 1.0}
 const TIER_LOOK: Dictionary = {
 	"low": {},
-	"mid": {"real": true, "skin": "simple", "ibl": true, "cam": "close", "beats": true, "hit_order": true, "self_shadow": false, "key_yaw": REAL_KEY_YAW, "key_elev_min": REAL_KEY_ELEV_MIN, "ground_k": "auto"},
+	"mid": {"real": true, "skin": "simple", "ibl": true, "cam": "close", "beats": true, "hit_order": true, "self_shadow": false, "key_yaw": REAL_KEY_YAW, "key_elev_min": REAL_KEY_ELEV_MIN, "ground_k": "auto",
+		"fx_gain": 0.6, "fx_cap": 0.5},
 	"high": {"real": true, "skin": "full", "ibl": true, "shadows": true, "grade": "base", "hero_lod": 0, "scale": 1.0,
-		"cam": "close", "beats": true, "hit_order": true, "self_shadow": false, "key_yaw": REAL_KEY_YAW, "key_elev_min": REAL_KEY_ELEV_MIN, "ground_k": "auto", "soft_shadows": true},
+		"cam": "close", "beats": true, "hit_order": true, "self_shadow": false, "key_yaw": REAL_KEY_YAW, "key_elev_min": REAL_KEY_ELEV_MIN, "ground_k": "auto", "soft_shadows": true,
+		"fx_gain": 0.6, "fx_cap": 0.5, "dof": true},
 }
 
 

@@ -103,8 +103,13 @@ static func skin_mask(path: String, state: GLTFState, kind: String = "skin") -> 
 			elif fs is String and str(fs) != "":
 				names.append(str(fs).get_file())     # the 11 Nov asset builds name the file directly
 	names.append(path.get_file().get_basename() + "_" + kind + ".png")
+	# beside the file, or one folder up (the asset track's rigged sets: <name>_wide/rigged/lodN.glb, masks in <name>_wide/)
+	var cands: Array[String] = []
 	for nm: String in names:
-		var p: String = path.get_base_dir().path_join(nm)
+		cands.append(path.get_base_dir().path_join(nm))
+	for nm: String in names:
+		cands.append(path.get_base_dir().get_base_dir().path_join(nm))
+	for p: String in cands:
 		if not FileAccess.file_exists(p):
 			continue
 		var img := Image.new()
