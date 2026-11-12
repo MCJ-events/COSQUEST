@@ -14,10 +14,10 @@
 #   COSQUEST_GAME_SERVER_URL  native game module (app.config.js serverUrl)
 # Set EXPO_PUBLIC_GAME_SERVER=staging for a test build on staging; the URL
 # follows it unless set. The check below refuses a mismatch.
-# Build 19 was the last upload; set COSQUEST_BUILD_NUMBER to the next free
-# number before every upload.
+# Build 22 is this upload (19 was the one before; 20 and 21 were never uploaded).
+# Set COSQUEST_BUILD_NUMBER to the next free number before every upload.
 export COSQUEST_TESTFLIGHT=1
-export COSQUEST_BUILD_NUMBER="${COSQUEST_BUILD_NUMBER:-19}"
+export COSQUEST_BUILD_NUMBER="${COSQUEST_BUILD_NUMBER:-22}"
 export EXPO_PUBLIC_API_URL="${EXPO_PUBLIC_API_URL:-https://cosquest-1.onrender.com}"
 export EXPO_PUBLIC_WEB_URL="${EXPO_PUBLIC_WEB_URL:-https://cosquest.vercel.app}"
 export EXPO_PUBLIC_SPARKS_ENGINE="${EXPO_PUBLIC_SPARKS_ENGINE:-module}"
