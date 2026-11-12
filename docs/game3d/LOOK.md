@@ -403,3 +403,21 @@ Evidence: `cosquest-review/realism-20261111/experiments/look/round3/README.md`.
 - **HUD:** name plates stay below the top block (`hud.gd plate_min_y`); in landscape the camera keeps the target's
   face below the block. `tools/look/cam_probe.gd` reports heads under HUD controls.
 - **Leaves:** with the close camera, place_life's leaves have a leaf outline and fade within 4 m of the camera.
+
+### Round 4 (12 Nov): light with a direction, occlusion, depth, the donor head
+Evidence: `cosquest-review/realism-20261111/experiments/look/round4/README.md`.
+- **Light** (`fighter.gd REAL_LIGHT`, `char_real.gdshader`): round 3's frontal fill is gone. Two kickers from behind the
+  fighter (`kick_a_*` the sky, `kick_b_*` the lamps at dusk and night), the paving's bounce on down-facing surfaces
+  (`bounce_col`), and exposure by the surface's own brightness (`expo`: a gain on near-black cloth fading out by mid
+  tones, a power-law hold above). Night is still out of range for very dark and very pale cloth.
+- **Occlusion stand-in** (`occ_k`): creases from the screen-space curvature of the mesh normal, and the ground's shade
+  on down-facing parts near it. No capsule or baked occlusion.
+- **Depth of field stand-in** (`fight.gd _dof`, look `dof`, high tier): a plate behind the hero in the intro and victory
+  shots redraws the street from the screen texture with 13 ring taps (the screen texture has no usable mips here).
+- **Effects** (`vfx/fx_card.gdshaderinc`, project `shader_globals` `cq_fx_gain`, `cq_fx_cap`; look `fx_gain`, `fx_cap`):
+  cards add less and are capped per card on mid and high. They still cover a target on the frame a hit lands.
+- **Portrait camera**: orbit 28 deg, tilt 2, 5.4 m, and the target's face point kept under the top block
+  (`close_*` look keys override each value for trials; `tools/look/cam_probe.gd`).
+- **Shader variants** (`fighter.gd _real_variant`): two-sided surfaces and alpha cut-out hair shells take the same
+  shading; a material whose name contains "hair", or any see-through one, is treated as hair.
+- **Masks** are also looked for one folder above the model file (`char_loader.gd`).
