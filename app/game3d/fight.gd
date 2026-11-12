@@ -540,7 +540,7 @@ func _ready() -> void:
 		(pair[0] as FighterScript).anim_opts = {"key": str(cfg.get(role + "_key", "")),
 			"class": str((wcfg as Dictionary).get("class", "")) if wcfg is Dictionary else ""}
 		var p: String = LoaderScript.clean_path(str(cfg.get(pair[1], "")))
-		# realism: on the mid and high tiers the six faction heroes are the cast (see _hero_cast)
+		# realism: with "hero_cast" on, the six faction heroes are the cast (see _hero_cast; off by default)
 		var hero_p: String = _hero_cast(role, p)
 		if hero_p != "":
 			p = hero_p
@@ -1090,13 +1090,13 @@ func _tier_lod(p: String, role: String) -> String:
 	return p
 
 
-## realism (12 Nov 2026): the faction heroes as the playable cast. On the mid and high tiers (config
-## "hero_cast", default on there, off on the low tier) a role whose model is one of the cartoon
-## built-in cast, or that has no model at all, plays a faction hero from res://cast/heroes instead:
+## realism (12 Nov 2026): the faction heroes as the playable cast. OFF by default from build 22
+## (the hero models are not good enough yet): every tier plays the built-in cast unless the config
+## says "hero_cast": true. With it on, a role whose model is one of the cartoon built-in cast, or
+## that has no model at all, plays a faction hero from res://cast/heroes instead:
 ## the player's hero is its faction's (config "faction", the app's faction id), the ally and the
 ## Guardian are drawn from the other factions' heroes by the fight's seed. A player's own Forge
-## character (any other model) is left alone. The low tier keeps the built-in cast. Presentation
-## only: the rules read no model.
+## character (any other model) is left alone. Presentation only: the rules read no model.
 const HERO_DIR: String = "res://cast/heroes/"
 const HERO_BY_FACTION: Dictionary = {"ascendants": "ascendants_zuri", "controllers": "controllers_tavo", "icons": "icons_imani",
 	"everborns": "everborn_oren", "celestials": "celestials_lyra", "blockbusters": "blockbusters_kofi"}
@@ -1106,7 +1106,7 @@ var _hero_roles: Dictionary = {}     # role -> hero key, for the roles a faction
 
 
 func _hero_cast(role: String, p: String) -> String:
-	if not bool(cfg.get("hero_cast", ArenaScript.tier_of(cfg) != "low")):
+	if not bool(cfg.get("hero_cast", false)):
 		return ""
 	var key_now: String = str(cfg.get(role + "_key", ""))
 	if p != "" and not p.begins_with(CAST_STAND_IN_DIR) and not (key_now in CARTOON_CAST):
