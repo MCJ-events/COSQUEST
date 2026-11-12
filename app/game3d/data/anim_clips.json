@@ -3822,5 +3822,13 @@
    "clips_in_library": 39
   }
  },
- "hybrid_states": {}
+ "hybrid_states": {
+  "staff": {
+   "heavy": "classic"
+  },
+  "heavy": {
+   "heavy": "classic",
+   "attack_3": "classic"
+  }
+ }
 }
