@@ -24,6 +24,7 @@ const SfxScript := preload("res://sfx.gd")
 const HitArea := preload("res://hit_area.gd")
 const AnimLib := preload("res://anim_library.gd")
 const AnimatorScript := preload("res://combat_animator.gd")
+const READY_RANGE: float = 4.5          # m at size 1: an opponent this close winds the body up (presentation)
 const LoaderScript := preload("res://char_loader.gd")
 const TilesScript := preload("res://tiles_layer.gd")
 const ArenaScript := preload("res://arena.gd")
@@ -469,7 +470,8 @@ func _ready() -> void:
 		_begin_when_built()
 		return
 	# hero_hp / enemy_hp: test and capture knobs (a quick win or loss); the app never sends them
-	AnimLib.motion = str(cfg.get("motion", "mocap" if bool(cfg.get("motion_realism", false)) else ""))
+	AnimLib.motion = str(cfg.get("motion", "hybrid" if bool(cfg.get("motion_realism", false)) else "classic"))
+	AnimLib.state_modes = (cfg["motion_states"] as Dictionary) if cfg.get("motion_states") is Dictionary else {}
 	hero = _spawn(str(cfg.get("hero_name", "You")), 0, int(cfg.get("hero_hp", HERO_HP)), Color(0.3, 0.75, 0.35), Vector3(0.3, 0, 3.6), PI, "hero")
 	ally = _spawn(str(cfg.get("ally_name", "Ally")), 0, ALLY_HP, Color(0.3, 0.65, 0.9), Vector3(3.0, 0, 4.4), PI, "ally")
 	enemy = _spawn(str(cfg.get("enemy_name", "Guardian")), 1, int(cfg.get("enemy_hp", boss_hp())), Color(0.85, 0.3, 0.25), Vector3(-0.4, 0, -0.6), 0.0, "boss",
@@ -516,8 +518,10 @@ func _ready() -> void:
 		var mr: bool = bool(cfg.get("motion_realism", false))
 		if cfg.has(role + "_class"):
 			(pair[0] as FighterScript).anim_opts["class"] = str(cfg[role + "_class"])
-		(pair[0] as FighterScript).anim_opts["foot_ik"] = bool(cfg.get("foot_ik", mr and AnimatorScript.foot_ik_default()))
+		(pair[0] as FighterScript).anim_opts["foot_ik"] = bool(cfg.get("foot_ik", false))   # the app decides by tier (features/game/motionTier.ts)
 		(pair[0] as FighterScript).anim_opts["natural_rates"] = bool(cfg.get("natural_rates", mr))
+		(pair[0] as FighterScript).anim_opts["no_bind"] = bool(cfg.get("no_bind", mr))
+		(pair[0] as FighterScript).anim_opts["run_layer"] = bool(cfg.get("run_layer", mr))
 		(pair[0] as FighterScript).aim_hold = bool(cfg.get("aim_hold", mr))
 		(pair[0] as FighterScript).weight_fx = bool(cfg.get("weight", mr))
 		(pair[0] as FighterScript).real_speed = bool(cfg.get("real_speed", mr))
@@ -1095,6 +1099,13 @@ func _process(dt: float) -> void:
 				hero.face_yaw = atan2(to_e.x, to_e.z)
 	for f: FighterScript in fighters:
 		f.anim_freeze = frozen
+		# realism round 2 (presentation): wound up while a living opponent stands within reach
+		var rdy: bool = false
+		if state == "fighting" and f.weight_fx and not f.dead:
+			for o: FighterScript in fighters:
+				if o.team != f.team and not o.dead and _flat(o.position - f.position).length() < READY_RANGE * maxf(f.size_k, o.size_k):
+					rdy = true
+		f.anim.ready = rdy
 		f.tick_visual(dt)
 	_skid_dust(dt)
 	_follow_camera(dt)
@@ -1656,6 +1667,12 @@ func _apply_hit(src: FighterScript, dst: FighterScript, info: Dictionary) -> voi
 	if src == hero or dst == hero:
 		_hitstop = maxf(_hitstop, stop * (1.4 if crit else 1.0))
 		_feel_hit(_moment_for(src, dst, info, heavy, crit), dst, stop * (1.4 if crit else 1.0), away, src)
+	# realism round 2 (presentation): an animation-only pause on both bodies, scaled by the damage,
+	# on top of the real hit-stop (which only the hero's blows have): the game clock never sees it
+	var want_pause: float = clampf(0.025 + 0.06 * float(amount) / 175.0, 0.025, 0.09)
+	var real_stop: float = stop * (1.4 if crit else 1.0) if (src == hero or dst == hero) else 0.0
+	src.hit_pause(maxf(0.0, want_pause - real_stop))
+	dst.hit_pause(maxf(0.0, want_pause - real_stop))
 	if left > 0:
 		var style: String = "normal"
 		if dst.team == 0:

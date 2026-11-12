@@ -15,6 +15,11 @@ const LIB_NAME: String = "cq"
 ## Mesh2Motion clips; a state with no overlay pick keeps its classic clip), "" = the data's
 ## "motion_default". fight.gd sets it from the config ("motion"); one switch for before / after.
 static var motion: String = ""
+## realism round 2: "hybrid" = the overlay state by state, as the data's "hybrid_states" says per
+## weapon set: "mocap" (the captured clip), "classic" (keep build 21's), or "blend" (the captured
+## clip's upper body on the classic clip's hips and legs: combat_animator.gd mixes them when the
+## swing starts). `state_modes` (fight config "motion_states") overrides single states, for A/B runs.
+static var state_modes: Dictionary = {}
 
 static var _data: Dictionary = {}
 static var _libs: Dictionary = {}     # path -> AnimationLibrary (track paths relative to the skeleton: ".:Bone")
@@ -220,7 +225,7 @@ static func apply(player: AnimationPlayer, skeleton: Skeleton3D, src: AnimationL
 ## "classic" or "mocap" (see `motion`).
 static func motion_now() -> String:
 	var m: String = motion if motion != "" else str(data().get("motion_default", "classic"))
-	return m if m == "mocap" else "classic"
+	return m if (m == "mocap" or m == "hybrid") else "classic"
 
 
 ## The clip set for a weapon class ("hammer" -> "heavy"), "" for none. A set that exists only in the
@@ -259,19 +264,29 @@ static func states_for(cls: String, key: String = "") -> Dictionary:
 			m["body"] = true    # an alternate without the set clip's motion (no spin): the body motion adds it
 		m["clip"] = name
 		out[st] = m
-	if motion_now() == "mocap" and key != "":
+	if motion_now() != "classic" and key != "":
 		var so: Dictionary = (d.get("sets_mocap", {}) as Dictionary).get(sname, {})
 		var po: Dictionary = ((ch.get("pick_mocap", {}) as Dictionary).get(sname, {}) as Dictionary)
+		var hy: Dictionary = (d.get("hybrid_states", {}) as Dictionary).get(sname, {})
 		for st: String in so:
 			var name2: String = str(po.get(st, ""))
 			var c2: Dictionary = clips.get(name2, {})
 			if name2 == "" or c2.is_empty():
 				continue
+			var mode: String = "mocap"
+			if motion_now() == "hybrid":
+				mode = str(hy.get(st, "mocap"))
+			mode = str(state_modes.get(st, mode))
+			if mode == "classic":
+				continue
+			var lower: Dictionary = (out.get(st, {}) as Dictionary).duplicate() if mode == "blend" else {}
 			var m2: Dictionary = c2.duplicate()
 			var own: Dictionary = ch.get("ground_speed_per_hip", {})
 			if own.has(name2):
 				m2["ground_speed_per_hip"] = own[name2]   # this character's own stride
 			m2["clip"] = name2
 			m2["mocap"] = true
+			if not lower.is_empty() and str(lower.get("clip", "")) != name2:
+				m2["lower"] = lower    # the classic clip whose hips and legs carry this one's upper body
 			out[st] = m2
 	return out

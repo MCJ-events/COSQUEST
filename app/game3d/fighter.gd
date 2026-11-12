@@ -141,6 +141,15 @@ const GIVE_DROP: float = 0.03
 var weight_fx: bool = false             # config "weight" (on with "motion_realism")
 var _hit_at: float = -1.0
 var real_speed: bool = false            # config "real_speed" (on with "motion_realism")
+## realism round 2 (presentation): a short animation-only pause on a blow, scaled by the damage, on
+## top of whatever real hit-stop the game ran (fight.gd calls it for both fighters); the game's
+## clock is untouched.
+var _vis_pause: float = 0.0
+## realism round 2 (presentation): the body is drawn where a smoothed path would have it while the
+## game shoves the fighter forward and straight back every frame (the ally against the arena
+## edge moved 7 cm each way a frame: it read as a vibration). 0..1.
+var _jit: float = 0.0
+var _smooth_pos: Vector3 = Vector3.INF
 var _trail: Array = []                  # the last few drawn positions (the legs' real speed)
 var _trail_dt: Array = []
 
@@ -676,6 +685,12 @@ func flinch(push: Vector3, strength: float) -> void:
 	anim.flinch(push, strength)
 
 
+## realism round 2: holds this fighter's animation for `secs` more (drawing only).
+func hit_pause(secs: float) -> void:
+	if weight_fx:
+		_vis_pause = maxf(_vis_pause, secs)
+
+
 ## fight-anim: a hit reaction for `length` seconds, unless an attack or skill clip still owns the
 ## body (the Guardian mid-swing): then the recoil already playing on top of it shows the hit, and
 ## the swing is not cut into a hit clip (the old 165 deg/frame snap). Presentation only: callers
@@ -816,7 +831,9 @@ func tick_logic(dt: float) -> void:
 
 ## Visual tick: animator, procedural body motion, flash, dome, aura.
 func tick_visual(dt: float) -> void:
-	anim.frozen = anim_freeze
+	if _vis_pause > 0.0 and not anim_freeze:
+		_vis_pause = maxf(0.0, _vis_pause - dt)
+	anim.frozen = anim_freeze or _vis_pause > 0.0
 	anim.floor_y = global_position.y
 	# realism-20261111: the animation follows the ground the body really covers. The game reports
 	# the speed it asked for (speed_now) even when the arena edge or another body pushes the
@@ -836,6 +853,16 @@ func tick_visual(dt: float) -> void:
 			var net: Vector3 = (_trail[-1] as Vector3) - (_trail[0] as Vector3)
 			net.y = 0.0
 			anim_speed = minf(speed_now, net.length() / maxf(0.001, span) * 1.1 + 0.15)
+			# how much of the last frames' travel was there-and-back
+			var path: float = 0.0
+			for i in range(1, _trail.size()):
+				path += Vector2((_trail[i] as Vector3).x - (_trail[i - 1] as Vector3).x, (_trail[i] as Vector3).z - (_trail[i - 1] as Vector3).z).length()
+			var jt: float = clampf(1.0 - net.length() / maxf(0.001, path) * 1.6, 0.0, 1.0) if path > 0.06 and kb_vel.length() < 0.5 else 0.0
+			_jit = lerpf(_jit, jt, 0.35)
+	if real_speed:
+		if _smooth_pos == Vector3.INF or (_smooth_pos - global_position).length() > 1.0:
+			_smooth_pos = global_position
+		_smooth_pos = _smooth_pos.lerp(global_position, 1.0 - exp(-dt * 9.0))
 	anim.update(dt, anim_speed, dead or celebrating)
 	var vdt: float = 0.0 if anim_freeze else dt
 	var pos := Vector3.ZERO
@@ -938,6 +965,10 @@ func tick_visual(dt: float) -> void:
 		if ge > 0.001:
 			pos += Vector3(anim._flinch_dir.x, 0.0, anim._flinch_dir.z) * GIVE_M * size_k * ge
 			pos.y -= GIVE_DROP * size_k * ge
+	if real_speed and _jit > 0.02 and not dead:
+		# drawn on the smoothed path while the game jitters the fighter
+		var off: Vector3 = global_basis.orthonormalized().inverse() * ((_smooth_pos - global_position) * _jit)
+		pos += Vector3(off.x, 0.0, off.z)
 	var bscale := Vector3(sc * sxz, sc * (1.0 + 0.6 * (1.0 - sxz)) * maxf(0.05, sxz), sc * sxz)
 	# build 21: the lower foot on the paving, with this frame's lean and offsets (see _plant_target)
 	_plant_y = lerpf(_plant_y, _plant_target(Basis.from_euler(rot).scaled(bscale), pos.y), 1.0 - exp(-dt * PLANT_RATE))

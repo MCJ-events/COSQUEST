@@ -19,12 +19,16 @@ const DOWN_H: float = 0.030        # m at size 1: a foot this close to its stand
 const UP_H: float = 0.055          # ... and this far over it has left the ground (hysteresis)
 const REACH: float = 0.16          # m at size 1: the pin lets go when the clip's foot is this far from it
 const REACH_LOCO: float = 0.34     # the same while walking or running (a stride carries the foot back)
-const STEP_TIME: float = 0.12      # s: the step back to the clip's place
+const STEP_TIME: float = 0.12      # s: the shortest step to the clip's place (a longer one takes up to 2.2x)
 const STEP_LIFT: float = 0.06      # m at size 1: how high that step lifts
 const BLEND_IN: float = 0.05       # s: a pin that is dropped (not stepped) eases off
 const PIN_SPEED: float = 0.45      # m/s at size 1: the settle clock only runs while the clip holds the foot this still
 const SETTLE_ERR: float = 0.10     # m at size 1: a standing pin this far from the clip's foot ...
 const SETTLE_TIME: float = 0.35    # ... for this long takes a step to it (the stance follows a turn)
+const FLOOR_CREEP: float = 0.03    # m/s at size 1: how fast a foot's learnt floor rises again
+const FLOOR_MAX: float = 0.12      # m at size 1: a foot higher than this over its rest height is never "down"
+const HIP_DROP_MAX: float = 0.14   # m at size 1: the most the hips sink to let a planted leg reach
+const HIP_RISE: float = 0.5        # m/s at size 1: how fast they come back up
 const STRETCH: float = 0.995       # the leg never straightens past this share of its length
 
 var frame_root: Node3D             # the fighter's model holder (its scale is the character's size)
@@ -36,6 +40,8 @@ var dt: float = 1.0 / 30.0         # set by the animator each frame (0 in a hit-
 var strength: float = 1.0          # tier switch: 0 = off
 var _legs: Array = []              # per leg: {up, lo, foot, toe, base_a, base_t, pinned, pin: Transform3D, w, step_t, step_from}
 var stats: Dictionary = {"pins": 0, "steps": 0}
+var _hips: int = -1
+var _drop: float = 0.0
 
 
 ## How far the lock holds foot `i` (0 left, 1 right) from where the clip has it, in the world, on
@@ -58,6 +64,7 @@ func setup(sk: Skeleton3D) -> int:
 	_legs.clear()
 	if sk == null:
 		return 0
+	_hips = sk.find_bone("Hips")
 	for names: Array in LEGS:
 		var ids: Array = []
 		for n: String in names:
@@ -89,7 +96,10 @@ func _process_modification_with_delta(_delta: float) -> void:
 	var xf: Transform3D = sk.global_transform
 	var inv: Transform3D = xf.affine_inverse()
 	var k: float = maxf(0.05, size)
-	for l: Dictionary in _legs:
+	# ---- pass 1: where each foot should be this frame (pins, steps), from the clip's pose
+	var need_drop: float = 0.0
+	for li in _legs.size():
+		var l: Dictionary = _legs[li]
 		var foot: int = l["foot"]
 		var g: Transform3D = sk.get_bone_global_pose(foot)
 		var world: Transform3D = xf * g
@@ -104,27 +114,35 @@ func _process_modification_with_delta(_delta: float) -> void:
 		if int(l["toe"]) >= 0:
 			var tw: Vector3 = xf * sk.get_bone_global_pose(int(l["toe"])).origin
 			h = minf(h, tw.y - floor_y - float(l["t_h"]))
+		# round 2: each foot's own floor. A captured clip holds one foot 3 to 5 cm higher than the
+		# other (marker offsets), so against the rest height that foot never counted as down and
+		# was left to drift. The floor is the lowest the clip has held this foot lately (it creeps
+		# up 3 cm a second, so a new clip's stance is learnt in a second or two).
+		var base: float = minf(h, float(l.get("base", h)) + FLOOR_CREEP * k * dt)
+		l["base"] = base
+		var hr: float = h - maxf(base, -0.02 * k)
+		var is_down: bool = hr < DOWN_H * k and h < FLOOR_MAX * k
 		l["cool"] = maxf(0.0, float(l["cool"]) - dt)
-		# how fast the clip moves this foot under the body (skeleton space): a blend or a teleport
-		# is not a place to pin
+		# how fast the clip moves this foot under the body (skeleton space)
 		var sp: float = 0.0
 		if l.has("prev") and dt > 0.0:
 			sp = ((g.origin - (l["prev"] as Vector3)) * xf.basis.get_scale().y).length() / dt
 		if dt > 0.0:
 			l["prev"] = g.origin
 		var head_now: float = _heading(sk, xf, l)
+		var other: Dictionary = _legs[1 - li] if _legs.size() == 2 else l
 		var pinned: bool = l["pinned"]
 		if not pinning:
 			pinned = false
 			l["step_t"] = -1.0
-		elif pinned and h > UP_H * k:
+		elif pinned and hr > UP_H * k:
 			# the clip lifts the foot (a real step): ease from the pin to the clip's foot, no extra lift
 			pinned = false
 			l["step_t"] = 0.0
 			l["step_from"] = (l["pin"] as Transform3D).origin
 			l["step_head"] = float(l.get("pin_head", head_now))
 			l["step_lift"] = 0.0
-		elif not pinned and h < DOWN_H * k and float(l["cool"]) <= 0.0 and float(l["step_t"]) < 0.0 \
+		elif not pinned and is_down and float(l["cool"]) <= 0.0 and float(l["step_t"]) < 0.0 \
 				and l.has("prev"):
 			pinned = true
 			l["err_t"] = 0.0
@@ -142,13 +160,21 @@ func _process_modification_with_delta(_delta: float) -> void:
 				l["err_t"] = float(l.get("err_t", 0.0)) + dt
 			else:
 				l["err_t"] = 0.0
-			if err.length() > (REACH_LOCO if loco else REACH) * k or float(l["err_t"]) > SETTLE_TIME:
-				# too far from where the clip wants it: step there
+			var reach: float = (REACH_LOCO if loco else REACH) * k
+			var want_step: bool = err.length() > reach or float(l["err_t"]) > SETTLE_TIME
+			# round 2: one foot at a time. While the other foot is in the air this one carries the
+			# body and stays down (the hips sink to reach it), unless it is hopelessly far.
+			if want_step and float(other["step_t"]) >= 0.0 and other != l and err.length() < reach * 2.0:
+				want_step = false
+			if want_step:
+				# too far from where the clip wants it: a step to there
 				pinned = false
 				l["step_t"] = 0.0
 				l["step_from"] = (l["pin"] as Transform3D).origin
 				l["step_head"] = float(l.get("pin_head", head_now))
 				l["step_lift"] = STEP_LIFT
+				# a longer step takes longer and lifts higher (a real step, not a flick)
+				l["step_len"] = clampf(STEP_TIME * (0.8 + err.length() / (0.3 * k)), STEP_TIME, STEP_TIME * 2.2)
 				stats["steps"] = int(stats["steps"]) + 1
 		l["pinned"] = pinned
 		var w: float = float(l["w"])
@@ -165,13 +191,13 @@ func _process_modification_with_delta(_delta: float) -> void:
 				target.basis = Basis(Vector3.UP, wrapf(float(l["pin_head"]) - head_now, -PI, PI)) * world.basis.orthonormalized()
 		elif float(l["step_t"]) >= 0.0:
 			var st: float = float(l["step_t"]) + dt
-			var u: float = clampf(st / STEP_TIME, 0.0, 1.0)
+			var u: float = clampf(st / float(l.get("step_len", STEP_TIME)), 0.0, 1.0)
 			var e: float = u * u * (3.0 - 2.0 * u)
 			target.origin = (l["step_from"] as Vector3).lerp(world.origin, e)
 			target.origin.y = world.origin.y + sin(u * PI) * float(l.get("step_lift", 0.0)) * k
 			target.basis = Basis(Vector3.UP, wrapf(float(l["step_head"]) - head_now, -PI, PI) * (1.0 - e)) * world.basis.orthonormalized()
 			w = 1.0
-			if u > 0.5 and u < 1.0 and target.origin.y - floor_y - float(l["a_h"]) < DOWN_H * k and pinning:
+			if u > 0.5 and u < 1.0 and target.origin.y - floor_y - float(l["a_h"]) - maxf(base, -0.02 * k) < DOWN_H * k and pinning:
 				# the stepping foot has come down: it lands here, whatever the clip's foot still does
 				# (a foot never travels along the ground; the next step takes up what is left)
 				l["step_t"] = -1.0
@@ -183,26 +209,63 @@ func _process_modification_with_delta(_delta: float) -> void:
 				stats["pins"] = int(stats["pins"]) + 1
 			elif u >= 1.0:
 				l["step_t"] = -1.0
-				l["cool"] = 0.03
+				l["cool"] = 0.0
 				w = 0.0
+				if is_down and pinning:
+					# the step ends on the ground: pinned on the same frame (no free frame between)
+					l["pinned"] = true
+					l["err_t"] = 0.0
+					l["pin"] = world.orthonormalized()
+					l["pin_head"] = head_now
+					l["pin_full"] = false
+					w = 1.0
+					stats["pins"] = int(stats["pins"]) + 1
 			else:
 				l["step_t"] = st
 		else:
 			w = maxf(0.0, w - dt / BLEND_IN) if dt > 0.0 else w
 		l["w"] = w
 		l["off"] = Vector3.ZERO
+		l["ww"] = 0.0
 		if w <= 0.001:
 			continue
 		var ww: float = w * clampf(strength, 0.0, 1.0)
+		l["ww"] = ww
 		l["off"] = (target.origin - world.origin) * ww    # where the foot really is, for its contact shadow
-		var goal: Vector3 = inv * world.origin.lerp(target.origin, ww)
-		_solve(sk, int(l["up"]), int(l["lo"]), foot, goal)
+		l["goal_w"] = world.origin.lerp(target.origin, ww)
+		l["tbasis"] = target.basis
+		l["g0"] = g
+		# round 2: can the leg reach it? If not, the hips sink (a weight shift) rather than the
+		# foot being dragged along the ground at the end of a straight leg.
+		if bool(l["pinned"]):
+			var ha: Vector3 = xf * sk.get_bone_global_pose(int(l["up"])).origin
+			var kn: Vector3 = xf * sk.get_bone_global_pose(int(l["lo"])).origin
+			var leg: float = ((kn - ha).length() + (world.origin - kn).length()) * STRETCH
+			var gw: Vector3 = l["goal_w"]
+			var dx: float = Vector2(gw.x - ha.x, gw.z - ha.z).length()
+			var dy: float = ha.y - gw.y
+			if dx * dx + dy * dy > leg * leg and dy > 0.0:
+				need_drop = maxf(need_drop, dy - sqrt(maxf(0.0, leg * leg - dx * dx)))
+	# ---- the hips: sink at once as far as a planted leg needs (capped), rise back slowly
+	_drop = maxf(minf(need_drop, HIP_DROP_MAX * k), _drop - HIP_RISE * k * dt)
+	if _drop > 0.0005 and _hips >= 0:
+		var gh: Transform3D = sk.get_bone_global_pose(_hips)
+		gh.origin += inv.basis * Vector3(0.0, -_drop, 0.0)
+		sk.set_bone_global_pose(_hips, gh)
+	# ---- pass 2: bend the legs to the goals
+	for l: Dictionary in _legs:
+		var ww2: float = float(l.get("ww", 0.0))
+		if ww2 <= 0.001:
+			continue
+		var foot2: int = l["foot"]
+		_solve(sk, int(l["up"]), int(l["lo"]), foot2, inv * (l["goal_w"] as Vector3))
 		# the foot keeps the heading it was planted with (no pivot on the spot)
-		var gf: Transform3D = sk.get_bone_global_pose(foot)
-		var want: Basis = (inv.basis * target.basis).orthonormalized()
-		var sc: Vector3 = g.basis.get_scale()
-		gf.basis = g.basis.orthonormalized().slerp(want, ww).scaled(sc)
-		sk.set_bone_global_pose(foot, gf)
+		var g2: Transform3D = l["g0"]
+		var gf: Transform3D = sk.get_bone_global_pose(foot2)
+		var want: Basis = (inv.basis * (l["tbasis"] as Basis)).orthonormalized()
+		var sc: Vector3 = g2.basis.get_scale()
+		gf.basis = g2.basis.orthonormalized().slerp(want, ww2).scaled(sc)
+		sk.set_bone_global_pose(foot2, gf)
 
 
 ## The heading of a foot in the world: ankle to toe joint on the ground plane (0 with no toe bone).

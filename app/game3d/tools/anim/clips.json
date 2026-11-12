@@ -2003,25 +2003,31 @@
    "attack_1": {
     "clip": "CMU_Slash_A",
     "alt": [
+     "CMU_Slash_C",
+     "CMU_Slash_B",
      "M2M_Sword_Regular_A"
     ]
    },
    "attack_2": {
     "clip": "CMU_Slash_B",
     "alt": [
+     "CMU_Slash_C",
      "M2M_Sword_Regular_B"
     ]
    },
    "attack_3": {
     "clip": "CMU_Chop_2H",
     "alt": [
-     "CMU_Slash_Low"
+     "CMU_Slash_Low",
+     "CMU_Slash_C",
+     "CMU_Strike_Down"
     ]
    },
    "heavy": {
     "clip": "CMU_Chop_2H",
     "alt": [
-     "CMU_Slash_Low"
+     "CMU_Slash_Low",
+     "CMU_Slash_C"
     ]
    },
    "sprint": {
@@ -2250,5 +2256,7 @@
   "unarmed": "blade"
  },
  "motion_default": "classic",
- "_doc_mocap": "realism-20261111: sets_mocap overlays the classic sets per weapon set and state when the game's motion switch is \"mocap\" (config \"motion\", anim_library.gd); a state with no overlay or no pick under the gate keeps its classic clip. set_base: a set that exists only in the overlay (unarmed) takes the rest of its states from this classic set. Sources per clip are in clips.<name>.source; lib cmu = cmu2glb.py, lib m2m = m2m_merge.py. run and sprint both play the captured jog (one cycle, rate = body speed / its ground speed): the UAL sprint was retargeted with its leg swing halved and shuffles."
+ "_doc_mocap": "realism-20261111: sets_mocap overlays the classic sets per weapon set and state when the game's motion switch is \"mocap\" (config \"motion\", anim_library.gd); a state with no overlay or no pick under the gate keeps its classic clip. set_base: a set that exists only in the overlay (unarmed) takes the rest of its states from this classic set. Sources per clip are in clips.<name>.source; lib cmu = cmu2glb.py, lib m2m = m2m_merge.py. run and sprint both play the captured jog (one cycle, rate = body speed / its ground speed): the UAL sprint was retargeted with its leg swing halved and shuffles.",
+ "hybrid_states": {},
+ "_doc_hybrid": "round 2: hybrid_states[set][state] = mocap | classic | blend for the game's \"hybrid\" motion (the default with motion_realism). A state not listed plays its overlay clip. Filled from the round 2 measurements and judge runs."
 }

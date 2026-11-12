@@ -78,7 +78,7 @@ func _spawn(mode: String, foot_ik: bool, clips: bool) -> void:
 			p.free()
 		# no library either: an unknown key and a skeleton the data does not recognise
 		(AnimLib.data()["characters"] as Dictionary)["armstrong"]["status"] = "off"
-	_f.anim_opts = {"key": "armstrong", "class": "sword", "foot_ik": foot_ik, "natural_rates": true}
+	_f.anim_opts = {"key": "armstrong", "class": "sword", "foot_ik": foot_ik, "natural_rates": true, "no_bind": true}
 	_f.aim_hold = true
 	_f.weight_fx = true
 	_f.real_speed = true

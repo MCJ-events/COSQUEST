@@ -153,6 +153,28 @@ var floor_y: float = 0.0         # the paving under the fighter (fighter.gd sets
 ## from behind plays "stagger_fwd" as the stagger, a KO from behind "death_fwd" as the death)
 var variant: Dictionary = {}
 var natural_rates: bool = false  # realism-20261111: the KO fall and the cheer at a natural speed (opts "natural_rates")
+## realism round 2: the bind-pose guard is a switch too (opts "no_bind"). Build 21 shows the rest
+## pose from the moment a model appears until its first state change (set_model plays "idle" while
+## the state already is "idle", so nothing starts): with the switch off that is kept, to the frame.
+var no_bind: bool = false
+## realism round 2: the upper-body layer (opts "run_layer"). A one-shot that starts while the body
+## is running keeps the run's hips and legs under the action's upper body (the ally casts on the
+## run: a standing clip on a moving body was most of the foot sliding left); and a "blend" state
+## (anim_library.gd) plays a captured upper body on the classic clip's lunge. Both are one mixed
+## clip built when the action starts (9 tracks resampled: a fraction of a millisecond).
+var run_layer: bool = false
+var legs_run: bool = false       # the current one-shot's legs are the run cycle (foot_lock: loco reach)
+var _speed_now: float = 0.0
+## realism round 2 (weight): 0..1, how far the body is wound up for the next blow while it stands
+## in reach of a living opponent (fighter.gd sets `ready`); the first frames of a swing then start
+## from a loaded pose, not from a hanging arm.
+var ready: bool = false
+var _ready_w: float = 0.0
+const READY_RATE: float = 6.0
+const READY_STATES: Array[String] = ["idle", "_", "walk"]
+const READY_POSE: Dictionary = {"spine_yaw": -12.0, "spine_lean": 5.0, "r_fwd": 30.0, "r_bend": 55.0, "r_side": 12.0, "l_fwd": 18.0, "l_bend": 35.0}
+const LOWER_BONES: Array[String] = ["Hips", "LeftUpLeg", "LeftLeg", "LeftFoot", "LeftToeBase", "RightUpLeg", "RightLeg", "RightFoot", "RightToeBase"]
+const MIX_STATES: Array[String] = ["attack_1", "attack_2", "attack_3", "heavy", "parry", "skill_rally", "skill_shield"]
 const DROOP_STATES: Array[String] = ["idle", "_", "walk", "run", "sprint", "hit", "stagger"]
 const DROOP_RATE: float = 8.0            # 1/s: eases in and out round the attacks
 
@@ -200,6 +222,8 @@ func bind(model: Node3D, body: Node3D, opts: Dictionary = {}) -> Dictionary:
 		nb = layer.bind_bones()
 		# foot locking, after the pose layer and before the cloth (device tier, or config "foot_ik")
 		natural_rates = bool(opts.get("natural_rates", false))
+		no_bind = bool(opts.get("no_bind", false))
+		run_layer = bool(opts.get("run_layer", false))
 		if bool(opts.get("foot_ik", false)) and not clips.is_empty():
 			var fl := FootLock.new()
 			fl.name = "FootLock"
@@ -409,6 +433,20 @@ func play(st: String, game_len: float = 0.0, hit_at: float = -1.0, blend: float 
 		if hit_at > 0.02:
 			blend = maxf(minf(blend, hit_at * 0.7), minf(hit_at * 0.3, 0.25))
 	_clip_t = t_in
+	legs_run = false
+	if run_layer and restart and a != null and not _warp.is_empty() and st in MIX_STATES:
+		var mixed: String = ""
+		if was in LOCO and _speed_now > 1.2 and clips.has(was) and player.current_animation == clips[was]:
+			# the run goes on under the action: its phase now, its rate, in game time
+			mixed = _mix(clip, clips[was], t_in, t_out, player.current_animation_position, walk_rate, {}, st)
+			legs_run = mixed != ""
+		elif m.has("lower"):
+			var lm: Dictionary = m["lower"]
+			var lname: String = AnimLib.LIB_NAME + "/" + str(lm.get("clip", ""))
+			if player.has_animation(lname):
+				mixed = _mix(clip, lname, t_in, t_out, 0.0, 1.0, {"meta": lm, "len": game_len, "hit_at": hit_at}, st)
+		if mixed != "":
+			clip = mixed
 	# fight-anim: the fade runs in clip time (speed_scale), so ask for blend x rate to get `blend` s
 	var rate0: float = float(_warp[1]) if not _warp.is_empty() else (walk_rate if st in LOCO else 1.0)
 	player.play(clip, blend * maxf(rate0, 0.05), 1.0)
@@ -416,6 +454,71 @@ func play(st: String, game_len: float = 0.0, hit_at: float = -1.0, blend: float 
 	if not _warp.is_empty():
 		player.speed_scale = 0.0 if frozen else float(_warp[1])
 	return true
+
+
+## realism round 2: one clip from two. The upper body (and every track but the hips and legs) is
+## `upper`'s; the hips and legs are `lower`'s, sampled where the lower clip would be at the same
+## game time: a loop running on from `phase0` at `rate` (the run under a cast), or, with
+## `timed`, a one-shot warped to the same game length and hit time (the classic lunge under a
+## captured swing; its own contact frame lands on the hit). Returns the mixed clip's name ("" if
+## it could not be built).
+func _mix(upper: String, lower: String, t_in: float, t_out: float, phase0: float, rate: float, timed: Dictionary, st: String) -> String:
+	var ua: Animation = player.get_animation(upper)
+	var la: Animation = player.get_animation(lower)
+	if ua == null or la == null or la.length <= 0.01 or _warp.is_empty():
+		return ""
+	var mix: Animation = ua.duplicate(true)
+	mix.loop_mode = Animation.LOOP_NONE
+	# the lower clip's own timing when it is a one-shot (as play() would warp it)
+	var l_in: float = 0.0
+	var l_out: float = la.length
+	var l_c: float = -1.0
+	var hit_at: float = float(_warp[3])
+	var glen: float = float(timed.get("len", 0.0))
+	if not timed.is_empty():
+		var lm: Dictionary = timed["meta"]
+		var lfps: float = float(lm.get("fps", 30.0))
+		l_in = float(lm.get("in", 0)) / lfps
+		if lm.has("out"):
+			l_out = minf(l_out, float(lm["out"]) / lfps)
+		l_c = float(lm.get("contact", -1)) / lfps
+		if l_c > l_in and l_c < l_out and hit_at > 0.02 and (l_c - l_in) / hit_at > WINDUP_RATE_MAX:
+			l_in = l_c - hit_at * WINDUP_RATE_MAX
+	var step: float = 1.0 / 30.0
+	for i in mix.get_track_count():
+		var bone: String = str(mix.track_get_path(i).get_concatenated_subnames())
+		if not (bone in LOWER_BONES):
+			continue
+		var typ: int = mix.track_get_type(i)
+		if typ != Animation.TYPE_ROTATION_3D and typ != Animation.TYPE_POSITION_3D:
+			continue
+		var li: int = la.find_track(mix.track_get_path(i), typ)
+		if li < 0:
+			continue
+		for k in range(mix.track_get_key_count(i) - 1, -1, -1):
+			mix.track_remove_key(i, k)
+		var tau: float = t_in
+		while tau <= t_out + 0.0001:
+			# game time at this point of the upper clip (the two-piece warp)
+			var g: float = (tau - t_in) / maxf(0.01, float(_warp[1])) if tau < float(_warp[0]) else hit_at + (tau - float(_warp[0])) / maxf(0.01, float(_warp[2]))
+			var lt: float
+			if timed.is_empty():
+				lt = fposmod(phase0 + rate * g, la.length)
+			elif l_c > l_in and l_c < l_out and hit_at > 0.02 and glen > hit_at:
+				lt = l_in + (l_c - l_in) * (g / hit_at) if g < hit_at else l_c + (l_out - l_c) * minf(1.0, (g - hit_at) / (glen - hit_at))
+			else:
+				lt = l_in + (l_out - l_in) * clampf(g / maxf(0.01, glen), 0.0, 1.0)
+			if typ == Animation.TYPE_ROTATION_3D:
+				mix.rotation_track_insert_key(i, tau, la.rotation_track_interpolate(li, lt))
+			else:
+				mix.position_track_insert_key(i, tau, la.position_track_interpolate(li, lt))
+			tau += step
+	var lib: AnimationLibrary = player.get_animation_library(AnimLib.LIB_NAME)
+	var name: String = "__mix_" + st
+	if lib.has_animation(name):
+		lib.remove_animation(name)
+	lib.add_animation(name, mix)
+	return AnimLib.LIB_NAME + "/" + name
 
 
 ## fight-anim: an additive recoil on top of whatever plays (the clip keeps running): `push` is the
@@ -459,6 +562,7 @@ func busy_action() -> bool:
 
 ## Locomotion and the procedural pose. `busy` = a one-shot owns the body.
 func update(dt: float, speed_now: float, dead: bool) -> void:
+	_speed_now = speed_now
 	if not frozen:
 		t += dt
 	if _flinch_t >= 0.0 and (not frozen or _flinch_t < FLINCH_IN):
@@ -511,16 +615,22 @@ func update(dt: float, speed_now: float, dead: bool) -> void:
 	# state is a loop or between states (nothing queued, a clip removed under it) goes back to the
 	# idle loop; a skeleton with no clip at all hangs its arms (pose_layer arm_droop) instead of
 	# standing in its T or A rest pose.
-	if player != null and not player.is_playing() and (state in LOOPING or state == "_") and clips.has("idle") and not frozen:
+	if no_bind and player != null and not player.is_playing() and (state in LOOPING or state == "_") and clips.has("idle") and not frozen:
 		player.play(clips["idle"], BLEND_LOOP, 1.0)
 	if foot != null:
 		foot.dt = 0.0 if frozen else dt
 		foot.floor_y = floor_y
 		foot.size = layer.frame_root.scale.y if layer != null and layer.frame_root != null else 1.0
-		foot.loco = state in LOCO
+		foot.loco = state in LOCO or (legs_run and length > 0.0)
 		foot.pinning = not (state in FOOT_OFF_STATES) and player != null
 	if layer != null:
 		var p: Dictionary = _pose_now() if not clips.has(state) else {}
+		# realism round 2: wound up for the next blow while an opponent is in reach
+		_ready_w = lerpf(_ready_w, 1.0 if (ready and not dead and state in READY_STATES) else 0.0, 1.0 - exp(-dt * READY_RATE))
+		if _ready_w > 0.01:
+			p = p.duplicate()
+			for rk: String in READY_POSE:
+				p[rk] = float(p.get(rk, 0.0)) + float(READY_POSE[rk]) * _ready_w
 		var fl: Dictionary = _flinch_pose()
 		if not fl.is_empty():
 			p = p.duplicate()
@@ -528,7 +638,7 @@ func update(dt: float, speed_now: float, dead: bool) -> void:
 				p[k] = float(p.get(k, 0.0)) + float(fl[k])
 		layer.pose = p
 		var dw: float = arm_droop if (state in DROOP_STATES and not dead) else 0.0
-		if clips.is_empty() and state != "death":
+		if no_bind and clips.is_empty() and state != "death":
 			dw = 1.0   # no clip at all: never the bind pose
 		_droop_now = lerpf(_droop_now, dw, 1.0 - exp(-dt * DROOP_RATE))
 		layer.arm_droop = _droop_now

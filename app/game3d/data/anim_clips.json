@@ -604,25 +604,31 @@
    "attack_1": {
     "clip": "CMU_Slash_A",
     "alt": [
+     "CMU_Slash_C",
+     "CMU_Slash_B",
      "M2M_Sword_Regular_A"
     ]
    },
    "attack_2": {
     "clip": "CMU_Slash_B",
     "alt": [
+     "CMU_Slash_C",
      "M2M_Sword_Regular_B"
     ]
    },
    "attack_3": {
     "clip": "CMU_Chop_2H",
     "alt": [
-     "CMU_Slash_Low"
+     "CMU_Slash_Low",
+     "CMU_Slash_C",
+     "CMU_Strike_Down"
     ]
    },
    "heavy": {
     "clip": "CMU_Chop_2H",
     "alt": [
-     "CMU_Slash_Low"
+     "CMU_Slash_Low",
+     "CMU_Slash_C"
     ]
    },
    "sprint": {
@@ -1779,8 +1785,8 @@
      "run": "CMU_Jog",
      "attack_1": "CMU_Slash_A",
      "attack_2": "CMU_Slash_B",
-     "attack_3": "",
-     "heavy": "",
+     "attack_3": "CMU_Slash_C",
+     "heavy": "CMU_Slash_C",
      "sprint": "CMU_Jog"
     },
     "heavy": {
@@ -2508,9 +2514,9 @@
      "idle": "UAL_Idle",
      "walk": "UAL_Walk",
      "run": "UAL_Jog",
-     "attack_1": "1H_Melee_Attack_Slice_Diagonal",
-     "attack_2": "1H_Melee_Attack_Slice_Horizontal",
-     "attack_3": "1H_Melee_Attack_Chop",
+     "attack_1": "",
+     "attack_2": "",
+     "attack_3": "",
      "skill_charge": "",
      "skill_split": "",
      "skill_whirl": "",
@@ -2530,9 +2536,9 @@
      "idle": "UAL_Idle",
      "walk": "UAL_Walk",
      "run": "UAL_Jog",
-     "attack_1": "1H_Melee_Attack_Slice_Diagonal",
-     "attack_2": "1H_Melee_Attack_Slice_Horizontal",
-     "attack_3": "2H_Melee_Attack_Chop",
+     "attack_1": "",
+     "attack_2": "",
+     "attack_3": "",
      "skill_charge": "",
      "skill_split": "",
      "skill_whirl": "",
@@ -2552,9 +2558,9 @@
      "idle": "UAL_Idle",
      "walk": "UAL_Walk",
      "run": "Staff_Jog",
-     "attack_1": "1H_Melee_Attack_Slice_Diagonal",
-     "attack_2": "Spellcast_Shoot",
-     "attack_3": "2H_Melee_Attack_Chop",
+     "attack_1": "",
+     "attack_2": "",
+     "attack_3": "",
      "skill_charge": "",
      "skill_split": "",
      "skill_whirl": "",
@@ -2574,9 +2580,9 @@
      "idle": "",
      "walk": "UAL_Walk",
      "run": "UAL_Jog",
-     "attack_1": "1H_Melee_Attack_Stab",
-     "attack_2": "1H_Melee_Attack_Stab",
-     "attack_3": "1H_Melee_Attack_Stab",
+     "attack_1": "",
+     "attack_2": "",
+     "attack_3": "",
      "skill_charge": "",
      "skill_split": "",
      "skill_whirl": "",
@@ -2687,9 +2693,9 @@
      "victory": "",
      "idle": "CMU_Idle",
      "run": "CMU_Jog",
-     "attack_1": "CMU_Slash_A",
-     "attack_2": "CMU_Slash_B",
-     "attack_3": "CMU_Slash_Low",
+     "attack_1": "",
+     "attack_2": "",
+     "attack_3": "",
      "heavy": "",
      "sprint": "CMU_Jog"
     },
@@ -2735,9 +2741,9 @@
      "victory": "",
      "idle": "M2M_Fighting_Idle",
      "run": "CMU_Jog",
-     "attack_1": "M2M_Punch_Jab",
-     "attack_2": "CMU_Punch_R",
-     "attack_3": "CMU_Strike_Down",
+     "attack_1": "",
+     "attack_2": "",
+     "attack_3": "",
      "heavy": "",
      "skill_charge": "",
      "sprint": "CMU_Jog"
@@ -2746,7 +2752,6 @@
    "ground_speed_per_hip": {
     "CMU_Jog": 2.768
    },
-   "gate_attacks": 0.011,
    "clips_in_library": 24
   },
   "forge_samurai": {
@@ -2900,8 +2905,8 @@
      "run": "CMU_Jog",
      "attack_1": "CMU_Slash_A",
      "attack_2": "CMU_Slash_B",
-     "attack_3": "",
-     "heavy": "",
+     "attack_3": "CMU_Slash_C",
+     "heavy": "CMU_Slash_C",
      "sprint": "CMU_Jog"
     },
     "heavy": {
@@ -3130,8 +3135,8 @@
      "run": "CMU_Jog",
      "attack_1": "CMU_Slash_A",
      "attack_2": "CMU_Slash_B",
-     "attack_3": "",
-     "heavy": "",
+     "attack_3": "CMU_Slash_C",
+     "heavy": "CMU_Slash_C",
      "sprint": "CMU_Jog"
     },
     "heavy": {
@@ -3541,8 +3546,8 @@
      "run": "CMU_Jog",
      "attack_1": "CMU_Slash_A",
      "attack_2": "CMU_Slash_B",
-     "attack_3": "",
-     "heavy": "",
+     "attack_3": "CMU_Slash_C",
+     "heavy": "CMU_Slash_C",
      "sprint": "CMU_Jog"
     },
     "heavy": {
@@ -3816,5 +3821,6 @@
    },
    "clips_in_library": 39
   }
- }
+ },
+ "hybrid_states": {}
 }

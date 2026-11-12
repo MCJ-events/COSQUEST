@@ -31,6 +31,7 @@ def main():
     ap.add_argument("--keys", default=",".join(CAST))
     ap.add_argument("--gate", type=float, default=0.005)
     ap.add_argument("--lod", default="lod1.glb")
+    ap.add_argument("--soft_core", action="store_true", help="attack states with no clip under the gate do not demote the character to procedural")
     ap.add_argument("--libs", default="", help="more source libraries for retarget.py: cmu=/p/cmu.glb,m2m=/p/m2m.glb")
     ap.add_argument("--gate_attacks", type=float, default=0.0, help="autorig: a looser gate for the attack states of an auto-rigged Forge character (recorded per character)")
     a = ap.parse_args()
@@ -147,6 +148,10 @@ def main():
         own_cls = cfg.get("default_class", {}).get(key) or attach["weapons"].get(attach["characters"].get(key, {}).get("default_weapon") or "", {}).get("grip", "sword")
         own_set = cfg["class_set"].get(own_cls, "blade")
         missing = [st for st in cfg["core_states"] if not pick[own_set].get(st)]
+        if a.soft_core:
+            # round 2 ruling: an auto-rigged Forge character whose attacks tear past the gate keeps its
+            # library; only those attacks fall back (to the procedural swing)
+            missing = [st for st in missing if not st.startswith("attack_")]
         if missing:
             chars[key] = {"status": "procedural", "why": "rig tears: no clip under the gate for %s with its %s (%s set); worst clip stretches %.1f %% of triangles past 2.5x" % (", ".join(missing), own_cls, own_set, worst * 100),
                           "fallback": "its own cq 060 idle/walk/celebrate and the procedural poses and body motion", "tear_worst": round(worst, 4)}
@@ -202,6 +207,7 @@ def main():
         "sets_mocap": cfg.get("sets_mocap", {}),
         "set_base": cfg.get("set_base", {}),
         "motion_default": cfg.get("motion_default", "classic"),
+        "hybrid_states": cfg.get("hybrid_states", {}),
         "clips": dict(sorted(clips_out.items())),
         "characters": dict(sorted(chars.items())),
     }

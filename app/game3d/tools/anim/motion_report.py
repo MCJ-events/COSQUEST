@@ -56,6 +56,16 @@ ATTACK = ["attack_1", "attack_2", "attack_3", "heavy", "parry", "skill_charge", 
           "skill_rally", "skill_shield"]
 DIRECTED = ["attack_1", "attack_2", "attack_3", "heavy", "skill_charge", "skill_split"]
 GATE_GROUPS = ["idle", "walk", "jog", "attack"]
+# round 2 (BAR.md section C restated): a fighter that is knocked back or dashing is meant to travel
+# with its feet down. A step is left out of the planted-feet gate when any of its frames has a
+# knockback speed over KB_SPEED m/s or is in one of these states: the stagger (the shove's own
+# reaction), the dodge roll, CHARGE (a dash), WHIRL (a spin on the spot) and SPLIT (a leap).
+KB_SPEED = 1.0
+DASH_STATES = ["stagger", "dodge", "skill_charge", "skill_whirl", "skill_split"]
+LIGHT = ["attack_1", "attack_2"]
+LIGHT_MIN_S = 0.05
+HEAVY_MIN_S = 0.10
+BIG_CM = 15.0
 
 
 def group(st):
@@ -162,6 +172,8 @@ def feet(rs):
                 cur["slide"] = max(cur["slide"], hlen(cur["acc"]))
                 cur["n"] += 1
                 cur["groups"][group(r["st"])] += 1
+                if r.get("kb", 0.0) > KB_SPEED or r["st"] in DASH_STATES:
+                    cur["excl"] = True
                 g = group(r["st"])
                 if g in ("walk", "jog"):
                     body_v = hlen(sub(r["pos"], rs[i - 1]["pos"])) * FPS
@@ -173,14 +185,15 @@ def feet(rs):
                 cur = None
                 if planted:
                     cur = {"foot": side, "fr": r["fr"], "n": 1, "acc": [0.0, 0.0, 0.0], "slide": 0.0,
-                           "groups": defaultdict(int)}
+                           "groups": defaultdict(int), "excl": r.get("kb", 0.0) > KB_SPEED or r["st"] in DASH_STATES}
                     cur["groups"][group(r["st"])] += 1
         if cur is not None and cur["n"] >= 3:
             steps.append(cur)
     out = []
     for s in steps:
         g = max(s["groups"].items(), key=lambda kv: kv[1])[0]
-        out.append({"foot": s["foot"], "fr": s["fr"], "frames": s["n"], "group": g, "slide_cm": round(s["slide"] * 100.0 / size, 2)})
+        out.append({"foot": s["foot"], "fr": s["fr"], "frames": s["n"], "group": g, "slide_cm": round(s["slide"] * 100.0 / size, 2),
+                    "excluded": bool(s.get("excl"))})
     return out, mism, glide, frames_by_group
 
 
@@ -337,11 +350,13 @@ def weight(rows, hits, acts_by_role):
                     if a["hit_at"] > 0 and rs[j]["t"] >= a["hit_at"]:
                         ic = j
                         break
-                e.update({"ranged": True, "st": a["st"], "antic": ic - a["i0"], "follow": a["i1"] - ic})
+                e.update({"ranged": True, "st": a["st"], "antic": ic - a["i0"], "follow": a["i1"] - ic,
+                          "windup_s": round(float(rs[ic]["t"]), 4)})
             else:
                 e.update({"ranged": True, "st": "", "antic": None, "follow": None})
         else:
-            e.update({"ranged": False, "st": act["st"], "antic": i - act["i0"], "follow": act["i1"] - i})
+            e.update({"ranged": False, "st": act["st"], "antic": i - act["i0"], "follow": act["i1"] - i,
+                      "windup_s": round(float(rs[i]["t"]), 4)})
         # the victim: hips and head relative to its own origin over the next 12 frames
         didx = {r["fr"]: k for k, r in enumerate(rd)}
         k = didx.get(h["fr"])
@@ -354,15 +369,18 @@ def weight(rows, hits, acts_by_role):
             dmax = 0.0
             root = 0.0
             sts = set()
+            onset = None
             for j in range(k, min(len(rd), k + 12)):
                 if "Hips" not in rd[j]:
                     continue
                 hmax = max(hmax, vlen(sub(sub(rd[j]["Hips"], rd[j]["pos"]), hip0)))
+                if onset is None and (vlen(sub(sub(rd[j]["Hips"], rd[j]["pos"]), hip0)) > 0.01 * size or vlen(sub(sub(rd[j]["Head"], rd[j]["pos"]), head0)) > 0.02 * size):
+                    onset = j - k
                 dmax = max(dmax, vlen(sub(sub(rd[j]["Head"], rd[j]["pos"]), head0)))
                 root = max(root, hlen(sub(rd[j]["pos"], base["pos"])))
                 sts.add(rd[j]["st"])
             e.update({"hips_cm": round(hmax * 100 / size, 1), "head_cm": round(dmax * 100 / size, 1),
-                      "root_cm": round(root * 100, 1), "dst_states": sorted(sts)})
+                      "root_cm": round(root * 100, 1), "dst_states": sorted(sts), "react_onset": onset})
         out.append(e)
     return out
 
@@ -459,6 +477,14 @@ def main():
                  "over_5cm": sum(1 for x in xs if x > SLIDE_WORST_CM)}
     summ["slide"] = sl
     gate = [s["slide_cm"] for s in steps_all if s["group"] in GATE_GROUPS]
+    g2 = [s["slide_cm"] for s in steps_all if s["group"] in GATE_GROUPS + ["hit", "guard", "victory"] and not s.get("excluded")]
+    ex = [s for s in steps_all if s.get("excluded")]
+    summ["planted_feet_r2"] = {"steps": len(g2), "median_cm": round(pct(g2, 0.5), 2),
+                               "share_over_2cm": round(sum(1 for x in g2 if x > SLIDE_PASS_CM) / max(1, len(g2)), 3),
+                               "over_5cm": sum(1 for x in g2 if x > SLIDE_WORST_CM), "over_15cm": sum(1 for x in g2 if x > BIG_CM),
+                               "worst_cm": round(max(g2), 2) if g2 else 0.0, "excluded_steps": len(ex),
+                               "excluded_worst_cm": round(max([s["slide_cm"] for s in ex] or [0.0]), 1),
+                               "pass": bool(g2) and pct(g2, 0.5) < SLIDE_PASS_CM and sum(1 for x in g2 if x > SLIDE_PASS_CM) / len(g2) < 0.10 and all(x <= BIG_CM for x in g2)}
     summ["planted_feet"] = {"steps": len(gate), "over_2cm": sum(1 for x in gate if x > SLIDE_PASS_CM),
                             "over_5cm": sum(1 for x in gate if x > SLIDE_WORST_CM), "median_cm": round(pct(gate, 0.5), 2),
                             "worst_cm": round(max(gate), 2) if gate else 0.0,
@@ -495,6 +521,19 @@ def main():
                       "hips_median_cm": pct([h["hips_cm"] for h in react], 0.5), "head_median_cm": pct([h["head_cm"] for h in react], 0.5),
                       "stagger_or_hit_clip": len(stag), "stagger_hips_move": len(stag_ok),
                       "pass": len(ok_a) == len(melee) and len(ok_f) == len(melee) and len(stag_ok) == len(stag) and len(melee) > 0}
+    # round 2: the wind-up in time, not 30 fps frames: a light attack at least 0.05 s (3 frames at the
+    # phone's 60), a heavy or skill attack at least 0.10 s; and when the defender starts to react
+    wl = [h for h in hs if h.get("windup_s") is not None and h.get("st") in LIGHT]
+    wh = [h for h in hs if h.get("windup_s") is not None and h.get("st") not in LIGHT and h.get("st")]
+    on = [h["react_onset"] for h in hs if h.get("react_onset") is not None]
+    no_react = sum(1 for h in hs if "hips_cm" in h and not h["ko"] and h.get("react_onset") is None)
+    summ["weight_r2"] = {
+        "light": {"n": len(wl), "ok": sum(1 for h in wl if h["windup_s"] >= LIGHT_MIN_S - 1e-6), "min_s": min([h["windup_s"] for h in wl] or [0.0]), "median_s": pct([h["windup_s"] for h in wl], 0.5)},
+        "heavy": {"n": len(wh), "ok": sum(1 for h in wh if h["windup_s"] >= HEAVY_MIN_S - 1e-6), "min_s": min([h["windup_s"] for h in wh] or [0.0]), "median_s": pct([h["windup_s"] for h in wh], 0.5),
+                  "short": sorted(set("%s %s %.3f" % (h["src"], h["st"], h["windup_s"]) for h in wh if h["windup_s"] < HEAVY_MIN_S - 1e-6))},
+        "react_on_contact_frame": sum(1 for x in on if x == 0), "react_within_1_frame": sum(1 for x in on if x <= 1), "reactions": len(on), "no_reaction": no_react}
+    summ["weight_r2"]["pass"] = (summ["weight_r2"]["light"]["ok"] == len(wl) and summ["weight_r2"]["heavy"]["ok"] == len(wh)
+                                 and len(ok_f) == len(melee) and len(stag_ok) == len(stag) and len(wl) + len(wh) > 0)
     worst_t = 0.0
     over = []
     for role, t in res["tear"].items():
@@ -516,6 +555,9 @@ def main():
     p = summ["planted_feet"]
     md.append("| Planted feet (idle, walk, jog, attack) | %d steps, median %.1f cm, %d over 2 cm (%.0f %%), %d over 5 cm, worst %.1f cm | under 2 cm, none over 5 cm | %s |" % (
         p["steps"], p["median_cm"], p["over_2cm"], 100.0 * p["over_2cm"] / max(1, p["steps"]), p["over_5cm"], p["worst_cm"], "yes" if p["pass"] else "NO"))
+    p2 = summ["planted_feet_r2"]
+    md.append("| Planted feet, round 2 gate (knockback and dashes left out: %d steps, their worst %.0f cm) | %d steps, median %.1f cm, %.0f %% over 2 cm, %d over 5 cm, %d over 15 cm, worst %.1f cm | median under 2 cm, under 10 %% over 2 cm, none over 15 cm | %s |" % (
+        p2["excluded_steps"], p2["excluded_worst_cm"], p2["steps"], p2["median_cm"], p2["share_over_2cm"] * 100, p2["over_5cm"], p2["over_15cm"], p2["worst_cm"], "yes" if p2["pass"] else "NO"))
     f = summ["facing"]
     md.append("| Facing | %d directed attacks, %d swing over 45 deg off, %d body over 45 deg off at contact (%d at the start), worst swing %.0f deg | 0 | %s |" % (
         f["attacks"], f["swing_off_45"], f["body_off_45_at_contact"], f["body_off_45_at_start"], f["worst_swing_deg"], "yes" if f["pass"] else "NO"))
@@ -525,6 +567,10 @@ def main():
     md.append("| Weight | %d blows (%d melee): anticipation at least 3 frames on %d of %d (least %s, median %s); follow-through on %d of %d (median %s); hit or stagger clips where the hips move at least 3 cm: %d of %d (all reactions: hips median %.1f cm, head %.1f cm) | every blow | %s |" % (
         w["hits"], w["melee"], w["antic_ok"], w["melee"], w["antic_min"], w["antic_median"], w["follow_ok"], w["melee"], w["follow_median"],
         w["stagger_hips_move"], w["stagger_or_hit_clip"], w["hips_median_cm"], w["head_median_cm"], "yes" if w["pass"] else "NO"))
+    w2 = summ["weight_r2"]
+    md.append("| Weight, round 2 (wind-up in time) | light attacks: %d of %d at 0.05 s or more (least %.3f s, median %.3f); heavy and skill attacks: %d of %d at 0.10 s or more (least %.3f s, median %.3f)%s; defender reacts on the contact frame in %d of %d blows (within one frame: %d; none: %d) | light 0.05 s, heavy 0.10 s | %s |" % (
+        w2["light"]["ok"], w2["light"]["n"], w2["light"]["min_s"], w2["light"]["median_s"], w2["heavy"]["ok"], w2["heavy"]["n"], w2["heavy"]["min_s"], w2["heavy"]["median_s"],
+        (" (short: " + "; ".join(w2["heavy"]["short"]) + ")") if w2["heavy"]["short"] else "", w2["react_on_contact_frame"], w2["reactions"], w2["react_within_1_frame"], w2["no_reaction"], "yes" if w2["pass"] else "NO"))
     t = summ["tear"]
     if t["pass"] is not None:
         md.append("| Tearing (clips that played, worst LOD) | worst %.2f %%; over the gate: %s | at most 0.5 %% (run 1 %%) | %s |" % (

@@ -17,8 +17,9 @@ $PY tools/anim/cmu2glb.py --cmu $MOTION/src/cmu --clips tools/anim/cmu_clips.jso
 B="nice -n 10 $BPY tools/anim/build_all.py --src $S/kaykit/Knight.glb --src_ual $S/ual/AnimationLibrary_Godot_Standard.gltf --libs cmu=$MOTION/lib/cmu.glb,m2m=$MOTION/lib/m2m.glb --cast $C"
 if [ "$what" = cast ] || [ "$what" = all ]; then $B; fi
 if [ "$what" = forge ] || [ "$what" = all ]; then
-  # the three auto-rigged Forge proof characters (autorig, 9 Nov): Kade's MIA rig needs the looser attack gate
-  $B --keys forge_kade --gate_attacks 0.011
-  $B --keys forge_soldier
-  $B --keys forge_samurai
+  # the three auto-rigged Forge proof characters (autorig, 9 Nov). Round 2 ruling: the strict 0.5 % gate
+  # for them too (Kade's attacks were let through at 1.1 %); an attack over it falls back
+  $B --keys forge_kade --soft_core
+  $B --keys forge_soldier --soft_core
+  $B --keys forge_samurai --soft_core
 fi

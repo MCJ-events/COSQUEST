@@ -164,6 +164,13 @@ func _write_frame() -> void:
 			var tip: Vector3 = _fight.call("_weapon_tip", f)
 			if tip != Vector3.INF:
 				row["tip"] = _v(tip)
+		if sk != null and not (_snap.has(role) and (_snap[role]["g"] as Array).size() == sk.get_bone_count()):
+			# no skeleton update yet: nothing has animated this model, it is drawn as it was loaded
+			# (build 21 stands a fighter in its rest pose until its first state change)
+			var g0: Array = []
+			for b0 in sk.get_bone_count():
+				g0.append(sk.get_bone_global_pose(b0))
+			_snap[role] = {"g": g0, "n": 0}
 		if sk != null and _snap.has(role) and (_snap[role]["g"] as Array).size() == sk.get_bone_count():
 			var g: Array = _snap[role]["g"]
 			var xf: Transform3D = sk.global_transform
