@@ -45,6 +45,7 @@ import { FIGHT3D } from "@/features/game3d/flags";
 import { hudLandscape, landscapePx } from "@/features/game/landscape";
 import { motionTierDecision } from "@/features/game/motionTier";
 import { CostQuestGame } from "@/modules/costquest-game/src";
+import { lookTierDecision } from "@/features/game/lookTier";
 import { acceptLandscape, declineLandscape, holdLandscape, landscapeAccepted, landscapeHeld, landscapeWanted, releaseLandscape } from "@/features/game/orientation";
 import { useAppSelector } from "@/store/hooks";
 import { gameStore } from "@/features/game/runtime";
@@ -239,6 +240,11 @@ export default function Fight3D({
         const probe = FIGHT3D as { selfCycle?: number; look?: Record<string, boolean> | null };
         if (probe.selfCycle) Object.assign(config, { self_cycle: probe.selfCycle, self_cycle_ms: 6000 });
         // Look switches (test link look=post etc.): the opt-in post stack on a device.
+        // realism: the look's device tier (features/game/lookTier.ts, the landscape flag's RAM rule).
+        // Godot treats a missing tier as "low" (the look as it was); the test link's look still wins per key.
+        const tier = lookTierDecision({ physicalMemory: CostQuestGame?.physicalMemory, env: process.env.EXPO_PUBLIC_LOOK_TIER ?? null });
+        Object.assign(config, { tier: tier.tier });
+        log(`look tier=${tier.tier} (${tier.reason})`);
         if (probe.look) Object.assign(config, { look: probe.look });
         // Build 20: the view's size in pixels. Godot keeps the fight in "loading" (this card stays up)
         // until its window is this size and has drawn a few frames at it, so the player never sees the

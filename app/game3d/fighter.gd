@@ -17,6 +17,17 @@ const RIM_TEAM: float = 0.25
 const SHADE_SHARE: float = 0.45       # how much of the street's shade colour the fighters' dark side takes
 const FLASH_SHADER := preload("res://vfx/flash.gdshader")
 const LIT_SHADER := preload("res://vfx/char_lit.gdshader")
+## realism (LOOK.md "The real look"): the mid and high tiers' fighter material (look "real")
+const REAL_SHADER := preload("res://vfx/char_real.gdshader")
+const LookReal := preload("res://look_real.gd")
+const REAL_RIM: float = 0.5           # the rim's strength on the real material (char_lit's is 1.35)
+## The fill: the street's measured ambient times this, per time of day. At dusk and at night the street's
+## lamps and windows are drawn as cards (light pools on the paving, halos), which light nothing, so the
+## measured light on a fighter is less than the paving shows; without this they are silhouettes at night
+## (measured: LOOK.md). Golden hour and day use the measured light as it is.
+## round 2: with the key turned to the camera's side the fill is smaller (dusk 1.35 -> 1.2, night 2.4 -> 1.9).
+const REAL_FILL: Dictionary = {"golden": 1.0, "day": 1.0, "dusk": 1.2, "night": 1.9}
+const SKIN_GUESS: float = 0.6         # the skin term's strength when it is guessed from colour (no Forge mask)
 const ArenaScript := preload("res://arena.gd")
 const DOME_SHADER := preload("res://vfx/dome.gdshader")
 
@@ -79,6 +90,9 @@ var _lit_mats: Array[ShaderMaterial] = []
 var _lit_flash: float = -1.0
 var rim_on: bool = true                                  # set by fight.gd from the look ("rim": false = the old material + overlay)
 var look: Dictionary = {}                                # the arena's look (set by fight.gd)
+var hair_mask: Texture2D = null                          # realism round 2: the model's Forge hair mask
+var skin_mask: Texture2D = null                          # realism: the model's Forge skin mask (fight.gd, before set_model)
+var _surf_tangents: bool = false                         # the surface being converted has tangents (normal map)
 var sun_blob: bool = true                                # set by fight.gd from the look ("ao")
 var key_dir: Vector3 = Vector3(0.65, -0.56, 0.51)       # the key light's direction (arena.gd)
 var _rim_team: Color = Color(0.5, 0.85, 1.0)
@@ -427,7 +441,7 @@ func _apply_overlay(root: Node) -> void:
 	if root is MeshInstance3D:
 		meshes.append(root)
 	for n: Node in meshes:
-		if not rim_on or not _light_mesh(n as MeshInstance3D):
+		if (not rim_on and not bool(look.get("real", false))) or not _light_mesh(n as MeshInstance3D):
 			_overlay_meshes.append(n)
 	_overlay_on = false
 	if not _overlay_meshes.is_empty():
@@ -483,6 +497,8 @@ func _wire_cloth(root: Node) -> void:
 func _light_mesh(mi: MeshInstance3D) -> bool:
 	if mi.mesh == null:
 		return false
+	var am := mi.mesh as ArrayMesh    # realism: a surface with tangents can take the model's normal map
+	_surf_tangents = am != null and am.get_surface_count() > 0 and (am.surface_get_format(0) & Mesh.ARRAY_FORMAT_TANGENT) != 0
 	if mi.material_override != null:
 		var o: ShaderMaterial = _lit_material(mi.material_override)
 		if o == null:
@@ -491,6 +507,7 @@ func _light_mesh(mi: MeshInstance3D) -> bool:
 		return true
 	var subs: Array = []
 	for si in mi.mesh.get_surface_count():
+		_surf_tangents = am != null and (am.surface_get_format(si) & Mesh.ARRAY_FORMAT_TANGENT) != 0
 		var sm: ShaderMaterial = _lit_material(mi.get_active_material(si))
 		if sm == null:
 			return false
@@ -504,6 +521,8 @@ func _lit_material(m: Material) -> ShaderMaterial:
 	if not (m is BaseMaterial3D):
 		return null
 	var b := m as BaseMaterial3D
+	if bool(look.get("real", false)):
+		return _real_material(b)
 	if b.transparency != BaseMaterial3D.TRANSPARENCY_DISABLED or b.shading_mode != BaseMaterial3D.SHADING_MODE_PER_PIXEL \
 			or b.cull_mode != BaseMaterial3D.CULL_BACK or b.vertex_color_use_as_albedo or b.normal_enabled \
 			or b.emission_enabled or b.uv1_triplanar:
@@ -530,6 +549,79 @@ func _lit_material(m: Material) -> ShaderMaterial:
 	var tp: Dictionary = ArenaScript.time_preset(look)
 	sm.set_shader_parameter("rim_key", (tp["key_color"] as Color).lerp(Color.WHITE, 0.15))
 	sm.set_shader_parameter("shade_tint", shade_tint(tp))
+	_lit_mats.append(sm)
+	return sm
+
+
+## realism: the surface on vfx/char_real.gdshader: the model's own maps (normal and emissive too), the
+## key light through the shader's own light(), the street's baked cube and ambient colours for this time
+## of day, the skin term from the Forge mask (or a colour guess). null if it cannot be converted.
+func _real_material(b: BaseMaterial3D) -> ShaderMaterial:
+	if b.transparency != BaseMaterial3D.TRANSPARENCY_DISABLED or b.shading_mode != BaseMaterial3D.SHADING_MODE_PER_PIXEL \
+			or b.cull_mode != BaseMaterial3D.CULL_BACK or b.vertex_color_use_as_albedo or b.uv1_triplanar:
+		return null
+	var sm := ShaderMaterial.new()
+	sm.shader = REAL_SHADER
+	sm.set_shader_parameter("albedo_tex", b.albedo_texture)
+	sm.set_shader_parameter("albedo", b.albedo_color)
+	var orm: Texture2D = b.roughness_texture if b.roughness_texture != null else b.metallic_texture
+	sm.set_shader_parameter("orm_tex", orm)
+	var ch: Array[Vector4] = [Vector4(1, 0, 0, 0), Vector4(0, 1, 0, 0), Vector4(0, 0, 1, 0), Vector4(0, 0, 0, 1), Vector4(0.3, 0.59, 0.11, 0)]
+	sm.set_shader_parameter("orm_channel_r", ch[b.roughness_texture_channel] if b.roughness_texture != null else Vector4(0, 0, 0, 1))
+	sm.set_shader_parameter("orm_channel_m", ch[b.metallic_texture_channel] if b.metallic_texture != null else Vector4(0, 0, 0, 1))
+	sm.set_shader_parameter("roughness", b.roughness)
+	sm.set_shader_parameter("metallic", b.metallic)
+	sm.set_shader_parameter("specular", b.metallic_specular)
+	sm.set_shader_parameter("uv1_scale", b.uv1_scale)
+	sm.set_shader_parameter("uv1_offset", b.uv1_offset)
+	if b.normal_enabled and b.normal_texture != null and _surf_tangents and bool(look.get("normal_map", true)):
+		sm.set_shader_parameter("normal_tex", b.normal_texture)
+		sm.set_shader_parameter("normal_amount", b.normal_scale)
+	if b.emission_enabled:
+		sm.set_shader_parameter("emission_tex", b.emission_texture)
+		var ec: Color = b.emission * b.emission_energy_multiplier
+		sm.set_shader_parameter("emission", Vector3(ec.r, ec.g, ec.b) if b.emission_texture != null else Vector3.ZERO)
+	if b.ao_enabled and b.ao_texture != null and b.ao_texture == orm and b.ao_texture_channel == BaseMaterial3D.TEXTURE_CHANNEL_RED:
+		sm.set_shader_parameter("ao_amount", 1.0)
+	# skin: the Forge mask when the model came with one, else a guess from the colour at part strength
+	var skin: String = str(look.get("skin", "full"))
+	if skin == "off" or skin == "false":
+		sm.set_shader_parameter("skin_mode", 0)
+	elif skin_mask != null:
+		sm.set_shader_parameter("skin_mode", 1)
+		sm.set_shader_parameter("skin_tex", skin_mask)
+		sm.set_shader_parameter("skin_amount", 1.0)
+	elif bool(look.get("skin_guess", true)):
+		sm.set_shader_parameter("skin_mode", 2)
+		sm.set_shader_parameter("skin_amount", SKIN_GUESS)
+	sm.set_shader_parameter("skin_lobe2", 0.18 if skin == "full" else 0.0)
+	if hair_mask != null and bool(look.get("hair", true)):
+		sm.set_shader_parameter("hair_on", true)
+		sm.set_shader_parameter("hair_tex", hair_mask)
+	# the street's light at this time of day
+	var tp: Dictionary = ArenaScript.time_preset(look)
+	var e: Dictionary = LookReal.env_for(str(look.get("time", "golden")))
+	if e.is_empty():
+		# not baked: the preset's flat ambient from every side, no reflections
+		var ac: Color = (tp["ambient"] as Color) * float(tp["ambient_energy"])
+		var flat := PackedVector3Array()
+		for i in 6:
+			flat.append(Vector3(ac.r, ac.g, ac.b))
+		sm.set_shader_parameter("amb_cube", flat)
+		sm.set_shader_parameter("env_spec", 0.0)
+	else:
+		sm.set_shader_parameter("env_cube", e["cube"])
+		sm.set_shader_parameter("env_scale", e["scale"])
+		sm.set_shader_parameter("env_lods", e["lods"])
+		sm.set_shader_parameter("amb_cube", e["amb"])
+		sm.set_shader_parameter("env_spec", float(look.get("ibl_k", 1.0)) if bool(look.get("ibl", true)) else 0.0)
+	sm.set_shader_parameter("amb_amount", float(look.get("amb_k", REAL_FILL.get(str(look.get("time", "golden")), 1.0))))
+	sm.set_shader_parameter("key_dir", key_dir)
+	sm.set_shader_parameter("rim_team", _rim_team)
+	sm.set_shader_parameter("rim_amount", float(look.get("rim_k", REAL_RIM)) if rim_on else 0.0)
+	sm.set_shader_parameter("team_amount", RIM_TEAM)
+	sm.set_shader_parameter("rim_key", (tp["key_color"] as Color).lerp(Color.WHITE, 0.15))
+	sm.set_shader_parameter("debug_view", int(look.get("real_debug", 0)))
 	_lit_mats.append(sm)
 	return sm
 

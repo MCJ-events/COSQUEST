@@ -286,3 +286,105 @@ cq 016 Kenney street exactly as it was (its neon circuit lines show only at dusk
 already in the project); every file in `art/world/CREDITS.md`. Mobile pack delta: ~17.4 MB of ETC2 textures with
 mipmaps plus 1.1 MB of kit meshes. Rig: `e2e/look-world/` (mkspec, run, seeded, compose). Captures and the
 before/after stills: `cosquest-review/look-world/`.
+
+## The real look (realism, 11 Nov 2026)
+The fighters drawn as real materials lit by the street, behind a device tier. Evidence, numbers and what
+still falls short: `cosquest-review/realism-20261111/experiments/look/README.md`.
+
+**Tiers** (`arena.gd TIER_LOOK`, the fight config's `"tier"`): the app sends it from the phone's reported
+memory with the landscape flag's rule (`features/game/lookTier.ts`: high at 5 GiB and up, mid from 3.3 GiB,
+else low; `EXPO_PUBLIC_LOOK_TIER=low|mid|high` forces one, `0` means low). A config without a tier is low.
+
+| Tier | Adds to `LOOK_DEFAULTS` | What the player gets |
+|---|---|---|
+| low | nothing | build 21's look, key for key (`tests/look_tier_test.gd`); seeded fights unchanged |
+| mid | `real`, `skin: "simple"`, `ibl` | the real fighter material, wrap skin with one specular lobe, the street's reflections; no post pass, LOD1, render scale as before |
+| high | mid plus `skin: "full"`, `shadows: true`, `grade: "base"`, `hero_lod: 0`, `scale: 1.0` | two-lobe skin, the shadow map, the base grade, the hero and the Guardian at LOD0, 3D at the screen's resolution |
+
+Every key can still be set from the config's `"look"` (it wins over the tier), which is how each piece is
+measured. Extra knobs: `faction` (a faction's grade table over the base), `normal_map`, `skin_guess`,
+`ibl_k`, `amb_k`, `rim_k`, `night` (lets the night preset through; without it night is drawn as dusk, as
+before), `real_debug` (1 grey fighters, 2 mirror fighters, 3 skin weight, 4 normals).
+
+**The material** (`vfx/char_real.gdshader`, built by `fighter.gd _real_material`):
+- The model's own maps: base colour, packed roughness and metal, the tangent-space normal map and the
+  emissive map when the file has them (`char_lit` refused a surface with either).
+- The key light goes through the shader's own `light()`: GGX specular with Schlick Fresnel, Lambert diffuse
+  less what the specular took, and a share given back on rough metal (single scattering makes it dark).
+  `ambient_light_disabled`: the flat ambient and `char_lit`'s hemisphere guess are not used.
+- The street's light replaces them: `data/look_real.json` holds, per time of day, a 32 px prefiltered cube of
+  the street as seen from where the fight stands (mip = roughness; one `textureLod` a pixel) and six ambient
+  colours taken from the same cube (ALU only). `tools/look/env_capture.gd` renders the six views in linear
+  light with the fighters out of the way; `tools/look/bake_env.py` filters and packs them. Rebake when the
+  street or a time preset changes.
+- Skin: the Forge skin mask (`lodN_skin.png` beside the model, named in `extras.forge_skin`; `char_loader.gd`
+  reads it) checked against the colour, or a guess from the colour alone at 0.6 strength when there is no
+  mask. The diffuse wraps past the terminator, red furthest (`skin_wrap`); a second tighter specular lobe on
+  the high tier; a little light through thin skin at the silhouette when the key is behind. All of it is
+  multiplied by the surface's own colour, so deep skin stays deep.
+- The rim is the key light at a grazing angle (0.6, was 1.35) and the team tint a hint; the hit flash and
+  the dissolve glow are `char_lit`'s, as is the cloth-off-legs vertex code.
+- `fighter.gd REAL_FILL`: the measured ambient is used as it is at golden hour and by day, x1.35 at dusk
+  and x2.4 at night. The street's lamps and windows are cards that light nothing, so the measured light is
+  less than the paving shows; without the factor the fighters are silhouettes at night.
+
+**Shadows:** the high tier turns the shadow map on. With it the blob keeps only its contact disc (the
+sun-cast tail and the map's shadow were two shadows of one fighter). The per-foot contact shadows stay.
+
+**The grade without blow-out** (`look.grade: "base"`, `look.faction`): what was measured (README, section 5):
+- Godot's glow moves the frame's bright pixels to white: the additive effects add up in linear light before
+  the tonemap and pass the glow's threshold. `post: true` (glow plus the old grade) clipped 5 to 10 % of an
+  effect-heavy frame; the same frame with neither clipped none.
+- The old 1D ramp lifted the highlights and its contrast gain did the rest.
+- At render scale 1.0 the renderer skips its linear buffer and tonemaps inside every material, so every
+  see-through thing (effects, halos, light pools, blob shadows) blends in display space and the frame goes
+  brighter and whiter. Every scale under 1 takes the other path, which is the one the look was tuned on.
+The fix: the grade is one 33-point 3D table in the renderer's colour-correction slot (base, or a faction's
+`.cube` over the base at 0.6), with no glow and no contrast gain; above mid-grey a table never returns more
+than it was given and it is the identity at white (`tools/look/bake_lut.py`). When the look's scale is 1.0,
+neutral adjustments keep the frame on the linear path.
+
+**Costs** (Godot's monitors, the Forge test characters, golden hour; frame time on the 1-thread software GL,
+three noisy rounds, relative only): the real material +1 to +9 % of the frame with its cube read, the skin
+term and the grade table not measurable, LOD0 for two fighters +20 to +40 % and +77 MB of textures (runtime
+GLB textures are not GPU-compressed), render scale 1.0 +28 to +48 %. Video memory: low 113 MB, mid 113 MB,
+high 202 MB. Draw calls unchanged (295). On-device frame time is not measured.
+
+**Tools:** `tools/look_shots.gd` (the same paused moment from the game, side and close cameras, with mask
+renders), `tools/look/measure.py` (BAR.md section D from those frames), `tools/look/judge_crops.py`.
+
+### Round 2 (12 Nov): camera, beats, light direction
+After the first judge run (6 wins in 30) the coordinator ruled that size on screen and light direction are
+the levers. All of it is on the mid and high tiers only (`TIER_LOOK`); the low tier is unchanged.
+
+- **Close camera** (`look.cam: "close"`, `fight.gd CLOSE_*`): pitch 20 deg in portrait and 16 in landscape
+  (was 34), distance from 5.85 m (portrait) or 7.8 m (landscape) instead of 15 m, orbit round the chest; in
+  portrait the view looks 6 deg further down than the orbit so the fight sits above the controls. The
+  heading is the old one, so the stick's axes, the bot and the ally's spot do not move: the seeded fight's
+  record is the same as on the low tier. Each frame the distance is the closest that keeps the hero whole,
+  the target's chest and face and an ally at the hero's side inside the HUD's margins (`_close_fit`, a
+  short search), eased quickly out and slowly in, never past 15 m. A config with `cam_dist` or `cam_pitch`
+  keeps the camera it asks for.
+- **Beats** (`look.beats`): the hero's shot before the clock (`BEAT_LEN` 1.8 s: the hero turns to the
+  camera, chest-up, then the camera pulls back as the hero turns to the Guardian; a tap on ATTACK skips it;
+  the HUD is hidden for it; config `"intro": false` turns it off), a closer victory shot (the winner turns
+  to the camera, 4.4 m, 9 deg), and a harder push-in on heavy hits. The fight's clock is untouched, but the
+  seeded record is NOT the same with the beat: build 21's own record changes whenever the fight starts a
+  few frames later (measured with its view wait), so the record depends on what runs before the clock.
+- **Light** (`look.key_yaw` -25, `look.key_elev_min` 24, `look.ground_k`): the sun comes from behind the
+  camera's left shoulder instead of from up the street, so the side of a fighter the camera sees is the lit
+  side, the shadows fall up the street, and the fill factors are smaller (`REAL_FILL` dusk 1.2, night 1.9).
+  The sun is never lower than 24 deg (at dusk's 14 one fighter's shadow lay across the next one's face).
+  The paving's exposure is 0.62 at golden hour and by day, 0.85 at dusk, 1.0 at night
+  (`vfx/world_ground.gdshader expose`, the street floor and the medallion). The street's cube was baked
+  again with this light (`tools/look/env_capture.gd` now captures on the mid tier).
+- **Faces and hair**: narrower skin wrap, the skin mask's floor on non-skin colours 0.1, rough non-metal
+  surfaces no longer mirror the sky at grazing angles (the grey haze on dark hair), the rim follows the
+  surface's colour more. A Forge hair mask (`lodN_hair.png`, `extras.forge_hair`) gives hair its own path:
+  never skin, rough base, a strand highlight (Kajiya-Kay on the solid sculpt).
+- **Shadows**: the renderer's 13-tap soft filter on the high tier, blur 3, bias 0.2 (the low sun drew
+  stepped self-shadow on faces).
+- `tools/look/cam_probe.gd` measures the hero's height on screen, the target on screen and HUD overlap over
+  a whole fight; `tools/look/judge_crops2.py` cuts the round 2 judge pairs.
+- Measured (`cosquest-review/realism-20261111/experiments/look/round2/`): hero height 15 % to about 30 % of the
+  screen in portrait, 23 % to 47 to 49 % in landscape; target off screen under 1 % of frames.

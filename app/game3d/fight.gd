@@ -387,7 +387,11 @@ func _ready() -> void:
 	# 3D drawn at a fraction of the screen's pixels, the HUD at full resolution.
 	# A 1080x2400 phone does not need 2.6 M shaded pixels for this view.
 	quality = _quality()
-	var rs: float = clampf(float(cfg.get("render_scale", DEVICE_RENDER_SCALE if quality == "device" else LOW_RENDER_SCALE)), 0.25, 1.0)
+	# realism: the high tier draws the 3D at the screen's own resolution on a real GPU (look "scale")
+	var tier_scale: float = float((ArenaScript.TIER_LOOK[ArenaScript.tier_of(cfg)] as Dictionary).get("scale", DEVICE_RENDER_SCALE))
+	if cfg.get("look") is Dictionary and (cfg["look"] as Dictionary).has("scale"):
+		tier_scale = float((cfg["look"] as Dictionary)["scale"])
+	var rs: float = clampf(float(cfg.get("render_scale", tier_scale if quality == "device" else LOW_RENDER_SCALE)), 0.25, 1.0)
 	get_viewport().scaling_3d_mode = Viewport.SCALING_3D_MODE_BILINEAR
 	get_viewport().scaling_3d_scale = rs
 	var aa: String = str(cfg.get("aa", DEVICE_AA if quality == "device" else "off"))
@@ -409,6 +413,7 @@ func _ready() -> void:
 	add_child(arena)
 	arena.call("build", cfg)
 	_place_camera()
+	_close_camera()
 	_ground = arena.get("ground")
 	plaza = arena.get("plaza")
 	_build_camera()
@@ -525,6 +530,7 @@ func _ready() -> void:
 		(pair[0] as FighterScript).aim_hold = bool(cfg.get("aim_hold", mr))
 		(pair[0] as FighterScript).weight_fx = bool(cfg.get("weight", mr))
 		(pair[0] as FighterScript).real_speed = bool(cfg.get("real_speed", mr))
+		p = _tier_lod(p, role)
 		(pair[0] as FighterScript).anim_opts["secondary"] = bool(cfg.get("secondary", true))
 		(pair[0] as FighterScript).anim_opts["cloth_push"] = bool(cfg.get("cloth_push", true))   # cq 016
 		if p != "":
@@ -592,6 +598,135 @@ func _quality() -> String:
 		if gpu.contains(sw):
 			return "low"
 	return "device"
+
+
+## realism round 2 (look "cam": "close", the mid and high tiers): a closer, lower fight camera, so the hero
+## stands about a third of the screen high (build 21: under a fifth) and a face can be read. The orbit's
+## heading is the old one (the stick's axes, the bot and the ally's spot depend on it: the judged fight is
+## the same); only the pitch, the distance and the pivot change. The distance is the closest that still
+## shows the hero, the Guardian it is fighting and an ally standing by, inside the HUD's margins: it pulls
+## back only as far as the fighters are apart, quickly out and slowly in, never past build 21's distance.
+## A config with cam_dist or cam_pitch (review captures) keeps the camera it asks for.
+const CLOSE_PITCH: float = 20.0          # deg above the fight, portrait
+const CLOSE_PITCH_LAND: float = 16.0
+const CLOSE_TILT: float = 6.0            # portrait: the view's extra pitch over the orbit (deg)
+const CLOSE_DIST: float = 5.85            # m: the hero alone, portrait (about a third of the screen's height)
+const CLOSE_DIST_LAND: float = 7.8       # landscape (about two fifths)
+const CLOSE_PIVOT_H: float = 1.15        # the orbit turns round the hero's chest, not the knees
+const CLOSE_MAX: float = 15.0            # build 21's distance: the furthest it pulls back
+const CLOSE_MARGIN: Vector3 = Vector3(0.94, 0.72, 0.8)   # across, above, below: the share of the half screen fighters may use
+const CLOSE_BOUNDS_X: float = 4.2
+const CLOSE_WIN_DIST: float = 4.4        # the victory shot: the winner from the knees up
+const CLOSE_WIN_DIST_LAND: float = 5.2
+const CLOSE_WIN_PITCH: float = 9.0
+var _close: bool = false
+var _close_d: float = CAM_DIST
+var _close_win_basis: Basis
+
+
+func _close_camera() -> void:
+	var lk: Dictionary = arena.get("look") if arena != null else {}
+	if str(lk.get("cam", "")) != "close" or cfg.has("cam_dist") or cfg.has("cam_pitch"):
+		return
+	_close = true
+	var yaw: float = atan2(_cam_basis.z.x, _cam_basis.z.z)    # the heading stays: _cam_fwd and _cam_right do not move
+	_cam_basis = Basis.from_euler(Vector3(deg_to_rad(-(CLOSE_PITCH_LAND if _landscape else CLOSE_PITCH)), yaw, 0.0))
+	# portrait: the view looks a little further down than the orbit, so the fight sits above the controls
+	_view_basis = _cam_basis if _landscape else Basis.from_euler(Vector3(deg_to_rad(-(CLOSE_PITCH + CLOSE_TILT)), yaw, 0.0))
+	_close_win_basis = Basis.from_euler(Vector3(deg_to_rad(-CLOSE_WIN_PITCH), yaw, 0.0))
+	_cam_dist = CLOSE_DIST_LAND if _landscape else CLOSE_DIST
+	_cam_ahead = 0.0
+	_close_d = _cam_dist
+	_log("close camera pitch=%.0f dist=%.1f" % [CLOSE_PITCH_LAND if _landscape else CLOSE_PITCH, _cam_dist])
+
+
+## The distance at which the hero, its target and an ally close by are all inside the screen's margins.
+func _close_fit() -> float:
+	if hero == null or cam == null:
+		return _cam_dist
+	var tv: float = tan(deg_to_rad(_base_fov) * 0.5)
+	var vs: Vector2 = get_viewport().get_visible_rect().size
+	var th: float = tv * vs.x / maxf(vs.y, 1.0)
+	var pivot: Vector3 = _focus + Vector3.UP * CLOSE_PIVOT_H
+	var pts: Array[Vector3] = [hero.position, hero.position + Vector3.UP * (FighterScript.HEIGHT * hero.size_k + 0.15)]
+	if enemy != null and not enemy.dead:
+		# the target's chest and face (a boss is half as tall again, and a target standing between the hero
+		# and the camera is very large: its legs and the top of its head may leave the frame)
+		pts.append(enemy.position + Vector3.UP * (FighterScript.HEIGHT * enemy.size_k * 0.55))
+		pts.append(enemy.position + Vector3.UP * (FighterScript.HEIGHT * enemy.size_k * 0.78))
+	if ally != null and not ally.dead and ally.visible and _flat(ally.position - hero.position).length() < (3.0 if _landscape else 1.6):
+		# a third fighter in the brawl beside the hero: its body's middle stays in the frame
+		pts.append(ally.position + Vector3.UP * 1.2)
+	# the nearest distance (from the close distance out to build 21's) at which every point is inside the
+	# margins: the view may be tilted off the orbit, so it is searched, not solved
+	var lo: float = _cam_dist
+	var hi: float = CLOSE_MAX
+	if _close_ok(pts, pivot, lo, tv, th):
+		return lo
+	for i in 7:
+		var mid: float = (lo + hi) * 0.5
+		if _close_ok(pts, pivot, mid, tv, th):
+			hi = mid
+		else:
+			lo = mid
+	return hi
+
+
+func _close_ok(pts: Array[Vector3], pivot: Vector3, d: float, tv: float, th: float) -> bool:
+	var eye: Vector3 = pivot + _cam_basis.z * d
+	for p: Vector3 in pts:
+		var r: Vector3 = p - eye
+		var depth: float = -r.dot(_view_basis.z)
+		if depth < 0.6:
+			return false
+		var y: float = r.dot(_view_basis.y)
+		if absf(r.dot(_view_basis.x)) > depth * th * CLOSE_MARGIN.x or y > depth * tv * CLOSE_MARGIN.y or -y > depth * tv * CLOSE_MARGIN.z:
+			return false
+	return true
+
+
+## realism round 2 (look "beats"): the hero's shot before the fight. For BEAT_LEN seconds before the clock
+## starts the hero turns to the camera and the camera stands at chest-up distance, then pulls back to the
+## fight camera as the hero turns to the Guardian. Nothing of the fight has started (the clock, the bot and
+## the Guardian wait as they do through a place's fly-in), the hero's yaw is put back exactly before the
+## first frame of the fight, and a tap on ATTACK skips it. Config "intro": false, or the low tier: none.
+const BEAT_LEN: float = 1.8
+const BEAT_OUT: float = 0.7              # the pull-back to the fight camera, at the end
+const BEAT_TURN: float = 0.45            # the hero turns back to the Guardian over the last part
+var _beat_t: float = -1.0
+var _beat_yaw0: float = 0.0
+
+
+func _after_intro() -> void:
+	var lk: Dictionary = arena.get("look") if arena != null else {}
+	if hero == null or not bool(lk.get("beats", false)) or not bool(cfg.get("intro", true)) or cfg.has("cam_dist") or cfg.has("cam_pitch"):
+		_begin_fight()
+		return
+	_beat_t = 0.0
+	_beat_yaw0 = hero.yaw
+	if bool(lk.get("beat_turn", true)):
+		hero.yaw = atan2(-_cam_fwd.x, -_cam_fwd.z)
+		hero.rotation.y = hero.yaw
+	state = "intro"
+	hud.visible = false     # the shot is the hero's: no controls over it (they come back with the clock)
+	_log("intro hero beat")
+
+
+func _beat_restore() -> void:
+	if hero != null and hero.yaw != _beat_yaw0:
+		hero.yaw = _beat_yaw0
+		hero.rotation.y = hero.yaw
+
+
+func _beat_camera() -> void:
+	if _beat_t < 0.0 or hero == null:
+		return
+	var to: Transform3D = cam.global_transform
+	var face: Vector3 = hero.position + Vector3.UP * (FighterScript.HEIGHT * hero.size_k * 0.74)
+	var dist: float = (2.5 if _landscape else 2.0) * hero.size_k * (1.08 - 0.08 * _beat_t / BEAT_LEN)
+	var from: Vector3 = face - _cam_fwd * dist + _cam_right * 0.5 + Vector3.UP * 0.12
+	var k: float = smoothstep(BEAT_LEN - BEAT_OUT, BEAT_LEN, _beat_t)
+	cam.global_transform = Transform3D(Basis.looking_at(face - from, Vector3.UP).slerp(to.basis.orthonormalized(), k), from.lerp(to.origin, k))
 
 
 ## env-fixes 4: in a real place (the arena built one), the place's camera unless the config sets its
@@ -663,6 +798,10 @@ func _spawn(n: String, team: int, hp_max: int, c: Color, at: Vector3, yaw: float
 	f.key_dir = ArenaScript.key_dir()
 	f.look = arena.get("look") if arena != null else {}
 	f.sun_blob = bool((arena.get("look") as Dictionary).get("ao", true)) if arena != null else true
+	# realism: with the real look and a real shadow map, the sun's shadow is the map's; the blob keeps only
+	# its contact disc (two shadows of one fighter read as a mistake)
+	if arena != null and bool(f.look.get("real", false)) and str(f.look.get("shadows", false)) == "true":
+		f.sun_blob = false
 	f.setup(n, team, hp_max, c, r)
 	f.position = at
 	f.yaw = yaw
@@ -708,13 +847,15 @@ func _poll_loading() -> void:
 		return
 	_loading_role = _load_queue.pop_front()
 	var path: String = _loading_role["path"]
+	# realism: a character for the real look loads with tangents and its skin mask (char_loader.gd)
+	var real: bool = arena != null and bool((arena.get("look") as Dictionary).get("real", false)) and not _loading_role.has("weapon")
 	if _load_threaded:
 		_thread = Thread.new()
-		if _thread.start(_loader.load_glb.bind(path)) != OK:
+		if _thread.start(_loader.load_glb.bind(path, real)) != OK:
 			_thread = null
-			_finish_load(_loader.load_glb(path))
+			_finish_load(_loader.load_glb(path, real))
 	else:
-		_finish_load(_loader.load_glb(path))   # one model per frame on the main thread
+		_finish_load(_loader.load_glb(path, real))   # one model per frame on the main thread
 
 
 ## Weapons in hand (cq 234). Per fighter the config may name
@@ -774,6 +915,8 @@ func _finish_load(r: Dictionary) -> void:
 			_log("weapon role=%s ok=false error=%s path=%s" % [role, str(r.get("error", "?")), str(r.get("path", ""))])
 		return
 	if bool(r.get("ok", false)):
+		f.skin_mask = r.get("skin_mask")
+		f.hair_mask = r.get("hair_mask")
 		var info: Dictionary = f.set_model(r["node"] as Node3D)
 		_log("load role=%s ok=true parse_ms=%.1f gen_ms=%.1f add_ms=%.1f scale=%.3f raw_h=%.3f library=%s anims=%d mapped=%s bones=%d hand=%s path=%s" % [
 			role, float(r["parse_ms"]), float(r["gen_ms"]), (Time.get_ticks_usec() - t_add) / 1000.0,
@@ -789,6 +932,23 @@ func _finish_load(r: Dictionary) -> void:
 			return
 		f.set_capsule()
 		_log("load role=%s ok=false error=%s path=%s (capsule fallback)" % [role, str(r.get("error", "?")), str(r.get("path", ""))])
+
+
+## realism: on the high tier (look "hero_lod": 0) the hero and the Guardian load the model's most detailed
+## file when it sits beside the one the app sent (".../lod1.glb" -> ".../lod0.glb", "x_lod1.glb" ->
+## "x_lod0.glb"); the ally keeps what was sent. Without the key, or without the file, the path is unchanged.
+func _tier_lod(p: String, role: String) -> String:
+	var lk: Dictionary = arena.get("look") if arena != null else {}
+	if p == "" or (role != "hero" and role != "enemy") or not lk.has("hero_lod"):
+		return p
+	var want: String = "lod%d.glb" % clampi(int(lk["hero_lod"]), 0, 2)
+	for have: String in ["lod0.glb", "lod1.glb", "lod2.glb"]:
+		if p.ends_with(have) and have != want:
+			var q: String = p.substr(0, p.length() - have.length()) + want
+			if FileAccess.file_exists(q):
+				_log("tier lod role=%s %s -> %s" % [role, have, want])
+				return q
+	return p
 
 
 ## build 20: a fighter with no model of its own (no Forge catalogue on this server, offline, a
@@ -813,6 +973,8 @@ func _cast_stand_in(f: FighterScript, role: String) -> String:
 			taken.append(str(_cast_worn.get(r, "")))
 	var pool: Array = CAST_STAND_IN[role]
 	var lod: int = clampi(int(cfg.get("lod", 1)), 0, 2)
+	if (role == "hero" or role == "enemy") and arena != null and (arena.get("look") as Dictionary).has("hero_lod") and not cfg.has("lod"):
+		lod = clampi(int((arena.get("look") as Dictionary)["hero_lod"]), 0, 2)   # realism: the high tier's hero and Guardian
 	var start: int = (int(absf(float(cfg.get("seed", 0)))) % pool.size()) if role == "enemy" else 0
 	for i in range(pool.size()):
 		var key: String = str(pool[(start + i) % pool.size()])
@@ -918,7 +1080,7 @@ func _begin_or_intro() -> void:
 		sfx.start_music()   # look-fight: the combat loop fades in under the intro
 	var pl: Node3D = arena.get("place") if arena != null else null
 	if pl == null or not bool(cfg.get("intro", true)):
-		_begin_fight()
+		_after_intro()
 		return
 	var info: Dictionary = pl.get("info")
 	var lm: Vector3 = info.get("landmark_at", Vector3(0, 0, -30))
@@ -941,10 +1103,19 @@ func _begin_or_intro() -> void:
 
 
 func _tick_intro(dt: float) -> void:
+	if _beat_t >= 0.0:
+		_beat_t += dt
+		if _beat_t >= BEAT_LEN - BEAT_TURN:
+			_beat_restore()
+		if _beat_t >= BEAT_LEN:
+			_beat_t = -1.0
+			hud.visible = not bool(cfg.get("prof_no_hud", false))
+			_begin_fight()
+		return
 	_intro_t += dt
 	if _intro_t >= INTRO_LEN:
 		_intro_t = -1.0
-		_begin_fight()
+		_after_intro()
 
 
 func _intro_camera() -> void:
@@ -1008,6 +1179,8 @@ func _on_move_started(t_in: float, ticks_in: int, src: String) -> void:
 
 
 func _on_attack_pressed(t_in: float, ticks_in: int, src: String) -> void:
+	if state == "intro" and _beat_t >= 0.0:
+		_beat_t = maxf(_beat_t, BEAT_LEN - BEAT_TURN)    # realism round 2: a tap skips the hero's shot
 	if hero == null or state != "fighting":
 		return
 	_attack_buffer = ATK_BUFFER
@@ -1079,6 +1252,9 @@ func _process(dt: float) -> void:
 		_tick_end_beat()
 		if outcome == "win":
 			_tick_ally_step(dt)
+			if _close and hero != null and not hero.dead:
+				# realism round 2: the winner turns to the camera for the closer victory shot (the fight is over)
+				hero.face(-_cam_fwd, real_dt, 5.0)
 		if _end_t >= _end_delay:
 			_emit_result()
 	var frozen: bool = _hitstop > 0.0 or feel.vis_stop > 0.0
@@ -1110,6 +1286,7 @@ func _process(dt: float) -> void:
 	_skid_dust(dt)
 	_follow_camera(dt)
 	_intro_camera()
+	_beat_camera()
 	_sync_hud()
 	if _headless and (not _lat_move.is_empty() or not _lat_atk.is_empty()):
 		_check_latency.call_deferred("deferred")
@@ -2314,10 +2491,16 @@ func _follow_camera(dt: float) -> void:
 		target = hero.position + _cam_fwd * _cam_ahead + _look
 		if enemy != null and not enemy.dead and not bool(cfg.get("cam_hero_only", false)):
 			target = target.lerp((hero.position + enemy.position) * 0.5, 0.5)
+		if _close:
+			# the close camera stays with the hero and leans towards its target (less in portrait: a hero nearer
+			# the camera than the focus drops under the controls)
+			target = hero.position + _look * 0.5
+			if enemy != null and not enemy.dead and not bool(cfg.get("cam_hero_only", false)):
+				target = target.lerp(enemy.position, 0.45 if _landscape else 0.3)
 		# look-fight dynamic framing: a little closer while the hero and the Guardian are engaged
 		var engaged: bool = enemy != null and not enemy.dead and _flat(enemy.position - hero.position).length() < FRAME_NEAR_M
 		_frame_k = lerpf(_frame_k, 1.0 if engaged else 0.0, 1.0 - exp(-dt * 1.6))
-	target.x = clampf(target.x, -CAM_BOUNDS_X, CAM_BOUNDS_X)
+	target.x = clampf(target.x, -(CLOSE_BOUNDS_X if _close else CAM_BOUNDS_X), CLOSE_BOUNDS_X if _close else CAM_BOUNDS_X)
 	target.z = clampf(target.z, -CAM_BOUNDS, CAM_BOUNDS)
 	target.y = 0.0
 	if state == "ending" and outcome == "win" and hero != null:
@@ -2328,7 +2511,9 @@ func _follow_camera(dt: float) -> void:
 		# build 21: the shot frames the winners (the hero and the ally beside it), not the Guardian's
 		# scorch mark: WIN_AHEAD was 4.5 m, so the pair stood in the bottom corner under an empty
 		# street centre
-		var ht: Vector3 = _winners_at() + _cam_fwd * WIN_AHEAD
+		var ht: Vector3 = _winners_at() + _cam_fwd * (0.0 if _close else WIN_AHEAD)
+		if _close and not _landscape:
+			ht = hero.position    # a portrait screen is too narrow for the pair at this distance: the hero's shot
 		ht.x = clampf(ht.x, -WIN_BOUNDS_X, WIN_BOUNDS_X)
 		ht.y = 0.0
 		target = target.lerp(ht, ease(_win_k, -2.0))
@@ -2336,6 +2521,9 @@ func _follow_camera(dt: float) -> void:
 		# the KO beat: the view leans in on the fallen fighter, then comes back
 		target = target.lerp(Vector3(feel.ko_at.x, 0.0, feel.ko_at.z), 0.55 * feel.ko_push(feel.ko_t))
 	_focus = _smooth_damp(_focus, target, CAM_SMOOTH, 40.0, dt)
+	if _close:
+		var need: float = _close_fit()
+		_close_d = lerpf(_close_d, need, 1.0 - exp(-_ko_dt_real * (7.0 if need > _close_d else 1.6)))
 	_apply_camera(dt)
 
 
@@ -2364,6 +2552,17 @@ func _apply_camera(dt: float) -> void:
 	d *= 1.0 - WIN_ZOOM * (0.5 if _reduce_motion else 1.0) * ease(_win_k, -2.0)
 	var orbit: Basis = Basis(Vector3.UP, deg_to_rad(float(ko_m.get("orbit", 0.0)) * ko_k))
 	var pos: Vector3 = _focus + Vector3.UP * 0.8 + (orbit * _cam_basis.z) * d
+	var close_basis: Basis = _view_basis
+	if _close:
+		# realism round 2: the fitted distance, a harder push-in on a heavy hit (the view is close enough for
+		# it to read), and the victory shot: down to the winner's height and in to CLOSE_WIN_DIST
+		var wk: float = ease(_win_k, -2.0)
+		d = _close_d * (1.0 - _punch * (0.04 if _reduce_motion else 0.12)) * (1.0 - float(ko_m.get("zoom", 0.0)) * ko_k)
+		d = lerpf(d, CLOSE_WIN_DIST_LAND if _landscape else CLOSE_WIN_DIST, wk)
+		close_basis = _view_basis.slerp(_close_win_basis, wk) if wk > 0.0 else _view_basis
+		var orbit_basis: Basis = _cam_basis.slerp(_close_win_basis, wk) if wk > 0.0 else _cam_basis
+		# the VICTORY card lies across the upper third: the winner's head sits just under it
+		pos = _focus + Vector3.UP * lerpf(CLOSE_PIVOT_H, FighterScript.HEIGHT * (hero.size_k if hero != null else 1.0) + 0.25, wk) + (orbit * orbit_basis.z) * d
 	if _shake_t > 0.0:
 		_shake_t -= dt
 		var s: float = _shake * clampf(_shake_t / 0.18, 0.0, 1.0)
@@ -2372,7 +2571,7 @@ func _apply_camera(dt: float) -> void:
 		var _legacy := Vector2(rng.randf_range(-s, s), rng.randf_range(-s, s))
 		if _shake_t <= 0.0:
 			_shake = 0.0
-	var basis: Basis = orbit * _view_basis
+	var basis: Basis = orbit * (close_basis if _close else _view_basis)
 	_shake_clock += _ko_dt_real
 	var sh: Vector3 = feel.shake_offset(_shake_clock)
 	if sh != Vector3.ZERO:

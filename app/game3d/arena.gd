@@ -11,6 +11,7 @@ const T_CIRCUIT := preload("res://art/street/circuit_run.png")
 const T_POOL := preload("res://art/street/light_pool.png")
 const FACADE_SHADER := preload("res://vfx/facade.gdshader")
 const PlaceScript := preload("res://place.gd")
+const LookReal := preload("res://look_real.gd")
 const StreetLayout := preload("res://street_layout.gd")
 const T_NEON := preload("res://art/street/neon_atlas.png")     # 6 signs stacked, self-drawn
 const T_SHOP := preload("res://art/street/shop_glow.png")
@@ -71,6 +72,41 @@ const LOOK_DEFAULTS: Dictionary = {
 	"street": "place",  # look-world: the default street is built by place.gd from a laid-out ground (the same
 	                    # roads, facades, props and light as the real places); "kit" keeps the cq 016 Kenney street
 }
+## realism (11 Nov 2026, LOOK.md "The real look"): what a device tier adds to LOOK_DEFAULTS. The tier is
+## the fight config's "tier" (the app's RAM rule, features/game/lookTier.ts: high at 5 GiB reported and
+## up, mid from 3.3 GiB, else low); a config without one is "low". Low adds nothing: today's path, key
+## for key (tests/look_tier_test.gd). Any key can still be set from the config's "look".
+##   real      the fighters on vfx/char_real.gdshader (the model's maps, the street's light)
+##   skin      "full" (wrap + two specular lobes) | "simple" (wrap, one lobe) | "off"
+##   ibl       reflections of the street from the baked cube (look_real.gd)
+##   grade     "base" = the base grade through a 3D table that leaves highlights alone (no glow)
+##   hero_lod  the detail level of the hero and the Guardian (the ally keeps the config's "lod")
+##   scale     the 3D render scale on a real GPU
+## round 2 (12 Nov, the coordinator's rulings after the first judge run):
+##   cam       "close" = the closer, lower fight camera (fight.gd CLOSE_*): the hero a third of the screen
+##   beats     the hero's intro shot before the clock, the closer victory shot (fight.gd)
+##   key_yaw   the sun's heading: from behind the camera's left shoulder, so the side of a fighter the
+##             camera sees is the lit side (build 21's sun is up the street, behind the fighters)
+##   key_elev_min  the sun no lower than this (deg): at dusk's 14 deg one fighter's shadow lies across the next
+##   ground_k  the paving's exposure (place.gd ground materials, the street floor, the medallion): a
+##             number, or "auto" = REAL_GROUND_K for the time of day (the pale paving down by day, not at night)
+##   soft_shadows  the shadow map's soft filter
+const REAL_KEY_YAW: float = -25.0
+const REAL_KEY_ELEV_MIN: float = 24.0
+const REAL_GROUND_K: Dictionary = {"golden": 0.62, "day": 0.62, "dusk": 0.85, "night": 1.0}
+const TIER_LOOK: Dictionary = {
+	"low": {},
+	"mid": {"real": true, "skin": "simple", "ibl": true, "cam": "close", "beats": true, "key_yaw": REAL_KEY_YAW, "key_elev_min": REAL_KEY_ELEV_MIN, "ground_k": "auto"},
+	"high": {"real": true, "skin": "full", "ibl": true, "shadows": true, "grade": "base", "hero_lod": 0, "scale": 1.0,
+		"cam": "close", "beats": true, "key_yaw": REAL_KEY_YAW, "key_elev_min": REAL_KEY_ELEV_MIN, "ground_k": "auto", "soft_shadows": true},
+}
+
+
+static func tier_of(cfg: Dictionary) -> String:
+	var t: String = str(cfg.get("tier", "low"))
+	return t if TIER_LOOK.has(t) else "low"
+
+
 # "glow" and "grade" each turn on the Compatibility renderer's post pass, which runs over the
 # whole screen at full resolution: on the 1-thread software GPU it doubled the frame (LOOK.md).
 # Instead the lamps, signs and windows carry their own halo cards (the effects do the same), and
@@ -138,6 +174,7 @@ const TIMES: Dictionary = {
 }
 const KEY_YAW: float = -128.0   # the sun's heading (KEY_ROT's yaw); its elevation comes from the preset
 static var _key_elev: float = 38.0
+static var _key_yaw: float = KEY_YAW     # realism round 2: look "key_yaw" (build sets it; KEY_YAW without the key)
 static var _halo_scale: float = 0.6
 static var _halo_max: float = 0.55
 const FOG_BEGIN: float = 60.0       # m from the camera: never on the fighters (the fight camera is ~21 m off)
@@ -154,6 +191,9 @@ var env: Environment
 
 static func look_opts(cfg: Dictionary) -> Dictionary:
 	var out: Dictionary = LOOK_DEFAULTS.duplicate()
+	var tl: Dictionary = TIER_LOOK[tier_of(cfg)]
+	for k: String in tl:
+		out[k] = tl[k]
 	var l: Variant = cfg.get("look", {})
 	if l is Dictionary:
 		for k: String in (l as Dictionary):
@@ -168,8 +208,10 @@ static func look_opts(cfg: Dictionary) -> Dictionary:
 	if str(out.get("time", "auto")) == "auto" or not TIMES.has(str(out["time"])):
 		var ll: Vector2 = Vector2(float(cfg.get("_lat", 51.5)), float(cfg.get("_lng", -0.13)))
 		out["time"] = time_of_day(ll.x, ll.y, cfg.get("clock_hour", null))
-	if str(out["time"]) == "night":
+	if str(out["time"]) == "night" and not bool(out.get("night", false)):
 		out["time"] = "dusk"   # the art direction: night is defined but not shipped in v1
+	if str(out.get("ground_k", "")) == "auto":
+		out["ground_k"] = float(REAL_GROUND_K.get(str(out["time"]), 1.0))
 	var tp: Dictionary = TIMES[str(out["time"])]
 	# the cheap bloom per preset (tokens world.time.*.bloom) unless the config sets it
 	for i in 3:
@@ -233,7 +275,7 @@ static func time_preset(l: Dictionary) -> Dictionary:
 ## The direction the key light travels (world space), for the fighters' rim. look-world: the elevation is
 ## the time preset's (build sets it before the fighters spawn); the heading stays KEY_YAW.
 static func key_dir() -> Vector3:
-	return Basis.from_euler(Vector3(-_key_elev, KEY_YAW, 0.0) * (PI / 180.0)) * Vector3(0, 0, -1)
+	return Basis.from_euler(Vector3(-_key_elev, _key_yaw, 0.0) * (PI / 180.0)) * Vector3(0, 0, -1)
 
 
 func build(cfg: Dictionary) -> void:
@@ -248,7 +290,8 @@ func build(cfg: Dictionary) -> void:
 				cfg["_lng"] = float(o["lng"])
 	look = look_opts(cfg)
 	var tp: Dictionary = time_preset(look)
-	_key_elev = float(tp["key_elev"])
+	_key_elev = maxf(float(tp["key_elev"]), float(look.get("key_elev_min", 0.0)))
+	_key_yaw = float(look.get("key_yaw", KEY_YAW))
 	_halo_scale = float(tp["halo_scale"])
 	_halo_max = float(tp["halo_max"])
 	if str(look.get("shadows", false)) == "auto":
@@ -338,7 +381,28 @@ func build(cfg: Dictionary) -> void:
 		env.set_glow_level(1, 0.6)
 		env.set_glow_level(2, 1.0)
 		env.set_glow_level(3, 0.7)
-	if bool(look["grade"]):
+	var grade: String = str(look["grade"])
+	if grade != "true" and grade != "false":
+		# realism (LOOK.md "The grade without blow-out"): the base grade, or a faction's on top of it
+		# (look "faction": "<id>"), as one 3D table in the renderer's own colour-correction slot. No glow
+		# with it (glow moves the whole frame to the HDR path, where the additive effects add up before
+		# the tonemap: that was build 21's white-out), no contrast gain, and the table leaves what is
+		# already bright where it is, so an effect is never pushed to white by the grade.
+		var lut: Texture3D = LookReal.lut_for("faction_" + str(look.get("faction", ""))) if str(look.get("faction", "")) != "" else null
+		if lut == null:
+			lut = LookReal.lut_for(grade)
+		if lut != null:
+			env.adjustment_enabled = true
+			env.adjustment_color_correction = lut
+		print("CQ grade table=%s faction=%s ok=%s" % [grade, str(look.get("faction", "")), str(lut != null)])
+	if not env.adjustment_enabled and float(look.get("scale", 0.0)) >= 0.999:
+		# realism: at render scale 1 the renderer draws straight to the screen and tonemaps in each material,
+		# so everything see-through (effects, halos, light pools, blob shadows) blends in display space and
+		# the frame goes brighter and whiter than the look was tuned for (measured: LOOK.md). The look is
+		# tuned on the path every scale under 1 takes (linear buffer, tonemap after blending); neutral
+		# adjustments keep the full-scale frame on it.
+		env.adjustment_enabled = true
+	if grade == "true":
 		# a warm evening grade: a touch more contrast and colour, and a split-tone curve
 		# (violet shadows, gold highlights) as a 256 px colour-correction ramp
 		env.adjustment_enabled = true
@@ -350,7 +414,7 @@ func build(cfg: Dictionary) -> void:
 	we.environment = env
 	add_child(we)
 	sun = DirectionalLight3D.new()
-	sun.rotation_degrees = Vector3(-_key_elev, KEY_YAW, 0.0)
+	sun.rotation_degrees = Vector3(-_key_elev, _key_yaw, 0.0)
 	sun.light_energy = float(tp["key_energy"])
 	sun.light_color = tp["key_color"]
 	sun.shadow_enabled = str(look["shadows"]) == "true"
@@ -360,6 +424,12 @@ func build(cfg: Dictionary) -> void:
 		sun.directional_shadow_max_distance = 35.0    # look-world: tokens world.time.*.shadow
 		sun.shadow_blur = 2.0
 		sun.shadow_opacity = 0.5 if str(look["time"]) == "dusk" else 0.65
+		if bool(look.get("soft_shadows", false)):
+			# realism round 2: the renderer's 13-tap soft filter and a wider blur (the edges were stepped)
+			RenderingServer.directional_soft_shadow_filter_set_quality(RenderingServer.SHADOW_QUALITY_SOFT_MEDIUM)
+			sun.shadow_blur = 3.0
+			sun.shadow_bias = 0.2            # the low sun on a face drew stepped self-shadow (acne) at the default
+			sun.shadow_normal_bias = 3.0
 	add_child(sun)
 	# no second (fill) light: each directional light is shaded on every pixel, ~2 ms a frame
 	# on the software GPU; the sky ambient is the fill
@@ -375,6 +445,9 @@ func build(cfg: Dictionary) -> void:
 	gm.uv1_scale = Vector3(GROUND_HALF * 0.5, GROUND_HALF * 0.5, 1)
 	# env-fixes 2: a neutral grey (the key warms it), not pink-lilac (was (0.66, 0.63, 0.69))
 	gm.albedo_color = Color(0.68, 0.67, 0.66)
+	var gk: float = float(look.get("ground_k", 1.0))     # realism round 2: the paving's exposure (1 = build 21)
+	if gk != 1.0:
+		gm.albedo_color = Color(0.68 * gk, 0.67 * gk, 0.66 * gk)
 	gm.roughness = 0.95
 	# plain trilinear: anisotropic filtering costs ~1.7 ms a frame on a software GPU
 	gm.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
@@ -393,6 +466,8 @@ func build(cfg: Dictionary) -> void:
 	# look-world: plaza stone, not pink (art direction 2.2). build 20 pass 2: quieter (0.96 -> 0.8) and
 	# smaller (7.2 -> 5.6 m): under the closer camera the bright copper disc read as the touch controls' ring
 	mm.albedo_color = Color(0.8, 0.77, 0.73)
+	if gk != 1.0:
+		mm.albedo_color = Color(0.8 * gk, 0.77 * gk, 0.73 * gk)
 	mm.roughness = 0.9
 	plaza.material_override = mm
 	plaza.position.y = 0.02

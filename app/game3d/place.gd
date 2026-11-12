@@ -426,6 +426,8 @@ func ground_mat(key: String, name: String, tile_m: float, opts: Dictionary = {})
 	sm.set_shader_parameter("ao_alpha", float(_tp.get("ao_alpha", 0.55)))
 	for k: String in opts:
 		sm.set_shader_parameter(k, opts[k])
+	if _look.has("ground_k") and not key.begins_with("grass"):
+		sm.set_shader_parameter("expose", float(_look["ground_k"]))   # realism round 2: the pale paving down
 	bake.call("register", sm)
 	_mats[key] = sm
 	return sm
