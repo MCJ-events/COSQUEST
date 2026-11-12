@@ -1,9 +1,10 @@
 extends SceneTree
 ## build 21 (11 Nov 2026): what needs no device.
 ##   godot --headless --path app/game3d -s res://tests/build21_test.gd
-## 1. Wale's attack panel (59328): ATTACK, DASH (= CHARGE, slot 0) and SHIELD (slot 4) cast what
-##    they did; SHOOT and RAIN are locked and send nothing to the fight; GUARD still works; the
-##    old arc is still there as panel = "classic".
+## 1. Wale's attack panel (59328), as build 22 draws it (his own art; tests/build22_test.gd has the rest):
+##    ATTACK, DASH (= CHARGE, slot 0) and SHIELD (slot 4) cast what they did; SHOOT and RAIN cast
+##    their own skills (slots 5 and 6: nothing is locked); SPLIT, WHIRL and RALLY have buttons again;
+##    GUARD still works; the old arc is still there as panel = "classic".
 ## 2. Landscape (config "landscape", 1280 x 720 HUD): the stick and the panel move in by the side
 ##    insets, nothing overlaps or leaves the screen, and taps still land.
 ## 3. The fight fixes from the build 20 review (presentation only; the five seeded fights stay
@@ -281,21 +282,19 @@ func _panel() -> void:
 	_check("wale_has_dash_and_shield", dash >= 0 and shield >= 0)
 	_check("wale_dash_is_charge", _tap(hud, hud.call("wale_centre", dash)) == ["skill", 0])
 	_check("wale_shield_is_shield", _tap(hud, hud.call("wale_centre", shield)) == ["skill", 4])
-	_check("wale_no_split_whirl_rally", int(hud.call("wale_button", 1)) < 0 and int(hud.call("wale_button", 2)) < 0 and int(hud.call("wale_button", 3)) < 0)
-	var locked: Array = []
-	for j in HudScript.W_BUTTONS.size():
-		if int(HudScript.W_BUTTONS[j]["slot"]) < 0:
-			locked.append(str(HudScript.W_BUTTONS[j]["id"]))
-			var got: Array = _tap(hud, hud.call("wale_centre", j))
-			_check("wale_locked_%s_sends_nothing" % HudScript.W_BUTTONS[j]["id"], got.is_empty(), str(got))
-	_check("wale_locked_are_shoot_and_rain", locked == ["shoot", "rain"], str(locked))
-	_check("wale_locked_says_coming_soon", str(hud.get("_toast")) == "Coming soon")
+	# build 22: every skill has a button and every button casts its own skill; nothing says "coming soon"
+	var all_cast: bool = true
+	for slot in HudScript.SKILL_N:
+		var j: int = hud.call("wale_button", slot)
+		all_cast = all_cast and j >= 0 and _tap(hud, hud.call("wale_centre", j)) == ["skill", slot]
+	_check("wale_every_skill_has_a_button_that_casts_it", all_cast)
+	_check("wale_nothing_locked", str(hud.get("_toast")) == "")
 	_check("wale_guard", _tap(hud, hud.call("guard_centre")) == ["guard"])
 	_check("wale_dash_label", str(hud.call("skill_label", 0)) == "DASH" and str(hud.call("skill_label", 4)) == "SHIELD")
 	# the buttons do not overlap each other, the attack or the guard, and stay on screen
 	var discs: Array = [[ac, HudScript.W_ATTACK_R], [hud.call("guard_centre"), HudScript.GUARD_R]]
 	for j in HudScript.W_BUTTONS.size():
-		discs.append([hud.call("wale_centre", j), float(HudScript.W_BUTTONS[j]["r"])])
+		discs.append([hud.call("wale_centre", j), float(hud.call("wale_r", j))])
 	var clear: bool = true
 	for i in discs.size():
 		var ci: Vector2 = discs[i][0]
@@ -306,9 +305,6 @@ func _panel() -> void:
 			if ci.distance_to(discs[k][0]) < ri + float(discs[k][1]) + 4.0:
 				clear = false
 	_check("wale_buttons_clear", clear)
-	# the hidden slots' toasts land over the attack, not off screen
-	var t1: Vector2 = hud.call("skill_centre", 1)
-	_check("wale_hidden_slot_toast_on_screen", Rect2(Vector2.ZERO, Vector2(720, 1280)).has_point(t1), str(t1))
 	hud.free()
 	# the old arc, as before
 	var old: Control = _hud("classic")
@@ -332,7 +328,7 @@ func _landscape() -> void:
 	var ok: bool = screen.grow(-1.0).has_point(st + Vector2(-HudScript.STICK_BASE_R, 0)) and st.x - HudScript.STICK_BASE_R >= 100.0
 	for j in HudScript.W_BUTTONS.size():
 		var c: Vector2 = hud.call("wale_centre", j)
-		var r: float = float(HudScript.W_BUTTONS[j]["r"]) * 1.2
+		var r: float = float(hud.call("wale_r", j)) * 1.2
 		ok = ok and c.y - r >= 0.0 and c.x + r <= 1280.0 - 70.0 + 1.0
 	var mc: Vector2 = hud.call("_map_centre")
 	ok = ok and mc.x + HudScript.MAP_R <= 1280.0 - 70.0

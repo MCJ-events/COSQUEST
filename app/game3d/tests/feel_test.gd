@@ -32,7 +32,7 @@ func _check(name: String, ok: bool, why: String = "") -> void:
 
 
 func _initialize() -> void:
-	_check("rules_id_unchanged", FightScript.rules_id() == "f3d-1-21d2cde61ab2", FightScript.rules_id())
+	_check("rules_id_unchanged", FightScript.rules_id() == "f3d-2-e872f23a43a5", FightScript.rules_id())
 	var m: Dictionary = FeelScript.MOMENTS
 	_check("table_light", is_equal_approx(float(m["light"]["stop"]), 0.067) and is_equal_approx(float(m["light"]["trauma"]), 0.06))
 	_check("table_crit", is_equal_approx(float(m["crit"]["stop"]), 0.15) and is_equal_approx(float(m["crit"]["zoom"]), 0.05))

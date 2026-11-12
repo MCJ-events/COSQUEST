@@ -480,6 +480,8 @@ func _ready() -> void:
 	hud.point_name = str(cfg.get("point_name", ""))
 	hud.top_shift = clampf(float(cfg.get("hud_top", 0.0)), 0.0, 240.0)   # build 20: the safe area (hud.gd)
 	hud.panel = "classic" if str(cfg.get("hud_panel", "wale")) == "classic" else "wale"   # build 21: Wale's panel
+	hud.extras = str(cfg.get("hud_extras", "arc"))   # build 22: where the three interim buttons sit (review stills)
+	hud.halo_a = clampf(float(cfg.get("hud_halo", 0.42)), 0.0, 1.0)
 	if _landscape:
 		var sd: Variant = cfg.get("hud_side", [0, 0])
 		if sd is Array and (sd as Array).size() == 2:
@@ -1901,6 +1903,23 @@ func _fire_shot() -> void:
 	_buzz("hit", 0.3)
 
 
+## The fight is over (or closed): shots in flight and circles still waiting go with it.
+func _clear_ranged() -> void:
+	for b: Dictionary in _shots:
+		(b["area"] as Node).queue_free()
+		(b["mi"] as Node).queue_free()
+	_shots.clear()
+	for r: Dictionary in _rains:
+		if r["tele"] != null:
+			fx.telegraph_end(r["tele"], false)
+		(r["area"] as Node).queue_free()
+	_rains.clear()
+	for b: Dictionary in _bolts:      # the ally's bolts in flight too (they were left to the fight's own free)
+		(b["area"] as Node).queue_free()
+		(b["mi"] as Node).queue_free()
+	_bolts.clear()
+
+
 func _tick_shots(dt: float) -> void:
 	var i: int = _shots.size() - 1
 	while i >= 0:
@@ -2514,12 +2533,12 @@ func _bot(dt: float) -> void:
 				cast = 3
 			elif _skill_cd[4] <= 0.0 and hero.hp < hero.max_hp * 0.8:
 				cast = 4
+			elif _skill_cd[6] <= 0.0:
+				cast = 6    # build 22: RAIN on the Guardian where it stands, first: it falls while the bot keeps swinging
 			elif _skill_cd[1] <= 0.0:
 				cast = 1
 			elif _skill_cd[2] <= 0.0:
 				cast = 2
-			elif _skill_cd[6] <= 0.0:
-				cast = 6    # build 22: RAIN on the Guardian where it stands
 			elif _skill_cd[5] <= 0.0:
 				cast = 5    # and a SHOOT at point-blank when nothing bigger is back
 		if cast >= 0 and _can_cast():
@@ -2550,10 +2569,7 @@ func _end(o: String) -> void:
 	if _tele != null:
 		fx.telegraph_end(_tele, false)
 		_tele = null
-	for r: Dictionary in _rains:
-		if r["tele"] != null:
-			fx.telegraph_end(r["tele"], false)
-			r["tele"] = null
+	_clear_ranged()
 	# look-fight: the end banner waits for the KO beat (feel.gd), then holds 1.2 s over the
 	# slowed, dimmed frame before the result goes to the app (art direction 7, "Win screen")
 	var beat: float = _ko_beat_len()
@@ -2707,6 +2723,8 @@ func _emit_result() -> void:
 
 ## Bridge.end_fight(): abort now with outcome "quit".
 func abort() -> void:
+	if fx != null:
+		_clear_ranged()
 	if state == "done":
 		return
 	outcome = "quit"

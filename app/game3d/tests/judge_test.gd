@@ -7,7 +7,7 @@ extends SceneTree
 ## Prints "CQTEST PASS <name>" / "CQTEST FAIL <name> <why>", then "CQTEST done failures=N".
 
 const FightScript := preload("res://fight.gd")
-const PINNED_RULES: String = "f3d-1-21d2cde61ab2"
+const PINNED_RULES: String = "f3d-2-e872f23a43a5"
 
 var _fails: int = 0
 var _done: bool = false
@@ -41,7 +41,7 @@ func _initialize() -> void:
 
 func _verify(r: Dictionary) -> void:
 	var j: Dictionary = r.get("judge", {})
-	_check("record_present", not j.is_empty() and int(j.get("v", 0)) == 1)
+	_check("record_present", not j.is_empty() and int(j.get("v", 0)) == 2)
 	_check("record_seed", int(j.get("seed", -1)) == 239, str(j.get("seed")))
 	_check("record_rules", str(j.get("rules", "")) == PINNED_RULES)
 	var boss: int = 0
@@ -54,10 +54,28 @@ func _verify(r: Dictionary) -> void:
 		last_t = int(h[0])
 		if int(h[2]) == 2:
 			boss += int(h[5])
-			if int(h[3]) >= 1 and int(h[3]) <= 6:
+			if (int(h[3]) >= 1 and int(h[3]) <= 6) or int(h[3]) == 10 or int(h[3]) == 11:
 				dealt += int(h[5])
 				hits += 1 if int(h[5]) > 0 else 0
 	_check("record_ordered", ordered)
 	_check("boss_hp_adds_up", maxi(0, 6500 - boss) == int(r["enemy_hp_left"]), "%d vs %d" % [6500 - boss, int(r["enemy_hp_left"])])
 	_check("damage_adds_up", dealt == int(r["damage_dealt"]) and hits == int(r["hits"]), "%d/%d vs %d/%d" % [dealt, hits, int(r["damage_dealt"]), int(r["hits"])])
 	_check("casts_add_up", (j.get("casts", []) as Array).size() == int(r["skill_uses"]))
+	# build 22: the bot's seeded fight uses SHOOT (slot 5, source 10) and RAIN (slot 6, source 11), inside their rules
+	var skills: Array = r.get("skills", [])
+	_check("seven_skill_slots", skills.size() == 7, str(skills))
+	var n_shoot: int = 0
+	var n_rain: int = 0
+	var ranges_ok: bool = true
+	for h: Array in j.get("hits", []):
+		var plain: bool = int(h[6]) == 0
+		if int(h[3]) == 10:
+			n_shoot += 1
+			ranges_ok = ranges_ok and (not plain or (int(h[4]) >= 55 and int(h[4]) <= 75))
+		elif int(h[3]) == 11:
+			n_rain += 1
+			ranges_ok = ranges_ok and (not plain or (int(h[4]) >= 60 and int(h[4]) <= 80))
+	_check("bot_uses_shoot_and_rain", skills.size() == 7 and int(skills[5]) > 0 and int(skills[6]) > 0, str(skills))
+	_check("shoot_hits_at_most_one_per_cast", n_shoot > 0 and n_shoot <= int(skills[5]), "%d hits, %s" % [n_shoot, str(skills)])
+	_check("rain_hits_at_most_three_per_cast", n_rain > 0 and n_rain <= 3 * int(skills[6]), "%d hits, %s" % [n_rain, str(skills)])
+	_check("shoot_and_rain_in_their_damage_ranges", ranges_ok)

@@ -7,7 +7,7 @@ extends SceneTree
 ## Prints "CQTEST PASS <name>" / "CQTEST FAIL <name> <why>", then "CQTEST done failures=N".
 
 const FightScript := preload("res://fight.gd")
-const PINNED_RULES: String = "f3d-1-21d2cde61ab2"
+const PINNED_RULES: String = "f3d-2-e872f23a43a5"
 const HP_P: int = 700
 const DMG_P: int = 1300
 

@@ -37,7 +37,7 @@ func _check(name: String, ok: bool, why: String = "") -> void:
 
 
 func _initialize() -> void:
-	_check("rules_id_unchanged", FightScript.rules_id() == "f3d-1-21d2cde61ab2", FightScript.rules_id())
+	_check("rules_id_unchanged", FightScript.rules_id() == "f3d-2-e872f23a43a5", FightScript.rules_id())
 	var lib: AnimationLibrary = AnimLib.library("armstrong")
 	_check("library_loads", lib != null and lib.get_animation_list().size() > 20)
 	if lib == null:
