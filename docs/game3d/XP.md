@@ -57,20 +57,51 @@ length (`[t, lt, slot, frame]`) and the judge allows exactly that, capped at 0.5
 fights at 15 fps and at an uncapped frame rate: the judge held honest ones before the fix.
 
 ## Changing the combat numbers
-`fight.gd rules_table()` (whole numbers) is hashed into `rules_id()` (`f3d-1-21d2cde61ab2` today), and the
-server's `RULES` must hash to the same id, or every 3D fight is held. `tests/judge_test.gd` pins the id.
-To change a number: change `fight.gd`, update `PINNED_RULES` in `judge_test.gd`, update `RULES` in
-`roam_fight3d.py`, regenerate the backend's fight corpus (`tests/fixtures/fight3d_corpus.jsonl.gz`), and
-deploy the server before the app.
+`fight.gd rules_table()` (whole numbers) is hashed into `rules_id()`. The server holds every table that is in
+testers' hands (`roam_fight3d.py RULESETS`) and judges a fight against the table its setup was given:
+
+| Builds | Rules id | Table |
+|---|---|---|
+| 19, 20, 21 | `f3d-1-21d2cde61ab2` | `RULES` (five skills) |
+| 22 on | `f3d-2-e872f23a43a5` | `RULES_V2` (the same numbers, plus SHOOT and RAIN) |
+
+The app names its id when the duel starts (`fight3d_rules` on `/v1/duel/start`, `features/game3d/rules.ts`). Builds
+19 to 21 send nothing and are set up on the first table, as before. The id is fixed in the stored setup: a record that
+claims another id than its setup's is held, so a fight cannot choose its table afterwards. `tests/judge_test.gd` pins
+the id this build fights on, and a jest test checks `rules.ts` says the same.
+
+To change a number: change `fight.gd`, update `PINNED_RULES` in `judge_test.gd` and `FIGHT3D_RULES` in `rules.ts`,
+ADD the new table to `roam_fight3d.py` (keep the old ones while their builds are in use), record a corpus for it
+(`tools/panel/corpus_fight.gd`), and deploy the server before the app.
+
+## SHOOT and RAIN (build 22)
+The two buttons of Wale's panel that had no mechanic in build 21 (they were padlocked) are skills now.
+
+| | SHOOT (slot 5, hit source 10) | RAIN (slot 6, hit source 11) |
+|---|---|---|
+| What | one fast straight shot along the aim (the stick, else the Guardian within 14 m, else the facing) | a marked circle (2.6 m) where the target stood when the cast began, then three volleys fall on it |
+| Cooldown | 3 s | 10 s |
+| Cast | 0.36 s; the shot leaves at 0.12 s | 0.6 s |
+| Damage | 55 to 75, one light hit | 60 to 80 a volley, light hits (180 to 240 if all three land) |
+| Timing | 22 m/s, dies at 12 m: it lands 0.12 to 0.67 s after the cast | volleys 0.8, 1.0 and 1.2 s after the cast (the moves' clock); the Guardian can walk out |
+
+What the server checks for them, on top of every hit's usual checks (range, multipliers, crit dice, HP sums): the cast
+exists, was pressed and respected its cooldown; a SHOOT cast lands at most one hit and a RAIN cast at most three; each
+hit lands inside its window after the cast (`Ruleset.hit_window`). Both are light hits (the plain crit roll), take the
+RALLY buff and the stagger bonus like any other hit, and are not tier-dependent: the rules table is one constant.
 
 ## Tests
-- Godot: `tests/judge_test.gd` (rules id pinned; a seeded fight's record adds up).
+- Godot: `tests/judge_test.gd` (rules id pinned; a seeded fight's record adds up; the bot uses SHOOT and RAIN inside
+  their rules) and `tests/build22_test.gd` (SHOOT and RAIN in a scripted fight: hits, damage, windows, cooldowns, range,
+  a target that leaves the circle).
 - App: `features/game3d/__tests__/fight3d.test.ts` (seed folding, the finish body, which fights are judged).
 - Server: `tests/test_roam_fight3d.py`: the verdict on every recorded bot fight equals the fight's own
   (337 fights: wins, losses, timeouts; 30, 15 and 60 fps and uncapped); tampered records are held (a loss called a
   win, inflated hits, every hit a crit, buffs and staggers from nowhere, skills under their cooldown or
   never pressed, impossible swing rates, HP that does not add up, a sped-up fight, a malformed record);
-  end to end, a 3D point win pays XP once and a forged one pays nothing.
+  end to end, a 3D point win pays XP once and a forged one pays nothing. `tests/test_fight3d_rules_v2.py`: both ids
+  known, 177 build 22 fights judged right, the 337 older ones still right on their own table, a record on the other
+  table than its setup held, SHOOT and RAIN forgeries held, a build 21 fight and a build 22 fight both paid by one server.
 
 ## Modifiers (battle-3d-only)
 The modes need different Guardians: a raid boss with more HP and heavier strikes over 60 s, a 30 s

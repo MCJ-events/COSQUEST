@@ -84,13 +84,15 @@ const DODGE_LEN: float = 0.36
 const DODGE_DIST: float = 3.4
 const DODGE_IFRAMES: float = 0.3
 
-# ---- skills: slot order CHARGE SPLIT WHIRL RALLY SHIELD (hud.SKILL_NAMES)
-const SKILL_CD: Array[float] = [5.0, 8.0, 6.0, 14.0, 12.0]
-const SKILL_LEN: Array[float] = [0.42, 0.72, 0.5, 0.6, 0.5]
+# ---- skills: slot order CHARGE SPLIT WHIRL RALLY SHIELD SHOOT RAIN (hud.SKILL_NAMES)
+# build 22: SHOOT (slot 5) and RAIN (slot 6) are real skills (they were padlocked buttons in build 21)
+const SKILL_N: int = 7
+const SKILL_CD: Array[float] = [5.0, 8.0, 6.0, 14.0, 12.0, 3.0, 10.0]
+const SKILL_LEN: Array[float] = [0.42, 0.72, 0.5, 0.6, 0.5, 0.36, 0.6]
 # when each skill's strike (or cast) lands, seconds in: a clip's contact frame is lined up with
 # it (cq 012; the frames are data in data/anim_clips.json). WHIRL's two hits span its spin, so
 # its clip is stretched evenly (-1).
-const SKILL_HIT_AT: Array[float] = [0.18, 0.34, -1.0, 0.25, 0.2]
+const SKILL_HIT_AT: Array[float] = [0.18, 0.34, -1.0, 0.25, 0.2, 0.12, 0.3]
 const PARRY_HIT_AT: float = 0.12   # the parry's riposte
 const BOLT_HIT_AT: float = 0.06    # the ally's cast, the bolt leaves at once
 const CHARGE_DIST: float = 6.0
@@ -105,6 +107,24 @@ const RALLY_SECS: float = 6.0
 const SHIELD_HP: int = 260
 const SHIELD_SECS: float = 6.0
 const SUPPORT_RANGE: float = 9.0
+# SHOOT: a fast shot along the aim (the stick, else the Guardian if within AIM_FAR, else the facing). It leaves
+# the hand SHOOT_AT s into the cast, flies straight at SHOOT_SPEED and dies at SHOOT_RANGE: one light hit.
+const SHOOT_AT: float = 0.12
+const SHOOT_SPEED: float = 22.0
+const SHOOT_RANGE: float = 12.0
+const SHOOT_DMG: Vector2i = Vector2i(55, 75)
+# RAIN: a marked circle on the target's position (where it stood when the cast began), then RAIN_WAVES
+# volleys fall on it, the first RAIN_DELAY s after the cast, RAIN_GAP s apart. The Guardian can walk out.
+const RAIN_MARK_AT: float = 0.3      # the arm is up: the volleys are loosed (presentation)
+const RAIN_DELAY: float = 0.8
+const RAIN_GAP: float = 0.2
+const RAIN_WAVES: int = 3
+const RAIN_RADIUS: float = 2.6
+const RAIN_REACH: float = 6.0        # no target in range: the circle lands this far ahead
+const RAIN_DMG: Vector2i = Vector2i(60, 80)
+const AIM_FAR: float = 14.0          # SHOOT and RAIN aim at the Guardian from this far (the other skills: 9 m)
+const SHOOT_COLS: Array = [Color("#3FC3FF"), Color("#E4F7FF")]
+const RAIN_COLS: Array = [Color("#FF4A3D"), Color("#FFD9C9")]
 
 # ---- the boss
 const ENEMY_SPEED: float = 1.8
@@ -162,12 +182,12 @@ const TEST_PACKS: String = "/opt/cq/tasks/056-game-forge-in-world-v2/out/packs/"
 # ---- the server's judge (cq 019, docs/game3d/XP.md): the fight records what happened, the game server
 # checks it against these rules (costquest-backend app/roam_fight3d.py) and pays XP like any point fight.
 # Recording only: nothing here draws a random number or changes a fight. Times are in 1/100 s.
-const RULES_VERSION: int = 1
+const RULES_VERSION: int = 2    # build 22: SHOOT and RAIN (slots 5, 6; sources 10, 11); builds 19 to 21 fight on version 1
 const J_HERO: int = 0
 const J_ALLY: int = 1
 const J_BOSS: int = 2
 # hit sources: 1..3 the combo's hits, then the skills that strike, the ally's bolt, the boss's two strikes
-const J_SRC: Dictionary = {"charge": 4, "split": 5, "whirl": 6, "bolt": 7, "swipe": 8, "slam": 9}
+const J_SRC: Dictionary = {"charge": 4, "split": 5, "whirl": 6, "bolt": 7, "swipe": 8, "slam": 9, "shoot": 10, "rain": 11}
 const JF_CRIT: int = 1
 const JF_STAGGERED: int = 2
 const JF_BUFFED: int = 4
@@ -227,7 +247,7 @@ var _attack_buffer: float = 0.0
 var _atk_data: Dictionary = {}
 var _skill: int = -1
 var _skill_fired: Dictionary = {}
-var _skill_cd: Array[float] = [0.0, 0.0, 0.0, 0.0, 0.0]
+var _skill_cd: Array[float] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 var _skill_dir: Vector3 = Vector3.FORWARD
 var _skill_from: Vector3 = Vector3.ZERO
 var _skill_area: HitArea
@@ -255,6 +275,8 @@ var _slam_shape: CylinderShape3D
 # ally
 var _ally_cd: float = 1.5
 var _bolts: Array[Dictionary] = []
+var _shots: Array[Dictionary] = []      # SHOOT's shots in flight: {mi, area, dir, left (m)}
+var _rains: Array[Dictionary] = []      # RAIN's circles: {at, t (s since the cast, moves' clock), wave, area, tele}
 
 # bot
 var _bot_guard_t: float = 0.0
@@ -273,7 +295,7 @@ var _coop_won: bool = false
 var _frame_dt: float = 0.0   # this frame's length: a skill cast mid-frame has its cooldown shortened by it
 var _jlog: Dictionary = {"hits": [], "casts": [], "heals": [], "staggers": [], "presses": [], "guards": []}
 var stats: Dictionary = {"damage_dealt": 0, "damage_taken": 0, "hits": 0, "skill_uses": 0, "ally_damage": 0,
-	"parries": 0, "blocks": 0, "dodges": 0, "crits": 0, "combo_max": 0, "skills": [0, 0, 0, 0, 0]}
+	"parries": 0, "blocks": 0, "dodges": 0, "crits": 0, "combo_max": 0, "skills": [0, 0, 0, 0, 0, 0, 0]}
 
 # camera state
 var _cam_basis: Basis
@@ -458,6 +480,8 @@ func _ready() -> void:
 	hud.point_name = str(cfg.get("point_name", ""))
 	hud.top_shift = clampf(float(cfg.get("hud_top", 0.0)), 0.0, 240.0)   # build 20: the safe area (hud.gd)
 	hud.panel = "classic" if str(cfg.get("hud_panel", "wale")) == "classic" else "wale"   # build 21: Wale's panel
+	hud.extras = str(cfg.get("hud_extras", "arc"))   # build 22: where the three interim buttons sit (review stills)
+	hud.halo_a = clampf(float(cfg.get("hud_halo", 0.42)), 0.0, 1.0)
 	if _landscape:
 		var sd: Variant = cfg.get("hud_side", [0, 0])
 		if sd is Array and (sd as Array).size() == 2:
@@ -1477,7 +1501,7 @@ func _tick_fight(dt: float) -> void:
 	if hero != null:
 		if autoplay:
 			_bot(dt)
-		for i in 5:
+		for i in SKILL_N:
 			_skill_cd[i] = maxf(0.0, _skill_cd[i] - dt)
 		_attack_buffer = maxf(0.0, _attack_buffer - dt)
 		_since_swing += logic_dt
@@ -1487,6 +1511,8 @@ func _tick_fight(dt: float) -> void:
 		_tick_enemy(logic_dt)
 		_tick_ally(logic_dt)
 		_tick_bolts(logic_dt)
+		_tick_shots(logic_dt)
+		_tick_rains(logic_dt)
 		_separate()
 		for f: FighterScript in fighters:
 			_clamp_arena(f)
@@ -1788,19 +1814,22 @@ func _cast(slot: int) -> void:
 	stats["skill_uses"] = int(stats["skill_uses"]) + 1
 	(stats["skills"] as Array)[slot] = int((stats["skills"] as Array)[slot]) + 1
 	_combo_next = 0
-	var names: Array[String] = ["skill_charge", "skill_split", "skill_whirl", "skill_rally", "skill_shield"]
+	# SHOOT plays the cast-and-shoot clip (the state the ally's bolt uses), RAIN the raised-arm cast
+	var names: Array[String] = ["skill_charge", "skill_split", "skill_whirl", "skill_rally", "skill_shield", "attack_2", "skill_rally"]
 	hero.act(names[slot], _act_len, SKILL_HIT_AT[slot])
 	# aim: the stick if pushed, else the boss if near, else the facing
 	var aim: Vector3 = _stick_world()
-	if aim.length() < 0.3 and enemy != null and not enemy.dead and _flat(enemy.position - hero.position).length() < 9.0:
+	var aim_range: float = AIM_FAR if slot >= 5 else 9.0
+	if aim.length() < 0.3 and enemy != null and not enemy.dead and _flat(enemy.position - hero.position).length() < aim_range:
 		aim = _flat(enemy.position - hero.position)
 	if aim.length() < 0.05:
 		aim = hero.forward()
 	_skill_dir = aim.normalized()
 	_skill_from = hero.position
-	if slot <= 2:
+	if slot <= 2 or slot >= 5:
 		hero.face(_skill_dir, 0.0, 0.0)
-	var cols: Array[Color] = [Color(0.4, 0.95, 0.9), Color(1.0, 0.6, 0.25), Color(1.0, 0.82, 0.35), Color(0.5, 1.0, 0.5), Color(0.5, 0.85, 1.0)]
+	var cols: Array[Color] = [Color(0.4, 0.95, 0.9), Color(1.0, 0.6, 0.25), Color(1.0, 0.82, 0.35), Color(0.5, 1.0, 0.5), Color(0.5, 0.85, 1.0),
+		SHOOT_COLS[0], RAIN_COLS[0]]
 	hud.callout(hud.skill_label(slot), cols[slot])
 	_buzz("cast", 0.4)
 	match slot:
@@ -1816,6 +1845,11 @@ func _cast(slot: int) -> void:
 			sfx.play("skill")
 		3, 4:
 			sfx.play("skill", 1.2)
+		5:
+			sfx.play("skill", 1.5)
+		6:
+			sfx.play("skill", 0.85)
+			_begin_rain()
 
 
 func _skill_area_shape(sz: Vector3, at: Vector3) -> void:
@@ -1914,6 +1948,134 @@ func _tick_skill(dt: float) -> void:
 						continue
 					f.give_shield(SHIELD_HP, SHIELD_SECS)
 					fx.shield_up(f.position, 1.3 * f.size_k, FeelScript.SHIELD_MID)
+		5:   # SHOOT: the shot leaves the hand
+			if t >= SHOOT_AT and _fire_once("shot"):
+				_fire_shot()
+		6:   # RAIN: the arm is up, the volleys are on their way (they fall on the moves' clock, see _tick_rains)
+			if t >= RAIN_MARK_AT and _fire_once("loose"):
+				sfx.play("swing_heavy", 1.4)
+				fx.pillar(hero.position, 3.2, 0.5, RAIN_COLS[0], 0.35)
+
+
+# ---- build 22: SHOOT. One straight shot, one light hit; the record's source is 10.
+func _fire_shot() -> void:
+	var mi: MeshInstance3D = fx.make_bolt(SHOOT_COLS[0])
+	var area := HitArea.new()
+	var sph := SphereShape3D.new()
+	sph.radius = 0.4
+	area.setup(1, sph)
+	area.struck.connect(_on_struck)
+	add_child(area)
+	var p: Vector3 = hero.position + Vector3(0, 1.25 * hero.size_k, 0) + _skill_dir * 0.6
+	mi.global_position = p
+	area.global_position = p
+	area.open({"src": hero, "kind": "shoot", "dmg": SHOOT_DMG, "kb": 0.2, "stop": 2.0 / 60.0, "heavy": false})
+	_shots.append({"mi": mi, "area": area, "dir": _skill_dir, "left": SHOOT_RANGE})
+	fx.muzzle(p, p + _skill_dir, SHOOT_COLS)
+	fx.ring(hero.position, 0.8, Color(SHOOT_COLS[0], 0.8), 0.25)
+	sfx.play("dash", 1.6)
+	_buzz("hit", 0.3)
+
+
+## The fight is over (or closed): shots in flight and circles still waiting go with it.
+func _clear_ranged() -> void:
+	for b: Dictionary in _shots:
+		(b["area"] as Node).queue_free()
+		(b["mi"] as Node).queue_free()
+	_shots.clear()
+	for r: Dictionary in _rains:
+		if r["tele"] != null:
+			fx.telegraph_end(r["tele"], false)
+		(r["area"] as Node).queue_free()
+	_rains.clear()
+	for b: Dictionary in _bolts:      # the ally's bolts in flight too (they were left to the fight's own free)
+		(b["area"] as Node).queue_free()
+		(b["mi"] as Node).queue_free()
+	_bolts.clear()
+
+
+func _tick_shots(dt: float) -> void:
+	var i: int = _shots.size() - 1
+	while i >= 0:
+		var b: Dictionary = _shots[i]
+		var area: HitArea = b["area"]
+		var mi: MeshInstance3D = b["mi"]
+		var dir: Vector3 = b["dir"]
+		var done: bool = float(b["left"]) <= 0.0 or area.hit_count() > 0
+		if not done and dt > 0.0:
+			# in steps no longer than the shot's own size, so a slow frame cannot carry it through the Guardian
+			var go: float = minf(SHOOT_SPEED * dt, float(b["left"]))
+			var steps: int = maxi(1, int(ceil(go / 0.5)))
+			for _k in steps:
+				area.global_position += dir * (go / steps)
+				area.scan()
+				if area.hit_count() > 0:
+					break
+			b["left"] = float(b["left"]) - go
+			mi.global_position = area.global_position
+			fx.trail_push("shot%d" % (i % 4), area.global_position + Vector3(0, 0.14, 0), area.global_position - Vector3(0, 0.14, 0), SHOOT_COLS, 0.0, 0.5)
+			done = float(b["left"]) <= 0.0 or area.hit_count() > 0
+		if done:
+			if area.hit_count() > 0:
+				fx.ring(area.global_position - Vector3(0, area.global_position.y, 0), 0.9, Color(SHOOT_COLS[0], 0.85), 0.25)
+			area.queue_free()
+			mi.queue_free()
+			_shots.remove_at(i)
+		i -= 1
+
+
+# ---- build 22: RAIN. A marked circle where the target stood, then RAIN_WAVES volleys; source 11.
+func _begin_rain() -> void:
+	var at: Vector3 = hero.position + _skill_dir * RAIN_REACH
+	if hud.stick.length() < 0.3 and enemy != null and not enemy.dead and _flat(enemy.position - hero.position).length() < AIM_FAR:
+		at = enemy.position
+	at.y = 0.0
+	at.x = clampf(at.x, -ARENA_HALF_X, ARENA_HALF_X)
+	at.z = clampf(at.z, ARENA_Z.x, ARENA_Z.y)
+	var area := HitArea.new()
+	var cyl := CylinderShape3D.new()
+	cyl.radius = RAIN_RADIUS
+	cyl.height = 3.0
+	area.setup(1, cyl)
+	area.struck.connect(_on_struck)
+	add_child(area)
+	area.global_position = at + Vector3(0, 1.2, 0)
+	var tele: MeshInstance3D = fx.telegraph(at, 0.0, RAIN_RADIUS, 180.0, RAIN_DELAY, Color(RAIN_COLS[0], 1.0))
+	_rains.append({"at": at, "t": 0.0, "wave": 0, "area": area, "tele": tele})
+
+
+func _tick_rains(dt: float) -> void:
+	var i: int = _rains.size() - 1
+	while i >= 0:
+		var r: Dictionary = _rains[i]
+		r["t"] = float(r["t"]) + dt
+		var area: HitArea = r["area"]
+		var at: Vector3 = r["at"]
+		var wave: int = int(r["wave"])
+		if wave < RAIN_WAVES and float(r["t"]) >= RAIN_DELAY + RAIN_GAP * wave:
+			if wave == 0 and r["tele"] != null:
+				fx.telegraph_end(r["tele"], true)
+				r["tele"] = null
+			area.close()
+			area.open({"src": hero, "kind": "rain", "dmg": RAIN_DMG, "kb": 0.0, "stop": 2.0 / 60.0, "heavy": false})
+			area.scan()
+			area.close()
+			r["wave"] = wave + 1
+			# the volley: streaks from above across the circle, a ring and dust where they land
+			for k in 5:
+				var a: float = TAU * (float(k) / 5.0 + 0.13 * wave)
+				var q: Vector3 = at + Vector3(cos(a), 0, sin(a)) * RAIN_RADIUS * (0.3 + 0.12 * ((k + wave) % 3))
+				fx.beam(q, 4.2, 0.16, RAIN_COLS[0], RAIN_COLS[1], 0.22)
+			fx.ring(at, RAIN_RADIUS, Color(RAIN_COLS[0], 0.85), 0.3)
+			fx.dust(at)
+			sfx.play("hit", 1.3)
+			if wave == RAIN_WAVES - 1:
+				fx.shock(at, RAIN_RADIUS, RAIN_COLS[0], 0.4)
+				_shake_cam(0.08, 0.18)
+		if int(r["wave"]) >= RAIN_WAVES:
+			area.queue_free()
+			_rains.remove_at(i)
+		i -= 1
 
 
 func _start_dodge(dir: Vector3) -> void:
@@ -2445,10 +2607,14 @@ func _bot(dt: float) -> void:
 				cast = 3
 			elif _skill_cd[4] <= 0.0 and hero.hp < hero.max_hp * 0.8:
 				cast = 4
+			elif _skill_cd[6] <= 0.0:
+				cast = 6    # build 22: RAIN on the Guardian where it stands, first: it falls while the bot keeps swinging
 			elif _skill_cd[1] <= 0.0:
 				cast = 1
 			elif _skill_cd[2] <= 0.0:
 				cast = 2
+			elif _skill_cd[5] <= 0.0:
+				cast = 5    # and a SHOOT at point-blank when nothing bigger is back
 		if cast >= 0 and _can_cast():
 			hud.bot_skill_slot(cast)
 			_bot_next_skill = 1.2
@@ -2457,6 +2623,9 @@ func _bot(dt: float) -> void:
 	elif d < 7.0 and d > 3.5 and _skill_cd[0] <= 0.0 and _can_cast() and _bot_next_skill <= 0.0:
 		hud.bot_skill_slot(0)
 		_bot_next_skill = 1.0
+	elif d < SHOOT_RANGE - 1.0 and _skill_cd[5] <= 0.0 and _can_cast() and _bot_next_skill <= 0.0:
+		hud.bot_skill_slot(5)   # build 22: closing in from range, a SHOOT on the way
+		_bot_next_skill = 0.6
 
 
 # ------------------------------------------------------------ end
@@ -2474,6 +2643,7 @@ func _end(o: String) -> void:
 	if _tele != null:
 		fx.telegraph_end(_tele, false)
 		_tele = null
+	_clear_ranged()
 	# look-fight: the end banner waits for the KO beat (feel.gd), then holds 1.2 s over the
 	# slowed, dimmed frame before the result goes to the app (art direction 7, "Win screen")
 	var beat: float = _ko_beat_len()
@@ -2565,7 +2735,7 @@ static func rules_table() -> Dictionary:
 		combo.append({"len_ms": int(round(float(c["len"]) * 1000.0)), "dmg": [(c["dmg"] as Vector2i).x, (c["dmg"] as Vector2i).y]})
 	var cd: Array = []
 	var ln: Array = []
-	for i in 5:
+	for i in SKILL_N:
 		cd.append(int(round(SKILL_CD[i] * 1000.0)))
 		ln.append(int(round(SKILL_LEN[i] * 1000.0)))
 	return {
@@ -2580,6 +2750,12 @@ static func rules_table() -> Dictionary:
 		"rally_ms": int(round(RALLY_SECS * 1000.0)), "shield_hp": SHIELD_HP, "shield_ms": int(round(SHIELD_SECS * 1000.0)),
 		"swipe_dmg": [SWIPE_DMG.x, SWIPE_DMG.y], "slam_dmg": [SLAM_DMG.x, SLAM_DMG.y], "boss_cd_ms": int(round(ENEMY_CD * 1000.0)),
 		"ally_dmg": [ALLY_DMG.x, ALLY_DMG.y],
+		# build 22. shoot_window_ms: the latest a shot can land after its cast (the release plus the flight
+		# to SHOOT_RANGE); rain: the first volley rain_delay_ms after the cast, rain_waves of them rain_gap_ms apart
+		"shoot_dmg": [SHOOT_DMG.x, SHOOT_DMG.y], "shoot_at_ms": int(round(SHOOT_AT * 1000.0)),
+		"shoot_window_ms": int(round((SHOOT_AT + SHOOT_RANGE / SHOOT_SPEED) * 1000.0)),
+		"rain_dmg": [RAIN_DMG.x, RAIN_DMG.y], "rain_delay_ms": int(round(RAIN_DELAY * 1000.0)),
+		"rain_gap_ms": int(round(RAIN_GAP * 1000.0)), "rain_waves": RAIN_WAVES,
 	}
 
 
@@ -2621,6 +2797,8 @@ func _emit_result() -> void:
 
 ## Bridge.end_fight(): abort now with outcome "quit".
 func abort() -> void:
+	if fx != null:
+		_clear_ranged()
 	if state == "done":
 		return
 	outcome = "quit"
@@ -2984,7 +3162,7 @@ func _restore_time() -> void:
 
 func _sync_hud() -> void:
 	hud.t_left = t_left
-	for i in 5:
+	for i in SKILL_N:
 		hud.skill_cd[i] = _skill_cd[i]
 		# disabled only when a press cannot count: during a swing or another skill it is buffered
 		hud.skill_ok[i] = hero != null and state == "fighting" and not hero.dead and hero.stagger <= 0.0

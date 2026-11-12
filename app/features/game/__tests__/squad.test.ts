@@ -290,6 +290,8 @@ describe("the next 3D fight carries the token", () => {
     await c.duelStart({ mode: "point", target: "p1", fight3d: true });
     assert.equal(sent[0].squad, "tok-123");
     assert.equal(used, 1);
+    // build 22: a 3D start names the rules table the build fights on
+    assert.match(String(sent[0].fight3d_rules), /^f3d-2-[0-9a-f]{12}$/);
   });
 
   it("keeps the token when the server left the friend out, and never sends it with a 2D fight", async () => {

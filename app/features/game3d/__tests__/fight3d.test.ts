@@ -465,3 +465,15 @@ test("build 20: hud_top goes to Godot only when there is a safe area to clear", 
   assert.equal(buildFightConfig({ ...base, hudTop: 0 }).hud_top, undefined);
   assert.equal(buildFightConfig(base).hud_top, undefined);
 });
+
+// ---------- build 22: the app names the rules table it fights on ----------
+
+import { readFileSync } from "node:fs";
+import { FIGHT3D_RULES } from "../rules.ts";
+
+test("the rules id the app sends is the one the Godot build fights on (judge_test.gd pins fight.gd's)", () => {
+  const gd = readFileSync(new URL("../../../game3d/tests/judge_test.gd", import.meta.url), "utf8");
+  const pinned = /const PINNED_RULES: String = "([^"]+)"/.exec(gd)?.[1];
+  assert.equal(FIGHT3D_RULES, pinned);
+  assert.match(FIGHT3D_RULES, /^f3d-2-[0-9a-f]{12}$/);
+});

@@ -48,7 +48,7 @@ func _check(name: String, ok: bool, why: String = "") -> void:
 
 
 func _initialize() -> void:
-	_check("rules_id_unchanged", FightScript.rules_id() == "f3d-1-21d2cde61ab2", FightScript.rules_id())
+	_check("rules_id_unchanged", FightScript.rules_id() == "f3d-2-e872f23a43a5", FightScript.rules_id())
 	AnimLib.motion = "classic"
 	var c: Dictionary = AnimLib.states_for("sword", "armstrong")
 	_check("classic_keeps_build21_swing", str((c.get("attack_1", {}) as Dictionary).get("clip", "")) == "1H_Melee_Attack_Slice_Diagonal", str(c.get("attack_1", {})))

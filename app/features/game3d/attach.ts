@@ -365,7 +365,8 @@ export function previewGripFor(m: AttachManifest, characterName: string | null |
 /** The grip to use: the manifest's for a known character, else computed from the GLB (null when it has no hand bone). */
 export function gripFor(m: AttachManifest, characterName: string | null | undefined, cls: GripClass, glb?: Gltf | null): { bone: string; matrix: Mat4 } | null {
   const known = m.characters[characterKey(characterName)];
-  if (known) return known.grips[cls] ?? null;
+  // the Forge rigs and the faction heroes carry clip grips only; their static grip is computed from the GLB below
+  if (known?.grips) return known.grips[cls] ?? null;
   if (!glb) return null;
   return computeAttach(glb, characterName ?? "", m.classes)?.grips[cls] ?? null;
 }

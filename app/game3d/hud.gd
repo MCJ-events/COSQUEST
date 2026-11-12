@@ -58,37 +58,55 @@ const GUARD_R: float = 33.0
 const ATTACK_FROM_BR: Vector2 = Vector2(98.0, 150.0)
 const SKILL_ARC_R: float = 150.0
 const SKILL_ANGLES: Array[float] = [72.0, 104.0, 136.0, 168.0, 200.0]
-const SKILL_NAMES: Array[String] = ["CHARGE", "SPLIT", "WHIRL", "RALLY", "SHIELD"]
+const SKILL_NAMES: Array[String] = ["CHARGE", "SPLIT", "WHIRL", "RALLY", "SHIELD", "SHOOT", "RAIN"]
+const SKILL_N: int = 7
 const GUARD_FROM_ATTACK: Vector2 = Vector2(-10.0, -165.0) # unused when the arc is full; see guard_centre()
 const REAL_SLOT: int = 2
-# ---- build 21: Wale's attack panel (59328; Mark: "I love these"). Bottom right: a big
-# ATTACK with DASH, SHIELD, SHOOT and RAIN round it, each a coloured disc with a dark face,
-# a soft halo and a grey four-segment ring that fills as the move comes back. Drawn in code
-# (no art files). DASH is CHARGE (slot 0), SHIELD is SHIELD (slot 4). SHOOT and RAIN are not
-# built yet (no mechanic, no server rule): drawn locked, a tap only says "coming soon".
-# SPLIT, WHIRL and RALLY have no button in this panel; the old arc is panel = "classic".
+# ---- Wale's attack panel (sheet 59328; Mark: "I love these"), drawn with HIS art (build 22). Build 21 drew
+# the buttons flat in code from his picture and Mark did not like the look; now each button is the sprite cut
+# out of his sheet (art/hud/wale/panel_atlas.png: the button, a dimmed copy, its four grey ring segments as a
+# lit layer, one halo disc). The five sit where his sheet puts them, at his relative sizes: every position and
+# radius below is the sheet's own pixels, scaled by W_K. All eight skills have a button and every button casts
+# (Mark, 12 Nov: buttons with different functions all stay): his ATTACK, DASH (CHARGE, slot 0), SHIELD (4),
+# SHOOT (5) and RAIN (6), and SPLIT (1), WHIRL (2), RALLY (3), which he has not drawn yet: those three are
+# INTERIM art (his ring and disc recoloured, a new centre), on an outer arc that leaves his five untouched.
+# The old code-drawn arc is still panel = "classic" (five skills, no SHOOT or RAIN).
+const PanelAtlas := preload("res://art/hud/wale/panel_atlas.gd")
+const T_PANEL := preload("res://art/hud/wale/panel_atlas.png")
 var panel: String = "wale"
-const W_ATTACK_R: float = 66.0
-## id, the skill slot it casts (-1: locked), offset from the attack centre, radius, colours
-## (rim, face, halo) after the sheet: purple attack, orange dash, green shield, blue shoot, red rain.
+## Where the three interim buttons go: "arc" (an outer arc round his cluster, the default), "row" or "column".
+var extras: String = "arc"
+## The halo's opacity over the fight (on his sheet it is a solid pale disc on a pale page: 1.0 shows that).
+var halo_a: float = 0.42
+## Review tools only (tools/panel/panel_sheet.gd): draw the panel and nothing else; leave the interim three out.
+var show_only_panel: bool = false
+var hide_extras: bool = false
+const W_ATTACK_R: float = 70.0
+## The sheet's measurements (px in g_59328.jpg): the button's centre x, y and its disc radius; the halo's
+## centre and radius. ATTACK is the origin.
+const W_SHEET_ATTACK: Dictionary = {"c": Vector2(601.14, 673.24), "r": 203.94, "hc": Vector2(598.5, 674.0), "hr": 245.0}
+const W_K: float = W_ATTACK_R / 203.94
 const W_BUTTONS: Array[Dictionary] = [
-	{"id": "dash", "slot": 0, "at": Vector2(-128.0, 62.0), "r": 36.0,
-		"rim": Color("#FF8A1E"), "face": Color("#4A1D05"), "halo": Color("#FFC58A")},
-	{"id": "shield", "slot": 4, "at": Vector2(-4.0, -152.0), "r": 40.0,
-		"rim": Color("#5FD13A"), "face": Color("#123D0C"), "halo": Color("#C4F0AE")},
-	{"id": "shoot", "slot": -1, "at": Vector2(-114.0, -118.0), "r": 34.0,
-		"rim": Color("#1FA8F0"), "face": Color("#06253F"), "halo": Color("#A8E2FA")},
-	{"id": "rain", "slot": -1, "at": Vector2(-152.0, -28.0), "r": 34.0,
-		"rim": Color("#E8262B"), "face": Color("#3E0608"), "halo": Color("#F6B0B0")},
+	{"id": "dash", "slot": 0, "c": Vector2(238.23, 807.97), "r": 80.63, "hc": Vector2(237.0, 806.5), "hr": 95.5},
+	{"id": "shield", "slot": 4, "c": Vector2(597.15, 211.05), "r": 110.56, "hc": Vector2(598.5, 215.0), "hr": 140.0},
+	{"id": "shoot", "slot": 5, "c": Vector2(287.89, 285.8), "r": 96.75, "hc": Vector2(288.0, 283.5), "hr": 115.5},
+	{"id": "rain", "slot": 6, "c": Vector2(170.59, 527.59), "r": 92.28, "hc": Vector2(171.0, 525.5), "hr": 108.5},
+	# interim (not on his sheet): placed by `extras`, sized like his small buttons
+	{"id": "whirl", "slot": 2, "interim": true},
+	{"id": "split", "slot": 1, "interim": true},
+	{"id": "rally", "slot": 3, "interim": true},
 ]
-const W_ATTACK_RIM := Color("#C23BE6")
-const W_ATTACK_FACE := Color("#2A0B44")
-const W_ATTACK_HALO := Color("#E9B8F5")
-const W_SEG := Color("#8D8C99")       # the ring's grey segments
-const W_SEG_LIT := Color("#F4F1FF")   # a segment that has come back
-## GUARD (block / parry) is not on Wale's sheet; it stays, small, left of the panel.
-const W_GUARD_AT: Vector2 = Vector2(-236.0, 70.0)
-var _locked_press: Array[float] = [-1.0, -1.0, -1.0, -1.0]   # per W_BUTTONS entry, the tap flash
+const W_EXTRA_R: float = 29.0
+const W_EXTRA_HALO: float = 1.2
+## The interim three, from the attack centre (HUD px at W_ATTACK_R = 70), nearest the thumb first (WHIRL, SPLIT,
+## RALLY), and where GUARD goes with each. "arc": 240 px out at 14, 38 and 62 degrees above the horizontal.
+const W_EXTRAS: Dictionary = {
+	"arc": {"at": [Vector2(-232.9, -58.1), Vector2(-189.1, -147.8), Vector2(-112.7, -211.9)], "guard": Vector2(-236.0, 58.0)},
+	"row": {"at": [Vector2(-200.0, 50.0), Vector2(-272.0, 50.0), Vector2(-344.0, 50.0)], "guard": Vector2(-240.0, -34.0)},
+	"column": {"at": [Vector2(-236.0, -16.0), Vector2(-236.0, -86.0), Vector2(-236.0, -156.0)], "guard": Vector2(-236.0, 62.0)},
+}
+## A thumb is wider than his smallest button: a tap counts within this of a centre at least (HUD px).
+const W_TOUCH_MIN: float = 36.0
 
 const MAP_R: float = 76.0
 const MAP_CENTRE_FROM_TR: Vector2 = Vector2(96.0, 118.0)
@@ -126,9 +144,9 @@ var _q_off: Vector2 = Vector2.ZERO
 var portrait: Texture2D = null   # the hero's face (fight.gd renders it once at the start)
 var units: Array[Dictionary] = []      # {id, name, hp, max, team, head: Vector3, feet, chest, hw (body half width, m), is_hero, shield, buff, stagger, level}
 var map_points: Array[Dictionary] = [] # {p: Vector2 metres (x right, y down-screen), kind, facing: Vector2}
-var skill_cd: Array[float] = [0.0, 0.0, 0.0, 0.0, 0.0]
-var skill_cd_max: Array[float] = [5.0, 8.0, 6.0, 14.0, 12.0]
-var skill_ok: Array[bool] = [true, true, true, true, true]   # castable now (not busy, alive)
+var skill_cd: Array[float] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+var skill_cd_max: Array[float] = [5.0, 8.0, 6.0, 14.0, 12.0, 3.0, 10.0]   # fight.gd SKILL_CD (it writes them at the start)
+var skill_ok: Array[bool] = [true, true, true, true, true, true, true]   # castable now (not busy, alive)
 var attack_cd_k: float = 0.0
 var combo_step: int = 0                # 0..3 swings landed in the current chain
 var guard_on: bool = false
@@ -144,9 +162,10 @@ var _touch_seen: bool = false
 var _stick_id: int = -999
 var _stick_origin: Vector2 = Vector2.ZERO
 var _knob: Vector2 = Vector2.ZERO
-var _press: Array[float] = [-1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0]   # 0 attack, 1..5 skills, 6 guard
-var _ready_pulse: Array[float] = [-1.0, -1.0, -1.0, -1.0, -1.0]
-var _was_cd: Array[bool] = [false, false, false, false, false]
+const P_GUARD: int = 8
+var _press: Array[float] = [-1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0]   # 0 attack, 1..7 skills, 8 guard
+var _ready_pulse: Array[float] = [-1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0]
+var _was_cd: Array[bool] = [false, false, false, false, false, false, false]
 var _toast: String = ""
 var _toast_t: float = 0.0
 var _toast_at: Vector2 = Vector2.ZERO
@@ -233,16 +252,45 @@ func wale_button(slot: int) -> int:
 	return -1
 
 
+func wale_interim(j: int) -> bool:
+	return bool(W_BUTTONS[j].get("interim", false))
+
+
+func _extra_i(j: int) -> int:
+	var n: int = 0
+	for q in j:
+		if wale_interim(q):
+			n += 1
+	return n
+
+
+## A button's offset from the attack centre (HUD px): his sheet's own offset, scaled; the interim three by `extras`.
+func wale_at(j: int) -> Vector2:
+	var b: Dictionary = W_BUTTONS[j]
+	if wale_interim(j):
+		var lay: Dictionary = W_EXTRAS.get(extras, W_EXTRAS["arc"])
+		return ((lay["at"] as Array)[_extra_i(j)] as Vector2) * (W_ATTACK_R / 70.0)
+	return ((b["c"] as Vector2) - (W_SHEET_ATTACK["c"] as Vector2)) * W_K
+
+
+## A button's drawn radius (HUD px): his sheet's, scaled.
+func wale_r(j: int) -> float:
+	return W_EXTRA_R if wale_interim(j) else float(W_BUTTONS[j]["r"]) * W_K
+
+
+func wale_touch_r(j: int) -> float:
+	return maxf(wale_r(j) * 1.2, W_TOUCH_MIN)
+
+
 func wale_centre(j: int) -> Vector2:
-	return attack_centre() + (W_BUTTONS[j]["at"] as Vector2)
+	return attack_centre() + wale_at(j)
 
 
 func skill_centre(i: int) -> Vector2:
 	if panel == "wale":
 		var j: int = wale_button(i)
-		# a slot with no button (SPLIT, WHIRL, RALLY): its toasts appear over the attack
 		return wale_centre(j) if j >= 0 else attack_centre() + Vector2(0.0, -W_ATTACK_R)
-	var a: float = deg_to_rad(SKILL_ANGLES[i])
+	var a: float = deg_to_rad(SKILL_ANGLES[mini(i, SKILL_ANGLES.size() - 1)])
 	return attack_centre() + Vector2(cos(a), -sin(a)) * SKILL_ARC_R
 
 
@@ -255,7 +303,7 @@ func skill_label(slot: int) -> String:
 
 func guard_centre() -> Vector2:
 	if panel == "wale":
-		return attack_centre() + W_GUARD_AT
+		return attack_centre() + ((W_EXTRAS.get(extras, W_EXTRAS["arc"]) as Dictionary)["guard"] as Vector2) * (W_ATTACK_R / 70.0)
 	# under the skill arc's last button, towards the middle of the screen
 	return attack_centre() + Vector2(-SKILL_ARC_R - 92.0, 62.0)
 
@@ -305,17 +353,16 @@ func _down(id: int, p: Vector2, src: String) -> void:
 		attack_pressed.emit(t_in, ticks, src)
 		return
 	if panel == "wale":
+		# the nearest button whose touch disc holds the point (the discs are padded for a thumb, so two can share a point)
+		var best: int = -1
+		var best_k: float = 1.0
 		for j in W_BUTTONS.size():
-			var b: Dictionary = W_BUTTONS[j]
-			if p.distance_to(wale_centre(j)) > float(b["r"]) * 1.2:
-				continue
-			var slot: int = int(b["slot"])
-			if slot < 0:
-				# SHOOT / RAIN: no mechanic yet, so nothing is sent to the fight (or the server)
-				_ptrs[id] = {"role": "none", "slot": -1}
-				_locked_press[j] = 0.0
-				toast("Coming soon", wale_centre(j) + Vector2(0, -float(b["r"]) - 22.0))
-				return
+			var kd: float = p.distance_to(wale_centre(j)) / wale_touch_r(j)
+			if kd <= best_k:
+				best_k = kd
+				best = j
+		if best >= 0:
+			var slot: int = int(W_BUTTONS[best]["slot"])
 			_ptrs[id] = {"role": "skill", "slot": slot}
 			_press[slot + 1] = 0.0
 			skill_pressed.emit(slot, t_in, ticks, src)
@@ -328,7 +375,7 @@ func _down(id: int, p: Vector2, src: String) -> void:
 			return
 	if p.distance_to(guard_centre()) <= GUARD_R * 1.35:
 		_ptrs[id] = {"role": "guard", "slot": -1}
-		_press[6] = 0.0
+		_press[P_GUARD] = 0.0
 		_refresh_held()
 		guard_changed.emit(true, t_in, ticks, src)
 		return
@@ -436,7 +483,7 @@ func bot_guard(on: bool) -> void:
 		return
 	guard_held = on
 	if on:
-		_press[6] = 0.0
+		_press[P_GUARD] = 0.0
 	guard_changed.emit(on, Time.get_unix_time_from_system(), Time.get_ticks_usec(), "bot")
 
 
@@ -553,12 +600,7 @@ func _process(dt: float) -> void:
 			_press[i] += dt
 			if _press[i] > 0.3:
 				_press[i] = -1.0
-	for j in _locked_press.size():
-		if _locked_press[j] >= 0.0:
-			_locked_press[j] += dt
-			if _locked_press[j] > 0.3:
-				_locked_press[j] = -1.0
-	for i in 5:
+	for i in SKILL_N:
 		var on_cd: bool = skill_cd[i] > 0.0
 		if _was_cd[i] and not on_cd:
 			_ready_pulse[i] = 0.0
@@ -695,6 +737,10 @@ func _pie(c: Vector2, r: float, k: float, col: Color) -> void:
 
 
 func _draw() -> void:
+	if show_only_panel:
+		_draw_wale_panel()
+		_flush_texts()
+		return
 	var card: bool = _banner != "" and (_banner_kind == "win" or _banner_kind == "lose")
 	if not card:
 		_draw_overheads()
@@ -1190,145 +1236,133 @@ func _draw_controls() -> void:
 	if guard_on:
 		_disc(gc, GUARD_R + 7.0, Color(0.5, 0.85, 1.0, 0.35))
 	_tex(T_GUARD, gc, GUARD_R * gs, Color.WHITE if guard_on else Color(1, 1, 1, 0.85))
-	if _press[6] >= 0.0:
-		var kg: float = _press[6] / 0.3
+	if _press[P_GUARD] >= 0.0:
+		var kg: float = _press[P_GUARD] / 0.3
 		_tex(T_BTN_RING, gc, GUARD_R * lerpf(1.0, 1.5, kg), Color(0.6, 0.9, 1.0, 1.0 - kg))
 	if _toast_t > 0.0:
 		_text(_toast_at, _toast, 24, Color(1, 1, 1, clampf(_toast_t / 0.3, 0.0, 1.0)), 6)
 
 
-# ------------------------------------------------------------ build 21: Wale's attack panel
+# ------------------------------------------------------------ Wale's attack panel, from his art
 
-## One button of the sheet: the soft halo, the coloured rim, the dark face, the grey ring of
-## four segments on the rim. `back` (0..1) is how much of the move has come back: the segments
-## light one by one as it does (all lit = ready). `dim` greys a locked or unusable button.
-func _wale_disc(c: Vector2, r: float, rim: Color, face: Color, halo: Color, back: float, dim: float) -> void:
-	var g := func(col: Color) -> Color:
-		var l: float = col.get_luminance()
-		return col.lerp(Color(l, l, l, col.a), dim)
-	_disc(c, r * 1.2, Color(halo.r, halo.g, halo.b, 0.34 * (1.0 - 0.5 * dim)).lerp(Color(0.6, 0.6, 0.65, 0.2), dim))
-	_disc(c, r, g.call(rim))
-	_disc(c, r * 0.95, g.call(rim.lightened(0.18)))
-	_disc(c, r * 0.9, g.call(rim))
-	_disc(c, r * 0.74, g.call(face))
-	# the face's light from above
-	_disc(c + Vector2(0, -r * 0.1), r * 0.6, g.call(Color(face.lightened(0.16), 0.55)))
-	# the four grey segments, on the diagonals (as in the sheet)
-	var w: float = r * 0.2
-	for k in 4:
-		var mid: float = deg_to_rad(-135.0 + 90.0 * k)   # top-left, top-right, bottom-right, bottom-left
-		var lit: bool = back >= float(k + 1) / 4.0 - 0.001
-		var col: Color = W_SEG_LIT if lit and back < 1.0 else W_SEG
-		draw_arc(c, r * 0.87, mid - 0.42, mid + 0.42, 10, Color(0.15, 0.14, 0.2, 0.9), w + 3.0, true)
-		draw_arc(c, r * 0.87, mid - 0.4, mid + 0.4, 10, col, w, true)
+## One sprite of a button from the atlas, its disc centred on `c` with radius `r` (HUD px). `quad` draws one
+## quarter only (0 top left, 1 top right, 2 bottom left, 3 bottom right): each holds one ring segment.
+func _w_sprite(id: String, kind: String, c: Vector2, r: float, mod: Color = Color.WHITE, quad: int = -1) -> void:
+	var e: Dictionary = PanelAtlas.A[id]
+	var reg: Array = e[kind]
+	var k: float = r / float(e["r"])
+	var half: float = float(e["half"]) * k
+	var sc: Vector2 = c - Vector2(float(e["off_x"]), float(e["off_y"])) * k
+	var src := Rect2(float(reg[0]), float(reg[1]), float(reg[2]), float(reg[3]))
+	var dst := Rect2(sc - Vector2(half, half), Vector2(half, half) * 2.0)
+	if quad >= 0:
+		var q := Vector2(float(quad % 2), float(quad / 2))
+		src = Rect2(src.position + src.size * 0.5 * q, src.size * 0.5)
+		dst = Rect2(dst.position + dst.size * 0.5 * q, dst.size * 0.5)
+	draw_texture_rect_region(T_PANEL, dst, src, mod)
 
 
-## The glyphs, drawn as polygons in a unit box (-1..1) scaled to the button.
-func _poly(c: Vector2, k: float, pts: Array, col: Color, rot: float = 0.0) -> void:
-	var out := PackedVector2Array()
-	for p: Vector2 in pts:
-		out.append(c + p.rotated(rot) * k)
-	draw_colored_polygon(out, col)
+func _w_halo(c: Vector2, r: float, col: Color) -> void:
+	var e: Dictionary = PanelAtlas.A["halo"]
+	var reg: Array = e["on"]
+	var half: float = r * float(reg[2]) * 0.5 / float(e["r"])
+	draw_texture_rect_region(T_PANEL, Rect2(c - Vector2(half, half), Vector2(half, half) * 2.0),
+		Rect2(float(reg[0]), float(reg[1]), float(reg[2]), float(reg[3])), col)
 
 
-const _BOLT: Array = [Vector2(0.18, -1.0), Vector2(-0.55, 0.12), Vector2(-0.05, 0.12), Vector2(-0.3, 1.0),
-	Vector2(0.6, -0.22), Vector2(0.08, -0.22), Vector2(0.42, -1.0)]
-const _SHIELD: Array = [Vector2(0.0, -0.95), Vector2(0.78, -0.62), Vector2(0.7, 0.2), Vector2(0.0, 0.98),
-	Vector2(-0.7, 0.2), Vector2(-0.78, -0.62)]
-const _ARROW: Array = [Vector2(-0.9, -0.07), Vector2(0.25, -0.07), Vector2(0.25, -0.3), Vector2(0.75, 0.0),
-	Vector2(0.25, 0.3), Vector2(0.25, 0.07), Vector2(-0.9, 0.07)]
-const _LOCK_BODY: Array = [Vector2(-0.5, -0.05), Vector2(0.5, -0.05), Vector2(0.5, 0.75), Vector2(-0.5, 0.75)]
+## The ring's segments in the order they light: clockwise from the top left (the atlas quarter of each).
+const W_SEG_ORDER: Array[int] = [0, 1, 3, 2]
 
 
-func _wale_glyph(id: String, c: Vector2, r: float, col: Color, hi: Color) -> void:
-	var k: float = r * 0.5
-	match id:
-		"attack":
-			_poly(c + Vector2(r * 0.12, -r * 0.08), k * 1.25, _BOLT, Color(hi, 0.55), 0.15)
-			_poly(c, k * 1.1, _BOLT, col, 0.15)
-		"dash":
-			_poly(c, k * 1.0, _BOLT, col, 0.6)
-		"shield":
-			_poly(c, k * 1.05, _SHIELD, col)
-			_poly(c, k * 0.84, _SHIELD, Color(hi, 0.85))
-			_poly(c, k * 0.55, _BOLT, col, 0.2)
-		"shoot":
-			for o: float in [-0.45, 0.0, 0.45]:
-				_poly(c + Vector2(o * -0.3 * k, o * k), k * (0.95 if o == 0.0 else 0.7), _ARROW, col)
-		"rain":
-			for o: float in [-0.5, 0.0, 0.5]:
-				_poly(c + Vector2(o * k, -0.15 * k + absf(o) * -0.25 * k), k * 0.7, _ARROW, col, PI * 0.5)
-			draw_arc(c + Vector2(0, 0.75 * k), k * 0.55, 0.0, PI, 12, col, 2.0, true)
-
-
-func _draw_lock(c: Vector2, r: float) -> void:
-	var k: float = r * 0.36
-	var at: Vector2 = c + Vector2(r * 0.6, r * 0.55)
-	_disc(at, k * 1.25, Color(0.08, 0.07, 0.12, 0.92))
-	var w: float = maxf(2.0, k * 0.2)
-	draw_arc(at + Vector2(0, -0.2 * k), k * 0.34, PI, TAU, 12, Color(0.93, 0.93, 0.97), w, true)
-	draw_line(at + Vector2(-0.34 * k, -0.2 * k), at + Vector2(-0.34 * k, 0.0), Color(0.93, 0.93, 0.97), w, true)
-	draw_line(at + Vector2(0.34 * k, -0.2 * k), at + Vector2(0.34 * k, 0.0), Color(0.93, 0.93, 0.97), w, true)
-	_poly(at + Vector2(0, -0.05 * k), k * 0.62, _LOCK_BODY, Color(0.93, 0.93, 0.97))
+## A button in one of its states. `back` 0..1: how much of the move has come back (1 = ready). While it is
+## coming back the button is the dimmed copy and his four grey segments light one by one, clockwise; the one
+## on its way glows in. `usable` false with no cooldown (staggered, down): dimmed and faint.
+func _w_button(id: String, c: Vector2, r: float, halo_c: Vector2, halo_r: float, back: float, usable: bool, s: float) -> void:
+	var e: Dictionary = PanelAtlas.A[id]
+	var hc: Array = e["halo"]
+	var ready: bool = usable and back >= 1.0
+	var ha: float = halo_a * (1.0 if ready else 0.5)
+	_w_halo(halo_c, halo_r * s, Color(float(hc[0]), float(hc[1]), float(hc[2]), ha))
+	if ready:
+		_w_sprite(id, "on", c, r * s)
+		return
+	_w_sprite(id, "off", c, r * s, Color(1, 1, 1, 1.0 if back < 1.0 else 0.72))
+	if back < 1.0:
+		var f: float = clampf(back, 0.0, 1.0) * 4.0
+		for q in 4:
+			var a: float = 1.0 if f >= float(q + 1) else clampf(f - float(q), 0.0, 1.0) * 0.75
+			if a > 0.01:
+				_w_sprite(id, "seg", c, r * s, Color(1, 1, 1, a), W_SEG_ORDER[q])
 
 
 func _draw_wale_panel() -> void:
 	var ac: Vector2 = attack_centre()
-	# the small buttons first, so the attack sits over their halos
+	# the small buttons first, so the attack sits over their halos (as on his sheet)
 	for j in W_BUTTONS.size():
 		var b: Dictionary = W_BUTTONS[j]
+		if hide_extras and wale_interim(j):
+			continue
+		var id: String = str(b["id"])
 		var c: Vector2 = wale_centre(j)
 		var slot: int = int(b["slot"])
-		var r: float = float(b["r"])
-		if slot < 0:
-			var lp: float = _locked_press[j]
-			var ls: float = 0.92 + 0.08 * clampf(lp / 0.12, 0.0, 1.0) if lp >= 0.0 else 1.0
-			_wale_disc(c, r * ls, b["rim"], b["face"], b["halo"], 1.0, 0.72)
-			_wale_glyph(str(b["id"]), c, r * ls, Color(0.78, 0.78, 0.82, 0.8), Color(0.6, 0.6, 0.65))
-			_draw_lock(c, r)
-			continue
+		var r: float = wale_r(j)
+		var hcen: Vector2 = c
+		var hr: float = r * W_EXTRA_HALO
+		if not wale_interim(j):
+			hcen = ac + ((b["hc"] as Vector2) - (W_SHEET_ATTACK["c"] as Vector2)) * W_K
+			hr = float(b["hr"]) * W_K
 		var pr: float = _press[slot + 1]
 		var s: float = 0.86 + 0.14 * clampf(pr / 0.12, 0.0, 1.0) if pr >= 0.0 else 1.0
 		var cd: float = skill_cd[slot]
 		var back: float = 1.0 - clampf(cd / maxf(skill_cd_max[slot], 0.01), 0.0, 1.0) if cd > 0.0 else 1.0
-		var usable: bool = skill_ok[slot] and cd <= 0.0
-		var dim: float = 0.0 if usable else (0.45 if cd > 0.0 else 0.6)
-		var rr: float = r * s
-		_wale_disc(c, rr, b["rim"], b["face"], b["halo"], back, dim)
-		_wale_glyph(str(b["id"]), c, rr, Color(1, 1, 1, 0.96 if usable else 0.6), (b["halo"] as Color))
+		var hc: Array = PanelAtlas.A[id]["halo"]
+		var hcol := Color(float(hc[0]), float(hc[1]), float(hc[2]))
+		if pr >= 0.0:   # the press: the halo jumps out and fades
+			var kr: float = pr / 0.3
+			_w_halo(hcen, hr * lerpf(1.0, 1.45, kr), Color(hcol, 0.7 * (1.0 - kr)))
+		_w_button(id, c, r, hcen, hr, back, skill_ok[slot], s)
 		if cd > 0.0:
-			_pie(c, rr * 0.74, cd / maxf(skill_cd_max[slot], 0.01), Color(0.02, 0.01, 0.05, 0.5))
-			_text(c, ("%.1f" % cd) if cd < 1.0 else ("%d" % int(ceil(cd))), 26, Color.WHITE, 7)
-		if _ready_pulse[slot] >= 0.0:
+			_text(c, ("%.1f" % cd) if cd < 1.0 else ("%d" % int(ceil(cd))), int(round(r * 0.72)), Color.WHITE, 7)
+		if _ready_pulse[slot] >= 0.0:   # back: all four segments flash and a ring runs out
 			var kp: float = _ready_pulse[slot] / 0.5
-			draw_arc(c, rr * lerpf(1.0, 1.45, kp), 0.0, TAU, 32, Color((b["halo"] as Color), 0.8 * (1.0 - kp)), 4.0, true)
-	# GUARD: the old button, small and quiet, off the sheet's cluster
+			_w_sprite(id, "seg", c, r, Color(1, 1, 1, 1.0 - kp))
+			draw_arc(c, r * lerpf(1.0, 1.45, kp), 0.0, TAU, 32, Color(hcol, 0.8 * (1.0 - kp)), 4.0, true)
+	# GUARD: not on his sheet; the old button, small and quiet, off his cluster
+	if not show_only_panel:
+		_draw_guard()
+	_draw_wale_attack(ac)
+
+
+func _draw_guard() -> void:
 	var gc: Vector2 = guard_centre()
 	var gs: float = 0.9 if guard_on else 1.0
 	_disc(gc, GUARD_R + 3.0, Color(0.05, 0.03, 0.1, 0.32))
 	if guard_on:
 		_disc(gc, GUARD_R + 7.0, Color(0.5, 0.85, 1.0, 0.35))
 	_tex(T_GUARD, gc, GUARD_R * gs, Color.WHITE if guard_on else Color(1, 1, 1, 0.85))
-	if _press[6] >= 0.0:
-		var kg: float = _press[6] / 0.3
+	if _press[P_GUARD] >= 0.0:
+		var kg: float = _press[P_GUARD] / 0.3
 		_tex(T_BTN_RING, gc, GUARD_R * lerpf(1.0, 1.5, kg), Color(0.6, 0.9, 1.0, 1.0 - kg))
-	# ATTACK: the big purple one; the segments are the combo (0..3 swings, the fourth lit = ready)
+
+
+func _draw_wale_attack(ac: Vector2) -> void:
+	# ATTACK: his big purple one. The combo shows on its ring: the bottom left segment after the first swing,
+	# the top left after the second, the right side (all four) on the third.
 	var pk: float = _press[0]
 	var s0: float = 1.0
 	if pk >= 0.0:
 		s0 = 0.88 + 0.12 * clampf(pk / 0.12, 0.0, 1.0)
 	if attack_held and pk < 0.0:
-		s0 = 0.93
-	var ar: float = W_ATTACK_R * s0
-	var back0: float = 1.0 - clampf(attack_cd_k, 0.0, 1.0)
-	if pk >= 0.0:   # the press burst, behind the button
-		var kr: float = pk / 0.3
-		_disc(ac, ar * lerpf(1.1, 1.6, kr), Color(W_ATTACK_HALO, 0.55 * (1.0 - kr)))
-	_wale_disc(ac, ar, W_ATTACK_RIM, W_ATTACK_FACE, W_ATTACK_HALO, back0, 0.0)
-	_wale_glyph("attack", ac, ar, Color("#FBE9FF"), Color("#FF4FE0"))
-	for j in 3:
-		var pa: float = deg_to_rad(-90.0 - 22.0 + 22.0 * j)
-		var pp: Vector2 = ac + Vector2(cos(pa), sin(pa)) * (ar * 1.2 + 10.0)
-		var lit: bool = j < combo_step
-		_disc(pp, 6.5, Color(0.05, 0.03, 0.08, 0.85))
-		_disc(pp, 4.5, Color(1.0, 0.75, 0.25) if lit else Color(1, 1, 1, 0.28))
+		s0 = 0.94
+	var ahc: Array = PanelAtlas.A["attack"]["halo"]
+	var acol := Color(float(ahc[0]), float(ahc[1]), float(ahc[2]))
+	var ah: Vector2 = ac + ((W_SHEET_ATTACK["hc"] as Vector2) - (W_SHEET_ATTACK["c"] as Vector2)) * W_K
+	var ahr: float = float(W_SHEET_ATTACK["hr"]) * W_K
+	if pk >= 0.0:
+		var kr0: float = pk / 0.3
+		_w_halo(ah, ahr * lerpf(1.0, 1.35, kr0), Color(acol, 0.7 * (1.0 - kr0)))
+	_w_halo(ah, ahr * s0, Color(acol, halo_a))
+	_w_sprite("attack", "on", ac, W_ATTACK_R * s0)
+	var lit: Array[int] = [2, 0, 1, 3]   # bottom left, top left, then the right side
+	for q in mini(combo_step, 3) + (1 if combo_step >= 3 else 0):
+		_w_sprite("attack", "seg", ac, W_ATTACK_R * s0, Color(1, 1, 1, 0.95), lit[q])
