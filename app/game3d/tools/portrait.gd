@@ -95,6 +95,8 @@ func _load(it: Dictionary) -> bool:
 	_model = r["node"]
 	_pivot.add_child(_model)
 	_pose(_model)
+	if str(it.get("key", "")) != "":
+		_pose_library(_model, str(it["key"]), str(it.get("class", "sword")))
 	_rim(_model)
 	return true
 
@@ -119,6 +121,29 @@ func _pose(m: Node3D) -> void:
 	if not held:
 		for sk: Node in m.find_children("*", "Skeleton3D", true, false):
 			(sk as Skeleton3D).reset_bone_poses()
+
+
+## realism (12 Nov 2026): plan item "key" = a character with a clip library (anim_clips.json): the
+## model is held in its fight idle (the library's idle for the weapon class), so a hero rigged in
+## a wide A-pose is pictured standing as it stands in the fight, not with its arms out.
+func _pose_library(m: Node3D, key: String, cls: String) -> void:
+	var AnimLib: GDScript = load("res://anim_library.gd")
+	var lib: AnimationLibrary = AnimLib.call("library", key)
+	var sks: Array[Node] = m.find_children("*", "Skeleton3D", true, false)
+	if lib == null or sks.is_empty():
+		return
+	var st: Dictionary = AnimLib.call("states_for", cls, key)
+	var clip: String = str((st.get("idle", {}) as Dictionary).get("clip", ""))
+	if clip == "":
+		return
+	var ap := AnimationPlayer.new()
+	m.add_child(ap)
+	ap.root_node = ap.get_path_to(m)
+	AnimLib.call("apply", ap, sks[0] as Skeleton3D, lib)
+	if ap.has_animation("cq/" + clip):
+		ap.play("cq/" + clip)
+		ap.seek(float(clip.length() % 7) * 0.1 + 0.3, true)
+		ap.pause()
 
 
 ## Section 5 rim on the model's own materials (60 % white + 40 % sky upper, 0.35 Golden).

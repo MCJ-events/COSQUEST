@@ -21,6 +21,10 @@ static var motion: String = ""
 ## swing starts). `state_modes` (fight config "motion_states") overrides single states, for A/B runs.
 static var state_modes: Dictionary = {}
 
+## realism (12 Nov 2026): clip grips of characters registered at run time (key -> {class: grip}),
+## read by fight.gd beside attach.json's.
+static var sidecar_grips: Dictionary = {}
+
 static var _data: Dictionary = {}
 static var _libs: Dictionary = {}     # path -> AnimationLibrary (track paths relative to the skeleton: ".:Bone")
 
@@ -31,6 +35,52 @@ static func data() -> Dictionary:
 		if d is Dictionary:
 			_data = d
 	return _data
+
+
+## Registers the clip library of a character that is NOT inside the pck (a Forge catalogue
+## download). Beside the model file lie two files written by tools/anim/add_hero.sh:
+##   anim.glb   the skeleton-only clip library
+##   anim.json  {v, key, character: its data/anim_clips.json entry, clips: metadata of the clips
+##               it names, clip_grips: its weapon grips}
+## (or <model name>.anim.glb / .anim.json for several characters in one folder). The entry is
+## merged into the clip data with the library pointed at the file, so everything else (key_for,
+## library, states_for) works as for a built-in character. Returns the key, or "" when there is
+## no sidecar or it does not parse. Cheap to call again: a key is registered once.
+static func register_sidecar(model_path: String) -> String:
+	if model_path == "" or model_path.begins_with("res://"):
+		return ""
+	var dir: String = model_path.get_base_dir()
+	var stem: String = model_path.get_file().get_basename()
+	for pair: Array in [[dir.path_join("anim.json"), dir.path_join("anim.glb")], [dir.path_join(stem + ".anim.json"), dir.path_join(stem + ".anim.glb")]]:
+		if not (FileAccess.file_exists(str(pair[0])) and FileAccess.file_exists(str(pair[1]))):
+			continue
+		var j: Variant = JSON.parse_string(FileAccess.get_file_as_string(str(pair[0])))
+		if not (j is Dictionary) or not ((j as Dictionary).get("character") is Dictionary) or str((j as Dictionary).get("key", "")) == "":
+			push_warning("anim sidecar %s: not a library description" % str(pair[0]))
+			return ""
+		var key: String = str(j["key"])
+		var d: Dictionary = data()
+		if not d.has("characters"):
+			d["characters"] = {}
+		var chars: Dictionary = d["characters"]
+		if chars.has(key) and str((chars[key] as Dictionary).get("library", "")) == str(pair[1]):
+			return key
+		var ch: Dictionary = (j["character"] as Dictionary).duplicate(true)
+		ch["library"] = str(pair[1])
+		ch["status"] = "clips"
+		ch["sidecar"] = true
+		chars[key] = ch
+		if not d.has("clips"):
+			d["clips"] = {}
+		var clips: Dictionary = d["clips"]
+		for c: String in (j.get("clips", {}) as Dictionary):
+			if not clips.has(c):
+				clips[c] = j["clips"][c]
+		if j.get("clip_grips") is Dictionary:
+			sidecar_grips[key] = j["clip_grips"]
+		print("CQ anim_sidecar key=%s library=%s" % [key, str(pair[1])])
+		return key
+	return ""
 
 
 ## The cast key for a skeleton: the config's key when it names a character with a library,

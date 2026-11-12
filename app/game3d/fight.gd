@@ -516,6 +516,11 @@ func _ready() -> void:
 		(pair[0] as FighterScript).anim_opts = {"key": str(cfg.get(role + "_key", "")),
 			"class": str((wcfg as Dictionary).get("class", "")) if wcfg is Dictionary else ""}
 		var p: String = LoaderScript.clean_path(str(cfg.get(pair[1], "")))
+		# realism: on the mid and high tiers the six faction heroes are the cast (see _hero_cast)
+		var hero_p: String = _hero_cast(role, p)
+		if hero_p != "":
+			p = hero_p
+			(pair[0] as FighterScript).anim_opts["key"] = str(cfg.get(role + "_key", ""))
 		if p != "" and bool(cfg.get("rig_fixes", true)):
 			var fx: Array = LoaderScript.rig_fix(p)
 			if str(fx[1]) != "":
@@ -539,6 +544,11 @@ func _ready() -> void:
 		(pair[0] as FighterScript).weight_fx = bool(cfg.get("weight", mr))
 		(pair[0] as FighterScript).real_speed = bool(cfg.get("real_speed", mr))
 		p = _tier_lod(p, role)
+		# realism: a clip library that came with a downloaded model (anim.glb + anim.json beside it)
+		var side_key: String = AnimLib.register_sidecar(p)
+		if side_key != "":
+			cfg[role + "_key"] = side_key
+			(pair[0] as FighterScript).anim_opts["key"] = side_key
 		(pair[0] as FighterScript).anim_opts["secondary"] = bool(cfg.get("secondary", true))
 		(pair[0] as FighterScript).anim_opts["cloth_push"] = bool(cfg.get("cloth_push", true))   # cq 016
 		if p != "":
@@ -984,8 +994,16 @@ func _queue_weapons() -> void:
 				att = {"bone": str(wd.get("bone", "")), "matrix": wd["matrix"]}
 			else:
 				var key: String = str(wd.get("character", cfg.get(str(pair[1]) + "_key", "")))
+				if _hero_roles.has(str(pair[1])):
+					key = str(_hero_roles[str(pair[1])])     # a faction hero holds it, with its own grip
 				var ch: Dictionary = (_attach_manifest().get("characters", {}) as Dictionary).get(key, {})
 				att = (ch.get("grips", {}) as Dictionary).get(cls, {})
+				if att.is_empty():
+					# realism: a character with a clip library but no hand-fitted grip (the heroes, a
+					# run-time sidecar) holds the weapon by its clip grip
+					att = (ch.get("clip_grips", {}) as Dictionary).get(cls, {})
+				if att.is_empty():
+					att = (AnimLib.sidecar_grips.get(key, {}) as Dictionary).get(cls, {})
 			if path == "" or att.is_empty():
 				_log("weapon role=%s side=%s skipped path=%s attach=%s" % [pair[1], slot[1], path, str(not att.is_empty())])
 				continue
@@ -1002,6 +1020,8 @@ func _finish_load(r: Dictionary) -> void:
 			# for (attach.json clip_grips, cq 012); else the idle-fitted grip
 			if f.anim.lib_key != "":
 				var cg: Dictionary = ((_attach_manifest().get("characters", {}) as Dictionary).get(f.anim.lib_key, {}) as Dictionary).get("clip_grips", {})
+				if cg.is_empty():
+					cg = AnimLib.sidecar_grips.get(f.anim.lib_key, {})   # a library registered at run time
 				if cg.has(str(_loading_role["class"])):
 					_loading_role["att"] = cg[str(_loading_role["class"])]
 			var why: String = f.hold_weapon(r["node"] as Node3D, _loading_role["att"], str(_loading_role["weapon"]), str(_loading_role["class"]))
@@ -1044,6 +1064,60 @@ func _tier_lod(p: String, role: String) -> String:
 				_log("tier lod role=%s %s -> %s" % [role, have, want])
 				return q
 	return p
+
+
+## realism (12 Nov 2026): the faction heroes as the playable cast. On the mid and high tiers (config
+## "hero_cast", default on there, off on the low tier) a role whose model is one of the cartoon
+## built-in cast, or that has no model at all, plays a faction hero from res://cast/heroes instead:
+## the player's hero is its faction's (config "faction", the app's faction id), the ally and the
+## Guardian are drawn from the other factions' heroes by the fight's seed. A player's own Forge
+## character (any other model) is left alone. The low tier keeps the built-in cast. Presentation
+## only: the rules read no model.
+const HERO_DIR: String = "res://cast/heroes/"
+const HERO_BY_FACTION: Dictionary = {"ascendants": "ascendants_zuri", "controllers": "controllers_tavo", "icons": "icons_imani",
+	"everborns": "everborn_oren", "celestials": "celestials_lyra", "blockbusters": "blockbusters_kofi"}
+const HERO_ORDER: Array[String] = ["ascendants_zuri", "controllers_tavo", "icons_imani", "everborn_oren", "celestials_lyra", "blockbusters_kofi"]
+const CARTOON_CAST: Array[String] = ["armstrong", "bobo", "catboy", "crystalz", "elvis", "hoof", "nebulx", "vanessa"]
+var _hero_roles: Dictionary = {}     # role -> hero key, for the roles a faction hero plays
+
+
+func _hero_cast(role: String, p: String) -> String:
+	if not bool(cfg.get("hero_cast", ArenaScript.tier_of(cfg) != "low")):
+		return ""
+	var key_now: String = str(cfg.get(role + "_key", ""))
+	if p != "" and not p.begins_with(CAST_STAND_IN_DIR) and not (key_now in CARTOON_CAST):
+		return ""     # the player's own character
+	var lod: int = clampi(int(cfg.get("lod", 1)), 0, 2)
+	var lk: Dictionary = ArenaScript.TIER_LOOK[ArenaScript.tier_of(cfg)]
+	if (role == "hero" or role == "enemy") and lk.has("hero_lod") and not cfg.has("lod"):
+		lod = clampi(int(lk["hero_lod"]), 0, 2)
+	var have: Array[String] = []
+	for k: String in HERO_ORDER:
+		if FileAccess.file_exists("%s%s_lod%d.glb" % [HERO_DIR, k, lod]) or FileAccess.file_exists("%s%s_lod1.glb" % [HERO_DIR, k]):
+			have.append(k)
+	if have.is_empty():
+		return ""
+	var mine: String = str(HERO_BY_FACTION.get(str(cfg.get("faction", "")), ""))
+	if not (mine in have):
+		mine = have[int(absf(float(cfg.get("seed", 0)))) % have.size()]
+	var pick: String = mine
+	if role != "hero":
+		var others: Array[String] = []
+		for k: String in have:
+			if k != mine:
+				others.append(k)
+		if others.is_empty():
+			return ""
+		var s: int = int(absf(float(cfg.get("seed", 0))))
+		var ally_i: int = s % others.size()
+		pick = others[ally_i] if role == "ally" else others[(ally_i + 1 + (s / 7) % maxi(1, others.size() - 1)) % others.size()]
+	var path: String = "%s%s_lod%d.glb" % [HERO_DIR, pick, lod]
+	if not FileAccess.file_exists(path):
+		path = "%s%s_lod1.glb" % [HERO_DIR, pick]
+	cfg[role + "_key"] = pick
+	_hero_roles[role] = pick
+	_log("hero cast role=%s key=%s lod=%d faction=%s" % [role, pick, lod, str(cfg.get("faction", ""))])
+	return path
 
 
 ## build 20: a fighter with no model of its own (no Forge catalogue on this server, offline, a
