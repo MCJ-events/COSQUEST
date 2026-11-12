@@ -30,6 +30,17 @@ const FLOOR_CREEP: float = 0.20    # m/s at size 1: how fast a foot's learnt flo
 const FLOOR_MAX: float = 0.12      # m at size 1: a foot higher than this over its rest height is never "down"
 const HIP_DROP_MAX: float = 0.14   # m at size 1: the most the hips sink to let a planted leg reach
 const HIP_RISE: float = 0.5        # m/s at size 1: how fast they come back up
+# round 3: a standing fighter stands. While it is not walking or running, a pin that is off by less
+# than STAND_ABSORB is never stepped away: the hips shift over the feet (a slow weight shift) and
+# sink a little, and the feet stay where they are. A larger offset takes one clean step, and only
+# once the clip has stopped moving the foot (a blend back to the stance is waited out), so a shove
+# is answered by one step a foot, not a shuffle.
+const STAND_ABSORB: float = 0.15   # m at size 1
+const STAND_FAR: float = 0.40      # m at size 1: this far off, the step does not wait for the clip to settle
+const STAND_SHIFT: float = 0.5     # the share of the feet's mean offset the hips move over them
+const STAND_SHIFT_MAX: float = 0.09   # m at size 1
+const STAND_SHIFT_RATE: float = 3.5   # 1/s: slow, it reads as weight moving
+const STAND_UP_H: float = 0.11     # m at size 1: standing, the clip must lift a foot this far to release it
 const STRETCH: float = 0.995       # the leg never straightens past this share of its length
 
 var frame_root: Node3D             # the fighter's model holder (its scale is the character's size)
@@ -43,6 +54,7 @@ var _legs: Array = []              # per leg: {up, lo, foot, toe, base_a, base_t
 var stats: Dictionary = {"pins": 0, "steps": 0}
 var _hips: int = -1
 var _drop: float = 0.0
+var _shift: Vector3 = Vector3.ZERO     # the hips' weight shift over the pinned feet (world, horizontal)
 
 
 ## How far the lock holds foot `i` (0 left, 1 right) from where the clip has it, in the world, on
@@ -58,7 +70,7 @@ func debug_state() -> Array:
 	var out: Array = []
 	for l: Dictionary in _legs:
 		out.append([1 if bool(l["pinned"]) else 0, 1 if float(l["step_t"]) >= 0.0 else 0, snappedf(float(l.get("err", 0.0)), 0.001),
-			snappedf(float(l.get("dbg_h", 0.0)), 0.001), snappedf(float(l.get("base", 0.0)), 0.001), 1 if pinning else 0, snappedf(float(l.get("w", 0.0)), 0.01)])
+			snappedf(float(l.get("dbg_h", 0.0)), 0.001), snappedf(float(l.get("base", 0.0)), 0.001), 1 if pinning else 0, snappedf(float(l.get("w", 0.0)), 0.01), 1 if (float(l["step_t"]) >= 0.0 and float(l.get("step_lift", 0.0)) > 0.0) else 0])
 	return out
 
 
@@ -138,7 +150,7 @@ func _process_modification_with_delta(_delta: float) -> void:
 		if not pinning:
 			pinned = false
 			l["step_t"] = -1.0
-		elif pinned and hr > UP_H * k and h > DOWN_H * k:
+		elif pinned and hr > (UP_H if loco else STAND_UP_H) * k and h > DOWN_H * k:
 			# the clip lifts the foot (a real step): ease from the pin to the clip's foot, no extra lift
 			pinned = false
 			l["step_t"] = 0.0
@@ -165,6 +177,9 @@ func _process_modification_with_delta(_delta: float) -> void:
 				l["err_t"] = 0.0
 			var reach: float = (REACH_LOCO if loco else REACH) * k
 			var want_step: bool = err.length() > reach or float(l["err_t"]) > SETTLE_TIME
+			if not loco:
+				# standing: small offsets are absorbed; a real step waits for the clip to hold still
+				want_step = err.length() > STAND_ABSORB * k and (float(l["err_t"]) > SETTLE_TIME * 0.5 or err.length() > STAND_FAR * k)
 			# round 2: one foot at a time. While the other foot is in the air this one carries the
 			# body and stays down (the hips sink to reach it), unless it is hopelessly far.
 			if want_step and float(other["step_t"]) >= 0.0 and other != l and err.length() < reach * 2.0:
@@ -179,6 +194,8 @@ func _process_modification_with_delta(_delta: float) -> void:
 				# a longer step takes longer and lifts higher (a real step, not a flick)
 				l["step_len"] = clampf(STEP_TIME * (0.8 + err.length() / (0.3 * k)), STEP_TIME, STEP_TIME * 2.2)
 				stats["steps"] = int(stats["steps"]) + 1
+				if not loco:
+					stats["stand_steps"] = int(stats.get("stand_steps", 0)) + 1
 		l["pinned"] = pinned
 		var w: float = float(l["w"])
 		var target: Transform3D = world
@@ -285,6 +302,23 @@ func _process_modification_with_delta(_delta: float) -> void:
 			var dy: float = ha.y - gw.y
 			if dx * dx + dy * dy > leg * leg and dy > 0.0:
 				need_drop = maxf(need_drop, dy - sqrt(maxf(0.0, leg * leg - dx * dx)))
+	# ---- standing: the hips move over the feet (half the feet's mean offset, slowly)
+	var mean := Vector3.ZERO
+	var n_pin: int = 0
+	if not loco and pinning:
+		for l2: Dictionary in _legs:
+			if bool(l2["pinned"]) and l2.has("goal_w") and float(l2.get("ww", 0.0)) > 0.5:
+				var o: Vector3 = l2["off"]
+				mean += Vector3(o.x, 0.0, o.z)
+				n_pin += 1
+	var want_shift: Vector3 = (mean / float(n_pin)) * STAND_SHIFT if n_pin > 0 else Vector3.ZERO
+	if want_shift.length() > STAND_SHIFT_MAX * k:
+		want_shift = want_shift.normalized() * STAND_SHIFT_MAX * k
+	_shift = _shift.lerp(want_shift, 1.0 - exp(-dt * STAND_SHIFT_RATE)) if dt > 0.0 else _shift
+	if _shift.length() > 0.0005 and _hips >= 0:
+		var gs: Transform3D = sk.get_bone_global_pose(_hips)
+		gs.origin += inv.basis * _shift
+		sk.set_bone_global_pose(_hips, gs)
 	# ---- the hips: sink at once as far as a planted leg needs (capped), rise back slowly
 	_drop = maxf(minf(need_drop, HIP_DROP_MAX * k), _drop - HIP_RISE * k * dt)
 	if _drop > 0.0005 and _hips >= 0:
