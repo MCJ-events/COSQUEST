@@ -186,7 +186,11 @@ void fragment() {
 	vec3 vw = normalize((INV_VIEW_MATRIX * vec4(VIEW, 0.0)).xyz);
 	vec3 f0 = mix(vec3(mix(0.16 * specular * specular, 0.028, skin)), base, metal);
 	// the street's diffuse light: sky above, walls at the sides, the paving's bounce below
-	vec3 amb = amb_at(nw) * amb_amount * ao;
+	// round 3: the extra fill (the ambient's factor over 1 at dusk and night, and the camera-side fill below)
+	// is for what the street's light leaves dim; on a pale surface it steps aside (a cream coat measured
+	// 2.75 times the paving at night with the full fill)
+	float pale = 1.0 - 0.75 * smoothstep(0.3, 0.7, dot(base, vec3(0.2126, 0.7152, 0.0722)));
+	vec3 amb = amb_at(nw) * (1.0 + (amb_amount - 1.0) * pale) * ao;
 	// a little of the bounce under the skin's surface: the shade side of skin is not dead
 	vec3 diffuse_amb = base * (1.0 - metal) * amb * (1.0 + skin * vec3(0.06, 0.01, 0.0));
 	// the street reflected: sharper on metal and wet-looking skin, a blur on cloth
@@ -231,9 +235,6 @@ void fragment() {
 		vec3 fd = normalize(vec3(-0.35, 0.4, 1.0));
 		float fw = clamp(dot(n, fd) * 0.6 + 0.4, 0.0, 1.0);
 		float sheen = pow(clamp(dot(n, normalize(fd + VIEW)), 0.0, 1.0), mix(24.0, 4.0, rough)) * mix(0.35, 0.11, rough);
-		// the fill is for what the street's light leaves dim: on a pale surface it steps aside (a cream coat
-		// measured 2.75 times the paving at night with the full fill)
-		float pale = 1.0 - 0.75 * smoothstep(0.08, 0.4, dot(base, vec3(0.2126, 0.7152, 0.0722)));
 		fill = fill_col * ao * pale * (base * (1.0 - metal) * fw * fw + mix(vec3(1.0), base, metal) * sheen);
 	}
 	EMISSION = diffuse_amb + spec_amb + fill + rim + hit + gl + texture(emission_tex, UV).rgb * emission;

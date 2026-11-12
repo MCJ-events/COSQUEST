@@ -27,7 +27,7 @@ const REAL_RIM: float = 0.5           # the rim's strength on the real material 
 ## (measured: LOOK.md). Golden hour and day use the measured light as it is.
 ## round 2: with the key turned to the camera's side the fill is smaller (dusk 1.35 -> 1.2, night 2.4 -> 1.9).
 ## round 3: the camera-side fill (the sky's colour times this) and how much of the key's colour the fighters keep
-const REAL_CAM_FILL: Dictionary = {"golden": 0.0, "day": 0.0, "dusk": 0.45, "night": 0.4}
+const REAL_CAM_FILL: Dictionary = {"golden": 0.0, "day": 0.0, "dusk": 0.5, "night": 0.6}
 const REAL_KEY_SAT: Dictionary = {"dusk": 0.6}
 const REAL_FILL: Dictionary = {"golden": 1.0, "day": 1.0, "dusk": 1.2, "night": 1.9}
 const SKIN_GUESS: float = 0.6         # the skin term's strength when it is guessed from colour (no Forge mask)
