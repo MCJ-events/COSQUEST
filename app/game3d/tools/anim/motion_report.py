@@ -22,7 +22,8 @@ What is measured, and how (all on the FINAL drawn pose, 30 frames a second):
             (hips to tip; shoulder to right hand when there is no weapon). The swing is off by the
             angle between that arc and the direction to where the target stood when the swing
             began (0 when the arc passes through it). The drawn body's forward is compared with
-            the same direction. Off = more than 45 degrees.
+            the same direction. Off = more than 45 degrees. An attack whose aim point is within
+            30 cm of the attacker at the contact (a charge that ran through it) is left out.
   flashes   bind pose: every limb bone (upper and lower arms and legs) within BIND_DEG of its rest
             rotation. T-pose: both arms straight, level and out to the sides.
   weight    For every landed blow: anticipation = drawn frames from the swing's start to the
@@ -229,6 +230,8 @@ def facing(rs, acts):
             continue
         rc = rs[ic]
         aim = sub(r0["tgt"], rc["pos"])
+        if hlen(aim) < 0.3:
+            continue    # the attacker is standing on the aim point (a charge that ran through): no direction to be off from
         aim_a = math.atan2(aim[0], aim[2])
         # the arc the weapon sweeps round the contact, while it is extended (reach over 60 % of
         # the swing's longest): the swing is off by how far the aim lies outside that arc

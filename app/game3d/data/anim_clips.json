@@ -1009,16 +1009,16 @@
   "CMU_Idle": {
    "src": "CMU_Idle",
    "lib": "cmu",
-   "frames": 125,
+   "frames": 99,
    "fps": 30.0,
-   "source": "CMU Graphics Lab Motion Capture Database (captured), 140_06 Idle"
+   "source": "CMU Graphics Lab Motion Capture Database (captured), 137_28 Normal Wait"
   },
   "CMU_Jog": {
    "src": "CMU_Jog",
    "lib": "cmu",
    "frames": 25,
    "fps": 30.0,
-   "ground_speed_per_hip": 2.828,
+   "ground_speed_per_hip": 2.805,
    "source": "CMU Graphics Lab Motion Capture Database (captured), 16_35 run/jog"
   },
   "CMU_Punch_L": {
@@ -1621,10 +1621,10 @@
      "sprint": "CMU_Jog"
     }
    },
-   "clips_in_library": 47,
    "ground_speed_per_hip": {
-    "CMU_Jog": 2.93
-   }
+    "CMU_Jog": 2.869
+   },
+   "clips_in_library": 47
   },
   "bobo": {
    "status": "clips",
@@ -1833,10 +1833,10 @@
      "sprint": "CMU_Jog"
     }
    },
-   "clips_in_library": 35,
    "ground_speed_per_hip": {
-    "CMU_Jog": 1.803
-   }
+    "CMU_Jog": 1.793
+   },
+   "clips_in_library": 35
   },
   "catboy": {
    "status": "clips",
@@ -2034,10 +2034,10 @@
      "sprint": "CMU_Jog"
     }
    },
-   "clips_in_library": 45,
    "ground_speed_per_hip": {
-    "CMU_Jog": 2.898
-   }
+    "CMU_Jog": 2.845
+   },
+   "clips_in_library": 45
   },
   "crystalz": {
    "status": "clips",
@@ -2150,7 +2150,7 @@
      -0.0732
     ]
    },
-   "tear_worst": 0.0379,
+   "tear_worst": 0.0375,
    "clips_over_gate": [
     "1H_Melee_Attack_Slice_Horizontal",
     "2H_Melee_Attack_Chop",
@@ -2260,10 +2260,10 @@
      "sprint": "CMU_Jog"
     }
    },
-   "clips_in_library": 32,
    "ground_speed_per_hip": {
-    "CMU_Jog": 2.019
-   }
+    "CMU_Jog": 2.223
+   },
+   "clips_in_library": 32
   },
   "elvis": {
    "status": "clips",
@@ -2487,10 +2487,10 @@
      "sprint": "CMU_Jog"
     }
    },
-   "clips_in_library": 34,
    "ground_speed_per_hip": {
-    "CMU_Jog": 1.895
-   }
+    "CMU_Jog": 1.929
+   },
+   "clips_in_library": 34
   },
   "forge_kade": {
    "status": "clips",
@@ -2743,11 +2743,11 @@
      "sprint": "CMU_Jog"
     }
    },
-   "gate_attacks": 0.011,
-   "clips_in_library": 24,
    "ground_speed_per_hip": {
-    "CMU_Jog": 2.792
-   }
+    "CMU_Jog": 2.768
+   },
+   "gate_attacks": 0.011,
+   "clips_in_library": 24
   },
   "forge_samurai": {
    "status": "clips",
@@ -2868,8 +2868,6 @@
     "CMU_Chop_2H",
     "CMU_Fall_Front",
     "CMU_Guard",
-    "CMU_Idle",
-    "CMU_Punch_R",
     "CMU_Slash_Low",
     "CMU_Strike_Down",
     "CMU_Stumble_Fwd",
@@ -2898,7 +2896,7 @@
      "death": "CMU_Fall_Back",
      "death_fwd": "",
      "victory": "M2M_Victory_Fist_Pump",
-     "idle": "M2M_Idle_Sword",
+     "idle": "CMU_Idle",
      "run": "CMU_Jog",
      "attack_1": "CMU_Slash_A",
      "attack_2": "CMU_Slash_B",
@@ -2949,17 +2947,17 @@
      "idle": "M2M_Fighting_Idle",
      "run": "CMU_Jog",
      "attack_1": "CMU_Punch_L",
-     "attack_2": "M2M_Punch_Cross",
+     "attack_2": "CMU_Punch_R",
      "attack_3": "",
      "heavy": "",
-     "skill_charge": "M2M_Punch_Cross",
+     "skill_charge": "CMU_Punch_R",
      "sprint": "CMU_Jog"
     }
    },
-   "clips_in_library": 42,
    "ground_speed_per_hip": {
-    "CMU_Jog": 2.893
-   }
+    "CMU_Jog": 2.828
+   },
+   "clips_in_library": 42
   },
   "forge_soldier": {
    "status": "clips",
@@ -3186,10 +3184,10 @@
      "sprint": "CMU_Jog"
     }
    },
-   "clips_in_library": 29,
    "ground_speed_per_hip": {
-    "CMU_Jog": 2.833
-   }
+    "CMU_Jog": 2.811
+   },
+   "clips_in_library": 29
   },
   "hoof": {
    "status": "clips",
@@ -3387,10 +3385,10 @@
      "sprint": "CMU_Jog"
     }
    },
-   "clips_in_library": 43,
    "ground_speed_per_hip": {
-    "CMU_Jog": 2.734
-   }
+    "CMU_Jog": 2.718
+   },
+   "clips_in_library": 43
   },
   "nebulx": {
    "status": "clips",
@@ -3509,7 +3507,6 @@
     "CMU_Chop_2H",
     "CMU_Fall_Front",
     "CMU_Guard",
-    "CMU_Idle",
     "CMU_Punch_R",
     "CMU_Slash_Low",
     "CMU_Strike_Down",
@@ -3540,7 +3537,7 @@
      "death": "CMU_Fall_Back",
      "death_fwd": "",
      "victory": "M2M_Victory_Fist_Pump",
-     "idle": "M2M_Idle_Sword",
+     "idle": "CMU_Idle",
      "run": "CMU_Jog",
      "attack_1": "CMU_Slash_A",
      "attack_2": "CMU_Slash_B",
@@ -3598,11 +3595,11 @@
      "sprint": "CMU_Jog"
     }
    },
-   "clips_in_library": 41,
-   "default_class": "staff",
    "ground_speed_per_hip": {
-    "CMU_Jog": 2.828
-   }
+    "CMU_Jog": 2.805
+   },
+   "clips_in_library": 41,
+   "default_class": "staff"
   },
   "vanessa": {
    "status": "clips",
@@ -3814,10 +3811,10 @@
      "sprint": "CMU_Jog"
     }
    },
-   "clips_in_library": 39,
    "ground_speed_per_hip": {
-    "CMU_Jog": 2.882
-   }
+    "CMU_Jog": 2.854
+   },
+   "clips_in_library": 39
   }
  }
 }

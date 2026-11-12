@@ -1111,6 +1111,11 @@ func _tick_feet() -> void:
 					nc += 1
 			c = cs / float(maxi(1, nc))
 			h = maxf(0.0, lo - gy)
+		if anim.foot != null and fi >= 0:
+			# realism-20261111: the shadow goes with the locked foot, not with the clip's
+			var lo_off: Vector3 = anim.foot.offset(fi)
+			c += Vector3(lo_off.x, 0.0, lo_off.z)
+			h = maxf(0.0, h + lo_off.y)
 		var k: float = clampf(1.0 - h / (FOOT_LIFT_FADE * size_k), 0.0, 1.0)
 		mi.visible = visible and k > 0.02 and not (dead and _diss_t >= 0.0)
 		if not mi.visible:

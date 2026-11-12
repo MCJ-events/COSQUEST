@@ -38,6 +38,14 @@ var _legs: Array = []              # per leg: {up, lo, foot, toe, base_a, base_t
 var stats: Dictionary = {"pins": 0, "steps": 0}
 
 
+## How far the lock holds foot `i` (0 left, 1 right) from where the clip has it, in the world, on
+## the last drawn frame (fighter.gd moves the foot's contact shadow with it).
+func offset(i: int) -> Vector3:
+	if i < 0 or i >= _legs.size():
+		return Vector3.ZERO
+	return (_legs[i] as Dictionary).get("off", Vector3.ZERO)
+
+
 ## For the motion probe: per leg [pinned, stepping].
 func debug_state() -> Array:
 	var out: Array = []
@@ -182,9 +190,11 @@ func _process_modification_with_delta(_delta: float) -> void:
 		else:
 			w = maxf(0.0, w - dt / BLEND_IN) if dt > 0.0 else w
 		l["w"] = w
+		l["off"] = Vector3.ZERO
 		if w <= 0.001:
 			continue
 		var ww: float = w * clampf(strength, 0.0, 1.0)
+		l["off"] = (target.origin - world.origin) * ww    # where the foot really is, for its contact shadow
 		var goal: Vector3 = inv * world.origin.lerp(target.origin, ww)
 		_solve(sk, int(l["up"]), int(l["lo"]), foot, goal)
 		# the foot keeps the heading it was planted with (no pivot on the spot)
