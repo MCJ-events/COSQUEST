@@ -233,7 +233,8 @@ func _process_modification_with_delta(_delta: float) -> void:
 				l["pin_full"] = false
 				l["pin_head"] = wrapf(head_now + wrapf(float(l["step_head"]) - head_now, -PI, PI) * (1.0 - e), -PI, PI)
 				stats["pins"] = int(stats["pins"]) + 1
-			elif u > 0.5 and u < 1.0 and target.origin.y - floor_y - float(l["a_h"]) - base < DOWN_REL * k and pinning:
+			elif u > 0.5 and u < 1.0 and h + sin(u * PI) * float(l.get("step_lift", 0.0)) * k - base < DOWN_REL * k and pinning:
+				# (the lower of ankle and toe: a foot that comes down toe first has landed too)
 				# the stepping foot has come down: it lands here, whatever the clip's foot still does
 				# (a foot never travels along the ground; the next step takes up what is left)
 				l["step_t"] = -1.0
