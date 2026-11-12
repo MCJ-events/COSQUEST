@@ -52,6 +52,7 @@ func _process(_dt: float) -> bool:
 	if _frames < 0:
 		if f.state == "fighting":
 			_frames = 0
+			print("CQPANEL fight_start frame=%d" % Engine.get_process_frames())   # where a --write-movie clip's fight begins
 		else:
 			return false
 	_frames += 1
