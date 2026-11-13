@@ -369,3 +369,32 @@ T-pose frames and planted-foot slide per step.
 **Building.** `tools/anim/build_readable.sh [cast|heroes|forge|all]` rebuilds every library (the cast first: it
 recomputes the shared clip data; then the faction heroes with `add_hero.sh` from `HERO_SRC`, then the Forge
 proofs). Tests: `tests/readable_test.gd`. Review recordings: `tools/anim/button_rec.gd`.
+
+## Fight kits: a Forge character animates without a new app build (build 28, 14 Nov 2026)
+
+Before build 28 a clip library had to be inside the pck, so a character published in the Forge after a
+release fought stiff (its model moved rigidly, or played the Forge rig's own idle). A fight kit is the
+library served with the character, the way its model is:
+
+| File | What |
+|---|---|
+| `anim.glb` | the skeleton-only clip library, retargeted onto this character's own skeleton |
+| `anim.json` | `{v: 1, key, character: its anim_clips.json entry (picks, skeleton fingerprint, ground speeds), clips: metadata of the clips it names, clip_grips, gates}` |
+| `lod0..2.glb` | only when the published version is static: the rigged model the library was made for |
+
+- Built on the farm by `tools/anim/fightkit_build.sh` (Forge's rig stage: landmarks, Make-It-Animatable v1, the
+  CC0 base body; then `add_hero.sh`; then `fightkit_gate.py`): every clip a state plays tears under 0.5 % on
+  LOD0 to LOD2, the core states must all have one, and a readable button pick that faces away at contact or
+  shows a T-pose frame is dropped (that button keeps its classic clip). The best method that passes is kept.
+- Served by the backend (`app/forge_fightkit.py`, flag `CQ_FORGE_FIGHT_KITS`): catalogue key `fight`, and
+  `GET v1/catalogue/fightkits/<id>/<version>`; uploaded by the backend's `tools/fightkit_sync.py`.
+- The app (`features/game3d/fightKit.ts`, `characters.ts`) downloads the kit with the character into
+  `<cache>/forge/<host>/<id>/<version>/fight-<kit>/`, each file checked against its sha256, and passes
+  `<role>_glb` (the kit's model when it has one) and `<role>_anim` (its anim.json) to Godot. Any file missing
+  or wrong: the published model alone, as before.
+- Godot (`anim_library.gd register_kit`): version 1 only, a fingerprint required, a key the pck already uses
+  gets its own (`<key>_kit`), and the library binds only to a skeleton that matches the fingerprint
+  (`key_for`, 2 cm, as for the pck's own characters). Otherwise the fighter plays exactly as without a kit.
+- Presentation only: the rules and the seeded record never read a model or a clip (proof: the same seeded
+  fight with and without the kit gives the same record). Old builds never read `fight`.
+- Test: `tests/fightkit_test.gd`.

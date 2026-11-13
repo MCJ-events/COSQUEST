@@ -495,3 +495,22 @@ test("the Warden's intro and verdict ride from the setup into Godot's config, on
   // a line about money never reaches the fight
   assert.equal(fightFromStart(start3d({ warden: { intro: "Win cash at Tower Bridge.", win: null, loss: null } }))!.warden, null);
 });
+
+test("build 28: a fight kit's library goes to Godot only with the model it was made for", () => {
+  const c = buildFightConfig({
+    hero: { path: "file:///c/hero.glb", name: "Ada", anim: null },
+    ally: { path: null, name: null, anim: "file:///c/a/fight-0123456789abcdef/anim.json" },
+    enemy: { path: "file:///c/e/1/fight-0123456789abcdef/lod1.glb", name: "Courier", anim: "file:///c/e/1/fight-0123456789abcdef/anim.json" },
+    pointName: "p",
+    mode: "full",
+    seed: 7,
+    autoplay: false,
+  });
+  assert.equal(c.enemy_anim, "/c/e/1/fight-0123456789abcdef/anim.json");
+  assert.equal(c.enemy_glb, "/c/e/1/fight-0123456789abcdef/lod1.glb");
+  assert.equal("hero_anim" in c, false);
+  assert.equal("ally_anim" in c, false, "no model, no library");
+  // without kits the config is exactly what build 27 sent
+  const old = buildFightConfig({ hero: { path: "file:///c/hero.glb", name: "Ada" }, ally: { path: null, name: null }, enemy: { path: null, name: null }, pointName: "p", mode: "full", seed: 7, autoplay: false });
+  assert.deepEqual(Object.keys(old).filter((k) => k.endsWith("_anim")), []);
+});

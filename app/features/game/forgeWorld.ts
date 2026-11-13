@@ -10,6 +10,7 @@
 // half (download, cache, the 3D view) is forgeWorldDevice.ts and
 // components/game/ForgeModel.tsx. Tested in __tests__/forgeWorld.test.ts.
 import { GameError, type GameClient } from "./client.ts";
+import { type FightKit, parseFightKit } from "../game3d/fightKit.ts";
 import { type ForgeElement, type ForgeFile, forgeKind, parseForgeElement } from "./forge.ts";
 
 export type ForgeType = "weapon" | "character" | "environment" | "station";
@@ -48,6 +49,8 @@ export type ForgeEntry = ForgeElement & {
   skeleton: string | null;
   gameplay: ForgeGameplay;
   updated_at: string | null;
+  /** build 28: the character's fight kit (game3d/fightKit.ts), when the server sends one. */
+  fight: FightKit | null;
 };
 
 const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
@@ -157,6 +160,7 @@ export function parseForgeEntry(raw: unknown): ForgeEntry | null {
     rigged: base.rigged === true && (animations.length === 0 || animations.some((a) => a.name === "idle")),
     gameplay,
     updated_at: str(r.updated_at) ?? base.published_at ?? null,
+    fight: type === "character" ? parseFightKit(r.fight) : null,
   };
 }
 

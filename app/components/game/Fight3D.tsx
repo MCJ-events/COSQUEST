@@ -217,6 +217,8 @@ export default function Fight3D({
         });
         if (!alive || done.current) return;
         log(`cast lod=${cast.lod} hero_id=${cast.hero.id ?? "-"} hero=${cast.hero.path ? "glb" : "-"} ally=${cast.ally.path ? "glb" : "-"} enemy=${cast.enemy.path ? "glb" : "-"} after_ms=${Date.now() - openedAt.current}`);
+        // build 28: which fighters came with a fight kit (their clip library, fightKit.ts)
+        log(`kits hero=${cast.hero.kit ?? "-"} ally=${cast.ally.kit ?? "-"} enemy=${cast.enemy.kit ?? "-"}`);
         go({ kind: "loading", step: "Opening the arena" });
         const config = buildFightConfig({
           hero: cast.hero,
