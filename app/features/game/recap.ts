@@ -1,6 +1,6 @@
 // "Your day": the card's words and the text a player shares. The pure half of
 // costquest-ios Warden/RecapSheet.swift (RecapCard). The numbers are the
-// server's (me.today); the story is the Warden's line (warden.ts recapMoment).
+// server's (me.today); plain data, no Warden story (build 24).
 // Pure: no React Native imports (tested in __tests__/recap.test.ts).
 import type { RoamMe } from "./wire.ts";
 
@@ -23,17 +23,15 @@ export function tiles(t: Today): { value: string; label: string }[] {
   ];
 }
 
-export const EMPTY_LINE = "Nothing to tell yet. Play a Quest Point and I'll have a story for you.";
-export const WAITING_LINE = "The Warden is writing your day…";
+export const EMPTY_LINE = "Nothing played yet today. Play a Quest Point to see your day here.";
 
-/** What the system share sheet carries: the numbers, the best stop, and the Warden's story. */
-export function shareText(opts: { name: string; level: number; rank: string; faction?: string | null; today: Today; story?: string | null }): string {
+/** What the system share sheet carries: the numbers and the best stop. */
+export function shareText(opts: { name: string; level: number; rank: string; faction?: string | null; today: Today }): string {
   const t = opts.today;
   const lines = [
     `My CostQuest day: ${t.points_played} ${t.points_played === 1 ? "point" : "points"}, ${t.correct} right, ${t.xp} XP.`,
     `${opts.name}, ${cardSubtitle(opts.level, opts.rank, opts.faction)}`,
   ];
   if (t.best_place) lines.push(`Best stop: ${t.best_place}`);
-  if (opts.story && opts.story.trim()) lines.push("", opts.story.trim());
   return lines.join("\n");
 }

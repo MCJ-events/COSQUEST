@@ -1,12 +1,10 @@
 // The quiz Siege's staging, the pure half (costquest-ios Features/SiegeFeature.swift
 // SiegeView, Roam/StrikeHaptics.swift): the timings of one exchange, the
-// haptic plans that stand in for Core Haptics, the words, and the Warden's
-// moments. siege.ts has the model and the server calls; components/game/
-// SiegeScreen.tsx draws it.
+// haptic plans that stand in for Core Haptics, and the words (no Warden line:
+// build 24's announcer is silent). siege.ts has the model and the server
+// calls; components/game/SiegeScreen.tsx draws it.
 //
 // Pure: no React Native. Siblings are imported with the .ts extension.
-import { WardenMoment, wardenStyle } from "./warden.ts";
-import type { RoamMe } from "./wire.ts";
 
 /** One exchange, in ms (SiegeView.land / answer / pop). */
 export const STRIKE_PULSE_MS = 360;
@@ -85,31 +83,6 @@ export function resultCopy(won: boolean, place: string, holderName: string, myFa
 /** The foot button's label. */
 export function resultButton(won: boolean): string {
   return won ? "Back to the map" : "Retreat";
-}
-
-/** What the Warden is told when a siege ends (RoamStore.siegeWonMoment / siegeLostMoment). */
-export function siegeMoment(
-  ctx: { me: RoamMe | null; playerName: string },
-  won: boolean,
-  place: string,
-  holderName: string,
-  rounds: number | null,
-): WardenMoment {
-  const style = wardenStyle(ctx.me?.faction);
-  if (won) {
-    return new WardenMoment("siege_won", style, [
-      ["name", ctx.playerName],
-      ["place", place],
-      ["taken_from", holderName],
-      ["rounds", rounds === null ? null : String(rounds)],
-      ["faction", ctx.me?.faction_name],
-    ]);
-  }
-  return new WardenMoment("siege_lost", style, [
-    ["name", ctx.playerName],
-    ["place", place],
-    ["holder", holderName],
-  ]);
 }
 
 /** The answer's spoken form, for VoiceOver on a choice: "Answer 2 of 4: text". */

@@ -25,8 +25,7 @@ import { useRoomBeacons, useRooms } from "@/features/game/roomsRuntime";
 import { isSiege } from "@/features/game/siege";
 import { noteStepsOnPhone } from "@/features/game/stepsDevice";
 import { unlocked, visiblePoints } from "@/features/game/unlocks";
-import { arriveMoment, legendMoment, nudgeMoment, siteArriveMoment } from "@/features/game/warden";
-import { siteArriveLine, siteAttribution, siteIdOf, siteLegend } from "@/features/game/wardenSite";
+import { siteAttribution, siteIdOf, siteLegend } from "@/features/game/wardenSite";
 import { siteFacts } from "./wardenSites";
 import { freshLoss, holdsLostOf, type QuestPoint, spinBanner } from "@/features/game/wire";
 import { factionVeilColor, world } from "@/features/world/worldState";
@@ -102,12 +101,7 @@ type Screen =
 /** What is open over the map (one at a time, closed by Android Back). */
 type Sheet = "dailies" | "codex" | "war" | "more" | "events" | "friends" | "squad" | "collection" | "battle" | "profile" | "coins" | "recap" | "ask" | "trials" | "runStart" | "ranks";
 
-const NUDGE_EVERY_MS = 150000;
 const LOSS_SEEN_KEY = "cq.holdsLost.seen";
-/** The first nudge waits for the map to settle (RoamHomeView.nudgeLoop: 25 s). */
-const FIRST_NUDGE_MS = 25000;
-/** A nudge is put away after 12 s if nothing else has spoken since. */
-const NUDGE_SHOWN_MS = 12000;
 
 
 /** EXPO_PUBLIC_PROGRESSION=0 hides Ranks whatever the server says (inlined by Metro). */
@@ -198,7 +192,6 @@ function GameRootInner({ parked }: { parked: boolean }) {
   const needsOnboarding = !!session && gameStore.needsOnboarding;
   if (needsOnboarding && !onboarding) setOnboarding(true);
   const [legendOf, setLegendOf] = useState<{ id: string; text: string; credit?: string | null } | null>(null);
-  const greeted = useRef(new Set<string>());
   // What the coach has said (cq.coach.done, cq.unlocks.introduced), read once.
   const [coachDone, setCoachDone] = useState<Set<string> | null>(null);
   const [introduced, setIntroduced] = useState<Set<string>>(() => new Set());
@@ -209,7 +202,6 @@ function GameRootInner({ parked }: { parked: boolean }) {
   // Bosses wait for level 5 (RoamGuide.swift visiblePoints).
   const points = useMemo(() => visiblePoints(allPoints, me), [allPoints, me]);
   const color = factionVeilColor(me?.faction, chatFaction);
-  const ctx = useCallback(() => ({ me: gameStore.get().me, playerName: gameStore.playerName() }), []);
   // Computed from the points and the fix themselves: the React Compiler
   // memoises on what the callback reads, so reading the store here would
   // freeze the list at its first (empty) value.
@@ -323,48 +315,15 @@ function GameRootInner({ parked }: { parked: boolean }) {
     else if (u === "battle") openBattle(null);
   };
 
-  // The Warden greets a point the first time it comes into reach (and starts
-  // writing the greeting while the player walks up, when the model is on).
-  useEffect(() => {
-    if (__DEV__ || process.env.EXPO_PUBLIC_WORLD_TIMING === "1") {
-      console.log(`[warden] effect: parked=${parked} screen=${screen.kind} faction=${me?.faction ?? "-"} points=${nearby.length}`);
-    }
-    if (parked || screen.kind !== "home" || !me?.faction) return;
-    const approaching = nearby.find((x) => !gameStore.isCooling(x) && (gameStore.distanceTo(x) ?? 1e9) < gameStore.reach() + 60);
-    if (approaching) wardenVoice.prepare(arriveMoment(ctx(), approaching));
-    const p = nearby.find((x) => gameStore.inReach(x) && !gameStore.isCooling(x));
-    if (__DEV__ || process.env.EXPO_PUBLIC_WORLD_TIMING === "1") {
-      console.log(`[warden] check: ${nearby.length} nearby, in reach ${p ? p.name : "none"}${p && greeted.current.has(p.id) ? " (greeted)" : ""}`);
-    }
-    if (p && !greeted.current.has(p.id)) {
-      greeted.current.add(p.id);
-      // At a Game Warden site the welcome is the site's own line, from its checked facts.
-      if (siteIdOf(p)) {
-        void siteFacts(p).then((f) => {
-          const line = siteArriveLine(f);
-          wardenVoice.speak(line ? siteArriveMoment(ctx(), p, line) : arriveMoment(ctx(), p)).catch(() => {});
-        });
-      } else wardenVoice.speak(arriveMoment(ctx(), p)).catch(() => {});
-    }
-  }, [nearby, parked, screen.kind, me?.faction, ctx]);
-
-  // The legend is written while they read the card (RoamHomeView .onChange(of: selected)).
+  // A Game Warden site's card tells its checked facts (and credits them), fetched while they read
+  // the card. Any other point has no line: the Warden tells no lore (build 24, the announcer).
   const selectedKey = selected?.id ?? null;
   useEffect(() => {
-    if (!selected) return;
+    if (!selected || !siteIdOf(selected)) return;
     let alive = true;
     const id = selected.id;
-    // A Game Warden site's card tells its checked facts (and credits them), never invented lore.
-    if (siteIdOf(selected)) {
-      void siteFacts(selected).then((f) => {
-        if (alive) setLegendOf({ id, text: siteLegend(f) ?? "", credit: siteAttribution(f) });
-      });
-      return () => {
-        alive = false;
-      };
-    }
-    void wardenVoice.line(legendMoment(ctx(), selected), 8000).then((text) => {
-      if (alive) setLegendOf({ id, text });
+    void siteFacts(selected).then((f) => {
+      if (alive) setLegendOf({ id, text: siteLegend(f) ?? "", credit: siteAttribution(f) });
     });
     return () => {
       alive = false;
@@ -399,9 +358,6 @@ function GameRootInner({ parked }: { parked: boolean }) {
     return () => clearInterval(t);
   }, [parked]);
 
-  // Now and then, the best next move: shown, and put away after 12 s.
-  const quietNudge = !parked && screen.kind === "home" && !selected && !coachStep && !runLive && me?.tutorial_done === true;
-
   // The run as the server has it: on the way in, and back from the background
   // (it may have ended, or a lost one be found again).
   const sessionKey = session?.playerKey ?? null;
@@ -415,32 +371,6 @@ function GameRootInner({ parked }: { parked: boolean }) {
     });
     return () => sub.remove();
   }, [sessionKey, parked]);
-  useEffect(() => {
-    if (!quietNudge) return;
-    let hide: ReturnType<typeof setTimeout> | null = null;
-    const nudge = () => {
-      if (wardenVoice.get()) return;
-      const s = gameStore.get();
-      const m = nudgeMoment(ctx(), s.fix, s.points, gameStore.reach(), s.war);
-      if (!m) return;
-      wardenVoice
-        .speak(m, NUDGE_SHOWN_MS)
-        .then(() => {
-          hide = setTimeout(() => {
-            if (wardenVoice.get()?.moment === "nudge") wardenVoice.quiet();
-          }, NUDGE_SHOWN_MS);
-        })
-        .catch(() => {});
-    };
-    const first = setTimeout(nudge, FIRST_NUDGE_MS);
-    const t = setInterval(nudge, NUDGE_EVERY_MS);
-    return () => {
-      clearTimeout(first);
-      clearInterval(t);
-      if (hide) clearTimeout(hide);
-    };
-  }, [quietNudge, ctx]);
-
   // Android Back inside the game: close what is open first; on the map, the
   // pager's own handler takes it (back to the chat).
   useEffect(() => {
@@ -786,7 +716,7 @@ function GameRootInner({ parked }: { parked: boolean }) {
           inReach={gameStore.inReach(selected)}
           cooling={gameStore.isCooling(selected)}
           factionName={gameStore.factionName}
-          legend={legendOf?.id === selected.id ? legendOf.text || null : null}
+          facts={legendOf?.id === selected.id ? legendOf.text || null : null}
           credit={legendOf?.id === selected.id ? legendOf.credit ?? null : null}
           onPlay={() => play(selected)}
           onSpin={() => void spin(selected)}

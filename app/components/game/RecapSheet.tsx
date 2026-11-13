@@ -1,27 +1,22 @@
-// "Your day", told by the Warden, on a card worth posting (costquest-ios
-// Warden/RecapSheet.swift). The numbers are the server's (me.today); the
-// story is the Warden's line for the day (the on-device model's when it is
-// on, the authored one otherwise), said aloud unless the Warden is muted.
+// "Your day": the day's numbers on a card worth posting (costquest-ios
+// Warden/RecapSheet.swift). The numbers are the server's (me.today). Plain
+// data since build 24: no Warden story, nothing said aloud.
 // iOS shares the card as an image (ImageRenderer); here the share sheet
 // carries the same card as text (features/game/recap.ts shareText), as no
 // view-capture module is in the app.
 import { Ionicons } from "@expo/vector-icons";
-import { useEffect, useState } from "react";
-import { ActivityIndicator, ScrollView, Share, Text, View } from "react-native";
-import Animated, { FadeIn } from "react-native-reanimated";
+import { useEffect } from "react";
+import { ScrollView, Share, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { cardSubtitle, EMPTY_LINE, hasDayToTell, shareText, tiles, type Today, WAITING_LINE } from "@/features/game/recap";
+import { cardSubtitle, EMPTY_LINE, hasDayToTell, shareText, tiles, type Today } from "@/features/game/recap";
 import { gameStore, useGame } from "@/features/game/runtime";
-import { recapMoment } from "@/features/game/warden";
 
 import { Chip, GameButton, GamePanel, MAX_FONT_SCALE, withAlpha } from "./kit";
 import { SheetHost } from "./Sheet";
 import { SheetFrame } from "./SheetFrame";
 import { SheetHeader } from "./SheetHeader";
 import { GF, GP, realmColor } from "./theme";
-import WardenBadge from "./WardenBadge";
-import { wardenVoice } from "./wardenVoice";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 export default function RecapSheet({ onClose }: { onClose: () => void }) {
@@ -37,33 +32,19 @@ function RecapBody({ close }: { close: () => void }) {
   const styles = useThemedStyles(STYLE_PAIR);
   const insets = useSafeAreaInsets();
   const me = useGame((s) => s.me);
-  const [story, setStory] = useState<string | null>(null);
   const tint = realmColor(me?.faction);
   const name = gameStore.playerName();
   const level = me?.standing.level ?? 1;
   const rank = me?.standing.rank ?? "Rookie";
 
+  // The day's numbers, fresh as the sheet opens.
   useEffect(() => {
-    let alive = true;
-    void (async () => {
-      await gameStore.refreshMe();
-      const s = gameStore.get();
-      const m = recapMoment({ me: s.me, playerName: gameStore.playerName() }, s.war);
-      if (!m || !alive) return;
-      // The model gets 14 s to write the day; the authored line otherwise.
-      const text = await wardenVoice.line(m, 14000);
-      if (!alive) return;
-      setStory(text);
-      void wardenVoice.speak(m, 8000).catch(() => {});
-    })();
-    return () => {
-      alive = false;
-    };
+    void gameStore.refreshMe().catch(() => {});
   }, []);
 
   const today = me?.today ?? null;
   const share = (t: Today) =>
-    void Share.share({ message: shareText({ name, level, rank, faction: me?.faction_name, today: t, story }) }).catch(() => {});
+    void Share.share({ message: shareText({ name, level, rank, faction: me?.faction_name, today: t }) }).catch(() => {});
 
   return (
     <SheetFrame top={insets.top + 40}>
@@ -71,17 +52,13 @@ function RecapBody({ close }: { close: () => void }) {
         <SheetHeader title="Your day" onClose={close} />
         {today && hasDayToTell(me) ? (
           <>
-            <RecapCard name={name} faction={me?.faction_name} tint={tint} today={today} level={level} rank={rank} story={story} />
-            {story ? (
-              <Animated.View entering={FadeIn}>
-                <GameButton title="Share your day" color={GP.sun} icon={<Ionicons name="share-outline" size={20} color="#FFF" />} onPress={() => share(today)} />
-              </Animated.View>
-            ) : null}
+            <RecapCard name={name} faction={me?.faction_name} tint={tint} today={today} level={level} rank={rank} />
+            <GameButton title="Share your day" color={GP.sun} icon={<Ionicons name="share-outline" size={20} color="#FFF" />} onPress={() => share(today)} />
           </>
         ) : (
           <GamePanel>
             <View style={styles.emptyRow}>
-              <WardenBadge tint={tint} size={56} />
+              <Ionicons name="book" size={36} color={tint} />
               <Text style={styles.empty} maxFontSizeMultiplier={MAX_FONT_SCALE}>
                 {EMPTY_LINE}
               </Text>
@@ -100,7 +77,6 @@ export function RecapCard({
   today,
   level,
   rank,
-  story,
 }: {
   name: string;
   faction?: string | null;
@@ -108,7 +84,6 @@ export function RecapCard({
   today: Today;
   level: number;
   rank: string;
-  story: string | null;
 }) {
   const styles = useThemedStyles(STYLE_PAIR);
   return (
@@ -135,21 +110,6 @@ export function RecapCard({
             </View>
           ))}
         </View>
-        <View style={styles.storyRow}>
-          <WardenBadge tint={tint} size={48} />
-          {story ? (
-            <Animated.Text entering={FadeIn.duration(400)} style={styles.story} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-              {story}
-            </Animated.Text>
-          ) : (
-            <View style={styles.waiting}>
-              <ActivityIndicator color={withAlpha(GP.ink, 0.6)} />
-              <Text style={styles.waitingText} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-                {WAITING_LINE}
-              </Text>
-            </View>
-          )}
-        </View>
         {today.best_place ? (
           <View style={styles.best}>
             <Ionicons name="star" size={14} color={GP.sunDeep} />
@@ -174,10 +134,6 @@ const STYLE_PAIR = themedStyles({
   tile: { flex: 1, alignItems: "center", paddingVertical: 10, borderRadius: 14 },
   tileValue: { fontFamily: GF.display, fontSize: 26, color: GP.ink },
   tileLabel: { fontFamily: GF.display, fontSize: 11, color: withAlpha(GP.ink, 0.55) },
-  storyRow: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
-  story: { flex: 1, fontFamily: GF.bold, fontSize: 16, color: GP.ink },
-  waiting: { flex: 1, flexDirection: "row", alignItems: "center", gap: 8 },
-  waitingText: { flex: 1, fontFamily: GF.body, fontSize: 15, color: withAlpha(GP.ink, 0.6) },
   best: { flexDirection: "row", alignItems: "center", gap: 6 },
   bestText: { fontFamily: GF.bold, fontSize: 14, color: GP.sunDeep },
 });

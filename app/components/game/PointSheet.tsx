@@ -43,7 +43,7 @@ export default function PointSheet({
   inReach,
   cooling,
   factionName,
-  legend,
+  facts,
   credit,
   onPlay,
   onSpin,
@@ -57,8 +57,8 @@ export default function PointSheet({
   /** Kept for callers written before the card read the point itself. */
   asDuel?: boolean;
   factionName: (id: string) => string;
-  /** The Warden's line about the place, once written. */
-  legend?: string | null;
+  /** A Game Warden site's checked facts about the place (plain data, no voice), once fetched. */
+  facts?: string | null;
   /** Where a Game Warden site's facts come from (their licences), shown under its facts. */
   credit?: string | null;
   onPlay: () => void;
@@ -117,7 +117,7 @@ export default function PointSheet({
           <HoldLine point={point} me={me} factionName={factionName} />
           <SiegeLine point={point} me={me} factionName={factionName} />
           <RaidLine point={point} />
-          {legend ? <Text style={site ? styles.fact : styles.legend}>{legend}</Text> : null}
+          {site && facts ? <Text style={styles.fact}>{facts}</Text> : null}
           {site && credit ? (
             <Text style={styles.credit} maxFontSizeMultiplier={MAX_FONT_SCALE}>
               {credit}
@@ -196,7 +196,6 @@ const STYLE_PAIR = themedStyles(
     chips: { flexDirection: "row", gap: 6, flexWrap: "wrap" },
     name: { fontFamily: GF.display, fontSize: 28, lineHeight: 32, color: L.text },
     subtitle: { fontFamily: GF.regular, fontSize: 15, lineHeight: 21, color: L.textMuted },
-    legend: { fontFamily: GF.regular, fontSize: 15, lineHeight: 21, fontStyle: "italic", color: L.textMuted },
     fact: { fontFamily: GF.regular, fontSize: 15, lineHeight: 21, color: L.text },
     credit: { fontFamily: GF.body, fontSize: 12, lineHeight: 16, color: L.textMuted, marginTop: -6 },
     realm: { flexDirection: "row", alignItems: "center", gap: 8 },
@@ -210,7 +209,6 @@ const STYLE_PAIR = themedStyles(
   {
     name: { color: D.text },
     subtitle: { color: D.textMuted },
-    legend: { color: D.textMuted },
     fact: { color: D.text },
     credit: { color: D.textMuted },
     realmText: { color: D.textMuted },

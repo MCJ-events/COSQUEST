@@ -21,7 +21,6 @@ import Animated, {
   Easing,
   FadeIn,
   FadeInDown,
-  FadeOut,
   LinearTransition,
   ReduceMotion,
   SlideInRight,
@@ -54,8 +53,7 @@ import {
   secondChanceLabel,
   tierName,
 } from "@/features/game/strike";
-import { arriveMoment, hintMoment, lateMoment, levelMoment, reactionMoment, siteArriveMoment } from "@/features/game/warden";
-import { siteArriveLine, siteIdOf } from "@/features/game/wardenSite";
+import { siteIdOf } from "@/features/game/wardenSite";
 import type { AttemptQuestion, QuestPoint, RoamAnswer, RoamAttempt, RoamVerdict } from "@/features/game/wire";
 import { parseServerDate } from "@/features/game/wire";
 
@@ -69,8 +67,6 @@ import { playSound } from "./sound";
 import { playResolve, startStrike } from "./strike";
 import { ACCENT, BUTTON, edgeColor, ELEVATION, labelOn, RADIUS, SURFACES, TEXT_ON_DARK, TEXT_ON_LIGHT, useLook, useMapLook } from "./look";
 import { CHOICE_COLORS, GF, realmColor, tierColor } from "./theme";
-import { useWardenSaid, wardenVoice } from "./wardenVoice";
-import { siteFacts } from "./wardenSites";
 import { CostQuestShrineView, type CostQuestShrineViewHandle, shrineARSupported } from "@/modules/costquest-game/src";
 
 import { AR_SHRINE_DEV, setShrineAR, useShrineAR } from "./prefs";
@@ -146,7 +142,6 @@ export default function Encounter({
       reset: () => (NativeShrine ? void nativeShrine.current?.reset().catch(() => {}) : crystal2d.current?.reset()),
     },
   }));
-  const said = useWardenSaid();
   const coins = useSyncExternalStore(gameStore.subscribe, () => gameStore.get().me?.coins ?? 0);
   const prices = useSyncExternalStore(gameStore.subscribe, () => gameStore.get().config?.hints ?? null);
   // What the player has answered so far, for the clock's own submit.
@@ -156,7 +151,6 @@ export default function Encounter({
     phaseRef.current = p;
     setPhaseState(p);
   }, []);
-  const ctx = () => ({ me: gameStore.get().me, playerName: gameStore.playerName() });
   // The scene behind the shrine is the world's own sky (Golden by day, Dusk after), not a realm colour:
   // realm colours stay on chips (art direction 2.7).
   const map = useMapLook();
@@ -199,27 +193,17 @@ export default function Encounter({
     };
   }, []);
 
-  // Arriving: the bag for the hints, and the Warden's welcome once the shrine stands.
+  // Arriving: the bag for the hints.
   useEffect(() => {
     refreshBag();
     // Once per point.
   }, [point.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const onPlaced = useCallback(
-    (ar: boolean) => {
-      setPlaced(true);
-      setInRoom(ar);
-      if (phaseRef.current !== "approach") return;
-      // At a Game Warden site, the site's own line (written from its checked facts).
-      if (siteIdOf(point)) {
-        void siteFacts(point).then((f) => {
-          const line = siteArriveLine(f);
-          if (phaseRef.current === "approach") wardenVoice.speak(line ? siteArriveMoment(ctx(), point, line) : arriveMoment(ctx(), point), 1500).catch(() => {});
-        });
-      } else wardenVoice.speak(arriveMoment(ctx(), point), 1500).catch(() => {});
-    },
-    [point],
-  );
+  // The shrine stands. No welcome: the Warden is silent (build 24, the announcer).
+  const onPlaced = useCallback((ar: boolean) => {
+    setPlaced(true);
+    setInRoom(ar);
+  }, []);
 
   // The 2D crystal rises in place, then stands (SimulatedStage: 500 ms).
   useEffect(() => {
@@ -238,11 +222,6 @@ export default function Encounter({
       .then((a) => {
         if (!mounted.current) return;
         startWith(a);
-        // Both reactions, written while the question is read (blitz waits for its score).
-        if (a.kind !== "blitz") {
-          wardenVoice.prepare(reactionMoment(ctx(), true, point, a.kind));
-          wardenVoice.prepare(reactionMoment(ctx(), false, point, a.kind));
-        }
       })
       .catch((error: Error) => {
         if (mounted.current) setPhase({ failed: error.message });
@@ -282,15 +261,12 @@ export default function Encounter({
       const line = resultTitle(v, timedOut.current);
       announce(v.grade ? `${line.text} ${v.grade}.` : line.text);
       if (v.can_retry) refreshBag();
-      if (v.leveled_up) wardenVoice.prepare(levelMoment(ctx(), v.after, v.rank_up));
-      const m = v.late || (timedOut.current && !win) ? lateMoment(ctx(), point) : reactionMoment(ctx(), win, point, attempt.kind, attempt.kind === "blitz" ? v : null);
-      wardenVoice.speak(m, 5000).catch(() => {});
     } catch (error) {
       // The answer is safe to send again; say so rather than dropping the player's work.
       strike.cancel();
       if (mounted.current) setPhase({ failed: `Couldn't send your answer: ${(error as Error).message}. Open the point again to retry.` });
     }
-  }, [attempt, point, setPhase, refreshBag, crystal]);
+  }, [attempt, setPhase, refreshBag, crystal]);
 
   // The server's clock: when it runs out, send whatever was answered.
   useEffect(() => {
@@ -313,7 +289,6 @@ export default function Encounter({
       const h = await gameStore.hint(attempt, kind, question);
       playSound("coin");
       if (h.bag) setBag(h.bag);
-      wardenVoice.speak(hintMoment(ctx(), kind), 3000).catch(() => {});
       if (h.removed) setRemoved((r) => ({ ...r, [question]: h.removed ?? [] }));
       if (kind === "time") {
         setBoughtTime(true);
@@ -343,10 +318,7 @@ export default function Encounter({
 
   const collect = () => {
     if (!verdict) return;
-    const reward = rewardFromVerdict(verdict, point, gameStore.get().me);
-    // The level line is the Warden's, said 2.4 s into the ceremony.
-    if (verdict.leveled_up) reward.speakLevel = () => wardenVoice.speak(levelMoment(ctx(), verdict.after, verdict.rank_up), 5000).catch(() => {});
-    onReward(reward);
+    onReward(rewardFromVerdict(verdict, point, gameStore.get().me));
   };
 
   const leave = () => {
@@ -354,7 +326,6 @@ export default function Encounter({
       // react-native-web's Alert.alert does nothing: on the web the browser's own confirm asks instead.
       if (Platform.OS === "web") {
         if (globalThis.confirm?.("Leave this challenge? The clock keeps running. You can come back while it does.") ?? true) {
-          wardenVoice.quiet();
           onClose();
         }
         return;
@@ -364,7 +335,6 @@ export default function Encounter({
           text: "Leave",
           style: "destructive",
           onPress: () => {
-            wardenVoice.quiet();
             onClose();
           },
         },
@@ -374,7 +344,6 @@ export default function Encounter({
     }
     // On the reveal the answer is already in: leaving still counts the day's quests.
     if (verdict) celebrate(rewardFromVerdict(verdict, point, gameStore.get().me));
-    wardenVoice.quiet();
     onClose();
   };
   const leaveRef = useRef(leave);
@@ -450,12 +419,6 @@ export default function Encounter({
             )}
           </View>
         </View>
-      </View>
-
-      {/* The Warden's line keeps its room once the question is up: lines come and go (quiet on submit, the
-          reaction after), and the question must not jump up and back under the player's thumb. */}
-      <View style={attempt ? styles.bubbleSlot : null}>
-        {said ? <WardenLine key={said.id} text={said.text} compact={phase === "playing" || phase === "submitting"} tint={ACCENT.sky.fill} /> : null}
       </View>
 
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: actions ? 8 : insets.bottom + 12 }]} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
@@ -626,28 +589,6 @@ export default function Encounter({
         />
       ) : null}
     </View>
-  );
-}
-
-/** The Warden's line under the header (WardenBubble); compact while the clock runs. */
-function WardenLine({ text, compact, tint }: { text: string; compact: boolean; tint: string }) {
-  const styles = useThemedStyles(STYLE_PAIR);
-  return (
-    <Animated.View entering={FadeInDown.duration(220)} exiting={FadeOut.duration(160)} style={styles.bubbleRow} accessibilityLiveRegion="polite">
-      <View style={[styles.wardenBadge, { backgroundColor: tint }]} importantForAccessibility="no-hide-descendants">
-        <Ionicons name="eye" size={compact ? 14 : 18} color={labelOn(tint)} />
-      </View>
-      <Pressable
-        style={styles.bubble}
-        onPress={() => wardenVoice.quiet()}
-        accessibilityRole="button"
-        accessibilityLabel={`The Warden says: ${text}`}
-        accessibilityHint="Double tap to dismiss">
-        <Text style={[styles.bubbleText, compact && { fontSize: 13, lineHeight: 17 }]} numberOfLines={compact ? 2 : 4}>
-          {text}
-        </Text>
-      </Pressable>
-    </Animated.View>
   );
 }
 
@@ -1047,11 +988,6 @@ const STYLE_PAIR = themedStyles(
       backgroundColor: L.surface,
     },
     chips: { flexDirection: "row", gap: 6 },
-    bubbleSlot: { minHeight: 60 },
-    bubbleRow: { flexDirection: "row", alignItems: "flex-start", gap: 8, marginTop: 10, paddingHorizontal: 16 },
-    wardenBadge: { width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: "#FFFFFF" },
-    bubble: { flex: 1, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16, backgroundColor: L.surface, ...ELEVATION.low },
-    bubbleText: { fontFamily: GF.body, fontSize: 15, lineHeight: 20, color: L.text },
     content: { flexGrow: 1, paddingHorizontal: 16, paddingTop: 8, gap: 14 },
     stage: { flex: 1, minHeight: 130, alignItems: "center", justifyContent: "center" },
     stageCompact: { flex: 0, minHeight: 0, height: 92 },
@@ -1094,8 +1030,6 @@ const STYLE_PAIR = themedStyles(
   },
   {
     place: { color: D.text, backgroundColor: D.surface },
-    bubble: { backgroundColor: D.surface, shadowOpacity: 0, elevation: 0, boxShadow: "none" },
-    bubbleText: { color: D.text },
     opening: { backgroundColor: D.surface, shadowOpacity: 0, elevation: 0, boxShadow: "none" },
     approachTitle: { color: D.text },
     approachBlurb: { color: D.textMuted },
