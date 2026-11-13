@@ -9,6 +9,7 @@ import { Alert, BackHandler, StyleSheet, View } from "react-native";
 import { isTerminal } from "@/features/game/rooms";
 import { newRoomSession, useRoomSession } from "@/features/game/roomsRuntime";
 
+import CeremonyCard from "./announcer/CeremonyCard";
 import RoomFight from "./RoomFight";
 import RoomLobby from "./RoomLobby";
 import { useOnScreen } from "./useOnScreen";
@@ -60,6 +61,10 @@ export default function RoomScreen({ gameId, onClose }: { gameId: string; onClos
   return (
     <View style={StyleSheet.absoluteFill}>
       {state.joined ? <RoomFight session={session} state={state} parked={!onScreen} onLeave={confirmLeave} onDone={onClose} /> : <RoomLobby session={session} state={state} onClose={onClose} />}
+      {/* The Warden at a live event (build 25): its ceremony cards before
+          joining (the rules card and the strip sit in the lobby); in the fight
+          it stays out of the way, and the map shows what was missed. */}
+      {!state.joined ? <CeremonyCard /> : null}
     </View>
   );
 }

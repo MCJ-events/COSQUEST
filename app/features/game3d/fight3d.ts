@@ -14,6 +14,7 @@ import { sha256 } from "@noble/hashes/sha2.js";
 import { bytesToHex, utf8ToBytes } from "@noble/hashes/utils.js";
 
 import type { RewardSummary } from "../../components/game/Reward.tsx";
+import { type FightLines, fightLinesOf } from "../game/announcer.ts";
 import type { ForgeEntry } from "../game/forgeWorld.ts";
 import { toLocal } from "../game/geo.ts";
 import type { DuelFinished, DuelStart, GroundGeometry, RoamStanding } from "../game/wire.ts";
@@ -264,6 +265,14 @@ export type Fight3DConfig = {
   landscape?: boolean;
   /** build 21, landscape: HUD px the stick and the attack panel move in from the left and right edges. */
   hud_side?: [number, number];
+  /**
+   * build 25: the Warden's lines for this fight (setup.warden, server app/warden_announcer.py): the
+   * intro under the intro banner, and the verdict under the end banner. Sent only when the server
+   * gave them; a pack without the fight.gd change ignores them.
+   */
+  warden_intro?: string;
+  warden_win?: string;
+  warden_loss?: string;
 };
 
 export type FightMods = { boss_hp_permille: number; boss_dmg_permille: number };
@@ -332,6 +341,8 @@ export function buildFightConfig(input: {
   guardianLook?: GuardianLook | null;
   /** HUD px the top block moves down for the phone's safe area (hudLayout). */
   hudTop?: number;
+  /** The Warden's lines for this fight (fightFromStart().warden). */
+  warden?: FightLines | null;
 }): Fight3DConfig {
   const config: Fight3DConfig = {
     hero_glb: localPath(input.hero.path),
@@ -356,6 +367,9 @@ export function buildFightConfig(input: {
   if (input.mods) config.mods = { ...input.mods };
   if (input.guardianLook) config.guardian_look = { ...input.guardianLook };
   if (input.hudTop && input.hudTop > 0) config.hud_top = Math.round(input.hudTop);
+  if (input.warden?.intro) config.warden_intro = input.warden.intro;
+  if (input.warden?.win) config.warden_win = input.warden.win;
+  if (input.warden?.loss) config.warden_loss = input.warden.loss;
   const groundJson = localPath(input.place?.groundPath);
   if (input.place && groundJson) Object.assign(config, { arena: "place", ground_json: groundJson, place_at: input.place.at });
   return config;
@@ -523,6 +537,8 @@ export function fightFromStart(
   enemyWeaponId: string | null;
   /** A Siege against a point's holder (setup.siege.holder_name / holder_hero), else null. */
   holder: SiegeHolder | null;
+  /** build 25: the Warden's intro and verdict lines (setup.warden), else null. */
+  warden: FightLines | null;
 } | null {
   const s = start.setup as Record<string, unknown> & { kind?: string };
   if (s.kind !== "fight3d") return null;
@@ -547,6 +563,7 @@ export function fightFromStart(
     ally: allyOf(s.ally),
     enemyWeaponId: weapon,
     holder,
+    warden: fightLinesOf(s),
   };
 }
 

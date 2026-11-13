@@ -41,6 +41,7 @@ import {
   placeFrom,
   quitResult,
 } from "@/features/game3d/fight3d";
+import { announcer } from "@/features/game/announcerRuntime";
 import { FIGHT3D } from "@/features/game3d/flags";
 import { hudLandscape, landscapePx } from "@/features/game/landscape";
 import { motionTierDecision } from "@/features/game/motionTier";
@@ -147,6 +148,8 @@ export default function Fight3D({
   const openedAt = useRef(Date.now());
   const duel = useRef<DuelStart | null>(start);
   const fightOf = start ? fightFromStart(start) : null;
+  // The Warden's lines for this fight (setup.warden), read once.
+  const wardenLines = useRef(fightOf?.warden ?? null);
   const card = fightCard(start, point?.name ?? "this place");
   const go = useCallback((p: Phase) => {
     phaseRef.current = p;
@@ -172,6 +175,9 @@ export default function Fight3D({
       done.current = true;
       go({ kind: "closing" });
       log(`close outcome=${result?.outcome ?? "none"} after_ms=${Date.now() - openedAt.current}`);
+      // The Warden's verdict for a fight fought to its end (the server's own judgement follows on the result screen).
+      if (result?.outcome === "win") announcer.sayFightLine(wardenLines.current?.win);
+      else if (result?.outcome === "lose") announcer.sayFightLine(wardenLines.current?.loss);
       void closeFight({ keep: FIGHT3D.keep }).then(async () => {
         if (heldLand.current) {
           heldLand.current = false;
@@ -231,6 +237,7 @@ export default function Fight3D({
           sound: !callActive(),
           place: placeFile(point),
           hudTop: hudTop.current,
+          warden: fightOf?.warden ?? null,
         });
         log(`arena ${config.arena ?? "street"}${config.place_at ? ` at=${config.place_at.join(",")}` : ""}`);
         // Weapons in hand (cq 234): the cast's weapons, as files, with their grips.
@@ -317,6 +324,8 @@ export default function Fight3D({
         });
         if (!alive || done.current) return;
         log(`started mode=${mode} after_ms=${Date.now() - openedAt.current}`);
+        // The Warden's intro, said as the intro plays (on-device speech; nothing when it gave none).
+        announcer.sayFightLine(fightOf?.warden?.intro);
       } catch (e) {
         if (!alive || done.current) return;
         if (e instanceof FightOpenError && (e as FightOpenError & { cancelled?: boolean }).cancelled) return;
