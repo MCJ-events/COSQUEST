@@ -477,3 +477,21 @@ test("the rules id the app sends is the one the Godot build fights on (judge_tes
   assert.equal(FIGHT3D_RULES, pinned);
   assert.match(FIGHT3D_RULES, /^f3d-2-[0-9a-f]{12}$/);
 });
+
+// ---------- the Warden's fight lines (build 25, setup.warden) ----------
+
+test("the Warden's intro and verdict ride from the setup into Godot's config, only when sent", () => {
+  const warden = { intro: "Siege at Tower Bridge. The Guardian holds. Begin.", win: "The Guardian falls.", loss: "The Guardian stands." };
+  const f = fightFromStart(start3d({ warden }))!;
+  assert.deepEqual(f.warden, warden);
+  assert.equal(fightFromStart(start3d({}))!.warden, null);
+  const base = { hero: { path: null, name: null }, ally: { path: null, name: null }, enemy: { path: null, name: "Ironhide" }, pointName: "Tower Bridge", mode: "full" as const, seed: 9, autoplay: false };
+  const c = buildFightConfig({ ...base, warden: f.warden });
+  assert.equal(c.warden_intro, warden.intro);
+  assert.equal(c.warden_win, warden.win);
+  assert.equal(c.warden_loss, warden.loss);
+  const none = buildFightConfig(base);
+  assert.equal("warden_intro" in none || "warden_win" in none || "warden_loss" in none, false);
+  // a line about money never reaches the fight
+  assert.equal(fightFromStart(start3d({ warden: { intro: "Win cash at Tower Bridge.", win: null, loss: null } }))!.warden, null);
+});

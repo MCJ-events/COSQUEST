@@ -1298,6 +1298,9 @@ func _begin_or_intro() -> void:
 	var sub: String = str(info.get("landmark", ""))
 	if title != "":
 		sub = title if sub == "" else "%s · %s" % [title, sub]
+	# build 25: the Warden's intro line (setup.warden.intro, server-decided) under the place's name, when sent
+	if str(cfg.get("warden_intro", "")) != "":
+		sub = str(cfg.get("warden_intro", ""))
 	hud.banner(str(cfg.get("point_name", "")).to_upper(), sub, Color(1.0, 0.86, 0.5), INTRO_LEN - 0.4)
 	_log("intro landmark=%s" % str(info.get("landmark", "")))
 
@@ -2659,10 +2662,12 @@ func _end(o: String) -> void:
 			_punch = 1.0
 			_shake_cam(0.14, 0.35)
 			_buzz("ko", 1.0)   # one rumble with the Guardian's fall (haptics.gd); a co-op win (no fall here) gets it now
-			_banner_later(beat, ["VICTORY", str(cfg.get("enemy_name", "Guardian")).to_upper() + " DEFEATED", "win"])
+			# build 25: the Warden's verdict line (setup.warden.win) under VICTORY, when sent
+			var win_sub: String = str(cfg.get("warden_win", ""))
+			_banner_later(beat, ["VICTORY", win_sub if win_sub != "" else str(cfg.get("enemy_name", "Guardian")).to_upper() + " DEFEATED", "win"])
 		"lose":
 			_end_delay = beat + LOSS_HOLD_S
-			_banner_later(beat, ["DEFEATED", "", "lose"])
+			_banner_later(beat, ["DEFEATED", str(cfg.get("warden_loss", "")), "lose"])
 		_:
 			_end_delay = 1.0
 			hud.banner("TIME UP", "", Color(0.85, 0.92, 1.0), 0.0)

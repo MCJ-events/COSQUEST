@@ -15,6 +15,8 @@ import { Chip, GameButton, MAX_FONT_SCALE } from "./kit";
 import { GameBackdrop } from "./GameBackdrop";
 import { ACCENT, ELEVATION, RADIUS, SURFACES, TEXT_ON_DARK, TEXT_ON_LIGHT, useLook } from "./look";
 import { GF, GP } from "./theme";
+import AnnouncerStrip from "./announcer/AnnouncerStrip";
+import EventRulesCard from "./announcer/EventRulesCard";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 export default function RoomLobby({ session, state, onClose }: { session: RoomSession; state: RoomSessionState; onClose: () => void }) {
@@ -49,6 +51,9 @@ export default function RoomLobby({ session, state, onClose }: { session: RoomSe
         <Text style={styles.kicker}>ROOM</Text>
       </View>
       <ScrollView contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + 24 }]} keyboardShouldPersistTaps="handled">
+        {/* The Warden (build 25): the event's rules and countdown, and its latest line. */}
+        <EventRulesCard />
+        <AnnouncerStrip />
         {!terms ? (
           problem ? (
             <View style={styles.panel}>

@@ -54,6 +54,8 @@ import { NearbyTray } from "./NearbyTray";
 import Journal from "./Journal";
 import { GameButton } from "./kit";
 import { GameSchemeProvider } from "./look";
+import AnnouncerStrip from "./announcer/AnnouncerStrip";
+import CeremonyCard from "./announcer/CeremonyCard";
 import LiveBanner from "./LiveBanner";
 import LiveCalendarSheet from "./LiveCalendarSheet";
 import MoreSheet, { type MoreTile } from "./MoreSheet";
@@ -76,6 +78,7 @@ import Reward, { type RewardSummary } from "./Reward";
 import TrialsSheet from "./TrialsSheet";
 import { GF, GP, realmColor } from "./theme";
 import { useOnScreen } from "./useOnScreen";
+import { announcer } from "@/features/game/announcerRuntime";
 import { useWardenSaid, wardenVoice } from "./wardenVoice";
 import WorldMap, { BackToMe } from "./WorldMap";
 import { CompassButton } from "./CompassButton";
@@ -479,6 +482,17 @@ function GameRootInner({ parked }: { parked: boolean }) {
   useEffect(() => {
     world.setGameFight(fighting);
   }, [fighting]);
+  // The Warden announcer (build 25): it listens while the game page shows, at
+  // a Room's pace when a Room is on screen, and keeps its voice down in a
+  // fight or a question.
+  useEffect(() => {
+    announcer.setActive(!parked && onScreen);
+  }, [parked, onScreen]);
+  useEffect(() => {
+    announcer.setEvent(screen.kind === "room" ? screen.gameId : null);
+    announcer.setQuiet("fight", fighting);
+    announcer.setQuiet("question", screen.kind === "encounter");
+  }, [screen, fighting]);
   useEffect(
     () => () => {
       world.setGameFocus(false);
@@ -726,6 +740,7 @@ function GameRootInner({ parked }: { parked: boolean }) {
           </View>
         ) : null}
 
+        {screen.kind === "home" ? <AnnouncerStrip /> : null}
         {screen.kind === "home" ? <LiveBanner parked={parked} onOpen={() => setSheet("events")} /> : null}
         {fix && screen.kind === "home" && unlocked(me, "raids") ? <RaidBanner points={nearby} fix={fix} onFight={(boss) => setSelectedId(boss.id)} /> : null}
 
@@ -795,6 +810,8 @@ function GameRootInner({ parked }: { parked: boolean }) {
         />
       ) : null}
 
+      {/* The Warden's ceremony card: on the map only, never over a sheet, a fight or a question. */}
+      {screen.kind === "home" && !sheet && !selected && !coachStep ? <CeremonyCard /> : null}
       {coachStep ? <CoachOverlay key={coachStep.id} step={coachStep} tint={color} onAction={() => coachAct(coachStep)} onLater={() => markCoach(coachStep)} /> : null}
 
       {sheet === "dailies" || sheet === "codex" || sheet === "war" ? (
