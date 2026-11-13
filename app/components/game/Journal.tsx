@@ -32,19 +32,17 @@ import { hasDayToTell } from "@/features/game/recap";
 import { gameStore, useGame } from "@/features/game/runtime";
 import type { GameState } from "@/features/game/store";
 import { unlocked } from "@/features/game/unlocks";
-import { startWardenModel, useWardenModel } from "@/features/game/wardenModel";
 import type { CodexCard, FactionWar } from "@/features/game/wire";
 
 import { CodexBar, XPBar } from "./Bars";
 import CodexDetail, { CodexTile } from "./CodexDetail";
-import { Chip, GameButton, GameHeading, GamePanel, MAX_FONT_SCALE, ProgressBar } from "./kit";
+import { Chip, GameButton, GameHeading, GamePanel, MAX_FONT_SCALE } from "./kit";
 import LiveStampCard from "./LiveStampCard";
 import { SheetHost } from "./Sheet";
 import { SheetHeader } from "./SheetHeader";
 import { SheetFrame } from "./SheetFrame";
 import StepsCard from "./StepsCard";
 import { GF, GP, realmColor, realmIcon } from "./theme";
-import { wardenVoice } from "./wardenVoice";
 import { ACCENT, labelOn, RADIUS, SURFACES, TEXT_ON_DARK, TEXT_ON_LIGHT, useLook } from "./look";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 import { ErrorState } from "@/components/kit";
@@ -189,7 +187,6 @@ function JournalSheet({ close, initial = "today", onRecap }: JournalProps & { cl
               ))}
               {unlocked(me, "walking") ? <StepsCard /> : null}
               <Text style={styles.footnote}>{`New quests every day at ${resetTime()}.`}</Text>
-              <WardenCard />
               {me.today && hasDayToTell(me) && onRecap ? (
                 <GameButton title="Your day" color={GP.sun} onPress={onRecap} />
               ) : me.today && !onRecap ? (
@@ -385,51 +382,6 @@ function WarBar({ standing, top, mine }: { standing: FactionWar["standings"][num
   );
 }
 
-/** The Warden's voice on this phone: fetch the model, and what it measures. */
-function WardenCard() {
-  const styles = useThemedStyles(STYLE_PAIR);
-  const model = useWardenModel();
-  const mb = model.bytes ? Math.round(model.bytes / 1048576) : null;
-  const text =
-    model.phase === "unsupported"
-      ? "The Warden speaks its written lines on this phone."
-      : model.phase === "too-small"
-        ? "This phone is too small to hold the Warden's model, so it speaks its written lines."
-        : model.phase === "off"
-          ? "Let the Warden write its own lines here, on this phone, with no network. A one-time download."
-          : model.phase === "downloading"
-            ? `Downloading ${model.label ?? "the model"}: ${Math.round((model.progress ?? 0) * 100)}%${mb ? ` of ${mb} MB` : ""}`
-            : model.phase === "verifying"
-              ? "Checking every byte…"
-              : model.phase === "loading"
-                ? "Waking the Warden…"
-                : model.phase === "ready"
-                  ? `${model.label} is writing lines here.${model.tokensPerSecond ? ` ${model.tokensPerSecond.toFixed(1)} words a second, first word in ${((model.firstTokenMs ?? 0) / 1000).toFixed(1)} s.` : ""} ${model.written} written, ${model.rejected} rejected.`
-                  : `The model could not start: ${model.error ?? "unknown"}. The written lines speak meanwhile.`;
-  return (
-    <GamePanel padding={14}>
-      <View style={styles.wardenRow}>
-        <Ionicons name="eye" size={26} color={ACCENT.sky.fill} />
-        <View style={{ flex: 1, gap: 6 }}>
-          <Text style={styles.wardenTitle}>{"The Warden's voice"}</Text>
-          <Text style={styles.wardenText}>{text}</Text>
-          {model.phase === "downloading" ? <ProgressBar value={model.progress ?? 0} color={ACCENT.sky.fill} /> : null}
-          {model.phase === "off" || model.phase === "failed" ? (
-            <GameButton
-              title={model.phase === "failed" ? "Try again" : "Download"}
-              size="small"
-              color={ACCENT.sky.fill}
-              accessibilityLabel="Download the Warden's model"
-              onPress={() => startWardenModel((w) => wardenVoice.setWriter(w))}
-              style={{ alignSelf: "flex-start" }}
-            />
-          ) : null}
-        </View>
-      </View>
-    </GamePanel>
-  );
-}
-
 const STYLE_PAIR = themedStyles(
   {
     head: { paddingHorizontal: 18 },
@@ -477,9 +429,6 @@ const STYLE_PAIR = themedStyles(
     leaderName: { flexShrink: 1, fontFamily: GF.body, fontSize: 16, lineHeight: 20, color: L.text },
     leaderLevel: { fontFamily: GF.regular, fontSize: 13, lineHeight: 17, color: L.textMuted },
     leaderXp: { fontFamily: GF.display, fontSize: 16, lineHeight: 20, color: L.text, fontVariant: ["tabular-nums"] },
-    wardenRow: { flexDirection: "row", alignItems: "center", gap: 12 },
-    wardenTitle: { fontFamily: GF.bold, fontSize: 17, lineHeight: 22, color: L.text },
-    wardenText: { fontFamily: GF.regular, fontSize: 14, lineHeight: 19, color: L.textMuted },
   },
   {
     tabs: { backgroundColor: D.surfaceAlt },
@@ -510,7 +459,5 @@ const STYLE_PAIR = themedStyles(
     leaderName: { color: D.text },
     leaderLevel: { color: D.textMuted },
     leaderXp: { color: D.text },
-    wardenTitle: { color: D.text },
-    wardenText: { color: D.textMuted },
   },
 );

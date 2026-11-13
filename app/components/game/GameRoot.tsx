@@ -34,7 +34,6 @@ import { CostQuestShrineView, openVenueEvents, venueEventsAvailable } from "@/mo
 import { emitGameEvent } from "@/modules/costquest-game/src/rnGame";
 import { useAppSelector } from "@/store/hooks";
 
-import AskWarden from "./AskWarden";
 import { GameBannerHost, showBanner } from "./Banner";
 import CoachOverlay from "./Coach";
 import CoinsSheet from "./CoinsSheet";
@@ -64,6 +63,7 @@ import { AR_SHRINE_DEV } from "./prefs";
 import ProfileSheet from "./ProfileSheet";
 import RaidBanner from "./RaidBanner";
 import RecapSheet from "./RecapSheet";
+import RulesSheet from "./RulesSheet";
 import { QuestRunButton, RunChallenge, runDistance, RunHUD, runInReach, RunResults, RunStartSheet, RunTray } from "./Run";
 import { runModel, useRun } from "./runModel";
 import { startLiveTimers } from "./liveTimers";
@@ -98,7 +98,7 @@ type Screen =
   | { kind: "reward"; reward: RewardSummary };
 
 /** What is open over the map (one at a time, closed by Android Back). */
-type Sheet = "dailies" | "codex" | "war" | "more" | "events" | "friends" | "squad" | "collection" | "battle" | "profile" | "coins" | "recap" | "ask" | "trials" | "runStart" | "ranks";
+type Sheet = "dailies" | "codex" | "war" | "more" | "events" | "friends" | "squad" | "collection" | "battle" | "profile" | "coins" | "recap" | "rules" | "trials" | "runStart" | "ranks";
 
 const LOSS_SEEN_KEY = "cq.holdsLost.seen";
 
@@ -555,7 +555,7 @@ function GameRootInner({ parked }: { parked: boolean }) {
   }
   if (me?.tutorial_done) moreTiles.push({ id: "recap", icon: "book", color: GP.skyDeep, title: "Your day", onPress: () => setSheet("recap") });
   // Always there, so More is never a sheet with one button in it.
-  moreTiles.push({ id: "warden", icon: "chatbubble-ellipses", color, title: "Ask the Warden", onPress: () => setSheet("ask") });
+  moreTiles.push({ id: "rules", icon: "document-text", color, title: "Rules", onPress: () => setSheet("rules") });
   moreTiles.push({ id: "profile", icon: "person-circle", color: GP.skyDeep, title: "Profile", onPress: () => setSheet("profile") });
   // Test builds only (AR_SHRINE_DEV): the AR shrine on its own, to prove the iOS AR island on a phone.
   if (AR_SHRINE_DEV && CostQuestShrineView) {
@@ -734,7 +734,7 @@ function GameRootInner({ parked }: { parked: boolean }) {
       {sheet === "coins" ? <CoinsSheet onClose={() => setSheet(null)} /> : null}
       {sheet === "ranks" ? <ProgressionSheet onClose={() => setSheet(null)} /> : null}
       {sheet === "recap" ? <RecapSheet onClose={() => setSheet(null)} /> : null}
-      {sheet === "ask" ? <AskWarden onClose={() => setSheet(null)} /> : null}
+      {sheet === "rules" ? <RulesSheet onClose={() => setSheet(null)} /> : null}
       {sheet === "trials" ? (
         <TrialsSheet
           onClose={() => setSheet(null)}
