@@ -35,7 +35,7 @@ const WINDUP_RATE_MAX: float = 1.7
 # clip at 2.2-2.4x
 const HIT_RATE_MAX: float = 1.3
 const ONE_SHOTS: Array[String] = ["attack_1", "attack_2", "attack_3", "heavy", "parry", "dodge",
-	"skill_charge", "skill_split", "skill_whirl", "skill_rally", "skill_shield"]
+	"skill_charge", "skill_split", "skill_whirl", "skill_rally", "skill_shield", "skill_shoot", "skill_rain", "knockdown"]
 
 # fight-anim: the additive flinch (pose_layer channels on top of whatever clip plays): a fast
 # recoil away from the blow, then an eased return. Real time on the way in (it shows through the
@@ -49,7 +49,12 @@ const FLINCH_ARMS: float = 14.0
 
 const STATES: Array[String] = ["idle", "walk", "run", "attack_1", "attack_2", "attack_3", "heavy",
 	"hit", "guard", "parry", "dodge", "skill_charge", "skill_split", "skill_whirl", "skill_rally",
-	"skill_shield", "death", "victory"]
+	"skill_shield", "death", "victory", "skill_shoot", "skill_rain"]
+# anim-readable (13 Nov 2026): states only a clip library gives (anim_clips.json sets_readable,
+# hero_poses): bigger and smaller hit reactions picked by the blow, the Guardian's knockdown and
+# get-up when a parry staggers it, the hero's own intro beat. A model without them plays "hit" or
+# nothing, as before.
+const LIB_ONLY: Array[String] = ["hit_light", "hit_heavy", "knockdown", "intro"]
 const LOOPING: Array[String] = ["idle", "walk", "run", "sprint", "guard"]
 const LOCO: Array[String] = ["walk", "run", "sprint"]
 # autorig: library-only states (anim_clips.json sets; no alias matching on a model's own clips).
@@ -66,7 +71,7 @@ const VICTORY_RATE_MAX: float = 1.2
 # realism-20261111: foot locking (foot_lock.gd) is on from this much reported RAM, the same tier
 # rule as the landscape fight (5 GiB reported = a 6 GB phone); config "foot_ik" overrides
 const FOOT_IK_MIN_RAM: int = 5 * 1024 * 1024 * 1024
-const FOOT_OFF_STATES: Array[String] = ["death", "dodge", "skill_whirl"]
+const FOOT_OFF_STATES: Array[String] = ["death", "dodge", "skill_whirl", "skill_charge", "skill_split", "knockdown"]
 
 const ALIASES: Dictionary = {
 	"idle": ["idle", "idle_loop", "breathing_idle"],
@@ -85,6 +90,8 @@ const ALIASES: Dictionary = {
 	"skill_whirl": ["whirl", "spin_attack", "spin", "whirlwind"],
 	"skill_rally": ["rally", "buff", "cheer", "shout", "cast"],
 	"skill_shield": ["shield", "barrier", "cast_shield", "spell"],
+	"skill_shoot": ["shoot", "fire", "skill_shoot", "cast_shoot"],
+	"skill_rain": ["rain", "skill_rain", "summon"],
 	"death": ["death", "die", "dying", "defeat", "ko"],
 	"victory": ["victory", "celebrate", "win", "cheer", "dance"],
 }
@@ -116,6 +123,9 @@ const POSES: Dictionary = {
 		[0.8, {"spine_lean": -10, "l_side": 165, "l_bend": 10, "r_side": 35}], [1.0, {}]],
 	"skill_shield": [[0.0, {}], [0.2, {"r_fwd": 85, "r_bend": 95, "l_fwd": 85, "l_bend": 95, "spine_lean": 10}],
 		[0.8, {"r_fwd": 85, "r_side": 30, "l_fwd": 85, "l_side": 30, "spine_lean": -8}], [1.0, {}]],
+	"skill_shoot": [[0.0, {}], [0.3, {"l_fwd": 88, "l_side": 4, "spine_yaw": 18}], [0.42, {"l_fwd": 100, "spine_yaw": 18, "spine_lean": -6}],
+		[0.85, {"l_fwd": 90, "spine_yaw": 16}], [1.0, {}]],
+	"skill_rain": [[0.0, {}], [0.5, {"r_fwd": 175, "r_bend": 5, "spine_lean": -12}], [0.8, {"r_fwd": 165, "spine_lean": -8}], [1.0, {"r_fwd": 95, "spine_lean": 6}]],
 	"death": [[0.0, {}], [0.3, {"spine_lean": -28, "r_side": 55, "l_side": 55}], [1.0, {"spine_lean": -28, "r_side": 70, "l_side": 70}]],
 	"victory": [[0.0, {}], [0.25, {"r_fwd": 170, "r_bend": 10, "spine_lean": -8}], [1.0, {"r_fwd": 170, "r_bend": 10, "spine_lean": -8}]],
 }
@@ -137,6 +147,18 @@ var _warp: Array = []            # [clip time at the hit, speed before it, speed
 var _clip_t: float = 0.0         # where the one-shot clip should be (seconds into the clip)
 var hip_h: float = 0.9           # the model's hip height in metres (locomotion rate)
 var _after: String = ""          # fight-anim: the one-shot that just ended (picks the blend back)
+## anim-readable: a one-shot's tail (anim_clips.json clips.<name>.tail, frames): once the game length is
+## over, a body that stands still and is asked for nothing else plays on past the clip's "out" at its
+## natural speed (SHOOT holds its aim, RAIN's arm comes down to the circle as the volleys fall). Any
+## new state, a walk or a hit ends it at once. Presentation only: the action itself is over.
+var _tail: float = 0.0           # seconds of tail the current one-shot has
+var in_tail: bool = false
+## anim-readable: a standing body breathes (the chest rises and falls) and shifts its weight from foot to
+## foot (the trunk sways over the hips), slowly, on top of the idle clip (opts "breathe")
+var breathe: bool = false
+var _breath_t: float = 0.0
+const BREATH_PERIOD: float = 3.8
+const SHIFT_PERIOD: float = 7.4
 var _victory_idle: bool = false  # fight-anim: the cheer has settled into the idle loop
 var _flinch_t: float = -1.0      # fight-anim: seconds into the current flinch (-1 = none)
 var _flinch_k: float = 0.0       # its strength
@@ -227,6 +249,7 @@ func bind(model: Node3D, body: Node3D, opts: Dictionary = {}) -> Dictionary:
 		natural_rates = bool(opts.get("natural_rates", false))
 		no_bind = bool(opts.get("no_bind", false))
 		run_layer = bool(opts.get("run_layer", false))
+		breathe = bool(opts.get("breathe", false))
 		if bool(opts.get("foot_ik", false)) and not clips.is_empty():
 			var fl := FootLock.new()
 			fl.name = "FootLock"
@@ -395,6 +418,8 @@ func play(st: String, game_len: float = 0.0, hit_at: float = -1.0, blend: float 
 	length = game_len
 	_warp = []
 	_victory_idle = false
+	_tail = 0.0
+	in_tail = false
 	if player == null or not clips.has(st):
 		# no clip: idle/walk still come from the clip map when it has them
 		return false
@@ -443,6 +468,8 @@ func play(st: String, game_len: float = 0.0, hit_at: float = -1.0, blend: float 
 		if hit_at > 0.02:
 			blend = maxf(minf(blend, hit_at * 0.7), minf(hit_at * 0.3, 0.25))
 	_clip_t = t_in
+	if restart and float(m.get("tail", 0)) > 0.0 and a != null:
+		_tail = minf(float(m["tail"]) / fps, maxf(0.0, a.length - t_out))
 	legs_run = false
 	if run_layer and restart and a != null and not _warp.is_empty() and st in MIX_STATES:
 		var mixed: String = ""
@@ -591,7 +618,7 @@ func _flinch_pose() -> Dictionary:
 
 ## True while a one-shot action clip (an attack, skill, parry or dodge) still owns the body.
 func busy_action() -> bool:
-	return length > 0.0 and t < length and state in ONE_SHOTS and clips.has(state)
+	return length > 0.0 and t < length and not in_tail and state in ONE_SHOTS and clips.has(state)
 
 
 ## Locomotion and the procedural pose. `busy` = a one-shot owns the body.
@@ -610,6 +637,8 @@ func update(dt: float, speed_now: float, dead: bool) -> void:
 			base = walk_rate
 		elif not _warp.is_empty():
 			base = float(_warp[1]) if t < float(_warp[3]) else float(_warp[2])
+		elif in_tail:
+			base = 1.0
 		player.speed_scale = 0.0 if frozen else base
 	if state == "victory" and length > 0.0 and t >= length and not _victory_idle and player != null and clips.has("idle"):
 		# fight-anim: the cheer used to freeze on its last frame (a statue); it settles into idle
@@ -617,11 +646,19 @@ func update(dt: float, speed_now: float, dead: bool) -> void:
 		_warp = []
 		player.play(clips["idle"], BLEND_VICTORY_IDLE, 1.0)
 		player.speed_scale = 0.0 if frozen else 1.0
+	if in_tail and speed_now > 0.2:
+		length = t     # a step ends the tail: the walk takes over below
+	if length > 0.0 and t >= length and not (state in HOLD_LAST) and not in_tail and _tail > 0.01 and speed_now <= 0.2 and player != null and clips.has(state):
+		# anim-readable: the tail plays on at the clip's own speed
+		in_tail = true
+		length = t + _tail
+		_warp = []
 	if length > 0.0 and t >= length and not (state in HOLD_LAST):
 		length = 0.0
 		_after = state
 		state = "_"
 		_warp = []
+		in_tail = false
 	if length <= 0.0 and not dead and not (state in HOLD_LAST) and state != "guard":
 		var want: String = "idle"
 		# run once a walk would have to play much faster than it was made
@@ -665,6 +702,16 @@ func update(dt: float, speed_now: float, dead: bool) -> void:
 			p = p.duplicate()
 			for rk: String in READY_POSE:
 				p[rk] = float(p.get(rk, 0.0)) + float(READY_POSE[rk]) * _ready_w
+		if breathe and not dead and (state == "idle" or state == "_" or state == "guard"):
+			_breath_t += dt
+			p = p.duplicate()
+			var br: float = sin(TAU * _breath_t / BREATH_PERIOD)
+			var sh: float = sin(TAU * _breath_t / SHIFT_PERIOD)
+			p["spine_lean"] = float(p.get("spine_lean", 0.0)) - 1.4 * br
+			p["spine_tilt"] = float(p.get("spine_tilt", 0.0)) + 2.2 * sh
+			p["spine_yaw"] = float(p.get("spine_yaw", 0.0)) + 1.2 * sin(TAU * _breath_t / (SHIFT_PERIOD * 1.3))
+			p["r_side"] = float(p.get("r_side", 0.0)) + 1.5 * br
+			p["l_side"] = float(p.get("l_side", 0.0)) + 1.5 * br
 		var fl: Dictionary = _flinch_pose()
 		if not fl.is_empty():
 			p = p.duplicate()

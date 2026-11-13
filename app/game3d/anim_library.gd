@@ -20,6 +20,12 @@ static var motion: String = ""
 ## clip's upper body on the classic clip's hips and legs: combat_animator.gd mixes them when the
 ## swing starts). `state_modes` (fight config "motion_states") overrides single states, for A/B runs.
 static var state_modes: Dictionary = {}
+## anim-readable (13 Nov 2026): every button's own readable body action (anim_clips.json sets_readable,
+## picked per character under the tear gate: characters.<key>.pick_readable) and each faction hero's
+## own victory and intro (hero_poses: characters.<key>.pick_poses), on top of whatever the motion
+## switch chose. -1 = the data's "readable_default", 0 = off (build 25's clips to the frame), 1 = on.
+## fight.gd sets it from the config ("readable").
+static var readable: int = -1
 
 ## realism (12 Nov 2026): clip grips of characters registered at run time (key -> {class: grip}),
 ## read by fight.gd beside attach.json's.
@@ -339,4 +345,32 @@ static func states_for(cls: String, key: String = "") -> Dictionary:
 			if not lower.is_empty() and str(lower.get("clip", "")) != name2:
 				m2["lower"] = lower    # the classic clip whose hips and legs carry this one's upper body
 			out[st] = m2
+	# the readable picks win over the overlay too: they are the actions the buttons promise
+	_readable_overlay(out, d, sname, ch, clips)
 	return out
+
+
+## anim-readable: true when the readable clips play (config "readable", else the data's default).
+static func readable_now() -> bool:
+	if readable >= 0:
+		return readable == 1
+	return bool(data().get("readable_default", false))
+
+
+## anim-readable: the character's readable picks for this weapon set, and its own victory and intro,
+## into `out` (state -> clip metadata). A state with no pick keeps what is there.
+static func _readable_overlay(out: Dictionary, d: Dictionary, sname: String, ch: Dictionary, clips: Dictionary) -> void:
+	if not readable_now() or ch.is_empty():
+		return
+	var pr: Dictionary = ((ch.get("pick_readable", {}) as Dictionary).get(sname, {}) as Dictionary)
+	var poses: Dictionary = ch.get("pick_poses", {})
+	for src: Dictionary in [pr, poses]:
+		for st: String in src:
+			var name: String = str(src[st])
+			var c: Dictionary = clips.get(name, {})
+			if name == "" or c.is_empty():
+				continue
+			var m: Dictionary = c.duplicate()
+			m["clip"] = name
+			m["readable"] = true
+			out[st] = m

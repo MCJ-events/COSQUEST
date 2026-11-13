@@ -508,6 +508,10 @@ func _ready() -> void:
 	# hero_hp / enemy_hp: test and capture knobs (a quick win or loss); the app never sends them
 	AnimLib.motion = str(cfg.get("motion", "hybrid" if bool(cfg.get("motion_realism", false)) else "classic"))
 	AnimLib.state_modes = (cfg["motion_states"] as Dictionary) if cfg.get("motion_states") is Dictionary else {}
+	# anim-readable (13 Nov 2026): every button's own body action, sized hit reactions, the Guardian's
+	# knockdown, the hero's intro and victory, breathing and turning steps. Presentation only (the
+	# rules, hit frames and cooldowns are untouched). "readable": false plays build 25's clips.
+	AnimLib.readable = (1 if bool(cfg["readable"]) else 0) if cfg.has("readable") else -1
 	_ready_pose = bool(cfg.get("ready_pose", true))
 	hero = _spawn(str(cfg.get("hero_name", "You")), 0, int(cfg.get("hero_hp", HERO_HP)), Color(0.3, 0.75, 0.35), Vector3(0.3, 0, 3.6), PI, "hero")
 	ally = _spawn(str(cfg.get("ally_name", "Ally")), 0, ALLY_HP, Color(0.3, 0.65, 0.9), Vector3(3.0, 0, 4.4), PI, "ally")
@@ -567,6 +571,8 @@ func _ready() -> void:
 		(pair[0] as FighterScript).aim_hold = bool(cfg.get("aim_hold", mr))
 		(pair[0] as FighterScript).weight_fx = bool(cfg.get("weight", mr))
 		(pair[0] as FighterScript).real_speed = bool(cfg.get("real_speed", mr))
+		(pair[0] as FighterScript).turn_steps = AnimLib.readable_now()
+		(pair[0] as FighterScript).anim_opts["breathe"] = AnimLib.readable_now()
 		p = _tier_lod(p, role)
 		# realism: a clip library that came with a downloaded model (anim.glb + anim.json beside it)
 		var side_key: String = AnimLib.register_sidecar(p)
@@ -768,6 +774,8 @@ func _after_intro() -> void:
 		hero.rotation.y = hero.yaw
 	state = "intro"
 	hud.visible = false     # the shot is the hero's: no controls over it (they come back with the clock)
+	if AnimLib.readable_now() and hero.anim.has_clip("intro"):
+		hero.act("intro", BEAT_LEN)   # anim-readable: the hero's own intro pose (anim_clips.json hero_poses)
 	_log("intro hero beat")
 
 
@@ -1853,8 +1861,14 @@ func _cast(slot: int) -> void:
 	stats["skill_uses"] = int(stats["skill_uses"]) + 1
 	(stats["skills"] as Array)[slot] = int((stats["skills"] as Array)[slot]) + 1
 	_combo_next = 0
-	# SHOOT plays the cast-and-shoot clip (the state the ally's bolt uses), RAIN the raised-arm cast
+	# SHOOT plays the cast-and-shoot clip (the state the ally's bolt uses), RAIN the raised-arm cast.
+	# anim-readable: their own states (skill_shoot: aim, fire with a recoil, hold; skill_rain: the arm to
+	# the sky, then down at the circle) where the character has them or has no clip for the old ones
 	var names: Array[String] = ["skill_charge", "skill_split", "skill_whirl", "skill_rally", "skill_shield", "attack_2", "skill_rally"]
+	if AnimLib.readable_now():
+		for pair: Array in [[5, "skill_shoot"], [6, "skill_rain"]]:
+			if hero.anim.has_clip(str(pair[1])) or not hero.anim.has_clip(names[int(pair[0])]):
+				names[int(pair[0])] = str(pair[1])
 	hero.act(names[slot], _act_len, SKILL_HIT_AT[slot])
 	# aim: the stick if pushed, else the boss if near, else the facing
 	var aim: Vector3 = _stick_world()
@@ -2010,7 +2024,13 @@ func _fire_shot() -> void:
 	area.global_position = p
 	area.open({"src": hero, "kind": "shoot", "dmg": SHOOT_DMG, "kb": 0.2, "stop": 2.0 / 60.0, "heavy": false})
 	_shots.append({"mi": mi, "area": area, "dir": _skill_dir, "left": SHOOT_RANGE})
-	fx.muzzle(p, p + _skill_dir, SHOOT_COLS)
+	# anim-readable: the flash leaves the hand that aims (the shot's own path is unchanged)
+	var muzzle: Vector3 = p
+	if hero.anim.state == "skill_shoot" and hero.anim.has_clip("skill_shoot"):
+		var hp: Vector3 = hero.bone_pos("LeftHand" if not str(hero.anim.timing.get("skill_shoot", {}).get("contact_class", "")).begins_with("rifle") else "RightHand")
+		if hp != Vector3.INF:
+			muzzle = hp + _skill_dir * 0.12
+	fx.muzzle(muzzle, muzzle + _skill_dir, SHOOT_COLS)
 	fx.ring(hero.position, 0.8, Color(SHOOT_COLS[0], 0.8), 0.25)
 	sfx.play("dash", 1.6)
 	_buzz("hit", 0.3)
@@ -2250,6 +2270,8 @@ func _apply_hit(src: FighterScript, dst: FighterScript, info: Dictionary) -> voi
 	if crit:
 		stats["crits"] = int(stats["crits"]) + 1
 		sfx.crit()
+	if left > 0 and AnimLib.readable_now():
+		dst.hit_size(left, heavy, crit)   # anim-readable: the reaction sized to the blow (presentation)
 	if dst == hero and left > 0:
 		hud.hurt()
 		_shake_cam(0.14, 0.2)
@@ -2329,7 +2351,13 @@ func _stagger_enemy(secs: float, parried: bool) -> void:
 	_boss_area.close()
 	_enemy_state = "staggered"
 	_enemy_t = 0.0
-	enemy.act("hit", minf(secs, 0.5))
+	if AnimLib.readable_now() and secs >= 1.2 and enemy.anim.has_clip("knockdown"):
+		# anim-readable: a parried Guardian goes down and gets up again inside the stagger the rules give it
+		enemy.act("knockdown", secs)
+	else:
+		if AnimLib.readable_now():
+			enemy.hit_size(200, true, false)
+		enemy.act("hit", minf(secs, 0.5))
 	enemy.knock(_flat(enemy.position - hero.position), 0.6 if parried else 0.3)
 
 

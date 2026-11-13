@@ -42,6 +42,7 @@ from gltf import (Glb, Pose, mat_to_q, q_from_to, qinv, qmul, qnorm, qrot, qsler
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "rig"))
 from secondary import Secondary  # noqa: E402
+from compose import clip_gates, compose_frames  # noqa: E402
 
 FPS = 30.0
 
@@ -402,6 +403,17 @@ def clip_frames(rt, cfg, cc, damp, anims_lib, grips, lib):
     return times, n, length, mode, off, raw_end, frames, Gs_t, ikw
 
 
+def compose_needs(cfg, cname):
+    """Every source clip a composed clip reads, through nested compositions."""
+    spec = cfg["clips"][cname].get("compose")
+    if not spec:
+        return [cname]
+    out = []
+    for s in list(spec.get("base", [])) + list(spec.get("layers", [])):
+        out += compose_needs(cfg, s["clip"])
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--src", required=True)
@@ -493,13 +505,21 @@ def main():
     t_lhand = tgt.names.index("LeftHand")
     t_rhand = tgt.names.index("RightHand")
     floor_rest = min(gpos(rt.t_rest_G, t_lfoot)[1], gpos(rt.t_rest_G, t_rfoot)[1])
+    comp_cache = {}
     for cname in clip_names:
         cc = cfg["clips"][cname]
         lib = cc.get("lib", "kaykit")
-        if lib not in rts:
-            continue
-        rt = rts[lib]
-        times, n, length, mode, off, raw_end, frames, Gs_t, ikw = clip_frames(rt, cfg, cc, damp, anims[lib], grips, lib)
+        if "compose" in cc:
+            # anim-readable: a clip composed from other clips of this character (compose.py)
+            if not all(cfg["clips"].get(x, {}).get("lib", "kaykit") in rts for x in compose_needs(cfg, cname)):
+                continue
+            rt = rts["kaykit"]
+            times, n, length, mode, off, raw_end, frames, Gs_t, ikw = compose_frames(cname, cfg, rts, anims, damp, grips, comp_cache, clip_frames)
+        else:
+            if lib not in rts:
+                continue
+            rt = rts[lib]
+            times, n, length, mode, off, raw_end, frames, Gs_t, ikw = clip_frames(rt, cfg, cc, damp, anims[lib], grips, lib)
         # --- checks
         feet_low = []
         for G in Gs_t:
@@ -571,8 +591,9 @@ def main():
             k0 = int(lo * (n - 1))
             k1 = max(k0 + 1, int(hi * (n - 1)))
             contact = int(np.argmax(v[k0:k1]) + k0 + 1)
+        gates = clip_gates(rt, Gs_t, grips, cc, contact, floor_rest)
         report["clips"][cname] = {
-            "src": cc["src"], "frames": n, "fps": FPS, "length_s": round(length, 3), "contact": contact,
+            "src": cc.get("src", "compose"), "frames": n, "fps": FPS, "length_s": round(length, 3), "contact": contact,
             "root": mode, "root_end_raw_m": [round(float(x), 3) for x in raw_end],
             "sway_max_m": round(float(np.max(np.linalg.norm(off[:, [0, 2]], axis=1))), 3),
             "feet_min_m": round(float(feet_low.min()), 3), "feet_max_m": round(float(feet_low.max()), 3),
@@ -580,6 +601,7 @@ def main():
             "tear_share": round(tear_share, 5), "tear_p99": round(tear_p99, 3), "tears": tear_share > 0.005,
             "tear_where": tear_where, "tear_share_chains_rigid": round(max(tears_rigid), 5) if tears_rigid else None,
             "lhand_ik_frames": int(sum(1 for x in ikw if x > 0.5)),
+            "gates": gates,
             "weapon": wchk}
         lib_anims.append((cname, np.arange(len(frames)) / FPS if cc.get("range") else times, frames))
         print("CLIP %-22s n=%3d tear=%.4f %s p99=%.2f feet=[%.3f,%.3f] slide=%.2f contact=%s weapon=%s" % (

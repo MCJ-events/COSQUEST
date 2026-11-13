@@ -303,3 +303,51 @@ id is unchanged. All clips are CC0 (KayKit Adventurers 1.0, Quaternius UAL).
 ### Round 3 (12 Nov 2026)
 
 **A standing fighter stands** (`foot_lock.gd`, `STAND_*`). While the body is not walking or running, a pin that is off by less than 15 cm is never stepped away: the hips move over the feet (half the feet's mean offset, up to 9 cm, slowly) and sink. A larger offset takes one clean step, after the clip has held the foot still for 0.3 s (so a blend back to the stance is waited out), or at once when it is 40 cm off or the leg cannot reach its pin even with the hips sunk. A pin that does not hold the whole foot holds the ball of the foot.
+
+## Readable actions (anim-readable, 13 Nov 2026)
+
+Every button now has its own body action, timed to the existing hit moments and cooldowns, so the rules
+(`f3d-2-e872f23a43a5`), the hit windows and every seeded record are unchanged. **On by default on every tier**
+(`anim_clips.json` `readable_default`); the fight config `"readable": false` plays build 25's clips (A/B and tests).
+Feedback that started it (Adewale, team PM): the effects showed a skill landed, but the body did not do it.
+
+| button | state | what the body does | hit moment (unchanged) |
+|---|---|---|---|
+| ATTACK | `attack_1..3` | a left-to-right cut from a coiled trunk (`R_Atk1`), a right-to-left backhand turned onto the target (`R_Atk2`), a two-handed overhead slam (`R_Atk3`, or the turned overhead chop `R_Atk3_k` where the slam tears); the off hand comes in | 0.11 s, 0.11 s, 0.235 s |
+| SHOOT | `skill_shoot` (new; was `attack_2`) | the off hand comes up straight at the target, fires with a recoil (arm kicks up, chest back) and holds the aim for 0.5 s while the body stands; guns: the rifle shot | 0.12 s |
+| RAIN | `skill_rain` (new; was `skill_rally`) | the weapon arm and the eyes go up to the sky, then the arm comes down to point at the marked circle as the volleys fall | 0.3 s (the arm is up) |
+| DASH | `skill_charge` | a crouch, then a sprint stride leaning 30 degrees into a forward thrust | 0.18 s |
+| SHIELD | `skill_shield` | a braced, lowered stance, the off forearm raised like a shield, pushing out as the barrier goes up | 0.2 s |
+| SPLIT | `skill_split` | a crouch, a jump with the weapon raised overhead, the slam on landing (no procedural hop on top) | 0.34 s |
+| WHIRL | `skill_whirl` | unchanged: the spin was already a full turn with the weapon out | 0.08, 0.30 s |
+| RALLY | `skill_rally` | a crouch, then both arms thrown up with the chest out and the head back | 0.25 s |
+| GUARD | `guard`, `parry` | a low block stance with the weapon across; the parry a fast deflection | `PARRY_HIT_AT` |
+
+**How the clips are made.** `tools/anim/compose.py`: a clip in `clips.json` with a `"compose"` entry is built from
+other clips already retargeted onto the same character (KayKit, Quaternius UAL, CMU, Mesh2Motion): segments
+retimed onto the output frames, bone groups layered from another clip, and turns, arm aims (two-bone IK, in
+the character's own forward frame) and hip offsets keyed on top. So one recipe works on every rig, and the
+result goes through the same tear gate (worst of LOD0 to LOD2, 0.5 %) and checks as any clip. Each state has a
+gentler alternate (`_s`, legs bending less; `_k`, from KayKit's smaller clips) for robes and capes; a character
+where none passes keeps what it played before. `clips.json`: `sets_readable` (per weapon set), `hero_poses`
+(per faction hero). Composed clips carry `contact` (lands on the game's hit moment through the usual two-piece
+warp), `out` (the end of the game-length part) and `tail` (frames that play on past it while the fighter stands
+still: SHOOT keeps its aim, RAIN's arm comes down at the circle; a step, a hit or any new state ends it).
+The report of each clip has `gates`: the weapon direction at the contact against forward (no backward attacks),
+T-pose frames and planted-foot slide per step.
+
+**Character animation generally** (same switch):
+- hit reactions sized to the blow (`fighter.hit_size`): under 80 plays `hit_light`, 110 and more, heavy blows and
+  crits `hit_heavy` (the trunk and head thrown back, the hips driven back and down), the rest `hit`;
+- the Guardian knocked down and back up (`knockdown`) when a parry staggers it for 1.6 s, where its rig passes the
+  gate (else the heavy hit), and a heavy hit for SPLIT's 0.8 s stagger;
+- each faction hero's own intro beat and victory (`hero_poses`: Imani salutes and pumps a fist, Zuri charges her
+  open hand and raises it, Tavo sets a guard, Oren holds his weapon ready, Lyra opens her arms, Kofi bounces on
+  his toes and leaps to celebrate);
+- a standing fighter breathes and shifts its weight (an additive sway on the idle and guard);
+- a fighter turning on the spot steps round (the walk's legs for 0.32 s) instead of pivoting on planted feet;
+- readable clips are drawn facing their target from the first frames to the contact on every tier (`READABLE_AIM`).
+
+**Building.** `tools/anim/build_readable.sh [cast|heroes|forge|all]` rebuilds every library (the cast first: it
+recomputes the shared clip data; then the faction heroes with `add_hero.sh` from `HERO_SRC`, then the Forge
+proofs). Tests: `tests/readable_test.gd`. Review recordings: `tools/anim/button_rec.gd`.

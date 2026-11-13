@@ -175,6 +175,19 @@ const AIM_AFTER: float = 0.14           # s the aim is held after the contact
 var aim_hold: bool = false              # config "aim_hold" (on with "motion_realism")
 var _aim_yaw: float = 0.0
 var _aim_t: float = 0.0
+## anim-readable (13 Nov 2026): a readable clip (anim_clips.json sets_readable) is drawn facing the target
+## it was aimed at, from its first frames to its contact, on every tier (not only with "aim_hold"): SHOOT
+## holds its aim through its tail, RAIN faces its circle. Presentation only.
+const READABLE_AIM: Array[String] = ["attack_1", "attack_2", "attack_3", "skill_shoot", "skill_rain", "skill_charge", "skill_split", "parry"]
+var _next_hit: String = ""        # anim-readable: the hit reaction the next act("hit") plays (hit_size)
+## anim-readable: a body that turns on the spot steps round (the walk's legs for a moment) instead of
+## pivoting on its planted feet. Config "readable" (fight.gd sets it).
+var turn_steps: bool = false
+const TURN_STEP_RATE: float = 2.6        # rad/s of yaw change that counts as a turn on the spot
+const TURN_STEP_HOLD: float = 0.32       # s the legs step after it
+const TURN_STEP_SPEED: float = 1.0       # m/s the legs are animated at while they step round
+var _turn_prev: float = NAN
+var _turn_step_t: float = 0.0
 ## realism-20261111 (presentation only): weight. The attacker's body leans into the blow round
 ## the contact, the victim's hips give with the flinch (with the feet locked, both read as weight).
 const LUNGE_M: float = 0.11             # m at size 1
@@ -838,6 +851,16 @@ func hold_weapon(weapon: Node3D, att: Dictionary, side: String, cls: String) -> 
 
 
 ## The weapon's grip point (the hand) in the world, or Vector3.INF.
+## anim-readable: a bone's position in the world (Vector3.INF when there is no such bone).
+func bone_pos(bone: String) -> Vector3:
+	if anim == null or anim.skeleton == null or not anim.skeleton.is_inside_tree():
+		return Vector3.INF
+	var i: int = anim.skeleton.find_bone(bone)
+	if i < 0:
+		return Vector3.INF
+	return anim.skeleton.global_transform * anim.skeleton.get_bone_global_pose(i).origin
+
+
 func grip_point(side: String = "r") -> Vector3:
 	if weapons.has(side):
 		return (weapons[side]["node"] as Node3D).global_position
@@ -857,9 +880,17 @@ func act(state: String, length: float, hit_at: float = -1.0) -> bool:
 		return anim.has_clip("death")
 	if state != "death":
 		anim.variant.erase(state)
+	if state == "hit" and _next_hit != "" and anim.has_clip(_next_hit):
+		anim.variant["hit"] = _next_hit
+	_next_hit = ""
 	var clip: bool = anim.play(state, length, hit_at)
 	_hit_at = hit_at
-	if aim_hold and state in AIM_STATES:
+	var tm: Dictionary = anim.timing.get(state, {})
+	if clip and bool(tm.get("readable", false)) and state in READABLE_AIM:
+		# anim-readable: on the target by the contact, held through the clip's tail
+		_aim_yaw = yaw + deg_to_rad(float(tm.get("aim_yaw_deg", 0.0)))
+		_aim_t = (hit_at if hit_at > 0.0 else length * 0.5) + AIM_AFTER + float(tm.get("tail", 0)) / float(tm.get("fps", 30.0))
+	elif aim_hold and state in AIM_STATES:
 		# round 2: a clip whose swing lands to one side of its own forward (the classic chop cuts 35
 		# to 55 degrees to the right) is turned by its "aim_yaw_deg" so the blade meets the target
 		_aim_yaw = yaw + deg_to_rad(float((anim.timing.get(state, {}) as Dictionary).get("aim_yaw_deg", 0.0)))
@@ -912,8 +943,20 @@ func hit_pause(secs: float) -> void:
 ## that change the game (the hero's interrupted swing, a stagger) keep calling act("hit").
 func react_hit(length: float) -> void:
 	if anim.busy_action():
+		_next_hit = ""
 		return
 	act("hit", length)
+
+
+## anim-readable: sizes the next hit reaction to the blow (presentation only): a light one (under 80,
+## not heavy) plays "hit_light", a heavy blow, a crit or 110 and more plays "hit_heavy", the rest "hit".
+## Each only when this character's library has it.
+func hit_size(amount: int, heavy: bool, crit: bool) -> void:
+	_next_hit = ""
+	if heavy or crit or amount >= 110:
+		_next_hit = "hit_heavy"
+	elif amount < 80:
+		_next_hit = "hit_light"
 
 
 ## look-fight: the body shakes side to side for `secs` (the hit-stop), `amp` metres, fading.
@@ -1082,6 +1125,16 @@ func tick_visual(dt: float) -> void:
 		if _smooth_pos == Vector3.INF or (_smooth_pos - global_position).length() > 1.0:
 			_smooth_pos = global_position
 		_smooth_pos = _smooth_pos.lerp(global_position, 1.0 - exp(-dt * 9.0))
+	if turn_steps and dt > 0.0 and not anim_freeze:
+		if not is_nan(_turn_prev) and not dead:
+			var dyaw: float = absf(wrapf(yaw - _turn_prev, -PI, PI))
+			if dyaw / dt > TURN_STEP_RATE and anim_speed < 0.2 and anim.state in ["idle", "_", "walk"]:
+				_turn_step_t = TURN_STEP_HOLD
+		_turn_prev = yaw
+		if _turn_step_t > 0.0:
+			_turn_step_t -= dt
+			if anim_speed < 0.2 and anim.state in ["idle", "_", "walk"] and not dead:
+				anim_speed = TURN_STEP_SPEED
 	anim.update(dt, anim_speed, dead or celebrating)
 	var vdt: float = 0.0 if anim_freeze else dt
 	var pos := Vector3.ZERO

@@ -38,7 +38,7 @@ def main():
                 lost.append("%s %s (%s %.2f %%)" % (kind, st, first, rep.get(first, {}).get("tear_share", 0) * 100))
             elif picks["blade"][st] != e["clip"]:
                 lost.append("%s %s: %s -> %s" % (kind, st, e["clip"], picks["blade"][st]))
-    used = sorted({v for sp in list(ch["pick"].values()) + list(ch.get("pick_mocap", {}).values()) for v in sp.values() if v})
+    used = sorted({v for sp in list(ch["pick"].values()) + list(ch.get("pick_mocap", {}).values()) + list(ch.get("pick_readable", {}).values()) + [ch.get("pick_poses", {})] for v in sp.values() if v})
     worst_used = max(rep[c]["tear_share"] for c in used if c in rep)
     hy = data.get("hybrid_states", {}).get("blade", {})
     plays = {}
@@ -50,6 +50,9 @@ def main():
     print("HERO %s clips_in_library=%d worst_tear_of_used=%.2f%% hip_scale=%s" % (key, len(used), worst_used * 100, ch.get("hip_scale")))
     print("  plays (sword, hybrid):", json.dumps(plays))
     print("  lost to the gate or replaced (sword set):", "; ".join(lost) if lost else "nothing")
+    rd = ch.get("pick_readable", {}).get("blade", {})
+    if rd:
+        print("  readable (sword):", json.dumps(rd), "poses:", json.dumps(ch.get("pick_poses", {})))
     if out:
         os.makedirs(out, exist_ok=True)
         shutil.copy(os.path.join(GAME, "anim", key + ".glb"), os.path.join(out, "anim.glb"))

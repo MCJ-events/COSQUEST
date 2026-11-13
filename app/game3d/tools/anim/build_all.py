@@ -127,10 +127,27 @@ def main():
                         got = cand
                         break
                 pick_mocap[sname][st] = got
+        # anim-readable: every button's own action (clips.json sets_readable), per set and state the first
+        # of the clip and its alternates under the gate ("" = keep what the other switches give), and the
+        # faction hero's own victory and intro (hero_poses, by key)
+        def first_ok(e, st):
+            g = cfg.get("gate_by_state", {}).get(st, a.gate)
+            for cand in [e["clip"]] + e.get("alt", []):
+                v = rep["clips"].get(cand)
+                if v is not None and v["tear_share"] <= g:
+                    return cand
+            return ""
+        pick_readable = {sname: {st: first_ok(e, st) for st, e in sset.items()} for sname, sset in cfg.get("sets_readable", {}).items()}
+        pick_poses = {st: first_ok(e, st) for st, e in cfg.get("hero_poses", {}).get(key, {}).items()}
+        pick_poses = {k: v for k, v in pick_poses.items() if v}
         chars[key] = {"status": "clips", "library": "res://anim/%s.glb" % key, "pick": pick,
                       "source_lod": a.lod, "fingerprint": {b: rep["fingerprint"][b] for b in FP_BONES},
                       "tear_worst": round(worst, 4), "clips_over_gate": torn,
                       "hip_scale": round(rep["hip_scale"], 3)}
+        if pick_readable:
+            chars[key]["pick_readable"] = pick_readable
+        if pick_poses:
+            chars[key]["pick_poses"] = pick_poses
         if pick_mocap:
             chars[key]["pick_mocap"] = pick_mocap
             # the overlay's loops keep this character's own ground speed (a robe's damped legs take a
@@ -160,7 +177,7 @@ def main():
             print("TEARS", key, missing)
             continue
         # the library ships only the clips this character plays
-        used = sorted({v for sp in list(pick.values()) + list(pick_mocap.values()) for v in sp.values() if v})
+        used = sorted({v for sp in list(pick.values()) + list(pick_mocap.values()) + list(pick_readable.values()) + [pick_poses] for v in sp.values() if v})
         c3 = list(cmd)
         c3[c3.index("--report") + 1] = rep_path + ".pruned.json"
         r2 = subprocess.run(c3 + ["--only", ",".join(used)], capture_output=True, text=True)
@@ -195,7 +212,7 @@ def main():
             clips_out[c]["contact"] = override
         elif cs:
             clips_out[c]["contact"] = cs[len(cs) // 2]
-        for k in ("in", "out", "spin", "source", "aim_yaw_deg"):   # cq 016: spin = the clip turns the body itself (no procedural spin on top)
+        for k in ("in", "out", "spin", "source", "aim_yaw_deg", "tail", "contact_class"):   # cq 016: spin = the clip turns the body itself (no procedural spin on top)
             if k in cfg["clips"][c]:
                 clips_out[c][k] = cfg["clips"][c][k]
     data = {
@@ -208,6 +225,8 @@ def main():
         "set_base": cfg.get("set_base", {}),
         "motion_default": cfg.get("motion_default", "classic"),
         "hybrid_states": cfg.get("hybrid_states", {}),
+        "sets_readable": cfg.get("sets_readable", {}),
+        "readable_default": cfg.get("readable_default", False),
         "clips": dict(sorted(clips_out.items())),
         "characters": dict(sorted(chars.items())),
     }
