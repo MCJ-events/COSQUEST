@@ -10,6 +10,7 @@ import { useEffect, useMemo, useSyncExternalStore } from "react";
 import { type Armory, buildArmory } from "@/features/waleui/armory";
 import { buyWeapon, fetchMe, type ProgMe, refusalText } from "@/features/game/progression";
 import { gameStore, useGame } from "@/features/game/runtime";
+import { hasOwnHomePicture } from "@/features/waleui/homeAvatar";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { fetchCurrentUser } from "@/store/thunks/userThunks";
 import { getAvatarSource } from "@/utils/callHelpers";
@@ -17,6 +18,8 @@ import { getAvatarSource } from "@/utils/callHelpers";
 export type WaleProfile = {
   name: string;
   avatar: ReturnType<typeof getAvatarSource> | null;
+  /** For Wale's Home avatar slot only: the player's own photo or chosen preset; null for the default preset or none (then the faction bust shows). */
+  homeAvatar: ReturnType<typeof getAvatarSource> | null;
   level: number | null;
   /** XP inside the level and the level's span, for the bar. */
   xpHave: number | null;
@@ -46,6 +49,7 @@ export function useWaleProfile(): WaleProfile {
     return {
       name,
       avatar: profile ? getAvatarSource({ avatarKey: profile.avatarKey, avatarPhotoUrl: profile.avatarPhotoUrl } as never) : null,
+      homeAvatar: hasOwnHomePicture(profile) ? getAvatarSource({ avatarKey: profile?.avatarKey, avatarPhotoUrl: profile?.avatarPhotoUrl } as never) : null,
       level: st ? st.level : null,
       xpHave: st ? st.into_level : null,
       xpNeed: st ? st.level_span : null,

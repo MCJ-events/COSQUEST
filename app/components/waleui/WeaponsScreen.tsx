@@ -18,7 +18,6 @@
 // the box his archer fills, over his street web; his own archer shows only when
 // the faction is unknown. The attack panel is his five buttons (the same sprites the
 // fight HUD uses, game3d/art/hud/wale, copied to assets/images/waleui).
-import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
@@ -32,7 +31,7 @@ import { fight3dAvailable } from "@/features/game3d/flags";
 import { buyArmoryWeapon, useArmory } from "./data";
 import { back, notBuiltYet } from "./go";
 import { useFactionHero } from "./heroArt";
-import { Art, At, Band, DesignCanvas, Footer, LineIcon, T, Tap, W, glass } from "./kit";
+import { Art, At, Band, DesignCanvas, LineIcon, Padlock, T, Tap, W, WaleFooter, glass } from "./kit";
 
 const FW = 403;
 
@@ -109,7 +108,7 @@ function Card({ w, x, y, onPress, bare }: { w: ArmoryWeapon; x: number; y: numbe
         </T>
       </View>
       <View style={{ position: "absolute", left: 9.5, top: 141, width: 99, flexDirection: "row", alignItems: "center", gap: 3 }}>
-        {w.state === "available" ? <LineIcon name="arrow-up" size={8.5} color={W.pink} stroke={2.6} /> : <Ionicons name={owned ? "checkmark" : "lock-closed"} size={8} color={owned ? W.pink : W.inkSoft} />}
+        {w.state === "available" ? <LineIcon name="arrow-up" size={8.5} color={W.pink} stroke={2.6} /> : owned ? <LineIcon name="check" size={9} color={W.pink} stroke={2.6} /> : <Padlock size={9} />}
         <T size={7} weight={700} color={live ? W.pink : W.inkSoft} style={{ lineHeight: 10 }}>
           {w.status}
         </T>
@@ -173,7 +172,7 @@ export function WeaponsScreen() {
         </T>
       </At>
       <View style={{ position: "absolute", left: 0, top: L.lineY, width: FW, height: 1, backgroundColor: "rgba(255,255,255,0.7)" }} />
-      <Footer y={L.footerY} w={FW} path="COSQUEST  /  ARMORY / COLLECTION" x={17.5} testID="wale-weapons-footer" />
+      <WaleFooter y={L.footerY} w={FW} path="COSQUEST  /  ARMORY / COLLECTION" x={17.5} testID="wale-weapons-footer" />
     </DesignCanvas>
   );
 }
@@ -342,7 +341,7 @@ export function WeaponDetailScreen({ id }: { id?: string | null }) {
         </T>
         <LineIcon name="arrow-right" size={30} color="#FFFFFF" stroke={1.8} />
       </Tap>
-      <Footer y={921.5} w={FW} path={`COSQUEST / ARMORY / ${w.name.toUpperCase()}`} testID="wale-weapon-footer" />
+      <WaleFooter y={921.5} w={FW} path={`COSQUEST / ARMORY / ${w.name.toUpperCase()}`} testID="wale-weapon-footer" />
     </DesignCanvas>
   );
 }

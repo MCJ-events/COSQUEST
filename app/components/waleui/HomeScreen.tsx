@@ -12,15 +12,15 @@
 // The hero slot shows the player's own faction hero (heroArt.ts), standing in
 // the box his character fills, and falls back to his cut-out character only
 // when the faction is unknown (signed out, no faction yet). Never the 3D Forge
-// avatar. The rank badge stays the code-drawn Roman numeral one (Mark), sized
-// to fill the box his badge art fills.
+// avatar. The rank badge is his own badge art for the player's rank
+// (RankBadgeArt.tsx) with the rank as a Roman numeral on the tab (Mark).
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import { useState } from "react";
+import { View } from "react-native";
 
-import { RankBadge } from "@/components/game/RankBadge";
 import { spaced, xpRatio } from "@/features/waleui/armory";
 
 import { useGame } from "@/features/game/runtime";
@@ -28,6 +28,7 @@ import { useGame } from "@/features/game/runtime";
 import { useProgMe, useWaleProfile } from "./data";
 import { notBuiltYet, openGameSheet, openMap } from "./go";
 import { useFactionHero } from "./heroArt";
+import { BADGE_CELL, WaleRankBadge } from "./RankBadgeArt";
 import { Art, At, DesignCanvas, Hexagon, LineIcon, T, Tap, W, glass } from "./kit";
 
 /** His art and the box each piece fills in the 403 x 575 frame (x, y, w, h), measured from the cut-outs. */
@@ -36,11 +37,18 @@ const ART = {
   hero: { src: require("@/assets/images/waleui/home_hero.png"), x: 97.25, y: 83.25, w: 153, h: 404.5 },
   xp: { src: require("@/assets/images/waleui/xp_shield.png"), x: 62.75, y: 43.5, w: 16.5, h: 15.25 },
   coin: { src: require("@/assets/images/waleui/coin.png"), x: 205.75, y: 21.5, w: 20.25, h: 17.5 },
-  // the second currency slot (his frame: a gem at 278.5, 21.5, 16.5 x 15.5): his XP shield in its place
-  xp2: { src: require("@/assets/images/waleui/xp_shield.png"), x: 278.5, y: 21.75, w: 16.5, h: 15.25 },
+  // the second currency slot: his pink XP coin, as drawn in that slot
+  xp2: { src: require("@/assets/images/waleui/xp_coin.png"), x: 278, y: 20.75, w: 17.5, h: 17.75 },
   map: { src: require("@/assets/images/waleui/map_pin.png"), x: 265.75, y: 326.5, w: 98, h: 73.5 },
 } as const;
 type Pic = { src: number; x: number; y: number; w: number; h: number };
+
+/** His badge's box on the Homepage, and the scale that puts rank IV's badge exactly in it. */
+const BADGE_BOX = { x: 272.5, y: 104, w: 78.5, h: 98.5 };
+const BADGE_K = BADGE_BOX.w / BADGE_CELL.badge.w;
+
+/** What getAvatarSource gives a profile with no photo and no preset. */
+const DEFAULT_AVATAR = require("@/assets/images/dp-avatar.png");
 
 export const HOME_W = 403;
 export const HOME_H = 575;
@@ -72,6 +80,9 @@ export default function HomeScreen({ menuOpen = false }: { menuOpen?: boolean })
   const prog = useProgMe();
   const fh = useFactionHero();
   const totalXp = useGame((s) => s.me?.standing?.xp ?? null);
+  // the app's generic picture and the default "adventurer" preset count as no avatar here (only in this
+  // slot, features/waleui/homeAvatar.ts): then his round frame shows the player's faction hero bust
+  const ownAvatar = !!p.homeAvatar && p.homeAvatar !== DEFAULT_AVATAR;
   const rank = prog?.rank?.number ?? null;
   const ratio = xpRatio(p.xpHave, p.xpNeed);
   return (
@@ -94,7 +105,13 @@ export default function HomeScreen({ menuOpen = false }: { menuOpen?: boolean })
         </T>
       </At>
       <At x={17} y={16} w={43} h={43} style={{ borderRadius: 22, backgroundColor: "#C9C3DA", overflow: "hidden", alignItems: "center", justifyContent: "center" }} testID="wale-home-avatar">
-        {p.avatar ? <Image source={p.avatar as never} style={{ width: 43, height: 43 }} contentFit="cover" /> : <Ionicons name="person" size={24} color="#FFFFFF" />}
+        {ownAvatar ? (
+          <Image source={p.homeAvatar as never} style={{ width: 43, height: 43 }} contentFit="cover" />
+        ) : fh ? (
+          <Image source={fh.bust} style={{ width: 43, height: 43 }} contentFit="cover" contentPosition="top" accessible accessibilityRole="image" accessibilityLabel={fh.name} />
+        ) : (
+          <Ionicons name="person" size={24} color="#FFFFFF" />
+        )}
       </At>
       <Art {...ART.xp} source={ART.xp.src} testID="wale-home-xp-icon" />
       <At x={81} y={49} w={88} h={7} style={{ borderRadius: 4, backgroundColor: "#FFFFFF", overflow: "hidden" }} testID="wale-home-xp-bar">
@@ -131,9 +148,11 @@ export default function HomeScreen({ menuOpen = false }: { menuOpen?: boolean })
 
       {/* rank badge (hidden under the open menu in his frame) */}
       {!menu ? (
-        <Tap x={265.25} y={100.25} w={93} h={104.25} label={rank ? `Your rank: ${rank}` : "Ranks"} onPress={() => openGameSheet("ranks")} testID="wale-home-rank">
-          {/* his badge art fills (272.5, 104) 78.5 x 98.5; the drawn shield is 84% of its own box, so size 93 fills that */}
-          <RankBadge rank={rank ?? 1} total={10} size={93} />
+        <Tap x={272.5} y={107.5} w={78} h={94} label={rank ? `Your rank: ${rank}` : "Ranks"} onPress={() => openGameSheet("ranks")} testID="wale-home-rank">
+          {/* his own badge for the player's rank; rank IV's badge fills his art's box (272.5, 104) 78.5 x 98.5 exactly */}
+          <View pointerEvents="none" style={{ position: "absolute", left: BADGE_BOX.x - 272.5 - BADGE_CELL.badge.x * BADGE_K, top: BADGE_BOX.y - 107.5 - BADGE_CELL.badge.y * BADGE_K }}>
+            <WaleRankBadge rank={rank ?? 1} width={BADGE_CELL.w * BADGE_K} />
+          </View>
         </Tap>
       ) : null}
 

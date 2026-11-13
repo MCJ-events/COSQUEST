@@ -368,6 +368,7 @@ const LUCIDE = {
   "arrow-up": { d: ["m5 12 7-7 7 7", "M12 19V5"] },
   "chevron-right": { d: ["m9 18 6-6-6-6"] },
   "chevron-down": { d: ["m6 9 6 6 6-6"] },
+  check: { d: ["M20 6 9 17l-5-5"] },
   wifi: { d: ["M12 20h.01", "M2 8.82a15 15 0 0 1 20 0", "M5 12.859a10 10 0 0 1 14 0", "M8.5 16.429a5 5 0 0 1 7 0"] },
   lock: { d: ["M7 11V7a5 5 0 0 1 10 0v4"], r: [[3, 11, 18, 11, 2]] },
 } as const satisfies Record<string, { d: readonly string[]; c?: readonly (readonly number[])[]; r?: readonly (readonly number[])[] }>;
@@ -397,5 +398,35 @@ export function Hexagon({ w, h, color = "#FFFFFF", stroke = 2 }: { w: number; h:
     <Svg width={w} height={h} viewBox="0 0 20 22">
       <Polygon points="10,1.6 18,6.2 18,15.8 10,20.4 2,15.8 2,6.2" stroke={color} strokeWidth={stroke * (20 / w)} strokeLinejoin="round" fill="none" />
     </Svg>
+  );
+}
+
+/** His filled padlock beside NOT OWNED on the Armory cards (a solid lock with a light bar in its body). */
+export function Padlock({ size, color = W.inkSoft }: { size: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M7.5 11V7.5a4.5 4.5 0 0 1 9 0V11" stroke={color} strokeWidth={2.6} fill="none" strokeLinecap="round" />
+      <Rect x={3.5} y={10} width={17} height={12} rx={2.5} fill={color} />
+      <Rect x={7.5} y={15} width={9} height={2.4} rx={1.2} fill="#FFFFFF" opacity={0.85} />
+    </Svg>
+  );
+}
+
+/** The foot of his long frames with his Lucide wifi glyph ("COSQUEST / ARMORY" left, "Connected" right). */
+export function WaleFooter({ y, w, path, testID, x = 20.5 }: { y: number; w: number; path: string; testID?: string; x?: number }) {
+  return (
+    <>
+      <At x={x} y={y - 4.5}>
+        <T size={8} weight={700} color={W.inkSoft} spacing={0.4} style={{ lineHeight: 10 }} testID={testID}>
+          {path}
+        </T>
+      </At>
+      <At x={w - 20 - 70} y={y - 7} w={70} style={{ flexDirection: "row", justifyContent: "flex-end", alignItems: "center", gap: 4 }}>
+        <LineIcon name="wifi" size={11} color={W.slate} stroke={2.4} />
+        <T size={9} weight={400} color={W.slate}>
+          Connected
+        </T>
+      </At>
+    </>
   );
 }

@@ -8,5 +8,6 @@ import HomeScreen from "@/components/waleui/HomeScreen";
 export default function WaleHome() {
   const { menu } = useLocalSearchParams<{ menu?: string }>();
   if (!WALE_UI) return <Redirect href="/" />;
-  return <HomeScreen menuOpen={menu === "1"} />;
+  // keyed, so a link to the same route with the other menu state opens it that way
+  return <HomeScreen key={menu === "1" ? "open" : "closed"} menuOpen={menu === "1"} />;
 }
