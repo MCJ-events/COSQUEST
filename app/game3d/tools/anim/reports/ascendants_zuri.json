@@ -1,6 +1,6 @@
 {
  "key": "ascendants_zuri",
- "target": "/home/engineer/realism-20261111/motion/heroes/cast/pose/ascendants_zuri/lod1.glb",
+ "target": "/home/engineer/cq-work/godot-b26/herocast/pose/ascendants_zuri/lod1.glb",
  "source": "/home/engineer/cq-work/243-characters-relift-pod-prep/clipsrc/kaykit/Knight.glb",
  "hip_scale": 2.144635032265373,
  "damp": {},
@@ -9,12 +9,12 @@
   [
    "Hips",
    "Neck",
-   0.141
+   0.146
   ],
   [
    "Neck",
    "HeadTop_End",
-   0.113
+   0.081
   ],
   [
    "LeftUpLeg",
@@ -29,7 +29,7 @@
   [
    "LeftLeg",
    "LeftFoot",
-   0.068
+   0.067
   ],
   [
    "RightLeg",
@@ -55,11 +55,11 @@
    "feet_max_m": 0.152,
    "planted_slide_mps": 2.032,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00138,
-   "tear_p99": 1.536,
+   "tear_share": 0.00061,
+   "tear_p99": 1.372,
    "tears": false,
    "tear_where": {
-    "Spine2": 8
+    "Spine2": 2
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
@@ -120,10 +120,10 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00138,
-    "lod2": 0.00106
+    "lod0": 0.0003,
+    "lod2": 0.00061
    },
-   "tear_worst_lod": "lod0"
+   "tear_worst_lod": "lod2"
   },
   "1H_Melee_Attack_Slice_Diagonal": {
    "src": "1H_Melee_Attack_Slice_Diagonal",
@@ -142,11 +142,10 @@
    "feet_max_m": 0.02,
    "planted_slide_mps": 6.163,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00106,
-   "tear_p99": 1.436,
+   "tear_share": 0.00061,
+   "tear_p99": 1.377,
    "tears": false,
    "tear_where": {
-    "Spine2": 1,
     "RightUpLeg": 4
    },
    "tear_share_chains_rigid": null,
@@ -208,8 +207,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00078,
-    "lod2": 0.00106
+    "lod0": 0.00054,
+    "lod2": 0.00061
    },
    "tear_worst_lod": "lod2"
   },
@@ -230,11 +229,11 @@
    "feet_max_m": 0.028,
    "planted_slide_mps": 3.662,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00145,
-   "tear_p99": 1.581,
+   "tear_share": 0.00054,
+   "tear_p99": 1.447,
    "tears": false,
    "tear_where": {
-    "Spine2": 11
+    "RightUpLeg": 2
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
@@ -295,8 +294,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00145,
-    "lod2": 0.00035
+    "lod0": 0.00054,
+    "lod2": 0.0002
    },
    "tear_worst_lod": "lod0"
   },
@@ -317,8 +316,8 @@
    "feet_max_m": 0.018,
    "planted_slide_mps": 4.937,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00106,
-   "tear_p99": 1.384,
+   "tear_share": 0.00061,
+   "tear_p99": 1.333,
    "tears": false,
    "tear_where": {},
    "tear_share_chains_rigid": null,
@@ -380,8 +379,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00014,
-    "lod2": 0.00106
+    "lod0": 5e-05,
+    "lod2": 0.00061
    },
    "tear_worst_lod": "lod2"
   },
@@ -402,11 +401,12 @@
    "feet_max_m": 0.0,
    "planted_slide_mps": 5.87,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00226,
-   "tear_p99": 1.793,
+   "tear_share": 0.00081,
+   "tear_p99": 1.596,
    "tears": false,
    "tear_where": {
-    "Spine2": 24
+    "Spine2": 1,
+    "RightArm": 2
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 50,
@@ -467,10 +467,10 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00226,
-    "lod2": 0.00211
+    "lod0": 0.0007,
+    "lod2": 0.00081
    },
-   "tear_worst_lod": "lod0"
+   "tear_worst_lod": "lod2"
   },
   "2H_Melee_Attack_Slice": {
    "src": "2H_Melee_Attack_Slice",
@@ -489,11 +489,11 @@
    "feet_max_m": -0.0,
    "planted_slide_mps": 5.619,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00276,
-   "tear_p99": 1.877,
+   "tear_share": 0.00121,
+   "tear_p99": 1.68,
    "tears": false,
    "tear_where": {
-    "Spine2": 22,
+    "Spine2": 11,
     "RightArm": 2,
     "RightUpLeg": 4
    },
@@ -556,10 +556,10 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00276,
-    "lod2": 0.00211
+    "lod0": 0.00107,
+    "lod2": 0.00121
    },
-   "tear_worst_lod": "lod0"
+   "tear_worst_lod": "lod2"
   },
   "2H_Melee_Attack_Spin": {
    "src": "2H_Melee_Attack_Spin",
@@ -578,12 +578,12 @@
    "feet_max_m": 0.0,
    "planted_slide_mps": 6.783,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00261,
-   "tear_p99": 1.807,
+   "tear_share": 0.00142,
+   "tear_p99": 1.681,
    "tears": false,
    "tear_where": {
     "Hips": 10,
-    "Spine2": 4,
+    "Spine2": 1,
     "RightArm": 2,
     "RightUpLeg": 6
    },
@@ -646,8 +646,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00261,
-    "lod2": 0.00247
+    "lod0": 0.00142,
+    "lod2": 0.00142
    },
    "tear_worst_lod": "lod0"
   },
@@ -668,12 +668,12 @@
    "feet_max_m": -0.0,
    "planted_slide_mps": 8.535,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00382,
-   "tear_p99": 1.932,
+   "tear_share": 0.00193,
+   "tear_p99": 1.752,
    "tears": false,
    "tear_where": {
     "Hips": 7,
-    "Spine2": 8,
+    "Spine2": 3,
     "RightArm": 2,
     "LeftUpLeg": 2,
     "RightUpLeg": 6
@@ -737,8 +737,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00382,
-    "lod2": 0.00141
+    "lod0": 0.00193,
+    "lod2": 0.00081
    },
    "tear_worst_lod": "lod0"
   },
@@ -759,12 +759,12 @@
    "feet_max_m": -0.0,
    "planted_slide_mps": 5.804,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00332,
-   "tear_p99": 2.003,
+   "tear_share": 0.00137,
+   "tear_p99": 1.783,
    "tears": false,
    "tear_where": {
     "Hips": 2,
-    "Spine2": 22,
+    "Spine2": 9,
     "RightArm": 4
    },
    "tear_share_chains_rigid": null,
@@ -826,8 +826,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00332,
-    "lod2": 0.00176
+    "lod0": 0.00137,
+    "lod2": 0.00081
    },
    "tear_worst_lod": "lod0"
   },
@@ -848,11 +848,11 @@
    "feet_max_m": -0.0,
    "planted_slide_mps": 0.051,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00201,
-   "tear_p99": 1.651,
+   "tear_share": 0.00061,
+   "tear_p99": 1.478,
    "tears": false,
    "tear_where": {
-    "Spine2": 12,
+    "Spine2": 1,
     "RightArm": 2
    },
    "tear_share_chains_rigid": null,
@@ -914,10 +914,10 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00201,
-    "lod2": 0.00106
+    "lod0": 0.00051,
+    "lod2": 0.00061
    },
-   "tear_worst_lod": "lod0"
+   "tear_worst_lod": "lod2"
   },
   "2H_Ranged_Aiming": {
    "src": "2H_Ranged_Aiming",
@@ -936,11 +936,11 @@
    "feet_max_m": -0.0,
    "planted_slide_mps": 1.493,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00266,
-   "tear_p99": 1.754,
+   "tear_share": 0.00073,
+   "tear_p99": 1.503,
    "tears": false,
    "tear_where": {
-    "Spine2": 23,
+    "Spine2": 1,
     "LeftArm": 2,
     "RightUpLeg": 4
    },
@@ -984,8 +984,8 @@
      "lhand_to_shaft_m_p50": 0.15
     },
     "shield": {
-     "pen_max_m": 0.049,
-     "pen_frames": 1,
+     "pen_max_m": 0.054,
+     "pen_frames": 2,
      "frames": 49,
      "lhand_to_shaft_m_p50": 0.0
     },
@@ -1003,9 +1003,10 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00261,
-    "lod2": 0.00176
-   }
+    "lod0": 0.00073,
+    "lod2": 0.00061
+   },
+   "tear_worst_lod": "lod0"
   },
   "2H_Ranged_Shoot": {
    "src": "2H_Ranged_Shoot",
@@ -1024,11 +1025,11 @@
    "feet_max_m": -0.0,
    "planted_slide_mps": 3.602,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00285,
-   "tear_p99": 1.763,
+   "tear_share": 0.00083,
+   "tear_p99": 1.513,
    "tears": false,
    "tear_where": {
-    "Spine2": 25,
+    "Spine2": 2,
     "LeftArm": 2,
     "RightUpLeg": 4
    },
@@ -1072,7 +1073,7 @@
      "lhand_to_shaft_m_p50": 0.153
     },
     "shield": {
-     "pen_max_m": 0.129,
+     "pen_max_m": 0.134,
      "pen_frames": 2,
      "frames": 33,
      "lhand_to_shaft_m_p50": 0.0
@@ -1091,9 +1092,10 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00276,
-    "lod2": 0.00176
-   }
+    "lod0": 0.00083,
+    "lod2": 0.00061
+   },
+   "tear_worst_lod": "lod0"
   },
   "Aim_Hold": {
    "src": "2H_Ranged_Aiming",
@@ -1112,11 +1114,11 @@
    "feet_max_m": -0.006,
    "planted_slide_mps": 0.32,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00266,
-   "tear_p99": 1.754,
+   "tear_share": 0.00073,
+   "tear_p99": 1.503,
    "tears": false,
    "tear_where": {
-    "Spine2": 23,
+    "Spine2": 1,
     "LeftArm": 2,
     "RightUpLeg": 4
    },
@@ -1179,9 +1181,10 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00261,
-    "lod2": 0.00176
-   }
+    "lod0": 0.00073,
+    "lod2": 0.00061
+   },
+   "tear_worst_lod": "lod0"
   },
   "Block": {
    "src": "Block",
@@ -1200,8 +1203,8 @@
    "feet_max_m": -0.0,
    "planted_slide_mps": 1.479,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00035,
-   "tear_p99": 1.432,
+   "tear_share": 0.0002,
+   "tear_p99": 1.375,
    "tears": false,
    "tear_where": {},
    "tear_share_chains_rigid": null,
@@ -1263,8 +1266,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 7e-05,
-    "lod2": 0.00035
+    "lod0": 0.0,
+    "lod2": 0.0002
    },
    "tear_worst_lod": "lod2"
   },
@@ -1285,8 +1288,8 @@
    "feet_max_m": 0.081,
    "planted_slide_mps": 5.727,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00035,
-   "tear_p99": 1.447,
+   "tear_share": 0.0002,
+   "tear_p99": 1.385,
    "tears": false,
    "tear_where": {},
    "tear_share_chains_rigid": null,
@@ -1348,8 +1351,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00025,
-    "lod2": 0.00035
+    "lod0": 0.0,
+    "lod2": 0.0002
    },
    "tear_worst_lod": "lod2"
   },
@@ -1370,8 +1373,8 @@
    "feet_max_m": -0.0,
    "planted_slide_mps": 0.822,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00035,
-   "tear_p99": 1.465,
+   "tear_share": 0.0002,
+   "tear_p99": 1.409,
    "tears": false,
    "tear_where": {},
    "tear_share_chains_rigid": null,
@@ -1433,8 +1436,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 7e-05,
-    "lod2": 0.00035
+    "lod0": 5e-05,
+    "lod2": 0.0002
    },
    "tear_worst_lod": "lod2"
   },
@@ -1455,8 +1458,8 @@
    "feet_max_m": -0.0,
    "planted_slide_mps": 0.094,
    "ground_speed_mps": 0.0,
-   "tear_share": 7e-05,
-   "tear_p99": 1.447,
+   "tear_share": 0.0,
+   "tear_p99": 1.381,
    "tears": false,
    "tear_where": {},
    "tear_share_chains_rigid": null,
@@ -1518,10 +1521,9 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 7e-05,
+    "lod0": 0.0,
     "lod2": 0.0
-   },
-   "tear_worst_lod": "lod0"
+   }
   },
   "CMU_Chop_2H": {
    "src": "CMU_Chop_2H",
@@ -1540,11 +1542,11 @@
    "feet_max_m": 0.017,
    "planted_slide_mps": 0.3,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00406,
-   "tear_p99": 1.919,
+   "tear_share": 0.00121,
+   "tear_p99": 1.694,
    "tears": false,
    "tear_where": {
-    "Spine2": 31,
+    "Spine2": 11,
     "RightArm": 2
    },
    "tear_share_chains_rigid": null,
@@ -1587,8 +1589,8 @@
      "lhand_to_shaft_m_p50": 0.065
     },
     "shield": {
-     "pen_max_m": 0.084,
-     "pen_frames": 27,
+     "pen_max_m": 0.07,
+     "pen_frames": 24,
      "frames": 53,
      "lhand_to_shaft_m_p50": 0.0
     },
@@ -1606,8 +1608,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00406,
-    "lod2": 0.00282
+    "lod0": 0.00121,
+    "lod2": 0.00101
    },
    "tear_worst_lod": "lod0"
   },
@@ -1628,18 +1630,18 @@
    "feet_max_m": 0.24,
    "planted_slide_mps": 2.081,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00155,
-   "tear_p99": 1.561,
+   "tear_share": 0.00061,
+   "tear_p99": 1.449,
    "tears": false,
    "tear_where": {
-    "Spine2": 6
+    "Spine2": 2
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
    "weapon": {
     "axe": {
      "pen_max_m": 0.076,
-     "pen_frames": 5,
+     "pen_frames": 7,
      "frames": 43,
      "lhand_to_shaft_m_p50": 0.406
     },
@@ -1651,13 +1653,13 @@
     },
     "dagger": {
      "pen_max_m": 0.081,
-     "pen_frames": 5,
+     "pen_frames": 7,
      "frames": 43,
      "lhand_to_shaft_m_p50": 0.406
     },
     "greatsword": {
      "pen_max_m": 0.075,
-     "pen_frames": 4,
+     "pen_frames": 6,
      "frames": 43,
      "lhand_to_shaft_m_p50": 0.406
     },
@@ -1675,28 +1677,28 @@
     },
     "shield": {
      "pen_max_m": 0.091,
-     "pen_frames": 14,
+     "pen_frames": 12,
      "frames": 43,
      "lhand_to_shaft_m_p50": 0.0
     },
     "staff": {
-     "pen_max_m": 0.062,
-     "pen_frames": 3,
+     "pen_max_m": 0.067,
+     "pen_frames": 5,
      "frames": 43,
      "lhand_to_shaft_m_p50": 0.406
     },
     "sword": {
-     "pen_max_m": 0.095,
+     "pen_max_m": 0.1,
      "pen_frames": 9,
      "frames": 43,
      "lhand_to_shaft_m_p50": 0.393
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00155,
-    "lod2": 0.00106
+    "lod0": 0.00032,
+    "lod2": 0.00061
    },
-   "tear_worst_lod": "lod0"
+   "tear_worst_lod": "lod2"
   },
   "CMU_Fall_Front": {
    "src": "CMU_Fall_Front",
@@ -1715,18 +1717,20 @@
    "feet_max_m": 1.156,
    "planted_slide_mps": 0.63,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.0041,
-   "tear_p99": 1.996,
+   "tear_share": 0.00228,
+   "tear_p99": 1.795,
    "tears": false,
    "tear_where": {
-    "Spine2": 29,
+    "Hips": 3,
+    "Spine": 14,
+    "Spine1": 1,
     "RightArm": 2
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
    "weapon": {
     "axe": {
-     "pen_max_m": 0.135,
+     "pen_max_m": 0.14,
      "pen_frames": 28,
      "frames": 75,
      "lhand_to_shaft_m_p50": 0.431
@@ -1738,20 +1742,20 @@
      "lhand_to_shaft_m_p50": 0.632
     },
     "dagger": {
-     "pen_max_m": 0.136,
+     "pen_max_m": 0.141,
      "pen_frames": 28,
      "frames": 75,
      "lhand_to_shaft_m_p50": 0.431
     },
     "greatsword": {
-     "pen_max_m": 0.137,
+     "pen_max_m": 0.142,
      "pen_frames": 28,
      "frames": 75,
      "lhand_to_shaft_m_p50": 0.431
     },
     "hammer": {
-     "pen_max_m": 0.104,
-     "pen_frames": 26,
+     "pen_max_m": 0.109,
+     "pen_frames": 28,
      "frames": 75,
      "lhand_to_shaft_m_p50": 0.431
     },
@@ -1762,27 +1766,27 @@
      "lhand_to_shaft_m_p50": 0.653
     },
     "shield": {
-     "pen_max_m": 0.135,
+     "pen_max_m": 0.14,
      "pen_frames": 30,
      "frames": 75,
      "lhand_to_shaft_m_p50": 0.0
     },
     "staff": {
-     "pen_max_m": 0.129,
+     "pen_max_m": 0.134,
      "pen_frames": 28,
      "frames": 75,
      "lhand_to_shaft_m_p50": 0.431
     },
     "sword": {
-     "pen_max_m": 0.137,
+     "pen_max_m": 0.142,
      "pen_frames": 28,
      "frames": 75,
      "lhand_to_shaft_m_p50": 0.49
     }
    },
    "tear_by_lod": {
-    "lod0": 0.0041,
-    "lod2": 0.00211
+    "lod0": 0.00228,
+    "lod2": 0.00081
    },
    "tear_worst_lod": "lod0"
   },
@@ -1803,44 +1807,44 @@
    "feet_max_m": -0.0,
    "planted_slide_mps": 0.847,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.0035,
-   "tear_p99": 1.886,
+   "tear_share": 0.00115,
+   "tear_p99": 1.711,
    "tears": false,
    "tear_where": {
     "Spine": 2,
-    "Spine2": 18,
+    "Spine2": 2,
     "RightArm": 2
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
    "weapon": {
     "axe": {
-     "pen_max_m": 0.061,
-     "pen_frames": 44,
+     "pen_max_m": 0.066,
+     "pen_frames": 49,
      "frames": 49,
      "lhand_to_shaft_m_p50": 0.256
     },
     "crossbow": {
-     "pen_max_m": 0.061,
-     "pen_frames": 25,
+     "pen_max_m": 0.029,
+     "pen_frames": 0,
      "frames": 49,
      "lhand_to_shaft_m_p50": 0.238
     },
     "dagger": {
-     "pen_max_m": 0.067,
-     "pen_frames": 44,
+     "pen_max_m": 0.072,
+     "pen_frames": 49,
      "frames": 49,
      "lhand_to_shaft_m_p50": 0.256
     },
     "greatsword": {
-     "pen_max_m": 0.057,
-     "pen_frames": 44,
+     "pen_max_m": 0.062,
+     "pen_frames": 49,
      "frames": 49,
      "lhand_to_shaft_m_p50": 0.256
     },
     "hammer": {
-     "pen_max_m": 0.057,
-     "pen_frames": 44,
+     "pen_max_m": 0.062,
+     "pen_frames": 49,
      "frames": 49,
      "lhand_to_shaft_m_p50": 0.256
     },
@@ -1851,27 +1855,27 @@
      "lhand_to_shaft_m_p50": 0.207
     },
     "shield": {
-     "pen_max_m": 0.128,
+     "pen_max_m": 0.133,
      "pen_frames": 49,
      "frames": 49,
      "lhand_to_shaft_m_p50": 0.0
     },
     "staff": {
-     "pen_max_m": 0.057,
-     "pen_frames": 44,
+     "pen_max_m": 0.062,
+     "pen_frames": 49,
      "frames": 49,
      "lhand_to_shaft_m_p50": 0.256
     },
     "sword": {
-     "pen_max_m": 0.046,
-     "pen_frames": 34,
+     "pen_max_m": 0.051,
+     "pen_frames": 44,
      "frames": 49,
      "lhand_to_shaft_m_p50": 0.255
     }
    },
    "tear_by_lod": {
-    "lod0": 0.0035,
-    "lod2": 0.00176
+    "lod0": 0.00115,
+    "lod2": 0.00081
    },
    "tear_worst_lod": "lod0"
   },
@@ -1892,11 +1896,11 @@
    "feet_max_m": 0.036,
    "planted_slide_mps": 1.041,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00141,
-   "tear_p99": 1.497,
+   "tear_share": 0.00027,
+   "tear_p99": 1.341,
    "tears": false,
    "tear_where": {
-    "Spine2": 8
+    "Spine2": 1
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
@@ -1957,7 +1961,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00141,
+    "lod0": 0.00027,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -1979,18 +1983,16 @@
    "feet_max_m": 0.076,
    "planted_slide_mps": 2.709,
    "ground_speed_mps": 2.501,
-   "tear_share": 0.00208,
-   "tear_p99": 1.648,
+   "tear_share": 0.00073,
+   "tear_p99": 1.507,
    "tears": false,
-   "tear_where": {
-    "Spine2": 6
-   },
+   "tear_where": {},
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
    "weapon": {
     "axe": {
-     "pen_max_m": 0.082,
-     "pen_frames": 7,
+     "pen_max_m": 0.084,
+     "pen_frames": 8,
      "frames": 25,
      "lhand_to_shaft_m_p50": 0.371
     },
@@ -2001,19 +2003,19 @@
      "lhand_to_shaft_m_p50": 0.373
     },
     "dagger": {
-     "pen_max_m": 0.083,
+     "pen_max_m": 0.088,
      "pen_frames": 8,
      "frames": 25,
      "lhand_to_shaft_m_p50": 0.371
     },
     "greatsword": {
-     "pen_max_m": 0.082,
-     "pen_frames": 7,
+     "pen_max_m": 0.083,
+     "pen_frames": 8,
      "frames": 25,
      "lhand_to_shaft_m_p50": 0.371
     },
     "hammer": {
-     "pen_max_m": 0.083,
+     "pen_max_m": 0.079,
      "pen_frames": 8,
      "frames": 25,
      "lhand_to_shaft_m_p50": 0.371
@@ -2025,27 +2027,27 @@
      "lhand_to_shaft_m_p50": 0.357
     },
     "shield": {
-     "pen_max_m": 0.026,
-     "pen_frames": 0,
+     "pen_max_m": 0.031,
+     "pen_frames": 1,
      "frames": 25,
      "lhand_to_shaft_m_p50": 0.0
     },
     "staff": {
-     "pen_max_m": 0.085,
+     "pen_max_m": 0.09,
      "pen_frames": 8,
      "frames": 25,
      "lhand_to_shaft_m_p50": 0.371
     },
     "sword": {
-     "pen_max_m": 0.133,
+     "pen_max_m": 0.138,
      "pen_frames": 16,
      "frames": 25,
      "lhand_to_shaft_m_p50": 0.371
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00208,
-    "lod2": 0.00106
+    "lod0": 0.00073,
+    "lod2": 0.00061
    },
    "tear_worst_lod": "lod0"
   },
@@ -2066,74 +2068,74 @@
    "feet_max_m": 0.009,
    "planted_slide_mps": 0.449,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00321,
-   "tear_p99": 1.774,
+   "tear_share": 0.00099,
+   "tear_p99": 1.599,
    "tears": false,
    "tear_where": {
-    "Spine2": 23,
+    "Spine2": 4,
     "RightArm": 2
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
    "weapon": {
     "axe": {
-     "pen_max_m": 0.072,
+     "pen_max_m": 0.077,
      "pen_frames": 17,
      "frames": 17,
      "lhand_to_shaft_m_p50": 0.296
     },
     "crossbow": {
-     "pen_max_m": 0.083,
-     "pen_frames": 17,
+     "pen_max_m": 0.051,
+     "pen_frames": 13,
      "frames": 17,
      "lhand_to_shaft_m_p50": 0.338
     },
     "dagger": {
-     "pen_max_m": 0.072,
+     "pen_max_m": 0.077,
      "pen_frames": 17,
      "frames": 17,
      "lhand_to_shaft_m_p50": 0.296
     },
     "greatsword": {
-     "pen_max_m": 0.072,
+     "pen_max_m": 0.077,
      "pen_frames": 17,
      "frames": 17,
      "lhand_to_shaft_m_p50": 0.296
     },
     "hammer": {
-     "pen_max_m": 0.072,
+     "pen_max_m": 0.077,
      "pen_frames": 17,
      "frames": 17,
      "lhand_to_shaft_m_p50": 0.296
     },
     "rifle": {
-     "pen_max_m": 0.045,
-     "pen_frames": 10,
+     "pen_max_m": 0.013,
+     "pen_frames": 0,
      "frames": 17,
      "lhand_to_shaft_m_p50": 0.338
     },
     "shield": {
-     "pen_max_m": 0.055,
-     "pen_frames": 2,
+     "pen_max_m": 0.023,
+     "pen_frames": 0,
      "frames": 17,
      "lhand_to_shaft_m_p50": 0.0
     },
     "staff": {
-     "pen_max_m": 0.072,
+     "pen_max_m": 0.077,
      "pen_frames": 17,
      "frames": 17,
      "lhand_to_shaft_m_p50": 0.296
     },
     "sword": {
-     "pen_max_m": 0.058,
+     "pen_max_m": 0.063,
      "pen_frames": 17,
      "frames": 17,
      "lhand_to_shaft_m_p50": 0.295
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00321,
-    "lod2": 0.00176
+    "lod0": 0.00099,
+    "lod2": 0.00081
    },
    "tear_worst_lod": "lod0"
   },
@@ -2154,18 +2156,18 @@
    "feet_max_m": 0.016,
    "planted_slide_mps": 0.252,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00293,
-   "tear_p99": 1.744,
+   "tear_share": 0.00091,
+   "tear_p99": 1.568,
    "tears": false,
    "tear_where": {
-    "Spine2": 23,
+    "Spine2": 2,
     "RightArm": 2
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
    "weapon": {
     "axe": {
-     "pen_max_m": 0.071,
+     "pen_max_m": 0.039,
      "pen_frames": 2,
      "frames": 18,
      "lhand_to_shaft_m_p50": 0.224
@@ -2177,20 +2179,20 @@
      "lhand_to_shaft_m_p50": 0.225
     },
     "dagger": {
-     "pen_max_m": 0.082,
+     "pen_max_m": 0.05,
      "pen_frames": 2,
      "frames": 18,
      "lhand_to_shaft_m_p50": 0.224
     },
     "greatsword": {
-     "pen_max_m": 0.074,
-     "pen_frames": 2,
+     "pen_max_m": 0.042,
+     "pen_frames": 1,
      "frames": 18,
      "lhand_to_shaft_m_p50": 0.224
     },
     "hammer": {
-     "pen_max_m": 0.06,
-     "pen_frames": 2,
+     "pen_max_m": 0.028,
+     "pen_frames": 0,
      "frames": 18,
      "lhand_to_shaft_m_p50": 0.224
     },
@@ -2201,27 +2203,27 @@
      "lhand_to_shaft_m_p50": 0.22
     },
     "shield": {
-     "pen_max_m": 0.016,
+     "pen_max_m": 0.021,
      "pen_frames": 0,
      "frames": 18,
      "lhand_to_shaft_m_p50": 0.0
     },
     "staff": {
-     "pen_max_m": 0.038,
-     "pen_frames": 1,
+     "pen_max_m": 0.006,
+     "pen_frames": 0,
      "frames": 18,
      "lhand_to_shaft_m_p50": 0.224
     },
     "sword": {
-     "pen_max_m": 0.063,
+     "pen_max_m": 0.031,
      "pen_frames": 1,
      "frames": 18,
      "lhand_to_shaft_m_p50": 0.224
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00293,
-    "lod2": 0.00141
+    "lod0": 0.00091,
+    "lod2": 0.00081
    },
    "tear_worst_lod": "lod0"
   },
@@ -2242,11 +2244,11 @@
    "feet_max_m": 0.03,
    "planted_slide_mps": 0.313,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00346,
-   "tear_p99": 1.792,
+   "tear_share": 0.00097,
+   "tear_p99": 1.537,
    "tears": false,
    "tear_where": {
-    "Spine2": 28,
+    "Spine2": 9,
     "RightArm": 2
    },
    "tear_share_chains_rigid": null,
@@ -2289,7 +2291,7 @@
      "lhand_to_shaft_m_p50": 0.566
     },
     "shield": {
-     "pen_max_m": 0.102,
+     "pen_max_m": 0.092,
      "pen_frames": 21,
      "frames": 36,
      "lhand_to_shaft_m_p50": 0.0
@@ -2308,8 +2310,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00346,
-    "lod2": 0.00141
+    "lod0": 0.00097,
+    "lod2": 0.00061
    },
    "tear_worst_lod": "lod0"
   },
@@ -2330,11 +2332,11 @@
    "feet_max_m": 0.023,
    "planted_slide_mps": 0.227,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.0035,
-   "tear_p99": 1.749,
+   "tear_share": 0.00094,
+   "tear_p99": 1.547,
    "tears": false,
    "tear_where": {
-    "Spine2": 23,
+    "Spine2": 5,
     "RightArm": 2
    },
    "tear_share_chains_rigid": null,
@@ -2377,7 +2379,7 @@
      "lhand_to_shaft_m_p50": 0.423
     },
     "shield": {
-     "pen_max_m": 0.09,
+     "pen_max_m": 0.095,
      "pen_frames": 4,
      "frames": 33,
      "lhand_to_shaft_m_p50": 0.0
@@ -2396,8 +2398,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.0035,
-    "lod2": 0.00141
+    "lod0": 0.00094,
+    "lod2": 0.00061
    },
    "tear_worst_lod": "lod0"
   },
@@ -2418,11 +2420,11 @@
    "feet_max_m": 0.019,
    "planted_slide_mps": 0.305,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00353,
-   "tear_p99": 1.808,
+   "tear_share": 0.00097,
+   "tear_p99": 1.588,
    "tears": false,
    "tear_where": {
-    "Spine2": 28,
+    "Spine2": 9,
     "RightArm": 2
    },
    "tear_share_chains_rigid": null,
@@ -2465,8 +2467,8 @@
      "lhand_to_shaft_m_p50": 0.582
     },
     "shield": {
-     "pen_max_m": 0.103,
-     "pen_frames": 3,
+     "pen_max_m": 0.108,
+     "pen_frames": 4,
      "frames": 32,
      "lhand_to_shaft_m_p50": 0.0
     },
@@ -2484,8 +2486,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00353,
-    "lod2": 0.00176
+    "lod0": 0.00097,
+    "lod2": 0.00061
    },
    "tear_worst_lod": "lod0"
   },
@@ -2506,12 +2508,12 @@
    "feet_max_m": 0.018,
    "planted_slide_mps": 0.336,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00555,
-   "tear_p99": 2.019,
+   "tear_share": 0.0022,
+   "tear_p99": 1.82,
    "tears": false,
    "tear_where": {
     "Spine": 6,
-    "Spine2": 36,
+    "Spine2": 11,
     "RightArm": 2
    },
    "tear_share_chains_rigid": null,
@@ -2554,8 +2556,8 @@
      "lhand_to_shaft_m_p50": 0.42
     },
     "shield": {
-     "pen_max_m": 0.096,
-     "pen_frames": 10,
+     "pen_max_m": 0.101,
+     "pen_frames": 11,
      "frames": 45,
      "lhand_to_shaft_m_p50": 0.0
     },
@@ -2573,8 +2575,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00555,
-    "lod2": 0.00282
+    "lod0": 0.0022,
+    "lod2": 0.00101
    },
    "tear_worst_lod": "lod0"
   },
@@ -2595,12 +2597,10 @@
    "feet_max_m": 0.029,
    "planted_slide_mps": 1.035,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00092,
-   "tear_p99": 1.537,
+   "tear_share": 0.00021,
+   "tear_p99": 1.414,
    "tears": false,
-   "tear_where": {
-    "Spine2": 6
-   },
+   "tear_where": {},
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
    "weapon": {
@@ -2641,7 +2641,7 @@
      "lhand_to_shaft_m_p50": 0.693
     },
     "shield": {
-     "pen_max_m": 0.006,
+     "pen_max_m": 0.011,
      "pen_frames": 0,
      "frames": 39,
      "lhand_to_shaft_m_p50": 0.0
@@ -2660,8 +2660,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00092,
-    "lod2": 0.00035
+    "lod0": 0.00021,
+    "lod2": 0.0002
    },
    "tear_worst_lod": "lod0"
   },
@@ -2682,20 +2682,20 @@
    "feet_max_m": 0.018,
    "planted_slide_mps": 0.255,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00332,
-   "tear_p99": 1.874,
+   "tear_share": 0.00134,
+   "tear_p99": 1.722,
    "tears": false,
    "tear_where": {
     "Spine": 2,
-    "Spine2": 25,
+    "Spine2": 8,
     "RightArm": 4
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
    "weapon": {
     "axe": {
-     "pen_max_m": 0.038,
-     "pen_frames": 2,
+     "pen_max_m": 0.043,
+     "pen_frames": 4,
      "frames": 43,
      "lhand_to_shaft_m_p50": 0.333
     },
@@ -2706,20 +2706,20 @@
      "lhand_to_shaft_m_p50": 0.387
     },
     "dagger": {
-     "pen_max_m": 0.041,
-     "pen_frames": 3,
+     "pen_max_m": 0.046,
+     "pen_frames": 4,
      "frames": 43,
      "lhand_to_shaft_m_p50": 0.333
     },
     "greatsword": {
-     "pen_max_m": 0.034,
-     "pen_frames": 1,
+     "pen_max_m": 0.039,
+     "pen_frames": 2,
      "frames": 43,
      "lhand_to_shaft_m_p50": 0.333
     },
     "hammer": {
-     "pen_max_m": 0.034,
-     "pen_frames": 1,
+     "pen_max_m": 0.039,
+     "pen_frames": 2,
      "frames": 43,
      "lhand_to_shaft_m_p50": 0.333
     },
@@ -2730,27 +2730,27 @@
      "lhand_to_shaft_m_p50": 0.359
     },
     "shield": {
-     "pen_max_m": 0.099,
+     "pen_max_m": 0.088,
      "pen_frames": 43,
      "frames": 43,
      "lhand_to_shaft_m_p50": 0.0
     },
     "staff": {
-     "pen_max_m": 0.034,
-     "pen_frames": 1,
+     "pen_max_m": 0.039,
+     "pen_frames": 2,
      "frames": 43,
      "lhand_to_shaft_m_p50": 0.333
     },
     "sword": {
-     "pen_max_m": 0.08,
-     "pen_frames": 13,
+     "pen_max_m": 0.085,
+     "pen_frames": 14,
      "frames": 43,
      "lhand_to_shaft_m_p50": 0.323
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00332,
-    "lod2": 0.00141
+    "lod0": 0.00134,
+    "lod2": 0.00061
    },
    "tear_worst_lod": "lod0"
   },
@@ -2771,8 +2771,8 @@
    "feet_max_m": 0.06,
    "planted_slide_mps": 1.93,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00106,
-   "tear_p99": 1.716,
+   "tear_share": 0.00061,
+   "tear_p99": 1.618,
    "tears": false,
    "tear_where": {
     "Spine": 8
@@ -2781,7 +2781,7 @@
    "lhand_ik_frames": 0,
    "weapon": {
     "axe": {
-     "pen_max_m": 0.007,
+     "pen_max_m": 0.0,
      "pen_frames": 0,
      "frames": 34,
      "lhand_to_shaft_m_p50": 0.915
@@ -2793,19 +2793,19 @@
      "lhand_to_shaft_m_p50": 1.038
     },
     "dagger": {
-     "pen_max_m": 0.006,
+     "pen_max_m": 0.0,
      "pen_frames": 0,
      "frames": 34,
      "lhand_to_shaft_m_p50": 0.915
     },
     "greatsword": {
-     "pen_max_m": 0.007,
+     "pen_max_m": 0.0,
      "pen_frames": 0,
      "frames": 34,
      "lhand_to_shaft_m_p50": 0.915
     },
     "hammer": {
-     "pen_max_m": 0.006,
+     "pen_max_m": 0.0,
      "pen_frames": 0,
      "frames": 34,
      "lhand_to_shaft_m_p50": 0.915
@@ -2829,15 +2829,15 @@
      "lhand_to_shaft_m_p50": 0.915
     },
     "sword": {
-     "pen_max_m": 0.037,
-     "pen_frames": 2,
+     "pen_max_m": 0.012,
+     "pen_frames": 0,
      "frames": 34,
      "lhand_to_shaft_m_p50": 0.858
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00099,
-    "lod2": 0.00106
+    "lod0": 0.00056,
+    "lod2": 0.00061
    },
    "tear_worst_lod": "lod2"
   },
@@ -2858,11 +2858,11 @@
    "feet_max_m": -0.0,
    "planted_slide_mps": 0.426,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00162,
-   "tear_p99": 1.62,
+   "tear_share": 0.00064,
+   "tear_p99": 1.452,
    "tears": false,
    "tear_where": {
-    "Spine2": 6,
+    "Spine2": 1,
     "RightArm": 2
    },
    "tear_share_chains_rigid": null,
@@ -2924,8 +2924,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00162,
-    "lod2": 0.00106
+    "lod0": 0.00064,
+    "lod2": 0.00061
    },
    "tear_worst_lod": "lod0"
   },
@@ -2946,12 +2946,10 @@
    "feet_max_m": 0.402,
    "planted_slide_mps": 1.244,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00095,
-   "tear_p99": 1.427,
+   "tear_share": 0.00024,
+   "tear_p99": 1.322,
    "tears": false,
-   "tear_where": {
-    "Spine2": 2
-   },
+   "tear_where": {},
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
    "weapon": {
@@ -3011,8 +3009,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00095,
-    "lod2": 0.00035
+    "lod0": 0.00024,
+    "lod2": 0.0002
    },
    "tear_worst_lod": "lod0"
   },
@@ -3033,8 +3031,8 @@
    "feet_max_m": 0.124,
    "planted_slide_mps": 1.402,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00057,
-   "tear_p99": 1.561,
+   "tear_share": 0.00043,
+   "tear_p99": 1.483,
    "tears": false,
    "tear_where": {
     "RightArm": 2
@@ -3098,8 +3096,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00057,
-    "lod2": 0.00035
+    "lod0": 0.00043,
+    "lod2": 0.0002
    },
    "tear_worst_lod": "lod0"
   },
@@ -3120,12 +3118,10 @@
    "feet_max_m": 0.031,
    "planted_slide_mps": 1.037,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00106,
-   "tear_p99": 1.435,
+   "tear_share": 0.00061,
+   "tear_p99": 1.385,
    "tears": false,
-   "tear_where": {
-    "Spine2": 2
-   },
+   "tear_where": {},
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
    "weapon": {
@@ -3185,8 +3181,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00014,
-    "lod2": 0.00106
+    "lod0": 5e-05,
+    "lod2": 0.00061
    },
    "tear_worst_lod": "lod2"
   },
@@ -3207,11 +3203,11 @@
    "feet_max_m": 0.0,
    "planted_slide_mps": 0.497,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00211,
-   "tear_p99": 1.712,
+   "tear_share": 0.00081,
+   "tear_p99": 1.52,
    "tears": false,
    "tear_where": {
-    "Spine2": 10
+    "Spine2": 1
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 11,
@@ -3272,8 +3268,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00173,
-    "lod2": 0.00211
+    "lod0": 0.00051,
+    "lod2": 0.00081
    },
    "tear_worst_lod": "lod2"
   },
@@ -3295,7 +3291,7 @@
    "planted_slide_mps": 1.018,
    "ground_speed_mps": 0.0,
    "tear_share": 0.0,
-   "tear_p99": 1.334,
+   "tear_p99": 1.307,
    "tears": false,
    "tear_where": {},
    "tear_share_chains_rigid": null,
@@ -3378,12 +3374,10 @@
    "feet_max_m": 0.0,
    "planted_slide_mps": 2.824,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00064,
-   "tear_p99": 1.531,
+   "tear_share": 0.00027,
+   "tear_p99": 1.436,
    "tears": false,
-   "tear_where": {
-    "Spine2": 2
-   },
+   "tear_where": {},
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
    "weapon": {
@@ -3443,8 +3437,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00064,
-    "lod2": 0.00035
+    "lod0": 0.00027,
+    "lod2": 0.0002
    },
    "tear_worst_lod": "lod0"
   },
@@ -3465,8 +3459,8 @@
    "feet_max_m": -0.0,
    "planted_slide_mps": 0.086,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00035,
-   "tear_p99": 1.342,
+   "tear_share": 0.0002,
+   "tear_p99": 1.292,
    "tears": false,
    "tear_where": {},
    "tear_share_chains_rigid": null,
@@ -3528,8 +3522,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 7e-05,
-    "lod2": 0.00035
+    "lod0": 5e-05,
+    "lod2": 0.0002
    },
    "tear_worst_lod": "lod2"
   },
@@ -3550,12 +3544,10 @@
    "feet_max_m": 0.276,
    "planted_slide_mps": 0.773,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00117,
-   "tear_p99": 1.583,
+   "tear_share": 0.00067,
+   "tear_p99": 1.483,
    "tears": false,
-   "tear_where": {
-    "Spine2": 2
-   },
+   "tear_where": {},
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
    "weapon": {
@@ -3615,8 +3607,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00117,
-    "lod2": 0.00035
+    "lod0": 0.00067,
+    "lod2": 0.0002
    },
    "tear_worst_lod": "lod0"
   },
@@ -3637,21 +3629,21 @@
    "feet_max_m": 0.438,
    "planted_slide_mps": 0.931,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00699,
-   "tear_p99": 2.103,
+   "tear_share": 0.00403,
+   "tear_p99": 1.876,
    "tears": false,
    "tear_where": {
-    "Hips": 5,
+    "Hips": 7,
     "Spine": 23,
-    "Spine2": 15,
+    "Spine2": 5,
     "RightUpLeg": 4
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
    "weapon": {
     "axe": {
-     "pen_max_m": 0.1,
-     "pen_frames": 16,
+     "pen_max_m": 0.068,
+     "pen_frames": 13,
      "frames": 61,
      "lhand_to_shaft_m_p50": 0.642
     },
@@ -3662,20 +3654,20 @@
      "lhand_to_shaft_m_p50": 0.863
     },
     "dagger": {
-     "pen_max_m": 0.081,
-     "pen_frames": 11,
+     "pen_max_m": 0.064,
+     "pen_frames": 7,
      "frames": 61,
      "lhand_to_shaft_m_p50": 0.642
     },
     "greatsword": {
-     "pen_max_m": 0.097,
-     "pen_frames": 15,
+     "pen_max_m": 0.065,
+     "pen_frames": 12,
      "frames": 61,
      "lhand_to_shaft_m_p50": 0.642
     },
     "hammer": {
-     "pen_max_m": 0.101,
-     "pen_frames": 15,
+     "pen_max_m": 0.069,
+     "pen_frames": 12,
      "frames": 61,
      "lhand_to_shaft_m_p50": 0.642
     },
@@ -3686,27 +3678,27 @@
      "lhand_to_shaft_m_p50": 0.86
     },
     "shield": {
-     "pen_max_m": 0.128,
-     "pen_frames": 9,
+     "pen_max_m": 0.133,
+     "pen_frames": 8,
      "frames": 61,
      "lhand_to_shaft_m_p50": 0.0
     },
     "staff": {
-     "pen_max_m": 0.106,
-     "pen_frames": 15,
+     "pen_max_m": 0.074,
+     "pen_frames": 9,
      "frames": 61,
      "lhand_to_shaft_m_p50": 0.642
     },
     "sword": {
-     "pen_max_m": 0.102,
+     "pen_max_m": 0.09,
      "pen_frames": 25,
      "frames": 61,
      "lhand_to_shaft_m_p50": 0.596
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00699,
-    "lod2": 0.00176
+    "lod0": 0.00403,
+    "lod2": 0.00101
    },
    "tear_worst_lod": "lod0"
   },
@@ -3727,12 +3719,10 @@
    "feet_max_m": 0.0,
    "planted_slide_mps": 0.023,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00106,
-   "tear_p99": 1.48,
+   "tear_share": 0.00061,
+   "tear_p99": 1.363,
    "tears": false,
-   "tear_where": {
-    "Spine2": 4
-   },
+   "tear_where": {},
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
    "weapon": {
@@ -3792,8 +3782,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00039,
-    "lod2": 0.00106
+    "lod0": 0.00013,
+    "lod2": 0.00061
    },
    "tear_worst_lod": "lod2"
   },
@@ -3814,12 +3804,10 @@
    "feet_max_m": -0.0,
    "planted_slide_mps": 0.101,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00032,
-   "tear_p99": 1.372,
+   "tear_share": 8e-05,
+   "tear_p99": 1.259,
    "tears": false,
-   "tear_where": {
-    "Spine2": 3
-   },
+   "tear_where": {},
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
    "weapon": {
@@ -3879,7 +3867,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00032,
+    "lod0": 8e-05,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -3901,12 +3889,10 @@
    "feet_max_m": -0.0,
    "planted_slide_mps": 0.018,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00032,
-   "tear_p99": 1.39,
+   "tear_share": 8e-05,
+   "tear_p99": 1.273,
    "tears": false,
-   "tear_where": {
-    "Spine2": 3
-   },
+   "tear_where": {},
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
    "weapon": {
@@ -3966,7 +3952,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00032,
+    "lod0": 8e-05,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -3988,12 +3974,14 @@
    "feet_max_m": 0.683,
    "planted_slide_mps": 9.87,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00378,
-   "tear_p99": 1.991,
+   "tear_share": 0.00183,
+   "tear_p99": 1.815,
    "tears": false,
    "tear_where": {
-    "Spine2": 26,
-    "RightArm": 6
+    "Spine": 9,
+    "Spine1": 1,
+    "Spine2": 6,
+    "RightArm": 2
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
@@ -4054,8 +4042,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00378,
-    "lod2": 0.00176
+    "lod0": 0.00183,
+    "lod2": 0.00101
    },
    "tear_worst_lod": "lod0"
   },
@@ -4076,12 +4064,10 @@
    "feet_max_m": -0.0,
    "planted_slide_mps": 0.014,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.0007,
-   "tear_p99": 1.481,
+   "tear_share": 0.0004,
+   "tear_p99": 1.401,
    "tears": false,
-   "tear_where": {
-    "Spine2": 1
-   },
+   "tear_where": {},
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
    "weapon": {
@@ -4141,8 +4127,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00032,
-    "lod2": 0.0007
+    "lod0": 0.00024,
+    "lod2": 0.0004
    },
    "tear_worst_lod": "lod2"
   },
@@ -4163,12 +4149,12 @@
    "feet_max_m": 0.008,
    "planted_slide_mps": 2.788,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.0024,
-   "tear_p99": 1.91,
+   "tear_share": 0.00145,
+   "tear_p99": 1.764,
    "tears": false,
    "tear_where": {
     "Spine": 2,
-    "Spine2": 9,
+    "Spine2": 6,
     "RightArm": 6,
     "RightUpLeg": 2
    },
@@ -4176,7 +4162,7 @@
    "lhand_ik_frames": 0,
    "weapon": {
     "axe": {
-     "pen_max_m": 0.107,
+     "pen_max_m": 0.112,
      "pen_frames": 2,
      "frames": 15,
      "lhand_to_shaft_m_p50": 0.944
@@ -4188,19 +4174,19 @@
      "lhand_to_shaft_m_p50": 1.058
     },
     "dagger": {
-     "pen_max_m": 0.132,
+     "pen_max_m": 0.137,
      "pen_frames": 1,
      "frames": 15,
      "lhand_to_shaft_m_p50": 0.944
     },
     "greatsword": {
-     "pen_max_m": 0.11,
-     "pen_frames": 1,
+     "pen_max_m": 0.115,
+     "pen_frames": 2,
      "frames": 15,
      "lhand_to_shaft_m_p50": 0.944
     },
     "hammer": {
-     "pen_max_m": 0.095,
+     "pen_max_m": 0.1,
      "pen_frames": 2,
      "frames": 15,
      "lhand_to_shaft_m_p50": 0.944
@@ -4218,21 +4204,21 @@
      "lhand_to_shaft_m_p50": 0.0
     },
     "staff": {
-     "pen_max_m": 0.069,
+     "pen_max_m": 0.074,
      "pen_frames": 2,
      "frames": 15,
      "lhand_to_shaft_m_p50": 0.944
     },
     "sword": {
-     "pen_max_m": 0.112,
+     "pen_max_m": 0.117,
      "pen_frames": 2,
      "frames": 15,
      "lhand_to_shaft_m_p50": 0.875
     }
    },
    "tear_by_lod": {
-    "lod0": 0.0024,
-    "lod2": 0.00211
+    "lod0": 0.00145,
+    "lod2": 0.00121
    },
    "tear_worst_lod": "lod0"
   },
@@ -4253,18 +4239,18 @@
    "feet_max_m": -0.0,
    "planted_slide_mps": 0.422,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.0029,
-   "tear_p99": 1.854,
+   "tear_share": 0.00097,
+   "tear_p99": 1.635,
    "tears": false,
    "tear_where": {
-    "Spine2": 19,
+    "Spine2": 7,
     "RightArm": 6
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
    "weapon": {
     "axe": {
-     "pen_max_m": 0.085,
+     "pen_max_m": 0.09,
      "pen_frames": 6,
      "frames": 37,
      "lhand_to_shaft_m_p50": 0.41
@@ -4276,19 +4262,19 @@
      "lhand_to_shaft_m_p50": 0.425
     },
     "dagger": {
-     "pen_max_m": 0.104,
+     "pen_max_m": 0.09,
      "pen_frames": 6,
      "frames": 37,
      "lhand_to_shaft_m_p50": 0.41
     },
     "greatsword": {
-     "pen_max_m": 0.084,
+     "pen_max_m": 0.069,
      "pen_frames": 6,
      "frames": 37,
      "lhand_to_shaft_m_p50": 0.41
     },
     "hammer": {
-     "pen_max_m": 0.083,
+     "pen_max_m": 0.088,
      "pen_frames": 6,
      "frames": 37,
      "lhand_to_shaft_m_p50": 0.41
@@ -4300,27 +4286,27 @@
      "lhand_to_shaft_m_p50": 0.443
     },
     "shield": {
-     "pen_max_m": 0.001,
+     "pen_max_m": 0.006,
      "pen_frames": 0,
      "frames": 37,
      "lhand_to_shaft_m_p50": 0.0
     },
     "staff": {
-     "pen_max_m": 0.062,
-     "pen_frames": 6,
+     "pen_max_m": 0.067,
+     "pen_frames": 4,
      "frames": 37,
      "lhand_to_shaft_m_p50": 0.41
     },
     "sword": {
-     "pen_max_m": 0.1,
+     "pen_max_m": 0.105,
      "pen_frames": 5,
      "frames": 37,
      "lhand_to_shaft_m_p50": 0.382
     }
    },
    "tear_by_lod": {
-    "lod0": 0.0029,
-    "lod2": 0.00141
+    "lod0": 0.00097,
+    "lod2": 0.00081
    },
    "tear_worst_lod": "lod0"
   },
@@ -4341,17 +4327,17 @@
    "feet_max_m": -0.0,
    "planted_slide_mps": 0.294,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00141,
-   "tear_p99": 1.627,
+   "tear_share": 0.00081,
+   "tear_p99": 1.448,
    "tears": false,
    "tear_where": {
-    "Spine2": 9
+    "Spine2": 5
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
    "weapon": {
     "axe": {
-     "pen_max_m": 0.006,
+     "pen_max_m": 0.011,
      "pen_frames": 0,
      "frames": 32,
      "lhand_to_shaft_m_p50": 0.577
@@ -4363,19 +4349,19 @@
      "lhand_to_shaft_m_p50": 0.472
     },
     "dagger": {
-     "pen_max_m": 0.008,
+     "pen_max_m": 0.013,
      "pen_frames": 0,
      "frames": 32,
      "lhand_to_shaft_m_p50": 0.577
     },
     "greatsword": {
-     "pen_max_m": 0.006,
+     "pen_max_m": 0.011,
      "pen_frames": 0,
      "frames": 32,
      "lhand_to_shaft_m_p50": 0.577
     },
     "hammer": {
-     "pen_max_m": 0.007,
+     "pen_max_m": 0.012,
      "pen_frames": 0,
      "frames": 32,
      "lhand_to_shaft_m_p50": 0.577
@@ -4387,13 +4373,13 @@
      "lhand_to_shaft_m_p50": 0.558
     },
     "shield": {
-     "pen_max_m": 0.107,
+     "pen_max_m": 0.075,
      "pen_frames": 2,
      "frames": 32,
      "lhand_to_shaft_m_p50": 0.0
     },
     "staff": {
-     "pen_max_m": 0.003,
+     "pen_max_m": 0.008,
      "pen_frames": 0,
      "frames": 32,
      "lhand_to_shaft_m_p50": 0.577
@@ -4406,10 +4392,10 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00141,
-    "lod2": 0.00141
+    "lod0": 0.00043,
+    "lod2": 0.00081
    },
-   "tear_worst_lod": "lod0"
+   "tear_worst_lod": "lod2"
   },
   "M2M_Sword_Regular_A": {
    "src": "M2M_Sword_Regular_A",
@@ -4428,11 +4414,11 @@
    "feet_max_m": -0.001,
    "planted_slide_mps": 7.815,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.0042,
-   "tear_p99": 1.951,
+   "tear_share": 0.00156,
+   "tear_p99": 1.684,
    "tears": false,
    "tear_where": {
-    "Spine2": 34,
+    "Spine2": 12,
     "RightArm": 9,
     "RightUpLeg": 2
    },
@@ -4476,8 +4462,8 @@
      "lhand_to_shaft_m_p50": 0.692
     },
     "shield": {
-     "pen_max_m": 0.073,
-     "pen_frames": 4,
+     "pen_max_m": 0.041,
+     "pen_frames": 2,
      "frames": 13,
      "lhand_to_shaft_m_p50": 0.0
     },
@@ -4495,8 +4481,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.0042,
-    "lod2": 0.00317
+    "lod0": 0.00156,
+    "lod2": 0.00121
    },
    "tear_worst_lod": "lod0"
   },
@@ -4517,13 +4503,13 @@
    "feet_max_m": 0.0,
    "planted_slide_mps": 4.803,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00615,
-   "tear_p99": 2.1,
+   "tear_share": 0.00247,
+   "tear_p99": 1.906,
    "tears": false,
    "tear_where": {
     "Spine": 4,
     "Spine1": 1,
-    "Spine2": 37,
+    "Spine2": 14,
     "RightArm": 9
    },
    "tear_share_chains_rigid": null,
@@ -4566,7 +4552,7 @@
      "lhand_to_shaft_m_p50": 0.608
     },
     "shield": {
-     "pen_max_m": 0.131,
+     "pen_max_m": 0.136,
      "pen_frames": 8,
      "frames": 17,
      "lhand_to_shaft_m_p50": 0.0
@@ -4585,8 +4571,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00615,
-    "lod2": 0.00529
+    "lod0": 0.00247,
+    "lod2": 0.00182
    },
    "tear_worst_lod": "lod0"
   },
@@ -4607,49 +4593,49 @@
    "feet_max_m": 0.463,
    "planted_slide_mps": 0.961,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00378,
-   "tear_p99": 1.917,
+   "tear_share": 0.00145,
+   "tear_p99": 1.71,
    "tears": false,
    "tear_where": {
     "Spine": 2,
-    "Spine2": 28,
+    "Spine2": 8,
     "RightArm": 4
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
    "weapon": {
     "axe": {
-     "pen_max_m": 0.063,
+     "pen_max_m": 0.065,
      "pen_frames": 2,
      "frames": 56,
      "lhand_to_shaft_m_p50": 0.508
     },
     "crossbow": {
-     "pen_max_m": 0.116,
-     "pen_frames": 3,
+     "pen_max_m": 0.121,
+     "pen_frames": 4,
      "frames": 56,
      "lhand_to_shaft_m_p50": 0.522
     },
     "dagger": {
-     "pen_max_m": 0.026,
-     "pen_frames": 0,
+     "pen_max_m": 0.031,
+     "pen_frames": 1,
      "frames": 56,
      "lhand_to_shaft_m_p50": 0.508
     },
     "greatsword": {
-     "pen_max_m": 0.048,
-     "pen_frames": 2,
+     "pen_max_m": 0.044,
+     "pen_frames": 1,
      "frames": 56,
      "lhand_to_shaft_m_p50": 0.508
     },
     "hammer": {
-     "pen_max_m": 0.062,
+     "pen_max_m": 0.051,
      "pen_frames": 2,
      "frames": 56,
      "lhand_to_shaft_m_p50": 0.508
     },
     "rifle": {
-     "pen_max_m": 0.066,
+     "pen_max_m": 0.071,
      "pen_frames": 2,
      "frames": 56,
      "lhand_to_shaft_m_p50": 0.528
@@ -4661,21 +4647,21 @@
      "lhand_to_shaft_m_p50": 0.0
     },
     "staff": {
-     "pen_max_m": 0.064,
+     "pen_max_m": 0.061,
      "pen_frames": 2,
      "frames": 56,
      "lhand_to_shaft_m_p50": 0.508
     },
     "sword": {
-     "pen_max_m": 0.044,
-     "pen_frames": 1,
+     "pen_max_m": 0.023,
+     "pen_frames": 0,
      "frames": 56,
      "lhand_to_shaft_m_p50": 0.501
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00378,
-    "lod2": 0.00176
+    "lod0": 0.00145,
+    "lod2": 0.00101
    },
    "tear_worst_lod": "lod0"
   },
@@ -4696,11 +4682,11 @@
    "feet_max_m": 0.0,
    "planted_slide_mps": 0.547,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00106,
-   "tear_p99": 1.565,
+   "tear_share": 0.00061,
+   "tear_p99": 1.431,
    "tears": false,
    "tear_where": {
-    "Spine2": 4
+    "Spine2": 2
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
@@ -4742,7 +4728,7 @@
      "lhand_to_shaft_m_p50": 0.792
     },
     "shield": {
-     "pen_max_m": 0.124,
+     "pen_max_m": 0.129,
      "pen_frames": 44,
      "frames": 75,
      "lhand_to_shaft_m_p50": 0.0
@@ -4761,8 +4747,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00049,
-    "lod2": 0.00106
+    "lod0": 0.00021,
+    "lod2": 0.00061
    },
    "tear_worst_lod": "lod2"
   },
@@ -4783,8 +4769,8 @@
    "feet_max_m": 0.542,
    "planted_slide_mps": 4.993,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00035,
-   "tear_p99": 1.524,
+   "tear_share": 0.0002,
+   "tear_p99": 1.467,
    "tears": false,
    "tear_where": {},
    "tear_share_chains_rigid": null,
@@ -4846,8 +4832,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00014,
-    "lod2": 0.00035
+    "lod0": 0.00011,
+    "lod2": 0.0002
    },
    "tear_worst_lod": "lod2"
   },
@@ -4868,11 +4854,11 @@
    "feet_max_m": 0.426,
    "planted_slide_mps": 2.277,
    "ground_speed_mps": 2.035,
-   "tear_share": 0.00088,
-   "tear_p99": 1.503,
+   "tear_share": 0.0004,
+   "tear_p99": 1.425,
    "tears": false,
    "tear_where": {
-    "Spine2": 4
+    "Spine2": 2
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
@@ -4933,8 +4919,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00088,
-    "lod2": 0.00035
+    "lod0": 0.0004,
+    "lod2": 0.0002
    },
    "tear_worst_lod": "lod0"
   },
@@ -4955,8 +4941,8 @@
    "feet_max_m": -0.0,
    "planted_slide_mps": 0.82,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00106,
-   "tear_p99": 1.38,
+   "tear_share": 0.00061,
+   "tear_p99": 1.335,
    "tears": false,
    "tear_where": {},
    "tear_share_chains_rigid": null,
@@ -5018,8 +5004,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00021,
-    "lod2": 0.00106
+    "lod0": 5e-05,
+    "lod2": 0.00061
    },
    "tear_worst_lod": "lod2"
   },
@@ -5040,8 +5026,8 @@
    "feet_max_m": -0.0,
    "planted_slide_mps": 0.601,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00106,
-   "tear_p99": 1.567,
+   "tear_share": 0.00061,
+   "tear_p99": 1.464,
    "tears": false,
    "tear_where": {},
    "tear_share_chains_rigid": null,
@@ -5103,8 +5089,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00028,
-    "lod2": 0.00106
+    "lod0": 0.00013,
+    "lod2": 0.00061
    },
    "tear_worst_lod": "lod2"
   },
@@ -5125,8 +5111,8 @@
    "feet_max_m": -0.0,
    "planted_slide_mps": 1.45,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00106,
-   "tear_p99": 1.396,
+   "tear_share": 0.00061,
+   "tear_p99": 1.319,
    "tears": false,
    "tear_where": {},
    "tear_share_chains_rigid": null,
@@ -5188,8 +5174,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00021,
-    "lod2": 0.00106
+    "lod0": 0.00011,
+    "lod2": 0.00061
    },
    "tear_worst_lod": "lod2"
   },
@@ -5210,8 +5196,8 @@
    "feet_max_m": 0.0,
    "planted_slide_mps": 1.018,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00035,
-   "tear_p99": 1.352,
+   "tear_share": 0.0002,
+   "tear_p99": 1.319,
    "tears": false,
    "tear_where": {},
    "tear_share_chains_rigid": null,
@@ -5274,7 +5260,7 @@
    },
    "tear_by_lod": {
     "lod0": 0.0,
-    "lod2": 0.00035
+    "lod2": 0.0002
    },
    "tear_worst_lod": "lod2"
   },
@@ -5295,8 +5281,8 @@
    "feet_max_m": -0.0,
    "planted_slide_mps": 0.051,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00106,
-   "tear_p99": 1.457,
+   "tear_share": 0.00061,
+   "tear_p99": 1.403,
    "tears": false,
    "tear_where": {
     "RightArm": 2
@@ -5360,8 +5346,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00035,
-    "lod2": 0.00106
+    "lod0": 0.00021,
+    "lod2": 0.00061
    },
    "tear_worst_lod": "lod2"
   },
@@ -5382,11 +5368,11 @@
    "feet_max_m": 0.281,
    "planted_slide_mps": 3.67,
    "ground_speed_mps": 3.44,
-   "tear_share": 0.00106,
-   "tear_p99": 1.592,
+   "tear_share": 0.00061,
+   "tear_p99": 1.49,
    "tears": false,
    "tear_where": {
-    "Spine2": 3
+    "Spine2": 2
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
@@ -5428,8 +5414,8 @@
      "lhand_to_shaft_m_p50": 0.812
     },
     "shield": {
-     "pen_max_m": 0.134,
-     "pen_frames": 19,
+     "pen_max_m": 0.139,
+     "pen_frames": 20,
      "frames": 29,
      "lhand_to_shaft_m_p50": 0.0
     },
@@ -5447,8 +5433,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00039,
-    "lod2": 0.00106
+    "lod0": 0.00019,
+    "lod2": 0.00061
    },
    "tear_worst_lod": "lod2"
   },
@@ -5469,11 +5455,11 @@
    "feet_max_m": 0.426,
    "planted_slide_mps": 2.277,
    "ground_speed_mps": 2.035,
-   "tear_share": 0.00088,
-   "tear_p99": 1.504,
+   "tear_share": 0.0004,
+   "tear_p99": 1.433,
    "tears": false,
    "tear_where": {
-    "Spine2": 4
+    "Spine2": 2
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
@@ -5534,8 +5520,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00088,
-    "lod2": 0.00035
+    "lod0": 0.0004,
+    "lod2": 0.0002
    },
    "tear_worst_lod": "lod0"
   },
@@ -5556,11 +5542,11 @@
    "feet_max_m": 0.205,
    "planted_slide_mps": 5.857,
    "ground_speed_mps": 4.894,
-   "tear_share": 0.00106,
-   "tear_p99": 1.573,
+   "tear_share": 0.00061,
+   "tear_p99": 1.491,
    "tears": false,
    "tear_where": {
-    "Spine2": 3
+    "Spine2": 2
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
@@ -5602,7 +5588,7 @@
      "lhand_to_shaft_m_p50": 0.774
     },
     "shield": {
-     "pen_max_m": 0.134,
+     "pen_max_m": 0.139,
      "pen_frames": 13,
      "frames": 21,
      "lhand_to_shaft_m_p50": 0.0
@@ -5621,8 +5607,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00032,
-    "lod2": 0.00106
+    "lod0": 0.00021,
+    "lod2": 0.00061
    },
    "tear_worst_lod": "lod2"
   },
@@ -5643,11 +5629,11 @@
    "feet_max_m": 0.133,
    "planted_slide_mps": 2.219,
    "ground_speed_mps": 0.732,
-   "tear_share": 0.00057,
-   "tear_p99": 1.478,
+   "tear_share": 0.00032,
+   "tear_p99": 1.417,
    "tears": false,
    "tear_where": {
-    "Spine2": 4
+    "Spine2": 2
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
@@ -5708,8 +5694,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00057,
-    "lod2": 0.00035
+    "lod0": 0.00032,
+    "lod2": 0.0002
    },
    "tear_worst_lod": "lod0"
   },
@@ -5730,11 +5716,11 @@
    "feet_max_m": 0.02,
    "planted_slide_mps": 4.343,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00131,
-   "tear_p99": 1.582,
+   "tear_share": 0.00038,
+   "tear_p99": 1.438,
    "tears": false,
    "tear_where": {
-    "Spine2": 4,
+    "Spine2": 1,
     "RightArm": 2
    },
    "tear_share_chains_rigid": null,
@@ -5796,8 +5782,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00131,
-    "lod2": 0.00035
+    "lod0": 0.00038,
+    "lod2": 0.0002
    },
    "tear_worst_lod": "lod0"
   },
@@ -5818,12 +5804,10 @@
    "feet_max_m": 0.0,
    "planted_slide_mps": 0.186,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00106,
-   "tear_p99": 1.454,
+   "tear_share": 0.00061,
+   "tear_p99": 1.386,
    "tears": false,
-   "tear_where": {
-    "Spine2": 2
-   },
+   "tear_where": {},
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
    "weapon": {
@@ -5876,15 +5860,15 @@
      "lhand_to_shaft_m_p50": 0.654
     },
     "sword": {
-     "pen_max_m": 0.069,
-     "pen_frames": 6,
+     "pen_max_m": 0.037,
+     "pen_frames": 2,
      "frames": 31,
      "lhand_to_shaft_m_p50": 0.648
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00035,
-    "lod2": 0.00106
+    "lod0": 0.00011,
+    "lod2": 0.00061
    },
    "tear_worst_lod": "lod2"
   },
@@ -5905,11 +5889,11 @@
    "feet_max_m": 0.501,
    "planted_slide_mps": 3.687,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00374,
-   "tear_p99": 1.962,
+   "tear_share": 0.00188,
+   "tear_p99": 1.775,
    "tears": false,
    "tear_where": {
-    "Spine2": 11,
+    "Spine2": 9,
     "RightArm": 18
    },
    "tear_share_chains_rigid": null,
@@ -5952,7 +5936,7 @@
      "lhand_to_shaft_m_p50": 1.012
     },
     "shield": {
-     "pen_max_m": 0.077,
+     "pen_max_m": 0.082,
      "pen_frames": 8,
      "frames": 72,
      "lhand_to_shaft_m_p50": 0.0
@@ -5964,15 +5948,15 @@
      "lhand_to_shaft_m_p50": 0.867
     },
     "sword": {
-     "pen_max_m": 0.03,
-     "pen_frames": 2,
+     "pen_max_m": 0.035,
+     "pen_frames": 3,
      "frames": 72,
      "lhand_to_shaft_m_p50": 0.797
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00374,
-    "lod2": 0.00282
+    "lod0": 0.00188,
+    "lod2": 0.00162
    },
    "tear_worst_lod": "lod0"
   },
@@ -5993,12 +5977,10 @@
    "feet_max_m": -0.001,
    "planted_slide_mps": 0.068,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00028,
-   "tear_p99": 1.351,
+   "tear_share": 8e-05,
+   "tear_p99": 1.26,
    "tears": false,
-   "tear_where": {
-    "Spine2": 2
-   },
+   "tear_where": {},
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
    "weapon": {
@@ -6058,7 +6040,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00028,
+    "lod0": 8e-05,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -6080,12 +6062,10 @@
    "feet_max_m": -0.001,
    "planted_slide_mps": 0.006,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00018,
-   "tear_p99": 1.347,
+   "tear_share": 0.0,
+   "tear_p99": 1.274,
    "tears": false,
-   "tear_where": {
-    "Spine2": 2
-   },
+   "tear_where": {},
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
    "weapon": {
@@ -6145,7 +6125,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00014,
+    "lod0": 0.0,
     "lod2": 0.0
    }
   },
@@ -6166,18 +6146,18 @@
    "feet_max_m": 0.281,
    "planted_slide_mps": 3.67,
    "ground_speed_mps": 3.44,
-   "tear_share": 0.00106,
-   "tear_p99": 1.591,
+   "tear_share": 0.00061,
+   "tear_p99": 1.483,
    "tears": false,
    "tear_where": {
-    "Spine2": 3
+    "Spine2": 2
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
    "weapon": {
     "axe": {
-     "pen_max_m": 0.075,
-     "pen_frames": 8,
+     "pen_max_m": 0.043,
+     "pen_frames": 4,
      "frames": 29,
      "lhand_to_shaft_m_p50": 0.71
     },
@@ -6188,20 +6168,20 @@
      "lhand_to_shaft_m_p50": 0.862
     },
     "dagger": {
-     "pen_max_m": 0.007,
+     "pen_max_m": 0.012,
      "pen_frames": 0,
      "frames": 29,
      "lhand_to_shaft_m_p50": 0.71
     },
     "greatsword": {
-     "pen_max_m": 0.077,
-     "pen_frames": 8,
+     "pen_max_m": 0.045,
+     "pen_frames": 4,
      "frames": 29,
      "lhand_to_shaft_m_p50": 0.71
     },
     "hammer": {
-     "pen_max_m": 0.076,
-     "pen_frames": 8,
+     "pen_max_m": 0.044,
+     "pen_frames": 4,
      "frames": 29,
      "lhand_to_shaft_m_p50": 0.71
     },
@@ -6212,27 +6192,27 @@
      "lhand_to_shaft_m_p50": 0.849
     },
     "shield": {
-     "pen_max_m": 0.134,
-     "pen_frames": 19,
+     "pen_max_m": 0.139,
+     "pen_frames": 20,
      "frames": 29,
      "lhand_to_shaft_m_p50": 0.0
     },
     "staff": {
-     "pen_max_m": 0.046,
-     "pen_frames": 7,
+     "pen_max_m": 0.021,
+     "pen_frames": 0,
      "frames": 29,
      "lhand_to_shaft_m_p50": 0.71
     },
     "sword": {
-     "pen_max_m": 0.097,
-     "pen_frames": 18,
+     "pen_max_m": 0.065,
+     "pen_frames": 17,
      "frames": 29,
      "lhand_to_shaft_m_p50": 0.697
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00039,
-    "lod2": 0.00106
+    "lod0": 0.00019,
+    "lod2": 0.00061
    },
    "tear_worst_lod": "lod2"
   },
@@ -6253,19 +6233,22 @@
    "feet_max_m": 0.868,
    "planted_slide_mps": 7.545,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00286,
-   "tear_p99": 1.862,
+   "tear_share": 0.00161,
+   "tear_p99": 1.685,
    "tears": false,
    "tear_where": {
-    "Spine2": 14,
-    "RightArm": 2
+    "Hips": 1,
+    "Spine": 4,
+    "Spine1": 1,
+    "RightUpLeg": 4,
+    "RightLeg": 2
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
    "weapon": {
     "axe": {
-     "pen_max_m": 0.104,
-     "pen_frames": 21,
+     "pen_max_m": 0.072,
+     "pen_frames": 12,
      "frames": 45,
      "lhand_to_shaft_m_p50": 0.581
     },
@@ -6276,20 +6259,20 @@
      "lhand_to_shaft_m_p50": 0.686
     },
     "dagger": {
-     "pen_max_m": 0.079,
-     "pen_frames": 19,
+     "pen_max_m": 0.051,
+     "pen_frames": 9,
      "frames": 45,
      "lhand_to_shaft_m_p50": 0.581
     },
     "greatsword": {
-     "pen_max_m": 0.103,
-     "pen_frames": 17,
+     "pen_max_m": 0.071,
+     "pen_frames": 11,
      "frames": 45,
      "lhand_to_shaft_m_p50": 0.581
     },
     "hammer": {
-     "pen_max_m": 0.109,
-     "pen_frames": 21,
+     "pen_max_m": 0.077,
+     "pen_frames": 10,
      "frames": 45,
      "lhand_to_shaft_m_p50": 0.581
     },
@@ -6300,27 +6283,27 @@
      "lhand_to_shaft_m_p50": 0.675
     },
     "shield": {
-     "pen_max_m": 0.116,
+     "pen_max_m": 0.121,
      "pen_frames": 11,
      "frames": 45,
      "lhand_to_shaft_m_p50": 0.0
     },
     "staff": {
-     "pen_max_m": 0.101,
-     "pen_frames": 12,
+     "pen_max_m": 0.069,
+     "pen_frames": 7,
      "frames": 45,
      "lhand_to_shaft_m_p50": 0.581
     },
     "sword": {
-     "pen_max_m": 0.12,
+     "pen_max_m": 0.125,
      "pen_frames": 19,
      "frames": 45,
      "lhand_to_shaft_m_p50": 0.597
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00286,
-    "lod2": 0.00247
+    "lod0": 0.00161,
+    "lod2": 0.00142
    },
    "tear_worst_lod": "lod0"
   },
@@ -6341,11 +6324,11 @@
    "feet_max_m": -0.001,
    "planted_slide_mps": 0.016,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00074,
-   "tear_p99": 1.529,
+   "tear_share": 0.00019,
+   "tear_p99": 1.4,
    "tears": false,
    "tear_where": {
-    "Spine2": 4
+    "Spine2": 1
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
@@ -6406,7 +6389,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00074,
+    "lod0": 0.00019,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -6428,18 +6411,18 @@
    "feet_max_m": 0.205,
    "planted_slide_mps": 5.857,
    "ground_speed_mps": 4.894,
-   "tear_share": 0.00106,
-   "tear_p99": 1.57,
+   "tear_share": 0.00061,
+   "tear_p99": 1.487,
    "tears": false,
    "tear_where": {
-    "Spine2": 3
+    "Spine2": 2
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
    "weapon": {
     "axe": {
-     "pen_max_m": 0.079,
-     "pen_frames": 7,
+     "pen_max_m": 0.047,
+     "pen_frames": 5,
      "frames": 21,
      "lhand_to_shaft_m_p50": 0.68
     },
@@ -6450,20 +6433,20 @@
      "lhand_to_shaft_m_p50": 0.822
     },
     "dagger": {
-     "pen_max_m": 0.007,
+     "pen_max_m": 0.012,
      "pen_frames": 0,
      "frames": 21,
      "lhand_to_shaft_m_p50": 0.68
     },
     "greatsword": {
-     "pen_max_m": 0.077,
-     "pen_frames": 7,
+     "pen_max_m": 0.045,
+     "pen_frames": 5,
      "frames": 21,
      "lhand_to_shaft_m_p50": 0.68
     },
     "hammer": {
-     "pen_max_m": 0.069,
-     "pen_frames": 7,
+     "pen_max_m": 0.037,
+     "pen_frames": 4,
      "frames": 21,
      "lhand_to_shaft_m_p50": 0.68
     },
@@ -6474,27 +6457,27 @@
      "lhand_to_shaft_m_p50": 0.808
     },
     "shield": {
-     "pen_max_m": 0.134,
+     "pen_max_m": 0.139,
      "pen_frames": 13,
      "frames": 21,
      "lhand_to_shaft_m_p50": 0.0
     },
     "staff": {
-     "pen_max_m": 0.07,
-     "pen_frames": 7,
+     "pen_max_m": 0.038,
+     "pen_frames": 2,
      "frames": 21,
      "lhand_to_shaft_m_p50": 0.68
     },
     "sword": {
-     "pen_max_m": 0.096,
-     "pen_frames": 12,
+     "pen_max_m": 0.064,
+     "pen_frames": 11,
      "frames": 21,
      "lhand_to_shaft_m_p50": 0.681
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00032,
-    "lod2": 0.00106
+    "lod0": 0.00021,
+    "lod2": 0.00061
    },
    "tear_worst_lod": "lod2"
   },
@@ -6515,12 +6498,12 @@
    "feet_max_m": 0.004,
    "planted_slide_mps": 6.809,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00374,
-   "tear_p99": 2.01,
+   "tear_share": 0.00193,
+   "tear_p99": 1.837,
    "tears": false,
    "tear_where": {
     "Spine": 2,
-    "Spine2": 16,
+    "Spine2": 12,
     "RightArm": 11,
     "RightUpLeg": 4
    },
@@ -6583,10 +6566,9 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00374,
-    "lod2": 0.00211
-   },
-   "tear_worst_lod": "lod0"
+    "lod0": 0.00188,
+    "lod2": 0.00121
+   }
   },
   "UAL_Sword_Idle": {
    "src": "Sword_Idle",
@@ -6605,8 +6587,8 @@
    "feet_max_m": -0.001,
    "planted_slide_mps": 0.008,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.0007,
-   "tear_p99": 1.49,
+   "tear_share": 0.0004,
+   "tear_p99": 1.408,
    "tears": false,
    "tear_where": {},
    "tear_share_chains_rigid": null,
@@ -6668,8 +6650,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00035,
-    "lod2": 0.0007
+    "lod0": 0.00021,
+    "lod2": 0.0004
    },
    "tear_worst_lod": "lod2"
   },
@@ -6690,12 +6672,10 @@
    "feet_max_m": 0.014,
    "planted_slide_mps": 2.514,
    "ground_speed_mps": 0.678,
-   "tear_share": 0.00035,
-   "tear_p99": 1.411,
+   "tear_share": 0.00013,
+   "tear_p99": 1.334,
    "tears": false,
-   "tear_where": {
-    "Spine2": 2
-   },
+   "tear_where": {},
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
    "weapon": {
@@ -6755,7 +6735,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00035,
+    "lod0": 0.00013,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -6777,8 +6757,8 @@
    "feet_max_m": 0.133,
    "planted_slide_mps": 2.22,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00057,
-   "tear_p99": 1.573,
+   "tear_share": 0.00038,
+   "tear_p99": 1.498,
    "tears": false,
    "tear_where": {},
    "tear_share_chains_rigid": null,
@@ -6840,8 +6820,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00057,
-    "lod2": 0.00035
+    "lod0": 0.00038,
+    "lod2": 0.0002
    },
    "tear_worst_lod": "lod0"
   },
@@ -6862,11 +6842,11 @@
    "feet_max_m": 0.133,
    "planted_slide_mps": 2.261,
    "ground_speed_mps": 0.801,
-   "tear_share": 0.00088,
-   "tear_p99": 1.507,
+   "tear_share": 0.00046,
+   "tear_p99": 1.43,
    "tears": false,
    "tear_where": {
-    "Spine2": 4
+    "Spine2": 2
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
@@ -6927,8 +6907,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00088,
-    "lod2": 0.00035
+    "lod0": 0.00046,
+    "lod2": 0.0002
    },
    "tear_worst_lod": "lod0"
   },
@@ -6949,11 +6929,11 @@
    "feet_max_m": 0.133,
    "planted_slide_mps": 2.219,
    "ground_speed_mps": 0.732,
-   "tear_share": 0.00057,
-   "tear_p99": 1.472,
+   "tear_share": 0.00032,
+   "tear_p99": 1.399,
    "tears": false,
    "tear_where": {
-    "Spine2": 4
+    "Spine2": 2
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
@@ -7014,8 +6994,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00057,
-    "lod2": 0.00035
+    "lod0": 0.00032,
+    "lod2": 0.0002
    },
    "tear_worst_lod": "lod0"
   },
@@ -7036,11 +7016,11 @@
    "feet_max_m": -0.0,
    "planted_slide_mps": 1.302,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00205,
-   "tear_p99": 1.702,
+   "tear_share": 0.00061,
+   "tear_p99": 1.495,
    "tears": false,
    "tear_where": {
-    "Spine2": 8,
+    "Spine2": 3,
     "RightArm": 2
    },
    "tear_share_chains_rigid": null,
@@ -7102,10 +7082,10 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00205,
-    "lod2": 0.00106
+    "lod0": 0.00059,
+    "lod2": 0.00061
    },
-   "tear_worst_lod": "lod0"
+   "tear_worst_lod": "lod2"
   }
  },
  "grips": {
@@ -7120,7 +7100,7 @@
     0.124313,
     0.988381,
     0.0,
-    0.093165,
+    0.093166,
     -0.986814,
     0.13236,
     0.0,
@@ -7143,7 +7123,7 @@
     0.0,
     0.076562,
     -0.950235,
-    0.301981,
+    0.30198,
     0.0,
     0.0,
     0.0,
@@ -7164,7 +7144,7 @@
     0.0,
     0.076562,
     -0.950235,
-    0.301981,
+    0.30198,
     0.0,
     0.0,
     0.0,
@@ -7185,7 +7165,7 @@
     0.0,
     0.076562,
     -0.950235,
-    0.301981,
+    0.30198,
     0.0,
     0.0,
     0.0,
@@ -7206,7 +7186,7 @@
     0.0,
     0.076562,
     -0.950235,
-    0.301981,
+    0.30198,
     0.0,
     0.0,
     0.0,
@@ -7227,7 +7207,7 @@
     0.0,
     0.076562,
     -0.950235,
-    0.301981,
+    0.30198,
     0.0,
     0.0,
     0.0,
@@ -7242,7 +7222,7 @@
     0.10366,
     0.07473,
     0.0,
-    -0.093165,
+    -0.093166,
     0.986814,
     -0.13236,
     0.0,
@@ -7263,7 +7243,7 @@
     -0.240101,
     0.115493,
     0.0,
-    0.251669,
+    0.251668,
     0.962755,
     -0.098819,
     0.0,
@@ -7280,7 +7260,7 @@
   "shield": {
    "bone": "LeftHand",
    "matrix": [
-    -0.093252,
+    -0.093253,
     -0.989053,
     0.114357,
     0.0,
