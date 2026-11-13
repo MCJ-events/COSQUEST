@@ -2028,7 +2028,8 @@
    "contact": 4,
    "out": 10,
    "source": "anim-readable attack 1: KayKit diagonal slice (CC0) from a cocked start, the trunk coiling and unwinding through the cut, the off hand in",
-   "tail": 0
+   "tail": 0,
+   "aim_yaw_deg": 15
   },
   "R_Atk1_k": {
    "src": "compose",
@@ -2038,7 +2039,8 @@
    "contact": 4,
    "out": 10,
    "source": "anim-readable attack 1: KayKit diagonal slice (CC0) from a cocked start, the trunk coiling and unwinding through the cut, the off hand in (gentler alternate for robes: legs bend less, smaller turns)",
-   "tail": 0
+   "tail": 0,
+   "aim_yaw_deg": 15
   },
   "R_Atk2": {
    "src": "compose",

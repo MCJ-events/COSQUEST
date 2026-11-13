@@ -565,13 +565,17 @@ func _ready() -> void:
 		var mr: bool = bool(cfg.get("motion_realism", false))
 		if cfg.has(role + "_class"):
 			(pair[0] as FighterScript).anim_opts["class"] = str(cfg[role + "_class"])
-		(pair[0] as FighterScript).anim_opts["foot_ik"] = bool(cfg.get("foot_ik", false))   # the app decides by tier (features/game/motionTier.ts)
+		# anim-readable (Wale: feet steadily on the ground on every tier): with the readable clips the foot lock,
+		# the bind-pose guard and legs animated by the ground really covered are on by default on every tier;
+		# the app's tier keys still override ("foot_ik": false turns the lock off)
+		var rd: bool = AnimLib.readable_now()
+		(pair[0] as FighterScript).anim_opts["foot_ik"] = bool(cfg.get("foot_ik", rd))   # the app decides by tier (features/game/motionTier.ts)
 		(pair[0] as FighterScript).anim_opts["natural_rates"] = bool(cfg.get("natural_rates", mr))
-		(pair[0] as FighterScript).anim_opts["no_bind"] = bool(cfg.get("no_bind", mr))
+		(pair[0] as FighterScript).anim_opts["no_bind"] = bool(cfg.get("no_bind", mr or rd))
 		(pair[0] as FighterScript).anim_opts["run_layer"] = bool(cfg.get("run_layer", mr))
-		(pair[0] as FighterScript).aim_hold = bool(cfg.get("aim_hold", mr))
+		(pair[0] as FighterScript).aim_hold = bool(cfg.get("aim_hold", mr or rd))
 		(pair[0] as FighterScript).weight_fx = bool(cfg.get("weight", mr))
-		(pair[0] as FighterScript).real_speed = bool(cfg.get("real_speed", mr))
+		(pair[0] as FighterScript).real_speed = bool(cfg.get("real_speed", mr or rd))
 		(pair[0] as FighterScript).turn_steps = AnimLib.readable_now()
 		(pair[0] as FighterScript).anim_opts["breathe"] = AnimLib.readable_now()
 		p = _tier_lod(p, role)
@@ -1870,7 +1874,6 @@ func _cast(slot: int) -> void:
 		for pair: Array in [[5, "skill_shoot"], [6, "skill_rain"]]:
 			if hero.anim.has_clip(str(pair[1])) or not hero.anim.has_clip(names[int(pair[0])]):
 				names[int(pair[0])] = str(pair[1])
-	hero.act(names[slot], _act_len, SKILL_HIT_AT[slot])
 	# aim: the stick if pushed, else the boss if near, else the facing
 	var aim: Vector3 = _stick_world()
 	var aim_range: float = AIM_FAR if slot >= 5 else 9.0
@@ -1882,6 +1885,9 @@ func _cast(slot: int) -> void:
 	_skill_from = hero.position
 	if slot <= 2 or slot >= 5:
 		hero.face(_skill_dir, 0.0, 0.0)
+	# anim-readable: the clip starts after the hero has turned onto the aim, so a readable clip is drawn facing
+	# where the skill goes (presentation only: the yaw and the aim are the rules' as before)
+	hero.act(names[slot], _act_len, SKILL_HIT_AT[slot])
 	var cols: Array[Color] = [Color(0.4, 0.95, 0.9), Color(1.0, 0.6, 0.25), Color(1.0, 0.82, 0.35), Color(0.5, 1.0, 0.5), Color(0.5, 0.85, 1.0),
 		SHOOT_COLS[0], RAIN_COLS[0]]
 	hud.callout(hud.skill_label(slot), cols[slot])

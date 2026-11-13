@@ -2323,7 +2323,9 @@
       "w": 1.0
      }
     ]
-   }
+   },
+   "aim_yaw_deg": 15,
+   "_why_aim": "measured: the cut's arc sat 45 to 47 degrees to one side of the target on the game's facing measure (motion_report.py); the drawn body turns 15 degrees so the arc is centred (the hit area is the game's own)"
   },
   "R_Atk2": {
    "classes": [
@@ -4803,7 +4805,9 @@
       "w": 1.0
      }
     ]
-   }
+   },
+   "aim_yaw_deg": 15,
+   "_why_aim": "measured: the cut's arc sat 45 to 47 degrees to one side of the target on the game's facing measure (motion_report.py); the drawn body turns 15 degrees so the arc is centred (the hit area is the game's own)"
   },
   "R_Atk2_k": {
    "classes": [
