@@ -1237,7 +1237,7 @@
      {
       "op": "aim",
       "side": "l",
-      "yaw": 22,
+      "yaw": 32,
       "elev": [
        [
         0,
@@ -1245,23 +1245,23 @@
        ],
        [
         3,
-        22
+        30
        ],
        [
         4,
-        22
+        30
        ],
        [
         6,
-        40
+        48
        ],
        [
         11,
-        26
+        34
        ],
        [
         24,
-        26
+        34
        ],
        [
         29,
@@ -1368,7 +1368,8 @@
       "w": 1.0
      }
     ]
-   }
+   },
+   "_why_aim": "seen from the game camera behind the hero an arm pointed straight at the target hides behind the body (judge: no visible aim); the hand goes out 32 deg to the side and 30 deg up, so the raised, aiming arm shows past the shoulder"
   },
   "R_Shoot_Gun": {
    "classes": [
@@ -3399,7 +3400,7 @@
      {
       "op": "aim",
       "side": "l",
-      "yaw": 22,
+      "yaw": 32,
       "elev": [
        [
         0,
@@ -3407,23 +3408,23 @@
        ],
        [
         3,
-        22
+        30
        ],
        [
         4,
-        22
+        30
        ],
        [
         6,
-        40
+        48
        ],
        [
         11,
-        26
+        34
        ],
        [
         24,
-        26
+        34
        ],
        [
         29,
@@ -5181,7 +5182,7 @@
      {
       "op": "aim",
       "side": "l",
-      "yaw": 22,
+      "yaw": 32,
       "elev": [
        [
         0,
@@ -5189,23 +5190,23 @@
        ],
        [
         3,
-        22
+        30
        ],
        [
         4,
-        22
+        30
        ],
        [
         6,
-        40
+        48
        ],
        [
         11,
-        26
+        34
        ],
        [
         24,
-        26
+        34
        ],
        [
         29,
@@ -6153,23 +6154,23 @@
        ],
        [
         3,
-        18
+        30
        ],
        [
         4,
-        18
+        30
        ],
        [
         6,
-        32
+        48
        ],
        [
         11,
-        20
+        34
        ],
        [
         24,
-        20
+        34
        ],
        [
         29,
