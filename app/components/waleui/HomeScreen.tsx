@@ -42,6 +42,7 @@ import { useBriefFlags } from "./brief/briefKit";
 import { useProgMe, useWaleProfile } from "./data";
 import { notBuiltYet, openGameSheet, openMap } from "./go";
 import { useFactionHero } from "./heroArt";
+import { HeroIdle } from "./HeroIdle";
 import { BADGE_CELL, WaleRankBadge } from "./RankBadgeArt";
 import { Art, At, DesignCanvas, Hexagon, LineIcon, T, Tap, W, glass, useCanvasExtra } from "./kit";
 
@@ -156,11 +157,14 @@ function HomeFrame({ menuOpen }: { menuOpen: boolean }) {
         <Art x={0} y={0} w={fit.web.w} h={fit.web.h} source={ART.web.src} testID="wale-home-web" />
       </At>
       <At x={fit.hero.x} y={fit.hero.y} w={fit.hero.w} h={fit.hero.h} pointerEvents="none" testID="wale-home-hero">
+        {/* Wale (13 Nov): the hero idles in place, breathing and shifting its weight about its planted feet */}
+        <HeroIdle testID="wale-home-hero-idle">
         {fh ? (
           <Image source={fh.full} style={{ width: fit.hero.w, height: fit.hero.h }} contentFit="contain" contentPosition="bottom" accessible accessibilityRole="image" accessibilityLabel={`Your hero: ${fh.name}`} />
         ) : (
           <Image source={ART.hero.src} style={{ width: fit.hero.w, height: fit.hero.h }} contentFit="contain" contentPosition="bottom" accessible accessibilityRole="image" accessibilityLabel="Your hero" />
         )}
+        </HeroIdle>
       </At>
 
       {/* top bar */}
