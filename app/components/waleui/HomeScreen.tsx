@@ -18,12 +18,13 @@ import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { View } from "react-native";
 
 import { spaced, xpRatio } from "@/features/waleui/armory";
 
-import { useGame } from "@/features/game/runtime";
+import { fetchPayConfig } from "@/features/game/payLink";
+import { gameStore, useGame } from "@/features/game/runtime";
 
 import { showEvents, showReferrals } from "@/features/game/briefFeatures";
 
@@ -101,6 +102,19 @@ export default function HomeScreen({ menuOpen = false }: { menuOpen?: boolean })
   const menuRows = [...MENU, ...extras];
   const grow = MENU_STEP * extras.length;
   const p = useWaleProfile();
+  // payments: the Wallet is reachable only when the server has the pay routes on (features/game/payLink.ts: 404 = null)
+  const [payOn, setPayOn] = useState(false);
+  useEffect(() => {
+    let live = true;
+    fetchPayConfig(gameStore.client)
+      .then((c) => {
+        if (live) setPayOn(c !== null);
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, []);
   const prog = useProgMe();
   const fh = useFactionHero();
   const totalXp = useGame((s) => s.me?.standing?.xp ?? null);
@@ -147,8 +161,11 @@ export default function HomeScreen({ menuOpen = false }: { menuOpen?: boolean })
         </T>
       </At>
       <Art {...ART.coin} source={ART.coin.src} testID="wale-home-coin-icon" />
-      {/* the CosCoin pill opens the Wallet (balance and history from the server; app/wallet.tsx) */}
-      <Tap x={203} y={18} w={70} h={24} label={`Wallet: ${p.coins === null ? 0 : p.coins} CosCoins`} onPress={() => router.push("/wallet")} testID="wale-home-wallet" />
+      {/* the CosCoin pill opens the Wallet (balance and history from the server; app/wallet.tsx), only on a
+          server with payments on (/v1/pay/config answers): production 404s it, so build 25 looks like build 24 there */}
+      {payOn ? (
+        <Tap x={203} y={18} w={70} h={24} label={`Wallet: ${p.coins === null ? 0 : p.coins} CosCoins`} onPress={() => router.push("/wallet")} testID="wale-home-wallet" />
+      ) : null}
       {/* the second currency slot: total XP (hidden under the open menu, as in his frame) */}
       {!menu ? (
         <>
