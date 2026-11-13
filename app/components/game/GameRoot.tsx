@@ -1,7 +1,7 @@
 // The React Native game (gameUi: 'rn'): page 1 of the world on Android, and
 // on iOS behind the flag. The home map with its HUD, the point sheet, and
 // the screens a point opens (a quiz, a Guardian Duel, the reward), plus the
-// journal (dailies, codex, faction war) and first-time onboarding.
+// journal (dailies, codex, faction war). No first-run Warden conversation since build 24 (features/game/firstRun.ts).
 // costquest-ios Roam/RoamHomeView.swift is the reference for the loop.
 import { Ionicons } from "@expo/vector-icons";
 import { useFonts } from "expo-font";
@@ -18,6 +18,7 @@ import { hasTrials, type TrialRequest, trialPoint } from "@/features/game/duelFl
 import { suggestedId } from "@/features/game/guide";
 import { progressionAllowed, progressionOn } from "@/features/game/progression";
 import { isLive, isPocket, type RunPoint, runOn, runPointOf, runQuestPoints, TRIVIA_DOOR } from "@/features/game/run";
+import { LOCATION_REASON, quietGameName, shouldStartLocation } from "@/features/game/firstRun";
 import { gameStore, GAME_SERVER, GAME_SERVER_IS_PRODUCTION, useGame, useLocationPermission, startLocation } from "@/features/game/runtime";
 import { useSquad } from "@/features/game/squadRuntime";
 import { nearestFirst } from "@/features/game/store";
@@ -59,7 +60,6 @@ import LiveCalendarSheet from "./LiveCalendarSheet";
 import MoreSheet, { type MoreTile } from "./MoreSheet";
 import ProgressionSheet from "./ProgressionSheet";
 import NearbyRadar from "./NearbyRadar";
-import Onboarding from "./Onboarding";
 import PointSheet from "./PointSheet";
 import { AR_SHRINE_DEV } from "./prefs";
 import ProfileSheet from "./ProfileSheet";
@@ -194,9 +194,25 @@ function GameRootInner({ parked }: { parked: boolean }) {
   // The rail's Centre on me and the map's "Back to me" fly the map's camera home.
   const [recentreTick, recentre] = useState(0);
   const [mapFollowing, setMapFollowing] = useState(true);
-  const [onboarding, setOnboarding] = useState(false);
-  const needsOnboarding = !!session && gameStore.needsOnboarding;
-  if (needsOnboarding && !onboarding) setOnboarding(true);
+  // Build 24: no Warden first-run conversation (features/game/firstRun.ts). The game name comes
+  // quietly from the chat profile; the faction is picked on Wale's Faction screen; location is
+  // asked for the first time the map is on screen, with a one-line reason on the map.
+  const gameHandle = profile?.handle || me?.handle || null;
+  const loadedOnce = useGame((s) => s.loadedOnce);
+  const namedFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (!session || !loadedOnce || !me) return;
+    const name = quietGameName(chatName, gameHandle);
+    if (!name || namedFor.current === name) return;
+    namedFor.current = name;
+    gameStore.saveProfile(name, profile?.avatar ?? undefined).catch(() => {
+      namedFor.current = null;
+    });
+  }, [session, loadedOnce, me, chatName, gameHandle, profile?.avatar]);
+  const locate = shouldStartLocation({ session: !!session, onScreen, parked });
+  useEffect(() => {
+    if (locate) void startLocation(true);
+  }, [locate]);
   const [legendOf, setLegendOf] = useState<{ id: string; text: string; credit?: string | null } | null>(null);
   const greeted = useRef(new Set<string>());
   // What the coach has said (cq.coach.done, cq.unlocks.introduced), read once.
@@ -469,7 +485,7 @@ function GameRootInner({ parked }: { parked: boolean }) {
   // does not cover answers, titles or rewards (F-38, features/world/bubbleZone.ts).
   // Every game sheet counts too (build 19: the full bubble clipped "Lantern
   // Ronin" in Guardian Trials), as do the Forge bag and a claim.
-  const fullScreen = gameStore.needsOnboarding || onboarding || screen.kind !== "home" || runPoint !== null || runState.finished !== null
+  const fullScreen = screen.kind !== "home" || runPoint !== null || runState.finished !== null
     || sheet !== null || forgeDrop !== null;
   // In a fight even the tucked bubble's unread dot goes (build 19: a pink dot through the 3D fight).
   const fighting = screen.kind === "duel" || screen.kind === "room" || screen.kind === "fight3d";
@@ -502,7 +518,7 @@ function GameRootInner({ parked }: { parked: boolean }) {
       run: { mode: "full", cycle: 0, cycleMs: FIGHT3D.cycleMs, autoplay: FIGHT3D.autoplay, ...run },
     });
   const autostarted = useRef(false);
-  const autostartReady = !!session && (fontsReady || !!fontsError) && !gameStore.needsOnboarding && !onboarding && screen.kind === "home";
+  const autostartReady = !!session && (fontsReady || !!fontsError) && screen.kind === "home";
   useEffect(() => {
     if (!autostartReady || autostarted.current || !FIGHT3D.autostart || !fight3dAvailable()) return;
     autostarted.current = true;
@@ -563,19 +579,9 @@ function GameRootInner({ parked }: { parked: boolean }) {
   );
 
   // build 21: the map sideways on phones that can take it (the notice first, once a session)
-  const mapLand = useMapLandscape(!parked && onScreen && !!session && !(gameStore.needsOnboarding || onboarding), !fighting);
+  const mapLand = useMapLandscape(!parked && onScreen && !!session, !fighting);
   if (!session || (!fontsReady && !fontsError)) {
     return <View style={styles.root} />;
-  }
-  // Opened by the server's answer and closed only by onboarding itself:
-  // choosing a house clears needsOnboarding halfway through, and following it
-  // would close the welcome before the gift and the location question.
-  if (gameStore.needsOnboarding || onboarding) {
-    // Not while parked: the game is warmed up behind the chat at sign-in, and
-    // the Warden would talk (and the narrative beats move on by themselves)
-    // over the chat app. The first run starts when the player swipes in.
-    if (parked) return <View style={styles.root} />;
-    return <Onboarding suggestedName={chatName} onDone={() => setOnboarding(false)} />;
   }
 
   const dailiesLeft = me?.dailies.filter((d) => !d.done).length ?? 0;
@@ -716,7 +722,7 @@ function GameRootInner({ parked }: { parked: boolean }) {
           </View>
         ) : !fix ? (
           <View style={styles.notice}>
-            <Text style={styles.noticeText}>Finding you…</Text>
+            <Text style={styles.noticeText}>{permission === "granted" ? "Finding you…" : LOCATION_REASON}</Text>
             {TRIVIA_DOOR && !runLive ? <GameButton title="Play trivia meanwhile" small color={GP.sun} onPress={() => router.push("/trivia")} testID="game-trivia" /> : null}
           </View>
         ) : problem ? (
