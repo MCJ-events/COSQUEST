@@ -57,7 +57,7 @@ export const HOME_H = 575;
 const LEFT: { id: string; label: string; pic?: Pic; tx?: number; y: number; go: () => void }[] = [
   { id: "add-friend", label: "ADD FRIEND", pic: { src: require("@/assets/images/waleui/icon_add_friend.png"), x: 23.5, y: 90, w: 9, h: 10.25 }, tx: 35, y: 85, go: () => openGameSheet("friends") },
   { id: "team-up", label: "TEAM UP", pic: { src: require("@/assets/images/waleui/icon_team_up.png"), x: 23.75, y: 113.5, w: 15, h: 12.75 }, tx: 41, y: 111.5, go: () => openGameSheet("squad") },
-  { id: "faction", label: "FACTION", y: 138, go: () => openGameSheet("ranks") },
+  { id: "faction", label: "FACTION", y: 138, go: () => router.push("/wale/faction") },
   { id: "community", label: "COMMUNITY", y: 164, go: () => router.push("/community") },
 ];
 
