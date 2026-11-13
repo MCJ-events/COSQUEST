@@ -314,7 +314,7 @@ Feedback that started it (Adewale, team PM): the effects showed a skill landed, 
 | button | state | what the body does | hit moment (unchanged) |
 |---|---|---|---|
 | ATTACK | `attack_1..3` | a left-to-right cut from a coiled trunk (`R_Atk1`), a right-to-left backhand turned onto the target (`R_Atk2`), a two-handed overhead slam (`R_Atk3`, or the turned overhead chop `R_Atk3_k` where the slam tears); the off hand comes in | 0.11 s, 0.11 s, 0.235 s |
-| SHOOT | `skill_shoot` (new; was `attack_2`) | the off hand comes up straight at the target, fires with a recoil (arm kicks up, chest back) and holds the aim for 0.5 s while the body stands; guns: the rifle shot | 0.12 s |
+| SHOOT | `skill_shoot` (new; was `attack_2`) | the shoulders turn side-on and the off hand comes up and out towards the target (32 degrees out and 30 up, so it shows past the body from the camera behind the hero), fires with a recoil (arm kicks up, chest back) and holds the aim for 0.5 s while the body stands; guns: the rifle shot | 0.12 s |
 | RAIN | `skill_rain` (new; was `skill_rally`) | the weapon arm and the eyes go up to the sky, then the arm comes down to point at the marked circle as the volleys fall | 0.3 s (the arm is up) |
 | DASH | `skill_charge` | a crouch, then a sprint stride leaning 30 degrees into a forward thrust | 0.18 s |
 | SHIELD | `skill_shield` | a braced, lowered stance, the off forearm raised like a shield, pushing out as the barrier goes up | 0.2 s |
@@ -337,7 +337,11 @@ The report of each clip has `gates`: the weapon direction at the contact against
 T-pose frames and planted-foot slide per step.
 
 **Wale's notes (13 Nov), same switch:**
-- *Grounding* ("levitating, feet not steadily on the ground"): the body's sole planting (build 21, `fighter.gd`
+- *Grounding* ("levitating, feet not steadily on the ground"): the cause on the side camera was feet resting on
+  their toes (the classic idle's front foot 28 to 30 degrees toes-down) while the sole planting kept the lowest point on
+  the paving. A `flatfeet` compose op stands a planted foot heel and ball down in the idle, guard, every button and the
+  intro. With the readable clips the foot lock, the bind-pose guard, legs animated by the ground covered and the aim hold
+  are on by default on every tier (they were mid and high only; the app's tier keys still override). The body's sole planting (build 21, `fighter.gd`
   `_plant_target`) now also holds the third cut, SHOOT, RAIN, SPLIT and the intro beat on the paving
   (`PLANT_READABLE`), and keeps a knockdown from sinking. `fighter.sole_gap()` is the measure (the lowest sole marker
   above the fighter's ground), logged per frame by `tools/anim/button_rec.gd`.
