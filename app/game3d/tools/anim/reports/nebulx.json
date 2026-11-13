@@ -64,6 +64,16 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "contact_yaw_deg": -29.0,
+    "contact_elev_deg": -0.3,
+    "hips_yaw_deg": 3.7,
+    "backward": false,
+    "tpose_frames": 0,
+    "foot_steps": 8,
+    "foot_slide_worst_cm": 12.2,
+    "foot_steps_over_2cm": 6
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.0,
@@ -152,6 +162,16 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "contact_yaw_deg": -5.4,
+    "contact_elev_deg": 1.3,
+    "hips_yaw_deg": 14.9,
+    "backward": false,
+    "tpose_frames": 0,
+    "foot_steps": 6,
+    "foot_slide_worst_cm": 45.5,
+    "foot_steps_over_2cm": 6
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.018,
@@ -241,6 +261,16 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "contact_yaw_deg": -22.4,
+    "contact_elev_deg": -10.5,
+    "hips_yaw_deg": 0.2,
+    "backward": false,
+    "tpose_frames": 0,
+    "foot_steps": 9,
+    "foot_slide_worst_cm": 29.8,
+    "foot_steps_over_2cm": 9
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.0,
@@ -328,6 +358,16 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "contact_yaw_deg": -26.0,
+    "contact_elev_deg": -9.6,
+    "hips_yaw_deg": 6.7,
+    "backward": false,
+    "tpose_frames": 0,
+    "foot_steps": 6,
+    "foot_slide_worst_cm": 20.4,
+    "foot_steps_over_2cm": 6
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.0,
@@ -416,6 +456,16 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 50,
+   "gates": {
+    "contact_yaw_deg": -21.6,
+    "contact_elev_deg": 17.6,
+    "hips_yaw_deg": -0.0,
+    "backward": false,
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 41.2,
+    "foot_steps_over_2cm": 4
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.0,
@@ -504,6 +554,16 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 34,
+   "gates": {
+    "contact_yaw_deg": 5.6,
+    "contact_elev_deg": 6.9,
+    "hips_yaw_deg": 4.7,
+    "backward": false,
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 32.4,
+    "foot_steps_over_2cm": 4
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.032,
@@ -591,6 +651,16 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "contact_yaw_deg": -35.7,
+    "contact_elev_deg": -0.7,
+    "hips_yaw_deg": -50.4,
+    "backward": false,
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 48.0,
+    "foot_steps_over_2cm": 4
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.0,
@@ -679,6 +749,16 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "contact_yaw_deg": -148.3,
+    "contact_elev_deg": 1.7,
+    "hips_yaw_deg": -147.7,
+    "backward": true,
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 61.6,
+    "foot_steps_over_2cm": 4
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.0,
@@ -769,6 +849,16 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 49,
+   "gates": {
+    "contact_yaw_deg": -26.0,
+    "contact_elev_deg": -2.1,
+    "hips_yaw_deg": -29.8,
+    "backward": false,
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 41.7,
+    "foot_steps_over_2cm": 4
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.0,
@@ -858,6 +948,12 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 33,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 2.0,
+    "foot_steps_over_2cm": 0
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.0,
@@ -946,6 +1042,12 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 42,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 28.3,
+    "foot_steps_over_2cm": 4
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.0,
@@ -1035,6 +1137,16 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 26,
+   "gates": {
+    "contact_yaw_deg": -115.8,
+    "contact_elev_deg": 62.1,
+    "hips_yaw_deg": -46.1,
+    "backward": false,
+    "tpose_frames": 0,
+    "foot_steps": 6,
+    "foot_slide_worst_cm": 34.1,
+    "foot_steps_over_2cm": 6
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.0,
@@ -1124,6 +1236,12 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 73,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 6.0,
+    "foot_steps_over_2cm": 4
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.0,
@@ -1212,6 +1330,12 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 29.4,
+    "foot_steps_over_2cm": 4
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.0,
@@ -1299,6 +1423,16 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "contact_yaw_deg": -53.1,
+    "contact_elev_deg": -10.9,
+    "hips_yaw_deg": -0.0,
+    "backward": false,
+    "tpose_frames": 0,
+    "foot_steps": 8,
+    "foot_slide_worst_cm": 45.1,
+    "foot_steps_over_2cm": 8
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.0,
@@ -1389,6 +1523,12 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 7.2,
+    "foot_steps_over_2cm": 2
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.0,
@@ -1477,6 +1617,12 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 3.4,
+    "foot_steps_over_2cm": 2
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.0,
@@ -1568,6 +1714,16 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "contact_yaw_deg": 25.8,
+    "contact_elev_deg": 22.6,
+    "hips_yaw_deg": -14.4,
+    "backward": false,
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 12.4,
+    "foot_steps_over_2cm": 4
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.0,
@@ -1657,6 +1813,12 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 5,
+    "foot_slide_worst_cm": 19.9,
+    "foot_steps_over_2cm": 4
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.2,
@@ -1751,6 +1913,12 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 3.6,
+    "foot_steps_over_2cm": 4
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.266,
@@ -1843,6 +2011,12 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 8,
+    "foot_slide_worst_cm": 8.3,
+    "foot_steps_over_2cm": 3
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.204,
@@ -1933,6 +2107,12 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 7,
+    "foot_slide_worst_cm": 21.1,
+    "foot_steps_over_2cm": 7
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.1,
@@ -2022,6 +2202,12 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 59.7,
+    "foot_steps_over_2cm": 4
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.265,
@@ -2111,6 +2297,12 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 3.7,
+    "foot_steps_over_2cm": 4
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.206,
@@ -2201,6 +2393,12 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 6,
+    "foot_slide_worst_cm": 5.2,
+    "foot_steps_over_2cm": 2
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.126,
@@ -2288,6 +2486,16 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "contact_yaw_deg": 62.0,
+    "contact_elev_deg": 21.3,
+    "hips_yaw_deg": 49.3,
+    "backward": false,
+    "tpose_frames": 0,
+    "foot_steps": 5,
+    "foot_slide_worst_cm": 23.8,
+    "foot_steps_over_2cm": 4
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.0,
@@ -2380,6 +2588,16 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "contact_yaw_deg": 53.6,
+    "contact_elev_deg": 22.8,
+    "hips_yaw_deg": 75.3,
+    "backward": false,
+    "tpose_frames": 0,
+    "foot_steps": 5,
+    "foot_slide_worst_cm": 15.4,
+    "foot_steps_over_2cm": 4
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.0,
@@ -2471,6 +2689,16 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "contact_yaw_deg": 109.2,
+    "contact_elev_deg": -12.4,
+    "hips_yaw_deg": 70.4,
+    "backward": true,
+    "tpose_frames": 0,
+    "foot_steps": 7,
+    "foot_slide_worst_cm": 14.3,
+    "foot_steps_over_2cm": 5
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.0,
@@ -2565,6 +2793,16 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "contact_yaw_deg": 45.1,
+    "contact_elev_deg": -34.5,
+    "hips_yaw_deg": 53.9,
+    "backward": false,
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 16.2,
+    "foot_steps_over_2cm": 4
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.0,
@@ -2654,6 +2892,12 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 7,
+    "foot_slide_worst_cm": 65.7,
+    "foot_steps_over_2cm": 6
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.0,
@@ -2748,6 +2992,16 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "contact_yaw_deg": 62.7,
+    "contact_elev_deg": 6.4,
+    "hips_yaw_deg": -5.4,
+    "backward": false,
+    "tpose_frames": 0,
+    "foot_steps": 6,
+    "foot_slide_worst_cm": 5.0,
+    "foot_steps_over_2cm": 2
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.221,
@@ -2840,6 +3094,12 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 10,
+    "foot_slide_worst_cm": 41.9,
+    "foot_steps_over_2cm": 10
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.093,
@@ -2929,6 +3189,12 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 8.2,
+    "foot_steps_over_2cm": 4
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.0,
@@ -3020,6 +3286,12 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 6,
+    "foot_slide_worst_cm": 43.9,
+    "foot_steps_over_2cm": 5
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.0,
@@ -3112,6 +3384,12 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 16.0,
+    "foot_steps_over_2cm": 4
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.0,
@@ -3201,6 +3479,12 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 3.4,
+    "foot_steps_over_2cm": 3
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.0,
@@ -3285,6 +3569,12 @@
    "tear_where": {},
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 11,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 5.9,
+    "foot_steps_over_2cm": 4
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.0,
@@ -3373,6 +3663,12 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 12.1,
+    "foot_steps_over_2cm": 4
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.0,
@@ -3463,6 +3759,12 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 6,
+    "foot_slide_worst_cm": 10.2,
+    "foot_steps_over_2cm": 6
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.0,
@@ -3525,6 +3827,2510 @@
    },
    "tear_worst_lod": "lod0"
   },
+  "I_Chop2H_T": {
+   "src": "compose",
+   "frames": 24,
+   "fps": 30.0,
+   "length_s": 0.767,
+   "contact": null,
+   "root": "composed",
+   "root_end_raw_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": -0.002,
+   "feet_max_m": 0.0,
+   "planted_slide_mps": 8.364,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00219,
+   "tear_p99": 1.788,
+   "tears": false,
+   "tear_where": {
+    "Hips": 9,
+    "LeftLeg": 6
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 49.6,
+    "foot_steps_over_2cm": 4
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 24,
+     "lhand_to_shaft_m_p50": 0.089
+    },
+    "crossbow": {
+     "pen_max_m": 0.089,
+     "pen_frames": 3,
+     "frames": 24,
+     "lhand_to_shaft_m_p50": 0.294
+    },
+    "dagger": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 24,
+     "lhand_to_shaft_m_p50": 0.089
+    },
+    "greatsword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 24,
+     "lhand_to_shaft_m_p50": 0.089
+    },
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 24,
+     "lhand_to_shaft_m_p50": 0.089
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 24,
+     "lhand_to_shaft_m_p50": 0.294
+    },
+    "shield": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 24,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 24,
+     "lhand_to_shaft_m_p50": 0.089
+    },
+    "sword": {
+     "pen_max_m": 0.045,
+     "pen_frames": 2,
+     "frames": 24,
+     "lhand_to_shaft_m_p50": 0.083
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00167,
+    "lod2": 0.00219
+   },
+   "tear_worst_lod": "lod2"
+  },
+  "I_Defend": {
+   "src": "M2M_Defend",
+   "frames": 29,
+   "fps": 30.0,
+   "length_s": 0.917,
+   "contact": null,
+   "root": "inplace",
+   "root_end_raw_m": [
+    -0.019,
+    -0.254,
+    -0.055
+   ],
+   "sway_max_m": 0.019,
+   "feet_min_m": -0.0,
+   "feet_max_m": 0.0,
+   "planted_slide_mps": 0.012,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00324,
+   "tear_p99": 1.82,
+   "tears": false,
+   "tear_where": {
+    "Hips": 8,
+    "LeftUpLeg": 1,
+    "LeftLeg": 3,
+    "RightUpLeg": 16,
+    "RightLeg": 3
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 1.5,
+    "foot_steps_over_2cm": 0
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.119,
+     "pen_frames": 29,
+     "frames": 29,
+     "lhand_to_shaft_m_p50": 0.366
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 29,
+     "lhand_to_shaft_m_p50": 0.8
+    },
+    "dagger": {
+     "pen_max_m": 0.121,
+     "pen_frames": 29,
+     "frames": 29,
+     "lhand_to_shaft_m_p50": 0.366
+    },
+    "greatsword": {
+     "pen_max_m": 0.117,
+     "pen_frames": 29,
+     "frames": 29,
+     "lhand_to_shaft_m_p50": 0.366
+    },
+    "hammer": {
+     "pen_max_m": 0.117,
+     "pen_frames": 29,
+     "frames": 29,
+     "lhand_to_shaft_m_p50": 0.366
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 29,
+     "lhand_to_shaft_m_p50": 0.803
+    },
+    "shield": {
+     "pen_max_m": 0.039,
+     "pen_frames": 13,
+     "frames": 29,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.107,
+     "pen_frames": 29,
+     "frames": 29,
+     "lhand_to_shaft_m_p50": 0.366
+    },
+    "sword": {
+     "pen_max_m": 0.169,
+     "pen_frames": 29,
+     "frames": 29,
+     "lhand_to_shaft_m_p50": 0.384
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00324,
+    "lod2": 0.00146
+   },
+   "tear_worst_lod": "lod0"
+  },
+  "I_Defend_s": {
+   "src": "M2M_Defend",
+   "frames": 29,
+   "fps": 30.0,
+   "length_s": 0.917,
+   "contact": null,
+   "root": "inplace",
+   "root_end_raw_m": [
+    -0.019,
+    -0.254,
+    -0.055
+   ],
+   "sway_max_m": 0.019,
+   "feet_min_m": -0.0,
+   "feet_max_m": 0.0,
+   "planted_slide_mps": 0.035,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00171,
+   "tear_p99": 1.763,
+   "tears": false,
+   "tear_where": {
+    "Hips": 7,
+    "LeftLeg": 3,
+    "RightUpLeg": 2
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 1.9,
+    "foot_steps_over_2cm": 0
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.119,
+     "pen_frames": 29,
+     "frames": 29,
+     "lhand_to_shaft_m_p50": 0.366
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 29,
+     "lhand_to_shaft_m_p50": 0.8
+    },
+    "dagger": {
+     "pen_max_m": 0.121,
+     "pen_frames": 29,
+     "frames": 29,
+     "lhand_to_shaft_m_p50": 0.366
+    },
+    "greatsword": {
+     "pen_max_m": 0.117,
+     "pen_frames": 29,
+     "frames": 29,
+     "lhand_to_shaft_m_p50": 0.366
+    },
+    "hammer": {
+     "pen_max_m": 0.117,
+     "pen_frames": 29,
+     "frames": 29,
+     "lhand_to_shaft_m_p50": 0.366
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 29,
+     "lhand_to_shaft_m_p50": 0.803
+    },
+    "shield": {
+     "pen_max_m": 0.039,
+     "pen_frames": 13,
+     "frames": 29,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.107,
+     "pen_frames": 29,
+     "frames": 29,
+     "lhand_to_shaft_m_p50": 0.366
+    },
+    "sword": {
+     "pen_max_m": 0.169,
+     "pen_frames": 29,
+     "frames": 29,
+     "lhand_to_shaft_m_p50": 0.384
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00171,
+    "lod2": 0.0
+   },
+   "tear_worst_lod": "lod0"
+  },
+  "I_Diag_s": {
+   "src": "1H_Melee_Attack_Slice_Diagonal",
+   "frames": 31,
+   "fps": 30.0,
+   "length_s": 1.0,
+   "contact": null,
+   "root": "inplace",
+   "root_end_raw_m": [
+    0.0,
+    -0.029,
+    0.0
+   ],
+   "sway_max_m": 0.392,
+   "feet_min_m": -0.0,
+   "feet_max_m": 0.02,
+   "planted_slide_mps": 8.032,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00037,
+   "tear_p99": 1.423,
+   "tears": false,
+   "tear_where": {
+    "Hips": 1,
+    "LeftLeg": 3
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 5,
+    "foot_slide_worst_cm": 46.4,
+    "foot_steps_over_2cm": 5
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.018,
+     "pen_frames": 0,
+     "frames": 31,
+     "lhand_to_shaft_m_p50": 0.96
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 31,
+     "lhand_to_shaft_m_p50": 0.972
+    },
+    "dagger": {
+     "pen_max_m": 0.018,
+     "pen_frames": 0,
+     "frames": 31,
+     "lhand_to_shaft_m_p50": 0.96
+    },
+    "greatsword": {
+     "pen_max_m": 0.013,
+     "pen_frames": 0,
+     "frames": 31,
+     "lhand_to_shaft_m_p50": 0.96
+    },
+    "hammer": {
+     "pen_max_m": 0.017,
+     "pen_frames": 0,
+     "frames": 31,
+     "lhand_to_shaft_m_p50": 0.96
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 31,
+     "lhand_to_shaft_m_p50": 0.943
+    },
+    "shield": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 31,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.012,
+     "pen_frames": 0,
+     "frames": 31,
+     "lhand_to_shaft_m_p50": 0.96
+    },
+    "sword": {
+     "pen_max_m": 0.097,
+     "pen_frames": 5,
+     "frames": 31,
+     "lhand_to_shaft_m_p50": 0.961
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00022,
+    "lod2": 0.0
+   }
+  },
+  "I_Guard_hi": {
+   "src": "M2M_Weapon_Block",
+   "frames": 27,
+   "fps": 30.0,
+   "length_s": 1.875,
+   "contact": null,
+   "root": "inplace",
+   "root_end_raw_m": [
+    -0.0,
+    -0.129,
+    -0.038
+   ],
+   "sway_max_m": 0.012,
+   "feet_min_m": -0.002,
+   "feet_max_m": -0.001,
+   "planted_slide_mps": 0.384,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.0013,
+   "tear_p99": 1.778,
+   "tears": false,
+   "tear_where": {
+    "Hips": 6,
+    "Spine1": 2,
+    "Spine2": 4,
+    "RightUpLeg": 1,
+    "RightLeg": 1
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 4.2,
+    "foot_steps_over_2cm": 2
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 27,
+     "lhand_to_shaft_m_p50": 0.105
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 27,
+     "lhand_to_shaft_m_p50": 0.417
+    },
+    "dagger": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 27,
+     "lhand_to_shaft_m_p50": 0.105
+    },
+    "greatsword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 27,
+     "lhand_to_shaft_m_p50": 0.105
+    },
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 27,
+     "lhand_to_shaft_m_p50": 0.105
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 27,
+     "lhand_to_shaft_m_p50": 0.418
+    },
+    "shield": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 27,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 27,
+     "lhand_to_shaft_m_p50": 0.105
+    },
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 27,
+     "lhand_to_shaft_m_p50": 0.034
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.0013,
+    "lod2": 0.0
+   },
+   "tear_worst_lod": "lod0"
+  },
+  "I_Guard_hi_s": {
+   "src": "M2M_Weapon_Block",
+   "frames": 27,
+   "fps": 30.0,
+   "length_s": 1.875,
+   "contact": null,
+   "root": "inplace",
+   "root_end_raw_m": [
+    -0.0,
+    -0.129,
+    -0.038
+   ],
+   "sway_max_m": 0.012,
+   "feet_min_m": -0.002,
+   "feet_max_m": -0.001,
+   "planted_slide_mps": 0.273,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00123,
+   "tear_p99": 1.761,
+   "tears": false,
+   "tear_where": {
+    "Hips": 6,
+    "Spine1": 2,
+    "Spine2": 4
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 2.1,
+    "foot_steps_over_2cm": 1
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 27,
+     "lhand_to_shaft_m_p50": 0.105
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 27,
+     "lhand_to_shaft_m_p50": 0.417
+    },
+    "dagger": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 27,
+     "lhand_to_shaft_m_p50": 0.105
+    },
+    "greatsword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 27,
+     "lhand_to_shaft_m_p50": 0.105
+    },
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 27,
+     "lhand_to_shaft_m_p50": 0.105
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 27,
+     "lhand_to_shaft_m_p50": 0.418
+    },
+    "shield": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 27,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 27,
+     "lhand_to_shaft_m_p50": 0.105
+    },
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 27,
+     "lhand_to_shaft_m_p50": 0.034
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00123,
+    "lod2": 0.0
+   },
+   "tear_worst_lod": "lod0"
+  },
+  "I_Intro_Guard": {
+   "src": "CMU_Guard",
+   "frames": 49,
+   "fps": 30.0,
+   "length_s": 0.933,
+   "contact": null,
+   "root": "inplace",
+   "root_end_raw_m": [
+    -0.003,
+    -0.006,
+    -0.008
+   ],
+   "sway_max_m": 0.175,
+   "feet_min_m": -0.016,
+   "feet_max_m": -0.0,
+   "planted_slide_mps": 0.831,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00569,
+   "tear_p99": 2.172,
+   "tears": true,
+   "tear_where": {
+    "Hips": 18,
+    "Spine": 1,
+    "Head": 2,
+    "LeftUpLeg": 9,
+    "LeftLeg": 22,
+    "RightUpLeg": 4,
+    "RightLeg": 3
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 8,
+    "foot_slide_worst_cm": 8.3,
+    "foot_steps_over_2cm": 3
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.204,
+     "pen_frames": 49,
+     "frames": 49,
+     "lhand_to_shaft_m_p50": 0.196
+    },
+    "crossbow": {
+     "pen_max_m": 0.088,
+     "pen_frames": 47,
+     "frames": 49,
+     "lhand_to_shaft_m_p50": 0.193
+    },
+    "dagger": {
+     "pen_max_m": 0.208,
+     "pen_frames": 49,
+     "frames": 49,
+     "lhand_to_shaft_m_p50": 0.196
+    },
+    "greatsword": {
+     "pen_max_m": 0.201,
+     "pen_frames": 49,
+     "frames": 49,
+     "lhand_to_shaft_m_p50": 0.196
+    },
+    "hammer": {
+     "pen_max_m": 0.208,
+     "pen_frames": 49,
+     "frames": 49,
+     "lhand_to_shaft_m_p50": 0.196
+    },
+    "rifle": {
+     "pen_max_m": 0.056,
+     "pen_frames": 43,
+     "frames": 49,
+     "lhand_to_shaft_m_p50": 0.221
+    },
+    "shield": {
+     "pen_max_m": 0.263,
+     "pen_frames": 49,
+     "frames": 49,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.193,
+     "pen_frames": 49,
+     "frames": 49,
+     "lhand_to_shaft_m_p50": 0.196
+    },
+    "sword": {
+     "pen_max_m": 0.193,
+     "pen_frames": 49,
+     "frames": 49,
+     "lhand_to_shaft_m_p50": 0.209
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00569,
+    "lod2": 0.00146
+   },
+   "tear_worst_lod": "lod0"
+  },
+  "I_Intro_Open": {
+   "src": "Spellcast_Long",
+   "frames": 77,
+   "fps": 30.0,
+   "length_s": 2.533,
+   "contact": null,
+   "root": "inplace",
+   "root_end_raw_m": [
+    0.0,
+    -0.029,
+    0.0
+   ],
+   "sway_max_m": 0.275,
+   "feet_min_m": -0.0,
+   "feet_max_m": -0.0,
+   "planted_slide_mps": 0.777,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00171,
+   "tear_p99": 1.66,
+   "tears": false,
+   "tear_where": {
+    "Hips": 9,
+    "LeftLeg": 7
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 6,
+    "foot_slide_worst_cm": 17.0,
+    "foot_steps_over_2cm": 4
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 77,
+     "lhand_to_shaft_m_p50": 1.025
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 77,
+     "lhand_to_shaft_m_p50": 1.028
+    },
+    "dagger": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 77,
+     "lhand_to_shaft_m_p50": 1.025
+    },
+    "greatsword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 77,
+     "lhand_to_shaft_m_p50": 1.025
+    },
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 77,
+     "lhand_to_shaft_m_p50": 1.025
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 77,
+     "lhand_to_shaft_m_p50": 0.996
+    },
+    "shield": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 77,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 77,
+     "lhand_to_shaft_m_p50": 1.025
+    },
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 77,
+     "lhand_to_shaft_m_p50": 1.03
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00171,
+    "lod2": 0.0
+   },
+   "tear_worst_lod": "lod0"
+  },
+  "I_Intro_Plant": {
+   "src": "2H_Melee_Idle",
+   "frames": 33,
+   "fps": 30.0,
+   "length_s": 1.067,
+   "contact": null,
+   "root": "inplace",
+   "root_end_raw_m": [
+    0.018,
+    -0.06,
+    -0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": -0.0,
+   "feet_max_m": -0.0,
+   "planted_slide_mps": 0.056,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00082,
+   "tear_p99": 1.462,
+   "tears": false,
+   "tear_where": {
+    "Hips": 1,
+    "LeftLeg": 3,
+    "RightUpLeg": 3,
+    "RightLeg": 2
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 2.0,
+    "foot_steps_over_2cm": 0
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.419
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.722
+    },
+    "dagger": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.419
+    },
+    "greatsword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.419
+    },
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.419
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.733
+    },
+    "shield": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.419
+    },
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.432
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.0006,
+    "lod2": 0.0
+   }
+  },
+  "I_Intro_Ready": {
+   "src": "M2M_Fighting_Idle",
+   "frames": 50,
+   "fps": 30.0,
+   "length_s": 1.625,
+   "contact": null,
+   "root": "inplace",
+   "root_end_raw_m": [
+    0.011,
+    -0.062,
+    -0.012
+   ],
+   "sway_max_m": 0.086,
+   "feet_min_m": -0.0,
+   "feet_max_m": 0.0,
+   "planted_slide_mps": 0.019,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00052,
+   "tear_p99": 1.528,
+   "tears": false,
+   "tear_where": {
+    "LeftLeg": 2,
+    "RightUpLeg": 1,
+    "RightLeg": 1
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 0.6,
+    "foot_steps_over_2cm": 0
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.012,
+     "pen_frames": 0,
+     "frames": 50,
+     "lhand_to_shaft_m_p50": 0.373
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 50,
+     "lhand_to_shaft_m_p50": 0.56
+    },
+    "dagger": {
+     "pen_max_m": 0.012,
+     "pen_frames": 0,
+     "frames": 50,
+     "lhand_to_shaft_m_p50": 0.373
+    },
+    "greatsword": {
+     "pen_max_m": 0.012,
+     "pen_frames": 0,
+     "frames": 50,
+     "lhand_to_shaft_m_p50": 0.373
+    },
+    "hammer": {
+     "pen_max_m": 0.012,
+     "pen_frames": 0,
+     "frames": 50,
+     "lhand_to_shaft_m_p50": 0.373
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 50,
+     "lhand_to_shaft_m_p50": 0.574
+    },
+    "shield": {
+     "pen_max_m": 0.091,
+     "pen_frames": 36,
+     "frames": 50,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.012,
+     "pen_frames": 0,
+     "frames": 50,
+     "lhand_to_shaft_m_p50": 0.373
+    },
+    "sword": {
+     "pen_max_m": 0.032,
+     "pen_frames": 6,
+     "frames": 50,
+     "lhand_to_shaft_m_p50": 0.39
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00052,
+    "lod2": 0.0
+   },
+   "tear_worst_lod": "lod0"
+  },
+  "I_Jump_s": {
+   "src": "Jump_Full_Short",
+   "frames": 36,
+   "fps": 30.0,
+   "length_s": 1.167,
+   "contact": null,
+   "root": "inplace",
+   "root_end_raw_m": [
+    0.0,
+    -0.029,
+    0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": -0.0,
+   "feet_max_m": 0.279,
+   "planted_slide_mps": 0.693,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00055,
+   "tear_p99": 1.566,
+   "tears": false,
+   "tear_where": {
+    "LeftLeg": 2,
+    "RightUpLeg": 2,
+    "RightLeg": 2
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 8,
+    "foot_slide_worst_cm": 11.3,
+    "foot_steps_over_2cm": 8
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 36,
+     "lhand_to_shaft_m_p50": 0.999
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 36,
+     "lhand_to_shaft_m_p50": 0.999
+    },
+    "dagger": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 36,
+     "lhand_to_shaft_m_p50": 0.999
+    },
+    "greatsword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 36,
+     "lhand_to_shaft_m_p50": 0.999
+    },
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 36,
+     "lhand_to_shaft_m_p50": 0.999
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 36,
+     "lhand_to_shaft_m_p50": 0.965
+    },
+    "shield": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 36,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 36,
+     "lhand_to_shaft_m_p50": 0.999
+    },
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 36,
+     "lhand_to_shaft_m_p50": 1.001
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00045,
+    "lod2": 0.0
+   }
+  },
+  "I_Jump_s2": {
+   "src": "Jump_Full_Short",
+   "frames": 36,
+   "fps": 30.0,
+   "length_s": 1.167,
+   "contact": null,
+   "root": "inplace",
+   "root_end_raw_m": [
+    0.0,
+    -0.029,
+    0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": -0.0,
+   "feet_max_m": 0.279,
+   "planted_slide_mps": 0.547,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00018,
+   "tear_p99": 1.492,
+   "tears": false,
+   "tear_where": {
+    "RightUpLeg": 1,
+    "RightLeg": 1
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 8,
+    "foot_slide_worst_cm": 7.7,
+    "foot_steps_over_2cm": 8
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 36,
+     "lhand_to_shaft_m_p50": 0.999
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 36,
+     "lhand_to_shaft_m_p50": 0.999
+    },
+    "dagger": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 36,
+     "lhand_to_shaft_m_p50": 0.999
+    },
+    "greatsword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 36,
+     "lhand_to_shaft_m_p50": 0.999
+    },
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 36,
+     "lhand_to_shaft_m_p50": 0.999
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 36,
+     "lhand_to_shaft_m_p50": 0.965
+    },
+    "shield": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 36,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 36,
+     "lhand_to_shaft_m_p50": 0.999
+    },
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 36,
+     "lhand_to_shaft_m_p50": 1.001
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00015,
+    "lod2": 0.0
+   }
+  },
+  "I_Knockback": {
+   "src": "M2M_Hit_Knockback",
+   "frames": 25,
+   "fps": 30.0,
+   "length_s": 0.792,
+   "contact": null,
+   "root": "zero",
+   "root_end_raw_m": [
+    0.005,
+    -0.404,
+    -0.141
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": -0.442,
+   "feet_max_m": 0.653,
+   "planted_slide_mps": 6.663,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.0209,
+   "tear_p99": 2.983,
+   "tears": true,
+   "tear_where": {
+    "Hips": 60,
+    "Spine": 11,
+    "Spine1": 43,
+    "Spine2": 41,
+    "LeftUpLeg": 17,
+    "LeftLeg": 47,
+    "RightUpLeg": 6,
+    "RightLeg": 3
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 2,
+    "foot_slide_worst_cm": 17.4,
+    "foot_steps_over_2cm": 2
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 25,
+     "lhand_to_shaft_m_p50": 0.737
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 25,
+     "lhand_to_shaft_m_p50": 0.694
+    },
+    "dagger": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 25,
+     "lhand_to_shaft_m_p50": 0.737
+    },
+    "greatsword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 25,
+     "lhand_to_shaft_m_p50": 0.737
+    },
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 25,
+     "lhand_to_shaft_m_p50": 0.737
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 25,
+     "lhand_to_shaft_m_p50": 0.666
+    },
+    "shield": {
+     "pen_max_m": 0.223,
+     "pen_frames": 6,
+     "frames": 25,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 25,
+     "lhand_to_shaft_m_p50": 0.737
+    },
+    "sword": {
+     "pen_max_m": 0.022,
+     "pen_frames": 0,
+     "frames": 25,
+     "lhand_to_shaft_m_p50": 0.731
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.02027,
+    "lod2": 0.00146
+   }
+  },
+  "I_Knockback_s": {
+   "src": "M2M_Hit_Knockback",
+   "frames": 25,
+   "fps": 30.0,
+   "length_s": 0.792,
+   "contact": null,
+   "root": "zero",
+   "root_end_raw_m": [
+    0.005,
+    -0.404,
+    -0.141
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": -0.442,
+   "feet_max_m": 0.653,
+   "planted_slide_mps": 3.915,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.01604,
+   "tear_p99": 2.753,
+   "tears": true,
+   "tear_where": {
+    "Hips": 44,
+    "Spine": 11,
+    "Spine1": 43,
+    "Spine2": 41,
+    "LeftUpLeg": 7,
+    "LeftLeg": 27,
+    "RightUpLeg": 1,
+    "RightLeg": 1
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 2,
+    "foot_slide_worst_cm": 9.9,
+    "foot_steps_over_2cm": 2
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 25,
+     "lhand_to_shaft_m_p50": 0.737
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 25,
+     "lhand_to_shaft_m_p50": 0.694
+    },
+    "dagger": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 25,
+     "lhand_to_shaft_m_p50": 0.737
+    },
+    "greatsword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 25,
+     "lhand_to_shaft_m_p50": 0.737
+    },
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 25,
+     "lhand_to_shaft_m_p50": 0.737
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 25,
+     "lhand_to_shaft_m_p50": 0.666
+    },
+    "shield": {
+     "pen_max_m": 0.223,
+     "pen_frames": 6,
+     "frames": 25,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 25,
+     "lhand_to_shaft_m_p50": 0.737
+    },
+    "sword": {
+     "pen_max_m": 0.022,
+     "pen_frames": 0,
+     "frames": 25,
+     "lhand_to_shaft_m_p50": 0.731
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.01585,
+    "lod2": 0.00146
+   }
+  },
+  "I_M2M_Sprint": {
+   "src": "M2M_Sprint",
+   "frames": 25,
+   "fps": 30.0,
+   "length_s": 0.792,
+   "contact": null,
+   "root": "inplace",
+   "root_end_raw_m": [
+    0.017,
+    -0.014,
+    -0.023
+   ],
+   "sway_max_m": 0.034,
+   "feet_min_m": -0.019,
+   "feet_max_m": 0.226,
+   "planted_slide_mps": 5.612,
+   "ground_speed_mps": 5.412,
+   "tear_share": 0.00962,
+   "tear_p99": 2.456,
+   "tears": true,
+   "tear_where": {
+    "Hips": 37,
+    "Spine": 1,
+    "LeftUpLeg": 19,
+    "LeftLeg": 46,
+    "RightUpLeg": 1,
+    "RightLeg": 1
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 68.6,
+    "foot_steps_over_2cm": 4
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.216,
+     "pen_frames": 25,
+     "frames": 25,
+     "lhand_to_shaft_m_p50": 0.536
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 25,
+     "lhand_to_shaft_m_p50": 0.747
+    },
+    "dagger": {
+     "pen_max_m": 0.158,
+     "pen_frames": 25,
+     "frames": 25,
+     "lhand_to_shaft_m_p50": 0.536
+    },
+    "greatsword": {
+     "pen_max_m": 0.183,
+     "pen_frames": 25,
+     "frames": 25,
+     "lhand_to_shaft_m_p50": 0.536
+    },
+    "hammer": {
+     "pen_max_m": 0.198,
+     "pen_frames": 25,
+     "frames": 25,
+     "lhand_to_shaft_m_p50": 0.536
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 25,
+     "lhand_to_shaft_m_p50": 0.75
+    },
+    "shield": {
+     "pen_max_m": 0.171,
+     "pen_frames": 25,
+     "frames": 25,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.213,
+     "pen_frames": 25,
+     "frames": 25,
+     "lhand_to_shaft_m_p50": 0.536
+    },
+    "sword": {
+     "pen_max_m": 0.236,
+     "pen_frames": 25,
+     "frames": 25,
+     "lhand_to_shaft_m_p50": 0.556
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00949,
+    "lod2": 0.00219
+   }
+  },
+  "I_Slam": {
+   "src": "M2M_Two_Handed_Overhead_Slam",
+   "frames": 55,
+   "fps": 30.0,
+   "length_s": 1.792,
+   "contact": null,
+   "root": "inplace",
+   "root_end_raw_m": [
+    0.002,
+    -0.077,
+    -0.028
+   ],
+   "sway_max_m": 0.182,
+   "feet_min_m": -0.003,
+   "feet_max_m": -0.003,
+   "planted_slide_mps": 1.465,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00477,
+   "tear_p99": 2.005,
+   "tears": false,
+   "tear_where": {
+    "Hips": 22,
+    "Spine": 1,
+    "LeftUpLeg": 9,
+    "LeftLeg": 18,
+    "RightUpLeg": 1,
+    "RightLeg": 1
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 7,
+    "foot_slide_worst_cm": 23.1,
+    "foot_steps_over_2cm": 4
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 55,
+     "lhand_to_shaft_m_p50": 0.213
+    },
+    "crossbow": {
+     "pen_max_m": 0.067,
+     "pen_frames": 11,
+     "frames": 55,
+     "lhand_to_shaft_m_p50": 0.219
+    },
+    "dagger": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 55,
+     "lhand_to_shaft_m_p50": 0.213
+    },
+    "greatsword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 55,
+     "lhand_to_shaft_m_p50": 0.213
+    },
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 55,
+     "lhand_to_shaft_m_p50": 0.213
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 55,
+     "lhand_to_shaft_m_p50": 0.19
+    },
+    "shield": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 55,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 55,
+     "lhand_to_shaft_m_p50": 0.213
+    },
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 55,
+     "lhand_to_shaft_m_p50": 0.218
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00458,
+    "lod2": 0.00073
+   }
+  },
+  "I_Slam_T": {
+   "src": "compose",
+   "frames": 24,
+   "fps": 30.0,
+   "length_s": 0.767,
+   "contact": null,
+   "root": "composed",
+   "root_end_raw_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": -0.003,
+   "feet_max_m": -0.003,
+   "planted_slide_mps": 2.839,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00458,
+   "tear_p99": 1.991,
+   "tears": false,
+   "tear_where": {
+    "Hips": 20,
+    "Spine": 1,
+    "LeftUpLeg": 9,
+    "LeftLeg": 18,
+    "RightUpLeg": 1,
+    "RightLeg": 1
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 6,
+    "foot_slide_worst_cm": 23.6,
+    "foot_steps_over_2cm": 4
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 24,
+     "lhand_to_shaft_m_p50": 0.214
+    },
+    "crossbow": {
+     "pen_max_m": 0.066,
+     "pen_frames": 6,
+     "frames": 24,
+     "lhand_to_shaft_m_p50": 0.224
+    },
+    "dagger": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 24,
+     "lhand_to_shaft_m_p50": 0.214
+    },
+    "greatsword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 24,
+     "lhand_to_shaft_m_p50": 0.214
+    },
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 24,
+     "lhand_to_shaft_m_p50": 0.214
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 24,
+     "lhand_to_shaft_m_p50": 0.196
+    },
+    "shield": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 24,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 24,
+     "lhand_to_shaft_m_p50": 0.214
+    },
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 24,
+     "lhand_to_shaft_m_p50": 0.22
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00458,
+    "lod2": 0.00073
+   }
+  },
+  "I_Slam_T_s": {
+   "src": "compose",
+   "frames": 24,
+   "fps": 30.0,
+   "length_s": 0.767,
+   "contact": null,
+   "root": "composed",
+   "root_end_raw_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": -0.003,
+   "feet_max_m": -0.003,
+   "planted_slide_mps": 2.329,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00205,
+   "tear_p99": 1.702,
+   "tears": false,
+   "tear_where": {
+    "Hips": 8,
+    "Spine": 1,
+    "LeftUpLeg": 2,
+    "LeftLeg": 11
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 6,
+    "foot_slide_worst_cm": 21.3,
+    "foot_steps_over_2cm": 6
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 24,
+     "lhand_to_shaft_m_p50": 0.214
+    },
+    "crossbow": {
+     "pen_max_m": 0.063,
+     "pen_frames": 5,
+     "frames": 24,
+     "lhand_to_shaft_m_p50": 0.224
+    },
+    "dagger": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 24,
+     "lhand_to_shaft_m_p50": 0.214
+    },
+    "greatsword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 24,
+     "lhand_to_shaft_m_p50": 0.214
+    },
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 24,
+     "lhand_to_shaft_m_p50": 0.214
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 24,
+     "lhand_to_shaft_m_p50": 0.196
+    },
+    "shield": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 24,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 24,
+     "lhand_to_shaft_m_p50": 0.214
+    },
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 24,
+     "lhand_to_shaft_m_p50": 0.22
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00205,
+    "lod2": 0.0
+   },
+   "tear_worst_lod": "lod0"
+  },
+  "I_Slam_s": {
+   "src": "M2M_Two_Handed_Overhead_Slam",
+   "frames": 55,
+   "fps": 30.0,
+   "length_s": 1.792,
+   "contact": null,
+   "root": "inplace",
+   "root_end_raw_m": [
+    0.002,
+    -0.077,
+    -0.028
+   ],
+   "sway_max_m": 0.182,
+   "feet_min_m": -0.003,
+   "feet_max_m": -0.003,
+   "planted_slide_mps": 1.205,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.0022,
+   "tear_p99": 1.721,
+   "tears": false,
+   "tear_where": {
+    "Hips": 10,
+    "Spine": 1,
+    "LeftUpLeg": 2,
+    "LeftLeg": 11
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 9,
+    "foot_slide_worst_cm": 20.6,
+    "foot_steps_over_2cm": 6
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 55,
+     "lhand_to_shaft_m_p50": 0.213
+    },
+    "crossbow": {
+     "pen_max_m": 0.064,
+     "pen_frames": 9,
+     "frames": 55,
+     "lhand_to_shaft_m_p50": 0.219
+    },
+    "dagger": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 55,
+     "lhand_to_shaft_m_p50": 0.213
+    },
+    "greatsword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 55,
+     "lhand_to_shaft_m_p50": 0.213
+    },
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 55,
+     "lhand_to_shaft_m_p50": 0.213
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 55,
+     "lhand_to_shaft_m_p50": 0.19
+    },
+    "shield": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 55,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 55,
+     "lhand_to_shaft_m_p50": 0.213
+    },
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 55,
+     "lhand_to_shaft_m_p50": 0.218
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00212,
+    "lod2": 0.0
+   }
+  },
+  "I_SlashB_s": {
+   "src": "CMU_Slash_B",
+   "frames": 33,
+   "fps": 30.0,
+   "length_s": 1.067,
+   "contact": null,
+   "root": "inplace",
+   "root_end_raw_m": [
+    -0.05,
+    -0.011,
+    -0.152
+   ],
+   "sway_max_m": 0.044,
+   "feet_min_m": 0.004,
+   "feet_max_m": 0.023,
+   "planted_slide_mps": 0.316,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00331,
+   "tear_p99": 1.99,
+   "tears": false,
+   "tear_where": {
+    "Hips": 13,
+    "Spine": 1,
+    "Head": 2,
+    "LeftUpLeg": 2,
+    "LeftLeg": 18
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 5,
+    "foot_slide_worst_cm": 5.8,
+    "foot_steps_over_2cm": 5
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.313
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.448
+    },
+    "dagger": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.313
+    },
+    "greatsword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.313
+    },
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.313
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.428
+    },
+    "shield": {
+     "pen_max_m": 0.139,
+     "pen_frames": 10,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.313
+    },
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.287
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00331,
+    "lod2": 0.00073
+   },
+   "tear_worst_lod": "lod0"
+  },
+  "I_Spell_Enter": {
+   "src": "Spell_Simple_Enter",
+   "frames": 16,
+   "fps": 30.0,
+   "length_s": 0.5,
+   "contact": null,
+   "root": "inplace",
+   "root_end_raw_m": [
+    0.027,
+    -0.038,
+    -0.033
+   ],
+   "sway_max_m": 0.005,
+   "feet_min_m": -0.001,
+   "feet_max_m": -0.001,
+   "planted_slide_mps": 0.056,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00108,
+   "tear_p99": 1.813,
+   "tears": false,
+   "tear_where": {
+    "Hips": 2,
+    "Spine2": 2,
+    "RightUpLeg": 1,
+    "RightLeg": 1
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 1.6,
+    "foot_steps_over_2cm": 0
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.006,
+     "pen_frames": 0,
+     "frames": 16,
+     "lhand_to_shaft_m_p50": 0.632
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 16,
+     "lhand_to_shaft_m_p50": 0.906
+    },
+    "dagger": {
+     "pen_max_m": 0.006,
+     "pen_frames": 0,
+     "frames": 16,
+     "lhand_to_shaft_m_p50": 0.632
+    },
+    "greatsword": {
+     "pen_max_m": 0.004,
+     "pen_frames": 0,
+     "frames": 16,
+     "lhand_to_shaft_m_p50": 0.632
+    },
+    "hammer": {
+     "pen_max_m": 0.004,
+     "pen_frames": 0,
+     "frames": 16,
+     "lhand_to_shaft_m_p50": 0.632
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 16,
+     "lhand_to_shaft_m_p50": 0.888
+    },
+    "shield": {
+     "pen_max_m": 0.004,
+     "pen_frames": 0,
+     "frames": 16,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.004,
+     "pen_frames": 0,
+     "frames": 16,
+     "lhand_to_shaft_m_p50": 0.632
+    },
+    "sword": {
+     "pen_max_m": 0.033,
+     "pen_frames": 3,
+     "frames": 16,
+     "lhand_to_shaft_m_p50": 0.604
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00108,
+    "lod2": 0.0
+   },
+   "tear_worst_lod": "lod0"
+  },
+  "I_Sprint_s": {
+   "src": "Sprint_Loop",
+   "frames": 21,
+   "fps": 30.0,
+   "length_s": 0.667,
+   "contact": null,
+   "root": "inplace",
+   "root_end_raw_m": [
+    0.018,
+    -0.047,
+    -0.023
+   ],
+   "sway_max_m": 0.034,
+   "feet_min_m": -0.053,
+   "feet_max_m": 0.207,
+   "planted_slide_mps": 3.973,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.01008,
+   "tear_p99": 2.5,
+   "tears": true,
+   "tear_where": {
+    "Hips": 17,
+    "Spine": 1,
+    "Spine1": 20,
+    "Spine2": 35,
+    "Head": 2,
+    "LeftUpLeg": 4,
+    "LeftLeg": 31
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 7,
+    "foot_slide_worst_cm": 15.3,
+    "foot_steps_over_2cm": 7
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.211,
+     "pen_frames": 21,
+     "frames": 21,
+     "lhand_to_shaft_m_p50": 0.553
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 21,
+     "lhand_to_shaft_m_p50": 0.755
+    },
+    "dagger": {
+     "pen_max_m": 0.16,
+     "pen_frames": 21,
+     "frames": 21,
+     "lhand_to_shaft_m_p50": 0.553
+    },
+    "greatsword": {
+     "pen_max_m": 0.185,
+     "pen_frames": 21,
+     "frames": 21,
+     "lhand_to_shaft_m_p50": 0.553
+    },
+    "hammer": {
+     "pen_max_m": 0.199,
+     "pen_frames": 21,
+     "frames": 21,
+     "lhand_to_shaft_m_p50": 0.553
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 21,
+     "lhand_to_shaft_m_p50": 0.758
+    },
+    "shield": {
+     "pen_max_m": 0.187,
+     "pen_frames": 21,
+     "frames": 21,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.211,
+     "pen_frames": 21,
+     "frames": 21,
+     "lhand_to_shaft_m_p50": 0.553
+    },
+    "sword": {
+     "pen_max_m": 0.222,
+     "pen_frames": 21,
+     "frames": 21,
+     "lhand_to_shaft_m_p50": 0.569
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00956,
+    "lod2": 0.00292
+   }
+  },
+  "I_StandUp": {
+   "src": "Lie_StandUp",
+   "frames": 71,
+   "fps": 30.0,
+   "length_s": 2.333,
+   "contact": null,
+   "root": "zero",
+   "root_end_raw_m": [
+    0.0,
+    -0.029,
+    0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": -0.0,
+   "feet_max_m": 0.19,
+   "planted_slide_mps": 1.812,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00618,
+   "tear_p99": 2.251,
+   "tears": true,
+   "tear_where": {
+    "Hips": 24,
+    "Spine": 1,
+    "LeftUpLeg": 10,
+    "LeftLeg": 17,
+    "RightUpLeg": 12,
+    "RightLeg": 3
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 5,
+    "foot_slide_worst_cm": 43.8,
+    "foot_steps_over_2cm": 5
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 71,
+     "lhand_to_shaft_m_p50": 0.825
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 71,
+     "lhand_to_shaft_m_p50": 0.903
+    },
+    "dagger": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 71,
+     "lhand_to_shaft_m_p50": 0.825
+    },
+    "greatsword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 71,
+     "lhand_to_shaft_m_p50": 0.825
+    },
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 71,
+     "lhand_to_shaft_m_p50": 0.825
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 71,
+     "lhand_to_shaft_m_p50": 0.873
+    },
+    "shield": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 71,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 71,
+     "lhand_to_shaft_m_p50": 0.825
+    },
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 71,
+     "lhand_to_shaft_m_p50": 0.803
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00618,
+    "lod2": 0.00146
+   },
+   "tear_worst_lod": "lod0"
+  },
+  "I_StandUp_s": {
+   "src": "Lie_StandUp",
+   "frames": 71,
+   "fps": 30.0,
+   "length_s": 2.333,
+   "contact": null,
+   "root": "zero",
+   "root_end_raw_m": [
+    0.0,
+    -0.029,
+    0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": -0.0,
+   "feet_max_m": 0.19,
+   "planted_slide_mps": 1.146,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.01338,
+   "tear_p99": 2.708,
+   "tears": true,
+   "tear_where": {
+    "Hips": 48,
+    "LeftUpLeg": 13,
+    "LeftLeg": 42,
+    "RightUpLeg": 41,
+    "RightLeg": 2
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 5,
+    "foot_slide_worst_cm": 27.2,
+    "foot_steps_over_2cm": 5
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 71,
+     "lhand_to_shaft_m_p50": 0.825
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 71,
+     "lhand_to_shaft_m_p50": 0.903
+    },
+    "dagger": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 71,
+     "lhand_to_shaft_m_p50": 0.825
+    },
+    "greatsword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 71,
+     "lhand_to_shaft_m_p50": 0.825
+    },
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 71,
+     "lhand_to_shaft_m_p50": 0.825
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 71,
+     "lhand_to_shaft_m_p50": 0.873
+    },
+    "shield": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 71,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 71,
+     "lhand_to_shaft_m_p50": 0.825
+    },
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 71,
+     "lhand_to_shaft_m_p50": 0.803
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.01023,
+    "lod2": 0.00219
+   }
+  },
+  "I_Sword_Block": {
+   "src": "M2M_Sword_Block",
+   "frames": 37,
+   "fps": 30.0,
+   "length_s": 1.208,
+   "contact": null,
+   "root": "inplace",
+   "root_end_raw_m": [
+    0.004,
+    -0.043,
+    0.046
+   ],
+   "sway_max_m": 0.1,
+   "feet_min_m": -0.008,
+   "feet_max_m": -0.0,
+   "planted_slide_mps": 0.512,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00862,
+   "tear_p99": 2.436,
+   "tears": true,
+   "tear_where": {
+    "Hips": 6,
+    "Spine": 1,
+    "Spine1": 23,
+    "Spine2": 35,
+    "RightArm": 2,
+    "LeftUpLeg": 7,
+    "LeftLeg": 15,
+    "RightUpLeg": 3,
+    "RightLeg": 2
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 5.0,
+    "foot_steps_over_2cm": 2
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.038,
+     "pen_frames": 1,
+     "frames": 37,
+     "lhand_to_shaft_m_p50": 0.889
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 37,
+     "lhand_to_shaft_m_p50": 0.887
+    },
+    "dagger": {
+     "pen_max_m": 0.038,
+     "pen_frames": 1,
+     "frames": 37,
+     "lhand_to_shaft_m_p50": 0.889
+    },
+    "greatsword": {
+     "pen_max_m": 0.038,
+     "pen_frames": 1,
+     "frames": 37,
+     "lhand_to_shaft_m_p50": 0.889
+    },
+    "hammer": {
+     "pen_max_m": 0.038,
+     "pen_frames": 1,
+     "frames": 37,
+     "lhand_to_shaft_m_p50": 0.889
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 37,
+     "lhand_to_shaft_m_p50": 0.861
+    },
+    "shield": {
+     "pen_max_m": 0.093,
+     "pen_frames": 21,
+     "frames": 37,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.038,
+     "pen_frames": 1,
+     "frames": 37,
+     "lhand_to_shaft_m_p50": 0.889
+    },
+    "sword": {
+     "pen_max_m": 0.054,
+     "pen_frames": 1,
+     "frames": 37,
+     "lhand_to_shaft_m_p50": 0.859
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00692,
+    "lod2": 0.00292
+   }
+  },
+  "I_Sword_Block_s": {
+   "src": "M2M_Sword_Block",
+   "frames": 37,
+   "fps": 30.0,
+   "length_s": 1.208,
+   "contact": null,
+   "root": "inplace",
+   "root_end_raw_m": [
+    0.004,
+    -0.043,
+    0.046
+   ],
+   "sway_max_m": 0.1,
+   "feet_min_m": -0.008,
+   "feet_max_m": -0.0,
+   "planted_slide_mps": 0.875,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00623,
+   "tear_p99": 2.256,
+   "tears": true,
+   "tear_where": {
+    "Hips": 3,
+    "Spine1": 23,
+    "Spine2": 35,
+    "RightArm": 2,
+    "LeftLeg": 3,
+    "RightUpLeg": 1,
+    "RightLeg": 1
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 8.0,
+    "foot_steps_over_2cm": 4
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.038,
+     "pen_frames": 1,
+     "frames": 37,
+     "lhand_to_shaft_m_p50": 0.889
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 37,
+     "lhand_to_shaft_m_p50": 0.887
+    },
+    "dagger": {
+     "pen_max_m": 0.038,
+     "pen_frames": 1,
+     "frames": 37,
+     "lhand_to_shaft_m_p50": 0.889
+    },
+    "greatsword": {
+     "pen_max_m": 0.038,
+     "pen_frames": 1,
+     "frames": 37,
+     "lhand_to_shaft_m_p50": 0.889
+    },
+    "hammer": {
+     "pen_max_m": 0.038,
+     "pen_frames": 1,
+     "frames": 37,
+     "lhand_to_shaft_m_p50": 0.889
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 37,
+     "lhand_to_shaft_m_p50": 0.861
+    },
+    "shield": {
+     "pen_max_m": 0.093,
+     "pen_frames": 21,
+     "frames": 37,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.038,
+     "pen_frames": 1,
+     "frames": 37,
+     "lhand_to_shaft_m_p50": 0.889
+    },
+    "sword": {
+     "pen_max_m": 0.054,
+     "pen_frames": 1,
+     "frames": 37,
+     "lhand_to_shaft_m_p50": 0.859
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00498,
+    "lod2": 0.00292
+   }
+  },
   "Idle": {
    "src": "Idle",
    "frames": 33,
@@ -3552,6 +6358,12 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 3.3,
+    "foot_steps_over_2cm": 4
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.0,
@@ -3643,6 +6455,12 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 8,
+    "foot_slide_worst_cm": 9.1,
+    "foot_steps_over_2cm": 8
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.0,
@@ -3735,6 +6553,12 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 5,
+    "foot_slide_worst_cm": 16.3,
+    "foot_steps_over_2cm": 5
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.246,
@@ -3796,6 +6620,106 @@
     "lod2": 0.00548
    }
   },
+  "M2M_Death_D": {
+   "src": "M2M_Death_D",
+   "frames": 66,
+   "fps": 30.0,
+   "length_s": 2.167,
+   "contact": null,
+   "root": "keep",
+   "root_end_raw_m": [
+    0.009,
+    -0.825,
+    -0.476
+   ],
+   "sway_max_m": 0.497,
+   "feet_min_m": -0.002,
+   "feet_max_m": 0.458,
+   "planted_slide_mps": 0.921,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00897,
+   "tear_p99": 2.434,
+   "tears": true,
+   "tear_where": {
+    "Hips": 24,
+    "Spine": 1,
+    "Spine1": 8,
+    "Spine2": 11,
+    "LeftUpLeg": 10,
+    "LeftLeg": 17,
+    "RightUpLeg": 18,
+    "RightLeg": 6
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 5,
+    "foot_slide_worst_cm": 17.1,
+    "foot_steps_over_2cm": 3
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.136,
+     "pen_frames": 28,
+     "frames": 66,
+     "lhand_to_shaft_m_p50": 0.496
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 66,
+     "lhand_to_shaft_m_p50": 0.723
+    },
+    "dagger": {
+     "pen_max_m": 0.136,
+     "pen_frames": 28,
+     "frames": 66,
+     "lhand_to_shaft_m_p50": 0.496
+    },
+    "greatsword": {
+     "pen_max_m": 0.126,
+     "pen_frames": 28,
+     "frames": 66,
+     "lhand_to_shaft_m_p50": 0.496
+    },
+    "hammer": {
+     "pen_max_m": 0.136,
+     "pen_frames": 28,
+     "frames": 66,
+     "lhand_to_shaft_m_p50": 0.496
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 66,
+     "lhand_to_shaft_m_p50": 0.719
+    },
+    "shield": {
+     "pen_max_m": 0.139,
+     "pen_frames": 41,
+     "frames": 66,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.132,
+     "pen_frames": 28,
+     "frames": 66,
+     "lhand_to_shaft_m_p50": 0.496
+    },
+    "sword": {
+     "pen_max_m": 0.203,
+     "pen_frames": 29,
+     "frames": 66,
+     "lhand_to_shaft_m_p50": 0.492
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00897,
+    "lod2": 0.00146
+   },
+   "tear_worst_lod": "lod0"
+  },
   "M2M_Fighting_Idle": {
    "src": "M2M_Fighting_Idle",
    "frames": 50,
@@ -3823,6 +6747,12 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 0.6,
+    "foot_steps_over_2cm": 0
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.012,
@@ -3908,6 +6838,12 @@
    "tear_where": {},
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 1.8,
+    "foot_steps_over_2cm": 0
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.012,
@@ -3993,6 +6929,12 @@
    "tear_where": {},
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 0.1,
+    "foot_steps_over_2cm": 0
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.016,
@@ -4087,6 +7029,12 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 0,
+    "foot_slide_worst_cm": 0.0,
+    "foot_steps_over_2cm": 0
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.02,
@@ -4180,6 +7128,12 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 0.2,
+    "foot_steps_over_2cm": 0
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.0,
@@ -4276,6 +7230,16 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "contact_yaw_deg": 20.0,
+    "contact_elev_deg": 19.3,
+    "hips_yaw_deg": -19.6,
+    "backward": false,
+    "tpose_frames": 0,
+    "foot_steps": 7,
+    "foot_slide_worst_cm": 37.5,
+    "foot_steps_over_2cm": 7
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.222,
@@ -4367,6 +7331,16 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "contact_yaw_deg": 75.8,
+    "contact_elev_deg": 30.4,
+    "hips_yaw_deg": -2.1,
+    "backward": false,
+    "tpose_frames": 0,
+    "foot_steps": 6,
+    "foot_slide_worst_cm": 5.2,
+    "foot_steps_over_2cm": 3
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.251,
@@ -4457,6 +7431,16 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "contact_yaw_deg": 167.2,
+    "contact_elev_deg": 34.0,
+    "hips_yaw_deg": -20.6,
+    "backward": true,
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 0.9,
+    "foot_steps_over_2cm": 0
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.113,
@@ -4552,6 +7536,16 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "contact_yaw_deg": -10.2,
+    "contact_elev_deg": -18.7,
+    "hips_yaw_deg": 57.4,
+    "backward": false,
+    "tpose_frames": 0,
+    "foot_steps": 6,
+    "foot_slide_worst_cm": 79.7,
+    "foot_steps_over_2cm": 6
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.016,
@@ -4644,6 +7638,16 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "contact_yaw_deg": -39.2,
+    "contact_elev_deg": -2.4,
+    "hips_yaw_deg": -9.6,
+    "backward": false,
+    "tpose_frames": 0,
+    "foot_steps": 0,
+    "foot_slide_worst_cm": 0.0,
+    "foot_steps_over_2cm": 0
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.0,
@@ -4737,6 +7741,12 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 8,
+    "foot_slide_worst_cm": 8.4,
+    "foot_steps_over_2cm": 2
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.22,
@@ -4825,6 +7835,12 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 5,
+    "foot_slide_worst_cm": 20.4,
+    "foot_steps_over_2cm": 4
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.0,
@@ -4886,6 +7902,5454 @@
     "lod2": 0.0
    }
   },
+  "R_Atk1": {
+   "src": "compose",
+   "frames": 15,
+   "fps": 30.0,
+   "length_s": 0.467,
+   "contact": 4,
+   "root": "composed",
+   "root_end_raw_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": 0.019,
+   "feet_max_m": 0.041,
+   "planted_slide_mps": 4.457,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00367,
+   "tear_p99": 1.875,
+   "tears": false,
+   "tear_where": {
+    "Hips": 23,
+    "LeftLeg": 17
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "contact_yaw_deg": -10.7,
+    "contact_elev_deg": -12.5,
+    "hips_yaw_deg": 14.9,
+    "backward": false,
+    "tpose_frames": 0,
+    "foot_steps": 6,
+    "foot_slide_worst_cm": 34.4,
+    "foot_steps_over_2cm": 5
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 15,
+     "lhand_to_shaft_m_p50": 1.016
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 15,
+     "lhand_to_shaft_m_p50": 0.958
+    },
+    "dagger": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 15,
+     "lhand_to_shaft_m_p50": 1.016
+    },
+    "greatsword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 15,
+     "lhand_to_shaft_m_p50": 1.016
+    },
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 15,
+     "lhand_to_shaft_m_p50": 1.016
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 15,
+     "lhand_to_shaft_m_p50": 0.933
+    },
+    "shield": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 15,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 15,
+     "lhand_to_shaft_m_p50": 1.016
+    },
+    "sword": {
+     "pen_max_m": 0.042,
+     "pen_frames": 1,
+     "frames": 15,
+     "lhand_to_shaft_m_p50": 1.026
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00298,
+    "lod2": 0.00292
+   }
+  },
+  "R_Atk1_k": {
+   "src": "compose",
+   "frames": 15,
+   "fps": 30.0,
+   "length_s": 0.467,
+   "contact": 4,
+   "root": "composed",
+   "root_end_raw_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": 0.034,
+   "feet_max_m": 0.054,
+   "planted_slide_mps": 0.0,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00093,
+   "tear_p99": 1.555,
+   "tears": false,
+   "tear_where": {
+    "Hips": 7,
+    "LeftLeg": 3
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "contact_yaw_deg": -8.5,
+    "contact_elev_deg": -7.0,
+    "hips_yaw_deg": 14.9,
+    "backward": false,
+    "tpose_frames": 0,
+    "foot_steps": 6,
+    "foot_slide_worst_cm": 65.2,
+    "foot_steps_over_2cm": 6
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 15,
+     "lhand_to_shaft_m_p50": 1.002
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 15,
+     "lhand_to_shaft_m_p50": 0.948
+    },
+    "dagger": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 15,
+     "lhand_to_shaft_m_p50": 1.002
+    },
+    "greatsword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 15,
+     "lhand_to_shaft_m_p50": 1.002
+    },
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 15,
+     "lhand_to_shaft_m_p50": 1.002
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 15,
+     "lhand_to_shaft_m_p50": 0.919
+    },
+    "shield": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 15,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 15,
+     "lhand_to_shaft_m_p50": 1.002
+    },
+    "sword": {
+     "pen_max_m": 0.042,
+     "pen_frames": 1,
+     "frames": 15,
+     "lhand_to_shaft_m_p50": 1.014
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00093,
+    "lod2": 0.0
+   },
+   "tear_worst_lod": "lod0"
+  },
+  "R_Atk2": {
+   "src": "compose",
+   "frames": 15,
+   "fps": 30.0,
+   "length_s": 0.467,
+   "contact": 4,
+   "root": "composed",
+   "root_end_raw_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": -0.018,
+   "feet_max_m": 0.002,
+   "planted_slide_mps": 0.301,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.01237,
+   "tear_p99": 2.661,
+   "tears": true,
+   "tear_where": {
+    "Hips": 113,
+    "Spine": 14,
+    "LeftUpLeg": 1,
+    "LeftLeg": 7
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "contact_yaw_deg": 12.8,
+    "contact_elev_deg": 11.1,
+    "hips_yaw_deg": 75.3,
+    "backward": false,
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 11.7,
+    "foot_steps_over_2cm": 4
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 15,
+     "lhand_to_shaft_m_p50": 0.3
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 15,
+     "lhand_to_shaft_m_p50": 0.493
+    },
+    "dagger": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 15,
+     "lhand_to_shaft_m_p50": 0.3
+    },
+    "greatsword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 15,
+     "lhand_to_shaft_m_p50": 0.3
+    },
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 15,
+     "lhand_to_shaft_m_p50": 0.3
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 15,
+     "lhand_to_shaft_m_p50": 0.477
+    },
+    "shield": {
+     "pen_max_m": 0.102,
+     "pen_frames": 11,
+     "frames": 15,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 15,
+     "lhand_to_shaft_m_p50": 0.3
+    },
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 15,
+     "lhand_to_shaft_m_p50": 0.262
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00923,
+    "lod2": 0.00548
+   }
+  },
+  "R_Atk2_k": {
+   "src": "compose",
+   "frames": 15,
+   "fps": 30.0,
+   "length_s": 0.467,
+   "contact": 4,
+   "root": "composed",
+   "root_end_raw_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": -0.02,
+   "feet_max_m": 0.011,
+   "planted_slide_mps": 0.339,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00477,
+   "tear_p99": 2.085,
+   "tears": false,
+   "tear_where": {
+    "Hips": 40,
+    "Spine": 7,
+    "LeftLeg": 5
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "contact_yaw_deg": 28.4,
+    "contact_elev_deg": 16.5,
+    "hips_yaw_deg": 75.3,
+    "backward": false,
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 6.6,
+    "foot_steps_over_2cm": 2
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 15,
+     "lhand_to_shaft_m_p50": 0.298
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 15,
+     "lhand_to_shaft_m_p50": 0.473
+    },
+    "dagger": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 15,
+     "lhand_to_shaft_m_p50": 0.298
+    },
+    "greatsword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 15,
+     "lhand_to_shaft_m_p50": 0.298
+    },
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 15,
+     "lhand_to_shaft_m_p50": 0.298
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 15,
+     "lhand_to_shaft_m_p50": 0.457
+    },
+    "shield": {
+     "pen_max_m": 0.109,
+     "pen_frames": 12,
+     "frames": 15,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 15,
+     "lhand_to_shaft_m_p50": 0.298
+    },
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 15,
+     "lhand_to_shaft_m_p50": 0.261
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00379,
+    "lod2": 0.00365
+   }
+  },
+  "R_Atk3": {
+   "src": "compose",
+   "frames": 18,
+   "fps": 30.0,
+   "length_s": 0.567,
+   "contact": 7,
+   "root": "composed",
+   "root_end_raw_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": -0.022,
+   "feet_max_m": 0.024,
+   "planted_slide_mps": 1.574,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00623,
+   "tear_p99": 2.1,
+   "tears": true,
+   "tear_where": {
+    "Hips": 31,
+    "Spine": 1,
+    "LeftUpLeg": 9,
+    "LeftLeg": 25,
+    "RightUpLeg": 1,
+    "RightLeg": 1
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "contact_yaw_deg": -8.0,
+    "contact_elev_deg": -27.7,
+    "hips_yaw_deg": -12.0,
+    "backward": false,
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 10.1,
+    "foot_steps_over_2cm": 4
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 18,
+     "lhand_to_shaft_m_p50": 0.218
+    },
+    "crossbow": {
+     "pen_max_m": 0.106,
+     "pen_frames": 8,
+     "frames": 18,
+     "lhand_to_shaft_m_p50": 0.231
+    },
+    "dagger": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 18,
+     "lhand_to_shaft_m_p50": 0.218
+    },
+    "greatsword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 18,
+     "lhand_to_shaft_m_p50": 0.218
+    },
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 18,
+     "lhand_to_shaft_m_p50": 0.218
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 18,
+     "lhand_to_shaft_m_p50": 0.203
+    },
+    "shield": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 18,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 18,
+     "lhand_to_shaft_m_p50": 0.218
+    },
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 18,
+     "lhand_to_shaft_m_p50": 0.225
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00565,
+    "lod2": 0.00146
+   }
+  },
+  "R_Atk3_k": {
+   "src": "compose",
+   "frames": 18,
+   "fps": 30.0,
+   "length_s": 0.567,
+   "contact": 7,
+   "root": "composed",
+   "root_end_raw_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": 0.019,
+   "feet_max_m": 0.154,
+   "planted_slide_mps": 0.0,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00394,
+   "tear_p99": 1.857,
+   "tears": false,
+   "tear_where": {
+    "Hips": 25,
+    "Spine": 2,
+    "LeftUpLeg": 2,
+    "LeftLeg": 9,
+    "RightUpLeg": 3,
+    "RightLeg": 2
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "contact_yaw_deg": 6.3,
+    "contact_elev_deg": -18.2,
+    "hips_yaw_deg": 3.7,
+    "backward": false,
+    "tpose_frames": 0,
+    "foot_steps": 8,
+    "foot_slide_worst_cm": 7.4,
+    "foot_steps_over_2cm": 8
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 18,
+     "lhand_to_shaft_m_p50": 0.719
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 18,
+     "lhand_to_shaft_m_p50": 0.734
+    },
+    "dagger": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 18,
+     "lhand_to_shaft_m_p50": 0.719
+    },
+    "greatsword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 18,
+     "lhand_to_shaft_m_p50": 0.719
+    },
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 18,
+     "lhand_to_shaft_m_p50": 0.719
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 18,
+     "lhand_to_shaft_m_p50": 0.702
+    },
+    "shield": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 18,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 18,
+     "lhand_to_shaft_m_p50": 0.719
+    },
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 18,
+     "lhand_to_shaft_m_p50": 0.718
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00208,
+    "lod2": 0.00073
+   }
+  },
+  "R_Atk3_s": {
+   "src": "compose",
+   "frames": 18,
+   "fps": 30.0,
+   "length_s": 0.567,
+   "contact": 7,
+   "root": "composed",
+   "root_end_raw_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": -0.025,
+   "feet_max_m": 0.047,
+   "planted_slide_mps": 1.259,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00294,
+   "tear_p99": 1.801,
+   "tears": false,
+   "tear_where": {
+    "Hips": 14,
+    "Spine": 1,
+    "LeftUpLeg": 2,
+    "LeftLeg": 11
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "contact_yaw_deg": -7.6,
+    "contact_elev_deg": -21.4,
+    "hips_yaw_deg": -12.0,
+    "backward": false,
+    "tpose_frames": 0,
+    "foot_steps": 6,
+    "foot_slide_worst_cm": 12.5,
+    "foot_steps_over_2cm": 4
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 18,
+     "lhand_to_shaft_m_p50": 0.218
+    },
+    "crossbow": {
+     "pen_max_m": 0.088,
+     "pen_frames": 8,
+     "frames": 18,
+     "lhand_to_shaft_m_p50": 0.231
+    },
+    "dagger": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 18,
+     "lhand_to_shaft_m_p50": 0.218
+    },
+    "greatsword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 18,
+     "lhand_to_shaft_m_p50": 0.218
+    },
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 18,
+     "lhand_to_shaft_m_p50": 0.218
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 18,
+     "lhand_to_shaft_m_p50": 0.203
+    },
+    "shield": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 18,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 18,
+     "lhand_to_shaft_m_p50": 0.218
+    },
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 18,
+     "lhand_to_shaft_m_p50": 0.225
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00294,
+    "lod2": 0.0
+   },
+   "tear_worst_lod": "lod0"
+  },
+  "R_Dash": {
+   "src": "compose",
+   "frames": 17,
+   "fps": 30.0,
+   "length_s": 0.533,
+   "contact": 5,
+   "root": "composed",
+   "root_end_raw_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": -0.118,
+   "feet_max_m": 0.152,
+   "planted_slide_mps": 7.953,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.011,
+   "tear_p99": 2.655,
+   "tears": true,
+   "tear_where": {
+    "Hips": 56,
+    "Spine": 1,
+    "RightArm": 2,
+    "LeftUpLeg": 12,
+    "LeftLeg": 49
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "contact_yaw_deg": 12.6,
+    "contact_elev_deg": -17.3,
+    "hips_yaw_deg": -0.5,
+    "backward": false,
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 23.9,
+    "foot_steps_over_2cm": 4
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 17,
+     "lhand_to_shaft_m_p50": 1.025
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 17,
+     "lhand_to_shaft_m_p50": 1.027
+    },
+    "dagger": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 17,
+     "lhand_to_shaft_m_p50": 1.025
+    },
+    "greatsword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 17,
+     "lhand_to_shaft_m_p50": 1.025
+    },
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 17,
+     "lhand_to_shaft_m_p50": 1.025
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 17,
+     "lhand_to_shaft_m_p50": 1.008
+    },
+    "shield": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 17,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 17,
+     "lhand_to_shaft_m_p50": 1.025
+    },
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 17,
+     "lhand_to_shaft_m_p50": 0.996
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00874,
+    "lod2": 0.00365
+   }
+  },
+  "R_Dash_k": {
+   "src": "compose",
+   "frames": 17,
+   "fps": 30.0,
+   "length_s": 0.533,
+   "contact": 5,
+   "root": "composed",
+   "root_end_raw_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": -0.081,
+   "feet_max_m": 0.18,
+   "planted_slide_mps": 5.971,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00568,
+   "tear_p99": 2.038,
+   "tears": true,
+   "tear_where": {
+    "Hips": 19,
+    "Spine": 1,
+    "RightArm": 2,
+    "LeftUpLeg": 9,
+    "LeftLeg": 31
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "contact_yaw_deg": 14.8,
+    "contact_elev_deg": -4.3,
+    "hips_yaw_deg": -0.5,
+    "backward": false,
+    "tpose_frames": 0,
+    "foot_steps": 6,
+    "foot_slide_worst_cm": 16.0,
+    "foot_steps_over_2cm": 6
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 17,
+     "lhand_to_shaft_m_p50": 1.02
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 17,
+     "lhand_to_shaft_m_p50": 1.024
+    },
+    "dagger": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 17,
+     "lhand_to_shaft_m_p50": 1.02
+    },
+    "greatsword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 17,
+     "lhand_to_shaft_m_p50": 1.02
+    },
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 17,
+     "lhand_to_shaft_m_p50": 1.02
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 17,
+     "lhand_to_shaft_m_p50": 1.0
+    },
+    "shield": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 17,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 17,
+     "lhand_to_shaft_m_p50": 1.02
+    },
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 17,
+     "lhand_to_shaft_m_p50": 0.995
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00551,
+    "lod2": 0.00073
+   }
+  },
+  "R_Dash_n": {
+   "src": "compose",
+   "frames": 17,
+   "fps": 30.0,
+   "length_s": 0.533,
+   "contact": 5,
+   "root": "composed",
+   "root_end_raw_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": -0.09,
+   "feet_max_m": 0.174,
+   "planted_slide_mps": 7.953,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00816,
+   "tear_p99": 2.275,
+   "tears": true,
+   "tear_where": {
+    "Hips": 32,
+    "Spine": 1,
+    "LeftUpLeg": 12,
+    "LeftLeg": 44
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "contact_yaw_deg": -42.7,
+    "contact_elev_deg": -38.0,
+    "hips_yaw_deg": -0.5,
+    "backward": false,
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 23.9,
+    "foot_steps_over_2cm": 4
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 17,
+     "lhand_to_shaft_m_p50": 1.028
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 17,
+     "lhand_to_shaft_m_p50": 1.027
+    },
+    "dagger": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 17,
+     "lhand_to_shaft_m_p50": 1.028
+    },
+    "greatsword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 17,
+     "lhand_to_shaft_m_p50": 1.028
+    },
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 17,
+     "lhand_to_shaft_m_p50": 1.028
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 17,
+     "lhand_to_shaft_m_p50": 1.0
+    },
+    "shield": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 17,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 17,
+     "lhand_to_shaft_m_p50": 1.028
+    },
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 17,
+     "lhand_to_shaft_m_p50": 1.013
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00729,
+    "lod2": 0.00146
+   }
+  },
+  "R_Dash_s": {
+   "src": "compose",
+   "frames": 17,
+   "fps": 30.0,
+   "length_s": 0.533,
+   "contact": 5,
+   "root": "composed",
+   "root_end_raw_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": -0.09,
+   "feet_max_m": 0.174,
+   "planted_slide_mps": 7.953,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00834,
+   "tear_p99": 2.28,
+   "tears": true,
+   "tear_where": {
+    "Hips": 32,
+    "Spine": 1,
+    "RightArm": 2,
+    "LeftUpLeg": 12,
+    "LeftLeg": 44
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "contact_yaw_deg": 35.6,
+    "contact_elev_deg": -0.5,
+    "hips_yaw_deg": -0.5,
+    "backward": false,
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 23.9,
+    "foot_steps_over_2cm": 4
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.037,
+     "pen_frames": 1,
+     "frames": 17,
+     "lhand_to_shaft_m_p50": 0.977
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 17,
+     "lhand_to_shaft_m_p50": 0.987
+    },
+    "dagger": {
+     "pen_max_m": 0.037,
+     "pen_frames": 1,
+     "frames": 17,
+     "lhand_to_shaft_m_p50": 0.977
+    },
+    "greatsword": {
+     "pen_max_m": 0.025,
+     "pen_frames": 0,
+     "frames": 17,
+     "lhand_to_shaft_m_p50": 0.977
+    },
+    "hammer": {
+     "pen_max_m": 0.037,
+     "pen_frames": 1,
+     "frames": 17,
+     "lhand_to_shaft_m_p50": 0.977
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 17,
+     "lhand_to_shaft_m_p50": 0.96
+    },
+    "shield": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 17,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.032,
+     "pen_frames": 1,
+     "frames": 17,
+     "lhand_to_shaft_m_p50": 0.977
+    },
+    "sword": {
+     "pen_max_m": 0.095,
+     "pen_frames": 1,
+     "frames": 17,
+     "lhand_to_shaft_m_p50": 0.954
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00722,
+    "lod2": 0.00146
+   }
+  },
+  "R_Guard": {
+   "src": "M2M_Defend",
+   "frames": 29,
+   "fps": 30.0,
+   "length_s": 0.917,
+   "contact": null,
+   "root": "inplace",
+   "root_end_raw_m": [
+    -0.019,
+    -0.254,
+    -0.055
+   ],
+   "sway_max_m": 0.019,
+   "feet_min_m": -0.0,
+   "feet_max_m": 0.0,
+   "planted_slide_mps": 0.012,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00324,
+   "tear_p99": 1.82,
+   "tears": false,
+   "tear_where": {
+    "Hips": 8,
+    "LeftUpLeg": 1,
+    "LeftLeg": 3,
+    "RightUpLeg": 16,
+    "RightLeg": 3
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 1.5,
+    "foot_steps_over_2cm": 0
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.119,
+     "pen_frames": 29,
+     "frames": 29,
+     "lhand_to_shaft_m_p50": 0.366
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 29,
+     "lhand_to_shaft_m_p50": 0.8
+    },
+    "dagger": {
+     "pen_max_m": 0.121,
+     "pen_frames": 29,
+     "frames": 29,
+     "lhand_to_shaft_m_p50": 0.366
+    },
+    "greatsword": {
+     "pen_max_m": 0.117,
+     "pen_frames": 29,
+     "frames": 29,
+     "lhand_to_shaft_m_p50": 0.366
+    },
+    "hammer": {
+     "pen_max_m": 0.117,
+     "pen_frames": 29,
+     "frames": 29,
+     "lhand_to_shaft_m_p50": 0.366
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 29,
+     "lhand_to_shaft_m_p50": 0.803
+    },
+    "shield": {
+     "pen_max_m": 0.039,
+     "pen_frames": 13,
+     "frames": 29,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.107,
+     "pen_frames": 29,
+     "frames": 29,
+     "lhand_to_shaft_m_p50": 0.366
+    },
+    "sword": {
+     "pen_max_m": 0.169,
+     "pen_frames": 29,
+     "frames": 29,
+     "lhand_to_shaft_m_p50": 0.384
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00324,
+    "lod2": 0.00146
+   },
+   "tear_worst_lod": "lod0"
+  },
+  "R_Guard_hi": {
+   "src": "compose",
+   "frames": 27,
+   "fps": 30.0,
+   "length_s": 0.867,
+   "contact": null,
+   "root": "composed",
+   "root_end_raw_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": 0.002,
+   "feet_max_m": 0.02,
+   "planted_slide_mps": 0.503,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.0013,
+   "tear_p99": 1.778,
+   "tears": false,
+   "tear_where": {
+    "Hips": 6,
+    "Spine1": 2,
+    "Spine2": 4,
+    "RightUpLeg": 1,
+    "RightLeg": 1
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 4.2,
+    "foot_steps_over_2cm": 2
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 27,
+     "lhand_to_shaft_m_p50": 0.105
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 27,
+     "lhand_to_shaft_m_p50": 0.417
+    },
+    "dagger": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 27,
+     "lhand_to_shaft_m_p50": 0.105
+    },
+    "greatsword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 27,
+     "lhand_to_shaft_m_p50": 0.105
+    },
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 27,
+     "lhand_to_shaft_m_p50": 0.105
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 27,
+     "lhand_to_shaft_m_p50": 0.418
+    },
+    "shield": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 27,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 27,
+     "lhand_to_shaft_m_p50": 0.105
+    },
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 27,
+     "lhand_to_shaft_m_p50": 0.034
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.0013,
+    "lod2": 0.0
+   },
+   "tear_worst_lod": "lod0"
+  },
+  "R_Guard_hi_s": {
+   "src": "compose",
+   "frames": 27,
+   "fps": 30.0,
+   "length_s": 0.867,
+   "contact": null,
+   "root": "composed",
+   "root_end_raw_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": 0.002,
+   "feet_max_m": 0.023,
+   "planted_slide_mps": 0.393,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00123,
+   "tear_p99": 1.761,
+   "tears": false,
+   "tear_where": {
+    "Hips": 6,
+    "Spine1": 2,
+    "Spine2": 4
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 2.1,
+    "foot_steps_over_2cm": 2
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 27,
+     "lhand_to_shaft_m_p50": 0.105
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 27,
+     "lhand_to_shaft_m_p50": 0.417
+    },
+    "dagger": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 27,
+     "lhand_to_shaft_m_p50": 0.105
+    },
+    "greatsword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 27,
+     "lhand_to_shaft_m_p50": 0.105
+    },
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 27,
+     "lhand_to_shaft_m_p50": 0.105
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 27,
+     "lhand_to_shaft_m_p50": 0.418
+    },
+    "shield": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 27,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 27,
+     "lhand_to_shaft_m_p50": 0.105
+    },
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 27,
+     "lhand_to_shaft_m_p50": 0.034
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00123,
+    "lod2": 0.0
+   },
+   "tear_worst_lod": "lod0"
+  },
+  "R_Guard_k": {
+   "src": "compose",
+   "frames": 33,
+   "fps": 30.0,
+   "length_s": 1.067,
+   "contact": null,
+   "root": "composed",
+   "root_end_raw_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": 0.006,
+   "feet_max_m": 0.006,
+   "planted_slide_mps": 0.101,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00292,
+   "tear_p99": 1.835,
+   "tears": false,
+   "tear_where": {
+    "Hips": 19,
+    "Spine2": 4,
+    "LeftUpLeg": 1,
+    "LeftLeg": 5
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 3.4,
+    "foot_steps_over_2cm": 2
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.975
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 1.023
+    },
+    "dagger": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.975
+    },
+    "greatsword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.975
+    },
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.975
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 1.002
+    },
+    "shield": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.975
+    },
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.923
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00186,
+    "lod2": 0.00292
+   },
+   "tear_worst_lod": "lod2"
+  },
+  "R_Guard_s": {
+   "src": "M2M_Defend",
+   "frames": 29,
+   "fps": 30.0,
+   "length_s": 0.917,
+   "contact": null,
+   "root": "inplace",
+   "root_end_raw_m": [
+    -0.019,
+    -0.254,
+    -0.055
+   ],
+   "sway_max_m": 0.019,
+   "feet_min_m": -0.0,
+   "feet_max_m": 0.0,
+   "planted_slide_mps": 0.035,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00171,
+   "tear_p99": 1.763,
+   "tears": false,
+   "tear_where": {
+    "Hips": 7,
+    "LeftLeg": 3,
+    "RightUpLeg": 2
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 1.9,
+    "foot_steps_over_2cm": 0
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.119,
+     "pen_frames": 29,
+     "frames": 29,
+     "lhand_to_shaft_m_p50": 0.366
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 29,
+     "lhand_to_shaft_m_p50": 0.8
+    },
+    "dagger": {
+     "pen_max_m": 0.121,
+     "pen_frames": 29,
+     "frames": 29,
+     "lhand_to_shaft_m_p50": 0.366
+    },
+    "greatsword": {
+     "pen_max_m": 0.117,
+     "pen_frames": 29,
+     "frames": 29,
+     "lhand_to_shaft_m_p50": 0.366
+    },
+    "hammer": {
+     "pen_max_m": 0.117,
+     "pen_frames": 29,
+     "frames": 29,
+     "lhand_to_shaft_m_p50": 0.366
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 29,
+     "lhand_to_shaft_m_p50": 0.803
+    },
+    "shield": {
+     "pen_max_m": 0.039,
+     "pen_frames": 13,
+     "frames": 29,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.107,
+     "pen_frames": 29,
+     "frames": 29,
+     "lhand_to_shaft_m_p50": 0.366
+    },
+    "sword": {
+     "pen_max_m": 0.169,
+     "pen_frames": 29,
+     "frames": 29,
+     "lhand_to_shaft_m_p50": 0.384
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00171,
+    "lod2": 0.0
+   },
+   "tear_worst_lod": "lod0"
+  },
+  "R_Hit_Heavy": {
+   "src": "compose",
+   "frames": 20,
+   "fps": 30.0,
+   "length_s": 0.633,
+   "contact": null,
+   "root": "composed",
+   "root_end_raw_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": -0.056,
+   "feet_max_m": -0.001,
+   "planted_slide_mps": 0.881,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00078,
+   "tear_p99": 1.454,
+   "tears": false,
+   "tear_where": {
+    "Hips": 1,
+    "LeftLeg": 1
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 3.3,
+    "foot_steps_over_2cm": 4
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.008,
+     "pen_frames": 0,
+     "frames": 20,
+     "lhand_to_shaft_m_p50": 0.553
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 20,
+     "lhand_to_shaft_m_p50": 0.603
+    },
+    "dagger": {
+     "pen_max_m": 0.008,
+     "pen_frames": 0,
+     "frames": 20,
+     "lhand_to_shaft_m_p50": 0.553
+    },
+    "greatsword": {
+     "pen_max_m": 0.008,
+     "pen_frames": 0,
+     "frames": 20,
+     "lhand_to_shaft_m_p50": 0.553
+    },
+    "hammer": {
+     "pen_max_m": 0.008,
+     "pen_frames": 0,
+     "frames": 20,
+     "lhand_to_shaft_m_p50": 0.553
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 20,
+     "lhand_to_shaft_m_p50": 0.577
+    },
+    "shield": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 20,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.008,
+     "pen_frames": 0,
+     "frames": 20,
+     "lhand_to_shaft_m_p50": 0.553
+    },
+    "sword": {
+     "pen_max_m": 0.016,
+     "pen_frames": 0,
+     "frames": 20,
+     "lhand_to_shaft_m_p50": 0.55
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00078,
+    "lod2": 0.0
+   },
+   "tear_worst_lod": "lod0"
+  },
+  "R_Hit_Heavy_s": {
+   "src": "compose",
+   "frames": 20,
+   "fps": 30.0,
+   "length_s": 0.633,
+   "contact": null,
+   "root": "composed",
+   "root_end_raw_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": -0.0,
+   "feet_max_m": 0.0,
+   "planted_slide_mps": 1.047,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00108,
+   "tear_p99": 1.824,
+   "tears": false,
+   "tear_where": {
+    "Hips": 2,
+    "Spine2": 4,
+    "Head": 2
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 12.1,
+    "foot_steps_over_2cm": 4
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 20,
+     "lhand_to_shaft_m_p50": 1.003
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 20,
+     "lhand_to_shaft_m_p50": 1.025
+    },
+    "dagger": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 20,
+     "lhand_to_shaft_m_p50": 1.003
+    },
+    "greatsword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 20,
+     "lhand_to_shaft_m_p50": 1.003
+    },
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 20,
+     "lhand_to_shaft_m_p50": 1.003
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 20,
+     "lhand_to_shaft_m_p50": 0.993
+    },
+    "shield": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 20,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 20,
+     "lhand_to_shaft_m_p50": 1.003
+    },
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 20,
+     "lhand_to_shaft_m_p50": 1.004
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00108,
+    "lod2": 0.00073
+   },
+   "tear_worst_lod": "lod0"
+  },
+  "R_Idle": {
+   "src": "compose",
+   "frames": 33,
+   "fps": 30.0,
+   "length_s": 1.067,
+   "contact": null,
+   "root": "composed",
+   "root_end_raw_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": 0.034,
+   "feet_max_m": 0.034,
+   "planted_slide_mps": 0.0,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00046,
+   "tear_p99": 1.348,
+   "tears": false,
+   "tear_where": {
+    "LeftLeg": 2,
+    "RightUpLeg": 1,
+    "RightLeg": 2
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 3.3,
+    "foot_steps_over_2cm": 4
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.959
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.97
+    },
+    "dagger": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.959
+    },
+    "greatsword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.959
+    },
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.959
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.937
+    },
+    "shield": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.959
+    },
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.96
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00015,
+    "lod2": 0.0
+   }
+  },
+  "R_Idle_2H": {
+   "src": "compose",
+   "frames": 33,
+   "fps": 30.0,
+   "length_s": 1.067,
+   "contact": null,
+   "root": "composed",
+   "root_end_raw_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": 0.034,
+   "feet_max_m": 0.034,
+   "planted_slide_mps": 0.0,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00082,
+   "tear_p99": 1.509,
+   "tears": false,
+   "tear_where": {
+    "Hips": 1,
+    "LeftLeg": 3,
+    "RightUpLeg": 3,
+    "RightLeg": 2
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 2.0,
+    "foot_steps_over_2cm": 0
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.06
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.303
+    },
+    "dagger": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.06
+    },
+    "greatsword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.06
+    },
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.06
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.304
+    },
+    "shield": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.06
+    },
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.05
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.0006,
+    "lod2": 0.0
+   }
+  },
+  "R_Idle_staff": {
+   "src": "compose",
+   "frames": 33,
+   "fps": 30.0,
+   "length_s": 1.067,
+   "contact": null,
+   "root": "composed",
+   "root_end_raw_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": 0.034,
+   "feet_max_m": 0.034,
+   "planted_slide_mps": 0.0,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00082,
+   "tear_p99": 1.465,
+   "tears": false,
+   "tear_where": {
+    "Hips": 1,
+    "LeftLeg": 3,
+    "RightUpLeg": 3,
+    "RightLeg": 2
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 2.0,
+    "foot_steps_over_2cm": 0
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.716
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.641
+    },
+    "dagger": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.716
+    },
+    "greatsword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.716
+    },
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.716
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.717
+    },
+    "shield": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.716
+    },
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.707
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.0006,
+    "lod2": 0.0
+   }
+  },
+  "R_Intro_Charge": {
+   "src": "compose",
+   "frames": 54,
+   "fps": 30.0,
+   "length_s": 1.767,
+   "contact": null,
+   "root": "composed",
+   "root_end_raw_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": 0.009,
+   "feet_max_m": 0.01,
+   "planted_slide_mps": 0.036,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00108,
+   "tear_p99": 1.819,
+   "tears": false,
+   "tear_where": {
+    "Hips": 2,
+    "Spine2": 2,
+    "RightUpLeg": 1,
+    "RightLeg": 1
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 1.6,
+    "foot_steps_over_2cm": 0
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.006,
+     "pen_frames": 0,
+     "frames": 54,
+     "lhand_to_shaft_m_p50": 0.695
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 54,
+     "lhand_to_shaft_m_p50": 0.946
+    },
+    "dagger": {
+     "pen_max_m": 0.006,
+     "pen_frames": 0,
+     "frames": 54,
+     "lhand_to_shaft_m_p50": 0.695
+    },
+    "greatsword": {
+     "pen_max_m": 0.004,
+     "pen_frames": 0,
+     "frames": 54,
+     "lhand_to_shaft_m_p50": 0.695
+    },
+    "hammer": {
+     "pen_max_m": 0.004,
+     "pen_frames": 0,
+     "frames": 54,
+     "lhand_to_shaft_m_p50": 0.695
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 54,
+     "lhand_to_shaft_m_p50": 0.948
+    },
+    "shield": {
+     "pen_max_m": 0.123,
+     "pen_frames": 15,
+     "frames": 54,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.004,
+     "pen_frames": 0,
+     "frames": 54,
+     "lhand_to_shaft_m_p50": 0.695
+    },
+    "sword": {
+     "pen_max_m": 0.033,
+     "pen_frames": 4,
+     "frames": 54,
+     "lhand_to_shaft_m_p50": 0.631
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00108,
+    "lod2": 0.0
+   },
+   "tear_worst_lod": "lod0"
+  },
+  "R_Intro_Guard": {
+   "src": "compose",
+   "frames": 49,
+   "fps": 30.0,
+   "length_s": 1.6,
+   "contact": null,
+   "root": "composed",
+   "root_end_raw_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": -0.038,
+   "feet_max_m": -0.017,
+   "planted_slide_mps": 0.732,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00569,
+   "tear_p99": 2.172,
+   "tears": true,
+   "tear_where": {
+    "Hips": 18,
+    "Spine": 1,
+    "Head": 2,
+    "LeftUpLeg": 9,
+    "LeftLeg": 22,
+    "RightUpLeg": 4,
+    "RightLeg": 3
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 8,
+    "foot_slide_worst_cm": 1.2,
+    "foot_steps_over_2cm": 0
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.204,
+     "pen_frames": 49,
+     "frames": 49,
+     "lhand_to_shaft_m_p50": 0.196
+    },
+    "crossbow": {
+     "pen_max_m": 0.088,
+     "pen_frames": 47,
+     "frames": 49,
+     "lhand_to_shaft_m_p50": 0.193
+    },
+    "dagger": {
+     "pen_max_m": 0.208,
+     "pen_frames": 49,
+     "frames": 49,
+     "lhand_to_shaft_m_p50": 0.196
+    },
+    "greatsword": {
+     "pen_max_m": 0.201,
+     "pen_frames": 49,
+     "frames": 49,
+     "lhand_to_shaft_m_p50": 0.196
+    },
+    "hammer": {
+     "pen_max_m": 0.208,
+     "pen_frames": 49,
+     "frames": 49,
+     "lhand_to_shaft_m_p50": 0.196
+    },
+    "rifle": {
+     "pen_max_m": 0.056,
+     "pen_frames": 43,
+     "frames": 49,
+     "lhand_to_shaft_m_p50": 0.221
+    },
+    "shield": {
+     "pen_max_m": 0.263,
+     "pen_frames": 49,
+     "frames": 49,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.193,
+     "pen_frames": 49,
+     "frames": 49,
+     "lhand_to_shaft_m_p50": 0.196
+    },
+    "sword": {
+     "pen_max_m": 0.193,
+     "pen_frames": 49,
+     "frames": 49,
+     "lhand_to_shaft_m_p50": 0.209
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00569,
+    "lod2": 0.00146
+   },
+   "tear_worst_lod": "lod0"
+  },
+  "R_Intro_Open": {
+   "src": "compose",
+   "frames": 77,
+   "fps": 30.0,
+   "length_s": 2.533,
+   "contact": null,
+   "root": "composed",
+   "root_end_raw_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": 0.019,
+   "feet_max_m": 0.038,
+   "planted_slide_mps": 0.625,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00171,
+   "tear_p99": 1.66,
+   "tears": false,
+   "tear_where": {
+    "Hips": 9,
+    "LeftLeg": 7
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 5,
+    "foot_slide_worst_cm": 17.3,
+    "foot_steps_over_2cm": 4
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 77,
+     "lhand_to_shaft_m_p50": 1.025
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 77,
+     "lhand_to_shaft_m_p50": 1.028
+    },
+    "dagger": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 77,
+     "lhand_to_shaft_m_p50": 1.025
+    },
+    "greatsword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 77,
+     "lhand_to_shaft_m_p50": 1.025
+    },
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 77,
+     "lhand_to_shaft_m_p50": 1.025
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 77,
+     "lhand_to_shaft_m_p50": 0.996
+    },
+    "shield": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 77,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 77,
+     "lhand_to_shaft_m_p50": 1.025
+    },
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 77,
+     "lhand_to_shaft_m_p50": 1.03
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00171,
+    "lod2": 0.0
+   },
+   "tear_worst_lod": "lod0"
+  },
+  "R_Intro_Plant": {
+   "src": "compose",
+   "frames": 33,
+   "fps": 30.0,
+   "length_s": 1.067,
+   "contact": null,
+   "root": "composed",
+   "root_end_raw_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": 0.034,
+   "feet_max_m": 0.034,
+   "planted_slide_mps": 0.0,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00082,
+   "tear_p99": 1.465,
+   "tears": false,
+   "tear_where": {
+    "Hips": 1,
+    "LeftLeg": 3,
+    "RightUpLeg": 3,
+    "RightLeg": 2
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 2.0,
+    "foot_steps_over_2cm": 0
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.419
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.722
+    },
+    "dagger": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.419
+    },
+    "greatsword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.419
+    },
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.419
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.733
+    },
+    "shield": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.419
+    },
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 33,
+     "lhand_to_shaft_m_p50": 0.432
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.0006,
+    "lod2": 0.0
+   }
+  },
+  "R_Intro_Ready": {
+   "src": "compose",
+   "frames": 50,
+   "fps": 30.0,
+   "length_s": 1.633,
+   "contact": null,
+   "root": "composed",
+   "root_end_raw_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": 0.004,
+   "feet_max_m": 0.004,
+   "planted_slide_mps": 0.019,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00052,
+   "tear_p99": 1.528,
+   "tears": false,
+   "tear_where": {
+    "LeftLeg": 2,
+    "RightUpLeg": 1,
+    "RightLeg": 1
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 0.6,
+    "foot_steps_over_2cm": 0
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.012,
+     "pen_frames": 0,
+     "frames": 50,
+     "lhand_to_shaft_m_p50": 0.373
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 50,
+     "lhand_to_shaft_m_p50": 0.56
+    },
+    "dagger": {
+     "pen_max_m": 0.012,
+     "pen_frames": 0,
+     "frames": 50,
+     "lhand_to_shaft_m_p50": 0.373
+    },
+    "greatsword": {
+     "pen_max_m": 0.012,
+     "pen_frames": 0,
+     "frames": 50,
+     "lhand_to_shaft_m_p50": 0.373
+    },
+    "hammer": {
+     "pen_max_m": 0.012,
+     "pen_frames": 0,
+     "frames": 50,
+     "lhand_to_shaft_m_p50": 0.373
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 50,
+     "lhand_to_shaft_m_p50": 0.574
+    },
+    "shield": {
+     "pen_max_m": 0.091,
+     "pen_frames": 36,
+     "frames": 50,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.012,
+     "pen_frames": 0,
+     "frames": 50,
+     "lhand_to_shaft_m_p50": 0.373
+    },
+    "sword": {
+     "pen_max_m": 0.032,
+     "pen_frames": 6,
+     "frames": 50,
+     "lhand_to_shaft_m_p50": 0.39
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00052,
+    "lod2": 0.0
+   },
+   "tear_worst_lod": "lod0"
+  },
+  "R_Intro_Salute": {
+   "src": "compose",
+   "frames": 54,
+   "fps": 30.0,
+   "length_s": 1.767,
+   "contact": null,
+   "root": "composed",
+   "root_end_raw_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": 0.034,
+   "feet_max_m": 0.034,
+   "planted_slide_mps": 0.0,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00046,
+   "tear_p99": 1.431,
+   "tears": false,
+   "tear_where": {
+    "LeftLeg": 2,
+    "RightUpLeg": 1,
+    "RightLeg": 2
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 3.3,
+    "foot_steps_over_2cm": 4
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.243,
+     "pen_frames": 36,
+     "frames": 54,
+     "lhand_to_shaft_m_p50": 0.586
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 54,
+     "lhand_to_shaft_m_p50": 0.555
+    },
+    "dagger": {
+     "pen_max_m": 0.254,
+     "pen_frames": 36,
+     "frames": 54,
+     "lhand_to_shaft_m_p50": 0.586
+    },
+    "greatsword": {
+     "pen_max_m": 0.244,
+     "pen_frames": 36,
+     "frames": 54,
+     "lhand_to_shaft_m_p50": 0.586
+    },
+    "hammer": {
+     "pen_max_m": 0.256,
+     "pen_frames": 36,
+     "frames": 54,
+     "lhand_to_shaft_m_p50": 0.586
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 54,
+     "lhand_to_shaft_m_p50": 0.626
+    },
+    "shield": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 54,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.223,
+     "pen_frames": 36,
+     "frames": 54,
+     "lhand_to_shaft_m_p50": 0.586
+    },
+    "sword": {
+     "pen_max_m": 0.213,
+     "pen_frames": 37,
+     "frames": 54,
+     "lhand_to_shaft_m_p50": 0.658
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00022,
+    "lod2": 0.0
+   }
+  },
+  "R_Jog": {
+   "src": "compose",
+   "frames": 25,
+   "fps": 30.0,
+   "length_s": 0.8,
+   "contact": null,
+   "root": "composed",
+   "root_end_raw_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": -0.003,
+   "feet_max_m": 0.077,
+   "planted_slide_mps": 2.693,
+   "ground_speed_mps": 2.466,
+   "tear_share": 0.00284,
+   "tear_p99": 1.786,
+   "tears": false,
+   "tear_where": {
+    "Hips": 8,
+    "Spine": 1,
+    "LeftUpLeg": 7,
+    "LeftLeg": 15
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 59.7,
+    "foot_steps_over_2cm": 4
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.102,
+     "pen_frames": 25,
+     "frames": 25,
+     "lhand_to_shaft_m_p50": 0.434
+    },
+    "crossbow": {
+     "pen_max_m": 0.161,
+     "pen_frames": 8,
+     "frames": 25,
+     "lhand_to_shaft_m_p50": 0.475
+    },
+    "dagger": {
+     "pen_max_m": 0.102,
+     "pen_frames": 25,
+     "frames": 25,
+     "lhand_to_shaft_m_p50": 0.434
+    },
+    "greatsword": {
+     "pen_max_m": 0.096,
+     "pen_frames": 25,
+     "frames": 25,
+     "lhand_to_shaft_m_p50": 0.434
+    },
+    "hammer": {
+     "pen_max_m": 0.101,
+     "pen_frames": 25,
+     "frames": 25,
+     "lhand_to_shaft_m_p50": 0.434
+    },
+    "rifle": {
+     "pen_max_m": 0.051,
+     "pen_frames": 5,
+     "frames": 25,
+     "lhand_to_shaft_m_p50": 0.453
+    },
+    "shield": {
+     "pen_max_m": 0.128,
+     "pen_frames": 13,
+     "frames": 25,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.095,
+     "pen_frames": 25,
+     "frames": 25,
+     "lhand_to_shaft_m_p50": 0.434
+    },
+    "sword": {
+     "pen_max_m": 0.09,
+     "pen_frames": 25,
+     "frames": 25,
+     "lhand_to_shaft_m_p50": 0.433
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00249,
+    "lod2": 0.0
+   }
+  },
+  "R_Knockdown": {
+   "src": "compose",
+   "frames": 48,
+   "fps": 30.0,
+   "length_s": 1.567,
+   "contact": null,
+   "root": "composed",
+   "root_end_raw_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": -0.003,
+   "feet_max_m": 0.188,
+   "planted_slide_mps": 4.225,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00577,
+   "tear_p99": 2.155,
+   "tears": true,
+   "tear_where": {
+    "Hips": 24,
+    "Spine": 1,
+    "LeftUpLeg": 10,
+    "LeftLeg": 15,
+    "RightUpLeg": 10,
+    "RightLeg": 3
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 5,
+    "foot_slide_worst_cm": 34.5,
+    "foot_steps_over_2cm": 5
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.167,
+     "pen_frames": 24,
+     "frames": 48,
+     "lhand_to_shaft_m_p50": 0.458
+    },
+    "crossbow": {
+     "pen_max_m": 0.041,
+     "pen_frames": 2,
+     "frames": 48,
+     "lhand_to_shaft_m_p50": 0.756
+    },
+    "dagger": {
+     "pen_max_m": 0.168,
+     "pen_frames": 24,
+     "frames": 48,
+     "lhand_to_shaft_m_p50": 0.458
+    },
+    "greatsword": {
+     "pen_max_m": 0.167,
+     "pen_frames": 24,
+     "frames": 48,
+     "lhand_to_shaft_m_p50": 0.458
+    },
+    "hammer": {
+     "pen_max_m": 0.157,
+     "pen_frames": 24,
+     "frames": 48,
+     "lhand_to_shaft_m_p50": 0.458
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 48,
+     "lhand_to_shaft_m_p50": 0.755
+    },
+    "shield": {
+     "pen_max_m": 0.189,
+     "pen_frames": 19,
+     "frames": 48,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.168,
+     "pen_frames": 24,
+     "frames": 48,
+     "lhand_to_shaft_m_p50": 0.458
+    },
+    "sword": {
+     "pen_max_m": 0.226,
+     "pen_frames": 25,
+     "frames": 48,
+     "lhand_to_shaft_m_p50": 0.468
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00536,
+    "lod2": 0.00146
+   }
+  },
+  "R_Knockdown_k": {
+   "src": "compose",
+   "frames": 48,
+   "fps": 30.0,
+   "length_s": 1.567,
+   "contact": null,
+   "root": "composed",
+   "root_end_raw_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": -0.075,
+   "feet_max_m": -0.0,
+   "planted_slide_mps": 2.92,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.0033,
+   "tear_p99": 1.799,
+   "tears": false,
+   "tear_where": {
+    "Hips": 22,
+    "Spine": 1,
+    "LeftUpLeg": 2,
+    "LeftLeg": 7,
+    "RightUpLeg": 2,
+    "RightLeg": 2
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 6,
+    "foot_slide_worst_cm": 28.6,
+    "foot_steps_over_2cm": 4
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.002,
+     "pen_frames": 0,
+     "frames": 48,
+     "lhand_to_shaft_m_p50": 0.993
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 48,
+     "lhand_to_shaft_m_p50": 0.995
+    },
+    "dagger": {
+     "pen_max_m": 0.002,
+     "pen_frames": 0,
+     "frames": 48,
+     "lhand_to_shaft_m_p50": 0.993
+    },
+    "greatsword": {
+     "pen_max_m": 0.002,
+     "pen_frames": 0,
+     "frames": 48,
+     "lhand_to_shaft_m_p50": 0.993
+    },
+    "hammer": {
+     "pen_max_m": 0.002,
+     "pen_frames": 0,
+     "frames": 48,
+     "lhand_to_shaft_m_p50": 0.993
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 48,
+     "lhand_to_shaft_m_p50": 0.962
+    },
+    "shield": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 48,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.002,
+     "pen_frames": 0,
+     "frames": 48,
+     "lhand_to_shaft_m_p50": 0.993
+    },
+    "sword": {
+     "pen_max_m": 0.013,
+     "pen_frames": 0,
+     "frames": 48,
+     "lhand_to_shaft_m_p50": 0.993
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00208,
+    "lod2": 0.0
+   }
+  },
+  "R_Knockdown_s": {
+   "src": "compose",
+   "frames": 48,
+   "fps": 30.0,
+   "length_s": 1.567,
+   "contact": null,
+   "root": "composed",
+   "root_end_raw_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": -0.003,
+   "feet_max_m": 0.188,
+   "planted_slide_mps": 2.665,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00502,
+   "tear_p99": 1.954,
+   "tears": false,
+   "tear_where": {
+    "Hips": 12,
+    "LeftLeg": 16,
+    "RightUpLeg": 7
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 6,
+    "foot_slide_worst_cm": 21.4,
+    "foot_steps_over_2cm": 6
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.167,
+     "pen_frames": 24,
+     "frames": 48,
+     "lhand_to_shaft_m_p50": 0.458
+    },
+    "crossbow": {
+     "pen_max_m": 0.041,
+     "pen_frames": 2,
+     "frames": 48,
+     "lhand_to_shaft_m_p50": 0.756
+    },
+    "dagger": {
+     "pen_max_m": 0.168,
+     "pen_frames": 24,
+     "frames": 48,
+     "lhand_to_shaft_m_p50": 0.458
+    },
+    "greatsword": {
+     "pen_max_m": 0.167,
+     "pen_frames": 24,
+     "frames": 48,
+     "lhand_to_shaft_m_p50": 0.458
+    },
+    "hammer": {
+     "pen_max_m": 0.157,
+     "pen_frames": 24,
+     "frames": 48,
+     "lhand_to_shaft_m_p50": 0.458
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 48,
+     "lhand_to_shaft_m_p50": 0.755
+    },
+    "shield": {
+     "pen_max_m": 0.189,
+     "pen_frames": 19,
+     "frames": 48,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.168,
+     "pen_frames": 24,
+     "frames": 48,
+     "lhand_to_shaft_m_p50": 0.458
+    },
+    "sword": {
+     "pen_max_m": 0.226,
+     "pen_frames": 25,
+     "frames": 48,
+     "lhand_to_shaft_m_p50": 0.468
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00502,
+    "lod2": 0.00073
+   },
+   "tear_worst_lod": "lod0"
+  },
+  "R_Parry": {
+   "src": "compose",
+   "frames": 18,
+   "fps": 30.0,
+   "length_s": 0.567,
+   "contact": 4,
+   "root": "composed",
+   "root_end_raw_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": -0.002,
+   "feet_max_m": 0.003,
+   "planted_slide_mps": 0.764,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00898,
+   "tear_p99": 2.45,
+   "tears": true,
+   "tear_where": {
+    "Hips": 8,
+    "Spine": 1,
+    "Spine1": 23,
+    "Spine2": 37,
+    "RightArm": 2,
+    "LeftUpLeg": 7,
+    "LeftLeg": 15,
+    "RightUpLeg": 3,
+    "RightLeg": 2
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "contact_yaw_deg": 40.5,
+    "contact_elev_deg": 20.4,
+    "hips_yaw_deg": -11.0,
+    "backward": false,
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 5.0,
+    "foot_steps_over_2cm": 2
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.016,
+     "pen_frames": 0,
+     "frames": 18,
+     "lhand_to_shaft_m_p50": 0.891
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 18,
+     "lhand_to_shaft_m_p50": 0.91
+    },
+    "dagger": {
+     "pen_max_m": 0.016,
+     "pen_frames": 0,
+     "frames": 18,
+     "lhand_to_shaft_m_p50": 0.891
+    },
+    "greatsword": {
+     "pen_max_m": 0.016,
+     "pen_frames": 0,
+     "frames": 18,
+     "lhand_to_shaft_m_p50": 0.891
+    },
+    "hammer": {
+     "pen_max_m": 0.016,
+     "pen_frames": 0,
+     "frames": 18,
+     "lhand_to_shaft_m_p50": 0.891
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 18,
+     "lhand_to_shaft_m_p50": 0.888
+    },
+    "shield": {
+     "pen_max_m": 0.09,
+     "pen_frames": 12,
+     "frames": 18,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.016,
+     "pen_frames": 0,
+     "frames": 18,
+     "lhand_to_shaft_m_p50": 0.891
+    },
+    "sword": {
+     "pen_max_m": 0.021,
+     "pen_frames": 0,
+     "frames": 18,
+     "lhand_to_shaft_m_p50": 0.857
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00763,
+    "lod2": 0.00292
+   }
+  },
+  "R_Parry_k": {
+   "src": "compose",
+   "frames": 18,
+   "fps": 30.0,
+   "length_s": 0.567,
+   "contact": 4,
+   "root": "composed",
+   "root_end_raw_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": 0.034,
+   "feet_max_m": 0.076,
+   "planted_slide_mps": 0.0,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00219,
+   "tear_p99": 1.66,
+   "tears": false,
+   "tear_where": {
+    "Hips": 9
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "contact_yaw_deg": -53.1,
+    "contact_elev_deg": -10.9,
+    "hips_yaw_deg": -0.0,
+    "backward": false,
+    "tpose_frames": 0,
+    "foot_steps": 8,
+    "foot_slide_worst_cm": 38.5,
+    "foot_steps_over_2cm": 8
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 18,
+     "lhand_to_shaft_m_p50": 0.955
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 18,
+     "lhand_to_shaft_m_p50": 0.984
+    },
+    "dagger": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 18,
+     "lhand_to_shaft_m_p50": 0.955
+    },
+    "greatsword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 18,
+     "lhand_to_shaft_m_p50": 0.955
+    },
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 18,
+     "lhand_to_shaft_m_p50": 0.955
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 18,
+     "lhand_to_shaft_m_p50": 0.962
+    },
+    "shield": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 18,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 18,
+     "lhand_to_shaft_m_p50": 0.955
+    },
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 18,
+     "lhand_to_shaft_m_p50": 0.913
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.001,
+    "lod2": 0.00219
+   },
+   "tear_worst_lod": "lod2"
+  },
+  "R_Parry_s": {
+   "src": "compose",
+   "frames": 18,
+   "fps": 30.0,
+   "length_s": 0.567,
+   "contact": 4,
+   "root": "composed",
+   "root_end_raw_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": -0.001,
+   "feet_max_m": 0.003,
+   "planted_slide_mps": 1.222,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.0066,
+   "tear_p99": 2.28,
+   "tears": true,
+   "tear_where": {
+    "Hips": 6,
+    "Spine1": 23,
+    "Spine2": 35,
+    "RightArm": 2,
+    "LeftUpLeg": 1,
+    "LeftLeg": 3,
+    "RightUpLeg": 1,
+    "RightLeg": 1
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "contact_yaw_deg": 41.3,
+    "contact_elev_deg": 22.9,
+    "hips_yaw_deg": -11.0,
+    "backward": false,
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 8.0,
+    "foot_steps_over_2cm": 4
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.016,
+     "pen_frames": 0,
+     "frames": 18,
+     "lhand_to_shaft_m_p50": 0.891
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 18,
+     "lhand_to_shaft_m_p50": 0.91
+    },
+    "dagger": {
+     "pen_max_m": 0.016,
+     "pen_frames": 0,
+     "frames": 18,
+     "lhand_to_shaft_m_p50": 0.891
+    },
+    "greatsword": {
+     "pen_max_m": 0.016,
+     "pen_frames": 0,
+     "frames": 18,
+     "lhand_to_shaft_m_p50": 0.891
+    },
+    "hammer": {
+     "pen_max_m": 0.016,
+     "pen_frames": 0,
+     "frames": 18,
+     "lhand_to_shaft_m_p50": 0.891
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 18,
+     "lhand_to_shaft_m_p50": 0.888
+    },
+    "shield": {
+     "pen_max_m": 0.088,
+     "pen_frames": 11,
+     "frames": 18,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.016,
+     "pen_frames": 0,
+     "frames": 18,
+     "lhand_to_shaft_m_p50": 0.891
+    },
+    "sword": {
+     "pen_max_m": 0.021,
+     "pen_frames": 0,
+     "frames": 18,
+     "lhand_to_shaft_m_p50": 0.857
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00532,
+    "lod2": 0.00292
+   }
+  },
+  "R_Rain": {
+   "src": "compose",
+   "frames": 40,
+   "fps": 30.0,
+   "length_s": 1.3,
+   "contact": 9,
+   "root": "composed",
+   "root_end_raw_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": -0.012,
+   "feet_max_m": 0.041,
+   "planted_slide_mps": 0.856,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00193,
+   "tear_p99": 1.804,
+   "tears": false,
+   "tear_where": {
+    "Hips": 13,
+    "LeftLeg": 5
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 8,
+    "foot_slide_worst_cm": 8.7,
+    "foot_steps_over_2cm": 4
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 40,
+     "lhand_to_shaft_m_p50": 0.92
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 40,
+     "lhand_to_shaft_m_p50": 0.93
+    },
+    "dagger": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 40,
+     "lhand_to_shaft_m_p50": 0.92
+    },
+    "greatsword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 40,
+     "lhand_to_shaft_m_p50": 0.92
+    },
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 40,
+     "lhand_to_shaft_m_p50": 0.92
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 40,
+     "lhand_to_shaft_m_p50": 0.897
+    },
+    "shield": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 40,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 40,
+     "lhand_to_shaft_m_p50": 0.92
+    },
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 40,
+     "lhand_to_shaft_m_p50": 0.921
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00193,
+    "lod2": 0.0
+   },
+   "tear_worst_lod": "lod0"
+  },
+  "R_Rain_s": {
+   "src": "compose",
+   "frames": 40,
+   "fps": 30.0,
+   "length_s": 1.3,
+   "contact": 9,
+   "root": "composed",
+   "root_end_raw_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": 0.011,
+   "feet_max_m": 0.036,
+   "planted_slide_mps": 0.856,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00156,
+   "tear_p99": 1.735,
+   "tears": false,
+   "tear_where": {
+    "Hips": 7,
+    "LeftLeg": 5
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 6,
+    "foot_slide_worst_cm": 16.2,
+    "foot_steps_over_2cm": 6
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 40,
+     "lhand_to_shaft_m_p50": 0.92
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 40,
+     "lhand_to_shaft_m_p50": 0.93
+    },
+    "dagger": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 40,
+     "lhand_to_shaft_m_p50": 0.92
+    },
+    "greatsword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 40,
+     "lhand_to_shaft_m_p50": 0.92
+    },
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 40,
+     "lhand_to_shaft_m_p50": 0.92
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 40,
+     "lhand_to_shaft_m_p50": 0.896
+    },
+    "shield": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 40,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 40,
+     "lhand_to_shaft_m_p50": 0.92
+    },
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 40,
+     "lhand_to_shaft_m_p50": 0.921
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00156,
+    "lod2": 0.0
+   },
+   "tear_worst_lod": "lod0"
+  },
+  "R_Rally": {
+   "src": "compose",
+   "frames": 30,
+   "fps": 30.0,
+   "length_s": 0.967,
+   "contact": 7,
+   "root": "composed",
+   "root_end_raw_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": -0.012,
+   "feet_max_m": 0.058,
+   "planted_slide_mps": 0.365,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00247,
+   "tear_p99": 1.755,
+   "tears": false,
+   "tear_where": {
+    "Hips": 17,
+    "RightArm": 2,
+    "LeftLeg": 3,
+    "RightUpLeg": 3,
+    "RightLeg": 2
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 2.2,
+    "foot_steps_over_2cm": 2
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 0.471
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 0.424
+    },
+    "dagger": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 0.471
+    },
+    "greatsword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 0.471
+    },
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 0.471
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 0.472
+    },
+    "shield": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 0.471
+    },
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 0.464
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00197,
+    "lod2": 0.00073
+   }
+  },
+  "R_Rally_c": {
+   "src": "compose",
+   "frames": 30,
+   "fps": 30.0,
+   "length_s": 0.967,
+   "contact": 7,
+   "root": "composed",
+   "root_end_raw_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": 0.033,
+   "feet_max_m": 0.034,
+   "planted_slide_mps": 0.0,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.0013,
+   "tear_p99": 1.613,
+   "tears": false,
+   "tear_where": {
+    "Hips": 3,
+    "LeftLeg": 3,
+    "RightUpLeg": 3,
+    "RightLeg": 2
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 6.9,
+    "foot_steps_over_2cm": 4
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 1.029
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 1.042
+    },
+    "dagger": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 1.029
+    },
+    "greatsword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 1.029
+    },
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 1.029
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 1.011
+    },
+    "shield": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 1.029
+    },
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 1.031
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.0013,
+    "lod2": 0.0
+   },
+   "tear_worst_lod": "lod0"
+  },
+  "R_Rally_c2": {
+   "src": "compose",
+   "frames": 30,
+   "fps": 30.0,
+   "length_s": 0.967,
+   "contact": 7,
+   "root": "composed",
+   "root_end_raw_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": 0.033,
+   "feet_max_m": 0.034,
+   "planted_slide_mps": 0.0,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00115,
+   "tear_p99": 1.597,
+   "tears": false,
+   "tear_where": {
+    "Hips": 1,
+    "LeftLeg": 3,
+    "RightUpLeg": 3,
+    "RightLeg": 2
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 6.9,
+    "foot_steps_over_2cm": 4
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 1.029
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 1.042
+    },
+    "dagger": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 1.029
+    },
+    "greatsword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 1.029
+    },
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 1.029
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 1.011
+    },
+    "shield": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 1.029
+    },
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 1.031
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00115,
+    "lod2": 0.0
+   },
+   "tear_worst_lod": "lod0"
+  },
+  "R_Rally_s": {
+   "src": "compose",
+   "frames": 30,
+   "fps": 30.0,
+   "length_s": 0.967,
+   "contact": 7,
+   "root": "composed",
+   "root_end_raw_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": 0.033,
+   "feet_max_m": 0.034,
+   "planted_slide_mps": 0.0,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00138,
+   "tear_p99": 1.639,
+   "tears": false,
+   "tear_where": {
+    "Hips": 3,
+    "LeftLeg": 3,
+    "RightUpLeg": 3,
+    "RightLeg": 2
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 6.9,
+    "foot_steps_over_2cm": 4
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 0.541
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 0.504
+    },
+    "dagger": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 0.541
+    },
+    "greatsword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 0.541
+    },
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 0.541
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 0.548
+    },
+    "shield": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 0.541
+    },
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 0.533
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00138,
+    "lod2": 0.0
+   },
+   "tear_worst_lod": "lod0"
+  },
+  "R_Rally_v45": {
+   "src": "compose",
+   "frames": 30,
+   "fps": 30.0,
+   "length_s": 0.967,
+   "contact": 7,
+   "root": "composed",
+   "root_end_raw_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": 0.033,
+   "feet_max_m": 0.034,
+   "planted_slide_mps": 0.0,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.0013,
+   "tear_p99": 1.62,
+   "tears": false,
+   "tear_where": {
+    "Hips": 3,
+    "LeftLeg": 3,
+    "RightUpLeg": 3,
+    "RightLeg": 2
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 6.9,
+    "foot_steps_over_2cm": 4
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 0.645
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 0.591
+    },
+    "dagger": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 0.645
+    },
+    "greatsword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 0.645
+    },
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 0.645
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 0.658
+    },
+    "shield": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 0.645
+    },
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 0.635
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.0013,
+    "lod2": 0.0
+   },
+   "tear_worst_lod": "lod0"
+  },
+  "R_Shield": {
+   "src": "compose",
+   "frames": 26,
+   "fps": 30.0,
+   "length_s": 0.833,
+   "contact": 6,
+   "root": "composed",
+   "root_end_raw_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": -0.042,
+   "feet_max_m": 0.033,
+   "planted_slide_mps": 0.059,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00379,
+   "tear_p99": 1.967,
+   "tears": false,
+   "tear_where": {
+    "Hips": 12,
+    "LeftUpLeg": 1,
+    "LeftLeg": 5,
+    "RightUpLeg": 16,
+    "RightLeg": 3
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 1.1,
+    "foot_steps_over_2cm": 0
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.122,
+     "pen_frames": 26,
+     "frames": 26,
+     "lhand_to_shaft_m_p50": 0.547
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 26,
+     "lhand_to_shaft_m_p50": 0.904
+    },
+    "dagger": {
+     "pen_max_m": 0.125,
+     "pen_frames": 26,
+     "frames": 26,
+     "lhand_to_shaft_m_p50": 0.547
+    },
+    "greatsword": {
+     "pen_max_m": 0.122,
+     "pen_frames": 26,
+     "frames": 26,
+     "lhand_to_shaft_m_p50": 0.547
+    },
+    "hammer": {
+     "pen_max_m": 0.12,
+     "pen_frames": 26,
+     "frames": 26,
+     "lhand_to_shaft_m_p50": 0.547
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 26,
+     "lhand_to_shaft_m_p50": 0.901
+    },
+    "shield": {
+     "pen_max_m": 0.033,
+     "pen_frames": 1,
+     "frames": 26,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.109,
+     "pen_frames": 26,
+     "frames": 26,
+     "lhand_to_shaft_m_p50": 0.547
+    },
+    "sword": {
+     "pen_max_m": 0.172,
+     "pen_frames": 26,
+     "frames": 26,
+     "lhand_to_shaft_m_p50": 0.504
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00379,
+    "lod2": 0.00146
+   },
+   "tear_worst_lod": "lod0"
+  },
+  "R_Shield_k": {
+   "src": "compose",
+   "frames": 26,
+   "fps": 30.0,
+   "length_s": 0.833,
+   "contact": 6,
+   "root": "composed",
+   "root_end_raw_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": -0.008,
+   "feet_max_m": 0.034,
+   "planted_slide_mps": 0.101,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00292,
+   "tear_p99": 1.826,
+   "tears": false,
+   "tear_where": {
+    "Hips": 19,
+    "Spine2": 4,
+    "LeftUpLeg": 1,
+    "LeftLeg": 5
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 3.0,
+    "foot_steps_over_2cm": 2
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 26,
+     "lhand_to_shaft_m_p50": 0.946
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 26,
+     "lhand_to_shaft_m_p50": 0.926
+    },
+    "dagger": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 26,
+     "lhand_to_shaft_m_p50": 0.946
+    },
+    "greatsword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 26,
+     "lhand_to_shaft_m_p50": 0.946
+    },
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 26,
+     "lhand_to_shaft_m_p50": 0.946
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 26,
+     "lhand_to_shaft_m_p50": 0.914
+    },
+    "shield": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 26,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 26,
+     "lhand_to_shaft_m_p50": 0.946
+    },
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 26,
+     "lhand_to_shaft_m_p50": 0.887
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00186,
+    "lod2": 0.00292
+   },
+   "tear_worst_lod": "lod2"
+  },
+  "R_Shield_k2": {
+   "src": "compose",
+   "frames": 26,
+   "fps": 30.0,
+   "length_s": 0.833,
+   "contact": 6,
+   "root": "composed",
+   "root_end_raw_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": 0.034,
+   "feet_max_m": 0.034,
+   "planted_slide_mps": 0.0,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00219,
+   "tear_p99": 1.804,
+   "tears": false,
+   "tear_where": {
+    "Hips": 16,
+    "Spine2": 4,
+    "LeftLeg": 3
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 3.7,
+    "foot_steps_over_2cm": 2
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 26,
+     "lhand_to_shaft_m_p50": 0.97
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 26,
+     "lhand_to_shaft_m_p50": 0.982
+    },
+    "dagger": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 26,
+     "lhand_to_shaft_m_p50": 0.97
+    },
+    "greatsword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 26,
+     "lhand_to_shaft_m_p50": 0.97
+    },
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 26,
+     "lhand_to_shaft_m_p50": 0.97
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 26,
+     "lhand_to_shaft_m_p50": 0.969
+    },
+    "shield": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 26,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 26,
+     "lhand_to_shaft_m_p50": 0.97
+    },
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 26,
+     "lhand_to_shaft_m_p50": 0.905
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00167,
+    "lod2": 0.00219
+   },
+   "tear_worst_lod": "lod2"
+  },
+  "R_Shield_s": {
+   "src": "compose",
+   "frames": 26,
+   "fps": 30.0,
+   "length_s": 0.833,
+   "contact": 6,
+   "root": "composed",
+   "root_end_raw_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": 0.029,
+   "feet_max_m": 0.063,
+   "planted_slide_mps": 0.033,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00193,
+   "tear_p99": 1.803,
+   "tears": false,
+   "tear_where": {
+    "Hips": 10,
+    "LeftUpLeg": 1,
+    "LeftLeg": 3,
+    "RightUpLeg": 2
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 1.7,
+    "foot_steps_over_2cm": 0
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.121,
+     "pen_frames": 26,
+     "frames": 26,
+     "lhand_to_shaft_m_p50": 0.547
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 26,
+     "lhand_to_shaft_m_p50": 0.904
+    },
+    "dagger": {
+     "pen_max_m": 0.123,
+     "pen_frames": 26,
+     "frames": 26,
+     "lhand_to_shaft_m_p50": 0.547
+    },
+    "greatsword": {
+     "pen_max_m": 0.119,
+     "pen_frames": 26,
+     "frames": 26,
+     "lhand_to_shaft_m_p50": 0.547
+    },
+    "hammer": {
+     "pen_max_m": 0.118,
+     "pen_frames": 26,
+     "frames": 26,
+     "lhand_to_shaft_m_p50": 0.547
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 26,
+     "lhand_to_shaft_m_p50": 0.901
+    },
+    "shield": {
+     "pen_max_m": 0.033,
+     "pen_frames": 1,
+     "frames": 26,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.108,
+     "pen_frames": 26,
+     "frames": 26,
+     "lhand_to_shaft_m_p50": 0.547
+    },
+    "sword": {
+     "pen_max_m": 0.17,
+     "pen_frames": 26,
+     "frames": 26,
+     "lhand_to_shaft_m_p50": 0.504
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00193,
+    "lod2": 0.0
+   },
+   "tear_worst_lod": "lod0"
+  },
+  "R_Shoot": {
+   "src": "compose",
+   "frames": 30,
+   "fps": 30.0,
+   "length_s": 0.967,
+   "contact": 4,
+   "root": "composed",
+   "root_end_raw_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": 0.009,
+   "feet_max_m": 0.01,
+   "planted_slide_mps": 0.847,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00231,
+   "tear_p99": 1.94,
+   "tears": false,
+   "tear_where": {
+    "Hips": 18,
+    "Spine2": 2,
+    "RightUpLeg": 1,
+    "RightLeg": 1
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "contact_yaw_deg": 3.9,
+    "contact_elev_deg": 32.1,
+    "hips_yaw_deg": -40.8,
+    "backward": false,
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 5.5,
+    "foot_steps_over_2cm": 4
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.008,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 1.035
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 1.138
+    },
+    "dagger": {
+     "pen_max_m": 0.008,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 1.035
+    },
+    "greatsword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 1.035
+    },
+    "hammer": {
+     "pen_max_m": 0.007,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 1.035
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 1.135
+    },
+    "shield": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 1.035
+    },
+    "sword": {
+     "pen_max_m": 0.033,
+     "pen_frames": 3,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 0.962
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00231,
+    "lod2": 0.00146
+   },
+   "tear_worst_lod": "lod0"
+  },
+  "R_Shoot_Gun": {
+   "src": "compose",
+   "frames": 30,
+   "fps": 30.0,
+   "length_s": 0.967,
+   "contact": 4,
+   "root": "composed",
+   "root_end_raw_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": 0.026,
+   "feet_max_m": 0.028,
+   "planted_slide_mps": 1.065,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00153,
+   "tear_p99": 1.879,
+   "tears": false,
+   "tear_where": {
+    "Hips": 4,
+    "Spine2": 2,
+    "LeftLeg": 3
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "contact_yaw_deg": -48.3,
+    "contact_elev_deg": 1.1,
+    "hips_yaw_deg": -46.1,
+    "backward": false,
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 22.5,
+    "foot_steps_over_2cm": 4
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 0.302
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 0.127
+    },
+    "dagger": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 0.302
+    },
+    "greatsword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 0.302
+    },
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 0.302
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 0.215
+    },
+    "shield": {
+     "pen_max_m": 0.143,
+     "pen_frames": 30,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 0.302
+    },
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 0.315
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00153,
+    "lod2": 0.00073
+   },
+   "tear_worst_lod": "lod0"
+  },
+  "R_Shoot_k": {
+   "src": "compose",
+   "frames": 30,
+   "fps": 30.0,
+   "length_s": 0.967,
+   "contact": 4,
+   "root": "composed",
+   "root_end_raw_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": 0.034,
+   "feet_max_m": 0.034,
+   "planted_slide_mps": 0.0,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00067,
+   "tear_p99": 1.524,
+   "tears": false,
+   "tear_where": {
+    "LeftLeg": 2,
+    "RightUpLeg": 1,
+    "RightLeg": 2
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "contact_yaw_deg": 30.3,
+    "contact_elev_deg": 34.7,
+    "hips_yaw_deg": 4.9,
+    "backward": false,
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 5.5,
+    "foot_steps_over_2cm": 4
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 1.088
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 1.046
+    },
+    "dagger": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 1.088
+    },
+    "greatsword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 1.088
+    },
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 1.088
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 1.02
+    },
+    "shield": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 1.088
+    },
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 1.071
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00067,
+    "lod2": 0.0
+   },
+   "tear_worst_lod": "lod0"
+  },
+  "R_Shoot_k2": {
+   "src": "compose",
+   "frames": 30,
+   "fps": 30.0,
+   "length_s": 0.967,
+   "contact": 4,
+   "root": "composed",
+   "root_end_raw_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": -0.0,
+   "feet_max_m": -0.0,
+   "planted_slide_mps": 0.094,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00046,
+   "tear_p99": 1.4,
+   "tears": false,
+   "tear_where": {
+    "LeftLeg": 2,
+    "RightUpLeg": 1,
+    "RightLeg": 2
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "contact_yaw_deg": 40.3,
+    "contact_elev_deg": 32.6,
+    "hips_yaw_deg": 4.9,
+    "backward": false,
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 3.3,
+    "foot_steps_over_2cm": 4
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 1.034
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 0.997
+    },
+    "dagger": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 1.034
+    },
+    "greatsword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 1.034
+    },
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 1.034
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 0.971
+    },
+    "shield": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 1.034
+    },
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 1.013
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00015,
+    "lod2": 0.0
+   }
+  },
+  "R_Shoot_s": {
+   "src": "compose",
+   "frames": 30,
+   "fps": 30.0,
+   "length_s": 0.967,
+   "contact": 4,
+   "root": "composed",
+   "root_end_raw_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": 0.009,
+   "feet_max_m": 0.01,
+   "planted_slide_mps": 0.519,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.0013,
+   "tear_p99": 1.843,
+   "tears": false,
+   "tear_where": {
+    "Hips": 4,
+    "Spine2": 2,
+    "RightUpLeg": 1,
+    "RightLeg": 1
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "contact_yaw_deg": 14.1,
+    "contact_elev_deg": 30.0,
+    "hips_yaw_deg": -40.8,
+    "backward": false,
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 3.2,
+    "foot_steps_over_2cm": 4
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.006,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 1.035
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 1.138
+    },
+    "dagger": {
+     "pen_max_m": 0.006,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 1.035
+    },
+    "greatsword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 1.035
+    },
+    "hammer": {
+     "pen_max_m": 0.003,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 1.035
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 1.135
+    },
+    "shield": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 1.035
+    },
+    "sword": {
+     "pen_max_m": 0.033,
+     "pen_frames": 1,
+     "frames": 30,
+     "lhand_to_shaft_m_p50": 0.962
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.0013,
+    "lod2": 0.0
+   },
+   "tear_worst_lod": "lod0"
+  },
+  "R_Split": {
+   "src": "compose",
+   "frames": 24,
+   "fps": 30.0,
+   "length_s": 0.767,
+   "contact": 10,
+   "root": "composed",
+   "root_end_raw_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": -0.095,
+   "feet_max_m": 0.053,
+   "planted_slide_mps": 1.744,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.0077,
+   "tear_p99": 2.327,
+   "tears": true,
+   "tear_where": {
+    "Hips": 50,
+    "Spine": 2,
+    "LeftUpLeg": 9,
+    "LeftLeg": 21,
+    "RightUpLeg": 1,
+    "RightLeg": 1
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "contact_yaw_deg": -8.1,
+    "contact_elev_deg": -64.0,
+    "hips_yaw_deg": -12.0,
+    "backward": false,
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 3.3,
+    "foot_steps_over_2cm": 2
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 24,
+     "lhand_to_shaft_m_p50": 0.214
+    },
+    "crossbow": {
+     "pen_max_m": 0.088,
+     "pen_frames": 8,
+     "frames": 24,
+     "lhand_to_shaft_m_p50": 0.224
+    },
+    "dagger": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 24,
+     "lhand_to_shaft_m_p50": 0.214
+    },
+    "greatsword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 24,
+     "lhand_to_shaft_m_p50": 0.214
+    },
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 24,
+     "lhand_to_shaft_m_p50": 0.214
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 24,
+     "lhand_to_shaft_m_p50": 0.196
+    },
+    "shield": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 24,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 24,
+     "lhand_to_shaft_m_p50": 0.214
+    },
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 24,
+     "lhand_to_shaft_m_p50": 0.22
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00696,
+    "lod2": 0.00146
+   }
+  },
+  "R_Split_k": {
+   "src": "compose",
+   "frames": 24,
+   "fps": 30.0,
+   "length_s": 0.767,
+   "contact": 10,
+   "root": "composed",
+   "root_end_raw_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": -0.031,
+   "feet_max_m": 0.049,
+   "planted_slide_mps": 9.268,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00348,
+   "tear_p99": 1.927,
+   "tears": false,
+   "tear_where": {
+    "Hips": 27,
+    "Spine": 1,
+    "LeftUpLeg": 1,
+    "LeftLeg": 9
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "contact_yaw_deg": -20.6,
+    "contact_elev_deg": -4.8,
+    "hips_yaw_deg": -0.0,
+    "backward": false,
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 20.2,
+    "foot_steps_over_2cm": 4
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 24,
+     "lhand_to_shaft_m_p50": 0.089
+    },
+    "crossbow": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 24,
+     "lhand_to_shaft_m_p50": 0.294
+    },
+    "dagger": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 24,
+     "lhand_to_shaft_m_p50": 0.089
+    },
+    "greatsword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 24,
+     "lhand_to_shaft_m_p50": 0.089
+    },
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 24,
+     "lhand_to_shaft_m_p50": 0.089
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 24,
+     "lhand_to_shaft_m_p50": 0.294
+    },
+    "shield": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 24,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 24,
+     "lhand_to_shaft_m_p50": 0.089
+    },
+    "sword": {
+     "pen_max_m": 0.045,
+     "pen_frames": 2,
+     "frames": 24,
+     "lhand_to_shaft_m_p50": 0.083
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00234,
+    "lod2": 0.00292
+   }
+  },
+  "R_Split_k2": {
+   "src": "compose",
+   "frames": 24,
+   "fps": 30.0,
+   "length_s": 0.767,
+   "contact": 10,
+   "root": "composed",
+   "root_end_raw_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": 0.002,
+   "feet_max_m": 0.042,
+   "planted_slide_mps": 5.01,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00292,
+   "tear_p99": 1.83,
+   "tears": false,
+   "tear_where": {
+    "Hips": 22,
+    "LeftLeg": 7
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "contact_yaw_deg": -20.5,
+    "contact_elev_deg": 2.7,
+    "hips_yaw_deg": -0.0,
+    "backward": false,
+    "tpose_frames": 0,
+    "foot_steps": 6,
+    "foot_slide_worst_cm": 26.3,
+    "foot_steps_over_2cm": 6
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 24,
+     "lhand_to_shaft_m_p50": 0.089
+    },
+    "crossbow": {
+     "pen_max_m": 0.046,
+     "pen_frames": 1,
+     "frames": 24,
+     "lhand_to_shaft_m_p50": 0.294
+    },
+    "dagger": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 24,
+     "lhand_to_shaft_m_p50": 0.089
+    },
+    "greatsword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 24,
+     "lhand_to_shaft_m_p50": 0.089
+    },
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 24,
+     "lhand_to_shaft_m_p50": 0.089
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 24,
+     "lhand_to_shaft_m_p50": 0.294
+    },
+    "shield": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 24,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 24,
+     "lhand_to_shaft_m_p50": 0.089
+    },
+    "sword": {
+     "pen_max_m": 0.045,
+     "pen_frames": 2,
+     "frames": 24,
+     "lhand_to_shaft_m_p50": 0.083
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00186,
+    "lod2": 0.00292
+   },
+   "tear_worst_lod": "lod2"
+  },
+  "R_Split_s": {
+   "src": "compose",
+   "frames": 24,
+   "fps": 30.0,
+   "length_s": 0.767,
+   "contact": 10,
+   "root": "composed",
+   "root_end_raw_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": -0.063,
+   "feet_max_m": 0.065,
+   "planted_slide_mps": 1.72,
+   "ground_speed_mps": 0.0,
+   "tear_share": 0.00554,
+   "tear_p99": 2.14,
+   "tears": true,
+   "tear_where": {
+    "Hips": 41,
+    "Spine": 2,
+    "LeftUpLeg": 2,
+    "LeftLeg": 14
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "contact_yaw_deg": -8.1,
+    "contact_elev_deg": -64.0,
+    "hips_yaw_deg": -12.0,
+    "backward": false,
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 6.0,
+    "foot_steps_over_2cm": 4
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 24,
+     "lhand_to_shaft_m_p50": 0.214
+    },
+    "crossbow": {
+     "pen_max_m": 0.09,
+     "pen_frames": 8,
+     "frames": 24,
+     "lhand_to_shaft_m_p50": 0.224
+    },
+    "dagger": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 24,
+     "lhand_to_shaft_m_p50": 0.214
+    },
+    "greatsword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 24,
+     "lhand_to_shaft_m_p50": 0.214
+    },
+    "hammer": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 24,
+     "lhand_to_shaft_m_p50": 0.214
+    },
+    "rifle": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 24,
+     "lhand_to_shaft_m_p50": 0.196
+    },
+    "shield": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 24,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 24,
+     "lhand_to_shaft_m_p50": 0.214
+    },
+    "sword": {
+     "pen_max_m": 0.0,
+     "pen_frames": 0,
+     "frames": 24,
+     "lhand_to_shaft_m_p50": 0.22
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.00554,
+    "lod2": 0.00073
+   },
+   "tear_worst_lod": "lod0"
+  },
+  "R_Sprint": {
+   "src": "compose",
+   "frames": 25,
+   "fps": 30.0,
+   "length_s": 0.8,
+   "contact": null,
+   "root": "composed",
+   "root_end_raw_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": -0.019,
+   "feet_max_m": 0.226,
+   "planted_slide_mps": 5.612,
+   "ground_speed_mps": 5.412,
+   "tear_share": 0.01008,
+   "tear_p99": 2.522,
+   "tears": true,
+   "tear_where": {
+    "Hips": 40,
+    "Spine": 1,
+    "LeftUpLeg": 19,
+    "LeftLeg": 48,
+    "RightUpLeg": 1,
+    "RightLeg": 1
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 68.6,
+    "foot_steps_over_2cm": 4
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.052,
+     "pen_frames": 11,
+     "frames": 25,
+     "lhand_to_shaft_m_p50": 0.526
+    },
+    "crossbow": {
+     "pen_max_m": 0.24,
+     "pen_frames": 25,
+     "frames": 25,
+     "lhand_to_shaft_m_p50": 0.368
+    },
+    "dagger": {
+     "pen_max_m": 0.052,
+     "pen_frames": 11,
+     "frames": 25,
+     "lhand_to_shaft_m_p50": 0.526
+    },
+    "greatsword": {
+     "pen_max_m": 0.052,
+     "pen_frames": 11,
+     "frames": 25,
+     "lhand_to_shaft_m_p50": 0.526
+    },
+    "hammer": {
+     "pen_max_m": 0.052,
+     "pen_frames": 11,
+     "frames": 25,
+     "lhand_to_shaft_m_p50": 0.526
+    },
+    "rifle": {
+     "pen_max_m": 0.144,
+     "pen_frames": 25,
+     "frames": 25,
+     "lhand_to_shaft_m_p50": 0.424
+    },
+    "shield": {
+     "pen_max_m": 0.268,
+     "pen_frames": 25,
+     "frames": 25,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.052,
+     "pen_frames": 11,
+     "frames": 25,
+     "lhand_to_shaft_m_p50": 0.526
+    },
+    "sword": {
+     "pen_max_m": 0.031,
+     "pen_frames": 6,
+     "frames": 25,
+     "lhand_to_shaft_m_p50": 0.515
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.01008,
+    "lod2": 0.00219
+   }
+  },
+  "R_Sprint_u": {
+   "src": "compose",
+   "frames": 21,
+   "fps": 30.0,
+   "length_s": 0.667,
+   "contact": null,
+   "root": "composed",
+   "root_end_raw_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "sway_max_m": 0.0,
+   "feet_min_m": -0.053,
+   "feet_max_m": 0.207,
+   "planted_slide_mps": 5.294,
+   "ground_speed_mps": 4.674,
+   "tear_share": 0.01127,
+   "tear_p99": 2.576,
+   "tears": true,
+   "tear_where": {
+    "Hips": 17,
+    "Spine": 1,
+    "Spine1": 20,
+    "Spine2": 35,
+    "Head": 2,
+    "LeftUpLeg": 7,
+    "LeftLeg": 41
+   },
+   "tear_share_chains_rigid": null,
+   "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 25.0,
+    "foot_steps_over_2cm": 4
+   },
+   "weapon": {
+    "axe": {
+     "pen_max_m": 0.026,
+     "pen_frames": 0,
+     "frames": 21,
+     "lhand_to_shaft_m_p50": 0.494
+    },
+    "crossbow": {
+     "pen_max_m": 0.268,
+     "pen_frames": 21,
+     "frames": 21,
+     "lhand_to_shaft_m_p50": 0.374
+    },
+    "dagger": {
+     "pen_max_m": 0.026,
+     "pen_frames": 0,
+     "frames": 21,
+     "lhand_to_shaft_m_p50": 0.494
+    },
+    "greatsword": {
+     "pen_max_m": 0.026,
+     "pen_frames": 0,
+     "frames": 21,
+     "lhand_to_shaft_m_p50": 0.494
+    },
+    "hammer": {
+     "pen_max_m": 0.026,
+     "pen_frames": 0,
+     "frames": 21,
+     "lhand_to_shaft_m_p50": 0.494
+    },
+    "rifle": {
+     "pen_max_m": 0.165,
+     "pen_frames": 21,
+     "frames": 21,
+     "lhand_to_shaft_m_p50": 0.42
+    },
+    "shield": {
+     "pen_max_m": 0.233,
+     "pen_frames": 21,
+     "frames": 21,
+     "lhand_to_shaft_m_p50": 0.058
+    },
+    "staff": {
+     "pen_max_m": 0.026,
+     "pen_frames": 0,
+     "frames": 21,
+     "lhand_to_shaft_m_p50": 0.494
+    },
+    "sword": {
+     "pen_max_m": 0.008,
+     "pen_frames": 0,
+     "frames": 21,
+     "lhand_to_shaft_m_p50": 0.479
+    }
+   },
+   "tear_by_lod": {
+    "lod0": 0.01068,
+    "lod2": 0.00292
+   }
+  },
   "Running_A": {
    "src": "Running_A",
    "frames": 25,
@@ -4916,6 +13380,12 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 0,
+    "foot_slide_worst_cm": 0.0,
+    "foot_steps_over_2cm": 0
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.0,
@@ -5007,6 +13477,12 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 19.9,
+    "foot_steps_over_2cm": 4
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.0,
@@ -5094,6 +13570,12 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 6,
+    "foot_slide_worst_cm": 17.0,
+    "foot_steps_over_2cm": 4
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.0,
@@ -5182,6 +13664,12 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 15.7,
+    "foot_steps_over_2cm": 4
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.0,
@@ -5272,6 +13760,16 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "contact_yaw_deg": -35.0,
+    "contact_elev_deg": 17.4,
+    "hips_yaw_deg": 14.7,
+    "backward": false,
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 15.8,
+    "foot_steps_over_2cm": 4
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.0,
@@ -5360,6 +13858,12 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 12.1,
+    "foot_steps_over_2cm": 4
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.0,
@@ -5450,6 +13954,12 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 2.0,
+    "foot_steps_over_2cm": 0
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.0,
@@ -5542,6 +14052,12 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 5,
+    "foot_slide_worst_cm": 43.3,
+    "foot_steps_over_2cm": 5
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.0,
@@ -5634,6 +14150,12 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 19.9,
+    "foot_steps_over_2cm": 4
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.0,
@@ -5726,6 +14248,12 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 25.0,
+    "foot_steps_over_2cm": 4
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.0,
@@ -5815,6 +14343,12 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 5,
+    "foot_slide_worst_cm": 31.6,
+    "foot_steps_over_2cm": 5
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.0,
@@ -5902,6 +14436,12 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 35.5,
+    "foot_steps_over_2cm": 4
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.0,
@@ -5990,6 +14530,12 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 4.4,
+    "foot_steps_over_2cm": 4
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.104,
@@ -6085,6 +14631,12 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 7,
+    "foot_slide_worst_cm": 31.9,
+    "foot_steps_over_2cm": 6
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.144,
@@ -6174,6 +14726,12 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 1.8,
+    "foot_steps_over_2cm": 0
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.012,
@@ -6265,6 +14823,12 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 0.2,
+    "foot_steps_over_2cm": 0
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.018,
@@ -6358,6 +14922,12 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 5,
+    "foot_slide_worst_cm": 43.3,
+    "foot_steps_over_2cm": 5
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.211,
@@ -6452,6 +15022,12 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 3,
+    "foot_slide_worst_cm": 21.2,
+    "foot_steps_over_2cm": 3
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.218,
@@ -6541,6 +15117,12 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 0.1,
+    "foot_steps_over_2cm": 0
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.0,
@@ -6634,6 +15216,12 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 25.0,
+    "foot_steps_over_2cm": 4
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.211,
@@ -6728,6 +15316,16 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "contact_yaw_deg": -19.2,
+    "contact_elev_deg": -1.8,
+    "hips_yaw_deg": 33.2,
+    "backward": false,
+    "tpose_frames": 0,
+    "foot_steps": 8,
+    "foot_slide_worst_cm": 84.9,
+    "foot_steps_over_2cm": 8
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.0,
@@ -6820,6 +15418,12 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 0.1,
+    "foot_steps_over_2cm": 0
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.0,
@@ -6909,6 +15513,12 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 6,
+    "foot_slide_worst_cm": 47.9,
+    "foot_steps_over_2cm": 4
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.0,
@@ -6998,6 +15608,12 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 17.9,
+    "foot_steps_over_2cm": 4
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.0,
@@ -7088,6 +15704,12 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 20.4,
+    "foot_steps_over_2cm": 4
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.0,
@@ -7177,6 +15799,12 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "tpose_frames": 0,
+    "foot_steps": 5,
+    "foot_slide_worst_cm": 31.6,
+    "foot_steps_over_2cm": 5
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.0,
@@ -7264,6 +15892,16 @@
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
+   "gates": {
+    "contact_yaw_deg": -148.3,
+    "contact_elev_deg": 1.7,
+    "hips_yaw_deg": -147.7,
+    "backward": true,
+    "tpose_frames": 0,
+    "foot_steps": 4,
+    "foot_slide_worst_cm": 27.9,
+    "foot_steps_over_2cm": 4
+   },
    "weapon": {
     "axe": {
      "pen_max_m": 0.0,

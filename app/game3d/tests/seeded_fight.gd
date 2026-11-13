@@ -1,7 +1,7 @@
 extends SceneTree
 ## A seeded autoplay fight with the real cast files, for "the look changed, the fight did not" (cq 239).
 ##   godot --headless --path app/game3d --fixed-fps 30 -s res://tests/seeded_fight.gd -- \
-##     --hero=/abs/hero.glb --ally=/abs/ally.glb --enemy=/abs/enemy.glb [--seed=239] [--keys=a,b,c]
+##     --hero=/abs/hero.glb --ally=/abs/ally.glb --enemy=/abs/enemy.glb [--seed=239] [--keys=a,b,c] [--cfg='{"readable": false}']
 ## Prints "CQSEEDED {result json}" (outcome, damage dealt and taken, hits, time) when the fight ends.
 ## Run it on two builds with the same arguments: the results must be identical.
 
@@ -28,6 +28,12 @@ func _initialize() -> void:
 		cfg["look"] = JSON.parse_string(str(a["look"]))
 	if a.has("land"):
 		cfg["landscape"] = true
+	if a.has("cfg"):
+		# anim-readable: more config keys as JSON ("readable", "hero_cast", "motion_realism", ...): the record
+		# of a presentation switch must not change
+		var more: Variant = JSON.parse_string(str(a["cfg"]))
+		if more is Dictionary:
+			cfg.merge(more, true)
 	var main: Node = load("res://main.tscn").instantiate()
 	root.add_child(main)
 	current_scene = main

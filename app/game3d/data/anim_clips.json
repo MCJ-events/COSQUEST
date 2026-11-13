@@ -879,6 +879,573 @@
    "victory": "classic"
   }
  },
+ "sets_readable": {
+  "blade": {
+   "attack_1": {
+    "clip": "R_Atk1",
+    "alt": [
+     "R_Atk1_k"
+    ]
+   },
+   "attack_2": {
+    "clip": "R_Atk2",
+    "alt": [
+     "R_Atk2_k"
+    ]
+   },
+   "attack_3": {
+    "clip": "R_Atk3",
+    "alt": [
+     "R_Atk3_s",
+     "R_Atk3_k"
+    ]
+   },
+   "skill_shoot": {
+    "clip": "R_Shoot",
+    "alt": [
+     "R_Shoot_s",
+     "R_Shoot_k",
+     "R_Shoot_k2"
+    ]
+   },
+   "skill_rain": {
+    "clip": "R_Rain",
+    "alt": [
+     "R_Rain_s",
+     "Spellcast_Raise"
+    ]
+   },
+   "skill_charge": {
+    "clip": "R_Dash",
+    "alt": [
+     "R_Dash_s",
+     "R_Dash_k",
+     "R_Dash_n"
+    ]
+   },
+   "skill_shield": {
+    "clip": "R_Shield",
+    "alt": [
+     "R_Shield_s",
+     "R_Shield_k",
+     "R_Shield_k2"
+    ]
+   },
+   "skill_split": {
+    "clip": "R_Split",
+    "alt": [
+     "R_Split_s",
+     "R_Split_k",
+     "R_Split_k2"
+    ]
+   },
+   "skill_rally": {
+    "clip": "R_Rally",
+    "alt": [
+     "R_Rally_s",
+     "R_Rally_v45",
+     "R_Rally_c",
+     "R_Rally_c2"
+    ]
+   },
+   "guard": {
+    "clip": "R_Guard_hi",
+    "alt": [
+     "R_Guard_hi_s",
+     "R_Guard",
+     "R_Guard_s",
+     "R_Guard_k"
+    ]
+   },
+   "parry": {
+    "clip": "R_Parry",
+    "alt": [
+     "R_Parry_s",
+     "R_Parry_k"
+    ]
+   },
+   "hit_light": {
+    "clip": "UAL_Hit_Chest",
+    "alt": [
+     "Hit_B"
+    ]
+   },
+   "hit_heavy": {
+    "clip": "R_Hit_Heavy",
+    "alt": [
+     "R_Hit_Heavy_s"
+    ]
+   },
+   "knockdown": {
+    "clip": "R_Knockdown",
+    "alt": [
+     "R_Knockdown_s",
+     "R_Knockdown_k"
+    ]
+   },
+   "death": {
+    "clip": "CMU_Fall_Back",
+    "alt": [
+     "M2M_Death_D",
+     "M2M_Death_B"
+    ]
+   },
+   "sprint": {
+    "clip": "R_Sprint",
+    "alt": [
+     "R_Sprint_u"
+    ]
+   },
+   "run": {
+    "clip": "R_Jog",
+    "alt": []
+   },
+   "idle": {
+    "clip": "R_Idle",
+    "alt": []
+   }
+  },
+  "heavy": {
+   "attack_3": {
+    "clip": "R_Atk3",
+    "alt": [
+     "R_Atk3_s",
+     "R_Atk3_k"
+    ]
+   },
+   "skill_shoot": {
+    "clip": "R_Shoot",
+    "alt": [
+     "R_Shoot_s",
+     "R_Shoot_k",
+     "R_Shoot_k2"
+    ]
+   },
+   "skill_rain": {
+    "clip": "R_Rain",
+    "alt": [
+     "R_Rain_s",
+     "Spellcast_Raise"
+    ]
+   },
+   "skill_charge": {
+    "clip": "R_Dash",
+    "alt": [
+     "R_Dash_s",
+     "R_Dash_k",
+     "R_Dash_n"
+    ]
+   },
+   "skill_shield": {
+    "clip": "R_Shield",
+    "alt": [
+     "R_Shield_s",
+     "R_Shield_k",
+     "R_Shield_k2"
+    ]
+   },
+   "skill_split": {
+    "clip": "R_Split",
+    "alt": [
+     "R_Split_s",
+     "R_Split_k",
+     "R_Split_k2"
+    ]
+   },
+   "skill_rally": {
+    "clip": "R_Rally",
+    "alt": [
+     "R_Rally_s",
+     "R_Rally_v45",
+     "R_Rally_c",
+     "R_Rally_c2"
+    ]
+   },
+   "guard": {
+    "clip": "R_Guard_hi",
+    "alt": [
+     "R_Guard_hi_s",
+     "R_Guard",
+     "R_Guard_s",
+     "R_Guard_k"
+    ]
+   },
+   "parry": {
+    "clip": "R_Parry",
+    "alt": [
+     "R_Parry_s",
+     "R_Parry_k"
+    ]
+   },
+   "hit_light": {
+    "clip": "UAL_Hit_Chest",
+    "alt": [
+     "Hit_B"
+    ]
+   },
+   "hit_heavy": {
+    "clip": "R_Hit_Heavy",
+    "alt": [
+     "R_Hit_Heavy_s"
+    ]
+   },
+   "knockdown": {
+    "clip": "R_Knockdown",
+    "alt": [
+     "R_Knockdown_s",
+     "R_Knockdown_k"
+    ]
+   },
+   "death": {
+    "clip": "CMU_Fall_Back",
+    "alt": [
+     "M2M_Death_D",
+     "M2M_Death_B"
+    ]
+   },
+   "sprint": {
+    "clip": "R_Sprint",
+    "alt": [
+     "R_Sprint_u"
+    ]
+   },
+   "run": {
+    "clip": "R_Jog",
+    "alt": []
+   },
+   "idle": {
+    "clip": "R_Idle_2H",
+    "alt": []
+   }
+  },
+  "staff": {
+   "attack_3": {
+    "clip": "R_Atk3",
+    "alt": [
+     "R_Atk3_s",
+     "R_Atk3_k"
+    ]
+   },
+   "skill_shoot": {
+    "clip": "R_Shoot",
+    "alt": [
+     "R_Shoot_s",
+     "R_Shoot_k",
+     "R_Shoot_k2"
+    ]
+   },
+   "skill_rain": {
+    "clip": "R_Rain",
+    "alt": [
+     "R_Rain_s",
+     "Spellcast_Raise"
+    ]
+   },
+   "skill_charge": {
+    "clip": "R_Dash",
+    "alt": [
+     "R_Dash_s",
+     "R_Dash_k",
+     "R_Dash_n"
+    ]
+   },
+   "skill_shield": {
+    "clip": "R_Shield",
+    "alt": [
+     "R_Shield_s",
+     "R_Shield_k",
+     "R_Shield_k2"
+    ]
+   },
+   "skill_split": {
+    "clip": "R_Split",
+    "alt": [
+     "R_Split_s",
+     "R_Split_k",
+     "R_Split_k2"
+    ]
+   },
+   "skill_rally": {
+    "clip": "R_Rally",
+    "alt": [
+     "R_Rally_s",
+     "R_Rally_v45",
+     "R_Rally_c",
+     "R_Rally_c2"
+    ]
+   },
+   "guard": {
+    "clip": "R_Guard_hi",
+    "alt": [
+     "R_Guard_hi_s",
+     "R_Guard",
+     "R_Guard_s",
+     "R_Guard_k"
+    ]
+   },
+   "parry": {
+    "clip": "R_Parry",
+    "alt": [
+     "R_Parry_s",
+     "R_Parry_k"
+    ]
+   },
+   "hit_light": {
+    "clip": "UAL_Hit_Chest",
+    "alt": [
+     "Hit_B"
+    ]
+   },
+   "hit_heavy": {
+    "clip": "R_Hit_Heavy",
+    "alt": [
+     "R_Hit_Heavy_s"
+    ]
+   },
+   "knockdown": {
+    "clip": "R_Knockdown",
+    "alt": [
+     "R_Knockdown_s",
+     "R_Knockdown_k"
+    ]
+   },
+   "death": {
+    "clip": "CMU_Fall_Back",
+    "alt": [
+     "M2M_Death_D",
+     "M2M_Death_B"
+    ]
+   },
+   "sprint": {
+    "clip": "R_Sprint",
+    "alt": [
+     "R_Sprint_u"
+    ]
+   },
+   "run": {
+    "clip": "R_Jog",
+    "alt": []
+   },
+   "idle": {
+    "clip": "R_Idle_staff",
+    "alt": []
+   }
+  },
+  "gun": {
+   "skill_shoot": {
+    "clip": "R_Shoot_Gun",
+    "alt": [
+     "2H_Ranged_Shoot"
+    ]
+   },
+   "skill_rain": {
+    "clip": "R_Rain",
+    "alt": [
+     "R_Rain_s",
+     "Spellcast_Raise"
+    ]
+   },
+   "skill_charge": {
+    "clip": "R_Dash",
+    "alt": [
+     "R_Dash_s",
+     "R_Dash_k",
+     "R_Dash_n"
+    ]
+   },
+   "skill_shield": {
+    "clip": "R_Shield",
+    "alt": [
+     "R_Shield_s",
+     "R_Shield_k",
+     "R_Shield_k2"
+    ]
+   },
+   "skill_split": {
+    "clip": "R_Split",
+    "alt": [
+     "R_Split_s",
+     "R_Split_k",
+     "R_Split_k2"
+    ]
+   },
+   "skill_rally": {
+    "clip": "R_Rally",
+    "alt": [
+     "R_Rally_s",
+     "R_Rally_v45",
+     "R_Rally_c",
+     "R_Rally_c2"
+    ]
+   },
+   "guard": {
+    "clip": "R_Guard_hi",
+    "alt": [
+     "R_Guard_hi_s",
+     "R_Guard",
+     "R_Guard_s",
+     "R_Guard_k"
+    ]
+   },
+   "parry": {
+    "clip": "R_Parry",
+    "alt": [
+     "R_Parry_s",
+     "R_Parry_k"
+    ]
+   },
+   "hit_light": {
+    "clip": "UAL_Hit_Chest",
+    "alt": [
+     "Hit_B"
+    ]
+   },
+   "hit_heavy": {
+    "clip": "R_Hit_Heavy",
+    "alt": [
+     "R_Hit_Heavy_s"
+    ]
+   },
+   "knockdown": {
+    "clip": "R_Knockdown",
+    "alt": [
+     "R_Knockdown_s",
+     "R_Knockdown_k"
+    ]
+   },
+   "death": {
+    "clip": "CMU_Fall_Back",
+    "alt": [
+     "M2M_Death_D",
+     "M2M_Death_B"
+    ]
+   },
+   "sprint": {
+    "clip": "R_Sprint",
+    "alt": [
+     "R_Sprint_u"
+    ]
+   },
+   "run": {
+    "clip": "R_Jog",
+    "alt": []
+   }
+  },
+  "unarmed": {
+   "attack_3": {
+    "clip": "R_Atk3",
+    "alt": [
+     "R_Atk3_s",
+     "R_Atk3_k"
+    ]
+   },
+   "skill_shoot": {
+    "clip": "R_Shoot",
+    "alt": [
+     "R_Shoot_s",
+     "R_Shoot_k",
+     "R_Shoot_k2"
+    ]
+   },
+   "skill_rain": {
+    "clip": "R_Rain",
+    "alt": [
+     "R_Rain_s",
+     "Spellcast_Raise"
+    ]
+   },
+   "skill_charge": {
+    "clip": "R_Dash",
+    "alt": [
+     "R_Dash_s",
+     "R_Dash_k",
+     "R_Dash_n"
+    ]
+   },
+   "skill_shield": {
+    "clip": "R_Shield",
+    "alt": [
+     "R_Shield_s",
+     "R_Shield_k",
+     "R_Shield_k2"
+    ]
+   },
+   "skill_split": {
+    "clip": "R_Split",
+    "alt": [
+     "R_Split_s",
+     "R_Split_k",
+     "R_Split_k2"
+    ]
+   },
+   "skill_rally": {
+    "clip": "R_Rally",
+    "alt": [
+     "R_Rally_s",
+     "R_Rally_v45",
+     "R_Rally_c",
+     "R_Rally_c2"
+    ]
+   },
+   "guard": {
+    "clip": "R_Guard_hi",
+    "alt": [
+     "R_Guard_hi_s",
+     "R_Guard",
+     "R_Guard_s",
+     "R_Guard_k"
+    ]
+   },
+   "parry": {
+    "clip": "R_Parry",
+    "alt": [
+     "R_Parry_s",
+     "R_Parry_k"
+    ]
+   },
+   "hit_light": {
+    "clip": "UAL_Hit_Chest",
+    "alt": [
+     "Hit_B"
+    ]
+   },
+   "hit_heavy": {
+    "clip": "R_Hit_Heavy",
+    "alt": [
+     "R_Hit_Heavy_s"
+    ]
+   },
+   "knockdown": {
+    "clip": "R_Knockdown",
+    "alt": [
+     "R_Knockdown_s",
+     "R_Knockdown_k"
+    ]
+   },
+   "death": {
+    "clip": "CMU_Fall_Back",
+    "alt": [
+     "M2M_Death_D",
+     "M2M_Death_B"
+    ]
+   },
+   "sprint": {
+    "clip": "R_Sprint",
+    "alt": [
+     "R_Sprint_u"
+    ]
+   },
+   "run": {
+    "clip": "R_Jog",
+    "alt": []
+   },
+   "idle": {
+    "clip": "R_Idle_2H",
+    "alt": []
+   }
+  }
+ },
+ "readable_default": true,
  "clips": {
   "1H_Melee_Attack_Chop": {
    "src": "1H_Melee_Attack_Chop",
@@ -1169,6 +1736,189 @@
    "frames": 27,
    "fps": 30.0
   },
+  "I_Chop2H_T": {
+   "src": "compose",
+   "lib": "kaykit",
+   "frames": 24,
+   "fps": 30.0,
+   "source": "anim-readable: KayKit two-handed chop (CC0) retimed for SPLIT's jump (ingredient)"
+  },
+  "I_Defend": {
+   "src": "M2M_Defend",
+   "lib": "m2m",
+   "frames": 29,
+   "fps": 30.0,
+   "source": "Mesh2Motion (CC0, authored), defend: ingredient"
+  },
+  "I_Defend_s": {
+   "src": "M2M_Defend",
+   "lib": "m2m",
+   "frames": 29,
+   "fps": 30.0,
+   "source": "Mesh2Motion (CC0, authored), defend: ingredient"
+  },
+  "I_Diag_s": {
+   "src": "1H_Melee_Attack_Slice_Diagonal",
+   "lib": "kaykit",
+   "frames": 31,
+   "fps": 30.0,
+   "source": "KayKit (CC0) diagonal slice, legs damped: ingredient"
+  },
+  "I_Guard_hi": {
+   "src": "M2M_Weapon_Block",
+   "lib": "m2m",
+   "frames": 27,
+   "fps": 30.0,
+   "source": "Mesh2Motion weapon-block: ingredient"
+  },
+  "I_Guard_hi_s": {
+   "src": "M2M_Weapon_Block",
+   "lib": "m2m",
+   "frames": 27,
+   "fps": 30.0,
+   "source": "Mesh2Motion weapon-block: ingredient"
+  },
+  "I_Intro_Guard": {
+   "src": "CMU_Guard",
+   "lib": "cmu",
+   "frames": 49,
+   "fps": 30.0,
+   "source": "anim-readable intro: CMU captured guard (76_04), set and still: ingredient"
+  },
+  "I_Intro_Open": {
+   "src": "Spellcast_Long",
+   "lib": "kaykit",
+   "frames": 77,
+   "fps": 30.0,
+   "source": "anim-readable intro: KayKit Spellcast_Long (CC0), the arms opening wide: ingredient"
+  },
+  "I_Intro_Plant": {
+   "src": "2H_Melee_Idle",
+   "lib": "kaykit",
+   "frames": 33,
+   "fps": 30.0,
+   "source": "anim-readable intro: KayKit 2H_Melee_Idle (CC0), the weapon held ready in both hands: ingredient"
+  },
+  "I_Intro_Ready": {
+   "src": "M2M_Fighting_Idle",
+   "lib": "m2m",
+   "frames": 50,
+   "fps": 30.0,
+   "source": "anim-readable intro: Mesh2Motion fighting idle (CC0), bouncing on the toes: ingredient"
+  },
+  "I_Jump_s": {
+   "src": "Jump_Full_Short",
+   "lib": "kaykit",
+   "frames": 36,
+   "fps": 30.0,
+   "source": "KayKit Adventurers 1.0 (CC0) Jump_Full_Short, legs damped: ingredient"
+  },
+  "I_Jump_s2": {
+   "src": "Jump_Full_Short",
+   "lib": "kaykit",
+   "frames": 36,
+   "fps": 30.0,
+   "source": "KayKit Jump_Full_Short (CC0), legs damped more: ingredient"
+  },
+  "I_Knockback": {
+   "src": "M2M_Hit_Knockback",
+   "lib": "m2m",
+   "frames": 25,
+   "fps": 30.0,
+   "source": "Mesh2Motion (CC0, authored) hit-knockback: ingredient"
+  },
+  "I_Knockback_s": {
+   "src": "M2M_Hit_Knockback",
+   "lib": "m2m",
+   "frames": 25,
+   "fps": 30.0,
+   "source": "Mesh2Motion (CC0, authored) hit-knockback: ingredient"
+  },
+  "I_M2M_Sprint": {
+   "src": "M2M_Sprint",
+   "lib": "m2m",
+   "frames": 25,
+   "fps": 30.0,
+   "ground_speed_per_hip": 6.156,
+   "source": "Mesh2Motion sprint (CC0): ingredient"
+  },
+  "I_Slam": {
+   "src": "M2M_Two_Handed_Overhead_Slam",
+   "lib": "m2m",
+   "frames": 55,
+   "fps": 30.0,
+   "source": "Mesh2Motion (CC0, authored), two-handed-overhead-slam: ingredient"
+  },
+  "I_Slam_T": {
+   "src": "compose",
+   "lib": "kaykit",
+   "frames": 24,
+   "fps": 30.0,
+   "source": "anim-readable: the overhead slam retimed for SPLIT's jump (ingredient)"
+  },
+  "I_Slam_T_s": {
+   "src": "compose",
+   "lib": "kaykit",
+   "frames": 24,
+   "fps": 30.0,
+   "source": "anim-readable: the overhead slam retimed for SPLIT's jump (ingredient)"
+  },
+  "I_Slam_s": {
+   "src": "M2M_Two_Handed_Overhead_Slam",
+   "lib": "m2m",
+   "frames": 55,
+   "fps": 30.0,
+   "source": "Mesh2Motion (CC0, authored), two-handed-overhead-slam: ingredient"
+  },
+  "I_SlashB_s": {
+   "src": "CMU_Slash_B",
+   "lib": "cmu",
+   "frames": 33,
+   "fps": 30.0,
+   "source": "CMU 02_09 backhand, legs damped: ingredient"
+  },
+  "I_Spell_Enter": {
+   "src": "Spell_Simple_Enter",
+   "lib": "ual",
+   "frames": 16,
+   "fps": 30.0,
+   "source": "Quaternius Universal Animation Library (CC0), Spell_Simple_Enter: ingredient"
+  },
+  "I_Sprint_s": {
+   "src": "Sprint_Loop",
+   "lib": "ual",
+   "frames": 21,
+   "fps": 30.0,
+   "source": "Quaternius UAL sprint (CC0), legs damped: ingredient"
+  },
+  "I_StandUp": {
+   "src": "Lie_StandUp",
+   "lib": "kaykit",
+   "frames": 71,
+   "fps": 30.0,
+   "source": "KayKit Adventurers 1.0 (CC0) Lie_StandUp: ingredient"
+  },
+  "I_StandUp_s": {
+   "src": "Lie_StandUp",
+   "lib": "kaykit",
+   "frames": 71,
+   "fps": 30.0,
+   "source": "KayKit Adventurers 1.0 (CC0) Lie_StandUp: ingredient"
+  },
+  "I_Sword_Block": {
+   "src": "M2M_Sword_Block",
+   "lib": "m2m",
+   "frames": 37,
+   "fps": 30.0,
+   "source": "Mesh2Motion (CC0, authored), sword-block: ingredient"
+  },
+  "I_Sword_Block_s": {
+   "src": "M2M_Sword_Block",
+   "lib": "m2m",
+   "frames": 37,
+   "fps": 30.0,
+   "source": "Mesh2Motion (CC0, authored), sword-block: ingredient"
+  },
   "Idle": {
    "src": "Idle",
    "lib": "kaykit",
@@ -1187,6 +1937,13 @@
    "frames": 61,
    "fps": 30.0,
    "source": "Mesh2Motion (CC0, authored), death-b"
+  },
+  "M2M_Death_D": {
+   "src": "M2M_Death_D",
+   "lib": "m2m",
+   "frames": 66,
+   "fps": 30.0,
+   "source": "Mesh2Motion (CC0, authored), death-d: to the knees, then onto the back"
   },
   "M2M_Fighting_Idle": {
    "src": "M2M_Fighting_Idle",
@@ -1276,6 +2033,506 @@
    "frames": 75,
    "fps": 30.0,
    "source": "Mesh2Motion (CC0, authored), victory-fist-pump"
+  },
+  "R_Atk1": {
+   "src": "compose",
+   "lib": "kaykit",
+   "frames": 15,
+   "fps": 30.0,
+   "contact": 4,
+   "out": 10,
+   "source": "anim-readable attack 1: KayKit diagonal slice (CC0) from a cocked start, the trunk coiling and unwinding through the cut, the off hand in",
+   "aim_yaw_deg": 15,
+   "tail": 0
+  },
+  "R_Atk1_k": {
+   "src": "compose",
+   "lib": "kaykit",
+   "frames": 15,
+   "fps": 30.0,
+   "contact": 4,
+   "out": 10,
+   "source": "anim-readable attack 1: KayKit diagonal slice (CC0) from a cocked start, the trunk coiling and unwinding through the cut, the off hand in (gentler alternate for robes: legs bend less, smaller turns)",
+   "aim_yaw_deg": 15,
+   "tail": 0
+  },
+  "R_Atk2": {
+   "src": "compose",
+   "lib": "kaykit",
+   "frames": 15,
+   "fps": 30.0,
+   "contact": 4,
+   "out": 10,
+   "source": "anim-readable attack 2: CMU captured backhand (02_09) from its cocked start, turned so the cut crosses the target, the trunk unwinding, the off hand in",
+   "tail": 0
+  },
+  "R_Atk2_k": {
+   "src": "compose",
+   "lib": "kaykit",
+   "frames": 15,
+   "fps": 30.0,
+   "contact": 4,
+   "out": 10,
+   "source": "anim-readable attack 2: CMU captured backhand (02_09) from its cocked start, turned so the cut crosses the target, the trunk unwinding, the off hand in (gentler alternate for robes: legs bend less, smaller turns)",
+   "tail": 0
+  },
+  "R_Atk3": {
+   "src": "compose",
+   "lib": "kaykit",
+   "frames": 18,
+   "fps": 30.0,
+   "contact": 7,
+   "out": 17,
+   "source": "anim-readable attack 3: Mesh2Motion two-handed overhead slam (CC0), from the raised weapon down to the ground, the trunk arching back then crunching into it",
+   "tail": 0
+  },
+  "R_Atk3_k": {
+   "src": "compose",
+   "lib": "kaykit",
+   "frames": 18,
+   "fps": 30.0,
+   "contact": 7,
+   "out": 17,
+   "source": "anim-readable attack 3 (alternate): KayKit overhead chop (CC0) from the raised blade, the trunk turned onto the target and crunching into the cut, the off hand in",
+   "tail": 0
+  },
+  "R_Atk3_s": {
+   "src": "compose",
+   "lib": "kaykit",
+   "frames": 18,
+   "fps": 30.0,
+   "contact": 7,
+   "out": 17,
+   "source": "anim-readable attack 3: Mesh2Motion two-handed overhead slam (CC0), from the raised weapon down to the ground, the trunk arching back then crunching into it (gentler alternate: the legs bend less, for robes and capes under the tear gate)",
+   "tail": 0
+  },
+  "R_Dash": {
+   "src": "compose",
+   "lib": "kaykit",
+   "frames": 17,
+   "fps": 30.0,
+   "contact": 5,
+   "out": 13,
+   "source": "anim-readable DASH: a crouch, then a sprint stride (Quaternius UAL) leaning hard into a forward thrust (KayKit stab, CC0)",
+   "tail": 4
+  },
+  "R_Dash_k": {
+   "src": "compose",
+   "lib": "kaykit",
+   "frames": 17,
+   "fps": 30.0,
+   "contact": 5,
+   "out": 13,
+   "source": "anim-readable DASH: a crouch, then a sprint stride (Quaternius UAL) leaning hard into a forward thrust (KayKit stab, CC0) (gentler alternate for robes: the stride and the lean smaller)",
+   "tail": 4
+  },
+  "R_Dash_n": {
+   "src": "compose",
+   "lib": "kaykit",
+   "frames": 17,
+   "fps": 30.0,
+   "contact": 5,
+   "out": 13,
+   "source": "anim-readable DASH: a crouch, then a sprint stride (Quaternius UAL) leaning hard into a forward thrust (KayKit stab, CC0) (gentlest alternate, the arm as the stab carries it: the legs bend less, for robes and capes under the tear gate)",
+   "tail": 4
+  },
+  "R_Dash_s": {
+   "src": "compose",
+   "lib": "kaykit",
+   "frames": 17,
+   "fps": 30.0,
+   "contact": 5,
+   "out": 13,
+   "source": "anim-readable DASH: a crouch, then a sprint stride (Quaternius UAL) leaning hard into a forward thrust (KayKit stab, CC0) (gentler alternate: the legs bend less, for robes and capes under the tear gate)",
+   "tail": 4
+  },
+  "R_Guard": {
+   "src": "M2M_Defend",
+   "lib": "m2m",
+   "frames": 29,
+   "fps": 30.0,
+   "source": "anim-readable GUARD: Mesh2Motion defend (CC0, authored): a low block stance, the weapon across the body"
+  },
+  "R_Guard_hi": {
+   "src": "compose",
+   "lib": "kaykit",
+   "frames": 27,
+   "fps": 30.0,
+   "source": "anim-readable GUARD: Mesh2Motion weapon-block (CC0, authored), the weapon held up across above the head, a held loop, feet flat"
+  },
+  "R_Guard_hi_s": {
+   "src": "compose",
+   "lib": "kaykit",
+   "frames": 27,
+   "fps": 30.0,
+   "source": "anim-readable GUARD: Mesh2Motion weapon-block (CC0, authored), the weapon held up across above the head, a held loop, feet flat (legs bend less)"
+  },
+  "R_Guard_k": {
+   "src": "compose",
+   "lib": "kaykit",
+   "frames": 33,
+   "fps": 30.0,
+   "source": "anim-readable GUARD (gentle alternate): KayKit block stance (CC0), set a little lower and leaning in"
+  },
+  "R_Guard_s": {
+   "src": "M2M_Defend",
+   "lib": "m2m",
+   "frames": 29,
+   "fps": 30.0,
+   "source": "anim-readable GUARD: Mesh2Motion defend (CC0, authored): a low block stance, the weapon across the body (legs bend less: robes and capes)"
+  },
+  "R_Hit_Heavy": {
+   "src": "compose",
+   "lib": "kaykit",
+   "frames": 20,
+   "fps": 30.0,
+   "source": "anim-readable: a heavy blow's reaction: Mesh2Motion hit (CC0) with the trunk and head thrown back and the hips driven back and down"
+  },
+  "R_Hit_Heavy_s": {
+   "src": "compose",
+   "lib": "kaykit",
+   "frames": 20,
+   "fps": 30.0,
+   "source": "anim-readable: a heavy blow's reaction: Mesh2Motion hit (CC0) with the trunk and head thrown back and the hips driven back and down (gentler alternate)"
+  },
+  "R_Idle": {
+   "src": "compose",
+   "lib": "kaykit",
+   "frames": 33,
+   "fps": 30.0,
+   "source": "anim-readable idle: Idle with the planted feet standing flat on the paving (heel and ball down), the breathing and weight shift added in the game"
+  },
+  "R_Idle_2H": {
+   "src": "compose",
+   "lib": "kaykit",
+   "frames": 33,
+   "fps": 30.0,
+   "source": "anim-readable idle: 2H_Melee_Idle with the planted feet standing flat on the paving (heel and ball down), the breathing and weight shift added in the game"
+  },
+  "R_Idle_staff": {
+   "src": "compose",
+   "lib": "kaykit",
+   "frames": 33,
+   "fps": 30.0,
+   "source": "anim-readable idle: Staff_Idle with the planted feet standing flat on the paving (heel and ball down), the breathing and weight shift added in the game"
+  },
+  "R_Intro_Charge": {
+   "src": "compose",
+   "lib": "kaykit",
+   "frames": 54,
+   "fps": 30.0,
+   "source": "anim-readable intro: the off hand comes up open and charged, the body set (Quaternius UAL spell enter, CC0)"
+  },
+  "R_Intro_Guard": {
+   "src": "compose",
+   "lib": "kaykit",
+   "frames": 49,
+   "fps": 30.0,
+   "source": "anim-readable intro: CMU captured guard (76_04), set and still, feet flat"
+  },
+  "R_Intro_Open": {
+   "src": "compose",
+   "lib": "kaykit",
+   "frames": 77,
+   "fps": 30.0,
+   "source": "anim-readable intro: KayKit Spellcast_Long (CC0), the arms opening wide, feet flat"
+  },
+  "R_Intro_Plant": {
+   "src": "compose",
+   "lib": "kaykit",
+   "frames": 33,
+   "fps": 30.0,
+   "source": "anim-readable intro: KayKit 2H_Melee_Idle (CC0), the weapon held ready in both hands, feet flat"
+  },
+  "R_Intro_Ready": {
+   "src": "compose",
+   "lib": "kaykit",
+   "frames": 50,
+   "fps": 30.0,
+   "source": "anim-readable intro: Mesh2Motion fighting idle (CC0), bouncing on the toes, feet flat"
+  },
+  "R_Intro_Salute": {
+   "src": "compose",
+   "lib": "kaykit",
+   "frames": 54,
+   "fps": 30.0,
+   "source": "anim-readable intro: the weapon brought up before the face in a salute, held, then lowered to the ready (arm IK on the KayKit idle, CC0)"
+  },
+  "R_Jog": {
+   "src": "compose",
+   "lib": "kaykit",
+   "frames": 25,
+   "fps": 30.0,
+   "ground_speed_per_hip": 2.805,
+   "source": "anim-readable jog: CMU 16_35 jog (captured) with the arms swinging against the opposite legs"
+  },
+  "R_Knockdown": {
+   "src": "compose",
+   "lib": "kaykit",
+   "frames": 48,
+   "fps": 30.0,
+   "source": "anim-readable knockdown: a real fall onto the back (CMU 90_18, captured), a moment on the ground, then up again (KayKit Lie_StandUp, CC0), fitted to the Guardian's 1.6 s parry stagger"
+  },
+  "R_Knockdown_k": {
+   "src": "compose",
+   "lib": "kaykit",
+   "frames": 48,
+   "fps": 30.0,
+   "source": "anim-readable knockdown (alternate): rocked by the blow (Mesh2Motion hit, CC0), dropped into a deep crouch with the head down (KayKit landing crouch, CC0, legs bending less), then back up"
+  },
+  "R_Knockdown_s": {
+   "src": "compose",
+   "lib": "kaykit",
+   "frames": 48,
+   "fps": 30.0,
+   "source": "anim-readable knockdown: a real fall onto the back (CMU 90_18, captured), a moment on the ground, then up again (KayKit Lie_StandUp, CC0), fitted to the Guardian's 1.6 s parry stagger (the get-up's legs bending less)"
+  },
+  "R_Parry": {
+   "src": "compose",
+   "lib": "kaykit",
+   "frames": 18,
+   "fps": 30.0,
+   "contact": 4,
+   "out": 11,
+   "source": "anim-readable PARRY: Mesh2Motion sword block (CC0), a fast deflection with a step",
+   "tail": 6
+  },
+  "R_Parry_k": {
+   "src": "compose",
+   "lib": "kaykit",
+   "frames": 18,
+   "fps": 30.0,
+   "contact": 4,
+   "out": 11,
+   "source": "anim-readable PARRY (gentle alternate): KayKit block-and-strike (CC0), retimed so the deflection lands on the parry",
+   "tail": 6
+  },
+  "R_Parry_s": {
+   "src": "compose",
+   "lib": "kaykit",
+   "frames": 18,
+   "fps": 30.0,
+   "contact": 4,
+   "out": 11,
+   "source": "anim-readable PARRY: Mesh2Motion sword block (CC0), a fast deflection with a step (gentler alternate: the legs bend less, for robes and capes under the tear gate)",
+   "tail": 6
+  },
+  "R_Rain": {
+   "src": "compose",
+   "lib": "kaykit",
+   "frames": 40,
+   "fps": 30.0,
+   "contact": 9,
+   "out": 18,
+   "source": "anim-readable RAIN: the weapon arm goes up to the sky (KayKit Spellcast_Raise, CC0), the head and chest follow, then the arm comes down to point at the marked circle as the volleys fall (arm IK)",
+   "tail": 20
+  },
+  "R_Rain_s": {
+   "src": "compose",
+   "lib": "kaykit",
+   "frames": 40,
+   "fps": 30.0,
+   "contact": 9,
+   "out": 18,
+   "source": "anim-readable RAIN: the weapon arm goes up to the sky (KayKit Spellcast_Raise, CC0), the head and chest follow, then the arm comes down to point at the marked circle as the volleys fall (arm IK) (gentler alternate: the legs bend less, for robes and capes under the tear gate)",
+   "tail": 20
+  },
+  "R_Rally": {
+   "src": "compose",
+   "lib": "kaykit",
+   "frames": 30,
+   "fps": 30.0,
+   "contact": 7,
+   "out": 18,
+   "source": "anim-readable RALLY: a crouch, then both arms thrown up with the chest out and the head back, a rallying call (KayKit Cheer, CC0, retimed)",
+   "tail": 10
+  },
+  "R_Rally_c": {
+   "src": "compose",
+   "lib": "kaykit",
+   "frames": 30,
+   "fps": 30.0,
+   "contact": 7,
+   "out": 18,
+   "source": "anim-readable RALLY: a crouch, then both arms thrown up with the chest out and the head back, a rallying call (KayKit Cheer, CC0, retimed) (gentler alternate: the legs bend less, for robes and capes under the tear gate) (the arms as the cheer carries them)",
+   "tail": 10
+  },
+  "R_Rally_c2": {
+   "src": "compose",
+   "lib": "kaykit",
+   "frames": 30,
+   "fps": 30.0,
+   "contact": 7,
+   "out": 18,
+   "source": "anim-readable RALLY: a crouch, then both arms thrown up with the chest out and the head back, a rallying call (KayKit Cheer, CC0, retimed) (gentlest alternate: no crouch, the cheer's own arms)",
+   "tail": 10
+  },
+  "R_Rally_s": {
+   "src": "compose",
+   "lib": "kaykit",
+   "frames": 30,
+   "fps": 30.0,
+   "contact": 7,
+   "out": 18,
+   "source": "anim-readable RALLY: a crouch, then both arms thrown up with the chest out and the head back, a rallying call (KayKit Cheer, CC0, retimed) (gentler alternate: the legs bend less, for robes and capes under the tear gate)",
+   "tail": 10
+  },
+  "R_Rally_v45": {
+   "src": "compose",
+   "lib": "kaykit",
+   "frames": 30,
+   "fps": 30.0,
+   "contact": 7,
+   "out": 18,
+   "source": "anim-readable RALLY: a crouch, then both arms thrown up with the chest out and the head back, a rallying call (KayKit Cheer, CC0, retimed) (gentler alternate: the legs bend less, for robes and capes under the tear gate) (arms lower: shoulders that stretch past the gate)",
+   "tail": 10
+  },
+  "R_Shield": {
+   "src": "compose",
+   "lib": "kaykit",
+   "frames": 26,
+   "fps": 30.0,
+   "contact": 6,
+   "out": 15,
+   "source": "anim-readable SHIELD: a braced crouch, the weapon across (Mesh2Motion defend, CC0) and the off forearm raised like a shield (arm IK), pushing out as the barrier goes up",
+   "tail": 10
+  },
+  "R_Shield_k": {
+   "src": "compose",
+   "lib": "kaykit",
+   "frames": 26,
+   "fps": 30.0,
+   "contact": 6,
+   "out": 15,
+   "source": "anim-readable SHIELD (alternate): KayKit block stance (CC0) set lower, the off forearm raised before the chest like a shield (arm IK), pushing out as the barrier goes up",
+   "tail": 10
+  },
+  "R_Shield_k2": {
+   "src": "compose",
+   "lib": "kaykit",
+   "frames": 26,
+   "fps": 30.0,
+   "contact": 6,
+   "out": 15,
+   "source": "anim-readable SHIELD (gentlest alternate): KayKit block stance (CC0), the off forearm raised like a shield by arm IK, no crouch",
+   "tail": 10
+  },
+  "R_Shield_s": {
+   "src": "compose",
+   "lib": "kaykit",
+   "frames": 26,
+   "fps": 30.0,
+   "contact": 6,
+   "out": 15,
+   "source": "anim-readable SHIELD: a braced crouch, the weapon across (Mesh2Motion defend, CC0) and the off forearm raised like a shield (arm IK), pushing out as the barrier goes up (gentler alternate: the legs bend less, for robes and capes under the tear gate)",
+   "tail": 10
+  },
+  "R_Shoot": {
+   "src": "compose",
+   "lib": "kaykit",
+   "frames": 30,
+   "fps": 30.0,
+   "contact": 4,
+   "out": 11,
+   "source": "anim-readable SHOOT: the off hand comes up to the target, fires with a recoil and holds the aim (Quaternius UAL spell cast, arm IK)",
+   "tail": 16
+  },
+  "R_Shoot_Gun": {
+   "src": "compose",
+   "lib": "kaykit",
+   "frames": 30,
+   "fps": 30.0,
+   "contact": 4,
+   "out": 11,
+   "source": "anim-readable SHOOT for guns: KayKit two-handed aim and shot (CC0), retimed, with a recoil",
+   "tail": 16,
+   "contact_class": "rifle"
+  },
+  "R_Shoot_k": {
+   "src": "compose",
+   "lib": "kaykit",
+   "frames": 30,
+   "fps": 30.0,
+   "contact": 4,
+   "out": 11,
+   "source": "anim-readable SHOOT (gentle alternate): KayKit idle (CC0) with the off hand brought up straight at the target by arm IK, a recoil and the aim held",
+   "tail": 16
+  },
+  "R_Shoot_k2": {
+   "src": "compose",
+   "lib": "kaykit",
+   "frames": 30,
+   "fps": 30.0,
+   "contact": 4,
+   "out": 11,
+   "source": "anim-readable SHOOT (gentlest alternate): KayKit idle (CC0), the off hand brought up at the target by arm IK with a recoil and the aim held; trunk and hips as the idle has them",
+   "tail": 16
+  },
+  "R_Shoot_s": {
+   "src": "compose",
+   "lib": "kaykit",
+   "frames": 30,
+   "fps": 30.0,
+   "contact": 4,
+   "out": 11,
+   "source": "anim-readable SHOOT: the off hand comes up to the target, fires with a recoil and holds the aim (Quaternius UAL spell cast, arm IK) (gentler alternate: the legs bend less, for robes and capes under the tear gate)",
+   "tail": 16
+  },
+  "R_Split": {
+   "src": "compose",
+   "lib": "kaykit",
+   "frames": 24,
+   "fps": 30.0,
+   "contact": 10,
+   "out": 22,
+   "source": "anim-readable SPLIT: a grounded power slam: the weapon wound up overhead in both hands, the body sinking and driving it into the ground on the hit (Mesh2Motion two-handed overhead slam, CC0, retimed), no jump",
+   "tail": 0
+  },
+  "R_Split_k": {
+   "src": "compose",
+   "lib": "kaykit",
+   "frames": 24,
+   "fps": 30.0,
+   "contact": 10,
+   "out": 22,
+   "source": "anim-readable SPLIT (alternate): a grounded power slam on KayKit's two-handed chop (CC0), retimed, the trunk crunching and the hips sinking into it",
+   "tail": 0
+  },
+  "R_Split_k2": {
+   "src": "compose",
+   "lib": "kaykit",
+   "frames": 24,
+   "fps": 30.0,
+   "contact": 10,
+   "out": 22,
+   "source": "anim-readable SPLIT (alternate): a grounded power slam on KayKit's two-handed chop (CC0), retimed, the trunk crunching and the hips sinking into it (gentlest: a shallower sink)",
+   "tail": 0
+  },
+  "R_Split_s": {
+   "src": "compose",
+   "lib": "kaykit",
+   "frames": 24,
+   "fps": 30.0,
+   "contact": 10,
+   "out": 22,
+   "source": "anim-readable SPLIT: a grounded power slam: the weapon wound up overhead in both hands, the body sinking and driving it into the ground on the hit (Mesh2Motion two-handed overhead slam, CC0, retimed), no jump (gentler alternate: the legs bend less)",
+   "tail": 0
+  },
+  "R_Sprint": {
+   "src": "compose",
+   "lib": "kaykit",
+   "frames": 25,
+   "fps": 30.0,
+   "ground_speed_per_hip": 6.156,
+   "source": "anim-readable sprint: Mesh2Motion sprint (CC0) with each arm driven against the opposite leg, elbows bent, the trunk leaning in (Wale's sprint note)"
+  },
+  "R_Sprint_u": {
+   "src": "compose",
+   "lib": "kaykit",
+   "frames": 21,
+   "fps": 30.0,
+   "ground_speed_per_hip": 5.615,
+   "source": "anim-readable sprint (alternate): Quaternius UAL sprint (CC0) with the arms driven against the opposite legs"
   },
   "Running_A": {
    "src": "Running_A",
@@ -1579,11 +2836,105 @@
    },
    "tear_worst": 0.0109,
    "clips_over_gate": [
+    "I_Knockback",
+    "I_Knockback_s",
     "M2M_Hit_Knockback",
     "UAL_Roll",
     "UAL_Sword_Attack"
    ],
    "hip_scale": 2.145,
+   "pick_readable": {
+    "blade": {
+     "attack_1": "R_Atk1",
+     "attack_2": "R_Atk2",
+     "attack_3": "R_Atk3",
+     "skill_shoot": "R_Shoot",
+     "skill_rain": "R_Rain",
+     "skill_charge": "R_Dash",
+     "skill_shield": "R_Shield",
+     "skill_split": "R_Split",
+     "skill_rally": "R_Rally",
+     "guard": "R_Guard_hi",
+     "parry": "R_Parry",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown",
+     "death": "CMU_Fall_Back",
+     "sprint": "R_Sprint",
+     "run": "R_Jog",
+     "idle": "R_Idle"
+    },
+    "heavy": {
+     "attack_3": "R_Atk3",
+     "skill_shoot": "R_Shoot",
+     "skill_rain": "R_Rain",
+     "skill_charge": "R_Dash",
+     "skill_shield": "R_Shield",
+     "skill_split": "R_Split",
+     "skill_rally": "R_Rally",
+     "guard": "R_Guard_hi",
+     "parry": "R_Parry",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown",
+     "death": "CMU_Fall_Back",
+     "sprint": "R_Sprint",
+     "run": "R_Jog",
+     "idle": "R_Idle_2H"
+    },
+    "staff": {
+     "attack_3": "R_Atk3",
+     "skill_shoot": "R_Shoot",
+     "skill_rain": "R_Rain",
+     "skill_charge": "R_Dash",
+     "skill_shield": "R_Shield",
+     "skill_split": "R_Split",
+     "skill_rally": "R_Rally",
+     "guard": "R_Guard_hi",
+     "parry": "R_Parry",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown",
+     "death": "CMU_Fall_Back",
+     "sprint": "R_Sprint",
+     "run": "R_Jog",
+     "idle": "R_Idle_staff"
+    },
+    "gun": {
+     "skill_shoot": "R_Shoot_Gun",
+     "skill_rain": "R_Rain",
+     "skill_charge": "R_Dash",
+     "skill_shield": "R_Shield",
+     "skill_split": "R_Split",
+     "skill_rally": "R_Rally",
+     "guard": "R_Guard_hi",
+     "parry": "R_Parry",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown",
+     "death": "CMU_Fall_Back",
+     "sprint": "R_Sprint",
+     "run": "R_Jog"
+    },
+    "unarmed": {
+     "attack_3": "R_Atk3",
+     "skill_shoot": "R_Shoot",
+     "skill_rain": "R_Rain",
+     "skill_charge": "R_Dash",
+     "skill_shield": "R_Shield",
+     "skill_split": "R_Split",
+     "skill_rally": "R_Rally",
+     "guard": "R_Guard_hi",
+     "parry": "R_Parry",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown",
+     "death": "CMU_Fall_Back",
+     "sprint": "R_Sprint",
+     "run": "R_Jog",
+     "idle": "R_Idle_2H"
+    }
+   },
    "pick_mocap": {
     "blade": {
      "hit": "M2M_Hit_Chest",
@@ -1651,9 +3002,13 @@
     }
    },
    "ground_speed_per_hip": {
-    "CMU_Jog": 2.869
+    "CMU_Jog": 2.869,
+    "I_M2M_Sprint": 6.372,
+    "R_Jog": 2.869,
+    "R_Sprint": 6.372,
+    "R_Sprint_u": 5.615
    },
-   "clips_in_library": 47
+   "clips_in_library": 67
   },
   "ascendants_zuri": {
    "status": "clips",
@@ -1766,9 +3121,109 @@
      -0.0949
     ]
    },
-   "tear_worst": 0.004,
-   "clips_over_gate": [],
+   "tear_worst": 0.007,
+   "clips_over_gate": [
+    "CMU_Slash_Low",
+    "M2M_Death_B",
+    "M2M_Sword_Regular_B"
+   ],
    "hip_scale": 2.145,
+   "pick_readable": {
+    "blade": {
+     "attack_1": "R_Atk1",
+     "attack_2": "R_Atk2",
+     "attack_3": "R_Atk3",
+     "skill_shoot": "R_Shoot",
+     "skill_rain": "R_Rain",
+     "skill_charge": "R_Dash",
+     "skill_shield": "R_Shield",
+     "skill_split": "R_Split",
+     "skill_rally": "R_Rally",
+     "guard": "R_Guard_hi",
+     "parry": "R_Parry",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown",
+     "death": "CMU_Fall_Back",
+     "sprint": "R_Sprint",
+     "run": "R_Jog",
+     "idle": "R_Idle"
+    },
+    "heavy": {
+     "attack_3": "R_Atk3",
+     "skill_shoot": "R_Shoot",
+     "skill_rain": "R_Rain",
+     "skill_charge": "R_Dash",
+     "skill_shield": "R_Shield",
+     "skill_split": "R_Split",
+     "skill_rally": "R_Rally",
+     "guard": "R_Guard_hi",
+     "parry": "R_Parry",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown",
+     "death": "CMU_Fall_Back",
+     "sprint": "R_Sprint",
+     "run": "R_Jog",
+     "idle": "R_Idle_2H"
+    },
+    "staff": {
+     "attack_3": "R_Atk3",
+     "skill_shoot": "R_Shoot",
+     "skill_rain": "R_Rain",
+     "skill_charge": "R_Dash",
+     "skill_shield": "R_Shield",
+     "skill_split": "R_Split",
+     "skill_rally": "R_Rally",
+     "guard": "R_Guard_hi",
+     "parry": "R_Parry",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown",
+     "death": "CMU_Fall_Back",
+     "sprint": "R_Sprint",
+     "run": "R_Jog",
+     "idle": "R_Idle_staff"
+    },
+    "gun": {
+     "skill_shoot": "R_Shoot_Gun",
+     "skill_rain": "R_Rain",
+     "skill_charge": "R_Dash",
+     "skill_shield": "R_Shield",
+     "skill_split": "R_Split",
+     "skill_rally": "R_Rally",
+     "guard": "R_Guard_hi",
+     "parry": "R_Parry",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown",
+     "death": "CMU_Fall_Back",
+     "sprint": "R_Sprint",
+     "run": "R_Jog"
+    },
+    "unarmed": {
+     "attack_3": "R_Atk3",
+     "skill_shoot": "R_Shoot",
+     "skill_rain": "R_Rain",
+     "skill_charge": "R_Dash",
+     "skill_shield": "R_Shield",
+     "skill_split": "R_Split",
+     "skill_rally": "R_Rally",
+     "guard": "R_Guard_hi",
+     "parry": "R_Parry",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown",
+     "death": "CMU_Fall_Back",
+     "sprint": "R_Sprint",
+     "run": "R_Jog",
+     "idle": "R_Idle_2H"
+    }
+   },
+   "pick_poses": {
+    "intro": "R_Intro_Charge",
+    "victory": "Spellcast_Raise"
+   },
    "pick_mocap": {
     "blade": {
      "hit": "M2M_Hit_Chest",
@@ -1836,219 +3291,13 @@
     }
    },
    "ground_speed_per_hip": {
-    "CMU_Jog": 2.875
+    "CMU_Jog": 2.875,
+    "I_M2M_Sprint": 6.436,
+    "R_Jog": 2.875,
+    "R_Sprint": 6.436,
+    "R_Sprint_u": 5.625
    },
-   "clips_in_library": 47,
-   "arm_droop": 0.9,
-   "arm_free_deg": 14.0
-  },
-  "blockbusters_kofi": {
-   "status": "clips",
-   "library": "res://anim/blockbusters_kofi.glb",
-   "pick": {
-    "blade": {
-     "hit": "Hit_A",
-     "guard": "Blocking",
-     "parry": "Block_Attack",
-     "dodge": "Dodge_Forward",
-     "skill_rally": "Cheer",
-     "death": "Death_A",
-     "victory": "Cheer",
-     "heavy": "2H_Melee_Attack_Chop",
-     "idle": "Idle",
-     "walk": "Walking_A",
-     "run": "UAL_Jog",
-     "attack_1": "1H_Melee_Attack_Slice_Diagonal",
-     "attack_2": "1H_Melee_Attack_Slice_Horizontal",
-     "attack_3": "1H_Melee_Attack_Chop",
-     "skill_charge": "1H_Melee_Attack_Stab",
-     "skill_split": "2H_Melee_Attack_Chop",
-     "skill_whirl": "Whirl_Spin",
-     "skill_shield": "Spellcast_Long",
-     "sprint": "UAL_Sprint",
-     "stagger": "Stagger_Back"
-    },
-    "heavy": {
-     "hit": "Hit_A",
-     "guard": "Guard_2H",
-     "parry": "1H_Melee_Attack_Slice_Horizontal",
-     "dodge": "Dodge_Forward",
-     "skill_rally": "Spellcast_Raise",
-     "death": "Death_A",
-     "victory": "Cheer",
-     "heavy": "2H_Melee_Attack_Chop",
-     "idle": "2H_Melee_Idle",
-     "walk": "Walking_B",
-     "run": "UAL_Jog",
-     "attack_1": "1H_Melee_Attack_Slice_Diagonal",
-     "attack_2": "1H_Melee_Attack_Slice_Horizontal",
-     "attack_3": "2H_Melee_Attack_Chop",
-     "skill_charge": "1H_Melee_Attack_Stab",
-     "skill_split": "2H_Melee_Attack_Chop",
-     "skill_whirl": "Whirl_Spin",
-     "skill_shield": "Spellcast_Long",
-     "sprint": "UAL_Sprint",
-     "stagger": "Stagger_Back"
-    },
-    "staff": {
-     "hit": "Staff_Hit",
-     "guard": "Guard_2H",
-     "parry": "1H_Melee_Attack_Slice_Horizontal",
-     "dodge": "Dodge_Forward",
-     "skill_rally": "Spellcast_Raise",
-     "death": "Death_A",
-     "victory": "Cheer",
-     "heavy": "2H_Melee_Attack_Chop",
-     "idle": "Staff_Idle",
-     "walk": "Staff_Walk",
-     "run": "Staff_Jog",
-     "attack_1": "1H_Melee_Attack_Slice_Diagonal",
-     "attack_2": "Spellcast_Shoot",
-     "attack_3": "2H_Melee_Attack_Chop",
-     "skill_charge": "1H_Melee_Attack_Stab",
-     "skill_split": "2H_Melee_Attack_Chop",
-     "skill_whirl": "Whirl_Spin",
-     "skill_shield": "Spellcast_Long",
-     "sprint": "Staff_Sprint",
-     "stagger": "Stagger_Back"
-    },
-    "gun": {
-     "hit": "Hit_A",
-     "guard": "Blocking",
-     "parry": "Block_Attack",
-     "dodge": "Dodge_Forward",
-     "skill_rally": "Cheer",
-     "death": "Death_A",
-     "victory": "Cheer",
-     "heavy": "2H_Melee_Attack_Chop",
-     "idle": "Aim_Hold",
-     "walk": "Walking_B",
-     "run": "UAL_Jog",
-     "attack_1": "2H_Ranged_Shoot",
-     "attack_2": "2H_Ranged_Shoot",
-     "attack_3": "1H_Melee_Attack_Stab",
-     "skill_charge": "1H_Melee_Attack_Stab",
-     "skill_split": "2H_Melee_Attack_Chop",
-     "skill_whirl": "Whirl_Spin",
-     "skill_shield": "Spellcast_Long",
-     "sprint": "UAL_Sprint",
-     "stagger": "Stagger_Back"
-    }
-   },
-   "source_lod": "lod1.glb",
-   "fingerprint": {
-    "Hips": [
-     0.0304,
-     0.8866,
-     0.0523
-    ],
-    "RightHand": [
-     -0.6812,
-     1.0047,
-     -0.0073
-    ],
-    "LeftFoot": [
-     0.2485,
-     0.081,
-     -0.0624
-    ]
-   },
-   "tear_worst": 0.0117,
-   "clips_over_gate": [
-    "2H_Melee_Attack_Slice",
-    "2H_Melee_Attack_Spin",
-    "2H_Melee_Attack_Spinning",
-    "2H_Melee_Attack_Stab",
-    "CMU_Chop_2H",
-    "CMU_Fall_Front",
-    "CMU_Guard",
-    "CMU_Slash_C",
-    "CMU_Slash_Low",
-    "CMU_Strike_Down",
-    "CMU_Stumble_Fwd",
-    "M2M_Death_B",
-    "M2M_Hit_Knockback",
-    "M2M_Melee_Hook",
-    "M2M_Punch_Cross",
-    "M2M_Punch_Jab",
-    "M2M_Sword_Regular_A",
-    "M2M_Sword_Regular_B",
-    "M2M_Victory",
-    "UAL_Death",
-    "UAL_Roll",
-    "UAL_Sword_Attack"
-   ],
-   "hip_scale": 2.186,
-   "pick_mocap": {
-    "blade": {
-     "hit": "M2M_Hit_Chest",
-     "stagger": "CMU_Stagger_Back",
-     "stagger_fwd": "",
-     "death": "CMU_Fall_Back",
-     "death_fwd": "",
-     "victory": "M2M_Victory_Fist_Pump",
-     "idle": "CMU_Idle",
-     "run": "CMU_Jog",
-     "attack_1": "CMU_Slash_A",
-     "attack_2": "CMU_Slash_B",
-     "attack_3": "",
-     "heavy": "",
-     "sprint": "CMU_Jog"
-    },
-    "heavy": {
-     "hit": "M2M_Hit_Chest",
-     "stagger": "CMU_Stagger_Back",
-     "stagger_fwd": "",
-     "death": "CMU_Fall_Back",
-     "death_fwd": "",
-     "victory": "M2M_Victory_Fist_Pump",
-     "heavy": "",
-     "attack_3": "",
-     "run": "CMU_Jog",
-     "sprint": "CMU_Jog"
-    },
-    "staff": {
-     "hit": "M2M_Hit_Chest",
-     "stagger": "CMU_Stagger_Back",
-     "stagger_fwd": "",
-     "death": "CMU_Fall_Back",
-     "death_fwd": "",
-     "victory": "M2M_Victory_Fist_Pump",
-     "heavy": "",
-     "run": "CMU_Jog",
-     "sprint": "CMU_Jog"
-    },
-    "gun": {
-     "hit": "M2M_Hit_Chest",
-     "stagger": "CMU_Stagger_Back",
-     "stagger_fwd": "",
-     "death": "CMU_Fall_Back",
-     "death_fwd": "",
-     "victory": "M2M_Victory_Fist_Pump",
-     "run": "CMU_Jog",
-     "sprint": "CMU_Jog"
-    },
-    "unarmed": {
-     "hit": "M2M_Hit_Chest",
-     "stagger": "CMU_Stagger_Back",
-     "stagger_fwd": "",
-     "death": "CMU_Fall_Back",
-     "death_fwd": "",
-     "victory": "M2M_Victory_Fist_Pump",
-     "idle": "M2M_Fighting_Idle",
-     "run": "CMU_Jog",
-     "attack_1": "CMU_Punch_L",
-     "attack_2": "CMU_Punch_R",
-     "attack_3": "",
-     "heavy": "",
-     "skill_charge": "CMU_Punch_R",
-     "sprint": "CMU_Jog"
-    }
-   },
-   "ground_speed_per_hip": {
-    "CMU_Jog": 2.899
-   },
-   "clips_in_library": 41,
+   "clips_in_library": 68,
    "arm_droop": 0.9,
    "arm_free_deg": 14.0
   },
@@ -2179,6 +3428,18 @@
     "CMU_Slash_Low",
     "CMU_Strike_Down",
     "Guard_2H",
+    "I_Chop2H_T",
+    "I_Guard_hi",
+    "I_Guard_hi_s",
+    "I_Intro_Guard",
+    "I_Knockback",
+    "I_Knockback_s",
+    "I_Slam",
+    "I_Slam_T",
+    "I_Slam_T_s",
+    "I_Slam_s",
+    "I_StandUp",
+    "I_StandUp_s",
     "M2M_Death_B",
     "M2M_Hit_Knockback",
     "M2M_Melee_Hook",
@@ -2188,11 +3449,114 @@
     "M2M_Sword_Regular_B",
     "M2M_Victory",
     "M2M_Victory_Fist_Pump",
+    "R_Atk3",
+    "R_Atk3_s",
+    "R_Guard_hi",
+    "R_Guard_hi_s",
+    "R_Intro_Guard",
+    "R_Shield",
+    "R_Shoot_Gun",
+    "R_Split",
+    "R_Split_k",
+    "R_Split_k2",
+    "R_Split_s",
     "UAL_Death",
     "UAL_Roll",
     "UAL_Sword_Attack"
    ],
    "hip_scale": 2.322,
+   "pick_readable": {
+    "blade": {
+     "attack_1": "R_Atk1",
+     "attack_2": "R_Atk2",
+     "attack_3": "R_Atk3_k",
+     "skill_shoot": "R_Shoot",
+     "skill_rain": "R_Rain",
+     "skill_charge": "R_Dash",
+     "skill_shield": "R_Shield_s",
+     "skill_split": "",
+     "skill_rally": "R_Rally",
+     "guard": "R_Guard",
+     "parry": "R_Parry",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown",
+     "death": "CMU_Fall_Back",
+     "sprint": "R_Sprint",
+     "run": "R_Jog",
+     "idle": "R_Idle"
+    },
+    "heavy": {
+     "attack_3": "R_Atk3_k",
+     "skill_shoot": "R_Shoot",
+     "skill_rain": "R_Rain",
+     "skill_charge": "R_Dash",
+     "skill_shield": "R_Shield_s",
+     "skill_split": "",
+     "skill_rally": "R_Rally",
+     "guard": "R_Guard",
+     "parry": "R_Parry",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown",
+     "death": "CMU_Fall_Back",
+     "sprint": "R_Sprint",
+     "run": "R_Jog",
+     "idle": "R_Idle_2H"
+    },
+    "staff": {
+     "attack_3": "R_Atk3_k",
+     "skill_shoot": "R_Shoot",
+     "skill_rain": "R_Rain",
+     "skill_charge": "R_Dash",
+     "skill_shield": "R_Shield_s",
+     "skill_split": "",
+     "skill_rally": "R_Rally",
+     "guard": "R_Guard",
+     "parry": "R_Parry",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown",
+     "death": "CMU_Fall_Back",
+     "sprint": "R_Sprint",
+     "run": "R_Jog",
+     "idle": "R_Idle_staff"
+    },
+    "gun": {
+     "skill_shoot": "",
+     "skill_rain": "R_Rain",
+     "skill_charge": "R_Dash",
+     "skill_shield": "R_Shield_s",
+     "skill_split": "",
+     "skill_rally": "R_Rally",
+     "guard": "R_Guard",
+     "parry": "R_Parry",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown",
+     "death": "CMU_Fall_Back",
+     "sprint": "R_Sprint",
+     "run": "R_Jog"
+    },
+    "unarmed": {
+     "attack_3": "R_Atk3_k",
+     "skill_shoot": "R_Shoot",
+     "skill_rain": "R_Rain",
+     "skill_charge": "R_Dash",
+     "skill_shield": "R_Shield_s",
+     "skill_split": "",
+     "skill_rally": "R_Rally",
+     "guard": "R_Guard",
+     "parry": "R_Parry",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown",
+     "death": "CMU_Fall_Back",
+     "sprint": "R_Sprint",
+     "run": "R_Jog",
+     "idle": "R_Idle_2H"
+    }
+   },
    "pick_mocap": {
     "blade": {
      "hit": "M2M_Hit_Chest",
@@ -2260,9 +3624,13 @@
     }
    },
    "ground_speed_per_hip": {
-    "CMU_Jog": 1.793
+    "CMU_Jog": 1.793,
+    "I_M2M_Sprint": 4.857,
+    "R_Jog": 1.793,
+    "R_Sprint": 4.857,
+    "R_Sprint_u": 5.683
    },
-   "clips_in_library": 36
+   "clips_in_library": 54
   },
   "catboy": {
    "status": "clips",
@@ -2379,7 +3747,20 @@
    "clips_over_gate": [
     "CMU_Fall_Front",
     "CMU_Slash_Low",
+    "I_Defend",
+    "I_Defend_s",
+    "I_Guard_hi",
+    "I_Guard_hi_s",
+    "I_Intro_Ready",
+    "I_Knockback",
+    "I_Knockback_s",
+    "I_M2M_Sprint",
+    "I_Slam",
+    "I_Slam_T",
+    "I_Slam_T_s",
+    "I_Slam_s",
     "M2M_Death_B",
+    "M2M_Death_D",
     "M2M_Fighting_Idle",
     "M2M_Hit_Knockback",
     "M2M_Melee_Hook",
@@ -2389,11 +3770,115 @@
     "M2M_Sword_Regular_B",
     "M2M_Victory",
     "M2M_Victory_Fist_Pump",
+    "R_Atk3",
+    "R_Atk3_s",
+    "R_Guard",
+    "R_Guard_hi",
+    "R_Guard_hi_s",
+    "R_Guard_s",
+    "R_Intro_Ready",
+    "R_Shield",
+    "R_Shield_s",
+    "R_Split",
+    "R_Split_s",
+    "R_Sprint",
     "UAL_Death",
     "UAL_Roll",
     "UAL_Sword_Attack"
    ],
    "hip_scale": 1.908,
+   "pick_readable": {
+    "blade": {
+     "attack_1": "R_Atk1",
+     "attack_2": "R_Atk2",
+     "attack_3": "R_Atk3_k",
+     "skill_shoot": "R_Shoot",
+     "skill_rain": "R_Rain",
+     "skill_charge": "R_Dash",
+     "skill_shield": "R_Shield_k",
+     "skill_split": "R_Split_k",
+     "skill_rally": "R_Rally",
+     "guard": "R_Guard_k",
+     "parry": "R_Parry",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown",
+     "death": "CMU_Fall_Back",
+     "sprint": "R_Sprint",
+     "run": "R_Jog",
+     "idle": "R_Idle"
+    },
+    "heavy": {
+     "attack_3": "R_Atk3_k",
+     "skill_shoot": "R_Shoot",
+     "skill_rain": "R_Rain",
+     "skill_charge": "R_Dash",
+     "skill_shield": "R_Shield_k",
+     "skill_split": "R_Split_k",
+     "skill_rally": "R_Rally",
+     "guard": "R_Guard_k",
+     "parry": "R_Parry",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown",
+     "death": "CMU_Fall_Back",
+     "sprint": "R_Sprint",
+     "run": "R_Jog",
+     "idle": "R_Idle_2H"
+    },
+    "staff": {
+     "attack_3": "R_Atk3_k",
+     "skill_shoot": "R_Shoot",
+     "skill_rain": "R_Rain",
+     "skill_charge": "R_Dash",
+     "skill_shield": "R_Shield_k",
+     "skill_split": "R_Split_k",
+     "skill_rally": "R_Rally",
+     "guard": "R_Guard_k",
+     "parry": "R_Parry",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown",
+     "death": "CMU_Fall_Back",
+     "sprint": "R_Sprint",
+     "run": "R_Jog",
+     "idle": "R_Idle_staff"
+    },
+    "gun": {
+     "skill_shoot": "R_Shoot_Gun",
+     "skill_rain": "R_Rain",
+     "skill_charge": "R_Dash",
+     "skill_shield": "R_Shield_k",
+     "skill_split": "R_Split_k",
+     "skill_rally": "R_Rally",
+     "guard": "R_Guard_k",
+     "parry": "R_Parry",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown",
+     "death": "CMU_Fall_Back",
+     "sprint": "R_Sprint",
+     "run": "R_Jog"
+    },
+    "unarmed": {
+     "attack_3": "R_Atk3_k",
+     "skill_shoot": "R_Shoot",
+     "skill_rain": "R_Rain",
+     "skill_charge": "R_Dash",
+     "skill_shield": "R_Shield_k",
+     "skill_split": "R_Split_k",
+     "skill_rally": "R_Rally",
+     "guard": "R_Guard_k",
+     "parry": "R_Parry",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown",
+     "death": "CMU_Fall_Back",
+     "sprint": "R_Sprint",
+     "run": "R_Jog",
+     "idle": "R_Idle_2H"
+    }
+   },
    "pick_mocap": {
     "blade": {
      "hit": "M2M_Hit_Chest",
@@ -2461,9 +3946,13 @@
     }
    },
    "ground_speed_per_hip": {
-    "CMU_Jog": 2.845
+    "CMU_Jog": 2.845,
+    "I_M2M_Sprint": 6.279,
+    "R_Jog": 2.845,
+    "R_Sprint": 6.279,
+    "R_Sprint_u": 5.571
    },
-   "clips_in_library": 45
+   "clips_in_library": 65
   },
   "celestials_lyra": {
    "status": "clips",
@@ -2576,9 +4065,108 @@
      -0.1086
     ]
    },
-   "tear_worst": 0.0025,
-   "clips_over_gate": [],
+   "tear_worst": 0.0071,
+   "clips_over_gate": [
+    "UAL_Roll",
+    "UAL_Sword_Attack"
+   ],
    "hip_scale": 2.204,
+   "pick_readable": {
+    "blade": {
+     "attack_1": "R_Atk1",
+     "attack_2": "R_Atk2",
+     "attack_3": "R_Atk3",
+     "skill_shoot": "R_Shoot",
+     "skill_rain": "R_Rain",
+     "skill_charge": "R_Dash",
+     "skill_shield": "R_Shield",
+     "skill_split": "R_Split",
+     "skill_rally": "R_Rally",
+     "guard": "R_Guard_hi",
+     "parry": "R_Parry",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown",
+     "death": "CMU_Fall_Back",
+     "sprint": "R_Sprint",
+     "run": "R_Jog",
+     "idle": "R_Idle"
+    },
+    "heavy": {
+     "attack_3": "R_Atk3",
+     "skill_shoot": "R_Shoot",
+     "skill_rain": "R_Rain",
+     "skill_charge": "R_Dash",
+     "skill_shield": "R_Shield",
+     "skill_split": "R_Split",
+     "skill_rally": "R_Rally",
+     "guard": "R_Guard_hi",
+     "parry": "R_Parry",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown",
+     "death": "CMU_Fall_Back",
+     "sprint": "R_Sprint",
+     "run": "R_Jog",
+     "idle": "R_Idle_2H"
+    },
+    "staff": {
+     "attack_3": "R_Atk3",
+     "skill_shoot": "R_Shoot",
+     "skill_rain": "R_Rain",
+     "skill_charge": "R_Dash",
+     "skill_shield": "R_Shield",
+     "skill_split": "R_Split",
+     "skill_rally": "R_Rally",
+     "guard": "R_Guard_hi",
+     "parry": "R_Parry",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown",
+     "death": "CMU_Fall_Back",
+     "sprint": "R_Sprint",
+     "run": "R_Jog",
+     "idle": "R_Idle_staff"
+    },
+    "gun": {
+     "skill_shoot": "R_Shoot_Gun",
+     "skill_rain": "R_Rain",
+     "skill_charge": "R_Dash",
+     "skill_shield": "R_Shield",
+     "skill_split": "R_Split",
+     "skill_rally": "R_Rally",
+     "guard": "R_Guard_hi",
+     "parry": "R_Parry",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown",
+     "death": "CMU_Fall_Back",
+     "sprint": "R_Sprint",
+     "run": "R_Jog"
+    },
+    "unarmed": {
+     "attack_3": "R_Atk3",
+     "skill_shoot": "R_Shoot",
+     "skill_rain": "R_Rain",
+     "skill_charge": "R_Dash",
+     "skill_shield": "R_Shield",
+     "skill_split": "R_Split",
+     "skill_rally": "R_Rally",
+     "guard": "R_Guard_hi",
+     "parry": "R_Parry",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown",
+     "death": "CMU_Fall_Back",
+     "sprint": "R_Sprint",
+     "run": "R_Jog",
+     "idle": "R_Idle_2H"
+    }
+   },
+   "pick_poses": {
+    "intro": "R_Intro_Open",
+    "victory": "Spellcast_Raise"
+   },
    "pick_mocap": {
     "blade": {
      "hit": "M2M_Hit_Chest",
@@ -2646,9 +4234,13 @@
     }
    },
    "ground_speed_per_hip": {
-    "CMU_Jog": 2.84
+    "CMU_Jog": 2.84,
+    "I_M2M_Sprint": 6.306,
+    "R_Jog": 2.84,
+    "R_Sprint": 6.306,
+    "R_Sprint_u": 5.492
    },
-   "clips_in_library": 47,
+   "clips_in_library": 68,
    "arm_droop": 0.9,
    "arm_free_deg": 14.0
   },
@@ -2661,10 +4253,10 @@
      "guard": "Blocking",
      "parry": "Block_Attack",
      "dodge": "Dodge_Forward",
-     "skill_rally": "",
+     "skill_rally": "Cheer",
      "death": "Death_A",
-     "victory": "",
-     "heavy": "1H_Melee_Attack_Chop",
+     "victory": "Cheer",
+     "heavy": "2H_Melee_Attack_Chop",
      "idle": "Idle",
      "walk": "Walking_A",
      "run": "UAL_Jog",
@@ -2672,207 +4264,272 @@
      "attack_2": "1H_Melee_Attack_Slice_Horizontal",
      "attack_3": "1H_Melee_Attack_Chop",
      "skill_charge": "1H_Melee_Attack_Stab",
-     "skill_split": "1H_Melee_Attack_Chop",
-     "skill_whirl": "1H_Melee_Attack_Slice_Horizontal",
+     "skill_split": "2H_Melee_Attack_Chop",
+     "skill_whirl": "2H_Melee_Attack_Spinning",
      "skill_shield": "Spellcast_Long",
      "sprint": "UAL_Sprint",
-     "stagger": "Walk_Back"
+     "stagger": "Stagger_Back"
     },
     "heavy": {
      "hit": "Hit_A",
-     "guard": "Blocking",
+     "guard": "Guard_2H",
      "parry": "1H_Melee_Attack_Slice_Horizontal",
      "dodge": "Dodge_Forward",
-     "skill_rally": "",
+     "skill_rally": "Spellcast_Raise",
      "death": "Death_A",
-     "victory": "",
-     "heavy": "1H_Melee_Attack_Chop",
+     "victory": "Cheer",
+     "heavy": "2H_Melee_Attack_Chop",
      "idle": "2H_Melee_Idle",
      "walk": "Walking_B",
      "run": "UAL_Jog",
-     "attack_1": "1H_Melee_Attack_Slice_Diagonal",
-     "attack_2": "1H_Melee_Attack_Slice_Horizontal",
-     "attack_3": "1H_Melee_Attack_Chop",
-     "skill_charge": "1H_Melee_Attack_Stab",
-     "skill_split": "1H_Melee_Attack_Chop",
-     "skill_whirl": "1H_Melee_Attack_Slice_Horizontal",
+     "attack_1": "2H_Melee_Attack_Slice",
+     "attack_2": "2H_Melee_Attack_Stab",
+     "attack_3": "2H_Melee_Attack_Chop",
+     "skill_charge": "2H_Melee_Attack_Stab",
+     "skill_split": "2H_Melee_Attack_Chop",
+     "skill_whirl": "2H_Melee_Attack_Spinning",
      "skill_shield": "Spellcast_Long",
      "sprint": "UAL_Sprint",
-     "stagger": "Walk_Back"
+     "stagger": "Stagger_Back"
     },
     "staff": {
      "hit": "Staff_Hit",
-     "guard": "Blocking",
+     "guard": "Guard_2H",
      "parry": "1H_Melee_Attack_Slice_Horizontal",
      "dodge": "Dodge_Forward",
-     "skill_rally": "",
+     "skill_rally": "Spellcast_Raise",
      "death": "Death_A",
-     "victory": "",
-     "heavy": "1H_Melee_Attack_Chop",
+     "victory": "Cheer",
+     "heavy": "2H_Melee_Attack_Chop",
      "idle": "Staff_Idle",
      "walk": "Staff_Walk",
      "run": "Staff_Jog",
-     "attack_1": "1H_Melee_Attack_Slice_Diagonal",
+     "attack_1": "2H_Melee_Attack_Slice",
      "attack_2": "Spellcast_Shoot",
-     "attack_3": "1H_Melee_Attack_Chop",
-     "skill_charge": "1H_Melee_Attack_Stab",
-     "skill_split": "1H_Melee_Attack_Chop",
-     "skill_whirl": "1H_Melee_Attack_Slice_Horizontal",
+     "attack_3": "2H_Melee_Attack_Chop",
+     "skill_charge": "2H_Melee_Attack_Stab",
+     "skill_split": "2H_Melee_Attack_Chop",
+     "skill_whirl": "2H_Melee_Attack_Spinning",
      "skill_shield": "Spellcast_Long",
      "sprint": "Staff_Sprint",
-     "stagger": "Walk_Back"
+     "stagger": "Stagger_Back"
     },
     "gun": {
      "hit": "Hit_A",
      "guard": "Blocking",
      "parry": "Block_Attack",
      "dodge": "Dodge_Forward",
-     "skill_rally": "",
+     "skill_rally": "Cheer",
      "death": "Death_A",
-     "victory": "",
-     "heavy": "1H_Melee_Attack_Chop",
+     "victory": "Cheer",
+     "heavy": "2H_Melee_Attack_Chop",
      "idle": "Aim_Hold",
      "walk": "Walking_B",
      "run": "UAL_Jog",
      "attack_1": "2H_Ranged_Shoot",
      "attack_2": "2H_Ranged_Shoot",
-     "attack_3": "1H_Melee_Attack_Stab",
-     "skill_charge": "1H_Melee_Attack_Stab",
-     "skill_split": "1H_Melee_Attack_Chop",
-     "skill_whirl": "1H_Melee_Attack_Slice_Horizontal",
+     "attack_3": "2H_Melee_Attack_Stab",
+     "skill_charge": "2H_Melee_Attack_Stab",
+     "skill_split": "2H_Melee_Attack_Chop",
+     "skill_whirl": "2H_Melee_Attack_Spinning",
      "skill_shield": "Spellcast_Long",
      "sprint": "UAL_Sprint",
-     "stagger": "Walk_Back"
+     "stagger": "Stagger_Back"
     }
    },
    "source_lod": "lod1.glb",
    "fingerprint": {
     "Hips": [
-     0.0082,
-     0.8941,
-     0.0538
+     0.0043,
+     0.9195,
+     0.0222
     ],
     "RightHand": [
-     -0.5362,
-     1.182,
-     -0.0815
+     -0.6584,
+     1.0281,
+     -0.0283
     ],
     "LeftFoot": [
-     0.1968,
-     0.081,
-     -0.1105
+     0.231,
+     0.1269,
+     -0.0658
     ]
    },
-   "tear_worst": 0.0154,
+   "tear_worst": 0.0063,
    "clips_over_gate": [
-    "2H_Melee_Attack_Chop",
-    "2H_Melee_Attack_Slice",
-    "2H_Melee_Attack_Spin",
-    "2H_Melee_Attack_Spinning",
-    "2H_Melee_Attack_Stab",
-    "CMU_Chop_2H",
-    "CMU_Fall_Back",
-    "CMU_Fall_Front",
-    "CMU_Guard",
-    "CMU_Jog",
-    "CMU_Punch_L",
-    "CMU_Punch_R",
-    "CMU_Slash_A",
-    "CMU_Slash_B",
-    "CMU_Slash_C",
-    "CMU_Slash_Low",
-    "CMU_Strike_Down",
-    "CMU_Stumble_Fwd",
-    "Cheer",
-    "Death_B",
-    "Guard_2H",
-    "M2M_Death_B",
-    "M2M_Hit_Knockback",
-    "M2M_Melee_Hook",
-    "M2M_Punch_Cross",
-    "M2M_Punch_Jab",
-    "M2M_Sword_Regular_A",
-    "M2M_Sword_Regular_B",
-    "M2M_Victory",
-    "M2M_Victory_Fist_Pump",
-    "Spellcast_Raise",
-    "Stagger_Back",
-    "UAL_Death",
-    "UAL_Roll",
-    "UAL_Sword_Attack",
-    "Whirl_Spin"
+    "M2M_Death_B"
    ],
-   "hip_scale": 2.204,
+   "hip_scale": 2.267,
+   "pick_readable": {
+    "blade": {
+     "attack_1": "R_Atk1",
+     "attack_2": "R_Atk2",
+     "attack_3": "R_Atk3",
+     "skill_shoot": "R_Shoot",
+     "skill_rain": "R_Rain",
+     "skill_charge": "R_Dash",
+     "skill_shield": "R_Shield",
+     "skill_split": "R_Split",
+     "skill_rally": "R_Rally",
+     "guard": "R_Guard_hi",
+     "parry": "R_Parry",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown",
+     "death": "CMU_Fall_Back",
+     "sprint": "R_Sprint",
+     "run": "R_Jog",
+     "idle": "R_Idle"
+    },
+    "heavy": {
+     "attack_3": "R_Atk3",
+     "skill_shoot": "R_Shoot",
+     "skill_rain": "R_Rain",
+     "skill_charge": "R_Dash",
+     "skill_shield": "R_Shield",
+     "skill_split": "R_Split",
+     "skill_rally": "R_Rally",
+     "guard": "R_Guard_hi",
+     "parry": "R_Parry",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown",
+     "death": "CMU_Fall_Back",
+     "sprint": "R_Sprint",
+     "run": "R_Jog",
+     "idle": "R_Idle_2H"
+    },
+    "staff": {
+     "attack_3": "R_Atk3",
+     "skill_shoot": "R_Shoot",
+     "skill_rain": "R_Rain",
+     "skill_charge": "R_Dash",
+     "skill_shield": "R_Shield",
+     "skill_split": "R_Split",
+     "skill_rally": "R_Rally",
+     "guard": "R_Guard_hi",
+     "parry": "R_Parry",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown",
+     "death": "CMU_Fall_Back",
+     "sprint": "R_Sprint",
+     "run": "R_Jog",
+     "idle": "R_Idle_staff"
+    },
+    "gun": {
+     "skill_shoot": "R_Shoot_Gun",
+     "skill_rain": "R_Rain",
+     "skill_charge": "R_Dash",
+     "skill_shield": "R_Shield",
+     "skill_split": "R_Split",
+     "skill_rally": "R_Rally",
+     "guard": "R_Guard_hi",
+     "parry": "R_Parry",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown",
+     "death": "CMU_Fall_Back",
+     "sprint": "R_Sprint",
+     "run": "R_Jog"
+    },
+    "unarmed": {
+     "attack_3": "R_Atk3",
+     "skill_shoot": "R_Shoot",
+     "skill_rain": "R_Rain",
+     "skill_charge": "R_Dash",
+     "skill_shield": "R_Shield",
+     "skill_split": "R_Split",
+     "skill_rally": "R_Rally",
+     "guard": "R_Guard_hi",
+     "parry": "R_Parry",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown",
+     "death": "CMU_Fall_Back",
+     "sprint": "R_Sprint",
+     "run": "R_Jog",
+     "idle": "R_Idle_2H"
+    }
+   },
+   "pick_poses": {
+    "intro": "R_Intro_Guard",
+    "victory": "Cheer"
+   },
    "pick_mocap": {
     "blade": {
      "hit": "M2M_Hit_Chest",
      "stagger": "CMU_Stagger_Back",
-     "stagger_fwd": "",
-     "death": "",
-     "death_fwd": "",
-     "victory": "",
+     "stagger_fwd": "CMU_Stumble_Fwd",
+     "death": "CMU_Fall_Back",
+     "death_fwd": "CMU_Fall_Front",
+     "victory": "M2M_Victory_Fist_Pump",
      "idle": "CMU_Idle",
      "run": "CMU_Jog",
-     "attack_1": "",
-     "attack_2": "",
-     "attack_3": "",
-     "heavy": "",
+     "attack_1": "CMU_Slash_A",
+     "attack_2": "CMU_Slash_B",
+     "attack_3": "CMU_Chop_2H",
+     "heavy": "CMU_Chop_2H",
      "sprint": "CMU_Jog"
     },
     "heavy": {
      "hit": "M2M_Hit_Chest",
      "stagger": "CMU_Stagger_Back",
-     "stagger_fwd": "",
-     "death": "",
-     "death_fwd": "",
-     "victory": "",
-     "heavy": "",
-     "attack_3": "",
+     "stagger_fwd": "CMU_Stumble_Fwd",
+     "death": "CMU_Fall_Back",
+     "death_fwd": "CMU_Fall_Front",
+     "victory": "M2M_Victory_Fist_Pump",
+     "heavy": "CMU_Chop_2H",
+     "attack_3": "CMU_Chop_2H",
      "run": "CMU_Jog",
      "sprint": "CMU_Jog"
     },
     "staff": {
      "hit": "M2M_Hit_Chest",
      "stagger": "CMU_Stagger_Back",
-     "stagger_fwd": "",
-     "death": "",
-     "death_fwd": "",
-     "victory": "",
-     "heavy": "",
+     "stagger_fwd": "CMU_Stumble_Fwd",
+     "death": "CMU_Fall_Back",
+     "death_fwd": "CMU_Fall_Front",
+     "victory": "M2M_Victory_Fist_Pump",
+     "heavy": "CMU_Chop_2H",
      "run": "CMU_Jog",
      "sprint": "CMU_Jog"
     },
     "gun": {
      "hit": "M2M_Hit_Chest",
      "stagger": "CMU_Stagger_Back",
-     "stagger_fwd": "",
-     "death": "",
-     "death_fwd": "",
-     "victory": "",
+     "stagger_fwd": "CMU_Stumble_Fwd",
+     "death": "CMU_Fall_Back",
+     "death_fwd": "CMU_Fall_Front",
+     "victory": "M2M_Victory_Fist_Pump",
      "run": "CMU_Jog",
      "sprint": "CMU_Jog"
     },
     "unarmed": {
      "hit": "M2M_Hit_Chest",
      "stagger": "CMU_Stagger_Back",
-     "stagger_fwd": "",
-     "death": "",
-     "death_fwd": "",
-     "victory": "",
-     "idle": "M2M_Fighting_Idle",
+     "stagger_fwd": "CMU_Stumble_Fwd",
+     "death": "CMU_Fall_Back",
+     "death_fwd": "CMU_Fall_Front",
+     "victory": "M2M_Victory_Fist_Pump",
+     "idle": "CMU_Guard",
      "run": "CMU_Jog",
-     "attack_1": "",
-     "attack_2": "",
-     "attack_3": "",
-     "heavy": "",
-     "skill_charge": "",
+     "attack_1": "CMU_Punch_L",
+     "attack_2": "CMU_Punch_R",
+     "attack_3": "CMU_Strike_Down",
+     "heavy": "CMU_Strike_Down",
+     "skill_charge": "CMU_Punch_R",
      "sprint": "CMU_Jog"
     }
    },
    "ground_speed_per_hip": {
-    "CMU_Jog": 2.943
+    "CMU_Jog": 2.71,
+    "I_M2M_Sprint": 5.98,
+    "R_Jog": 2.71,
+    "R_Sprint": 5.98,
+    "R_Sprint_u": 5.299
    },
-   "clips_in_library": 30,
+   "clips_in_library": 68,
    "arm_droop": 0.9,
    "arm_free_deg": 14.0
   },
@@ -3011,8 +4668,27 @@
     "CMU_Strike_Down",
     "CMU_Stumble_Fwd",
     "Guard_2H",
+    "I_Chop2H_T",
+    "I_Guard_hi",
+    "I_Guard_hi_s",
+    "I_Intro_Guard",
+    "I_Jump_s",
+    "I_Jump_s2",
+    "I_Knockback",
+    "I_Knockback_s",
+    "I_M2M_Sprint",
+    "I_Slam",
+    "I_Slam_T",
+    "I_Slam_T_s",
+    "I_Slam_s",
+    "I_SlashB_s",
+    "I_StandUp",
+    "I_StandUp_s",
+    "I_Sword_Block",
+    "I_Sword_Block_s",
     "Jump_Full_Short",
     "M2M_Death_B",
+    "M2M_Death_D",
     "M2M_Hit_Knockback",
     "M2M_Melee_Hook",
     "M2M_Punch_Jab",
@@ -3020,6 +4696,41 @@
     "M2M_Sword_Regular_B",
     "M2M_Victory",
     "M2M_Victory_Fist_Pump",
+    "R_Atk1",
+    "R_Atk1_k",
+    "R_Atk2",
+    "R_Atk2_k",
+    "R_Atk3",
+    "R_Atk3_s",
+    "R_Dash",
+    "R_Dash_k",
+    "R_Dash_s",
+    "R_Guard_hi",
+    "R_Guard_hi_s",
+    "R_Intro_Guard",
+    "R_Jog",
+    "R_Knockdown",
+    "R_Knockdown_s",
+    "R_Parry",
+    "R_Parry_s",
+    "R_Rally",
+    "R_Rally_s",
+    "R_Rally_v45",
+    "R_Shield",
+    "R_Shield_k",
+    "R_Shield_k2",
+    "R_Shield_s",
+    "R_Shoot",
+    "R_Shoot_Gun",
+    "R_Shoot_k",
+    "R_Shoot_k2",
+    "R_Shoot_s",
+    "R_Split",
+    "R_Split_k",
+    "R_Split_k2",
+    "R_Split_s",
+    "R_Sprint",
+    "R_Sprint_u",
     "Running_B",
     "Staff_Jog",
     "Staff_Run",
@@ -3031,6 +4742,98 @@
     "UAL_Sword_Attack"
    ],
    "hip_scale": 2.057,
+   "pick_readable": {
+    "blade": {
+     "attack_1": "",
+     "attack_2": "",
+     "attack_3": "R_Atk3_k",
+     "skill_shoot": "",
+     "skill_rain": "R_Rain",
+     "skill_charge": "R_Dash_n",
+     "skill_shield": "",
+     "skill_split": "",
+     "skill_rally": "R_Rally_c",
+     "guard": "R_Guard",
+     "parry": "R_Parry_k",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown_k",
+     "death": "",
+     "sprint": "R_Sprint",
+     "run": "R_Jog",
+     "idle": "R_Idle"
+    },
+    "heavy": {
+     "attack_3": "R_Atk3_k",
+     "skill_shoot": "",
+     "skill_rain": "R_Rain",
+     "skill_charge": "R_Dash_n",
+     "skill_shield": "",
+     "skill_split": "",
+     "skill_rally": "R_Rally_c",
+     "guard": "R_Guard",
+     "parry": "R_Parry_k",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown_k",
+     "death": "",
+     "sprint": "R_Sprint",
+     "run": "R_Jog",
+     "idle": "R_Idle_2H"
+    },
+    "staff": {
+     "attack_3": "R_Atk3_k",
+     "skill_shoot": "",
+     "skill_rain": "R_Rain",
+     "skill_charge": "R_Dash_n",
+     "skill_shield": "",
+     "skill_split": "",
+     "skill_rally": "R_Rally_c",
+     "guard": "R_Guard",
+     "parry": "R_Parry_k",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown_k",
+     "death": "",
+     "sprint": "R_Sprint",
+     "run": "R_Jog",
+     "idle": "R_Idle_staff"
+    },
+    "gun": {
+     "skill_shoot": "",
+     "skill_rain": "R_Rain",
+     "skill_charge": "R_Dash_n",
+     "skill_shield": "",
+     "skill_split": "",
+     "skill_rally": "R_Rally_c",
+     "guard": "R_Guard",
+     "parry": "R_Parry_k",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown_k",
+     "death": "",
+     "sprint": "R_Sprint",
+     "run": "R_Jog"
+    },
+    "unarmed": {
+     "attack_3": "R_Atk3_k",
+     "skill_shoot": "",
+     "skill_rain": "R_Rain",
+     "skill_charge": "R_Dash_n",
+     "skill_shield": "",
+     "skill_split": "",
+     "skill_rally": "R_Rally_c",
+     "guard": "R_Guard",
+     "parry": "R_Parry_k",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown_k",
+     "death": "",
+     "sprint": "R_Sprint",
+     "run": "R_Jog",
+     "idle": "R_Idle_2H"
+    }
+   },
    "pick_mocap": {
     "blade": {
      "hit": "M2M_Hit_Chest",
@@ -3098,9 +4901,13 @@
     }
    },
    "ground_speed_per_hip": {
-    "CMU_Jog": 2.223
+    "CMU_Jog": 2.223,
+    "I_M2M_Sprint": 5.456,
+    "R_Jog": 2.223,
+    "R_Sprint": 5.456,
+    "R_Sprint_u": 6.189
    },
-   "clips_in_library": 32
+   "clips_in_library": 46
   },
   "elvis": {
    "status": "clips",
@@ -3236,7 +5043,26 @@
     "CMU_Stumble_Fwd",
     "Death_B",
     "Hit_B",
+    "I_Defend",
+    "I_Defend_s",
+    "I_Guard_hi",
+    "I_Guard_hi_s",
+    "I_Intro_Guard",
+    "I_Knockback",
+    "I_Knockback_s",
+    "I_M2M_Sprint",
+    "I_Slam",
+    "I_Slam_T",
+    "I_Slam_T_s",
+    "I_Slam_s",
+    "I_SlashB_s",
+    "I_Sprint_s",
+    "I_StandUp",
+    "I_StandUp_s",
+    "I_Sword_Block",
+    "I_Sword_Block_s",
     "M2M_Death_B",
+    "M2M_Death_D",
     "M2M_Hit_Knockback",
     "M2M_Melee_Hook",
     "M2M_Punch_Cross",
@@ -3244,6 +5070,35 @@
     "M2M_Sword_Regular_A",
     "M2M_Sword_Regular_B",
     "M2M_Victory",
+    "R_Atk1",
+    "R_Atk2",
+    "R_Atk2_k",
+    "R_Atk3",
+    "R_Atk3_k",
+    "R_Atk3_s",
+    "R_Dash",
+    "R_Dash_k",
+    "R_Dash_n",
+    "R_Dash_s",
+    "R_Guard",
+    "R_Guard_hi",
+    "R_Guard_hi_s",
+    "R_Guard_s",
+    "R_Intro_Guard",
+    "R_Knockdown",
+    "R_Knockdown_s",
+    "R_Parry",
+    "R_Parry_k",
+    "R_Parry_s",
+    "R_Rally",
+    "R_Shield",
+    "R_Shield_s",
+    "R_Shoot_Gun",
+    "R_Split",
+    "R_Split_k",
+    "R_Split_s",
+    "R_Sprint",
+    "R_Sprint_u",
     "Running_A",
     "Running_B",
     "Staff_Jog",
@@ -3258,6 +5113,98 @@
     "UAL_Sword_Idle"
    ],
    "hip_scale": 2.222,
+   "pick_readable": {
+    "blade": {
+     "attack_1": "R_Atk1_k",
+     "attack_2": "",
+     "attack_3": "",
+     "skill_shoot": "R_Shoot",
+     "skill_rain": "R_Rain",
+     "skill_charge": "",
+     "skill_shield": "R_Shield_k",
+     "skill_split": "R_Split_k2",
+     "skill_rally": "R_Rally_s",
+     "guard": "R_Guard_k",
+     "parry": "",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown_k",
+     "death": "",
+     "sprint": "R_Sprint",
+     "run": "R_Jog",
+     "idle": "R_Idle"
+    },
+    "heavy": {
+     "attack_3": "",
+     "skill_shoot": "R_Shoot",
+     "skill_rain": "R_Rain",
+     "skill_charge": "",
+     "skill_shield": "R_Shield_k",
+     "skill_split": "R_Split_k2",
+     "skill_rally": "R_Rally_s",
+     "guard": "R_Guard_k",
+     "parry": "",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown_k",
+     "death": "",
+     "sprint": "R_Sprint",
+     "run": "R_Jog",
+     "idle": "R_Idle_2H"
+    },
+    "staff": {
+     "attack_3": "",
+     "skill_shoot": "R_Shoot",
+     "skill_rain": "R_Rain",
+     "skill_charge": "",
+     "skill_shield": "R_Shield_k",
+     "skill_split": "R_Split_k2",
+     "skill_rally": "R_Rally_s",
+     "guard": "R_Guard_k",
+     "parry": "",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown_k",
+     "death": "",
+     "sprint": "R_Sprint",
+     "run": "R_Jog",
+     "idle": "R_Idle_staff"
+    },
+    "gun": {
+     "skill_shoot": "",
+     "skill_rain": "R_Rain",
+     "skill_charge": "",
+     "skill_shield": "R_Shield_k",
+     "skill_split": "R_Split_k2",
+     "skill_rally": "R_Rally_s",
+     "guard": "R_Guard_k",
+     "parry": "",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown_k",
+     "death": "",
+     "sprint": "R_Sprint",
+     "run": "R_Jog"
+    },
+    "unarmed": {
+     "attack_3": "",
+     "skill_shoot": "R_Shoot",
+     "skill_rain": "R_Rain",
+     "skill_charge": "",
+     "skill_shield": "R_Shield_k",
+     "skill_split": "R_Split_k2",
+     "skill_rally": "R_Rally_s",
+     "guard": "R_Guard_k",
+     "parry": "",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown_k",
+     "death": "",
+     "sprint": "R_Sprint",
+     "run": "R_Jog",
+     "idle": "R_Idle_2H"
+    }
+   },
    "pick_mocap": {
     "blade": {
      "hit": "M2M_Hit_Chest",
@@ -3325,9 +5272,13 @@
     }
    },
    "ground_speed_per_hip": {
-    "CMU_Jog": 1.929
+    "CMU_Jog": 1.929,
+    "I_M2M_Sprint": 5.261,
+    "R_Jog": 1.929,
+    "R_Sprint": 5.261,
+    "R_Sprint_u": 6.039
    },
-   "clips_in_library": 34
+   "clips_in_library": 49
   },
   "everborn_oren": {
    "status": "clips",
@@ -3446,6 +5397,102 @@
     "M2M_Hit_Knockback"
    ],
    "hip_scale": 2.204,
+   "pick_readable": {
+    "blade": {
+     "attack_1": "R_Atk1",
+     "attack_2": "R_Atk2",
+     "attack_3": "R_Atk3",
+     "skill_shoot": "R_Shoot",
+     "skill_rain": "R_Rain",
+     "skill_charge": "R_Dash",
+     "skill_shield": "R_Shield",
+     "skill_split": "R_Split",
+     "skill_rally": "R_Rally",
+     "guard": "R_Guard_hi",
+     "parry": "R_Parry",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown",
+     "death": "CMU_Fall_Back",
+     "sprint": "R_Sprint",
+     "run": "R_Jog",
+     "idle": "R_Idle"
+    },
+    "heavy": {
+     "attack_3": "R_Atk3",
+     "skill_shoot": "R_Shoot",
+     "skill_rain": "R_Rain",
+     "skill_charge": "R_Dash",
+     "skill_shield": "R_Shield",
+     "skill_split": "R_Split",
+     "skill_rally": "R_Rally",
+     "guard": "R_Guard_hi",
+     "parry": "R_Parry",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown",
+     "death": "CMU_Fall_Back",
+     "sprint": "R_Sprint",
+     "run": "R_Jog",
+     "idle": "R_Idle_2H"
+    },
+    "staff": {
+     "attack_3": "R_Atk3",
+     "skill_shoot": "R_Shoot",
+     "skill_rain": "R_Rain",
+     "skill_charge": "R_Dash",
+     "skill_shield": "R_Shield",
+     "skill_split": "R_Split",
+     "skill_rally": "R_Rally",
+     "guard": "R_Guard_hi",
+     "parry": "R_Parry",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown",
+     "death": "CMU_Fall_Back",
+     "sprint": "R_Sprint",
+     "run": "R_Jog",
+     "idle": "R_Idle_staff"
+    },
+    "gun": {
+     "skill_shoot": "R_Shoot_Gun",
+     "skill_rain": "R_Rain",
+     "skill_charge": "R_Dash",
+     "skill_shield": "R_Shield",
+     "skill_split": "R_Split",
+     "skill_rally": "R_Rally",
+     "guard": "R_Guard_hi",
+     "parry": "R_Parry",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown",
+     "death": "CMU_Fall_Back",
+     "sprint": "R_Sprint",
+     "run": "R_Jog"
+    },
+    "unarmed": {
+     "attack_3": "R_Atk3",
+     "skill_shoot": "R_Shoot",
+     "skill_rain": "R_Rain",
+     "skill_charge": "R_Dash",
+     "skill_shield": "R_Shield",
+     "skill_split": "R_Split",
+     "skill_rally": "R_Rally",
+     "guard": "R_Guard_hi",
+     "parry": "R_Parry",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown",
+     "death": "CMU_Fall_Back",
+     "sprint": "R_Sprint",
+     "run": "R_Jog",
+     "idle": "R_Idle_2H"
+    }
+   },
+   "pick_poses": {
+    "intro": "R_Intro_Plant",
+    "victory": "Spellcast_Long"
+   },
    "pick_mocap": {
     "blade": {
      "hit": "M2M_Hit_Chest",
@@ -3513,9 +5560,13 @@
     }
    },
    "ground_speed_per_hip": {
-    "CMU_Jog": 2.873
+    "CMU_Jog": 2.873,
+    "I_M2M_Sprint": 6.355,
+    "R_Jog": 2.873,
+    "R_Sprint": 6.355,
+    "R_Sprint_u": 5.607
    },
-   "clips_in_library": 47,
+   "clips_in_library": 68,
    "arm_droop": 0.9,
    "arm_free_deg": 14.0
   },
@@ -3668,9 +5719,35 @@
     "Guard_2H",
     "Hit_A",
     "Hit_B",
+    "I_Chop2H_T",
+    "I_Defend",
+    "I_Defend_s",
+    "I_Diag_s",
+    "I_Guard_hi",
+    "I_Guard_hi_s",
+    "I_Intro_Guard",
+    "I_Intro_Open",
+    "I_Intro_Plant",
+    "I_Jump_s",
+    "I_Jump_s2",
+    "I_Knockback",
+    "I_Knockback_s",
+    "I_M2M_Sprint",
+    "I_Slam",
+    "I_Slam_T",
+    "I_Slam_T_s",
+    "I_Slam_s",
+    "I_SlashB_s",
+    "I_Spell_Enter",
+    "I_Sprint_s",
+    "I_StandUp",
+    "I_StandUp_s",
+    "I_Sword_Block",
+    "I_Sword_Block_s",
     "Idle",
     "Jump_Full_Short",
     "M2M_Death_B",
+    "M2M_Death_D",
     "M2M_Hit_Knockback",
     "M2M_Idle_Sword",
     "M2M_Melee_Hook",
@@ -3680,6 +5757,60 @@
     "M2M_Sword_Regular_B",
     "M2M_Victory",
     "M2M_Victory_Fist_Pump",
+    "R_Atk1",
+    "R_Atk1_k",
+    "R_Atk2",
+    "R_Atk2_k",
+    "R_Atk3",
+    "R_Atk3_k",
+    "R_Atk3_s",
+    "R_Dash",
+    "R_Dash_k",
+    "R_Dash_n",
+    "R_Dash_s",
+    "R_Guard",
+    "R_Guard_hi",
+    "R_Guard_hi_s",
+    "R_Guard_k",
+    "R_Guard_s",
+    "R_Hit_Heavy_s",
+    "R_Idle",
+    "R_Idle_2H",
+    "R_Idle_staff",
+    "R_Intro_Charge",
+    "R_Intro_Guard",
+    "R_Intro_Open",
+    "R_Intro_Plant",
+    "R_Intro_Salute",
+    "R_Jog",
+    "R_Knockdown",
+    "R_Knockdown_k",
+    "R_Knockdown_s",
+    "R_Parry",
+    "R_Parry_k",
+    "R_Parry_s",
+    "R_Rain",
+    "R_Rain_s",
+    "R_Rally",
+    "R_Rally_c",
+    "R_Rally_c2",
+    "R_Rally_s",
+    "R_Rally_v45",
+    "R_Shield",
+    "R_Shield_k",
+    "R_Shield_k2",
+    "R_Shield_s",
+    "R_Shoot",
+    "R_Shoot_Gun",
+    "R_Shoot_k",
+    "R_Shoot_k2",
+    "R_Shoot_s",
+    "R_Split",
+    "R_Split_k",
+    "R_Split_k2",
+    "R_Split_s",
+    "R_Sprint",
+    "R_Sprint_u",
     "Running_B",
     "Spellcast_Long",
     "Spellcast_Raise",
@@ -3704,6 +5835,98 @@
     "Whirl_Spin"
    ],
    "hip_scale": 2.474,
+   "pick_readable": {
+    "blade": {
+     "attack_1": "",
+     "attack_2": "",
+     "attack_3": "",
+     "skill_shoot": "",
+     "skill_rain": "",
+     "skill_charge": "",
+     "skill_shield": "",
+     "skill_split": "",
+     "skill_rally": "",
+     "guard": "",
+     "parry": "",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "",
+     "death": "CMU_Fall_Back",
+     "sprint": "R_Sprint",
+     "run": "R_Jog",
+     "idle": ""
+    },
+    "heavy": {
+     "attack_3": "",
+     "skill_shoot": "",
+     "skill_rain": "",
+     "skill_charge": "",
+     "skill_shield": "",
+     "skill_split": "",
+     "skill_rally": "",
+     "guard": "",
+     "parry": "",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "",
+     "death": "CMU_Fall_Back",
+     "sprint": "R_Sprint",
+     "run": "R_Jog",
+     "idle": ""
+    },
+    "staff": {
+     "attack_3": "",
+     "skill_shoot": "",
+     "skill_rain": "",
+     "skill_charge": "",
+     "skill_shield": "",
+     "skill_split": "",
+     "skill_rally": "",
+     "guard": "",
+     "parry": "",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "",
+     "death": "CMU_Fall_Back",
+     "sprint": "R_Sprint",
+     "run": "R_Jog",
+     "idle": ""
+    },
+    "gun": {
+     "skill_shoot": "",
+     "skill_rain": "",
+     "skill_charge": "",
+     "skill_shield": "",
+     "skill_split": "",
+     "skill_rally": "",
+     "guard": "",
+     "parry": "",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "",
+     "death": "CMU_Fall_Back",
+     "sprint": "R_Sprint",
+     "run": "R_Jog"
+    },
+    "unarmed": {
+     "attack_3": "",
+     "skill_shoot": "",
+     "skill_rain": "",
+     "skill_charge": "",
+     "skill_shield": "",
+     "skill_split": "",
+     "skill_rally": "",
+     "guard": "",
+     "parry": "",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "",
+     "death": "CMU_Fall_Back",
+     "sprint": "R_Sprint",
+     "run": "R_Jog",
+     "idle": ""
+    }
+   },
    "pick_mocap": {
     "blade": {
      "hit": "M2M_Hit_Chest",
@@ -3771,9 +5994,13 @@
     }
    },
    "ground_speed_per_hip": {
-    "CMU_Jog": 2.768
+    "CMU_Jog": 2.768,
+    "I_M2M_Sprint": 6.068,
+    "R_Jog": 2.768,
+    "R_Sprint": 6.068,
+    "R_Sprint_u": 5.343
    },
-   "clips_in_library": 12
+   "clips_in_library": 15
   },
   "forge_samurai": {
    "status": "clips",
@@ -3897,13 +6124,32 @@
     "CMU_Slash_Low",
     "CMU_Strike_Down",
     "CMU_Stumble_Fwd",
+    "I_Defend",
+    "I_Intro_Guard",
+    "I_Knockback",
+    "I_Knockback_s",
+    "I_M2M_Sprint",
+    "I_StandUp",
+    "I_StandUp_s",
     "Jump_Full_Short",
     "M2M_Death_B",
+    "M2M_Death_D",
     "M2M_Hit_Knockback",
     "M2M_Melee_Hook",
     "M2M_Sword_Regular_A",
     "M2M_Sword_Regular_B",
     "M2M_Victory",
+    "R_Atk2",
+    "R_Dash",
+    "R_Dash_k",
+    "R_Dash_n",
+    "R_Dash_s",
+    "R_Guard",
+    "R_Intro_Guard",
+    "R_Knockdown",
+    "R_Shield",
+    "R_Sprint",
+    "R_Sprint_u",
     "Staff_Run",
     "Staff_Sprint",
     "UAL_Death",
@@ -3914,6 +6160,98 @@
     "Walking_A"
    ],
    "hip_scale": 1.984,
+   "pick_readable": {
+    "blade": {
+     "attack_1": "R_Atk1",
+     "attack_2": "R_Atk2_k",
+     "attack_3": "R_Atk3",
+     "skill_shoot": "R_Shoot",
+     "skill_rain": "R_Rain",
+     "skill_charge": "",
+     "skill_shield": "R_Shield_s",
+     "skill_split": "R_Split",
+     "skill_rally": "R_Rally",
+     "guard": "R_Guard_hi",
+     "parry": "R_Parry",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown_s",
+     "death": "CMU_Fall_Back",
+     "sprint": "R_Sprint",
+     "run": "R_Jog",
+     "idle": "R_Idle"
+    },
+    "heavy": {
+     "attack_3": "R_Atk3",
+     "skill_shoot": "R_Shoot",
+     "skill_rain": "R_Rain",
+     "skill_charge": "",
+     "skill_shield": "R_Shield_s",
+     "skill_split": "R_Split",
+     "skill_rally": "R_Rally",
+     "guard": "R_Guard_hi",
+     "parry": "R_Parry",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown_s",
+     "death": "CMU_Fall_Back",
+     "sprint": "R_Sprint",
+     "run": "R_Jog",
+     "idle": "R_Idle_2H"
+    },
+    "staff": {
+     "attack_3": "R_Atk3",
+     "skill_shoot": "R_Shoot",
+     "skill_rain": "R_Rain",
+     "skill_charge": "",
+     "skill_shield": "R_Shield_s",
+     "skill_split": "R_Split",
+     "skill_rally": "R_Rally",
+     "guard": "R_Guard_hi",
+     "parry": "R_Parry",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown_s",
+     "death": "CMU_Fall_Back",
+     "sprint": "R_Sprint",
+     "run": "R_Jog",
+     "idle": "R_Idle_staff"
+    },
+    "gun": {
+     "skill_shoot": "R_Shoot_Gun",
+     "skill_rain": "R_Rain",
+     "skill_charge": "",
+     "skill_shield": "R_Shield_s",
+     "skill_split": "R_Split",
+     "skill_rally": "R_Rally",
+     "guard": "R_Guard_hi",
+     "parry": "R_Parry",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown_s",
+     "death": "CMU_Fall_Back",
+     "sprint": "R_Sprint",
+     "run": "R_Jog"
+    },
+    "unarmed": {
+     "attack_3": "R_Atk3",
+     "skill_shoot": "R_Shoot",
+     "skill_rain": "R_Rain",
+     "skill_charge": "",
+     "skill_shield": "R_Shield_s",
+     "skill_split": "R_Split",
+     "skill_rally": "R_Rally",
+     "guard": "R_Guard_hi",
+     "parry": "R_Parry",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown_s",
+     "death": "CMU_Fall_Back",
+     "sprint": "R_Sprint",
+     "run": "R_Jog",
+     "idle": "R_Idle_2H"
+    }
+   },
    "pick_mocap": {
     "blade": {
      "hit": "M2M_Hit_Chest",
@@ -3981,9 +6319,13 @@
     }
    },
    "ground_speed_per_hip": {
-    "CMU_Jog": 2.828
+    "CMU_Jog": 2.828,
+    "I_M2M_Sprint": 6.245,
+    "R_Jog": 2.828,
+    "R_Sprint": 6.245,
+    "R_Sprint_u": 5.532
    },
-   "clips_in_library": 43
+   "clips_in_library": 62
   },
   "forge_soldier": {
    "status": "clips",
@@ -4121,8 +6463,30 @@
     "Death_B",
     "Guard_2H",
     "Hit_B",
+    "I_Chop2H_T",
+    "I_Defend",
+    "I_Defend_s",
+    "I_Diag_s",
+    "I_Guard_hi",
+    "I_Guard_hi_s",
+    "I_Intro_Guard",
+    "I_Jump_s",
+    "I_Jump_s2",
+    "I_Knockback",
+    "I_Knockback_s",
+    "I_M2M_Sprint",
+    "I_Slam",
+    "I_Slam_T",
+    "I_Slam_T_s",
+    "I_Slam_s",
+    "I_SlashB_s",
+    "I_StandUp",
+    "I_StandUp_s",
+    "I_Sword_Block",
+    "I_Sword_Block_s",
     "Jump_Full_Short",
     "M2M_Death_B",
+    "M2M_Death_D",
     "M2M_Hit_Knockback",
     "M2M_Melee_Hook",
     "M2M_Punch_Cross",
@@ -4131,6 +6495,46 @@
     "M2M_Sword_Regular_B",
     "M2M_Victory",
     "M2M_Victory_Fist_Pump",
+    "R_Atk1",
+    "R_Atk3",
+    "R_Atk3_s",
+    "R_Dash",
+    "R_Dash_k",
+    "R_Dash_n",
+    "R_Dash_s",
+    "R_Guard",
+    "R_Guard_hi",
+    "R_Guard_hi_s",
+    "R_Guard_s",
+    "R_Intro_Guard",
+    "R_Intro_Salute",
+    "R_Jog",
+    "R_Knockdown",
+    "R_Parry",
+    "R_Parry_k",
+    "R_Parry_s",
+    "R_Rain",
+    "R_Rain_s",
+    "R_Rally",
+    "R_Rally_c",
+    "R_Rally_c2",
+    "R_Rally_s",
+    "R_Rally_v45",
+    "R_Shield",
+    "R_Shield_k",
+    "R_Shield_k2",
+    "R_Shield_s",
+    "R_Shoot",
+    "R_Shoot_Gun",
+    "R_Shoot_k",
+    "R_Shoot_k2",
+    "R_Shoot_s",
+    "R_Split",
+    "R_Split_k",
+    "R_Split_k2",
+    "R_Split_s",
+    "R_Sprint",
+    "R_Sprint_u",
     "Spellcast_Raise",
     "Staff_Jog",
     "Staff_Sprint",
@@ -4144,6 +6548,98 @@
     "Whirl_Spin"
    ],
    "hip_scale": 2.459,
+   "pick_readable": {
+    "blade": {
+     "attack_1": "R_Atk1_k",
+     "attack_2": "R_Atk2",
+     "attack_3": "R_Atk3_k",
+     "skill_shoot": "",
+     "skill_rain": "",
+     "skill_charge": "",
+     "skill_shield": "",
+     "skill_split": "",
+     "skill_rally": "",
+     "guard": "R_Guard_k",
+     "parry": "",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown_s",
+     "death": "CMU_Fall_Back",
+     "sprint": "R_Sprint",
+     "run": "R_Jog",
+     "idle": "R_Idle"
+    },
+    "heavy": {
+     "attack_3": "R_Atk3_k",
+     "skill_shoot": "",
+     "skill_rain": "",
+     "skill_charge": "",
+     "skill_shield": "",
+     "skill_split": "",
+     "skill_rally": "",
+     "guard": "R_Guard_k",
+     "parry": "",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown_s",
+     "death": "CMU_Fall_Back",
+     "sprint": "R_Sprint",
+     "run": "R_Jog",
+     "idle": "R_Idle_2H"
+    },
+    "staff": {
+     "attack_3": "R_Atk3_k",
+     "skill_shoot": "",
+     "skill_rain": "",
+     "skill_charge": "",
+     "skill_shield": "",
+     "skill_split": "",
+     "skill_rally": "",
+     "guard": "R_Guard_k",
+     "parry": "",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown_s",
+     "death": "CMU_Fall_Back",
+     "sprint": "R_Sprint",
+     "run": "R_Jog",
+     "idle": "R_Idle_staff"
+    },
+    "gun": {
+     "skill_shoot": "",
+     "skill_rain": "",
+     "skill_charge": "",
+     "skill_shield": "",
+     "skill_split": "",
+     "skill_rally": "",
+     "guard": "R_Guard_k",
+     "parry": "",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown_s",
+     "death": "CMU_Fall_Back",
+     "sprint": "R_Sprint",
+     "run": "R_Jog"
+    },
+    "unarmed": {
+     "attack_3": "R_Atk3_k",
+     "skill_shoot": "",
+     "skill_rain": "",
+     "skill_charge": "",
+     "skill_shield": "",
+     "skill_split": "",
+     "skill_rally": "",
+     "guard": "R_Guard_k",
+     "parry": "",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown_s",
+     "death": "CMU_Fall_Back",
+     "sprint": "R_Sprint",
+     "run": "R_Jog",
+     "idle": "R_Idle_2H"
+    }
+   },
    "pick_mocap": {
     "blade": {
      "hit": "M2M_Hit_Chest",
@@ -4211,9 +6707,13 @@
     }
    },
    "ground_speed_per_hip": {
-    "CMU_Jog": 2.811
+    "CMU_Jog": 2.811,
+    "I_M2M_Sprint": 6.174,
+    "R_Jog": 2.811,
+    "R_Sprint": 6.174,
+    "R_Sprint_u": 5.442
    },
-   "clips_in_library": 30
+   "clips_in_library": 42
   },
   "hoof": {
    "status": "clips",
@@ -4335,16 +6835,121 @@
     "CMU_Slash_Low",
     "CMU_Strike_Down",
     "CMU_Stumble_Fwd",
+    "I_Knockback",
+    "I_Knockback_s",
+    "I_M2M_Sprint",
+    "I_SlashB_s",
+    "I_StandUp",
+    "I_StandUp_s",
     "M2M_Death_B",
+    "M2M_Death_D",
     "M2M_Hit_Knockback",
     "M2M_Melee_Hook",
     "M2M_Sword_Regular_A",
     "M2M_Sword_Regular_B",
+    "R_Atk1",
+    "R_Atk2",
+    "R_Atk2_k",
+    "R_Knockdown",
+    "R_Knockdown_s",
+    "R_Sprint",
     "UAL_Death",
     "UAL_Roll",
     "UAL_Sword_Attack"
    ],
    "hip_scale": 2.169,
+   "pick_readable": {
+    "blade": {
+     "attack_1": "R_Atk1_k",
+     "attack_2": "",
+     "attack_3": "R_Atk3",
+     "skill_shoot": "R_Shoot",
+     "skill_rain": "R_Rain",
+     "skill_charge": "R_Dash",
+     "skill_shield": "R_Shield",
+     "skill_split": "R_Split",
+     "skill_rally": "R_Rally",
+     "guard": "R_Guard_hi",
+     "parry": "R_Parry",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown_k",
+     "death": "CMU_Fall_Back",
+     "sprint": "R_Sprint",
+     "run": "R_Jog",
+     "idle": "R_Idle"
+    },
+    "heavy": {
+     "attack_3": "R_Atk3",
+     "skill_shoot": "R_Shoot",
+     "skill_rain": "R_Rain",
+     "skill_charge": "R_Dash",
+     "skill_shield": "R_Shield",
+     "skill_split": "R_Split",
+     "skill_rally": "R_Rally",
+     "guard": "R_Guard_hi",
+     "parry": "R_Parry",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown_k",
+     "death": "CMU_Fall_Back",
+     "sprint": "R_Sprint",
+     "run": "R_Jog",
+     "idle": "R_Idle_2H"
+    },
+    "staff": {
+     "attack_3": "R_Atk3",
+     "skill_shoot": "R_Shoot",
+     "skill_rain": "R_Rain",
+     "skill_charge": "R_Dash",
+     "skill_shield": "R_Shield",
+     "skill_split": "R_Split",
+     "skill_rally": "R_Rally",
+     "guard": "R_Guard_hi",
+     "parry": "R_Parry",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown_k",
+     "death": "CMU_Fall_Back",
+     "sprint": "R_Sprint",
+     "run": "R_Jog",
+     "idle": "R_Idle_staff"
+    },
+    "gun": {
+     "skill_shoot": "R_Shoot_Gun",
+     "skill_rain": "R_Rain",
+     "skill_charge": "R_Dash",
+     "skill_shield": "R_Shield",
+     "skill_split": "R_Split",
+     "skill_rally": "R_Rally",
+     "guard": "R_Guard_hi",
+     "parry": "R_Parry",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown_k",
+     "death": "CMU_Fall_Back",
+     "sprint": "R_Sprint",
+     "run": "R_Jog"
+    },
+    "unarmed": {
+     "attack_3": "R_Atk3",
+     "skill_shoot": "R_Shoot",
+     "skill_rain": "R_Rain",
+     "skill_charge": "R_Dash",
+     "skill_shield": "R_Shield",
+     "skill_split": "R_Split",
+     "skill_rally": "R_Rally",
+     "guard": "R_Guard_hi",
+     "parry": "R_Parry",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown_k",
+     "death": "CMU_Fall_Back",
+     "sprint": "R_Sprint",
+     "run": "R_Jog",
+     "idle": "R_Idle_2H"
+    }
+   },
    "pick_mocap": {
     "blade": {
      "hit": "M2M_Hit_Chest",
@@ -4412,9 +7017,13 @@
     }
    },
    "ground_speed_per_hip": {
-    "CMU_Jog": 2.718
+    "CMU_Jog": 2.718,
+    "I_M2M_Sprint": 6.076,
+    "R_Jog": 2.718,
+    "R_Sprint": 6.076,
+    "R_Sprint_u": 5.258
    },
-   "clips_in_library": 43
+   "clips_in_library": 62
   },
   "icons_imani": {
    "status": "clips",
@@ -4425,9 +7034,9 @@
      "guard": "Blocking",
      "parry": "Block_Attack",
      "dodge": "Dodge_Forward",
-     "skill_rally": "Cheer",
+     "skill_rally": "Spellcast_Raise",
      "death": "Death_A",
-     "victory": "Cheer",
+     "victory": "Spellcast_Raise",
      "heavy": "2H_Melee_Attack_Chop",
      "idle": "Idle",
      "walk": "Walking_A",
@@ -4437,7 +7046,7 @@
      "attack_3": "1H_Melee_Attack_Chop",
      "skill_charge": "1H_Melee_Attack_Stab",
      "skill_split": "2H_Melee_Attack_Chop",
-     "skill_whirl": "2H_Melee_Attack_Spinning",
+     "skill_whirl": "Whirl_Spin",
      "skill_shield": "Spellcast_Long",
      "sprint": "UAL_Sprint",
      "stagger": "Stagger_Back"
@@ -4449,7 +7058,7 @@
      "dodge": "Dodge_Forward",
      "skill_rally": "Spellcast_Raise",
      "death": "Death_A",
-     "victory": "Cheer",
+     "victory": "Spellcast_Raise",
      "heavy": "2H_Melee_Attack_Chop",
      "idle": "2H_Melee_Idle",
      "walk": "Walking_B",
@@ -4459,7 +7068,7 @@
      "attack_3": "2H_Melee_Attack_Chop",
      "skill_charge": "1H_Melee_Attack_Stab",
      "skill_split": "2H_Melee_Attack_Chop",
-     "skill_whirl": "2H_Melee_Attack_Spinning",
+     "skill_whirl": "Whirl_Spin",
      "skill_shield": "Spellcast_Long",
      "sprint": "UAL_Sprint",
      "stagger": "Stagger_Back"
@@ -4471,7 +7080,7 @@
      "dodge": "Dodge_Forward",
      "skill_rally": "Spellcast_Raise",
      "death": "Death_A",
-     "victory": "Cheer",
+     "victory": "Spellcast_Raise",
      "heavy": "2H_Melee_Attack_Chop",
      "idle": "Staff_Idle",
      "walk": "Staff_Walk",
@@ -4481,7 +7090,7 @@
      "attack_3": "2H_Melee_Attack_Chop",
      "skill_charge": "1H_Melee_Attack_Stab",
      "skill_split": "2H_Melee_Attack_Chop",
-     "skill_whirl": "2H_Melee_Attack_Spinning",
+     "skill_whirl": "Whirl_Spin",
      "skill_shield": "Spellcast_Long",
      "sprint": "Staff_Sprint",
      "stagger": "Stagger_Back"
@@ -4491,9 +7100,9 @@
      "guard": "Blocking",
      "parry": "Block_Attack",
      "dodge": "Dodge_Forward",
-     "skill_rally": "Cheer",
+     "skill_rally": "Spellcast_Raise",
      "death": "Death_A",
-     "victory": "Cheer",
+     "victory": "Spellcast_Raise",
      "heavy": "2H_Melee_Attack_Chop",
      "idle": "Aim_Hold",
      "walk": "Walking_B",
@@ -4503,7 +7112,7 @@
      "attack_3": "1H_Melee_Attack_Stab",
      "skill_charge": "1H_Melee_Attack_Stab",
      "skill_split": "2H_Melee_Attack_Chop",
-     "skill_whirl": "2H_Melee_Attack_Spinning",
+     "skill_whirl": "Whirl_Spin",
      "skill_shield": "Spellcast_Long",
      "sprint": "UAL_Sprint",
      "stagger": "Stagger_Back"
@@ -4527,9 +7136,10 @@
      -0.0035
     ]
    },
-   "tear_worst": 0.0207,
+   "tear_worst": 0.0265,
    "clips_over_gate": [
     "2H_Melee_Attack_Slice",
+    "2H_Melee_Attack_Spinning",
     "2H_Melee_Attack_Stab",
     "CMU_Chop_2H",
     "CMU_Fall_Front",
@@ -4539,7 +7149,24 @@
     "CMU_Slash_Low",
     "CMU_Strike_Down",
     "CMU_Stumble_Fwd",
+    "Cheer",
+    "I_Defend",
+    "I_Guard_hi",
+    "I_Guard_hi_s",
+    "I_Intro_Guard",
+    "I_Knockback",
+    "I_Knockback_s",
+    "I_M2M_Sprint",
+    "I_Slam",
+    "I_Slam_T",
+    "I_Slam_T_s",
+    "I_Slam_s",
+    "I_StandUp",
+    "I_StandUp_s",
+    "I_Sword_Block",
+    "Jump_Full_Short",
     "M2M_Death_B",
+    "M2M_Death_D",
     "M2M_Hit_Knockback",
     "M2M_Melee_Hook",
     "M2M_Punch_Cross",
@@ -4547,11 +7174,136 @@
     "M2M_Sword_Regular_A",
     "M2M_Sword_Regular_B",
     "M2M_Victory",
+    "R_Atk3",
+    "R_Atk3_s",
+    "R_Dash",
+    "R_Dash_k",
+    "R_Dash_s",
+    "R_Guard",
+    "R_Guard_hi",
+    "R_Guard_hi_s",
+    "R_Intro_Guard",
+    "R_Jog",
+    "R_Knockdown",
+    "R_Parry",
+    "R_Rain",
+    "R_Rally",
+    "R_Rally_c",
+    "R_Rally_c2",
+    "R_Rally_s",
+    "R_Rally_v45",
+    "R_Shield",
+    "R_Shield_k",
+    "R_Shield_k2",
+    "R_Shield_s",
+    "R_Shoot",
+    "R_Shoot_k",
+    "R_Shoot_k2",
+    "R_Shoot_s",
+    "R_Split",
+    "R_Split_s",
+    "R_Sprint",
     "UAL_Death",
     "UAL_Roll",
     "UAL_Sword_Attack"
    ],
    "hip_scale": 2.428,
+   "pick_readable": {
+    "blade": {
+     "attack_1": "R_Atk1",
+     "attack_2": "R_Atk2",
+     "attack_3": "R_Atk3_k",
+     "skill_shoot": "",
+     "skill_rain": "R_Rain_s",
+     "skill_charge": "R_Dash_n",
+     "skill_shield": "",
+     "skill_split": "R_Split_k",
+     "skill_rally": "",
+     "guard": "R_Guard_s",
+     "parry": "R_Parry_s",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown_s",
+     "death": "CMU_Fall_Back",
+     "sprint": "R_Sprint",
+     "run": "R_Jog",
+     "idle": "R_Idle"
+    },
+    "heavy": {
+     "attack_3": "R_Atk3_k",
+     "skill_shoot": "",
+     "skill_rain": "R_Rain_s",
+     "skill_charge": "R_Dash_n",
+     "skill_shield": "",
+     "skill_split": "R_Split_k",
+     "skill_rally": "",
+     "guard": "R_Guard_s",
+     "parry": "R_Parry_s",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown_s",
+     "death": "CMU_Fall_Back",
+     "sprint": "R_Sprint",
+     "run": "R_Jog",
+     "idle": "R_Idle_2H"
+    },
+    "staff": {
+     "attack_3": "R_Atk3_k",
+     "skill_shoot": "",
+     "skill_rain": "R_Rain_s",
+     "skill_charge": "R_Dash_n",
+     "skill_shield": "",
+     "skill_split": "R_Split_k",
+     "skill_rally": "",
+     "guard": "R_Guard_s",
+     "parry": "R_Parry_s",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown_s",
+     "death": "CMU_Fall_Back",
+     "sprint": "R_Sprint",
+     "run": "R_Jog",
+     "idle": "R_Idle_staff"
+    },
+    "gun": {
+     "skill_shoot": "R_Shoot_Gun",
+     "skill_rain": "R_Rain_s",
+     "skill_charge": "R_Dash_n",
+     "skill_shield": "",
+     "skill_split": "R_Split_k",
+     "skill_rally": "",
+     "guard": "R_Guard_s",
+     "parry": "R_Parry_s",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown_s",
+     "death": "CMU_Fall_Back",
+     "sprint": "R_Sprint",
+     "run": "R_Jog"
+    },
+    "unarmed": {
+     "attack_3": "R_Atk3_k",
+     "skill_shoot": "",
+     "skill_rain": "R_Rain_s",
+     "skill_charge": "R_Dash_n",
+     "skill_shield": "",
+     "skill_split": "R_Split_k",
+     "skill_rally": "",
+     "guard": "R_Guard_s",
+     "parry": "R_Parry_s",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown_s",
+     "death": "CMU_Fall_Back",
+     "sprint": "R_Sprint",
+     "run": "R_Jog",
+     "idle": "R_Idle_2H"
+    }
+   },
+   "pick_poses": {
+    "intro": "R_Intro_Salute",
+    "victory": "M2M_Victory_Fist_Pump"
+   },
    "pick_mocap": {
     "blade": {
      "hit": "M2M_Hit_Chest",
@@ -4619,9 +7371,13 @@
     }
    },
    "ground_speed_per_hip": {
-    "CMU_Jog": 2.825
+    "CMU_Jog": 2.825,
+    "I_M2M_Sprint": 6.273,
+    "R_Jog": 2.825,
+    "R_Sprint": 6.273,
+    "R_Sprint_u": 5.478
    },
-   "clips_in_library": 40,
+   "clips_in_library": 57,
    "arm_droop": 0.9,
    "arm_free_deg": 14.0
   },
@@ -4747,13 +7503,38 @@
     "CMU_Strike_Down",
     "CMU_Stumble_Fwd",
     "Death_A",
+    "I_Intro_Guard",
+    "I_Knockback",
+    "I_Knockback_s",
+    "I_M2M_Sprint",
+    "I_Sprint_s",
+    "I_StandUp",
+    "I_StandUp_s",
+    "I_Sword_Block",
+    "I_Sword_Block_s",
     "Jump_Full_Short",
     "M2M_Death_B",
+    "M2M_Death_D",
     "M2M_Hit_Knockback",
     "M2M_Melee_Hook",
     "M2M_Sword_Regular_A",
     "M2M_Sword_Regular_B",
     "M2M_Victory",
+    "R_Atk2",
+    "R_Atk3",
+    "R_Dash",
+    "R_Dash_k",
+    "R_Dash_n",
+    "R_Dash_s",
+    "R_Intro_Guard",
+    "R_Knockdown",
+    "R_Knockdown_s",
+    "R_Parry",
+    "R_Parry_s",
+    "R_Split",
+    "R_Split_s",
+    "R_Sprint",
+    "R_Sprint_u",
     "Staff_Jog",
     "Staff_Sprint",
     "UAL_Death",
@@ -4764,6 +7545,98 @@
     "UAL_Sword_Idle"
    ],
    "hip_scale": 2.167,
+   "pick_readable": {
+    "blade": {
+     "attack_1": "R_Atk1",
+     "attack_2": "R_Atk2_k",
+     "attack_3": "R_Atk3_s",
+     "skill_shoot": "R_Shoot",
+     "skill_rain": "R_Rain",
+     "skill_charge": "",
+     "skill_shield": "R_Shield",
+     "skill_split": "R_Split_k",
+     "skill_rally": "R_Rally",
+     "guard": "R_Guard_hi",
+     "parry": "R_Parry_k",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown_k",
+     "death": "CMU_Fall_Back",
+     "sprint": "",
+     "run": "R_Jog",
+     "idle": "R_Idle"
+    },
+    "heavy": {
+     "attack_3": "R_Atk3_s",
+     "skill_shoot": "R_Shoot",
+     "skill_rain": "R_Rain",
+     "skill_charge": "",
+     "skill_shield": "R_Shield",
+     "skill_split": "R_Split_k",
+     "skill_rally": "R_Rally",
+     "guard": "R_Guard_hi",
+     "parry": "R_Parry_k",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown_k",
+     "death": "CMU_Fall_Back",
+     "sprint": "",
+     "run": "R_Jog",
+     "idle": "R_Idle_2H"
+    },
+    "staff": {
+     "attack_3": "R_Atk3_s",
+     "skill_shoot": "R_Shoot",
+     "skill_rain": "R_Rain",
+     "skill_charge": "",
+     "skill_shield": "R_Shield",
+     "skill_split": "R_Split_k",
+     "skill_rally": "R_Rally",
+     "guard": "R_Guard_hi",
+     "parry": "R_Parry_k",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown_k",
+     "death": "CMU_Fall_Back",
+     "sprint": "",
+     "run": "R_Jog",
+     "idle": "R_Idle_staff"
+    },
+    "gun": {
+     "skill_shoot": "R_Shoot_Gun",
+     "skill_rain": "R_Rain",
+     "skill_charge": "",
+     "skill_shield": "R_Shield",
+     "skill_split": "R_Split_k",
+     "skill_rally": "R_Rally",
+     "guard": "R_Guard_hi",
+     "parry": "R_Parry_k",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown_k",
+     "death": "CMU_Fall_Back",
+     "sprint": "",
+     "run": "R_Jog"
+    },
+    "unarmed": {
+     "attack_3": "R_Atk3_s",
+     "skill_shoot": "R_Shoot",
+     "skill_rain": "R_Rain",
+     "skill_charge": "",
+     "skill_shield": "R_Shield",
+     "skill_split": "R_Split_k",
+     "skill_rally": "R_Rally",
+     "guard": "R_Guard_hi",
+     "parry": "R_Parry_k",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown_k",
+     "death": "CMU_Fall_Back",
+     "sprint": "",
+     "run": "R_Jog",
+     "idle": "R_Idle_2H"
+    }
+   },
    "pick_mocap": {
     "blade": {
      "hit": "M2M_Hit_Chest",
@@ -4831,9 +7704,13 @@
     }
    },
    "ground_speed_per_hip": {
-    "CMU_Jog": 2.805
+    "CMU_Jog": 2.805,
+    "I_M2M_Sprint": 6.156,
+    "R_Jog": 2.805,
+    "R_Sprint": 6.156,
+    "R_Sprint_u": 5.316
    },
-   "clips_in_library": 42,
+   "clips_in_library": 60,
    "default_class": "staff"
   },
   "vanessa": {
@@ -4963,12 +7840,34 @@
     "CMU_Strike_Down",
     "CMU_Stumble_Fwd",
     "Death_B",
+    "I_Defend",
+    "I_Defend_s",
+    "I_Knockback",
+    "I_Knockback_s",
+    "I_SlashB_s",
+    "I_Spell_Enter",
+    "I_Sprint_s",
+    "I_StandUp",
+    "I_StandUp_s",
     "M2M_Death_B",
     "M2M_Hit_Knockback",
     "M2M_Melee_Hook",
     "M2M_Sword_Regular_A",
     "M2M_Sword_Regular_B",
     "M2M_Victory",
+    "R_Atk2",
+    "R_Atk2_k",
+    "R_Guard",
+    "R_Guard_s",
+    "R_Intro_Charge",
+    "R_Knockdown",
+    "R_Knockdown_s",
+    "R_Shield",
+    "R_Shield_s",
+    "R_Shoot",
+    "R_Shoot_s",
+    "R_Sprint",
+    "R_Sprint_u",
     "Staff_Jog",
     "Staff_Sprint",
     "UAL_Death",
@@ -4980,6 +7879,98 @@
     "UAL_Sword_Idle"
    ],
    "hip_scale": 2.411,
+   "pick_readable": {
+    "blade": {
+     "attack_1": "R_Atk1",
+     "attack_2": "",
+     "attack_3": "R_Atk3",
+     "skill_shoot": "R_Shoot_k",
+     "skill_rain": "R_Rain",
+     "skill_charge": "R_Dash",
+     "skill_shield": "R_Shield_k",
+     "skill_split": "R_Split",
+     "skill_rally": "R_Rally",
+     "guard": "R_Guard_hi",
+     "parry": "R_Parry",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown_k",
+     "death": "CMU_Fall_Back",
+     "sprint": "R_Sprint",
+     "run": "R_Jog",
+     "idle": "R_Idle"
+    },
+    "heavy": {
+     "attack_3": "R_Atk3",
+     "skill_shoot": "R_Shoot_k",
+     "skill_rain": "R_Rain",
+     "skill_charge": "R_Dash",
+     "skill_shield": "R_Shield_k",
+     "skill_split": "R_Split",
+     "skill_rally": "R_Rally",
+     "guard": "R_Guard_hi",
+     "parry": "R_Parry",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown_k",
+     "death": "CMU_Fall_Back",
+     "sprint": "R_Sprint",
+     "run": "R_Jog",
+     "idle": "R_Idle_2H"
+    },
+    "staff": {
+     "attack_3": "R_Atk3",
+     "skill_shoot": "R_Shoot_k",
+     "skill_rain": "R_Rain",
+     "skill_charge": "R_Dash",
+     "skill_shield": "R_Shield_k",
+     "skill_split": "R_Split",
+     "skill_rally": "R_Rally",
+     "guard": "R_Guard_hi",
+     "parry": "R_Parry",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown_k",
+     "death": "CMU_Fall_Back",
+     "sprint": "R_Sprint",
+     "run": "R_Jog",
+     "idle": "R_Idle_staff"
+    },
+    "gun": {
+     "skill_shoot": "R_Shoot_Gun",
+     "skill_rain": "R_Rain",
+     "skill_charge": "R_Dash",
+     "skill_shield": "R_Shield_k",
+     "skill_split": "R_Split",
+     "skill_rally": "R_Rally",
+     "guard": "R_Guard_hi",
+     "parry": "R_Parry",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown_k",
+     "death": "CMU_Fall_Back",
+     "sprint": "R_Sprint",
+     "run": "R_Jog"
+    },
+    "unarmed": {
+     "attack_3": "R_Atk3",
+     "skill_shoot": "R_Shoot_k",
+     "skill_rain": "R_Rain",
+     "skill_charge": "R_Dash",
+     "skill_shield": "R_Shield_k",
+     "skill_split": "R_Split",
+     "skill_rally": "R_Rally",
+     "guard": "R_Guard_hi",
+     "parry": "R_Parry",
+     "hit_light": "UAL_Hit_Chest",
+     "hit_heavy": "R_Hit_Heavy",
+     "knockdown": "R_Knockdown_k",
+     "death": "CMU_Fall_Back",
+     "sprint": "R_Sprint",
+     "run": "R_Jog",
+     "idle": "R_Idle_2H"
+    }
+   },
    "pick_mocap": {
     "blade": {
      "hit": "M2M_Hit_Chest",
@@ -5047,9 +8038,13 @@
     }
    },
    "ground_speed_per_hip": {
-    "CMU_Jog": 2.854
+    "CMU_Jog": 2.854,
+    "I_M2M_Sprint": 6.269,
+    "R_Jog": 2.854,
+    "R_Sprint": 6.269,
+    "R_Sprint_u": 5.431
    },
-   "clips_in_library": 39
+   "clips_in_library": 58
   }
  }
 }

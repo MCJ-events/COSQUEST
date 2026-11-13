@@ -175,6 +175,19 @@ const AIM_AFTER: float = 0.14           # s the aim is held after the contact
 var aim_hold: bool = false              # config "aim_hold" (on with "motion_realism")
 var _aim_yaw: float = 0.0
 var _aim_t: float = 0.0
+## anim-readable (13 Nov 2026): a readable clip (anim_clips.json sets_readable) is drawn facing the target
+## it was aimed at, from its first frames to its contact, on every tier (not only with "aim_hold"): SHOOT
+## holds its aim through its tail, RAIN faces its circle. Presentation only.
+const READABLE_AIM: Array[String] = ["attack_1", "attack_2", "attack_3", "skill_shoot", "skill_rain", "skill_charge", "skill_split", "parry"]
+var _next_hit: String = ""        # anim-readable: the hit reaction the next act("hit") plays (hit_size)
+## anim-readable: a body that turns on the spot steps round (the walk's legs for a moment) instead of
+## pivoting on its planted feet. Config "readable" (fight.gd sets it).
+var turn_steps: bool = false
+const TURN_STEP_RATE: float = 2.6        # rad/s of yaw change that counts as a turn on the spot
+const TURN_STEP_HOLD: float = 0.32       # s the legs step after it
+const TURN_STEP_SPEED: float = 1.0       # m/s the legs are animated at while they step round
+var _turn_prev: float = NAN
+var _turn_step_t: float = 0.0
 ## realism-20261111 (presentation only): weight. The attacker's body leans into the blow round
 ## the contact, the victim's hips give with the flinch (with the feet locked, both read as weight).
 const LUNGE_M: float = 0.11             # m at size 1
@@ -221,6 +234,13 @@ func setup(n: String, t: int, hp_max: int, c: Color, r: String = "hero") -> void
 	set_capsule()
 
 
+## anim-readable (Wale, 13 Nov: "the drop shadow is too thick"): softer contact shadows, still dark right
+## under the feet so they read as contact (fight.gd sets it from "readable" before the fighters are made)
+static var soft_shadows: bool = false
+const SOFT_K: float = 0.55       # opacity of the blob and the sun tail against the old ones
+const SOFT_FOOT_K: float = 0.7   # the small per-foot contact shadows keep more (they are what says "on the ground")
+
+
 func _build_shadow() -> void:
 	# a soft contact shadow: grounds the fighters on the bright paving at no real cost
 	var sh := MeshInstance3D.new()
@@ -232,11 +252,11 @@ func _build_shadow() -> void:
 	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	m.albedo_texture = preload("res://art/fx/vfx_glow.png")
-	m.albedo_color = Color(0.08, 0.04, 0.12, 0.75)
+	m.albedo_color = Color(0.08, 0.04, 0.12, 0.75 * (SOFT_K if soft_shadows else 1.0))
 	if bool(look.get("real", false)):
 		# round 4: a firmer contact disc under the body on the real look (the judge read "weak contact shadow")
-		m.albedo_color = Color(0.05, 0.035, 0.07, 0.92)
-		q.size = Vector2(1.8, 1.8) * size_k
+		m.albedo_color = Color(0.05, 0.035, 0.07, 0.92 * (SOFT_K if soft_shadows else 1.0))
+		q.size = Vector2(1.8, 1.8) * size_k * (0.85 if soft_shadows else 1.0)
 	m.disable_receive_shadows = true
 	sh.material_override = m
 	sh.position.y = 0.045
@@ -249,7 +269,7 @@ func _build_shadow() -> void:
 	if sun_blob and ld.length() > 0.05:
 		q.size = Vector2(SUN_BLOB.x, SUN_BLOB.y) * size_k
 		m.albedo_texture = _sun_blob_tex()
-		m.albedo_color = Color.WHITE
+		m.albedo_color = Color(1, 1, 1, SOFT_K) if soft_shadows else Color.WHITE
 		sh.top_level = true
 		_cast = sh
 		# the quad's centre sits ahead of the feet along the sun (the texture's feet are at SUN_FEET)
@@ -840,6 +860,28 @@ func hold_weapon(weapon: Node3D, att: Dictionary, side: String, cls: String) -> 
 	return ""
 
 
+## anim-readable: how far the lowest sole is above the fighter's ground (m; INF without sole markers).
+## Review logs only (button_rec.gd): it is what "levitating" or "sunk" measures.
+func sole_gap() -> float:
+	if _soles.is_empty() or _feet_sk == null or not is_instance_valid(_feet_sk) or not _feet_sk.is_inside_tree():
+		return INF
+	var lo: float = INF
+	for marks: Array in _soles:
+		for mk: Array in marks:
+			lo = minf(lo, (_feet_sk.global_transform * (_feet_sk.get_bone_global_pose(int(mk[0])) * (mk[1] as Vector3))).y)
+	return lo - global_position.y
+
+
+## anim-readable: a bone's position in the world (Vector3.INF when there is no such bone).
+func bone_pos(bone: String) -> Vector3:
+	if anim == null or anim.skeleton == null or not anim.skeleton.is_inside_tree():
+		return Vector3.INF
+	var i: int = anim.skeleton.find_bone(bone)
+	if i < 0:
+		return Vector3.INF
+	return anim.skeleton.global_transform * anim.skeleton.get_bone_global_pose(i).origin
+
+
 ## The weapon's grip point (the hand) in the world, or Vector3.INF.
 func grip_point(side: String = "r") -> Vector3:
 	if weapons.has(side):
@@ -860,9 +902,17 @@ func act(state: String, length: float, hit_at: float = -1.0) -> bool:
 		return anim.has_clip("death")
 	if state != "death":
 		anim.variant.erase(state)
+	if state == "hit" and _next_hit != "" and anim.has_clip(_next_hit):
+		anim.variant["hit"] = _next_hit
+	_next_hit = ""
 	var clip: bool = anim.play(state, length, hit_at)
 	_hit_at = hit_at
-	if aim_hold and state in AIM_STATES:
+	var tm: Dictionary = anim.timing.get(state, {})
+	if clip and bool(tm.get("readable", false)) and state in READABLE_AIM:
+		# anim-readable: on the target by the contact, held through the clip's tail
+		_aim_yaw = yaw + deg_to_rad(float(tm.get("aim_yaw_deg", 0.0)))
+		_aim_t = (hit_at if hit_at > 0.0 else length * 0.5) + AIM_AFTER + float(tm.get("tail", 0)) / float(tm.get("fps", 30.0))
+	elif aim_hold and state in AIM_STATES:
 		# round 2: a clip whose swing lands to one side of its own forward (the classic chop cuts 35
 		# to 55 degrees to the right) is turned by its "aim_yaw_deg" so the blade meets the target
 		_aim_yaw = yaw + deg_to_rad(float((anim.timing.get(state, {}) as Dictionary).get("aim_yaw_deg", 0.0)))
@@ -915,8 +965,20 @@ func hit_pause(secs: float) -> void:
 ## that change the game (the hero's interrupted swing, a stagger) keep calling act("hit").
 func react_hit(length: float) -> void:
 	if anim.busy_action():
+		_next_hit = ""
 		return
 	act("hit", length)
+
+
+## anim-readable: sizes the next hit reaction to the blow (presentation only): a light one (under 80,
+## not heavy) plays "hit_light", a heavy blow, a crit or 110 and more plays "hit_heavy", the rest "hit".
+## Each only when this character's library has it.
+func hit_size(amount: int, heavy: bool, crit: bool) -> void:
+	_next_hit = ""
+	if heavy or crit or amount >= 110:
+		_next_hit = "hit_heavy"
+	elif amount < 80:
+		_next_hit = "hit_light"
 
 
 ## look-fight: the body shakes side to side for `secs` (the hit-stop), `amp` metres, fading.
@@ -1085,6 +1147,16 @@ func tick_visual(dt: float) -> void:
 		if _smooth_pos == Vector3.INF or (_smooth_pos - global_position).length() > 1.0:
 			_smooth_pos = global_position
 		_smooth_pos = _smooth_pos.lerp(global_position, 1.0 - exp(-dt * 9.0))
+	if turn_steps and dt > 0.0 and not anim_freeze:
+		if not is_nan(_turn_prev) and not dead:
+			var dyaw: float = absf(wrapf(yaw - _turn_prev, -PI, PI))
+			if dyaw / dt > TURN_STEP_RATE and anim_speed < 0.2 and anim.state in ["idle", "_", "walk"]:
+				_turn_step_t = TURN_STEP_HOLD
+		_turn_prev = yaw
+		if _turn_step_t > 0.0:
+			_turn_step_t -= dt
+			if anim_speed < 0.2 and anim.state in ["idle", "_", "walk"] and not dead:
+				anim_speed = TURN_STEP_SPEED
 	anim.update(dt, anim_speed, dead or celebrating)
 	var vdt: float = 0.0 if anim_freeze else dt
 	var pos := Vector3.ZERO
@@ -1193,7 +1265,8 @@ func tick_visual(dt: float) -> void:
 		pos += Vector3(off.x, 0.0, off.z)
 	var bscale := Vector3(sc * sxz, sc * (1.0 + 0.6 * (1.0 - sxz)) * maxf(0.05, sxz), sc * sxz)
 	# build 21: the lower foot on the paving, with this frame's lean and offsets (see _plant_target)
-	_plant_y = lerpf(_plant_y, _plant_target(Basis.from_euler(rot).scaled(bscale), pos.y), 1.0 - exp(-dt * PLANT_RATE))
+	# anim-readable: the readable clips crouch and rise more, so the plant follows faster (no float on the way back up)
+	_plant_y = lerpf(_plant_y, _plant_target(Basis.from_euler(rot).scaled(bscale), pos.y), 1.0 - exp(-dt * (PLANT_RATE_READABLE if turn_steps else PLANT_RATE)))
 	pos.y += _plant_y
 	body.position = pos
 	body.rotation = rot
@@ -1375,7 +1448,7 @@ func _tick_feet() -> void:
 			continue
 		var grow: float = 1.0 + 0.5 * (1.0 - k)
 		mi.global_transform = Transform3D(Basis(Vector3.UP, yaw_v).scaled(Vector3(grow, 1.0, grow)), Vector3(c.x, gy + 0.05, c.z))
-		(mi.material_override as StandardMaterial3D).albedo_color = Color(1, 1, 1, (0.95 if bool(look.get("real", false)) else FOOT_ALPHA) * k * k)
+		(mi.material_override as StandardMaterial3D).albedo_color = Color(1, 1, 1, (0.95 if bool(look.get("real", false)) else FOOT_ALPHA) * k * k * (SOFT_FOOT_K if soft_shadows else 1.0))
 
 
 # build 21: planted feet. The retargeted clips put a character's feet where a human's go, and a
@@ -1386,10 +1459,16 @@ func _tick_feet() -> void:
 # eased, in the states where a foot should be down. Presentation only: the fighter's position,
 # hurtbox and weapon arc are the game's and never move.
 const PLANT_RATE: float = 18.0              # 1/s
+const PLANT_RATE_READABLE: float = 40.0     # 1/s, with the readable clips
 const PLANT_MAX: float = 0.45               # m at size 1: the most the body moves
 const PLANT_STATES: Array[String] = ["idle", "_", "walk", "hit", "stagger", "guard", "parry", "heavy",
 	"attack_1", "attack_2", "skill_charge", "skill_whirl", "skill_rally", "skill_shield"]
 const PLANT_LIFT_ONLY: Array[String] = ["run", "sprint"]   # a stride leaves the ground: only lift a sunk foot
+## anim-readable (Wale, 13 Nov: "the players are kind of levitating"): with the readable clips on, every
+## standing action keeps its lower sole on the paving too (it floated through the third cut, SHOOT, RAIN,
+## SPLIT and the intro), and a fall or knockdown is only kept from sinking
+const PLANT_READABLE: Array[String] = ["attack_3", "skill_shoot", "skill_rain", "skill_split", "intro", "sprint_stop"]
+const PLANT_LIFT_READABLE: Array[String] = ["knockdown"]
 var foot_plant: bool = true                 # set false by fight.gd from the look ("plant": false)
 var _soles: Array = []                      # per foot (FOOT_BONES order): [[bone, Vector3 in bone space], ...]
 var _plant_y: float = 0.0
@@ -1498,8 +1577,8 @@ func _plant_target(b: Basis, y0: float) -> float:
 	if not foot_plant or dead or celebrating or _diss_t >= 0.0 or not anim.has_clip(anim.state if anim.state != "_" else "idle"):
 		return 0.0
 	var st: String = anim.state
-	var lift_only: bool = st in PLANT_LIFT_ONLY
-	if not lift_only and not (st in PLANT_STATES):
+	var lift_only: bool = st in PLANT_LIFT_ONLY or (turn_steps and st in PLANT_LIFT_READABLE)
+	if not lift_only and not (st in PLANT_STATES) and not (turn_steps and st in PLANT_READABLE):
 		return 0.0
 	var h: float = sole_height(b)
 	if h == INF:

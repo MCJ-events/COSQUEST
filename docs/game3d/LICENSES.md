@@ -156,3 +156,26 @@ Notes:
 - The CMU terms forbid reselling the data itself, even converted. Shipping retargeted clips baked into the game's pack is "including the data in a commercially-sold product", which the terms allow. Do not publish the raw takes or the converted source library (`cmu.glb`), and do not hand them over as an asset pack.
 - Tools used and not shipped: glTF-Transform and meshoptimizer (both MIT) to decode Mesh2Motion's compressed files.
 - Not used: Mixamo (needs an Adobe sign-in and has its own terms; an option for Subomi), 100STYLE (CC BY 4.0, locomotion only, 1.47 GB, over the download cap), Rokoko and Truebones free packs (terms not verified), LAFAN1, AMASS, Bandai Namco research set (non-commercial).
+
+## Readable actions (anim-readable, 13 Nov 2026)
+
+Every button's body action (`anim_clips.json` `sets_readable`, the `R_*` clips) and each faction hero's intro and victory (`hero_poses`) are **composed** on each character's own skeleton from clips of the sources already listed above (`app/game3d/tools/anim/compose.py`): segments retimed, bone groups layered, and turns, arm aims and hip offsets keyed on top. Nothing new was downloaded and no new source or licence is involved; the composed clips are derived works of CC0 clips and of the CMU data under the terms above (baked into the game, not published as data).
+
+| composed clip | made from | sources and licences |
+|---|---|---|
+| `R_Shoot` (and `_s`) | Quaternius UAL `Spell_Simple_Enter`, `Spell_Simple_Shoot`; arm IK | Quaternius Universal Animation Library, CC0 (above) |
+| `R_Shoot_Gun` | KayKit `2H_Ranged_Shoot` | KayKit Adventurers 1.0, CC0 |
+| `R_Rain` (and `_s`) | KayKit `Spellcast_Raise`; arm IK | KayKit, CC0 |
+| `R_Dash` (and `_s`) | Quaternius UAL `Sprint_Loop` legs, KayKit `1H_Melee_Attack_Stab` upper body | CC0 |
+| `R_Shield`, `R_Shield_s`, `R_Guard`, `R_Guard_s` | Mesh2Motion `defend` | Mesh2Motion human animations, CC0 (same set and terms as above; `defend`, `sword-block` and `two-handed-overhead-slam` are further clips of that set, already in the decoded library) |
+| `R_Shield_k` | KayKit `Blocking`; arm IK | CC0 |
+| `R_Split`, `R_Split_s` | KayKit `Jump_Full_Short` legs, Mesh2Motion `two-handed-overhead-slam` upper body | CC0 |
+| `R_Split_k` | KayKit `Jump_Full_Short` legs, KayKit `2H_Melee_Attack_Chop` upper body | CC0 |
+| `R_Rally` (and `_s`) | KayKit `Cheer` | CC0 |
+| `R_Parry` (and `_s`) | Mesh2Motion `sword-block` | CC0 |
+| `R_Atk1` | KayKit `1H_Melee_Attack_Slice_Diagonal` | CC0 |
+| `R_Atk2` | CMU take 02_09 (`CMU_Slash_B`) | CMU terms above |
+| `R_Atk3`, `R_Atk3_s` / `R_Atk3_k` | Mesh2Motion `two-handed-overhead-slam` / KayKit `1H_Melee_Attack_Chop` | CC0 |
+| `R_Hit_Heavy` / `R_Hit_Heavy_s` | Mesh2Motion `hit-chest` / KayKit `Hit_A` | CC0 |
+| `R_Knockdown`, `R_Knockdown_s` / `R_Knockdown_k` | Mesh2Motion `hit-knockback`, KayKit `Lie_StandUp` / Mesh2Motion `hit-chest`, KayKit `Jump_Full_Short` | CC0 |
+| `R_Intro_Salute`, `R_Intro_Charge`, `R_Intro_Open`, `R_Intro_Ready`, `R_Intro_Plant`, `R_Intro_Guard` | KayKit `Idle`, `Spellcast_Long`, `2H_Melee_Idle`; UAL `Spell_Simple_*`; Mesh2Motion `fighting-idle`; CMU take 76_04 | CC0 / CMU terms |

@@ -49,6 +49,7 @@ func _check(name: String, ok: bool, why: String = "") -> void:
 
 func _initialize() -> void:
 	_check("rules_id_unchanged", FightScript.rules_id() == "f3d-2-e872f23a43a5", FightScript.rules_id())
+	AnimLib.readable = 0    # anim-readable: these checks are about the motion switches under build 25's clips (readable_test.gd covers the rest)
 	AnimLib.motion = "classic"
 	var c: Dictionary = AnimLib.states_for("sword", "armstrong")
 	_check("classic_keeps_build21_swing", str((c.get("attack_1", {}) as Dictionary).get("clip", "")) == "1H_Melee_Attack_Slice_Diagonal", str(c.get("attack_1", {})))
