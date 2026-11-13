@@ -4,7 +4,8 @@
 // The backend only has three test quests in Lagos, so the dashboard shows
 // these (the Figma's San Diego set) while USE_SAMPLE_QUESTS is on in
 // app/(tabs)/home.tsx. Times are made relative to now, so the countdown
-// always runs. Same shape as GET /api/quests.
+// always runs. Same shape as GET /api/quests. Titles are CosQuest's own
+// wording (its factions and lore), never another company's brand.
 import type { Quest } from "@/services/quests";
 
 export const SAMPLE_CITY = "San Diego";
@@ -62,8 +63,8 @@ export function makeSampleQuests(): Quest[] {
     quest("paris", { status: "live", title: "Paris Cos Walk", startsAt: inHours(-1.5, now), endsAt: inHours(1.5, now), location: { name: "Le Marais", address: "Paris" } }),
 
     // Upcoming events.
-    quest("weekend-1", { title: "Anime Realm Showdown", startsAt: thisSaturday(12), location: { name: "Tokyo", address: "Hanuma" } }),
-    quest("weekend-2", { title: "Marvel Trivia Night", startsAt: thisSaturday(15), location: { name: "Tokyo", address: "Hanuma" } }),
+    quest("weekend-1", { title: "Ascendants Realm Showdown", startsAt: thisSaturday(12), location: { name: "Tokyo", address: "Hanuma" } }),
+    quest("weekend-2", { title: "CosQuest Lore Trivia Night", startsAt: thisSaturday(15), location: { name: "Tokyo", address: "Hanuma" } }),
     quest("weekend-3", { title: "Cosplay City Hunt", startsAt: thisSaturday(18), location: { name: "Tokyo", address: "Hanuma" } }),
     quest("weekend-4", { title: "Gaming Legends Meetup", startsAt: thisSaturday(20), location: { name: "Gaslamp", address: "San Diego" }, prizePool: usd(750), entryFee: usd(15) }),
   ];
