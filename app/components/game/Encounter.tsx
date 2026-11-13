@@ -53,7 +53,7 @@ import {
   secondChanceLabel,
   tierName,
 } from "@/features/game/strike";
-import { siteIdOf } from "@/features/game/wardenSite";
+import { SITE_CHIP, siteIdOf } from "@/features/game/wardenSite";
 import type { AttemptQuestion, QuestPoint, RoamAnswer, RoamAttempt, RoamVerdict } from "@/features/game/wire";
 import { parseServerDate } from "@/features/game/wire";
 
@@ -413,7 +413,7 @@ export default function Encounter({
             <Chip text={tierName(point.tier)} color={tierColor(point.tier)} />
             {/* A Game Warden site asks about the place itself, not a realm. */}
             {siteIdOf(point) ? (
-              <Chip text="Warden site" color={ACCENT.sky.fill} />
+              <Chip text={SITE_CHIP} color={ACCENT.sky.fill} />
             ) : (
               <Chip text={attempt?.realm_name ?? challengeLabel(point.challenge)} color={realmColor(attempt?.realm ?? point.realm)} />
             )}

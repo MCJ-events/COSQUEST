@@ -139,7 +139,7 @@ describe("the card's words", () => {
 
   it("the accessibility label reads like the Swift", () => {
     const o = { inReach: false, distanceText: "120 m", cooling: true, suggested: true };
-    assert.equal(cardLabel(pt("a", { tier: "rare", challenge: "blitz" }), o), "Place a, Rare, Blitz, 120 m, recharging, the Warden's best next move");
+    assert.equal(cardLabel(pt("a", { tier: "rare", challenge: "blitz" }), o), "Place a, Rare, Blitz, 120 m, recharging, suggested next");
     assert.equal(
       cardLabel(pt("a", { tier: "epic", challenge: "duel" }), { ...o, inReach: true, cooling: false, suggested: false }),
       "Place a, Duel, Keeper of Place a, Hard, in reach",

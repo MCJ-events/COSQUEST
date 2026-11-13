@@ -16,7 +16,7 @@ import { isRaidPoint, RAID_COLOR } from "@/features/game/raids";
 import { useGame } from "@/features/game/runtime";
 import { siegeOf } from "@/features/game/siege";
 import { type QuestPoint, spinReady } from "@/features/game/wire";
-import { SITE_REALM_LINE, siteIdOf, siteSubtitle } from "@/features/game/wardenSite";
+import { SITE_CHIP, SITE_REALM_LINE, siteIdOf, siteSubtitle } from "@/features/game/wardenSite";
 
 import { GAME_TO_CHAT } from "@/features/world/factionLink";
 
@@ -100,7 +100,7 @@ export default function PointSheet({
               <View style={styles.chips}>
                 <Chip text={duel ? difficultyLabel(point.tier) : tierName(point.tier)} color={tint} />
                 <Chip text={challengeLabel(point.challenge)} color={ACCENT.sky.fill} light />
-                {site ? <Chip text="Warden site" color={ACCENT.sky.fill} /> : null}
+                {site ? <Chip text={SITE_CHIP} color={ACCENT.sky.fill} /> : null}
               </View>
               <Text style={styles.name} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.7} accessibilityRole="header" maxFontSizeMultiplier={MAX_FONT_SCALE}>
                 {point.name}

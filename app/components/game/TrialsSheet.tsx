@@ -52,7 +52,7 @@ function TrialsBody({ close, onFight }: { close: () => void; onFight: (t: TrialR
         </Text>
         {order.length === 0 ? (
           <Text style={styles.closed} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-            {"No ladders open yet. The Warden will call you when the first Guardian takes its rung."}
+            {"No ladders open yet. They open when the first Guardian takes its rung."}
           </Text>
         ) : null}
         {order.map((f) => (

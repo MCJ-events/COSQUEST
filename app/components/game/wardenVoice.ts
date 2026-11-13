@@ -236,8 +236,8 @@ export const wardenVoice = {
   },
 
   /**
-   * Say any Warden line aloud with no bubble (onboarding, the coach, Ask the
-   * Warden's answers), unless muted or on a call. `done` runs once when it has
+   * Say any Warden line aloud with no bubble, unless the announcer is off,
+   * muted or on a call. `done` runs once when it has
    * been said, stopped or given up on.
    */
   say(text: string, opts: { moment?: string; done?: () => void } = {}) {
@@ -254,7 +254,7 @@ export const wardenVoice = {
     void stopVoice();
   },
 
-  /** A moment's line without saying it (the point card's legend): the model's if it comes within `waitMs`. */
+  /** A moment's line without saying it: the model's if it comes within `waitMs`. Empty while the announcer is off. */
   async line(moment: WardenMoment, waitMs = 8000): Promise<string> {
     if (!announcing()) return "";
     const fromModel = writer ? await Promise.race([ask(moment), new Promise<null>((r) => setTimeout(() => r(null), waitMs))]) : null;
