@@ -2,11 +2,11 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { fallbackLine, WardenMoment, type WardenStyle } from "../warden.ts";
+import { fallbackLine, WardenMoment } from "../warden.ts";
 import { chooseVariant, cleanLine, lineProblem, numbersIn, offVoice } from "../wardenCheck.ts";
 import type { ModelManifest } from "../wire.ts";
 
-const arrive = new WardenMoment("arrive", "arcade", [["name", "Ada"], ["place", "Caffè Nero"], ["level", "7"]]);
+const arrive = new WardenMoment("arrive", "neutral", [["name", "Ada"], ["place", "Caffè Nero"], ["level", "7"]]);
 
 describe("WardenCheck", () => {
   it("cleans the model's line to the line itself", () => {
@@ -32,8 +32,8 @@ describe("WardenCheck", () => {
 });
 
 describe("WardenCheck: the small model's assistant voice", () => {
-  const lost = new WardenMoment("result", "hype", [["name", "ada"], ["place", "Caffè Nero"], ["challenge", "duel"], ["result", "lost"]]);
-  const crest = new WardenMoment("arrive", "hype", [["name", "ada"], ["place", "Crest of London"], ["challenge", "duel"]]);
+  const lost = new WardenMoment("result", "neutral", [["name", "ada"], ["place", "Caffè Nero"], ["challenge", "duel"], ["result", "lost"]]);
+  const crest = new WardenMoment("arrive", "neutral", [["name", "ada"], ["place", "Crest of London"], ["challenge", "duel"]]);
   it("refuses what the 0.5B actually wrote on the host run (2026-10-13)", () => {
     assert.equal(lineProblem("I'm ada, an assistant built for the Crest of London. I run on your device.", crest), "off voice: assistant");
     assert.equal(lineProblem("I won't be able to help you with that. I can't help with duels.", lost), "off voice: can't help");
@@ -54,21 +54,18 @@ describe("WardenCheck: the small model's assistant voice", () => {
     assert.equal(lineProblem("Crest of London, Ada! A duel, and I can feel the pressure!", crest), null);
     assert.equal(lineProblem("That duel was tough, Ada, but you never gave up! Caffè Nero will remember this one.", lost), null);
   });
-  it("never trips on an authored line, in any style", () => {
-    const kinds = ["arrive", "correct", "wrong", "siege_won", "siege_lost", "late", "levelup", "rankup", "streak", "daily_done", "hint", "legend", "recap", "nudge", "other"];
-    const styles: WardenStyle[] = ["arcade", "mythic", "hype", "trailer", "quippy", "neutral"];
+  it("never trips on an authored line (one neutral style)", () => {
+    const kinds = ["arrive", "correct", "wrong", "siege_won", "siege_lost", "late", "levelup", "rankup", "streak", "daily_done", "hint", "other"];
     const names = ["Ada", "Mo", "Priya", "Chidi", "Sam", "Lin", "Tomi", "Zara"];
     let checked = 0;
     for (const kind of kinds) {
-      for (const style of styles) {
-        for (const name of names) {
-          const line = fallbackLine(new WardenMoment(kind, style, [["name", name], ["place", "Camden Lock"], ["level", "7"], ["rank", "Mythic"]]));
-          assert.equal(offVoice(line), null, line);
-          checked++;
-        }
+      for (const name of names) {
+        const line = fallbackLine(new WardenMoment(kind, "neutral", [["name", name], ["place", "Camden Lock"], ["level", "7"], ["rank", "Mythic"]]));
+        assert.equal(offVoice(line), null, line);
+        checked++;
       }
     }
-    assert.equal(checked, kinds.length * styles.length * names.length);
+    assert.equal(checked, kinds.length * names.length);
   });
 });
 

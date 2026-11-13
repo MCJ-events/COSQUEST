@@ -19,11 +19,11 @@ import { bearingDeg, distanceM, distanceText, reachM, stepToward, toLocal } from
 import { bytesToHex, Identity, signingPayload, utf8ToBytes, verifySignature } from "../identity.ts";
 import { createGameStore, type KeyStorage, nearestFirst } from "../store.ts";
 import {
+  announcerOn,
   arriveMoment,
   fallbackLine,
   lineFor,
   lineSeed,
-  nudgeMoment,
   reactionMoment,
   WardenMoment,
   wardenStyle,
@@ -203,17 +203,44 @@ describe("the Warden", () => {
     // Python emulation of Swift's (seed &* 31 &+ scalar) & 0x7fffffff.
     assert.equal(lineSeed("moment: correct | style: arcade | name: Ada | place: Caffè Nero 🍵 | challenge: duel"), 1209235477);
   });
-  it("styles follow the faction", () => {
-    assert.equal(wardenStyle("gaming"), "arcade");
-    assert.equal(wardenStyle("marvel"), "quippy");
-    assert.equal(wardenStyle(null), "neutral");
+  it("one neutral register for every faction id (the announcer, build 24)", () => {
+    // Every faction id the server has used, old and new, and none at all.
+    for (const f of ["gaming", "dc", "anime", "movies", "marvel", "icons", "everborns", "neutral", "", "nope", null, undefined]) {
+      assert.equal(wardenStyle(f), "neutral", String(f));
+    }
   });
-  it("lines use only the facts given", () => {
-    const m = new WardenMoment("correct", "arcade", [["name", "Ada"], ["place", "Caffè Nero 🍵"], ["challenge", "duel"]]);
-    assert.equal(m.input, "moment: correct | style: arcade | name: Ada | place: Caffè Nero 🍵 | challenge: duel");
-    assert.equal(fallbackLine(m), "GG, Ada. That's how it's done.");
+  it("the announcer is silent unless the server turns features.announcer on", () => {
+    assert.equal(announcerOn(null), false);
+    assert.equal(announcerOn(undefined), false);
+    assert.equal(announcerOn({}), false);
+    assert.equal(announcerOn({ features: null }), false);
+    assert.equal(announcerOn({ features: {} }), false);
+    assert.equal(announcerOn({ features: { announcer: false } }), false);
+    assert.equal(announcerOn({ features: { announcer: null } }), false);
+    assert.equal(announcerOn({ features: { announcer: "true" } }), false);
+    assert.equal(announcerOn({ features: { announcer: 1 } }), false);
+    assert.equal(announcerOn({ features: { announcer: {} } }), false);
+    assert.equal(announcerOn({ features: { announcer: { on: false } } }), false);
+    assert.equal(announcerOn({ features: { announcer: { enabled: "yes" } } }), false);
+    assert.equal(announcerOn({ features: { announcer: true } }), true);
+    assert.equal(announcerOn({ features: { announcer: { on: true } } }), true);
+    assert.equal(announcerOn({ features: { announcer: { enabled: true } } }), true);
   });
-  it("arrive and nudge moments carry the player's real numbers", () => {
+  it("lines use only the facts given, in a neutral voice", () => {
+    const m = new WardenMoment("correct", "neutral", [["name", "Ada"], ["place", "Caffè Nero 🍵"], ["challenge", "duel"]]);
+    assert.equal(m.input, "moment: correct | style: neutral | name: Ada | place: Caffè Nero 🍵 | challenge: duel");
+    assert.ok(["Correct, Ada.", "Right answer, Ada."].includes(fallbackLine(m)), fallbackLine(m));
+  });
+  it("no authored line speaks as a character or cheers", () => {
+    const kinds = ["arrive", "correct", "wrong", "siege_won", "siege_lost", "late", "levelup", "rankup", "streak", "daily_done", "hint", "other"];
+    for (const kind of kinds) {
+      for (const salt of ["a", "b", "c", "d"]) {
+        const line = fallbackLine(new WardenMoment(kind, "neutral", [["name", "Ada"], ["place", "Camden Lock"], ["level", "7"], ["rank", "Scout"]], salt));
+        assert.doesNotMatch(line, /\b(I|I'm|I've|I'll|me|my|we|our|us)\b|!/, `${kind}: ${line}`);
+      }
+    }
+  });
+  it("arrive moments carry the player's real numbers, whatever the faction", () => {
     const me = {
       faction: "dc",
       day: "2026-10-13",
@@ -223,12 +250,9 @@ describe("the Warden", () => {
     } as unknown as RoamMe;
     const p = { id: "p", name: "Nelson", lat: 51.5078, lng: -0.1279, tier: "epic", challenge: "duel", realm: "dc" } as QuestPoint;
     const arrive = arriveMoment({ me, playerName: "Ada" }, p);
-    assert.equal(arrive.style, "mythic");
+    assert.equal(arrive.style, "neutral");
     assert.equal(arrive.fact("streak"), "3 days");
     assert.equal(arrive.fact("to_next"), "150 XP");
-    const nudge = nudgeMoment({ me, playerName: "Ada" }, { lat: 51.5, lng: -0.1278 }, [p], 80, null);
-    assert.equal(nudge?.fact("nearest"), "Nelson");
-    assert.equal(nudge?.fact("daily_left"), "Play 3 points");
   });
   it("the model is optional: a failing writer falls back at once", async () => {
     const m = reactionMoment({ me: null, playerName: "Ada" }, false, { name: "Here" }, "trivia");

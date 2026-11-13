@@ -95,9 +95,7 @@ import {
 import { distanceText } from "@/features/game/geo";
 import { RAID_COLOR, raidDuelStart } from "@/features/game/raids";
 import { gameStore } from "@/features/game/runtime";
-import { siegeMoment } from "@/features/game/siegeFlow";
-import { levelMoment, reactionMoment } from "@/features/game/warden";
-import type { DuelFinished, DuelOutcome, DuelStart, QuestPoint, RoamStanding } from "@/features/game/wire";
+import type { DuelFinished, DuelOutcome, DuelStart, QuestPoint } from "@/features/game/wire";
 import { revealHoldsFight, revealStep, revealWanted } from "@/features/game/reveal";
 import { finishFrom3D } from "@/features/game3d/fight3d";
 import { FIGHT3D, fight3dAvailable } from "@/features/game3d/flags";
@@ -119,7 +117,6 @@ import { RaidDuelBriefing } from "./RaidDuel";
 import type { RewardSummary } from "./Reward";
 import { playSound } from "./sound";
 import { edgeOf, GF, GP, realmColor, tierColor } from "./theme";
-import { wardenVoice } from "./wardenVoice";
 import { useRenderCount } from "@/utils/perfMarks";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 import { POP_FADE, POP_IN, POP_IN_COUNT } from "./sheetMotion";
@@ -211,14 +208,12 @@ export default function DuelScreen({
   revealRef.current = reveal;
   const phaseRef = useRef<Phase>(phase);
   const [paused, setPaused] = useState(false);
-  const before = useRef<RoamStanding | null>(null);
   // look-fight: the 3D fight's whole result, for the result screen's highlights (crits, combo, time)
   const fightRecord = useRef<Record<string, unknown> | null>(null);
   const alive = useRef(true);
   const startedOnce = useRef(false);
   const runnerRef = useRef<DuelRunner | null>(null);
   const timers = useRef(new Set<ReturnType<typeof setTimeout>>());
-  const ctx = () => ({ me: gameStore.get().me, playerName: gameStore.playerName() });
 
   const wait = (ms: number) =>
     new Promise<void>((resolve) => {
@@ -265,7 +260,7 @@ export default function DuelScreen({
     if (parked && (phase.kind === "versus" || phase.kind === "countdown" || phase.kind === "fighting")) setPaused(true);
   }
 
-  // The verdict: sounds and haptics from the SERVER's word, then the Warden.
+  // The verdict: sounds and haptics from the SERVER's word.
   const report = useCallback(
     async (start: DuelStart, f: DuelFinished, end: { won: boolean; reason: string } | null) => {
       const k = phaseRef.current.kind;
@@ -277,28 +272,14 @@ export default function DuelScreen({
         if (!alive.current) return;
         go({ kind: "result", start, outcome });
         playCue(verdictCue(outcome.status));
-        const won = outcome.status === "won";
-        if (outcome.status !== "held") {
-          const c = ctx();
-          const moment =
-            mode === "siege"
-              ? siegeMoment(c, won, point.name, siegeHolderName(start, point), null)
-              : reactionMoment(c, won, point, "duel");
-          wardenVoice.speak(moment, 5000).catch(() => {});
-        }
-        void gameStore.refreshMe().then(() => {
-          const after = gameStore.get().me?.standing ?? null;
-          const was = before.current;
-          if (after && ((was && after.level > was.level) || outcome.point?.leveled_up)) {
-            wardenVoice.speak(levelMoment(ctx(), after, !!was && after.rank !== was.rank), 5000).catch(() => {});
-          }
-        });
+        // No Warden line on the verdict (build 24, the announcer): the result screen says it.
+        void gameStore.refreshMe().catch(() => {});
       } catch (error) {
         if (!alive.current) return;
         go({ kind: "failed", message: `Couldn't send the fight: ${(error as Error).message}`, afterStart: true });
       }
     },
-    [go, mode, point],
+    [go],
   );
 
   // The 2D arena's loop, or the Leave button, hands the fight over.
@@ -336,7 +317,6 @@ export default function DuelScreen({
   const fight = async () => {
     go({ kind: "starting" });
     announce("Finding your opponent");
-    before.current = gameStore.get().me?.standing ?? null;
     // Ask for the 3D fight; a phone that cannot run it says so and keeps the 2D duel.
     const how = use3D ? { fight3d: true } : { fallback2d: true };
     try {
@@ -541,12 +521,6 @@ export default function DuelScreen({
       ) : null}
     </View>
   );
-}
-
-/** The Hold's holder, for the Warden (the siege block of the start, else the point's own facts). */
-function siegeHolderName(start: DuelStart, point: QuestPoint): string {
-  const siege = (start as unknown as { siege?: { faction_attacked_name?: string | null; faction_attacked?: string | null } | null }).siege;
-  return siege?.faction_attacked_name ?? point.extra?.holder_name ?? gameStore.factionName(siege?.faction_attacked ?? point.extra?.holder ?? point.realm);
 }
 
 function PauseButton({ top, onPress }: { top: number; onPress: () => void }) {

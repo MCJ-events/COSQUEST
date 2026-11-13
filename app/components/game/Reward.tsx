@@ -23,7 +23,6 @@ import {
   standingProgress,
 } from "@/features/game/rewardCeremony";
 import { settle } from "@/features/game/spring";
-import { dailyMoment } from "@/features/game/warden";
 import type { DuelOutcome, QuestPoint, RoamDaily, RoamExtra, RoamMe, RoamStanding, RoamVerdict } from "@/features/game/wire";
 
 import { showBanner } from "./Banner";
@@ -35,7 +34,6 @@ import { Pop } from "./Pop";
 import { RelicDropExtra } from "./RelicDropCard";
 import { playSound } from "./sound";
 import { GF, GP, realmColor } from "./theme";
-import { wardenVoice } from "./wardenVoice";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 export type RewardSummary = {
@@ -55,10 +53,8 @@ export type RewardSummary = {
   extras: RoamExtra[];
   /** Held: the server would not pay this fight, and says why. */
   note?: string | null;
-  /** The dailies completed, by title (from me.dailies); the banner and the Warden's line on leaving. */
+  /** The dailies completed, by title (from me.dailies): the "Quest done!" banner on leaving. */
   dailiesInfo?: DailyDone<RoamDaily>[];
-  /** The Warden's level-up line: said 2.4 s in, when the ceremony has started. */
-  speakLevel?: () => void;
   /** A fight's own numbers (the 3D fight, cq 061): shown as rows, each with testID `reward-<id>`. */
   stats?: { id: string; label: string; value: string }[];
   /** A fight the server did not count (the test arena, an unanswered finish): "Not counted" instead of "+0 XP". */
@@ -110,19 +106,12 @@ export function rewardFromDuel(o: DuelOutcome, point: QuestPoint, before: RoamSt
 
 /**
  * RoamHomeView.celebrate: "Quest done!" for each daily the point completed (the
- * daily's title, else "Daily quest"), and 1.2 s later the Warden's line for it.
+ * daily's title, else "Daily quest"). No Warden line after it (build 24).
  * Called when the player leaves the reward (or the reveal).
  */
 export function celebrate(reward: RewardSummary) {
   const done = reward.dailiesInfo ?? dailiesDone(reward.dailiesCompleted, gameStore.get().me?.dailies);
   for (const d of done) showBanner("Quest done!", { subtitle: d.title, color: GP.mint, sound: "fanfare" });
-  const last = [...done].reverse().find((d) => d.daily);
-  if (last?.daily) {
-    const daily = last.daily as RoamDaily;
-    setTimeout(() => {
-      wardenVoice.speak(dailyMoment({ me: gameStore.get().me, playerName: gameStore.playerName() }, daily), 4000).catch(() => {});
-    }, 1200);
-  }
 }
 
 const LINE_SPRING = settle(0.35);
@@ -182,13 +171,6 @@ export default function Reward({ reward, onDone, onShare }: { reward: RewardSumm
     return () => timers.forEach(clearTimeout);
     // The reward is fixed for the life of the screen.
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // The Warden's level-up line lands with the ceremony (2.4 s in).
-  useEffect(() => {
-    if (!reward.leveledUp || !reward.speakLevel) return;
-    const timer = setTimeout(() => reward.speakLevel?.(), 2400);
-    return () => clearTimeout(timer);
-  }, [reward]);
 
   useEffect(() => {
     panelOpacity.value = withTiming(showLevelUp ? 0 : 1, { duration: 300, easing: Easing.inOut(Easing.cubic) });

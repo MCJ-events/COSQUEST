@@ -26,8 +26,7 @@ import { useRoomBeacons, useRooms } from "@/features/game/roomsRuntime";
 import { isSiege } from "@/features/game/siege";
 import { noteStepsOnPhone } from "@/features/game/stepsDevice";
 import { unlocked, visiblePoints } from "@/features/game/unlocks";
-import { arriveMoment, legendMoment, nudgeMoment, siteArriveMoment } from "@/features/game/warden";
-import { siteArriveLine, siteAttribution, siteIdOf, siteLegend } from "@/features/game/wardenSite";
+import { siteAttribution, siteIdOf, siteLegend } from "@/features/game/wardenSite";
 import { siteFacts } from "./wardenSites";
 import { freshLoss, holdsLostOf, type QuestPoint, spinBanner } from "@/features/game/wire";
 import { factionVeilColor, world } from "@/features/world/worldState";
@@ -36,7 +35,6 @@ import { CostQuestShrineView, openVenueEvents, venueEventsAvailable } from "@/mo
 import { emitGameEvent } from "@/modules/costquest-game/src/rnGame";
 import { useAppSelector } from "@/store/hooks";
 
-import AskWarden from "./AskWarden";
 import { GameBannerHost, showBanner } from "./Banner";
 import CoachOverlay from "./Coach";
 import CoinsSheet from "./CoinsSheet";
@@ -50,7 +48,7 @@ import { AvatarBadge, AvatarFigure, useHasAvatarFigure, usePinPortraits, ForgeCl
 import { GAME_FONTS } from "./fonts";
 import FriendsSheet from "./FriendsSheet";
 import SquadSheet from "./SquadSheet";
-import { Rail, StagingBadge, TopBar, WardenBubble } from "./Hud";
+import { Rail, StagingBadge, TopBar } from "./Hud";
 import { NearbyTray } from "./NearbyTray";
 import Journal from "./Journal";
 import { GameButton } from "./kit";
@@ -65,6 +63,7 @@ import { AR_SHRINE_DEV } from "./prefs";
 import ProfileSheet from "./ProfileSheet";
 import RaidBanner from "./RaidBanner";
 import RecapSheet from "./RecapSheet";
+import RulesSheet from "./RulesSheet";
 import { QuestRunButton, RunChallenge, runDistance, RunHUD, runInReach, RunResults, RunStartSheet, RunTray } from "./Run";
 import { runModel, useRun } from "./runModel";
 import { startLiveTimers } from "./liveTimers";
@@ -76,7 +75,6 @@ import Reward, { type RewardSummary } from "./Reward";
 import TrialsSheet from "./TrialsSheet";
 import { GF, GP, realmColor } from "./theme";
 import { useOnScreen } from "./useOnScreen";
-import { useWardenSaid, wardenVoice } from "./wardenVoice";
 import WorldMap, { BackToMe } from "./WorldMap";
 import { CompassButton } from "./CompassButton";
 import { useHeadingUp } from "./useHeadingUp";
@@ -100,14 +98,9 @@ type Screen =
   | { kind: "reward"; reward: RewardSummary };
 
 /** What is open over the map (one at a time, closed by Android Back). */
-type Sheet = "dailies" | "codex" | "war" | "more" | "events" | "friends" | "squad" | "collection" | "battle" | "profile" | "coins" | "recap" | "ask" | "trials" | "runStart" | "ranks";
+type Sheet = "dailies" | "codex" | "war" | "more" | "events" | "friends" | "squad" | "collection" | "battle" | "profile" | "coins" | "recap" | "rules" | "trials" | "runStart" | "ranks";
 
-const NUDGE_EVERY_MS = 150000;
 const LOSS_SEEN_KEY = "cq.holdsLost.seen";
-/** The first nudge waits for the map to settle (RoamHomeView.nudgeLoop: 25 s). */
-const FIRST_NUDGE_MS = 25000;
-/** A nudge is put away after 12 s if nothing else has spoken since. */
-const NUDGE_SHOWN_MS = 12000;
 
 
 /** EXPO_PUBLIC_PROGRESSION=0 hides Ranks whatever the server says (inlined by Metro). */
@@ -144,7 +137,6 @@ function GameRootInner({ parked }: { parked: boolean }) {
   const centre = useGame((s) => s.centre);
   const problem = useGame((s) => s.problem);
   const permission = useLocationPermission();
-  const said = useWardenSaid();
   const chatName = useAppSelector((s) => s.auth.user?.profile?.username || s.auth.user?.profile?.firstName || "");
   const chatFaction = useAppSelector((s) => s.auth.user?.faction ?? null);
   const [screen, setScreen] = useState<Screen>({ kind: "home" });
@@ -214,7 +206,6 @@ function GameRootInner({ parked }: { parked: boolean }) {
     if (locate) void startLocation(true);
   }, [locate]);
   const [legendOf, setLegendOf] = useState<{ id: string; text: string; credit?: string | null } | null>(null);
-  const greeted = useRef(new Set<string>());
   // What the coach has said (cq.coach.done, cq.unlocks.introduced), read once.
   const [coachDone, setCoachDone] = useState<Set<string> | null>(null);
   const [introduced, setIntroduced] = useState<Set<string>>(() => new Set());
@@ -225,7 +216,6 @@ function GameRootInner({ parked }: { parked: boolean }) {
   // Bosses wait for level 5 (RoamGuide.swift visiblePoints).
   const points = useMemo(() => visiblePoints(allPoints, me), [allPoints, me]);
   const color = factionVeilColor(me?.faction, chatFaction);
-  const ctx = useCallback(() => ({ me: gameStore.get().me, playerName: gameStore.playerName() }), []);
   // Computed from the points and the fix themselves: the React Compiler
   // memoises on what the callback reads, so reading the store here would
   // freeze the list at its first (empty) value.
@@ -287,7 +277,7 @@ function GameRootInner({ parked }: { parked: boolean }) {
   }, []);
 
   // One unlock introduction per return to the map: a first quiz can pay two or
-  // three levels at once, and the Warden then queued Codex, Relics, walking and
+  // three levels at once, and the coach then queued Codex, Relics, walking and
   // friends back to back, a wall of tutorials between the player and the map.
   // The next one waits until the player has played something else.
   const [unlockTurn, setUnlockTurn] = useState(true);
@@ -298,13 +288,12 @@ function GameRootInner({ parked }: { parked: boolean }) {
     wasHome.current = home;
   }, [screen.kind]);
 
-  // What the Warden has to show next. Nothing while a card, a sheet or a
-  // challenge is up: one voice at a time (RoamHomeView.coachStep).
+  // The help step to show next. Nothing while a card, a sheet or a
+  // challenge is up: one thing at a time (RoamHomeView.coachStep).
   const nextCoach: CoachStep | null =
     coachDone && !parked && screen.kind === "home" && !selected && sheet === null && fix && !runLive && !runPoint
       ? coachStepFor({
           me,
-          playerName: gameStore.playerName(),
           hasStarter: points.some((p) => p.source === "starter"),
           starterKind: starterKindOf(points.find((p) => p.source === "starter"), me),
           hasSiege: points.some((p) => isSiege(p, me)),
@@ -339,48 +328,15 @@ function GameRootInner({ parked }: { parked: boolean }) {
     else if (u === "battle") openBattle(null);
   };
 
-  // The Warden greets a point the first time it comes into reach (and starts
-  // writing the greeting while the player walks up, when the model is on).
-  useEffect(() => {
-    if (__DEV__ || process.env.EXPO_PUBLIC_WORLD_TIMING === "1") {
-      console.log(`[warden] effect: parked=${parked} screen=${screen.kind} faction=${me?.faction ?? "-"} points=${nearby.length}`);
-    }
-    if (parked || screen.kind !== "home" || !me?.faction) return;
-    const approaching = nearby.find((x) => !gameStore.isCooling(x) && (gameStore.distanceTo(x) ?? 1e9) < gameStore.reach() + 60);
-    if (approaching) wardenVoice.prepare(arriveMoment(ctx(), approaching));
-    const p = nearby.find((x) => gameStore.inReach(x) && !gameStore.isCooling(x));
-    if (__DEV__ || process.env.EXPO_PUBLIC_WORLD_TIMING === "1") {
-      console.log(`[warden] check: ${nearby.length} nearby, in reach ${p ? p.name : "none"}${p && greeted.current.has(p.id) ? " (greeted)" : ""}`);
-    }
-    if (p && !greeted.current.has(p.id)) {
-      greeted.current.add(p.id);
-      // At a Game Warden site the welcome is the site's own line, from its checked facts.
-      if (siteIdOf(p)) {
-        void siteFacts(p).then((f) => {
-          const line = siteArriveLine(f);
-          wardenVoice.speak(line ? siteArriveMoment(ctx(), p, line) : arriveMoment(ctx(), p)).catch(() => {});
-        });
-      } else wardenVoice.speak(arriveMoment(ctx(), p)).catch(() => {});
-    }
-  }, [nearby, parked, screen.kind, me?.faction, ctx]);
-
-  // The legend is written while they read the card (RoamHomeView .onChange(of: selected)).
+  // A Game Warden site's card tells its checked facts (and credits them), fetched while they read
+  // the card. Any other point has no line: the Warden tells no lore (build 24, the announcer).
   const selectedKey = selected?.id ?? null;
   useEffect(() => {
-    if (!selected) return;
+    if (!selected || !siteIdOf(selected)) return;
     let alive = true;
     const id = selected.id;
-    // A Game Warden site's card tells its checked facts (and credits them), never invented lore.
-    if (siteIdOf(selected)) {
-      void siteFacts(selected).then((f) => {
-        if (alive) setLegendOf({ id, text: siteLegend(f) ?? "", credit: siteAttribution(f) });
-      });
-      return () => {
-        alive = false;
-      };
-    }
-    void wardenVoice.line(legendMoment(ctx(), selected), 8000).then((text) => {
-      if (alive) setLegendOf({ id, text });
+    void siteFacts(selected).then((f) => {
+      if (alive) setLegendOf({ id, text: siteLegend(f) ?? "", credit: siteAttribution(f) });
     });
     return () => {
       alive = false;
@@ -415,9 +371,6 @@ function GameRootInner({ parked }: { parked: boolean }) {
     return () => clearInterval(t);
   }, [parked]);
 
-  // Now and then, the best next move: shown, and put away after 12 s.
-  const quietNudge = !parked && screen.kind === "home" && !selected && !coachStep && !runLive && me?.tutorial_done === true;
-
   // The run as the server has it: on the way in, and back from the background
   // (it may have ended, or a lost one be found again).
   const sessionKey = session?.playerKey ?? null;
@@ -431,32 +384,6 @@ function GameRootInner({ parked }: { parked: boolean }) {
     });
     return () => sub.remove();
   }, [sessionKey, parked]);
-  useEffect(() => {
-    if (!quietNudge) return;
-    let hide: ReturnType<typeof setTimeout> | null = null;
-    const nudge = () => {
-      if (wardenVoice.get()) return;
-      const s = gameStore.get();
-      const m = nudgeMoment(ctx(), s.fix, s.points, gameStore.reach(), s.war);
-      if (!m) return;
-      wardenVoice
-        .speak(m, NUDGE_SHOWN_MS)
-        .then(() => {
-          hide = setTimeout(() => {
-            if (wardenVoice.get()?.moment === "nudge") wardenVoice.quiet();
-          }, NUDGE_SHOWN_MS);
-        })
-        .catch(() => {});
-    };
-    const first = setTimeout(nudge, FIRST_NUDGE_MS);
-    const t = setInterval(nudge, NUDGE_EVERY_MS);
-    return () => {
-      clearTimeout(first);
-      clearInterval(t);
-      if (hide) clearTimeout(hide);
-    };
-  }, [quietNudge, ctx]);
-
   // Android Back inside the game: close what is open first; on the map, the
   // pager's own handler takes it (back to the chat).
   useEffect(() => {
@@ -633,7 +560,7 @@ function GameRootInner({ parked }: { parked: boolean }) {
   }
   if (me?.tutorial_done) moreTiles.push({ id: "recap", icon: "book", color: GP.skyDeep, title: "Your day", onPress: () => setSheet("recap") });
   // Always there, so More is never a sheet with one button in it.
-  moreTiles.push({ id: "warden", icon: "chatbubble-ellipses", color, title: "Ask the Warden", onPress: () => setSheet("ask") });
+  moreTiles.push({ id: "rules", icon: "document-text", color, title: "Rules", onPress: () => setSheet("rules") });
   moreTiles.push({ id: "profile", icon: "person-circle", color: GP.skyDeep, title: "Profile", onPress: () => setSheet("profile") });
   // Test builds only (AR_SHRINE_DEV): the AR shrine on its own, to prove the iOS AR island on a phone.
   if (AR_SHRINE_DEV && CostQuestShrineView) {
@@ -650,7 +577,6 @@ function GameRootInner({ parked }: { parked: boolean }) {
   const focusMissing = focus && focusId && !focusPoint ? focus : null;
   // The pocket board is full width; the rail would sit on its tiles.
   const showsRail = fix !== null && !selected && screen.kind === "home" && !pocketRun;
-  const showBubble = said !== null && !coachStep && screen.kind === "home";
 
   return (
     <View style={styles.root}>
@@ -684,7 +610,7 @@ function GameRootInner({ parked }: { parked: boolean }) {
       {/* build 21: in landscape the HUD keeps clear of the notch / Dynamic Island and the home bar */}
       <View style={mapLand.land && !fighting ? [StyleSheet.absoluteFill, { left: insets.left, right: insets.right }] : StyleSheet.absoluteFill} pointerEvents="box-none">
 
-      <TopBar me={me} profile={profile} name={gameStore.playerName()} color={color} onProfile={() => setSheet("profile")} onCoins={() => setSheet("coins")} onAskWarden={() => setSheet("ask")} />
+      <TopBar me={me} profile={profile} name={gameStore.playerName()} color={color} onProfile={() => setSheet("profile")} onCoins={() => setSheet("coins")} />
       {!GAME_SERVER_IS_PRODUCTION ? <StagingBadge label={GAME_SERVER.includes("staging") ? "STAGING" : "TEST SERVER"} /> : null}
       {showsRail ? (
         <Rail
@@ -745,11 +671,10 @@ function GameRootInner({ parked }: { parked: boolean }) {
         ) : null}
       </View>
 
-      {/* The lower half: the Warden's line, the radar and the Nearby tray (RoamHomeView.bottom). */}
+      {/* The lower half: the radar and the Nearby tray (RoamHomeView.bottom). */}
       {!selected && screen.kind === "home" ? (
         <View style={[styles.bottom, { bottom: insets.bottom + 10 }]} pointerEvents="box-none">
           {fix && !mapFollowing ? <BackToMe onPress={() => recentre((n) => n + 1)} /> : null}
-          {showBubble ? <WardenBubble text={said.text} color={color} onClose={() => wardenVoice.quiet()} /> : null}
           {runLive ? (
             <RunTray onPick={setRunPoint} onEnd={() => void runModel.finish()} distanceOf={runDistance} inReach={runInReach} />
           ) : me?.tutorial_done ? (
@@ -792,7 +717,7 @@ function GameRootInner({ parked }: { parked: boolean }) {
           inReach={gameStore.inReach(selected)}
           cooling={gameStore.isCooling(selected)}
           factionName={gameStore.factionName}
-          legend={legendOf?.id === selected.id ? legendOf.text || null : null}
+          facts={legendOf?.id === selected.id ? legendOf.text || null : null}
           credit={legendOf?.id === selected.id ? legendOf.credit ?? null : null}
           onPlay={() => play(selected)}
           onSpin={() => void spin(selected)}
@@ -814,7 +739,7 @@ function GameRootInner({ parked }: { parked: boolean }) {
       {sheet === "coins" ? <CoinsSheet onClose={() => setSheet(null)} /> : null}
       {sheet === "ranks" ? <ProgressionSheet onClose={() => setSheet(null)} /> : null}
       {sheet === "recap" ? <RecapSheet onClose={() => setSheet(null)} /> : null}
-      {sheet === "ask" ? <AskWarden onClose={() => setSheet(null)} /> : null}
+      {sheet === "rules" ? <RulesSheet onClose={() => setSheet(null)} /> : null}
       {sheet === "trials" ? (
         <TrialsSheet
           onClose={() => setSheet(null)}

@@ -1,11 +1,11 @@
-// Over the map: the top bar (you, your coins and streak), the rail (the
-// daily quests, Relics, the Codex, More) and the Warden's speech bubble.
-// costquest-ios Roam/RoamHomeView.swift (topBar, PlayerChip, ResourceChip,
-// rail) and Warden/WardenViews.swift (WardenBubble). The Nearby tray is
+// Over the map: the top bar (you, your coins and streak) and the rail (the
+// daily quests, Relics, the Codex, More). costquest-ios Roam/RoamHomeView.swift
+// (topBar, PlayerChip, ResourceChip, rail). No Warden badge, speech bubble or
+// voice toggle since build 24 (the announcer is silent). The Nearby tray is
 // NearbyTray.tsx.
 import { Ionicons } from "@expo/vector-icons";
-import { type ReactNode, useEffect } from "react";
-import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { type ReactNode } from "react";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import Animated, { Easing, Keyframe } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle } from "react-native-svg";
@@ -19,11 +19,9 @@ import { useMyPicture } from "@/components/world/useMyPicture";
 import AvatarView from "./AvatarView";
 import { PlayerAvatar } from "./ForgeWorld";
 import { CoachAnchor } from "./Coach";
-import { announce, GameCoin, GameIconButton, HUD_FONT_SCALE, withAlpha } from "./kit";
-import { ACCENT, contrast, edgeColor, ELEVATION, RADIUS, SURFACES, useLook } from "./look";
+import { GameCoin, GameIconButton, HUD_FONT_SCALE } from "./kit";
+import { ACCENT, ELEVATION, RADIUS, SURFACES, useLook } from "./look";
 import { GF, GP } from "./theme";
-import WardenBadge from "./WardenBadge";
-import { useWardenMuted, wardenVoice } from "./wardenVoice";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 /**
@@ -33,14 +31,6 @@ import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
  */
 const L = SURFACES.light;
 const D = SURFACES.dark;
-
-/** A colour for words on a plate: the colour itself if it reads (AA), else its edge, else the ink. */
-function readable(color: string, plate: string, ink: string): string {
-  if (contrast(color, plate) >= 4.5) return color;
-  const edge = edgeColor(color, 0.6);
-  return contrast(edge, plate) >= 4.5 ? edge : ink;
-}
-
 
 // ---------- the top bar ----------
 
@@ -143,7 +133,6 @@ export function TopBar({
   color,
   onProfile,
   onCoins,
-  onAskWarden,
 }: {
   me: RoamMe | null;
   profile: Profile | null;
@@ -151,8 +140,6 @@ export function TopBar({
   color: string;
   onProfile: () => void;
   onCoins: () => void;
-  /** The Warden's face beside the chip: "Ask the Warden". */
-  onAskWarden?: () => void;
 }) {
   const styles = useThemedStyles(STYLE_PAIR);
   const look = useLook();
@@ -162,11 +149,6 @@ export function TopBar({
   return (
     <View style={[styles.top, { top: insets.top + 4 }]} pointerEvents="box-none">
       <PlayerChip me={me} profile={profile} name={name} color={color} onPress={onProfile} />
-      {onAskWarden ? (
-        <Pressable onPress={onAskWarden} accessibilityRole="button" accessibilityLabel="Ask the Warden" hitSlop={4} style={({ pressed }) => ({ transform: [{ scale: pressed ? 0.94 : 1 }] })}>
-          <WardenBadge tint={color} size={40} />
-        </Pressable>
-      ) : null}
       <View style={{ flex: 1, minWidth: 4 }} pointerEvents="none" />
       <View style={styles.stats}>
         <Pressable onPress={onCoins} accessibilityRole="button" accessibilityLabel={`${coins} CosCoins`} accessibilityHint="Opens your CosCoins" hitSlop={5}>
@@ -211,8 +193,8 @@ const MORE_IDS = ["more", "war", "battle", "recap", "events", "friends"] as cons
 /**
  * Four buttons at most, high on the right under the top bar: the daily
  * quests, the Relics, the Codex, and More for everything else. Mounted only
- * while no card is open (the card is the one thing to read). The Warden's
- * mute and "centre on me" are small extras under them.
+ * while no card is open (the card is the one thing to read). The compass and
+ * "centre on me" are small extras under them.
  */
 export function Rail({
   dailiesLeft,
@@ -242,7 +224,6 @@ export function Rail({
 }) {
   const styles = useThemedStyles(STYLE_PAIR);
   const insets = useSafeAreaInsets();
-  const muted = useWardenMuted();
   return (
     <Animated.View entering={RAIL_IN} exiting={RAIL_OUT} style={[styles.rail, { top: insets.top + 72 }]} pointerEvents="box-none">
       <CoachAnchor ids={["dailies"]}>
@@ -266,62 +247,9 @@ export function Rail({
         <GameIconButton icon="grid" color={GP.skyDeep} diameter={50} accessibilityLabel="More" onPress={onMore} />
       </CoachAnchor>
       <View style={styles.extras}>
-        <GameIconButton
-          icon={muted ? "volume-mute" : "volume-high"}
-          color={GP.slate}
-          diameter={38}
-          accessibilityLabel={muted ? "Warden voice off" : "Warden voice on"}
-          onPress={() => wardenVoice.setMuted(!muted)}
-        />
         {compass}
         <GameIconButton icon="locate" color={GP.navy} diameter={38} accessibilityLabel="Centre on me" onPress={onRecentre} />
       </View>
-    </Animated.View>
-  );
-}
-
-// ---------- the Warden ----------
-
-const BUBBLE_OUT = new Keyframe({ from: { opacity: 1 }, to: { opacity: 0 } }).duration(180);
-const BUBBLE_IN = new Keyframe({
-  from: { opacity: 0, transform: [{ scale: 0.9 }] },
-  to: { opacity: 1, transform: [{ scale: 1 }], easing: Easing.out(Easing.cubic) },
-}).duration(260);
-
-/**
- * What the Warden just said, with its face. Shown, not spoken (the nudge loop
- * in GameRoot). The player can always put the Warden away: tap it, or its X.
- */
-export function WardenBubble({ text, color, onClose }: { text: string; color: string; onClose: () => void }) {
-  const styles = useThemedStyles(STYLE_PAIR);
-  const look = useLook();
-  // iOS has no live regions: say it to VoiceOver as it appears.
-  useEffect(() => {
-    if (Platform.OS === "ios") announce(`The Warden: ${text}`);
-  }, [text]);
-  return (
-    <Animated.View entering={BUBBLE_IN} exiting={BUBBLE_OUT}>
-      <Pressable
-        onPress={onClose}
-        style={[styles.bubble, { borderColor: look.dark ? withAlpha(color, 0.5) : look.hairline }]}
-        accessible
-        accessibilityRole="button"
-        accessibilityLabel={`The Warden: ${text}`}
-        accessibilityHint="Double tap to put the Warden away"
-        accessibilityLiveRegion={Platform.OS === "android" ? "polite" : undefined}>
-        <WardenBadge tint={color} size={36} />
-        <View style={{ flex: 1, gap: 3 }}>
-          <Text style={[styles.bubbleLabel, { color: readable(color, look.surface, look.text) }]} maxFontSizeMultiplier={HUD_FONT_SCALE}>
-            THE WARDEN
-          </Text>
-          <Text style={styles.bubbleText} maxFontSizeMultiplier={HUD_FONT_SCALE}>
-            {text}
-          </Text>
-        </View>
-        <Pressable onPress={onClose} hitSlop={9} style={styles.bubbleClose} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-          <Ionicons name="close" size={13} color={look.textMuted} />
-        </Pressable>
-      </Pressable>
     </Animated.View>
   );
 }
@@ -398,21 +326,6 @@ const STYLE_PAIR = themedStyles(
     rail: { position: "absolute", right: 12, gap: 12, alignItems: "center", width: 50 },
     relics: { width: 50, height: 54, alignItems: "center", justifyContent: "center" },
     extras: { gap: 10, marginTop: 4, alignItems: "center" },
-    bubble: {
-      flexDirection: "row",
-      alignItems: "flex-start",
-      gap: 10,
-      marginLeft: 14,
-      marginRight: 76,
-      padding: 14,
-      borderRadius: RADIUS.card,
-      borderWidth: 1,
-      backgroundColor: L.surface,
-      ...ELEVATION.float,
-    },
-    bubbleLabel: { fontFamily: GF.bold, fontSize: 12, lineHeight: 16, letterSpacing: 1 },
-    bubbleText: { fontFamily: GF.body, fontSize: 16, lineHeight: 21, color: L.text },
-    bubbleClose: { width: 26, height: 26, borderRadius: 13, backgroundColor: L.surfaceAlt, alignItems: "center", justifyContent: "center" },
     staging: { alignSelf: "flex-start", paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, backgroundColor: ACCENT.berry.fill },
     stagingText: { fontFamily: GF.bold, fontSize: 12, lineHeight: 15, color: "#FFFFFF", letterSpacing: 0.8 },
   },
@@ -426,8 +339,5 @@ const STYLE_PAIR = themedStyles(
     redactB: { backgroundColor: D.surfaceAlt },
     resource: { backgroundColor: D.surface, borderColor: D.hairline, shadowOpacity: 0, elevation: 0, boxShadow: "none" },
     resourceText: { color: D.text },
-    bubble: { backgroundColor: D.surface, shadowOpacity: 0, elevation: 0, boxShadow: "none" },
-    bubbleText: { color: D.text },
-    bubbleClose: { backgroundColor: D.surfaceAlt },
   },
 );

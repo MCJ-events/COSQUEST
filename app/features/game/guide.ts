@@ -201,7 +201,7 @@ export function cardLabel(
       : [p.name, tierName(p.tier), challengeLabel(p.challenge)];
   parts.push(o.inReach ? "in reach" : o.distanceText);
   if (o.cooling) parts.push("recharging");
-  if (o.suggested) parts.push("the Warden's best next move");
+  if (o.suggested) parts.push("suggested next");
   return parts.join(", ");
 }
 

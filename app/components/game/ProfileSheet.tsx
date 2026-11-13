@@ -56,7 +56,6 @@ import { SheetFrame } from "./SheetFrame";
 import { ACCENT, ELEVATION, RADIUS, SURFACES, TEXT_ON_DARK, TEXT_ON_LIGHT, useLook } from "./look";
 import { GF, GP } from "./theme";
 import { factionVeilColor } from "@/features/world/worldState";
-import { useWardenMuted, wardenVoice } from "./wardenVoice";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 type Tab = "hero" | "record" | "settings";
@@ -411,7 +410,6 @@ function SettingsTab({ handle, avatar, onEdit }: { handle: string; avatar: Profi
   const styles = useThemedStyles(STYLE_PAIR);
   const me = useGame((s) => s.me);
   const haptics = useHapticsOn();
-  const muted = useWardenMuted();
   const clock = useWorldClock();
   const reveal = useFightReveal();
   const revealShown = revealSettingShown({ platform: Platform.OS, nativeView: CostQuestSummonView !== null, arSupported: summonARSupported, islandOff: REVEAL_ISLAND_OFF });
@@ -486,13 +484,6 @@ function SettingsTab({ handle, avatar, onEdit }: { handle: string; avatar: Profi
                 <OnOff on={reveal} label="AR reveal before fights" onPress={() => setFightReveal(!reveal)} />
               </View>
             ) : null}
-            <View style={styles.prefRow}>
-              <View style={{ flex: 1, gap: 2 }}>
-                <Text style={styles.prefTitle}>The Warden speaks</Text>
-                <Text style={styles.prefNote}>Its lines are written on your phone either way.</Text>
-              </View>
-              <OnOff on={!muted} label="The Warden speaks" onPress={() => wardenVoice.setMuted(!muted)} />
-            </View>
           </View>
         </GamePanel>
         <Text style={styles.note} maxFontSizeMultiplier={MAX_FONT_SCALE}>

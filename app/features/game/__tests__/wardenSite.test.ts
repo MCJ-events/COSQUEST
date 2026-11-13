@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { SITE_REALM_LINE, siteArriveLine, siteAttribution, siteIdOf, siteLegend, siteSubtitle, type WardenFacts } from "../wardenSite.ts";
+import { SITE_CHIP, SITE_REALM_LINE, siteArriveLine, siteAttribution, siteIdOf, siteLegend, siteSubtitle, type WardenFacts } from "../wardenSite.ts";
 
 // The shape staging served for Sam Wanamaker Playhouse (3 Nov 2026), trimmed.
 const SAM: WardenFacts = {
@@ -43,5 +43,7 @@ test("the facts' licences are credited, and the copy says the questions are abou
   assert.equal(siteAttribution({ ...SAM, attribution: [] }), null);
   assert.match(siteSubtitle({ challenge: "blitz" }), /against the clock/);
   assert.match(siteSubtitle({ challenge: "trivia" }), /question about this place/);
+  // Build 24: the player-facing words do not name the Warden.
+  for (const words of [siteSubtitle({ challenge: "blitz" }), siteSubtitle({ challenge: "trivia" }), SITE_REALM_LINE, SITE_CHIP]) assert.doesNotMatch(words, /Warden/);
   assert.equal(SITE_REALM_LINE, "Questions about this place");
 });

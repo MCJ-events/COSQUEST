@@ -34,7 +34,7 @@ export function siteIdOf(p: Pick<QuestPoint, "source" | "extra"> | null | undefi
 const clean = (s: unknown): string => (typeof s === "string" ? s.replace(/\s+/g, " ").trim() : "");
 const sentence = (s: string): string => (s && !/[.!?]$/.test(s) ? `${s}.` : s);
 
-/** What the Warden says on arriving: the server's line, written from the checked facts only. */
+/** The server's arrive line, written from the checked facts only (not shown or said in build 24). */
 export function siteArriveLine(f: WardenFacts | null | undefined): string | null {
   const line = clean(f?.narration?.fallback_lines?.arrive);
   return line || null;
@@ -56,8 +56,10 @@ export function siteAttribution(f: WardenFacts | null | undefined): string | nul
   return a.length ? `Facts: ${a.join(" · ")}` : null;
 }
 
-/** The card's subtitle and realm line at a Warden site: its questions are about the place, not a realm. */
+/** The card's subtitle and realm line at a Warden site: its questions are about the place, not a realm (plain words, no Warden). */
 export function siteSubtitle(p: Pick<QuestPoint, "challenge">): string {
-  return p.challenge === "blitz" ? "The Warden's questions about this place, against the clock." : "The Warden's question about this place.";
+  return p.challenge === "blitz" ? "Questions about this place, against the clock." : "A question about this place.";
 }
 export const SITE_REALM_LINE = "Questions about this place";
+/** The chip a Warden site wears on its card and its challenge (build 24: the Warden is not named). */
+export const SITE_CHIP = "Local site";
