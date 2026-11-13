@@ -48,7 +48,7 @@ import { AvatarBadge, AvatarFigure, useHasAvatarFigure, usePinPortraits, ForgeCl
 import { GAME_FONTS } from "./fonts";
 import FriendsSheet from "./FriendsSheet";
 import SquadSheet from "./SquadSheet";
-import { Rail, StagingBadge, TopBar, WardenBubble } from "./Hud";
+import { Rail, StagingBadge, TopBar } from "./Hud";
 import { NearbyTray } from "./NearbyTray";
 import Journal from "./Journal";
 import { GameButton } from "./kit";
@@ -75,7 +75,6 @@ import Reward, { type RewardSummary } from "./Reward";
 import TrialsSheet from "./TrialsSheet";
 import { GF, GP, realmColor } from "./theme";
 import { useOnScreen } from "./useOnScreen";
-import { useWardenSaid, wardenVoice } from "./wardenVoice";
 import WorldMap, { BackToMe } from "./WorldMap";
 import { CompassButton } from "./CompassButton";
 import { useHeadingUp } from "./useHeadingUp";
@@ -138,7 +137,6 @@ function GameRootInner({ parked }: { parked: boolean }) {
   const centre = useGame((s) => s.centre);
   const problem = useGame((s) => s.problem);
   const permission = useLocationPermission();
-  const said = useWardenSaid();
   const chatName = useAppSelector((s) => s.auth.user?.profile?.username || s.auth.user?.profile?.firstName || "");
   const chatFaction = useAppSelector((s) => s.auth.user?.faction ?? null);
   const [screen, setScreen] = useState<Screen>({ kind: "home" });
@@ -574,7 +572,6 @@ function GameRootInner({ parked }: { parked: boolean }) {
   const focusMissing = focus && focusId && !focusPoint ? focus : null;
   // The pocket board is full width; the rail would sit on its tiles.
   const showsRail = fix !== null && !selected && screen.kind === "home" && !pocketRun;
-  const showBubble = said !== null && !coachStep && screen.kind === "home";
 
   return (
     <View style={styles.root}>
@@ -608,7 +605,7 @@ function GameRootInner({ parked }: { parked: boolean }) {
       {/* build 21: in landscape the HUD keeps clear of the notch / Dynamic Island and the home bar */}
       <View style={mapLand.land && !fighting ? [StyleSheet.absoluteFill, { left: insets.left, right: insets.right }] : StyleSheet.absoluteFill} pointerEvents="box-none">
 
-      <TopBar me={me} profile={profile} name={gameStore.playerName()} color={color} onProfile={() => setSheet("profile")} onCoins={() => setSheet("coins")} onAskWarden={() => setSheet("ask")} />
+      <TopBar me={me} profile={profile} name={gameStore.playerName()} color={color} onProfile={() => setSheet("profile")} onCoins={() => setSheet("coins")} />
       {!GAME_SERVER_IS_PRODUCTION ? <StagingBadge label={GAME_SERVER.includes("staging") ? "STAGING" : "TEST SERVER"} /> : null}
       {showsRail ? (
         <Rail
@@ -669,11 +666,10 @@ function GameRootInner({ parked }: { parked: boolean }) {
         ) : null}
       </View>
 
-      {/* The lower half: the Warden's line, the radar and the Nearby tray (RoamHomeView.bottom). */}
+      {/* The lower half: the radar and the Nearby tray (RoamHomeView.bottom). */}
       {!selected && screen.kind === "home" ? (
         <View style={[styles.bottom, { bottom: insets.bottom + 10 }]} pointerEvents="box-none">
           {fix && !mapFollowing ? <BackToMe onPress={() => recentre((n) => n + 1)} /> : null}
-          {showBubble ? <WardenBubble text={said.text} color={color} onClose={() => wardenVoice.quiet()} /> : null}
           {runLive ? (
             <RunTray onPick={setRunPoint} onEnd={() => void runModel.finish()} distanceOf={runDistance} inReach={runInReach} />
           ) : me?.tutorial_done ? (
