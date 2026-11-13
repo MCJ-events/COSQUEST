@@ -9,7 +9,7 @@ export type Interest = {
 export const INTERESTS: Interest[] = [
   {
     id: "anime",
-    label: "Anime & Manga",
+    label: "Aura & Elements",
     image: require("@/assets/images/interests/anime.png"),
   },
   {
@@ -19,7 +19,7 @@ export const INTERESTS: Interest[] = [
   },
   {
     id: "movie",
-    label: "Movies & TV",
+    label: "Stunts & Spectacle",
     image: require("@/assets/images/interests/movies.png"),
   },
   {

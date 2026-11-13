@@ -60,8 +60,38 @@ export default function LobbyScreen() {
     }),
   ).current;
 
+  // his tab row and chat bar stay on screen above the home bar on a phone shorter than his frame (build 27)
+  const footer = (
+    <>
+      {/* tabs */}
+      <At x={0} y={798} w={FW} h={102.5} style={{ backgroundColor: "rgba(255,255,255,0.45)", borderTopWidth: 1, borderBottomWidth: 1, borderColor: "rgba(255,255,255,0.8)" }} testID="wale-lobby-tabbar" />
+      {TABS.map((t) => {
+        const on = t.id === "wardrobe";
+        return (
+          <Tap key={t.id} x={t.cx - 37.25} y={813.5} w={75} h={72.5} label={t.label} onPress={t.go} style={{ borderRadius: 12, backgroundColor: on ? "#FFFFFF" : "rgba(255,255,255,0.35)", gap: 6 }} testID={`wale-lobby-tab-${t.id}`}>
+            <LineIcon name={t.icon} size={25} color={on ? W.pink : W.ink} />
+            <T size={9.5} weight={700} color={on ? W.pink : W.ink} style={{ lineHeight: 13 }} testID={`wale-lobby-tablabel-${t.id}`}>
+              {t.label}
+            </T>
+          </Tap>
+        );
+      })}
+
+      {/* chat bar */}
+      <Tap x={12} y={905} w={406} h={46} label="Tap to chat" onPress={() => router.push("/chat")} style={{ flexDirection: "row", justifyContent: "flex-start", paddingLeft: 5, gap: 13 }} testID="wale-lobby-chatbar">
+        <LineIcon name="message-circle" size={21} color={W.inkSoft} />
+        <T size={11} weight={400} color={W.inkSoft} style={{ flex: 1 }} testID="wale-lobby-chat-text">
+          Tap to chat...
+        </T>
+        <View style={{ marginRight: 4 }}>
+          <LineIcon name="send" size={19} color={W.pink} />
+        </View>
+      </Tap>
+    </>
+  );
+
   return (
-    <DesignCanvas width={FW} height={956} colors={["#DAECF2", "#E8F4F9"]} testID="wale-lobby">
+    <DesignCanvas width={FW} height={956} colors={["#DAECF2", "#E8F4F9"]} testID="wale-lobby" footer={{ y: 798, children: footer }}>
       <At x={16} y={10}>
         <T size={10} weight={700} color={W.pink} spacing={1.2} style={{ lineHeight: 12 }} testID="wale-lobby-kicker">
           COSQUEST
@@ -181,30 +211,6 @@ export default function LobbyScreen() {
         </T>
       </Tap>
 
-      {/* tabs */}
-      <At x={0} y={798} w={FW} h={102.5} style={{ backgroundColor: "rgba(255,255,255,0.45)", borderTopWidth: 1, borderBottomWidth: 1, borderColor: "rgba(255,255,255,0.8)" }} testID="wale-lobby-tabbar" />
-      {TABS.map((t) => {
-        const on = t.id === "wardrobe";
-        return (
-          <Tap key={t.id} x={t.cx - 37.25} y={813.5} w={75} h={72.5} label={t.label} onPress={t.go} style={{ borderRadius: 12, backgroundColor: on ? "#FFFFFF" : "rgba(255,255,255,0.35)", gap: 6 }} testID={`wale-lobby-tab-${t.id}`}>
-            <LineIcon name={t.icon} size={25} color={on ? W.pink : W.ink} />
-            <T size={9.5} weight={700} color={on ? W.pink : W.ink} style={{ lineHeight: 13 }} testID={`wale-lobby-tablabel-${t.id}`}>
-              {t.label}
-            </T>
-          </Tap>
-        );
-      })}
-
-      {/* chat bar */}
-      <Tap x={12} y={905} w={406} h={46} label="Tap to chat" onPress={() => router.push("/chat")} style={{ flexDirection: "row", justifyContent: "flex-start", paddingLeft: 5, gap: 13 }} testID="wale-lobby-chatbar">
-        <LineIcon name="message-circle" size={21} color={W.inkSoft} />
-        <T size={11} weight={400} color={W.inkSoft} style={{ flex: 1 }} testID="wale-lobby-chat-text">
-          Tap to chat...
-        </T>
-        <View style={{ marginRight: 4 }}>
-          <LineIcon name="send" size={19} color={W.pink} />
-        </View>
-      </Tap>
     </DesignCanvas>
   );
 }

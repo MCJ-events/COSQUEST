@@ -1,11 +1,13 @@
 extends SceneTree
 ## realism (12 Nov 2026): the six faction heroes as the cast (fight.gd _hero_cast).
 ##   godot --headless --path app/game3d -s res://tests/hero_cast_test.gd
-## Build 22 ships with the hero cast OFF (the models are not good enough yet); "hero_cast": true
-## in the fight config turns it on.
-## 1. Without the switch every tier keeps the built-in cast: no hero is chosen.
-## 2. Switched on, mid and high: a fighter with no character of their own gets a hero. The player's
+## Build 26: the hero cast is on by default on the mid and high tiers (builds 22 to 25 had it off);
+## "hero_cast" in the fight config overrides the tier either way.
+## 1. The low tier (and a config with no tier, or an unknown one) keeps the built-in cast: no hero
+##    is chosen unless the config says "hero_cast": true.
+## 2. Mid and high, with no switch: a fighter with no character of their own gets a hero. The player's
 ##    is their faction's, the ally and the Guardian are heroes of other factions, all three different.
+##    "hero_cast": false turns it off.
 ## 3. A player's own character (a file outside res://cast) is never replaced.
 ## 4. Every hero the pck ships has both detail levels, a clip library the game binds by key, an
 ##    arm droop, and stays small (a guard of ours, not the bar's: 5 MB at lod0, 2 MB at lod1).
@@ -34,27 +36,29 @@ func _pick(c: Dictionary, role: String, p: String = "") -> String:
 
 
 func _initialize() -> void:
-	for t: String in ["", "low", "mid", "high", "nonsense"]:
+	for t: String in ["", "low", "nonsense"]:
 		var c: Dictionary = {"seed": 7, "faction": "ascendants"}
 		if t != "":
 			c["tier"] = t
-		_check("default_keeps_cast_" + (t if t != "" else "none"), _pick(c, "hero") == "" and _pick(c, "ally") == ""
+		_check("low_keeps_cast_" + (t if t != "" else "none"), _pick(c, "hero") == "" and _pick(c, "ally") == ""
 			and _pick(c, "enemy") == "" and _pick(c, "enemy", "res://cast/hoof.glb") == "")
+		c["hero_cast"] = true
+		_check("low_switch_on_" + (t if t != "" else "none"), _pick(c, "hero") != "")
 	for t: String in ["mid", "high"]:
 		for fac: String in FightScript.HERO_BY_FACTION:
 			var want: String = FightScript.HERO_BY_FACTION[fac]
 			if not FileAccess.file_exists(FightScript.HERO_DIR + want + "_lod1.glb"):
 				continue     # a hero that has not arrived (Kofi): the seed picks one that has
 			for seed: int in [1, 7, 52012, 99991]:
-				var c: Dictionary = {"tier": t, "seed": seed, "faction": fac, "hero_cast": true}
+				var c: Dictionary = {"tier": t, "seed": seed, "faction": fac}
 				var h: String = _pick(c, "hero"); var a: String = _pick(c, "ally"); var e: String = _pick(c, "enemy", "res://cast/hoof.glb")
 				_check("%s_%s_%d" % [t, fac, seed], h.contains(want) and a != "" and e != "" and not a.contains(want) and not e.contains(want)
 					and a.get_file().trim_suffix(a.get_file().right(9)) != e.get_file().trim_suffix(e.get_file().right(9)), "%s %s %s" % [h, a, e])
-		var hi: String = _pick({"tier": t, "seed": 3, "faction": "ascendants", "hero_cast": true}, "hero")
+		var hi: String = _pick({"tier": t, "seed": 3, "faction": "ascendants"}, "hero")
 		_check(t + "_hero_lod", hi.ends_with("_lod0.glb") if t == "high" else hi.ends_with("_lod1.glb"), hi)
-		_check(t + "_own_character_kept", _pick({"tier": t, "seed": 3, "faction": "icons", "hero_cast": true}, "hero", "/data/forge/abc/lod1.glb") == "")
+		_check(t + "_own_character_kept", _pick({"tier": t, "seed": 3, "faction": "icons"}, "hero", "/data/forge/abc/lod1.glb") == "")
 		_check(t + "_switch_off", _pick({"tier": t, "seed": 3, "hero_cast": false}, "hero") == "")
-		_check(t + "_no_faction_still_a_hero", _pick({"tier": t, "seed": 3, "hero_cast": true}, "hero") != "")
+		_check(t + "_no_faction_still_a_hero", _pick({"tier": t, "seed": 3}, "hero") != "")
 	var chars: Dictionary = AnimLib.data().get("characters", {})
 	for k: String in FightScript.HERO_ORDER:
 		var p0: String = FightScript.HERO_DIR + k + "_lod0.glb"

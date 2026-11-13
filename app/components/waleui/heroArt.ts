@@ -3,6 +3,8 @@
 // Forge character of their own. Rendered from the game's own models and library idle by
 // game3d/tools/portrait.gd ("full_px": [768, 1152]), cut to the figure; the bust is the top of
 // the same render. About 0.36 MB per hero. Kofi (Blockbusters) was rendered the same way for build 23.
+// Build 26: Imani, Kofi, Zuri, Lyra and Tavo re-rendered from their new hybrid models (new heads and hair;
+// Lyra's new hands); Oren is unchanged.
 import { useGame } from "@/features/game/runtime";
 import { type FactionHero, heroForFaction } from "@/features/waleui/heroCast";
 import { useAppSelector } from "@/store/hooks";
@@ -12,8 +14,7 @@ export type HeroArt = { full: number; bust: number };
 const ART: Record<string, HeroArt> = {
   ascendants_zuri: { full: require("@/assets/images/heroes/ascendants_zuri_full.png"), bust: require("@/assets/images/heroes/ascendants_zuri_bust.png") },
   controllers_tavo: { full: require("@/assets/images/heroes/controllers_tavo_full.png"), bust: require("@/assets/images/heroes/controllers_tavo_bust.png") },
-  // Imani: the hybrid head (fitted head and hair cards, 12 Nov), clearly better than the first render.
-  icons_imani: { full: require("@/assets/images/heroes/icons_imani_full_hybrid.png"), bust: require("@/assets/images/heroes/icons_imani_bust_hybrid.png") },
+  icons_imani: { full: require("@/assets/images/heroes/icons_imani_full.png"), bust: require("@/assets/images/heroes/icons_imani_bust.png") },
   everborn_oren: { full: require("@/assets/images/heroes/everborn_oren_full.png"), bust: require("@/assets/images/heroes/everborn_oren_bust.png") },
   blockbusters_kofi: { full: require("@/assets/images/heroes/blockbusters_kofi_full.png"), bust: require("@/assets/images/heroes/blockbusters_kofi_bust.png") },
   celestials_lyra: { full: require("@/assets/images/heroes/celestials_lyra_full.png"), bust: require("@/assets/images/heroes/celestials_lyra_bust.png") },

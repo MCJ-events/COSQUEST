@@ -223,8 +223,39 @@ export function WeaponDetailScreen({ id }: { id?: string | null }) {
     if (Platform.OS === "web") console.log(`[wale-ui] ${r.text}`);
     else Alert.alert(r.ok ? w.name : "Not yet", r.text);
   };
+  // his action band (EQUIPPED / TRY) and the path line stay on screen above the home bar on a phone shorter than his frame (build 27)
+  const footer = (
+    <>
+      {/* actions */}
+      <Band y={809} h={88} w={FW} color="rgba(255,255,255,0.4)" />
+      {/* the left button: a label only (equipped, owned, locked, soon), or the real claim / buy when the ladder allows it */}
+      <Tap x={16} y={825.5} w={187} h={55.5} label={btn.kind === "buy" ? `${btn.label} ${w.name}` : btn.label} disabled={btn.kind !== "buy" || buying} onPress={btn.kind === "buy" ? buy : undefined} style={[glass(12, "rgba(255,255,255,0.6)"), { borderColor: btn.kind === "buy" ? W.pink : "#B7CED9", flexDirection: "row", gap: 7, opacity: buying ? 0.6 : 1 }]} testID="wale-weapon-equipped">
+        {btn.kind === "buy" ? null : <LineIcon name={btn.kind === "equipped" || btn.kind === "owned" ? "check-circle" : "lock"} size={15} color={W.inkSoft} />}
+        <T size={12} weight={700} color={btn.kind === "buy" ? W.pink : W.inkSoft} style={{ lineHeight: 16 }}>
+          {buying ? "ONE MOMENT" : btn.label}
+        </T>
+      </Tap>
+      <Tap
+        x={215.5}
+        y={825.5}
+        w={171.5}
+        h={55.5}
+        label={`Try ${w.name}`}
+        onPress={() => (fight3dAvailable() ? router.push("/fight3d?mode=arena") : notBuiltYet("The practice fight on this build"))}
+        style={{ backgroundColor: W.pink, borderRadius: 12, flexDirection: "row", gap: 10 }}
+        testID="wale-weapon-try"
+      >
+        <T size={17} weight={700} color="#FFFFFF" spacing={0.5} style={{ lineHeight: 22 }}>
+          TRY
+        </T>
+        <LineIcon name="arrow-right" size={30} color="#FFFFFF" stroke={1.8} />
+      </Tap>
+      <WaleFooter y={921.5} w={FW} path={`COSQUEST / ARMORY / ${w.name.toUpperCase()}`} testID="wale-weapon-footer" />
+    </>
+  );
+
   return (
-    <DesignCanvas width={FW} height={946} colors={["#BBDDE9", "#DCEDF5", "#E4F1F8"]} testID="wale-weapon">
+    <DesignCanvas width={FW} height={946} colors={["#BBDDE9", "#DCEDF5", "#E4F1F8"]} testID="wale-weapon" footer={{ y: 809, children: footer }}>
       <Band y={0} h={83.5} w={FW} line="bottom" />
       <At x={16} y={22.5}>
         <T size={8} weight={700} color={W.inkSoft} spacing={1.2} style={{ lineHeight: 10 }} testID="wale-weapon-kicker">
@@ -317,31 +348,6 @@ export function WeaponDetailScreen({ id }: { id?: string | null }) {
         </At>
       ))}
 
-      {/* actions */}
-      <Band y={809} h={88} w={FW} color="rgba(255,255,255,0.4)" />
-      {/* the left button: a label only (equipped, owned, locked, soon), or the real claim / buy when the ladder allows it */}
-      <Tap x={16} y={825.5} w={187} h={55.5} label={btn.kind === "buy" ? `${btn.label} ${w.name}` : btn.label} disabled={btn.kind !== "buy" || buying} onPress={btn.kind === "buy" ? buy : undefined} style={[glass(12, "rgba(255,255,255,0.6)"), { borderColor: btn.kind === "buy" ? W.pink : "#B7CED9", flexDirection: "row", gap: 7, opacity: buying ? 0.6 : 1 }]} testID="wale-weapon-equipped">
-        {btn.kind === "buy" ? null : <LineIcon name={btn.kind === "equipped" || btn.kind === "owned" ? "check-circle" : "lock"} size={15} color={W.inkSoft} />}
-        <T size={12} weight={700} color={btn.kind === "buy" ? W.pink : W.inkSoft} style={{ lineHeight: 16 }}>
-          {buying ? "ONE MOMENT" : btn.label}
-        </T>
-      </Tap>
-      <Tap
-        x={215.5}
-        y={825.5}
-        w={171.5}
-        h={55.5}
-        label={`Try ${w.name}`}
-        onPress={() => (fight3dAvailable() ? router.push("/fight3d?mode=arena") : notBuiltYet("The practice fight on this build"))}
-        style={{ backgroundColor: W.pink, borderRadius: 12, flexDirection: "row", gap: 10 }}
-        testID="wale-weapon-try"
-      >
-        <T size={17} weight={700} color="#FFFFFF" spacing={0.5} style={{ lineHeight: 22 }}>
-          TRY
-        </T>
-        <LineIcon name="arrow-right" size={30} color="#FFFFFF" stroke={1.8} />
-      </Tap>
-      <WaleFooter y={921.5} w={FW} path={`COSQUEST / ARMORY / ${w.name.toUpperCase()}`} testID="wale-weapon-footer" />
     </DesignCanvas>
   );
 }
