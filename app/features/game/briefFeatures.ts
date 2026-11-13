@@ -538,6 +538,41 @@ export async function startPuzzle(client: GameClient, gameId: string, stationId:
   return { ...got, puzzle: { ...got.puzzle, panels } };
 }
 
+/** The distinct panel picture URLs of a puzzle, in panel order (panels without a picture are skipped). */
+export function panelImageUrls(paper: PuzzlePaper | null | undefined): string[] {
+  const out: string[] = [];
+  for (const p of paper?.puzzle?.panels ?? []) {
+    const u = (p.image_url ?? "").trim();
+    if (u && !out.includes(u)) out.push(u);
+  }
+  return out;
+}
+
+/**
+ * The clock starts the moment the server opens a puzzle, so its pictures are fetched straight away
+ * and the board is shown once they are all in the image cache: every panel appears at once instead
+ * of the player watching blank cards while the clock runs. Waits at most `capMs` (a slow or failed
+ * picture never holds the board; the card then loads it as before). Resolves true when every
+ * picture arrived in time. `prefetch` is expo-image's Image.prefetch (injected: this file stays pure).
+ */
+export async function preloadPanels(
+  paper: PuzzlePaper | null | undefined,
+  prefetch: (urls: string[]) => Promise<boolean>,
+  capMs = 6000,
+): Promise<boolean> {
+  const urls = panelImageUrls(paper);
+  if (!urls.length) return true;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const cap = new Promise<boolean>((resolve) => {
+    timer = setTimeout(() => resolve(false), capMs);
+  });
+  try {
+    return await Promise.race([prefetch(urls).then((ok) => ok !== false, () => false), cap]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 /** Send the panels in the order you put them (their shown idx, first to last). */
 export async function submitPuzzle(client: GameClient, gameId: string, stationId: string, testId: string, order: number[]): Promise<PuzzleVerdict> {
   return client.request<PuzzleVerdict>("POST", st(gameId, stationId, "/puzzle/submit"), {

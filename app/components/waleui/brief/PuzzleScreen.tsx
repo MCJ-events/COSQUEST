@@ -16,6 +16,7 @@ import {
   orderComplete,
   type Panel,
   panelsInOrder,
+  preloadPanels,
   type PuzzlePaper,
   type PuzzleVerdict,
   retryAtFrom,
@@ -44,7 +45,7 @@ function PanelCard({ panel, badge, onPress, testID, dim }: { panel: Panel; badge
       style={({ pressed }) => [glass(12, "rgba(255,255,255,0.88)"), { width: "47%", padding: 10, gap: 8, borderWidth: badge ? 2 : 1, borderColor: badge ? W.pink : W.line, opacity: dim ? 0.6 : pressed ? 0.75 : 1 }]}
     >
       {panel.image_url ? (
-        <Image source={{ uri: panel.image_url }} style={{ width: "100%", aspectRatio: 1, borderRadius: 8, backgroundColor: W.band }} contentFit="cover" accessibilityLabel={panel.alt ?? undefined} />
+        <Image source={{ uri: panel.image_url }} cachePolicy="memory-disk" transition={0} style={{ width: "100%", aspectRatio: 1, borderRadius: 8, backgroundColor: W.band }} contentFit="cover" accessibilityLabel={panel.alt ?? undefined} />
       ) : (
         <View style={{ width: "100%", aspectRatio: 1.4, borderRadius: 8, backgroundColor: W.band, padding: 8, justifyContent: "center" }}>
           <T size={11} weight={500} color={W.inkSoft} lines={0} italic align="center">
@@ -101,7 +102,11 @@ export default function PuzzleScreen({ gameId, stationId }: { gameId: string; st
     try {
       const at = await spotNow();
       if (!at) throw new Error("location");
-      setPaper(await startPuzzle(gameStore.client, gameId, stationId, at));
+      const got = await startPuzzle(gameStore.client, gameId, stationId, at);
+      // the clock is already running: fetch every panel picture now and show the board when they are in
+      // the cache (at most 6 s), so all panels appear together
+      await preloadPanels(got, (urls) => Image.prefetch(urls, "memory-disk"));
+      setPaper(got);
       setRetryAt(null);
     } catch (e) {
       setRetryAt(retryAtFrom(e));

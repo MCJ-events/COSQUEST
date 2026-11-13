@@ -29,8 +29,10 @@ import {
   normaliseReferralCode,
   normaliseStationCode,
   orderComplete,
+  panelImageUrls,
   panelsInOrder,
   parseFlags,
+  preloadPanels,
   photoFits,
   photoUri,
   redeemErrorText,
@@ -434,5 +436,35 @@ describe("brief features: links", () => {
     assert.equal(routeForUrl("cosquest://chat/abc"), "/chat/abc");
     assert.equal(routeForUrl("cosquest://play"), "/play");
     assert.equal(routeForUrl("cosquest://station"), null);
+  });
+});
+
+describe("comic puzzle pictures load before the board (build 26)", () => {
+  const paper = (urls: (string | null)[]) => ({
+    test_id: "t",
+    expires_at: "2026-11-13T12:00:00Z",
+    time_limit_s: 60,
+    puzzle: { panels: urls.map((u, i) => ({ idx: i, caption: `c${i}`, image_url: u })) },
+  });
+  it("lists each panel picture once, skipping panels without one", () => {
+    assert.deepEqual(panelImageUrls(paper(["a", null, " ", "b", "a"])), ["a", "b"]);
+    assert.deepEqual(panelImageUrls(null), []);
+  });
+  it("fetches every picture at once and says when they are all in", async () => {
+    const asked: string[][] = [];
+    assert.equal(await preloadPanels(paper(["a", "b", "c"]), async (u) => (asked.push(u), true)), true);
+    assert.deepEqual(asked, [["a", "b", "c"]]);
+  });
+  it("never waits when there is nothing to fetch", async () => {
+    let called = false;
+    assert.equal(await preloadPanels(paper([null, null]), async () => ((called = true), true)), true);
+    assert.equal(called, false);
+  });
+  it("a slow or failed picture never holds the board past the cap", async () => {
+    const t0 = Date.now();
+    assert.equal(await preloadPanels(paper(["a"]), () => new Promise<boolean>(() => {}), 50), false);
+    assert.ok(Date.now() - t0 < 1000);
+    assert.equal(await preloadPanels(paper(["a"]), async () => { throw new Error("net"); }), false);
+    assert.equal(await preloadPanels(paper(["a"]), async () => false), false);
   });
 });
