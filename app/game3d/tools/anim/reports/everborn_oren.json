@@ -1,6 +1,6 @@
 {
  "key": "everborn_oren",
- "target": "/home/engineer/realism-20261111/anim-readable/herocast/pose/everborn_oren/lod1.glb",
+ "target": "/home/engineer/realism-20261111/build27/herocast/pose/everborn_oren/lod1.glb",
  "source": "/home/engineer/cq-work/243-characters-relift-pod-prep/clipsrc/kaykit/Knight.glb",
  "hip_scale": 2.2039453104165605,
  "damp": {},
