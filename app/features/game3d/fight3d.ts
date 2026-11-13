@@ -221,6 +221,14 @@ export type Fight3DConfig = {
   hero_glb: string;
   ally_glb: string;
   enemy_glb: string;
+  /**
+   * build 28: a fighter's fight kit (fightKit.ts), the path of its anim.json with anim.glb beside it.
+   * Godot registers the clip library at run time (anim_library.gd register_kit) and checks it against
+   * the model's skeleton; a pack without that change ignores the keys. Presentation only.
+   */
+  hero_anim?: string;
+  ally_anim?: string;
+  enemy_anim?: string;
   hero_name: string;
   ally_name: string;
   enemy_name: string;
@@ -273,14 +281,6 @@ export type Fight3DConfig = {
   warden_intro?: string;
   warden_win?: string;
   warden_loss?: string;
-  /**
-   * build 28: a fighter's fight kit (fightKit.ts), the path of its anim.json with anim.glb beside it.
-   * Godot registers the clip library at run time (anim_library.gd register_kit) and checks it against
-   * the model's skeleton; a pack without that change ignores the keys. Presentation only.
-   */
-  hero_anim?: string;
-  ally_anim?: string;
-  enemy_anim?: string;
 };
 
 export type FightMods = { boss_hp_permille: number; boss_dmg_permille: number };
@@ -369,6 +369,11 @@ export function buildFightConfig(input: {
     autoplay: input.autoplay,
     haptics: input.haptics !== false,
   };
+  for (const role of ["hero", "ally", "enemy"] as const) {
+    // a library only with the model it was made for
+    const anim = localPath(input[role].anim);
+    if (anim && config[`${role}_glb`]) config[`${role}_anim`] = anim;
+  }
   if (input.tilesUrl) Object.assign(config, tilesFields(input.tilesUrl));
   if (input.reduceMotion) config.reduce_motion = true;
   if (input.sound === false) config.sound = false;
@@ -378,11 +383,6 @@ export function buildFightConfig(input: {
   if (input.warden?.intro) config.warden_intro = input.warden.intro;
   if (input.warden?.win) config.warden_win = input.warden.win;
   if (input.warden?.loss) config.warden_loss = input.warden.loss;
-  for (const role of ["hero", "ally", "enemy"] as const) {
-    // a library only with the model it was made for
-    const anim = localPath(input[role].anim);
-    if (anim && config[`${role}_glb`]) config[`${role}_anim`] = anim;
-  }
   const groundJson = localPath(input.place?.groundPath);
   if (input.place && groundJson) Object.assign(config, { arena: "place", ground_json: groundJson, place_at: input.place.at });
   return config;
