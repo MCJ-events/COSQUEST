@@ -12,6 +12,8 @@ import {
   completeStation,
   createFlagCache,
   decideCompletion,
+  eventWhenText,
+  fetchNearbyEvents,
   fetchBriefFlags,
   fetchMyStations,
   fetchReferralMe,
@@ -268,6 +270,8 @@ describe("brief features: stations and venue challenges", () => {
     assert.equal(needFrom(new GameError("http", "x", 422, { need: "photo" })), "photo");
     assert.equal(needFrom(new Error("x")), null);
     assert.equal(stationErrorText(new GameError("http", "Not Found", 404)), "This isn't open right now.");
+    assert.equal(stationErrorText(new GameError("http", "own_completion", 403, { reason: "own_completion" })), "You can't approve your own challenge.");
+    assert.equal(stationErrorText(new GameError("http", "cooldown", 429, { reason: "cooldown", retry_at: "x" })), "Wait a moment before the next try.");
   });
 
   it("steps a station from its completion", () => {
@@ -291,6 +295,20 @@ describe("brief features: stations and venue challenges", () => {
     assert.equal(photoFits("A".repeat(800_000)), true);
     assert.equal(photoFits("A".repeat(900_000)), false);
     assert.equal(normaliseStationCode("k7-p2 qx!"), "K7P2QX");
+  });
+});
+
+describe("brief features: events", () => {
+  it("lists events near the fix, or everywhere without one", async () => {
+    const { client, calls } = await setup((c) => (c.path === "/v1/games" ? { body: { games: [{ game_id: GID, title: "Fair", status: "live" }] } } : undefined));
+    assert.equal((await fetchNearbyEvents(client, { lat: 51.5, lng: -0.1 }))[0].title, "Fair");
+    assert.equal(calls[0].query.get("lat"), "51.5");
+    assert.equal(calls[0].query.get("radius_m"), "50000");
+    await fetchNearbyEvents(client, null);
+    assert.equal(calls[1].query.get("lat"), null);
+    assert.equal(eventWhenText({ status: "live" }), "Live now");
+    assert.equal(eventWhenText({ status: "scheduled", starts_at: "2026-11-14T18:00:00Z" }), "Starts 14 Nov");
+    assert.equal(eventWhenText({ status: "finished" }), "Ended");
   });
 });
 

@@ -261,6 +261,35 @@ export type CheckinResult = { checked_in: boolean; already: boolean; game_id: st
 
 export type Spot = { lat: number; lng: number; accuracy_m: number };
 
+export type NearbyEvent = {
+  game_id: string;
+  title: string;
+  status: string;
+  starts_at?: string | null;
+  ends_at?: string | null;
+  distance_m?: number | null;
+  entry_fee_cents?: number | null;
+  entry_coins?: number | null;
+};
+
+/** CosQuest events near you (GET /v1/games, the public list), nearest first; anywhere without a fix. */
+export async function fetchNearbyEvents(client: GameClient, at: { lat: number; lng: number } | null, radiusM = 50_000): Promise<NearbyEvent[]> {
+  const query = at ? { lat: at.lat, lng: at.lng, radius_m: radiusM } : undefined;
+  const got = await client.retrying(() => client.request<{ games?: NearbyEvent[] | null }>("GET", "v1/games", { query }));
+  return Array.isArray(got.games) ? got.games : [];
+}
+
+/** "Live now", "Starts 14 Nov", "Ended". */
+export function eventWhenText(e: Pick<NearbyEvent, "status" | "starts_at">): string {
+  if (e.status === "live") return "Live now";
+  if (e.status === "scheduled" && e.starts_at) {
+    const t = Date.parse(e.starts_at);
+    if (Number.isFinite(t)) return `Starts ${new Date(t).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" })}`;
+  }
+  if (e.status === "scheduled") return "Coming up";
+  return "Ended";
+}
+
 const ev = (gid: string, rest = "") => `v1/events/${encodeURIComponent(gid)}${rest}`;
 const st = (gid: string, sid: string, rest = "") => ev(gid, `/stations/${encodeURIComponent(sid)}${rest}`);
 
@@ -389,13 +418,25 @@ export function photoFits(b64: string): boolean {
   return base64Bytes(b64) <= PHOTO_MAX_BYTES;
 }
 
+const STATION_REASONS: Record<string, string> = {
+  "completed already": "You've done this one.",
+  completed: "You've done this one.",
+  own_completion: "You can't approve your own challenge.",
+  "already decided": "Someone on staff already decided this one.",
+  not_staff: "You aren't staff at this event.",
+  bad_code: "That staff code isn't right for this event.",
+  cooldown: "Wait a moment before the next try.",
+  daily_limit: "That's all the tries for today.",
+  bank_not_ready: "This puzzle isn't ready yet.",
+};
+
 /** A station refusal as a sentence (the server's own reason when it gave one). */
 export function stationErrorText(e: unknown): string {
   if (e instanceof GameError) {
     if (e.kind === "network") return "Can't reach CosQuest right now.";
     if (e.kind === "not_signed_in") return e.message;
     const reason = typeof e.detail?.reason === "string" ? (e.detail.reason as string) : e.message;
-    if (reason === "completed already" || reason === "completed") return "You've done this one.";
+    if (STATION_REASONS[reason]) return STATION_REASONS[reason];
     if (reason === "Not Found" || /^The server returned/.test(reason)) return "This isn't open right now.";
     return reason;
   }
