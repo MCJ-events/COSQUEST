@@ -44,10 +44,13 @@ export type GameErrorKind = "http" | "network" | "stale_nonce" | "bad_signature"
 export class GameError extends Error {
   readonly kind: GameErrorKind;
   readonly status: number;
-  constructor(kind: GameErrorKind, message: string, status = 0) {
+  /** The server's `detail` object when it sent one (a reason plus fields such as retry_at or need). */
+  readonly detail: Record<string, unknown> | null;
+  constructor(kind: GameErrorKind, message: string, status = 0, detail: Record<string, unknown> | null = null) {
     super(message);
     this.kind = kind;
     this.status = status;
+    this.detail = detail;
   }
   /** Whether trying the same thing again could plausibly work. */
   get retryable(): boolean {
@@ -59,11 +62,13 @@ export class GameError extends Error {
 /** The server's error body: `detail` is a sentence written to be shown, or a reason object. */
 export function errorFrom(status: number, bodyText: string): GameError {
   let detail = "";
+  let fields: Record<string, unknown> | null = null;
   try {
     const parsed = JSON.parse(bodyText) as { detail?: unknown };
     if (typeof parsed.detail === "string") detail = parsed.detail;
-    else if (parsed.detail && typeof parsed.detail === "object") {
-      const reason = (parsed.detail as { reason?: unknown }).reason;
+    else if (parsed.detail && typeof parsed.detail === "object" && !Array.isArray(parsed.detail)) {
+      fields = parsed.detail as Record<string, unknown>;
+      const reason = fields.reason;
       if (typeof reason === "string") detail = reason;
     }
   } catch {
@@ -75,7 +80,7 @@ export function errorFrom(status: number, bodyText: string): GameError {
   if (status === 401 && detail.includes("signature")) {
     return new GameError("bad_signature", "This device could not prove who it is.", status);
   }
-  return new GameError("http", detail || `The server returned ${status}.`, status);
+  return new GameError("http", detail || `The server returned ${status}.`, status, fields);
 }
 
 export type FetchLike = (

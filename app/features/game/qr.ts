@@ -1,14 +1,17 @@
 // A small QR encoder for the friend code (FriendsFeature.swift draws the code
 // with CIFilter.qrCodeGenerator, correction level "M"): byte mode, error
-// correction M, versions 1 to 4 (up to 62 bytes), which is far more than the
-// six-letter code needs. Pure, so it is tested against known vectors
+// correction M, versions 1 to 7 (up to 122 bytes): far more than the six-letter
+// friend code needs, and enough for an event station's link (13 Nov 2026,
+// cosquest://station?game=<id>&station=<id>&code=<code>, about 116 bytes).
+// Pure, so it is tested against known vectors
 // (__tests__/qr.test.ts) and against an independent encoder.
 //
 // The steps are ISO/IEC 18004: the bit stream (mode 0100, 8-bit count, bytes,
 // terminator, padding 0xEC 0x11), Reed-Solomon over GF(256) (x^8+x^4+x^3+x^2+1),
 // the blocks interleaved, the codewords laid in the zigzag round the finder,
 // timing and alignment patterns, the best of the eight masks by the standard
-// penalty score, and the 15-bit format information.
+// penalty score, the 15-bit format information and, from version 7, the 18-bit
+// version information.
 
 /** [data codewords, EC codewords per block, blocks] of each version at level M. */
 const BLOCKS_M: Record<number, [number, number, number]> = {
@@ -16,11 +19,15 @@ const BLOCKS_M: Record<number, [number, number, number]> = {
   2: [28, 16, 1],
   3: [44, 26, 1],
   4: [32, 18, 2],
+  5: [43, 24, 2],
+  6: [27, 16, 4],
+  7: [31, 18, 4],
 };
-/** Alignment pattern centre (versions 2 to 4 have one). */
-const ALIGN: Record<number, number | null> = { 1: null, 2: 18, 3: 22, 4: 26 };
+/** Alignment pattern centre rows/columns (ISO 18004 table E.1); version 1 has none. */
+const ALIGN: Record<number, number[]> = { 1: [], 2: [6, 18], 3: [6, 22], 4: [6, 26], 5: [6, 30], 6: [6, 34], 7: [6, 22, 38] };
+const MAX_VERSION = 7;
 
-export const QR_MAX_BYTES = 62;
+export const QR_MAX_BYTES = 122;
 
 // ---------- Reed-Solomon ----------
 
@@ -69,7 +76,7 @@ export function reedSolomon(data: readonly number[], ecCount: number): number[] 
 
 /** The smallest version at level M that holds `n` bytes, or null. */
 export function versionFor(n: number): number | null {
-  for (let v = 1; v <= 4; v++) {
+  for (let v = 1; v <= MAX_VERSION; v++) {
     const [data, , blocks] = BLOCKS_M[v];
     // 4 mode bits + 8 count bits, then n bytes.
     if (12 + n * 8 <= data * blocks * 8) return v;
@@ -166,9 +173,29 @@ function patterns(version: number): Grid {
     setFixed(g, 6, i, i % 2 === 0);
     setFixed(g, i, 6, i % 2 === 0);
   }
-  const a = ALIGN[version];
-  if (a !== null) {
-    for (let dr = -2; dr <= 2; dr++) for (let dc = -2; dc <= 2; dc++) setFixed(g, a + dr, a + dc, Math.max(Math.abs(dr), Math.abs(dc)) !== 1);
+  const centres = ALIGN[version];
+  const last = centres.length - 1;
+  for (let i = 0; i <= last; i++) {
+    for (let j = 0; j <= last; j++) {
+      // Not over the three finders (the corners of the centre grid but the bottom right).
+      if ((i === 0 && j === 0) || (i === 0 && j === last) || (i === last && j === 0)) continue;
+      const ar = centres[i];
+      const ac = centres[j];
+      for (let dr = -2; dr <= 2; dr++) for (let dc = -2; dc <= 2; dc++) setFixed(g, ar + dr, ac + dc, Math.max(Math.abs(dr), Math.abs(dc)) !== 1);
+    }
+  }
+  // Version 7 and up: two copies of the 18-bit version information (BCH(18,6), generator 0x1F25).
+  if (version >= 7) {
+    let rem = version;
+    for (let i = 0; i < 12; i++) rem = (rem << 1) ^ ((rem >>> 11) * 0x1f25);
+    const bits = (version << 12) | (rem & 0xfff);
+    for (let i = 0; i < 18; i++) {
+      const on = ((bits >>> i) & 1) === 1;
+      const a = size - 11 + (i % 3);
+      const b = Math.floor(i / 3);
+      setFixed(g, b, a, on);
+      setFixed(g, a, b, on);
+    }
   }
   // The format areas are reserved (drawn per mask), and the one dark module.
   for (let i = 0; i < 9; i++) {
@@ -272,13 +299,13 @@ export type QrCode = { version: number; size: number; mask: number; modules: boo
 
 /**
  * `text` (UTF-8) as a QR symbol, byte mode, level M. Throws when it is longer
- * than 62 bytes (this encoder stops at version 4). `forceMask` skips the
+ * than 122 bytes (this encoder stops at version 7). `forceMask` skips the
  * penalty search (tests).
  */
 export function encodeQr(text: string, forceMask?: number): QrCode {
   const bytes = Array.from(new TextEncoder().encode(text));
   const version = versionFor(bytes.length);
-  if (version === null) throw new Error(`QR: ${bytes.length} bytes does not fit versions 1 to 4`);
+  if (version === null) throw new Error(`QR: ${bytes.length} bytes does not fit versions 1 to 7`);
   const codewords = interleave(dataCodewords(bytes, version), version);
   const base = patterns(version);
   placeData(base, codewords);
