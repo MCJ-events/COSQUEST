@@ -14,6 +14,8 @@ const SACCADE_GAP: Vector2 = Vector2(0.35, 1.6)
 const SACCADE_DEG: float = 2.5
 const EYE_MAX_X: float = 18.0          # the shape keys' full turn, degrees (deploy/hybrid/hybrid_assemble.py face_shapes)
 const EYE_MAX_Y: float = 12.0
+const GAZE_X: float = 7.0              # the gaze used (degrees): kept well inside the shape keys' range
+const GAZE_Y: float = 4.0
 
 var _meshes: Array = []                # [[MeshInstance3D, {key: blend shape index}]]
 var _skel: Skeleton3D
@@ -110,8 +112,10 @@ func tick(dt: float, frozen: bool) -> void:
 	if force_blink >= 0.0:
 		w_blink = force_blink
 	want += _sacc
-	want.x = clampf(want.x, -EYE_MAX_X, EYE_MAX_X)
-	want.y = clampf(want.y, -EYE_MAX_Y, EYE_MAX_Y)
+	# the shape keys are a straight-line blend of a turned eyeball: past about 8 degrees its edge pushed through the
+	# lower lid (a grey smear in the game's close shots), so the gaze stays inside that and the head does the rest
+	want.x = clampf(want.x, -GAZE_X, GAZE_X)
+	want.y = clampf(want.y, -GAZE_Y, GAZE_Y)
 	# eyes jump (a saccade takes 30 to 50 ms), they do not drift
 	_gaze = _gaze.lerp(want, 1.0 - exp(-dt * 28.0))
 	var wx: float = _gaze.x / EYE_MAX_X
