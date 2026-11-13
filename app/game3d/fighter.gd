@@ -106,7 +106,7 @@ var rim_on: bool = true                                  # set by fight.gd from 
 var look: Dictionary = {}                                # the arena's look (set by fight.gd)
 var hair_mask: Texture2D = null                          # realism round 2: the model's Forge hair mask
 var skin_mask: Texture2D = null                          # realism: the model's Forge skin mask (fight.gd, before set_model)
-var surface_kinds: Dictionary = {}                       # realism round 5: material name -> "skin" | "hair" (char_loader.surface_kinds)
+var surface_kinds: Dictionary = {}                       # realism round 5: material name -> "skin" | "hair" | "metal" (char_loader.surface_kinds)
 static var _white_tex: ImageTexture = null
 ## realism round 5 (13 Nov): per time of day, the key's colour on skin pulled towards white (the street keeps its colour)
 const SKIN_KEY_DESAT: Dictionary = {"golden": 0.45, "day": 0.2, "dusk": 0.35, "night": 0.2}
@@ -642,6 +642,9 @@ func _real_material(b: BaseMaterial3D) -> ShaderMaterial:
 	elif kind == "hair":
 		sm.set_shader_parameter("skin_mode", 0)
 		sm.set_shader_parameter("hair_all", 1.0)
+	elif kind != "":
+		# any other declared surface (a fitted metal mask, "metal"): no skin, and not the body's masks (other UVs)
+		sm.set_shader_parameter("skin_mode", 0)
 	elif skin_mask != null:
 		sm.set_shader_parameter("skin_mode", 1)
 		sm.set_shader_parameter("skin_tex", skin_mask)
