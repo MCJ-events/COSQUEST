@@ -8,7 +8,12 @@
 //   group/join/<code>, invite/<code>, join/<code> -> /group/join/<code>
 //   post/<id>                     -> /post/<id>
 //   notifications                 -> /notifications
+//   referral?code=<code>, r/<code> -> /wale/invite?code=<code>      (13 Nov: features/game/briefFeatures.ts)
+//   station?game=&station=&code=  -> /wale/challenge?...             (an event booth's QR)
+//   event?game=<id>               -> /wale/event?game=<id>
 // Anything else: null (the router's own matching, then +not-found).
+
+import { routeForBriefLink } from "../game/briefFeatures.ts";
 
 const ID = /^[A-Za-z0-9_-]{1,80}$/;
 const NAME = /^[A-Za-z0-9_.]{1,40}$/;
@@ -59,6 +64,7 @@ export function routeForUrl(url: string | null | undefined): string | null {
   if ((h === "invite" || h === "join") && n === 2 && ID.test(a)) return `/group/join/${a}`;
   if (h === "post" && n === 2 && ID.test(a)) return `/post/${a}`;
   if (h === "notifications" && n === 1) return "/notifications";
+  if (h === "referral" || h === "station" || h === "event" || h === "r") return routeForBriefLink(url);
   return null;
 }
 

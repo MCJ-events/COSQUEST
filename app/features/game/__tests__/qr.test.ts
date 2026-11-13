@@ -6,6 +6,7 @@
 // byte more after the terminator for short texts, so it is not compared there:
 // both are valid and decode the same.
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { describe, it } from "node:test";
 
 import { dataCodewords, encodeQr, formatBits, qrRows, reedSolomon, versionFor } from "../qr.ts";
@@ -30,8 +31,14 @@ describe("QR encoder (friend code, FriendsFeature.swift qrImage)", () => {
     assert.equal(versionFor(14), 1);
     assert.equal(versionFor(15), 2);
     assert.equal(versionFor(62), 4);
-    assert.equal(versionFor(63), null);
-    assert.throws(() => encodeQr("x".repeat(63)));
+    assert.equal(versionFor(63), 5);
+    assert.equal(versionFor(84), 5);
+    assert.equal(versionFor(85), 6);
+    assert.equal(versionFor(106), 6);
+    assert.equal(versionFor(107), 7);
+    assert.equal(versionFor(122), 7);
+    assert.equal(versionFor(123), null);
+    assert.throws(() => encodeQr("x".repeat(123)));
   });
 
   it("draws the same symbol as an independent encoder (segno), format bits included", () => {
@@ -89,5 +96,26 @@ describe("QR encoder (friend code, FriendsFeature.swift qrImage)", () => {
       assert.equal(q.version, version, text);
       assert.equal(q.size, 17 + 4 * version);
     }
+  });
+  it("versions 5 to 7 (an event station's link) match segno 1.6.6 bit for bit, version 7's version information included", () => {
+    // Texts that fill each version exactly, so neither encoder pads (segno pads short texts one byte differently).
+    // Each golden is the sha256 of segno's rows joined by newlines, at mask 5.
+    const golden: [number, number, string][] = [
+      [5, 84, "a474becb20af4f5afab9f1dd6cc039fb4b9fc34dc954c6eafe70bf864ee29776"],
+      [6, 106, "b2cf8f62cb7732719f57d66736d13f0261e7e00c7eafc8ecf1a0a5b038f33763"],
+      [7, 122, "5262ae591085da0ec9d0245534b6848af61dbfcb1ccc5070ab3b311a98fa0d86"],
+    ];
+    for (const [version, n, sha] of golden) {
+      const q = encodeQr("cosquest-".repeat(20).slice(0, n), 5);
+      assert.equal(q.version, version);
+      assert.equal(createHash("sha256").update(qrRows(q).join("\n")).digest("hex"), sha, `version ${version}`);
+    }
+  });
+
+  it("a station link (about 116 bytes) fits", () => {
+    const link = "cosquest://station?game=3f2a1c0e-1111-4a2b-9c3d-abcdef012345&station=9e8d7c6b-2222-4f3e-8a1b-0123456789ab&code=K7P2QX";
+    const q = encodeQr(link);
+    assert.equal(q.version, 7);
+    assert.equal(q.size, 45);
   });
 });

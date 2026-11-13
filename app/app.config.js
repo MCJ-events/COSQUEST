@@ -132,7 +132,7 @@ function cosquestBeta(config, env) {
           ...plugin[1],
           photosPermission: "CosQuest needs access to your photos so you can share them in chats or set a profile picture.",
           cameraPermission:
-            "CosQuest uses the camera for video calls and to take photos to share in chats or as your profile picture.",
+            "CosQuest uses the camera for video calls, to take photos to share in chats or as your profile picture, and for challenge photos at CosQuest events.",
         },
       ];
     }
@@ -173,7 +173,7 @@ function cosquestBeta(config, env) {
         ...(config.ios && config.ios.infoPlist),
         ITSAppUsesNonExemptEncryption: false,
         NSCameraUsageDescription:
-          "CosQuest uses the camera for video calls and to take photos to share in chats or as your profile picture.",
+          "CosQuest uses the camera for video calls, to take photos to share in chats or as your profile picture, and for challenge photos at CosQuest events.",
         NSMicrophoneUsageDescription: "CosQuest uses the microphone for voice and video calls and voice messages.",
         NSPhotoLibraryUsageDescription: "CosQuest needs access to your photos so you can share them in chats or set a profile picture.",
         NSLocationWhenInUseUsageDescription: "CosQuest uses your location to show quests and events near you, and to share it with friends when you choose to.",

@@ -25,6 +25,9 @@ import { spaced, xpRatio } from "@/features/waleui/armory";
 
 import { useGame } from "@/features/game/runtime";
 
+import { showEvents, showReferrals } from "@/features/game/briefFeatures";
+
+import { useBriefFlags } from "./brief/briefKit";
 import { useProgMe, useWaleProfile } from "./data";
 import { notBuiltYet, openGameSheet, openMap } from "./go";
 import { useFactionHero } from "./heroArt";
@@ -74,8 +77,29 @@ const MENU: { id: string; label: string; pic: Pic; tx: number; y: number; size: 
   { id: "leaderboard", label: "LEADERBOARD", pic: { src: require("@/assets/images/waleui/icon_trophy.png"), x: 289.75, y: 123.75, w: 15.25, h: 19 }, tx: 313, y: 119, size: 7.5, go: () => openGameSheet("war") },
 ];
 
+/** One menu row's step in his frame (the four rows sit 31 to 34 px apart). */
+const MENU_STEP = 32.5;
+
+/**
+ * Rows added under his four when the server has the feature on (13 Nov 2026, the brief features):
+ * INVITE (referrals) and EVENTS (event stations). With the flags off the menu is his frame exactly.
+ */
+function extraMenu(flags: ReturnType<typeof useBriefFlags>): typeof MENU {
+  const rows: { id: string; label: string; src: number; w: number; h: number; go: () => void }[] = [];
+  if (showReferrals(flags)) rows.push({ id: "invite", label: "INVITE", src: require("@/assets/images/waleui/icon_team_up.png"), w: 18, h: 15.25, go: () => router.push("/wale/invite") });
+  if (showEvents(flags)) rows.push({ id: "events", label: "EVENTS", src: require("@/assets/images/waleui/map_pin.png"), w: 20, h: 15, go: () => router.push("/wale/event") });
+  return rows.map((r, i) => {
+    const y = 119 + MENU_STEP * (i + 1);
+    return { id: r.id, label: r.label, pic: { src: r.src, x: 289, y: y + 5, w: r.w, h: r.h }, tx: 313, y, size: 9, go: r.go };
+  });
+}
+
 export default function HomeScreen({ menuOpen = false }: { menuOpen?: boolean }) {
   const [menu, setMenu] = useState(menuOpen);
+  const briefFlags = useBriefFlags();
+  const extras = extraMenu(briefFlags);
+  const menuRows = [...MENU, ...extras];
+  const grow = MENU_STEP * extras.length;
   const p = useWaleProfile();
   const prog = useProgMe();
   const fh = useFactionHero();
@@ -184,8 +208,8 @@ export default function HomeScreen({ menuOpen = false }: { menuOpen?: boolean })
       {/* menu */}
       {menu ? (
         <>
-          <At x={277} y={15.5} w={110} h={138} style={{ borderRadius: 10, backgroundColor: "rgba(200,196,222,0.86)" }} testID="wale-home-menu" />
-          {MENU.map((m) => (
+          <At x={277} y={15.5} w={110} h={138 + grow} style={{ borderRadius: 10, backgroundColor: "rgba(200,196,222,0.86)" }} testID="wale-home-menu" />
+          {menuRows.map((m) => (
             <Tap key={m.id} x={283} y={m.y} w={98} h={28.5} label={m.label} onPress={m.go} style={[glass(7, "rgba(255,255,255,0.5)"), { flexDirection: "row", justifyContent: "flex-start", paddingLeft: m.tx - 283 - 1 }]} testID={`wale-home-menu-${m.id}`}>
               <Art x={m.pic.x - 283 - 1} y={m.pic.y - m.y - 1} w={m.pic.w} h={m.pic.h} source={m.pic.src} />
               <T size={m.size} weight={700} spacing={0.5} style={{ lineHeight: 13 }}>
@@ -194,7 +218,7 @@ export default function HomeScreen({ menuOpen = false }: { menuOpen?: boolean })
             </Tap>
           ))}
           {/* a tap anywhere else closes it */}
-          <Tap x={0} y={160} w={403} h={330} label="Close menu" onPress={() => setMenu(false)} testID="wale-home-menu-close" />
+          <Tap x={0} y={160 + grow} w={403} h={330 - grow} label="Close menu" onPress={() => setMenu(false)} testID="wale-home-menu-close" />
         </>
       ) : (
         <Tap x={352} y={15} w={39} h={42} label="Menu" onPress={() => setMenu(true)} style={glass(10, "rgba(255,255,255,0.6)")} testID="wale-home-menu-button">
