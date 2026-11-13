@@ -80,7 +80,7 @@ function useCity(lat?: number | null, lng?: number | null) {
 // the app is built with EXPO_PUBLIC_WALE_UI=0. Its quests stay one tap away
 // either way (ENTER QUEST opens /quests).
 export default function HomeTab() {
-  return WALE_UI ? <WaleHomeScreen /> : <TeamHomeScreen />;
+  return WALE_UI ? <WaleHomeScreen inTabs /> : <TeamHomeScreen />;
 }
 
 function TeamHomeScreen() {

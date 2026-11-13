@@ -13,12 +13,15 @@ import { Ionicons } from "@expo/vector-icons";
 import { Image, type ImageSource } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useGlobalSearchParams } from "expo-router";
-import type { ComponentProps, ReactNode } from "react";
+import { type ComponentProps, createContext, type ReactNode, useContext, useState } from "react";
 import { Pressable, ScrollView, type StyleProp, Text, type TextStyle, View, type ViewStyle, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle, Ellipse, Path, Polygon, Rect } from "react-native-svg";
 
 import { FONTS } from "@/constants/fonts";
+import { TAB_BAR_HEIGHT, tabBarBottom } from "@/constants/tabBar";
+import { fitFrame, pinnedBarTop } from "@/features/waleui/fit";
+import { useIsDesktop } from "@/hooks/useDesktop";
 
 export type IconName = ComponentProps<typeof Ionicons>["name"];
 
@@ -157,12 +160,56 @@ export const glass = (radius: number, fill: string = W.card): ViewStyle => ({ ba
 
 /**
  * The frame-sized canvas, scaled to the phone's width. Frames taller than the
- * screen scroll. `fixedBottom` is drawn over the bottom edge and does not
- * scroll (not used by his frames today; kept for the footer if he asks).
+ * screen scroll.
+ *
+ * `fit` (build 27) is for his one-screen frames (the Homepage): the canvas is
+ * as tall as the room between the status bar and the bottom ("tabs": the top of
+ * the floating tab bar; "screen": the home bar inset), so it never leaves an
+ * empty band on a tall phone. The frame keeps the phone's width and gets the
+ * spare height as extra frame px under it (read with useCanvasExtra); on a phone
+ * too short for it the frame is scaled to the height and centred instead
+ * (features/waleui/fit.ts). The background runs edge to edge behind the bars.
+ *
+ * `footer` (build 27) is for his frames that are one Pro Max screen tall with an
+ * action bar at the foot (customiser DONE, weapon page TRY, lobby tabs and chat,
+ * the Faction button): on a shorter phone the frame from `footer.y` down stays
+ * on screen above the home bar, at his size, and the rest scrolls above it. At
+ * his frame's own size the bar is exactly where his frame has it.
  */
+export type CanvasFooter = {
+  /** Frame y where the pinned bar starts. */
+  y: number;
+  /** Its height in frame px (default: to the foot of the frame). */
+  h?: number;
+  /** Colour under the bar, behind the home bar inset (default: the gradient's last colour). */
+  base?: string;
+  children: ReactNode;
+};
 const SHOTS = process.env.EXPO_PUBLIC_E2E === "1";
 
-export function DesignCanvas({ width, height, children, colors, horizontal, testID }: { width: number; height: number; children: ReactNode; colors?: readonly [string, string, ...string[]]; horizontal?: boolean; testID?: string }) {
+const CanvasExtra = createContext(0);
+
+/** Frame px the fitted canvas adds under the frame's own height (0 for scrolling frames and at his frame's size). */
+export function useCanvasExtra(): number {
+  return useContext(CanvasExtra);
+}
+
+export function DesignCanvas({ width, height, children, colors, horizontal, testID, fit, footer }: { width: number; height: number; children: ReactNode; colors?: readonly [string, string, ...string[]]; horizontal?: boolean; testID?: string; fit?: "tabs" | "screen"; footer?: CanvasFooter }) {
+  if (fit) {
+    return (
+      <FittedCanvas width={width} height={height} colors={colors} horizontal={horizontal} testID={testID} fit={fit}>
+        {children}
+      </FittedCanvas>
+    );
+  }
+  return (
+    <ScrollingCanvas width={width} height={height} colors={colors} horizontal={horizontal} testID={testID} footer={footer}>
+      {children}
+    </ScrollingCanvas>
+  );
+}
+
+function ScrollingCanvas({ width, height, children, colors, horizontal, testID, footer }: { width: number; height: number; children: ReactNode; colors?: readonly [string, string, ...string[]]; horizontal?: boolean; testID?: string; footer?: CanvasFooter }) {
   const win = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const scale = win.width / width;
@@ -171,16 +218,71 @@ export function DesignCanvas({ width, height, children, colors, horizontal, test
   // measuring tools can photograph a whole frame in steps (experiments/build23-ui/tools).
   const { shotY } = useGlobalSearchParams<{ shotY?: string }>();
   const startY = SHOTS && shotY ? Math.max(0, Number(shotY) || 0) * scale : 0;
+  const gradStart = horizontal ? { x: 0, y: 0.5 } : { x: 0.5, y: 0 };
+  const gradEnd = horizontal ? { x: 1, y: 0.5 } : { x: 0.5, y: 1 };
+  // with a pinned bar the scrolling part ends where the bar starts, and leaves room under it for the bar
+  const bodyH = footer ? footer.y : height;
+  const barH = footer ? (footer.h ?? height - footer.y) : 0;
+  // the bar sits right under the frame when the whole frame fits, else on the home bar inset
+  const [roomH, setRoomH] = useState<number | null>(null);
+  const screenH = roomH ?? win.height;
+  const barTop = pinnedBarTop({ screenH, top: insets.top, bottom: insets.bottom, scale, barY: bodyH, barH });
   return (
-    <View style={{ flex: 1, backgroundColor: grad[0] }}>
-      <ScrollView key={startY} contentOffset={{ x: 0, y: startY }} style={{ flex: 1 }} contentContainerStyle={{ paddingTop: insets.top, paddingBottom: insets.bottom }} bounces={false} showsVerticalScrollIndicator={false} testID={testID ? `${testID}-scroll` : undefined}>
-        <View style={{ width: win.width, height: height * scale, overflow: "hidden" }}>
+    <View
+      style={{ flex: 1, backgroundColor: grad[0] }}
+      onLayout={footer ? (e) => {
+        const h = e.nativeEvent.layout.height;
+        if (h > 0 && (roomH === null || Math.abs(roomH - h) > 0.5)) setRoomH(h);
+      } : undefined}
+    >
+      <ScrollView key={startY} contentOffset={{ x: 0, y: startY }} style={{ flex: 1 }} contentContainerStyle={{ paddingTop: insets.top, paddingBottom: insets.bottom + barH * scale }} bounces={false} showsVerticalScrollIndicator={false} testID={testID ? `${testID}-scroll` : undefined}>
+        <View style={{ width: win.width, height: bodyH * scale, overflow: "hidden" }}>
           <View testID={testID} style={{ position: "absolute", left: 0, top: 0, width, height, transformOrigin: "top left", transform: [{ scale }] }}>
-            <LinearGradient colors={grad} start={horizontal ? { x: 0, y: 0.5 } : { x: 0.5, y: 0 }} end={horizontal ? { x: 1, y: 0.5 } : { x: 0.5, y: 1 }} style={{ position: "absolute", left: 0, top: 0, width, height }} />
+            <LinearGradient colors={grad} start={gradStart} end={gradEnd} style={{ position: "absolute", left: 0, top: 0, width, height }} />
             {children}
           </View>
         </View>
       </ScrollView>
+      {footer ? (
+        <View style={{ position: "absolute", left: 0, right: 0, top: barTop, bottom: 0, backgroundColor: footer.base ?? grad[grad.length - 1] }}>
+          <View style={{ width: win.width, height: barH * scale, overflow: "hidden" }}>
+            {/* the same frame, shifted so his y = footer.y is the bar's top edge */}
+            <View testID={testID ? `${testID}-pinned` : undefined} style={{ position: "absolute", left: 0, top: -footer.y * scale, width, height, transformOrigin: "top left", transform: [{ scale }] }}>
+              <LinearGradient colors={grad} start={gradStart} end={gradEnd} style={{ position: "absolute", left: 0, top: 0, width, height }} />
+              {footer.children}
+            </View>
+          </View>
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+function FittedCanvas({ width, height, children, colors, horizontal, testID, fit }: { width: number; height: number; children: ReactNode; colors?: readonly [string, string, ...string[]]; horizontal?: boolean; testID?: string; fit: "tabs" | "screen" }) {
+  const win = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const desktop = useIsDesktop();
+  // the screen's own size once laid out (the window until then): right on split screens and in a resized browser
+  const [room, setRoom] = useState<{ w: number; h: number } | null>(null);
+  const bottom = fit === "tabs" && !desktop ? tabBarBottom(insets.bottom) + TAB_BAR_HEIGHT : insets.bottom;
+  const f = fitFrame({ width: room?.w ?? win.width, height: room?.h ?? win.height, top: insets.top, bottom, frameW: width, frameH: height });
+  const grad = colors ?? ([W.bgTop, W.bgLight] as const);
+  const h = height + f.extra;
+  return (
+    <View
+      style={{ flex: 1, backgroundColor: grad[0], overflow: "hidden" }}
+      onLayout={(e) => {
+        const { width: w, height: hh } = e.nativeEvent.layout;
+        if (w > 0 && hh > 0 && (!room || Math.abs(room.w - w) > 0.5 || Math.abs(room.h - hh) > 0.5)) setRoom({ w, h: hh });
+      }}
+    >
+      {/* his gradient from the top of the screen to the bottom, behind the status bar and the tab bar */}
+      <LinearGradient colors={grad} start={horizontal ? { x: 0, y: 0.5 } : { x: 0.5, y: 0 }} end={horizontal ? { x: 1, y: 0.5 } : { x: 0.5, y: 1 }} style={{ position: "absolute", left: 0, top: 0, right: 0, bottom: 0 }} />
+      <View style={{ position: "absolute", left: f.left, top: insets.top, width: width * f.scale, height: h * f.scale }}>
+        <View testID={testID} style={{ position: "absolute", left: 0, top: 0, width, height: h, transformOrigin: "top left", transform: [{ scale: f.scale }] }}>
+          <CanvasExtra.Provider value={f.extra}>{children}</CanvasExtra.Provider>
+        </View>
+      </View>
     </View>
   );
 }

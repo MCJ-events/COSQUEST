@@ -119,8 +119,26 @@ export default function CustomiserScreen({ initialTab = "faces" }: { initialTab?
   const preview = previewArt(tab, look.outfit);
   const pv = outfits ? { x: 140, y: 82 } : { x: 60, y: 96 };
 
+  // his footer (Look saved, DONE) stays on screen above the home bar on a phone shorter than his frame (build 27)
+  const footer = (
+    <>
+      <Band y={footY} h={56} w={FW} color="#EAF4F9" line="top" />
+      <At x={16.5} y={footY + 22} w={200} style={{ flexDirection: "row", alignItems: "center", gap: 7.5 }}>
+        <Ico source={ART.ic.check} size={15} color={saved ? W.pink : W.slate} />
+        <T size={10.5} weight={500} color={W.inkSoft} style={{ lineHeight: 14 }} testID="wale-custom-saved">
+          {saved ? "Look saved" : "Saving…"}
+        </T>
+      </At>
+      <Tap x={286.25} y={doneY} w={128} h={39.5} label="Done" onPress={() => back("/wale/wardrobe")} style={{ borderRadius: 12, backgroundColor: head.done === "white" ? "#FFFFFF" : W.pink }} testID="wale-custom-done">
+        <T size={13.5} weight={700} italic={tab === "headwear"} color={head.done === "white" ? W.pink : "#FFFFFF"} spacing={0.4} style={{ lineHeight: 18 }}>
+          DONE
+        </T>
+      </Tap>
+    </>
+  );
+
   return (
-    <DesignCanvas width={FW} height={H} colors={["#E3F1F7", "#E9F5FA"]} testID="wale-custom">
+    <DesignCanvas width={FW} height={H} colors={["#E3F1F7", "#E9F5FA"]} testID="wale-custom" footer={{ y: footY, base: "#EAF4F9", children: footer }}>
       {/* header */}
       <Band y={0} h={71} w={FW} line="bottom" />
       <Tap x={16} y={13.75} w={44} h={44} label="Back" onPress={() => back("/wale/wardrobe")} style={TILE} testID="wale-custom-back">
@@ -291,20 +309,6 @@ export default function CustomiserScreen({ initialTab = "faces" }: { initialTab?
           </At>
         </>
       ) : null}
-
-      {/* footer */}
-      <Band y={footY} h={56} w={FW} color="#EAF4F9" line="top" />
-      <At x={16.5} y={footY + 22} w={200} style={{ flexDirection: "row", alignItems: "center", gap: 7.5 }}>
-        <Ico source={ART.ic.check} size={15} color={saved ? W.pink : W.slate} />
-        <T size={10.5} weight={500} color={W.inkSoft} style={{ lineHeight: 14 }} testID="wale-custom-saved">
-          {saved ? "Look saved" : "Saving…"}
-        </T>
-      </At>
-      <Tap x={286.25} y={doneY} w={128} h={39.5} label="Done" onPress={() => back("/wale/wardrobe")} style={{ borderRadius: 12, backgroundColor: head.done === "white" ? "#FFFFFF" : W.pink }} testID="wale-custom-done">
-        <T size={13.5} weight={700} italic={tab === "headwear"} color={head.done === "white" ? W.pink : "#FFFFFF"} spacing={0.4} style={{ lineHeight: 18 }}>
-          DONE
-        </T>
-      </Tap>
     </DesignCanvas>
   );
 }

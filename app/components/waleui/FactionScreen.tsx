@@ -83,8 +83,36 @@ export default function FactionScreen() {
       ? "Pass the entry test to finish joining."
       : "Pick the faction you play for. You join once you pass its entry test.";
 
+  // the pick button (and its notice) stays on screen above the home bar on a phone shorter than the frame (build 27)
+  const footer = (
+    <>
+      <Tap
+        x={24}
+        y={770}
+        w={382}
+        h={56}
+        label={actionLabel(action, selectedName)}
+        disabled={action.kind === "none" || busy || !config}
+        onPress={() => void go()}
+        style={{ backgroundColor: action.kind === "none" || !config ? W.chip : W.pink, borderRadius: 14 }}
+        testID="wale-faction-go"
+      >
+        <T size={17} weight={800} color="#FFFFFF" spacing={0.5}>
+          {busy ? "…" : actionLabel(action, selectedName)}
+        </T>
+      </Tap>
+      {notice ? (
+        <At x={24} y={840} w={382}>
+          <T size={12} weight={600} color={W.inkSoft} lines={2} align="center" style={{ lineHeight: 17 }} testID="wale-faction-notice">
+            {notice}
+          </T>
+        </At>
+      ) : null}
+    </>
+  );
+
   return (
-    <DesignCanvas width={FW} height={FH} colors={["#B5D9E6", "#E6F2F8", "#D2E8F2"]} testID="wale-faction">
+    <DesignCanvas width={FW} height={FH} colors={["#B5D9E6", "#E6F2F8", "#D2E8F2"]} testID="wale-faction" footer={{ y: 760, h: 120, children: footer }}>
       <At x={24} y={30}>
         <T size={22} weight={700} style={{ lineHeight: 34 }} testID="wale-faction-title">
           Faction
@@ -144,28 +172,6 @@ export default function FactionScreen() {
         </Tap>
       ) : null}
 
-      <Tap
-        x={24}
-        y={770}
-        w={382}
-        h={56}
-        label={actionLabel(action, selectedName)}
-        disabled={action.kind === "none" || busy || !config}
-        onPress={() => void go()}
-        style={{ backgroundColor: action.kind === "none" || !config ? W.chip : W.pink, borderRadius: 14 }}
-        testID="wale-faction-go"
-      >
-        <T size={17} weight={800} color="#FFFFFF" spacing={0.5}>
-          {busy ? "…" : actionLabel(action, selectedName)}
-        </T>
-      </Tap>
-      {notice ? (
-        <At x={24} y={840} w={382}>
-          <T size={12} weight={600} color={W.inkSoft} lines={2} align="center" style={{ lineHeight: 17 }} testID="wale-faction-notice">
-            {notice}
-          </T>
-        </At>
-      ) : null}
     </DesignCanvas>
   );
 }

@@ -14,6 +14,15 @@
 // when the faction is unknown (signed out, no faction yet). Never the 3D Forge
 // avatar. The rank badge is his own badge art for the player's rank
 // (RankBadgeArt.tsx) with the rank as a Roman numeral on the tab (Mark).
+//
+// Build 27 (Wale on build 26: "this circled part is a lot of space in the app on
+// iPhone, it does not fit the screen"): the canvas fills the room between the
+// status bar and the tab bar (kit.tsx DesignCanvas fit, features/waleui/fit.ts).
+// The spare height goes to the middle of his frame: the header, the column under
+// it, the rank badge and the menu stay where he put them; ENTER QUEST keeps his
+// 13 px above the tab bar; the hero and the street web grow with the room (the
+// hero no wider than the gap beside the right-hand panel) and the panel moves
+// with the hero's body. At his frame's size nothing moves.
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
@@ -22,6 +31,7 @@ import { useEffect, useState } from "react";
 import { View } from "react-native";
 
 import { spaced, xpRatio } from "@/features/waleui/armory";
+import { homeStretch } from "@/features/waleui/fit";
 
 import { fetchPayConfig } from "@/features/game/payLink";
 import { gameStore, useGame } from "@/features/game/runtime";
@@ -33,7 +43,7 @@ import { useProgMe, useWaleProfile } from "./data";
 import { notBuiltYet, openGameSheet, openMap } from "./go";
 import { useFactionHero } from "./heroArt";
 import { BADGE_CELL, WaleRankBadge } from "./RankBadgeArt";
-import { Art, At, DesignCanvas, Hexagon, LineIcon, T, Tap, W, glass } from "./kit";
+import { Art, At, DesignCanvas, Hexagon, LineIcon, T, Tap, W, glass, useCanvasExtra } from "./kit";
 
 /** His art and the box each piece fills in the 403 x 575 frame (x, y, w, h), measured from the cut-outs. */
 const ART = {
@@ -95,7 +105,22 @@ function extraMenu(flags: ReturnType<typeof useBriefFlags>): typeof MENU {
   });
 }
 
-export default function HomeScreen({ menuOpen = false }: { menuOpen?: boolean }) {
+/**
+ * `inTabs`: drawn as the Home tab, so the canvas ends at the top of the floating tab bar
+ * (app/(tabs)/home.tsx); the /wale/home link has no tab bar and fills to the home bar inset.
+ */
+export default function HomeScreen({ menuOpen = false, inTabs = false }: { menuOpen?: boolean; inTabs?: boolean }) {
+  return (
+    <DesignCanvas width={HOME_W} height={HOME_H} colors={["#C1DEE9", "#D6E9F2", "#E6F2F8"]} testID="wale-home" fit={inTabs ? "tabs" : "screen"}>
+      <HomeFrame menuOpen={menuOpen} />
+    </DesignCanvas>
+  );
+}
+
+function HomeFrame({ menuOpen }: { menuOpen: boolean }) {
+  const extra = useCanvasExtra();
+  const fit = homeStretch(extra);
+  const dy = fit.rightDy;
   const [menu, setMenu] = useState(menuOpen);
   const briefFlags = useBriefFlags();
   const extras = extraMenu(briefFlags);
@@ -124,14 +149,17 @@ export default function HomeScreen({ menuOpen = false }: { menuOpen?: boolean })
   const rank = prog?.rank?.number ?? null;
   const ratio = xpRatio(p.xpHave, p.xpNeed);
   return (
-    <DesignCanvas width={HOME_W} height={HOME_H} colors={["#C1DEE9", "#D6E9F2", "#E6F2F8"]} testID="wale-home">
-      {/* his street web, and on it the player's faction hero (his own character when the faction is unknown) */}
-      <Art {...ART.web} source={ART.web.src} testID="wale-home-web" />
-      <At x={ART.hero.x} y={ART.hero.y} w={ART.hero.w} h={ART.hero.h} pointerEvents="none" testID="wale-home-hero">
+    <>
+      {/* his street web, and on it the player's faction hero (his own character when the faction is unknown); both grow
+          with the room on a tall phone, the web cut at his edge beside the right-hand panel */}
+      <At x={fit.web.x} y={fit.web.y} w={ART.web.w} h={fit.web.h} style={{ overflow: "hidden" }} pointerEvents="none">
+        <Art x={0} y={0} w={fit.web.w} h={fit.web.h} source={ART.web.src} testID="wale-home-web" />
+      </At>
+      <At x={fit.hero.x} y={fit.hero.y} w={fit.hero.w} h={fit.hero.h} pointerEvents="none" testID="wale-home-hero">
         {fh ? (
-          <Image source={fh.full} style={{ width: ART.hero.w, height: ART.hero.h }} contentFit="contain" contentPosition="bottom" accessible accessibilityRole="image" accessibilityLabel={`Your hero: ${fh.name}`} />
+          <Image source={fh.full} style={{ width: fit.hero.w, height: fit.hero.h }} contentFit="contain" contentPosition="bottom" accessible accessibilityRole="image" accessibilityLabel={`Your hero: ${fh.name}`} />
         ) : (
-          <Image source={ART.hero.src} style={{ width: ART.hero.w, height: ART.hero.h }} contentFit="fill" accessible accessibilityRole="image" accessibilityLabel="Your hero" />
+          <Image source={ART.hero.src} style={{ width: fit.hero.w, height: fit.hero.h }} contentFit="contain" contentPosition="bottom" accessible accessibilityRole="image" accessibilityLabel="Your hero" />
         )}
       </At>
 
@@ -200,24 +228,24 @@ export default function HomeScreen({ menuOpen = false }: { menuOpen?: boolean })
       ) : null}
 
       {/* right column */}
-      <At x={256} y={208} w={121} h={233} style={glass(14, "rgba(255,255,255,0.28)")} testID="wale-home-right" />
+      <At x={256} y={208 + dy} w={121} h={233} style={glass(14, "rgba(255,255,255,0.28)")} testID="wale-home-right" />
       {RIGHT.map((b) => (
-        <Tap key={b.id} x={265} y={b.y} w={103} h={30} label={b.label} onPress={b.go} style={[glass(8, "rgba(255,255,255,0.55)"), { flexDirection: "row", justifyContent: "flex-start", paddingLeft: b.tx - 265 - 1 }]} testID={`wale-home-${b.id}`}>
+        <Tap key={b.id} x={265} y={b.y + dy} w={103} h={30} label={b.label} onPress={b.go} style={[glass(8, "rgba(255,255,255,0.55)"), { flexDirection: "row", justifyContent: "flex-start", paddingLeft: b.tx - 265 - 1 }]} testID={`wale-home-${b.id}`}>
           <Art x={b.pic.x - 265 - 1} y={b.pic.y - b.y - 1} w={b.pic.w} h={b.pic.h} source={b.pic.src} />
           <T size={9.5} weight={700} color={W.inkSoft} spacing={0.6} style={{ lineHeight: 13 }}>
             {b.label}
           </T>
         </Tap>
       ))}
-      <Art {...ART.map} source={ART.map.src} testID="wale-home-map-art" />
-      <Tap x={265} y={408} w={103} h={32} label="Open map" onPress={openMap} style={{ backgroundColor: W.green, borderRadius: 8 }} testID="wale-home-open-map">
+      <Art {...ART.map} y={ART.map.y + dy} source={ART.map.src} testID="wale-home-map-art" />
+      <Tap x={265} y={408 + dy} w={103} h={32} label="Open map" onPress={openMap} style={{ backgroundColor: W.green, borderRadius: 8 }} testID="wale-home-open-map">
         <T size={9} weight={700} color="#FFFFFF" style={{ lineHeight: 12 }}>
           OPEN MAP
         </T>
       </Tap>
 
       {/* ENTER QUEST */}
-      <Tap x={17} y={502} w={369} h={60} label="Enter quest" onPress={() => router.push("/quests")} style={{ backgroundColor: W.pink, borderRadius: 14, flexDirection: "row", gap: 9, shadowColor: W.pink, shadowOpacity: 0.35, shadowRadius: 8, shadowOffset: { width: 0, height: 5 } }} testID="wale-home-enter-quest">
+      <Tap x={17} y={fit.questY} w={369} h={60} label="Enter quest" onPress={() => router.push("/quests")} style={{ backgroundColor: W.pink, borderRadius: 14, flexDirection: "row", gap: 9, shadowColor: W.pink, shadowOpacity: 0.35, shadowRadius: 8, shadowOffset: { width: 0, height: 5 } }} testID="wale-home-enter-quest">
         <Hexagon w={17} h={19} />
         <T size={19} weight={800} color="#FFFFFF" spacing={0.6} style={{ lineHeight: 26 }}>
           ENTER QUEST
@@ -237,13 +265,13 @@ export default function HomeScreen({ menuOpen = false }: { menuOpen?: boolean })
             </Tap>
           ))}
           {/* a tap anywhere else closes it */}
-          <Tap x={0} y={160 + grow} w={403} h={330 - grow} label="Close menu" onPress={() => setMenu(false)} testID="wale-home-menu-close" />
+          <Tap x={0} y={160 + grow} w={403} h={330 - grow + extra} label="Close menu" onPress={() => setMenu(false)} testID="wale-home-menu-close" />
         </>
       ) : (
         <Tap x={352} y={15} w={39} h={42} label="Menu" onPress={() => setMenu(true)} style={glass(10, "rgba(255,255,255,0.6)")} testID="wale-home-menu-button">
           <LineIcon name="menu" size={19.5} />
         </Tap>
       )}
-    </DesignCanvas>
+    </>
   );
 }
