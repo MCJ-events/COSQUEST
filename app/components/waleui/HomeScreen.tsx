@@ -123,6 +123,8 @@ export default function HomeScreen({ menuOpen = false }: { menuOpen?: boolean })
         </T>
       </At>
       <Art {...ART.coin} source={ART.coin.src} testID="wale-home-coin-icon" />
+      {/* the CosCoin pill opens the Wallet (balance and history from the server; app/wallet.tsx) */}
+      <Tap x={203} y={18} w={70} h={24} label={`Wallet: ${p.coins === null ? 0 : p.coins} CosCoins`} onPress={() => router.push("/wallet")} testID="wale-home-wallet" />
       {/* the second currency slot: total XP (hidden under the open menu, as in his frame) */}
       {!menu ? (
         <>
