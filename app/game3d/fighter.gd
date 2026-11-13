@@ -234,6 +234,13 @@ func setup(n: String, t: int, hp_max: int, c: Color, r: String = "hero") -> void
 	set_capsule()
 
 
+## anim-readable (Wale, 13 Nov: "the drop shadow is too thick"): softer contact shadows, still dark right
+## under the feet so they read as contact (fight.gd sets it from "readable" before the fighters are made)
+static var soft_shadows: bool = false
+const SOFT_K: float = 0.55       # opacity of the blob and the sun tail against the old ones
+const SOFT_FOOT_K: float = 0.7   # the small per-foot contact shadows keep more (they are what says "on the ground")
+
+
 func _build_shadow() -> void:
 	# a soft contact shadow: grounds the fighters on the bright paving at no real cost
 	var sh := MeshInstance3D.new()
@@ -245,11 +252,11 @@ func _build_shadow() -> void:
 	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	m.albedo_texture = preload("res://art/fx/vfx_glow.png")
-	m.albedo_color = Color(0.08, 0.04, 0.12, 0.75)
+	m.albedo_color = Color(0.08, 0.04, 0.12, 0.75 * (SOFT_K if soft_shadows else 1.0))
 	if bool(look.get("real", false)):
 		# round 4: a firmer contact disc under the body on the real look (the judge read "weak contact shadow")
-		m.albedo_color = Color(0.05, 0.035, 0.07, 0.92)
-		q.size = Vector2(1.8, 1.8) * size_k
+		m.albedo_color = Color(0.05, 0.035, 0.07, 0.92 * (SOFT_K if soft_shadows else 1.0))
+		q.size = Vector2(1.8, 1.8) * size_k * (0.85 if soft_shadows else 1.0)
 	m.disable_receive_shadows = true
 	sh.material_override = m
 	sh.position.y = 0.045
@@ -262,7 +269,7 @@ func _build_shadow() -> void:
 	if sun_blob and ld.length() > 0.05:
 		q.size = Vector2(SUN_BLOB.x, SUN_BLOB.y) * size_k
 		m.albedo_texture = _sun_blob_tex()
-		m.albedo_color = Color.WHITE
+		m.albedo_color = Color(1, 1, 1, SOFT_K) if soft_shadows else Color.WHITE
 		sh.top_level = true
 		_cast = sh
 		# the quad's centre sits ahead of the feet along the sun (the texture's feet are at SUN_FEET)
@@ -850,7 +857,18 @@ func hold_weapon(weapon: Node3D, att: Dictionary, side: String, cls: String) -> 
 	return ""
 
 
-## The weapon's grip point (the hand) in the world, or Vector3.INF.
+## anim-readable: how far the lowest sole is above the fighter's ground (m; INF without sole markers).
+## Review logs only (button_rec.gd): it is what "levitating" or "sunk" measures.
+func sole_gap() -> float:
+	if _soles.is_empty() or _feet_sk == null or not is_instance_valid(_feet_sk) or not _feet_sk.is_inside_tree():
+		return INF
+	var lo: float = INF
+	for marks: Array in _soles:
+		for mk: Array in marks:
+			lo = minf(lo, (_feet_sk.global_transform * (_feet_sk.get_bone_global_pose(int(mk[0])) * (mk[1] as Vector3))).y)
+	return lo - global_position.y
+
+
 ## anim-readable: a bone's position in the world (Vector3.INF when there is no such bone).
 func bone_pos(bone: String) -> Vector3:
 	if anim == null or anim.skeleton == null or not anim.skeleton.is_inside_tree():
@@ -861,6 +879,7 @@ func bone_pos(bone: String) -> Vector3:
 	return anim.skeleton.global_transform * anim.skeleton.get_bone_global_pose(i).origin
 
 
+## The weapon's grip point (the hand) in the world, or Vector3.INF.
 func grip_point(side: String = "r") -> Vector3:
 	if weapons.has(side):
 		return (weapons[side]["node"] as Node3D).global_position
@@ -1243,7 +1262,8 @@ func tick_visual(dt: float) -> void:
 		pos += Vector3(off.x, 0.0, off.z)
 	var bscale := Vector3(sc * sxz, sc * (1.0 + 0.6 * (1.0 - sxz)) * maxf(0.05, sxz), sc * sxz)
 	# build 21: the lower foot on the paving, with this frame's lean and offsets (see _plant_target)
-	_plant_y = lerpf(_plant_y, _plant_target(Basis.from_euler(rot).scaled(bscale), pos.y), 1.0 - exp(-dt * PLANT_RATE))
+	# anim-readable: the readable clips crouch and rise more, so the plant follows faster (no float on the way back up)
+	_plant_y = lerpf(_plant_y, _plant_target(Basis.from_euler(rot).scaled(bscale), pos.y), 1.0 - exp(-dt * (PLANT_RATE_READABLE if turn_steps else PLANT_RATE)))
 	pos.y += _plant_y
 	body.position = pos
 	body.rotation = rot
@@ -1425,7 +1445,7 @@ func _tick_feet() -> void:
 			continue
 		var grow: float = 1.0 + 0.5 * (1.0 - k)
 		mi.global_transform = Transform3D(Basis(Vector3.UP, yaw_v).scaled(Vector3(grow, 1.0, grow)), Vector3(c.x, gy + 0.05, c.z))
-		(mi.material_override as StandardMaterial3D).albedo_color = Color(1, 1, 1, (0.95 if bool(look.get("real", false)) else FOOT_ALPHA) * k * k)
+		(mi.material_override as StandardMaterial3D).albedo_color = Color(1, 1, 1, (0.95 if bool(look.get("real", false)) else FOOT_ALPHA) * k * k * (SOFT_FOOT_K if soft_shadows else 1.0))
 
 
 # build 21: planted feet. The retargeted clips put a character's feet where a human's go, and a
@@ -1436,10 +1456,16 @@ func _tick_feet() -> void:
 # eased, in the states where a foot should be down. Presentation only: the fighter's position,
 # hurtbox and weapon arc are the game's and never move.
 const PLANT_RATE: float = 18.0              # 1/s
+const PLANT_RATE_READABLE: float = 40.0     # 1/s, with the readable clips
 const PLANT_MAX: float = 0.45               # m at size 1: the most the body moves
 const PLANT_STATES: Array[String] = ["idle", "_", "walk", "hit", "stagger", "guard", "parry", "heavy",
 	"attack_1", "attack_2", "skill_charge", "skill_whirl", "skill_rally", "skill_shield"]
 const PLANT_LIFT_ONLY: Array[String] = ["run", "sprint"]   # a stride leaves the ground: only lift a sunk foot
+## anim-readable (Wale, 13 Nov: "the players are kind of levitating"): with the readable clips on, every
+## standing action keeps its lower sole on the paving too (it floated through the third cut, SHOOT, RAIN,
+## SPLIT and the intro), and a fall or knockdown is only kept from sinking
+const PLANT_READABLE: Array[String] = ["attack_3", "skill_shoot", "skill_rain", "skill_split", "intro", "sprint_stop"]
+const PLANT_LIFT_READABLE: Array[String] = ["knockdown"]
 var foot_plant: bool = true                 # set false by fight.gd from the look ("plant": false)
 var _soles: Array = []                      # per foot (FOOT_BONES order): [[bone, Vector3 in bone space], ...]
 var _plant_y: float = 0.0
@@ -1548,8 +1574,8 @@ func _plant_target(b: Basis, y0: float) -> float:
 	if not foot_plant or dead or celebrating or _diss_t >= 0.0 or not anim.has_clip(anim.state if anim.state != "_" else "idle"):
 		return 0.0
 	var st: String = anim.state
-	var lift_only: bool = st in PLANT_LIFT_ONLY
-	if not lift_only and not (st in PLANT_STATES):
+	var lift_only: bool = st in PLANT_LIFT_ONLY or (turn_steps and st in PLANT_LIFT_READABLE)
+	if not lift_only and not (st in PLANT_STATES) and not (turn_steps and st in PLANT_READABLE):
 		return 0.0
 	var h: float = sole_height(b)
 	if h == INF:

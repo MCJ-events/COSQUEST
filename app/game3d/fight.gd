@@ -512,6 +512,7 @@ func _ready() -> void:
 	# knockdown, the hero's intro and victory, breathing and turning steps. Presentation only (the
 	# rules, hit frames and cooldowns are untouched). "readable": false plays build 25's clips.
 	AnimLib.readable = (1 if bool(cfg["readable"]) else 0) if cfg.has("readable") else -1
+	FighterScript.soft_shadows = AnimLib.readable_now()
 	_ready_pose = bool(cfg.get("ready_pose", true))
 	hero = _spawn(str(cfg.get("hero_name", "You")), 0, int(cfg.get("hero_hp", HERO_HP)), Color(0.3, 0.75, 0.35), Vector3(0.3, 0, 3.6), PI, "hero")
 	ally = _spawn(str(cfg.get("ally_name", "Ally")), 0, ALLY_HP, Color(0.3, 0.65, 0.9), Vector3(3.0, 0, 4.4), PI, "ally")

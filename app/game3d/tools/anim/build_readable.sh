@@ -30,10 +30,10 @@ if [ "$what" = forge ] || [ "$what" = all ]; then
   done
 fi
 if [ "$what" = heroes ] || [ "$what" = all ]; then
-  src_of() { local d; for d in ${HERO_SRC//:/ }; do [ -f "$d/$1/lod1.glb" ] && { echo "$d/$1"; return; }; done; }
+  src_of() { local d; for d in ${HERO_SRC//:/ }; do [ -f "$d/$1/lod1.glb" ] && { echo "$d/$1"; return 0; }; done; return 0; }
   keys=${HERO_KEYS:-ascendants_zuri controllers_tavo icons_imani everborn_oren celestials_lyra blockbusters_kofi}
   for k in $keys; do
-    src=$(src_of $k)
+    src=$(src_of $k || true)
     [ -n "$src" ] || { echo "== $k: no lod1.glb in $HERO_SRC, skipped"; continue; }
     echo "== $k from $src $(date -u +%H:%M:%S)"
     bash tools/anim/add_hero.sh $k "$src" --no-pack

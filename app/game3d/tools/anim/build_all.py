@@ -154,7 +154,7 @@ def main():
             # shorter stride than the cast's median: Bobo 1.9 per hip against 2.8), so the feet hold
             own_gs = {}
             for c, v in rep["clips"].items():
-                if cfg["clips"][c].get("lib") in ("cmu", "m2m") and v.get("ground_speed_mps"):
+                if (cfg["clips"][c].get("lib") in ("cmu", "m2m") or "compose" in cfg["clips"][c]) and v.get("ground_speed_mps"):
                     own_gs[c] = round(v["ground_speed_mps"] / rep["fingerprint"]["Hips"][1], 3)
             if own_gs:
                 chars[key]["ground_speed_per_hip"] = own_gs

@@ -184,12 +184,16 @@ def compose_frames(cname, cfg, rts, anims, damp, grips, cache, clip_frames):
         f1 = float(s.get("to", len(fr) - 1))
         sp = float(s.get("speed", 1.0))
         segs.append({"fr": fr, "from": f0, "to": f1, "at": float(s.get("at", 0)), "speed": sp, "fade": float(s.get("fade", 0))})
+    if nfr <= 0:
+        nfr = int(round(segs[0]["to"] - segs[0]["from"])) + 1 if segs[0]["to"] < 1e8 else len(segs[0]["fr"])   # "frames": 0 = the base clip's own length
     layers = []
     for L in spec.get("layers", []):
         layers.append({"fr": ingredient(L["clip"]), "idx": idx_of(L.get("bones", "upper")), "from": float(L.get("from", 0)),
                        "to": float(L.get("to", 1e9)), "at": float(L.get("at", 0)), "speed": float(L.get("speed", 1.0)), "w": L.get("w", 1.0)})
     i_hips = rt.t_hips
     hk = max(0.3, float(_gpos(rt.t_rest_G, i_hips)[1])) / 0.95   # offsets are for a 0.95 m hip height
+    feet_i = [tn.index(x) for x in ("LeftToeBase", "RightToeBase") if x in tn]
+    floor0 = min(float(_gpos(rt.t_rest_G, i)[1]) for i in feet_i) if feet_i else 0.0
     frames = []
     Gs = []
     for f in range(nfr):
@@ -239,6 +243,53 @@ def compose_frames(cname, cfg, rts, anims, damp, grips, cache, clip_frames):
                 d = _dir(curve(op.get("yaw", 0.0), f), curve(op.get("elev", 0.0), f))
                 P = _gpos(G, ia) + d * arm * float(op.get("reach", 0.96))
                 loc, G = _arm_ik(rt, loc, G, op["side"], P, w)
+            elif kind == "flatfeet":
+                # anim-readable (Wale: "their feet are not steadily on the ground"): a foot that is down stands
+                # flat, heel and ball on the paving, the way it stands in the rest pose, instead of resting on
+                # its toes; turned about the ankle, blended in as the foot nears its lowest height
+                w = curve(op.get("w", 1.0), f, 1.0)
+                if w <= 1e-4:
+                    continue
+                for side in ("Left", "Right"):
+                    fa, ft = side + "Foot", side + "ToeBase"
+                    if fa not in tn or ft not in tn:
+                        continue
+                    ia, it = tn.index(fa), tn.index(ft)
+                    v = _gpos(G, it) - _gpos(G, ia)
+                    vr = _gpos(rt.t_rest_G, it) - _gpos(rt.t_rest_G, ia)
+                    hz = math.hypot(v[0], v[2])
+                    if hz < 1e-4:
+                        continue
+                    low = _gpos(G, it)[1] - floor0
+                    k = w * max(0.0, min(1.0, 1.0 - (low - 0.02 * hk) / (0.06 * hk)))
+                    if k <= 1e-3:
+                        continue
+                    er = math.atan2(vr[1], math.hypot(vr[0], vr[2]))
+                    L = np.linalg.norm(v)
+                    tgt = np.array([v[0] / hz * math.cos(er), math.sin(er), v[2] / hz * math.cos(er)]) * L
+                    from gltf import q_from_to
+                    q = qslerp(ID, q_from_to(v, tgt), k)
+                    _set_world_rot(rt, loc, G, ia, qmul(q, _grot(G, ia)))
+                    G = rt.tp.globals_of(loc)
+            elif kind == "pump":
+                # anim-readable (Wale's sprint note): each arm swings against the opposite leg, as a runner's
+                # does: the hand comes forward and up when the other foot is forward, back past the hip when
+                # it is behind, the elbow bent near 90 degrees. The legs' phase is read from this frame.
+                w = curve(op.get("w", 1.0), f, 1.0)
+                if w <= 1e-4:
+                    continue
+                hz = _gpos(G, i_hips)[2]
+                for side, foot, amp in (("l", "RightFoot", float(op.get("amp", 1.0))), ("r", "LeftFoot", float(op.get("amp_r", 0.6)))):
+                    if foot not in tn:
+                        continue
+                    span = max(0.05, float(op.get("stride", 0.35)) * hk)
+                    ph = max(-1.0, min(1.0, (_gpos(G, tn.index(foot))[2] - hz) / span))
+                    s_ = "Left" if side == "l" else "Right"
+                    ia, ie, ih = tn.index(s_ + "Arm"), tn.index(s_ + "ForeArm"), tn.index(s_ + "Hand")
+                    arm = np.linalg.norm(_gpos(rt.t_rest_G, ie) - _gpos(rt.t_rest_G, ia)) + np.linalg.norm(_gpos(rt.t_rest_G, ih) - _gpos(rt.t_rest_G, ie))
+                    out_x = (1.0 if side == "l" else -1.0) * 0.12
+                    P = _gpos(G, ia) + np.array([out_x, -0.42 + 0.22 * max(ph, 0.0) * amp, 0.42 * ph * amp]) * arm
+                    loc, G = _arm_ik(rt, loc, G, side, P, w)
             elif kind == "hips":
                 dy = curve(op.get("dy"), f)
                 dz = curve(op.get("dz"), f)

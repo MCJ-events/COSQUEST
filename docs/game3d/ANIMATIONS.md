@@ -318,7 +318,7 @@ Feedback that started it (Adewale, team PM): the effects showed a skill landed, 
 | RAIN | `skill_rain` (new; was `skill_rally`) | the weapon arm and the eyes go up to the sky, then the arm comes down to point at the marked circle as the volleys fall | 0.3 s (the arm is up) |
 | DASH | `skill_charge` | a crouch, then a sprint stride leaning 30 degrees into a forward thrust | 0.18 s |
 | SHIELD | `skill_shield` | a braced, lowered stance, the off forearm raised like a shield, pushing out as the barrier goes up | 0.2 s |
-| SPLIT | `skill_split` | a crouch, a jump with the weapon raised overhead, the slam on landing (no procedural hop on top) | 0.34 s |
+| SPLIT | `skill_split` | a grounded power slam: the weapon wound up overhead in both hands, the body sinking and driving it into the ground (no jump: Wale found the jump unconvincing and not right for every character; a jump version was built first and is not used) | 0.34 s |
 | WHIRL | `skill_whirl` | unchanged: the spin was already a full turn with the weapon out | 0.08, 0.30 s |
 | RALLY | `skill_rally` | a crouch, then both arms thrown up with the chest out and the head back | 0.25 s |
 | GUARD | `guard`, `parry` | a low block stance with the weapon across; the parry a fast deflection | `PARRY_HIT_AT` |
@@ -335,6 +335,20 @@ warp), `out` (the end of the game-length part) and `tail` (frames that play on p
 still: SHOOT keeps its aim, RAIN's arm comes down at the circle; a step, a hit or any new state ends it).
 The report of each clip has `gates`: the weapon direction at the contact against forward (no backward attacks),
 T-pose frames and planted-foot slide per step.
+
+**Wale's notes (13 Nov), same switch:**
+- *Grounding* ("levitating, feet not steadily on the ground"): the body's sole planting (build 21, `fighter.gd`
+  `_plant_target`) now also holds the third cut, SHOOT, RAIN, SPLIT and the intro beat on the paving
+  (`PLANT_READABLE`), and keeps a knockdown from sinking. `fighter.sole_gap()` is the measure (the lowest sole marker
+  above the fighter's ground), logged per frame by `tools/anim/button_rec.gd`.
+- *Shadows* ("too thick"): the blob and the sun's tail at 55 % of their old opacity, the per-foot contact shadows at
+  70 % (they are what says "on the ground"), the real-look disc 15 % smaller (`Fighter.soft_shadows`).
+- *Sprint and jog*: `R_Sprint` (Mesh2Motion sprint) and `R_Jog` (CMU jog) with a `pump` op: each hand is driven
+  forward and up when the opposite foot is forward and back past the hip when it is behind, elbows bent, the weapon
+  arm swinging less than the free one; the stride's ground speed is each character's own.
+- *Falls*: the death is the captured fall onto the back (CMU 90_18) on every tier where it passes the gate (it was
+  KayKit's stiff arched fall on the low tier); the parried Guardian's knockdown is that fall, a moment on the
+  ground and KayKit's get-up.
 
 **Character animation generally** (same switch):
 - hit reactions sized to the blow (`fighter.hit_size`): under 80 plays `hit_light`, 110 and more, heavy blows and

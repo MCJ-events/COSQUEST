@@ -9,6 +9,9 @@ extends SceneTree
 ## Prints "CQREC start frame=N" when the fight starts, then one line per frame:
 ##   CQREC f=<process frame> t=<s> st=<hero animation state> clip=<clip> act=<fight action> sk=<skill slot>
 ##     x=<feet x px> y=<feet y px> hy=<head y px> e=<Guardian state> ex=<Guardian x px> ey=<Guardian feet y>
+##     g=<hero's lowest sole above its ground, m> eg=<the Guardian's> a=<ally state> ag=<ally's> (9 = no sole markers;
+##     the same measure as fighter.sole_gap, read here so it works on older builds too)
+##     tp=<the hero's lower foot pitched toes-down from flat, degrees, when it is down>
 
 var plan: Dictionary = {}
 var _frames: int = -1
@@ -76,10 +79,62 @@ func _process(_dt: float) -> bool:
 		var clip: String = str(pl.current_animation).get_file() if pl != null else ""
 		var ef: Vector2 = cam.unproject_position(enemy.global_position) if enemy != null else Vector2.ZERO
 		var est: String = str((enemy.get("anim") as Object).get("state")) if enemy != null and enemy.get("anim") != null else ""
-		print("CQREC f=%d t=%.3f st=%s clip=%s act=%s sk=%d x=%.0f y=%.0f hy=%.0f w=%.0f h=%.0f e=%s ex=%.0f ey=%.0f" % [Engine.get_process_frames(), t, st, clip,
-			str(f.get("_action")), int(f.get("_skill")), feet.x, feet.y, head.y, vs.x, vs.y, est, ef.x, ef.y])
+		var g: float = _gap(hero)
+		var eg: float = _gap(enemy)
+		var ally: Node3D = f.get("ally")
+		var ag: float = _gap(ally)
+		var tp: float = _toe_pitch(hero)
+		var ast: String = str((ally.get("anim") as Object).get("state")) if ally != null and ally.get("anim") != null else ""
+		print("CQREC f=%d t=%.3f st=%s clip=%s act=%s sk=%d x=%.0f y=%.0f hy=%.0f w=%.0f h=%.0f e=%s ex=%.0f ey=%.0f g=%.4f eg=%.4f a=%s ag=%.4f tp=%.1f" % [Engine.get_process_frames(), t, st, clip,
+			str(f.get("_action")), int(f.get("_skill")), feet.x, feet.y, head.y, vs.x, vs.y, est, ef.x, ef.y, g if g != INF else 9.0, eg if eg != INF else 9.0, ast, ag if ag != INF else 9.0, tp])
 	if t >= float(plan.get("quit_s", 46.0)) or str(f.state) == "done":
 		_done = true
 		print("CQREC end frames=%d outcome=%s skills=%s" % [_frames, str(f.get("outcome")), str((f.get("stats") as Dictionary).get("skills"))])
 		quit.call_deferred(0)
 	return false
+
+
+## The fighter's lowest sole marker above its ground (m), read the same way on any build from 21 on
+## (fighter.gd's own sole markers), INF when it has none.
+func _gap(f: Node3D) -> float:
+	if f == null:
+		return INF
+	var soles: Variant = f.get("_soles")
+	var sk: Skeleton3D = f.get("_feet_sk") as Skeleton3D
+	if not (soles is Array) or (soles as Array).is_empty() or sk == null or not is_instance_valid(sk) or not sk.is_inside_tree():
+		return INF
+	var lo: float = INF
+	for marks: Array in soles:
+		for mk: Array in marks:
+			lo = minf(lo, (sk.global_transform * (sk.get_bone_global_pose(int(mk[0])) * (mk[1] as Vector3))).y)
+	return lo - f.global_position.y
+
+
+## How far the lower foot is pitched toes-down from standing flat (degrees; its rest pose is flat), when that
+## foot is down: "on its toes" is what reads as levitating. 0 when no foot is down or there is no skeleton.
+func _toe_pitch(f: Node3D) -> float:
+	var an: Object = f.get("anim")
+	var sk: Skeleton3D = an.get("skeleton") as Skeleton3D if an != null else null
+	if sk == null or not sk.is_inside_tree():
+		return 0.0
+	var best: float = INF
+	var pitch: float = 0.0
+	for side: String in ["Left", "Right"]:
+		var ia: int = sk.find_bone(side + "Foot")
+		var it: int = sk.find_bone(side + "ToeBase")
+		if ia < 0 or it < 0:
+			continue
+		var a: Vector3 = sk.global_transform * sk.get_bone_global_pose(ia).origin
+		var t: Vector3 = sk.global_transform * sk.get_bone_global_pose(it).origin
+		var ra: Vector3 = sk.get_bone_global_rest(ia).origin
+		var rt: Vector3 = sk.get_bone_global_rest(it).origin
+		var v: Vector3 = t - a
+		var vr: Vector3 = sk.global_transform.basis * (rt - ra)
+		var e: float = rad_to_deg(atan2(-v.y, Vector2(v.x, v.z).length()))
+		var er: float = rad_to_deg(atan2(-vr.y, Vector2(vr.x, vr.z).length()))
+		if t.y < best:
+			best = t.y
+			pitch = e - er
+	if best - f.global_position.y > 0.06:
+		return 0.0
+	return pitch

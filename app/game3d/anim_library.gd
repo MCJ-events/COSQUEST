@@ -371,6 +371,9 @@ static func _readable_overlay(out: Dictionary, d: Dictionary, sname: String, ch:
 			if name == "" or c.is_empty():
 				continue
 			var m: Dictionary = c.duplicate()
+			var own: Dictionary = ch.get("ground_speed_per_hip", {})
+			if own.has(name):
+				m["ground_speed_per_hip"] = own[name]   # this character's own stride (run and sprint)
 			m["clip"] = name
 			m["readable"] = true
 			out[st] = m

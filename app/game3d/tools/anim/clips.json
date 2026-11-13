@@ -1237,7 +1237,7 @@
      {
       "op": "aim",
       "side": "l",
-      "yaw": 0,
+      "yaw": 22,
       "elev": [
        [
         0,
@@ -1245,23 +1245,23 @@
        ],
        [
         3,
-        3
+        22
        ],
        [
         4,
-        3
+        22
        ],
        [
         6,
-        16
+        40
        ],
        [
         11,
-        5
+        26
        ],
        [
         24,
-        5
+        26
        ],
        [
         29,
@@ -1292,6 +1292,33 @@
       "op": "rot",
       "bone": "Spine",
       "axis": [
+       0,
+       1,
+       0
+      ],
+      "deg": [
+       [
+        0,
+        0
+       ],
+       [
+        3,
+        -25
+       ],
+       [
+        24,
+        -25
+       ],
+       [
+        29,
+        0
+       ]
+      ]
+     },
+     {
+      "op": "rot",
+      "bone": "Spine",
+      "axis": [
        1,
        0,
        0
@@ -1303,15 +1330,15 @@
        ],
        [
         5,
-        -7
+        -10
        ],
        [
         11,
-        -2
+        -3
        ],
        [
         24,
-        -2
+        -3
        ],
        [
         29,
@@ -1328,13 +1355,17 @@
        ],
        [
         5,
-        -0.04
+        -0.06
        ],
        [
         12,
         0
        ]
       ]
+     },
+     {
+      "op": "flatfeet",
+      "w": 1.0
      }
     ]
    }
@@ -1390,6 +1421,10 @@
         -1
        ]
       ]
+     },
+     {
+      "op": "flatfeet",
+      "w": 1.0
      }
     ]
    }
@@ -1542,7 +1577,7 @@
      {
       "op": "aim",
       "side": "r",
-      "yaw": 0,
+      "yaw": 10,
       "elev": [
        [
         18,
@@ -1550,7 +1585,7 @@
        ],
        [
         23,
-        -12
+        -5
        ]
       ],
       "reach": 0.97,
@@ -1572,6 +1607,10 @@
         0
        ]
       ]
+     },
+     {
+      "op": "flatfeet",
+      "w": 1.0
      }
     ]
    },
@@ -1612,19 +1651,19 @@
       "dy": [
        [
         0,
-        0
+        0.0
        ],
        [
         3,
-        -0.04
+        -0.05
        ],
        [
         7,
-        0.015
+        0.04
        ],
        [
         10,
-        0
+        0.0
        ]
       ]
      },
@@ -1639,23 +1678,23 @@
       "deg": [
        [
         0,
-        0
+        0.0
        ],
        [
         3,
-        14
+        16.0
        ],
        [
         7,
-        -12
+        -16.0
        ],
        [
         16,
-        -8
+        -10.0
        ],
        [
         28,
-        0
+        0.0
        ]
       ]
      },
@@ -1685,6 +1724,60 @@
         0
        ]
       ]
+     },
+     {
+      "op": "aim",
+      "side": "r",
+      "yaw": -28,
+      "elev": 68,
+      "reach": 0.97,
+      "w": [
+       [
+        2,
+        0
+       ],
+       [
+        6,
+        1
+       ],
+       [
+        22,
+        1
+       ],
+       [
+        28,
+        0
+       ]
+      ]
+     },
+     {
+      "op": "aim",
+      "side": "l",
+      "yaw": 28,
+      "elev": 68,
+      "reach": 0.97,
+      "w": [
+       [
+        2,
+        0
+       ],
+       [
+        6,
+        1
+       ],
+       [
+        22,
+        1
+       ],
+       [
+        28,
+        0
+       ]
+      ]
+     },
+     {
+      "op": "flatfeet",
+      "w": 1.0
      }
     ]
    },
@@ -1717,7 +1810,7 @@
      {
       "op": "aim",
       "side": "l",
-      "yaw": 25,
+      "yaw": 45,
       "elev": [
        [
         0,
@@ -1725,10 +1818,10 @@
        ],
        [
         5,
-        45
+        55
        ]
       ],
-      "reach": 0.62,
+      "reach": 0.6,
       "w": [
        [
         0,
@@ -1803,6 +1896,10 @@
         4
        ]
       ]
+     },
+     {
+      "op": "flatfeet",
+      "w": 1.0
      }
     ]
    }
@@ -1878,6 +1975,10 @@
         2
        ]
       ]
+     },
+     {
+      "op": "flatfeet",
+      "w": 1.0
      }
     ]
    }
@@ -1943,27 +2044,27 @@
       "deg": [
        [
         0,
-        4
+        4.0
        ],
        [
         2,
-        16
+        22.0
        ],
        [
         5,
-        30
+        40.0
        ],
        [
         9,
-        26
+        34.0
        ],
        [
         13,
-        8
+        10.0
        ],
        [
         16,
-        0
+        0.0
        ]
       ]
      },
@@ -1972,23 +2073,23 @@
       "dy": [
        [
         0,
-        0
+        0.0
        ],
        [
         1,
-        -0.07
+        -0.09
        ],
        [
         3,
-        -0.04
+        -0.06
        ],
        [
         10,
-        -0.04
+        -0.06
        ],
        [
         13,
-        0
+        0.0
        ]
       ]
      },
@@ -2018,6 +2119,31 @@
         0
        ]
       ]
+     },
+     {
+      "op": "aim",
+      "side": "r",
+      "yaw": -8,
+      "elev": -8,
+      "reach": 0.95,
+      "w": [
+       [
+        1,
+        0
+       ],
+       [
+        4,
+        1
+       ],
+       [
+        10,
+        1
+       ],
+       [
+        15,
+        0
+       ]
+      ]
      }
     ]
    }
@@ -2032,30 +2158,16 @@
    "out": 22,
    "tail": 0,
    "gate_facing": true,
-   "source": "anim-readable SPLIT: a crouch, a jump with the weapon raised overhead in both hands, and the slam on landing (KayKit Jump_Full_Short legs, Mesh2Motion overhead slam upper body, both CC0)",
+   "source": "anim-readable SPLIT: a grounded power slam: the weapon wound up overhead in both hands, the body sinking and driving it into the ground on the hit (Mesh2Motion two-handed overhead slam, CC0, retimed), no jump",
    "compose": {
     "frames": 24,
     "base": [
      {
-      "clip": "Jump_Full_Short",
-      "from": 4,
-      "to": 21,
-      "at": 0,
-      "speed": 1.7
-     },
-     {
-      "clip": "Jump_Full_Short",
-      "from": 21,
-      "to": 35,
-      "at": 10,
-      "speed": 1.17
-     }
-    ],
-    "layers": [
-     {
       "clip": "I_Slam_T",
-      "bones": "upper",
-      "w": 1.0
+      "from": 0,
+      "to": 23,
+      "at": 0,
+      "speed": 1.0
      }
     ],
     "ops": [
@@ -2074,21 +2186,50 @@
        ],
        [
         6,
-        -10
+        -12
        ],
        [
         10,
-        22
+        26
        ],
        [
         16,
-        14
+        18
        ],
        [
         23,
         0
        ]
       ]
+     },
+     {
+      "op": "hips",
+      "dy": [
+       [
+        0,
+        0
+       ],
+       [
+        5,
+        0.03
+       ],
+       [
+        10,
+        -0.1
+       ],
+       [
+        16,
+        -0.08
+       ],
+       [
+        23,
+        0
+       ]
+      ]
+     },
+     {
+      "op": "flatfeet",
+      "w": 1.0
      }
     ]
    }
@@ -2126,19 +2267,19 @@
       "deg": [
        [
         0,
-        22
+        35.0
        ],
        [
         4,
-        -4
+        -5.0
        ],
        [
         8,
-        -22
+        -35.0
        ],
        [
         14,
-        -8
+        -10.0
        ]
       ]
      },
@@ -2153,19 +2294,19 @@
       "deg": [
        [
         0,
-        0
+        0.0
        ],
        [
         4,
-        10
+        14.0
        ],
        [
         10,
-        4
+        5.0
        ],
        [
         14,
-        0
+        0.0
        ]
       ]
      },
@@ -2176,6 +2317,10 @@
       "elev": -40,
       "reach": 0.8,
       "w": 0.7
+     },
+     {
+      "op": "flatfeet",
+      "w": 1.0
      }
     ]
    }
@@ -2221,19 +2366,19 @@
       "deg": [
        [
         0,
-        -55
+        -70.0
        ],
        [
         4,
-        -40
+        -40.0
        ],
        [
         9,
-        -15
+        -5.0
        ],
        [
         14,
-        -20
+        -15.0
        ]
       ]
      },
@@ -2248,19 +2393,19 @@
       "deg": [
        [
         0,
-        0
+        0.0
        ],
        [
         4,
-        9
+        12.0
        ],
        [
         10,
-        3
+        4.0
        ],
        [
         14,
-        0
+        0.0
        ]
       ]
      },
@@ -2271,6 +2416,10 @@
       "elev": -35,
       "reach": 0.8,
       "w": 0.5
+     },
+     {
+      "op": "flatfeet",
+      "w": 1.0
      }
     ]
    }
@@ -2333,6 +2482,10 @@
         0
        ]
       ]
+     },
+     {
+      "op": "flatfeet",
+      "w": 1.0
      }
     ]
    }
@@ -2477,6 +2630,10 @@
         0.0
        ]
       ]
+     },
+     {
+      "op": "flatfeet",
+      "w": 1.0
      }
     ]
    }
@@ -2508,7 +2665,7 @@
      {
       "op": "aim",
       "side": "l",
-      "yaw": 25,
+      "yaw": 45,
       "elev": [
        [
         0,
@@ -2516,10 +2673,10 @@
        ],
        [
         5,
-        45
+        55
        ]
       ],
-      "reach": 0.62,
+      "reach": 0.6,
       "w": [
        [
         0,
@@ -2594,6 +2751,10 @@
         1.8
        ]
       ]
+     },
+     {
+      "op": "flatfeet",
+      "w": 1.0
      }
     ]
    }
@@ -2608,30 +2769,16 @@
    "out": 22,
    "tail": 0,
    "gate_facing": true,
-   "source": "anim-readable SPLIT: a crouch, a jump with the weapon raised overhead in both hands, and the slam on landing (KayKit Jump_Full_Short legs, Mesh2Motion overhead slam upper body, both CC0) (gentler alternate: the legs bend less, for robes and capes under the tear gate)",
+   "source": "anim-readable SPLIT: a grounded power slam: the weapon wound up overhead in both hands, the body sinking and driving it into the ground on the hit (Mesh2Motion two-handed overhead slam, CC0, retimed), no jump (gentler alternate: the legs bend less)",
    "compose": {
     "frames": 24,
     "base": [
      {
-      "clip": "I_Jump_s",
-      "from": 4,
-      "to": 21,
-      "at": 0,
-      "speed": 1.7
-     },
-     {
-      "clip": "I_Jump_s",
-      "from": 21,
-      "to": 35,
-      "at": 10,
-      "speed": 1.17
-     }
-    ],
-    "layers": [
-     {
       "clip": "I_Slam_T_s",
-      "bones": "upper",
-      "w": 1.0
+      "from": 0,
+      "to": 23,
+      "at": 0,
+      "speed": 1.0
      }
     ],
     "ops": [
@@ -2646,25 +2793,54 @@
       "deg": [
        [
         0,
-        0.0
+        0
        ],
        [
         6,
-        -6.0
+        -12
        ],
        [
         10,
-        13.2
+        26
        ],
        [
         16,
-        8.4
+        18
        ],
        [
         23,
-        0.0
+        0
        ]
       ]
+     },
+     {
+      "op": "hips",
+      "dy": [
+       [
+        0,
+        0
+       ],
+       [
+        5,
+        0.02
+       ],
+       [
+        10,
+        -0.06
+       ],
+       [
+        16,
+        -0.05
+       ],
+       [
+        23,
+        0
+       ]
+      ]
+     },
+     {
+      "op": "flatfeet",
+      "w": 1.0
      }
     ]
    }
@@ -2734,15 +2910,15 @@
        ],
        [
         3,
-        7.0
+        9.6
        ],
        [
         7,
-        -6.0
+        -9.6
        ],
        [
         16,
-        -4.0
+        -6.0
        ],
        [
         28,
@@ -2776,6 +2952,60 @@
         0.0
        ]
       ]
+     },
+     {
+      "op": "aim",
+      "side": "r",
+      "yaw": -28,
+      "elev": 58,
+      "reach": 0.97,
+      "w": [
+       [
+        2,
+        0
+       ],
+       [
+        6,
+        1
+       ],
+       [
+        22,
+        1
+       ],
+       [
+        28,
+        0
+       ]
+      ]
+     },
+     {
+      "op": "aim",
+      "side": "l",
+      "yaw": 28,
+      "elev": 58,
+      "reach": 0.97,
+      "w": [
+       [
+        2,
+        0
+       ],
+       [
+        6,
+        1
+       ],
+       [
+        22,
+        1
+       ],
+       [
+        28,
+        0
+       ]
+      ]
+     },
+     {
+      "op": "flatfeet",
+      "w": 1.0
      }
     ]
    },
@@ -2846,19 +3076,19 @@
        ],
        [
         2,
-        9.6
+        13.2
        ],
        [
         5,
-        18.0
+        24.0
        ],
        [
         9,
-        15.6
+        20.4
        ],
        [
         13,
-        4.8
+        6.0
        ],
        [
         16,
@@ -2875,15 +3105,15 @@
        ],
        [
         1,
-        -0.042
+        -0.054
        ],
        [
         3,
-        -0.024
+        -0.036
        ],
        [
         10,
-        -0.024
+        -0.036
        ],
        [
         13,
@@ -2915,6 +3145,31 @@
        [
         13,
         0.0
+       ]
+      ]
+     },
+     {
+      "op": "aim",
+      "side": "r",
+      "yaw": -8,
+      "elev": -15,
+      "reach": 0.82,
+      "w": [
+       [
+        1,
+        0
+       ],
+       [
+        4,
+        1
+       ],
+       [
+        10,
+        1
+       ],
+       [
+        15,
+        0
        ]
       ]
      }
@@ -3069,7 +3324,7 @@
      {
       "op": "aim",
       "side": "r",
-      "yaw": 0,
+      "yaw": 10,
       "elev": [
        [
         18,
@@ -3077,7 +3332,7 @@
        ],
        [
         23,
-        -12
+        -5
        ]
       ],
       "reach": 0.97,
@@ -3099,6 +3354,10 @@
         0
        ]
       ]
+     },
+     {
+      "op": "flatfeet",
+      "w": 1.0
      }
     ]
    },
@@ -3138,7 +3397,7 @@
      {
       "op": "aim",
       "side": "l",
-      "yaw": 0,
+      "yaw": 22,
       "elev": [
        [
         0,
@@ -3146,23 +3405,23 @@
        ],
        [
         3,
-        3
+        22
        ],
        [
         4,
-        3
+        22
        ],
        [
         6,
-        16
+        40
        ],
        [
         11,
-        5
+        26
        ],
        [
         24,
-        5
+        26
        ],
        [
         29,
@@ -3193,6 +3452,33 @@
       "op": "rot",
       "bone": "Spine",
       "axis": [
+       0,
+       1,
+       0
+      ],
+      "deg": [
+       [
+        0,
+        0
+       ],
+       [
+        3,
+        -15
+       ],
+       [
+        24,
+        -15
+       ],
+       [
+        29,
+        0
+       ]
+      ]
+     },
+     {
+      "op": "rot",
+      "bone": "Spine",
+      "axis": [
        1,
        0,
        0
@@ -3200,23 +3486,23 @@
       "deg": [
        [
         3,
-        0.0
+        0
        ],
        [
         5,
-        -3.5
+        -6
        ],
        [
         11,
-        -1.0
+        -2
        ],
        [
         24,
-        -1.0
+        -2
        ],
        [
         29,
-        0.0
+        0
        ]
       ]
      },
@@ -3225,17 +3511,21 @@
       "dz": [
        [
         3,
-        0.0
+        0
        ],
        [
         5,
-        -0.02
+        -0.036
        ],
        [
         12,
-        0.0
+        0
        ]
       ]
+     },
+     {
+      "op": "flatfeet",
+      "w": 1.0
      }
     ]
    }
@@ -3291,6 +3581,10 @@
         1.2
        ]
       ]
+     },
+     {
+      "op": "flatfeet",
+      "w": 1.0
      }
     ]
    }
@@ -3547,24 +3841,24 @@
     "rifle"
    ],
    "gate_facing": false,
-   "source": "anim-readable: knocked down and back up (Mesh2Motion knockback fall, CC0, then KayKit Lie_StandUp, CC0), fitted to the Guardian's 1.6 s parry stagger",
+   "source": "anim-readable knockdown: a real fall onto the back (CMU 90_18, captured), a moment on the ground, then up again (KayKit Lie_StandUp, CC0), fitted to the Guardian's 1.6 s parry stagger",
    "compose": {
     "frames": 48,
     "base": [
      {
-      "clip": "I_Knockback",
+      "clip": "CMU_Fall_Back",
       "from": 0,
-      "to": 9,
+      "to": 30,
       "at": 0,
-      "speed": 1.0
+      "speed": 1.5
      },
      {
       "clip": "I_StandUp",
-      "from": 10,
+      "from": 8,
       "to": 70,
-      "at": 11,
-      "speed": 1.75,
-      "fade": 5
+      "at": 22,
+      "speed": 2.4,
+      "fade": 4
      }
     ]
    }
@@ -3647,6 +3941,10 @@
         0
        ]
       ]
+     },
+     {
+      "op": "flatfeet",
+      "w": 1.0
      }
     ]
    }
@@ -3706,44 +4004,109 @@
         1
        ]
       ]
+     },
+     {
+      "op": "flatfeet",
+      "w": 1.0
      }
     ]
    }
   },
   "R_Intro_Open": {
-   "src": "Spellcast_Long",
    "classes": [
     "sword"
    ],
-   "source": "anim-readable intro: KayKit Spellcast_Long (CC0), the arms opening wide"
+   "gate_facing": false,
+   "source": "anim-readable intro: KayKit Spellcast_Long (CC0), the arms opening wide, feet flat",
+   "compose": {
+    "frames": 0,
+    "base": [
+     {
+      "clip": "I_Intro_Open",
+      "from": 0,
+      "at": 0,
+      "speed": 1.0
+     }
+    ],
+    "ops": [
+     {
+      "op": "flatfeet",
+      "w": 1.0
+     }
+    ]
+   }
   },
   "R_Intro_Ready": {
-   "src": "M2M_Fighting_Idle",
-   "lib": "m2m",
    "classes": [
     "sword"
    ],
-   "source": "anim-readable intro: Mesh2Motion fighting idle (CC0), bouncing on the toes"
+   "gate_facing": false,
+   "source": "anim-readable intro: Mesh2Motion fighting idle (CC0), bouncing on the toes, feet flat",
+   "compose": {
+    "frames": 0,
+    "base": [
+     {
+      "clip": "I_Intro_Ready",
+      "from": 0,
+      "at": 0,
+      "speed": 1.0
+     }
+    ],
+    "ops": [
+     {
+      "op": "flatfeet",
+      "w": 1.0
+     }
+    ]
+   }
   },
   "R_Intro_Plant": {
-   "src": "2H_Melee_Idle",
    "classes": [
     "sword"
    ],
-   "source": "anim-readable intro: KayKit 2H_Melee_Idle (CC0), the weapon held ready in both hands"
+   "gate_facing": false,
+   "source": "anim-readable intro: KayKit 2H_Melee_Idle (CC0), the weapon held ready in both hands, feet flat",
+   "compose": {
+    "frames": 0,
+    "base": [
+     {
+      "clip": "I_Intro_Plant",
+      "from": 0,
+      "at": 0,
+      "speed": 1.0
+     }
+    ],
+    "ops": [
+     {
+      "op": "flatfeet",
+      "w": 1.0
+     }
+    ]
+   }
   },
   "R_Intro_Guard": {
-   "src": "CMU_Guard",
-   "lib": "cmu",
    "classes": [
     "sword"
    ],
-   "range": [
-    2,
-    26
-   ],
-   "pingpong": true,
-   "source": "anim-readable intro: CMU captured guard (76_04), set and still"
+   "gate_facing": false,
+   "source": "anim-readable intro: CMU captured guard (76_04), set and still, feet flat",
+   "compose": {
+    "frames": 0,
+    "base": [
+     {
+      "clip": "I_Intro_Guard",
+      "from": 0,
+      "at": 0,
+      "speed": 1.0
+     }
+    ],
+    "ops": [
+     {
+      "op": "flatfeet",
+      "w": 1.0
+     }
+    ]
+   }
   },
   "R_Atk3_k": {
    "classes": [
@@ -3831,6 +4194,10 @@
       "elev": -35,
       "reach": 0.8,
       "w": 0.7
+     },
+     {
+      "op": "flatfeet",
+      "w": 1.0
      }
     ]
    }
@@ -3876,30 +4243,17 @@
    "contact": 10,
    "out": 22,
    "tail": 0,
-   "source": "anim-readable SPLIT (alternate): a crouch and a jump (KayKit Jump_Full_Short, legs bending less) with KayKit's two-handed chop (CC0) landing on the ground as the feet come down",
+   "gate_facing": true,
+   "source": "anim-readable SPLIT (alternate): a grounded power slam on KayKit's two-handed chop (CC0), retimed, the trunk crunching and the hips sinking into it",
    "compose": {
     "frames": 24,
     "base": [
      {
-      "clip": "I_Jump_s",
-      "from": 4,
-      "to": 21,
-      "at": 0,
-      "speed": 1.7
-     },
-     {
-      "clip": "I_Jump_s",
-      "from": 21,
-      "to": 35,
-      "at": 10,
-      "speed": 1.17
-     }
-    ],
-    "layers": [
-     {
       "clip": "I_Chop2H_T",
-      "bones": "upper",
-      "w": 1.0
+      "from": 0,
+      "to": 23,
+      "at": 0,
+      "speed": 1.0
      }
     ],
     "ops": [
@@ -3918,21 +4272,50 @@
        ],
        [
         6,
-        -6
+        -10
        ],
        [
         10,
-        16
+        24
        ],
        [
         16,
-        10
+        16
        ],
        [
         23,
         0
        ]
       ]
+     },
+     {
+      "op": "hips",
+      "dy": [
+       [
+        0,
+        0
+       ],
+       [
+        5,
+        0.02
+       ],
+       [
+        10,
+        -0.07
+       ],
+       [
+        16,
+        -0.06
+       ],
+       [
+        23,
+        0
+       ]
+      ]
+     },
+     {
+      "op": "flatfeet",
+      "w": 1.0
      }
     ]
    }
@@ -3964,18 +4347,18 @@
      {
       "op": "aim",
       "side": "l",
-      "yaw": 20,
+      "yaw": 45,
       "elev": [
        [
         0,
-        0
+        10
        ],
        [
         5,
-        25
+        55
        ]
       ],
-      "reach": 0.72,
+      "reach": 0.6,
       "w": [
        [
         0,
@@ -4050,6 +4433,10 @@
         3
        ]
       ]
+     },
+     {
+      "op": "flatfeet",
+      "w": 1.0
      }
     ]
    }
@@ -4097,24 +4484,24 @@
     "rifle"
    ],
    "gate_facing": false,
-   "source": "anim-readable: knocked down and back up (Mesh2Motion knockback fall, CC0, then KayKit Lie_StandUp, CC0), fitted to the Guardian's 1.6 s parry stagger (gentler alternate: the legs bend less)",
+   "source": "anim-readable knockdown: a real fall onto the back (CMU 90_18, captured), a moment on the ground, then up again (KayKit Lie_StandUp, CC0), fitted to the Guardian's 1.6 s parry stagger (the get-up's legs bending less)",
    "compose": {
     "frames": 48,
     "base": [
      {
-      "clip": "I_Knockback_s",
+      "clip": "CMU_Fall_Back",
       "from": 0,
-      "to": 9,
+      "to": 30,
       "at": 0,
-      "speed": 1.0
+      "speed": 1.5
      },
      {
       "clip": "I_StandUp_s",
-      "from": 10,
+      "from": 8,
       "to": 70,
-      "at": 11,
-      "speed": 1.75,
-      "fade": 5
+      "at": 22,
+      "speed": 2.4,
+      "fade": 4
      }
     ]
    }
@@ -4360,19 +4747,19 @@
       "deg": [
        [
         0,
-        13.2
+        21.0
        ],
        [
         4,
-        -2.4
+        -3.0
        ],
        [
         8,
-        -13.2
+        -21.0
        ],
        [
         14,
-        -4.8
+        -6.0
        ]
       ]
      },
@@ -4391,11 +4778,11 @@
        ],
        [
         4,
-        6.0
+        8.4
        ],
        [
         10,
-        2.4
+        3.0
        ],
        [
         14,
@@ -4410,6 +4797,10 @@
       "elev": -40,
       "reach": 0.8,
       "w": 0.7
+     },
+     {
+      "op": "flatfeet",
+      "w": 1.0
      }
     ]
    }
@@ -4455,7 +4846,7 @@
       "deg": [
        [
         0,
-        -33.0
+        -42.0
        ],
        [
         4,
@@ -4463,11 +4854,11 @@
        ],
        [
         9,
-        -9.0
+        -3.0
        ],
        [
         14,
-        -12.0
+        -9.0
        ]
       ]
      },
@@ -4486,11 +4877,11 @@
        ],
        [
         4,
-        5.4
+        7.2
        ],
        [
         10,
-        1.8
+        2.4
        ],
        [
         14,
@@ -4505,6 +4896,10 @@
       "elev": -35,
       "reach": 0.8,
       "w": 0.5
+     },
+     {
+      "op": "flatfeet",
+      "w": 1.0
      }
     ]
    }
@@ -4574,19 +4969,19 @@
        ],
        [
         2,
-        8.0
+        11.0
        ],
        [
         5,
-        15.0
+        20.0
        ],
        [
         9,
-        13.0
+        17.0
        ],
        [
         13,
-        4.0
+        5.0
        ],
        [
         16,
@@ -4603,15 +4998,15 @@
        ],
        [
         1,
-        -0.035
+        -0.045
        ],
        [
         3,
-        -0.02
+        -0.03
        ],
        [
         10,
-        -0.02
+        -0.03
        ],
        [
         13,
@@ -4645,6 +5040,31 @@
         0.0
        ]
       ]
+     },
+     {
+      "op": "aim",
+      "side": "r",
+      "yaw": -8,
+      "elev": -8,
+      "reach": 0.95,
+      "w": [
+       [
+        1,
+        0
+       ],
+       [
+        4,
+        1
+       ],
+       [
+        10,
+        1
+       ],
+       [
+        15,
+        0
+       ]
+      ]
      }
     ]
    }
@@ -4658,30 +5078,17 @@
    "contact": 10,
    "out": 22,
    "tail": 0,
-   "source": "anim-readable SPLIT (alternate): a crouch and a jump (KayKit Jump_Full_Short, legs bending less) with KayKit's two-handed chop (CC0) landing on the ground as the feet come down (gentlest alternate: the jump's crouch shallower)",
+   "gate_facing": true,
+   "source": "anim-readable SPLIT (alternate): a grounded power slam on KayKit's two-handed chop (CC0), retimed, the trunk crunching and the hips sinking into it (gentlest: a shallower sink)",
    "compose": {
     "frames": 24,
     "base": [
      {
-      "clip": "I_Jump_s2",
-      "from": 4,
-      "to": 21,
-      "at": 0,
-      "speed": 1.7
-     },
-     {
-      "clip": "I_Jump_s2",
-      "from": 21,
-      "to": 35,
-      "at": 10,
-      "speed": 1.17
-     }
-    ],
-    "layers": [
-     {
       "clip": "I_Chop2H_T",
-      "bones": "upper",
-      "w": 1.0
+      "from": 0,
+      "to": 23,
+      "at": 0,
+      "speed": 1.0
      }
     ],
     "ops": [
@@ -4696,25 +5103,50 @@
       "deg": [
        [
         0,
-        0.0
+        0
        ],
        [
         6,
-        -3.0
+        -6
        ],
        [
         10,
-        8.0
+        16
        ],
        [
         16,
-        5.0
+        10
        ],
        [
         23,
-        0.0
+        0
        ]
       ]
+     },
+     {
+      "op": "hips",
+      "dy": [
+       [
+        0,
+        0
+       ],
+       [
+        10,
+        -0.035
+       ],
+       [
+        16,
+        -0.03
+       ],
+       [
+        23,
+        0
+       ]
+      ]
+     },
+     {
+      "op": "flatfeet",
+      "w": 1.0
      }
     ]
    }
@@ -4745,7 +5177,7 @@
      {
       "op": "aim",
       "side": "l",
-      "yaw": 0,
+      "yaw": 22,
       "elev": [
        [
         0,
@@ -4753,23 +5185,23 @@
        ],
        [
         3,
-        2
+        22
        ],
        [
         4,
-        2
+        22
        ],
        [
         6,
-        12
+        40
        ],
        [
         11,
-        3
+        26
        ],
        [
         24,
-        3
+        26
        ],
        [
         29,
@@ -4811,11 +5243,11 @@
        ],
        [
         3,
-        -12
+        -20
        ],
        [
         24,
-        -12
+        -20
        ],
        [
         29,
@@ -4838,13 +5270,42 @@
        ],
        [
         5,
-        -5
+        -8
        ],
        [
         11,
-        -1
+        -2
+       ],
+       [
+        24,
+        -2
+       ],
+       [
+        29,
+        0
        ]
       ]
+     },
+     {
+      "op": "hips",
+      "dz": [
+       [
+        3,
+        0
+       ],
+       [
+        5,
+        -0.048
+       ],
+       [
+        12,
+        0
+       ]
+      ]
+     },
+     {
+      "op": "flatfeet",
+      "w": 1.0
      }
     ]
    }
@@ -4881,6 +5342,10 @@
        0
       ],
       "deg": 6
+     },
+     {
+      "op": "flatfeet",
+      "w": 1.0
      }
     ]
    }
@@ -4912,8 +5377,1015 @@
       "at": 4,
       "speed": 1.43
      }
+    ],
+    "ops": [
+     {
+      "op": "flatfeet",
+      "w": 1.0
+     }
     ]
    }
+  },
+  "R_Dash_n": {
+   "classes": [
+    "sword",
+    "hammer",
+    "staff",
+    "rifle"
+   ],
+   "contact": 5,
+   "out": 13,
+   "tail": 4,
+   "source": "anim-readable DASH: a crouch, then a sprint stride (Quaternius UAL) leaning hard into a forward thrust (KayKit stab, CC0) (gentlest alternate, the arm as the stab carries it: the legs bend less, for robes and capes under the tear gate)",
+   "compose": {
+    "frames": 17,
+    "base": [
+     {
+      "clip": "UAL_Sprint",
+      "from": 0,
+      "to": 40,
+      "at": 0,
+      "speed": 1.6
+     }
+    ],
+    "layers": [
+     {
+      "clip": "1H_Melee_Attack_Stab",
+      "bones": "upper",
+      "from": 6,
+      "at": 0,
+      "speed": 1.2,
+      "w": [
+       [
+        0,
+        0.6
+       ],
+       [
+        2,
+        1
+       ],
+       [
+        11,
+        1
+       ],
+       [
+        16,
+        0.4
+       ]
+      ]
+     }
+    ],
+    "ops": [
+     {
+      "op": "rot",
+      "bone": "Spine",
+      "axis": [
+       1,
+       0,
+       0
+      ],
+      "deg": [
+       [
+        0,
+        2.4
+       ],
+       [
+        2,
+        13.2
+       ],
+       [
+        5,
+        24.0
+       ],
+       [
+        9,
+        20.4
+       ],
+       [
+        13,
+        6.0
+       ],
+       [
+        16,
+        0.0
+       ]
+      ]
+     },
+     {
+      "op": "hips",
+      "dy": [
+       [
+        0,
+        0.0
+       ],
+       [
+        1,
+        -0.054
+       ],
+       [
+        3,
+        -0.036
+       ],
+       [
+        10,
+        -0.036
+       ],
+       [
+        13,
+        0.0
+       ]
+      ]
+     },
+     {
+      "op": "rot",
+      "bone": "Head",
+      "axis": [
+       1,
+       0,
+       0
+      ],
+      "deg": [
+       [
+        2,
+        -4.8
+       ],
+       [
+        5,
+        -9.6
+       ],
+       [
+        9,
+        -8.4
+       ],
+       [
+        13,
+        0.0
+       ]
+      ]
+     }
+    ]
+   }
+  },
+  "R_Guard_hi": {
+   "classes": [
+    "sword",
+    "hammer",
+    "staff"
+   ],
+   "gate_facing": false,
+   "source": "anim-readable GUARD: Mesh2Motion weapon-block (CC0, authored), the weapon held up across above the head, a held loop, feet flat",
+   "compose": {
+    "frames": 0,
+    "base": [
+     {
+      "clip": "I_Guard_hi",
+      "from": 0,
+      "at": 0,
+      "speed": 1.0
+     }
+    ],
+    "ops": [
+     {
+      "op": "flatfeet",
+      "w": 1.0
+     }
+    ]
+   }
+  },
+  "R_Guard_hi_s": {
+   "classes": [
+    "sword",
+    "hammer",
+    "staff"
+   ],
+   "gate_facing": false,
+   "source": "anim-readable GUARD: Mesh2Motion weapon-block (CC0, authored), the weapon held up across above the head, a held loop, feet flat (legs bend less)",
+   "compose": {
+    "frames": 0,
+    "base": [
+     {
+      "clip": "I_Guard_hi_s",
+      "from": 0,
+      "at": 0,
+      "speed": 1.0
+     }
+    ],
+    "ops": [
+     {
+      "op": "flatfeet",
+      "w": 1.0
+     }
+    ]
+   }
+  },
+  "R_Rally_v45": {
+   "classes": [
+    "sword",
+    "hammer",
+    "staff",
+    "rifle"
+   ],
+   "contact": 7,
+   "out": 18,
+   "tail": 10,
+   "source": "anim-readable RALLY: a crouch, then both arms thrown up with the chest out and the head back, a rallying call (KayKit Cheer, CC0, retimed) (gentler alternate: the legs bend less, for robes and capes under the tear gate) (arms lower: shoulders that stretch past the gate)",
+   "compose": {
+    "frames": 30,
+    "base": [
+     {
+      "clip": "Cheer",
+      "from": 3,
+      "to": 15,
+      "at": 0,
+      "speed": 1.7
+     },
+     {
+      "clip": "Cheer",
+      "from": 15,
+      "to": 44,
+      "at": 7,
+      "speed": 1.3
+     }
+    ],
+    "ops": [
+     {
+      "op": "rot",
+      "bone": "Spine",
+      "axis": [
+       1,
+       0,
+       0
+      ],
+      "deg": [
+       [
+        0,
+        0.0
+       ],
+       [
+        3,
+        9.6
+       ],
+       [
+        7,
+        -9.6
+       ],
+       [
+        16,
+        -6.0
+       ],
+       [
+        28,
+        0.0
+       ]
+      ]
+     },
+     {
+      "op": "rot",
+      "bone": "Head",
+      "axis": [
+       1,
+       0,
+       0
+      ],
+      "deg": [
+       [
+        3,
+        5.0
+       ],
+       [
+        7,
+        -10.0
+       ],
+       [
+        16,
+        -6.0
+       ],
+       [
+        28,
+        0.0
+       ]
+      ]
+     },
+     {
+      "op": "aim",
+      "side": "r",
+      "yaw": -35,
+      "elev": 45,
+      "reach": 0.9,
+      "w": [
+       [
+        2,
+        0
+       ],
+       [
+        6,
+        1
+       ],
+       [
+        22,
+        1
+       ],
+       [
+        28,
+        0
+       ]
+      ]
+     },
+     {
+      "op": "aim",
+      "side": "l",
+      "yaw": 35,
+      "elev": 45,
+      "reach": 0.9,
+      "w": [
+       [
+        2,
+        0
+       ],
+       [
+        6,
+        1
+       ],
+       [
+        22,
+        1
+       ],
+       [
+        28,
+        0
+       ]
+      ]
+     },
+     {
+      "op": "flatfeet",
+      "w": 1.0
+     }
+    ]
+   },
+   "gate_facing": false
+  },
+  "R_Rally_c": {
+   "classes": [
+    "sword",
+    "hammer",
+    "staff",
+    "rifle"
+   ],
+   "contact": 7,
+   "out": 18,
+   "tail": 10,
+   "source": "anim-readable RALLY: a crouch, then both arms thrown up with the chest out and the head back, a rallying call (KayKit Cheer, CC0, retimed) (gentler alternate: the legs bend less, for robes and capes under the tear gate) (the arms as the cheer carries them)",
+   "compose": {
+    "frames": 30,
+    "base": [
+     {
+      "clip": "Cheer",
+      "from": 3,
+      "to": 15,
+      "at": 0,
+      "speed": 1.7
+     },
+     {
+      "clip": "Cheer",
+      "from": 15,
+      "to": 44,
+      "at": 7,
+      "speed": 1.3
+     }
+    ],
+    "ops": [
+     {
+      "op": "rot",
+      "bone": "Spine",
+      "axis": [
+       1,
+       0,
+       0
+      ],
+      "deg": [
+       [
+        0,
+        0.0
+       ],
+       [
+        3,
+        9.6
+       ],
+       [
+        7,
+        -9.6
+       ],
+       [
+        16,
+        -6.0
+       ],
+       [
+        28,
+        0.0
+       ]
+      ]
+     },
+     {
+      "op": "rot",
+      "bone": "Head",
+      "axis": [
+       1,
+       0,
+       0
+      ],
+      "deg": [
+       [
+        3,
+        5.0
+       ],
+       [
+        7,
+        -10.0
+       ],
+       [
+        16,
+        -6.0
+       ],
+       [
+        28,
+        0.0
+       ]
+      ]
+     },
+     {
+      "op": "flatfeet",
+      "w": 1.0
+     }
+    ]
+   },
+   "gate_facing": false
+  },
+  "M2M_Death_D": {
+   "src": "M2M_Death_D",
+   "lib": "m2m",
+   "classes": [
+    "sword"
+   ],
+   "root": "keep",
+   "source": "Mesh2Motion (CC0, authored), death-d: to the knees, then onto the back"
+  },
+  "R_Sprint": {
+   "classes": [
+    "sword",
+    "hammer",
+    "staff",
+    "rifle"
+   ],
+   "loop": true,
+   "gate_facing": false,
+   "source": "anim-readable sprint: Mesh2Motion sprint (CC0) with each arm driven against the opposite leg, elbows bent, the trunk leaning in (Wale's sprint note)",
+   "compose": {
+    "frames": 25,
+    "base": [
+     {
+      "clip": "I_M2M_Sprint",
+      "from": 0,
+      "to": 24,
+      "at": 0,
+      "speed": 1.0
+     }
+    ],
+    "ops": [
+     {
+      "op": "rot",
+      "bone": "Spine",
+      "axis": [
+       1,
+       0,
+       0
+      ],
+      "deg": 10
+     },
+     {
+      "op": "pump",
+      "amp": 1.0,
+      "amp_r": 0.6,
+      "stride": 0.4,
+      "w": 1.0
+     }
+    ]
+   }
+  },
+  "I_M2M_Sprint": {
+   "src": "M2M_Sprint",
+   "lib": "m2m",
+   "classes": [
+    "sword"
+   ],
+   "loop": true,
+   "damp_legs": {
+    "bones": [
+     "LeftUpLeg",
+     "RightUpLeg",
+     "LeftLeg",
+     "RightLeg"
+    ],
+    "f": 0.8
+   },
+   "source": "Mesh2Motion sprint (CC0): ingredient"
+  },
+  "R_Sprint_u": {
+   "classes": [
+    "sword",
+    "hammer",
+    "staff",
+    "rifle"
+   ],
+   "loop": true,
+   "gate_facing": false,
+   "source": "anim-readable sprint (alternate): Quaternius UAL sprint (CC0) with the arms driven against the opposite legs",
+   "compose": {
+    "frames": 21,
+    "base": [
+     {
+      "clip": "UAL_Sprint",
+      "from": 0,
+      "to": 20,
+      "at": 0,
+      "speed": 1.0
+     }
+    ],
+    "ops": [
+     {
+      "op": "pump",
+      "amp": 0.9,
+      "amp_r": 0.5,
+      "stride": 0.3,
+      "w": 1.0
+     }
+    ]
+   }
+  },
+  "R_Jog": {
+   "classes": [
+    "sword",
+    "hammer",
+    "staff",
+    "rifle"
+   ],
+   "loop": true,
+   "gate_facing": false,
+   "source": "anim-readable jog: CMU 16_35 jog (captured) with the arms swinging against the opposite legs",
+   "compose": {
+    "frames": 25,
+    "base": [
+     {
+      "clip": "CMU_Jog",
+      "from": 0,
+      "to": 24,
+      "at": 0,
+      "speed": 1.0
+     }
+    ],
+    "ops": [
+     {
+      "op": "pump",
+      "amp": 0.7,
+      "amp_r": 0.45,
+      "stride": 0.3,
+      "w": 1.0
+     }
+    ]
+   }
+  },
+  "R_Idle": {
+   "classes": [
+    "sword",
+    "hammer",
+    "staff"
+   ],
+   "loop": false,
+   "gate_facing": false,
+   "source": "anim-readable idle: Idle with the planted feet standing flat on the paving (heel and ball down), the breathing and weight shift added in the game",
+   "compose": {
+    "frames": 0,
+    "base": [
+     {
+      "clip": "Idle",
+      "from": 0,
+      "at": 0,
+      "speed": 1.0
+     }
+    ],
+    "ops": [
+     {
+      "op": "flatfeet",
+      "w": 1.0
+     }
+    ]
+   }
+  },
+  "R_Idle_2H": {
+   "classes": [
+    "sword",
+    "hammer",
+    "staff"
+   ],
+   "loop": false,
+   "gate_facing": false,
+   "source": "anim-readable idle: 2H_Melee_Idle with the planted feet standing flat on the paving (heel and ball down), the breathing and weight shift added in the game",
+   "compose": {
+    "frames": 0,
+    "base": [
+     {
+      "clip": "2H_Melee_Idle",
+      "from": 0,
+      "at": 0,
+      "speed": 1.0
+     }
+    ],
+    "ops": [
+     {
+      "op": "flatfeet",
+      "w": 1.0
+     }
+    ]
+   }
+  },
+  "R_Idle_staff": {
+   "classes": [
+    "sword",
+    "hammer",
+    "staff"
+   ],
+   "loop": false,
+   "gate_facing": false,
+   "source": "anim-readable idle: Staff_Idle with the planted feet standing flat on the paving (heel and ball down), the breathing and weight shift added in the game",
+   "compose": {
+    "frames": 0,
+    "base": [
+     {
+      "clip": "Staff_Idle",
+      "from": 0,
+      "at": 0,
+      "speed": 1.0
+     }
+    ],
+    "ops": [
+     {
+      "op": "flatfeet",
+      "w": 1.0
+     }
+    ]
+   }
+  },
+  "I_Guard_hi": {
+   "src": "M2M_Weapon_Block",
+   "lib": "m2m",
+   "classes": [
+    "sword"
+   ],
+   "range": [
+    9,
+    22
+   ],
+   "pingpong": true,
+   "damp_legs": {
+    "bones": [
+     "LeftUpLeg",
+     "RightUpLeg",
+     "LeftLeg",
+     "RightLeg"
+    ],
+    "f": 0.5
+   },
+   "source": "Mesh2Motion weapon-block: ingredient"
+  },
+  "I_Guard_hi_s": {
+   "src": "M2M_Weapon_Block",
+   "lib": "m2m",
+   "classes": [
+    "sword"
+   ],
+   "range": [
+    9,
+    22
+   ],
+   "pingpong": true,
+   "damp_legs": {
+    "bones": [
+     "LeftUpLeg",
+     "RightUpLeg",
+     "LeftLeg",
+     "RightLeg"
+    ],
+    "f": 0.25
+   },
+   "source": "Mesh2Motion weapon-block: ingredient"
+  },
+  "I_Intro_Open": {
+   "src": "Spellcast_Long",
+   "lib": "kaykit",
+   "classes": [
+    "sword"
+   ],
+   "source": "anim-readable intro: KayKit Spellcast_Long (CC0), the arms opening wide: ingredient"
+  },
+  "I_Intro_Ready": {
+   "src": "M2M_Fighting_Idle",
+   "lib": "m2m",
+   "classes": [
+    "sword"
+   ],
+   "source": "anim-readable intro: Mesh2Motion fighting idle (CC0), bouncing on the toes: ingredient"
+  },
+  "I_Intro_Plant": {
+   "src": "2H_Melee_Idle",
+   "lib": "kaykit",
+   "classes": [
+    "sword"
+   ],
+   "source": "anim-readable intro: KayKit 2H_Melee_Idle (CC0), the weapon held ready in both hands: ingredient"
+  },
+  "I_Intro_Guard": {
+   "src": "CMU_Guard",
+   "lib": "cmu",
+   "classes": [
+    "sword"
+   ],
+   "range": [
+    2,
+    26
+   ],
+   "pingpong": true,
+   "source": "anim-readable intro: CMU captured guard (76_04), set and still: ingredient"
+  },
+  "R_Shoot_k2": {
+   "classes": [
+    "sword",
+    "hammer",
+    "staff"
+   ],
+   "contact": 4,
+   "out": 11,
+   "tail": 16,
+   "gate_hand": "l",
+   "source": "anim-readable SHOOT (gentlest alternate): KayKit idle (CC0), the off hand brought up at the target by arm IK with a recoil and the aim held; trunk and hips as the idle has them",
+   "compose": {
+    "frames": 30,
+    "base": [
+     {
+      "clip": "Idle",
+      "from": 0,
+      "to": 30,
+      "at": 0,
+      "speed": 1.0
+     }
+    ],
+    "ops": [
+     {
+      "op": "aim",
+      "side": "l",
+      "yaw": 20,
+      "elev": [
+       [
+        0,
+        -25
+       ],
+       [
+        3,
+        18
+       ],
+       [
+        4,
+        18
+       ],
+       [
+        6,
+        32
+       ],
+       [
+        11,
+        20
+       ],
+       [
+        24,
+        20
+       ],
+       [
+        29,
+        -30
+       ]
+      ],
+      "reach": 0.88,
+      "w": [
+       [
+        0,
+        0.2
+       ],
+       [
+        3,
+        1
+       ],
+       [
+        24,
+        1
+       ],
+       [
+        29,
+        0.3
+       ]
+      ]
+     }
+    ]
+   }
+  },
+  "R_Shield_k2": {
+   "classes": [
+    "sword",
+    "hammer",
+    "staff",
+    "rifle"
+   ],
+   "contact": 6,
+   "out": 15,
+   "tail": 10,
+   "gate_facing": false,
+   "source": "anim-readable SHIELD (gentlest alternate): KayKit block stance (CC0), the off forearm raised like a shield by arm IK, no crouch",
+   "compose": {
+    "frames": 26,
+    "base": [
+     {
+      "clip": "Blocking",
+      "from": 0,
+      "to": 32,
+      "at": 0,
+      "speed": 1.0
+     }
+    ],
+    "ops": [
+     {
+      "op": "aim",
+      "side": "l",
+      "yaw": 35,
+      "elev": [
+       [
+        0,
+        0
+       ],
+       [
+        5,
+        40
+       ]
+      ],
+      "reach": 0.66,
+      "w": [
+       [
+        0,
+        0
+       ],
+       [
+        5,
+        1
+       ],
+       [
+        22,
+        1
+       ],
+       [
+        25,
+        0.5
+       ]
+      ]
+     },
+     {
+      "op": "rot",
+      "bone": "Spine",
+      "axis": [
+       1,
+       0,
+       0
+      ],
+      "deg": [
+       [
+        0,
+        0
+       ],
+       [
+        5,
+        6
+       ],
+       [
+        7,
+        2
+       ],
+       [
+        22,
+        4
+       ],
+       [
+        25,
+        2
+       ]
+      ]
+     },
+     {
+      "op": "flatfeet",
+      "w": 1.0
+     }
+    ]
+   }
+  },
+  "R_Rally_c2": {
+   "classes": [
+    "sword",
+    "hammer",
+    "staff",
+    "rifle"
+   ],
+   "contact": 7,
+   "out": 18,
+   "tail": 10,
+   "source": "anim-readable RALLY: a crouch, then both arms thrown up with the chest out and the head back, a rallying call (KayKit Cheer, CC0, retimed) (gentlest alternate: no crouch, the cheer's own arms)",
+   "compose": {
+    "frames": 30,
+    "base": [
+     {
+      "clip": "Cheer",
+      "from": 3,
+      "to": 15,
+      "at": 0,
+      "speed": 1.7
+     },
+     {
+      "clip": "Cheer",
+      "from": 15,
+      "to": 44,
+      "at": 7,
+      "speed": 1.3
+     }
+    ],
+    "ops": [
+     {
+      "op": "rot",
+      "bone": "Spine",
+      "axis": [
+       1,
+       0,
+       0
+      ],
+      "deg": [
+       [
+        0,
+        0
+       ],
+       [
+        3,
+        6
+       ],
+       [
+        7,
+        -8
+       ],
+       [
+        16,
+        -5
+       ],
+       [
+        28,
+        0
+       ]
+      ]
+     },
+     {
+      "op": "rot",
+      "bone": "Head",
+      "axis": [
+       1,
+       0,
+       0
+      ],
+      "deg": [
+       [
+        3,
+        5
+       ],
+       [
+        7,
+        -14
+       ],
+       [
+        16,
+        -8
+       ],
+       [
+        28,
+        0
+       ]
+      ]
+     },
+     {
+      "op": "flatfeet",
+      "w": 1.0
+     }
+    ]
+   },
+   "gate_facing": false
   }
  },
  "holds": {
@@ -6110,7 +7582,8 @@
     "clip": "R_Shoot",
     "alt": [
      "R_Shoot_s",
-     "R_Shoot_k"
+     "R_Shoot_k",
+     "R_Shoot_k2"
     ]
    },
    "skill_rain": {
@@ -6124,14 +7597,16 @@
     "clip": "R_Dash",
     "alt": [
      "R_Dash_s",
-     "R_Dash_k"
+     "R_Dash_k",
+     "R_Dash_n"
     ]
    },
    "skill_shield": {
     "clip": "R_Shield",
     "alt": [
      "R_Shield_s",
-     "R_Shield_k"
+     "R_Shield_k",
+     "R_Shield_k2"
     ]
    },
    "skill_split": {
@@ -6145,12 +7620,17 @@
    "skill_rally": {
     "clip": "R_Rally",
     "alt": [
-     "R_Rally_s"
+     "R_Rally_s",
+     "R_Rally_v45",
+     "R_Rally_c",
+     "R_Rally_c2"
     ]
    },
    "guard": {
-    "clip": "R_Guard",
+    "clip": "R_Guard_hi",
     "alt": [
+     "R_Guard_hi_s",
+     "R_Guard",
      "R_Guard_s",
      "R_Guard_k"
     ]
@@ -6180,6 +7660,27 @@
      "R_Knockdown_s",
      "R_Knockdown_k"
     ]
+   },
+   "death": {
+    "clip": "CMU_Fall_Back",
+    "alt": [
+     "M2M_Death_D",
+     "M2M_Death_B"
+    ]
+   },
+   "sprint": {
+    "clip": "R_Sprint",
+    "alt": [
+     "R_Sprint_u"
+    ]
+   },
+   "run": {
+    "clip": "R_Jog",
+    "alt": []
+   },
+   "idle": {
+    "clip": "R_Idle",
+    "alt": []
    }
   },
   "heavy": {
@@ -6194,7 +7695,8 @@
     "clip": "R_Shoot",
     "alt": [
      "R_Shoot_s",
-     "R_Shoot_k"
+     "R_Shoot_k",
+     "R_Shoot_k2"
     ]
    },
    "skill_rain": {
@@ -6208,14 +7710,16 @@
     "clip": "R_Dash",
     "alt": [
      "R_Dash_s",
-     "R_Dash_k"
+     "R_Dash_k",
+     "R_Dash_n"
     ]
    },
    "skill_shield": {
     "clip": "R_Shield",
     "alt": [
      "R_Shield_s",
-     "R_Shield_k"
+     "R_Shield_k",
+     "R_Shield_k2"
     ]
    },
    "skill_split": {
@@ -6229,12 +7733,17 @@
    "skill_rally": {
     "clip": "R_Rally",
     "alt": [
-     "R_Rally_s"
+     "R_Rally_s",
+     "R_Rally_v45",
+     "R_Rally_c",
+     "R_Rally_c2"
     ]
    },
    "guard": {
-    "clip": "R_Guard",
+    "clip": "R_Guard_hi",
     "alt": [
+     "R_Guard_hi_s",
+     "R_Guard",
      "R_Guard_s",
      "R_Guard_k"
     ]
@@ -6264,6 +7773,27 @@
      "R_Knockdown_s",
      "R_Knockdown_k"
     ]
+   },
+   "death": {
+    "clip": "CMU_Fall_Back",
+    "alt": [
+     "M2M_Death_D",
+     "M2M_Death_B"
+    ]
+   },
+   "sprint": {
+    "clip": "R_Sprint",
+    "alt": [
+     "R_Sprint_u"
+    ]
+   },
+   "run": {
+    "clip": "R_Jog",
+    "alt": []
+   },
+   "idle": {
+    "clip": "R_Idle_2H",
+    "alt": []
    }
   },
   "staff": {
@@ -6278,7 +7808,8 @@
     "clip": "R_Shoot",
     "alt": [
      "R_Shoot_s",
-     "R_Shoot_k"
+     "R_Shoot_k",
+     "R_Shoot_k2"
     ]
    },
    "skill_rain": {
@@ -6292,14 +7823,16 @@
     "clip": "R_Dash",
     "alt": [
      "R_Dash_s",
-     "R_Dash_k"
+     "R_Dash_k",
+     "R_Dash_n"
     ]
    },
    "skill_shield": {
     "clip": "R_Shield",
     "alt": [
      "R_Shield_s",
-     "R_Shield_k"
+     "R_Shield_k",
+     "R_Shield_k2"
     ]
    },
    "skill_split": {
@@ -6313,12 +7846,17 @@
    "skill_rally": {
     "clip": "R_Rally",
     "alt": [
-     "R_Rally_s"
+     "R_Rally_s",
+     "R_Rally_v45",
+     "R_Rally_c",
+     "R_Rally_c2"
     ]
    },
    "guard": {
-    "clip": "R_Guard",
+    "clip": "R_Guard_hi",
     "alt": [
+     "R_Guard_hi_s",
+     "R_Guard",
      "R_Guard_s",
      "R_Guard_k"
     ]
@@ -6348,6 +7886,27 @@
      "R_Knockdown_s",
      "R_Knockdown_k"
     ]
+   },
+   "death": {
+    "clip": "CMU_Fall_Back",
+    "alt": [
+     "M2M_Death_D",
+     "M2M_Death_B"
+    ]
+   },
+   "sprint": {
+    "clip": "R_Sprint",
+    "alt": [
+     "R_Sprint_u"
+    ]
+   },
+   "run": {
+    "clip": "R_Jog",
+    "alt": []
+   },
+   "idle": {
+    "clip": "R_Idle_staff",
+    "alt": []
    }
   },
   "gun": {
@@ -6368,14 +7927,16 @@
     "clip": "R_Dash",
     "alt": [
      "R_Dash_s",
-     "R_Dash_k"
+     "R_Dash_k",
+     "R_Dash_n"
     ]
    },
    "skill_shield": {
     "clip": "R_Shield",
     "alt": [
      "R_Shield_s",
-     "R_Shield_k"
+     "R_Shield_k",
+     "R_Shield_k2"
     ]
    },
    "skill_split": {
@@ -6389,12 +7950,17 @@
    "skill_rally": {
     "clip": "R_Rally",
     "alt": [
-     "R_Rally_s"
+     "R_Rally_s",
+     "R_Rally_v45",
+     "R_Rally_c",
+     "R_Rally_c2"
     ]
    },
    "guard": {
-    "clip": "R_Guard",
+    "clip": "R_Guard_hi",
     "alt": [
+     "R_Guard_hi_s",
+     "R_Guard",
      "R_Guard_s",
      "R_Guard_k"
     ]
@@ -6424,6 +7990,23 @@
      "R_Knockdown_s",
      "R_Knockdown_k"
     ]
+   },
+   "death": {
+    "clip": "CMU_Fall_Back",
+    "alt": [
+     "M2M_Death_D",
+     "M2M_Death_B"
+    ]
+   },
+   "sprint": {
+    "clip": "R_Sprint",
+    "alt": [
+     "R_Sprint_u"
+    ]
+   },
+   "run": {
+    "clip": "R_Jog",
+    "alt": []
    }
   },
   "unarmed": {
@@ -6438,7 +8021,8 @@
     "clip": "R_Shoot",
     "alt": [
      "R_Shoot_s",
-     "R_Shoot_k"
+     "R_Shoot_k",
+     "R_Shoot_k2"
     ]
    },
    "skill_rain": {
@@ -6452,14 +8036,16 @@
     "clip": "R_Dash",
     "alt": [
      "R_Dash_s",
-     "R_Dash_k"
+     "R_Dash_k",
+     "R_Dash_n"
     ]
    },
    "skill_shield": {
     "clip": "R_Shield",
     "alt": [
      "R_Shield_s",
-     "R_Shield_k"
+     "R_Shield_k",
+     "R_Shield_k2"
     ]
    },
    "skill_split": {
@@ -6473,12 +8059,17 @@
    "skill_rally": {
     "clip": "R_Rally",
     "alt": [
-     "R_Rally_s"
+     "R_Rally_s",
+     "R_Rally_v45",
+     "R_Rally_c",
+     "R_Rally_c2"
     ]
    },
    "guard": {
-    "clip": "R_Guard",
+    "clip": "R_Guard_hi",
     "alt": [
+     "R_Guard_hi_s",
+     "R_Guard",
      "R_Guard_s",
      "R_Guard_k"
     ]
@@ -6508,6 +8099,27 @@
      "R_Knockdown_s",
      "R_Knockdown_k"
     ]
+   },
+   "death": {
+    "clip": "CMU_Fall_Back",
+    "alt": [
+     "M2M_Death_D",
+     "M2M_Death_B"
+    ]
+   },
+   "sprint": {
+    "clip": "R_Sprint",
+    "alt": [
+     "R_Sprint_u"
+    ]
+   },
+   "run": {
+    "clip": "R_Jog",
+    "alt": []
+   },
+   "idle": {
+    "clip": "R_Idle_2H",
+    "alt": []
    }
   }
  },
