@@ -3,7 +3,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { coachStepFor, firstShrineLine, parseIdList, starterKindOf, unlockOfStep, unlockStep } from "../coach.ts";
+import { coachStepFor, firstShrineLine, parseIdList, SIEGE_STEP, starterKindOf, unlockOfStep, unlockStep } from "../coach.ts";
 import {
   bestNext,
   cardLabel,
@@ -165,23 +165,23 @@ describe("the card's words", () => {
 
 describe("coach", () => {
   const none = new Set<string>();
-  const base = { playerName: "Sam", hasStarter: true, hasSiege: false, done: none, introduced: none };
+  const base = { hasStarter: true, hasSiege: false, done: none, introduced: none };
 
   it("the first shrine comes first, and only with a starter beside the player", () => {
     const m = me(1, { tutorial_done: false });
     assert.equal(coachStepFor({ ...base, me: m })?.id, "first-shrine");
-    assert.match(coachStepFor({ ...base, me: m })?.line ?? "", /^Sam, your first Guardian/);
+    assert.match(coachStepFor({ ...base, me: m })?.line ?? "", /^Your first Guardian/);
     assert.equal(coachStepFor({ ...base, me: m, hasStarter: false }), null);
     assert.equal(coachStepFor({ ...base, me: null }), null);
   });
 
   it("the first point's verb matches what its card does", () => {
     const m = me(1, { tutorial_done: false });
-    assert.equal(coachStepFor({ ...base, me: m, starterKind: "duel" })?.line, "Sam, your first Guardian is right beside you. Tap its card to fight.");
-    assert.equal(coachStepFor({ ...base, me: m, starterKind: "trivia" })?.line, "Sam, your first Quest Point is right beside you. Tap its card to answer.");
-    assert.equal(firstShrineLine("Sam", "rebus"), "Sam, your first Quest Point is right beside you. Tap its card to answer.");
-    assert.equal(firstShrineLine("Sam", "blitz"), "Sam, your first Quest Point is right beside you. Tap its card to play.");
-    assert.equal(firstShrineLine("Sam", "sequence"), "Sam, your first Quest Point is right beside you. Tap its card to play.");
+    assert.equal(coachStepFor({ ...base, me: m, starterKind: "duel" })?.line, "Your first Guardian is right beside you. Tap its card to fight.");
+    assert.equal(coachStepFor({ ...base, me: m, starterKind: "trivia" })?.line, "Your first Quest Point is right beside you. Tap its card to answer.");
+    assert.equal(firstShrineLine("rebus"), "Your first Quest Point is right beside you. Tap its card to answer.");
+    assert.equal(firstShrineLine("blitz"), "Your first Quest Point is right beside you. Tap its card to play.");
+    assert.equal(firstShrineLine("sequence"), "Your first Quest Point is right beside you. Tap its card to play.");
     // The kind as a tap plays it: the server's point_mode can turn any point into a duel, or a duel into a quiz.
     const starter = pt("s", { source: "starter", challenge: "trivia" });
     assert.equal(starterKindOf(starter, m), "trivia");
@@ -213,6 +213,19 @@ describe("coach", () => {
     assert.equal(unlockOfStep("unlock-battle"), "battle");
     assert.equal(unlockOfStep("siege"), null);
     assert.equal(unlockOfStep("unlock-nope"), null);
+  });
+
+  it("every step is a plain instruction: no Warden, no character voice (build 24)", () => {
+    const unlocks = ["codex", "relics", "war", "battle", "walking", "friends", "raids"] as const;
+    const lines = [
+      ...["duel", "trivia", "rebus", "blitz", "sequence", null].map((k) => firstShrineLine(k)),
+      ...unlocks.map((u) => unlockStep(u).line),
+      SIEGE_STEP.line,
+    ];
+    for (const line of lines) {
+      assert.doesNotMatch(line, /Warden/i, line);
+      assert.doesNotMatch(line, /\b(I|I'm|I've|I'll|me|my|we|our|ours|us)\b/, line);
+    }
   });
 
   it("reads a stored list defensively", () => {

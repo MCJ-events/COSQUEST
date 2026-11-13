@@ -1,6 +1,7 @@
-// The Warden showing the player round the game (costquest-ios
+// The help steps that show the player round the game (costquest-ios
 // Warden/WardenCoach.swift CoachStep + Roam/RoamHomeView.swift coachStep):
-// the step to show next, from what the player has seen. Pure: the memory
+// the step to show next, from what the player has seen. Since build 24 the
+// words are plain instructions, not the Warden speaking (no "I", no voice). Pure: the memory
 // (cq.coach.done, cq.unlocks.introduced) is kept by the component, and the
 // order is tested in features/game/__tests__/guide.test.ts.
 import { pendingUnlock, type Unlock, unlocked } from "./unlocks.ts";
@@ -24,15 +25,15 @@ export const UNLOCKS_INTRODUCED_KEY = "cq.unlocks.introduced";
  * (trivia, rebus) is answered. `kind` is the starter's challenge as it will
  * play (see pointPlaysAsDuel); without one, the Guardian line as before.
  */
-export function firstShrineLine(name: string, kind?: string | null): string {
+export function firstShrineLine(kind?: string | null): string {
   switch (kind ?? "duel") {
     case "duel":
-      return `${name}, your first Guardian is right beside you. Tap its card to fight.`;
+      return "Your first Guardian is right beside you. Tap its card to fight.";
     case "blitz":
     case "sequence":
-      return `${name}, your first Quest Point is right beside you. Tap its card to play.`;
+      return "Your first Quest Point is right beside you. Tap its card to play.";
     default:
-      return `${name}, your first Quest Point is right beside you. Tap its card to answer.`;
+      return "Your first Quest Point is right beside you. Tap its card to answer.";
   }
 }
 
@@ -44,43 +45,43 @@ export function starterKindOf(p: QuestPoint | null | undefined, me: RoamMe | nul
   return p.challenge === "duel" ? "trivia" : p.challenge;
 }
 
-export function firstShrineStep(name: string, kind?: string | null): CoachStep {
+export function firstShrineStep(kind?: string | null): CoachStep {
   return {
     id: "first-shrine",
-    line: firstShrineLine(name, kind),
+    line: firstShrineLine(kind),
     target: "starter",
     action: "Show me",
     later: "",
   };
 }
 
-/** WardenCoach.swift CoachStep.unlock, line for line. */
+/** WardenCoach.swift CoachStep.unlock, as plain instructions. */
 export function unlockStep(u: Unlock): CoachStep {
   let target: string | null = u;
   let line: string;
   switch (u) {
     case "codex":
-      line = "Every shrine you play leaves a card behind. I keep them here, in your Codex.";
+      line = "Every Quest Point you play leaves a card behind. Your cards are kept here, in your Codex.";
       break;
     case "relics":
-      line = "I've been keeping something for you. Right answers wake Relics, the weapons of the houses. Come and see.";
+      line = "Right answers wake Relics, the weapons of the houses. Your Relics are kept here.";
       break;
     case "war":
-      line = "Your house is at war for this city, every week. Take shrines, hold them, and we win.";
+      line = "Every week the houses compete for this city. Take Quest Points and hold them to score for your house.";
       break;
     case "battle":
-      line = "You're ready for a real fight. Find someone nearby, start a Room, and battle them right here, through your camera.";
+      line = "Rooms are open. Find a player nearby, start a Room, and battle them through your camera.";
       break;
     case "walking":
-      line = "Walk, and I'll reward you for it. Five, twenty-five and fifty kilometres a week.";
+      line = "Walking earns rewards at five, twenty-five and fifty kilometres a week.";
       target = null;
       break;
     case "friends":
-      line = "Hold your phone against a friend's and I'll remember you're together. No chat, and no one sees where you are.";
+      line = "Hold your phone against a friend's to record that you met. No chat, and no one sees where you are.";
       target = null;
       break;
     case "raids":
-      line = "Every hour a boss wakes somewhere near you. Bring a crew, and bring it down.";
+      line = "Every hour a boss appears somewhere near you. Bring a crew to defeat it.";
       target = null;
       break;
   }
@@ -91,7 +92,7 @@ export function unlockStep(u: Unlock): CoachStep {
 
 export const SIEGE_STEP: CoachStep = {
   id: "siege",
-  line: "See the shrine flying another house's colours? A Guardian holds it for them. Strike it down with your Relic and it's ours.",
+  line: "A Quest Point in another house's colours is held by their Guardian. Defeat the Guardian with your Relic to take the point.",
   target: null,
   action: "Got it",
   later: "",
@@ -115,15 +116,14 @@ export function opensSomething(u: Unlock): boolean {
 export const MORE_ANCHORS = ["more", "war", "battle", "recap", "events", "friends"] as const;
 
 /**
- * What the Warden has to show the player next, if anything: the first shrine,
+ * The help step to show the player next, if anything: the first shrine,
  * each unlock as the level opens it, then the siege. The caller adds the
  * "nothing while a card, a sheet or a challenge is up" part.
  */
 export function coachStepFor(input: {
   me: RoamMe | null | undefined;
-  playerName: string;
   hasStarter: boolean;
-  /** The starter's challenge as it will play ("duel", "trivia", "blitz", ...), for the Warden's verb. */
+  /** The starter's challenge as it will play ("duel", "trivia", "blitz", ...), for the step's verb. */
   starterKind?: string | null;
   hasSiege: boolean;
   done: ReadonlySet<string>;
@@ -132,7 +132,7 @@ export function coachStepFor(input: {
   const { me } = input;
   if (!me) return null;
   if (!me.tutorial_done && !input.done.has("first-shrine")) {
-    return input.hasStarter ? firstShrineStep(input.playerName, input.starterKind) : null;
+    return input.hasStarter ? firstShrineStep(input.starterKind) : null;
   }
   const u = pendingUnlock(me, input.introduced);
   if (u) return unlockStep(u);

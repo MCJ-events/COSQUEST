@@ -1,6 +1,7 @@
-// The Warden showing the player round the game: the rest of the screen dims,
-// the button in question is lit (a rounded hole and a pulsing ring), and the
-// Warden's bubble says what it is and offers "Show me" / "Later". "Tap Battle"
+// The help steps showing the player round the game: the rest of the screen
+// dims, the button in question is lit (a rounded hole and a pulsing ring), and
+// a plain card says what it is and offers "Show me" / "Later". Since build 24
+// it is UI text: no Warden badge or label, nothing spoken. "Tap Battle"
 // never means hunting for Battle. costquest-ios Warden/WardenCoach.swift
 // (WardenCoachOverlay) with Roam/RoamGuide.swift's railAnchor, here the
 // <CoachAnchor> a button is wrapped in. The step to show is features/game/coach.ts.
@@ -24,10 +25,8 @@ import Svg, { Path } from "react-native-svg";
 import type { CoachStep } from "@/features/game/coach";
 
 import { announce, GameButton } from "./kit";
-import { ACCENT, contrast, edgeColor, ELEVATION, RADIUS, SURFACES, useLook } from "./look";
+import { ACCENT, ELEVATION, RADIUS, SURFACES, useLook } from "./look";
 import { GF } from "./theme";
-import WardenBadge from "./WardenBadge";
-import { wardenVoice } from "./wardenVoice";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
 // ---------- anchors ----------
@@ -117,12 +116,10 @@ export default function CoachOverlay({
     shown.set(withDelay(400, withTiming(1, { duration: 500, easing: Easing.inOut(Easing.cubic) })));
     if (!reduce) ring.set(withRepeat(withTiming(1, { duration: 1400, easing: Easing.out(Easing.cubic) }), -1, false));
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Soft).catch(() => {});
-    announce(`The Warden: ${step.line}`);
-    wardenVoice.say(step.line, { moment: "coach" });
+    announce(step.line);
     return () => {
       cancelAnimation(shown);
       cancelAnimation(ring);
-      wardenVoice.hush();
     };
   }, [step.line, reduce, shown, ring]);
 
@@ -144,7 +141,7 @@ export default function CoachOverlay({
             pointerEvents="none"
             style={[{ position: "absolute", left: hole.x, top: hole.y, width: hole.w, height: hole.h, borderRadius: 22, borderWidth: 3, borderColor: tint }, ringStyle]}
           />
-          {/* The lit button itself does what the Warden asked. */}
+          {/* The lit button itself does what the step asks. */}
           <Pressable
             onPress={onAction}
             accessibilityRole="button"
@@ -154,12 +151,8 @@ export default function CoachOverlay({
         </>
       ) : null}
       <Animated.View style={[styles.bubble, { bottom: insets.bottom + 236, right: rightPad }, bubbleStyle]}>
-        <View style={styles.head} accessible accessibilityLabel={`The Warden: ${step.line}`}>
-          <WardenBadge tint={tint} size={38} />
-          <View style={{ flex: 1, gap: 4 }}>
-            <Text style={[styles.label, { color: readableOn(tint, look.surface, look.text) }]}>THE WARDEN</Text>
-            <Text style={styles.line}>{step.line}</Text>
-          </View>
+        <View style={styles.head} accessible accessibilityLabel={step.line}>
+          <Text style={styles.line}>{step.line}</Text>
         </View>
         <Pressable onPress={onLater} hitSlop={9} style={styles.close} accessibilityRole="button" accessibilityLabel="Close">
           <Ionicons name="close" size={14} color={look.textMuted} />
@@ -177,17 +170,10 @@ export default function CoachOverlay({
   );
 }
 
-/** The faction colour for words on paper if it reads (AA), else its darker edge, else the ink. */
-function readableOn(color: string, plate: string, ink: string): string {
-  if (contrast(color, plate) >= 4.5) return color;
-  const edge = edgeColor(color, 0.6);
-  return contrast(edge, plate) >= 4.5 ? edge : ink;
-}
-
 const L = SURFACES.light;
 const D = SURFACES.dark;
 
-// The Warden's bubble is a paper card like the one on the map (Hud.tsx WardenBubble).
+// The step's card is a paper card like the map's other plates.
 const STYLE_PAIR = themedStyles(
   {
     bubble: {
@@ -203,7 +189,6 @@ const STYLE_PAIR = themedStyles(
       ...ELEVATION.float,
     },
     head: { flexDirection: "row", alignItems: "flex-start", gap: 10, paddingRight: 22 },
-    label: { fontFamily: GF.bold, fontSize: 12, lineHeight: 16, letterSpacing: 1 },
     line: { fontFamily: GF.body, fontSize: 16, lineHeight: 21, color: L.text },
     close: {
       position: "absolute",

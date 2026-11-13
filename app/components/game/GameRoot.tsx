@@ -261,7 +261,7 @@ function GameRootInner({ parked }: { parked: boolean }) {
   }, []);
 
   // One unlock introduction per return to the map: a first quiz can pay two or
-  // three levels at once, and the Warden then queued Codex, Relics, walking and
+  // three levels at once, and the coach then queued Codex, Relics, walking and
   // friends back to back, a wall of tutorials between the player and the map.
   // The next one waits until the player has played something else.
   const [unlockTurn, setUnlockTurn] = useState(true);
@@ -272,13 +272,12 @@ function GameRootInner({ parked }: { parked: boolean }) {
     wasHome.current = home;
   }, [screen.kind]);
 
-  // What the Warden has to show next. Nothing while a card, a sheet or a
-  // challenge is up: one voice at a time (RoamHomeView.coachStep).
+  // The help step to show next. Nothing while a card, a sheet or a
+  // challenge is up: one thing at a time (RoamHomeView.coachStep).
   const nextCoach: CoachStep | null =
     coachDone && !parked && screen.kind === "home" && !selected && sheet === null && fix && !runLive && !runPoint
       ? coachStepFor({
           me,
-          playerName: gameStore.playerName(),
           hasStarter: points.some((p) => p.source === "starter"),
           starterKind: starterKindOf(points.find((p) => p.source === "starter"), me),
           hasSiege: points.some((p) => isSiege(p, me)),
