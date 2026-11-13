@@ -292,6 +292,9 @@ describe("the next 3D fight carries the token", () => {
     assert.equal(used, 1);
     // build 22: a 3D start names the rules table the build fights on
     assert.match(String(sent[0].fight3d_rules), /^f3d-2-[0-9a-f]{12}$/);
+    // build 28: and every table it can fight on, the five-button one first
+    assert.deepEqual(sent[0].fight3d_rules_ok, [/* five */ (sent[0].fight3d_rules_ok as string[])[0], sent[0].fight3d_rules]);
+    assert.match(String((sent[0].fight3d_rules_ok as string[])[0]), /^f3d-3-[0-9a-f]{12}$/);
   });
 
   it("keeps the token when the server left the friend out, and never sends it with a 2D fight", async () => {

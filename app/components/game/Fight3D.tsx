@@ -238,6 +238,8 @@ export default function Fight3D({
           place: placeFile(point),
           hudTop: hudTop.current,
           warden: fightOf?.warden ?? null,
+          // build 28: the table the server set this fight up on picks the panel (five buttons on table 3)
+          rules: fightOf?.rules ?? null,
         });
         log(`arena ${config.arena ?? "street"}${config.place_at ? ` at=${config.place_at.join(",")}` : ""}`);
         // Weapons in hand (cq 234): the cast's weapons, as files, with their grips.

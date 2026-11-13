@@ -469,13 +469,35 @@ test("build 20: hud_top goes to Godot only when there is a safe area to clear", 
 // ---------- build 22: the app names the rules table it fights on ----------
 
 import { readFileSync } from "node:fs";
-import { FIGHT3D_RULES } from "../rules.ts";
+import { FIGHT3D_RULES, FIGHT3D_RULES_FIVE, FIGHT3D_RULES_OK } from "../rules.ts";
 
 test("the rules id the app sends is the one the Godot build fights on (judge_test.gd pins fight.gd's)", () => {
   const gd = readFileSync(new URL("../../../game3d/tests/judge_test.gd", import.meta.url), "utf8");
   const pinned = /const PINNED_RULES: String = "([^"]+)"/.exec(gd)?.[1];
   assert.equal(FIGHT3D_RULES, pinned);
   assert.match(FIGHT3D_RULES, /^f3d-2-[0-9a-f]{12}$/);
+});
+
+// ---------- build 28: the five-button panel is its own table, picked by the setup ----------
+
+test("the five-button table id is the one Godot pins (five_button_test.gd), listed first, table 2 second", () => {
+  const gd = readFileSync(new URL("../../../game3d/tests/five_button_test.gd", import.meta.url), "utf8");
+  assert.equal(FIGHT3D_RULES_FIVE, /const PINNED_V3: String = "([^"]+)"/.exec(gd)?.[1]);
+  assert.equal(FIGHT3D_RULES, /const PINNED_V2: String = "([^"]+)"/.exec(gd)?.[1]);
+  assert.match(FIGHT3D_RULES_FIVE, /^f3d-3-[0-9a-f]{12}$/);
+  assert.deepEqual([...FIGHT3D_RULES_OK], [FIGHT3D_RULES_FIVE, FIGHT3D_RULES]);
+});
+
+test("the setup's rules id rides into Godot's config (it picks the panel), only when the setup names one", () => {
+  const base = { hero: { path: null, name: null }, ally: { path: null, name: null }, enemy: { path: null, name: null }, pointName: "P", mode: "full" as const, seed: 9, autoplay: false };
+  const five = fightFromStart(start3d({ rules: FIGHT3D_RULES_FIVE }))!;
+  assert.equal(five.rules, FIGHT3D_RULES_FIVE);
+  assert.equal(buildFightConfig({ ...base, rules: five.rules }).rules, FIGHT3D_RULES_FIVE);
+  const eight = fightFromStart(start3d({ rules: FIGHT3D_RULES }))!;
+  assert.equal(buildFightConfig({ ...base, rules: eight.rules }).rules, FIGHT3D_RULES);
+  assert.equal(fightFromStart(start3d({}))!.rules, null);
+  assert.equal(buildFightConfig({ ...base, rules: null }).rules, undefined);
+  assert.equal(buildFightConfig(base).rules, undefined);
 });
 
 // ---------- the Warden's fight lines (build 25, setup.warden) ----------

@@ -7,7 +7,7 @@
 //   - Retries are safe where the server is idempotent (answers, duel finish),
 //     and a stale nonce is the one 401 worth retrying.
 // Pure: fetch and the identity are injected (tested in features/game/__tests__).
-import { FIGHT3D_RULES } from "../game3d/rules.ts";
+import { FIGHT3D_RULES, FIGHT3D_RULES_OK } from "../game3d/rules.ts";
 import type { WardenFacts } from "./wardenSite.ts";
 import { type FixFields, withFixFields } from "./fixInfo.ts";
 import { type Identity, utf8ToBytes } from "./identity.ts";
@@ -377,6 +377,8 @@ export class GameClient {
     if (body.fight3d) payload.fight3d = true;
     // build 22: the rules table this build fights on; the server judges the fight against that table
     if (body.fight3d) payload.fight3d_rules = FIGHT3D_RULES;
+    // build 28: every table this build can fight on, best first; the setup says which one the server chose
+    if (body.fight3d) payload.fight3d_rules_ok = [...FIGHT3D_RULES_OK];
     if (body.fallback2d) payload.fallback2d = true;
     if (body.lat != null && body.lng != null) {
       payload.lat = body.lat;

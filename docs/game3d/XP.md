@@ -64,6 +64,7 @@ testers' hands (`roam_fight3d.py RULESETS`) and judges a fight against the table
 |---|---|---|
 | 19, 20, 21 | `f3d-1-21d2cde61ab2` | `RULES` (five skills) |
 | 22 on | `f3d-2-e872f23a43a5` | `RULES_V2` (the same numbers, plus SHOOT and RAIN) |
+| 28 on, flag on | `f3d-3-dd591cb09b67` | `RULES_V3` (table 2 plus `five`: the five-button panel, below) |
 
 The app names its id when the duel starts (`fight3d_rules` on `/v1/duel/start`, `features/game3d/rules.ts`). Builds
 19 to 21 send nothing and are set up on the first table, as before. The id is fixed in the stored setup: a record that
@@ -73,6 +74,31 @@ the id this build fights on, and a jest test checks `rules.ts` says the same.
 To change a number: change `fight.gd`, update `PINNED_RULES` in `judge_test.gd` and `FIGHT3D_RULES` in `rules.ts`,
 ADD the new table to `roam_fight3d.py` (keep the old ones while their builds are in use), record a corpus for it
 (`tools/panel/corpus_fight.gd`), and deploy the server before the app.
+
+## The five-button panel (build 28, table 3)
+Wale's five are the only buttons; WHIRL is the combo's finisher, SPLIT a held ATTACK, RALLY comes by itself below
+half health (COMBAT.md). Those casts have no press, so the table says how each comes and the record logs the input:
+
+| Row | Fields | What |
+|---|---|---|
+| `atk` | `[t, lt, on]` | ATTACK down (1, at the press) and up (0, on the next frame that sees it up) |
+| `swings` | `[t, lt, chain index]` | every combo swing that started (0, 1, 2) |
+| `derived` | `[t, lt, slot, how, arg]` | one per cast of a slot with no button, beside its `casts` row: how 1 finisher (arg: the chain index it follows), 2 hold (arg: how long ATTACK was held, 1/100 s), 3 auto (arg: the hero's HP) |
+
+The server (`roam_fight3d._judge_derived`) re-derives each one from the record itself: a WHIRL finisher follows a
+swing of chain index 1 (usually at its chain point; sooner when a guard, a dodge or a blow cut that swing short) by at
+most its length plus 0.55 s (moves' clock), with no other cast between, and ATTACK was pressed since that swing
+began or is still held; a SPLIT comes when ATTACK has been down 0.4 s since its
+latest press with no release, once per hold; a RALLY comes with the hero's HP, re-added from the record's own hits
+and heals, below half. A press of SPLIT, WHIRL or RALLY on table 3 is held. Cooldowns, hit windows and damage are
+judged as on table 2, so a derived cast can do nothing a pressed one could not.
+
+Which table a fight gets: the app sends `fight3d_rules` = table 2 (as builds 22 to 27) and `fight3d_rules_ok` =
+[table 3, table 2]. A server with the flag `five_button` in `CQ_FEATURES_ON` picks table 3; with it off (or an older
+server that ignores the list) the fight is set up on table 2, and Godot plays the panel of the table the setup names
+(config `rules`, passed by the app from `setup.rules`). So build 28 works against any server: eight buttons until the
+flag is on, five after, and turning the flag off is the rollback. A setup already made on table 3 is judged on it
+whatever the flag says later.
 
 ## SHOOT and RAIN (build 22)
 The two buttons of Wale's panel that had no mechanic in build 21 (they were padlocked) are skills now.
@@ -102,6 +128,11 @@ RALLY buff and the stagger bonus like any other hit, and are not tier-dependent:
   end to end, a 3D point win pays XP once and a forged one pays nothing. `tests/test_fight3d_rules_v2.py`: both ids
   known, 177 build 22 fights judged right, the 337 older ones still right on their own table, a record on the other
   table than its setup held, SHOOT and RAIN forgeries held, a build 21 fight and a build 22 fight both paid by one server.
+  `tests/test_fight3d_rules_v3.py` (build 28): the flag picks the table, every table 3 fight judged right (flag on and
+  off), every older fight still right with the flag on, and each kind of forged derived cast held.
+- Godot (build 28): `tests/five_button_test.gd` (the panel, table 3 pinned, the hold, the finisher, the automatic
+  RALLY in a scripted fight) and `tests/five_seeded_test.gd` (table 2 records identical to build 27, table 3 records
+  identical run to run, the bot's moves).
 
 ## Modifiers (battle-3d-only)
 The modes need different Guardians: a raid boss with more HP and heavier strikes over 60 s, a 30 s

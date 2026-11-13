@@ -97,7 +97,20 @@ export const LOSS_TIPS: readonly string[] = [
   "RALLY heals you and your ally and makes your hits stronger.",
 ];
 
-export function lossTip(seed: number): string {
-  const i = Math.abs(Math.floor(seed)) % LOSS_TIPS.length;
-  return LOSS_TIPS[Number.isFinite(i) ? i : 0];
+/**
+ * build 28: the five-button panel's tips (the fight was set up on table 3, FIGHT3D_RULES_FIVE): SPLIT, WHIRL and
+ * RALLY have no button there, so the tips say how they come.
+ */
+export const LOSS_TIPS_FIVE: readonly string[] = [
+  "Raise your guard just before the red ring lands: a perfect parry staggers the Guardian.",
+  "Hold ATTACK to SPLIT the ground: the hardest hit in the game, best while the Guardian is staggered.",
+  "Keep tapping ATTACK: the third hit of the combo is a WHIRL whenever it is back.",
+  "Dodge through a swipe: you cannot be hit mid-dodge.",
+  "RALLY comes by itself when your health drops below half: it heals you and your ally.",
+];
+
+export function lossTip(seed: number, five = false): string {
+  const tips = five ? LOSS_TIPS_FIVE : LOSS_TIPS;
+  const i = Math.abs(Math.floor(seed)) % tips.length;
+  return tips[Number.isFinite(i) ? i : 0];
 }

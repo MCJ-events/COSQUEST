@@ -9,6 +9,7 @@ import {
   fightHighlights,
   fightRewardTimeline,
   LOSS_TIPS,
+  LOSS_TIPS_FIVE,
   lossTip,
   REWARD_COUNT_MS,
   ROW_EVERY_MS,
@@ -74,5 +75,9 @@ test("the daily shown is the nearest to done, never a done one", () => {
 test("the loss tip is one calm line, the same for the same fight", () => {
   assert.equal(lossTip(239), lossTip(239));
   assert.ok(LOSS_TIPS.includes(lossTip(-7)));
+  // build 28: on the five-button panel the tips say how SPLIT, WHIRL and RALLY come, never a button for them
+  assert.ok(LOSS_TIPS_FIVE.includes(lossTip(239, true)));
+  assert.equal(lossTip(239, false), lossTip(239));
+  assert.ok(LOSS_TIPS_FIVE.some((t) => t.includes("Hold ATTACK")) && LOSS_TIPS_FIVE.some((t) => t.includes("by itself")));
   for (const t of LOSS_TIPS) assert.ok(t.length < 100 && !t.includes("\n"));
 });

@@ -34,6 +34,25 @@ numbers, and for the two hooks the sister tasks fill: **CombatAnimator** (clips)
 - **GUARD** (the shield button left of the arc): hold to block; press just before a hit
   to parry; press with the stick pushed to dodge.
 
+### The five-button panel (build 28, rules table 3)
+Subomi's decision of 13 Nov 2026: Wale's five buttons only (ATTACK, DASH, SHIELD, SHOOT, RAIN, at his sheet's
+relative positions and sizes, the cluster 1.1x about ATTACK now that the outer arc is gone), GUARD where it was. All
+eight moves stay; the three with no button come like this (numbers in `fight.gd`, judged by the server, XP.md):
+- **WHIRL is the combo's finisher.** Tap ATTACK in rhythm: hit 1, hit 2, then WHIRL whenever it is back (6 s
+  cooldown); while it cools the third hit is the heavy overhead cut as before. Cue: WHIRL's badge on ATTACK's upper
+  right rim (its cooldown segments and seconds); the right side of ATTACK's ring glows teal when the next tap is the
+  finisher.
+- **SPLIT is a held ATTACK.** The press swings at once (no added delay); held 0.4 s (round clock) it casts SPLIT, the
+  grounded slam (8 s cooldown), once per hold, cancelling the swing's recovery as a pressed skill does. While SPLIT
+  is back a held ATTACK does not chain; while it cools a held ATTACK chains as before. Cue: a gold ring fills round
+  ATTACK while it is held; SPLIT's badge on the lower right rim.
+- **RALLY comes by itself** when the hero drops below half health (500 of 1000), RALLY is back (14 s) and the hero is
+  free (no swing, skill, dodge or guard): heal and buff as before. Cue: the RALLY badge under the hero card ("auto below
+  half", then its seconds), a pink mark at half way on the hero's health bar, and the RALLY callout.
+The autoplay bot plays the same way: it presses DASH, SHIELD, SHOOT and RAIN, holds ATTACK for SPLIT and finishes its
+combos with WHIRL; RALLY comes to it as to a player. Any other table (no `rules` in the config, or table 2) plays
+the eight-button panel exactly as builds 22 to 27 (seeded records identical, `tests/five_seeded_test.gd`).
+
 ## The combo (`COMBO`)
 | Hit | State | Length | Hitbox live | Damage | Knockback | Hit-stop | Arc |
 |---|---|---|---|---|---|---|---|

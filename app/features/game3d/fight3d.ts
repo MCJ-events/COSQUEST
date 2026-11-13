@@ -273,6 +273,11 @@ export type Fight3DConfig = {
   warden_intro?: string;
   warden_win?: string;
   warden_loss?: string;
+  /**
+   * build 28: the rules table the server set this fight up on (setup.rules). Godot plays the five-button panel
+   * on table 3 (FIGHT3D_RULES_FIVE) and the eight-button panel on any other; sent only when the setup names one.
+   */
+  rules?: string;
 };
 
 export type FightMods = { boss_hp_permille: number; boss_dmg_permille: number };
@@ -343,6 +348,8 @@ export function buildFightConfig(input: {
   hudTop?: number;
   /** The Warden's lines for this fight (fightFromStart().warden). */
   warden?: FightLines | null;
+  /** build 28: the setup's rules id (fightFromStart().rules). */
+  rules?: string | null;
 }): Fight3DConfig {
   const config: Fight3DConfig = {
     hero_glb: localPath(input.hero.path),
@@ -370,6 +377,7 @@ export function buildFightConfig(input: {
   if (input.warden?.intro) config.warden_intro = input.warden.intro;
   if (input.warden?.win) config.warden_win = input.warden.win;
   if (input.warden?.loss) config.warden_loss = input.warden.loss;
+  if (input.rules) config.rules = input.rules;
   const groundJson = localPath(input.place?.groundPath);
   if (input.place && groundJson) Object.assign(config, { arena: "place", ground_json: groundJson, place_at: input.place.at });
   return config;
@@ -539,6 +547,8 @@ export function fightFromStart(
   holder: SiegeHolder | null;
   /** build 25: the Warden's intro and verdict lines (setup.warden), else null. */
   warden: FightLines | null;
+  /** build 28: the rules table the fight was set up on (setup.rules), else null. */
+  rules: string | null;
 } | null {
   const s = start.setup as Record<string, unknown> & { kind?: string };
   if (s.kind !== "fight3d") return null;
@@ -564,6 +574,7 @@ export function fightFromStart(
     enemyWeaponId: weapon,
     holder,
     warden: fightLinesOf(s),
+    rules: typeof s.rules === "string" && s.rules ? s.rules : null,
   };
 }
 

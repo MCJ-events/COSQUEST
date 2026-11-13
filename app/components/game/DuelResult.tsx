@@ -35,6 +35,7 @@ import {
   verdictAnnouncement,
 } from "@/features/game/duelFlow";
 import { dailyToShow, fightHighlights, fightRewardTimeline, lossTip } from "@/features/game/fightReward";
+import { FIGHT3D_RULES_FIVE } from "@/features/game3d/rules";
 import { standingProgress } from "@/features/game/rewardCeremony";
 import { gameStore } from "@/features/game/runtime";
 import { paidLine, squadPaid } from "@/features/game/squad";
@@ -112,7 +113,11 @@ export default function DuelResult({
   const lines = held ? [] : (pay?.lines ?? []).filter((l) => (l.xp ?? 0) > 0 || (l.faction_points ?? 0) > 0);
   const levelsUp = !held && !!after && (!!o.point?.leveled_up || (!!before && after.level > before.level));
   const daily = useMemo(() => (held ? null : dailyToShow(gameStore.get().me?.dailies ?? null)), [held]);
-  const tip = useMemo(() => lossTip(Number((start?.seed_text ?? "0").slice(-6)) || 0), [start]);
+  // build 28: on the five-button panel (setup.rules is table 3) the tips say how SPLIT, WHIRL and RALLY come
+  const tip = useMemo(
+    () => lossTip(Number((start?.seed_text ?? "0").slice(-6)) || 0, (start?.setup as { rules?: unknown } | undefined)?.rules === FIGHT3D_RULES_FIVE),
+    [start],
+  );
 
   const [shownRows, setShownRows] = useState(0);
   const [xpShown, setXpShown] = useState(0);

@@ -194,6 +194,21 @@ const JF_BUFFED: int = 4
 const JF_BLOCKED: int = 8
 const JF_PARRIED: int = 16
 const JF_DODGED: int = 32
+# ---- build 28: the five-button panel (Subomi, 13 Nov 2026). Wale's five are the only buttons (ATTACK, DASH,
+# SHIELD, SHOOT, RAIN); the other three moves stay but are not buttons: WHIRL is the combo's finisher (it is the
+# third hit whenever it is back), SPLIT is a held ATTACK (a grounded slam), RALLY comes by itself when the hero
+# drops below half health. Same numbers as version 2, plus how those three are triggered, so it is its own rules
+# table (version 3) and the server judges those casts from the input the record logs (atk, swings, derived rows,
+# docs/game3d/XP.md). The setup's rules id picks it (config "rules"); any other id fights as builds 22 to 27.
+const RULES_VERSION_FIVE: int = 3
+const HOLD_SPLIT_CS: int = 40          # ATTACK held this long (round clock, 1/100 s) casts SPLIT, once per hold
+const AUTO_RALLY_BELOW: int = 500      # permille of the hero's max HP: below it RALLY comes by itself
+const FINISHER_AFTER: int = 1          # WHIRL replaces the swing that would follow this chain index (the third hit)
+const FIVE_BUTTONS: Array[int] = [0, 4, 5, 6]   # the skill slots that still have a button (DASH, SHIELD, SHOOT, RAIN)
+# derived casts: why a skill was cast with no button (derived rows [t, lt, slot, how, arg])
+const J_HOW_FINISHER: int = 1   # arg: the chain index of the swing it follows
+const J_HOW_HOLD: int = 2       # arg: how long ATTACK had been held (1/100 s, round clock)
+const J_HOW_AUTO: int = 3       # arg: the hero's HP when it came
 
 var cfg: Dictionary = {}
 var mode: String = "full"
@@ -281,6 +296,14 @@ var _rains: Array[Dictionary] = []      # RAIN's circles: {at, t (s since the ca
 # bot
 var _bot_guard_t: float = 0.0
 var _bot_next_skill: float = 0.0
+var _bot_hold_t: float = 0.0   # five-button: the bot holds ATTACK for SPLIT this long at most
+
+# build 28, five-button panel (RULES_VERSION_FIVE): which table this fight runs on, and ATTACK's hold
+var rules_version: int = RULES_VERSION
+var five: bool = false
+var _atk_down: bool = false     # ATTACK is down (logged); the release is logged on the next frame that sees it up
+var _atk_down_cs: int = 0       # the round clock (1/100 s) of the latest ATTACK press
+var _hold_used: bool = false    # this hold already cast its SPLIT
 
 var _end_t: float = 0.0
 var _end_delay: float = 1.0
@@ -366,6 +389,14 @@ func configure(c: Dictionary) -> void:
 		boss_hp_permille = clampi(int((m as Dictionary).get("boss_hp_permille", 1000)), 200, 5000)
 		boss_dmg_permille = clampi(int((m as Dictionary).get("boss_dmg_permille", 1000)), 200, 3000)
 		mods = {"boss_hp_permille": boss_hp_permille, "boss_dmg_permille": boss_dmg_permille}
+	# build 28: the setup's rules id picks the table; "five_button" is a review/test knob (the app never sends it)
+	five = str(c.get("rules", "")) == rules_id(RULES_VERSION_FIVE) or bool(c.get("five_button", false))
+	rules_version = RULES_VERSION_FIVE if five else RULES_VERSION
+	if five:
+		# ATTACK down/up [t, lt, on], every combo swing [t, lt, chain index], every derived cast [t, lt, slot, how, arg]
+		_jlog["atk"] = []
+		_jlog["swings"] = []
+		_jlog["derived"] = []
 	autoplay = bool(c.get("autoplay", false))
 	bot_kind = str(c.get("bot", "fight"))
 	_load_threaded = bool(c.get("load_thread", true))
@@ -482,6 +513,9 @@ func _ready() -> void:
 	hud.panel = "classic" if str(cfg.get("hud_panel", "wale")) == "classic" else "wale"   # build 21: Wale's panel
 	hud.extras = str(cfg.get("hud_extras", "arc"))   # build 22: where the three interim buttons sit (review stills)
 	hud.halo_a = clampf(float(cfg.get("hud_halo", 0.42)), 0.0, 1.0)
+	hud.five = five   # build 28: Wale's five only, the cues for the finisher, the hold and RALLY
+	hud.hold_cs = HOLD_SPLIT_CS
+	hud.rally_below = AUTO_RALLY_BELOW
 	if _landscape:
 		var sd: Variant = cfg.get("hud_side", [0, 0])
 		if sd is Array and (sd as Array).size() == 2:
@@ -1434,6 +1468,11 @@ func _on_attack_pressed(t_in: float, ticks_in: int, src: String) -> void:
 		_beat_t = maxf(_beat_t, BEAT_LEN - BEAT_TURN)    # realism round 2: a tap skips the hero's shot
 	if hero == null or state != "fighting":
 		return
+	if five:
+		(_jlog["atk"] as Array).append([_jt(), _jl(), 1])
+		_atk_down = true
+		_atk_down_cs = _jt()
+		_hold_used = false
 	_attack_buffer = ATK_BUFFER
 	_lat_atk = {"t_in": t_in, "ticks_in": ticks_in, "frame_in": Engine.get_process_frames(), "node": null, "src": src}
 	# Start the swing on this very frame when the hero is free: the press is drawn next frame.
@@ -1445,6 +1484,8 @@ func _on_attack_pressed(t_in: float, ticks_in: int, src: String) -> void:
 func _on_skill_pressed(slot: int, _t_in: float, _ticks_in: int, src: String) -> void:
 	if hero == null or state != "fighting" or hero.dead:
 		return
+	if five and not FIVE_BUTTONS.has(slot):
+		return   # build 28: SPLIT, WHIRL and RALLY have no button (a stray press, e.g. an old capture timeline)
 	(_jlog["presses"] as Array).append([_jt(), _jl(), slot])
 	if _skill_cd[slot] > 0.0:
 		if src != "bot":
@@ -1546,6 +1587,10 @@ func _process(dt: float) -> void:
 
 
 func _tick_fight(dt: float) -> void:
+	# build 28: ATTACK let go since the last frame (logged on the clock the press was, before this frame moves it)
+	if five and _atk_down and not hud.attack_held:
+		(_jlog["atk"] as Array).append([_jt(), _jl(), 0])
+		_atk_down = false
 	fight_time += dt
 	t_left = maxf(0.0, duration - fight_time)
 	var logic_dt: float = 0.0 if _hitstop > 0.0 else dt
@@ -1619,8 +1664,10 @@ func _tick_hero(dt: float, real_dt: float) -> void:
 			var b: int = _skill_buffer
 			_skill_buffer = -1
 			_cast(b)
+	if five:
+		_tick_five()
 	# attack input: buffered presses and a held button
-	var want_attack: bool = _attack_buffer > 0.0 or hud.attack_held
+	var want_attack: bool = _attack_buffer > 0.0 or _held_chains()
 	if want_attack and not hero.guarding:
 		if _action == "":
 			_attack_buffer = 0.0
@@ -1645,6 +1692,32 @@ func _tick_hero(dt: float, real_dt: float) -> void:
 		hero.face(_flat(enemy.position - hero.position), dt, 10.0)
 
 
+## build 28: the two moves that come with no button of their own.
+##  SPLIT: ATTACK held HOLD_SPLIT_CS (the round clock, from the latest press), once per hold, when SPLIT is back and
+##  the hero can cast (a swing's recovery is cancelled, as a pressed skill does).
+##  RALLY: the hero below AUTO_RALLY_BELOW of their HP, RALLY back, the hero free (no swing, guard or dodge).
+## WHIRL, the third, is the combo's finisher (_swing).
+func _tick_five() -> void:
+	if hero.dead:
+		return
+	var held_cs: int = _jt() - _atk_down_cs
+	if _atk_down and not _hold_used and held_cs >= HOLD_SPLIT_CS and _skill_cd[1] <= 0.0 and _can_cast() and not hero.guarding:
+		_hold_used = true
+		_cast(1, J_HOW_HOLD, held_cs)
+		return
+	if _skill_cd[3] <= 0.0 and hero.hp * 1000 < hero.max_hp * AUTO_RALLY_BELOW and _action == "" and not hero.guarding \
+			and _can_cast():
+		_cast(3, J_HOW_AUTO, hero.hp)
+
+
+## A held ATTACK keeps the combo going. Five-button: the hold belongs to SPLIT, so it chains only while SPLIT
+## is cooling down (and not after this hold already cast it).
+func _held_chains() -> bool:
+	if not hud.attack_held:
+		return false
+	return not five or (_skill_cd[1] > 0.0 and not _hold_used)
+
+
 func _end_action() -> void:
 	if _action == "attack":
 		hero.weapon.close()
@@ -1660,6 +1733,14 @@ func _swing() -> void:
 	if _since_swing > COMBO_RESET and _action != "attack":
 		_combo_next = 0
 	_combo_i = _combo_next
+	if five:
+		# build 28: the combo's finisher is WHIRL whenever it is back (the heavy third cut while it cools down)
+		if _combo_i == FINISHER_AFTER + 1 and _skill_cd[2] <= 0.0 and _can_cast():
+			_combo_shown = 3
+			stats["combo_max"] = maxi(int(stats["combo_max"]), 3)
+			_cast(2, J_HOW_FINISHER, FINISHER_AFTER)
+			return
+		(_jlog["swings"] as Array).append([_jt(), _jl(), _combo_i])
 	_atk_data = COMBO[_combo_i]
 	_combo_next = (_combo_i + 1) % COMBO.size()
 	_action = "attack"
@@ -1740,7 +1821,7 @@ func _tick_swing(_dt: float) -> void:
 			fx.trail_push("hero%d" % _combo_i, base, tip, _swing_cols(bool(d["heavy"])), (1.0 - u) * _dt, 0.45)
 	_swing_prev_deg = yaw_deg
 	# chain: a buffered press (or a held button) starts the next hit at COMBO_CHAIN_AT
-	if (_attack_buffer > 0.0 or hud.attack_held) and _act_t >= _act_len * COMBO_CHAIN_AT and _combo_i < COMBO.size() - 1:
+	if (_attack_buffer > 0.0 or _held_chains()) and _act_t >= _act_len * COMBO_CHAIN_AT and _combo_i < COMBO.size() - 1:
 		_attack_buffer = 0.0
 		hero.weapon.close()
 		_action = ""
@@ -1853,7 +1934,8 @@ func _can_cast() -> bool:
 	return _action == "attack" and _act_t > float(_atk_data.get("close", 0.0))
 
 
-func _cast(slot: int) -> void:
+## `how`/`arg` (build 28): a cast with no button press of its own (J_HOW_*), logged as a derived row beside it.
+func _cast(slot: int, how: int = 0, arg: int = 0) -> void:
 	_end_action()
 	hero.set_guard(false)
 	_skill = slot
@@ -1863,6 +1945,8 @@ func _cast(slot: int) -> void:
 	_skill_fired = {}
 	_skill_cd[slot] = SKILL_CD[slot]
 	(_jlog["casts"] as Array).append([_jt(), _jl(), slot, int(round(_frame_dt * 100.0))])
+	if how > 0:
+		(_jlog["derived"] as Array).append([_jt(), _jl(), slot, how, arg])
 	stats["skill_uses"] = int(stats["skill_uses"]) + 1
 	(stats["skills"] as Array)[slot] = int((stats["skills"] as Array)[slot]) + 1
 	_combo_next = 0
@@ -2641,6 +2725,14 @@ func _bot(dt: float) -> void:
 		hud.bot_stick(Vector2.ZERO)
 		hud.bot_guard(false)
 		return
+	if five and _bot_hold_t > 0.0:
+		# build 28: holding ATTACK for SPLIT (stands still); let go once it is cast, or after the hold's time
+		_bot_hold_t -= dt
+		hud.bot_stick(Vector2.ZERO)
+		if _hold_used or _bot_hold_t <= 0.0:
+			_bot_hold_t = 0.0
+			hud.bot_attack_hold(false)
+		return
 	var to: Vector3 = _flat(enemy.position - hero.position)
 	var d: float = to.length()
 	var want := Vector3.ZERO
@@ -2674,6 +2766,9 @@ func _bot(dt: float) -> void:
 	if threat:
 		return
 	_bot_next_skill -= dt
+	if five:
+		_bot_five(d, reach)
+		return
 	if d < reach + 0.4:
 		var cast: int = -1
 		if _bot_next_skill <= 0.0:
@@ -2699,6 +2794,38 @@ func _bot(dt: float) -> void:
 		_bot_next_skill = 1.0
 	elif d < SHOOT_RANGE - 1.0 and _skill_cd[5] <= 0.0 and _can_cast() and _bot_next_skill <= 0.0:
 		hud.bot_skill_slot(5)   # build 22: closing in from range, a SHOOT on the way
+		_bot_next_skill = 0.6
+
+
+## build 28: the bot on the five-button panel, the same eight moves as a player: it presses DASH, SHIELD, SHOOT
+## and RAIN, holds ATTACK for SPLIT, swings its combo into the WHIRL finisher, and RALLY comes by itself.
+func _bot_five(d: float, reach: float) -> void:
+	if d < reach + 0.4:
+		var cast: int = -1
+		var hold: bool = false
+		if _bot_next_skill <= 0.0:
+			if _skill_cd[4] <= 0.0 and hero.hp < hero.max_hp * 0.8:
+				cast = 4
+			elif _skill_cd[6] <= 0.0:
+				cast = 6    # RAIN on the Guardian where it stands, first: it falls while the bot keeps swinging
+			elif _skill_cd[1] <= 0.0:
+				hold = true  # SPLIT: hold ATTACK
+			elif _skill_cd[5] <= 0.0:
+				cast = 5    # and a SHOOT at point-blank when nothing bigger is back
+		if hold and _action == "" and not hero.guarding:
+			hud.bot_attack_hold(true)   # the press starts a swing; the hold casts SPLIT HOLD_SPLIT_CS later
+			_bot_hold_t = HOLD_SPLIT_CS / 100.0 + 0.5
+			_bot_next_skill = 1.2
+		elif cast >= 0 and _can_cast():
+			hud.bot_skill_slot(cast)
+			_bot_next_skill = 1.2
+		elif _action == "" or (_action == "attack" and _act_t > _act_len * 0.5):
+			hud.bot_attack()    # the chain's third hit is WHIRL whenever it is back
+	elif d < 7.0 and d > 3.5 and _skill_cd[0] <= 0.0 and _can_cast() and _bot_next_skill <= 0.0:
+		hud.bot_skill_slot(0)
+		_bot_next_skill = 1.0
+	elif d < SHOOT_RANGE - 1.0 and _skill_cd[5] <= 0.0 and _can_cast() and _bot_next_skill <= 0.0:
+		hud.bot_skill_slot(5)
 		_bot_next_skill = 0.6
 
 
@@ -2776,8 +2903,8 @@ func result() -> Dictionary:
 ## and every hit, cast, heal, stagger, skill press and guard change, on both clocks (1/100 s).
 func judge_log() -> Dictionary:
 	var j: Dictionary = _jlog.duplicate(true)
-	j["v"] = RULES_VERSION
-	j["rules"] = rules_id()
+	j["v"] = rules_version
+	j["rules"] = rules_id(rules_version)
 	j["seed"] = int(cfg["seed"]) if cfg.has("seed") else -1
 	if not mods.is_empty():
 		j["mods"] = mods.duplicate()
@@ -2805,7 +2932,9 @@ func _guardian_look() -> Dictionary:
 
 ## The combat numbers the judge needs, as whole numbers (ms, permille): the server holds the same
 ## table, and the sha256 of this one's sorted JSON must match its own (rules_id).
-static func rules_table() -> Dictionary:
+## `version` 3 (build 28, the five-button panel) is version 2's table plus "five": how the three moves with no button
+## are triggered (the server re-derives each such cast from the record's ATTACK presses, swings and HP).
+static func rules_table(version: int = RULES_VERSION) -> Dictionary:
 	var combo: Array = []
 	for c: Dictionary in COMBO:
 		combo.append({"len_ms": int(round(float(c["len"]) * 1000.0)), "dmg": [(c["dmg"] as Vector2i).x, (c["dmg"] as Vector2i).y]})
@@ -2814,7 +2943,7 @@ static func rules_table() -> Dictionary:
 	for i in SKILL_N:
 		cd.append(int(round(SKILL_CD[i] * 1000.0)))
 		ln.append(int(round(SKILL_LEN[i] * 1000.0)))
-	return {
+	var t: Dictionary = {
 		"hp": {"hero": HERO_HP, "ally": ALLY_HP, "boss": ENEMY_HP},
 		"combo": combo, "combo_chain_permille": int(round(COMBO_CHAIN_AT * 1000.0)),
 		"crit_permille": int(round(CRIT_CHANCE * 1000.0)), "crit_mult_permille": int(round(CRIT_MULT * 1000.0)),
@@ -2833,11 +2962,18 @@ static func rules_table() -> Dictionary:
 		"rain_dmg": [RAIN_DMG.x, RAIN_DMG.y], "rain_delay_ms": int(round(RAIN_DELAY * 1000.0)),
 		"rain_gap_ms": int(round(RAIN_GAP * 1000.0)), "rain_waves": RAIN_WAVES,
 	}
+	if version >= RULES_VERSION_FIVE:
+		# buttons: the slots with a button; finisher: WHIRL follows a swing of chain index finisher_after (within
+		# its length plus combo_reset_ms); hold: SPLIT after ATTACK held hold_ms; auto: RALLY below auto_below_permille
+		t["five"] = {"buttons": FIVE_BUTTONS.duplicate(), "finisher_slot": 2, "finisher_after": FINISHER_AFTER,
+			"combo_reset_ms": int(round(COMBO_RESET * 1000.0)), "hold_slot": 1, "hold_ms": HOLD_SPLIT_CS * 10,
+			"auto_slot": 3, "auto_below_permille": AUTO_RALLY_BELOW}
+	return t
 
 
-static func rules_id() -> String:
-	var body: String = JSON.stringify(rules_table(), "", true)
-	return "f3d-%d-%s" % [RULES_VERSION, body.sha256_text().left(12)]
+static func rules_id(version: int = RULES_VERSION) -> String:
+	var body: String = JSON.stringify(rules_table(version), "", true)
+	return "f3d-%d-%s" % [version, body.sha256_text().left(12)]
 
 
 func _jt() -> int:
@@ -3248,6 +3384,13 @@ func _sync_hud() -> void:
 	if _action != "attack" and _since_swing > COMBO_RESET:
 		_combo_shown = 0
 	hud.combo_step = _combo_shown
+	if five:
+		# the hold's charge towards SPLIT (0..1, while it can still come), and whether the next ATTACK is the WHIRL finisher
+		hud.hold_k = 0.0
+		if _atk_down and not _hold_used and _skill_cd[1] <= 0.0 and state == "fighting":
+			hud.hold_k = clampf(float(_jt() - _atk_down_cs) / float(HOLD_SPLIT_CS), 0.0, 1.0)
+		hud.finisher_next = _skill_cd[2] <= 0.0 and _combo_next == FINISHER_AFTER + 1 \
+			and (_action == "attack" or _since_swing <= COMBO_RESET)
 	if hero != null:
 		hud.hero_hp = hero.hp
 		hud.hero_max = hero.max_hp

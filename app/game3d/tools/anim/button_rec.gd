@@ -6,6 +6,7 @@ extends SceneTree
 ##     --fixed-fps 30 --write-movie /abs/out.avi -s res://tools/anim/button_rec.gd -- --plan=/abs/plan.json
 ## plan.json: {"config": {fight config}, "input": [{"t": 1.0, "skill_slot": 5}, {"t": 2.0, "attack": true},
 ##   {"t": 3, "stick": [0, 1]}, {"t": 4, "guard": true}, {"t": 5, "autoplay": true}], "quit_s": 20.0}
+##   build 28: {"hold": true|false} holds or lets go of ATTACK; {"hero_hp": 450} sets the hero's health (review only).
 ## Prints "CQREC start frame=N" when the fight starts, then one line per frame:
 ##   CQREC f=<process frame> t=<s> st=<hero animation state> clip=<clip> act=<fight action> sk=<skill slot>
 ##     x=<feet x px> y=<feet y px> hy=<head y px> e=<Guardian state> ex=<Guardian x px> ey=<Guardian feet y>
@@ -64,6 +65,10 @@ func _process(_dt: float) -> bool:
 			f.hud.bot_guard(bool(ev["guard"]))
 		if ev.has("skill_slot"):
 			f.hud.bot_skill_slot(int(ev["skill_slot"]))
+		if ev.has("hold"):
+			f.hud.bot_attack_hold(bool(ev["hold"]))   # build 28: ATTACK held (SPLIT on the five-button panel)
+		if ev.has("hero_hp"):
+			f.hero.hp = int(ev["hero_hp"])            # review only: show RALLY coming by itself below half health
 		if ev.has("autoplay"):
 			f.set("autoplay", bool(ev["autoplay"]))
 	var cam: Camera3D = f.get("cam")

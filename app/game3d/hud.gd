@@ -107,6 +107,21 @@ const W_EXTRAS: Dictionary = {
 }
 ## A thumb is wider than his smallest button: a tap counts within this of a centre at least (HUD px).
 const W_TOUCH_MIN: float = 36.0
+## build 28, the five-button panel (fight.gd RULES_VERSION_FIVE, Subomi 13 Nov): only his five, no interim three.
+## With the outer arc gone his cluster grows by W_FIVE_K about ATTACK (his relative positions and sizes kept), so his
+## small DASH, RAIN and SHOOT are bigger under a thumb. GUARD keeps its spot left of DASH. The three moves with no
+## button show on the panel: WHIRL (the combo's finisher) and SPLIT (hold ATTACK) as small badges on ATTACK's rim,
+## with their cooldowns, and a ring round ATTACK that fills while it is held towards SPLIT; RALLY (comes by itself
+## below half health) as a badge under the hero card and a mark at half way on the hero's health bar.
+const W_FIVE_K: float = 1.1
+const W_FIVE_GUARD: Vector2 = Vector2(-236.0, 58.0)
+const W_BADGE_R: float = 17.0
+const W_BADGE_AT: Dictionary = {"whirl": -40.0, "split": 40.0}   # degrees round ATTACK from its right (+ is down)
+var five: bool = false
+var hold_cs: int = 40             # fight.gd HOLD_SPLIT_CS
+var rally_below: int = 500        # fight.gd AUTO_RALLY_BELOW (permille of max HP)
+var hold_k: float = 0.0           # 0..1: ATTACK held towards SPLIT (fight.gd writes it)
+var finisher_next: bool = false   # the next ATTACK is the WHIRL finisher
 
 const MAP_R: float = 76.0
 const MAP_CENTRE_FROM_TR: Vector2 = Vector2(96.0, 118.0)
@@ -241,7 +256,12 @@ func attack_centre() -> Vector2:
 
 
 func attack_r() -> float:
-	return W_ATTACK_R if panel == "wale" else ATTACK_R
+	return W_ATTACK_R * _wk() if panel == "wale" else ATTACK_R
+
+
+## The panel's scale about ATTACK: W_FIVE_K on the five-button panel, else his sheet's own (1).
+func _wk() -> float:
+	return W_FIVE_K if five else 1.0
 
 
 ## The Wale panel's button for a skill slot (its index in W_BUTTONS), or -1 when it has none.
@@ -270,12 +290,12 @@ func wale_at(j: int) -> Vector2:
 	if wale_interim(j):
 		var lay: Dictionary = W_EXTRAS.get(extras, W_EXTRAS["arc"])
 		return ((lay["at"] as Array)[_extra_i(j)] as Vector2) * (W_ATTACK_R / 70.0)
-	return ((b["c"] as Vector2) - (W_SHEET_ATTACK["c"] as Vector2)) * W_K
+	return ((b["c"] as Vector2) - (W_SHEET_ATTACK["c"] as Vector2)) * W_K * _wk()
 
 
 ## A button's drawn radius (HUD px): his sheet's, scaled.
 func wale_r(j: int) -> float:
-	return W_EXTRA_R if wale_interim(j) else float(W_BUTTONS[j]["r"]) * W_K
+	return W_EXTRA_R if wale_interim(j) else float(W_BUTTONS[j]["r"]) * W_K * _wk()
 
 
 func wale_touch_r(j: int) -> float:
@@ -289,7 +309,10 @@ func wale_centre(j: int) -> Vector2:
 func skill_centre(i: int) -> Vector2:
 	if panel == "wale":
 		var j: int = wale_button(i)
-		return wale_centre(j) if j >= 0 else attack_centre() + Vector2(0.0, -W_ATTACK_R)
+		if five and i in [1, 2, 3]:
+			# build 28: no button; where the move shows (its badge)
+			return badge_centre("split") if i == 1 else (badge_centre("whirl") if i == 2 else rally_centre() + Vector2(0.0, top_shift))
+		return wale_centre(j) if j >= 0 else attack_centre() + Vector2(0.0, -attack_r())
 	var a: float = deg_to_rad(SKILL_ANGLES[mini(i, SKILL_ANGLES.size() - 1)])
 	return attack_centre() + Vector2(cos(a), -sin(a)) * SKILL_ARC_R
 
@@ -302,10 +325,22 @@ func skill_label(slot: int) -> String:
 
 
 func guard_centre() -> Vector2:
+	if panel == "wale" and five:
+		return attack_centre() + W_FIVE_GUARD * (W_ATTACK_R / 70.0) * _wk()
 	if panel == "wale":
 		return attack_centre() + ((W_EXTRAS.get(extras, W_EXTRAS["arc"]) as Dictionary)["guard"] as Vector2) * (W_ATTACK_R / 70.0)
 	# under the skill arc's last button, towards the middle of the screen
 	return attack_centre() + Vector2(-SKILL_ARC_R - 92.0, 62.0)
+
+
+## build 28: a badge's centre on ATTACK's rim (WHIRL up right, SPLIT down right, away from his other buttons).
+func badge_centre(id: String) -> Vector2:
+	return attack_centre() + Vector2.from_angle(deg_to_rad(float(W_BADGE_AT[id]))) * attack_r() * 1.02
+
+
+## build 28: where the RALLY badge sits, under the hero card at the left (inside the top block, so top_shift applies).
+func rally_centre() -> Vector2:
+	return Vector2(40.0, 184.0)
 
 
 func _stick_home() -> Vector2:
@@ -357,6 +392,8 @@ func _down(id: int, p: Vector2, src: String) -> void:
 		var best: int = -1
 		var best_k: float = 1.0
 		for j in W_BUTTONS.size():
+			if five and wale_interim(j):
+				continue   # build 28: SPLIT, WHIRL and RALLY have no button
 			var kd: float = p.distance_to(wale_centre(j)) / wale_touch_r(j)
 			if kd <= best_k:
 				best_k = kd
@@ -1096,6 +1133,8 @@ func _draw_top() -> void:
 			_text(hr.position + Vector2(30, 31), hero_name.substr(0, 1).to_upper(), 24, Color(1, 0.86, 0.45))
 		_text_left(hr.position + Vector2(60, 18), hero_name, 20, Color.WHITE)
 		_rbar(Rect2(hr.position + Vector2(60, 34), Vector2(122, 12)), float(hero_hp) / maxf(1.0, float(hero_max)), C_HERO)
+		if five and panel == "wale":
+			_draw_rally_cue(Rect2(hr.position + Vector2(60, 34), Vector2(122, 12)))
 		_text_left(hr.position + Vector2(60, 54), "%d / %d" % [hero_hp, hero_max], 14, Color(1, 1, 1, 0.8))
 		if buff_t > 0.0:
 			_text_left(hr.position + Vector2(146, 54), "ATK+", 14, Color(1.0, 0.8, 0.3))
@@ -1300,7 +1339,7 @@ func _draw_wale_panel() -> void:
 	# the small buttons first, so the attack sits over their halos (as on his sheet)
 	for j in W_BUTTONS.size():
 		var b: Dictionary = W_BUTTONS[j]
-		if hide_extras and wale_interim(j):
+		if (hide_extras or five) and wale_interim(j):
 			continue
 		var id: String = str(b["id"])
 		var c: Vector2 = wale_centre(j)
@@ -1309,8 +1348,8 @@ func _draw_wale_panel() -> void:
 		var hcen: Vector2 = c
 		var hr: float = r * W_EXTRA_HALO
 		if not wale_interim(j):
-			hcen = ac + ((b["hc"] as Vector2) - (W_SHEET_ATTACK["c"] as Vector2)) * W_K
-			hr = float(b["hr"]) * W_K
+			hcen = ac + ((b["hc"] as Vector2) - (W_SHEET_ATTACK["c"] as Vector2)) * W_K * _wk()
+			hr = float(b["hr"]) * W_K * _wk()
 		var pr: float = _press[slot + 1]
 		var s: float = 0.86 + 0.14 * clampf(pr / 0.12, 0.0, 1.0) if pr >= 0.0 else 1.0
 		var cd: float = skill_cd[slot]
@@ -1356,13 +1395,72 @@ func _draw_wale_attack(ac: Vector2) -> void:
 		s0 = 0.94
 	var ahc: Array = PanelAtlas.A["attack"]["halo"]
 	var acol := Color(float(ahc[0]), float(ahc[1]), float(ahc[2]))
-	var ah: Vector2 = ac + ((W_SHEET_ATTACK["hc"] as Vector2) - (W_SHEET_ATTACK["c"] as Vector2)) * W_K
-	var ahr: float = float(W_SHEET_ATTACK["hr"]) * W_K
+	var ah: Vector2 = ac + ((W_SHEET_ATTACK["hc"] as Vector2) - (W_SHEET_ATTACK["c"] as Vector2)) * W_K * _wk()
+	var ahr: float = float(W_SHEET_ATTACK["hr"]) * W_K * _wk()
+	var ar: float = attack_r()
 	if pk >= 0.0:
 		var kr0: float = pk / 0.3
 		_w_halo(ah, ahr * lerpf(1.0, 1.35, kr0), Color(acol, 0.7 * (1.0 - kr0)))
 	_w_halo(ah, ahr * s0, Color(acol, halo_a))
-	_w_sprite("attack", "on", ac, W_ATTACK_R * s0)
+	_w_sprite("attack", "on", ac, ar * s0)
 	var lit: Array[int] = [2, 0, 1, 3]   # bottom left, top left, then the right side
 	for q in mini(combo_step, 3) + (1 if combo_step >= 3 else 0):
-		_w_sprite("attack", "seg", ac, W_ATTACK_R * s0, Color(1, 1, 1, 0.95), lit[q])
+		_w_sprite("attack", "seg", ac, ar * s0, Color(1, 1, 1, 0.95), lit[q])
+	if five:
+		_draw_five_attack(ac, ar * s0)
+
+
+## build 28: the hold ring (fills towards SPLIT while ATTACK is held) and the WHIRL and SPLIT badges on its rim.
+func _draw_five_attack(ac: Vector2, ar: float) -> void:
+	var gold := Color("#FFD23F")
+	var teal := Color("#3FE0C8")
+	if hold_k > 0.0:
+		draw_arc(ac, ar + 7.0, -PI * 0.5, -PI * 0.5 + TAU * hold_k, 48, Color(gold, 0.95), 7.0, true)
+		if hold_k >= 1.0:
+			_w_halo(ac, (ar + 14.0) * 1.2, Color(gold, 0.5))
+	if finisher_next:
+		# the next tap is the finisher: the right side of the ring (the third hit's segments) glows teal
+		var pulse: float = 0.6 + 0.4 * sin(_clock * 12.0)
+		draw_arc(ac, ar + 4.0, -PI * 0.5, PI * 0.5, 32, Color(teal, 0.8 * pulse), 5.0, true)
+	for id: String in ["whirl", "split"]:
+		var slot: int = 2 if id == "whirl" else 1
+		var c: Vector2 = badge_centre(id)
+		var r: float = W_BADGE_R * _wk()
+		var cd: float = skill_cd[slot]
+		var back: float = 1.0 - clampf(cd / maxf(skill_cd_max[slot], 0.01), 0.0, 1.0) if cd > 0.0 else 1.0
+		var hcv: Array = PanelAtlas.A[id]["halo"]
+		var hcol := Color(float(hcv[0]), float(hcv[1]), float(hcv[2]))
+		var big: float = 1.0
+		if id == "whirl" and finisher_next:
+			big = 1.0 + 0.12 * (0.5 + 0.5 * sin(_clock * 12.0))
+		elif id == "split" and hold_k > 0.0:
+			big = 1.0 + 0.25 * hold_k
+		_disc(c, r * big + 3.0, Color(0.05, 0.03, 0.1, 0.55))
+		_w_button(id, c, r * big, c, r * big * 1.25, back, skill_ok[slot], 1.0)
+		if cd > 0.0:
+			_text(c, ("%.1f" % cd) if cd < 1.0 else ("%d" % int(ceil(cd))), int(round(r * 0.95)), Color.WHITE, 5)
+		if _ready_pulse[slot] >= 0.0:
+			var kp: float = _ready_pulse[slot] / 0.5
+			draw_arc(c, r * lerpf(1.0, 1.7, kp), 0.0, TAU, 24, Color(hcol, 0.9 * (1.0 - kp)), 3.0, true)
+
+
+## build 28: RALLY comes by itself below half health: a badge under the hero card (its cooldown, "AUTO" while it is
+## back) and, on the health bar, a mark at the point where it comes.
+func _draw_rally_cue(bar: Rect2) -> void:
+	var pink := Color("#FF6FB0")
+	var cd: float = skill_cd[3]
+	var ready: bool = cd <= 0.0
+	var mx: float = bar.position.x + bar.size.x * float(rally_below) / 1000.0
+	draw_line(Vector2(mx, bar.position.y - 4.0), Vector2(mx, bar.end.y + 4.0), Color(pink, 1.0 if ready else 0.45), 3.0)
+	var c: Vector2 = rally_centre()
+	var r: float = 19.0
+	var back: float = 1.0 - clampf(cd / maxf(skill_cd_max[3], 0.01), 0.0, 1.0) if cd > 0.0 else 1.0
+	_disc(c, r + 3.0, Color(0.05, 0.03, 0.1, 0.55))
+	_w_button("rally", c, r, c, r * 1.25, back, skill_ok[3], 1.0)
+	if cd > 0.0:
+		_text(c, "%d" % int(ceil(cd)), 18, Color.WHITE, 5)
+	if _ready_pulse[3] >= 0.0:
+		var kp: float = _ready_pulse[3] / 0.5
+		draw_arc(c, r * lerpf(1.0, 1.7, kp), 0.0, TAU, 24, Color(pink, 0.9 * (1.0 - kp)), 3.0, true)
+	_text_left(c + Vector2(r + 8.0, -8.0), "RALLY", 16, Color(pink, 1.0) if ready else Color(1, 1, 1, 0.7), 4)
+	_text_left(c + Vector2(r + 8.0, 9.0), "auto below half" if ready else "back soon", 12, Color(1, 1, 1, 0.8), 3)
