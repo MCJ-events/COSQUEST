@@ -904,7 +904,8 @@
     "clip": "R_Shoot",
     "alt": [
      "R_Shoot_s",
-     "R_Shoot_k"
+     "R_Shoot_k",
+     "R_Shoot_k2"
     ]
    },
    "skill_rain": {
@@ -926,7 +927,8 @@
     "clip": "R_Shield",
     "alt": [
      "R_Shield_s",
-     "R_Shield_k"
+     "R_Shield_k",
+     "R_Shield_k2"
     ]
    },
    "skill_split": {
@@ -942,7 +944,8 @@
     "alt": [
      "R_Rally_s",
      "R_Rally_v45",
-     "R_Rally_c"
+     "R_Rally_c",
+     "R_Rally_c2"
     ]
    },
    "guard": {
@@ -1014,7 +1017,8 @@
     "clip": "R_Shoot",
     "alt": [
      "R_Shoot_s",
-     "R_Shoot_k"
+     "R_Shoot_k",
+     "R_Shoot_k2"
     ]
    },
    "skill_rain": {
@@ -1036,7 +1040,8 @@
     "clip": "R_Shield",
     "alt": [
      "R_Shield_s",
-     "R_Shield_k"
+     "R_Shield_k",
+     "R_Shield_k2"
     ]
    },
    "skill_split": {
@@ -1052,7 +1057,8 @@
     "alt": [
      "R_Rally_s",
      "R_Rally_v45",
-     "R_Rally_c"
+     "R_Rally_c",
+     "R_Rally_c2"
     ]
    },
    "guard": {
@@ -1124,7 +1130,8 @@
     "clip": "R_Shoot",
     "alt": [
      "R_Shoot_s",
-     "R_Shoot_k"
+     "R_Shoot_k",
+     "R_Shoot_k2"
     ]
    },
    "skill_rain": {
@@ -1146,7 +1153,8 @@
     "clip": "R_Shield",
     "alt": [
      "R_Shield_s",
-     "R_Shield_k"
+     "R_Shield_k",
+     "R_Shield_k2"
     ]
    },
    "skill_split": {
@@ -1162,7 +1170,8 @@
     "alt": [
      "R_Rally_s",
      "R_Rally_v45",
-     "R_Rally_c"
+     "R_Rally_c",
+     "R_Rally_c2"
     ]
    },
    "guard": {
@@ -1248,7 +1257,8 @@
     "clip": "R_Shield",
     "alt": [
      "R_Shield_s",
-     "R_Shield_k"
+     "R_Shield_k",
+     "R_Shield_k2"
     ]
    },
    "skill_split": {
@@ -1264,7 +1274,8 @@
     "alt": [
      "R_Rally_s",
      "R_Rally_v45",
-     "R_Rally_c"
+     "R_Rally_c",
+     "R_Rally_c2"
     ]
    },
    "guard": {
@@ -1332,7 +1343,8 @@
     "clip": "R_Shoot",
     "alt": [
      "R_Shoot_s",
-     "R_Shoot_k"
+     "R_Shoot_k",
+     "R_Shoot_k2"
     ]
    },
    "skill_rain": {
@@ -1354,7 +1366,8 @@
     "clip": "R_Shield",
     "alt": [
      "R_Shield_s",
-     "R_Shield_k"
+     "R_Shield_k",
+     "R_Shield_k2"
     ]
    },
    "skill_split": {
@@ -1370,7 +1383,8 @@
     "alt": [
      "R_Rally_s",
      "R_Rally_v45",
-     "R_Rally_c"
+     "R_Rally_c",
+     "R_Rally_c2"
     ]
    },
    "guard": {
@@ -2028,8 +2042,8 @@
    "contact": 4,
    "out": 10,
    "source": "anim-readable attack 1: KayKit diagonal slice (CC0) from a cocked start, the trunk coiling and unwinding through the cut, the off hand in",
-   "tail": 0,
-   "aim_yaw_deg": 15
+   "aim_yaw_deg": 15,
+   "tail": 0
   },
   "R_Atk1_k": {
    "src": "compose",
@@ -2039,8 +2053,8 @@
    "contact": 4,
    "out": 10,
    "source": "anim-readable attack 1: KayKit diagonal slice (CC0) from a cocked start, the trunk coiling and unwinding through the cut, the off hand in (gentler alternate for robes: legs bend less, smaller turns)",
-   "tail": 0,
-   "aim_yaw_deg": 15
+   "aim_yaw_deg": 15,
+   "tail": 0
   },
   "R_Atk2": {
    "src": "compose",
@@ -2343,6 +2357,16 @@
    "source": "anim-readable RALLY: a crouch, then both arms thrown up with the chest out and the head back, a rallying call (KayKit Cheer, CC0, retimed) (gentler alternate: the legs bend less, for robes and capes under the tear gate) (the arms as the cheer carries them)",
    "tail": 10
   },
+  "R_Rally_c2": {
+   "src": "compose",
+   "lib": "kaykit",
+   "frames": 30,
+   "fps": 30.0,
+   "contact": 7,
+   "out": 18,
+   "source": "anim-readable RALLY: a crouch, then both arms thrown up with the chest out and the head back, a rallying call (KayKit Cheer, CC0, retimed) (gentlest alternate: no crouch, the cheer's own arms)",
+   "tail": 10
+  },
   "R_Rally_s": {
    "src": "compose",
    "lib": "kaykit",
@@ -2381,6 +2405,16 @@
    "contact": 6,
    "out": 15,
    "source": "anim-readable SHIELD (alternate): KayKit block stance (CC0) set lower, the off forearm raised before the chest like a shield (arm IK), pushing out as the barrier goes up",
+   "tail": 10
+  },
+  "R_Shield_k2": {
+   "src": "compose",
+   "lib": "kaykit",
+   "frames": 26,
+   "fps": 30.0,
+   "contact": 6,
+   "out": 15,
+   "source": "anim-readable SHIELD (gentlest alternate): KayKit block stance (CC0), the off forearm raised like a shield by arm IK, no crouch",
    "tail": 10
   },
   "R_Shield_s": {
@@ -2422,6 +2456,16 @@
    "contact": 4,
    "out": 11,
    "source": "anim-readable SHOOT (gentle alternate): KayKit idle (CC0) with the off hand brought up straight at the target by arm IK, a recoil and the aim held",
+   "tail": 16
+  },
+  "R_Shoot_k2": {
+   "src": "compose",
+   "lib": "kaykit",
+   "frames": 30,
+   "fps": 30.0,
+   "contact": 4,
+   "out": 11,
+   "source": "anim-readable SHOOT (gentlest alternate): KayKit idle (CC0), the off hand brought up at the target by arm IK with a recoil and the aim held; trunk and hips as the idle has them",
    "tail": 16
   },
   "R_Shoot_s": {
@@ -4674,10 +4718,12 @@
     "R_Rally_v45",
     "R_Shield",
     "R_Shield_k",
+    "R_Shield_k2",
     "R_Shield_s",
     "R_Shoot",
     "R_Shoot_Gun",
     "R_Shoot_k",
+    "R_Shoot_k2",
     "R_Shoot_s",
     "R_Split",
     "R_Split_k",
@@ -5747,14 +5793,17 @@
     "R_Rain_s",
     "R_Rally",
     "R_Rally_c",
+    "R_Rally_c2",
     "R_Rally_s",
     "R_Rally_v45",
     "R_Shield",
     "R_Shield_k",
+    "R_Shield_k2",
     "R_Shield_s",
     "R_Shoot",
     "R_Shoot_Gun",
     "R_Shoot_k",
+    "R_Shoot_k2",
     "R_Shoot_s",
     "R_Split",
     "R_Split_k",
@@ -6468,14 +6517,17 @@
     "R_Rain_s",
     "R_Rally",
     "R_Rally_c",
+    "R_Rally_c2",
     "R_Rally_s",
     "R_Rally_v45",
     "R_Shield",
     "R_Shield_k",
+    "R_Shield_k2",
     "R_Shield_s",
     "R_Shoot",
     "R_Shoot_Gun",
     "R_Shoot_k",
+    "R_Shoot_k2",
     "R_Shoot_s",
     "R_Split",
     "R_Split_k",
@@ -7137,13 +7189,16 @@
     "R_Rain",
     "R_Rally",
     "R_Rally_c",
+    "R_Rally_c2",
     "R_Rally_s",
     "R_Rally_v45",
     "R_Shield",
     "R_Shield_k",
+    "R_Shield_k2",
     "R_Shield_s",
     "R_Shoot",
     "R_Shoot_k",
+    "R_Shoot_k2",
     "R_Shoot_s",
     "R_Split",
     "R_Split_s",
