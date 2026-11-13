@@ -4,6 +4,7 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { FONTS } from "@/constants/fonts";
 import { Ionicons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
+import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { Tabs } from "expo-router";
 import { SparksSetupPrompt } from "@/components/sparks/SparksSetupPrompt";
@@ -32,6 +33,11 @@ const BAR_LIGHT = ANDROID
 const BAR_DARK = ANDROID
   ? (["rgba(30,28,36,0.38)", "rgba(30,28,36,0.30)"] as const)
   : (["rgba(30,28,36,0.14)", "rgba(30,28,36,0.08)"] as const);
+
+// The Cosquest tab's icon: CosQuest's Q pin, the team's own art (assets/images/dashboard, the same pins as the
+// Home dashboard and the quest cards), in its magenta (open) and grey (not open) cuts.
+const QPIN_ON = require("@/assets/images/dashboard/cosquest home pin icon.png");
+const QPIN_OFF = require("@/assets/images/dashboard/cosquest card pin icon - grey.png");
 
 // Figma: the open tab gets a short pink line above its icon.
 function TabIcon({
@@ -117,7 +123,9 @@ function ChatTabs() {
           title: "Cosquest",
           tabBarIcon: ({ color, focused }) => (
             <TabIcon focused={focused}>
-              <IconSymbol size={26} name="mappin.and.ellipse" color={color} />
+              {/* CosQuest's own Q pin (the team's art, magenta when open, grey when not), not a stock map pin:
+                  Wale on build 26, "the original icon is supposed to be placed here" */}
+              <Image source={focused ? QPIN_ON : QPIN_OFF} style={styles.qpin} contentFit="contain" accessibilityIgnoresInvertColors />
             </TabIcon>
           ),
         }}
@@ -200,6 +208,12 @@ const STYLE_PAIR = themedStyles({
   iconWrap: {
     alignItems: "center",
     justifyContent: "center",
+  },
+
+  // the Q pin in the 26 pt icon slot (the pictures are 0.72 and 0.75 wide to tall)
+  qpin: {
+    width: 20,
+    height: 27,
   },
 
   // The short pink line above the open tab's icon.
