@@ -1,33 +1,40 @@
-// The Warden: the game's voice. A port of costquest-ios Warden/WardenVoice.swift
-// (WardenStyle, WardenMoment), Warden/WardenLines.swift (the authored lines)
-// and Warden/WardenMoments.swift (the facts for each moment).
+// The Warden: the game's announcer. A port of costquest-ios Warden/WardenVoice.swift
+// (WardenMoment), Warden/WardenLines.swift (the authored lines) and
+// Warden/WardenMoments.swift (the facts for each moment).
 //
-// The authored lines are not a lesser path: they are what a player hears
-// before the model has downloaded, on a phone that cannot hold it, and
-// whenever a generated line fails its check. The variant is seeded by the
+// Build 24: the Warden is an impartial announcer, not a companion, and it is
+// silent unless the server turns `features.announcer` on (announcerOn). The
+// authored lines are neutral statements of fact, one register for everyone;
+// they are what is said before a model is loaded and whenever a generated
+// line fails its check. The variant is seeded by the
 // facts exactly as on iOS, so the same moment gets the same line on both.
 // Pure (tested in features/game/__tests__).
-import { distanceM, type LatLng } from "./geo.ts";
-import type { FactionWar, QuestPoint, RoamDaily, RoamMe, RoamVerdict } from "./wire.ts";
-import { isCooling } from "./wire.ts";
+import type { QuestPoint, RoamDaily, RoamMe, RoamVerdict } from "./wire.ts";
 
-export type WardenStyle = "arcade" | "mythic" | "hype" | "trailer" | "quippy" | "neutral";
+/**
+ * The Warden is an impartial announcer (build 24): one neutral register for
+ * every player, whatever their faction. The faction styles (arcade, mythic,
+ * hype, trailer, quippy) are gone; the type stays so the model input keeps
+ * its "style: neutral" field as trained.
+ */
+export type WardenStyle = "neutral";
 
-export function wardenStyle(faction: string | null | undefined): WardenStyle {
-  switch (faction) {
-    case "gaming":
-      return "arcade";
-    case "dc":
-      return "mythic";
-    case "anime":
-      return "hype";
-    case "movies":
-      return "trailer";
-    case "marvel":
-      return "quippy";
-    default:
-      return "neutral";
-  }
+/** Always "neutral": a player's faction no longer changes how the Warden speaks. */
+export function wardenStyle(_faction?: string | null): WardenStyle {
+  return "neutral";
+}
+
+/**
+ * Whether the server has the announcer on (/v1/roam/me features.announcer):
+ * `true`, or an object with `on` or `enabled` true. Absent, false or null is
+ * silent, and production does not send the key, so the Warden says nothing.
+ */
+export function announcerOn(me: { features?: Record<string, unknown> | null } | null | undefined): boolean {
+  const a = me?.features?.announcer;
+  if (a === true) return true;
+  if (!a || typeof a !== "object") return false;
+  const o = a as { on?: unknown; enabled?: unknown };
+  return o.on === true || o.enabled === true;
 }
 
 type FactPair = [string, string | null | undefined];
@@ -62,11 +69,11 @@ export class WardenMoment {
   }
 
   get maxTokens(): number {
-    return this.kind === "recap" ? 80 : this.kind === "legend" ? 64 : 40;
+    return 40;
   }
 
   static readonly system =
-    "You are the Warden, the voice of CostQuest. Speak one line in the given style, using only the given facts.";
+    "You are the Warden, the impartial announcer of CostQuest. State one short line in a neutral voice, using only the given facts.";
 
   /** The Qwen3 chat prompt with thinking off, as the voice was trained. */
   get prompt(): string {
@@ -93,132 +100,54 @@ export function lineSeed(input: string): number {
 export function fallbackLine(m: WardenMoment): string {
   if (m.fixed) return m.fixed;
   const name = m.fact("name") ?? "traveller";
-  const place = m.fact("place") ?? m.fact("nearest") ?? "this place";
+  const place = m.fact("place") ?? "this place";
   let options: string[];
-  const s = m.style;
   switch (m.kind) {
     case "arrive":
-      options =
-        s === "arcade"
-          ? [`Player one, ${name}! ${place} is live. Ready up.`, `New stage unlocked: ${place}. Show it what you've got, ${name}.`]
-          : s === "mythic"
-            ? [`${place} has waited for you, ${name}. Its shrine wakes.`, `The stones of ${place} remember every seeker. Now they know you.`]
-            : s === "hype"
-              ? [`${place}! This is it, ${name}. Give it everything!`, `You made it to ${place}! I knew you would. Let's go!`]
-              : s === "trailer"
-                ? [`One city. One shrine. ${place}. And ${name}, ready.`, `Coming to ${place}: ${name}. Nothing will be the same.`]
-                : s === "quippy"
-                  ? [`${place}, ${name}. Try not to make it look too easy.`, `Oh good, ${place}. It's been dying to meet you, ${name}.`]
-                  : [`Welcome to ${place}, ${name}. The shrine is listening.`, `${place}. A good place for a challenge, ${name}.`];
+      options = [`${place}. Challenge open, ${name}.`, `${name} has reached ${place}. The shrine is open.`];
       break;
     case "correct":
-      options =
-        s === "arcade"
-          ? [`Clean hit, ${name}! Combo continues.`, `GG, ${name}. That's how it's done.`]
-          : s === "mythic"
-            ? [`The shrine yields to you, ${name}.`, `Rightly answered. The legend of ${name} grows.`]
-            : s === "hype"
-              ? [`YES! That's the spirit, ${name}!`, `You got it, ${name}! I never doubted you!`]
-              : s === "trailer"
-                ? [`And against all odds, ${name} gets it right.`, "One answer. One hero. Correct."]
-                : s === "quippy"
-                  ? [`Nailed it, ${name}. Obviously.`, `Correct. Try to stay humble, ${name}.`]
-                  : [`Right answer, ${name}. Nicely done.`, `That's it exactly, ${name}.`];
+      options = [`Correct, ${name}.`, `Right answer, ${name}.`];
       break;
     case "wrong":
-      options =
-        s === "arcade"
-          ? [`Missed that one, ${name}. Respawn and go again.`, "Not this round. Next point, new run."]
-          : s === "mythic"
-            ? [`Even legends stumble, ${name}. The city will test you again.`, "The shrine keeps its secret. For now."]
-            : s === "hype"
-              ? [`Not yet, ${name}! Get back up, we go again!`, "That one got away, but you're only getting stronger!"]
-              : s === "trailer"
-                ? [`A setback. But this story isn't over, ${name}.`, "Every hero has that scene. This was yours."]
-                : s === "quippy"
-                  ? [`Close. Well, not close. But brave, ${name}.`, `That one's on the question, ${name}. Probably.`]
-                  : [`Not this time, ${name}. The next point is waiting.`, "That one slipped away. Plenty more out there."];
+      options = [`Incorrect, ${name}.`, "Not correct. The next point is open."];
       break;
     case "siege_won": {
       const from = m.fact("taken_from") ?? "the rival";
-      options =
-        s === "arcade"
-          ? [`Boss down! ${place} is yours, ${name}. New high score.`, `Guardian K.O.! ${from} loses ${place}. GG, ${name}.`]
-          : s === "mythic"
-            ? [`The ${from} Guardian falls. ${place} bows to you, ${name}.`, `Sing it in the old halls: ${name} took ${place} from ${from}.`]
-            : s === "hype"
-              ? [`YOU TOOK ${place.toUpperCase()}, ${name}! ${from} never saw it coming!`, `That's our flag on ${place} now! Incredible, ${name}!`]
-              : s === "trailer"
-                ? [`They said ${place} would never fall. ${name} had other plans.`, `One Guardian. One challenger. ${place} changes hands tonight.`]
-                : s === "quippy"
-                  ? [`${place} is yours. ${from} will want that back. Let them try.`, `Nice siege, ${name}. ${from} is drafting a strongly worded letter.`]
-                  : [`${place} is yours, ${name}. Hold it well.`, `The Guardian yields. ${place} flies your colours now.`];
+      options = [`${place} is taken from ${from}. It now holds for ${name}.`, `The Guardian is defeated. ${place} changes hands.`];
       break;
     }
     case "siege_lost": {
       const holder = m.fact("holder") ?? "the rival";
-      options =
-        s === "arcade"
-          ? [`Game over at ${place}, ${name}. Power up and hit continue.`, `The ${holder} Guardian wins this round. Level that Relic and rematch.`]
-          : s === "mythic"
-            ? [`${place} holds, for now. Even stone tires, ${name}.`, `The Guardian of ${holder} stands. Return stronger, seeker.`]
-            : s === "hype"
-              ? [`So close, ${name}! Shake it off, we're coming back for ${place}!`, `The Guardian got lucky. Next time ${place} is ours!`]
-              : s === "trailer"
-                ? [`${place} holds. But ${name} will be back.`, "The first siege failed. The second one won't."]
-                : s === "quippy"
-                  ? [`${holder} keeps ${place}. Enjoy it while it lasts, ${holder}.`, "The Guardian won. Don't tell it, it'll get smug."]
-                  : [`${place} holds this time, ${name}. Rest, then try again.`, "The Guardian held. Level up your Relic and come back."];
+      options = [`${place} holds for ${holder}.`, "The Guardian held. The siege can be tried again after the rest."];
       break;
     }
     case "late":
-      options = [`Time ran out, ${name}. The clock is a harsh judge.`, `Too slow this time, ${name}. Next one, faster.`];
+      options = [`Time is up, ${name}.`, "Time is up. No answer counted."];
       break;
     case "levelup": {
       const level = m.fact("level") ?? "up";
-      options = [`Level ${level}, ${name}! The city takes notice.`, `You've reached level ${level}, ${name}. Onward.`];
+      options = [`${name} reaches level ${level}.`, `Level ${level}, ${name}.`];
       break;
     }
     case "rankup": {
       const rank = m.fact("rank") ?? "a new rank";
-      options = [`${name}, you are now ${rank}. Wear it well.`, `A new title for ${name}: ${rank}.`];
+      options = [`${name} is now ${rank}.`, `New rank for ${name}: ${rank}.`];
       break;
     }
     case "streak":
-      options = [`${m.fact("streak") ?? "another day"} and counting, ${name}. Don't break it now.`];
+      options = [`Streak: ${m.fact("streak") ?? "another day"}, ${name}.`];
       break;
     case "daily_done": {
       const q = m.fact("quest") ?? "Today's quest";
-      options = [`${q}: done. Nicely handled, ${name}.`, `Quest complete, ${name}. ${q}, ticked off.`];
+      options = [`${q}: complete.`, `Quest complete, ${name}: ${q}.`];
       break;
     }
     case "hint":
-      options = [`A little help never hurt anyone, ${name}.`, `Spent wisely, ${name}. Now finish it.`];
+      options = [`Hint used, ${name}.`, "Hint applied."];
       break;
-    case "legend":
-      options = [
-        "I felt this shrine wake the night the city first dreamed. It still hums when someone like you comes close.",
-        `People pass ${place} every day. Very few notice the shrine. You did.`,
-        `Nobody remembers who first marked ${place}. I do. Keep coming back and I might tell you.`,
-        `The shrine at ${place} is older than the street around it. It does not like to be rushed.`,
-      ];
-      break;
-    case "recap":
-      options = [
-        `${m.fact("points_played") ?? "a few"} points played, ${m.fact("xp_today") ?? "some"} XP earned. Not a bad day's work, ${name}.`,
-      ];
-      break;
-    case "nudge": {
-      const d = m.fact("distance") ?? "not far";
-      options = [
-        `The shrine at ${place} is awake, ${d} from here.`,
-        `${place}, ${d} away. I think it wants to meet you, ${name}.`,
-        `Try ${place} next. It's ${d} away.`,
-      ];
-      break;
-    }
     default:
-      options = [`I'm right here, ${name}.`];
+      options = [`${name}.`];
   }
   return options[lineSeed(m.input) % options.length];
 }
@@ -230,7 +159,7 @@ export type MomentContext = {
   playerName: string;
 };
 
-const styleOf = (ctx: MomentContext) => wardenStyle(ctx.me?.faction);
+const NEUTRAL: WardenStyle = "neutral";
 
 export function arriveMoment(ctx: MomentContext, p: QuestPoint): WardenMoment {
   const s = ctx.me?.standing;
@@ -245,7 +174,7 @@ export function arriveMoment(ctx: MomentContext, p: QuestPoint): WardenMoment {
   if (s && !s.max_level && s.level_span - s.into_level < 200) facts.push(["to_next", `${s.level_span - s.into_level} XP`]);
   if (ctx.me && ctx.me.streak.days >= 2) facts.push(["streak", `${ctx.me.streak.days} days`]);
   if (ctx.me?.streak.played_today === false) facts.push(["first_point_today", "yes"]);
-  return new WardenMoment("arrive", styleOf(ctx), facts, ctx.me?.day ?? "");
+  return new WardenMoment("arrive", NEUTRAL, facts, ctx.me?.day ?? "");
 }
 
 export function reactionMoment(
@@ -261,87 +190,31 @@ export function reactionMoment(
     if (correct && verdict.answer_run >= 2) facts.push(["run", `${verdict.answer_run} right in a row`]);
     if (correct) facts.push(["xp_gained", String(verdict.reward.xp)]);
   }
-  return new WardenMoment(correct ? "correct" : "wrong", styleOf(ctx), facts, verdict?.attempt_id ?? "");
+  return new WardenMoment(correct ? "correct" : "wrong", NEUTRAL, facts, verdict?.attempt_id ?? "");
 }
 
 export function lateMoment(ctx: MomentContext, point: { name: string }): WardenMoment {
-  return new WardenMoment("late", styleOf(ctx), [["name", ctx.playerName], ["place", point.name]]);
+  return new WardenMoment("late", NEUTRAL, [["name", ctx.playerName], ["place", point.name]]);
 }
 
 export function levelMoment(ctx: MomentContext, after: { level: number; rank: string }, rankUp: boolean): WardenMoment {
   if (rankUp) {
-    return new WardenMoment("rankup", styleOf(ctx), [["name", ctx.playerName], ["rank", after.rank], ["level", String(after.level)]]);
+    return new WardenMoment("rankup", NEUTRAL, [["name", ctx.playerName], ["rank", after.rank], ["level", String(after.level)]]);
   }
-  return new WardenMoment("levelup", styleOf(ctx), [["name", ctx.playerName], ["level", String(after.level)], ["rank", after.rank]]);
+  return new WardenMoment("levelup", NEUTRAL, [["name", ctx.playerName], ["level", String(after.level)], ["rank", after.rank]]);
 }
 
 export function dailyMoment(ctx: MomentContext, d: RoamDaily): WardenMoment {
-  return new WardenMoment("daily_done", styleOf(ctx), [["name", ctx.playerName], ["quest", d.title], ["reward", `${d.reward.xp} XP`]]);
+  return new WardenMoment("daily_done", NEUTRAL, [["name", ctx.playerName], ["quest", d.title], ["reward", `${d.reward.xp} XP`]]);
 }
 
 export function hintMoment(ctx: MomentContext, kind: string): WardenMoment {
-  return new WardenMoment("hint", styleOf(ctx), [["name", ctx.playerName], ["hint", kind === "fifty" ? "50/50" : "extra time"]]);
+  return new WardenMoment("hint", NEUTRAL, [["name", ctx.playerName], ["hint", kind === "fifty" ? "50/50" : "extra time"]]);
 }
 
 /** Arriving at a Game Warden site: the site's own arrive line, as the server wrote it from its facts. */
 export function siteArriveMoment(ctx: MomentContext, p: QuestPoint, line: string): WardenMoment {
-  return new WardenMoment("arrive", styleOf(ctx), [["name", ctx.playerName], ["place", p.name]], p.id, line);
-}
-
-export function legendMoment(ctx: MomentContext, p: QuestPoint): WardenMoment {
-  return new WardenMoment("legend", styleOf(ctx), [["place", p.name], ["tier", p.tier], ["realm", p.realm]]);
-}
-
-export function nudgeMoment(
-  ctx: MomentContext,
-  here: LatLng | null,
-  points: QuestPoint[],
-  reach: number,
-  war: FactionWar | null,
-  now: number = Date.now(),
-): WardenMoment | null {
-  if (!here) return null;
-  const candidates = points
-    .filter((p) => !isCooling(p, now))
-    .map((p) => ({ p, d: distanceM(here, p) }))
-    .filter(({ d }) => d > reach)
-    .sort((a, b) => a.d - b.d);
-  const pick = candidates[0];
-  if (!pick) return null;
-  const facts: FactPair[] = [
-    ["name", ctx.playerName],
-    ["nearest", pick.p.name],
-    ["distance", `${Math.round(pick.d / 10) * 10} m`],
-    ["tier", pick.p.tier],
-  ];
-  const left = ctx.me?.dailies.find((d) => !d.done);
-  if (left) facts.push(["daily_left", left.title]);
-  const mine = ctx.me?.faction;
-  if (war && mine && war.total > 0) {
-    const i = war.standings.findIndex((s) => s.faction === mine);
-    if (i >= 0) facts.push(["faction_standing", `${war.standings[i].name} ${i === 0 ? "leads" : i === 1 ? "is 2nd" : "trails"} this week`]);
-  }
-  return new WardenMoment("nudge", styleOf(ctx), facts, String(Math.floor(now / 600000)));
-}
-
-export function recapMoment(ctx: MomentContext, war: FactionWar | null): WardenMoment | null {
-  const me = ctx.me;
-  const t = me?.today;
-  if (!me || !t || t.points_played <= 0) return null;
-  const facts: FactPair[] = [
-    ["name", ctx.playerName],
-    ["points_played", String(t.points_played)],
-    ["correct", String(t.correct)],
-    ["xp_today", String(t.xp)],
-    ["faction", me.faction_name],
-    ["best_place", t.best_place],
-    ["level_now", String(me.standing.level)],
-  ];
-  if (war && me.faction && war.total > 0) {
-    const i = war.standings.findIndex((s) => s.faction === me.faction);
-    if (i >= 0) facts.push(["faction_rank_this_week", ["1st", "2nd", "3rd", "4th", "5th"][Math.min(i, 4)]]);
-  }
-  return new WardenMoment("recap", styleOf(ctx), facts, `${t.points_played}-${t.xp}`);
+  return new WardenMoment("arrive", NEUTRAL, [["name", ctx.playerName], ["place", p.name]], p.id, line);
 }
 
 /**

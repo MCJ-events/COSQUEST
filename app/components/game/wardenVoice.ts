@@ -8,12 +8,16 @@
 // backend app/warden_voice.py), else on-device speech (expo-speech) as
 // before. The bubble never waits for either; mute and a call silence both.
 // EXPO_PUBLIC_WARDEN_SERVER_VOICE=0 turns the server voice off in a build.
+//
+// Build 24: the Warden is an impartial announcer and silent by default. Nothing
+// is said, shown or prepared unless the server turns features.announcer on in
+// /v1/roam/me (announcerOn in features/game/warden.ts); production does not.
 import { type AudioPlayer, createAudioPlayer } from "expo-audio";
 import * as Speech from "expo-speech";
 import { useSyncExternalStore } from "react";
 
 import { gameStore } from "@/features/game/runtime";
-import { fallbackLine, type LineWriter, type WardenMoment } from "@/features/game/warden";
+import { announcerOn, fallbackLine, type LineWriter, type WardenMoment } from "@/features/game/warden";
 import { ServerVoice, VOICE_WAIT_MS } from "@/features/game/wardenServerVoice";
 import { store } from "@/store/store";
 import { getPref, setPref } from "@/utils/prefsStorage";
@@ -41,9 +45,14 @@ const SERVER_VOICE = process.env.EXPO_PUBLIC_WARDEN_SERVER_VOICE !== "0";
 const PREFETCH = new Set(["arrive"]);
 const PHONE_VOICE = { rate: 1.02, pitch: 0.95 };
 
+/** The one register the server voice is asked for: the Warden is neutral for everyone. */
+const VOICE_STYLE = "neutral";
 const serverVoice = new ServerVoice({
-  ask: (text, moment, style) => gameStore.client.wardenVoice(text, moment, style),
+  ask: (text, moment) => gameStore.client.wardenVoice(text, moment, VOICE_STYLE),
 });
+
+/** The server's announcer switch: off (silent) unless /v1/roam/me says so. */
+const announcing = () => announcerOn(gameStore.get().me);
 
 // ---------- the voice: server audio, else on-device speech ----------
 
@@ -96,7 +105,7 @@ function playUrl(url: string, done: () => void): boolean {
  * `done` runs once when it has been said (or given up on), so a caller that
  * waits for the end of a line (onboarding) never waits forever.
  */
-function voice(text: string, moment: string, style: string, done?: () => void) {
+function voice(text: string, moment: string, done?: () => void) {
   const stopped = stopVoice();
   const mine = ++voiceSerial;
   let finished = false;
@@ -118,7 +127,7 @@ function voice(text: string, moment: string, style: string, done?: () => void) {
     onPhone();
     return;
   }
-  void serverVoice.urlFor(text, moment, style).then((url) => {
+  void serverVoice.urlFor(text, moment, VOICE_STYLE).then((url) => {
     // Superseded by a newer line, a stop, mute or a call while waiting.
     if (mine !== voiceSerial || muted || callActive()) return finish();
     if (url && playUrl(url, finish)) return;
@@ -188,9 +197,10 @@ export const wardenVoice = {
 
   /** Start writing a line now so it is ready when wanted; the arrive line's audio too. */
   prepare(moment: WardenMoment) {
+    if (!announcing()) return;
     const audio = (text: string | null) => {
       if (!SERVER_VOICE || muted || !PREFETCH.has(moment.kind)) return;
-      serverVoice.prefetch(text || fallbackLine(moment), moment.kind, moment.style);
+      serverVoice.prefetch(text || fallbackLine(moment), moment.kind, VOICE_STYLE);
     };
     // A fixed line (a Warden site's own words) is said as written: no model, audio only.
     if (moment.fixed) { audio(moment.fixed); return; }
@@ -199,6 +209,8 @@ export const wardenVoice = {
 
   /** Say a moment's line: the model's if it is ready in time, the authored one otherwise. */
   async speak(moment: WardenMoment, holdMs = 6000): Promise<string> {
+    // Silent unless the server has the announcer on: no line, no bubble, no voice.
+    if (!announcing()) return "";
     const fromModel = writer && !moment.fixed
       ? await Promise.race([ask(moment), new Promise<null>((r) => setTimeout(() => r(null), MODEL_WAIT_MS))])
       : null;
@@ -210,7 +222,7 @@ export const wardenVoice = {
     // switch does not swallow it (GameKit.swift: .playback, call-safe).
     if (!muted && !callActive()) {
       prepareGameAudio();
-      voice(line.text, moment.kind, moment.style);
+      voice(line.text, moment.kind);
     }
     if (hideTimer) clearTimeout(hideTimer);
     const id = said.id;
@@ -228,13 +240,13 @@ export const wardenVoice = {
    * Warden's answers), unless muted or on a call. `done` runs once when it has
    * been said, stopped or given up on.
    */
-  say(text: string, opts: { moment?: string; style?: string; done?: () => void } = {}) {
-    if (!text || muted || callActive()) {
+  say(text: string, opts: { moment?: string; done?: () => void } = {}) {
+    if (!text || muted || callActive() || !announcing()) {
       opts.done?.();
       return;
     }
     prepareGameAudio();
-    voice(text, opts.moment ?? "line", opts.style ?? "neutral", opts.done);
+    voice(text, opts.moment ?? "line", opts.done);
   },
 
   /** Stop talking (the bubble stays). */
@@ -244,6 +256,7 @@ export const wardenVoice = {
 
   /** A moment's line without saying it (the point card's legend): the model's if it comes within `waitMs`. */
   async line(moment: WardenMoment, waitMs = 8000): Promise<string> {
+    if (!announcing()) return "";
     const fromModel = writer ? await Promise.race([ask(moment), new Promise<null>((r) => setTimeout(() => r(null), waitMs))]) : null;
     return fromModel || fallbackLine(moment);
   },
