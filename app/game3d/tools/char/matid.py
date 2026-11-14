@@ -47,6 +47,10 @@ GAME_HEIGHT = 2.3          # fighter.gd HEIGHT: every hero is scaled to this
 # "strands" hang (a bun, a bob), "curls" are tufts with no one strand direction (a crop, a beard), "none" = lashes only
 HAIR_STYLE = {"icons_imani": "strands", "celestials_lyra": "strands", "blockbusters_kofi": "curls", "ascendants_zuri": "curls",
               "controllers_tavo": "none", "everborn_oren": ""}
+# heroes whose painted armour the texel classes took for cloth (Tavo's breastplate and helmet: the class debug view shows
+# them green, with only the painted highlight as metal): the shader keeps the lift's own metal flag on their cloth and
+# leather texels (cs_orm_trust). Not Imani: there the lift's flag is the cape's "smeared bronze".
+ORM_TRUST = {"controllers_tavo": 1.0}
 
 
 # ---------------------------------------------------------------- glb
@@ -317,7 +321,8 @@ def cmd_build(a):
     info = {"key": a.key, "source": Path(a.glb).name, "classes": Path(a.classes).name,
             "share_of_body_texels": {c: round(float(w[..., i][cov_s].mean()), 4) for i, c in enumerate(["skin", "metal", "leather", "cloth"])},
             "uv_per_m": round(uv_density(j, b, mat), 4), "hair_srgb": hair_colour(j, b), "iris": iris_info(j, b),
-            "lum_p50_p75_p95": knee, "hair_style": HAIR_STYLE.get(a.key, "")}
+            "lum_p50_p75_p95": knee, "hair_style": HAIR_STYLE.get(a.key, ""),
+            "orm_trust": ORM_TRUST.get(a.key, 0.0)}
     (out / f"{a.key}.json").write_text(json.dumps(info, indent=1) + "\n")
     print("MATID_BUILD", json.dumps(info))
 

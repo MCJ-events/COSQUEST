@@ -99,6 +99,9 @@ func _initialize() -> void:
 	var src: String = (load("res://vfx/char_real.gdshader") as Shader).code
 	_check("shader_keeps_recv_shadow_kick_a", src.contains("uniform float recv_shadow") and src.contains("uniform vec3 kick_a_col"))
 	_check("shader_cs_off_by_default", src.contains("uniform bool cs_on = false;"))
+	_check("orm_trust_off_by_default_tavo_only", src.contains("uniform float cs_orm_trust = 0.0;")
+		and float(FighterScript._cs_json("res://art/char/masks/controllers_tavo.json").get("orm_trust", 0.0)) == 1.0
+		and float(FighterScript._cs_json("res://art/char/masks/icons_imani.json").get("orm_trust", 0.0)) == 0.0)
 	_check("plain_variant_is_the_file", FighterScript._real_variant(false, false) == load("res://vfx/char_real.gdshader"))
 	var soft: String = FighterScript._real_variant(true, true, true, false).code
 	_check("hair_soft_variant_alpha_to_coverage", soft.contains("alpha_to_coverage") and soft.contains("ALPHA_ANTIALIASING_EDGE = 0.3")

@@ -6,7 +6,7 @@ Per shot present in both folders (<tag>_B_intro, <tag>_B_win, <tag>_A_mid; the h
   skin   median CIELAB of the skin-coloured pixels in the hero's face crop, b28 against new: Delta E 76. The lane only
          touches skin through the cavity term and the eyes, so this bounds how far it moved the tone skinlook-28 set.
          skin_mid_dE76: the same on the face box's middle band (no hair, no beard: the hair this lane re-shades
-         otherwise moves the median).
+         otherwise moves the median). skin_low_dE76: from the eye line down (a bowed head's face box is mostly hair).
   hair   stair-steps on the hair: in the hero's hair crop, the share of strong luminance edges (Sobel above the 95th
          percentile of the b28 crop) that are single-pixel steps (|Laplacian| > 0.5 x the edge strength). new / b28.
   budget the CQLOOK perf line of each run (texture and video memory, draws, primitives).
@@ -86,6 +86,13 @@ def main():
             sa, sb = skin_lab(crop(A, fb)), skin_lab(crop(B, fb))
             if sa is not None and sb is not None:
                 out["skin_mid_dE76"] = round(float(np.linalg.norm(sa - sb)), 2)
+            # the face from the eye line down (the eyes box's top to the face box's bottom): with the head bowed (victory)
+            # the face box is mostly hair, and the re-shaded strands' brown highlights pass the skin window
+            if "eyes" in bx:
+                lb = [x0, bx["eyes"][1], x1, y1]
+                sa, sb = skin_lab(crop(A, lb)), skin_lab(crop(B, lb))
+                if sa is not None and sb is not None:
+                    out["skin_low_dE76"] = round(float(np.linalg.norm(sa - sb)), 2)
         if "hair" in bx:
             ca, cb = crop(A, bx["hair"]), crop(B, bx["hair"])
             if ca.size > 300:

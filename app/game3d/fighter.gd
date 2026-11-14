@@ -837,6 +837,8 @@ func _charshade_parts(sm: ShaderMaterial, b: BaseMaterial3D, kind: String, cut: 
 			sm.set_shader_parameter("skin_tex", mask)
 			# the same skin strength the colour guess had (SKIN_GUESS): only where skin is changes, not how much of it
 			sm.set_shader_parameter("skin_amount", float(look.get("cs_skin_amount", SKIN_GUESS)))
+			# a hero whose painted armour the classes took for cloth keeps the lift's metal there (matid.py ORM_TRUST)
+			sm.set_shader_parameter("cs_orm_trust", float(info.get("orm_trust", 0.0)))
 			var kn: Variant = info.get("lum_p50_p75_p95", {})
 			if kn is Dictionary and bool(look.get("cs_knee", true)):
 				var kl: Variant = (kn as Dictionary).get("leather")

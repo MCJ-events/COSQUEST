@@ -19,7 +19,8 @@
 // exactly build 28's fighter:
 //  - a material-ID mask per hero (art/char/masks, tools/char/matid.py) in the skin mask's sampler: R skin, G metal,
 //    B leather, A cloth sheen; what is left is synthetic. Skin from the mask (no colour guess: leather is not skin),
-//    metal only where the mask says metal (the lift's metal flag made Imani's cape bronze), roughness kept inside each
+//    metal only where the mask says metal (the lift's metal flag made Imani's cape bronze; a hero flagged orm_trust in its
+//    mask json keeps that flag on cloth and leather: Tavo's painted breastplate and helmet), roughness kept inside each
 //    class's range (leather 0.45 to 0.65, cotton 0.7 to 0.9, metal 0.3 to 0.5, the painted range: costume metal);
 //  - cloth: a sheen lobe (Charlie distribution, Neubelt visibility, as Filament's cloth) in place of GGX and of the rim;
 //    leather keeps GGX at its own roughness;
@@ -126,6 +127,8 @@ uniform vec2 cs_rough_cloth = vec2(0.70, 0.90);
 uniform vec2 cs_rough_metal = vec2(0.30, 0.50);    // the heroes metal is costume metal (gilt trims, plates): the painted range; 0.15 to 0.35 sparkled in the orbit (imani_high orbm)
 uniform vec2 cs_knee = vec2(0.0);          // leather, cloth: the linear luminance above which painted light is soft-clipped (0 = off)
 uniform vec2 cs_knee_keep = vec2(0.1, 0.25);   // leather, cloth: the share of the painted light above the knee that is kept (kofi_high k10: 0.1 reads less lacquered)
+uniform float cs_orm_trust = 0.0;           // 1: the lift's metal flag is kept on what the mask calls cloth or leather (a hero
+                                           // whose painted armour the classes took for cloth: Tavo's breastplate and helmet)
 uniform float cs_sheen = 1.0;              // the sheen lobe on cloth (0 = cloth keeps GGX)
 uniform vec2 cs_sheen_k = vec2(1.653, 0.8445);   // the sheen lobe at perceptual roughness 0.55 (a = 0.3025): exponent 1 / 2a, norm (2 + 1/a) / 2 pi
 uniform float cs_aa_var = 0.15;            // geometric specular AA: variance scale and threshold
@@ -287,12 +290,16 @@ void fragment() {
 	if (cs_on && cs_matid == 1) {
 		// metal only where the mask says so: on cloth, leather and skin the lift's metal flag is the "smeared bronze"
 		float rest = clamp(1.0 - cm.r - cm.b - cm.a, 0.0, 1.0);
-		metal = max(metal * rest, cm.g);
+		metal = max(metal * mix(rest, clamp(1.0 - cm.r, 0.0, 1.0), cs_orm_trust), cm.g);
+		// the lift's metal kept on a cloth or leather texel (cs_orm_trust): it shades as painted metal, not as that class
+		float mo = clamp(metal - cm.g, 0.0, 1.0) * cs_orm_trust;
 		float r0 = rough;
 		rough = r0 * clamp(1.0 - cm.g - cm.b - cm.a, 0.0, 1.0)
 			+ cm.g * mix(cs_rough_metal.x, cs_rough_metal.y, r0)
 			+ cm.b * mix(cs_rough_leather.x, cs_rough_leather.y, r0)
 			+ cm.a * mix(cs_rough_cloth.x, cs_rough_cloth.y, r0);
+		rough = mix(rough, mix(cs_rough_metal.x, cs_rough_metal.y, r0), mo);
+		cm.ba *= 1.0 - mo;
 		v_sheen = cm.a * cs_sheen;
 		// the lift baked the concept's highlights into leather and cloth: above the class's own knee (its 75th percentile,
 		// tools/char/matid.py) a tenth (leather) or a quarter (cloth) of the painted light is kept, so a jacket stops reading as lacquer
