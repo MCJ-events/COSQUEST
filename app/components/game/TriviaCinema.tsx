@@ -137,7 +137,7 @@ export function ArtBackdrop({ art, tint, lifted, blurred }: { art: TriviaArt | n
             cachePolicy="memory-disk"
             priority="high"
             transition={{ duration: reduce ? 0 : 600, effect: "cross-dissolve" }}
-            blurRadius={blurred ? 24 : 0}
+            blurRadius={blurred ? 14 : 0}
             accessible={!!art?.alt && !blurred}
             accessibilityLabel={art?.alt ?? undefined}
             accessibilityRole="image"
@@ -146,9 +146,10 @@ export function ArtBackdrop({ art, tint, lifted, blurred }: { art: TriviaArt | n
       ) : (
         <LinearGradient colors={[tint ?? "#3A2D5C", base, "#06080C"]} locations={[0, 0.55, 1]} start={{ x: 0, y: 0 }} end={{ x: 0.6, y: 1 }} style={StyleSheet.absoluteFill} />
       )}
-      <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: blurred ? "rgba(6,8,12,0.55)" : C.dim }, blurred ? null : dimStyle]} />
+      <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: blurred ? "rgba(6,8,12,0.28)" : C.dim }, blurred ? null : dimStyle]} />
       <LinearGradient colors={[C.scrimTop, "rgba(6,8,12,0)"]} style={styles.scrimTop} />
-      <LinearGradient colors={["rgba(6,8,12,0)", C.scrimMid, C.scrimBottom]} locations={[0, 0.3, 1]} style={styles.scrimBottom} />
+      {/* Behind the results the card carries its own dark glass, so the picture keeps more of its light. */}
+      <LinearGradient colors={blurred ? ["rgba(6,8,12,0)", "rgba(6,8,12,0.25)", "rgba(6,8,12,0.6)"] : ["rgba(6,8,12,0)", C.scrimMid, C.scrimBottom]} locations={[0, 0.3, 1]} style={styles.scrimBottom} />
     </View>
   );
 }
@@ -388,24 +389,29 @@ export function CinemaQuestion({
                     {extras(result).join("  ·  ")}
                   </Text>
                 ) : null}
-                <TriviaButton
-                  title={then === "next" ? "Next question" : then === "board" ? "All questions" : "See your score"}
-                  icon={then === "score" ? "trophy-outline" : "arrow-forward"}
-                  iconSide="left"
-                  onPress={onNext}
-                  testID="trivia-next"
-                />
-                {shareable ? (
+                {/* Share beside Next, so both stay on screen with the picture above them. */}
+                <View style={styles.actions}>
+                  {shareable ? (
+                    <TriviaButton
+                      title="Share"
+                      kind="quiet"
+                      icon="share-social-outline"
+                      iconSide="left"
+                      busy={s.sharingQuestion === shareKey}
+                      onPress={() => void runModel.shareQuestion(attempt.attempt_id, 0)}
+                      testID="trivia-share-question"
+                      style={{ flexBasis: 128 }}
+                    />
+                  ) : null}
                   <TriviaButton
-                    title="Share this question"
-                    kind="quiet"
-                    icon="share-social-outline"
+                    title={then === "next" ? "Next question" : then === "board" ? "All questions" : "See your score"}
+                    icon={then === "score" ? "trophy-outline" : "arrow-forward"}
                     iconSide="left"
-                    busy={s.sharingQuestion === shareKey}
-                    onPress={() => void runModel.shareQuestion(attempt.attempt_id, 0)}
-                    testID="trivia-share-question"
+                    onPress={onNext}
+                    testID="trivia-next"
+                    style={{ flex: 1 }}
                   />
-                ) : null}
+                </View>
                 {s.notice ? <Text style={styles.notice}>{s.notice}</Text> : null}
               </Animated.View>
             ) : null}
@@ -646,14 +652,15 @@ function Beat({ text, n, locked, onPress, tone }: { text: string; n: number; loc
         onPress={onPress}
         disabled={locked || !onPress}
         accessibilityRole={onPress ? "button" : "text"}
-        accessibilityLabel={`${text}${n ? `, number ${n}` : ""}`}
-        style={({ pressed }) => [styles.beat, n > 0 && styles.beatOn, tone === "right" && { borderColor: T.accent }, tone === "miss" && { borderColor: C.miss }, pressed && { transform: [{ scale: 0.98 }] }]}>
-        <View style={[styles.beatBadge, n > 0 && { backgroundColor: T.accent, borderColor: T.accent }]}>
+        accessibilityLabel={`${text}${n ? `, number ${n}` : ""}${tone === "right" ? ", you had it here" : tone === "miss" ? ", you had it elsewhere" : ""}`}
+        style={({ pressed }) => [styles.beat, n > 0 && styles.beatOn, tone === "right" && { borderColor: T.accent }, tone === "miss" && { borderColor: "rgba(255,154,174,0.55)" }, pressed && { transform: [{ scale: 0.98 }] }]}>
+        <View style={[styles.beatBadge, n > 0 && tone !== "miss" && { backgroundColor: T.accent, borderColor: T.accent }, tone === "miss" && { borderColor: C.miss }]}>
           <Text style={styles.beatBadgeText}>{n || ""}</Text>
         </View>
         <Text style={styles.beatText} maxFontSizeMultiplier={MAX_FONT_SCALE}>
           {text}
         </Text>
+        {tone ? <Ionicons name={tone === "right" ? "checkmark-circle" : "close-circle-outline"} size={20} color={tone === "right" ? "#FFFFFF" : C.miss} /> : null}
       </Pressable>
     </Animated.View>
   );
@@ -824,6 +831,7 @@ const styles = StyleSheet.create({
   ring: { width: TRIVIA_SIZE.ring, height: TRIVIA_SIZE.ring, borderRadius: TRIVIA_SIZE.ring / 2, alignItems: "center", justifyContent: "center", borderWidth: 3, backgroundColor: C.glassStrong, alignSelf: "center" },
   ringText: { fontFamily: FONTS.bold, fontSize: 16, lineHeight: 20, color: C.ink, fontVariant: ["tabular-nums"] },
   ringSub: { fontFamily: FONTS.semibold, fontSize: 9, lineHeight: 11, letterSpacing: 1, color: C.muted },
+  actions: { flexDirection: "row", gap: 10 },
   extras: { fontFamily: FONTS.medium, fontSize: 12, lineHeight: 16, color: C.muted, textAlign: "center", ...shadowText },
   notice: { fontFamily: FONTS.medium, fontSize: 13.5, lineHeight: 19, color: C.ink, textAlign: "center", ...shadowText },
   pips: { flexDirection: "row", gap: 6 },
