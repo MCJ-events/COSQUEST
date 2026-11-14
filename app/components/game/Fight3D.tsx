@@ -27,6 +27,7 @@ import { ActivityIndicator, AppState, BackHandler, Dimensions, PixelRatio, Platf
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { castWeapons, fightCast } from "@/features/game3d/characters";
+import { fightEnv } from "@/features/game3d/fightEnvDevice";
 import { closeFight, fightStatus, FightOpenError, godotLib, holdForBackground, onFightState, openFight, warmFight } from "@/features/game3d/engine";
 import {
   buildFightConfig,
@@ -53,6 +54,7 @@ import { gameStore } from "@/features/game/runtime";
 import { factionId } from "@/features/waleui/heroCast";
 import type { DuelStart, QuestPoint } from "@/features/game/wire";
 
+import { FightPiece } from "./ForgeEnvBits";
 import { GameButton, MAX_FONT_SCALE } from "./kit";
 import { hapticsOn } from "./prefs";
 import { callActive } from "./sound";
@@ -255,6 +257,12 @@ export default function Fight3D({
         const tier = lookTierDecision({ physicalMemory: CostQuestGame?.physicalMemory, env: process.env.EXPO_PUBLIC_LOOK_TIER ?? null });
         Object.assign(config, { tier: tier.tier });
         log(`look tier=${tier.tier} (${tier.reason})`);
+        // build 28 (forge-env-28): the point's Forge world piece as set dressing (game3d/env_piece.gd), while the
+        // server's flag forge_env_fights is on; the model on the mid and high tiers, its picture on the low one
+        const env = await fightEnv(point, tier.tier);
+        if (!alive || done.current) return;
+        if (env) Object.assign(config, env);
+        log(`env ${env ? `${env.env_name} glb=${env.env_glb ? "y" : "-"} card=${env.env_thumb ? "y" : "-"}` : "-"}`);
         if (probe.look) Object.assign(config, { look: probe.look });
         // Build 20: the view's size in pixels. Godot keeps the fight in "loading" (this card stays up)
         // until its window is this size and has drawn a few frames at it, so the player never sees the
@@ -421,6 +429,8 @@ export default function Fight3D({
                   {card.line}
                 </Text>
               ) : null}
+              {/* build 28 (forge-env-28): the world piece this arena is dressed with */}
+              <FightPiece point={point} />
             </View>
           ) : null}
           <ActivityIndicator color="#FFF" size="large" />

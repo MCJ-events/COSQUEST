@@ -28,6 +28,7 @@ import { noteStepsOnPhone } from "@/features/game/stepsDevice";
 import { unlocked, visiblePoints } from "@/features/game/unlocks";
 import { siteAttribution, siteIdOf, siteLegend } from "@/features/game/wardenSite";
 import { siteFacts } from "./wardenSites";
+import { usePinPieces } from "./ForgeEnvBits";
 import { freshLoss, holdsLostOf, type QuestPoint, spinBanner } from "@/features/game/wire";
 import { factionVeilColor, world } from "@/features/world/worldState";
 import { resultShareText } from "@/features/world/gameInvite";
@@ -173,6 +174,8 @@ function GameRootInner({ parked }: { parked: boolean }) {
   const forgeAvatar = useHasForgeAvatar();
   const forgeFigure = useHasAvatarFigure();
   const pinPortrait = usePinPortraits();
+  // build 28 (forge-env-28): dressed points carry their world piece on the pin, while the server flag is on
+  const pinPiece = usePinPieces();
   const [forgeDrop, setForgeDrop] = useState<ForgeDrop | null>(null);
   // Relics and the Forge share one sheet, the Collection (features/game/collection.ts routes each opener to its tab).
   const [collectionTab, setCollectionTab] = useState<CollectionTab>("relics");
@@ -611,6 +614,7 @@ function GameRootInner({ parked }: { parked: boolean }) {
         playerBadge={forgeAvatar ? <AvatarBadge size={34} /> : undefined}
         playerFigure={forgeFigure ? <AvatarFigure /> : undefined}
         pinPortrait={pinPortrait}
+        pinPiece={pinPiece}
         recentreSignal={recentreTick}
         onFollowChange={setMapFollowing}
         loadGround={loadGround}

@@ -27,6 +27,7 @@ const AnimatorScript := preload("res://combat_animator.gd")
 var _ready_pose: bool = true            # config "ready_pose" (with "weight"): the wound-up stand near an opponent
 const READY_RANGE: float = 4.5          # m at size 1: an opponent this close winds the body up (presentation)
 const LoaderScript := preload("res://char_loader.gd")
+const EnvPieceScript := preload("res://env_piece.gd")   # build 28: the point's Forge world piece
 const TilesScript := preload("res://tiles_layer.gd")
 const ArenaScript := preload("res://arena.gd")
 const BloomScript := preload("res://bloom.gd")
@@ -475,6 +476,13 @@ func _ready() -> void:
 	_ground = arena.get("ground")
 	plaza = arena.get("plaza")
 	_build_camera()
+	# build 28 (forge-env-28): the point's Forge world piece as set dressing at the far end of the fight
+	# (env_piece.gd); presentation only, loaded beside the fighters, never through the load queue
+	if str(cfg.get("env_glb", "")) != "" or str(cfg.get("env_thumb", "")) != "":
+		var env_piece: Node3D = EnvPieceScript.new()
+		env_piece.name = "EnvPiece"
+		arena.add_child(env_piece)
+		env_piece.call("setup", cfg, self)
 	fx = FxScript.new()
 	fx.name = "Fx"
 	add_child(fx)

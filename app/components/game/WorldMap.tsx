@@ -60,6 +60,7 @@ import type { NearbyRoom } from "@/features/game/rooms";
 import type { GroundGeometry, QuestPoint } from "@/features/game/wire";
 
 import { GroundPaths } from "./GroundPaths";
+import { PinPiece } from "./ForgeEnvBits";
 import GroundTiles, { type LoadGround } from "./GroundTiles";
 import { useMapBench } from "./mapBenchRunner";
 import { REACH_PULSE, SHEET_EASE_OUT, usePinDrop } from "./sheetMotion";
@@ -127,6 +128,8 @@ type Props = {
   playerFigure?: ReactNode;
   /** A Guardian pin's 3/4 portrait URL (the character a fight there puts up), or null for the glyph. */
   pinPortrait?: (p: QuestPoint) => string | null;
+  /** build 28 (forge-env-28): a dressed point's world piece picture on its pin's shoulder (ForgeEnvBits usePinPieces). */
+  pinPiece?: (p: QuestPoint) => string | null;
   /**
    * Fetches the ground round a point (the game client's /v1/map/ground). With
    * it the map loads tiles wherever it is looked at; without it, only `ground`
@@ -523,7 +526,7 @@ export default function WorldMap(props: Props) {
                 const inReach = props.inReach(p);
                 return (
                   <MapPin key={p.id} left={spot.left + spot.dx} top={spot.top + spot.dy} zIndex={selected ? 3 : inReach ? 2 : 1}>
-                    <PointMarker point={p} selected={selected} inReach={inReach} cooling={props.cooling(p)} onPress={props.onSelect} look={look} portrait={props.pinPortrait?.(p) ?? null} />
+                    <PointMarker point={p} selected={selected} inReach={inReach} cooling={props.cooling(p)} onPress={props.onSelect} look={look} portrait={props.pinPortrait?.(p) ?? null} piece={props.pinPiece?.(p) ?? null} />
                   </MapPin>
                 );
               })}
@@ -662,6 +665,7 @@ const PointMarker = memo(function PointMarker({
   onPress,
   look,
   portrait,
+  piece = null,
 }: {
   point: QuestPoint;
   selected: boolean;
@@ -670,6 +674,8 @@ const PointMarker = memo(function PointMarker({
   onPress: (p: QuestPoint) => void;
   look: MapStyle;
   portrait: string | null;
+  /** build 28: the point's world piece picture, when the server's forge_env_fights flag is on. */
+  piece?: string | null;
 }) {
   const styles = useThemedStyles(STYLE_PAIR);
   useRenderCount("PointMarker");
@@ -713,6 +719,7 @@ const PointMarker = memo(function PointMarker({
             <Ionicons name={challengeGlyph(point)} size={17} color="#FFFFFF" />
           )}
         </View>
+        {piece ? <PinPiece uri={piece} dim={cooling} /> : null}
         {band ? <View style={[styles.band, { backgroundColor: band }]} /> : null}
         <View style={[styles.stem, { height: STEM + lift - (band ? 6 : 0), backgroundColor: "#FFFFFF" }]} />
       </Pressable>

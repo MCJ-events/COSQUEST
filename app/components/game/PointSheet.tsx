@@ -27,6 +27,7 @@ import RaidLine from "./RaidLine";
 import { RaidCrown } from "./RaidParts";
 import { useCardMotion } from "./sheetMotion";
 import { usePinPortraits } from "./ForgeWorld";
+import { PiecePointLine } from "./ForgeEnvBits";
 import { GF, realmIcon, tierColor } from "./theme";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 
@@ -117,6 +118,8 @@ export default function PointSheet({
           <HoldLine point={point} me={me} factionName={factionName} />
           <SiegeLine point={point} me={me} factionName={factionName} />
           <RaidLine point={point} />
+          {/* build 28 (forge-env-28): the world piece the point is dressed with, also where it plays as a fight */}
+          <PiecePointLine point={point} fight={duel || boss || !!siege} />
           {site && facts ? <Text style={styles.fact}>{facts}</Text> : null}
           {site && credit ? (
             <Text style={styles.credit} maxFontSizeMultiplier={MAX_FONT_SCALE}>

@@ -85,6 +85,24 @@ kit, one light and one material set.
 - Server `tests/test_arena_osm_ground.py`: an Overpass answer becomes the server's ground shape with
   heights, road kinds and widths, trees, landmarks, water and squares.
 
+## The point's Forge world piece (build 28, `env_piece.gd`)
+A point the game server dresses with a Forge world piece (`point.forge.environment`, catalogue type `environment`;
+about half of all points) shows it in the fight too, while the server's flag `forge_env_fights` is on (`/me`
+`features.forge_world.env_fights`; app `features/game3d/fightEnv.ts`). Set dressing only:
+- Config keys `env_glb` (the tier's LOD from the Forge cache: high LOD 1, mid LOD 2), `env_thumb` (the thumbnail),
+  `env_name`, `env_placement`, `env_height_m`. An older pack ignores them; a config without them is build 27's.
+- Low tier: the thumbnail stands up as one card (no model load). Mid and high: the GLB, loaded on its own thread
+  (never through the fighters' load queue), refused over the tier's size (mid 1.5 MB / 12 k triangles, high 4 MB /
+  40 k), stripped of collision, bodies, lights, cameras and animation players, textures scaled to 512 / 1024 px.
+  Anything refused, broken or missing falls back to the card, or to nothing.
+- Height: the catalogue's `height_m`, else 2 m (ground), 1.2 m (prop), 4.5 m (backdrop), capped; the footprint
+  shrinks to fit 1.4 m half-width (ground).
+- Where: past the far end of the fighters' ground (z < -9.7 m) or past their left side (x < -5.4 m), the two places
+  no fighter can ever stand between the camera and it; inside the place's clear zone, never on a building footprint
+  or by a landmark; scored from the standard wide camera (the low tier's, the one the close camera pulls back to),
+  the far end preferred (the fly-in and the victory shot look along it). Deterministic: no RNG, no screen size.
+- Seeded records are byte-identical with and without it (`tests/env_piece_test.gd`).
+
 ## Not done
 - Build time: 191 ms for Trafalgar on the farm's CPU is over the 60 ms device budget. Next steps, in order of
   value: let the game server send the place pre-built (roads, kerbs and walls as arrays), or build in a thread
