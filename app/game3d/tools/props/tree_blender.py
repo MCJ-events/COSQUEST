@@ -21,7 +21,12 @@ rnd = random.Random(1906)
 
 H_TRUNK = 3.1
 CARD = 1.5          # leaf card side (m): capped so the crown's overdraw stays near 3 layers
-N_CARDS = 380
+N_CARDS = 250       # fid29 overdraw cap: the denser cluster texture (make_atlas LEAF_N) needs fewer cards
+# each card is trimmed to the octagon that bounds the cluster texture's leaves (alpha >= 0.45; tools/props/leaf_overdraw.py
+# measures it): UV corners (0..1), the card's square minus its empty corners, so about 30 % fewer fragments are shaded
+# for nothing behind alpha-tested texels
+CARD_UV = [(0.8614, 0.8426), (0.4895, 0.9967), (0.1525, 0.8571), (0.0062, 0.504), (0.157, 0.14), (0.5006, 0.0),
+           (0.8533, 0.1437), (1.0, 0.503)]
 
 
 def perp(d):
@@ -121,9 +126,9 @@ for p in spots:
     u, w = u * math.cos(rot) + w * math.sin(rot), -u * math.sin(rot) + w * math.cos(rot)
     s = CARD * rnd.uniform(0.85, 1.15) / 2
     c = p + out * 0.2
-    vs = [bm.verts.new(c + (u * x + w * y) * s) for x, y in ((-1, -1), (1, -1), (1, 1), (-1, 1))]
+    vs = [bm.verts.new(c + (u * (2 * x - 1) + w * (2 * y - 1)) * s) for x, y in CARD_UV]
     f = bm.faces.new(vs)
-    for loop, uv in zip(f.loops, ((0, 0), (1, 0), (1, 1), (0, 1))):
+    for loop, uv in zip(f.loops, CARD_UV):
         loop[uvl].uv = uv
     f.material_index = 1
     leaf_faces.append(f)

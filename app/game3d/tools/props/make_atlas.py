@@ -10,6 +10,7 @@ PH, ACG, OUT = sys.argv[1], sys.argv[2], sys.argv[3]
 HERE = os.path.dirname(os.path.abspath(__file__))
 L = json.load(open(os.path.join(HERE, "atlas_layout.json")))
 os.makedirs(OUT, exist_ok=True)
+LEAF_N, LEAF_SPREAD = 96, 165   # leaves per cluster texture and their spread (px of 1024)
 TIERS = {"high": {"a": 2048, "n": 2048, "orm": 1024, "leaf": 512}, "mid": {"a": 1024, "n": 512, "orm": 512, "leaf": 256}}
 
 # Paint-outs on the 1K source maps: (kind, [x0, y0, x1, y1] to cover, [dx, dy] clean source offset, why)
@@ -125,7 +126,9 @@ def leaves(tier, S):
     big = 1024
     out = Image.new("RGBA", (big, big), (0, 0, 0, 0))
     # summer-to-autumn mix: most leaves pulled towards plane green, a few left yellow
-    for i in range(46):
+    # fid29 overdraw cap: twice the leaves, gathered tighter, so a card is mostly leaf (alpha coverage about 0.65 of
+    # the card, 0.9 of its trimmed octagon) and the crown needs fewer cards for the same leaf mass (dressing.md)
+    for i in range(LEAF_N):
         s = rnd.uniform(0.26, 0.42)
         w = int(leaf.size[0] * s)
         im = leaf.resize((w, w), Image.LANCZOS).rotate(rnd.uniform(0, 360), resample=Image.BICUBIC, expand=True)
@@ -133,8 +136,8 @@ def leaves(tier, S):
         if rnd.random() < 0.88:
             gr = ImageChops.multiply(Image.merge("RGB", (r, g, bb)), Image.new("RGB", im.size, (128, 196, 104)))
             r, g, bb = gr.split()
-        cx = 512 + rnd.gauss(0, 200)
-        cy = 512 + rnd.gauss(0, 200)
+        cx = 512 + rnd.gauss(0, LEAF_SPREAD)
+        cy = 512 + rnd.gauss(0, LEAF_SPREAD)
         out.alpha_composite(Image.merge("RGBA", (r, g, bb, a)), (int(cx - im.size[0] / 2), int(cy - im.size[1] / 2)))
     # keep the cluster inside a soft disc so a card's square never shows
     disc = Image.new("L", (big, big), 0)
