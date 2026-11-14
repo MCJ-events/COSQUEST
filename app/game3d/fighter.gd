@@ -113,7 +113,15 @@ const SKIN_KEY_DESAT: Dictionary = {"golden": 0.45, "day": 0.2, "dusk": 0.35, "n
 const SKIN_ROUGH_MIN: float = 0.5
 ## skin's colour balance per time of day: the golden street light and the golden grade together turned faces orange
 ## (measured on game frames against the concept's skin: b* 44 against 24). Linear multipliers on skin's base colour.
-const SKIN_WB: Dictionary = {"golden": [0.8, 0.83, 1.17]}
+## skinlook-28 (14 Nov): with every skin tone on the skin shading (char_real skin_wide) the old balance [0.8, 0.83, 1.17]
+## turned faces pink (a* +5 to +12 against the concept); refitted on all six heroes
+const SKIN_WB: Dictionary = {"golden": [0.70, 0.83, 1.03], "day": [0.92, 1.0, 1.2], "dusk": [0.8, 1.0, 1.3]}
+## skinlook-28 (14 Nov): skin's exposure gain per time of day, the same for every skin tone, in place of the gain by the
+## surface's own brightness (REAL_LIGHT expo), so deep and pale skin keep the difference the concepts have. Absent = by
+## its own brightness (build 27). Look key "skin_gain" overrides it for trials.
+## Measured on concept-toned heads in the close beats (experiments/skinlook-28): golden on all six heroes and both tiers,
+## day and dusk on four (high tier). Night is not shipped (arena.gd turns it into dusk) and keeps the old exposure.
+const SKIN_GAIN: Dictionary = {"golden": 0.83, "day": 0.62, "dusk": 0.8}
 const NORMAL_FADE: float = 1.5            # texels per screen pixel where the detail normal starts to fade
 ## the face fill (fight.gd set_face_fill): colour x strength; close = the intro beat and the victory shot
 const FACE_FILL_COL: Color = Color(1.0, 0.82, 0.74)    # warm: the street is warm, a white fill read as a flash
@@ -659,6 +667,7 @@ func _real_material(b: BaseMaterial3D) -> ShaderMaterial:
 		sm.set_shader_parameter("skin_mode", 1)
 		sm.set_shader_parameter("skin_tex", _white_tex)
 		sm.set_shader_parameter("skin_amount", 1.0)
+		sm.set_shader_parameter("skin_wide", float(look.get("skin_wide", 1.0)))     # skinlook-28: every tone is skin here
 	elif kind == "hair":
 		sm.set_shader_parameter("skin_mode", 0)
 		sm.set_shader_parameter("hair_all", 1.0)
@@ -730,6 +739,7 @@ func _real_material(b: BaseMaterial3D) -> ShaderMaterial:
 	sm.set_shader_parameter("skin_key_desat", float(look.get("skin_key_desat", SKIN_KEY_DESAT.get(tm, 0.0))))
 	sm.set_shader_parameter("skin_rough_min", float(look.get("skin_rough_min", SKIN_ROUGH_MIN)))
 	sm.set_shader_parameter("normal_fade", float(look.get("normal_fade", NORMAL_FADE)))
+	sm.set_shader_parameter("skin_gain", float(look.get("skin_gain", SKIN_GAIN.get(tm, 0.0))))
 	var wb: Array = look.get("skin_wb", SKIN_WB.get(tm, [1.0, 1.0, 1.0]))
 	sm.set_shader_parameter("skin_wb", Vector3(float(wb[0]), float(wb[1]), float(wb[2])))
 	_lit_mats.append(sm)

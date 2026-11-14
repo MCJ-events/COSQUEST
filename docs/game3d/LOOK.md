@@ -421,3 +421,23 @@ Evidence: `cosquest-review/realism-20261111/experiments/look/round4/README.md`.
 - **Shader variants** (`fighter.gd _real_variant`): two-sided surfaces and alpha cut-out hair shells take the same
   shading; a material whose name contains "hair", or any see-through one, is treated as hair.
 - **Masks** are also looked for one folder above the model file (`char_loader.gd`).
+
+### skinlook-28 (14 Nov): skin tone on mid and high is the same treatment for every tone
+Evidence: `cosquest-review/realism-20261111/experiments/skinlook-28/README.md` (Spec 4 tone method on game frames, six heroes,
+both tiers, before and after).
+- **Cause 1, the colour check** (`char_real.gdshader skin_guess`): on a fitted head (`cq_surface` "skin") the skin weight came
+  from the base colour with green/red at most 0.62 to 0.72. Pale and olive faces fail that (a toned pale face measured a
+  weight of about 0.15, a deep one 1), so only deep skin took the skin shading, its colour balance and its exposure. Now
+  `skin_wide` (1 on fitted heads, look key `skin_wide`) moves the upper edges to 0.80 to 0.88 (green/red) and 0.62 to
+  0.72 (blue/red); eye whites and grey or white paint still fail. Bodies keep the narrow check.
+- **Cause 2, exposure by the surface's own brightness** (`expo`): the gain for near-black cloth lifted deep skin 1.3 to
+  1.5 times at golden hour (up to about 4 at night) and held pale skin near 1, which squeezed every face towards one
+  middle tone. Skin now takes one gain per time of day, whatever its tone (`fighter.gd SKIN_GAIN`, look key `skin_gain`;
+  absent = the old behaviour).
+- **Colour balance** (`SKIN_WB` golden): the old [0.8, 0.83, 1.17] turned faces pink once every tone took it (a* +5 to
+  +12 against the concept); refitted on all six heroes to [0.70, 0.83, 1.03] (golden), and set for day [0.92, 1.0, 1.2]
+  and dusk [0.8, 1.0, 1.3] (the warm dusk light read orange on every tone). `SKIN_GAIN`: golden 0.83, day 0.62, dusk 0.8;
+  night is not shipped (it becomes dusk) and keeps the old exposure.
+- Low tier (`char_lit.gdshader`) unchanged. The fight itself is untouched (presentation only).
+- Measuring: `tools/look_shots.gd` plan key `"skin_view": true` also draws each shot without effects (`_nofx`), the skin
+  weight the shader used (debug view 3, `_skinw`) and one id mask per fighter (`_id_<role>1/0`, white then black).
