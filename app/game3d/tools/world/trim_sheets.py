@@ -905,7 +905,7 @@ class RealSheet(Sheet):
             w = np.clip((self.tint - 0.5) * 2, 0, 1)
             lm = (S.luma(alb) * w).sum() / max(1.0, w.sum())
             alb = np.clip(alb * (1 + (0.8 / lm - 1) * w)[..., None], 0, 1)
-        alb = clamp_lum(alb)
+        alb = clamp_lum(alb, 0.0415, 0.846)       # the gate with a margin that survives 8-bit rounding
         S.save(alb, os.path.join(out, f"{name}.png"))
         rough = np.clip(self.rough, 0.05, 1.0) * (1 - self.glass) + 0.08 * self.glass
         orm = np.stack([ao, rough, self.tint, self.glass], -1)

@@ -38,8 +38,10 @@ const FILL: Dictionary = {"golden": 1.0, "day": 1.0, "dusk": 1.1, "night": 1.7} 
 ## The sky fill on the ground and the walls, over the fighters' (FILL). The six ambient colours are the cube's diffuse
 ## light as the fighters see it; on the paving build 28's sky light was ~0.6 of the sun's (measured on the farm: the
 ## street paving in the baked shade keeps ~0.55 of its sunlit brightness), the cube alone gave ~0.25 and shade read as
-## night. 2.5 restores build 28's balance (look "street_amb_k" overrides the product).
-const SKY_FILL: float = 2.5
+## night. 2.5 restored build 28's shade balance but flattened golden hour (grey, the fighters' shadows weak); 1.9 keeps
+## the shade daylit (baked shade ~0.5 of sunlit) with the sun patches and contact shadows reading (game-camera trials
+## 1.9 vs 2.5, 14 Nov). Look "street_amb_k" overrides the product.
+const SKY_FILL: float = 1.9
 ## Walls take less (a vertical wall sees half the sky and build 28's facades were already lifted by a painted AO band):
 ## at 2.5 the photo brick washed out to a pale render at golden hour.
 const SKY_FILL_WALL: float = 1.5

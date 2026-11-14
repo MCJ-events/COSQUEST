@@ -662,7 +662,7 @@ def real_ground(src: str, out: str) -> None:
     rcredit("real/ground/wear.png", "wear: R grime, G damp patches, B macro brightness (0.5 mean)", "512", "~21 (24 m)", [], "procedural periodic noise; own work")
     # UK markings: our own lines (place_roads.gd) worn through a mask taken from ambientCG RoadLines020C's paint
     op = _map("RoadLines020C", "Opacity")[..., 0]
-    band = op[150:270, :]                                            # inside one worn stripe: paint vs worn holes
+    band = op[940:980, :]                                            # inside one worn stripe (rows 936-984): paint vs worn holes
     band = S.resize_wrap(band[..., None].repeat(3, -1), 512, 128)[..., 0]
     m = np.tile(band, (4, 1))
     m = np.minimum(m, np.rot90(m))
@@ -715,10 +715,10 @@ def real_medallion(src: str, street_out: str) -> None:
     stone = (0.70 + (pal - pal.mean()) * 0.9 + speck * 0.025 + tone)
     stone_rgb = np.stack([stone * 1.0, stone * 0.985, stone * 0.955], -1)
     gran = S.tile_to(S.resize_wrap(_map("granite_tile", "Color"), 256, 256), N, N)
-    gran = trim_sheets.match_lin(gran, [0.10, 0.10, 0.106], 0.5)      # dark grey granite, not a black print
+    gran = trim_sheets.match_lin(gran, [0.15, 0.15, 0.158], 0.5)      # mid-dark grey granite, not a black print
     # wear: the inlay worn through in places, dirt in the joints and round the lines, a polished, paler middle
     wearn = S.fnoise(N, N, 2.2, 142, 3, 60)
-    inlay = line * np.clip(1.2 - np.clip(wearn - 1.3, 0, 1) * 2.5, 0, 1) * 0.88
+    inlay = line * np.clip(1.2 - np.clip(wearn - 1.3, 0, 1) * 2.5, 0, 1) * 0.8
     dirt = np.clip(gaussian_filter(inlay, 3) * 0.8 + joint * 0.9 + np.clip(S.fnoise(N, N, 2.6, 143, 2, 30) - 0.8, 0, 1) * 0.35, 0, 1)
     walk = np.clip(1 - rad / 0.55, 0, 1) ** 1.5
     col = stone_rgb * (1 - dirt[..., None] * 0.35) * (1 + walk[..., None] * 0.06)
