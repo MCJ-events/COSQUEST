@@ -15,8 +15,10 @@ extends RefCounted
 ## Callers: arena.gd apply_floor (the seam: the arena's floor and medallion), place.gd (ground and facade materials,
 ## water and basins, reveals, the near bake, ground_occluders, then adopt()).
 
-const GROUND_REAL := preload("res://vfx/world_ground_real.gdshader")
-const FACADE_REAL := preload("res://vfx/world_facade_real.gdshader")
+## The _real shaders are loaded on first use (never preloaded), so the low tier, which only meets this script through
+## arena.gds seam call, opens no file of this lanes beyond this one.
+const GROUND_REAL_PATH := "res://vfx/world_ground_real.gdshader"
+const FACADE_REAL_PATH := "res://vfx/world_facade_real.gdshader"
 const LookRealScript := preload("res://look_real.gd")
 const ART := "res://art/world/real/"
 const STREET_ART := "res://art/street/real/"
@@ -33,9 +35,19 @@ const GROUND: Dictionary = {
 }
 const DAMP: Dictionary = {"golden": 0.0, "day": 0.0, "dusk": 1.0, "night": 1.0}
 const FILL: Dictionary = {"golden": 1.0, "day": 1.0, "dusk": 1.1, "night": 1.7}   # fighter.gd REAL_FILL
+## The sky fill on the ground and the walls, over the fighters' (FILL). The six ambient colours are the cube's diffuse
+## light as the fighters see it; on the paving build 28's sky light was ~0.6 of the sun's (measured on the farm: the
+## street paving in the baked shade keeps ~0.55 of its sunlit brightness), the cube alone gave ~0.25 and shade read as
+## night. 2.5 restores build 28's balance (look "street_amb_k" overrides the product).
+const SKY_FILL: float = 2.5
+## Walls take less (a vertical wall sees half the sky and build 28's facades were already lifted by a painted AO band):
+## at 2.5 the photo brick washed out to a pale render at golden hour.
+const SKY_FILL_WALL: float = 1.5
 
 static var _tex: Dictionary = {}
 static var _cut: Shader
+static var _ground: Shader
+static var _facade: Shader
 static var _warm_cls: Variant = null
 
 
@@ -49,6 +61,18 @@ static func caps_on(look: Dictionary) -> bool:
 
 static func hi(look: Dictionary) -> bool:
 	return on(look) and bool(look.get("fid_street_hi", str(look.get("skin", "")) == "full"))
+
+
+static func ground_shader() -> Shader:
+	if _ground == null:
+		_ground = load(GROUND_REAL_PATH)
+	return _ground
+
+
+static func facade_shader() -> Shader:
+	if _facade == null:
+		_facade = load(FACADE_REAL_PATH)
+	return _facade
 
 
 static func tex(path: String) -> Texture2D:
@@ -70,7 +94,7 @@ static func gtex(stem: String, suffix: String, look: Dictionary) -> Texture2D:
 static func cutout_shader() -> Shader:
 	if _cut == null:
 		_cut = Shader.new()
-		_cut.code = GROUND_REAL.code.replace("// @CUTOUT", "#define CUTOUT\n//")
+		_cut.code = ground_shader().code.replace("// @CUTOUT", "#define CUTOUT\n//")
 	return _cut
 
 
@@ -86,7 +110,7 @@ static func warm(m: Material) -> void:
 
 
 ## The street's light (LookReal.env_for(time), read only) and the time's damp on a real material.
-static func env_params(sm: ShaderMaterial, look: Dictionary, tp: Dictionary) -> void:
+static func env_params(sm: ShaderMaterial, look: Dictionary, tp: Dictionary, fill: float = SKY_FILL) -> void:
 	var time: String = str(look.get("time", "golden"))
 	var e: Dictionary = LookRealScript.env_for(time)
 	if e.is_empty():
@@ -102,8 +126,8 @@ static func env_params(sm: ShaderMaterial, look: Dictionary, tp: Dictionary) -> 
 		sm.set_shader_parameter("env_scale", e["scale"])
 		sm.set_shader_parameter("env_lods", e["lods"])
 		sm.set_shader_parameter("env_on", 1.0)
-	sm.set_shader_parameter("amb_amount", float(look.get("street_amb_k", FILL.get(time, 1.0))))
-	if sm.shader == GROUND_REAL or sm.shader == _cut:
+	sm.set_shader_parameter("amb_amount", float(look.get("street_amb_k", FILL.get(time, 1.0) * fill)))
+	if sm.shader == _ground or (_cut != null and sm.shader == _cut):
 		sm.set_shader_parameter("damp_k", float(look.get("street_damp", DAMP.get(time, 0.0))))
 
 
@@ -111,7 +135,7 @@ static func env_params(sm: ShaderMaterial, look: Dictionary, tp: Dictionary) -> 
 static func ground_mat(kind: String, look: Dictionary, tp: Dictionary, opts: Dictionary = {}, cutout: bool = false) -> ShaderMaterial:
 	var g: Array = GROUND.get(kind, GROUND["flags"])
 	var sm := ShaderMaterial.new()
-	sm.shader = cutout_shader() if cutout else GROUND_REAL
+	sm.shader = cutout_shader() if cutout else ground_shader()
 	var h: bool = hi(look)
 	sm.set_shader_parameter("albedo_tex", gtex(str(g[0]), "", look))
 	sm.set_shader_parameter("normal_tex", gtex(str(g[0]), "_n", look))
@@ -155,7 +179,7 @@ static func facade_mat(sheet: String, look: Dictionary, tp: Dictionary) -> Shade
 	if alb == null:
 		return null
 	var sm := ShaderMaterial.new()
-	sm.shader = FACADE_REAL
+	sm.shader = facade_shader()
 	sm.set_shader_parameter("albedo_tex", alb)
 	sm.set_shader_parameter("orm_tex", tex(ART + "trims/" + sheet + "_orm.png"))
 	sm.set_shader_parameter("normal_tex", tex(ART + "trims/" + sheet + "_n.png"))
@@ -172,7 +196,7 @@ static func facade_mat(sheet: String, look: Dictionary, tp: Dictionary) -> Shade
 	sm.set_shader_parameter("window_col", tp.get("window_col", Color(1.0, 0.85, 0.63)))
 	sm.set_shader_parameter("sky_upper", tp.get("upper", Color(0.5, 0.68, 0.88)))
 	sm.set_shader_parameter("sky_horizon", tp.get("horizon", Color(0.95, 0.87, 0.76)))
-	env_params(sm, look, tp)
+	env_params(sm, look, tp, SKY_FILL_WALL)
 	warm(sm)
 	return sm
 

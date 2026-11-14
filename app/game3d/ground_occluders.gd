@@ -21,7 +21,7 @@ var total_us: int = 0
 var max_us: int = 0
 
 
-func _ready() -> void:
+func _init() -> void:
 	process_priority = 1000          # after the fighters and their animators this frame
 	_a.resize(MAX_FIGHTERS * 6)
 	_b.resize(MAX_FIGHTERS * 6)

@@ -14,8 +14,9 @@
 //  - the place's baked shade (far bake, and the 48 m near-fight bake when inside it): R cast shadow, G contact AO;
 //  - capsule occlusion under the fighters (ground_occluders.gd): 6 capsules per fighter for up to 4 fighters,
 //    cosine-weighted, evaluated only within 2.5 m of a fighter.
-// Texture reads per pixel: within 25 m albedo, normal, ORM, wear, bake, decal (+ detail on high, or the cube on a damp
-// pixel instead of the detail): 6 on mid, 7 on high; beyond 25 m albedo, ORM, wear, bake: 4.
+// Texture reads per pixel: within 25 m albedo, normal, ORM, wear, bake, decal (+ detail on high); a damp pixel reads the
+// cube instead of the detail (high) or instead of the decal (mid): 6 on mid, 7 on high; beyond 25 m albedo, ORM,
+// wear, bake: 4.
 shader_type spatial;
 render_mode cull_back, ambient_light_disabled;
 // @CUTOUT (street_real.gd makes a variant with "#define CUTOUT" here: the medallion's disc, the worn road paint)
@@ -194,7 +195,8 @@ void fragment() {
 			// whiteout blend
 			nt = vec3(nt.xy + dn.xy * dk, nt.z * dn.z);
 		}
-		if (decal_on > 0.5 && uv_mode < 0.5 && !vert) {
+		// mid has no detail layer: a damp pixel reads the cube instead of the decal atlas (6 reads either way)
+		if (decal_on > 0.5 && uv_mode < 0.5 && !vert && (detail_on > 0.5 || wet < 0.05)) {
 			vec2 q = wpos.xz / decal_cell;
 			vec2 cid = floor(q);
 			vec3 h = hash32(cid + vec2(17.0, 3.0));
@@ -287,7 +289,9 @@ void fragment() {
 		refl = mix(refl, e * e * env_scale, wet);
 	}
 	float so = clamp(pow(nov + ao, exp2(-16.0 * r_aa - 1.0)) - 1.0 + ao, 0.0, 1.0);
-	EMISSION = (ALBEDO * amb * ao + refl * (f0 * ab.x + ab.y) * so * spec_k) * (1.0 - sh * 0.35);
+	// the baked shadow takes the sun away (light()) and dims the sky's reflection a little; the sky's diffuse light
+	// stays, as on build 28 (shade reads as daylit shade, not night)
+	EMISSION = ALBEDO * amb * ao + refl * (f0 * ab.x + ab.y) * so * spec_k * (1.0 - sh * 0.35);
 }
 
 void light() {

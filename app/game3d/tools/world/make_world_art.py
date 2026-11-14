@@ -485,6 +485,12 @@ def _save_n(n01: np.ndarray, path: str) -> None:
     S.save(n * 0.5 + 0.5, path)
 
 
+def _safe(a_srgb: np.ndarray) -> np.ndarray:
+    """The albedo gate (linear luminance 0.04 to 0.85) with a margin that survives 8-bit rounding and resampling:
+    applied to every real albedo as the last step before it is written."""
+    return trim_sheets.clamp_lum(np.clip(a_srgb, 0, 1), 0.0415, 0.846)
+
+
 def _lumstat(a_srgb: np.ndarray) -> str:
     L = trim_sheets.lum(trim_sheets.srgb_to_lin(a_srgb))
     return f"lin lum mean {L.mean():.3f}, min {L.min():.3f}, max {L.max():.3f}"
@@ -500,7 +506,7 @@ def real_ground_set(out: str, name: str, ident: str, n: int, target_lin, sat: fl
         col = S.resize_wrap(col0, k, k)
         if fix is not None:
             col = fix(col)
-        col = trim_sheets.clamp_lum(trim_sheets.match_lin(col, target_lin, sat))
+        col = _safe(trim_sheets.match_lin(col, target_lin, sat))
         S.save(col, f"{out}/{name}{suf}.png")
         _save_n(S.resize_wrap(nrm0, k, k), f"{out}/{name}{suf}_n.png")
         ao, ro = _arm(ident, k // 2)
@@ -607,7 +613,7 @@ def real_decals(out: str, n: int) -> np.ndarray:
     for i, cell in enumerate(cells[:16]):
         x, y = (i % 4) * c, (i // 4) * c
         atlas[y:y + c, x:x + c] = cell
-    atlas[..., :3] = trim_sheets.clamp_lum(np.clip(atlas[..., :3], 0, 1))
+    atlas[..., :3] = _safe(atlas[..., :3])
     return atlas
 
 
@@ -615,24 +621,25 @@ def real_ground(src: str, out: str) -> None:
     g = os.path.join(out, "real", "ground")
     os.makedirs(g, exist_ok=True)
     # grey London footway flags (Poly Haven large_square_pattern_01, 3 x 3 flags a tile -> 0.8 m flags on a 2.4 m tile)
-    real_ground_set(g, "flags_uk", "large_square_pattern_01", 1024, [0.30, 0.295, 0.28], 0.55, 2.4,
+    real_ground_set(g, "flags_uk", "large_square_pattern_01", 1024, [0.49, 0.485, 0.465], 0.55, 2.4,
                     "London footway: grey concrete flags, dark joints", "ph:large_square_pattern_01", fix=_deweed)
     # civic square paving (ambientCG PavingStones133: 4 x 4 slabs a tile -> 0.8 m on 3.2 m), pale York-stone grey
-    real_ground_set(g, "plaza_uk", "PavingStones133", 1024, [0.36, 0.345, 0.31], 0.45, 3.2,
+    real_ground_set(g, "plaza_uk", "PavingStones133", 1024, [0.50, 0.485, 0.445], 0.45, 3.2,
                     "civic square paving, pale slabs", "acg:PavingStones133", fix=_deweed)
     # carriageway asphalt (Poly Haven asphalt_04, 4 m), aged grey
-    real_ground_set(g, "asphalt_uk", "asphalt_04", 1024, [0.125, 0.122, 0.118], 0.6, 4.0,
+    real_ground_set(g, "asphalt_uk", "asphalt_04", 1024, [0.15, 0.147, 0.142], 0.6, 4.0,
                     "carriageway asphalt, aged grey aggregate", "ph:asphalt_04")
     # granite kerbs (Poly Haven granite_tile, 1 m), mid grey granite
-    real_ground_set(g, "kerb_uk", "granite_tile", 512, [0.17, 0.17, 0.168], 0.6, 1.0,
+    real_ground_set(g, "kerb_uk", "granite_tile", 512, [0.28, 0.28, 0.275], 0.6, 1.0,
                     "granite kerb", "ph:granite_tile")
     # granite setts for the gutter channel (ambientCG PavingStones070, 1.15 m)
-    real_ground_set(g, "setts_uk", "PavingStones070", 512, [0.16, 0.155, 0.15], 0.5, 1.15,
+    real_ground_set(g, "setts_uk", "PavingStones070", 512, [0.22, 0.215, 0.205], 0.5, 1.15,
                     "granite setts (gutter channel)", "acg:PavingStones070", fix=_deweed)
     # decal atlas (high 1K, mid 512)
     at = real_decals(g, 1024)
     S.save(at, f"{g}/decals.png")
     am = np.asarray(Image.fromarray((np.clip(at, 0, 1) * 255 + 0.5).astype(np.uint8), "RGBA").resize((512, 512), Image.LANCZOS), np.float32) / 255
+    am[..., :3] = _safe(am[..., :3])
     S.save(am, f"{g}/decals_mid.png")
     for f, sz in (("decals.png", "1024 RGBA"), ("decals_mid.png", "512 RGBA")):
         rcredit(f"real/ground/{f}", "decal atlas 4 x 4: gum (0-3), asphalt cracks/patches (4-7), leaves (8-9), gully grates drawn by us (10-11), damp stain (12), cracks (13-14), tar seal (15)",
@@ -705,21 +712,23 @@ def real_medallion(src: str, street_out: str) -> None:
         joint = np.maximum(joint, np.clip(1 - np.abs(rad - r0) * N / 2 / 2.2, 0, 1))
     seg_edge = np.abs(np.sin((ang + np.pi) * np.array([1, 6, 12, 16, 24])[np.clip(ring_id, 0, 4)] / 2))
     joint = np.maximum(joint, np.clip(1 - seg_edge * rad * N / 2 / 2.0, 0, 1) * (ring_id > 0))
-    stone = (0.58 + (pal - pal.mean()) * 0.9 + speck * 0.025 + tone)
+    stone = (0.70 + (pal - pal.mean()) * 0.9 + speck * 0.025 + tone)
     stone_rgb = np.stack([stone * 1.0, stone * 0.985, stone * 0.955], -1)
     gran = S.tile_to(S.resize_wrap(_map("granite_tile", "Color"), 256, 256), N, N)
-    gran = trim_sheets.match_lin(gran, [0.055, 0.056, 0.058], 0.5)
+    gran = trim_sheets.match_lin(gran, [0.10, 0.10, 0.106], 0.5)      # dark grey granite, not a black print
     # wear: the inlay worn through in places, dirt in the joints and round the lines, a polished, paler middle
     wearn = S.fnoise(N, N, 2.2, 142, 3, 60)
-    inlay = line * np.clip(1.2 - np.clip(wearn - 1.3, 0, 1) * 2.5, 0, 1)
+    inlay = line * np.clip(1.2 - np.clip(wearn - 1.3, 0, 1) * 2.5, 0, 1) * 0.88
     dirt = np.clip(gaussian_filter(inlay, 3) * 0.8 + joint * 0.9 + np.clip(S.fnoise(N, N, 2.6, 143, 2, 30) - 0.8, 0, 1) * 0.35, 0, 1)
     walk = np.clip(1 - rad / 0.55, 0, 1) ** 1.5
     col = stone_rgb * (1 - dirt[..., None] * 0.35) * (1 + walk[..., None] * 0.06)
     col = col * (1 - inlay[..., None]) + gran * inlay[..., None]
     gm, gma = _map("ChewingGum002", "Color"), _map("ChewingGum002", "Opacity")[..., 0]
-    gum = S.tile_to(gma, N, N) * (rad > 0.45) * 0.7
-    col = col * (1 - gum[..., None]) + np.array([0.34, 0.33, 0.32], np.float32) * gum[..., None]
-    col = trim_sheets.clamp_lum(np.clip(col, 0, 1))
+    # a few dozen gum spots over the outer rings (a sparse mask over the gum map), not a spatter
+    sparse = np.clip((S.fnoise(N, N, 1.6, 144, 3, 40) - 0.9) * 3.0, 0, 1)
+    gum = S.tile_to(gma, N, N) * sparse * np.clip((rad - 0.5) * 6, 0, 1) * 0.5
+    col = col * (1 - gum[..., None]) + np.array([0.40, 0.39, 0.375], np.float32) * gum[..., None]
+    col = _safe(col)
     # height: lines a little sunk (worn), joints sunk, edge chamfer
     hgt = -inlay * 0.6 - joint * 1.2 + wearn * 0.06 - np.clip((rad - 0.965) * 60, 0, 1) * 1.0
     n = S.normal_from_height(hgt.astype(np.float32), 3.2, wrap_y=False)
@@ -729,8 +738,9 @@ def real_medallion(src: str, street_out: str) -> None:
     a_out = np.clip((1 - rad) * N / 2 / 1.5, 0, 1) * (alpha > 0.02)
     for suf, k in (("", 1024), ("_mid", 512)):
         rgba = np.concatenate([col, a_out[..., None]], -1)
-        im = Image.fromarray((np.clip(rgba, 0, 1) * 255 + 0.5).astype(np.uint8), "RGBA").resize((k, k), Image.LANCZOS)
-        im.save(os.path.join(street_out, f"medallion{suf}.png"), optimize=True)
+        im = np.asarray(Image.fromarray((np.clip(rgba, 0, 1) * 255 + 0.5).astype(np.uint8), "RGBA").resize((k, k), Image.LANCZOS), np.float32) / 255
+        im[..., :3] = _safe(im[..., :3])
+        S.save(im, os.path.join(street_out, f"medallion{suf}.png"))
         _save_n(np.asarray(S.to_img(n).resize((k, k), Image.LANCZOS), np.float32) / 255, os.path.join(street_out, f"medallion{suf}_n.png"))
         orm = np.stack([ao, rough, hn], -1)
         S.save(np.asarray(S.to_img(orm).resize((k // 2, k // 2), Image.LANCZOS), np.float32) / 255, os.path.join(street_out, f"medallion{suf}_orm.png"))

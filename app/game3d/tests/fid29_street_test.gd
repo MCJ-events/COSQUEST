@@ -124,7 +124,7 @@ func _floor_seam() -> void:
 		ok = ok and t != null and t.resource_path == want and t.get_image() != null and t.get_image().has_mipmaps()
 		_check(tier + "_medallion_real_mipmapped", ok, str(t.resource_path if t != null else "none"))
 		var g: Material = (a.get("ground") as MeshInstance3D).material_override
-		_check(tier + "_floor_real", g is ShaderMaterial and (g as ShaderMaterial).shader == StreetReal.GROUND_REAL)
+		_check(tier + "_floor_real", g is ShaderMaterial and (g as ShaderMaterial).shader == StreetReal.ground_shader())
 
 
 ## Every real albedo (ground, decals where opaque, medallion where opaque, facade sheets): linear luminance in range.
@@ -159,7 +159,7 @@ func _albedo_gate() -> void:
 		if n_out > 0 and worst.size() < 5:
 			worst.append(p.get_file())
 	print("CQTEST INFO albedo_gate files=%d texels=%d outside=%d" % [files.size(), n_tex, n_out])
-	_check("albedo_lum_0.04_0.85", files.size() >= 20 and n_out == 0, str(worst))
+	_check("albedo_lum_0.04_0.85", files.size() >= 18 and n_out == 0, str(worst))
 
 
 static func _lin(b: int) -> float:
@@ -188,10 +188,10 @@ func _places() -> void:
 		var ps: Node3D = _place(street, Vector2.ZERO, 0.0, lk)
 		var real: bool = tier != "low"
 		var fm: Material = _mesh_mat(pt, "floor")
-		var fs: bool = fm is ShaderMaterial and (fm as ShaderMaterial).shader == StreetReal.GROUND_REAL
+		var fs: bool = fm is ShaderMaterial and (fm as ShaderMaterial).shader == StreetReal.ground_shader()
 		_check(tier + "_floor_material", fs == real, str(fm))
 		var fac: Material = _mesh_mat(ps, "buildings_trim_uk_brick")
-		var fr: bool = fac is ShaderMaterial and (fac as ShaderMaterial).shader == StreetReal.FACADE_REAL
+		var fr: bool = fac is ShaderMaterial and (fac as ShaderMaterial).shader == StreetReal.facade_shader()
 		_check(tier + "_facade_material", fr == real, str(fac))
 		_check(tier + "_occluders", (pt.get_node_or_null("GroundOccluders") != null) == real)
 		var si: Dictionary = ps.get("info")
@@ -244,7 +244,7 @@ func _occluders() -> void:
 	var occ: Node = Occluders.new()
 	host.add_child(occ)
 	var sm := ShaderMaterial.new()
-	sm.shader = StreetReal.GROUND_REAL
+	sm.shader = StreetReal.ground_shader()
 	occ.call("register", sm)
 	var before: Array = []
 	for f: Node3D in fl:

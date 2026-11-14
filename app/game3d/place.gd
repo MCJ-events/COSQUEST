@@ -31,7 +31,6 @@ const FACADE_SHADER := preload("res://vfx/world_facade.gdshader")
 const KIT_SHADER := preload("res://vfx/world_kit.gdshader")
 const WATER_SHADER := preload("res://vfx/world_water.gdshader")
 const StreetReal := preload("res://street_real.gd")
-const GroundOccluders := preload("res://ground_occluders.gd")
 const ART := "res://art/world/"
 
 const REACH: float = 260.0      # nothing further than this is built (the camera sees ~150 m)
@@ -492,7 +491,7 @@ var _real_ground_mats: Array = []
 ## medallion (made real by street_real.gd apply_floor, the fid29-base seam in arena.gd) takes the bake and the shade.
 func _real_finish() -> void:
 	if StreetReal.caps_on(_look):
-		occluders = GroundOccluders.new()
+		occluders = (load("res://ground_occluders.gd") as GDScript).new()    # loaded on use: low never opens it
 		occluders.name = "GroundOccluders"
 		add_child(occluders)
 		for m: ShaderMaterial in _real_ground_mats:
@@ -1239,7 +1238,7 @@ func _reveals(wv: PackedVector3Array, wn: PackedVector3Array, wt: PackedFloat32A
 			_rq(wv, wn, wt, wc, wu, wu2, p.call(e0, sy0, 0.0), p.call(e0, sy0, so), p.call(e0, bot, so), p.call(e0, bot, 0.0), -along, nrm, tint, uv_sill, uv2)
 			_rq(wv, wn, wt, wc, wu, wu2, p.call(e1, sy0, so), p.call(e1, sy0, 0.0), p.call(e1, bot, 0.0), p.call(e1, bot, so), along, nrm, tint, uv_sill, uv2)
 			_rq(wv, wn, wt, wc, wu, wu2, p.call(e0, sy0, so), p.call(e0, sy0, 0.0), p.call(e1, sy0, 0.0), p.call(e1, sy0, so), Vector3.DOWN, along, tint, uv_sill, uv2)
-			_reveal_tris += 26
+			_reveal_tris += 28      # 14 quads
 
 
 ## One quad (a, b, c, d counter-clockwise seen from its front) into the wall arrays, facing `nrm`, tangent `tan`,
