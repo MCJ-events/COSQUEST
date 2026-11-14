@@ -736,6 +736,7 @@ var _close_d: float = CAM_DIST
 var _close_win_basis: Basis
 var _close_top: float = 0.72
 var _close_lean: float = 0.3
+var _close_bottom: float = CLOSE_MARGIN.z   # fid29-lightcam: the close fit's bottom margin (lc_bottom)
 var _close_face: float = 0.0     # the share of the target's height that must stay under the top margin (0 = only the 0.78 point)
 
 
@@ -754,12 +755,15 @@ func _close_camera() -> void:
 	# the hero's size (27 % of the screen); from 28 deg the camera is above a tall Guardian's head, so its face
 	# falls lower in the frame and the hero stays at 30 % (trials: experiments/look/round4)
 	_close_face = float(lk.get("close_face", 0.9 if _landscape else 0.87))
+	# fid29-lightcam: the lowest point (the hero's feet) may sit nearer the bottom edge (under the controls), so the
+	# fighters fill more of the frame (look "lc_bottom"; build 28: CLOSE_MARGIN.z)
+	_close_bottom = float(lk.get("lc_bottom", LC_BOTTOM)) if (_lc and not _landscape) else CLOSE_MARGIN.z
 	_cam_basis = Basis.from_euler(Vector3(deg_to_rad(-pitch), yaw, 0.0))
 	# portrait: the view looks a little further down than the orbit, so the fight sits above the controls
 	_view_basis = Basis.from_euler(Vector3(deg_to_rad(-(pitch + tilt)), yaw, 0.0))
 	_close_win_basis = Basis.from_euler(Vector3(deg_to_rad(-CLOSE_WIN_PITCH), yaw, 0.0))
 	_lc_win_basis = Basis.from_euler(Vector3(deg_to_rad(-float(lk.get("lc_win_pitch", LC_WIN_PITCH))), yaw, 0.0))
-	_cam_dist = float(lk.get("close_dist", CLOSE_DIST_LAND if _landscape else CLOSE_DIST))
+	_cam_dist = float(lk.get("close_dist", CLOSE_DIST_LAND if _landscape else (LC_CLOSE_DIST if _lc else CLOSE_DIST)))
 	_cam_ahead = 0.0
 	_close_d = _cam_dist
 	_log("close camera pitch=%.0f dist=%.1f" % [CLOSE_PITCH_LAND if _landscape else CLOSE_PITCH, _cam_dist])
@@ -811,7 +815,7 @@ func _close_ok(pts: Array[Vector3], pivot: Vector3, d: float, tv: float, th: flo
 		if depth < 0.6:
 			return false
 		var y: float = r.dot(_view_basis.y)
-		if absf(r.dot(_view_basis.x)) > depth * th * CLOSE_MARGIN.x or y > depth * tv * _close_top or -y > depth * tv * CLOSE_MARGIN.z:
+		if absf(r.dot(_view_basis.x)) > depth * th * CLOSE_MARGIN.x or y > depth * tv * _close_top or -y > depth * tv * _close_bottom:
 			return false
 	return true
 
@@ -1007,6 +1011,7 @@ const LC_HANDHELD_DEG: float = 0.15     # high: a hand-held drift, from a hash o
 const LC_EV: float = 0.15
 const LC_RIM: float = 2.6               # kick_a's gain in the close shots
 const LC_SHADOW_S: float = 0.2
+const LC_CLOSE_BLUR: float = 0.8        # the sun's shadow_blur in the close shots (fight distance keeps the tier's)
 const LC_BIAS: Vector2 = Vector2(0.2, 0.05)       # fight, close
 const LC_NBIAS: Vector2 = Vector2(3.0, 0.9)
 const LC_SPLIT: float = 0.3             # the first shadow split at fight distance (of 35 m)
@@ -1018,10 +1023,17 @@ const LC_PITCH: float = 20.0            # the mid-fight orbit (build 28: 28)
 const LC_PIVOT_H: float = 1.15          # the orbit's pivot (build 28's; trials 0.9 to 1.3, tools/look/frame_probe.gd)
 const LC_H_OFF: float = 0.5             # the camera right of its orbit point: the hero sits left, over the shoulder
 const LC_V_OFF: float = 0.9             # the camera above its orbit point (m, in the view's up): the fight drops under the top block
+const LC_BOTTOM: float = 1.05           # the close fit's bottom margin (build 28's CLOSE_MARGIN.z = 0.8): the feet may sit at
+										# the bottom edge, under the controls (frame_probe.gd trials, lightcam.md)
+const LC_CLOSE_DIST: float = 5.15       # the nearest close distance (build 28: CLOSE_DIST 5.4); 5.0 put a nameplate on a face
+const LC_NEAR: float = 0.5              # the fight camera's near plane (build 28's)
+const LC_NEAR_K: float = 0.5            # close shots: the near plane moves out to this share of the camera-to-hero distance,
+										# so the first shadow split's slice (near to just past the face) is short and its texel small
 var _lc: bool = false
 var _lc_close: float = 0.0
 var _lc_mats: Dictionary = {}           # ShaderMaterial -> [kick_a_col at fight distance, recv_shadow at fight distance]
 var _lc_expo: float = -1.0
+var _lc_blur: float = -1.0
 var _lc_clock: float = 0.0
 var _lc_fov: float = -1.0
 var _lc_win_basis: Basis = Basis.IDENTITY
@@ -1098,13 +1110,21 @@ func _lightcam_update(dt: float) -> void:
 		var dh: float = cam.global_position.distance_to(hero.global_position + Vector3.UP * FighterScript.HEIGHT * hero.size_k * 0.8)
 		var far_c: float = dh + 3.0
 		sun.directional_shadow_max_distance = lerpf(35.0, far_c, c)
-		sun.directional_shadow_split_1 = lerpf(LC_SPLIT, clampf((dh + 0.6) / far_c, 0.1, 0.9), c)
+		cam.near = lerpf(LC_NEAR, maxf(LC_NEAR, dh * float(lk.get("lc_near_k", LC_NEAR_K))), c)
+		# the filter's blur narrows too (high 3.0, mid 2.0 at fight distance): a wide penumbra washed out the nose's
+		# and the chin's shadows, a few millimetres across at this texel
+		if _lc_blur < 0.0:
+			_lc_blur = sun.shadow_blur
+		sun.shadow_blur = lerpf(_lc_blur, minf(_lc_blur, float(lk.get("lc_close_blur", LC_CLOSE_BLUR))), c)
+		# Godot splits [near, max]: the first split ends just past the face
+		var nr: float = cam.near
+		sun.directional_shadow_split_1 = lerpf(LC_SPLIT, clampf((dh + 0.6 - nr) / maxf(far_c - nr, 0.01), 0.1, 0.9), c)
 		sun.shadow_bias = lerpf(LC_BIAS.x, LC_BIAS.y, c)
 		sun.shadow_normal_bias = lerpf(LC_NBIAS.x, LC_NBIAS.y, c)
 		if c > 0.99 and not _lc_said.has("texel%d" % int(state == "ending")):
 			_lc_said["texel%d" % int(state == "ending")] = true
-			_log("lightcam close shadow shot=%s dist_m=%.2f max_m=%.2f split1=%.2f texel_mm=%.2f fov=%.1f" % ["win" if state == "ending" else "intro",
-				dh, far_c, sun.directional_shadow_split_1, _lc_texel_mm(dh, 0.5, far_c * sun.directional_shadow_split_1), cam.fov])
+			_log("lightcam close shadow shot=%s dist_m=%.2f max_m=%.2f split1=%.2f texel_mm=%.2f near=%.2f fov=%.1f" % ["win" if state == "ending" else "intro",
+				dh, far_c, sun.directional_shadow_split_1, _lc_texel_mm(dh, nr, nr + (far_c - nr) * sun.directional_shadow_split_1), cam.near, cam.fov])
 	# the fighters: the shadow map on them, the kicker as a rim
 	for f: FighterScript in fighters:
 		for m: ShaderMaterial in f.get("_lit_mats"):

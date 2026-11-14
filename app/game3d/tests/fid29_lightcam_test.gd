@@ -10,6 +10,8 @@ extends SceneTree
 ##    push-in rises 0 -> about 0.9 by the end of the beat without overshoot.
 ## 4. ShaderWarm: in a live fight on mid (the street, the faction heroes), at the hero's intro beat, the shader of every
 ##    ShaderMaterial in the fight's tree was drawn by the warm-up under the loading card. On low nothing is drawn.
+## 5. The close shot (mid, the intro beat): the camera's near plane out, the sun's blur narrowed, its reach cut; low
+##    keeps build 28's near plane (0.5 m).
 ## Prints "CQTEST PASS <name>" / "CQTEST FAIL <name> <why>", then "CQTEST done failures=N".
 
 const ArenaScript := preload("res://arena.gd")
@@ -139,11 +141,22 @@ func _process(_dt: float) -> bool:
 			_check("shader_warm_covers_intro", n > 0 and miss.is_empty() and int(ShaderWarm.last.get("drawn", 0)) > 0,
 				"shader materials=%d missed=%s last=%s" % [n, str(miss.slice(0, 6)), str(ShaderWarm.last)])
 			print("CQ lightcam_test intro shader materials=%d warmed=%s" % [n, str(ShaderWarm.last)])
+			# 5. the close shot tightens the sun's shadow round the hero: the near plane out (the first split's slice
+			# short), the filter's blur narrowed, the shadow's reach cut to the camera-to-hero distance + 3 m
+			var cam3: Camera3D = fi.get("cam")
+			var sun3: DirectionalLight3D = (fi.get("arena") as Node).get("sun")
+			var near_ok: bool = cam3 != null and cam3.near > FightScript.LC_NEAR + 0.3
+			var blur_ok: bool = sun3 == null or not sun3.shadow_enabled or sun3.shadow_blur <= FightScript.LC_CLOSE_BLUR + 0.05
+			var reach_ok: bool = sun3 == null or not sun3.shadow_enabled or sun3.directional_shadow_max_distance < 12.0
+			_check("close_shot_shadow_tightened", near_ok and blur_ok and reach_ok, "near=%.2f blur=%s reach=%s" % [cam3.near if cam3 != null else -1.0,
+				str(sun3.shadow_blur if sun3 != null else -1.0), str(sun3.directional_shadow_max_distance if sun3 != null else -1.0)])
 			_prev = fi
 			_start("low")    # the bridge restarts the fight
 			return false
 	elif str(fi.get("state")) == "fighting" or str(fi.get("state")) == "intro":
 		_check("low_draws_no_warmup", int(ShaderWarm.last.get("drawn", -1)) == 0 and ShaderWarm.warmed.is_empty(), str(ShaderWarm.last))
+		var cam4: Camera3D = fi.get("cam")
+		_check("low_near_is_build28", cam4 != null and is_equal_approx(cam4.near, 0.5), "near=%s" % str(cam4.near if cam4 != null else -1.0))
 		return _done()
 	if _frames > 6000:
 		_check("reached_intro_" + _tier, false, "state=%s" % str(fi.get("state")))
