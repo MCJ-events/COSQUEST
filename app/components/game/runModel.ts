@@ -23,6 +23,7 @@ import {
   type RunPoint,
   runPower,
   runStart,
+  type QuestionShare,
   type RunState,
   SERVER_GRACE_S,
   shareContent,
@@ -30,12 +31,15 @@ import {
   triviaBoard,
   type TriviaShare,
   triviaShare,
+  triviaShareQuestion,
 } from "@/features/game/run";
 import { gameStore } from "@/features/game/runtime";
-import type { RoamAnswer, RoamAttempt } from "@/features/game/wire";
+import { questionArt } from "@/features/game/triviaVisual";
+import type { RoamAnswer, RoamAttempt, TriviaArt } from "@/features/game/wire";
 
 import { impact, notify } from "./prefs";
 import { playSound } from "./sound";
+import { shareCard } from "./triviaShareDevice";
 
 export type RunModelState = {
   run: RunState | null;
@@ -56,6 +60,12 @@ export type RunModelState = {
   triviaLeft: number | null;
   /** A finished trivia run's share link, once asked for. */
   share: TriviaShare | null;
+  /** Each opened trivia tile's picture by its idx (trivia-visual): the results show the best one. */
+  arts: Record<number, TriviaArt | null>;
+  /** Answered questions' share cards, by "<attempt id>:<q>": asked again, shared at once. */
+  questionShares: Record<string, QuestionShare>;
+  /** The question card being made ("<attempt id>:<q>"), for its button's spinner. */
+  sharingQuestion: string | null;
 };
 
 const EMPTY: RunModelState = {
@@ -71,6 +81,9 @@ const EMPTY: RunModelState = {
   pocketLeft: null,
   triviaLeft: null,
   share: null,
+  arts: {},
+  questionShares: {},
+  sharingQuestion: null,
 };
 
 let state: RunModelState = EMPTY;
@@ -143,7 +156,7 @@ export const runModel = {
       }
       const r = await runStart(gameStore.client, mode, fixOf());
       apply(r);
-      set({ finished: null, openedStakes: {}, share: null });
+      set({ finished: null, openedStakes: {}, share: null, arts: {}, questionShares: {} });
       notify(Haptics.NotificationFeedbackType.Success);
       return true;
     } catch (e) {
@@ -166,7 +179,8 @@ export const runModel = {
     if (!run) throw new Error("The run is over.");
     try {
       const o = await runOpen(gameStore.client, run.run_id, p.idx, stake, fixOf());
-      set({ openedStakes: { ...state.openedStakes, [p.idx]: o.stake } });
+      const art = questionArt(o.attempt);
+      set({ openedStakes: { ...state.openedStakes, [p.idx]: o.stake }, ...(art ? { arts: { ...state.arts, [p.idx]: art } } : {}) });
       return o;
     } catch (e) {
       // A refused open means the tray is out of date: ask the server what the run looks like.
@@ -295,12 +309,49 @@ export const runModel = {
         set({ busy: false });
       }
     }
+    // A trivia-visual server draws the run as a 9:16 story card: the picture goes with the line.
+    if (link.story_url) {
+      const out = await shareCard({ id: link.share_id, url: link.url, image_url: link.story_url, text: link.text }, "story");
+      if (out === "again") runModel.flash("Your card is ready. Tap Share again.");
+      else if (out === "opened") runModel.flash("Your card is open in a new tab. The line is copied.");
+      else if (out === "failed") runModel.flash("Couldn't open the share sheet. The link is below.");
+      return out !== "failed";
+    }
     try {
       await Share.share(shareContent(link, Platform.OS));
     } catch {
       // No share sheet here (a desktop browser): the link is on the results to copy.
     }
     return true;
+  },
+
+  /**
+   * Share one answered question of a topic tile (`q`: which one, 0 to 4 in a quick-fire) as its 9:16
+   * card with the answer lit. Only when the player taps Share; the server makes the card (asked again,
+   * the same one). False when it could not be made or handed over.
+   */
+  async shareQuestion(attemptId: string, q: number): Promise<boolean> {
+    const run = state.run ?? state.finished?.run ?? null;
+    const key = `${attemptId}:${q}`;
+    if (!run || state.sharingQuestion) return false;
+    let card: QuestionShare | undefined = state.questionShares[key];
+    if (!card) {
+      set({ sharingQuestion: key });
+      try {
+        card = await triviaShareQuestion(gameStore.client, run.run_id, attemptId, q);
+        set({ questionShares: { ...state.questionShares, [key]: card } });
+      } catch (e) {
+        runModel.flash(`Couldn't make the card: ${message(e, "no connection")}`);
+        return false;
+      } finally {
+        set({ sharingQuestion: null });
+      }
+    }
+    const out = await shareCard({ id: card.share_id, url: card.url, image_url: card.image_url, text: card.text }, "q");
+    if (out === "again") runModel.flash("Your card is ready. Tap Share again.");
+    else if (out === "opened") runModel.flash("Your card is open in a new tab. The line is copied.");
+    else if (out === "failed") runModel.flash("Couldn't open the share sheet.");
+    return out !== "failed";
   },
 
   flash(text: string) {
@@ -316,7 +367,7 @@ export const runModel = {
 
   /** Once the results are closed, the run is over for the phone too. */
   close() {
-    set({ finished: null, run: null, localEnd: null, openedStakes: {}, share: null });
+    set({ finished: null, run: null, localEnd: null, openedStakes: {}, share: null, arts: {}, questionShares: {} });
   },
 
   /** A run point fought as a duel comes back with the run as the server now has it. */

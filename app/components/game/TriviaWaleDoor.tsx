@@ -208,7 +208,8 @@ function Door() {
   if (point) {
     return (
       <View style={styles.fill}>
-        <Animated.View key={point.idx} entering={FadeIn.duration(220)} style={StyleSheet.absoluteFill}>
+        {/* One question to the next: the new one fades in over the old as it fades out (a crossfade between pictures). */}
+        <Animated.View key={point.idx} entering={FadeIn.duration(point.topic ? 420 : 220)} exiting={point.topic ? FadeOut.duration(420) : undefined} style={StyleSheet.absoluteFill}>
           <TriviaChallenge point={point} onBoard={() => setCurrent(null)} onNext={() => next(point.idx)} onLeave={exit} />
         </Animated.View>
       </View>

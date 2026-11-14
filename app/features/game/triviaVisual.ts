@@ -9,6 +9,32 @@
 import type { RunAnswerResult, RunPoint, RunState } from "./run.ts";
 import type { RoamAttempt, TriviaArt } from "./wire.ts";
 
+/**
+ * The light-on-dark look over a picture (Wale's frosted glass, dark): scrims that keep white words
+ * readable over any picture, dark glass cards, white words, his magenta for fills. Checked against
+ * WCAG AA over a pure white picture, the worst case (__tests__/triviaVisual.test.ts).
+ */
+export const CINEMA = {
+  /** Behind everything until the picture arrives, when the server sends no colour. */
+  fallback: "#141A24",
+  /** The top strip under the bar. */
+  scrimTop: "rgba(6,8,12,0.62)",
+  /** The bottom half, where the words are: at least this dark from the question down. */
+  scrimMid: "rgba(6,8,12,0.58)",
+  scrimBottom: "rgba(6,8,12,0.9)",
+  /** Over the whole picture while answering; lifted at the reveal so the picture breathes. */
+  dim: "rgba(6,8,12,0.3)",
+  glass: "rgba(16,20,28,0.6)",
+  glassStrong: "rgba(16,20,28,0.8)",
+  rim: "rgba(255,255,255,0.22)",
+  rimStrong: "rgba(255,255,255,0.6)",
+  ink: "#FFFFFF",
+  muted: "rgba(255,255,255,0.8)",
+  /** A miss on dark: a rose light enough to read. */
+  miss: "#FF9AAE",
+  track: "rgba(255,255,255,0.28)",
+} as const;
+
 export type ArtSize = "s" | "m" | "l";
 
 /** The quality tier the app gives a phone (features/game/lookTier.ts); null where it does not apply (the web). */
@@ -106,14 +132,14 @@ export function revealLine(r: Pick<RunAnswerResult, "late" | "earned" | "correct
 }
 
 /** What each answer card shows after the reveal. */
-export type CardMark = "idle" | "picked" | "right" | "wrong" | "missed-right" | "dim";
+export type CardMark = "idle" | "picked" | "waiting" | "right" | "wrong" | "missed-right" | "dim";
 
 /**
  * One card once the player has picked: while the server marks it the pick is lit and the rest wait;
  * after, the right one is lit (yours or not), your wrong pick keeps a rose rim, the rest dim away.
  */
 export function cardMark(i: number, picked: number | null, verdict: "right" | "wrong" | "late" | null, right: number | null): CardMark {
-  if (verdict === null) return picked === null ? "idle" : picked === i ? "picked" : "dim";
+  if (verdict === null) return picked === null ? "idle" : picked === i ? "picked" : "waiting";
   if (right !== null && i === right) return picked === i ? "right" : "missed-right";
   if (picked === i) return verdict === "right" ? "right" : "wrong";
   return "dim";

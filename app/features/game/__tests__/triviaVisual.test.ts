@@ -5,8 +5,11 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
+import { contrast, over } from "../lookTokens.ts";
 import { runReveal, type RunPoint } from "../run.ts";
+import { TRIVIA } from "../triviaLook.ts";
 import {
+  CINEMA,
   artColor,
   artUri,
   attemptArts,
@@ -38,6 +41,24 @@ const art = (h: string, color = "#1d2a35"): TriviaArt => ({
 const pt = (idx: number, o: Partial<RunPoint> = {}): RunPoint => ({ idx, id: `p${idx}`, name: `P${idx}`, value: 100, done: false, earned: 0, hidden: false, forbidden: false, ...o });
 const challenge = (c: RoamAttempt["challenge"]): Pick<RoamAttempt, "challenge"> => ({ challenge: c });
 const q = (id: string, a?: TriviaArt) => ({ id, q: `${id}?`, choices: ["Cherries", "Strawberries", "Oranges", "Apples"], difficulty: 1, art: a ?? null });
+
+describe("words over a picture pass AA, even over a white one", () => {
+  const white = "#FFFFFF";
+  const scrim = over(CINEMA.scrimMid, white);
+  const card = over(CINEMA.glass, scrim);
+  it("white and muted words on the scrim and on a dark glass card", () => {
+    assert.ok(contrast(CINEMA.ink, scrim) >= 4.5, `ink on scrim ${contrast(CINEMA.ink, scrim).toFixed(2)}`);
+    assert.ok(contrast(CINEMA.ink, card) >= 7, "ink on a card");
+    assert.ok(contrast(over(CINEMA.muted, card), card) >= 4.5, "muted on a card");
+  });
+  it("the top bar's words over the top scrim", () => {
+    assert.ok(contrast(CINEMA.ink, over(CINEMA.scrimTop, white)) >= 4.5);
+  });
+  it("a miss reads on a card, white reads on the magenta", () => {
+    assert.ok(contrast(CINEMA.miss, card) >= 4.5);
+    assert.ok(contrast(CINEMA.ink, TRIVIA.accent) >= 4.5);
+  });
+});
 
 describe("the picture's size", () => {
   it("follows the contract's widths on a high tier phone", () => {
@@ -134,7 +155,7 @@ describe("the reveal", () => {
   it("marks the cards: the pick waits, then the right one lights, a wrong pick keeps its rim, the rest dim", () => {
     assert.equal(cardMark(0, null, null, null), "idle");
     assert.equal(cardMark(1, 1, null, null), "picked");
-    assert.equal(cardMark(0, 1, null, null), "dim");
+    assert.equal(cardMark(0, 1, null, null), "waiting");
     assert.equal(cardMark(1, 1, "right", 1), "right");
     assert.equal(cardMark(1, 1, "right", null), "right");
     assert.equal(cardMark(1, 1, "wrong", 0), "wrong");

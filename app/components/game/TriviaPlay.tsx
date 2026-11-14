@@ -55,7 +55,8 @@ import { useGame } from "@/features/game/runtime";
 import { settle } from "@/features/game/spring";
 import { deadlineView } from "@/features/game/strike";
 import { afterAnswer, feedbackLine, halfWidth, heroHeight, heroPlate, letterOf, nextTriviaPoint, questionNumber, scoredCount, segments, stopwatch, TRIVIA, TRIVIA_RADIUS, TRIVIA_SIZE, twoDigits } from "@/features/game/triviaLook";
-import type { AttemptQuestion } from "@/features/game/wire";
+import { attemptArts, bestArt, isTopicTile } from "@/features/game/triviaVisual";
+import type { AttemptQuestion, TriviaArt } from "@/features/game/wire";
 
 import AvatarView from "./AvatarView";
 import { announce, MAX_FONT_SCALE, pressFeedback } from "./kit";
@@ -63,6 +64,7 @@ import { runModel, useRun } from "./runModel";
 import { useRunQuiz } from "./Run";
 import SayItButton from "./SayItButton";
 import { challengeName, realmColor, realmIcon } from "./theme";
+import { CinemaResults, CinemaQuestion } from "./TriviaCinema";
 import { CountBadge, Glass, Kicker, PointsRing, Segments, TriviaBackdrop, TriviaButton, TriviaTopBar, triviaShadow } from "./TriviaKit";
 
 const T = TRIVIA;
@@ -196,6 +198,11 @@ function TriviaQuestion({ point, staked: stakedAsked, onBoard, onNext, onLeave }
   const question = attempt?.challenge.questions?.[0] ?? null;
   const pickedText = question && q.picked !== null ? (question.choices[q.picked] ?? null) : null;
   const line = done && result ? (attempt?.kind === "sequence" ? { tone: result.earned > 0 ? "right" : "miss", text: sequenceLine(result.reveal.positions_right ?? 0, attempt.challenge.beats?.length ?? 4) } : feedbackLine(result, pickedText)) : null;
+
+  // A tile dealt by topic, or one with a picture: the question over its picture, full-bleed (TriviaCinema.tsx).
+  if (isTopicTile(point) || !!point.art || attemptArts(attempt).length > 0) {
+    return <CinemaQuestion point={point} q={q} number={opened.number} marks={marks} then={then} onBoard={onBoard} onNext={onNext} onLeave={onLeave} />;
+  }
 
   return (
     <Screen onBoard={onBoard} onLeave={onLeave} backDisabled={phase === "submitting"}>
@@ -594,7 +601,7 @@ function RunClockInline({ run, localEnd }: { run: RunState; localEnd: number | n
 function BoardTile({ point, number, onPress }: { point: RunPoint; number: number; onPress: () => void }) {
   const face = point.hidden ? "rgba(255,255,255,0.45)" : T.pastel[(KIND_FACE[point.kind ?? "trivia"] ?? 0) % T.pastel.length];
   const off = point.done || point.hidden;
-  const label = point.hidden ? "Hidden bonus, use Radar to find it" : `Question ${number}, ${challengeName(point.kind ?? "trivia")}, ${point.value} points${point.forbidden ? ", Forbidden Zone" : ""}${point.done ? `, done, ${signed(point.earned)}` : ""}`;
+  const label = point.hidden ? "Hidden bonus, use Radar to find it" : `Question ${number}, ${point.topic_name ? `${point.topic_name}, ` : ""}${challengeName(point.kind ?? "trivia")}, ${point.value} points${point.forbidden ? ", Forbidden Zone" : ""}${point.done ? `, done, ${signed(point.earned)}` : ""}`;
   return (
     <Pressable
       onPress={onPress}
@@ -615,10 +622,10 @@ function BoardTile({ point, number, onPress }: { point: RunPoint; number: number
         )}
       </View>
       <Text style={styles.tileKind} numberOfLines={1}>
-        {point.hidden ? "Hidden bonus" : challengeName(point.kind ?? "trivia")}
+        {point.hidden ? "Hidden bonus" : point.topic_name ? point.topic_name : challengeName(point.kind ?? "trivia")}
       </Text>
       <Text style={styles.tileSub} numberOfLines={1}>
-        {point.hidden ? "Use Radar" : point.done ? `${signed(point.earned)} pts` : `${point.value} pts${point.forbidden ? " · Stake" : ""}`}
+        {point.hidden ? "Use Radar" : point.done ? `${signed(point.earned)} pts` : `${point.topic_name ? `${challengeName(point.kind ?? "trivia")} · ` : ""}${point.value} pts${point.forbidden ? " · Stake" : ""}`}
       </Text>
     </Pressable>
   );
@@ -656,7 +663,20 @@ function Power({ icon, label, hint, left, lit, busy, onPress }: { icon: "radio-o
  * ring with your place on the badge, the points counting up) and his "Score
  * difference" row is your place today, then the XP it paid.
  */
-export function TriviaResults({ result, board, onDone, onAgain, againLeft }: { result: RunFinish; board: RunBoard | null; onDone: () => void; onAgain: (() => void) | null; againLeft: number | null }) {
+type ResultsProps = { result: RunFinish; board: RunBoard | null; onDone: () => void; onAgain: (() => void) | null; againLeft: number | null };
+
+/** The results: over the run's best picture when its questions had pictures (TriviaCinema.tsx), else Wale's light card. */
+export function TriviaResults(props: ResultsProps) {
+  const s = useRun();
+  const run = props.result.run;
+  const seen: Record<number, TriviaArt | null | undefined> = {};
+  for (const p of run.points) if (p.art) seen[p.idx] = p.art;
+  const art = bestArt(run, { ...seen, ...s.arts });
+  if (art) return <CinemaResults {...props} art={art} />;
+  return <LightResults {...props} />;
+}
+
+function LightResults({ result, board, onDone, onAgain, againLeft }: ResultsProps) {
   const insets = useSafeAreaInsets();
   const s = useRun();
   const profile = useGame((g) => g.profile);
