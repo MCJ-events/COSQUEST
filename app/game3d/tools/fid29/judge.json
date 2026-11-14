@@ -1,0 +1,26 @@
+{
+  "about": "fid29 judge config (frozen after fid29-base; docs/game3d/fid29/COMMON.md gate C5). judge29.py reads it.",
+  "model": "sonnet",
+  "image_long_side": 1266,
+  "questions": {
+    "game": "Which screenshot looks more like a top-tier realistic mobile game? Judge rendering quality only.",
+    "defect": "Which shows more visible flaws (shimmer, stair-steps, smears, seams, broken geometry, white-out)?",
+    "face_sun": "Which face looks lit by the sun?"
+  },
+  "controls": {
+    "identical_share": 0.10,
+    "identical_must_tie_or_split": 0.90,
+    "degraded_share": 0.10,
+    "degraded_blur_sigma": 1.5,
+    "degraded_posterise_bits": 6,
+    "degraded_must_lose": 0.90
+  },
+  "win_rule": "a side wins a pair only when both orders name it; otherwise tie (both say tie) or split",
+  "dev_set": {"seed": 239, "places": ["street", "trafalgar"], "times": ["golden", "day", "dusk"],
+              "heroes": ["icons", "blockbusters", "ascendants", "controllers"], "tiers": ["mid", "high"]},
+  "sealed_heldout": {"seed": 811, "place": "shoreditch", "times": ["day", "dusk"], "tiers": ["mid", "high"],
+                     "heroes": ["icons", "blockbusters", "ascendants", "controllers", "celestials", "everborns"],
+                     "rule": "never rendered by any lane during development; rendered and judged once on the lane's final commit"},
+  "scale06_subset": {"render_scale": 0.6, "pairs": 12, "rule": "old wins at most 2 of 12"},
+  "defect_rule": "new judged more flawed in at most 10% of pairs"
+}

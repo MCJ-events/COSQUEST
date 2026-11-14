@@ -13,6 +13,7 @@ const FACADE_SHADER := preload("res://vfx/facade.gdshader")
 const PlaceScript := preload("res://place.gd")
 const LookReal := preload("res://look_real.gd")
 const StreetLayout := preload("res://street_layout.gd")
+const StreetReal := preload("res://street_real.gd")    # fid29-street's seam (a no-op at fid29-base)
 const T_NEON := preload("res://art/street/neon_atlas.png")     # 6 signs stacked, self-drawn
 const T_SHOP := preload("res://art/street/shop_glow.png")
 const T_LAMP := preload("res://art/street/lamp_glow.png")
@@ -99,13 +100,19 @@ const LOOK_DEFAULTS: Dictionary = {
 const REAL_KEY_YAW: float = -25.0
 const REAL_KEY_ELEV_MIN: float = 24.0
 const REAL_GROUND_K: Dictionary = {"golden": 0.62, "day": 0.62, "dusk": 0.85, "night": 1.0}
+## fid29 (build 29 fidelity lanes, docs/game3d/fid29/COMMON.md): each lane's work sits behind its own key, on for
+## mid and high, never on low. fid_street (street_real.gd), fid_dressing, fid_heromaps (hero_files.gd),
+## fid_charshade, fid_combat. With a key false the lane's part is build 28's to the pixel; nothing in the
+## fight's rules reads any of them.
 const TIER_LOOK: Dictionary = {
 	"low": {},
 	"mid": {"real": true, "skin": "simple", "ibl": true, "cam": "close", "beats": true, "hit_order": true, "self_shadow": false, "key_yaw": REAL_KEY_YAW, "key_elev_min": REAL_KEY_ELEV_MIN, "ground_k": "auto",
-		"fx_gain": 0.6, "fx_cap": 0.5},
+		"fx_gain": 0.6, "fx_cap": 0.5,
+		"fid_street": true, "fid_dressing": true, "fid_heromaps": true, "fid_charshade": true, "fid_combat": true},
 	"high": {"real": true, "skin": "full", "ibl": true, "shadows": true, "grade": "base", "hero_lod": 0, "scale": 1.0,
 		"cam": "close", "beats": true, "hit_order": true, "self_shadow": false, "key_yaw": REAL_KEY_YAW, "key_elev_min": REAL_KEY_ELEV_MIN, "ground_k": "auto", "soft_shadows": true,
-		"fx_gain": 0.6, "fx_cap": 0.5, "dof": true},
+		"fx_gain": 0.6, "fx_cap": 0.5, "dof": true,
+		"fid_street": true, "fid_dressing": true, "fid_heromaps": true, "fid_charshade": true, "fid_combat": true},
 }
 
 
@@ -484,6 +491,8 @@ func build(cfg: Dictionary) -> void:
 		# the map; a thin, faint ring in the faction's colour marks the fight instead
 		(plaza.mesh as PlaneMesh).size = Vector2(RING_SIZE, RING_SIZE)
 		plaza.material_override = _faction_ring_mat(cfg)
+	# fid29 seam (owned by fid29-street): the street floor and the medallion's materials, once built
+	StreetReal.apply_floor(self, look, gm, plaza.material_override)
 	# circuit lines down the street, towards the camera, as on the reference
 	var cm := StandardMaterial3D.new()
 	cm.albedo_texture = T_CIRCUIT

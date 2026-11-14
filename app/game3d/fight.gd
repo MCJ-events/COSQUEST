@@ -22,6 +22,8 @@ const HudScript := preload("res://hud.gd")
 const FxScript := preload("res://fx.gd")
 const SfxScript := preload("res://sfx.gd")
 const HitArea := preload("res://hit_area.gd")
+const HeroFiles := preload("res://hero_files.gd")     # fid29 seam (owned by fid29-heromaps): which file a hero loads
+const ShaderWarm := preload("res://shader_warm.gd")   # fid29: materials drawn once under the loading card
 const AnimLib := preload("res://anim_library.gd")
 const AnimatorScript := preload("res://combat_animator.gd")
 var _ready_pose: bool = true            # config "ready_pose" (with "weight"): the wound-up stand near an opponent
@@ -621,6 +623,8 @@ func _ready() -> void:
 		(pair[0] as FighterScript).turn_steps = AnimLib.readable_now()
 		(pair[0] as FighterScript).anim_opts["breathe"] = AnimLib.readable_now()
 		p = _tier_lod(p, role)
+		# fid29 seam (fid29-heromaps): the hero file the tier really loads (a no-op at fid29-base)
+		p = HeroFiles.pick(p, role, arena.get("look") if arena != null else {})
 		# realism: a clip library that came with a downloaded model (anim.glb + anim.json beside it)
 		var side_key: String = AnimLib.register_sidecar(p)
 		# build 28: the fight kit the app downloaded with this character (config "<role>_anim")
@@ -1034,6 +1038,7 @@ func _spawn(n: String, team: int, hp_max: int, c: Color, at: Vector3, yaw: float
 func _begin_when_built() -> void:
 	if arena != null:
 		arena.call("finish_place")
+	ShaderWarm.warm(self)
 	_begin_when_shown()
 
 
@@ -1064,6 +1069,7 @@ func _poll_loading() -> void:
 		hud.loading_text = ""
 		for f: FighterScript in fighters:
 			f.visible = true
+		ShaderWarm.warm(self)    # fid29: every registered material drawn once before the first shot (none at fid29-base)
 		_begin_when_shown()
 		return
 	_loading_role = _load_queue.pop_front()
