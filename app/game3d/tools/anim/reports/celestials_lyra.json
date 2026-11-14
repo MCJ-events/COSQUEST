@@ -1,7 +1,7 @@
 {
  "key": "celestials_lyra",
- "target": "/home/engineer/realism-20261111/build27/herocast/pose/celestials_lyra/lod1.glb",
- "source": "/home/engineer/cq-work/243-characters-relift-pod-prep/clipsrc/kaykit/Knight.glb",
+ "target": "/home/engineer/cq-overflow/build28/herocast/pose/celestials_lyra/lod1.glb",
+ "source": "/home/engineer/cq-overflow/build28/clipsrc/kaykit/Knight.glb",
  "hip_scale": 2.203797350623422,
  "damp": {},
  "unmapped": [],

@@ -1,7 +1,7 @@
 {
  "key": "everborn_oren",
- "target": "/home/engineer/realism-20261111/build27/herocast/pose/everborn_oren/lod1.glb",
- "source": "/home/engineer/cq-work/243-characters-relift-pod-prep/clipsrc/kaykit/Knight.glb",
+ "target": "/home/engineer/cq-overflow/build28/herocast/pose/everborn_oren/lod1.glb",
+ "source": "/home/engineer/cq-overflow/build28/clipsrc/kaykit/Knight.glb",
  "hip_scale": 2.2039453104165605,
  "damp": {},
  "unmapped": [],
@@ -55,8 +55,8 @@
    "feet_max_m": 0.157,
    "planted_slide_mps": 2.239,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00072,
-   "tear_p99": 1.476,
+   "tear_share": 0.00058,
+   "tear_p99": 1.445,
    "tears": false,
    "tear_where": {
     "Spine2": 6
@@ -130,7 +130,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00072,
+    "lod0": 0.00058,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -152,8 +152,8 @@
    "feet_max_m": 0.02,
    "planted_slide_mps": 6.226,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00027,
-   "tear_p99": 1.478,
+   "tear_share": 0.00023,
+   "tear_p99": 1.467,
    "tears": false,
    "tear_where": {
     "Spine2": 3
@@ -227,9 +227,10 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00021,
+    "lod0": 0.00023,
     "lod2": 0.0
-   }
+   },
+   "tear_worst_lod": "lod0"
   },
   "1H_Melee_Attack_Slice_Horizontal": {
    "src": "1H_Melee_Attack_Slice_Horizontal",
@@ -248,12 +249,13 @@
    "feet_max_m": 0.028,
    "planted_slide_mps": 4.082,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00064,
-   "tear_p99": 1.54,
+   "tear_share": 0.00078,
+   "tear_p99": 1.538,
    "tears": false,
    "tear_where": {
     "Spine2": 4,
-    "LeftArm": 1
+    "LeftArm": 1,
+    "LeftHand": 6
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
@@ -324,10 +326,9 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00064,
+    "lod0": 0.00067,
     "lod2": 0.0
-   },
-   "tear_worst_lod": "lod0"
+   }
   },
   "1H_Melee_Attack_Stab": {
    "src": "1H_Melee_Attack_Stab",
@@ -346,8 +347,8 @@
    "feet_max_m": 0.018,
    "planted_slide_mps": 4.912,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00021,
-   "tear_p99": 1.41,
+   "tear_share": 0.00018,
+   "tear_p99": 1.373,
    "tears": false,
    "tear_where": {},
    "tear_share_chains_rigid": null,
@@ -419,7 +420,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00021,
+    "lod0": 0.00018,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -441,15 +442,16 @@
    "feet_max_m": 0.0,
    "planted_slide_mps": 6.035,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00247,
-   "tear_p99": 1.681,
+   "tear_share": 0.00234,
+   "tear_p99": 1.683,
    "tears": false,
    "tear_where": {
     "Hips": 5,
     "Spine": 1,
     "Spine2": 15,
     "Head": 3,
-    "LeftArm": 3
+    "LeftArm": 3,
+    "LeftHand": 6
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 50,
@@ -520,8 +522,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00158,
-    "lod2": 0.00036
+    "lod0": 0.00146,
+    "lod2": 0.00022
    }
   },
   "2H_Melee_Attack_Slice": {
@@ -541,8 +543,8 @@
    "feet_max_m": -0.0,
    "planted_slide_mps": 5.541,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00201,
-   "tear_p99": 1.771,
+   "tear_share": 0.00163,
+   "tear_p99": 1.694,
    "tears": false,
    "tear_where": {
     "Hips": 4,
@@ -618,7 +620,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00201,
+    "lod0": 0.00163,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -640,12 +642,13 @@
    "feet_max_m": 0.0,
    "planted_slide_mps": 6.824,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00215,
-   "tear_p99": 1.798,
+   "tear_share": 0.00187,
+   "tear_p99": 1.795,
    "tears": false,
    "tear_where": {
     "Hips": 8,
     "Spine2": 4,
+    "LeftHand": 6,
     "LeftFoot": 2
    },
    "tear_share_chains_rigid": null,
@@ -717,7 +720,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00215,
+    "lod0": 0.00187,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -739,13 +742,14 @@
    "feet_max_m": -0.0,
    "planted_slide_mps": 8.583,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00247,
-   "tear_p99": 1.816,
+   "tear_share": 0.00226,
+   "tear_p99": 1.809,
    "tears": false,
    "tear_where": {
     "Hips": 11,
     "Spine2": 10,
     "LeftArm": 1,
+    "LeftHand": 8,
     "LeftFoot": 2
    },
    "tear_share_chains_rigid": null,
@@ -817,10 +821,9 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00247,
+    "lod0": 0.00225,
     "lod2": 0.0
-   },
-   "tear_worst_lod": "lod0"
+   }
   },
   "2H_Melee_Attack_Stab": {
    "src": "2H_Melee_Attack_Stab",
@@ -839,8 +842,8 @@
    "feet_max_m": -0.0,
    "planted_slide_mps": 5.988,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00265,
-   "tear_p99": 1.898,
+   "tear_share": 0.00254,
+   "tear_p99": 1.861,
    "tears": false,
    "tear_where": {
     "Hips": 4,
@@ -848,6 +851,7 @@
     "Spine2": 14,
     "Head": 3,
     "LeftArm": 5,
+    "LeftHand": 6,
     "RightArm": 1
    },
    "tear_share_chains_rigid": null,
@@ -919,9 +923,10 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00261,
-    "lod2": 0.00036
-   }
+    "lod0": 0.00254,
+    "lod2": 0.00043
+   },
+   "tear_worst_lod": "lod0"
   },
   "2H_Melee_Idle": {
    "src": "2H_Melee_Idle",
@@ -940,12 +945,13 @@
    "feet_max_m": -0.0,
    "planted_slide_mps": 0.058,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00072,
-   "tear_p99": 1.522,
+   "tear_share": 0.00092,
+   "tear_p99": 1.523,
    "tears": false,
    "tear_where": {
     "Spine2": 5,
-    "Head": 2
+    "Head": 2,
+    "LeftHand": 6
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 33,
@@ -1012,10 +1018,9 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00072,
+    "lod0": 0.0007,
     "lod2": 0.0
-   },
-   "tear_worst_lod": "lod0"
+   }
   },
   "2H_Ranged_Aiming": {
    "src": "2H_Ranged_Aiming",
@@ -1034,8 +1039,8 @@
    "feet_max_m": -0.0,
    "planted_slide_mps": 1.416,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00219,
-   "tear_p99": 1.619,
+   "tear_share": 0.0017,
+   "tear_p99": 1.598,
    "tears": false,
    "tear_where": {
     "Spine": 2,
@@ -1108,8 +1113,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00129,
-    "lod2": 0.00036
+    "lod0": 0.00111,
+    "lod2": 0.00022
    }
   },
   "2H_Ranged_Shoot": {
@@ -1129,8 +1134,8 @@
    "feet_max_m": -0.0,
    "planted_slide_mps": 3.803,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.0021,
-   "tear_p99": 1.641,
+   "tear_share": 0.00163,
+   "tear_p99": 1.597,
    "tears": false,
    "tear_where": {
     "Spine": 2,
@@ -1207,8 +1212,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00129,
-    "lod2": 0.00036
+    "lod0": 0.00111,
+    "lod2": 0.00022
    }
   },
   "Aim_Hold": {
@@ -1228,8 +1233,8 @@
    "feet_max_m": -0.006,
    "planted_slide_mps": 0.356,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00219,
-   "tear_p99": 1.619,
+   "tear_share": 0.0017,
+   "tear_p99": 1.598,
    "tears": false,
    "tear_where": {
     "Spine": 2,
@@ -1302,8 +1307,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00129,
-    "lod2": 0.00036
+    "lod0": 0.00111,
+    "lod2": 0.00022
    }
   },
   "Block": {
@@ -1323,11 +1328,12 @@
    "feet_max_m": -0.0,
    "planted_slide_mps": 1.505,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00043,
+   "tear_share": 0.00057,
    "tear_p99": 1.531,
    "tears": false,
    "tear_where": {
-    "Hips": 2
+    "Hips": 2,
+    "LeftHand": 6
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
@@ -1394,10 +1400,9 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00043,
+    "lod0": 0.00047,
     "lod2": 0.0
-   },
-   "tear_worst_lod": "lod0"
+   }
   },
   "Block_Attack": {
    "src": "Block_Attack",
@@ -1416,11 +1421,11 @@
    "feet_max_m": 0.083,
    "planted_slide_mps": 5.863,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00036,
-   "tear_p99": 1.542,
+   "tear_share": 0.00042,
+   "tear_p99": 1.522,
    "tears": false,
    "tear_where": {
-    "Hips": 2
+    "LeftHand": 6
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
@@ -1491,10 +1496,9 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00036,
+    "lod0": 0.00041,
     "lod2": 0.0
-   },
-   "tear_worst_lod": "lod0"
+   }
   },
   "Block_Hit": {
    "src": "Block_Hit",
@@ -1513,11 +1517,12 @@
    "feet_max_m": -0.0,
    "planted_slide_mps": 0.922,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00037,
-   "tear_p99": 1.549,
+   "tear_share": 0.00057,
+   "tear_p99": 1.537,
    "tears": false,
    "tear_where": {
-    "Hips": 4
+    "Hips": 2,
+    "LeftHand": 6
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
@@ -1584,7 +1589,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00036,
+    "lod0": 0.00041,
     "lod2": 0.0
    }
   },
@@ -1605,11 +1610,12 @@
    "feet_max_m": -0.0,
    "planted_slide_mps": 0.106,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00043,
+   "tear_share": 0.00057,
    "tear_p99": 1.531,
    "tears": false,
    "tear_where": {
-    "Hips": 2
+    "Hips": 2,
+    "LeftHand": 6
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
@@ -1676,10 +1682,9 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00043,
+    "lod0": 0.00047,
     "lod2": 0.0
-   },
-   "tear_worst_lod": "lod0"
+   }
   },
   "CMU_Chop_2H": {
    "src": "CMU_Chop_2H",
@@ -1698,8 +1703,8 @@
    "feet_max_m": 0.018,
    "planted_slide_mps": 0.304,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00233,
-   "tear_p99": 1.819,
+   "tear_share": 0.0019,
+   "tear_p99": 1.74,
    "tears": false,
    "tear_where": {
     "Spine2": 19,
@@ -1775,7 +1780,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00233,
+    "lod0": 0.0019,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -1797,8 +1802,8 @@
    "feet_max_m": 0.249,
    "planted_slide_mps": 1.663,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00047,
-   "tear_p99": 1.512,
+   "tear_share": 0.00038,
+   "tear_p99": 1.471,
    "tears": false,
    "tear_where": {
     "Spine2": 4
@@ -1868,7 +1873,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00047,
+    "lod0": 0.00038,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -1890,8 +1895,8 @@
    "feet_max_m": 1.188,
    "planted_slide_mps": 0.585,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.0031,
-   "tear_p99": 1.986,
+   "tear_share": 0.00241,
+   "tear_p99": 1.904,
    "tears": false,
    "tear_where": {
     "Hips": 23,
@@ -1963,7 +1968,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00258,
+    "lod0": 0.0021,
     "lod2": 0.0
    }
   },
@@ -1984,8 +1989,8 @@
    "feet_max_m": -0.0,
    "planted_slide_mps": 0.897,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00274,
-   "tear_p99": 1.876,
+   "tear_share": 0.00216,
+   "tear_p99": 1.782,
    "tears": false,
    "tear_where": {
     "Hips": 2,
@@ -2059,9 +2064,10 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00265,
+    "lod0": 0.00216,
     "lod2": 0.0
-   }
+   },
+   "tear_worst_lod": "lod0"
   },
   "CMU_Idle": {
    "src": "CMU_Idle",
@@ -2080,8 +2086,8 @@
    "feet_max_m": 0.037,
    "planted_slide_mps": 1.017,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00039,
-   "tear_p99": 1.34,
+   "tear_share": 0.00032,
+   "tear_p99": 1.311,
    "tears": false,
    "tear_where": {
     "Spine2": 2
@@ -2151,7 +2157,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00039,
+    "lod0": 0.00032,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -2173,8 +2179,8 @@
    "feet_max_m": 0.078,
    "planted_slide_mps": 2.768,
    "ground_speed_mps": 2.569,
-   "tear_share": 0.00079,
-   "tear_p99": 1.692,
+   "tear_share": 0.00064,
+   "tear_p99": 1.608,
    "tears": false,
    "tear_where": {
     "Spine2": 5
@@ -2244,7 +2250,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00079,
+    "lod0": 0.00064,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -2266,8 +2272,8 @@
    "feet_max_m": 0.009,
    "planted_slide_mps": 0.476,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00165,
-   "tear_p99": 1.727,
+   "tear_share": 0.0014,
+   "tear_p99": 1.637,
    "tears": false,
    "tear_where": {
     "Hips": 1,
@@ -2339,7 +2345,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00165,
+    "lod0": 0.0014,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -2361,8 +2367,8 @@
    "feet_max_m": 0.016,
    "planted_slide_mps": 0.32,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.0019,
-   "tear_p99": 1.79,
+   "tear_share": 0.00155,
+   "tear_p99": 1.697,
    "tears": false,
    "tear_where": {
     "Spine2": 13,
@@ -2434,7 +2440,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.0019,
+    "lod0": 0.00155,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -2456,8 +2462,8 @@
    "feet_max_m": 0.031,
    "planted_slide_mps": 0.467,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00186,
-   "tear_p99": 1.622,
+   "tear_share": 0.00152,
+   "tear_p99": 1.547,
    "tears": false,
    "tear_where": {
     "Spine2": 19,
@@ -2532,7 +2538,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00186,
+    "lod0": 0.00152,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -2554,8 +2560,8 @@
    "feet_max_m": 0.023,
    "planted_slide_mps": 0.233,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00186,
-   "tear_p99": 1.651,
+   "tear_share": 0.00152,
+   "tear_p99": 1.595,
    "tears": false,
    "tear_where": {
     "Spine2": 19,
@@ -2630,7 +2636,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00186,
+    "lod0": 0.00152,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -2652,8 +2658,8 @@
    "feet_max_m": 0.02,
    "planted_slide_mps": 0.304,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00186,
-   "tear_p99": 1.662,
+   "tear_share": 0.00152,
+   "tear_p99": 1.606,
    "tears": false,
    "tear_where": {
     "Spine2": 16,
@@ -2728,7 +2734,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00186,
+    "lod0": 0.00152,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -2750,8 +2756,8 @@
    "feet_max_m": 0.018,
    "planted_slide_mps": 0.362,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00329,
-   "tear_p99": 1.961,
+   "tear_share": 0.00257,
+   "tear_p99": 1.876,
    "tears": false,
    "tear_where": {
     "Hips": 13,
@@ -2828,9 +2834,10 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00315,
+    "lod0": 0.00257,
     "lod2": 0.0
-   }
+   },
+   "tear_worst_lod": "lod0"
   },
   "CMU_Stagger_Back": {
    "src": "CMU_Stagger_Back",
@@ -2849,8 +2856,8 @@
    "feet_max_m": 0.03,
    "planted_slide_mps": 1.008,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00036,
-   "tear_p99": 1.541,
+   "tear_share": 0.00029,
+   "tear_p99": 1.492,
    "tears": false,
    "tear_where": {},
    "tear_share_chains_rigid": null,
@@ -2918,7 +2925,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00036,
+    "lod0": 0.00029,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -2940,8 +2947,8 @@
    "feet_max_m": 0.019,
    "planted_slide_mps": 0.174,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00215,
-   "tear_p99": 1.852,
+   "tear_share": 0.00175,
+   "tear_p99": 1.79,
    "tears": false,
    "tear_where": {
     "Hips": 3,
@@ -3018,7 +3025,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00215,
+    "lod0": 0.00175,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -3040,8 +3047,8 @@
    "feet_max_m": 0.062,
    "planted_slide_mps": 2.021,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00128,
-   "tear_p99": 1.748,
+   "tear_share": 0.00099,
+   "tear_p99": 1.69,
    "tears": false,
    "tear_where": {
     "Hips": 5,
@@ -3113,7 +3120,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00104,
+    "lod0": 0.00085,
     "lod2": 0.0
    }
   },
@@ -3134,11 +3141,12 @@
    "feet_max_m": -0.0,
    "planted_slide_mps": 0.441,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00082,
-   "tear_p99": 1.521,
+   "tear_share": 0.00099,
+   "tear_p99": 1.544,
    "tears": false,
    "tear_where": {
-    "Spine2": 6
+    "Spine2": 6,
+    "LeftHand": 8
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
@@ -3205,10 +3213,9 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00082,
-    "lod2": 0.0
-   },
-   "tear_worst_lod": "lod0"
+    "lod0": 0.00096,
+    "lod2": 0.00043
+   }
   },
   "Death_A": {
    "src": "Death_A",
@@ -3227,11 +3234,11 @@
    "feet_max_m": 0.413,
    "planted_slide_mps": 1.284,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00037,
-   "tear_p99": 1.435,
+   "tear_share": 0.00057,
+   "tear_p99": 1.463,
    "tears": false,
    "tear_where": {
-    "Spine2": 4
+    "LeftHand": 8
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
@@ -3298,7 +3305,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00036,
+    "lod0": 0.00055,
     "lod2": 0.0
    }
   },
@@ -3319,13 +3326,14 @@
    "feet_max_m": 0.128,
    "planted_slide_mps": 1.444,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00091,
-   "tear_p99": 1.555,
+   "tear_share": 0.00099,
+   "tear_p99": 1.548,
    "tears": false,
    "tear_where": {
     "Hips": 4,
     "Spine": 4,
-    "LeftArm": 2
+    "LeftArm": 2,
+    "LeftHand": 4
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
@@ -3392,7 +3400,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00043,
+    "lod0": 0.00047,
     "lod2": 0.0
    }
   },
@@ -3413,11 +3421,11 @@
    "feet_max_m": 0.032,
    "planted_slide_mps": 1.124,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00043,
-   "tear_p99": 1.481,
+   "tear_share": 0.00047,
+   "tear_p99": 1.479,
    "tears": false,
    "tear_where": {
-    "Spine2": 2
+    "LeftHand": 6
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
@@ -3484,7 +3492,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00043,
+    "lod0": 0.00047,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -3506,12 +3514,13 @@
    "feet_max_m": 0.0,
    "planted_slide_mps": 0.507,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00093,
-   "tear_p99": 1.64,
+   "tear_share": 0.00102,
+   "tear_p99": 1.658,
    "tears": false,
    "tear_where": {
     "Spine2": 4,
-    "Head": 1
+    "Head": 1,
+    "LeftHand": 8
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 11,
@@ -3578,7 +3587,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00093,
+    "lod0": 0.00102,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -3600,8 +3609,8 @@
    "feet_max_m": 0.0,
    "planted_slide_mps": 1.057,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.0,
-   "tear_p99": 1.369,
+   "tear_share": 6e-05,
+   "tear_p99": 1.362,
    "tears": false,
    "tear_where": {},
    "tear_share_chains_rigid": null,
@@ -3669,9 +3678,10 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.0,
+    "lod0": 6e-05,
     "lod2": 0.0
-   }
+   },
+   "tear_worst_lod": "lod0"
   },
   "Hit_B": {
    "src": "Hit_B",
@@ -3690,11 +3700,12 @@
    "feet_max_m": 0.0,
    "planted_slide_mps": 1.041,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00018,
-   "tear_p99": 1.487,
+   "tear_share": 0.00028,
+   "tear_p99": 1.489,
    "tears": false,
    "tear_where": {
-    "Spine2": 2
+    "Spine2": 2,
+    "LeftHand": 2
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
@@ -3761,7 +3772,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00014,
+    "lod0": 0.00018,
     "lod2": 0.0
    }
   },
@@ -3782,15 +3793,16 @@
    "feet_max_m": 0.0,
    "planted_slide_mps": 9.019,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00247,
-   "tear_p99": 1.679,
+   "tear_share": 0.00234,
+   "tear_p99": 1.683,
    "tears": false,
    "tear_where": {
     "Hips": 5,
     "Spine": 1,
     "Spine2": 15,
     "Head": 3,
-    "LeftArm": 3
+    "LeftArm": 3,
+    "LeftHand": 6
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
@@ -3857,8 +3869,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00158,
-    "lod2": 0.00036
+    "lod0": 0.00146,
+    "lod2": 0.00022
    }
   },
   "I_Defend": {
@@ -3878,8 +3890,8 @@
    "feet_max_m": 0.0,
    "planted_slide_mps": 0.012,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00064,
-   "tear_p99": 1.694,
+   "tear_share": 0.00058,
+   "tear_p99": 1.657,
    "tears": false,
    "tear_where": {
     "Hips": 2
@@ -3949,7 +3961,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00064,
+    "lod0": 0.00058,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -3971,8 +3983,8 @@
    "feet_max_m": 0.0,
    "planted_slide_mps": 0.036,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00064,
-   "tear_p99": 1.63,
+   "tear_share": 0.00058,
+   "tear_p99": 1.593,
    "tears": false,
    "tear_where": {
     "Hips": 2
@@ -4042,7 +4054,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00064,
+    "lod0": 0.00058,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -4064,8 +4076,8 @@
    "feet_max_m": 0.02,
    "planted_slide_mps": 8.191,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00027,
-   "tear_p99": 1.477,
+   "tear_share": 0.00023,
+   "tear_p99": 1.47,
    "tears": false,
    "tear_where": {
     "Spine2": 3
@@ -4135,9 +4147,10 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00021,
+    "lod0": 0.00023,
     "lod2": 0.0
-   }
+   },
+   "tear_worst_lod": "lod0"
   },
   "I_Guard_hi": {
    "src": "M2M_Weapon_Block",
@@ -4156,14 +4169,15 @@
    "feet_max_m": -0.001,
    "planted_slide_mps": 0.337,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00228,
-   "tear_p99": 1.783,
+   "tear_share": 0.00226,
+   "tear_p99": 1.752,
    "tears": false,
    "tear_where": {
     "Hips": 4,
     "Spine": 10,
     "Spine2": 10,
-    "Head": 1
+    "Head": 1,
+    "LeftHand": 7
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
@@ -4230,7 +4244,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00115,
+    "lod0": 0.00108,
     "lod2": 0.0
    }
   },
@@ -4251,14 +4265,15 @@
    "feet_max_m": -0.001,
    "planted_slide_mps": 0.224,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00228,
-   "tear_p99": 1.783,
+   "tear_share": 0.00226,
+   "tear_p99": 1.752,
    "tears": false,
    "tear_where": {
     "Hips": 4,
     "Spine": 10,
     "Spine2": 10,
-    "Head": 1
+    "Head": 1,
+    "LeftHand": 7
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
@@ -4325,7 +4340,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00115,
+    "lod0": 0.00108,
     "lod2": 0.0
    }
   },
@@ -4346,8 +4361,8 @@
    "feet_max_m": -0.0,
    "planted_slide_mps": 0.897,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00274,
-   "tear_p99": 1.876,
+   "tear_share": 0.00216,
+   "tear_p99": 1.782,
    "tears": false,
    "tear_where": {
     "Hips": 2,
@@ -4421,9 +4436,10 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00265,
+    "lod0": 0.00216,
     "lod2": 0.0
-   }
+   },
+   "tear_worst_lod": "lod0"
   },
   "I_Intro_Open": {
    "src": "Spellcast_Long",
@@ -4442,11 +4458,12 @@
    "feet_max_m": -0.0,
    "planted_slide_mps": 0.827,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00027,
-   "tear_p99": 1.491,
+   "tear_share": 0.00035,
+   "tear_p99": 1.47,
    "tears": false,
    "tear_where": {
-    "Spine2": 3
+    "Spine2": 3,
+    "LeftHand": 2
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
@@ -4513,7 +4530,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00025,
+    "lod0": 0.00026,
     "lod2": 0.0
    }
   },
@@ -4534,10 +4551,12 @@
    "feet_max_m": -0.0,
    "planted_slide_mps": 0.058,
    "ground_speed_mps": 0.0,
-   "tear_share": 7e-05,
-   "tear_p99": 1.431,
+   "tear_share": 0.00042,
+   "tear_p99": 1.439,
    "tears": false,
-   "tear_where": {},
+   "tear_where": {
+    "LeftHand": 6
+   },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
    "gates": {
@@ -4603,10 +4622,9 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 7e-05,
+    "lod0": 0.00018,
     "lod2": 0.0
-   },
-   "tear_worst_lod": "lod0"
+   }
   },
   "I_Intro_Ready": {
    "src": "M2M_Fighting_Idle",
@@ -4625,8 +4643,8 @@
    "feet_max_m": 0.0,
    "planted_slide_mps": 0.019,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00014,
-   "tear_p99": 1.515,
+   "tear_share": 0.00012,
+   "tear_p99": 1.469,
    "tears": false,
    "tear_where": {},
    "tear_share_chains_rigid": null,
@@ -4694,7 +4712,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00014,
+    "lod0": 0.00012,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -4716,8 +4734,8 @@
    "feet_max_m": 0.284,
    "planted_slide_mps": 0.803,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.001,
-   "tear_p99": 1.585,
+   "tear_share": 0.00082,
+   "tear_p99": 1.566,
    "tears": false,
    "tear_where": {
     "Spine2": 9
@@ -4787,7 +4805,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.001,
+    "lod0": 0.00082,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -4809,8 +4827,8 @@
    "feet_max_m": 0.284,
    "planted_slide_mps": 0.653,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.001,
-   "tear_p99": 1.582,
+   "tear_share": 0.00082,
+   "tear_p99": 1.566,
    "tears": false,
    "tear_where": {
     "Spine2": 9
@@ -4880,7 +4898,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.001,
+    "lod0": 0.00082,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -4902,8 +4920,8 @@
    "feet_max_m": 0.703,
    "planted_slide_mps": 7.166,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.0034,
-   "tear_p99": 2.076,
+   "tear_share": 0.00277,
+   "tear_p99": 1.978,
    "tears": false,
    "tear_where": {
     "Hips": 6,
@@ -4978,8 +4996,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.0034,
-    "lod2": 0.00215
+    "lod0": 0.00277,
+    "lod2": 0.00129
    },
    "tear_worst_lod": "lod0"
   },
@@ -5000,8 +5018,8 @@
    "feet_max_m": 0.703,
    "planted_slide_mps": 4.353,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.0031,
-   "tear_p99": 2.022,
+   "tear_share": 0.00241,
+   "tear_p99": 1.939,
    "tears": false,
    "tear_where": {
     "Hips": 4,
@@ -5076,8 +5094,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00283,
-    "lod2": 0.00143
+    "lod0": 0.0023,
+    "lod2": 0.00086
    }
   },
   "I_M2M_Sprint": {
@@ -5097,8 +5115,8 @@
    "feet_max_m": 0.229,
    "planted_slide_mps": 5.953,
    "ground_speed_mps": 5.682,
-   "tear_share": 0.00119,
-   "tear_p99": 1.717,
+   "tear_share": 0.00092,
+   "tear_p99": 1.638,
    "tears": false,
    "tear_where": {
     "Hips": 12,
@@ -5169,7 +5187,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00064,
+    "lod0": 0.00053,
     "lod2": 0.0
    }
   },
@@ -5190,14 +5208,15 @@
    "feet_max_m": -0.003,
    "planted_slide_mps": 1.699,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00265,
-   "tear_p99": 1.824,
+   "tear_share": 0.00262,
+   "tear_p99": 1.833,
    "tears": false,
    "tear_where": {
     "Spine": 2,
     "Spine2": 21,
     "Head": 3,
-    "LeftArm": 3
+    "LeftArm": 3,
+    "LeftHand": 8
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
@@ -5264,8 +5283,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00233,
-    "lod2": 0.00036
+    "lod0": 0.00254,
+    "lod2": 0.00022
    }
   },
   "I_Slam_T": {
@@ -5285,14 +5304,15 @@
    "feet_max_m": -0.003,
    "planted_slide_mps": 3.312,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00247,
-   "tear_p99": 1.813,
+   "tear_share": 0.00241,
+   "tear_p99": 1.779,
    "tears": false,
    "tear_where": {
     "Spine": 2,
     "Spine2": 19,
     "Head": 3,
-    "LeftArm": 3
+    "LeftArm": 3,
+    "LeftHand": 7
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
@@ -5359,8 +5379,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00222,
-    "lod2": 0.00036
+    "lod0": 0.00207,
+    "lod2": 0.00022
    }
   },
   "I_Slam_T_s": {
@@ -5380,14 +5400,15 @@
    "feet_max_m": -0.003,
    "planted_slide_mps": 2.743,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00247,
-   "tear_p99": 1.796,
+   "tear_share": 0.00241,
+   "tear_p99": 1.77,
    "tears": false,
    "tear_where": {
     "Spine": 2,
     "Spine2": 19,
     "Head": 3,
-    "LeftArm": 3
+    "LeftArm": 3,
+    "LeftHand": 7
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
@@ -5454,8 +5475,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00222,
-    "lod2": 0.00036
+    "lod0": 0.00207,
+    "lod2": 0.00022
    }
   },
   "I_Slam_s": {
@@ -5475,14 +5496,15 @@
    "feet_max_m": -0.003,
    "planted_slide_mps": 1.415,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00265,
-   "tear_p99": 1.824,
+   "tear_share": 0.00262,
+   "tear_p99": 1.833,
    "tears": false,
    "tear_where": {
     "Spine": 2,
     "Spine2": 21,
     "Head": 3,
-    "LeftArm": 3
+    "LeftArm": 3,
+    "LeftHand": 8
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
@@ -5549,8 +5571,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00233,
-    "lod2": 0.00036
+    "lod0": 0.00254,
+    "lod2": 0.00022
    }
   },
   "I_SlashB_s": {
@@ -5570,8 +5592,8 @@
    "feet_max_m": 0.023,
    "planted_slide_mps": 0.465,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00201,
-   "tear_p99": 1.711,
+   "tear_share": 0.00156,
+   "tear_p99": 1.637,
    "tears": false,
    "tear_where": {
     "Hips": 2,
@@ -5643,7 +5665,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00186,
+    "lod0": 0.00152,
     "lod2": 0.0
    }
   },
@@ -5664,8 +5686,8 @@
    "feet_max_m": -0.001,
    "planted_slide_mps": 0.054,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00082,
-   "tear_p99": 1.401,
+   "tear_share": 0.00067,
+   "tear_p99": 1.374,
    "tears": false,
    "tear_where": {
     "Spine2": 2,
@@ -5736,7 +5758,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00082,
+    "lod0": 0.00067,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -5758,8 +5780,8 @@
    "feet_max_m": 0.211,
    "planted_slide_mps": 4.733,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00036,
-   "tear_p99": 1.58,
+   "tear_share": 0.00029,
+   "tear_p99": 1.541,
    "tears": false,
    "tear_where": {
     "LeftFoot": 2
@@ -5829,7 +5851,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00036,
+    "lod0": 0.00029,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -5851,13 +5873,14 @@
    "feet_max_m": 0.193,
    "planted_slide_mps": 1.853,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00154,
-   "tear_p99": 1.665,
+   "tear_share": 0.00131,
+   "tear_p99": 1.615,
    "tears": false,
    "tear_where": {
     "Spine2": 9,
     "Head": 2,
-    "LeftArm": 3
+    "LeftArm": 3,
+    "LeftHand": 4
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
@@ -5924,7 +5947,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00154,
+    "lod0": 0.00131,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -5946,14 +5969,15 @@
    "feet_max_m": 0.193,
    "planted_slide_mps": 1.17,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00168,
-   "tear_p99": 1.699,
+   "tear_share": 0.00156,
+   "tear_p99": 1.632,
    "tears": false,
    "tear_where": {
     "Hips": 2,
     "Spine2": 9,
     "Head": 2,
     "LeftArm": 3,
+    "LeftHand": 4,
     "LeftFoot": 2
    },
    "tear_share_chains_rigid": null,
@@ -6021,10 +6045,9 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00168,
+    "lod0": 0.00143,
     "lod2": 0.0
-   },
-   "tear_worst_lod": "lod0"
+   }
   },
   "I_Sword_Block": {
    "src": "M2M_Sword_Block",
@@ -6043,8 +6066,8 @@
    "feet_max_m": -0.0,
    "planted_slide_mps": 0.523,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00018,
-   "tear_p99": 1.533,
+   "tear_share": 0.00014,
+   "tear_p99": 1.481,
    "tears": false,
    "tear_where": {
     "LeftArm": 1,
@@ -6115,7 +6138,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00014,
+    "lod0": 0.00012,
     "lod2": 0.0
    }
   },
@@ -6136,8 +6159,8 @@
    "feet_max_m": -0.0,
    "planted_slide_mps": 0.891,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00018,
-   "tear_p99": 1.434,
+   "tear_share": 0.00014,
+   "tear_p99": 1.395,
    "tears": false,
    "tear_where": {
     "LeftArm": 1,
@@ -6230,7 +6253,7 @@
    "planted_slide_mps": 0.097,
    "ground_speed_mps": 0.0,
    "tear_share": 0.0,
-   "tear_p99": 1.388,
+   "tear_p99": 1.382,
    "tears": false,
    "tear_where": {},
    "tear_share_chains_rigid": null,
@@ -6319,8 +6342,8 @@
    "feet_max_m": 0.284,
    "planted_slide_mps": 0.864,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.001,
-   "tear_p99": 1.666,
+   "tear_share": 0.00082,
+   "tear_p99": 1.645,
    "tears": false,
    "tear_where": {
     "Spine2": 9,
@@ -6391,9 +6414,10 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.001,
+    "lod0": 0.00082,
     "lod2": 0.0
-   }
+   },
+   "tear_worst_lod": "lod0"
   },
   "M2M_Death_B": {
    "src": "M2M_Death_B",
@@ -6412,8 +6436,8 @@
    "feet_max_m": 0.451,
    "planted_slide_mps": 0.966,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00527,
-   "tear_p99": 1.976,
+   "tear_share": 0.00435,
+   "tear_p99": 1.86,
    "tears": false,
    "tear_where": {
     "Hips": 14,
@@ -6485,7 +6509,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00527,
+    "lod0": 0.00435,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -6507,8 +6531,8 @@
    "feet_max_m": 0.506,
    "planted_slide_mps": 3.668,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00147,
-   "tear_p99": 1.752,
+   "tear_share": 0.0012,
+   "tear_p99": 1.69,
    "tears": false,
    "tear_where": {
     "Spine": 2,
@@ -6580,7 +6604,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00147,
+    "lod0": 0.0012,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -6602,8 +6626,8 @@
    "feet_max_m": 0.0,
    "planted_slide_mps": 0.019,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00014,
-   "tear_p99": 1.515,
+   "tear_share": 0.00012,
+   "tear_p99": 1.469,
    "tears": false,
    "tear_where": {},
    "tear_share_chains_rigid": null,
@@ -6671,7 +6695,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00014,
+    "lod0": 0.00012,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -6694,7 +6718,7 @@
    "planted_slide_mps": 0.104,
    "ground_speed_mps": 0.0,
    "tear_share": 0.0,
-   "tear_p99": 1.332,
+   "tear_p99": 1.302,
    "tears": false,
    "tear_where": {},
    "tear_share_chains_rigid": null,
@@ -6784,7 +6808,7 @@
    "planted_slide_mps": 0.012,
    "ground_speed_mps": 0.0,
    "tear_share": 0.0,
-   "tear_p99": 1.317,
+   "tear_p99": 1.288,
    "tears": false,
    "tear_where": {},
    "tear_share_chains_rigid": null,
@@ -6873,9 +6897,9 @@
    "feet_max_m": 0.703,
    "planted_slide_mps": 10.141,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00502,
-   "tear_p99": 2.157,
-   "tears": true,
+   "tear_share": 0.00389,
+   "tear_p99": 2.041,
+   "tears": false,
    "tear_where": {
     "Hips": 22,
     "Spine": 15,
@@ -6949,8 +6973,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00383,
-    "lod2": 0.00215
+    "lod0": 0.00312,
+    "lod2": 0.00129
    }
   },
   "M2M_Idle_Sword": {
@@ -6970,8 +6994,8 @@
    "feet_max_m": -0.0,
    "planted_slide_mps": 0.013,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00014,
-   "tear_p99": 1.492,
+   "tear_share": 0.00012,
+   "tear_p99": 1.457,
    "tears": false,
    "tear_where": {},
    "tear_share_chains_rigid": null,
@@ -7039,7 +7063,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00014,
+    "lod0": 0.00012,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -7061,8 +7085,8 @@
    "feet_max_m": 0.009,
    "planted_slide_mps": 2.846,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00283,
-   "tear_p99": 1.971,
+   "tear_share": 0.00219,
+   "tear_p99": 1.856,
    "tears": false,
    "tear_where": {
     "Hips": 15,
@@ -7139,8 +7163,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00229,
-    "lod2": 0.00143
+    "lod0": 0.00187,
+    "lod2": 0.00086
    }
   },
   "M2M_Punch_Cross": {
@@ -7160,8 +7184,8 @@
    "feet_max_m": -0.0,
    "planted_slide_mps": 0.47,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00247,
-   "tear_p99": 1.694,
+   "tear_share": 0.00191,
+   "tear_p99": 1.627,
    "tears": false,
    "tear_where": {
     "Spine": 2,
@@ -7239,8 +7263,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00193,
-    "lod2": 0.00036
+    "lod0": 0.00158,
+    "lod2": 0.00022
    }
   },
   "M2M_Punch_Jab": {
@@ -7260,8 +7284,8 @@
    "feet_max_m": -0.0,
    "planted_slide_mps": 0.215,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00129,
-   "tear_p99": 1.675,
+   "tear_share": 0.00105,
+   "tear_p99": 1.599,
    "tears": false,
    "tear_where": {
     "Spine2": 4,
@@ -7337,7 +7361,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00129,
+    "lod0": 0.00105,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -7359,8 +7383,8 @@
    "feet_max_m": -0.001,
    "planted_slide_mps": 7.893,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00193,
-   "tear_p99": 1.78,
+   "tear_share": 0.00158,
+   "tear_p99": 1.702,
    "tears": false,
    "tear_where": {
     "Spine": 2,
@@ -7438,7 +7462,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00193,
+    "lod0": 0.00158,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -7460,8 +7484,8 @@
    "feet_max_m": 0.0,
    "planted_slide_mps": 5.604,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00347,
-   "tear_p99": 1.953,
+   "tear_share": 0.00269,
+   "tear_p99": 1.861,
    "tears": false,
    "tear_where": {
     "Spine": 2,
@@ -7540,8 +7564,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00319,
-    "lod2": 0.0025
+    "lod0": 0.0026,
+    "lod2": 0.00151
    }
   },
   "M2M_Victory": {
@@ -7561,8 +7585,8 @@
    "feet_max_m": 0.475,
    "planted_slide_mps": 1.019,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00201,
-   "tear_p99": 1.757,
+   "tear_share": 0.00156,
+   "tear_p99": 1.711,
    "tears": false,
    "tear_where": {
     "Hips": 2,
@@ -7636,7 +7660,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00143,
+    "lod0": 0.00117,
     "lod2": 0.0
    }
   },
@@ -7657,8 +7681,8 @@
    "feet_max_m": 0.0,
    "planted_slide_mps": 0.548,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00037,
-   "tear_p99": 1.529,
+   "tear_share": 0.00028,
+   "tear_p99": 1.476,
    "tears": false,
    "tear_where": {
     "LeftArm": 4
@@ -7728,7 +7752,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00029,
+    "lod0": 0.00023,
     "lod2": 0.0
    }
   },
@@ -7749,8 +7773,8 @@
    "feet_max_m": 0.091,
    "planted_slide_mps": 0.0,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00082,
-   "tear_p99": 1.672,
+   "tear_share": 0.00073,
+   "tear_p99": 1.648,
    "tears": false,
    "tear_where": {
     "Hips": 3,
@@ -7826,7 +7850,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00082,
+    "lod0": 0.00073,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -7848,8 +7872,8 @@
    "feet_max_m": 0.096,
    "planted_slide_mps": 0.0,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00075,
-   "tear_p99": 1.589,
+   "tear_share": 0.00067,
+   "tear_p99": 1.56,
    "tears": false,
    "tear_where": {
     "Hips": 2
@@ -7923,7 +7947,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00075,
+    "lod0": 0.00067,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -7945,8 +7969,8 @@
    "feet_max_m": 0.016,
    "planted_slide_mps": 0.294,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00398,
-   "tear_p99": 2.069,
+   "tear_share": 0.00324,
+   "tear_p99": 1.917,
    "tears": false,
    "tear_where": {
     "Hips": 17,
@@ -8021,8 +8045,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00398,
-    "lod2": 0.00143
+    "lod0": 0.00324,
+    "lod2": 0.00086
    },
    "tear_worst_lod": "lod0"
   },
@@ -8043,8 +8067,8 @@
    "feet_max_m": 0.024,
    "planted_slide_mps": 0.511,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00164,
-   "tear_p99": 1.71,
+   "tear_share": 0.00127,
+   "tear_p99": 1.645,
    "tears": false,
    "tear_where": {
     "Hips": 2,
@@ -8121,7 +8145,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00143,
+    "lod0": 0.00117,
     "lod2": 0.0
    }
   },
@@ -8142,15 +8166,15 @@
    "feet_max_m": 0.055,
    "planted_slide_mps": 0.937,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00247,
-   "tear_p99": 1.808,
+   "tear_share": 0.00241,
+   "tear_p99": 1.796,
    "tears": false,
    "tear_where": {
     "Spine": 2,
-    "Spine2": 17,
+    "Spine2": 19,
     "Head": 3,
     "LeftArm": 3,
-    "LeftFoot": 2
+    "LeftHand": 7
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
@@ -8221,8 +8245,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00215,
-    "lod2": 0.00036
+    "lod0": 0.00201,
+    "lod2": 0.00022
    }
   },
   "R_Atk3_k": {
@@ -8242,11 +8266,14 @@
    "feet_max_m": 0.157,
    "planted_slide_mps": 0.0,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00082,
-   "tear_p99": 1.639,
+   "tear_share": 0.00079,
+   "tear_p99": 1.611,
    "tears": false,
    "tear_where": {
-    "Spine2": 4
+    "Hips": 1,
+    "Spine": 1,
+    "LeftHand": 6,
+    "LeftFoot": 2
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
@@ -8317,7 +8344,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00082,
+    "lod0": 0.00079,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -8339,15 +8366,15 @@
    "feet_max_m": 0.064,
    "planted_slide_mps": 1.313,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00247,
-   "tear_p99": 1.79,
+   "tear_share": 0.00241,
+   "tear_p99": 1.781,
    "tears": false,
    "tear_where": {
     "Spine": 2,
-    "Spine2": 17,
+    "Spine2": 19,
     "Head": 3,
     "LeftArm": 3,
-    "LeftFoot": 2
+    "LeftHand": 7
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
@@ -8418,8 +8445,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00215,
-    "lod2": 0.00036
+    "lod0": 0.00201,
+    "lod2": 0.00022
    }
   },
   "R_Dash": {
@@ -8439,8 +8466,8 @@
    "feet_max_m": 0.154,
    "planted_slide_mps": 9.177,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00155,
-   "tear_p99": 1.77,
+   "tear_share": 0.0012,
+   "tear_p99": 1.709,
    "tears": false,
    "tear_where": {
     "Hips": 6,
@@ -8516,7 +8543,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00133,
+    "lod0": 0.00108,
     "lod2": 0.0
    }
   },
@@ -8537,8 +8564,8 @@
    "feet_max_m": 0.183,
    "planted_slide_mps": 7.146,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00119,
-   "tear_p99": 1.652,
+   "tear_share": 0.00092,
+   "tear_p99": 1.604,
    "tears": false,
    "tear_where": {
     "Hips": 1,
@@ -8615,7 +8642,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.0009,
+    "lod0": 0.00073,
     "lod2": 0.0
    }
   },
@@ -8636,8 +8663,8 @@
    "feet_max_m": 0.177,
    "planted_slide_mps": 9.177,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.0005,
-   "tear_p99": 1.666,
+   "tear_share": 0.00041,
+   "tear_p99": 1.634,
    "tears": false,
    "tear_where": {
     "Hips": 1,
@@ -8713,7 +8740,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.0005,
+    "lod0": 0.00041,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -8735,8 +8762,8 @@
    "feet_max_m": 0.177,
    "planted_slide_mps": 9.177,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.0011,
-   "tear_p99": 1.702,
+   "tear_share": 0.00085,
+   "tear_p99": 1.669,
    "tears": false,
    "tear_where": {
     "Hips": 1,
@@ -8813,7 +8840,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00086,
+    "lod0": 0.0007,
     "lod2": 0.0
    }
   },
@@ -8834,8 +8861,8 @@
    "feet_max_m": 0.0,
    "planted_slide_mps": 0.012,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00064,
-   "tear_p99": 1.694,
+   "tear_share": 0.00058,
+   "tear_p99": 1.657,
    "tears": false,
    "tear_where": {
     "Hips": 2
@@ -8905,7 +8932,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00064,
+    "lod0": 0.00058,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -8927,14 +8954,15 @@
    "feet_max_m": 0.044,
    "planted_slide_mps": 0.067,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00228,
-   "tear_p99": 1.783,
+   "tear_share": 0.00226,
+   "tear_p99": 1.752,
    "tears": false,
    "tear_where": {
     "Hips": 4,
     "Spine": 10,
     "Spine2": 10,
-    "Head": 1
+    "Head": 1,
+    "LeftHand": 7
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
@@ -9001,7 +9029,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00115,
+    "lod0": 0.00108,
     "lod2": 0.0
    }
   },
@@ -9022,14 +9050,15 @@
    "feet_max_m": 0.05,
    "planted_slide_mps": 0.104,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00228,
-   "tear_p99": 1.783,
+   "tear_share": 0.00226,
+   "tear_p99": 1.752,
    "tears": false,
    "tear_where": {
     "Hips": 4,
     "Spine": 10,
     "Spine2": 10,
-    "Head": 1
+    "Head": 1,
+    "LeftHand": 7
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
@@ -9096,7 +9125,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00115,
+    "lod0": 0.00108,
     "lod2": 0.0
    }
   },
@@ -9117,11 +9146,12 @@
    "feet_max_m": 0.045,
    "planted_slide_mps": 0.0,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00057,
-   "tear_p99": 1.571,
+   "tear_share": 0.00058,
+   "tear_p99": 1.568,
    "tears": false,
    "tear_where": {
-    "Hips": 2
+    "Hips": 2,
+    "LeftHand": 6
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
@@ -9188,7 +9218,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00057,
+    "lod0": 0.00058,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -9210,8 +9240,8 @@
    "feet_max_m": 0.0,
    "planted_slide_mps": 0.036,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00064,
-   "tear_p99": 1.63,
+   "tear_share": 0.00058,
+   "tear_p99": 1.593,
    "tears": false,
    "tear_where": {
     "Hips": 2
@@ -9281,7 +9311,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00064,
+    "lod0": 0.00058,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -9304,7 +9334,7 @@
    "planted_slide_mps": 0.896,
    "ground_speed_mps": 0.0,
    "tear_share": 0.0,
-   "tear_p99": 1.351,
+   "tear_p99": 1.302,
    "tears": false,
    "tear_where": {},
    "tear_share_chains_rigid": null,
@@ -9393,8 +9423,8 @@
    "feet_max_m": 0.0,
    "planted_slide_mps": 1.057,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.0,
-   "tear_p99": 1.369,
+   "tear_share": 6e-05,
+   "tear_p99": 1.362,
    "tears": false,
    "tear_where": {},
    "tear_share_chains_rigid": null,
@@ -9462,9 +9492,10 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.0,
+    "lod0": 6e-05,
     "lod2": 0.0
-   }
+   },
+   "tear_worst_lod": "lod0"
   },
   "R_Idle": {
    "src": "compose",
@@ -9484,7 +9515,7 @@
    "planted_slide_mps": 0.0,
    "ground_speed_mps": 0.0,
    "tear_share": 0.0,
-   "tear_p99": 1.388,
+   "tear_p99": 1.382,
    "tears": false,
    "tear_where": {},
    "tear_share_chains_rigid": null,
@@ -9573,12 +9604,13 @@
    "feet_max_m": 0.073,
    "planted_slide_mps": 0.0,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00072,
-   "tear_p99": 1.522,
+   "tear_share": 0.00092,
+   "tear_p99": 1.523,
    "tears": false,
    "tear_where": {
     "Spine2": 5,
-    "Head": 2
+    "Head": 2,
+    "LeftHand": 6
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
@@ -9645,10 +9677,9 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00072,
+    "lod0": 0.0007,
     "lod2": 0.0
-   },
-   "tear_worst_lod": "lod0"
+   }
   },
   "R_Idle_staff": {
    "src": "compose",
@@ -9667,10 +9698,12 @@
    "feet_max_m": 0.073,
    "planted_slide_mps": 0.0,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00014,
-   "tear_p99": 1.447,
+   "tear_share": 0.00042,
+   "tear_p99": 1.453,
    "tears": false,
-   "tear_where": {},
+   "tear_where": {
+    "LeftHand": 6
+   },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
    "gates": {
@@ -9736,10 +9769,9 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00014,
+    "lod0": 0.00023,
     "lod2": 0.0
-   },
-   "tear_worst_lod": "lod0"
+   }
   },
   "R_Intro_Charge": {
    "src": "compose",
@@ -9758,8 +9790,8 @@
    "feet_max_m": 0.037,
    "planted_slide_mps": 0.0,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00093,
-   "tear_p99": 1.461,
+   "tear_share": 0.00076,
+   "tear_p99": 1.436,
    "tears": false,
    "tear_where": {
     "Spine2": 4,
@@ -9830,7 +9862,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00093,
+    "lod0": 0.00076,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -9852,8 +9884,8 @@
    "feet_max_m": -0.005,
    "planted_slide_mps": 0.514,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00274,
-   "tear_p99": 1.876,
+   "tear_share": 0.00216,
+   "tear_p99": 1.782,
    "tears": false,
    "tear_where": {
     "Hips": 2,
@@ -9927,9 +9959,10 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00265,
+    "lod0": 0.00216,
     "lod2": 0.0
-   }
+   },
+   "tear_worst_lod": "lod0"
   },
   "R_Intro_Open": {
    "src": "compose",
@@ -9948,11 +9981,12 @@
    "feet_max_m": 0.075,
    "planted_slide_mps": 0.0,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00027,
-   "tear_p99": 1.492,
+   "tear_share": 0.00035,
+   "tear_p99": 1.475,
    "tears": false,
    "tear_where": {
-    "Spine2": 3
+    "Spine2": 3,
+    "LeftHand": 2
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
@@ -10019,7 +10053,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00025,
+    "lod0": 0.00026,
     "lod2": 0.0
    }
   },
@@ -10040,10 +10074,12 @@
    "feet_max_m": 0.073,
    "planted_slide_mps": 0.0,
    "ground_speed_mps": 0.0,
-   "tear_share": 7e-05,
-   "tear_p99": 1.431,
+   "tear_share": 0.00042,
+   "tear_p99": 1.439,
    "tears": false,
-   "tear_where": {},
+   "tear_where": {
+    "LeftHand": 6
+   },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
    "gates": {
@@ -10109,10 +10145,9 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 7e-05,
+    "lod0": 0.00018,
     "lod2": 0.0
-   },
-   "tear_worst_lod": "lod0"
+   }
   },
   "R_Intro_Ready": {
    "src": "compose",
@@ -10131,8 +10166,8 @@
    "feet_max_m": 0.029,
    "planted_slide_mps": 0.019,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00014,
-   "tear_p99": 1.515,
+   "tear_share": 0.00012,
+   "tear_p99": 1.469,
    "tears": false,
    "tear_where": {},
    "tear_share_chains_rigid": null,
@@ -10200,7 +10235,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00014,
+    "lod0": 0.00012,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -10222,8 +10257,8 @@
    "feet_max_m": 0.073,
    "planted_slide_mps": 0.0,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.0005,
-   "tear_p99": 1.484,
+   "tear_share": 0.00041,
+   "tear_p99": 1.458,
    "tears": false,
    "tear_where": {
     "Spine2": 4
@@ -10293,7 +10328,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.0005,
+    "lod0": 0.00041,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -10315,8 +10350,8 @@
    "feet_max_m": 0.078,
    "planted_slide_mps": 2.768,
    "ground_speed_mps": 2.569,
-   "tear_share": 0.00172,
-   "tear_p99": 1.739,
+   "tear_share": 0.0014,
+   "tear_p99": 1.665,
    "tears": false,
    "tear_where": {
     "Spine2": 16,
@@ -10388,7 +10423,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00172,
+    "lod0": 0.0014,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -10410,11 +10445,12 @@
    "feet_max_m": 0.249,
    "planted_slide_mps": 4.321,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00072,
-   "tear_p99": 1.622,
+   "tear_share": 0.00082,
+   "tear_p99": 1.614,
    "tears": false,
    "tear_where": {
-    "Spine2": 4
+    "Spine2": 4,
+    "LeftHand": 6
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
@@ -10481,7 +10517,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00072,
+    "lod0": 0.00082,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -10503,8 +10539,8 @@
    "feet_max_m": -0.0,
    "planted_slide_mps": 3.059,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00057,
-   "tear_p99": 1.569,
+   "tear_share": 0.00047,
+   "tear_p99": 1.55,
    "tears": false,
    "tear_where": {},
    "tear_share_chains_rigid": null,
@@ -10572,7 +10608,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00057,
+    "lod0": 0.00047,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -10594,11 +10630,12 @@
    "feet_max_m": 0.249,
    "planted_slide_mps": 2.74,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00072,
-   "tear_p99": 1.501,
+   "tear_share": 0.00082,
+   "tear_p99": 1.487,
    "tears": false,
    "tear_where": {
-    "Spine2": 4
+    "Spine2": 4,
+    "LeftHand": 6
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
@@ -10665,7 +10702,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00072,
+    "lod0": 0.00082,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -10687,8 +10724,8 @@
    "feet_max_m": 0.028,
    "planted_slide_mps": 0.259,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00025,
-   "tear_p99": 1.561,
+   "tear_share": 0.0002,
+   "tear_p99": 1.5,
    "tears": false,
    "tear_where": {
     "LeftArm": 1,
@@ -10763,7 +10800,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00025,
+    "lod0": 0.0002,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -10785,11 +10822,11 @@
    "feet_max_m": 0.089,
    "planted_slide_mps": 0.0,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00036,
-   "tear_p99": 1.534,
+   "tear_share": 0.00042,
+   "tear_p99": 1.521,
    "tears": false,
    "tear_where": {
-    "Hips": 2
+    "LeftHand": 6
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
@@ -10860,10 +10897,9 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00036,
+    "lod0": 0.00041,
     "lod2": 0.0
-   },
-   "tear_worst_lod": "lod0"
+   }
   },
   "R_Parry_s": {
    "src": "compose",
@@ -10882,8 +10918,8 @@
    "feet_max_m": 0.028,
    "planted_slide_mps": 0.859,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00018,
-   "tear_p99": 1.443,
+   "tear_share": 0.00015,
+   "tear_p99": 1.401,
    "tears": false,
    "tear_where": {
     "LeftArm": 1,
@@ -10958,9 +10994,10 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00018,
+    "lod0": 0.00015,
     "lod2": 0.0
-   }
+   },
+   "tear_worst_lod": "lod0"
   },
   "R_Rain": {
    "src": "compose",
@@ -10979,14 +11016,15 @@
    "feet_max_m": 0.087,
    "planted_slide_mps": 0.0,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.0011,
-   "tear_p99": 1.525,
+   "tear_share": 0.00134,
+   "tear_p99": 1.535,
    "tears": false,
    "tear_where": {
     "Hips": 1,
     "Spine": 3,
     "Spine2": 6,
-    "LeftArm": 2
+    "LeftArm": 2,
+    "LeftHand": 7
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
@@ -11053,7 +11091,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00039,
+    "lod0": 0.00044,
     "lod2": 0.0
    }
   },
@@ -11074,14 +11112,15 @@
    "feet_max_m": 0.08,
    "planted_slide_mps": 0.0,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.0011,
-   "tear_p99": 1.521,
+   "tear_share": 0.00134,
+   "tear_p99": 1.526,
    "tears": false,
    "tear_where": {
     "Hips": 1,
     "Spine": 3,
     "Spine2": 6,
-    "LeftArm": 2
+    "LeftArm": 2,
+    "LeftHand": 7
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
@@ -11148,7 +11187,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00036,
+    "lod0": 0.00041,
     "lod2": 0.0
    }
   },
@@ -11169,13 +11208,14 @@
    "feet_max_m": 0.086,
    "planted_slide_mps": 0.0,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00247,
-   "tear_p99": 1.666,
+   "tear_share": 0.00248,
+   "tear_p99": 1.675,
    "tears": false,
    "tear_where": {
     "Spine2": 18,
     "Head": 3,
     "LeftArm": 4,
+    "LeftHand": 8,
     "LeftFoot": 2
    },
    "tear_share_chains_rigid": null,
@@ -11243,8 +11283,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00201,
-    "lod2": 0.0
+    "lod0": 0.00193,
+    "lod2": 0.00043
    }
   },
   "R_Rally_c": {
@@ -11264,11 +11304,12 @@
    "feet_max_m": 0.073,
    "planted_slide_mps": 0.0,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00082,
-   "tear_p99": 1.512,
+   "tear_share": 0.00113,
+   "tear_p99": 1.541,
    "tears": false,
    "tear_where": {
     "Spine2": 6,
+    "LeftHand": 8,
     "LeftFoot": 2
    },
    "tear_share_chains_rigid": null,
@@ -11336,10 +11377,9 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00082,
-    "lod2": 0.0
-   },
-   "tear_worst_lod": "lod0"
+    "lod0": 0.00096,
+    "lod2": 0.00043
+   }
   },
   "R_Rally_c2": {
    "src": "compose",
@@ -11358,11 +11398,12 @@
    "feet_max_m": 0.073,
    "planted_slide_mps": 0.0,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00082,
-   "tear_p99": 1.512,
+   "tear_share": 0.00113,
+   "tear_p99": 1.536,
    "tears": false,
    "tear_where": {
     "Spine2": 6,
+    "LeftHand": 8,
     "LeftFoot": 2
    },
    "tear_share_chains_rigid": null,
@@ -11430,10 +11471,9 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00082,
-    "lod2": 0.0
-   },
-   "tear_worst_lod": "lod0"
+    "lod0": 0.00096,
+    "lod2": 0.00043
+   }
   },
   "R_Rally_s": {
    "src": "compose",
@@ -11452,13 +11492,14 @@
    "feet_max_m": 0.073,
    "planted_slide_mps": 0.0,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00228,
-   "tear_p99": 1.645,
+   "tear_share": 0.00234,
+   "tear_p99": 1.659,
    "tears": false,
    "tear_where": {
     "Spine2": 17,
     "Head": 3,
     "LeftArm": 3,
+    "LeftHand": 8,
     "LeftFoot": 2
    },
    "tear_share_chains_rigid": null,
@@ -11526,8 +11567,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00193,
-    "lod2": 0.0
+    "lod0": 0.00187,
+    "lod2": 0.00043
    }
   },
   "R_Rally_v45": {
@@ -11547,12 +11588,13 @@
    "feet_max_m": 0.073,
    "planted_slide_mps": 0.0,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00119,
-   "tear_p99": 1.597,
+   "tear_share": 0.00149,
+   "tear_p99": 1.618,
    "tears": false,
    "tear_where": {
     "Spine2": 10,
     "Head": 1,
+    "LeftHand": 8,
     "LeftFoot": 2
    },
    "tear_share_chains_rigid": null,
@@ -11620,8 +11662,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00115,
-    "lod2": 0.0
+    "lod0": 0.00123,
+    "lod2": 0.00043
    }
   },
   "R_Shield": {
@@ -11641,8 +11683,8 @@
    "feet_max_m": 0.06,
    "planted_slide_mps": 0.059,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00168,
-   "tear_p99": 1.768,
+   "tear_share": 0.00143,
+   "tear_p99": 1.729,
    "tears": false,
    "tear_where": {
     "Hips": 2,
@@ -11715,7 +11757,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00168,
+    "lod0": 0.00143,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -11737,12 +11779,13 @@
    "feet_max_m": 0.073,
    "planted_slide_mps": 0.0,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00104,
-   "tear_p99": 1.644,
+   "tear_share": 0.00099,
+   "tear_p99": 1.631,
    "tears": false,
    "tear_where": {
     "Hips": 2,
-    "Spine2": 6
+    "Spine2": 6,
+    "LeftHand": 6
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
@@ -11809,10 +11852,9 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00104,
+    "lod0": 0.00096,
     "lod2": 0.0
-   },
-   "tear_worst_lod": "lod0"
+   }
   },
   "R_Shield_k2": {
    "src": "compose",
@@ -11831,12 +11873,13 @@
    "feet_max_m": 0.073,
    "planted_slide_mps": 0.0,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00097,
-   "tear_p99": 1.62,
+   "tear_share": 0.0009,
+   "tear_p99": 1.609,
    "tears": false,
    "tear_where": {
     "Hips": 2,
-    "Spine2": 2
+    "Spine2": 2,
+    "LeftHand": 6
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
@@ -11903,7 +11946,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00097,
+    "lod0": 0.0009,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -11925,8 +11968,8 @@
    "feet_max_m": 0.078,
    "planted_slide_mps": 0.0,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00168,
-   "tear_p99": 1.712,
+   "tear_share": 0.00143,
+   "tear_p99": 1.653,
    "tears": false,
    "tear_where": {
     "Hips": 2,
@@ -11999,7 +12042,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00168,
+    "lod0": 0.00143,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -12021,8 +12064,8 @@
    "feet_max_m": 0.037,
    "planted_slide_mps": 0.0,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.001,
-   "tear_p99": 1.522,
+   "tear_share": 0.00082,
+   "tear_p99": 1.463,
    "tears": false,
    "tear_where": {
     "Spine2": 7,
@@ -12098,7 +12141,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.001,
+    "lod0": 0.00082,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -12120,8 +12163,8 @@
    "feet_max_m": 0.067,
    "planted_slide_mps": 0.0,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.0021,
-   "tear_p99": 1.646,
+   "tear_share": 0.00163,
+   "tear_p99": 1.589,
    "tears": false,
    "tear_where": {
     "Spine": 2,
@@ -12198,8 +12241,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00129,
-    "lod2": 0.00036
+    "lod0": 0.00111,
+    "lod2": 0.00022
    }
   },
   "R_Shoot_k": {
@@ -12219,8 +12262,8 @@
    "feet_max_m": 0.073,
    "planted_slide_mps": 0.0,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.0011,
-   "tear_p99": 1.503,
+   "tear_share": 0.00085,
+   "tear_p99": 1.49,
    "tears": false,
    "tear_where": {
     "Spine2": 9,
@@ -12296,7 +12339,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00093,
+    "lod0": 0.00076,
     "lod2": 0.0
    }
   },
@@ -12317,8 +12360,8 @@
    "feet_max_m": -0.0,
    "planted_slide_mps": 0.097,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00119,
-   "tear_p99": 1.514,
+   "tear_share": 0.00092,
+   "tear_p99": 1.49,
    "tears": false,
    "tear_where": {
     "Spine2": 7,
@@ -12394,7 +12437,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00104,
+    "lod0": 0.00085,
     "lod2": 0.0
    }
   },
@@ -12415,8 +12458,8 @@
    "feet_max_m": 0.037,
    "planted_slide_mps": 0.0,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.001,
-   "tear_p99": 1.476,
+   "tear_share": 0.00082,
+   "tear_p99": 1.427,
    "tears": false,
    "tear_where": {
     "Spine2": 7,
@@ -12492,7 +12535,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.001,
+    "lod0": 0.00082,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -12514,15 +12557,16 @@
    "feet_max_m": 0.066,
    "planted_slide_mps": 1.778,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00265,
-   "tear_p99": 1.801,
+   "tear_share": 0.00255,
+   "tear_p99": 1.809,
    "tears": false,
    "tear_where": {
     "Hips": 2,
     "Spine": 2,
     "Spine2": 19,
     "Head": 3,
-    "LeftArm": 3
+    "LeftArm": 3,
+    "LeftHand": 7
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
@@ -12593,8 +12637,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00222,
-    "lod2": 0.00036
+    "lod0": 0.00207,
+    "lod2": 0.00022
    }
   },
   "R_Split_k": {
@@ -12614,15 +12658,16 @@
    "feet_max_m": 0.09,
    "planted_slide_mps": 1.432,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00247,
-   "tear_p99": 1.783,
+   "tear_share": 0.00234,
+   "tear_p99": 1.749,
    "tears": false,
    "tear_where": {
     "Hips": 5,
     "Spine": 1,
     "Spine2": 15,
     "Head": 3,
-    "LeftArm": 3
+    "LeftArm": 3,
+    "LeftHand": 6
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
@@ -12693,8 +12738,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00186,
-    "lod2": 0.00036
+    "lod0": 0.00169,
+    "lod2": 0.00022
    }
   },
   "R_Split_k2": {
@@ -12714,15 +12759,16 @@
    "feet_max_m": 0.082,
    "planted_slide_mps": 0.0,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00247,
-   "tear_p99": 1.757,
+   "tear_share": 0.00234,
+   "tear_p99": 1.715,
    "tears": false,
    "tear_where": {
     "Hips": 5,
     "Spine": 1,
     "Spine2": 15,
     "Head": 3,
-    "LeftArm": 3
+    "LeftArm": 3,
+    "LeftHand": 6
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
@@ -12793,8 +12839,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00179,
-    "lod2": 0.00036
+    "lod0": 0.00163,
+    "lod2": 0.00022
    }
   },
   "R_Split_s": {
@@ -12814,14 +12860,15 @@
    "feet_max_m": 0.072,
    "planted_slide_mps": 1.754,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00247,
-   "tear_p99": 1.796,
+   "tear_share": 0.00241,
+   "tear_p99": 1.777,
    "tears": false,
    "tear_where": {
     "Spine": 2,
     "Spine2": 19,
     "Head": 3,
-    "LeftArm": 3
+    "LeftArm": 3,
+    "LeftHand": 7
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
@@ -12892,8 +12939,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00222,
-    "lod2": 0.00036
+    "lod0": 0.00207,
+    "lod2": 0.00022
    }
   },
   "R_Sprint": {
@@ -12913,8 +12960,8 @@
    "feet_max_m": 0.229,
    "planted_slide_mps": 5.953,
    "ground_speed_mps": 5.682,
-   "tear_share": 0.0011,
-   "tear_p99": 1.772,
+   "tear_share": 0.00085,
+   "tear_p99": 1.693,
    "tears": false,
    "tear_where": {
     "Hips": 11,
@@ -12985,7 +13032,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00082,
+    "lod0": 0.00067,
     "lod2": 0.0
    }
   },
@@ -13006,8 +13053,8 @@
    "feet_max_m": 0.211,
    "planted_slide_mps": 6.086,
    "ground_speed_mps": 5.013,
-   "tear_share": 0.00064,
-   "tear_p99": 1.687,
+   "tear_share": 0.00053,
+   "tear_p99": 1.621,
    "tears": false,
    "tear_where": {
     "LeftFoot": 2
@@ -13077,7 +13124,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00064,
+    "lod0": 0.00053,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -13099,10 +13146,11 @@
    "feet_max_m": 0.557,
    "planted_slide_mps": 5.193,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00043,
-   "tear_p99": 1.557,
+   "tear_share": 0.00041,
+   "tear_p99": 1.539,
    "tears": false,
    "tear_where": {
+    "LeftHand": 2,
     "LeftFoot": 2
    },
    "tear_share_chains_rigid": null,
@@ -13170,7 +13218,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00043,
+    "lod0": 0.00041,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -13192,8 +13240,8 @@
    "feet_max_m": 0.438,
    "planted_slide_mps": 2.374,
    "ground_speed_mps": 2.109,
-   "tear_share": 0.00111,
-   "tear_p99": 1.639,
+   "tear_share": 0.00096,
+   "tear_p99": 1.586,
    "tears": false,
    "tear_where": {
     "Spine2": 9
@@ -13263,7 +13311,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00111,
+    "lod0": 0.00096,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -13285,11 +13333,12 @@
    "feet_max_m": -0.0,
    "planted_slide_mps": 0.827,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00027,
-   "tear_p99": 1.491,
+   "tear_share": 0.00035,
+   "tear_p99": 1.47,
    "tears": false,
    "tear_where": {
-    "Spine2": 3
+    "Spine2": 3,
+    "LeftHand": 2
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
@@ -13356,7 +13405,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00025,
+    "lod0": 0.00026,
     "lod2": 0.0
    }
   },
@@ -13377,14 +13426,15 @@
    "feet_max_m": -0.0,
    "planted_slide_mps": 0.645,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00073,
-   "tear_p99": 1.51,
+   "tear_share": 0.00106,
+   "tear_p99": 1.512,
    "tears": false,
    "tear_where": {
     "Hips": 1,
     "Spine": 1,
     "Spine2": 4,
-    "LeftArm": 2
+    "LeftArm": 2,
+    "LeftHand": 7
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
@@ -13451,7 +13501,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00043,
+    "lod0": 0.00047,
     "lod2": 0.0
    }
   },
@@ -13472,10 +13522,12 @@
    "feet_max_m": -0.0,
    "planted_slide_mps": 1.451,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00014,
-   "tear_p99": 1.402,
+   "tear_share": 0.00042,
+   "tear_p99": 1.418,
    "tears": false,
-   "tear_where": {},
+   "tear_where": {
+    "LeftHand": 6
+   },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
    "gates": {
@@ -13545,10 +13597,9 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00014,
+    "lod0": 0.00023,
     "lod2": 0.0
-   },
-   "tear_worst_lod": "lod0"
+   }
   },
   "Staff_Hit": {
    "src": "Hit_A",
@@ -13567,8 +13618,8 @@
    "feet_max_m": 0.0,
    "planted_slide_mps": 1.057,
    "ground_speed_mps": 0.0,
-   "tear_share": 7e-05,
-   "tear_p99": 1.381,
+   "tear_share": 0.00012,
+   "tear_p99": 1.375,
    "tears": false,
    "tear_where": {},
    "tear_share_chains_rigid": null,
@@ -13636,7 +13687,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 7e-05,
+    "lod0": 0.00012,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -13658,10 +13709,12 @@
    "feet_max_m": -0.0,
    "planted_slide_mps": 0.058,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00014,
-   "tear_p99": 1.444,
+   "tear_share": 0.00042,
+   "tear_p99": 1.453,
    "tears": false,
-   "tear_where": {},
+   "tear_where": {
+    "LeftHand": 6
+   },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
    "gates": {
@@ -13727,10 +13780,9 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00014,
+    "lod0": 0.00023,
     "lod2": 0.0
-   },
-   "tear_worst_lod": "lod0"
+   }
   },
   "Staff_Jog": {
    "src": "Jog_Fwd_Loop",
@@ -13749,8 +13801,8 @@
    "feet_max_m": 0.289,
    "planted_slide_mps": 3.774,
    "ground_speed_mps": 3.565,
-   "tear_share": 0.00057,
-   "tear_p99": 1.602,
+   "tear_share": 0.00047,
+   "tear_p99": 1.559,
    "tears": false,
    "tear_where": {
     "Spine": 2,
@@ -13821,7 +13873,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00057,
+    "lod0": 0.00047,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -13843,8 +13895,8 @@
    "feet_max_m": 0.438,
    "planted_slide_mps": 2.374,
    "ground_speed_mps": 2.109,
-   "tear_share": 0.00111,
-   "tear_p99": 1.639,
+   "tear_share": 0.00096,
+   "tear_p99": 1.583,
    "tears": false,
    "tear_where": {
     "Spine2": 9
@@ -13914,7 +13966,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00111,
+    "lod0": 0.00096,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -13936,8 +13988,8 @@
    "feet_max_m": 0.211,
    "planted_slide_mps": 6.086,
    "ground_speed_mps": 5.013,
-   "tear_share": 0.0005,
-   "tear_p99": 1.647,
+   "tear_share": 0.00041,
+   "tear_p99": 1.585,
    "tears": false,
    "tear_where": {
     "LeftFoot": 2
@@ -14007,7 +14059,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.0005,
+    "lod0": 0.00041,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -14029,8 +14081,8 @@
    "feet_max_m": 0.137,
    "planted_slide_mps": 2.285,
    "ground_speed_mps": 0.757,
-   "tear_share": 0.00036,
-   "tear_p99": 1.557,
+   "tear_share": 0.00029,
+   "tear_p99": 1.506,
    "tears": false,
    "tear_where": {
     "Spine2": 3
@@ -14100,7 +14152,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00036,
+    "lod0": 0.00029,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -14122,12 +14174,13 @@
    "feet_max_m": 0.021,
    "planted_slide_mps": 4.464,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00082,
-   "tear_p99": 1.475,
+   "tear_share": 0.00079,
+   "tear_p99": 1.466,
    "tears": false,
    "tear_where": {
     "Spine2": 6,
-    "LeftArm": 1
+    "LeftArm": 1,
+    "LeftHand": 2
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
@@ -14194,7 +14247,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00082,
+    "lod0": 0.00079,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -14216,8 +14269,8 @@
    "feet_max_m": 0.0,
    "planted_slide_mps": 0.145,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00037,
-   "tear_p99": 1.519,
+   "tear_share": 0.00028,
+   "tear_p99": 1.482,
    "tears": false,
    "tear_where": {
     "Hips": 1,
@@ -14288,7 +14341,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00021,
+    "lod0": 0.00018,
     "lod2": 0.0
    }
   },
@@ -14309,8 +14362,8 @@
    "feet_max_m": 0.517,
    "planted_slide_mps": 3.845,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.0015,
-   "tear_p99": 1.809,
+   "tear_share": 0.00123,
+   "tear_p99": 1.755,
    "tears": false,
    "tear_where": {
     "Spine": 2,
@@ -14383,7 +14436,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.0015,
+    "lod0": 0.00123,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -14406,7 +14459,7 @@
    "planted_slide_mps": 0.07,
    "ground_speed_mps": 0.0,
    "tear_share": 0.0,
-   "tear_p99": 1.298,
+   "tear_p99": 1.277,
    "tears": false,
    "tear_where": {},
    "tear_share_chains_rigid": null,
@@ -14496,7 +14549,7 @@
    "planted_slide_mps": 0.004,
    "ground_speed_mps": 0.0,
    "tear_share": 0.0,
-   "tear_p99": 1.332,
+   "tear_p99": 1.3,
    "tears": false,
    "tear_where": {},
    "tear_share_chains_rigid": null,
@@ -14585,8 +14638,8 @@
    "feet_max_m": 0.289,
    "planted_slide_mps": 3.774,
    "ground_speed_mps": 3.565,
-   "tear_share": 0.00057,
-   "tear_p99": 1.599,
+   "tear_share": 0.00047,
+   "tear_p99": 1.562,
    "tears": false,
    "tear_where": {
     "Spine": 2,
@@ -14657,7 +14710,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00057,
+    "lod0": 0.00047,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -14679,8 +14732,8 @@
    "feet_max_m": 0.892,
    "planted_slide_mps": 7.622,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00265,
-   "tear_p99": 1.963,
+   "tear_share": 0.00205,
+   "tear_p99": 1.899,
    "tears": false,
    "tear_where": {
     "Hips": 12,
@@ -14753,8 +14806,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00236,
-    "lod2": 0.00072
+    "lod0": 0.00198,
+    "lod2": 0.00043
    }
   },
   "UAL_Spell_Shoot": {
@@ -14774,8 +14827,8 @@
    "feet_max_m": -0.001,
    "planted_slide_mps": 0.01,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00086,
-   "tear_p99": 1.425,
+   "tear_share": 0.0007,
+   "tear_p99": 1.393,
    "tears": false,
    "tear_where": {
     "Spine2": 4,
@@ -14846,7 +14899,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00086,
+    "lod0": 0.0007,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -14868,8 +14921,8 @@
    "feet_max_m": 0.211,
    "planted_slide_mps": 6.086,
    "ground_speed_mps": 5.013,
-   "tear_share": 0.0005,
-   "tear_p99": 1.645,
+   "tear_share": 0.00041,
+   "tear_p99": 1.584,
    "tears": false,
    "tear_where": {
     "LeftFoot": 2
@@ -14939,7 +14992,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.0005,
+    "lod0": 0.00041,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -14961,8 +15014,8 @@
    "feet_max_m": 0.004,
    "planted_slide_mps": 6.801,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.0021,
-   "tear_p99": 1.838,
+   "tear_share": 0.00163,
+   "tear_p99": 1.76,
    "tears": false,
    "tear_where": {
     "Spine": 8,
@@ -15040,8 +15093,8 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.0019,
-    "lod2": 0.00072
+    "lod0": 0.00155,
+    "lod2": 0.00043
    }
   },
   "UAL_Sword_Idle": {
@@ -15061,8 +15114,8 @@
    "feet_max_m": -0.001,
    "planted_slide_mps": 0.005,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00021,
-   "tear_p99": 1.521,
+   "tear_share": 0.00018,
+   "tear_p99": 1.481,
    "tears": false,
    "tear_where": {
     "Spine": 2
@@ -15132,7 +15185,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00021,
+    "lod0": 0.00018,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -15154,8 +15207,8 @@
    "feet_max_m": 0.014,
    "planted_slide_mps": 2.623,
    "ground_speed_mps": 0.698,
-   "tear_share": 0.00018,
-   "tear_p99": 1.407,
+   "tear_share": 0.00014,
+   "tear_p99": 1.374,
    "tears": false,
    "tear_where": {
     "LeftFoot": 2
@@ -15225,7 +15278,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 7e-05,
+    "lod0": 6e-05,
     "lod2": 0.0
    }
   },
@@ -15246,8 +15299,8 @@
    "feet_max_m": 0.137,
    "planted_slide_mps": 2.286,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00068,
-   "tear_p99": 1.609,
+   "tear_share": 0.00061,
+   "tear_p99": 1.577,
    "tears": false,
    "tear_where": {
     "Hips": 2,
@@ -15319,7 +15372,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00068,
+    "lod0": 0.00061,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -15341,13 +15394,12 @@
    "feet_max_m": 0.137,
    "planted_slide_mps": 2.353,
    "ground_speed_mps": 0.825,
-   "tear_share": 0.00082,
-   "tear_p99": 1.613,
+   "tear_share": 0.00073,
+   "tear_p99": 1.577,
    "tears": false,
    "tear_where": {
-    "Hips": 1,
-    "Spine": 1,
-    "Spine2": 3
+    "Spine2": 5,
+    "LeftHand": 4
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
@@ -15414,7 +15466,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00082,
+    "lod0": 0.00073,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -15436,8 +15488,8 @@
    "feet_max_m": 0.137,
    "planted_slide_mps": 2.285,
    "ground_speed_mps": 0.757,
-   "tear_share": 0.00029,
-   "tear_p99": 1.54,
+   "tear_share": 0.00023,
+   "tear_p99": 1.499,
    "tears": false,
    "tear_where": {
     "Spine2": 3
@@ -15507,7 +15559,7 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00029,
+    "lod0": 0.00023,
     "lod2": 0.0
    },
    "tear_worst_lod": "lod0"
@@ -15529,12 +15581,13 @@
    "feet_max_m": -0.0,
    "planted_slide_mps": 1.102,
    "ground_speed_mps": 0.0,
-   "tear_share": 0.00122,
-   "tear_p99": 1.561,
+   "tear_share": 0.00134,
+   "tear_p99": 1.584,
    "tears": false,
    "tear_where": {
     "Spine2": 10,
-    "LeftArm": 1
+    "LeftArm": 1,
+    "LeftHand": 8
    },
    "tear_share_chains_rigid": null,
    "lhand_ik_frames": 0,
@@ -15605,10 +15658,9 @@
     }
    },
    "tear_by_lod": {
-    "lod0": 0.00122,
+    "lod0": 0.00123,
     "lod2": 0.0
-   },
-   "tear_worst_lod": "lod0"
+   }
   }
  },
  "grips": {
