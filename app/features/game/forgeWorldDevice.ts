@@ -268,15 +268,19 @@ const ready = new Map<string, string>();
  * hashed once, when it lands (a marker named after its digest says it was
  * checked). A download that does not match is deleted and never shown.
  */
-export function ensureFile(entry: Pick<ForgeEntry, "id" | "version">, f: ForgeFileRef): Promise<string | null> {
-  const key = `${entry.id}@${entry.version}/${f.file}`;
+export function ensureFile(entry: Pick<ForgeEntry, "id" | "version">, f: ForgeFileRef, sub?: string): Promise<string | null> {
+  // build 28: `sub` is a fight kit's folder (fightKit.ts kitFolder) under the version's, so its
+  // anim.glb / anim.json / lodN.glb never meet the published files of the same version.
+  const key = `${entry.id}@${entry.version}/${sub ? `${sub}/` : ""}${f.file}`;
   const known = ready.get(key);
   if (known) return Promise.resolve(known);
   const running = inFlight.get(key);
   if (running) return running;
   const work = (async (): Promise<string | null> => {
     try {
-      const dir = new Directory(root(), forgeComponent(entry.id), String(entry.version));
+      const dir = sub
+        ? new Directory(root(), forgeComponent(entry.id), String(entry.version), forgeComponent(sub))
+        : new Directory(root(), forgeComponent(entry.id), String(entry.version));
       const dest = new File(dir, forgeComponent(f.file));
       const marker = new File(dir, `${forgeComponent(f.file)}.${(f.sha256 ?? "nosha").slice(0, 16)}.ok`);
       if (dest.exists && marker.exists && cachedSizeOk(f.bytes, dest.size)) {

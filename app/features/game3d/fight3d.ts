@@ -221,6 +221,14 @@ export type Fight3DConfig = {
   hero_glb: string;
   ally_glb: string;
   enemy_glb: string;
+  /**
+   * build 28: a fighter's fight kit (fightKit.ts), the path of its anim.json with anim.glb beside it.
+   * Godot registers the clip library at run time (anim_library.gd register_kit) and checks it against
+   * the model's skeleton; a pack without that change ignores the keys. Presentation only.
+   */
+  hero_anim?: string;
+  ally_anim?: string;
+  enemy_anim?: string;
   hero_name: string;
   ally_name: string;
   enemy_name: string;
@@ -324,9 +332,9 @@ export function hudLayout(safeTop: number, width: number, height: number): { hud
 }
 
 export function buildFightConfig(input: {
-  hero: { path: string | null; name: string | null };
-  ally: { path: string | null; name: string | null };
-  enemy: { path: string | null; name: string | null };
+  hero: { path: string | null; name: string | null; anim?: string | null };
+  ally: { path: string | null; name: string | null; anim?: string | null };
+  enemy: { path: string | null; name: string | null; anim?: string | null };
   pointName: string;
   mode: Fight3DMode;
   seed: number;
@@ -368,6 +376,11 @@ export function buildFightConfig(input: {
     autoplay: input.autoplay,
     haptics: input.haptics !== false,
   };
+  for (const role of ["hero", "ally", "enemy"] as const) {
+    // a library only with the model it was made for
+    const anim = localPath(input[role].anim);
+    if (anim && config[`${role}_glb`]) config[`${role}_anim`] = anim;
+  }
   if (input.tilesUrl) Object.assign(config, tilesFields(input.tilesUrl));
   if (input.reduceMotion) config.reduce_motion = true;
   if (input.sound === false) config.sound = false;

@@ -623,6 +623,9 @@ func _ready() -> void:
 		p = _tier_lod(p, role)
 		# realism: a clip library that came with a downloaded model (anim.glb + anim.json beside it)
 		var side_key: String = AnimLib.register_sidecar(p)
+		# build 28: the fight kit the app downloaded with this character (config "<role>_anim")
+		if side_key == "" and p != "" and not p.begins_with("res://") and str(cfg.get(role + "_anim", "")) != "":
+			side_key = AnimLib.register_kit(LoaderScript.clean_path(str(cfg[role + "_anim"])))
 		if side_key != "":
 			cfg[role + "_key"] = side_key
 			(pair[0] as FighterScript).anim_opts["key"] = side_key

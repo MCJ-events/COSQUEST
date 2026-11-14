@@ -143,7 +143,7 @@ export function starterEntry(m: AttachManifest, slug: string): ForgeEntry | null
     id: STARTER + slug, type: "weapon", name: w.name, version: 1, rarity: "common", files: [],
     thumbnail: { file: `${slug}.png`, url: `bundle:${slug}` },
     contract: 2, lods: [0, 1, 2].map((lod) => ({ lod, glb, usdz: null })), bounds_m: null, height_m: w.length_m,
-    pivot: "grip", animations: [], skeleton: null, updated_at: null, rigged: false,
+    pivot: "grip", animations: [], skeleton: null, updated_at: null, rigged: false, fight: null,
     gameplay: { kind: w.kind },
   };
 }

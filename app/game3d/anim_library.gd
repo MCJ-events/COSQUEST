@@ -60,33 +60,82 @@ static func register_sidecar(model_path: String) -> String:
 	for pair: Array in [[dir.path_join("anim.json"), dir.path_join("anim.glb")], [dir.path_join(stem + ".anim.json"), dir.path_join(stem + ".anim.glb")]]:
 		if not (FileAccess.file_exists(str(pair[0])) and FileAccess.file_exists(str(pair[1]))):
 			continue
-		var j: Variant = JSON.parse_string(FileAccess.get_file_as_string(str(pair[0])))
-		if not (j is Dictionary) or not ((j as Dictionary).get("character") is Dictionary) or str((j as Dictionary).get("key", "")) == "":
-			push_warning("anim sidecar %s: not a library description" % str(pair[0]))
-			return ""
-		var key: String = str(j["key"])
-		var d: Dictionary = data()
-		if not d.has("characters"):
-			d["characters"] = {}
-		var chars: Dictionary = d["characters"]
-		if chars.has(key) and str((chars[key] as Dictionary).get("library", "")) == str(pair[1]):
-			return key
-		var ch: Dictionary = (j["character"] as Dictionary).duplicate(true)
-		ch["library"] = str(pair[1])
-		ch["status"] = "clips"
-		ch["sidecar"] = true
-		chars[key] = ch
-		if not d.has("clips"):
-			d["clips"] = {}
-		var clips: Dictionary = d["clips"]
-		for c: String in (j.get("clips", {}) as Dictionary):
-			if not clips.has(c):
-				clips[c] = j["clips"][c]
-		if j.get("clip_grips") is Dictionary:
-			sidecar_grips[key] = j["clip_grips"]
-		print("CQ anim_sidecar key=%s library=%s" % [key, str(pair[1])])
-		return key
+		return _register(str(pair[0]), str(pair[1]), "sidecar")
 	return ""
+
+
+## build 28: a Forge character's fight kit, downloaded with the character (the app's
+## features/game3d/fightKit.ts; config "<role>_anim" = the kit's anim.json, anim.glb beside it).
+## Same files and checks as a sidecar, plus: version 1 only, and the library is bound only to a
+## skeleton that matches its fingerprint (key_for), so a wrong or broken kit leaves the fighter
+## exactly as it was without one. Returns the key, or "" (and why on the log).
+static func register_kit(json_path: String) -> String:
+	if json_path == "" or json_path.begins_with("res://") or not json_path.ends_with(".json"):
+		return ""
+	var glb_path: String = json_path.get_base_dir().path_join("anim.glb")
+	if not (FileAccess.file_exists(json_path) and FileAccess.file_exists(glb_path)):
+		print("CQ anim_kit_reject path=%s why=missing files" % json_path)
+		return ""
+	return _register(json_path, glb_path, "kit")
+
+
+## The checks every run-time library passes before it joins the clip data; "" when it fails.
+static func _register(json_path: String, glb_path: String, how: String) -> String:
+	var j: Variant = JSON.parse_string(FileAccess.get_file_as_string(json_path))
+	var why: String = ""
+	if not (j is Dictionary) or not ((j as Dictionary).get("character") is Dictionary) or str((j as Dictionary).get("key", "")) == "":
+		why = "not a library description"
+	elif how == "kit" and int((j as Dictionary).get("v", 0)) != 1:
+		why = "version %s" % str((j as Dictionary).get("v", "?"))
+	elif how == "kit" and ((((j as Dictionary)["character"] as Dictionary).get("fingerprint", {}) as Dictionary).is_empty()):
+		why = "no skeleton fingerprint"
+	if why != "":
+		push_warning("anim %s %s: %s" % [how, json_path, why])
+		print("CQ anim_%s_reject path=%s why=%s" % [how, json_path, why])
+		return ""
+	var key: String = str(j["key"])
+	var d: Dictionary = data()
+	if not d.has("characters"):
+		d["characters"] = {}
+	var chars: Dictionary = d["characters"]
+	# a downloaded library never replaces one the pck ships (same key): it takes its own
+	if chars.has(key) and not bool((chars[key] as Dictionary).get("sidecar", false)):
+		key = key + "_" + how
+	if chars.has(key) and str((chars[key] as Dictionary).get("library", "")) == glb_path:
+		return key
+	var ch: Dictionary = (j["character"] as Dictionary).duplicate(true)
+	ch["library"] = glb_path
+	ch["status"] = "clips"
+	ch["sidecar"] = true
+	ch["sidecar_how"] = how
+	chars[key] = ch
+	if not d.has("clips"):
+		d["clips"] = {}
+	var clips: Dictionary = d["clips"]
+	for c: String in (j.get("clips", {}) as Dictionary):
+		if not clips.has(c):
+			clips[c] = j["clips"][c]
+	if j.get("clip_grips") is Dictionary:
+		sidecar_grips[key] = j["clip_grips"]
+	print("CQ anim_%s key=%s library=%s" % [how, key, glb_path])
+	return key
+
+
+## build 28: true when every bone of the character's fingerprint is in `skeleton` with its rest
+## position within 2 cm (what key_for asks of a pck character it recognises).
+static func fits(skeleton: Skeleton3D, fp: Dictionary) -> bool:
+	if skeleton == null or fp.is_empty():
+		return false
+	for bone: String in fp:
+		var b: int = skeleton.find_bone(bone)
+		if b < 0:
+			return false
+		var want: Array = fp[bone]
+		if want.size() < 3:
+			return false
+		if skeleton.get_bone_global_rest(b).origin.distance_to(Vector3(want[0], want[1], want[2])) > 0.02:
+			return false
+	return true
 
 
 ## The cast key for a skeleton: the config's key when it names a character with a library,
@@ -95,6 +144,11 @@ static func register_sidecar(model_path: String) -> String:
 static func key_for(skeleton: Skeleton3D, hint: String) -> String:
 	var chars: Dictionary = data().get("characters", {})
 	if hint != "" and chars.has(hint) and str((chars[hint] as Dictionary).get("status", "")) == "clips":
+		var hc: Dictionary = chars[hint]
+		# build 28: a library that came with a download binds only to the skeleton it was made for
+		if str(hc.get("sidecar_how", "")) == "kit" and not fits(skeleton, hc.get("fingerprint", {})):
+			print("CQ anim_kit_reject key=%s why=the model's skeleton is not the library's" % hint)
+			return ""
 		return hint
 	if skeleton == null:
 		return ""
