@@ -42,8 +42,25 @@ rm -f "$out"/anim.glb "$out"/anim.json "$out"/lod?.glb "$out"/verdict.json
 [ -f "$src/lod1.glb" ] || { echo "no lod1.glb in $src" >&2; exit 2; }
 cd "$G"
 
+# Mark's farm comes first (AIMM, the live Forge; the farm gate of 14 Nov): before each heavy step wait
+# unless the 1-minute load is at most 24, nothing is being swapped (vmstat si+so under 100 pages/s over
+# 5 s) and at least 6 GB are available (8 GB before a Make-It-Animatable step). FIGHTKIT_NO_WAIT=1 skips it.
+wait_load() {
+  [ "${FIGHTKIT_NO_WAIT:-0}" = 1 ] && return 0
+  local need=${1:-6}
+  while :; do
+    local l a sw; l=$(cut -d" " -f1 /proc/loadavg)
+    a=$(awk '/MemAvailable/{print int($2/1048576)}' /proc/meminfo)
+    sw=$(vmstat 5 2 | tail -1 | awk '{print $7+$8}')
+    if awk -v l="$l" 'BEGIN{exit !(l<=24)}' && [ "$sw" -lt 100 ] && [ "$a" -ge "$need" ]; then return 0; fi
+    echo "FIGHTKIT waiting: load $l, swapping $sw pages/s, $a GB available (need $need) ($(date -u +%H:%M:%S))" >&2
+    sleep 60
+  done
+}
+
 rig_with() {   # <method> <dir>: Forge's rig stage on a copy of the published files; prints rigged or why
   local m=$1 d=$2
+  wait_load $([ "$m" = landmarks ] && echo 6 || echo 8)
   rm -rf "$d"; mkdir -p "$d"; cp "$src"/lod?.glb "$d/"
   python3 -c "import json,sys,glob,os;l=sorted(int(os.path.basename(p)[3]) for p in glob.glob(sys.argv[1]+'/lod?.glb'));json.dump({'lods':[{'lod':i,'file':'lod%d.glb'%i} for i in l]},open(sys.argv[1]+'/optimize.json','w'))" "$d"
   (cd "$RENDERER" && env PYTHONDONTWRITEBYTECODE=1 FORGE_RIG_METHOD=$m FORGE_MIA_DEVICE=cpu CUDA_VISIBLE_DEVICES= \
@@ -59,6 +76,7 @@ print('RIG', json.dumps({'rigged': r.get('rigged'), 'method': r.get('method'), '
 
 lib_on() {     # <key> <dir with rigged lods>: the library and its gate verdict (fightkit_gate.py)
   local k=$1 d=$2
+  wait_load
   HERO_CAST=$WORK/cast HERO_OUT=$WORK/sidecar ARM_DROOP=${ARM_DROOP:-0.9} bash tools/anim/add_hero.sh "$k" "$d" > "$WORK/$k.add_hero.log" 2>&1
   python3 tools/anim/fightkit_gate.py "$k" --sidecar "$WORK/sidecar/$k" --report "$WORK/$k.gate.json" > "$WORK/$k.gate.log" 2>&1
   tail -1 "$WORK/$k.gate.log"

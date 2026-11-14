@@ -42,9 +42,15 @@ def gate(key, sidecar, report):
     played = [r for r in rows if r["clip"]]
     bad = [r for r in played if not (r["tear_ok"] and r["facing_ok"] and not r["tpose"])]
     picks = (ch.get("pick", {}) or {}).get("blade", {})
+    # the worst tear among the clips this character PLAYS (ch["tear_worst"] also counts the clips the gate refused)
+    rep = json.load(open(os.path.join(HERE, "reports", key + ".json")))["clips"]
+    used = {v for sp in list((ch.get("pick") or {}).values()) + list((ch.get("pick_mocap") or {}).values())
+            + list((ch.get("pick_readable") or {}).values()) + [ch.get("pick_poses") or {}] for v in sp.values() if v}
+    used -= {r["clip"] for r in bad}
+    worst_used = max([rep[c].get("tear_share", 0) for c in used if c in rep] or [0])
     out.update({
-        "ok": True, "status": ch["status"], "tear_worst_pct": round(100 * float(ch.get("tear_worst") or 0), 3),
-        "clips_over_gate": len(ch.get("clips_over_gate") or []),
+        "ok": True, "status": ch["status"], "tear_worst_pct": round(100 * worst_used, 3),
+        "clips_played": len(used), "clips_refused_by_gate": len(ch.get("clips_over_gate") or []),
         "core": {s: picks.get(s, "") for s in CORE},
         "readable": {"picks": len(played) - len(bad), "fallbacks": len(rows) - len(played),
                      "dropped": [{"state": r["state"], "set": r["set"], "clip": r["clip"], "tear_pct": r["tear_pct"],
@@ -60,7 +66,7 @@ def gate(key, sidecar, report):
                 j["character"].get("pick_poses", {}).pop(r["state"], None)
             else:
                 pr.get(r["set"], {}).pop(r["state"], None)
-        j["gates"] = {k: out[k] for k in ("tear_worst_pct", "clips_over_gate", "readable", "worst_foot_slide_cm")}
+        j["gates"] = {k: out[k] for k in ("tear_worst_pct", "clips_played", "clips_refused_by_gate", "readable", "worst_foot_slide_cm")}
         json.dump(j, open(side, "w"), indent=1)
     else:
         out.update({"ok": False, "why": "no sidecar written"})
