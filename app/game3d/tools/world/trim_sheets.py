@@ -11,6 +11,7 @@ cornices, shopfronts, grilles, signs) is drawn procedurally here.
 """
 from __future__ import annotations
 
+import json
 import os
 
 import numpy as np
@@ -397,8 +398,8 @@ TOK = {"frame": "#F4F1EA", "portland": "#E3DACB", "door_navy": "#23395B", "door_
        "grille": "#3B3F45", "wa_concrete": "#B7B1A6", "wa_streak": "#8C857A", "tin_rust": "#A4613A", "red_brick": "#A65441"}
 
 
-def sheet_uk_brick(src):
-    s = Sheet(brick_wall(src, 1), 1)
+def sheet_uk_brick(src, wall=None, cls=None):
+    s = (cls or Sheet)(brick_wall(src, 1) if wall is None else wall, 1)
     st = TOK["portland"]
     # parapet: brick with a stone coping and a stone band
     s.paint(0, 0.0, 8, 0.14, col=st, h=3.0, bevel=0.02)
@@ -430,8 +431,8 @@ def sheet_uk_brick(src):
     return s
 
 
-def sheet_uk_stone(src):
-    s = Sheet(ashlar_wall(src, "Concrete034", 2, 0.4, 0.9, 2, 0.03, 0.45), 2)
+def sheet_uk_stone(src, wall=None, cls=None):
+    s = (cls or Sheet)(ashlar_wall(src, "Concrete034", 2, 0.4, 0.9, 2, 0.03, 0.45) if wall is None else wall, 2)
     st = ("wall", 1.0)
     # parapet: balustrade over a heavy cornice
     s.paint(0, 0.0, 8, 0.1, col=("wall", 1.05), tint="wall", h=3.0, bevel=0.02)
@@ -724,4 +725,223 @@ def make_all(src: str, out: str) -> list[dict]:
                           "size": sz, "px_per_m": d, "sources": ids,
                           "process": "wall material: stylise pass then greyed to mean 0.8; architecture drawn procedurally (own work), baked bevel light + AO"})
         print(name, "ok")
+    return creds
+
+
+# ================================================================ build 29 "real" profile (fid29-street)
+# make_world_art.py --profile real: the same architecture on the same layout (so place.gd's UVs serve both), but
+# the wall is a CC0 photo material at full strength: no stylise pass, no baked light in the albedo, the photo's own
+# normal, roughness and AO, albedo calibrated into measured ranges (Physically Based, CC0). Glass is a dark base the
+# shader reflects the sky into. Written to art/world/real/trims/ only; the low tier's art/world/trims is untouched.
+
+LIN_LO, LIN_HI = 0.04, 0.85     # non-metal linear luminance (the albedo gate)
+REAL_SRC = ""                   # make_world_art sets it: the asset dir (acg/<Id>/, ph/<id>/)
+
+
+def srgb_to_lin(a: np.ndarray) -> np.ndarray:
+    return np.where(a <= 0.04045, a / 12.92, ((a + 0.055) / 1.055) ** 2.4).astype(np.float32)
+
+
+def lin_to_srgb(a: np.ndarray) -> np.ndarray:
+    a = np.clip(a, 0.0, 1.0)
+    return np.where(a <= 0.0031308, a * 12.92, 1.055 * a ** (1 / 2.4) - 0.055).astype(np.float32)
+
+
+def lum(a_lin: np.ndarray) -> np.ndarray:
+    return a_lin[..., 0] * 0.2126 + a_lin[..., 1] * 0.7152 + a_lin[..., 2] * 0.0722
+
+
+def clamp_lum(a_srgb: np.ndarray, lo: float = LIN_LO, hi: float = LIN_HI) -> np.ndarray:
+    """Every texel's linear luminance into [lo, hi] (hue kept): the albedo gate holds by construction."""
+    al = srgb_to_lin(a_srgb)
+    L = lum(al)
+    k = np.clip(L, lo, hi) / np.maximum(L, 1e-5)
+    k = np.where(L < 1e-5, 0.0, k)
+    out = al * k[..., None]
+    out = np.where((L < 1e-5)[..., None], lo, out)
+    return lin_to_srgb(out)
+
+
+def match_lin(a_srgb: np.ndarray, target_lin, sat: float = 1.0) -> np.ndarray:
+    """Mean-match a texture's linear mean colour to `target_lin` (RGB) after scaling its chroma by `sat`."""
+    al = srgb_to_lin(a_srgb)
+    L = lum(al)[..., None]
+    al = L + (al - L) * sat
+    for _ in range(4):
+        m = al.reshape(-1, 3).mean(0)
+        al = np.clip(al * (np.asarray(target_lin, np.float32) / np.maximum(m, 1e-4)), 0, 1)
+    return lin_to_srgb(al)
+
+
+def real_map(kind: str, ident: str) -> np.ndarray | None:
+    """A source map from the street asset dir: ambientCG acg/<Id>/<Id>_1K-JPG_<Kind>.jpg or Poly Haven ph/<id>/."""
+    import glob as _g
+    ph = {"Color": ["diff", "diffuse"], "NormalGL": ["nor_gl"], "Roughness": ["rough"], "AmbientOcclusion": ["ao"],
+          "Displacement": ["disp", "displacement"], "Opacity": ["opacity"]}
+    f = sorted(_g.glob(os.path.join(REAL_SRC, "acg", ident, f"*_{kind}.jpg")))
+    if not f:
+        for k in ph.get(kind, []):
+            f = sorted(_g.glob(os.path.join(REAL_SRC, "ph", ident, f"{ident}_{k}_*.jpg")))
+            if f:
+                break
+    if not f:
+        return None
+    return np.asarray(Image.open(f[0]).convert("RGB"), np.float32) / 255.0
+
+
+def _tile_map(a: np.ndarray, tw: int, th: int) -> np.ndarray:
+    return S.tile_to(S.resize_wrap(a, tw, th), W, H)
+
+
+def _renorm(n01: np.ndarray) -> np.ndarray:
+    n = n01 * 2 - 1
+    n /= np.maximum(np.linalg.norm(n, axis=-1, keepdims=True), 1e-5)
+    return n
+
+
+def real_brick(ident: str, tw: int, th: int, target_lin, sat: float = 1.0):
+    """A photo brick wall tiled so the 8 m sheet repeats seamlessly: (albedo sRGB, tint, height, roughness, normal)."""
+    col = _tile_map(real_map("Color", ident), tw, th)
+    col = clamp_lum(match_lin(col, target_lin, sat))
+    nrm = _renorm(_tile_map(real_map("NormalGL", ident), tw, th))
+    r = real_map("Roughness", ident)
+    rough = _tile_map(r, tw, th)[..., 0] if r is not None else np.full((H, W), 0.9, np.float32)
+    d = real_map("Displacement", ident)
+    hgt = ((_tile_map(d, tw, th)[..., 0] - 0.5) * 1.2).astype(np.float32) if d is not None else np.zeros((H, W), np.float32)
+    return col.astype(np.float32), np.ones((H, W), np.float32), hgt, rough.astype(np.float32), nrm.astype(np.float32)
+
+
+def real_ashlar(seed: int, course_m: float = 0.4, block_m: float = 0.9, joint: int = 2, tone: float = 0.03):
+    """Portland ashlar coursing (drawn) over a real painted-render photo grain: a neutral grey of mean luma 0.8 the
+    shader tints by the building's colour, as the low sheet does."""
+    rng = np.random.default_rng(seed)
+    yy, xx = np.mgrid[0:H, 0:W]
+    c = px(course_m)
+    b = W // (2 ** int(round(np.log2(8.0 / block_m))))
+    row = yy // c
+    off = (row % 2) * (b // 2)
+    bid = (xx + off) // b
+    tones = rng.normal(0.0, tone, (H // c + 2, W // b + 2)).astype(np.float32)
+    t = tones[row, bid % max(1, W // b)]
+    dy = np.minimum(yy % c, c - 1 - yy % c)
+    dx = np.minimum((xx + off) % b, b - 1 - (xx + off) % b)
+    d = np.minimum(dy, dx)
+    g = S.luma(_tile_map(real_map("Color", "PaintedPlaster017"), 512, 256))
+    g = (g - g.mean()) * 1.6 + 0.8
+    v = (g + t) * np.where(d < joint, 0.8, 1.0)
+    v = v + (0.8 - v.mean())
+    alb = np.repeat(np.clip(v, 0, 1)[..., None], 3, -1).astype(np.float32)
+    nrm = _renorm(_tile_map(real_map("NormalGL", "PaintedPlaster017"), 512, 256))
+    r = real_map("Roughness", "PaintedPlaster017")
+    rough = _tile_map(r, 512, 256)[..., 0] if r is not None else np.full((H, W), 0.85, np.float32)
+    hgt = (np.clip(d / 3.0, 0, 1) * 1.5 - 1.5).astype(np.float32)
+    return alb, np.where(d < joint, 0.6, 1.0).astype(np.float32), hgt, rough.astype(np.float32), nrm.astype(np.float32)
+
+
+class RealSheet(Sheet):
+    """Sheet with a photo wall: tracks where the wall photo still shows (its normal is kept there), records the
+    window openings (place.gd's reveals on high), dark glass, and finishes without baked light."""
+
+    def __init__(self, wall, seed: int = 0):
+        super().__init__(wall[:3], seed)
+        self.rough = wall[3].copy()
+        self.wn = wall[4]
+        self.wallmask = np.ones((H, W), np.float32)
+        self.windows: list = []
+
+    def paint(self, x0, y0, x1, y1, col=None, tint=0.0, rough=0.82, glass=0.0, h=None, bevel=0.0, mask=None,
+              hadd=False, grain=0.035):
+        is_wall = isinstance(col, tuple) and len(col) == 2 and col[0] == "wall"
+        if is_wall:
+            # the wall photo scaled; its own roughness stays (only the region's light/dark changes)
+            rough = None
+        X0, X1, Y0, Y1 = px(x0), px(x1), max(0, px(y0)), min(H, px(y1))
+        keep_r = self.rough.copy() if rough is None else None
+        super().paint(x0, y0, x1, y1, col, tint, 0.0 if rough is None else rough, glass, h, bevel, mask, hadd, grain)
+        if keep_r is not None:
+            self.rough = keep_r
+        if col is not None and not is_wall and X1 > X0 and Y1 > Y0:
+            ys = np.arange(Y0, Y1)
+            xs = np.arange(X0, X1) % W
+            ym, xm = np.meshgrid((ys + 0.5) / PX, (np.arange(X0, X1) + 0.5) / PX, indexing="ij")
+            m = np.ones(ym.shape, bool) if mask is None else mask(xm, ym)
+            idx = np.ix_(ys, xs)
+            self.wallmask[idx] = self.wallmask[idx] * (1.0 - m.astype(np.float32))
+
+    def lines(self, segs, width_m, col, h=1.0, tint=0.0, rough=0.7, glass=0.0):
+        before = self.alb.copy()
+        super().lines(segs, width_m, col, h, tint, rough, glass)
+        self.wallmask[np.any(before != self.alb, -1)] = 0.0
+
+    def glass_col(self, x0, y0, x1, y1, tint_c=None, panes=1):
+        def f(xm, ym):
+            v = np.clip((ym - y0) / max(0.01, (y1 - y0)), 0, 1)[..., None]
+            return np.broadcast_to(np.array([0.24, 0.255, 0.27], np.float32), xm.shape + (3,)) * (1.04 - 0.08 * v)
+        return f
+
+    def window(self, cx, top, w, hgt, frame="#F4F1EA", fw=0.07, bars=(2, 2), sash=True, arch=False, sill="#E3DACB",
+               lintel=None, lintel_h=0.16, surround=None, sur_w=0.12, grille=None, reveal=0.07, louvres=False,
+               glass_tint=None, hood=None):
+        if 1.0 <= top < 4.2:
+            self.windows.append([round(cx - w / 2, 3), round(top, 3), round(cx + w / 2, 3), round(top + hgt, 3),
+                                 bool(arch), sill is not None])
+        frame = "#E2DFD8" if frame == "#F4F1EA" else frame     # painted white timber, not paper white
+        super().window(cx, top, w, hgt, frame, fw, bars, sash, arch, sill, lintel, lintel_h, surround, sur_w, grille,
+                       reveal, louvres, glass_tint, hood)
+
+    def finish_real(self, name: str, out: str, tinted: bool) -> dict:
+        h = self.hgt
+        hn = _renorm(S.normal_from_height(h, 3.2, wrap_y=False))       # x0.5 inside: full strength 1.6
+        pn = self.wn
+        wm = self.wallmask[..., None]
+        n = np.concatenate([hn[..., :2] + pn[..., :2] * wm, hn[..., 2:3]], -1)
+        n /= np.maximum(np.linalg.norm(n, axis=-1, keepdims=True), 1e-5)
+        cav = np.clip(S.blur(h, 5) - h, 0, None)
+        hp = np.pad(h, ((8, 0), (0, 0)), mode="edge")[:-8]
+        drop = S.blur(np.clip(hp - h - 0.5, 0, None), 3)
+        ao = np.clip(1.0 - cav * 0.07 - drop * 0.09, 0.35, 1.0).astype(np.float32)
+        alb = np.clip(self.alb, 0, 1)
+        if tinted:
+            w = np.clip((self.tint - 0.5) * 2, 0, 1)
+            lm = (S.luma(alb) * w).sum() / max(1.0, w.sum())
+            alb = np.clip(alb * (1 + (0.8 / lm - 1) * w)[..., None], 0, 1)
+        alb = clamp_lum(alb)
+        S.save(alb, os.path.join(out, f"{name}.png"))
+        rough = np.clip(self.rough, 0.05, 1.0) * (1 - self.glass) + 0.08 * self.glass
+        orm = np.stack([ao, rough, self.tint, self.glass], -1)
+        chans = [np.asarray(S.to_img(orm[..., i]).resize((W // 2, H // 2), Image.LANCZOS), np.float32) / 255 for i in range(4)]
+        Image.merge("RGBA", [S.to_img(c) for c in chans]).save(os.path.join(out, f"{name}_orm.png"), optimize=True)
+        nh = S.to_img(n * 0.5 + 0.5).resize((W // 2, H // 2), Image.LANCZOS)
+        a = np.asarray(nh, np.float32) / 255 * 2 - 1
+        a /= np.maximum(np.linalg.norm(a, axis=-1, keepdims=True), 1e-5)
+        S.save(a * 0.5 + 0.5, os.path.join(out, f"{name}_n.png"))
+        L = lum(srgb_to_lin(alb))
+        return {"lum_min": round(float(L.min()), 4), "lum_max": round(float(L.max()), 4), "lum_mean": round(float(L.mean()), 4),
+                "windows": self.windows}
+
+
+REAL_SHEETS = {
+    # name: (builder, wall, tinted, sources, what)
+    "trim_uk_brick": (sheet_uk_brick, lambda: real_brick("Bricks105", 341, 171, [0.34, 0.25, 0.15], 0.85), False,
+                      ["acg:Bricks105"], "UK brick, London stock (yellow) photo brick, the uk_brick sheet's architecture"),
+    "trim_uk_brick_red": (sheet_uk_brick, lambda: real_brick("brick_wall_001", 341, 341, [0.262, 0.095, 0.061], 1.0), False,
+                          ["ph:brick_wall_001"], "UK brick, Victorian red brick with burnt headers (mean = Physically Based brick)"),
+    "trim_uk_stone": (sheet_uk_stone, lambda: real_ashlar(2), True,
+                      ["acg:PaintedPlaster017"], "UK stone: Portland ashlar coursing (drawn) over a real painted-render grain, tinted per building"),
+}
+
+
+def make_real(src: str, out: str) -> list[dict]:
+    """art/world/real/trims: the UK sheets for mid and high (window openings printed for place.gd)."""
+    global REAL_SRC
+    REAL_SRC = src
+    os.makedirs(out, exist_ok=True)
+    creds = []
+    for name, (fn, wall, tinted, ids, what) in REAL_SHEETS.items():
+        s = fn(src, wall=wall(), cls=RealSheet)
+        r = s.finish_real(name, out, tinted)
+        print(name, json.dumps(r))
+        for suf, sz, d in (("", "1024x1280", "128 (8 x 10 m)"), ("_orm", "512x640", "64"), ("_n", "512x640", "64")):
+            creds.append({"file": f"real/trims/{name}{suf}.png", "what": what if suf == "" else {"_orm": "ORM: R AO, G roughness (source), B tint mask, A glass", "_n": "normal map (GL), full strength, photo normal on the wall"}[suf],
+                          "size": sz, "px_per_m": d, "sources": ids, "process": "no stylise; albedo mean-matched, every texel's linear luminance in [0.04, 0.85]; no baked light"})
     return creds

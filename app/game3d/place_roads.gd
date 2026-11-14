@@ -126,6 +126,10 @@ func build(p: Node3D) -> void:
 func _kerbs(p: Node3D, clear: Rect2) -> void:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	# build 29 (fid29-street): on the real street a granite sett gutter channel runs on the road side of each kerb
+	var real: bool = bool(p.get("_real"))
+	var st_s := SurfaceTool.new()
+	st_s.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var n_seg: int = 0
 	var bake: RefCounted = p.get("bake")
 	for i in _ribbons.size():
@@ -155,16 +159,29 @@ func _kerbs(p: Node3D, clear: Rect2) -> void:
 					nrm = -nrm          # out of the road, onto the pavement
 				_kerb_seg(st, a, b, nrm)
 				bake.call("kerb", a, b, nrm)
+				if real:
+					_flat_y(st_s, a, b, b - nrm * SETT_W, a - nrm * SETT_W, 0.024)
 				n_seg += 1
 	p.get("info")["kerb_segments"] = n_seg
 	if n_seg > 0:
 		var kc: Color = Color("#B9B2A6")
 		p.call("add_mesh", st.commit(), p.call("ground_mat", "kerb", "misc/stone", 1.6,
 			{"tint": Color(kc.r / 0.8, kc.g / 0.8, kc.b / 0.8), "bake_on": 1.0, "crack_k": 0.0, "uv_world_y": 0.0}), "kerbs")
+		if real:
+			p.call("add_mesh", st_s.commit(), p.call("ground_mat", "setts", "misc/stone", 1.15, {"bake_on": 1.0}), "gutters")
 
 
 const KERB_H: float = 0.15
 const KERB_W: float = 0.3
+const SETT_W: float = 0.32     # build 29: the sett channel's width (real street)
+
+
+static func _flat_y(st: SurfaceTool, a: Vector2, b: Vector2, c: Vector2, d: Vector2, y: float) -> void:
+	var cross: float = (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)
+	var vs: Array = [a, b, c, a, c, d] if cross > 0.0 else [a, c, b, a, d, c]
+	for v: Vector2 in vs:
+		st.set_normal(Vector3.UP)
+		st.add_vertex(Vector3(v.x, y, v.y))
 
 
 func _kerb_seg(st: SurfaceTool, a: Vector2, b: Vector2, n: Vector2) -> void:

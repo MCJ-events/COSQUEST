@@ -12,6 +12,7 @@ extends RefCounted
 ## The sun's direction is the time preset's (arena.gd key_dir), so dusk shadows are long.
 
 const ArenaScript := preload("res://arena.gd")
+const StreetReal := preload("res://street_real.gd")
 const BAKE_SIZE: float = 440.0
 const BAKE_CENTER := Vector2(0.0, -80.0)
 const BAKE_PX: int = 1024
@@ -22,9 +23,20 @@ var _sun: Vector2          # metres of shadow on the ground per metre of height
 var _mats: Array = []
 var _n: int = 0
 var viewport: SubViewport
+## build 29 (fid29-street): on mid and high with the real street, a second, finer bake of the same shade and contact
+## AO round the fight (NEAR_PX over NEAR_SIZE metres: ~11 px/m, the far bake is ~2.3), read by world_ground_real
+## where it covers. Low never makes it.
+const NEAR_SIZE: float = 48.0
+const NEAR_CENTER := Vector2(0.0, 4.0)
+const NEAR_PX: int = 512
+var near_on: bool = false
+var near_viewport: SubViewport
+var _real: Array = []
 
 
 func setup(_p: Node3D, _quality: String) -> void:
+	var lk: Variant = _p.get("_look")
+	near_on = lk is Dictionary and StreetReal.on(lk)
 	var d: Vector3 = ArenaScript.key_dir()
 	_sun = Vector2(d.x, d.z) / maxf(0.12, -d.y)
 	_sh = SurfaceTool.new()
@@ -35,6 +47,23 @@ func setup(_p: Node3D, _quality: String) -> void:
 
 func register(m: ShaderMaterial) -> void:
 	_mats.append(m)
+
+
+## A real ground material (world_ground_real): the far bake and the near one. Before commit it is queued; after
+## (the arena's medallion, added once the street is built) it takes the textures at once.
+func register_real(m: ShaderMaterial) -> void:
+	_real.append(m)
+	if viewport != null:
+		_assign_real(m)
+
+
+func _assign_real(m: ShaderMaterial) -> void:
+	m.set_shader_parameter("bake_tex", viewport.get_texture())
+	m.set_shader_parameter("bake_rect", Vector4(BAKE_CENTER.x - BAKE_SIZE * 0.5, BAKE_CENTER.y - BAKE_SIZE * 0.5, BAKE_SIZE, BAKE_SIZE))
+	if near_viewport != null:
+		m.set_shader_parameter("near_tex", near_viewport.get_texture())
+		m.set_shader_parameter("near_rect", Vector4(NEAR_CENTER.x - NEAR_SIZE * 0.5, NEAR_CENTER.y - NEAR_SIZE * 0.5, NEAR_SIZE, NEAR_SIZE))
+		m.set_shader_parameter("near_on", 1.0)
 
 
 func _tri(st: SurfaceTool, a: Vector2, b: Vector2, c: Vector2, ca: float, cb: float, cc: float) -> void:
@@ -188,3 +217,42 @@ func commit(p: Node3D) -> void:
 		sm.set_shader_parameter("bake_tex", t)
 		sm.set_shader_parameter("bake_rect", rect)
 	p.get("info")["bake_quads"] = _n
+	if near_on:
+		_commit_near(p)
+	for sm: ShaderMaterial in _real:
+		_assign_real(sm)
+
+
+func _commit_near(p: Node3D) -> void:
+	near_viewport = SubViewport.new()
+	near_viewport.name = "ShadeBakeNear"
+	near_viewport.size = Vector2i(NEAR_PX, NEAR_PX)
+	near_viewport.own_world_3d = true
+	near_viewport.transparent_bg = false
+	near_viewport.msaa_3d = Viewport.MSAA_DISABLED
+	near_viewport.render_target_clear_mode = SubViewport.CLEAR_MODE_ONCE
+	near_viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	var env := Environment.new()
+	env.background_mode = Environment.BG_COLOR
+	env.background_color = Color.BLACK
+	env.tonemap_mode = Environment.TONE_MAPPER_LINEAR
+	var we := WorldEnvironment.new()
+	we.environment = env
+	near_viewport.add_child(we)
+	var cam := Camera3D.new()
+	cam.projection = Camera3D.PROJECTION_ORTHOGONAL
+	cam.size = NEAR_SIZE
+	cam.near = 1.0
+	cam.far = 200.0
+	cam.transform = Transform3D(Basis(Vector3(1, 0, 0), Vector3(0, 0, -1), Vector3(0, 1, 0)), Vector3(NEAR_CENTER.x, 100.0, NEAR_CENTER.y))
+	near_viewport.add_child(cam)
+	cam.current = true
+	for c: Node in viewport.get_children():
+		if c is MeshInstance3D:
+			var mi := MeshInstance3D.new()
+			mi.mesh = (c as MeshInstance3D).mesh
+			mi.material_override = (c as MeshInstance3D).material_override
+			near_viewport.add_child(mi)
+	p.add_child(near_viewport)
+	near_viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
+	p.get("info")["bake_near_px_per_m"] = snappedf(NEAR_PX / NEAR_SIZE, 0.1)
