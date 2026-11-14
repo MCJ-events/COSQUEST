@@ -1,0 +1,49 @@
+{
+ "key": "celestials_lyra",
+ "source": "celestials_lyra_lod0.glb",
+ "classes": "maps_lod0.npz",
+ "share_of_body_texels": {
+  "skin": 0.0,
+  "metal": 0.0505,
+  "leather": 0.1341,
+  "cloth": 0.6441
+ },
+ "uv_per_m": 0.2371,
+ "hair_srgb": [
+  0.7765,
+  0.7569,
+  0.7333
+ ],
+ "iris": {
+  "centres": [
+   [
+    0.87847,
+    0.12334,
+    0.01468
+   ],
+   [
+    0.94873,
+    0.05133,
+    0.01563
+   ]
+  ],
+  "colour_srgb": [
+   0.2314,
+   0.3059,
+   0.3137
+  ]
+ },
+ "lum_p50_p75_p95": {
+  "leather": [
+   0.0444,
+   0.4559,
+   0.5587
+  ],
+  "cloth": [
+   0.5014,
+   0.5404,
+   0.6376
+  ]
+ },
+ "hair_style": "strands"
+}

@@ -1,0 +1,49 @@
+{
+ "key": "controllers_tavo",
+ "source": "controllers_tavo_lod0.glb",
+ "classes": "maps_lod0.npz",
+ "share_of_body_texels": {
+  "skin": 0.1337,
+  "metal": 0.0475,
+  "leather": 0.0839,
+  "cloth": 0.6691
+ },
+ "uv_per_m": 0.1958,
+ "hair_srgb": [
+  0.2314,
+  0.2275,
+  0.1765
+ ],
+ "iris": {
+  "centres": [
+   [
+    0.87948,
+    0.12108,
+    0.01887
+   ],
+   [
+    0.94986,
+    0.0506,
+    0.01914
+   ]
+  ],
+  "colour_srgb": [
+   0.2745,
+   0.1961,
+   0.1373
+  ]
+ },
+ "lum_p50_p75_p95": {
+  "leather": [
+   0.0269,
+   0.0373,
+   0.2298
+  ],
+  "cloth": [
+   0.0302,
+   0.054,
+   0.2625
+  ]
+ },
+ "hair_style": "none"
+}

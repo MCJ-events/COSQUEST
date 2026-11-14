@@ -13,8 +13,32 @@
 //  - the rim and the hit flash of char_lit, the rim quieter (it was a self-glow on dark characters);
 //  - the cloth-off-legs vertex code of char_lit, unchanged (secondary_motion.gd feeds it).
 // Cost over char_lit: one cube read, one or two 2D reads (normal, skin mask), about 60 ALU.
+//
+// fid29 charshade (14 Nov 2026, build 29 "character materials", docs/game3d/fid29/charshade.md): with cs_on (fighter.gd,
+// look "fid_charshade", mid and high) every surface shades as what it is. Off (cs_on false, the default) this file draws
+// exactly build 28's fighter:
+//  - a material-ID mask per hero (art/char/masks, tools/char/matid.py) in the skin mask's sampler: R skin, G metal,
+//    B leather, A cloth sheen; what is left is synthetic. Skin from the mask (no colour guess: leather is not skin),
+//    metal only where the mask says metal (the lift's metal flag made Imani's cape bronze), roughness kept inside each
+//    class's range (leather 0.45 to 0.65, cotton 0.7 to 0.9, bare metal 0.15 to 0.35);
+//  - cloth: a sheen lobe (Charlie distribution, Neubelt visibility, as Filament's cloth) in place of GGX and of the rim;
+//    leather keeps GGX at its own roughness;
+//  - geometric specular anti-aliasing (Tokuyoshi and Kaplanyan; variance 0.15, threshold 0.2) and the normal map's own
+//    mip variance (Toksvig) folded into roughness, so highlights stop sparkling;
+//  - skin: a warm tint in the shadow map's penumbra (when the fighter takes the shadow, recv_shadow > 0), and its
+//    specular damped in cavities;
+//  - eyes (the hybrid head's eye corner of the UVs): no skin wrap, a wet roughness, the iris shifted by parallax, a
+//    live catchlight from the face fill's direction (the painted one taken out), shade under the upper lid;
+//  - hair cards: the strand direction from the card's own V axis (BINORMAL), two shifted lobes (Scheuermann), darker
+//    towards the root, and alpha to coverage on the MSAA every tier runs (fighter.gd's "cs" cut variant);
+//  - high tier only (#define CS_HIGH, fighter.gd): tiling detail normals for cloth and leather (ambientCG CC0, one 1K
+//    sheet of four 512 tiles, about 5 cm a tile) and a roughness break-up on metal (ambientCG CC0), whiteout blended
+//    and faded with the normal_fade footprint rule.
+// Cost with cs_on, mid: no new texture read (the mask is the skin mask's read), about 35 ALU on the body; high: two more
+// texture reads on cloth, leather and metal. Measured in docs/game3d/fid29/charshade.md.
 shader_type spatial;
 render_mode cull_back, depth_draw_opaque, ambient_light_disabled;
+// CS_DEFINES (fighter.gd inserts #define CS_HIGH here for the high tier's hero bodies)
 
 uniform sampler2D albedo_tex : source_color, hint_default_white, filter_linear_mipmap, repeat_enable;
 uniform vec4 albedo : source_color = vec4(1.0);
@@ -94,8 +118,53 @@ uniform vec4 la1; uniform vec4 lb1;
 uniform vec4 la2; uniform vec4 lb2;
 uniform vec4 la3; uniform vec4 lb3;
 
+// fid29 charshade (see the header). All off unless cs_on.
+uniform bool cs_on = false;
+uniform int cs_matid = 0;                  // 1: skin_tex is the hero's material-ID mask (RGBA: skin, metal, leather, cloth sheen)
+uniform vec2 cs_rough_leather = vec2(0.45, 0.65);
+uniform vec2 cs_rough_cloth = vec2(0.70, 0.90);
+uniform vec2 cs_rough_metal = vec2(0.15, 0.35);
+uniform float cs_leather_gain = 1.0;      // leather's exposure gain at most this (no near-black lift)
+uniform vec2 cs_knee = vec2(0.0);          // leather, cloth: the linear luminance above which painted light is soft-clipped (0 = off)
+uniform float cs_sheen = 1.0;              // the sheen lobe on cloth (0 = cloth keeps GGX)
+uniform float cs_sheen_rough = 0.55;       // perceptual roughness of the sheen lobe
+uniform float cs_aa_var = 0.15;            // geometric specular AA: variance scale and threshold
+uniform float cs_aa_thr = 0.2;
+uniform float cs_toksvig = 1.0;            // the normal map's mip variance folded into roughness
+uniform float cs_grain = 0.06;             // leather's sub-pixel grain as roughness (alpha squared added; high sets 0, its detail map does it)
+uniform vec3 cs_penumbra = vec3(1.0, 0.42, 0.28);  // skin in the shadow map's penumbra: the red goes furthest
+uniform float cs_cavity = 0.6;             // skin's specular damped in creases and occlusion
+uniform int cs_eye = 0;                    // 1: a hybrid head (eyes in the UV corner, deploy/hybrid/hybrid_head.py EYE)
+uniform float cs_eye_corner = 0.17;
+uniform vec4 cs_iris_a = vec4(0.0);        // iris centre (UV) and radius of each eyeball island; w unused
+uniform vec4 cs_iris_b = vec4(0.0);
+uniform vec3 cs_iris_col = vec3(0.04, 0.025, 0.015);   // linear: what the painted catchlight is replaced with
+uniform float cs_parallax = 0.03;          // iris depth, in units of the eye corner (0.02 to 0.04)
+uniform float cs_eye_rough = 0.06;
+uniform vec2 cs_catch = vec2(3.0, 0.22);   // the face fill's catchlight: strength, lobe roughness (a soft box, not a point)
+uniform float cs_lid = 0.35;               // shade under the upper lid and at the corners (on top of the baked one)
+uniform float cs_hair_cards = 0.0;         // 1: hair cards with strands along V (hair_cards material)
+uniform vec4 cs_hair_lobes = vec4(-0.06, 0.10, 0.08, 0.04);   // primary shift, secondary shift, primary and secondary strength
+uniform vec2 cs_hair_root = vec2(0.5, 1.0);   // the hair colour at the root end, at the tip (root-to-tip occlusion)
+uniform float cs_hair_root_v = 1.0;        // 1: the root is at UV.y = 1 (the cards' layout), 0: at UV.y = 0
+uniform vec4 cs_hair_strand = vec4(1.0);   // per card column of the atlas: 1 strands along V, 0 coils / braids (broad sheen)
+#ifdef CS_HIGH
+uniform sampler2D cs_detail_tex : hint_normal, filter_linear_mipmap, repeat_enable;   // 2x2 tiles: two cloth, two leather
+uniform sampler2D cs_breakup_tex : hint_default_white, filter_linear_mipmap, repeat_enable;   // R scratches, G imperfections
+uniform float cs_tiles = 100.0;            // detail tiles per UV unit (about 5 cm at the game's scale, tools/char/matid.py uv_per_m)
+uniform vec2 cs_detail_amt = vec2(0.55, 0.45);   // cloth, leather strength
+uniform vec4 cs_detail_pick = vec4(0.0, 0.0, 0.5, 0.0);   // the cloth tile's and the leather tile's corner in the sheet
+uniform float cs_breakup = 1.0;
+#endif
+
 varying float v_skin;
 varying float v_hair;
+varying float v_sheen;
+varying float v_eye;
+varying float v_cav;
+varying vec3 v_strand;
+varying float v_shift;
+varying float v_strandy;
 
 vec3 cap_push(vec3 p, vec4 a, vec4 b) {
 	vec3 ab = b.xyz - a.xyz;
@@ -155,15 +224,89 @@ vec3 amb_at(vec3 nw) {
 		+ n2.z * (nw.z >= 0.0 ? amb_cube[4] : amb_cube[5]);
 }
 
+float d_ggx(float ndh, float a2) {
+	float d = ndh * ndh * (a2 - 1.0) + 1.0;
+	return a2 / (PI * d * d);
+}
+
+float d_charlie(float ndh, float al) {
+	// Estevez and Kulla's "Charlie" sheen distribution (Filament's cloth)
+	float inv = 1.0 / al;
+	float s2 = max(1.0 - ndh * ndh, 0.0078125);
+	return (2.0 + inv) * pow(s2, inv * 0.5) / (2.0 * PI);
+}
+
 void fragment() {
-	vec4 a = texture(albedo_tex, UV) * albedo;
+	v_sheen = 0.0;
+	v_eye = 0.0;
+	v_cav = 1.0;
+	v_strand = vec3(0.0);
+	v_shift = 0.0;
+	v_strandy = 0.0;
+	vec2 uv = UV;
+	float eye = 0.0;
+	float iris = 0.0;
+	vec4 cm = vec4(0.0);       // charshade: the material-ID mask (skin, metal, leather, cloth sheen)
+	if (cs_on) {
+		if (cs_matid == 1) {
+			cm = texture(skin_tex, UV);
+		}
+		if (cs_eye == 1) {
+			// the hybrid head keeps both eyeballs in the top-right corner of its UVs (one island each)
+			float c0 = 1.0 - cs_eye_corner;
+			eye = smoothstep(c0, c0 + 0.004, UV.x) * (1.0 - smoothstep(cs_eye_corner - 0.004, cs_eye_corner, UV.y));
+			if (eye > 0.0) {
+				vec4 ic = distance(UV, cs_iris_a.xy) < distance(UV, cs_iris_b.xy) ? cs_iris_a : cs_iris_b;
+				float d = distance(UV, ic.xy) / max(ic.z, 1e-4);
+				iris = (1.0 - smoothstep(0.9, 1.1, d)) * eye;
+				// the iris lies behind the cornea: seen at an angle it shifts against the eyeball's surface
+				vec3 vt = vec3(dot(VIEW, TANGENT), dot(VIEW, BINORMAL), dot(VIEW, NORMAL));
+				uv -= vt.xy / max(vt.z, 0.35) * (cs_parallax * cs_eye_corner) * iris;
+			}
+		}
+	}
+	vec4 a = texture(albedo_tex, uv) * albedo;
 	vec3 base = a.rgb;
+	if (iris > 0.0) {
+		// the painted catchlight (hybrid_head.py HEAD_CATCH) goes: anything in the iris brighter than an iris is the paint
+		float lb = dot(base, vec3(0.2126, 0.7152, 0.0722));
+		float lc = dot(cs_iris_col, vec3(0.2126, 0.7152, 0.0722));
+		base = mix(base, cs_iris_col * clamp(lb / max(lc, 1e-4), 0.5, 1.4), smoothstep(lc * 2.5, lc * 6.0, lb) * iris);
+	}
 	vec4 orm = texture(orm_tex, UV);
 	float rough = clamp(dot(orm, orm_channel_r) * roughness, 0.06, 1.0);
 	float metal = clamp(dot(orm, orm_channel_m) * metallic, 0.0, 1.0);
+	if (cs_on && cs_matid == 1) {
+		// metal only where the mask says so: on cloth, leather and skin the lift's metal flag is the "smeared bronze"
+		float rest = clamp(1.0 - cm.r - cm.b - cm.a, 0.0, 1.0);
+		metal = max(metal * rest, cm.g);
+		float r0 = rough;
+		rough = r0 * clamp(1.0 - cm.g - cm.b - cm.a, 0.0, 1.0)
+			+ cm.g * mix(cs_rough_metal.x, cs_rough_metal.y, r0)
+			+ cm.b * mix(cs_rough_leather.x, cs_rough_leather.y, r0)
+			+ cm.a * mix(cs_rough_cloth.x, cs_rough_cloth.y, r0);
+		v_sheen = cm.a * cs_sheen;
+		// the lift baked the concept's highlights into leather and cloth: above the class's own knee (its 75th percentile,
+		// tools/char/matid.py) a quarter of the painted light is kept, so a jacket stops reading as lacquer
+		float wk = cm.b + cm.a;
+		if (wk > 0.02 && cs_knee.x + cs_knee.y > 0.0) {
+			float kn = (cm.b * cs_knee.x + cm.a * cs_knee.y) / wk;
+			float lb = dot(base, vec3(0.2126, 0.7152, 0.0722));
+			float l2 = lb > kn ? kn + (lb - kn) * 0.25 : lb;
+			base *= mix(1.0, l2 / max(lb, 1e-4), clamp(wk, 0.0, 1.0));
+		}
+	}
+	if (eye > 0.0) {
+		rough = mix(rough, cs_eye_rough, eye);
+		metal *= 1.0 - eye;
+	}
 	float skin = 0.0;
 	float skin_area = 0.0;     // where skin is, before the colour check (beard and brow texels fail the check)
-	if (skin_mode == 1) {
+	if (cs_on && cs_matid == 1) {
+		// charshade: the mask already passed the classes' and the colour's skin gates (tools/char/matid.py)
+		skin_area = cm.r;
+		skin = cm.r;
+	} else if (skin_mode == 1) {
 		// the mask, checked against the colour: Forge's mask also marks red and brown armour as skin
 		// (measured on the Kade test character), and armour must not get the skin's wrap
 		skin_area = texture(skin_tex, UV).r;
@@ -172,7 +315,7 @@ void fragment() {
 		skin = skin_guess(base);
 		skin_area = skin;
 	}
-	skin *= skin_amount * (1.0 - metal);
+	skin *= skin_amount * (1.0 - metal) * (1.0 - eye);
 	rough = mix(rough, max(rough, skin_rough_min), clamp(skin * 1.6, 0.0, 1.0));
 	base = mix(base, base * skin_wb, clamp(skin * 1.6, 0.0, 1.0));
 	float hair = hair_all;
@@ -183,6 +326,17 @@ void fragment() {
 		metal *= 1.0 - hair;
 	}
 	v_hair = hair;
+	if (cs_on && cs_hair_cards > 0.0) {
+		// hair cards: darker towards the root (the strands under it shade it), a per-strand shift of the highlight from
+		// the strand texture's own light and dark
+		float tip = cs_hair_root_v > 0.5 ? 1.0 - UV.y : UV.y;
+		v_strandy = cs_hair_strand[clamp(int(UV.x * 4.0), 0, 3)];
+		base *= mix(1.0, mix(cs_hair_root.x, cs_hair_root.y, smoothstep(0.0, 0.7, tip)), v_strandy);
+		// a strand id across the card (the strands run along V): a small random shift each
+		v_shift = (fract(sin(floor(UV.x * 384.0) * 12.9898) * 43758.5453) - 0.5) * 0.1;
+		v_strand = BINORMAL;
+	}
+	v_eye = eye;
 	if (debug_view == 1) {
 		base = vec3(0.5);     // one mid-grey for every fighter: the light alone (measure.py, the grey test)
 		metal = 0.0;
@@ -196,6 +350,8 @@ void fragment() {
 	}
 	v_skin = skin;
 	vec3 n = NORMAL;
+	vec3 ngeo = NORMAL;
+	float tok = 0.0;           // charshade: the normal map's lost length at this mip (Toksvig)
 	if (normal_amount > 0.0) {
 		// round 3: the baked normal map is noisy on faces (the lift's voxel ripple), and across the key's
 		// terminator that noise drew a jagged dark patch down one side of a face in close shots (measured:
@@ -206,6 +362,11 @@ void fragment() {
 		// that only the normal map smooths, so a weak map left their faces faceted; the mip level alone takes
 		// the noise out.
 		vec3 t = texture(normal_tex, UV, 3.0 * skin_area).xyz * 2.0 - 1.0;
+		if (cs_on) {
+			// the mip-averaged normal is shorter where the map's normals disagree: that spread is roughness (Toksvig)
+			float ln = clamp(length(t), 0.2, 1.0);
+			tok = cs_toksvig * (1.0 - ln) / ln * normal_amount;
+		}
 		float namt = normal_amount;
 		if (normal_fade > 0.0) {
 			vec2 ts = vec2(textureSize(normal_tex, 0));
@@ -214,8 +375,49 @@ void fragment() {
 		}
 		t.xy *= namt;
 		t.z = sqrt(max(1.0 - dot(t.xy, t.xy), 0.0));
+#ifdef CS_HIGH
+		// high tier: tiling cloth weave and leather grain at about 5 cm a tile, whiteout blended over the model's map,
+		// faded where a screen pixel covers too many of its texels (the normal_fade rule) so it never shimmers
+		float dw = cm.b + cm.a;
+		if (dw > 0.02) {
+			vec2 du = UV * cs_tiles;
+			vec2 corner = cm.a >= cm.b ? cs_detail_pick.xy : cs_detail_pick.zw;
+			vec2 tuv = corner + 0.0039 + fract(du) * 0.4922;
+			vec3 dn = textureGrad(cs_detail_tex, tuv, dFdx(du) * 0.4922, dFdy(du) * 0.4922).xyz * 2.0 - 1.0;
+			// the tiles are mip-mapped, so what one pixel cannot hold is averaged, never aliased: the grain fades only
+			// once a pixel covers a whole patch of it (8 to 32 tile texels; at the intro beat a pixel covers about 8)
+			float dfp = max(length(dFdx(du * 512.0)), length(dFdy(du * 512.0)));
+			float damt0 = cm.a * cs_detail_amt.x + cm.b * cs_detail_amt.y;
+			float damt = damt0 * (1.0 - smoothstep(normal_fade * 5.0, normal_fade * 21.0, dfp));
+			// and the grain the pixel averaged away is roughness (Toksvig on the detail map): leather stops being a
+			// smooth lacquer where its grain is smaller than a pixel
+			float dl = clamp(length(dn), 0.2, 1.0);
+			tok += cs_toksvig * (1.0 - dl) / dl * damt0;
+			dn.xy *= damt;
+			t = vec3(t.xy + dn.xy, t.z * sqrt(max(1.0 - dot(dn.xy, dn.xy), 0.0)));
+		}
+#endif
 		n = normalize(TANGENT * t.x + BINORMAL * t.y + NORMAL * t.z);
 		NORMAL = n;
+	}
+	if (cs_on) {
+		// geometric specular anti-aliasing (Tokuyoshi and Kaplanyan 2019, as Filament): the screen-space change of the
+		// mesh's own normal widens the lobe, so curved, small and far surfaces stop sparkling; plus the map's Toksvig term
+		vec3 gdu = dFdx(ngeo);
+		vec3 gdv = dFdy(ngeo);
+		// leather's own grain below the pixel (the mid tier has no detail map: the same spread as a fixed term)
+		float kern = min(2.0 * cs_aa_var * (dot(gdu, gdu) + dot(gdv, gdv)), cs_aa_thr) + min(tok, 0.25) + cm.b * cs_grain;
+		float al = rough * rough;
+		rough = sqrt(sqrt(clamp(al * al + kern, 0.0, 1.0)));
+#ifdef CS_HIGH
+		if (cm.g > 0.02) {
+			// worn metal: scratches a little smoother, the rest of the surface broken up (ambientCG Scratches005,
+			// SurfaceImperfections003), at the detail tiles' scale
+			vec2 bu = UV * cs_tiles * 0.5;
+			vec2 bk = texture(cs_breakup_tex, bu).rg;
+			rough = clamp(rough + cm.g * cs_breakup * (0.18 * (bk.g - 0.5) - 0.08 * bk.r), 0.08, 1.0);
+		}
+#endif
 	}
 	float ao = mix(1.0, orm.r, ao_amount);
 	if (occ_k > 0.0) {
@@ -233,6 +435,17 @@ void fragment() {
 	float nov = clamp(dot(n, VIEW), 0.0, 1.0);
 	vec3 nw = normalize((INV_VIEW_MATRIX * vec4(n, 0.0)).xyz);
 	vec3 vw = normalize((INV_VIEW_MATRIX * vec4(VIEW, 0.0)).xyz);
+	if (cs_on) {
+		v_cav = mix(1.0, clamp(ao, 0.0, 1.0), cs_cavity);
+		if (eye > 0.0) {
+			// the lids shade the eyeball: most where it faces up (under the upper lid) and at the corners
+			vec3 nm = normalize(transpose(mat3(MODEL_MATRIX)) * nw);
+			float lid = smoothstep(0.1, 0.5, nm.y) + 0.6 * smoothstep(0.45, 0.8, abs(nm.x));
+			lid = cs_lid * clamp(lid, 0.0, 1.0) * eye;
+			ao *= 1.0 - lid;
+			base *= 1.0 - 0.6 * lid;
+		}
+	}
 	vec3 f0 = mix(vec3(mix(0.16 * specular * specular, 0.028, skin)), base, metal);
 	// the street's diffuse light: sky above, walls at the sides, the paving's bounce below
 	float blum = dot(base, vec3(0.2126, 0.7152, 0.0722));
@@ -244,6 +457,11 @@ void fragment() {
 	// came out lighter and, lifted, more orange than the concept (fighter.gd SKIN_GAIN, measured per time of day)
 	if (skin_gain > 0.0) {
 		gain = mix(gain, skin_gain, clamp(skin * 1.6, 0.0, 1.0));
+	}
+	if (cs_on) {
+		// charshade: leather is dark by nature; the near-black lift (made for black suits at night) turned a brown
+		// jacket tan and satin. Leather keeps its own value (at most gain 1)
+		gain = mix(gain, min(gain, cs_leather_gain), clamp(cm.b * 1.5, 0.0, 1.0));
 	}
 	vec3 lit = base * gain;
 	vec3 amb = amb_at(nw) * amb_amount * ao;
@@ -266,6 +484,16 @@ void fragment() {
 		// single scattering loses energy on rough metal (it goes dark): give back the multiple-scatter share
 		vec3 ms = 1.0 + f0 * (1.0 / max(ab.x + ab.y, 0.2) - 1.0);
 		spec_amb = e * (f0 * ab.x + ab.y) * ms * so * env_spec;
+		// the eye: one surface here, no separate cornea, so the sky mirrored over the iris greyed it; the lashes and the
+		// iris's depth keep most of that off (the catchlight below stays)
+		spec_amb *= 1.0 - 0.7 * iris;
+		if (v_sheen > 0.0) {
+			// cloth reflects no image of the street: its sheen takes the blurred light round it, strongest at grazing
+			// angles (a fit of the Charlie lobe's directional albedo at roughness 0.5 to 0.6). The cube read above is
+			// already the blurred one at cloth's roughness, so no second read.
+			float sd = 0.06 + 0.32 * pow(1.0 - nov, 3.0);
+			spec_amb = mix(spec_amb, e * sqrt(max(base, vec3(0.0))) * sd * so * env_spec, v_sheen);
+		}
 	}
 	float f = 1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0);
 	float f3 = f * f * f;
@@ -275,6 +503,8 @@ void fragment() {
 	// the rim: the key light at a grazing angle, where every surface reflects (Fresnel), so it is mostly
 	// the light's colour and a little of the surface's; the team tint on the far side stays a hint
 	vec3 rim = mix(rim_team * team_amount, rim_key, sunward) * fr * rim_amount * mix(vec3(1.0), base * 1.6 + 0.04, 0.7);
+	// charshade: on cloth the sheen lobe is the grazing light, so it replaces the rim there (the team's tint stays readable)
+	rim *= 1.0 - 0.75 * v_sheen;
 	vec3 hit = vec3(1.0, 0.86, 0.62) * flash * (0.06 + 1.15 * fr);
 	float body = smoothstep(0.35, 1.0, glow);
 	vec3 gl = vec3(1.0, 0.97, 0.92) * glow * (0.6 * body + 0.75 * pow(f, 1.5))
@@ -308,6 +538,15 @@ void fragment() {
 		float wf = clamp((dot(nw, face_fill_dir) + 0.5) / 1.5, 0.0, 1.0);
 		kick += face_fill_col * lit * (1.0 - metal) * wf * wf * ao * mix(face_fill_body, 1.0, clamp(v_skin * 1.6, 0.0, 1.0));
 	}
+	if (eye > 0.0 && face_fill_col.r + face_fill_col.g + face_fill_col.b > 0.0) {
+		// the catchlight: the face fill is a big soft source by the camera, so the wet eye mirrors it as a small bright
+		// patch that moves with it (GGX at the fill's own size, cornea Fresnel)
+		vec3 hf = normalize(face_fill_dir + vw);
+		float nh = clamp(dot(nw, hf), 0.0, 1.0);
+		float ca = cs_catch.y * cs_catch.y;
+		float dc = d_ggx(nh, ca * ca) * ca * ca * PI;   // 1 at the lobe's centre
+		kick += face_fill_col * dc * cs_catch.x * eye * smoothstep(0.0, 0.2, dot(nw, face_fill_dir));
+	}
 	EMISSION = diffuse_amb + spec_amb + kick + rim + hit + gl + texture(emission_tex, UV).rgb * emission;
 	if (debug_view == 3) {
 		ALBEDO = vec3(0.0);
@@ -315,12 +554,13 @@ void fragment() {
 	} else if (debug_view == 4) {
 		ALBEDO = vec3(0.0);
 		EMISSION = nw * 0.5 + 0.5;
+	} else if (debug_view == 5) {
+		// charshade review: the material classes (skin orange, metal cyan, leather red, cloth green, eye yellow, hair blue)
+		ALBEDO = vec3(0.0);
+		EMISSION = cm.r * vec3(1.0, 0.55, 0.2) + cm.g * vec3(0.2, 0.9, 1.0) + cm.b * vec3(0.9, 0.15, 0.15)
+			+ cm.a * vec3(0.3, 0.95, 0.3) + eye * vec3(1.0, 1.0, 0.0) + iris * vec3(-0.6, -0.6, 0.6) + v_hair * vec3(0.2, 0.3, 1.0)
+			+ vec3(0.12) * clamp(1.0 - cm.r - cm.g - cm.b - cm.a - eye - v_hair, 0.0, 1.0);
 	}
-}
-
-float d_ggx(float ndh, float a2) {
-	float d = ndh * ndh * (a2 - 1.0) + 1.0;
-	return a2 / (PI * d * d);
 }
 
 void light() {
@@ -340,7 +580,15 @@ void light() {
 	// The engine multiplies it by the surface's colour and by (1 - metal).
 	vec3 w = skin_wrap * v_skin;
 	vec3 d = clamp((vec3(ndl) + w) / (1.0 + w), 0.0, 1.0);
-	DIFFUSE_LIGHT += lcol * att * d * (1.0 - fr) * (1.0 / PI);
+	vec3 attc = vec3(att);
+	if (cs_on && v_skin > 0.0 && LIGHT_IS_DIRECTIONAL && recv_shadow > 0.0) {
+		// charshade: light scattered under the skin carries red past the shadow map's edge, so skin's penumbra is warm
+		// (the shadow factor per channel: red falls off last). Only where the fighter takes the shadow (recv_shadow).
+		float sh = ATTENUATION;
+		vec3 pen = pow(vec3(sh), 1.0 / max(mix(vec3(1.0), cs_penumbra * 2.0, clamp(v_skin * 1.6, 0.0, 1.0)), vec3(0.05)));
+		attc = mix(vec3(1.0), pen, recv_shadow);
+	}
+	DIFFUSE_LIGHT += lcol * attc * d * (1.0 - fr) * (1.0 / PI);
 	if (v_skin > 0.0 && skin_back > 0.0) {
 		// no thickness map: only where the body is thin from here (the silhouette) and the light is behind it
 		float thin = (1.0 - ndv) * (1.0 - ndv);
@@ -359,7 +607,35 @@ void light() {
 	vec2 ab = env_brdf(ROUGHNESS, ndv);
 	vec3 ms = 1.0 + f0 * (1.0 / max(ab.x + ab.y, 0.2) - 1.0);
 	vec3 spec = cndl * dd * vis * fr * ms;
-	if (v_hair > 0.0) {
+	if (cs_on) {
+		if (v_sheen > 0.0) {
+			// cloth: Charlie sheen with Neubelt's visibility (Filament's cloth model) instead of GGX; sheen colour from the
+			// cloth's own colour (sqrt of the albedo)
+			float sa = cs_sheen_rough * cs_sheen_rough;
+			float vsh = 1.0 / (4.0 * (cndl + ndv - cndl * ndv) + 1e-4);
+			vec3 sh = cndl * d_charlie(ndh, sa) * vsh * sqrt(max(ALBEDO, vec3(0.0)));
+			spec = mix(spec, sh, v_sheen);
+		}
+		// skin's highlight gives way in its creases and pores' shade (the cavity / occlusion term)
+		spec *= mix(1.0, v_cav, clamp(v_skin * 1.6, 0.0, 1.0));
+	}
+	if (cs_on && cs_hair_cards > 0.0 && v_hair > 0.0) {
+		// hair cards: the strands run along the card's V (BINORMAL). Two lobes (Scheuermann): a white one shifted
+		// towards the root, a dimmer one in the hair's colour shifted towards the tip; per-strand jitter (v_shift)
+		vec3 tg = normalize(v_strand - NORMAL * dot(NORMAL, v_strand));
+		vec3 t1 = normalize(tg + NORMAL * (cs_hair_lobes.x + v_shift));
+		vec3 t2 = normalize(tg + NORMAL * (cs_hair_lobes.y + v_shift));
+		float th1 = dot(t1, h);
+		float th2 = dot(t2, h);
+		float s1 = pow(sqrt(max(1.0 - th1 * th1, 0.0)), 90.0);
+		float s2 = pow(sqrt(max(1.0 - th2 * th2, 0.0)), 22.0);
+		float fac = smoothstep(-0.1, 0.4, ndl);
+		vec3 hs = (vec3(s1 * cs_hair_lobes.z) + s2 * cs_hair_lobes.w * (ALBEDO * 3.0 + 0.05)) * fac;
+		// coils and braids: no strand direction, a broad dim sheen (the same Charlie lobe as cloth, rough)
+		float hvs = 1.0 / (4.0 * (cndl + ndv - cndl * ndv) + 1e-4);
+		vec3 coil = cndl * d_charlie(ndh, 0.5) * hvs * sqrt(max(ALBEDO, vec3(0.0))) * 0.5;
+		spec = mix(spec, mix(coil, hs, v_strandy), v_hair);
+	} else if (v_hair > 0.0) {
 		// Kajiya-Kay on a solid sculpt: the strands run down the head (the view's up, laid on the surface)
 		vec3 up = normalize((VIEW_MATRIX * vec4(0.0, 1.0, 0.0, 0.0)).xyz);
 		vec3 t = normalize(up - NORMAL * dot(NORMAL, up) + NORMAL * 0.08);

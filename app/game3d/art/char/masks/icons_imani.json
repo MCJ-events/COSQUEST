@@ -1,0 +1,49 @@
+{
+ "key": "icons_imani",
+ "source": "icons_imani_lod0.glb",
+ "classes": "maps_lod0.npz",
+ "share_of_body_texels": {
+  "skin": 0.0115,
+  "metal": 0.0444,
+  "leather": 0.1357,
+  "cloth": 0.7995
+ },
+ "uv_per_m": 0.1905,
+ "hair_srgb": [
+  0.0784,
+  0.0745,
+  0.0667
+ ],
+ "iris": {
+  "centres": [
+   [
+    0.879,
+    0.12051,
+    0.01936
+   ],
+   [
+    0.94968,
+    0.05041,
+    0.01932
+   ]
+  ],
+  "colour_srgb": [
+   0.2118,
+   0.149,
+   0.1059
+  ]
+ },
+ "lum_p50_p75_p95": {
+  "leather": [
+   0.0453,
+   0.0586,
+   0.2303
+  ],
+  "cloth": [
+   0.2018,
+   0.2156,
+   0.2266
+  ]
+ },
+ "hair_style": "strands"
+}
