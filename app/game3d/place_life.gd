@@ -2,7 +2,8 @@ extends Node3D
 ## look-world (audit issue 14, art direction 4.9): a little life in a place, cheaply and never in the
 ## fight's way. All cosmetic: nothing here reads or draws the fight's seeded random numbers (its own
 ## RandomNumberGenerator with a fixed seed), and nothing collides.
-##  - 2 to 4 cars driving the OSM roads that stay clear of the fight (one mesh each, moved in _process);
+##  - 2 to 4 cars driving the OSM roads that stay clear of the fight (one mesh each, moved in _process; low tier
+##    only since fid29: the real look has no Kenney cars);
 ##  - 6 to 12 distant pedestrians beyond 40 m (billboards from art/world/misc/npc_atlas, one MultiMesh),
 ##    strolling up and down the pavement;
 ##  - pigeons circling the landmark (one MultiMesh, wings flapped in world_kit.gdshader);
@@ -57,8 +58,16 @@ func _drivers(p: Node3D, roads: RefCounted, clear: Rect2, rng: RandomNumberGener
 	var left: bool = str(p.get("region")) == "uk"
 	var models: Array[String] = ["cars/sedan", "cars/taxi", "cars/suv", "cars/van"]
 	var n: int = mini(cands.size(), 3)
+	# fid29 (dressing): no Kenney cars on the real look (mid and high); the same random numbers are still drawn,
+	# so the people, birds and leaves stand where they always did
+	var lk: Dictionary = p.get("_look")
+	var real: bool = bool(lk.get("real", false)) and bool(lk.get("fid_dressing", false))
 	for i in n:
 		var c: Array = cands[i]
+		if real:
+			rng.randf_range(6.0, 9.5)
+			rng.randf()
+			continue
 		var mi: Array = Dress.car_mesh(p, models[i % models.size()])
 		if mi.is_empty():
 			continue
