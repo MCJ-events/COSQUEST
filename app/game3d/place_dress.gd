@@ -675,7 +675,12 @@ func _real_pools() -> void:
 			var s: float = carry
 			while s < len:
 				var e: Vector2 = a + d * s
-				var q: Vector2 = e + out * 1.1
+				# 1.6 m out from the rim, and never inside the pool (the edge's outward side can still fall in the water at a
+				# concave corner): the blind judge read a lamp at 1.1 m as standing in the water (dressing.md, round 2)
+				var q: Vector2 = e + out * 1.6
+				if Geometry2D.is_point_in_polygon(q, poly) or Geometry2D.is_point_in_polygon(q - out * 0.6, poly):
+					s += POOL_LAMP_STEP
+					continue
 				var near: bool = false
 				for o: Vector2 in lamps:
 					if o.distance_to(q) < POOL_LAMP_STEP * 0.6:
@@ -686,8 +691,8 @@ func _real_pools() -> void:
 					lamps.append(q)
 					k += 1
 					# a bench between this lamp and the next, its seat towards the water
-					var qb: Vector2 = e + d * POOL_LAMP_STEP * 0.5 + out * 2.0
-					if k % 2 == 0 and free_spot(qb, false, 0.6) and free_spot(qb + d * 1.0, false, 0.3) and free_spot(qb - d * 1.0, false, 0.3):
+					var qb: Vector2 = e + d * POOL_LAMP_STEP * 0.5 + out * 2.6
+					if k % 2 == 0 and not Geometry2D.is_point_in_polygon(qb, poly) and free_spot(qb, false, 0.6) and free_spot(qb + d * 1.0, false, 0.3) and free_spot(qb - d * 1.0, false, 0.3):
 						_put_photo("painted_wooden_bench", qb, atan2(-out.x, -out.y))
 						_bake.call("blob", qb, 1.0, 0.7)
 				s += POOL_LAMP_STEP
@@ -695,8 +700,14 @@ func _real_pools() -> void:
 	_p.get("info")["pool_lamps"] = lamps.size()
 
 
-## Parked bays on the real look: no Kenney cars. A covered car (Poly Haven) in at most 30 % of today's slots, the
-## rest empty; road barriers on the junction approaches, where today's rule leaves the kerb free.
+## Share of today's parked slots that get a covered car on the real look (the brief allows 0 to 30 %). 0: the blind
+## judge (dressing.md) named the dark, depth-of-field-softened cover a smeared or ghostly car in 9 of 11 flawed
+## victory frames, so the bays stay empty; the mesh and its atlas cell stay for a later, lighter cover.
+const COVERED_CAR_SHARE: float = 0.0
+
+
+## Parked bays on the real look: no Kenney cars. A covered car (Poly Haven) in COVERED_CAR_SHARE of today's slots,
+## the rest empty; road barriers on the junction approaches, where today's rule leaves the kerb free.
 func _real_cars(region: String) -> void:
 	var left: bool = region == "uk"
 	var n: int = 0
@@ -732,7 +743,7 @@ func _real_cars(region: String) -> void:
 								_bake.call("blob", qb, 1.4, 0.8)
 						continue
 					slots += 1
-					if h01(q, 31.0) < 0.3:
+					if h01(q, 31.0) < COVERED_CAR_SHARE:
 						_put_photo("covered_car", q, atan2(fwd.x, fwd.y))
 						_bake.call("blob", q, 1.6, 1.0)
 						n += 1

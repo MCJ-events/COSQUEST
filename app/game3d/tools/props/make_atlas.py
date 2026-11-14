@@ -10,7 +10,10 @@ PH, ACG, OUT = sys.argv[1], sys.argv[2], sys.argv[3]
 HERE = os.path.dirname(os.path.abspath(__file__))
 L = json.load(open(os.path.join(HERE, "atlas_layout.json")))
 os.makedirs(OUT, exist_ok=True)
-LEAF_N, LEAF_SPREAD = 96, 165   # leaves per cluster texture and their spread (px of 1024)
+LEAF_N, LEAF_SPREAD = 150, 195   # leaves per cluster texture and their spread (px of 1024)
+# summer plane greens (multiplied into the scan's luminance) and the gain that keeps the old cluster's mean colour
+LEAF_GREENS = [(150, 200, 60), (135, 190, 55), (160, 205, 70), (125, 175, 50)]
+LEAF_GAIN = 1.15
 TIERS = {"high": {"a": 2048, "n": 2048, "orm": 1024, "leaf": 512}, "mid": {"a": 1024, "n": 512, "orm": 512, "leaf": 256}}
 
 # Paint-outs on the 1K source maps: (kind, [x0, y0, x1, y1] to cover, [dx, dy] clean source offset, why)
@@ -116,34 +119,44 @@ def build(tier):
 
 def leaves(tier, S):
     # a dense cluster of real maple leaves (ambientCG LeafSet027, the nearest palmate leaf to a plane leaf):
-    # the source's leaves cut out by its opacity, scattered rotated and scaled into one card texture
+    # the source's leaves cut out by its opacity, scattered rotated and scaled into one card texture.
+    # Round 2 (blind judge, dressing.md): the first cluster kept 12 % autumn leaves and faded its rim through a blurred
+    # disc; at phone size the yellow leaves read as speckle and the half-transparent rim leaves came out of alpha to
+    # coverage as dither noise ("noisy, speckled foliage"). Now every leaf is a summer plane green (the scan's own
+    # light and veins kept as luminance, one of four greens, a little brightness spread, the upper leaves lighter), the
+    # rim is a lobed outline that keeps or drops whole leaves (no texel between a leaf's own edge and nothing), and the
+    # whole cluster sits inside the card's octagon (CARD_UV in tree_blender.py).
     b = os.path.join(ACG, "LeafSet027")
     col = Image.open(os.path.join(b, "LeafSet027_1K-JPG_Color.jpg")).convert("RGB")
     op = Image.open(os.path.join(b, "LeafSet027_1K-JPG_Opacity.jpg")).convert("L")
-    leaf = col.copy()
-    leaf.putalpha(op)
+    lum = col.convert("L")
     rnd = random.Random(11)
     big = 1024
     out = Image.new("RGBA", (big, big), (0, 0, 0, 0))
-    # summer-to-autumn mix: most leaves pulled towards plane green, a few left yellow
-    # fid29 overdraw cap: twice the leaves, gathered tighter, so a card is mostly leaf (alpha coverage about 0.65 of
-    # the card, 0.9 of its trimmed octagon) and the crown needs fewer cards for the same leaf mass (dressing.md)
-    for i in range(LEAF_N):
-        s = rnd.uniform(0.26, 0.42)
-        w = int(leaf.size[0] * s)
-        im = leaf.resize((w, w), Image.LANCZOS).rotate(rnd.uniform(0, 360), resample=Image.BICUBIC, expand=True)
-        r, g, bb, a = im.split()
-        if rnd.random() < 0.88:
-            gr = ImageChops.multiply(Image.merge("RGB", (r, g, bb)), Image.new("RGB", im.size, (128, 196, 104)))
-            r, g, bb = gr.split()
+    lobes = [(rnd.uniform(0, 2 * math.pi), k, rnd.uniform(0.03, 0.06)) for k in (3, 5, 7)]
+    R = 432.0   # the octagon's inradius is about 0.46 of the card (471 px): leaves and lobes stay inside it
+    n = 0; tries = 0
+    while n < LEAF_N and tries < LEAF_N * 40:
+        tries += 1
+        sc = rnd.uniform(0.24, 0.38)
+        w = int(op.size[0] * sc)
         cx = 512 + rnd.gauss(0, LEAF_SPREAD)
         cy = 512 + rnd.gauss(0, LEAF_SPREAD)
-        out.alpha_composite(Image.merge("RGBA", (r, g, bb, a)), (int(cx - im.size[0] / 2), int(cy - im.size[1] / 2)))
-    # keep the cluster inside a soft disc so a card's square never shows
-    disc = Image.new("L", (big, big), 0)
-    ImageDraw.Draw(disc).ellipse((40, 40, big - 40, big - 40), fill=255)
-    disc = disc.filter(ImageFilter.GaussianBlur(30))
-    out.putalpha(ImageChops.multiply(out.getchannel("A"), disc))
+        th = math.atan2(cy - 512, cx - 512); r = math.hypot(cx - 512, cy - 512)
+        edge = R * (1.0 + sum(am * math.cos(k * th + ph) for ph, k, am in lobes))
+        if r + w * 0.32 > min(edge, 452.0):
+            continue
+        rot = rnd.uniform(0, 360)
+        g = LEAF_GREENS[rnd.randrange(len(LEAF_GREENS))]
+        v = rnd.uniform(0.84, 1.06) * (1.0 + 0.10 * (512 - cy) / 512.0)   # upper leaves a little lighter
+        l = lum.resize((w, w), Image.LANCZOS)
+        rgb = Image.merge("RGB", [l.point(lambda x, c=c: min(255, int(x * c * v * LEAF_GAIN / 255.0))) for c in g])
+        al = op.resize((w, w), Image.LANCZOS)
+        rgb = rgb.rotate(rot, resample=Image.BICUBIC, expand=True)
+        al = al.rotate(rot, resample=Image.BICUBIC, expand=True)
+        rgb.putalpha(al)
+        out.alpha_composite(rgb, (int(cx - rgb.size[0] / 2), int(cy - rgb.size[1] / 2)))
+        n += 1
     # bleed colour into the transparent texels so mips do not fringe dark
     rgb = Image.new("RGB", (big, big), (70, 92, 52))
     rgb.paste(out.convert("RGB"), (0, 0), out.getchannel("A"))
@@ -152,7 +165,11 @@ def leaves(tier, S):
     res.resize((S, S), Image.LANCZOS).save(os.path.join(OUT, "plane_leaves_%s.png" % tier), optimize=True)
     a = out.getchannel("A")
     cov = sum(1 for v in a.resize((128, 128)).getdata() if v > 100) / (128 * 128.0)
-    print("ATLAS leaves %s coverage %.2f" % (tier, cov))
+    m = [0, 0, 0]; k = 0
+    for c, q in zip(out.convert("RGB").resize((128, 128)).getdata(), a.resize((128, 128)).getdata()):
+        if q > 200:
+            k += 1; m = [m[i] + c[i] for i in range(3)]
+    print("ATLAS leaves %s leaves %d coverage %.2f mean %s" % (tier, n, cov, [round(x / max(1, k)) for x in m]))
 
 
 def sheet():
@@ -173,7 +190,11 @@ def sheet():
     board.save(os.path.join(OUT, "chalkboard_board.jpg"), quality=90)
 
 
-for t in TIERS:
-    build(t)
-sheet()
+if "--leaves-only" in sys.argv:   # the plane's cluster texture alone (the prop atlases keep their bytes)
+    for t in TIERS:
+        leaves(t, TIERS[t]["leaf"])
+else:
+    for t in TIERS:
+        build(t)
+    sheet()
 print("ATLAS_DONE")
