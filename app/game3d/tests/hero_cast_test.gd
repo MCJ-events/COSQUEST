@@ -10,7 +10,8 @@ extends SceneTree
 ##    "hero_cast": false turns it off.
 ## 3. A player's own character (a file outside res://cast) is never replaced.
 ## 4. Every hero the pck ships has both detail levels, a clip library the game binds by key, an
-##    arm droop, and stays small (a guard of ours, not the bar's: 5 MB at lod0, 2 MB at lod1).
+##    arm droop, and stays small (a guard of ours, not the bar's: 5 MB at lod0, 2 MB at lod1; fid29 heromaps: the
+##    compressed r files 14 MiB at lod0r, 6 MiB at lod1r).
 ## Prints "CQTEST PASS <name>" / "CQTEST FAIL <name> <why>", then "CQTEST done failures=N".
 
 const FightScript := preload("res://fight.gd")
@@ -68,6 +69,13 @@ func _initialize() -> void:
 		var p1: String = FightScript.HERO_DIR + k + "_lod1.glb"
 		var n1: int = FileAccess.open(p1, FileAccess.READ).get_length() if FileAccess.file_exists(p1) else 0
 		_check("files_" + k, n1 > 0 and n0 <= 5 * 1024 * 1024 and n1 <= 2 * 1024 * 1024, "lod0=%d lod1=%d" % [n0, n1])
+		# fid29 heromaps: the compressed r files (KTX2 maps inside; mid/high only, hero_files.gd) have their own caps,
+		# the lane's only relaxation of this guard: 14 MiB at lod0r, 6 MiB at lod1r
+		for rr: Array in [["_lod0r.glb", 14], ["_lod1r.glb", 6]]:
+			var pr: String = FightScript.HERO_DIR + k + str(rr[0])
+			if FileAccess.file_exists(pr):
+				var nr: int = FileAccess.open(pr, FileAccess.READ).get_length()
+				_check("files" + str(rr[0]).get_basename() + "_" + k, nr <= int(rr[1]) * 1024 * 1024, "%d bytes" % nr)
 		var ch: Dictionary = chars.get(k, {})
 		_check("library_" + k, FileAccess.file_exists("res://anim/%s.glb" % k) and float(ch.get("arm_droop", 0.0)) > 0.0)
 	print("CQTEST done failures=%d" % _fails)
