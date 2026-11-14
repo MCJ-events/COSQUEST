@@ -12,8 +12,8 @@
   ],
   "cap": 3.7751,
   "gain": 1.0,
-  "longest_flat_run_hi": 20,
-  "longest_flat_run_mid": 14
+  "longest_flat_run_hi": 9,
+  "longest_flat_run_mid": 8
  },
  "day": {
   "src": "kloppenheim_05_puresky_2k.hdr",
@@ -28,8 +28,8 @@
   ],
   "cap": 0.8901,
   "gain": 1.0,
-  "longest_flat_run_hi": 31,
-  "longest_flat_run_mid": 22
+  "longest_flat_run_hi": 14,
+  "longest_flat_run_mid": 9
  },
  "dusk": {
   "src": "qwantani_dusk_2_puresky_2k.hdr",
@@ -44,7 +44,7 @@
   ],
   "cap": 4.7396,
   "gain": 1.0,
-  "longest_flat_run_hi": 14,
-  "longest_flat_run_mid": 12
+  "longest_flat_run_hi": 9,
+  "longest_flat_run_mid": 10
  }
 }

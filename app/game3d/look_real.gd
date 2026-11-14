@@ -58,7 +58,10 @@ static func env_for(time: String) -> Dictionary:
 			var cube := Cubemap.new()
 			if cube.create_from_images(faces) == OK:
 				var amb := PackedVector3Array()
-				for c: Variant in (e as Dictionary).get("amb", []):
+				# the six ambient colours stay build 28's ("env"): the real sky changes what the fighters reflect, not
+				# their diffuse shade, so the skin keeps its tone (lightcam.md: skin Delta E within 1.0 of b28p)
+				var amb_src: Variant = (doc().get("env", {}) as Dictionary).get(time, e) if group == "env_lc" else e
+				for c: Variant in (amb_src as Dictionary).get("amb", []):
 					amb.append(Vector3(float(c[0]), float(c[1]), float(c[2])))
 				var lods: int = 0
 				while (size >> (lods + 1)) >= 1:

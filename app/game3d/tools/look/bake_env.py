@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""bake_env.py <capture dir> <data/look_real.json> [--size 32] [--raw]
+"""bake_env.py <capture dir> <data/look_real.json> [--size 32] [--raw] [--group env]
+--group env_lc (fid29-lightcam): the cubes captured under the real cloud sky (env_capture.gd --look with fid_lightcam),
+read by look_real.gd env_for only with the lightcam look; build 28's "env" group is left as it is.
 
 Turns tools/look/env_capture.gd's six views per time of day into what vfx/char_real.gdshader reads
 (look_real.gd): a prefiltered cube (mip = roughness, GGX-like lobes, stored as sqrt(radiance / scale) in 8
@@ -69,7 +71,9 @@ def main():
     cdir, out_json = sys.argv[1], sys.argv[2]
     size = int(sys.argv[sys.argv.index("--size") + 1]) if "--size" in sys.argv else 32
     doc = json.load(open(out_json)) if os.path.exists(out_json) else {}
+    group = sys.argv[sys.argv.index("--group") + 1] if "--group" in sys.argv else "env"
     doc.setdefault("env", {})
+    doc.setdefault(group, {})
     doc.setdefault("lut", {})
     for meta_file in sorted(f for f in os.listdir(cdir) if f.startswith("env_") and f.endswith(".json")):
         meta = json.load(open(os.path.join(cdir, meta_file)))
@@ -100,7 +104,7 @@ def main():
         # half the cube's own colour (the sunlit walls' and the paving's bounce), half the street's ambient
         # colour with the cube's brightness by direction: the fighters' shade stays the street's shade
         amb_out = np.array([0.5 * c * k + 0.5 * street * (k * lum(c) / max(lum(street), 1e-6)) for c in amb])
-        doc["env"][time] = {"png": base64.b64encode(buf.getvalue()).decode(), "size": size, "scale": SCALE,
+        doc[group][time] = {"png": base64.b64encode(buf.getvalue()).decode(), "size": size, "scale": SCALE,
                             "amb": [[round(float(v), 4) for v in c] for c in amb_out], "amb_raw_up": [round(float(v), 4) for v in amb[2]],
                             "amb_k": round(float(k), 4)}
         Image.fromarray(atlas).resize((atlas.shape[1] * 4, atlas.shape[0] * 4), Image.NEAREST).save(os.path.join(cdir, "atlas_%s.png" % time))

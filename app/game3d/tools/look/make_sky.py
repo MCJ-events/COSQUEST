@@ -12,8 +12,8 @@ Per time of day (SKIES below):
   3. tone-mapped to the preset: the upper sky's median luminance is set to the gradient's (arena.gd TIMES) at the same
      elevations, the colour pulled half way to the gradient's balance, highlights rolled off under 1 (8-bit storage);
   4. below the horizon the horizon row is repeated (the haze band covers it; no black in the filtering);
-  5. 64 x 64 blue noise (Christoph Peters, CC0) dithers the 8-bit quantisation (no flat runs, no banding after
-     VRAM compression); written as <time>_hi.png (2048 x 1024) and <time>_mid.png (1024 x 512).
+  5. 64 x 64 blue noise (Christoph Peters, CC0), triangular (two channels summed), dithers the 8-bit quantisation
+     (no flat runs, no banding after VRAM compression; tools/look/sky_runs.gd measures it after compression); written as <time>_hi.png (2048 x 1024) and <time>_mid.png (1024 x 512).
 """
 import argparse, json, math, os
 import numpy as np
@@ -102,6 +102,9 @@ def make(time, src, noise, out, preview):
     for tag, (w, h) in {"hi": (2048, 1024), "mid": (1024, 512)}.items():
         s = cv2.resize(srgb, (w, h), interpolation=cv2.INTER_AREA) if (w, h) != (W, H) else srgb.copy()
         n = np.tile(noise, (h // noise.shape[0] + 1, w // noise.shape[1] + 1, 1))[:h, :w]
+        # triangular dither from two of the noise's channels (-0.5..1.5 of a step): a level that sits exactly on an
+        # 8-bit step still toggles, so no run stays flat (a single channel's 0..1 offset left 31 px runs in the day sky)
+        n = n + np.roll(n, 1, axis=2) - 0.5
         q = np.clip(np.floor(s * 255.0 + n), 0, 255).astype(np.uint8)
         cv2.imwrite(os.path.join(out, "%s_%s.png" % (time, tag)), q[:, :, ::-1])
         # flat runs (the gate: none longer than 24 px in the upper sky)

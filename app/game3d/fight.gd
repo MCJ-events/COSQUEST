@@ -804,7 +804,7 @@ func _close_fit() -> float:
 func _close_ok(pts: Array[Vector3], pivot: Vector3, d: float, tv: float, th: float) -> bool:
 	var eye: Vector3 = pivot + _cam_basis.z * d
 	if _lc and not _landscape:
-		eye += _view_basis.x * LC_H_OFF + _view_basis.y * _lc_voff()   # fid29-lightcam: the camera's offsets
+		eye += _view_basis.x * _lc_hoff() + _view_basis.y * _lc_voff()   # fid29-lightcam: the camera's offsets
 	for p: Vector3 in pts:
 		var r: Vector3 = p - eye
 		var depth: float = -r.dot(_view_basis.z)
@@ -1011,13 +1011,13 @@ const LC_BIAS: Vector2 = Vector2(0.2, 0.05)       # fight, close
 const LC_NBIAS: Vector2 = Vector2(3.0, 0.9)
 const LC_SPLIT: float = 0.3             # the first shadow split at fight distance (of 35 m)
 const LC_WIN_SHARE: float = 0.72        # the winner's share of the frame's height
-const LC_WIN_HK: float = 0.86           # the drawn figure's height over HEIGHT (the models stand under the 2.3 m capsule)
+const LC_WIN_HK: float = 1.07           # the drawn figure's height over HEIGHT (the models stand under the 2.3 m capsule)
 const LC_WIN_AIM: float = 0.52          # the victory view's height, as a share of the body
 const LC_WIN_PITCH: float = 3.0
-const LC_PITCH: float = 22.0            # the mid-fight orbit (build 28: 28)
-const LC_PIVOT_H: float = 1.0           # the orbit's pivot (build 28: 1.15)
-const LC_H_OFF: float = 0.0
-const LC_V_OFF: float = -0.35           # the camera a little lower than its orbit point (m, in the view's up)
+const LC_PITCH: float = 20.0            # the mid-fight orbit (build 28: 28)
+const LC_PIVOT_H: float = 1.15          # the orbit's pivot (build 28's; trials 0.9 to 1.3, tools/look/frame_probe.gd)
+const LC_H_OFF: float = 0.5             # the camera right of its orbit point: the hero sits left, over the shoulder
+const LC_V_OFF: float = 0.9             # the camera above its orbit point (m, in the view's up): the fight drops under the top block
 var _lc: bool = false
 var _lc_close: float = 0.0
 var _lc_mats: Dictionary = {}           # ShaderMaterial -> [kick_a_col at fight distance, recv_shadow at fight distance]
@@ -1037,6 +1037,10 @@ func _lc_pivot_h() -> float:
 
 func _lc_voff() -> float:
 	return float((arena.get("look") as Dictionary).get("lc_voff", LC_V_OFF)) if arena != null else LC_V_OFF
+
+
+func _lc_hoff() -> float:
+	return float((arena.get("look") as Dictionary).get("lc_hoff", LC_H_OFF)) if arena != null else LC_H_OFF
 
 
 ## 0 -> 1, critically damped from t = 0 (no overshoot), at LC_PUSH_W.
@@ -3459,9 +3463,12 @@ func _apply_camera(dt: float) -> void:
 		basis = _lc_handheld(basis)
 	cam.transform = Transform3D(basis, pos)
 	if _lc and _close:
-		# fid29-lightcam: the mid-fight frame's offsets (the view shifts, the heading and the pitch of the orbit stay)
+		# fid29-lightcam: the mid-fight frame's offsets (the view shifts, the heading and the pitch of the orbit stay);
+		# none in the close shots (the intro beat, the victory shot), which frame the hero themselves
 		var wk2: float = ease(_win_k, -2.0)
-		cam.h_offset = LC_H_OFF * (1.0 - wk2)
+		if _beat_t >= 0.0:
+			wk2 = maxf(wk2, 1.0 - smoothstep(BEAT_LEN - BEAT_OUT, BEAT_LEN, _beat_t))
+		cam.h_offset = _lc_hoff() * (1.0 - wk2)
 		cam.v_offset = _lc_voff() * (1.0 - wk2)
 
 
