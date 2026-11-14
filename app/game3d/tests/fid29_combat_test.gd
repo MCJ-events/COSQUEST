@@ -15,8 +15,9 @@ extends SceneTree
 ## 6. The KO settle: no physics body of this lane exists before the result is final (none while "fighting", none
 ##    after the fall with the fight still on); after the result it starts, no bone ends more than 3 cm under the
 ##    ground and the body is settled within 1.2 s.
-## 7. Effects: the low tier's cards and arcs use build 28's shader resources; mid/high cards compile with FID29,
-##    high arcs with FLOW (mid arcs build 28's); a hit sets a shield on the cards it made.
+## 7. Effects: the low tier's cards, beams and arcs use build 28's shader resources; mid/high cards and beams compile
+##    with FID29, high arcs with FLOW (mid arcs build 28's); a hit sets a shield on the cards it made and on cards made
+##    at the struck body within SHIELD_HOLD.
 ## 8. Cost: the animation modifiers this lane adds (dead blending while it blends, the additive hit layers) take at
 ##    most 0.3 ms a frame for three fighters (measured on this core).
 ## 9. Credits: every CC-BY source in docs/game3d/fid29/ASSETS-LICENCES-combat.md is on the Credits screen
@@ -309,8 +310,9 @@ func _effects() -> void:
 		var card_sh: Shader = (fx._cards[0].material_override as ShaderMaterial).shader
 		var top_sh: Shader = (fx._tops[0].material_override as ShaderMaterial).shader
 		var arc_sh: Shader = (fx._arcs[0].material_override as ShaderMaterial).shader
-		fl[tier] = [card_sh == FxScript.CARD_SHADER and top_sh == FxScript.CARD_TOP_SHADER, arc_sh == FxScript.ARC_SHADER,
-			card_sh.code.contains("#define FID29"), arc_sh.code.contains("#define FLOW")]
+		var beam_sh: Shader = (fx._beams[0].material_override as ShaderMaterial).shader
+		fl[tier] = [card_sh == FxScript.CARD_SHADER and top_sh == FxScript.CARD_TOP_SHADER and beam_sh == FxScript.BEAM_SHADER, arc_sh == FxScript.ARC_SHADER,
+			card_sh.code.contains("#define FID29") and beam_sh.code.contains("#define FID29"), arc_sh.code.contains("#define FLOW")]
 		if tier == "mid":
 			fx.sparks(_f.chest_pos(), Color(1, 0.5, 0.2), 200, true, Vector3(0, 0, 1))
 			var shielded: int = 0
@@ -318,6 +320,11 @@ func _effects() -> void:
 				if mi.visible and ((mi.material_override as ShaderMaterial).get_shader_parameter("sh_head") as Vector4).w > 0.0:
 					shielded += 1
 			_check("fx_hit_sets_a_shield", fx.shields == 1 and shielded >= 2, "shields %d, cards %d" % [fx.shields, shielded])
+			# a card made just after the hit, at the struck body, takes its shield; one far away does not
+			var near: MeshInstance3D = fx.card(FxScript.GLOW, _f.chest_pos(), Color.WHITE, 0.2, 1.0, 1.2)
+			var far: MeshInstance3D = fx.card(FxScript.GLOW, _f.chest_pos() + Vector3(8, 0, 0), Color.WHITE, 0.2, 1.0, 1.2)
+			_check("fx_shield_holds_for_cards_at_the_struck_body", ((near.material_override as ShaderMaterial).get_shader_parameter("sh_head") as Vector4).w > 0.0
+				and ((far.material_override as ShaderMaterial).get_shader_parameter("sh_head") as Vector4).w == 0.0)
 		fx.queue_free()
 	_check("fx_low_is_build28", fl["low"][0] and fl["low"][1] and not fl["low"][2], str(fl["low"]))
 	_check("fx_mid_cards_fid29_arcs_build28", fl["mid"][2] and fl["mid"][1], str(fl["mid"]))

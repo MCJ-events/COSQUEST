@@ -74,8 +74,12 @@ var _sh_top: Shader = CARD_TOP_SHADER
 var _sh_arc: Shader = ARC_SHADER
 var _t_flow: Texture2D
 const SHIELD_FLOOR: float = 0.2
-const SHIELD_HALF_W: float = 0.42        # metres either side of the body's axis (x size_k)
+const SHIELD_HALF_W: float = 0.5         # metres either side of the body's axis (x size_k)
+const SHIELD_LOW: float = 0.5            # the ellipse reaches down to this share of the body's height (the waist)
+const SHIELD_HOLD: float = 0.35          # s: cards made this soon after a hit, near the struck fighter, take its shield too
 var shields: int = 0                     # hits that set a shield (tests)
+var _sh_f: Node3D                        # the last struck fighter and until when its shield holds for new cards
+var _sh_until: float = -1.0
 
 
 ## The arena's look and the fight's tier, read from the fight this is a child of (fight.gd adds it after the arena).
@@ -135,8 +139,10 @@ func _ready() -> void:
 	bq.center_offset = Vector3(0, 0.5, 0)   # stands on the ground
 	for i in N_BEAMS:
 		var bm := ShaderMaterial.new()
-		bm.shader = BEAM_SHADER
+		bm.shader = _variant(BEAM_SHADER, "FID29") if fid else BEAM_SHADER
 		bm.set_shader_parameter("tile", T_TILE)
+		if fid:
+			bm.set_shader_parameter("shield_floor", BEAM_SHIELD_FLOOR)
 		_beams.append(_make_mi(bq, bm))
 	for i in 6:
 		var cm := StandardMaterial3D.new()
@@ -439,7 +445,13 @@ func card(cell: int, at: Vector3, tint: Color, life: float, s0: float, s1: float
 	m.set_shader_parameter("spin", spin0)
 	m.set_shader_parameter("tint", tint)
 	if fid:
-		m.set_shader_parameter("sh_head", Vector4.ZERO)     # no shield unless the hit that made it sets one
+		# no shield unless a hit set one: the cards a hit makes (sparks), and any card made within SHIELD_HOLD of it
+		# near the struck fighter (a skill's burst landing on the same body)
+		var held: bool = not flat and _sh_f != null and is_instance_valid(_sh_f) and _clock <= _sh_until \
+			and Vector2(_sh_f.global_position.x - at.x, _sh_f.global_position.z - at.z).length() < 2.5
+		var sp: Array = _shield_params(_sh_f) if held else [Vector4.ZERO, Vector3.ZERO]
+		m.set_shader_parameter("sh_head", sp[0])
+		m.set_shader_parameter("sh_chest", sp[1])
 		m.set_shader_parameter("ground_y", _ground_at(at))
 	mi.position = at
 	if bloom_layer != 0:
@@ -624,16 +636,22 @@ func _shield(made: Array, at: Vector3) -> void:
 	var f: Node3D = _struck(at)
 	if f == null:
 		return
+	var sp: Array = _shield_params(f)
+	for mi: Variant in made:
+		var m := (mi as MeshInstance3D).material_override as ShaderMaterial
+		m.set_shader_parameter("sh_head", sp[0])
+		m.set_shader_parameter("sh_chest", sp[1])
+	_sh_f = f
+	_sh_until = _clock + SHIELD_HOLD
+	shields += 1
+
+
+## The shield of a struck fighter: [its head (w = half width, metres), the low end of the ellipse (chest to waist)].
+func _shield_params(f: Node3D) -> Array:
 	var sk: float = float(f.get("size_k")) if "size_k" in f else 1.0
 	var h: float = 2.3 * sk          # fighter.gd HEIGHT
 	var p: Vector3 = f.global_position
-	var head := Vector4(p.x, p.y + h * 0.9, p.z, SHIELD_HALF_W * sk)
-	var chest := Vector3(p.x, p.y + h * 0.58, p.z)
-	for mi: Variant in made:
-		var m := (mi as MeshInstance3D).material_override as ShaderMaterial
-		m.set_shader_parameter("sh_head", head)
-		m.set_shader_parameter("sh_chest", chest)
-	shields += 1
+	return [Vector4(p.x, p.y + h * 0.9, p.z, SHIELD_HALF_W * sk), Vector3(p.x, p.y + h * SHIELD_LOW, p.z)]
 
 
 func _fighters() -> Array:
@@ -650,6 +668,29 @@ func _struck(at: Vector3) -> Node3D:
 			continue
 		var d: float = Vector2((f as Node3D).global_position.x - at.x, (f as Node3D).global_position.z - at.z).length()
 		if d < bd:
+			bd = d
+			best = f
+	return best
+
+
+const BEAM_SHIELD_FLOOR: float = 0.3    # fid29: what of a beam is left over the fighter it stands in front of
+
+
+## fid29: the fighter a beam at `at` stands in front of (seen from the camera): further from the camera than the beam
+## and within 4 m of it on the ground, the nearest such; null = none.
+func _behind(at: Vector3) -> Node3D:
+	var cam: Camera3D = get_viewport().get_camera_3d() if is_inside_tree() else null
+	if cam == null:
+		return null
+	var dc: float = cam.global_position.distance_to(at)
+	var best: Node3D = null
+	var bd: float = 4.0
+	for f: Variant in _fighters():
+		if f == null or not is_instance_valid(f):
+			continue
+		var fp: Vector3 = (f as Node3D).global_position
+		var d: float = Vector2(fp.x - at.x, fp.z - at.z).length()
+		if cam.global_position.distance_to(fp) > dc + 0.3 and d < bd:
 			bd = d
 			best = f
 	return best
@@ -725,6 +766,13 @@ func beam(at: Vector3, height: float, width: float, tint: Color, glow: Color, li
 	m.set_shader_parameter("speed", 3.5)
 	m.set_shader_parameter("top_fade", 0.6)
 	m.set_shader_parameter("flow", 1.0)
+	if fid:
+		# fid29: a column of light standing in front of a fighter (seen from the camera) frames that body instead of
+		# burying it: the beam thins to BEAM_SHIELD_FLOOR inside the ellipse round its head and chest
+		var bf: Node3D = _behind(at)
+		var sp: Array = _shield_params(bf) if bf != null else [Vector4.ZERO, Vector3.ZERO]
+		m.set_shader_parameter("sh_head", sp[0])
+		m.set_shader_parameter("sh_chest", sp[1])
 	mi.visible = true
 	_start(mi, life, "beam", width, tint, {"h": height})
 	return mi
