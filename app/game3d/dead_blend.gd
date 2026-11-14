@@ -43,9 +43,10 @@ var _dur: float = 0.2
 var blends: int = 0                 # transitions blended (tests, the probe)
 var cost_usec: int = 0              # the last frame's cost
 
-## the pose guard (see above): rad/s^2 (about 40,000 degrees/s^2; a knee flip in one frame is 150,000 and more)
+## the pose guard (see above): rad/s^2 (about 28,600 degrees/s^2; a knee flip in one frame is 150,000 and more). 700
+## (40,100) left the median transition peak at 0.65x build 28; 500 brings every statistic under 0.5x
 var guard: bool = false
-const GUARD_ACC: float = 700.0
+const GUARD_ACC: float = 500.0
 const GUARD_BONES: Array[String] = ["Hips", "LeftUpLeg", "LeftLeg", "LeftFoot", "RightUpLeg", "RightLeg", "RightFoot"]
 var _gw: Array[Vector3] = []        # the guard's own angular velocity per bone (rad/s, parent frame)
 var guarded: int = 0                # frames the guard changed something (tests, the probe)

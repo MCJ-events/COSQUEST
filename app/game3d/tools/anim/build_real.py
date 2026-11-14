@@ -27,10 +27,11 @@ import add_gate  # noqa: E402
 GAME = os.path.abspath(os.path.join(HERE, "..", ".."))
 REAL = os.path.join(HERE, "real")
 HEROES = ["icons_imani", "blockbusters_kofi", "ascendants_zuri", "controllers_tavo", "everborn_oren", "celestials_lyra"]
-# fid29 combat: the 100STYLE intros are not mapped to a state. On the game camera (look_shots intro beat) the
-# retargeted idles held the arms out level, a T-pose read, and bowed Imani's head; each hero keeps its build 28 intro
-# until the retarget handles 100STYLE's rest pose. The clips are still retargeted (their tear is reported).
-INTROS = False
+# fid29 combat: the 100STYLE intros stand in for each hero's intro. The first cut (frame 300 on) fell inside each take's
+# arms-out stretch (about frames 240 to 560 of every idle take, arms near level), a T-pose read on the game camera;
+# the cuts in real/src_clips.json now come from a stretch with the arms at the sides (the source's upper arms 75 to 85
+# degrees below level throughout, measured on the BVH).
+INTROS = True
 # intro archetype per hero (100STYLE idles): proud / strutting / neutral
 ARCH = {"icons_imani": "Proud", "celestials_lyra": "Proud", "blockbusters_kofi": "Strut", "ascendants_zuri": "Strut",
         "controllers_tavo": "Neutral", "everborn_oren": "Neutral"}
@@ -122,8 +123,11 @@ def main():
             n = data["clips"][vic28]["frames"]
             c = "CM_Victory_%d" % n
             if c in rclips["clips"]:
-                want[c] = ("state", "victory", vic28)
-                want[c + "s"] = ("state", "victory", vic28)
+                # candidates in order: the cut, legs damped harder (s), pelvis and legs damped (h), legs damped
+                # relative to the hips (r); the first under the gate on this hero is kept
+                for suf in ("", "s", "h", "r"):
+                    if c + suf in rclips["clips"]:
+                        want[c + suf] = ("state", "victory", vic28)
         if INTROS and intro28 in data["clips"]:
             n = data["clips"][intro28]["frames"]
             c = "ST_Intro_%s_%d" % (ARCH[key], n)

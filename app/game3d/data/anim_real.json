@@ -139,7 +139,9 @@
     "front_light": "M2M_Hit_Chest",
     "front_heavy": "M2M_Hit_Head"
    },
-   "states": {},
+   "states": {
+    "intro": "ST_Intro_Proud_54"
+   },
    "variants": {
     "guard": [
      "CB_Guard_14"
@@ -173,10 +175,12 @@
     "CM_Hit_Right": 0.00478,
     "CM_Hit_Right_M": 0.00639,
     "CM_Victory_75": 0.00568,
+    "CM_Victory_75h": 0.00584,
+    "CM_Victory_75r": 0.00563,
     "CM_Victory_75s": 0.00579,
     "M2M_Hit_Chest": 0.00471,
     "M2M_Hit_Head": 0.00429,
-    "ST_Intro_Proud_54": 0.00085
+    "ST_Intro_Proud_54": 0.00018
    },
    "over_gate": [
     "CB_Guard_13",
@@ -184,6 +188,8 @@
     "CM_Hit_Left",
     "CM_Hit_Right_M",
     "CM_Victory_75",
+    "CM_Victory_75h",
+    "CM_Victory_75r",
     "CM_Victory_75s"
    ],
    "tear_note": "worst share of triangles stretched past 2.5x on LOD0 to LOD2; hit clips measured as layered (add_gate.py)",
@@ -206,7 +212,9 @@
     "front_light": "M2M_Hit_Chest",
     "front_heavy": "M2M_Hit_Head"
    },
-   "states": {},
+   "states": {
+    "intro": "ST_Intro_Strut_50"
+   },
    "variants": {
     "guard": [
      "CB_Guard_14"
@@ -240,16 +248,20 @@
     "CM_Hit_Right": 0.00497,
     "CM_Hit_Right_M": 0.00613,
     "CM_Victory_51": 0.00513,
+    "CM_Victory_51h": 0.00513,
+    "CM_Victory_51r": 0.00508,
     "CM_Victory_51s": 0.00519,
     "M2M_Hit_Chest": 0.00413,
     "M2M_Hit_Head": 0.00359,
-    "ST_Intro_Strut_50": 0.00254
+    "ST_Intro_Strut_50": 0.00105
    },
    "over_gate": [
     "CB_Guard_13",
     "CM_Hit_Left",
     "CM_Hit_Right_M",
     "CM_Victory_51",
+    "CM_Victory_51h",
+    "CM_Victory_51r",
     "CM_Victory_51s"
    ],
    "tear_note": "worst share of triangles stretched past 2.5x on LOD0 to LOD2; hit clips measured as layered (add_gate.py)",
@@ -273,7 +285,8 @@
     "front_heavy": "M2M_Hit_Head"
    },
    "states": {
-    "victory": "CM_Victory_64"
+    "victory": "CM_Victory_64",
+    "intro": "ST_Intro_Strut_54"
    },
    "variants": {
     "guard": [
@@ -312,7 +325,7 @@
     "CM_Victory_64s": 0.00057,
     "M2M_Hit_Chest": 0.00087,
     "M2M_Hit_Head": 0.00087,
-    "ST_Intro_Strut_54": 0.00021
+    "ST_Intro_Strut_54": 5e-05
    },
    "over_gate": [],
    "tear_note": "worst share of triangles stretched past 2.5x on LOD0 to LOD2; hit clips measured as layered (add_gate.py)",
@@ -331,7 +344,9 @@
     "back": "CM_Hit_Back_B",
     "front_heavy": "M2M_Hit_Head"
    },
-   "states": {},
+   "states": {
+    "intro": "ST_Intro_Neutral_49"
+   },
    "variants": {},
    "fingerprint": {
     "Hips": [
@@ -361,10 +376,12 @@
     "CM_Hit_Right": 0.00592,
     "CM_Hit_Right_M": 0.00671,
     "CM_Victory_51": 0.01037,
+    "CM_Victory_51h": 0.01037,
+    "CM_Victory_51r": 0.00974,
     "CM_Victory_51s": 0.01037,
     "M2M_Hit_Chest": 0.00516,
     "M2M_Hit_Head": 0.00499,
-    "ST_Intro_Neutral_49": 0.00351
+    "ST_Intro_Neutral_49": 0.00206
    },
    "over_gate": [
     "CB_Guard_13",
@@ -376,6 +393,8 @@
     "CM_Hit_Right",
     "CM_Hit_Right_M",
     "CM_Victory_51",
+    "CM_Victory_51h",
+    "CM_Victory_51r",
     "CM_Victory_51s",
     "M2M_Hit_Chest"
    ],
@@ -396,7 +415,8 @@
     "front_heavy": "M2M_Hit_Head"
    },
    "states": {
-    "victory": "CM_Victory_77"
+    "victory": "CM_Victory_77",
+    "intro": "ST_Intro_Neutral_33"
    },
    "variants": {
     "guard": [
@@ -435,7 +455,7 @@
     "CM_Victory_77s": 0.0012,
     "M2M_Hit_Chest": 0.00226,
     "M2M_Hit_Head": 0.00234,
-    "ST_Intro_Neutral_33": 0.00018
+    "ST_Intro_Neutral_33": 0.00014
    },
    "over_gate": [],
    "tear_note": "worst share of triangles stretched past 2.5x on LOD0 to LOD2; hit clips measured as layered (add_gate.py)",
@@ -459,7 +479,8 @@
     "front_heavy": "M2M_Hit_Head"
    },
    "states": {
-    "victory": "CM_Victory_64"
+    "victory": "CM_Victory_64",
+    "intro": "ST_Intro_Proud_77"
    },
    "variants": {
     "guard": [
@@ -498,7 +519,7 @@
     "CM_Victory_64s": 0.00058,
     "M2M_Hit_Chest": 0.00167,
     "M2M_Hit_Head": 0.00178,
-    "ST_Intro_Proud_77": 0.00012
+    "ST_Intro_Proud_77": 0.00013
    },
    "over_gate": [],
    "tear_note": "worst share of triangles stretched past 2.5x on LOD0 to LOD2; hit clips measured as layered (add_gate.py)",
@@ -511,6 +532,5 @@
     "front_heavy": 1.0
    }
   }
- },
- "_intro_note": "fid29 combat: the 100STYLE intro clips (ST_Intro_*) are retargeted into the libraries but mapped to no state: on the game camera their arms stood out level, a T-pose read (tools/anim/build_real.py INTROS = False). Each hero keeps its build 28 intro."
+ }
 }

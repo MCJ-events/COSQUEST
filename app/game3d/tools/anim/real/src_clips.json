@@ -99,56 +99,56 @@
   "ST_Intro_Proud_54": {
    "lib": "style",
    "file": "Proud_ID.bvh",
-   "f0": 300,
-   "f1": 406,
+   "f0": 1000,
+   "f1": 1106,
    "frames": 54,
    "face": "mean",
-   "what": "100STYLE Proud idle"
+   "what": "100STYLE Proud idle (cut from a stretch with the arms at the sides; the first cut, frame 300 on, fell inside the take's arms-out stretch, a T-pose read)"
   },
   "ST_Intro_Proud_77": {
    "lib": "style",
    "file": "Proud_ID.bvh",
-   "f0": 300,
-   "f1": 452,
+   "f0": 1000,
+   "f1": 1152,
    "frames": 77,
    "face": "mean",
-   "what": "100STYLE Proud idle"
+   "what": "100STYLE Proud idle (cut from a stretch with the arms at the sides; the first cut, frame 300 on, fell inside the take's arms-out stretch, a T-pose read)"
   },
   "ST_Intro_Strut_50": {
    "lib": "style",
    "file": "Strutting_ID.bvh",
-   "f0": 300,
-   "f1": 398,
+   "f0": 1100,
+   "f1": 1198,
    "frames": 50,
    "face": "mean",
-   "what": "100STYLE Strutting idle"
+   "what": "100STYLE Strutting idle (cut from a stretch with the arms at the sides; the first cut, frame 300 on, fell inside the take's arms-out stretch, a T-pose read)"
   },
   "ST_Intro_Strut_54": {
    "lib": "style",
    "file": "Strutting_ID.bvh",
-   "f0": 300,
-   "f1": 406,
+   "f0": 1100,
+   "f1": 1206,
    "frames": 54,
    "face": "mean",
-   "what": "100STYLE Strutting idle"
+   "what": "100STYLE Strutting idle (cut from a stretch with the arms at the sides; the first cut, frame 300 on, fell inside the take's arms-out stretch, a T-pose read)"
   },
   "ST_Intro_Neutral_33": {
    "lib": "style",
    "file": "Neutral_ID.bvh",
-   "f0": 300,
-   "f1": 364,
+   "f0": 700,
+   "f1": 764,
    "frames": 33,
    "face": "mean",
-   "what": "100STYLE Neutral idle"
+   "what": "100STYLE Neutral idle (cut from a stretch with the arms at the sides; the first cut, frame 300 on, fell inside the take's arms-out stretch, a T-pose read)"
   },
   "ST_Intro_Neutral_49": {
    "lib": "style",
    "file": "Neutral_ID.bvh",
-   "f0": 300,
-   "f1": 396,
+   "f0": 700,
+   "f1": 796,
    "frames": 49,
    "face": "mean",
-   "what": "100STYLE Neutral idle"
+   "what": "100STYLE Neutral idle (cut from a stretch with the arms at the sides; the first cut, frame 300 on, fell inside the take's arms-out stretch, a T-pose read)"
   },
   "CM_Hit_Left_M": {
    "lib": "cmcd",

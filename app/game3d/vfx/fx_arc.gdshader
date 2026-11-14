@@ -68,6 +68,12 @@ void fragment() {
 	rgb = vec3(1.0, 0.98, 0.92) * ca + rgb * (1.0 - ca);
 	a = ca + a * (1.0 - ca);
 	rgb += glow.rgb * ha * 0.75;
+#ifdef FLOW
+	// fid29 combat: the ribbon is capped at 0.85 of white with its hue kept, as the cards are (fx_card.gdshaderinc):
+	// where it sweeps across the struck fighter its white-hot core no longer clips that body to the frame's white
+	float mx = max(rgb.r, max(rgb.g, rgb.b));
+	rgb *= min(1.0, 0.85 / max(mx, 0.001));
+#endif
 	ALBEDO = rgb;
 	ALPHA = clamp(a, 0.0, 1.0);
 }

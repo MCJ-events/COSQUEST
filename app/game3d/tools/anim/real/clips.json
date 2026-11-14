@@ -198,7 +198,15 @@
     "sword"
    ],
    "source": "100STYLE: Proud_ID.bvh, 100STYLE Proud idle",
-   "licence": "100STYLE (Ian Mason), CC BY 4.0"
+   "licence": "100STYLE (Ian Mason), CC BY 4.0",
+   "damp_legs": {
+    "bones": [
+     "Neck",
+     "Head"
+    ],
+    "f": 0.25
+   },
+   "_why": "the head and neck keep a quarter of the take's turn: the 100STYLE performers look down at the floor between takes (Imani's head bowed on the game camera) and the hero should face the camera"
   },
   "ST_Intro_Proud_77": {
    "src": "ST_Intro_Proud_77",
@@ -207,7 +215,15 @@
     "sword"
    ],
    "source": "100STYLE: Proud_ID.bvh, 100STYLE Proud idle",
-   "licence": "100STYLE (Ian Mason), CC BY 4.0"
+   "licence": "100STYLE (Ian Mason), CC BY 4.0",
+   "damp_legs": {
+    "bones": [
+     "Neck",
+     "Head"
+    ],
+    "f": 0.25
+   },
+   "_why": "the head and neck keep a quarter of the take's turn: the 100STYLE performers look down at the floor between takes (Imani's head bowed on the game camera) and the hero should face the camera"
   },
   "ST_Intro_Strut_50": {
    "src": "ST_Intro_Strut_50",
@@ -216,7 +232,15 @@
     "sword"
    ],
    "source": "100STYLE: Strutting_ID.bvh, 100STYLE Strutting idle",
-   "licence": "100STYLE (Ian Mason), CC BY 4.0"
+   "licence": "100STYLE (Ian Mason), CC BY 4.0",
+   "damp_legs": {
+    "bones": [
+     "Neck",
+     "Head"
+    ],
+    "f": 0.25
+   },
+   "_why": "the head and neck keep a quarter of the take's turn: the 100STYLE performers look down at the floor between takes (Imani's head bowed on the game camera) and the hero should face the camera"
   },
   "ST_Intro_Strut_54": {
    "src": "ST_Intro_Strut_54",
@@ -225,7 +249,15 @@
     "sword"
    ],
    "source": "100STYLE: Strutting_ID.bvh, 100STYLE Strutting idle",
-   "licence": "100STYLE (Ian Mason), CC BY 4.0"
+   "licence": "100STYLE (Ian Mason), CC BY 4.0",
+   "damp_legs": {
+    "bones": [
+     "Neck",
+     "Head"
+    ],
+    "f": 0.25
+   },
+   "_why": "the head and neck keep a quarter of the take's turn: the 100STYLE performers look down at the floor between takes (Imani's head bowed on the game camera) and the hero should face the camera"
   },
   "ST_Intro_Neutral_33": {
    "src": "ST_Intro_Neutral_33",
@@ -234,7 +266,15 @@
     "sword"
    ],
    "source": "100STYLE: Neutral_ID.bvh, 100STYLE Neutral idle",
-   "licence": "100STYLE (Ian Mason), CC BY 4.0"
+   "licence": "100STYLE (Ian Mason), CC BY 4.0",
+   "damp_legs": {
+    "bones": [
+     "Neck",
+     "Head"
+    ],
+    "f": 0.25
+   },
+   "_why": "the head and neck keep a quarter of the take's turn: the 100STYLE performers look down at the floor between takes (Imani's head bowed on the game camera) and the hero should face the camera"
   },
   "ST_Intro_Neutral_49": {
    "src": "ST_Intro_Neutral_49",
@@ -243,7 +283,15 @@
     "sword"
    ],
    "source": "100STYLE: Neutral_ID.bvh, 100STYLE Neutral idle",
-   "licence": "100STYLE (Ian Mason), CC BY 4.0"
+   "licence": "100STYLE (Ian Mason), CC BY 4.0",
+   "damp_legs": {
+    "bones": [
+     "Neck",
+     "Head"
+    ],
+    "f": 0.25
+   },
+   "_why": "the head and neck keep a quarter of the take's turn: the 100STYLE performers look down at the floor between takes (Imani's head bowed on the game camera) and the hero should face the camera"
   },
   "CB_Guard_13": {
    "src": "CB_Guard_13",
@@ -498,6 +546,86 @@
     "f": 0.4
    },
    "_why": "the same cut with the jump's legs damped harder, for a mesh that tears at 0.7"
+  },
+  "CM_Victory_75h": {
+   "src": "CM_Victory_75",
+   "lib": "cmcd",
+   "classes": [
+    "sword"
+   ],
+   "source": "Cologne Motion Capture Database: Take_2014-12-16_11.21.47_AM.bvh, 'boxing, jumping, cheering, winning' (Rocky, boxer, happy)",
+   "licence": "CMCD (TH Koeln), CC BY 4.0",
+   "damp_legs": {
+    "bones": [
+     "Hips",
+     "LeftUpLeg",
+     "RightUpLeg",
+     "LeftLeg",
+     "RightLeg"
+    ],
+    "f": 0.6
+   },
+   "_why": "the same cut with the pelvis tilt and the legs damped (the jump tears the hips on Imani and Kofi at 0.7)"
+  },
+  "CM_Victory_75r": {
+   "src": "CM_Victory_75",
+   "lib": "cmcd",
+   "classes": [
+    "sword"
+   ],
+   "source": "Cologne Motion Capture Database: Take_2014-12-16_11.21.47_AM.bvh, 'boxing, jumping, cheering, winning' (Rocky, boxer, happy)",
+   "licence": "CMCD (TH Koeln), CC BY 4.0",
+   "damp_legs": {
+    "bones": [
+     "LeftUpLeg",
+     "RightUpLeg",
+     "LeftLeg",
+     "RightLeg"
+    ],
+    "f": 0.5
+   },
+   "damp_rel": true,
+   "_why": "the same cut with the legs damped relative to the hips (the jump tears the hips on Imani and Kofi at 0.7)"
+  },
+  "CM_Victory_51h": {
+   "src": "CM_Victory_51",
+   "lib": "cmcd",
+   "classes": [
+    "sword"
+   ],
+   "source": "Cologne Motion Capture Database: Take_2014-12-16_11.21.47_AM.bvh, as CM_Victory_75 in Cheer's 51 frames, both fists up at Cheer's frame 15",
+   "licence": "CMCD (TH Koeln), CC BY 4.0",
+   "damp_legs": {
+    "bones": [
+     "Hips",
+     "LeftUpLeg",
+     "RightUpLeg",
+     "LeftLeg",
+     "RightLeg"
+    ],
+    "f": 0.6
+   },
+   "_why": "the same cut with the pelvis tilt and the legs damped (the jump tears the hips on Imani and Kofi at 0.7)"
+  },
+  "CM_Victory_51r": {
+   "src": "CM_Victory_51",
+   "lib": "cmcd",
+   "classes": [
+    "sword"
+   ],
+   "source": "Cologne Motion Capture Database: Take_2014-12-16_11.21.47_AM.bvh, as CM_Victory_75 in Cheer's 51 frames, both fists up at Cheer's frame 15",
+   "licence": "CMCD (TH Koeln), CC BY 4.0",
+   "damp_legs": {
+    "bones": [
+     "LeftUpLeg",
+     "RightUpLeg",
+     "LeftLeg",
+     "RightLeg"
+    ],
+    "f": 0.5
+   },
+   "damp_rel": true,
+   "_why": "the same cut with the legs damped relative to the hips (the jump tears the hips on Imani and Kofi at 0.7)"
   }
  }
 }

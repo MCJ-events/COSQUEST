@@ -69,7 +69,8 @@ var _low: FighterScript
 
 func _check(name: String, ok: bool, why: String = "") -> void:
 	if ok:
-		print("CQTEST PASS " + name)
+		# the measurement too, for the lane doc (docs/game3d/fid29/combat.md)
+		print("CQTEST PASS " + name + ("" if why == "" else " (" + why + ")"))
 	else:
 		_fails += 1
 		print("CQTEST FAIL %s %s" % [name, why])
@@ -157,7 +158,7 @@ func _initialize() -> void:
 		if str(a.clips.get(st, "")) != AnimLib.REAL_LIB + "/" + cn:
 			timing_ok = false
 			timing_why += "%s not mapped " % st
-	# every hero's captured state clips (Imani has none since the intros were unmapped; Zuri, Oren and Lyra have victories)
+	# every hero's captured state clips (each hero's intro; the victories that pass the tear gate)
 	var n_states: int = 0
 	for key: String in (AnimLib.real_data().get("characters", {}) as Dictionary):
 		var cs: Dictionary = (AnimLib.real_data()["characters"][key] as Dictionary).get("states", {})
@@ -169,8 +170,30 @@ func _initialize() -> void:
 				if old2.is_empty() or old2.has(k) != m2.has(k) or (old2.has(k) and int(old2[k]) != int(m2[k])):
 					timing_ok = false
 					timing_why += "%s %s.%s " % [key, str(cs[st]), k]
-	_check("real_states_keep_button_length_and_events", timing_ok and n_states >= 3, timing_why + " states %d" % n_states)
-	_check("real_intro_is_build28", not (rc.get("states", {}) as Dictionary).has("intro") and str(a.clips.get("intro", "")).begins_with(AnimLib.LIB_NAME + "/"), str(a.clips.get("intro", "")))
+	_check("real_states_keep_button_length_and_events", timing_ok and n_states >= 8, timing_why + " states %d" % n_states)
+	# the captured intro (100STYLE idle) stands in for the hero's intro, and its arms hang at the sides: the first cut
+	# fell inside the take's arms-out stretch (a T-pose read on the game camera). Upper arms at least 45 degrees below
+	# level at the start, middle and end of the clip.
+	var intro_clip: String = str(a.clips.get("intro", ""))
+	var arms_ok: bool = intro_clip.begins_with(AnimLib.REAL_LIB + "/ST_Intro_")
+	var arms_why: String = intro_clip
+	if arms_ok:
+		var ianim: Animation = a.player.get_animation(intro_clip)
+		var sk: Skeleton3D = a.skeleton
+		for u: float in [0.0, 0.5, 1.0]:
+			a.player.play(intro_clip, 0.0)
+			a.player.seek(ianim.length * u, true)
+			for side: String in ["Left", "Right"]:
+				var b0: int = sk.find_bone(side + "Arm")
+				var b1: int = sk.find_bone(side + "ForeArm")
+				if b0 < 0 or b1 < 0:
+					continue
+				var d: Vector3 = (sk.get_bone_global_pose(b1).origin - sk.get_bone_global_pose(b0).origin).normalized()
+				var elev: float = rad_to_deg(asin(clampf(d.y, -1.0, 1.0)))
+				arms_why += " %s@%.1f %.0f" % [side, u, elev]
+				if elev > -45.0:
+					arms_ok = false
+	_check("real_intro_is_captured_arms_down", arms_ok, arms_why)
 	# 4. variation and the fight's RNG
 	var fight_obj: Node = FightScript.new()
 	var rng: RandomNumberGenerator = fight_obj.get("rng")
