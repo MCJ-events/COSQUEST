@@ -32,6 +32,7 @@ extends Node3D
 ## thread. Shadows from the piece only where the tier has shadows (high).
 
 const LoaderScript := preload("res://char_loader.gd")
+const ShaderWarmScript := preload("res://shader_warm.gd")
 
 ## What each look tier may draw. bytes: the GLB file; tris: triangles after load; tex: the longest texture side kept.
 const TIER_LIMITS: Dictionary = {
@@ -297,15 +298,60 @@ func _try_attach() -> void:
 	holder.scale = Vector3.ONE * s
 	holder.position = (spot as Dictionary)["at"]
 	holder.rotation.y = float((spot as Dictionary)["yaw"])
-	var shadows: bool = tier == "high" and bool(((arena.get("look") if arena != null else {}) as Dictionary).get("shadows", false))
+	var lk: Dictionary = (arena.get("look") if arena != null else {}) as Dictionary
+	var shadows: bool = tier == "high" and bool(lk.get("shadows", false))
 	for mi: Node in holder.find_children("*", "MeshInstance3D", true, false):
 		(mi as GeometryInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if shadows else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(holder)
 	model = holder
+	# fid29 (dressing): on the real look (mid and high) the piece sits on the street through a contact shadow, a soft
+	# dark disc under its footprint (one quad, one draw); high also casts the key light's shadow (above)
+	if tier != "low" and bool(lk.get("real", false)) and bool(lk.get("fid_dressing", false)):
+		var half: float = maxf(box.size.x, box.size.z) * 0.5 * s
+		add_child(contact_disc(holder.position, half))
+		info["contact_ao"] = true
 	info.merge({"ok": true, "tris": int(r["tris"]), "h": snappedf(box.size.y * s, 0.01), "half": snappedf(maxf(box.size.x, box.size.z) * 0.5 * s, 0.01),
 		"at": [snappedf(holder.position.x, 0.01), snappedf(holder.position.z, 0.01)], "score": (spot as Dictionary)["score"],
 		"parse_ms": snappedf(float(r.get("parse_ms", 0.0)), 0.1), "shadows": shadows}, true)
 	_log()
+
+
+static var _disc_mat: StandardMaterial3D
+
+
+## fid29 (dressing): the contact shadow under a Forge piece on the real look: a quad 2.6 x the footprint's half-width,
+## a radial falloff (made here, no file) multiplied onto the street, unshaded, no shadow, drawn just above the paving.
+static func contact_disc(at: Vector3, half: float) -> MeshInstance3D:
+	if _disc_mat == null:
+		var g := Gradient.new()
+		g.set_color(0, Color(0.0, 0.0, 0.0, 0.55))
+		g.set_color(1, Color(0.0, 0.0, 0.0, 0.0))
+		g.add_point(0.45, Color(0.0, 0.0, 0.0, 0.32))
+		var gt := GradientTexture2D.new()
+		gt.gradient = g
+		gt.fill = GradientTexture2D.FILL_RADIAL
+		gt.fill_from = Vector2(0.5, 0.5)
+		gt.fill_to = Vector2(1.0, 0.5)
+		gt.width = 64
+		gt.height = 64
+		var m := StandardMaterial3D.new()
+		m.albedo_texture = gt
+		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		m.disable_receive_shadows = true
+		m.render_priority = -1
+		_disc_mat = m
+		ShaderWarmScript.add(m)
+	var q := PlaneMesh.new()
+	var r: float = clampf(half * 1.3, 0.4, 4.0)
+	q.size = Vector2(r * 2.0, r * 2.0)
+	var mi := MeshInstance3D.new()
+	mi.name = "ContactAO"
+	mi.mesh = q
+	mi.material_override = _disc_mat
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mi.position = Vector3(at.x, at.y + 0.025, at.z)
+	return mi
 
 
 ## The low tier's card, or the fallback: the thumbnail cropped to what it shows, standing upright on the spot and
