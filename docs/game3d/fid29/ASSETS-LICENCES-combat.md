@@ -36,6 +36,9 @@ Credits screen word for word.
   Mason". This work is licensed under a Creative Commons Attribution 4.0 International License."
   https://www.ianxmason.com/100style/ (Zenodo record 8127870, licence id cc-by-4.0)
 - Credit: "The 100STYLE Dataset - Ian Mason, CC BY 4.0. Retargeted and edited."
+- Status in this build: the three idles are retargeted into the hero libraries (`anim/real/*.glb`, clips
+  `ST_Intro_*`) but mapped to no state (`data/anim_real.json`): on the game camera their arms stood out level. The data
+  is in the shipped files, so the credit stays on the Credits screen.
 - Files, fetched one by one from the site's per-file links (never the 1.47 GB zip):
 
 | File | Link id | sha256 | Used for |
