@@ -90,7 +90,7 @@ function artTier(): ArtTier {
 /** Which size of every picture this screen gets (features/game/triviaVisual.ts pickArtSize). */
 export function useArtSize(): { size: ArtSize; tier: ArtTier } {
   const { width, height } = useWindowDimensions();
-  const tier = useMemo(artTier, []);
+  const tier = useMemo(() => artTier(), []);
   return { size: pickArtSize({ width, height, scale: PixelRatio.get(), tier }), tier };
 }
 
