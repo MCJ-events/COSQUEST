@@ -899,8 +899,8 @@ static func _real_variant(two_sided: bool, cut: bool, soft: bool = false, high: 
 			code = code.replace("render_mode cull_back,", "render_mode cull_disabled,")
 		if cut and soft:
 			code = code.replace("ambient_light_disabled;", "ambient_light_disabled, alpha_to_coverage;")
-			code = code.replace("// ALPHA_HOOK", "float amip = max(log2(max(length(dFdx(UV * vec2(textureSize(albedo_tex, 0)))), length(dFdy(UV * vec2(textureSize(albedo_tex, 0)))))), 0.0); " +
-				"ALPHA = clamp(a.a * (1.0 + 0.25 * amip), 0.0, 1.0); ALPHA_SCISSOR_THRESHOLD = 0.12; ALPHA_ANTIALIASING_EDGE = 0.3; " +
+			# Godot keeps the coverage through the mips itself from ALPHA_TEXTURE_COORDINATE (alpha x (1 + mip / 4))
+			code = code.replace("// ALPHA_HOOK", "ALPHA = a.a; ALPHA_SCISSOR_THRESHOLD = 0.12; ALPHA_ANTIALIASING_EDGE = 0.3; " +
 				"ALPHA_TEXTURE_COORDINATE = UV * vec2(textureSize(albedo_tex, 0)); // ALPHA_HOOK")
 		elif cut:
 			code = code.replace("// ALPHA_HOOK", "ALPHA = a.a; ALPHA_SCISSOR_THRESHOLD = 0.35; // ALPHA_HOOK")

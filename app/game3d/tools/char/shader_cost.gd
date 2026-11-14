@@ -6,12 +6,13 @@ extends SceneTree
 ## A screen-filling quad with the hero's own body maps (lod0 for high, lod1 for mid), one directional key, the face fill
 ## on. Configs, interleaved round by round so load drifts cancel: b28 (cs_on false, the colour-guessed skin), mid
 ## (cs_on, the mask), high (the CS_HIGH variant, detail and break-up), and the same three on the hair cards' material
-## (b28 cut, soft). Prints "CQCOST <config> ms_per_frame=<median>" and the ratio to b28.
+## (b28 cut, soft), and b28's mask path on the body (b28mask: the skin mask read that charshade's mask takes over;
+## a "new / b28mask" ratio is then the ALU change alone). Prints "CQCOST <config> ms_per_frame=<median>" and the ratio to b28.
 
 const FighterScript := preload("res://fighter.gd")
 const LoaderScript := preload("res://char_loader.gd")
 
-var _cfgs: Array = []
+var _cfgs: Array = []   # [name, material]; the last is the unshaded quad
 var _mi: MeshInstance3D
 var _i: int = 0
 var _f: int = 0
@@ -46,8 +47,9 @@ func _body(path: String) -> Dictionary:
 	return out
 
 
-func _mat(b: BaseMaterial3D, look: Dictionary, key: String, cut: bool) -> ShaderMaterial:
+func _mat(b: BaseMaterial3D, look: Dictionary, key: String, cut: bool, mask: Texture2D = null) -> ShaderMaterial:
 	var f: Node3D = FighterScript.new()
+	f.set("skin_mask", mask)     # b28's own mask path (a Forge guardian with a skin mask): the read charshade's mask replaces
 	f.set("look", look)
 	f.set("anim_opts", {"key": key})
 	f.set("surface_kinds", {"hair_cards": "hair"} if cut else {})
@@ -69,11 +71,17 @@ func _initialize() -> void:
 	var b1: Dictionary = _body("res://cast/heroes/%s_lod1.glb" % key)
 	var off_h: Dictionary = high.duplicate(); off_h["fid_charshade"] = false
 	var off_m: Dictionary = mid.duplicate(); off_m["fid_charshade"] = false
-	_cfgs = [["body_high_b28", _mat(b0["body"], off_h, key, false)], ["body_high_new", _mat(b0["body"], high, key, false)],
+	var m0: Texture2D = load("res://art/char/masks/%s_lod0.png" % key)
+	var m1: Texture2D = load("res://art/char/masks/%s_lod1r.png" % key)
+	_cfgs = [["body_high_b28mask", _mat(b0["body"], off_h, key, false, m0)], ["body_mid_b28mask", _mat(b1["body"], off_m, key, false, m1)]]
+	_cfgs += [["body_high_b28", _mat(b0["body"], off_h, key, false)], ["body_high_new", _mat(b0["body"], high, key, false)],
 		["body_mid_b28", _mat(b1["body"], off_m, key, false)], ["body_mid_new", _mat(b1["body"], mid, key, false)]]
 	if b0.has("hair"):
 		_cfgs += [["hair_high_b28", _mat(b0["hair"], off_h, key, true)], ["hair_high_new", _mat(b0["hair"], high, key, true)],
 			["hair_mid_b28", _mat(b1["hair"], off_m, key, true)], ["hair_mid_new", _mat(b1["hair"], mid, key, true)]]
+	var flat := StandardMaterial3D.new()
+	flat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	_cfgs.append(["flat", flat])
 	var cam := Camera3D.new()
 	cam.projection = Camera3D.PROJECTION_ORTHOGONAL
 	cam.size = 2.0
@@ -121,9 +129,15 @@ func _process(_d: float) -> bool:
 				var a: Array = _times[k]
 				a.sort()
 				med[k] = a[a.size() / 2]
+			# the fixed cost of a frame (clear, resolve, the quad's vertices) is the unshaded quad's time: what is left is
+			# the fragment shader's, the ALU proxy
+			var fl: float = float(med.get("flat", 0.0))
 			for k: String in med:
-				var bk: String = k.replace("_new", "_b28")
-				print("CQCOST %s ms_per_frame=%.2f ratio_to_b28=%.3f" % [k, med[k], med[k] / maxf(med.get(bk, med[k]), 1e-6)])
+				var bk: String = k.replace("_new", "_b28").replace("_b28mask", "_b28")
+				var bm: String = k.replace("_new", "_b28mask")
+				print("CQCOST %s ms_per_frame=%.2f ratio_to_b28=%.3f shader_ratio=%.3f shader_ratio_vs_b28mask=%.3f" % [k, med[k],
+					med[k] / maxf(med.get(bk, med[k]), 1e-6), (med[k] - fl) / maxf(float(med.get(bk, med[k])) - fl, 1e-6),
+					(med[k] - fl) / maxf(float(med.get(bm, med.get(bk, med[k]))) - fl, 1e-6)])
 			return true
 	_apply()
 	return false

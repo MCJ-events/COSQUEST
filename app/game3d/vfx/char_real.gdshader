@@ -124,10 +124,9 @@ uniform int cs_matid = 0;                  // 1: skin_tex is the hero's material
 uniform vec2 cs_rough_leather = vec2(0.45, 0.65);
 uniform vec2 cs_rough_cloth = vec2(0.70, 0.90);
 uniform vec2 cs_rough_metal = vec2(0.15, 0.35);
-uniform float cs_leather_gain = 1.0;      // leather's exposure gain at most this (no near-black lift)
 uniform vec2 cs_knee = vec2(0.0);          // leather, cloth: the linear luminance above which painted light is soft-clipped (0 = off)
 uniform float cs_sheen = 1.0;              // the sheen lobe on cloth (0 = cloth keeps GGX)
-uniform float cs_sheen_rough = 0.55;       // perceptual roughness of the sheen lobe
+uniform vec2 cs_sheen_k = vec2(1.653, 0.8445);   // the sheen lobe at perceptual roughness 0.55 (a = 0.3025): exponent 1 / 2a, norm (2 + 1/a) / 2 pi
 uniform float cs_aa_var = 0.15;            // geometric specular AA: variance scale and threshold
 uniform float cs_aa_thr = 0.2;
 uniform float cs_toksvig = 1.0;            // the normal map's mip variance folded into roughness
@@ -141,7 +140,8 @@ uniform vec4 cs_iris_b = vec4(0.0);
 uniform vec3 cs_iris_col = vec3(0.04, 0.025, 0.015);   // linear: what the painted catchlight is replaced with
 uniform float cs_parallax = 0.03;          // iris depth, in units of the eye corner (0.02 to 0.04)
 uniform float cs_eye_rough = 0.06;
-uniform vec2 cs_catch = vec2(3.0, 0.22);   // the face fill's catchlight: strength, lobe roughness (a soft box, not a point)
+uniform vec2 cs_catch = vec2(2.5, 0.32);   // the face fill's catchlight: strength (x the fill), size in iris radii
+uniform float cs_catch_off = 0.9;           // how far the catchlight sits off the iris centre, per unit of half-vector tilt
 uniform float cs_lid = 0.35;               // shade under the upper lid and at the corners (on top of the baked one)
 uniform float cs_hair_cards = 0.0;         // 1: hair cards with strands along V (hair_cards material)
 uniform vec4 cs_hair_lobes = vec4(-0.06, 0.10, 0.08, 0.04);   // primary shift, secondary shift, primary and secondary strength
@@ -160,6 +160,7 @@ uniform float cs_breakup = 1.0;
 varying float v_skin;
 varying float v_hair;
 varying float v_sheen;
+varying vec3 v_tint;       // charshade: the sheen's colour, sqrt of the surface colour (once here, not per light)
 varying float v_eye;
 varying float v_cav;
 varying vec3 v_strand;
@@ -238,6 +239,7 @@ float d_charlie(float ndh, float al) {
 
 void fragment() {
 	v_sheen = 0.0;
+	v_tint = vec3(0.0);
 	v_eye = 0.0;
 	v_cav = 1.0;
 	v_strand = vec3(0.0);
@@ -246,17 +248,21 @@ void fragment() {
 	vec2 uv = UV;
 	float eye = 0.0;
 	float iris = 0.0;
+	vec4 icx = vec4(0.0);      // charshade: the nearest iris (UV centre, radius)
+	vec4 duv = vec4(0.0);      // charshade: the UV's screen derivatives on the head (the catchlight's screen-to-UV frame)
 	vec4 cm = vec4(0.0);       // charshade: the material-ID mask (skin, metal, leather, cloth sheen)
 	if (cs_on) {
 		if (cs_matid == 1) {
 			cm = texture(skin_tex, UV);
 		}
 		if (cs_eye == 1) {
+			duv = vec4(dFdx(UV), dFdy(UV));     // uniform control flow: before any per-pixel branch
 			// the hybrid head keeps both eyeballs in the top-right corner of its UVs (one island each)
 			float c0 = 1.0 - cs_eye_corner;
 			eye = smoothstep(c0, c0 + 0.004, UV.x) * (1.0 - smoothstep(cs_eye_corner - 0.004, cs_eye_corner, UV.y));
 			if (eye > 0.0) {
 				vec4 ic = distance(UV, cs_iris_a.xy) < distance(UV, cs_iris_b.xy) ? cs_iris_a : cs_iris_b;
+				icx = ic;
 				float d = distance(UV, ic.xy) / max(ic.z, 1e-4);
 				iris = (1.0 - smoothstep(0.9, 1.1, d)) * eye;
 				// the iris lies behind the cornea: seen at an angle it shifts against the eyeball's surface
@@ -333,7 +339,7 @@ void fragment() {
 		v_strandy = cs_hair_strand[clamp(int(UV.x * 4.0), 0, 3)];
 		base *= mix(1.0, mix(cs_hair_root.x, cs_hair_root.y, smoothstep(0.0, 0.7, tip)), v_strandy);
 		// a strand id across the card (the strands run along V): a small random shift each
-		v_shift = (fract(sin(floor(UV.x * 384.0) * 12.9898) * 43758.5453) - 0.5) * 0.1;
+		v_shift = (fract(floor(UV.x * 384.0) * 0.6180339) - 0.5) * 0.1;
 		v_strand = BINORMAL;
 	}
 	v_eye = eye;
@@ -362,11 +368,14 @@ void fragment() {
 		// that only the normal map smooths, so a weak map left their faces faceted; the mip level alone takes
 		// the noise out.
 		vec3 t = texture(normal_tex, UV, 3.0 * skin_area).xyz * 2.0 - 1.0;
+#ifdef CS_HIGH
 		if (cs_on) {
-			// the mip-averaged normal is shorter where the map's normals disagree: that spread is roughness (Toksvig)
+			// the mip-averaged normal is shorter where the map's normals disagree: that spread is roughness (Toksvig;
+			// high only: on mid the geometric term below carries the anti-aliasing)
 			float ln = clamp(length(t), 0.2, 1.0);
 			tok = cs_toksvig * (1.0 - ln) / ln * normal_amount;
 		}
+#endif
 		float namt = normal_amount;
 		if (normal_fade > 0.0) {
 			vec2 ts = vec2(textureSize(normal_tex, 0));
@@ -458,17 +467,15 @@ void fragment() {
 	if (skin_gain > 0.0) {
 		gain = mix(gain, skin_gain, clamp(skin * 1.6, 0.0, 1.0));
 	}
-	if (cs_on) {
-		// charshade: leather is dark by nature; the near-black lift (made for black suits at night) turned a brown
-		// jacket tan and satin. Leather keeps its own value (at most gain 1)
-		gain = mix(gain, min(gain, cs_leather_gain), clamp(cm.b * 1.5, 0.0, 1.0));
-	}
 	vec3 lit = base * gain;
 	vec3 amb = amb_at(nw) * amb_amount * ao;
 	// a little of the bounce under the skin's surface: the shade side of skin is not dead
 	vec3 diffuse_amb = lit * (1.0 - metal) * amb * (1.0 + skin * vec3(0.06, 0.01, 0.0));
 	// the street reflected: sharper on metal and wet-looking skin, a blur on cloth
 	vec3 spec_amb = vec3(0.0);
+	if (v_sheen > 0.0 || v_hair > 0.0) {
+		v_tint = sqrt(max(base, vec3(0.0)));
+	}
 	if (env_spec > 0.0) {
 		vec3 r = reflect(-vw, nw);
 		// a rough surface reflects what its normal faces more than the mirror direction
@@ -491,8 +498,8 @@ void fragment() {
 			// cloth reflects no image of the street: its sheen takes the blurred light round it, strongest at grazing
 			// angles (a fit of the Charlie lobe's directional albedo at roughness 0.5 to 0.6). The cube read above is
 			// already the blurred one at cloth's roughness, so no second read.
-			float sd = 0.06 + 0.32 * pow(1.0 - nov, 3.0);
-			spec_amb = mix(spec_amb, e * sqrt(max(base, vec3(0.0))) * sd * so * env_spec, v_sheen);
+			float sd = 0.09 + 0.36 * pow(1.0 - nov, 3.0);
+			spec_amb = mix(spec_amb, e * v_tint * sd * so * env_spec, v_sheen);
 		}
 	}
 	float f = 1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0);
@@ -524,7 +531,7 @@ void fragment() {
 	if (kick_a_col.r + kick_a_col.g + kick_a_col.b > 0.0) {
 		float wa = pow(clamp(dot(nw, kick_a_dir), 0.0, 1.0), 1.2) * edge;
 		float sa = pow(clamp(dot(nw, normalize(kick_a_dir + vw)), 0.0, 1.0), mix(48.0, 6.0, rough)) * mix(0.5, 0.08, rough);
-		kick += kick_a_col * ao * (lit * (1.0 - metal) * wa + mix(vec3(0.6), base, metal) * sa);
+		kick += kick_a_col * ao * (lit * (1.0 - metal) * wa + mix(vec3(0.6), base, metal) * sa * (1.0 - 0.6 * v_sheen));
 	}
 	if (kick_b_col.r + kick_b_col.g + kick_b_col.b > 0.0) {
 		float wb = pow(clamp(dot(nw, kick_b_dir), 0.0, 1.0), 1.2) * edge;
@@ -538,14 +545,18 @@ void fragment() {
 		float wf = clamp((dot(nw, face_fill_dir) + 0.5) / 1.5, 0.0, 1.0);
 		kick += face_fill_col * lit * (1.0 - metal) * wf * wf * ao * mix(face_fill_body, 1.0, clamp(v_skin * 1.6, 0.0, 1.0));
 	}
-	if (eye > 0.0 && face_fill_col.r + face_fill_col.g + face_fill_col.b > 0.0) {
-		// the catchlight: the face fill is a big soft source by the camera, so the wet eye mirrors it as a small bright
-		// patch that moves with it (GGX at the fill's own size, cornea Fresnel)
-		vec3 hf = normalize(face_fill_dir + vw);
-		float nh = clamp(dot(nw, hf), 0.0, 1.0);
-		float ca = cs_catch.y * cs_catch.y;
-		float dc = d_ggx(nh, ca * ca) * ca * ca * PI;   // 1 at the lobe's centre
-		kick += face_fill_col * dc * cs_catch.x * eye * smoothstep(0.0, 0.2, dot(nw, face_fill_dir));
+	if (iris > 0.0 && face_fill_col.r + face_fill_col.g + face_fill_col.b > 0.0) {
+		// the catchlight: the face fill is a big soft source by the camera and the cornea a small sphere in front of the
+		// iris, so it mirrors the fill where the sphere's normal is halfway between the fill and the eye: a soft dot on
+		// the iris, off its centre towards the fill (the half vector in the eye's own UV frame), that moves as the fill
+		// and the head move. Drawn on the cornea, so from the UV before the iris's parallax.
+		vec3 fv = normalize((VIEW_MATRIX * vec4(face_fill_dir, 0.0)).xyz);
+		vec3 hv = normalize(fv + VIEW);
+		// the half vector's tilt on the screen, carried into the head's UVs by their screen derivatives
+		vec2 su = duv.xy * hv.x + duv.zw * hv.y;
+		vec2 off = su / max(length(su), 1e-7) * min(length(hv.xy), 0.7) * cs_catch_off;
+		float cd = distance(UV, icx.xy + off * icx.z) / max(icx.z * cs_catch.y, 1e-5);
+		kick += face_fill_col * (cs_catch.x * (1.0 - smoothstep(0.45, 1.0, cd)) * iris);
 	}
 	EMISSION = diffuse_amb + spec_amb + kick + rim + hit + gl + texture(emission_tex, UV).rgb * emission;
 	if (debug_view == 3) {
@@ -611,9 +622,9 @@ void light() {
 		if (v_sheen > 0.0) {
 			// cloth: Charlie sheen with Neubelt's visibility (Filament's cloth model) instead of GGX; sheen colour from the
 			// cloth's own colour (sqrt of the albedo)
-			float sa = cs_sheen_rough * cs_sheen_rough;
 			float vsh = 1.0 / (4.0 * (cndl + ndv - cndl * ndv) + 1e-4);
-			vec3 sh = cndl * d_charlie(ndh, sa) * vsh * sqrt(max(ALBEDO, vec3(0.0)));
+			float dch = pow(max(1.0 - ndh * ndh, 0.0078125), cs_sheen_k.x) * cs_sheen_k.y;
+			vec3 sh = cndl * dch * vsh * v_tint;
 			spec = mix(spec, sh, v_sheen);
 		}
 		// skin's highlight gives way in its creases and pores' shade (the cavity / occlusion term)
@@ -622,19 +633,22 @@ void light() {
 	if (cs_on && cs_hair_cards > 0.0 && v_hair > 0.0) {
 		// hair cards: the strands run along the card's V (BINORMAL). Two lobes (Scheuermann): a white one shifted
 		// towards the root, a dimmer one in the hair's colour shifted towards the tip; per-strand jitter (v_shift)
-		vec3 tg = normalize(v_strand - NORMAL * dot(NORMAL, v_strand));
-		vec3 t1 = normalize(tg + NORMAL * (cs_hair_lobes.x + v_shift));
-		vec3 t2 = normalize(tg + NORMAL * (cs_hair_lobes.y + v_shift));
-		float th1 = dot(t1, h);
-		float th2 = dot(t2, h);
-		float s1 = pow(sqrt(max(1.0 - th1 * th1, 0.0)), 90.0);
-		float s2 = pow(sqrt(max(1.0 - th2 * th2, 0.0)), 22.0);
-		float fac = smoothstep(-0.1, 0.4, ndl);
-		vec3 hs = (vec3(s1 * cs_hair_lobes.z) + s2 * cs_hair_lobes.w * (ALBEDO * 3.0 + 0.05)) * fac;
-		// coils and braids: no strand direction, a broad dim sheen (the same Charlie lobe as cloth, rough)
-		float hvs = 1.0 / (4.0 * (cndl + ndv - cndl * ndv) + 1e-4);
-		vec3 coil = cndl * d_charlie(ndh, 0.5) * hvs * sqrt(max(ALBEDO, vec3(0.0))) * 0.5;
-		spec = mix(spec, mix(coil, hs, v_strandy), v_hair);
+		vec3 hs;
+		if (v_strandy > 0.5) {
+			vec3 tg = normalize(v_strand - NORMAL * dot(NORMAL, v_strand));
+			vec3 t1 = normalize(tg + NORMAL * (cs_hair_lobes.x + v_shift));
+			vec3 t2 = normalize(tg + NORMAL * (cs_hair_lobes.y + v_shift));
+			float th1 = dot(t1, h);
+			float th2 = dot(t2, h);
+			float s1 = pow(max(1.0 - th1 * th1, 0.0), 45.0);
+			float s2 = pow(max(1.0 - th2 * th2, 0.0), 11.0);
+			hs = (vec3(s1 * cs_hair_lobes.z) + s2 * cs_hair_lobes.w * (ALBEDO * 3.0 + 0.05)) * smoothstep(-0.1, 0.4, ndl);
+		} else {
+			// coils and braids: no strand direction, a broad dim sheen (the cloth's Charlie lobe, rough: a = 0.5)
+			float hvs = 1.0 / (4.0 * (cndl + ndv - cndl * ndv) + 1e-4);
+			hs = cndl * max(1.0 - ndh * ndh, 0.0078125) * 0.637 * hvs * v_tint * 0.5;
+		}
+		spec = mix(spec, hs, v_hair);
 	} else if (v_hair > 0.0) {
 		// Kajiya-Kay on a solid sculpt: the strands run down the head (the view's up, laid on the surface)
 		vec3 up = normalize((VIEW_MATRIX * vec4(0.0, 1.0, 0.0, 0.0)).xyz);

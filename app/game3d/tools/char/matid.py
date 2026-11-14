@@ -16,6 +16,9 @@ texels), on the exact build-28 lod0 file. On top of them this tool's own gates:
     cape and suit as metal: the "smeared bronze");
   - leather and cloth straight from the classes.
 
+Then a garment pass (garment_pass): leather against cloth is settled by colour family (a garment is one colour), so a
+jacket's sleeves, back and painted highlights stop reading as cloth patches.
+
 Usage (any python with numpy, scipy and Pillow):
   matid.py build KEY --glb LOD0.glb --classes maps_lod0.npz --out-dir art/char/masks [--size 1024]
       -> KEY_lod0.png, KEY.json (hair colour, iris colour, body UV density), KEY_lod0_debug.jpg (the mask over the map)
@@ -178,6 +181,36 @@ def weights_from_classes(cls, albedo_rgb, size):
     return np.clip(w, 0, 1), cov
 
 
+def garment_pass(w, cov, alb, k=150, sub=3, seed=7):
+    """Leather against cloth, garment by garment. The classes come from the concept's colour groups laid over the model's
+    front (the back and sides by nearest labelled texel), so a jacket came out with patches of cloth (its sleeves, its
+    painted highlights, a wedge of its back) that drew as satin streaks. A garment is one colour family: every leather-or-
+    cloth texel takes the leather share of the texels nearest it in colour (CIELAB, lightness at half weight, the k
+    nearest of a 1-in-`sub` sample of the hero's leather and cloth), so the jacket's brown is leather wherever it is and
+    the shirt's cream and the trousers' olive stay cloth. Skin and metal are left as they are; the texel's leather +
+    cloth total is kept."""
+    lab = srgb_to_lab(np.clip(alb, 0, 1))[cov] * np.array([0.5, 1.0, 1.0])
+    lc = w[..., 2][cov] + w[..., 3][cov]
+    fr = np.where(lc > 1e-3, w[..., 2][cov] / np.maximum(lc, 1e-3), 0.5)
+    rng = np.random.default_rng(seed)
+    src = np.where(lc > 0.5)[0]
+    src = src[rng.random(len(src)) < 1.0 / sub]
+    if len(src) < k or not (0.25 <= float((fr[src] > 0.5).mean()) <= 0.75):
+        # only where leather is a garment (a jacket: a quarter or more of the leather-and-cloth surface). Small leather
+        # parts (belts, straps, holsters) share colours with the cloth round them and a vote would wash them out
+        return w
+    _, nn = cKDTree(lab[src]).query(lab, k=k)
+    v = fr[src][nn].mean(1)
+    # a clear colour vote decides; a split one (a colour both garments share) keeps the texel's own class
+    t = np.clip((np.abs(v - 0.5) - 0.1) / 0.2, 0, 1)
+    fr = t * (v > 0.5) + (1 - t) * fr
+    out = w.copy()
+    L = out[..., 2].copy(); C = out[..., 3].copy()
+    L[cov] = lc * fr; C[cov] = lc * (1 - fr)
+    out[..., 2] = L; out[..., 3] = C
+    return out
+
+
 def hair_colour(j, b):
     for m in j["materials"]:
         if str((m.get("extras") or {}).get("cq_surface", "")) == "hair":
@@ -264,9 +297,11 @@ def cmd_build(a):
         np.concatenate([p["V"] for p in UVp]), cls.shape[0])
     cls = np.where(cov, cls, -1)
     w, cov_s = weights_from_classes(cls, alb, a.size)
+    small_alb = np.asarray(Image.fromarray((alb * 255).astype(np.uint8)).resize((a.size, a.size), Image.BILINEAR), np.float32) / 255
+    if not getattr(a, "no_garment", False):
+        w = garment_pass(w, cov_s, small_alb)
     out = Path(a.out_dir); out.mkdir(parents=True, exist_ok=True)
     save_mask(w, out / f"{a.key}_lod0.png")
-    small_alb = np.asarray(Image.fromarray((alb * 255).astype(np.uint8)).resize((a.size, a.size), Image.BILINEAR), np.float32) / 255
     debug_sheet(w, small_alb, Path(a.debug_dir or out) / f"{a.key}_lod0_debug.jpg")
     # the painted light on leather and cloth: the lift baked the concept's highlights into the base colour, and on
     # leather those streaks read as lacquer. char_real soft-clips each class's linear luminance above a knee: the
