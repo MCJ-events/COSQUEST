@@ -24,6 +24,7 @@ const SfxScript := preload("res://sfx.gd")
 const HitArea := preload("res://hit_area.gd")
 const HeroFiles := preload("res://hero_files.gd")     # fid29 seam (owned by fid29-heromaps): which file a hero loads
 const ShaderWarm := preload("res://shader_warm.gd")   # fid29: materials drawn once under the loading card
+const LookReal := preload("res://look_real.gd")       # fid29-lightcam: the per-place reflection capture
 const AnimLib := preload("res://anim_library.gd")
 const AnimatorScript := preload("res://combat_animator.gd")
 var _ready_pose: bool = true            # config "ready_pose" (with "weight"): the wound-up stand near an opponent
@@ -451,7 +452,12 @@ func _ready() -> void:
 	var rs: float = clampf(float(cfg.get("render_scale", tier_scale if quality == "device" else LOW_RENDER_SCALE)), 0.25, 1.0)
 	get_viewport().scaling_3d_mode = Viewport.SCALING_3D_MODE_BILINEAR
 	get_viewport().scaling_3d_scale = rs
-	var aa: String = str(cfg.get("aa", DEVICE_AA if quality == "device" else "off"))
+	# fid29-lightcam: the tier's own MSAA (TIER_LOOK "aa": high msaa4) when its look has fid_lightcam
+	var aa_dev: String = DEVICE_AA
+	var lo0: Dictionary = ArenaScript.look_opts(cfg)
+	if bool(lo0.get("fid_lightcam", false)) and lo0.has("aa"):
+		aa_dev = str(lo0["aa"])
+	var aa: String = str(cfg.get("aa", aa_dev if quality == "device" else "off"))
 	get_viewport().msaa_3d = {"msaa2": Viewport.MSAA_2X, "msaa4": Viewport.MSAA_4X}.get(aa, Viewport.MSAA_DISABLED)
 	_dyn_base = rs
 	_dyn_on = bool(cfg.get("dyn_res", true)) and not _headless
@@ -469,6 +475,9 @@ func _ready() -> void:
 	arena.name = "Arena"
 	add_child(arena)
 	arena.call("build", cfg)
+	_lc = bool((arena.get("look") as Dictionary).get("fid_lightcam", false))
+	if _lc:
+		ShaderWarm.add(_lc_dof_mat())    # the depth focus first draws at the intro beat: compiled under the loading card
 	_place_camera()
 	_close_camera()
 	HitArea.ordered = bool((arena.get("look") as Dictionary).get("hit_order", false))   # realism round 3 (hit_area.gd)
@@ -737,7 +746,7 @@ func _close_camera() -> void:
 	_close = true
 	var yaw: float = atan2(_cam_basis.z.x, _cam_basis.z.z)    # the heading stays: _cam_fwd and _cam_right do not move
 	# look "close_pitch", "close_tilt", "close_dist", "close_top", "close_lean", "close_face": framing trials (tools/look/cam_probe.gd)
-	var pitch: float = float(lk.get("close_pitch", CLOSE_PITCH_LAND if _landscape else CLOSE_PITCH))
+	var pitch: float = float(lk.get("close_pitch", CLOSE_PITCH_LAND if _landscape else (LC_PITCH if bool(lk.get("fid_lightcam", false)) else CLOSE_PITCH)))
 	var tilt: float = float(lk.get("close_tilt", 0.0 if _landscape else CLOSE_TILT))
 	_close_top = float(lk.get("close_top", CLOSE_MARGIN_LAND_TOP if _landscape else 0.76))
 	_close_lean = float(lk.get("close_lean", 0.45 if _landscape else 0.3))
@@ -749,6 +758,7 @@ func _close_camera() -> void:
 	# portrait: the view looks a little further down than the orbit, so the fight sits above the controls
 	_view_basis = Basis.from_euler(Vector3(deg_to_rad(-(pitch + tilt)), yaw, 0.0))
 	_close_win_basis = Basis.from_euler(Vector3(deg_to_rad(-CLOSE_WIN_PITCH), yaw, 0.0))
+	_lc_win_basis = Basis.from_euler(Vector3(deg_to_rad(-float(lk.get("lc_win_pitch", LC_WIN_PITCH))), yaw, 0.0))
 	_cam_dist = float(lk.get("close_dist", CLOSE_DIST_LAND if _landscape else CLOSE_DIST))
 	_cam_ahead = 0.0
 	_close_d = _cam_dist
@@ -762,7 +772,7 @@ func _close_fit() -> float:
 	var tv: float = tan(deg_to_rad(_base_fov) * 0.5)
 	var vs: Vector2 = get_viewport().get_visible_rect().size
 	var th: float = tv * vs.x / maxf(vs.y, 1.0)
-	var pivot: Vector3 = _focus + Vector3.UP * CLOSE_PIVOT_H
+	var pivot: Vector3 = _focus + Vector3.UP * _lc_pivot_h()
 	var pts: Array[Vector3] = [hero.position, hero.position + Vector3.UP * (FighterScript.HEIGHT * hero.size_k + 0.15)]
 	if enemy != null and not enemy.dead:
 		# the target's chest and face (a boss is half as tall again, and a target standing between the hero
@@ -793,6 +803,8 @@ func _close_fit() -> float:
 
 func _close_ok(pts: Array[Vector3], pivot: Vector3, d: float, tv: float, th: float) -> bool:
 	var eye: Vector3 = pivot + _cam_basis.z * d
+	if _lc and not _landscape:
+		eye += _view_basis.x * LC_H_OFF + _view_basis.y * _lc_voff()   # fid29-lightcam: the camera's offsets
 	for p: Vector3 in pts:
 		var r: Vector3 = p - eye
 		var depth: float = -r.dot(_view_basis.z)
@@ -845,9 +857,26 @@ func _beat_camera() -> void:
 	var to: Transform3D = cam.global_transform
 	var face: Vector3 = hero.position + Vector3.UP * (FighterScript.HEIGHT * hero.size_k * 0.74)
 	var dist: float = (2.5 if _landscape else 2.0) * hero.size_k * (1.08 - 0.08 * _beat_t / BEAT_LEN)
-	var from: Vector3 = face - _cam_fwd * dist + _cam_right * 0.5 + Vector3.UP * 0.12
+	var side: float = 0.5
 	var k: float = smoothstep(BEAT_LEN - BEAT_OUT, BEAT_LEN, _beat_t)
-	cam.global_transform = Transform3D(Basis.looking_at(face - from, Vector3.UP).slerp(to.basis.orthonormalized(), k), from.lerp(to.origin, k))
+	var fov_fight: float = cam.fov
+	var fov: float = fov_fight
+	if _lc:
+		# fid29-lightcam: a long lens. Over LC_LENS_S the view narrows to LC_INTRO_FOV while the camera backs off so the
+		# hero keeps its size (a dolly zoom: 52 deg at 2.0 m -> 30 deg at 3.64 m, a place's 56 deg -> 3.97 m), then a
+		# critically damped push-in of LC_PUSH; the side offset scales with the distance, so the composition holds
+		var e: float = smoothstep(0.0, LC_LENS_S, _beat_t)
+		fov = lerpf(fov_fight, LC_INTRO_FOV, e)
+		var d0: float = (2.5 if _landscape else 2.0) * hero.size_k
+		var dz: float = d0 * tan(deg_to_rad(_base_fov) * 0.5) / tan(deg_to_rad(fov) * 0.5)
+		dist = dz * (1.0 - LC_PUSH * _lc_push(_beat_t - LC_LENS_S))
+		side = 0.5 * dist / d0
+	var from: Vector3 = face - _cam_fwd * dist + _cam_right * side + Vector3.UP * 0.12
+	var b: Basis = Basis.looking_at(face - from, Vector3.UP)
+	if _lc:
+		b = _lc_handheld(b)
+		cam.fov = lerpf(fov, fov_fight, k)
+	cam.global_transform = Transform3D(b.slerp(to.basis.orthonormalized(), k), from.lerp(to.origin, k))
 
 
 ## realism round 4 (look "dof", the high tier): a stand-in for a shallow depth of field in the hero's intro
@@ -913,7 +942,7 @@ func _face_fill_update() -> void:
 
 
 func _dof_update() -> void:
-	if arena == null or cam == null or hero == null or not bool((arena.get("look") as Dictionary).get("dof", false)):
+	if arena == null or cam == null or hero == null or not (bool((arena.get("look") as Dictionary).get("dof", false)) or _lc):
 		return
 	var want: float = 0.0
 	if _beat_t >= 0.0:
@@ -930,14 +959,24 @@ func _dof_update() -> void:
 		_dof.name = "DofPlate"
 		_dof.mesh = QuadMesh.new()
 		_dof.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		var sm := ShaderMaterial.new()
-		var sh := Shader.new()
-		sh.code = DOF_SHADER
-		sm.shader = sh
+		var sm: ShaderMaterial = _lc_dof_mat() if _lc else ShaderMaterial.new()
+		if not _lc:
+			var sh := Shader.new()
+			sh.code = DOF_SHADER
+			sm.shader = sh
 		sm.render_priority = -100     # before the effects and the halos: they stay sharp over it
 		_dof.material_override = sm
 		_dof.set_meta("no_bloom", true)
 		cam.add_child(_dof)
+	if _lc:
+		# fid29-lightcam: a full-screen pass (the vertex shader places it), focused on the hero's chest
+		_dof.extra_cull_margin = 16384.0
+		_dof.position = Vector3(0.0, 0.0, -1.0)
+		_dof.visible = true
+		var dm: ShaderMaterial = _dof.material_override
+		dm.set_shader_parameter("amount", _dof_k)
+		dm.set_shader_parameter("focus", -(cam.global_transform.affine_inverse() * (hero.global_position + Vector3.UP * FighterScript.HEIGHT * hero.size_k * 0.6)).z)
+		return
 	var d: float = cam.global_position.distance_to(hero.global_position + Vector3.UP * 1.2) + 1.1 * hero.size_k
 	var h: float = 2.0 * d * tan(deg_to_rad(cam.fov) * 0.5) * 1.3
 	var vs: Vector2 = get_viewport().get_visible_rect().size
@@ -945,6 +984,239 @@ func _dof_update() -> void:
 	_dof.position = Vector3(0.0, 0.0, -d)
 	_dof.visible = true
 	(_dof.material_override as ShaderMaterial).set_shader_parameter("amount", _dof_k)
+
+
+## ---- fid29-lightcam (build 29, docs/game3d/fid29/lightcam.md): light, lens and framing, mid and high only
+## (look "fid_lightcam"; off, and on the low tier, everything below is build 28's). Presentation only: nothing here
+## reads or writes the fight's state, timers, RNG or hit order; all motion comes from the frame clock.
+##   - the close shots (the hero's intro beat, the victory shot), weighted by the same close weight as the face fill:
+##     the sun's shadow tightens round the hero (max distance = camera to hero + 3 m, the first split ends just past
+##     the face, bias 0.2 -> 0.05, normal bias 3.0 -> 0.9, eased over LC_SHADOW_S), the fighters take the shadow map
+##     (recv_shadow 0 -> 1: nose, chin and collar shadows), the sky-side kicker becomes a rim (kick_a x LC_RIM) and the
+##     exposure rises LC_EV stops; a long lens and a slow push-in (_beat_camera, _apply_camera); depth-aware focus
+##   - the mid-fight frame: a lower orbit (LC_PITCH), a lower pivot and a camera offset (LC_H_OFF, LC_V_OFF), so the
+##     fighters fill more of the frame and the paving less; the heading is untouched (the stick, the bot and the ally's
+##     spot depend on it)
+##   - a real place's reflections: a small cube captured at the fight under the loading card (look_real.gd)
+const LC_INTRO_FOV: float = 30.0
+const LC_WIN_FOV: float = 32.0
+const LC_LENS_S: float = 0.3            # the lens change, eased
+const LC_PUSH: float = 0.05             # the slow push-in after it (critically damped)
+const LC_PUSH_W: float = 2.6            # its rate (1/s): about 90 % done by the end of the beat
+const LC_HANDHELD_DEG: float = 0.15     # high: a hand-held drift, from a hash of the frame clock
+const LC_EV: float = 0.15
+const LC_RIM: float = 2.6               # kick_a's gain in the close shots
+const LC_SHADOW_S: float = 0.2
+const LC_BIAS: Vector2 = Vector2(0.2, 0.05)       # fight, close
+const LC_NBIAS: Vector2 = Vector2(3.0, 0.9)
+const LC_SPLIT: float = 0.3             # the first shadow split at fight distance (of 35 m)
+const LC_WIN_SHARE: float = 0.72        # the winner's share of the frame's height
+const LC_WIN_HK: float = 0.86           # the drawn figure's height over HEIGHT (the models stand under the 2.3 m capsule)
+const LC_WIN_AIM: float = 0.52          # the victory view's height, as a share of the body
+const LC_WIN_PITCH: float = 3.0
+const LC_PITCH: float = 22.0            # the mid-fight orbit (build 28: 28)
+const LC_PIVOT_H: float = 1.0           # the orbit's pivot (build 28: 1.15)
+const LC_H_OFF: float = 0.0
+const LC_V_OFF: float = -0.35           # the camera a little lower than its orbit point (m, in the view's up)
+var _lc: bool = false
+var _lc_close: float = 0.0
+var _lc_mats: Dictionary = {}           # ShaderMaterial -> [kick_a_col at fight distance, recv_shadow at fight distance]
+var _lc_expo: float = -1.0
+var _lc_clock: float = 0.0
+var _lc_fov: float = -1.0
+var _lc_win_basis: Basis = Basis.IDENTITY
+var _lc_said: Dictionary = {}
+var _lc_cap: Dictionary = {}            # the per-place capture's state
+
+
+func _lc_pivot_h() -> float:
+	if _lc and not _landscape:
+		return float((arena.get("look") as Dictionary).get("lc_pivot", LC_PIVOT_H))
+	return CLOSE_PIVOT_H
+
+
+func _lc_voff() -> float:
+	return float((arena.get("look") as Dictionary).get("lc_voff", LC_V_OFF)) if arena != null else LC_V_OFF
+
+
+## 0 -> 1, critically damped from t = 0 (no overshoot), at LC_PUSH_W.
+func _lc_push(t: float) -> float:
+	if t <= 0.0:
+		return 0.0
+	return 1.0 - (1.0 + LC_PUSH_W * t) * exp(-LC_PUSH_W * t)
+
+
+static func _lc_hash(i: int) -> float:
+	var x: int = (i * 73856093) ^ 0x5bd1e995
+	x = ((x >> 13) ^ x) * 1274126177
+	x = (x >> 16) ^ x
+	return float(x & 0xffff) / 32767.5 - 1.0
+
+
+## Smooth value noise from integer hashes of the frame clock (no RNG): -1..1.
+func _lc_noise(t: float, seed_off: int) -> float:
+	var i: int = int(floor(t))
+	var f: float = t - float(i)
+	f = f * f * (3.0 - 2.0 * f)
+	return lerpf(_lc_hash(i * 2 + seed_off * 7919), _lc_hash((i + 1) * 2 + seed_off * 7919), f)
+
+
+## high: the close shots drift by LC_HANDHELD_DEG, as a held camera (mid: none).
+func _lc_handheld(b: Basis) -> Basis:
+	if ArenaScript.tier_of(cfg) != "high" or _reduce_motion:
+		return b
+	var t: float = _lc_clock * 0.9
+	var yaw: float = deg_to_rad(LC_HANDHELD_DEG) * _lc_noise(t, 1)
+	var pit: float = deg_to_rad(LC_HANDHELD_DEG) * _lc_noise(t * 1.3 + 17.0, 2)
+	return (b * Basis(Vector3.UP, yaw) * Basis(Vector3.RIGHT, pit)).orthonormalized()
+
+
+func _lightcam_update(dt: float) -> void:
+	if not _lc or cam == null or arena == null:
+		return
+	_lc_clock += dt
+	var close: float = 0.0
+	if _beat_t >= 0.0:
+		close = 1.0 - smoothstep(BEAT_LEN - BEAT_OUT, BEAT_LEN, _beat_t)
+	elif state == "ending" and outcome == "win" and _close:
+		close = ease(_win_k, -2.0)
+	if bool(cfg.get("face_close", false)):
+		close = 1.0
+	var was: float = _lc_close
+	_lc_close = move_toward(_lc_close, close, dt / LC_SHADOW_S)
+	var c: float = _lc_close
+	if c == was and c == 0.0 and not _lc_mats.is_empty():
+		return
+	var lk: Dictionary = arena.get("look")
+	# the sun's shadow, tightened round the hero in the close shots
+	var sun: DirectionalLight3D = arena.get("sun")
+	if sun != null and sun.shadow_enabled and hero != null:
+		var dh: float = cam.global_position.distance_to(hero.global_position + Vector3.UP * FighterScript.HEIGHT * hero.size_k * 0.8)
+		var far_c: float = dh + 3.0
+		sun.directional_shadow_max_distance = lerpf(35.0, far_c, c)
+		sun.directional_shadow_split_1 = lerpf(LC_SPLIT, clampf((dh + 0.6) / far_c, 0.1, 0.9), c)
+		sun.shadow_bias = lerpf(LC_BIAS.x, LC_BIAS.y, c)
+		sun.shadow_normal_bias = lerpf(LC_NBIAS.x, LC_NBIAS.y, c)
+		if c > 0.99 and not _lc_said.has("texel%d" % int(state == "ending")):
+			_lc_said["texel%d" % int(state == "ending")] = true
+			_log("lightcam close shadow shot=%s dist_m=%.2f max_m=%.2f split1=%.2f texel_mm=%.2f fov=%.1f" % ["win" if state == "ending" else "intro",
+				dh, far_c, sun.directional_shadow_split_1, _lc_texel_mm(dh, 0.5, far_c * sun.directional_shadow_split_1), cam.fov])
+	# the fighters: the shadow map on them, the kicker as a rim
+	for f: FighterScript in fighters:
+		for m: ShaderMaterial in f.get("_lit_mats"):
+			if not _lc_mats.has(m):
+				_lc_mats[m] = [m.get_shader_parameter("kick_a_col"), m.get_shader_parameter("recv_shadow")]
+			var base: Array = _lc_mats[m]
+			var kc: Variant = base[0]
+			if kc is Vector3:
+				m.set_shader_parameter("kick_a_col", (kc as Vector3) * lerpf(1.0, float(lk.get("lc_rim", LC_RIM)), c))
+			m.set_shader_parameter("recv_shadow", maxf(float(base[1]) if base[1] != null else 1.0, c))
+	# the exposure of the close shots
+	var env: Environment = arena.get("env")
+	if env != null:
+		if _lc_expo < 0.0:
+			_lc_expo = env.tonemap_exposure
+		env.tonemap_exposure = _lc_expo * pow(2.0, float(lk.get("lc_ev", LC_EV)) * c)
+
+
+## The shadow map's texel at distance `d` from the camera (mm): the first split covers [near, split_far]; the split's
+## view slice is fitted into a sphere, and with two splits each gets half the atlas's width.
+func _lc_texel_mm(d: float, near: float, split_far: float) -> float:
+	var far_s: float = split_far
+	var nr: float = near
+	if d > split_far:
+		nr = split_far
+		far_s = float((arena.get("sun") as DirectionalLight3D).directional_shadow_max_distance)
+	var vs: Vector2 = get_viewport().get_visible_rect().size
+	var tv: float = tan(deg_to_rad(cam.fov) * 0.5)
+	var th: float = tv * vs.x / maxf(vs.y, 1.0)
+	var mid: float = (nr + far_s) * 0.5
+	var r: float = Vector3(far_s * th, far_s * tv, far_s - mid).length()
+	var atlas: int = int(ProjectSettings.get_setting("rendering/lights_and_shadows/directional_shadow/size", 2048))
+	return 2.0 * r / (atlas * 0.5) * 1000.0
+
+
+## The depth-aware focus (mid and high, close shots only): a full-screen pass over the screen copy, its circle of
+## confusion from the depth buffer (one read, linearised), 0 at the focus (the hero's chest) rising over 3 m behind
+## it; the same 13 taps as build 28's plate. On Compatibility the depth read forces a depth copy: only while a close
+## shot shows (it is hidden otherwise).
+const LC_DOF_SHADER := """
+shader_type spatial;
+render_mode unshaded, cull_disabled, shadows_disabled, fog_disabled, depth_draw_never, depth_test_disabled;
+uniform sampler2D screen : hint_screen_texture, filter_linear, repeat_disable;
+uniform sampler2D depth : hint_depth_texture, filter_nearest, repeat_disable;
+uniform float amount = 0.0;
+uniform float focus = 3.0;
+uniform float ramp = 3.0;
+uniform float radius = 8.0;
+void vertex() {
+	POSITION = vec4(VERTEX.xy * 2.0, 0.0, 1.0);
+}
+void fragment() {
+	float d = texture(depth, SCREEN_UV).r;
+	vec3 ndc = vec3(SCREEN_UV, d) * 2.0 - 1.0;
+	vec4 v = INV_PROJECTION_MATRIX * vec4(ndc, 1.0);
+	float z = -v.z / v.w;
+	float coc = smoothstep(0.0, ramp, z - focus) * amount;
+	vec2 px = coc / VIEWPORT_SIZE;
+	vec3 c = texture(screen, SCREEN_UV).rgb * 0.16;
+	for (int i = 0; i < 6; i++) {
+		float a = float(i) * 1.0472;
+		vec2 dd = vec2(cos(a), sin(a));
+		c += texture(screen, SCREEN_UV + dd * px * radius * 0.44).rgb * 0.08;
+		c += texture(screen, SCREEN_UV + vec2(dd.y, -dd.x) * px * radius).rgb * 0.06;
+	}
+	ALBEDO = c;
+	ALPHA = clamp(coc * 4.0, 0.0, 1.0);
+}
+"""
+static var _lc_dof_shader: Shader
+
+
+func _lc_dof_mat() -> ShaderMaterial:
+	if _lc_dof_shader == null:
+		_lc_dof_shader = Shader.new()
+		_lc_dof_shader.code = LC_DOF_SHADER
+	var sm := ShaderMaterial.new()
+	sm.shader = _lc_dof_shader
+	return sm
+
+
+## A real place's reflections (audit L2): under the loading card, a small cube (look_real.gd capture_place; mid 32 px,
+## high 64 px) at the fight's centre, then every fighter reflects the place instead of the default street. Falls back to
+## the baked cube when the capture runs over its budget. True while the capture is still running.
+func _lc_capture_pending() -> bool:
+	if not _lc or arena == null or arena.get("place") == null or _headless or bool(_lc_cap.get("done", false)):
+		return false
+	var lk: Dictionary = arena.get("look")
+	if not bool(lk.get("lc_capture", true)):
+		_lc_cap["done"] = true
+		return false
+	if not _lc_cap.has("job"):
+		var sz: int = 64 if ArenaScript.tier_of(cfg) == "high" else 32
+		_lc_cap["t0"] = Time.get_ticks_usec()
+		_lc_cap["job"] = LookReal.capture_begin(self, Vector3(0.0, 1.2, 0.0), sz, arena.get("env"))
+		return true
+	var job: Dictionary = _lc_cap["job"]
+	var e: Dictionary = LookReal.capture_step(job)
+	var ms: float = (Time.get_ticks_usec() - int(_lc_cap["t0"])) / 1000.0
+	if e.is_empty() and ms < LookReal.CAPTURE_BUDGET_MS:
+		return true
+	_lc_cap["done"] = true
+	LookReal.capture_end(job)
+	if e.is_empty():
+		_log("lightcam place capture fallback ms=%.1f (baked cube kept)" % ms)
+		return false
+	for f: FighterScript in fighters:
+		for m: ShaderMaterial in f.get("_lit_mats"):
+			if m.get_shader_parameter("env_spec") != null:
+				m.set_shader_parameter("env_cube", e["cube"])
+				m.set_shader_parameter("env_scale", e["scale"])
+				m.set_shader_parameter("env_lods", e["lods"])
+				m.set_shader_parameter("amb_cube", e["amb"])
+	_log("lightcam place capture size=%d ms=%.1f cube_mean=%s street_mean=%s" % [int(job["size"]), ms, str(e.get("mean")),
+		str(LookReal.env_mean(str(lk.get("time", "golden"))))])
+	return false
 
 
 ## env-fixes 4: in a real place (the arena built one), the place's camera unless the config sets its
@@ -1038,7 +1310,7 @@ func _spawn(n: String, team: int, hp_max: int, c: Color, at: Vector3, yaw: float
 func _begin_when_built() -> void:
 	if arena != null:
 		arena.call("finish_place")
-	ShaderWarm.warm(self)
+	ShaderWarm.warm(self if _lc else null)
 	_begin_when_shown()
 
 
@@ -1064,12 +1336,14 @@ func _poll_loading() -> void:
 	if _load_queue.is_empty():
 		if arena != null:
 			arena.call("finish_place")
+		if _lc_capture_pending():
+			return    # fid29-lightcam: the place's reflections are being captured under the loading card (two frames)
 		load_ms = (Time.get_ticks_usec() - _load_t0) / 1000.0
 		_log("load_total ms=%.1f threaded=%s" % [load_ms, _load_threaded])
 		hud.loading_text = ""
 		for f: FighterScript in fighters:
 			f.visible = true
-		ShaderWarm.warm(self)    # fid29: every registered material drawn once before the first shot (none at fid29-base)
+		ShaderWarm.warm(self if _lc else null)    # fid29: every material of the fight drawn once before the first shot (lightcam look)
 		_begin_when_shown()
 		return
 	_loading_role = _load_queue.pop_front()
@@ -1599,6 +1873,7 @@ func _process(dt: float) -> void:
 	_beat_camera()
 	_dof_update()
 	_face_fill_update()
+	_lightcam_update(real_dt)
 	_sync_hud()
 	if _headless and (not _lat_move.is_empty() or not _lat_atk.is_empty()):
 		_check_latency.call_deferred("deferred")
@@ -3143,11 +3418,23 @@ func _apply_camera(dt: float) -> void:
 		# it to read), and the victory shot: down to the winner's height and in to CLOSE_WIN_DIST
 		var wk: float = ease(_win_k, -2.0)
 		d = _close_d * (1.0 - _punch * (0.04 if _reduce_motion else 0.12)) * (1.0 - float(ko_m.get("zoom", 0.0)) * ko_k)
-		d = lerpf(d, CLOSE_WIN_DIST_LAND if _landscape else CLOSE_WIN_DIST, wk)
-		close_basis = _view_basis.slerp(_close_win_basis, wk) if wk > 0.0 else _view_basis
-		var orbit_basis: Basis = _cam_basis.slerp(_close_win_basis, wk) if wk > 0.0 else _cam_basis
+		var win_d: float = CLOSE_WIN_DIST_LAND if _landscape else CLOSE_WIN_DIST
+		var win_h: float = FighterScript.HEIGHT * (hero.size_k if hero != null else 1.0) + 0.25
+		var win_b: Basis = _close_win_basis
+		if _lc and not _landscape:
+			# fid29-lightcam: the victory shot on a long lens (LC_WIN_FOV), the winner LC_WIN_SHARE of the frame's
+			# height, aimed lower (LC_WIN_AIM of the body) and nearly level, so the figure fills the frame under the card
+			var hh: float = FighterScript.HEIGHT * (hero.size_k if hero != null else 1.0)
+			var fw: float = lerpf(_base_fov, LC_WIN_FOV, wk)
+			win_d = hh * LC_WIN_HK / (LC_WIN_SHARE * 2.0 * tan(deg_to_rad(LC_WIN_FOV) * 0.5)) * (1.0 - LC_PUSH * _lc_push(_end_t - WIN_FRAME_S))
+			win_h = hh * LC_WIN_AIM
+			win_b = _lc_win_basis
+			_lc_fov = fw
+		d = lerpf(d, win_d, wk)
+		close_basis = _view_basis.slerp(win_b, wk) if wk > 0.0 else _view_basis
+		var orbit_basis: Basis = _cam_basis.slerp(win_b, wk) if wk > 0.0 else _cam_basis
 		# the VICTORY card lies across the upper third: the winner's head sits just under it
-		pos = _focus + Vector3.UP * lerpf(CLOSE_PIVOT_H, FighterScript.HEIGHT * (hero.size_k if hero != null else 1.0) + 0.25, wk) + (orbit * orbit_basis.z) * d
+		pos = _focus + Vector3.UP * lerpf(_lc_pivot_h(), win_h, wk) + (orbit * orbit_basis.z) * d
 	if _shake_t > 0.0:
 		_shake_t -= dt
 		var s: float = _shake * clampf(_shake_t / 0.18, 0.0, 1.0)
@@ -3166,8 +3453,16 @@ func _apply_camera(dt: float) -> void:
 	_kick = _kick.lerp(Vector3.ZERO, 1.0 - exp(-dt * 12.0))
 	pos += _kick * (0.3 if _reduce_motion else 1.0)
 	_fov_kick = move_toward(_fov_kick, 0.0, FOV_KICK_DECAY * dt)
-	cam.fov = _base_fov - (0.0 if _reduce_motion else _fov_kick)
+	cam.fov = (_lc_fov if _lc_fov > 0.0 else _base_fov) - (0.0 if _reduce_motion else _fov_kick)
+	_lc_fov = -1.0
+	if _lc and _close and _win_k > 0.0 and not _landscape:
+		basis = _lc_handheld(basis)
 	cam.transform = Transform3D(basis, pos)
+	if _lc and _close:
+		# fid29-lightcam: the mid-fight frame's offsets (the view shifts, the heading and the pitch of the orbit stay)
+		var wk2: float = ease(_win_k, -2.0)
+		cam.h_offset = LC_H_OFF * (1.0 - wk2)
+		cam.v_offset = _lc_voff() * (1.0 - wk2)
 
 
 ## Camera impact for a hit or a skill (cq 013): trauma 0..1 (shake), fov_kick degrees of

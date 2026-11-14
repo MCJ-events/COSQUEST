@@ -1,0 +1,50 @@
+{
+ "golden": {
+  "src": "kloppenheim_06_puresky_2k.hdr",
+  "u_sun": 0.6072,
+  "v_sun": 0.4565,
+  "sun_elev_deg": 7.8,
+  "exposure": 0.46422,
+  "balance": [
+   0.9511,
+   0.9973,
+   1.114
+  ],
+  "cap": 3.7751,
+  "gain": 1.0,
+  "longest_flat_run_hi": 20,
+  "longest_flat_run_mid": 14
+ },
+ "day": {
+  "src": "kloppenheim_05_puresky_2k.hdr",
+  "u_sun": 0.5999,
+  "v_sun": 0.0864,
+  "sun_elev_deg": 74.4,
+  "exposure": 1.2796,
+  "balance": [
+   0.8882,
+   1.0139,
+   1.0671
+  ],
+  "cap": 0.8901,
+  "gain": 1.0,
+  "longest_flat_run_hi": 31,
+  "longest_flat_run_mid": 22
+ },
+ "dusk": {
+  "src": "qwantani_dusk_2_puresky_2k.hdr",
+  "u_sun": 0.6047,
+  "v_sun": 0.437,
+  "sun_elev_deg": 11.3,
+  "exposure": 0.12712,
+  "balance": [
+   1.0533,
+   0.9608,
+   1.1232
+  ],
+  "cap": 4.7396,
+  "gain": 1.0,
+  "longest_flat_run_hi": 14,
+  "longest_flat_run_mid": 12
+ }
+}

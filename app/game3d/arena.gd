@@ -102,17 +102,20 @@ const REAL_KEY_ELEV_MIN: float = 24.0
 const REAL_GROUND_K: Dictionary = {"golden": 0.62, "day": 0.62, "dusk": 0.85, "night": 1.0}
 ## fid29 (build 29 fidelity lanes, docs/game3d/fid29/COMMON.md): each lane's work sits behind its own key, on for
 ## mid and high, never on low. fid_street (street_real.gd), fid_dressing, fid_heromaps (hero_files.gd),
-## fid_charshade, fid_combat. With a key false the lane's part is build 28's to the pixel; nothing in the
+## fid_charshade, fid_combat, fid_lightcam (fight.gd and this file: shadows, sky, lens, framing; "aa" is the
+## tier's MSAA, read by fight.gd only with fid_lightcam). With a key false the lane's part is build 28's to the pixel; nothing in the
 ## fight's rules reads any of them.
 const TIER_LOOK: Dictionary = {
 	"low": {},
 	"mid": {"real": true, "skin": "simple", "ibl": true, "cam": "close", "beats": true, "hit_order": true, "self_shadow": false, "key_yaw": REAL_KEY_YAW, "key_elev_min": REAL_KEY_ELEV_MIN, "ground_k": "auto",
 		"fx_gain": 0.6, "fx_cap": 0.5,
-		"fid_street": true, "fid_dressing": true, "fid_heromaps": true, "fid_charshade": true, "fid_combat": true},
+		"fid_street": true, "fid_dressing": true, "fid_heromaps": true, "fid_charshade": true, "fid_combat": true,
+		"fid_lightcam": true, "aa": "msaa2"},
 	"high": {"real": true, "skin": "full", "ibl": true, "shadows": true, "grade": "base", "hero_lod": 0, "scale": 1.0,
 		"cam": "close", "beats": true, "hit_order": true, "self_shadow": false, "key_yaw": REAL_KEY_YAW, "key_elev_min": REAL_KEY_ELEV_MIN, "ground_k": "auto", "soft_shadows": true,
 		"fx_gain": 0.6, "fx_cap": 0.5, "dof": true,
-		"fid_street": true, "fid_dressing": true, "fid_heromaps": true, "fid_charshade": true, "fid_combat": true},
+		"fid_street": true, "fid_dressing": true, "fid_heromaps": true, "fid_charshade": true, "fid_combat": true,
+		"fid_lightcam": true, "aa": "msaa4"},
 }
 
 
@@ -303,6 +306,7 @@ func build(cfg: Dictionary) -> void:
 				cfg["_lat"] = float(o["lat"])
 				cfg["_lng"] = float(o["lng"])
 	look = look_opts(cfg)
+	LookReal.lc = bool(look.get("fid_lightcam", false))    # fid29-lightcam: the fighters' cubes under the real sky
 	var tp: Dictionary = time_preset(look)
 	_key_elev = maxf(float(tp["key_elev"]), float(look.get("key_elev_min", 0.0)))
 	_key_yaw = float(look.get("key_yaw", KEY_YAW))
@@ -353,6 +357,8 @@ func build(cfg: Dictionary) -> void:
 		for k: String in ["zenith", "upper", "horizon", "horizon_sun", "fog", "sun_glow"]:
 			ssm.set_shader_parameter(k, tp[k])
 		ssm.set_shader_parameter("sun_dir", -key_dir())
+		if bool(look.get("fid_lightcam", false)) and bool(look.get("lc_sky", true)):
+			ssm = _lc_sky_material(ssm, tp, tier_of(cfg) == "high")
 		var dsky := Sky.new()
 		dsky.sky_material = ssm
 		dsky.radiance_size = Sky.RADIANCE_SIZE_32
@@ -444,6 +450,18 @@ func build(cfg: Dictionary) -> void:
 			sun.shadow_blur = 3.0
 			sun.shadow_bias = 0.2            # the low sun on a face drew stepped self-shadow (acne) at the default
 			sun.shadow_normal_bias = 3.0
+		if bool(look.get("fid_lightcam", false)):
+			# fid29-lightcam: two splits (the near one about 0.3 of the 35 m, blended), soft on every tier that has
+			# lightcam: mid the 5-tap filter (it shipped hard), high the 13-tap one; fight.gd tightens it in the close shots
+			sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
+			sun.directional_shadow_split_1 = 0.3
+			sun.directional_shadow_blend_splits = true
+			sun.shadow_bias = 0.2
+			sun.shadow_normal_bias = 3.0
+			var q: int = RenderingServer.SHADOW_QUALITY_SOFT_MEDIUM if bool(look.get("soft_shadows", false)) else RenderingServer.SHADOW_QUALITY_SOFT_LOW
+			q = int(look.get("lc_shadow_q", q))
+			RenderingServer.directional_soft_shadow_filter_set_quality(q)
+			print("CQ lightcam shadow mode=pssm2 split1=0.30 filter=%s q=%d" % ["PCF13" if q >= RenderingServer.SHADOW_QUALITY_SOFT_MEDIUM else "PCF5", q])
 	add_child(sun)
 	# no second (fill) light: each directional light is shaded on every pixel, ~2 ms a frame
 	# on the software GPU; the sky ambient is the fill
@@ -550,6 +568,77 @@ func build(cfg: Dictionary) -> void:
 	_commit_glows()
 	if bool(cfg.get("merge_street", true)):
 		_merge_dressing()
+
+
+## fid29-lightcam: a real cloud sky (Poly Haven pure skies, CC0; tools/look/make_sky.py: turned so its sun sits on
+## the key's heading, the sun disc painted out, tone-mapped per time of day, blue-noise dithered) in an equirect
+## lookup, blended into the gradient's haze at the horizon so the fog and the far city still melt into it. High reads
+## the 2048 x 1024 map, mid the 1024 x 512; low keeps the gradient (vfx/sky.gdshader, unchanged). The shader is
+## built here, so the low tier opens exactly build 28's files.
+const SKY_REAL_SHADER := """
+shader_type sky;
+uniform vec3 zenith : source_color = vec3(0.12, 0.16, 0.36);
+uniform vec3 upper : source_color = vec3(0.36, 0.38, 0.64);
+uniform vec3 horizon : source_color = vec3(0.9, 0.64, 0.58);
+uniform vec3 horizon_sun : source_color = vec3(1.0, 0.7, 0.42);
+uniform vec3 fog : source_color = vec3(0.74, 0.6, 0.6);
+uniform vec3 sun_dir = vec3(0.0, 0.56, -0.83);
+uniform float sun_glow = 0.55;
+uniform float band = 0.09;
+uniform sampler2D sky_tex : source_color, filter_linear, repeat_enable;
+uniform float sky_amount = 1.0;
+uniform float sky_gain = 1.0;
+uniform float sky_u0 = 0.0;      // the map's u of the key's heading (make_sky.py turned the sun there)
+
+void sky() {
+	vec3 d = normalize(EYEDIR);
+	float y = d.y;
+	vec3 s = normalize(sun_dir);
+	vec2 dh = normalize(d.xz + vec2(1e-5));
+	vec2 sh = normalize(s.xz + vec2(1e-5));
+	float toward = max(dot(dh, sh), 0.0);
+	vec3 hz = mix(horizon, horizon_sun, toward * toward * toward);
+	vec3 c = mix(hz, upper, smoothstep(0.02, 0.38, y));
+	c = mix(c, zenith, smoothstep(0.3, 1.0, y));
+	// the map: u from the heading relative to the sun's, v from the elevation (upper half only)
+	float rel = atan(dh.x * sh.y - dh.y * sh.x, dot(dh, sh));
+	vec2 uv = vec2(fract(sky_u0 + rel / 6.2831853), acos(clamp(y, -1.0, 1.0)) / 3.1415927);
+	vec3 t = texture(sky_tex, uv).rgb * sky_gain;
+	c = mix(c, t, sky_amount * smoothstep(0.0, band * 1.6, y));
+	float sd = max(dot(d, s), 0.0);
+	c += horizon_sun * (pow(sd, 6.0) * 0.3 + pow(sd, 64.0) * 0.5) * sun_glow;
+	c = mix(fog, c, smoothstep(-0.01, band, y));
+	COLOR = c;
+}
+"""
+const SKY_MAPS: Dictionary = {"golden": "golden", "day": "day", "dusk": "dusk", "night": "dusk"}
+static var _sky_shader: Shader
+static var _sky_meta: Dictionary = {}
+
+
+func _lc_sky_material(grad: ShaderMaterial, tp: Dictionary, high: bool) -> ShaderMaterial:
+	var name: String = str(SKY_MAPS.get(str(look["time"]), "golden"))
+	var path: String = "res://art/sky/%s_%s.png" % [name, "hi" if high else "mid"]
+	if not ResourceLoader.exists(path):
+		return grad
+	if _sky_shader == null:
+		_sky_shader = Shader.new()
+		_sky_shader.code = SKY_REAL_SHADER
+	if _sky_meta.is_empty() and FileAccess.file_exists("res://art/sky/sky.json"):
+		var j: Variant = JSON.parse_string(FileAccess.get_file_as_string("res://art/sky/sky.json"))
+		_sky_meta = j if j is Dictionary else {}
+	var m := ShaderMaterial.new()
+	m.shader = _sky_shader
+	for k: String in ["zenith", "upper", "horizon", "horizon_sun", "fog", "sun_glow"]:
+		m.set_shader_parameter(k, tp[k])
+	m.set_shader_parameter("sun_dir", -key_dir())
+	m.set_shader_parameter("sky_tex", load(path))
+	var meta: Dictionary = _sky_meta.get(name, {})
+	m.set_shader_parameter("sky_u0", float(meta.get("u_sun", 0.5)))
+	m.set_shader_parameter("sky_gain", float(look.get("lc_sky_gain", meta.get("gain", 1.0))))
+	m.set_shader_parameter("sky_amount", float(look.get("lc_sky_amount", 1.0)))
+	print("CQ lightcam sky %s" % path)
+	return m
 
 
 var place: Node3D   # the real place (cq 019), when the fight has one
