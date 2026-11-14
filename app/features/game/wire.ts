@@ -114,7 +114,14 @@ export type RoamMe = {
   } | null;
 };
 
-export type AttemptQuestion = { id: string; q: string; choices: string[]; difficulty: number; clue?: string | null };
+/**
+ * A question's picture (trivia-visual, flag `trivia_topics`): portrait, about 9:16, at three widths
+ * (l 768, m 540, s 360), its average colour to show at once, and words for a screen reader. The address
+ * is a content hash: it says nothing about the answer. Absent on an older server or a question without one.
+ */
+export type TriviaArt = { w: number; h: number; color?: string | null; alt?: string | null; src: { l?: string | null; m?: string | null; s?: string | null } };
+
+export type AttemptQuestion = { id: string; q: string; choices: string[]; difficulty: number; clue?: string | null; art?: TriviaArt | null };
 export type AttemptBeat = { id: string; text: string };
 
 export type RoamAttempt = {
@@ -127,8 +134,12 @@ export type RoamAttempt = {
   issued_at: string;
   deadline: string;
   seconds: number;
-  challenge: { questions?: AttemptQuestion[] | null; prompt?: string | null; beats?: AttemptBeat[] | null };
+  /** Put-in-order's one picture is the challenge's (`art`); the others carry one per question. */
+  challenge: { questions?: AttemptQuestion[] | null; prompt?: string | null; beats?: AttemptBeat[] | null; art?: TriviaArt | null };
   resumed: boolean;
+  /** A trivia tile dealt by topic ("film", "Film"); its realm is then null. */
+  topic?: string | null;
+  topic_name?: string | null;
   /** Seconds left by the server's clock when it answered. */
   remaining_s?: number | null;
 };

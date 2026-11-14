@@ -8,7 +8,7 @@
 // Pure (no React Native), so the pairings are checked against WCAG AA in
 // features/game/__tests__/triviaLook.test.ts. The screens: TriviaKit.tsx,
 // TriviaPlay.tsx and TriviaFrontDoor.tsx.
-import { realmName } from "./realmNames.ts";
+import { topicLabel } from "./triviaVisual.ts";
 import type { RunAnswerResult, RunBoard, RunPoint, RunState } from "./run";
 
 export const TRIVIA = {
@@ -152,11 +152,12 @@ export function runLength(questions: number, minutes: number): string {
 
 /**
  * The plate on the hero band. Wale's names the question's subject ("WRECK-IT
- * RALPH"); a question carries no subject, and the tile's generated name has
- * nothing to do with it, so the plate names the tile's realm, or the game.
+ * RALPH"); the tile's generated name has nothing to do with the question, so
+ * the plate names the tile's topic ("FILM"), or the game. Never the realm:
+ * Mark, 14 Nov, "the trivia is not related in any way to the factions".
  */
-export function heroPlate(point: Pick<RunPoint, "realm">): string {
-  return point.realm ? realmName(point.realm).toUpperCase() : "DAILY TRIVIA";
+export function heroPlate(point: Pick<RunPoint, "topic" | "topic_name">): string {
+  return topicLabel(point);
 }
 
 /** Where the main button goes after an answer: the next question, the board (a hidden bonus is left), or the score. */
