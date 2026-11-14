@@ -1,0 +1,524 @@
+{
+ "_doc": "fid29 combat (build 29): captured motion for the mid and high tiers only (combat_animator.gd, look real + fid_combat), in new libraries anim/real/<key>.glb; build 28's anim/*.glb and data/anim_clips.json are untouched (low phones load them). Per hero: hit = the additive directional hit reactions (layered on the spine, neck and arms by pose_layer.gd, never played as a state); states = the state a captured clip stands in for (its length and event times are the build 28 clip's: 'replaces'); variants = clips a looping state may play instead of its build 28 clip, picked by a hash of the fighter's slot and its count (never the fight's RNG). Written by tools/anim/build_real.py.",
+ "credits": [
+  "Motion data from the Cologne Motion Capture Database by TH Köln (University of Applied Sciences), CC BY 4.0. Retargeted and edited.",
+  "The 100STYLE Dataset - Ian Mason, CC BY 4.0. Retargeted and edited.",
+  "The data used in this project was obtained from mocap.cs.cmu.edu. The database was created with funding from NSF EIA-0196217."
+ ],
+ "gate_tear_share": 0.005,
+ "clips": {
+  "CB_Guard_14": {
+   "frames": 27,
+   "fps": 30.0,
+   "src": "CMU Graphics Lab Motion Capture Database, 14_01 boxing: guard and bounce",
+   "licence": "CMU Graphics Lab Motion Capture Database (free for all uses, not resold)"
+  },
+  "CM_Hit_Back_B": {
+   "frames": 22,
+   "fps": 30.0,
+   "src": "Cologne Motion Capture Database: Take2018-01-17_12.21.11SAM.bvh, struck from behind, smaller: the trunk thrown forward 14 deg (2018-01-17 sparring, SAM)",
+   "licence": "CMCD (TH Koeln), CC BY 4.0"
+  },
+  "CM_Hit_Front": {
+   "frames": 22,
+   "fps": 30.0,
+   "src": "Cologne Motion Capture Database: Take_2019-01-09_E_Nussknacker3.bvh, struck in front: the trunk thrown back 21 deg (Nussknacker 'getting kicked, wounded, crinching', receiver)",
+   "licence": "CMCD (TH Koeln), CC BY 4.0"
+  },
+  "CM_Hit_Left_M": {
+   "frames": 22,
+   "fps": 30.0,
+   "src": "Cologne Motion Capture Database: Take2018-01-17_12.01.06SAM.bvh, pushed to its left: CM_Hit_Right's take mirrored (2018-01-17 sparring, SAM)",
+   "licence": "CMCD (TH Koeln), CC BY 4.0"
+  },
+  "CM_Hit_Right": {
+   "frames": 22,
+   "fps": 30.0,
+   "src": "Cologne Motion Capture Database: Take2018-01-17_12.01.06SAM.bvh, pushed to its right (struck on its left): trunk tilted 26 deg (2018-01-17 sparring, SAM)",
+   "licence": "CMCD (TH Koeln), CC BY 4.0"
+  },
+  "M2M_Hit_Chest": {
+   "frames": 12,
+   "fps": 30.0,
+   "src": "Mesh2Motion (CC0, authored), hit-chest",
+   "licence": "CC0"
+  },
+  "M2M_Hit_Head": {
+   "frames": 16,
+   "fps": 30.0,
+   "src": "Mesh2Motion (CC0, authored), hit-head",
+   "licence": "CC0"
+  },
+  "ST_Intro_Proud_54": {
+   "frames": 54,
+   "fps": 30.0,
+   "src": "100STYLE: Proud_ID.bvh, 100STYLE Proud idle",
+   "licence": "100STYLE (Ian Mason), CC BY 4.0",
+   "replaces": "R_Intro_Salute"
+  },
+  "CM_Hit_Back": {
+   "frames": 22,
+   "fps": 30.0,
+   "src": "Cologne Motion Capture Database: Take2018-01-17_12.01.06SAM.bvh, struck from behind: the trunk thrown forward 31 deg (2018-01-17 sparring, SAM)",
+   "licence": "CMCD (TH Koeln), CC BY 4.0"
+  },
+  "ST_Intro_Strut_50": {
+   "frames": 50,
+   "fps": 30.0,
+   "src": "100STYLE: Strutting_ID.bvh, 100STYLE Strutting idle",
+   "licence": "100STYLE (Ian Mason), CC BY 4.0",
+   "replaces": "R_Intro_Ready"
+  },
+  "CB_Guard_13": {
+   "frames": 27,
+   "fps": 30.0,
+   "src": "CMU Graphics Lab Motion Capture Database, 13_17 boxing: the guard up, weight rocking on the balls of the feet",
+   "licence": "CMU Graphics Lab Motion Capture Database (free for all uses, not resold)"
+  },
+  "CM_Hit_Left": {
+   "frames": 22,
+   "fps": 30.0,
+   "src": "Cologne Motion Capture Database: Take_2019-01-09_E_Kampf.bvh, pushed to its left (struck on its right): trunk tilted 30 deg (Kampf 'boxing, fighting')",
+   "licence": "CMCD (TH Koeln), CC BY 4.0"
+  },
+  "CM_Victory_64": {
+   "frames": 64,
+   "fps": 30.0,
+   "src": "Cologne Motion Capture Database: Take_2014-12-16_11.21.47_AM.bvh, in Spellcast_Raise's 64 frames, both fists up at its frame 14",
+   "licence": "CMCD (TH Koeln), CC BY 4.0",
+   "contact": 14,
+   "out": 40,
+   "replaces": "Spellcast_Raise"
+  },
+  "ST_Intro_Strut_54": {
+   "frames": 54,
+   "fps": 30.0,
+   "src": "100STYLE: Strutting_ID.bvh, 100STYLE Strutting idle",
+   "licence": "100STYLE (Ian Mason), CC BY 4.0",
+   "replaces": "R_Intro_Charge"
+  },
+  "ST_Intro_Neutral_49": {
+   "frames": 49,
+   "fps": 30.0,
+   "src": "100STYLE: Neutral_ID.bvh, 100STYLE Neutral idle",
+   "licence": "100STYLE (Ian Mason), CC BY 4.0",
+   "replaces": "R_Intro_Guard"
+  },
+  "CM_Victory_77": {
+   "frames": 77,
+   "fps": 30.0,
+   "src": "Cologne Motion Capture Database: Take_2014-12-16_11.21.47_AM.bvh, in Spellcast_Long's 77 frames, both fists up at its frame 20",
+   "licence": "CMCD (TH Koeln), CC BY 4.0",
+   "contact": 20,
+   "out": 46,
+   "replaces": "Spellcast_Long"
+  },
+  "ST_Intro_Neutral_33": {
+   "frames": 33,
+   "fps": 30.0,
+   "src": "100STYLE: Neutral_ID.bvh, 100STYLE Neutral idle",
+   "licence": "100STYLE (Ian Mason), CC BY 4.0",
+   "replaces": "R_Intro_Plant"
+  },
+  "ST_Intro_Proud_77": {
+   "frames": 77,
+   "fps": 30.0,
+   "src": "100STYLE: Proud_ID.bvh, 100STYLE Proud idle",
+   "licence": "100STYLE (Ian Mason), CC BY 4.0",
+   "replaces": "R_Intro_Open"
+  }
+ },
+ "characters": {
+  "icons_imani": {
+   "library": "res://anim/real/icons_imani.glb",
+   "hit": {
+    "back": "CM_Hit_Back_B",
+    "front": "CM_Hit_Front",
+    "left": "CM_Hit_Left_M",
+    "right": "CM_Hit_Right",
+    "front_light": "M2M_Hit_Chest",
+    "front_heavy": "M2M_Hit_Head"
+   },
+   "states": {
+    "intro": "ST_Intro_Proud_54"
+   },
+   "variants": {
+    "guard": [
+     "CB_Guard_14"
+    ]
+   },
+   "fingerprint": {
+    "Hips": [
+     0.0018,
+     0.9851,
+     -0.0024
+    ],
+    "RightHand": [
+     -0.7141,
+     1.1737,
+     0.05
+    ],
+    "LeftFoot": [
+     0.1545,
+     0.09,
+     -0.0035
+    ]
+   },
+   "tear": {
+    "CB_Guard_13": 0.00572,
+    "CB_Guard_14": 0.00307,
+    "CM_Hit_Back": 0.00529,
+    "CM_Hit_Back_B": 0.00392,
+    "CM_Hit_Front": 0.00392,
+    "CM_Hit_Left": 0.00785,
+    "CM_Hit_Left_M": 0.00489,
+    "CM_Hit_Right": 0.00478,
+    "CM_Hit_Right_M": 0.00639,
+    "CM_Victory_75": 0.00568,
+    "CM_Victory_75s": 0.00579,
+    "M2M_Hit_Chest": 0.00471,
+    "M2M_Hit_Head": 0.00429,
+    "ST_Intro_Proud_54": 0.00085
+   },
+   "over_gate": [
+    "CB_Guard_13",
+    "CM_Hit_Back",
+    "CM_Hit_Left",
+    "CM_Hit_Right_M",
+    "CM_Victory_75",
+    "CM_Victory_75s"
+   ],
+   "tear_note": "worst share of triangles stretched past 2.5x on LOD0 to LOD2; hit clips measured as layered (add_gate.py)",
+   "hit_gain": {
+    "back": 1.0,
+    "front": 1.0,
+    "left": 0.8,
+    "right": 0.8,
+    "front_light": 1.0,
+    "front_heavy": 1.0
+   }
+  },
+  "blockbusters_kofi": {
+   "library": "res://anim/real/blockbusters_kofi.glb",
+   "hit": {
+    "back": "CM_Hit_Back",
+    "front": "CM_Hit_Front",
+    "left": "CM_Hit_Left_M",
+    "right": "CM_Hit_Right",
+    "front_light": "M2M_Hit_Chest",
+    "front_heavy": "M2M_Hit_Head"
+   },
+   "states": {
+    "intro": "ST_Intro_Strut_50"
+   },
+   "variants": {
+    "guard": [
+     "CB_Guard_14"
+    ]
+   },
+   "fingerprint": {
+    "Hips": [
+     0.0304,
+     0.8866,
+     0.0523
+    ],
+    "RightHand": [
+     -0.6812,
+     1.0047,
+     -0.0073
+    ],
+    "LeftFoot": [
+     0.2485,
+     0.081,
+     -0.0624
+    ]
+   },
+   "tear": {
+    "CB_Guard_13": 0.00597,
+    "CB_Guard_14": 0.00419,
+    "CM_Hit_Back": 0.00494,
+    "CM_Hit_Back_B": 0.00489,
+    "CM_Hit_Front": 0.00494,
+    "CM_Hit_Left": 0.00651,
+    "CM_Hit_Left_M": 0.00467,
+    "CM_Hit_Right": 0.00497,
+    "CM_Hit_Right_M": 0.00613,
+    "CM_Victory_51": 0.00513,
+    "CM_Victory_51s": 0.00519,
+    "M2M_Hit_Chest": 0.00413,
+    "M2M_Hit_Head": 0.00359,
+    "ST_Intro_Strut_50": 0.00254
+   },
+   "over_gate": [
+    "CB_Guard_13",
+    "CM_Hit_Left",
+    "CM_Hit_Right_M",
+    "CM_Victory_51",
+    "CM_Victory_51s"
+   ],
+   "tear_note": "worst share of triangles stretched past 2.5x on LOD0 to LOD2; hit clips measured as layered (add_gate.py)",
+   "hit_gain": {
+    "back": 1.0,
+    "front": 1.0,
+    "left": 0.8,
+    "right": 0.8,
+    "front_light": 1.0,
+    "front_heavy": 1.0
+   }
+  },
+  "ascendants_zuri": {
+   "library": "res://anim/real/ascendants_zuri.glb",
+   "hit": {
+    "back": "CM_Hit_Back",
+    "front": "CM_Hit_Front",
+    "left": "CM_Hit_Left",
+    "right": "CM_Hit_Right",
+    "front_light": "M2M_Hit_Chest",
+    "front_heavy": "M2M_Hit_Head"
+   },
+   "states": {
+    "victory": "CM_Victory_64",
+    "intro": "ST_Intro_Strut_54"
+   },
+   "variants": {
+    "guard": [
+     "CB_Guard_13",
+     "CB_Guard_14"
+    ]
+   },
+   "fingerprint": {
+    "Hips": [
+     0.0038,
+     0.87,
+     0.0271
+    ],
+    "RightHand": [
+     -0.5617,
+     1.0635,
+     0.0614
+    ],
+    "LeftFoot": [
+     0.1872,
+     0.081,
+     -0.0949
+    ]
+   },
+   "tear": {
+    "CB_Guard_13": 0.00062,
+    "CB_Guard_14": 0.00059,
+    "CM_Hit_Back": 0.00089,
+    "CM_Hit_Back_B": 0.00089,
+    "CM_Hit_Front": 0.00088,
+    "CM_Hit_Left": 0.00413,
+    "CM_Hit_Left_M": 0.00176,
+    "CM_Hit_Right": 0.00187,
+    "CM_Hit_Right_M": 0.00443,
+    "CM_Victory_64": 0.00057,
+    "CM_Victory_64s": 0.00057,
+    "M2M_Hit_Chest": 0.00087,
+    "M2M_Hit_Head": 0.00087,
+    "ST_Intro_Strut_54": 0.00021
+   },
+   "over_gate": [],
+   "tear_note": "worst share of triangles stretched past 2.5x on LOD0 to LOD2; hit clips measured as layered (add_gate.py)",
+   "hit_gain": {
+    "back": 1.0,
+    "front": 1.0,
+    "left": 1.0,
+    "right": 1.0,
+    "front_light": 1.0,
+    "front_heavy": 1.0
+   }
+  },
+  "controllers_tavo": {
+   "library": "res://anim/real/controllers_tavo.glb",
+   "hit": {
+    "back": "CM_Hit_Back_B",
+    "front_heavy": "M2M_Hit_Head"
+   },
+   "states": {
+    "intro": "ST_Intro_Neutral_49"
+   },
+   "variants": {},
+   "fingerprint": {
+    "Hips": [
+     0.0082,
+     0.8941,
+     0.0538
+    ],
+    "RightHand": [
+     -0.5362,
+     1.182,
+     -0.0815
+    ],
+    "LeftFoot": [
+     0.1968,
+     0.081,
+     -0.1105
+    ]
+   },
+   "tear": {
+    "CB_Guard_13": 0.00754,
+    "CB_Guard_14": 0.00693,
+    "CM_Hit_Back": 0.00558,
+    "CM_Hit_Back_B": 0.00499,
+    "CM_Hit_Front": 0.00516,
+    "CM_Hit_Left": 0.00849,
+    "CM_Hit_Left_M": 0.00524,
+    "CM_Hit_Right": 0.00592,
+    "CM_Hit_Right_M": 0.00671,
+    "CM_Victory_51": 0.01037,
+    "CM_Victory_51s": 0.01037,
+    "M2M_Hit_Chest": 0.00516,
+    "M2M_Hit_Head": 0.00499,
+    "ST_Intro_Neutral_49": 0.00351
+   },
+   "over_gate": [
+    "CB_Guard_13",
+    "CB_Guard_14",
+    "CM_Hit_Back",
+    "CM_Hit_Front",
+    "CM_Hit_Left",
+    "CM_Hit_Left_M",
+    "CM_Hit_Right",
+    "CM_Hit_Right_M",
+    "CM_Victory_51",
+    "CM_Victory_51s",
+    "M2M_Hit_Chest"
+   ],
+   "tear_note": "worst share of triangles stretched past 2.5x on LOD0 to LOD2; hit clips measured as layered (add_gate.py)",
+   "hit_gain": {
+    "back": 0.8,
+    "front_heavy": 0.5
+   }
+  },
+  "everborn_oren": {
+   "library": "res://anim/real/everborn_oren.glb",
+   "hit": {
+    "back": "CM_Hit_Back",
+    "front": "CM_Hit_Front",
+    "left": "CM_Hit_Left",
+    "right": "CM_Hit_Right",
+    "front_light": "M2M_Hit_Chest",
+    "front_heavy": "M2M_Hit_Head"
+   },
+   "states": {
+    "victory": "CM_Victory_77",
+    "intro": "ST_Intro_Neutral_33"
+   },
+   "variants": {
+    "guard": [
+     "CB_Guard_13",
+     "CB_Guard_14"
+    ]
+   },
+   "fingerprint": {
+    "Hips": [
+     -0.0023,
+     0.8941,
+     0.0343
+    ],
+    "RightHand": [
+     -0.4628,
+     1.095,
+     -0.0887
+    ],
+    "LeftFoot": [
+     0.1732,
+     0.081,
+     -0.0852
+    ]
+   },
+   "tear": {
+    "CB_Guard_13": 0.00079,
+    "CB_Guard_14": 0.0007,
+    "CM_Hit_Back": 0.00226,
+    "CM_Hit_Back_B": 0.00226,
+    "CM_Hit_Front": 0.00283,
+    "CM_Hit_Left": 0.00405,
+    "CM_Hit_Left_M": 0.00417,
+    "CM_Hit_Right": 0.00405,
+    "CM_Hit_Right_M": 0.00432,
+    "CM_Victory_77": 0.0012,
+    "CM_Victory_77s": 0.0012,
+    "M2M_Hit_Chest": 0.00226,
+    "M2M_Hit_Head": 0.00234,
+    "ST_Intro_Neutral_33": 0.00018
+   },
+   "over_gate": [],
+   "tear_note": "worst share of triangles stretched past 2.5x on LOD0 to LOD2; hit clips measured as layered (add_gate.py)",
+   "hit_gain": {
+    "back": 1.0,
+    "front": 1.0,
+    "left": 0.65,
+    "right": 1.0,
+    "front_light": 1.0,
+    "front_heavy": 1.0
+   }
+  },
+  "celestials_lyra": {
+   "library": "res://anim/real/celestials_lyra.glb",
+   "hit": {
+    "back": "CM_Hit_Back",
+    "front": "CM_Hit_Front",
+    "left": "CM_Hit_Left",
+    "right": "CM_Hit_Right",
+    "front_light": "M2M_Hit_Chest",
+    "front_heavy": "M2M_Hit_Head"
+   },
+   "states": {
+    "victory": "CM_Victory_64",
+    "intro": "ST_Intro_Proud_77"
+   },
+   "variants": {
+    "guard": [
+     "CB_Guard_13",
+     "CB_Guard_14"
+    ]
+   },
+   "fingerprint": {
+    "Hips": [
+     -0.0015,
+     0.894,
+     -0.0189
+    ],
+    "RightHand": [
+     -0.6181,
+     1.0922,
+     0.0326
+    ],
+    "LeftFoot": [
+     0.1625,
+     0.081,
+     -0.1086
+    ]
+   },
+   "tear": {
+    "CB_Guard_13": 0.00066,
+    "CB_Guard_14": 0.00052,
+    "CM_Hit_Back": 0.00155,
+    "CM_Hit_Back_B": 0.00161,
+    "CM_Hit_Front": 0.00149,
+    "CM_Hit_Left": 0.00315,
+    "CM_Hit_Left_M": 0.00139,
+    "CM_Hit_Right": 0.00161,
+    "CM_Hit_Right_M": 0.00304,
+    "CM_Victory_64": 0.00058,
+    "CM_Victory_64s": 0.00058,
+    "M2M_Hit_Chest": 0.00167,
+    "M2M_Hit_Head": 0.00178,
+    "ST_Intro_Proud_77": 0.00012
+   },
+   "over_gate": [],
+   "tear_note": "worst share of triangles stretched past 2.5x on LOD0 to LOD2; hit clips measured as layered (add_gate.py)",
+   "hit_gain": {
+    "back": 1.0,
+    "front": 1.0,
+    "left": 1.0,
+    "right": 1.0,
+    "front_light": 1.0,
+    "front_heavy": 1.0
+   }
+  }
+ }
+}

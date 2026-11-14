@@ -61,13 +61,65 @@ var _emit_until: Dictionary = {}       # CPUParticles3D -> clock when its burst 
 var peak_parts: int = 0
 var peak_live: int = 0
 
+## fid29 combat (build 29): on the mid and high tiers (the arena's look "real", and "fid_combat" unless false) the
+## cards are compiled with FID29 (vfx/fx_card.gdshaderinc): a hit's burst fades inside an ellipse round the struck
+## fighter's head and chest (set per hit in sparks()), every card fades out over its lowest 0.3 m above the paving
+## (world height, no depth read) and no card adds more than 0.85 of white, hue kept. On the high tier the slash
+## arcs and weapon ribbons are compiled with FLOW (vfx/fx_arc.gdshader): flow-mapped ribbons, same meshes and draws.
+## The low tier keeps build 28's shaders, art and calls exactly (fid stays false; nothing new is loaded).
+var fid: bool = false
+var flow: bool = false
+var _sh_card: Shader = CARD_SHADER
+var _sh_top: Shader = CARD_TOP_SHADER
+var _sh_arc: Shader = ARC_SHADER
+var _t_flow: Texture2D
+const SHIELD_FLOOR: float = 0.2
+const SHIELD_HALF_W: float = 0.42        # metres either side of the body's axis (x size_k)
+var shields: int = 0                     # hits that set a shield (tests)
+
+
+## The arena's look and the fight's tier, read from the fight this is a child of (fight.gd adds it after the arena).
+func _fid_setup() -> void:
+	var f: Node = get_parent()
+	var arena: Variant = f.get("arena") if f != null and "arena" in f else null
+	var lk: Variant = (arena as Node).get("look") if arena != null and is_instance_valid(arena) else null
+	if not (lk is Dictionary):
+		return
+	fid = bool((lk as Dictionary).get("real", false)) and bool((lk as Dictionary).get("fid_combat", true))
+	if not fid:
+		return
+	var cfg: Variant = f.get("cfg") if "cfg" in f else null
+	flow = cfg is Dictionary and str((cfg as Dictionary).get("tier", "")) == "high" and bool((lk as Dictionary).get("fid_flow", true))
+	_sh_card = _variant(CARD_SHADER, "FID29")
+	_sh_top = _variant(CARD_TOP_SHADER, "FID29")
+	if flow:
+		_sh_arc = _variant(ARC_SHADER, "FLOW")
+		_t_flow = load("res://art/fx/fx_flow.png")
+
+
+static func _variant(src: Shader, define: String) -> Shader:
+	var sh := Shader.new()
+	sh.code = src.code.replace("shader_type spatial;", "shader_type spatial;\n#define %s" % define)
+	return sh
+
+
+func _arc_mat() -> ShaderMaterial:
+	var am := ShaderMaterial.new()
+	am.shader = _sh_arc
+	am.set_shader_parameter("tile", T_TILE)
+	if flow:
+		am.set_shader_parameter("flow", _t_flow)
+	return am
+
 
 func _ready() -> void:
+	_fid_setup()
 	_arc_mesh = _crescent(40)
 	for i in N_ARCS:
-		var am := ShaderMaterial.new()
-		am.shader = ARC_SHADER
-		am.set_shader_parameter("tile", T_TILE)
+		var am: ShaderMaterial = _arc_mat() if fid else ShaderMaterial.new()
+		if not fid:
+			am.shader = ARC_SHADER
+			am.set_shader_parameter("tile", T_TILE)
 		_arcs.append(_make_mi(_arc_mesh, am))
 		_arcs[-1].set_meta("no_bloom", true)   # cq 016: the arcs carry their own halo; bloomed they white out the fighters
 	var q := QuadMesh.new()
@@ -149,7 +201,11 @@ func _warm() -> void:
 
 func _card_mat(cell: int, add: float, billboard: int = 1, top: bool = false) -> ShaderMaterial:
 	var m := ShaderMaterial.new()
-	m.shader = CARD_TOP_SHADER if top else CARD_SHADER
+	if fid:
+		m.shader = _sh_top if top else _sh_card
+		m.set_shader_parameter("shield_floor", SHIELD_FLOOR)
+	else:
+		m.shader = CARD_TOP_SHADER if top else CARD_SHADER
 	m.set_shader_parameter("atlas", T_ATLAS)
 	m.set_shader_parameter("cell", float(cell))
 	m.set_shader_parameter("add", add)
@@ -382,6 +438,9 @@ func card(cell: int, at: Vector3, tint: Color, life: float, s0: float, s1: float
 	var spin0: float = float(opts.get("rot", randf() * TAU if bool(opts.get("rand_rot", false)) else 0.0))
 	m.set_shader_parameter("spin", spin0)
 	m.set_shader_parameter("tint", tint)
+	if fid:
+		m.set_shader_parameter("sh_head", Vector4.ZERO)     # no shield unless the hit that made it sets one
+		m.set_shader_parameter("ground_y", _ground_at(at))
 	mi.position = at
 	if bloom_layer != 0:
 		# cq 016: the cheap bloom takes the standing cards (flashes, bursts, glows), not the big
@@ -461,9 +520,10 @@ func trail_push(key: String, base: Vector3, tip: Vector3, tint: Variant, t_back:
 		var mi := MeshInstance3D.new()
 		var im := ImmediateMesh.new()
 		mi.mesh = im
-		var sm := ShaderMaterial.new()
-		sm.shader = ARC_SHADER
-		sm.set_shader_parameter("tile", T_TILE)
+		var sm: ShaderMaterial = _arc_mat() if fid else ShaderMaterial.new()
+		if not fid:
+			sm.shader = ARC_SHADER
+			sm.set_shader_parameter("tile", T_TILE)
 		sm.set_shader_parameter("head", 1.0)
 		sm.set_shader_parameter("tail_len", 1.0)
 		mi.material_override = sm
@@ -542,17 +602,63 @@ func sparks(at: Vector3, tint: Color, dmg: int, crit: bool = false, away: Vector
 	# bigger than a 120 and a light 60 stays small
 	var k: float = clampf(0.75 + float(dmg) / 160.0, 1.0, 2.4) * (1.2 if crit else 1.0)
 	var flash_col: Color = tint.lerp(WHITE_HOT, 0.5)
-	card(STAR4, at, flash_col, 0.15, 0.6 * k, 1.25 * k, {"top": true, "add": 0.85, "hot": 1.0, "sp": 0.3, "fin": 0.05, "rand_rot": true})
-	card(GLOW, at, tint, 0.2, 0.6 * k, 1.3 * k, {"top": true, "add": 1.0, "sp": 0.4, "intensity": 0.65})
+	var made: Array = []
+	made.append(card(STAR4, at, flash_col, 0.15, 0.6 * k, 1.25 * k, {"top": true, "add": 0.85, "hot": 1.0, "sp": 0.3, "fin": 0.05, "rand_rot": true}))
+	made.append(card(GLOW, at, tint, 0.2, 0.6 * k, 1.3 * k, {"top": true, "add": 1.0, "sp": 0.4, "intensity": 0.65}))
 	if tier >= 1 or crit:
-		card(RING, at, tint.lerp(Color.WHITE, 0.4), 0.2, 0.4 * k, 1.8 * k, {"top": true, "add": 0.8, "sp": 0.35})
+		made.append(card(RING, at, tint.lerp(Color.WHITE, 0.4), 0.2, 0.4 * k, 1.8 * k, {"top": true, "add": 0.8, "sp": 0.35}))
 	if tier >= 2 and not crit:
 		# a big blow: impact lines out from the contact (a crit has its own below)
-		card(LINES, at, tint.lerp(Color.WHITE, 0.5), 0.18, 1.0 * k * 0.6, 2.4 * k * 0.6, {"top": true, "add": 0.85, "sp": 0.3, "rand_rot": true})
+		made.append(card(LINES, at, tint.lerp(Color.WHITE, 0.5), 0.18, 1.0 * k * 0.6, 2.4 * k * 0.6, {"top": true, "add": 0.85, "sp": 0.3, "rand_rot": true}))
 	if crit:
-		card(BURST, at, Color(1.0, 0.82, 0.35), 0.24, 1.0, 2.4, {"top": true, "add": 0.7, "hot": 1.0, "sp": 0.3, "rand_rot": true, "spin": 2.0})
-		card(LINES, at, Color(1.0, 0.92, 0.6), 0.22, 1.4, 3.4, {"top": true, "add": 0.9, "sp": 0.3, "rand_rot": true})
+		made.append(card(BURST, at, Color(1.0, 0.82, 0.35), 0.24, 1.0, 2.4, {"top": true, "add": 0.7, "hot": 1.0, "sp": 0.3, "rand_rot": true, "spin": 2.0}))
+		made.append(card(LINES, at, Color(1.0, 0.92, 0.6), 0.22, 1.4, 3.4, {"top": true, "add": 0.9, "sp": 0.3, "rand_rot": true}))
 		_emit("glint", at, Color(1.0, 0.9, 0.55))
+	if fid:
+		_shield(made, at)
+
+
+## fid29 combat: the struck fighter (the one nearest the contact) frames its own hit: its head and chest, and its
+## half width, go to the cards this hit made (vfx/fx_card.gdshaderinc fades them inside that screen ellipse).
+func _shield(made: Array, at: Vector3) -> void:
+	var f: Node3D = _struck(at)
+	if f == null:
+		return
+	var sk: float = float(f.get("size_k")) if "size_k" in f else 1.0
+	var h: float = 2.3 * sk          # fighter.gd HEIGHT
+	var p: Vector3 = f.global_position
+	var head := Vector4(p.x, p.y + h * 0.9, p.z, SHIELD_HALF_W * sk)
+	var chest := Vector3(p.x, p.y + h * 0.58, p.z)
+	for mi: Variant in made:
+		var m := (mi as MeshInstance3D).material_override as ShaderMaterial
+		m.set_shader_parameter("sh_head", head)
+		m.set_shader_parameter("sh_chest", chest)
+	shields += 1
+
+
+func _fighters() -> Array:
+	var f: Node = get_parent()
+	var fs: Variant = f.get("fighters") if f != null and "fighters" in f else null
+	return fs if fs is Array else []
+
+
+func _struck(at: Vector3) -> Node3D:
+	var best: Node3D = null
+	var bd: float = 2.5
+	for f: Variant in _fighters():
+		if f == null or not is_instance_valid(f):
+			continue
+		var d: float = Vector2((f as Node3D).global_position.x - at.x, (f as Node3D).global_position.z - at.z).length()
+		if d < bd:
+			bd = d
+			best = f
+	return best
+
+
+## The paving under a card: the nearest fighter's feet (the arena is flat round the fight), else 0.
+func _ground_at(at: Vector3) -> float:
+	var f: Node3D = _struck(at)
+	return f.global_position.y if f != null else 0.0
 
 
 ## Parry: a bright clash spark where the weapons meet.

@@ -1,0 +1,503 @@
+{
+ "_doc": "fid29 combat: retarget entries for the new captured clips (merged over tools/anim/clips.json by build_real.py; same fields). M2M_Hit_Chest and M2M_Hit_Head (Mesh2Motion, CC0) are build 28's own entries.",
+ "clips": {
+  "CM_Hit_Front": {
+   "src": "CM_Hit_Front",
+   "lib": "cmcd",
+   "classes": [
+    "sword"
+   ],
+   "source": "Cologne Motion Capture Database: Take_2019-01-09_E_Nussknacker3.bvh, struck in front: the trunk thrown back 21 deg (Nussknacker 'getting kicked, wounded, crinching', receiver)",
+   "licence": "CMCD (TH Koeln), CC BY 4.0",
+   "root": "zero",
+   "damp_legs": {
+    "bones": [
+     "Hips",
+     "LeftUpLeg",
+     "RightUpLeg",
+     "LeftLeg",
+     "RightLeg",
+     "LeftFoot",
+     "RightFoot",
+     "LeftToeBase",
+     "RightToeBase"
+    ],
+    "f": 0.0
+   },
+   "_why": "additive on the spine, neck and arms only: measured (tear, T-pose) with the hips and legs at rest, as the game layers it"
+  },
+  "CM_Hit_Back": {
+   "src": "CM_Hit_Back",
+   "lib": "cmcd",
+   "classes": [
+    "sword"
+   ],
+   "source": "Cologne Motion Capture Database: Take2018-01-17_12.01.06SAM.bvh, struck from behind: the trunk thrown forward 31 deg (2018-01-17 sparring, SAM)",
+   "licence": "CMCD (TH Koeln), CC BY 4.0",
+   "root": "zero",
+   "damp_legs": {
+    "bones": [
+     "Hips",
+     "LeftUpLeg",
+     "RightUpLeg",
+     "LeftLeg",
+     "RightLeg",
+     "LeftFoot",
+     "RightFoot",
+     "LeftToeBase",
+     "RightToeBase"
+    ],
+    "f": 0.0
+   },
+   "_why": "additive on the spine, neck and arms only: measured (tear, T-pose) with the hips and legs at rest, as the game layers it"
+  },
+  "CM_Hit_Left": {
+   "src": "CM_Hit_Left",
+   "lib": "cmcd",
+   "classes": [
+    "sword"
+   ],
+   "source": "Cologne Motion Capture Database: Take_2019-01-09_E_Kampf.bvh, pushed to its left (struck on its right): trunk tilted 30 deg (Kampf 'boxing, fighting')",
+   "licence": "CMCD (TH Koeln), CC BY 4.0",
+   "root": "zero",
+   "damp_legs": {
+    "bones": [
+     "Hips",
+     "LeftUpLeg",
+     "RightUpLeg",
+     "LeftLeg",
+     "RightLeg",
+     "LeftFoot",
+     "RightFoot",
+     "LeftToeBase",
+     "RightToeBase"
+    ],
+    "f": 0.0
+   },
+   "_why": "additive on the spine, neck and arms only: measured (tear, T-pose) with the hips and legs at rest, as the game layers it"
+  },
+  "CM_Hit_Right": {
+   "src": "CM_Hit_Right",
+   "lib": "cmcd",
+   "classes": [
+    "sword"
+   ],
+   "source": "Cologne Motion Capture Database: Take2018-01-17_12.01.06SAM.bvh, pushed to its right (struck on its left): trunk tilted 26 deg (2018-01-17 sparring, SAM)",
+   "licence": "CMCD (TH Koeln), CC BY 4.0",
+   "root": "zero",
+   "damp_legs": {
+    "bones": [
+     "Hips",
+     "LeftUpLeg",
+     "RightUpLeg",
+     "LeftLeg",
+     "RightLeg",
+     "LeftFoot",
+     "RightFoot",
+     "LeftToeBase",
+     "RightToeBase"
+    ],
+    "f": 0.0
+   },
+   "_why": "additive on the spine, neck and arms only: measured (tear, T-pose) with the hips and legs at rest, as the game layers it"
+  },
+  "CM_Victory_75": {
+   "src": "CM_Victory_75",
+   "lib": "cmcd",
+   "classes": [
+    "sword"
+   ],
+   "source": "Cologne Motion Capture Database: Take_2014-12-16_11.21.47_AM.bvh, 'boxing, jumping, cheering, winning' (Rocky, boxer, happy)",
+   "licence": "CMCD (TH Koeln), CC BY 4.0",
+   "damp_legs": {
+    "bones": [
+     "LeftUpLeg",
+     "RightUpLeg",
+     "LeftLeg",
+     "RightLeg"
+    ],
+    "f": 0.7
+   }
+  },
+  "CM_Victory_56": {
+   "src": "CM_Victory_56",
+   "lib": "cmcd",
+   "classes": [
+    "sword"
+   ],
+   "source": "Cologne Motion Capture Database: Take_2014-12-16_11.21.47_AM.bvh, as CM_Victory_75 in M2M_Victory's 56 frames",
+   "licence": "CMCD (TH Koeln), CC BY 4.0",
+   "damp_legs": {
+    "bones": [
+     "LeftUpLeg",
+     "RightUpLeg",
+     "LeftLeg",
+     "RightLeg"
+    ],
+    "f": 0.7
+   }
+  },
+  "CM_Victory_51": {
+   "src": "CM_Victory_51",
+   "lib": "cmcd",
+   "classes": [
+    "sword"
+   ],
+   "source": "Cologne Motion Capture Database: Take_2014-12-16_11.21.47_AM.bvh, as CM_Victory_75 in Cheer's 51 frames, both fists up at Cheer's frame 15",
+   "licence": "CMCD (TH Koeln), CC BY 4.0",
+   "damp_legs": {
+    "bones": [
+     "LeftUpLeg",
+     "RightUpLeg",
+     "LeftLeg",
+     "RightLeg"
+    ],
+    "f": 0.7
+   }
+  },
+  "CM_Victory_64": {
+   "src": "CM_Victory_64",
+   "lib": "cmcd",
+   "classes": [
+    "sword"
+   ],
+   "source": "Cologne Motion Capture Database: Take_2014-12-16_11.21.47_AM.bvh, in Spellcast_Raise's 64 frames, both fists up at its frame 14",
+   "licence": "CMCD (TH Koeln), CC BY 4.0",
+   "damp_legs": {
+    "bones": [
+     "LeftUpLeg",
+     "RightUpLeg",
+     "LeftLeg",
+     "RightLeg"
+    ],
+    "f": 0.7
+   }
+  },
+  "CM_Victory_77": {
+   "src": "CM_Victory_77",
+   "lib": "cmcd",
+   "classes": [
+    "sword"
+   ],
+   "source": "Cologne Motion Capture Database: Take_2014-12-16_11.21.47_AM.bvh, in Spellcast_Long's 77 frames, both fists up at its frame 20",
+   "licence": "CMCD (TH Koeln), CC BY 4.0",
+   "damp_legs": {
+    "bones": [
+     "LeftUpLeg",
+     "RightUpLeg",
+     "LeftLeg",
+     "RightLeg"
+    ],
+    "f": 0.7
+   }
+  },
+  "ST_Intro_Proud_54": {
+   "src": "ST_Intro_Proud_54",
+   "lib": "style",
+   "classes": [
+    "sword"
+   ],
+   "source": "100STYLE: Proud_ID.bvh, 100STYLE Proud idle",
+   "licence": "100STYLE (Ian Mason), CC BY 4.0"
+  },
+  "ST_Intro_Proud_77": {
+   "src": "ST_Intro_Proud_77",
+   "lib": "style",
+   "classes": [
+    "sword"
+   ],
+   "source": "100STYLE: Proud_ID.bvh, 100STYLE Proud idle",
+   "licence": "100STYLE (Ian Mason), CC BY 4.0"
+  },
+  "ST_Intro_Strut_50": {
+   "src": "ST_Intro_Strut_50",
+   "lib": "style",
+   "classes": [
+    "sword"
+   ],
+   "source": "100STYLE: Strutting_ID.bvh, 100STYLE Strutting idle",
+   "licence": "100STYLE (Ian Mason), CC BY 4.0"
+  },
+  "ST_Intro_Strut_54": {
+   "src": "ST_Intro_Strut_54",
+   "lib": "style",
+   "classes": [
+    "sword"
+   ],
+   "source": "100STYLE: Strutting_ID.bvh, 100STYLE Strutting idle",
+   "licence": "100STYLE (Ian Mason), CC BY 4.0"
+  },
+  "ST_Intro_Neutral_33": {
+   "src": "ST_Intro_Neutral_33",
+   "lib": "style",
+   "classes": [
+    "sword"
+   ],
+   "source": "100STYLE: Neutral_ID.bvh, 100STYLE Neutral idle",
+   "licence": "100STYLE (Ian Mason), CC BY 4.0"
+  },
+  "ST_Intro_Neutral_49": {
+   "src": "ST_Intro_Neutral_49",
+   "lib": "style",
+   "classes": [
+    "sword"
+   ],
+   "source": "100STYLE: Neutral_ID.bvh, 100STYLE Neutral idle",
+   "licence": "100STYLE (Ian Mason), CC BY 4.0"
+  },
+  "CB_Guard_13": {
+   "src": "CB_Guard_13",
+   "lib": "cmubox",
+   "classes": [
+    "sword"
+   ],
+   "loop": true,
+   "source": "CMU Graphics Lab Motion Capture Database, 13_17 boxing: the guard up, weight rocking on the balls of the feet",
+   "licence": "CMU Graphics Lab Motion Capture Database (free for all uses, not resold)",
+   "damp_legs": {
+    "bones": [
+     "LeftUpLeg",
+     "RightUpLeg",
+     "LeftLeg",
+     "RightLeg"
+    ],
+    "f": 0.7
+   }
+  },
+  "CB_Guard_14": {
+   "src": "CB_Guard_14",
+   "lib": "cmubox",
+   "classes": [
+    "sword"
+   ],
+   "loop": true,
+   "source": "CMU Graphics Lab Motion Capture Database, 14_01 boxing: guard and bounce",
+   "licence": "CMU Graphics Lab Motion Capture Database (free for all uses, not resold)",
+   "damp_legs": {
+    "bones": [
+     "LeftUpLeg",
+     "RightUpLeg",
+     "LeftLeg",
+     "RightLeg"
+    ],
+    "f": 0.7
+   }
+  },
+  "M2M_Hit_Chest": {
+   "src": "M2M_Hit_Chest",
+   "lib": "m2m",
+   "classes": [
+    "sword"
+   ],
+   "source": "Mesh2Motion (CC0, authored), hit-chest",
+   "licence": "CC0",
+   "damp_legs": {
+    "bones": [
+     "Hips",
+     "LeftUpLeg",
+     "RightUpLeg",
+     "LeftLeg",
+     "RightLeg",
+     "LeftFoot",
+     "RightFoot",
+     "LeftToeBase",
+     "RightToeBase"
+    ],
+    "f": 0.0
+   }
+  },
+  "M2M_Hit_Head": {
+   "src": "M2M_Hit_Head",
+   "lib": "m2m",
+   "classes": [
+    "sword"
+   ],
+   "source": "Mesh2Motion (CC0, authored), hit-head",
+   "licence": "CC0",
+   "damp_legs": {
+    "bones": [
+     "Hips",
+     "LeftUpLeg",
+     "RightUpLeg",
+     "LeftLeg",
+     "RightLeg",
+     "LeftFoot",
+     "RightFoot",
+     "LeftToeBase",
+     "RightToeBase"
+    ],
+    "f": 0.0
+   }
+  },
+  "CM_Hit_Left_M": {
+   "src": "CM_Hit_Left_M",
+   "lib": "cmcd",
+   "classes": [
+    "sword"
+   ],
+   "source": "Cologne Motion Capture Database: Take2018-01-17_12.01.06SAM.bvh, pushed to its left: CM_Hit_Right's take mirrored (2018-01-17 sparring, SAM)",
+   "licence": "CMCD (TH Koeln), CC BY 4.0",
+   "root": "zero",
+   "damp_legs": {
+    "bones": [
+     "Hips",
+     "LeftUpLeg",
+     "RightUpLeg",
+     "LeftLeg",
+     "RightLeg",
+     "LeftFoot",
+     "RightFoot",
+     "LeftToeBase",
+     "RightToeBase"
+    ],
+    "f": 0.0
+   },
+   "_why": "additive on the spine, neck and arms only: measured (tear, T-pose) with the hips and legs at rest, as the game layers it"
+  },
+  "CM_Hit_Right_M": {
+   "src": "CM_Hit_Right_M",
+   "lib": "cmcd",
+   "classes": [
+    "sword"
+   ],
+   "source": "Cologne Motion Capture Database: Take_2019-01-09_E_Kampf.bvh, pushed to its right: CM_Hit_Left's take mirrored (Kampf)",
+   "licence": "CMCD (TH Koeln), CC BY 4.0",
+   "root": "zero",
+   "damp_legs": {
+    "bones": [
+     "Hips",
+     "LeftUpLeg",
+     "RightUpLeg",
+     "LeftLeg",
+     "RightLeg",
+     "LeftFoot",
+     "RightFoot",
+     "LeftToeBase",
+     "RightToeBase"
+    ],
+    "f": 0.0
+   },
+   "_why": "additive on the spine, neck and arms only: measured (tear, T-pose) with the hips and legs at rest, as the game layers it"
+  },
+  "CM_Hit_Back_B": {
+   "src": "CM_Hit_Back_B",
+   "lib": "cmcd",
+   "classes": [
+    "sword"
+   ],
+   "source": "Cologne Motion Capture Database: Take2018-01-17_12.21.11SAM.bvh, struck from behind, smaller: the trunk thrown forward 14 deg (2018-01-17 sparring, SAM)",
+   "licence": "CMCD (TH Koeln), CC BY 4.0",
+   "root": "zero",
+   "damp_legs": {
+    "bones": [
+     "Hips",
+     "LeftUpLeg",
+     "RightUpLeg",
+     "LeftLeg",
+     "RightLeg",
+     "LeftFoot",
+     "RightFoot",
+     "LeftToeBase",
+     "RightToeBase"
+    ],
+    "f": 0.0
+   },
+   "_why": "additive on the spine, neck and arms only: measured (tear, T-pose) with the hips and legs at rest, as the game layers it"
+  },
+  "CM_Victory_75s": {
+   "src": "CM_Victory_75",
+   "lib": "cmcd",
+   "classes": [
+    "sword"
+   ],
+   "source": "Cologne Motion Capture Database: Take_2014-12-16_11.21.47_AM.bvh, 'boxing, jumping, cheering, winning' (Rocky, boxer, happy)",
+   "licence": "CMCD (TH Koeln), CC BY 4.0",
+   "damp_legs": {
+    "bones": [
+     "LeftUpLeg",
+     "RightUpLeg",
+     "LeftLeg",
+     "RightLeg"
+    ],
+    "f": 0.4
+   },
+   "_why": "the same cut with the jump's legs damped harder, for a mesh that tears at 0.7"
+  },
+  "CM_Victory_56s": {
+   "src": "CM_Victory_56",
+   "lib": "cmcd",
+   "classes": [
+    "sword"
+   ],
+   "source": "Cologne Motion Capture Database: Take_2014-12-16_11.21.47_AM.bvh, as CM_Victory_75 in M2M_Victory's 56 frames",
+   "licence": "CMCD (TH Koeln), CC BY 4.0",
+   "damp_legs": {
+    "bones": [
+     "LeftUpLeg",
+     "RightUpLeg",
+     "LeftLeg",
+     "RightLeg"
+    ],
+    "f": 0.4
+   },
+   "_why": "the same cut with the jump's legs damped harder, for a mesh that tears at 0.7"
+  },
+  "CM_Victory_51s": {
+   "src": "CM_Victory_51",
+   "lib": "cmcd",
+   "classes": [
+    "sword"
+   ],
+   "source": "Cologne Motion Capture Database: Take_2014-12-16_11.21.47_AM.bvh, as CM_Victory_75 in Cheer's 51 frames, both fists up at Cheer's frame 15",
+   "licence": "CMCD (TH Koeln), CC BY 4.0",
+   "damp_legs": {
+    "bones": [
+     "LeftUpLeg",
+     "RightUpLeg",
+     "LeftLeg",
+     "RightLeg"
+    ],
+    "f": 0.4
+   },
+   "_why": "the same cut with the jump's legs damped harder, for a mesh that tears at 0.7"
+  },
+  "CM_Victory_64s": {
+   "src": "CM_Victory_64",
+   "lib": "cmcd",
+   "classes": [
+    "sword"
+   ],
+   "source": "Cologne Motion Capture Database: Take_2014-12-16_11.21.47_AM.bvh, in Spellcast_Raise's 64 frames, both fists up at its frame 14",
+   "licence": "CMCD (TH Koeln), CC BY 4.0",
+   "damp_legs": {
+    "bones": [
+     "LeftUpLeg",
+     "RightUpLeg",
+     "LeftLeg",
+     "RightLeg"
+    ],
+    "f": 0.4
+   },
+   "_why": "the same cut with the jump's legs damped harder, for a mesh that tears at 0.7"
+  },
+  "CM_Victory_77s": {
+   "src": "CM_Victory_77",
+   "lib": "cmcd",
+   "classes": [
+    "sword"
+   ],
+   "source": "Cologne Motion Capture Database: Take_2014-12-16_11.21.47_AM.bvh, in Spellcast_Long's 77 frames, both fists up at its frame 20",
+   "licence": "CMCD (TH Koeln), CC BY 4.0",
+   "damp_legs": {
+    "bones": [
+     "LeftUpLeg",
+     "RightUpLeg",
+     "LeftLeg",
+     "RightLeg"
+    ],
+    "f": 0.4
+   },
+   "_why": "the same cut with the jump's legs damped harder, for a mesh that tears at 0.7"
+  }
+ }
+}

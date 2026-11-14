@@ -235,5 +235,55 @@ def main(out):
     print("wrote", out)
 
 
+# fid29 combat (build 29): the art the mid and high tiers add, in new files (fx_atlas.png and fx_tile.png above are
+# build 28's and stay byte-identical; this part never rewrites them).
+#   python make_fx_art.py --flow <out dir>
+# writes fx_flow.png (128 x 64 RGBA, linear data, not colour): the flow field and fibre mask of the high tier's slash
+# ribbons (vfx/fx_arc.gdshader FLOW). U runs along the ribbon (0 = where the swing started, 1 = its leading edge; the
+# shader tiles it twice), V across it (0 = hilt side, 0.72 = the cutting edge).
+#   R, G  the flow vector (0.5 = still): mostly along +U, curling towards the edge and back in slow eddies, so the
+#         energy texture streams along the cut instead of sliding as one sheet
+#   B     fibre streaks: thin bright filaments along U, denser and finer near the edge
+#   A     1
+# Deterministic (fixed seed 29): the same bytes every run.
+def make_flow(out):
+    import math
+    FW, FH = 128, 64
+    g = np.random.default_rng(29)
+    fu_ = (np.arange(FW) + 0.5) / FW
+    fv_ = (np.arange(FH) + 0.5) / FH
+    U, V = np.meshgrid(fu_, fv_)
+    edge = 0.72
+    # flow: along the ribbon, plus eddies (two periodic vortex rows, so the map tiles in U)
+    fu = 0.65 + 0.25 * np.sin(2 * math.pi * (2 * U + 0.3 * V))
+    fv = 0.35 * np.sin(2 * math.pi * (3 * U)) * np.exp(-((V - edge) / 0.22) ** 2) + 0.15 * np.cos(2 * math.pi * (U + 2 * V))
+    fv -= 0.25 * (V - edge)          # drawn in towards the cutting edge
+    m = np.maximum(np.abs(fu), np.abs(fv)).max()
+    R = 0.5 + 0.5 * fu / m
+    G = 0.5 + 0.5 * fv / m
+    # fibres: random thin lines along U (periodic), denser near the edge
+    B = np.zeros((FH, FW))
+    for _ in range(46):
+        vc = np.clip(g.normal(edge - 0.06, 0.18), 0.04, 0.98)
+        w = 0.006 + 0.02 * g.random() * (1.0 - math.exp(-abs(vc - edge) * 6))
+        ph = g.random()
+        amp = 0.02 + 0.03 * g.random()
+        k = g.integers(1, 4)
+        c = vc + amp * np.sin(2 * math.pi * (k * U + ph))
+        bright = 0.5 + 0.5 * g.random()
+        seg = 0.5 + 0.5 * np.sin(2 * math.pi * (g.integers(1, 4) * U + g.random()))
+        B = np.maximum(B, bright * np.exp(-((V - c) / w) ** 2) * (0.35 + 0.65 * seg))
+    B = np.clip(B, 0.0, 1.0)
+    img = np.stack([R, G, B, np.ones_like(B)], -1)
+    img = (np.clip(img, 0, 1) * 255 + 0.5).astype(np.uint8)
+    os.makedirs(out, exist_ok=True)
+    p = os.path.join(out, "fx_flow.png")
+    Image.fromarray(img, "RGBA").save(p, optimize=True)
+    print("wrote", p, os.path.getsize(p))
+
+
 if __name__ == "__main__":
-    main(sys.argv[1] if len(sys.argv) > 1 else ".")
+    if len(sys.argv) > 2 and sys.argv[1] == "--flow":
+        make_flow(sys.argv[2])
+    else:
+        main(sys.argv[1] if len(sys.argv) > 1 else ".")

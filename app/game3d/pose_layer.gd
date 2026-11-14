@@ -61,7 +61,47 @@ func bind_bones() -> int:
 	return _bones.size()
 
 
+## fid29 combat (build 29, mid and high): additive captured clips on top of whatever plays, the directional
+## hit reactions (combat_animator.gd flinch). Each entry is [Animation, clip seconds, weight]; only the spine,
+## neck, head and arm bones take them (each bone's rotation since the clip's first frame, in its own frame,
+## scaled by the weight), so the legs keep the clip's footwork and foot lock. Empty on the low tier.
+var add_layers: Array = []
+const ADD_BONES: Array[String] = ["Spine", "Spine1", "Spine2", "Neck", "Head", "LeftShoulder", "LeftArm", "LeftForeArm",
+	"RightShoulder", "RightArm", "RightForeArm"]
+var _add_map: Dictionary = {}   # Animation -> [[bone index, track index, rotation at the first frame], ...]
+
+
+func _apply_add(skel: Skeleton3D) -> void:
+	for e: Array in add_layers:
+		var a: Animation = e[0]
+		var w: float = float(e[2])
+		if a == null or w <= 0.001:
+			continue
+		if not _add_map.has(a):
+			var m: Array = []
+			for i in a.get_track_count():
+				if a.track_get_type(i) != Animation.TYPE_ROTATION_3D:
+					continue
+				var bn: String = str(a.track_get_path(i).get_concatenated_subnames())
+				if not (bn in ADD_BONES):
+					continue
+				var b: int = skel.find_bone(bn)
+				if b >= 0:
+					m.append([b, i, a.rotation_track_interpolate(i, 0.0)])
+			_add_map[a] = m
+		var t: float = float(e[1])
+		for bt: Array in _add_map[a]:
+			var q0: Quaternion = bt[2]
+			var d: Quaternion = (q0.inverse() * a.rotation_track_interpolate(int(bt[1]), t)).normalized()
+			var b: int = bt[0]
+			skel.set_bone_pose_rotation(b, skel.get_bone_pose_rotation(b) * Quaternion.IDENTITY.slerp(d, w))
+
+
 func _process_modification_with_delta(_delta: float) -> void:
+	if not add_layers.is_empty() and not _bones.is_empty():
+		var sk: Skeleton3D = get_skeleton()
+		if sk != null:
+			_apply_add(sk)
 	if (pose.is_empty() and arm_droop <= 0.001) or _bones.is_empty():
 		return
 	var skel: Skeleton3D = get_skeleton()

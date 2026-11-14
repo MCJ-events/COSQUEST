@@ -8,6 +8,8 @@
 // Sounds, Music, Locked movement control and Personal offers have nothing
 // behind them in the app yet, so they are remembered on the phone and marked
 // in the screens README; the buttons with no page say so when tapped.
+// Build 29: Credits opens the credits the game's captured motion owes
+// (CreditsScreen.tsx), over this screen.
 //
 // His frame draws each slider's pink fill running past the thumb. A slider
 // cannot work that way, so the fill ends at the thumb here.
@@ -15,11 +17,12 @@ import * as Application from "expo-application";
 import Constants from "expo-constants";
 import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { PanResponder, View } from "react-native";
+import { Modal, PanResponder, View } from "react-native";
 
 import { setHapticsOn, useHapticsOn } from "@/components/game/prefs";
 import { getPref, setPref } from "@/utils/prefsStorage";
 
+import CreditsScreen from "./CreditsScreen";
 import { back, notBuiltYet } from "./go";
 import { At, DesignCanvas, LineIcon, T, Tap, W, glass } from "./kit";
 
@@ -100,7 +103,7 @@ const LINKS: { id: string; label: string; go: () => void }[] = [
   { id: "controls", label: "Adjust Controls", go: () => notBuiltYet("Adjust Controls") },
   { id: "parents", label: "Parent’s Guide", go: () => notBuiltYet("The Parent’s Guide") },
   { id: "delete", label: "Delete My Account", go: () => router.push("/delete-account") },
-  { id: "credits", label: "Credits", go: () => notBuiltYet("Credits") },
+  { id: "credits", label: "Credits", go: () => undefined },   // opens CreditsScreen (below)
   { id: "licenses", label: "Third Party Licenses", go: () => notBuiltYet("Third Party Licenses") },
   { id: "consent", label: "Manage Consent", go: () => router.push("/privacy-visibility") },
 ];
@@ -111,6 +114,7 @@ export default function SettingsScreen() {
   const [music, setMusic] = useLocalPref("wale.settings.music", "0.84");
   const [locked, setLocked] = useLocalPref("wale.settings.lockedMove", "0");
   const [offers, setOffers] = useLocalPref("wale.settings.offers", "1");
+  const [credits, setCredits] = useState(false);
   const build = `${Constants.expoConfig?.version ?? "1.0.0"}${Application.nativeBuildVersion ? `.${Application.nativeBuildVersion}` : ""}`;
   return (
     <DesignCanvas width={FW} height={960} colors={["#B5D9E6", "#E6F2F8", "#D2E8F2"]} horizontal testID="wale-settings">
@@ -168,7 +172,7 @@ export default function SettingsScreen() {
       </Tap>
 
       {LINKS.map((l, i) => (
-        <Tap key={l.id} x={i % 2 === 0 ? 24 : 221.25} y={591 + Math.floor(i / 2) * 63.9} w={184.6} h={51} label={l.label} onPress={l.go} style={glass(10, "rgba(255,255,255,0.18)")} testID={`wale-settings-link-${l.id}`}>
+        <Tap key={l.id} x={i % 2 === 0 ? 24 : 221.25} y={591 + Math.floor(i / 2) * 63.9} w={184.6} h={51} label={l.label} onPress={l.id === "credits" ? () => setCredits(true) : l.go} style={glass(10, "rgba(255,255,255,0.18)")} testID={`wale-settings-link-${l.id}`}>
           <T size={11.5} weight={700} style={{ lineHeight: 16 }}>
             {l.label}
           </T>
@@ -178,6 +182,9 @@ export default function SettingsScreen() {
       <At x={0} y={922} w={FW} style={{ alignItems: "center" }}>
         <T size={10} weight={400} color={W.inkSoft} testID="wale-settings-build">{`Build: ${build}`}</T>
       </At>
+      <Modal visible={credits} animationType="slide" onRequestClose={() => setCredits(false)}>
+        <CreditsScreen onClose={() => setCredits(false)} />
+      </Modal>
     </DesignCanvas>
   );
 }

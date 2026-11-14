@@ -1,0 +1,25 @@
+{
+ "_doc": "fid29 combat: CMU boxing trials cut as GUARD variants (cmu2glb.py, 120 a second, 27 output frames, looped). Licence: http://mocap.cs.cmu.edu/ (free for all uses; may be in a sold product; never resold or published as data, even converted).",
+ "clips": {
+  "CB_Guard_13": {
+   "file": "13_17",
+   "f0": 600,
+   "f1": 704,
+   "face": "mean",
+   "loop": {
+    "blend": 6
+   },
+   "what": "13_17 boxing: the guard up, weight rocking on the balls of the feet"
+  },
+  "CB_Guard_14": {
+   "file": "14_01",
+   "f0": 900,
+   "f1": 1004,
+   "face": "mean",
+   "loop": {
+    "blend": 6
+   },
+   "what": "14_01 boxing: guard and bounce"
+  }
+ }
+}

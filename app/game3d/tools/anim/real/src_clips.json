@@ -1,0 +1,180 @@
+{
+ "_doc": "fid29 combat: cuts of the CMCD and 100STYLE takes (bvh2glb.py; f0..f1 at the take's own rate: CMCD 60 or 120 a second, 100STYLE 60). Receiver jolts found by find_hits.py; 'frames' + 'warp' make a clip exactly as long as the build 28 clip it stands in for. Raw takes are never shipped or published.",
+ "clips": {
+  "CM_Hit_Front": {
+   "lib": "cmcd",
+   "file": "Take_2019-01-09_E_Nussknacker3.bvh",
+   "f0": 670,
+   "f1": 712,
+   "face": 670,
+   "what": "struck in front: the trunk thrown back 21 deg (Nussknacker 'getting kicked, wounded, crinching', receiver)"
+  },
+  "CM_Hit_Back": {
+   "lib": "cmcd",
+   "file": "Take2018-01-17_12.01.06SAM.bvh",
+   "f0": 1061,
+   "f1": 1103,
+   "face": 1061,
+   "what": "struck from behind: the trunk thrown forward 31 deg (2018-01-17 sparring, SAM)"
+  },
+  "CM_Hit_Left": {
+   "lib": "cmcd",
+   "file": "Take_2019-01-09_E_Kampf.bvh",
+   "f0": 449,
+   "f1": 491,
+   "face": 449,
+   "what": "pushed to its left (struck on its right): trunk tilted 30 deg (Kampf 'boxing, fighting')"
+  },
+  "CM_Hit_Right": {
+   "lib": "cmcd",
+   "file": "Take2018-01-17_12.01.06SAM.bvh",
+   "f0": 638,
+   "f1": 680,
+   "face": 638,
+   "what": "pushed to its right (struck on its left): trunk tilted 26 deg (2018-01-17 sparring, SAM)"
+  },
+  "CM_Victory_75": {
+   "lib": "cmcd",
+   "file": "Take_2014-12-16_11.21.47_AM.bvh",
+   "f0": 1200,
+   "f1": 1500,
+   "frames": 75,
+   "face": "start",
+   "what": "'boxing, jumping, cheering, winning' (Rocky, boxer, happy)"
+  },
+  "CM_Victory_56": {
+   "lib": "cmcd",
+   "file": "Take_2014-12-16_11.21.47_AM.bvh",
+   "f0": 1200,
+   "f1": 1500,
+   "frames": 56,
+   "face": "start",
+   "what": "as CM_Victory_75 in M2M_Victory's 56 frames"
+  },
+  "CM_Victory_51": {
+   "lib": "cmcd",
+   "file": "Take_2014-12-16_11.21.47_AM.bvh",
+   "f0": 1200,
+   "f1": 1500,
+   "frames": 51,
+   "warp": [
+    [
+     1344,
+     15
+    ]
+   ],
+   "face": "start",
+   "what": "as CM_Victory_75 in Cheer's 51 frames, both fists up at Cheer's frame 15"
+  },
+  "CM_Victory_64": {
+   "lib": "cmcd",
+   "file": "Take_2014-12-16_11.21.47_AM.bvh",
+   "f0": 1200,
+   "f1": 1500,
+   "frames": 64,
+   "warp": [
+    [
+     1344,
+     14
+    ]
+   ],
+   "face": "start",
+   "what": "in Spellcast_Raise's 64 frames, both fists up at its frame 14"
+  },
+  "CM_Victory_77": {
+   "lib": "cmcd",
+   "file": "Take_2014-12-16_11.21.47_AM.bvh",
+   "f0": 1200,
+   "f1": 1500,
+   "frames": 77,
+   "warp": [
+    [
+     1344,
+     20
+    ]
+   ],
+   "face": "start",
+   "what": "in Spellcast_Long's 77 frames, both fists up at its frame 20"
+  },
+  "ST_Intro_Proud_54": {
+   "lib": "style",
+   "file": "Proud_ID.bvh",
+   "f0": 300,
+   "f1": 406,
+   "frames": 54,
+   "face": "mean",
+   "what": "100STYLE Proud idle"
+  },
+  "ST_Intro_Proud_77": {
+   "lib": "style",
+   "file": "Proud_ID.bvh",
+   "f0": 300,
+   "f1": 452,
+   "frames": 77,
+   "face": "mean",
+   "what": "100STYLE Proud idle"
+  },
+  "ST_Intro_Strut_50": {
+   "lib": "style",
+   "file": "Strutting_ID.bvh",
+   "f0": 300,
+   "f1": 398,
+   "frames": 50,
+   "face": "mean",
+   "what": "100STYLE Strutting idle"
+  },
+  "ST_Intro_Strut_54": {
+   "lib": "style",
+   "file": "Strutting_ID.bvh",
+   "f0": 300,
+   "f1": 406,
+   "frames": 54,
+   "face": "mean",
+   "what": "100STYLE Strutting idle"
+  },
+  "ST_Intro_Neutral_33": {
+   "lib": "style",
+   "file": "Neutral_ID.bvh",
+   "f0": 300,
+   "f1": 364,
+   "frames": 33,
+   "face": "mean",
+   "what": "100STYLE Neutral idle"
+  },
+  "ST_Intro_Neutral_49": {
+   "lib": "style",
+   "file": "Neutral_ID.bvh",
+   "f0": 300,
+   "f1": 396,
+   "frames": 49,
+   "face": "mean",
+   "what": "100STYLE Neutral idle"
+  },
+  "CM_Hit_Left_M": {
+   "lib": "cmcd",
+   "file": "Take2018-01-17_12.01.06SAM.bvh",
+   "f0": 638,
+   "f1": 680,
+   "face": 638,
+   "what": "pushed to its left: CM_Hit_Right's take mirrored (2018-01-17 sparring, SAM)",
+   "mirror": true
+  },
+  "CM_Hit_Right_M": {
+   "lib": "cmcd",
+   "file": "Take_2019-01-09_E_Kampf.bvh",
+   "f0": 449,
+   "f1": 491,
+   "face": 449,
+   "what": "pushed to its right: CM_Hit_Left's take mirrored (Kampf)",
+   "mirror": true
+  },
+  "CM_Hit_Back_B": {
+   "lib": "cmcd",
+   "file": "Take2018-01-17_12.21.11SAM.bvh",
+   "f0": 1130,
+   "f1": 1172,
+   "face": 1130,
+   "what": "struck from behind, smaller: the trunk thrown forward 14 deg (2018-01-17 sparring, SAM)"
+  }
+ }
+}
