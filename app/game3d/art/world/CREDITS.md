@@ -113,16 +113,14 @@ Full list with URLs: docs/game3d/fid29/ASSETS-LICENCES-street.md.
 | `real/ground/flags_uk_mid_n.png` | normal (GL), source strength | 512 | 213 (2.4 m tile) | ph:large_square_pattern_01 | resized, renormalised |
 | `real/ground/flags_uk_mid_orm.png` | ORM: R AO, G roughness (source), B height | 256 | - | ph:large_square_pattern_01 | packed |
 | `real/ground/plaza_uk.png` | civic square paving, pale slabs | 1024 | 320 (3.2 m tile) | acg:PavingStones133 | no stylise; mean-matched to linear [0.5, 0.485, 0.445] (chroma x0.45); lin lum mean 0.485, min 0.041, max 0.846 |
-| `real/ground/plaza_uk_n.png` | normal (GL), source strength | 1024 | 320 (3.2 m tile) | acg:PavingStones133 | resized, renormalised |
 | `real/ground/plaza_uk_orm.png` | ORM: R AO, G roughness (source), B height | 512 | - | acg:PavingStones133 | packed |
 | `real/ground/plaza_uk_mid.png` | civic square paving, pale slabs (mid) | 512 | 160 (3.2 m tile) | acg:PavingStones133 | no stylise; mean-matched to linear [0.5, 0.485, 0.445] (chroma x0.45); lin lum mean 0.485, min 0.041, max 0.846 |
-| `real/ground/plaza_uk_mid_n.png` | normal (GL), source strength | 512 | 160 (3.2 m tile) | acg:PavingStones133 | resized, renormalised |
+| `real/ground/plaza_uk_mid_n.png` | normal (GL), source strength (high reads it too) | 512 | 160 (3.2 m tile) | acg:PavingStones133 | resized, renormalised |
 | `real/ground/plaza_uk_mid_orm.png` | ORM: R AO, G roughness (source), B height | 256 | - | acg:PavingStones133 | packed |
 | `real/ground/asphalt_uk.png` | carriageway asphalt, aged grey aggregate | 1024 | 256 (4.0 m tile) | ph:asphalt_04 | no stylise; mean-matched to linear [0.15, 0.147, 0.142] (chroma x0.6); lin lum mean 0.147, min 0.041, max 0.649 |
-| `real/ground/asphalt_uk_n.png` | normal (GL), source strength | 1024 | 256 (4.0 m tile) | ph:asphalt_04 | resized, renormalised |
 | `real/ground/asphalt_uk_orm.png` | ORM: R AO, G roughness (source), B height | 512 | - | ph:asphalt_04 | packed |
 | `real/ground/asphalt_uk_mid.png` | carriageway asphalt, aged grey aggregate (mid) | 512 | 128 (4.0 m tile) | ph:asphalt_04 | no stylise; mean-matched to linear [0.15, 0.147, 0.142] (chroma x0.6); lin lum mean 0.147, min 0.042, max 0.552 |
-| `real/ground/asphalt_uk_mid_n.png` | normal (GL), source strength | 512 | 128 (4.0 m tile) | ph:asphalt_04 | resized, renormalised |
+| `real/ground/asphalt_uk_mid_n.png` | normal (GL), source strength (high reads it too) | 512 | 128 (4.0 m tile) | ph:asphalt_04 | resized, renormalised |
 | `real/ground/asphalt_uk_mid_orm.png` | ORM: R AO, G roughness (source), B height | 256 | - | ph:asphalt_04 | packed |
 | `real/ground/kerb_uk.png` | granite kerb | 512 | 512 (1.0 m tile) | ph:granite_tile | no stylise; mean-matched to linear [0.28, 0.28, 0.275] (chroma x0.6); lin lum mean 0.280, min 0.130, max 0.601 |
 | `real/ground/kerb_uk_n.png` | normal (GL), source strength | 512 | 512 (1.0 m tile) | ph:granite_tile | resized, renormalised |

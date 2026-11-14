@@ -497,8 +497,10 @@ def _lumstat(a_srgb: np.ndarray) -> str:
 
 
 def real_ground_set(out: str, name: str, ident: str, n: int, target_lin, sat: float, tile_m: float, what: str,
-                    src_tag: str, fix=None, rough_add: float = 0.0) -> None:
-    """One ground material: <name>.png albedo n, <name>_n.png normal n, <name>_orm.png n/2; _mid files at half."""
+                    src_tag: str, fix=None, rough_add: float = 0.0, n_hi: bool = True) -> None:
+    """One ground material: <name>.png albedo n, <name>_n.png normal n, <name>_orm.png n/2; _mid files at half.
+    n_hi False: no full-size normal; high reads the _mid normal (street_real.gd gtex), which saves 1 MB of high's
+    texture memory where the detail layer carries the fine relief (asphalt) or the joints are wide (square slabs)."""
     col0 = _map(ident, "Color")
     nrm0 = _map(ident, "NormalGL")
     d0 = trim_sheets.real_map("Displacement", ident)
@@ -508,7 +510,8 @@ def real_ground_set(out: str, name: str, ident: str, n: int, target_lin, sat: fl
             col = fix(col)
         col = _safe(trim_sheets.match_lin(col, target_lin, sat))
         S.save(col, f"{out}/{name}{suf}.png")
-        _save_n(S.resize_wrap(nrm0, k, k), f"{out}/{name}{suf}_n.png")
+        if suf or n_hi:
+            _save_n(S.resize_wrap(nrm0, k, k), f"{out}/{name}{suf}_n.png")
         ao, ro = _arm(ident, k // 2)
         hg = S.resize_wrap(d0, k // 2, k // 2)[..., 0] if d0 is not None else np.full((k // 2, k // 2), 0.5, np.float32)
         hg = (hg - hg.min()) / max(1e-4, float(hg.max() - hg.min()))
@@ -516,7 +519,9 @@ def real_ground_set(out: str, name: str, ident: str, n: int, target_lin, sat: fl
         dens = f"{k / tile_m:.0f} ({tile_m} m tile)"
         rcredit(f"real/ground/{name}{suf}.png", what + (" (mid)" if suf else ""), f"{k}", dens, [src_tag],
                 f"no stylise; mean-matched to linear {target_lin} (chroma x{sat}); {_lumstat(col)}")
-        rcredit(f"real/ground/{name}{suf}_n.png", "normal (GL), source strength", f"{k}", dens, [src_tag], "resized, renormalised")
+        if suf or n_hi:
+            rcredit(f"real/ground/{name}{suf}_n.png", "normal (GL), source strength" + ("" if n_hi else " (high reads it too)"),
+                    f"{k}", dens, [src_tag], "resized, renormalised")
         rcredit(f"real/ground/{name}{suf}_orm.png", "ORM: R AO, G roughness (source), B height", f"{k // 2}", "-", [src_tag], "packed")
 
 
@@ -625,10 +630,10 @@ def real_ground(src: str, out: str) -> None:
                     "London footway: grey concrete flags, dark joints", "ph:large_square_pattern_01", fix=_deweed)
     # civic square paving (ambientCG PavingStones133: 4 x 4 slabs a tile -> 0.8 m on 3.2 m), pale York-stone grey
     real_ground_set(g, "plaza_uk", "PavingStones133", 1024, [0.50, 0.485, 0.445], 0.45, 3.2,
-                    "civic square paving, pale slabs", "acg:PavingStones133", fix=_deweed)
+                    "civic square paving, pale slabs", "acg:PavingStones133", fix=_deweed, n_hi=False)
     # carriageway asphalt (Poly Haven asphalt_04, 4 m), aged grey
     real_ground_set(g, "asphalt_uk", "asphalt_04", 1024, [0.15, 0.147, 0.142], 0.6, 4.0,
-                    "carriageway asphalt, aged grey aggregate", "ph:asphalt_04")
+                    "carriageway asphalt, aged grey aggregate", "ph:asphalt_04", n_hi=False)
     # granite kerbs (Poly Haven granite_tile, 1 m), mid grey granite
     real_ground_set(g, "kerb_uk", "granite_tile", 512, [0.28, 0.28, 0.275], 0.6, 1.0,
                     "granite kerb", "ph:granite_tile")
@@ -741,7 +746,8 @@ def real_medallion(src: str, street_out: str) -> None:
         im = np.asarray(Image.fromarray((np.clip(rgba, 0, 1) * 255 + 0.5).astype(np.uint8), "RGBA").resize((k, k), Image.LANCZOS), np.float32) / 255
         im[..., :3] = _safe(im[..., :3])
         S.save(im, os.path.join(street_out, f"medallion{suf}.png"))
-        _save_n(np.asarray(S.to_img(n).resize((k, k), Image.LANCZOS), np.float32) / 255, os.path.join(street_out, f"medallion{suf}_n.png"))
+        if suf:     # one 512 normal for both tiers (the inlay's lines are 2 to 3 cm wide: 91 px/m holds them)
+            _save_n(np.asarray(S.to_img(n).resize((k, k), Image.LANCZOS), np.float32) / 255, os.path.join(street_out, "medallion_n.png"))
         orm = np.stack([ao, rough, hn], -1)
         S.save(np.asarray(S.to_img(orm).resize((k // 2, k // 2), Image.LANCZOS), np.float32) / 255, os.path.join(street_out, f"medallion{suf}_orm.png"))
         rcredit(f"../street/real/medallion{suf}.png", "street medallion as a worn stone inlay (same motif), alpha = the disc", f"{k} RGBA", f"{k / 5.6:.0f} (5.6 m)",

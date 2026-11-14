@@ -83,11 +83,14 @@ static func tex(path: String) -> Texture2D:
 	return _tex[path]
 
 
-## A ground texture by stem: the high file, or its _mid copy on mid (half size).
+## A ground texture by stem: the high file, or its _mid copy on mid (half size). High reads the _mid file where there
+## is no full-size one (the asphalt's and the square slabs' normals: make_world_art.py n_hi False).
 static func gtex(stem: String, suffix: String, look: Dictionary) -> Texture2D:
 	var t: Texture2D = null
-	if not hi(look):
-		t = tex(ART + "ground/" + stem + "_mid" + suffix + ".png")
+	if hi(look):
+		t = tex(ART + "ground/" + stem + suffix + ".png")
+		return t if t != null else tex(ART + "ground/" + stem + "_mid" + suffix + ".png")
+	t = tex(ART + "ground/" + stem + "_mid" + suffix + ".png")
 	return t if t != null else tex(ART + "ground/" + stem + suffix + ".png")
 
 
@@ -222,7 +225,7 @@ static func apply_floor(arena: Node3D, look: Dictionary, floor_mat: Material, me
 		var suf: String = "" if h else "_mid"
 		var mm: ShaderMaterial = ground_mat("flags", look, tp, {"uv_mode": 2.0, "decal_on": 0.0, "bake_on": 1.0,
 			"albedo_tex": tex(STREET_ART + "medallion" + suf + ".png"),
-			"normal_tex": tex(STREET_ART + "medallion" + suf + "_n.png"),
+			"normal_tex": tex(STREET_ART + "medallion_n.png"),
 			"orm_tex": tex(STREET_ART + "medallion" + suf + "_orm.png")}, true)
 		(plaza as MeshInstance3D).material_override = mm
 		made.append(mm)
