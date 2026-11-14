@@ -20,7 +20,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import Animated, {
   FadeIn,
   FadeInDown,
@@ -528,11 +528,20 @@ export function TriviaBoard({ onPick, onNext, onLeave }: { onPick: (p: RunPoint)
   const run = s.run;
   if (!run) return null;
   const next = nextTriviaPoint(run);
-  const end = () =>
-    Alert.alert("End this run now?", `You keep the ${run.score} points you have, and they go on today's board.`, [
+  const end = () => {
+    const title = "End this run now?";
+    const body = `You keep the ${run.score} points you have, and they go on today's board.`;
+    // react-native-web's Alert.alert does nothing, so on the /play page End run never ended the run.
+    if (Platform.OS === "web") {
+      const ok = typeof globalThis.confirm === "function" ? globalThis.confirm(`${title}\n\n${body}`) : true;
+      if (ok) void runModel.finish();
+      return;
+    }
+    Alert.alert(title, body, [
       { text: "Keep playing", style: "cancel" },
       { text: "End run", style: "destructive", onPress: () => void runModel.finish() },
     ]);
+  };
   const { n, total } = questionNumber(run);
   return (
     <View style={StyleSheet.absoluteFill}>
