@@ -183,6 +183,8 @@ func _take(s: Dictionary, f: Node) -> void:
 		(meta["views"] as Dictionary)[vn] = boxes
 		if bool(plan.get("masks", false)):
 			await _masks(f, "%s_%s" % [name, vn])
+		if bool(plan.get("skin_view", false)):
+			await _skin_view(f, "%s_%s" % [name, vn])
 	if hud_layer != null:
 		hud_layer.visible = true
 	if f.get("fx") != null:
@@ -228,6 +230,57 @@ func _flat(c: Color) -> StandardMaterial3D:
 	m.albedo_color = c
 	m.disable_fog = true
 	return m
+
+
+## skinlook-28 (13 Nov): the skin weight each pixel was shaded with (char_real.gdshader debug view 3: red = skin,
+## blue = hair) and one id mask per fighter (that fighter white, the others black, effects off), at the same paused
+## moment as the frame: tools for measuring skin tone on game frames (Spec 4 method). Review only.
+func _skin_view(f: Node, tag: String) -> void:
+	var fx: Node3D = f.get("fx")
+	var fx_was: bool = fx.visible if fx != null else false
+	var bloom_q: Node3D = (f.get("cam") as Node).get_node_or_null("BloomAdd")
+	var bloom_was: bool = bloom_q.visible if bloom_q != null else false
+	if bloom_q != null:
+		bloom_q.visible = false
+	if fx != null:
+		fx.visible = false
+	await _save(tag + "_nofx")     # the same frame without effects (skin tone is measured on it: auras and glows are not skin)
+	var mats: Array = []
+	for kf: Array in _fighters(f):
+		for m: Variant in (kf[1] as Node).get("_lit_mats"):
+			if m is ShaderMaterial and (m as ShaderMaterial).shader != null and (m as ShaderMaterial).shader.code.contains("debug_view"):
+				mats.append([m, (m as ShaderMaterial).get_shader_parameter("debug_view")])
+	for mv: Array in mats:
+		(mv[0] as ShaderMaterial).set_shader_parameter("debug_view", 3)
+	await _save(tag + "_skinw")
+	for mv: Array in mats:
+		(mv[0] as ShaderMaterial).set_shader_parameter("debug_view", mv[1] if mv[1] != null else 0)
+	var white: StandardMaterial3D = _flat(Color(1, 1, 1))
+	var black: StandardMaterial3D = _flat(Color(0, 0, 0))
+	var per: Array = []
+	for kf: Array in _fighters(f):
+		var ms: Array[MeshInstance3D] = []
+		for n: Node in ((kf[1] as Node).get("body") as Node).find_children("*", "MeshInstance3D", true, false):
+			if (n as MeshInstance3D).is_visible_in_tree():
+				ms.append(n)
+		per.append([str(kf[0]), ms])
+	var was: Dictionary = {}
+	for pk: Array in per:
+		for m: MeshInstance3D in pk[1]:
+			was[m] = m.material_override
+	# white then black for each fighter (the others black both times): the difference is that fighter where it shows
+	for pk: Array in per:
+		for c: int in 2:
+			for qk: Array in per:
+				for m: MeshInstance3D in qk[1]:
+					m.material_override = white if (qk[0] == pk[0] and c == 0) else black
+			await _save("%s_id_%s%d" % [tag, pk[0], 1 - c])
+	for m: Variant in was.keys():
+		(m as MeshInstance3D).material_override = was[m]
+	if fx != null:
+		fx.visible = fx_was
+	if bloom_q != null:
+		bloom_q.visible = bloom_was
 
 
 func _masks(f: Node, tag: String) -> void:

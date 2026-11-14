@@ -83,6 +83,8 @@ uniform float face_fill_body = 0.35;      // the share of the fill the rest of t
 uniform float skin_key_desat = 0.0;       // how far the key's colour is pulled towards white on skin (golden hour's orange)
 uniform float skin_rough_min = 0.0;       // skin's specular never sharper than this roughness (a wet sheen read as plastic)
 uniform float normal_fade = 0.0;
+uniform float skin_wide = 0.0;             // skinlook-28: 1 on a fitted head: the colour check accepts every skin tone
+uniform float skin_gain = 0.0;             // skinlook-28: > 0 = skin's exposure gain, the same for every tone (fighter.gd SKIN_GAIN)
 uniform vec3 skin_wb = vec3(1.0);         // skin's colour balance under this time of day's light and grade (fighter.gd SKIN_WB)          // > 0: the normal map fades as one screen pixel covers more texels than this                // review only: 1 grey albedo, 2 mirror, 3 skin weight, 4 normals
 
 // cq 016: cloth off the legs (char_lit.gdshader has the notes). Off: cloth_bind0 = 100000.
@@ -127,8 +129,13 @@ float skin_guess(vec3 c) {
 	float mx = max(c.r, 0.001);
 	float g = c.g / mx;
 	float b = c.b / mx;
-	float w = smoothstep(0.3, 0.4, g) * (1.0 - smoothstep(0.62, 0.72, g))
-		* smoothstep(0.1, 0.18, b) * (1.0 - smoothstep(0.44, 0.54, b)) * step(b, g);
+	// skinlook-28 (14 Nov): on a fitted head (skin_wide 1) the upper edges move out so pale and olive skin pass too
+	// (measured: a toned pale face had a skin weight of about 0.15, a deep one 1, so only deep skin took the skin
+	// shading, its colour balance and its exposure); eye whites, grey and white paint still fail
+	vec2 ge = mix(vec2(0.62, 0.72), vec2(0.80, 0.88), skin_wide);
+	vec2 be = mix(vec2(0.44, 0.54), vec2(0.62, 0.72), skin_wide);
+	float w = smoothstep(0.3, 0.4, g) * (1.0 - smoothstep(ge.x, ge.y, g))
+		* smoothstep(0.1, 0.18, b) * (1.0 - smoothstep(be.x, be.y, b)) * step(b, g);
 	return w * smoothstep(0.012, 0.04, c.r);
 }
 
@@ -230,7 +237,15 @@ void fragment() {
 	// the street's diffuse light: sky above, walls at the sides, the paving's bounce below
 	float blum = dot(base, vec3(0.2126, 0.7152, 0.0722));
 	// round 5: hair is meant to be dark: the near-black gain (for black suits at night) turned black hair grey
-	vec3 lit = base * mix(mix(expo.x, 1.0, clamp(hair * 1.5, 0.0, 1.0)), 1.0, smoothstep(0.03, 0.3, blum)) * pow(0.3 / max(blum, 0.3), expo.y);
+	float gain = mix(mix(expo.x, 1.0, clamp(hair * 1.5, 0.0, 1.0)), 1.0, smoothstep(0.03, 0.3, blum)) * pow(0.3 / max(blum, 0.3), expo.y);
+	// skinlook-28 (14 Nov): skin takes one exposure gain whatever its own tone. The gain by the surface's own brightness
+	// (expo: up for near-black cloth, down for pale cloth) lifted deep skin 1.3 to 1.5 times at golden hour and up to 4
+	// times at night while it held pale skin at 1 or under, so every face was pulled towards one middle tone: deep skin
+	// came out lighter and, lifted, more orange than the concept (fighter.gd SKIN_GAIN, measured per time of day)
+	if (skin_gain > 0.0) {
+		gain = mix(gain, skin_gain, clamp(skin * 1.6, 0.0, 1.0));
+	}
+	vec3 lit = base * gain;
 	vec3 amb = amb_at(nw) * amb_amount * ao;
 	// a little of the bounce under the skin's surface: the shade side of skin is not dead
 	vec3 diffuse_amb = lit * (1.0 - metal) * amb * (1.0 + skin * vec3(0.06, 0.01, 0.0));
