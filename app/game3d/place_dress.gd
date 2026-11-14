@@ -93,6 +93,7 @@ func build(p: Node3D, ground: Dictionary) -> void:
 	if _real:
 		_real_cars(region)
 		_real_frontage()
+		_real_pools()
 	else:
 		_parked_cars(region)
 	for key: String in _xf:
@@ -513,7 +514,7 @@ const KIT_REAL: Dictionary = {
 const NEAR_DRESS_R: float = 45.0
 const NEAR_DRESS_K: float = 2.2
 const TEMPERATE_BROADLEAF: Array[String] = ["tree_london_plane", "tree_lime", "tree_oak"]
-const PLANE_H: float = 16.57   # the plane mesh's height (tree_blender.py)
+const PLANE_H: float = 16.8    # the plane mesh's height (tree_blender.py, plane.json dims)
 
 var _real: bool = false
 var _high: bool = false
@@ -638,6 +639,60 @@ func _real_frontage() -> void:
 				if q.length() < 95.0 and bool(_p.call("in_building", q + out * 0.6, 0.0)):
 					_front_props(q, out, 4.0, 50.0)
 				s += 3.0
+
+
+## Squares with a fountain pool (Trafalgar Square's two): Victorian lamp standards round the pool's rim every
+## POOL_LAMP_STEP m and a painted bench facing the water between every other pair, as real squares are furnished. Only
+## pools (a water polygon under POOL_MAX m across) within POOL_R m of the fight; free_spot keeps the clear ground,
+## roads, buildings and landmarks free. The paved open plaza around a fight otherwise has nothing in the frames' top band.
+const POOL_MAX: float = 60.0
+const POOL_R: float = 80.0
+const POOL_LAMP_STEP: float = 9.0
+
+
+func _real_pools() -> void:
+	var lamps: Array = []
+	for poly: PackedVector2Array in _p.get("_water_polys"):
+		if poly.size() < 3:
+			continue
+		var bb := Rect2(poly[0], Vector2.ZERO)
+		for q: Vector2 in poly:
+			bb = bb.expand(q)
+		if bb.size.x > POOL_MAX or bb.size.y > POOL_MAX or bb.get_center().length() > POOL_R:
+			continue
+		var carry: float = POOL_LAMP_STEP * 0.5
+		var k: int = 0
+		for i in poly.size():
+			var a: Vector2 = poly[i]
+			var b: Vector2 = poly[(i + 1) % poly.size()]
+			var len: float = a.distance_to(b)
+			if len < 0.5:
+				continue
+			var d: Vector2 = (b - a) / len
+			var nrm := Vector2(-d.y, d.x)
+			var mid: Vector2 = (a + b) * 0.5
+			var out: Vector2 = -nrm if Geometry2D.is_point_in_polygon(mid + nrm * 0.3, poly) else nrm
+			var s: float = carry
+			while s < len:
+				var e: Vector2 = a + d * s
+				var q: Vector2 = e + out * 1.1
+				var near: bool = false
+				for o: Vector2 in lamps:
+					if o.distance_to(q) < POOL_LAMP_STEP * 0.6:
+						near = true
+				if not near and free_spot(q, true, 0.6):
+					_put_photo("street_lamp_01", q, h01(q, 61.0) * TAU)
+					_bake.call("post", q, 2.8, 0.1)
+					lamps.append(q)
+					k += 1
+					# a bench between this lamp and the next, its seat towards the water
+					var qb: Vector2 = e + d * POOL_LAMP_STEP * 0.5 + out * 2.0
+					if k % 2 == 0 and free_spot(qb, false, 0.6) and free_spot(qb + d * 1.0, false, 0.3) and free_spot(qb - d * 1.0, false, 0.3):
+						_put_photo("painted_wooden_bench", qb, atan2(-out.x, -out.y))
+						_bake.call("blob", qb, 1.0, 0.7)
+				s += POOL_LAMP_STEP
+			carry = s - len
+	_p.get("info")["pool_lamps"] = lamps.size()
 
 
 ## Parked bays on the real look: no Kenney cars. A covered car (Poly Haven) in at most 30 % of today's slots, the
@@ -823,7 +878,7 @@ func _emit_real() -> void:
 					_emit_mm(load(TREES_DIR + "plane_lod0_bark.res"), _prop_mat, xs, "real_plane_bark_%d_%d" % [c.x, c.y], 0)
 					if _leaf_mat != null:
 						_emit_mm(load(TREES_DIR + "plane_lod0_leaves.res"), _leaf_mat, xs, "real_plane_leaves_%d_%d" % [c.x, c.y], 0)
-					tris += 3052 * xs.size()
+					tris += 3792 * xs.size()
 				else:
 					_emit_mm(load(TREES_DIR + "plane_imp.res"), _imp_mat if _imp_mat != null else _imp_for_high(), xs, "real_plane_imp_%d_%d" % [c.x, c.y], 0)
 				continue
