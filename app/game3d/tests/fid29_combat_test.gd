@@ -18,7 +18,7 @@ extends SceneTree
 ## 7. Effects: the low tier's cards, beams and arcs use build 28's shader resources; mid/high cards and beams compile
 ##    with FID29, high arcs with FLOW (mid arcs build 28's); a hit sets a shield on the cards it made and on cards made
 ##    at the struck body within SHIELD_HOLD.
-## 8. Cost: the animation modifiers this lane adds (dead blending while it blends, the additive hit layers) take at
+## 8. Cost: the animation modifiers this lane adds (dead blending while it blends, the pose guard, the additive hit layers) take at
 ##    most 0.3 ms a frame for three fighters (measured on this core).
 ## 9. Credits: every CC-BY source in docs/game3d/fid29/ASSETS-LICENCES-combat.md is on the Credits screen
 ##    (app/components/waleui/CreditsScreen.tsx).
@@ -226,6 +226,7 @@ func _process(_dt: float) -> bool:
 			elif _n == 30:
 				_check("hit_layers_fade_out", a.layer.add_layers.is_empty() and a._add_t < 0.0, str(a._add_t))
 				_cost()
+				_guard_check()
 				_effects()
 				_credits()
 				_phase = "ko"
@@ -286,6 +287,10 @@ func _cost() -> void:
 		_check("modifier_cost_measured", false, "no dead blend")
 		return
 	a.layer.add_layers = [[hits[0], 0.2, 0.5], [hits[min(1, hits.size() - 1)], 0.2, 0.5]] if not hits.is_empty() else []
+	var pg = a.pose_guard
+	_check("pose_guard_after_foot_lock_before_cloth", pg != null and pg.guard and pg.get_index() > a.layer.get_index()
+		and (a.foot == null or pg.get_index() > a.foot.get_index()) and (a.secondary == null or pg.get_index() < a.secondary.get_index()),
+		"guard %s" % str(pg.get_index() if pg != null else -1))
 	var n: int = 300
 	var t0: int = Time.get_ticks_usec()
 	for i in n:
@@ -293,10 +298,55 @@ func _cost() -> void:
 		db.dt = 1.0 / 30.0
 		db._process_modification_with_delta(1.0 / 30.0)
 		a.layer._apply_add(a.skeleton)
+		if pg != null:
+			# worst case: every guarded bone jerked this frame (the limit and the braking both run)
+			a.skeleton.set_bone_pose_rotation(pg._ids[0], Quaternion(Vector3.UP, 1.5 if i % 2 == 0 else -1.5))
+			pg.dt = 1.0 / 30.0
+			pg._process_modification_with_delta(1.0 / 30.0)
 	var per: float = (Time.get_ticks_usec() - t0) / float(n) / 1000.0
 	a.layer.add_layers = []
 	print("CQFID29 modifier_ms_per_fighter=%.4f three=%.4f" % [per, per * 3.0])
 	_check("modifiers_under_0_3_ms_for_three", per * 3.0 <= 0.3, "%.4f ms for three" % (per * 3.0))
+
+
+func _guard_check() -> void:
+	# the pose guard on its own skeleton: a slow turn passes exactly; a one-frame flip is limited to GUARD_ACC (5 % for the
+	# discrete braking step, which may stop a little harder) and lands
+	var sk := Skeleton3D.new()
+	sk.add_bone("Hips")
+	sk.add_bone("LeftUpLeg")
+	sk.set_bone_parent(1, 0)
+	var DeadBlendS: GDScript = load("res://dead_blend.gd")
+	var g = DeadBlendS.new()
+	g.guard = true
+	sk.add_child(g)
+	g.bind_bones(sk)
+	var dt: float = 1.0 / 30.0
+	g.dt = dt
+	var exact: bool = true
+	for i in 10:
+		var q := Quaternion(Vector3.RIGHT, 0.02 * i)
+		sk.set_bone_pose_rotation(1, q)
+		g._guard(sk)
+		exact = exact and sk.get_bone_pose_rotation(1).is_equal_approx(q)
+	_check("pose_guard_passes_motion_under_the_limit", exact)
+	var target := Quaternion(Vector3.RIGHT, 0.18 + 1.2)
+	var w_prev: float = 0.0
+	var a_max: float = 0.0
+	var prev := Quaternion(Vector3.RIGHT, 0.18)
+	var landed: int = -1
+	for i in 30:
+		sk.set_bone_pose_rotation(1, target)
+		g._guard(sk)
+		var now: Quaternion = sk.get_bone_pose_rotation(1)
+		var w: float = (now * prev.inverse()).get_angle() / dt
+		a_max = maxf(a_max, absf(w - w_prev) / dt)
+		w_prev = w
+		prev = now
+		if landed < 0 and now.angle_to(target) < 0.001:
+			landed = i
+	_check("pose_guard_limits_a_flip_and_lands", a_max <= g.GUARD_ACC * 1.05 and landed > 0 and landed <= 12, "acc %.0f rad/s2, landed at %d" % [a_max, landed])
+	sk.free()
 
 
 func _effects() -> void:

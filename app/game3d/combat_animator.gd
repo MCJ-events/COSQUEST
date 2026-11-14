@@ -218,6 +218,7 @@ const DROOP_RATE: float = 8.0            # 1/s: eases in and out round the attac
 static var fid_force: int = -1
 var fid: bool = false
 var dead_blend: DeadBlend
+var pose_guard: DeadBlend                # the same script with guard on: after the foot lock, before the cloth
 var ko: KoSettle
 var _slot: String = ""
 var _swings: int = 0
@@ -250,6 +251,7 @@ func bind(model: Node3D, body: Node3D, opts: Dictionary = {}) -> Dictionary:
 	variant.clear()
 	fid = false
 	dead_blend = null
+	pose_guard = null
 	ko = null
 	_variants.clear()
 	_hit_anims.clear()
@@ -351,6 +353,19 @@ func _fid_setup(body: Node) -> void:
 		else:
 			skeleton.remove_child(db)
 			db.free()
+		var pg := DeadBlend.new()
+		pg.name = "PoseGuard"
+		pg.guard = true
+		skeleton.add_child(pg)
+		# after the pose layer and the foot lock (the final leg pose), before the cloth (it hangs from the guarded pose)
+		var after: Node = foot if foot != null else layer
+		if after != null:
+			skeleton.move_child(pg, after.get_index() + 1)
+		if pg.bind_bones(skeleton) > 0:
+			pose_guard = pg
+		else:
+			skeleton.remove_child(pg)
+			pg.free()
 	ko = KoSettle.new()
 	ko.skeleton = skeleton
 	if lib_key == "" or player == null:
@@ -814,6 +829,8 @@ func update(dt: float, speed_now: float, dead: bool) -> void:
 			_add_set = []
 	if dead_blend != null:
 		dead_blend.dt = 0.0 if frozen else dt
+	if pose_guard != null:
+		pose_guard.dt = 0.0 if frozen else dt
 	if ko != null and dead and state == "death" and player != null:
 		ko.tick(0.0 if frozen else dt, player.current_animation_position, floor_y)
 	if player != null:

@@ -10,6 +10,13 @@ extends SkeletonModifier3D
 ## Sits first among the skeleton's modifiers (before the pose layer, foot lock and cloth), so everything
 ## else is applied on the blended pose. Low phones never get it (combat_animator.gd installs it on the
 ## real-look tiers only).
+##
+## A second instance with `guard` on sits after the foot lock (before the cloth): the pose guard. The foot lock's
+## two-bone solve can flip a knee in one frame when a pin is taken or let go, and a clip switch can still jerk the
+## hips; the guard limits each leg bone's and the hips' angular acceleration on the FINAL pose to GUARD_ACC, with a
+## braking rule (it never overshoots the pose the clip and the IK ask for, and lands on it as soon as the limit
+## allows). Motion within the limit passes through exactly; the spine, arms and head (the strikes) are never
+## touched. A hit-stop (dt 0) holds it.
 
 const HALF_LIFE: float = 0.1
 const LN2: float = 0.6931472
@@ -36,10 +43,17 @@ var _dur: float = 0.2
 var blends: int = 0                 # transitions blended (tests, the probe)
 var cost_usec: int = 0              # the last frame's cost
 
+## the pose guard (see above): rad/s^2 (about 40,000 degrees/s^2; a knee flip in one frame is 150,000 and more)
+var guard: bool = false
+const GUARD_ACC: float = 700.0
+const GUARD_BONES: Array[String] = ["Hips", "LeftUpLeg", "LeftLeg", "LeftFoot", "RightUpLeg", "RightLeg", "RightFoot"]
+var _gw: Array[Vector3] = []        # the guard's own angular velocity per bone (rad/s, parent frame)
+var guarded: int = 0                # frames the guard changed something (tests, the probe)
+
 
 func bind_bones(skel: Skeleton3D) -> int:
 	_ids = PackedInt32Array()
-	for n: String in BONES:
+	for n: String in (GUARD_BONES if guard else BONES):
 		var b: int = skel.find_bone(n)
 		if b < 0:
 			b = skel.find_bone("mixamorig:" + n)
@@ -50,6 +64,8 @@ func bind_bones(skel: Skeleton3D) -> int:
 	_q0.resize(_ids.size())
 	_src_q.resize(_ids.size())
 	_src_w.resize(_ids.size())
+	_gw.resize(_ids.size())
+	_gw.fill(Vector3.ZERO)
 	_have = 0
 	_t = -1.0
 	return _ids.size()
@@ -87,6 +103,10 @@ func _process_modification_with_delta(_delta: float) -> void:
 	if skel == null or _ids.is_empty():
 		return
 	var t0: int = Time.get_ticks_usec()
+	if guard:
+		_guard(skel)
+		cost_usec = Time.get_ticks_usec() - t0
+		return
 	if _t >= 0.0:
 		_t += dt
 		var u: float = clampf(_t / _dur, 0.0, 1.0)
@@ -120,3 +140,54 @@ func _process_modification_with_delta(_delta: float) -> void:
 		_dt1 = dt
 		_have = mini(_have + 1, 2)
 	cost_usec = Time.get_ticks_usec() - t0
+
+
+## The pose guard (guard = true): per bone, the angular velocity that would reach this frame's pose from the last one
+## shown, changed by at most GUARD_ACC * dt, and never faster towards the pose than it can brake to land on it.
+func _guard(skel: Skeleton3D) -> void:
+	if dt <= 0.0:
+		# a hit-stop: the clip is held, so is what the guard last showed (no jump to the raw pose in the freeze)
+		if _have >= 1:
+			for i in _ids.size():
+				skel.set_bone_pose_rotation(_ids[i], _q1[i])
+		return
+	var dv: float = GUARD_ACC * dt
+	var changed: bool = false
+	for i in _ids.size():
+		var b: int = _ids[i]
+		var q: Quaternion = skel.get_bone_pose_rotation(b)
+		if _have < 1:
+			_q1[i] = q
+			continue
+		var d: Quaternion = (q * _q1[i].inverse()).normalized()
+		if d.w < 0.0:
+			d = -d
+		var ang: float = d.get_angle()
+		var e: Vector3 = d.get_axis() * ang if ang > 0.000001 else Vector3.ZERO    # what this frame asks for (rad)
+		var want: Vector3 = e / dt
+		var w: Vector3 = _gw[i]
+		var dw: Vector3 = want - w
+		var dl: float = dw.length()
+		if dl > dv:
+			w += dw * (dv / dl)
+			# braking: towards the pose no faster than can still stop on it; and never past it this frame
+			var el: float = e.length()
+			if el > 0.000001:
+				var dir: Vector3 = e / el
+				var along: float = w.dot(dir)
+				# the discrete braking curve: at this speed the steps left, each dv slower, still stop on the pose
+				var vmax: float = minf(sqrt(2.0 * GUARD_ACC * el + 0.25 * dv * dv) - 0.5 * dv, el / dt)
+				if along > vmax:
+					w -= dir * (along - vmax)
+			var wl: float = w.length()
+			var out: Quaternion = (Quaternion(w / wl, wl * dt) * _q1[i]).normalized() if wl > 0.000001 else _q1[i]
+			skel.set_bone_pose_rotation(b, out)
+			_q1[i] = out
+			changed = true
+		else:
+			w = want
+			_q1[i] = q
+		_gw[i] = w
+	_have = 1
+	if changed:
+		guarded += 1
