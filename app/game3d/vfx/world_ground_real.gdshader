@@ -186,8 +186,10 @@ void fragment() {
 	if (is_near) {
 		vec2 gx = dFdx(p);
 		vec2 gy = dFdy(p);
-		nt = unpack_n(textureGrad(normal_tex, p, gx, gy));
-		nt.xy *= normal_k * nfade;
+		if (normal_k > 0.0) {     // the worn road paint has no relief of its own: no normal read
+			nt = unpack_n(textureGrad(normal_tex, p, gx, gy));
+			nt.xy *= normal_k * nfade;
+		}
 		if (detail_on > 0.5 && wet < 0.05) {
 			vec2 dp = wpos.xz / detail_tile;
 			vec3 dn = unpack_n(textureGrad(detail_tex, dp, dpx / detail_tile, dpy / detail_tile));
@@ -233,7 +235,12 @@ void fragment() {
 		bool in_near = near_on > 0.5 && nuv.x > 0.01 && nuv.y > 0.01 && nuv.x < 0.99 && nuv.y < 0.99;
 		vec2 buv = in_near ? nuv : (wpos.xz - bake_rect.xy) / bake_rect.zw;
 		if (buv.x > 0.0 && buv.y > 0.0 && buv.x < 1.0 && buv.y < 1.0) {
-			b = in_near ? texture(near_tex, buv).rg : texture(bake_tex, buv).rg;
+			// one bake read: a branch, not a select (a select samples both)
+			if (in_near) {
+				b = texture(near_tex, buv).rg;
+			} else {
+				b = texture(bake_tex, buv).rg;
+			}
 			sh = clamp(b.r, 0.0, 1.0);
 			a *= mix(vec3(1.0), ao_col, clamp(b.g, 0.0, 1.0) * ao_alpha);
 		}
