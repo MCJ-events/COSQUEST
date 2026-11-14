@@ -115,13 +115,13 @@ const SKIN_ROUGH_MIN: float = 0.5
 ## (measured on game frames against the concept's skin: b* 44 against 24). Linear multipliers on skin's base colour.
 ## skinlook-28 (14 Nov): with every skin tone on the skin shading (char_real skin_wide) the old balance [0.8, 0.83, 1.17]
 ## turned faces pink (a* +5 to +12 against the concept); refitted on all six heroes
-const SKIN_WB: Dictionary = {"golden": [0.70, 0.83, 1.03]}
+const SKIN_WB: Dictionary = {"golden": [0.70, 0.83, 1.03], "day": [0.92, 1.0, 1.2], "dusk": [0.8, 1.0, 1.3]}
 ## skinlook-28 (14 Nov): skin's exposure gain per time of day, the same for every skin tone, in place of the gain by the
 ## surface's own brightness (REAL_LIGHT expo), so deep and pale skin keep the difference the concepts have. Absent = by
 ## its own brightness (build 27). Look key "skin_gain" overrides it for trials.
-## Golden hour measured (six heroes on concept-toned heads, close beats, high and mid tiers: experiments/skinlook-28);
-## the other times keep golden's ratio to the gain a middle skin (linear luminance 0.2) took under REAL_LIGHT expo.
-const SKIN_GAIN: Dictionary = {"golden": 0.83, "day": 0.81, "dusk": 1.06, "night": 1.48}
+## Measured on concept-toned heads in the close beats (experiments/skinlook-28): golden on all six heroes and both tiers,
+## day and dusk on four (high tier). Night is not shipped (arena.gd turns it into dusk) and keeps the old exposure.
+const SKIN_GAIN: Dictionary = {"golden": 0.83, "day": 0.62, "dusk": 0.8}
 const NORMAL_FADE: float = 1.5            # texels per screen pixel where the detail normal starts to fade
 ## the face fill (fight.gd set_face_fill): colour x strength; close = the intro beat and the victory shot
 const FACE_FILL_COL: Color = Color(1.0, 0.82, 0.74)    # warm: the street is warm, a white fill read as a flash

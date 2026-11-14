@@ -435,7 +435,9 @@ both tiers, before and after).
   middle tone. Skin now takes one gain per time of day, whatever its tone (`fighter.gd SKIN_GAIN`, look key `skin_gain`;
   absent = the old behaviour).
 - **Colour balance** (`SKIN_WB` golden): the old [0.8, 0.83, 1.17] turned faces pink once every tone took it (a* +5 to
-  +12 against the concept); refitted on all six heroes to [0.70, 0.83, 1.03].
+  +12 against the concept); refitted on all six heroes to [0.70, 0.83, 1.03] (golden), and set for day [0.92, 1.0, 1.2]
+  and dusk [0.8, 1.0, 1.3] (the warm dusk light read orange on every tone). `SKIN_GAIN`: golden 0.83, day 0.62, dusk 0.8;
+  night is not shipped (it becomes dusk) and keeps the old exposure.
 - Low tier (`char_lit.gdshader`) unchanged. The fight itself is untouched (presentation only).
 - Measuring: `tools/look_shots.gd` plan key `"skin_view": true` also draws each shot without effects (`_nofx`), the skin
   weight the shader used (debug view 3, `_skinw`) and one id mask per fighter (`_id_<role>1/0`, white then black).
