@@ -26,6 +26,8 @@ Usage (any python with numpy, scipy and Pillow):
       -> the same mask on another file's UVs, by 3D position (nearest texel on the reference surface). Used for
          lod1 (KEY_lod1r.png, 512) and at integration for a re-baked hero with new UVs (fid29-heromaps):
          matid.py transfer --ref-glb <build-28 lod0> --ref-mask art/char/masks/KEY_lod0.png --glb <new lod0> ...
+  matid.py files --json art/char/masks/KEY.json --lod0 LOD0.glb --lod1 LOD1.glb
+      -> records each file's body map width in KEY.json ("albedo_w"): fighter.gd picks the mask that fits the loaded file
   matid.py all --cast app/game3d/cast/heroes --classes-dir DIR --out-dir app/game3d/art/char/masks
       -> build + transfer for the six heroes (lod0 1024, lod1r 512).
 """
@@ -341,6 +343,20 @@ def cmd_transfer(a):
     print("MATID_TRANSFER", a.out, "covered", round(float(ct.mean()), 4))
 
 
+def albedo_w(glb):
+    j, b = read_glb(glb); m = j["materials"][body_material(j)]
+    return image(j, b, m["pbrMetallicRoughness"]["baseColorTexture"]["index"]).size[0]
+
+
+def cmd_files(a):
+    """Which file each mask belongs to: the body map's width of lod0 and lod1 (fighter.gd _cs_body_lod tells the files
+    apart by it, since the high tier's ally keeps the lod1 file). Written into KEY.json as "albedo_w"."""
+    p = Path(a.json); info = json.loads(p.read_text())
+    info["albedo_w"] = {"lod0": albedo_w(a.lod0), "lod1": albedo_w(a.lod1)}
+    p.write_text(json.dumps(info, indent=1) + "\n")
+    print("MATID_FILES", a.json, info["albedo_w"])
+
+
 def cmd_all(a):
     cast = Path(a.cast); out = Path(a.out_dir)
     for k in HEROES:
@@ -348,6 +364,7 @@ def cmd_all(a):
                                      out_dir=str(out), size=1024, debug_dir=a.debug_dir))
         cmd_transfer(argparse.Namespace(ref_glb=str(cast / f"{k}_lod0.glb"), ref_mask=str(out / f"{k}_lod0.png"),
                                         glb=str(cast / f"{k}_lod1.glb"), out=str(out / f"{k}_lod1r.png"), size=512))
+        cmd_files(argparse.Namespace(json=str(out / f"{k}.json"), lod0=str(cast / f"{k}_lod0.glb"), lod1=str(cast / f"{k}_lod1.glb")))
 
 
 def main():
@@ -356,10 +373,11 @@ def main():
     p.add_argument("--out-dir", required=True); p.add_argument("--size", type=int, default=1024); p.add_argument("--debug-dir")
     p = sp.add_parser("transfer"); p.add_argument("--ref-glb", required=True); p.add_argument("--ref-mask", required=True)
     p.add_argument("--glb", required=True); p.add_argument("--out", required=True); p.add_argument("--size", type=int, default=512)
+    p = sp.add_parser("files"); p.add_argument("--json", required=True); p.add_argument("--lod0", required=True); p.add_argument("--lod1", required=True)
     p = sp.add_parser("all"); p.add_argument("--cast", required=True); p.add_argument("--classes-dir", required=True)
     p.add_argument("--out-dir", required=True); p.add_argument("--debug-dir")
     a = ap.parse_args()
-    {"build": cmd_build, "transfer": cmd_transfer, "all": cmd_all}[a.cmd](a)
+    {"build": cmd_build, "transfer": cmd_transfer, "files": cmd_files, "all": cmd_all}[a.cmd](a)
 
 
 if __name__ == "__main__":

@@ -45,5 +45,9 @@
    0.2266
   ]
  },
- "hair_style": "strands"
+ "hair_style": "strands",
+ "albedo_w": {
+  "lod0": 2048,
+  "lod1": 1024
+ }
 }

@@ -808,13 +808,29 @@ func _charshade(sm: ShaderMaterial, b: BaseMaterial3D, kind: String, cut: bool, 
 	ShaderWarmScript.add(sm)
 
 
+## Which of the hero's masks fits this body. A mask lies in one file's UVs (lod0 or lod1, matid.py), and the file is not
+## the tier's: the high tier's ally keeps the lod1 file (fight.gd _tier_lod). The files are told apart by their body map's
+## width (matid.py "albedo_w" in the hero's json: lod0 2048, lod1 1024); a body that matches neither takes no mask.
+func _cs_body_lod(b: BaseMaterial3D, info: Dictionary) -> String:
+	var w: int = b.albedo_texture.get_width() if b.albedo_texture != null else 0
+	var aw: Variant = info.get("albedo_w")
+	if aw is Dictionary and int((aw as Dictionary).get("lod0", 0)) != int((aw as Dictionary).get("lod1", 0)):
+		if w == int((aw as Dictionary).get("lod0", 0)):
+			return "_lod0.png"
+		if w == int((aw as Dictionary).get("lod1", 0)):
+			return "_lod1r.png"
+		return ""
+	return "_lod0.png" if _cs_high() else "_lod1r.png"
+
+
 func _charshade_parts(sm: ShaderMaterial, b: BaseMaterial3D, kind: String, cut: bool, two_sided: bool) -> void:
 	var key: String = _cs_key()
 	var high: bool = _cs_high()
 	var info: Dictionary = _cs_json(CS_MASK_DIR + key + ".json") if key != "" else {}
 	if kind == "":
 		# the body: its material-ID mask, in the skin mask's sampler (the colour guess stays for Forge guardians)
-		var mask: Texture2D = _cs_tex(CS_MASK_DIR + key + ("_lod0.png" if high else "_lod1r.png")) if key != "" else null
+		var lod: String = _cs_body_lod(b, info) if key != "" else ""
+		var mask: Texture2D = _cs_tex(CS_MASK_DIR + key + lod) if lod != "" else null
 		if mask != null:
 			sm.set_shader_parameter("cs_matid", 1)
 			sm.set_shader_parameter("skin_mode", 1)
@@ -862,7 +878,9 @@ func _charshade_parts(sm: ShaderMaterial, b: BaseMaterial3D, kind: String, cut: 
 		if sc is Array and (sc as Array).size() == 4:
 			sm.set_shader_parameter("cs_hair_strand", Vector4(float(sc[0]), float(sc[1]), float(sc[2]), float(sc[3])))
 		sm.set_shader_parameter("cs_hair_root_v", float(hj.get("root_v", 1.0)))
-		var at: Texture2D = _cs_tex(CS_HAIR_DIR + key + ("_hi.png" if high else "_mid.png")) if key != "" else null
+		# the 1K x 2K atlas only for the player's own hero on high (the intro and victory close-ups are its); the ally and
+		# the Guardian are never framed that close, so they take the 512 x 1024 one (the high tier's texture budget)
+		var at: Texture2D = _cs_tex(CS_HAIR_DIR + key + ("_hi.png" if high and role == "hero" else "_mid.png")) if key != "" else null
 		if at != null:
 			sm.set_shader_parameter("albedo_tex", at)
 

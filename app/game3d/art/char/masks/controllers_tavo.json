@@ -45,5 +45,9 @@
    0.2625
   ]
  },
- "hair_style": "none"
+ "hair_style": "none",
+ "albedo_w": {
+  "lod0": 2048,
+  "lod1": 1024
+ }
 }

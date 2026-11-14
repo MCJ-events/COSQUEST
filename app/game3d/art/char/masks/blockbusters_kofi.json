@@ -45,5 +45,9 @@
    0.1915
   ]
  },
- "hair_style": "curls"
+ "hair_style": "curls",
+ "albedo_w": {
+  "lod0": 2048,
+  "lod1": 1024
+ }
 }

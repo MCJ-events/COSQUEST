@@ -45,10 +45,11 @@ func _fighter(tier: String, extra: Dictionary, key: String) -> Node:
 	return f
 
 
-func _body_mat() -> StandardMaterial3D:
+## a hero body: its map's width says which file it is (lod0 2048, lod1 1024: the masks' json "albedo_w")
+func _body_mat(w: int = 2048) -> StandardMaterial3D:
 	var b := StandardMaterial3D.new()
 	b.resource_name = "Material_0"
-	b.albedo_texture = load("res://art/char/masks/blockbusters_kofi_lod0.png") as Texture2D
+	b.albedo_texture = ImageTexture.create_from_image(Image.create(w, w, false, Image.FORMAT_L8))
 	return b
 
 
@@ -118,8 +119,22 @@ func _initialize() -> void:
 		and (hh.get_shader_parameter("albedo_tex") as Texture2D).resource_path.ends_with("blockbusters_kofi_hi.png"))
 	_check("shader_warm_registered", ShaderWarm.registered().has(sh) and ShaderWarm.registered().has(hh))
 	fh.free()
+	# the high tier's ally keeps the lod1 file (fight.gd _tier_lod): its mask is the lod1r one, its hair the 512 atlas;
+	# a body that is neither file takes no mask
+	var fa: Node = _fighter("high", {}, "blockbusters_kofi")
+	fa.set("role", "ally")
+	var sa: ShaderMaterial = fa.call("_real_material", _body_mat(1024))
+	_check("high_ally_lod1_file_lod1r_mask", sa != null and sa.get_shader_parameter("skin_tex") != null
+		and (sa.get_shader_parameter("skin_tex") as Texture2D).resource_path.ends_with("blockbusters_kofi_lod1r.png"))
+	fa.set("surface_kinds", {"hair_cards": "hair"})
+	var ha: ShaderMaterial = fa.call("_real_material", _hair_mat())
+	_check("high_ally_hair_atlas_512", ha != null and (ha.get_shader_parameter("albedo_tex") as Texture2D).resource_path.ends_with("blockbusters_kofi_mid.png"))
+	var su: ShaderMaterial = fa.call("_real_material", _body_mat(512))
+	_check("unknown_file_no_mask", su != null and su.get_shader_parameter("cs_matid") == null)
+	fa.free()
+	_check("emission_read_skipped_without_emission", src.contains("if (!cs_on || emission.r + emission.g + emission.b > 0.0)"))
 	var fm: Node = _fighter("mid", {}, "blockbusters_kofi")
-	var sm: ShaderMaterial = fm.call("_real_material", _body_mat())
+	var sm: ShaderMaterial = fm.call("_real_material", _body_mat(1024))
 	_check("mid_body_lod1r_mask_no_new_sampler", sm != null and bool(sm.get_shader_parameter("cs_on"))
 		and (sm.get_shader_parameter("skin_tex") as Texture2D).resource_path.ends_with("blockbusters_kofi_lod1r.png")
 		and not sm.shader.code.contains("#define CS_HIGH\n"))

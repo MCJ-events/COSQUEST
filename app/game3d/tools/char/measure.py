@@ -5,11 +5,14 @@
 Per shot present in both folders (<tag>_B_intro, <tag>_B_win, <tag>_A_mid; the hero's crops from the shot's json):
   skin   median CIELAB of the skin-coloured pixels in the hero's face crop, b28 against new: Delta E 76. The lane only
          touches skin through the cavity term and the eyes, so this bounds how far it moved the tone skinlook-28 set.
+         skin_mid_dE76: the same on the face box's middle band (no hair, no beard: the hair this lane re-shades
+         otherwise moves the median).
   hair   stair-steps on the hair: in the hero's hair crop, the share of strong luminance edges (Sobel above the 95th
          percentile of the b28 crop) that are single-pixel steps (|Laplacian| > 0.5 x the edge strength). new / b28.
   budget the CQLOOK perf line of each run (texture and video memory, draws, primitives).
 --orbit TAG: the 30-frame slow orbit of the intro beat (<TAG>_B_intro_orbit_00..29): specular flicker = mean absolute
-  frame-to-frame change of the high-passed luminance (L minus its 2 px blur) over the hero's torso and face boxes.
+  frame-to-frame change of the high-passed luminance (L minus its 2 px blur) over the hero's torso and face boxes;
+  flicker_rel: that change over the mean |high-pass| itself (instability per unit of detail).
 Prints one JSON line per measure.
 """
 import json, re, sys
@@ -77,6 +80,12 @@ def main():
             if sa is not None and sb is not None:
                 out["skin_dE76"] = round(float(np.linalg.norm(sa - sb)), 2)
                 out["skin_lab_b28"] = [round(float(v), 1) for v in sa]; out["skin_lab_new"] = [round(float(v), 1) for v in sb]
+            # the same below the hairline and above the beard (the face box's middle band, 35 to 75 % down): the hair
+            # this lane re-shades sits in the face box too, and its pixels that pass the skin window move the median
+            x0, y0, x1, y1 = bx["face"]; fb = [x0, y0 + 0.35 * (y1 - y0), x1, y0 + 0.75 * (y1 - y0)]
+            sa, sb = skin_lab(crop(A, fb)), skin_lab(crop(B, fb))
+            if sa is not None and sb is not None:
+                out["skin_mid_dE76"] = round(float(np.linalg.norm(sa - sb)), 2)
         if "hair" in bx:
             ca, cb = crop(A, bx["hair"]), crop(B, bx["hair"])
             if ca.size > 300:
@@ -105,9 +114,13 @@ def main():
             if not m.any():
                 m[:] = True
             res[nm] = round(float(np.abs(np.diff(ys, axis=0))[:, m].mean()), 5)
+            # the same change relative to the detail there is (mean |high-pass|): an orbit moves real detail across pixels
+            # too, so a sharper surface raises the raw number without sparkling; the relative one is the instability
+            res[nm + "_rel"] = round(float(np.abs(np.diff(ys, axis=0))[:, m].mean() / max(np.abs(ys)[:, m].mean(), 1e-6)), 4)
             res[nm + "_frames"] = len(fr)
         if res.get("b28") and res.get("new"):
             res["flicker_ratio"] = round(res["new"] / res["b28"], 3)
+            res["flicker_rel_ratio"] = round(res["new_rel"] / res["b28_rel"], 3)
         print(json.dumps(res))
     for nm, d in (("b28", b28), ("new", new)):
         for lg in sorted((d / "logs").glob("*.log")):
