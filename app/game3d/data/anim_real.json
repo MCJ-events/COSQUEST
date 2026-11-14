@@ -139,9 +139,7 @@
     "front_light": "M2M_Hit_Chest",
     "front_heavy": "M2M_Hit_Head"
    },
-   "states": {
-    "intro": "ST_Intro_Proud_54"
-   },
+   "states": {},
    "variants": {
     "guard": [
      "CB_Guard_14"
@@ -208,9 +206,7 @@
     "front_light": "M2M_Hit_Chest",
     "front_heavy": "M2M_Hit_Head"
    },
-   "states": {
-    "intro": "ST_Intro_Strut_50"
-   },
+   "states": {},
    "variants": {
     "guard": [
      "CB_Guard_14"
@@ -277,8 +273,7 @@
     "front_heavy": "M2M_Hit_Head"
    },
    "states": {
-    "victory": "CM_Victory_64",
-    "intro": "ST_Intro_Strut_54"
+    "victory": "CM_Victory_64"
    },
    "variants": {
     "guard": [
@@ -336,9 +331,7 @@
     "back": "CM_Hit_Back_B",
     "front_heavy": "M2M_Hit_Head"
    },
-   "states": {
-    "intro": "ST_Intro_Neutral_49"
-   },
+   "states": {},
    "variants": {},
    "fingerprint": {
     "Hips": [
@@ -403,8 +396,7 @@
     "front_heavy": "M2M_Hit_Head"
    },
    "states": {
-    "victory": "CM_Victory_77",
-    "intro": "ST_Intro_Neutral_33"
+    "victory": "CM_Victory_77"
    },
    "variants": {
     "guard": [
@@ -467,8 +459,7 @@
     "front_heavy": "M2M_Hit_Head"
    },
    "states": {
-    "victory": "CM_Victory_64",
-    "intro": "ST_Intro_Proud_77"
+    "victory": "CM_Victory_64"
    },
    "variants": {
     "guard": [
@@ -520,5 +511,6 @@
     "front_heavy": 1.0
    }
   }
- }
+ },
+ "_intro_note": "fid29 combat: the 100STYLE intro clips (ST_Intro_*) are retargeted into the libraries but mapped to no state: on the game camera their arms stood out level, a T-pose read (tools/anim/build_real.py INTROS = False). Each hero keeps its build 28 intro."
 }

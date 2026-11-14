@@ -157,7 +157,20 @@ func _initialize() -> void:
 		if str(a.clips.get(st, "")) != AnimLib.REAL_LIB + "/" + cn:
 			timing_ok = false
 			timing_why += "%s not mapped " % st
-	_check("real_states_keep_button_length_and_events", timing_ok and not (rc.get("states", {}) as Dictionary).is_empty(), timing_why)
+	# every hero's captured state clips (Imani has none since the intros were unmapped; Zuri, Oren and Lyra have victories)
+	var n_states: int = 0
+	for key: String in (AnimLib.real_data().get("characters", {}) as Dictionary):
+		var cs: Dictionary = (AnimLib.real_data()["characters"][key] as Dictionary).get("states", {})
+		for st: String in cs:
+			n_states += 1
+			var m2: Dictionary = (AnimLib.real_data().get("clips", {}) as Dictionary).get(str(cs[st]), {})
+			var old2: Dictionary = d28.get(str(m2.get("replaces", "")), {})
+			for k: String in ["frames", "contact", "in", "out", "tail"]:
+				if old2.is_empty() or old2.has(k) != m2.has(k) or (old2.has(k) and int(old2[k]) != int(m2[k])):
+					timing_ok = false
+					timing_why += "%s %s.%s " % [key, str(cs[st]), k]
+	_check("real_states_keep_button_length_and_events", timing_ok and n_states >= 3, timing_why + " states %d" % n_states)
+	_check("real_intro_is_build28", not (rc.get("states", {}) as Dictionary).has("intro") and str(a.clips.get("intro", "")).begins_with(AnimLib.LIB_NAME + "/"), str(a.clips.get("intro", "")))
 	# 4. variation and the fight's RNG
 	var fight_obj: Node = FightScript.new()
 	var rng: RandomNumberGenerator = fight_obj.get("rng")

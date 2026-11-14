@@ -398,3 +398,22 @@ library served with the character, the way its model is:
 - Presentation only: the rules and the seeded record never read a model or a clip (proof: the same seeded
   fight with and without the kit gives the same record). Old builds never read `fight`.
 - Test: `tests/fightkit_test.gd`.
+
+## Build 29: combat motion on the mid and high tiers (fid29 combat)
+
+Behind the look keys `real` and `fid_combat` (mid and high; the low tier has neither, so a low phone loads, plays
+and flinches exactly as in build 28). Everything is installed by `combat_animator.gd` in `bind()` (`_fid_setup`);
+`arena.gd` and `fighter.gd` are unchanged. Full write-up and numbers: `docs/game3d/fid29/combat.md`.
+
+| Part | Where | What |
+|---|---|---|
+| Dead blending | `dead_blend.gd` (first skeleton modifier) | A clip switch plays the new clip with no crossfade (one clip evaluated); for 0.15 to 0.25 s each bone carries on from its own last two frames (angular velocity extrapolated with a 0.1 s half-life) and eases into the new clip with a smoothstep (Holden, "Dead Blending", 2023). A strike's contact frame always shows the clip's own pose. |
+| Pose guard | `dead_blend.gd` with `guard` (after the foot lock, before the cloth) | Hips and legs: angular acceleration on the final pose limited to 700 rad/s^2 with a braking rule, so a knee flip from the foot-lock solve becomes a fast bend instead of a one-frame pop. Motion under the limit passes exactly; spine, arms and head are never touched. |
+| Directional hit reactions | `combat_animator.flinch()` (same signature and members), `pose_layer.gd add_layers` | A blow plays captured recoils (front, back, left, right, plus a light chest and a heavy head hit) as additive layers on the spine, neck and arms, the two strongest sides by the push direction, scaled by the blow (0.25 to 0.4 s). A side with no clip for a hero falls back to the procedural flinch. |
+| KO settle | `ko_settle.gd` | After the KO clip's impact frame and only once the fight's result is final, a partial ragdoll (PhysicalBoneSimulator3D, capsules on the humanoid's joints, its own physics layer that sees only a ground plane) eases in to 0.6 over 0.2 s and holds. No body of it exists while the fight can still change. |
+| Captured clips | `anim/real/<key>.glb`, `data/anim_real.json`, `anim_library.gd real_for` | Victories (Cologne database "boxing, jumping, cheering, winning": Zuri, Oren, Lyra, where the tear gate passes) and GUARD variants (CMU boxing) in their own library `cqr`. The 100STYLE intros are retargeted but mapped to no state (their arms read as a T-pose on the game camera); every hero keeps its build 28 intro. A clip standing in for a build 28 one keeps its frames and event times (`tools/anim/check_clips.py --real`). Build 28's `anim/*.glb` and `data/anim_clips.json` are untouched. |
+| Variation | `combat_animator.variant_pick` | A hash of the fighter's slot, the state and its swing count; never the fight's RNG. |
+
+Built with `tools/anim/build_real.py` (BVH and ASF/AMC readers `bvh2glb.py`, `cmu2glb.py`, `retarget.py`, the tear gate
+`add_gate.py`, hit finding `find_hits.py`) on mm1's CPU. Sources and licences: `docs/game3d/fid29/ASSETS-LICENCES-combat.md`;
+the CC-BY credits are on the app's Credits screen. Tests: `tests/fid29_combat_test.gd`; pop metric: `tools/anim/pop_probe.gd`.

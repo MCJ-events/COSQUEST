@@ -27,6 +27,10 @@ import add_gate  # noqa: E402
 GAME = os.path.abspath(os.path.join(HERE, "..", ".."))
 REAL = os.path.join(HERE, "real")
 HEROES = ["icons_imani", "blockbusters_kofi", "ascendants_zuri", "controllers_tavo", "everborn_oren", "celestials_lyra"]
+# fid29 combat: the 100STYLE intros are not mapped to a state. On the game camera (look_shots intro beat) the
+# retargeted idles held the arms out level, a T-pose read, and bowed Imani's head; each hero keeps its build 28 intro
+# until the retarget handles 100STYLE's rest pose. The clips are still retargeted (their tear is reported).
+INTROS = False
 # intro archetype per hero (100STYLE idles): proud / strutting / neutral
 ARCH = {"icons_imani": "Proud", "celestials_lyra": "Proud", "blockbusters_kofi": "Strut", "ascendants_zuri": "Strut",
         "controllers_tavo": "Neutral", "everborn_oren": "Neutral"}
@@ -120,7 +124,7 @@ def main():
             if c in rclips["clips"]:
                 want[c] = ("state", "victory", vic28)
                 want[c + "s"] = ("state", "victory", vic28)
-        if intro28 in data["clips"]:
+        if INTROS and intro28 in data["clips"]:
             n = data["clips"][intro28]["frames"]
             c = "ST_Intro_%s_%d" % (ARCH[key], n)
             if c not in rclips["clips"]:
