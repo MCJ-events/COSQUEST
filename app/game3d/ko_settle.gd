@@ -28,7 +28,10 @@ var sim: PhysicalBoneSimulator3D
 var ground: StaticBody3D
 var impact_t: float = -1.0         # seconds into the KO clip where the hips have landed (-1 = not known)
 var _t: float = 0.0
+var _w0: float = 0.0               # the skeleton's width scale when the settle started
+var _wp: float = 0.0               # its width scale on the previous tick
 var started: bool = false
+const END_WIDTH: float = 0.2
 
 
 static func impact_of(a: Animation) -> float:
@@ -69,8 +72,13 @@ func tick(dt: float, clip_t: float, floor_y: float) -> void:
 	if skeleton == null or not is_instance_valid(skeleton):
 		return
 	if not started:
-		if impact_t >= 0.0 and clip_t >= impact_t and result_final(skeleton):
+		if impact_t >= 0.0 and clip_t >= impact_t and result_final(skeleton) and _drawable():
 			_start(floor_y)
+		return
+	if sim != null and not _drawable():
+		_end()
+		return
+	if sim == null:
 		return
 	_t += dt
 	var u: float = clampf(_t / BLEND_S, 0.0, 1.0)
@@ -80,6 +88,8 @@ func tick(dt: float, clip_t: float, floor_y: float) -> void:
 func _start(floor_y: float) -> void:
 	started = true
 	_t = 0.0
+	_w0 = skeleton.global_basis.x.length()
+	_wp = _w0
 	sim = PhysicalBoneSimulator3D.new()
 	sim.name = "KoSettle"
 	sim.influence = 0.0
@@ -140,6 +150,36 @@ func _start(floor_y: float) -> void:
 	skeleton.add_child(ground)
 	ground.global_transform = Transform3D(Basis.IDENTITY, Vector3(0.0, floor_y, 0.0))
 	sim.physical_bones_start_simulation()
+
+
+## False once fighter.gd's dissolve is about to fold the body to zero width, or has hidden it. The dissolve eases in
+## (its last frame jumps from about a fifth or a quarter of the width straight to zero and hides the body), so
+## this looks one step ahead: the ragdoll stops while its parent transform can still be inverted. Stopping it any
+## later only makes the physics server complain ("det == 0", "must be normalized").
+func _drawable() -> bool:
+	if not skeleton.is_visible_in_tree() or absf(skeleton.global_basis.determinant()) < 1e-9:
+		return false
+	if _w0 <= 0.0:
+		return true
+	var w: float = skeleton.global_basis.x.length()
+	var step: float = maxf(0.0, _wp - w)
+	_wp = w
+	# this tick's width, and the width two of this tick's steps further on (the ease only speeds up)
+	return w > END_WIDTH * _w0 and w - 2.0 * step > END_WIDTH * _w0
+
+
+## The body is going (dissolved or hidden): stop and free the ragdoll and its ground. It does not start again.
+## If the skeleton's transform is already singular, the bones are freed without the stop (stopping re-parents
+## each bone under that transform, which cannot be inverted).
+func _end() -> void:
+	if absf(skeleton.global_basis.determinant()) >= 1e-9:
+		sim.physical_bones_stop_simulation()
+	sim.influence = 0.0
+	sim.queue_free()
+	sim = null
+	if ground != null:
+		ground.queue_free()
+		ground = null
 
 
 ## Physics bodies this made (0 until the result is final): the test reads it.

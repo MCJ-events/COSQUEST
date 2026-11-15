@@ -300,6 +300,11 @@ func _process(_dt: float) -> bool:
 					var st: float = (int(_ko.get("settled", -1)) - int(_ko.get("t0", 0))) / 30.0 if int(_ko.get("settled", -1)) > 0 else 99.0
 					_check("ko_no_bone_under_ground", float(_ko.get("low", 0.0)) > -0.03, "lowest %.3f m" % float(_ko.get("low", 0.0)))
 					_check("ko_settled_within_1_2_s", st <= 1.2, "settled after %.2f s" % st)
+					# the Guardian's dissolve shrinks the body to zero width and hides it: the ragdoll goes with it
+					_f.dissolve(0.3)
+				elif _n == 75 + 90 + 20:
+					_check("ko_ragdoll_freed_when_the_body_dissolves", a.ko.started and a.ko.sim == null and a.ko.ground == null,
+						"sim=%s visible=%s" % [str(a.ko.sim), str(_f.anim.skeleton.is_visible_in_tree())])
 					print("CQTEST done failures=%d" % _fails)
 					quit(1 if _fails > 0 else 0)
 					_phase = ""
