@@ -24,7 +24,7 @@ Credits screen word for word.
 | Take_2019-01-09_E_Nussknacker3.bvh | 7f22debe9fe6b5c9ac7947a07ce941de3123bff096720435285f6ecfa67b9b2b | CM_Hit_Front (frames 670 to 712, 60 fps) |
 | Take2018-01-17_12.01.06SAM.bvh | faa0d6b49d57394ebc30905a7a7fa75649b37bd9acfa311e65f00e4828c46d38 | CM_Hit_Back (1061 to 1103), CM_Hit_Right (638 to 680) |
 | Take_2019-01-09_E_Kampf.bvh | 0386a776c84ceb553d556c67766e64f5427c74b8be19eb7bb27822417130c4bd | CM_Hit_Left (449 to 491) |
-| Take_2014-12-16_11.21.47_AM.bvh | a187ddbbd42e9e4ee48c8ad3170b9abe24886aa0ccabe2c0fd211933e84a09a8 | CM_Victory_* (1200 to 1500, 120 fps: "boxing, jumping, cheering, winning") |
+| Take_2014-12-16_11.21.47_AM.bvh | a187ddbbd42e9e4ee48c8ad3170b9abe24886aa0ccabe2c0fd211933e84a09a8 | CM_Victory_* (1200 to 1500, 120 fps: "boxing, jumping, cheering, winning"): ships for Zuri, Oren and Lyra; over the tear gate on Imani, Kofi and Tavo |
 | Take_2019-01-09_E_Nussknacker1.bvh | 85db6ef37e149c39e78eaa71bf125e8238919ff4bdf03ec582061ed69ea9bc9a | scanned for hits (find_hits.py), not shipped |
 | Take_2019-01-09_N_Nussknacker1.bvh, _N_Nussknacker3.bvh, _N_Kampf.bvh | 1ea138c9..., d4a8c10c..., 39360101... | the attacker's side of the pairs, read for timing only, not shipped |
 | Take2018-01-17_12.01.06AM.bvh, 12.21.11AM.bvh, 12.21.11SAM.bvh | af7c5040..., 17b5330c..., f19c81fb... | scanned for hits, not shipped |
@@ -36,16 +36,17 @@ Credits screen word for word.
   Mason". This work is licensed under a Creative Commons Attribution 4.0 International License."
   https://www.ianxmason.com/100style/ (Zenodo record 8127870, licence id cc-by-4.0)
 - Credit: "The 100STYLE Dataset - Ian Mason, CC BY 4.0. Retargeted and edited."
-- Status in this build: the three idles are retargeted into the hero libraries (`anim/real/*.glb`, clips
-  `ST_Intro_*`) but mapped to no state (`data/anim_real.json`): on the game camera their arms stood out level. The data
-  is in the shipped files, so the credit stays on the Credits screen.
+- Status in this build: the three idles stand in for every hero's intro but Kofi's on the mid and high tiers (clips `ST_Intro_*`
+  in `anim/real/*.glb`, mapped in `data/anim_real.json`). The first cuts (frame 300 on) fell inside each take's
+  arms-out stretch and read as a T-pose; the cuts below come from stretches with the arms at the sides, and the head and
+  neck keep a quarter of the take's turn (the performers look down at the floor).
 - Files, fetched one by one from the site's per-file links (never the 1.47 GB zip):
 
 | File | Link id | sha256 | Used for |
 |---|---|---|---|
-| Proud_ID.bvh | drive 19Or4e2n_RVGSXmUPpN1GCqZkYIIB4hZX | 9e29739d07c5b8d340011907099d11e298182de9280701d76e8497fd6826382b | ST_Intro_Proud_* (Imani, Lyra) |
-| Strutting_ID.bvh | drive 1qREJO0GS2VVULxwDImB4e69QoaZ6Rild | a98391a24acf795cd37310fe5b38af88c3be0ff34bc5e087a29611c68ba45d76 | ST_Intro_Strut_* (Kofi, Zuri) |
-| Neutral_ID.bvh | drive 1Vnz5wnFmOztNzaSBHjSt9v6y0pl0FK8X | 71aead2e3246bdb47a5b839cb3e60e0574e9a1a046c071cc147e2922a35f259f | ST_Intro_Neutral_* (Tavo, Oren) |
+| Proud_ID.bvh | drive 19Or4e2n_RVGSXmUPpN1GCqZkYIIB4hZX | 9e29739d07c5b8d340011907099d11e298182de9280701d76e8497fd6826382b | ST_Intro_Proud_* (Imani, Lyra): frames 1000 to 1106 / 1152 (60 fps) |
+| Strutting_ID.bvh | drive 1qREJO0GS2VVULxwDImB4e69QoaZ6Rild | a98391a24acf795cd37310fe5b38af88c3be0ff34bc5e087a29611c68ba45d76 | ST_Intro_Strut_* (Zuri; built for Kofi too but not shipped, see combat.md): frames 1100 to 1206 |
+| Neutral_ID.bvh | drive 1Vnz5wnFmOztNzaSBHjSt9v6y0pl0FK8X | 71aead2e3246bdb47a5b839cb3e60e0574e9a1a046c071cc147e2922a35f259f | ST_Intro_Neutral_* (Tavo, Oren): frames 700 to 764 / 796 |
 
 - orangeduck/100style-retarget (CC BY 4.0) was not used: our own bvh2glb.py and retarget.py read the BVH directly, so
   its credit line is not needed and is not on the screen.

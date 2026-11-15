@@ -62,13 +62,6 @@
    "src": "Cologne Motion Capture Database: Take2018-01-17_12.01.06SAM.bvh, struck from behind: the trunk thrown forward 31 deg (2018-01-17 sparring, SAM)",
    "licence": "CMCD (TH Koeln), CC BY 4.0"
   },
-  "ST_Intro_Strut_50": {
-   "frames": 50,
-   "fps": 30.0,
-   "src": "100STYLE: Strutting_ID.bvh, 100STYLE Strutting idle",
-   "licence": "100STYLE (Ian Mason), CC BY 4.0",
-   "replaces": "R_Intro_Ready"
-  },
   "CB_Guard_13": {
    "frames": 27,
    "fps": 30.0,
@@ -212,9 +205,7 @@
     "front_light": "M2M_Hit_Chest",
     "front_heavy": "M2M_Hit_Head"
    },
-   "states": {
-    "intro": "ST_Intro_Strut_50"
-   },
+   "states": {},
    "variants": {
     "guard": [
      "CB_Guard_14"
@@ -252,8 +243,7 @@
     "CM_Victory_51r": 0.00508,
     "CM_Victory_51s": 0.00519,
     "M2M_Hit_Chest": 0.00413,
-    "M2M_Hit_Head": 0.00359,
-    "ST_Intro_Strut_50": 0.00105
+    "M2M_Hit_Head": 0.00359
    },
    "over_gate": [
     "CB_Guard_13",

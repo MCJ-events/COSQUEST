@@ -35,6 +35,10 @@ INTROS = True
 # intro archetype per hero (100STYLE idles): proud / strutting / neutral
 ARCH = {"icons_imani": "Proud", "celestials_lyra": "Proud", "blockbusters_kofi": "Strut", "ascendants_zuri": "Strut",
         "controllers_tavo": "Neutral", "everborn_oren": "Neutral"}
+# heroes that keep build 28's intro: on Kofi the Strutting idle drops the shoulders and hangs the arms straight, so the
+# jacket collar falls and the neck reads as a long stalk under a raised head (the blind judge picked build 28 on 2 of 4
+# Kofi intro pairs; damping the head and neck less, 0.6, did not change it). His build 28 intro gestures; it stays.
+NO_INTRO = {"blockbusters_kofi"}
 # per direction, candidates in order of preference (the first under the gate on this hero is kept)
 HITS = {"front": ["CM_Hit_Front"], "back": ["CM_Hit_Back", "CM_Hit_Back_B"], "left": ["CM_Hit_Left", "CM_Hit_Left_M"],
         "right": ["CM_Hit_Right", "CM_Hit_Right_M"], "front_heavy": ["M2M_Hit_Head"], "front_light": ["M2M_Hit_Chest"]}
@@ -128,7 +132,7 @@ def main():
                 for suf in ("", "s", "h", "r"):
                     if c + suf in rclips["clips"]:
                         want[c + suf] = ("state", "victory", vic28)
-        if INTROS and intro28 in data["clips"]:
+        if INTROS and key not in NO_INTRO and intro28 in data["clips"]:
             n = data["clips"][intro28]["frames"]
             c = "ST_Intro_%s_%d" % (ARCH[key], n)
             if c not in rclips["clips"]:
