@@ -351,7 +351,6 @@ void fragment() {
 		base *= mix(1.0, mix(cs_hair_root.x, cs_hair_root.y, smoothstep(0.0, 0.7, tip)), v_strandy);
 		// a strand id across the card (the strands run along V): a small random shift each
 		v_shift = (fract(floor(UV.x * 384.0) * 0.6180339) - 0.5) * 0.1;
-		v_strand = BINORMAL;
 	}
 	v_eye = eye;
 	if (debug_view == 1) {
@@ -422,6 +421,10 @@ void fragment() {
 		n = normalize(TANGENT * t.x + BINORMAL * t.y + NORMAL * t.z);
 		NORMAL = n;
 	}
+	if (cs_on && cs_hair_cards > 0.0) {
+		// the strand direction once per pixel, not once per light: the card's V axis laid on the final normal
+		v_strand = normalize(BINORMAL - n * dot(n, BINORMAL));
+	}
 	if (cs_on) {
 		// geometric specular anti-aliasing (Tokuyoshi and Kaplanyan 2019, as Filament): the screen-space change of the
 		// mesh's own normal widens the lobe, so curved, small and far surfaces stop sparkling; plus the map's Toksvig term
@@ -486,7 +489,7 @@ void fragment() {
 	vec3 diffuse_amb = lit * (1.0 - metal) * amb * (1.0 + skin * vec3(0.06, 0.01, 0.0));
 	// the street reflected: sharper on metal and wet-looking skin, a blur on cloth
 	vec3 spec_amb = vec3(0.0);
-	if (v_sheen > 0.0 || v_hair > 0.0) {
+	if (v_sheen > 0.0) {
 		v_tint = sqrt(max(base, vec3(0.0)));
 	}
 	if (env_spec > 0.0) {
@@ -660,11 +663,11 @@ void light() {
 		// towards the root, a dimmer one in the hair's colour shifted towards the tip; per-strand jitter (v_shift)
 		vec3 hs;
 		if (v_strandy > 0.5) {
-			vec3 tg = normalize(v_strand - NORMAL * dot(NORMAL, v_strand));
-			vec3 t1 = normalize(tg + NORMAL * (cs_hair_lobes.x + v_shift));
-			vec3 t2 = normalize(tg + NORMAL * (cs_hair_lobes.y + v_shift));
-			float th1 = dot(t1, h);
-			float th2 = dot(t2, h);
+			// the shifted tangents T + s N taken unnormalised (|s| <= 0.2: under 2 % off), so each lobe is one multiply-add
+			float th0 = dot(v_strand, h);
+			float nh = dot(NORMAL, h);
+			float th1 = th0 + (cs_hair_lobes.x + v_shift) * nh;
+			float th2 = th0 + (cs_hair_lobes.y + v_shift) * nh;
 			float s1 = pow(max(1.0 - th1 * th1, 0.0), 45.0);
 			float s2 = pow(max(1.0 - th2 * th2, 0.0), 11.0);
 			hs = (vec3(s1 * cs_hair_lobes.z) + s2 * cs_hair_lobes.w * (ALBEDO * 3.0 + 0.05)) * smoothstep(-0.1, 0.4, ndl);

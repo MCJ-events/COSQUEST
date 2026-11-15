@@ -8,6 +8,10 @@ extends SceneTree
 ## (cs_on, the mask), high (the CS_HIGH variant, detail and break-up), and the same three on the hair cards' material
 ## (b28 cut, soft), and b28's mask path on the body (b28mask: the skin mask read that charshade's mask takes over;
 ## a "new / b28mask" ratio is then the ALU change alone). Prints "CQCOST <config> ms_per_frame=<median>" and the ratio to b28.
+## --only=hair|body: those configs alone (more rounds in the same time). hair_high_newmid: the high look with the ally's
+## 512 x 1024 atlas (the atlas size apart from the ALU). --prev=<path>: an earlier char_real.gdshader (outside res://) run
+## as "<config>_prev" with the same variant edits and parameters, so two versions of the shader meet in one run.
+## hair_mid_newhard / hair_mid_b28soft: the cut swapped (the soft cut's own cost apart from the shading).
 
 const FighterScript := preload("res://fighter.gd")
 const LoaderScript := preload("res://char_loader.gd")
@@ -47,8 +51,9 @@ func _body(path: String) -> Dictionary:
 	return out
 
 
-func _mat(b: BaseMaterial3D, look: Dictionary, key: String, cut: bool, mask: Texture2D = null) -> ShaderMaterial:
+func _mat(b: BaseMaterial3D, look: Dictionary, key: String, cut: bool, mask: Texture2D = null, role: String = "hero") -> ShaderMaterial:
 	var f: Node3D = FighterScript.new()
+	f.set("role", role)
 	f.set("skin_mask", mask)     # b28's own mask path (a Forge guardian with a skin mask): the read charshade's mask replaces
 	f.set("look", look)
 	f.set("anim_opts", {"key": key})
@@ -73,12 +78,64 @@ func _initialize() -> void:
 	var off_m: Dictionary = mid.duplicate(); off_m["fid_charshade"] = false
 	var m0: Texture2D = load("res://art/char/masks/%s_lod0.png" % key)
 	var m1: Texture2D = load("res://art/char/masks/%s_lod1r.png" % key)
-	_cfgs = [["body_high_b28mask", _mat(b0["body"], off_h, key, false, m0)], ["body_mid_b28mask", _mat(b1["body"], off_m, key, false, m1)]]
-	_cfgs += [["body_high_b28", _mat(b0["body"], off_h, key, false)], ["body_high_new", _mat(b0["body"], high, key, false)],
-		["body_mid_b28", _mat(b1["body"], off_m, key, false)], ["body_mid_new", _mat(b1["body"], mid, key, false)]]
-	if b0.has("hair"):
+	var only: String = _arg("only", "all")
+	_cfgs = []
+	if only != "hair":
+		_cfgs += [["body_high_b28mask", _mat(b0["body"], off_h, key, false, m0)], ["body_mid_b28mask", _mat(b1["body"], off_m, key, false, m1)]]
+		_cfgs += [["body_high_b28", _mat(b0["body"], off_h, key, false)], ["body_high_new", _mat(b0["body"], high, key, false)],
+			["body_mid_b28", _mat(b1["body"], off_m, key, false)], ["body_mid_new", _mat(b1["body"], mid, key, false)]]
+	if b0.has("hair") and only != "body":
 		_cfgs += [["hair_high_b28", _mat(b0["hair"], off_h, key, true)], ["hair_high_new", _mat(b0["hair"], high, key, true)],
+			["hair_high_newmid", _mat(b0["hair"], high, key, true, null, "ally")],
 			["hair_mid_b28", _mat(b1["hair"], off_m, key, true)], ["hair_mid_new", _mat(b1["hair"], mid, key, true)]]
+	# what the hair cards' soft cut (alpha to coverage, the edge sharpening, the mip-kept alpha) costs apart from the shading:
+	# the charshade parameters on build 28's hard 0.35 cut, and build 28's parameters on the soft cut
+	if b0.has("hair") and only != "body":
+		var ab: Array = []
+		for c: Array in _cfgs:
+			if String(c[0]) == "hair_mid_new" or String(c[0]) == "hair_mid_b28":
+				var sm: ShaderMaterial = (c[1] as ShaderMaterial).duplicate()
+				var vc: String = sm.shader.code
+				var sh := Shader.new()
+				if vc.find("alpha_to_coverage;") >= 0:
+					var hk: int = vc.find("ALPHA = a.a;")
+					sh.code = vc.replace("ambient_light_disabled, alpha_to_coverage;", "ambient_light_disabled;").replace(
+						vc.substr(hk, vc.find("// ALPHA_HOOK", hk) - hk), "ALPHA = a.a; ALPHA_SCISSOR_THRESHOLD = 0.35; ")
+					ab.append(["hair_mid_newhard", sm])
+				else:
+					sh.code = vc.replace("ambient_light_disabled;", "ambient_light_disabled, alpha_to_coverage;").replace(
+						"ALPHA = a.a; ALPHA_SCISSOR_THRESHOLD = 0.35; ", "ALPHA = a.a; ALPHA_SCISSOR_THRESHOLD = 0.12; ALPHA_ANTIALIASING_EDGE = 0.3; " +
+						"ALPHA_TEXTURE_COORDINATE = UV * vec2(textureSize(albedo_tex, 0)); ")
+					ab.append(["hair_mid_b28soft", sm])
+				sm.shader = sh
+		_cfgs += ab
+	var prev: String = _arg("prev", "")
+	if prev != "" and FileAccess.file_exists(prev):
+		var pc: String = FileAccess.get_file_as_string(prev)
+		var cur: String = (load("res://vfx/char_real.gdshader") as Shader).code
+		var extra: Array = []
+		for c: Array in _cfgs:
+			if not String(c[0]).ends_with("_new") and not String(c[0]).ends_with("_newmid"):
+				continue
+			var sm: ShaderMaterial = (c[1] as ShaderMaterial).duplicate()
+			var code: String = pc
+			var vc: String = sm.shader.code
+			# the variant edits fighter.gd made to this material's shader, made again on the earlier code
+			if vc.find("render_mode cull_disabled,") >= 0:
+				code = code.replace("render_mode cull_back,", "render_mode cull_disabled,")
+			if vc.find("alpha_to_coverage;") >= 0:
+				code = code.replace("ambient_light_disabled;", "ambient_light_disabled, alpha_to_coverage;")
+			var hk: int = vc.find("ALPHA = a.a;")
+			if hk >= 0:
+				code = code.replace("// ALPHA_HOOK", vc.substr(hk, vc.find("// ALPHA_HOOK", hk) - hk) + "// ALPHA_HOOK")
+			if vc.find("#define CS_HIGH") >= 0:
+				code = code.replace("// CS_DEFINES", "#define CS_HIGH\n// CS_DEFINES")
+			var sh := Shader.new()
+			sh.code = code
+			sm.shader = sh
+			extra.append([String(c[0]) + "_prev", sm])
+		_cfgs += extra
+		print("CQCOST prev shader %s (%d configs), current %d chars" % [prev, extra.size(), cur.length()])
 	var flat := StandardMaterial3D.new()
 	flat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	_cfgs.append(["flat", flat])
@@ -96,7 +153,7 @@ func _initialize() -> void:
 	q.size = Vector2(1.2, 2.1)
 	_mi.mesh = q
 	root.add_child(_mi)
-	root.get_viewport().msaa_3d = Viewport.MSAA_2X
+	root.msaa_3d = Viewport.MSAA_2X     # every tier runs MSAA (alpha to coverage needs it); root is the window's viewport
 	_apply()
 
 
@@ -133,8 +190,8 @@ func _process(_d: float) -> bool:
 			# the fragment shader's, the ALU proxy
 			var fl: float = float(med.get("flat", 0.0))
 			for k: String in med:
-				var bk: String = k.replace("_new", "_b28").replace("_b28mask", "_b28")
-				var bm: String = k.replace("_new", "_b28mask")
+				var bk: String = k.replace("_prev", "").replace("_newmid", "_b28").replace("_newhard", "_b28").replace("_b28soft", "_b28").replace("_new", "_b28").replace("_b28mask", "_b28")
+				var bm: String = k.replace("_prev", "").replace("_newmid", "_b28mask").replace("_new", "_b28mask")
 				print("CQCOST %s ms_per_frame=%.2f ratio_to_b28=%.3f shader_ratio=%.3f shader_ratio_vs_b28mask=%.3f" % [k, med[k],
 					med[k] / maxf(med.get(bk, med[k]), 1e-6), (med[k] - fl) / maxf(float(med.get(bk, med[k])) - fl, 1e-6),
 					(med[k] - fl) / maxf(float(med.get(bm, med.get(bk, med[k]))) - fl, 1e-6)])
