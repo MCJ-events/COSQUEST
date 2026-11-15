@@ -109,6 +109,30 @@ func _initialize() -> void:
 					ab.append(["hair_mid_b28soft", sm])
 				sm.shader = sh
 		_cfgs += ab
+		# build 28's shading and hard cut on charshade's own strand atlas: the same texels and the same coverage, so
+		# "hair_*_new / hair_*_b28atlas" is the per-pixel ALU change alone (the atlas also changes how many texels pass
+		# the cut, which hair_*_new / hair_*_b28 folds in)
+		var at: Array = []
+		for c: Array in _cfgs:
+			var nm: String = String(c[0])
+			if nm == "hair_mid_new" or nm == "hair_high_new":
+				var bb: ShaderMaterial = _mat(b0["hair"] if nm == "hair_high_new" else b1["hair"], off_h if nm == "hair_high_new" else off_m, key, true)
+				bb.set_shader_parameter("albedo_tex", (c[1] as ShaderMaterial).get_shader_parameter("albedo_tex"))
+				at.append([nm.replace("_new", "_b28atlas"), bb])
+				# the strand atlas decompressed to RGBA8 with mipmaps, as build 28's own GLB hair texture is at runtime
+				# (char_loader.gd add_mipmaps): llvmpipe decodes a VRAM-compressed texel in software on every fetch, which
+				# a phone GPU does in the texture unit, so "_newraw / _b28" is the change at build 28's texture format
+				var ct: Texture2D = (c[1] as ShaderMaterial).get_shader_parameter("albedo_tex")
+				if ct != null:
+					var img: Image = ct.get_image()
+					if img.is_compressed():
+						img.decompress()
+					if not img.has_mipmaps():
+						img.generate_mipmaps()
+					var nr: ShaderMaterial = (c[1] as ShaderMaterial).duplicate()
+					nr.set_shader_parameter("albedo_tex", ImageTexture.create_from_image(img))
+					at.append([nm + "raw", nr])
+		_cfgs += at
 	var prev: String = _arg("prev", "")
 	if prev != "" and FileAccess.file_exists(prev):
 		var pc: String = FileAccess.get_file_as_string(prev)
@@ -190,7 +214,13 @@ func _process(_d: float) -> bool:
 			# the fragment shader's, the ALU proxy
 			var fl: float = float(med.get("flat", 0.0))
 			for k: String in med:
-				var bk: String = k.replace("_prev", "").replace("_newmid", "_b28").replace("_newhard", "_b28").replace("_b28soft", "_b28").replace("_new", "_b28").replace("_b28mask", "_b28")
+				if k.ends_with("_new") and med.has(k.replace("_new", "_b28atlas")):
+					var ba: float = float(med[k.replace("_new", "_b28atlas")])
+					print("CQCOST %s alu_ratio_same_atlas=%.3f" % [k, (med[k] - fl) / maxf(ba - fl, 1e-6)])
+			if k.ends_with("_newraw") and med.has(k.replace("_newraw", "_b28")):
+				var b2: float = float(med[k.replace("_newraw", "_b28")])
+				print("CQCOST %s shader_ratio_b28_format=%.3f" % [k, (med[k] - fl) / maxf(b2 - fl, 1e-6)])
+				var bk: String = k.replace("_prev", "").replace("_b28atlas", "_b28").replace("_newmid", "_b28").replace("_newhard", "_b28").replace("_b28soft", "_b28").replace("_new", "_b28").replace("_b28mask", "_b28")
 				var bm: String = k.replace("_prev", "").replace("_newmid", "_b28mask").replace("_new", "_b28mask")
 				print("CQCOST %s ms_per_frame=%.2f ratio_to_b28=%.3f shader_ratio=%.3f shader_ratio_vs_b28mask=%.3f" % [k, med[k],
 					med[k] / maxf(med.get(bk, med[k]), 1e-6), (med[k] - fl) / maxf(float(med.get(bk, med[k])) - fl, 1e-6),

@@ -839,8 +839,15 @@ func _charshade_parts(sm: ShaderMaterial, b: BaseMaterial3D, kind: String, cut: 
 			sm.set_shader_parameter("skin_amount", float(look.get("cs_skin_amount", SKIN_GUESS)))
 			# a hero whose painted armour the classes took for cloth keeps the lift's metal there (matid.py ORM_TRUST)
 			sm.set_shader_parameter("cs_orm_trust", float(info.get("orm_trust", 0.0)))
+			# per-hero overrides (matid.py HERO_SHADE): Imani's cape and suit keep build 28's shading (the blind judge
+			# preferred build 28's bronze cape to the mask's cloth, and the suit's sheen read as plastic)
+			var rm: Variant = info.get("rough_metal")
+			if rm is Array and (rm as Array).size() == 2:
+				sm.set_shader_parameter("cs_rough_metal", Vector2(float(rm[0]), float(rm[1])))
+			if info.has("sheen"):
+				sm.set_shader_parameter("cs_sheen", float(info["sheen"]))
 			var kn: Variant = info.get("lum_p50_p75_p95", {})
-			if kn is Dictionary and bool(look.get("cs_knee", true)):
+			if kn is Dictionary and bool(look.get("cs_knee", true)) and bool(info.get("knee", true)):
 				var kl: Variant = (kn as Dictionary).get("leather")
 				var kc: Variant = (kn as Dictionary).get("cloth")
 				sm.set_shader_parameter("cs_knee", Vector2(float(kl[1]) if kl is Array else 0.0, float(kc[1]) if kc is Array else 0.0))

@@ -49,8 +49,12 @@ HAIR_STYLE = {"icons_imani": "strands", "celestials_lyra": "strands", "blockbust
               "controllers_tavo": "none", "everborn_oren": ""}
 # heroes whose painted armour the texel classes took for cloth (Tavo's breastplate and helmet: the class debug view shows
 # them green, with only the painted highlight as metal): the shader keeps the lift's own metal flag on their cloth and
-# leather texels (cs_orm_trust). Not Imani: there the lift's flag is the cape's "smeared bronze".
-ORM_TRUST = {"controllers_tavo": 1.0}
+# leather texels (cs_orm_trust). Imani too (15 Nov, after the blind judge): with her lift's metal flag dropped the cape went
+# flat pale cream with black streaks, and build 28's bronze-gold cape won 16 of 16 Imani pairs.
+ORM_TRUST = {"controllers_tavo": 1.0, "icons_imani": 1.0}
+# per-hero shading overrides written into the hero's json (fighter.gd _charshade_parts): Imani's cape keeps the lift's own
+# roughness (rough_metal 0..1), her suit no cloth sheen and no painted-light knee (the judge: "plastic over-saturated sheen")
+HERO_SHADE = {"icons_imani": {"rough_metal": [0.0, 1.0], "sheen": 0.0, "knee": False}}
 
 
 # ---------------------------------------------------------------- glb
@@ -322,7 +326,7 @@ def cmd_build(a):
             "share_of_body_texels": {c: round(float(w[..., i][cov_s].mean()), 4) for i, c in enumerate(["skin", "metal", "leather", "cloth"])},
             "uv_per_m": round(uv_density(j, b, mat), 4), "hair_srgb": hair_colour(j, b), "iris": iris_info(j, b),
             "lum_p50_p75_p95": knee, "hair_style": HAIR_STYLE.get(a.key, ""),
-            "orm_trust": ORM_TRUST.get(a.key, 0.0)}
+            "orm_trust": ORM_TRUST.get(a.key, 0.0), **HERO_SHADE.get(a.key, {})}
     (out / f"{a.key}.json").write_text(json.dumps(info, indent=1) + "\n")
     print("MATID_BUILD", json.dumps(info))
 

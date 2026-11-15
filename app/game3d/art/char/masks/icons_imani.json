@@ -50,5 +50,11 @@
   "lod0": 2048,
   "lod1": 1024
  },
- "orm_trust": 0.0
+ "orm_trust": 1.0,
+ "rough_metal": [
+  0.0,
+  1.0
+ ],
+ "sheen": 0.0,
+ "knee": false
 }
