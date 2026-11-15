@@ -26,6 +26,17 @@ PAINT = [
     ("utility_box_02", [688, 648, 750, 700], [0, 64], "WARNING HIGH VOLTAGE sticker (text)"),
     ("utility_box_02", [412, 690, 488, 767], [90, 0], "DANGER KEEP OUT sticker (text)"),
     ("utility_box_02", [310, 950, 375, 1005], [-84, 0], "WARNING HIGH VOLTAGE sticker (text)"),
+    # trashbag: printed food packaging seen through the bag film. No clean plastic of the same shape lies beside
+    # each pack, so these boxes are blurred out (offset None: albedo only) and keep only their colour blobs.
+    ("trashbag", [100, 222, 185, 278], None, "green crisp-packet lettering (text)"),
+    ("trashbag", [175, 495, 300, 562], None, "ELIXER drinks-can wordmark (text)"),
+    ("trashbag", [395, 388, 445, 428], None, "white price / barcode label (text)"),
+    ("trashbag", [735, 225, 830, 310], None, "red packet lettering (text)"),
+    ("trashbag", [660, 605, 880, 800], None, "cereal box front: brand name and pack copy (text, logo)"),
+    ("trashbag", [740, 795, 905, 885], None, "Savoury Beef Stew instant-meal sleeve (text)"),
+    ("trashbag", [925, 780, 1005, 925], None, "green drinks-can lettering (text)"),
+    ("trashbag", [815, 880, 890, 985], None, "orange can label (text)"),
+    ("trashbag", [125, 810, 215, 870], None, "packet lettering in the lower bag (text)"),
 ]
 
 
@@ -41,6 +52,14 @@ def painted(kind, mat, m):
         if k != kind:
             continue
         x0, y0, x1, y1 = box
+        if off is None:
+            if m == "a":   # blur the print out of legibility, keep its colour under the film
+                pad = 12
+                blur = im.crop((x0 - pad, y0 - pad, x1 + pad, y1 + pad)).filter(ImageFilter.GaussianBlur(9))
+                mask = Image.new("L", blur.size, 0)
+                ImageDraw.Draw(mask).rectangle((pad // 2, pad // 2, blur.size[0] - pad // 2, blur.size[1] - pad // 2), fill=255)
+                im.paste(blur, (x0 - pad, y0 - pad), mask.filter(ImageFilter.GaussianBlur(3)))
+            continue
         patch = im.crop((x0 + off[0], y0 + off[1], x1 + off[0], y1 + off[1]))
         # feathered edge so the clone has no seam
         mask = Image.new("L", patch.size, 0)
