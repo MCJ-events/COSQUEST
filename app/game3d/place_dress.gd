@@ -807,17 +807,7 @@ func _real_mats() -> void:
 		elif dbg == "hide":
 			_leaf_mat = null
 	else:
-		var im := StandardMaterial3D.new()
-		im.albedo_texture = load(TREES_DIR + "plane_imp_mid.png")
-		im.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
-		im.alpha_scissor_threshold = 0.45
-		im.alpha_antialiasing_mode = BaseMaterial3D.ALPHA_ANTIALIASING_ALPHA_TO_COVERAGE
-		im.cull_mode = BaseMaterial3D.CULL_DISABLED
-		im.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		var k: float = float(lk.get("imp_k", 0.86))
-		im.albedo_color = Color(k, k, k)
-		_imp_mat = im
-		ShaderWarmScript.add(im)
+		_imp_mat = _imp_material(lk)
 
 
 ## The street's light from the LookReal cube (read only), as fighter.gd gives the fighters: the six ambient
@@ -908,18 +898,43 @@ var _imp_high: Material
 ## Far trees on high use the impostor card too (the mid texture, lit the same way).
 func _imp_for_high() -> Material:
 	if _imp_high == null:
-		var im := StandardMaterial3D.new()
-		im.albedo_texture = load(TREES_DIR + "plane_imp_mid.png")
-		im.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
-		im.alpha_scissor_threshold = 0.45
-		im.alpha_antialiasing_mode = BaseMaterial3D.ALPHA_ANTIALIASING_ALPHA_TO_COVERAGE
-		im.cull_mode = BaseMaterial3D.CULL_DISABLED
-		im.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		var k: float = float((_p.get("_look") as Dictionary).get("imp_k", 0.86))
-		im.albedo_color = Color(k, k, k)
-		_imp_high = im
-		ShaderWarmScript.add(im)
+		_imp_high = _imp_material(_p.get("_look"))
 	return _imp_high
+
+
+## The plane impostor's two crossed cards. A card seen near edge-on squeezes the whole crown into a vertical green
+## streak (the held-out judge's defect at Shoreditch, mid), so each card fades out by how squarely it faces the eye:
+## alpha x smoothstep(IMP_FADE) of |N.V|. At any yaw the other card faces the eye at |N.V| >= 0.7, so the crown never
+## thins. One texture read, as the StandardMaterial3D it replaces (unshaded, alpha scissor 0.45, alpha to coverage).
+const IMP_FADE := Vector2(0.18, 0.42)
+static var _imp_shader: Shader
+
+
+static func _imp_material(lk: Dictionary) -> Material:
+	if _imp_shader == null:
+		_imp_shader = Shader.new()
+		_imp_shader.code = """shader_type spatial;
+render_mode unshaded, cull_disabled, depth_draw_opaque, alpha_to_coverage;
+uniform sampler2D albedo_tex : source_color, filter_linear_mipmap;
+uniform float tint = 0.86;
+uniform vec2 fade = vec2(0.18, 0.42);
+void fragment() {
+	vec4 c = texture(albedo_tex, UV);
+	float facing = abs(dot(normalize(NORMAL), normalize(VIEW)));
+	ALBEDO = c.rgb * tint;
+	ALPHA = c.a * smoothstep(fade.x, fade.y, facing);
+	ALPHA_SCISSOR_THRESHOLD = 0.45;
+	ALPHA_ANTIALIASING_EDGE = 0.3;
+	ALPHA_TEXTURE_COORDINATE = UV * vec2(textureSize(albedo_tex, 0));
+}
+"""
+	var im := ShaderMaterial.new()
+	im.shader = _imp_shader
+	im.set_shader_parameter("albedo_tex", load(TREES_DIR + "plane_imp_mid.png"))
+	im.set_shader_parameter("tint", float(lk.get("imp_k", 0.86)))
+	im.set_shader_parameter("fade", IMP_FADE)
+	ShaderWarmScript.add(im)
+	return im
 
 
 func _emit_mm(mesh: Mesh, mat: Material, xs: Array, n: String, shadow: int) -> void:

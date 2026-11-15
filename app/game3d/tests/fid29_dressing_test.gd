@@ -137,6 +137,8 @@ func _place(pname: String, ground: Dictionary, at: Vector2, yaw: float, tier: St
 	var inside: Array = []
 	var far_cast: int = 0
 	var trees: int = 0
+	var imps: int = 0
+	var imp_hard: int = 0
 	for c: Node in p.get_children():
 		if not c is MultiMeshInstance3D:
 			continue
@@ -152,6 +154,12 @@ func _place(pname: String, ground: Dictionary, at: Vector2, yaw: float, tier: St
 			lod0 += mm.instance_count
 		if nm.begins_with("real_plane"):
 			trees += mm.instance_count
+		if nm.begins_with("real_plane_imp"):
+			# the impostor's cards fade out edge-on (place_dress._imp_material): no crown squeezed into a streak
+			imps += 1
+			var im: Material = mmi.material_override
+			if not (im is ShaderMaterial and (im as ShaderMaterial).get_shader_parameter("fade") is Vector2):
+				imp_hard += 1
 		var shadow: bool = mmi.cast_shadow != GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		for q: Vector2 in (mmi.get_meta("xz", PackedVector2Array()) as PackedVector2Array):
 			if clear.has_point(q):
@@ -170,6 +178,9 @@ func _place(pname: String, ground: Dictionary, at: Vector2, yaw: float, tier: St
 		_check("clear_ground_free_" + tag, inside.is_empty(), str(inside.slice(0, 6)))
 		_check("lod0_high_only_" + tag, (lod0 > 0) if tier == "high" else (lod0 == 0), "lod0 %d" % lod0)
 		_check("casters_within_12m_" + tag, far_cast == 0, str(far_cast))
+		if trees > 0:
+			# mid draws every plane as the impostor; high only the far ones (a place with no planes, e.g. Times Square, skips)
+			_check("impostor_fades_edge_on_" + tag, imp_hard == 0 and (imps > 0 or tier == "high"), "%d impostor cells, %d without the fade" % [imps, imp_hard])
 		if pname == "trafalgar":
 			# the square's fountain pools get lamp standards round the rim (place_dress._real_pools)
 			var pool_lamps: int = int((p.get("info") as Dictionary).get("pool_lamps", 0))
