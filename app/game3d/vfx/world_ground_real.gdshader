@@ -16,7 +16,7 @@
 //    cosine-weighted, evaluated only within 2.5 m of a fighter.
 // Texture reads per pixel: within 25 m albedo, normal, ORM, wear, bake, decal (+ detail on high); a damp pixel reads the
 // cube instead of the detail (high) or instead of the decal (mid): 6 on mid, 7 on high; beyond 25 m albedo, ORM,
-// wear, bake: 4.
+// wear, bake: 4 (the worn road paint reads its wear mask only within 25 m, so it stays at 4 beyond too).
 shader_type spatial;
 render_mode cull_back, ambient_light_disabled;
 // @CUTOUT (street_real.gd makes a variant with "#define CUTOUT" here: the medallion's disc, the worn road paint)
@@ -76,6 +76,7 @@ uniform vec4 cap_a[24];               // capsule end a (world xyz), w radius
 uniform vec4 cap_b[24];               // capsule end b (world xyz)
 uniform vec4 cap_f[4];                // fighter i: ground centre xyz, w 1 = present
 uniform float cap_k = 0.0;            // 0 = capsule occlusion off (look fid_street_cap false)
+uniform float cap_floor = 0.45;       // the capsule shade never takes more than 55 % of the sky light (at most ~30 % darker on screen)
 
 varying vec3 wpos;
 varying float vshadow;
@@ -163,7 +164,14 @@ void fragment() {
 	vec3 a = alb.rgb * tint;
 	a *= mix(vec3(1.0), to_lin(COLOR.rgb), use_vcol);
 #ifdef CUTOUT
-	float cover = alb.a * (use_vcol > 0.5 ? texture(mask_tex, wpos.xz / mask_tile).r : 1.0);
+	// the paint's wear mask only within 25 m: beyond, the far ground keeps its 4 reads (the mask's far mips average
+	// 0.95, so the cut-out barely changes there)
+	float pm = 1.0;
+	if (use_vcol > 0.5 && is_near) {
+		vec2 mp = wpos.xz / mask_tile;
+		pm = textureGrad(mask_tex, mp, dFdx(mp), dFdy(mp)).r;
+	}
+	float cover = alb.a * pm;
 	ALPHA = cover;
 	ALPHA_SCISSOR_THRESHOLD = 0.5;
 #endif
@@ -282,7 +290,7 @@ void fragment() {
 	vec3 vw = (INV_VIEW_MATRIX * vec4(VIEW, 0.0)).xyz;
 	float ao = occ;
 	if (cap_k > 0.0) {
-		ao *= caps_occ(wpos, nw);
+		ao *= max(caps_occ(wpos, nw), cap_floor);
 	}
 	float nov = clamp(dot(n, VIEW), 1e-4, 1.0);
 	vec3 amb = amb_at(nw) * amb_amount;

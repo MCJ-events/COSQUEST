@@ -1182,6 +1182,16 @@ const REVEAL_REACH: float = 30.0
 const REVEAL_MAX_TRIS: int = 19000
 const REVEAL_D: float = 0.11
 const REVEAL_RING: float = 0.08
+## The reveal faces' albedo shade (judge, 15 Nov: the frames and sills read as flat bright strips): the cheeks and
+## soffit in the opening's shade, the surround's face and the sill just under the wall, the returns between.
+const REVEAL_SHADE_IN: float = 0.35
+const REVEAL_SHADE_FACE: float = 0.82
+const REVEAL_SHADE_SIDE: float = 0.5
+const REVEAL_SHADE_SILL: float = 0.8
+## The sheet patch each reveal face maps (UV units: 12 cm x 30 cm of wall beside the window; 24 cm x 4 cm of sill), so
+## the faces carry the stone's grain instead of one flat texel.
+const WALL_SPAN := Vector2(0.015, 0.03)
+const SILL_SPAN := Vector2(0.03, 0.004)
 const SHEET_OPENINGS: Dictionary = {
 	"trim_uk_brick": [[0.5, 1.45, 1.5, 3.4], [2.5, 1.45, 3.5, 3.4], [4.85, 1.45, 7.15, 3.4]],
 	"trim_uk_brick_red": [[0.5, 1.45, 1.5, 3.4], [2.5, 1.45, 3.5, 3.4], [4.85, 1.45, 7.15, 3.4]],
@@ -1212,43 +1222,53 @@ func _reveals(wv: PackedVector3Array, wn: PackedVector3Array, wt: PackedFloat32A
 			var cx: float = (float(o[0]) + float(o[2])) * 0.5
 			var uv_sill := Vector2(cx / SHEET_W, (float(o[3]) + 0.045) / SHEET_H)        # the stone sill strip
 			var uv_brick := Vector2((float(o[0]) - 0.2) / SHEET_W, (float(o[1]) + 0.6) / SHEET_H)   # wall beside it
+			if sheet == "trim_uk_stone":
+				uv_sill = uv_brick      # a rendered stone front: the sill in the wall's own (tinted) stone, not bare white
 			var p := func(s: float, y: float, out: float) -> Vector3:
 				return base + along * s + Vector3(0.0, y, 0.0) + nrm * out
 			var D: float = REVEAL_D
+			# the faces' shade in the vertex alpha (world_facade_real multiplies the albedo; walls keep 1.0)
+			var t_in := Color(tint.r, tint.g, tint.b, REVEAL_SHADE_IN)
+			var t_face := Color(tint.r, tint.g, tint.b, REVEAL_SHADE_FACE)
+			var t_side := Color(tint.r, tint.g, tint.b, REVEAL_SHADE_SIDE)
+			var t_sill := Color(tint.r, tint.g, tint.b, REVEAL_SHADE_SILL)
+			var t_sill_f := Color(tint.r, tint.g, tint.b, REVEAL_SHADE_SILL * 0.94)
+			var t_sill_e := Color(tint.r, tint.g, tint.b, REVEAL_SHADE_SIDE)
+			var t_under := Color(tint.r, tint.g, tint.b, REVEAL_SHADE_IN * 0.85)
 			var R: float = REVEAL_RING
 			# cheeks (facing into the opening), the head's soffit
-			_rq(wv, wn, wt, wc, wu, wu2, p.call(s0, bot, 0.0), p.call(s0, bot, D), p.call(s0, top, D), p.call(s0, top, 0.0), along, -nrm, tint, uv_brick, uv2)
-			_rq(wv, wn, wt, wc, wu, wu2, p.call(s1, bot, D), p.call(s1, bot, 0.0), p.call(s1, top, 0.0), p.call(s1, top, D), -along, -nrm, tint, uv_brick, uv2)
-			_rq(wv, wn, wt, wc, wu, wu2, p.call(s0, top, 0.0), p.call(s0, top, D), p.call(s1, top, D), p.call(s1, top, 0.0), Vector3.DOWN, along, tint, uv_brick, uv2)
+			_rq(wv, wn, wt, wc, wu, wu2, p.call(s0, bot, 0.0), p.call(s0, bot, D), p.call(s0, top, D), p.call(s0, top, 0.0), along, -nrm, t_in, uv_brick, uv2, WALL_SPAN)
+			_rq(wv, wn, wt, wc, wu, wu2, p.call(s1, bot, D), p.call(s1, bot, 0.0), p.call(s1, top, 0.0), p.call(s1, top, D), -along, -nrm, t_in, uv_brick, uv2, WALL_SPAN)
+			_rq(wv, wn, wt, wc, wu, wu2, p.call(s0, top, 0.0), p.call(s0, top, D), p.call(s1, top, D), p.call(s1, top, 0.0), Vector3.DOWN, along, t_in, uv_brick, uv2, WALL_SPAN)
 			# the surround's face, D proud of the wall, R wide (left, right, head)
-			_rq(wv, wn, wt, wc, wu, wu2, p.call(s0 - R, bot, D), p.call(s0, bot, D), p.call(s0, top + R, D), p.call(s0 - R, top + R, D), nrm, along, tint, uv_brick, uv2)
-			_rq(wv, wn, wt, wc, wu, wu2, p.call(s1, bot, D), p.call(s1 + R, bot, D), p.call(s1 + R, top + R, D), p.call(s1, top + R, D), nrm, along, tint, uv_brick, uv2)
-			_rq(wv, wn, wt, wc, wu, wu2, p.call(s0, top, D), p.call(s1, top, D), p.call(s1, top + R, D), p.call(s0, top + R, D), nrm, along, tint, uv_brick, uv2)
+			_rq(wv, wn, wt, wc, wu, wu2, p.call(s0 - R, bot, D), p.call(s0, bot, D), p.call(s0, top + R, D), p.call(s0 - R, top + R, D), nrm, along, t_face, uv_brick, uv2, WALL_SPAN)
+			_rq(wv, wn, wt, wc, wu, wu2, p.call(s1, bot, D), p.call(s1 + R, bot, D), p.call(s1 + R, top + R, D), p.call(s1, top + R, D), nrm, along, t_face, uv_brick, uv2, WALL_SPAN)
+			_rq(wv, wn, wt, wc, wu, wu2, p.call(s0, top, D), p.call(s1, top, D), p.call(s1, top + R, D), p.call(s0, top + R, D), nrm, along, t_face, uv_brick, uv2, WALL_SPAN)
 			# the surround's outer sides and top (back to the wall)
-			_rq(wv, wn, wt, wc, wu, wu2, p.call(s0 - R, bot, 0.0), p.call(s0 - R, bot, D), p.call(s0 - R, top + R, D), p.call(s0 - R, top + R, 0.0), -along, nrm, tint, uv_brick, uv2)
-			_rq(wv, wn, wt, wc, wu, wu2, p.call(s1 + R, bot, D), p.call(s1 + R, bot, 0.0), p.call(s1 + R, top + R, 0.0), p.call(s1 + R, top + R, D), along, nrm, tint, uv_brick, uv2)
-			_rq(wv, wn, wt, wc, wu, wu2, p.call(s0 - R, top + R, D), p.call(s1 + R, top + R, D), p.call(s1 + R, top + R, 0.0), p.call(s0 - R, top + R, 0.0), Vector3.UP, along, tint, uv_brick, uv2)
+			_rq(wv, wn, wt, wc, wu, wu2, p.call(s0 - R, bot, 0.0), p.call(s0 - R, bot, D), p.call(s0 - R, top + R, D), p.call(s0 - R, top + R, 0.0), -along, nrm, t_side, uv_brick, uv2, WALL_SPAN)
+			_rq(wv, wn, wt, wc, wu, wu2, p.call(s1 + R, bot, D), p.call(s1 + R, bot, 0.0), p.call(s1 + R, top + R, 0.0), p.call(s1 + R, top + R, D), along, nrm, t_side, uv_brick, uv2, WALL_SPAN)
+			_rq(wv, wn, wt, wc, wu, wu2, p.call(s0 - R, top + R, D), p.call(s1 + R, top + R, D), p.call(s1 + R, top + R, 0.0), p.call(s0 - R, top + R, 0.0), Vector3.UP, along, t_side, uv_brick, uv2, WALL_SPAN)
 			# the sill: a stone slab across the opening's foot, standing out D + 0.06, 0.07 deep
 			var sy0: float = bot - 0.07
 			var e0: float = s0 - R - 0.05
 			var e1: float = s1 + R + 0.05
 			var so: float = D + 0.06
-			_rq(wv, wn, wt, wc, wu, wu2, p.call(e0, bot, 0.0), p.call(e1, bot, 0.0), p.call(e1, bot, so), p.call(e0, bot, so), Vector3.UP, along, tint, uv_sill, uv2)
-			_rq(wv, wn, wt, wc, wu, wu2, p.call(e0, sy0, so), p.call(e1, sy0, so), p.call(e1, bot, so), p.call(e0, bot, so), nrm, along, tint, uv_sill, uv2)
-			_rq(wv, wn, wt, wc, wu, wu2, p.call(e0, sy0, 0.0), p.call(e0, sy0, so), p.call(e0, bot, so), p.call(e0, bot, 0.0), -along, nrm, tint, uv_sill, uv2)
-			_rq(wv, wn, wt, wc, wu, wu2, p.call(e1, sy0, so), p.call(e1, sy0, 0.0), p.call(e1, bot, 0.0), p.call(e1, bot, so), along, nrm, tint, uv_sill, uv2)
-			_rq(wv, wn, wt, wc, wu, wu2, p.call(e0, sy0, so), p.call(e0, sy0, 0.0), p.call(e1, sy0, 0.0), p.call(e1, sy0, so), Vector3.DOWN, along, tint, uv_sill, uv2)
+			_rq(wv, wn, wt, wc, wu, wu2, p.call(e0, bot, 0.0), p.call(e1, bot, 0.0), p.call(e1, bot, so), p.call(e0, bot, so), Vector3.UP, along, t_sill, uv_sill, uv2, SILL_SPAN)
+			_rq(wv, wn, wt, wc, wu, wu2, p.call(e0, sy0, so), p.call(e1, sy0, so), p.call(e1, bot, so), p.call(e0, bot, so), nrm, along, t_sill_f, uv_sill, uv2, SILL_SPAN)
+			_rq(wv, wn, wt, wc, wu, wu2, p.call(e0, sy0, 0.0), p.call(e0, sy0, so), p.call(e0, bot, so), p.call(e0, bot, 0.0), -along, nrm, t_sill_e, uv_sill, uv2, SILL_SPAN)
+			_rq(wv, wn, wt, wc, wu, wu2, p.call(e1, sy0, so), p.call(e1, sy0, 0.0), p.call(e1, bot, 0.0), p.call(e1, bot, so), along, nrm, t_sill_e, uv_sill, uv2, SILL_SPAN)
+			_rq(wv, wn, wt, wc, wu, wu2, p.call(e0, sy0, so), p.call(e0, sy0, 0.0), p.call(e1, sy0, 0.0), p.call(e1, sy0, so), Vector3.DOWN, along, t_under, uv_sill, uv2, SILL_SPAN)
 			_reveal_tris += 28      # 14 quads
 
 
 ## One quad (a, b, c, d counter-clockwise seen from its front) into the wall arrays, facing `nrm`, tangent `tan`,
-## every corner at the same sheet texel `uv` (a flat material patch).
+## its corners over the sheet patch `uv` .. `uv + span` (the default: one flat texel patch).
 static func _rq(wv: PackedVector3Array, wn: PackedVector3Array, wt: PackedFloat32Array, wc: PackedColorArray,
 		wu: PackedVector2Array, wu2: PackedVector2Array, a: Vector3, b: Vector3, c: Vector3, d: Vector3,
-		nrm: Vector3, tan: Vector3, tint: Color, uv: Vector2, uv2: Vector2) -> void:
+		nrm: Vector3, tan: Vector3, tint: Color, uv: Vector2, uv2: Vector2, span: Vector2 = Vector2(0.004, 0.002)) -> void:
 	var cr: Vector3 = (b - a).cross(c - a)
 	var order: Array = [a, c, b, a, d, c] if cr.dot(nrm) > 0.0 else [a, b, c, a, c, d]
-	var uvs: Array = [uv, uv + Vector2(0.004, 0.0), uv + Vector2(0.004, 0.002), uv + Vector2(0.0, 0.002)]
+	var uvs: Array = [uv, uv + Vector2(span.x, 0.0), uv + span, uv + Vector2(0.0, span.y)]
 	var corner: Dictionary = {a: 0, b: 1, c: 2, d: 3}
 	for v: Vector3 in order:
 		wv.append(v)

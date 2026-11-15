@@ -6,7 +6,12 @@
 //  - lit like the real ground: the key light through the engine's GGX, the street's six ambient colours from
 //    LookReal.env_for(time) for the ambient (ALU), glass reflecting the sky by Karis' environment BRDF;
 //  - rain streaks under the sills (ambientCG Leaking012A) running down the wall below each window;
-//  - on high, a masonry micro-detail normal at 256 px/m on walls within 15 m of the camera.
+//  - on high, a masonry micro-detail normal at 256 px/m on walls within 15 m of the camera;
+//  - on high, the window reveals and sills (place.gd _reveals) carry their own shade in the vertex alpha (the walls
+//    keep 1.0): the reveal's cheeks and soffit sit in the opening's shade, the surround and sill a little under the
+//    wall, so they read as depth, not as bright strips stuck on (the facade casts no shadows);
+//  - glass: the street's sky reflected at glass_refl + 0.32 Fresnel (as build 28's glass), at least the physical
+//    Fresnel; the photo glass is dark (0.05), so the 4 % of a physical pane alone read as black holes.
 // Texture reads: albedo, ORM, normal, streaks (4); +1 detail on high within 15 m.
 shader_type spatial;
 render_mode cull_back, shadows_disabled, ambient_light_disabled;
@@ -33,6 +38,7 @@ uniform float ao_height = 2.0;
 uniform float ao_min = 0.6;
 uniform vec3 amb_cube[6];
 uniform float amb_amount = 1.0;
+uniform float glass_refl = 0.22;       // the glass's sky reflection head-on (build 28's glass: 0.06 + albedo)
 
 varying float wy;
 
@@ -74,7 +80,7 @@ void fragment() {
 	vec4 orm = texture(orm_tex, UV);
 	float lshade = 0.93 + 0.14 * fract(UV2.x * 7.13);                // per building, brick lightness
 	vec3 wall = base * mix(vec3(lshade), to_lin(COLOR.rgb) / 0.604, tint_k);
-	vec3 a = mix(base, wall, orm.b);
+	vec3 a = mix(base, wall, orm.b) * COLOR.a;   // reveal and sill faces: their shade (walls 1.0)
 	float glass = smoothstep(0.35, 0.75, orm.a);
 	// rain streaks: under each window's sill, down through the string course into the bay below
 	float xm = fract(UV.x) * 8.0;
@@ -113,6 +119,10 @@ void fragment() {
 	vec2 ab = env_brdf(ROUGHNESS, nov);
 	ab.y *= mix(1.0 - 0.75 * ROUGHNESS, 1.0, glass);
 	vec3 spec = refl * (0.04 * ab.x + ab.y) * mix(ao, 1.0, glass);
+	float fres = pow(1.0 - nov, 3.0);
+	// panes mirror the upper sky (the blue, as build 28's glass), not the warm horizon
+	vec3 gsky = mix(refl, sky_upper * 0.9, 0.6);
+	spec = mix(spec, max(spec, gsky * (glass_refl + 0.32 * fres)), glass);
 	EMISSION = a * amb_at(nw) * amb_amount * ao + spec * (1.0 - lit * min(windows_k_mul, 1.0) * glass)
 		+ glass * window_col * lit * windows_k_mul;
 }
