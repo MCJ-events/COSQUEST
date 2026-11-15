@@ -9,7 +9,8 @@ extends SceneTree
 ##    cards' charshade variant draws with alpha to coverage, the high body variant defines CS_HIGH, and the plain
 ##    variant is the file itself.
 ## 4. The materials a fighter builds: high = the lod0 mask and the CS_HIGH variant, mid = the lod1r mask and no new
-##    texture sampler; hair cards take the soft variant and the tier's atlas; off = no charshade uniform set. Every
+##    texture sampler; hair cards take build 28's hard cut and shading with the tier's atlas (the soft strand path is
+##    gated off, look "cs_hair_soft" brings it back); off = no charshade uniform set. Every
 ##    charshade material is registered with ShaderWarm.
 ## 5. Contracts: fighter.gd's public calls and the face fill are where they were.
 ## Prints "CQTEST PASS <name>" / "CQTEST FAIL <name> <why>", then "CQTEST done failures=N".
@@ -124,8 +125,15 @@ func _initialize() -> void:
 	_check("high_body_cs_high_variant", sh != null and sh.shader.code.contains("#define CS_HIGH\n") and sh.get_shader_parameter("cs_detail_tex") != null)
 	fh.set("surface_kinds", {"hair_cards": "hair"})
 	var hh: ShaderMaterial = fh.call("_real_material", _hair_mat())
-	_check("high_hair_soft_and_atlas", hh != null and hh.shader.code.contains("alpha_to_coverage")
+	# the strand path is gated off (over the hair budget, 15 Nov): build 28's hard cut and shading, the strand atlas only
+	_check("high_hair_b28_cut_and_atlas", hh != null and not hh.shader.code.contains("alpha_to_coverage")
+		and hh.shader.code.contains("ALPHA_SCISSOR_THRESHOLD = 0.35") and not bool(hh.get_shader_parameter("cs_on"))
 		and (hh.get_shader_parameter("albedo_tex") as Texture2D).resource_path.ends_with("blockbusters_kofi_hi.png"))
+	var fsoft: Node = _fighter("high", {"cs_hair_soft": true}, "blockbusters_kofi")
+	fsoft.set("surface_kinds", {"hair_cards": "hair"})
+	var hs: ShaderMaterial = fsoft.call("_real_material", _hair_mat())
+	_check("high_hair_soft_behind_look_key", hs != null and hs.shader.code.contains("alpha_to_coverage"))
+	fsoft.free()
 	_check("shader_warm_registered", ShaderWarm.registered().has(sh) and ShaderWarm.registered().has(hh))
 	fh.free()
 	# the high tier's ally keeps the lod1 file (fight.gd _tier_lod): its mask is the lod1r one, its hair the 512 atlas;

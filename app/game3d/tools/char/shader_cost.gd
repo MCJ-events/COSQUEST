@@ -217,9 +217,9 @@ func _process(_d: float) -> bool:
 				if k.ends_with("_new") and med.has(k.replace("_new", "_b28atlas")):
 					var ba: float = float(med[k.replace("_new", "_b28atlas")])
 					print("CQCOST %s alu_ratio_same_atlas=%.3f" % [k, (med[k] - fl) / maxf(ba - fl, 1e-6)])
-			if k.ends_with("_newraw") and med.has(k.replace("_newraw", "_b28")):
-				var b2: float = float(med[k.replace("_newraw", "_b28")])
-				print("CQCOST %s shader_ratio_b28_format=%.3f" % [k, (med[k] - fl) / maxf(b2 - fl, 1e-6)])
+				if k.ends_with("_newraw") and med.has(k.replace("_newraw", "_b28")):
+					var b2: float = float(med[k.replace("_newraw", "_b28")])
+					print("CQCOST %s shader_ratio_b28_format=%.3f" % [k, (med[k] - fl) / maxf(b2 - fl, 1e-6)])
 				var bk: String = k.replace("_prev", "").replace("_b28atlas", "_b28").replace("_newmid", "_b28").replace("_newhard", "_b28").replace("_b28soft", "_b28").replace("_new", "_b28").replace("_b28mask", "_b28")
 				var bm: String = k.replace("_prev", "").replace("_newmid", "_b28mask").replace("_new", "_b28mask")
 				print("CQCOST %s ms_per_frame=%.2f ratio_to_b28=%.3f shader_ratio=%.3f shader_ratio_vs_b28mask=%.3f" % [k, med[k],
