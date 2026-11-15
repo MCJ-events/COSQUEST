@@ -8,6 +8,9 @@ extends SceneTree
 ##   godot --headless --path app/game3d -s res://tools/props/bake_props.gd -- --glb=/abs/glb --tree=/abs/tree
 ## Prints BAKEPROPS lines (triangles per LOD, bounds) and checks every LOD against its cap (atlas_layout.json).
 
+const BarkNormals := preload("res://tools/props/bark_normals.gd")
+
+
 func _initialize() -> void:
 	var glb_dir: String = ""
 	var tree_dir: String = ""
@@ -48,6 +51,8 @@ func _initialize() -> void:
 				var one := ArrayMesh.new()
 				one.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, m.surface_get_arrays(si))
 				one.surface_set_name(0, m.surface_get_name(si))
+				if m.surface_get_name(si) == "bark":
+					one = BarkNormals.smooth_bark(one)   # the glTF round trip turns the ring normals
 				var nm: String = pair[0] if m.get_surface_count() == 1 else "%s_%s" % [pair[0], m.surface_get_name(si)]
 				ResourceSaver.save(one, "res://art/world/trees/%s.res" % nm, ResourceSaver.FLAG_COMPRESS)
 				print("BAKEPROPS %s tris=%d aabb=%s" % [nm, _tris(one), one.get_aabb()])
