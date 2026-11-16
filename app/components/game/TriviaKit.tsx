@@ -153,24 +153,24 @@ export function TriviaButton({
 }
 
 /** One segment per question; the played ones fill magenta, sliding in as each is played. */
-export function Segments({ marks }: { marks: Segment[] }) {
+export function Segments({ marks, onDark }: { marks: Segment[]; /** Over a picture: a light track. */ onDark?: boolean }) {
   return (
     <View style={styles.segments} importantForAccessibility="no-hide-descendants">
       {marks.map((m, i) => (
-        <SegmentBar key={i} mark={m} />
+        <SegmentBar key={i} mark={m} onDark={onDark} />
       ))}
     </View>
   );
 }
 
-function SegmentBar({ mark }: { mark: Segment }) {
+function SegmentBar({ mark, onDark }: { mark: Segment; onDark?: boolean }) {
   const fill = useSharedValue(mark === "done" ? 1 : 0);
   useEffect(() => {
     fill.set(withTiming(mark === "done" ? 1 : mark === "now" ? 0.35 : 0, { duration: 420 }));
   }, [mark, fill]);
   const style = useAnimatedStyle(() => ({ width: `${fill.get() * 100}%` }));
   return (
-    <View style={styles.segment}>
+    <View style={[styles.segment, onDark && { backgroundColor: "rgba(255,255,255,0.28)" }]}>
       <Animated.View style={[styles.segmentFill, style]} />
     </View>
   );

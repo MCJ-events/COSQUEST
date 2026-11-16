@@ -85,9 +85,10 @@ describe("Wale's measurements and the real data in his slots", () => {
     assert.equal(halfWidth(1200, 16), halfWidth(560, 16));
   });
   it("the plate names the realm by its faction name, never an old label", () => {
-    assert.equal(heroPlate({ realm: "marvel" }), "ICONS");
-    assert.equal(heroPlate({ realm: "movies" }), "BLOCKBUSTERS");
-    assert.equal(heroPlate({ realm: null }), "DAILY TRIVIA");
+    // A topic, never a faction (Mark, 14 Nov): an old server's realm on the tile is not shown.
+    assert.equal(heroPlate({ topic: "film", topic_name: "Film" }), "FILM");
+    assert.equal(heroPlate({ realm: "marvel" } as never), "DAILY TRIVIA");
+    assert.equal(heroPlate({}), "DAILY TRIVIA");
   });
   it("after an answer: next question, the board when only a hidden bonus is left, else the score", () => {
     assert.equal(afterAnswer({ points: [pt(0, { done: true }), pt(1)], finished: false }, 0), "next");

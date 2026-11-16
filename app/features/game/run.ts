@@ -8,7 +8,7 @@
 // Pure: no React Native imports (tested in __tests__/run.test.ts).
 import type { GameClient } from "./client.ts";
 import { distanceText } from "./geo.ts";
-import type { QuestPoint, RoamAnswer, RoamAttempt, RoamStanding, RoamVerdict } from "./wire.ts";
+import type { QuestPoint, RoamAnswer, RoamAttempt, RoamStanding, RoamVerdict, TriviaArt } from "./wire.ts";
 
 // ---------- the wire ----------
 
@@ -22,6 +22,11 @@ export type RunPoint = {
   kind?: string | null;
   tier?: string | null;
   realm?: string | null;
+  /** A trivia tile dealt by topic (flag `trivia_topics`): "film", "Film". Absent on the hidden bonus until found. */
+  topic?: string | null;
+  topic_name?: string | null;
+  /** The tile's picture, when the server puts it on the tile too: fetched before the tile opens. */
+  art?: TriviaArt | null;
   done: boolean;
   earned: number;
   hidden: boolean;
@@ -160,7 +165,11 @@ export type TriviaCard = {
   approx?: boolean | null;
 };
 
-export type TriviaShare = { share_id: string; url: string; image_url: string; text: string; card: TriviaCard; created?: boolean };
+/** `story_url`: the run's 1080 x 1920 story card (the best picture, the score, the topics), from a trivia-visual server. */
+export type TriviaShare = { share_id: string; url: string; image_url: string; text: string; card: TriviaCard; created?: boolean; story_url?: string | null };
+
+/** One answered question's 9:16 card: `image_url` with the answer lit, `teaser_url` without. */
+export type QuestionShare = { share_id: string; url: string; image_url: string; teaser_url?: string | null; text: string; created?: boolean };
 
 /** Today's (or that day's) global trivia board. Public; the key only marks your own row. */
 export async function triviaBoard(client: GameClient, day?: string | null, deviceKey?: string | null): Promise<RunBoard> {
@@ -173,6 +182,11 @@ export async function triviaBoard(client: GameClient, day?: string | null, devic
 /** A share link for a finished trivia run. Asked again, the same link. */
 export async function triviaShare(client: GameClient, runId: string): Promise<TriviaShare> {
   return client.request<TriviaShare>("POST", "v1/trivia/share", { body: { device_key: client.deviceKey(), run_id: runId }, signed: true });
+}
+
+/** The card for one answered question of a topic tile (`q`: which question, 0 to 4 in a quick-fire). Asked again, the same card. */
+export async function triviaShareQuestion(client: GameClient, runId: string, attemptId: string, q: number): Promise<QuestionShare> {
+  return client.request<QuestionShare>("POST", "v1/trivia/share/question", { body: { device_key: client.deviceKey(), run_id: runId, attempt_id: attemptId, q }, signed: true });
 }
 
 /**
@@ -376,9 +390,12 @@ export function stakeLine(s: { stake: number; won: boolean }): string {
 export function runReveal(kind: string, r: Pick<RunAnswerResult, "reveal">, picked: number | null, blitz: number[]): { correct: number[]; marks: boolean[] | null } | null {
   const marks = r.reveal.marks ?? [];
   if (kind === "sequence") return null;
-  if (kind === "blitz") return { correct: blitz.map((pick, i) => (i < marks.length && marks[i] ? pick : -1)), marks };
+  // A topic tile's answer names the right choices (trivia-visual): a miss can light the right card too.
+  const key = r.reveal.correct;
+  const told = (i: number) => (key && typeof key[i] === "number" && key[i] >= 0 ? key[i] : null);
+  if (kind === "blitz") return { correct: blitz.map((pick, i) => told(i) ?? (i < marks.length && marks[i] ? pick : -1)), marks };
   const right = marks[0] ?? false;
-  return { correct: [right ? (picked ?? -1) : -1], marks: r.reveal.marks ?? null };
+  return { correct: [told(0) ?? (right ? (picked ?? -1) : -1)], marks: r.reveal.marks ?? null };
 }
 
 export function sequenceLine(right: number, n: number): string {
