@@ -3,10 +3,40 @@
 Lane spec: `fidelity-29/specs/charshade.json`. Branch `fid29-charshade`, forked from `fid29-base` (afec3fd). Common
 gates: `COMMON.md`. Licences: `ASSETS-LICENCES-charshade.md`.
 
+## Shipped state (16 Nov, 5b5036f): hair and eyes only
+
+The second blind judge (68 pairs at 81f4076: new 21, old 29, tie 18) returned **keep-partial**: the hair shading and
+the eye catchlight won and never lost a pair, while the body path (material-ID masks, cloth sheen, high-tier detail
+normals and metal break-up, `orm_trust`, the knee) lost on Kofi, Lyra, Oren and Tavo. 5b5036f puts the whole body path
+behind look **`cs_body`, off on every tier**: bodies and fitted metal take no `cs_on`, so they draw as build 28 and no
+mask, detail or break-up texture loads. Hair cards (charshade shading on build 28's hard 0.35 cut, the per-hero strand
+atlases) and the hybrid head (eyes: catchlight, lid shade, iris parallax) stay on. `cs_hair_soft` stays off.
+Everything below describing masks, sheen and detail is the body path, now reachable only with `cs_body: true`.
+
+Re-checked at 5b5036f (the judge's conditions 1 to 3):
+
+- **Bodies match build 28.** `bodydiff.py` (pixels outside every fighter's head boxes, 50 matched game frames): body
+  MAD at most 0.14 /255 on every intro, 0.1 to 0.8 on victories, against 4 to 45 at 81f4076. The victory residue is
+  GPU particle sparkles and the glow at the feet; the 8 mid-fight frames (body MAD 2.3 to 3.8) differ in the hit
+  VFX (ground cracks, shockwave ripple), not on the bodies (heatmaps checked). Imani on low, where the lane does
+  nothing, reads 0.13 to 0.14: that is the renderer's own run-to-run noise.
+- **Looked at by eye** (b28 | new side by side): Zuri's coils dark in every shot, Imani's cape bronze with dark braid
+  strands, Kofi, Tavo, Lyra and Oren bodies identical to build 28. No new hair or eye artefacts; Zuri's hairline flecks
+  under the hard cut are still there.
+- **Tests and records** (mm1): 606 pass, 1 known `whirl_ends_facing_target` (build21 39/39 with `--fixed-fps 30`);
+  `fid29_charshade_test` 60/60 (new section 6: body path gated), `hero_cast_test` 74/74, `five_seeded_test` 26/26.
+  The 11 seeded records with the lane on and off: 11/11 SAME as build 28.
+- **Hair texture memory**: the whole delta is the strand atlases, 2.67 MiB per 1K x 2K atlas (player's hero on high),
+  0.67 MiB per 512 x 1024 atlas: mid +1.3 to +2.0 MB per fight, high +1.3 to +4.0 MB (budgets +3 and +10).
+- **Hair ALU**: charshade's hair shading adds +2.4 to +3.7 % on mid and +1.0 to +2.4 % on high over build 28's at the
+  same atlas, in both texture formats, +0 reads. The whole-hair ratio with the compressed atlas on llvmpipe (up to
+  1.60 on high) is the software block decoder: build 28's own shading on that atlas costs the same. Phone GPU: owed.
+
 ## What it does
 
-With look `fid_charshade` on (mid and high; `look.real`), `fighter.gd` builds every hero material from
-`vfx/char_real.gdshader` with `cs_on`. Off, or on low (`char_lit`), the fighter draws exactly as build 28.
+With look `fid_charshade` on (mid and high; `look.real`), `fighter.gd` builds hero materials from
+`vfx/char_real.gdshader` with `cs_on` (since 5b5036f only the hair cards and the head, unless `cs_body` is on). Off, or
+on low (`char_lit`), the fighter draws exactly as build 28.
 
 - **Material-ID masks** (`tools/char/matid.py`, `art/char/masks/<hero>_lod0.png` 1024 and `_lod1r.png` 512): smooth
   weights, R skin, G metal, B leather, A cloth sheen, synthetic = the remainder. They sit in the skin mask's sampler,
@@ -54,6 +84,16 @@ The first blind judge rejected the lane (new 9, old 17, tie 18). Its findings an
 
 ## Numbers
 
+At 5b5036f (shipped, hair and eyes only; 83 matched shots, `budgets.md` in the lane folder):
+
+| tier | texture memory | draws | primitives | body shader | hair shader |
+|---|---|---|---|---|---|
+| low | +0 (budget +0) | +0 | +0 | char_lit untouched | untouched |
+| mid | +1.3 to +2.0 MB (budget +3) | +0 | +0 | build 28 | +0 reads, +2.4 to +3.7 % (budget +10 %) |
+| high | +1.3 to +4.0 MB (budget +10) | +0 | +0 | build 28 | +0 reads, +1.0 to +2.4 % (budget +20 %) |
+
+The rest of this section is the 81f4076 record (body path on), kept for the judge's history.
+
 Measured at 81f4076 on every matched render (83 shots; `budgets.md` in the lane folder has the per-shot table).
 Low, mid and high all pass their budgets; mid texture memory sits at the +3 MB ceiling (Kofi, Lyra).
 
@@ -67,6 +107,11 @@ The cost is an llvmpipe proxy, not a phone GPU. With the shipped compressed atla
 +31 % mid (`cost_s1`, mm1), a figure dominated by software texture decode.
 
 ## Other numbers
+
+At 5b5036f (`tools/char/measure.py`, lane `logs/measure32.jsonl`): skin Delta E 76 (face middle band) Zuri at most
+0.54, Oren 0.13, Tavo 0.52, Kofi 1.01 (one mid-fight frame), Imani 1.12 (one day victory), Lyra 2.02 (high intro: the
+head material's `cs_on` skin terms leave her face a little darker and her iris less green than build 28's). Hair-edge
+stair-steps new / b28: median 1.008 over 50 shots (0.85 to 1.26). The 81f4076 figures follow.
 
 - **Masks after VRAM compression** (`tools/char/maskiou.py`, `logs/maskiou_s.jsonl`, 15 Nov, masks unchanged since):
   measured against the lossless masks, not hand-checked ones. ETC2 (phone) lod0: skin IoU Zuri 0.96, Kofi 0.95, Tavo 0.94,
@@ -82,7 +127,8 @@ The cost is an llvmpipe proxy, not a phone GPU. With the shipped compressed atla
 
 ## Pairs
 
-68 matched pairs at 81f4076 against build 28 (`bin/pairs30.sh`): all six heroes x mid, high x intro, victory;
+68 matched pairs at 5b5036f against build 28 (`bin/pairs32.sh`, lane folder `pairs/`; handover `charshade/pairs/`), the
+same shot list as the judged 81f4076 set (kept as `pairs.81f4076`). The 81f4076 set: 68 matched pairs (`bin/pairs30.sh`): all six heroes x mid, high x intro, victory;
 mid-fight for Kofi, Imani, Zuri and Tavo on both tiers; day and dusk for Kofi and Imani; Imani on low; the arena wide
 and side shots; and 16 crops on high (face, hair, torso, legs for Kofi, Imani, Zuri, Tavo). Zuri's coils are dark
 again (build 28 renders them as a pale grey blob); Imani's cape and suit match build 28's colours.
@@ -97,7 +143,9 @@ again (build 28 renders them as a pale grey blob); Imani's cape and suit match b
 - `0f5d74f` Imani keeps build 28's bronze cape and muted suit; same-atlas hair cost ablations
 - `50a4935` hair strand path gated off (superseded by 81f4076)
 - `81f4076` hair cards take charshade's hair shading on build 28's hard cut; soft cut behind `cs_hair_soft`
-- this doc
+- `74c9d7d` lane doc at 81f4076
+- `5b5036f` ship hair and eyes only: look `cs_body` (off on every tier) gates the body path; lane test section 6
+- this doc (5b5036f re-checks)
 
 ## Tests and fight identity (81f4076)
 
@@ -107,6 +155,11 @@ again (build 28 renders them as a pale grey blob); Imani's cape and suit match b
   `records.sh --check` rc 0 for both.
 
 ## Known limits
+
+At 5b5036f: the hair ALU on a phone GPU (with the compressed atlas) is still owed; Lyra's face reads 2.0 Delta E
+darker on the high intro through the head's `cs_on` skin terms (not the eye branch); specular flicker and the
+catchlight check were not re-run; spec item 10 (re-run `hair_atlas.py`/`matid.py` on fid29-heromaps' UVs) applies if
+that lane merges. The limits below are from 81f4076; the mask, sheen and detail ones apply only with `cs_body` on.
 
 - The hair cost is an llvmpipe proxy; a phone GPU measurement is still owed, both for the hard cut and for `cs_hair_soft`.
 - Hair-edge stair-steps are about build 28's (ratio about 1.0, target at most 0.5): the hard cut is kept.
