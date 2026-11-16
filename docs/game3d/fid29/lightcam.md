@@ -14,14 +14,25 @@ Branch `fid29-lightcam` on fid29-base (afec3fd). Lane spec: `~/handover/fidelity
   slice (face shadow texel 3.3 to 3.5 mm intro, 4.75 mm victory; it was 6.28 mm before); the shadow blur narrows to 0.8 in close shots;
   fuller mid-fight frame.
 - 1672896: `tools/look/lc_cpu.gd` (C4 CPU timer). Tool only.
-- Final commit: this doc (no code).
+- 9c9baa6: this doc (judged: KEEP-PARTIAL, `judge-lightcam/verdict.json`).
+- Fix round (after the judge):
+  - 0673c53: the intro beat back on build 28's FOV, distance and push-in (the 30 deg long lens lost 29 of 46 intro pairs);
+    build 28's single orthogonal shadow split at fight distance, PSSM2 only while the close weight is above 0 (both
+    variants compiled under the loading card); a looser victory at a real place; lane test updated.
+  - 022c0c2: the victory at a real place at 0.56 of the frame height on a 48 deg lens (the camera distance of 0.65 on
+    42 deg), camera 6 deg below level, so Kofi's arms-up pose keeps both hands in frame; the near plane at 0.35 of the
+    camera-to-hero distance there (0.5 clipped the ground under the wider lens: a flat band at the bottom edge); one shadow
+    split on the whole atlas for that shot (the first of two half-atlas splits gave a 5.73 mm face texel on the wider lens; one gives 4.49 mm).
+- Final commit: this doc update (no code). Final code commit: 022c0c2.
 
 ## What the frame does now (mid and high)
-- Sun shadows: PSSM2 at fight distance. In the beats (driven by `_face_fill_update`'s close weight, eased over 0.2 s), shadow
+- Sun shadows: build 28's single orthogonal split at fight distance (35 m); PSSM2 only in the close beats (intro, street
+  victory); the victory at a real place keeps one split fitted to [near, hero + 3 m] on the whole atlas. In the beats (driven by `_face_fill_update`'s close weight, eased over 0.2 s), shadow
   max distance goes to camera-to-hero + 3 m, bias 0.2 to 0.05, normal bias 3.0 to 0.9, and recv_shadow and kick_a_col go up on every
   fighter ShaderMaterial (the rim, +0.15 EV).
-- Lens: intro FOV 52 to about 36 to 41, victory to 32, eased, then a critically damped push-in; on high, 0.15 deg handheld from a
-  hash of the frame clock (no RNG). BEAT_* timers and hit_order are untouched.
+- Lens: intro as build 28 (FOV, distance, push-in). Victory on the street to 32 deg, winner 72 % of the height; at a real place
+  48 deg, winner 56 %, camera 6 deg below level (sky above the facades). On high, 0.15 deg handheld from a hash of the frame
+  clock (no RNG) outside the intro. BEAT_* timers and hit_order are untouched.
 - Depth DOF in the beats only (13 taps + 1 depth read).
 - MSAA 4x on high through TIER_LOOK `"aa"` (mid 2x, low as build 28). Verified in the dumps: `msaa_3d = 2` is the 4x enum.
 - Sky: equirect from CC0 Poly Haven pure skies (2048x1024 high, 1024x512 mid), ASTC; low keeps the gradient.
@@ -45,20 +56,28 @@ Branch `fid29-lightcam` on fid29-base (afec3fd). Lane spec: `~/handover/fidelity
   conflicts with "skin Delta E within 1.0". FAIL as measured.
 - CPU: `_lightcam_update` 10.2 us a frame in the intro beat, 0.8 us mid-fight (high; mid the same).
 
-## Budgets
-See `budgets.md` in the lane folder. Low +0 on every counter. Mid texture +0.7 MB (PASS). High MSAA 4x +45.2 MB at
-1170x2532 measured (PASS), other texture +14.1 MB (PASS). Draws and primitives FAIL at mid-fight on mid (+19 / +55k) and high
-(+19 / +101k): the three fighters are drawn into both shadow splits.
+- Fix round: face texel at the victory at a real place 4.49 mm (022c0c2, all 6 Trafalgar logs; 9f87d96's two splits gave 5.73).
 
-## Gates on the final code commit (1672896)
-- C1: 11/11 records byte-identical to build 28 with fid_lightcam on and off (`final3/records_{on,off}.txt`).
-- C2: 557 Godot tests pass. build21 `whirl_ends_facing_target` fails under load as known and passes 39/39 with
-  `--fixed-fps 30` (`final3/tests.txt`, `testlogs3/`).
-- C3: low counters identical in all 12 dumps. Low frames are not repeatable on llvmpipe: street frames sit inside the
-  b28p-against-b28p noise floor, and Trafalgar frames are at the floor (0.14 % against 0.08 %, 1.78 % against 1.77 % of pixels over 8 levels).
-- C5/C7: not graded by the lane. The coordinator runs the blind judge.
+## Budgets
+See `budgets.md` in the lane folder (36 shots per side, re-dumped in the fix round). Worst shot against the lane budget:
+low +0 on every counter (PASS). Mid: texture +0.7 MB, draws +7, primitives +24.3k (limits +1 MB / +8 / +40k: PASS).
+High: MSAA 4x +45.2 MB (limit +50), other texture +14.1 MB (limit +28), draws +6 (limit +10), primitives +58.1k (limit
++60k, the intro beat's two splits on Kofi): PASS. Before the fix round mid-fight was +19 draws and +55k / +101k primitives.
+
+## Gates on the final code commit (022c0c2, fix round; mm1 CPU, lc tree checked file for file)
+- C1: 11/11 seeded records byte-identical to build 28 (`tools/fid29/records.txt`, low and high) with fid_lightcam on and off
+  (`fix/final4/records_{on,off}.txt` on mm1, copied to the lane folder's `final4/`).
+- C2: 560 Godot tests pass (fid29_lightcam_test 14/14). build21 `whirl_ends_facing_target` fails under load as known and
+  passes 39/39 with `--fixed-fps 30` (`final4/tests.txt`, `testlogs4/`).
+- C3: low counters identical in all 12 dumps; low frames not re-rendered (the lane key is off on low).
+- Earlier round (1672896): the same gates passed (`final3/`).
+- C5/C7: the coordinator re-judges the fix round's pairs (`changed_fix.txt`).
 
 ## Known limits
-- Draw and primitive budgets over at mid-fight (see above). Skin Delta E over 1.0 in the beats. Fighters 21 % rather than 22 %.
-  ETC2 sky banding. Capture fallback on slow GPUs.
+- High primitives +58.1k against +60k: the intro beat's two splits on Kofi. Little headroom.
+- The victory at a real place is looser than on the street (56 % against 72 % of the height), and a blurred pigeon
+  can cross the top edge of the wider lens. Kofi's arms-up pose still fills the width: both hands are in frame on mid and
+  high, but on mid the heel of his left hand touches the frame edge (high has a few pixels to spare).
+- Skin Delta E over 1.0 in the beats. Fighters 21 % rather than 22 %. ETC2 sky banding. Capture fallback on slow GPUs.
+- llvmpipe frames are not bit-repeatable: re-rendered Trafalgar intros differ from the first fix-round render in 0.01 to 0.04 % of pixels.
 - Step 12 (integration) is the coordinator's.
