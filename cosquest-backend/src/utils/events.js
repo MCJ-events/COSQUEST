@@ -16,7 +16,8 @@ const notificationModel = require('../models/notificationModel');
  * quests without the venue rule, close at the start.
  */
 function sellsWhileLive(quest) {
-  return quest?.kind === 'quest' && Boolean(quest?.requireAtVenue);
+  // Virtual quests too: joined from anywhere, while live.
+  return (quest?.kind || 'quest') !== 'event' && (Boolean(quest?.requireAtVenue) || quest?.format === 'virtual');
 }
 
 function salesClosesAt(ticketType, quest) {
@@ -81,7 +82,7 @@ async function nudgeSalesClosing(now = new Date()) {
     isPublished: true,
     // Not quests that sell while live (sellsWhileLive). A quest saved before
     // `kind` existed has none stored but reads as 'quest', hence $ne.
-    $nor: [{ kind: { $ne: 'event' }, requireAtVenue: true }],
+    $nor: [{ kind: { $ne: 'event' }, requireAtVenue: true }, { kind: { $ne: 'event' }, format: 'virtual' }],
     status: { $ne: 'cancelled' },
     startsAt: { $gt: new Date(now.getTime() + 50 * 60e3), $lte: new Date(now.getTime() + 70 * 60e3) },
   }).select('title startsAt');

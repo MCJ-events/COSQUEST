@@ -17,6 +17,8 @@ const { canViewProfile, canViewActivityFeed, isBlockedEitherWay } = require('./p
 // this can be a normal top-level require.
 const { emitToPost } = require('../realtime/socket');
 const notifyPosts = require('../utils/postNotifications');
+// Public / Friends / Private (src/utils/privacy.js).
+const privacy = require('../utils/privacy');
 
 // A thought (text post) is up to 2,000 characters; captions on photos and
 // reels up to 2,200.
@@ -35,7 +37,8 @@ const LIST_TYPES = [...POST_TYPES, 'share'];
 const IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif', 'application/octet-stream', 'text/plain'];
 const VIDEO_TYPES = ['video/mp4', 'video/quicktime', 'video/webm', 'application/octet-stream', 'text/plain'];
 
-const AUTHOR_FIELDS = 'profile.username profile.displayName profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl faction';
+// privacy.*: for the visibility checks only (authorPreview never sends them).
+const AUTHOR_FIELDS = 'profile.username profile.displayName profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl faction privacy.profileVisibility privacy.showActivityFeed';
 
 // A shared post's original, with its author (used by every list).
 const SHARED_POST_POPULATE = { path: 'sharedPost', populate: { path: 'author', select: AUTHOR_FIELDS } };
@@ -111,6 +114,11 @@ function serializePost(post) {
 // icons show filled straight away. Signed out: no `viewer`.
 async function serializeForViewer(posts, viewerId) {
   const items = posts.map(serializePost);
+  // A shared post whose original this viewer may not see shows as unavailable.
+  if (items.some((item) => item.sharedPost?.author)) {
+    const hidden = await privacy.hiddenAuthorIds(viewerId);
+    for (const item of items) if (item.sharedPost?.author && hidden.has(item.sharedPost.author.id)) item.sharedPost = { unavailable: true };
+  }
   if (!viewerId || !items.length) return items;
   const ids = posts.map((post) => post._id);
   const [likes, bookmarks, shares] = await Promise.all([
@@ -145,11 +153,15 @@ function validatePostInput(type, content, files) {
   return null;
 }
 
-async function loadPost(postId) {
+// viewerId given (null = signed out): a post this viewer may not see reads
+// like a missing one (404), as profiles do.
+async function loadPost(postId, viewerId) {
   if (!mongoose.isValidObjectId(postId)) return null;
-  return Post.findById(postId)
+  const post = await Post.findById(postId)
     .populate('author', AUTHOR_FIELDS)
     .populate(SHARED_POST_POPULATE);
+  if (post && viewerId !== undefined && !(await privacy.canViewPost(post, viewerId))) return null;
+  return post;
 }
 
 async function createPost(req, res) {
@@ -186,7 +198,9 @@ async function listPosts(req, res) {
   if (type && !LIST_TYPES.includes(type)) return res.status(400).json({ error: 'type must be image, reel, thought, or share.' });
   const limit = parseLimit(req.query.limit);
   const page = parsePage(req.query.page);
-  const query = type ? { type } : {};
+  // Not posts from people whose profile or activity this viewer may not see (or blocked).
+  const hidden = [...(await privacy.hiddenAuthorIds(req.userId))];
+  const query = { ...(type ? { type } : {}), ...(hidden.length ? { author: { $nin: hidden } } : {}) };
   const [posts, total] = await Promise.all([
     Post.find(query)
       .populate('author', AUTHOR_FIELDS)
@@ -226,14 +240,14 @@ async function listUserPosts(req, res) {
 }
 
 async function getPost(req, res) {
-  const post = await loadPost(req.params.postId);
+  const post = await loadPost(req.params.postId, req.userId || null);
   if (!post) return res.status(404).json({ error: 'Post not found.' });
   return res.json({ post: (await serializeForViewer([post], req.userId))[0] });
 }
 
 async function updatePost(req, res) {
   if (require('../utils/communityRestrictions').refuseIfMuted(req, res)) return undefined; // post edit
-  const post = await loadPost(req.params.postId);
+  const post = await loadPost(req.params.postId, req.userId || null);
   if (!post) return res.status(404).json({ error: 'Post not found.' });
   if (String(post.author._id) !== String(req.userId)) return res.status(403).json({ error: 'You can only edit your own post.' });
   if (req.body.content === undefined || typeof req.body.content !== 'string') {
@@ -251,7 +265,7 @@ async function updatePost(req, res) {
 }
 
 async function deletePost(req, res) {
-  const post = await loadPost(req.params.postId);
+  const post = await loadPost(req.params.postId, req.userId || null);
   if (!post) return res.status(404).json({ error: 'Post not found.' });
   if (String(post.author._id) !== String(req.userId)) return res.status(403).json({ error: 'You can only delete your own post.' });
   await Promise.all([
@@ -277,7 +291,7 @@ async function deletePost(req, res) {
 }
 
 async function likePost(req, res) {
-  const post = await loadPost(req.params.postId);
+  const post = await loadPost(req.params.postId, req.userId || null);
   if (!post) return res.status(404).json({ error: 'Post not found.' });
   // Liking again (a double tap, a retry) is not an error: same answer.
   try {
@@ -292,7 +306,7 @@ async function likePost(req, res) {
 }
 
 async function unlikePost(req, res) {
-  const post = await loadPost(req.params.postId);
+  const post = await loadPost(req.params.postId, req.userId || null);
   if (!post) return res.status(404).json({ error: 'Post not found.' });
   const removed = await PostLike.deleteOne({ post: post._id, user: req.userId });
   if (!removed.deletedCount) return res.json({ liked: false, likeCount: Math.max(0, post.likeCount) });
@@ -301,7 +315,7 @@ async function unlikePost(req, res) {
 }
 
 async function sharePost(req, res) {
-  const post = await loadPost(req.params.postId);
+  const post = await loadPost(req.params.postId, req.userId || null);
   if (!post) return res.status(404).json({ error: 'Post not found.' });
   try {
     await PostShare.create({ post: post._id, user: req.userId });
@@ -320,7 +334,7 @@ async function sharePost(req, res) {
 // once per person - same rule as POST /posts/:postId/shares.
 async function shareToFeed(req, res) {
   if (require('../utils/communityRestrictions').refuseIfMuted(req, res)) return undefined; // share to feed
-  const target = await loadPost(req.params.postId);
+  const target = await loadPost(req.params.postId, req.userId || null);
   if (!target) return res.status(404).json({ error: 'Post not found.' });
 
   // Always point at the original, never at another share.
@@ -330,6 +344,10 @@ async function shareToFeed(req, res) {
   }
 
   const originalAuthorId = original.author?._id || original.author;
+  // Only posts everyone can see can be shared to the feed (it would show them to your followers).
+  if (original.author?.privacy && !privacy.isPublicAuthor(original.author)) {
+    return res.status(403).json({ error: "This post isn't public, so it can't be shared to the feed.", code: 'not_public' });
+  }
   if (await isBlockedEitherWay(req.userId, originalAuthorId)) {
     return res.status(404).json({ error: 'Post not found.' });
   }
@@ -358,7 +376,7 @@ async function shareToFeed(req, res) {
 }
 
 async function unsharePost(req, res) {
-  const post = await loadPost(req.params.postId);
+  const post = await loadPost(req.params.postId, req.userId || null);
   if (!post) return res.status(404).json({ error: 'Post not found.' });
   const removed = await PostShare.deleteOne({ post: post._id, user: req.userId });
   if (!removed.deletedCount) return res.status(404).json({ error: 'You have not shared this post.' });
@@ -367,7 +385,7 @@ async function unsharePost(req, res) {
 }
 
 async function bookmarkPost(req, res) {
-  const post = await loadPost(req.params.postId);
+  const post = await loadPost(req.params.postId, req.userId || null);
   if (!post) return res.status(404).json({ error: 'Post not found.' });
   try {
     await PostBookmark.create({ post: post._id, user: req.userId });
@@ -380,7 +398,7 @@ async function bookmarkPost(req, res) {
 }
 
 async function unbookmarkPost(req, res) {
-  const post = await loadPost(req.params.postId);
+  const post = await loadPost(req.params.postId, req.userId || null);
   if (!post) return res.status(404).json({ error: 'Post not found.' });
   const removed = await PostBookmark.deleteOne({ post: post._id, user: req.userId });
   if (!removed.deletedCount) return res.json({ bookmarked: false, bookmarkCount: Math.max(0, post.bookmarkCount) });
@@ -407,7 +425,7 @@ async function listMyBookmarks(req, res) {
     PostBookmark.countDocuments(query),
   ]);
   return res.json({
-    posts: await serializeForViewer(bookmarks.filter((bookmark) => bookmark.post).map((bookmark) => bookmark.post), req.userId),
+    posts: await serializeForViewer(await privacy.visiblePosts(bookmarks.filter((bookmark) => bookmark.post).map((bookmark) => bookmark.post), req.userId), req.userId),
     pagination: { page, limit, total, hasMore: page * limit < total },
   });
 }
@@ -432,7 +450,7 @@ function serializeComment(comment, likes = { count: 0, mine: false }) {
 // ?parentComment=<id> to fetch the replies under one specific top-level
 // comment instead. A reply id resolves to its root thread as well.
 async function listComments(req, res) {
-  const post = await loadPost(req.params.postId);
+  const post = await loadPost(req.params.postId, req.userId || null);
   if (!post) return res.status(404).json({ error: 'Post not found.' });
 
   let parentComment = null;
@@ -471,7 +489,7 @@ async function listComments(req, res) {
 async function createComment(req, res) {
   if (require('../utils/communityRestrictions').refuseIfMuted(req, res)) return undefined; // comment
   const file = req.file || null;
-  const post = await loadPost(req.params.postId);
+  const post = await loadPost(req.params.postId, req.userId || null);
   if (!post) {
     cleanUpLocalFiles(file ? [file] : []);
     return res.status(404).json({ error: 'Post not found.' });

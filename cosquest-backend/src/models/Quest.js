@@ -26,12 +26,13 @@ const questSchema = new mongoose.Schema(
     startsAt: { type: Date, required: true, index: true },
     endsAt: { type: Date, required: true },
     location: {
-      name: { type: String, required: true, trim: true },
+      // The venue: only for in-person quests (virtual ones have a placeLabel).
+      name: { type: String, required: function () { return this.format !== 'virtual'; }, trim: true },
       address: { type: String, default: '', trim: true },
       city: { type: String, default: '', trim: true },
       country: { type: String, default: '', trim: true },
-      lat: { type: Number, required: true, min: -90, max: 90 },
-      lng: { type: Number, required: true, min: -180, max: 180 },
+      lat: { type: Number, required: function () { return this.format !== 'virtual'; }, min: -90, max: 90 },
+      lng: { type: Number, required: function () { return this.format !== 'virtual'; }, min: -180, max: 180 },
     },
     prizePool: { type: moneySchema, required: true },
     entryFee: { type: moneySchema, required: true },
@@ -46,6 +47,11 @@ const questSchema = new mongoose.Schema(
     isSeedData: { type: Boolean, default: false, index: true },
     // A quest (game activity, often live) or an event (scheduled, ticketed).
     kind: { type: String, enum: ['quest', 'event'], default: 'quest', index: true },
+    // In person (a venue on the map) or virtual (online, from anywhere: no venue,
+    // shown to everyone, no distance filter).
+    format: { type: String, enum: ['in_person', 'virtual'], default: 'in_person', index: true },
+    // Virtual: where it's "set", shown on the card (e.g. "Tokyo · Hanuma").
+    placeLabel: { type: String, default: '', trim: true, maxlength: 80 },
     // Joining / check-in only within venueRadiusMeters of the venue (optional).
     requireAtVenue: { type: Boolean, default: false },
     venueRadiusMeters: { type: Number, default: 200, min: 50, max: 5000 },

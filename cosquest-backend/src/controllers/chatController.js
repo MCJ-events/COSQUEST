@@ -56,7 +56,11 @@ function userPreview(user) {
     avatarKey: user.profile.avatarKey,
     avatarPhotoUrl: user.profile.avatarPhotoUrl,
     faction: user.faction,
-    lastActiveAt: user.privacy?.showOnlineStatus === false ? null : user.lastActiveAt,
+    // Last seen: only public accounts that show their status. This preview
+    // goes to everyone in a chat (message senders, member lists), so a
+    // Friends account's last seen is added only for its DM partner when
+    // they're friends (buildSummary), and a Private one's never.
+    lastActiveAt: user.privacy?.showOnlineStatus !== false && (user.privacy?.profileVisibility || 'public') === 'public' ? user.lastActiveAt : null,
     // Expertise role shown under the name ("Front-end"), or null.
     expertise: expertiseLabel(user.expertise),
     // Faction rank badge (from points, or set by hand: overridden: true).
@@ -281,7 +285,7 @@ const ONLINE_COUNT_TYPES = ['group', 'faction', 'community'];
 
 async function onlineCountFor(conversation, memberCount, memberFilter = null) {
   if (!ONLINE_COUNT_TYPES.includes(conversation.type)) return null;
-  const filter = { $and: [memberFilter || (await memberFilterFor(conversation)), { 'privacy.showOnlineStatus': { $ne: false } }] };
+  const filter = { $and: [memberFilter || (await memberFilterFor(conversation)), { 'privacy.showOnlineStatus': { $ne: false }, 'privacy.profileVisibility': { $ne: 'private' } }] };
 
   const online = await onlineTotal();
   if (!online) return 0;
@@ -517,7 +521,7 @@ function previewMessage(message, viewerId) {
 // opts.myRows: Map(conversationId -> my ConversationMember row), when the
 // caller already loaded them. opts.memberFilters: a Map that receives each
 // group's member filter (see countGroupMembers).
-const SENDER_FIELDS = 'profile.username profile.displayName profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl faction lastActiveAt privacy.showOnlineStatus expertise pointsBalance rankOverride';
+const SENDER_FIELDS = 'profile.username profile.displayName profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl faction lastActiveAt privacy.showOnlineStatus privacy.profileVisibility expertise pointsBalance rankOverride';
 const LAST_MESSAGE_PROJECTION = { conversation: 1, sender: 1, kind: 1, content: 1, deletedForEveryone: 1, callLog: 1, scheduledCall: 1, poll: 1, album: 1, createdAt: 1 };
 const LAST_SENDER_FIELDS = 'profile.username profile.firstName';
 const DM_PEER_FIELDS = `${SENDER_FIELDS} privacy.readReceipts`;
@@ -643,6 +647,8 @@ async function summarizeConversations(conversations, me, opts = {}) {
     Promise.all(countJobs),
   ]);
 
+  // Privacy: Friends = only friends see their online status; Private = nobody.
+  const onlineHidden = await require('../utils/privacy').onlineHiddenFrom(me._id, otherIds);
   return conversations.map((conversation, i) => {
     const id = key(conversation._id);
     const otherId = dmOther.get(id);
@@ -653,7 +659,8 @@ async function summarizeConversations(conversations, me, opts = {}) {
       memberCount: countsByConversation.get(id),
       otherUser: otherId ? dm.users.get(key(otherId)) || null : null,
       otherMember: otherId ? dm.rows.get(`${id}:${key(otherId)}`) || null : null,
-      otherOnline: otherId ? Boolean(dm.online.get(key(otherId))) : false,
+      otherOnline: otherId ? Boolean(dm.online.get(key(otherId))) && !onlineHidden.has(key(otherId)) : false,
+      otherStatusHidden: otherId ? onlineHidden.has(key(otherId)) : false,
     });
   });
 }
@@ -663,7 +670,7 @@ async function summarizeConversation(conversation, me, opts) {
   return summary;
 }
 
-function buildSummary(conversation, me, { lastMessage, member, unreadCount, memberCount, otherUser, otherMember, otherOnline }) {
+function buildSummary(conversation, me, { lastMessage, member, unreadCount, memberCount, otherUser, otherMember, otherOnline, otherStatusHidden = false }) {
   const summary = {
     id: String(conversation._id),
     type: conversation.type,
@@ -730,6 +737,8 @@ function buildSummary(conversation, me, { lastMessage, member, unreadCount, memb
 
       summary.otherParticipant = {
         ...userPreview(otherUser),
+        // Their status, unless their privacy hides it from me (Friends: friends only; Private: nobody).
+        lastActiveAt: showsStatus && !otherStatusHidden ? otherUser.lastActiveAt || null : null,
         isOnline: showsStatus ? otherOnline : false,
         lastReadAt: otherLastReadAt,
       };
@@ -1009,13 +1018,17 @@ async function resolveDmTarget(userId, username) {
   if (target.privacy?.allowDirectMessages === false) {
     return { error: { status: 403, message: 'This user is not accepting direct messages.' } };
   }
+  // Privacy: Friends = friends only; Private = only people already chatting with them.
+  const refused = await require('../utils/privacy').dmRefusal(target, userId);
+  if (refused) return { error: refused };
   return { target };
 }
 
 // POST /api/chats/dm - find-or-create a DM by target username.
 async function startDirectMessage(req, res) {
   const { target, error } = await resolveDmTarget(req.userId, req.body?.username);
-  if (error) return res.status(error.status).json({ error: error.message });
+  // extra.code says why (friends_only, private_account), for the app.
+  if (error) return res.status(error.status).json({ error: error.message, ...(error.extra || {}) });
 
   const conversation = await getOrCreateDmConversation(req.userId, target._id);
   return res.json({ chat: await summarizeConversation(conversation, req.user) });
@@ -1667,7 +1680,7 @@ async function forwardMessage(req, res) {
   let targetConversation;
   if (targetUsername) {
     const { target, error: dmError } = await resolveDmTarget(req.userId, targetUsername);
-    if (dmError) return res.status(dmError.status).json({ error: dmError.message });
+    if (dmError) return res.status(dmError.status).json({ error: dmError.message, ...(dmError.extra || {}) });
     targetConversation = await getOrCreateDmConversation(req.userId, target._id);
   } else {
     const { conversation, error: targetError } = await loadConversationForUser(targetConversationId, req.user);
@@ -1777,11 +1790,11 @@ async function bulkForwardMessages(req, res) {
   for (const target of targets) {
     if (target.targetUsername) {
       const resolved = await resolveDmTarget(req.userId, target.targetUsername);
-      if (resolved.error) return res.status(resolved.error.status).json({ error: resolved.error.message });
+      if (resolved.error) return res.status(resolved.error.status).json({ error: resolved.error.message, ...(resolved.error.extra || {}) });
       destinations.push({ user: resolved.target });
     } else {
       const resolved = await loadConversationForUser(target.targetConversationId, req.user);
-      if (resolved.error) return res.status(resolved.error.status).json({ error: resolved.error.message });
+      if (resolved.error) return res.status(resolved.error.status).json({ error: resolved.error.message, ...(resolved.error.extra || {}) });
       const sendError = await canSendToConversation(resolved.conversation, req.userId);
       if (sendError) return res.status(sendError.status).json({ error: sendError.message });
       destinations.push({ conversation: resolved.conversation });
@@ -1858,6 +1871,9 @@ async function canSendToConversation(conversation, senderId) {
   const [other, blocked] = await Promise.all([User.findById(otherId), isBlockedEitherWay(senderId, otherId)]);
   if (!other || blocked) return { status: 403, message: 'Direct messages are unavailable for this conversation.' };
   if (other.privacy?.allowDirectMessages === false) return { status: 403, message: 'This user is not accepting direct messages.' };
+  // Privacy: Friends = friends only (an existing chat with a Private account is fine).
+  const refused = await require('../utils/privacy').dmRefusal(other, senderId, { existing: true });
+  if (refused) return refused;
   return null;
 }
 

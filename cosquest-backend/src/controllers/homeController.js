@@ -32,6 +32,8 @@ async function getDashboard(req, res) {
   ]);
   const registrationIds = new Set(registrations.map((registration) => String(registration.quest)));
   const nearby = quests
+    // Virtual quests have no venue: listed apart (virtualQuests), never by distance.
+    .filter((quest) => quest.format !== 'virtual')
     .map((quest) => ({ quest, distance: distanceMiles(location.lat, location.lng, quest.location.lat, quest.location.lng) }))
     .filter((item) => item.distance <= location.radiusMiles)
     .sort((a, b) => a.distance - b.distance);
@@ -55,6 +57,7 @@ async function getDashboard(req, res) {
     liveQuest: liveQuest ? format(liveQuest) : null,
     upcomingQuests: nearby.filter((item) => effectiveStatus(item.quest) === 'upcoming').slice(0, maxUpcoming).map(format),
     nearbyQuests: nearby.slice(0, maxNearby).map(format),
+    virtualQuests: quests.filter((quest) => quest.format === 'virtual').slice(0, maxNearby).map((quest) => serializeQuest(quest, { isRegistered: registrationIds.has(String(quest._id)) })),
   });
 }
 

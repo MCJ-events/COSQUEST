@@ -96,7 +96,16 @@ function readFields(body, { partial = false, current = null } = {}) {
       out.endsAt = end;
     } else if (!partial) fail(400, 'endsAt is required.');
   }
-  if (need('location')) {
+  // In person (a venue on the map) or virtual (online: no venue, a place label).
+  if (has('format')) {
+    if (!['in_person', 'virtual'].includes(body.format)) fail(400, 'format must be in_person or virtual.');
+    out.format = body.format;
+  }
+  if (has('placeLabel')) out.placeLabel = String(body.placeLabel || '').trim().slice(0, 80);
+  const virtual = (out.format || current?.format) === 'virtual';
+  if (virtual && !(out.placeLabel || current?.placeLabel)) fail(400, 'A virtual quest needs a place label, for example "Tokyo · Hanuma".');
+  if (!virtual && out.format === 'in_person' && !has('location') && !Number.isFinite(current?.location?.lat)) fail(400, 'Pick the venue on the map (latitude and longitude).');
+  if (!virtual && need('location')) {
     const l = body.location || {};
     const lat = Number(l.lat);
     const lng = Number(l.lng);
@@ -137,6 +146,8 @@ function readFields(body, { partial = false, current = null } = {}) {
     out.interests = body.interests.slice(0, 20);
   }
   if (has('requireAtVenue')) out.requireAtVenue = Boolean(body.requireAtVenue);
+  // Nobody can "be at the venue" of a virtual quest.
+  if (virtual) out.requireAtVenue = false;
   if (has('venueRadiusMeters')) {
     const r = Number(body.venueRadiusMeters);
     if (!Number.isInteger(r) || r < 50 || r > 5000) fail(400, 'The venue radius must be 50-5,000 metres.');

@@ -52,14 +52,16 @@ async function listQuests(req, res) {
   // measured, and the nearest are kept (nearest first, then the limit). It
   // used to take the first 20 worldwide by start time and filter after, so
   // nearby quests were cut off. Without one: the soonest, as before.
-  if (lat !== null) Object.assign(query, nearbyBox(lat, lng, radiusMiles));
+  // Virtual quests have no place: everyone sees them, wherever they are.
+  if (lat !== null) query.$and = [...(query.$and || []), { $or: [nearbyBox(lat, lng, radiusMiles), { format: 'virtual' }] }];
   const quests = await Quest.find(query).sort({ startsAt: 1 }).limit(lat === null ? parseLimit(req.query.limit, 20) : 2000);
   const withDistance = quests.map((quest) => ({
     quest,
-    distance: lat === null ? undefined : distanceMiles(lat, lng, quest.location.lat, quest.location.lng),
+    distance: lat === null || quest.format === 'virtual' ? undefined : distanceMiles(lat, lng, quest.location.lat, quest.location.lng),
   }));
-  const filtered = lat === null ? withDistance : withDistance.filter((item) => item.distance <= radiusMiles);
-  filtered.sort((a, b) => (a.distance ?? 0) - (b.distance ?? 0));
+  const filtered = lat === null ? withDistance : withDistance.filter((item) => item.distance === undefined || item.distance <= radiusMiles);
+  // Nearest first; virtual ones (no distance) after them.
+  filtered.sort((a, b) => (a.distance ?? 1e9) - (b.distance ?? 1e9));
   if (lat !== null) filtered.splice(parseLimit(req.query.limit, 20));
   const mine = await registeredIds(req, filtered.map(({ quest }) => quest));
   return res.json({ quests: filtered.map(({ quest, distance }) => serializeQuest(quest, { distance, ...(mine ? { isRegistered: mine.has(String(quest._id)) } : {}) })) });

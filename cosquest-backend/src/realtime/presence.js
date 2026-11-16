@@ -99,12 +99,18 @@ async function notifyPresenceChange(io, userId, event) {
   const lastActiveAt = new Date();
 
   const user = goingOffline
-    ? await User.findByIdAndUpdate(userId, { $set: { lastActiveAt } }, { new: true }).select('privacy.showOnlineStatus')
-    : await User.findById(userId, 'privacy.showOnlineStatus');
+    ? await User.findByIdAndUpdate(userId, { $set: { lastActiveAt } }, { new: true }).select('privacy.showOnlineStatus privacy.profileVisibility')
+    : await User.findById(userId, 'privacy.showOnlineStatus privacy.profileVisibility');
 
   if (user?.privacy?.showOnlineStatus === false) return; // same opt-out userPreview() already respects in chatController.js
 
-  const partnerIds = await dmPartnerIds(userId);
+  // Privacy: Private = nobody sees it; Friends = only friends (mutual follows).
+  if (user?.privacy?.profileVisibility === 'private') return;
+  let partnerIds = await dmPartnerIds(userId);
+  if (user?.privacy?.profileVisibility === 'friends') {
+    const friends = await require('../utils/privacy').friendIdsOf(userId);
+    partnerIds = partnerIds.filter((id) => friends.has(String(id)));
+  }
   if (!partnerIds.length) return;
 
   const payload = goingOffline ? { userId: String(userId), lastActiveAt } : { userId: String(userId) };

@@ -23,9 +23,12 @@ function serializeQuest(quest, { distance, isRegistered } = {}) {
     // From the clock (only draft and cancelled are stored decisions).
     status: effectiveStatus(item),
     kind: item.kind || 'quest',
+    format: item.format || 'in_person',
+    placeLabel: item.placeLabel || '',
     startsAt: item.startsAt,
     endsAt: item.endsAt,
-    location: item.location,
+    // Virtual: no venue; the label stands in for it (no pin, no directions).
+    location: item.format === 'virtual' ? { name: item.placeLabel || 'Online', address: '', city: '', country: '', lat: null, lng: null } : item.location,
     prizePool: item.prizePool,
     entryFee: item.entryFee,
     maxParticipants: item.maxParticipants,

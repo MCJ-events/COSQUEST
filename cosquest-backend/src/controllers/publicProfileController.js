@@ -207,6 +207,10 @@ async function followUser(req, res) {
   if (await isBlockedEitherWay(req.userId, target._id)) {
     return res.status(404).json({ error: 'Profile not found.' });
   }
+  // "Allow new followers" off (privacy.allowFriendRequests): no new followers.
+  if (target.privacy?.allowFriendRequests === false && !(await Follow.exists({ follower: req.userId, following: target._id }))) {
+    return res.status(403).json({ error: 'This person isn\'t accepting new followers.', code: 'not_accepting_followers' });
+  }
 
   // Following again is not an error (a double tap, a retry): same answer.
   let created = true;
@@ -312,12 +316,12 @@ async function withRelationships(users, viewerId) {
 }
 
 // GET /api/users/search?search=jamie - find people to start a DM/forward with,
-// by username/first/last name (not gated by profileVisibility - it's a
-// discoverability search for messaging, the same way most chat apps let you
-// find someone by name even with a private profile; the target's own
-// allowDirectMessages setting is still checked once you actually try to
-// message them). A block hides someone from search in both directions, same
-// as everywhere else, and incomplete accounts never show up.
+// by username/first/last name. Private accounts aren't found (only people
+// already chatting with them can message them, from their chat list:
+// src/utils/privacy.js); Friends accounts are, so people can follow them.
+// Messaging rules are checked once you actually try to message someone. A
+// block hides someone from search in both directions, same as everywhere
+// else, and incomplete accounts never show up.
 async function searchUsers(req, res) {
   const search = typeof req.query.search === 'string' ? req.query.search.trim() : '';
   if (!search) return res.status(400).json({ error: 'search is required.' });
@@ -332,6 +336,8 @@ async function searchUsers(req, res) {
   const query = {
     _id: { $nin: excludedIds },
     onboardingComplete: true,
+    // Private profiles aren't found by search (Settings > Privacy).
+    'privacy.profileVisibility': { $ne: 'private' },
     $or: [{ 'profile.username': regex }, { 'profile.firstName': regex }, { 'profile.lastName': regex }],
   };
   const [users, total] = await Promise.all([
@@ -358,7 +364,7 @@ async function discoverUsers(req, res) {
   const excludedIds = [req.userId, ...blocks.map((block) => (
     String(block.blocker) === String(req.userId) ? block.blocked : block.blocker
   ))];
-  const query = { _id: { $nin: excludedIds }, onboardingComplete: true };
+  const query = { _id: { $nin: excludedIds }, onboardingComplete: true, 'privacy.profileVisibility': { $ne: 'private' } };
 
   const [users, total] = await Promise.all([
     User.find(query)

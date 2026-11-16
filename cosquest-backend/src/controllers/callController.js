@@ -568,13 +568,16 @@ async function startCall(req, res) {
   }
 
   const recipientId = memberIds.find((id) => id !== String(req.userId));
-  const recipient = await User.findById(recipientId).select('privacy.allowDirectMessages');
+  const recipient = await User.findById(recipientId).select('privacy.allowDirectMessages privacy.profileVisibility');
   if (!recipient || await isBlockedEitherWay(req.userId, recipientId)) {
     return res.status(403).json({ error: 'Calls are unavailable for this conversation.' });
   }
   if (recipient.privacy?.allowDirectMessages === false) {
     return res.status(403).json({ error: 'This user is not accepting direct messages or calls.' });
   }
+  // Privacy, as for messages in this chat: Friends = friends only.
+  const refused = await require('../utils/privacy').dmRefusal(recipient, req.userId, { existing: true });
+  if (refused) return res.status(refused.status).json({ error: refused.message, ...(refused.extra || {}) });
 
   // Validate configuration before creating a ringing call.
   getLivekitUrl();
@@ -1009,13 +1012,16 @@ async function inviteUsers(callId, inviter, { userIds = [], usernames = [] } = {
 async function startCallFor(caller, conversation, recipientId, type = 'audio') {
   const callerId = String(caller._id);
   const otherId = String(recipientId);
-  const recipient = await User.findById(otherId).select('privacy.allowDirectMessages');
+  const recipient = await User.findById(otherId).select('privacy.allowDirectMessages privacy.profileVisibility');
   if (!recipient || (await isBlockedEitherWay(callerId, otherId))) {
     return { error: { status: 403, message: 'Calls are unavailable for this conversation.' } };
   }
   if (recipient.privacy?.allowDirectMessages === false) {
     return { error: { status: 403, message: 'This user is not accepting direct messages or calls.' } };
   }
+  // Privacy, as for messages in this chat: Friends = friends only.
+  const refused = await require('../utils/privacy').dmRefusal(recipient, callerId, { existing: true });
+  if (refused) return { error: { status: refused.status, message: refused.message } };
   getLivekitUrl();
 
   const memberIds = [callerId, otherId];
