@@ -51,7 +51,8 @@ async function run(baseUrl) {
   const suffix = `${Date.now()}${Math.floor(Math.random() * 1000)}`;
   async function makeUser(name, extra = {}) {
     const user = await User.create({
-      profile: { username: `${name}${suffix}`, usernameNormalized: `${name.toLowerCase()}${suffix}`, firstName: name, lastName: 'Test', avatarKey: 'green-knight' },
+      // Adults: paid tickets are 18+ (src/utils/eligibility.js; test/payments.js checks the rule).
+      profile: { username: `${name}${suffix}`, usernameNormalized: `${name.toLowerCase()}${suffix}`, firstName: name, lastName: 'Test', avatarKey: 'green-knight', age: 30 },
       email: `${name.toLowerCase()}_${suffix}@example.com`, onboardingComplete: true, faction: 'ascendants', ...extra,
     });
     return { user, token: signToken(user.id, user.tokenVersion) };
@@ -117,6 +118,8 @@ async function run(baseUrl) {
   check(memberCheckin.status === 401, 'only admins check people in', memberCheckin.status);
 
   console.log('\n--- paying inside the app (payment sheet) ---');
+  const savedSheet = process.env.PAYMENT_SHEET;
+  process.env.PAYMENT_SHEET = '1'; // off for members (payment brief); still tested here
   const sheetQuest = await makeQuest('Sheet Show', 15, 3);
   const sheet = await request('POST', `/api/quests/${sheetQuest.id}/payment-sheet`, ana.token, {});
   check(sheet.status === 201 && /_secret_/.test(sheet.data.paymentIntentClientSecret || '') && sheet.data.order.status === 'pending', 'the app gets a payment sheet (client secret), order pending', sheet.data);
@@ -170,6 +173,8 @@ async function run(baseUrl) {
   const dashSheet = await request('POST', `/api/quests/${pageQuest.id}/payment-sheet`, hal.token, {});
   await webhook('payment_intent.canceled', await fake.paymentIntents.cancel((await Order.findById(dashSheet.data.order.id)).stripe.paymentIntentId));
   check((await Order.findById(dashSheet.data.order.id)).status === 'expired' && (await TicketType.findOne({ quest: pageQuest._id })).held === 1, '...but a payment sheet cancelled in Stripe gives its seat back', null);
+  if (savedSheet === undefined) delete process.env.PAYMENT_SHEET;
+  else process.env.PAYMENT_SHEET = savedSheet;
 
   console.log('\n--- be at the venue (live quests) ---');
   const venueQuest = await Quest.create({ slug: `venue-${suffix}`, title: 'Venue Hunt', status: 'upcoming', isPublished: true, startsAt: new Date(Date.now() - hour), endsAt: new Date(Date.now() + 2 * hour), location: venue, prizePool: { amount: 0, currency: 'USD' }, entryFee: { amount: 10, currency: 'USD' }, maxParticipants: 10, requireAtVenue: true, venueRadiusMeters: 200 });

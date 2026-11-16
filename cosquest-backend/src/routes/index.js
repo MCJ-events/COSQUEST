@@ -35,6 +35,7 @@ router.use('/meta', metaRoutes); // /api/meta/avatars
 router.use('/', questRoutes); // /api/quests
 router.use('/', require('./questFeedRoutes')); // /api/quests/:questId/joins (who just joined)
 router.use('/', require('./ticketRoutes')); // /api/quests/:id/ticket-types|checkout, /api/orders/:id, /api/me/tickets
+router.use('/', require('./paymentRoutes')); // /api/payments/* (paying on the CosQuest website)
 router.use('/home', homeRoutes); // /api/home/dashboard
 router.use('/', callRoutes); // /api/calls and /api/chats/:conversationId/calls
 router.use('/', require('./projectRoutes'));

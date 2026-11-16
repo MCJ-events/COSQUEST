@@ -38,7 +38,7 @@ async function checkout(req, res) {
     // The phone's position, for quests that need you at the venue (live ones).
     const p = req.body?.position;
     const position = p && typeof p === 'object' ? { lat: p.lat, lng: p.lng, accuracy: p.accuracy } : null;
-    const result = await tickets.startCheckout({ user: req.user, questId: req.params.questId, ticketTypeId: req.body?.ticketTypeId, position });
+    const result = await tickets.startCheckout({ user: req.user, questId: req.params.questId, ticketTypeId: req.body?.ticketTypeId, position, ip: req.ip });
     const status = result.ticket ? 201 : result.reused ? 200 : 201;
     return res.status(status).json({
       order: tickets.orderJson(result.order, result.ticket),
@@ -53,11 +53,16 @@ async function checkout(req, res) {
 
 // The app: Stripe's payment sheet (card, Google Pay) instead of Stripe's page.
 async function paymentSheet(req, res) {
+  // Payment brief, decision 2: payments happen on the CosQuest website, never
+  // in the app. PAYMENT_SHEET=1 turns it back on (tests, or a team decision).
+  if (process.env.PAYMENT_SHEET !== '1') {
+    return res.status(410).json({ error: 'Payments happen on the CosQuest website. Update the app to pay.', code: 'pay_on_website' });
+  }
   try {
     if (!mongoose.isValidObjectId(req.params.questId)) return res.status(404).json({ error: 'Quest not found.' });
     const p = req.body?.position;
     const position = p && typeof p === 'object' ? { lat: p.lat, lng: p.lng, accuracy: p.accuracy } : null;
-    const result = await tickets.startCheckout({ user: req.user, questId: req.params.questId, ticketTypeId: req.body?.ticketTypeId, position, method: 'sheet' });
+    const result = await tickets.startCheckout({ user: req.user, questId: req.params.questId, ticketTypeId: req.body?.ticketTypeId, position, method: 'sheet', ip: req.ip });
     return res.status(result.reused ? 200 : 201).json({
       order: tickets.orderJson(result.order, result.ticket),
       paymentIntentClientSecret: result.order.status === 'pending' ? result.clientSecret || null : null,

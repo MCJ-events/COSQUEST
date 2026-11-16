@@ -29,6 +29,8 @@ const orderSchema = new mongoose.Schema(
     status: { type: String, enum: STATUSES, default: 'pending', index: true },
     // How it's paid: Stripe's page (website) or the payment sheet inside the app.
     method: { type: String, enum: ['checkout', 'sheet'], default: 'checkout' },
+    // Where Stripe's page sends the person back: the app, or the website checkout.
+    returnTo: { type: String, enum: ['app', 'web'], default: 'app' },
     // Whether this order still holds a seat (pending, not yet released).
     holding: { type: Boolean, default: false },
     holdExpiresAt: { type: Date, default: null },

@@ -36,6 +36,7 @@ const notificationModel = require('../models/notificationModel');
 const { effectiveStatus } = require('./questStatus');
 const { distanceMiles } = require('./quest');
 const payments = require('./stripe');
+const { checkEligibility } = require('./eligibility');
 
 const HOLD_MS = 31 * 60 * 1000;
 const MAX_CHECKOUTS_PER_10_MIN = 8;
@@ -162,7 +163,10 @@ function checkAtVenue(quest, status, position) {
   }
 }
 
-async function startCheckout({ user, questId, ticketTypeId, position = null, method = 'checkout' }) {
+// returnTo: where Stripe's page sends the person back: 'app' (the app's
+// /tickets/return) or 'web' (the website checkout's /checkout/return).
+// ip: the request's address, for the eligibility check (eligibility.js).
+async function startCheckout({ user, questId, ticketTypeId, position = null, method = 'checkout', returnTo = 'app', ip = null }) {
   const now = new Date();
   const quest = await Quest.findOne({ _id: questId, isPublished: true });
   if (!quest) fail(404, 'Quest not found.');
@@ -178,7 +182,7 @@ async function startCheckout({ user, questId, ticketTypeId, position = null, met
   const open = await Order.findOne({ user: user._id, quest: quest._id, status: 'pending' });
   if (open) {
     const sameType = !ticketTypeId || String(open.ticketType) === String(ticketTypeId);
-    const fresh = sameType && (open.method || 'checkout') === method && open.holdExpiresAt > new Date(now.getTime() + 60 * 1000);
+    const fresh = sameType && (open.method || 'checkout') === method && (open.returnTo || 'app') === returnTo && open.holdExpiresAt > new Date(now.getTime() + 60 * 1000);
     if (fresh && method === 'checkout' && open.stripe.checkoutUrl) return { order: open, reused: true };
     if (fresh && method === 'sheet') {
       const clientSecret = await openSheetSecret(open);
@@ -199,6 +203,12 @@ async function startCheckout({ user, questId, ticketTypeId, position = null, met
   if (!type) fail(400, ticketTypeId ? 'That ticket type is not available.' : 'Choose a ticket type.', 'choose_ticket_type');
   // Paid only (unless ALLOW_FREE_TICKETS=1): a quest without a price isn't on sale.
   if (!type.price.amount && !freeAllowed()) fail(409, "Tickets for this aren't on sale yet.", 'not_on_sale');
+  // 18+ (and, with live payments, the region) for anything that costs money,
+  // here so no way of paying can skip it (the website, the app, older apps).
+  if (type.price.amount > 0) {
+    const eligible = await checkEligibility(user, { quest, paid: true, ip, position });
+    if (!eligible.allowed) fail(403, eligible.message, eligible.code, { reason: eligible.reason });
+  }
   if (type.price.amount > 0 && !payments.isConfigured()) fail(503, 'Payments are not set up yet. Please try again later.', 'payments_unavailable');
   if (type.price.amount > 0) payments.toMinor(type.price.amount, type.price.currency); // supported currency?
 
@@ -215,6 +225,7 @@ async function startCheckout({ user, questId, ticketTypeId, position = null, met
       amount: { amount: type.price.amount, currency: type.price.currency },
       status: 'pending',
       method,
+      returnTo,
       holding: true,
       holdExpiresAt: new Date(now.getTime() + HOLD_MS),
       history: [step('created', `${type.name} · ${type.price.amount} ${type.price.currency}`)],
@@ -286,8 +297,8 @@ async function startCheckout({ user, questId, ticketTypeId, position = null, met
         payment_intent_data: { metadata: { orderId: String(order._id), questId: String(quest._id), userId: String(user._id) } },
         ...(user.email ? { customer_email: user.email } : {}),
         expires_at: Math.floor(order.holdExpiresAt.getTime() / 1000),
-        success_url: `${payments.appWebUrl()}/tickets/return?order=${order._id}&result=success`,
-        cancel_url: `${payments.appWebUrl()}/tickets/return?order=${order._id}&result=cancelled`,
+        success_url: `${payments.appWebUrl()}/${returnTo === 'web' ? 'checkout/return' : 'tickets/return'}?order=${order._id}&result=success`,
+        cancel_url: `${payments.appWebUrl()}/${returnTo === 'web' ? 'checkout/return' : 'tickets/return'}?order=${order._id}&result=cancelled`,
       },
       { idempotencyKey: `checkout-${order._id}` }
     );
@@ -430,6 +441,12 @@ async function fulfil(order, { paymentIntentId = null, amountTotal = null, curre
 
   tell(claimed.user, `Your ticket for ${quest.title} is ready. See it in My tickets.`);
   pushTicket(claimed.user, ticket._id, 'Your ticket is ready 🎟️', `${quest.title} · ${when(quest.startsAt)}`, 'questUpdates');
+  // The app updates by itself (e.g. paid on the website): live, while it's open.
+  try {
+    require('../realtime/socket').emitToUser(String(claimed.user), 'ticket:issued', { orderId: String(claimed._id), ticketId: String(ticket._id), questId: String(claimed.quest) });
+  } catch (error) {
+    console.warn(`[tickets] ${orderLabel(claimed)}: live update failed:`, error.message);
+  }
   return { order: await Order.findById(order._id), ticket };
 }
 
