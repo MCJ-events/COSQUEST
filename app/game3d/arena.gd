@@ -451,9 +451,11 @@ func build(cfg: Dictionary) -> void:
 			sun.shadow_bias = 0.2            # the low sun on a face drew stepped self-shadow (acne) at the default
 			sun.shadow_normal_bias = 3.0
 		if bool(look.get("fid_lightcam", false)):
-			# fid29-lightcam: two splits (the near one about 0.3 of the 35 m, blended), soft on every tier that has
-			# lightcam: mid the 5-tap filter (it shipped hard), high the 13-tap one; fight.gd tightens it in the close shots
-			sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
+			# fid29-lightcam: soft on every tier that has lightcam (mid the 5-tap filter, it shipped hard; high the 13-tap
+			# one). At fight distance the sun keeps build 28's single orthogonal split (one shadow pass for the fighters:
+			# the tier's draw and primitive budget); fight.gd switches to two blended splits (the near one ending just past
+			# the face) only while the close shots' weight is above 0, and tightens them there
+			sun.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
 			sun.directional_shadow_split_1 = 0.3
 			sun.directional_shadow_blend_splits = true
 			sun.shadow_bias = 0.2
@@ -461,7 +463,7 @@ func build(cfg: Dictionary) -> void:
 			var q: int = RenderingServer.SHADOW_QUALITY_SOFT_MEDIUM if bool(look.get("soft_shadows", false)) else RenderingServer.SHADOW_QUALITY_SOFT_LOW
 			q = int(look.get("lc_shadow_q", q))
 			RenderingServer.directional_soft_shadow_filter_set_quality(q)
-			print("CQ lightcam shadow mode=pssm2 split1=0.30 filter=%s q=%d" % ["PCF13" if q >= RenderingServer.SHADOW_QUALITY_SOFT_MEDIUM else "PCF5", q])
+			print("CQ lightcam shadow mode=ortho (pssm2 in the close shots) filter=%s q=%d" % ["PCF13" if q >= RenderingServer.SHADOW_QUALITY_SOFT_MEDIUM else "PCF5", q])
 	add_child(sun)
 	# no second (fill) light: each directional light is shaded on every pixel, ~2 ms a frame
 	# on the software GPU; the sky ambient is the fill

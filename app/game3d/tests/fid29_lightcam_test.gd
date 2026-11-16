@@ -10,8 +10,10 @@ extends SceneTree
 ##    push-in rises 0 -> about 0.9 by the end of the beat without overshoot.
 ## 4. ShaderWarm: in a live fight on mid (the street, the faction heroes), at the hero's intro beat, the shader of every
 ##    ShaderMaterial in the fight's tree was drawn by the warm-up under the loading card. On low nothing is drawn.
-## 5. The close shot (mid, the intro beat): the camera's near plane out, the sun's blur narrowed, its reach cut; low
-##    keeps build 28's near plane (0.5 m).
+## 5. The close shot (mid, the intro beat): the camera's near plane out, the sun's blur narrowed, its reach cut, two
+##    shadow splits, and build 28's intro lens (the fight's own FOV); low keeps build 28's near plane (0.5 m).
+## 6. Fight distance (mid, fighting, close weight 0): the sun is build 28's single orthogonal split (one shadow pass
+##    for the fighters, the tier's draw and primitive budget), at build 28's 35 m reach.
 ## Prints "CQTEST PASS <name>" / "CQTEST FAIL <name> <why>", then "CQTEST done failures=N".
 
 const ArenaScript := preload("res://arena.gd")
@@ -24,6 +26,7 @@ var _frames: int = 0
 var _fight: Node = null
 var _tier: String = "mid"
 var _prev: Node = null
+var _mid_intro: bool = false
 
 
 func _check(name: String, ok: bool, why: String = "") -> void:
@@ -91,7 +94,7 @@ func _initialize() -> void:
 		if v < prev or v > 1.0:
 			mono = false
 		prev = v
-	var end_v: float = f.call("_lc_push", FightScript.BEAT_LEN - FightScript.LC_LENS_S)
+	var end_v: float = f.call("_lc_push", FightScript.BEAT_LEN - 0.3)
 	_check("push_in_damped", mono and end_v > 0.85, "end=%.3f" % end_v)
 	f.free()
 	# 4. a live fight
@@ -123,7 +126,16 @@ func _process(_dt: float) -> bool:
 			_check("fight_started_" + _tier, false)
 			return _done()
 		return false
-	if _tier == "mid":
+	if _tier == "mid" and _mid_intro:
+		if str(fi.get("state")) == "fighting" and float(fi.get("_lc_close")) == 0.0 and float(fi.get("_beat_t")) < 0.0:
+			var sun6: DirectionalLight3D = (fi.get("arena") as Node).get("sun")
+			_check("fight_distance_one_split", sun6 != null and sun6.shadow_enabled
+				and sun6.directional_shadow_mode == DirectionalLight3D.SHADOW_ORTHOGONAL and is_equal_approx(sun6.directional_shadow_max_distance, 35.0),
+				"mode=%s reach=%s" % [str(sun6.directional_shadow_mode if sun6 != null else -1), str(sun6.directional_shadow_max_distance if sun6 != null else -1.0)])
+			_prev = fi
+			_start("low")    # the bridge restarts the fight
+			return false
+	elif _tier == "mid":
 		if str(fi.get("state")) == "intro" and float(fi.get("_beat_t")) > 0.3:
 			var mats: Array[Material] = []
 			ShaderWarm.collect(fi, mats)
@@ -150,8 +162,11 @@ func _process(_dt: float) -> bool:
 			var reach_ok: bool = sun3 == null or not sun3.shadow_enabled or sun3.directional_shadow_max_distance < 12.0
 			_check("close_shot_shadow_tightened", near_ok and blur_ok and reach_ok, "near=%.2f blur=%s reach=%s" % [cam3.near if cam3 != null else -1.0,
 				str(sun3.shadow_blur if sun3 != null else -1.0), str(sun3.directional_shadow_max_distance if sun3 != null else -1.0)])
-			_prev = fi
-			_start("low")    # the bridge restarts the fight
+			_check("close_shot_two_splits", sun3 == null or not sun3.shadow_enabled or sun3.directional_shadow_mode == DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS,
+				"mode=%s" % str(sun3.directional_shadow_mode if sun3 != null else -1))
+			_check("intro_lens_is_build28", cam3 != null and absf(cam3.fov - float(fi.get("_base_fov"))) < 0.01,
+				"fov=%s base=%s" % [str(cam3.fov if cam3 != null else -1.0), str(fi.get("_base_fov"))])
+			_mid_intro = true
 			return false
 	elif str(fi.get("state")) == "fighting" or str(fi.get("state")) == "intro":
 		_check("low_draws_no_warmup", int(ShaderWarm.last.get("drawn", -1)) == 0 and ShaderWarm.warmed.is_empty(), str(ShaderWarm.last))

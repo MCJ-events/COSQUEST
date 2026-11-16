@@ -763,6 +763,7 @@ func _close_camera() -> void:
 	_view_basis = Basis.from_euler(Vector3(deg_to_rad(-(pitch + tilt)), yaw, 0.0))
 	_close_win_basis = Basis.from_euler(Vector3(deg_to_rad(-CLOSE_WIN_PITCH), yaw, 0.0))
 	_lc_win_basis = Basis.from_euler(Vector3(deg_to_rad(-float(lk.get("lc_win_pitch", LC_WIN_PITCH))), yaw, 0.0))
+	_lc_win_basis_place = Basis.from_euler(Vector3(deg_to_rad(-float(lk.get("lc_win_pitch_place", LC_WIN_PITCH_PLACE))), yaw, 0.0))
 	_cam_dist = float(lk.get("close_dist", CLOSE_DIST_LAND if _landscape else (LC_CLOSE_DIST if _lc else CLOSE_DIST)))
 	_cam_ahead = 0.0
 	_close_d = _cam_dist
@@ -861,26 +862,11 @@ func _beat_camera() -> void:
 	var to: Transform3D = cam.global_transform
 	var face: Vector3 = hero.position + Vector3.UP * (FighterScript.HEIGHT * hero.size_k * 0.74)
 	var dist: float = (2.5 if _landscape else 2.0) * hero.size_k * (1.08 - 0.08 * _beat_t / BEAT_LEN)
-	var side: float = 0.5
 	var k: float = smoothstep(BEAT_LEN - BEAT_OUT, BEAT_LEN, _beat_t)
-	var fov_fight: float = cam.fov
-	var fov: float = fov_fight
-	if _lc:
-		# fid29-lightcam: a long lens. Over LC_LENS_S the view narrows to LC_INTRO_FOV while the camera backs off so the
-		# hero keeps its size (a dolly zoom: 52 deg at 2.0 m -> 30 deg at 3.64 m, a place's 56 deg -> 3.97 m), then a
-		# critically damped push-in of LC_PUSH; the side offset scales with the distance, so the composition holds
-		var e: float = smoothstep(0.0, LC_LENS_S, _beat_t)
-		fov = lerpf(fov_fight, LC_INTRO_FOV, e)
-		var d0: float = (2.5 if _landscape else 2.0) * hero.size_k
-		var dz: float = d0 * tan(deg_to_rad(_base_fov) * 0.5) / tan(deg_to_rad(fov) * 0.5)
-		dist = dz * (1.0 - LC_PUSH * _lc_push(_beat_t - LC_LENS_S))
-		side = 0.5 * dist / d0
-	var from: Vector3 = face - _cam_fwd * dist + _cam_right * side + Vector3.UP * 0.12
-	var b: Basis = Basis.looking_at(face - from, Vector3.UP)
-	if _lc:
-		b = _lc_handheld(b)
-		cam.fov = lerpf(fov, fov_fight, k)
-	cam.global_transform = Transform3D(b.slerp(to.basis.orthonormalized(), k), from.lerp(to.origin, k))
+	# fid29-lightcam fix round: build 28's intro lens, distance and push-in (the 30 deg long lens lost its pairs:
+	# it cropped the opponent to half a body at the frame's edge and flattened the depth)
+	var from: Vector3 = face - _cam_fwd * dist + _cam_right * 0.5 + Vector3.UP * 0.12
+	cam.global_transform = Transform3D(Basis.looking_at(face - from, Vector3.UP).slerp(to.basis.orthonormalized(), k), from.lerp(to.origin, k))
 
 
 ## realism round 4 (look "dof", the high tier): a stand-in for a shallow depth of field in the hero's intro
@@ -997,15 +983,15 @@ func _dof_update() -> void:
 ##     the sun's shadow tightens round the hero (max distance = camera to hero + 3 m, the first split ends just past
 ##     the face, bias 0.2 -> 0.05, normal bias 3.0 -> 0.9, eased over LC_SHADOW_S), the fighters take the shadow map
 ##     (recv_shadow 0 -> 1: nose, chin and collar shadows), the sky-side kicker becomes a rim (kick_a x LC_RIM) and the
-##     exposure rises LC_EV stops; a long lens and a slow push-in (_beat_camera, _apply_camera); depth-aware focus
+##     exposure rises LC_EV stops; the victory shot on a long lens with a slow push-in (_apply_camera; the intro beat
+##     keeps build 28's lens); depth-aware focus. The sun has two splits (PSSM2) only while the close weight is above
+##     0: at fight distance it is build 28's single orthogonal split, so the fighters are drawn into one shadow pass
 ##   - the mid-fight frame: a lower orbit (LC_PITCH), a lower pivot and a camera offset (LC_H_OFF, LC_V_OFF), so the
 ##     fighters fill more of the frame and the paving less; the heading is untouched (the stick, the bot and the ally's
 ##     spot depend on it)
 ##   - a real place's reflections: a small cube captured at the fight under the loading card (look_real.gd)
-const LC_INTRO_FOV: float = 30.0
 const LC_WIN_FOV: float = 32.0
-const LC_LENS_S: float = 0.3            # the lens change, eased
-const LC_PUSH: float = 0.05             # the slow push-in after it (critically damped)
+const LC_PUSH: float = 0.05             # the victory shot's slow push-in (critically damped)
 const LC_PUSH_W: float = 2.6            # its rate (1/s): about 90 % done by the end of the beat
 const LC_HANDHELD_DEG: float = 0.15     # high: a hand-held drift, from a hash of the frame clock
 const LC_EV: float = 0.15
@@ -1019,6 +1005,12 @@ const LC_WIN_SHARE: float = 0.72        # the winner's share of the frame's heig
 const LC_WIN_HK: float = 1.07           # the drawn figure's height over HEIGHT (the models stand under the 2.3 m capsule)
 const LC_WIN_AIM: float = 0.52          # the victory view's height, as a share of the body
 const LC_WIN_PITCH: float = 3.0
+## fid29-lightcam fix round: at a real place the victory shot is looser and looks up a little (the place's flat facades
+## filled the long lens's frame behind the winner, with no sky, and the arms of a wide pose cropped at its edges)
+const LC_WIN_SHARE_PLACE: float = 0.65
+const LC_WIN_FOV_PLACE: float = 42.0
+const LC_WIN_PITCH_PLACE: float = -6.0   # negative: the camera looks up at the winner
+const LC_WIN_AIM_PLACE: float = 0.55
 const LC_PITCH: float = 20.0            # the mid-fight orbit (build 28: 28)
 const LC_PIVOT_H: float = 1.15          # the orbit's pivot (build 28's; trials 0.9 to 1.3, tools/look/frame_probe.gd)
 const LC_H_OFF: float = 0.5             # the camera right of its orbit point: the hero sits left, over the shoulder
@@ -1037,8 +1029,10 @@ var _lc_blur: float = -1.0
 var _lc_clock: float = 0.0
 var _lc_fov: float = -1.0
 var _lc_win_basis: Basis = Basis.IDENTITY
+var _lc_win_basis_place: Basis = Basis.IDENTITY
 var _lc_said: Dictionary = {}
 var _lc_cap: Dictionary = {}            # the per-place capture's state
+var _lc_warm_n: int = 0                 # 2 after ShaderWarm's draw: one frame with two shadow splits, then one with one
 
 
 func _lc_pivot_h() -> float:
@@ -1101,6 +1095,23 @@ func _lightcam_update(dt: float) -> void:
 	var was: float = _lc_close
 	_lc_close = move_toward(_lc_close, close, dt / LC_SHADOW_S)
 	var c: float = _lc_close
+	# fid29-lightcam fix round: two splits only in the close shots. At fight distance (c = 0) the sun is build 28's
+	# single orthogonal split: with two blended splits the three fighters sat across the boundary and were drawn into
+	# both (+17 to +19 draws, +49k to +101k primitives over the tier budget). The first frame after ShaderWarm's
+	# draw is drawn with two splits and the next with one (its quads live for both), so both shader variants compile
+	# under the loading card, not at the intro beat (the close weight is still under 0.1 there).
+	var sun0: DirectionalLight3D = arena.get("sun")
+	if sun0 != null and sun0.shadow_enabled:
+		var two: bool = c > 0.0
+		if _lc_warm_n > 0:
+			two = _lc_warm_n == 2
+			_lc_warm_n -= 1
+		var want: int = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS if two else DirectionalLight3D.SHADOW_ORTHOGONAL
+		if sun0.directional_shadow_mode != want:
+			sun0.directional_shadow_mode = want
+			if not _lc_said.has("mode%d" % want):
+				_lc_said["mode%d" % want] = true
+				_log("lightcam shadow mode=%s state=%s close=%.2f" % ["pssm2" if two else "ortho", state, c])
 	if c == was and c == 0.0 and not _lc_mats.is_empty():
 		return
 	var lk: Dictionary = arena.get("look")
@@ -1335,6 +1346,8 @@ func _begin_when_built() -> void:
 	if arena != null:
 		arena.call("finish_place")
 	ShaderWarm.warm(self if _lc else null)
+	if _lc:
+		_lc_warm_n = 2
 	_begin_when_shown()
 
 
@@ -1368,6 +1381,8 @@ func _poll_loading() -> void:
 		for f: FighterScript in fighters:
 			f.visible = true
 		ShaderWarm.warm(self if _lc else null)    # fid29: every material of the fight drawn once before the first shot (lightcam look)
+		if _lc:
+			_lc_warm_n = 2
 		_begin_when_shown()
 		return
 	_loading_role = _load_queue.pop_front()
@@ -3448,11 +3463,16 @@ func _apply_camera(dt: float) -> void:
 		if _lc and not _landscape:
 			# fid29-lightcam: the victory shot on a long lens (LC_WIN_FOV), the winner LC_WIN_SHARE of the frame's
 			# height, aimed lower (LC_WIN_AIM of the body) and nearly level, so the figure fills the frame under the card
+			# (at a real place: looser, a wider lens and a low camera looking up, LC_WIN_*_PLACE)
 			var hh: float = FighterScript.HEIGHT * (hero.size_k if hero != null else 1.0)
-			var fw: float = lerpf(_base_fov, LC_WIN_FOV, wk)
-			win_d = hh * LC_WIN_HK / (LC_WIN_SHARE * 2.0 * tan(deg_to_rad(LC_WIN_FOV) * 0.5)) * (1.0 - LC_PUSH * _lc_push(_end_t - WIN_FRAME_S))
-			win_h = hh * LC_WIN_AIM
-			win_b = _lc_win_basis
+			var at_place: bool = arena != null and arena.get("place") != null
+			var lk3: Dictionary = arena.get("look") if arena != null else {}
+			var w_fov: float = float(lk3.get("lc_win_fov_place", LC_WIN_FOV_PLACE)) if at_place else LC_WIN_FOV
+			var w_share: float = float(lk3.get("lc_win_share_place", LC_WIN_SHARE_PLACE)) if at_place else LC_WIN_SHARE
+			var fw: float = lerpf(_base_fov, w_fov, wk)
+			win_d = hh * LC_WIN_HK / (w_share * 2.0 * tan(deg_to_rad(w_fov) * 0.5)) * (1.0 - LC_PUSH * _lc_push(_end_t - WIN_FRAME_S))
+			win_h = hh * (float(lk3.get("lc_win_aim_place", LC_WIN_AIM_PLACE)) if at_place else LC_WIN_AIM)
+			win_b = _lc_win_basis_place if at_place else _lc_win_basis
 			_lc_fov = fw
 		d = lerpf(d, win_d, wk)
 		close_basis = _view_basis.slerp(win_b, wk) if wk > 0.0 else _view_basis
