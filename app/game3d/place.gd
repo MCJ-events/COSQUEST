@@ -30,6 +30,7 @@ const GROUND_SHADER := preload("res://vfx/world_ground.gdshader")
 const FACADE_SHADER := preload("res://vfx/world_facade.gdshader")
 const KIT_SHADER := preload("res://vfx/world_kit.gdshader")
 const WATER_SHADER := preload("res://vfx/world_water.gdshader")
+const StreetReal := preload("res://street_real.gd")
 const ART := "res://art/world/"
 
 const REACH: float = 260.0      # nothing further than this is built (the camera sees ~150 m)
@@ -100,6 +101,18 @@ var _paved_polys: Array = []
 var bake: RefCounted            # place_bake.gd
 var _heroes: Array = []         # world_heroes.gd: the hero landmarks this place has (begin), built in _work
 var life: Node3D
+## build 29 (fid29-street, docs/game3d/fid29/street.md): on mid and high with look "fid_street" (street_real.gd on())
+## the ground, kerbs, markings and water take the real materials (art/world/real, the _real shaders), every water
+## polygon gets a kerbed stone basin, and the fighters' capsule shade (ground_occluders.gd). The UK facades
+## (world_facade_real) and, on high, the window reveals and sills only with look "fid_street_facade" (default off:
+## build 28's walls). Off (low): every line below runs build 28's path.
+var _real: bool = false
+var _real_hi: bool = false
+var _real_facade: bool = false   # build 29: look fid_street_facade (default off: build 28's walls on mid and high)
+var _street_layout: bool = false
+var occluders: Node = null
+var _reveal_tris: int = 0
+var _basins: int = 0
 
 
 ## ground: the parsed JSON. at: the Quest Point in the ground's metres. cam_yaw_deg: the fight camera's
@@ -145,6 +158,10 @@ func begin(ground: Dictionary, at: Vector2, cam_yaw_deg: float, yaw_override: fl
 	_look = look
 	_tp = TIMES_OF(look)
 	_ground = ground
+	_real = StreetReal.on(look)
+	_real_hi = StreetReal.hi(look)
+	_real_facade = StreetReal.facade(look)
+	_street_layout = str(ground.get("source", "")) == "street_layout"
 	var o: Dictionary = ground.get("origin", {})
 	region = str(ground.get("region", region_of(float(o.get("lat", 0.0)), float(o.get("lng", 0.0)))))
 	if not REGIONS.has(region):
@@ -255,6 +272,8 @@ func pump(budget_ms: float = 4.0) -> bool:
 		_queue.clear()
 		_deferring = false
 		bake.call("commit", self)
+		if _real:
+			_real_finish()
 		life = Life.new()
 		life.name = "Life"
 		add_child(life)
@@ -414,6 +433,11 @@ func tex(name: String) -> Texture2D:
 func ground_mat(key: String, name: String, tile_m: float, opts: Dictionary = {}) -> ShaderMaterial:
 	if _mats.has(key):
 		return _mats[key]
+	if _real:
+		var rm: ShaderMaterial = _real_ground_mat(key, opts)
+		if rm != null:
+			_mats[key] = rm
+			return rm
 	var sm := ShaderMaterial.new()
 	sm.shader = GROUND_SHADER
 	var t: Texture2D = tex(name)
@@ -431,6 +455,53 @@ func ground_mat(key: String, name: String, tile_m: float, opts: Dictionary = {})
 	bake.call("register", sm)
 	_mats[key] = sm
 	return sm
+
+
+## build 29: the real material for a ground key (street_real.gd GROUND), or null to keep build 28's.
+const REAL_KINDS: Dictionary = {"floor": "flags", "plaza": "plaza", "asphalt": "asphalt", "kerb": "kerb", "paint": "paint", "setts": "setts"}
+
+
+func _real_ground_mat(key: String, opts: Dictionary) -> ShaderMaterial:
+	if not REAL_KINDS.has(key) or not (region in ["uk", "generic"]):
+		return null
+	var kind: String = REAL_KINDS[key]
+	if kind == "plaza" and _street_layout:
+		kind = "flags"      # the default street's shopping paving is the London footway
+	var o: Dictionary = {"bake_on": float(opts.get("bake_on", 1.0))}
+	var cut: bool = false
+	if kind == "paint":
+		o["use_vcol"] = 1.0
+		o["mask_tex"] = StreetReal.tex(StreetReal.ART + "ground/paint_wear.png")
+		o["mask_tile"] = 1.0
+		o["albedo_tex"] = _white()
+		o["detail_on"] = 0.0
+		o["normal_k"] = 0.0
+		cut = true
+	var sm: ShaderMaterial = StreetReal.ground_mat(kind, _look, _tp, o, cut)
+	if kind == "paint":
+		sm.set_shader_parameter("orm_tex", StreetReal.gtex("asphalt_uk", "_orm", _look))
+		sm.set_shader_parameter("rough_mul", 0.75)
+	bake.call("register_real", sm)
+	if kind in ["flags", "plaza", "setts"]:
+		_real_ground_mats.append(sm)
+	return sm
+
+
+var _real_ground_mats: Array = []
+
+
+## build 29: after the bake is committed (main thread): the fighters' capsule shade on the paving, and the arena's
+## medallion (made real by street_real.gd apply_floor, the fid29-base seam in arena.gd) takes the bake and the shade.
+func _real_finish() -> void:
+	if StreetReal.caps_on(_look):
+		occluders = (load("res://ground_occluders.gd") as GDScript).new()    # loaded on use: low never opens it
+		occluders.name = "GroundOccluders"
+		add_child(occluders)
+		for m: ShaderMaterial in _real_ground_mats:
+			occluders.call("register", m)
+	if get_parent() != null:
+		StreetReal.adopt(get_parent(), bake, occluders)
+	info["street_real"] = {"hi": _real_hi, "caps": occluders != null, "reveal_tris": _reveal_tris, "basins": _basins}
 
 
 ## A kit material (world_kit.gdshader) for a surface class of the props, trees and landmarks.
@@ -565,6 +636,10 @@ func water_mat() -> ShaderMaterial:
 		sm.set_shader_parameter("water_n", n)
 	sm.set_shader_parameter("sky_upper", _tp.get("upper", Color(0.5, 0.68, 0.88)))
 	sm.set_shader_parameter("sky_horizon", _tp.get("horizon", Color(0.95, 0.87, 0.76)))
+	if _real:
+		sm.set_shader_parameter("real_k", 1.0)
+		StreetReal.env_params(sm, _look, _tp)
+		StreetReal.warm(sm)
 	_mats["water"] = sm
 	return sm
 
@@ -733,7 +808,11 @@ func _build_flat(ground: Dictionary) -> void:
 					kit_has_it = true
 		if kit_has_it:
 			continue
-		if poly_fill(st_w, p, 0.03):
+		if _real:
+			if _real_water(st_w, p):
+				_water_polys.append(p)
+				n["water"] += 1
+		elif poly_fill(st_w, p, 0.03):
 			_water_polys.append(p)
 			n["water"] += 1
 	for k: String in n:
@@ -748,6 +827,9 @@ func _build_flat(ground: Dictionary) -> void:
 		add_mesh(dm, ground_mat("grass_dry", "ground/grass_dry", 4.0, {"bake_on": 1.0, "grime_k": 0.0, "crack_k": 0.0, "macro_k": 0.25}), "green_dry")
 	if n["water"] > 0:
 		add_mesh(st_w.commit(), water_mat(), "water")
+	if _real and _basin_st != null:
+		add_mesh(_basin_st.commit(), ground_mat("kerb", "misc/stone", 1.6, {"bake_on": 1.0}), "basins")
+		_basin_st = null
 
 
 static func _poly_centre(p: PackedVector2Array) -> Vector2:
@@ -885,6 +967,11 @@ func _build_buildings(builds: Array) -> void:
 		var tints: Array = SHEET_TINTS.get(sheet, SHEET_TINTS["trim_generic"])
 		var tint: Color = tints[int(rnd * 997.0) % tints.size()]
 		tint = tint.lightened((fposmod(rnd * 31.0, 1.0) - 0.5) * 0.1)
+		if _real_facade and sheet == "trim_uk_brick" and int(rnd * 997.0) % tints.size() == 1:
+			sheet = "trim_uk_brick_red"     # build 29: the red-tinted brick buildings in real red brick
+			if not sts.has(sheet):
+				sts[sheet] = {"v": PackedVector3Array(), "n": PackedVector3Array(), "t": PackedFloat32Array(),
+					"c": PackedColorArray(), "uv": PackedVector2Array(), "uv2": PackedVector2Array()}
 		_walls(sts[sheet], p, base, h, tint, rnd, sheet)
 		var roofs: Array = REGIONS[region]["roof"]
 		var rc: Color = roofs[int(rnd * 131.0) % roofs.size()]
@@ -910,6 +997,8 @@ func _build_buildings(builds: Array) -> void:
 	info["sheets"] = sheets_used
 	for sheet: String in sts:
 		var w: Dictionary = sts[sheet]
+		if _real_facade and (w["v"] as PackedVector3Array).is_empty():
+			continue    # build 29: a sheet whose buildings all went to the red-brick sheet
 		var arr: Array = []
 		arr.resize(Mesh.ARRAY_MAX)
 		arr[Mesh.ARRAY_VERTEX] = w["v"]
@@ -951,6 +1040,11 @@ func _facade_mat(sheet: String) -> ShaderMaterial:
 	var key: String = "facade_" + sheet
 	if _mats.has(key):
 		return _mats[key]
+	if _real_facade:
+		var rm: ShaderMaterial = StreetReal.facade_mat(sheet, _look, _tp)
+		if rm != null:
+			_mats[key] = rm
+			return rm
 	var sm := ShaderMaterial.new()
 	sm.shader = FACADE_SHADER
 	for pair: Array in [["albedo_tex", ""], ["orm_tex", "_orm"], ["normal_tex", "_n"]]:
@@ -1070,6 +1164,8 @@ func _walls(w: Dictionary, poly: PackedVector2Array, base: float, h: float, tint
 				wc.append(tint)
 				wu.append(q[k][1])
 				wu2.append(uv2)
+			if _real_hi and _real_facade and row == ROW_BAY and mid.length() < REVEAL_REACH and _reveal_tris < REVEAL_MAX_TRIS:
+				_reveals(wv, wn, wt, wc, wu, wu2, a, d, n2, u, len, y0, y1, sheet, tint, uv2)
 		u += len
 	w["v"] = wv
 	w["n"] = wn
@@ -1077,6 +1173,192 @@ func _walls(w: Dictionary, poly: PackedVector2Array, base: float, h: float, tint
 	w["c"] = wc
 	w["uv"] = wu
 	w["uv2"] = wu2
+
+
+# ------------------------------------------------------------ build 29: window reveals, basins (real street)
+
+## High tier: walls within REVEAL_REACH m of the fight get a real window depth. Each window opening of the sheet's
+## upper bays (trim_sheets.py make_real prints them) gets a surround standing REVEAL_D proud of the wall, with its
+## inner cheeks, head and sill faces, and a projecting stone sill: the painted glass then sits back in a real reveal.
+## Appended to the wall's own surface (no new draw); UVs point at the sheet's stone sill and brick beside the window.
+const REVEAL_REACH: float = 30.0
+const REVEAL_MAX_TRIS: int = 19000
+const REVEAL_D: float = 0.11
+const REVEAL_RING: float = 0.08
+## The reveal faces' albedo shade (judge, 15 Nov: the frames and sills read as flat bright strips): the cheeks and
+## soffit in the opening's shade, the surround's face and the sill just under the wall, the returns between.
+const REVEAL_SHADE_IN: float = 0.35
+const REVEAL_SHADE_FACE: float = 0.82
+const REVEAL_SHADE_SIDE: float = 0.5
+const REVEAL_SHADE_SILL: float = 0.8
+## The sheet patch each reveal face maps (UV units: 12 cm x 30 cm of wall beside the window; 24 cm x 4 cm of sill), so
+## the faces carry the stone's grain instead of one flat texel.
+const WALL_SPAN := Vector2(0.015, 0.03)
+const SILL_SPAN := Vector2(0.03, 0.004)
+const SHEET_OPENINGS: Dictionary = {
+	"trim_uk_brick": [[0.5, 1.45, 1.5, 3.4], [2.5, 1.45, 3.5, 3.4], [4.85, 1.45, 7.15, 3.4]],
+	"trim_uk_brick_red": [[0.5, 1.45, 1.5, 3.4], [2.5, 1.45, 3.5, 3.4], [4.85, 1.45, 7.15, 3.4]],
+	"trim_uk_stone": [[0.475, 1.55, 1.525, 3.6], [2.475, 1.55, 3.525, 3.6]],
+}
+
+
+func _reveals(wv: PackedVector3Array, wn: PackedVector3Array, wt: PackedFloat32Array, wc: PackedColorArray,
+		wu: PackedVector2Array, wu2: PackedVector2Array, a: Vector2, d: Vector2, n2: Vector2, u0: float, len: float,
+		y0: float, y1: float, sheet: String, tint: Color, uv2: Vector2) -> void:
+	var ops: Array = SHEET_OPENINGS.get(sheet, [])
+	if ops.is_empty():
+		return
+	var k0: int = floori(u0 / SHEET_W)
+	var k1: int = floori((u0 + len) / SHEET_W)
+	var nrm := Vector3(n2.x, 0.0, n2.y)
+	var along := Vector3(d.x, 0.0, d.y)
+	var base := Vector3(a.x, 0.0, a.y)
+	for k in range(k0, k1 + 1):
+		for o: Array in ops:
+			var s0: float = k * SHEET_W + float(o[0]) - u0
+			var s1: float = k * SHEET_W + float(o[2]) - u0
+			if s0 < 0.25 or s1 > len - 0.25:
+				continue
+			# the sheet's metres (from the top of the bay row) to the wall's height
+			var top: float = y1 - (float(o[1]) - ROW_BAY.x) / (ROW_BAY.y - ROW_BAY.x) * (y1 - y0)
+			var bot: float = y1 - (float(o[3]) - ROW_BAY.x) / (ROW_BAY.y - ROW_BAY.x) * (y1 - y0)
+			var cx: float = (float(o[0]) + float(o[2])) * 0.5
+			var uv_sill := Vector2(cx / SHEET_W, (float(o[3]) + 0.045) / SHEET_H)        # the stone sill strip
+			var uv_brick := Vector2((float(o[0]) - 0.2) / SHEET_W, (float(o[1]) + 0.6) / SHEET_H)   # wall beside it
+			if sheet == "trim_uk_stone":
+				uv_sill = uv_brick      # a rendered stone front: the sill in the wall's own (tinted) stone, not bare white
+			var p := func(s: float, y: float, out: float) -> Vector3:
+				return base + along * s + Vector3(0.0, y, 0.0) + nrm * out
+			var D: float = REVEAL_D
+			# the faces' shade in the vertex alpha (world_facade_real multiplies the albedo; walls keep 1.0)
+			var t_in := Color(tint.r, tint.g, tint.b, REVEAL_SHADE_IN)
+			var t_face := Color(tint.r, tint.g, tint.b, REVEAL_SHADE_FACE)
+			var t_side := Color(tint.r, tint.g, tint.b, REVEAL_SHADE_SIDE)
+			var t_sill := Color(tint.r, tint.g, tint.b, REVEAL_SHADE_SILL)
+			var t_sill_f := Color(tint.r, tint.g, tint.b, REVEAL_SHADE_SILL * 0.94)
+			var t_sill_e := Color(tint.r, tint.g, tint.b, REVEAL_SHADE_SIDE)
+			var t_under := Color(tint.r, tint.g, tint.b, REVEAL_SHADE_IN * 0.85)
+			var R: float = REVEAL_RING
+			# cheeks (facing into the opening), the head's soffit
+			_rq(wv, wn, wt, wc, wu, wu2, p.call(s0, bot, 0.0), p.call(s0, bot, D), p.call(s0, top, D), p.call(s0, top, 0.0), along, -nrm, t_in, uv_brick, uv2, WALL_SPAN)
+			_rq(wv, wn, wt, wc, wu, wu2, p.call(s1, bot, D), p.call(s1, bot, 0.0), p.call(s1, top, 0.0), p.call(s1, top, D), -along, -nrm, t_in, uv_brick, uv2, WALL_SPAN)
+			_rq(wv, wn, wt, wc, wu, wu2, p.call(s0, top, 0.0), p.call(s0, top, D), p.call(s1, top, D), p.call(s1, top, 0.0), Vector3.DOWN, along, t_in, uv_brick, uv2, WALL_SPAN)
+			# the surround's face, D proud of the wall, R wide (left, right, head)
+			_rq(wv, wn, wt, wc, wu, wu2, p.call(s0 - R, bot, D), p.call(s0, bot, D), p.call(s0, top + R, D), p.call(s0 - R, top + R, D), nrm, along, t_face, uv_brick, uv2, WALL_SPAN)
+			_rq(wv, wn, wt, wc, wu, wu2, p.call(s1, bot, D), p.call(s1 + R, bot, D), p.call(s1 + R, top + R, D), p.call(s1, top + R, D), nrm, along, t_face, uv_brick, uv2, WALL_SPAN)
+			_rq(wv, wn, wt, wc, wu, wu2, p.call(s0, top, D), p.call(s1, top, D), p.call(s1, top + R, D), p.call(s0, top + R, D), nrm, along, t_face, uv_brick, uv2, WALL_SPAN)
+			# the surround's outer sides and top (back to the wall)
+			_rq(wv, wn, wt, wc, wu, wu2, p.call(s0 - R, bot, 0.0), p.call(s0 - R, bot, D), p.call(s0 - R, top + R, D), p.call(s0 - R, top + R, 0.0), -along, nrm, t_side, uv_brick, uv2, WALL_SPAN)
+			_rq(wv, wn, wt, wc, wu, wu2, p.call(s1 + R, bot, D), p.call(s1 + R, bot, 0.0), p.call(s1 + R, top + R, 0.0), p.call(s1 + R, top + R, D), along, nrm, t_side, uv_brick, uv2, WALL_SPAN)
+			_rq(wv, wn, wt, wc, wu, wu2, p.call(s0 - R, top + R, D), p.call(s1 + R, top + R, D), p.call(s1 + R, top + R, 0.0), p.call(s0 - R, top + R, 0.0), Vector3.UP, along, t_side, uv_brick, uv2, WALL_SPAN)
+			# the sill: a stone slab across the opening's foot, standing out D + 0.06, 0.07 deep
+			var sy0: float = bot - 0.07
+			var e0: float = s0 - R - 0.05
+			var e1: float = s1 + R + 0.05
+			var so: float = D + 0.06
+			_rq(wv, wn, wt, wc, wu, wu2, p.call(e0, bot, 0.0), p.call(e1, bot, 0.0), p.call(e1, bot, so), p.call(e0, bot, so), Vector3.UP, along, t_sill, uv_sill, uv2, SILL_SPAN)
+			_rq(wv, wn, wt, wc, wu, wu2, p.call(e0, sy0, so), p.call(e1, sy0, so), p.call(e1, bot, so), p.call(e0, bot, so), nrm, along, t_sill_f, uv_sill, uv2, SILL_SPAN)
+			_rq(wv, wn, wt, wc, wu, wu2, p.call(e0, sy0, 0.0), p.call(e0, sy0, so), p.call(e0, bot, so), p.call(e0, bot, 0.0), -along, nrm, t_sill_e, uv_sill, uv2, SILL_SPAN)
+			_rq(wv, wn, wt, wc, wu, wu2, p.call(e1, sy0, so), p.call(e1, sy0, 0.0), p.call(e1, bot, 0.0), p.call(e1, bot, so), along, nrm, t_sill_e, uv_sill, uv2, SILL_SPAN)
+			_rq(wv, wn, wt, wc, wu, wu2, p.call(e0, sy0, so), p.call(e0, sy0, 0.0), p.call(e1, sy0, 0.0), p.call(e1, sy0, so), Vector3.DOWN, along, t_under, uv_sill, uv2, SILL_SPAN)
+			_reveal_tris += 28      # 14 quads
+
+
+## One quad (a, b, c, d counter-clockwise seen from its front) into the wall arrays, facing `nrm`, tangent `tan`,
+## its corners over the sheet patch `uv` .. `uv + span` (the default: one flat texel patch).
+static func _rq(wv: PackedVector3Array, wn: PackedVector3Array, wt: PackedFloat32Array, wc: PackedColorArray,
+		wu: PackedVector2Array, wu2: PackedVector2Array, a: Vector3, b: Vector3, c: Vector3, d: Vector3,
+		nrm: Vector3, tan: Vector3, tint: Color, uv: Vector2, uv2: Vector2, span: Vector2 = Vector2(0.004, 0.002)) -> void:
+	var cr: Vector3 = (b - a).cross(c - a)
+	var order: Array = [a, c, b, a, d, c] if cr.dot(nrm) > 0.0 else [a, b, c, a, c, d]
+	var uvs: Array = [uv, uv + Vector2(span.x, 0.0), uv + span, uv + Vector2(0.0, span.y)]
+	var corner: Dictionary = {a: 0, b: 1, c: 2, d: 3}
+	for v: Vector3 in order:
+		wv.append(v)
+		wn.append(nrm)
+		wt.append_array([tan.x, tan.y, tan.z, 1.0])
+		wc.append(tint)
+		wu.append(uvs[int(corner.get(v, 0))])
+		wu2.append(uv2)
+
+
+var _basin_st: SurfaceTool = null
+const BASIN_W: float = 0.42
+const BASIN_H: float = 0.46
+const WATER_Y: float = 0.3
+
+
+## Real water: the polygon's surface at WATER_Y with a depth ramp (vertex alpha 0 at the rim, 1 a metre in), and a
+## kerbed stone basin round it (granite coping BASIN_W wide, BASIN_H high, its inner face down to the water).
+func _real_water(st_w: SurfaceTool, p: PackedVector2Array) -> bool:
+	var tri: PackedInt32Array = Geometry2D.triangulate_polygon(p)
+	if tri.is_empty():
+		return false
+	var inner: Array = Geometry2D.offset_polygon(p, -1.0)
+	var ring_ok: bool = inner.size() == 1 and (inner[0] as PackedVector2Array).size() >= 3
+	if ring_ok:
+		var ip: PackedVector2Array = inner[0]
+		var itri: PackedInt32Array = Geometry2D.triangulate_polygon(ip)
+		ring_ok = not itri.is_empty()
+		if ring_ok:
+			for k in range(0, itri.size(), 3):
+				_wtri(st_w, ip[itri[k]], ip[itri[k + 1]], ip[itri[k + 2]], 1.0, 1.0, 1.0)
+			# the band between the rim (alpha 0) and the inner line (alpha 1): each rim vertex to its nearest inner one
+			for i in p.size():
+				var a: Vector2 = p[i]
+				var b: Vector2 = p[(i + 1) % p.size()]
+				var ia: Vector2 = _nearest(ip, a)
+				var ib: Vector2 = _nearest(ip, b)
+				_wtri(st_w, a, b, ib, 0.0, 0.0, 1.0)
+				if not ia.is_equal_approx(ib):
+					_wtri(st_w, a, ib, ia, 0.0, 1.0, 1.0)
+	if not ring_ok:
+		for k in range(0, tri.size(), 3):
+			_wtri(st_w, p[tri[k]], p[tri[k + 1]], p[tri[k + 2]], 0.6, 0.6, 0.6)
+	# the basin
+	if _basin_st == null:
+		_basin_st = SurfaceTool.new()
+		_basin_st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var outer: Array = Geometry2D.offset_polygon(p, BASIN_W, Geometry2D.JOIN_MITER)
+	if outer.size() != 1:
+		return true
+	var op: PackedVector2Array = outer[0]
+	var ccw: bool = _area(p) > 0.0
+	for i in p.size():
+		var a2: Vector2 = p[i]
+		var b2: Vector2 = p[(i + 1) % p.size()]
+		var oa: Vector2 = _nearest(op, a2)
+		var ob: Vector2 = _nearest(op, b2)
+		var dd: Vector2 = (b2 - a2).normalized()
+		var nout: Vector2 = Vector2(dd.y, -dd.x) if ccw else Vector2(-dd.y, dd.x)
+		# coping top, the inner face (towards the water), the outer face (to the paving)
+		Roads._q(_basin_st, Vector3(a2.x, BASIN_H, a2.y), Vector3(b2.x, BASIN_H, b2.y), Vector3(ob.x, BASIN_H, ob.y), Vector3(oa.x, BASIN_H, oa.y), Vector3.UP, Color.WHITE)
+		Roads._q(_basin_st, Vector3(a2.x, WATER_Y - 0.05, a2.y), Vector3(b2.x, WATER_Y - 0.05, b2.y), Vector3(b2.x, BASIN_H, b2.y), Vector3(a2.x, BASIN_H, a2.y), Vector3(-nout.x, 0.0, -nout.y), Color.WHITE)
+		Roads._q(_basin_st, Vector3(oa.x, 0.0, oa.y), Vector3(ob.x, 0.0, ob.y), Vector3(ob.x, BASIN_H, ob.y), Vector3(oa.x, BASIN_H, oa.y), Vector3(nout.x, 0.0, nout.y), Color.WHITE)
+		bake.call("kerb", oa, ob, -nout)      # contact shade on the paving at the basin's foot
+	_basins += 1
+	return true
+
+
+static func _nearest(poly: PackedVector2Array, q: Vector2) -> Vector2:
+	var best: Vector2 = poly[0]
+	var bd: float = INF
+	for v: Vector2 in poly:
+		var dd: float = v.distance_squared_to(q)
+		if dd < bd:
+			bd = dd
+			best = v
+	return best
+
+
+static func _wtri(st: SurfaceTool, a: Vector2, b: Vector2, c: Vector2, aa: float, ab: float, ac: float) -> void:
+	var cross: float = (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)
+	var t: Array = [[a, aa], [b, ab], [c, ac]] if cross > 0.0 else [[a, aa], [c, ac], [b, ab]]
+	for pr: Array in t:
+		var v: Vector2 = pr[0]
+		st.set_color(Color(1, 1, 1, float(pr[1])))
+		st.set_normal(Vector3.UP)
+		st.add_vertex(Vector3(v.x, WATER_Y, v.y))
 
 
 # ------------------------------------------------------------ hero landmarks

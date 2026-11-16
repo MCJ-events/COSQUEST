@@ -95,3 +95,61 @@ Their sources would be Gravel023, Concrete034/036 and Ground037 (ambientCG, CC0)
   Generic words and shapes only, no real brand, product or person. The words are rasterised from DejaVu Sans Bold
   (https://dejavu-fonts.github.io/License.html, Bitstream Vera licence: free to use, embed and redistribute);
   no font file is shipped.
+
+## Build 29 real profile (mid and high tiers): art/world/real and art/street/real
+
+Rebuilt by `tools/world/make_world_art.py <street assets> app/game3d/art/world --profile real` (fid29-street).
+No stylise pass. Sources: Poly Haven (CC0 1.0, https://polyhaven.com/license; their preview renders are never
+used) and ambientCG (CC0 1.0). Albedo bounds from Physically Based (CC0 1.0). Lettering and maker's marks are
+never shipped: the gully grates are drawn by us (only a plain bar's iron grain is taken from Grate001).
+Full list with URLs: docs/game3d/fid29/ASSETS-LICENCES-street.md.
+
+| File | What | Size | px/m | Sources (CC0 1.0) | Processing |
+|---|---|---|---|---|---|
+| `real/ground/flags_uk.png` | London footway: grey concrete flags, dark joints | 1024 | 427 (2.4 m tile) | ph:large_square_pattern_01 | no stylise; mean-matched to linear [0.49, 0.485, 0.465] (chroma x0.55); lin lum mean 0.483, min 0.041, max 0.846 |
+| `real/ground/flags_uk_n.png` | normal (GL), source strength | 1024 | 427 (2.4 m tile) | ph:large_square_pattern_01 | resized, renormalised |
+| `real/ground/flags_uk_orm.png` | ORM: R AO, G roughness (source), B height | 512 | - | ph:large_square_pattern_01 | packed |
+| `real/ground/flags_uk_mid.png` | London footway: grey concrete flags, dark joints (mid) | 512 | 213 (2.4 m tile) | ph:large_square_pattern_01 | no stylise; mean-matched to linear [0.49, 0.485, 0.465] (chroma x0.55); lin lum mean 0.484, min 0.041, max 0.846 |
+| `real/ground/flags_uk_mid_n.png` | normal (GL), source strength | 512 | 213 (2.4 m tile) | ph:large_square_pattern_01 | resized, renormalised |
+| `real/ground/flags_uk_mid_orm.png` | ORM: R AO, G roughness (source), B height | 256 | - | ph:large_square_pattern_01 | packed |
+| `real/ground/plaza_uk.png` | civic square paving, pale slabs | 1024 | 320 (3.2 m tile) | acg:PavingStones133 | no stylise; mean-matched to linear [0.5, 0.485, 0.445] (chroma x0.45); lin lum mean 0.485, min 0.041, max 0.846 |
+| `real/ground/plaza_uk_orm.png` | ORM: R AO, G roughness (source), B height | 512 | - | acg:PavingStones133 | packed |
+| `real/ground/plaza_uk_mid.png` | civic square paving, pale slabs (mid) | 512 | 160 (3.2 m tile) | acg:PavingStones133 | no stylise; mean-matched to linear [0.5, 0.485, 0.445] (chroma x0.45); lin lum mean 0.485, min 0.041, max 0.846 |
+| `real/ground/plaza_uk_mid_n.png` | normal (GL), source strength (high reads it too) | 512 | 160 (3.2 m tile) | acg:PavingStones133 | resized, renormalised |
+| `real/ground/plaza_uk_mid_orm.png` | ORM: R AO, G roughness (source), B height | 256 | - | acg:PavingStones133 | packed |
+| `real/ground/asphalt_uk.png` | carriageway asphalt, aged grey aggregate | 1024 | 256 (4.0 m tile) | ph:asphalt_04 | no stylise; mean-matched to linear [0.15, 0.147, 0.142] (chroma x0.6); lin lum mean 0.147, min 0.041, max 0.649 |
+| `real/ground/asphalt_uk_orm.png` | ORM: R AO, G roughness (source), B height | 512 | - | ph:asphalt_04 | packed |
+| `real/ground/asphalt_uk_mid.png` | carriageway asphalt, aged grey aggregate (mid) | 512 | 128 (4.0 m tile) | ph:asphalt_04 | no stylise; mean-matched to linear [0.15, 0.147, 0.142] (chroma x0.6); lin lum mean 0.147, min 0.042, max 0.552 |
+| `real/ground/asphalt_uk_mid_n.png` | normal (GL), source strength (high reads it too) | 512 | 128 (4.0 m tile) | ph:asphalt_04 | resized, renormalised |
+| `real/ground/asphalt_uk_mid_orm.png` | ORM: R AO, G roughness (source), B height | 256 | - | ph:asphalt_04 | packed |
+| `real/ground/kerb_uk.png` | granite kerb | 512 | 512 (1.0 m tile) | ph:granite_tile | no stylise; mean-matched to linear [0.28, 0.28, 0.275] (chroma x0.6); lin lum mean 0.280, min 0.130, max 0.601 |
+| `real/ground/kerb_uk_n.png` | normal (GL), source strength | 512 | 512 (1.0 m tile) | ph:granite_tile | resized, renormalised |
+| `real/ground/kerb_uk_orm.png` | ORM: R AO, G roughness (source), B height | 256 | - | ph:granite_tile | packed |
+| `real/ground/kerb_uk_mid.png` | granite kerb (mid) | 256 | 256 (1.0 m tile) | ph:granite_tile | no stylise; mean-matched to linear [0.28, 0.28, 0.275] (chroma x0.6); lin lum mean 0.280, min 0.163, max 0.457 |
+| `real/ground/kerb_uk_mid_n.png` | normal (GL), source strength | 256 | 256 (1.0 m tile) | ph:granite_tile | resized, renormalised |
+| `real/ground/kerb_uk_mid_orm.png` | ORM: R AO, G roughness (source), B height | 128 | - | ph:granite_tile | packed |
+| `real/ground/setts_uk.png` | granite setts (gutter channel) | 512 | 445 (1.15 m tile) | acg:PavingStones070 | no stylise; mean-matched to linear [0.22, 0.215, 0.205] (chroma x0.5); lin lum mean 0.215, min 0.041, max 0.746 |
+| `real/ground/setts_uk_n.png` | normal (GL), source strength | 512 | 445 (1.15 m tile) | acg:PavingStones070 | resized, renormalised |
+| `real/ground/setts_uk_orm.png` | ORM: R AO, G roughness (source), B height | 256 | - | acg:PavingStones070 | packed |
+| `real/ground/setts_uk_mid.png` | granite setts (gutter channel) (mid) | 256 | 223 (1.15 m tile) | acg:PavingStones070 | no stylise; mean-matched to linear [0.22, 0.215, 0.205] (chroma x0.5); lin lum mean 0.215, min 0.041, max 0.584 |
+| `real/ground/setts_uk_mid_n.png` | normal (GL), source strength | 256 | 223 (1.15 m tile) | acg:PavingStones070 | resized, renormalised |
+| `real/ground/setts_uk_mid_orm.png` | ORM: R AO, G roughness (source), B height | 128 | - | acg:PavingStones070 | packed |
+| `real/ground/decals.png` | decal atlas 4 x 4: gum (0-3), asphalt cracks/patches (4-7), leaves (8-9), gully grates drawn by us (10-11), damp stain (12), cracks (13-14), tar seal (15) | 1024 RGBA | - | acg:ChewingGum001, acg:ChewingGum002, acg:AsphaltDamageSet001, acg:ScatteredLeaves006, acg:Grate001 (iron grain from a bar with no lettering), ph:asphalt_02, ph:asphalt_04 | crops with source opacity; gully grates drawn (no maker's marks); luminance clamped |
+| `real/ground/decals_mid.png` | decal atlas 4 x 4: gum (0-3), asphalt cracks/patches (4-7), leaves (8-9), gully grates drawn by us (10-11), damp stain (12), cracks (13-14), tar seal (15) | 512 RGBA | - | acg:ChewingGum001, acg:ChewingGum002, acg:AsphaltDamageSet001, acg:ScatteredLeaves006, acg:Grate001 (iron grain from a bar with no lettering), ph:asphalt_02, ph:asphalt_04 | crops with source opacity; gully grates drawn (no maker's marks); luminance clamped |
+| `real/ground/detail_n.png` | detail normal, world 1.5 m (whiteout blend) | 512 | 341 | ph:asphalt_04 | high-passed normal |
+| `real/ground/wear.png` | wear: R grime, G damp patches, B macro brightness (0.5 mean) | 512 | ~21 (24 m) | own work | procedural periodic noise; own work |
+| `real/ground/paint_wear.png` | road paint wear mask (1 = paint left), world 1 m | 512 L | 512 | acg:RoadLines020C | opacity inside a worn stripe, crossed with itself |
+| `real/trims/leak.png` | rain streaks mask (1 clean, dark = streak) | 512 L | - | acg:Leaking012A | luma, normalised |
+| `real/trims/wall_detail_n.png` | masonry micro-detail normal for walls within 15 m (high) | 512 | 256 (2 m) | acg:Bricks097 | high-passed normal |
+| `../street/real/medallion.png` | street medallion as a worn stone inlay (same motif), alpha = the disc | 1024 RGBA | 183 (5.6 m) | own: art/street/medallion.png motif, acg:PaintedPlaster017, ph:granite_tile, acg:ChewingGum002 | motif lines inlaid in dark granite; lin lum mean 0.365, min 0.089, max 0.685 |
+| `../street/real/medallion_mid.png` | street medallion as a worn stone inlay (same motif), alpha = the disc | 512 RGBA | 91 (5.6 m) | own: art/street/medallion.png motif, acg:PaintedPlaster017, ph:granite_tile, acg:ChewingGum002 | motif lines inlaid in dark granite; lin lum mean 0.365, min 0.089, max 0.685 |
+| `../street/real/pavers.png` | the arena floor on mid/high (= real/ground/flags_uk_mid) | 512 | - | ph:large_square_pattern_01 | copy |
+| `real/trims/trim_uk_brick.png` | UK brick, London stock (yellow) photo brick, the uk_brick sheet's architecture | 1024x1280 | 128 (8 x 10 m) | acg:Bricks105 | no stylise; albedo mean-matched, every texel's linear luminance in [0.04, 0.85]; no baked light |
+| `real/trims/trim_uk_brick_orm.png` | ORM: R AO, G roughness (source), B tint mask, A glass | 512x640 | 64 | acg:Bricks105 | no stylise; albedo mean-matched, every texel's linear luminance in [0.04, 0.85]; no baked light |
+| `real/trims/trim_uk_brick_n.png` | normal map (GL), full strength, photo normal on the wall | 512x640 | 64 | acg:Bricks105 | no stylise; albedo mean-matched, every texel's linear luminance in [0.04, 0.85]; no baked light |
+| `real/trims/trim_uk_brick_red.png` | UK brick, Victorian red brick with burnt headers (mean = Physically Based brick) | 1024x1280 | 128 (8 x 10 m) | ph:brick_wall_001 | no stylise; albedo mean-matched, every texel's linear luminance in [0.04, 0.85]; no baked light |
+| `real/trims/trim_uk_brick_red_orm.png` | ORM: R AO, G roughness (source), B tint mask, A glass | 512x640 | 64 | ph:brick_wall_001 | no stylise; albedo mean-matched, every texel's linear luminance in [0.04, 0.85]; no baked light |
+| `real/trims/trim_uk_brick_red_n.png` | normal map (GL), full strength, photo normal on the wall | 512x640 | 64 | ph:brick_wall_001 | no stylise; albedo mean-matched, every texel's linear luminance in [0.04, 0.85]; no baked light |
+| `real/trims/trim_uk_stone.png` | UK stone: Portland ashlar coursing (drawn) over a real painted-render grain, tinted per building | 1024x1280 | 128 (8 x 10 m) | acg:PaintedPlaster017 | no stylise; albedo mean-matched, every texel's linear luminance in [0.04, 0.85]; no baked light |
+| `real/trims/trim_uk_stone_orm.png` | ORM: R AO, G roughness (source), B tint mask, A glass | 512x640 | 64 | acg:PaintedPlaster017 | no stylise; albedo mean-matched, every texel's linear luminance in [0.04, 0.85]; no baked light |
+| `real/trims/trim_uk_stone_n.png` | normal map (GL), full strength, photo normal on the wall | 512x640 | 64 | acg:PaintedPlaster017 | no stylise; albedo mean-matched, every texel's linear luminance in [0.04, 0.85]; no baked light |
