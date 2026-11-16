@@ -112,13 +112,15 @@ Details, budgets and gates: `docs/game3d/fid29/street.md`; sources and licences:
 - Ground keys `floor`, `plaza`, `asphalt`, `kerb`, `paint`, `setts` (uk and generic regions) take
   `vfx/world_ground_real.gdshader` with CC0 photo maps from `art/world/real/ground` (the default street's shopping
   paving is the London footway flag). Other regions and keys (grass, paths, roofs) keep build 28's materials.
-- UK facades (`trim_uk_brick`, `trim_uk_stone`, and `trim_uk_brick_red` for the red-tinted brick buildings) take
-  `vfx/world_facade_real.gdshader` on `art/world/real/trims`; other sheets keep build 28's.
+- Facades keep build 28's `world_facade` walls by default. Only with the look key `fid_street_facade: true` (default
+  off since round 3: the real facade lost the intro close-ups in the blind judge) do the UK facades (`trim_uk_brick`,
+  `trim_uk_stone`, and `trim_uk_brick_red` for the red-tinted brick buildings) take `vfx/world_facade_real.gdshader`
+  on `art/world/real/trims`.
 - Kerbs get a granite sett gutter channel on the road side (`place_roads.gd`, one `gutters` mesh).
 - Water: a depth ramp from the rim, the time's sky and the street's cube reflected (`world_water.gdshader` `real_k`),
   inside a kerbed granite basin (`basins` mesh).
-- High: wall segments within 30 m of the fight get recessed window reveals with stone sills (at most 19,000
-  triangles, appended to the wall surfaces).
+- High, with `fid_street_facade` only: wall segments within 30 m of the fight get recessed window reveals with stone
+  sills (at most 19,000 triangles, appended to the wall surfaces).
 - After the bake commits: a finer near-fight shade and contact-AO bake (`place_bake.gd`, 512 px over 48 m) and
   `ground_occluders.gd` (the fighters' capsule shade on the paving; off with `fid_street_cap: false`).
 - `tex`, `kit_mat`, `add_multi_buffer`, `_emit` and `free_spot` keep their signatures; `in_water` and the water
