@@ -10,7 +10,21 @@ const Ticket = require('../models/Ticket');
 const Order = require('../models/Order');
 const notificationModel = require('../models/notificationModel');
 
+/**
+ * A quest (game activity) with "Be at the venue" keeps selling while it's
+ * live (only to people at the venue: tickets.js checkAtVenue). Events, and
+ * quests without the venue rule, close at the start.
+ */
+function sellsWhileLive(quest) {
+  return quest?.kind === 'quest' && Boolean(quest?.requireAtVenue);
+}
+
 function salesClosesAt(ticketType, quest) {
+  if (sellsWhileLive(quest)) {
+    const ends = quest?.endsAt ? new Date(quest.endsAt) : null;
+    const own = ticketType?.salesEndAt ? new Date(ticketType.salesEndAt) : null;
+    return own && ends ? (own < ends ? own : ends) : own || ends;
+  }
   // SALES_AFTER_START=1: sales stay open after the start (as checkout does).
   const starts = quest?.startsAt && process.env.SALES_AFTER_START !== '1' ? new Date(quest.startsAt) : null;
   const own = ticketType?.salesEndAt ? new Date(ticketType.salesEndAt) : null;
@@ -65,6 +79,9 @@ async function remindTomorrow(now = new Date()) {
 async function nudgeSalesClosing(now = new Date()) {
   const soon = await Quest.find({
     isPublished: true,
+    // Not quests that sell while live (sellsWhileLive). A quest saved before
+    // `kind` existed has none stored but reads as 'quest', hence $ne.
+    $nor: [{ kind: { $ne: 'event' }, requireAtVenue: true }],
     status: { $ne: 'cancelled' },
     startsAt: { $gt: new Date(now.getTime() + 50 * 60e3), $lte: new Date(now.getTime() + 70 * 60e3) },
   }).select('title startsAt');
@@ -88,4 +105,4 @@ async function nudgeSalesClosing(now = new Date()) {
   return sent;
 }
 
-module.exports = { salesClosesAt, placeLabel, remindTomorrow, nudgeSalesClosing };
+module.exports = { sellsWhileLive, salesClosesAt, placeLabel, remindTomorrow, nudgeSalesClosing };

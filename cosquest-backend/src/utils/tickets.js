@@ -178,7 +178,7 @@ async function startCheckout({ user, questId, ticketTypeId, position = null, met
   if (status === 'cancelled') fail(409, 'This has been cancelled.');
   if (status === 'completed' || quest.endsAt <= now) fail(409, 'This has already ended.');
   // Ticket sales close when it starts: no joining after the start.
-  if (quest.startsAt <= now && process.env.SALES_AFTER_START !== '1') fail(409, 'Ticket sales closed when it started.', 'sales_closed');
+  if (!require('./events').sellsWhileLive(quest) && quest.startsAt <= now && process.env.SALES_AFTER_START !== '1') fail(409, 'Ticket sales closed when it started.', 'sales_closed');
   checkAtVenue(quest, status, position);
 
   const live = await Ticket.findOne({ user: user._id, quest: quest._id, status: { $in: ['valid', 'checked_in'] } });

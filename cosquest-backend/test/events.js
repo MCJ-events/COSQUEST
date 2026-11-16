@@ -67,6 +67,8 @@ async function run(baseUrl) {
   const types = await request('GET', `/api/quests/${later.id}/ticket-types`);
   check(types.data.ticketTypes[0].onSale && new Date(types.data.ticketTypes[0].salesClosesAt).getTime() === later.startsAt.getTime(), 'ticket types say when sales close (the start)', types.data);
   const started = await makeQuest('Already On', -1);
+  await Quest.updateOne({ _id: started._id }, { $set: { kind: 'event' } });
+  started.kind = 'event';
   const closed = await request('POST', `/api/quests/${started.id}/checkout`, amy.token, {});
   check(closed.status === 409 && closed.data.code === 'sales_closed', 'once it has started: no more tickets', closed.data);
   const startedTypes = await request('GET', `/api/quests/${started.id}/ticket-types`);
@@ -75,6 +77,20 @@ async function run(baseUrl) {
   const openTypes = await request('GET', `/api/quests/${started.id}/ticket-types`);
   delete process.env.SALES_AFTER_START;
   check(openTypes.data.ticketTypes[0].onSale === true && openTypes.data.ticketTypes[0].salesClosesAt === null, 'with SALES_AFTER_START=1, its ticket types agree with checkout (on sale)', openTypes.data);
+
+  // A live quest with "Be at the venue" keeps selling, at the venue only.
+  const liveQuest = await makeQuest('Venue Quest Live', -1);
+  await Quest.updateOne({ _id: liveQuest._id }, { $set: { kind: 'quest', requireAtVenue: true, venueRadiusMeters: 200 } });
+  const liveTypes = await request('GET', `/api/quests/${liveQuest.id}/ticket-types`);
+  check(liveTypes.data.ticketTypes[0].onSale === true && new Date(liveTypes.data.ticketTypes[0].salesClosesAt).getTime() === liveQuest.endsAt.getTime(), 'a live venue quest: still on sale, until its end', liveTypes.data);
+  const fromHome = await request('POST', `/api/quests/${liveQuest.id}/checkout`, amy.token, { position: { lat: 32.75, lng: -117.16, accuracy: 20 } });
+  check(fromHome.status === 403 && fromHome.data.code === 'not_at_venue', '...but not from home (Be at the venue)', fromHome.data);
+  const atVenue = await request('POST', `/api/quests/${liveQuest.id}/checkout`, amy.token, { position: { lat: 32.7158, lng: -117.1611, accuracy: 10 } });
+  check(atVenue.status === 201 && atVenue.data.checkoutUrl, '...and yes at the venue', atVenue.data);
+  const plainQuest = await makeQuest('Plain Quest Live', -1);
+  await Quest.updateOne({ _id: plainQuest._id }, { $set: { kind: 'quest', requireAtVenue: false } });
+  const plain = await request('POST', `/api/quests/${plainQuest.id}/checkout`, bob.token, {});
+  check(plain.status === 409 && plain.data.code === 'sales_closed', 'a live quest without the venue rule closes at the start (anyone could buy from anywhere otherwise)', plain.data);
 
   console.log('\n--- the door, attendance ---');
   const show = await makeQuest('Door Show', 48);
