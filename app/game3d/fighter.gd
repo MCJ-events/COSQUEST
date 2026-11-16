@@ -742,8 +742,173 @@ func _real_material(b: BaseMaterial3D) -> ShaderMaterial:
 	sm.set_shader_parameter("skin_gain", float(look.get("skin_gain", SKIN_GAIN.get(tm, 0.0))))
 	var wb: Array = look.get("skin_wb", SKIN_WB.get(tm, [1.0, 1.0, 1.0]))
 	sm.set_shader_parameter("skin_wb", Vector3(float(wb[0]), float(wb[1]), float(wb[2])))
+	if _cs_on():
+		_charshade(sm, b, kind, cut, two_sided)
 	_lit_mats.append(sm)
 	return sm
+
+
+## fid29 charshade (14 Nov 2026, docs/game3d/fid29/charshade.md): every surface of a hero shades as what it is. On with
+## the real look when the tier's look carries "fid_charshade" (arena.gd TIER_LOOK: mid and high); the high tier's extra steps follow look
+## "skin" == "full". Presentation only: no node is added, the model holder, its AABB and every public call are unchanged.
+const CS_MASK_DIR: String = "res://art/char/masks/"
+const CS_HAIR_DIR: String = "res://art/char/hair/"
+const CS_DETAIL: String = "res://art/char/detail/cloth_sheet.png"
+const CS_BREAKUP: String = "res://art/char/detail/metal_breakup.png"
+const ShaderWarmScript := preload("res://shader_warm.gd")
+const CS_TILE_M: float = 0.05            # the detail tiles' size on the body at the game's scale (4 to 6 cm)
+## which tile of the cloth sheet each hero's cloth and leather take (x, y of the cloth tile, x, y of the leather tile):
+## tiles 0,0 woven cotton (Fabric030), 0.5,0 knit (Fabric061), 0,0.5 grained leather (Leather037), 0.5,0.5 smooth (Leather026)
+const CS_TILES: Dictionary = {
+	"blockbusters_kofi": Vector4(0.0, 0.0, 0.0, 0.5), "icons_imani": Vector4(0.5, 0.0, 0.5, 0.5),
+	"ascendants_zuri": Vector4(0.5, 0.0, 0.5, 0.5), "celestials_lyra": Vector4(0.5, 0.0, 0.5, 0.5),
+	"controllers_tavo": Vector4(0.0, 0.0, 0.0, 0.5), "everborn_oren": Vector4(0.0, 0.0, 0.0, 0.5),
+}
+static var _cs_info: Dictionary = {}
+
+
+func _cs_on() -> bool:
+	return bool(look.get("real", false)) and bool(look.get("fid_charshade", false))
+
+
+## build 29 ships charshade's hair and eyes only (blind judge 16 Nov, keep-partial: the body path lost 29 to 21 on four of
+## six heroes). Look "cs_body" (default off on every tier) brings the body path back for review: the material-ID masks,
+## cloth sheen, the high tier's detail normals and metal break-up, orm_trust and the knee, and with them cs_on on every
+## surface that is not hair or a face (specular AA, Toksvig, cavity). Off, a body or a fitted metal piece takes no
+## charshade uniform and no mask, detail or break-up texture is loaded: it draws as build 28's to the pixel.
+func _cs_body() -> bool:
+	return bool(look.get("cs_body", false))
+
+
+func _cs_high() -> bool:
+	return str(look.get("skin", "full")) == "full"
+
+
+## The hero this fighter plays (fight.gd puts the cast key in anim_opts), or "".
+func _cs_key() -> String:
+	return str(anim_opts.get("key", ""))
+
+
+static func _cs_tex(path: String) -> Texture2D:
+	return load(path) as Texture2D if ResourceLoader.exists(path) else null
+
+
+static func _cs_json(path: String) -> Dictionary:
+	if not _cs_info.has(path):
+		var d: Variant = JSON.parse_string(FileAccess.get_file_as_string(path)) if FileAccess.file_exists(path) else null
+		_cs_info[path] = d if d is Dictionary else {}
+	return _cs_info[path]
+
+
+func _charshade(sm: ShaderMaterial, b: BaseMaterial3D, kind: String, cut: bool, two_sided: bool) -> void:
+	if kind != "hair" and kind != "skin" and not _cs_body():
+		return
+	sm.set_shader_parameter("cs_on", true)
+	_charshade_parts(sm, b, kind, cut, two_sided)
+	# review and tuning only: look "cs_u_<uniform>": <value> sets that char_real uniform on every surface
+	for k: String in look:
+		if k.begins_with("cs_u_"):
+			var v: Variant = look[k]
+			if v is Array and (v as Array).size() == 2:
+				v = Vector2(float(v[0]), float(v[1]))
+			elif v is Array and (v as Array).size() == 3:
+				v = Vector3(float(v[0]), float(v[1]), float(v[2]))
+			elif v is Array and (v as Array).size() == 4:
+				v = Vector4(float(v[0]), float(v[1]), float(v[2]), float(v[3]))
+			sm.set_shader_parameter(k.substr(5), v)
+	ShaderWarmScript.add(sm)
+
+
+## Which of the hero's masks fits this body. A mask lies in one file's UVs (lod0 or lod1, matid.py), and the file is not
+## the tier's: the high tier's ally keeps the lod1 file (fight.gd _tier_lod). The files are told apart by their body map's
+## width (matid.py "albedo_w" in the hero's json: lod0 2048, lod1 1024); a body that matches neither takes no mask.
+func _cs_body_lod(b: BaseMaterial3D, info: Dictionary) -> String:
+	var w: int = b.albedo_texture.get_width() if b.albedo_texture != null else 0
+	var aw: Variant = info.get("albedo_w")
+	if aw is Dictionary and int((aw as Dictionary).get("lod0", 0)) != int((aw as Dictionary).get("lod1", 0)):
+		if w == int((aw as Dictionary).get("lod0", 0)):
+			return "_lod0.png"
+		if w == int((aw as Dictionary).get("lod1", 0)):
+			return "_lod1r.png"
+		return ""
+	return "_lod0.png" if _cs_high() else "_lod1r.png"
+
+
+func _charshade_parts(sm: ShaderMaterial, b: BaseMaterial3D, kind: String, cut: bool, two_sided: bool) -> void:
+	var key: String = _cs_key()
+	var high: bool = _cs_high()
+	var info: Dictionary = _cs_json(CS_MASK_DIR + key + ".json") if key != "" else {}
+	if kind == "" and _cs_body():
+		# the body (look "cs_body" only): its material-ID mask, in the skin mask's sampler (the colour guess stays for Forge guardians)
+		var lod: String = _cs_body_lod(b, info) if key != "" else ""
+		var mask: Texture2D = _cs_tex(CS_MASK_DIR + key + lod) if lod != "" else null
+		if mask != null:
+			sm.set_shader_parameter("cs_matid", 1)
+			sm.set_shader_parameter("skin_mode", 1)
+			sm.set_shader_parameter("skin_tex", mask)
+			# the same skin strength the colour guess had (SKIN_GUESS): only where skin is changes, not how much of it
+			sm.set_shader_parameter("skin_amount", float(look.get("cs_skin_amount", SKIN_GUESS)))
+			# a hero whose painted armour the classes took for cloth keeps the lift's metal there (matid.py ORM_TRUST)
+			sm.set_shader_parameter("cs_orm_trust", float(info.get("orm_trust", 0.0)))
+			# per-hero overrides (matid.py HERO_SHADE): Imani's cape and suit keep build 28's shading (the blind judge
+			# preferred build 28's bronze cape to the mask's cloth, and the suit's sheen read as plastic)
+			var rm: Variant = info.get("rough_metal")
+			if rm is Array and (rm as Array).size() == 2:
+				sm.set_shader_parameter("cs_rough_metal", Vector2(float(rm[0]), float(rm[1])))
+			if info.has("sheen"):
+				sm.set_shader_parameter("cs_sheen", float(info["sheen"]))
+			var kn: Variant = info.get("lum_p50_p75_p95", {})
+			if kn is Dictionary and bool(look.get("cs_knee", true)) and bool(info.get("knee", true)):
+				var kl: Variant = (kn as Dictionary).get("leather")
+				var kc: Variant = (kn as Dictionary).get("cloth")
+				sm.set_shader_parameter("cs_knee", Vector2(float(kl[1]) if kl is Array else 0.0, float(kc[1]) if kc is Array else 0.0))
+			var detail: Texture2D = _cs_tex(CS_DETAIL) if high else null
+			if detail != null and bool(look.get("cs_detail", true)):
+				sm.shader = _real_variant(two_sided, cut, false, true)
+				sm.set_shader_parameter("cs_detail_tex", detail)
+				sm.set_shader_parameter("cs_grain", 0.0)      # the leather tile's own averaged grain does it on high
+				var bk: Texture2D = _cs_tex(CS_BREAKUP)
+				if bk != null:
+					sm.set_shader_parameter("cs_breakup_tex", bk)
+				var upm: float = float(info.get("uv_per_m", 0.19))
+				sm.set_shader_parameter("cs_tiles", 1.0 / maxf(upm * CS_TILE_M, 1e-4))
+				sm.set_shader_parameter("cs_detail_pick", CS_TILES.get(key, Vector4(0.0, 0.0, 0.0, 0.5)))
+	elif kind == "skin" and b.resource_name == "head_hybrid":
+		# the hybrid head: eyes in its UVs' top-right corner (deploy/hybrid/hybrid_head.py)
+		var ir: Dictionary = info.get("iris", {}) if info.get("iris") is Dictionary else {}
+		var cs: Array = ir.get("centres", [[0.879, 0.1205, 0.0193], [0.9497, 0.0504, 0.0193]])
+		if cs.size() == 2:
+			sm.set_shader_parameter("cs_eye", 1)
+			sm.set_shader_parameter("cs_iris_a", Vector4(float(cs[0][0]), float(cs[0][1]), maxf(float(cs[0][2]), 0.019), 0.0))
+			sm.set_shader_parameter("cs_iris_b", Vector4(float(cs[1][0]), float(cs[1][1]), maxf(float(cs[1][2]), 0.019), 0.0))
+			var ic: Array = ir.get("colour_srgb", [0.21, 0.15, 0.11])
+			var c := Color(float(ic[0]), float(ic[1]), float(ic[2])).srgb_to_linear()
+			sm.set_shader_parameter("cs_iris_col", Vector3(c.r, c.g, c.b))
+	elif kind == "hair":
+		# 16 Nov: the hair cards take charshade's hair SHADING (strand lobes along the card, root-to-tip shade, the coils'
+		# broad matte sheen) on build 28's hard 0.35 cut. The shading is what turns Zuri's coils from build 28's white blob
+		# (its strand highlight lit the whole coil) into dark coils; it costs +3 to +5 % hair ALU and +0 texture reads at one
+		# texture format (shader_cost --raw=1, budgets.md), inside +10 % mid and +20 % high. The soft cut (alpha to
+		# coverage) is what was over the budget (+33 to +69 % on the llvmpipe proxy): it stays off, look "cs_hair_soft": true
+		# brings it back for a re-measure on a phone GPU.
+		sm.set_shader_parameter("cs_hair_cards", 1.0)
+		if str(info.get("hair_style", "")) == "curls":
+			# tufts (a crop, a beard) have no one strand direction: a weak, broad highlight
+			sm.set_shader_parameter("cs_hair_lobes", Vector4(0.0, 0.08, 0.035, 0.025))
+		if cut and bool(look.get("cs_hair_soft", false)):
+			sm.shader = _real_variant(two_sided, true, true, false)
+		# the strand atlas made for this hero (tools/char/hair_atlas.py): 1K x 2K on high, 512 x 1024 on mid, soft alpha
+		# for the coverage; which card columns hold strands (the rest are coils or braids) and which end is the root
+		var hj: Dictionary = _cs_json(CS_HAIR_DIR + key + "_hair.json") if key != "" else {}
+		var sc: Variant = hj.get("strand_columns", [1, 1, 1, 1])
+		if sc is Array and (sc as Array).size() == 4:
+			sm.set_shader_parameter("cs_hair_strand", Vector4(float(sc[0]), float(sc[1]), float(sc[2]), float(sc[3])))
+		sm.set_shader_parameter("cs_hair_root_v", float(hj.get("root_v", 1.0)))
+		# the 1K x 2K atlas only for the player's own hero on high (the intro and victory close-ups are its); the ally and
+		# the Guardian are never framed that close, so they take the 512 x 1024 one (the high tier's texture budget)
+		var at: Texture2D = _cs_tex(CS_HAIR_DIR + key + ("_hi.png" if high and role == "hero" else "_mid.png")) if key != "" else null
+		if at != null:
+			sm.set_shader_parameter("albedo_tex", at)
 
 
 ## realism round 5: the soft face fill. k 0 = off, 1 = the close shots' strength; `to_fill` is the world direction
@@ -764,16 +929,27 @@ func set_face_fill(k: float, to_fill: Vector3) -> void:
 static var _real_variants: Dictionary = {}
 
 
-static func _real_variant(two_sided: bool, cut: bool) -> Shader:
-	if not two_sided and not cut:
+## fid29 charshade: `soft` (hair cards with the charshade look) = alpha to coverage on the tier's MSAA instead of the hard
+## 0.35 cut ("ALPHA_ANTIALIASING_EDGE" 0.3), the alpha kept as the texture's mips thin it; `high` = the high tier's hero
+## body (#define CS_HIGH: detail normals and the metal break-up). Every material charshade touches is handed to
+## ShaderWarm (fid29-base), so its variant compiles while the fight loads.
+static func _real_variant(two_sided: bool, cut: bool, soft: bool = false, high: bool = false) -> Shader:
+	if not two_sided and not cut and not soft and not high:
 		return REAL_SHADER
-	var key: String = "%s%s" % [two_sided, cut]
+	var key: String = "%s%s%s%s" % [two_sided, cut, soft, high]
 	if not _real_variants.has(key):
 		var code: String = REAL_SHADER.code
 		if two_sided:
 			code = code.replace("render_mode cull_back,", "render_mode cull_disabled,")
-		if cut:
+		if cut and soft:
+			code = code.replace("ambient_light_disabled;", "ambient_light_disabled, alpha_to_coverage;")
+			# Godot keeps the coverage through the mips itself from ALPHA_TEXTURE_COORDINATE (alpha x (1 + mip / 4))
+			code = code.replace("// ALPHA_HOOK", "ALPHA = a.a; ALPHA_SCISSOR_THRESHOLD = 0.12; ALPHA_ANTIALIASING_EDGE = 0.3; " +
+				"ALPHA_TEXTURE_COORDINATE = UV * vec2(textureSize(albedo_tex, 0)); // ALPHA_HOOK")
+		elif cut:
 			code = code.replace("// ALPHA_HOOK", "ALPHA = a.a; ALPHA_SCISSOR_THRESHOLD = 0.35; // ALPHA_HOOK")
+		if high:
+			code = code.replace("// CS_DEFINES", "#define CS_HIGH\n// CS_DEFINES")
 		var sh := Shader.new()
 		sh.code = code
 		_real_variants[key] = sh
