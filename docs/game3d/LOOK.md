@@ -441,3 +441,17 @@ both tiers, before and after).
 - Low tier (`char_lit.gdshader`) unchanged. The fight itself is untouched (presentation only).
 - Measuring: `tools/look_shots.gd` plan key `"skin_view": true` also draws each shot without effects (`_nofx`), the skin
   weight the shader used (debug view 3, `_skinw`) and one id mask per fighter (`_id_<role>1/0`, white then black).
+
+## fid29 base (14 Nov 2026, build 29 fidelity lanes)
+
+`docs/game3d/fid29/COMMON.md` has the whole contract. In short:
+- **Shadow parity.** `project.godot` gives the desktop the phone shadow keys (`directional_shadow/size=2048`,
+  `soft_shadow_filter_quality=0`), so llvmpipe stills on the farm show the phones' shadow: mid's is hard, high keeps
+  its runtime soft filter (arena.gd `soft_shadows`) on a 2048 atlas. Phone pixels do not change (the `.mobile` keys
+  were already these values).
+- **Lane keys.** `TIER_LOOK` mid and high carry `fid_street`, `fid_dressing`, `fid_heromaps`, `fid_charshade`,
+  `fid_combat`; low stays `{}`.
+- **Seams.** `street_real.gd` (`StreetReal.apply_floor`, arena.gd), `hero_files.gd` (`HeroFiles.pick`, fight.gd),
+  `shader_warm.gd` (`ShaderWarm.add` / `warm`, fight.gd's loading card): no-ops at the base.
+- **Tools.** `tools/look_shots.gd` gains the phone path, contact frames, strips, crops and an orbit; `tools/fid29/`
+  holds the audit kit, the gates' scripts, the 11 records and the judge. All frozen from the base on.

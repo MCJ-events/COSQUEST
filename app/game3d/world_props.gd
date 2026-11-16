@@ -509,28 +509,26 @@ static func _planter(b: MB, variant: int) -> void:
 			return _canopy_col(pp, nn, ctr, 0.55, S, M, L, 0.0, clampf((pp.y - 0.62) / 0.6, 0.0, 1.0) * 0.4), ctr)
 
 
+## fid29 (assets.md section 10, trade marks): a generic street kiosk of our own design on every tier, replacing the
+## K6-style box (domed roof, 3 x 6 panes, sign band), which may be a registered trade mark. A slim slate cabinet on
+## a plinth, one tall glazed panel and a blank info panel per side, a thin flat cantilevered roof. Same footprint and
+## height, the same two surfaces ("paint", "glass"), fewer triangles (the kind keeps its key, phone_box_uk).
 static func _phone_box(b: MB) -> void:
-	var red: Color = c("#B32020", true)
+	var body: Color = c("#34403F")
+	var trim: Color = c("#5E6A68")
+	var panel: Color = c("#D9D6CC")
 	var glass: Color = c("#2C3540")
-	b.box("paint", Vector3(0, 0.06, 0), Vector3(1.0, 0.12, 1.0), red.darkened(0.15))
-	b.box("paint", Vector3(0, 1.12, 0), Vector3(0.9, 2.0, 0.9), red)
+	b.box("paint", Vector3(0, 0.05, 0), Vector3(0.96, 0.1, 0.96), trim)
+	b.box("paint", Vector3(0, 1.21, 0), Vector3(0.84, 2.22, 0.84), body)
 	for i in 4:
 		var rot := Basis(Vector3.UP, PI / 2 * i)
-		# the panes: 3 x 6, the red glazing bars between them
-		for cx in 3:
-			for ry in 6:
-				var x0: float = -0.3 + cx * 0.2 + 0.015
-				var y0: float = 0.35 + ry * 0.24 + 0.015
-				var p0: Vector3 = rot * Vector3(x0, y0, 0.452)
-				var p1: Vector3 = rot * Vector3(x0 + 0.17, y0, 0.452)
-				var p2: Vector3 = rot * Vector3(x0 + 0.17, y0 + 0.21, 0.452)
-				var p3: Vector3 = rot * Vector3(x0, y0 + 0.21, 0.452)
-				b.quad("glass", p0, p1, p2, p3, glass, rot * Vector3(0, 0, 1))
-		# the TELEPHONE sign band
-		b.quad("paint", rot * Vector3(-0.3, 1.94, 0.456), rot * Vector3(0.3, 1.94, 0.456), rot * Vector3(0.3, 2.06, 0.456), rot * Vector3(-0.3, 2.06, 0.456), c("#ECEAE2"), rot * Vector3(0, 0, 1))
-	b.box("paint", Vector3(0, 2.16, 0), Vector3(0.98, 0.08, 0.98), red)
-	b.lathe("paint", [Vector2(0.67, 2.2), Vector2(0.62, 2.32), Vector2(0.46, 2.44), Vector2(0.0, 2.5)], 4, red, Vector3.ZERO, PI / 4)
-	b.box("paint", Vector3(0, 2.51, 0), Vector3(0.16, 0.06, 0.16), red.darkened(0.1))
+		if i % 2 == 0:
+			# a tall glazed panel, off centre
+			b.quad("glass", rot * Vector3(-0.32, 0.42, 0.422), rot * Vector3(0.12, 0.42, 0.422), rot * Vector3(0.12, 2.02, 0.422), rot * Vector3(-0.32, 2.02, 0.422), glass, rot * Vector3(0, 0, 1))
+		else:
+			# a blank, pale info panel (no lettering)
+			b.quad("paint", rot * Vector3(-0.28, 1.0, 0.422), rot * Vector3(0.28, 1.0, 0.422), rot * Vector3(0.28, 1.86, 0.422), rot * Vector3(-0.28, 1.86, 0.422), panel, rot * Vector3(0, 0, 1))
+	b.box("paint", Vector3(0.06, 2.4, 0.06), Vector3(1.06, 0.06, 1.06), trim)
 
 
 static func _post_box(b: MB) -> void:

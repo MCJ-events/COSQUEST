@@ -1,14 +1,19 @@
 extends SceneTree
 ## look-world: bakes the kit's procedural meshes (world_landmarks.gd, world_props.gd) into
 ## art/world/kit/<kind>_<variant>.res, so a place loads them instead of building them (~100 ms).
-##   godot --headless --path app/game3d -s res://tools/world/bake_kit.gd
-## Rerun after changing either kit script.
+##   godot --headless --path app/game3d -s res://tools/world/bake_kit.gd [-- --only=kind,kind]
+## Rerun after changing either kit script. --only re-bakes just those kinds (the rest of the kit keeps its bytes:
+## the low tier opens every file here).
 
 const Landmarks := preload("res://world_landmarks.gd")
 const Props := preload("res://world_props.gd")
 
 
 func _initialize() -> void:
+	var only: PackedStringArray = []
+	for a: String in OS.get_cmdline_user_args():
+		if a.begins_with("--only="):
+			only = a.substr(7).split(",")
 	DirAccess.make_dir_recursive_absolute("res://art/world/kit")
 	var jobs: Array = []
 	for k: String in ["column", "obelisk", "lion", "fountain", "memorial", "clock_tower"]:
@@ -28,6 +33,8 @@ func _initialize() -> void:
 	var n: int = 0
 	var tris: int = 0
 	for j: Array in jobs:
+		if not only.is_empty() and not str(j[1]) in only:
+			continue
 		var m: ArrayMesh = (j[0] as GDScript).call("build", j[1], j[2])
 		if m == null:
 			print("BAKEKIT missing %s" % j[1])

@@ -5,7 +5,8 @@ extends SceneTree
 ##    tier nobody knows all give exactly the look below, the fighters stay on vfx/char_lit.gdshader (the
 ##    file itself unchanged, by its sha256), a character loads without looking for a skin mask, and the
 ##    hero's file is not swapped for another detail level.
-## 2. The mid and high tiers turn on what the bar gives them (BAR.md section E) and nothing else.
+## 2. The mid and high tiers turn on what the bar gives them (BAR.md section E) and nothing else; fid29: the build 29
+##    lanes' fid_* keys are on for mid and high and absent on low.
 ## 3. The baked data the real look reads is there: a cube and six ambient colours per time of day, and
 ##    the base and faction grade tables.
 ## Prints "CQTEST PASS <name>" / "CQTEST FAIL <name> <why>", then "CQTEST done failures=N".
@@ -88,6 +89,13 @@ func _initialize() -> void:
 	_check("mid_high_hit_order", bool(mid.get("hit_order", false)) and bool(high.get("hit_order", false)))
 	_check("mid_high_round2", str(mid.get("cam")) == "close" and str(high.get("cam")) == "close" and bool(mid.get("beats", false))
 		and float(high.get("key_yaw", 0.0)) == ArenaScript.REAL_KEY_YAW and float(high.get("ground_k", 0.0)) == 0.62)
+	# fid29 (docs/game3d/fid29/COMMON.md): the lanes' keys are on for mid and high, absent on low
+	var fid_ok: bool = true
+	var low_l: Dictionary = ArenaScript.look_opts({"look": {"time": "golden"}})
+	for k: String in ["fid_street", "fid_dressing", "fid_heromaps", "fid_charshade", "fid_combat"]:
+		if not (bool(mid.get(k, false)) and bool(high.get(k, false))) or low_l.has(k):
+			fid_ok = false
+	_check("fid29_keys_mid_high_not_low", fid_ok)
 	var over: Dictionary = ArenaScript.look_opts({"tier": "high", "look": {"time": "golden", "real": false, "grade": false}})
 	_check("config_overrides_tier", not bool(over["real"]) and str(over["grade"]) == "false")
 	var high_m: ShaderMaterial = _material(high)

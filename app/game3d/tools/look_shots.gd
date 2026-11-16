@@ -11,6 +11,18 @@ extends SceneTree
 ## then black, and with discs on the ground under them (2 m round each fighter; 0.2 m under each foot) white
 ## then black: tools/look/measure.py takes the differences as the character, ground and foot masks.
 ## Prints CQLOOK lines (texture memory, draw calls, frame time) for the cost table.
+## fid29 (build 29 lanes, frozen after fid29-base; docs/game3d/fid29/COMMON.md):
+##   the phone path: run in a 1170x2532 window (tools/fid29/shots.sh --phone): the fight's own "quality": "device"
+##     applies the tier's render scale and MSAA and Godot upscales the 3D to the window and composites the HUD over it,
+##     as on an iPhone; the plan's "phone": true prints the viewport, scale and MSAA once (CQLOOK view).
+##   "hit_frames": {"n": 4, "delay": 1}: the first n contact events (a hit row in the fight's record) are each drawn
+##     `delay` frames after the contact, named hit0..hit(n-1) (game camera, with and without the HUD).
+##   "strips": [{"t": 3.0, "name": "s1", "n": 6, "every": 1}]: n frames in a row of the game camera (no HUD, the
+##     fight keeps running), named <name>_f0..f5: shimmer, stair-steps and smears show in motion.
+##   "crops": true: every shot's .json gets named boxes per fighter (face, eyes, hair, torso, legs, hand_l, hand_r,
+##     ground) in pixels of the saved image, from the skeleton (tools/fid29/crops.py cuts them).
+##   a shot (or "beat_orbit" / "win_orbit") with "orbit": {"frames": 30, "deg": 36, "who": "hero", "dist": 2.6,
+##     "height": 1.45, "pitch": 4, "fov": 30}: the paused moment drawn from a slow orbit, named <name>_orbit_00..29.
 
 var plan: Dictionary = {}
 var out_dir: String = ""
@@ -26,6 +38,12 @@ var _last_usec: int = 0
 var _cam: Camera3D
 var _intro_done: bool = false
 var _win_done: bool = false
+var _hits_seen: int = -1
+var _hit_wait: Array = []           # frames left before each pending contact shot
+var _hit_taken: int = 0
+var _strip: Dictionary = {}         # the strip being drawn: {"name", "n", "every", "i", "k"}
+var _strips: Array = []
+var _view_said: bool = false
 
 
 func _initialize() -> void:
@@ -41,6 +59,7 @@ func _initialize() -> void:
 	DirAccess.make_dir_recursive_absolute(out_dir)
 	_shots = (plan.get("shots", []) as Array).duplicate()
 	_inputs = (plan.get("input", []) as Array).duplicate()
+	_strips = (plan.get("strips", []) as Array).duplicate()
 	var main: Node = load("res://main.tscn").instantiate()
 	root.add_child(main)
 	current_scene = main
@@ -66,12 +85,18 @@ func _process(_dt: float) -> bool:
 		if (f.state == "intro" and bt >= float(plan["beat_shot"])) or f.state == "fighting":
 			_intro_done = true
 			_busy = true
-			_take.call_deferred({"name": "intro", "game_only": true}, f)
+			var bs: Dictionary = {"name": "intro", "game_only": true}
+			if plan.has("beat_orbit"):
+				bs["orbit"] = plan["beat_orbit"]
+			_take.call_deferred(bs, f)
 			return false
 	if plan.has("win_shot") and not _win_done and f.state == "ending" and float(f.get("_end_t")) >= float(plan["win_shot"]):
 		_win_done = true
 		_busy = true
-		_take.call_deferred({"name": "win", "game_only": true, "then_quit": true}, f)
+		var ws: Dictionary = {"name": "win", "game_only": true, "then_quit": true}
+		if plan.has("win_orbit"):
+			ws["orbit"] = plan["win_orbit"]
+		_take.call_deferred(ws, f)
 		return false
 	if _fight_frames < 0:
 		if f.state == "fighting":
@@ -95,10 +120,41 @@ func _process(_dt: float) -> bool:
 			f.hud.bot_skill_slot(int(ev["skill_slot"]))
 		if ev.has("autoplay"):
 			f.set("autoplay", bool(ev["autoplay"]))
+	# fid29: contact frames (a new hit row in the fight's record), each `delay` frames after the contact
+	if plan.has("hit_frames"):
+		var hn: int = ((f.get("_jlog") as Dictionary).get("hits", []) as Array).size()
+		if _hits_seen >= 0 and hn > _hits_seen and _hit_taken + _hit_wait.size() < int((plan["hit_frames"] as Dictionary).get("n", 4)):
+			_hit_wait.append(int((plan["hit_frames"] as Dictionary).get("delay", 1)))
+		_hits_seen = hn
+		for i in _hit_wait.size():
+			_hit_wait[i] = int(_hit_wait[i]) - 1
+		if not _hit_wait.is_empty() and int(_hit_wait[0]) <= 0:
+			_hit_wait.pop_front()
+			_busy = true
+			_take.call_deferred({"name": "hit%d" % _hit_taken, "game_only": true}, f)
+			_hit_taken += 1
+			return false
+	# fid29: a strip of frames in a row (no pause)
+	if _strip.is_empty() and not _strips.is_empty() and float(_strips[0]["t"]) <= t:
+		var sp: Dictionary = _strips.pop_front()
+		_strip = {"name": str(sp.get("name", "strip")), "n": int(sp.get("n", 6)), "every": maxi(1, int(sp.get("every", 1))), "i": 0, "k": 0}
+		var hl: CanvasLayer = f.get_node_or_null("HudLayer")
+		if hl != null:
+			hl.visible = false
+	if not _strip.is_empty():
+		if int(_strip["k"]) % int(_strip["every"]) == 0:
+			_strip_save(str(_strip["name"]) + "_f%d" % int(_strip["i"]))
+			_strip["i"] = int(_strip["i"]) + 1
+		_strip["k"] = int(_strip["k"]) + 1
+		if int(_strip["i"]) >= int(_strip["n"]):
+			_strip = {}
+			var hl2: CanvasLayer = f.get_node_or_null("HudLayer")
+			if hl2 != null:
+				hl2.visible = true
 	if not _shots.is_empty() and float(_shots[0]["t"]) <= t:
 		_busy = true
 		_take.call_deferred(_shots.pop_front(), f)
-	elif _shots.is_empty() and ((t >= float(plan.get("quit_s", 0.0)) and not plan.has("win_shot")) or _win_done or f.state == "done" or t > 44.0):
+	elif _shots.is_empty() and _strip.is_empty() and ((t >= float(plan.get("quit_s", 0.0)) and not plan.has("win_shot")) or _win_done or f.state == "done" or t > 44.0):
 		_done = true
 		quit.call_deferred(0)
 	return false
@@ -107,6 +163,102 @@ func _process(_dt: float) -> bool:
 func _save(name: String) -> void:
 	await RenderingServer.frame_post_draw
 	root.get_viewport().get_texture().get_image().save_png(out_dir.path_join("%s_%s.png" % [prefix, name]))
+
+
+## fid29: one frame of a strip, saved after this frame draws (the fight is not paused).
+func _strip_save(name: String) -> void:
+	var path: String = out_dir.path_join("%s_%s.png" % [prefix, name])
+	var cb: Callable = func() -> void: root.get_viewport().get_texture().get_image().save_png(path)
+	RenderingServer.frame_post_draw.connect(cb, CONNECT_ONE_SHOT)
+
+
+## fid29: named boxes per fighter from its skeleton, in pixels of the saved image (crops.py cuts them).
+func _crops(cam: Camera3D, o: Node3D) -> Dictionary:
+	var anim: Variant = o.get("anim")
+	var sk: Skeleton3D = anim.get("skeleton") if anim != null else null
+	if sk == null:
+		return {}
+	var sz: Vector2 = Vector2(root.get_viewport().get_texture().get_size())
+	var k: Vector2 = sz / Vector2(root.size)
+	var pt: Dictionary = {}
+	for nm: String in ["Hips", "Spine", "Spine2", "Neck", "Head", "HeadTop_End", "LeftArm", "RightArm", "LeftHand", "RightHand",
+			"LeftUpLeg", "RightUpLeg", "LeftFoot", "RightFoot", "LeftToe_End", "RightToe_End"]:
+		var b: int = sk.find_bone(nm)
+		if b < 0:
+			continue
+		var w: Vector3 = sk.global_transform * sk.get_bone_global_pose(b).origin
+		if cam.is_position_behind(w):
+			continue
+		pt[nm] = cam.unproject_position(w) * k
+	if not (pt.has("Neck") and pt.has("Head") and pt.has("HeadTop_End")):
+		return {}
+	var neck: Vector2 = pt["Neck"]
+	var top: Vector2 = pt["HeadTop_End"]
+	var u: float = maxf(4.0, neck.distance_to(top))       # the head's size on screen
+	var box := func(c: Vector2, hw: float, hh: float) -> Array:
+		return [c.x - hw, c.y - hh, c.x + hw, c.y + hh]
+	var span := func(names: Array, pad: float) -> Array:
+		var lo := Vector2(INF, INF)
+		var hi := Vector2(-INF, -INF)
+		for n: String in names:
+			if pt.has(n):
+				lo = lo.min(pt[n])
+				hi = hi.max(pt[n])
+		if lo.x == INF:
+			return []
+		return [lo.x - pad, lo.y - pad, hi.x + pad, hi.y + pad]
+	# measured on the heroes' rigs: the face's middle is half way from the neck joint to the head's end joint
+	var out: Dictionary = {
+		"face": box.call(neck.lerp(top, 0.5), u * 0.5, u * 0.56),
+		"eyes": box.call(neck.lerp(top, 0.56), u * 0.45, u * 0.16),
+		"hair": box.call(neck.lerp(top, 0.85), u * 0.62, u * 0.42),
+		"torso": span.call(["Neck", "LeftArm", "RightArm", "Spine2", "Spine", "Hips"], u * 0.45),
+		"legs": span.call(["Hips", "LeftUpLeg", "RightUpLeg", "LeftFoot", "RightFoot", "LeftToe_End", "RightToe_End"], u * 0.45),
+	}
+	if pt.has("LeftHand"):
+		out["hand_l"] = box.call(pt["LeftHand"], u * 0.45, u * 0.45)
+	if pt.has("RightHand"):
+		out["hand_r"] = box.call(pt["RightHand"], u * 0.45, u * 0.45)
+	var feet_y: float = -INF
+	var xs := Vector2(INF, -INF)
+	for n: String in ["LeftFoot", "RightFoot", "LeftToe_End", "RightToe_End", "Hips"]:
+		if pt.has(n):
+			feet_y = maxf(feet_y, (pt[n] as Vector2).y)
+			xs = Vector2(minf(xs.x, (pt[n] as Vector2).x), maxf(xs.y, (pt[n] as Vector2).x))
+	if feet_y > -INF:
+		out["ground"] = [xs.x - u * 2.0, feet_y - u * 0.3, xs.y + u * 2.0, feet_y + u * 1.2]
+	for kk: String in out.keys():
+		var r: Array = out[kk]
+		if r.size() == 4:
+			out[kk] = [clampf(r[0], 0.0, sz.x), clampf(r[1], 0.0, sz.y), clampf(r[2], 0.0, sz.x), clampf(r[3], 0.0, sz.y)]
+	return out
+
+
+## fid29: the paused moment from a slow orbit round a fighter (look at the silhouette's edges as it turns).
+func _orbit(f: Node, spec: Dictionary, tag: String) -> void:
+	if _cam == null:
+		_cam = Camera3D.new()
+		_cam.near = 0.1
+		_cam.far = 600.0
+		f.add_child(_cam)
+	var who: Node3D = f.get(str(spec.get("who", "hero")))
+	if who == null:
+		return
+	var game_cam: Camera3D = f.get("cam")
+	var gc: Vector3 = game_cam.global_position - who.global_position
+	var yaw0: float = rad_to_deg(atan2(gc.x, gc.z))
+	var n: int = maxi(2, int(spec.get("frames", 30)))
+	var deg: float = float(spec.get("deg", 36.0))
+	var tgt: Vector3 = who.global_position + Vector3.UP * float(spec.get("height", 1.45))
+	_cam.fov = float(spec.get("fov", 30.0))
+	for i in n:
+		var yaw: float = yaw0 - deg * 0.5 + deg * float(i) / float(n - 1)
+		var b: Basis = Basis.from_euler(Vector3(deg_to_rad(-float(spec.get("pitch", 4.0))), deg_to_rad(yaw), 0.0))
+		_cam.global_transform = Transform3D(b, tgt + b.z * float(spec.get("dist", 2.6)))
+		_cam.current = true
+		await _save("%s_orbit_%02d" % [tag, i])
+	_cam.current = false
+	game_cam.current = true
 
 
 func _fighters(f: Node) -> Array:
@@ -152,6 +304,10 @@ func _take(s: Dictionary, f: Node) -> void:
 		Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / 1048576.0, Performance.get_monitor(Performance.RENDER_BUFFER_MEM_USED) / 1048576.0,
 		Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME), Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME),
 		Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME)])
+	if not _view_said:
+		_view_said = true
+		var vp: Viewport = root.get_viewport()
+		print("CQLOOK view %s window=%s scale=%.2f msaa=%d phone=%s" % [prefix, str(vp.get_visible_rect().size), vp.scaling_3d_scale, vp.msaa_3d, str(plan.get("phone", false))])
 	var views: Array = [["game", {}]]
 	if plan.has("side") and not bool(s.get("game_only", false)):
 		views.append(["side", plan["side"]])
@@ -181,10 +337,19 @@ func _take(s: Dictionary, f: Node) -> void:
 		for kf: Array in _fighters(f):
 			boxes[str(kf[0])] = _screen_box(cam, kf[1] as Node3D)
 		(meta["views"] as Dictionary)[vn] = boxes
+		if bool(plan.get("crops", false)):
+			var cr: Dictionary = {}
+			for kf: Array in _fighters(f):
+				cr[str(kf[0])] = _crops(cam, kf[1] as Node3D)
+			if not meta.has("crops"):
+				meta["crops"] = {}
+			(meta["crops"] as Dictionary)[vn] = cr
 		if bool(plan.get("masks", false)):
 			await _masks(f, "%s_%s" % [name, vn])
 		if bool(plan.get("skin_view", false)):
 			await _skin_view(f, "%s_%s" % [name, vn])
+	if s.has("orbit"):
+		await _orbit(f, s["orbit"] as Dictionary, name)
 	if hud_layer != null:
 		hud_layer.visible = true
 	if f.get("fx") != null:
@@ -206,8 +371,9 @@ func _take(s: Dictionary, f: Node) -> void:
 ## The fighter's box on the screen [x0, y0, x1, y1] in pixels of the saved image.
 func _screen_box(cam: Camera3D, o: Node3D) -> Array:
 	var sz: Vector2 = Vector2(root.get_viewport().get_texture().get_size())
-	var vis: Vector2 = root.get_viewport().get_visible_rect().size
-	var k: Vector2 = sz / vis
+	# fid29: unproject_position answers in the window's pixels (a phone-size window with the 720 px canvas stretch
+	# included), so this is 1 unless the saved image is not the window's size
+	var k: Vector2 = sz / Vector2(root.size)
 	var h: float = 2.3 * float(o.get("size_k"))
 	var r: float = 0.8 * float(o.get("size_k"))
 	var lo := Vector2(INF, INF)

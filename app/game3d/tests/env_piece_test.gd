@@ -181,6 +181,12 @@ func _fights() -> void:
 		_check(tier + "_model", str(with[1].get("mode", "")) == "model" and bool(with[1].get("ok", false)), str(with[1]))
 		_check(tier + "_fought", not bare[0].is_empty() and not with[0].is_empty())
 		_check(tier + "_record_unchanged", _md5(bare[0]) == _md5(with[0]), "%s vs %s" % [_md5(bare[0]), _md5(with[0])])
+		# fid29 dressing: the contact shadow under the piece on the real look; high also casts the key light's shadow
+		_check(tier + "_contact_ao", bool(with[1].get("contact_ao", false)) and bool(with[1].get("shadows", false)) == (tier == "high"), str(with[1]))
+	_check("low_no_contact_ao", not low[1].has("contact_ao"), str(low[1]))
+	# the lane key off: no contact shadow
+	var off: Array = _fight({"seed": 239, "tier": "mid", "duration_s": 12, "look": {"fid_dressing": false}}.merged(piece))
+	_check("mid_key_off_no_contact_ao", str(off[1].get("mode", "")) == "model" and not off[1].has("contact_ao"), str(off[1]))
 	# a broken model falls back to the card; neither file: nothing
 	var broken: Array = _fight({"seed": 239, "tier": "mid", "duration_s": 12}.merged({"env_glb": _broken, "env_thumb": _thumb}))
 	_check("broken_glb_card", str(broken[1].get("mode", "")) == "card" and str(broken[1].get("why", "")) == "not a GLB", str(broken[1]))

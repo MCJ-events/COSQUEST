@@ -1,0 +1,11 @@
+cast_low_win 359921307e1b
+cast_low_loss 083a338c03d4
+hero_high_win 7aae6410bfc2
+hero_high_loss 8770037c84b4
+hero_mid_win 7aae6410bfc2
+hero_mid_loss 8770037c84b4
+hero_low_win 359921307e1b
+hero_high_s11_win 9064d3b9d2f0
+hero_high_s101_win 4f86459549a4
+hero_high_place_win 7aae6410bfc2
+hero_high_forge_win 7aae6410bfc2
