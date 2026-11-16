@@ -84,7 +84,7 @@ async function redeem(req, res) {
     expiresAt: session.expiresAt,
     member: { name: p.displayName || [p.firstName, p.lastName].filter(Boolean).join(' ') || p.username || 'You', username: p.username || null },
     quest: serializeQuest(quest),
-    ticketTypes: types.map((tt) => tickets.ticketTypeJson(tt)),
+    ticketTypes: types.map((tt) => tickets.ticketTypeJson(tt, new Date(), quest)),
     selectedTicketTypeId: claims.tt || null,
     eligibility: { allowed: result.allowed, ...(result.allowed ? {} : { reason: result.reason, code: result.code, message: result.message }), mode: result.mode },
   });

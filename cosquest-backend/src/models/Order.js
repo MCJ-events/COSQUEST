@@ -51,6 +51,8 @@ const orderSchema = new mongoose.Schema(
     refundDue: { type: String, default: null, maxlength: 300 },
     // When the reconciler last asked Stripe about this order.
     lastCheckedAt: { type: Date, default: null },
+    // "Ticket sales close in about an hour" sent (src/utils/events.js nudgeSalesClosing).
+    salesNudgedAt: { type: Date, default: null },
     // What happened, in order (for support and the admin page).
     history: {
       type: [{ _id: false, at: { type: Date, default: Date.now }, event: String, detail: String }],

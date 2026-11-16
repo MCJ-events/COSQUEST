@@ -164,4 +164,12 @@ router.post('/approvals/:requestId/approve', validate(moneyRules.approve), a(mon
 router.post('/approvals/:requestId/reject', validate(moneyRules.reject), a(money.reject));
 router.post('/approvals/:requestId/withdraw', validate(moneyRules.requestId), a(money.withdrawApproval));
 
+// After the event: attendance (no-shows) and results (winners).
+const eventsAdmin = require('../controllers/adminEventsController');
+const eventRules = require('../validators/events');
+router.get('/quests/:questId/attendance', validate(eventRules.questId), a(eventsAdmin.attendance));
+router.get('/quests/:questId/results', validate(eventRules.questId), a(eventsAdmin.getResults));
+router.put('/quests/:questId/results', validate(eventRules.saveResults), a(eventsAdmin.saveResults));
+router.post('/quests/:questId/results/publish', validate(eventRules.questId), a(eventsAdmin.publishResults));
+
 module.exports = router;

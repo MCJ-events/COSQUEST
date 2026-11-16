@@ -657,6 +657,9 @@ async function run(baseUrlArg) {
       assert(r.status === 200 && r.json.quest.id === String(liveQuest._id), 'GET one quest -> public quest details', r);
     }
     process.env.ALLOW_FREE_TICKETS = '1';
+    // A live quest: ticket sales close at the start (test/events.js), kept
+    // open here, where the register route itself is checked.
+    process.env.SALES_AFTER_START = '1';
     {
       const r = await c('POST', `/api/quests/${liveQuest._id}/registrations`, { token });
       assert(r.status === 201 && r.json.quest.registrationCount === 1 && r.json.quest.isRegistered, 'POST quest registration -> joined and count updated', r);
@@ -670,6 +673,7 @@ async function run(baseUrlArg) {
       assert(r.status === 200 && r.json.quest.registrationCount === 0 && !r.json.quest.isRegistered, 'DELETE quest registration -> cancelled and count updated', r);
     }
     delete process.env.ALLOW_FREE_TICKETS;
+    delete process.env.SALES_AFTER_START;
     {
       const r = await c('GET', '/api/users/Ravencaller/quests?status=cancelled');
       assert(r.status === 200 && r.json.quests.some((item) => item.quest.id === String(liveQuest._id)), 'GET public quest history -> registered quest is listed', r);

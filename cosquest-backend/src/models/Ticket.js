@@ -17,6 +17,8 @@ const ticketSchema = new mongoose.Schema(
     checkedInBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     // "Starts in about an hour" reminder, sent once.
     reminderSentAt: { type: Date, default: null },
+    // "Tomorrow!" sent (src/utils/events.js remindTomorrow).
+    dayReminderSentAt: { type: Date, default: null },
   },
   { timestamps: true }
 );

@@ -29,7 +29,7 @@ async function listTicketTypes(req, res) {
   const quest = await Quest.findOne({ _id: req.params.questId, isPublished: true });
   if (!quest) return res.status(404).json({ error: 'Quest not found.' });
   const types = await tickets.ticketTypesFor(quest);
-  return res.json({ ticketTypes: types.map((tt) => tickets.ticketTypeJson(tt)) });
+  return res.json({ ticketTypes: types.map((tt) => tickets.ticketTypeJson(tt, new Date(), quest)) });
 }
 
 async function checkout(req, res) {
@@ -84,6 +84,13 @@ async function getOrder(req, res) {
   return res.json({ order: tickets.orderJson(order, ticket) });
 }
 
+// The place, once the quest's results are published (src/models/QuestResult.js).
+async function resultFor(ticket) {
+  const result = await require('../models/QuestResult').findOne({ quest: ticket.quest, publishedAt: { $ne: null }, 'winners.ticket': ticket._id }).lean();
+  const won = result?.winners.find((w) => String(w.ticket) === String(ticket._id));
+  return won ? { place: won.place, placeLabel: require('../utils/events').placeLabel(won.place), prizeNote: won.prizeNote } : null;
+}
+
 async function ticketJson(ticket, { withCode = false } = {}) {
   const [quest, type, order] = await Promise.all([Quest.findById(ticket.quest), TicketType.findById(ticket.ticketType), Order.findById(ticket.order)]);
   const startsIn = quest ? quest.startsAt.getTime() - Date.now() : 0;
@@ -96,6 +103,7 @@ async function ticketJson(ticket, { withCode = false } = {}) {
     ticketType: type ? { id: String(type._id), name: type.name } : null,
     order: order ? { id: String(order._id), number: tickets.orderLabel(order), amount: order.amount, status: order.status, paidAt: order.paidAt } : null,
     checkedInAt: ticket.checkedInAt,
+    result: await resultFor(ticket),
     canGiveBack: Boolean(refundable),
     giveBackUntil: quest ? new Date(quest.startsAt.getTime() - CUTOFF_HOURS() * 3600e3) : null,
     createdAt: ticket.createdAt,

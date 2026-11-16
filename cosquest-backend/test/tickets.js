@@ -177,6 +177,7 @@ async function run(baseUrl) {
   else process.env.PAYMENT_SHEET = savedSheet;
 
   console.log('\n--- be at the venue (live quests) ---');
+  process.env.SALES_AFTER_START = '1'; // sales now close at the start; these check the venue rule itself
   const venueQuest = await Quest.create({ slug: `venue-${suffix}`, title: 'Venue Hunt', status: 'upcoming', isPublished: true, startsAt: new Date(Date.now() - hour), endsAt: new Date(Date.now() + 2 * hour), location: venue, prizePool: { amount: 0, currency: 'USD' }, entryFee: { amount: 10, currency: 'USD' }, maxParticipants: 10, requireAtVenue: true, venueRadiusMeters: 200 });
   const noPlace = await request('POST', `/api/quests/${venueQuest.id}/checkout`, ben.token, {});
   check(noPlace.status === 403 && noPlace.data.code === 'location_required', 'live + at the venue: a position is needed', noPlace.data);
@@ -193,6 +194,7 @@ async function run(baseUrl) {
   const ahead = await request('POST', `/api/quests/${later.id}/checkout`, ben.token, {});
   check(ahead.status === 201, 'tickets for later can be bought from anywhere', ahead.data);
 
+  delete process.env.SALES_AFTER_START;
   console.log('\n--- things going wrong ---');
   const meetup = await makeQuest('Late Meetup', 10, 2);
   fake._failNext = true;

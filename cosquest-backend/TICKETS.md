@@ -39,6 +39,15 @@ Older app versions keep using `POST /api/quests/:id/checkout`, which returns to 
 - **Approvals** (`ApprovalRequest`): a region change is a request that another admin approves (and it is applied) or rejects, never the requester, decided once. Each step is in the audit log (area `payments`).
 - **Admin:** `GET /api/admin/ledger/transactions | balances | check | export` (CSV, safe to open in a spreadsheet), `POST /api/admin/ledger/transactions/:txId/reverse { reason }`, `GET /api/admin/regions`, `POST /api/admin/regions/requests { changes, reason }`, `GET /api/admin/approvals?status`, `POST /api/admin/approvals/:id/approve | reject | withdraw`.
 
+## Before, during and after an event
+- **Sales close at the start:** checkout answers `409 sales_closed` once a quest has started. Ticket types carry `salesClosesAt` (the start, or the type's own end if sooner) for the app's countdown. `SALES_AFTER_START=1` keeps sales open, and ticket types follow it.
+- **The door:** check-in answers `409 event_ended` once it has ended.
+- **Attendance:** `GET /api/admin/quests/:id/attendance` shows who was checked in and, after the end, the no-shows. Admins only; members aren't told.
+- **Results:** `GET` / `PUT /api/admin/quests/:id/results { winners: [{ ticketId, place, prizeNote? }] }` is a draft, allowed once the quest has ended; only checked-in people can win. `POST .../results/publish` works once: it tells the winners, sets their registration to `winner`, and records `quest.results` in the audit log. My tickets shows `result: { place, placeLabel, prizeNote }`. Prize money is handed out by the team.
+- **Reminders** (with the 2-minute job):
+    - "Tomorrow!" to ticket holders 23-25 hours before (`Ticket.dayReminderSentAt`).
+    - "Ticket sales close in about an hour" to people whose checkout expired or failed and who have no ticket, once per person per quest (`Order.salesNudgedAt`).
+
 ## Paying inside the app (payment sheet): off
 Answers `410 pay_on_website` unless `PAYMENT_SHEET=1`.
 

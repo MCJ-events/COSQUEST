@@ -233,6 +233,8 @@ async function checkin(req, res) {
     const [user, quest] = await Promise.all([User.findById(ticket.user).select('profile'), Quest.findById(ticket.quest).select('title startsAt endsAt')]);
     const who = { person: personJson(user), quest: quest ? { id: String(quest._id), title: quest.title } : null };
     if (ticket.status === 'refunded' || ticket.status === 'cancelled') return res.status(409).json({ error: `This ticket was ${ticket.status}.`, code: 'not_valid', ...who });
+    // The event is over: the door is closed.
+    if (quest && quest.endsAt <= new Date()) return res.status(409).json({ error: 'This event has ended.', code: 'event_ended', ...who });
     // One atomic step: a copied code only gets in once.
     const updated = await Ticket.findOneAndUpdate({ _id: ticket._id, status: 'valid' }, { $set: { status: 'checked_in', checkedInAt: new Date(), checkedInBy: req.admin._id } }, { new: true });
     if (!updated) {

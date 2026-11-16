@@ -95,7 +95,7 @@ Ready-made code, the setup and free ringtones: `examples/expo-chat/NativeCalls.j
 
 ## Taps
 
-Every push carries `data.type`. Message, mention, call and missed-call pushes carry `data.chatId` (the app opens that chat). Game pushes carry `data.url`, a `cosquest://play?...` link (the app opens the game there).
+Every push carries `data.type`. Message, mention, call and missed-call pushes carry `data.chatId` (the app opens that chat). Ticket pushes (`type: 'ticket'`: ticket ready, tomorrow, starts in an hour, you won) carry `data.ticketId` (the app opens the ticket). "Last chance" pushes (`type: 'quest'`) carry `data.questId` (the app opens the quest). Game pushes carry `data.url`, a `cosquest://play?...` link (the app opens the game there).
 
 ### Reply and Mark as read
 

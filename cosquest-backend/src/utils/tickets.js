@@ -90,10 +90,12 @@ async function ticketTypesFor(quest, { activeOnly = true } = {}) {
   return TicketType.find({ quest: quest._id, ...(activeOnly ? { active: true } : {}) }).sort({ sortOrder: 1, createdAt: 1 });
 }
 
-function ticketTypeJson(tt, now = new Date()) {
+// quest: ticket sales close when it starts (src/utils/events.js salesClosesAt).
+function ticketTypeJson(tt, now = new Date(), quest = null) {
   const remaining = Math.max(0, tt.quantity - tt.sold - tt.held);
   const notYet = tt.salesStartAt && tt.salesStartAt > now;
-  const over = tt.salesEndAt && tt.salesEndAt <= now;
+  const closesAt = require('./events').salesClosesAt(tt, quest);
+  const over = closesAt && closesAt <= now;
   return {
     id: String(tt._id),
     name: tt.name,
@@ -106,6 +108,8 @@ function ticketTypeJson(tt, now = new Date()) {
     onSale: tt.active && !notYet && !over && remaining > 0 && (tt.price.amount > 0 || freeAllowed()),
     salesStartAt: tt.salesStartAt,
     salesEndAt: tt.salesEndAt,
+    // When sales close (the start, or the type's own end if sooner): the app's countdown.
+    salesClosesAt: closesAt,
   };
 }
 
@@ -173,6 +177,8 @@ async function startCheckout({ user, questId, ticketTypeId, position = null, met
   const status = effectiveStatus(quest, now);
   if (status === 'cancelled') fail(409, 'This has been cancelled.');
   if (status === 'completed' || quest.endsAt <= now) fail(409, 'This has already ended.');
+  // Ticket sales close when it starts: no joining after the start.
+  if (quest.startsAt <= now && process.env.SALES_AFTER_START !== '1') fail(409, 'Ticket sales closed when it started.', 'sales_closed');
   checkAtVenue(quest, status, position);
 
   const live = await Ticket.findOne({ user: user._id, quest: quest._id, status: { $in: ['valid', 'checked_in'] } });
@@ -656,6 +662,11 @@ async function remindersDue(now = new Date()) {
       sent += 1;
     }
   }
+  // "Tomorrow!" (ticket holders) and "Ticket sales close in about an hour"
+  // (people who started buying): src/utils/events.js.
+  const events = require('./events');
+  sent += await events.remindTomorrow(now).catch((error) => { console.error('[tickets] tomorrow reminders failed:', error.message); return 0; });
+  sent += await events.nudgeSalesClosing(now).catch((error) => { console.error('[tickets] sales-closing reminders failed:', error.message); return 0; });
   return sent;
 }
 
