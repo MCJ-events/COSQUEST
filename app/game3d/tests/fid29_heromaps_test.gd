@@ -136,7 +136,18 @@ func _initialize() -> void:
 		if FileAccess.file_exists(FightScript.HERO_DIR + k + "_lod1r.glb"):
 			any_r = FightScript.HERO_DIR + k + "_lod1.glb"
 			break
-	_check("some_r_file_ships", any_r != "")
+	if any_r == "":
+		# build 29 ships the seam only (heromaps keep-partial: the r files wait on the app-size OK). With no r file in
+		# the pck the seam must hand back build 28's file for every hero, role and tier, even with ASTC reported present.
+		HeroFiles.force_astc = 1
+		_check("pick_missing_r_keeps_b28", HeroFiles.pick("res://cast/heroes/nobody_lod1.glb", "hero", {"fid_heromaps": true}) == "res://cast/heroes/nobody_lod1.glb")
+		for k: String in FightScript.HERO_ORDER:
+			for sfx: String in ["_lod0.glb", "_lod1.glb"]:
+				var hp: String = FightScript.HERO_DIR + k + sfx
+				var same: bool = true
+				for t: String in ["low", "mid", "high"]:
+					same = same and HeroFiles.pick(hp, "hero", ArenaScript.TIER_LOOK[t]) == hp
+				_check("seam_only_b28_" + k + sfx.get_basename(), same)
 	if any_r != "":
 		HeroFiles.force_astc = 1
 		_check("pick_off_without_look", HeroFiles.pick(any_r, "hero", {}) == any_r)
