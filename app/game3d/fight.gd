@@ -990,7 +990,11 @@ func _dof_update() -> void:
 ##     fighters fill more of the frame and the paving less; the heading is untouched (the stick, the bot and the ally's
 ##     spot depend on it)
 ##   - a real place's reflections: a small cube captured at the fight under the loading card (look_real.gd)
-const LC_WIN_FOV: float = 32.0
+## fid29-lightcam street victory fit round (judge-lightcam-r2): the street victory was 0.72 of the height on a 32 deg lens,
+## aimed at 0.52 of the body, pitch 3: it cut Kofi's and Tavo's raised hands and looked up under Zuri's chin. Now 0.50
+## on a 48 deg lens (the hands fit with margin), the camera at 0.8 of the body looking down 8 deg (the face level, as
+## build 28's), on the place victory's single full-atlas split and near plane (face texel 4.77 mm). Trials fix/s10..s16.
+const LC_WIN_FOV: float = 48.0
 const LC_PUSH: float = 0.05             # the victory shot's slow push-in (critically damped)
 const LC_PUSH_W: float = 2.6            # its rate (1/s): about 90 % done by the end of the beat
 const LC_HANDHELD_DEG: float = 0.15     # high: a hand-held drift, from a hash of the frame clock
@@ -1001,10 +1005,11 @@ const LC_CLOSE_BLUR: float = 0.8        # the sun's shadow_blur in the close sho
 const LC_BIAS: Vector2 = Vector2(0.2, 0.05)       # fight, close
 const LC_NBIAS: Vector2 = Vector2(3.0, 0.9)
 const LC_SPLIT: float = 0.3             # the first shadow split at fight distance (of 35 m)
-const LC_WIN_SHARE: float = 0.72        # the winner's share of the frame's height
+const LC_WIN_SHARE: float = 0.5         # the winner's share of the frame's height
 const LC_WIN_HK: float = 1.07           # the drawn figure's height over HEIGHT (the models stand under the 2.3 m capsule)
-const LC_WIN_AIM: float = 0.52          # the victory view's height, as a share of the body
-const LC_WIN_PITCH: float = 3.0
+const LC_WIN_AIM: float = 0.8           # the victory view's height, as a share of the body
+const LC_WIN_PITCH: float = 8.0         # positive: the camera looks down at the winner
+const LC_WIN_ONE: bool = true           # the street victory on the place victory's single full-atlas split and near plane
 ## fid29-lightcam fix round: at a real place the victory shot is looser and looks up a little (the place's flat facades
 ## filled the long lens's frame behind the winner, with no sky, and the arms of a wide pose cropped at its edges).
 ## 0.56 of the height on a 48 deg lens keeps 0.65-on-42's camera distance and fits Kofi's arms-up pose inside the
@@ -1105,9 +1110,9 @@ func _lightcam_update(dt: float) -> void:
 	# both (+17 to +19 draws, +49k to +101k primitives over the tier budget). The first frame after ShaderWarm's
 	# draw is drawn with two splits and the next with one (its quads live for both), so both shader variants compile
 	# under the loading card, not at the intro beat (the close weight is still under 0.1 there).
-	# The victory at a real place keeps the single split too, fitted to [near, hero + 3 m] on the whole atlas: its
+	# The victory (at a real place, and on the street with LC_WIN_ONE) keeps the single split too, fitted to [near, hero + 3 m] on the whole atlas: its
 	# 48 deg lens (LC_WIN_FOV_PLACE) put the face texel of the first of two half-atlas splits at 5.7 mm (limit 5).
-	var place_win: bool = state == "ending" and arena.get("place") != null
+	var place_win: bool = state == "ending" and (arena.get("place") != null or bool((arena.get("look") as Dictionary).get("lc_win_one", LC_WIN_ONE)))
 	var sun0: DirectionalLight3D = arena.get("sun")
 	if sun0 != null and sun0.shadow_enabled:
 		var two: bool = c > 0.0 and not place_win
@@ -3472,17 +3477,17 @@ func _apply_camera(dt: float) -> void:
 		var win_h: float = FighterScript.HEIGHT * (hero.size_k if hero != null else 1.0) + 0.25
 		var win_b: Basis = _close_win_basis
 		if _lc and not _landscape:
-			# fid29-lightcam: the victory shot on a long lens (LC_WIN_FOV), the winner LC_WIN_SHARE of the frame's
-			# height, aimed lower (LC_WIN_AIM of the body) and nearly level, so the figure fills the frame under the card
+			# fid29-lightcam: the victory shot on LC_WIN_FOV, the winner LC_WIN_SHARE of the frame's height, the camera
+			# at LC_WIN_AIM of the body looking down LC_WIN_PITCH, so a wide pose's hands stay in frame and the face is level
 			# (at a real place: looser, a wider lens and a low camera looking up, LC_WIN_*_PLACE)
 			var hh: float = FighterScript.HEIGHT * (hero.size_k if hero != null else 1.0)
 			var at_place: bool = arena != null and arena.get("place") != null
 			var lk3: Dictionary = arena.get("look") if arena != null else {}
-			var w_fov: float = float(lk3.get("lc_win_fov_place", LC_WIN_FOV_PLACE)) if at_place else LC_WIN_FOV
-			var w_share: float = float(lk3.get("lc_win_share_place", LC_WIN_SHARE_PLACE)) if at_place else LC_WIN_SHARE
+			var w_fov: float = float(lk3.get("lc_win_fov_place", LC_WIN_FOV_PLACE)) if at_place else float(lk3.get("lc_win_fov", LC_WIN_FOV))
+			var w_share: float = float(lk3.get("lc_win_share_place", LC_WIN_SHARE_PLACE)) if at_place else float(lk3.get("lc_win_share", LC_WIN_SHARE))
 			var fw: float = lerpf(_base_fov, w_fov, wk)
 			win_d = hh * LC_WIN_HK / (w_share * 2.0 * tan(deg_to_rad(w_fov) * 0.5)) * (1.0 - LC_PUSH * _lc_push(_end_t - WIN_FRAME_S))
-			win_h = hh * (float(lk3.get("lc_win_aim_place", LC_WIN_AIM_PLACE)) if at_place else LC_WIN_AIM)
+			win_h = hh * (float(lk3.get("lc_win_aim_place", LC_WIN_AIM_PLACE)) if at_place else float(lk3.get("lc_win_aim", LC_WIN_AIM)))
 			win_b = _lc_win_basis_place if at_place else _lc_win_basis
 			_lc_fov = fw
 		d = lerpf(d, win_d, wk)
