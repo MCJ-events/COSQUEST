@@ -447,6 +447,8 @@ async function fulfil(order, { paymentIntentId = null, amountTotal = null, curre
   } catch (error) {
     console.warn(`[tickets] ${orderLabel(claimed)}: live update failed:`, error.message);
   }
+  // The money in the ledger (a hiccup never blocks a payment; syncDue fills it in).
+  require('./ledger').recordOrderLater(order._id);
   return { order: await Order.findById(order._id), ticket };
 }
 
@@ -473,6 +475,7 @@ async function autoRefund(orderId, paymentIntentId, why) {
   );
   const quest = await Quest.findById(order.quest).select('title');
   tell(order.user, `Your payment for ${quest?.title || 'a ticket'} was refunded. ${why}`);
+  require('./ledger').recordOrderLater(order._id);
   return { order: updated || (await Order.findById(order._id)), refunded: true };
 }
 
@@ -510,6 +513,7 @@ async function refundOrder(orderId, { reason, by = null }) {
   );
   if (!updated) return { order: await Order.findById(order._id), already: true };
   await releaseSeat(updated, free ? 'cancelled' : 'refunded');
+  if (!free) require('./ledger').recordOrderLater(updated);
   return { order: updated };
 }
 
@@ -531,6 +535,7 @@ async function markRefundedFromStripe(paymentIntentId) {
     { new: true }
   );
   if (updated) await releaseSeat(updated, 'refunded');
+  if (updated) require('./ledger').recordOrderLater(updated);
   return updated;
 }
 
@@ -663,6 +668,9 @@ function start() {
     busy = true;
     try {
       await reconcileDue();
+      // The ledger: entries missed (e.g. a crash between steps), and an hourly debits = credits check.
+      await require('./ledger').syncDue().catch((error) => console.error('[ledger] sync failed:', error.message));
+      await require('./ledger').checkDue().catch((error) => console.error('[ledger] check failed:', error.message));
       await remindersDue().catch((error) => console.error('[tickets] reminders failed:', error.message));
     } finally {
       busy = false;

@@ -149,4 +149,19 @@ router.get('/orders/:orderId', validate(rules.orderId), a(pay.orderDetail));
 router.post('/orders/:orderId/refund', validate(rules.refundOrder), a(pay.refund));
 router.post('/checkin', validate(rules.checkin), a(pay.checkin));
 
+// Money: the ledger, regions (paid quests), two-person approvals (payment brief 6.1, 6.4, 6.6).
+const money = require('../controllers/adminLedgerController');
+const moneyRules = require('../validators/ledger');
+router.get('/ledger/transactions', validate(moneyRules.list), a(money.transactions));
+router.get('/ledger/balances', validate(moneyRules.list), a(money.balances));
+router.get('/ledger/check', a(money.check));
+router.get('/ledger/export', validate(moneyRules.list), a(money.exportCsv));
+router.post('/ledger/transactions/:txId/reverse', validate(moneyRules.reverse), a(money.reverseTx));
+router.get('/regions', a(money.regions));
+router.post('/regions/requests', validate(moneyRules.regionRequest), a(money.requestRegions));
+router.get('/approvals', validate(moneyRules.list), a(money.listApprovals));
+router.post('/approvals/:requestId/approve', validate(moneyRules.approve), a(money.approve));
+router.post('/approvals/:requestId/reject', validate(moneyRules.reject), a(money.reject));
+router.post('/approvals/:requestId/withdraw', validate(moneyRules.requestId), a(money.withdrawApproval));
+
 module.exports = router;

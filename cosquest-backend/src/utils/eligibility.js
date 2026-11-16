@@ -78,7 +78,12 @@ async function checkEligibility(user, { quest = null, paid = null, ip = null, po
   if (!region) {
     return { allowed: false, reason: 'missing_signals', code: 'location_unconfirmed', message: "We can't confirm where you are, so paid quests aren't available right now.", mode: 'live' };
   }
-  if (!allowedRegions().includes(region.toUpperCase())) {
+  // The admin's region table (two-person approved); PAYMENTS_ALLOWED_REGIONS only while it's empty.
+  const RegionRule = require('../models/RegionRule');
+  const rule = await RegionRule.findOne({ region: region.toUpperCase() }).lean();
+  const useTable = rule || (await RegionRule.estimatedDocumentCount()) > 0;
+  const regionAllowed = useTable ? rule?.status === 'allowed' : allowedRegions().includes(region.toUpperCase());
+  if (!regionAllowed) {
     return { allowed: false, reason: 'region', code: 'region_blocked', message: "Paid quests aren't available where you are.", mode: 'live', region };
   }
   return { allowed: true, mode: 'live', region };

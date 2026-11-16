@@ -8,7 +8,7 @@ const mongoose = require('mongoose');
  *
  * Write events with src/utils/audit.js (recordAudit), never directly.
  */
-const AREAS = ['moderation', 'feeds', 'chats', 'members', 'groups', 'sparks', 'roles', 'settings', 'auth', 'quests'];
+const AREAS = ['moderation', 'feeds', 'chats', 'members', 'groups', 'sparks', 'roles', 'settings', 'auth', 'quests', 'payments'];
 
 const auditEventSchema = new mongoose.Schema(
   {

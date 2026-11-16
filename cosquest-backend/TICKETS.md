@@ -31,6 +31,14 @@ The app can also ask first: `GET /api/payments/eligibility?questId=`.
 
 Older app versions keep using `POST /api/quests/:id/checkout`, which returns to the app.
 
+## Ledger, regions and two-person approvals (payment brief 6.1, 6.4, 6.6)
+- **Ledger** (`src/models/LedgerTransaction.js`, `src/utils/ledger.js`): double-entry and append-only. The model refuses every update and delete; corrections are reversals. Amounts are in cents, as Stripe charges them, with two books (`money`, `costcoin`) and a unique key per event.
+- **Ticket money:** a paid ticket is a debit to `processor_clearing` and a credit to `quest_pool:<questId>`; a refund is the reverse. It is recorded from `tickets.js` without ever holding up a payment, and the 2-minute job fills in anything missed. The platform share comes at settlement (prize formula, not approved yet). Stripe fees, partial refunds and reconciliation against Stripe's balance are not in it yet.
+- **Balance check:** debits = credits per book and currency, every hour (a log `ALERT` if not) and on the admin page.
+- **Regions** (`RegionRule`): `allowed`, `blocked` or `needs_license`. Live-mode eligibility reads the table; while it is empty, `PAYMENTS_ALLOWED_REGIONS` applies. Once it has rows, a region with no row is blocked.
+- **Approvals** (`ApprovalRequest`): a region change is a request that another admin approves (and it is applied) or rejects, never the requester, decided once. Each step is in the audit log (area `payments`).
+- **Admin:** `GET /api/admin/ledger/transactions | balances | check | export` (CSV, safe to open in a spreadsheet), `POST /api/admin/ledger/transactions/:txId/reverse { reason }`, `GET /api/admin/regions`, `POST /api/admin/regions/requests { changes, reason }`, `GET /api/admin/approvals?status`, `POST /api/admin/approvals/:id/approve | reject | withdraw`.
+
 ## Paying inside the app (payment sheet): off
 Answers `410 pay_on_website` unless `PAYMENT_SHEET=1`.
 
