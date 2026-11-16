@@ -101,7 +101,8 @@ function apnsToken(config) {
   return apnsJwt.token;
 }
 
-// Resolves to { ok, gone } (gone: the token is dead), never rejects.
+// Resolves to { ok, gone, error } (gone: the token is dead; error: Apple's
+// answer, for the notifications check), never rejects.
 function sendApns(config, deviceToken, payload) {
   return new Promise((resolve) => {
     let request;
@@ -119,7 +120,7 @@ function sendApns(config, deviceToken, payload) {
       });
     } catch (err) {
       console.warn('[callPush] APNs send failed:', err.message);
-      resolve({ ok: false });
+      resolve({ ok: false, error: `APNs: ${err.message}` });
       return;
     }
     let status = 0;
@@ -136,11 +137,11 @@ function sendApns(config, deviceToken, payload) {
       // APNS_PRODUCTION=1, or the other way round).
       const gone = status === 410 || reason === 'Unregistered' || reason === 'BadDeviceToken';
       console.warn(`[callPush] APNs ${status} ${reason}${reason === 'BadDeviceToken' ? ' (check APNS_PRODUCTION)' : ''}`);
-      return resolve({ ok: false, gone });
+      return resolve({ ok: false, gone, error: status ? `APNs ${status} ${reason}`.trim() : 'APNs: no answer in time' });
     });
     request.on('error', (err) => {
       console.warn('[callPush] APNs request failed:', err.message);
-      resolve({ ok: false });
+      resolve({ ok: false, error: `APNs: ${err.message}` });
     });
     request.setTimeout(10000, () => request.close(http2.constants.NGHTTP2_CANCEL));
     request.end(JSON.stringify(payload));
@@ -167,7 +168,7 @@ async function fcmAccessToken(account) {
   return fcmAccess.token;
 }
 
-// Resolves to { ok, gone }, never rejects. Data values must be strings.
+// Resolves to { ok, gone, error }, never rejects. Data values must be strings.
 async function sendFcm(account, deviceToken, data) {
   try {
     const response = await fetch(`${process.env.FCM_URL || 'https://fcm.googleapis.com'}/v1/projects/${account.project_id}/messages:send`, {
@@ -183,10 +184,10 @@ async function sendFcm(account, deviceToken, data) {
     // UNREGISTERED: the app was removed from the phone or the token replaced.
     const gone = response.status === 404 || code === 'UNREGISTERED';
     console.warn(`[callPush] FCM ${response.status} ${code}`);
-    return { ok: false, gone };
+    return { ok: false, gone, error: `FCM ${response.status} ${code}`.trim() };
   } catch (err) {
     console.warn('[callPush] FCM send failed:', err.message);
-    return { ok: false };
+    return { ok: false, error: err.message };
   }
 }
 
@@ -316,4 +317,37 @@ function resetForTests() {
   serviceAccount = { source: undefined, account: null };
 }
 
-module.exports = { canRing, ring, ringEnded, incomingCallEvent, withDeclinePass, verifyDeclinePass, RING_SECONDS, resetForTests };
+/**
+ * Notifications check (pushTestController.js): rings one phone with its own
+ * call screen, like ring(), and resolves to Google's / Apple's answer
+ * ({ ok, error }). A dead token is left for the next real call to clear.
+ */
+async function testRing(phone, { call, caller }) {
+  if (!phone?.voipToken) return { ok: false, error: 'no call token from this phone' };
+  const event = withDeclinePass(incomingCallEvent(call, caller), phone.userId);
+  if (phone.voipType === 'APNS_VOIP') {
+    const apns = apnsConfig();
+    return apns ? sendApns(apns, phone.voipToken, { incomingCall: event }) : { ok: false, error: 'APNs keys not set' };
+  }
+  if (phone.voipType !== 'FCM') return { ok: false, error: `unknown call token type ${phone.voipType}` };
+  const fcm = fcmConfig();
+  if (!fcm) return { ok: false, error: 'FCM_SERVICE_ACCOUNT not set or unreadable' };
+  // The app compares it with its own google-services.json project.
+  event.metadata = { ...event.metadata, firebaseProject: fcm.project_id };
+  return sendFcm(fcm, phone.voipToken, { messageType: 'incomingCall', incomingCall: JSON.stringify(event) });
+}
+
+/**
+ * Which call-screen keys this server has, for the notifications check:
+ * Firebase's project id (it must be the app's google-services.json project)
+ * and whether APNs is set, and for which builds. No key material.
+ */
+function ringingSetup() {
+  const apns = apnsConfig();
+  return {
+    fcmProject: fcmConfig()?.project_id || null,
+    apns: apns ? (process.env.APNS_PRODUCTION === '1' ? 'production' : 'sandbox') : null,
+  };
+}
+
+module.exports = { testRing, ringingSetup, canRing, ring, ringEnded, incomingCallEvent, withDeclinePass, verifyDeclinePass, RING_SECONDS, resetForTests };

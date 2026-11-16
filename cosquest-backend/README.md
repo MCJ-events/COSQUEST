@@ -102,6 +102,7 @@ Runs correctly today as a single server process. If this is ever deployed as mor
 |---|---|---|---|
 | PATCH | `/api/users/me/preferences/notifications` | `{ email, notificationsEnabled }` | |
 | POST | `/api/users/me/devices` | `{ pushToken, platform, voipToken?, voipType?, dataCalls? }` (Bearer) | platform: `"ios" \| "android" \| "web"`; dedupes by token. `voipToken`/`voipType` (`APNS_VOIP` \| `FCM`): the call token, so calls ring on the phone's own call screen. `dataCalls` (Android): the app rings itself from data-only call pushes. The answer's `callRinging` is `native`, `data` or `push` (PUSH.md) |
+| POST | `/api/users/me/push-test` | `{ kind: "message" \| "call" }` (signed in; one every 10 s) | Settings > Notifications check: a real push to each of your phones with Expo's receipt, or (`call`) a test ring 10 s later with Google's / Apple's / Expo's answer, plus `server.fcmProject` (PUSH.md) |
 | POST | `/api/users/me/onboarding/complete` | `{ email }` alone, or `{ email, profile, faction, interests, preferences }` | Requires a completed profile, avatar/photo, faction, at least one interest, and notification choice. One-shot submissions are atomic: nothing is saved if anything is invalid. The signup token unlocks the app after this succeeds. |
 
 ### Notifications (in-app inbox — Bearer token only, i.e. after login)

@@ -10,6 +10,7 @@ const {
   unregisterDevice,
   completeOnboarding,
 } = require('../controllers/preferencesController');
+const { pushTest } = require('../controllers/pushTestController');
 
 const router = express.Router();
 
@@ -19,6 +20,8 @@ const router = express.Router();
 router.patch('/me/preferences/notifications', requireAuth, validate(rules.notifications), asyncHandler(updateNotificationPrefs));
 router.patch('/me/preferences/location', requireAuth, validate(rules.location), asyncHandler(updateLocationPrefs));
 router.post('/me/devices', requireAuth, validate(rules.registerDevice), asyncHandler(registerDevice));
+// Settings > Notifications check: a real test push with each phone's exact answer.
+router.post('/me/push-test', requireAuth, validate(rules.pushTest), asyncHandler(pushTest));
 router.delete('/me/devices', requireAuth, validate(rules.unregisterDevice), asyncHandler(unregisterDevice));
 router.delete('/me/devices/:pushToken', requireAuth, validate(rules.unregisterDeviceByPath), asyncHandler(unregisterDevice));
 router.post('/me/onboarding/complete', requireAuth, validate(rules.completeOnboarding), asyncHandler(completeOnboarding));

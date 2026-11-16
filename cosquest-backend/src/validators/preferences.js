@@ -45,6 +45,9 @@ const registerDevice = [
 const unregisterDevice = [string('pushToken', { required: true, min: 1, max: 300, message: 'pushToken is required.' })];
 const unregisterDeviceByPath = [string('pushToken', { in: 'param', required: true, min: 1, max: 300, message: 'pushToken is required.' })];
 
+// POST /api/users/me/push-test { kind } (the notifications check; no kind: a message)
+const pushTest = [oneOfValues('kind', ['message', 'call'], { message: 'kind must be "message" or "call".' })];
+
 // POST /api/users/me/onboarding/complete - the shapes. The controller checks the
 // values (a taken username, real faction and interest keys, the required steps).
 const completeOnboarding = [
@@ -58,4 +61,4 @@ const completeOnboarding = [
   ...locationRules('location.'),
 ];
 
-module.exports = { notifications, location, registerDevice, unregisterDevice, unregisterDeviceByPath, completeOnboarding, locationRules };
+module.exports = { notifications, location, registerDevice, unregisterDevice, unregisterDeviceByPath, pushTest, completeOnboarding, locationRules };
