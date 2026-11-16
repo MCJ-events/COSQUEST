@@ -4,7 +4,9 @@ extends SceneTree
 ## clips), with the fighters and effects out of the way. tools/look/bake_env.py turns them into the
 ## prefiltered cube and the six ambient colours in data/look_real.json.
 ##   xvfb-run godot --path app/game3d --rendering-driver opengl3 --resolution 720x1280 --fixed-fps 30 \
-##     -s res://tools/look/env_capture.gd -- --out=/abs/dir [--times=golden,day,dusk,night] [--size=128]
+##     -s res://tools/look/env_capture.gd -- --out=/abs/dir [--times=golden,day,dusk,night] [--size=128] [--look={json}]
+## --look merges keys into the capture's look (fid29-lightcam: {"fid_lightcam": true} captures under the real sky, for
+## bake_env.py --group env_lc).
 ## Saves <out>/env_<time>_<face>.png (faces px nx py ny pz nz) and <out>/env_<time>.json (exposure, key).
 
 const EXPOSURE: float = 0.25        # stored value = radiance x this (sRGB encoded): radiance up to 4 survives
@@ -19,6 +21,7 @@ var size: int = 128
 var _ti: int = -1
 var _state: String = "next"
 var _wait: int = 0
+var look_extra: Dictionary = {}
 
 
 func _initialize() -> void:
@@ -29,6 +32,9 @@ func _initialize() -> void:
 			times = a.substr(8).split(",")
 		elif a.begins_with("--size="):
 			size = int(a.substr(7))
+		elif a.begins_with("--look="):
+			var lx: Variant = JSON.parse_string(a.substr(7))
+			look_extra = lx if lx is Dictionary else {}
 	DirAccess.make_dir_recursive_absolute(out_dir)
 	var main: Node = load("res://main.tscn").instantiate()
 	root.add_child(main)
@@ -52,6 +58,7 @@ func _process(_dt: float) -> bool:
 			"quality": "low", "render_scale": 0.5, "dyn_res": false, "music": false, "sound": false, "intro": false,
 			"tier": "mid",    # the street as the real look draws it (round 2: the turned key, the paving's exposure)
 			"look": {"time": times[_ti], "night": true, "bloom": false, "shadows": false}}
+		(cfg["look"] as Dictionary).merge(look_extra, true)
 		root.get_node("Bridge").start_fight.call_deferred(JSON.stringify(cfg))
 		_state = "load"
 		_wait = 0
