@@ -1006,9 +1006,14 @@ const LC_WIN_HK: float = 1.07           # the drawn figure's height over HEIGHT 
 const LC_WIN_AIM: float = 0.52          # the victory view's height, as a share of the body
 const LC_WIN_PITCH: float = 3.0
 ## fid29-lightcam fix round: at a real place the victory shot is looser and looks up a little (the place's flat facades
-## filled the long lens's frame behind the winner, with no sky, and the arms of a wide pose cropped at its edges)
-const LC_WIN_SHARE_PLACE: float = 0.65
-const LC_WIN_FOV_PLACE: float = 42.0
+## filled the long lens's frame behind the winner, with no sky, and the arms of a wide pose cropped at its edges).
+## 0.56 of the height on a 48 deg lens keeps 0.65-on-42's camera distance and fits Kofi's arms-up pose inside the
+## portrait frame's width (0.65 cut both hands); the near plane comes in to LC_NEAR_K_PLACE_WIN of the distance there,
+## or the wider lens's bottom edge showed the clipped ground's background as a flat band (trials fix/t5..t9). The sun
+## stays one split there (see _lightcam_update) so the face texel holds under 5 mm on the wider lens.
+const LC_WIN_SHARE_PLACE: float = 0.56
+const LC_WIN_FOV_PLACE: float = 48.0
+const LC_NEAR_K_PLACE_WIN: float = 0.35
 const LC_WIN_PITCH_PLACE: float = -6.0   # negative: the camera looks up at the winner
 const LC_WIN_AIM_PLACE: float = 0.55
 const LC_PITCH: float = 20.0            # the mid-fight orbit (build 28: 28)
@@ -1100,9 +1105,12 @@ func _lightcam_update(dt: float) -> void:
 	# both (+17 to +19 draws, +49k to +101k primitives over the tier budget). The first frame after ShaderWarm's
 	# draw is drawn with two splits and the next with one (its quads live for both), so both shader variants compile
 	# under the loading card, not at the intro beat (the close weight is still under 0.1 there).
+	# The victory at a real place keeps the single split too, fitted to [near, hero + 3 m] on the whole atlas: its
+	# 48 deg lens (LC_WIN_FOV_PLACE) put the face texel of the first of two half-atlas splits at 5.7 mm (limit 5).
+	var place_win: bool = state == "ending" and arena.get("place") != null
 	var sun0: DirectionalLight3D = arena.get("sun")
 	if sun0 != null and sun0.shadow_enabled:
-		var two: bool = c > 0.0
+		var two: bool = c > 0.0 and not place_win
 		if _lc_warm_n > 0:
 			two = _lc_warm_n == 2
 			_lc_warm_n -= 1
@@ -1121,7 +1129,10 @@ func _lightcam_update(dt: float) -> void:
 		var dh: float = cam.global_position.distance_to(hero.global_position + Vector3.UP * FighterScript.HEIGHT * hero.size_k * 0.8)
 		var far_c: float = dh + 3.0
 		sun.directional_shadow_max_distance = lerpf(35.0, far_c, c)
-		cam.near = lerpf(LC_NEAR, maxf(LC_NEAR, dh * float(lk.get("lc_near_k", LC_NEAR_K))), c)
+		var nk: float = float(lk.get("lc_near_k", LC_NEAR_K))
+		if place_win:
+			nk = float(lk.get("lc_near_k_place_win", LC_NEAR_K_PLACE_WIN))
+		cam.near = lerpf(LC_NEAR, maxf(LC_NEAR, dh * nk), c)
 		# the filter's blur narrows too (high 3.0, mid 2.0 at fight distance): a wide penumbra washed out the nose's
 		# and the chin's shadows, a few millimetres across at this texel
 		if _lc_blur < 0.0:
@@ -1135,7 +1146,7 @@ func _lightcam_update(dt: float) -> void:
 		if c > 0.99 and not _lc_said.has("texel%d" % int(state == "ending")):
 			_lc_said["texel%d" % int(state == "ending")] = true
 			_log("lightcam close shadow shot=%s dist_m=%.2f max_m=%.2f split1=%.2f texel_mm=%.2f near=%.2f fov=%.1f" % ["win" if state == "ending" else "intro",
-				dh, far_c, sun.directional_shadow_split_1, _lc_texel_mm(dh, nr, nr + (far_c - nr) * sun.directional_shadow_split_1), cam.near, cam.fov])
+				dh, far_c, sun.directional_shadow_split_1, _lc_texel_mm(dh, nr, far_c if place_win else nr + (far_c - nr) * sun.directional_shadow_split_1, place_win), cam.near, cam.fov])
 	# the fighters: the shadow map on them, the kicker as a rim
 	for f: FighterScript in fighters:
 		for m: ShaderMaterial in f.get("_lit_mats"):
@@ -1156,7 +1167,7 @@ func _lightcam_update(dt: float) -> void:
 
 ## The shadow map's texel at distance `d` from the camera (mm): the first split covers [near, split_far]; the split's
 ## view slice is fitted into a sphere, and with two splits each gets half the atlas's width.
-func _lc_texel_mm(d: float, near: float, split_far: float) -> float:
+func _lc_texel_mm(d: float, near: float, split_far: float, one: bool = false) -> float:
 	var far_s: float = split_far
 	var nr: float = near
 	if d > split_far:
@@ -1168,7 +1179,7 @@ func _lc_texel_mm(d: float, near: float, split_far: float) -> float:
 	var mid: float = (nr + far_s) * 0.5
 	var r: float = Vector3(far_s * th, far_s * tv, far_s - mid).length()
 	var atlas: int = int(ProjectSettings.get_setting("rendering/lights_and_shadows/directional_shadow/size", 2048))
-	return 2.0 * r / (atlas * 0.5) * 1000.0
+	return 2.0 * r / (atlas * (1.0 if one else 0.5)) * 1000.0   # one split: the whole atlas; two: half each
 
 
 ## The depth-aware focus (mid and high, close shots only): a full-screen pass over the screen copy, its circle of
