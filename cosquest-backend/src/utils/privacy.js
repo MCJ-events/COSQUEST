@@ -107,4 +107,15 @@ async function onlineHiddenFrom(viewerId, userIds) {
   return new Set(users.filter((u) => u.privacy?.profileVisibility === 'private' || !friends.has(String(u._id))).map((u) => String(u._id)));
 }
 
-module.exports = { friendIdsOf, areFriends, hiddenAuthorIds, canViewPost, visiblePosts, isPublicAuthor, dmRefusal, onlineHiddenFrom };
+/**
+ * Ringing someone into a group call: members of the group can always be
+ * rung (they joined it). From outside a group they belong to, the message
+ * rules apply (Friends: friends only; Private: people already chatting with
+ * them). Returns null (allowed) or { status, message, extra }.
+ */
+async function callInviteRefusal(target, inviterId, { isMember = false } = {}) {
+  if (isMember) return null;
+  return dmRefusal(target, inviterId);
+}
+
+module.exports = { callInviteRefusal, friendIdsOf, areFriends, hiddenAuthorIds, canViewPost, visiblePosts, isPublicAuthor, dmRefusal, onlineHiddenFrom };

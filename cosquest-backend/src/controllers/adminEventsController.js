@@ -43,9 +43,13 @@ async function attendance(req, res) {
     const who = await people(tickets.map((t) => t.user));
     const ended = quest.endsAt <= new Date();
     const row = (t) => ({ ticketId: String(t._id), person: who.get(String(t.user)) || null, checkedInAt: t.checkedInAt });
-    const attendees = tickets.filter((t) => t.status === 'checked_in').map(row);
-    const notIn = tickets.filter((t) => t.status === 'valid').map(row);
+    // Virtual quests have no door: every ticket holder counts (until the game
+    // reports who actually played), so no "not here yet" and no no-shows.
+    const virtual = quest.format === 'virtual';
+    const attendees = tickets.filter((t) => virtual || t.status === 'checked_in').map(row);
+    const notIn = virtual ? [] : tickets.filter((t) => t.status === 'valid').map(row);
     return res.json({
+      virtual,
       ended,
       tickets: tickets.length,
       checkedIn: attendees.length,
@@ -91,8 +95,10 @@ async function saveResults(req, res) {
     const ticketIds = input.map((w) => String(w?.ticketId || ''));
     if (ticketIds.some((id) => !mongoose.isValidObjectId(id))) fail(400, 'Choose winners from the people who were checked in.', 'bad_ticket');
     if (new Set(ticketIds).size !== ticketIds.length) fail(400, 'Each person can win once.', 'duplicate_winner');
-    const tickets = await Ticket.find({ _id: { $in: ticketIds }, quest: quest._id, status: 'checked_in' }).select('user');
-    if (tickets.length !== ticketIds.length) fail(400, 'Only people who were checked in can win.', 'not_checked_in');
+    // In person: only people who were checked in. Virtual: any ticket holder.
+    const virtualQuest = quest.format === 'virtual';
+    const tickets = await Ticket.find({ _id: { $in: ticketIds }, quest: quest._id, status: virtualQuest ? { $in: ['valid', 'checked_in'] } : 'checked_in' }).select('user');
+    if (tickets.length !== ticketIds.length) fail(400, virtualQuest ? 'Only ticket holders can win.' : 'Only people who were checked in can win.', 'not_checked_in');
     const byId = new Map(tickets.map((t) => [String(t._id), t]));
     const winners = input.map((w) => {
       const place = Number(w.place);

@@ -101,6 +101,15 @@ async function run(baseUrl) {
   const call = await request('POST', `/api/chats/${strangerChat}/calls`, viewer.token, { type: 'audio' });
   check(call.status === 403 && call.data.code === 'friends_only', 'calls follow the messages rule (a Friends account: friends only)', call.data);
 
+  // Adding people to a call: from outside the chat the call started in, the message rules apply.
+  const openChat = (await request('POST', '/api/chats/dm', viewer.token, { username: open.name })).data.chat.id;
+  const groupCall = (await request('POST', `/api/chats/${openChat}/calls`, viewer.token, { type: 'audio' })).data.call.id;
+  const addStranger = await request('POST', `/api/calls/${groupCall}/invite`, viewer.token, { userIds: [stranger.user.id] });
+  check(addStranger.status === 409 && addStranger.data.skipped?.[0]?.reason === 'friends_only', "adding a Friends account you're not friends with to a call: skipped (friends_only)", addStranger.data);
+  const addFriend = await request('POST', `/api/calls/${groupCall}/invite`, viewer.token, { userIds: [friend.user.id] });
+  check(addFriend.status === 200 && addFriend.data.invited?.includes(friend.user.id), '...a friend: added and rung', addFriend.data);
+  await request('POST', `/api/calls/${groupCall}/end`, viewer.token);
+
   console.log(`\nprivacy: ${ok} passed, ${bad} failed`);
   return { pass: ok, fail: bad };
 }

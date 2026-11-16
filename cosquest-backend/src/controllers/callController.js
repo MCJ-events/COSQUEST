@@ -870,7 +870,7 @@ async function inviteUsers(callId, inviter, { userIds = [], usernames = [] } = {
     }
   }
   const foundUsers = validIds.length
-    ? await User.find({ _id: { $in: validIds } }).select('privacy.allowDirectMessages profile.username').lean()
+    ? await User.find({ _id: { $in: validIds } }).select('privacy.allowDirectMessages privacy.profileVisibility profile.username').lean()
     : [];
   const byId = new Map(foundUsers.map((user) => [String(user._id), user]));
   for (const rawId of validIds) {
@@ -895,6 +895,11 @@ async function inviteUsers(callId, inviter, { userIds = [], usernames = [] } = {
     blockedEitherWayAmong(inviterId, candidateIds),
     busyAmong(candidateIds, found.callId),
   ]);
+  // Privacy (src/utils/privacy.js callInviteRefusal): the people of the chat
+  // the call started in can always be rung; anyone else as the message rules
+  // allow (Friends: friends only; Private: people already chatting with them).
+  const callChat = await Call.findById(found.callId).select('conversation').populate('conversation', 'participants').lean();
+  const chatPeople = new Set((callChat?.conversation?.participants || []).map(String));
 
   const allowed = [];
   for (const [userId, user] of candidates) {
@@ -904,10 +909,11 @@ async function inviteUsers(callId, inviter, { userIds = [], usernames = [] } = {
       skipped.push({ userId, username, reason: 'unavailable' });
     } else if (user.privacy?.allowDirectMessages === false) {
       skipped.push({ userId, username, reason: 'not_accepting_calls' });
-    } else if (busyIds.has(userId)) {
-      skipped.push({ userId, username, reason: 'busy' });
     } else {
-      allowed.push({ userId, username });
+      const refused = await require('../utils/privacy').callInviteRefusal(user, inviterId, { isMember: chatPeople.has(userId) });
+      if (refused) skipped.push({ userId, username, reason: refused.extra?.code || 'not_accepting_calls' });
+      else if (busyIds.has(userId)) skipped.push({ userId, username, reason: 'busy' });
+      else allowed.push({ userId, username });
     }
   }
 
