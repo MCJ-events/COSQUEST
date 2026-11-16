@@ -874,21 +874,18 @@ func _charshade_parts(sm: ShaderMaterial, b: BaseMaterial3D, kind: String, cut: 
 			var c := Color(float(ic[0]), float(ic[1]), float(ic[2])).srgb_to_linear()
 			sm.set_shader_parameter("cs_iris_col", Vector3(c.r, c.g, c.b))
 	elif kind == "hair":
-		# GATED OFF on mid and high (15 Nov): the strand lobes and the soft cut (alpha to coverage) could not be shown
-		# inside the hair budget (+10 % mid, +20 % high: the llvmpipe proxy read the soft cut alone at +33 to +69 %), so
-		# the hair cards keep build 28's shading and hard 0.35 cut exactly (cs_on off on this material) and take only
-		# the strand atlas below: a texture swap, the same shader code, +0 ALU and +0 reads (texture memory counted in
-		# budgets.md). Look "cs_hair_soft": true brings the strand path back for a re-measure on a phone GPU.
-		var soft: bool = bool(look.get("cs_hair_soft", false))
-		if soft:
-			sm.set_shader_parameter("cs_hair_cards", 1.0)
-			if str(info.get("hair_style", "")) == "curls":
-				# tufts (a crop, a beard) have no one strand direction: a weak, broad highlight
-				sm.set_shader_parameter("cs_hair_lobes", Vector4(0.0, 0.08, 0.035, 0.025))
-			if cut:
-				sm.shader = _real_variant(two_sided, true, true, false)
-		else:
-			sm.set_shader_parameter("cs_on", false)
+		# 16 Nov: the hair cards take charshade's hair SHADING (strand lobes along the card, root-to-tip shade, the coils'
+		# broad matte sheen) on build 28's hard 0.35 cut. The shading is what turns Zuri's coils from build 28's white blob
+		# (its strand highlight lit the whole coil) into dark coils; it costs +3 to +5 % hair ALU and +0 texture reads at one
+		# texture format (shader_cost --raw=1, budgets.md), inside +10 % mid and +20 % high. The soft cut (alpha to
+		# coverage) is what was over the budget (+33 to +69 % on the llvmpipe proxy): it stays off, look "cs_hair_soft": true
+		# brings it back for a re-measure on a phone GPU.
+		sm.set_shader_parameter("cs_hair_cards", 1.0)
+		if str(info.get("hair_style", "")) == "curls":
+			# tufts (a crop, a beard) have no one strand direction: a weak, broad highlight
+			sm.set_shader_parameter("cs_hair_lobes", Vector4(0.0, 0.08, 0.035, 0.025))
+		if cut and bool(look.get("cs_hair_soft", false)):
+			sm.shader = _real_variant(two_sided, true, true, false)
 		# the strand atlas made for this hero (tools/char/hair_atlas.py): 1K x 2K on high, 512 x 1024 on mid, soft alpha
 		# for the coverage; which card columns hold strands (the rest are coils or braids) and which end is the root
 		var hj: Dictionary = _cs_json(CS_HAIR_DIR + key + "_hair.json") if key != "" else {}

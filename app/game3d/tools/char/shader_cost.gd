@@ -133,6 +133,29 @@ func _initialize() -> void:
 					nr.set_shader_parameter("albedo_tex", ImageTexture.create_from_image(img))
 					at.append([nm + "raw", nr])
 		_cfgs += at
+	# --raw=1 (15 Nov): the hair ALU at one texture format. Every config samples charshade's strand atlas decompressed to
+	# RGBA8 with mipmaps (build 28's GLB texture is RGBA8 at runtime; llvmpipe decodes VRAM-compressed texels in software,
+	# which swamped the earlier hair ratios): build 28's shading and hard cut (rawb28), charshade's hair shading on build
+	# 28's hard 0.35 cut (rawcshard) and on the soft cut (rawcssoft). Prints alu_ratio = (config - flat) / (rawb28 - flat).
+	if _arg("raw", "0") == "1" and b0.has("hair"):
+		_cfgs = [["hair_high_b28", _mat(b0["hair"], off_h, key, true)], ["hair_mid_b28", _mat(b1["hair"], off_m, key, true)]]
+		for t: Array in [["high", b0, high, off_h], ["mid", b1, mid, off_m]]:
+			var lk: Dictionary = (t[2] as Dictionary).duplicate()
+			lk["cs_hair_soft"] = true
+			var soft: ShaderMaterial = _mat((t[1] as Dictionary)["hair"], lk, key, true)
+			var tex: Texture2D = soft.get_shader_parameter("albedo_tex")
+			var img: Image = tex.get_image()
+			if img.is_compressed():
+				img.decompress()
+			if not img.has_mipmaps():
+				img.generate_mipmaps()
+			var raw := ImageTexture.create_from_image(img)
+			soft.set_shader_parameter("albedo_tex", raw)
+			var hard: ShaderMaterial = soft.duplicate()
+			hard.shader = FighterScript._real_variant(soft.shader.code.contains("cull_disabled"), true)
+			var bb: ShaderMaterial = _mat((t[1] as Dictionary)["hair"], t[3], key, true)
+			bb.set_shader_parameter("albedo_tex", raw)
+			_cfgs += [["hair_%s_rawb28" % t[0], bb], ["hair_%s_rawcshard" % t[0], hard], ["hair_%s_rawcssoft" % t[0], soft]]
 	var prev: String = _arg("prev", "")
 	if prev != "" and FileAccess.file_exists(prev):
 		var pc: String = FileAccess.get_file_as_string(prev)
@@ -217,6 +240,10 @@ func _process(_d: float) -> bool:
 				if k.ends_with("_new") and med.has(k.replace("_new", "_b28atlas")):
 					var ba: float = float(med[k.replace("_new", "_b28atlas")])
 					print("CQCOST %s alu_ratio_same_atlas=%.3f" % [k, (med[k] - fl) / maxf(ba - fl, 1e-6)])
+				for sfx: String in ["_rawcshard", "_rawcssoft", "_b28"]:
+					if k.ends_with(sfx) and med.has(k.replace(sfx, "_rawb28")):
+						var rb: float = float(med[k.replace(sfx, "_rawb28")])
+						print("CQCOST %s alu_ratio_vs_rawb28=%.3f" % [k, (med[k] - fl) / maxf(rb - fl, 1e-6)])
 				if k.ends_with("_newraw") and med.has(k.replace("_newraw", "_b28")):
 					var b2: float = float(med[k.replace("_newraw", "_b28")])
 					print("CQCOST %s shader_ratio_b28_format=%.3f" % [k, (med[k] - fl) / maxf(b2 - fl, 1e-6)])
