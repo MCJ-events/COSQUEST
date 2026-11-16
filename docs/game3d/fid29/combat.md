@@ -15,7 +15,7 @@ are not edited; everything is installed by `combat_animator.gd` when it binds a 
 | Dead blending | `dead_blend.gd` (first skeleton modifier) | A clip switch plays the new clip with no crossfade (one clip evaluated, never two). For 0.15 to 0.25 s every bone carries on from its own last two frames (angular velocity extrapolated with a 0.1 s half-life) and eases into the new clip with a smoothstep (D. Holden, "Dead Blending", 2023). A strike's contact frame always shows the clip's own pose. | mid, high |
 | Pose guard | `dead_blend.gd` with `guard`, after the foot lock, before the cloth | Hips and legs only: angular acceleration on the final pose limited to 500 rad/s^2 (28,648 deg/s^2) with a braking rule that never overshoots the pose the clip and the IK ask for. The pop probe showed most transition peaks were knee flips from the foot-lock solve, not the clip switch. Motion under the limit passes exactly; spine, arms and head (the strikes) are never touched; a hit-stop holds it. | mid, high |
 | Directional hit reactions | `combat_animator.flinch(push, strength)` (signature and `_flinch_env`, `_flinch_k`, `_flinch_dir` kept), `pose_layer.gd add_layers` | Captured recoils as additive layers on the spine, neck and arms: front (CMCD Nussknacker 3), back and right (CMCD 2018-01-17 SAM sparring), left (CMCD Kampf, or the right take mirrored), plus Mesh2Motion hit-chest (light) and hit-head (heavy front). The two strongest sides by the push direction, weighted, scaled 0.55 to 1 by the blow's strength, 0.25 to 0.4 s. A side with no clip for a hero falls back to the procedural flinch. | mid, high |
-| KO settle | `ko_settle.gd` | After the KO clip's impact frame (the hips have landed) and only once the fight's result is final, a PhysicalBoneSimulator3D partial ragdoll (capsules from the humanoid's joints, its own collision layer that sees only a ground plane under the fighter, never a hit or hurt area) eases from 0 to 0.6 over 0.2 s and holds. Freed with the fight. No physics body of this lane exists while the fight can still change, so the broadphase that `hit_area.gd` warns about is untouched during play. | mid, high |
+| KO settle | `ko_settle.gd` | After the KO clip's impact frame (the hips have landed) and only once the fight's result is final, a PhysicalBoneSimulator3D partial ragdoll (capsules from the humanoid's joints, its own collision layer that sees only a ground plane under the fighter, never a hit or hurt area) eases from 0 to 0.6 over 0.2 s and holds. It stops and is freed one step before the Guardian's dissolve (`fighter.gd`) folds the body to zero width, and otherwise with the fight; `foot_lock.gd` skips a zero-width skeleton. No physics body of this lane exists while the fight can still change, so the broadphase that `hit_area.gd` warns about is untouched during play. | mid, high |
 | Captured clips | `anim/real/<key>.glb`, `data/anim_real.json`, `anim_library.gd real_for` | A second library `cqr` per hero. Intros by archetype from 100STYLE idles (Proud: Imani, Lyra; Strutting: Zuri; Neutral: Tavo, Oren), cut where the performer's arms hang at the sides; Kofi keeps build 28's intro (below). Victories from the Cologne database's "boxing, jumping, cheering, winning" take for Zuri, Oren and Lyra. GUARD variants from CMU boxing 13_17 and 14_01. A captured clip that stands in for a build 28 clip keeps its frame count and event times (`tools/anim/check_clips.py --real`). | mid, high |
 | Variation | `combat_animator.variant_pick` | Which variant a looping state plays: a hash of the fighter's slot, the state and its swing count. Never the fight's RNG. | mid, high |
 | Hit shield | `vfx/fx_card.gdshaderinc` (`FID29`), `fx.gd` | A hit's cards fade to 0.2 inside a screen ellipse round the struck fighter's head and chest (set per hit; cards made within 0.35 s at the same body take it too). | mid, high |
@@ -69,7 +69,7 @@ All on the final tree. Gate values from the brief in brackets.
 | the same at 0.95 absolute luma | 0 % (the phone tonemapper puts white at 0.86) | 0 % | |
 | Guardian pixels the effects lift by more than 0.25 luma | 33.6 to 50.1 % | 11.7 to 16.5 % | |
 | KO: lowest bone under the ground / time to settle (lane test) | | 0.000 m / 0.03 s after the settle starts | at most 3 cm / within 1.2 s |
-| Animation modifiers, three fighters, one CPU core (lane test, `Time.get_ticks_usec`) | | 0.047 ms per frame (0.016 per fighter) | at most 0.3 ms |
+| Animation modifiers, three fighters, one CPU core (lane test, `Time.get_ticks_usec`) | | 0.038 ms per frame (0.013 per fighter) on the farm, final commit; 0.047 ms on mm1 earlier | at most 0.3 ms |
 | Clip length and event times per button (`check_clips.py --real`) | | 0 problems over every captured clip that stands in for a build 28 one | identical |
 | Variation and the fight RNG (lane test, 1,000 picks) | | state unchanged | unchanged |
 | Ragdoll bodies before the result is final (lane test) | | 0 (13 after) | 0 |
@@ -145,11 +145,14 @@ on low.
 
 ## Tests
 
-- C1: the 11 seeded records byte-identical to build 28 with `fid_combat` on and off (`tools/fid29/records.sh --check`,
-  mm1, Godot 4.5.1): cast_low_win 359921307e1b, cast_low_loss 083a338c03d4, hero_high/mid win 7aae6410bfc2 and loss
-  8770037c84b4, hero_low_win 359921307e1b, s11 9064d3b9d2f0, s101 4f86459549a4, place and forge 7aae6410bfc2.
-- C2: `tools/fid29/gdtests.sh`: 576 passed, 1 failed, the known whirl check (`build21_test whirl_ends_facing_target`),
-  which passes with `--fixed-fps 30` (build21_test 39 of 39). The lane test `tests/fid29_combat_test.gd` 30 of 30;
+All on the final commit (79584cc), on the farm, Godot 4.5.1, under the shared render lock and gate
+(`final/farm_final.sh` in the lane folder, log `final/farm_final.log`).
+
+- C1: the 11 seeded records byte-identical to build 28 with `fid_combat` on and off (`tools/fid29/records.sh --check`):
+  cast_low_win 359921307e1b, cast_low_loss 083a338c03d4, hero_high/mid win 7aae6410bfc2 and loss 8770037c84b4, hero_low_win 359921307e1b, s11 9064d3b9d2f0, s101 4f86459549a4, place and forge 7aae6410bfc2.
+- C2: `tools/fid29/gdtests.sh`: 577 passed, 1 failed, the known whirl check (`build21_test whirl_ends_facing_target`),
+  which passes with `--fixed-fps 30` (build21_test 39 of 39). The lane test `tests/fid29_combat_test.gd` 31 of 31
+  (new: `ko_ragdoll_freed_when_the_body_dissolves`);
   `anim_feel_test` 20, `motion_test` 33 and `readable_test` 25 pass unchanged.
 - C3: build 28's 17 libraries, `data/anim_clips.json`, `data/secondary.json` and `fx_atlas.png` keep their build 28
   sha256. Low frames on llvmpipe are not repeatable run to run (two b28p renders of the same low shot differ by up to
@@ -157,8 +160,27 @@ on low.
   counters above plus the lane's `low_*` tests; the per-frame differences lane vs b28p sit inside the b28p vs b28p
   spread on 10 of 14 low frames and above it on 4 (street hit2, hit3, victory, intro by 1 level), the same frames whose
   particle timing differs most between any two runs.
+- C3 again on the final commit: all 20 files compared by git blob against `89840bb`, none changed.
 - App: `npm test` 1168 of 1168 (1164 + 4 credits tests in `features/waleui/__tests__/credits.test.ts`), `tsc --noEmit`
   clean.
+
+## Engine errors and the final commit's pair frames
+
+- Engine errors in the pop runs (seed 239 autoplay, Imani and Kofi, mid and high): earlier lane commits logged 24
+  `Basis must be normalized` and 26 to 27 `det == 0` per run, from the ragdoll and the foot lock working on a Guardian
+  the dissolve had folded to zero width. On 79584cc: 0 and 0 (Imani), 0 and 1 (Kofi). The one left is
+  `face_life.gd:105` inverting the dissolved Guardian's head frame once at the KO. b28p logs that same line once in
+  Kofi's fight too (b28p totals: 2 for Kofi, 1 for Imani, the rest from `foot_lock.gd`), so it is build 28's and in a
+  file outside this lane.
+- The pairs' `__new` frames were rendered before 79584cc, on earlier lane commits. 79584cc only acts after the result is final (the
+  ragdoll's start and end checks) and on a zero-width skeleton (foot lock), so intro, mid-fight and hit frames cannot
+  change. For the victory frames, run B (intro, victory; 4 heroes x mid, high x street, Trafalgar) was rendered three
+  times on mm1: 79584cc twice and 019b88d once. llvmpipe's run-to-run noise on 79584cc vs 79584cc: 5.64 % of pixels
+  differ on a victory frame (mean; max 7.72 %), 57,282 pixels by more than 32 levels over the 16 frames; 019b88d vs
+  79584cc: 5.87 % (max 8.60 %), 58,214 pixels. Intros: 0.07 % both ways. The change is inside the noise, so the pairs
+  were kept, not re-rendered. The shipped `__new` frames match the 79584cc re-renders within the same noise (victories
+  2 to 6 %; mid-fight frames differ more, 15 to 54 %; that is run-to-run noise, since the code change cannot reach those frames,
+  but no second 79584cc render of them was made to size it).
 
 ## How to rebuild and re-measure
 
