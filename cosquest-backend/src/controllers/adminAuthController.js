@@ -11,7 +11,7 @@
 const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const { newAdminSessionId, signAdminToken } = require('../utils/adminToken');
-const { isSuperAdmin } = require('../utils/superAdmin');
+const { canUseDashboard } = require('../utils/superAdmin');
 const { recordAudit } = require('../utils/audit');
 
 const WRONG = 'Wrong email or password.';
@@ -54,14 +54,14 @@ async function login(req, res) {
   if (!user || !(await passwordMatches(req.body.password, user.passwordHash))) {
     return res.status(401).json({ error: WRONG });
   }
-  if (!isSuperAdmin(user)) return res.status(403).json({ error: 'This account is not a super admin.', code: 'not_admin' });
+  if (!canUseDashboard(user)) return res.status(403).json({ error: 'This account is not a super admin.', code: 'not_admin' });
   return res.json(await startSession(user, req, 'password'));
 }
 
 // An app session (requireAuth) swaps itself for a dashboard session; the app
 // session stays as it is.
 async function exchange(req, res) {
-  if (!isSuperAdmin(req.user)) return res.status(403).json({ error: 'This account is not a super admin.', code: 'not_admin' });
+  if (!canUseDashboard(req.user)) return res.status(403).json({ error: 'This account is not a super admin.', code: 'not_admin' });
   const user = await User.findById(req.user._id);
   return res.json(await startSession(user, req, 'app_session'));
 }

@@ -20,7 +20,7 @@ async function recordAudit(actor, { action, area, target = {}, reason = '', befo
   return AuditEvent.create({
     number,
     actor: actor._id,
-    actorRole: actor.platformRole === 'admin' ? 'super_admin' : 'unknown',
+    actorRole: { admin: 'super_admin', finance: 'finance_approver' }[actor.platformRole] || 'unknown',
     action,
     area,
     target: { type: target.type || null, id: target.id ? String(target.id) : null, label: target.label || null },

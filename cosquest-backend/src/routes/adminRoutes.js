@@ -172,4 +172,12 @@ router.get('/quests/:questId/results', validate(eventRules.questId), a(eventsAdm
 router.put('/quests/:questId/results', validate(eventRules.saveResults), a(eventsAdmin.saveResults));
 router.post('/quests/:questId/results/publish', validate(eventRules.questId), a(eventsAdmin.publishResults));
 
+// Finance approvers (the second person for money changes). Super admins manage them.
+const finance = require('../controllers/adminFinanceController');
+const financeRules = require('../validators/finance');
+router.get('/auth/role', a(finance.myRole));
+router.get('/finance-approvers', a(finance.list));
+router.post('/finance-approvers', validate(financeRules.add), a(finance.add));
+router.delete('/finance-approvers/:userId', validate(financeRules.remove), a(finance.remove));
+
 module.exports = router;

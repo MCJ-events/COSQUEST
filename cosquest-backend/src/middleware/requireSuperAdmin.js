@@ -1,10 +1,12 @@
 const User = require('../models/User');
 const { verifyAdminToken } = require('../utils/adminToken');
-const { isSuperAdmin } = require('../utils/superAdmin');
+const { isSuperAdmin, isFinanceApprover, financeMayUse } = require('../utils/superAdmin');
 
 /**
  * Every /api/admin route (except signing in): a valid ADMIN token
- * (src/utils/adminToken.js) from someone who is STILL a super admin.
+ * (src/utils/adminToken.js) from someone who is STILL a super admin, or a
+ * finance approver on one of their few routes (src/utils/superAdmin.js
+ * financeMayUse).
  *
  *   Authorization: Bearer <admin token>
  *
@@ -25,7 +27,15 @@ async function requireSuperAdmin(req, res, next) {
   if (!user || decoded.tokenVersion !== user.tokenVersion || !user.adminSessionId || decoded.adminSessionId !== user.adminSessionId) {
     return res.status(401).json({ error: 'Your admin session has ended. Sign in again.', code: 'admin_signin' });
   }
-  if (!isSuperAdmin(user)) return res.status(403).json({ error: 'Your super admin access has been removed.', code: 'not_admin' });
+  // Finance approvers: only Ledger & approvals (see, approve, reject), and
+  // not while their account is suspended.
+  if (!isSuperAdmin(user) && isFinanceApprover(user)) {
+    const suspended = require('../utils/communityRestrictions').suspendedAnswer(user);
+    if (suspended) return res.status(403).json({ ...suspended, error: 'Your account is suspended, so your finance approver access is paused.' });
+  }
+  if (!isSuperAdmin(user) && !(isFinanceApprover(user) && financeMayUse(req.method, req.path))) {
+    return res.status(403).json({ error: isFinanceApprover(user) ? 'Finance approvers can only use Ledger & approvals.' : 'Your super admin access has been removed.', code: isFinanceApprover(user) ? 'finance_only' : 'not_admin' });
+  }
 
   req.admin = user;
   req.adminId = String(user._id);

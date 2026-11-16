@@ -12,4 +12,31 @@ function isSuperAdmin(user) {
   return user?.platformRole === SUPER_ADMIN;
 }
 
-module.exports = { SUPER_ADMIN, isSuperAdmin };
+// Finance approvers (platformRole 'finance'): the second person for money
+// changes (payment brief 6.6). They use only Ledger & approvals.
+const FINANCE = 'finance';
+
+function isFinanceApprover(user) {
+  return user?.platformRole === FINANCE;
+}
+
+/** Can sign in to the dashboard at all (what they may use is in requireSuperAdmin). */
+function canUseDashboard(user) {
+  return isSuperAdmin(user) || isFinanceApprover(user);
+}
+
+// What a finance approver may call (method + path under /api/admin).
+const FINANCE_ROUTES = [
+  ['GET', /^\/auth\/(me|role)$/],
+  ['POST', /^\/auth\/logout$/],
+  ['GET', /^\/ledger\/(transactions|balances|check|export)$/],
+  ['GET', /^\/regions$/],
+  ['GET', /^\/approvals$/],
+  ['POST', /^\/approvals\/[a-f\d]{24}\/(approve|reject)$/i],
+];
+
+function financeMayUse(method, path) {
+  return FINANCE_ROUTES.some(([m, pattern]) => m === method && pattern.test(path));
+}
+
+module.exports = { SUPER_ADMIN, FINANCE, isSuperAdmin, isFinanceApprover, canUseDashboard, financeMayUse };

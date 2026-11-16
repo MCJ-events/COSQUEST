@@ -157,7 +157,9 @@ const userSchema = new mongoose.Schema(
     // 'admin' = super admin of all of CosQuest; null = everyone else. Given
     // only by an existing super admin or scripts/setSuperAdmin.js - never by
     // faction rank, group roles or room roles.
-    platformRole: { type: String, enum: ['admin', null], default: null },
+    // 'finance' = finance approver: the second person for money changes;
+    // dashboard access to Ledger & approvals only (src/utils/superAdmin.js).
+    platformRole: { type: String, enum: ['admin', 'finance', null], default: null },
     adminSince: { type: Date, default: null },
     adminAssignedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     // The admin dashboard's own session (src/utils/adminToken.js), separate
