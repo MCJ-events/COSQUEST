@@ -32,7 +32,7 @@ function webTakesFiles(nav: WebNav | null): boolean {
   }
 }
 
-async function webFile(card: ShareCard, kind: "q" | "story"): Promise<globalThis.File> {
+async function webFile(card: ShareCard, kind: "q" | "story" | "board"): Promise<globalThis.File> {
   const held = webFiles.get(card.image_url ?? "");
   if (held) return held;
   const res = await fetch(card.image_url as string);
@@ -50,11 +50,11 @@ const isNotAllowed = (e: unknown) => e instanceof Error && e.name === "NotAllowe
  * Share one card. "again": the browser lost the tap while the picture came down; it is ready now
  * and the next tap shares it at once. A dismissed share sheet counts as shared (the player chose).
  */
-export async function shareCard(card: ShareCard, kind: "q" | "story"): Promise<ShareOutcome> {
+export async function shareCard(card: ShareCard, kind: "q" | "story" | "board"): Promise<ShareOutcome> {
   const nav = Platform.OS === "web" ? webNav() : null;
   const plan = sharePlan(Platform.OS, card, webTakesFiles(nav));
   const message = shareMessage(card.text, card.url);
-  const title = kind === "q" ? "CosQuest daily trivia" : "My CosQuest trivia run";
+  const title = kind === "q" ? "CosQuest daily trivia" : kind === "board" ? "Today's CosQuest trivia board" : "My CosQuest trivia run";
   try {
     if (plan === "file") {
       let uri: string | null = null;
@@ -100,5 +100,22 @@ export async function shareCard(card: ShareCard, kind: "q" | "story"): Promise<S
     return "shared";
   } catch (e) {
     return isAbort(e) ? "shared" : "failed";
+  }
+}
+
+/**
+ * A card as a file to upload into a feed post: on a phone the PNG saved to the cache (once), on the
+ * web the picture's own address (the upload reads it as a blob). Null when it could not be had.
+ */
+export async function cardUpload(card: ShareCard, kind: "q" | "story" | "board"): Promise<{ uri: string; name: string; type: string } | null> {
+  if (!card.image_url) return null;
+  const name = shareFileName(card.id, kind);
+  if (Platform.OS === "web") return { uri: card.image_url, name, type: "image/png" };
+  try {
+    const dest = new File(Paths.cache, name);
+    const uri = dest.exists && dest.size > 0 ? dest.uri : (await File.downloadFileAsync(card.image_url, dest, { idempotent: true })).uri;
+    return { uri, name, type: "image/png" };
+  } catch {
+    return null;
   }
 }

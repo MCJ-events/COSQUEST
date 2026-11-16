@@ -87,6 +87,8 @@ export type RunBoard = {
   factions: { faction: string; name: string; total: number }[];
   you?: { place: number; score: number; approx?: boolean | null } | null;
   resets_at?: string | null;
+  /** The day's board as a 9:16 picture to post (trivia_board_card on the server); absent when off. */
+  card_url?: string | null;
 };
 
 export const isPocket = (r: Pick<RunState, "mode">): boolean => r.mode === "pocket";

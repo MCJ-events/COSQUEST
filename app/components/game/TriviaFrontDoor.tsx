@@ -255,6 +255,9 @@ function StartView() {
       <Text style={styles.sub}>{triviaSub(s.triviaLeft)}</Text>
       {s.problem ? <Text style={styles.problem}>{s.problem}</Text> : null}
       {s.board && s.board.region === "global" ? <BountyBoard board={s.board} title="TODAY'S TOP PLAYERS" /> : null}
+      {s.board?.card_url ? (
+        <GameButton title={s.sharingBoard ? "Getting the board…" : "Share today's board"} small disabled={s.sharingBoard} icon={<Ionicons name="trophy-outline" size={18} color={ACCENT.sun.label} />} onPress={() => void runModel.shareBoard()} style={{ alignSelf: "stretch" }} testID="trivia-door-share-board" />
+      ) : null}
     </ScrollView>
   );
 }

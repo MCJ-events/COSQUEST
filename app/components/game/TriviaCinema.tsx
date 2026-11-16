@@ -36,6 +36,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { FONTS } from "@/constants/fonts";
 import { lookTierDecision } from "@/features/game/lookTier";
+import { useAppSelector } from "@/store/hooks";
 import { boardPlaceText, clock, isWorldBoard, type RunBoard, type RunFinish, type RunPoint, sequenceLine, signed, stakeLine, triviaSub } from "@/features/game/run";
 import { useGame } from "@/features/game/runtime";
 import { settle } from "@/features/game/spring";
@@ -699,6 +700,8 @@ export function CinemaResults({ result, board, art, onDone, onAgain, againLeft }
   const insets = useSafeAreaInsets();
   const s = useRun();
   const profile = useGame((g) => g.profile);
+  // Signed in to the chat app: the run can go to the in-app feed too (a guest has no feed).
+  const chatToken = useAppSelector((st) => st.auth.token);
   const run = result.run;
   const [shown, setShown] = useState(0);
   useEffect(() => {
@@ -770,6 +773,21 @@ export function CinemaResults({ result, board, art, onDone, onAgain, againLeft }
             <Text style={styles.link} selectable accessibilityLabel={`Your link: ${s.share.url}`}>
               {s.share.url}
             </Text>
+          ) : null}
+          {chatToken ? (
+            <TriviaButton
+              title={s.posting === "posted" ? "Posted to your feed" : "Post to the feed"}
+              kind="quiet"
+              icon={s.posting === "posted" ? "checkmark-circle-outline" : "people-outline"}
+              iconSide="left"
+              busy={s.posting === "posting"}
+              disabled={s.posting === "posted"}
+              onPress={() => void runModel.postToFeed(chatToken)}
+              testID="trivia-post-feed"
+            />
+          ) : null}
+          {board?.card_url ? (
+            <TriviaButton title="Share today's board" kind="quiet" icon="trophy-outline" iconSide="left" busy={s.sharingBoard} onPress={() => void runModel.shareBoard()} testID="trivia-share-board" />
           ) : null}
           {s.notice ? <Text style={styles.notice}>{s.notice}</Text> : null}
           <TriviaButton title="Take another quiz" icon="refresh" iconSide="left" disabled={out} onPress={() => onAgain?.()} testID="trivia-again" />

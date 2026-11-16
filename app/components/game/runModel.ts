@@ -34,12 +34,13 @@ import {
   triviaShareQuestion,
 } from "@/features/game/run";
 import { gameStore } from "@/features/game/runtime";
-import { questionArt } from "@/features/game/triviaVisual";
+import { boardShareCard, feedCaption, questionArt } from "@/features/game/triviaVisual";
+import { createImagePost } from "@/services/posts";
 import type { RoamAnswer, RoamAttempt, TriviaArt } from "@/features/game/wire";
 
 import { impact, notify } from "./prefs";
 import { playSound } from "./sound";
-import { shareCard } from "./triviaShareDevice";
+import { cardUpload, shareCard } from "./triviaShareDevice";
 
 export type RunModelState = {
   run: RunState | null;
@@ -66,6 +67,10 @@ export type RunModelState = {
   questionShares: Record<string, QuestionShare>;
   /** The question card being made ("<attempt id>:<q>"), for its button's spinner. */
   sharingQuestion: string | null;
+  /** The finished run is being posted to the in-app feed, or was ("posted"). */
+  posting: "posting" | "posted" | null;
+  /** Today's board card is being fetched for the share sheet. */
+  sharingBoard: boolean;
 };
 
 const EMPTY: RunModelState = {
@@ -84,6 +89,8 @@ const EMPTY: RunModelState = {
   arts: {},
   questionShares: {},
   sharingQuestion: null,
+  posting: null,
+  sharingBoard: false,
 };
 
 let state: RunModelState = EMPTY;
@@ -354,6 +361,66 @@ export const runModel = {
     return out !== "failed";
   },
 
+  /** The finished run's share link, made once (shared by Share and Post to the feed). */
+  async ensureShare(): Promise<TriviaShare | null> {
+    const f = state.finished;
+    if (!f || !isTrivia(f.run)) return null;
+    if (state.share) return state.share;
+    try {
+      const link = await triviaShare(gameStore.client, f.run.run_id);
+      set({ share: link });
+      return link;
+    } catch (e) {
+      runModel.flash(`Couldn't make your card: ${message(e, "no connection")}`);
+      return null;
+    }
+  },
+
+  /**
+   * Post the finished run to the in-app feed (16 Nov 2026): its 9:16 story card as the photo, the
+   * run's line with its link as the caption, so friends in the app see it and tap through to play.
+   * `token` is the chat account's; no token (a guest), no button. Only when the player taps it.
+   */
+  async postToFeed(token: string | null | undefined): Promise<boolean> {
+    if (!token || state.posting) return false;
+    set({ posting: "posting" });
+    try {
+      const link = await runModel.ensureShare();
+      if (!link) {
+        set({ posting: null });
+        return false;
+      }
+      const card = { id: link.share_id, url: link.url, image_url: link.story_url ?? link.image_url, text: link.text };
+      const file = await cardUpload(card, "story");
+      if (!file) throw new Error("the card did not download");
+      await createImagePost(token, feedCaption(link.text, link.url), [file]);
+      set({ posting: "posted" });
+      runModel.flash("Posted to your feed.");
+      return true;
+    } catch (e) {
+      set({ posting: null });
+      runModel.flash(`Couldn't post: ${message(e, "no connection")}`);
+      return false;
+    }
+  },
+
+  /** Share today's board as its 9:16 card (only offered when the server draws one). */
+  async shareBoard(): Promise<boolean> {
+    const b = state.board;
+    const card = b ? boardShareCard(b, `${gameStore.client.baseUrl}/trivia`) : null;
+    if (!card || state.sharingBoard) return false;
+    set({ sharingBoard: true });
+    try {
+      const out = await shareCard(card, "board");
+      if (out === "again") runModel.flash("The board card is ready. Tap Share again.");
+      else if (out === "opened") runModel.flash("The board card is open in a new tab. The line is copied.");
+      else if (out === "failed") runModel.flash("Couldn't open the share sheet.");
+      return out !== "failed";
+    } finally {
+      set({ sharingBoard: false });
+    }
+  },
+
   flash(text: string) {
     set({ notice: text });
     if (noticeTimer) clearTimeout(noticeTimer);
@@ -367,7 +434,7 @@ export const runModel = {
 
   /** Once the results are closed, the run is over for the phone too. */
   close() {
-    set({ finished: null, run: null, localEnd: null, openedStakes: {}, share: null, arts: {}, questionShares: {} });
+    set({ finished: null, run: null, localEnd: null, openedStakes: {}, share: null, arts: {}, questionShares: {}, posting: null });
   },
 
   /** A run point fought as a duel comes back with the run as the server now has it. */

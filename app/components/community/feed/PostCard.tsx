@@ -29,6 +29,7 @@ import { KeyboardAvoidingView } from "@/components/ui/keyboard";
 import { CommentsModal } from "./CommentsModal";
 import { PostActions } from "./PostActions";
 import { PostCaption } from "./PostCaption";
+import { TriviaPostLink } from "./TriviaPostLink";
 import { getMediaUrls, PostMedia } from "./PostMedia";
 import { PostMenu } from "./PostMenu";
 import { SharedPostEmbed } from "./SharedPostEmbed";
@@ -635,6 +636,7 @@ export const PostCard = memo(function PostCard({ post, token }: { post: any; tok
           {post?.content?.trim() ? (
             <View style={styles.captionBelow}>
               <PostCaption username={postUsername} content={post?.content} />
+              <TriviaPostLink content={post?.content} />
             </View>
           ) : null}
         </>
@@ -649,6 +651,7 @@ export const PostCard = memo(function PostCard({ post, token }: { post: any; tok
           {post?.content?.trim() ? (
             <View style={styles.textCardCaption}>
               <PostCaption username={postUsername} content={post?.content} />
+              <TriviaPostLink content={post?.content} />
             </View>
           ) : null}
 

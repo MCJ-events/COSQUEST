@@ -19,7 +19,7 @@ import { useFonts } from "expo-font";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import { type ReactNode, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Platform, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
+import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
 import Animated, { FadeIn, FadeInDown, FadeOut } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -320,7 +320,22 @@ function StartView({ name, onName, onPlay, onLeave }: { name: string; onName: (v
           <Text style={styles.sectionTitle} accessibilityRole="header">
             Today&apos;s top players
           </Text>
-          <Text style={styles.sectionCount}>{players === 1 ? "1 player" : `${players} players`}</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+            <Text style={styles.sectionCount}>{players === 1 ? "1 player" : `${players} players`}</Text>
+            {board?.card_url ? (
+              <Pressable
+                onPress={() => void runModel.shareBoard()}
+                disabled={s.sharingBoard}
+                hitSlop={10}
+                accessibilityRole="button"
+                accessibilityLabel="Share today's board"
+                testID="trivia-share-board-door"
+                style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+                {s.sharingBoard ? <ActivityIndicator size="small" color={T.accentText} /> : <Ionicons name="share-social-outline" size={16} color={T.accentText} />}
+                <Text style={[styles.sectionCount, { color: T.accentText }]}>Share</Text>
+              </Pressable>
+            ) : null}
+          </View>
         </View>
         <View style={styles.cards}>
           {cards.map((c, i) => (

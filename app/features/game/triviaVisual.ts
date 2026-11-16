@@ -210,7 +210,7 @@ export function sharePlan(os: string, card: Pick<ShareCard, "image_url">, webCan
 }
 
 /** The file name a card is saved under: the share's id, kept to letters and digits. */
-export function shareFileName(id: string, kind: "q" | "story"): string {
+export function shareFileName(id: string, kind: "q" | "story" | "board"): string {
   const safe = id.replace(/[^A-Za-z0-9_-]/g, "").slice(0, 64) || "card";
   return `cosquest-${kind}-${safe}.png`;
 }
@@ -218,4 +218,58 @@ export function shareFileName(id: string, kind: "q" | "story"): string {
 /** Whether a question can be shared: a topic tile the server has answered. */
 export function canShareQuestion(o: { topic?: string | null; answered: boolean }): boolean {
   return !!o.topic && o.answered;
+}
+
+// ---------- the social side (16 Nov 2026: Mark, trivia pulls people in and works as a social hub) ----------
+
+/**
+ * The line that goes with today's board card: your place when you are on it, else the open
+ * question. Never a faction (trivia is about topics).
+ */
+export function boardShareText(you: { place: number; approx?: boolean | null } | null | undefined): string {
+  if (you && you.place > 0) {
+    const at = you.approx ? `about #${you.place.toLocaleString("en-US")}` : `#${you.place.toLocaleString("en-US")}`;
+    return `I'm ${at} on today's CosQuest trivia board. Can you beat it?`;
+  }
+  return "Today's CosQuest trivia board. Can you make it?";
+}
+
+/** The board card as a share card: one id per day, so a second tap shares the same picture. */
+export function boardShareCard(board: { day: string; card_url?: string | null; you?: { place: number; approx?: boolean | null } | null }, link: string): ShareCard | null {
+  if (!board.card_url) return null;
+  return { id: `board-${board.day}`, url: link, image_url: board.card_url, text: boardShareText(board.you) };
+}
+
+/** The caption of a run posted to the in-app feed: the run's line, its link once, and the tag. */
+export function feedCaption(text: string, url: string): string {
+  const line = shareMessage(text, url);
+  return line.includes("#CosQuestTrivia") ? line : `${line} #CosQuestTrivia`.trim();
+}
+
+const TRIVIA_PATH = /^\/(share\/|trivia\b|play\/trivia\b)/;
+
+/**
+ * The trivia link in a feed post, if it has one: a link on one of `servers` (the game servers and
+ * the play page) to a shared run, a shared question, the board or the trivia page. The feed shows a
+ * Play trivia button for these. Anything else (another site, another path) is not trivia.
+ */
+export function triviaLinkIn(content: string | null | undefined, servers: string[]): string | null {
+  if (!content) return null;
+  const hosts = new Set<string>();
+  for (const s of servers) {
+    try {
+      if (s) hosts.add(new URL(s).host.toLowerCase());
+    } catch {
+      // not a URL: skipped
+    }
+  }
+  for (const m of content.matchAll(/https?:\/\/[^\s<>"')]+/g)) {
+    try {
+      const u = new URL(m[0].replace(/[.,!?]+$/, ""));
+      if (hosts.has(u.host.toLowerCase()) && TRIVIA_PATH.test(u.pathname)) return u.toString();
+    } catch {
+      // a broken link: not trivia
+    }
+  }
+  return null;
 }
