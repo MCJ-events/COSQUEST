@@ -8,11 +8,15 @@ extends SceneTree
 ## 3. The shader: char_real keeps recv_shadow and kick_a_col; cs_on is off by default (the build 28 path); the hair
 ##    cards' charshade variant draws with alpha to coverage, the high body variant defines CS_HIGH, and the plain
 ##    variant is the file itself.
-## 4. The materials a fighter builds: high = the lod0 mask and the CS_HIGH variant, mid = the lod1r mask and no new
+## 4. The materials a fighter builds (body checks with look "cs_body": true): high = the lod0 mask and the CS_HIGH variant, mid = the lod1r mask and no new
 ##    texture sampler; hair cards take charshade's hair shading on build 28's hard cut with the tier's atlas (the soft
 ##    cut is gated off, look "cs_hair_soft" brings it back); off = no charshade uniform set. Every
 ##    charshade material is registered with ShaderWarm.
 ## 5. Contracts: fighter.gd's public calls and the face fill are where they were.
+## 6. Hair and eyes only (blind judge 16 Nov, keep-partial): look "cs_body" is off on every tier; with the defaults a body
+##    or fitted metal piece takes no charshade uniform, the plain file and build 28's colour guess, and no mask, detail or
+##    break-up texture is loaded, while the hair cards (shading, hard cut, atlas) and the hybrid head's eyes stay on.
+##    Section 4 checks the body path with look "cs_body": true.
 ## Prints "CQTEST PASS <name>" / "CQTEST FAIL <name> <why>", then "CQTEST done failures=N".
 
 const ArenaScript := preload("res://arena.gd")
@@ -77,6 +81,37 @@ func _initialize() -> void:
 	var off: Node = _fighter("high", {"fid_charshade": false}, "blockbusters_kofi")
 	_check("cs_off_with_key_false", not bool(off.call("_cs_on")))
 	off.free()
+	# 6. hair and eyes only, before anything below loads a mask
+	var cs_body_off: bool = true
+	for t: String in ["low", "mid", "high"]:
+		cs_body_off = cs_body_off and not bool(ArenaScript.look_opts({"tier": t, "look": {"time": "golden"}}).get("cs_body", false))
+	_check("cs_body_off_every_tier", cs_body_off)
+	var mem_ok: bool = true
+	for t: String in ["mid", "high"]:
+		for k: String in HEROES:
+			var fd: Node = _fighter(t, {}, k)
+			fd.set("surface_kinds", {"hair_cards": "hair", "head_hybrid": "skin", "helmet": "metal"})
+			var bd: ShaderMaterial = fd.call("_real_material", _body_mat(2048 if t == "high" else 1024))
+			var md: StandardMaterial3D = _body_mat(); md.resource_name = "helmet"
+			var mt: ShaderMaterial = fd.call("_real_material", md)
+			var hd: ShaderMaterial = fd.call("_real_material", _hair_mat())
+			var hb: StandardMaterial3D = _body_mat(); hb.resource_name = "head_hybrid"
+			var ed: ShaderMaterial = fd.call("_real_material", hb)
+			var b28_body: bool = bd != null and bd.get_shader_parameter("cs_on") == null and bd.get_shader_parameter("cs_matid") == null \
+				and bd.shader == load("res://vfx/char_real.gdshader") and int(bd.get_shader_parameter("skin_mode")) == 2 \
+				and mt != null and mt.get_shader_parameter("cs_on") == null
+			_check("default_body_b28_%s_%s" % [t, k], b28_body)
+			_check("default_hair_eyes_on_%s_%s" % [t, k], hd != null and bool(hd.get_shader_parameter("cs_on"))
+				and float(hd.get_shader_parameter("cs_hair_cards")) == 1.0 and hd.shader.code.contains("ALPHA_SCISSOR_THRESHOLD = 0.35")
+				and not hd.shader.code.contains("alpha_to_coverage")
+				and ed != null and bool(ed.get_shader_parameter("cs_on")) and int(ed.get_shader_parameter("cs_eye")) == 1)
+			fd.free()
+	for p: String in ["res://art/char/detail/cloth_sheet.png", "res://art/char/detail/metal_breakup.png"]:
+		mem_ok = mem_ok and not ResourceLoader.has_cached(p)
+	for k: String in HEROES:
+		mem_ok = mem_ok and not ResourceLoader.has_cached("res://art/char/masks/%s_lod0.png" % k) \
+			and not ResourceLoader.has_cached("res://art/char/masks/%s_lod1r.png" % k)
+	_check("default_loads_no_body_mask_detail_breakup", mem_ok)
 	# 2. the files
 	var masks_ok: bool = true
 	var why: String = ""
@@ -117,7 +152,7 @@ func _initialize() -> void:
 	_check("high_variant_defines_cs_high", FighterScript._real_variant(false, false, false, true).code.contains("#define CS_HIGH\n"))
 	# 4. the materials
 	ShaderWarm.clear()
-	var fh: Node = _fighter("high", {}, "blockbusters_kofi")
+	var fh: Node = _fighter("high", {"cs_body": true}, "blockbusters_kofi")
 	var sh: ShaderMaterial = fh.call("_real_material", _body_mat())
 	_check("high_body_cs_on", sh != null and bool(sh.get_shader_parameter("cs_on")) and int(sh.get_shader_parameter("cs_matid")) == 1)
 	_check("high_body_lod0_mask", sh != null and sh.get_shader_parameter("skin_tex") != null
@@ -139,7 +174,7 @@ func _initialize() -> void:
 	fh.free()
 	# the high tier's ally keeps the lod1 file (fight.gd _tier_lod): its mask is the lod1r one, its hair the 512 atlas;
 	# a body that is neither file takes no mask
-	var fa: Node = _fighter("high", {}, "blockbusters_kofi")
+	var fa: Node = _fighter("high", {"cs_body": true}, "blockbusters_kofi")
 	fa.set("role", "ally")
 	var sa: ShaderMaterial = fa.call("_real_material", _body_mat(1024))
 	_check("high_ally_lod1_file_lod1r_mask", sa != null and sa.get_shader_parameter("skin_tex") != null
@@ -151,7 +186,7 @@ func _initialize() -> void:
 	_check("unknown_file_no_mask", su != null and su.get_shader_parameter("cs_matid") == null)
 	fa.free()
 	_check("emission_read_skipped_without_emission", src.contains("if (!cs_on || emission.r + emission.g + emission.b > 0.0)"))
-	var fm: Node = _fighter("mid", {}, "blockbusters_kofi")
+	var fm: Node = _fighter("mid", {"cs_body": true}, "blockbusters_kofi")
 	var sm: ShaderMaterial = fm.call("_real_material", _body_mat(1024))
 	_check("mid_body_lod1r_mask_no_new_sampler", sm != null and bool(sm.get_shader_parameter("cs_on"))
 		and (sm.get_shader_parameter("skin_tex") as Texture2D).resource_path.ends_with("blockbusters_kofi_lod1r.png")
@@ -164,7 +199,7 @@ func _initialize() -> void:
 	var so: ShaderMaterial = fo.call("_real_material", _body_mat())
 	_check("off_body_no_charshade", so != null and so.get_shader_parameter("cs_on") == null and so.shader == load("res://vfx/char_real.gdshader"))
 	fo.free()
-	var fg: Node = _fighter("high", {}, "")
+	var fg: Node = _fighter("high", {"cs_body": true}, "")
 	var sg: ShaderMaterial = fg.call("_real_material", _body_mat())
 	_check("forge_guardian_keeps_colour_guess", sg != null and sg.get_shader_parameter("cs_matid") == null and int(sg.get_shader_parameter("skin_mode")) == 2)
 	fg.free()

@@ -771,6 +771,15 @@ func _cs_on() -> bool:
 	return bool(look.get("real", false)) and bool(look.get("fid_charshade", false))
 
 
+## build 29 ships charshade's hair and eyes only (blind judge 16 Nov, keep-partial: the body path lost 29 to 21 on four of
+## six heroes). Look "cs_body" (default off on every tier) brings the body path back for review: the material-ID masks,
+## cloth sheen, the high tier's detail normals and metal break-up, orm_trust and the knee, and with them cs_on on every
+## surface that is not hair or a face (specular AA, Toksvig, cavity). Off, a body or a fitted metal piece takes no
+## charshade uniform and no mask, detail or break-up texture is loaded: it draws as build 28's to the pixel.
+func _cs_body() -> bool:
+	return bool(look.get("cs_body", false))
+
+
 func _cs_high() -> bool:
 	return str(look.get("skin", "full")) == "full"
 
@@ -792,6 +801,8 @@ static func _cs_json(path: String) -> Dictionary:
 
 
 func _charshade(sm: ShaderMaterial, b: BaseMaterial3D, kind: String, cut: bool, two_sided: bool) -> void:
+	if kind != "hair" and kind != "skin" and not _cs_body():
+		return
 	sm.set_shader_parameter("cs_on", true)
 	_charshade_parts(sm, b, kind, cut, two_sided)
 	# review and tuning only: look "cs_u_<uniform>": <value> sets that char_real uniform on every surface
@@ -827,8 +838,8 @@ func _charshade_parts(sm: ShaderMaterial, b: BaseMaterial3D, kind: String, cut: 
 	var key: String = _cs_key()
 	var high: bool = _cs_high()
 	var info: Dictionary = _cs_json(CS_MASK_DIR + key + ".json") if key != "" else {}
-	if kind == "":
-		# the body: its material-ID mask, in the skin mask's sampler (the colour guess stays for Forge guardians)
+	if kind == "" and _cs_body():
+		# the body (look "cs_body" only): its material-ID mask, in the skin mask's sampler (the colour guess stays for Forge guardians)
 		var lod: String = _cs_body_lod(b, info) if key != "" else ""
 		var mask: Texture2D = _cs_tex(CS_MASK_DIR + key + lod) if lod != "" else null
 		if mask != null:
