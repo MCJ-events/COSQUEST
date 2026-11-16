@@ -96,6 +96,8 @@ func _keys() -> void:
 	_check("high_on", StreetReal.on(_look("high")) and StreetReal.hi(_look("high")))
 	_check("key_off", not StreetReal.on(_look("high", {"fid_street": false})))
 	_check("cap_key", StreetReal.on(_look("high", {"fid_street_cap": false})) and not StreetReal.caps_on(_look("high", {"fid_street_cap": false})))
+	_check("facade_key_default_off", not StreetReal.facade(_look("mid")) and not StreetReal.facade(_look("high")) and not StreetReal.facade(_look("low")))
+	_check("facade_key_on", StreetReal.facade(_look("high", {"fid_street_facade": true})) and not StreetReal.facade(_look("low", {"fid_street_facade": true})))
 
 
 ## The arena's plain floor and medallion (the "plain" arena builds only those): low as build 28, mid/high real.
@@ -192,7 +194,8 @@ func _places() -> void:
 		_check(tier + "_floor_material", fs == real, str(fm))
 		var fac: Material = _mesh_mat(ps, "buildings_trim_uk_brick")
 		var fr: bool = fac is ShaderMaterial and (fac as ShaderMaterial).shader == StreetReal.facade_shader()
-		_check(tier + "_facade_material", fr == real, str(fac))
+		_check(tier + "_facade_build28", not fr and fac is ShaderMaterial and (fac as ShaderMaterial).shader == load("res://vfx/world_facade.gdshader")
+			and ps.get_node_or_null("buildings_trim_uk_brick_red") == null, str(fac))
 		_check(tier + "_occluders", (pt.get_node_or_null("GroundOccluders") != null) == real)
 		var si: Dictionary = ps.get("info")
 		var ti: Dictionary = pt.get("info")
@@ -203,10 +206,17 @@ func _places() -> void:
 			var rt: int = int(sr.get("reveal_tris", 0))
 			var rs: int = int(ss.get("reveal_tris", 0))
 			print("CQTEST INFO %s reveal_tris trafalgar=%d street=%d basins=%d" % [tier, rt, rs, int(sr.get("basins", 0))])
-			_check(tier + "_reveals", (rt == 0 and rs == 0) if tier == "mid" else (rs > 0 and rt <= 20000 and rs <= 20000), "%d %d" % [rt, rs])
+			_check(tier + "_no_reveals_by_default", rt == 0 and rs == 0, "%d %d" % [rt, rs])
 			_check(tier + "_near_bake", pt.get_node_or_null("ShadeBakeNear") != null)
 		else:
 			_check("low_no_real", not ti.has("street_real") and pt.get_node_or_null("ShadeBakeNear") == null and pt.get_node_or_null("gutters") == null)
+	# look fid_street_facade on (high): the real facade and the window reveals within their budget
+	var pf: Node3D = _place(street, Vector2.ZERO, 0.0, _look("high", {"fid_street_facade": true}))
+	var ff: Material = _mesh_mat(pf, "buildings_trim_uk_brick")
+	_check("high_facade_key_real", ff is ShaderMaterial and (ff as ShaderMaterial).shader == StreetReal.facade_shader(), str(ff))
+	var rf: int = int((pf.get("info") as Dictionary).get("street_real", {}).get("reveal_tris", 0))
+	print("CQTEST INFO high facade key reveal_tris street=%d" % rf)
+	_check("high_facade_key_reveals", rf > 0 and rf <= 20000, str(rf))
 
 
 ## A fight-shaped stand-in: 3 fighters with the game's leg bones; the occluders read them and fill the arrays.

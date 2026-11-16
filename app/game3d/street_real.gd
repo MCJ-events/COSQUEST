@@ -11,6 +11,10 @@ extends RefCounted
 ##                   false switches only the capsule shade off (the budget and C5 comparisons use it)
 ##   fid_street_hi   the high tier's extras (1K decals, the detail layers, near-wall detail, window reveals):
 ##                   default = the high tier's full skin look (look.skin == "full")
+##   fid_street_facade  the real facades (world_facade_real on art/world/real/trims, the real red-brick sheet, and with
+##                   fid_street_hi the window reveals and sills): default OFF, so mid and high keep build 28's
+##                   world_facade walls (blind judge round 2, 16 Nov: the real facade loses the intro close-ups: no lit
+##                   warm dusk windows, dim glass, dark sill lines, aliased mortar on mid). Kept for a later round.
 ##
 ## Callers: arena.gd apply_floor (the seam: the arena's floor and medallion), place.gd (ground and facade materials,
 ## water and basins, reveals, the near bake, ground_occluders, then adopt()).
@@ -63,6 +67,10 @@ static func caps_on(look: Dictionary) -> bool:
 
 static func hi(look: Dictionary) -> bool:
 	return on(look) and bool(look.get("fid_street_hi", str(look.get("skin", "")) == "full"))
+
+
+static func facade(look: Dictionary) -> bool:
+	return on(look) and bool(look.get("fid_street_facade", false))
 
 
 static func ground_shader() -> Shader:

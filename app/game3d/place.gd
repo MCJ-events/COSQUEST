@@ -102,11 +102,13 @@ var bake: RefCounted            # place_bake.gd
 var _heroes: Array = []         # world_heroes.gd: the hero landmarks this place has (begin), built in _work
 var life: Node3D
 ## build 29 (fid29-street, docs/game3d/fid29/street.md): on mid and high with look "fid_street" (street_real.gd on())
-## the ground, kerbs, markings, the UK facades and water take the real materials (art/world/real, the _real shaders),
-## high adds window reveals and sills near the fight, every water polygon gets a kerbed stone basin, and the fighters'
-## capsule shade (ground_occluders.gd). Off (low): every line below runs build 28's path.
+## the ground, kerbs, markings and water take the real materials (art/world/real, the _real shaders), every water
+## polygon gets a kerbed stone basin, and the fighters' capsule shade (ground_occluders.gd). The UK facades
+## (world_facade_real) and, on high, the window reveals and sills only with look "fid_street_facade" (default off:
+## build 28's walls). Off (low): every line below runs build 28's path.
 var _real: bool = false
 var _real_hi: bool = false
+var _real_facade: bool = false   # build 29: look fid_street_facade (default off: build 28's walls on mid and high)
 var _street_layout: bool = false
 var occluders: Node = null
 var _reveal_tris: int = 0
@@ -158,6 +160,7 @@ func begin(ground: Dictionary, at: Vector2, cam_yaw_deg: float, yaw_override: fl
 	_ground = ground
 	_real = StreetReal.on(look)
 	_real_hi = StreetReal.hi(look)
+	_real_facade = StreetReal.facade(look)
 	_street_layout = str(ground.get("source", "")) == "street_layout"
 	var o: Dictionary = ground.get("origin", {})
 	region = str(ground.get("region", region_of(float(o.get("lat", 0.0)), float(o.get("lng", 0.0)))))
@@ -964,7 +967,7 @@ func _build_buildings(builds: Array) -> void:
 		var tints: Array = SHEET_TINTS.get(sheet, SHEET_TINTS["trim_generic"])
 		var tint: Color = tints[int(rnd * 997.0) % tints.size()]
 		tint = tint.lightened((fposmod(rnd * 31.0, 1.0) - 0.5) * 0.1)
-		if _real and sheet == "trim_uk_brick" and int(rnd * 997.0) % tints.size() == 1:
+		if _real_facade and sheet == "trim_uk_brick" and int(rnd * 997.0) % tints.size() == 1:
 			sheet = "trim_uk_brick_red"     # build 29: the red-tinted brick buildings in real red brick
 			if not sts.has(sheet):
 				sts[sheet] = {"v": PackedVector3Array(), "n": PackedVector3Array(), "t": PackedFloat32Array(),
@@ -994,7 +997,7 @@ func _build_buildings(builds: Array) -> void:
 	info["sheets"] = sheets_used
 	for sheet: String in sts:
 		var w: Dictionary = sts[sheet]
-		if _real and (w["v"] as PackedVector3Array).is_empty():
+		if _real_facade and (w["v"] as PackedVector3Array).is_empty():
 			continue    # build 29: a sheet whose buildings all went to the red-brick sheet
 		var arr: Array = []
 		arr.resize(Mesh.ARRAY_MAX)
@@ -1037,7 +1040,7 @@ func _facade_mat(sheet: String) -> ShaderMaterial:
 	var key: String = "facade_" + sheet
 	if _mats.has(key):
 		return _mats[key]
-	if _real:
+	if _real_facade:
 		var rm: ShaderMaterial = StreetReal.facade_mat(sheet, _look, _tp)
 		if rm != null:
 			_mats[key] = rm
@@ -1161,7 +1164,7 @@ func _walls(w: Dictionary, poly: PackedVector2Array, base: float, h: float, tint
 				wc.append(tint)
 				wu.append(q[k][1])
 				wu2.append(uv2)
-			if _real_hi and row == ROW_BAY and mid.length() < REVEAL_REACH and _reveal_tris < REVEAL_MAX_TRIS:
+			if _real_hi and _real_facade and row == ROW_BAY and mid.length() < REVEAL_REACH and _reveal_tris < REVEAL_MAX_TRIS:
 				_reveals(wv, wn, wt, wc, wu, wu2, a, d, n2, u, len, y0, y1, sheet, tint, uv2)
 		u += len
 	w["v"] = wv

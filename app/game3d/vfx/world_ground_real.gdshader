@@ -76,7 +76,7 @@ uniform vec4 cap_a[24];               // capsule end a (world xyz), w radius
 uniform vec4 cap_b[24];               // capsule end b (world xyz)
 uniform vec4 cap_f[4];                // fighter i: ground centre xyz, w 1 = present
 uniform float cap_k = 0.0;            // 0 = capsule occlusion off (look fid_street_cap false)
-uniform float cap_floor = 0.45;       // the capsule shade never takes more than 55 % of the sky light (at most ~30 % darker on screen)
+uniform float cap_floor = 0.3;        // the capsule shade never takes more than 70 % of the sky light (0.45 cut the high mean to ~7 %)
 
 varying vec3 wpos;
 varying float vshadow;
