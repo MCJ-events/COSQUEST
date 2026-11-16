@@ -34,7 +34,7 @@ const Ticket = require('../models/Ticket');
 const Counter = require('../models/Counter');
 const notificationModel = require('../models/notificationModel');
 const { effectiveStatus } = require('./questStatus');
-const { distanceMiles } = require('./quest');
+const { distanceMiles, placeName } = require('./quest');
 const payments = require('./stripe');
 const { checkEligibility } = require('./eligibility');
 
@@ -294,7 +294,7 @@ async function startCheckout({ user, questId, ticketTypeId, position = null, met
             price_data: {
               currency: type.price.currency.toLowerCase(),
               unit_amount: payments.toMinor(type.price.amount, type.price.currency),
-              product_data: { name: `${quest.title} · ${type.name}`.slice(0, 120), description: `${quest.location?.name || ''} · ${quest.startsAt.toUTCString()}`.slice(0, 300) },
+              product_data: { name: `${quest.title} · ${type.name}`.slice(0, 120), description: [placeName(quest), quest.startsAt.toUTCString()].filter(Boolean).join(' · ').slice(0, 300) },
             },
           },
         ],
@@ -650,7 +650,7 @@ async function remindersDue(now = new Date()) {
     isPublished: true,
     status: { $ne: 'cancelled' },
     startsAt: { $gt: new Date(now.getTime() + 50 * 60 * 1000), $lte: new Date(now.getTime() + 70 * 60 * 1000) },
-  }).select('title startsAt location');
+  }).select('title startsAt location format placeLabel');
   let sent = 0;
   for (const quest of soon) {
     const due = await Ticket.find({ quest: quest._id, status: 'valid', reminderSentAt: null }).select('_id user').limit(1000);
@@ -658,7 +658,7 @@ async function remindersDue(now = new Date()) {
       const claimed = await Ticket.findOneAndUpdate({ _id: t._id, reminderSentAt: null }, { $set: { reminderSentAt: new Date() } });
       if (!claimed) continue;
       tell(t.user, `${quest.title} starts in about an hour. Have your ticket ready.`);
-      pushTicket(t.user, t._id, 'Starts in about an hour', `${quest.title}${quest.location?.name ? ` · ${quest.location.name}` : ''}. Tap to show your ticket.`, 'eventReminders');
+      pushTicket(t.user, t._id, 'Starts in about an hour', `${quest.title}${placeName(quest) ? ` · ${placeName(quest)}` : ''}. Tap to show your ticket.`, 'eventReminders');
       sent += 1;
     }
   }

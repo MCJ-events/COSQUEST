@@ -11,6 +11,11 @@ function distanceMiles(fromLat, fromLng, toLat, toLng) {
   return earthRadiusMiles * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+// Where it happens, in words: the venue, or a virtual quest's place label.
+function placeName(quest) {
+  return quest?.format === 'virtual' ? quest.placeLabel || 'Online' : quest?.location?.name || '';
+}
+
 function serializeQuest(quest, { distance, isRegistered } = {}) {
   const item = quest.toObject ? quest.toObject() : quest;
   return {
@@ -28,7 +33,7 @@ function serializeQuest(quest, { distance, isRegistered } = {}) {
     startsAt: item.startsAt,
     endsAt: item.endsAt,
     // Virtual: no venue; the label stands in for it (no pin, no directions).
-    location: item.format === 'virtual' ? { name: item.placeLabel || 'Online', address: '', city: '', country: '', lat: null, lng: null } : item.location,
+    location: item.format === 'virtual' ? { name: placeName(item), address: '', city: '', country: '', lat: null, lng: null } : item.location,
     prizePool: item.prizePool,
     entryFee: item.entryFee,
     maxParticipants: item.maxParticipants,
@@ -44,4 +49,4 @@ function serializeQuest(quest, { distance, isRegistered } = {}) {
   };
 }
 
-module.exports = { distanceMiles, serializeQuest };
+module.exports = { distanceMiles, placeName, serializeQuest };

@@ -55,6 +55,13 @@ Answers `410 pay_on_website` unless `PAYMENT_SHEET=1`.
 
 **Stripe dashboard:** add `payment_intent.succeeded` and `payment_intent.canceled` to the webhook endpoint, and turn on **Google Pay** in Settings > Payment methods.
 
+## Virtual quests
+`Quest.format`: `in_person` (default: a venue and map pin) or `virtual` (no venue; `placeLabel`, e.g. "Tokyo · Hanuma"). The venue is only required in person.
+- **API:** quests carry `format` and `placeLabel`. A virtual quest's `location` is `{ name: placeLabel, lat: null, lng: null }`, so older apps still show a place.
+- **Lists:** `GET /api/quests?lat&lng` always includes virtual quests (no distance), after the nearby ones. The dashboard lists them in `virtualQuests` and never measures them.
+- **Selling:** a virtual quest (not event) keeps selling while live, from anywhere, and gets no "sales close soon" reminder. A virtual quest never has "Be at the venue".
+- **Admin form:** `format` and `placeLabel`. Virtual needs a place label; switching to in person needs a venue.
+
 ## Deleting quests
 `DELETE /api/admin/quests/:questId { reason }` deletes a quest for good, with its ticket types: only when nobody is registered and no order was ever paid, refunded, free or in checkout (otherwise 409 `has_registrations` / `has_orders`: cancel it instead). It is unpublished while it is checked, so no checkout can start meanwhile, and a refused delete leaves it as it was. Recorded as `quest.delete` with a snapshot.
 

@@ -53,6 +53,12 @@ async function run(baseUrl) {
   const closed = await request('POST', `/api/quests/${event.data.quest.id}/checkout`, memberToken, {});
   check(closed.status === 409 && closed.data.code === 'sales_closed', 'a virtual EVENT still closes at the start', closed.data);
 
+  console.log('\n--- its place, in words ---');
+  const { placeName } = require('../src/utils/quest');
+  const liveDoc = await Quest.findById(live.data.quest.id);
+  check(placeName(liveDoc) === 'Lagos · Ikeja' && placeName({ format: 'in_person', location: { name: 'Waterfront Plaza' } }) === 'Waterfront Plaza',
+    "reminders and Stripe's page name the place label for virtual quests, the venue otherwise", placeName(liveDoc));
+
   console.log(`\nvirtual quests: ${ok} passed, ${bad} failed`);
   return { pass: ok, fail: bad };
 }

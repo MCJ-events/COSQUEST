@@ -9,6 +9,7 @@ const Quest = require('../models/Quest');
 const Ticket = require('../models/Ticket');
 const Order = require('../models/Order');
 const notificationModel = require('../models/notificationModel');
+const { placeName } = require('./quest');
 
 /**
  * A quest (game activity) with "Be at the venue" keeps selling while it's
@@ -56,7 +57,7 @@ async function remindTomorrow(now = new Date()) {
     isPublished: true,
     status: { $ne: 'cancelled' },
     startsAt: { $gt: new Date(now.getTime() + 23 * 3600e3), $lte: new Date(now.getTime() + 25 * 3600e3) },
-  }).select('title startsAt location');
+  }).select('title startsAt location format placeLabel');
   let sent = 0;
   for (const quest of soon) {
     const due = await Ticket.find({ quest: quest._id, status: 'valid', dayReminderSentAt: null }).select('_id user').limit(1000);
@@ -64,7 +65,7 @@ async function remindTomorrow(now = new Date()) {
       const claimed = await Ticket.findOneAndUpdate({ _id: t._id, dayReminderSentAt: null }, { $set: { dayReminderSentAt: new Date() } });
       if (!claimed) continue;
       tell(t.user, `Tomorrow: ${quest.title} at ${when(quest.startsAt)}. Your ticket is in My tickets.`);
-      push([t.user], { title: `Tomorrow: ${quest.title}`, body: `${when(quest.startsAt)}${quest.location?.name ? ` · ${quest.location.name}` : ''}. Tap to see your ticket.`, data: { type: 'ticket', ticketId: String(t._id) }, category: 'eventReminders' });
+      push([t.user], { title: `Tomorrow: ${quest.title}`, body: `${when(quest.startsAt)}${placeName(quest) ? ` · ${placeName(quest)}` : ''}. Tap to see your ticket.`, data: { type: 'ticket', ticketId: String(t._id) }, category: 'eventReminders' });
       sent += 1;
     }
   }
