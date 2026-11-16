@@ -108,6 +108,10 @@ func _process_modification_with_delta(_delta: float) -> void:
 	if sk == null or not sk.is_inside_tree():
 		return
 	var xf: Transform3D = sk.global_transform
+	# fid29 combat: the last frames of a Guardian's dissolve (fighter.gd) are zero width; nothing to lock, and
+	# inverting that transform only logs "det == 0" (once a fight in build 28, each remaining frame in fid29 pop runs)
+	if absf(xf.basis.determinant()) < 1e-12:
+		return
 	var inv: Transform3D = xf.affine_inverse()
 	var k: float = maxf(0.05, size)
 	# ---- pass 1: where each foot should be this frame (pins, steps), from the clip's pose

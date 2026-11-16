@@ -15,6 +15,8 @@ const PoseLayer := preload("res://pose_layer.gd")
 const AnimLib := preload("res://anim_library.gd")
 const SecondaryMotion := preload("res://secondary_motion.gd")
 const FootLock := preload("res://foot_lock.gd")
+const DeadBlend := preload("res://dead_blend.gd")
+const KoSettle := preload("res://ko_settle.gd")
 
 # crossfades (s, real time): into a one-shot, back to a loop, into a hit react. fight-anim: Godot
 # advances a crossfade with the player's speed_scale, so a clip warped to 2-3.6x used to finish its
@@ -202,6 +204,33 @@ const MIX_STATES: Array[String] = ["attack_1", "attack_2", "attack_3", "heavy", 
 const DROOP_STATES: Array[String] = ["idle", "_", "walk", "run", "sprint", "hit", "stagger"]
 const DROOP_RATE: float = 8.0            # 1/s: eases in and out round the attacks
 
+## fid29 combat (build 29): on the mid and high tiers (the fighter's look "real", and "fid_combat" unless it is
+## false) the animator installs, in bind():
+##   * dead blending (dead_blend.gd): clips switch with no crossfade (one clip evaluated) and the body carries on
+##     from its own motion into the new clip over 0.15 to 0.25 s
+##   * directional hit reactions: flinch() layers a captured recoil (front, back, left, right; data/anim_real.json)
+##     on the spine, neck and arms (pose_layer.gd add_layers), scaled by the blow, 0.25 to 0.4 s
+##   * the KO settle (ko_settle.gd): a partial ragdoll after the fall's impact, only once the result is final
+##   * captured victory and intro clips and GUARD variants from anim/real/<key>.glb (never the build 28 files),
+##     a variant picked by a hash of the fighter's slot and its swing count (never the fight's RNG)
+## The low tier gets none of it: its libraries, flinch and timings are build 28's to the frame.
+## `fid_force` (tests and the probe): -1 = by the look, 0 = off, 1 = on.
+static var fid_force: int = -1
+var fid: bool = false
+var dead_blend: DeadBlend
+var pose_guard: DeadBlend                # the same script with guard on: after the foot lock, before the cloth
+var ko: KoSettle
+var _slot: String = ""
+var _swings: int = 0
+var _variants: Dictionary = {}           # state -> [clip names in the player] (index 0 = build 28's)
+var _hit_anims: Dictionary = {}          # "front" | "back" | "left" | "right" | "front_heavy" | "front_light" -> Animation
+var _hit_gain: Dictionary = {}           # the same keys -> the largest share of the reaction this hero's mesh takes (data)
+var _add_t: float = -1.0                 # seconds into the clip hit reaction (-1 = none)
+var _add_len: float = 0.3
+var _add_w: float = 1.0
+var _add_set: Array = []                 # [[Animation, share], ...]
+const ADD_LEN: Vector2 = Vector2(0.25, 0.4)
+
 
 ## Finds the AnimationPlayer and Skeleton3D under `model`, maps clips to states, adds the
 ## pose layer and the hand_r attach point. `body` hosts the stand-in hand if there is no
@@ -220,6 +249,15 @@ func bind(model: Node3D, body: Node3D, opts: Dictionary = {}) -> Dictionary:
 	secondary = null
 	foot = null
 	variant.clear()
+	fid = false
+	dead_blend = null
+	pose_guard = null
+	ko = null
+	_variants.clear()
+	_hit_anims.clear()
+	_hit_gain.clear()
+	_add_t = -1.0
+	_add_set = []
 	var skels: Array[Node] = model.find_children("*", "Skeleton3D", true, false)
 	if skels.size() > 0:
 		skeleton = skels[0] as Skeleton3D
@@ -271,6 +309,7 @@ func bind(model: Node3D, body: Node3D, opts: Dictionary = {}) -> Dictionary:
 				secondary = sm
 			else:
 				sm.free()
+		_fid_setup(body)
 	hand_r = _make_hand(body)
 	var proc: Array[String] = []
 	for st: String in STATES:
@@ -281,6 +320,108 @@ func bind(model: Node3D, body: Node3D, opts: Dictionary = {}) -> Dictionary:
 
 static func foot_ik_default() -> bool:
 	return int(OS.get_memory_info().get("physical", 0)) >= FOOT_IK_MIN_RAM
+
+
+## fid29 combat: true on the real-look tiers (mid, high), from the fighter's look.
+static func fid_on(body: Node) -> bool:
+	if fid_force >= 0:
+		return fid_force == 1
+	var f: Node = body.get_parent() if body != null else null
+	if f == null or not ("look" in f):
+		return false
+	var lk: Variant = f.get("look")
+	if not (lk is Dictionary):
+		return false
+	return bool((lk as Dictionary).get("real", false)) and bool((lk as Dictionary).get("fid_combat", true))
+
+
+## fid29 combat: installs dead blending, the KO settle and the captured clips (see the note at the top).
+func _fid_setup(body: Node) -> void:
+	if skeleton == null or not fid_on(body):
+		return
+	fid = true
+	var f: Node = body.get_parent() if body != null else null
+	_slot = "%s%s" % [str(f.get("role")) if f != null and "role" in f else "", str(f.get("team")) if f != null and "team" in f else ""]
+	_swings = 0
+	if player != null and not clips.is_empty():
+		var db := DeadBlend.new()
+		db.name = "DeadBlend"
+		skeleton.add_child(db)
+		skeleton.move_child(db, 0)     # first of the modifiers: the pose layer, foot lock and cloth act on the blended pose
+		if db.bind_bones(skeleton) > 0:
+			dead_blend = db
+		else:
+			skeleton.remove_child(db)
+			db.free()
+		var pg := DeadBlend.new()
+		pg.name = "PoseGuard"
+		pg.guard = true
+		skeleton.add_child(pg)
+		# after the pose layer and the foot lock (the final leg pose), before the cloth (it hangs from the guarded pose)
+		var after: Node = foot if foot != null else layer
+		if after != null:
+			skeleton.move_child(pg, after.get_index() + 1)
+		if pg.bind_bones(skeleton) > 0:
+			pose_guard = pg
+		else:
+			skeleton.remove_child(pg)
+			pg.free()
+	ko = KoSettle.new()
+	ko.skeleton = skeleton
+	if lib_key == "" or player == null:
+		return
+	var rc: Dictionary = AnimLib.real_for(lib_key, skeleton)
+	if rc.is_empty():
+		return
+	var rl: AnimationLibrary = AnimLib.load_library(str(rc.get("library", "")))
+	if rl == null:
+		return
+	AnimLib.apply(player, skeleton, rl, AnimLib.REAL_LIB)
+	var meta: Dictionary = AnimLib.real_data().get("clips", {})
+	var pre: String = AnimLib.REAL_LIB + "/"
+	for st: String in (rc.get("states", {}) as Dictionary):
+		var cn: String = str(rc["states"][st])
+		if not player.has_animation(pre + cn):
+			continue
+		player.get_animation(pre + cn).loop_mode = Animation.LOOP_NONE
+		clips[st] = pre + cn
+		var m: Dictionary = (meta.get(cn, {}) as Dictionary).duplicate()
+		m["clip"] = cn
+		m["real"] = true
+		timing[st] = m
+	for st: String in (rc.get("variants", {}) as Dictionary):
+		if not clips.has(st):
+			continue
+		var vs: Array = [clips[st]]
+		for cn: Variant in rc["variants"][st]:
+			if player.has_animation(pre + str(cn)):
+				player.get_animation(pre + str(cn)).loop_mode = Animation.LOOP_LINEAR if st in LOOPING else Animation.LOOP_NONE
+				vs.append(pre + str(cn))
+		if vs.size() > 1:
+			_variants[st] = vs
+	for d: String in (rc.get("hit", {}) as Dictionary):
+		var hn: String = pre + str(rc["hit"][d])
+		if player.has_animation(hn):
+			_hit_anims[d] = player.get_animation(hn)
+			_hit_gain[d] = float((rc.get("hit_gain", {}) as Dictionary).get(d, 1.0))
+
+
+## fid29 combat: which of a state's variants plays this time: a hash of the fighter's slot and its swing
+## count (the same fight shows the same picks; the fight's seeded RNG is never read).
+func variant_pick(st: String, n: int) -> int:
+	var vs: Array = _variants.get(st, [])
+	if vs.size() < 2:
+		return 0
+	return posmod(hash("%s:%s:%d" % [_slot, st, n]), vs.size())
+
+
+## fid29 combat: a clip switch with no crossfade, dead-blended from the body's own motion instead.
+func _dead_play(clip: String, blend: float, hit_at: float = -1.0) -> void:
+	player.play(clip, 0.0, 1.0)
+	var d: float = clampf(blend * 2.0, 0.15, 0.25)
+	if hit_at > 0.02:
+		d = minf(d, maxf(hit_at, 0.1))   # a strike's contact frame shows the clip's own pose
+	dead_blend.start(d)
 
 
 ## The cast clip library (cq 012): adds it to the model's AnimationPlayer (made if the GLB has
@@ -427,6 +568,11 @@ func play(st: String, game_len: float = 0.0, hit_at: float = -1.0, blend: float 
 	if variant.has(st) and clips.has(str(variant[st])):
 		key = str(variant[st])
 	var clip: String = clips[key]
+	if fid:
+		if st in ONE_SHOTS:
+			_swings += 1
+		if _variants.has(key):
+			clip = str((_variants[key] as Array)[variant_pick(key, _swings)])
 	var a: Animation = player.get_animation(clip)
 	if blend < 0.0:
 		blend = BLEND_HIT if st == "hit" else (BLEND_ACT if restart else BLEND_LOOP)
@@ -486,8 +632,13 @@ func play(st: String, game_len: float = 0.0, hit_at: float = -1.0, blend: float 
 			clip = mixed
 	# fight-anim: the fade runs in clip time (speed_scale), so ask for blend x rate to get `blend` s
 	var rate0: float = float(_warp[1]) if not _warp.is_empty() else (walk_rate if st in LOCO else 1.0)
-	player.play(clip, blend * maxf(rate0, 0.05), 1.0)
+	if dead_blend != null:
+		_dead_play(clip, blend, hit_at)
+	else:
+		player.play(clip, blend * maxf(rate0, 0.05), 1.0)
 	player.seek(t_in, true)
+	if ko != null and st == "death":
+		ko.impact_t = KoSettle.impact_of(a)
 	if not _warp.is_empty():
 		player.speed_scale = 0.0 if frozen else float(_warp[1])
 	return true
@@ -594,6 +745,44 @@ func flinch(push: Vector3, strength: float) -> void:
 	_flinch_dir = local.normalized()
 	_flinch_k = maxf(strength, _flinch_k * _flinch_env() if _flinch_t >= 0.0 else 0.0)
 	_flinch_t = 0.0
+	if fid and not _hit_anims.is_empty():
+		_hit_clip(_flinch_dir, strength)
+
+
+## fid29 combat: the captured recoil for a blow pushing the body along `d` (its own frame, +Z forward): the
+## two strongest of front (pushed back), back (pushed forward), left and right, weighted by how much of the push
+## each is; a heavy blow from the front takes the head hit. A side with no clip on this hero: the procedural
+## flinch shows the blow instead.
+func _hit_clip(d: Vector3, strength: float) -> void:
+	var parts: Array = [["front", maxf(0.0, -d.z)], ["back", maxf(0.0, d.z)], ["left", maxf(0.0, d.x)], ["right", maxf(0.0, -d.x)]]
+	parts.sort_custom(func(p: Array, q: Array) -> bool: return float(p[1]) > float(q[1]))
+	var out: Array = []
+	for p: Array in parts.slice(0, 2):
+		var k: String = str(p[0])
+		if k == "front" and strength >= 1.0 and _hit_anims.has("front_heavy"):
+			k = "front_heavy"
+		elif k == "front" and not _hit_anims.has("front"):
+			k = "front_light"
+		if not _hit_anims.has(k):
+			if out.is_empty():
+				break      # the main side has no clip: procedural
+			continue
+		if float(p[1]) > 0.15 or out.is_empty():
+			out.append([_hit_anims[k], float(p[1]), float(_hit_gain.get(k, 1.0))])
+	_add_set = []
+	_add_t = -1.0
+	if out.is_empty():
+		return
+	var tot: float = 0.0
+	for o: Array in out:
+		tot += float(o[1])
+	for o: Array in out:
+		o[1] = float(o[1]) / maxf(tot, 0.0001)
+	_add_set = out
+	var u: float = clampf((strength - 0.45) / 0.95, 0.0, 1.0)
+	_add_len = lerpf(ADD_LEN.x, ADD_LEN.y, u)
+	_add_w = lerpf(0.55, 1.0, u)
+	_add_t = 0.0
 
 
 func _flinch_env() -> float:
@@ -607,6 +796,8 @@ func _flinch_env() -> float:
 
 
 func _flinch_pose() -> Dictionary:
+	if _add_t >= 0.0:
+		return {}   # fid29: the captured recoil plays it
 	var e: float = _flinch_env() * _flinch_k
 	if e <= 0.001:
 		return {}
@@ -631,6 +822,17 @@ func update(dt: float, speed_now: float, dead: bool) -> void:
 		if _flinch_t > FLINCH_IN + FLINCH_OUT:
 			_flinch_t = -1.0
 			_flinch_k = 0.0
+	if _add_t >= 0.0 and (not frozen or _add_t < FLINCH_IN):
+		_add_t += dt
+		if _add_t > _add_len:
+			_add_t = -1.0
+			_add_set = []
+	if dead_blend != null:
+		dead_blend.dt = 0.0 if frozen else dt
+	if pose_guard != null:
+		pose_guard.dt = 0.0 if frozen else dt
+	if ko != null and dead and state == "death" and player != null:
+		ko.tick(0.0 if frozen else dt, player.current_animation_position, floor_y)
 	if player != null:
 		var base: float = 1.0
 		if state in LOCO:
@@ -644,7 +846,10 @@ func update(dt: float, speed_now: float, dead: bool) -> void:
 		# fight-anim: the cheer used to freeze on its last frame (a statue); it settles into idle
 		_victory_idle = true
 		_warp = []
-		player.play(clips["idle"], BLEND_VICTORY_IDLE, 1.0)
+		if dead_blend != null:
+			_dead_play(clips["idle"], BLEND_VICTORY_IDLE)
+		else:
+			player.play(clips["idle"], BLEND_VICTORY_IDLE, 1.0)
 		player.speed_scale = 0.0 if frozen else 1.0
 	if in_tail and speed_now > 0.2:
 		length = t     # a step ends the tail: the walk takes over below
@@ -680,14 +885,20 @@ func update(dt: float, speed_now: float, dead: bool) -> void:
 				if player != null:
 					var alt: String = "walk" if want == "run" or want == "sprint" else want
 					if clips.has(alt):
-						player.play(clips[alt], 0.15)
+						if dead_blend != null:
+							_dead_play(clips[alt], 0.15)
+						else:
+							player.play(clips[alt], 0.15)
 				state = want
 	# realism-20261111: no state ever shows the bind pose. A player that has stopped while the
 	# state is a loop or between states (nothing queued, a clip removed under it) goes back to the
 	# idle loop; a skeleton with no clip at all hangs its arms (pose_layer arm_droop) instead of
 	# standing in its T or A rest pose.
 	if no_bind and player != null and not player.is_playing() and (state in LOOPING or state == "_") and clips.has("idle") and not frozen:
-		player.play(clips["idle"], BLEND_LOOP, 1.0)
+		if dead_blend != null:
+			_dead_play(clips["idle"], BLEND_LOOP)
+		else:
+			player.play(clips["idle"], BLEND_LOOP, 1.0)
 	if foot != null:
 		foot.dt = 0.0 if frozen else dt
 		foot.floor_y = floor_y
@@ -712,6 +923,8 @@ func update(dt: float, speed_now: float, dead: bool) -> void:
 			p["spine_yaw"] = float(p.get("spine_yaw", 0.0)) + 1.2 * sin(TAU * _breath_t / (SHIFT_PERIOD * 1.3))
 			p["r_side"] = float(p.get("r_side", 0.0)) + 1.5 * br
 			p["l_side"] = float(p.get("l_side", 0.0)) + 1.5 * br
+		if fid:
+			layer.add_layers = _add_layers_now()
 		var fl: Dictionary = _flinch_pose()
 		if not fl.is_empty():
 			p = p.duplicate()
@@ -724,6 +937,20 @@ func update(dt: float, speed_now: float, dead: bool) -> void:
 			dw = 1.0   # no clip at all: never the bind pose
 		_droop_now = lerpf(_droop_now, dw, 1.0 - exp(-dt * DROOP_RATE))
 		layer.arm_droop = _droop_now
+
+
+## fid29 combat: this frame's additive hit layers for pose_layer.gd: each clip at the matching point of its own
+## length, weighted by its share of the push and the blow, eased in over FLINCH_IN and out over the last 35 %.
+func _add_layers_now() -> Array:
+	if _add_t < 0.0 or _add_set.is_empty():
+		return []
+	var u: float = clampf(_add_t / _add_len, 0.0, 1.0)
+	var env: float = minf(1.0, _add_t / FLINCH_IN) * (1.0 - smoothstep(0.65, 1.0, u))
+	var out: Array = []
+	for o: Array in _add_set:
+		var a: Animation = o[0]
+		out.append([a, u * a.length, float(o[1]) * float(o[2]) * _add_w * env])
+	return out
 
 
 func phase() -> float:

@@ -179,6 +179,35 @@ static func library(key: String) -> AnimationLibrary:
 	var path: String = str(c.get("library", ""))
 	if path == "":
 		return null
+	return load_library(path)
+
+
+## fid29 combat (build 29): the mid and high tiers' captured motion (tools/anim/build_real.py), in its own
+## data file and its own libraries (anim/real/<key>.glb). Build 28's anim_clips.json and anim/*.glb are never
+## read differently: a low phone loads exactly what it loaded before. combat_animator.gd asks for it only on
+## the real-look tiers.
+const REAL_JSON: String = "res://data/anim_real.json"
+static var _real: Dictionary = {}
+
+
+static func real_data() -> Dictionary:
+	if _real.is_empty() and FileAccess.file_exists(REAL_JSON):
+		var d: Variant = JSON.parse_string(FileAccess.get_file_as_string(REAL_JSON))
+		if d is Dictionary:
+			_real = d
+	return _real
+
+
+## This character's captured-motion entry ({} = none), only when `skeleton` is the one it was made for.
+static func real_for(key: String, skeleton: Skeleton3D) -> Dictionary:
+	var c: Dictionary = (real_data().get("characters", {}) as Dictionary).get(key, {})
+	if c.is_empty() or not fits(skeleton, c.get("fingerprint", {})):
+		return {}
+	return c
+
+
+## Loads (once) a library GLB by its path (the build 28 libraries and the fid29 ones alike).
+static func load_library(path: String) -> AnimationLibrary:
 	if _libs.has(path):
 		return _libs[path]
 	var t0: int = Time.get_ticks_usec()
@@ -311,8 +340,12 @@ static func soften_arms(a: Animation, keep: float) -> int:
 	return n_tracks
 
 
-## Adds the library to `player`, its tracks pointed at `skeleton`. Returns the clip names.
-static func apply(player: AnimationPlayer, skeleton: Skeleton3D, src: AnimationLibrary) -> PackedStringArray:
+## Adds the library to `player`, its tracks pointed at `skeleton`. Returns the clip names. `lib_name` (fid29):
+## the name it is added under ("cq" = build 28's; the captured clips go in beside it as REAL_LIB).
+const REAL_LIB: String = "cqr"
+
+
+static func apply(player: AnimationPlayer, skeleton: Skeleton3D, src: AnimationLibrary, lib_name: String = LIB_NAME) -> PackedStringArray:
 	var out := PackedStringArray()
 	if player == null or skeleton == null or src == null:
 		return out
@@ -325,10 +358,10 @@ static func apply(player: AnimationPlayer, skeleton: Skeleton3D, src: AnimationL
 			var bone: String = str(a.track_get_path(i).get_concatenated_subnames())
 			a.track_set_path(i, NodePath(skel_path + ":" + bone))
 		lib.add_animation(n, a)
-		out.append(LIB_NAME + "/" + str(n))
-	if player.has_animation_library(LIB_NAME):
-		player.remove_animation_library(LIB_NAME)
-	player.add_animation_library(LIB_NAME, lib)
+		out.append(lib_name + "/" + str(n))
+	if player.has_animation_library(lib_name):
+		player.remove_animation_library(lib_name)
+	player.add_animation_library(lib_name, lib)
 	return out
 
 

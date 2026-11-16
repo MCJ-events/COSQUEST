@@ -128,3 +128,26 @@ mips); the tile is lossless with mipmaps (about 0.35 MB). The HUD reuses the atl
 - Shake: `TRAUMA_DECAY`, `SHAKE_MAX_M`, `SHAKE_MAX_ROLL`, `FOV_KICK_DECAY` and the `_impact_cam` call
   sites.
 - Review captures: cq 013's `cap/tune.json` (the scripted fight at the moments each effect peaks).
+
+## Build 29: effects that frame the struck fighter (fid29 combat, mid and high)
+
+Behind the look keys `real` and `fid_combat`; the low tier keeps build 28's shaders, art and calls exactly. `fx.gd`
+compiles variants of the build 28 shader files with a define (`_variant`), so there is one source per effect.
+
+- **Hit shield** (`vfx/fx_card.gdshaderinc`, `FID29`): a hit's cards (`sparks`) fade to 0.2 inside a screen ellipse round
+  the struck fighter's head and torso (head to waist, 0.5 m half width), set per hit; any card made within 0.35 s of
+  that hit at the same body takes it too. The burst frames the body instead of covering it.
+- **Beams** (`vfx/fx_beam.gdshader`, `FID29`): a beam standing between the camera and a fighter fades to 0.3 inside that
+  fighter's ellipse (the ellipse coordinates leave the vertex multiplied by clip w, so the varying is exact at every
+  fragment though the beam only turns round world up; 6 fragment operations over build 28). In b28p this was the main
+  white-out of the mid-fight frame.
+- **Ground fade**: every upright card fades out over its lowest 0.3 m above the paving (world height, no depth read).
+- **Cap with hue**: no card adds more than min(`cq_fx_cap`, 0.85) of white, scaling its colour rather than clipping each
+  channel. `fx_gain` and `fx_cap` stay in `arena.gd TIER_LOOK`.
+- **Flow ribbons** (high only, `vfx/fx_arc.gdshader`, `FLOW`): the slash arcs and weapon ribbons advect the energy texture
+  along a painted flow field with fibre streaks (`art/fx/fx_flow.png`, 128 x 64, from `tools/fx/make_fx_art.py --flow`);
+  same meshes and draws, capped at 0.85 of white with the hue kept (as the cards). `fx_atlas.png` and `fx_tile.png` are
+  unchanged (the script still writes them byte-identical).
+- Measures: `tools/fx/whiteout.py` on look_shots frames: the struck Guardian's mask pixels at or above 0.95 luma (0 % on
+  b28p as well: the phone path's tonemapper puts white at 0.86 luma), at or above 0.95 x the frame's own white
+  (`white_rel`, the gate this lane reports) and lifted more than 0.25 by the effects (`raised`). Budgets and numbers: `docs/game3d/fid29/combat.md`.
