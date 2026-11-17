@@ -482,8 +482,15 @@ func _ready() -> void:
 	_close_camera()
 	HitArea.ordered = bool((arena.get("look") as Dictionary).get("hit_order", false))   # realism round 3 (hit_area.gd)
 	# realism round 4: how much the effect cards add (project.godot shader_globals; 1 and no cap unless the tier says)
-	RenderingServer.global_shader_parameter_set("cq_fx_gain", float((arena.get("look") as Dictionary).get("fx_gain", 1.0)))
-	RenderingServer.global_shader_parameter_set("cq_fx_cap", float((arena.get("look") as Dictionary).get("fx_cap", 100.0)))
+	var lk_fx: Dictionary = arena.get("look") as Dictionary
+	var fx_gain: float = float(lk_fx.get("fx_gain", 1.0))
+	var fx_cap: float = float(lk_fx.get("fx_cap", 100.0))
+	if bool(lk_fx.get("fx_combat", false)):
+		# fx_combat: the effects may add a little more (the shield still frames the struck fighter's head and chest)
+		fx_gain = maxf(fx_gain, 0.8)
+		fx_cap = maxf(fx_cap, 0.7)
+	RenderingServer.global_shader_parameter_set("cq_fx_gain", fx_gain)
+	RenderingServer.global_shader_parameter_set("cq_fx_cap", fx_cap)
 	_ground = arena.get("ground")
 	plaza = arena.get("plaza")
 	_build_camera()
@@ -2201,6 +2208,9 @@ func _wclass(f: FighterScript) -> String:
 
 
 func _swing_cols(heavy: bool) -> Array:
+	# fx_combat (17 Nov): the weapon's element instead (Frostbrand's ice blue, Wale's reference)
+	if fx != null and fx.fxc:
+		return fx.FXC_FROST_HEAVY if heavy else fx.FXC_FROST
 	# look-fight: every hero swing in the hero's colours (art direction 2.8), the heavy third hotter
 	if heavy:
 		return [FeelScript.HERO_EDGE, FeelScript.HERO_MID]
@@ -2672,7 +2682,11 @@ func _apply_hit(src: FighterScript, dst: FighterScript, info: Dictionary) -> voi
 	if dst.team == 0:
 		tint = FeelScript.BOSS_MID
 	var contact: Vector3 = dst.chest_pos() - away.normalized() * 0.45 * dst.size_k   # on the body's surface, facing the blow
+	if fx.fxc and src == hero and not crit:
+		tint = (_swing_cols(heavy)[0] as Color)
 	fx.sparks(contact, tint, amount, crit, away)
+	if fx.fxc and src == hero:
+		fx.impact(contact, dst.position, _swing_cols(heavy), 1.0 if crit else (0.7 if heavy else 0.3))
 	if heavy and src == hero:
 		fx.dust(dst.position, amount >= 140)
 	if crit:
