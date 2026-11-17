@@ -74,7 +74,8 @@ uniform float skin_back = 0.22;            // light through thin skin at the sil
 uniform samplerCube env_cube : filter_linear_mipmap;
 uniform float env_scale = 4.0;             // the cube stores sqrt(radiance / env_scale)
 uniform float env_lods = 5.0;              // the last mip (roughness 1)
-uniform float env_spec = 1.0;              // 0 = no reflections (look "ibl": false)
+uniform float env_spec = 1.0;
+uniform float env_neutral = 0.0;          // charload-29: rough non-metal reflections drift to their own luminance (0 = off)              // 0 = no reflections (look "ibl": false)
 uniform vec3 amb_cube[6];                  // +x -x +y -y +z -z: the cube's diffuse light, in the street's units
 uniform float amb_amount = 1.0;
 
@@ -498,6 +499,12 @@ void fragment() {
 		r = normalize(mix(r, nw, rough * rough));
 		vec3 e = textureLod(env_cube, r, rough * env_lods).rgb;
 		e = e * e * env_scale;
+		// charload-29: black cloth shows almost only this reflection, and the street's warm walls and paving turned it
+		// olive; a rough fabric blurs its surroundings to a near-neutral sheen, so pull its colour to its luminance
+		if (env_neutral > 0.0) {
+			float el = dot(e, vec3(0.2126, 0.7152, 0.0722));
+			e = mix(e, vec3(el), env_neutral * smoothstep(0.35, 0.8, rough) * (1.0 - metal));
+		}
 		vec2 ab = env_brdf(rough, nov);
 		// round 2: a rough, non-metal surface at a grazing angle mirrored the bright sky as a grey haze
 		// (the top of dark hair): its edge reflection fades with roughness

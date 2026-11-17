@@ -655,6 +655,8 @@ func _real_material(b: BaseMaterial3D) -> ShaderMaterial:
 	if b.normal_enabled and b.normal_texture != null and _surf_tangents and bool(look.get("normal_map", true)):
 		sm.set_shader_parameter("normal_tex", b.normal_texture)
 		sm.set_shader_parameter("normal_amount", b.normal_scale)
+	if cl:
+		sm.set_shader_parameter("env_neutral", float(look.get("env_neutral", 0.85)))
 	if b.emission_enabled:
 		sm.set_shader_parameter("emission_tex", b.emission_texture)
 		var ec: Color = b.emission * b.emission_energy_multiplier
