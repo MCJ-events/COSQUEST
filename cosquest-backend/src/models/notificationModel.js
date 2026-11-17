@@ -27,7 +27,7 @@ async function createForEnabledUsers(message) {
  * sent at signup, before the person has chosen at onboarding step 4
  * (`notificationsEnabled` starts on; they can switch it off there).
  */
-async function createForUser(userId, message, { type = 'system', actor, conversation, chatMessage } = {}) {
+async function createForUser(userId, message, { type = 'system', actor, conversation, chatMessage, link, gameKind, push: sendPush = true } = {}) {
   const notification = await Notification.create({
     user: userId,
     message,
@@ -35,11 +35,18 @@ async function createForUser(userId, message, { type = 'system', actor, conversa
     actor: actor || null,
     conversation: conversation || null,
     chatMessage: chatMessage || null,
+    link: link || null,
+    gameKind: gameKind || null,
   });
   if (actor) await notification.populate('actor', ACTOR_FIELDS);
   emitToUser(String(userId), 'notification:new', sanitize(notification));
-  push.notifyFromNotification([String(userId)], { type, message, conversation, actor: notification.actor?.profile ? notification.actor : null });
+  if (sendPush) push.notifyFromNotification([String(userId)], { type, message, conversation, actor: notification.actor?.profile ? notification.actor : null });
   return notification;
+}
+
+/** Unread notifications for the app badge (pushes carry it). */
+async function unreadCount(userId) {
+  return Notification.countDocuments({ user: userId, read: false });
 }
 
 /**
@@ -107,6 +114,8 @@ function sanitize(n) {
     scheduledCallId: n.scheduledCall ? String(n.scheduledCall) : null,
     postId: n.post ? String(n.post) : null,
     commentId: n.postComment ? String(n.postComment) : null,
+    link: n.link || null,
+    gameKind: n.gameKind || null,
     read: n.read,
     createdAt: n.createdAt,
   };
@@ -117,4 +126,4 @@ function sanitize(n) {
 const WELCOME_MESSAGE =
   "🎉 Welcome to CosQuest! 🥷✨ Your account is officially live. This is your new home for everything you love — real-world quests, your faction, your people, all in one place. 🗺️💜 So glad you're here — let's go make some legendary memories. 🏆";
 
-module.exports = { createForEnabledUsers, createForUser, createMentionNotifications, listForUser, markAllRead, sanitize, WELCOME_MESSAGE };
+module.exports = { createForEnabledUsers, createForUser, createMentionNotifications, listForUser, markAllRead, sanitize, unreadCount, WELCOME_MESSAGE };

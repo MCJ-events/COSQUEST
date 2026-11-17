@@ -1,0 +1,32 @@
+{
+ "key": "everborn_oren",
+ "source": "everborn_oren_lod0.glb",
+ "classes": "maps_lod0.npz",
+ "share_of_body_texels": {
+  "skin": 0.1443,
+  "metal": 0.0024,
+  "leather": 0.0819,
+  "cloth": 0.6585
+ },
+ "uv_per_m": 0.2176,
+ "hair_srgb": null,
+ "iris": null,
+ "lum_p50_p75_p95": {
+  "leather": [
+   0.0211,
+   0.0341,
+   0.1092
+  ],
+  "cloth": [
+   0.0233,
+   0.0358,
+   0.0894
+  ]
+ },
+ "hair_style": "",
+ "albedo_w": {
+  "lod0": 2048,
+  "lod1": 1024
+ },
+ "orm_trust": 0.0
+}

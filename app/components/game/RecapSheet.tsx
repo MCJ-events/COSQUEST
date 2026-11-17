@@ -1,0 +1,139 @@
+// "Your day": the day's numbers on a card worth posting (costquest-ios
+// Warden/RecapSheet.swift). The numbers are the server's (me.today). Plain
+// data since build 24: no Warden story, nothing said aloud.
+// iOS shares the card as an image (ImageRenderer); here the share sheet
+// carries the same card as text (features/game/recap.ts shareText), as no
+// view-capture module is in the app.
+import { Ionicons } from "@expo/vector-icons";
+import { useEffect } from "react";
+import { ScrollView, Share, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+import { cardSubtitle, EMPTY_LINE, hasDayToTell, shareText, tiles, type Today } from "@/features/game/recap";
+import { gameStore, useGame } from "@/features/game/runtime";
+
+import { Chip, GameButton, GamePanel, MAX_FONT_SCALE, withAlpha } from "./kit";
+import { SheetHost } from "./Sheet";
+import { SheetFrame } from "./SheetFrame";
+import { SheetHeader } from "./SheetHeader";
+import { GF, GP, realmColor } from "./theme";
+import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
+
+export default function RecapSheet({ onClose }: { onClose: () => void }) {
+  const insets = useSafeAreaInsets();
+  return (
+    <SheetHost band={{ top: insets.top + 40, height: 90 }} scrimLabel="Close your day" onClose={onClose}>
+      {(close) => <RecapBody close={close} />}
+    </SheetHost>
+  );
+}
+
+function RecapBody({ close }: { close: () => void }) {
+  const styles = useThemedStyles(STYLE_PAIR);
+  const insets = useSafeAreaInsets();
+  const me = useGame((s) => s.me);
+  const tint = realmColor(me?.faction);
+  const name = gameStore.playerName();
+  const level = me?.standing.level ?? 1;
+  const rank = me?.standing.rank ?? "Rookie";
+
+  // The day's numbers, fresh as the sheet opens.
+  useEffect(() => {
+    void gameStore.refreshMe().catch(() => {});
+  }, []);
+
+  const today = me?.today ?? null;
+  const share = (t: Today) =>
+    void Share.share({ message: shareText({ name, level, rank, faction: me?.faction_name, today: t }) }).catch(() => {});
+
+  return (
+    <SheetFrame top={insets.top + 40}>
+      <ScrollView contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + 24 }]} showsVerticalScrollIndicator={false}>
+        <SheetHeader title="Your day" onClose={close} />
+        {today && hasDayToTell(me) ? (
+          <>
+            <RecapCard name={name} faction={me?.faction_name} tint={tint} today={today} level={level} rank={rank} />
+            <GameButton title="Share your day" color={GP.sun} icon={<Ionicons name="share-outline" size={20} color="#FFF" />} onPress={() => share(today)} />
+          </>
+        ) : (
+          <GamePanel>
+            <View style={styles.emptyRow}>
+              <Ionicons name="book" size={36} color={tint} />
+              <Text style={styles.empty} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+                {EMPTY_LINE}
+              </Text>
+            </View>
+          </GamePanel>
+        )}
+      </ScrollView>
+    </SheetFrame>
+  );
+}
+
+export function RecapCard({
+  name,
+  faction,
+  tint,
+  today,
+  level,
+  rank,
+}: {
+  name: string;
+  faction?: string | null;
+  tint: string;
+  today: Today;
+  level: number;
+  rank: string;
+}) {
+  const styles = useThemedStyles(STYLE_PAIR);
+  return (
+    <GamePanel padding={18}>
+      <View style={{ gap: 14 }}>
+        <View style={styles.head}>
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text style={styles.name} numberOfLines={1} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+              {name}
+            </Text>
+            <Text style={styles.sub} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+              {cardSubtitle(level, rank, faction)}
+            </Text>
+          </View>
+          <Chip text="CostQuest" color={tint} />
+        </View>
+        <View style={styles.tiles}>
+          {tiles(today).map((t) => (
+            <View key={t.label} style={[styles.tile, { backgroundColor: withAlpha(tint, 0.14) }]} accessible accessibilityLabel={`${t.value} ${t.label}`}>
+              <Text style={styles.tileValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
+                {t.value}
+              </Text>
+              <Text style={styles.tileLabel}>{t.label.toUpperCase()}</Text>
+            </View>
+          ))}
+        </View>
+        {today.best_place ? (
+          <View style={styles.best}>
+            <Ionicons name="star" size={14} color={GP.sunDeep} />
+            <Text style={styles.bestText} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+              Best stop: {today.best_place}
+            </Text>
+          </View>
+        ) : null}
+      </View>
+    </GamePanel>
+  );
+}
+
+const STYLE_PAIR = themedStyles({
+  body: { paddingHorizontal: 18, gap: 18 },
+  emptyRow: { flexDirection: "row", alignItems: "center", gap: 14 },
+  empty: { flex: 1, fontFamily: GF.bold, fontSize: 17, color: GP.ink },
+  head: { flexDirection: "row", alignItems: "center", gap: 10 },
+  name: { fontFamily: GF.display, fontSize: 28, color: GP.ink },
+  sub: { fontFamily: GF.bold, fontSize: 14, color: withAlpha(GP.ink, 0.6) },
+  tiles: { flexDirection: "row", gap: 10 },
+  tile: { flex: 1, alignItems: "center", paddingVertical: 10, borderRadius: 14 },
+  tileValue: { fontFamily: GF.display, fontSize: 26, color: GP.ink },
+  tileLabel: { fontFamily: GF.display, fontSize: 11, color: withAlpha(GP.ink, 0.55) },
+  best: { flexDirection: "row", alignItems: "center", gap: 6 },
+  bestText: { fontFamily: GF.bold, fontSize: 14, color: GP.sunDeep },
+});

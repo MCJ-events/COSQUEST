@@ -1,0 +1,407 @@
+{
+ "_doc": "fid29 combat: bone maps for the new sources (merged over tools/anim/rigs.json by build_real.py; same format)",
+ "cmcd_to_mixamo": {
+  "source": "Cologne Motion Capture Database (TH Koeln, CC BY 4.0) BVH skeleton via bvh2glb.py: Hips > Spine > Spine1 > Neck > Head; Shoulder/Arm/ForeArm/Hand; UpLeg/Leg/Foot/ToeBase. Rest: identity rotations, a T-pose facing +Z",
+  "target": "cq 060 humanoid-mixamo auto-rig: 25 bones, no fingers",
+  "hips": [
+   "Hips",
+   "Hips"
+  ],
+  "feet": [
+   [
+    "LeftFoot",
+    "LeftToeBase",
+    "RightFoot",
+    "RightToeBase"
+   ],
+   [
+    "LeftFoot",
+    "LeftToeBase",
+    "RightFoot",
+    "RightToeBase"
+   ]
+  ],
+  "bones": {
+   "Hips": {
+    "src": "Hips",
+    "dir": [
+     "Hips",
+     "Neck",
+     "Hips",
+     "Neck"
+    ]
+   },
+   "Spine": {
+    "src": "Spine",
+    "dir": [
+     "Spine",
+     "Spine2",
+     "Spine",
+     "Spine1"
+    ]
+   },
+   "Spine1": {
+    "src": [
+     "Spine",
+     "Spine1",
+     0.5
+    ],
+    "dir": "inherit"
+   },
+   "Spine2": {
+    "src": "Spine1",
+    "dir": [
+     "Spine2",
+     "Neck",
+     "Spine1",
+     "Neck"
+    ]
+   },
+   "Neck": {
+    "src": [
+     "Neck",
+     "Head",
+     0.5
+    ],
+    "dir": [
+     "Neck",
+     "Head",
+     "Neck",
+     "Head"
+    ]
+   },
+   "Head": {
+    "src": "Head",
+    "dir": "none"
+   },
+   "HeadTop_End": {
+    "src": "Head",
+    "dir": "inherit"
+   },
+   "LeftShoulder": {
+    "src": "Spine1",
+    "dir": "inherit"
+   },
+   "LeftArm": {
+    "src": "LeftArm",
+    "dir": [
+     "LeftArm",
+     "LeftForeArm",
+     "LeftArm",
+     "LeftForeArm"
+    ]
+   },
+   "LeftForeArm": {
+    "src": "LeftForeArm",
+    "dir": [
+     "LeftForeArm",
+     "LeftHand",
+     "LeftForeArm",
+     "LeftHand"
+    ]
+   },
+   "LeftHand": {
+    "src": "LeftHand",
+    "dir": "inherit"
+   },
+   "LeftUpLeg": {
+    "src": "LeftUpLeg",
+    "dir": [
+     "LeftUpLeg",
+     "LeftLeg",
+     "LeftUpLeg",
+     "LeftLeg"
+    ]
+   },
+   "LeftLeg": {
+    "src": "LeftLeg",
+    "dir": [
+     "LeftLeg",
+     "LeftFoot",
+     "LeftLeg",
+     "LeftFoot"
+    ]
+   },
+   "LeftFoot": {
+    "src": "LeftFoot",
+    "dir": [
+     "LeftFoot",
+     "LeftToeBase",
+     "LeftFoot",
+     "LeftToeBase"
+    ]
+   },
+   "LeftToeBase": {
+    "src": "LeftToeBase",
+    "dir": "inherit"
+   },
+   "LeftToe_End": {
+    "src": "LeftToeBase",
+    "dir": "inherit"
+   },
+   "RightShoulder": {
+    "src": "Spine1",
+    "dir": "inherit"
+   },
+   "RightArm": {
+    "src": "RightArm",
+    "dir": [
+     "RightArm",
+     "RightForeArm",
+     "RightArm",
+     "RightForeArm"
+    ]
+   },
+   "RightForeArm": {
+    "src": "RightForeArm",
+    "dir": [
+     "RightForeArm",
+     "RightHand",
+     "RightForeArm",
+     "RightHand"
+    ]
+   },
+   "RightHand": {
+    "src": "RightHand",
+    "dir": "inherit"
+   },
+   "RightUpLeg": {
+    "src": "RightUpLeg",
+    "dir": [
+     "RightUpLeg",
+     "RightLeg",
+     "RightUpLeg",
+     "RightLeg"
+    ]
+   },
+   "RightLeg": {
+    "src": "RightLeg",
+    "dir": [
+     "RightLeg",
+     "RightFoot",
+     "RightLeg",
+     "RightFoot"
+    ]
+   },
+   "RightFoot": {
+    "src": "RightFoot",
+    "dir": [
+     "RightFoot",
+     "RightToeBase",
+     "RightFoot",
+     "RightToeBase"
+    ]
+   },
+   "RightToeBase": {
+    "src": "RightToeBase",
+    "dir": "inherit"
+   },
+   "RightToe_End": {
+    "src": "RightToeBase",
+    "dir": "inherit"
+   }
+  }
+ },
+ "style_to_mixamo": {
+  "source": "100STYLE (Ian Mason, CC BY 4.0) BVH skeleton via bvh2glb.py: Hips > Chest..Chest4 > Neck > Head; Collar/Shoulder/Elbow/Wrist; Hip/Knee/Ankle/Toe. Rest turned to face +Z",
+  "target": "cq 060 humanoid-mixamo auto-rig: 25 bones, no fingers",
+  "hips": [
+   "Hips",
+   "Hips"
+  ],
+  "feet": [
+   [
+    "LeftFoot",
+    "LeftToeBase",
+    "RightFoot",
+    "RightToeBase"
+   ],
+   [
+    "LeftAnkle",
+    "LeftToe",
+    "RightAnkle",
+    "RightToe"
+   ]
+  ],
+  "bones": {
+   "Hips": {
+    "src": "Hips",
+    "dir": [
+     "Hips",
+     "Neck",
+     "Hips",
+     "Neck"
+    ]
+   },
+   "Spine": {
+    "src": [
+     "Chest",
+     "Chest2",
+     0.5
+    ],
+    "dir": [
+     "Spine",
+     "Spine2",
+     "Chest",
+     "Chest4"
+    ]
+   },
+   "Spine1": {
+    "src": "Chest3",
+    "dir": "inherit"
+   },
+   "Spine2": {
+    "src": "Chest4",
+    "dir": [
+     "Spine2",
+     "Neck",
+     "Chest4",
+     "Neck"
+    ]
+   },
+   "Neck": {
+    "src": [
+     "Neck",
+     "Head",
+     0.5
+    ],
+    "dir": [
+     "Neck",
+     "Head",
+     "Neck",
+     "Head"
+    ]
+   },
+   "Head": {
+    "src": "Head",
+    "dir": "none"
+   },
+   "HeadTop_End": {
+    "src": "Head",
+    "dir": "inherit"
+   },
+   "LeftShoulder": {
+    "src": "Chest4",
+    "dir": "inherit"
+   },
+   "LeftArm": {
+    "src": "LeftShoulder",
+    "dir": [
+     "LeftArm",
+     "LeftForeArm",
+     "LeftShoulder",
+     "LeftElbow"
+    ]
+   },
+   "LeftForeArm": {
+    "src": "LeftElbow",
+    "dir": [
+     "LeftForeArm",
+     "LeftHand",
+     "LeftElbow",
+     "LeftWrist"
+    ]
+   },
+   "LeftHand": {
+    "src": "LeftWrist",
+    "dir": "inherit"
+   },
+   "LeftUpLeg": {
+    "src": "LeftHip",
+    "dir": [
+     "LeftUpLeg",
+     "LeftLeg",
+     "LeftHip",
+     "LeftKnee"
+    ]
+   },
+   "LeftLeg": {
+    "src": "LeftKnee",
+    "dir": [
+     "LeftLeg",
+     "LeftFoot",
+     "LeftKnee",
+     "LeftAnkle"
+    ]
+   },
+   "LeftFoot": {
+    "src": "LeftAnkle",
+    "dir": [
+     "LeftFoot",
+     "LeftToeBase",
+     "LeftAnkle",
+     "LeftToe"
+    ]
+   },
+   "LeftToeBase": {
+    "src": "LeftToe",
+    "dir": "inherit"
+   },
+   "LeftToe_End": {
+    "src": "LeftToe",
+    "dir": "inherit"
+   },
+   "RightShoulder": {
+    "src": "Chest4",
+    "dir": "inherit"
+   },
+   "RightArm": {
+    "src": "RightShoulder",
+    "dir": [
+     "RightArm",
+     "RightForeArm",
+     "RightShoulder",
+     "RightElbow"
+    ]
+   },
+   "RightForeArm": {
+    "src": "RightElbow",
+    "dir": [
+     "RightForeArm",
+     "RightHand",
+     "RightElbow",
+     "RightWrist"
+    ]
+   },
+   "RightHand": {
+    "src": "RightWrist",
+    "dir": "inherit"
+   },
+   "RightUpLeg": {
+    "src": "RightHip",
+    "dir": [
+     "RightUpLeg",
+     "RightLeg",
+     "RightHip",
+     "RightKnee"
+    ]
+   },
+   "RightLeg": {
+    "src": "RightKnee",
+    "dir": [
+     "RightLeg",
+     "RightFoot",
+     "RightKnee",
+     "RightAnkle"
+    ]
+   },
+   "RightFoot": {
+    "src": "RightAnkle",
+    "dir": [
+     "RightFoot",
+     "RightToeBase",
+     "RightAnkle",
+     "RightToe"
+    ]
+   },
+   "RightToeBase": {
+    "src": "RightToe",
+    "dir": "inherit"
+   },
+   "RightToe_End": {
+    "src": "RightToe",
+    "dir": "inherit"
+   }
+  }
+ }
+}

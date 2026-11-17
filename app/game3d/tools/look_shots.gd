@@ -1,0 +1,533 @@
+extends SceneTree
+## Realism review stills and the numbers of BAR.md section D (11 Nov 2026), run outside the app:
+##   xvfb-run -s "-screen 0 720x1280x24" godot --path app/game3d --rendering-driver opengl3 --resolution 720x1280 \
+##     --fixed-fps 30 -s res://tools/look_shots.gd -- --plan=/abs/plan.json
+## plan.json: {"config": {fight config}, "out": "/abs/dir", "prefix": "cast_golden_after",
+##   "input": [{"t": 1.0, "skill_slot": 2}], "shots": [{"t": 2.6, "name": "a"}], "quit_s": 4.0,
+##   "side": {"dist": 9, "pitch": 16, "yaw": 70}, "close": {"dist": 4.2, "pitch": 8, "yaw": 150, "who": "hero"},
+##   "masks": true}
+## At each shot the fight is paused and the same moment is drawn from the game camera (with and without the
+## HUD), the side camera and the close camera. With "masks", each view is also drawn with the fighters white
+## then black, and with discs on the ground under them (2 m round each fighter; 0.2 m under each foot) white
+## then black: tools/look/measure.py takes the differences as the character, ground and foot masks.
+## Prints CQLOOK lines (texture memory, draw calls, frame time) for the cost table.
+## fid29 (build 29 lanes, frozen after fid29-base; docs/game3d/fid29/COMMON.md):
+##   the phone path: run in a 1170x2532 window (tools/fid29/shots.sh --phone): the fight's own "quality": "device"
+##     applies the tier's render scale and MSAA and Godot upscales the 3D to the window and composites the HUD over it,
+##     as on an iPhone; the plan's "phone": true prints the viewport, scale and MSAA once (CQLOOK view).
+##   "hit_frames": {"n": 4, "delay": 1}: the first n contact events (a hit row in the fight's record) are each drawn
+##     `delay` frames after the contact, named hit0..hit(n-1) (game camera, with and without the HUD).
+##   "strips": [{"t": 3.0, "name": "s1", "n": 6, "every": 1}]: n frames in a row of the game camera (no HUD, the
+##     fight keeps running), named <name>_f0..f5: shimmer, stair-steps and smears show in motion.
+##   "crops": true: every shot's .json gets named boxes per fighter (face, eyes, hair, torso, legs, hand_l, hand_r,
+##     ground) in pixels of the saved image, from the skeleton (tools/fid29/crops.py cuts them).
+##   a shot (or "beat_orbit" / "win_orbit") with "orbit": {"frames": 30, "deg": 36, "who": "hero", "dist": 2.6,
+##     "height": 1.45, "pitch": 4, "fov": 30}: the paused moment drawn from a slow orbit, named <name>_orbit_00..29.
+
+var plan: Dictionary = {}
+var out_dir: String = ""
+var prefix: String = "shot"
+var _fight_frames: int = -1
+var _shots: Array = []
+var _inputs: Array = []
+var _busy: bool = false
+var _done: bool = false
+var _t0_usec: int = 0
+var _frame_ms: Array[float] = []
+var _last_usec: int = 0
+var _cam: Camera3D
+var _intro_done: bool = false
+var _win_done: bool = false
+var _hits_seen: int = -1
+var _hit_wait: Array = []           # frames left before each pending contact shot
+var _hit_taken: int = 0
+var _strip: Dictionary = {}         # the strip being drawn: {"name", "n", "every", "i", "k"}
+var _strips: Array = []
+var _view_said: bool = false
+
+
+func _initialize() -> void:
+	for a: String in OS.get_cmdline_user_args():
+		if a.begins_with("--plan="):
+			plan = JSON.parse_string(FileAccess.get_file_as_string(a.substr(7)))
+	out_dir = str(plan.get("out", ""))
+	prefix = str(plan.get("prefix", "shot"))
+	if plan.is_empty() or out_dir == "":
+		push_error("look_shots: need --plan= with an out dir")
+		quit(2)
+		return
+	DirAccess.make_dir_recursive_absolute(out_dir)
+	_shots = (plan.get("shots", []) as Array).duplicate()
+	_inputs = (plan.get("input", []) as Array).duplicate()
+	_strips = (plan.get("strips", []) as Array).duplicate()
+	var main: Node = load("res://main.tscn").instantiate()
+	root.add_child(main)
+	current_scene = main
+	var cfg: Dictionary = plan.get("config", {})
+	(func() -> void: root.get_node("Bridge").start_fight(JSON.stringify(cfg))).call_deferred()
+
+
+func _fight() -> Node:
+	var b: Node = root.get_node_or_null("Bridge")
+	return b.get("_fight") if b != null else null
+
+
+func _process(_dt: float) -> bool:
+	if _done:
+		return true
+	var f: Node = _fight()
+	if f == null or not is_instance_valid(f) or _busy:
+		return false
+	# round 2: "beat_shot": seconds into the hero's intro shot (a tier without one: the fight's first frame);
+	# "win_shot": seconds after the fight ends in a win. Both from the game camera only.
+	if plan.has("beat_shot") and not _intro_done:
+		var bt: float = float(f.get("_beat_t"))
+		if (f.state == "intro" and bt >= float(plan["beat_shot"])) or f.state == "fighting":
+			_intro_done = true
+			_busy = true
+			var bs: Dictionary = {"name": "intro", "game_only": true}
+			if plan.has("beat_orbit"):
+				bs["orbit"] = plan["beat_orbit"]
+			_take.call_deferred(bs, f)
+			return false
+	if plan.has("win_shot") and not _win_done and f.state == "ending" and float(f.get("_end_t")) >= float(plan["win_shot"]):
+		_win_done = true
+		_busy = true
+		var ws: Dictionary = {"name": "win", "game_only": true, "then_quit": true}
+		if plan.has("win_orbit"):
+			ws["orbit"] = plan["win_orbit"]
+		_take.call_deferred(ws, f)
+		return false
+	if _fight_frames < 0:
+		if f.state == "fighting":
+			_fight_frames = 0
+			_last_usec = Time.get_ticks_usec()
+		else:
+			return false
+	var now: int = Time.get_ticks_usec()
+	if _fight_frames > 2:
+		_frame_ms.append((now - _last_usec) / 1000.0)
+	_last_usec = now
+	_fight_frames += 1
+	var t: float = _fight_frames / 30.0
+	while not _inputs.is_empty() and float(_inputs[0]["t"]) <= t:
+		var ev: Dictionary = _inputs.pop_front()
+		if ev.has("stick"):
+			f.hud.bot_stick(Vector2(float(ev["stick"][0]), float(ev["stick"][1])))
+		if bool(ev.get("attack", false)):
+			f.hud.bot_attack()
+		if ev.has("skill_slot"):
+			f.hud.bot_skill_slot(int(ev["skill_slot"]))
+		if ev.has("autoplay"):
+			f.set("autoplay", bool(ev["autoplay"]))
+	# fid29: contact frames (a new hit row in the fight's record), each `delay` frames after the contact
+	if plan.has("hit_frames"):
+		var hn: int = ((f.get("_jlog") as Dictionary).get("hits", []) as Array).size()
+		if _hits_seen >= 0 and hn > _hits_seen and _hit_taken + _hit_wait.size() < int((plan["hit_frames"] as Dictionary).get("n", 4)):
+			_hit_wait.append(int((plan["hit_frames"] as Dictionary).get("delay", 1)))
+		_hits_seen = hn
+		for i in _hit_wait.size():
+			_hit_wait[i] = int(_hit_wait[i]) - 1
+		if not _hit_wait.is_empty() and int(_hit_wait[0]) <= 0:
+			_hit_wait.pop_front()
+			_busy = true
+			_take.call_deferred({"name": "hit%d" % _hit_taken, "game_only": true}, f)
+			_hit_taken += 1
+			return false
+	# fid29: a strip of frames in a row (no pause)
+	if _strip.is_empty() and not _strips.is_empty() and float(_strips[0]["t"]) <= t:
+		var sp: Dictionary = _strips.pop_front()
+		_strip = {"name": str(sp.get("name", "strip")), "n": int(sp.get("n", 6)), "every": maxi(1, int(sp.get("every", 1))), "i": 0, "k": 0}
+		var hl: CanvasLayer = f.get_node_or_null("HudLayer")
+		if hl != null:
+			hl.visible = false
+	if not _strip.is_empty():
+		if int(_strip["k"]) % int(_strip["every"]) == 0:
+			_strip_save(str(_strip["name"]) + "_f%d" % int(_strip["i"]))
+			_strip["i"] = int(_strip["i"]) + 1
+		_strip["k"] = int(_strip["k"]) + 1
+		if int(_strip["i"]) >= int(_strip["n"]):
+			_strip = {}
+			var hl2: CanvasLayer = f.get_node_or_null("HudLayer")
+			if hl2 != null:
+				hl2.visible = true
+	if not _shots.is_empty() and float(_shots[0]["t"]) <= t:
+		_busy = true
+		_take.call_deferred(_shots.pop_front(), f)
+	elif _shots.is_empty() and _strip.is_empty() and ((t >= float(plan.get("quit_s", 0.0)) and not plan.has("win_shot")) or _win_done or f.state == "done" or t > 44.0):
+		_done = true
+		quit.call_deferred(0)
+	return false
+
+
+func _save(name: String) -> void:
+	await RenderingServer.frame_post_draw
+	root.get_viewport().get_texture().get_image().save_png(out_dir.path_join("%s_%s.png" % [prefix, name]))
+
+
+## fid29: one frame of a strip, saved after this frame draws (the fight is not paused).
+func _strip_save(name: String) -> void:
+	var path: String = out_dir.path_join("%s_%s.png" % [prefix, name])
+	var cb: Callable = func() -> void: root.get_viewport().get_texture().get_image().save_png(path)
+	RenderingServer.frame_post_draw.connect(cb, CONNECT_ONE_SHOT)
+
+
+## fid29: named boxes per fighter from its skeleton, in pixels of the saved image (crops.py cuts them).
+func _crops(cam: Camera3D, o: Node3D) -> Dictionary:
+	var anim: Variant = o.get("anim")
+	var sk: Skeleton3D = anim.get("skeleton") if anim != null else null
+	if sk == null:
+		return {}
+	var sz: Vector2 = Vector2(root.get_viewport().get_texture().get_size())
+	var k: Vector2 = sz / Vector2(root.size)
+	var pt: Dictionary = {}
+	for nm: String in ["Hips", "Spine", "Spine2", "Neck", "Head", "HeadTop_End", "LeftArm", "RightArm", "LeftHand", "RightHand",
+			"LeftUpLeg", "RightUpLeg", "LeftFoot", "RightFoot", "LeftToe_End", "RightToe_End"]:
+		var b: int = sk.find_bone(nm)
+		if b < 0:
+			continue
+		var w: Vector3 = sk.global_transform * sk.get_bone_global_pose(b).origin
+		if cam.is_position_behind(w):
+			continue
+		pt[nm] = cam.unproject_position(w) * k
+	if not (pt.has("Neck") and pt.has("Head") and pt.has("HeadTop_End")):
+		return {}
+	var neck: Vector2 = pt["Neck"]
+	var top: Vector2 = pt["HeadTop_End"]
+	var u: float = maxf(4.0, neck.distance_to(top))       # the head's size on screen
+	var box := func(c: Vector2, hw: float, hh: float) -> Array:
+		return [c.x - hw, c.y - hh, c.x + hw, c.y + hh]
+	var span := func(names: Array, pad: float) -> Array:
+		var lo := Vector2(INF, INF)
+		var hi := Vector2(-INF, -INF)
+		for n: String in names:
+			if pt.has(n):
+				lo = lo.min(pt[n])
+				hi = hi.max(pt[n])
+		if lo.x == INF:
+			return []
+		return [lo.x - pad, lo.y - pad, hi.x + pad, hi.y + pad]
+	# measured on the heroes' rigs: the face's middle is half way from the neck joint to the head's end joint
+	var out: Dictionary = {
+		"face": box.call(neck.lerp(top, 0.5), u * 0.5, u * 0.56),
+		"eyes": box.call(neck.lerp(top, 0.56), u * 0.45, u * 0.16),
+		"hair": box.call(neck.lerp(top, 0.85), u * 0.62, u * 0.42),
+		"torso": span.call(["Neck", "LeftArm", "RightArm", "Spine2", "Spine", "Hips"], u * 0.45),
+		"legs": span.call(["Hips", "LeftUpLeg", "RightUpLeg", "LeftFoot", "RightFoot", "LeftToe_End", "RightToe_End"], u * 0.45),
+	}
+	if pt.has("LeftHand"):
+		out["hand_l"] = box.call(pt["LeftHand"], u * 0.45, u * 0.45)
+	if pt.has("RightHand"):
+		out["hand_r"] = box.call(pt["RightHand"], u * 0.45, u * 0.45)
+	var feet_y: float = -INF
+	var xs := Vector2(INF, -INF)
+	for n: String in ["LeftFoot", "RightFoot", "LeftToe_End", "RightToe_End", "Hips"]:
+		if pt.has(n):
+			feet_y = maxf(feet_y, (pt[n] as Vector2).y)
+			xs = Vector2(minf(xs.x, (pt[n] as Vector2).x), maxf(xs.y, (pt[n] as Vector2).x))
+	if feet_y > -INF:
+		out["ground"] = [xs.x - u * 2.0, feet_y - u * 0.3, xs.y + u * 2.0, feet_y + u * 1.2]
+	for kk: String in out.keys():
+		var r: Array = out[kk]
+		if r.size() == 4:
+			out[kk] = [clampf(r[0], 0.0, sz.x), clampf(r[1], 0.0, sz.y), clampf(r[2], 0.0, sz.x), clampf(r[3], 0.0, sz.y)]
+	return out
+
+
+## fid29: the paused moment from a slow orbit round a fighter (look at the silhouette's edges as it turns).
+func _orbit(f: Node, spec: Dictionary, tag: String) -> void:
+	if _cam == null:
+		_cam = Camera3D.new()
+		_cam.near = 0.1
+		_cam.far = 600.0
+		f.add_child(_cam)
+	var who: Node3D = f.get(str(spec.get("who", "hero")))
+	if who == null:
+		return
+	var game_cam: Camera3D = f.get("cam")
+	var gc: Vector3 = game_cam.global_position - who.global_position
+	var yaw0: float = rad_to_deg(atan2(gc.x, gc.z))
+	var n: int = maxi(2, int(spec.get("frames", 30)))
+	var deg: float = float(spec.get("deg", 36.0))
+	var tgt: Vector3 = who.global_position + Vector3.UP * float(spec.get("height", 1.45))
+	_cam.fov = float(spec.get("fov", 30.0))
+	for i in n:
+		var yaw: float = yaw0 - deg * 0.5 + deg * float(i) / float(n - 1)
+		var b: Basis = Basis.from_euler(Vector3(deg_to_rad(-float(spec.get("pitch", 4.0))), deg_to_rad(yaw), 0.0))
+		_cam.global_transform = Transform3D(b, tgt + b.z * float(spec.get("dist", 2.6)))
+		_cam.current = true
+		await _save("%s_orbit_%02d" % [tag, i])
+	_cam.current = false
+	game_cam.current = true
+
+
+func _fighters(f: Node) -> Array:
+	var out: Array = []
+	for k: String in ["hero", "ally", "enemy"]:
+		var o: Node3D = f.get(k)
+		if o != null and o.visible:
+			out.append([k, o])
+	return out
+
+
+func _view_cam(f: Node, spec: Dictionary) -> void:
+	if _cam == null:
+		_cam = Camera3D.new()
+		_cam.near = 0.1
+		_cam.far = 600.0
+		f.add_child(_cam)
+	var hero: Node3D = f.get("hero")
+	var enemy: Node3D = f.get("enemy")
+	var who: String = str(spec.get("who", "pair"))
+	var target: Vector3 = hero.global_position
+	if who == "pair" and enemy != null:
+		target = hero.global_position.lerp(enemy.global_position, 0.5)
+	elif who != "hero" and f.get(who) != null:
+		target = (f.get(who) as Node3D).global_position
+	target.y = float(spec.get("height", 1.1))
+	var b: Basis = Basis.from_euler(Vector3(deg_to_rad(-float(spec.get("pitch", 16.0))), deg_to_rad(float(spec.get("yaw", 70.0))), 0.0))
+	_cam.fov = float(spec.get("fov", (f.get("cam") as Camera3D).fov))
+	_cam.global_transform = Transform3D(b, target + b.z * float(spec.get("dist", 9.0)))
+	_cam.current = true
+
+
+func _take(s: Dictionary, f: Node) -> void:
+	paused = true
+	var name: String = str(s["name"])
+	var hud_layer: CanvasLayer = f.get_node_or_null("HudLayer")
+	var game_cam: Camera3D = f.get("cam")
+	var n_ms: int = _frame_ms.size()
+	var sorted_ms: Array[float] = _frame_ms.duplicate()
+	sorted_ms.sort()
+	print("CQLOOK perf %s_%s frames=%d frame_ms_p50=%.1f tex_mb=%.1f vmem_mb=%.1f buf_mb=%.1f draws=%d prims=%d objects=%d" % [prefix, name, n_ms,
+		sorted_ms[n_ms / 2] if n_ms > 0 else 0.0, Performance.get_monitor(Performance.RENDER_TEXTURE_MEM_USED) / 1048576.0,
+		Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / 1048576.0, Performance.get_monitor(Performance.RENDER_BUFFER_MEM_USED) / 1048576.0,
+		Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME), Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME),
+		Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME)])
+	if not _view_said:
+		_view_said = true
+		var vp: Viewport = root.get_viewport()
+		print("CQLOOK view %s window=%s scale=%.2f msaa=%d phone=%s" % [prefix, str(vp.get_visible_rect().size), vp.scaling_3d_scale, vp.msaa_3d, str(plan.get("phone", false))])
+	var views: Array = [["game", {}]]
+	if plan.has("side") and not bool(s.get("game_only", false)):
+		views.append(["side", plan["side"]])
+	if plan.has("close") and not bool(s.get("game_only", false)):
+		views.append(["close", plan["close"]])
+	var meta: Dictionary = {"prefix": prefix, "shot": name, "views": {}}
+	for v: Array in views:
+		var vn: String = str(v[0])
+		if vn == "game":
+			if _cam != null:
+				_cam.current = false
+			game_cam.current = true
+			if hud_layer != null:
+				hud_layer.visible = true
+			await _save(name + "_game_hud")
+		else:
+			_view_cam(f, v[1])
+		# the review cameras look at the characters: no effects across them (as the earlier review captures)
+		var fxn: Node3D = f.get("fx")
+		if fxn != null:
+			fxn.visible = vn == "game" or bool((v[1] as Dictionary).get("fx", false))
+		if hud_layer != null:
+			hud_layer.visible = false
+		await _save("%s_%s" % [name, vn])
+		var cam: Camera3D = root.get_viewport().get_camera_3d()
+		var boxes: Dictionary = {}
+		for kf: Array in _fighters(f):
+			boxes[str(kf[0])] = _screen_box(cam, kf[1] as Node3D)
+		(meta["views"] as Dictionary)[vn] = boxes
+		if bool(plan.get("crops", false)):
+			var cr: Dictionary = {}
+			for kf: Array in _fighters(f):
+				cr[str(kf[0])] = _crops(cam, kf[1] as Node3D)
+			if not meta.has("crops"):
+				meta["crops"] = {}
+			(meta["crops"] as Dictionary)[vn] = cr
+		if bool(plan.get("masks", false)):
+			await _masks(f, "%s_%s" % [name, vn])
+		if bool(plan.get("skin_view", false)):
+			await _skin_view(f, "%s_%s" % [name, vn])
+	if s.has("orbit"):
+		await _orbit(f, s["orbit"] as Dictionary, name)
+	if hud_layer != null:
+		hud_layer.visible = true
+	if f.get("fx") != null:
+		(f.get("fx") as Node3D).visible = true
+	if _cam != null:
+		_cam.current = false
+	game_cam.current = true
+	var mf := FileAccess.open(out_dir.path_join("%s_%s.json" % [prefix, name]), FileAccess.WRITE)
+	mf.store_string(JSON.stringify(meta))
+	mf.close()
+	print("CQLOOK shot %s_%s t=%.2f" % [prefix, name, _fight_frames / 30.0])
+	paused = false
+	_busy = false
+	if bool(s.get("then_quit", false)):
+		_done = true
+		quit.call_deferred(0)
+
+
+## The fighter's box on the screen [x0, y0, x1, y1] in pixels of the saved image.
+func _screen_box(cam: Camera3D, o: Node3D) -> Array:
+	var sz: Vector2 = Vector2(root.get_viewport().get_texture().get_size())
+	# fid29: unproject_position answers in the window's pixels (a phone-size window with the 720 px canvas stretch
+	# included), so this is 1 unless the saved image is not the window's size
+	var k: Vector2 = sz / Vector2(root.size)
+	var h: float = 2.3 * float(o.get("size_k"))
+	var r: float = 0.8 * float(o.get("size_k"))
+	var lo := Vector2(INF, INF)
+	var hi := Vector2(-INF, -INF)
+	for dx: float in [-r, r]:
+		for dz: float in [-r, r]:
+			for y: float in [0.0, h]:
+				var p: Vector3 = o.global_position + Vector3(dx, y, dz)
+				if cam.is_position_behind(p):
+					continue
+				var q: Vector2 = cam.unproject_position(p) * k
+				lo = lo.min(q)
+				hi = hi.max(q)
+	return [lo.x, lo.y, hi.x, hi.y]
+
+
+func _flat(c: Color) -> StandardMaterial3D:
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.albedo_color = c
+	m.disable_fog = true
+	return m
+
+
+## skinlook-28 (13 Nov): the skin weight each pixel was shaded with (char_real.gdshader debug view 3: red = skin,
+## blue = hair) and one id mask per fighter (that fighter white, the others black, effects off), at the same paused
+## moment as the frame: tools for measuring skin tone on game frames (Spec 4 method). Review only.
+func _skin_view(f: Node, tag: String) -> void:
+	var fx: Node3D = f.get("fx")
+	var fx_was: bool = fx.visible if fx != null else false
+	var bloom_q: Node3D = (f.get("cam") as Node).get_node_or_null("BloomAdd")
+	var bloom_was: bool = bloom_q.visible if bloom_q != null else false
+	if bloom_q != null:
+		bloom_q.visible = false
+	if fx != null:
+		fx.visible = false
+	await _save(tag + "_nofx")     # the same frame without effects (skin tone is measured on it: auras and glows are not skin)
+	var mats: Array = []
+	for kf: Array in _fighters(f):
+		for m: Variant in (kf[1] as Node).get("_lit_mats"):
+			if m is ShaderMaterial and (m as ShaderMaterial).shader != null and (m as ShaderMaterial).shader.code.contains("debug_view"):
+				mats.append([m, (m as ShaderMaterial).get_shader_parameter("debug_view")])
+	for mv: Array in mats:
+		(mv[0] as ShaderMaterial).set_shader_parameter("debug_view", 3)
+	await _save(tag + "_skinw")
+	for mv: Array in mats:
+		(mv[0] as ShaderMaterial).set_shader_parameter("debug_view", mv[1] if mv[1] != null else 0)
+	var white: StandardMaterial3D = _flat(Color(1, 1, 1))
+	var black: StandardMaterial3D = _flat(Color(0, 0, 0))
+	var per: Array = []
+	for kf: Array in _fighters(f):
+		var ms: Array[MeshInstance3D] = []
+		for n: Node in ((kf[1] as Node).get("body") as Node).find_children("*", "MeshInstance3D", true, false):
+			if (n as MeshInstance3D).is_visible_in_tree():
+				ms.append(n)
+		per.append([str(kf[0]), ms])
+	var was: Dictionary = {}
+	for pk: Array in per:
+		for m: MeshInstance3D in pk[1]:
+			was[m] = m.material_override
+	# white then black for each fighter (the others black both times): the difference is that fighter where it shows
+	for pk: Array in per:
+		for c: int in 2:
+			for qk: Array in per:
+				for m: MeshInstance3D in qk[1]:
+					m.material_override = white if (qk[0] == pk[0] and c == 0) else black
+			await _save("%s_id_%s%d" % [tag, pk[0], 1 - c])
+	for m: Variant in was.keys():
+		(m as MeshInstance3D).material_override = was[m]
+	if fx != null:
+		fx.visible = fx_was
+	if bloom_q != null:
+		bloom_q.visible = bloom_was
+
+
+func _masks(f: Node, tag: String) -> void:
+	var white: StandardMaterial3D = _flat(Color(1, 1, 1))
+	var black: StandardMaterial3D = _flat(Color(0, 0, 0))
+	var meshes: Array[MeshInstance3D] = []
+	var discs: Array[MeshInstance3D] = []
+	var feet: Array[MeshInstance3D] = []
+	for kf: Array in _fighters(f):
+		var o: Node3D = kf[1]
+		var body: Node = o.get("body")
+		for n: Node in body.find_children("*", "MeshInstance3D", true, false):
+			if (n as MeshInstance3D).is_visible_in_tree():
+				meshes.append(n)
+		var d := MeshInstance3D.new()
+		var cm := CylinderMesh.new()
+		cm.top_radius = 2.0
+		cm.bottom_radius = 2.0
+		cm.height = 0.004
+		cm.radial_segments = 40
+		d.mesh = cm
+		d.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		d.visible = false
+		f.add_child(d)
+		d.global_position = Vector3(o.global_position.x, 0.075, o.global_position.z)
+		discs.append(d)
+		for ft: Array in o.get("_feet"):
+			var fm: MeshInstance3D = ft[0]
+			var fd := MeshInstance3D.new()
+			var fc := CylinderMesh.new()
+			fc.top_radius = 0.2 * float(o.get("size_k"))
+			fc.bottom_radius = fc.top_radius
+			fc.height = 0.004
+			fd.mesh = fc
+			fd.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			fd.visible = false
+			f.add_child(fd)
+			fd.global_position = Vector3(fm.global_position.x, 0.085, fm.global_position.z)
+			fd.set_meta("planted", fm.visible)
+			feet.append(fd)
+	var fx: Node3D = f.get("fx")
+	var fx_was: bool = fx.visible if fx != null else false
+	var bloom_q: Node3D = (f.get("cam") as Node).get_node_or_null("BloomAdd")
+	if bloom_q != null:
+		bloom_q.visible = false
+	if fx != null:
+		fx.visible = false
+	await _save(tag + "_m_nofx")    # the frame without effects: what the light alone does (measure.py)
+	# 1. the fighters white, then black: the character mask
+	var was: Array = []
+	for m: MeshInstance3D in meshes:
+		was.append(m.material_override)
+		m.material_override = white
+		m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	await _save(tag + "_m_c1")
+	for m: MeshInstance3D in meshes:
+		m.material_override = black
+	await _save(tag + "_m_c0")
+	# 2. the ground discs (the fighters stay black, in front): the ground each stands on
+	for d: MeshInstance3D in discs:
+		d.visible = true
+		d.material_override = white
+	await _save(tag + "_m_g1")
+	for d: MeshInstance3D in discs:
+		d.material_override = black
+	await _save(tag + "_m_g0")
+	# 3. the discs under the planted feet
+	for d: MeshInstance3D in feet:
+		d.visible = bool(d.get_meta("planted"))
+		d.material_override = white
+	await _save(tag + "_m_f1")
+	for d: MeshInstance3D in feet:
+		d.material_override = black
+	await _save(tag + "_m_f0")
+	for d: MeshInstance3D in discs + feet:
+		d.queue_free()
+	for i in meshes.size():
+		var m: MeshInstance3D = meshes[i]
+		m.material_override = was[i]
+		m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	if fx != null:
+		fx.visible = fx_was
+	if bloom_q != null:
+		bloom_q.visible = true

@@ -774,3 +774,11 @@ A poll message carries `poll`: `{ question, options: [{ id, text, votes }], mult
 ## The CostQuest game's one login
 
 - `GET /api/game/session` (Bearer) returns `{ user: { id, username, displayName, faction, avatarKey, avatarPhotoUrl, onboardingComplete } }` with `Cache-Control: no-store`. It runs the full session check (logged out, or signed in on another phone, is `401`), which is why the game backend's single sign-on (`POST /v1/sso/cosquest` on ubmids/costquest-backend, docs/SSO.md there) calls it with the person's own token before giving them their game player. Nothing private is in the answer (no email, token version or session id). Rate limited per address: 120 per 5 minutes (`GAME_SESSION_RATE_MAX`), `429` beyond. Tests: `node test/gameSession.js`.
+
+## Game invites (merged app)
+
+The merged app carries the CostQuest game next to the chat (`app/`, docs/merged-app-ux.md). A game invite is a chat message with `kind: "game_invite"`, so replying, reacting, pinning, deleting, forwarding and read state work like any message. Needs login and chat membership; sending follows the normal rules (blocked DMs, muted by an admin, slow mode).
+
+- `POST /api/chats/:id/game-invites` with `{ type: "raid" | "shrine" | "duel", targetId (1-80 of letters, digits, : _ . -), place? (up to 80), lat?, lng? (both or neither), startsAt? (ISO date, up to 60 days ahead), note? (up to 300, becomes `content`), replyTo? }` returns `201 { message }`.
+
+The message carries `gameInvite`: `{ type, targetId, place, lat, lng, startsAt }` (`null` on every other kind and once deleted for everyone). Live: `message:new` as usual. Invites cannot be edited; they can be forwarded (the card goes with them). The chat-list preview reads `🎮 Raid at <place>` (or `🎮 Raid invite` with no place).

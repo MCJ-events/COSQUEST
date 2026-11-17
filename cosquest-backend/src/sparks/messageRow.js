@@ -16,6 +16,7 @@ const KIND = {
   audio: 'voice',
   call: 'system',
   sparks_bot: 'system', // a Sparks bot post (module 1.3): never conversation
+  game_invite: 'system',
 };
 
 function idOf(value) {

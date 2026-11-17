@@ -182,6 +182,10 @@ const userSchema = new mongoose.Schema(
     lastActiveAt: { type: Date, default: Date.now },
 
     onboardingComplete: { type: Boolean, default: false },
+    // Polish (docs/polish/BACKEND-PORT.md): set when the person deletes their
+    // account in the app. The row stays (as "Deleted user", every personal
+    // detail wiped) so old messages and calls still resolve their sender.
+    deletedAt: { type: Date, default: null },
     // These flags distinguish a deliberate "off" preference from an untouched default.
     onboarding: {
       avatarChosen: { type: Boolean, default: false },
