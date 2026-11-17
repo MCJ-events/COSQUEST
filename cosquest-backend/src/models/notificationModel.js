@@ -40,7 +40,13 @@ async function createForUser(userId, message, { type = 'system', actor, conversa
   });
   if (actor) await notification.populate('actor', ACTOR_FIELDS);
   emitToUser(String(userId), 'notification:new', sanitize(notification));
-  if (sendPush) push.notifyFromNotification([String(userId)], { type, message, conversation, actor: notification.actor?.profile ? notification.actor : null });
+  if (sendPush && type === 'game') {
+    // Game events (raids, bosses, duel invites) open the game where the
+    // notification points (cosquest://play?...), so the push carries the link.
+    void push.sendToUsers([String(userId)], { title: 'CosQuest', body: message, data: { type: 'game', link: link || null, gameKind: gameKind || null }, category: 'questUpdates' });
+  } else if (sendPush) {
+    push.notifyFromNotification([String(userId)], { type, message, conversation, actor: notification.actor?.profile ? notification.actor : null });
+  }
   return notification;
 }
 
