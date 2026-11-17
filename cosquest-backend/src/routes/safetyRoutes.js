@@ -12,7 +12,7 @@ const perUser = (max) =>
 
 router.get('/meta/capabilities', safety.capabilities);
 router.post('/notifications/game-events', asyncHandler(safety.gameEvent));
-router.delete('/users/me/devices', requireAuth, asyncHandler(safety.unregisterDevice));
+// DELETE /api/users/me/devices is preferencesRoutes.js (the team's version also returns the user).
 router.delete('/users/me', requireAuth, perUser(10), asyncHandler(safety.deleteAccount));
 // POST /api/reports is reportRoutes.js (the admin moderation queue's own model).
 router.post('/blocks', requireAuth, requireCompletedOnboarding, asyncHandler(safety.blockAnywhere));
