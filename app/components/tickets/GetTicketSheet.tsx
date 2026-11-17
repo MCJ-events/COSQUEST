@@ -3,13 +3,13 @@
 // ==========================================
 // Shows the ticket types (price, places left), then:
 //   free  -> the ticket at once
-//   paid  -> Stripe's payment page (see openPayment)
+//   paid  -> the CosQuest website (payment brief, decision 2)
 // A second tap after a network drop gets the SAME order back (the server
 // keeps one open checkout per person), so nobody pays twice.
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Modal, Pressable, ScrollView, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Modal, Platform, Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { themedStyles, useInk, useThemedStyles } from "@/constants/chatTheme";
@@ -17,20 +17,35 @@ import { FONTS } from "@/constants/fonts";
 import { useIsDesktop } from "@/hooks/useDesktop";
 import type { Quest } from "@/services/quests";
 import { type TicketType, TicketError, checkout, formatMoney, getTicketTypes } from "@/services/tickets";
-import { useAppSelector } from "@/store/hooks";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { checkEligibility, openWebCheckout } from "@/store/thunks/paymentThunks";
 
 import { currentPosition } from "./currentPosition";
-import { openPayment } from "./openPayment";
+import SalesCountdown, { salesClosed } from "./SalesCountdown";
 
 const PINK = "#C34D9C";
 
-export default function GetTicketSheet({ quest, onClose, onTicket }: { quest: Quest | null; onClose: () => void; onTicket: (questId: string, ticketId: string | null) => void }) {
+type SheetProps = { quest: Quest | null; onClose: () => void; onTicket: (questId: string, ticketId: string | null) => void };
+
+// Phones pay inside the app (Stripe's payment sheet: card, Google Pay);
+// the website uses Stripe's page.
+// Payment brief, decision 2: paid tickets are bought on the CosQuest website
+// (this sheet opens it); free tickets are issued right here.
+export default function GetTicketSheet(props: SheetProps) {
+  if (!props.quest) return null;
+  return <TicketSheet {...props} />;
+}
+
+function TicketSheet({ quest, onClose, onTicket }: SheetProps) {
   const styles = useThemedStyles(STYLE_PAIR);
   const ink = useInk();
   const insets = useSafeAreaInsets();
   // Computers: a centered window instead of a bottom sheet.
   const desktop = useIsDesktop();
   const token = useAppSelector((state) => state.auth.token);
+  const dispatch = useAppDispatch();
+  // Can I pay for this? (18+, region; the server checks again before paying.)
+  const eligibility = useAppSelector((state) => (quest ? state.payment.eligibility[quest.id] : undefined));
   const [types, setTypes] = useState<TicketType[] | null>(null);
   const [chosen, setChosen] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -48,13 +63,18 @@ export default function GetTicketSheet({ quest, onClose, onTicket }: { quest: Qu
         setChosen(firstOnSale?.id || null);
       })
       .catch((e) => setError(e?.message || "Couldn't load tickets."));
-  }, [quest]);
+    if (token) dispatch(checkEligibility({ questId: quest.id, token }));
+  }, [quest, token, dispatch]);
 
   if (!quest) return null;
   const type = types?.find((t) => t.id === chosen) || null;
 
   const go = async () => {
     if (!token || !type || busy) return;
+    if (salesClosed(type.salesClosesAt)) {
+      setError("Ticket sales have closed: it has started.");
+      return;
+    }
     setBusy(true);
     setError("");
     try {
@@ -62,6 +82,19 @@ export default function GetTicketSheet({ quest, onClose, onTicket }: { quest: Qu
       const now = Date.now();
       const live = !!quest.startsAt && !!quest.endsAt && new Date(quest.startsAt).getTime() <= now && new Date(quest.endsAt).getTime() > now;
       const position = quest.requireAtVenue && live ? await currentPosition() : null;
+
+      // Paid: on the CosQuest website. The ticket arrives in the app by itself
+      // (the server's "ticket:issued", a push, or the next refresh).
+      if (!type.free) {
+        const opened = await dispatch(openWebCheckout({ questId: quest.id, ticketTypeId: type.id, token }));
+        if (openWebCheckout.rejected.match(opened)) {
+          setError(opened.payload?.message || "Couldn't open the checkout. Please try again.");
+          return;
+        }
+        onClose();
+        return;
+      }
+
       const result = await checkout(quest.id, type.id, token, position);
       if (result.ticket) {
         // Free: done.
@@ -69,10 +102,6 @@ export default function GetTicketSheet({ quest, onClose, onTicket }: { quest: Qu
         onClose();
         router.push({ pathname: "/tickets/[id]", params: { id: result.ticket.id } } as any);
         return;
-      }
-      if (result.checkoutUrl) {
-        onClose();
-        await openPayment(result.checkoutUrl, result.order.id);
       }
     } catch (e) {
       const err = e as TicketError;
@@ -151,15 +180,17 @@ export default function GetTicketSheet({ quest, onClose, onTicket }: { quest: Qu
           {quest.requireAtVenue ? (
             <Text style={styles.sub}>📍 Joining while it's live works at {quest.location?.name || "the venue"} only.</Text>
           ) : null}
+          <SalesCountdown closesAt={type?.salesClosesAt} />
           {error ? <Text style={styles.error}>{error}</Text> : null}
+          {eligibility && !eligibility.allowed && !type?.free ? <Text style={styles.error}>{eligibility.message || "Paid quests aren't available for you right now."}</Text> : null}
 
-          <Pressable style={[styles.button, (!type || busy) && { opacity: 0.5 }]} disabled={!type || busy} onPress={go} accessibilityRole="button">
-            {busy ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.buttonText}>{!type ? "Choose a ticket" : type.free ? "Get free ticket" : `Pay ${formatMoney(type.price)}`}</Text>}
+          <Pressable style={[styles.button, (!type || busy || eligibility && !eligibility.allowed && !type?.free) && { opacity: 0.5 }]} disabled={!type || busy || !!(eligibility && !eligibility.allowed && !type?.free)} onPress={go} accessibilityRole="button">
+            {busy ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.buttonText}>{!type ? "Choose a ticket" : type.free ? "Get free ticket" : `Pay ${formatMoney(type.price)} on the website`}</Text>}
           </Pressable>
           {type && !type.free ? (
             <View style={styles.secure}>
               <Ionicons name="lock-closed" size={12} color={ink.text("#7A8296")} />
-              <Text style={styles.secureText}>Secure payment by Stripe. Your card details never reach CosQuest.</Text>
+              <Text style={styles.secureText}>You pay on the CosQuest website (secure payment by Stripe), then come back here.</Text>
             </View>
           ) : null}
         </Pressable>

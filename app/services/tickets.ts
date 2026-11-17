@@ -52,6 +52,8 @@ export type TicketType = {
   remaining: number;
   soldOut: boolean;
   onSale: boolean;
+  /** When sales close (the quest's start, or sooner): the countdown. */
+  salesClosesAt?: string | null;
 };
 
 export type OrderStatus = "pending" | "paid" | "free" | "expired" | "failed" | "refunded" | "cancelled";
@@ -79,6 +81,8 @@ export type MyTicket = {
   order: { id: string; number: string; amount: Money; status: OrderStatus; paidAt: string | null } | null;
   checkedInAt: string | null;
   canGiveBack: boolean;
+  /** The place, once the quest's results are published. */
+  result?: { place: number; placeLabel: string; prizeNote: string } | null;
   giveBackUntil: string | null;
 };
 
@@ -90,6 +94,14 @@ export const getTicketTypes = (questId: string) => request<{ ticketTypes: Ticket
 // position: only for joining a LIVE quest that needs you at the venue.
 export const checkout = (questId: string, ticketTypeId: string | null, token: string, position?: { lat: number; lng: number; accuracy: number } | null) =>
   request<{ order: Order; checkoutUrl: string | null; ticket: { id: string } | null; reused: boolean }>(`/api/quests/${questId}/checkout`, {
+    method: "POST",
+    token,
+    body: { ...(ticketTypeId ? { ticketTypeId } : {}), ...(position ? { position } : {}) },
+  });
+
+// The app: Stripe's payment sheet (card, Google Pay) inside CosQuest.
+export const paymentSheet = (questId: string, ticketTypeId: string | null, token: string, position?: { lat: number; lng: number; accuracy: number } | null) =>
+  request<{ order: Order; paymentIntentClientSecret: string | null; ticket: { id: string } | null; reused: boolean }>(`/api/quests/${questId}/payment-sheet`, {
     method: "POST",
     token,
     body: { ...(ticketTypeId ? { ticketTypeId } : {}), ...(position ? { position } : {}) },

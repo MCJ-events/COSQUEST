@@ -31,6 +31,7 @@ import {
   UPCOMING_WIDTH,
   UpcomingCard,
 } from "@/components/dashboard/QuestCards";
+import { useAutoScroll } from "@/components/dashboard/useAutoScroll";
 import { isLiveQuest, isUpcomingQuest, questCity } from "@/components/dashboard/questFormat";
 import {
   DARK_SCREEN_GRADIENT,
@@ -107,6 +108,8 @@ function TeamHomeScreen() {
   const [busyId, setBusyId] = useState<string | null>(null);
   // "Get a ticket" (free at once, paid through Stripe's page).
   const [ticketQuest, setTicketQuest] = useState<Quest | null>(null);
+  // Nothing within your radius: the nearest quests anywhere are shown.
+  const [anywhere, setAnywhere] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   const profile = user?.profile || authUser?.profile;
@@ -131,10 +134,22 @@ function TeamHomeScreen() {
   } as any);
 
   const load = useCallback(async () => {
-    const work: Promise<unknown>[] = [dispatch(fetchQuests(nearMe))];
+    const work: Promise<unknown>[] = [
+      (async () => {
+        const result: any = await dispatch(fetchQuests(nearMe));
+        const list = Array.isArray(result?.payload) ? result.payload : Array.isArray(result?.payload?.quests) ? result.payload.quests : null;
+        // Nothing near: the nearest anywhere (the server sorts by distance).
+        if (nearMe && list && !list.length) {
+          setAnywhere(true);
+          await dispatch(fetchQuests({ ...nearMe, radiusMiles: 13000 }));
+        } else {
+          setAnywhere(false);
+        }
+      })(),
+    ];
     if (authUser?.email && !user) work.push(dispatch(fetchCurrentUser(authUser.email)));
     await Promise.all(work);
-  }, [dispatch, authUser?.email, user]);
+  }, [dispatch, authUser?.email, user, radius]);
 
   // Fresh quests each time the tab comes into view.
   useFocusEffect(
@@ -157,13 +172,18 @@ function TeamHomeScreen() {
     // The big pin is for a quest in the user's city (live first, then the
     // next to start); other cities only when there's nothing local.
     const here = (quest: Quest) => !!city && questCity(quest).toLowerCase() === city.toLowerCase();
-    const featured = live.find(here) || soon.find(here) || live[0] || soon[0] || null;
+    // The big pin is a place to GO: in-person quests only. Ongoing: live
+    // virtual quests (from anywhere) first, then other live ones. Upcoming: both.
+    const inPerson = (quest: Quest) => quest.format !== "virtual";
+    const featured = live.filter(inPerson).find(here) || soon.filter(inPerson).find(here) || live.find(inPerson) || soon.find(inPerson) || null;
     return {
       featured,
-      ongoing: live.filter((quest) => quest !== featured),
+      ongoing: [...live.filter((quest) => !inPerson(quest)), ...live.filter((quest) => inPerson(quest) && quest !== featured)],
       upcoming: soon.filter((quest) => quest !== featured),
     };
   }, [quests, city]);
+  // Ongoing slides by itself (pauses when touched; still with Reduce Motion).
+  const ongoingScroll = useAutoScroll(ongoing.length, ONGOING_WIDTH + 14);
 
   // Register / Join / ENTER: "Get a ticket" (paid, through Stripe); once
   // you have one, My tickets.
@@ -189,7 +209,7 @@ function TeamHomeScreen() {
         onClose={() => setTicketQuest(null)}
         onTicket={(questId) => {
           setRegistered((current) => new Set(current).add(questId));
-          dispatch(fetchQuests(nearMe));
+          load();
         }}
       />
       <LinearGradient
@@ -265,6 +285,9 @@ function TeamHomeScreen() {
         {/* ONGOING */}
         {ongoing.length ? (
           <FlatList
+            ref={ongoingScroll.ref}
+            onScrollBeginDrag={ongoingScroll.pause}
+            onMomentumScrollEnd={ongoingScroll.settle}
             horizontal
             data={ongoing}
             keyExtractor={(quest) => quest.id}
@@ -288,6 +311,11 @@ function TeamHomeScreen() {
 
         {/* UPCOMING EVENTS */}
         <Text style={styles.sectionTitle}>UPCOMING EVENTS</Text>
+        {anywhere && (upcoming.length || ongoing.length || featured) ? (
+          <Text style={{ textAlign: "center", fontSize: 12.5, color: "#5F6170", marginTop: -4, marginBottom: 8 }}>
+            Nothing within {radius} mi · showing the nearest
+          </Text>
+        ) : null}
         {upcoming.length ? (
           <FlatList
             horizontal
