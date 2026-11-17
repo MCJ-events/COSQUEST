@@ -524,7 +524,7 @@ function previewMessage(message, viewerId) {
 // caller already loaded them. opts.memberFilters: a Map that receives each
 // group's member filter (see countGroupMembers).
 const SENDER_FIELDS = 'profile.username profile.displayName profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl faction lastActiveAt privacy.showOnlineStatus privacy.profileVisibility expertise pointsBalance rankOverride';
-const LAST_MESSAGE_PROJECTION = { conversation: 1, sender: 1, kind: 1, content: 1, deletedForEveryone: 1, callLog: 1, scheduledCall: 1, poll: 1, album: 1, createdAt: 1 };
+const LAST_MESSAGE_PROJECTION = { conversation: 1, sender: 1, kind: 1, content: 1, deletedForEveryone: 1, callLog: 1, scheduledCall: 1, poll: 1, album: 1, gameInvite: 1, gameResult: 1, createdAt: 1 };
 const LAST_SENDER_FIELDS = 'profile.username profile.firstName';
 const DM_PEER_FIELDS = `${SENDER_FIELDS} privacy.readReceipts`;
 
