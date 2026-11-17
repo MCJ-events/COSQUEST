@@ -630,7 +630,15 @@ func _real_material(b: BaseMaterial3D) -> ShaderMaterial:
 	var cut: bool = b.transparency != BaseMaterial3D.TRANSPARENCY_DISABLED
 	var sm := ShaderMaterial.new()
 	sm.shader = _real_variant(two_sided, cut)
-	if cut or b.resource_name.to_lower().contains("hair"):
+	# charload-29 (look key `charload`, default off): a see-through surface is only hair when it is declared hair (or named
+	# so): eyes (cornea shell), lashes and brows of a multi-part character are cut-outs without the hair shading
+	var cl: bool = bool(look.get("charload", false))
+	var nm_l: String = b.resource_name.to_lower()
+	var kind0: String = str(surface_kinds.get(b.resource_name, ""))
+	var as_hair: bool = cut or nm_l.contains("hair")
+	if cl:
+		as_hair = kind0 == "hair" or nm_l.contains("hair") or (cut and kind0 == "" and not nm_l.contains("eye"))
+	if as_hair:
 		sm.set_shader_parameter("hair_all", 1.0)
 	sm.set_shader_parameter("albedo_tex", b.albedo_texture)
 	sm.set_shader_parameter("albedo", b.albedo_color)
@@ -650,6 +658,10 @@ func _real_material(b: BaseMaterial3D) -> ShaderMaterial:
 	if b.emission_enabled:
 		sm.set_shader_parameter("emission_tex", b.emission_texture)
 		var ec: Color = b.emission * b.emission_energy_multiplier
+		# charload-29: Godot's glTF import sets an emissive texture with a black colour and the ADD operator (glTF's
+		# emissive = texture x factor); the shader multiplies texture by colour, so every emissive map read as zero
+		if cl and b.emission_texture != null and b.emission_operator == BaseMaterial3D.EMISSION_OP_ADD:
+			ec = (Color(1, 1, 1) + b.emission) * b.emission_energy_multiplier
 		sm.set_shader_parameter("emission", Vector3(ec.r, ec.g, ec.b) if b.emission_texture != null else Vector3.ZERO)
 	if b.ao_enabled and b.ao_texture != null and b.ao_texture == orm and b.ao_texture_channel == BaseMaterial3D.TEXTURE_CHANNEL_RED:
 		sm.set_shader_parameter("ao_amount", 1.0)
