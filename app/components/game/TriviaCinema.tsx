@@ -36,6 +36,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { FONTS } from "@/constants/fonts";
 import { lookTierDecision } from "@/features/game/lookTier";
+import { TriviaFactionPanel } from "./TriviaFactionPanel";
 import { useAppSelector } from "@/store/hooks";
 import { boardPlaceText, clock, isWorldBoard, type RunBoard, type RunFinish, type RunPoint, sequenceLine, signed, stakeLine, triviaSub } from "@/features/game/run";
 import { useGame } from "@/features/game/runtime";
@@ -765,6 +766,11 @@ export function CinemaResults({ result, board, art, onDone, onAgain, againLeft }
             <Row label="Level" value={`Level ${result.after.level}${result.leveled_up ? " (up!)" : ""}`} />
             <Row label="XP earned" value={`+${result.reward.xp}`} />
           </View>
+        </Rise>
+
+        {/* Your score went to your faction: its board and meter (app only, 17 Nov 2026). */}
+        <Rise i={3} style={{ marginTop: 22 }}>
+          <TriviaFactionPanel onDark refreshKey={run.score} />
         </Rise>
 
         <Rise i={4} style={{ gap: 12, marginTop: 22 }}>

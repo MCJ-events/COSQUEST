@@ -38,6 +38,7 @@ import { runModel, useRun } from "./runModel";
 import { POP_IN_COUNT, usePopIn } from "./sheetMotion";
 import { playSound } from "./sound";
 import { Glass, Kicker, TriviaBackdrop, TriviaButton, TriviaTopBar, triviaShadow } from "./TriviaKit";
+import { TriviaFactionPanel } from "./TriviaFactionPanel";
 import { TopPlayers, TriviaBoard, TriviaChallenge, TriviaResults } from "./TriviaPlay";
 
 const T = TRIVIA;
@@ -345,6 +346,10 @@ function StartView({ name, onName, onPlay, onLeave }: { name: string; onName: (v
           ))}
         </View>
         {board && players > cards.length ? <TopPlayers board={board} title="Next on the board" from={cards.length} /> : null}
+        {/* Trivia for your faction (17 Nov 2026): in the app only; draws nothing on the web or with the flags off. */}
+        <View style={{ marginTop: 22 }}>
+          <TriviaFactionPanel refreshKey={board?.entries.length ?? 0} />
+        </View>
       </ScrollView>
       <View style={[styles.dock, { paddingBottom: Math.max(insets.bottom, 12) + 10 }]}>
         <View style={styles.dockRow}>
