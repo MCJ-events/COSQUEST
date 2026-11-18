@@ -1,4 +1,4 @@
-// Costcoin: buying a bundle on the website, both ledgers linked, the wallet credited once, 18+.
+// CosCoin: buying a bundle on the website, both ledgers linked, the wallet credited once, 18+.
 const Stripe = require('stripe');
 const User = require('../src/models/User');
 const CostcoinOrder = require('../src/models/CostcoinOrder');
@@ -49,14 +49,14 @@ async function run(baseUrl) {
   ] });
 
   const young = await request('POST', '/api/costcoin/handoff', teen.token, { bundleId: 'B-500' });
-  check(young.status === 403 && young.data.code === 'too_young', 'buying Costcoin is 18+', young.data);
+  check(young.status === 403 && young.data.code === 'too_young', 'buying CosCoin is 18+', young.data);
   const open = await request('POST', '/api/costcoin/handoff', adult.token, { bundleId: 'B-STARTER' });
   check(open.status === 404 && open.data.code === 'not_on_sale', 'an OPEN bundle is not on sale', open.data);
   const link = await request('POST', '/api/costcoin/handoff', adult.token, { bundleId: 'B-500' });
   check(link.status === 201 && /\/checkout\/costcoin\?h=/.test(link.data.url), 'a 20-minute link to the website', link.data);
   const h = new URL(link.data.url).searchParams.get('h');
   const ticketRedeem = await request('POST', '/api/payments/handoff/redeem', null, { h });
-  check(ticketRedeem.status !== 200, "a Costcoin link can't be used to buy a ticket", ticketRedeem.status);
+  check(ticketRedeem.status !== 200, "a CosCoin link can't be used to buy a ticket", ticketRedeem.status);
   const link2 = await request('POST', '/api/costcoin/handoff', adult.token, { bundleId: 'B-500' });
   const redeemed = await request('POST', '/api/costcoin/handoff/redeem', null, { h: new URL(link2.data.url).searchParams.get('h') });
   check(redeemed.status === 200 && redeemed.data.bundle.costcoin === 500 && /^v\d+$/.test(redeemed.data.priceVersion), 'the website gets the pass and the bundle', redeemed.data);
@@ -68,11 +68,11 @@ async function run(baseUrl) {
   const payload = await webhook('checkout.session.completed', session);
   await new Promise((r) => setTimeout(r, 200));
   const wallet = await Wallet.findOne({ user: adult.user._id });
-  check(wallet?.balance === 500, "Stripe's webhook: 500 Costcoin in the wallet", wallet);
+  check(wallet?.balance === 500, "Stripe's webhook: 500 CosCoin in the wallet", wallet);
   const cash = await LedgerTransaction.findOne({ key: `cc-paid-${order._id}` });
   const coins = await LedgerTransaction.findOne({ key: `cc-issue-${order._id}` });
-  check(cash && cash.kind === 'costcoin.purchase' && cash.lines.find((l) => l.account === '4010').credit === 400 && cash.lines.find((l) => l.account === '1010').debit === 400 && cash.itemId === 'B-500', 'cash ledger: 1010 Stripe Clearing / 4010 Costcoin Sales, $4.00, item B-500', cash);
-  check(coins && coins.book === 'costcoin' && coins.lines.find((l) => l.account === 'CC-ISSUED').debit === 500 && String(coins.linkedTx) === String(cash._id), 'Costcoin ledger: Costcoin Issued / Wallet, 500, linked to the cash entry', coins);
+  check(cash && cash.kind === 'costcoin.purchase' && cash.lines.find((l) => l.account === '4010').credit === 400 && cash.lines.find((l) => l.account === '1010').debit === 400 && cash.itemId === 'B-500', 'cash ledger: 1010 Stripe Clearing / 4010 CosCoin Sales, $4.00, item B-500', cash);
+  check(coins && coins.book === 'costcoin' && coins.lines.find((l) => l.account === 'CC-ISSUED').debit === 500 && String(coins.linkedTx) === String(cash._id), 'CosCoin ledger: CosCoin Issued / Wallet, 500, linked to the cash entry', coins);
   // The same webhook again (Stripe retries): nothing more.
   const header = signer.webhooks.generateTestHeaderString({ payload: payload.replace(/evt_cc_\d+_\d+/, `evt_cc_retry_${suffix}`), secret });
   await fetch(`${baseUrl}/api/stripe/webhook`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'stripe-signature': header }, body: payload.replace(/evt_cc_\d+_\d+/, `evt_cc_retry_${suffix}`) });

@@ -23,7 +23,7 @@ async function handle(event) {
     case 'checkout.session.completed':
     case 'checkout.session.async_payment_succeeded': {
       if (object.payment_status !== 'paid' && object.payment_status !== 'no_payment_required') return null; // a delayed method: wait for async_payment_succeeded
-      // Costcoin bundles (src/utils/costcoin.js) have their own orders.
+      // CosCoin bundles (src/utils/costcoin.js) have their own orders.
       if (object.metadata?.purpose === 'costcoin') return require('../utils/costcoin').paidFromSession(object, event.type);
       const order = await orderForSession(object);
       if (!order) return null;

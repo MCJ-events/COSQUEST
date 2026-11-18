@@ -73,7 +73,7 @@ const csvCell = (value) => {
 };
 
 // Finance's sheets (src/utils/ledgerExport.js): ?book=money (Cash Ledger, the
-// default) or ?book=costcoin (Costcoin Ledger), same columns and order as the
+// default) or ?book=costcoin (CosCoin Ledger), same columns and order as the
 // CosQuest Sample Ledger, with account names, usernames and quest titles.
 async function exportCsv(req, res) {
   const { financeRows, toCsv } = require('../utils/ledgerExport');
@@ -104,7 +104,7 @@ async function exportCsv(req, res) {
     txs: Object.fromEntries(linked.map((t) => [String(t._id), `TX-${t.number}`])),
   };
   const csv = toCsv(financeRows(rows, book, names));
-  await recordAudit(req.admin, { action: 'ledger.export', area: 'payments', target: { type: 'ledger', id: null, label: book === 'costcoin' ? 'Costcoin Ledger export' : 'Cash Ledger export' }, meta: { rows: rows.length, ...req.query } });
+  await recordAudit(req.admin, { action: 'ledger.export', area: 'payments', target: { type: 'ledger', id: null, label: book === 'costcoin' ? 'CosCoin Ledger export' : 'Cash Ledger export' }, meta: { rows: rows.length, ...req.query } });
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
   res.setHeader('Content-Disposition', `attachment; filename="cosquest-${book === 'costcoin' ? 'costcoin' : 'cash'}-ledger-${new Date().toISOString().slice(0, 10)}.csv"`);
   return res.send(csv);

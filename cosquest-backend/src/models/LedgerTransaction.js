@@ -7,7 +7,7 @@ const mongoose = require('mongoose');
  * transaction that reverses it (src/utils/ledger.js reverse()).
  *
  *   book      'money' (USD and other real currencies) or 'costcoin'. Never mixed.
- *   amounts   integers in the smallest unit (cents; whole Costcoin).
+ *   amounts   integers in the smallest unit (cents; whole CosCoin).
  *   accounts  processor_clearing, platform_revenue, quest_pool:<questId>,
  *             payouts_payable, refunds, tax_payable, user_costcoin:<userId>,
  *             costcoin_issued, costcoin_spent (src/utils/ledger.js ACCOUNTS)
@@ -27,7 +27,7 @@ const ledgerTransactionSchema = new mongoose.Schema(
     number: { type: Number, required: true }, // shown as TX-<number>
     kind: { type: String, required: true, maxlength: 60 }, // ticket.sale, ticket.refund, reversal, ...
     book: { type: String, enum: ['money', 'costcoin'], required: true },
-    currency: { type: String, required: true, uppercase: true, maxlength: 10 }, // USD, ... or CQC for Costcoin
+    currency: { type: String, required: true, uppercase: true, maxlength: 10 }, // USD, ... or CQC for CosCoin
     lines: { type: [lineSchema], required: true },
     // References (brief 6.1: user, quest, jurisdiction, processor, key, version).
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
@@ -42,7 +42,7 @@ const ledgerTransactionSchema = new mongoose.Schema(
     //   formulaVersion  the prize formula used at settlement (f0, f1...)
     //   status          every row is "posted"; a mistake is fixed by a new reversing row
     //   approvedBy      who approved it (payouts and money changes: two people)
-    //   linkedTx        a Costcoin entry's cash payment (and the other way round)
+    //   linkedTx        a CosCoin entry's cash payment (and the other way round)
     itemId: { type: String, default: null, maxlength: 60 },
     formulaVersion: { type: String, default: null, maxlength: 60 },
     status: { type: String, enum: ['posted'], default: 'posted' },

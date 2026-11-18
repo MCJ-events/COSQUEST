@@ -4,13 +4,13 @@
 //     1010  Stripe Clearing    Asset      money held by or owed to us through Stripe
 //     2010  Quest Pool         Liability  entry fees held for one quest until settlement (one per quest: 2010:<questId>)
 //     2020  Payouts Payable    Liability  winner shares approved but not yet paid out
-//     4010  Costcoin Sales     Revenue    money received for Costcoin bundles (revenue timing: the accountant decides)
+//     4010  CosCoin Sales     Revenue    money received for CosCoin bundles (revenue timing: the accountant decides)
 //     4020  Platform Fees      Revenue    CosQuest's share of each quest pool
 //     5010  Stripe Fees        Expense    processor fees
 //   Book costcoin (coins):
-//     CC-ISSUED  Costcoin Issued  Contra     coins created by purchases
+//     CC-ISSUED  CosCoin Issued  Contra     coins created by purchases
 //     CC-WALLET  Wallet           Liability  a player's balance (one per user: CC-WALLET:<userId>)
-//     CC-SPENT   Costcoin Spent   Contra     coins used on skins, weapons, faction switches...
+//     CC-SPENT   CosCoin Spent   Contra     coins used on skins, weapons, faction switches...
 //
 // The ledger is append-only, so entries written before this chart keep their
 // old names (processor_clearing, quest_pool:<id>, ...). They mean the same
@@ -20,12 +20,12 @@ const CHART = [
   { code: '1010', name: 'Stripe Clearing', type: 'Asset', book: 'money', normal: 'debit', meaning: 'Money held by or owed to us through Stripe' },
   { code: '2010', name: 'Quest Pool', type: 'Liability', book: 'money', normal: 'credit', per: 'quest', meaning: 'Entry fees held for one quest until settlement' },
   { code: '2020', name: 'Payouts Payable', type: 'Liability', book: 'money', normal: 'credit', meaning: 'Winner shares approved but not yet paid out' },
-  { code: '4010', name: 'Costcoin Sales', type: 'Revenue', book: 'money', normal: 'credit', meaning: 'Money received for Costcoin bundles (revenue timing to be confirmed by the accountant)' },
+  { code: '4010', name: 'CosCoin Sales', type: 'Revenue', book: 'money', normal: 'credit', meaning: 'Money received for CosCoin bundles (revenue timing to be confirmed by the accountant)' },
   { code: '4020', name: 'Platform Fees', type: 'Revenue', book: 'money', normal: 'credit', meaning: 'Share of each quest pool kept by CosQuest' },
   { code: '5010', name: 'Stripe Fees', type: 'Expense', book: 'money', normal: 'debit', meaning: 'Processor fees' },
-  { code: 'CC-ISSUED', name: 'Costcoin Issued', type: 'Contra', book: 'costcoin', normal: 'debit', meaning: 'Coins created by purchases' },
-  { code: 'CC-WALLET', name: 'Wallet', type: 'Liability', book: 'costcoin', normal: 'credit', per: 'user', meaning: "A player's Costcoin balance (one account per user)" },
-  { code: 'CC-SPENT', name: 'Costcoin Spent', type: 'Contra', book: 'costcoin', normal: 'credit', meaning: 'Coins used on skins, weapons, faction switches and similar' },
+  { code: 'CC-ISSUED', name: 'CosCoin Issued', type: 'Contra', book: 'costcoin', normal: 'debit', meaning: 'Coins created by purchases' },
+  { code: 'CC-WALLET', name: 'Wallet', type: 'Liability', book: 'costcoin', normal: 'credit', per: 'user', meaning: "A player's CosCoin balance (one account per user)" },
+  { code: 'CC-SPENT', name: 'CosCoin Spent', type: 'Contra', book: 'costcoin', normal: 'credit', meaning: 'Coins used on skins, weapons, faction switches and similar' },
 ];
 const BY_CODE = new Map(CHART.map((a) => [a.code, a]));
 

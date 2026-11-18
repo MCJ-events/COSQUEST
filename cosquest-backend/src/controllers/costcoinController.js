@@ -1,4 +1,4 @@
-// Costcoin for members (buying on the CosQuest website, the wallet).
+// CosCoin for members (buying on the CosQuest website, the wallet).
 //
 //   GET  /api/costcoin/bundles             (public) bundles on sale + price version
 //   POST /api/costcoin/handoff             (app, logged in) { bundleId } -> { url, expiresAt }: the 20-minute link
@@ -8,7 +8,7 @@
 //   GET  /api/costcoin/wallet              (app, logged in) { balance, frozen, history }
 //
 // The checkout pass is the tickets' one (src/utils/checkoutPass.js): for
-// Costcoin its quest claim is "costcoin:<bundle>", so a Costcoin pass can
+// CosCoin its quest claim is "costcoin:<bundle>", so a CosCoin pass can
 // never buy a ticket, and a ticket pass never buys coins.
 const mongoose = require('mongoose');
 const User = require('../models/User');

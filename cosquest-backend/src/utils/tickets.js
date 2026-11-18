@@ -679,7 +679,7 @@ function start() {
     busy = true;
     try {
       await reconcileDue();
-      // Costcoin purchases: missed webhooks, expired pages, credits (src/utils/costcoin.js).
+      // CosCoin purchases: missed webhooks, expired pages, credits (src/utils/costcoin.js).
       await require('./costcoin').reconcileDue().catch((error) => console.error('[costcoin] reconcile failed:', error.message));
       // The ledger: entries missed (e.g. a crash between steps), and an hourly debits = credits check.
       await require('./ledger').syncDue().catch((error) => console.error('[ledger] sync failed:', error.message));

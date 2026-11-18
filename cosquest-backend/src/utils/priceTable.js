@@ -1,4 +1,4 @@
-// The Costcoin price table (finance's "Price Table"). See src/models/PriceTableVersion.js.
+// The CosCoin price table (finance's "Price Table"). See src/models/PriceTableVersion.js.
 //
 //   current()         { priceVersion: 'v2' | null, bundles } (every bundle, admins)
 //   onSale()          { priceVersion, bundles } active bundles only (the app's shop)
@@ -6,7 +6,7 @@
 //   requestChange()   a new table waits for a second admin (ApprovalRequest kind 'price_table')
 //   applyApproved()   called by approvals.decide: the approved table becomes the next version
 //
-// Agreed so far (Sep 2 meeting): B-80 $1 -> 80 Costcoin, B-500 $4 -> 500 Costcoin.
+// Agreed so far (Sep 2 meeting): B-80 $1 -> 80 CosCoin, B-500 $4 -> 500 CosCoin.
 // The $20 starter pack's coin amount is OPEN (status 'open': never sold).
 const PriceTableVersion = require('../models/PriceTableVersion');
 const ApprovalRequest = require('../models/ApprovalRequest');
@@ -51,8 +51,8 @@ function cleanBundles(input) {
     const status = b?.status === 'open' ? 'open' : 'active';
     const raw = b?.costcoin;
     const costcoin = raw === null || raw === undefined || raw === '' ? null : Number(raw);
-    if (costcoin !== null && (!Number.isInteger(costcoin) || costcoin < 1)) fail(400, `${id}: Costcoin is a whole number from 1.`, 'bad_costcoin');
-    if (status === 'active' && costcoin === null) fail(400, `${id}: an active bundle needs its Costcoin amount (or mark it open).`, 'bad_costcoin');
+    if (costcoin !== null && (!Number.isInteger(costcoin) || costcoin < 1)) fail(400, `${id}: CosCoin is a whole number from 1.`, 'bad_costcoin');
+    if (status === 'active' && costcoin === null) fail(400, `${id}: an active bundle needs its CosCoin amount (or mark it open).`, 'bad_costcoin');
     return { id, name, priceCents: Math.round(price * 100), costcoin, status, note: String(b?.note || '').slice(0, 200) };
   });
   if (new Set(bundles.map((b) => b.id)).size !== bundles.length) fail(400, 'Each bundle id once.', 'duplicate_bundle');

@@ -1,4 +1,4 @@
-// Costcoin for members: buying bundles on the CosQuest website, the wallet.
+// CosCoin for members: buying bundles on the CosQuest website, the wallet.
 // The website's calls carry the checkout pass, not a login token.
 const express = require('express');
 const { requireAuth, requireCompletedOnboarding } = require('../middleware/auth');

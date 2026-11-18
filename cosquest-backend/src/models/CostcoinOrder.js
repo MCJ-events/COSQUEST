@@ -1,10 +1,10 @@
 const mongoose = require('mongoose');
 
 /**
- * One Costcoin bundle bought on the CosQuest website (Stripe Checkout).
+ * One CosCoin bundle bought on the CosQuest website (Stripe Checkout).
  * Paid only by Stripe's signed webhook (or the reconciler asking Stripe),
  * like ticket orders. On payment the cash ledger gets the sale (1010 / 4010),
- * the Costcoin ledger the coins (Costcoin Issued / the member's Wallet),
+ * the CosCoin ledger the coins (CosCoin Issued / the member's Wallet),
  * linked together, and the wallet is credited once.
  *
  *   pending  -> paid | expired | failed | refunded

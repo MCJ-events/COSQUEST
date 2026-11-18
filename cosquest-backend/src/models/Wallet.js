@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 /**
- * A member's Costcoin balance (fast to read and to spend from). The Costcoin
+ * A member's CosCoin balance (fast to read and to spend from). The CosCoin
  * ledger is the record of every coin; finance's check "wallets equal coins
  * issued minus coins spent" (ledger.financeChecks) catches any drift.
  *

@@ -1,11 +1,11 @@
-// Costcoin: buying bundles on the CosQuest website (payment brief: a closed-loop
+// CosCoin: buying bundles on the CosQuest website (payment brief: a closed-loop
 // game currency, bought with money, never cash, never paid quest entry).
 //
 //   startPurchase()   a Stripe Checkout page for one bundle on sale (18+), like tickets
 //   paidFromSession() Stripe's signed webhook: the purchase is paid
 //   credit()          both ledgers, linked, and the wallet: each exactly once
-//       cash:     debit 1010 Stripe Clearing / credit 4010 Costcoin Sales   (Costcoin purchase)
-//       costcoin: debit Costcoin Issued / credit <user> Wallet              (Purchase, linked)
+//       cash:     debit 1010 Stripe Clearing / credit 4010 CosCoin Sales   (CosCoin purchase)
+//       costcoin: debit CosCoin Issued / credit <user> Wallet              (Purchase, linked)
 //   reconcileDue()    missed webhooks and expired pages (the 2-minute job)
 //   wallet(), history()  the balance and its entries
 const CostcoinOrder = require('../models/CostcoinOrder');
@@ -60,14 +60,14 @@ async function startPurchase({ user, bundleId, ip = null }) {
     priceCents: bundle.priceCents,
     costcoin: bundle.costcoin,
     expiresAt: new Date(now.getTime() + PAGE_MS),
-    history: [step('created', `${bundle.id} ${bundle.costcoin} Costcoin for ${bundle.priceCents} cents (${priceVersion})`)],
+    history: [step('created', `${bundle.id} ${bundle.costcoin} CosCoin for ${bundle.priceCents} cents (${priceVersion})`)],
   });
   const meta = { purpose: 'costcoin', costcoinOrderId: String(order._id), userId: String(user._id), bundleId: bundle.id };
   try {
     const session = await payments.stripe().checkout.sessions.create(
       {
         mode: 'payment',
-        line_items: [{ quantity: 1, price_data: { currency: 'usd', unit_amount: bundle.priceCents, product_data: { name: `${bundle.costcoin} Costcoin (${bundle.name})`.slice(0, 120), description: 'CosQuest game currency. Not cash, not withdrawable.' } } }],
+        line_items: [{ quantity: 1, price_data: { currency: 'usd', unit_amount: bundle.priceCents, product_data: { name: `${bundle.costcoin} CosCoin (${bundle.name})`.slice(0, 120), description: 'CosQuest game currency. Not cash, not withdrawable.' } } }],
         client_reference_id: `cc-${order._id}`,
         metadata: meta,
         payment_intent_data: { metadata: meta },
@@ -101,7 +101,7 @@ async function applyToWallet(userId, key, amount) {
 /** Both ledgers (linked) and the wallet, each exactly once. Safe to call many times. */
 async function credit(order) {
   if (order.status !== 'paid') return null;
-  const memo = `${label(order)}: ${order.costcoin} Costcoin (${order.bundleId})`;
+  const memo = `${label(order)}: ${order.costcoin} CosCoin (${order.bundleId})`;
   const cash = await ledger.record({
     key: `cc-paid-${order._id}`,
     kind: 'costcoin.purchase',
@@ -132,7 +132,7 @@ async function credit(order) {
     try {
       require('../realtime/socket').emitToUser(String(order.user), 'costcoin:credited', { orderId: String(order._id), added: order.costcoin, balance: wallet?.balance ?? null });
     } catch {}
-    require('./push').sendToUsers([String(order.user)], { title: 'Costcoin added', body: `${order.costcoin} Costcoin are in your wallet.`, data: { type: 'costcoin', orderId: String(order._id) }, channel: 'default', skipOnline: false }).catch(() => {});
+    require('./push').sendToUsers([String(order.user)], { title: 'CosCoin added', body: `${order.costcoin} CosCoin are in your wallet.`, data: { type: 'costcoin', orderId: String(order._id) }, channel: 'default', skipOnline: false }).catch(() => {});
   }
   recordFee(order, cash.tx).catch((error) => console.warn(`[costcoin] ${label(order)}: Stripe fee not recorded yet:`, error.message));
   return cash.tx;
@@ -177,7 +177,7 @@ async function fulfil(order, { paymentIntentId = null, amountTotal = null, curre
   return credit(paid || (await CostcoinOrder.findById(order._id)));
 }
 
-/** Stripe's webhook: checkout.session.completed / async_payment_succeeded for a Costcoin page. */
+/** Stripe's webhook: checkout.session.completed / async_payment_succeeded for a CosCoin page. */
 async function paidFromSession(session, via) {
   const order = await CostcoinOrder.findById(session.metadata?.costcoinOrderId).catch(() => null);
   if (!order) return null;
@@ -223,7 +223,7 @@ async function wallet(userId) {
   return { balance: w?.balance || 0, frozen: Boolean(w?.frozen), frozenReason: w?.frozen ? w.frozenReason || null : null };
 }
 
-/** The wallet's entries (the Costcoin ledger), newest first. */
+/** The wallet's entries (the CosCoin ledger), newest first. */
 async function history(userId, { offset = 0, limit = 30 } = {}) {
   const account = ledger.ACCOUNTS.wallet(userId);
   const rows = await LedgerTransaction.find({ book: 'costcoin', 'lines.account': account }).sort({ createdAt: -1, number: -1 }).skip(offset).limit(Math.min(limit, 50)).lean();

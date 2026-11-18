@@ -25,7 +25,7 @@ const ACCOUNTS = {
   // The names this file used before, so other code keeps working.
   processorClearing: chart.ACCOUNTS.stripeClearing,
   platformRevenue: chart.ACCOUNTS.platformFees,
-  userCostcoin: chart.ACCOUNTS.wallet,
+  userCosCoin: chart.ACCOUNTS.wallet,
 };
 
 const label = (tx) => `TX-${tx.number}`;
@@ -35,7 +35,7 @@ const TYPES = {
   'ticket.sale': 'Quest entry',
   'ticket.refund': 'Quest entry refund',
   'stripe.fee': 'Processor fee',
-  'costcoin.purchase': 'Costcoin purchase',
+  'costcoin.purchase': 'CosCoin purchase',
   'costcoin.issue': 'Purchase',
   'costcoin.spend': 'Spend',
   'settlement.platform': 'Settlement: platform share',
@@ -218,7 +218,7 @@ async function financeChecks() {
   const cash = sum(money, 'debits') - sum(money, 'credits');
   checks.push({ name: 'Cash book: total debits equal total credits', pass: cash === 0, detail: cash });
   const coinDiff = sum(coins, 'debits') - sum(coins, 'credits');
-  checks.push({ name: 'Costcoin book: debits equal credits', pass: coinDiff === 0, detail: coinDiff });
+  checks.push({ name: 'CosCoin book: debits equal credits', pass: coinDiff === 0, detail: coinDiff });
   const unknown = all.filter((r) => r.type === 'Unknown').map((r) => r.account);
   checks.push({ name: 'Every ledger row uses an account from the chart', pass: !unknown.length, detail: unknown.length ? unknown.join(', ') : 0 });
 
@@ -247,13 +247,13 @@ async function financeChecks() {
     detail: payable ? `${payable.balance} cents approved, not yet paid out` : 'No payouts yet',
   });
 
-  // Costcoin: what wallets hold = coins issued - coins spent, and no wallet below zero.
+  // CosCoin: what wallets hold = coins issued - coins spent, and no wallet below zero.
   const issued = coins.find((r) => r.code === 'CC-ISSUED');
   const spent = coins.find((r) => r.code === 'CC-SPENT');
   const wallets = coins.filter((r) => r.code === 'CC-WALLET');
   const held = sum(wallets, 'balance');
   const expected = (issued?.balance || 0) - (spent?.balance || 0);
-  checks.push({ name: 'Wallets equal coins issued minus coins spent', pass: coins.length ? held === expected : null, detail: coins.length ? held - expected : 'No Costcoin yet' });
+  checks.push({ name: 'Wallets equal coins issued minus coins spent', pass: coins.length ? held === expected : null, detail: coins.length ? held - expected : 'No CosCoin yet' });
   const below = [...wallets, ...pools].filter((r) => r.balance < 0);
   checks.push({ name: 'No wallet or quest pool is below zero', pass: !below.length, detail: below.length ? below.map((r) => `${r.label}: ${r.balance}`).join('; ') : 0 });
   return checks;

@@ -4,8 +4,8 @@
 //   Cash Ledger:     Txn id, Timestamp (UTC), User id, Type, Quest id, Item id, Description,
 //                    Debit account, Credit account, Amount (cents), Amount (USD), Processor ref,
 //                    Status, Jurisdiction, Price version, Formula version, Approver
-//   Costcoin Ledger: Txn id, Timestamp (UTC), User id, Type, Item id, Description,
-//                    Debit account, Credit account, Costcoin, Linked cash txn, Status, Price version
+//   CosCoin Ledger: Txn id, Timestamp (UTC), User id, Type, Item id, Description,
+//                    Debit account, Credit account, CosCoin, Linked cash txn, Status, Price version
 //
 // One row = one debit account and one credit account, as in the sheet. A
 // transaction with more lines (one debit, several credits, or the other way
@@ -14,7 +14,7 @@
 const chart = require('./ledgerAccounts');
 
 const CASH_HEADERS = ['Txn id', 'Timestamp (UTC)', 'User id', 'Type', 'Quest id', 'Item id', 'Description', 'Debit account', 'Credit account', 'Amount (cents)', 'Amount (USD)', 'Processor ref', 'Status', 'Jurisdiction', 'Price version', 'Formula version', 'Approver'];
-const COSTCOIN_HEADERS = ['Txn id', 'Timestamp (UTC)', 'User id', 'Type', 'Item id', 'Description', 'Debit account', 'Credit account', 'Costcoin', 'Linked cash txn', 'Status', 'Price version'];
+const COSTCOIN_HEADERS = ['Txn id', 'Timestamp (UTC)', 'User id', 'Type', 'Item id', 'Description', 'Debit account', 'Credit account', 'CosCoin', 'Linked cash txn', 'Status', 'Price version'];
 
 /** [{ debit, credit, amount }]: the debit / credit pairs of a transaction. */
 function pairs(lines) {

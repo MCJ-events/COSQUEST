@@ -72,7 +72,7 @@ export const getPaymentSettings = () => adminRequest<{ current: PaymentSettings;
 export const requestPaymentSettings = (body: { platformSharePercent: string; payoutApprovalLimitDollars: string; reason: string; note?: string }) =>
   adminRequest<{ request: { id: string; number: string; title: string }; auditEvent: string }>("/payment-settings/requests", { method: "POST", body });
 
-/** The Costcoin price table (finance's "Price Table"). status open = not decided, never sold. */
+/** The CosCoin price table (finance's "Price Table"). status open = not decided, never sold. */
 export type PriceBundle = { id: string; name: string; priceCents: number; costcoin: number | null; costcoinPerDollar?: number | null; status: "active" | "open"; note: string };
 export type PriceTable = { priceVersion: string | null; bundles: PriceBundle[]; approvedAt: string | null };
 export const getPriceTable = () => adminRequest<{ current: PriceTable; history: PriceTable[] }>("/price-table");
@@ -103,6 +103,6 @@ export async function downloadLedgerCsv(book: string) {
   setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
 
-/** Cents (or whole Costcoin) for display. */
+/** Cents (or whole CosCoin) for display. */
 export const amount = (minor: number, currency: string) =>
-  currency === "CQC" ? `${minor.toLocaleString("en-US")} Costcoin` : `${(minor / 100).toLocaleString("en-US", { style: "currency", currency })}`;
+  currency === "CQC" ? `${minor.toLocaleString("en-US")} CosCoin` : `${(minor / 100).toLocaleString("en-US", { style: "currency", currency })}`;

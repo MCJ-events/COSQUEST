@@ -38,9 +38,9 @@ router.use('/meta', metaRoutes); // /api/meta/avatars
 router.use('/', questRoutes); // /api/quests
 router.use('/', require('./questFeedRoutes')); // /api/quests/:questId/joins (who just joined)
 router.use('/', require('./ticketRoutes')); // /api/quests/:id/ticket-types|checkout, /api/orders/:id, /api/me/tickets
-// The Costcoin bundles on sale (public: the app's shop).
+// The CosCoin bundles on sale (public: the app's shop).
 router.get('/costcoin/bundles', require('../utils/asyncHandler').asyncHandler(require('../controllers/adminPriceTableController').bundlesOnSale));
-router.use('/', require('./costcoinRoutes')); // /api/costcoin/* (buying Costcoin on the website, the wallet)
+router.use('/', require('./costcoinRoutes')); // /api/costcoin/* (buying CosCoin on the website, the wallet)
 router.use('/', require('./paymentRoutes')); // /api/payments/* (paying on the CosQuest website)
 router.use('/home', homeRoutes); // /api/home/dashboard
 router.use('/', callRoutes); // /api/calls and /api/chats/:conversationId/calls

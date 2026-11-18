@@ -1,4 +1,4 @@
-// The Costcoin price table: versions, two-person approval, open bundles never on sale.
+// The CosCoin price table: versions, two-person approval, open bundles never on sale.
 const User = require('../src/models/User');
 const PriceTableVersion = require('../src/models/PriceTableVersion');
 const { signToken } = require('../src/utils/token');
@@ -32,14 +32,14 @@ async function run(baseUrl) {
   const cheap = await request('POST', '/api/admin/price-table/requests', a, { bundles: [{ id: 'B-1', name: 'Too cheap', price: 0.2, costcoin: 10 }], reason: 'Test' });
   check(cheap.status === 400 && cheap.data.code === 'bad_price', "a price under Stripe's $0.50 minimum is refused", cheap.data);
   const noCoins = await request('POST', '/api/admin/price-table/requests', a, { bundles: [{ id: 'B-9', name: 'No coins', price: 5, status: 'active' }], reason: 'Test' });
-  check(noCoins.status === 400 && noCoins.data.code === 'bad_costcoin', 'an active bundle needs its Costcoin amount', noCoins.data);
+  check(noCoins.status === 400 && noCoins.data.code === 'bad_costcoin', 'an active bundle needs its CosCoin amount', noCoins.data);
   const asked = await request('POST', '/api/admin/price-table/requests', a, { bundles: table, reason: 'Agreed bundles (Sep 2)' });
   check(asked.status === 201, 'a new table waits for approval', asked.data);
   check((await request('POST', `/api/admin/approvals/${asked.data.request.id}/approve`, a, {})).status === 403, "the requester can't approve it", null);
   check((await request('POST', `/api/admin/approvals/${asked.data.request.id}/approve`, b, { note: 'OK' })).status === 200, 'a second admin approves', null);
   const current = await request('GET', '/api/admin/price-table', a);
   const bundles = current.data.current.bundles;
-  check(/^v\d+$/.test(current.data.current.priceVersion) && bundles.length === 3 && bundles.find((x) => x.id === 'B-500').costcoinPerDollar === 125, 'new version: 3 bundles, B-500 = 125 Costcoin per $1 (as the sheet)', current.data);
+  check(/^v\d+$/.test(current.data.current.priceVersion) && bundles.length === 3 && bundles.find((x) => x.id === 'B-500').costcoinPerDollar === 125, 'new version: 3 bundles, B-500 = 125 CosCoin per $1 (as the sheet)', current.data);
   const shop = await request('GET', '/api/costcoin/bundles');
   check(shop.status === 200 && shop.data.bundles.length === 2 && !shop.data.bundles.some((x) => x.id === 'B-STARTER'), 'the shop shows only bundles on sale (the open starter pack is hidden)', shop.data);
   let edited = true;

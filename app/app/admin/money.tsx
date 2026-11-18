@@ -158,7 +158,7 @@ function LedgerTab({ canCorrect }: { canCorrect: boolean }) {
           subtitle="Append-only: a mistake is corrected by a reversal, never edited."
           right={
             <View style={{ flexDirection: "row", gap: 10, alignItems: "center" }}>
-              <Select value={book} options={[{ value: "money", label: "Money (USD)" }, { value: "costcoin", label: "Costcoin" }]} onChange={(v) => { setBook(v); setOffset(0); }} />
+              <Select value={book} options={[{ value: "money", label: "Money (USD)" }, { value: "costcoin", label: "CosCoin" }]} onChange={(v) => { setBook(v); setOffset(0); }} />
               {Platform.OS === "web" ? <Button label="Export CSV" icon="download-outline" onPress={() => downloadLedgerCsv(book).catch((e) => setError(e.message))} /> : null}
             </View>
           }
@@ -390,7 +390,7 @@ function ApprovalsTab({ onChanged }: { onChanged: () => void }) {
                 ) : "bundles" in r.changes ? (
                   r.changes.bundles.map((b) => (
                     <Text key={b.id} style={{ fontFamily: FONTS.regular, fontSize: 14, color: t.text }}>
-                      {b.id} {b.name}: ${(b.priceCents / 100).toFixed(2)} → {b.costcoin === null ? "OPEN" : `${b.costcoin} Costcoin`}{b.status === "open" ? " (not on sale)" : ""}
+                      {b.id} {b.name}: ${(b.priceCents / 100).toFixed(2)} → {b.costcoin === null ? "OPEN" : `${b.costcoin} CosCoin`}{b.status === "open" ? " (not on sale)" : ""}
                     </Text>
                   ))
                 ) : (
@@ -647,7 +647,7 @@ function SettingsTab({ canRequest, onRequested }: { canRequest: boolean; onReque
   );
 }
 
-// ---------- Costcoin price table (finance's "Price Table") ----------
+// ---------- CosCoin price table (finance's "Price Table") ----------
 
 type BundleRow = { id: string; name: string; price: string; costcoin: string; status: "active" | "open"; note: string };
 // Until a table is approved, start from the Sep 2 meeting's agreed bundles.
@@ -702,7 +702,7 @@ function PricesTab({ canRequest, onRequested }: { canRequest: boolean; onRequest
     <View style={{ gap: 16 }}>
       {error ? <Notice icon="alert-circle-outline" tone="red" text={error} /> : null}
       <Card>
-        <CardHeader title="Costcoin price table" subtitle={c?.priceVersion ? `Version ${c.priceVersion}. Each purchase records the version it was sold at.` : "No table approved yet: nothing is on sale."} />
+        <CardHeader title="CosCoin price table" subtitle={c?.priceVersion ? `Version ${c.priceVersion}. Each purchase records the version it was sold at.` : "No table approved yet: nothing is on sale."} />
         {!c ? (
           <Loading />
         ) : !c.bundles.length ? (
@@ -730,7 +730,7 @@ function PricesTab({ canRequest, onRequested }: { canRequest: boolean; onRequest
                 <TextInput value={r.id} onChangeText={(v) => set(i, { id: v.toUpperCase().slice(0, 22) })} placeholder="B-1000" placeholderTextColor={t.faint} style={[input, { width: 110 }]} accessibilityLabel="Bundle id" />
                 <TextInput value={r.name} onChangeText={(v) => set(i, { name: v.slice(0, 40) })} placeholder="Name" placeholderTextColor={t.faint} style={[input, { flex: 1, minWidth: 140 }]} accessibilityLabel="Bundle name" />
                 <TextInput value={r.price} onChangeText={(v) => set(i, { price: v.replace(/[^0-9.]/g, "").slice(0, 7) })} placeholder="Price $" keyboardType="decimal-pad" placeholderTextColor={t.faint} style={[input, { width: 90 }]} accessibilityLabel="Price in dollars" />
-                <TextInput value={r.costcoin} onChangeText={(v) => set(i, { costcoin: v.replace(/[^0-9]/g, "").slice(0, 7) })} placeholder="Coins" keyboardType="number-pad" placeholderTextColor={t.faint} style={[input, { width: 90 }]} accessibilityLabel="Costcoin" />
+                <TextInput value={r.costcoin} onChangeText={(v) => set(i, { costcoin: v.replace(/[^0-9]/g, "").slice(0, 7) })} placeholder="Coins" keyboardType="number-pad" placeholderTextColor={t.faint} style={[input, { width: 90 }]} accessibilityLabel="CosCoin" />
                 <Select<"active" | "open"> value={r.status} options={[{ value: "active", label: "On sale" }, { value: "open", label: "OPEN" }]} onChange={(v) => set(i, { status: v })} minWidth={110} />
                 <Button label="Remove" variant="ghost" onPress={() => setRows((all) => all.filter((_, j) => j !== i))} />
               </View>

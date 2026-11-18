@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 /**
- * The Costcoin price table (finance's "Price Table" sheet), one document per
+ * The CosCoin price table (finance's "Price Table" sheet), one document per
  * approved version: v1, v2... Append-only: a change is a new version, never
  * an edit, so each purchase records the version it was sold at (the ledger's
  * Price version column).

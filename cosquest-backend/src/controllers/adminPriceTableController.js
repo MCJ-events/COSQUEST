@@ -1,4 +1,4 @@
-// The Costcoin price table.
+// The CosCoin price table.
 //   GET  /api/admin/price-table             current table (every bundle) + history
 //   POST /api/admin/price-table/requests    { bundles: [{ id, name, price, costcoin, status, note }], reason }
 //   GET  /api/costcoin/bundles              (members) the bundles on sale and the price version
