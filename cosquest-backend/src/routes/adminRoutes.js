@@ -185,4 +185,9 @@ const moneySettings = require('../controllers/adminPaymentSettingsController');
 router.get('/payment-settings', a(moneySettings.getSettings));
 router.post('/payment-settings/requests', a(moneySettings.requestSettings));
 
+// Costcoin price table (finance's "Price Table"): versions, changed through approvals.
+const prices = require('../controllers/adminPriceTableController');
+router.get('/price-table', a(prices.getTable));
+router.post('/price-table/requests', a(prices.requestTable));
+
 module.exports = router;

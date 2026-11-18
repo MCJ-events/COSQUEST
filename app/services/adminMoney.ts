@@ -44,7 +44,7 @@ export type ApprovalRequest = {
   kind: string;
   title: string;
   /** Region rules: a list; money settings: { platformShareBps, payoutApprovalLimitCents, note }. */
-  changes: { region: string; name: string; status: RegionStatus; note: string }[] | PaymentSettingsChange;
+  changes: { region: string; name: string; status: RegionStatus; note: string }[] | PaymentSettingsChange | { bundles: PriceBundle[] };
   reason: string;
   status: ApprovalStatus;
   requestedBy: { id: string; name: string };
@@ -71,6 +71,13 @@ export type PaymentSettingsChange = { platformShareBps: number | null; payoutApp
 export const getPaymentSettings = () => adminRequest<{ current: PaymentSettings; history: PaymentSettings[] }>("/payment-settings");
 export const requestPaymentSettings = (body: { platformSharePercent: string; payoutApprovalLimitDollars: string; reason: string; note?: string }) =>
   adminRequest<{ request: { id: string; number: string; title: string }; auditEvent: string }>("/payment-settings/requests", { method: "POST", body });
+
+/** The Costcoin price table (finance's "Price Table"). status open = not decided, never sold. */
+export type PriceBundle = { id: string; name: string; priceCents: number; costcoin: number | null; costcoinPerDollar?: number | null; status: "active" | "open"; note: string };
+export type PriceTable = { priceVersion: string | null; bundles: PriceBundle[]; approvedAt: string | null };
+export const getPriceTable = () => adminRequest<{ current: PriceTable; history: PriceTable[] }>("/price-table");
+export const requestPriceTable = (bundles: { id: string; name: string; price: string; costcoin: string; status: "active" | "open"; note?: string }[], reason: string) =>
+  adminRequest<{ request: { id: string; number: string; title: string }; auditEvent: string }>("/price-table/requests", { method: "POST", body: { bundles, reason } });
 
 export const requestRegionChanges = (changes: { region: string; name?: string; status: RegionStatus; note?: string }[], reason: string) =>
   adminRequest<{ request: ApprovalRequest; auditEvent: string }>("/regions/requests", { method: "POST", body: { changes, reason } });
