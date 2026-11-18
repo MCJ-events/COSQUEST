@@ -72,7 +72,46 @@ const csvCell = (value) => {
   return `"${safe.replace(/"/g, '""')}"`;
 };
 
+// Finance's sheets (src/utils/ledgerExport.js): ?book=money (Cash Ledger, the
+// default) or ?book=costcoin (Costcoin Ledger), same columns and order as the
+// CosQuest Sample Ledger, with account names, usernames and quest titles.
 async function exportCsv(req, res) {
+  const { financeRows, toCsv } = require('../utils/ledgerExport');
+  const chart = require('../utils/ledgerAccounts');
+  const book = req.query.book === 'costcoin' ? 'costcoin' : 'money';
+  const rows = await LedgerTransaction.find({ ...txFilter(req.query), book }).sort({ createdAt: 1, number: 1 }).limit(50000).lean();
+  const ids = { users: new Set(), quests: new Set(), txs: new Set() };
+  for (const tx of rows) {
+    if (tx.user) ids.users.add(String(tx.user));
+    (tx.approvedBy || []).forEach((id) => ids.users.add(String(id)));
+    if (tx.quest) ids.quests.add(String(tx.quest));
+    if (tx.linkedTx) ids.txs.add(String(tx.linkedTx));
+    for (const l of tx.lines) {
+      const account = chart.normalize(l.account);
+      if (account.startsWith('2010:')) ids.quests.add(account.slice(5));
+      if (account.startsWith('CC-WALLET:')) ids.users.add(account.slice(10));
+    }
+  }
+  const valid = (set) => [...set].filter((id) => mongoose.isValidObjectId(id));
+  const [users, quests, linked] = await Promise.all([
+    User.find({ _id: { $in: valid(ids.users) } }).select('profile.username').lean(),
+    require('../models/Quest').find({ _id: { $in: valid(ids.quests) } }).select('title').lean(),
+    LedgerTransaction.find({ _id: { $in: valid(ids.txs) } }).select('number').lean(),
+  ]);
+  const names = {
+    users: Object.fromEntries(users.map((u) => [String(u._id), u.profile?.username ? `@${u.profile.username}` : String(u._id)])),
+    quests: Object.fromEntries(quests.map((q) => [String(q._id), q.title])),
+    txs: Object.fromEntries(linked.map((t) => [String(t._id), `TX-${t.number}`])),
+  };
+  const csv = toCsv(financeRows(rows, book, names));
+  await recordAudit(req.admin, { action: 'ledger.export', area: 'payments', target: { type: 'ledger', id: null, label: book === 'costcoin' ? 'Costcoin Ledger export' : 'Cash Ledger export' }, meta: { rows: rows.length, ...req.query } });
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="cosquest-${book === 'costcoin' ? 'costcoin' : 'cash'}-ledger-${new Date().toISOString().slice(0, 10)}.csv"`);
+  return res.send(csv);
+}
+
+// The previous export (one row per line, internal names): kept for engineers.
+async function exportLinesCsv(req, res) {
   const rows = await LedgerTransaction.find(txFilter(req.query)).sort({ createdAt: 1, number: 1 }).limit(50000);
   const header = ['transaction', 'date', 'kind', 'book', 'currency', 'account', 'debit', 'credit', 'order', 'quest', 'user', 'processor_ref', 'jurisdiction', 'price_version', 'reverses', 'memo'];
   const lines = [header.join(',')];
@@ -196,6 +235,7 @@ async function withdrawApproval(req, res) {
 }
 
 module.exports = {
+  exportLinesCsv,
   transactions,
   balances,
   check,

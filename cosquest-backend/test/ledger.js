@@ -105,7 +105,7 @@ async function run(baseUrl) {
   console.log('\n--- export ---');
   const csv = await fetch(`${baseUrl}/api/admin/ledger/export?book=money`, { headers: { Authorization: `Bearer ${tokenA}` } });
   const body = await csv.text();
-  check(csv.status === 200 && /^"?transaction"?,/.test(body) && body.includes(pool), 'CSV export, one row per line', body.slice(0, 200));
+  check(csv.status === 200 && body.replace(/^\uFEFF/, '').startsWith('"Txn id","Timestamp (UTC)","User id","Type","Quest id"') && body.includes('"2010 Quest Pool ') && body.includes('"Quest entry"') && body.includes('"1010 Stripe Clearing"'), "CSV export in finance's Cash Ledger format", body.slice(0, 300));
   const memberExport = await request('GET', '/api/admin/ledger/export', member.token);
   check(memberExport.status === 401, 'only admins see the ledger', memberExport.status);
 
