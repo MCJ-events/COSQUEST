@@ -53,14 +53,14 @@ async function run(baseUrl) {
   const tokenB = (await request('POST', '/api/admin/auth/exchange', adminB.token)).data.token;
   const venue = { name: 'Waterfront Plaza', address: '1 Harbor Dr', city: 'San Diego', country: 'United States', lat: 32.7157, lng: -117.1611 };
   const quest = await Quest.create({ slug: `ledger-${suffix}`, title: 'Ledger Night', status: 'upcoming', isPublished: true, startsAt: new Date(Date.now() + 72 * 3600e3), endsAt: new Date(Date.now() + 75 * 3600e3), location: venue, prizePool: { amount: 100, currency: 'USD' }, entryFee: { amount: 12, currency: 'USD' }, maxParticipants: 5 });
-  const pool = `quest_pool:${quest.id}`;
+  const pool = `2010:${quest.id}`;
 
   console.log('\n--- ticket money in the ledger ---');
   const started = await request('POST', `/api/quests/${quest.id}/checkout`, member.token, {});
   await webhook('checkout.session.completed', fake._pay((await Order.findById(started.data.order.id)).stripe.checkoutSessionId));
   await settle();
   const sale = await LedgerTransaction.findOne({ key: `order-paid-${started.data.order.id}` });
-  check(sale && sale.kind === 'ticket.sale' && sale.lines.find((l) => l.account === 'processor_clearing').debit === 1200 && sale.lines.find((l) => l.account === pool).credit === 1200, 'a paid ticket: 1200 cents into the quest prize pool', sale);
+  check(sale && sale.kind === 'ticket.sale' && sale.lines.find((l) => l.account === '1010').debit === 1200 && sale.lines.find((l) => l.account === pool).credit === 1200, 'a paid ticket: 1200 cents into the quest prize pool', sale);
   await ledger.recordOrder(started.data.order.id);
   await ledger.recordOrder(started.data.order.id);
   check((await LedgerTransaction.countDocuments({ order: started.data.order.id })) === 1, 'recorded once, however often it is called', null);
@@ -71,7 +71,7 @@ async function run(baseUrl) {
   await settle();
   const refund = await LedgerTransaction.findOne({ key: `order-refund-${started.data.order.id}` });
   check(refunded.status === 200 && refund?.kind === 'ticket.refund' && refund.lines.find((l) => l.account === pool).debit === 1200, 'a refund: 1200 cents back out of the pool', refund);
-  const bal = await request('GET', `/api/admin/ledger/balances?book=money&prefix=quest_pool:${quest.id}`, tokenA);
+  const bal = await request('GET', `/api/admin/ledger/balances?book=money&prefix=2010:${quest.id}`, tokenA);
   check(bal.status === 200 && bal.data.balances.length === 1 && bal.data.balances[0].balance === 0, 'the pool is back to 0 after the refund', bal.data);
   const books = await request('GET', '/api/admin/ledger/check', tokenA);
   check(books.status === 200 && books.data.ok === true && books.data.books.every((b) => Number.isInteger(b.transactions) && b.transactions > 0), 'debits = credits for every book (with how many transactions)', books.data);

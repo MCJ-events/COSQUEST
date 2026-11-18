@@ -11,21 +11,21 @@
 // prize pool (brief 5: "funds are booked to that quest's prize pool"). The
 // platform's share is taken only at settlement, by the prize formula saved on
 // the quest (not built: the formula isn't approved yet).
-//   sale:    debit processor_clearing   credit quest_pool:<questId>
-//   refund:  debit quest_pool:<questId> credit processor_clearing
+//   sale:    debit 1010 Stripe Clearing     credit 2010 Quest Pool <quest>
+//   refund:  debit 2010 Quest Pool <quest>  credit 1010 Stripe Clearing
+// Account codes: finance's chart of accounts (src/utils/ledgerAccounts.js).
 const LedgerTransaction = require('../models/LedgerTransaction');
 const Counter = require('../models/Counter');
 
+// New entries use the chart's codes (1010, 2010:<questId>, ...); entries
+// written before keep their old names and are read under the new codes.
+const chart = require('./ledgerAccounts');
 const ACCOUNTS = {
-  processorClearing: 'processor_clearing',
-  platformRevenue: 'platform_revenue',
-  questPool: (questId) => `quest_pool:${questId}`,
-  payoutsPayable: 'payouts_payable',
-  refunds: 'refunds',
-  taxPayable: 'tax_payable',
-  userCostcoin: (userId) => `user_costcoin:${userId}`,
-  costcoinIssued: 'costcoin_issued',
-  costcoinSpent: 'costcoin_spent',
+  ...chart.ACCOUNTS,
+  // The names this file used before, so other code keeps working.
+  processorClearing: chart.ACCOUNTS.stripeClearing,
+  platformRevenue: chart.ACCOUNTS.platformFees,
+  userCostcoin: chart.ACCOUNTS.wallet,
 };
 
 const label = (tx) => `TX-${tx.number}`;
@@ -155,17 +155,30 @@ async function checkDue() {
   return check();
 }
 
-/** Balance per account (debits minus credits), optionally one book. */
+/**
+ * Balance per chart account, optionally one book and one account (prefix,
+ * e.g. 2010:<questId>; an old name works too). Old and new names are merged;
+ * the balance is on the account's normal side (finance's Balances sheet).
+ */
 async function balances({ book = null, prefix = null } = {}) {
   const match = book ? { book } : {};
   const rows = await LedgerTransaction.aggregate([
     { $match: match },
     { $unwind: '$lines' },
-    ...(prefix ? [{ $match: { 'lines.account': { $regex: `^${prefix.replace(/[^a-z_:0-9]/gi, '')}` } } }] : []),
     { $group: { _id: { account: '$lines.account', currency: '$currency', book: '$book' }, debits: { $sum: '$lines.debit' }, credits: { $sum: '$lines.credit' } } },
-    { $sort: { '_id.account': 1 } },
   ]);
-  return rows.map((r) => ({ account: r._id.account, book: r._id.book, currency: r._id.currency, debits: r.debits, credits: r.credits, balance: r.debits - r.credits }));
+  const raw = rows.map((r) => ({ account: r._id.account, book: r._id.book, currency: r._id.currency, debits: r.debits, credits: r.credits }));
+  const merged = chart.mergeBalances(raw, { questLabels: await questLabels(raw.map((r) => chart.normalize(r.account))) });
+  const want = prefix ? chart.normalize(String(prefix).replace(/[^a-z_:0-9-]/gi, '')) : null;
+  return want ? merged.filter((r) => r.account.startsWith(want)) : merged;
+}
+
+// "2010 Quest Pool <title>": the quests' titles, for the accounts' labels.
+async function questLabels(accounts) {
+  const ids = [...new Set(accounts.filter((a) => a.startsWith('2010:')).map((a) => a.slice(5)))].filter((id) => /^[a-f\d]{24}$/i.test(id));
+  if (!ids.length) return {};
+  const quests = await require('../models/Quest').find({ _id: { $in: ids } }, 'title').lean();
+  return Object.fromEntries(quests.map((q) => [String(q._id), q.title]));
 }
 
 function txJson(tx) {
@@ -175,7 +188,8 @@ function txJson(tx) {
     kind: tx.kind,
     book: tx.book,
     currency: tx.currency,
-    lines: tx.lines.map((l) => ({ account: l.account, debit: l.debit, credit: l.credit })),
+    // The chart's code and name (old entries read under the new codes).
+    lines: tx.lines.map((l) => ({ account: chart.normalize(l.account), label: chart.describe(l.account).label, debit: l.debit, credit: l.credit })),
     total: tx.lines.reduce((sum, l) => sum + l.debit, 0),
     user: tx.user ? String(tx.user) : null,
     quest: tx.quest ? String(tx.quest) : null,
@@ -190,4 +204,4 @@ function txJson(tx) {
   };
 }
 
-module.exports = { ACCOUNTS, record, reverse, recordOrder, recordOrderLater, syncDue, check, checkDue, balances, txJson, label };
+module.exports = { CHART: chart.CHART, ACCOUNTS, record, reverse, recordOrder, recordOrderLater, syncDue, check, checkDue, balances, txJson, label };

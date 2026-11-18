@@ -2,7 +2,8 @@
 // Backend: ledger-backend (LEDGER.md).
 import { adminRequest } from "./admin";
 
-export type LedgerLine = { account: string; debit: number; credit: number };
+/** account: the chart code (e.g. 2010:<questId>); label: "2010 Quest Pool Glam zone". */
+export type LedgerLine = { account: string; label?: string; debit: number; credit: number };
 export type LedgerTx = {
   id: string;
   number: string;

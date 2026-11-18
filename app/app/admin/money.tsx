@@ -154,7 +154,7 @@ function LedgerTab({ canCorrect }: { canCorrect: boolean }) {
                 </View>
                 {tx.lines.map((l, i) => (
                   <Text key={i} style={{ fontFamily: FONTS.regular, fontSize: 12.5, color: t.muted }}>
-                    {l.debit ? `Debit  ${l.account}  ${amount(l.debit, tx.currency)}` : `Credit ${l.account}  ${amount(l.credit, tx.currency)}`}
+                    {l.debit ? `Debit  ${l.label || l.account}  ${amount(l.debit, tx.currency)}` : `Credit ${l.label || l.account}  ${amount(l.credit, tx.currency)}`}
                   </Text>
                 ))}
                 {canCorrect && tx.kind !== "reversal" ? (
