@@ -1538,14 +1538,32 @@ const HERO_BY_FACTION: Dictionary = {"ascendants": "ascendants_zuri", "controlle
 	"everborns": "everborn_oren", "celestials": "celestials_lyra", "blockbusters": "blockbusters_kofi"}
 const HERO_ORDER: Array[String] = ["ascendants_zuri", "controllers_tavo", "icons_imani", "everborn_oren", "celestials_lyra", "blockbusters_kofi"]
 const CARTOON_CAST: Array[String] = ["armstrong", "bobo", "catboy", "crystalz", "elvis", "hoof", "nebulx", "vanessa"]
+## build 29 (Subomi, 18 Nov): the Forge characters a player can choose to be, beside the six faction heroes. Their
+## files sit in res://cast/heroes like the heroes' (tools/forge_chars/chars.json says where each comes from) with
+## their own clip library (anim/<key>.glb, tools/anim/add_hero.sh). Only a character whose rig passed the clip
+## gate is listed. They never stand in as an ally or a Guardian: only the player who picked one plays it.
+const FORGE_CAST: Array[String] = ["forge_courier"]
 var _hero_roles: Dictionary = {}     # role -> hero key, for the roles a faction hero plays
+
+
+## The character the player chose in the app (config "hero_pick": a faction hero's or a Forge character's key), when
+## this build ships its files; "" otherwise (no pick, an unknown key, or a key from a newer app than this pck).
+func _hero_pick(lod: int) -> String:
+	var k: String = str(cfg.get("hero_pick", ""))
+	if k == "" or not (k in HERO_ORDER or k in FORGE_CAST):
+		return ""
+	if FileAccess.file_exists("%s%s_lod%d.glb" % [HERO_DIR, k, lod]) or FileAccess.file_exists("%s%s_lod1.glb" % [HERO_DIR, k]):
+		return k
+	return ""
 
 
 func _hero_cast(role: String, p: String) -> String:
 	if not bool(cfg.get("hero_cast", ArenaScript.tier_of(cfg) != "low")):
 		return ""
 	var key_now: String = str(cfg.get(role + "_key", ""))
-	if p != "" and not p.begins_with(CAST_STAND_IN_DIR) and not (key_now in CARTOON_CAST):
+	# build 29: a character the player picked plays the hero even over a Forge download (the pick is the newer choice)
+	var picked: String = _hero_pick(clampi(int(cfg.get("lod", 1)), 0, 2)) if role == "hero" else ""
+	if picked == "" and p != "" and not p.begins_with(CAST_STAND_IN_DIR) and not (key_now in CARTOON_CAST):
 		return ""     # the player's own character
 	var lod: int = clampi(int(cfg.get("lod", 1)), 0, 2)
 	var lk: Dictionary = ArenaScript.TIER_LOOK[ArenaScript.tier_of(cfg)]
@@ -1560,6 +1578,9 @@ func _hero_cast(role: String, p: String) -> String:
 	var mine: String = str(HERO_BY_FACTION.get(str(cfg.get("faction", "")), ""))
 	if not (mine in have):
 		mine = have[int(absf(float(cfg.get("seed", 0)))) % have.size()]
+	var chosen: String = _hero_pick(lod)
+	if chosen != "":
+		mine = chosen     # the ally and the Guardian are then never the player's pick
 	var pick: String = mine
 	if role != "hero":
 		var others: Array[String] = []
@@ -1576,7 +1597,7 @@ func _hero_cast(role: String, p: String) -> String:
 		path = "%s%s_lod1.glb" % [HERO_DIR, pick]
 	cfg[role + "_key"] = pick
 	_hero_roles[role] = pick
-	_log("hero cast role=%s key=%s lod=%d faction=%s" % [role, pick, lod, str(cfg.get("faction", ""))])
+	_log("hero cast role=%s key=%s lod=%d faction=%s pick=%s" % [role, pick, lod, str(cfg.get("faction", "")), chosen])
 	return path
 
 
