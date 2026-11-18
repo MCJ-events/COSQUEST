@@ -66,6 +66,15 @@ async function run(baseUrl) {
   await ledger.recordOrder(started.data.order.id);
   await ledger.recordOrder(started.data.order.id);
   check((await LedgerTransaction.countDocuments({ order: started.data.order.id })) === 1, 'recorded once, however often it is called', null);
+  // Stripe's real fee (the fake Stripe answers like the real one, with a balance transaction).
+  const realRetrieve = fake.paymentIntents.retrieve;
+  fake.paymentIntents.retrieve = async (id) => ({ id, latest_charge: { balance_transaction: { fee: 65, currency: 'usd' } } });
+  await ledger.recordOrder(started.data.order.id);
+  await ledger.recordOrder(started.data.order.id);
+  fake.paymentIntents.retrieve = realRetrieve;
+  const fee = await LedgerTransaction.findOne({ key: `order-fee-${started.data.order.id}` });
+  const feeCount = await LedgerTransaction.countDocuments({ kind: 'stripe.fee', order: started.data.order.id });
+  check(fee && feeCount === 1 && fee.lines.find((l) => l.account === '5010').debit === 65 && fee.lines.find((l) => l.account === '1010').credit === 65 && String(fee.linkedTx) === String(sale._id), "Stripe's real fee recorded once: 5010 Stripe Fees / 1010 Stripe Clearing, linked to the sale", fee);
   // tickets.js passes an order's id (an ObjectId, which has an _id of its own).
   const byId = await Order.findById(started.data.order.id).select('_id');
   check((await ledger.recordOrder(byId._id)).length === 1, 'recordOrder takes an order id as well as the order', null);

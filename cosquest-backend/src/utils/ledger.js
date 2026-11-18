@@ -111,6 +111,12 @@ async function recordOrder(orderOrId) {
     memo: `ORD-${order.number} entry fee`,
     ...refs,
   }));
+  // Stripe's real fee on it (finance's "Processor fee" row), once Stripe has it.
+  const fee = await recordFee(order, done[0]?.tx).catch((error) => {
+    console.warn(`[ledger] ORD-${order.number}: Stripe fee not recorded yet:`, error.message);
+    return null;
+  });
+  if (fee) done.push(fee);
   if (order.status === 'refunded') {
     done.push(await record({
       key: `order-refund-${order._id}`,
@@ -123,6 +129,38 @@ async function recordOrder(orderOrId) {
     }));
   }
   return done;
+}
+
+/**
+ * The real Stripe fee of a paid order, as finance's "Processor fee" row
+ * (sample T-0002): debit 5010 Stripe Fees, credit 1010 Stripe Clearing, linked
+ * to the sale. Stripe knows it once the charge has its balance transaction;
+ * until then nothing is recorded and syncDue asks again (payments of the last
+ * 30 days only). On a refund Stripe keeps its fee, so the fee entry stays.
+ */
+async function recordFee(order, saleTx) {
+  const paymentIntentId = order.stripe?.paymentIntentId;
+  if (!paymentIntentId || !order.paidAt || Date.now() - new Date(order.paidAt).getTime() > 30 * 24 * 3600e3) return null;
+  const key = `order-fee-${order._id}`;
+  if (await LedgerTransaction.exists({ key })) return null;
+  const payments = require('./stripe');
+  if (!payments.isConfigured()) return null;
+  const intent = await payments.stripe().paymentIntents.retrieve(paymentIntentId, { expand: ['latest_charge.balance_transaction'] });
+  const balance = intent?.latest_charge?.balance_transaction;
+  if (!balance || typeof balance !== 'object' || !Number.isInteger(balance.fee) || balance.fee <= 0) return null;
+  return record({
+    key,
+    kind: 'stripe.fee',
+    book: 'money',
+    currency: String(balance.currency || order.amount.currency).toUpperCase(),
+    lines: [{ account: ACCOUNTS.stripeFees, debit: balance.fee }, { account: ACCOUNTS.stripeClearing, credit: balance.fee }],
+    memo: `Stripe fee on ORD-${order.number}`,
+    user: order.user,
+    quest: order.quest,
+    order: order._id,
+    processorRef: paymentIntentId,
+    linkedTx: saleTx?._id || null,
+  });
 }
 
 /** Fire and forget from the payment code: a ledger hiccup never blocks a payment; syncDue fills it in. */
@@ -226,4 +264,4 @@ function txJson(tx) {
   };
 }
 
-module.exports = { TYPES, typeOf, CHART: chart.CHART, ACCOUNTS, record, reverse, recordOrder, recordOrderLater, syncDue, check, checkDue, balances, txJson, label };
+module.exports = { recordFee, TYPES, typeOf, CHART: chart.CHART, ACCOUNTS, record, reverse, recordOrder, recordOrderLater, syncDue, check, checkDue, balances, txJson, label };
