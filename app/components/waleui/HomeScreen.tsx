@@ -9,7 +9,8 @@
 // each at the box measured in his frame): the hooded hero, the street web behind
 // it, the 3D icons (gear, megaphone, envelope, trophy, add friend, team up,
 // swords, wardrobe, shop), the map with its pin, the coin and the XP shield.
-// The hero slot shows the player's own faction hero (heroArt.ts), standing in
+// Build 29: the hero slot shows the character the player picked (else their faction hero) as its 2D art
+// (heroArt.ts), and tapping it opens the character picker. Before: the player's own faction hero (heroArt.ts), standing in
 // the box his character fills, and falls back to his cut-out character only
 // when the faction is unknown (signed out, no faction yet). Never the 3D Forge
 // avatar. The rank badge is his own badge art for the player's rank
@@ -166,6 +167,8 @@ function HomeFrame({ menuOpen }: { menuOpen: boolean }) {
         )}
         </HeroIdle>
       </At>
+      {/* build 29: tap your character to pick who you are (the character picker) */}
+      <Tap x={fit.hero.x} y={fit.hero.y} w={fit.hero.w} h={fit.hero.h} label={fh ? `Your character: ${fh.name}. Change character` : "Pick your character"} onPress={() => router.push("/wale/character" as never)} testID="wale-home-hero-pick" />
 
       {/* top bar */}
       <At x={0} y={0} w={403} h={66} style={[glass(0, "rgba(255,255,255,0.22)"), { borderTopWidth: 0, borderLeftWidth: 0, borderRightWidth: 0, borderBottomLeftRadius: 14, borderBottomRightRadius: 14 }]} testID="wale-home-topbar" />

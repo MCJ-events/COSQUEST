@@ -52,6 +52,8 @@ import { acceptLandscape, declineLandscape, holdLandscape, landscapeAccepted, la
 import { useAppSelector } from "@/store/hooks";
 import { gameStore } from "@/features/game/runtime";
 import { factionId } from "@/features/waleui/heroCast";
+import { pickConfig } from "@/features/waleui/characters";
+import { pickedCharacter } from "@/components/waleui/characterStore";
 import type { DuelStart, QuestPoint } from "@/features/game/wire";
 
 import { FightPiece } from "./ForgeEnvBits";
@@ -281,6 +283,8 @@ export default function Fight3D({
         // keeps the built-in cast). No key when the faction is unknown: Godot then picks by the seed.
         const faction = factionId(gameStore.get().me?.faction ?? null);
         if (faction) Object.assign(config, { faction: faction === "everborn" ? "everborns" : faction });
+        // build 29: the character the player picked plays the hero (fight.gd _hero_pick; same tiers as the heroes)
+        Object.assign(config, pickConfig(pickedCharacter()));
         if (holdRef.current) {
           // Ready under the reveal: wait for its handover.
           log(`ready, held for the reveal after_ms=${Date.now() - openedAt.current}`);

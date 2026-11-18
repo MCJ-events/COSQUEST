@@ -3,7 +3,8 @@
 //   - the fight: Godot picks the hero from the fight config's "faction" (game3d/fight.gd
 //     HERO_BY_FACTION; the low tier keeps the built-in cast);
 //   - Wale's screens: the home hero slot, the weapon page and the customiser preview show the
-//     faction hero's render (components/waleui/heroArt.ts holds the pictures).
+//     faction hero's picture (components/waleui/heroArt.ts; build 29: its 2D art, or the character the
+//     player picked, features/waleui/characters.ts).
 // Keys are the hero folders of the asset track and the names of the models in
 // game3d/cast/heroes. Pure (tested in features/waleui/__tests__/heroCast.test.ts).
 
