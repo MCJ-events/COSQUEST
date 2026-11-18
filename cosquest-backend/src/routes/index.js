@@ -17,6 +17,9 @@ const expertiseRoutes = require('./expertiseRoutes');
 
 const router = express.Router();
 
+// Polish (task 059): first, so /users/me DELETE and /meta/capabilities are not
+// caught by the routers below.
+router.use('/', require('./safetyRoutes'));
 router.use('/auth', authRoutes); // /api/auth/signup, /api/auth/login
 router.use('/admin', require('./adminRoutes')); // /api/admin/* (super admin dashboard)
 router.use('/', require('./reportRoutes')); // /api/reports (members report content)
@@ -45,5 +48,6 @@ router.use('/', expertiseRoutes); // /api/expertise (expertise roles)
 router.use('/', require('./rankRoutes')); // /api/ranks (faction rank ladder, public)
 router.use('/', chatRoutes); // /api/chats
 router.use('/spotlight', require('./spotlightRoutes'));
+router.use('/game', require('./gameRoutes')); // /api/game/session (the game's single sign-on)
 
 module.exports = router;

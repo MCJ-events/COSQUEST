@@ -496,6 +496,8 @@ function previewMessage(message, viewerId) {
     return `📅 ${message.scheduledCall?.status === 'cancelled' ? 'Call cancelled' : 'Call scheduled'}: ${message.scheduledCall?.topic || ''}`;
   }
   if (message.kind === 'poll') return `📊 Poll: ${message.poll?.question || message.content}`;
+  if (message.kind === 'game_invite') return gameInvitePreview(message.gameInvite);
+  if (message.kind === 'game_result') return gameResultPreview(message.gameResult);
   if (message.kind === 'album') return albumPreview(message.album);
   if (message.kind === 'image') return 'Sent a photo';
   if (message.kind === 'video') return 'Sent a video';
@@ -522,7 +524,7 @@ function previewMessage(message, viewerId) {
 // caller already loaded them. opts.memberFilters: a Map that receives each
 // group's member filter (see countGroupMembers).
 const SENDER_FIELDS = 'profile.username profile.displayName profile.firstName profile.lastName profile.avatarKey profile.avatarPhotoUrl faction lastActiveAt privacy.showOnlineStatus privacy.profileVisibility expertise pointsBalance rankOverride';
-const LAST_MESSAGE_PROJECTION = { conversation: 1, sender: 1, kind: 1, content: 1, deletedForEveryone: 1, callLog: 1, scheduledCall: 1, poll: 1, album: 1, createdAt: 1 };
+const LAST_MESSAGE_PROJECTION = { conversation: 1, sender: 1, kind: 1, content: 1, deletedForEveryone: 1, callLog: 1, scheduledCall: 1, poll: 1, album: 1, gameInvite: 1, gameResult: 1, createdAt: 1 };
 const LAST_SENDER_FIELDS = 'profile.username profile.firstName';
 const DM_PEER_FIELDS = `${SENDER_FIELDS} privacy.readReceipts`;
 
@@ -829,6 +831,46 @@ async function pollSummaries(messages, viewerId) {
 }
 
 // "📷 3 photos", "🎥 2 videos", "📷 4 photos & videos"
+// GAME INVITES (kind 'game_invite', the merged app's CostQuest game)
+const GAME_INVITE_LABELS = { raid: 'Raid', shrine: 'Shrine', duel: 'Duel' };
+
+function gameInvitePreview(invite) {
+  const label = GAME_INVITE_LABELS[invite?.type] || 'Game';
+  return invite?.place ? `🎮 ${label} at ${invite.place}` : `🎮 ${label} invite`;
+}
+
+// Polish (task 059): kind 'game_result'.
+function gameResultPreview(result) {
+  if (!result) return '🎮 Game result';
+  return `${result.win ? '🏆' : '⚔️'} ${result.headline}${result.pointName ? ` at ${result.pointName}` : ''}`;
+}
+
+function serializeGameResult(result) {
+  if (!result) return null;
+  return {
+    headline: result.headline,
+    pointName: result.pointName || '',
+    realm: result.realm || '',
+    win: Boolean(result.win),
+    xp: Number(result.xp) || 0,
+    coins: Number(result.coins) || 0,
+    level: typeof result.level === 'number' ? result.level : null,
+    rank: result.rank || '',
+  };
+}
+
+function serializeGameInvite(invite) {
+  if (!invite) return null;
+  return {
+    type: invite.type,
+    targetId: invite.targetId,
+    place: invite.place || '',
+    lat: typeof invite.lat === 'number' ? invite.lat : null,
+    lng: typeof invite.lng === 'number' ? invite.lng : null,
+    startsAt: invite.startsAt || null,
+  };
+}
+
 function albumPreview(album) {
   const items = Array.isArray(album) ? album : [];
   const videos = items.filter((item) => item?.kind === 'video').length;
@@ -914,6 +956,9 @@ function serializeMessage(message, { viewerId, conversationType, otherLastReadAt
     // kind 'sparks_bot': the Sparks bot's post (role_pings or earlier_context);
     // docs: cosquest-sparks docs/APP_SPEC_bot_posts.md. Only on bot messages.
     ...(message.kind === 'sparks_bot' ? { sparksBot: message.sparksBot || null } : {}),
+    // kind 'game_invite': what to open in the game, where and when.
+    gameInvite: message.kind === 'game_invite' ? serializeGameInvite(message.gameInvite) : null,
+    gameResult: message.kind === 'game_result' ? serializeGameResult(message.gameResult) : null,
     mentions,
     mentionsEveryone: Boolean(message.mentionsEveryone),
     forwarded: Boolean(message.forwardedFrom),
@@ -951,11 +996,40 @@ function forBroadcast(serialized) {
 }
 
 // GET /api/chats - "Your Space" (community + faction room) plus every DM.
+// chat:preview for a DM, with each participant's own summary (unread count,
+// last message, the other person). Falls back to the bare event on any error.
+async function emitDmPreviews(conversation) {
+  const ids = conversation.participants.map(String);
+  try {
+    const users = await User.find({ _id: { $in: ids } });
+    await Promise.all(
+      users.map(async (user) => {
+        const chat = await summarizeConversation(conversation, user);
+        emitToUsers([String(user._id)], 'chat:preview', { conversationId: conversation.id, chat });
+      })
+    );
+  } catch (err) {
+    console.error('DM preview summaries failed:', err);
+    emitToUsers(ids, 'chat:preview', { conversationId: conversation.id });
+  }
+}
+
+// GET /api/chats[?ids=a,b,c]
+// With `ids` (polish, docs/polish/BACKEND-PORT.md): only those of my chats are
+// summarised and returned, for the app's reconnect catch-up and preview
+// bursts (one request instead of one per chat). Without it, every chat, as
+// before. Ids that aren't mine are simply left out.
+function parseIdList(value) {
+  if (typeof value !== 'string' || !value.trim()) return null;
+  return new Set(value.split(',').map((id) => id.trim()).filter((id) => mongoose.isValidObjectId(id)).slice(0, 200));
+}
+
 // Same rooms, same order and same rows as before; the lookups that don't
 // depend on each other run in parallel, and the rows are built in one batch
 // (summarizeConversations) instead of a chain of queries per chat.
 async function listChats(req, res) {
   const me = req.user;
+  const only = parseIdList(req.query.ids);
   const [community, factionRoom, memberships, factionGroups, myBans] = await Promise.all([
     getOrCreateCommunityConversation(),
     me.faction ? getOrCreateFactionConversation(me.faction) : null,
@@ -1002,7 +1076,8 @@ async function listChats(req, res) {
     }
   }
 
-  const chats = await summarizeConversations(rooms, me, { myRows });
+  const wanted = only ? rooms.filter((conversation) => only.has(String(conversation._id))) : rooms;
+  const chats = await summarizeConversations(wanted, me, { myRows });
   return res.json({ chats });
 }
 
@@ -1136,16 +1211,24 @@ async function listMessages(req, res) {
 
   const limit = historyLimit(req.query.limit);
   const page = parsePage(req.query.page);
-  const [messages, total, otherLastReadAt] = await Promise.all([
-    Message.find({ conversation: conversation._id, deletedFor: { $ne: req.userId } })
+  // `before` (polish, docs/polish/BACKEND-PORT.md): the page just older than
+  // that message (an id in this chat) or that time (ISO). It replaces `page`
+  // and doesn't shift when new messages arrive. Unknown values are ignored.
+  const cursor = await messageCursor(conversation, req.query.before);
+  const visible = { conversation: conversation._id, deletedFor: { $ne: req.userId } };
+  const filter = cursor ? { ...visible, ...cursor } : visible;
+  const [found, total, otherLastReadAt] = await Promise.all([
+    Message.find(filter)
       .sort({ createdAt: -1, _id: -1 })
-      .skip((page - 1) * limit)
-      .limit(limit)
+      .skip(cursor ? 0 : (page - 1) * limit)
+      .limit(cursor ? limit + 1 : limit)
       .populate('sender', SENDER_FIELDS)
       .populate({ path: 'replyTo', populate: { path: 'sender', select: 'profile.username profile.firstName' } }),
-    Message.countDocuments({ conversation: conversation._id, deletedFor: { $ne: req.userId } }),
+    Message.countDocuments(visible),
     otherLastReadFor(conversation, req.user),
   ]);
+  const messages = cursor ? found.slice(0, limit) : found;
+  const hasMore = cursor ? found.length > limit : page * limit < total;
 
   const [reactionDocs, polls, groupRoles] = await Promise.all([
     MessageReaction.find({ message: { $in: messages.map((message) => message._id) } }),
@@ -1168,8 +1251,33 @@ async function listMessages(req, res) {
 
   return res.json({
     messages: serializedMessages,
-    pagination: { page, limit, total, hasMore: page * limit < total },
+    pagination: {
+      page: cursor ? null : page,
+      limit,
+      total,
+      hasMore,
+      // Pass as `before` for the next older page.
+      nextBefore: messages.length ? String(messages[messages.length - 1]._id) : null,
+    },
   });
+}
+
+// The query part for "older than `before`": a message id in this chat (its
+// time, then its id for ties) or an ISO time. null when absent or unusable.
+async function messageCursor(conversation, before) {
+  if (typeof before !== 'string' || !before) return null;
+  if (mongoose.isValidObjectId(before)) {
+    const anchor = await Message.findOne({ _id: before, conversation: conversation._id }, 'createdAt');
+    if (!anchor) return null;
+    return {
+      $or: [
+        { createdAt: { $lt: anchor.createdAt } },
+        { createdAt: anchor.createdAt, _id: { $lt: anchor._id } },
+      ],
+    };
+  }
+  const at = new Date(before);
+  return Number.isNaN(at.getTime()) ? null : { createdAt: { $lt: at } };
 }
 
 // POST /api/chats/:conversationId/messages - text and/or one attachment.
@@ -1303,7 +1411,10 @@ async function createMessage(req, res) {
   // chat list (unread badge / last-message preview) updates live even for
   // whoever doesn't currently have this conversation open.
   if (conversation.type === 'dm') {
-    emitToUsers(conversation.participants.map(String), 'chat:preview', { conversationId: conversation.id });
+    // Polish (docs/polish/BACKEND-PORT.md): each of the two gets their own
+    // chat summary in the event, so the app needn't fetch the chat again.
+    // Apps that only read conversationId are unaffected.
+    void emitDmPreviews(conversation);
   } else if (conversation.type === 'group' && conversation.group?.kind !== 'faction') {
     // Group members' chat lists update live too (unread badge / preview).
     const memberIds = await explicitGroupMemberIds(conversation);
@@ -1417,6 +1528,7 @@ async function editMessage(req, res) {
   // Call entries are a record of what happened - not editable.
   if (message.kind === 'call' || message.kind === 'scheduled_call') return res.status(400).json({ error: 'Call entries cannot be edited.' });
   if (message.kind === 'poll') return res.status(400).json({ error: 'Polls cannot be edited.' });
+  if (message.kind === 'game_invite') return res.status(400).json({ error: 'Game invites cannot be edited.' });
 
   const content = typeof req.body.content === 'string' ? req.body.content.trim() : '';
   if (!content) return res.status(400).json({ error: 'content is required.' });
@@ -1704,6 +1816,8 @@ async function forwardCopy(original, targetConversation, userId) {
     media: original.media,
     // An album's photos live in `album`, not `media` - without this the copy would be empty.
     album: original.kind === 'album' ? (original.album || []).map((item) => ({ ...item })) : undefined,
+    // A game invite is forwardable: "come to this raid" passed on to another chat.
+    gameInvite: original.kind === 'game_invite' ? serializeGameInvite(original.gameInvite) : undefined,
     forwardedFrom: original._id,
   });
   await Promise.all([
@@ -2019,6 +2133,8 @@ module.exports = {
   explicitGroupMemberIds,
   forBroadcast,
   albumPreview,
+  gameInvitePreview,
+  serializeGameInvite,
   buildPollSummary,
   pollIsClosed,
   pollSummaries,

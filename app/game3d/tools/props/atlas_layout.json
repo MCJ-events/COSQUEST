@@ -1,0 +1,26 @@
+{
+ "note": "fid29-dressing prop atlas. Cells in grid units of the atlas side / grid, top-left origin: [x, y, size]. High tier atlas 2048 (albedo, normal) + 1024 ORM; mid 1024 + 512 normal and ORM. cap0/cap1: LOD triangle caps (the test reads the meshes). src: Poly Haven asset id (CC0). mats: the textured materials in column order inside the cell. swatch: untextured materials -> a flat swatch.",
+ "grid": 8,
+ "swatch": {"glass": [0.90625, 0.78125], "bulb": [0.96875, 0.78125], "dark": [0.90625, 0.84375]},
+ "emit_rect": [0.9375, 0.75, 0.0625, 0.0625],
+ "kinds": {
+  "street_lamp_01": {"src": "street_lamp_01", "cell": [0, 0, 4], "cap0": 4000, "cap1": 1200, "height_m": 4.6,
+    "mats": ["street_lamp_01"], "swatch": {"street_lamp_01_glass": "glass", "street_lamp_01_bulb": "bulb"}},
+  "covered_car": {"src": "covered_car", "cell": [4, 0, 2], "cap0": 4000, "cap1": 1200, "mats": ["covered_car"]},
+  "utility_box_02": {"src": "utility_box_02", "cell": [6, 0, 2], "cap0": 2000, "cap1": 600, "height_m": 1.25, "mats": ["utility_box_02"]},
+  "utility_box_01": {"src": "utility_box_01", "cell": [4, 2, 2], "cap0": 1600, "cap1": 500, "height_m": 1.25, "mats": ["utility_box_01"]},
+  "standing_chalkboard_01": {"src": "standing_chalkboard_01", "cell": [6, 2, 2], "cap0": 1500, "cap1": 700,
+    "mats": ["standing_chalkboard_01_board", "standing_chalkboard_01_frame"]},
+  "outdoor_table_chair_set_01": {"src": "outdoor_table_chair_set_01", "cell": [0, 4, 2], "cap0": 3000, "cap1": 900,
+    "mats": ["outdoor_table_chair_set_01_chair", "outdoor_table_chair_set_01_table"]},
+  "trashbag": {"src": "trashbag", "cell": [2, 4, 2], "cap0": 1000, "cap1": 300, "mats": ["trashbag"]},
+  "painted_wooden_bench": {"src": "painted_wooden_bench", "cell": [4, 4, 2], "cap0": 700, "cap1": 400, "mats": ["painted_wooden_bench"]},
+  "planter_box_01": {"src": "planter_box_01", "cell": [6, 4, 2], "cap0": 1500, "cap1": 450, "mats": ["planter_box_01"]},
+  "street_lamp_02": {"src": "street_lamp_02", "cell": [0, 6, 2], "cap0": 3000, "cap1": 900,
+    "mats": ["street_lamp_02"], "swatch": {"street_lamp_02_glass": "glass", "street_lamp_02_bulb": "bulb"}},
+  "concrete_road_barrier": {"src": "concrete_road_barrier", "cell": [2, 6, 2], "cap0": 1500, "cap1": 400, "mats": ["concrete_road_barrier"]},
+  "bark": {"src": null, "cell": [4, 6, 2]},
+  "security_light": {"src": "security_light", "cell": [6, 6, 1], "cap0": 900, "cap1": 300,
+    "mats": ["security_light"], "swatch": {"security_light_glass": "glass", "security_light_bulb": "bulb"}}
+ }
+}

@@ -1,0 +1,811 @@
+{
+ "_doc": "Bone maps for retarget.py (cq 012). Per target bone: src = the source bone whose world rotation it follows (or [a, b, u]: a slerp between two), dir = the rest-pose correction: [target from, target to, source from, source to] joints whose directions are lined up, 'inherit' = the parent's correction, 'none' = no correction.",
+ "kaykit_to_mixamo": {
+  "source": "KayKit Adventurers 1.0 rig (Knight.glb): root > hips > spine > chest > head, upperarm/lowerarm/wrist/hand/handslot, upperleg/lowerleg/foot/toes",
+  "target": "cq 060 humanoid-mixamo auto-rig: 25 bones, no fingers",
+  "hips": [
+   "Hips",
+   "hips"
+  ],
+  "feet": [
+   [
+    "LeftFoot",
+    "LeftToeBase",
+    "RightFoot",
+    "RightToeBase"
+   ],
+   [
+    "foot.l",
+    "toes.l",
+    "foot.r",
+    "toes.r"
+   ]
+  ],
+  "bones": {
+   "Hips": {
+    "src": "hips",
+    "dir": [
+     "Hips",
+     "Neck",
+     "hips",
+     "head"
+    ]
+   },
+   "Spine": {
+    "src": "spine",
+    "dir": [
+     "Spine",
+     "Spine2",
+     "spine",
+     "chest"
+    ]
+   },
+   "Spine1": {
+    "src": [
+     "spine",
+     "chest",
+     0.5
+    ],
+    "dir": [
+     "Spine1",
+     "Neck",
+     "spine",
+     "head"
+    ]
+   },
+   "Spine2": {
+    "src": "chest",
+    "dir": [
+     "Spine2",
+     "Neck",
+     "chest",
+     "head"
+    ]
+   },
+   "Neck": {
+    "src": [
+     "chest",
+     "head",
+     0.5
+    ],
+    "dir": [
+     "Neck",
+     "Head",
+     "chest",
+     "head"
+    ]
+   },
+   "Head": {
+    "src": "head",
+    "dir": "none"
+   },
+   "HeadTop_End": {
+    "src": "head",
+    "dir": "inherit"
+   },
+   "LeftShoulder": {
+    "src": "chest",
+    "dir": "inherit"
+   },
+   "LeftArm": {
+    "src": "upperarm.l",
+    "dir": [
+     "LeftArm",
+     "LeftForeArm",
+     "upperarm.l",
+     "lowerarm.l"
+    ]
+   },
+   "LeftForeArm": {
+    "src": "lowerarm.l",
+    "dir": [
+     "LeftForeArm",
+     "LeftHand",
+     "lowerarm.l",
+     "wrist.l"
+    ]
+   },
+   "LeftHand": {
+    "src": "hand.l",
+    "dir": "inherit"
+   },
+   "RightShoulder": {
+    "src": "chest",
+    "dir": "inherit"
+   },
+   "RightArm": {
+    "src": "upperarm.r",
+    "dir": [
+     "RightArm",
+     "RightForeArm",
+     "upperarm.r",
+     "lowerarm.r"
+    ]
+   },
+   "RightForeArm": {
+    "src": "lowerarm.r",
+    "dir": [
+     "RightForeArm",
+     "RightHand",
+     "lowerarm.r",
+     "wrist.r"
+    ]
+   },
+   "RightHand": {
+    "src": "hand.r",
+    "dir": "inherit"
+   },
+   "LeftUpLeg": {
+    "src": "upperleg.l",
+    "dir": [
+     "LeftUpLeg",
+     "LeftLeg",
+     "upperleg.l",
+     "lowerleg.l"
+    ]
+   },
+   "LeftLeg": {
+    "src": "lowerleg.l",
+    "dir": [
+     "LeftLeg",
+     "LeftFoot",
+     "lowerleg.l",
+     "foot.l"
+    ]
+   },
+   "LeftFoot": {
+    "src": "foot.l",
+    "dir": [
+     "LeftFoot",
+     "LeftToeBase",
+     "foot.l",
+     "toes.l"
+    ]
+   },
+   "LeftToeBase": {
+    "src": "toes.l",
+    "dir": "inherit"
+   },
+   "LeftToe_End": {
+    "src": "toes.l",
+    "dir": "inherit"
+   },
+   "RightUpLeg": {
+    "src": "upperleg.r",
+    "dir": [
+     "RightUpLeg",
+     "RightLeg",
+     "upperleg.r",
+     "lowerleg.r"
+    ]
+   },
+   "RightLeg": {
+    "src": "lowerleg.r",
+    "dir": [
+     "RightLeg",
+     "RightFoot",
+     "lowerleg.r",
+     "foot.r"
+    ]
+   },
+   "RightFoot": {
+    "src": "foot.r",
+    "dir": [
+     "RightFoot",
+     "RightToeBase",
+     "foot.r",
+     "toes.r"
+    ]
+   },
+   "RightToeBase": {
+    "src": "toes.r",
+    "dir": "inherit"
+   },
+   "RightToe_End": {
+    "src": "toes.r",
+    "dir": "inherit"
+   }
+  }
+ },
+ "ual_to_mixamo": {
+  "source": "Quaternius Universal Animation Library (standard, CC0): DEF- deform bones of the Mannequin rig",
+  "target": "cq 060 humanoid-mixamo auto-rig: 25 bones, no fingers",
+  "hips": [
+   "Hips",
+   "DEF-hips"
+  ],
+  "feet": [
+   [
+    "LeftFoot",
+    "LeftToeBase",
+    "RightFoot",
+    "RightToeBase"
+   ],
+   [
+    "DEF-foot.L",
+    "DEF-toe.L",
+    "DEF-foot.R",
+    "DEF-toe.R"
+   ]
+  ],
+  "bones": {
+   "Hips": {
+    "src": "DEF-hips",
+    "dir": [
+     "Hips",
+     "Neck",
+     "DEF-hips",
+     "DEF-neck"
+    ]
+   },
+   "Spine": {
+    "src": "DEF-spine.001",
+    "dir": [
+     "Spine",
+     "Spine1",
+     "DEF-spine.001",
+     "DEF-spine.002"
+    ]
+   },
+   "Spine1": {
+    "src": "DEF-spine.002",
+    "dir": [
+     "Spine1",
+     "Spine2",
+     "DEF-spine.002",
+     "DEF-spine.003"
+    ]
+   },
+   "Spine2": {
+    "src": "DEF-spine.003",
+    "dir": [
+     "Spine2",
+     "Neck",
+     "DEF-spine.003",
+     "DEF-neck"
+    ]
+   },
+   "Neck": {
+    "src": "DEF-neck",
+    "dir": [
+     "Neck",
+     "Head",
+     "DEF-neck",
+     "DEF-head"
+    ]
+   },
+   "Head": {
+    "src": "DEF-head",
+    "dir": "none"
+   },
+   "HeadTop_End": {
+    "src": "DEF-head",
+    "dir": "inherit"
+   },
+   "LeftShoulder": {
+    "src": "DEF-shoulder.L",
+    "dir": "inherit"
+   },
+   "LeftArm": {
+    "src": "DEF-upper_arm.L",
+    "dir": [
+     "LeftArm",
+     "LeftForeArm",
+     "DEF-upper_arm.L",
+     "DEF-forearm.L"
+    ]
+   },
+   "LeftForeArm": {
+    "src": "DEF-forearm.L",
+    "dir": [
+     "LeftForeArm",
+     "LeftHand",
+     "DEF-forearm.L",
+     "DEF-hand.L"
+    ]
+   },
+   "LeftHand": {
+    "src": "DEF-hand.L",
+    "dir": "inherit"
+   },
+   "RightShoulder": {
+    "src": "DEF-shoulder.R",
+    "dir": "inherit"
+   },
+   "RightArm": {
+    "src": "DEF-upper_arm.R",
+    "dir": [
+     "RightArm",
+     "RightForeArm",
+     "DEF-upper_arm.R",
+     "DEF-forearm.R"
+    ]
+   },
+   "RightForeArm": {
+    "src": "DEF-forearm.R",
+    "dir": [
+     "RightForeArm",
+     "RightHand",
+     "DEF-forearm.R",
+     "DEF-hand.R"
+    ]
+   },
+   "RightHand": {
+    "src": "DEF-hand.R",
+    "dir": "inherit"
+   },
+   "LeftUpLeg": {
+    "src": "DEF-thigh.L",
+    "dir": [
+     "LeftUpLeg",
+     "LeftLeg",
+     "DEF-thigh.L",
+     "DEF-shin.L"
+    ]
+   },
+   "LeftLeg": {
+    "src": "DEF-shin.L",
+    "dir": [
+     "LeftLeg",
+     "LeftFoot",
+     "DEF-shin.L",
+     "DEF-foot.L"
+    ]
+   },
+   "LeftFoot": {
+    "src": "DEF-foot.L",
+    "dir": [
+     "LeftFoot",
+     "LeftToeBase",
+     "DEF-foot.L",
+     "DEF-toe.L"
+    ]
+   },
+   "LeftToeBase": {
+    "src": "DEF-toe.L",
+    "dir": "inherit"
+   },
+   "LeftToe_End": {
+    "src": "DEF-toe.L",
+    "dir": "inherit"
+   },
+   "RightUpLeg": {
+    "src": "DEF-thigh.R",
+    "dir": [
+     "RightUpLeg",
+     "RightLeg",
+     "DEF-thigh.R",
+     "DEF-shin.R"
+    ]
+   },
+   "RightLeg": {
+    "src": "DEF-shin.R",
+    "dir": [
+     "RightLeg",
+     "RightFoot",
+     "DEF-shin.R",
+     "DEF-foot.R"
+    ]
+   },
+   "RightFoot": {
+    "src": "DEF-foot.R",
+    "dir": [
+     "RightFoot",
+     "RightToeBase",
+     "DEF-foot.R",
+     "DEF-toe.R"
+    ]
+   },
+   "RightToeBase": {
+    "src": "DEF-toe.R",
+    "dir": "inherit"
+   },
+   "RightToe_End": {
+    "src": "DEF-toe.R",
+    "dir": "inherit"
+   }
+  }
+ },
+ "cmu_to_mixamo": {
+  "source": "CMU Graphics Lab Motion Capture Database skeleton (ASF, via cmu2glb.py): root > lowerback > upperback > thorax > lowerneck > upperneck > head; clavicle/humerus/radius/wrist/hand; hipjoint/femur/tibia/foot/toes. Rest: every joint at identity, a T-pose with the legs apart, facing +Z",
+  "target": "cq 060 humanoid-mixamo auto-rig: 25 bones, no fingers",
+  "hips": [
+   "Hips",
+   "root"
+  ],
+  "feet": [
+   [
+    "LeftFoot",
+    "LeftToeBase",
+    "RightFoot",
+    "RightToeBase"
+   ],
+   [
+    "lfoot",
+    "ltoes",
+    "rfoot",
+    "rtoes"
+   ]
+  ],
+  "bones": {
+   "Hips": {
+    "src": "root",
+    "dir": [
+     "Hips",
+     "Neck",
+     "root",
+     "lowerneck"
+    ]
+   },
+   "Spine": {
+    "src": "lowerback",
+    "dir": [
+     "Spine",
+     "Spine2",
+     "lowerback",
+     "thorax"
+    ]
+   },
+   "Spine1": {
+    "src": "upperback",
+    "dir": [
+     "Spine1",
+     "Neck",
+     "upperback",
+     "lowerneck"
+    ]
+   },
+   "Spine2": {
+    "src": "thorax",
+    "dir": [
+     "Spine2",
+     "Neck",
+     "thorax",
+     "lowerneck"
+    ]
+   },
+   "Neck": {
+    "src": [
+     "lowerneck",
+     "head",
+     0.5
+    ],
+    "dir": [
+     "Neck",
+     "Head",
+     "lowerneck",
+     "head"
+    ]
+   },
+   "Head": {
+    "src": "head",
+    "dir": "none"
+   },
+   "HeadTop_End": {
+    "src": "head",
+    "dir": "inherit"
+   },
+   "LeftShoulder": {
+    "src": "thorax",
+    "dir": "inherit"
+   },
+   "LeftArm": {
+    "src": "lhumerus",
+    "dir": [
+     "LeftArm",
+     "LeftForeArm",
+     "lhumerus",
+     "lradius"
+    ]
+   },
+   "LeftForeArm": {
+    "src": "lradius",
+    "dir": [
+     "LeftForeArm",
+     "LeftHand",
+     "lradius",
+     "lwrist"
+    ]
+   },
+   "LeftHand": {
+    "src": "lwrist",
+    "dir": "inherit"
+   },
+   "LeftUpLeg": {
+    "src": "lfemur",
+    "dir": [
+     "LeftUpLeg",
+     "LeftLeg",
+     "lfemur",
+     "ltibia"
+    ]
+   },
+   "LeftLeg": {
+    "src": "ltibia",
+    "dir": [
+     "LeftLeg",
+     "LeftFoot",
+     "ltibia",
+     "lfoot"
+    ]
+   },
+   "LeftFoot": {
+    "src": "lfoot",
+    "dir": [
+     "LeftFoot",
+     "LeftToeBase",
+     "lfoot",
+     "ltoes"
+    ]
+   },
+   "LeftToeBase": {
+    "src": "ltoes",
+    "dir": "inherit"
+   },
+   "LeftToe_End": {
+    "src": "ltoes",
+    "dir": "inherit"
+   },
+   "RightShoulder": {
+    "src": "thorax",
+    "dir": "inherit"
+   },
+   "RightArm": {
+    "src": "rhumerus",
+    "dir": [
+     "RightArm",
+     "RightForeArm",
+     "rhumerus",
+     "rradius"
+    ]
+   },
+   "RightForeArm": {
+    "src": "rradius",
+    "dir": [
+     "RightForeArm",
+     "RightHand",
+     "rradius",
+     "rwrist"
+    ]
+   },
+   "RightHand": {
+    "src": "rwrist",
+    "dir": "inherit"
+   },
+   "RightUpLeg": {
+    "src": "rfemur",
+    "dir": [
+     "RightUpLeg",
+     "RightLeg",
+     "rfemur",
+     "rtibia"
+    ]
+   },
+   "RightLeg": {
+    "src": "rtibia",
+    "dir": [
+     "RightLeg",
+     "RightFoot",
+     "rtibia",
+     "rfoot"
+    ]
+   },
+   "RightFoot": {
+    "src": "rfoot",
+    "dir": [
+     "RightFoot",
+     "RightToeBase",
+     "rfoot",
+     "rtoes"
+    ]
+   },
+   "RightToeBase": {
+    "src": "rtoes",
+    "dir": "inherit"
+   },
+   "RightToe_End": {
+    "src": "rtoes",
+    "dir": "inherit"
+   }
+  }
+ },
+ "m2m_to_mixamo": {
+  "source": "Mesh2Motion human rig (CC0): root > pelvis > spine_01..03 > neck_01 > head; clavicle/upperarm/lowerarm/hand; thigh/calf/foot/ball",
+  "target": "cq 060 humanoid-mixamo auto-rig: 25 bones, no fingers",
+  "hips": [
+   "Hips",
+   "pelvis"
+  ],
+  "feet": [
+   [
+    "LeftFoot",
+    "LeftToeBase",
+    "RightFoot",
+    "RightToeBase"
+   ],
+   [
+    "foot_l",
+    "ball_l",
+    "foot_r",
+    "ball_r"
+   ]
+  ],
+  "bones": {
+   "Hips": {
+    "src": "pelvis",
+    "dir": [
+     "Hips",
+     "Neck",
+     "pelvis",
+     "neck_01"
+    ]
+   },
+   "Spine": {
+    "src": "spine_01",
+    "dir": [
+     "Spine",
+     "Spine2",
+     "spine_01",
+     "spine_03"
+    ]
+   },
+   "Spine1": {
+    "src": "spine_02",
+    "dir": [
+     "Spine1",
+     "Neck",
+     "spine_02",
+     "neck_01"
+    ]
+   },
+   "Spine2": {
+    "src": "spine_03",
+    "dir": [
+     "Spine2",
+     "Neck",
+     "spine_03",
+     "neck_01"
+    ]
+   },
+   "Neck": {
+    "src": "neck_01",
+    "dir": [
+     "Neck",
+     "Head",
+     "neck_01",
+     "head"
+    ]
+   },
+   "Head": {
+    "src": "head",
+    "dir": "none"
+   },
+   "HeadTop_End": {
+    "src": "head",
+    "dir": "inherit"
+   },
+   "LeftShoulder": {
+    "src": "spine_03",
+    "dir": "inherit"
+   },
+   "LeftArm": {
+    "src": "upperarm_l",
+    "dir": [
+     "LeftArm",
+     "LeftForeArm",
+     "upperarm_l",
+     "lowerarm_l"
+    ]
+   },
+   "LeftForeArm": {
+    "src": "lowerarm_l",
+    "dir": [
+     "LeftForeArm",
+     "LeftHand",
+     "lowerarm_l",
+     "hand_l"
+    ]
+   },
+   "LeftHand": {
+    "src": "hand_l",
+    "dir": "inherit"
+   },
+   "LeftUpLeg": {
+    "src": "thigh_l",
+    "dir": [
+     "LeftUpLeg",
+     "LeftLeg",
+     "thigh_l",
+     "calf_l"
+    ]
+   },
+   "LeftLeg": {
+    "src": "calf_l",
+    "dir": [
+     "LeftLeg",
+     "LeftFoot",
+     "calf_l",
+     "foot_l"
+    ]
+   },
+   "LeftFoot": {
+    "src": "foot_l",
+    "dir": [
+     "LeftFoot",
+     "LeftToeBase",
+     "foot_l",
+     "ball_l"
+    ]
+   },
+   "LeftToeBase": {
+    "src": "ball_l",
+    "dir": "inherit"
+   },
+   "LeftToe_End": {
+    "src": "ball_l",
+    "dir": "inherit"
+   },
+   "RightShoulder": {
+    "src": "spine_03",
+    "dir": "inherit"
+   },
+   "RightArm": {
+    "src": "upperarm_r",
+    "dir": [
+     "RightArm",
+     "RightForeArm",
+     "upperarm_r",
+     "lowerarm_r"
+    ]
+   },
+   "RightForeArm": {
+    "src": "lowerarm_r",
+    "dir": [
+     "RightForeArm",
+     "RightHand",
+     "lowerarm_r",
+     "hand_r"
+    ]
+   },
+   "RightHand": {
+    "src": "hand_r",
+    "dir": "inherit"
+   },
+   "RightUpLeg": {
+    "src": "thigh_r",
+    "dir": [
+     "RightUpLeg",
+     "RightLeg",
+     "thigh_r",
+     "calf_r"
+    ]
+   },
+   "RightLeg": {
+    "src": "calf_r",
+    "dir": [
+     "RightLeg",
+     "RightFoot",
+     "calf_r",
+     "foot_r"
+    ]
+   },
+   "RightFoot": {
+    "src": "foot_r",
+    "dir": [
+     "RightFoot",
+     "RightToeBase",
+     "foot_r",
+     "ball_r"
+    ]
+   },
+   "RightToeBase": {
+    "src": "ball_r",
+    "dir": "inherit"
+   },
+   "RightToe_End": {
+    "src": "ball_r",
+    "dir": "inherit"
+   }
+  }
+ }
+}

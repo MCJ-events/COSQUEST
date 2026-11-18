@@ -92,7 +92,7 @@ const messageSchema = new mongoose.Schema(
       default: null,
       index: true,
     },
-    kind: { type: String, enum: ['text', 'image', 'video', 'audio', 'file', 'sticker', 'call', 'album', 'poll', 'sparks_bot', 'scheduled_call'], default: 'text' },
+    kind: { type: String, enum: ['text', 'image', 'video', 'audio', 'file', 'sticker', 'call', 'album', 'poll', 'sparks_bot', 'scheduled_call', 'game_invite', 'game_result'], default: 'text' },
     content: { type: String, default: '', trim: true, maxlength: 2000 },
     media: { type: messageMediaSchema, default: null },
     callLog: { type: callLogSchema, default: null },
@@ -131,6 +131,42 @@ const messageSchema = new mongoose.Schema(
     sparksBot: { type: mongoose.Schema.Types.Mixed, default: undefined },
     // pending | none | judged | assigned: the module's sorting bookkeeping.
     sparkHintState: { type: String, enum: ['pending', 'none', 'judged', 'assigned'], default: 'none' },
+    // kind 'game_invite': an invitation into the CostQuest game (merged app),
+    // a raid, a shrine or a duel at a place and maybe a time. Tapping Join
+    // swipes into the game and opens it there. `content` is the optional note.
+    gameInvite: {
+      type: new mongoose.Schema(
+        {
+          type: { type: String, enum: ['raid', 'shrine', 'duel'], required: true },
+          targetId: { type: String, required: true, maxlength: 80 },
+          place: { type: String, default: '', maxlength: 80 },
+          lat: { type: Number, default: null },
+          lng: { type: Number, default: null },
+          startsAt: { type: Date, default: null },
+        },
+        { _id: false }
+      ),
+      default: undefined,
+    },
+    // Polish (task 059): kind 'game_result', a CostQuest result shared to a
+    // chat as a card. `content` holds the same result as one line of text, so
+    // apps without the card still show something readable.
+    gameResult: {
+      type: new mongoose.Schema(
+        {
+          headline: { type: String, required: true, maxlength: 80 },
+          pointName: { type: String, default: '', maxlength: 80 },
+          realm: { type: String, default: '', maxlength: 24 },
+          win: { type: Boolean, default: false },
+          xp: { type: Number, default: 0, min: 0, max: 100000 },
+          coins: { type: Number, default: 0, min: 0, max: 100000 },
+          level: { type: Number, default: null, min: 0, max: 1000 },
+          rank: { type: String, default: '', maxlength: 40 },
+        },
+        { _id: false }
+      ),
+      default: undefined,
+    },
     replyTo: { type: mongoose.Schema.Types.ObjectId, ref: 'Message', default: null },
     // Set when this message was created by forwarding another one, so the UI
     // can show a "Forwarded" label. Points at the original message; the

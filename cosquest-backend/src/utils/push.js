@@ -531,6 +531,11 @@ function resetForTests() {
   transport = defaultTransport;
 }
 
+/** Tests (merged-app checks): swap the transport; null puts the real one back. */
+function setTransport(fn) {
+  transport = fn || defaultTransport;
+}
+
 module.exports = {
   sendToUsers,
   sendData,
@@ -541,6 +546,8 @@ module.exports = {
   callRingEnded,
   ringsItself,
   isExpoToken,
+  enabled,
+  setTransport,
   actorPreview,
   CATEGORIES,
   captureForTests,

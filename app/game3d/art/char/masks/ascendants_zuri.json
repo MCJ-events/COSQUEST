@@ -1,0 +1,50 @@
+{
+ "key": "ascendants_zuri",
+ "source": "ascendants_zuri_lod0.glb",
+ "classes": "maps_lod0.npz",
+ "share_of_body_texels": {
+  "skin": 0.2764,
+  "metal": 0.049,
+  "leather": 0.0,
+  "cloth": 0.6161
+ },
+ "uv_per_m": 0.2442,
+ "hair_srgb": [
+  0.0863,
+  0.0863,
+  0.0824
+ ],
+ "iris": {
+  "centres": [
+   [
+    0.87489,
+    0.11484,
+    0.01357
+   ],
+   [
+    0.94819,
+    0.04901,
+    0.01511
+   ]
+  ],
+  "colour_srgb": [
+   0.1922,
+   0.1529,
+   0.1176
+  ]
+ },
+ "lum_p50_p75_p95": {
+  "leather": null,
+  "cloth": [
+   0.0296,
+   0.0565,
+   0.1244
+  ]
+ },
+ "hair_style": "curls",
+ "albedo_w": {
+  "lod0": 2048,
+  "lod1": 1024
+ },
+ "orm_trust": 0.0
+}

@@ -1,0 +1,54 @@
+{
+ "key": "blockbusters_kofi",
+ "source": "blockbusters_kofi_lod0.glb",
+ "classes": "maps_lod0.npz",
+ "share_of_body_texels": {
+  "skin": 0.0903,
+  "metal": 0.0,
+  "leather": 0.3574,
+  "cloth": 0.5308
+ },
+ "uv_per_m": 0.2124,
+ "hair_srgb": [
+  0.1333,
+  0.1176,
+  0.1098
+ ],
+ "iris": {
+  "centres": [
+   [
+    0.87931,
+    0.12095,
+    0.019
+   ],
+   [
+    0.94973,
+    0.05049,
+    0.01932
+   ]
+  ],
+  "colour_srgb": [
+   0.2118,
+   0.149,
+   0.1098
+  ]
+ },
+ "lum_p50_p75_p95": {
+  "leather": [
+   0.0436,
+   0.0637,
+   0.1597
+  ],
+  "cloth": [
+   0.0435,
+   0.093,
+   0.1915
+  ]
+ },
+ "hair_style": "curls",
+ "albedo_w": {
+  "lod0": 2048,
+  "lod1": 1024
+ },
+ "orm_trust": 0.0
+}

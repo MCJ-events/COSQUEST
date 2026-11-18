@@ -83,6 +83,8 @@ reportSchema.index({ targetUser: 1, createdAt: -1 });
 reportSchema.index({ conversation: 1, status: 1 });
 
 reportSchema.statics.TARGET_TYPES = TARGET_TYPES;
+// The app's capabilities answer (safetyController) lists these as `TARGETS`.
+reportSchema.statics.TARGETS = TARGET_TYPES;
 reportSchema.statics.REASONS = REASONS;
 reportSchema.statics.HIGH_PRIORITY_REASONS = HIGH_PRIORITY_REASONS;
 reportSchema.statics.STATUSES = STATUSES;

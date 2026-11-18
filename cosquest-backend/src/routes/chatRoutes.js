@@ -33,6 +33,7 @@ const { searchMessages, messageContext, createAlbum } = require('../controllers/
 const sparksAdmin = require('../sparks/admin');
 const sparkSearch = require('../sparks/search');
 const { createPoll, votePoll, closePoll, listPollVotes } = require('../controllers/pollController');
+const { createGameInvite, createGameResult } = require('../controllers/gameController');
 
 const router = express.Router();
 
@@ -80,6 +81,11 @@ router.post('/chats/:conversationId/messages/:messageId/forward', validate(rules
 
 // Polls (kind 'poll'): create, vote, close, see who voted.
 router.post('/chats/:conversationId/polls', validate(rules.createPoll), asyncHandler(createPoll));
+
+// Game invites (kind 'game_invite', the merged app): raid / shrine / duel cards.
+router.post('/chats/:conversationId/game-invites', asyncHandler(createGameInvite));
+// A game result as a card.
+router.post('/chats/:conversationId/game-results', asyncHandler(createGameResult));
 router.post('/chats/:conversationId/messages/:messageId/vote', validate(rules.votePoll), asyncHandler(votePoll));
 router.post('/chats/:conversationId/messages/:messageId/poll/close', validate(rules.poll), asyncHandler(closePoll));
 router.get('/chats/:conversationId/messages/:messageId/poll/votes', validate(rules.poll), asyncHandler(listPollVotes));
