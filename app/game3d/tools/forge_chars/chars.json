@@ -1,21 +1,45 @@
 {
  "_doc": "build 29 Forge characters: THE one place that says which finished model each playable Forge character is built from. To drop in a newer model (the Phase A3 heads, or any later Forge pass), point its \"source\" at the new .blend (exported by export_char.py) or at a folder holding lod0.glb and lod1.glb, then run tools/forge_chars/install.sh <key> on the farm and re-export the pck. \"playable\" false = its rig did not pass add_hero.sh's clip gate: kept here with the reason, never installed, never pickable (fight.gd FORGE_CAST and features/waleui/characters.ts list the playable ones).",
  "characters": {
-  "forge_courier": {"name": "Courier", "faction": null, "playable": true,
-   "source": "~/forge-artist/bakeoff2/phaseA2/chars/courier/var_lens20/final.blend",
-   "front": "~/forge-artist/bakeoff2/inputs/flat/view_front.png", "front_mask": "~/forge-artist/bakeoff2/inputs/masks/flat/view_front_mask.png",
-   "export": "jpeg=80"},
-  "forge_bram": {"name": "Bram", "faction": "celestials", "playable": false,
+  "forge_courier": {
+   "name": "Courier",
+   "faction": null,
+   "playable": true,
+   "source": "~/forge-artist/bakeoff2/phaseA2/chars/courier/a3/final_final.blend",
+   "front": "~/forge-artist/bakeoff2/inputs/flat/view_front.png",
+   "front_mask": "~/forge-artist/bakeoff2/inputs/masks/flat/view_front_mask.png",
+   "export": "jpeg=80",
+   "head_pass": "A3 (18 Nov: generated head texture + landmark-aligned face; no blue nose streak). A2 was ~/forge-artist/bakeoff2/phaseA2/chars/courier/var_lens20/final.blend"
+  },
+  "forge_bram": {
+   "name": "Bram",
+   "faction": "celestials",
+   "playable": false,
    "source": "~/forge-artist/bakeoff2/phaseA2/chars/bram/lift/final.blend",
-   "front": "~/forge-artist/bakeoff2/phaseA2/chars/bram/flat/view_front.png", "front_mask": "~/forge-artist/bakeoff2/phaseA2/chars/bram/masks/view_front_mask.png",
-   "why": "add_hero.sh gate: rig tears in every clip (idle 1.6 %, jog 3.6 %, worst 7.5 % of triangles past 2.5x; gate 0.5 %), mostly the outfit at the armpits, the belt pouches beside the hands and the crotch"},
-  "forge_mei": {"name": "Mei", "faction": "ascendants", "playable": false,
+   "front": "~/forge-artist/bakeoff2/phaseA2/chars/bram/flat/view_front.png",
+   "front_mask": "~/forge-artist/bakeoff2/phaseA2/chars/bram/masks/view_front_mask.png",
+   "why": "add_hero.sh gate: rig tears in every clip (idle 1.6 %, jog 3.6 %, worst 7.5 % of triangles past 2.5x; gate 0.5 %), mostly the outfit at the armpits, the belt pouches beside the hands and the crotch",
+   "a3": "~/forge-artist/bakeoff2/phaseA2/chars/bram/a3/final_final.blend (better head; same rig tears, 1.6 % idle / 3.4 % jog, so still not playable)"
+  },
+  "forge_mei": {
+   "name": "Mei",
+   "faction": "ascendants",
+   "playable": false,
    "source": "~/forge-artist/bakeoff2/phaseA2/chars/mei/lift/final.blend",
-   "front": "~/forge-artist/bakeoff2/phaseA2/chars/mei/flat/view_front.png", "front_mask": "~/forge-artist/bakeoff2/phaseA2/chars/mei/masks/view_front_mask.png",
-   "why": "add_hero.sh gate: rig tears (idle 1.2 %, jog 1.9 %; gate 0.5 %), mostly the hakama between the legs"},
-  "forge_catboy": {"name": "Cat-Boy", "faction": null, "playable": false,
+   "front": "~/forge-artist/bakeoff2/phaseA2/chars/mei/flat/view_front.png",
+   "front_mask": "~/forge-artist/bakeoff2/phaseA2/chars/mei/masks/view_front_mask.png",
+   "why": "add_hero.sh gate: rig tears (idle 1.2 %, jog 1.9 %; gate 0.5 %), mostly the hakama between the legs",
+   "a3": "A3 not used for Mei (RESULT-A3: not better at gameplay distance)"
+  },
+  "forge_catboy": {
+   "name": "Cat-Boy",
+   "faction": null,
+   "playable": false,
    "source": "~/forge-artist/bakeoff2/phaseA2/chars/catboy/lift/final.blend",
-   "front": "~/forge-artist/bakeoff2/phaseA2/chars/catboy/flat/view_front.png", "front_mask": "~/forge-artist/bakeoff2/phaseA2/chars/catboy/masks/view_front_mask.png",
-   "why": "add_hero.sh gate: no clip under the gate for idle and hit (worst 3.4 % of triangles past 2.5x), the lifted boots and the outfit"}
+   "front": "~/forge-artist/bakeoff2/phaseA2/chars/catboy/flat/view_front.png",
+   "front_mask": "~/forge-artist/bakeoff2/phaseA2/chars/catboy/masks/view_front_mask.png",
+   "why": "add_hero.sh gate: no clip under the gate for idle and hit (worst 3.4 % of triangles past 2.5x), the lifted boots and the outfit",
+   "a3": "~/forge-artist/game/app/game3d/forge_candidates/a3/catboy_lod0_a3.glb (helmet kept, template head removed; same rig tears, 0.9 % idle / 1.9 % jog)"
+  }
  }
 }

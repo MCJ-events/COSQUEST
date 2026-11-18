@@ -161,7 +161,9 @@ function HomeFrame({ menuOpen }: { menuOpen: boolean }) {
         {/* Wale (13 Nov): the hero idles in place, breathing and shifting its weight about its planted feet */}
         <HeroIdle testID="wale-home-hero-idle">
         {fh ? (
-          <Image source={fh.full} style={{ width: fit.hero.w, height: fit.hero.h }} contentFit="contain" contentPosition="bottom" accessible accessibilityRole="image" accessibilityLabel={`Your hero: ${fh.name}`} />
+          // build 29: the 2D art stands in its A-pose (arms out), wider than his slot: drawn 1.4x the slot's width,
+          // centred on it, so the figure is as tall as the room allows instead of shrinking to the arm span
+          <Image source={fh.full} style={{ width: fit.hero.w * 1.4, height: fit.hero.h, marginLeft: -fit.hero.w * 0.2 }} contentFit="contain" contentPosition="bottom" accessible accessibilityRole="image" accessibilityLabel={`Your hero: ${fh.name}`} />
         ) : (
           <Image source={ART.hero.src} style={{ width: fit.hero.w, height: fit.hero.h }} contentFit="contain" contentPosition="bottom" accessible accessibilityRole="image" accessibilityLabel="Your hero" />
         )}
