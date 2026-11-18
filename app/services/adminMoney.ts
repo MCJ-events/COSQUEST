@@ -43,7 +43,8 @@ export type ApprovalRequest = {
   number: string;
   kind: string;
   title: string;
-  changes: { region: string; name: string; status: RegionStatus; note: string }[];
+  /** Region rules: a list; money settings: { platformShareBps, payoutApprovalLimitCents, note }. */
+  changes: { region: string; name: string; status: RegionStatus; note: string }[] | PaymentSettingsChange;
   reason: string;
   status: ApprovalStatus;
   requestedBy: { id: string; name: string };
@@ -64,6 +65,13 @@ export const getLedgerCheck = () => adminRequest<LedgerCheck>("/ledger/check");
 export const getBalances = (book: string, prefix?: string) => adminRequest<{ balances: AccountBalance[] }>(`/ledger/balances${qs({ book, prefix })}`);
 export const reverseTx = (txId: string, reason: string) => adminRequest<{ transaction: LedgerTx; auditEvent: string }>(`/ledger/transactions/${txId}/reverse`, { method: "POST", body: { reason } });
 export const getRegions = () => adminRequest<{ mode: "test" | "live"; regions: RegionRule[] }>("/regions");
+/** Money settings (finance's "Assumptions"). null = OPEN (not decided). */
+export type PaymentSettings = { formulaVersion: string | null; platformShareBps: number | null; winnerShareBps: number | null; payoutApprovalLimitCents: number | null; note: string; approvedAt: string | null };
+export type PaymentSettingsChange = { platformShareBps: number | null; payoutApprovalLimitCents: number | null; note?: string };
+export const getPaymentSettings = () => adminRequest<{ current: PaymentSettings; history: PaymentSettings[] }>("/payment-settings");
+export const requestPaymentSettings = (body: { platformSharePercent: string; payoutApprovalLimitDollars: string; reason: string; note?: string }) =>
+  adminRequest<{ request: { id: string; number: string; title: string }; auditEvent: string }>("/payment-settings/requests", { method: "POST", body });
+
 export const requestRegionChanges = (changes: { region: string; name?: string; status: RegionStatus; note?: string }[], reason: string) =>
   adminRequest<{ request: ApprovalRequest; auditEvent: string }>("/regions/requests", { method: "POST", body: { changes, reason } });
 export const listApprovals = (status: ApprovalStatus) => adminRequest<{ requests: ApprovalRequest[]; pending: number; me: string }>(`/approvals${qs({ status })}`);

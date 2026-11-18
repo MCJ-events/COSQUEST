@@ -33,9 +33,12 @@ import {
   requestRegionChanges,
   reverseTx,
   withdrawApproval,
+  type PaymentSettings,
+  getPaymentSettings,
+  requestPaymentSettings,
 } from "@/services/adminMoney";
 
-type TabKey = "ledger" | "regions" | "approvals" | "approvers";
+type TabKey = "ledger" | "regions" | "settings" | "approvals" | "approvers";
 const STATUS_LABEL: Record<RegionStatus, string> = { allowed: "Allowed", blocked: "Blocked", needs_license: "Needs licence" };
 const STATUS_TONE: Record<RegionStatus, "green" | "red" | "amber"> = { allowed: "green", blocked: "red", needs_license: "amber" };
 const when = (iso: string) => new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
@@ -59,6 +62,7 @@ export default function MoneyAdmin() {
         tabs={[
           { key: "ledger", label: "Ledger" },
           { key: "regions", label: "Regions" },
+          { key: "settings", label: "Settings" },
           { key: "approvals", label: "Approvals", count: pending },
           ...(role === "admin" ? [{ key: "approvers" as TabKey, label: "Approvers" }] : []),
         ]}
@@ -69,6 +73,8 @@ export default function MoneyAdmin() {
         <LedgerTab canCorrect={!finance} />
       ) : tab === "regions" ? (
         <RegionsTab canRequest={!finance} onRequested={() => setTab("approvals")} />
+      ) : tab === "settings" ? (
+        <SettingsTab canRequest={!finance} onRequested={() => setTab("approvals")} />
       ) : tab === "approvers" ? (
         <ApproversTab />
       ) : (
@@ -369,11 +375,17 @@ function ApprovalsTab({ onChanged }: { onChanged: () => void }) {
             <Card key={r.id}>
               <CardHeader title={`${r.number} · ${r.title}`} subtitle={`Requested by ${mine ? "you" : r.requestedBy.name} · ${when(r.createdAt)}`} right={<Pill label={r.status} tone={r.status === "approved" ? "green" : r.status === "pending" ? "amber" : "red"} />} />
               <View style={{ marginTop: 12, gap: 6 }}>
-                {r.changes.map((c) => (
-                  <Text key={c.region} style={{ fontFamily: FONTS.regular, fontSize: 14, color: t.text }}>
-                    {c.region}{c.name ? ` (${c.name})` : ""} → {STATUS_LABEL[c.status]}{c.note ? ` · ${c.note}` : ""}
+                {Array.isArray(r.changes) ? (
+                  r.changes.map((c) => (
+                    <Text key={c.region} style={{ fontFamily: FONTS.regular, fontSize: 14, color: t.text }}>
+                      {c.region}{c.name ? ` (${c.name})` : ""} → {STATUS_LABEL[c.status]}{c.note ? ` · ${c.note}` : ""}
+                    </Text>
+                  ))
+                ) : (
+                  <Text style={{ fontFamily: FONTS.regular, fontSize: 14, color: t.text }}>
+                    Platform share {r.changes.platformShareBps === null ? "OPEN" : `${r.changes.platformShareBps / 100}%`} · payout limit {r.changes.payoutApprovalLimitCents === null ? "OPEN" : `$${(r.changes.payoutApprovalLimitCents / 100).toLocaleString("en-US")}`}
                   </Text>
-                ))}
+                )}
                 <Text style={{ fontFamily: FONTS.regular, fontSize: 13, color: t.muted }}>Reason: {r.reason}</Text>
                 {r.decidedBy ? <Text style={{ fontFamily: FONTS.regular, fontSize: 13, color: t.muted }}>{r.status === "approved" ? "Approved" : "Rejected"} by {r.decidedBy.name}{r.decisionNote ? `: ${r.decisionNote}` : ""}</Text> : null}
               </View>
@@ -512,6 +524,113 @@ function ApproversTab() {
           </View>
         </View>
       </Card>
+    </View>
+  );
+}
+
+// ---------- Money settings (finance's "Assumptions") ----------
+
+function SettingsTab({ canRequest, onRequested }: { canRequest: boolean; onRequested: () => void }) {
+  const t = useAdminTheme();
+  const [data, setData] = useState<{ current: PaymentSettings; history: PaymentSettings[] } | null>(null);
+  const [share, setShare] = useState("");
+  const [limit, setLimit] = useState("");
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  const load = useCallback(() => {
+    getPaymentSettings()
+      .then((d) => {
+        setData(d);
+        setShare(d.current.platformShareBps === null ? "" : String(d.current.platformShareBps / 100));
+        setLimit(d.current.payoutApprovalLimitCents === null ? "" : String(d.current.payoutApprovalLimitCents / 100));
+      })
+      .catch((e) => setError(e?.message || "Couldn't load the settings."));
+  }, []);
+  useEffect(load, [load]);
+
+  const input = { height: 44, paddingHorizontal: 14, borderRadius: 12, borderWidth: 1, borderColor: t.border, backgroundColor: t.cardSoft, fontFamily: FONTS.regular, fontSize: 14, color: t.text, ...(Platform.OS === "web" ? ({ outlineStyle: "none" } as object) : null) };
+  const pct = (bps: number | null) => (bps === null ? "OPEN" : `${bps / 100}%`);
+  const usd = (cents: number | null) => (cents === null ? "OPEN" : `$${(cents / 100).toLocaleString("en-US")}`);
+
+  const submit = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      await requestPaymentSettings({ platformSharePercent: share.trim(), payoutApprovalLimitDollars: limit.trim(), reason: reason.trim() });
+      setReason("");
+      onRequested();
+    } catch (e: any) {
+      setError(e?.message || "Couldn't send the request.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const c = data?.current;
+  return (
+    <View style={{ gap: 16 }}>
+      {error ? <Notice icon="alert-circle-outline" tone="red" text={error} /> : null}
+      <Card>
+        <CardHeader title="Money settings" subtitle={c?.formulaVersion ? `Version ${c.formulaVersion}. Each settlement records the version it used.` : "No version approved yet: everything is OPEN until Mark decides."} />
+        {!c ? (
+          <Loading />
+        ) : (
+          <View style={{ marginTop: 14, gap: 10 }}>
+            {[
+              ["Platform share of each quest pool", pct(c.platformShareBps), "Mark decides (30% was only an example)."],
+              ["Winners' share of each quest pool", pct(c.winnerShareBps), "Whatever the platform doesn't keep."],
+              ["Payouts above this need a second admin", usd(c.payoutApprovalLimitCents), "Mark decides."],
+              ["Stripe fee", "Recorded from Stripe", "The ledger records Stripe's real fee on each payment."],
+            ].map(([name, value, hint]) => (
+              <View key={name} style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 12, padding: 14, borderRadius: 16, borderWidth: 1, borderColor: t.border, backgroundColor: t.cardSoft }}>
+                <View style={{ flex: 1, minWidth: 200 }}>
+                  <Text style={{ fontFamily: FONTS.medium, fontSize: 14, color: t.text }}>{name}</Text>
+                  <Text style={{ fontFamily: FONTS.regular, fontSize: 12.5, color: t.muted }}>{hint}</Text>
+                </View>
+                <Pill label={value} tone={value === "OPEN" ? "amber" : "green"} />
+              </View>
+            ))}
+          </View>
+        )}
+      </Card>
+      {canRequest ? (
+        <Card>
+          <CardHeader title="Request a change" subtitle="Another admin or a finance approver must approve it. Leave a field empty to keep it OPEN." />
+          <View style={{ marginTop: 14, gap: 12 }}>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}>
+              <View style={{ width: 220 }}>
+                <Field label="Platform share (%)">
+                  <TextInput value={share} onChangeText={(v) => setShare(v.replace(/[^0-9.]/g, "").slice(0, 6))} placeholder="OPEN" keyboardType="decimal-pad" placeholderTextColor={t.faint} style={input} />
+                </Field>
+              </View>
+              <View style={{ width: 260 }}>
+                <Field label="Payout approval limit ($)">
+                  <TextInput value={limit} onChangeText={(v) => setLimit(v.replace(/[^0-9.]/g, "").slice(0, 10))} placeholder="OPEN" keyboardType="decimal-pad" placeholderTextColor={t.faint} style={input} />
+                </Field>
+              </View>
+            </View>
+            <ReasonBox value={reason} onChange={setReason} placeholder="e.g. Mark approved a 30% platform share on 20 Nov." />
+            <View style={{ flexDirection: "row" }}>
+              <Button label="Send for approval" variant="primary" icon="send-outline" loading={busy} disabled={reason.trim().length < 3} onPress={submit} />
+            </View>
+          </View>
+        </Card>
+      ) : null}
+      {data?.history?.length ? (
+        <Card>
+          <CardHeader title="History" subtitle="Every approved version (never edited)." />
+          <View style={{ marginTop: 12, gap: 6 }}>
+            {data.history.map((v) => (
+              <Text key={v.formulaVersion || "none"} style={{ fontFamily: FONTS.regular, fontSize: 13.5, color: t.text }}>
+                {v.formulaVersion} · platform {pct(v.platformShareBps)} · winners {pct(v.winnerShareBps)} · payout limit {usd(v.payoutApprovalLimitCents)}
+                {v.approvedAt ? ` · ${new Date(v.approvedAt).toLocaleDateString()}` : ""}
+              </Text>
+            ))}
+          </View>
+        </Card>
+      ) : null}
     </View>
   );
 }
