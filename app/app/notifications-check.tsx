@@ -137,13 +137,15 @@ export default function NotificationsCheck() {
   const serverTest = async (kind: "message" | "call") => {
     if (!token) return;
     setBusy(`server-${kind}`);
+    setNote(kind === "call" ? "The server rings this phone in about 10 seconds: lock it now, and wait." : "Sending a real message push… (a few seconds)");
     try {
       const result: any = await apiRequest("/api/users/me/push-test", { method: "POST", token, body: { kind } });
-      setNote(
-        kind === "call"
-          ? `The server is ringing this phone in ${result?.delaySeconds ?? 10} seconds: lock it now. ${result?.detail || ""}`
-          : `The server sent a message push. ${result?.detail || ""}`,
-      );
+      const phones: any[] = result?.phones || [];
+      const lines = [
+        ...(result?.problems || []).map((p: string) => `⚠️ ${p}`),
+        ...phones.map((p) => `${p.ok ? "✅" : "❌"} ${p.platform} (${p.way}): ${p.detail}`),
+      ];
+      setNote(lines.length ? lines.join("\n\n") : "The server answered, but no phone was tested.");
     } catch (error: any) {
       setNote(error?.status === 404 ? "The server test isn't installed yet (Emmanuel's part)." : `The server couldn't send it: ${messageOf(error)}`);
     } finally {
