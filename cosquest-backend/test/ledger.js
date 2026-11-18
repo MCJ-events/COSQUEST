@@ -61,6 +61,8 @@ async function run(baseUrl) {
   await settle();
   const sale = await LedgerTransaction.findOne({ key: `order-paid-${started.data.order.id}` });
   check(sale && sale.kind === 'ticket.sale' && sale.lines.find((l) => l.account === '1010').debit === 1200 && sale.lines.find((l) => l.account === pool).credit === 1200, 'a paid ticket: 1200 cents into the quest prize pool', sale);
+  const saleJson = ledger.txJson(sale);
+  check(saleJson.type === 'Quest entry' && saleJson.status === 'posted' && Array.isArray(saleJson.approvedBy) && saleJson.linkedTx === null, "finance's columns: Type 'Quest entry', Status 'posted'", saleJson);
   await ledger.recordOrder(started.data.order.id);
   await ledger.recordOrder(started.data.order.id);
   check((await LedgerTransaction.countDocuments({ order: started.data.order.id })) === 1, 'recorded once, however often it is called', null);

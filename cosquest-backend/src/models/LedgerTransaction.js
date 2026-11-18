@@ -37,6 +37,17 @@ const ledgerTransactionSchema = new mongoose.Schema(
     processorRef: { type: String, default: null, maxlength: 200 },
     key: { type: String, required: true, maxlength: 200 },
     priceVersion: { type: String, default: null, maxlength: 60 },
+    // The rest of finance's columns (CosQuest Sample Ledger):
+    //   itemId          the bundle, skin or weapon (B-500, SK-07); tickets use the quest
+    //   formulaVersion  the prize formula used at settlement (f0, f1...)
+    //   status          every row is "posted"; a mistake is fixed by a new reversing row
+    //   approvedBy      who approved it (payouts and money changes: two people)
+    //   linkedTx        a Costcoin entry's cash payment (and the other way round)
+    itemId: { type: String, default: null, maxlength: 60 },
+    formulaVersion: { type: String, default: null, maxlength: 60 },
+    status: { type: String, enum: ['posted'], default: 'posted' },
+    approvedBy: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], default: [] },
+    linkedTx: { type: mongoose.Schema.Types.ObjectId, ref: 'LedgerTransaction', default: null },
     memo: { type: String, default: '', maxlength: 500 },
     reverses: { type: mongoose.Schema.Types.ObjectId, ref: 'LedgerTransaction', default: null },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
@@ -49,6 +60,7 @@ ledgerTransactionSchema.index({ number: 1 }, { unique: true });
 ledgerTransactionSchema.index({ book: 1, createdAt: -1 });
 ledgerTransactionSchema.index({ 'lines.account': 1, createdAt: -1 });
 ledgerTransactionSchema.index({ order: 1 });
+ledgerTransactionSchema.index({ linkedTx: 1 }, { partialFilterExpression: { linkedTx: { $type: 'objectId' } } });
 // One reversal per transaction.
 ledgerTransactionSchema.index({ reverses: 1 }, { unique: true, partialFilterExpression: { reverses: { $type: 'objectId' } } });
 

@@ -147,7 +147,7 @@ function LedgerTab({ canCorrect }: { canCorrect: boolean }) {
               <View key={tx.id} style={{ padding: 14, borderRadius: 16, borderWidth: 1, borderColor: picked?.id === tx.id ? t.pink : t.border, backgroundColor: t.cardSoft, gap: 6 }}>
                 <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
                   <Text style={{ fontFamily: FONTS.semibold, fontSize: 14, color: t.text }}>{tx.number}</Text>
-                  <Pill label={tx.kind} tone={tx.kind === "reversal" ? "amber" : tx.kind.endsWith("refund") ? "red" : "blue"} />
+                  <Pill label={tx.type || tx.kind} tone={tx.kind === "reversal" ? "amber" : tx.kind.endsWith("refund") ? "red" : "blue"} />
                   <Text style={{ flex: 1, minWidth: 160, fontFamily: FONTS.regular, fontSize: 13, color: t.muted }} numberOfLines={1}>{tx.memo}</Text>
                   <Text style={{ fontFamily: FONTS.semibold, fontSize: 14, color: t.text }}>{amount(tx.total, tx.currency)}</Text>
                   <Text style={{ fontFamily: FONTS.regular, fontSize: 12.5, color: t.faint }}>{when(tx.createdAt)}</Text>

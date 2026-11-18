@@ -29,17 +29,33 @@ const ACCOUNTS = {
 };
 
 const label = (tx) => `TX-${tx.number}`;
+
+// Finance's "Type" column for each kind of entry (the sample ledger's words).
+const TYPES = {
+  'ticket.sale': 'Quest entry',
+  'ticket.refund': 'Quest entry refund',
+  'stripe.fee': 'Processor fee',
+  'costcoin.purchase': 'Costcoin purchase',
+  'costcoin.issue': 'Purchase',
+  'costcoin.spend': 'Spend',
+  'settlement.platform': 'Settlement: platform share',
+  'settlement.winner': 'Settlement: winner share',
+  payout: 'Payout',
+  reversal: 'Reversal',
+};
+const typeOf = (kind) => TYPES[kind] || kind;
 // The same cents Stripe was asked for (src/utils/stripe.js).
 const toMinor = (amount, currency) => require('./stripe').toMinor(amount, currency);
 
 /** Records a balanced transaction once (by key). Returns { tx, created }. */
-async function record({ key, kind, book, currency, lines, user = null, quest = null, order = null, jurisdiction = null, processorRef = null, priceVersion = null, memo = '', reverses = null, createdBy = null }) {
+async function record({ key, kind, book, currency, lines, user = null, quest = null, order = null, jurisdiction = null, processorRef = null, priceVersion = null, memo = '', reverses = null, createdBy = null, itemId = null, formulaVersion = null, approvedBy = [], linkedTx = null }) {
   const existing = await LedgerTransaction.findOne({ key });
   if (existing) return { tx: existing, created: false };
   try {
     const tx = await LedgerTransaction.create({
       number: await Counter.next('ledger', 1),
       key, kind, book, currency, lines, user, quest, order, jurisdiction, processorRef, priceVersion, memo, reverses, createdBy,
+      itemId, formulaVersion, approvedBy, linkedTx,
     });
     return { tx, created: true };
   } catch (error) {
@@ -186,6 +202,8 @@ function txJson(tx) {
     id: String(tx._id),
     number: label(tx),
     kind: tx.kind,
+    type: typeOf(tx.kind),
+    status: tx.status || 'posted',
     book: tx.book,
     currency: tx.currency,
     // The chart's code and name (old entries read under the new codes).
@@ -198,10 +216,14 @@ function txJson(tx) {
     processorRef: tx.processorRef,
     key: tx.key,
     priceVersion: tx.priceVersion,
+    formulaVersion: tx.formulaVersion || null,
+    itemId: tx.itemId || null,
+    approvedBy: (tx.approvedBy || []).map(String),
+    linkedTx: tx.linkedTx ? String(tx.linkedTx) : null,
     memo: tx.memo,
     reverses: tx.reverses ? String(tx.reverses) : null,
     createdAt: tx.createdAt,
   };
 }
 
-module.exports = { CHART: chart.CHART, ACCOUNTS, record, reverse, recordOrder, recordOrderLater, syncDue, check, checkDue, balances, txJson, label };
+module.exports = { TYPES, typeOf, CHART: chart.CHART, ACCOUNTS, record, reverse, recordOrder, recordOrderLater, syncDue, check, checkDue, balances, txJson, label };

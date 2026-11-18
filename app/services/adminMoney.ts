@@ -8,6 +8,13 @@ export type LedgerTx = {
   id: string;
   number: string;
   kind: string;
+  /** Finance's words: "Quest entry", "Processor fee", "Payout"... */
+  type?: string;
+  status?: string;
+  itemId?: string | null;
+  formulaVersion?: string | null;
+  approvedBy?: string[];
+  linkedTx?: string | null;
   book: "money" | "costcoin";
   currency: string;
   lines: LedgerLine[];
