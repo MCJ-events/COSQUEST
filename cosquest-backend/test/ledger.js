@@ -85,6 +85,8 @@ async function run(baseUrl) {
   const bal = await request('GET', `/api/admin/ledger/balances?book=money&prefix=2010:${quest.id}`, tokenA);
   check(bal.status === 200 && bal.data.balances.length === 1 && bal.data.balances[0].balance === 0, 'the pool is back to 0 after the refund', bal.data);
   const books = await request('GET', '/api/admin/ledger/check', tokenA);
+  const financeChecks = books.data.checks || [];
+  check(financeChecks.length >= 6 && financeChecks.every((c) => c.pass !== false), "finance's checks: none failing", financeChecks);
   check(books.status === 200 && books.data.ok === true && books.data.books.every((b) => Number.isInteger(b.transactions) && b.transactions > 0), 'debits = credits for every book (with how many transactions)', books.data);
 
   console.log('\n--- missed entries are filled in ---');

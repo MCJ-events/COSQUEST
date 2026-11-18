@@ -196,9 +196,67 @@ async function check() {
     { $group: { _id: { book: '$book', currency: '$currency' }, debits: { $sum: '$debits' }, credits: { $sum: '$credits' }, transactions: { $sum: 1 } } },
   ]);
   const books = rows.map((r) => ({ book: r._id.book, currency: r._id.currency, debits: r.debits, credits: r.credits, transactions: r.transactions, balanced: r.debits === r.credits }));
-  const ok = books.every((b) => b.balanced);
-  if (!ok) console.error('[ledger] ALERT: debits and credits differ', JSON.stringify(books.filter((b) => !b.balanced)));
-  return { ok, books, checkedAt: new Date() };
+  const balanced = books.every((b) => b.balanced);
+  if (!balanced) console.error('[ledger] ALERT: debits and credits differ', JSON.stringify(books.filter((b) => !b.balanced)));
+  // Finance's checks (the sample ledger's Balances sheet).
+  const checks = await financeChecks().catch((error) => [{ name: 'Finance checks', pass: false, detail: `Could not run: ${error.message}` }]);
+  const failed = checks.filter((c) => c.pass === false);
+  if (failed.length) console.error('[ledger] ALERT: finance checks failed', JSON.stringify(failed));
+  return { ok: balanced && !failed.length, books, checks, checkedAt: new Date() };
+}
+
+/**
+ * Finance's checks (CosQuest Sample Ledger, "Balances and checks"):
+ * { name, pass: true | false | null (not applicable yet), detail }.
+ */
+async function financeChecks() {
+  const all = await balances();
+  const money = all.filter((r) => r.book === 'money');
+  const coins = all.filter((r) => r.book === 'costcoin');
+  const sum = (rows, key) => rows.reduce((total, r) => total + r[key], 0);
+  const checks = [];
+  const cash = sum(money, 'debits') - sum(money, 'credits');
+  checks.push({ name: 'Cash book: total debits equal total credits', pass: cash === 0, detail: cash });
+  const coinDiff = sum(coins, 'debits') - sum(coins, 'credits');
+  checks.push({ name: 'Costcoin book: debits equal credits', pass: coinDiff === 0, detail: coinDiff });
+  const unknown = all.filter((r) => r.type === 'Unknown').map((r) => r.account);
+  checks.push({ name: 'Every ledger row uses an account from the chart', pass: !unknown.length, detail: unknown.length ? unknown.join(', ') : 0 });
+
+  // Quest pools: zero once a quest is settled or cancelled (everything paid out or refunded).
+  const pools = money.filter((r) => r.code === '2010');
+  const poolQuest = (p) => p.account.slice(5);
+  const settled = new Set((await LedgerTransaction.distinct('quest', { kind: /^settlement\./ })).map(String));
+  const ids = pools.map(poolQuest).filter((id) => /^[a-f\d]{24}$/i.test(id));
+  const quests = ids.length ? await require('../models/Quest').find({ _id: { $in: ids } }, 'status endsAt').lean() : [];
+  const cancelled = new Set(quests.filter((q) => q.status === 'cancelled').map((q) => String(q._id)));
+  const ended = new Set(quests.filter((q) => q.status !== 'cancelled' && new Date(q.endsAt) <= new Date()).map((q) => String(q._id)));
+  const closedPools = pools.filter((p) => settled.has(poolQuest(p)) || cancelled.has(poolQuest(p)));
+  const notEmpty = closedPools.filter((p) => p.balance !== 0);
+  const waiting = pools.filter((p) => ended.has(poolQuest(p)) && !settled.has(poolQuest(p)) && p.balance !== 0);
+  checks.push({
+    name: 'Quest pools are zero after settlement (or cancellation)',
+    pass: closedPools.length ? !notEmpty.length : null,
+    detail: notEmpty.length ? notEmpty.map((p) => `${p.label}: ${p.balance}`).join('; ') : `${waiting.length} ended quest(s) waiting for settlement (the prize formula isn't approved yet)`,
+  });
+
+  // Payouts: never more than the winner shares approved.
+  const payable = money.find((r) => r.code === '2020');
+  checks.push({
+    name: 'Payouts payable is never below zero (paid out at most what was won)',
+    pass: payable ? payable.balance >= 0 : null,
+    detail: payable ? `${payable.balance} cents approved, not yet paid out` : 'No payouts yet',
+  });
+
+  // Costcoin: what wallets hold = coins issued - coins spent, and no wallet below zero.
+  const issued = coins.find((r) => r.code === 'CC-ISSUED');
+  const spent = coins.find((r) => r.code === 'CC-SPENT');
+  const wallets = coins.filter((r) => r.code === 'CC-WALLET');
+  const held = sum(wallets, 'balance');
+  const expected = (issued?.balance || 0) - (spent?.balance || 0);
+  checks.push({ name: 'Wallets equal coins issued minus coins spent', pass: coins.length ? held === expected : null, detail: coins.length ? held - expected : 'No Costcoin yet' });
+  const below = [...wallets, ...pools].filter((r) => r.balance < 0);
+  checks.push({ name: 'No wallet or quest pool is below zero', pass: !below.length, detail: below.length ? below.map((r) => `${r.label}: ${r.balance}`).join('; ') : 0 });
+  return checks;
 }
 
 // The background job checks the books at most once an hour.
@@ -264,4 +322,4 @@ function txJson(tx) {
   };
 }
 
-module.exports = { recordFee, TYPES, typeOf, CHART: chart.CHART, ACCOUNTS, record, reverse, recordOrder, recordOrderLater, syncDue, check, checkDue, balances, txJson, label };
+module.exports = { financeChecks, recordFee, TYPES, typeOf, CHART: chart.CHART, ACCOUNTS, record, reverse, recordOrder, recordOrderLater, syncDue, check, checkDue, balances, txJson, label };

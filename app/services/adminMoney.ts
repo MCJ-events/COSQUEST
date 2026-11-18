@@ -27,7 +27,13 @@ export type LedgerTx = {
   reverses: string | null;
   createdAt: string;
 };
-export type LedgerCheck = { ok: boolean; books: { book: string; currency: string; debits: number; credits: number; transactions: number; balanced: boolean }[]; checkedAt: string };
+export type LedgerCheck = {
+  ok: boolean;
+  books: { book: string; currency: string; debits: number; credits: number; transactions: number; balanced: boolean }[];
+  /** Finance's checks: pass null = not applicable yet. */
+  checks?: { name: string; pass: boolean | null; detail: string | number }[];
+  checkedAt: string;
+};
 export type AccountBalance = { account: string; book: string; currency: string; debits: number; credits: number; balance: number };
 export type RegionStatus = "allowed" | "blocked" | "needs_license";
 export type RegionRule = { region: string; name: string; status: RegionStatus; note: string; updatedAt: string };

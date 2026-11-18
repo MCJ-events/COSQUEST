@@ -118,11 +118,25 @@ function LedgerTab({ canCorrect }: { canCorrect: boolean }) {
   return (
     <View style={{ gap: 16 }}>
       {books ? (
-        books.ok ? (
+        books.books.every((b) => b.balanced) ? (
           <Notice icon="checkmark-circle-outline" tone="green" title="The books balance" text={books.books.length ? books.books.map((b) => `${b.book} ${b.currency}: ${b.transactions} transactions, debits = credits`).join(" · ") : "No entries yet."} />
         ) : (
           <Notice icon="alert-circle-outline" tone="red" title="The books don't balance" text="Debits and credits differ. Tell the backend team at once; the details are in the server log." />
         )
+      ) : null}
+      {books?.checks?.length ? (
+        <Card>
+          <CardHeader title="Checks" subtitle="Finance's checks from the sample ledger, run on every entry." />
+          <View style={{ marginTop: 12, gap: 8 }}>
+            {books.checks.map((c) => (
+              <View key={c.name} style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
+                <Pill label={c.pass === true ? "PASS" : c.pass === false ? "FAIL" : "N/A"} tone={c.pass === true ? "green" : c.pass === false ? "red" : "blue"} />
+                <Text style={{ flex: 1, minWidth: 200, fontFamily: FONTS.medium, fontSize: 13.5, color: t.text }}>{c.name}</Text>
+                <Text style={{ fontFamily: FONTS.regular, fontSize: 12.5, color: t.muted }}>{String(c.detail)}</Text>
+              </View>
+            ))}
+          </View>
+        </Card>
       ) : null}
       {done ? <Notice icon="checkmark-circle-outline" tone="green" text={done} /> : null}
       {error ? <Notice icon="alert-circle-outline" tone="red" text={error} /> : null}
