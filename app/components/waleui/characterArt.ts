@@ -4,7 +4,7 @@
 // game3d/tools/forge_chars/char_art.py: the full figure ("card", 720 px tall), head and shoulders ("portrait",
 // 384 px square) and a 1080 x 1920 card to post ("share"). The faction heroes' art is their concept art (the
 // pictures their 3D models were made from); the Forge characters' is the turnaround front view the Forge pipeline
-// used (build 30: Bram; build 31: Mei). Only playable characters are here (features/waleui/characters.ts; the test checks both lists match).
+// used (build 30: Bram too). Only playable characters are here (features/waleui/characters.ts; the test checks both lists match).
 export type CharacterArt = { card: number; portrait: number; share: number };
 
 const ART: Record<string, CharacterArt> = {
@@ -47,11 +47,6 @@ const ART: Record<string, CharacterArt> = {
     card: require("@/assets/images/characters/forge_bram_card.png"),
     portrait: require("@/assets/images/characters/forge_bram_portrait.png"),
     share: require("@/assets/images/characters/forge_bram_share.jpg"),
-  },
-  forge_mei: {
-    card: require("@/assets/images/characters/forge_mei_card.png"),
-    portrait: require("@/assets/images/characters/forge_mei_portrait.png"),
-    share: require("@/assets/images/characters/forge_mei_share.jpg"),
   },
 };
 

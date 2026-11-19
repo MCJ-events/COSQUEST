@@ -12,11 +12,10 @@ const APP = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 test("the roster is the six faction heroes and the playable Forge characters, each key once", () => {
   assert.equal(CHARACTERS.length, FACTION_HEROES.length + FORGE_CHARACTERS.length);
   assert.equal(new Set(CHARACTERS.map((c) => c.key)).size, CHARACTERS.length);
-  // build 31: the Courier, Bram and Mei; Cat-Boy looks broken in motion, so he is not offered yet
-  for (const k of ["forge_courier", "forge_bram", "forge_mei"]) assert.ok(characterByKey(k), k);
+  // build 30: the Courier and Bram; Mei and Cat-Boy look broken in motion, so they are not offered yet
+  for (const k of ["forge_courier", "forge_bram"]) assert.ok(characterByKey(k), k);
   assert.equal(characterByKey("forge_bram")?.faction, "celestials");
-  assert.equal(characterByKey("forge_mei")?.faction, "ascendants");
-  assert.equal(characterByKey("forge_catboy"), null);
+  for (const k of ["forge_mei", "forge_catboy"]) assert.equal(characterByKey(k), null, k);
 });
 
 test("no pick means the faction hero; a pick wins over the faction", () => {
