@@ -3425,6 +3425,8 @@ func _end(o: String) -> void:
 	outcome = o
 	state = "ending"
 	_end_t = 0.0
+	for f: FighterScript in fighters:
+		f.fight_over = true   # fight-motion-31: every barrier breaks up quietly with the result (fighter.gd)
 	hud.release_all()
 	if hero != null:
 		hero.speed_now = 0.0

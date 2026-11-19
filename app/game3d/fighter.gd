@@ -69,6 +69,9 @@ var yaw: float = 0.0
 var speed_now: float = 0.0
 var dead: bool = false
 var celebrating: bool = false
+## fight-motion-31: the result is in (fight.gd _end). The barrier breaks up quietly on every fighter then, not only on
+## one that celebrates: the ally walks to its spot first and stood in its dome through most of the VICTORY banner.
+var fight_over: bool = false
 var anim_freeze: bool = false
 var weapons: Dictionary = {}      # "r" / "l" -> {node, class, bone} (weapons in hand, cq 234)
 
@@ -1578,10 +1581,10 @@ func tick_visual(dt: float) -> void:
 	if _dome != null:
 		# fight-look-31: the barrier never stays up over the victory pose (it played inside a glass dome in most seeds): it
 		# breaks up quietly as the winner celebrates (no shard burst over the VICTORY shot)
-		var on: bool = shield_t > 0.0 and not dead and not celebrating
+		var on: bool = shield_t > 0.0 and not dead and not celebrating and not fight_over
 		if not on and _dome.visible and _shatter_t < 0.0:
 			_shatter_t = 0.0
-			if not celebrating:
+			if not celebrating and not fight_over:
 				shield_ended.emit(global_position, 1.15 * size_k)
 		if _shatter_t >= 0.0:
 			# the dome breaks up cell by cell over 0.3 s (fx throws the shards)
