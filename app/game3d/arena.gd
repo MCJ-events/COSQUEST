@@ -135,7 +135,7 @@ const FL_PARTS: Array[String] = ["fl_light", "fl_mat", "fl_fx", "fl_cam", "fl_we
 ## deg the fight camera's heading turns off the street (build 30: 0). Negative: the camera swings to the hero's left, the
 ## side away from the ally's spot (fight.gd _tick_ally: the hero's right and behind, in the street's frame), so the ally
 ## is never between the camera and the fight
-const FL_CAM_YAW: float = -34.0
+const FL_CAM_YAW: float = 55.0
 const FL_LC_RIM: float = 1.4              # fid29-lightcam's rim gain in the close shots (build 30: 2.6, on a rim half as strong)
 const FL_KEY_NEUTRAL: Dictionary = {"golden": 0.45, "day": 0.2, "dusk": 0.6, "night": 0.0}   # the key's colour towards white
 const FL_KEY_GAIN: Dictionary = {"golden": 0.95, "day": 0.9, "dusk": 1.05, "night": 1.0}       # its energy (the whiter key reads dimmer)
