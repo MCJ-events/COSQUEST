@@ -35,9 +35,17 @@ const TEXT_CAP = [
   [path.join("react-native", "Libraries", "Components", "TextInput", "TextInput.js"), path.join(TEXT_CAP_DIR, "TextInput.tsx")],
 ];
 
+// ICON FONTS (build 30, app size): the bare "@expo/vector-icons" index requires all 16 icon fonts;
+// the app's own imports of it resolve to utils/vectorIcons.js, which re-exports the three families
+// the app draws, so the other 13 fonts stay out of the bundle. Deep imports are unchanged.
+const VECTOR_ICONS = path.resolve(__dirname, "utils/vectorIcons.js");
+
 config.resolver.resolveRequest = (context, moduleName, platform) => {
   if (platform === "web" && WEB_STUBS[moduleName]) {
     return { type: "sourceFile", filePath: WEB_STUBS[moduleName] };
+  }
+  if (moduleName === "@expo/vector-icons" && !context.originModulePath.includes(`${path.sep}node_modules${path.sep}`)) {
+    return { type: "sourceFile", filePath: VECTOR_ICONS };
   }
 
   const resolved = defaultResolveRequest
