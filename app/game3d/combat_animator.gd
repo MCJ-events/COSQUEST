@@ -215,6 +215,12 @@ const LOWER_BONES: Array[String] = ["Hips", "LeftUpLeg", "LeftLeg", "LeftFoot", 
 const MIX_STATES: Array[String] = ["attack_1", "attack_2", "attack_3", "heavy", "parry", "skill_rally", "skill_shield"]
 const DROOP_STATES: Array[String] = ["idle", "_", "walk", "run", "sprint", "hit", "stagger"]
 const DROOP_RATE: float = 8.0            # 1/s: eases in and out round the attacks
+## moves-fix-32 (mid, high): the share of each arm's spread (x: the sword arm, y: the off arm) taken back while a clip flings
+## the arms out. The DASH's arms went out wide to the sides (near a T from the front) and the whirl held both arms locked
+## out at shoulder height for 8 frames: the off arm now stays in by the body and the sword arm keeps its sweep, lower.
+const ARM_TUCK: Dictionary = {"skill_charge": Vector2(0.45, 0.8), "skill_whirl": Vector2(0.3, 0.85)}
+const TUCK_RATE: float = 16.0            # 1/s: in by the DASH's take-off (0.26 s of travel)
+var _tuck: Vector2 = Vector2.ZERO
 ## moves-fix-32 (mid, high): the end of a one-shot. A clip whose last key came a frame before its state's end (the DASH,
 ## SHIELD and RALLY tails end on the clip's last key; the whirl and the knockdown play to it) ran out in the player one
 ## frame early: one frame with no clip, then the idle came in with a jump. The clip is now held a hair before its end until
@@ -979,6 +985,11 @@ func update(dt: float, speed_now: float, dead: bool) -> void:
 			dw = 1.0   # no clip at all: never the bind pose
 		_droop_now = lerpf(_droop_now, dw, 1.0 - exp(-dt * DROOP_RATE))
 		layer.arm_droop = _droop_now
+		if fid:
+			var tw: Vector2 = ARM_TUCK.get(state, Vector2.ZERO) if (clips.has(state) and length > 0.0 and not dead) else Vector2.ZERO
+			_tuck = _tuck.lerp(tw, 1.0 - exp(-dt * TUCK_RATE))
+			layer.droop_r = maxf(_droop_now, _tuck.x) if _tuck.x > 0.002 else -1.0
+			layer.droop_l = maxf(_droop_now, _tuck.y) if _tuck.y > 0.002 else -1.0
 
 
 ## fid29 combat: this frame's additive hit layers for pose_layer.gd: each clip at the matching point of its own
