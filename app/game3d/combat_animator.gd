@@ -227,6 +227,19 @@ var _tuck: Vector2 = Vector2.ZERO
 ## the state hands over, and the hand-over is dead-blended as every other switch.
 const END_KEEP: float = 0.002            # s short of the clip's end
 const END_MARGIN: float = 1.5            # frame-time headroom
+## moves-fix-32 (mid, high): a run that stops. The run used to stand up into the idle in 0.25 s and go dead still. Now the
+## legs and arms come together over STOP_BLEND and the trunk carries on forward, then settles back in decaying bounces
+## (Wale's weighted-step reference), scaled by how fast the body was going.
+const STOP_BLEND: float = 0.36
+const STOP_LEAN: float = 10.0            # deg of forward carry from a full run
+const STOP_PERIOD: float = 0.46          # s of one bounce
+const STOP_DECAY: float = 0.17           # s
+const STOP_LEN: float = 0.8
+const STOP_FULL: float = 4.6             # m/s: the hero's full-stick run
+var _stop_t: float = -1.0
+var _stop_k: float = 0.0
+var _loco_speed: float = 0.0
+var _blend_max: float = 0.25             # the next dead blend's longest (STOP_BLEND for a stop)
 
 ## fid29 combat (build 29): on the mid and high tiers (the fighter's look "real", and "fid_combat" unless it is
 ## false) the animator installs, in bind():
@@ -444,7 +457,8 @@ func variant_pick(st: String, n: int) -> int:
 ## fid29 combat: a clip switch with no crossfade, dead-blended from the body's own motion instead.
 func _dead_play(clip: String, blend: float, hit_at: float = -1.0) -> void:
 	player.play(clip, 0.0, 1.0)
-	var d: float = clampf(blend * 2.0, 0.15, 0.25)
+	var d: float = clampf(blend * 2.0, 0.15, maxf(0.25, _blend_max))
+	_blend_max = 0.25
 	if hit_at > 0.02:
 		d = minf(d, maxf(hit_at, 0.1))   # a strike's contact frame shows the clip's own pose
 	dead_blend.start(d)
@@ -922,9 +936,15 @@ func update(dt: float, speed_now: float, dead: bool) -> void:
 			want = state
 		if want != state:
 			_loco_t = 0.0
+		if fid and (state == "run" or state == "sprint") and want == "idle" and _loco_speed > 2.0 and clips.has("idle"):
+			# moves-fix-32: the run stops with a carry and a settle (STOP_*)
+			_stop_t = 0.0
+			_stop_k = clampf(_loco_speed / STOP_FULL, 0.0, 1.2)
+			_blend_max = STOP_BLEND
+		_loco_speed = speed_now if state in LOCO else 0.0
 		walk_rate = _loco_rate(want if clips.has(want) else "walk", speed_now)
 		if want != state:
-			if not play(want):
+			if not play(want, 0.0, -1.0, STOP_BLEND * 0.5 if _stop_t == 0.0 else -1.0):
 				# no clip for it: fall back to whichever locomotion clip exists
 				if player != null:
 					var alt: String = "walk" if want == "run" or want == "sprint" else want
@@ -949,8 +969,15 @@ func update(dt: float, speed_now: float, dead: bool) -> void:
 		foot.size = layer.frame_root.scale.y if layer != null and layer.frame_root != null else 1.0
 		foot.loco = state in LOCO or (legs_run and length > 0.0)
 		foot.pinning = (not (state in FOOT_OFF_STATES) or (fid and PIN_AFTER.has(state) and phase() >= float(PIN_AFTER[state])) or in_tail) and player != null
+	if _stop_t >= 0.0:
+		_stop_t += 0.0 if frozen else dt
+		if _stop_t > STOP_LEN or dead or not (state == "idle" or state == "_"):
+			_stop_t = -1.0
 	if layer != null:
 		var p: Dictionary = _pose_now() if not clips.has(state) else {}
+		if _stop_t >= 0.0:
+			p = p.duplicate()
+			p["spine_lean"] = float(p.get("spine_lean", 0.0)) + STOP_LEAN * stop_env()
 		# realism round 2: wound up for the next blow while an opponent is in reach
 		_ready_w = lerpf(_ready_w, 1.0 if (ready and not dead and state in READY_STATES) else 0.0, 1.0 - exp(-dt * READY_RATE))
 		if _ready_w > 0.01:
@@ -1004,6 +1031,13 @@ func _add_layers_now() -> Array:
 		var a: Animation = o[0]
 		out.append([a, u * a.length, float(o[1]) * float(o[2]) * _add_w * env])
 	return out
+
+
+## moves-fix-32: the run stop's trunk carry, signed (+ = forward), times how fast the run was (STOP_*)
+func stop_env() -> float:
+	if _stop_t < 0.0:
+		return 0.0
+	return _stop_k * exp(-_stop_t / STOP_DECAY) * cos(TAU * _stop_t / STOP_PERIOD)
 
 
 func phase() -> float:
