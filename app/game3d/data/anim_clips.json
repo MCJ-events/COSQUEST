@@ -6476,9 +6476,9 @@
    "pick_readable": {
     "blade": {
      "attack_1": "R_Atk1",
-     "attack_2": "",
+     "attack_2": "1H_Melee_Attack_Slice_Horizontal",
      "attack_3": "R_Atk3_k",
-     "skill_shoot": "",
+     "skill_shoot": "Spellcast_Shoot",
      "skill_rain": "R_Rain",
      "skill_charge": "R_Dash_n",
      "skill_shield": "R_Shield_k",
@@ -6640,7 +6640,21 @@
    },
    "clips_in_library": 55,
    "arm_droop": 0.9,
-   "arm_free_deg": 14.0
+   "arm_free_deg": 14.0,
+   "clip_meta": {
+    "1H_Melee_Attack_Slice_Horizontal": {
+     "tail": 6
+    },
+    "Spellcast_Shoot": {
+     "tail": 8,
+     "muzzle": "RightHand"
+    }
+   },
+   "idle_blend": {
+    "base": "R_Idle",
+    "body": "CMU_Idle",
+    "seam": 0.4
+   }
   },
   "forge_kade": {
    "status": "clips",

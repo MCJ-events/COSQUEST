@@ -2696,7 +2696,10 @@ func _fire_shot() -> void:
 	# anim-readable: the flash leaves the hand that aims (the shot's own path is unchanged)
 	var muzzle: Vector3 = p
 	if hero.anim.state == "skill_shoot" and hero.anim.has_clip("skill_shoot"):
-		var hp: Vector3 = hero.bone_pos("LeftHand" if not str(hero.anim.timing.get("skill_shoot", {}).get("contact_class", "")).begins_with("rifle") else "RightHand")
+		var st_m: Dictionary = hero.anim.timing.get("skill_shoot", {})
+		# moves-fix-32: a clip can name the hand it fires from ("muzzle": the Courier's sword points the shot)
+		var hand: String = str(st_m.get("muzzle", "LeftHand" if not str(st_m.get("contact_class", "")).begins_with("rifle") else "RightHand"))
+		var hp: Vector3 = hero.bone_pos(hand)
 		if hp != Vector3.INF:
 			muzzle = hp + _skill_dir * 0.12
 	fx.muzzle(muzzle, muzzle + _skill_dir, SHOOT_COLS)

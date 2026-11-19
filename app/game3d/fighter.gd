@@ -81,6 +81,17 @@ var kb_vel: Vector3 = Vector3.ZERO
 # step) for as long as the shove lasts; presentation only (kb_vel and the position are the game's)
 const STAGGER_V: float = 3.0
 var _staggering: bool = false
+## moves-fix-32 (mid, high tiers, presentation only): a heavy blow's own reaction plays before the shove's stumble takes
+## over. Every Guardian blow is heavy, so the hero's R_Hit_Heavy was picked, but the 1.4 to 2.2 m knockback started the
+## stagger clip on the next frame: the heavy hit was on screen for one frame (a pop). Now the hit plays HIT_LEAD of its own
+## time (the impact: trunk and head thrown back), then the stagger is dead-blended in for what is left of the shove.
+const HIT_LEAD: float = 0.12
+const STAGGER_V_LATE: float = 1.5        # m/s: the shove still worth a stumble once the hit has played its lead
+const STAGGER_BLEND: float = 0.11        # the hand-over (a 0.22 s dead blend)
+var _stagger_wait: bool = false
+## moves-fix-32: while a clip carries the reaction (the hit, the stagger) the whole-body lean with the shove is this share
+## of build 31's, which tipped the body back stiff on its heels (a plank) on top of the clip's own recoil
+const KB_LEAN_CLIP: float = 0.4
 var iframes: float = 0.0
 var stagger: float = 0.0
 var guarding: bool = false
@@ -1508,9 +1519,16 @@ func tick_visual(dt: float) -> void:
 	# fight-anim: a knockback shove leans the body with the push and sinks it a little (the feet
 	# are planted while the game slides the fighter back, so the body reads as shoved, not gliding)
 	var kv: float = kb_vel.length()
+	# moves-fix-32 (mid, high): a blow taken on the guard never staggers (the guard holds, CombatAnimator plays the block's
+	# own recoil: block_hit); a heavy hit plays its lead before the stumble (HIT_LEAD)
+	var hit_lead: bool = anim.fid and anim.state == "hit" and anim.has_clip("hit") and anim.length > 0.0 and anim.t < HIT_LEAD
+	var v_need: float = STAGGER_V_LATE if _stagger_wait else STAGGER_V
 	if kv < 0.05:
 		_staggering = false
-	elif kv >= STAGGER_V and not _staggering and not dead and anim.has_clip("stagger") and not anim.busy_action() \
+		_stagger_wait = false
+	elif anim.fid and (guarding or hit_lead) and kv >= v_need and not _staggering:
+		_stagger_wait = not guarding
+	elif kv >= v_need and not _staggering and not dead and anim.has_clip("stagger") and not anim.busy_action() \
 			and (kb_vel.normalized().dot(forward()) < -0.4 or (kb_vel.normalized().dot(forward()) > 0.4 and anim.has_clip("stagger_fwd"))):
 		# the shove decays 9/s: it is above 1 m/s for ln(kv)/9 s; the step covers that, then blends back
 		_staggering = true
@@ -1519,9 +1537,14 @@ func tick_visual(dt: float) -> void:
 			anim.variant["stagger"] = "stagger_fwd"
 		else:
 			anim.variant.erase("stagger")
-		anim.play("stagger", clampf(log(kv) / 9.0 + 0.12, 0.3, 0.6))
+		anim.play("stagger", clampf(log(kv) / 9.0 + 0.12, 0.3, 0.6), -1.0, STAGGER_BLEND if _stagger_wait else -1.0)
+		_stagger_wait = false
 	if kv > 1.0 and not dead:
 		var kk: float = clampf((kv - 1.0) / 6.0, 0.0, 1.0)
+		if anim.fid and (anim.state == "hit" or anim.state == "stagger") and anim.has_clip(anim.state):
+			kk *= KB_LEAN_CLIP
+		elif anim.fid and guarding and anim.has_clip("guard"):
+			kk *= 0.5    # moves-fix-32: the block's own recoil (CombatAnimator BLOCK_POSE) carries most of it
 		var kl: Vector3 = global_basis.orthonormalized().inverse() * kb_vel.normalized()
 		rot.x += 0.32 * kk * kl.z
 		rot.z -= 0.32 * kk * kl.x
