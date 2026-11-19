@@ -49,7 +49,12 @@ const STAND_SHIFT: float = 0.5     # the share of the feet's mean offset the hip
 const STAND_SHIFT_MAX: float = 0.09   # m at size 1
 const STAND_SHIFT_RATE: float = 3.5   # 1/s: slow, it reads as weight moving
 const STAND_UP_H: float = 0.11     # m at size 1: standing, the clip must lift a foot this far to release it
-const STRETCH: float = 0.995       # the leg never straightens past this share of its length
+const STRETCH: float = 0.995
+## fight-motion-31: a planted foot keeps its heading while the body turns only this far (rad); past HEAD_STEP it steps
+## round. Build 30 held it whatever the turn: after a turn on the spot the foot was twisted half a turn on its ankle
+## (hidden by the old pose guard's lag, a 180 degree flip of the foot when anything reset it)
+const HEAD_MAX: float = 0.7
+const HEAD_STEP: float = 0.8       # the leg never straightens past this share of its length
 
 var frame_root: Node3D             # the fighter's model holder (its scale is the character's size)
 var floor_y: float = 0.0           # the paving under the fighter, world
@@ -162,7 +167,9 @@ func _process_modification_with_delta(_delta: float) -> void:
 		if not pinning:
 			if (pinned or float(l["step_t"]) >= 0.0) and l.has("drawn"):
 				# fight-motion-31: ease off from where the foot is drawn (see RELEASE_TIME)
-				l["rel_off"] = (l["drawn"] as Vector3) - world.origin
+				# in the body's own frame: it turns with the body (a WHIRL spins it twice: an offset held in the world
+				# ended up across the body and the leg flipped to reach it)
+				l["rel_off"] = inv.basis * ((l["drawn"] as Vector3) - world.origin)
 				l["rel_t"] = 0.0
 			pinned = false
 			l["step_t"] = -1.0
@@ -178,7 +185,7 @@ func _process_modification_with_delta(_delta: float) -> void:
 			# the clip's own foot path (see the step below), so the lifted foot swings the clip's arc, not a straight line
 			var rel_d: float = Vector2(world.origin.x - (l["pin"] as Transform3D).origin.x, world.origin.z - (l["pin"] as Transform3D).origin.z).length()
 			l["step_len"] = clampf(RELEASE_TIME * (0.8 + rel_d / (0.3 * k)), RELEASE_TIME, RELEASE_TIME * 1.8)
-			l["step_off"] = (l["pin"] as Transform3D).origin - world.origin
+			l["step_off"] = inv.basis * ((l["pin"] as Transform3D).origin - world.origin)
 		elif not pinned and is_down and float(l["cool"]) <= 0.0 and float(l["step_t"]) < 0.0 \
 				and l.has("prev"):
 			pinned = true
@@ -211,6 +218,10 @@ func _process_modification_with_delta(_delta: float) -> void:
 				# be dragged at the end of a straight leg, and a step now is the honest answer
 				if bool(l.get("strain", false)) and err.length() > 0.06 * k:
 					want_step = true
+			# fight-motion-31: the body has turned far round a planted foot (the foot would be twisted on its ankle,
+			# up to half a turn): it steps round instead
+			if absf(wrapf(float(l.get("pin_head", head_now)) - head_now, -PI, PI)) > HEAD_STEP:
+				want_step = true
 			# round 2: one foot at a time. While the other foot is in the air this one carries the
 			# body and stays down (the hips sink to reach it), unless it is hopelessly far.
 			if want_step and float(other["step_t"]) >= 0.0 and other != l and err.length() < reach * 2.0:
@@ -240,7 +251,7 @@ func _process_modification_with_delta(_delta: float) -> void:
 			if bool(l.get("pin_full", false)):
 				target.basis = (l["pin"] as Transform3D).basis
 			else:
-				target.basis = Basis(Vector3.UP, wrapf(float(l["pin_head"]) - head_now, -PI, PI)) * world.basis.orthonormalized()
+				target.basis = Basis(Vector3.UP, clampf(wrapf(float(l["pin_head"]) - head_now, -PI, PI), -HEAD_MAX, HEAD_MAX)) * world.basis.orthonormalized()
 			if int(l["toe"]) >= 0:
 				# round 2: the contact point is pinned, not always the ankle. When the clip raises
 				# the heel (a weight shift, a toe-off) the ball of the foot is what stays put, and
@@ -268,9 +279,9 @@ func _process_modification_with_delta(_delta: float) -> void:
 			if float(l.get("step_lift", 0.0)) <= 0.0 and l.has("step_off"):
 				# fight-motion-31: an unlifted ease rides on the clip's foot with the pin's offset fading out
 				var ue: float = u * u * (3.0 - 2.0 * u)
-				target.origin = world.origin + (l["step_off"] as Vector3) * (1.0 - ue)
+				target.origin = world.origin + xf.basis * (l["step_off"] as Vector3) * (1.0 - ue)
 			target.origin.y = world.origin.y + sin(u * PI) * float(l.get("step_lift", 0.0)) * k
-			target.basis = Basis(Vector3.UP, wrapf(float(l["step_head"]) - head_now, -PI, PI) * (1.0 - e)) * world.basis.orthonormalized()
+			target.basis = Basis(Vector3.UP, clampf(wrapf(float(l["step_head"]) - head_now, -PI, PI), -HEAD_MAX, HEAD_MAX) * (1.0 - e)) * world.basis.orthonormalized()
 			w = 1.0
 			if float(l.get("step_lift", 0.0)) <= 0.0 and is_down and pinning and l.has("drawn") and u < 1.0:
 				# an unlifted ease (the clip had raised the foot) and the clip has put the foot down
@@ -319,7 +330,7 @@ func _process_modification_with_delta(_delta: float) -> void:
 			var rt: float = float(l["rel_t"]) + dt
 			var ru: float = clampf(rt / RELEASE_TIME, 0.0, 1.0)
 			var keep: float = 1.0 - ru * ru * (3.0 - 2.0 * ru)
-			target.origin = world.origin + (l["rel_off"] as Vector3) * keep
+			target.origin = world.origin + xf.basis * (l["rel_off"] as Vector3) * keep
 			w = 1.0 if keep > 0.001 else 0.0
 			l["rel_t"] = rt if ru < 1.0 else -1.0
 		else:
@@ -410,11 +421,20 @@ func repin(sk: Skeleton3D) -> void:
 	for l: Dictionary in _legs:
 		if float(l.get("ww", 0.0)) <= 0.001 or not l.has("goal_s"):
 			continue
+		if not bool(l["pinned"]) and float(l["step_t"]) < 0.0:
+			continue   # a dropped pin easing off (a spin, a dash): the follower's smoothed leg is shown as it is
 		var foot: int = l["foot"]
 		_solve(sk, int(l["up"]), int(l["lo"]), foot, l["goal_s"])
-		var gf: Transform3D = sk.get_bone_global_pose(foot)
-		gf.basis = l["fb_s"]
-		sk.set_bone_global_pose(foot, gf)
+		# the foot back on its planted orientation, as a local rotation under the re-solved shin (written as a global
+		# pose it flipped half a turn on some frames)
+		var par: int = sk.get_bone_parent(foot)
+		if par >= 0:
+			var pb: Basis = sk.get_bone_global_pose(par).basis.orthonormalized()
+			var want_l: Quaternion = (pb.inverse() * (l["fb_s"] as Basis).orthonormalized()).get_rotation_quaternion()
+			var have_l: Quaternion = sk.get_bone_pose_rotation(foot)
+			if want_l.dot(have_l) < 0.0:
+				want_l = -want_l
+			sk.set_bone_pose_rotation(foot, want_l.normalized())
 
 
 ## The heading of a foot in the world: ankle to toe joint on the ground plane (0 with no toe bone).
