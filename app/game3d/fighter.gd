@@ -69,6 +69,9 @@ var yaw: float = 0.0
 var speed_now: float = 0.0
 var dead: bool = false
 var celebrating: bool = false
+## fight-motion-31: the result is in (fight.gd _end). The barrier breaks up quietly on every fighter then, not only on
+## one that celebrates: the ally walks to its spot first and stood in its dome through most of the VICTORY banner.
+var fight_over: bool = false
 var anim_freeze: bool = false
 var weapons: Dictionary = {}      # "r" / "l" -> {node, class, bone} (weapons in hand, cq 234)
 
@@ -151,6 +154,9 @@ const FL_DASH_PITCH: float = -0.12
 const FL_DOME_A: float = 0.5
 const FL_DISSOLVE_GLOW: float = 0.45
 const FL_DASH_DROP: float = 0.08
+## fight-motion-31: the bound over a travelling action: [from, to] (shares of the move), height (m at size 1), held (a
+## quick rise, a hang and a quick drop) or an arc. The DASH bounds through its 6 m; SPLIT's leap lands on its slam (0.47).
+const LEAPS: Dictionary = {"skill_charge": [0.06, 0.8, 0.22, true], "skill_split": [0.05, 0.47, 0.3, false]}
 var _face_fill_k: float = -1.0
 const FaceLifeScript := preload("res://face_life.gd")
 var face_life: RefCounted = null                         # realism round 5: blinks and gaze (face_life.gd), heroes with the shape keys
@@ -239,6 +245,7 @@ var _vis_pause: float = 0.0
 ## edge moved 7 cm each way a frame: it read as a vibration). 0..1.
 var _jit: float = 0.0
 var _smooth_pos: Vector3 = Vector3.INF
+var _last_pos: Vector3 = Vector3.INF     # fight-motion-31: where the body was last frame (no freeze while it moves)
 var _trail: Array = []                  # the last few drawn positions (the legs' real speed)
 var _trail_dt: Array = []
 
@@ -1375,6 +1382,15 @@ func tick_visual(dt: float) -> void:
 	if _vis_pause > 0.0 and not anim_freeze:
 		_vis_pause = maxf(0.0, _vis_pause - dt)
 	anim.frozen = anim_freeze or _vis_pause > 0.0
+	# fight-motion-31: a body the game is still moving is never frozen. The presentation hit-stop (feel.gd vis_stop)
+	# outlasts the simulation's stop, and the animation-only pause (hit_pause) never stops the game: a running ally or
+	# a shoved Guardian then slid along the paving with its legs held still (measured: up to 15 % of the frozen frames,
+	# 1 m of glide a fight). Its animation plays on while it moves; a body standing still keeps the freeze.
+	var moved: float = Vector2(global_position.x - _last_pos.x, global_position.z - _last_pos.z).length() if _last_pos != Vector3.INF else 0.0
+	_last_pos = global_position
+	if anim.frozen and moved > 0.002 and not dead:
+		anim.frozen = false
+		anim_freeze = false
 	anim.floor_y = global_position.y
 	if face_life != null:
 		face_life.tick(dt, anim.frozen or dead)
@@ -1521,6 +1537,7 @@ func tick_visual(dt: float) -> void:
 		if ge > 0.001:
 			pos += Vector3(anim._flinch_dir.x, 0.0, anim._flinch_dir.z) * GIVE_M * size_k * ge
 			pos.y -= GIVE_DROP * size_k * ge
+	pos += _root_follow(dt)
 	if real_speed and _jit > 0.02 and not dead:
 		# drawn on the smoothed path while the game jitters the fighter
 		var off: Vector3 = global_basis.orthonormalized().inverse() * ((_smooth_pos - global_position) * _jit)
@@ -1530,6 +1547,15 @@ func tick_visual(dt: float) -> void:
 	# anim-readable: the readable clips crouch and rise more, so the plant follows faster (no float on the way back up)
 	_plant_y = lerpf(_plant_y, _plant_target(Basis.from_euler(rot).scaled(bscale), pos.y), 1.0 - exp(-dt * (PLANT_RATE_READABLE if turn_steps else PLANT_RATE)))
 	pos.y += _plant_y
+	if anim.fid and _mlen > 0.0 and not dead and LEAPS.has(_motion) and anim.has_clip(_motion):
+		# fight-motion-31 (mid, high): the DASH covers 6 m in 0.26 s (fight.gd CHARGE, from 0.12 to 0.74 of the move) and
+		# SPLIT's clip leaps forward on the spot, both with the feet on the paving: 0.5 to 2 m of skating a cast. The body
+		# bounds through the travel (the feet leave the paving), lands (SPLIT on its slam), and the feet are pinned again
+		# (combat_animator PIN_AFTER). After the plant above, which would put the lower foot straight back on the paving.
+		var lp: Array = LEAPS[_motion]
+		var kl: float = clampf((clampf(_mt / _mlen, 0.0, 1.0) - float(lp[0])) / (float(lp[1]) - float(lp[0])), 0.0, 1.0)
+		var shape: float = smoothstep(0.0, 0.22, kl) * smoothstep(1.0, 0.78, kl) if bool(lp[3]) else sin(kl * PI)
+		pos.y += float(lp[2]) * size_k * shape
 	body.position = pos
 	body.rotation = rot
 	body.scale = bscale
@@ -1555,10 +1581,10 @@ func tick_visual(dt: float) -> void:
 	if _dome != null:
 		# fight-look-31: the barrier never stays up over the victory pose (it played inside a glass dome in most seeds): it
 		# breaks up quietly as the winner celebrates (no shard burst over the VICTORY shot)
-		var on: bool = shield_t > 0.0 and not dead and not celebrating
+		var on: bool = shield_t > 0.0 and not dead and not celebrating and not fight_over
 		if not on and _dome.visible and _shatter_t < 0.0:
 			_shatter_t = 0.0
-			if not celebrating:
+			if not celebrating and not fight_over:
 				shield_ended.emit(global_position, 1.15 * size_k)
 		if _shatter_t >= 0.0:
 			# the dome breaks up cell by cell over 0.3 s (fx throws the shards)
@@ -1588,6 +1614,61 @@ func tick_visual(dt: float) -> void:
 
 var _bm_pos: Vector3
 var _bm_rot: Vector3
+
+## fight-motion-31 (presentation only, mid and high tiers): the drawn body follows the fighter's position with a
+## critically damped spring fed the position's own motion, so a speed that changes in one frame (CHARGE's 23 m/s dash
+## starts and stops dead, a knockback shove starts at full speed, a jog starts and stops at once) is eased over a few
+## frames instead of stepping: the dash leans in and carries a little past its end. The fighter's position, hurtbox and
+## weapon arc are the game's and never move; the drawn offset is at most ROOT_MAX and a teleport resets it.
+const ROOT_W: float = 30.0              # 1/s
+const ROOT_FF_ACC: float = 120.0        # m/s^2: how fast the speed taken as motion may change (the rest is eased)
+const ROOT_MAX: float = 0.45            # m at size 1
+var smooth_root: bool = false           # fight.gd/animator: on with the real-look tiers (CombatAnimator.fid)
+var _vr_pos: Vector3 = Vector3.INF
+var _vr_vel: Vector3 = Vector3.ZERO
+var _vr_ff: Vector3 = Vector3.ZERO
+var _vr_prev: Vector3 = Vector3.ZERO
+
+
+## The drawn body's offset from the fighter's position this frame, in the fighter's own frame (see ROOT_W).
+func _root_follow(dt: float) -> Vector3:
+	if not (smooth_root or anim.fid) or dead:
+		_vr_pos = Vector3.INF
+		return Vector3.ZERO
+	var gp := Vector3(global_position.x, 0.0, global_position.z)
+	if _vr_pos == Vector3.INF or (_vr_pos - gp).length() > 1.5 * size_k:
+		_vr_pos = gp
+		_vr_vel = Vector3.ZERO
+		_vr_ff = Vector3.ZERO
+		_vr_prev = gp
+	if dt > 0.0 and not anim_freeze:
+		var vt: Vector3 = (gp - _vr_prev) / dt
+		var dv: Vector3 = vt - _vr_ff
+		if dv.length() > ROOT_FF_ACC * dt:
+			dv = dv * (ROOT_FF_ACC * dt / dv.length())
+		_vr_ff += dv
+		# the offset from where the position would be had it moved at the eased speed (moving with it: none); the
+		# part of this frame's step beyond that speed is in the offset, to be eased out
+		var x: Vector3 = _vr_pos - (gp - _vr_ff * dt)
+		var v: Vector3 = _vr_vel - _vr_ff
+		var subs: int = maxi(1, ceili(ROOT_W * dt / 0.5))
+		var h: float = dt / float(subs)
+		for i in subs:
+			v += (-ROOT_W * ROOT_W * x - 2.0 * ROOT_W * v) * h
+			x += v * h
+		_vr_vel = _vr_ff + v
+		_vr_pos = gp + x
+		_vr_prev = gp
+	else:
+		_vr_pos += gp - _vr_prev
+		_vr_prev = gp
+	var off: Vector3 = _vr_pos - gp
+	var lim: float = ROOT_MAX * size_k
+	if off.length() > lim:
+		off = off.normalized() * lim
+		_vr_pos = gp + off
+	var lo: Vector3 = global_basis.orthonormalized().inverse() * off
+	return Vector3(lo.x, 0.0, lo.z)
 
 # build 20 pass 2: contact shadows under each foot. The sun blob is a broad soft disc round the
 # fighter; on its own it read as a shadow the body floated over. Each foot now has a small, dark,

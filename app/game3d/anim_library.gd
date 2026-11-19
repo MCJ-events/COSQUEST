@@ -383,6 +383,13 @@ static func set_for(cls: String) -> String:
 ## that passed the tear gate on its mesh); a state with no pick is left out (the model's own
 ## clip or the procedural pose plays it). With the motion switch on "mocap" the overlay's pick
 ## replaces a state's classic one (and adds the overlay-only states: stagger_fwd, death_fwd).
+## fight-motion-31: hybrid states decided in code over the data's "hybrid_states" (anim_clips.json keeps build 28's
+## bytes for the low tier's hash). The victory plays the captured fist pump (the weapon raised in front, a step of
+## weight) in place of KayKit's Cheer, whose straight arms held out to the sides read as a T-pose under the VICTORY
+## banner at the far fight camera (judged on game frames: cosquest-review/fight-motion-31).
+const HYBRID_FIX: Dictionary = {"victory": "mocap"}
+
+
 static func states_for(cls: String, key: String = "") -> Dictionary:
 	var d: Dictionary = data()
 	var sname: String = set_for(cls)
@@ -418,7 +425,7 @@ static func states_for(cls: String, key: String = "") -> Dictionary:
 				continue
 			var mode: String = "mocap"
 			if motion_now() == "hybrid":
-				mode = str(hy.get(st, "mocap"))
+				mode = str(HYBRID_FIX.get(st, hy.get(st, "mocap")))
 			mode = str(state_modes.get(st, mode))
 			if mode == "classic":
 				continue

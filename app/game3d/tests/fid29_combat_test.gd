@@ -371,7 +371,8 @@ func _cost() -> void:
 
 func _guard_check() -> void:
 	# the pose guard on its own skeleton: a slow turn passes exactly; a one-frame flip is limited to GUARD_ACC (5 % for the
-	# discrete braking step, which may stop a little harder) and lands
+	# discrete braking step, which may stop a little harder) and lands. fight-motion-31: the guard is a critically damped
+	# follower now (dead_blend.gd _guard): a flip is absorbed more gently, so it lands within 0.9 s (build 29: 0.4 s)
 	var sk := Skeleton3D.new()
 	sk.add_bone("Hips")
 	sk.add_bone("LeftUpLeg")
@@ -405,7 +406,7 @@ func _guard_check() -> void:
 		prev = now
 		if landed < 0 and now.angle_to(target) < 0.001:
 			landed = i
-	_check("pose_guard_limits_a_flip_and_lands", a_max <= g.GUARD_ACC * 1.05 and landed > 0 and landed <= 12, "acc %.0f rad/s2, landed at %d" % [a_max, landed])
+	_check("pose_guard_limits_a_flip_and_lands", a_max <= g.GUARD_ACC * 1.05 and landed > 0 and landed <= 27, "acc %.0f rad/s2, landed at %d" % [a_max, landed])
 	sk.free()
 
 

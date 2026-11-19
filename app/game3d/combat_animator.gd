@@ -74,6 +74,10 @@ const VICTORY_RATE_MAX: float = 1.2
 # rule as the landscape fight (5 GiB reported = a 6 GB phone); config "foot_ik" overrides
 const FOOT_IK_MIN_RAM: int = 5 * 1024 * 1024 * 1024
 const FOOT_OFF_STATES: Array[String] = ["death", "dodge", "skill_whirl", "skill_charge", "skill_split", "knockdown"]
+## fight-motion-31 (mid, high): the share of an action after which its feet are pinned again: SPLIT's slam has landed
+## (fighter.gd's hop is over at 0.45), the DASH has stopped travelling (fight.gd CHARGE moves until 0.31 s of 0.42)
+## and lands its lunge. Build 30 left them unpinned to the end: 0.5 to 0.9 m of slide after the landing.
+const PIN_AFTER: Dictionary = {"skill_split": 0.5, "skill_charge": 0.78}
 
 const ALIASES: Dictionary = {
 	"idle": ["idle", "idle_loop", "breathing_idle"],
@@ -203,6 +207,8 @@ var relax: float = 0.0
 const FL_RELAX_POSE: Dictionary = {"l_twist": 65.0, "l_bend": 12.0, "r_bend": 8.0}
 const FL_RELAX_STATES: Array[String] = ["idle", "_", "intro"]
 const READY_RATE: float = 6.0
+const LOCO_HOLD: float = 0.3             # fight-motion-31: s a locomotion state is held before a slower one
+var _loco_t: float = 0.0
 const READY_STATES: Array[String] = ["idle", "_", "walk"]
 const READY_POSE: Dictionary = {"spine_yaw": -12.0, "spine_lean": 5.0, "r_fwd": 30.0, "r_bend": 55.0, "r_side": 12.0, "l_fwd": 18.0, "l_bend": 35.0}
 const LOWER_BONES: Array[String] = ["Hips", "LeftUpLeg", "LeftLeg", "LeftFoot", "LeftToeBase", "RightUpLeg", "RightLeg", "RightFoot", "RightToeBase"]
@@ -370,6 +376,7 @@ func _fid_setup(body: Node) -> void:
 			skeleton.move_child(pg, after.get_index() + 1)
 		if pg.bind_bones(skeleton) > 0:
 			pose_guard = pg
+			pg.foot_lock = foot   # fight-motion-31: the feet are put back on their pins after the smoothing
 		else:
 			skeleton.remove_child(pg)
 			pg.free()
@@ -483,6 +490,11 @@ func _loco_rate(st: String, speed_now: float) -> float:
 	if gs <= 0.01:
 		return clampf(speed_now / 2.6, 0.8, 1.9)
 	return clampf(speed_now / gs, 0.5, 2.4)
+
+
+## fight-motion-31: idle < walk < run < sprint (LOCO_HOLD)
+static func _loco_rank(st: String) -> int:
+	return {"walk": 1, "run": 2, "sprint": 3}.get(st, 0)
 
 
 func _loop_copy(name: String) -> String:
@@ -885,6 +897,14 @@ func update(dt: float, speed_now: float, dead: bool) -> void:
 					want = "sprint"
 		elif speed_now > 0.2:
 			want = "walk"
+		# fight-motion-31: a locomotion state is held at least LOCO_HOLD before the body drops to a slower one (the
+		# ally kiting at its range flipped idle, walk and run every few frames: 48 flips in one fight, each a new
+		# clip); speeding up still switches at once, a hit or an action still ends it at once
+		_loco_t += dt
+		if fid and state in LOCO and want != state and _loco_rank(want) < _loco_rank(state) and _loco_t < LOCO_HOLD:
+			want = state
+		if want != state:
+			_loco_t = 0.0
 		walk_rate = _loco_rate(want if clips.has(want) else "walk", speed_now)
 		if want != state:
 			if not play(want):
@@ -911,7 +931,7 @@ func update(dt: float, speed_now: float, dead: bool) -> void:
 		foot.floor_y = floor_y
 		foot.size = layer.frame_root.scale.y if layer != null and layer.frame_root != null else 1.0
 		foot.loco = state in LOCO or (legs_run and length > 0.0)
-		foot.pinning = not (state in FOOT_OFF_STATES) and player != null
+		foot.pinning = (not (state in FOOT_OFF_STATES) or (fid and PIN_AFTER.has(state) and phase() >= float(PIN_AFTER[state])) or in_tail) and player != null
 	if layer != null:
 		var p: Dictionary = _pose_now() if not clips.has(state) else {}
 		# realism round 2: wound up for the next blow while an opponent is in reach
