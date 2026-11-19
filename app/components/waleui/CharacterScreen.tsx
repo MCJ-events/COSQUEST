@@ -4,6 +4,8 @@
 // cards, pink), reached from his Home (tap your character) and from the profile. "Faction hero" = no pick: the
 // hero of your faction, as before. The pick is kept on the phone (characterStore.ts). Logic and roster:
 // features/waleui/characters.ts (tested).
+// Build 30: eleven tiles in three rows (Faction hero, the six heroes, the four Forge characters), the large picture
+// a little shorter so all three rows sit above the buttons.
 import { Asset } from "expo-asset";
 import { Image } from "expo-image";
 import { useState } from "react";
@@ -23,9 +25,9 @@ const FH = 932;
 const AUTO = "auto";
 const COLS = 4;
 const TILE_W = 88;
-const TILE_H = 112;
-const GAP = 10;
-const GRID_Y = 486;
+const TILE_H = 100;
+const GAP = 8;
+const GRID_Y = 432;
 
 /** Hand a character's 9:16 card to the share sheet (the bundled picture as a file); the line alone if that fails. */
 export async function shareCharacterCard(key: string): Promise<boolean> {
@@ -127,16 +129,16 @@ export default function CharacterScreen() {
       </At>
 
       {/* the picked character, large */}
-      <At x={24} y={110} w={382} h={300} style={[glass(18, "rgba(255,255,255,0.4)"), { alignItems: "center", justifyContent: "flex-end", overflow: "hidden" }]} testID="wale-character-preview">
+      <At x={24} y={104} w={382} h={240} style={[glass(18, "rgba(255,255,255,0.4)"), { alignItems: "center", justifyContent: "flex-end", overflow: "hidden" }]} testID="wale-character-preview">
         {art ? (
-          <Image source={art.card} style={{ width: 360, height: 290 }} contentFit="contain" contentPosition="bottom" accessible accessibilityRole="image" accessibilityLabel={shown ? `${shown.name}, ${characterLine(shown)}` : "Your character"} testID="wale-character-art" />
+          <Image source={art.card} style={{ width: 360, height: 232 }} contentFit="contain" contentPosition="bottom" accessible accessibilityRole="image" accessibilityLabel={shown ? `${shown.name}, ${characterLine(shown)}` : "Your character"} testID="wale-character-art" />
         ) : (
-          <T size={13} weight={600} color={W.inkSoft} align="center" style={{ marginBottom: 130 }}>
+          <T size={13} weight={600} color={W.inkSoft} align="center" style={{ marginBottom: 100 }}>
             Join a faction to get its hero, or pick a character below.
           </T>
         )}
       </At>
-      <At x={24} y={418} w={382} style={{ alignItems: "center" }}>
+      <At x={24} y={350} w={382} style={{ alignItems: "center" }}>
         <T size={21} weight={800} style={{ lineHeight: 28 }} testID="wale-character-name">
           {shown?.name ?? "No character yet"}
         </T>
@@ -166,13 +168,13 @@ export default function CharacterScreen() {
             testID={`wale-character-${t.id}`}
           >
             {t.portrait ? (
-              <Image source={t.portrait} style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: "rgba(255,255,255,0.6)" }} contentFit="cover" />
+              <Image source={t.portrait} style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: "rgba(255,255,255,0.6)" }} contentFit="cover" />
             ) : (
-              <At x={8} y={6} w={72} h={72} style={{ borderRadius: 36, backgroundColor: "rgba(255,255,255,0.6)", alignItems: "center", justifyContent: "center" }}>
+              <At x={12} y={6} w={64} h={64} style={{ borderRadius: 32, backgroundColor: "rgba(255,255,255,0.6)", alignItems: "center", justifyContent: "center" }}>
                 <LineIcon name="person-standing" size={30} stroke={2.2} />
               </At>
             )}
-            <T size={10.5} weight={700} lines={1} align="center" style={{ lineHeight: 14, marginTop: t.portrait ? 6 : 84, paddingHorizontal: 4 }}>
+            <T size={10.5} weight={700} lines={1} align="center" style={{ lineHeight: 14, marginTop: t.portrait ? 5 : 75, paddingHorizontal: 4 }}>
               {t.name}
             </T>
             {on ? (

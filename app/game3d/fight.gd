@@ -1542,7 +1542,7 @@ const CARTOON_CAST: Array[String] = ["armstrong", "bobo", "catboy", "crystalz", 
 ## files sit in res://cast/heroes like the heroes' (tools/forge_chars/chars.json says where each comes from) with
 ## their own clip library (anim/<key>.glb, tools/anim/add_hero.sh). Only a character whose rig passed the clip
 ## gate is listed. They never stand in as an ally or a Guardian: only the player who picked one plays it.
-const FORGE_CAST: Array[String] = ["forge_courier"]
+const FORGE_CAST: Array[String] = ["forge_courier", "forge_bram"]
 var _hero_roles: Dictionary = {}     # role -> hero key, for the roles a faction hero plays
 
 

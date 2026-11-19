@@ -17,10 +17,14 @@ export type Character = {
 
 /**
  * The Forge characters whose rig passed the game's clip gate (game3d/tools/forge_chars/chars.json; fight.gd
- * FORGE_CAST lists the same keys). Bram, Mei and Cat-Boy are made but not playable yet: their rigs tear in the
- * clips, so they are not offered.
+ * FORGE_CAST lists the same keys). Build 30: Bram joins the Courier (his garment weights were redone so he passes
+ * the gate). Mei and Cat-Boy pass it too but look broken in motion (Mei's hands shred, Cat-Boy's jacket back webs
+ * out to his arm), so they are not offered yet (chars.json says why).
  */
-export const FORGE_CHARACTERS: Character[] = [{ key: "forge_courier", name: "Courier", faction: null, kind: "forge" }];
+export const FORGE_CHARACTERS: Character[] = [
+  { key: "forge_courier", name: "Courier", faction: null, kind: "forge" },
+  { key: "forge_bram", name: "Bram", faction: "celestials", kind: "forge" },
+];
 
 export const CHARACTERS: Character[] = [
   ...FACTION_HEROES.map((h): Character => ({ key: h.key, name: h.name, faction: h.faction, kind: "hero" })),

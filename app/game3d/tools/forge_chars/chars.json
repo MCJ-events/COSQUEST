@@ -14,32 +14,38 @@
   "forge_bram": {
    "name": "Bram",
    "faction": "celestials",
-   "playable": false,
-   "source": "~/forge-artist/bakeoff2/phaseA2/chars/bram/lift/final.blend",
+   "playable": true,
+   "source": "~/forge-artist/game/app/game3d/forge_candidates/weights/bram",
    "front": "~/forge-artist/bakeoff2/phaseA2/chars/bram/flat/view_front.png",
    "front_mask": "~/forge-artist/bakeoff2/phaseA2/chars/bram/masks/view_front_mask.png",
-   "why": "add_hero.sh gate: rig tears in every clip (idle 1.6 %, jog 3.6 %, worst 7.5 % of triangles past 2.5x; gate 0.5 %), mostly the outfit at the armpits, the belt pouches beside the hands and the crotch",
-   "a3": "~/forge-artist/bakeoff2/phaseA2/chars/bram/a3/final_final.blend (better head; same rig tears, 1.6 % idle / 3.4 % jog, so still not playable)"
+   "a3": "~/forge-artist/bakeoff2/phaseA2/chars/bram/a3/final_final.blend (better head; same rig tears, 1.6 % idle / 3.4 % jog, so still not playable)",
+   "previous_why": "add_hero.sh gate: rig tears in every clip (idle 1.6 %, jog 3.6 %, worst 7.5 % of triangles past 2.5x; gate 0.5 %), mostly the outfit at the armpits, the belt pouches beside the hands and the crotch",
+   "head_pass": "A3 head; garment weights redone (reweight.py, Forge commit a435006): hands rigid, contact relabelled, A-pose 35 deg baked",
+   "known_flaws": "build 30 hole check: small see-through gaps at the right armpit and through the belt pouches in overhead swings, thin fins at the glove edges, a few loose specks above the head; visible only up close, not at the game camera"
   },
   "forge_mei": {
    "name": "Mei",
    "faction": "ascendants",
    "playable": false,
-   "source": "~/forge-artist/bakeoff2/phaseA2/chars/mei/lift/final.blend",
+   "source": "~/forge-artist/game/app/game3d/forge_candidates/weights/mei",
    "front": "~/forge-artist/bakeoff2/phaseA2/chars/mei/flat/view_front.png",
    "front_mask": "~/forge-artist/bakeoff2/phaseA2/chars/mei/masks/view_front_mask.png",
-   "why": "add_hero.sh gate: rig tears (idle 1.2 %, jog 1.9 %; gate 0.5 %), mostly the hakama between the legs",
-   "a3": "A3 not used for Mei (RESULT-A3: not better at gameplay distance)"
+   "a3": "A3 not used for Mei (RESULT-A3: not better at gameplay distance)",
+   "previous_why": "add_hero.sh gate: rig tears (idle 1.2 %, jog 1.9 %; gate 0.5 %), mostly the hakama between the legs",
+   "head_pass": "A2 head (A3 not better for her); garment weights redone (reweight.py, a435006)",
+   "why": "build 30 hole check (19 Nov): passes the stretch gate (65 clips) but her hands shred into shards in every swing (close turntable and the fight intro); the stretch gate does not catch it. Left out."
   },
   "forge_catboy": {
    "name": "Cat-Boy",
    "faction": null,
    "playable": false,
-   "source": "~/forge-artist/bakeoff2/phaseA2/chars/catboy/lift/final.blend",
+   "source": "~/forge-artist/game/app/game3d/forge_candidates/weights/catboy",
    "front": "~/forge-artist/bakeoff2/phaseA2/chars/catboy/flat/view_front.png",
    "front_mask": "~/forge-artist/bakeoff2/phaseA2/chars/catboy/masks/view_front_mask.png",
-   "why": "add_hero.sh gate: no clip under the gate for idle and hit (worst 3.4 % of triangles past 2.5x), the lifted boots and the outfit",
-   "a3": "~/forge-artist/game/app/game3d/forge_candidates/a3/catboy_lod0_a3.glb (helmet kept, template head removed; same rig tears, 0.9 % idle / 1.9 % jog)"
+   "a3": "~/forge-artist/game/app/game3d/forge_candidates/a3/catboy_lod0_a3.glb (helmet kept, template head removed; same rig tears, 0.9 % idle / 1.9 % jog)",
+   "previous_why": "add_hero.sh gate: no clip under the gate for idle and hit (worst 3.4 % of triangles past 2.5x), the lifted boots and the outfit",
+   "head_pass": "A2 body lift, helmet head; garment weights redone (reweight.py, a435006)",
+   "why": "build 30 hole check (19 Nov): passes the stretch gate (54 clips) but when an arm lifts, the jacket back stretches out to the arm as a flat purple sheet (a web, like a wing) and the scarf ends fray into loose strips. Left out."
   }
  }
 }
