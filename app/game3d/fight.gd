@@ -23,6 +23,7 @@ const FxScript := preload("res://fx.gd")
 const SfxScript := preload("res://sfx.gd")
 const HitArea := preload("res://hit_area.gd")
 const HeroFiles := preload("res://hero_files.gd")     # fid29 seam (owned by fid29-heromaps): which file a hero loads
+const WeaponLook := preload("res://weapon_look.gd")   # fight-look-31: the weapons' materials
 const ShaderWarm := preload("res://shader_warm.gd")   # fid29: materials drawn once under the loading card
 const LookReal := preload("res://look_real.gd")       # fid29-lightcam: the per-place reflection capture
 const AnimLib := preload("res://anim_library.gd")
@@ -402,6 +403,7 @@ func configure(c: Dictionary) -> void:
 		_jlog["swings"] = []
 		_jlog["derived"] = []
 	autoplay = bool(c.get("autoplay", false))
+	_bot_pace = maxf(0.0, float(c.get("bot_pace", 0.0)))
 	bot_kind = str(c.get("bot", "fight"))
 	_load_threaded = bool(c.get("load_thread", true))
 	if c.has("seed"):
@@ -489,6 +491,10 @@ func _ready() -> void:
 		# fx_combat: the effects may add a little more (the shield still frames the struck fighter's head and chest)
 		fx_gain = maxf(fx_gain, 0.8)
 		fx_cap = maxf(fx_cap, 0.7)
+	elif bool(lk_fx.get("fl_fx", false)):
+		# fight-look-31: the cards add less again and one card never more than FL_FX_CAP (punchy, never a white sheet)
+		fx_gain = minf(fx_gain, float(lk_fx.get("fl_fx_gain", FL_FX_GAIN)))
+		fx_cap = minf(fx_cap, float(lk_fx.get("fl_fx_cap", FL_FX_CAP)))
 	RenderingServer.global_shader_parameter_set("cq_fx_gain", fx_gain)
 	RenderingServer.global_shader_parameter_set("cq_fx_cap", fx_cap)
 	_ground = arena.get("ground")
@@ -638,6 +644,7 @@ func _ready() -> void:
 		(pair[0] as FighterScript).real_speed = bool(cfg.get("real_speed", mr or rd))
 		(pair[0] as FighterScript).turn_steps = AnimLib.readable_now()
 		(pair[0] as FighterScript).anim_opts["breathe"] = AnimLib.readable_now()
+		(pair[0] as FighterScript).anim_opts["relax"] = 1.0 if bool((arena.get("look") as Dictionary).get("fl_motion", false)) else 0.0
 		p = _tier_lod(p, role)
 		# fid29 seam (fid29-heromaps): the hero file the tier really loads (a no-op at fid29-base)
 		p = HeroFiles.pick(p, role, arena.get("look") if arena != null else {})
@@ -745,6 +752,22 @@ var _close_top: float = 0.72
 var _close_lean: float = 0.3
 var _close_bottom: float = CLOSE_MARGIN.z   # fid29-lightcam: the close fit's bottom margin (lc_bottom)
 var _close_face: float = 0.0     # the share of the target's height that must stay under the top margin (0 = only the 0.78 point)
+## fight-look-31 (look "fl_cam", mid and high): a lower, closer fight camera turned ArenaScript.FL_CAM_YAW off the street's axis,
+## so the fighters fill more of the frame and the hero is seen three-quarter on with its face and sword, not its back.
+## Build 30's values are the constants above (LC_PITCH, LC_CLOSE_DIST, CLOSE_PITCH_LAND, CLOSE_DIST_LAND, LC_PIVOT_H,
+## LC_V_OFF, LC_H_OFF, CLOSE_MAX) and come back with look "fl_cam": false. Each FL_ value can be tried from the look
+## ("close_pitch", "close_dist", "lc_pivot", "lc_voff", "lc_hoff") as before.
+const FL_CAM_PITCH: float = 12.0         # portrait orbit (build 30: LC_PITCH 20)
+const FL_CAM_PITCH_LAND: float = 9.0     # landscape (build 30: CLOSE_PITCH_LAND 16)
+const FL_CAM_DIST: float = 4.5           # portrait nearest distance (build 30: LC_CLOSE_DIST 5.15)
+const FL_CAM_DIST_LAND: float = 6.0      # landscape (build 30: CLOSE_DIST_LAND 7.8)
+const FL_CAM_PIVOT: float = 1.05         # the orbit's pivot height (build 30: 1.15)
+const FL_CAM_VOFF: float = 0.45          # the view's lift over the orbit (build 30: LC_V_OFF 0.9)
+const FL_CAM_HOFF: float = 0.3           # (build 30: LC_H_OFF 0.5)
+const FL_CAM_MAX: float = 11.0           # the furthest the fit pulls back (build 30: CLOSE_MAX 15)
+var _close_max: float = CLOSE_MAX
+const FL_FX_GAIN: float = 0.42           # fight-look-31 (fl_fx): the cards' global gain (build 30 mid/high: 0.6)
+const FL_FX_CAP: float = 0.34            # and what one card may add (build 30: 0.5)
 
 
 func _close_camera() -> void:
@@ -753,8 +776,23 @@ func _close_camera() -> void:
 		return
 	_close = true
 	var yaw: float = atan2(_cam_basis.z.x, _cam_basis.z.z)    # the heading stays: _cam_fwd and _cam_right do not move
+	var flc: bool = bool(lk.get("fl_cam", false))
+	if flc:
+		# fight-look-31 (fl_cam): the heading turns FL_CAM_YAW off the street, so the hero is seen three-quarter on (its
+		# sword side and the Guardian's front), not from behind. The stick stays screen-relative (_cam_fwd, _cam_right
+		# follow the view); the bot steers in the street's frame (_play_*) and is untouched
+		yaw += deg_to_rad(ArenaScript.FL_CAM_YAW)
+		if not lk.has("lc_pivot"):
+			lk["lc_pivot"] = FL_CAM_PIVOT
+		if not lk.has("lc_voff"):
+			lk["lc_voff"] = FL_CAM_VOFF
+		if not lk.has("lc_hoff"):
+			lk["lc_hoff"] = FL_CAM_HOFF
+		_close_max = FL_CAM_MAX
 	# look "close_pitch", "close_tilt", "close_dist", "close_top", "close_lean", "close_face": framing trials (tools/look/cam_probe.gd)
 	var pitch: float = float(lk.get("close_pitch", CLOSE_PITCH_LAND if _landscape else (LC_PITCH if bool(lk.get("fid_lightcam", false)) else CLOSE_PITCH)))
+	if flc and not lk.has("close_pitch"):
+		pitch = FL_CAM_PITCH_LAND if _landscape else FL_CAM_PITCH
 	var tilt: float = float(lk.get("close_tilt", 0.0 if _landscape else CLOSE_TILT))
 	_close_top = float(lk.get("close_top", CLOSE_MARGIN_LAND_TOP if _landscape else 0.76))
 	_close_lean = float(lk.get("close_lean", 0.45 if _landscape else 0.3))
@@ -772,9 +810,46 @@ func _close_camera() -> void:
 	_lc_win_basis = Basis.from_euler(Vector3(deg_to_rad(-float(lk.get("lc_win_pitch", LC_WIN_PITCH))), yaw, 0.0))
 	_lc_win_basis_place = Basis.from_euler(Vector3(deg_to_rad(-float(lk.get("lc_win_pitch_place", LC_WIN_PITCH_PLACE))), yaw, 0.0))
 	_cam_dist = float(lk.get("close_dist", CLOSE_DIST_LAND if _landscape else (LC_CLOSE_DIST if _lc else CLOSE_DIST)))
+	if flc:
+		if not lk.has("close_dist"):
+			_cam_dist = FL_CAM_DIST_LAND if _landscape else FL_CAM_DIST
+		_cam_fwd = Vector3(-_cam_basis.z.x, 0.0, -_cam_basis.z.z).normalized()
+		_cam_right = Vector3(_cam_basis.x.x, 0.0, _cam_basis.x.z).normalized()
 	_cam_ahead = 0.0
 	_close_d = _cam_dist
 	_log("close camera pitch=%.0f dist=%.1f" % [CLOSE_PITCH_LAND if _landscape else CLOSE_PITCH, _cam_dist])
+	if flc:
+		_log("fl31 camera yaw=%+.0f pitch=%.0f dist=%.1f pivot=%.2f" % [ArenaScript.FL_CAM_YAW, pitch, _cam_dist, float(lk["lc_pivot"])])
+
+
+## fight-look-31 (fl_cam): the ally fades out of the way (fighter.gd set_fade) while it stands nearer the camera than the
+## hero and over the hero or its target on the screen, or within FL_FADE_NEAR of the lens. Presentation only.
+const FL_FADE_MAX: float = 0.7
+const FL_FADE_NEAR: float = 2.6
+var _fl_fade_k: float = 0.0
+
+
+func _fl_ally_fade(dt: float) -> void:
+	if not _close or ally == null or cam == null or hero == null or not bool((arena.get("look") as Dictionary).get("fl_cam", false)):
+		return
+	var want: float = 0.0
+	if not ally.dead and ally.visible:
+		var ac: Vector3 = ally.global_position + Vector3.UP * 1.2
+		var da: float = cam.global_position.distance_to(ac)
+		var vs: Vector2 = get_viewport().get_visible_rect().size
+		var sa: Vector2 = cam.unproject_position(ac)
+		for o: FighterScript in [hero, enemy]:
+			if o == null or o.dead:
+				continue
+			var oc: Vector3 = o.global_position + Vector3.UP * 1.2 * o.size_k
+			if da < cam.global_position.distance_to(oc) - 0.6 and not cam.is_position_behind(ac):
+				var so: Vector2 = cam.unproject_position(oc)
+				if absf(sa.x - so.x) < vs.y * 0.28 * o.size_k:
+					want = FL_FADE_MAX
+		if da < FL_FADE_NEAR:
+			want = maxf(want, FL_FADE_MAX * clampf((FL_FADE_NEAR - da) / 1.0, 0.0, 1.0))
+	_fl_fade_k = move_toward(_fl_fade_k, want, dt * 3.0)
+	ally.set_fade(_fl_fade_k)
 
 
 ## The distance at which the hero, its target and an ally close by are all inside the screen's margins.
@@ -801,7 +876,7 @@ func _close_fit() -> float:
 	# the nearest distance (from the close distance out to build 21's) at which every point is inside the
 	# margins: the view may be tilted off the orbit, so it is searched, not solved
 	var lo: float = _cam_dist
-	var hi: float = CLOSE_MAX
+	var hi: float = maxf(_close_max, lo)
 	if _close_ok(pts, pivot, lo, tv, th):
 		return lo
 	for i in 7:
@@ -917,7 +992,9 @@ func _face_fill_update() -> void:
 		close = ease(_win_k, -2.0)
 	if bool(cfg.get("face_close", false)):
 		close = 1.0      # review tools (tools/look/face_clip.gd): the close shots' light and gaze throughout
-	var k: float = lerpf(FighterScript.FACE_FILL_FIGHT, FighterScript.FACE_FILL_CLOSE, close)
+	# fight-look-31 (fl_light): a stronger, neutral fill at fight distance, so the side the camera sees reads
+	var ff: float = FighterScript.FL_FILL_FIGHT if bool((arena.get("look") as Dictionary).get("fl_light", false)) else FighterScript.FACE_FILL_FIGHT
+	var k: float = lerpf(ff, FighterScript.FACE_FILL_CLOSE, close)
 	var cb: Basis = cam.global_transform.basis
 	var to_fill: Vector3 = (cb.z + cb.y * 0.45 - cb.x * 0.3).normalized()
 	for f: FighterScript in fighters:
@@ -1482,7 +1559,15 @@ func _finish_load(r: Dictionary) -> void:
 					cg = AnimLib.sidecar_grips.get(f.anim.lib_key, {})   # a library registered at run time
 				if cg.has(str(_loading_role["class"])):
 					_loading_role["att"] = cg[str(_loading_role["class"])]
-			var why: String = f.hold_weapon(r["node"] as Node3D, _loading_role["att"], str(_loading_role["weapon"]), str(_loading_role["class"]))
+			var wnode: Node3D = r["node"] as Node3D
+			var why: String = f.hold_weapon(wnode, _loading_role["att"], str(_loading_role["weapon"]), str(_loading_role["class"]))
+			if why == "" and arena != null and bool((arena.get("look") as Dictionary).get("fl_weapon", false)):
+				# fight-look-31: metal, wood and leather instead of the palette's flat colours (weapon_look.gd)
+				var wn: int = WeaponLook.apply(wnode, arena.get("look"))
+				for wmi: Node in wnode.find_children("*", "MeshInstance3D", true, false):
+					for si in (wmi as MeshInstance3D).get_surface_override_material_count():
+						ShaderWarm.add((wmi as MeshInstance3D).get_surface_override_material(si))
+				_log("fl31 weapon role=%s surfaces=%d" % [role, wn])
 			_log("weapon role=%s class=%s bone=%s ok=%s %s parse_ms=%.1f path=%s" % [role, str(_loading_role["class"]), str(_loading_role["att"].get("bone", "")), str(why == ""), why, float(r["parse_ms"]), str(r["path"])])
 		else:
 			_log("weapon role=%s ok=false error=%s path=%s" % [role, str(r.get("error", "?")), str(r.get("path", ""))])
@@ -1492,6 +1577,9 @@ func _finish_load(r: Dictionary) -> void:
 		f.hair_mask = r.get("hair_mask")
 		f.surface_kinds = r.get("surface_kinds", {})
 		var info: Dictionary = f.set_model(r["node"] as Node3D)
+		if f == ally and arena != null and bool((arena.get("look") as Dictionary).get("fl_cam", false)):
+			for fm: Material in f.fl_enable_fade():
+				ShaderWarm.add(fm)
 		_log("load role=%s ok=true parse_ms=%.1f gen_ms=%.1f add_ms=%.1f scale=%.3f raw_h=%.3f library=%s anims=%d mapped=%s bones=%d hand=%s path=%s" % [
 			role, float(r["parse_ms"]), float(r["gen_ms"]), (Time.get_ticks_usec() - t_add) / 1000.0,
 			float(info["scale"]), float(info["height_raw"]), str(info.get("library", "")), (info["anims"] as PackedStringArray).size(), JSON.stringify(info["mapped"]),
@@ -1952,10 +2040,13 @@ func _process(dt: float) -> void:
 			for o: FighterScript in fighters:
 				if o.team != f.team and not o.dead and _flat(o.position - f.position).length() < READY_RANGE * maxf(f.size_k, o.size_k):
 					rdy = true
+		if state == "intro" and f == hero and _beat_t >= 0.0 and f.anim.relax > 0.0 and not f.anim.has_clip("intro"):
+			rdy = true    # fight-look-31 (fl_motion): a hero with no intro clip stands wound up in its beat, the weapon raised
 		f.anim.ready = rdy
 		f.tick_visual(dt)
 	_skid_dust(dt)
 	_follow_camera(dt)
+	_fl_ally_fade(real_dt)
 	_intro_camera()
 	_beat_camera()
 	_dof_update()
@@ -3104,6 +3195,12 @@ func _separate() -> void:
 
 # ------------------------------------------------------------ the autoplay bot
 
+## fight-look-31: config "bot_pace" (seconds, sims and demo captures only; 0 or absent = build 30's bot): at least this long
+## between the bot's skills, so a recorded fight rests between casts instead of chaining every skill the moment its
+## cooldown ends. A player never has a bot; nothing else reads it.
+var _bot_pace: float = 0.0
+
+
 func _bot(dt: float) -> void:
 	if bot_kind == "idle":
 		hud.bot_stick(Vector2.ZERO)
@@ -3173,15 +3270,15 @@ func _bot(dt: float) -> void:
 				cast = 5    # and a SHOOT at point-blank when nothing bigger is back
 		if cast >= 0 and _can_cast():
 			hud.bot_skill_slot(cast)
-			_bot_next_skill = 1.2
+			_bot_next_skill = maxf(1.2, _bot_pace)
 		elif _action == "" or (_action == "attack" and _act_t > _act_len * 0.5):
 			hud.bot_attack()
 	elif d < 7.0 and d > 3.5 and _skill_cd[0] <= 0.0 and _can_cast() and _bot_next_skill <= 0.0:
 		hud.bot_skill_slot(0)
-		_bot_next_skill = 1.0
+		_bot_next_skill = maxf(1.0, _bot_pace)
 	elif d < SHOOT_RANGE - 1.0 and _skill_cd[5] <= 0.0 and _can_cast() and _bot_next_skill <= 0.0:
 		hud.bot_skill_slot(5)   # build 22: closing in from range, a SHOOT on the way
-		_bot_next_skill = 0.6
+		_bot_next_skill = maxf(0.6, _bot_pace)
 
 
 ## build 28: the bot on the five-button panel, the same eight moves as a player: it presses DASH, SHIELD, SHOOT
@@ -3202,18 +3299,18 @@ func _bot_five(d: float, reach: float) -> void:
 		if hold and _action == "" and not hero.guarding:
 			hud.bot_attack_hold(true)   # the press starts a swing; the hold casts SPLIT HOLD_SPLIT_CS later
 			_bot_hold_t = HOLD_SPLIT_CS / 100.0 + 0.5
-			_bot_next_skill = 1.2
+			_bot_next_skill = maxf(1.2, _bot_pace)
 		elif cast >= 0 and _can_cast():
 			hud.bot_skill_slot(cast)
-			_bot_next_skill = 1.2
+			_bot_next_skill = maxf(1.2, _bot_pace)
 		elif _action == "" or (_action == "attack" and _act_t > _act_len * 0.5):
 			hud.bot_attack()    # the chain's third hit is WHIRL whenever it is back
 	elif d < 7.0 and d > 3.5 and _skill_cd[0] <= 0.0 and _can_cast() and _bot_next_skill <= 0.0:
 		hud.bot_skill_slot(0)
-		_bot_next_skill = 1.0
+		_bot_next_skill = maxf(1.0, _bot_pace)
 	elif d < SHOOT_RANGE - 1.0 and _skill_cd[5] <= 0.0 and _can_cast() and _bot_next_skill <= 0.0:
 		hud.bot_skill_slot(5)
-		_bot_next_skill = 0.6
+		_bot_next_skill = maxf(0.6, _bot_pace)
 
 
 # ------------------------------------------------------------ end

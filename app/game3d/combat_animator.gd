@@ -196,6 +196,12 @@ var _speed_now: float = 0.0
 ## from a loaded pose, not from a hanging arm.
 var ready: bool = false
 var _ready_w: float = 0.0
+## fight-look-31 (look "fl_motion", fighter.gd sets it): 0..1, the open hands of a standing body turned palm in and the
+## elbows a little soft (FL_RELAX_POSE), so an idle or the hero's intro beat is not two stiff palms facing the camera.
+## The weapon hand only softens its elbow (a twist would turn the weapon in it). 0 = build 30.
+var relax: float = 0.0
+const FL_RELAX_POSE: Dictionary = {"l_twist": 65.0, "l_bend": 12.0, "r_bend": 8.0}
+const FL_RELAX_STATES: Array[String] = ["idle", "_", "intro"]
 const READY_RATE: float = 6.0
 const READY_STATES: Array[String] = ["idle", "_", "walk"]
 const READY_POSE: Dictionary = {"spine_yaw": -12.0, "spine_lean": 5.0, "r_fwd": 30.0, "r_bend": 55.0, "r_side": 12.0, "l_fwd": 18.0, "l_bend": 35.0}
@@ -288,6 +294,7 @@ func bind(model: Node3D, body: Node3D, opts: Dictionary = {}) -> Dictionary:
 		no_bind = bool(opts.get("no_bind", false))
 		run_layer = bool(opts.get("run_layer", false))
 		breathe = bool(opts.get("breathe", false))
+		relax = float(opts.get("relax", 0.0))
 		if bool(opts.get("foot_ik", false)) and not clips.is_empty():
 			var fl := FootLock.new()
 			fl.name = "FootLock"
@@ -913,6 +920,10 @@ func update(dt: float, speed_now: float, dead: bool) -> void:
 			p = p.duplicate()
 			for rk: String in READY_POSE:
 				p[rk] = float(p.get(rk, 0.0)) + float(READY_POSE[rk]) * _ready_w
+		if relax > 0.0 and not dead and state in FL_RELAX_STATES:
+			p = p.duplicate()
+			for rk: String in FL_RELAX_POSE:
+				p[rk] = float(p.get(rk, 0.0)) + float(FL_RELAX_POSE[rk]) * relax
 		if breathe and not dead and (state == "idle" or state == "_" or state == "guard"):
 			_breath_t += dt
 			p = p.duplicate()
