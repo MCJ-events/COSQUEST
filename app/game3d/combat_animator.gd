@@ -169,6 +169,12 @@ var _victory_idle: bool = false  # fight-anim: the cheer has settled into the id
 var _flinch_t: float = -1.0      # fight-anim: seconds into the current flinch (-1 = none)
 var _flinch_k: float = 0.0       # its strength
 var _flinch_dir: Vector3 = Vector3.ZERO   # the push, in the character's own frame (+Z forward)
+## moves-fix-32 (mid, high): a blow taken on the guard. Build 31 fired the stagger clip off the block's 0.5 m push, so a good
+## block looked like being hit (the guard broke into a stumble, the sword dropped). The guard clip now holds and this recoil
+## plays on it instead: the trunk rocks back, the arms are driven in toward the chest behind the blade, then it recovers
+## (fighter.gd's hips give, GIVE_M, goes with it). Its envelope is the flinch's.
+const BLOCK_POSE: Dictionary = {"spine_lean": -11.0, "r_bend": 16.0, "l_bend": 14.0, "r_fwd": -10.0, "l_fwd": -8.0, "spine_tilt": 0.0}
+var _flinch_block: bool = false
 ## build 21: how much of its arms' spread a character takes back while it stands, walks, reels or
 ## is hit (pose_layer.gd arm_droop; 0 = none). The Guardian's retargeted arms stand out 65 deg in
 ## every clip, and its stagger read as a T-pose from the game camera (fighter.gd sets it for a boss).
@@ -790,6 +796,11 @@ func flinch(push: Vector3, strength: float) -> void:
 	_flinch_dir = local.normalized()
 	_flinch_k = maxf(strength, _flinch_k * _flinch_env() if _flinch_t >= 0.0 else 0.0)
 	_flinch_t = 0.0
+	_flinch_block = fid and state == "guard" and clips.has("guard")
+	if _flinch_block:
+		_add_t = -1.0
+		_add_set = []
+		return
 	if fid and not _hit_anims.is_empty():
 		_hit_clip(_flinch_dir, strength)
 
@@ -846,6 +857,12 @@ func _flinch_pose() -> Dictionary:
 	var e: float = _flinch_env() * _flinch_k
 	if e <= 0.001:
 		return {}
+	if _flinch_block:
+		# moves-fix-32: the block's recoil (BLOCK_POSE), at full depth for a 0.45 blow (fight.gd's block)
+		var kb: float = minf(e / 0.45, 1.6)
+		return {"spine_lean": BLOCK_POSE["spine_lean"] * kb * maxf(0.3, -_flinch_dir.z), "r_bend": BLOCK_POSE["r_bend"] * kb,
+			"l_bend": BLOCK_POSE["l_bend"] * kb, "r_fwd": BLOCK_POSE["r_fwd"] * kb, "l_fwd": BLOCK_POSE["l_fwd"] * kb,
+			"spine_tilt": FLINCH_TILT * 0.5 * e * _flinch_dir.x}
 	# pushed back (-Z) leans the spine back; pushed to its left (+X) tilts it that way and turns it
 	return {"spine_lean": FLINCH_LEAN * e * _flinch_dir.z, "spine_tilt": FLINCH_TILT * e * _flinch_dir.x,
 		"spine_yaw": FLINCH_YAW * e * _flinch_dir.x, "r_side": FLINCH_ARMS * e, "l_side": FLINCH_ARMS * e,
