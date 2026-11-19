@@ -6649,6 +6649,11 @@
      "tail": 8,
      "muzzle": "RightHand"
     }
+   },
+   "idle_blend": {
+    "base": "R_Idle",
+    "body": "CMU_Idle",
+    "seam": 0.4
    }
   },
   "forge_kade": {

@@ -418,6 +418,7 @@ func _fid_setup(body: Node) -> void:
 			pg.free()
 	ko = KoSettle.new()
 	ko.skeleton = skeleton
+	_idle_blend()
 	if lib_key == "" or player == null:
 		return
 	var rc: Dictionary = AnimLib.real_for(lib_key, skeleton)
@@ -454,6 +455,115 @@ func _fid_setup(body: Node) -> void:
 		if player.has_animation(hn):
 			_hit_anims[d] = player.get_animation(hn)
 			_hit_gain[d] = float((rc.get("hit_gain", {}) as Dictionary).get(d, 1.0))
+
+
+## moves-fix-32 (mid, high): a character's idle built from two library clips (anim_clips.json characters.<key>.idle_blend:
+## {base, body, seam}). The Courier's R_Idle loops in 1.07 s in a deep knee bend, a little hunched, with only the breath
+## moving; CMU_Idle (a captured wait, 3.3 s) stands upright and shifts its weight, but its arms were captured with no
+## sword (the hand wanders across the thighs). The built loop takes the body's legs, neck and head, its hips turned onto
+## the base's mean facing with IDLE_SWAY of their sway kept (the capture turns 15 to 20 degrees, which swung the carried
+## sword out to the side), the trunk half and half, and the base's shoulders, arms and hands (the sword carried as
+## before), the base re-timed to a whole number of its loops; the body's last `seam` s are blended into its start so the
+## loop has no seam. Built once per bind, a few milliseconds.
+const IDLE_ARMS: Array[String] = ["LeftShoulder", "LeftArm", "LeftForeArm", "LeftHand", "RightShoulder", "RightArm", "RightForeArm", "RightHand"]
+const IDLE_TRUNK: Array[String] = ["Spine", "Spine1", "Spine2"]
+const IDLE_SWAY: float = 0.5
+
+
+func _idle_blend() -> void:
+	if lib_key == "" or player == null or not clips.has("idle"):
+		return
+	var ib: Dictionary = ((AnimLib.data().get("characters", {}) as Dictionary).get(lib_key, {}) as Dictionary).get("idle_blend", {})
+	if ib.is_empty() or str((timing.get("idle", {}) as Dictionary).get("clip", "")) != str(ib.get("base", "")):
+		return
+	var pre: String = AnimLib.LIB_NAME + "/"
+	var ba: Animation = player.get_animation(pre + str(ib["base"]))
+	var bo: Animation = player.get_animation(pre + str(ib.get("body", "")))
+	if ba == null or bo == null or ba.length < 0.2 or bo.length < 1.0:
+		return
+	var seam: float = clampf(float(ib.get("seam", 0.4)), 0.1, bo.length * 0.3)
+	var ln: float = bo.length - seam
+	var n: int = maxi(1, int(round(ln / ba.length)))
+	var k: float = float(n) * ba.length / ln      # base seconds per built second
+	var out := Animation.new()
+	out.length = ln
+	out.loop_mode = Animation.LOOP_LINEAR
+	var step: float = 1.0 / 30.0
+	var nk: int = int(round(ln / step))
+	var b_hips: Quaternion = _mean_rot(ba, "Hips")
+	var o_hips: Quaternion = _mean_rot(bo, "Hips")
+	for src: Animation in [bo, ba]:
+		for i in src.get_track_count():
+			var typ: int = src.track_get_type(i)
+			if typ != Animation.TYPE_ROTATION_3D and typ != Animation.TYPE_POSITION_3D:
+				continue
+			var path: NodePath = src.track_get_path(i)
+			var bone: String = str(path.get_concatenated_subnames())
+			var arm: bool = bone in IDLE_ARMS
+			if (src == bo) == arm:
+				continue    # arms from the base, everything else from the body
+			if typ == Animation.TYPE_POSITION_3D and bone != "Hips":
+				continue
+			if out.find_track(path, typ) >= 0:
+				continue
+			var ti: int = out.add_track(typ)
+			out.track_set_path(ti, path)
+			out.track_set_interpolation_loop_wrap(ti, true)
+			for f in nk:
+				var tt: float = f * step
+				if src == ba:
+					var bt: float = fposmod(tt * k, ba.length)
+					if typ == Animation.TYPE_ROTATION_3D:
+						out.rotation_track_insert_key(ti, tt, ba.rotation_track_interpolate(i, bt))
+					else:
+						out.position_track_insert_key(ti, tt, ba.position_track_interpolate(i, bt))
+					continue
+				# the body: its tail blended into its start over the seam
+				var w: float = smoothstep(0.0, 1.0, tt / seam) if tt < seam else 1.0
+				if typ == Animation.TYPE_ROTATION_3D:
+					var q: Quaternion = bo.rotation_track_interpolate(i, tt)
+					if w < 1.0:
+						q = bo.rotation_track_interpolate(i, tt + ln).slerp(q, w)
+					if bone == "Hips":
+						q = (b_hips * Quaternion.IDENTITY.slerp((o_hips.inverse() * q).normalized(), IDLE_SWAY)).normalized()
+					elif bone in IDLE_TRUNK:
+						var bi: int = ba.find_track(path, typ)
+						if bi >= 0:
+							q = ba.rotation_track_interpolate(bi, fposmod(tt * k, ba.length)).slerp(q, 0.5)
+					out.rotation_track_insert_key(ti, tt, q)
+				else:
+					var v: Vector3 = bo.position_track_interpolate(i, tt)
+					if w < 1.0:
+						v = bo.position_track_interpolate(i, tt + ln).lerp(v, w)
+					out.position_track_insert_key(ti, tt, v)
+	var lib: AnimationLibrary = player.get_animation_library(AnimLib.LIB_NAME)
+	if lib.has_animation("__idle_blend"):
+		lib.remove_animation("__idle_blend")
+	lib.add_animation("__idle_blend", out)
+	clips["idle"] = pre + "__idle_blend"
+	var m: Dictionary = (timing.get("idle", {}) as Dictionary).duplicate()
+	m["idle_blend"] = str(ib.get("body", ""))
+	timing["idle"] = m
+
+
+## moves-fix-32: a bone's mean rotation over a clip (its keys, sign-aligned, averaged)
+static func _mean_rot(a: Animation, bone: String) -> Quaternion:
+	for i in a.get_track_count():
+		if a.track_get_type(i) != Animation.TYPE_ROTATION_3D or str(a.track_get_path(i).get_concatenated_subnames()) != bone:
+			continue
+		var n: int = a.track_get_key_count(i)
+		if n == 0:
+			break
+		var q0: Quaternion = a.track_get_key_value(i, 0)
+		var acc := Vector4.ZERO
+		for k in n:
+			var q: Quaternion = a.track_get_key_value(i, k)
+			if q.dot(q0) < 0.0:
+				q = -q
+			acc += Vector4(q.x, q.y, q.z, q.w)
+		acc = acc.normalized()
+		return Quaternion(acc.x, acc.y, acc.z, acc.w)
+	return Quaternion.IDENTITY
 
 
 ## fid29 combat: which of a state's variants plays this time: a hash of the fighter's slot and its swing
