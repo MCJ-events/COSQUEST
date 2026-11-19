@@ -22,8 +22,8 @@ uniform float env_k = 0.0;               // 0 = no cube (sun and ambient only)
 uniform vec3 env_flat = vec3(0.35, 0.36, 0.4);   // the reflection when there is no cube: a soft street grey
 uniform float steel_tint = 0.22;         // how much of the palette's hue a steel part keeps (a blue blade stays a little blue)
 uniform float edge_k = 0.35;
-uniform float studio_k = 0.9;            // the studio band's brightness
-uniform float studio_mix = 0.55;         // how much of the reflection is the studio (the rest the street)             // the bevel stand-in: a soft bright edge where a face turns away from the camera
+uniform float studio_k = 1.0;            // the studio band's brightness
+uniform float studio_mix = 0.65;         // how much of the reflection is the studio (the rest the street)             // the bevel stand-in: a soft bright edge where a face turns away from the camera
 
 varying vec3 v_obj;
 varying vec3 v_objn;
@@ -65,13 +65,13 @@ void fragment() {
 	// steel: a neutral polished grey that keeps a little of the palette's hue, brushed
 	float cl = max(l, 0.0001);
 	vec3 hue = clamp(c / cl * 0.56, 0.0, 1.0);
-	vec3 steel_c = mix(vec3(0.62, 0.63, 0.66), hue, steel_tint) * (0.9 + 0.2 * g.r);
+	vec3 steel_c = mix(vec3(0.7, 0.71, 0.74), hue, steel_tint) * (0.9 + 0.2 * g.r);
 	vec3 gold_c = mix(c / max(mx, 0.0001), vec3(1.0, 0.78, 0.36), 0.5) * 0.85 * (0.92 + 0.16 * g.a);
 	vec3 wood_c = c * (0.62 + 0.75 * g.g);
 	vec3 leather_c = max(c, vec3(0.03, 0.022, 0.018)) * (0.75 + 0.5 * g.b);
 
 	ALBEDO = steel_c * steel + gold_c * gold + wood_c * wood + leather_c * leather;
-	METALLIC = (steel + gold) * 0.85;
+	METALLIC = steel * 0.7 + gold * 0.85;
 	ROUGHNESS = steel * (0.28 + 0.18 * g.r + 0.12 * g.a) + gold * (0.36 + 0.12 * g.a) + wood * (0.72 + 0.15 * (1.0 - g.g)) + leather * (0.55 + 0.2 * g.b);
 	SPECULAR = 0.5;
 

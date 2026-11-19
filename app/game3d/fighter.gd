@@ -144,8 +144,11 @@ const FL_SKIN_ROUGH_MIN: float = 0.6
 const FL_SKIN_LOBE2: float = 0.08
 const FL_FILL_COL: Color = Color(1.0, 0.97, 0.94)
 const FL_FILL_FIGHT: float = 0.2
+const FL_FILL_CLOSE: float = 0.17         # the close shots' fill (build 30: 0.25 of a warm one; the neutral one read as a flash)
 ## fight-look-31 (fl_motion): the DASH's extra body pitch over its clip (build 30: 0.35 rad) and the hips' drop into the lunge
 const FL_DASH_PITCH: float = -0.12
+## fight-look-31 (fl_fx): the SHIELD dome's opacity (on the lower camera it is a large share of the frame and hid the fighter)
+const FL_DOME_A: float = 0.5
 const FL_DASH_DROP: float = 0.08
 var _face_fill_k: float = -1.0
 const FaceLifeScript := preload("res://face_life.gd")
@@ -1569,7 +1572,7 @@ func tick_visual(dt: float) -> void:
 			_dome_age += dt
 			_dome_hit = maxf(0.0, _dome_hit - dt * 4.0)
 			var fade: float = clampf(shield_t / 0.4, 0.0, 1.0)
-			_dome_mat.set_shader_parameter("alpha", maxf(fade, 0.6))
+			_dome_mat.set_shader_parameter("alpha", maxf(fade, 0.6) * (FL_DOME_A if bool(look.get("fl_fx", false)) else 1.0))
 			_dome_mat.set_shader_parameter("hit", _dome_hit + maxf(0.0, 1.0 - _dome_age / 0.25))
 			var pop: float = 1.0 + 0.12 * sin(clampf(_dome_age / 0.22, 0.0, 1.0) * PI) - 0.25 * maxf(0.0, 1.0 - _dome_age / 0.1)
 			var r: float = 1.15 * size_k

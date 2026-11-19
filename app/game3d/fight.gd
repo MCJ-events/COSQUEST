@@ -822,10 +822,28 @@ func _close_camera() -> void:
 		_log("fl31 camera yaw=%+.0f pitch=%.0f dist=%.1f pivot=%.2f" % [ArenaScript.FL_CAM_YAW, pitch, _cam_dist, float(lk["lc_pivot"])])
 
 
+## fight-look-31 (fl_motion): a face's rest on its own shape keys. Bram's head was built with the mouth open on bared
+## teeth (the intro close-up showed it gaping); the Forge heads' "mouth-open" key driven below zero with a little
+## "mouth-compression" closes it. Look "fl_face" ({key: weight}) overrides the table for trials.
+const FL_FACE_REST: Dictionary = {"forge_bram": {"mouth-open": -0.85, "mouth-compression": 0.9}}
+
+
+func _fl_face_rest(f: FighterScript, keys: Dictionary) -> void:
+	if keys.is_empty() or f.model == null:
+		return
+	for n: Node in f.model.find_children("*", "MeshInstance3D", true, false):
+		var mi := n as MeshInstance3D
+		for k: String in keys:
+			var i: int = mi.find_blend_shape_by_name(k)
+			if i >= 0:
+				mi.set_blend_shape_value(i, float(keys[k]))
+
+
 ## fight-look-31 (fl_cam): the ally fades out of the way (fighter.gd set_fade) while it stands nearer the camera than the
 ## hero and over the hero or its target on the screen, or within FL_FADE_NEAR of the lens. Presentation only.
 const FL_FADE_MAX: float = 0.7
 const FL_FADE_NEAR: float = 2.6
+const FL_FADE_TALL: float = 0.62
 var _fl_fade_k: float = 0.0
 
 
@@ -848,6 +866,10 @@ func _fl_ally_fade(dt: float) -> void:
 					want = FL_FADE_MAX
 		if da < FL_FADE_NEAR:
 			want = maxf(want, FL_FADE_MAX * clampf((FL_FADE_NEAR - da) / 1.0, 0.0, 1.0))
+		# or so near the lens that it stands taller than FL_FADE_TALL of the screen (the foreground, at the frame's edge)
+		if not cam.is_position_behind(ac):
+			var hp: float = absf(cam.unproject_position(ally.global_position + Vector3.UP * FighterScript.HEIGHT * ally.size_k).y - cam.unproject_position(ally.global_position).y)
+			want = maxf(want, FL_FADE_MAX * clampf((hp / maxf(vs.y, 1.0) - FL_FADE_TALL) / 0.15, 0.0, 1.0))
 	_fl_fade_k = move_toward(_fl_fade_k, want, dt * 3.0)
 	ally.set_fade(_fl_fade_k)
 
@@ -993,8 +1015,9 @@ func _face_fill_update() -> void:
 	if bool(cfg.get("face_close", false)):
 		close = 1.0      # review tools (tools/look/face_clip.gd): the close shots' light and gaze throughout
 	# fight-look-31 (fl_light): a stronger, neutral fill at fight distance, so the side the camera sees reads
-	var ff: float = FighterScript.FL_FILL_FIGHT if bool((arena.get("look") as Dictionary).get("fl_light", false)) else FighterScript.FACE_FILL_FIGHT
-	var k: float = lerpf(ff, FighterScript.FACE_FILL_CLOSE, close)
+	var fl_l: bool = bool((arena.get("look") as Dictionary).get("fl_light", false))
+	var ff: float = FighterScript.FL_FILL_FIGHT if fl_l else FighterScript.FACE_FILL_FIGHT
+	var k: float = lerpf(ff, FighterScript.FL_FILL_CLOSE if fl_l else FighterScript.FACE_FILL_CLOSE, close)
 	var cb: Basis = cam.global_transform.basis
 	var to_fill: Vector3 = (cb.z + cb.y * 0.45 - cb.x * 0.3).normalized()
 	for f: FighterScript in fighters:
@@ -1577,6 +1600,8 @@ func _finish_load(r: Dictionary) -> void:
 		f.hair_mask = r.get("hair_mask")
 		f.surface_kinds = r.get("surface_kinds", {})
 		var info: Dictionary = f.set_model(r["node"] as Node3D)
+		if arena != null and bool((arena.get("look") as Dictionary).get("fl_motion", false)):
+			_fl_face_rest(f, (arena.get("look") as Dictionary).get("fl_face", FL_FACE_REST.get(f.anim.lib_key, {})))
 		if f == ally and arena != null and bool((arena.get("look") as Dictionary).get("fl_cam", false)):
 			for fm: Material in f.fl_enable_fade():
 				ShaderWarm.add(fm)

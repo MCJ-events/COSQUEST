@@ -173,3 +173,8 @@ func _sync() -> void:
 		return
 	cam.global_transform = main_cam.global_transform
 	cam.fov = main_cam.fov
+	# fight-look-31: the fight camera's lens shift too (fid29-lightcam moves its view with h_offset / v_offset): without it
+	# the bloom view was drawn off to one side and added back as a ghost copy of every bright figure (the victory shot
+	# showed two of the ally and of the hero). 0 on the low tier, so nothing changes there
+	cam.h_offset = main_cam.h_offset
+	cam.v_offset = main_cam.v_offset
