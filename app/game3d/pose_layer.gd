@@ -27,6 +27,8 @@ const ROLES: Dictionary = {
 	"r_fore": ["RightForeArm", "lowerarm_r", "forearm.R", "LowerArm_R", "RightLowerArm"],
 	"l_arm": ["LeftArm", "upperarm_l", "upper_arm.L", "UpperArm_L", "LeftUpperArm"],
 	"l_fore": ["LeftForeArm", "lowerarm_l", "forearm.L", "LowerArm_L", "LeftLowerArm"],
+	"r_hand": ["RightHand", "hand_r", "hand.R", "Hand_R"],
+	"l_hand": ["LeftHand", "hand_l", "hand.L", "Hand_L"],
 }
 
 
@@ -122,6 +124,22 @@ func _process_modification_with_delta(_delta: float) -> void:
 	_turn(skel, "l_arm", Basis(Vector3.RIGHT, deg_to_rad(-_c("l_fwd"))) * Basis(Vector3.BACK, deg_to_rad(_c("l_side"))), s)
 	_turn(skel, "r_fore", Basis(Vector3.RIGHT, deg_to_rad(-_c("r_bend"))), s)
 	_turn(skel, "l_fore", Basis(Vector3.RIGHT, deg_to_rad(-_c("l_bend"))), s)
+	# fight-look-31 (fl_motion): the hand turned about the forearm's line (+ = the palm towards the body), so a hanging
+	# open hand rests palm in instead of facing the camera (the models have no finger bones)
+	_twist(skel, "r_hand", "r_fore", -_c("r_twist"))
+	_twist(skel, "l_hand", "l_fore", _c("l_twist"))
+
+
+func _twist(skel: Skeleton3D, hand: String, fore: String, deg: float) -> void:
+	if absf(deg) < 0.01 or not (_bones.has(hand) and _bones.has(fore)):
+		return
+	var b: int = _bones[hand]
+	var g: Transform3D = skel.get_bone_global_pose(b)
+	var axis: Vector3 = g.origin - skel.get_bone_global_pose(_bones[fore]).origin
+	if axis.length_squared() < 1e-10:
+		return
+	g.basis = Basis(axis.normalized(), deg_to_rad(deg)) * g.basis
+	skel.set_bone_global_pose(b, g)
 
 
 ## build 21: turns the upper arm (about its shoulder) towards hanging straight down, so its angle

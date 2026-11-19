@@ -93,6 +93,19 @@ const SHIELD_HOLD: float = 0.35          # s: cards made this soon after a hit, 
 var shields: int = 0                     # hits that set a shield (tests)
 var _sh_f: Node3D                        # the last struck fighter and until when its shield holds for new cards
 var _sh_until: float = -1.0
+## fight-look-31 (arena.gd "fl31" / "fl_fx", mid and high): Mark and Wale saw skills as big over-exposed white and orange
+## overlays that covered the fighters. Every effect is smaller (FL_FX_SIZE), shorter (FL_FX_LIFE) and the slash arcs and
+## beams dimmer, with less white core (FL_FX_ARC_A, FL_FX_CORE); the cards' global gain and cap are lower (fight.gd
+## FL_FX_GAIN, FL_FX_CAP). Ground decals (scorch, cracks) and the Guardian's attack telegraphs keep their size: they are
+## read for play. Off (and on low) every value is 1: build 30's effects.
+var fl_fx: bool = false
+const FL_FX_SIZE: float = 0.72
+const FL_FX_LIFE: float = 0.75
+const FL_FX_ARC_SIZE: float = 0.86
+const FL_FX_ARC_A: float = 0.62
+const FL_FX_CORE: float = 0.45
+const FL_FX_BEAM_W: float = 0.5
+const FL_FX_BEAM_H: float = 0.6
 
 
 ## The arena's look and the fight's tier, read from the fight this is a child of (fight.gd adds it after the arena).
@@ -103,6 +116,7 @@ func _fid_setup() -> void:
 	if not (lk is Dictionary):
 		return
 	fxc = bool((lk as Dictionary).get("fx_combat", false))
+	fl_fx = bool((lk as Dictionary).get("fl_fx", false))
 	var cfg0: Variant = f.get("cfg") if "cfg" in f else null
 	fxc_low = fxc and not (cfg0 is Dictionary and str((cfg0 as Dictionary).get("tier", "low")) in ["mid", "high"])
 	fid = bool((lk as Dictionary).get("real", false)) and bool((lk as Dictionary).get("fid_combat", true))
@@ -465,6 +479,10 @@ func _start(mi: Node3D, life: float, kind: String, size: float, tint: Color, ext
 func card(cell: int, at: Vector3, tint: Color, life: float, s0: float, s1: float, opts: Dictionary = {}) -> MeshInstance3D:
 	var flat: bool = bool(opts.get("flat", false))
 	var pool: String = "decal" if bool(opts.get("decal", false)) else ("top" if bool(opts.get("top", false)) else "card")
+	if fl_fx and pool != "decal" and not bool(opts.get("keep", false)):
+		s0 *= FL_FX_SIZE
+		s1 *= FL_FX_SIZE
+		life *= FL_FX_LIFE
 	var mi: MeshInstance3D = _pick({"decal": _decals, "top": _tops, "card": _cards}[pool], pool)
 	var m := mi.material_override as ShaderMaterial
 	m.set_shader_parameter("cell", float(cell))
@@ -514,6 +532,11 @@ func slash(at: Vector3, yaw: float, tint: Variant, size: float, tilt: float, lif
 	if fxc:
 		size *= 1.15
 		life *= 1.25
+	var ak: float = 1.0
+	if fl_fx:
+		size *= FL_FX_ARC_SIZE
+		life *= FL_FX_LIFE
+		ak = FL_FX_ARC_A
 	var mi: MeshInstance3D = _pick(_arcs, "arc")
 	mi.position = at
 	mi.basis = Basis(Vector3.UP, yaw) * Basis(Vector3(0, 0, 1), tilt)
@@ -524,11 +547,11 @@ func slash(at: Vector3, yaw: float, tint: Variant, size: float, tilt: float, lif
 	m.set_shader_parameter("head", 0.0)
 	m.set_shader_parameter("tail_len", 1.2)
 	m.set_shader_parameter("alpha", 1.0)
-	m.set_shader_parameter("core", 0.55 if fxc else 1.0)
-	m.set_shader_parameter("halo", 1.3)
+	m.set_shader_parameter("core", (0.55 if fxc else 1.0) * (FL_FX_CORE if fl_fx else 1.0))
+	m.set_shader_parameter("halo", 1.3 * (0.6 if fl_fx else 1.0))
 	m.set_shader_parameter("body", 1.0 if fxc else 0.95)
 	mi.visible = true
-	_start(mi, life, "arc", size, cols[0], {"spin": 0.0})
+	_start(mi, life, "arc", size, cols[0], {"spin": 0.0, "ak": ak})
 	if echo:
 		# a thin bright stroke just outside the crescent, a beat behind it (the reference's
 		# concentric strokes): core and halo only, no body
@@ -546,7 +569,7 @@ func slash(at: Vector3, yaw: float, tint: Variant, size: float, tilt: float, lif
 		em.set_shader_parameter("halo", 0.7)
 		em.set_shader_parameter("body", 0.0)
 		e.visible = true
-		_start(e, life * 1.15, "arc", size * 1.14, cols[1], {"spin": 0.0})
+		_start(e, life * 1.15, "arc", size * 1.14, cols[1], {"spin": 0.0, "ak": ak})
 	return mi
 
 
@@ -590,6 +613,11 @@ func trail_push(key: String, base: Vector3, tip: Vector3, tint: Variant, t_back:
 	if fxc:
 		trm.set_shader_parameter("body", 1.0)
 		trm.set_shader_parameter("halo", 1.25)
+	if fl_fx:
+		# fight-look-31: the weapon's ribbon with less white core and glow (it crossed the fighters' faces)
+		trm.set_shader_parameter("core", float(trm.get_shader_parameter("core")) * FL_FX_CORE)
+		trm.set_shader_parameter("halo", float(trm.get_shader_parameter("halo") if trm.get_shader_parameter("halo") != null else 1.0) * 0.6)
+		trm.set_shader_parameter("alpha", FL_FX_ARC_A + 0.15)
 
 
 func _trail_life() -> float:
@@ -825,6 +853,12 @@ func shock(at: Vector3, radius: float, tint: Color, life: float = 0.45) -> void:
 ## SPLIT: the energy beam (a white core in a blue sheath with scrolling energy, a wide glow,
 ## a downward light spike), a shock ring, a gold blast, a crack + scorch and dust.
 func beam(at: Vector3, height: float, width: float, tint: Color, glow: Color, life: float = 0.6) -> MeshInstance3D:
+	var ak: float = 1.0
+	if fl_fx:
+		width *= FL_FX_BEAM_W
+		height *= FL_FX_BEAM_H
+		life *= FL_FX_LIFE
+		ak = FL_FX_ARC_A
 	var mi: MeshInstance3D = _pick(_beams, "beam")
 	mi.position = at
 	mi.scale = Vector3(width, height, 1.0)
@@ -846,7 +880,7 @@ func beam(at: Vector3, height: float, width: float, tint: Color, glow: Color, li
 		m.set_shader_parameter("sh_head", sp[0])
 		m.set_shader_parameter("sh_chest", sp[1])
 	mi.visible = true
-	_start(mi, life, "beam", width, tint, {"h": height})
+	_start(mi, life, "beam", width, tint, {"h": height, "ak": ak})
 	return mi
 
 
@@ -1159,7 +1193,7 @@ func _process(dt: float) -> void:
 				head = 1.0 - (1.0 - head) * (1.0 - head)
 				m2.set_shader_parameter("head", head)
 				m2.set_shader_parameter("tail_len", lerpf(1.2, 0.25, clampf((k - 0.3) / 0.7, 0.0, 1.0)))
-				m2.set_shader_parameter("alpha", 1.0 - ease(clampf((k - 0.35) / 0.65, 0.0, 1.0), 1.6))
+				m2.set_shader_parameter("alpha", (1.0 - ease(clampf((k - 0.35) / 0.65, 0.0, 1.0), 1.6)) * float(d.get("ak", 1.0)))
 				mi.scale = Vector3.ONE * size * lerpf(0.92, 1.12, ease(k, 0.5))
 				var spn: float = float(d["spin"])
 				if spn != 0.0:
@@ -1169,7 +1203,7 @@ func _process(dt: float) -> void:
 				# flares wide fast, holds, then thins and fades
 				var wk: float = lerpf(0.55, 1.0, ease(minf(k / 0.06, 1.0), 0.4)) * lerpf(1.0, 0.25, ease(maxf(0.0, (k - 0.35) / 0.65), 1.5))
 				mi.scale = Vector3(size * wk, float(d["h"]) * lerpf(0.75, 1.05, ease(k, 0.3)), 1.0)
-				mb.set_shader_parameter("alpha", 1.0 - ease(maxf(0.0, (k - 0.3) / 0.7), 1.8))
+				mb.set_shader_parameter("alpha", (1.0 - ease(maxf(0.0, (k - 0.3) / 0.7), 1.8)) * float(d.get("ak", 1.0)))
 			"coin":
 				var from: Vector3 = d["from"]
 				var cv: Vector3 = d["vel"]

@@ -14,6 +14,8 @@ extends SceneTree
 ##    shadow splits, and build 28's intro lens (the fight's own FOV); low keeps build 28's near plane (0.5 m).
 ## 6. Fight distance (mid, fighting, close weight 0): the sun is build 28's single orthogonal split (one shadow pass
 ##    for the fighters, the tier's draw and primitive budget), at build 28's 35 m reach.
+## fight-look-31 (19 Nov 2026): the live fight runs with look "fl_cam": false, build 30's camera and beats. With fl_cam on
+## (the mid and high default since) there is no close shot at all; tests/fl31_test.gd checks that path.
 ## Prints "CQTEST PASS <name>" / "CQTEST FAIL <name> <why>", then "CQTEST done failures=N".
 
 const ArenaScript := preload("res://arena.gd")
@@ -110,7 +112,7 @@ func _start(tier: String) -> void:
 	_fight = null
 	var cfg: Dictionary = {"mode": "full", "duration_s": 45, "autoplay": true, "seed": 239, "load_thread": false, "place_thread": false,
 		"quality": "device", "dyn_res": false, "music": false, "sound": false, "tier": tier, "hero_cast": true, "faction": "icons",
-		"intro": true, "look": {"time": "golden"}}
+		"intro": true, "look": {"time": "golden", "fl_cam": false}}   # fight-look-31: the close shots exist only with fl_cam off (tests/fl31_test.gd covers it on)
 	(func() -> void:
 		root.get_node("Bridge").call("start_fight", JSON.stringify(cfg))).call_deferred()
 

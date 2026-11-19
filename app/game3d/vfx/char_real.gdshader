@@ -111,6 +111,9 @@ uniform float skin_rough_min = 0.0;       // skin's specular never sharper than 
 uniform float normal_fade = 0.0;
 uniform float skin_wide = 0.0;             // skinlook-28: 1 on a fitted head: the colour check accepts every skin tone
 uniform float skin_gain = 0.0;             // skinlook-28: > 0 = skin's exposure gain, the same for every tone (fighter.gd SKIN_GAIN)
+uniform float fl_fade = 0.0;             // fight-look-31 (fl_cam): the share of the ally's pixels left out while it stands between the camera and the fight (FL_FADE variant only)
+uniform float fl_rough_min = 0.0;        // fight-look-31 (fl_mat): the roughness floor of what is not skin, eyes or hair
+uniform float fl_spec_k = 1.0;           // fight-look-31 (fl_mat): a non-metal's specular
 uniform vec3 skin_wb = vec3(1.0);         // skin's colour balance under this time of day's light and grade (fighter.gd SKIN_WB)          // > 0: the normal map fades as one screen pixel covers more texels than this                // review only: 1 grey albedo, 2 mirror, 3 skin weight, 4 normals
 
 // cq 016: cloth off the legs (char_lit.gdshader has the notes). Off: cloth_bind0 = 100000.
@@ -344,6 +347,8 @@ void fragment() {
 		metal *= 1.0 - hair;
 	}
 	v_hair = hair;
+	// fight-look-31 (fl_mat): leather, cloth and armour never as glossy as lacquer (0 = build 30)
+	rough = mix(rough, max(rough, fl_rough_min), (1.0 - clamp(skin * 1.6, 0.0, 1.0)) * (1.0 - eye) * (1.0 - hair));
 	if (cs_on && cs_hair_cards > 0.0) {
 		// hair cards: darker towards the root (the strands under it shade it), a per-strand shift of the highlight from
 		// the strand texture's own light and dark
@@ -472,7 +477,7 @@ void fragment() {
 			base *= 1.0 - 0.6 * lid;
 		}
 	}
-	vec3 f0 = mix(vec3(mix(0.16 * specular * specular, 0.028, skin)), base, metal);
+	vec3 f0 = mix(vec3(mix(0.16 * specular * specular * fl_spec_k, 0.028, skin)), base, metal);
 	// the street's diffuse light: sky above, walls at the sides, the paving's bounce below
 	float blum = dot(base, vec3(0.2126, 0.7152, 0.0722));
 	// round 5: hair is meant to be dark: the near-black gain (for black suits at night) turned black hair grey
