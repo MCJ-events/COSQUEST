@@ -17,7 +17,7 @@
 # Build 23 is this upload (22 was the one before; 20 and 21 were never uploaded).
 # Set COSQUEST_BUILD_NUMBER to the next free number before every upload.
 export COSQUEST_TESTFLIGHT=1
-export COSQUEST_BUILD_NUMBER="${COSQUEST_BUILD_NUMBER:-30}"
+export COSQUEST_BUILD_NUMBER="${COSQUEST_BUILD_NUMBER:-31}"
 export EXPO_PUBLIC_API_URL="${EXPO_PUBLIC_API_URL:-https://cosquest-1.onrender.com}"
 export EXPO_PUBLIC_WEB_URL="${EXPO_PUBLIC_WEB_URL:-https://cosquest.vercel.app}"
 export EXPO_PUBLIC_SPARKS_ENGINE="${EXPO_PUBLIC_SPARKS_ENGINE:-module}"
