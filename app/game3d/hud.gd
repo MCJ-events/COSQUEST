@@ -155,6 +155,13 @@ var plate_min_y: float = 0.0
 ## from the screen's sides, for the notch / Dynamic Island and the home bar.
 var side_l: float = 0.0
 var side_r: float = 0.0
+## landscape-fit-32, landscape: the right edge of the app's close button (HUD px; fight3d config "hud_close"). The
+## button sits top left beside the notch / Dynamic Island, over the fight; the hero card starts past it (in build 31
+## the button covered the card's name and health bar). 0: no button to clear (portrait, review tools, older apps).
+var close_r: float = 0.0
+const CARD_W: float = 196.0
+const CARD_H: float = 64.0
+const CARD_Y: float = 26.0
 var _q_off: Vector2 = Vector2.ZERO
 var portrait: Texture2D = null   # the hero's face (fight.gd renders it once at the start)
 var units: Array[Dictionary] = []      # {id, name, hp, max, team, head: Vector3, feet, chest, hw (body half width, m), is_hero, shield, buff, stagger, level}
@@ -345,7 +352,22 @@ func badge_centre(id: String) -> Vector2:
 
 ## build 28: where the RALLY badge sits, under the hero card at the left (inside the top block, so top_shift applies).
 func rally_centre() -> Vector2:
-	return Vector2(40.0, 184.0)
+	return Vector2(card_rect().position.x + 24.0, 184.0)
+
+
+## landscape-fit-32: the hero card (top left, inside the top block). Portrait: 16 px in, as before. Landscape: inside
+## the left safe area (build 31 drew it at 16 px, under the rounded corner and the notch side) and past the app's close
+## button. The boss bar and the RALLY badge line up with it.
+func card_rect() -> Rect2:
+	var x: float = 16.0
+	if side_l > 0.0 or close_r > 0.0:
+		x = maxf(side_l + 16.0, close_r + 12.0)
+	return Rect2(Vector2(x, CARD_Y), Vector2(CARD_W, CARD_H))
+
+
+## landscape-fit-32: the left edge of the top block's bars (the boss bar and its name): 26 px in from the safe area.
+func top_left_x() -> float:
+	return side_l + 26.0
 
 
 func _stick_home() -> Vector2:
@@ -1068,19 +1090,40 @@ func _draw_vs() -> void:
 	_text_scaled(Vector2(w * 0.5, h * 0.48), "VS", int(64.0 * PT), Color(GOLD_HI.r, GOLD_HI.g, GOLD_HI.b, a), 18, kp, Color(INK.r, INK.g, INK.b, a))
 
 
+const TITLE_Y: float = 0.38
+const TITLE_Y_LAND: float = 0.5
+## The winner's art stands no higher than this (HUD px from the top, plus top_shift): under the timer and the place name.
+const TITLE_ART_TOP: float = 112.0
+const TITLE_BAND_H: float = 176.0
+
+
+## The end card's centre line. landscape-fit-32: sideways it sits at mid height (at 0.38 of a 720 px screen the
+## winner's art rose off the top).
+func title_y() -> float:
+	return size.y * (TITLE_Y_LAND if size.x > size.y else TITLE_Y)
+
+
+## Where the winner's art stands on the VICTORY card (grown by `k` as it comes in; 1 = settled). landscape-fit-32: no
+## taller than the room under the top block (the timer, the place name), so the head is on screen and the timer stays
+## readable (build 31 sideways: the art's top was 36 px off screen, over the timer). Portrait sizes are as before.
+func title_art_rect(k: float = 1.0) -> Rect2:
+	var y: float = title_y()
+	var s: float = minf(minf(TITLE_BAND_H * 2.3, size.y * 0.5), (y - top_shift - TITLE_ART_TOP) / 0.86) * k
+	return Rect2(Vector2(size.x * 0.5 - s * 0.5, y - s * 0.86), Vector2(s, s))
+
+
 func _draw_title_card() -> void:
 	var k: float = clampf(_banner_t / 0.22, 0.0, 1.0)
 	var ke: float = ease(k, 0.35)
-	var y: float = size.y * 0.38
+	var y: float = title_y()
 	var win: bool = _banner_kind == "win"
 	# the frame dims behind the card (the "frozen, slightly blurred" frame, without a post pass)
 	draw_rect(Rect2(Vector2.ZERO, size), Color(INK.r, INK.g, INK.b, 0.28 * ke))
-	var band_h: float = 176.0
+	var band_h: float = TITLE_BAND_H
 	if win and win_art != null:
 		# fight-look-31: the winner's 2D art rising behind the card (the 3D victory close-up is gone); the band covers its
 		# lower edge, so the head and shoulders stand over VICTORY
-		var s: float = minf(band_h * 2.3, size.y * 0.5) * lerpf(0.8, 1.0, ke)
-		draw_texture_rect(win_art, Rect2(Vector2(size.x * 0.5 - s * 0.5, y - s * 0.86), Vector2(s, s)), false, Color(1, 1, 1, ke))
+		draw_texture_rect(win_art, title_art_rect(lerpf(0.8, 1.0, ke)), false, Color(1, 1, 1, ke))
 	var band: Color = Color(INK.r, INK.g, INK.b, 0.72 * ke) if win else Color(BERRY.r, BERRY.g, BERRY.b, 0.94 * ke)
 	var bw: float = size.x * lerpf(0.3, 1.0, ke)
 	draw_rect(Rect2(Vector2((size.x - bw) * 0.5, y - band_h * 0.5), Vector2(bw, band_h)), band)
@@ -1118,7 +1161,7 @@ func _draw_boss_bar() -> void:
 	_boss_last_hp = hp
 	var k: float = float(hp) / mx
 	var chip: float = float(_chip.get(id, k))
-	var x0: float = 26.0
+	var x0: float = top_left_x()   # landscape-fit-32: inside the left safe area (build 31: 26 px from the edge)
 	var x1: float = size.x - side_r - 194.0   # build 21: clear of the minimap, which moves in by side_r
 	var y: float = 132.0
 	var j: Vector2 = Vector2(sin(_clock * 70.0), cos(_clock * 53.0)) * 4.0 * _boss_shake
@@ -1174,7 +1217,7 @@ func _draw_top() -> void:
 		_text(Vector2(cx, 98), point_name, 18, Color(1, 1, 1, 0.85), 5)
 	# hero card, top left
 	if show_hero_card:
-		var hr := Rect2(Vector2(16, 26), Vector2(196, 64))
+		var hr: Rect2 = card_rect()
 		draw_style_box(_card, hr)
 		_disc(hr.position + Vector2(30, 32), 21.0, Color(0.95, 0.72, 0.25))
 		_disc(hr.position + Vector2(30, 32), 18.0, Color(0.16, 0.12, 0.26))
