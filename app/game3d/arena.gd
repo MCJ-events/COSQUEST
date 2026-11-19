@@ -131,7 +131,8 @@ const TIER_LOOK: Dictionary = {
 ##             values stay the constants they were and come back with "fl_cam": false
 ##   fl_weapon the weapons in hand on metal, wood and leather (weapon_look.gd)
 ##   fl_motion the DASH's lean, the stiff intro hands (fight.gd, fighter.gd)
-const FL_PARTS: Array[String] = ["fl_light", "fl_mat", "fl_fx", "fl_cam", "fl_weapon", "fl_motion"]
+##   fl_env    the street's paving: less repetition, fewer dark decals (street_real.gd FL_*)
+const FL_PARTS: Array[String] = ["fl_light", "fl_mat", "fl_fx", "fl_cam", "fl_weapon", "fl_motion", "fl_env"]
 ## deg the fight camera's heading turns off the street (build 30: 0). Negative: the camera swings to the hero's left, the
 ## side away from the ally's spot (fight.gd _tick_ally: the hero's right and behind, in the street's frame), so the ally
 ## is never between the camera and the fight

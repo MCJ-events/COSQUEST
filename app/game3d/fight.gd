@@ -1041,10 +1041,14 @@ func _face_fill_update() -> void:
 func _dof_update() -> void:
 	if arena == null or cam == null or hero == null or not (bool((arena.get("look") as Dictionary).get("dof", false)) or _lc):
 		return
+	if not bool((arena.get("look") as Dictionary).get("dof_plate", true)):
+		return    # fight-look-31: review switch, no soft-focus pass at all (look "dof_plate": false)
 	var want: float = 0.0
 	if _beat_t >= 0.0:
 		want = 1.0 - smoothstep(BEAT_LEN - BEAT_OUT, BEAT_LEN - 0.15, _beat_t)
-	elif _close and state == "ending" and outcome == "win":
+	elif _close and state == "ending" and outcome == "win" and not bool((arena.get("look") as Dictionary).get("fl_cam", false)):
+		# fight-look-31 (fl_cam): no soft-focus pass in the victory shot. It reads the screen as it was before the camera's
+		# swing onto the winner, so every fighter left a ghost copy (two heroes, two allies) over the VICTORY card
 		want = ease(_win_k, -2.0)
 	_dof_k = want if _beat_t >= 0.0 else move_toward(_dof_k, want, 0.08)
 	if _dof_k <= 0.01:

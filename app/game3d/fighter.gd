@@ -149,6 +149,7 @@ const FL_FILL_CLOSE: float = 0.17         # the close shots' fill (build 30: 0.2
 const FL_DASH_PITCH: float = -0.12
 ## fight-look-31 (fl_fx): the SHIELD dome's opacity (on the lower camera it is a large share of the frame and hid the fighter)
 const FL_DOME_A: float = 0.5
+const FL_DISSOLVE_GLOW: float = 0.45
 const FL_DASH_DROP: float = 0.08
 var _face_fill_k: float = -1.0
 const FaceLifeScript := preload("res://face_life.gd")
@@ -1458,7 +1459,8 @@ func tick_visual(dt: float) -> void:
 	if _diss_t >= 0.0:
 		_diss_t += dt
 		var kd2: float = clampf(_diss_t / _diss_len, 0.0, 1.0)
-		_glow = maxf(_glow, 0.9 * (1.0 - kd2) + 0.3)
+		# fight-look-31 (fl_fx): the felled Guardian dissolves warm, not as a white-hot silhouette over the victory shot
+		_glow = maxf(_glow, (0.9 * (1.0 - kd2) + 0.3) * (FL_DISSOLVE_GLOW if bool(look.get("fl_fx", false)) else 1.0))
 		sxz = 1.0 - ease(kd2, 2.2)
 		sc *= 1.0 + 0.08 * sin(kd2 * PI)
 		if kd2 >= 1.0:
