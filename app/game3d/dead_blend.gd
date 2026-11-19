@@ -164,6 +164,10 @@ func _guard(skel: Skeleton3D) -> void:
 		if _have >= 1:
 			for i in _ids.size():
 				skel.set_bone_pose_rotation(_ids[i], _q1[i])
+		# fight-motion-31: the held legs still go onto the pins (the hit-stop shudder moves the body; without this the
+		# planted feet shook with it: 11 to 16 cm of slide on the hero's attack_1 steps)
+		if foot_lock != null and is_instance_valid(foot_lock):
+			foot_lock.repin(skel)
 		return
 	if _gt.size() != _ids.size():
 		_gt.resize(_ids.size())
