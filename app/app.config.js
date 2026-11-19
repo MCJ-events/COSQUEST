@@ -113,7 +113,7 @@ function webBaseUrl(raw) {
 }
 module.exports.webBaseUrl = webBaseUrl;
 
-const BETA_BUILD_NUMBER = "31";
+const BETA_BUILD_NUMBER = "32";
 const STORE_RELEASE_PLUGIN = "./plugins/withStoreRelease";
 // The microphone, said once for the whole app (calls, voice messages and voice comments are uploaded;
 // the game's spoken trivia answer is added by the game plugin).
