@@ -30,6 +30,7 @@ import {
   type Wallet,
 } from "@/features/game/payLink";
 import { gameStore, refreshFix, startLocation } from "@/features/game/runtime";
+import { appConfig } from "@/services/appConfig";
 
 export type WalletState = {
   /** null: the server has no payments (feature off) or it has not answered yet. */
@@ -124,7 +125,7 @@ export async function checkPaidAction(input: { action: "buy_costcoin" | "paid_qu
 
 /** Manage purchases: check, get the one-time link, open the website, and ask again when it closes. */
 export async function manageNow(): Promise<void> {
-  if (state.busy) return;
+  if (state.busy || !appConfig.coinPurchase) return;
   set({ busy: true, notice: null });
   try {
     const check = await checkPaidAction({ action: "buy_costcoin", moment: "checkout" });

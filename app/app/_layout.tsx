@@ -21,7 +21,9 @@ import { RootErrorBoundary } from "@/components/ErrorBoundary";
 import ForceUpdateGate from "@/components/ForceUpdateGate";
 import OfflineBanner from "@/components/OfflineBanner";
 import PushBridge from "@/components/PushBridge";
-import { startMonitoring } from "@/services/monitoring";
+import { setMonitoringUser, startMonitoring } from "@/services/monitoring";
+import { useAppSelector } from "@/store/hooks";
+import { useEffect } from "react";
 import GameBridge from "@/components/world/GameBridge";
 import { KeyboardProvider } from "@/components/ui/keyboard";
 import { useSocketConnection } from "@/hooks/useSocketConnection";
@@ -61,6 +63,20 @@ function SocketConnectionGate() {
   return null;
 }
 
+// Crash reports group by person: the signed-in account's id only (no name, email or token).
+// Does nothing while reporting is off (no EXPO_PUBLIC_SENTRY_DSN).
+function MonitoringUser() {
+  const id = useAppSelector((state) => {
+    const u = state.user.user as { _id?: unknown; id?: unknown } | null | undefined;
+    const v = u?._id ?? u?.id;
+    return v == null || !state.auth.token ? null : String(v);
+  });
+  useEffect(() => {
+    setMonitoringUser(id);
+  }, [id]);
+  return null;
+}
+
 // The phone's splash stays up until the fonts and the saved login are ready
 // (SessionGate hides it), instead of a blank frame and then a second splash
 // (audit B6). If something hangs, it goes after 6 s anyway.
@@ -93,6 +109,7 @@ export default function RootLayout() {
       {/* Stay logged in: loads the saved login before the screens show */}
       <SessionGate>
         <SocketConnectionGate />
+        <MonitoringUser />
 
         {/* Loads all the backend's avatars (GET /api/meta/avatars) */}
         <AvatarCatalogLoader />

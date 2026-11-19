@@ -42,3 +42,22 @@ export EXPO_PUBLIC_FORGE_CATALOGUE="${EXPO_PUBLIC_FORGE_CATALOGUE:-1}"
 # trivia; features/waleui/flag.ts). Set EXPO_PUBLIC_WALE_UI=0 before sourcing this to
 # build the app with the old screens, as build 22 was.
 export EXPO_PUBLIC_WALE_UI="${EXPO_PUBLIC_WALE_UI:-1}"
+
+# ---- Store release (build 30, release checklist 19 Nov 2026) ----
+# Legal pages. NOT written by us: Mark's company and its lawyer publish them on the company's
+# domain, then the URLs go here. Empty = the page is linked nowhere (sign-up, Settings, Help) and
+# its route says "not published yet" (services/appConfig.ts, components/Terms.tsx).
+export EXPO_PUBLIC_PRIVACY_URL="${EXPO_PUBLIC_PRIVACY_URL:-}"      # TODO(Mark + lawyer): privacy policy URL
+export EXPO_PUBLIC_TERMS_URL="${EXPO_PUBLIC_TERMS_URL:-}"          # TODO(Mark + lawyer): terms of service (with EULA) URL
+export EXPO_PUBLIC_GUIDELINES_URL="${EXPO_PUBLIC_GUIDELINES_URL:-}" # TODO(Mark + lawyer): community guidelines URL
+# Crash reporting (Sentry). Empty = the SDK is never started and nothing is sent (services/monitoring.ts).
+# SENTRY_ORG + SENTRY_PROJECT (+ SENTRY_AUTH_TOKEN, never committed) add the source-map upload plugin.
+export EXPO_PUBLIC_SENTRY_DSN="${EXPO_PUBLIC_SENTRY_DSN:-}"        # TODO(team account): the project's DSN
+# Store switches (services/releaseGates.ts). Unset = the store build. For a TestFlight build that
+# keeps today's behaviour, set before sourcing:
+#   EXPO_PUBLIC_COIN_PURCHASE=1      CosCoin packs, the web hand-off and "Manage purchases" on the phone
+#   EXPO_PUBLIC_SHOW_PLACEHOLDERS=1  the "not in the app yet" buttons and the Lobby mock-up
+#   EXPO_PUBLIC_DEV_SCREENS=1        /gps-demo and the Notifications check
+# Signing (plugins/withStoreRelease.js): the archive signs with this App Store profile so the push
+# entitlement reaches the IPA. A company account names its own profile here.
+export COSQUEST_IOS_PROFILE="${COSQUEST_IOS_PROFILE:-CosQuest Chat App Store}"

@@ -18,6 +18,9 @@ import { activeLook, lookSummary, randomLook } from "@/features/waleui/look";
 
 import { ART, Art, Ico, wardrobeArt } from "./custArt";
 import { BOX } from "./custArtBoxes";
+import { appConfig } from "@/services/appConfig";
+import { withoutPlaceholders } from "@/services/releaseGates";
+
 import { back, notBuiltYet } from "./go";
 import { At, Band, DesignCanvas, Footer, T, Tap, W } from "./kit";
 import { chooseSlot, setLook, useWardrobe } from "./lookStore";
@@ -30,21 +33,24 @@ const openTab = (tab: TabId) => router.push({ pathname: "/wale/customise", param
 
 type PartId = "face" | "hair" | "headwear" | "outfit" | "companion";
 
-const ROWS: { id: PartId; label: string; y: number; go: () => void }[] = [
+// soon: nothing behind it yet, drawn only with EXPO_PUBLIC_SHOW_PLACEHOLDERS=1 (services/releaseGates.ts)
+const ALL_ROWS: { id: PartId; label: string; y: number; go: () => void; soon?: boolean }[] = [
   { id: "face", label: "Face", y: 813, go: () => openTab("faces") },
   { id: "hair", label: "Hair", y: 883, go: () => openTab("hair") },
   { id: "headwear", label: "Headwear", y: 953, go: () => openTab("headwear") },
   { id: "outfit", label: "Outfit", y: 1023.5, go: () => openTab("outfits") },
-  { id: "companion", label: "Companion", y: 1093.5, go: () => notBuiltYet("Companion") },
+  { id: "companion", label: "Companion", y: 1093.5, go: () => notBuiltYet("Companion"), soon: true },
 ];
+const ROWS = withoutPlaceholders(ALL_ROWS, appConfig.showPlaceholders);
 
-const CIRCLES: { id: PartId; label: string; cx: number; go: () => void }[] = [
+const ALL_CIRCLES: { id: PartId; label: string; cx: number; go: () => void; soon?: boolean }[] = [
   { id: "face", label: "Face", cx: 52.5, go: () => openTab("faces") },
   { id: "hair", label: "Hair", cx: 127, go: () => openTab("hair") },
   { id: "headwear", label: "Headwear", cx: 200.6, go: () => openTab("headwear") },
   { id: "outfit", label: "Outfit", cx: 275, go: () => openTab("outfits") },
-  { id: "companion", label: "Companion", cx: 348.75, go: () => notBuiltYet("Companion") },
+  { id: "companion", label: "Companion", cx: 348.75, go: () => notBuiltYet("Companion"), soon: true },
 ];
+const CIRCLES = withoutPlaceholders(ALL_CIRCLES, appConfig.showPlaceholders);
 
 export default function WardrobeScreen() {
   const wardrobe = useWardrobe();
@@ -76,12 +82,14 @@ export default function WardrobeScreen() {
           YOUR LOOKS
         </T>
       </At>
-      <Tap x={271} y={103} w={115} h={18} label="More options" onPress={() => notBuiltYet("More options")} style={{ flexDirection: "row", justifyContent: "flex-end", gap: 4 }} testID="wale-wardrobe-more">
-        <Ico source={ART.ic.more} size={14} color={W.ink} />
-        <T size={10} weight={700} align="right" testID="wale-wardrobe-more-text">
-          More options
-        </T>
-      </Tap>
+      {appConfig.showPlaceholders ? (
+        <Tap x={271} y={103} w={115} h={18} label="More options" onPress={() => notBuiltYet("More options")} style={{ flexDirection: "row", justifyContent: "flex-end", gap: 4 }} testID="wale-wardrobe-more">
+          <Ico source={ART.ic.more} size={14} color={W.ink} />
+          <T size={10} weight={700} align="right" testID="wale-wardrobe-more-text">
+            More options
+          </T>
+        </Tap>
+      ) : null}
 
       {([0, 1] as const).map((slot) => {
         const on = wardrobe.active === slot;

@@ -8,6 +8,8 @@
 import Constants from "expo-constants";
 import { Platform } from "react-native";
 
+import { releaseGates } from "./releaseGates";
+
 const env = (value: string | undefined) => (value ?? "").trim();
 const url = (value: string | undefined) => {
   const v = env(value).replace(/\/+$/, "");
@@ -21,7 +23,11 @@ export const appConfig = {
   /** The website, for share links. */
   webUrl: url(process.env.EXPO_PUBLIC_WEB_URL),
 
-  /** Legal pages and help (not written by us: published by the team). Unset: "not published yet". */
+  /**
+   * Legal pages and help. Not written by us: the company and its lawyer publish them, then the
+   * build names them (scripts/cosquest-beta-env.sh lists the placeholders). Unset: the page is not
+   * linked anywhere (sign-up, Settings, Help) and its route says "not published yet".
+   */
   termsUrl: url(process.env.EXPO_PUBLIC_TERMS_URL),
   privacyUrl: url(process.env.EXPO_PUBLIC_PRIVACY_URL),
   guidelinesUrl: url(process.env.EXPO_PUBLIC_GUIDELINES_URL),
@@ -40,6 +46,18 @@ export const appConfig = {
   /** Call features that are not built yet: hidden unless turned on for testing. */
   callScreenShare: flag(process.env.EXPO_PUBLIC_CALL_SCREEN_SHARE),
   callSparks: flag(process.env.EXPO_PUBLIC_CALL_SPARKS),
+
+  /** Store-release switches (services/releaseGates.ts): all off unless the build turns them on. */
+  ...releaseGates(
+    {
+      EXPO_PUBLIC_COIN_PURCHASE: process.env.EXPO_PUBLIC_COIN_PURCHASE,
+      EXPO_PUBLIC_SHOW_PLACEHOLDERS: process.env.EXPO_PUBLIC_SHOW_PLACEHOLDERS,
+      EXPO_PUBLIC_DEV_SCREENS: process.env.EXPO_PUBLIC_DEV_SCREENS,
+      EXPO_PUBLIC_E2E: process.env.EXPO_PUBLIC_E2E,
+    },
+    Platform.OS,
+    __DEV__,
+  ),
 
   /** The installed app's version (app.json "version"). */
   appVersion: Constants.expoConfig?.version ?? "0.0.0",

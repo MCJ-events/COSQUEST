@@ -1,4 +1,5 @@
 import * as Location from "expo-location";
+import { Redirect } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
   Platform,
@@ -8,6 +9,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { appConfig } from "@/services/appConfig";
 import { C } from "@/theme/tokens";
 
 // Standalone demo screen — reachable at /gps-demo (web: /Cosquest/gps-demo).
@@ -19,7 +21,7 @@ import { C } from "@/theme/tokens";
 
 type Fix = { time: string; lat: number; lng: number };
 
-export default function GpsDemo() {
+function GpsDemoScreen() {
   const [status, setStatus] = useState("Idle: tap Start");
   const [running, setRunning] = useState(false);
   const [count, setCount] = useState(0);
@@ -182,3 +184,10 @@ const styles = StyleSheet.create({
   logLine: { color: "#8FE39B", fontSize: 13, fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace", marginBottom: 4 },
   hint: { fontSize: 12, color: C.muted, textAlign: "center", marginTop: 14, lineHeight: 18 },
 });
+
+// Build 30: a test screen, reachable only on dev builds or with EXPO_PUBLIC_DEV_SCREENS=1 (services/releaseGates.ts);
+// a store build sends the deep link home.
+export default function GpsDemo() {
+  if (!appConfig.devScreens) return <Redirect href="/" />;
+  return <GpsDemoScreen />;
+}

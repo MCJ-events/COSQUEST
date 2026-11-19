@@ -29,6 +29,8 @@ import { type Armory, type ArmoryWeapon, armoryFooter, countLabel, findWeapon } 
 import { fight3dAvailable } from "@/features/game3d/flags";
 
 import { buyArmoryWeapon, useArmory } from "./data";
+import { appConfig } from "@/services/appConfig";
+
 import { back, notBuiltYet } from "./go";
 import { useFactionHero } from "./heroArt";
 import { Art, At, Band, DesignCanvas, LineIcon, Padlock, T, Tap, W, WaleFooter, glass } from "./kit";
@@ -336,12 +338,14 @@ export function WeaponDetailScreen({ id }: { id?: string | null }) {
           UPGRADE CORES
         </T>
       </At>
-      <Tap x={316.5} y={694} w={67} h={18} label="View all upgrade cores" onPress={() => notBuiltYet("Upgrade cores")} style={{ flexDirection: "row", justifyContent: "flex-end", gap: 5 }} testID="wale-weapon-view-all">
-        <T size={9} weight={700} color={W.pink} spacing={0.4} testID="wale-weapon-view-all-text">
-          VIEW ALL
-        </T>
-        <LineIcon name="chevron-right" size={14} color={W.pink} stroke={2.6} />
-      </Tap>
+      {appConfig.showPlaceholders ? (
+        <Tap x={316.5} y={694} w={67} h={18} label="View all upgrade cores" onPress={() => notBuiltYet("Upgrade cores")} style={{ flexDirection: "row", justifyContent: "flex-end", gap: 5 }} testID="wale-weapon-view-all">
+          <T size={9} weight={700} color={W.pink} spacing={0.4} testID="wale-weapon-view-all-text">
+            VIEW ALL
+          </T>
+          <LineIcon name="chevron-right" size={14} color={W.pink} stroke={2.6} />
+        </Tap>
+      ) : null}
       {COL_X.map((x, i) => (
         <At key={i} x={x} y={727} w={117} h={63} style={[glass(12, "rgba(255,255,255,0.4)"), { alignItems: "center", justifyContent: "center" }]} testID={`wale-weapon-core-${i}`}>
           <CoreTile />

@@ -14,6 +14,7 @@ import { safeBack } from "@/utils/safeBack";
 import { C } from "@/theme/tokens";
 import { useIsDesktop } from "@/hooks/useDesktop";
 import { DARK_SCREEN_GRADIENT, themedStyles, useInk, useThemedStyles } from "@/constants/chatTheme";
+import { appConfig } from "@/services/appConfig";
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
@@ -164,11 +165,14 @@ export default function Settings() {
             href="/notification-preferences"
           />
 
-          <SettingRow
-            icon="pulse-outline"
-            label="Notifications check"
-            href="/notifications-check"
-          />
+          {/* push diagnostics: test builds only (EXPO_PUBLIC_DEV_SCREENS, services/releaseGates.ts) */}
+          {appConfig.devScreens ? (
+            <SettingRow
+              icon="pulse-outline"
+              label="Notifications check"
+              href="/notifications-check"
+            />
+          ) : null}
         </View>
 
         {/* APP PREFERENCES */}
