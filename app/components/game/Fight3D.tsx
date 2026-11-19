@@ -327,7 +327,7 @@ export default function Fight3D({
         if (land.current) {
           const d = Dimensions.get("window");
           const l = hudLandscape(insetsRef.current, d.width, d.height);
-          Object.assign(config, { landscape: true, hud_side: l.side, hud_top: l.top, view_px: landscapePx(d.width, d.height, PixelRatio.get()) });
+          Object.assign(config, { landscape: true, hud_side: l.side, hud_top: l.top, hud_close: l.close, view_px: landscapePx(d.width, d.height, PixelRatio.get()) });
           if (!l.top) delete (config as { hud_top?: number }).hud_top;
           setIsLand(true);
           log(`landscape side=${l.side.join(",")} view=${(config as { view_px?: number[] }).view_px?.join("x")}`);

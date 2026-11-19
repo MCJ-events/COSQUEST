@@ -36,18 +36,25 @@ export function landscapeDecision(input: LandscapeInput): LandscapeDecision {
 export const HUD_LAND_W = 1280;
 export const HUD_LAND_H = 720;
 
+/** The fight's close button (components/game/Fight3D.tsx styles.close): 40 pt round. */
+export const CLOSE_SIZE = 40;
+
 /**
  * The fight HUD's safe area in landscape, in HUD px: `side` [left, right] moves the stick and the
  * attack panel in from the notch / Dynamic Island and the home bar, `top` the top block down
  * (iOS shows no status bar in landscape, so usually 0). Width and height in points, landscape.
+ * `closeLeft` is the close button's left in points (top left, beside the notch side's inset) and
+ * `close` its right edge in HUD px (config "hud_close"): the hero card starts past it (landscape-fit-32;
+ * in build 31 the button sat on the card's name and health bar).
  */
-export function hudLandscape(insets: { top: number; left: number; right: number }, width: number, height: number): { side: [number, number]; top: number; closeLeft: number } {
+export function hudLandscape(insets: { top: number; left: number; right: number }, width: number, height: number): { side: [number, number]; top: number; closeLeft: number; close: number } {
   const w = Math.max(width, height);
   const h = Math.min(width, height);
-  if (!(w > 0) || !(h > 0)) return { side: [0, 0], top: 0, closeLeft: 14 };
+  if (!(w > 0) || !(h > 0)) return { side: [0, 0], top: 0, closeLeft: 14, close: 0 };
   const k = Math.max(HUD_LAND_W / w, HUD_LAND_H / h); // HUD px per point
   const px = (pt: number) => Math.round(Math.max(0, pt) * k);
-  return { side: [px(insets.left), px(insets.right)], top: Math.max(0, px(insets.top) - 20), closeLeft: Math.round(Math.max(0, insets.left)) + 10 };
+  const closeLeft = Math.round(Math.max(0, insets.left)) + 10;
+  return { side: [px(insets.left), px(insets.right)], top: Math.max(0, px(insets.top) - 20), closeLeft, close: px(closeLeft + CLOSE_SIZE) };
 }
 
 /** The view's size in pixels with the long side across (the fight waits for its window to be this). */
