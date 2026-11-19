@@ -553,6 +553,7 @@ func _ready() -> void:
 		if sd is Array and (sd as Array).size() == 2:
 			hud.side_l = clampf(float(sd[0]), 0.0, 200.0)
 			hud.side_r = clampf(float(sd[1]), 0.0, 200.0)
+		hud.close_r = clampf(float(cfg.get("hud_close", 0.0)), 0.0, 400.0)   # landscape-fit-32: the app's close button
 	hud.hero_name = str(cfg.get("hero_name", "You"))
 	hud.skill_cd_max = SKILL_CD.duplicate()
 	hud.t_left = duration

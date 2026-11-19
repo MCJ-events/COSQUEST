@@ -448,7 +448,7 @@ test("build 20: the fight HUD's top block clears the Dynamic Island and the clos
   // the close button's top is under the moved boss bar (HUD 153 + hudTop), in points
   const k = 720 / 393;
   assert.ok(pro.closeTop * k >= 153 + pro.hudTop, `closeTop ${pro.closeTop}`);
-  assert.ok(pro.closeTop < 160);
+  assert.ok(pro.closeTop < 180);
   // no safe area: the HUD stays where it was, the button still clears the bar
   const flat = hudLayout(0, 375, 667);
   assert.equal(flat.hudTop, 0);
@@ -457,6 +457,18 @@ test("build 20: the fight HUD's top block clears the Dynamic Island and the clos
   assert.equal(hudLayout(10, 393, 852).hudTop, 0);
   // no window size yet: as build 19 (under the safe area), no shift
   assert.deepEqual(hudLayout(47, 0, 0), { hudTop: 0, closeTop: 57 });
+});
+
+test("landscape-fit-32: the portrait close button sits under the RALLY badge (five-button panel), not on it", () => {
+  // hud.gd rally_centre (40, 184) + top_shift, radius 19 and a 3 px rim; the button is 40 pt square at left 14 pt
+  for (const [top, w, h] of [[20, 375, 667], [47, 390, 844], [59, 393, 852], [62, 402, 874], [59, 430, 932], [62, 440, 956]]) {
+    const l = hudLayout(top, w, h);
+    const k = Math.max(720 / w, 1280 / h);
+    const badgeBottom = 184 + 22 + l.hudTop;
+    assert.ok(l.closeTop * k >= badgeBottom + 8, `${w}x${h}: close ${l.closeTop * k} vs badge ${badgeBottom}`);
+    // and it stays in the top quarter of the screen
+    assert.ok(l.closeTop < h * 0.25, `${w}x${h}: closeTop ${l.closeTop}`);
+  }
 });
 
 test("build 20: hud_top goes to Godot only when there is a safe area to clear", () => {
