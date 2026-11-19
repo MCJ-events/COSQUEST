@@ -13,6 +13,7 @@ uniform float fill : hint_range(0.0, 1.0) = 0.0;
 uniform float half_angle = 3.1416;
 uniform float alpha = 1.0;
 uniform float flash = 0.0;
+uniform vec3 flash_col : source_color = vec3(1.0);   // build 32: the hero's RAIN lands in its own tint (fx.gd telegraph_land_own)
 
 void fragment() {
 	vec2 p = (UV - 0.5) * 2.0;
@@ -35,6 +36,6 @@ void fragment() {
 	float body = (0.06 + 0.24 * filled * smoothstep(0.0, max(fill, 0.01), r) + 0.28 * edge) * k;
 	// additive glow: the advancing front line and the rim
 	float glow = (0.9 * front + 0.55 * edge * (0.6 + 0.4 * fill)) * k;
-	ALBEDO = tint.rgb * body + mix(tint.rgb, vec3(1.0, 0.85, 0.6), 0.3) * glow + vec3(flash) * inside * alpha;
+	ALBEDO = tint.rgb * body + mix(tint.rgb, vec3(1.0, 0.85, 0.6), 0.3) * glow + flash_col * flash * inside * alpha;
 	ALPHA = clamp(body, 0.0, 1.0);
 }

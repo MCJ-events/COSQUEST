@@ -8,6 +8,7 @@ extends SceneTree
 ## 4. A live fight on high (the street, autoplay, "bot_pace" 3): before the clock the 2D VS card shows and no close shot
 ##    weighs in (the close weight 0, the camera no nearer the hero than build 30's nearest, LC_CLOSE_DIST); while the fight
 ##    runs the camera never comes nearer than that either; the effects are tamed (fx.gd fl_fx) and the bot is paced.
+##    Build 32: the hero's RAIN circle lands with a small tinted flash, a Guardian telegraph keeps its white one.
 ## Prints "CQTEST PASS <name>" / "CQTEST FAIL <name> <why>", then "CQTEST done failures=N".
 
 const ArenaScript := preload("res://arena.gd")
@@ -109,11 +110,31 @@ func _process(_dt: float) -> bool:
 		_check("camera_never_nearer_than_build30", _min_d >= FightScript.LC_CLOSE_DIST - 0.05, "min=%.2f" % _min_d)
 		_check("fx_tamed", bool((fi.get("fx") as Node).get("fl_fx")))
 		_check("bot_paced", is_equal_approx(float(fi.get("_bot_pace")), 3.0))
+		_check_rain_flash(fi.get("fx") as Node)
 		return _done()
 	if _frames > 6000:
 		_check("reached_fight", false, "state=%s" % st)
 		return _done()
 	return false
+
+
+## build 32: the hero's RAIN circle lands with a small flash in its own tint (fx.gd telegraph_land_own); a Guardian
+## telegraph keeps its white 0.8 flash.
+func _check_rain_flash(fx: Node) -> void:
+	var own: MeshInstance3D = fx.call("telegraph", Vector3.ZERO, 0.0, 2.6, 180.0, 0.8, Color(1.0, 0.29, 0.24))
+	fx.call("telegraph_land_own", own, Color("#FFD9C9"))
+	var boss: MeshInstance3D = fx.call("telegraph", Vector3(3, 0, 0), 0.0, 2.0, 180.0, 0.8)
+	fx.call("telegraph_end", boss, true)
+	var fo: float = -1.0
+	var fb: float = -1.0
+	for d: Dictionary in fx.get("_live"):
+		if d["node"] == own:
+			fo = float(d.get("flash", -1.0))
+		elif d["node"] == boss:
+			fb = float(d.get("flash", -1.0))
+	var col: Color = (own.material_override as ShaderMaterial).get_shader_parameter("flash_col")
+	_check("rain_flash_tamed", fo > 0.0 and fo <= 0.25 and col.b < 0.9, "flash=%.2f col=%s" % [fo, str(col)])
+	_check("guardian_flash_kept", is_equal_approx(fb, 0.8), "flash=%.2f" % fb)
 
 
 func _done() -> bool:

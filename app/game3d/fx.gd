@@ -106,6 +106,11 @@ const FL_FX_ARC_A: float = 0.62
 const FL_FX_CORE: float = 0.45
 const FL_FX_BEAM_W: float = 0.5
 const FL_FX_BEAM_H: float = 0.6
+## build 32: the hero's own RAIN circle landed with the Guardian telegraph's flash, 0.8 of white over its whole 2.6 m disc
+## (a bright white disc in the build 31 capture, every other effect tamed round it). With fl_fx it lands at this share
+## of that flash, in the circle's own pale tint (telegraph_land_own). The Guardian's telegraphs keep theirs: read for play.
+const TELE_FLASH: float = 0.8
+const FL_FX_TELE_FLASH: float = 0.22
 
 
 ## The arena's look and the fight's tier, read from the fight this is a child of (fight.gd adds it after the arena).
@@ -1105,8 +1110,9 @@ func telegraph(at: Vector3, yaw: float, radius: float, half_deg: float, life: fl
 	sm.set_shader_parameter("fill", 0.0)
 	sm.set_shader_parameter("alpha", 1.0)
 	sm.set_shader_parameter("flash", 0.0)
+	sm.set_shader_parameter("flash_col", Color.WHITE)
 	mi.visible = true
-	_start(mi, life, "tele", radius, tint, {"phase": "fill"})
+	_start(mi, life, "tele", radius, tint, {"phase": "fill", "flash": TELE_FLASH})
 	return mi
 
 
@@ -1117,6 +1123,19 @@ func telegraph_end(mi: MeshInstance3D, landed: bool) -> void:
 			d["phase"] = "flash" if landed else "fade"
 			d["t"] = 0.0
 			d["life"] = 0.25
+			return
+
+
+## build 32: the hero's own telegraph (RAIN's circle) landed. With fl_fx (mid, high) a small flash in flash_col, like the
+## other tamed effects (FL_FX_TELE_FLASH); off (and on low) the Guardian's white flash, as build 31.
+func telegraph_land_own(mi: MeshInstance3D, flash_col: Color) -> void:
+	telegraph_end(mi, true)
+	if not fl_fx or mi == null:
+		return
+	for d: Dictionary in _live:
+		if d["node"] == mi:
+			d["flash"] = FL_FX_TELE_FLASH
+			(mi.material_override as ShaderMaterial).set_shader_parameter("flash_col", flash_col)
 			return
 
 
@@ -1222,7 +1241,7 @@ func _process(dt: float) -> void:
 						sm.set_shader_parameter("fill", clampf(k, 0.0, 1.0))
 					"flash":
 						sm.set_shader_parameter("fill", 1.0)
-						sm.set_shader_parameter("flash", 0.8 * (1.0 - k))
+						sm.set_shader_parameter("flash", float(d.get("flash", TELE_FLASH)) * (1.0 - k))
 						sm.set_shader_parameter("alpha", 1.0 - k)
 					"fade":
 						sm.set_shader_parameter("alpha", 1.0 - k)

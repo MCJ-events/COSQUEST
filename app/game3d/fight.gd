@@ -2786,7 +2786,7 @@ func _tick_rains(dt: float) -> void:
 		var wave: int = int(r["wave"])
 		if wave < RAIN_WAVES and float(r["t"]) >= RAIN_DELAY + RAIN_GAP * wave:
 			if wave == 0 and r["tele"] != null:
-				fx.telegraph_end(r["tele"], true)
+				fx.telegraph_land_own(r["tele"], RAIN_COLS[1])   # build 32: a small pale flash, not a white disc
 				r["tele"] = null
 			area.close()
 			area.open({"src": hero, "kind": "rain", "dmg": RAIN_DMG, "kb": 0.0, "stop": 2.0 / 60.0, "heavy": false})
