@@ -45,7 +45,7 @@ export function CharacterProfileCard() {
               <Text style={styles.buttonPinkText}>Change</Text>
             </Pressable>
             {c ? (
-              <Pressable onPress={() => void shareCharacterCard(c.key)} style={styles.button} accessibilityRole="button" accessibilityLabel="Share your character card" testID="profile-character-share">
+              <Pressable onPress={() => void shareCharacterCard(c)} style={styles.button} accessibilityRole="button" accessibilityLabel="Share your character card" testID="profile-character-share">
                 <Ionicons name="share-outline" size={14} color={ink.text(PINK)} />
                 <Text style={styles.buttonText}>Share card</Text>
               </Pressable>

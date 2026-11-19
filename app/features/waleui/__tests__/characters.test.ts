@@ -4,7 +4,19 @@ import { dirname, join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 
-import { CHARACTERS, FORGE_CHARACTERS, characterByKey, characterLine, parsePick, pickConfig, playerCharacter, shareLine } from "../characters.ts";
+import {
+  CHARACTERS,
+  FORGE_CHARACTERS,
+  catalogueCharacters,
+  characterByKey,
+  characterLine,
+  parsePick,
+  pickConfig,
+  pickedElement,
+  playerCharacter,
+  rosterWith,
+  shareLine,
+} from "../characters.ts";
 import { FACTION_HEROES } from "../heroCast.ts";
 
 const APP = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
@@ -65,4 +77,44 @@ test("the game ships the same playable Forge characters (fight.gd FORGE_CAST) wi
     for (const l of [0, 1]) assert.ok(existsSync(join(APP, "game3d", "cast", "heroes", `${k}_lod${l}.glb`)), `${k}_lod${l}.glb`);
     assert.ok(existsSync(join(APP, "game3d", "anim", `${k}.glb`)), `anim/${k}.glb`);
   }
+});
+
+// build 31: the catalogue's playable characters, at run time (no app build)
+const MEI = "157ff388-68e9-4584-a884-54592ea032d3";
+const CATBOY = "85bf170e-b7dc-4a5f-8292-a0192d181193";
+const CATALOGUE = [
+  { id: MEI, name: "Mei", type: "character", gameplay: { role: "hero", avatar: true } },
+  { id: CATBOY, name: "Cat-Boy", type: "character", gameplay: { role: "hero", avatar: true } },
+  { id: "46f88194-0000-4000-8000-000000000000", name: "Cyberpunk Courier", type: "character", gameplay: { role: "guardian", avatar: false } },
+  { id: "5cff765b-0000-4000-8000-000000000000", name: "Elderly Samurai", type: "character", gameplay: { role: "guardian", avatar: false } },
+  { id: "b80cdcfa-0000-4000-8000-000000000000", name: "Courier", type: "character", gameplay: { role: "hero", avatar: true } },
+  { id: "aaaaaaaa-0000-4000-8000-000000000000", name: "Ember Blade", type: "weapon", gameplay: {} },
+];
+
+test("only the characters the catalogue marks playable join the picker, after the baked roster", () => {
+  const extra = catalogueCharacters(CATALOGUE);
+  // guardians stay opponents; a weapon is not a character; a name the app bakes (Courier) stays the baked one
+  assert.deepEqual(extra.map((c) => c.name), ["Cat-Boy", "Mei"]);
+  assert.deepEqual(extra.map((c) => c.key), [`forge:${CATBOY}`, `forge:${MEI}`]);
+  assert.ok(extra.every((c) => c.kind === "catalogue" && c.faction === null && c.elementId));
+  const roster = rosterWith(CATALOGUE);
+  assert.equal(roster.length, CHARACTERS.length + 2);
+  assert.deepEqual(roster.slice(0, CHARACTERS.length), CHARACTERS);
+  // offline (no catalogue): the baked roster alone
+  assert.deepEqual(rosterWith([]), CHARACTERS);
+});
+
+test("a catalogue pick is kept before the catalogue loads, resolves once it has, and wears its element", () => {
+  const key = `forge:${MEI}`;
+  assert.equal(parsePick(key), key);
+  assert.equal(parsePick("forge:../../etc"), null);
+  assert.equal(pickedElement(key), MEI);
+  assert.equal(pickedElement("forge_courier"), null);
+  assert.equal(pickedElement(null), null);
+  // not loaded yet (or unpublished since): the faction hero meanwhile
+  assert.equal(playerCharacter(key, "icons")?.name, "Imani");
+  assert.equal(playerCharacter(key, "icons", rosterWith(CATALOGUE))?.name, "Mei");
+  assert.equal(characterLine(playerCharacter(key, null, rosterWith(CATALOGUE))!), "Forge character");
+  // the fight loads a catalogue character as the worn avatar: no hero_pick for it
+  assert.deepEqual(pickConfig(key), {});
 });
