@@ -166,6 +166,11 @@ var _breath_t: float = 0.0
 const BREATH_PERIOD: float = 3.8
 const SHIFT_PERIOD: float = 7.4
 var _victory_idle: bool = false  # fight-anim: the cheer has settled into the idle loop
+## moves-fix-32 (mid, high): the cheer holds its own last pose (the captured fist pump ends with the sword raised in front)
+## and breathes, instead of settling into the idle loop. The idle under VICTORY had no arm droop (a celebrating body is
+## passed as "dead" for the stance layers), so the arms stood out from the body in an A-pose under the banner.
+var _victory_hold: bool = false
+const VICTORY_BREATH: float = 1.6        # the chest heaves a little more after a fight
 var _flinch_t: float = -1.0      # fight-anim: seconds into the current flinch (-1 = none)
 var _flinch_k: float = 0.0       # its strength
 var _flinch_dir: Vector3 = Vector3.ZERO   # the push, in the character's own frame (+Z forward)
@@ -610,6 +615,7 @@ func play(st: String, game_len: float = 0.0, hit_at: float = -1.0, blend: float 
 	length = game_len
 	_warp = []
 	_victory_idle = false
+	_victory_hold = false
 	_tail = 0.0
 	in_tail = false
 	if player == null or not clips.has(st):
@@ -913,11 +919,15 @@ func update(dt: float, speed_now: float, dead: bool) -> void:
 		# fight-anim: the cheer used to freeze on its last frame (a statue); it settles into idle
 		_victory_idle = true
 		_warp = []
-		if dead_blend != null:
+		if fid:
+			_victory_hold = true   # moves-fix-32: the last pose holds and breathes (see _victory_hold)
+		elif dead_blend != null:
 			_dead_play(clips["idle"], BLEND_VICTORY_IDLE)
 		else:
 			player.play(clips["idle"], BLEND_VICTORY_IDLE, 1.0)
-		player.speed_scale = 0.0 if frozen else 1.0
+		player.speed_scale = 0.0 if (frozen or _victory_hold) else 1.0
+	if _victory_hold and player != null:
+		player.speed_scale = 0.0
 	if in_tail and speed_now > 0.2:
 		length = t     # a step ends the tail: the walk takes over below
 	if length > 0.0 and t >= length and not (state in HOLD_LAST) and not in_tail and _tail > 0.01 and speed_now <= 0.2 and player != null and clips.has(state):
@@ -1005,16 +1015,17 @@ func update(dt: float, speed_now: float, dead: bool) -> void:
 			p = p.duplicate()
 			for rk: String in FL_RELAX_POSE:
 				p[rk] = float(p.get(rk, 0.0)) + float(FL_RELAX_POSE[rk]) * relax
-		if breathe and not dead and (state == "idle" or state == "_" or state == "guard"):
+		if breathe and (_victory_hold or (not dead and (state == "idle" or state == "_" or state == "guard"))):
 			_breath_t += dt
 			p = p.duplicate()
+			var bk: float = VICTORY_BREATH if _victory_hold else 1.0
 			var br: float = sin(TAU * _breath_t / BREATH_PERIOD)
 			var sh: float = sin(TAU * _breath_t / SHIFT_PERIOD)
-			p["spine_lean"] = float(p.get("spine_lean", 0.0)) - 1.4 * br
+			p["spine_lean"] = float(p.get("spine_lean", 0.0)) - 1.4 * br * bk
 			p["spine_tilt"] = float(p.get("spine_tilt", 0.0)) + 2.2 * sh
 			p["spine_yaw"] = float(p.get("spine_yaw", 0.0)) + 1.2 * sin(TAU * _breath_t / (SHIFT_PERIOD * 1.3))
-			p["r_side"] = float(p.get("r_side", 0.0)) + 1.5 * br
-			p["l_side"] = float(p.get("l_side", 0.0)) + 1.5 * br
+			p["r_side"] = float(p.get("r_side", 0.0)) + 1.5 * br * bk
+			p["l_side"] = float(p.get("l_side", 0.0)) + 1.5 * br * bk
 		if fid:
 			layer.add_layers = _add_layers_now()
 		var fl: Dictionary = _flinch_pose()
