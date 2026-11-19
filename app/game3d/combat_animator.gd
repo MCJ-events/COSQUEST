@@ -197,6 +197,8 @@ var _speed_now: float = 0.0
 var ready: bool = false
 var _ready_w: float = 0.0
 const READY_RATE: float = 6.0
+const LOCO_HOLD: float = 0.3             # fight-motion-31: s a locomotion state is held before a slower one
+var _loco_t: float = 0.0
 const READY_STATES: Array[String] = ["idle", "_", "walk"]
 const READY_POSE: Dictionary = {"spine_yaw": -12.0, "spine_lean": 5.0, "r_fwd": 30.0, "r_bend": 55.0, "r_side": 12.0, "l_fwd": 18.0, "l_bend": 35.0}
 const LOWER_BONES: Array[String] = ["Hips", "LeftUpLeg", "LeftLeg", "LeftFoot", "LeftToeBase", "RightUpLeg", "RightLeg", "RightFoot", "RightToeBase"]
@@ -363,6 +365,7 @@ func _fid_setup(body: Node) -> void:
 			skeleton.move_child(pg, after.get_index() + 1)
 		if pg.bind_bones(skeleton) > 0:
 			pose_guard = pg
+			pg.foot_lock = foot   # fight-motion-31: the feet are put back on their pins after the smoothing
 		else:
 			skeleton.remove_child(pg)
 			pg.free()
@@ -476,6 +479,11 @@ func _loco_rate(st: String, speed_now: float) -> float:
 	if gs <= 0.01:
 		return clampf(speed_now / 2.6, 0.8, 1.9)
 	return clampf(speed_now / gs, 0.5, 2.4)
+
+
+## fight-motion-31: idle < walk < run < sprint (LOCO_HOLD)
+static func _loco_rank(st: String) -> int:
+	return {"walk": 1, "run": 2, "sprint": 3}.get(st, 0)
 
 
 func _loop_copy(name: String) -> String:
@@ -878,6 +886,14 @@ func update(dt: float, speed_now: float, dead: bool) -> void:
 					want = "sprint"
 		elif speed_now > 0.2:
 			want = "walk"
+		# fight-motion-31: a locomotion state is held at least LOCO_HOLD before the body drops to a slower one (the
+		# ally kiting at its range flipped idle, walk and run every few frames: 48 flips in one fight, each a new
+		# clip); speeding up still switches at once, a hit or an action still ends it at once
+		_loco_t += dt
+		if fid and state in LOCO and want != state and _loco_rank(want) < _loco_rank(state) and _loco_t < LOCO_HOLD:
+			want = state
+		if want != state:
+			_loco_t = 0.0
 		walk_rate = _loco_rate(want if clips.has(want) else "walk", speed_now)
 		if want != state:
 			if not play(want):

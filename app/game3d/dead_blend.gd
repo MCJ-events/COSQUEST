@@ -13,10 +13,9 @@ extends SkeletonModifier3D
 ##
 ## A second instance with `guard` on sits after the foot lock (before the cloth): the pose guard. The foot lock's
 ## two-bone solve can flip a knee in one frame when a pin is taken or let go, and a clip switch can still jerk the
-## hips; the guard limits each leg bone's and the hips' angular acceleration on the FINAL pose to GUARD_ACC, with a
-## braking rule (it never overshoots the pose the clip and the IK ask for, and lands on it as soon as the limit
-## allows). Motion within the limit passes through exactly; the spine, arms and head (the strikes) are never
-## touched. A hit-stop (dt 0) holds it.
+## hips; the guard makes each leg bone and the hips follow the FINAL pose with a critically damped spring fed the
+## pose's own motion (fight-motion-31; build 29 limited the acceleration to GUARD_ACC, see _guard). Smooth motion
+## passes through exactly; the spine, arms and head (the strikes) are never touched. A hit-stop (dt 0) holds it.
 
 const HALF_LIFE: float = 0.1
 const LN2: float = 0.6931472
@@ -46,7 +45,7 @@ var cost_usec: int = 0              # the last frame's cost
 ## the pose guard (see above): rad/s^2 (about 28,600 degrees/s^2; a knee flip in one frame is 150,000 and more). 700
 ## (40,100) left the median transition peak at 0.65x build 28; 500 brings every statistic under 0.5x
 var guard: bool = false
-const GUARD_ACC: float = 500.0
+const GUARD_ACC: float = 500.0       # build 29's limit, kept as the bar a one-frame flip is measured against (tests)
 const GUARD_BONES: Array[String] = ["Hips", "LeftUpLeg", "LeftLeg", "LeftFoot", "RightUpLeg", "RightLeg", "RightFoot"]
 var _gw: Array[Vector3] = []        # the guard's own angular velocity per bone (rad/s, parent frame)
 var guarded: int = 0                # frames the guard changed something (tests, the probe)
@@ -143,8 +142,22 @@ func _process_modification_with_delta(_delta: float) -> void:
 	cost_usec = Time.get_ticks_usec() - t0
 
 
-## The pose guard (guard = true): per bone, the angular velocity that would reach this frame's pose from the last one
-## shown, changed by at most GUARD_ACC * dt, and never faster towards the pose than it can brake to land on it.
+## The pose guard (guard = true). fight-motion-31: a velocity-continuous follower in place of build 29's limiter.
+## Build 29 limited each bone's angular acceleration to GUARD_ACC with a braking rule; on a moving target (the foot
+## lock's IK on a body that moves) the limit and the brake took turns frame by frame (bang-bang), and that chatter was
+## half of all the joint-acceleration spikes the probe found (fight-motion-31 REPORT.md). Now each bone follows the pose
+## the clip and the IK ask for with a critically damped spring (GUARD_W) that is fed the target's own motion: a motion
+## that changes speed smoothly passes exactly, a kink in it is rounded off over a few frames and a jump (a knee flip, a
+## pin taken) is absorbed with no overshoot. 15/s was picked on the probe: 30 left most of the spikes, 10 let the
+## planted feet slide (fight-motion-31 REPORT.md).
+const GUARD_W: float = 15.0          # 1/s: the follower's stiffness (critically damped: a kink is rounded off in ~0.15 s)
+const GUARD_W_MAX: float = 25.0      # rad/s: the most target speed taken as real motion (more is a jump to absorb)
+const GUARD_FF_ACC: float = 250.0    # rad/s^2: how fast the target's speed taken as motion may change
+var foot_lock: Node = null          # fight-motion-31: the fighter's foot lock (repin after the smoothing)
+var _gt: Array[Quaternion] = []      # the target last frame
+var _gtw: Array[Vector3] = []        # its velocity last frame (clamped)
+
+
 func _guard(skel: Skeleton3D) -> void:
 	if dt <= 0.0:
 		# a hit-stop: the clip is held, so is what the guard last showed (no jump to the raw pose in the freeze)
@@ -152,43 +165,66 @@ func _guard(skel: Skeleton3D) -> void:
 			for i in _ids.size():
 				skel.set_bone_pose_rotation(_ids[i], _q1[i])
 		return
-	var dv: float = GUARD_ACC * dt
+	if _gt.size() != _ids.size():
+		_gt.resize(_ids.size())
+		_gtw.resize(_ids.size())
+		_gtw.fill(Vector3.ZERO)
 	var changed: bool = false
+	var subs: int = maxi(1, ceili(GUARD_W * dt / 0.5))
+	var h: float = dt / float(subs)
 	for i in _ids.size():
 		var b: int = _ids[i]
 		var q: Quaternion = skel.get_bone_pose_rotation(b)
 		if _have < 1:
 			_q1[i] = q
+			_gt[i] = q
+			_gw[i] = Vector3.ZERO
+			_gtw[i] = Vector3.ZERO
 			continue
-		var d: Quaternion = (q * _q1[i].inverse()).normalized()
-		if d.w < 0.0:
-			d = -d
-		var ang: float = d.get_angle()
-		var e: Vector3 = d.get_axis() * ang if ang > 0.000001 else Vector3.ZERO    # what this frame asks for (rad)
-		var want: Vector3 = e / dt
+		# the target's own velocity this frame, clamped (a faster one is a jump, not motion)
+		var wt: Vector3 = _rotvec(q * _gt[i].inverse()) / dt
+		if _have < 2:
+			_gw[i] = wt.limit_length(GUARD_W_MAX)     # the first measured frame: no impulse
+			_gtw[i] = _gw[i]
+		# the target's speed is taken as motion only as fast as it could really change (GUARD_FF_ACC); the rest of
+		# a sudden change (a flip, a pin taken) is left to the spring as an offset to absorb
+		var dwt: Vector3 = wt - _gtw[i]
+		if dwt.length() > GUARD_FF_ACC * dt:
+			wt = _gtw[i] + dwt * (GUARD_FF_ACC * dt / dwt.length())
+		wt = wt.limit_length(GUARD_W_MAX)
+		_gt[i] = q
+		_gtw[i] = wt
 		var w: Vector3 = _gw[i]
-		var dw: Vector3 = want - w
-		var dl: float = dw.length()
-		if dl > dv:
-			w += dw * (dv / dl)
-			# braking: towards the pose no faster than can still stop on it; and never past it this frame
-			var el: float = e.length()
-			if el > 0.000001:
-				var dir: Vector3 = e / el
-				var along: float = w.dot(dir)
-				# the discrete braking curve: at this speed the steps left, each dv slower, still stop on the pose
-				var vmax: float = minf(sqrt(2.0 * GUARD_ACC * el + 0.25 * dv * dv) - 0.5 * dv, el / dt)
-				if along > vmax:
-					w -= dir * (along - vmax)
-			var wl: float = w.length()
-			var out: Quaternion = (Quaternion(w / wl, wl * dt) * _q1[i]).normalized() if wl > 0.000001 else _q1[i]
-			skel.set_bone_pose_rotation(b, out)
-			_q1[i] = out
-			changed = true
+		var cur: Quaternion = _q1[i]
+		# the offset from the target, measured against where the target was at the frame's start (a bone moving with
+		# its target has none), integrated on the critically damped spring in sub-steps; the bone's own velocity carries
+		# over (a kink in the target's speed is rounded off, never passed on in one frame)
+		var x: Vector3 = _rotvec(cur * q.inverse()) + wt * dt
+		var v: Vector3 = w - wt
+		for si in subs:
+			v += (-GUARD_W * GUARD_W * x - 2.0 * GUARD_W * v) * h
+			x += v * h
+		w = wt + v
+		var wl: float = w.length()
+		var out: Quaternion = (Quaternion(w / wl, wl * dt) * cur).normalized() if wl > 0.000001 else cur
+		if out.angle_to(q) < 0.0005:
+			out = q
+			w = wt
 		else:
-			w = want
-			_q1[i] = q
+			changed = true
+		skel.set_bone_pose_rotation(b, out)
+		_q1[i] = out
 		_gw[i] = w
-	_have = 1
+	_have = mini(_have + 1, 2)
 	if changed:
 		guarded += 1
+	if foot_lock != null and is_instance_valid(foot_lock):
+		foot_lock.repin(skel)   # fight-motion-31: the planted feet back on their pins from the smoothed legs
+
+
+static func _rotvec(d: Quaternion) -> Vector3:
+	d = d.normalized()
+	if d.w < 0.0:
+		d = -d
+	var ang: float = d.get_angle()
+	return d.get_axis() * ang if ang > 0.000001 else Vector3.ZERO
