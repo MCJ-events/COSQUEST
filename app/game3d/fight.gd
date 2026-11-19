@@ -977,7 +977,8 @@ func _fl_far() -> bool:
 
 
 ## The 2D concept art for a fighter (the app's character art, art/portraits/<key>.png, or the config's "<role>_art" file
-## for a character the pck does not carry), or null.
+## for a character the pck does not carry), or null. Build 32: the baked portraits import lossy (WebP), and Mei and Cat-Boy
+## have none (forge_mei, forge_catboy): their art is always the catalogue's figure, the app's castArt -> "<role>_art".
 func _fl_art(f: FighterScript, role: String) -> Texture2D:
 	var p: String = str(cfg.get(role + "_art", ""))
 	if p != "" and FileAccess.file_exists(p):
