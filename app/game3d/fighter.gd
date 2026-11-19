@@ -215,6 +215,7 @@ var _vis_pause: float = 0.0
 ## edge moved 7 cm each way a frame: it read as a vibration). 0..1.
 var _jit: float = 0.0
 var _smooth_pos: Vector3 = Vector3.INF
+var _last_pos: Vector3 = Vector3.INF     # fight-motion-31: where the body was last frame (no freeze while it moves)
 var _trail: Array = []                  # the last few drawn positions (the legs' real speed)
 var _trail_dt: Array = []
 
@@ -1314,6 +1315,15 @@ func tick_visual(dt: float) -> void:
 	if _vis_pause > 0.0 and not anim_freeze:
 		_vis_pause = maxf(0.0, _vis_pause - dt)
 	anim.frozen = anim_freeze or _vis_pause > 0.0
+	# fight-motion-31: a body the game is still moving is never frozen. The presentation hit-stop (feel.gd vis_stop)
+	# outlasts the simulation's stop, and the animation-only pause (hit_pause) never stops the game: a running ally or
+	# a shoved Guardian then slid along the paving with its legs held still (measured: up to 15 % of the frozen frames,
+	# 1 m of glide a fight). Its animation plays on while it moves; a body standing still keeps the freeze.
+	var moved: float = Vector2(global_position.x - _last_pos.x, global_position.z - _last_pos.z).length() if _last_pos != Vector3.INF else 0.0
+	_last_pos = global_position
+	if anim.frozen and moved > 0.002 and not dead:
+		anim.frozen = false
+		anim_freeze = false
 	anim.floor_y = global_position.y
 	if face_life != null:
 		face_life.tick(dt, anim.frozen or dead)
@@ -1459,6 +1469,7 @@ func tick_visual(dt: float) -> void:
 		if ge > 0.001:
 			pos += Vector3(anim._flinch_dir.x, 0.0, anim._flinch_dir.z) * GIVE_M * size_k * ge
 			pos.y -= GIVE_DROP * size_k * ge
+	pos += _root_follow(dt)
 	if real_speed and _jit > 0.02 and not dead:
 		# drawn on the smoothed path while the game jitters the fighter
 		var off: Vector3 = global_basis.orthonormalized().inverse() * ((_smooth_pos - global_position) * _jit)
@@ -1523,6 +1534,61 @@ func tick_visual(dt: float) -> void:
 
 var _bm_pos: Vector3
 var _bm_rot: Vector3
+
+## fight-motion-31 (presentation only, mid and high tiers): the drawn body follows the fighter's position with a
+## critically damped spring fed the position's own motion, so a speed that changes in one frame (CHARGE's 23 m/s dash
+## starts and stops dead, a knockback shove starts at full speed, a jog starts and stops at once) is eased over a few
+## frames instead of stepping: the dash leans in and carries a little past its end. The fighter's position, hurtbox and
+## weapon arc are the game's and never move; the drawn offset is at most ROOT_MAX and a teleport resets it.
+const ROOT_W: float = 30.0              # 1/s
+const ROOT_FF_ACC: float = 120.0        # m/s^2: how fast the speed taken as motion may change (the rest is eased)
+const ROOT_MAX: float = 0.45            # m at size 1
+var smooth_root: bool = false           # fight.gd/animator: on with the real-look tiers (CombatAnimator.fid)
+var _vr_pos: Vector3 = Vector3.INF
+var _vr_vel: Vector3 = Vector3.ZERO
+var _vr_ff: Vector3 = Vector3.ZERO
+var _vr_prev: Vector3 = Vector3.ZERO
+
+
+## The drawn body's offset from the fighter's position this frame, in the fighter's own frame (see ROOT_W).
+func _root_follow(dt: float) -> Vector3:
+	if not (smooth_root or anim.fid) or dead:
+		_vr_pos = Vector3.INF
+		return Vector3.ZERO
+	var gp := Vector3(global_position.x, 0.0, global_position.z)
+	if _vr_pos == Vector3.INF or (_vr_pos - gp).length() > 1.5 * size_k:
+		_vr_pos = gp
+		_vr_vel = Vector3.ZERO
+		_vr_ff = Vector3.ZERO
+		_vr_prev = gp
+	if dt > 0.0 and not anim_freeze:
+		var vt: Vector3 = (gp - _vr_prev) / dt
+		var dv: Vector3 = vt - _vr_ff
+		if dv.length() > ROOT_FF_ACC * dt:
+			dv = dv * (ROOT_FF_ACC * dt / dv.length())
+		_vr_ff += dv
+		# the offset from where the position would be had it moved at the eased speed (moving with it: none); the
+		# part of this frame's step beyond that speed is in the offset, to be eased out
+		var x: Vector3 = _vr_pos - (gp - _vr_ff * dt)
+		var v: Vector3 = _vr_vel - _vr_ff
+		var subs: int = maxi(1, ceili(ROOT_W * dt / 0.5))
+		var h: float = dt / float(subs)
+		for i in subs:
+			v += (-ROOT_W * ROOT_W * x - 2.0 * ROOT_W * v) * h
+			x += v * h
+		_vr_vel = _vr_ff + v
+		_vr_pos = gp + x
+		_vr_prev = gp
+	else:
+		_vr_pos += gp - _vr_prev
+		_vr_prev = gp
+	var off: Vector3 = _vr_pos - gp
+	var lim: float = ROOT_MAX * size_k
+	if off.length() > lim:
+		off = off.normalized() * lim
+		_vr_pos = gp + off
+	var lo: Vector3 = global_basis.orthonormalized().inverse() * off
+	return Vector3(lo.x, 0.0, lo.z)
 
 # build 20 pass 2: contact shadows under each foot. The sun blob is a broad soft disc round the
 # fighter; on its own it read as a shadow the body floated over. Each foot now has a small, dark,
