@@ -104,9 +104,6 @@ No file was downloaded for this pass. Everything new or changed is own work, CC0
   from seeded noise by `tools/weapons/make_grain.py` (numpy + Pillow, no source image).
 - `vfx/weapon.gdshader` and `weapon_look.gd`: the weapons' metal, wood and leather material (it reads the KayKit CC0
   palettes listed under Weapons; the palettes themselves are unchanged).
-- `cast/heroes/forge_courier_lod0.glb`, `forge_courier_lod1.glb`: the Courier's head texture repainted under the jaw by
-  `tools/char/neck_fix.py` (the neck filled with the face's own skin colour; the Courier is the project's own Forge
-  output, see Characters). Mesh, UVs, rig and the other images are unchanged.
 - The neutral grade table (built at load from the base table in `arena.gd fl_grade`), the ally's see-through pattern
   (`fighter.gd fl_enable_fade`) and the hand turn in `pose_layer.gd`: code, no files.
 
