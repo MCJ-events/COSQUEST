@@ -1629,6 +1629,10 @@ func _cast_stand_in(f: FighterScript, role: String) -> String:
 	for i in range(pool.size()):
 		var key: String = str(pool[(start + i) % pool.size()])
 		var path: String = "%s%s_lod%d.glb" % [CAST_STAND_IN_DIR, key, lod]
+		# build 30 (app size): the phone pcks ship only the stand-ins' lod1 (export_presets.cfg leaves out their
+		# lod0 and lod2), so a detail level the pck lacks falls back to lod1. The repo keeps all three for the tests.
+		if not FileAccess.file_exists(path):
+			path = "%s%s_lod1.glb" % [CAST_STAND_IN_DIR, key]
 		if key in taken or not FileAccess.file_exists(path):
 			continue
 		cfg[role + "_key"] = key            # the weapon grips (attach.json) read it too
