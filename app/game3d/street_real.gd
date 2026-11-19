@@ -144,6 +144,10 @@ static func env_params(sm: ShaderMaterial, look: Dictionary, tp: Dictionary, fil
 		sm.set_shader_parameter("damp_k", float(look.get("street_damp", DAMP.get(time, 0.0))))
 
 
+const FL_MACRO_K: float = 0.3      # fight-look-31 (fl_env): build 29/30 0.12
+const FL_DECAL_K: float = 0.35     # the share of the decals kept
+
+
 ## A real ground material of `kind` (GROUND). opts: extra shader parameters.
 static func ground_mat(kind: String, look: Dictionary, tp: Dictionary, opts: Dictionary = {}, cutout: bool = false) -> ShaderMaterial:
 	var g: Array = GROUND.get(kind, GROUND["flags"])
@@ -170,6 +174,12 @@ static func ground_mat(kind: String, look: Dictionary, tp: Dictionary, opts: Dic
 		sm.set_shader_parameter("expose", float(look["ground_k"]))
 	sm.set_shader_parameter("cap_k", float(look.get("street_cap_k", 1.0)) if caps_on(look) else 0.0)
 	env_params(sm, look, tp)
+	if bool(look.get("fl_env", false)):
+		# fight-look-31 (fl_env): the paving's repeat broken up by a stronger large-scale tone change, and fewer of the dark
+		# gum and stain decals (in the low camera they read as one repeated dot pattern)
+		sm.set_shader_parameter("macro_k", FL_MACRO_K)
+		if prob > 0.0:
+			sm.set_shader_parameter("decal_prob", prob * FL_DECAL_K)
 	for k: String in opts:
 		sm.set_shader_parameter(k, opts[k])
 	warm(sm)

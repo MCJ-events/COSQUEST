@@ -203,6 +203,11 @@ var tint: Color = Color(0, 0, 0, 0)      # the ultimate's source-colour wash (al
 var vignette: float = 0.0                # the hurt vignette's alpha (feel.gd: 15 % for 200 ms)
 var _flash_a: float = 0.0
 var _banner_kind: String = ""
+## fight-look-31 (fight.gd _fl_far): the beats a 3D close-up used to carry, in 2D concept art. vs_card(): both fighters'
+## art either side of a VS before the clock starts (nothing else of the HUD shows meanwhile); win_art: the winner's art
+## standing on the VICTORY card. Unset (build 30 and the low tier): neither draws.
+var _vs: Dictionary = {}
+var win_art: Texture2D = null
 var _boss_shake: float = 0.0
 var _boss_last_hp: int = -1
 const INK := Color("#1C2B3A")
@@ -601,6 +606,15 @@ func callout(text: String, col: Color) -> void:
 	_callout_t = 0.0
 
 
+func vs_card(a: Texture2D, b: Texture2D, name_a: String, name_b: String, length: float) -> void:
+	_vs = {"a": a, "b": b, "na": name_a, "nb": name_b, "t": 0.0, "len": length}
+	queue_redraw()
+
+
+func vs_showing() -> bool:
+	return not _vs.is_empty()
+
+
 func banner(text: String, sub: String, col: Color, dur: float, kind: String = "") -> void:
 	_banner_kind = kind
 	if kind == "win" or kind == "lose":
@@ -651,6 +665,10 @@ func _process(dt: float) -> void:
 	if _hurt_t > 0.0:
 		_hurt_t -= dt
 	_callout_t += dt
+	if not _vs.is_empty():
+		_vs["t"] = float(_vs["t"]) + dt
+		if float(_vs["t"]) >= float(_vs["len"]):
+			_vs = {}
 	if _banner != "":
 		_banner_t += dt
 		if _banner_dur > 0.0 and _banner_t > _banner_dur:
@@ -776,6 +794,10 @@ func _pie(c: Vector2, r: float, k: float, col: Color) -> void:
 func _draw() -> void:
 	if show_only_panel:
 		_draw_wale_panel()
+		_flush_texts()
+		return
+	if not _vs.is_empty():
+		_draw_vs()
 		_flush_texts()
 		return
 	var card: bool = _banner != "" and (_banner_kind == "win" or _banner_kind == "lose")
@@ -1014,6 +1036,38 @@ static func _damage_pop(t: float, peak: float) -> float:
 
 ## look-fight end title card (art direction 7): VICTORY in gold (#FFE08A over #F59E2A, ink
 ## outline) on a dimmed band, or DEFEATED in cream on a Berry band. In over 220 ms.
+## fight-look-31: the VS card. The two halves slide in on a slant (the hero's blue on the left, the Guardian's berry on the
+## right), the concept art large on each, the names under them and a gold VS in the middle; out again over the last 0.35 s.
+func _draw_vs() -> void:
+	var t: float = float(_vs["t"])
+	var ln: float = float(_vs["len"])
+	var kin: float = ease(clampf(t / 0.3, 0.0, 1.0), 0.4)
+	var kout: float = 1.0 - ease(clampf((t - (ln - 0.35)) / 0.35, 0.0, 1.0), 2.0)
+	var a: float = minf(kin, kout)
+	var w: float = size.x
+	var h: float = size.y
+	var slide: float = (1.0 - kin) * w * 0.55 + (1.0 - kout) * w * 0.15
+	draw_rect(Rect2(Vector2.ZERO, size), Color(INK.r, INK.g, INK.b, 0.45 * a))
+	var blue := Color(0.09, 0.22, 0.48, 0.92 * a)
+	var berry := Color(0.5, 0.08, 0.14, 0.92 * a)
+	draw_colored_polygon(PackedVector2Array([Vector2(-slide, 0), Vector2(w * 0.56 - slide, 0), Vector2(w * 0.44 - slide, h), Vector2(-slide, h)]), blue)
+	draw_colored_polygon(PackedVector2Array([Vector2(w * 0.56 + slide, 0), Vector2(w + slide, 0), Vector2(w + slide, h), Vector2(w * 0.44 + slide, h)]), berry)
+	draw_line(Vector2(w * 0.56 - slide, 0), Vector2(w * 0.44 - slide, h), Color(GOLD_HI.r, GOLD_HI.g, GOLD_HI.b, a), 6.0)
+	var s: float = minf(h * 0.66, w * 0.36)
+	for i in 2:
+		var tex: Texture2D = _vs["a"] if i == 0 else _vs["b"]
+		var cx: float = (w * 0.25 - slide) if i == 0 else (w * 0.75 + slide)
+		var r := Rect2(Vector2(cx - s * 0.5, h * 0.46 - s * 0.5), Vector2(s, s))
+		if tex != null:
+			draw_texture_rect(tex, r, false, Color(1, 1, 1, a))
+		else:
+			draw_circle(r.get_center(), s * 0.36, Color(CREAM.r, CREAM.g, CREAM.b, 0.18 * a))
+		var nm: String = str(_vs["na"] if i == 0 else _vs["nb"])
+		_text(Vector2(cx, h * 0.46 + s * 0.5 + 34.0), nm, int(24.0 * PT), Color(CREAM.r, CREAM.g, CREAM.b, a), 10, Color(INK.r, INK.g, INK.b, a))
+	var kp: float = lerpf(1.6, 1.0, ease(clampf((t - 0.15) / 0.25, 0.0, 1.0), 0.4))
+	_text_scaled(Vector2(w * 0.5, h * 0.48), "VS", int(64.0 * PT), Color(GOLD_HI.r, GOLD_HI.g, GOLD_HI.b, a), 18, kp, Color(INK.r, INK.g, INK.b, a))
+
+
 func _draw_title_card() -> void:
 	var k: float = clampf(_banner_t / 0.22, 0.0, 1.0)
 	var ke: float = ease(k, 0.35)
@@ -1022,6 +1076,11 @@ func _draw_title_card() -> void:
 	# the frame dims behind the card (the "frozen, slightly blurred" frame, without a post pass)
 	draw_rect(Rect2(Vector2.ZERO, size), Color(INK.r, INK.g, INK.b, 0.28 * ke))
 	var band_h: float = 176.0
+	if win and win_art != null:
+		# fight-look-31: the winner's 2D art rising behind the card (the 3D victory close-up is gone); the band covers its
+		# lower edge, so the head and shoulders stand over VICTORY
+		var s: float = minf(band_h * 2.3, size.y * 0.5) * lerpf(0.8, 1.0, ke)
+		draw_texture_rect(win_art, Rect2(Vector2(size.x * 0.5 - s * 0.5, y - s * 0.86), Vector2(s, s)), false, Color(1, 1, 1, ke))
 	var band: Color = Color(INK.r, INK.g, INK.b, 0.72 * ke) if win else Color(BERRY.r, BERRY.g, BERRY.b, 0.94 * ke)
 	var bw: float = size.x * lerpf(0.3, 1.0, ke)
 	draw_rect(Rect2(Vector2((size.x - bw) * 0.5, y - band_h * 0.5), Vector2(bw, band_h)), band)

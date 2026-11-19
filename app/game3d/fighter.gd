@@ -127,6 +127,30 @@ const NORMAL_FADE: float = 1.5            # texels per screen pixel where the de
 const FACE_FILL_COL: Color = Color(1.0, 0.82, 0.74)    # warm: the street is warm, a white fill read as a flash
 const FACE_FILL_CLOSE: float = 0.25
 const FACE_FILL_FIGHT: float = 0.08
+## fight-look-31 (arena.gd "fl31"). fl_light: a key, fill and rim that separate the fighters from the street instead of one
+## warm wash: the sky-side kicker behind the fighter becomes a cool rim (FL_KA, FL_RIM_COL), the warm lamp-side one and the
+## paving's warm bounce are halved, the camera-side fill is neutral and stronger at fight distance (fight.gd), and skin is
+## balanced for the whiter key (FL_SKIN_WB, FL_SKIN_KEY_DESAT). fl_mat: a roughness floor and a lower specular on what is
+## not skin, eyes or hair (char_real fl_rough_min, fl_spec_k), skin's sheen broader and its tight lobe smaller.
+const FL_KA: Dictionary = {"golden": 0.85, "day": 0.75, "dusk": 0.95, "night": 0.7}
+const FL_RIM_COL: Color = Color(0.82, 0.9, 1.0)
+const FL_KB_K: float = 0.45
+const FL_BOUNCE_K: float = 0.6
+const FL_SKIN_WB: Dictionary = {"golden": [0.8, 0.9, 1.02], "day": [0.94, 1.0, 1.1], "dusk": [0.9, 1.0, 1.12]}
+const FL_SKIN_KEY_DESAT: Dictionary = {"golden": 0.6, "day": 0.3, "dusk": 0.55, "night": 0.3}
+const FL_ROUGH_MIN: float = 0.55
+const FL_SPEC_K: float = 0.7
+const FL_SKIN_ROUGH_MIN: float = 0.6
+const FL_SKIN_LOBE2: float = 0.08
+const FL_FILL_COL: Color = Color(1.0, 0.97, 0.94)
+const FL_FILL_FIGHT: float = 0.15
+const FL_FILL_CLOSE: float = 0.17         # the close shots' fill (build 30: 0.25 of a warm one; the neutral one read as a flash)
+## fight-look-31 (fl_motion): the DASH's extra body pitch over its clip (build 30: 0.35 rad) and the hips' drop into the lunge
+const FL_DASH_PITCH: float = -0.12
+## fight-look-31 (fl_fx): the SHIELD dome's opacity (on the lower camera it is a large share of the frame and hid the fighter)
+const FL_DOME_A: float = 0.5
+const FL_DISSOLVE_GLOW: float = 0.45
+const FL_DASH_DROP: float = 0.08
 var _face_fill_k: float = -1.0
 const FaceLifeScript := preload("res://face_life.gd")
 var face_life: RefCounted = null                         # realism round 5: blinks and gaze (face_life.gd), heroes with the shape keys
@@ -695,7 +719,7 @@ func _real_material(b: BaseMaterial3D) -> ShaderMaterial:
 	elif bool(look.get("skin_guess", true)):
 		sm.set_shader_parameter("skin_mode", 2)
 		sm.set_shader_parameter("skin_amount", SKIN_GUESS)
-	sm.set_shader_parameter("skin_lobe2", 0.18 if skin == "full" else 0.0)
+	sm.set_shader_parameter("skin_lobe2", (FL_SKIN_LOBE2 if bool(look.get("fl_mat", false)) else 0.18) if skin == "full" else 0.0)
 	if hair_mask != null and bool(look.get("hair", true)) and kind == "":
 		sm.set_shader_parameter("hair_on", true)
 		sm.set_shader_parameter("hair_tex", hair_mask)
@@ -733,16 +757,24 @@ func _real_material(b: BaseMaterial3D) -> ShaderMaterial:
 	var ex: Array = look.get("expo", rl["expo"])
 	sm.set_shader_parameter("expo", Vector2(float(ex[0]), float(ex[1])))
 	# the kickers stand behind the fighter as the fight camera sees it (the camera's heading in the street)
-	var cb: Basis = Basis.from_euler(Vector3(0.0, deg_to_rad(12.0), 0.0))
+	var fl_l: bool = bool(look.get("fl_light", false))
+	# fight-look-31 (fl_cam): the camera's heading turned FL_CAM_YAW, and the kickers with it
+	var cb: Basis = Basis.from_euler(Vector3(0.0, deg_to_rad(12.0 + (ArenaScript.FL_CAM_YAW if bool(look.get("fl_cam", false)) else 0.0)), 0.0))
 	var fwd: Vector3 = -cb.z
 	var right: Vector3 = cb.x
 	sm.set_shader_parameter("kick_a_dir", (fwd * 0.55 + right * 0.65 + Vector3.UP * 0.5).normalized())
-	sm.set_shader_parameter("kick_a_col", Vector3(sky.r, sky.g, sky.b) / maxf(smax, 0.001) * float(look.get("kick_a", rl["ka"])))
+	var ka_col: Vector3 = Vector3(sky.r, sky.g, sky.b) / maxf(smax, 0.001) * float(look.get("kick_a", rl["ka"]))
+	if fl_l:
+		ka_col = Vector3(FL_RIM_COL.r, FL_RIM_COL.g, FL_RIM_COL.b) * float(look.get("kick_a", FL_KA.get(tm, rl["ka"])))
+	sm.set_shader_parameter("kick_a_col", ka_col)
 	sm.set_shader_parameter("kick_b_dir", (fwd * 0.5 - right * 0.75 + Vector3.UP * 0.25).normalized())
-	sm.set_shader_parameter("kick_b_col", Vector3(LAMP_COL.r, LAMP_COL.g, LAMP_COL.b) * float(look.get("kick_b", rl["kb"])) * float(tp.get("lamps", 0.0)))
+	sm.set_shader_parameter("kick_b_col", Vector3(LAMP_COL.r, LAMP_COL.g, LAMP_COL.b) * float(look.get("kick_b", rl["kb"])) * float(tp.get("lamps", 0.0)) * (FL_KB_K if fl_l else 1.0))
 	var kc: Color = tp["key_color"]
 	var down: float = float(tp["key_energy"]) * sin(deg_to_rad(maxf(float(tp["key_elev"]), float(look.get("key_elev_min", 0.0))))) * 0.5 * float(look.get("ground_k", 1.0))
-	sm.set_shader_parameter("bounce_col", Vector3(kc.r, kc.g * 0.92, kc.b * 0.82) * down * float(look.get("bounce_k", rl["bounce"])))
+	sm.set_shader_parameter("bounce_col", Vector3(kc.r, kc.g * 0.92, kc.b * 0.82) * down * float(look.get("bounce_k", rl["bounce"])) * (FL_BOUNCE_K if fl_l else 1.0))
+	if bool(look.get("fl_mat", false)):
+		sm.set_shader_parameter("fl_rough_min", float(look.get("fl_rough_min", FL_ROUGH_MIN)))
+		sm.set_shader_parameter("fl_spec_k", float(look.get("fl_spec_k", FL_SPEC_K)))
 	sm.set_shader_parameter("occ_k", float(look.get("occ_k", 1.0)))
 	# round 4: the current target keeps a readable rim (the team's colour) through the effects
 	if team == 1:
@@ -750,11 +782,11 @@ func _real_material(b: BaseMaterial3D) -> ShaderMaterial:
 		sm.set_shader_parameter("team_amount", 0.6)
 	sm.set_shader_parameter("debug_view", int(look.get("real_debug", 0)))
 	# round 5: faces under the game's light (look "skin_key_desat", "skin_rough_min", "normal_fade" for trials)
-	sm.set_shader_parameter("skin_key_desat", float(look.get("skin_key_desat", SKIN_KEY_DESAT.get(tm, 0.0))))
-	sm.set_shader_parameter("skin_rough_min", float(look.get("skin_rough_min", SKIN_ROUGH_MIN)))
+	sm.set_shader_parameter("skin_key_desat", float(look.get("skin_key_desat", (FL_SKIN_KEY_DESAT if fl_l else SKIN_KEY_DESAT).get(tm, 0.0))))
+	sm.set_shader_parameter("skin_rough_min", float(look.get("skin_rough_min", FL_SKIN_ROUGH_MIN if bool(look.get("fl_mat", false)) else SKIN_ROUGH_MIN)))
 	sm.set_shader_parameter("normal_fade", float(look.get("normal_fade", NORMAL_FADE)))
 	sm.set_shader_parameter("skin_gain", float(look.get("skin_gain", SKIN_GAIN.get(tm, 0.0))))
-	var wb: Array = look.get("skin_wb", SKIN_WB.get(tm, [1.0, 1.0, 1.0]))
+	var wb: Array = look.get("skin_wb", (FL_SKIN_WB if fl_l else SKIN_WB).get(tm, [1.0, 1.0, 1.0]))
 	sm.set_shader_parameter("skin_wb", Vector3(float(wb[0]), float(wb[1]), float(wb[2])))
 	if _cs_on():
 		_charshade(sm, b, kind, cut, two_sided)
@@ -933,7 +965,8 @@ func set_face_fill(k: float, to_fill: Vector3) -> void:
 	if absf(k - _face_fill_k) < 0.004 and k > 0.0 and _lit_mats[0].get_shader_parameter("face_fill_dir") == to_fill:
 		return
 	_face_fill_k = k
-	var fc: Array = look.get("face_fill_col", [FACE_FILL_COL.r, FACE_FILL_COL.g, FACE_FILL_COL.b])
+	var ffc: Color = FL_FILL_COL if bool(look.get("fl_light", false)) else FACE_FILL_COL
+	var fc: Array = look.get("face_fill_col", [ffc.r, ffc.g, ffc.b])
 	var c: Vector3 = Vector3(float(fc[0]), float(fc[1]), float(fc[2])) * k * float(look.get("face_fill_k", 1.0))
 	for m: ShaderMaterial in _lit_mats:
 		m.set_shader_parameter("face_fill_col", c)
@@ -941,6 +974,34 @@ func set_face_fill(k: float, to_fill: Vector3) -> void:
 
 
 static var _real_variants: Dictionary = {}
+static var _fade_variants: Dictionary = {}
+var _fl_fade: float = 0.0
+
+
+## fight-look-31 (fl_cam): the lower three-quarter camera stands behind the hero, where the ally holds its spot, so the ally
+## could fill the foreground. Its materials move to a variant of their shader that leaves out a share of the pixels in a
+## fine screen pattern (FL_FADE, set per frame by fight.gd fl_ally_fade): the fight shows through. Only the ally's draw
+## carries the discard; every other fighter keeps the opaque shader as it was.
+func fl_enable_fade() -> Array[Material]:
+	var out: Array[Material] = []
+	for m: ShaderMaterial in _lit_mats:
+		if m.shader == null:
+			continue
+		if not _fade_variants.has(m.shader):
+			var sh := Shader.new()
+			sh.code = m.shader.code.replace("void fragment() {\n", "void fragment() {\n\tif (fl_fade > 0.001 && fract(52.9829189 * fract(dot(FRAGCOORD.xy, vec2(0.06711056, 0.00583715)))) < fl_fade) {\n\t\tdiscard;\n\t}\n")
+			_fade_variants[m.shader] = sh
+		m.shader = _fade_variants[m.shader]
+		out.append(m)
+	return out
+
+
+func set_fade(k: float) -> void:
+	if absf(k - _fl_fade) < 0.01:
+		return
+	_fl_fade = k
+	for m: ShaderMaterial in _lit_mats:
+		m.set_shader_parameter("fl_fade", k)
 
 
 ## fid29 charshade: `soft` (hair cards with the charshade look) = alpha to coverage on the tier's MSAA instead of the hard
@@ -1398,7 +1459,8 @@ func tick_visual(dt: float) -> void:
 	if _diss_t >= 0.0:
 		_diss_t += dt
 		var kd2: float = clampf(_diss_t / _diss_len, 0.0, 1.0)
-		_glow = maxf(_glow, 0.9 * (1.0 - kd2) + 0.3)
+		# fight-look-31 (fl_fx): the felled Guardian dissolves warm, not as a white-hot silhouette over the victory shot
+		_glow = maxf(_glow, (0.9 * (1.0 - kd2) + 0.3) * (FL_DISSOLVE_GLOW if bool(look.get("fl_fx", false)) else 1.0))
 		sxz = 1.0 - ease(kd2, 2.2)
 		sc *= 1.0 + 0.08 * sin(kd2 * PI)
 		if kd2 >= 1.0:
@@ -1491,10 +1553,13 @@ func tick_visual(dt: float) -> void:
 			m.set_shader_parameter("flash", _flash)
 			m.set_shader_parameter("glow", _glow)
 	if _dome != null:
-		var on: bool = shield_t > 0.0 and not dead
+		# fight-look-31: the barrier never stays up over the victory pose (it played inside a glass dome in most seeds): it
+		# breaks up quietly as the winner celebrates (no shard burst over the VICTORY shot)
+		var on: bool = shield_t > 0.0 and not dead and not celebrating
 		if not on and _dome.visible and _shatter_t < 0.0:
 			_shatter_t = 0.0
-			shield_ended.emit(global_position, 1.15 * size_k)
+			if not celebrating:
+				shield_ended.emit(global_position, 1.15 * size_k)
 		if _shatter_t >= 0.0:
 			# the dome breaks up cell by cell over 0.3 s (fx throws the shards)
 			_shatter_t += dt
@@ -1509,7 +1574,7 @@ func tick_visual(dt: float) -> void:
 			_dome_age += dt
 			_dome_hit = maxf(0.0, _dome_hit - dt * 4.0)
 			var fade: float = clampf(shield_t / 0.4, 0.0, 1.0)
-			_dome_mat.set_shader_parameter("alpha", maxf(fade, 0.6))
+			_dome_mat.set_shader_parameter("alpha", maxf(fade, 0.6) * (FL_DOME_A if bool(look.get("fl_fx", false)) else 1.0))
 			_dome_mat.set_shader_parameter("hit", _dome_hit + maxf(0.0, 1.0 - _dome_age / 0.25))
 			var pop: float = 1.0 + 0.12 * sin(clampf(_dome_age / 0.22, 0.0, 1.0) * PI) - 0.25 * maxf(0.0, 1.0 - _dome_age / 0.1)
 			var r: float = 1.15 * size_k
@@ -1803,7 +1868,13 @@ func _body_motion(st: String, k: float, pos: Vector3, rot: Vector3) -> void:
 		"skill_whirl":
 			rot.y += TAU * 2.0 * ease(k, 0.8) * _spin_dir
 		"skill_charge":
-			rot.x += 0.35 * sin(k * PI)
+			# fight-look-31 (fl_motion): the DASH clips already lean hard into the thrust; this body pitch on top threw the
+			# hero near horizontal. A lunge keeps the chest up: a small pitch and a drop of the hips into the step
+			if bool(look.get("fl_motion", false)) and anim.has_clip("skill_charge"):
+				rot.x += FL_DASH_PITCH * sin(k * PI)
+				pos.y -= FL_DASH_DROP * sin(k * PI)
+			else:
+				rot.x += 0.35 * sin(k * PI)
 		"skill_split":
 			pos.y += 0.9 * sin(clampf(k / 0.45, 0.0, 1.0) * PI) if k < 0.45 else 0.0
 			if k >= 0.45 and k < 0.7:
