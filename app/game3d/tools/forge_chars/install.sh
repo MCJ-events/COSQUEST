@@ -2,7 +2,9 @@
 # install.sh <key> [--force]: build one Forge character into the game from chars.json (build 29, 18 Nov 2026).
 #   Run from anywhere on the farm, inside this checkout. Heavy steps run under choom -n 500 and nice.
 #   1. source .blend -> lod0.glb + lod1.glb (export_char.py: proj colour baked onto UV0, fingers merged into the
-#      hands, JPEG maps), or a folder that already holds lod0.glb and lod1.glb;
+#      hands, JPEG maps), or a folder that already holds lod0.glb and lod1.glb, or (build 31) "forge_element": a
+#      character PUBLISHED in the Forge, pulled from the public catalogue with forge_pull_char.py (sha256 checked;
+#      "forge_api" picks the server, production by default);
 #   2. tools/anim/add_hero.sh <key> (clip library, anim_clips.json, attach.json, report; the strict tear gate);
 #   3. only if the gate gave the character its clips: copies the two files to cast/heroes/<key>_lod{0,1}.glb with
 #      "keep" import files (loaded at run time like the faction heroes).
@@ -14,14 +16,18 @@ key=$1; force=${2:-}
 HERE=$(cd "$(dirname "$0")" && pwd); GAME=$(cd "$HERE/../.." && pwd)
 W=${FORGE_CHARS_WORK:-$HOME/cq-work/forge-chars-29}
 BL=${BL:-$HOME/forge/blender/blender}
-read -r src exp < <(python3 - "$HERE/chars.json" "$key" <<'PY'
+read -r src exp elem api < <(python3 - "$HERE/chars.json" "$key" <<'PY'
 import json, os, sys
 c = json.load(open(sys.argv[1]))["characters"][sys.argv[2]]
-print(os.path.expanduser(c["source"]), c.get("export", ""))
+print(os.path.expanduser(c.get("source") or "-"), c.get("export") or "-", c.get("forge_element") or "-",
+      c.get("forge_api") or "https://costquest.204.168.162.79.sslip.io")
 PY
 )
+[ "$exp" = "-" ] && exp=""
 out=$W/out/$key; mkdir -p "$out"
-if [ -d "$src" ]; then
+if [ "$elem" != "-" ]; then
+  python3 "$HERE/forge_pull_char.py" "$elem" "$out" --api "$api" || { echo "pull failed: $elem" >&2; exit 2; }
+elif [ -d "$src" ]; then
   cp "$src/lod0.glb" "$src/lod1.glb" "$out/"
 else
   ( cd "$out" && choom -n 500 -- nice -n 10 "$BL" -b "$src" --python "$HERE/export_char.py" -- . $exp > export.log 2>&1 )
