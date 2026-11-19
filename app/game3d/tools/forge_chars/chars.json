@@ -26,14 +26,13 @@
   "forge_mei": {
    "name": "Mei",
    "faction": "ascendants",
-   "playable": false,
+   "playable": true,
    "source": "~/forge-artist/game/app/game3d/forge_candidates/weights/mei",
    "front": "~/forge-artist/bakeoff2/phaseA2/chars/mei/flat/view_front.png",
    "front_mask": "~/forge-artist/bakeoff2/phaseA2/chars/mei/masks/view_front_mask.png",
    "a3": "A3 not used for Mei (RESULT-A3: not better at gameplay distance)",
-   "previous_why": "add_hero.sh gate: rig tears (idle 1.2 %, jog 1.9 %; gate 0.5 %), mostly the hakama between the legs",
-   "head_pass": "A2 head (A3 not better for her); garment weights redone (reweight.py, a435006)",
-   "why": "build 30 hole check (19 Nov): passes the stretch gate (65 clips) but her hands shred into shards in every swing (close turntable and the fight intro); the stretch gate does not catch it. Left out."
+   "previous_why": "build 30 hole check (19 Nov): passes the stretch gate (65 clips) but her hands shred into shards in every swing (close turntable and the fight intro); the stretch gate does not catch it. Left out.",
+   "head_pass": "A2 head (A3 not better for her); garment weights redone again (Forge 8e8c369): hands whole, the lift's sword pieces removed (the game attaches its own weapon)"
   },
   "forge_catboy": {
    "name": "Cat-Boy",
