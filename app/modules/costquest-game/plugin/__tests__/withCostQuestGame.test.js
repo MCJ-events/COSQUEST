@@ -3,7 +3,7 @@
 const assert = require("node:assert/strict");
 const { describe, it } = require("node:test");
 
-const { mergeUsage, GAME_USAGE, CHAT_USAGE } = require("../withCostQuestGame");
+const { mergeUsage, GAME_USAGE, CHAT_USAGE, NFC_USAGE } = require("../withCostQuestGame");
 
 describe("mergeUsage", () => {
   it("uses the game's sentence when the chat has none", () => {
@@ -34,7 +34,6 @@ describe("mergeUsage", () => {
       "NSMotionUsageDescription",
       "NSMicrophoneUsageDescription",
       "NSSpeechRecognitionUsageDescription",
-      "NFCReaderUsageDescription",
       "NSNearbyInteractionUsageDescription",
       "NSLocalNetworkUsageDescription",
     ]) {
@@ -46,5 +45,24 @@ describe("mergeUsage", () => {
 describe("chat fallbacks", () => {
   it("the microphone always says what calls use it for", () => {
     assert.match(CHAT_USAGE.NSMicrophoneUsageDescription, /calls/);
+  });
+
+  it("the microphone says voice messages are uploaded, and no text claims a voice never leaves the phone", () => {
+    assert.match(CHAT_USAGE.NSMicrophoneUsageDescription, /uploaded/);
+    for (const text of [...Object.values(GAME_USAGE), ...Object.values(CHAT_USAGE)]) {
+      assert.doesNotMatch(text, /never leaves/);
+    }
+  });
+
+  it("motion names only what CMPedometer gives (no floors)", () => {
+    assert.match(GAME_USAGE.NSMotionUsageDescription, /steps/);
+    assert.doesNotMatch(GAME_USAGE.NSMotionUsageDescription, /floor/);
+  });
+});
+
+describe("NFC", () => {
+  it("is not one of the always-written sentences", () => {
+    assert.equal(GAME_USAGE.NFCReaderUsageDescription, undefined);
+    assert.ok(NFC_USAGE.NFCReaderUsageDescription);
   });
 });

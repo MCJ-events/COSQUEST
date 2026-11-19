@@ -25,7 +25,9 @@ module.exports = ({ config }) => {
   // also treats unset as on). EXPO_PUBLIC_WALE_UI=0 builds the app with the old screens.
   if (env.EXPO_PUBLIC_WALE_UI === undefined) env.EXPO_PUBLIC_WALE_UI = "1";
   // One copy of BouncyCastle (expo-updates and the Sparks SDK both bring one).
-  const plugins = [...(config.plugins || []), "./plugins/withBouncyCastleDedupe"];
+  // withStoreRelease goes FIRST: Expo runs Info.plist mods in reverse order of registration, so it
+  // then runs after expo-location has written its default "Always" sentences, and removes them.
+  const plugins = [STORE_RELEASE_PLUGIN, ...(config.plugins || []), "./plugins/withBouncyCastleDedupe"];
   // Run and raid clocks on the lock screen (iOS Live Activity widget extension,
   // plugins/withLiveActivity.js). The extension needs its own bundle id
   // (<app>.LiveActivity) registered under the signing team, so it is on for the
@@ -53,6 +55,8 @@ module.exports = ({ config }) => {
     ...config,
     plugins,
     updates,
+    // The privacy manifest (PrivacyInfo.xcprivacy) for every iOS build, not only the beta overlay.
+    ios: { ...config.ios, privacyManifests: privacyManifest(env) },
     // OTA updates only reach builds with the same runtime version.
     runtimeVersion: { policy: "appVersion" },
   };
@@ -110,9 +114,61 @@ function webBaseUrl(raw) {
 module.exports.webBaseUrl = webBaseUrl;
 
 const BETA_BUILD_NUMBER = "28";
+const STORE_RELEASE_PLUGIN = "./plugins/withStoreRelease";
+// The microphone, said once for the whole app (calls, voice messages and voice comments are uploaded;
+// the game's spoken trivia answer is added by the game plugin).
+const MIC_TEXT =
+  "CosQuest uses the microphone for voice and video calls, and to record voice messages and voice comments, which are uploaded so the people you send them to can hear them.";
+
+// PrivacyInfo.xcprivacy (build 30, release checklist section 2 "Privacy manifest"). What the app
+// itself collects, all linked to the account, none used for tracking, all for the app's own
+// functions (no ads, no analytics). SDKs that ship their own manifest (Sentry, Stripe, LiveKit...)
+// declare their own; Apple merges them. Crash data is declared only on a build that has a Sentry
+// DSN (services/monitoring.ts never starts without one).
+const COLLECTED = [
+  "NSPrivacyCollectedDataTypeName", // display name
+  "NSPrivacyCollectedDataTypeEmailAddress", // sign-up and sign-in
+  "NSPrivacyCollectedDataTypeUserID", // account and game player ids
+  "NSPrivacyCollectedDataTypeDeviceID", // Expo push token, identifierForVendor, the game's device key
+  "NSPrivacyCollectedDataTypePreciseLocation", // Quest Points, nearby events, location sharing with friends
+  "NSPrivacyCollectedDataTypePhotosorVideos", // profile pictures, chat photos and videos, challenge photos
+  "NSPrivacyCollectedDataTypeAudioData", // voice messages and voice comments (calls are live, not stored)
+  "NSPrivacyCollectedDataTypeEmailsOrTextMessages", // chat messages
+  "NSPrivacyCollectedDataTypeOtherUserContent", // posts, comments, profile text, Forge uploads
+  "NSPrivacyCollectedDataTypeGameplayContent", // game progress, fights, trivia answers, squads
+  "NSPrivacyCollectedDataTypeFitness", // steps and walking distance (game rewards)
+  "NSPrivacyCollectedDataTypePurchaseHistory", // CosCoin and ticket orders
+  "NSPrivacyCollectedDataTypePaymentInfo", // prize payout details (native Venue Events)
+  "NSPrivacyCollectedDataTypeOtherDataTypes", // the age the player types at sign-up
+];
+function privacyManifest(env) {
+  const types = [...COLLECTED];
+  if ((env.EXPO_PUBLIC_SENTRY_DSN || "").trim()) types.push("NSPrivacyCollectedDataTypeCrashData");
+  return {
+    NSPrivacyTracking: false,
+    NSPrivacyTrackingDomains: [],
+    NSPrivacyCollectedDataTypes: types.map((t) => ({
+      NSPrivacyCollectedDataType: t,
+      NSPrivacyCollectedDataTypeLinked: true,
+      NSPrivacyCollectedDataTypeTracking: false,
+      NSPrivacyCollectedDataTypePurposes: ["NSPrivacyCollectedDataTypePurposeAppFunctionality"],
+    })),
+    // Required-reason APIs used by the app's own code and the libraries linked into its binary
+    // (the union of the pods' manifests: expo-file-system adds 3B52.1 and 85F4.1).
+    NSPrivacyAccessedAPITypes: [
+      { NSPrivacyAccessedAPIType: "NSPrivacyAccessedAPICategoryFileTimestamp", NSPrivacyAccessedAPITypeReasons: ["C617.1", "3B52.1"] },
+      { NSPrivacyAccessedAPIType: "NSPrivacyAccessedAPICategoryUserDefaults", NSPrivacyAccessedAPITypeReasons: ["CA92.1"] },
+      { NSPrivacyAccessedAPIType: "NSPrivacyAccessedAPICategorySystemBootTime", NSPrivacyAccessedAPITypeReasons: ["35F9.1"] },
+      // The Sparks SDK checks free space before the model download; the data-usage screen shows it.
+      { NSPrivacyAccessedAPIType: "NSPrivacyAccessedAPICategoryDiskSpace", NSPrivacyAccessedAPITypeReasons: ["E174.1", "85F4.1"] },
+    ],
+  };
+}
+module.exports.privacyManifest = privacyManifest;
 // Build 19 on: the beta plays on PRODUCTION (scripts/cosquest-beta-env.sh sets both game-server settings).
 const BETA_GAME_SERVER = "https://costquest.204.168.162.79.sslip.io";
 const BETA_GAME_PLUGIN = "./modules/costquest-game/plugin/withCostQuestGame";
+const BETA_TEAM = "P8M65P9522";
 
 function cosquestBeta(config, env) {
   const extra = { ...(config.extra || {}) };
@@ -139,6 +195,21 @@ function cosquestBeta(config, env) {
     if (Array.isArray(plugin) && plugin[0] === BETA_GAME_PLUGIN) {
       return [BETA_GAME_PLUGIN, { ...plugin[1], nfc: false, serverUrl: env.COSQUEST_GAME_SERVER_URL || BETA_GAME_SERVER }];
     }
+    // The call kit writes the microphone sentence itself; one truthful sentence for the whole app.
+    if (Array.isArray(plugin) && plugin[0] === "expo-callkit-telecom") {
+      return ["expo-callkit-telecom", { ...plugin[1], microphonePermission: MIC_TEXT }];
+    }
+    if (Array.isArray(plugin) && plugin[0] === "expo-notifications") {
+      return ["expo-notifications", { ...plugin[1], mode: "production" }];
+    }
+    // Build 30: the archive signs with the App Store profile, so aps-environment reaches the IPA
+    // (plugins/withStoreRelease.js). COSQUEST_IOS_PROFILE names another profile (a company account).
+    if (plugin === STORE_RELEASE_PLUGIN) {
+      return [
+        STORE_RELEASE_PLUGIN,
+        { signing: { team: BETA_TEAM, profile: env.COSQUEST_IOS_PROFILE || "CosQuest Chat App Store" } },
+      ];
+    }
     return plugin;
   });
 
@@ -155,35 +226,21 @@ function cosquestBeta(config, env) {
     ios: {
       ...config.ios,
       bundleIdentifier: env.COSQUEST_IOS_BUNDLE_ID || "com.subomi.cosquest.chat",
-      appleTeamId: "P8M65P9522",
+      appleTeamId: BETA_TEAM,
       buildNumber,
       supportsTablet: false,
       icon: "./assets/images/app-icon-ios.png",
-      // The Sparks SDK checks free disk space before the model download
-      // (volumeAvailableCapacityForImportantUsage), a required-reason API.
-      privacyManifests: {
-        NSPrivacyAccessedAPITypes: [
-          { NSPrivacyAccessedAPIType: "NSPrivacyAccessedAPICategoryFileTimestamp", NSPrivacyAccessedAPITypeReasons: ["C617.1"] },
-          { NSPrivacyAccessedAPIType: "NSPrivacyAccessedAPICategoryUserDefaults", NSPrivacyAccessedAPITypeReasons: ["CA92.1"] },
-          { NSPrivacyAccessedAPIType: "NSPrivacyAccessedAPICategorySystemBootTime", NSPrivacyAccessedAPITypeReasons: ["35F9.1"] },
-          { NSPrivacyAccessedAPIType: "NSPrivacyAccessedAPICategoryDiskSpace", NSPrivacyAccessedAPITypeReasons: ["E174.1"] },
-        ],
-      },
       infoPlist: {
         ...(config.ios && config.ios.infoPlist),
         ITSAppUsesNonExemptEncryption: false,
         NSCameraUsageDescription:
           "CosQuest uses the camera for video calls, to take photos to share in chats or as your profile picture, and for challenge photos at CosQuest events.",
-        NSMicrophoneUsageDescription: "CosQuest uses the microphone for voice and video calls and voice messages.",
+        NSMicrophoneUsageDescription: MIC_TEXT,
         NSPhotoLibraryUsageDescription: "CosQuest needs access to your photos so you can share them in chats or set a profile picture.",
         NSLocationWhenInUseUsageDescription: "CosQuest uses your location to show quests and events near you, and to share it with friends when you choose to.",
-        // Team sync (3 Nov 2026): the plugins' generic "Allow $(PRODUCT_NAME) ..."
-        // texts replaced with what the app really does (the game appends its own line).
-        NSLocationAlwaysAndWhenInUseUsageDescription:
-          "CosQuest uses your location to show quests and events near you, and to share it with friends when you choose to.",
-        NSLocationAlwaysUsageDescription:
-          "CosQuest uses your location to show quests and events near you, and to share it with friends when you choose to.",
-        NSMotionUsageDescription: "CosQuest uses motion while you play.",
+        // Build 30: no "Always" location sentences (nothing asks for Always; plugins/withStoreRelease.js
+        // removes expo-location's defaults) and no motion sentence here: the game plugin's own says
+        // exactly what Motion & Fitness is for (steps and walking distance).
         NSLocalNetworkUsageDescription: "CosQuest uses the local network for calls.",
         NSFaceIDUsageDescription: "CosQuest uses Face ID to keep your saved sign-in safe on this phone.",
       },
