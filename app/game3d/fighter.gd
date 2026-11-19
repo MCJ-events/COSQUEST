@@ -151,6 +151,9 @@ const FL_DASH_PITCH: float = -0.12
 const FL_DOME_A: float = 0.5
 const FL_DISSOLVE_GLOW: float = 0.45
 const FL_DASH_DROP: float = 0.08
+## fight-motion-31: the bound over a travelling action: [from, to] (shares of the move), height (m at size 1), held (a
+## quick rise, a hang and a quick drop) or an arc. The DASH bounds through its 6 m; SPLIT's leap lands on its slam (0.47).
+const LEAPS: Dictionary = {"skill_charge": [0.06, 0.8, 0.22, true], "skill_split": [0.05, 0.47, 0.3, false]}
 var _face_fill_k: float = -1.0
 const FaceLifeScript := preload("res://face_life.gd")
 var face_life: RefCounted = null                         # realism round 5: blinks and gaze (face_life.gd), heroes with the shape keys
@@ -1541,6 +1544,15 @@ func tick_visual(dt: float) -> void:
 	# anim-readable: the readable clips crouch and rise more, so the plant follows faster (no float on the way back up)
 	_plant_y = lerpf(_plant_y, _plant_target(Basis.from_euler(rot).scaled(bscale), pos.y), 1.0 - exp(-dt * (PLANT_RATE_READABLE if turn_steps else PLANT_RATE)))
 	pos.y += _plant_y
+	if anim.fid and _mlen > 0.0 and not dead and LEAPS.has(_motion) and anim.has_clip(_motion):
+		# fight-motion-31 (mid, high): the DASH covers 6 m in 0.26 s (fight.gd CHARGE, from 0.12 to 0.74 of the move) and
+		# SPLIT's clip leaps forward on the spot, both with the feet on the paving: 0.5 to 2 m of skating a cast. The body
+		# bounds through the travel (the feet leave the paving), lands (SPLIT on its slam), and the feet are pinned again
+		# (combat_animator PIN_AFTER). After the plant above, which would put the lower foot straight back on the paving.
+		var lp: Array = LEAPS[_motion]
+		var kl: float = clampf((clampf(_mt / _mlen, 0.0, 1.0) - float(lp[0])) / (float(lp[1]) - float(lp[0])), 0.0, 1.0)
+		var shape: float = smoothstep(0.0, 0.22, kl) * smoothstep(1.0, 0.78, kl) if bool(lp[3]) else sin(kl * PI)
+		pos.y += float(lp[2]) * size_k * shape
 	body.position = pos
 	body.rotation = rot
 	body.scale = bscale

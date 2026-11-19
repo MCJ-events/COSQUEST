@@ -74,6 +74,10 @@ const VICTORY_RATE_MAX: float = 1.2
 # rule as the landscape fight (5 GiB reported = a 6 GB phone); config "foot_ik" overrides
 const FOOT_IK_MIN_RAM: int = 5 * 1024 * 1024 * 1024
 const FOOT_OFF_STATES: Array[String] = ["death", "dodge", "skill_whirl", "skill_charge", "skill_split", "knockdown"]
+## fight-motion-31 (mid, high): the share of an action after which its feet are pinned again: SPLIT's slam has landed
+## (fighter.gd's hop is over at 0.45), the DASH has stopped travelling (fight.gd CHARGE moves until 0.31 s of 0.42)
+## and lands its lunge. Build 30 left them unpinned to the end: 0.5 to 0.9 m of slide after the landing.
+const PIN_AFTER: Dictionary = {"skill_split": 0.5, "skill_charge": 0.78}
 
 const ALIASES: Dictionary = {
 	"idle": ["idle", "idle_loop", "breathing_idle"],
@@ -927,7 +931,7 @@ func update(dt: float, speed_now: float, dead: bool) -> void:
 		foot.floor_y = floor_y
 		foot.size = layer.frame_root.scale.y if layer != null and layer.frame_root != null else 1.0
 		foot.loco = state in LOCO or (legs_run and length > 0.0)
-		foot.pinning = not (state in FOOT_OFF_STATES) and player != null
+		foot.pinning = (not (state in FOOT_OFF_STATES) or (fid and PIN_AFTER.has(state) and phase() >= float(PIN_AFTER[state])) or in_tail) and player != null
 	if layer != null:
 		var p: Dictionary = _pose_now() if not clips.has(state) else {}
 		# realism round 2: wound up for the next blow while an opponent is in reach

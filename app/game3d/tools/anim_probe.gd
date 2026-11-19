@@ -135,7 +135,8 @@ func _write_frame() -> void:
 			"hit_at": snappedf(float(warp[3]), 0.0001) if warp.size() > 3 else -1.0,
 			"yaw": snappedf(float(f.get("yaw")), 0.0001), "vis": f.visible, "hp": int(f.get("hp")),
 			"fs": fstate, "frz": frozen, "kb": snappedf((f.get("kb_vel") as Vector3).length(), 0.001),
-			"size": snappedf(float(f.get("size_k")), 0.001), "team": int(f.get("team"))}
+			"size": snappedf(float(f.get("size_k")), 0.001), "team": int(f.get("team")),
+			"fid": bool(a.get("fid")), "afz": bool(a.get("frozen"))}   # fight-motion-31: the real-look motion on, the animation frozen
 		var fl: Variant = a.get("foot")
 		if fl != null and (fl as Object).has_method("debug_state"):
 			row["lock"] = (fl as Object).call("debug_state")
