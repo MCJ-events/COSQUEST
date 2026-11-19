@@ -132,7 +132,7 @@ const FACE_FILL_FIGHT: float = 0.08
 ## paving's warm bounce are halved, the camera-side fill is neutral and stronger at fight distance (fight.gd), and skin is
 ## balanced for the whiter key (FL_SKIN_WB, FL_SKIN_KEY_DESAT). fl_mat: a roughness floor and a lower specular on what is
 ## not skin, eyes or hair (char_real fl_rough_min, fl_spec_k), skin's sheen broader and its tight lobe smaller.
-const FL_KA: Dictionary = {"golden": 1.15, "day": 0.95, "dusk": 1.35, "night": 0.8}
+const FL_KA: Dictionary = {"golden": 0.85, "day": 0.75, "dusk": 0.95, "night": 0.7}
 const FL_RIM_COL: Color = Color(0.82, 0.9, 1.0)
 const FL_KB_K: float = 0.45
 const FL_BOUNCE_K: float = 0.6
@@ -143,7 +143,7 @@ const FL_SPEC_K: float = 0.7
 const FL_SKIN_ROUGH_MIN: float = 0.6
 const FL_SKIN_LOBE2: float = 0.08
 const FL_FILL_COL: Color = Color(1.0, 0.97, 0.94)
-const FL_FILL_FIGHT: float = 0.2
+const FL_FILL_FIGHT: float = 0.15
 const FL_FILL_CLOSE: float = 0.17         # the close shots' fill (build 30: 0.25 of a warm one; the neutral one read as a flash)
 ## fight-look-31 (fl_motion): the DASH's extra body pitch over its clip (build 30: 0.35 rad) and the hips' drop into the lunge
 const FL_DASH_PITCH: float = -0.12
