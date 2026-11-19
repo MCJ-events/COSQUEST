@@ -468,6 +468,11 @@ static func _readable_overlay(out: Dictionary, d: Dictionary, sname: String, ch:
 			var own: Dictionary = ch.get("ground_speed_per_hip", {})
 			if own.has(name):
 				m["ground_speed_per_hip"] = own[name]   # this character's own stride (run and sprint)
+			# moves-fix-32: the character's own timing for a clip it picks (anim_clips.json characters.<key>.clip_meta:
+			# in / out / tail / aim_yaw_deg / muzzle), kept in its own entry so build 28's clip table stays byte for byte
+			var cm: Dictionary = (ch.get("clip_meta", {}) as Dictionary).get(name, {})
+			if not cm.is_empty():
+				m.merge(cm, true)
 			m["clip"] = name
 			m["readable"] = true
 			out[st] = m
