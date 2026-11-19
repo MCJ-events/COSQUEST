@@ -127,16 +127,18 @@ const TIER_LOOK: Dictionary = {
 ##   fl_mat    less plastic: a roughness floor and a lower specular on everything that is not skin or eyes (char_real
 ##             fl_rough_min, fl_spec_k), and skin's sheen softer
 ##   fl_fx     the effects smaller, shorter, dimmer (fx.gd FL_FX_*), capped lower (FL_FX_GAIN, FL_FX_CAP)
-##   fl_cam    the fight camera lower, closer and turned FL_CAM_YAW off the street's axis (fight.gd FL_CAM_*): the old
-##             values stay the constants they were and come back with "fl_cam": false
+##   fl_cam    the fight camera never nearer than build 30's (a little further and higher), turned FL_CAM_YAW off the
+##             street, and no 3D close-up at all: 2D concept art for the intro (VS card) and the victory (fight.gd
+##             FL_CAM_*, _fl_far; hud.gd vs_card, win_art). Build 30's camera and beats come back with "fl_cam": false
 ##   fl_weapon the weapons in hand on metal, wood and leather (weapon_look.gd)
-##   fl_motion the DASH's lean, the stiff intro hands (fight.gd, fighter.gd)
+##   fl_motion the DASH's lean, the stiff intro hands, Bram's face at rest (fight.gd, fighter.gd, combat_animator.gd,
+##             pose_layer.gd); motion is owned by fight-motion-31 from 19 Nov, these stay as they were
 ##   fl_env    the street's paving: less repetition, fewer dark decals (street_real.gd FL_*)
 const FL_PARTS: Array[String] = ["fl_light", "fl_mat", "fl_fx", "fl_cam", "fl_weapon", "fl_motion", "fl_env"]
-## deg the fight camera's heading turns off the street (build 30: 0). Negative: the camera swings to the hero's left, the
-## side away from the ally's spot (fight.gd _tick_ally: the hero's right and behind, in the street's frame), so the ally
-## is never between the camera and the fight
-const FL_CAM_YAW: float = 55.0
+## deg the fight camera's heading turns off the street (build 30: 0), a modest turn so the hero and the Guardian read side
+## by side rather than the hero's back; positive puts the ally's casting spot (fight.gd _tick_ally: behind the hero, to
+## its left in the street's frame) on the far side of the fight from the camera
+const FL_CAM_YAW: float = 30.0
 const FL_LC_RIM: float = 1.4              # fid29-lightcam's rim gain in the close shots (build 30: 2.6, on a rim half as strong)
 const FL_KEY_NEUTRAL: Dictionary = {"golden": 0.45, "day": 0.2, "dusk": 0.6, "night": 0.0}   # the key's colour towards white
 const FL_KEY_GAIN: Dictionary = {"golden": 0.95, "day": 0.9, "dusk": 1.05, "night": 1.0}       # its energy (the whiter key reads dimmer)
