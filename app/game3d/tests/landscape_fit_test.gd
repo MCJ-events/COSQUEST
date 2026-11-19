@@ -4,7 +4,8 @@ extends SceneTree
 ## For each phone (points, the safe-area insets iOS reports, as the app turns them into HUD px: fight3d.ts hudLayout,
 ## landscape.ts hudLandscape) the HUD is laid out on the canvas Godot gives it (stretch canvas_items + expand on
 ## 720 x 1280, or 1280 x 720 sideways) and:
-##   1. every control, the hero card, the RALLY badge, the minimap and the boss bar's left end are inside the safe area;
+##   1. every control, the hero card, the RALLY badge, the minimap and the boss bar's left end are inside the safe area
+##      (upright, the bottom limit is the home bar itself);
 ##   2. nothing of the HUD is under the app's close button (a React Native view over the game, top left);
 ##   3. the winner's art on the VICTORY card is on screen and under the top block;
 ##   4. upright, the layout is build 31's (the card, the badge and the end card did not move).
@@ -128,13 +129,15 @@ func _portrait(p: Array, five: bool) -> void:
 	var sz: Vector2 = _canvas(w, h, Vector2(720, 1280))
 	var k: float = maxf(720.0 / w, 1280.0 / h)
 	var top: float = roundf(maxf(0.0, float(p[3]) * k - 20.0))
-	var bottom: float = roundf(float(p[4]) * k)
 	var close_top: float = roundf((CLOSE_BELOW + top) / k)
 	var close := Rect2(Vector2(14.0, close_top) * k, Vector2(CLOSE_PT, CLOSE_PT) * k)
 	var hud: Control = _hud(sz, five)
 	hud.set("top_shift", top)
 	var safe_top: float = float(p[3]) * k
-	var safe := Rect2(Vector2(0.0, safe_top), Vector2(sz.x, sz.y - safe_top - bottom)).grow(0.5)
+	# upright, the bottom limit is the home bar itself (13 pt up from the edge), not the whole inset: build 31's GUARD
+	# dips 5 to 6 pt into the inset on notch and island phones, about 15 pt clear of the bar, and stays where Wale put it
+	var home: float = 13.0 * k if float(p[4]) > 0.0 else 0.0
+	var safe := Rect2(Vector2(0.0, safe_top), Vector2(sz.x, sz.y - safe_top - home)).grow(0.5)
 	var tag: String = "%s_port_%s" % [p[0], "five" if five else "eight"]
 	var out: Array[String] = []
 	var under: Array[String] = []
