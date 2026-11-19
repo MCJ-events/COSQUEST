@@ -26,7 +26,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, AppState, BackHandler, Dimensions, PixelRatio, Platform, Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { castWeapons, fightCast } from "@/features/game3d/characters";
+import { castArt, castWeapons, fightCast } from "@/features/game3d/characters";
 import { fightEnv } from "@/features/game3d/fightEnvDevice";
 import { closeFight, fightStatus, FightOpenError, godotLib, holdForBackground, onFightState, openFight, warmFight } from "@/features/game3d/engine";
 import {
@@ -252,6 +252,10 @@ export default function Fight3D({
         const weapons = await castWeapons(cast);
         Object.assign(config, weapons);
         log(`weapons ${Object.keys(weapons).join(",") || "-"}`);
+        // build 31: the Forge fighters' 2D art for the VS and VICTORY cards (their catalogue pictures)
+        const art = await castArt(cast);
+        Object.assign(config, art);
+        log(`art ${Object.keys(art).join(",") || "-"}`);
         // Leak probe (test link selfcycle=N): Godot restarts the fight N times in this one view.
         const probe = FIGHT3D as { selfCycle?: number; look?: Record<string, boolean> | null };
         if (probe.selfCycle) Object.assign(config, { self_cycle: probe.selfCycle, self_cycle_ms: 6000 });

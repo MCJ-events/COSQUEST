@@ -19,7 +19,9 @@
 // A kit that fails to download, or whose model does, is dropped whole: the
 // fighter loads its published model and plays as before.
 import { type ForgeEntry, forgeWorldOf, pickGlb } from "@/features/game/forgeWorld";
-import { DEVICE_CLASS, ensureFile, forgeWorld, refreshCatalogue, refreshInventory } from "@/features/game/forgeWorldDevice";
+import { File, Paths } from "expo-file-system";
+
+import { DEVICE_CLASS, ensureFile, figureUrl, forgeWorld, refreshCatalogue, refreshInventory, thumbUrl } from "@/features/game/forgeWorldDevice";
 import { gameStore } from "@/features/game/runtime";
 
 import { fightLod, localPath, pickCast, wornAvatarId } from "./fight3d";
@@ -140,6 +142,34 @@ export async function castWeapons(cast: Cast, waitMs = 4000): Promise<Record<str
       );
       if (w.main) out[`${role}_weapon`] = { ...w.main, glb: localPath(w.main.glb) };
       if (w.offhand) out[`${role}_offhand`] = { ...w.offhand, glb: localPath(w.offhand.glb) };
+    }
+    return out;
+  })();
+  return within(work, waitMs, {});
+}
+
+/**
+ * Build 31: each Forge fighter's 2D art for the fight's VS card and VICTORY card (fight-look-31: fight.gd _fl_art reads
+ * "<role>_art", a picture file, for a character the pck does not carry): the catalogue's full figure, else its bust
+ * (for the playable Forge characters that is their turnaround art), as a WebP in the cache, once per version. Never
+ * throws and never waits long: a fighter with nothing here gets its baked portrait, or its name only, as before.
+ */
+export async function castArt(cast: Cast, waitMs = 3000): Promise<Record<string, string>> {
+  const work = (async () => {
+    const out: Record<string, string> = {};
+    for (const role of ["hero", "ally", "enemy"] as const) {
+      const entry = forgeWorld.entry(cast[role].id);
+      if (!entry || entry.type !== "character") continue;
+      const url = figureUrl(entry, 512) ?? thumbUrl(entry, 512);
+      if (!url) continue;
+      try {
+        const dest = new File(Paths.cache, `forge-art-${entry.id}-v${entry.version}.webp`);
+        const uri = dest.exists && dest.size > 0 ? dest.uri : (await File.downloadFileAsync(url, dest, { idempotent: true })).uri;
+        const p = localPath(uri);
+        if (p) out[`${role}_art`] = p;
+      } catch {
+        // no picture: the card falls back
+      }
     }
     return out;
   })();
