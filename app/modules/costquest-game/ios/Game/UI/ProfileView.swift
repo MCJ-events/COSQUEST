@@ -191,7 +191,7 @@ struct ProfileView: View {
 
     private var heroTitle: String {
         guard let r = model.roam else { return "A NEW HERO" }
-        let house = r.faction_name ?? r.faction?.capitalized
+        let house = RealmNames.clean(r.faction_name) ?? r.faction.map { RealmNames.name($0) }
         return house.map { "\(r.standing.rank.uppercased()) OF HOUSE \($0.uppercased())" }
             ?? r.standing.rank.uppercased()
     }
@@ -378,7 +378,7 @@ struct ProfileView: View {
                                              color: placing == 1 ? GamePalette.sunDeep : GamePalette.skyDeep)
                                 }
                                 if let faction = r.faction {
-                                    Text(faction.capitalized)
+                                    Text(RealmNames.name(faction))
                                         .font(GameFont.body(13, weight: .semibold)).opacity(0.6)
                                 }
                                 GameCoin(size: 16)
@@ -563,7 +563,7 @@ private struct WallList: View {
                                             .foregroundStyle(GamePalette.sunDeep)
                                     }
                                 }
-                                Text("\(r.tokens) tokens" + (r.faction.map { " · \($0.capitalized)" } ?? ""))
+                                Text("\(r.tokens) tokens" + (r.faction.map { " · \(RealmNames.name($0))" } ?? ""))
                                     .font(GameFont.body(13, weight: .semibold)).opacity(0.6)
                             }
                         }

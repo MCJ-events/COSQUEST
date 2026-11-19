@@ -234,7 +234,7 @@ struct CodexSheet: View {
                     .foregroundStyle(.white)
                     .frame(width: 34, height: 34)
                     .background(Circle().fill(colour))
-                GameHeading(cards.first?.realm_name ?? realm.capitalized, size: 24)
+                GameHeading(RealmNames.clean(cards.first?.realm_name) ?? RealmNames.name(realm), size: 24)
                 Text("\(cards.count)")
                     .font(GameFont.display(18).monospacedDigit())
                     .foregroundStyle(.white.opacity(0.9))
@@ -399,7 +399,7 @@ private struct CodexDetail: View {
                     .font(GameFont.display(26))
                     .multilineTextAlignment(.center)
                 VStack(spacing: 6) {
-                    row("Fandom", card.realm_name ?? card.realm.capitalized)
+                    row("Fandom", RealmNames.clean(card.realm_name) ?? RealmNames.name(card.realm))
                     row("City", card.region_name ?? card.region.capitalized)
                     row("Played", card.times == 1 ? "Once" : "\(card.times) times")
                     if let first = firstWon { row("First won", first) }

@@ -75,3 +75,32 @@ enum RoamStyle {
         return String(format: "%.1f km", m / 1000)
     }
 }
+
+
+/// The five map realms under the brief's faction names, as the RN game shows them
+/// (app/features/game/realmNames.ts). The server keys realms by their old ids (anime, marvel, dc,
+/// movies, gaming) and those stay the wire and the stored data, but "Marvel" and "DC" are other
+/// companies' trademarks and must never reach the screen: every realm name a player sees in the
+/// native game goes through here (build 30, release checklist section 3).
+enum RealmNames {
+    static let names: [String: String] = [
+        "anime": "Ascendants",
+        "marvel": "Icons",
+        "dc": "Everborns",
+        "movies": "Blockbusters",
+        "gaming": "Controllers",
+    ]
+
+    /// A realm id's name: "marvel" -> "Icons"; an unknown id capitalised; nil -> "No faction".
+    static func name(_ id: String?) -> String {
+        guard let id, !id.isEmpty else { return "No faction" }
+        return names[id.lowercased()] ?? id.capitalized
+    }
+
+    /// A name the server sent: an old realm label ("Marvel", "DC") becomes the faction's, the rest as sent.
+    static func clean(_ label: String?) -> String? {
+        guard let label else { return nil }
+        let key = label.trimmingCharacters(in: .whitespaces).lowercased()
+        return names[key] ?? label
+    }
+}

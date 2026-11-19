@@ -1264,7 +1264,7 @@ struct PointCard: View {
                              : "\(store.factionName(point.realm)) Guardian · \(DuelModes.guardian(point))")
                             .lineLimit(1).minimumScaleFactor(0.8)
                     } else {
-                        Text("\(point.realm == "dc" ? "DC" : point.realm.capitalized) questions")
+                        Text("\(store.factionName(point.realm)) questions")
                     }
                 }
                 .font(GameFont.body(14, weight: .semibold))

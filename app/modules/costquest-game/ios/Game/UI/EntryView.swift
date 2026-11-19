@@ -356,7 +356,7 @@ struct EntryView: View {
                         HStack(spacing: 8) {
                             Image(systemName: chosen ? "checkmark.circle.fill" : "circle")
                                 .font(.system(size: 18, weight: .heavy))
-                            Text(faction.name.capitalized)
+                            Text(RealmNames.clean(faction.name)?.capitalized ?? "")
                             Text("\(faction.players)")
                                 .font(GameFont.body(14, weight: .bold))
                                 .opacity(0.8)

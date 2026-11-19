@@ -275,7 +275,7 @@ struct ResultsView: View {
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 10)
             } else if let faction = session.faction {
-                GameChip(text: "Team \(faction.capitalized)", color: factionColour)
+                GameChip(text: "Team \(RealmNames.name(faction))", color: factionColour)
             }
         }
         .padding(.top, 6)
@@ -328,7 +328,7 @@ struct ResultsView: View {
                             .foregroundStyle(GamePalette.sun)
                             .shadow(color: GamePalette.ink, radius: 0, y: 3)
                     }
-                    Text(s.faction.capitalized)
+                    Text(RealmNames.name(s.faction))
                         .font(GameFont.display(mine ? 19 : 17))
                         .foregroundStyle(.white)
                         .shadow(color: GamePalette.ink.opacity(0.6), radius: 0, y: 2)
@@ -409,7 +409,7 @@ struct ResultsView: View {
                 .modifier(popIn(2))
                 if let f = myFaction {
                     GamePanel(face: colour(for: f.faction), padding: 14) {
-                        stat("\(f.tokens)", "Team \(f.faction.capitalized)", coin: false)
+                        stat("\(f.tokens)", "Team \(RealmNames.name(f.faction))", coin: false)
                             .foregroundStyle(.white)
                     }
                     .modifier(popIn(3))
@@ -430,7 +430,7 @@ struct ResultsView: View {
                                     .fill(colour(for: s.faction))
                                     .overlay(Circle().strokeBorder(GamePalette.ink, lineWidth: 2))
                                     .frame(width: 14, height: 14)
-                                Text(s.faction.capitalized)
+                                Text(RealmNames.name(s.faction))
                                     .font(GameFont.body(16, weight: s.faction == session.faction
                                                         ? .bold : .medium))
                                 Spacer()
