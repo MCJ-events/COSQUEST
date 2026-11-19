@@ -4,6 +4,8 @@ extends RefCounted
 ## the look is "real" (mid, high) with "fid_street" on, so the low tier keeps build 28's street byte for byte:
 ## arena.gd still preloads art/street/medallion.png and street_pavers.png for every tier, and those files, like
 ## art/world/ground, trims, roofs and misc, are never edited; the real versions are new files reached only from here.
+## (Build 32, for the iOS size: medallion.png and street_pavers.png import lossy WebP at 0.9 instead of lossless; the
+## files themselves are unchanged, B28_SHA in tests/fid29_street_test.gd still holds.)
 ##
 ## Look keys (arena.gd TIER_LOOK, fid29-base: on for mid and high, never on low):
 ##   fid_street      the real street
