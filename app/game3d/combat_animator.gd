@@ -215,6 +215,12 @@ const LOWER_BONES: Array[String] = ["Hips", "LeftUpLeg", "LeftLeg", "LeftFoot", 
 const MIX_STATES: Array[String] = ["attack_1", "attack_2", "attack_3", "heavy", "parry", "skill_rally", "skill_shield"]
 const DROOP_STATES: Array[String] = ["idle", "_", "walk", "run", "sprint", "hit", "stagger"]
 const DROOP_RATE: float = 8.0            # 1/s: eases in and out round the attacks
+## moves-fix-32 (mid, high): the end of a one-shot. A clip whose last key came a frame before its state's end (the DASH,
+## SHIELD and RALLY tails end on the clip's last key; the whirl and the knockdown play to it) ran out in the player one
+## frame early: one frame with no clip, then the idle came in with a jump. The clip is now held a hair before its end until
+## the state hands over, and the hand-over is dead-blended as every other switch.
+const END_KEEP: float = 0.002            # s short of the clip's end
+const END_MARGIN: float = 1.5            # frame-time headroom
 
 ## fid29 combat (build 29): on the mid and high tiers (the fighter's look "real", and "fid_combat" unless it is
 ## false) the animator installs, in bind():
@@ -861,6 +867,11 @@ func update(dt: float, speed_now: float, dead: bool) -> void:
 		elif in_tail:
 			base = 1.0
 		player.speed_scale = 0.0 if frozen else base
+		if fid and length > 0.0 and not frozen and dt > 0.0 and player.is_playing() and not (state in LOOPING) and state != "death":
+			# moves-fix-32: held a hair before the clip's end while the state still owns the body (END_KEEP)
+			var left: float = player.current_animation_length - player.current_animation_position - END_KEEP
+			if player.speed_scale * dt * END_MARGIN > left:
+				player.speed_scale = maxf(0.0, left / (dt * END_MARGIN))
 	if state == "victory" and length > 0.0 and t >= length and not _victory_idle and player != null and clips.has("idle"):
 		# fight-anim: the cheer used to freeze on its last frame (a statue); it settles into idle
 		_victory_idle = true
