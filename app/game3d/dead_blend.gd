@@ -46,19 +46,29 @@ var cost_usec: int = 0              # the last frame's cost
 ## (40,100) left the median transition peak at 0.65x build 28; 500 brings every statistic under 0.5x
 var guard: bool = false
 const GUARD_ACC: float = 500.0       # build 29's limit, kept as the bar a one-frame flip is measured against (tests)
-const GUARD_BONES: Array[String] = ["Hips", "LeftUpLeg", "LeftLeg", "LeftFoot", "RightUpLeg", "RightLeg", "RightFoot"]
+const GUARD_BONES: Array[String] = ["Hips", "LeftUpLeg", "LeftLeg", "LeftFoot", "RightUpLeg", "RightLeg", "RightFoot",
+	"LeftArm", "LeftForeArm", "LeftHand", "RightArm", "RightForeArm", "RightHand"]
+## fight-motion-31: the arms are followed too, stiffer than the legs (GUARD_W_ARM): a captured swing played at 1.7x (the
+## Courier's CMU slash) carried the capture's frame-to-frame noise, 2.9 times amplified, into the sword hand
+const GUARD_ARMS: Array[String] = ["LeftArm", "LeftForeArm", "LeftHand", "RightArm", "RightForeArm", "RightHand"]
+const GUARD_W_ARM: float = 28.0
 var _gw: Array[Vector3] = []        # the guard's own angular velocity per bone (rad/s, parent frame)
 var guarded: int = 0                # frames the guard changed something (tests, the probe)
 
 
+var _arm: Array[bool] = []
+
+
 func bind_bones(skel: Skeleton3D) -> int:
 	_ids = PackedInt32Array()
+	_arm.clear()
 	for n: String in (GUARD_BONES if guard else BONES):
 		var b: int = skel.find_bone(n)
 		if b < 0:
 			b = skel.find_bone("mixamorig:" + n)
 		if b >= 0:
 			_ids.append(b)
+			_arm.append(guard and n in GUARD_ARMS)
 	_hips = skel.find_bone("Hips")
 	_q1.resize(_ids.size())
 	_q0.resize(_ids.size())
@@ -174,11 +184,12 @@ func _guard(skel: Skeleton3D) -> void:
 		_gtw.resize(_ids.size())
 		_gtw.fill(Vector3.ZERO)
 	var changed: bool = false
-	var subs: int = maxi(1, ceili(GUARD_W * dt / 0.5))
+	var subs: int = maxi(1, ceili(maxf(GUARD_W, GUARD_W_ARM) * dt / 0.5))
 	var h: float = dt / float(subs)
 	for i in _ids.size():
 		var b: int = _ids[i]
 		var q: Quaternion = skel.get_bone_pose_rotation(b)
+		var gw: float = GUARD_W_ARM if _arm.size() > i and _arm[i] else GUARD_W
 		if _have < 1:
 			_q1[i] = q
 			_gt[i] = q
@@ -206,7 +217,7 @@ func _guard(skel: Skeleton3D) -> void:
 		var x: Vector3 = _rotvec(cur * q.inverse()) + wt * dt
 		var v: Vector3 = w - wt
 		for si in subs:
-			v += (-GUARD_W * GUARD_W * x - 2.0 * GUARD_W * v) * h
+			v += (-gw * gw * x - 2.0 * gw * v) * h
 			x += v * h
 		w = wt + v
 		var wl: float = w.length()
@@ -226,9 +237,14 @@ func _guard(skel: Skeleton3D) -> void:
 		foot_lock.repin(skel)   # fight-motion-31: the planted feet back on their pins from the smoothed legs
 
 
+## The rotation as axis x angle (rad). From the vector part with atan2, which keeps its precision near zero (acos of w
+## does not: the follower stalled 0.008 rad short of its target on single-precision floats).
 static func _rotvec(d: Quaternion) -> Vector3:
 	d = d.normalized()
 	if d.w < 0.0:
 		d = -d
-	var ang: float = d.get_angle()
-	return d.get_axis() * ang if ang > 0.000001 else Vector3.ZERO
+	var v := Vector3(d.x, d.y, d.z)
+	var sl: float = v.length()
+	if sl < 1e-9:
+		return Vector3.ZERO
+	return v * (2.0 * atan2(sl, d.w) / sl)
