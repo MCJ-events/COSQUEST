@@ -31,6 +31,8 @@ const FINANCE_ROUTES = [
   ['POST', /^\/auth\/logout$/],
   ['GET', /^\/ledger\/(transactions|balances|check|export)$/],
   ['GET', /^\/regions$/],
+  ['GET', /^\/payment-settings$/],
+  ['GET', /^\/price-table$/],
   ['GET', /^\/approvals$/],
   ['POST', /^\/approvals\/[a-f\d]{24}\/(approve|reject)$/i],
 ];

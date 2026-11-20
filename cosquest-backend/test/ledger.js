@@ -53,17 +53,28 @@ async function run(baseUrl) {
   const tokenB = (await request('POST', '/api/admin/auth/exchange', adminB.token)).data.token;
   const venue = { name: 'Waterfront Plaza', address: '1 Harbor Dr', city: 'San Diego', country: 'United States', lat: 32.7157, lng: -117.1611 };
   const quest = await Quest.create({ slug: `ledger-${suffix}`, title: 'Ledger Night', status: 'upcoming', isPublished: true, startsAt: new Date(Date.now() + 72 * 3600e3), endsAt: new Date(Date.now() + 75 * 3600e3), location: venue, prizePool: { amount: 100, currency: 'USD' }, entryFee: { amount: 12, currency: 'USD' }, maxParticipants: 5 });
-  const pool = `quest_pool:${quest.id}`;
+  const pool = `2010:${quest.id}`;
 
   console.log('\n--- ticket money in the ledger ---');
   const started = await request('POST', `/api/quests/${quest.id}/checkout`, member.token, {});
   await webhook('checkout.session.completed', fake._pay((await Order.findById(started.data.order.id)).stripe.checkoutSessionId));
   await settle();
   const sale = await LedgerTransaction.findOne({ key: `order-paid-${started.data.order.id}` });
-  check(sale && sale.kind === 'ticket.sale' && sale.lines.find((l) => l.account === 'processor_clearing').debit === 1200 && sale.lines.find((l) => l.account === pool).credit === 1200, 'a paid ticket: 1200 cents into the quest prize pool', sale);
+  check(sale && sale.kind === 'ticket.sale' && sale.lines.find((l) => l.account === '1010').debit === 1200 && sale.lines.find((l) => l.account === pool).credit === 1200, 'a paid ticket: 1200 cents into the quest prize pool', sale);
+  const saleJson = ledger.txJson(sale);
+  check(saleJson.type === 'Quest entry' && saleJson.status === 'posted' && Array.isArray(saleJson.approvedBy) && saleJson.linkedTx === null, "finance's columns: Type 'Quest entry', Status 'posted'", saleJson);
   await ledger.recordOrder(started.data.order.id);
   await ledger.recordOrder(started.data.order.id);
   check((await LedgerTransaction.countDocuments({ order: started.data.order.id })) === 1, 'recorded once, however often it is called', null);
+  // Stripe's real fee (the fake Stripe answers like the real one, with a balance transaction).
+  const realRetrieve = fake.paymentIntents.retrieve;
+  fake.paymentIntents.retrieve = async (id) => ({ id, latest_charge: { balance_transaction: { fee: 65, currency: 'usd' } } });
+  await ledger.recordOrder(started.data.order.id);
+  await ledger.recordOrder(started.data.order.id);
+  fake.paymentIntents.retrieve = realRetrieve;
+  const fee = await LedgerTransaction.findOne({ key: `order-fee-${started.data.order.id}` });
+  const feeCount = await LedgerTransaction.countDocuments({ kind: 'stripe.fee', order: started.data.order.id });
+  check(fee && feeCount === 1 && fee.lines.find((l) => l.account === '5010').debit === 65 && fee.lines.find((l) => l.account === '1010').credit === 65 && String(fee.linkedTx) === String(sale._id), "Stripe's real fee recorded once: 5010 Stripe Fees / 1010 Stripe Clearing, linked to the sale", fee);
   // tickets.js passes an order's id (an ObjectId, which has an _id of its own).
   const byId = await Order.findById(started.data.order.id).select('_id');
   check((await ledger.recordOrder(byId._id)).length === 1, 'recordOrder takes an order id as well as the order', null);
@@ -71,9 +82,11 @@ async function run(baseUrl) {
   await settle();
   const refund = await LedgerTransaction.findOne({ key: `order-refund-${started.data.order.id}` });
   check(refunded.status === 200 && refund?.kind === 'ticket.refund' && refund.lines.find((l) => l.account === pool).debit === 1200, 'a refund: 1200 cents back out of the pool', refund);
-  const bal = await request('GET', `/api/admin/ledger/balances?book=money&prefix=quest_pool:${quest.id}`, tokenA);
+  const bal = await request('GET', `/api/admin/ledger/balances?book=money&prefix=2010:${quest.id}`, tokenA);
   check(bal.status === 200 && bal.data.balances.length === 1 && bal.data.balances[0].balance === 0, 'the pool is back to 0 after the refund', bal.data);
   const books = await request('GET', '/api/admin/ledger/check', tokenA);
+  const financeChecks = books.data.checks || [];
+  check(financeChecks.length >= 6 && financeChecks.every((c) => c.pass !== false), "finance's checks: none failing", financeChecks);
   check(books.status === 200 && books.data.ok === true && books.data.books.every((b) => Number.isInteger(b.transactions) && b.transactions > 0), 'debits = credits for every book (with how many transactions)', books.data);
 
   console.log('\n--- missed entries are filled in ---');
@@ -103,7 +116,7 @@ async function run(baseUrl) {
   console.log('\n--- export ---');
   const csv = await fetch(`${baseUrl}/api/admin/ledger/export?book=money`, { headers: { Authorization: `Bearer ${tokenA}` } });
   const body = await csv.text();
-  check(csv.status === 200 && /^"?transaction"?,/.test(body) && body.includes(pool), 'CSV export, one row per line', body.slice(0, 200));
+  check(csv.status === 200 && body.replace(/^\uFEFF/, '').startsWith('"Txn id","Timestamp (UTC)","User id","Type","Quest id"') && body.includes('"2010 Quest Pool ') && body.includes('"Quest entry"') && body.includes('"1010 Stripe Clearing"'), "CSV export in finance's Cash Ledger format", body.slice(0, 300));
   const memberExport = await request('GET', '/api/admin/ledger/export', member.token);
   check(memberExport.status === 401, 'only admins see the ledger', memberExport.status);
 

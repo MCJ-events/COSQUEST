@@ -10,8 +10,7 @@
       "env": {
         "EXPO_PUBLIC_GAME3D": "1",
         "EXPO_PUBLIC_FORGE_CATALOGUE": "1",
-        "EXPO_PUBLIC_WALE_UI": "1",
-        "EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY": "pk_test_51UWUc9RizCjeYiR7q0yvX3vWSEdcW5tPZVSJrPGKhlA2vMAmoDlLDxZWsAimoW54yS28FaxRhqQJpj0dJexKyEIg00rTnhimQf"
+        "EXPO_PUBLIC_WALE_UI": "1"
       }
     },
     "preview": {
@@ -25,8 +24,7 @@
         "EXPO_PUBLIC_SPARKS_ENGINE": "module",
         "EXPO_PUBLIC_GAME3D": "1",
         "EXPO_PUBLIC_FORGE_CATALOGUE": "1",
-        "EXPO_PUBLIC_WALE_UI": "1",
-        "EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY": "pk_test_51UWUc9RizCjeYiR7q0yvX3vWSEdcW5tPZVSJrPGKhlA2vMAmoDlLDxZWsAimoW54yS28FaxRhqQJpj0dJexKyEIg00rTnhimQf"
+        "EXPO_PUBLIC_WALE_UI": "1"
       }
     },
     "production": {
@@ -38,8 +36,7 @@
         "EXPO_PUBLIC_SPARKS_ENGINE": "module",
         "EXPO_PUBLIC_GAME3D": "1",
         "EXPO_PUBLIC_FORGE_CATALOGUE": "1",
-        "EXPO_PUBLIC_WALE_UI": "1",
-        "EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY": "pk_test_51UWUc9RizCjeYiR7q0yvX3vWSEdcW5tPZVSJrPGKhlA2vMAmoDlLDxZWsAimoW54yS28FaxRhqQJpj0dJexKyEIg00rTnhimQf"
+        "EXPO_PUBLIC_WALE_UI": "1"
       }
     }
   },

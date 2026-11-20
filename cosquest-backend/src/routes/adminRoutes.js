@@ -180,4 +180,14 @@ router.get('/finance-approvers', a(finance.list));
 router.post('/finance-approvers', validate(financeRules.add), a(finance.add));
 router.delete('/finance-approvers/:userId', validate(financeRules.remove), a(finance.remove));
 
+// Money settings (finance's "Assumptions"): versions, changed through approvals.
+const moneySettings = require('../controllers/adminPaymentSettingsController');
+router.get('/payment-settings', a(moneySettings.getSettings));
+router.post('/payment-settings/requests', a(moneySettings.requestSettings));
+
+// CosCoin price table (finance's "Price Table"): versions, changed through approvals.
+const prices = require('../controllers/adminPriceTableController');
+router.get('/price-table', a(prices.getTable));
+router.post('/price-table/requests', a(prices.requestTable));
+
 module.exports = router;

@@ -109,7 +109,12 @@
       "expo-asset",
       "./plugins/withSceneLifecycle",
       "./plugins/withGodot",
-      ["expo-screen-orientation", { "initialOrientation": "PORTRAIT_UP" }],
+      [
+        "expo-screen-orientation",
+        {
+          "initialOrientation": "PORTRAIT_UP"
+        }
+      ],
       "./plugins/withPortraitAndroid",
       [
         "expo-notifications",
@@ -119,13 +124,6 @@
           "sounds": [
             "./assets/sounds/ringtone.wav"
           ]
-        }
-      ],
-      [
-        "@stripe/stripe-react-native",
-        {
-          "merchantIdentifier": "merchant.com.dammy0227.cosquest",
-          "enableGooglePay": true
         }
       ],
       [

@@ -33,9 +33,15 @@ import {
   requestRegionChanges,
   reverseTx,
   withdrawApproval,
+  type PaymentSettings,
+  type PriceTable,
+  getPriceTable,
+  requestPriceTable,
+  getPaymentSettings,
+  requestPaymentSettings,
 } from "@/services/adminMoney";
 
-type TabKey = "ledger" | "regions" | "approvals" | "approvers";
+type TabKey = "ledger" | "regions" | "settings" | "prices" | "approvals" | "approvers";
 const STATUS_LABEL: Record<RegionStatus, string> = { allowed: "Allowed", blocked: "Blocked", needs_license: "Needs licence" };
 const STATUS_TONE: Record<RegionStatus, "green" | "red" | "amber"> = { allowed: "green", blocked: "red", needs_license: "amber" };
 const when = (iso: string) => new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
@@ -59,6 +65,8 @@ export default function MoneyAdmin() {
         tabs={[
           { key: "ledger", label: "Ledger" },
           { key: "regions", label: "Regions" },
+          { key: "settings", label: "Settings" },
+          { key: "prices", label: "Prices" },
           { key: "approvals", label: "Approvals", count: pending },
           ...(role === "admin" ? [{ key: "approvers" as TabKey, label: "Approvers" }] : []),
         ]}
@@ -69,6 +77,10 @@ export default function MoneyAdmin() {
         <LedgerTab canCorrect={!finance} />
       ) : tab === "regions" ? (
         <RegionsTab canRequest={!finance} onRequested={() => setTab("approvals")} />
+      ) : tab === "prices" ? (
+        <PricesTab canRequest={!finance} onRequested={() => setTab("approvals")} />
+      ) : tab === "settings" ? (
+        <SettingsTab canRequest={!finance} onRequested={() => setTab("approvals")} />
       ) : tab === "approvers" ? (
         <ApproversTab />
       ) : (
@@ -118,11 +130,25 @@ function LedgerTab({ canCorrect }: { canCorrect: boolean }) {
   return (
     <View style={{ gap: 16 }}>
       {books ? (
-        books.ok ? (
+        books.books.every((b) => b.balanced) ? (
           <Notice icon="checkmark-circle-outline" tone="green" title="The books balance" text={books.books.length ? books.books.map((b) => `${b.book} ${b.currency}: ${b.transactions} transactions, debits = credits`).join(" · ") : "No entries yet."} />
         ) : (
           <Notice icon="alert-circle-outline" tone="red" title="The books don't balance" text="Debits and credits differ. Tell the backend team at once; the details are in the server log." />
         )
+      ) : null}
+      {books?.checks?.length ? (
+        <Card>
+          <CardHeader title="Checks" subtitle="Finance's checks from the sample ledger, run on every entry." />
+          <View style={{ marginTop: 12, gap: 8 }}>
+            {books.checks.map((c) => (
+              <View key={c.name} style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
+                <Pill label={c.pass === true ? "PASS" : c.pass === false ? "FAIL" : "N/A"} tone={c.pass === true ? "green" : c.pass === false ? "red" : "blue"} />
+                <Text style={{ flex: 1, minWidth: 200, fontFamily: FONTS.medium, fontSize: 13.5, color: t.text }}>{c.name}</Text>
+                <Text style={{ fontFamily: FONTS.regular, fontSize: 12.5, color: t.muted }}>{String(c.detail)}</Text>
+              </View>
+            ))}
+          </View>
+        </Card>
       ) : null}
       {done ? <Notice icon="checkmark-circle-outline" tone="green" text={done} /> : null}
       {error ? <Notice icon="alert-circle-outline" tone="red" text={error} /> : null}
@@ -132,7 +158,7 @@ function LedgerTab({ canCorrect }: { canCorrect: boolean }) {
           subtitle="Append-only: a mistake is corrected by a reversal, never edited."
           right={
             <View style={{ flexDirection: "row", gap: 10, alignItems: "center" }}>
-              <Select value={book} options={[{ value: "money", label: "Money (USD)" }, { value: "costcoin", label: "Costcoin" }]} onChange={(v) => { setBook(v); setOffset(0); }} />
+              <Select value={book} options={[{ value: "money", label: "Money (USD)" }, { value: "costcoin", label: "CosCoin" }]} onChange={(v) => { setBook(v); setOffset(0); }} />
               {Platform.OS === "web" ? <Button label="Export CSV" icon="download-outline" onPress={() => downloadLedgerCsv(book).catch((e) => setError(e.message))} /> : null}
             </View>
           }
@@ -147,14 +173,14 @@ function LedgerTab({ canCorrect }: { canCorrect: boolean }) {
               <View key={tx.id} style={{ padding: 14, borderRadius: 16, borderWidth: 1, borderColor: picked?.id === tx.id ? t.pink : t.border, backgroundColor: t.cardSoft, gap: 6 }}>
                 <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
                   <Text style={{ fontFamily: FONTS.semibold, fontSize: 14, color: t.text }}>{tx.number}</Text>
-                  <Pill label={tx.kind} tone={tx.kind === "reversal" ? "amber" : tx.kind.endsWith("refund") ? "red" : "blue"} />
+                  <Pill label={tx.type || tx.kind} tone={tx.kind === "reversal" ? "amber" : tx.kind.endsWith("refund") ? "red" : "blue"} />
                   <Text style={{ flex: 1, minWidth: 160, fontFamily: FONTS.regular, fontSize: 13, color: t.muted }} numberOfLines={1}>{tx.memo}</Text>
                   <Text style={{ fontFamily: FONTS.semibold, fontSize: 14, color: t.text }}>{amount(tx.total, tx.currency)}</Text>
                   <Text style={{ fontFamily: FONTS.regular, fontSize: 12.5, color: t.faint }}>{when(tx.createdAt)}</Text>
                 </View>
                 {tx.lines.map((l, i) => (
                   <Text key={i} style={{ fontFamily: FONTS.regular, fontSize: 12.5, color: t.muted }}>
-                    {l.debit ? `Debit  ${l.account}  ${amount(l.debit, tx.currency)}` : `Credit ${l.account}  ${amount(l.credit, tx.currency)}`}
+                    {l.debit ? `Debit  ${l.label || l.account}  ${amount(l.debit, tx.currency)}` : `Credit ${l.label || l.account}  ${amount(l.credit, tx.currency)}`}
                   </Text>
                 ))}
                 {canCorrect && tx.kind !== "reversal" ? (
@@ -355,11 +381,23 @@ function ApprovalsTab({ onChanged }: { onChanged: () => void }) {
             <Card key={r.id}>
               <CardHeader title={`${r.number} · ${r.title}`} subtitle={`Requested by ${mine ? "you" : r.requestedBy.name} · ${when(r.createdAt)}`} right={<Pill label={r.status} tone={r.status === "approved" ? "green" : r.status === "pending" ? "amber" : "red"} />} />
               <View style={{ marginTop: 12, gap: 6 }}>
-                {r.changes.map((c) => (
-                  <Text key={c.region} style={{ fontFamily: FONTS.regular, fontSize: 14, color: t.text }}>
-                    {c.region}{c.name ? ` (${c.name})` : ""} → {STATUS_LABEL[c.status]}{c.note ? ` · ${c.note}` : ""}
+                {Array.isArray(r.changes) ? (
+                  r.changes.map((c) => (
+                    <Text key={c.region} style={{ fontFamily: FONTS.regular, fontSize: 14, color: t.text }}>
+                      {c.region}{c.name ? ` (${c.name})` : ""} → {STATUS_LABEL[c.status]}{c.note ? ` · ${c.note}` : ""}
+                    </Text>
+                  ))
+                ) : "bundles" in r.changes ? (
+                  r.changes.bundles.map((b) => (
+                    <Text key={b.id} style={{ fontFamily: FONTS.regular, fontSize: 14, color: t.text }}>
+                      {b.id} {b.name}: ${(b.priceCents / 100).toFixed(2)} → {b.costcoin === null ? "OPEN" : `${b.costcoin} CosCoin`}{b.status === "open" ? " (not on sale)" : ""}
+                    </Text>
+                  ))
+                ) : (
+                  <Text style={{ fontFamily: FONTS.regular, fontSize: 14, color: t.text }}>
+                    Platform share {r.changes.platformShareBps === null ? "OPEN" : `${r.changes.platformShareBps / 100}%`} · payout limit {r.changes.payoutApprovalLimitCents === null ? "OPEN" : `$${(r.changes.payoutApprovalLimitCents / 100).toLocaleString("en-US")}`}
                   </Text>
-                ))}
+                )}
                 <Text style={{ fontFamily: FONTS.regular, fontSize: 13, color: t.muted }}>Reason: {r.reason}</Text>
                 {r.decidedBy ? <Text style={{ fontFamily: FONTS.regular, fontSize: 13, color: t.muted }}>{r.status === "approved" ? "Approved" : "Rejected"} by {r.decidedBy.name}{r.decisionNote ? `: ${r.decisionNote}` : ""}</Text> : null}
               </View>
@@ -498,6 +536,228 @@ function ApproversTab() {
           </View>
         </View>
       </Card>
+    </View>
+  );
+}
+
+// ---------- Money settings (finance's "Assumptions") ----------
+
+function SettingsTab({ canRequest, onRequested }: { canRequest: boolean; onRequested: () => void }) {
+  const t = useAdminTheme();
+  const [data, setData] = useState<{ current: PaymentSettings; history: PaymentSettings[] } | null>(null);
+  const [share, setShare] = useState("");
+  const [limit, setLimit] = useState("");
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  const load = useCallback(() => {
+    getPaymentSettings()
+      .then((d) => {
+        setData(d);
+        setShare(d.current.platformShareBps === null ? "" : String(d.current.platformShareBps / 100));
+        setLimit(d.current.payoutApprovalLimitCents === null ? "" : String(d.current.payoutApprovalLimitCents / 100));
+      })
+      .catch((e) => setError(e?.message || "Couldn't load the settings."));
+  }, []);
+  useEffect(load, [load]);
+
+  const input = { height: 44, paddingHorizontal: 14, borderRadius: 12, borderWidth: 1, borderColor: t.border, backgroundColor: t.cardSoft, fontFamily: FONTS.regular, fontSize: 14, color: t.text, ...(Platform.OS === "web" ? ({ outlineStyle: "none" } as object) : null) };
+  const pct = (bps: number | null) => (bps === null ? "OPEN" : `${bps / 100}%`);
+  const usd = (cents: number | null) => (cents === null ? "OPEN" : `$${(cents / 100).toLocaleString("en-US")}`);
+
+  const submit = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      await requestPaymentSettings({ platformSharePercent: share.trim(), payoutApprovalLimitDollars: limit.trim(), reason: reason.trim() });
+      setReason("");
+      onRequested();
+    } catch (e: any) {
+      setError(e?.message || "Couldn't send the request.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const c = data?.current;
+  return (
+    <View style={{ gap: 16 }}>
+      {error ? <Notice icon="alert-circle-outline" tone="red" text={error} /> : null}
+      <Card>
+        <CardHeader title="Money settings" subtitle={c?.formulaVersion ? `Version ${c.formulaVersion}. Each settlement records the version it used.` : "No version approved yet: everything is OPEN until Mark decides."} />
+        {!c ? (
+          <Loading />
+        ) : (
+          <View style={{ marginTop: 14, gap: 10 }}>
+            {[
+              ["Platform share of each quest pool", pct(c.platformShareBps), "Mark decides (30% was only an example)."],
+              ["Winners' share of each quest pool", pct(c.winnerShareBps), "Whatever the platform doesn't keep."],
+              ["Payouts above this need a second admin", usd(c.payoutApprovalLimitCents), "Mark decides."],
+              ["Stripe fee", "Recorded from Stripe", "The ledger records Stripe's real fee on each payment."],
+            ].map(([name, value, hint]) => (
+              <View key={name} style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 12, padding: 14, borderRadius: 16, borderWidth: 1, borderColor: t.border, backgroundColor: t.cardSoft }}>
+                <View style={{ flex: 1, minWidth: 200 }}>
+                  <Text style={{ fontFamily: FONTS.medium, fontSize: 14, color: t.text }}>{name}</Text>
+                  <Text style={{ fontFamily: FONTS.regular, fontSize: 12.5, color: t.muted }}>{hint}</Text>
+                </View>
+                <Pill label={value} tone={value === "OPEN" ? "amber" : "green"} />
+              </View>
+            ))}
+          </View>
+        )}
+      </Card>
+      {canRequest ? (
+        <Card>
+          <CardHeader title="Request a change" subtitle="Another admin or a finance approver must approve it. Leave a field empty to keep it OPEN." />
+          <View style={{ marginTop: 14, gap: 12 }}>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}>
+              <View style={{ width: 220 }}>
+                <Field label="Platform share (%)">
+                  <TextInput value={share} onChangeText={(v) => setShare(v.replace(/[^0-9.]/g, "").slice(0, 6))} placeholder="OPEN" keyboardType="decimal-pad" placeholderTextColor={t.faint} style={input} />
+                </Field>
+              </View>
+              <View style={{ width: 260 }}>
+                <Field label="Payout approval limit ($)">
+                  <TextInput value={limit} onChangeText={(v) => setLimit(v.replace(/[^0-9.]/g, "").slice(0, 10))} placeholder="OPEN" keyboardType="decimal-pad" placeholderTextColor={t.faint} style={input} />
+                </Field>
+              </View>
+            </View>
+            <ReasonBox value={reason} onChange={setReason} placeholder="e.g. Mark approved a 30% platform share on 20 Nov." />
+            <View style={{ flexDirection: "row" }}>
+              <Button label="Send for approval" variant="primary" icon="send-outline" loading={busy} disabled={reason.trim().length < 3} onPress={submit} />
+            </View>
+          </View>
+        </Card>
+      ) : null}
+      {data?.history?.length ? (
+        <Card>
+          <CardHeader title="History" subtitle="Every approved version (never edited)." />
+          <View style={{ marginTop: 12, gap: 6 }}>
+            {data.history.map((v) => (
+              <Text key={v.formulaVersion || "none"} style={{ fontFamily: FONTS.regular, fontSize: 13.5, color: t.text }}>
+                {v.formulaVersion} · platform {pct(v.platformShareBps)} · winners {pct(v.winnerShareBps)} · payout limit {usd(v.payoutApprovalLimitCents)}
+                {v.approvedAt ? ` · ${new Date(v.approvedAt).toLocaleDateString()}` : ""}
+              </Text>
+            ))}
+          </View>
+        </Card>
+      ) : null}
+    </View>
+  );
+}
+
+// ---------- CosCoin price table (finance's "Price Table") ----------
+
+type BundleRow = { id: string; name: string; price: string; costcoin: string; status: "active" | "open"; note: string };
+// Until a table is approved, start from the Sep 2 meeting's agreed bundles.
+const AGREED_BUNDLES: BundleRow[] = [
+  { id: "B-80", name: "Small bundle", price: "1", costcoin: "80", status: "active", note: "Agreed data point (Sep 2)" },
+  { id: "B-500", name: "Medium bundle", price: "4", costcoin: "500", status: "active", note: "Agreed data point (Sep 2)" },
+  { id: "B-STARTER", name: "Starter pack", price: "20", costcoin: "", status: "open", note: "Coin amount not decided. Includes character items and a basic weapon." },
+];
+
+function PricesTab({ canRequest, onRequested }: { canRequest: boolean; onRequested: () => void }) {
+  const t = useAdminTheme();
+  const [data, setData] = useState<{ current: PriceTable; history: PriceTable[] } | null>(null);
+  const [rows, setRows] = useState<BundleRow[]>([]);
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  const load = useCallback(() => {
+    getPriceTable()
+      .then((d) => {
+        setData(d);
+        setRows(
+          d.current.bundles.length
+            ? d.current.bundles.map((b) => ({ id: b.id, name: b.name, price: String(b.priceCents / 100), costcoin: b.costcoin === null ? "" : String(b.costcoin), status: b.status, note: b.note }))
+            : AGREED_BUNDLES,
+        );
+      })
+      .catch((e) => setError(e?.message || "Couldn't load the price table."));
+  }, []);
+  useEffect(load, [load]);
+
+  const input = { height: 40, paddingHorizontal: 10, borderRadius: 10, borderWidth: 1, borderColor: t.border, backgroundColor: t.cardSoft, fontFamily: FONTS.regular, fontSize: 13.5, color: t.text, ...(Platform.OS === "web" ? ({ outlineStyle: "none" } as object) : null) };
+  const set = (i: number, patch: Partial<BundleRow>) => setRows((all) => all.map((r, j) => (j === i ? { ...r, ...patch } : r)));
+  const money = (cents: number) => `$${(cents / 100).toFixed(2)}`;
+
+  const submit = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      await requestPriceTable(rows.map((r) => ({ id: r.id.trim(), name: r.name.trim(), price: r.price.trim(), costcoin: r.costcoin.trim(), status: r.status, note: r.note })), reason.trim());
+      setReason("");
+      onRequested();
+    } catch (e: any) {
+      setError(e?.message || "Couldn't send the request.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const c = data?.current;
+  return (
+    <View style={{ gap: 16 }}>
+      {error ? <Notice icon="alert-circle-outline" tone="red" text={error} /> : null}
+      <Card>
+        <CardHeader title="CosCoin price table" subtitle={c?.priceVersion ? `Version ${c.priceVersion}. Each purchase records the version it was sold at.` : "No table approved yet: nothing is on sale."} />
+        {!c ? (
+          <Loading />
+        ) : !c.bundles.length ? (
+          <Text style={{ marginTop: 14, fontFamily: FONTS.regular, fontSize: 14, color: t.muted }}>Request the first table below (it starts from the bundles agreed on Sep 2).</Text>
+        ) : (
+          <View style={{ marginTop: 14, gap: 8 }}>
+            {c.bundles.map((b) => (
+              <View key={b.id} style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 12, padding: 14, borderRadius: 16, borderWidth: 1, borderColor: t.border, backgroundColor: t.cardSoft }}>
+                <Text style={{ width: 100, fontFamily: FONTS.semibold, fontSize: 14, color: t.text }}>{b.id}</Text>
+                <Text style={{ flex: 1, minWidth: 140, fontFamily: FONTS.regular, fontSize: 14, color: t.text }}>{b.name}</Text>
+                <Text style={{ fontFamily: FONTS.medium, fontSize: 14, color: t.text }}>{money(b.priceCents)} → {b.costcoin === null ? "OPEN" : `${b.costcoin} coins`}</Text>
+                {b.costcoinPerDollar ? <Text style={{ fontFamily: FONTS.regular, fontSize: 12.5, color: t.muted }}>{b.costcoinPerDollar} per $1</Text> : null}
+                <Pill label={b.status === "active" ? "On sale" : "OPEN"} tone={b.status === "active" ? "green" : "amber"} />
+              </View>
+            ))}
+          </View>
+        )}
+      </Card>
+      {canRequest ? (
+        <Card>
+          <CardHeader title="Request a new table" subtitle="The whole table becomes a new version once another admin or a finance approver approves it. Open bundles are never sold." />
+          <View style={{ marginTop: 14, gap: 10 }}>
+            {rows.map((r, i) => (
+              <View key={i} style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
+                <TextInput value={r.id} onChangeText={(v) => set(i, { id: v.toUpperCase().slice(0, 22) })} placeholder="B-1000" placeholderTextColor={t.faint} style={[input, { width: 110 }]} accessibilityLabel="Bundle id" />
+                <TextInput value={r.name} onChangeText={(v) => set(i, { name: v.slice(0, 40) })} placeholder="Name" placeholderTextColor={t.faint} style={[input, { flex: 1, minWidth: 140 }]} accessibilityLabel="Bundle name" />
+                <TextInput value={r.price} onChangeText={(v) => set(i, { price: v.replace(/[^0-9.]/g, "").slice(0, 7) })} placeholder="Price $" keyboardType="decimal-pad" placeholderTextColor={t.faint} style={[input, { width: 90 }]} accessibilityLabel="Price in dollars" />
+                <TextInput value={r.costcoin} onChangeText={(v) => set(i, { costcoin: v.replace(/[^0-9]/g, "").slice(0, 7) })} placeholder="Coins" keyboardType="number-pad" placeholderTextColor={t.faint} style={[input, { width: 90 }]} accessibilityLabel="CosCoin" />
+                <Select<"active" | "open"> value={r.status} options={[{ value: "active", label: "On sale" }, { value: "open", label: "OPEN" }]} onChange={(v) => set(i, { status: v })} minWidth={110} />
+                <Button label="Remove" variant="ghost" onPress={() => setRows((all) => all.filter((_, j) => j !== i))} />
+              </View>
+            ))}
+            <View style={{ flexDirection: "row" }}>
+              <Button label="Add a bundle" variant="ghost" icon="add-outline" onPress={() => setRows((all) => [...all, { id: "B-", name: "", price: "", costcoin: "", status: "open", note: "" }])} />
+            </View>
+            <ReasonBox value={reason} onChange={setReason} placeholder="e.g. Agreed bundles from the Sep 2 meeting (Adewale, Emaculate); approved by Mark." />
+            <View style={{ flexDirection: "row" }}>
+              <Button label="Send for approval" variant="primary" icon="send-outline" loading={busy} disabled={!rows.length || reason.trim().length < 3} onPress={submit} />
+            </View>
+          </View>
+        </Card>
+      ) : null}
+      {data?.history?.length ? (
+        <Card>
+          <CardHeader title="History" subtitle="Every approved table (never edited)." />
+          <View style={{ marginTop: 12, gap: 6 }}>
+            {data.history.map((v) => (
+              <Text key={v.priceVersion || "none"} style={{ fontFamily: FONTS.regular, fontSize: 13.5, color: t.text }}>
+                {v.priceVersion} · {v.bundles.map((b) => `${b.id} ${money(b.priceCents)} = ${b.costcoin ?? "OPEN"}`).join(" · ")}
+                {v.approvedAt ? ` · ${new Date(v.approvedAt).toLocaleDateString()}` : ""}
+              </Text>
+            ))}
+          </View>
+        </Card>
+      ) : null}
     </View>
   );
 }

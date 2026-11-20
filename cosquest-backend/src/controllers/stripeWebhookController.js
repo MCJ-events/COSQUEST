@@ -23,6 +23,8 @@ async function handle(event) {
     case 'checkout.session.completed':
     case 'checkout.session.async_payment_succeeded': {
       if (object.payment_status !== 'paid' && object.payment_status !== 'no_payment_required') return null; // a delayed method: wait for async_payment_succeeded
+      // CosCoin bundles (src/utils/costcoin.js) have their own orders.
+      if (object.metadata?.purpose === 'costcoin') return require('../utils/costcoin').paidFromSession(object, event.type);
       const order = await orderForSession(object);
       if (!order) return null;
       await tickets.fulfil(order, { paymentIntentId: object.payment_intent, amountTotal: object.amount_total, currency: object.currency, via: event.type });
@@ -30,6 +32,7 @@ async function handle(event) {
     }
     case 'checkout.session.expired':
     case 'checkout.session.async_payment_failed': {
+      if (object.metadata?.purpose === 'costcoin') return require('../utils/costcoin').expiredFromSession(object, event.type);
       const order = await orderForSession(object);
       if (order) await tickets.releaseHold(order, 'expired', event.type);
       return order?._id || null;

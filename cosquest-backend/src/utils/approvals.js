@@ -44,6 +44,10 @@ async function decide(admin, requestId, { approve, note = '' }) {
     { new: true }
   );
   if (!claimed) fail(409, 'This request was just decided by someone else.', 'already_decided');
+  // Money settings: the approved change becomes the next version (f1, f2...).
+  // CosCoin price table: the approved table becomes the next version (v1, v2...).
+  if (approve && claimed.kind === 'price_table') await require('./priceTable').applyApproved(claimed, admin);
+  if (approve && claimed.kind === 'payment_settings') await require('./paymentSettings').applyApproved(claimed, admin);
   if (approve && claimed.kind === 'region_rules') {
     for (const c of claimed.changes) {
       await RegionRule.findOneAndUpdate(

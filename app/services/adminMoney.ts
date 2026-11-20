@@ -2,11 +2,19 @@
 // Backend: ledger-backend (LEDGER.md).
 import { adminRequest } from "./admin";
 
-export type LedgerLine = { account: string; debit: number; credit: number };
+/** account: the chart code (e.g. 2010:<questId>); label: "2010 Quest Pool Glam zone". */
+export type LedgerLine = { account: string; label?: string; debit: number; credit: number };
 export type LedgerTx = {
   id: string;
   number: string;
   kind: string;
+  /** Finance's words: "Quest entry", "Processor fee", "Payout"... */
+  type?: string;
+  status?: string;
+  itemId?: string | null;
+  formulaVersion?: string | null;
+  approvedBy?: string[];
+  linkedTx?: string | null;
   book: "money" | "costcoin";
   currency: string;
   lines: LedgerLine[];
@@ -19,7 +27,13 @@ export type LedgerTx = {
   reverses: string | null;
   createdAt: string;
 };
-export type LedgerCheck = { ok: boolean; books: { book: string; currency: string; debits: number; credits: number; transactions: number; balanced: boolean }[]; checkedAt: string };
+export type LedgerCheck = {
+  ok: boolean;
+  books: { book: string; currency: string; debits: number; credits: number; transactions: number; balanced: boolean }[];
+  /** Finance's checks: pass null = not applicable yet. */
+  checks?: { name: string; pass: boolean | null; detail: string | number }[];
+  checkedAt: string;
+};
 export type AccountBalance = { account: string; book: string; currency: string; debits: number; credits: number; balance: number };
 export type RegionStatus = "allowed" | "blocked" | "needs_license";
 export type RegionRule = { region: string; name: string; status: RegionStatus; note: string; updatedAt: string };
@@ -29,7 +43,8 @@ export type ApprovalRequest = {
   number: string;
   kind: string;
   title: string;
-  changes: { region: string; name: string; status: RegionStatus; note: string }[];
+  /** Region rules: a list; money settings: { platformShareBps, payoutApprovalLimitCents, note }. */
+  changes: { region: string; name: string; status: RegionStatus; note: string }[] | PaymentSettingsChange | { bundles: PriceBundle[] };
   reason: string;
   status: ApprovalStatus;
   requestedBy: { id: string; name: string };
@@ -50,6 +65,20 @@ export const getLedgerCheck = () => adminRequest<LedgerCheck>("/ledger/check");
 export const getBalances = (book: string, prefix?: string) => adminRequest<{ balances: AccountBalance[] }>(`/ledger/balances${qs({ book, prefix })}`);
 export const reverseTx = (txId: string, reason: string) => adminRequest<{ transaction: LedgerTx; auditEvent: string }>(`/ledger/transactions/${txId}/reverse`, { method: "POST", body: { reason } });
 export const getRegions = () => adminRequest<{ mode: "test" | "live"; regions: RegionRule[] }>("/regions");
+/** Money settings (finance's "Assumptions"). null = OPEN (not decided). */
+export type PaymentSettings = { formulaVersion: string | null; platformShareBps: number | null; winnerShareBps: number | null; payoutApprovalLimitCents: number | null; note: string; approvedAt: string | null };
+export type PaymentSettingsChange = { platformShareBps: number | null; payoutApprovalLimitCents: number | null; note?: string };
+export const getPaymentSettings = () => adminRequest<{ current: PaymentSettings; history: PaymentSettings[] }>("/payment-settings");
+export const requestPaymentSettings = (body: { platformSharePercent: string; payoutApprovalLimitDollars: string; reason: string; note?: string }) =>
+  adminRequest<{ request: { id: string; number: string; title: string }; auditEvent: string }>("/payment-settings/requests", { method: "POST", body });
+
+/** The CosCoin price table (finance's "Price Table"). status open = not decided, never sold. */
+export type PriceBundle = { id: string; name: string; priceCents: number; costcoin: number | null; costcoinPerDollar?: number | null; status: "active" | "open"; note: string };
+export type PriceTable = { priceVersion: string | null; bundles: PriceBundle[]; approvedAt: string | null };
+export const getPriceTable = () => adminRequest<{ current: PriceTable; history: PriceTable[] }>("/price-table");
+export const requestPriceTable = (bundles: { id: string; name: string; price: string; costcoin: string; status: "active" | "open"; note?: string }[], reason: string) =>
+  adminRequest<{ request: { id: string; number: string; title: string }; auditEvent: string }>("/price-table/requests", { method: "POST", body: { bundles, reason } });
+
 export const requestRegionChanges = (changes: { region: string; name?: string; status: RegionStatus; note?: string }[], reason: string) =>
   adminRequest<{ request: ApprovalRequest; auditEvent: string }>("/regions/requests", { method: "POST", body: { changes, reason } });
 export const listApprovals = (status: ApprovalStatus) => adminRequest<{ requests: ApprovalRequest[]; pending: number; me: string }>(`/approvals${qs({ status })}`);
@@ -74,6 +103,6 @@ export async function downloadLedgerCsv(book: string) {
   setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
 
-/** Cents (or whole Costcoin) for display. */
+/** Cents (or whole CosCoin) for display. */
 export const amount = (minor: number, currency: string) =>
-  currency === "CQC" ? `${minor.toLocaleString("en-US")} Costcoin` : `${(minor / 100).toLocaleString("en-US", { style: "currency", currency })}`;
+  currency === "CQC" ? `${minor.toLocaleString("en-US")} CosCoin` : `${(minor / 100).toLocaleString("en-US", { style: "currency", currency })}`;
