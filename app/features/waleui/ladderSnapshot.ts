@@ -6,6 +6,14 @@
 // (Speedshot, Hornbow...). Every number on the server is a draft the team
 // edits through the admin API, so nothing here is a price or a threshold a
 // player is charged against. Regenerate from the seed when the names change.
+//
+// Build 30 (release checklist section 3): ten names that echo other companies' characters or
+// props are renamed here, the offline fallback, pending Wale's approval; the live names come from
+// the server and are changed there through the admin API (cosquest-review/release-fixes-30):
+//   Mutation Claw > Riftfang Claw, War-Suit Mk II > Bulwark Frame Mk II, Psi-Edge Blade > Mindglass Blade,
+//   World-Breaker Fists > Quakeforge Fists (icons); Levitation Cloak > Driftweave Cloak, Elderwood Phoenix
+//   Wand > Emberroot Wand (everborns); Sandwalker Crysblade > Duneglass Sabre (celestials); Adamant Claws >
+//   Ironbark Talons, Willpower Signet Ring > Oathstone Signet, Web-Sling Gauntlets > Skyhook Gauntlets (blockbusters).
 import type { ProgRank, ProgWeapon } from "../game/progression.ts";
 
 export const SNAPSHOT_FACTIONS: { id: string; name: string }[] = [{"id": "ascendants", "name": "Ascendants"}, {"id": "controllers", "name": "Controllers"}, {"id": "icons", "name": "Icons"}, {"id": "everborns", "name": "Everborns"}, {"id": "celestials", "name": "Celestials"}, {"id": "blockbusters", "name": "Blockbusters"}];
@@ -47,11 +55,11 @@ export const SNAPSHOT_WEAPONS: ProgWeapon[] = [
   {"id": "icons-t0", "faction": "icons", "tier": 0, "tier_label": "Starter", "name": "Iron Knuckles", "cc_price": null, "starter": true, "account_bound_capstone": false},
   {"id": "icons-t1", "faction": "icons", "tier": 1, "tier_label": "Standard", "name": "Adaptive Gauntlet", "cc_price": null, "starter": false, "account_bound_capstone": false},
   {"id": "icons-t2", "faction": "icons", "tier": 2, "tier_label": "Standard", "name": "Genius Tech Blaster", "cc_price": null, "starter": false, "account_bound_capstone": false},
-  {"id": "icons-t3", "faction": "icons", "tier": 3, "tier_label": "Rare", "name": "Mutation Claw", "cc_price": null, "starter": false, "account_bound_capstone": false},
+  {"id": "icons-t3", "faction": "icons", "tier": 3, "tier_label": "Rare", "name": "Riftfang Claw", "cc_price": null, "starter": false, "account_bound_capstone": false},
   {"id": "icons-t4", "faction": "icons", "tier": 4, "tier_label": "Signature", "name": "Titan Golem", "cc_price": null, "starter": false, "account_bound_capstone": false},
-  {"id": "icons-t5", "faction": "icons", "tier": 5, "tier_label": "Elder", "name": "War-Suit Mk II", "cc_price": null, "starter": false, "account_bound_capstone": false},
-  {"id": "icons-t6", "faction": "icons", "tier": 6, "tier_label": "Ascended", "name": "Psi-Edge Blade", "cc_price": null, "starter": false, "account_bound_capstone": false},
-  {"id": "icons-t7", "faction": "icons", "tier": 7, "tier_label": "Exalted", "name": "World-Breaker Fists", "cc_price": null, "starter": false, "account_bound_capstone": false},
+  {"id": "icons-t5", "faction": "icons", "tier": 5, "tier_label": "Elder", "name": "Bulwark Frame Mk II", "cc_price": null, "starter": false, "account_bound_capstone": false},
+  {"id": "icons-t6", "faction": "icons", "tier": 6, "tier_label": "Ascended", "name": "Mindglass Blade", "cc_price": null, "starter": false, "account_bound_capstone": false},
+  {"id": "icons-t7", "faction": "icons", "tier": 7, "tier_label": "Exalted", "name": "Quakeforge Fists", "cc_price": null, "starter": false, "account_bound_capstone": false},
   {"id": "icons-t8", "faction": "icons", "tier": 8, "tier_label": "Mythic", "name": "Omega Exo-Suit", "cc_price": null, "starter": false, "account_bound_capstone": false},
   {"id": "icons-t9", "faction": "icons", "tier": 9, "tier_label": "Eternal", "name": "Legacy Armor", "cc_price": null, "starter": false, "account_bound_capstone": true},
   {"id": "everborns-t0", "faction": "everborns", "tier": 0, "tier_label": "Starter", "name": "Apprentice Wand", "cc_price": null, "starter": true, "account_bound_capstone": false},
@@ -59,18 +67,18 @@ export const SNAPSHOT_WEAPONS: ProgWeapon[] = [
   {"id": "everborns-t2", "faction": "everborns", "tier": 2, "tier_label": "Standard", "name": "Bloodline Sigil Staff", "cc_price": null, "starter": false, "account_bound_capstone": false},
   {"id": "everborns-t3", "faction": "everborns", "tier": 3, "tier_label": "Rare", "name": "Ancient Grimoire", "cc_price": null, "starter": false, "account_bound_capstone": false},
   {"id": "everborns-t4", "faction": "everborns", "tier": 4, "tier_label": "Signature", "name": "Mystic Essence Scythe", "cc_price": null, "starter": false, "account_bound_capstone": false},
-  {"id": "everborns-t5", "faction": "everborns", "tier": 5, "tier_label": "Elder", "name": "Levitation Cloak", "cc_price": null, "starter": false, "account_bound_capstone": false},
+  {"id": "everborns-t5", "faction": "everborns", "tier": 5, "tier_label": "Elder", "name": "Driftweave Cloak", "cc_price": null, "starter": false, "account_bound_capstone": false},
   {"id": "everborns-t6", "faction": "everborns", "tier": 6, "tier_label": "Ascended", "name": "Ringbound Sigil", "cc_price": null, "starter": false, "account_bound_capstone": false},
   {"id": "everborns-t7", "faction": "everborns", "tier": 7, "tier_label": "Exalted", "name": "Portal Key", "cc_price": null, "starter": false, "account_bound_capstone": false},
   {"id": "everborns-t8", "faction": "everborns", "tier": 8, "tier_label": "Mythic", "name": "Bloodline Awakening Relic", "cc_price": null, "starter": false, "account_bound_capstone": false},
-  {"id": "everborns-t9", "faction": "everborns", "tier": 9, "tier_label": "Eternal", "name": "Elderwood Phoenix Wand", "cc_price": null, "starter": false, "account_bound_capstone": true},
+  {"id": "everborns-t9", "faction": "everborns", "tier": 9, "tier_label": "Eternal", "name": "Emberroot Wand", "cc_price": null, "starter": false, "account_bound_capstone": true},
   {"id": "celestials-t0", "faction": "celestials", "tier": 0, "tier_label": "Starter", "name": "Cadet Plasma Pistol", "cc_price": null, "starter": true, "account_bound_capstone": false},
   {"id": "celestials-t1", "faction": "celestials", "tier": 1, "tier_label": "Standard", "name": "Photon Blade", "cc_price": null, "starter": false, "account_bound_capstone": false},
   {"id": "celestials-t2", "faction": "celestials", "tier": 2, "tier_label": "Standard", "name": "Gravity Gauntlets", "cc_price": null, "starter": false, "account_bound_capstone": false},
   {"id": "celestials-t3", "faction": "celestials", "tier": 3, "tier_label": "Rare", "name": "Nova Cannon", "cc_price": null, "starter": false, "account_bound_capstone": false},
   {"id": "celestials-t4", "faction": "celestials", "tier": 4, "tier_label": "Signature", "name": "Starforge Lance", "cc_price": null, "starter": false, "account_bound_capstone": false},
   {"id": "celestials-t5", "faction": "celestials", "tier": 5, "tier_label": "Elder", "name": "Drift-Runner Blaster", "cc_price": null, "starter": false, "account_bound_capstone": false},
-  {"id": "celestials-t6", "faction": "celestials", "tier": 6, "tier_label": "Ascended", "name": "Sandwalker Crysblade", "cc_price": null, "starter": false, "account_bound_capstone": false},
+  {"id": "celestials-t6", "faction": "celestials", "tier": 6, "tier_label": "Ascended", "name": "Duneglass Sabre", "cc_price": null, "starter": false, "account_bound_capstone": false},
   {"id": "celestials-t7", "faction": "celestials", "tier": 7, "tier_label": "Exalted", "name": "Warp-Vambraces", "cc_price": null, "starter": false, "account_bound_capstone": false},
   {"id": "celestials-t8", "faction": "celestials", "tier": 8, "tier_label": "Mythic", "name": "Singularity Core", "cc_price": null, "starter": false, "account_bound_capstone": false},
   {"id": "celestials-t9", "faction": "celestials", "tier": 9, "tier_label": "Eternal", "name": "Celestial Ascension Armor", "cc_price": null, "starter": false, "account_bound_capstone": true},
@@ -79,9 +87,9 @@ export const SNAPSHOT_WEAPONS: ProgWeapon[] = [
   {"id": "blockbusters-t2", "faction": "blockbusters", "tier": 2, "tier_label": "Standard", "name": "Riot Aegis Shield", "cc_price": null, "starter": false, "account_bound_capstone": false},
   {"id": "blockbusters-t3", "faction": "blockbusters", "tier": 3, "tier_label": "Rare", "name": "Storm Warhammer", "cc_price": null, "starter": false, "account_bound_capstone": false},
   {"id": "blockbusters-t4", "faction": "blockbusters", "tier": 4, "tier_label": "Signature", "name": "Solar Flight Cape", "cc_price": null, "starter": false, "account_bound_capstone": false},
-  {"id": "blockbusters-t5", "faction": "blockbusters", "tier": 5, "tier_label": "Elder", "name": "Adamant Claws", "cc_price": null, "starter": false, "account_bound_capstone": false},
-  {"id": "blockbusters-t6", "faction": "blockbusters", "tier": 6, "tier_label": "Ascended", "name": "Willpower Signet Ring", "cc_price": null, "starter": false, "account_bound_capstone": false},
-  {"id": "blockbusters-t7", "faction": "blockbusters", "tier": 7, "tier_label": "Exalted", "name": "Web-Sling Gauntlets", "cc_price": null, "starter": false, "account_bound_capstone": false},
+  {"id": "blockbusters-t5", "faction": "blockbusters", "tier": 5, "tier_label": "Elder", "name": "Ironbark Talons", "cc_price": null, "starter": false, "account_bound_capstone": false},
+  {"id": "blockbusters-t6", "faction": "blockbusters", "tier": 6, "tier_label": "Ascended", "name": "Oathstone Signet", "cc_price": null, "starter": false, "account_bound_capstone": false},
+  {"id": "blockbusters-t7", "faction": "blockbusters", "tier": 7, "tier_label": "Exalted", "name": "Skyhook Gauntlets", "cc_price": null, "starter": false, "account_bound_capstone": false},
   {"id": "blockbusters-t8", "faction": "blockbusters", "tier": 8, "tier_label": "Mythic", "name": "Legend Reel", "cc_price": null, "starter": false, "account_bound_capstone": false},
   {"id": "blockbusters-t9", "faction": "blockbusters", "tier": 9, "tier_label": "Eternal", "name": "Blockbuster Cannon", "cc_price": null, "starter": false, "account_bound_capstone": true},
 ];

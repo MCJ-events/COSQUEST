@@ -69,6 +69,9 @@ var yaw: float = 0.0
 var speed_now: float = 0.0
 var dead: bool = false
 var celebrating: bool = false
+## fight-motion-31: the result is in (fight.gd _end). The barrier breaks up quietly on every fighter then, not only on
+## one that celebrates: the ally walks to its spot first and stood in its dome through most of the VICTORY banner.
+var fight_over: bool = false
 var anim_freeze: bool = false
 var weapons: Dictionary = {}      # "r" / "l" -> {node, class, bone} (weapons in hand, cq 234)
 
@@ -78,6 +81,17 @@ var kb_vel: Vector3 = Vector3.ZERO
 # step) for as long as the shove lasts; presentation only (kb_vel and the position are the game's)
 const STAGGER_V: float = 3.0
 var _staggering: bool = false
+## moves-fix-32 (mid, high tiers, presentation only): a heavy blow's own reaction plays before the shove's stumble takes
+## over. Every Guardian blow is heavy, so the hero's R_Hit_Heavy was picked, but the 1.4 to 2.2 m knockback started the
+## stagger clip on the next frame: the heavy hit was on screen for one frame (a pop). Now the hit plays HIT_LEAD of its own
+## time (the impact: trunk and head thrown back), then the stagger is dead-blended in for what is left of the shove.
+const HIT_LEAD: float = 0.12
+const STAGGER_V_LATE: float = 1.5        # m/s: the shove still worth a stumble once the hit has played its lead
+const STAGGER_BLEND: float = 0.11        # the hand-over (a 0.22 s dead blend)
+var _stagger_wait: bool = false
+## moves-fix-32: while a clip carries the reaction (the hit, the stagger) the whole-body lean with the shove is this share
+## of build 31's, which tipped the body back stiff on its heels (a plank) on top of the clip's own recoil
+const KB_LEAN_CLIP: float = 0.4
 var iframes: float = 0.0
 var stagger: float = 0.0
 var guarding: bool = false
@@ -127,6 +141,33 @@ const NORMAL_FADE: float = 1.5            # texels per screen pixel where the de
 const FACE_FILL_COL: Color = Color(1.0, 0.82, 0.74)    # warm: the street is warm, a white fill read as a flash
 const FACE_FILL_CLOSE: float = 0.25
 const FACE_FILL_FIGHT: float = 0.08
+## fight-look-31 (arena.gd "fl31"). fl_light: a key, fill and rim that separate the fighters from the street instead of one
+## warm wash: the sky-side kicker behind the fighter becomes a cool rim (FL_KA, FL_RIM_COL), the warm lamp-side one and the
+## paving's warm bounce are halved, the camera-side fill is neutral and stronger at fight distance (fight.gd), and skin is
+## balanced for the whiter key (FL_SKIN_WB, FL_SKIN_KEY_DESAT). fl_mat: a roughness floor and a lower specular on what is
+## not skin, eyes or hair (char_real fl_rough_min, fl_spec_k), skin's sheen broader and its tight lobe smaller.
+const FL_KA: Dictionary = {"golden": 0.85, "day": 0.75, "dusk": 0.95, "night": 0.7}
+const FL_RIM_COL: Color = Color(0.82, 0.9, 1.0)
+const FL_KB_K: float = 0.45
+const FL_BOUNCE_K: float = 0.6
+const FL_SKIN_WB: Dictionary = {"golden": [0.8, 0.9, 1.02], "day": [0.94, 1.0, 1.1], "dusk": [0.9, 1.0, 1.12]}
+const FL_SKIN_KEY_DESAT: Dictionary = {"golden": 0.6, "day": 0.3, "dusk": 0.55, "night": 0.3}
+const FL_ROUGH_MIN: float = 0.55
+const FL_SPEC_K: float = 0.7
+const FL_SKIN_ROUGH_MIN: float = 0.6
+const FL_SKIN_LOBE2: float = 0.08
+const FL_FILL_COL: Color = Color(1.0, 0.97, 0.94)
+const FL_FILL_FIGHT: float = 0.15
+const FL_FILL_CLOSE: float = 0.17         # the close shots' fill (build 30: 0.25 of a warm one; the neutral one read as a flash)
+## fight-look-31 (fl_motion): the DASH's extra body pitch over its clip (build 30: 0.35 rad) and the hips' drop into the lunge
+const FL_DASH_PITCH: float = -0.12
+## fight-look-31 (fl_fx): the SHIELD dome's opacity (on the lower camera it is a large share of the frame and hid the fighter)
+const FL_DOME_A: float = 0.5
+const FL_DISSOLVE_GLOW: float = 0.45
+const FL_DASH_DROP: float = 0.08
+## fight-motion-31: the bound over a travelling action: [from, to] (shares of the move), height (m at size 1), held (a
+## quick rise, a hang and a quick drop) or an arc. The DASH bounds through its 6 m; SPLIT's leap lands on its slam (0.47).
+const LEAPS: Dictionary = {"skill_charge": [0.06, 0.8, 0.22, true], "skill_split": [0.05, 0.47, 0.3, false]}
 var _face_fill_k: float = -1.0
 const FaceLifeScript := preload("res://face_life.gd")
 var face_life: RefCounted = null                         # realism round 5: blinks and gaze (face_life.gd), heroes with the shape keys
@@ -215,6 +256,7 @@ var _vis_pause: float = 0.0
 ## edge moved 7 cm each way a frame: it read as a vibration). 0..1.
 var _jit: float = 0.0
 var _smooth_pos: Vector3 = Vector3.INF
+var _last_pos: Vector3 = Vector3.INF     # fight-motion-31: where the body was last frame (no freeze while it moves)
 var _trail: Array = []                  # the last few drawn positions (the legs' real speed)
 var _trail_dt: Array = []
 
@@ -630,7 +672,15 @@ func _real_material(b: BaseMaterial3D) -> ShaderMaterial:
 	var cut: bool = b.transparency != BaseMaterial3D.TRANSPARENCY_DISABLED
 	var sm := ShaderMaterial.new()
 	sm.shader = _real_variant(two_sided, cut)
-	if cut or b.resource_name.to_lower().contains("hair"):
+	# charload-29 (look key `charload`, default off): a see-through surface is only hair when it is declared hair (or named
+	# so): eyes (cornea shell), lashes and brows of a multi-part character are cut-outs without the hair shading
+	var cl: bool = bool(look.get("charload", false))
+	var nm_l: String = b.resource_name.to_lower()
+	var kind0: String = str(surface_kinds.get(b.resource_name, ""))
+	var as_hair: bool = cut or nm_l.contains("hair")
+	if cl:
+		as_hair = kind0 == "hair" or nm_l.contains("hair") or (cut and kind0 == "" and not nm_l.contains("eye"))
+	if as_hair:
 		sm.set_shader_parameter("hair_all", 1.0)
 	sm.set_shader_parameter("albedo_tex", b.albedo_texture)
 	sm.set_shader_parameter("albedo", b.albedo_color)
@@ -647,9 +697,15 @@ func _real_material(b: BaseMaterial3D) -> ShaderMaterial:
 	if b.normal_enabled and b.normal_texture != null and _surf_tangents and bool(look.get("normal_map", true)):
 		sm.set_shader_parameter("normal_tex", b.normal_texture)
 		sm.set_shader_parameter("normal_amount", b.normal_scale)
+	if cl:
+		sm.set_shader_parameter("env_neutral", float(look.get("env_neutral", 0.85)))
 	if b.emission_enabled:
 		sm.set_shader_parameter("emission_tex", b.emission_texture)
 		var ec: Color = b.emission * b.emission_energy_multiplier
+		# charload-29: Godot's glTF import sets an emissive texture with a black colour and the ADD operator (glTF's
+		# emissive = texture x factor); the shader multiplies texture by colour, so every emissive map read as zero
+		if cl and b.emission_texture != null and b.emission_operator == BaseMaterial3D.EMISSION_OP_ADD:
+			ec = (Color(1, 1, 1) + b.emission) * b.emission_energy_multiplier
 		sm.set_shader_parameter("emission", Vector3(ec.r, ec.g, ec.b) if b.emission_texture != null else Vector3.ZERO)
 	if b.ao_enabled and b.ao_texture != null and b.ao_texture == orm and b.ao_texture_channel == BaseMaterial3D.TEXTURE_CHANNEL_RED:
 		sm.set_shader_parameter("ao_amount", 1.0)
@@ -681,7 +737,7 @@ func _real_material(b: BaseMaterial3D) -> ShaderMaterial:
 	elif bool(look.get("skin_guess", true)):
 		sm.set_shader_parameter("skin_mode", 2)
 		sm.set_shader_parameter("skin_amount", SKIN_GUESS)
-	sm.set_shader_parameter("skin_lobe2", 0.18 if skin == "full" else 0.0)
+	sm.set_shader_parameter("skin_lobe2", (FL_SKIN_LOBE2 if bool(look.get("fl_mat", false)) else 0.18) if skin == "full" else 0.0)
 	if hair_mask != null and bool(look.get("hair", true)) and kind == "":
 		sm.set_shader_parameter("hair_on", true)
 		sm.set_shader_parameter("hair_tex", hair_mask)
@@ -719,16 +775,24 @@ func _real_material(b: BaseMaterial3D) -> ShaderMaterial:
 	var ex: Array = look.get("expo", rl["expo"])
 	sm.set_shader_parameter("expo", Vector2(float(ex[0]), float(ex[1])))
 	# the kickers stand behind the fighter as the fight camera sees it (the camera's heading in the street)
-	var cb: Basis = Basis.from_euler(Vector3(0.0, deg_to_rad(12.0), 0.0))
+	var fl_l: bool = bool(look.get("fl_light", false))
+	# fight-look-31 (fl_cam): the camera's heading turned FL_CAM_YAW, and the kickers with it
+	var cb: Basis = Basis.from_euler(Vector3(0.0, deg_to_rad(12.0 + (ArenaScript.FL_CAM_YAW if bool(look.get("fl_cam", false)) else 0.0)), 0.0))
 	var fwd: Vector3 = -cb.z
 	var right: Vector3 = cb.x
 	sm.set_shader_parameter("kick_a_dir", (fwd * 0.55 + right * 0.65 + Vector3.UP * 0.5).normalized())
-	sm.set_shader_parameter("kick_a_col", Vector3(sky.r, sky.g, sky.b) / maxf(smax, 0.001) * float(look.get("kick_a", rl["ka"])))
+	var ka_col: Vector3 = Vector3(sky.r, sky.g, sky.b) / maxf(smax, 0.001) * float(look.get("kick_a", rl["ka"]))
+	if fl_l:
+		ka_col = Vector3(FL_RIM_COL.r, FL_RIM_COL.g, FL_RIM_COL.b) * float(look.get("kick_a", FL_KA.get(tm, rl["ka"])))
+	sm.set_shader_parameter("kick_a_col", ka_col)
 	sm.set_shader_parameter("kick_b_dir", (fwd * 0.5 - right * 0.75 + Vector3.UP * 0.25).normalized())
-	sm.set_shader_parameter("kick_b_col", Vector3(LAMP_COL.r, LAMP_COL.g, LAMP_COL.b) * float(look.get("kick_b", rl["kb"])) * float(tp.get("lamps", 0.0)))
+	sm.set_shader_parameter("kick_b_col", Vector3(LAMP_COL.r, LAMP_COL.g, LAMP_COL.b) * float(look.get("kick_b", rl["kb"])) * float(tp.get("lamps", 0.0)) * (FL_KB_K if fl_l else 1.0))
 	var kc: Color = tp["key_color"]
 	var down: float = float(tp["key_energy"]) * sin(deg_to_rad(maxf(float(tp["key_elev"]), float(look.get("key_elev_min", 0.0))))) * 0.5 * float(look.get("ground_k", 1.0))
-	sm.set_shader_parameter("bounce_col", Vector3(kc.r, kc.g * 0.92, kc.b * 0.82) * down * float(look.get("bounce_k", rl["bounce"])))
+	sm.set_shader_parameter("bounce_col", Vector3(kc.r, kc.g * 0.92, kc.b * 0.82) * down * float(look.get("bounce_k", rl["bounce"])) * (FL_BOUNCE_K if fl_l else 1.0))
+	if bool(look.get("fl_mat", false)):
+		sm.set_shader_parameter("fl_rough_min", float(look.get("fl_rough_min", FL_ROUGH_MIN)))
+		sm.set_shader_parameter("fl_spec_k", float(look.get("fl_spec_k", FL_SPEC_K)))
 	sm.set_shader_parameter("occ_k", float(look.get("occ_k", 1.0)))
 	# round 4: the current target keeps a readable rim (the team's colour) through the effects
 	if team == 1:
@@ -736,11 +800,11 @@ func _real_material(b: BaseMaterial3D) -> ShaderMaterial:
 		sm.set_shader_parameter("team_amount", 0.6)
 	sm.set_shader_parameter("debug_view", int(look.get("real_debug", 0)))
 	# round 5: faces under the game's light (look "skin_key_desat", "skin_rough_min", "normal_fade" for trials)
-	sm.set_shader_parameter("skin_key_desat", float(look.get("skin_key_desat", SKIN_KEY_DESAT.get(tm, 0.0))))
-	sm.set_shader_parameter("skin_rough_min", float(look.get("skin_rough_min", SKIN_ROUGH_MIN)))
+	sm.set_shader_parameter("skin_key_desat", float(look.get("skin_key_desat", (FL_SKIN_KEY_DESAT if fl_l else SKIN_KEY_DESAT).get(tm, 0.0))))
+	sm.set_shader_parameter("skin_rough_min", float(look.get("skin_rough_min", FL_SKIN_ROUGH_MIN if bool(look.get("fl_mat", false)) else SKIN_ROUGH_MIN)))
 	sm.set_shader_parameter("normal_fade", float(look.get("normal_fade", NORMAL_FADE)))
 	sm.set_shader_parameter("skin_gain", float(look.get("skin_gain", SKIN_GAIN.get(tm, 0.0))))
-	var wb: Array = look.get("skin_wb", SKIN_WB.get(tm, [1.0, 1.0, 1.0]))
+	var wb: Array = look.get("skin_wb", (FL_SKIN_WB if fl_l else SKIN_WB).get(tm, [1.0, 1.0, 1.0]))
 	sm.set_shader_parameter("skin_wb", Vector3(float(wb[0]), float(wb[1]), float(wb[2])))
 	if _cs_on():
 		_charshade(sm, b, kind, cut, two_sided)
@@ -919,7 +983,8 @@ func set_face_fill(k: float, to_fill: Vector3) -> void:
 	if absf(k - _face_fill_k) < 0.004 and k > 0.0 and _lit_mats[0].get_shader_parameter("face_fill_dir") == to_fill:
 		return
 	_face_fill_k = k
-	var fc: Array = look.get("face_fill_col", [FACE_FILL_COL.r, FACE_FILL_COL.g, FACE_FILL_COL.b])
+	var ffc: Color = FL_FILL_COL if bool(look.get("fl_light", false)) else FACE_FILL_COL
+	var fc: Array = look.get("face_fill_col", [ffc.r, ffc.g, ffc.b])
 	var c: Vector3 = Vector3(float(fc[0]), float(fc[1]), float(fc[2])) * k * float(look.get("face_fill_k", 1.0))
 	for m: ShaderMaterial in _lit_mats:
 		m.set_shader_parameter("face_fill_col", c)
@@ -927,6 +992,34 @@ func set_face_fill(k: float, to_fill: Vector3) -> void:
 
 
 static var _real_variants: Dictionary = {}
+static var _fade_variants: Dictionary = {}
+var _fl_fade: float = 0.0
+
+
+## fight-look-31 (fl_cam): the lower three-quarter camera stands behind the hero, where the ally holds its spot, so the ally
+## could fill the foreground. Its materials move to a variant of their shader that leaves out a share of the pixels in a
+## fine screen pattern (FL_FADE, set per frame by fight.gd fl_ally_fade): the fight shows through. Only the ally's draw
+## carries the discard; every other fighter keeps the opaque shader as it was.
+func fl_enable_fade() -> Array[Material]:
+	var out: Array[Material] = []
+	for m: ShaderMaterial in _lit_mats:
+		if m.shader == null:
+			continue
+		if not _fade_variants.has(m.shader):
+			var sh := Shader.new()
+			sh.code = m.shader.code.replace("void fragment() {\n", "void fragment() {\n\tif (fl_fade > 0.001 && fract(52.9829189 * fract(dot(FRAGCOORD.xy, vec2(0.06711056, 0.00583715)))) < fl_fade) {\n\t\tdiscard;\n\t}\n")
+			_fade_variants[m.shader] = sh
+		m.shader = _fade_variants[m.shader]
+		out.append(m)
+	return out
+
+
+func set_fade(k: float) -> void:
+	if absf(k - _fl_fade) < 0.01:
+		return
+	_fl_fade = k
+	for m: ShaderMaterial in _lit_mats:
+		m.set_shader_parameter("fl_fade", k)
 
 
 ## fid29 charshade: `soft` (hair cards with the charshade look) = alpha to coverage on the tier's MSAA instead of the hard
@@ -1300,6 +1393,15 @@ func tick_visual(dt: float) -> void:
 	if _vis_pause > 0.0 and not anim_freeze:
 		_vis_pause = maxf(0.0, _vis_pause - dt)
 	anim.frozen = anim_freeze or _vis_pause > 0.0
+	# fight-motion-31: a body the game is still moving is never frozen. The presentation hit-stop (feel.gd vis_stop)
+	# outlasts the simulation's stop, and the animation-only pause (hit_pause) never stops the game: a running ally or
+	# a shoved Guardian then slid along the paving with its legs held still (measured: up to 15 % of the frozen frames,
+	# 1 m of glide a fight). Its animation plays on while it moves; a body standing still keeps the freeze.
+	var moved: float = Vector2(global_position.x - _last_pos.x, global_position.z - _last_pos.z).length() if _last_pos != Vector3.INF else 0.0
+	_last_pos = global_position
+	if anim.frozen and moved > 0.002 and not dead:
+		anim.frozen = false
+		anim_freeze = false
 	anim.floor_y = global_position.y
 	if face_life != null:
 		face_life.tick(dt, anim.frozen or dead)
@@ -1384,7 +1486,8 @@ func tick_visual(dt: float) -> void:
 	if _diss_t >= 0.0:
 		_diss_t += dt
 		var kd2: float = clampf(_diss_t / _diss_len, 0.0, 1.0)
-		_glow = maxf(_glow, 0.9 * (1.0 - kd2) + 0.3)
+		# fight-look-31 (fl_fx): the felled Guardian dissolves warm, not as a white-hot silhouette over the victory shot
+		_glow = maxf(_glow, (0.9 * (1.0 - kd2) + 0.3) * (FL_DISSOLVE_GLOW if bool(look.get("fl_fx", false)) else 1.0))
 		sxz = 1.0 - ease(kd2, 2.2)
 		sc *= 1.0 + 0.08 * sin(kd2 * PI)
 		if kd2 >= 1.0:
@@ -1416,9 +1519,16 @@ func tick_visual(dt: float) -> void:
 	# fight-anim: a knockback shove leans the body with the push and sinks it a little (the feet
 	# are planted while the game slides the fighter back, so the body reads as shoved, not gliding)
 	var kv: float = kb_vel.length()
+	# moves-fix-32 (mid, high): a blow taken on the guard never staggers (the guard holds, CombatAnimator plays the block's
+	# own recoil: block_hit); a heavy hit plays its lead before the stumble (HIT_LEAD)
+	var hit_lead: bool = anim.fid and anim.state == "hit" and anim.has_clip("hit") and anim.length > 0.0 and anim.t < HIT_LEAD
+	var v_need: float = STAGGER_V_LATE if _stagger_wait else STAGGER_V
 	if kv < 0.05:
 		_staggering = false
-	elif kv >= STAGGER_V and not _staggering and not dead and anim.has_clip("stagger") and not anim.busy_action() \
+		_stagger_wait = false
+	elif anim.fid and (guarding or hit_lead) and kv >= v_need and not _staggering:
+		_stagger_wait = not guarding
+	elif kv >= v_need and not _staggering and not dead and anim.has_clip("stagger") and not anim.busy_action() \
 			and (kb_vel.normalized().dot(forward()) < -0.4 or (kb_vel.normalized().dot(forward()) > 0.4 and anim.has_clip("stagger_fwd"))):
 		# the shove decays 9/s: it is above 1 m/s for ln(kv)/9 s; the step covers that, then blends back
 		_staggering = true
@@ -1427,9 +1537,14 @@ func tick_visual(dt: float) -> void:
 			anim.variant["stagger"] = "stagger_fwd"
 		else:
 			anim.variant.erase("stagger")
-		anim.play("stagger", clampf(log(kv) / 9.0 + 0.12, 0.3, 0.6))
+		anim.play("stagger", clampf(log(kv) / 9.0 + 0.12, 0.3, 0.6), -1.0, STAGGER_BLEND if _stagger_wait else -1.0)
+		_stagger_wait = false
 	if kv > 1.0 and not dead:
 		var kk: float = clampf((kv - 1.0) / 6.0, 0.0, 1.0)
+		if anim.fid and (anim.state == "hit" or anim.state == "stagger") and anim.has_clip(anim.state):
+			kk *= KB_LEAN_CLIP
+		elif anim.fid and guarding and anim.has_clip("guard"):
+			kk *= 0.5    # moves-fix-32: the block's own recoil (CombatAnimator BLOCK_POSE) carries most of it
 		var kl: Vector3 = global_basis.orthonormalized().inverse() * kb_vel.normalized()
 		rot.x += 0.32 * kk * kl.z
 		rot.z -= 0.32 * kk * kl.x
@@ -1445,6 +1560,7 @@ func tick_visual(dt: float) -> void:
 		if ge > 0.001:
 			pos += Vector3(anim._flinch_dir.x, 0.0, anim._flinch_dir.z) * GIVE_M * size_k * ge
 			pos.y -= GIVE_DROP * size_k * ge
+	pos += _root_follow(dt)
 	if real_speed and _jit > 0.02 and not dead:
 		# drawn on the smoothed path while the game jitters the fighter
 		var off: Vector3 = global_basis.orthonormalized().inverse() * ((_smooth_pos - global_position) * _jit)
@@ -1454,6 +1570,15 @@ func tick_visual(dt: float) -> void:
 	# anim-readable: the readable clips crouch and rise more, so the plant follows faster (no float on the way back up)
 	_plant_y = lerpf(_plant_y, _plant_target(Basis.from_euler(rot).scaled(bscale), pos.y), 1.0 - exp(-dt * (PLANT_RATE_READABLE if turn_steps else PLANT_RATE)))
 	pos.y += _plant_y
+	if anim.fid and _mlen > 0.0 and not dead and LEAPS.has(_motion) and anim.has_clip(_motion):
+		# fight-motion-31 (mid, high): the DASH covers 6 m in 0.26 s (fight.gd CHARGE, from 0.12 to 0.74 of the move) and
+		# SPLIT's clip leaps forward on the spot, both with the feet on the paving: 0.5 to 2 m of skating a cast. The body
+		# bounds through the travel (the feet leave the paving), lands (SPLIT on its slam), and the feet are pinned again
+		# (combat_animator PIN_AFTER). After the plant above, which would put the lower foot straight back on the paving.
+		var lp: Array = LEAPS[_motion]
+		var kl: float = clampf((clampf(_mt / _mlen, 0.0, 1.0) - float(lp[0])) / (float(lp[1]) - float(lp[0])), 0.0, 1.0)
+		var shape: float = smoothstep(0.0, 0.22, kl) * smoothstep(1.0, 0.78, kl) if bool(lp[3]) else sin(kl * PI)
+		pos.y += float(lp[2]) * size_k * shape
 	body.position = pos
 	body.rotation = rot
 	body.scale = bscale
@@ -1477,10 +1602,13 @@ func tick_visual(dt: float) -> void:
 			m.set_shader_parameter("flash", _flash)
 			m.set_shader_parameter("glow", _glow)
 	if _dome != null:
-		var on: bool = shield_t > 0.0 and not dead
+		# fight-look-31: the barrier never stays up over the victory pose (it played inside a glass dome in most seeds): it
+		# breaks up quietly as the winner celebrates (no shard burst over the VICTORY shot)
+		var on: bool = shield_t > 0.0 and not dead and not celebrating and not fight_over
 		if not on and _dome.visible and _shatter_t < 0.0:
 			_shatter_t = 0.0
-			shield_ended.emit(global_position, 1.15 * size_k)
+			if not celebrating and not fight_over:
+				shield_ended.emit(global_position, 1.15 * size_k)
 		if _shatter_t >= 0.0:
 			# the dome breaks up cell by cell over 0.3 s (fx throws the shards)
 			_shatter_t += dt
@@ -1495,7 +1623,7 @@ func tick_visual(dt: float) -> void:
 			_dome_age += dt
 			_dome_hit = maxf(0.0, _dome_hit - dt * 4.0)
 			var fade: float = clampf(shield_t / 0.4, 0.0, 1.0)
-			_dome_mat.set_shader_parameter("alpha", maxf(fade, 0.6))
+			_dome_mat.set_shader_parameter("alpha", maxf(fade, 0.6) * (FL_DOME_A if bool(look.get("fl_fx", false)) else 1.0))
 			_dome_mat.set_shader_parameter("hit", _dome_hit + maxf(0.0, 1.0 - _dome_age / 0.25))
 			var pop: float = 1.0 + 0.12 * sin(clampf(_dome_age / 0.22, 0.0, 1.0) * PI) - 0.25 * maxf(0.0, 1.0 - _dome_age / 0.1)
 			var r: float = 1.15 * size_k
@@ -1509,6 +1637,61 @@ func tick_visual(dt: float) -> void:
 
 var _bm_pos: Vector3
 var _bm_rot: Vector3
+
+## fight-motion-31 (presentation only, mid and high tiers): the drawn body follows the fighter's position with a
+## critically damped spring fed the position's own motion, so a speed that changes in one frame (CHARGE's 23 m/s dash
+## starts and stops dead, a knockback shove starts at full speed, a jog starts and stops at once) is eased over a few
+## frames instead of stepping: the dash leans in and carries a little past its end. The fighter's position, hurtbox and
+## weapon arc are the game's and never move; the drawn offset is at most ROOT_MAX and a teleport resets it.
+const ROOT_W: float = 30.0              # 1/s
+const ROOT_FF_ACC: float = 120.0        # m/s^2: how fast the speed taken as motion may change (the rest is eased)
+const ROOT_MAX: float = 0.45            # m at size 1
+var smooth_root: bool = false           # fight.gd/animator: on with the real-look tiers (CombatAnimator.fid)
+var _vr_pos: Vector3 = Vector3.INF
+var _vr_vel: Vector3 = Vector3.ZERO
+var _vr_ff: Vector3 = Vector3.ZERO
+var _vr_prev: Vector3 = Vector3.ZERO
+
+
+## The drawn body's offset from the fighter's position this frame, in the fighter's own frame (see ROOT_W).
+func _root_follow(dt: float) -> Vector3:
+	if not (smooth_root or anim.fid) or dead:
+		_vr_pos = Vector3.INF
+		return Vector3.ZERO
+	var gp := Vector3(global_position.x, 0.0, global_position.z)
+	if _vr_pos == Vector3.INF or (_vr_pos - gp).length() > 1.5 * size_k:
+		_vr_pos = gp
+		_vr_vel = Vector3.ZERO
+		_vr_ff = Vector3.ZERO
+		_vr_prev = gp
+	if dt > 0.0 and not anim_freeze:
+		var vt: Vector3 = (gp - _vr_prev) / dt
+		var dv: Vector3 = vt - _vr_ff
+		if dv.length() > ROOT_FF_ACC * dt:
+			dv = dv * (ROOT_FF_ACC * dt / dv.length())
+		_vr_ff += dv
+		# the offset from where the position would be had it moved at the eased speed (moving with it: none); the
+		# part of this frame's step beyond that speed is in the offset, to be eased out
+		var x: Vector3 = _vr_pos - (gp - _vr_ff * dt)
+		var v: Vector3 = _vr_vel - _vr_ff
+		var subs: int = maxi(1, ceili(ROOT_W * dt / 0.5))
+		var h: float = dt / float(subs)
+		for i in subs:
+			v += (-ROOT_W * ROOT_W * x - 2.0 * ROOT_W * v) * h
+			x += v * h
+		_vr_vel = _vr_ff + v
+		_vr_pos = gp + x
+		_vr_prev = gp
+	else:
+		_vr_pos += gp - _vr_prev
+		_vr_prev = gp
+	var off: Vector3 = _vr_pos - gp
+	var lim: float = ROOT_MAX * size_k
+	if off.length() > lim:
+		off = off.normalized() * lim
+		_vr_pos = gp + off
+	var lo: Vector3 = global_basis.orthonormalized().inverse() * off
+	return Vector3(lo.x, 0.0, lo.z)
 
 # build 20 pass 2: contact shadows under each foot. The sun blob is a broad soft disc round the
 # fighter; on its own it read as a shadow the body floated over. Each foot now has a small, dark,
@@ -1789,7 +1972,13 @@ func _body_motion(st: String, k: float, pos: Vector3, rot: Vector3) -> void:
 		"skill_whirl":
 			rot.y += TAU * 2.0 * ease(k, 0.8) * _spin_dir
 		"skill_charge":
-			rot.x += 0.35 * sin(k * PI)
+			# fight-look-31 (fl_motion): the DASH clips already lean hard into the thrust; this body pitch on top threw the
+			# hero near horizontal. A lunge keeps the chest up: a small pitch and a drop of the hips into the step
+			if bool(look.get("fl_motion", false)) and anim.has_clip("skill_charge"):
+				rot.x += FL_DASH_PITCH * sin(k * PI)
+				pos.y -= FL_DASH_DROP * sin(k * PI)
+			else:
+				rot.x += 0.35 * sin(k * PI)
 		"skill_split":
 			pos.y += 0.9 * sin(clampf(k / 0.45, 0.0, 1.0) * PI) if k < 0.45 else 0.0
 			if k >= 0.45 and k < 0.7:

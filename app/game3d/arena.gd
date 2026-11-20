@@ -110,13 +110,44 @@ const TIER_LOOK: Dictionary = {
 	"mid": {"real": true, "skin": "simple", "ibl": true, "cam": "close", "beats": true, "hit_order": true, "self_shadow": false, "key_yaw": REAL_KEY_YAW, "key_elev_min": REAL_KEY_ELEV_MIN, "ground_k": "auto",
 		"fx_gain": 0.6, "fx_cap": 0.5,
 		"fid_street": true, "fid_dressing": true, "fid_heromaps": true, "fid_charshade": true, "fid_combat": true,
-		"fid_lightcam": true, "aa": "msaa2"},
+		"fid_lightcam": true, "aa": "msaa2", "fl31": true},
 	"high": {"real": true, "skin": "full", "ibl": true, "shadows": true, "grade": "base", "hero_lod": 0, "scale": 1.0,
 		"cam": "close", "beats": true, "hit_order": true, "self_shadow": false, "key_yaw": REAL_KEY_YAW, "key_elev_min": REAL_KEY_ELEV_MIN, "ground_k": "auto", "soft_shadows": true,
 		"fx_gain": 0.6, "fx_cap": 0.5, "dof": true,
 		"fid_street": true, "fid_dressing": true, "fid_heromaps": true, "fid_charshade": true, "fid_combat": true,
-		"fid_lightcam": true, "aa": "msaa4"},
+		"fid_lightcam": true, "aa": "msaa4", "fl31": true},
 }
+## fight-look-31 (19 Nov 2026, the graphics pass after Mark's "the graphics, they're horrible"; report in
+## cosquest-review/fight-look-31): one look key, "fl31", on mid and high (never low), with a sub-key per part so each
+## can be switched off from the config's "look" for an A/B. With "fl31": false every part is build 30's to the pixel.
+##   fl_light  the light and the grade: the time presets' key turned towards a neutral white (FL_KEY_NEUTRAL), the sky's
+##             orange horizon and fog cooled, the paving darker (FL_GROUND_K) so the fighters stand off it, a stronger
+##             cool rim and a neutral camera-side fill on the fighters (fighter.gd FL_*), and on high a neutral, slightly
+##             cool grade table built from the base one at load (FL_GRADE_*). Colours and numbers only: no pass, no light
+##   fl_mat    less plastic: a roughness floor and a lower specular on everything that is not skin or eyes (char_real
+##             fl_rough_min, fl_spec_k), and skin's sheen softer
+##   fl_fx     the effects smaller, shorter, dimmer (fx.gd FL_FX_*), capped lower (FL_FX_GAIN, FL_FX_CAP)
+##   fl_cam    the fight camera never nearer than build 30's (a little further and higher), turned FL_CAM_YAW off the
+##             street, and no 3D close-up at all: 2D concept art for the intro (VS card) and the victory (fight.gd
+##             FL_CAM_*, _fl_far; hud.gd vs_card, win_art). Build 30's camera and beats come back with "fl_cam": false
+##   fl_weapon the weapons in hand on metal, wood and leather (weapon_look.gd)
+##   fl_motion the DASH's lean, the stiff intro hands, Bram's face at rest (fight.gd, fighter.gd, combat_animator.gd,
+##             pose_layer.gd); motion is owned by fight-motion-31 from 19 Nov, these stay as they were
+##   fl_env    the street's paving: less repetition, fewer dark decals (street_real.gd FL_*)
+const FL_PARTS: Array[String] = ["fl_light", "fl_mat", "fl_fx", "fl_cam", "fl_weapon", "fl_motion", "fl_env"]
+## deg the fight camera's heading turns off the street (build 30: 0), a modest turn so the hero and the Guardian read side
+## by side rather than the hero's back; positive puts the ally's casting spot (fight.gd _tick_ally: behind the hero, to
+## its left in the street's frame) on the far side of the fight from the camera
+const FL_CAM_YAW: float = 30.0
+const FL_LC_RIM: float = 1.4              # fid29-lightcam's rim gain in the close shots (build 30: 2.6, on a rim half as strong)
+const FL_KEY_NEUTRAL: Dictionary = {"golden": 0.45, "day": 0.2, "dusk": 0.6, "night": 0.0}   # the key's colour towards white
+const FL_KEY_GAIN: Dictionary = {"golden": 0.85, "day": 0.82, "dusk": 0.9, "night": 1.0}       # its energy (the whiter key reads dimmer)
+const FL_HORIZON_COOL: float = 0.35       # the sky's orange horizon and the fog towards FL_COOL_GREY
+const FL_COOL_GREY: Color = Color(0.74, 0.77, 0.84)
+const FL_AMBIENT: Color = Color(0.62, 0.66, 0.78)    # the shade: a cool, less violet sky
+const FL_GROUND_K: Dictionary = {"golden": 0.52, "day": 0.55, "dusk": 0.66, "night": 0.9}
+const FL_BLOOM_K: float = 0.6             # the cheap bloom's strength (the warm haze over everything)
+static var _fl_presets: Dictionary = {}
 
 
 static func tier_of(cfg: Dictionary) -> String:
@@ -227,6 +258,11 @@ static func look_opts(cfg: Dictionary) -> Dictionary:
 		out["time"] = time_of_day(ll.x, ll.y, cfg.get("clock_hour", null))
 	if str(out["time"]) == "night" and not bool(out.get("night", false)):
 		out["time"] = "dusk"   # the art direction: night is defined but not shipped in v1
+	# fight-look-31: each part on with "fl31" unless the config's look turns it off (no key at all without "fl31":
+	# the low tier's look stays build 21's key for key, tests/look_tier_test.gd)
+	if bool(out.get("fl31", false)):
+		for k: String in FL_PARTS:
+			out[k] = bool(out.get(k, true))
 	if str(out.get("ground_k", "")) == "auto":
 		out["ground_k"] = float(REAL_GROUND_K.get(str(out["time"]), 1.0))
 	var tp: Dictionary = TIMES[str(out["time"])]
@@ -236,6 +272,92 @@ static func look_opts(cfg: Dictionary) -> Dictionary:
 		if not out.has(k):
 			out[k] = (tp["bloom"] as Array)[i]
 	return out
+
+
+## fight-look-31: what the parts change in the built look (build calls it after look_opts, so look_opts itself, which the
+## tier tests read, is build 30's): the paving's exposure, the sun's heading (it turns with the camera, so the side of a
+## fighter the camera sees stays lit) and the cheap bloom.
+static func fl_apply(l: Dictionary, cfg: Dictionary) -> void:
+	var cl: Dictionary = cfg.get("look", {}) if cfg.get("look", {}) is Dictionary else {}
+	if bool(l.get("fl_light", false)):
+		if l.has("ground_k") and not cl.has("ground_k"):
+			l["ground_k"] = float(FL_GROUND_K.get(str(l["time"]), l["ground_k"]))
+		if not cl.has("bloom_strength"):
+			l["bloom_strength"] = float(l.get("bloom_strength", 0.5)) * FL_BLOOM_K
+		if not cl.has("lc_rim"):
+			l["lc_rim"] = FL_LC_RIM
+	if bool(l.get("fl_cam", false)) and l.has("key_yaw"):
+		l["key_yaw"] = float(l["key_yaw"]) + FL_CAM_YAW
+
+
+## fight-look-31 (fl_light): a time preset with the key turned towards a neutral white, the sky's orange horizon and the
+## fog cooled and the shade a cooler, less violet sky. Cached per time of day.
+## fight-look-31 (fl_light, the high tier's grade): a grade table made from `src` at load (33^3 points, once a run): the
+## warm cast taken out (white balance FL_GRADE_WB, luminance kept), orange skin and paving a little less saturated
+## (FL_GRADE_ORANGE), and a touch of contrast round the middle; what is already bright keeps the source's value, so an
+## effect is never pushed further to white (the base table's rule).
+const FL_GRADE_WB: Vector3 = Vector3(0.95, 1.0, 1.07)
+const FL_GRADE_ORANGE: float = 0.22
+const FL_GRADE_CONTRAST: float = 0.12
+static var _fl_grades: Dictionary = {}
+
+
+static func fl_grade(src: Texture3D) -> Texture3D:
+	if _fl_grades.has(src):
+		return _fl_grades[src]
+	var slices: Array[Image] = src.get_data()
+	var n: int = slices.size()
+	if n == 0:
+		return src
+	var out: Array[Image] = []
+	for b in n:
+		var im: Image = slices[b].duplicate()
+		im.convert(Image.FORMAT_RGB8)
+		for y in im.get_height():
+			for x in im.get_width():
+				im.set_pixel(x, y, fl_grade_color(im.get_pixel(x, y)))
+		out.append(im)
+	var t := ImageTexture3D.new()
+	if t.create(Image.FORMAT_RGB8, slices[0].get_width(), slices[0].get_height(), n, false, out) != OK:
+		return src
+	_fl_grades[src] = t
+	return t
+
+
+static func fl_grade_color(c: Color) -> Color:
+	var l0: float = c.r * 0.2126 + c.g * 0.7152 + c.b * 0.0722
+	var w: Color = Color(c.r * FL_GRADE_WB.x, c.g * FL_GRADE_WB.y, c.b * FL_GRADE_WB.z)
+	var l1: float = w.r * 0.2126 + w.g * 0.7152 + w.b * 0.0722
+	if l1 > 0.0001:
+		w = w * (l0 / l1)
+	# orange (hue 8 to 52 deg): less saturated, most at 30 deg
+	var ok: float = clampf(1.0 - absf(w.h * 360.0 - 30.0) / 22.0, 0.0, 1.0)
+	if ok > 0.0:
+		w = Color.from_hsv(w.h, w.s * (1.0 - FL_GRADE_ORANGE * ok), w.v)
+	# a gentle S round the middle
+	var lc: float = w.r * 0.2126 + w.g * 0.7152 + w.b * 0.0722
+	var lt: float = clampf(lc + FL_GRADE_CONTRAST * (lc - 0.5) * 4.0 * lc * (1.0 - lc), 0.0, 1.0)
+	if lc > 0.0001:
+		w = w * (lt / lc)
+	# highlights stay the source's
+	var o: Color = w.lerp(c, smoothstep(0.78, 0.95, l0))
+	return Color(clampf(o.r, 0.0, 1.0), clampf(o.g, 0.0, 1.0), clampf(o.b, 0.0, 1.0))
+
+
+static func fl_preset(time: String) -> Dictionary:
+	if _fl_presets.has(time):
+		return _fl_presets[time]
+	var t: Dictionary = (TIMES.get(time, TIMES["golden"]) as Dictionary).duplicate()
+	var kn: float = float(FL_KEY_NEUTRAL.get(time, 0.0))
+	t["key_color"] = (t["key_color"] as Color).lerp(Color(1.0, 0.98, 0.95), kn)
+	t["key_energy"] = float(t["key_energy"]) * float(FL_KEY_GAIN.get(time, 1.0))
+	if time != "night":
+		for k: String in ["horizon", "horizon_sun", "fog"]:
+			t[k] = (t[k] as Color).lerp(FL_COOL_GREY, FL_HORIZON_COOL * (0.6 if time == "day" else 1.0))
+		t["ambient"] = (t["ambient"] as Color).lerp(FL_AMBIENT, 0.6)
+		t["window_col"] = (t["window_col"] as Color).lerp(Color(1.0, 0.9, 0.75), 0.4)
+	_fl_presets[time] = t
+	return t
 
 
 ## look-world: the art direction's clock rule (tokens.json time_rule) at a place (lat, lng), on the device's
@@ -286,6 +408,8 @@ static func set_hemi(sm: ShaderMaterial, l: Dictionary) -> void:
 
 ## The look's time-of-day preset (TIMES), "dusk" unless the look says "day".
 static func time_preset(l: Dictionary) -> Dictionary:
+	if bool(l.get("fl_light", false)):
+		return fl_preset(str(l.get("time", "golden")))
 	return TIMES.get(str(l.get("time", "golden")), TIMES["golden"])
 
 
@@ -306,6 +430,7 @@ func build(cfg: Dictionary) -> void:
 				cfg["_lat"] = float(o["lat"])
 				cfg["_lng"] = float(o["lng"])
 	look = look_opts(cfg)
+	fl_apply(look, cfg)
 	LookReal.lc = bool(look.get("fid_lightcam", false))    # fid29-lightcam: the fighters' cubes under the real sky
 	var tp: Dictionary = time_preset(look)
 	_key_elev = maxf(float(tp["key_elev"]), float(look.get("key_elev_min", 0.0)))
@@ -411,6 +536,8 @@ func build(cfg: Dictionary) -> void:
 		var lut: Texture3D = LookReal.lut_for("faction_" + str(look.get("faction", ""))) if str(look.get("faction", "")) != "" else null
 		if lut == null:
 			lut = LookReal.lut_for(grade)
+		if lut != null and bool(look.get("fl_light", false)):
+			lut = fl_grade(lut)   # fight-look-31: the same table, neutral and a little cool
 		if lut != null:
 			env.adjustment_enabled = true
 			env.adjustment_color_correction = lut

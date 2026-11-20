@@ -12,6 +12,9 @@ extends SceneTree
 ## 4. Every hero the pck ships has both detail levels, a clip library the game binds by key, an
 ##    arm droop, and stays small (a guard of ours, not the bar's: 5 MB at lod0, 2 MB at lod1; fid29 heromaps: the
 ##    compressed r files 14 MiB at lod0r, 6 MiB at lod1r).
+## 5. Build 29: the player's pick ("hero_pick", a faction hero's or a Forge character's key) plays the hero on mid and
+##    high, even over the player's own Forge download and whatever the faction; never the ally or the Guardian; an
+##    unknown key, or no pick, changes nothing; the low tier keeps the built-in cast. Forge characters ship like heroes.
 ## Prints "CQTEST PASS <name>" / "CQTEST FAIL <name> <why>", then "CQTEST done failures=N".
 
 const FightScript := preload("res://fight.gd")
@@ -60,8 +63,23 @@ func _initialize() -> void:
 		_check(t + "_own_character_kept", _pick({"tier": t, "seed": 3, "faction": "icons"}, "hero", "/data/forge/abc/lod1.glb") == "")
 		_check(t + "_switch_off", _pick({"tier": t, "seed": 3, "hero_cast": false}, "hero") == "")
 		_check(t + "_no_faction_still_a_hero", _pick({"tier": t, "seed": 3}, "hero") != "")
+	# 5. the player's pick
+	for t: String in ["mid", "high"]:
+		for k: String in FightScript.HERO_ORDER + FightScript.FORGE_CAST:
+			if not FileAccess.file_exists(FightScript.HERO_DIR + k + "_lod1.glb"):
+				continue
+			for seed: int in [1, 7, 99991]:
+				var c: Dictionary = {"tier": t, "seed": seed, "faction": "icons", "hero_pick": k}
+				var h: String = _pick(c, "hero"); var a: String = _pick(c, "ally"); var e: String = _pick(c, "enemy")
+				_check("pick_%s_%s_%d" % [t, k, seed], h.get_file().begins_with(k + "_lod") and a != "" and e != ""
+					and not a.get_file().begins_with(k + "_lod") and not e.get_file().begins_with(k + "_lod"), "%s %s %s" % [h, a, e])
+			_check("pick_over_own_%s_%s" % [t, k], _pick({"tier": t, "seed": 3, "hero_pick": k}, "hero", "/data/forge/abc/lod1.glb").get_file().begins_with(k + "_lod"))
+		var nopick: String = _pick({"tier": t, "seed": 3, "faction": "icons"}, "hero")
+		_check(t + "_unknown_pick_ignored", _pick({"tier": t, "seed": 3, "faction": "icons", "hero_pick": "nobody"}, "hero") == nopick, nopick)
+		_check(t + "_unknown_pick_keeps_own", _pick({"tier": t, "seed": 3, "hero_pick": "nobody"}, "hero", "/data/forge/abc/lod1.glb") == "")
+	_check("low_ignores_pick", _pick({"tier": "low", "seed": 3, "hero_pick": "forge_courier"}, "hero") == "")
 	var chars: Dictionary = AnimLib.data().get("characters", {})
-	for k: String in FightScript.HERO_ORDER:
+	for k: String in FightScript.HERO_ORDER + FightScript.FORGE_CAST:
 		var p0: String = FightScript.HERO_DIR + k + "_lod0.glb"
 		if not FileAccess.file_exists(p0):
 			continue

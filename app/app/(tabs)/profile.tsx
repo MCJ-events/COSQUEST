@@ -1,4 +1,5 @@
 import { AppBackground } from "@/components/AppBackground";
+import { CharacterProfileCard } from "@/components/profile/CharacterProfileCard";
 import { AVATARS } from "@/constants/avatars";
 import { FACTIONS } from "@/constants/factions";
 import { FONTS } from "@/constants/fonts";
@@ -866,6 +867,9 @@ export default function Profile() {
             {/* About + Faction | Posts / Reels / Thoughts */}
             <View style={styles.wideRow}>
               <View style={styles.wideLeft}>
+        {/* YOUR CHARACTER (build 29): the character you are, as its 2D art, to change and share */}
+        <CharacterProfileCard />
+
         {/* ABOUT */}
         {about.trim() ? (
           <>
@@ -1103,6 +1107,9 @@ export default function Profile() {
           <GameStat value={wins} label={plural(wins, "Win", "Wins")} />
           <GameStat value={points} label={plural(points, "Point", "Points")} />
         </View>
+
+        {/* YOUR CHARACTER (build 29): the character you are, as its 2D art, to change and share */}
+        <CharacterProfileCard />
 
         {/* ABOUT */}
         {about.trim() ? (

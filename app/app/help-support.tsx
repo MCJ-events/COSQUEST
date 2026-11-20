@@ -132,28 +132,36 @@ export default function HelpSupport() {
           />
         </View>
 
-        {/* LEGAL */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>LEGAL</Text>
+        {/* LEGAL: each page only once the build names its URL (the company publishes them) */}
+        {appConfig.termsUrl || appConfig.privacyUrl || appConfig.guidelinesUrl ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionLabel}>LEGAL</Text>
 
-          <SupportRow
-            icon="document-text-outline"
-            title="Terms of Service"
-            onPress={() => open("/legal/terms")}
-          />
+            {appConfig.termsUrl ? (
+              <SupportRow
+                icon="document-text-outline"
+                title="Terms of Service"
+                onPress={() => open("/legal/terms")}
+              />
+            ) : null}
 
-          <SupportRow
-            icon="shield-checkmark-outline"
-            title="Privacy Policy"
-            onPress={() => open("/legal/privacy")}
-          />
+            {appConfig.privacyUrl ? (
+              <SupportRow
+                icon="shield-checkmark-outline"
+                title="Privacy Policy"
+                onPress={() => open("/legal/privacy")}
+              />
+            ) : null}
 
-          <SupportRow
-            icon="people-outline"
-            title="Community Guidelines"
-            onPress={() => open("/legal/guidelines")}
-          />
-        </View>
+            {appConfig.guidelinesUrl ? (
+              <SupportRow
+                icon="people-outline"
+                title="Community Guidelines"
+                onPress={() => open("/legal/guidelines")}
+              />
+            ) : null}
+          </View>
+        ) : null}
 
         {/* APP VERSION */}
         <View style={styles.versionContainer}>

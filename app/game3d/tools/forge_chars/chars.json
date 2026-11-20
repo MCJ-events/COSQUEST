@@ -1,0 +1,45 @@
+{
+ "_doc": "build 29 Forge characters: THE one place that says which finished model each playable Forge character is built from. To drop in a newer model (the Phase A3 heads, or any later Forge pass), point its \"source\" at the new .blend (exported by export_char.py) or at a folder holding lod0.glb and lod1.glb, then run tools/forge_chars/install.sh <key> on the farm and re-export the pck. \"playable\" false = its rig did not pass add_hero.sh's clip gate: kept here with the reason, never installed, never pickable (fight.gd FORGE_CAST and features/waleui/characters.ts list the playable ones). Build 31: a character published in the Forge can be named by \"forge_element\" (its element id; \"forge_api\" picks the server) instead of \"source\": install.sh pulls its published lods with forge_pull_char.py. Characters the catalogue marks playable (role hero) need no entry here at all: the app lists them at run time (features/waleui/characters.ts catalogueCharacters).",
+ "characters": {
+  "forge_courier": {
+   "name": "Courier",
+   "faction": null,
+   "playable": true,
+   "source": "~/forge-artist/bakeoff2/phaseA2/chars/courier/a3/final_final.blend",
+   "front": "~/forge-artist/bakeoff2/inputs/flat/view_front.png",
+   "front_mask": "~/forge-artist/bakeoff2/inputs/masks/flat/view_front_mask.png",
+   "export": "jpeg=80",
+   "head_pass": "A3 (18 Nov: generated head texture + landmark-aligned face; no blue nose streak). A2 was ~/forge-artist/bakeoff2/phaseA2/chars/courier/var_lens20/final.blend"
+  },
+  "forge_bram": {
+   "name": "Bram",
+   "faction": "celestials",
+   "playable": true,
+   "source": "~/forge-artist/game/app/game3d/forge_candidates/weights/bram",
+   "front": "~/forge-artist/bakeoff2/phaseA2/chars/bram/flat/view_front.png",
+   "front_mask": "~/forge-artist/bakeoff2/phaseA2/chars/bram/masks/view_front_mask.png",
+   "a3": "~/forge-artist/bakeoff2/phaseA2/chars/bram/a3/final_final.blend (better head; same rig tears, 1.6 % idle / 3.4 % jog, so still not playable)",
+   "previous_why": "add_hero.sh gate: rig tears in every clip (idle 1.6 %, jog 3.6 %, worst 7.5 % of triangles past 2.5x; gate 0.5 %), mostly the outfit at the armpits, the belt pouches beside the hands and the crotch",
+   "head_pass": "A3 head; garment weights redone (reweight.py, Forge commit a435006): hands rigid, contact relabelled, A-pose 35 deg baked",
+   "known_flaws": "build 30 hole check: small see-through gaps at the right armpit and through the belt pouches in overhead swings, thin fins at the glove edges, a few loose specks above the head; visible only up close, not at the game camera"
+  },
+  "forge_mei": {
+   "name": "Mei",
+   "faction": "ascendants",
+   "playable": false,
+   "forge_element": "157ff388-68e9-4584-a884-54592ea032d3",
+   "why": "build 31: not baked; she comes from the Forge catalogue at run time (element 157ff388 v2, published with her fight kit). This entry can still bake her as an offline fallback: install.sh forge_mei pulls the published lods.",
+   "front": "~/forge-artist/bakeoff2/phaseA2/chars/mei/flat/view_front.png",
+   "front_mask": "~/forge-artist/bakeoff2/phaseA2/chars/mei/masks/view_front_mask.png"
+  },
+  "forge_catboy": {
+   "name": "Cat-Boy",
+   "faction": null,
+   "playable": false,
+   "forge_element": "85bf170e-b7dc-4a5f-8292-a0192d181193",
+   "why": "build 31: not baked; he comes from the Forge catalogue at run time (element 85bf170e v1, rebuilt from his turnaround, fight kit 0f2df441caf6ec98). This entry can still bake him as an offline fallback.",
+   "front": "~/forge-artist/bakeoff2/phaseA2/chars/catboy/flat/view_front.png",
+   "front_mask": "~/forge-artist/bakeoff2/phaseA2/chars/catboy/masks/view_front_mask.png"
+  }
+ }
+}

@@ -45,25 +45,32 @@ const GAME_USAGE = {
     "In the game, the camera places the game world around you.",
   NSLocationWhenInUseUsageDescription:
     "In the game, your location places Quest Points around you and tells when you reach one.",
+  // Build 30: what the code really does. Motion is CMPedometer only (steps and walking distance;
+  // nothing reads the altimeter). Speech asks for on-device recognition, but on a phone without
+  // it iOS may use Apple's servers (GameHelpers.swift requiresOnDeviceRecognition = onDevice).
   NSMotionUsageDescription:
-    "In the game, motion counts your steps and tells which floor of a venue you are on.",
+    "In the game, Motion & Fitness counts your steps and walking distance, which earn rewards.",
   NSMicrophoneUsageDescription:
-    "In the game, you can say your answer out loud; your voice is recognised on this phone and never leaves it.",
+    "In the game, you can say a trivia answer out loud instead of tapping it.",
   NSSpeechRecognitionUsageDescription:
-    "In the game, your spoken answer is recognised on this phone to pick the choice you said.",
-  NFCReaderUsageDescription: "In the game, tap a checkpoint to capture it.",
+    "In the game, your spoken trivia answer is turned into text to pick the choice you said. This happens on the phone where it can; otherwise Apple's speech recognition handles it.",
   NSNearbyInteractionUsageDescription:
     "In the game, ultra wideband shows exactly how far away another player is, and in which direction.",
   NSLocalNetworkUsageDescription:
     "In the game, CosQuest shares game data directly with players standing near you, so the game keeps up when the network does not.",
 };
 
+// NFC checkpoints: only on a build with { nfc: true } (the entitlement too). Without it iOS gets no
+// NFC sentence at all, so a store build does not ask about a reader it never opens.
+const NFC_USAGE = { NFCReaderUsageDescription: "In the game, tap a checkpoint to capture it." };
+
 // What the CHAT uses these for, only if no other plugin wrote a sentence
 // (today expo-audio does). Without one, the game's sentence would be the only
 // reason iOS shows for the microphone that calls and voice messages use.
 // Never rewrites the chat's words.
 const CHAT_USAGE = {
-  NSMicrophoneUsageDescription: "CosQuest uses the microphone for calls and voice messages.",
+  NSMicrophoneUsageDescription:
+    "CosQuest uses the microphone for voice and video calls, and to record voice messages and voice comments, which are uploaded so the people you send them to can hear them.",
 };
 
 const BONJOUR = ["_costquest._udp", "_costquest._tcp"];
@@ -85,6 +92,10 @@ function withGameInfoPlist(config, { serverUrl, nfc }) {
     }
     for (const [key, game] of Object.entries(GAME_USAGE)) {
       plist[key] = mergeUsage(plist[key], game);
+    }
+    for (const [key, game] of Object.entries(NFC_USAGE)) {
+      if (nfc === true) plist[key] = mergeUsage(plist[key], game);
+      else delete plist[key];
     }
     const bonjour = Array.isArray(plist.NSBonjourServices) ? plist.NSBonjourServices : [];
     plist.NSBonjourServices = [...new Set([...bonjour, ...BONJOUR])];
@@ -472,6 +483,7 @@ module.exports = createRunOncePlugin(withCostQuestGame, "costquest-game", "0.2.0
 module.exports.mergeUsage = mergeUsage;
 module.exports.GAME_USAGE = GAME_USAGE;
 module.exports.CHAT_USAGE = CHAT_USAGE;
+module.exports.NFC_USAGE = NFC_USAGE;
 module.exports.withCostQuestGame = withCostQuestGame;
 module.exports.unityAndroidEnabled = unityAndroidEnabled;
 module.exports.addNfcToManifest = addNfcToManifest;

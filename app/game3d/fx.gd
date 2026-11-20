@@ -69,6 +69,19 @@ var peak_live: int = 0
 ## The low tier keeps build 28's shaders, art and calls exactly (fid stays false; nothing new is loaded).
 var fid: bool = false
 var flow: bool = false
+## fx_combat (17 Nov 2026, Wale's MOBA attack reference): the look key "fx_combat" (default OFF) makes the hero's
+## swings read like that reference: a thick, saturated weapon trail in the weapon's element colour that lingers
+## (FXC_TRAIL_LIFE), and a ground impact under every blow that lands (impact()): a flash on contact, a shock ring and
+## a glowing disc on the paving, and on heavy and crit blows a second ring, an element cloud that hangs over the
+## ground and shards. Presentation only: nothing here reads or writes the fight's RNG or clock (global randf() as the
+## rest of this file); the low tier keeps the trail and a small flash only.
+var fxc: bool = false
+var fxc_low: bool = false
+const FXC_TRAIL_LIFE: float = 0.3
+const FXC_TRAIL_LIFE_LOW: float = 0.22
+## Frost (Frostbrand, the reference's ice blue): [body, glow]; the heavy third blow a shade hotter.
+const FXC_FROST: Array = [Color(0.06, 0.36, 1.0), Color(0.22, 0.6, 1.0)]
+const FXC_FROST_HEAVY: Array = [Color(0.1, 0.46, 1.0), Color(0.36, 0.74, 1.0)]
 var _sh_card: Shader = CARD_SHADER
 var _sh_top: Shader = CARD_TOP_SHADER
 var _sh_arc: Shader = ARC_SHADER
@@ -80,6 +93,24 @@ const SHIELD_HOLD: float = 0.35          # s: cards made this soon after a hit, 
 var shields: int = 0                     # hits that set a shield (tests)
 var _sh_f: Node3D                        # the last struck fighter and until when its shield holds for new cards
 var _sh_until: float = -1.0
+## fight-look-31 (arena.gd "fl31" / "fl_fx", mid and high): Mark and Wale saw skills as big over-exposed white and orange
+## overlays that covered the fighters. Every effect is smaller (FL_FX_SIZE), shorter (FL_FX_LIFE) and the slash arcs and
+## beams dimmer, with less white core (FL_FX_ARC_A, FL_FX_CORE); the cards' global gain and cap are lower (fight.gd
+## FL_FX_GAIN, FL_FX_CAP). Ground decals (scorch, cracks) and the Guardian's attack telegraphs keep their size: they are
+## read for play. Off (and on low) every value is 1: build 30's effects.
+var fl_fx: bool = false
+const FL_FX_SIZE: float = 0.72
+const FL_FX_LIFE: float = 0.75
+const FL_FX_ARC_SIZE: float = 0.86
+const FL_FX_ARC_A: float = 0.62
+const FL_FX_CORE: float = 0.45
+const FL_FX_BEAM_W: float = 0.5
+const FL_FX_BEAM_H: float = 0.6
+## build 32: the hero's own RAIN circle landed with the Guardian telegraph's flash, 0.8 of white over its whole 2.6 m disc
+## (a bright white disc in the build 31 capture, every other effect tamed round it). With fl_fx it lands at this share
+## of that flash, in the circle's own pale tint (telegraph_land_own). The Guardian's telegraphs keep theirs: read for play.
+const TELE_FLASH: float = 0.8
+const FL_FX_TELE_FLASH: float = 0.22
 
 
 ## The arena's look and the fight's tier, read from the fight this is a child of (fight.gd adds it after the arena).
@@ -89,6 +120,10 @@ func _fid_setup() -> void:
 	var lk: Variant = (arena as Node).get("look") if arena != null and is_instance_valid(arena) else null
 	if not (lk is Dictionary):
 		return
+	fxc = bool((lk as Dictionary).get("fx_combat", false))
+	fl_fx = bool((lk as Dictionary).get("fl_fx", false))
+	var cfg0: Variant = f.get("cfg") if "cfg" in f else null
+	fxc_low = fxc and not (cfg0 is Dictionary and str((cfg0 as Dictionary).get("tier", "low")) in ["mid", "high"])
 	fid = bool((lk as Dictionary).get("real", false)) and bool((lk as Dictionary).get("fid_combat", true))
 	if not fid:
 		return
@@ -170,7 +205,7 @@ func _ready() -> void:
 		["sparkle", 18, 3, SPARKLE, Vector2(0.38, 0.38), 1.0, 1],
 		["shard", 16, 2, SHARD, Vector2(0.22, 0.34), 0.6, 1],
 		["ember", 16, 2, DOT, Vector2(0.14, 0.14), 1.0, 1],
-	]:
+	] + ([["frost", 12, 3, PUFF, Vector2(1.2, 1.2), 0.85, 1]] if fxc and not fxc_low else []):
 		var arr: Array = []
 		var mesh := QuadMesh.new()
 		mesh.size = spec[4]
@@ -299,6 +334,21 @@ func _tune_parts() -> void:
 		p.scale_amount_curve = _curve(0.3, 1.0, 0.0)
 		p.angle_min = 0.0
 		p.angle_max = 45.0
+	if _parts.has("frost"):
+		for p: CPUParticles3D in _parts["frost"]:
+			p.direction = Vector3.UP
+			p.spread = 88.0
+			p.initial_velocity_min = 0.5
+			p.initial_velocity_max = 1.8
+			p.damping_min = 1.5
+			p.damping_max = 3.0
+			p.gravity = Vector3(0, 0.25, 0)
+			p.lifetime = 1.0
+			p.scale_amount_min = 0.7
+			p.scale_amount_max = 1.5
+			p.scale_amount_curve = _curve(0.45, 1.0, 1.5)
+			p.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+			p.emission_sphere_radius = 0.6
 	for p: CPUParticles3D in _parts["dust"]:
 		p.direction = Vector3.UP
 		p.spread = 85.0
@@ -434,6 +484,10 @@ func _start(mi: Node3D, life: float, kind: String, size: float, tint: Color, ext
 func card(cell: int, at: Vector3, tint: Color, life: float, s0: float, s1: float, opts: Dictionary = {}) -> MeshInstance3D:
 	var flat: bool = bool(opts.get("flat", false))
 	var pool: String = "decal" if bool(opts.get("decal", false)) else ("top" if bool(opts.get("top", false)) else "card")
+	if fl_fx and pool != "decal" and not bool(opts.get("keep", false)):
+		s0 *= FL_FX_SIZE
+		s1 *= FL_FX_SIZE
+		life *= FL_FX_LIFE
 	var mi: MeshInstance3D = _pick({"decal": _decals, "top": _tops, "card": _cards}[pool], pool)
 	var m := mi.material_override as ShaderMaterial
 	m.set_shader_parameter("cell", float(cell))
@@ -480,6 +534,14 @@ func card(cell: int, at: Vector3, tint: Color, life: float, s0: float, s1: float
 ## the press frame on it).
 func slash(at: Vector3, yaw: float, tint: Variant, size: float, tilt: float, life: float = 0.26, echo: bool = false) -> MeshInstance3D:
 	var cols: Array = tint if tint is Array else [tint, (tint as Color).lerp(Color.WHITE, 0.45)]
+	if fxc:
+		size *= 1.15
+		life *= 1.25
+	var ak: float = 1.0
+	if fl_fx:
+		size *= FL_FX_ARC_SIZE
+		life *= FL_FX_LIFE
+		ak = FL_FX_ARC_A
 	var mi: MeshInstance3D = _pick(_arcs, "arc")
 	mi.position = at
 	mi.basis = Basis(Vector3.UP, yaw) * Basis(Vector3(0, 0, 1), tilt)
@@ -490,11 +552,11 @@ func slash(at: Vector3, yaw: float, tint: Variant, size: float, tilt: float, lif
 	m.set_shader_parameter("head", 0.0)
 	m.set_shader_parameter("tail_len", 1.2)
 	m.set_shader_parameter("alpha", 1.0)
-	m.set_shader_parameter("core", 1.0)
-	m.set_shader_parameter("halo", 1.3)
-	m.set_shader_parameter("body", 0.95)
+	m.set_shader_parameter("core", (0.55 if fxc else 1.0) * (FL_FX_CORE if fl_fx else 1.0))
+	m.set_shader_parameter("halo", 1.3 * (0.6 if fl_fx else 1.0))
+	m.set_shader_parameter("body", 1.0 if fxc else 0.95)
 	mi.visible = true
-	_start(mi, life, "arc", size, cols[0], {"spin": 0.0})
+	_start(mi, life, "arc", size, cols[0], {"spin": 0.0, "ak": ak})
 	if echo:
 		# a thin bright stroke just outside the crescent, a beat behind it (the reference's
 		# concentric strokes): core and halo only, no body
@@ -512,7 +574,7 @@ func slash(at: Vector3, yaw: float, tint: Variant, size: float, tilt: float, lif
 		em.set_shader_parameter("halo", 0.7)
 		em.set_shader_parameter("body", 0.0)
 		e.visible = true
-		_start(e, life * 1.15, "arc", size * 1.14, cols[1], {"spin": 0.0})
+		_start(e, life * 1.15, "arc", size * 1.14, cols[1], {"spin": 0.0, "ak": ak})
 	return mi
 
 
@@ -527,6 +589,10 @@ func trail_cut(key: String) -> void:
 ## tip, in metres.
 func trail_push(key: String, base: Vector3, tip: Vector3, tint: Variant, t_back: float = 0.0, halo: float = 0.35) -> void:
 	var cols: Array = tint if tint is Array else [tint, (tint as Color).lerp(Color.WHITE, 0.45)]
+	if fxc:
+		# fx_combat: a broad ribbon (the hilt end reaches half as far again down the blade) with a wider glow
+		base = tip + (base - tip) * 1.5
+		halo *= 1.6
 	var tr: Dictionary = _trails.get(key, {})
 	if tr.is_empty():
 		var mi := MeshInstance3D.new()
@@ -548,14 +614,29 @@ func trail_push(key: String, base: Vector3, tip: Vector3, tint: Variant, t_back:
 	var trm := (tr["mi"] as MeshInstance3D).material_override as ShaderMaterial
 	trm.set_shader_parameter("tint", cols[0])
 	trm.set_shader_parameter("glow", cols[1])
-	trm.set_shader_parameter("core", 0.45 if cols.size() > 2 else 1.0)   # a third entry: a softer core (CHARGE)
+	trm.set_shader_parameter("core", 0.45 if cols.size() > 2 else (0.55 if fxc else 1.0))   # a third entry: a softer core (CHARGE)
+	if fxc:
+		trm.set_shader_parameter("body", 1.0)
+		trm.set_shader_parameter("halo", 1.25)
+	if fl_fx:
+		# fight-look-31: the weapon's ribbon with less white core and glow (it crossed the fighters' faces)
+		trm.set_shader_parameter("core", float(trm.get_shader_parameter("core")) * FL_FX_CORE)
+		trm.set_shader_parameter("halo", float(trm.get_shader_parameter("halo") if trm.get_shader_parameter("halo") != null else 1.0) * 0.6)
+		trm.set_shader_parameter("alpha", FL_FX_ARC_A + 0.15)
+
+
+func _trail_life() -> float:
+	if not fxc:
+		return TRAIL_LIFE
+	return FXC_TRAIL_LIFE_LOW if fxc_low else FXC_TRAIL_LIFE
 
 
 func _draw_trails() -> void:
 	for key: String in _trails:
 		var tr: Dictionary = _trails[key]
 		var s: Array = tr["samples"]
-		while not s.is_empty() and _clock - float(s[0][0]) > TRAIL_LIFE:
+		var life: float = _trail_life()
+		while not s.is_empty() and _clock - float(s[0][0]) > life:
 			s.pop_front()
 		var im: ImmediateMesh = tr["mesh"]
 		im.clear_surfaces()
@@ -566,7 +647,7 @@ func _draw_trails() -> void:
 		im.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
 		var prev: Array = []
 		for i in s.size():
-			var age: float = clampf((_clock - float(s[i][0])) / TRAIL_LIFE, 0.0, 1.0)
+			var age: float = clampf((_clock - float(s[i][0])) / life, 0.0, 1.0)
 			var b: Vector3 = s[i][1]
 			var t: Vector3 = s[i][2]
 			var h: Vector3 = t + (t - b).normalized() * float(s[i][3]) * (1.0 - age * 0.5)
@@ -713,6 +794,30 @@ func clash(at: Vector3) -> void:
 	_emit("glint", at, WHITE_HOT)
 
 
+## fx_combat: a blow that lands. `contact` on the struck body, `ground` the struck fighter's feet, cols [body, glow] in
+## the weapon's element, w the blow's weight (0.3 light, 0.7 heavy, 1 crit). Low tier: the contact flash only.
+func impact(contact: Vector3, ground: Vector3, cols: Array, w: float) -> void:
+	if not fxc:
+		return
+	var body: Color = cols[0]
+	var glo: Color = cols[1]
+	card(GLOW, contact, glo, 0.16, 0.7, 1.4 + 0.8 * w, {"top": true, "add": 1.0, "intensity": 0.9, "sp": 0.3})
+	if fxc_low:
+		return
+	var g := Vector3(contact.x, ground.y, contact.z)
+	if w < 0.6:
+		# a light blow: a small glow on the paving under it, no ring (the reference rings only its slam)
+		card(GLOW, g + Vector3(0, 0.05, 0), body, 0.35, 0.8, 1.8, {"flat": true, "add": 1.0, "sp": 0.5, "intensity": 0.8, "fin": 0.05, "fp": 1.0})
+		return
+	shock(g, 1.0 + 1.6 * w, body, 0.45 + 0.25 * w)
+	card(GLOW, g + Vector3(0, 0.05, 0), body, 0.55 + 0.6 * w, 1.2 + w, 2.4 + 2.0 * w, {"flat": true, "add": 1.0, "sp": 0.5, "intensity": 0.95, "fin": 0.05, "fp": 1.0})
+	if w >= 0.6:
+		card(RING, g + Vector3(0, 0.09, 0), glo, 0.35, 0.5, 3.0 + 2.0 * w, {"flat": true, "add": 0.8, "sp": 0.25})
+		var p := _emit("frost", g + Vector3(0, 0.45, 0), Color(body.lerp(Color.WHITE, 0.35), 0.65))
+		p.emission_sphere_radius = 0.5 + 0.5 * w
+		_emit("shard", contact, glo, Vector3.UP, 120.0)
+
+
 ## KO: a burst, a shock ring and sparkles (the coins come from coin_burst).
 func ko_burst(at: Vector3, size: float, tint: Color = Color(1.0, 0.85, 0.45)) -> void:
 	var c: Vector3 = at + Vector3(0, 1.0 * size, 0)
@@ -753,6 +858,12 @@ func shock(at: Vector3, radius: float, tint: Color, life: float = 0.45) -> void:
 ## SPLIT: the energy beam (a white core in a blue sheath with scrolling energy, a wide glow,
 ## a downward light spike), a shock ring, a gold blast, a crack + scorch and dust.
 func beam(at: Vector3, height: float, width: float, tint: Color, glow: Color, life: float = 0.6) -> MeshInstance3D:
+	var ak: float = 1.0
+	if fl_fx:
+		width *= FL_FX_BEAM_W
+		height *= FL_FX_BEAM_H
+		life *= FL_FX_LIFE
+		ak = FL_FX_ARC_A
 	var mi: MeshInstance3D = _pick(_beams, "beam")
 	mi.position = at
 	mi.scale = Vector3(width, height, 1.0)
@@ -774,7 +885,7 @@ func beam(at: Vector3, height: float, width: float, tint: Color, glow: Color, li
 		m.set_shader_parameter("sh_head", sp[0])
 		m.set_shader_parameter("sh_chest", sp[1])
 	mi.visible = true
-	_start(mi, life, "beam", width, tint, {"h": height})
+	_start(mi, life, "beam", width, tint, {"h": height, "ak": ak})
 	return mi
 
 
@@ -999,8 +1110,9 @@ func telegraph(at: Vector3, yaw: float, radius: float, half_deg: float, life: fl
 	sm.set_shader_parameter("fill", 0.0)
 	sm.set_shader_parameter("alpha", 1.0)
 	sm.set_shader_parameter("flash", 0.0)
+	sm.set_shader_parameter("flash_col", Color.WHITE)
 	mi.visible = true
-	_start(mi, life, "tele", radius, tint, {"phase": "fill"})
+	_start(mi, life, "tele", radius, tint, {"phase": "fill", "flash": TELE_FLASH})
 	return mi
 
 
@@ -1011,6 +1123,19 @@ func telegraph_end(mi: MeshInstance3D, landed: bool) -> void:
 			d["phase"] = "flash" if landed else "fade"
 			d["t"] = 0.0
 			d["life"] = 0.25
+			return
+
+
+## build 32: the hero's own telegraph (RAIN's circle) landed. With fl_fx (mid, high) a small flash in flash_col, like the
+## other tamed effects (FL_FX_TELE_FLASH); off (and on low) the Guardian's white flash, as build 31.
+func telegraph_land_own(mi: MeshInstance3D, flash_col: Color) -> void:
+	telegraph_end(mi, true)
+	if not fl_fx or mi == null:
+		return
+	for d: Dictionary in _live:
+		if d["node"] == mi:
+			d["flash"] = FL_FX_TELE_FLASH
+			(mi.material_override as ShaderMaterial).set_shader_parameter("flash_col", flash_col)
 			return
 
 
@@ -1087,7 +1212,7 @@ func _process(dt: float) -> void:
 				head = 1.0 - (1.0 - head) * (1.0 - head)
 				m2.set_shader_parameter("head", head)
 				m2.set_shader_parameter("tail_len", lerpf(1.2, 0.25, clampf((k - 0.3) / 0.7, 0.0, 1.0)))
-				m2.set_shader_parameter("alpha", 1.0 - ease(clampf((k - 0.35) / 0.65, 0.0, 1.0), 1.6))
+				m2.set_shader_parameter("alpha", (1.0 - ease(clampf((k - 0.35) / 0.65, 0.0, 1.0), 1.6)) * float(d.get("ak", 1.0)))
 				mi.scale = Vector3.ONE * size * lerpf(0.92, 1.12, ease(k, 0.5))
 				var spn: float = float(d["spin"])
 				if spn != 0.0:
@@ -1097,7 +1222,7 @@ func _process(dt: float) -> void:
 				# flares wide fast, holds, then thins and fades
 				var wk: float = lerpf(0.55, 1.0, ease(minf(k / 0.06, 1.0), 0.4)) * lerpf(1.0, 0.25, ease(maxf(0.0, (k - 0.35) / 0.65), 1.5))
 				mi.scale = Vector3(size * wk, float(d["h"]) * lerpf(0.75, 1.05, ease(k, 0.3)), 1.0)
-				mb.set_shader_parameter("alpha", 1.0 - ease(maxf(0.0, (k - 0.3) / 0.7), 1.8))
+				mb.set_shader_parameter("alpha", (1.0 - ease(maxf(0.0, (k - 0.3) / 0.7), 1.8)) * float(d.get("ak", 1.0)))
 			"coin":
 				var from: Vector3 = d["from"]
 				var cv: Vector3 = d["vel"]
@@ -1116,7 +1241,7 @@ func _process(dt: float) -> void:
 						sm.set_shader_parameter("fill", clampf(k, 0.0, 1.0))
 					"flash":
 						sm.set_shader_parameter("fill", 1.0)
-						sm.set_shader_parameter("flash", 0.8 * (1.0 - k))
+						sm.set_shader_parameter("flash", float(d.get("flash", TELE_FLASH)) * (1.0 - k))
 						sm.set_shader_parameter("alpha", 1.0 - k)
 					"fade":
 						sm.set_shader_parameter("alpha", 1.0 - k)

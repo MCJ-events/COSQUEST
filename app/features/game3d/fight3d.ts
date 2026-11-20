@@ -273,6 +273,8 @@ export type Fight3DConfig = {
   landscape?: boolean;
   /** build 21, landscape: HUD px the stick and the attack panel move in from the left and right edges. */
   hud_side?: [number, number];
+  /** landscape-fit-32, landscape: the close button's right edge in HUD px; the hero card starts past it. */
+  hud_close?: number;
   /**
    * build 25: the Warden's lines for this fight (setup.warden, server app/warden_announcer.py): the
    * intro under the intro banner, and the verdict under the end banner. Sent only when the server
@@ -315,20 +317,26 @@ const HUD_W = 720;
 const HUD_H = 1280;
 /** The HUD's own top margin (hud.gd: the top bar starts ~26 px down); a safe area under it costs nothing. */
 const HUD_TOP_FREE = 20;
-/** The bottom of the boss bar in HUD px (hud.gd _draw_boss_bar: y 132, 18 high, a 3 px frame). */
-const HUD_BOSS_BAR_BOTTOM = 153;
+/**
+ * Where the close button may start in HUD px: under the top block's left column. That is the boss bar
+ * (hud.gd _draw_boss_bar: y 132, 18 high, a 3 px frame, bottom 153) and, on the five-button panel
+ * (build 28, on in production), the RALLY badge under it (hud.gd rally_centre: y 184, radius 19 and a
+ * 3 px rim, bottom 206). landscape-fit-32: build 20 put the button 14 px under the boss bar, which since
+ * build 28 is on top of the RALLY badge; it now goes 16 px under the badge.
+ */
+const HUD_CLOSE_BELOW = 222;
 
 /**
  * Where the fight HUD's top block goes on this screen, and the app's close button under it.
  * In build 19 the timer sat under the Dynamic Island and the close button over the boss bar.
  *   hudTop    HUD px the top bar, the boss bar and the minimap move down (config "hud_top")
- *   closeTop  the close button's top, in screen points: just under the (moved) boss bar
+ *   closeTop  the close button's top, in screen points: under the (moved) boss bar and RALLY badge
  */
 export function hudLayout(safeTop: number, width: number, height: number): { hudTop: number; closeTop: number } {
   if (!(width > 0) || !(height > 0)) return { hudTop: 0, closeTop: Math.max(0, safeTop) + 10 };
   const k = Math.max(HUD_W / width, HUD_H / height); // HUD px per screen point
   const hudTop = Math.round(Math.max(0, Math.max(0, safeTop) * k - HUD_TOP_FREE));
-  return { hudTop, closeTop: Math.round((HUD_BOSS_BAR_BOTTOM + hudTop + 14) / k) };
+  return { hudTop, closeTop: Math.round((HUD_CLOSE_BELOW + hudTop) / k) };
 }
 
 export function buildFightConfig(input: {

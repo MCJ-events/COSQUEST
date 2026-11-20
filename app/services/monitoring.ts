@@ -3,23 +3,24 @@
 // no DSN sends nothing anywhere. With one, it starts once at launch
 // (app/_layout.tsx) and the root error boundary reports what it catches.
 import * as Sentry from "@sentry/react-native";
+import * as Application from "expo-application";
 
 import { appConfig } from "./appConfig";
+import { monitoringOptions } from "./monitoringConfig";
 
 let started = false;
 
 export function startMonitoring() {
-  if (started || !appConfig.sentryDsn) return;
+  if (started) return;
+  const options = monitoringOptions({
+    dsn: appConfig.sentryDsn,
+    environment: appConfig.sentryEnvironment,
+    version: appConfig.appVersion,
+    build: Application.nativeBuildVersion,
+  });
+  if (!options) return;
   try {
-    Sentry.init({
-      dsn: appConfig.sentryDsn,
-      environment: appConfig.sentryEnvironment,
-      release: `cosquest@${appConfig.appVersion}`,
-      // Errors only: no performance tracing, no session replay, no PII.
-      tracesSampleRate: 0,
-      sendDefaultPii: false,
-      enableAutoSessionTracking: true,
-    });
+    Sentry.init(options);
     started = true;
   } catch {
     started = false;

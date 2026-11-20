@@ -22,6 +22,9 @@ import { Modal, PanResponder, View } from "react-native";
 import { setHapticsOn, useHapticsOn } from "@/components/game/prefs";
 import { getPref, setPref } from "@/utils/prefsStorage";
 
+import { appConfig } from "@/services/appConfig";
+import { withoutPlaceholders } from "@/services/releaseGates";
+
 import CreditsScreen from "./CreditsScreen";
 import { back, notBuiltYet } from "./go";
 import { At, DesignCanvas, LineIcon, T, Tap, W, glass } from "./kit";
@@ -96,17 +99,22 @@ function Switch({ y, on, onChange, label, testID }: { y: number; on: boolean; on
   );
 }
 
-const LINKS: { id: string; label: string; go: () => void }[] = [
+// soon: no page behind it yet (shown only with EXPO_PUBLIC_SHOW_PLACEHOLDERS=1, services/releaseGates.ts).
+// Privacy Policy and Terms of Service: only once the build names their URLs (the company publishes them).
+const ALL_LINKS: { id: string; label: string; go: () => void; soon?: boolean }[] = [
   { id: "help", label: "Help & Support", go: () => router.push("/help-support") },
   { id: "privacy", label: "Privacy Policy", go: () => router.push("/legal/privacy") },
   { id: "terms", label: "Terms of Service", go: () => router.push("/legal/terms") },
-  { id: "controls", label: "Adjust Controls", go: () => notBuiltYet("Adjust Controls") },
-  { id: "parents", label: "Parent’s Guide", go: () => notBuiltYet("The Parent’s Guide") },
+  { id: "controls", label: "Adjust Controls", go: () => notBuiltYet("Adjust Controls"), soon: true },
+  { id: "parents", label: "Parent’s Guide", go: () => notBuiltYet("The Parent’s Guide"), soon: true },
   { id: "delete", label: "Delete My Account", go: () => router.push("/delete-account") },
   { id: "credits", label: "Credits", go: () => undefined },   // opens CreditsScreen (below)
-  { id: "licenses", label: "Third Party Licenses", go: () => notBuiltYet("Third Party Licenses") },
+  { id: "licenses", label: "Third Party Licenses", go: () => notBuiltYet("Third Party Licenses"), soon: true },
   { id: "consent", label: "Manage Consent", go: () => router.push("/privacy-visibility") },
 ];
+const LINKS = withoutPlaceholders(ALL_LINKS, appConfig.showPlaceholders).filter(
+  (l) => (l.id !== "privacy" || appConfig.privacyUrl) && (l.id !== "terms" || appConfig.termsUrl),
+);
 
 export default function SettingsScreen() {
   const haptics = useHapticsOn();
@@ -164,12 +172,21 @@ export default function SettingsScreen() {
           Language
         </T>
       </At>
-      <Tap x={24} y={519.4} w={381.6} h={47.6} label="Language: English" onPress={() => notBuiltYet("Other languages")} style={[glass(10, "rgba(255,255,255,0.18)"), { flexDirection: "row", justifyContent: "space-between", paddingLeft: 16, paddingRight: 14 }]} testID="wale-settings-language">
-        <T size={13} weight={700} style={{ lineHeight: 20 }}>
-          English
-        </T>
-        <LineIcon name="chevron-down" size={17} stroke={2.8} />
-      </Tap>
+      {appConfig.showPlaceholders ? (
+        <Tap x={24} y={519.4} w={381.6} h={47.6} label="Language: English" onPress={() => notBuiltYet("Other languages")} style={[glass(10, "rgba(255,255,255,0.18)"), { flexDirection: "row", justifyContent: "space-between", paddingLeft: 16, paddingRight: 14 }]} testID="wale-settings-language">
+          <T size={13} weight={700} style={{ lineHeight: 20 }}>
+            English
+          </T>
+          <LineIcon name="chevron-down" size={17} stroke={2.8} />
+        </Tap>
+      ) : (
+        // English is the only language: shown as a fact, not a menu with nothing in it
+        <At x={24} y={519.4} w={381.6} h={47.6} style={[glass(10, "rgba(255,255,255,0.18)"), { flexDirection: "row", alignItems: "center", paddingLeft: 16 }]} testID="wale-settings-language">
+          <T size={13} weight={700} style={{ lineHeight: 20 }}>
+            English
+          </T>
+        </At>
+      )}
 
       {LINKS.map((l, i) => (
         <Tap key={l.id} x={i % 2 === 0 ? 24 : 221.25} y={591 + Math.floor(i / 2) * 63.9} w={184.6} h={51} label={l.label} onPress={l.id === "credits" ? () => setCredits(true) : l.go} style={glass(10, "rgba(255,255,255,0.18)")} testID={`wale-settings-link-${l.id}`}>

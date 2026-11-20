@@ -2,6 +2,8 @@
 // balance, the packs sold through Stripe's hosted checkout where the web shop
 // is allowed, and the ledger. Coins are bought, never earned, and the sheet
 // says so. A purchase that lands plays the "+1,200 CosCoins added" moment.
+// Build 30: buying is drawn only on builds with EXPO_PUBLIC_COIN_PURCHASE=1 (and on the web);
+// a store build shows the balance and the ledger, no packs, prices or region note (services/releaseGates.ts).
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useEffect, useState } from "react";
@@ -39,6 +41,7 @@ import { ACCENT, ELEVATION, RADIUS, SURFACES, TEXT_ON_DARK, TEXT_ON_LIGHT, useLo
 import { GF } from "./theme";
 import { themedStyles, useThemedStyles } from "@/constants/chatTheme";
 import { settle, SPRING_PRESS } from "@/features/game/spring";
+import { appConfig } from "@/services/appConfig";
 
 export default function CoinsSheet({ onClose }: { onClose: () => void }) {
   const insets = useSafeAreaInsets();
@@ -55,7 +58,7 @@ function CoinsBody({ close }: { close: () => void }) {
   const coins = useCoins();
   const packs = coinsStore.packs();
   const balance = coinsStore.displayBalance();
-  const shop = coins.config !== null && packs.length > 0;
+  const shop = appConfig.coinPurchase && coins.config !== null && packs.length > 0;
   const look = useLook();
 
   // On open, and back from the browser or the background (willEnterForeground).
@@ -68,6 +71,7 @@ function CoinsBody({ close }: { close: () => void }) {
   }, []);
 
   const buy = async (pack: CoinPack) => {
+    if (!appConfig.coinPurchase) return;
     const url = await coinsStore.buy(pack);
     if (url) await openCheckout(url);
   };
@@ -109,7 +113,7 @@ function CoinsBody({ close }: { close: () => void }) {
               </Text>
             </View>
           </View>
-        ) : coins.config !== null ? (
+        ) : appConfig.coinPurchase && coins.config !== null ? (
           // Outside the regions where the app may point at the web shop: said plainly, no other route.
           <GamePanel padding={14}>
             <View style={styles.notSold}>
@@ -125,7 +129,9 @@ function CoinsBody({ close }: { close: () => void }) {
           <SectionTitle text="History" />
           {coins.history.length === 0 ? (
             <Text style={styles.empty} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-              No coins in or out yet. Every pack you buy and every coin you spend lands here.
+              {appConfig.coinPurchase
+                ? "No coins in or out yet. Every pack you buy and every coin you spend lands here."
+                : "No coins in or out yet. Every coin you spend lands here."}
             </Text>
           ) : (
             <GamePanel padding={6}>

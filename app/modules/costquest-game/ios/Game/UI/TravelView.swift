@@ -241,7 +241,7 @@ private extension TravelView {
     var venueFacts: some View {
         HStack(spacing: 8) {
             if let faction = session.faction {
-                fact(icon: "flag.fill", text: faction.capitalized, colour: factionColour)
+                fact(icon: "flag.fill", text: RealmNames.name(faction), colour: factionColour)
             }
             fact(icon: "scope", text: "\(Int(radius)) m area", colour: Theme.brass)
             fact(icon: "person.2.fill", text: "\(terms.players_joined) in", colour: Theme.brass)

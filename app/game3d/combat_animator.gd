@@ -74,6 +74,10 @@ const VICTORY_RATE_MAX: float = 1.2
 # rule as the landscape fight (5 GiB reported = a 6 GB phone); config "foot_ik" overrides
 const FOOT_IK_MIN_RAM: int = 5 * 1024 * 1024 * 1024
 const FOOT_OFF_STATES: Array[String] = ["death", "dodge", "skill_whirl", "skill_charge", "skill_split", "knockdown"]
+## fight-motion-31 (mid, high): the share of an action after which its feet are pinned again: SPLIT's slam has landed
+## (fighter.gd's hop is over at 0.45), the DASH has stopped travelling (fight.gd CHARGE moves until 0.31 s of 0.42)
+## and lands its lunge. Build 30 left them unpinned to the end: 0.5 to 0.9 m of slide after the landing.
+const PIN_AFTER: Dictionary = {"skill_split": 0.5, "skill_charge": 0.78}
 
 const ALIASES: Dictionary = {
 	"idle": ["idle", "idle_loop", "breathing_idle"],
@@ -162,9 +166,20 @@ var _breath_t: float = 0.0
 const BREATH_PERIOD: float = 3.8
 const SHIFT_PERIOD: float = 7.4
 var _victory_idle: bool = false  # fight-anim: the cheer has settled into the idle loop
+## moves-fix-32 (mid, high): the cheer holds its own last pose (the captured fist pump ends with the sword raised in front)
+## and breathes, instead of settling into the idle loop. The idle under VICTORY had no arm droop (a celebrating body is
+## passed as "dead" for the stance layers), so the arms stood out from the body in an A-pose under the banner.
+var _victory_hold: bool = false
+const VICTORY_BREATH: float = 1.6        # the chest heaves a little more after a fight
 var _flinch_t: float = -1.0      # fight-anim: seconds into the current flinch (-1 = none)
 var _flinch_k: float = 0.0       # its strength
 var _flinch_dir: Vector3 = Vector3.ZERO   # the push, in the character's own frame (+Z forward)
+## moves-fix-32 (mid, high): a blow taken on the guard. Build 31 fired the stagger clip off the block's 0.5 m push, so a good
+## block looked like being hit (the guard broke into a stumble, the sword dropped). The guard clip now holds and this recoil
+## plays on it instead: the trunk rocks back, the arms are driven in toward the chest behind the blade, then it recovers
+## (fighter.gd's hips give, GIVE_M, goes with it). Its envelope is the flinch's.
+const BLOCK_POSE: Dictionary = {"spine_lean": -11.0, "r_bend": 16.0, "l_bend": 14.0, "r_fwd": -10.0, "l_fwd": -8.0, "spine_tilt": 0.0}
+var _flinch_block: bool = false
 ## build 21: how much of its arms' spread a character takes back while it stands, walks, reels or
 ## is hit (pose_layer.gd arm_droop; 0 = none). The Guardian's retargeted arms stand out 65 deg in
 ## every clip, and its stagger read as a T-pose from the game camera (fighter.gd sets it for a boss).
@@ -196,13 +211,46 @@ var _speed_now: float = 0.0
 ## from a loaded pose, not from a hanging arm.
 var ready: bool = false
 var _ready_w: float = 0.0
+## fight-look-31 (look "fl_motion", fighter.gd sets it): 0..1, the open hands of a standing body turned palm in and the
+## elbows a little soft (FL_RELAX_POSE), so an idle or the hero's intro beat is not two stiff palms facing the camera.
+## The weapon hand only softens its elbow (a twist would turn the weapon in it). 0 = build 30.
+var relax: float = 0.0
+const FL_RELAX_POSE: Dictionary = {"l_twist": 65.0, "l_bend": 12.0, "r_bend": 8.0}
+const FL_RELAX_STATES: Array[String] = ["idle", "_", "intro"]
 const READY_RATE: float = 6.0
+const LOCO_HOLD: float = 0.3             # fight-motion-31: s a locomotion state is held before a slower one
+var _loco_t: float = 0.0
 const READY_STATES: Array[String] = ["idle", "_", "walk"]
 const READY_POSE: Dictionary = {"spine_yaw": -12.0, "spine_lean": 5.0, "r_fwd": 30.0, "r_bend": 55.0, "r_side": 12.0, "l_fwd": 18.0, "l_bend": 35.0}
 const LOWER_BONES: Array[String] = ["Hips", "LeftUpLeg", "LeftLeg", "LeftFoot", "LeftToeBase", "RightUpLeg", "RightLeg", "RightFoot", "RightToeBase"]
 const MIX_STATES: Array[String] = ["attack_1", "attack_2", "attack_3", "heavy", "parry", "skill_rally", "skill_shield"]
 const DROOP_STATES: Array[String] = ["idle", "_", "walk", "run", "sprint", "hit", "stagger"]
 const DROOP_RATE: float = 8.0            # 1/s: eases in and out round the attacks
+## moves-fix-32 (mid, high): the share of each arm's spread (x: the sword arm, y: the off arm) taken back while a clip flings
+## the arms out. The DASH's arms went out wide to the sides (near a T from the front) and the whirl held both arms locked
+## out at shoulder height for 8 frames: the off arm now stays in by the body and the sword arm keeps its sweep, lower.
+const ARM_TUCK: Dictionary = {"skill_charge": Vector2(0.45, 0.8), "skill_whirl": Vector2(0.3, 0.85)}
+const TUCK_RATE: float = 16.0            # 1/s: in by the DASH's take-off (0.26 s of travel)
+var _tuck: Vector2 = Vector2.ZERO
+## moves-fix-32 (mid, high): the end of a one-shot. A clip whose last key came a frame before its state's end (the DASH,
+## SHIELD and RALLY tails end on the clip's last key; the whirl and the knockdown play to it) ran out in the player one
+## frame early: one frame with no clip, then the idle came in with a jump. The clip is now held a hair before its end until
+## the state hands over, and the hand-over is dead-blended as every other switch.
+const END_KEEP: float = 0.002            # s short of the clip's end
+const END_MARGIN: float = 1.5            # frame-time headroom
+## moves-fix-32 (mid, high): a run that stops. The run used to stand up into the idle in 0.25 s and go dead still. Now the
+## legs and arms come together over STOP_BLEND and the trunk carries on forward, then settles back in decaying bounces
+## (Wale's weighted-step reference), scaled by how fast the body was going.
+const STOP_BLEND: float = 0.36
+const STOP_LEAN: float = 10.0            # deg of forward carry from a full run
+const STOP_PERIOD: float = 0.46          # s of one bounce
+const STOP_DECAY: float = 0.17           # s
+const STOP_LEN: float = 0.8
+const STOP_FULL: float = 4.6             # m/s: the hero's full-stick run
+var _stop_t: float = -1.0
+var _stop_k: float = 0.0
+var _loco_speed: float = 0.0
+var _blend_max: float = 0.25             # the next dead blend's longest (STOP_BLEND for a stop)
 
 ## fid29 combat (build 29): on the mid and high tiers (the fighter's look "real", and "fid_combat" unless it is
 ## false) the animator installs, in bind():
@@ -288,6 +336,7 @@ func bind(model: Node3D, body: Node3D, opts: Dictionary = {}) -> Dictionary:
 		no_bind = bool(opts.get("no_bind", false))
 		run_layer = bool(opts.get("run_layer", false))
 		breathe = bool(opts.get("breathe", false))
+		relax = float(opts.get("relax", 0.0))
 		if bool(opts.get("foot_ik", false)) and not clips.is_empty():
 			var fl := FootLock.new()
 			fl.name = "FootLock"
@@ -363,11 +412,13 @@ func _fid_setup(body: Node) -> void:
 			skeleton.move_child(pg, after.get_index() + 1)
 		if pg.bind_bones(skeleton) > 0:
 			pose_guard = pg
+			pg.foot_lock = foot   # fight-motion-31: the feet are put back on their pins after the smoothing
 		else:
 			skeleton.remove_child(pg)
 			pg.free()
 	ko = KoSettle.new()
 	ko.skeleton = skeleton
+	_idle_blend()
 	if lib_key == "" or player == null:
 		return
 	var rc: Dictionary = AnimLib.real_for(lib_key, skeleton)
@@ -406,6 +457,115 @@ func _fid_setup(body: Node) -> void:
 			_hit_gain[d] = float((rc.get("hit_gain", {}) as Dictionary).get(d, 1.0))
 
 
+## moves-fix-32 (mid, high): a character's idle built from two library clips (anim_clips.json characters.<key>.idle_blend:
+## {base, body, seam}). The Courier's R_Idle loops in 1.07 s in a deep knee bend, a little hunched, with only the breath
+## moving; CMU_Idle (a captured wait, 3.3 s) stands upright and shifts its weight, but its arms were captured with no
+## sword (the hand wanders across the thighs). The built loop takes the body's legs, neck and head, its hips turned onto
+## the base's mean facing with IDLE_SWAY of their sway kept (the capture turns 15 to 20 degrees, which swung the carried
+## sword out to the side), the trunk half and half, and the base's shoulders, arms and hands (the sword carried as
+## before), the base re-timed to a whole number of its loops; the body's last `seam` s are blended into its start so the
+## loop has no seam. Built once per bind, a few milliseconds.
+const IDLE_ARMS: Array[String] = ["LeftShoulder", "LeftArm", "LeftForeArm", "LeftHand", "RightShoulder", "RightArm", "RightForeArm", "RightHand"]
+const IDLE_TRUNK: Array[String] = ["Spine", "Spine1", "Spine2"]
+const IDLE_SWAY: float = 0.5
+
+
+func _idle_blend() -> void:
+	if lib_key == "" or player == null or not clips.has("idle"):
+		return
+	var ib: Dictionary = ((AnimLib.data().get("characters", {}) as Dictionary).get(lib_key, {}) as Dictionary).get("idle_blend", {})
+	if ib.is_empty() or str((timing.get("idle", {}) as Dictionary).get("clip", "")) != str(ib.get("base", "")):
+		return
+	var pre: String = AnimLib.LIB_NAME + "/"
+	var ba: Animation = player.get_animation(pre + str(ib["base"]))
+	var bo: Animation = player.get_animation(pre + str(ib.get("body", "")))
+	if ba == null or bo == null or ba.length < 0.2 or bo.length < 1.0:
+		return
+	var seam: float = clampf(float(ib.get("seam", 0.4)), 0.1, bo.length * 0.3)
+	var ln: float = bo.length - seam
+	var n: int = maxi(1, int(round(ln / ba.length)))
+	var k: float = float(n) * ba.length / ln      # base seconds per built second
+	var out := Animation.new()
+	out.length = ln
+	out.loop_mode = Animation.LOOP_LINEAR
+	var step: float = 1.0 / 30.0
+	var nk: int = int(round(ln / step))
+	var b_hips: Quaternion = _mean_rot(ba, "Hips")
+	var o_hips: Quaternion = _mean_rot(bo, "Hips")
+	for src: Animation in [bo, ba]:
+		for i in src.get_track_count():
+			var typ: int = src.track_get_type(i)
+			if typ != Animation.TYPE_ROTATION_3D and typ != Animation.TYPE_POSITION_3D:
+				continue
+			var path: NodePath = src.track_get_path(i)
+			var bone: String = str(path.get_concatenated_subnames())
+			var arm: bool = bone in IDLE_ARMS
+			if (src == bo) == arm:
+				continue    # arms from the base, everything else from the body
+			if typ == Animation.TYPE_POSITION_3D and bone != "Hips":
+				continue
+			if out.find_track(path, typ) >= 0:
+				continue
+			var ti: int = out.add_track(typ)
+			out.track_set_path(ti, path)
+			out.track_set_interpolation_loop_wrap(ti, true)
+			for f in nk:
+				var tt: float = f * step
+				if src == ba:
+					var bt: float = fposmod(tt * k, ba.length)
+					if typ == Animation.TYPE_ROTATION_3D:
+						out.rotation_track_insert_key(ti, tt, ba.rotation_track_interpolate(i, bt))
+					else:
+						out.position_track_insert_key(ti, tt, ba.position_track_interpolate(i, bt))
+					continue
+				# the body: its tail blended into its start over the seam
+				var w: float = smoothstep(0.0, 1.0, tt / seam) if tt < seam else 1.0
+				if typ == Animation.TYPE_ROTATION_3D:
+					var q: Quaternion = bo.rotation_track_interpolate(i, tt)
+					if w < 1.0:
+						q = bo.rotation_track_interpolate(i, tt + ln).slerp(q, w)
+					if bone == "Hips":
+						q = (b_hips * Quaternion.IDENTITY.slerp((o_hips.inverse() * q).normalized(), IDLE_SWAY)).normalized()
+					elif bone in IDLE_TRUNK:
+						var bi: int = ba.find_track(path, typ)
+						if bi >= 0:
+							q = ba.rotation_track_interpolate(bi, fposmod(tt * k, ba.length)).slerp(q, 0.5)
+					out.rotation_track_insert_key(ti, tt, q)
+				else:
+					var v: Vector3 = bo.position_track_interpolate(i, tt)
+					if w < 1.0:
+						v = bo.position_track_interpolate(i, tt + ln).lerp(v, w)
+					out.position_track_insert_key(ti, tt, v)
+	var lib: AnimationLibrary = player.get_animation_library(AnimLib.LIB_NAME)
+	if lib.has_animation("__idle_blend"):
+		lib.remove_animation("__idle_blend")
+	lib.add_animation("__idle_blend", out)
+	clips["idle"] = pre + "__idle_blend"
+	var m: Dictionary = (timing.get("idle", {}) as Dictionary).duplicate()
+	m["idle_blend"] = str(ib.get("body", ""))
+	timing["idle"] = m
+
+
+## moves-fix-32: a bone's mean rotation over a clip (its keys, sign-aligned, averaged)
+static func _mean_rot(a: Animation, bone: String) -> Quaternion:
+	for i in a.get_track_count():
+		if a.track_get_type(i) != Animation.TYPE_ROTATION_3D or str(a.track_get_path(i).get_concatenated_subnames()) != bone:
+			continue
+		var n: int = a.track_get_key_count(i)
+		if n == 0:
+			break
+		var q0: Quaternion = a.track_get_key_value(i, 0)
+		var acc := Vector4.ZERO
+		for k in n:
+			var q: Quaternion = a.track_get_key_value(i, k)
+			if q.dot(q0) < 0.0:
+				q = -q
+			acc += Vector4(q.x, q.y, q.z, q.w)
+		acc = acc.normalized()
+		return Quaternion(acc.x, acc.y, acc.z, acc.w)
+	return Quaternion.IDENTITY
+
+
 ## fid29 combat: which of a state's variants plays this time: a hash of the fighter's slot and its swing
 ## count (the same fight shows the same picks; the fight's seeded RNG is never read).
 func variant_pick(st: String, n: int) -> int:
@@ -418,7 +578,8 @@ func variant_pick(st: String, n: int) -> int:
 ## fid29 combat: a clip switch with no crossfade, dead-blended from the body's own motion instead.
 func _dead_play(clip: String, blend: float, hit_at: float = -1.0) -> void:
 	player.play(clip, 0.0, 1.0)
-	var d: float = clampf(blend * 2.0, 0.15, 0.25)
+	var d: float = clampf(blend * 2.0, 0.15, maxf(0.25, _blend_max))
+	_blend_max = 0.25
 	if hit_at > 0.02:
 		d = minf(d, maxf(hit_at, 0.1))   # a strike's contact frame shows the clip's own pose
 	dead_blend.start(d)
@@ -476,6 +637,11 @@ func _loco_rate(st: String, speed_now: float) -> float:
 	if gs <= 0.01:
 		return clampf(speed_now / 2.6, 0.8, 1.9)
 	return clampf(speed_now / gs, 0.5, 2.4)
+
+
+## fight-motion-31: idle < walk < run < sprint (LOCO_HOLD)
+static func _loco_rank(st: String) -> int:
+	return {"walk": 1, "run": 2, "sprint": 3}.get(st, 0)
 
 
 func _loop_copy(name: String) -> String:
@@ -559,6 +725,7 @@ func play(st: String, game_len: float = 0.0, hit_at: float = -1.0, blend: float 
 	length = game_len
 	_warp = []
 	_victory_idle = false
+	_victory_hold = false
 	_tail = 0.0
 	in_tail = false
 	if player == null or not clips.has(st):
@@ -745,6 +912,11 @@ func flinch(push: Vector3, strength: float) -> void:
 	_flinch_dir = local.normalized()
 	_flinch_k = maxf(strength, _flinch_k * _flinch_env() if _flinch_t >= 0.0 else 0.0)
 	_flinch_t = 0.0
+	_flinch_block = fid and state == "guard" and clips.has("guard")
+	if _flinch_block:
+		_add_t = -1.0
+		_add_set = []
+		return
 	if fid and not _hit_anims.is_empty():
 		_hit_clip(_flinch_dir, strength)
 
@@ -801,6 +973,12 @@ func _flinch_pose() -> Dictionary:
 	var e: float = _flinch_env() * _flinch_k
 	if e <= 0.001:
 		return {}
+	if _flinch_block:
+		# moves-fix-32: the block's recoil (BLOCK_POSE), at full depth for a 0.45 blow (fight.gd's block)
+		var kb: float = minf(e / 0.45, 1.6)
+		return {"spine_lean": BLOCK_POSE["spine_lean"] * kb * maxf(0.3, -_flinch_dir.z), "r_bend": BLOCK_POSE["r_bend"] * kb,
+			"l_bend": BLOCK_POSE["l_bend"] * kb, "r_fwd": BLOCK_POSE["r_fwd"] * kb, "l_fwd": BLOCK_POSE["l_fwd"] * kb,
+			"spine_tilt": FLINCH_TILT * 0.5 * e * _flinch_dir.x}
 	# pushed back (-Z) leans the spine back; pushed to its left (+X) tilts it that way and turns it
 	return {"spine_lean": FLINCH_LEAN * e * _flinch_dir.z, "spine_tilt": FLINCH_TILT * e * _flinch_dir.x,
 		"spine_yaw": FLINCH_YAW * e * _flinch_dir.x, "r_side": FLINCH_ARMS * e, "l_side": FLINCH_ARMS * e,
@@ -842,15 +1020,24 @@ func update(dt: float, speed_now: float, dead: bool) -> void:
 		elif in_tail:
 			base = 1.0
 		player.speed_scale = 0.0 if frozen else base
+		if fid and length > 0.0 and not frozen and dt > 0.0 and player.is_playing() and not (state in LOOPING) and state != "death":
+			# moves-fix-32: held a hair before the clip's end while the state still owns the body (END_KEEP)
+			var left: float = player.current_animation_length - player.current_animation_position - END_KEEP
+			if player.speed_scale * dt * END_MARGIN > left:
+				player.speed_scale = maxf(0.0, left / (dt * END_MARGIN))
 	if state == "victory" and length > 0.0 and t >= length and not _victory_idle and player != null and clips.has("idle"):
 		# fight-anim: the cheer used to freeze on its last frame (a statue); it settles into idle
 		_victory_idle = true
 		_warp = []
-		if dead_blend != null:
+		if fid:
+			_victory_hold = true   # moves-fix-32: the last pose holds and breathes (see _victory_hold)
+		elif dead_blend != null:
 			_dead_play(clips["idle"], BLEND_VICTORY_IDLE)
 		else:
 			player.play(clips["idle"], BLEND_VICTORY_IDLE, 1.0)
-		player.speed_scale = 0.0 if frozen else 1.0
+		player.speed_scale = 0.0 if (frozen or _victory_hold) else 1.0
+	if _victory_hold and player != null:
+		player.speed_scale = 0.0
 	if in_tail and speed_now > 0.2:
 		length = t     # a step ends the tail: the walk takes over below
 	if length > 0.0 and t >= length and not (state in HOLD_LAST) and not in_tail and _tail > 0.01 and speed_now <= 0.2 and player != null and clips.has(state):
@@ -878,9 +1065,23 @@ func update(dt: float, speed_now: float, dead: bool) -> void:
 					want = "sprint"
 		elif speed_now > 0.2:
 			want = "walk"
+		# fight-motion-31: a locomotion state is held at least LOCO_HOLD before the body drops to a slower one (the
+		# ally kiting at its range flipped idle, walk and run every few frames: 48 flips in one fight, each a new
+		# clip); speeding up still switches at once, a hit or an action still ends it at once
+		_loco_t += dt
+		if fid and state in LOCO and want != state and _loco_rank(want) < _loco_rank(state) and _loco_t < LOCO_HOLD:
+			want = state
+		if want != state:
+			_loco_t = 0.0
+		if fid and (state == "run" or state == "sprint") and want == "idle" and _loco_speed > 2.0 and clips.has("idle"):
+			# moves-fix-32: the run stops with a carry and a settle (STOP_*)
+			_stop_t = 0.0
+			_stop_k = clampf(_loco_speed / STOP_FULL, 0.0, 1.2)
+			_blend_max = STOP_BLEND
+		_loco_speed = speed_now if state in LOCO else 0.0
 		walk_rate = _loco_rate(want if clips.has(want) else "walk", speed_now)
 		if want != state:
-			if not play(want):
+			if not play(want, 0.0, -1.0, STOP_BLEND * 0.5 if _stop_t == 0.0 else -1.0):
 				# no clip for it: fall back to whichever locomotion clip exists
 				if player != null:
 					var alt: String = "walk" if want == "run" or want == "sprint" else want
@@ -904,25 +1105,37 @@ func update(dt: float, speed_now: float, dead: bool) -> void:
 		foot.floor_y = floor_y
 		foot.size = layer.frame_root.scale.y if layer != null and layer.frame_root != null else 1.0
 		foot.loco = state in LOCO or (legs_run and length > 0.0)
-		foot.pinning = not (state in FOOT_OFF_STATES) and player != null
+		foot.pinning = (not (state in FOOT_OFF_STATES) or (fid and PIN_AFTER.has(state) and phase() >= float(PIN_AFTER[state])) or in_tail) and player != null
+	if _stop_t >= 0.0:
+		_stop_t += 0.0 if frozen else dt
+		if _stop_t > STOP_LEN or dead or not (state == "idle" or state == "_"):
+			_stop_t = -1.0
 	if layer != null:
 		var p: Dictionary = _pose_now() if not clips.has(state) else {}
+		if _stop_t >= 0.0:
+			p = p.duplicate()
+			p["spine_lean"] = float(p.get("spine_lean", 0.0)) + STOP_LEAN * stop_env()
 		# realism round 2: wound up for the next blow while an opponent is in reach
 		_ready_w = lerpf(_ready_w, 1.0 if (ready and not dead and state in READY_STATES) else 0.0, 1.0 - exp(-dt * READY_RATE))
 		if _ready_w > 0.01:
 			p = p.duplicate()
 			for rk: String in READY_POSE:
 				p[rk] = float(p.get(rk, 0.0)) + float(READY_POSE[rk]) * _ready_w
-		if breathe and not dead and (state == "idle" or state == "_" or state == "guard"):
+		if relax > 0.0 and not dead and state in FL_RELAX_STATES:
+			p = p.duplicate()
+			for rk: String in FL_RELAX_POSE:
+				p[rk] = float(p.get(rk, 0.0)) + float(FL_RELAX_POSE[rk]) * relax
+		if breathe and (_victory_hold or (not dead and (state == "idle" or state == "_" or state == "guard"))):
 			_breath_t += dt
 			p = p.duplicate()
+			var bk: float = VICTORY_BREATH if _victory_hold else 1.0
 			var br: float = sin(TAU * _breath_t / BREATH_PERIOD)
 			var sh: float = sin(TAU * _breath_t / SHIFT_PERIOD)
-			p["spine_lean"] = float(p.get("spine_lean", 0.0)) - 1.4 * br
+			p["spine_lean"] = float(p.get("spine_lean", 0.0)) - 1.4 * br * bk
 			p["spine_tilt"] = float(p.get("spine_tilt", 0.0)) + 2.2 * sh
 			p["spine_yaw"] = float(p.get("spine_yaw", 0.0)) + 1.2 * sin(TAU * _breath_t / (SHIFT_PERIOD * 1.3))
-			p["r_side"] = float(p.get("r_side", 0.0)) + 1.5 * br
-			p["l_side"] = float(p.get("l_side", 0.0)) + 1.5 * br
+			p["r_side"] = float(p.get("r_side", 0.0)) + 1.5 * br * bk
+			p["l_side"] = float(p.get("l_side", 0.0)) + 1.5 * br * bk
 		if fid:
 			layer.add_layers = _add_layers_now()
 		var fl: Dictionary = _flinch_pose()
@@ -937,6 +1150,11 @@ func update(dt: float, speed_now: float, dead: bool) -> void:
 			dw = 1.0   # no clip at all: never the bind pose
 		_droop_now = lerpf(_droop_now, dw, 1.0 - exp(-dt * DROOP_RATE))
 		layer.arm_droop = _droop_now
+		if fid:
+			var tw: Vector2 = ARM_TUCK.get(state, Vector2.ZERO) if (clips.has(state) and length > 0.0 and not dead) else Vector2.ZERO
+			_tuck = _tuck.lerp(tw, 1.0 - exp(-dt * TUCK_RATE))
+			layer.droop_r = maxf(_droop_now, _tuck.x) if _tuck.x > 0.002 else -1.0
+			layer.droop_l = maxf(_droop_now, _tuck.y) if _tuck.y > 0.002 else -1.0
 
 
 ## fid29 combat: this frame's additive hit layers for pose_layer.gd: each clip at the matching point of its own
@@ -951,6 +1169,13 @@ func _add_layers_now() -> Array:
 		var a: Animation = o[0]
 		out.append([a, u * a.length, float(o[1]) * float(o[2]) * _add_w * env])
 	return out
+
+
+## moves-fix-32: the run stop's trunk carry, signed (+ = forward), times how fast the run was (STOP_*)
+func stop_env() -> float:
+	if _stop_t < 0.0:
+		return 0.0
+	return _stop_k * exp(-_stop_t / STOP_DECAY) * cos(TAU * _stop_t / STOP_PERIOD)
 
 
 func phase() -> float:

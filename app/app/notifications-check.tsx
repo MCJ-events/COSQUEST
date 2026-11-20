@@ -10,7 +10,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import Constants from "expo-constants";
 import * as Notifications from "expo-notifications";
-import { router } from "expo-router";
+import { Redirect, router } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, Linking, Platform, Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useInk } from "@/constants/chatTheme";
 import { FONTS } from "@/constants/fonts";
 import { apiRequest } from "@/services/api";
+import { appConfig } from "@/services/appConfig";
 import { useAppSelector } from "@/store/hooks";
 import { currentVoipToken, registerCallsNow, registerThisPhone } from "@/utils/pushDevice";
 
@@ -29,7 +30,7 @@ type Line = { ok: boolean | null; title: string; detail: string };
 const short = (value: string) => (value.length > 18 ? `${value.slice(0, 10)}…${value.slice(-6)}` : value);
 const messageOf = (error: any) => String(error?.message || error || "Unknown error").slice(0, 220);
 
-export default function NotificationsCheck() {
+function NotificationsCheckScreen() {
   const ink = useInk();
   const insets = useSafeAreaInsets();
   const token = useAppSelector((state) => state.auth.token);
@@ -204,4 +205,10 @@ export default function NotificationsCheck() {
       )}
     </ScrollView>
   );
+}
+
+// Build 30: push diagnostics, only on dev builds or with EXPO_PUBLIC_DEV_SCREENS=1 (services/releaseGates.ts).
+export default function NotificationsCheck() {
+  if (!appConfig.devScreens) return <Redirect href="/" />;
+  return <NotificationsCheckScreen />;
 }

@@ -142,8 +142,8 @@ struct OnboardingView: View {
     static func pitch(_ id: String) -> String {
         switch id {
         case "anime": return "Anime. Loud, loyal, and they never, ever give up."
-        case "marvel": return "Marvel. Quick with a joke, quicker with a comeback."
-        case "dc": return "DC. Old legends, and they carry themselves like it."
+        case "marvel": return "Icons. Quick with a joke, quicker with a comeback."
+        case "dc": return "Everborns. Old legends, and they carry themselves like it."
         case "movies": return "Movies. Every story ever told on a big screen, and they know them all."
         case "gaming": return "Gaming. They see the world as a map with a boss at the end."
         default: return "Choose carefully."
@@ -154,7 +154,7 @@ struct OnboardingView: View {
     static func welcome(_ id: String, name: String) -> String {
         switch id {
         case "anime": return "Anime it is! I can feel your fighting spirit already, \(name)!"
-        case "marvel": return "Marvel. Good choice. I was hoping you'd have taste, \(name)."
+        case "marvel": return "Icons. Good choice. I was hoping you'd have taste, \(name)."
         case "dc": return "Then the legends have a new name among them. Welcome, \(name)."
         case "movies": return "In a city full of shrines, one fan chose Movies. Welcome, \(name)."
         case "gaming": return "Player \(name) has joined Gaming. New quest unlocked."

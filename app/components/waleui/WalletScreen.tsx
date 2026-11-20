@@ -10,7 +10,8 @@
 //   XP       purple, his XP coin, "Earned by playing. Can't be bought."
 //   money    plain ink with the currency code and a card icon, receipts only.
 //
-// Manage purchases shows only when the server says the payments website is set
+// Manage purchases shows only on builds with EXPO_PUBLIC_COIN_PURCHASE=1 (services/releaseGates.ts)
+// and when the server says the payments website is set
 // (GET /v1/pay/config manage_purchases); otherwise it is not drawn at all.
 import { Ionicons } from "@expo/vector-icons";
 import { type ReactNode, useEffect } from "react";
@@ -32,6 +33,7 @@ import {
   unavailableText,
   xpText,
 } from "@/features/game/payLink";
+import { appConfig } from "@/services/appConfig";
 
 import { back } from "./go";
 import { Art, At, DesignCanvas, LineIcon, T, Tap, W, WaleFooter, glass } from "./kit";
@@ -163,7 +165,7 @@ export default function WalletScreen() {
     ),
   });
   // Manage purchases: only when the server has the website
-  if (w.config?.manage_purchases) {
+  if (appConfig.coinPurchase && w.config?.manage_purchases) {
     blocks.push({
       h: 66,
       draw: (y) => (

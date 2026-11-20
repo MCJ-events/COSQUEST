@@ -9,7 +9,8 @@
 // each at the box measured in his frame): the hooded hero, the street web behind
 // it, the 3D icons (gear, megaphone, envelope, trophy, add friend, team up,
 // swords, wardrobe, shop), the map with its pin, the coin and the XP shield.
-// The hero slot shows the player's own faction hero (heroArt.ts), standing in
+// Build 29: the hero slot shows the character the player picked (else their faction hero) as its 2D art
+// (heroArt.ts), and tapping it opens the character picker. Before: the player's own faction hero (heroArt.ts), standing in
 // the box his character fills, and falls back to his cut-out character only
 // when the faction is unknown (signed out, no faction yet). Never the 3D Forge
 // avatar. The rank badge is his own badge art for the player's rank
@@ -40,6 +41,9 @@ import { showEvents, showReferrals } from "@/features/game/briefFeatures";
 
 import { useBriefFlags } from "./brief/briefKit";
 import { useProgMe, useWaleProfile } from "./data";
+import { appConfig } from "@/services/appConfig";
+import { withoutPlaceholders } from "@/services/releaseGates";
+
 import { notBuiltYet, openGameSheet, openMap } from "./go";
 import { useFactionHero } from "./heroArt";
 import { HeroIdle } from "./HeroIdle";
@@ -79,18 +83,28 @@ const LEFT: { id: string; label: string; pic?: Pic; tx?: number; y: number; go: 
 const RIGHT: { id: string; label: string; pic: Pic; tx: number; y: number; go: () => void }[] = [
   { id: "weapon", label: "WEAPON", pic: { src: require("@/assets/images/waleui/icon_swords.png"), x: 272, y: 224.5, w: 16.75, h: 16.5 }, tx: 292.5, y: 217.5, go: () => router.push("/wale/weapons") },
   { id: "wardrobe", label: "WARDROBE", pic: { src: require("@/assets/images/waleui/icon_wardrobe.png"), x: 275, y: 258, w: 13.75, h: 19 }, tx: 298.5, y: 252.5, go: () => router.push("/wale/wardrobe") },
-  { id: "shop", label: "SHOP", pic: { src: require("@/assets/images/waleui/icon_shop.png"), x: 273.75, y: 294, w: 17.5, h: 18 }, tx: 301.5, y: 287.5, go: () => openGameSheet("coins") },
+  { id: "shop", label: appConfig.coinPurchase ? "SHOP" : "COINS", pic: { src: require("@/assets/images/waleui/icon_shop.png"), x: 273.75, y: 294, w: 17.5, h: 18 }, tx: 301.5, y: 287.5, go: () => openGameSheet("coins") },
 ];
 
-const MENU: { id: string; label: string; pic: Pic; tx: number; y: number; size: number; go: () => void }[] = [
+// soon: nothing behind it yet (News), drawn only with EXPO_PUBLIC_SHOW_PLACEHOLDERS=1 (services/releaseGates.ts);
+// the rows under a hidden one move up a step so the menu has no hole.
+const MENU_ALL: { id: string; label: string; pic: Pic; tx: number; y: number; size: number; go: () => void; soon?: boolean }[] = [
   { id: "settings", label: "SETTINGS", pic: { src: require("@/assets/images/waleui/icon_gear.png"), x: 288.75, y: 26.5, w: 21.25, h: 18.75 }, tx: 317.5, y: 22, size: 9, go: () => router.push("/wale/settings") },
-  { id: "news", label: "NEWS", pic: { src: require("@/assets/images/waleui/icon_megaphone.png"), x: 291, y: 58.5, w: 17, h: 19.5 }, tx: 316.5, y: 53, size: 9, go: () => notBuiltYet("News") },
+  { id: "news", label: "NEWS", pic: { src: require("@/assets/images/waleui/icon_megaphone.png"), x: 291, y: 58.5, w: 17, h: 19.5 }, tx: 316.5, y: 53, size: 9, go: () => notBuiltYet("News"), soon: true },
   { id: "mails", label: "MAILS", pic: { src: require("@/assets/images/waleui/icon_envelope.png"), x: 288.5, y: 89.75, w: 18.5, h: 21.75 }, tx: 315.5, y: 86.5, size: 9, go: () => router.push("/chat") },
   { id: "leaderboard", label: "LEADERBOARD", pic: { src: require("@/assets/images/waleui/icon_trophy.png"), x: 289.75, y: 123.75, w: 15.25, h: 19 }, tx: 313, y: 119, size: 7.5, go: () => openGameSheet("war") },
 ];
 
 /** One menu row's step in his frame (the four rows sit 31 to 34 px apart). */
 const MENU_STEP = 32.5;
+
+const MENU_SHOWN = withoutPlaceholders(MENU_ALL, appConfig.showPlaceholders);
+/** How many of his rows a store build leaves out (the extra rows and the panel move up by as many steps). */
+const MENU_HIDDEN = MENU_ALL.length - MENU_SHOWN.length;
+const MENU: typeof MENU_ALL = MENU_SHOWN.map((m, i) => {
+  const d = (i - MENU_ALL.indexOf(m)) * MENU_STEP;
+  return d === 0 ? m : { ...m, y: m.y + d, pic: { ...m.pic, y: m.pic.y + d } };
+});
 
 /**
  * Rows added under his four when the server has the feature on (13 Nov 2026, the brief features):
@@ -101,7 +115,7 @@ function extraMenu(flags: ReturnType<typeof useBriefFlags>): typeof MENU {
   if (showReferrals(flags)) rows.push({ id: "invite", label: "INVITE", src: require("@/assets/images/waleui/icon_team_up.png"), w: 18, h: 15.25, go: () => router.push("/wale/invite") });
   if (showEvents(flags)) rows.push({ id: "events", label: "EVENTS", src: require("@/assets/images/waleui/map_pin.png"), w: 20, h: 15, go: () => router.push("/wale/event") });
   return rows.map((r, i) => {
-    const y = 119 + MENU_STEP * (i + 1);
+    const y = 119 + MENU_STEP * (i + 1 - MENU_HIDDEN);
     return { id: r.id, label: r.label, pic: { src: r.src, x: 289, y: y + 5, w: r.w, h: r.h }, tx: 313, y, size: 9, go: r.go };
   });
 }
@@ -126,7 +140,7 @@ function HomeFrame({ menuOpen }: { menuOpen: boolean }) {
   const briefFlags = useBriefFlags();
   const extras = extraMenu(briefFlags);
   const menuRows = [...MENU, ...extras];
-  const grow = MENU_STEP * extras.length;
+  const grow = MENU_STEP * (extras.length - MENU_HIDDEN);
   const p = useWaleProfile();
   // payments: the Wallet is reachable only when the server has the pay routes on (features/game/payLink.ts: 404 = null)
   const [payOn, setPayOn] = useState(false);
@@ -160,12 +174,16 @@ function HomeFrame({ menuOpen }: { menuOpen: boolean }) {
         {/* Wale (13 Nov): the hero idles in place, breathing and shifting its weight about its planted feet */}
         <HeroIdle testID="wale-home-hero-idle">
         {fh ? (
-          <Image source={fh.full} style={{ width: fit.hero.w, height: fit.hero.h }} contentFit="contain" contentPosition="bottom" accessible accessibilityRole="image" accessibilityLabel={`Your hero: ${fh.name}`} />
+          // build 29: the 2D art stands in its A-pose (arms out), wider than his slot: drawn 1.4x the slot's width,
+          // centred on it, so the figure is as tall as the room allows instead of shrinking to the arm span
+          <Image source={fh.full} style={{ width: fit.hero.w * 1.4, height: fit.hero.h, marginLeft: -fit.hero.w * 0.2 }} contentFit="contain" contentPosition="bottom" accessible accessibilityRole="image" accessibilityLabel={`Your hero: ${fh.name}`} />
         ) : (
           <Image source={ART.hero.src} style={{ width: fit.hero.w, height: fit.hero.h }} contentFit="contain" contentPosition="bottom" accessible accessibilityRole="image" accessibilityLabel="Your hero" />
         )}
         </HeroIdle>
       </At>
+      {/* build 29: tap your character to pick who you are (the character picker) */}
+      <Tap x={fit.hero.x} y={fit.hero.y} w={fit.hero.w} h={fit.hero.h} label={fh ? `Your character: ${fh.name}. Change character` : "Pick your character"} onPress={() => router.push("/wale/character" as never)} testID="wale-home-hero-pick" />
 
       {/* top bar */}
       <At x={0} y={0} w={403} h={66} style={[glass(0, "rgba(255,255,255,0.22)"), { borderTopWidth: 0, borderLeftWidth: 0, borderRightWidth: 0, borderBottomLeftRadius: 14, borderBottomRightRadius: 14 }]} testID="wale-home-topbar" />

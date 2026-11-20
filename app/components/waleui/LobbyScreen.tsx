@@ -1,5 +1,5 @@
 // Wale's Social lobby (Figma "Social lobby · Mobile", 430 x 956): level and
-// XP, three counters, the event banner, Portal and Free Shop, the lobby view,
+// XP, three counters, the event banner, Portal and the coin shop (labelled "Free shop" in his frame; it opens the paid CosCoins sheet, so build 30 calls it a coin shop), the lobby view,
 // the move stick, View Profile, SHOP, the five tabs and the chat bar.
 //
 // The shared 3D lobby itself (other players walking about) does not exist in
@@ -155,9 +155,9 @@ export default function LobbyScreen() {
           PORTAL · 0
         </T>
       </Tap>
-      <Tap x={353} y={151} w={66} h={48.5} label="Free shop" onPress={() => openGameSheet("coins")} style={{ borderRadius: 10, backgroundColor: "rgba(255,255,255,0.35)", paddingTop: 5 }} testID="wale-lobby-freeshop">
+      <Tap x={353} y={151} w={66} h={48.5} label="Coin shop" onPress={() => openGameSheet("coins")} style={{ borderRadius: 10, backgroundColor: "rgba(255,255,255,0.35)", paddingTop: 5 }} testID="wale-lobby-freeshop">
         <T size={8} weight={700} color={W.pink} style={{ lineHeight: 13 }}>
-          FREE
+          COIN
         </T>
         <T size={8.5} weight={700} style={{ lineHeight: 13 }} testID="wale-lobby-freeshop-text">
           SHOP
@@ -174,9 +174,9 @@ export default function LobbyScreen() {
           </T>
         </View>
       </At>
-      <Tap x={257.5} y={218} w={100} h={22.5} label="Free shop" onPress={() => openGameSheet("coins")} style={{ borderRadius: 12, backgroundColor: "#FFFFFF", flexDirection: "row", gap: 5 }} testID="wale-lobby-freeshop-pill">
+      <Tap x={257.5} y={218} w={100} h={22.5} label="Coin shop" onPress={() => openGameSheet("coins")} style={{ borderRadius: 12, backgroundColor: "#FFFFFF", flexDirection: "row", gap: 5 }} testID="wale-lobby-freeshop-pill">
         <T size={8.5} weight={700} style={{ lineHeight: 12 }}>
-          FREE SHOP
+          COIN SHOP
         </T>
         <LineIcon name="map-pin" size={12} color={W.pink} />
       </Tap>

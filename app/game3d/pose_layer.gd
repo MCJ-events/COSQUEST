@@ -17,6 +17,10 @@ const DROOP_FREE: float = 30.0
 ## realism (12 Nov 2026): the angle from hanging an arm keeps untouched, per character (a hero's
 ## arms hang 14 degrees out; the Guardian's long arms keep the old 30)
 var droop_free: float = DROOP_FREE
+## moves-fix-32 (mid, high): each arm's own droop, when CombatAnimator tucks in the arms a clip flings out (the DASH, the
+## whirl): -1 = arm_droop for that arm (the default, so the low tier and every other state are unchanged)
+var droop_r: float = -1.0
+var droop_l: float = -1.0
 var frame_root: Node3D          # the character's own frame (the model holder)
 var _bones: Dictionary = {}     # role -> bone index
 
@@ -27,6 +31,8 @@ const ROLES: Dictionary = {
 	"r_fore": ["RightForeArm", "lowerarm_r", "forearm.R", "LowerArm_R", "RightLowerArm"],
 	"l_arm": ["LeftArm", "upperarm_l", "upper_arm.L", "UpperArm_L", "LeftUpperArm"],
 	"l_fore": ["LeftForeArm", "lowerarm_l", "forearm.L", "LowerArm_L", "LeftLowerArm"],
+	"r_hand": ["RightHand", "hand_r", "hand.R", "Hand_R"],
+	"l_hand": ["LeftHand", "hand_l", "hand.L", "Hand_L"],
 }
 
 
@@ -102,16 +108,19 @@ func _process_modification_with_delta(_delta: float) -> void:
 		var sk: Skeleton3D = get_skeleton()
 		if sk != null:
 			_apply_add(sk)
-	if (pose.is_empty() and arm_droop <= 0.001) or _bones.is_empty():
+	var dr: float = droop_r if droop_r >= 0.0 else arm_droop
+	var dl: float = droop_l if droop_l >= 0.0 else arm_droop
+	if (pose.is_empty() and dr <= 0.001 and dl <= 0.001) or _bones.is_empty():
 		return
 	var skel: Skeleton3D = get_skeleton()
 	if skel == null or frame_root == null or not frame_root.is_inside_tree():
 		return
 	# s maps skeleton space to the character frame; a frame rotation R is s^-1 R s in skeleton space
 	var s: Basis = (frame_root.global_basis.orthonormalized().inverse() * skel.global_basis.orthonormalized())
-	if arm_droop > 0.001:
-		_droop(skel, "r_arm", "r_fore", s)
-		_droop(skel, "l_arm", "l_fore", s)
+	if dr > 0.001:
+		_droop(skel, "r_arm", "r_fore", s, dr)
+	if dl > 0.001:
+		_droop(skel, "l_arm", "l_fore", s, dl)
 	if pose.is_empty():
 		return
 	var spine := Basis.from_euler(Vector3(deg_to_rad(_c("spine_lean")), deg_to_rad(_c("spine_yaw")), deg_to_rad(_c("spine_tilt"))), EULER_ORDER_YXZ)
@@ -122,11 +131,27 @@ func _process_modification_with_delta(_delta: float) -> void:
 	_turn(skel, "l_arm", Basis(Vector3.RIGHT, deg_to_rad(-_c("l_fwd"))) * Basis(Vector3.BACK, deg_to_rad(_c("l_side"))), s)
 	_turn(skel, "r_fore", Basis(Vector3.RIGHT, deg_to_rad(-_c("r_bend"))), s)
 	_turn(skel, "l_fore", Basis(Vector3.RIGHT, deg_to_rad(-_c("l_bend"))), s)
+	# fight-look-31 (fl_motion): the hand turned about the forearm's line (+ = the palm towards the body), so a hanging
+	# open hand rests palm in instead of facing the camera (the models have no finger bones)
+	_twist(skel, "r_hand", "r_fore", -_c("r_twist"))
+	_twist(skel, "l_hand", "l_fore", _c("l_twist"))
+
+
+func _twist(skel: Skeleton3D, hand: String, fore: String, deg: float) -> void:
+	if absf(deg) < 0.01 or not (_bones.has(hand) and _bones.has(fore)):
+		return
+	var b: int = _bones[hand]
+	var g: Transform3D = skel.get_bone_global_pose(b)
+	var axis: Vector3 = g.origin - skel.get_bone_global_pose(_bones[fore]).origin
+	if axis.length_squared() < 1e-10:
+		return
+	g.basis = Basis(axis.normalized(), deg_to_rad(deg)) * g.basis
+	skel.set_bone_global_pose(b, g)
 
 
 ## build 21: turns the upper arm (about its shoulder) towards hanging straight down, so its angle
 ## from down beyond DROOP_FREE shrinks by arm_droop. The forearm and hand follow.
-func _droop(skel: Skeleton3D, arm: String, fore: String, s: Basis) -> void:
+func _droop(skel: Skeleton3D, arm: String, fore: String, s: Basis, amount: float) -> void:
 	if not (_bones.has(arm) and _bones.has(fore)):
 		return
 	var b: int = _bones[arm]
@@ -143,7 +168,7 @@ func _droop(skel: Skeleton3D, arm: String, fore: String, s: Basis) -> void:
 	var axis: Vector3 = dir.cross(down)
 	if axis.length_squared() < 1e-10:
 		return
-	g.basis = Basis(axis.normalized(), (ang - free) * clampf(arm_droop, 0.0, 1.0)) * g.basis
+	g.basis = Basis(axis.normalized(), (ang - free) * clampf(amount, 0.0, 1.0)) * g.basis
 	skel.set_bone_global_pose(b, g)
 
 

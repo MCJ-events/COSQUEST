@@ -54,6 +54,15 @@ for (const name of ["EXPO_PUBLIC_WEB_URL", "EXPO_PUBLIC_TERMS_URL", "EXPO_PUBLIC
   check(name, { required: false });
 }
 
+// Build 30: what App Review looks for that the company still has to supply (warnings, not refusals,
+// so the team's builds keep working until the pages exist).
+for (const name of ["EXPO_PUBLIC_PRIVACY_URL", "EXPO_PUBLIC_TERMS_URL"]) {
+  if (!(process.env[name] || "").trim()) console.warn(`release env: ${name} is not set, so the app links no ${name.includes("PRIVACY") ? "privacy policy (Apple 5.1.1 wants one in the app)" : "terms"}`);
+}
+for (const name of ["EXPO_PUBLIC_COIN_PURCHASE", "EXPO_PUBLIC_SHOW_PLACEHOLDERS", "EXPO_PUBLIC_DEV_SCREENS"]) {
+  if (["1", "true"].includes((process.env[name] || "").trim().toLowerCase())) console.warn(`release env: ${name} is on in a production build (services/releaseGates.ts)`);
+}
+
 if (problems.length) {
   console.error("release env: refusing a production build:");
   for (const p of problems) console.error(`  - ${p}`);

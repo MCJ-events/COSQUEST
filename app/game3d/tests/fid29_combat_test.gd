@@ -2,7 +2,8 @@ extends SceneTree
 ## fid29 combat (build 29): combat motion and hit effects on the mid and high tiers; the low tier unchanged.
 ##   godot --headless --path app/game3d --fixed-fps 30 -s res://tests/fid29_combat_test.gd
 ## 1. Build 28's clip libraries (anim/*.glb), data/anim_clips.json, data/secondary.json and art/fx/fx_atlas.png
-##    keep their build 28 sha256 (low phones load exactly these).
+##    keep their build 28 sha256 (low phones load exactly these). Build 29's added Forge characters' entries in
+##    anim_clips.json are taken out before its hash is compared (_b28_part_of_clips).
 ## 2. Low (no real look): no dead blending, no captured library, the procedural flinch; Imani's states and clips
 ##    are the build 28 ones.
 ## 3. Mid/high (look real): dead blending is the first skeleton modifier and blends a clip switch with no
@@ -100,6 +101,22 @@ func _spawn(look: Dictionary, parent: Node) -> FighterScript:
 	return f
 
 
+## build 29 (Forge characters): data/anim_clips.json with each added character's entry (fight.gd FORGE_CAST, one
+## block each, written by tools/anim/add_hero.sh) taken out again: everything build 28 had must be byte for byte
+## the same, so low phones still load exactly build 28's data for every build 28 character.
+func _b28_part_of_clips() -> String:
+	var t: String = FileAccess.get_file_as_string("res://data/anim_clips.json")
+	for k: String in (load("res://fight.gd") as GDScript).get_script_constant_map().get("FORGE_CAST", []):
+		var i: int = t.find('\n  "%s": {' % k)
+		if i < 0:
+			continue
+		var j: int = t.find("\n  },\n", i + 1)
+		if j < 0:
+			continue
+		t = t.substr(0, i + 1) + t.substr(j + 6)
+	return t.sha256_text()
+
+
 func _initialize() -> void:
 	AnimLib.motion = "hybrid"
 	AnimLib.readable = 1
@@ -108,6 +125,8 @@ func _initialize() -> void:
 	var diff: Array[String] = []
 	for p: String in B28_SHA:
 		var got: String = FileAccess.get_sha256("res://" + p)
+		if p == "data/anim_clips.json":
+			got = _b28_part_of_clips()
 		if got == str(B28_SHA[p]):
 			same.append(p)
 		else:
@@ -352,7 +371,8 @@ func _cost() -> void:
 
 func _guard_check() -> void:
 	# the pose guard on its own skeleton: a slow turn passes exactly; a one-frame flip is limited to GUARD_ACC (5 % for the
-	# discrete braking step, which may stop a little harder) and lands
+	# discrete braking step, which may stop a little harder) and lands. fight-motion-31: the guard is a critically damped
+	# follower now (dead_blend.gd _guard): a flip is absorbed more gently, so it lands within 0.9 s (build 29: 0.4 s)
 	var sk := Skeleton3D.new()
 	sk.add_bone("Hips")
 	sk.add_bone("LeftUpLeg")
@@ -386,7 +406,7 @@ func _guard_check() -> void:
 		prev = now
 		if landed < 0 and now.angle_to(target) < 0.001:
 			landed = i
-	_check("pose_guard_limits_a_flip_and_lands", a_max <= g.GUARD_ACC * 1.05 and landed > 0 and landed <= 12, "acc %.0f rad/s2, landed at %d" % [a_max, landed])
+	_check("pose_guard_limits_a_flip_and_lands", a_max <= g.GUARD_ACC * 1.05 and landed > 0 and landed <= 27, "acc %.0f rad/s2, landed at %d" % [a_max, landed])
 	sk.free()
 
 

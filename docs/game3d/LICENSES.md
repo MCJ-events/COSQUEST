@@ -98,6 +98,20 @@ checkout on the farm (`~/cq-work/game-godot/ext/unity-ref`, cq 061's read-only c
   the optional grade ramp (a `Gradient` in `arena.gd`): own work, CC0 1.0. No new files were
   downloaded for cq 015.
 
+## fight-look-31 (19 Nov 2026, the graphics pass on the fights)
+No file was downloaded for this pass. Everything new or changed is own work, CC0 1.0:
+- `art/weapons/weapon_grain.png`: the weapons' surface detail (brushed streaks, wood grain, leather cells, wear), made
+  from seeded noise by `tools/weapons/make_grain.py` (numpy + Pillow, no source image).
+- `vfx/weapon.gdshader` and `weapon_look.gd`: the weapons' metal, wood and leather material (it reads the KayKit CC0
+  palettes listed under Weapons; the palettes themselves are unchanged).
+- `art/portraits/<key>.png`: byte copies of the app's own character art (`app/assets/images/characters/<key>_portrait.png`,
+  build 29 commit 6e84332: cut from the project's concept views by `tools/forge_chars/char_art.py`), used for the
+  fight's 2D VS card and the winner on the VICTORY card. Same source and terms as the app's files; nothing downloaded.
+  Build 32: imported lossy (WebP), and `forge_mei.png` and `forge_catboy.png` are gone (their art comes from the Forge
+  catalogue at runtime).
+- The neutral grade table (built at load from the base table in `arena.gd fl_grade`), the ally's see-through pattern
+  (`fighter.gd fl_enable_fade`) and the hand turn in `pose_layer.gd`: code, no files.
+
 ## Characters
 - Not in `art/`. The fight loads the player's Forge GLBs at runtime (cq 056 cache). The farm
   review captures use cq 060's deck models (Armstrong, Nebul-X, Elvis), which are the

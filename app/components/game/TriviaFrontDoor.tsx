@@ -34,6 +34,7 @@ import { announce, GameButton, GameIconButton, MAX_FONT_SCALE } from "./kit";
 import { ACCENT, GameSchemeProvider, RADIUS, SURFACES, TEXT_ON_DARK, TEXT_ON_LIGHT, useLook } from "./look";
 import { impact } from "./prefs";
 import { BountyBoard, RunChallenge, RunHUD, RunResults, RunTray } from "./Run";
+import { TriviaFactionPanel } from "./TriviaFactionPanel";
 import { runModel, useRun } from "./runModel";
 import { POP_IN_COUNT, usePopIn } from "./sheetMotion";
 import { playSound } from "./sound";
@@ -255,6 +256,7 @@ function StartView() {
       <Text style={styles.sub}>{triviaSub(s.triviaLeft)}</Text>
       {s.problem ? <Text style={styles.problem}>{s.problem}</Text> : null}
       {s.board && s.board.region === "global" ? <BountyBoard board={s.board} title="TODAY'S TOP PLAYERS" /> : null}
+      <TriviaFactionPanel refreshKey={s.board?.entries.length ?? 0} />
       {s.board?.card_url ? (
         <GameButton title={s.sharingBoard ? "Getting the board…" : "Share today's board"} small disabled={s.sharingBoard} icon={<Ionicons name="trophy-outline" size={18} color={ACCENT.sun.label} />} onPress={() => void runModel.shareBoard()} style={{ alignSelf: "stretch" }} testID="trivia-door-share-board" />
       ) : null}

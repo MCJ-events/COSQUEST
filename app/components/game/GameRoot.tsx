@@ -11,6 +11,7 @@ import { AppState, BackHandler, Pressable, StyleSheet, Text, View } from "react-
 import Animated, { FadeIn, FadeOut, useReducedMotion, useSharedValue } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { appConfig } from "@/services/appConfig";
 import { getPref, setPref } from "@/utils/prefsStorage";
 import { COACH_DONE_KEY, coachStepFor, type CoachStep, parseIdList, starterKindOf, UNLOCKS_INTRODUCED_KEY, unlockOfStep } from "@/features/game/coach";
 import { bearingDeg, distanceM, distanceText } from "@/features/game/geo";
@@ -588,7 +589,8 @@ function GameRootInner({ parked }: { parked: boolean }) {
   if (WALE_UI) {
     moreTiles.push({ id: "wale-weapons", icon: "flash", color: GP.berry, title: "Armory", onPress: () => router.push("/wale/weapons") });
     moreTiles.push({ id: "wale-wardrobe", icon: "shirt", color: GP.sky, title: "Wardrobe", onPress: () => router.push("/wale/wardrobe") });
-    moreTiles.push({ id: "wale-lobby", icon: "people", color: GP.navy, title: "Lobby", onPress: () => router.push("/wale/lobby") });
+    // The lobby is a mock-up for now: only on builds that show placeholders (services/releaseGates.ts).
+    if (appConfig.showPlaceholders) moreTiles.push({ id: "wale-lobby", icon: "people", color: GP.navy, title: "Lobby", onPress: () => router.push("/wale/lobby") });
   }
   const focusAway = focus && !focusId && focus.lat !== undefined && focus.lng !== undefined ? focus : null;
   const focusMissing = focus && focusId && !focusPoint ? focus : null;

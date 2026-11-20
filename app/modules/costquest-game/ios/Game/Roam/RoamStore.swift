@@ -302,7 +302,7 @@ final class RoamStore {
 
     func factionName(_ id: String?) -> String {
         guard let id else { return "No faction" }
-        return config?.factions.first { $0.id == id }?.name ?? id.capitalized
+        return RealmNames.clean(config?.factions.first { $0.id == id }?.name) ?? RealmNames.name(id)
     }
 }
 

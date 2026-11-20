@@ -23,6 +23,7 @@ const FxScript := preload("res://fx.gd")
 const SfxScript := preload("res://sfx.gd")
 const HitArea := preload("res://hit_area.gd")
 const HeroFiles := preload("res://hero_files.gd")     # fid29 seam (owned by fid29-heromaps): which file a hero loads
+const WeaponLook := preload("res://weapon_look.gd")   # fight-look-31: the weapons' materials
 const ShaderWarm := preload("res://shader_warm.gd")   # fid29: materials drawn once under the loading card
 const LookReal := preload("res://look_real.gd")       # fid29-lightcam: the per-place reflection capture
 const AnimLib := preload("res://anim_library.gd")
@@ -402,6 +403,7 @@ func configure(c: Dictionary) -> void:
 		_jlog["swings"] = []
 		_jlog["derived"] = []
 	autoplay = bool(c.get("autoplay", false))
+	_bot_pace = maxf(0.0, float(c.get("bot_pace", 0.0)))
 	bot_kind = str(c.get("bot", "fight"))
 	_load_threaded = bool(c.get("load_thread", true))
 	if c.has("seed"):
@@ -482,8 +484,19 @@ func _ready() -> void:
 	_close_camera()
 	HitArea.ordered = bool((arena.get("look") as Dictionary).get("hit_order", false))   # realism round 3 (hit_area.gd)
 	# realism round 4: how much the effect cards add (project.godot shader_globals; 1 and no cap unless the tier says)
-	RenderingServer.global_shader_parameter_set("cq_fx_gain", float((arena.get("look") as Dictionary).get("fx_gain", 1.0)))
-	RenderingServer.global_shader_parameter_set("cq_fx_cap", float((arena.get("look") as Dictionary).get("fx_cap", 100.0)))
+	var lk_fx: Dictionary = arena.get("look") as Dictionary
+	var fx_gain: float = float(lk_fx.get("fx_gain", 1.0))
+	var fx_cap: float = float(lk_fx.get("fx_cap", 100.0))
+	if bool(lk_fx.get("fx_combat", false)):
+		# fx_combat: the effects may add a little more (the shield still frames the struck fighter's head and chest)
+		fx_gain = maxf(fx_gain, 0.8)
+		fx_cap = maxf(fx_cap, 0.7)
+	elif bool(lk_fx.get("fl_fx", false)):
+		# fight-look-31: the cards add less again and one card never more than FL_FX_CAP (punchy, never a white sheet)
+		fx_gain = minf(fx_gain, float(lk_fx.get("fl_fx_gain", FL_FX_GAIN)))
+		fx_cap = minf(fx_cap, float(lk_fx.get("fl_fx_cap", FL_FX_CAP)))
+	RenderingServer.global_shader_parameter_set("cq_fx_gain", fx_gain)
+	RenderingServer.global_shader_parameter_set("cq_fx_cap", fx_cap)
 	_ground = arena.get("ground")
 	plaza = arena.get("plaza")
 	_build_camera()
@@ -540,6 +553,7 @@ func _ready() -> void:
 		if sd is Array and (sd as Array).size() == 2:
 			hud.side_l = clampf(float(sd[0]), 0.0, 200.0)
 			hud.side_r = clampf(float(sd[1]), 0.0, 200.0)
+		hud.close_r = clampf(float(cfg.get("hud_close", 0.0)), 0.0, 400.0)   # landscape-fit-32: the app's close button
 	hud.hero_name = str(cfg.get("hero_name", "You"))
 	hud.skill_cd_max = SKILL_CD.duplicate()
 	hud.t_left = duration
@@ -631,6 +645,7 @@ func _ready() -> void:
 		(pair[0] as FighterScript).real_speed = bool(cfg.get("real_speed", mr or rd))
 		(pair[0] as FighterScript).turn_steps = AnimLib.readable_now()
 		(pair[0] as FighterScript).anim_opts["breathe"] = AnimLib.readable_now()
+		(pair[0] as FighterScript).anim_opts["relax"] = 1.0 if bool((arena.get("look") as Dictionary).get("fl_motion", false)) else 0.0
 		p = _tier_lod(p, role)
 		# fid29 seam (fid29-heromaps): the hero file the tier really loads (a no-op at fid29-base)
 		p = HeroFiles.pick(p, role, arena.get("look") if arena != null else {})
@@ -738,6 +753,27 @@ var _close_top: float = 0.72
 var _close_lean: float = 0.3
 var _close_bottom: float = CLOSE_MARGIN.z   # fid29-lightcam: the close fit's bottom margin (lc_bottom)
 var _close_face: float = 0.0     # the share of the target's height that must stay under the top margin (0 = only the 0.78 point)
+## fight-look-31 (look "fl_cam", mid and high), revised 19 Nov on Subomi's call: the game keeps its 3D-only fights, so no
+## moment may bring a 3D character close enough to judge its face or textures. The gameplay camera is never nearer than
+## build 30's and a little further back and higher (FL_CAM_*), turned ArenaScript.FL_CAM_YAW off the street's axis so the
+## hero and the Guardian read side by side instead of the hero's back; and every 3D close-up is gone (_fl_far()): no
+## intro beat on the hero (a 2D VS card with both fighters' concept art instead, hud.gd vs_card), no victory zoom (the
+## winner's 2D art on the VICTORY card instead, hud.gd win_art), no push-in on hits or KOs (punch, FRAME_IN, the zoom
+## punch, the KO moment's zoom), no soft-focus plate. Build 30's values are the constants above (LC_PITCH, LC_CLOSE_DIST,
+## CLOSE_PITCH_LAND, CLOSE_DIST_LAND, LC_PIVOT_H, LC_V_OFF, LC_H_OFF, CLOSE_MAX) and all of it comes back with look
+## "fl_cam": false. Each FL_ value can be tried from the look ("close_pitch", "close_dist", "lc_pivot", "lc_voff", "lc_hoff").
+const FL_CAM_PITCH: float = 24.0         # portrait orbit (build 30: LC_PITCH 20)
+const FL_CAM_PITCH_LAND: float = 19.0    # landscape (build 30: CLOSE_PITCH_LAND 16)
+const FL_CAM_DIST: float = 7.2           # portrait nearest distance (build 30: LC_CLOSE_DIST 5.15)
+const FL_CAM_DIST_LAND: float = 10.0     # landscape (build 30: CLOSE_DIST_LAND 7.8)
+const FL_CAM_PIVOT: float = 1.15         # the orbit's pivot height (build 30's)
+const FL_CAM_VOFF: float = 0.9           # the view's lift over the orbit (build 30's LC_V_OFF)
+const FL_CAM_HOFF: float = 0.5           # (build 30's LC_H_OFF)
+const FL_CAM_MAX: float = 16.0           # the furthest the fit pulls back (build 30: CLOSE_MAX 15)
+const FL_VS_LEN: float = 2.2             # the VS card's time before the clock starts (build 30's hero beat: BEAT_LEN 1.8)
+var _close_max: float = CLOSE_MAX
+const FL_FX_GAIN: float = 0.42           # fight-look-31 (fl_fx): the cards' global gain (build 30 mid/high: 0.6)
+const FL_FX_CAP: float = 0.34            # and what one card may add (build 30: 0.5)
 
 
 func _close_camera() -> void:
@@ -746,8 +782,23 @@ func _close_camera() -> void:
 		return
 	_close = true
 	var yaw: float = atan2(_cam_basis.z.x, _cam_basis.z.z)    # the heading stays: _cam_fwd and _cam_right do not move
+	var flc: bool = bool(lk.get("fl_cam", false))
+	if flc:
+		# fight-look-31 (fl_cam): the heading turns FL_CAM_YAW off the street, so the hero is seen three-quarter on (its
+		# sword side and the Guardian's front), not from behind. The stick stays screen-relative (_cam_fwd, _cam_right
+		# follow the view); the bot steers in the street's frame (_play_*) and is untouched
+		yaw += deg_to_rad(ArenaScript.FL_CAM_YAW)
+		if not lk.has("lc_pivot"):
+			lk["lc_pivot"] = FL_CAM_PIVOT
+		if not lk.has("lc_voff"):
+			lk["lc_voff"] = FL_CAM_VOFF
+		if not lk.has("lc_hoff"):
+			lk["lc_hoff"] = FL_CAM_HOFF
+		_close_max = FL_CAM_MAX
 	# look "close_pitch", "close_tilt", "close_dist", "close_top", "close_lean", "close_face": framing trials (tools/look/cam_probe.gd)
 	var pitch: float = float(lk.get("close_pitch", CLOSE_PITCH_LAND if _landscape else (LC_PITCH if bool(lk.get("fid_lightcam", false)) else CLOSE_PITCH)))
+	if flc and not lk.has("close_pitch"):
+		pitch = FL_CAM_PITCH_LAND if _landscape else FL_CAM_PITCH
 	var tilt: float = float(lk.get("close_tilt", 0.0 if _landscape else CLOSE_TILT))
 	_close_top = float(lk.get("close_top", CLOSE_MARGIN_LAND_TOP if _landscape else 0.76))
 	_close_lean = float(lk.get("close_lean", 0.45 if _landscape else 0.3))
@@ -765,9 +816,97 @@ func _close_camera() -> void:
 	_lc_win_basis = Basis.from_euler(Vector3(deg_to_rad(-float(lk.get("lc_win_pitch", LC_WIN_PITCH))), yaw, 0.0))
 	_lc_win_basis_place = Basis.from_euler(Vector3(deg_to_rad(-float(lk.get("lc_win_pitch_place", LC_WIN_PITCH_PLACE))), yaw, 0.0))
 	_cam_dist = float(lk.get("close_dist", CLOSE_DIST_LAND if _landscape else (LC_CLOSE_DIST if _lc else CLOSE_DIST)))
+	if flc:
+		if not lk.has("close_dist"):
+			_cam_dist = FL_CAM_DIST_LAND if _landscape else FL_CAM_DIST
+		_cam_fwd = Vector3(-_cam_basis.z.x, 0.0, -_cam_basis.z.z).normalized()
+		_cam_right = Vector3(_cam_basis.x.x, 0.0, _cam_basis.x.z).normalized()
 	_cam_ahead = 0.0
 	_close_d = _cam_dist
 	_log("close camera pitch=%.0f dist=%.1f" % [CLOSE_PITCH_LAND if _landscape else CLOSE_PITCH, _cam_dist])
+	if flc:
+		_log("fl31 camera yaw=%+.0f pitch=%.0f dist=%.1f pivot=%.2f" % [ArenaScript.FL_CAM_YAW, pitch, _cam_dist, float(lk["lc_pivot"])])
+
+
+## fight-look-31 (fl_motion): a face's rest on its own shape keys. Bram's head was built with the mouth open on bared
+## teeth (the intro close-up showed it gaping); the Forge heads' "mouth-open" key driven below zero with a little
+## "mouth-compression" closes it. Look "fl_face" ({key: weight}) overrides the table for trials.
+const FL_FACE_REST: Dictionary = {"forge_bram": {"mouth-open": -0.85, "mouth-compression": 0.9}}
+
+
+func _fl_face_rest(f: FighterScript, keys: Dictionary) -> void:
+	if keys.is_empty() or f.model == null:
+		return
+	for n: Node in f.model.find_children("*", "MeshInstance3D", true, false):
+		var mi := n as MeshInstance3D
+		for k: String in keys:
+			var i: int = mi.find_blend_shape_by_name(k)
+			if i >= 0:
+				mi.set_blend_shape_value(i, float(keys[k]))
+
+
+## fight-look-31 review (config "fl_measure": true): the largest any fighter is drawn, as a share of the screen's height
+## (feet to the top of the head), over the whole fight from the first frame of the intro to the end, logged at the end
+## ("CQ fl31 size ..."). The check that no frame brings a 3D character close enough to judge a face.
+var _fl_size: Dictionary = {}
+
+
+func _fl_measure() -> void:
+	if not bool(cfg.get("fl_measure", false)) or cam == null or state == "loading":
+		return
+	var vs: Vector2 = get_viewport().get_visible_rect().size
+	for f: FighterScript in fighters:
+		if f == null or not f.visible or cam.is_position_behind(f.global_position):
+			continue
+		var top: Vector3 = f.global_position + Vector3.UP * FighterScript.HEIGHT * f.size_k
+		if cam.is_position_behind(top):
+			continue
+		var hf: float = absf(cam.unproject_position(top).y - cam.unproject_position(f.global_position).y) / maxf(vs.y, 1.0)
+		var k: String = "%s:%s" % [f.role, f.anim.lib_key]
+		if hf > float(_fl_size.get(k, [0.0, ""])[0]):
+			_fl_size[k] = [hf, state]
+	if state == "ending" and _end_t >= _end_delay - 0.05 and not _fl_size.has("_said"):
+		_fl_size["_said"] = [0.0, ""]
+		var parts: PackedStringArray = []
+		for k: String in _fl_size:
+			if k != "_said":
+				parts.append("%s=%.2f(%s)" % [k, float(_fl_size[k][0]), str(_fl_size[k][1])])
+		_log("fl31 size max_share_of_height " + " ".join(parts))
+
+
+## fight-look-31 (fl_cam): the ally fades out of the way (fighter.gd set_fade) while it stands nearer the camera than the
+## hero and over the hero or its target on the screen, or within FL_FADE_NEAR of the lens. Presentation only.
+const FL_FADE_MAX: float = 0.7
+const FL_FADE_NEAR: float = 2.6
+const FL_FADE_TALL: float = 0.62
+var _fl_fade_k: float = 0.0
+
+
+func _fl_ally_fade(dt: float) -> void:
+	if not _close or ally == null or cam == null or hero == null or not bool((arena.get("look") as Dictionary).get("fl_cam", false)):
+		return
+	var want: float = 0.0
+	if not ally.dead and ally.visible:
+		var ac: Vector3 = ally.global_position + Vector3.UP * 1.2
+		var da: float = cam.global_position.distance_to(ac)
+		var vs: Vector2 = get_viewport().get_visible_rect().size
+		var sa: Vector2 = cam.unproject_position(ac)
+		for o: FighterScript in [hero, enemy]:
+			if o == null or o.dead:
+				continue
+			var oc: Vector3 = o.global_position + Vector3.UP * 1.2 * o.size_k
+			if da < cam.global_position.distance_to(oc) - 0.6 and not cam.is_position_behind(ac):
+				var so: Vector2 = cam.unproject_position(oc)
+				if absf(sa.x - so.x) < vs.y * 0.28 * o.size_k:
+					want = FL_FADE_MAX
+		if da < FL_FADE_NEAR:
+			want = maxf(want, FL_FADE_MAX * clampf((FL_FADE_NEAR - da) / 1.0, 0.0, 1.0))
+		# or so near the lens that it stands taller than FL_FADE_TALL of the screen (the foreground, at the frame's edge)
+		if not cam.is_position_behind(ac):
+			var hp: float = absf(cam.unproject_position(ally.global_position + Vector3.UP * FighterScript.HEIGHT * ally.size_k).y - cam.unproject_position(ally.global_position).y)
+			want = maxf(want, FL_FADE_MAX * clampf((hp / maxf(vs.y, 1.0) - FL_FADE_TALL) / 0.15, 0.0, 1.0))
+	_fl_fade_k = move_toward(_fl_fade_k, want, dt * 3.0)
+	ally.set_fade(_fl_fade_k)
 
 
 ## The distance at which the hero, its target and an ally close by are all inside the screen's margins.
@@ -794,7 +933,7 @@ func _close_fit() -> float:
 	# the nearest distance (from the close distance out to build 21's) at which every point is inside the
 	# margins: the view may be tilted off the orbit, so it is searched, not solved
 	var lo: float = _cam_dist
-	var hi: float = CLOSE_MAX
+	var hi: float = maxf(_close_max, lo)
 	if _close_ok(pts, pivot, lo, tv, th):
 		return lo
 	for i in 7:
@@ -833,10 +972,47 @@ var _beat_t: float = -1.0
 var _beat_yaw0: float = 0.0
 
 
+## fight-look-31 (fl_cam): true when no 3D close-up may show (see FL_CAM_*): the gameplay camera only, 2D art for the beats.
+func _fl_far() -> bool:
+	return _close and arena != null and bool((arena.get("look") as Dictionary).get("fl_cam", false))
+
+
+## The 2D concept art for a fighter (the app's character art, art/portraits/<key>.png, or the config's "<role>_art" file
+## for a character the pck does not carry), or null. Build 32: the baked portraits import lossy (WebP), and Mei and Cat-Boy
+## have none (forge_mei, forge_catboy): their art is always the catalogue's figure, the app's castArt -> "<role>_art".
+func _fl_art(f: FighterScript, role: String) -> Texture2D:
+	var p: String = str(cfg.get(role + "_art", ""))
+	if p != "" and FileAccess.file_exists(p):
+		var im := Image.load_from_file(p)
+		if im != null and not im.is_empty():
+			return ImageTexture.create_from_image(im)
+	var key: String = f.anim.lib_key if f != null else ""
+	if key == "":
+		key = str(cfg.get(role + "_key", ""))
+	var rp: String = "res://art/portraits/%s.png" % key
+	return load(rp) as Texture2D if key != "" and ResourceLoader.exists(rp) else null
+
+
+static func _fl_name(key: String) -> String:
+	var parts: PackedStringArray = key.split("_")
+	return (parts[parts.size() - 1] if parts.size() > 0 else key).to_upper()
+
+
 func _after_intro() -> void:
 	var lk: Dictionary = arena.get("look") if arena != null else {}
 	if hero == null or not bool(lk.get("beats", false)) or not bool(cfg.get("intro", true)) or cfg.has("cam_dist") or cfg.has("cam_pitch"):
 		_begin_fight()
+		return
+	if _fl_far():
+		# fight-look-31: the VS card (2D concept art) over the gameplay camera, in place of the hero's 3D close-up
+		var ha: Texture2D = _fl_art(hero, "hero")
+		var ea: Texture2D = _fl_art(enemy, "enemy")
+		_beat_t = 0.0
+		_beat_yaw0 = hero.yaw
+		state = "intro"
+		hud.vs_card(ha, ea, _fl_name(hero.anim.lib_key if hero.anim.lib_key != "" else str(cfg.get("hero_key", "HERO"))),
+			str(_guardian_look().get("title", "GUARDIAN")) if not _guardian_look().is_empty() else "GUARDIAN", FL_VS_LEN)
+		_log("fl31 vs card hero_art=%s enemy_art=%s" % [str(ha != null), str(ea != null)])
 		return
 	_beat_t = 0.0
 	_beat_yaw0 = hero.yaw
@@ -857,7 +1033,7 @@ func _beat_restore() -> void:
 
 
 func _beat_camera() -> void:
-	if _beat_t < 0.0 or hero == null:
+	if _beat_t < 0.0 or hero == null or _fl_far():
 		return
 	var to: Transform3D = cam.global_transform
 	var face: Vector3 = hero.position + Vector3.UP * (FighterScript.HEIGHT * hero.size_k * 0.74)
@@ -910,7 +1086,12 @@ func _face_fill_update() -> void:
 		close = ease(_win_k, -2.0)
 	if bool(cfg.get("face_close", false)):
 		close = 1.0      # review tools (tools/look/face_clip.gd): the close shots' light and gaze throughout
-	var k: float = lerpf(FighterScript.FACE_FILL_FIGHT, FighterScript.FACE_FILL_CLOSE, close)
+	if _fl_far():
+		close = 0.0      # fight-look-31: there are no close shots
+	# fight-look-31 (fl_light): a stronger, neutral fill at fight distance, so the side the camera sees reads
+	var fl_l: bool = bool((arena.get("look") as Dictionary).get("fl_light", false))
+	var ff: float = FighterScript.FL_FILL_FIGHT if fl_l else FighterScript.FACE_FILL_FIGHT
+	var k: float = lerpf(ff, FighterScript.FL_FILL_CLOSE if fl_l else FighterScript.FACE_FILL_CLOSE, close)
 	var cb: Basis = cam.global_transform.basis
 	var to_fill: Vector3 = (cb.z + cb.y * 0.45 - cb.x * 0.3).normalized()
 	for f: FighterScript in fighters:
@@ -934,10 +1115,14 @@ func _face_fill_update() -> void:
 func _dof_update() -> void:
 	if arena == null or cam == null or hero == null or not (bool((arena.get("look") as Dictionary).get("dof", false)) or _lc):
 		return
+	if not bool((arena.get("look") as Dictionary).get("dof_plate", true)) or _fl_far():
+		return    # fight-look-31: no soft-focus pass with no close shot (fl_cam), or for review (look "dof_plate": false)
 	var want: float = 0.0
 	if _beat_t >= 0.0:
 		want = 1.0 - smoothstep(BEAT_LEN - BEAT_OUT, BEAT_LEN - 0.15, _beat_t)
-	elif _close and state == "ending" and outcome == "win":
+	elif _close and state == "ending" and outcome == "win" and not bool((arena.get("look") as Dictionary).get("fl_cam", false)):
+		# fight-look-31 (fl_cam): no soft-focus pass in the victory shot. It reads the screen as it was before the camera's
+		# swing onto the winner, so every fighter left a ghost copy (two heroes, two allies) over the VICTORY card
 		want = ease(_win_k, -2.0)
 	_dof_k = want if _beat_t >= 0.0 else move_toward(_dof_k, want, 0.08)
 	if _dof_k <= 0.01:
@@ -1102,6 +1287,8 @@ func _lightcam_update(dt: float) -> void:
 		close = ease(_win_k, -2.0)
 	if bool(cfg.get("face_close", false)):
 		close = 1.0
+	if _fl_far():
+		close = 0.0
 	var was: float = _lc_close
 	_lc_close = move_toward(_lc_close, close, dt / LC_SHADOW_S)
 	var c: float = _lc_close
@@ -1475,7 +1662,15 @@ func _finish_load(r: Dictionary) -> void:
 					cg = AnimLib.sidecar_grips.get(f.anim.lib_key, {})   # a library registered at run time
 				if cg.has(str(_loading_role["class"])):
 					_loading_role["att"] = cg[str(_loading_role["class"])]
-			var why: String = f.hold_weapon(r["node"] as Node3D, _loading_role["att"], str(_loading_role["weapon"]), str(_loading_role["class"]))
+			var wnode: Node3D = r["node"] as Node3D
+			var why: String = f.hold_weapon(wnode, _loading_role["att"], str(_loading_role["weapon"]), str(_loading_role["class"]))
+			if why == "" and arena != null and bool((arena.get("look") as Dictionary).get("fl_weapon", false)):
+				# fight-look-31: metal, wood and leather instead of the palette's flat colours (weapon_look.gd)
+				var wn: int = WeaponLook.apply(wnode, arena.get("look"))
+				for wmi: Node in wnode.find_children("*", "MeshInstance3D", true, false):
+					for si in (wmi as MeshInstance3D).get_surface_override_material_count():
+						ShaderWarm.add((wmi as MeshInstance3D).get_surface_override_material(si))
+				_log("fl31 weapon role=%s surfaces=%d" % [role, wn])
 			_log("weapon role=%s class=%s bone=%s ok=%s %s parse_ms=%.1f path=%s" % [role, str(_loading_role["class"]), str(_loading_role["att"].get("bone", "")), str(why == ""), why, float(r["parse_ms"]), str(r["path"])])
 		else:
 			_log("weapon role=%s ok=false error=%s path=%s" % [role, str(r.get("error", "?")), str(r.get("path", ""))])
@@ -1485,6 +1680,11 @@ func _finish_load(r: Dictionary) -> void:
 		f.hair_mask = r.get("hair_mask")
 		f.surface_kinds = r.get("surface_kinds", {})
 		var info: Dictionary = f.set_model(r["node"] as Node3D)
+		if arena != null and bool((arena.get("look") as Dictionary).get("fl_motion", false)):
+			_fl_face_rest(f, (arena.get("look") as Dictionary).get("fl_face", FL_FACE_REST.get(f.anim.lib_key, {})))
+		if f == ally and arena != null and bool((arena.get("look") as Dictionary).get("fl_cam", false)):
+			for fm: Material in f.fl_enable_fade():
+				ShaderWarm.add(fm)
 		_log("load role=%s ok=true parse_ms=%.1f gen_ms=%.1f add_ms=%.1f scale=%.3f raw_h=%.3f library=%s anims=%d mapped=%s bones=%d hand=%s path=%s" % [
 			role, float(r["parse_ms"]), float(r["gen_ms"]), (Time.get_ticks_usec() - t_add) / 1000.0,
 			float(info["scale"]), float(info["height_raw"]), str(info.get("library", "")), (info["anims"] as PackedStringArray).size(), JSON.stringify(info["mapped"]),
@@ -1531,14 +1731,32 @@ const HERO_BY_FACTION: Dictionary = {"ascendants": "ascendants_zuri", "controlle
 	"everborns": "everborn_oren", "celestials": "celestials_lyra", "blockbusters": "blockbusters_kofi"}
 const HERO_ORDER: Array[String] = ["ascendants_zuri", "controllers_tavo", "icons_imani", "everborn_oren", "celestials_lyra", "blockbusters_kofi"]
 const CARTOON_CAST: Array[String] = ["armstrong", "bobo", "catboy", "crystalz", "elvis", "hoof", "nebulx", "vanessa"]
+## build 29 (Subomi, 18 Nov): the Forge characters a player can choose to be, beside the six faction heroes. Their
+## files sit in res://cast/heroes like the heroes' (tools/forge_chars/chars.json says where each comes from) with
+## their own clip library (anim/<key>.glb, tools/anim/add_hero.sh). Only a character whose rig passed the clip
+## gate is listed. They never stand in as an ally or a Guardian: only the player who picked one plays it.
+const FORGE_CAST: Array[String] = ["forge_courier", "forge_bram"]
 var _hero_roles: Dictionary = {}     # role -> hero key, for the roles a faction hero plays
+
+
+## The character the player chose in the app (config "hero_pick": a faction hero's or a Forge character's key), when
+## this build ships its files; "" otherwise (no pick, an unknown key, or a key from a newer app than this pck).
+func _hero_pick(lod: int) -> String:
+	var k: String = str(cfg.get("hero_pick", ""))
+	if k == "" or not (k in HERO_ORDER or k in FORGE_CAST):
+		return ""
+	if FileAccess.file_exists("%s%s_lod%d.glb" % [HERO_DIR, k, lod]) or FileAccess.file_exists("%s%s_lod1.glb" % [HERO_DIR, k]):
+		return k
+	return ""
 
 
 func _hero_cast(role: String, p: String) -> String:
 	if not bool(cfg.get("hero_cast", ArenaScript.tier_of(cfg) != "low")):
 		return ""
 	var key_now: String = str(cfg.get(role + "_key", ""))
-	if p != "" and not p.begins_with(CAST_STAND_IN_DIR) and not (key_now in CARTOON_CAST):
+	# build 29: a character the player picked plays the hero even over a Forge download (the pick is the newer choice)
+	var picked: String = _hero_pick(clampi(int(cfg.get("lod", 1)), 0, 2)) if role == "hero" else ""
+	if picked == "" and p != "" and not p.begins_with(CAST_STAND_IN_DIR) and not (key_now in CARTOON_CAST):
 		return ""     # the player's own character
 	var lod: int = clampi(int(cfg.get("lod", 1)), 0, 2)
 	var lk: Dictionary = ArenaScript.TIER_LOOK[ArenaScript.tier_of(cfg)]
@@ -1553,6 +1771,9 @@ func _hero_cast(role: String, p: String) -> String:
 	var mine: String = str(HERO_BY_FACTION.get(str(cfg.get("faction", "")), ""))
 	if not (mine in have):
 		mine = have[int(absf(float(cfg.get("seed", 0)))) % have.size()]
+	var chosen: String = _hero_pick(lod)
+	if chosen != "":
+		mine = chosen     # the ally and the Guardian are then never the player's pick
 	var pick: String = mine
 	if role != "hero":
 		var others: Array[String] = []
@@ -1569,7 +1790,7 @@ func _hero_cast(role: String, p: String) -> String:
 		path = "%s%s_lod1.glb" % [HERO_DIR, pick]
 	cfg[role + "_key"] = pick
 	_hero_roles[role] = pick
-	_log("hero cast role=%s key=%s lod=%d faction=%s" % [role, pick, lod, str(cfg.get("faction", ""))])
+	_log("hero cast role=%s key=%s lod=%d faction=%s pick=%s" % [role, pick, lod, str(cfg.get("faction", "")), chosen])
 	return path
 
 
@@ -1601,6 +1822,10 @@ func _cast_stand_in(f: FighterScript, role: String) -> String:
 	for i in range(pool.size()):
 		var key: String = str(pool[(start + i) % pool.size()])
 		var path: String = "%s%s_lod%d.glb" % [CAST_STAND_IN_DIR, key, lod]
+		# build 30 (app size): the phone pcks ship only the stand-ins' lod1 (export_presets.cfg leaves out their
+		# lod0 and lod2), so a detail level the pck lacks falls back to lod1. The repo keeps all three for the tests.
+		if not FileAccess.file_exists(path):
+			path = "%s%s_lod1.glb" % [CAST_STAND_IN_DIR, key]
 		if key in taken or not FileAccess.file_exists(path):
 			continue
 		cfg[role + "_key"] = key            # the weapon grips (attach.json) read it too
@@ -1739,7 +1964,7 @@ func _tick_intro(dt: float) -> void:
 		_beat_t += dt
 		if _beat_t >= BEAT_LEN - BEAT_TURN:
 			_beat_restore()
-		if _beat_t >= BEAT_LEN:
+		if _beat_t >= (FL_VS_LEN if _fl_far() else BEAT_LEN):
 			_beat_t = -1.0
 			hud.visible = not bool(cfg.get("prof_no_hud", false))
 			_begin_fight()
@@ -1920,10 +2145,14 @@ func _process(dt: float) -> void:
 			for o: FighterScript in fighters:
 				if o.team != f.team and not o.dead and _flat(o.position - f.position).length() < READY_RANGE * maxf(f.size_k, o.size_k):
 					rdy = true
+		if state == "intro" and f == hero and _beat_t >= 0.0 and f.anim.relax > 0.0 and not f.anim.has_clip("intro"):
+			rdy = true    # fight-look-31 (fl_motion): a hero with no intro clip stands wound up in its beat, the weapon raised
 		f.anim.ready = rdy
 		f.tick_visual(dt)
 	_skid_dust(dt)
 	_follow_camera(dt)
+	_fl_ally_fade(real_dt)
+	_fl_measure()
 	_intro_camera()
 	_beat_camera()
 	_dof_update()
@@ -2201,6 +2430,9 @@ func _wclass(f: FighterScript) -> String:
 
 
 func _swing_cols(heavy: bool) -> Array:
+	# fx_combat (17 Nov): the weapon's element instead (Frostbrand's ice blue, Wale's reference)
+	if fx != null and fx.fxc:
+		return fx.FXC_FROST_HEAVY if heavy else fx.FXC_FROST
 	# look-fight: every hero swing in the hero's colours (art direction 2.8), the heavy third hotter
 	if heavy:
 		return [FeelScript.HERO_EDGE, FeelScript.HERO_MID]
@@ -2466,7 +2698,10 @@ func _fire_shot() -> void:
 	# anim-readable: the flash leaves the hand that aims (the shot's own path is unchanged)
 	var muzzle: Vector3 = p
 	if hero.anim.state == "skill_shoot" and hero.anim.has_clip("skill_shoot"):
-		var hp: Vector3 = hero.bone_pos("LeftHand" if not str(hero.anim.timing.get("skill_shoot", {}).get("contact_class", "")).begins_with("rifle") else "RightHand")
+		var st_m: Dictionary = hero.anim.timing.get("skill_shoot", {})
+		# moves-fix-32: a clip can name the hand it fires from ("muzzle": the Courier's sword points the shot)
+		var hand: String = str(st_m.get("muzzle", "LeftHand" if not str(st_m.get("contact_class", "")).begins_with("rifle") else "RightHand"))
+		var hp: Vector3 = hero.bone_pos(hand)
 		if hp != Vector3.INF:
 			muzzle = hp + _skill_dir * 0.12
 	fx.muzzle(muzzle, muzzle + _skill_dir, SHOOT_COLS)
@@ -2552,7 +2787,7 @@ func _tick_rains(dt: float) -> void:
 		var wave: int = int(r["wave"])
 		if wave < RAIN_WAVES and float(r["t"]) >= RAIN_DELAY + RAIN_GAP * wave:
 			if wave == 0 and r["tele"] != null:
-				fx.telegraph_end(r["tele"], true)
+				fx.telegraph_land_own(r["tele"], RAIN_COLS[1])   # build 32: a small pale flash, not a white disc
 				r["tele"] = null
 			area.close()
 			area.open({"src": hero, "kind": "rain", "dmg": RAIN_DMG, "kb": 0.0, "stop": 2.0 / 60.0, "heavy": false})
@@ -2672,7 +2907,11 @@ func _apply_hit(src: FighterScript, dst: FighterScript, info: Dictionary) -> voi
 	if dst.team == 0:
 		tint = FeelScript.BOSS_MID
 	var contact: Vector3 = dst.chest_pos() - away.normalized() * 0.45 * dst.size_k   # on the body's surface, facing the blow
+	if fx.fxc and src == hero and not crit:
+		tint = (_swing_cols(heavy)[0] as Color)
 	fx.sparks(contact, tint, amount, crit, away)
+	if fx.fxc and src == hero:
+		fx.impact(contact, dst.position, _swing_cols(heavy), 1.0 if crit else (0.7 if heavy else 0.3))
 	if heavy and src == hero:
 		fx.dust(dst.position, amount >= 140)
 	if crit:
@@ -3065,6 +3304,12 @@ func _separate() -> void:
 
 # ------------------------------------------------------------ the autoplay bot
 
+## fight-look-31: config "bot_pace" (seconds, sims and demo captures only; 0 or absent = build 30's bot): at least this long
+## between the bot's skills, so a recorded fight rests between casts instead of chaining every skill the moment its
+## cooldown ends. A player never has a bot; nothing else reads it.
+var _bot_pace: float = 0.0
+
+
 func _bot(dt: float) -> void:
 	if bot_kind == "idle":
 		hud.bot_stick(Vector2.ZERO)
@@ -3134,15 +3379,15 @@ func _bot(dt: float) -> void:
 				cast = 5    # and a SHOOT at point-blank when nothing bigger is back
 		if cast >= 0 and _can_cast():
 			hud.bot_skill_slot(cast)
-			_bot_next_skill = 1.2
+			_bot_next_skill = maxf(1.2, _bot_pace)
 		elif _action == "" or (_action == "attack" and _act_t > _act_len * 0.5):
 			hud.bot_attack()
 	elif d < 7.0 and d > 3.5 and _skill_cd[0] <= 0.0 and _can_cast() and _bot_next_skill <= 0.0:
 		hud.bot_skill_slot(0)
-		_bot_next_skill = 1.0
+		_bot_next_skill = maxf(1.0, _bot_pace)
 	elif d < SHOOT_RANGE - 1.0 and _skill_cd[5] <= 0.0 and _can_cast() and _bot_next_skill <= 0.0:
 		hud.bot_skill_slot(5)   # build 22: closing in from range, a SHOOT on the way
-		_bot_next_skill = 0.6
+		_bot_next_skill = maxf(0.6, _bot_pace)
 
 
 ## build 28: the bot on the five-button panel, the same eight moves as a player: it presses DASH, SHIELD, SHOOT
@@ -3163,18 +3408,18 @@ func _bot_five(d: float, reach: float) -> void:
 		if hold and _action == "" and not hero.guarding:
 			hud.bot_attack_hold(true)   # the press starts a swing; the hold casts SPLIT HOLD_SPLIT_CS later
 			_bot_hold_t = HOLD_SPLIT_CS / 100.0 + 0.5
-			_bot_next_skill = 1.2
+			_bot_next_skill = maxf(1.2, _bot_pace)
 		elif cast >= 0 and _can_cast():
 			hud.bot_skill_slot(cast)
-			_bot_next_skill = 1.2
+			_bot_next_skill = maxf(1.2, _bot_pace)
 		elif _action == "" or (_action == "attack" and _act_t > _act_len * 0.5):
 			hud.bot_attack()    # the chain's third hit is WHIRL whenever it is back
 	elif d < 7.0 and d > 3.5 and _skill_cd[0] <= 0.0 and _can_cast() and _bot_next_skill <= 0.0:
 		hud.bot_skill_slot(0)
-		_bot_next_skill = 1.0
+		_bot_next_skill = maxf(1.0, _bot_pace)
 	elif d < SHOOT_RANGE - 1.0 and _skill_cd[5] <= 0.0 and _can_cast() and _bot_next_skill <= 0.0:
 		hud.bot_skill_slot(5)
-		_bot_next_skill = 0.6
+		_bot_next_skill = maxf(0.6, _bot_pace)
 
 
 # ------------------------------------------------------------ end
@@ -3185,6 +3430,8 @@ func _end(o: String) -> void:
 	outcome = o
 	state = "ending"
 	_end_t = 0.0
+	for f: FighterScript in fighters:
+		f.fight_over = true   # fight-motion-31: every barrier breaks up quietly with the result (fighter.gd)
 	hud.release_all()
 	if hero != null:
 		hero.speed_now = 0.0
@@ -3463,16 +3710,21 @@ func _apply_camera(dt: float) -> void:
 	_punch = move_toward(_punch, 0.0, dt * 3.0)
 	var ko_k: float = 0.0 if _reduce_motion else feel.ko_push(feel.ko_t)
 	var ko_m: Dictionary = FeelScript.moment(feel.ko_kind) if feel.ko_active else {}
+	var far: bool = _fl_far()   # fight-look-31: no push-in, zoom or victory close-up (FL_CAM_*)
 	var d: float = _cam_dist * (1.0 - _punch * 0.1) * (1.0 - FRAME_IN * _frame_k) * (1.0 - float(ko_m.get("zoom", 0.0)) * ko_k)
 	d *= 1.0 - WIN_ZOOM * (0.5 if _reduce_motion else 1.0) * ease(_win_k, -2.0)
+	if far:
+		d = _cam_dist
 	var orbit: Basis = Basis(Vector3.UP, deg_to_rad(float(ko_m.get("orbit", 0.0)) * ko_k))
 	var pos: Vector3 = _focus + Vector3.UP * 0.8 + (orbit * _cam_basis.z) * d
 	var close_basis: Basis = _view_basis
 	if _close:
 		# realism round 2: the fitted distance, a harder push-in on a heavy hit (the view is close enough for
 		# it to read), and the victory shot: down to the winner's height and in to CLOSE_WIN_DIST
-		var wk: float = ease(_win_k, -2.0)
+		var wk: float = 0.0 if far else ease(_win_k, -2.0)
 		d = _close_d * (1.0 - _punch * (0.04 if _reduce_motion else 0.12)) * (1.0 - float(ko_m.get("zoom", 0.0)) * ko_k)
+		if far:
+			d = _close_d
 		var win_d: float = CLOSE_WIN_DIST_LAND if _landscape else CLOSE_WIN_DIST
 		var win_h: float = FighterScript.HEIGHT * (hero.size_k if hero != null else 1.0) + 0.25
 		var win_b: Basis = _close_win_basis
@@ -3513,16 +3765,16 @@ func _apply_camera(dt: float) -> void:
 	_kick = _kick.lerp(Vector3.ZERO, 1.0 - exp(-dt * 12.0))
 	pos += _kick * (0.3 if _reduce_motion else 1.0)
 	_fov_kick = move_toward(_fov_kick, 0.0, FOV_KICK_DECAY * dt)
-	cam.fov = (_lc_fov if _lc_fov > 0.0 else _base_fov) - (0.0 if _reduce_motion else _fov_kick)
+	cam.fov = (_lc_fov if _lc_fov > 0.0 else _base_fov) - (0.0 if (_reduce_motion or far) else _fov_kick)
 	_lc_fov = -1.0
-	if _lc and _close and _win_k > 0.0 and not _landscape:
+	if _lc and _close and _win_k > 0.0 and not _landscape and not far:
 		basis = _lc_handheld(basis)
 	cam.transform = Transform3D(basis, pos)
 	if _lc and _close:
 		# fid29-lightcam: the mid-fight frame's offsets (the view shifts, the heading and the pitch of the orbit stay);
 		# none in the close shots (the intro beat, the victory shot), which frame the hero themselves
-		var wk2: float = ease(_win_k, -2.0)
-		if _beat_t >= 0.0:
+		var wk2: float = 0.0 if far else ease(_win_k, -2.0)
+		if _beat_t >= 0.0 and not far:
 			wk2 = maxf(wk2, 1.0 - smoothstep(BEAT_LEN - BEAT_OUT, BEAT_LEN, _beat_t))
 		cam.h_offset = _lc_hoff() * (1.0 - wk2)
 		cam.v_offset = _lc_voff() * (1.0 - wk2)
@@ -3708,6 +3960,8 @@ func _tick_end_beat() -> void:
 	if _banner_at >= 0.0 and _end_t >= _banner_at:
 		_banner_at = -1.0
 		var kind: String = str(_banner_args[2])
+		if kind == "win" and _fl_far():
+			hud.win_art = _fl_art(hero, "hero")
 		hud.banner(str(_banner_args[0]), str(_banner_args[1]), FeelScript.CRIT_MID if kind == "win" else FeelScript.CREAM, 0.0, kind)
 		sfx.sting(kind == "win")
 		if kind == "win":
