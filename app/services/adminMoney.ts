@@ -44,7 +44,7 @@ export type ApprovalRequest = {
   kind: string;
   title: string;
   /** Region rules: a list; money settings: { platformShareBps, payoutApprovalLimitCents, note }. */
-  changes: { region: string; name: string; status: RegionStatus; note: string }[] | PaymentSettingsChange | { bundles: PriceBundle[] };
+  changes: { region: string; name: string; status: RegionStatus; note: string }[] | PaymentSettingsChange | { bundles: PriceBundle[] } | { items: CatalogItem[] } | { transactionId: string; number: string; type: string; book: string; currency: string; total: number };
   reason: string;
   status: ApprovalStatus;
   requestedBy: { id: string; name: string };
@@ -63,7 +63,8 @@ export const listLedger = (filters: { book?: string; kind?: string; account?: st
   adminRequest<{ transactions: LedgerTx[]; total: number; offset: number; pageSize: number }>(`/ledger/transactions${qs(filters)}`);
 export const getLedgerCheck = () => adminRequest<LedgerCheck>("/ledger/check");
 export const getBalances = (book: string, prefix?: string) => adminRequest<{ balances: AccountBalance[] }>(`/ledger/balances${qs({ book, prefix })}`);
-export const reverseTx = (txId: string, reason: string) => adminRequest<{ transaction: LedgerTx; auditEvent: string }>(`/ledger/transactions/${txId}/reverse`, { method: "POST", body: { reason } });
+/** Asks for a correction (reversal): recorded only once a second person approves it. */
+export const reverseTx = (txId: string, reason: string) => adminRequest<{ request: { id: string; number: string; title: string }; auditEvent: string }>(`/ledger/transactions/${txId}/reverse`, { method: "POST", body: { reason } });
 export const getRegions = () => adminRequest<{ mode: "test" | "live"; regions: RegionRule[] }>("/regions");
 /** Money settings (finance's "Assumptions"). null = OPEN (not decided). */
 export type PaymentSettings = { formulaVersion: string | null; platformShareBps: number | null; winnerShareBps: number | null; payoutApprovalLimitCents: number | null; note: string; approvedAt: string | null };
@@ -78,6 +79,23 @@ export type PriceTable = { priceVersion: string | null; bundles: PriceBundle[]; 
 export const getPriceTable = () => adminRequest<{ current: PriceTable; history: PriceTable[] }>("/price-table");
 export const requestPriceTable = (bundles: { id: string; name: string; price: string; costcoin: string; status: "active" | "open"; note?: string }[], reason: string) =>
   adminRequest<{ request: { id: string; number: string; title: string }; auditEvent: string }>("/price-table/requests", { method: "POST", body: { bundles, reason } });
+
+/** What CosCoin can buy (never quest entry, XP or cash). status open = not decided, never sold. */
+export type CatalogItem = { id: string; name: string; kind: string; priceCosCoin: number | null; stackable: boolean; game: string; status: "active" | "open"; note?: string };
+export type ItemCatalog = { catalogVersion: string | null; items: CatalogItem[]; approvedAt: string | null };
+export const getItemCatalog = () => adminRequest<{ current: ItemCatalog; history: ItemCatalog[]; kinds: string[]; games: string[] }>("/item-catalog");
+export const requestItemCatalog = (items: { id: string; name: string; kind: string; priceCosCoin: string; game: string; status: "active" | "open" }[], reason: string) =>
+  adminRequest<{ request: { id: string; number: string; title: string }; auditEvent: string }>("/item-catalog/requests", { method: "POST", body: { items, reason } });
+
+/** A card dispute (chargeback) from Stripe. */
+export type AdminDispute = { id: string; stripeDisputeId: string; amount: number; currency: string; reason: string; status: string; outcome: "open" | "won" | "lost"; paymentType: "ticket" | "coscoin" | "unknown"; orderLabel: string | null; member: string | null; walletFrozen: boolean; evidenceDueBy: string | null; openedAt: string; closedAt: string | null };
+export const getDisputes = () => adminRequest<{ disputes: AdminDispute[] }>("/disputes");
+export const unfreezeDisputeWallet = (id: string, reason: string) => adminRequest<{ dispute: AdminDispute; auditEvent: string }>(`/disputes/${id}/unfreeze`, { method: "POST", body: { reason } });
+
+/** One day of the daily check against Stripe's records. */
+export type StripeCheckDay = { day: string; ok: boolean; problems: { kind: string; ref: string; detail: string }[]; totals: { stripe?: { payments: number; received: number; fees: number; refunds: number; disputes: number; payoutsToBank: number }; ledger?: { sales: number; received: number } }; error: string | null; ranAt: string };
+export const getStripeCheck = () => adminRequest<{ days: StripeCheckDay[] }>("/ledger/stripe-check");
+export const runStripeCheck = (day: string) => adminRequest<StripeCheckDay>("/ledger/stripe-check/run", { method: "POST", body: { day } });
 
 export const requestRegionChanges = (changes: { region: string; name?: string; status: RegionStatus; note?: string }[], reason: string) =>
   adminRequest<{ request: ApprovalRequest; auditEvent: string }>("/regions/requests", { method: "POST", body: { changes, reason } });

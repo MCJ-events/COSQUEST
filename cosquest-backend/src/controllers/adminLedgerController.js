@@ -129,19 +129,17 @@ async function exportLinesCsv(req, res) {
 async function reverseTx(req, res) {
   try {
     if (!mongoose.isValidObjectId(req.params.txId)) return res.status(404).json({ error: 'Ledger transaction not found.' });
-    const reason = String(req.body.reason || '').trim();
-    if (reason.length < 3) return res.status(400).json({ error: 'A reason is required.', code: 'reason_required' });
-    const original = await LedgerTransaction.findById(req.params.txId);
-    const reversal = await ledger.reverse(req.params.txId, { reason, by: req.admin._id });
+    // A correction needs a second person (Mark): this asks; another admin or
+    // the finance approver approves it in Approvals, and only then is it recorded.
+    const request = await require('../utils/ledgerCorrections').requestReversal(req.admin, req.params.txId, req.body.reason);
     const event = await recordAudit(req.admin, {
-      action: 'ledger.reverse',
+      action: 'approval.request',
       area: 'payments',
-      target: { type: 'ledger', id: original._id, label: ledger.label(original) },
-      reason,
-      before: { transaction: ledger.label(original), total: original.lines.reduce((s, l) => s + l.debit, 0) },
-      after: { reversal: ledger.label(reversal) },
+      target: { type: 'approval', id: request._id, label: `AP-${request.number}` },
+      reason: request.reason,
+      after: { title: request.title, transaction: request.changes.number },
     });
-    return res.status(201).json({ transaction: ledger.txJson(reversal), auditEvent: `EV-${event.number}` });
+    return res.status(202).json({ request: { id: String(request._id), number: `AP-${request.number}`, title: request.title, status: request.status }, auditEvent: `EV-${event.number}` });
   } catch (error) {
     return answer(res, error);
   }

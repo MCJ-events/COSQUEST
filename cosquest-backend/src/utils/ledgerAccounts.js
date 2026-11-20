@@ -23,6 +23,8 @@ const CHART = [
   { code: '4010', name: 'CosCoin Sales', type: 'Revenue', book: 'money', normal: 'credit', meaning: 'Money received for CosCoin bundles (revenue timing to be confirmed by the accountant)' },
   { code: '4020', name: 'Platform Fees', type: 'Revenue', book: 'money', normal: 'credit', meaning: 'Share of each quest pool kept by CosQuest' },
   { code: '5010', name: 'Stripe Fees', type: 'Expense', book: 'money', normal: 'debit', meaning: 'Processor fees' },
+  // Not on finance's sample chart: number to confirm with finance.
+  { code: '5020', name: 'Chargebacks', type: 'Expense', book: 'money', normal: 'debit', meaning: 'Money taken back by card disputes (returned if the dispute is won)' },
   { code: 'CC-ISSUED', name: 'CosCoin Issued', type: 'Contra', book: 'costcoin', normal: 'debit', meaning: 'Coins created by purchases' },
   { code: 'CC-WALLET', name: 'Wallet', type: 'Liability', book: 'costcoin', normal: 'credit', per: 'user', meaning: "A player's CosCoin balance (one account per user)" },
   { code: 'CC-SPENT', name: 'CosCoin Spent', type: 'Contra', book: 'costcoin', normal: 'credit', meaning: 'Coins used on skins, weapons, faction switches and similar' },
@@ -37,6 +39,7 @@ const ACCOUNTS = {
   costcoinSales: '4010',
   platformFees: '4020',
   stripeFees: '5010',
+  chargebacks: '5020',
   costcoinIssued: 'CC-ISSUED',
   wallet: (userId) => `CC-WALLET:${userId}`,
   costcoinSpent: 'CC-SPENT',

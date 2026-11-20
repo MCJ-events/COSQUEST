@@ -6,6 +6,7 @@ import { scheduledCallUpdated } from "@/store/slices/scheduledCallSlice";
 import { applyPrivateUpdate, receivePrivateIncoming } from "@/components/calls/privateCall";
 import { useEffect, useRef } from "react";
 import { ticketIssued } from "@/store/slices/paymentSlice";
+import { coinsCredited } from "@/store/slices/coscoinSlice";
 import { AppState } from "react-native";
 
 import { normalizeCall } from "@/services/calls";
@@ -281,6 +282,11 @@ export function useSocketConnection() {
       }
     };
 
+    // CosCoin topped up on the website: the server credited the wallet.
+    const handleCoinsCredited = (payload: { added?: number; balance?: number | null }) => {
+      if (typeof payload?.added === "number") dispatch(coinsCredited({ added: payload.added, balance: typeof payload.balance === "number" ? payload.balance : null }));
+    };
+
     const handleProjectUpdated = (payload: { projectId?: string }) => {
       if (payload?.projectId) dispatch(refreshProject(payload.projectId));
     };
@@ -358,6 +364,7 @@ export function useSocketConnection() {
     socket.on("scheduled-call:updated", handleScheduledCallUpdated);
     socket.on("project:updated", handleProjectUpdated);
     socket.on("ticket:issued", handleTicketIssued);
+    socket.on("costcoin:credited", handleCoinsCredited);
     socket.on("scheduled-call:waiting", onScheduledWaiting);
     socket.on("scheduled-call:admission", onScheduledAdmission);
     socket.on("connect", handleConnect);
@@ -376,6 +383,7 @@ export function useSocketConnection() {
       socket.off("scheduled-call:updated", handleScheduledCallUpdated);
       socket.off("project:updated", handleProjectUpdated);
       socket.off("ticket:issued", handleTicketIssued);
+      socket.off("costcoin:credited", handleCoinsCredited);
       socket.off("scheduled-call:waiting", onScheduledWaiting);
       socket.off("scheduled-call:admission", onScheduledAdmission);
       socket.off("connect", handleConnect);

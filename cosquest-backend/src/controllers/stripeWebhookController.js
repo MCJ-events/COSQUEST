@@ -30,6 +30,13 @@ async function handle(event) {
       await tickets.fulfil(order, { paymentIntentId: object.payment_intent, amountTotal: object.amount_total, currency: object.currency, via: event.type });
       return order._id;
     }
+    // Card disputes (chargebacks): src/utils/disputes.js.
+    case 'charge.dispute.created':
+    case 'charge.dispute.updated':
+    case 'charge.dispute.closed':
+    case 'charge.dispute.funds_withdrawn':
+    case 'charge.dispute.funds_reinstated':
+      return require('../utils/disputes').fromStripe(event.type, object);
     case 'checkout.session.expired':
     case 'checkout.session.async_payment_failed': {
       if (object.metadata?.purpose === 'costcoin') return require('../utils/costcoin').expiredFromSession(object, event.type);
