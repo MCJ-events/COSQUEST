@@ -190,4 +190,19 @@ const prices = require('../controllers/adminPriceTableController');
 router.get('/price-table', a(prices.getTable));
 router.post('/price-table/requests', a(prices.requestTable));
 
+// What CosCoin can buy: versions, changed through approvals.
+const catalog = require('../controllers/costcoinSpendController');
+router.get('/item-catalog', a(catalog.adminCatalog));
+router.post('/item-catalog/requests', a(catalog.adminRequestCatalog));
+
+// Card disputes (chargebacks).
+const disputesAdmin = require('../controllers/adminDisputesController');
+router.get('/disputes', a(disputesAdmin.list));
+router.post('/disputes/:id/unfreeze', a(disputesAdmin.unfreeze));
+
+// The daily check against Stripe's records.
+const stripeCheck = require('../controllers/adminStripeCheckController');
+router.get('/ledger/stripe-check', a(stripeCheck.recent));
+router.post('/ledger/stripe-check/run', a(stripeCheck.runDay));
+
 module.exports = router;

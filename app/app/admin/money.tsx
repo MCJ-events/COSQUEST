@@ -9,7 +9,7 @@
 // approvals, and approve or reject; they can't request or correct anything.
 // Approvers (super admins): who the finance approvers are.
 import { useCallback, useEffect, useState } from "react";
-import { Platform, Text, TextInput, View } from "react-native";
+import { Platform, Pressable, Text, TextInput, View } from "react-native";
 
 import { ConfirmBox, Field, ReasonBox, Select, Tabs } from "@/components/admin/controls";
 import { useAdminTheme } from "@/components/admin/theme";
@@ -35,13 +35,22 @@ import {
   withdrawApproval,
   type PaymentSettings,
   type PriceTable,
+  type ItemCatalog,
+  type AdminDispute,
+  type StripeCheckDay,
+  getStripeCheck,
+  runStripeCheck,
+  getDisputes,
+  unfreezeDisputeWallet,
+  getItemCatalog,
+  requestItemCatalog,
   getPriceTable,
   requestPriceTable,
   getPaymentSettings,
   requestPaymentSettings,
 } from "@/services/adminMoney";
 
-type TabKey = "ledger" | "regions" | "settings" | "prices" | "approvals" | "approvers";
+type TabKey = "ledger" | "regions" | "settings" | "prices" | "items" | "disputes" | "approvals" | "approvers";
 const STATUS_LABEL: Record<RegionStatus, string> = { allowed: "Allowed", blocked: "Blocked", needs_license: "Needs licence" };
 const STATUS_TONE: Record<RegionStatus, "green" | "red" | "amber"> = { allowed: "green", blocked: "red", needs_license: "amber" };
 const when = (iso: string) => new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
@@ -67,6 +76,8 @@ export default function MoneyAdmin() {
           { key: "regions", label: "Regions" },
           { key: "settings", label: "Settings" },
           { key: "prices", label: "Prices" },
+          { key: "items", label: "Items" },
+          { key: "disputes", label: "Disputes" },
           { key: "approvals", label: "Approvals", count: pending },
           ...(role === "admin" ? [{ key: "approvers" as TabKey, label: "Approvers" }] : []),
         ]}
@@ -77,6 +88,10 @@ export default function MoneyAdmin() {
         <LedgerTab canCorrect={!finance} />
       ) : tab === "regions" ? (
         <RegionsTab canRequest={!finance} onRequested={() => setTab("approvals")} />
+      ) : tab === "disputes" ? (
+        <DisputesTab canUnfreeze={!finance} />
+      ) : tab === "items" ? (
+        <ItemsTab canRequest={!finance} onRequested={() => setTab("approvals")} />
       ) : tab === "prices" ? (
         <PricesTab canRequest={!finance} onRequested={() => setTab("approvals")} />
       ) : tab === "settings" ? (
@@ -116,7 +131,7 @@ function LedgerTab({ canCorrect }: { canCorrect: boolean }) {
     setBusy(true);
     try {
       const result = await reverseTx(picked.id, reason.trim());
-      setDone(`${picked.number} was reversed by ${result.transaction.number}. Recorded as ${result.auditEvent}.`);
+      setDone(`The correction of ${picked.number} is waiting for a second person in Approvals (${result.request.number}). Recorded as ${result.auditEvent}.`);
       setPicked(null);
       setReason("");
       load();
@@ -136,6 +151,7 @@ function LedgerTab({ canCorrect }: { canCorrect: boolean }) {
           <Notice icon="alert-circle-outline" tone="red" title="The books don't balance" text="Debits and credits differ. Tell the backend team at once; the details are in the server log." />
         )
       ) : null}
+      <StripeCheckCard />
       {books?.checks?.length ? (
         <Card>
           <CardHeader title="Checks" subtitle="Finance's checks from the sample ledger, run on every entry." />
@@ -204,13 +220,13 @@ function LedgerTab({ canCorrect }: { canCorrect: boolean }) {
       </Card>
       {picked ? (
         <Card>
-          <CardHeader title={`Correct ${picked.number}`} subtitle="A new transaction with debits and credits swapped. The original stays, both are in the export." />
+          <CardHeader title={`Correct ${picked.number}`} subtitle="Once another admin or the finance approver approves it: a new transaction with debits and credits swapped. The original stays, both are in the export." />
           <View style={{ marginTop: 14, gap: 12 }}>
             <ReasonBox value={reason} onChange={setReason} placeholder="e.g. Booked twice by mistake." />
             <ConfirmBox
               title={`Reverse ${picked.number}?`}
               text={`${amount(picked.total, picked.currency)} goes back the other way. This can't be undone, only corrected again.`}
-              confirmLabel="Record the reversal"
+              confirmLabel="Send the correction for approval"
               onConfirm={reverse}
               onCancel={() => setPicked(null)}
               busy={busy}
@@ -385,6 +401,16 @@ function ApprovalsTab({ onChanged }: { onChanged: () => void }) {
                   r.changes.map((c) => (
                     <Text key={c.region} style={{ fontFamily: FONTS.regular, fontSize: 14, color: t.text }}>
                       {c.region}{c.name ? ` (${c.name})` : ""} → {STATUS_LABEL[c.status]}{c.note ? ` · ${c.note}` : ""}
+                    </Text>
+                  ))
+                ) : "transactionId" in r.changes ? (
+                  <Text style={{ fontFamily: FONTS.regular, fontSize: 14, color: t.text }}>
+                    Reverse {r.changes.number} ({r.changes.type}): {r.changes.book === "money" ? `$${(r.changes.total / 100).toFixed(2)}` : `${r.changes.total} CosCoin`} goes back the other way
+                  </Text>
+                ) : "items" in r.changes ? (
+                  r.changes.items.map((i) => (
+                    <Text key={i.id} style={{ fontFamily: FONTS.regular, fontSize: 14, color: t.text }}>
+                      {i.id} {i.name} ({i.kind}, {i.game}): {i.priceCosCoin === null ? "OPEN" : `${i.priceCosCoin} CosCoin`}{i.status === "open" ? " (not on sale)" : ""}
                     </Text>
                   ))
                 ) : "bundles" in r.changes ? (
@@ -759,5 +785,250 @@ function PricesTab({ canRequest, onRequested }: { canRequest: boolean; onRequest
         </Card>
       ) : null}
     </View>
+  );
+}
+
+// ---------- What CosCoin can buy (the item catalog) ----------
+
+type ItemRow = { id: string; name: string; kind: string; priceCosCoin: string; game: string; status: "active" | "open" };
+const ITEM_KINDS = ["cosmetic", "skin", "weapon", "ammo", "bundle", "faction_switch", "other"];
+const ITEM_GAMES = ["all", "social", "costquest", "trivia", "parlay"];
+
+function ItemsTab({ canRequest, onRequested }: { canRequest: boolean; onRequested: () => void }) {
+  const t = useAdminTheme();
+  const [data, setData] = useState<{ current: ItemCatalog; history: ItemCatalog[] } | null>(null);
+  const [rows, setRows] = useState<ItemRow[]>([]);
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  const load = useCallback(() => {
+    getItemCatalog()
+      .then((d) => {
+        setData(d);
+        setRows(d.current.items.map((i) => ({ id: i.id, name: i.name, kind: i.kind, priceCosCoin: i.priceCosCoin === null ? "" : String(i.priceCosCoin), game: i.game, status: i.status })));
+      })
+      .catch((e) => setError(e?.message || "Couldn't load the catalog."));
+  }, []);
+  useEffect(load, [load]);
+
+  const input = { height: 40, paddingHorizontal: 10, borderRadius: 10, borderWidth: 1, borderColor: t.border, backgroundColor: t.cardSoft, fontFamily: FONTS.regular, fontSize: 13.5, color: t.text, ...(Platform.OS === "web" ? ({ outlineStyle: "none" } as object) : null) };
+  const set = (i: number, patch: Partial<ItemRow>) => setRows((all) => all.map((r, j) => (j === i ? { ...r, ...patch } : r)));
+
+  const submit = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      await requestItemCatalog(rows.map((r) => ({ ...r, id: r.id.trim(), name: r.name.trim(), priceCosCoin: r.priceCosCoin.trim() })), reason.trim());
+      setReason("");
+      onRequested();
+    } catch (e: any) {
+      setError(e?.message || "Couldn't send the request.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const c = data?.current;
+  return (
+    <View style={{ gap: 16 }}>
+      {error ? <Notice icon="alert-circle-outline" tone="red" text={error} /> : null}
+      <Card>
+        <CardHeader title="What CosCoin can buy" subtitle={c?.catalogVersion ? `Catalog ${c.catalogVersion}. Never quest entry, XP or cash.` : "No catalog approved yet: nothing can be bought with CosCoin."} />
+        {!c ? (
+          <Loading />
+        ) : !c.items.length ? (
+          <Text style={{ marginTop: 14, fontFamily: FONTS.regular, fontSize: 14, color: t.muted }}>Add items below (prices come from Adewale's game mechanics document).</Text>
+        ) : (
+          <View style={{ marginTop: 14, gap: 8 }}>
+            {c.items.map((i) => (
+              <View key={i.id} style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 12, padding: 12, borderRadius: 14, borderWidth: 1, borderColor: t.border, backgroundColor: t.cardSoft }}>
+                <Text style={{ width: 90, fontFamily: FONTS.semibold, fontSize: 13.5, color: t.text }}>{i.id}</Text>
+                <Text style={{ flex: 1, minWidth: 140, fontFamily: FONTS.regular, fontSize: 14, color: t.text }}>{i.name}</Text>
+                <Text style={{ fontFamily: FONTS.regular, fontSize: 12.5, color: t.muted }}>{i.kind}{i.stackable ? " · stacks" : ""} · {i.game}</Text>
+                <Text style={{ fontFamily: FONTS.medium, fontSize: 14, color: t.text }}>{i.priceCosCoin === null ? "OPEN" : `${i.priceCosCoin} CosCoin`}</Text>
+                <Pill label={i.status === "active" ? "On sale" : "OPEN"} tone={i.status === "active" ? "green" : "amber"} />
+              </View>
+            ))}
+          </View>
+        )}
+      </Card>
+      {canRequest ? (
+        <Card>
+          <CardHeader title="Request a new catalog" subtitle="The whole list becomes a new version once another admin or a finance approver approves it." />
+          <View style={{ marginTop: 14, gap: 10 }}>
+            {rows.map((r, i) => (
+              <View key={i} style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
+                <TextInput value={r.id} onChangeText={(v) => set(i, { id: v.toUpperCase().slice(0, 27) })} placeholder="SK-07" placeholderTextColor={t.faint} style={[input, { width: 100 }]} accessibilityLabel="Item id" />
+                <TextInput value={r.name} onChangeText={(v) => set(i, { name: v.slice(0, 60) })} placeholder="Name" placeholderTextColor={t.faint} style={[input, { flex: 1, minWidth: 140 }]} accessibilityLabel="Item name" />
+                <Select<string> value={r.kind} options={ITEM_KINDS.map((k) => ({ value: k, label: k.replace("_", " ") }))} onChange={(v) => set(i, { kind: v })} minWidth={130} />
+                <TextInput value={r.priceCosCoin} onChangeText={(v) => set(i, { priceCosCoin: v.replace(/[^0-9]/g, "").slice(0, 7) })} placeholder="CosCoin" keyboardType="number-pad" placeholderTextColor={t.faint} style={[input, { width: 90 }]} accessibilityLabel="Price in CosCoin" />
+                <Select<string> value={r.game} options={ITEM_GAMES.map((g) => ({ value: g, label: g }))} onChange={(v) => set(i, { game: v })} minWidth={110} />
+                <Select<"active" | "open"> value={r.status} options={[{ value: "active", label: "On sale" }, { value: "open", label: "OPEN" }]} onChange={(v) => set(i, { status: v })} minWidth={100} />
+                <Button label="Remove" variant="ghost" onPress={() => setRows((all) => all.filter((_, j) => j !== i))} />
+              </View>
+            ))}
+            <View style={{ flexDirection: "row" }}>
+              <Button label="Add an item" variant="ghost" icon="add-outline" onPress={() => setRows((all) => [...all, { id: "", name: "", kind: "skin", priceCosCoin: "", game: "all", status: "open" }])} />
+            </View>
+            <ReasonBox value={reason} onChange={setReason} placeholder="e.g. Items and prices from Adewale's game mechanics document, approved by Mark." />
+            <View style={{ flexDirection: "row" }}>
+              <Button label="Send for approval" variant="primary" icon="send-outline" loading={busy} disabled={!rows.length || reason.trim().length < 3} onPress={submit} />
+            </View>
+          </View>
+        </Card>
+      ) : null}
+    </View>
+  );
+}
+
+// ---------- Disputes (chargebacks) ----------
+
+function DisputesTab({ canUnfreeze }: { canUnfreeze: boolean }) {
+  const t = useAdminTheme();
+  const [rows, setRows] = useState<AdminDispute[] | null>(null);
+  const [picked, setPicked] = useState<AdminDispute | null>(null);
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [done, setDone] = useState("");
+
+  const load = useCallback(() => {
+    getDisputes()
+      .then((d) => setRows(d.disputes))
+      .catch((e) => setError(e?.message || "Couldn't load the disputes."));
+  }, []);
+  useEffect(load, [load]);
+
+  const unfreeze = async () => {
+    if (!picked) return;
+    setBusy(true);
+    setError("");
+    try {
+      const result = await unfreezeDisputeWallet(picked.id, reason.trim());
+      setDone(`${picked.member || "The member"} can spend CosCoin again. Recorded as ${result.auditEvent}.`);
+      setPicked(null);
+      setReason("");
+      load();
+    } catch (e: any) {
+      setError(e?.message || "Couldn't unfreeze the wallet.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const money = (cents: number, currency: string) => `${currency === "USD" ? "$" : `${currency} `}${(cents / 100).toFixed(2)}`;
+  return (
+    <View style={{ gap: 16 }}>
+      {error ? <Notice icon="alert-circle-outline" tone="red" text={error} /> : null}
+      {done ? <Notice icon="checkmark-circle-outline" tone="green" text={done} /> : null}
+      <Card>
+        <CardHeader title="Disputes" subtitle="Card disputes (chargebacks) from Stripe. The money moves are in the ledger (5020 Chargebacks). Answer them in Stripe before the due date." />
+        {!rows ? (
+          <Loading />
+        ) : !rows.length ? (
+          <Text style={{ marginTop: 14, fontFamily: FONTS.regular, fontSize: 14, color: t.muted }}>No disputes. Good.</Text>
+        ) : (
+          <View style={{ marginTop: 14, gap: 8 }}>
+            {rows.map((d) => (
+              <View key={d.id} style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 10, padding: 12, borderRadius: 14, borderWidth: 1, borderColor: t.border, backgroundColor: t.cardSoft }}>
+                <Pill label={d.outcome === "open" ? "Open" : d.outcome === "won" ? "Won" : "Lost"} tone={d.outcome === "open" ? "amber" : d.outcome === "won" ? "green" : "red"} />
+                <Text style={{ fontFamily: FONTS.semibold, fontSize: 14, color: t.text }}>{money(d.amount, d.currency)}</Text>
+                <Text style={{ flex: 1, minWidth: 180, fontFamily: FONTS.regular, fontSize: 13.5, color: t.text }}>
+                  {d.orderLabel || "Unknown payment"} · {d.paymentType === "coscoin" ? "CosCoin top-up" : d.paymentType === "ticket" ? "Ticket" : "?"} · {d.member || "?"} · {d.reason.replace(/_/g, " ")}
+                </Text>
+                {d.evidenceDueBy && d.outcome === "open" ? <Text style={{ fontFamily: FONTS.regular, fontSize: 12.5, color: t.muted }}>Answer by {new Date(d.evidenceDueBy).toLocaleDateString()}</Text> : null}
+                {d.walletFrozen ? <Pill label="Wallet frozen" tone="red" /> : null}
+                {d.walletFrozen && canUnfreeze ? <Button label="Unfreeze wallet…" variant="ghost" icon="lock-open-outline" onPress={() => { setPicked(d); setReason(""); setDone(""); }} /> : null}
+              </View>
+            ))}
+          </View>
+        )}
+      </Card>
+      {picked ? (
+        <Card>
+          <CardHeader title={`Unfreeze ${picked.member || "the member"}'s wallet`} subtitle="They can spend their CosCoin again. Do this after reviewing the dispute." />
+          <View style={{ marginTop: 14, gap: 12 }}>
+            <ReasonBox value={reason} onChange={setReason} placeholder="e.g. Dispute won; the member confirmed the purchase." />
+            <ConfirmBox title="Unfreeze the wallet?" text="This is recorded in the audit log with your name." confirmLabel="Unfreeze" onConfirm={unfreeze} onCancel={() => setPicked(null)} busy={busy} disabled={reason.trim().length < 3} />
+          </View>
+        </Card>
+      ) : null}
+    </View>
+  );
+}
+
+// ---------- The daily check against Stripe ----------
+
+function StripeCheckCard() {
+  const t = useAdminTheme();
+  const [days, setDays] = useState<StripeCheckDay[] | null>(null);
+  const [open, setOpen] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  const load = useCallback(() => {
+    getStripeCheck()
+      .then((d) => setDays(d.days))
+      .catch((e) => setError(e?.message || "Couldn't load the Stripe check."));
+  }, []);
+  useEffect(load, [load]);
+
+  const runAgain = async (day: string) => {
+    setBusy(true);
+    setError("");
+    try {
+      await runStripeCheck(day);
+      load();
+    } catch (e: any) {
+      setError(e?.message || "Couldn't run the check.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const yesterday = new Date(Date.now() - 86400e3).toISOString().slice(0, 10);
+  const usd = (cents?: number) => (typeof cents === "number" ? `$${(cents / 100).toFixed(2)}` : "-");
+  return (
+    <Card>
+      <CardHeader title="Stripe check (daily)" subtitle="Every day after 02:00 UTC, yesterday's payments and fees in Stripe are matched with the ledger. It only reports, it never changes anything." />
+      {error ? <View style={{ marginTop: 10 }}><Notice icon="alert-circle-outline" tone="red" text={error} /></View> : null}
+      {!days ? (
+        <Loading />
+      ) : (
+        <View style={{ marginTop: 12, gap: 8 }}>
+          {!days.length ? <Text style={{ fontFamily: FONTS.regular, fontSize: 14, color: t.muted }}>No check has run yet.</Text> : null}
+          {days.map((d) => (
+            <View key={d.day} style={{ gap: 6, padding: 12, borderRadius: 14, borderWidth: 1, borderColor: t.border, backgroundColor: t.cardSoft }}>
+              <Pressable onPress={() => setOpen(open === d.day ? null : d.day)} accessibilityRole="button" style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
+                <Pill label={d.ok ? "PASS" : "FAIL"} tone={d.ok ? "green" : "red"} />
+                <Text style={{ fontFamily: FONTS.semibold, fontSize: 14, color: t.text }}>{d.day}</Text>
+                <Text style={{ flex: 1, minWidth: 200, fontFamily: FONTS.regular, fontSize: 13, color: t.muted }}>
+                  {d.error ? `Couldn't ask Stripe: ${d.error}` : `${d.totals?.stripe?.payments ?? 0} payment(s), ${usd(d.totals?.stripe?.received)} received, fees ${usd(d.totals?.stripe?.fees)}${d.problems.length ? ` · ${d.problems.length} problem(s)` : ""}`}
+                </Text>
+              </Pressable>
+              {open === d.day ? (
+                <View style={{ gap: 4 }}>
+                  {d.problems.map((p, i) => (
+                    <Text key={i} selectable style={{ fontFamily: FONTS.regular, fontSize: 12.5, color: t.text }}>• {p.kind.replace(/_/g, " ")}: {p.ref} ({p.detail})</Text>
+                  ))}
+                  <Text style={{ fontFamily: FONTS.regular, fontSize: 12.5, color: t.muted }}>
+                    Stripe: refunds {usd(d.totals?.stripe?.refunds)} · disputes {usd(d.totals?.stripe?.disputes)} · paid out to the bank {usd(d.totals?.stripe?.payoutsToBank)}
+                  </Text>
+                  <View style={{ flexDirection: "row" }}>
+                    <Button label="Run again" variant="ghost" icon="refresh-outline" loading={busy} onPress={() => runAgain(d.day)} />
+                  </View>
+                </View>
+              ) : null}
+            </View>
+          ))}
+          {!days.some((d) => d.day === yesterday) ? (
+            <View style={{ flexDirection: "row" }}>
+              <Button label={`Check ${yesterday} now`} variant="ghost" icon="play-outline" loading={busy} onPress={() => runAgain(yesterday)} />
+            </View>
+          ) : null}
+        </View>
+      )}
+    </Card>
   );
 }
