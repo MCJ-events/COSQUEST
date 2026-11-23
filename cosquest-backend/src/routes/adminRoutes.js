@@ -205,4 +205,10 @@ const stripeCheck = require('../controllers/adminStripeCheckController');
 router.get('/ledger/stripe-check', a(stripeCheck.recent));
 router.post('/ledger/stripe-check/run', a(stripeCheck.runDay));
 
+// CosCoin wallets: flagged and frozen, freeze / unfreeze (fraud).
+const walletsAdmin = require('../controllers/adminWalletsController');
+router.get('/wallets', a(walletsAdmin.list));
+router.post('/wallets/freeze', a(walletsAdmin.freeze));
+router.post('/wallets/unfreeze', a(walletsAdmin.unfreeze));
+
 module.exports = router;

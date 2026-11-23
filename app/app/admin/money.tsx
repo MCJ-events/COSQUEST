@@ -37,6 +37,10 @@ import {
   type PriceTable,
   type ItemCatalog,
   type AdminDispute,
+  type AdminWallet,
+  getWallets,
+  freezeWallet,
+  unfreezeWallet,
   type StripeCheckDay,
   getStripeCheck,
   runStripeCheck,
@@ -50,7 +54,7 @@ import {
   requestPaymentSettings,
 } from "@/services/adminMoney";
 
-type TabKey = "ledger" | "regions" | "settings" | "prices" | "items" | "disputes" | "approvals" | "approvers";
+type TabKey = "ledger" | "regions" | "settings" | "prices" | "items" | "disputes" | "wallets" | "approvals" | "approvers";
 const STATUS_LABEL: Record<RegionStatus, string> = { allowed: "Allowed", blocked: "Blocked", needs_license: "Needs licence" };
 const STATUS_TONE: Record<RegionStatus, "green" | "red" | "amber"> = { allowed: "green", blocked: "red", needs_license: "amber" };
 const when = (iso: string) => new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
@@ -78,6 +82,7 @@ export default function MoneyAdmin() {
           { key: "prices", label: "Prices" },
           { key: "items", label: "Items" },
           { key: "disputes", label: "Disputes" },
+          { key: "wallets", label: "Wallets" },
           { key: "approvals", label: "Approvals", count: pending },
           ...(role === "admin" ? [{ key: "approvers" as TabKey, label: "Approvers" }] : []),
         ]}
@@ -88,6 +93,8 @@ export default function MoneyAdmin() {
         <LedgerTab canCorrect={!finance} />
       ) : tab === "regions" ? (
         <RegionsTab canRequest={!finance} onRequested={() => setTab("approvals")} />
+      ) : tab === "wallets" ? (
+        <WalletsTab canChange={!finance} />
       ) : tab === "disputes" ? (
         <DisputesTab canUnfreeze={!finance} />
       ) : tab === "items" ? (
@@ -790,7 +797,7 @@ function PricesTab({ canRequest, onRequested }: { canRequest: boolean; onRequest
 
 // ---------- What CosCoin can buy (the item catalog) ----------
 
-type ItemRow = { id: string; name: string; kind: string; priceCosCoin: string; game: string; status: "active" | "open" };
+type ItemRow = { id: string; name: string; kind: string; priceCosCoin: string; game: string; status: "active" | "open"; boughtCoinsOnly: boolean };
 const ITEM_KINDS = ["cosmetic", "skin", "weapon", "ammo", "bundle", "faction_switch", "other"];
 const ITEM_GAMES = ["all", "social", "costquest", "trivia", "parlay"];
 
@@ -806,7 +813,7 @@ function ItemsTab({ canRequest, onRequested }: { canRequest: boolean; onRequeste
     getItemCatalog()
       .then((d) => {
         setData(d);
-        setRows(d.current.items.map((i) => ({ id: i.id, name: i.name, kind: i.kind, priceCosCoin: i.priceCosCoin === null ? "" : String(i.priceCosCoin), game: i.game, status: i.status })));
+        setRows(d.current.items.map((i) => ({ id: i.id, name: i.name, kind: i.kind, priceCosCoin: i.priceCosCoin === null ? "" : String(i.priceCosCoin), game: i.game, status: i.status, boughtCoinsOnly: Boolean(i.boughtCoinsOnly) })));
       })
       .catch((e) => setError(e?.message || "Couldn't load the catalog."));
   }, []);
@@ -845,7 +852,7 @@ function ItemsTab({ canRequest, onRequested }: { canRequest: boolean; onRequeste
               <View key={i.id} style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 12, padding: 12, borderRadius: 14, borderWidth: 1, borderColor: t.border, backgroundColor: t.cardSoft }}>
                 <Text style={{ width: 90, fontFamily: FONTS.semibold, fontSize: 13.5, color: t.text }}>{i.id}</Text>
                 <Text style={{ flex: 1, minWidth: 140, fontFamily: FONTS.regular, fontSize: 14, color: t.text }}>{i.name}</Text>
-                <Text style={{ fontFamily: FONTS.regular, fontSize: 12.5, color: t.muted }}>{i.kind}{i.stackable ? " · stacks" : ""} · {i.game}</Text>
+                <Text style={{ fontFamily: FONTS.regular, fontSize: 12.5, color: t.muted }}>{i.kind}{i.stackable ? " · stacks" : ""}{i.boughtCoinsOnly ? " · bought coins only" : ""} · {i.game}</Text>
                 <Text style={{ fontFamily: FONTS.medium, fontSize: 14, color: t.text }}>{i.priceCosCoin === null ? "OPEN" : `${i.priceCosCoin} CosCoin`}</Text>
                 <Pill label={i.status === "active" ? "On sale" : "OPEN"} tone={i.status === "active" ? "green" : "amber"} />
               </View>
@@ -864,12 +871,13 @@ function ItemsTab({ canRequest, onRequested }: { canRequest: boolean; onRequeste
                 <Select<string> value={r.kind} options={ITEM_KINDS.map((k) => ({ value: k, label: k.replace("_", " ") }))} onChange={(v) => set(i, { kind: v })} minWidth={130} />
                 <TextInput value={r.priceCosCoin} onChangeText={(v) => set(i, { priceCosCoin: v.replace(/[^0-9]/g, "").slice(0, 7) })} placeholder="CosCoin" keyboardType="number-pad" placeholderTextColor={t.faint} style={[input, { width: 90 }]} accessibilityLabel="Price in CosCoin" />
                 <Select<string> value={r.game} options={ITEM_GAMES.map((g) => ({ value: g, label: g }))} onChange={(v) => set(i, { game: v })} minWidth={110} />
+                <Select<"any" | "bought"> value={r.boughtCoinsOnly ? "bought" : "any"} options={[{ value: "any", label: "Any coins" }, { value: "bought", label: "Bought coins only" }]} onChange={(v) => set(i, { boughtCoinsOnly: v === "bought" })} minWidth={150} />
                 <Select<"active" | "open"> value={r.status} options={[{ value: "active", label: "On sale" }, { value: "open", label: "OPEN" }]} onChange={(v) => set(i, { status: v })} minWidth={100} />
                 <Button label="Remove" variant="ghost" onPress={() => setRows((all) => all.filter((_, j) => j !== i))} />
               </View>
             ))}
             <View style={{ flexDirection: "row" }}>
-              <Button label="Add an item" variant="ghost" icon="add-outline" onPress={() => setRows((all) => [...all, { id: "", name: "", kind: "skin", priceCosCoin: "", game: "all", status: "open" }])} />
+              <Button label="Add an item" variant="ghost" icon="add-outline" onPress={() => setRows((all) => [...all, { id: "", name: "", kind: "skin", priceCosCoin: "", game: "all", status: "open", boughtCoinsOnly: false }])} />
             </View>
             <ReasonBox value={reason} onChange={setReason} placeholder="e.g. Items and prices from Adewale's game mechanics document, approved by Mark." />
             <View style={{ flexDirection: "row" }}>
@@ -1030,5 +1038,88 @@ function StripeCheckCard() {
         </View>
       )}
     </Card>
+  );
+}
+
+// ---------- CosCoin wallets (fraud flags) ----------
+
+function WalletsTab({ canChange }: { canChange: boolean }) {
+  const t = useAdminTheme();
+  const [rows, setRows] = useState<AdminWallet[] | null>(null);
+  const [username, setUsername] = useState("");
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [done, setDone] = useState("");
+
+  const load = useCallback(() => {
+    getWallets()
+      .then((d) => setRows(d.wallets))
+      .catch((e) => setError(e?.message || "Couldn't load the wallets."));
+  }, []);
+  useEffect(load, [load]);
+
+  const run = async (fn: () => Promise<{ auditEvent: string }>, text: string) => {
+    setBusy(true);
+    setError("");
+    try {
+      const r = await fn();
+      setDone(`${text} Recorded as ${r.auditEvent}.`);
+      setReason("");
+      setUsername("");
+      load();
+    } catch (e: any) {
+      setError(e?.message || "That didn't work.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const input = { height: 44, paddingHorizontal: 14, borderRadius: 12, borderWidth: 1, borderColor: t.border, backgroundColor: t.cardSoft, fontFamily: FONTS.regular, fontSize: 14, color: t.text, ...(Platform.OS === "web" ? ({ outlineStyle: "none" } as object) : null) };
+  return (
+    <View style={{ gap: 16 }}>
+      {error ? <Notice icon="alert-circle-outline" tone="red" text={error} /> : null}
+      {done ? <Notice icon="checkmark-circle-outline" tone="green" text={done} /> : null}
+      <Card>
+        <CardHeader title="Flagged and frozen wallets" subtitle="A frozen wallet can't spend or earn CosCoin until it's unfrozen. Flags come from card disputes, the games (fraud checks) and admins." />
+        {!rows ? (
+          <Loading />
+        ) : !rows.length ? (
+          <Text style={{ marginTop: 14, fontFamily: FONTS.regular, fontSize: 14, color: t.muted }}>No flagged wallets.</Text>
+        ) : (
+          <View style={{ marginTop: 14, gap: 8 }}>
+            {rows.map((w) => (
+              <View key={w.userId} style={{ gap: 6, padding: 12, borderRadius: 14, borderWidth: 1, borderColor: t.border, backgroundColor: t.cardSoft }}>
+                <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
+                  <Pill label={w.frozen ? "Frozen" : "Flagged"} tone={w.frozen ? "red" : "amber"} />
+                  <Text style={{ fontFamily: FONTS.semibold, fontSize: 14, color: t.text }}>{w.member}</Text>
+                  <Text style={{ flex: 1, minWidth: 180, fontFamily: FONTS.regular, fontSize: 13, color: t.muted }}>
+                    {w.balance} CosCoin ({w.bought} bought, {w.earned} earned)
+                  </Text>
+                  {w.frozen && canChange ? (
+                    <Button label="Unfreeze" variant="ghost" icon="lock-open-outline" loading={busy} disabled={reason.trim().length < 3} onPress={() => run(() => unfreezeWallet(w.userId, reason.trim()), `${w.member} can spend again.`)} />
+                  ) : null}
+                </View>
+                {w.flags.map((f, i) => (
+                  <Text key={i} style={{ fontFamily: FONTS.regular, fontSize: 12.5, color: t.muted }}>• {f.reason} ({f.by}, {new Date(f.at).toLocaleDateString()})</Text>
+                ))}
+              </View>
+            ))}
+          </View>
+        )}
+      </Card>
+      {canChange ? (
+        <Card>
+          <CardHeader title="Freeze or unfreeze" subtitle="Type the reason first: it's needed for both, and kept in the audit log." />
+          <View style={{ marginTop: 14, gap: 12 }}>
+            <ReasonBox value={reason} onChange={setReason} placeholder="e.g. Rewards farmed with a script (game report R-881)." />
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
+              <TextInput value={username} onChangeText={setUsername} placeholder="@username" autoCapitalize="none" placeholderTextColor={t.faint} style={[input, { width: 220 }]} accessibilityLabel="Member's username" />
+              <Button label="Freeze wallet" variant="primary" icon="lock-closed-outline" loading={busy} disabled={!username.trim() || reason.trim().length < 3} onPress={() => run(() => freezeWallet(username.trim(), reason.trim()), `${username.trim()}'s wallet is frozen.`)} />
+            </View>
+          </View>
+        </Card>
+      ) : null}
+    </View>
   );
 }

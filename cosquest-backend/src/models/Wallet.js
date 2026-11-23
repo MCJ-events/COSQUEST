@@ -19,6 +19,13 @@ const walletSchema = new mongoose.Schema(
     applied: { type: [String], default: [] },
     frozen: { type: Boolean, default: false },
     frozenReason: { type: String, default: null, maxlength: 300 },
+    // Coins bought (the rest of the balance is earned in games): some items take bought coins only.
+    purchased: { type: Number, default: 0, min: 0 },
+    // Fraud flags (games, admins, disputes): the last 50.
+    flags: { type: [{ _id: false, reason: String, by: String, at: { type: Date, default: Date.now } }], default: [] },
+    // Rewards earned today (UTC), for the daily cap.
+    rewardDay: { type: String, default: null },
+    rewardToday: { type: Number, default: 0 },
   },
   { timestamps: true }
 );

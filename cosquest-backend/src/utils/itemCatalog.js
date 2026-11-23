@@ -13,7 +13,7 @@ function fail(status, message, code) {
 }
 
 const label = (v) => (v ? `c${v.version}` : null);
-const itemJson = (i) => ({ id: i.id, name: i.name, kind: i.kind, priceCosCoin: i.priceCosCoin ?? null, stackable: Boolean(i.stackable), game: i.game || 'all', status: i.status, note: i.note || '' });
+const itemJson = (i) => ({ id: i.id, name: i.name, kind: i.kind, priceCosCoin: i.priceCosCoin ?? null, stackable: Boolean(i.stackable), boughtCoinsOnly: Boolean(i.boughtCoinsOnly), game: i.game || 'all', status: i.status, note: i.note || '' });
 const catalogJson = (v) => ({ catalogVersion: label(v), items: v ? v.items.map(itemJson) : [], approvedAt: v?.createdAt || null });
 
 async function latest() {
@@ -53,7 +53,7 @@ function cleanItems(input) {
     const price = raw === null || raw === undefined || raw === '' ? null : Number(raw);
     if (price !== null && (!Number.isInteger(price) || price < 1 || price > 1000000)) fail(400, `${id}: the price is a whole number of CosCoin from 1.`, 'bad_item_price');
     if (status === 'active' && price === null) fail(400, `${id}: an item on sale needs its CosCoin price (or mark it open).`, 'bad_item_price');
-    return { id, name, kind, priceCosCoin: price, stackable: kind === 'ammo' ? true : Boolean(i?.stackable), game, status, note: String(i?.note || '').slice(0, 200) };
+    return { id, name, kind, priceCosCoin: price, stackable: kind === 'ammo' ? true : Boolean(i?.stackable), boughtCoinsOnly: Boolean(i?.boughtCoinsOnly), game, status, note: String(i?.note || '').slice(0, 200) };
   });
   if (new Set(items.map((i) => i.id)).size !== items.length) fail(400, 'Each item id once.', 'duplicate_item');
   return items;

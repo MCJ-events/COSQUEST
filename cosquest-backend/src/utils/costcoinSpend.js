@@ -38,9 +38,23 @@ async function spend(user, { itemId, key, game = null }) {
   if (!item) fail(404, 'This item is not on sale.', 'not_on_sale');
   if (!item.stackable && (await ItemOwnership.exists({ user: userId, itemId: item.id, quantity: { $gte: 1 } }))) fail(409, 'You already own this.', 'already_owned');
 
+  // Bought-only items take bought coins; any other item takes earned coins
+  // first, then bought ones (agreed with Subomi). One atomic step.
+  const price = item.priceCosCoin;
+  const boughtOnly = Boolean(item.boughtCoinsOnly);
+  const balanceNow = { $ifNull: ['$balance', 0] };
+  const boughtNow = { $min: [{ $ifNull: ['$purchased', 0] }, balanceNow] };
   const taken = await Wallet.updateOne(
-    { user: userId, frozen: { $ne: true }, balance: { $gte: item.priceCosCoin }, applied: { $ne: spendKey } },
-    { $inc: { balance: -item.priceCosCoin }, $push: { applied: spendKey } }
+    { user: userId, frozen: { $ne: true }, applied: { $ne: spendKey }, $expr: { $gte: [boughtOnly ? boughtNow : balanceNow, price] } },
+    [
+      {
+        $set: {
+          balance: { $subtract: [balanceNow, price] },
+          purchased: boughtOnly ? { $subtract: [boughtNow, price] } : { $min: [boughtNow, { $subtract: [balanceNow, price] }] },
+          applied: { $concatArrays: [{ $ifNull: ['$applied', []] }, [spendKey]] },
+        },
+      },
+    ]
   );
   if (!taken.modifiedCount) {
     const wallet = await Wallet.findOne({ user: userId }).lean();
@@ -49,7 +63,9 @@ async function spend(user, { itemId, key, game = null }) {
       if (again) return replay(userId, again);
     }
     if (wallet?.frozen) fail(423, 'Your CosCoin wallet is on hold while a payment is reviewed. Contact support.', 'wallet_frozen');
-    fail(402, 'Not enough CosCoin. Top up on the CosQuest website.', 'not_enough_coins', { balance: wallet?.balance || 0, price: item.priceCosCoin, topUp: true });
+    const coins = require('./coscoinRewards').split(wallet);
+    if (boughtOnly) fail(402, 'This item can only be bought with bought CosCoin. Top up on the CosQuest website.', 'not_enough_bought_coins', { ...coins, price, topUp: true });
+    fail(402, 'Not enough CosCoin. Top up on the CosQuest website.', 'not_enough_coins', { ...coins, price, topUp: true });
   }
 
   const tx = await ledger.record({
