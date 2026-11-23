@@ -291,7 +291,10 @@ export default function WorldPager({ children }: { children: ReactNode }) {
       if (world.get().page === "chat") setAwakeUntil(0);
       logMemory("memory warning");
     });
-    return () => sub.remove();
+    // The website has no memory warnings: react-native-web's AppState returns no subscription for
+    // "memoryWarning" (only "change"), so an unguarded remove() threw when the tabs remounted (on a
+    // computer, DesktopShell's frame going on at "/" -> "/home") and the root boundary took over.
+    return () => sub?.remove();
   }, []);
 
   useEffect(() => {
