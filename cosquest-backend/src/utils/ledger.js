@@ -41,6 +41,8 @@ const TYPES = {
   'settlement.platform': 'Settlement: platform share',
   'settlement.winner': 'Settlement: winner share',
   payout: 'Payout',
+  'dispute.withdrawn': 'Chargeback',
+  'dispute.reinstated': 'Chargeback won',
   reversal: 'Reversal',
 };
 const typeOf = (kind) => TYPES[kind] || kind;
@@ -68,7 +70,7 @@ async function record({ key, kind, book, currency, lines, user = null, quest = n
 }
 
 /** Corrects a transaction: debits and credits swapped (once per transaction). */
-async function reverse(txId, { reason, by = null }) {
+async function reverse(txId, { reason, by = null, approvedBy = [] }) {
   const original = await LedgerTransaction.findById(txId);
   if (!original) throw Object.assign(new Error('Ledger transaction not found.'), { status: 404 });
   if (original.reverses) throw Object.assign(new Error('A reversal cannot itself be reversed: record a new correction.'), { status: 409 });
@@ -86,6 +88,7 @@ async function reverse(txId, { reason, by = null }) {
     memo: `Reverses ${label(original)}: ${String(reason || '').slice(0, 400)}`,
     reverses: original._id,
     createdBy: by,
+    approvedBy,
   });
   if (!result.created) throw Object.assign(new Error(`${label(original)} was already reversed.`), { status: 409 });
   return result.tx;
@@ -264,6 +267,8 @@ let lastCheck = 0;
 async function checkDue() {
   if (Date.now() - lastCheck < 60 * 60 * 1000) return null;
   lastCheck = Date.now();
+  // Once a day after 02:00 UTC: yesterday's payments checked against Stripe (stripeReconcile.js).
+  require('./stripeReconcile').runDue().catch((error) => console.error('[stripe-check] failed:', error.message));
   return check();
 }
 
@@ -322,4 +327,9 @@ function txJson(tx) {
   };
 }
 
-module.exports = { financeChecks, recordFee, TYPES, typeOf, CHART: chart.CHART, ACCOUNTS, record, reverse, recordOrder, recordOrderLater, syncDue, check, checkDue, balances, txJson, label };
+/** One entry by its key (lean), or null: lets callers repeat a request safely. */
+async function findByKey(key) {
+  return LedgerTransaction.findOne({ key }).lean();
+}
+
+module.exports = { findByKey, financeChecks, recordFee, TYPES, typeOf, CHART: chart.CHART, ACCOUNTS, record, reverse, recordOrder, recordOrderLater, syncDue, check, checkDue, balances, txJson, label };

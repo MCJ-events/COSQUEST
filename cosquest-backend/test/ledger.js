@@ -106,7 +106,12 @@ async function run(baseUrl) {
   const noReason = await request('POST', `/api/admin/ledger/transactions/${target.id}/reverse`, tokenA, { reason: '' });
   check(noReason.status === 400, 'a correction needs a reason', noReason.data);
   const reversed = await request('POST', `/api/admin/ledger/transactions/${target.id}/reverse`, tokenA, { reason: 'Booked twice by mistake' });
-  check(reversed.status === 201 && reversed.data.transaction.kind === 'reversal' && reversed.data.transaction.reverses === target.id, 'a reversal transaction (debits and credits swapped)', reversed.data);
+  check(reversed.status === 202 && /^AP-/.test(reversed.data.request.number), 'a correction waits for a second person', reversed.data);
+  const ownCorrection = await request('POST', `/api/admin/approvals/${reversed.data.request.id}/approve`, tokenA, {});
+  check(ownCorrection.status === 403, "the requester can't approve their own correction", ownCorrection.data);
+  const correctionOk = await request('POST', `/api/admin/approvals/${reversed.data.request.id}/approve`, tokenB, { note: 'Checked' });
+  const reversal = await LedgerTransaction.findOne({ reverses: target.id });
+  check(correctionOk.status === 200 && reversal && reversal.kind === 'reversal' && reversal.approvedBy.length === 1, 'approved by a second admin: the reversal is recorded (debits and credits swapped)', reversal);
   const twice = await request('POST', `/api/admin/ledger/transactions/${target.id}/reverse`, tokenA, { reason: 'Again' });
   check(twice.status === 409, 'a transaction is reversed only once', twice.data);
   let edited = true;

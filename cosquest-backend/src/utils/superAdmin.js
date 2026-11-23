@@ -33,6 +33,9 @@ const FINANCE_ROUTES = [
   ['GET', /^\/regions$/],
   ['GET', /^\/payment-settings$/],
   ['GET', /^\/price-table$/],
+  ['GET', /^\/item-catalog$/],
+  ['GET', /^\/disputes$/],
+  ['GET', /^\/ledger\/stripe-check$/],
   ['GET', /^\/approvals$/],
   ['POST', /^\/approvals\/[a-f\d]{24}\/(approve|reject)$/i],
 ];
