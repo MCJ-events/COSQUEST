@@ -24,6 +24,8 @@ const itemSchema = new mongoose.Schema(
     kind: { type: String, enum: KINDS, required: true },
     priceCosCoin: { type: Number, default: null, min: 1, validate: { validator: (v) => v === null || Number.isInteger(v), message: 'priceCosCoin must be a whole number.' } },
     stackable: { type: Boolean, default: false },
+    // Only bought CosCoin can buy it (not coins earned in games).
+    boughtCoinsOnly: { type: Boolean, default: false },
     game: { type: String, enum: GAMES, default: 'all' },
     status: { type: String, enum: ['active', 'open'], default: 'active' },
     note: { type: String, default: '', maxlength: 200 },

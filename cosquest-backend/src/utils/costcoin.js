@@ -88,9 +88,9 @@ async function startPurchase({ user, bundleId, ip = null }) {
 }
 
 /** Applies a wallet change once per key (a repeated webhook or retry does nothing). */
-async function applyToWallet(userId, key, amount) {
+async function applyToWallet(userId, key, amount, { purchased = false } = {}) {
   try {
-    const result = await Wallet.updateOne({ user: userId, applied: { $ne: key } }, { $inc: { balance: amount }, $push: { applied: key } }, { upsert: true });
+    const result = await Wallet.updateOne({ user: userId, applied: { $ne: key } }, { $inc: { balance: amount, ...(purchased ? { purchased: amount } : {}) }, $push: { applied: key } }, { upsert: true });
     return Boolean(result.modifiedCount || result.upsertedCount);
   } catch (error) {
     if (error?.code === 11000) return false; // the wallet exists and already has this key
@@ -126,7 +126,7 @@ async function credit(order) {
     linkedTx: cash.tx._id,
     memo: `Coins issued for bundle ${order.bundleId} (${label(order)})`,
   });
-  const added = await applyToWallet(order.user, `buy:${order._id}`, order.costcoin);
+  const added = await applyToWallet(order.user, `buy:${order._id}`, order.costcoin, { purchased: true });
   if (added) {
     const wallet = await Wallet.findOne({ user: order.user }).lean();
     try {
@@ -220,7 +220,8 @@ async function reconcileDue() {
 
 async function wallet(userId) {
   const w = await Wallet.findOne({ user: userId }).lean();
-  return { balance: w?.balance || 0, frozen: Boolean(w?.frozen), frozenReason: w?.frozen ? w.frozenReason || null : null };
+  // balance = bought + earned (coins earned in games); some items take bought coins only.
+  return { ...require('./coscoinRewards').split(w), frozen: Boolean(w?.frozen), frozenReason: w?.frozen ? w.frozenReason || null : null };
 }
 
 /** The wallet's entries (the CosCoin ledger), newest first. */

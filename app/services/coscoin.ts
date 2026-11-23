@@ -29,7 +29,8 @@ async function request<T>(path: string, { method = "GET", body, token }: { metho
 /** A CosCoin bundle on sale (the approved price table). */
 export type CosCoinBundle = { id: string; name: string; priceCents: number; costcoin: number; costcoinPerDollar?: number | null; status: "active" | "open"; note?: string };
 export type WalletEntry = { id: string; type: string; amount: number; itemId: string | null; description: string; at: string };
-export type Wallet = { balance: number; frozen: boolean; frozenReason?: string | null };
+/** balance = bought + earned (coins earned in games); some items take bought coins only. */
+export type Wallet = { balance: number; bought?: number; earned?: number; frozen: boolean; frozenReason?: string | null };
 export type TopUpOrder = { id: string; number: string; bundleId: string; bundleName: string; costcoin: number; priceCents: number; priceVersion: string; status: "pending" | "paid" | "expired" | "failed" | "refunded"; checkoutUrl: string | null; paidAt: string | null; createdAt: string };
 
 export const dollars = (cents: number) => `$${(cents / 100).toFixed(2)}`;

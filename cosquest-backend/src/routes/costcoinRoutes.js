@@ -19,5 +19,10 @@ router.get('/costcoin/inventory', ...member, a(s.inventory));
 router.post('/costcoin/handoff/redeem', a(c.redeem));
 router.post('/costcoin/checkout', a(requireCheckoutPass), a(c.checkout));
 router.get('/costcoin/orders/:orderId', a(requireCheckoutPass), a(c.order));
+// Game servers only (secret x-game-key): rewards earned in gameplay, fraud flags, a wallet.
+const g = require('../controllers/coscoinGameController');
+router.post('/costcoin/game/rewards', g.requireGameKey, a(g.reward));
+router.post('/costcoin/game/flags', g.requireGameKey, a(g.flag));
+router.get('/costcoin/game/wallet/:userId', g.requireGameKey, a(g.walletOf));
 
 module.exports = router;
