@@ -38,6 +38,7 @@ const TYPES = {
   'costcoin.purchase': 'CosCoin purchase',
   'costcoin.issue': 'Purchase',
   'costcoin.spend': 'Spend',
+  'costcoin.reward': 'Reward',
   'settlement.platform': 'Settlement: platform share',
   'settlement.winner': 'Settlement: winner share',
   payout: 'Payout',
@@ -255,8 +256,10 @@ async function financeChecks() {
   const spent = coins.find((r) => r.code === 'CC-SPENT');
   const wallets = coins.filter((r) => r.code === 'CC-WALLET');
   const held = sum(wallets, 'balance');
-  const expected = (issued?.balance || 0) - (spent?.balance || 0);
-  checks.push({ name: 'Wallets equal coins issued minus coins spent', pass: coins.length ? held === expected : null, detail: coins.length ? held - expected : 'No CosCoin yet' });
+  // Coins earned in games come in through CosCoin Rewards.
+  const rewarded = coins.find((r) => r.code === 'CC-REWARDS');
+  const expected = (issued?.balance || 0) + (rewarded?.balance || 0) - (spent?.balance || 0);
+  checks.push({ name: 'Wallets equal coins issued and rewarded minus coins spent', pass: coins.length ? held === expected : null, detail: coins.length ? held - expected : 'No CosCoin yet' });
   const below = [...wallets, ...pools].filter((r) => r.balance < 0);
   checks.push({ name: 'No wallet or quest pool is below zero', pass: !below.length, detail: below.length ? below.map((r) => `${r.label}: ${r.balance}`).join('; ') : 0 });
   return checks;

@@ -81,10 +81,10 @@ export const requestPriceTable = (bundles: { id: string; name: string; price: st
   adminRequest<{ request: { id: string; number: string; title: string }; auditEvent: string }>("/price-table/requests", { method: "POST", body: { bundles, reason } });
 
 /** What CosCoin can buy (never quest entry, XP or cash). status open = not decided, never sold. */
-export type CatalogItem = { id: string; name: string; kind: string; priceCosCoin: number | null; stackable: boolean; game: string; status: "active" | "open"; note?: string };
+export type CatalogItem = { id: string; name: string; kind: string; priceCosCoin: number | null; stackable: boolean; boughtCoinsOnly?: boolean; game: string; status: "active" | "open"; note?: string };
 export type ItemCatalog = { catalogVersion: string | null; items: CatalogItem[]; approvedAt: string | null };
 export const getItemCatalog = () => adminRequest<{ current: ItemCatalog; history: ItemCatalog[]; kinds: string[]; games: string[] }>("/item-catalog");
-export const requestItemCatalog = (items: { id: string; name: string; kind: string; priceCosCoin: string; game: string; status: "active" | "open" }[], reason: string) =>
+export const requestItemCatalog = (items: { id: string; name: string; kind: string; priceCosCoin: string; game: string; status: "active" | "open"; boughtCoinsOnly?: boolean }[], reason: string) =>
   adminRequest<{ request: { id: string; number: string; title: string }; auditEvent: string }>("/item-catalog/requests", { method: "POST", body: { items, reason } });
 
 /** A card dispute (chargeback) from Stripe. */
@@ -96,6 +96,12 @@ export const unfreezeDisputeWallet = (id: string, reason: string) => adminReques
 export type StripeCheckDay = { day: string; ok: boolean; problems: { kind: string; ref: string; detail: string }[]; totals: { stripe?: { payments: number; received: number; fees: number; refunds: number; disputes: number; payoutsToBank: number }; ledger?: { sales: number; received: number } }; error: string | null; ranAt: string };
 export const getStripeCheck = () => adminRequest<{ days: StripeCheckDay[] }>("/ledger/stripe-check");
 export const runStripeCheck = (day: string) => adminRequest<StripeCheckDay>("/ledger/stripe-check/run", { method: "POST", body: { day } });
+
+/** A flagged or frozen CosCoin wallet. */
+export type AdminWallet = { userId: string; member: string; balance: number; bought: number; earned: number; frozen: boolean; frozenReason: string | null; flags: { reason: string; by: string; at: string }[] };
+export const getWallets = () => adminRequest<{ wallets: AdminWallet[] }>("/wallets");
+export const freezeWallet = (username: string, reason: string) => adminRequest<{ ok: boolean; auditEvent: string }>("/wallets/freeze", { method: "POST", body: { username, reason } });
+export const unfreezeWallet = (userId: string, reason: string) => adminRequest<{ ok: boolean; auditEvent: string }>("/wallets/unfreeze", { method: "POST", body: { userId, reason } });
 
 export const requestRegionChanges = (changes: { region: string; name?: string; status: RegionStatus; note?: string }[], reason: string) =>
   adminRequest<{ request: ApprovalRequest; auditEvent: string }>("/regions/requests", { method: "POST", body: { changes, reason } });
