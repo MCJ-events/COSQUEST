@@ -15,7 +15,7 @@ export default function QuestAfterEvent({ questId, status }: { questId: string; 
   const t = useAdminTheme();
   const [att, setAtt] = useState<Attendance | null>(null);
   const [res, setRes] = useState<Results | null>(null);
-  const [places, setPlaces] = useState<Record<string, { place: string; note: string }>>({});
+  const [places, setPlaces] = useState<Record<string, { place: string; note: string; prize?: string }>>({});
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [done, setDone] = useState("");
@@ -25,7 +25,7 @@ export default function QuestAfterEvent({ questId, status }: { questId: string; 
     getResults(questId)
       .then((r) => {
         setRes(r);
-        setPlaces(Object.fromEntries(r.winners.map((w) => [w.ticketId, { place: String(w.place), note: w.prizeNote }])));
+        setPlaces(Object.fromEntries(r.winners.map((w) => [w.ticketId, { place: String(w.place), note: w.prizeNote, prize: w.prizeCents ? String(w.prizeCents / 100) : "" }])));
       })
       .catch(() => setRes(null));
   }, [questId]);
@@ -40,7 +40,7 @@ export default function QuestAfterEvent({ questId, status }: { questId: string; 
     setBusy(andPublish ? "publish" : "save");
     setError("");
     try {
-      await saveResults(questId, chosen.map(([ticketId, v]) => ({ ticketId, place: Number(v.place), prizeNote: v.note.trim() })));
+      await saveResults(questId, chosen.map(([ticketId, v]) => ({ ticketId, place: Number(v.place), prizeNote: v.note.trim(), prizeCents: v.prize ? Math.round(Number(v.prize) * 100) : 0 })));
       if (andPublish) {
         const r = await publishResults(questId);
         setDone(`Results published: the winners were told. Recorded as ${r.auditEvent}.`);
@@ -97,7 +97,7 @@ export default function QuestAfterEvent({ questId, status }: { questId: string; 
               <Text style={{ flex: 1, minWidth: 140, fontFamily: FONTS.regular, fontSize: 13, color: t.text }}>{nameOf(r.person)}</Text>
               <TextInput
                 value={places[r.ticketId]?.place || ""}
-                onChangeText={(v) => setPlaces((p) => ({ ...p, [r.ticketId]: { place: v.replace(/[^0-9]/g, "").slice(0, 3), note: p[r.ticketId]?.note || "" } }))}
+                onChangeText={(v) => setPlaces((p) => ({ ...p, [r.ticketId]: { ...p[r.ticketId], place: v.replace(/[^0-9]/g, "").slice(0, 3), note: p[r.ticketId]?.note || "" } }))}
                 placeholder="Place"
                 placeholderTextColor={t.faint}
                 keyboardType="number-pad"
@@ -106,11 +106,20 @@ export default function QuestAfterEvent({ questId, status }: { questId: string; 
               />
               <TextInput
                 value={places[r.ticketId]?.note || ""}
-                onChangeText={(v) => setPlaces((p) => ({ ...p, [r.ticketId]: { place: p[r.ticketId]?.place || "", note: v.slice(0, 200) } }))}
+                onChangeText={(v) => setPlaces((p) => ({ ...p, [r.ticketId]: { ...p[r.ticketId], place: p[r.ticketId]?.place || "", note: v.slice(0, 200) } }))}
                 placeholder="Prize note (optional)"
                 placeholderTextColor={t.faint}
                 accessibilityLabel={`Prize note for ${nameOf(r.person)}`}
                 style={[input, { flex: 1, minWidth: 160 }]}
+              />
+              <TextInput
+                value={places[r.ticketId]?.prize || ""}
+                onChangeText={(v) => setPlaces((p) => ({ ...p, [r.ticketId]: { place: p[r.ticketId]?.place || "", note: p[r.ticketId]?.note || "", prize: v.replace(/[^0-9.]/g, "").slice(0, 9) } }))}
+                placeholder="Prize $ (paid via claim)"
+                placeholderTextColor={t.faint}
+                keyboardType="decimal-pad"
+                accessibilityLabel={`Prize in dollars for ${nameOf(r.person)}`}
+                style={[input, { width: 150 }]}
               />
             </View>
           ))}

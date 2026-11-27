@@ -42,6 +42,8 @@ const TYPES = {
   'costcoin.clawback': 'Clawback',
   'costcoin.clawback_returned': 'Clawback returned',
   'costcoin.adjustment': 'Adjustment',
+  'prize.payable': 'Prize payable',
+  'prize.paid': 'Prize paid',
   'settlement.platform': 'Settlement: platform share',
   'settlement.winner': 'Settlement: winner share',
   payout: 'Payout',
@@ -284,6 +286,8 @@ async function checkDue() {
   lastCheck = Date.now();
   // Once a day after 02:00 UTC: yesterday's payments checked against Stripe (stripeReconcile.js).
   require('./stripeReconcile').runDue().catch((error) => console.error('[stripe-check] failed:', error.message));
+  // Prizes not claimed by their deadline are forfeited (published rule).
+  require('./prizes').forfeitDue().catch((error) => console.error('[prizes] forfeit failed:', error.message));
   return check();
 }
 

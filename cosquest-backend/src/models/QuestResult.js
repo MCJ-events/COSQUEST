@@ -13,6 +13,8 @@ const winnerSchema = new mongoose.Schema(
     ticket: { type: mongoose.Schema.Types.ObjectId, ref: 'Ticket', required: true },
     place: { type: Number, required: true, min: 1, max: 100 },
     prizeNote: { type: String, default: '', maxlength: 200 },
+    // The prize in cents (0 = none): publishing creates a PrizeClaim to claim and pay out.
+    prizeCents: { type: Number, default: 0, min: 0 },
   },
   { _id: false }
 );

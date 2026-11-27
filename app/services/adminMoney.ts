@@ -44,7 +44,7 @@ export type ApprovalRequest = {
   kind: string;
   title: string;
   /** Region rules: a list; money settings: { platformShareBps, payoutApprovalLimitCents, note }. */
-  changes: { region: string; name: string; status: RegionStatus; note: string }[] | PaymentSettingsChange | { bundles: PriceBundle[] } | { items: CatalogItem[] } | { transactionId: string; number: string; type: string; book: string; currency: string; total: number } | { title: string; body: string } | { userId: string; member: string; amount: number };
+  changes: { region: string; name: string; status: RegionStatus; note: string }[] | PaymentSettingsChange | { bundles: PriceBundle[] } | { items: CatalogItem[] } | { transactionId: string; number: string; type: string; book: string; currency: string; total: number } | { title: string; body: string } | { userId: string; member: string; amount: number } | { prizeId: string; number: string; member: string; amountCents: number; quest: string };
   reason: string;
   status: ApprovalStatus;
   requestedBy: { id: string; name: string };
@@ -111,6 +111,49 @@ export const requestRules = (title: string, body: string, reason: string) => adm
 /** Add (+) or remove (-) CosCoin for one member: a second person approves. */
 export const requestAdjustment = (username: string, amount: number, reason: string) =>
   adminRequest<{ request: { id: string; number: string; title: string }; auditEvent: string }>("/wallets/adjustments", { method: "POST", body: { username, amount, reason } });
+
+/** Prizes won and their payouts (Admin > Ledger & approvals > Payouts). Bank and tax numbers are masked. */
+export type AdminPrize = {
+  id: string;
+  number: string;
+  member: string;
+  userId: string;
+  quest: { id: string; title?: string };
+  place: number;
+  amountCents: number;
+  currency: string;
+  status: "awaiting_claim" | "submitted" | "verified" | "payout_requested" | "held" | "paid" | "forfeited" | "rejected";
+  claimDeadline: string;
+  identity: { legalName: string; dateOfBirth: string | null } | null;
+  payoutMethod: { type: "ach" | "check"; accountHolder: string | null; accountLast4: string | null; routingLast4: string | null; mailingAddress: string | null } | null;
+  tax: { form: "w9" | "w8ben" | null; status: string; tinLast4: string | null; country: string | null };
+  holdUntil: string | null;
+  paidAt: string | null;
+  paymentRef: string | null;
+  rejectedReason: string | null;
+};
+export const getPrizes = (status?: string) => adminRequest<{ prizes: AdminPrize[] }>(`/prizes${status ? `?status=${status}` : ""}`);
+export const verifyPrize = (id: string) => adminRequest<{ ok: boolean; auditEvent: string }>(`/prizes/${id}/verify`, { method: "POST" });
+export const rejectPrize = (id: string, reason: string) => adminRequest<{ ok: boolean; auditEvent: string }>(`/prizes/${id}/reject`, { method: "POST", body: { reason } });
+export const requestPrizePayout = (id: string) => adminRequest<{ ok: boolean; request: { id: string; number: string; title: string }; auditEvent: string }>(`/prizes/${id}/payout-request`, { method: "POST" });
+export const markPrizePaid = (id: string, reference: string) => adminRequest<{ ok: boolean; auditEvent: string }>(`/prizes/${id}/paid`, { method: "POST", body: { reference } });
+
+/** The prizes as a CSV file (masked numbers). */
+export async function downloadPrizesCsv() {
+  const raw = typeof window !== "undefined" ? window.localStorage.getItem("cq_admin_session") : null;
+  const token = raw ? JSON.parse(raw).token : null;
+  const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/admin/prizes/export`, { headers: { Authorization: `Bearer ${token}` } });
+  if (!response.ok) throw new Error("Couldn't export the prizes.");
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `cosquest-prizes-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
 
 export const requestRegionChanges = (changes: { region: string; name?: string; status: RegionStatus; note?: string }[], reason: string) =>
   adminRequest<{ request: ApprovalRequest; auditEvent: string }>("/regions/requests", { method: "POST", body: { changes, reason } });

@@ -70,7 +70,7 @@ async function resultJson(result) {
     winners: result.winners
       .slice()
       .sort((a, b) => a.place - b.place)
-      .map((w) => ({ ticketId: String(w.ticket), place: w.place, placeLabel: placeLabel(w.place), prizeNote: w.prizeNote, person: who.get(String(w.user)) || null })),
+      .map((w) => ({ ticketId: String(w.ticket), place: w.place, placeLabel: placeLabel(w.place), prizeNote: w.prizeNote, prizeCents: w.prizeCents || 0, person: who.get(String(w.user)) || null })),
     publishedAt: result.publishedAt,
   };
 }
@@ -103,7 +103,9 @@ async function saveResults(req, res) {
     const winners = input.map((w) => {
       const place = Number(w.place);
       if (!Number.isInteger(place) || place < 1 || place > 100) fail(400, 'Places are whole numbers from 1.', 'bad_place');
-      return { user: byId.get(String(w.ticketId)).user, ticket: w.ticketId, place, prizeNote: String(w.prizeNote || '').trim().slice(0, 200) };
+      const prizeCents = w.prizeCents === undefined || w.prizeCents === null || w.prizeCents === '' ? 0 : Number(w.prizeCents);
+      if (!Number.isInteger(prizeCents) || prizeCents < 0 || prizeCents > 100000000) fail(400, 'Prize amounts are whole cents, 0 or more.', 'bad_prize');
+      return { user: byId.get(String(w.ticketId)).user, ticket: w.ticketId, place, prizeNote: String(w.prizeNote || '').trim().slice(0, 200), prizeCents };
     });
     const saved = await QuestResult.findOneAndUpdate(
       { quest: quest._id, publishedAt: null },
@@ -131,6 +133,8 @@ async function publishResults(req, res) {
       require('../utils/push').sendToUsers([String(w.user)], { title: `🏆 You won ${place} place!`, body: `${quest.title}${w.prizeNote ? ` · ${w.prizeNote}` : ''}`, data: { type: 'ticket', ticketId: String(w.ticket) }, channel: 'default', category: 'questUpdates', skipOnline: false }).catch(() => {});
       require('../models/QuestRegistration').updateOne({ quest: quest._id, user: w.user }, { $set: { status: 'winner' } }).catch(() => {});
     }
+    // Winners with a prize amount get a prize to claim (PrizeClaim).
+    await require('../utils/prizes').createForResults(quest, published);
     const event = await recordAudit(req.admin, {
       action: 'quest.results',
       area: 'quests',

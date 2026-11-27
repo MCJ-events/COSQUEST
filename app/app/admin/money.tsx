@@ -41,6 +41,13 @@ import {
   type AdminRules,
   getAdminRules,
   requestAdjustment,
+  type AdminPrize,
+  getPrizes,
+  verifyPrize,
+  rejectPrize,
+  requestPrizePayout,
+  markPrizePaid,
+  downloadPrizesCsv,
   requestRules,
   getWallets,
   freezeWallet,
@@ -58,7 +65,7 @@ import {
   requestPaymentSettings,
 } from "@/services/adminMoney";
 
-type TabKey = "ledger" | "regions" | "settings" | "prices" | "items" | "disputes" | "wallets" | "rules" | "approvals" | "approvers";
+type TabKey = "ledger" | "regions" | "settings" | "prices" | "items" | "disputes" | "wallets" | "rules" | "payouts" | "approvals" | "approvers";
 const STATUS_LABEL: Record<RegionStatus, string> = { allowed: "Allowed", blocked: "Blocked", needs_license: "Needs licence" };
 const STATUS_TONE: Record<RegionStatus, "green" | "red" | "amber"> = { allowed: "green", blocked: "red", needs_license: "amber" };
 const when = (iso: string) => new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
@@ -86,6 +93,7 @@ export default function MoneyAdmin() {
           { key: "prices", label: "Prices" },
           { key: "items", label: "Items" },
           { key: "disputes", label: "Disputes" },
+          { key: "payouts", label: "Payouts" },
           { key: "wallets", label: "Wallets" },
           { key: "rules", label: "Rules" },
           { key: "approvals", label: "Approvals", count: pending },
@@ -98,6 +106,8 @@ export default function MoneyAdmin() {
         <LedgerTab canCorrect={!finance} />
       ) : tab === "regions" ? (
         <RegionsTab canRequest={!finance} onRequested={() => setTab("approvals")} />
+      ) : tab === "payouts" ? (
+        <PayoutsTab canChange={!finance} />
       ) : tab === "rules" ? (
         <RulesTab canRequest={!finance} onRequested={() => setTab("approvals")} />
       ) : tab === "wallets" ? (
@@ -417,6 +427,10 @@ function ApprovalsTab({ onChanged }: { onChanged: () => void }) {
                       {c.region}{c.name ? ` (${c.name})` : ""} → {STATUS_LABEL[c.status]}{c.note ? ` · ${c.note}` : ""}
                     </Text>
                   ))
+                ) : "prizeId" in r.changes ? (
+                  <Text style={{ fontFamily: FONTS.regular, fontSize: 14, color: t.text }}>
+                    Pay {r.changes.number}: ${(r.changes.amountCents / 100).toLocaleString("en-US", { minimumFractionDigits: 2 })} to {r.changes.member} ({r.changes.quest})
+                  </Text>
                 ) : "member" in r.changes ? (
                   <Text style={{ fontFamily: FONTS.regular, fontSize: 14, color: t.text }}>
                     {r.changes.amount > 0 ? "Add" : "Remove"} {Math.abs(r.changes.amount).toLocaleString("en-US")} CosCoin {r.changes.amount > 0 ? "to" : "from"} {r.changes.member}
@@ -1258,5 +1272,116 @@ function AdjustCard() {
         </View>
       </View>
     </Card>
+  );
+}
+
+// ---------- Payouts: prizes won, claims, payouts (PrizeClaim contract) ----------
+
+const PRIZE_STATUS: Record<AdminPrize["status"], { label: string; tone: "green" | "amber" | "red" | "blue" | "pink" }> = {
+  awaiting_claim: { label: "Awaiting claim", tone: "pink" },
+  submitted: { label: "Claim to check", tone: "amber" },
+  verified: { label: "Verified", tone: "blue" },
+  payout_requested: { label: "Payout in Approvals", tone: "blue" },
+  held: { label: "Held (dispute window)", tone: "blue" },
+  paid: { label: "Paid", tone: "green" },
+  forfeited: { label: "Forfeited", tone: "red" },
+  rejected: { label: "Rejected", tone: "red" },
+};
+
+function PayoutsTab({ canChange }: { canChange: boolean }) {
+  const t = useAdminTheme();
+  const [status, setStatus] = useState<string>("");
+  const [rows, setRows] = useState<AdminPrize[] | null>(null);
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState("");
+  const [done, setDone] = useState("");
+
+  const load = useCallback(() => {
+    getPrizes(status || undefined)
+      .then((d) => setRows(d.prizes))
+      .catch((e) => setError(e?.message || "Couldn't load the prizes."));
+  }, [status]);
+  useEffect(load, [load]);
+
+  const run = async (id: string, fn: () => Promise<{ auditEvent: string; request?: { number: string } }>, text: string) => {
+    setBusy(id);
+    setError("");
+    setDone("");
+    try {
+      const r = await fn();
+      setDone(`${text}${r.request ? ` Waiting in Approvals as ${r.request.number}.` : ""} Recorded as ${r.auditEvent}.`);
+      setNote("");
+      load();
+    } catch (e: any) {
+      setError(e?.message || "That didn't work.");
+    } finally {
+      setBusy(null);
+    }
+  };
+  const usd = (cents: number) => `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
+  const input = { height: 44, paddingHorizontal: 14, borderRadius: 12, borderWidth: 1, borderColor: t.border, backgroundColor: t.cardSoft, fontFamily: FONTS.regular, fontSize: 14, color: t.text, ...(Platform.OS === "web" ? ({ outlineStyle: "none" } as object) : null) };
+
+  return (
+    <View style={{ gap: 16 }}>
+      {error ? <Notice icon="alert-circle-outline" tone="red" text={error} /> : null}
+      {done ? <Notice icon="checkmark-circle-outline" tone="green" text={done} /> : null}
+      <Card>
+        <CardHeader
+          title="Prizes and payouts"
+          subtitle="Winners claim with identity, payout details and the tax form. Check the claim, request the payout (a second admin approves; the finance approver above the limit), wait for the hold, then mark it paid with the reference."
+          right={
+            <View style={{ flexDirection: "row", gap: 10, alignItems: "center" }}>
+              <Select<string> value={status} options={[{ value: "", label: "All" }, ...Object.entries(PRIZE_STATUS).map(([value, s]) => ({ value, label: s.label }))]} onChange={setStatus} minWidth={170} />
+              {Platform.OS === "web" ? <Button label="Export CSV" icon="download-outline" onPress={() => downloadPrizesCsv().catch((e) => setError(e.message))} /> : null}
+            </View>
+          }
+        />
+        {canChange ? (
+          <View style={{ marginTop: 12 }}>
+            <TextInput value={note} onChangeText={setNote} placeholder="Reason (to reject) or payment reference (to mark paid)" placeholderTextColor={t.faint} style={input} accessibilityLabel="Reason or payment reference" />
+          </View>
+        ) : null}
+        {!rows ? (
+          <Loading />
+        ) : !rows.length ? (
+          <Text style={{ marginTop: 14, fontFamily: FONTS.regular, fontSize: 14, color: t.muted }}>No prizes here yet. Prizes appear when results with a prize amount are published.</Text>
+        ) : (
+          <View style={{ marginTop: 14, gap: 8 }}>
+            {rows.map((p) => {
+              const holdOver = p.holdUntil ? new Date(p.holdUntil) <= new Date() : false;
+              return (
+                <View key={p.id} style={{ gap: 6, padding: 12, borderRadius: 14, borderWidth: 1, borderColor: t.border, backgroundColor: t.cardSoft }}>
+                  <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
+                    <Pill label={PRIZE_STATUS[p.status].label} tone={PRIZE_STATUS[p.status].tone} />
+                    <Text style={{ fontFamily: FONTS.semibold, fontSize: 14, color: t.text }}>{p.number} · {p.member}</Text>
+                    <Text style={{ flex: 1, minWidth: 200, fontFamily: FONTS.regular, fontSize: 13, color: t.muted }}>
+                      {p.quest.title} · place {p.place}
+                    </Text>
+                    <Text style={{ fontFamily: FONTS.bold, fontSize: 15, color: t.text }}>{usd(p.amountCents)}</Text>
+                  </View>
+                  <Text style={{ fontFamily: FONTS.regular, fontSize: 12.5, color: t.muted }}>
+                    {p.identity ? `${p.identity.legalName}${p.identity.dateOfBirth ? ` · born ${p.identity.dateOfBirth}` : ""}` : `Claim by ${new Date(p.claimDeadline).toLocaleDateString()}`}
+                    {p.payoutMethod ? ` · ${p.payoutMethod.type === "ach" ? `ACH ••••${p.payoutMethod.accountLast4} (routing ••••${p.payoutMethod.routingLast4})` : `Check to ${p.payoutMethod.mailingAddress}`}` : ""}
+                    {p.tax.form ? ` · ${p.tax.form === "w9" ? "W-9" : "W-8BEN"} ${p.tax.status}${p.tax.tinLast4 ? ` ••••${p.tax.tinLast4}` : ""}${p.tax.country && p.tax.form === "w8ben" ? ` (${p.tax.country})` : ""}` : ""}
+                    {p.holdUntil && p.status === "held" ? ` · hold until ${new Date(p.holdUntil).toLocaleDateString()}` : ""}
+                    {p.paymentRef ? ` · ref ${p.paymentRef}` : ""}
+                    {p.rejectedReason ? ` · ${p.rejectedReason}` : ""}
+                  </Text>
+                  {canChange ? (
+                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                      {p.status === "submitted" ? <Button label="Verify claim" variant="primary" icon="checkmark-outline" loading={busy === p.id} onPress={() => run(p.id, () => verifyPrize(p.id), `${p.number} verified.`)} /> : null}
+                      {p.status === "verified" ? <Button label="Request payout" variant="primary" icon="send-outline" loading={busy === p.id} onPress={() => run(p.id, () => requestPrizePayout(p.id), `Payout for ${p.number} requested.`)} /> : null}
+                      {p.status === "held" ? <Button label={holdOver ? "Mark paid" : "On hold"} variant="primary" icon="cash-outline" loading={busy === p.id} disabled={!holdOver || note.trim().length < 3} onPress={() => run(p.id, () => markPrizePaid(p.id, note.trim()), `${p.number} marked paid.`)} /> : null}
+                      {["awaiting_claim", "submitted", "verified"].includes(p.status) ? <Button label="Reject" variant="ghost" icon="close-outline" loading={busy === p.id} disabled={note.trim().length < 3} onPress={() => run(p.id, () => rejectPrize(p.id, note.trim()), `${p.number} rejected.`)} /> : null}
+                    </View>
+                  ) : null}
+                </View>
+              );
+            })}
+          </View>
+        )}
+      </Card>
+    </View>
   );
 }
