@@ -39,6 +39,9 @@ async function main() {
   // sandbox keys from .env. Blank (not deleted) so dotenv doesn't fill them in.
   process.env.STRIPE_SECRET_KEY = '';
   process.env.STRIPE_WEBHOOK_SECRET = '';
+  // Sparks quick notes: the module default (off), whatever .env says. Blank, as above.
+  process.env.SPARKS_OUTLINE_FALLBACK = '';
+  process.env.SPARKS_OUTLINE_FALLBACK_AFTER_S = '';
   // Sparks module: production timers, except the wait for an author's hint
   // (20 s in production) so the end-to-end test does not idle.
   process.env.SPARKS_CONFIG = JSON.stringify({ hintWaitMs: 1500 });
