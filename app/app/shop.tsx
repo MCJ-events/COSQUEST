@@ -27,6 +27,7 @@ const TABS: { key: Tab; label: string; icon: (color: string) => ReactNode }[] = 
   { key: "remix", label: "MANNY'S REMIX", icon: (c) => <Ionicons name="shuffle" size={19} color={c} /> },
   { key: "coscoin", label: "COSCOIN", icon: (c) => <MaterialCommunityIcons name="circle-multiple-outline" size={18} color={c} /> },
 ];
+const KIND_LABEL: Record<string, string> = { skin: "Character skin", cosmetic: "Cosmetic", weapon: "Weapon", ammo: "Ammo", bundle: "Bundle", faction_switch: "Faction switch", other: "Item" };
 const CRUMB: Record<Tab, string> = { deals: "DEALS", elite: "ELITE MERCH", remix: "MANNY'S REMIX", coscoin: "COSCOIN PACKS" };
 
 function left(endsAt: string | null | undefined, offsetMs: number) {
@@ -48,6 +49,7 @@ export default function Shop() {
   const [online, setOnline] = useState(true);
   const [, setTick] = useState(0);
   const [confirm, setConfirm] = useState<ShopItem | null>(null);
+  const [preview, setPreview] = useState<ShopItem | null>(null);
   const [short, setShort] = useState<ShopItem | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState("");
@@ -219,7 +221,7 @@ export default function Shop() {
             {!data.eliteMerch.length ? <Text style={{ fontFamily: FONTS.regular, fontSize: 14, color: C.muted }}>Nothing new right now. Check back soon.</Text> : null}
             <Grid>
               {data.eliteMerch.map((item) => (
-                <Card key={item.id}>
+                <Card key={item.id} onPress={() => setPreview(item)}>
                   <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
                     {item.isNew ? <Text style={{ fontFamily: FONTS.bold, fontSize: 12, color: C.pink }}>NEW</Text> : <View />}
                     <Text style={{ fontFamily: FONTS.regular, fontSize: 12, color: C.muted }}>{left(item.dropEndsAt, offset)}</Text>
@@ -249,7 +251,7 @@ export default function Shop() {
                 </Card>
               ) : null}
               {data.remix.offers.map((item) => (
-                <Card key={item.id}>
+                <Card key={item.id} onPress={() => setPreview(item)}>
                   <Text style={{ fontFamily: FONTS.semibold, fontSize: 12.5, color: C.muted }}>{item.subtitle?.toUpperCase() || "BASIC"}</Text>
                   {item.imageUrl ? <Image source={{ uri: item.imageUrl }} style={{ width: "100%", height: 110 }} contentFit="contain" /> : <Ionicons name="color-palette-outline" size={56} color={C.muted} style={{ alignSelf: "center", marginVertical: 18 }} />}
                   <Text style={{ fontFamily: FONTS.bold, fontSize: 15, color: C.ink }}>{item.name}</Text>
@@ -265,7 +267,7 @@ export default function Shop() {
             {!data.deals.length ? <Text style={{ fontFamily: FONTS.regular, fontSize: 14, color: C.muted }}>No deals right now. Check back soon.</Text> : null}
             <Grid>
               {data.deals.map((item) => (
-                <Card key={item.id}>
+                <Card key={item.id} onPress={() => setPreview(item)}>
                   {item.imageUrl ? <Image source={{ uri: item.imageUrl }} style={{ width: "100%", height: 130 }} contentFit="contain" /> : null}
                   <Text style={{ fontFamily: FONTS.bold, fontSize: 15, color: C.ink }}>{item.name}</Text>
                   {item.subtitle ? <Text style={{ fontFamily: FONTS.regular, fontSize: 13, color: C.muted }}>{item.subtitle}</Text> : null}
@@ -290,6 +292,41 @@ export default function Shop() {
           </Pressable>
         )}
       </View>
+
+      <Sheet visible={!!preview} onClose={() => setPreview(null)}>
+        {preview ? (
+          <>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+              {preview.isNew ? <Text style={{ fontFamily: FONTS.bold, fontSize: 13, color: C.pink }}>NEW</Text> : <View />}
+              {preview.dropEndsAt ? <Text style={{ fontFamily: FONTS.medium, fontSize: 13, color: C.muted }}>Ends in {left(preview.dropEndsAt, offset)}</Text> : null}
+            </View>
+            <View style={{ height: 300, borderRadius: 22, backgroundColor: C.panel, alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+              {preview.imageUrl ? <Image source={{ uri: preview.imageUrl }} style={{ width: "100%", height: "100%" }} contentFit="contain" /> : <Ionicons name="shirt-outline" size={80} color={C.muted} />}
+            </View>
+            <Text style={{ fontFamily: FONTS.bold, fontSize: 24, color: C.ink }}>{preview.name.toUpperCase()}</Text>
+            {preview.subtitle ? <Text style={{ fontFamily: FONTS.regular, fontSize: 15, color: C.muted }}>{preview.subtitle}</Text> : null}
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+              {[KIND_LABEL[preview.kind] || "Item", preview.stackable ? "Stacks" : "Yours to keep", ...(preview.boughtCoinsOnly ? ["Bought Coscoin only"] : [])].map((chip) => (
+                <Text key={chip} style={{ fontFamily: FONTS.medium, fontSize: 12.5, color: C.ink, backgroundColor: C.panel, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999 }}>{chip}</Text>
+              ))}
+            </View>
+            {preview.owned && !preview.stackable ? (
+              <Btn label="Owned · Open Wardrobe" tone="solid" icon={<Ionicons name="shirt-outline" size={18} color="#FFFFFF" />} onPress={() => { setPreview(null); router.push("/wale/wardrobe" as any); }} />
+            ) : (
+              <>
+                <Row label="Price" value={`${preview.priceCosCoin} Coscoin`} />
+                <Row label="Your balance" value={`${balance} → ${Math.max(0, balance - (preview.priceCosCoin || 0))} after`} />
+                {balance < (preview.priceCosCoin || 0) ? (
+                  <Btn label="Get Coscoin" tone="solid" onPress={() => { wanted.current = preview.id; setPreview(null); setTab("coscoin"); }} />
+                ) : (
+                  <Btn label={`Buy for ${preview.priceCosCoin} Coscoin`} tone="solid" disabled={!online} onPress={() => { setConfirm(preview); setPreview(null); }} />
+                )}
+              </>
+            )}
+            <Text style={{ fontFamily: FONTS.regular, fontSize: 12, color: C.muted, textAlign: "center" }}>Trying it on your own character in 3D is coming soon.</Text>
+          </>
+        ) : null}
+      </Sheet>
 
       <Sheet visible={!!confirm} onClose={() => setConfirm(null)}>
         {confirm ? (
@@ -327,8 +364,10 @@ function Grid({ children }: { children: ReactNode }) {
   return <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}>{children}</View>;
 }
 
-function Card({ children }: { children: ReactNode }) {
-  return <View style={{ flexBasis: "47%", flexGrow: 1, maxWidth: 360, gap: 8, padding: 14, borderRadius: 22, borderWidth: 2, borderColor: "#FFFFFF", backgroundColor: C.card }}>{children}</View>;
+function Card({ children, onPress }: { children: ReactNode; onPress?: () => void }) {
+  const style = { flexBasis: "47%" as const, flexGrow: 1, maxWidth: 360, gap: 8, padding: 14, borderRadius: 22, borderWidth: 2, borderColor: "#FFFFFF", backgroundColor: C.card };
+  // Tapping a card opens the item preview (the price button inside still opens the confirm sheet).
+  return onPress ? <Pressable onPress={onPress} accessibilityRole="button" style={style}>{children}</Pressable> : <View style={style}>{children}</View>;
 }
 
 function Heading({ title, right }: { title: string; right: string }) {

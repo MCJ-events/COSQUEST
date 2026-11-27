@@ -842,7 +842,7 @@ function ItemsTab({ canRequest, onRequested }: { canRequest: boolean; onRequeste
     getItemCatalog()
       .then((d) => {
         setData(d);
-        setRows(d.current.items.map((i) => ({ id: i.id, name: i.name, kind: i.kind, priceCosCoin: i.priceCosCoin === null ? "" : String(i.priceCosCoin), game: i.game, status: i.status, boughtCoinsOnly: Boolean(i.boughtCoinsOnly), imageUrl: i.imageUrl || "", subtitle: i.subtitle || "", section: i.section || "elite_merch", isNew: Boolean(i.newTag), dropEndsAt: i.dropEndsAt ? i.dropEndsAt.slice(0, 10) : "", free: Boolean(i.free) })));
+        setRows(d.current.items.map((i) => ({ id: i.id, name: i.name, kind: i.kind, priceCosCoin: i.priceCosCoin === null ? "" : String(i.priceCosCoin), game: i.game, status: i.status, boughtCoinsOnly: Boolean(i.boughtCoinsOnly), imageUrl: i.imageUrl || "", subtitle: i.subtitle || "", section: i.section || "elite_merch", isNew: Boolean(i.isNew), dropEndsAt: i.dropEndsAt ? i.dropEndsAt.slice(0, 10) : "", free: Boolean(i.free) })));
       })
       .catch((e) => setError(e?.message || "Couldn't load the catalog."));
   }, []);
