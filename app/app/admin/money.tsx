@@ -40,6 +40,7 @@ import {
   type AdminWallet,
   type AdminRules,
   getAdminRules,
+  requestAdjustment,
   requestRules,
   getWallets,
   freezeWallet,
@@ -416,6 +417,10 @@ function ApprovalsTab({ onChanged }: { onChanged: () => void }) {
                       {c.region}{c.name ? ` (${c.name})` : ""} → {STATUS_LABEL[c.status]}{c.note ? ` · ${c.note}` : ""}
                     </Text>
                   ))
+                ) : "member" in r.changes ? (
+                  <Text style={{ fontFamily: FONTS.regular, fontSize: 14, color: t.text }}>
+                    {r.changes.amount > 0 ? "Add" : "Remove"} {Math.abs(r.changes.amount).toLocaleString("en-US")} CosCoin {r.changes.amount > 0 ? "to" : "from"} {r.changes.member}
+                  </Text>
                 ) : "body" in r.changes ? (
                   <Text style={{ fontFamily: FONTS.regular, fontSize: 14, color: t.text }}>
                     Publish “{r.changes.title}” ({r.changes.body.length.toLocaleString("en-US")} characters)
@@ -1118,6 +1123,7 @@ function WalletsTab({ canChange }: { canChange: boolean }) {
           </View>
         )}
       </Card>
+      {canChange ? <AdjustCard /> : null}
       {canChange ? (
         <Card>
           <CardHeader title="Freeze or unfreeze" subtitle="Type the reason first: it's needed for both, and kept in the audit log." />
@@ -1204,5 +1210,53 @@ function RulesTab({ canRequest, onRequested }: { canRequest: boolean; onRequeste
         </Card>
       ) : null}
     </View>
+  );
+}
+
+// ---------- CosCoin adjustments (a second person approves) ----------
+
+function AdjustCard() {
+  const t = useAdminTheme();
+  const [username, setUsername] = useState("");
+  const [amount, setAmount] = useState("");
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [done, setDone] = useState("");
+  const n = Number.parseInt(amount, 10);
+  const valid = username.trim() && Number.isInteger(n) && n !== 0 && Math.abs(n) <= 10000 && reason.trim().length >= 3;
+  const input = { height: 44, paddingHorizontal: 14, borderRadius: 12, borderWidth: 1, borderColor: t.border, backgroundColor: t.cardSoft, fontFamily: FONTS.regular, fontSize: 14, color: t.text, ...(Platform.OS === "web" ? ({ outlineStyle: "none" } as object) : null) };
+  const submit = async () => {
+    setBusy(true);
+    setError("");
+    setDone("");
+    try {
+      const r = await requestAdjustment(username.trim(), n, reason.trim());
+      setDone(`Sent for approval as ${r.request.number}. Another admin or the finance approver approves it in Approvals.`);
+      setUsername("");
+      setAmount("");
+      setReason("");
+    } catch (e: any) {
+      setError(e?.message || "Couldn't send the request.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Card>
+      <CardHeader title="Add or remove CosCoin" subtitle="For compensation or corrections. Added coins count as earned (not bought). Never below zero. A second person approves; the ledger keeps who asked and who approved." />
+      <View style={{ marginTop: 14, gap: 12 }}>
+        {error ? <Notice icon="alert-circle-outline" tone="red" text={error} /> : null}
+        {done ? <Notice icon="checkmark-circle-outline" tone="green" text={done} /> : null}
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
+          <TextInput value={username} onChangeText={setUsername} placeholder="@username" autoCapitalize="none" placeholderTextColor={t.faint} style={[input, { width: 200 }]} accessibilityLabel="Member's username" />
+          <TextInput value={amount} onChangeText={(v) => setAmount(v.replace(/[^0-9-]/g, "").slice(0, 6))} placeholder="+200 or -150" keyboardType="numbers-and-punctuation" placeholderTextColor={t.faint} style={[input, { width: 140 }]} accessibilityLabel="CosCoin to add (or remove with a minus)" />
+        </View>
+        <ReasonBox value={reason} onChange={setReason} placeholder="e.g. Compensation for a raid reward lost in the 26 Nov outage." />
+        <View style={{ flexDirection: "row" }}>
+          <Button label="Send for approval" variant="primary" icon="send-outline" loading={busy} disabled={!valid} onPress={submit} />
+        </View>
+      </View>
+    </Card>
   );
 }

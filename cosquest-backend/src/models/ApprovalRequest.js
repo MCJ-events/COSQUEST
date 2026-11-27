@@ -11,7 +11,7 @@ const mongoose = require('mongoose');
 const approvalRequestSchema = new mongoose.Schema(
   {
     number: { type: Number, required: true }, // AP-<number>
-    kind: { type: String, enum: ['region_rules', 'payment_settings', 'price_table', 'item_catalog', 'ledger_reversal', 'official_rules'], required: true },
+    kind: { type: String, enum: ['region_rules', 'payment_settings', 'price_table', 'item_catalog', 'ledger_reversal', 'official_rules', 'coscoin_adjustment'], required: true },
     title: { type: String, required: true, maxlength: 160 },
     changes: { type: mongoose.Schema.Types.Mixed, required: true },
     reason: { type: String, required: true, maxlength: 500 },

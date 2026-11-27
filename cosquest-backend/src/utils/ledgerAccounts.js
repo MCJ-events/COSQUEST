@@ -28,6 +28,7 @@ const CHART = [
   { code: 'CC-ISSUED', name: 'CosCoin Issued', type: 'Contra', book: 'costcoin', normal: 'debit', meaning: 'Coins created by purchases' },
   { code: 'CC-WALLET', name: 'Wallet', type: 'Liability', book: 'costcoin', normal: 'credit', per: 'user', meaning: "A player's CosCoin balance (one account per user)" },
   { code: 'CC-SPENT', name: 'CosCoin Spent', type: 'Contra', book: 'costcoin', normal: 'credit', meaning: 'Coins used on skins, weapons, faction switches and similar' },
+  { code: 'CC-ADJUST', name: 'CosCoin Adjustments', type: 'Contra', book: 'costcoin', normal: 'debit', meaning: 'Coins added or removed by admins (compensation, corrections), with a second approval' },
   { code: 'CC-REWARDS', name: 'CosCoin Rewards', type: 'Contra', book: 'costcoin', normal: 'debit', meaning: 'Coins earned in games (not bought): no money behind them' },
 ];
 const BY_CODE = new Map(CHART.map((a) => [a.code, a]));
@@ -45,6 +46,7 @@ const ACCOUNTS = {
   wallet: (userId) => `CC-WALLET:${userId}`,
   costcoinSpent: 'CC-SPENT',
   costcoinRewards: 'CC-REWARDS',
+  costcoinAdjustments: 'CC-ADJUST',
 };
 
 // Names used before the chart (same meaning).

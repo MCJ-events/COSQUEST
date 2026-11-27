@@ -210,6 +210,7 @@ const walletsAdmin = require('../controllers/adminWalletsController');
 router.get('/wallets', a(walletsAdmin.list));
 router.post('/wallets/freeze', a(walletsAdmin.freeze));
 router.post('/wallets/unfreeze', a(walletsAdmin.unfreeze));
+router.post('/wallets/adjustments', a(require('../controllers/adjustController').requestAdjustment));
 
 // Official contest rules: versions, published through approvals.
 const rulesAdmin = require('../controllers/rulesController');

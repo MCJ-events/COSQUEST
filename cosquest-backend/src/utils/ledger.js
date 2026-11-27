@@ -41,6 +41,7 @@ const TYPES = {
   'costcoin.reward': 'Reward',
   'costcoin.clawback': 'Clawback',
   'costcoin.clawback_returned': 'Clawback returned',
+  'costcoin.adjustment': 'Adjustment',
   'settlement.platform': 'Settlement: platform share',
   'settlement.winner': 'Settlement: winner share',
   payout: 'Payout',
@@ -260,7 +261,9 @@ async function financeChecks() {
   const held = sum(wallets, 'balance');
   // Coins earned in games come in through CosCoin Rewards.
   const rewarded = coins.find((r) => r.code === 'CC-REWARDS');
-  const expected = (issued?.balance || 0) + (rewarded?.balance || 0) - (spent?.balance || 0);
+  // Coins added or removed by admins come in through CosCoin Adjustments.
+  const adjusted = coins.find((r) => r.code === 'CC-ADJUST');
+  const expected = (issued?.balance || 0) + (rewarded?.balance || 0) + (adjusted?.balance || 0) - (spent?.balance || 0);
   checks.push({ name: 'Wallets equal coins issued and rewarded minus coins spent', pass: coins.length ? held === expected : null, detail: coins.length ? held - expected : 'No CosCoin yet' });
   // A wallet goes below zero only when a chargeback took back coins already spent (it owes coins and stays frozen).
   const clawed = new Set((await LedgerTransaction.distinct('user', { kind: 'costcoin.clawback' })).map(String));

@@ -44,7 +44,7 @@ export type ApprovalRequest = {
   kind: string;
   title: string;
   /** Region rules: a list; money settings: { platformShareBps, payoutApprovalLimitCents, note }. */
-  changes: { region: string; name: string; status: RegionStatus; note: string }[] | PaymentSettingsChange | { bundles: PriceBundle[] } | { items: CatalogItem[] } | { transactionId: string; number: string; type: string; book: string; currency: string; total: number } | { title: string; body: string };
+  changes: { region: string; name: string; status: RegionStatus; note: string }[] | PaymentSettingsChange | { bundles: PriceBundle[] } | { items: CatalogItem[] } | { transactionId: string; number: string; type: string; book: string; currency: string; total: number } | { title: string; body: string } | { userId: string; member: string; amount: number };
   reason: string;
   status: ApprovalStatus;
   requestedBy: { id: string; name: string };
@@ -107,6 +107,10 @@ export const unfreezeWallet = (userId: string, reason: string) => adminRequest<{
 export type AdminRules = { version: number; title: string; body: string; publishedAt: string };
 export const getAdminRules = () => adminRequest<{ current: AdminRules | null; history: { version: number; title: string; publishedAt: string }[] }>("/rules");
 export const requestRules = (title: string, body: string, reason: string) => adminRequest<{ request: { id: string; number: string; title: string }; auditEvent: string }>("/rules/requests", { method: "POST", body: { title, body, reason } });
+
+/** Add (+) or remove (-) CosCoin for one member: a second person approves. */
+export const requestAdjustment = (username: string, amount: number, reason: string) =>
+  adminRequest<{ request: { id: string; number: string; title: string }; auditEvent: string }>("/wallets/adjustments", { method: "POST", body: { username, amount, reason } });
 
 export const requestRegionChanges = (changes: { region: string; name?: string; status: RegionStatus; note?: string }[], reason: string) =>
   adminRequest<{ request: ApprovalRequest; auditEvent: string }>("/regions/requests", { method: "POST", body: { changes, reason } });
