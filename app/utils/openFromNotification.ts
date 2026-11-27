@@ -36,6 +36,17 @@ export function openFromNotification(
     return;
   }
 
+  // Prizes (to claim, approved, paid): My prizes.
+  if (type === "prize") {
+    router.push("/prizes" as any);
+    return;
+  }
+  // In-app links from the notification list (e.g. "/prizes").
+  if (typeof data.link === "string" && data.link.startsWith("/") && !data.link.startsWith("//")) {
+    router.push(data.link as any);
+    return;
+  }
+
   // Faction in danger: the alert, with Respond.
   if (type === "faction_alert" && data.alertId) {
     showFactionAlertById(String(data.alertId));
