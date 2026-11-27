@@ -96,6 +96,8 @@ async function fromStripe(type, d) {
     await freezeWallet(dispute.user, `Card dispute on ${dispute.orderLabel}`);
     await Dispute.updateOne({ _id: dispute._id }, { $set: { walletFrozen: true }, $push: { history: step('wallet_frozen') } });
   }
+  // And the coins bought with that money are taken back (once).
+  if (dispute.paymentType === 'coscoin') await clawback(dispute, d.id);
 
   const status = d.status || dispute.status;
   const outcome = status === 'won' ? 'won' : status === 'lost' ? 'lost' : 'open';
@@ -109,12 +111,79 @@ async function fromStripe(type, d) {
       memo: `Chargeback won on ${dispute.orderLabel || pi}`,
       ...refs,
     });
+    if (dispute.paymentType === 'coscoin') await giveBack(dispute, d.id);
   }
   await Dispute.updateOne(
     { _id: dispute._id },
     { $set: { status, outcome, ...(outcome !== 'open' ? { closedAt: dispute.closedAt || new Date() } : {}) }, ...(status !== dispute.status ? { $push: { history: step(status, type) } } : {}) }
   );
   return dispute._id;
+}
+
+/**
+ * Wallet spec, flow 7: the CosCoin bought with disputed money are taken back,
+ * once, even below zero when they were already spent (the wallet then owes
+ * coins and stays frozen). Ledger (CosCoin book) "Clawback": debit <user> Wallet
+ * / credit CosCoin Issued.
+ */
+async function clawback(dispute, disputeId) {
+  const order = await CostcoinOrder.findById(dispute.order).lean();
+  const coins = order?.costcoin;
+  if (!coins || !dispute.user) return;
+  const key = `clawback:${disputeId}`;
+  const taken = await Wallet.updateOne(
+    { user: dispute.user, applied: { $ne: key } },
+    [
+      {
+        $set: {
+          balance: { $subtract: [{ $ifNull: ['$balance', 0] }, coins] },
+          purchased: { $max: [0, { $subtract: [{ $ifNull: ['$purchased', 0] }, coins] }] },
+          applied: { $concatArrays: [{ $ifNull: ['$applied', []] }, [key]] },
+        },
+      },
+    ]
+  );
+  await ledger.record({
+    key: `cc-clawback-${disputeId}`,
+    kind: 'costcoin.clawback',
+    book: 'costcoin',
+    currency: 'CQC',
+    lines: [{ account: ledger.ACCOUNTS.wallet(dispute.user), debit: coins }, { account: ledger.ACCOUNTS.costcoinIssued, credit: coins }],
+    user: dispute.user,
+    memo: `${coins} CosCoin taken back after a card dispute on ${dispute.orderLabel}`,
+  });
+  if (taken.modifiedCount) await Dispute.updateOne({ _id: dispute._id }, { $push: { history: step('coins_taken_back', `${coins} CosCoin`) } });
+}
+
+/** The dispute was won: the coins taken back are given back (once). The wallet stays frozen until an admin reviews it. */
+async function giveBack(dispute, disputeId) {
+  const order = await CostcoinOrder.findById(dispute.order).lean();
+  const coins = order?.costcoin;
+  if (!coins || !dispute.user) return;
+  const key = `clawback-returned:${disputeId}`;
+  const returned = await Wallet.updateOne(
+    { user: dispute.user, applied: { $eq: `clawback:${disputeId}`, $ne: key } },
+    [
+      {
+        $set: {
+          balance: { $add: [{ $ifNull: ['$balance', 0] }, coins] },
+          purchased: { $add: [{ $ifNull: ['$purchased', 0] }, coins] },
+          applied: { $concatArrays: [{ $ifNull: ['$applied', []] }, [key]] },
+        },
+      },
+    ]
+  );
+  if (!returned.modifiedCount) return;
+  await ledger.record({
+    key: `cc-clawback-returned-${disputeId}`,
+    kind: 'costcoin.clawback_returned',
+    book: 'costcoin',
+    currency: 'CQC',
+    lines: [{ account: ledger.ACCOUNTS.costcoinIssued, debit: coins }, { account: ledger.ACCOUNTS.wallet(dispute.user), credit: coins }],
+    user: dispute.user,
+    memo: `${coins} CosCoin given back: card dispute won on ${dispute.orderLabel}`,
+  });
+  await Dispute.updateOne({ _id: dispute._id }, { $push: { history: step('coins_given_back', `${coins} CosCoin`) } });
 }
 
 /** Admin: lets a member spend again after reviewing the dispute. */
