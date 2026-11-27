@@ -34,6 +34,8 @@ const orderSchema = new mongoose.Schema(
     // The official rules version the buyer accepted at checkout (null before rules were published).
     rulesVersion: { type: Number, default: null },
     rulesAcceptedAt: { type: Date, default: null },
+    // The quest's scoring version shown at checkout.
+    scoringVersion: { type: Number, default: null },
     // Whether this order still holds a seat (pending, not yet released).
     holding: { type: Boolean, default: false },
     holdExpiresAt: { type: Date, default: null },

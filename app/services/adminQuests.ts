@@ -18,6 +18,7 @@ export type AdminQuest = {
   kind: "quest" | "event";
   format?: "in_person" | "virtual";
   placeLabel?: string;
+  scoring?: { rules: string; tieBreak: "earliest_completion" | "split_prize"; tieBreakText: string; version: number; lockedAt: string | null } | null;
   status: QuestStatus;
   isPublished: boolean;
   isSeedData: boolean;
@@ -37,11 +38,15 @@ export type AdminQuest = {
   createdAt: string;
 };
 
+/** How points are scored: required to publish a paid quest, locked once published. */
+export type QuestScoringInput = { rules: string; tieBreak: "earliest_completion" | "split_prize" };
+
 export type QuestInput = {
   title: string;
   kind: "quest" | "event";
   format?: "in_person" | "virtual";
   placeLabel?: string;
+  scoring?: QuestScoringInput;
   description: string;
   coverImageUrl: string;
   startsAt: string;

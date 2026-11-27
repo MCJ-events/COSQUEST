@@ -116,6 +116,13 @@ export default function WebCheckout() {
           <View style={{ gap: 10 }}>
             <SalesCountdown closesAt={type?.salesClosesAt} />
             {web.error ? <Text style={{ fontFamily: FONTS.regular, fontSize: 13.5, color: "#D9364F", textAlign: "center" }}>{web.error.message}</Text> : null}
+            {web.quest?.scoring?.rules ? (
+              <View style={{ gap: 4, padding: 12, borderRadius: 14, backgroundColor: ink.dark ? "#1F2130" : "#F4F8FD" }}>
+                <Text style={{ fontFamily: FONTS.semibold, fontSize: 13.5, color: text("#24283C") }}>How points are scored</Text>
+                <Text style={{ fontFamily: FONTS.regular, fontSize: 13, lineHeight: 18, color: text("#3D4256") }}>{web.quest.scoring.rules}</Text>
+                <Text style={{ fontFamily: FONTS.regular, fontSize: 12.5, color: text("#66738A") }}>Tie-break: {web.quest.scoring.tieBreakText}</Text>
+              </View>
+            ) : null}
             {rules ? (
               <Pressable onPress={() => setAccepted((x) => !x)} accessibilityRole="checkbox" accessibilityState={{ checked: accepted }} style={{ flexDirection: "row", alignItems: "flex-start", gap: 10, paddingVertical: 4 }}>
                 <Ionicons name={accepted ? "checkbox" : "square-outline"} size={22} color={accepted ? PINK : text("#66738A")} />

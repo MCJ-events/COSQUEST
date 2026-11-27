@@ -53,6 +53,7 @@ function adminQuestJson(quest) {
     ...serializeQuest(quest),
     status: effectiveStatus(quest),
     isPublished: Boolean(quest.isPublished),
+    scoring: require('../utils/questScoring').json(quest),
     isSeedData: Boolean(quest.isSeedData),
     cancelledAt: quest.cancelledAt || null,
     cancelReason: quest.cancelReason || null,
@@ -102,6 +103,8 @@ function readFields(body, { partial = false, current = null } = {}) {
     out.format = body.format;
   }
   if (has('placeLabel')) out.placeLabel = String(body.placeLabel || '').trim().slice(0, 80);
+  const scoring = require('../utils/questScoring').read(body);
+  if (scoring !== undefined) out.scoring = scoring;
   const virtual = (out.format || current?.format) === 'virtual';
   if (virtual && !(out.placeLabel || current?.placeLabel)) fail(400, 'A virtual quest needs a place label, for example "Tokyo · Hanuma".');
   if (!virtual && out.format === 'in_person' && !has('location') && !Number.isFinite(current?.location?.lat)) fail(400, 'Pick the venue on the map (latitude and longitude).');
@@ -238,6 +241,12 @@ async function createQuest(req, res) {
     const fields = readFields(req.body);
     checkTimes(fields.startsAt, fields.endsAt);
     const publish = req.body.publish === true;
+    if (fields.scoring !== undefined) {
+      const first = require('../utils/questScoring').initial(fields.scoring);
+      if (first) fields.scoring = publish ? { ...first, lockedAt: new Date() } : first;
+      else delete fields.scoring;
+    }
+    if (publish) await require('../utils/questScoring').checkPublish({ ...fields, _id: null });
     const quest = await Quest.create({
       kind: 'quest',
       ...fields,
@@ -270,6 +279,12 @@ async function updateQuest(req, res) {
     const quest = await loadQuest(req.params.questId);
     if (quest.status === 'cancelled') fail(409, 'A cancelled quest cannot be edited. Duplicate it instead.');
     const fields = readFields(req.body, { partial: true, current: quest });
+    // How points are scored: a new version while sales are closed, locked once they open.
+    if (fields.scoring !== undefined) {
+      const scored = require('../utils/questScoring').next(quest, fields.scoring);
+      if (scored === undefined) delete fields.scoring;
+      else fields.scoring = scored;
+    }
     const startsAt = fields.startsAt || quest.startsAt;
     const endsAt = fields.endsAt || quest.endsAt;
     checkTimes(startsAt, endsAt);
@@ -328,11 +343,13 @@ function setPublished(publish) {
       if (quest.status === 'cancelled') fail(409, 'A cancelled quest cannot be published. Duplicate it instead.');
       if (publish && quest.endsAt <= new Date()) fail(409, 'This has already ended. Change its dates first.');
       if (!publish && quest.registrationCount > 0) fail(409, 'People are registered. Cancel it instead, so they are told.');
+      if (publish) await require('../utils/questScoring').checkPublish(quest);
       if (Boolean(quest.isPublished) === publish && (publish ? quest.status !== 'draft' : quest.status === 'draft')) {
         return res.json({ quest: adminQuestJson(quest), auditEvent: null });
       }
       const before = { status: effectiveStatus(quest), isPublished: Boolean(quest.isPublished) };
       quest.isPublished = publish;
+      if (publish && quest.scoring?.rules && !quest.scoring.lockedAt) quest.scoring.lockedAt = new Date();
       quest.status = publish ? 'upcoming' : 'draft';
       quest.updatedBy = req.admin._id;
       await quest.save();

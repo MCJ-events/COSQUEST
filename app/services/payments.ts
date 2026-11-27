@@ -41,11 +41,14 @@ export type Eligibility = {
 
 export type CheckoutLink = { url: string; expiresAt: string };
 
+/** How the quest's points are scored (shown before paying). */
+export type QuestScoring = { rules: string; tieBreak: string; tieBreakText: string; version: number };
+
 export type RedeemedCheckout = {
   checkoutToken: string;
   expiresAt: string;
   member: { name: string; username: string | null };
-  quest: Quest;
+  quest: Quest & { scoring?: QuestScoring | null };
   ticketTypes: TicketType[];
   selectedTicketTypeId: string | null;
   eligibility: Eligibility;

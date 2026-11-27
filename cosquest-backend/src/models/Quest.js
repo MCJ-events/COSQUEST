@@ -52,6 +52,14 @@ const questSchema = new mongoose.Schema(
     format: { type: String, enum: ['in_person', 'virtual'], default: 'in_person', index: true },
     // Virtual: where it's "set", shown on the card (e.g. "Tokyo · Hanuma").
     placeLabel: { type: String, default: '', trim: true, maxlength: 80 },
+    // How points are scored (legal plan: skill decides the winner). Published before ticket
+    // sales open, locked once published; each order saves the version (utils/questScoring.js).
+    scoring: {
+      rules: { type: String, default: '', maxlength: 4000 },
+      tieBreak: { type: String, enum: ['earliest_completion', 'split_prize'], default: 'earliest_completion' },
+      version: { type: Number, default: 0 },
+      lockedAt: { type: Date, default: null },
+    },
     // Joining / check-in only within venueRadiusMeters of the venue (optional).
     requireAtVenue: { type: Boolean, default: false },
     venueRadiusMeters: { type: Number, default: 200, min: 50, max: 5000 },

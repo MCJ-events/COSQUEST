@@ -67,6 +67,7 @@ const EMPTY = (): QuestInput => {
     kind: "event",
     format: "in_person",
     placeLabel: "",
+    scoring: { rules: "", tieBreak: "earliest_completion" },
     description: "",
     coverImageUrl: "",
     startsAt: start.toISOString(),
@@ -87,6 +88,7 @@ function fromQuest(q: AdminQuest): QuestInput {
     kind: q.kind,
     format: q.format || "in_person",
     placeLabel: q.placeLabel || "",
+    scoring: { rules: q.scoring?.rules || "", tieBreak: q.scoring?.tieBreak || "earliest_completion" },
     description: q.description || "",
     coverImageUrl: q.coverImageUrl || "",
     startsAt: q.startsAt,
@@ -218,6 +220,29 @@ function QuestForm({ editing, onClose, onSaved }: { editing: AdminQuest | null; 
           <TextInput value={form.placeLabel || ""} onChangeText={(v) => setForm((cur) => ({ ...cur, placeLabel: v.slice(0, 80) }))} placeholder="Tokyo · Hanuma" placeholderTextColor={t.faint} style={input} />
         </View>
       ) : null}
+
+      <View style={{ marginTop: 12 }}>
+        {label("How points are scored (shown to buyers; locked once published)")}
+        <TextInput
+          value={form.scoring?.rules || ""}
+          onChangeText={(v) => setForm((cur) => ({ ...cur, scoring: { rules: v.slice(0, 4000), tieBreak: cur.scoring?.tieBreak || "earliest_completion" } }))}
+          multiline
+          placeholder="e.g. 10 points per checkpoint found, 50 points for finishing. Points come only from what you do in the quest."
+          placeholderTextColor={t.faint}
+          style={[input, { minHeight: 90, paddingTop: 10, textAlignVertical: "top" }]}
+        />
+        <View style={{ marginTop: 8, flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+          {(["earliest_completion", "split_prize"] as const).map((tb) => {
+            const on = (form.scoring?.tieBreak || "earliest_completion") === tb;
+            return (
+              <Pressable key={tb} onPress={() => setForm((cur) => ({ ...cur, scoring: { rules: cur.scoring?.rules || "", tieBreak: tb } }))} accessibilityRole="radio" accessibilityState={{ selected: on }} style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, borderWidth: 1, borderColor: on ? t.pink : t.border, backgroundColor: on ? t.pinkSoft : t.cardSoft }}>
+                <Text style={{ fontFamily: FONTS.medium, fontSize: 12.5, color: on ? t.pinkText : t.text }}>{tb === "earliest_completion" ? "Tie: earlier completion wins" : "Tie: prize shared"}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        <Text style={{ marginTop: 6, fontFamily: FONTS.regular, fontSize: 11.5, color: t.muted }}>Required before publishing a paid quest. No random points, drops or draws: skill must decide the winner.</Text>
+      </View>
 
       {label("Title")}
       <TextInput value={form.title} onChangeText={(v) => set("title", v)} maxLength={120} placeholder="e.g. Waterfront Glow Hunt" placeholderTextColor={t.faint} style={input} />
