@@ -43,6 +43,8 @@ router.get('/costcoin/bundles', require('../utils/asyncHandler').asyncHandler(re
 // The official contest rules (public).
 router.get('/rules', require('../utils/asyncHandler').asyncHandler(require('../controllers/rulesController').current));
 router.get('/rules/:version', require('../utils/asyncHandler').asyncHandler(require('../controllers/rulesController').version));
+// The game server reports a player's points in a quest (secret x-game-key).
+router.post('/quests/:questId/scores', require('../controllers/coscoinGameController').requireGameKey, require('../utils/asyncHandler').asyncHandler(require('../controllers/rankingController').gameScore));
 router.use('/', require('./prizeRoutes')); // /api/prizes (my prizes, claiming)
 router.use('/', require('./costcoinRoutes')); // /api/costcoin/* (buying CosCoin on the website, the wallet)
 router.use('/', require('./paymentRoutes')); // /api/payments/* (paying on the CosQuest website)

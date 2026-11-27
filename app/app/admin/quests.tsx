@@ -68,6 +68,7 @@ const EMPTY = (): QuestInput => {
     format: "in_person",
     placeLabel: "",
     scoring: { rules: "", tieBreak: "earliest_completion" },
+    prizeSplitPct: [],
     description: "",
     coverImageUrl: "",
     startsAt: start.toISOString(),
@@ -89,6 +90,7 @@ function fromQuest(q: AdminQuest): QuestInput {
     format: q.format || "in_person",
     placeLabel: q.placeLabel || "",
     scoring: { rules: q.scoring?.rules || "", tieBreak: q.scoring?.tieBreak || "earliest_completion" },
+    prizeSplitPct: q.prizeSplitPct || [],
     description: q.description || "",
     coverImageUrl: q.coverImageUrl || "",
     startsAt: q.startsAt,
@@ -242,6 +244,16 @@ function QuestForm({ editing, onClose, onSaved }: { editing: AdminQuest | null; 
           })}
         </View>
         <Text style={{ marginTop: 6, fontFamily: FONTS.regular, fontSize: 11.5, color: t.muted }}>Required before publishing a paid quest. No random points, drops or draws: skill must decide the winner.</Text>
+      </View>
+      <View style={{ marginTop: 12 }}>
+        {label("Prize split % by place (e.g. 60, 30, 10; empty = winner takes the whole prize pool)")}
+        <TextInput
+          value={(form.prizeSplitPct || []).join(", ")}
+          onChangeText={(v) => setForm((cur) => ({ ...cur, prizeSplitPct: v.split(",").map((x) => Number.parseInt(x.trim(), 10)).filter((n) => Number.isInteger(n) && n > 0).slice(0, 10) }))}
+          placeholder="60, 30, 10"
+          placeholderTextColor={t.faint}
+          style={input}
+        />
       </View>
 
       {label("Title")}

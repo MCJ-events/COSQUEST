@@ -12,4 +12,9 @@ async function paid(c) {
   await notificationModel.createForUser(c.user, `Your prize of ${money(c)} (PC-${c.number}) has been paid.`, { type: 'system', link: '/prizes' });
 }
 
-module.exports = { toClaim, paid };
+async function approved(c) {
+  const until = c.holdUntil ? c.holdUntil.toISOString().slice(0, 10) : 'soon';
+  await notificationModel.createForUser(c.user, `Your ${money(c)} prize (PC-${c.number}) is approved: it will be sent after ${until}.`, { type: 'system', link: '/prizes' });
+}
+
+module.exports = { toClaim, approved, paid };

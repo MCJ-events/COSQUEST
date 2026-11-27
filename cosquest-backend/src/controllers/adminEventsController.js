@@ -133,8 +133,10 @@ async function publishResults(req, res) {
       require('../utils/push').sendToUsers([String(w.user)], { title: `🏆 You won ${place} place!`, body: `${quest.title}${w.prizeNote ? ` · ${w.prizeNote}` : ''}`, data: { type: 'ticket', ticketId: String(w.ticket) }, channel: 'default', category: 'questUpdates', skipOnline: false }).catch(() => {});
       require('../models/QuestRegistration').updateOne({ quest: quest._id, user: w.user }, { $set: { status: 'winner' } }).catch(() => {});
     }
-    // Winners with a prize amount get a prize to claim (PrizeClaim).
-    await require('../utils/prizes').createForResults(quest, published);
+    // The prize pool is settled (prizes to Payouts Payable, the rest to Platform Fees),
+    // then winners with a prize amount get a prize to claim (PrizeClaim).
+    const settled = await require('../utils/settlement').settle(quest, published, req.admin);
+    await require('../utils/prizes').createForResults(quest, published, { formulaVersion: settled.formulaVersion });
     const event = await recordAudit(req.admin, {
       action: 'quest.results',
       area: 'quests',

@@ -215,6 +215,12 @@ router.post('/wallets/adjustments', a(require('../controllers/adjustController')
 const prizesAdmin = require('../controllers/adminPrizesController');
 router.get('/prizes', a(prizesAdmin.list));
 router.get('/prizes/export', a(prizesAdmin.exportCsv));
+router.get('/prizes/tax-totals', a(prizesAdmin.taxTotals));
+// Points and the ranking.
+const rankingAdmin = require('../controllers/rankingController');
+router.put('/quests/:questId/scores', a(rankingAdmin.adminScores));
+router.get('/quests/:questId/ranking', a(rankingAdmin.getRanking));
+router.post('/quests/:questId/ranking/draft', a(rankingAdmin.draft));
 router.post('/prizes/:prizeId/verify', a(prizesAdmin.verify));
 router.post('/prizes/:prizeId/reject', a(prizesAdmin.reject));
 router.post('/prizes/:prizeId/payout-request', a(prizesAdmin.payoutRequest));

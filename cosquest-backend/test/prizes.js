@@ -63,8 +63,8 @@ async function run(baseUrl) {
   check((await request('POST', `/api/admin/approvals/${asked.data.request.id}/approve`, b, { note: 'OK' })).status === 200, 'a second admin approves it', null);
   let c = await PrizeClaim.findById(claim1.id).lean();
   check(c.status === 'held' && c.holdUntil > new Date(Date.now() + 6 * 864e5), 'approved: held for the 7-day dispute window', { status: c.status, holdUntil: c.holdUntil });
-  const payable = await LedgerTransaction.findOne({ kind: 'prize.payable', key: `prize-payable-${claim1.id}` });
-  check(payable && payable.lines.find((l) => l.account === '2020').credit === 50000, 'ledger: Prize payable, Quest Pool > Payouts Payable', payable);
+  check(!(await LedgerTransaction.findOne({ key: `prize-payable-${claim1.id}` })), 'approval books no money (the prize was booked when results were published)', null);
+  await require('../src/utils/ledger').record({ key: `settlement-winner-${quest._id}`, kind: 'settlement.winner', book: 'money', currency: 'USD', lines: [{ account: '5030', debit: 50000 }, { account: '2020', credit: 50000 }], quest: quest._id, memo: 'test settlement' });
   const tooSoon = await request('POST', `/api/admin/prizes/${claim1.id}/paid`, a, { reference: 'ACH-778812' });
   check(tooSoon.status === 409 && tooSoon.data.code === 'on_hold', 'not paid before the hold ends', tooSoon.data);
   await PrizeClaim.collection.updateOne({ _id: c._id }, { $set: { holdUntil: new Date(Date.now() - 1000) } });

@@ -7,7 +7,7 @@ import { Platform, Text, TextInput, View } from "react-native";
 import { useAdminTheme } from "@/components/admin/theme";
 import { Button, Notice, Pill } from "@/components/admin/ui";
 import { FONTS } from "@/constants/fonts";
-import { type Attendance, type Results, getAttendance, getResults, publishResults, saveResults } from "@/services/adminEvents";
+import { type Attendance, type Ranking, type Results, draftFromRanking, getAttendance, getRanking, getResults, publishResults, saveResults, saveScores } from "@/services/adminEvents";
 
 const nameOf = (p: Attendance["attendees"][number]["person"]) => (p ? (p.username ? `${p.name} · @${p.username}` : p.name) : "Member");
 
@@ -30,6 +30,42 @@ export default function QuestAfterEvent({ questId, status }: { questId: string; 
       .catch(() => setRes(null));
   }, [questId]);
   useEffect(load, [load]);
+  const [points, setPoints] = useState<Record<string, string>>({});
+  const [pointsReason, setPointsReason] = useState("");
+  const [ranked, setRanked] = useState<Ranking | null>(null);
+  const loadRanking = useCallback(() => {
+    getRanking(questId).then(setRanked).catch(() => setRanked(null));
+  }, [questId]);
+  useEffect(loadRanking, [loadRanking]);
+  const savePoints = async () => {
+    setBusy("points");
+    setError("");
+    try {
+      const scores = Object.entries(points).filter(([, v]) => v.trim()).map(([ticketId, v]) => ({ ticketId, points: Number(v) }));
+      const r = await saveScores(questId, scores, pointsReason.trim());
+      setDone(`Points saved (${r.saved}). Recorded as ${r.auditEvent}.`);
+      setPoints({});
+      setPointsReason("");
+      loadRanking();
+    } catch (e: any) {
+      setError(e?.message || "Couldn't save the points.");
+    } finally {
+      setBusy(null);
+    }
+  };
+  const fillFromRanking = async () => {
+    setBusy("rank");
+    setError("");
+    try {
+      const r = await draftFromRanking(questId);
+      setDone(`Draft filled from the points ranking (${r.winners} winner(s)). Review it, then publish. Recorded as ${r.auditEvent}.`);
+      load();
+    } catch (e: any) {
+      setError(e?.message || "Couldn't fill the draft from the ranking.");
+    } finally {
+      setBusy(null);
+    }
+  };
 
   if (status !== "live" && status !== "completed") return null;
   const input = { height: 38, paddingHorizontal: 10, borderRadius: 10, borderWidth: 1, borderColor: t.border, backgroundColor: t.cardSoft, fontFamily: FONTS.regular, fontSize: 13, color: t.text, ...(Platform.OS === "web" ? ({ outlineStyle: "none" } as object) : null) };
@@ -123,6 +159,36 @@ export default function QuestAfterEvent({ questId, status }: { questId: string; 
               />
             </View>
           ))}
+          <View style={{ marginTop: 6, gap: 8, padding: 12, borderRadius: 12, borderWidth: 1, borderColor: t.border }}>
+            <Text style={{ fontFamily: FONTS.semibold, fontSize: 13.5, color: t.text }}>Points ranking</Text>
+            <Text style={{ fontFamily: FONTS.regular, fontSize: 12.5, color: t.muted }}>
+              Points come from the game, or enter them here (with a reason). Highest points win; ties follow the quest's published tie-break. "Fill from ranking" writes the draft below with the places and prizes from the prize pool split; review it, then publish.
+            </Text>
+            {(att?.attendees || []).map((r) => (
+              <View key={`pts-${r.ticketId}`} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <Text style={{ flex: 1, fontFamily: FONTS.regular, fontSize: 13, color: t.text }}>{nameOf(r.person)}</Text>
+                <TextInput
+                  value={points[r.ticketId] ?? ""}
+                  onChangeText={(v) => setPoints((p) => ({ ...p, [r.ticketId]: v.replace(/[^0-9.]/g, "").slice(0, 10) }))}
+                  placeholder="Points"
+                  placeholderTextColor={t.faint}
+                  keyboardType="decimal-pad"
+                  accessibilityLabel={`Points for ${nameOf(r.person)}`}
+                  style={[input, { width: 100 }]}
+                />
+              </View>
+            ))}
+            <TextInput value={pointsReason} onChangeText={setPointsReason} placeholder="Reason for entering points (e.g. scores from the venue sheet)" placeholderTextColor={t.faint} style={input} />
+            {ranked?.rows?.length ? (
+              <Text style={{ fontFamily: FONTS.regular, fontSize: 12.5, color: t.muted }}>
+                Ranking: {ranked.rows.map((x) => `${x.place}. ${x.member} (${x.points} pts${x.tied ? ", tie" : ""}${x.prizeCents ? `, $${(x.prizeCents / 100).toFixed(2)}` : ""})`).join(" · ")}
+              </Text>
+            ) : null}
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
+              <Button label="Save points" icon="save-outline" loading={busy === "points"} disabled={!Object.values(points).some((v) => v.trim()) || pointsReason.trim().length < 3} onPress={savePoints} />
+              <Button label="Fill from ranking" variant="primary" icon="podium-outline" loading={busy === "rank"} onPress={fillFromRanking} />
+            </View>
+          </View>
           <View style={{ flexDirection: "row", gap: 10, marginTop: 4 }}>
             <Button label="Save draft" loading={busy === "save"} disabled={!chosen.length} onPress={() => save(false)} />
             <Button label="Publish results" variant="primary" icon="trophy-outline" loading={busy === "publish"} disabled={!chosen.length} onPress={() => save(true)} />

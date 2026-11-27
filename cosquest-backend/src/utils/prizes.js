@@ -7,8 +7,9 @@
 //   checkPayoutApproval() / applyApproved() / payoutRejected()   called by approvals.decide
 //   markPaid()          after the hold: paid with a reference; ledger entries
 //   forfeitDue()        unclaimed after the deadline -> forfeited (hourly job)
-// Ledger (money book): approved -> "Prize payable" 2010 Quest Pool / 2020 Payouts Payable;
-//                      paid     -> "Prize paid"    2020 Payouts Payable / 1010 Stripe Clearing.
+// Ledger (money book): results published -> settlement (settlement.js): 2010 > 2020 prizes, 2010 > 4020 rest;
+//                      paid -> "Prize paid" 2020 Payouts Payable / 1010 Stripe Clearing;
+//                      forfeited or rejected -> "Prize returned" 2020 / 4020.
 const PrizeClaim = require('../models/PrizeClaim');
 const ApprovalRequest = require('../models/ApprovalRequest');
 const Counter = require('../models/Counter');
@@ -28,7 +29,7 @@ const step = (status, by, note = '') => ({ at: new Date(), status, by: String(by
 const label = (c) => `PC-${c.number}`;
 
 /** Results published: a claim for every winner with a prize amount (once). */
-async function createForResults(quest, result) {
+async function createForResults(quest, result, { formulaVersion = null } = {}) {
   const made = [];
   for (const w of result.winners || []) {
     if (!(w.prizeCents > 0)) continue;
@@ -43,6 +44,7 @@ async function createForResults(quest, result) {
         amountCents: w.prizeCents,
         currency: (quest.prizePool?.currency || 'USD').toUpperCase(),
         scoringVersion: quest.scoring?.version || null,
+        formulaVersion,
         resultsPublishedAt: result.publishedAt || new Date(),
         claimDeadline: new Date((result.publishedAt || new Date()).getTime() + CLAIM_DAYS() * DAY),
         history: [step('awaiting_claim', 'system', 'results published')],
@@ -163,10 +165,12 @@ async function adminMove(admin, claimId, from, to, extra = {}, note = '') {
 
 const verify = (admin, id) => adminMove(admin, id, 'submitted', 'verified', { verifiedBy: admin._id, verifiedAt: new Date(), 'tax.status': 'verified' });
 
-function reject(admin, id, reason) {
+async function reject(admin, id, reason) {
   const why = String(reason || '').trim();
   if (why.length < 3) fail(400, 'A reason is required.', 'reason_required');
-  return adminMove(admin, id, ['awaiting_claim', 'submitted', 'verified'], 'rejected', { rejectedReason: why.slice(0, 300) }, why);
+  const c = await adminMove(admin, id, ['awaiting_claim', 'submitted', 'verified'], 'rejected', { rejectedReason: why.slice(0, 300) }, why);
+  await require('./settlement').unpaidPrize(c, 'rejected');
+  return c;
 }
 
 async function requestPayout(admin, id, reason = '') {
@@ -204,18 +208,8 @@ async function applyApproved(request, admin) {
     { new: true }
   );
   if (!c) return;
-  await ledger.record({
-    key: `prize-payable-${c._id}`,
-    kind: 'prize.payable',
-    book: 'money',
-    currency: c.currency,
-    lines: [{ account: ledger.ACCOUNTS.questPool(c.quest), debit: c.amountCents }, { account: ledger.ACCOUNTS.payoutsPayable, credit: c.amountCents }],
-    user: c.user,
-    quest: c.quest,
-    memo: `${label(c)}: prize for place ${c.place}`,
-    createdBy: request.requestedBy,
-    approvedBy: [admin._id],
-  });
+  // The money was booked when results were published (settlement.js): approval books nothing.
+  require('./notifyPrize').approved(c).catch(() => {});
 }
 
 async function payoutRejected(request, admin) {
@@ -249,7 +243,8 @@ async function markPaid(admin, id, reference) {
 async function forfeitDue() {
   const due = await PrizeClaim.find({ status: 'awaiting_claim', claimDeadline: { $lt: new Date() } }).select('_id').limit(200).lean();
   for (const c of due) {
-    await PrizeClaim.updateOne({ _id: c._id, status: 'awaiting_claim' }, { $set: { status: 'forfeited' }, $push: { history: step('forfeited', 'system', 'claim deadline passed') } });
+    const r = await PrizeClaim.updateOne({ _id: c._id, status: 'awaiting_claim' }, { $set: { status: 'forfeited' }, $push: { history: step('forfeited', 'system', 'claim deadline passed') } });
+    if (r.modifiedCount) await require('./settlement').unpaidPrize(await PrizeClaim.findById(c._id).lean(), 'forfeited');
   }
   return due.length;
 }

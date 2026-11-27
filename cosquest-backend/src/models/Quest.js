@@ -60,6 +60,8 @@ const questSchema = new mongoose.Schema(
       version: { type: Number, default: 0 },
       lockedAt: { type: Date, default: null },
     },
+    // How the prize pool is split by place, in percent (e.g. [60, 30, 10]); empty = winner takes all.
+    prizeSplitPct: { type: [Number], default: [] },
     // Joining / check-in only within venueRadiusMeters of the venue (optional).
     requireAtVenue: { type: Boolean, default: false },
     venueRadiusMeters: { type: Number, default: 200, min: 50, max: 5000 },

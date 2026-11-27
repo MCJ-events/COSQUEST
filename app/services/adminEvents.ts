@@ -13,3 +13,9 @@ export const getResults = (questId: string) => adminRequest<Results>(`/quests/${
 export const saveResults = (questId: string, winners: { ticketId: string; place: number; prizeNote?: string; prizeCents?: number }[]) =>
   adminRequest<Results>(`/quests/${questId}/results`, { method: "PUT", body: { winners } });
 export const publishResults = (questId: string) => adminRequest<Results>(`/quests/${questId}/results/publish`, { method: "POST" });
+
+/** Points and the ranking (highest points win; the quest's tie-break decides ties). */
+export type Ranking = { tieBreak: string; scoringVersion: number | null; prizePoolCents: number; prizeSplitPct: number[]; withoutScore: number; rows: { ticket: string; user: string; member: string; points: number; completedAt: string | null; place: number; tied: boolean; prizeCents: number }[] };
+export const getRanking = (questId: string) => adminRequest<Ranking>(`/quests/${questId}/ranking`);
+export const saveScores = (questId: string, scores: { ticketId: string; points: number }[], reason: string) => adminRequest<{ ok: boolean; saved: number; auditEvent: string }>(`/quests/${questId}/scores`, { method: "PUT", body: { scores, reason } });
+export const draftFromRanking = (questId: string) => adminRequest<{ ok: boolean; winners: number; auditEvent: string }>(`/quests/${questId}/ranking/draft`, { method: "POST" });

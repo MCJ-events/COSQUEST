@@ -54,6 +54,7 @@ function adminQuestJson(quest) {
     status: effectiveStatus(quest),
     isPublished: Boolean(quest.isPublished),
     scoring: require('../utils/questScoring').json(quest),
+    prizeSplitPct: quest.prizeSplitPct || [],
     isSeedData: Boolean(quest.isSeedData),
     cancelledAt: quest.cancelledAt || null,
     cancelReason: quest.cancelReason || null,
@@ -105,6 +106,11 @@ function readFields(body, { partial = false, current = null } = {}) {
   if (has('placeLabel')) out.placeLabel = String(body.placeLabel || '').trim().slice(0, 80);
   const scoring = require('../utils/questScoring').read(body);
   if (scoring !== undefined) out.scoring = scoring;
+  if (has('prizeSplitPct')) {
+    const split = Array.isArray(body.prizeSplitPct) ? body.prizeSplitPct.map(Number) : null;
+    if (!split || split.length > 10 || split.some((n) => !Number.isInteger(n) || n < 1 || n > 100) || split.reduce((s, n) => s + n, 0) > 100) fail(400, 'The prize split is up to 10 whole percentages adding up to 100 at most.');
+    out.prizeSplitPct = split;
+  }
   const virtual = (out.format || current?.format) === 'virtual';
   if (virtual && !(out.placeLabel || current?.placeLabel)) fail(400, 'A virtual quest needs a place label, for example "Tokyo · Hanuma".');
   if (!virtual && out.format === 'in_person' && !has('location') && !Number.isFinite(current?.location?.lat)) fail(400, 'Pick the venue on the map (latitude and longitude).');

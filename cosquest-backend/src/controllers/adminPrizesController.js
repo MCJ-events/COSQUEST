@@ -73,4 +73,39 @@ async function exportCsv(req, res) {
   return res.send(`\uFEFF${[head.join(','), ...lines].join('\n')}`);
 }
 
-module.exports = { list, verify, reject, payoutRequest, paid, reveal, exportCsv };
+/**
+ * Tax totals for one calendar year (lock-in WE5): prizes PAID per recipient, with the full
+ * tax ID for 1099 filing. Super admins only, audited. 1099-MISC reporting from $2,000 a year
+ * for prizes paid after 31 Dec 2025 (confirm with the accountant).
+ */
+async function taxTotals(req, res) {
+  if (!isSuperAdmin(req.admin)) return res.status(403).json({ error: 'Only super admins can export tax totals.' });
+  const year = Number.parseInt(req.query.year, 10) || new Date().getUTCFullYear();
+  if (String(req.query.reason || '').trim().length < 3) return res.status(400).json({ error: 'A reason is required (?reason=...).', code: 'reason_required' });
+  const PrizeClaim = require('../models/PrizeClaim');
+  const crypto = require('../utils/payeeCrypto');
+  const from = new Date(Date.UTC(year, 0, 1));
+  const to = new Date(Date.UTC(year + 1, 0, 1));
+  const paid = await PrizeClaim.find({ status: 'paid', paidAt: { $gte: from, $lt: to } }).populate('user', 'profile.username').lean();
+  const byUser = new Map();
+  for (const c of paid) {
+    const k = String(c.user?._id || c.user);
+    const row = byUser.get(k) || { member: c.user?.profile?.username ? `@${c.user.profile.username}` : k, legalName: c.identity?.legalName, form: c.tax?.form, country: c.tax?.country, sealed: c.tax?.encrypted, total: 0, count: 0 };
+    row.total += c.amountCents;
+    row.count += 1;
+    byUser.set(k, row);
+  }
+  const threshold = Number.parseInt(process.env.PRIZE_1099_THRESHOLD_CENTS, 10) || 200000;
+  const head = ['Year', 'Member', 'Legal name', 'Tax form', 'Tax ID', 'Country', 'Prizes paid', 'Total (USD)', 'Reportable on 1099-MISC'];
+  const lines = [...byUser.values()].map((r) => {
+    let tin = '';
+    try { tin = crypto.open(r.sealed)?.tin || ''; } catch { tin = '(unreadable)'; }
+    return [year, r.member, r.legalName, r.form === 'w9' ? 'W-9' : r.form === 'w8ben' ? 'W-8BEN' : '', tin, r.country, r.count, (r.total / 100).toFixed(2), r.form === 'w9' && r.total >= threshold ? 'yes' : 'no'].map(cell).join(',');
+  });
+  await recordAudit(req.admin, { action: 'prize.tax_export', area: 'payments', target: { type: 'year', id: null, label: String(year) }, reason: String(req.query.reason) });
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="cosquest-prize-tax-totals-${year}.csv"`);
+  return res.send(`\uFEFF${[head.join(','), ...lines].join('\n')}`);
+}
+
+module.exports = { list, verify, reject, payoutRequest, paid, reveal, exportCsv, taxTotals };

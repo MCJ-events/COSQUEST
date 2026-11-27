@@ -18,6 +18,7 @@ export type AdminQuest = {
   kind: "quest" | "event";
   format?: "in_person" | "virtual";
   placeLabel?: string;
+  prizeSplitPct?: number[];
   scoring?: { rules: string; tieBreak: "earliest_completion" | "split_prize"; tieBreakText: string; version: number; lockedAt: string | null } | null;
   status: QuestStatus;
   isPublished: boolean;
@@ -47,6 +48,7 @@ export type QuestInput = {
   format?: "in_person" | "virtual";
   placeLabel?: string;
   scoring?: QuestScoringInput;
+  prizeSplitPct?: number[];
   description: string;
   coverImageUrl: string;
   startsAt: string;

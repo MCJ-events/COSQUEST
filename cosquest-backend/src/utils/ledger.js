@@ -44,6 +44,7 @@ const TYPES = {
   'costcoin.adjustment': 'Adjustment',
   'prize.payable': 'Prize payable',
   'prize.paid': 'Prize paid',
+  'prize.forfeited': 'Prize returned (unpaid)',
   'settlement.platform': 'Settlement: platform share',
   'settlement.winner': 'Settlement: winner share',
   payout: 'Payout',
