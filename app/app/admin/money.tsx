@@ -901,8 +901,6 @@ function ItemsTab({ canRequest, onRequested }: { canRequest: boolean; onRequeste
                 <TextInput value={r.priceCosCoin} onChangeText={(v) => set(i, { priceCosCoin: v.replace(/[^0-9]/g, "").slice(0, 7) })} placeholder="CosCoin" keyboardType="number-pad" placeholderTextColor={t.faint} style={[input, { width: 90 }]} accessibilityLabel="Price in CosCoin" />
                 <Select<string> value={r.game} options={ITEM_GAMES.map((g) => ({ value: g, label: g }))} onChange={(v) => set(i, { game: v })} minWidth={110} />
                 <Select<"any" | "bought"> value={r.boughtCoinsOnly ? "bought" : "any"} options={[{ value: "any", label: "Any coins" }, { value: "bought", label: "Bought coins only" }]} onChange={(v) => set(i, { boughtCoinsOnly: v === "bought" })} minWidth={150} />
-              </View>
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, alignItems: "center", marginTop: 6 }}>
                 <Select<string> value={r.section} options={[{ value: "elite_merch", label: "Shop: Elite Merch" }, { value: "remix", label: "Shop: Manny's Remix" }, { value: "deals", label: "Shop: Deals" }, { value: "wardrobe", label: "Not in the shop" }]} onChange={(v) => set(i, { section: v })} minWidth={170} />
                 <Select<"no" | "yes"> value={r.free ? "yes" : "no"} options={[{ value: "no", label: "Paid" }, { value: "yes", label: "Free reward" }]} onChange={(v) => set(i, { free: v === "yes", priceCosCoin: v === "yes" ? "" : r.priceCosCoin })} minWidth={120} />
                 <Select<"no" | "yes"> value={r.isNew ? "yes" : "no"} options={[{ value: "no", label: "Not new" }, { value: "yes", label: "NEW tag" }]} onChange={(v) => set(i, { isNew: v === "yes" })} minWidth={110} />
