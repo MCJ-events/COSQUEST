@@ -37,8 +37,12 @@ function next(quest, wanted) {
 /** For a new quest. */
 const initial = (wanted) => (wanted && wanted.rules ? { ...wanted, version: 1, lockedAt: null } : undefined);
 
+/** Required in live mode (real money), or when QUEST_SCORING_REQUIRED=1 (e.g. for the dry run). */
+const required = () => process.env.QUEST_SCORING_REQUIRED === '1' || String(process.env.STRIPE_SECRET_KEY || '').startsWith('sk_live');
+
 /** Before publishing: a paid quest must say how points are scored. */
 async function checkPublish(quest) {
+  if (!required()) return;
   const TicketType = require('../models/TicketType');
   const paid = (quest.entryFee?.amount || 0) > 0 || (quest._id && (await TicketType.exists({ quest: quest._id, 'price.amount': { $gt: 0 } })));
   if (paid && (quest.scoring?.rules || '').length < 20) {
@@ -52,4 +56,4 @@ function json(quest) {
   return { rules: s.rules, tieBreak: s.tieBreak || 'earliest_completion', tieBreakText: TIE_BREAKS[s.tieBreak || 'earliest_completion'], version: s.version || 1, lockedAt: s.lockedAt || null };
 }
 
-module.exports = { TIE_BREAKS, read, next, initial, checkPublish, json, locked };
+module.exports = { TIE_BREAKS, read, next, initial, checkPublish, json, locked, required };

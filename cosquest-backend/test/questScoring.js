@@ -16,6 +16,8 @@ async function run(baseUrl) {
     try { data = JSON.parse(text); } catch { data = text; }
     return { status: response.status, data };
   }
+  const before = process.env.QUEST_SCORING_REQUIRED;
+  process.env.QUEST_SCORING_REQUIRED = '1';
   const suffix = `${Date.now() % 1e7}${Math.floor(Math.random() * 100)}`;
   const u = await User.create({ profile: { username: `QsA${suffix}`, usernameNormalized: `qsa${suffix}`, firstName: 'Ada', avatarKey: 'green-knight' }, email: `qsa_${suffix}@example.com`, onboardingComplete: true, faction: 'ascendants', platformRole: 'admin', adminSince: new Date() });
   const admin = (await request('POST', '/api/admin/auth/exchange', signToken(u.id, u.tokenVersion))).data.token;
@@ -41,6 +43,8 @@ async function run(baseUrl) {
   const free = await request('POST', '/api/admin/quests', admin, { ...base, title: `Free quest ${suffix}`, entryFee: { amount: 0 }, publish: true });
   check(free.status === 201, 'a free quest can be published without scoring', free.data);
 
+  if (before === undefined) delete process.env.QUEST_SCORING_REQUIRED;
+  else process.env.QUEST_SCORING_REQUIRED = before;
   console.log(`\nquest scoring: ${ok} passed, ${bad} failed`);
   return { pass: ok, fail: bad };
 }
