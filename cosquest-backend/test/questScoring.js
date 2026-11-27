@@ -40,8 +40,9 @@ async function run(baseUrl) {
   check(change.status === 409, 'once published, the scoring is locked', change.data);
   const sameAgain = await request('PATCH', `/api/admin/quests/${id}`, admin, { scoring: { rules, tieBreak: 'earliest_completion' }, description: 'Updated description' });
   check(sameAgain.status === 200, 'other edits still work when the scoring is unchanged', sameAgain.data);
-  const free = await request('POST', '/api/admin/quests', admin, { ...base, title: `Free quest ${suffix}`, entryFee: { amount: 0 }, publish: true });
-  check(free.status === 201, 'a free quest can be published without scoring', free.data);
+  delete process.env.QUEST_SCORING_REQUIRED;
+  const loose = await request('POST', '/api/admin/quests', admin, { ...base, title: `Test-mode quest ${suffix}`, publish: true });
+  check(loose.status === 201, 'test mode, rule not switched on: a paid quest still publishes without scoring', loose.data);
 
   if (before === undefined) delete process.env.QUEST_SCORING_REQUIRED;
   else process.env.QUEST_SCORING_REQUIRED = before;
