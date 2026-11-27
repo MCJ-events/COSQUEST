@@ -38,6 +38,9 @@ import {
   type ItemCatalog,
   type AdminDispute,
   type AdminWallet,
+  type AdminRules,
+  getAdminRules,
+  requestRules,
   getWallets,
   freezeWallet,
   unfreezeWallet,
@@ -54,7 +57,7 @@ import {
   requestPaymentSettings,
 } from "@/services/adminMoney";
 
-type TabKey = "ledger" | "regions" | "settings" | "prices" | "items" | "disputes" | "wallets" | "approvals" | "approvers";
+type TabKey = "ledger" | "regions" | "settings" | "prices" | "items" | "disputes" | "wallets" | "rules" | "approvals" | "approvers";
 const STATUS_LABEL: Record<RegionStatus, string> = { allowed: "Allowed", blocked: "Blocked", needs_license: "Needs licence" };
 const STATUS_TONE: Record<RegionStatus, "green" | "red" | "amber"> = { allowed: "green", blocked: "red", needs_license: "amber" };
 const when = (iso: string) => new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
@@ -83,6 +86,7 @@ export default function MoneyAdmin() {
           { key: "items", label: "Items" },
           { key: "disputes", label: "Disputes" },
           { key: "wallets", label: "Wallets" },
+          { key: "rules", label: "Rules" },
           { key: "approvals", label: "Approvals", count: pending },
           ...(role === "admin" ? [{ key: "approvers" as TabKey, label: "Approvers" }] : []),
         ]}
@@ -93,6 +97,8 @@ export default function MoneyAdmin() {
         <LedgerTab canCorrect={!finance} />
       ) : tab === "regions" ? (
         <RegionsTab canRequest={!finance} onRequested={() => setTab("approvals")} />
+      ) : tab === "rules" ? (
+        <RulesTab canRequest={!finance} onRequested={() => setTab("approvals")} />
       ) : tab === "wallets" ? (
         <WalletsTab canChange={!finance} />
       ) : tab === "disputes" ? (
@@ -410,6 +416,10 @@ function ApprovalsTab({ onChanged }: { onChanged: () => void }) {
                       {c.region}{c.name ? ` (${c.name})` : ""} → {STATUS_LABEL[c.status]}{c.note ? ` · ${c.note}` : ""}
                     </Text>
                   ))
+                ) : "body" in r.changes ? (
+                  <Text style={{ fontFamily: FONTS.regular, fontSize: 14, color: t.text }}>
+                    Publish “{r.changes.title}” ({r.changes.body.length.toLocaleString("en-US")} characters)
+                  </Text>
                 ) : "transactionId" in r.changes ? (
                   <Text style={{ fontFamily: FONTS.regular, fontSize: 14, color: t.text }}>
                     Reverse {r.changes.number} ({r.changes.type}): {r.changes.book === "money" ? `$${(r.changes.total / 100).toFixed(2)}` : `${r.changes.total} CosCoin`} goes back the other way
@@ -1116,6 +1126,79 @@ function WalletsTab({ canChange }: { canChange: boolean }) {
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
               <TextInput value={username} onChangeText={setUsername} placeholder="@username" autoCapitalize="none" placeholderTextColor={t.faint} style={[input, { width: 220 }]} accessibilityLabel="Member's username" />
               <Button label="Freeze wallet" variant="primary" icon="lock-closed-outline" loading={busy} disabled={!username.trim() || reason.trim().length < 3} onPress={() => run(() => freezeWallet(username.trim(), reason.trim()), `${username.trim()}'s wallet is frozen.`)} />
+            </View>
+          </View>
+        </Card>
+      ) : null}
+    </View>
+  );
+}
+
+// ---------- Official rules (legal plan, section 9) ----------
+
+function RulesTab({ canRequest, onRequested }: { canRequest: boolean; onRequested: () => void }) {
+  const t = useAdminTheme();
+  const [data, setData] = useState<{ current: AdminRules | null; history: { version: number; title: string; publishedAt: string }[] } | null>(null);
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  const load = useCallback(() => {
+    getAdminRules()
+      .then((d) => {
+        setData(d);
+        setTitle(d.current?.title || "CosQuest Official Contest Rules");
+        setBody(d.current?.body || "");
+      })
+      .catch((e) => setError(e?.message || "Couldn't load the rules."));
+  }, []);
+  useEffect(load, [load]);
+
+  const input = { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12, borderWidth: 1, borderColor: t.border, backgroundColor: t.cardSoft, fontFamily: FONTS.regular, fontSize: 14, color: t.text, ...(Platform.OS === "web" ? ({ outlineStyle: "none" } as object) : null) };
+  const submit = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      await requestRules(title.trim(), body, reason.trim());
+      setReason("");
+      onRequested();
+    } catch (e: any) {
+      setError(e?.message || "Couldn't send the request.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const c = data?.current;
+  return (
+    <View style={{ gap: 16 }}>
+      {error ? <Notice icon="alert-circle-outline" tone="red" text={error} /> : null}
+      <Card>
+        <CardHeader title="Official rules" subtitle={c ? `Version ${c.version}, published ${new Date(c.publishedAt).toLocaleDateString()}. Every ticket accepts the current version at checkout.` : "No rules published yet: checkout doesn't ask for acceptance until the first version is approved."} />
+        {c ? <Text style={{ marginTop: 10, fontFamily: FONTS.regular, fontSize: 13.5, color: t.muted }}>Public page: cosquest.vercel.app/rules</Text> : null}
+        {data?.history?.length ? (
+          <View style={{ marginTop: 10, gap: 4 }}>
+            {data.history.map((v) => (
+              <Text key={v.version} style={{ fontFamily: FONTS.regular, fontSize: 13, color: t.text }}>v{v.version} · {v.title} · {new Date(v.publishedAt).toLocaleDateString()}</Text>
+            ))}
+          </View>
+        ) : null}
+      </Card>
+      {canRequest ? (
+        <Card>
+          <CardHeader title="Publish a new version" subtitle="Paste the lawyer-reviewed text. Use # for headings and - for bullet points. Another admin or the finance approver approves it." />
+          <View style={{ marginTop: 14, gap: 12 }}>
+            <Field label="Title">
+              <TextInput value={title} onChangeText={(v) => setTitle(v.slice(0, 120))} placeholderTextColor={t.faint} style={[input, { height: 44 }]} />
+            </Field>
+            <Field label="Rules text">
+              <TextInput value={body} onChangeText={(v) => setBody(v.slice(0, 60000))} multiline placeholder={"# Who can enter\n- 18 or over\n..."} placeholderTextColor={t.faint} style={[input, { minHeight: 260, textAlignVertical: "top" }]} />
+            </Field>
+            <ReasonBox value={reason} onChange={setReason} placeholder="e.g. Rules reviewed by counsel on 28 Nov." />
+            <View style={{ flexDirection: "row" }}>
+              <Button label="Send for approval" variant="primary" icon="send-outline" loading={busy} disabled={title.trim().length < 3 || body.trim().length < 50 || reason.trim().length < 3} onPress={submit} />
             </View>
           </View>
         </Card>

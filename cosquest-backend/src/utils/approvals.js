@@ -48,6 +48,8 @@ async function decide(admin, requestId, { approve, note = '' }) {
   // CosCoin price table: the approved table becomes the next version (v1, v2...).
   // What CosCoin can buy: the approved catalog becomes the next version (c1, c2...).
   // Ledger corrections: recorded only once a second person approves.
+  // Official rules: the approved text becomes the next version.
+  if (approve && claimed.kind === 'official_rules') await require('./officialRules').applyApproved(claimed, admin);
   if (approve && claimed.kind === 'ledger_reversal') await require('./ledgerCorrections').applyApproved(claimed, admin);
   if (approve && claimed.kind === 'item_catalog') await require('./itemCatalog').applyApproved(claimed, admin);
   if (approve && claimed.kind === 'price_table') await require('./priceTable').applyApproved(claimed, admin);

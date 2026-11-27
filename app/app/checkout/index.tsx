@@ -14,6 +14,7 @@ import { ActivityIndicator, Platform, Pressable, ScrollView, Text, View } from "
 
 import { useInk } from "@/constants/chatTheme";
 import { FONTS } from "@/constants/fonts";
+import { getRules, type OfficialRules } from "@/services/rules";
 import { formatMoney } from "@/services/tickets";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { chooseTicketType } from "@/store/slices/paymentSlice";
@@ -40,6 +41,13 @@ export default function WebCheckout() {
   const dispatch = useAppDispatch();
   const { h } = useLocalSearchParams<{ h?: string }>();
   const web = useAppSelector((state) => state.payment.web);
+  // Official rules: once published, the buyer ticks acceptance of the current version.
+  const [rules, setRules] = useState<OfficialRules | null>(null);
+  const [accepted, setAccepted] = useState(false);
+  useEffect(() => {
+    getRules().then(setRules).catch(() => setRules(null));
+  }, []);
+  const needsRules = !!rules && !accepted;
   const asked = useRef(false);
   const minutesLeft = useMinutesLeft(web.expiresAt);
 
@@ -108,11 +116,23 @@ export default function WebCheckout() {
           <View style={{ gap: 10 }}>
             <SalesCountdown closesAt={type?.salesClosesAt} />
             {web.error ? <Text style={{ fontFamily: FONTS.regular, fontSize: 13.5, color: "#D9364F", textAlign: "center" }}>{web.error.message}</Text> : null}
+            {rules ? (
+              <Pressable onPress={() => setAccepted((x) => !x)} accessibilityRole="checkbox" accessibilityState={{ checked: accepted }} style={{ flexDirection: "row", alignItems: "flex-start", gap: 10, paddingVertical: 4 }}>
+                <Ionicons name={accepted ? "checkbox" : "square-outline"} size={22} color={accepted ? PINK : text("#66738A")} />
+                <Text style={{ flex: 1, fontFamily: FONTS.regular, fontSize: 13.5, lineHeight: 19, color: text("#3D4256") }}>
+                  I have read and accept the{" "}
+                  <Text onPress={() => (Platform.OS === "web" ? window.open(`/rules?v=${rules.version}`, "_blank") : undefined)} style={{ fontFamily: FONTS.semibold, color: PINK, textDecorationLine: "underline" }}>
+                    official rules
+                  </Text>{" "}
+                  (version {rules.version}).
+                </Text>
+              </Pressable>
+            ) : null}
             <Pressable
-              onPress={() => dispatch(payNow())}
-              disabled={!type || web.status === "paying"}
+              onPress={() => dispatch(payNow({ acceptedRulesVersion: rules?.version }))}
+              disabled={!type || web.status === "paying" || needsRules}
               accessibilityRole="button"
-              style={{ height: 54, borderRadius: 27, alignItems: "center", justifyContent: "center", backgroundColor: !type ? "#B9BECB" : PINK }}>
+              style={{ height: 54, borderRadius: 27, alignItems: "center", justifyContent: "center", backgroundColor: !type || needsRules ? "#B9BECB" : PINK }}>
               {web.status === "paying" ? (
                 <ActivityIndicator color="#FFFFFF" />
               ) : (

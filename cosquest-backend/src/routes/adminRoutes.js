@@ -211,4 +211,9 @@ router.get('/wallets', a(walletsAdmin.list));
 router.post('/wallets/freeze', a(walletsAdmin.freeze));
 router.post('/wallets/unfreeze', a(walletsAdmin.unfreeze));
 
+// Official contest rules: versions, published through approvals.
+const rulesAdmin = require('../controllers/rulesController');
+router.get('/rules', a(rulesAdmin.admin));
+router.post('/rules/requests', a(rulesAdmin.requestPublish));
+
 module.exports = router;

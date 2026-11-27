@@ -62,11 +62,11 @@ export const getEligibility = (questId: string, token: string) => request<Eligib
 export const redeemCheckoutLink = (h: string) => request<RedeemedCheckout>("/api/payments/handoff/redeem", { method: "POST", body: { h } });
 
 /** The website: Stripe's page for this ticket (returns to /checkout/return). */
-export const startWebCheckout = (checkoutToken: string, ticketTypeId: string | null, position?: { lat: number; lng: number; accuracy: number } | null) =>
+export const startWebCheckout = (checkoutToken: string, ticketTypeId: string | null, position?: { lat: number; lng: number; accuracy: number } | null, acceptedRulesVersion?: number) =>
   request<{ order: Order; checkoutUrl: string | null; ticket: { id: string } | null; reused: boolean }>("/api/payments/checkout", {
     method: "POST",
     token: checkoutToken,
-    body: { ...(ticketTypeId ? { ticketTypeId } : {}), ...(position ? { position } : {}) },
+    body: { ...(ticketTypeId ? { ticketTypeId } : {}), ...(position ? { position } : {}), ...(acceptedRulesVersion ? { acceptedRulesVersion } : {}) },
   });
 
 /** The website's return page: where the order stands (asks Stripe if still pending). */

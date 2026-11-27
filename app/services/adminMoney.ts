@@ -44,7 +44,7 @@ export type ApprovalRequest = {
   kind: string;
   title: string;
   /** Region rules: a list; money settings: { platformShareBps, payoutApprovalLimitCents, note }. */
-  changes: { region: string; name: string; status: RegionStatus; note: string }[] | PaymentSettingsChange | { bundles: PriceBundle[] } | { items: CatalogItem[] } | { transactionId: string; number: string; type: string; book: string; currency: string; total: number };
+  changes: { region: string; name: string; status: RegionStatus; note: string }[] | PaymentSettingsChange | { bundles: PriceBundle[] } | { items: CatalogItem[] } | { transactionId: string; number: string; type: string; book: string; currency: string; total: number } | { title: string; body: string };
   reason: string;
   status: ApprovalStatus;
   requestedBy: { id: string; name: string };
@@ -102,6 +102,11 @@ export type AdminWallet = { userId: string; member: string; balance: number; bou
 export const getWallets = () => adminRequest<{ wallets: AdminWallet[] }>("/wallets");
 export const freezeWallet = (username: string, reason: string) => adminRequest<{ ok: boolean; auditEvent: string }>("/wallets/freeze", { method: "POST", body: { username, reason } });
 export const unfreezeWallet = (userId: string, reason: string) => adminRequest<{ ok: boolean; auditEvent: string }>("/wallets/unfreeze", { method: "POST", body: { userId, reason } });
+
+/** The official contest rules (versions, published through approvals). */
+export type AdminRules = { version: number; title: string; body: string; publishedAt: string };
+export const getAdminRules = () => adminRequest<{ current: AdminRules | null; history: { version: number; title: string; publishedAt: string }[] }>("/rules");
+export const requestRules = (title: string, body: string, reason: string) => adminRequest<{ request: { id: string; number: string; title: string }; auditEvent: string }>("/rules/requests", { method: "POST", body: { title, body, reason } });
 
 export const requestRegionChanges = (changes: { region: string; name?: string; status: RegionStatus; note?: string }[], reason: string) =>
   adminRequest<{ request: ApprovalRequest; auditEvent: string }>("/regions/requests", { method: "POST", body: { changes, reason } });
