@@ -26,6 +26,14 @@ const itemSchema = new mongoose.Schema(
     stackable: { type: Boolean, default: false },
     // Only bought CosCoin can buy it (not coins earned in games).
     boughtCoinsOnly: { type: Boolean, default: false },
+    // The Shop (Wale's design): picture, subtitle, which tab, NEW tag, when the offer ends,
+    // and free rewards (Manny's Remix, claimed once per offer period).
+    imageUrl: { type: String, default: '', maxlength: 500 },
+    subtitle: { type: String, default: '', maxlength: 80 },
+    section: { type: String, enum: ['elite_merch', 'remix', 'deals', 'wardrobe'], default: 'elite_merch' },
+    newTag: { type: Boolean, default: false },
+    dropEndsAt: { type: Date, default: null },
+    free: { type: Boolean, default: false },
     game: { type: String, enum: GAMES, default: 'all' },
     status: { type: String, enum: ['active', 'open'], default: 'active' },
     note: { type: String, default: '', maxlength: 200 },

@@ -55,3 +55,32 @@ export type RedeemedTopUp = { checkoutToken: string; expiresAt: string; member: 
 export const redeemTopUpLink = (h: string) => request<RedeemedTopUp>("/api/costcoin/handoff/redeem", { method: "POST", body: { h } });
 export const startTopUp = (checkoutToken: string) => request<{ order: TopUpOrder; checkoutUrl: string | null }>("/api/costcoin/checkout", { method: "POST", token: checkoutToken, body: {} });
 export const getTopUpOrder = (checkoutToken: string, orderId: string) => request<{ order: TopUpOrder; wallet: Wallet }>(`/api/costcoin/orders/${orderId}`, { token: checkoutToken });
+
+/** The Shop (GET /api/shop): everything the screen needs, with the server's clock. */
+export type ShopItem = {
+  id: string;
+  name: string;
+  subtitle: string;
+  imageUrl: string;
+  kind: string;
+  priceCosCoin: number | null;
+  stackable: boolean;
+  boughtCoinsOnly: boolean;
+  section: "elite_merch" | "remix" | "deals" | "wardrobe";
+  dropEndsAt: string | null;
+  isNew: boolean;
+  free: boolean;
+  owned: number;
+  claimed: boolean;
+};
+export type ShopData = {
+  serverTime: string;
+  notice: string;
+  balance: { balance: number; bought: number; earned: number; frozen: boolean };
+  packs: { priceVersion: string | null; bundles: { id: string; name: string; priceCents: number; costcoin: number }[] };
+  eliteMerch: ShopItem[];
+  remix: { endsAt: string | null; free: ShopItem | null; offers: ShopItem[] };
+  deals: ShopItem[];
+};
+export const getShop = (token: string) => request<ShopData>("/api/shop", { token });
+export const claimFreeReward = (token: string, itemId: string) => request<{ claimed: boolean; item: { id: string; name: string } }>(`/api/shop/free/${itemId}`, { method: "POST", token });

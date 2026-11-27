@@ -36,6 +36,8 @@ async function spend(user, { itemId, key, game = null }) {
   const { catalogVersion, items } = await itemCatalog.onSale(game);
   const item = items.find((i) => i.id === String(itemId || '').toUpperCase());
   if (!item) fail(404, 'This item is not on sale.', 'not_on_sale');
+  if (item.free || !item.priceCosCoin) fail(409, 'This is a free reward: claim it in the shop.', 'free_item');
+  if (item.dropEndsAt && new Date(item.dropEndsAt) <= new Date()) fail(404, 'This offer has ended.', 'not_on_sale');
   if (!item.stackable && (await ItemOwnership.exists({ user: userId, itemId: item.id, quantity: { $gte: 1 } }))) fail(409, 'You already own this.', 'already_owned');
 
   // Bought-only items take bought coins; any other item takes earned coins

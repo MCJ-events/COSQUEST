@@ -81,10 +81,10 @@ export const requestPriceTable = (bundles: { id: string; name: string; price: st
   adminRequest<{ request: { id: string; number: string; title: string }; auditEvent: string }>("/price-table/requests", { method: "POST", body: { bundles, reason } });
 
 /** What CosCoin can buy (never quest entry, XP or cash). status open = not decided, never sold. */
-export type CatalogItem = { id: string; name: string; kind: string; priceCosCoin: number | null; stackable: boolean; boughtCoinsOnly?: boolean; game: string; status: "active" | "open"; note?: string };
+export type CatalogItem = { id: string; name: string; kind: string; priceCosCoin: number | null; stackable: boolean; boughtCoinsOnly?: boolean; imageUrl?: string; subtitle?: string; section?: string; isNew?: boolean; dropEndsAt?: string | null; free?: boolean; game: string; status: "active" | "open"; note?: string };
 export type ItemCatalog = { catalogVersion: string | null; items: CatalogItem[]; approvedAt: string | null };
 export const getItemCatalog = () => adminRequest<{ current: ItemCatalog; history: ItemCatalog[]; kinds: string[]; games: string[] }>("/item-catalog");
-export const requestItemCatalog = (items: { id: string; name: string; kind: string; priceCosCoin: string; game: string; status: "active" | "open"; boughtCoinsOnly?: boolean }[], reason: string) =>
+export const requestItemCatalog = (items: { id: string; name: string; kind: string; priceCosCoin: string; game: string; status: "active" | "open"; boughtCoinsOnly?: boolean; imageUrl?: string; subtitle?: string; section?: string; isNew?: boolean; dropEndsAt?: string | null; free?: boolean }[], reason: string) =>
   adminRequest<{ request: { id: string; number: string; title: string }; auditEvent: string }>("/item-catalog/requests", { method: "POST", body: { items, reason } });
 
 /** A card dispute (chargeback) from Stripe. */

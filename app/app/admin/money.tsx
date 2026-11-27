@@ -826,7 +826,7 @@ function PricesTab({ canRequest, onRequested }: { canRequest: boolean; onRequest
 
 // ---------- What CosCoin can buy (the item catalog) ----------
 
-type ItemRow = { id: string; name: string; kind: string; priceCosCoin: string; game: string; status: "active" | "open"; boughtCoinsOnly: boolean };
+type ItemRow = { id: string; name: string; kind: string; priceCosCoin: string; game: string; status: "active" | "open"; boughtCoinsOnly: boolean; imageUrl: string; subtitle: string; section: string; isNew: boolean; dropEndsAt: string; free: boolean };
 const ITEM_KINDS = ["cosmetic", "skin", "weapon", "ammo", "bundle", "faction_switch", "other"];
 const ITEM_GAMES = ["all", "social", "costquest", "trivia", "parlay"];
 
@@ -842,7 +842,7 @@ function ItemsTab({ canRequest, onRequested }: { canRequest: boolean; onRequeste
     getItemCatalog()
       .then((d) => {
         setData(d);
-        setRows(d.current.items.map((i) => ({ id: i.id, name: i.name, kind: i.kind, priceCosCoin: i.priceCosCoin === null ? "" : String(i.priceCosCoin), game: i.game, status: i.status, boughtCoinsOnly: Boolean(i.boughtCoinsOnly) })));
+        setRows(d.current.items.map((i) => ({ id: i.id, name: i.name, kind: i.kind, priceCosCoin: i.priceCosCoin === null ? "" : String(i.priceCosCoin), game: i.game, status: i.status, boughtCoinsOnly: Boolean(i.boughtCoinsOnly), imageUrl: i.imageUrl || "", subtitle: i.subtitle || "", section: i.section || "elite_merch", isNew: Boolean(i.newTag), dropEndsAt: i.dropEndsAt ? i.dropEndsAt.slice(0, 10) : "", free: Boolean(i.free) })));
       })
       .catch((e) => setError(e?.message || "Couldn't load the catalog."));
   }, []);
@@ -901,12 +901,20 @@ function ItemsTab({ canRequest, onRequested }: { canRequest: boolean; onRequeste
                 <TextInput value={r.priceCosCoin} onChangeText={(v) => set(i, { priceCosCoin: v.replace(/[^0-9]/g, "").slice(0, 7) })} placeholder="CosCoin" keyboardType="number-pad" placeholderTextColor={t.faint} style={[input, { width: 90 }]} accessibilityLabel="Price in CosCoin" />
                 <Select<string> value={r.game} options={ITEM_GAMES.map((g) => ({ value: g, label: g }))} onChange={(v) => set(i, { game: v })} minWidth={110} />
                 <Select<"any" | "bought"> value={r.boughtCoinsOnly ? "bought" : "any"} options={[{ value: "any", label: "Any coins" }, { value: "bought", label: "Bought coins only" }]} onChange={(v) => set(i, { boughtCoinsOnly: v === "bought" })} minWidth={150} />
+              </View>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, alignItems: "center", marginTop: 6 }}>
+                <Select<string> value={r.section} options={[{ value: "elite_merch", label: "Shop: Elite Merch" }, { value: "remix", label: "Shop: Manny's Remix" }, { value: "deals", label: "Shop: Deals" }, { value: "wardrobe", label: "Not in the shop" }]} onChange={(v) => set(i, { section: v })} minWidth={170} />
+                <Select<"no" | "yes"> value={r.free ? "yes" : "no"} options={[{ value: "no", label: "Paid" }, { value: "yes", label: "Free reward" }]} onChange={(v) => set(i, { free: v === "yes", priceCosCoin: v === "yes" ? "" : r.priceCosCoin })} minWidth={120} />
+                <Select<"no" | "yes"> value={r.isNew ? "yes" : "no"} options={[{ value: "no", label: "Not new" }, { value: "yes", label: "NEW tag" }]} onChange={(v) => set(i, { isNew: v === "yes" })} minWidth={110} />
+                <TextInput value={r.subtitle} onChangeText={(v) => set(i, { subtitle: v.slice(0, 80) })} placeholder="Subtitle (e.g. Shimmer queen)" placeholderTextColor={t.faint} style={[input, { flex: 1, minWidth: 160 }]} accessibilityLabel="Subtitle" />
+                <TextInput value={r.imageUrl} onChangeText={(v) => set(i, { imageUrl: v.trim().slice(0, 500) })} placeholder="Picture URL (https://…)" autoCapitalize="none" placeholderTextColor={t.faint} style={[input, { flex: 1, minWidth: 200 }]} accessibilityLabel="Picture URL" />
+                <TextInput value={r.dropEndsAt} onChangeText={(v) => set(i, { dropEndsAt: v.replace(/[^0-9-]/g, "").slice(0, 10) })} placeholder="Ends YYYY-MM-DD" placeholderTextColor={t.faint} style={[input, { width: 140 }]} accessibilityLabel="Offer ends (date)" />
                 <Select<"active" | "open"> value={r.status} options={[{ value: "active", label: "On sale" }, { value: "open", label: "OPEN" }]} onChange={(v) => set(i, { status: v })} minWidth={100} />
                 <Button label="Remove" variant="ghost" onPress={() => setRows((all) => all.filter((_, j) => j !== i))} />
               </View>
             ))}
             <View style={{ flexDirection: "row" }}>
-              <Button label="Add an item" variant="ghost" icon="add-outline" onPress={() => setRows((all) => [...all, { id: "", name: "", kind: "skin", priceCosCoin: "", game: "all", status: "open", boughtCoinsOnly: false }])} />
+              <Button label="Add an item" variant="ghost" icon="add-outline" onPress={() => setRows((all) => [...all, { id: "", name: "", kind: "skin", priceCosCoin: "", game: "all", status: "open", boughtCoinsOnly: false, imageUrl: "", subtitle: "", section: "elite_merch", isNew: false, dropEndsAt: "", free: false }])} />
             </View>
             <ReasonBox value={reason} onChange={setReason} placeholder="e.g. Items and prices from Adewale's game mechanics document, approved by Mark." />
             <View style={{ flexDirection: "row" }}>
