@@ -38,6 +38,17 @@ import {
   type ItemCatalog,
   type AdminDispute,
   type AdminWallet,
+  type AdminRules,
+  getAdminRules,
+  requestAdjustment,
+  type AdminPrize,
+  getPrizes,
+  verifyPrize,
+  rejectPrize,
+  requestPrizePayout,
+  markPrizePaid,
+  downloadPrizesCsv,
+  requestRules,
   getWallets,
   freezeWallet,
   unfreezeWallet,
@@ -54,7 +65,7 @@ import {
   requestPaymentSettings,
 } from "@/services/adminMoney";
 
-type TabKey = "ledger" | "regions" | "settings" | "prices" | "items" | "disputes" | "wallets" | "approvals" | "approvers";
+type TabKey = "ledger" | "regions" | "settings" | "prices" | "items" | "disputes" | "wallets" | "rules" | "payouts" | "approvals" | "approvers";
 const STATUS_LABEL: Record<RegionStatus, string> = { allowed: "Allowed", blocked: "Blocked", needs_license: "Needs licence" };
 const STATUS_TONE: Record<RegionStatus, "green" | "red" | "amber"> = { allowed: "green", blocked: "red", needs_license: "amber" };
 const when = (iso: string) => new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
@@ -82,7 +93,9 @@ export default function MoneyAdmin() {
           { key: "prices", label: "Prices" },
           { key: "items", label: "Items" },
           { key: "disputes", label: "Disputes" },
+          { key: "payouts", label: "Payouts" },
           { key: "wallets", label: "Wallets" },
+          { key: "rules", label: "Rules" },
           { key: "approvals", label: "Approvals", count: pending },
           ...(role === "admin" ? [{ key: "approvers" as TabKey, label: "Approvers" }] : []),
         ]}
@@ -93,6 +106,10 @@ export default function MoneyAdmin() {
         <LedgerTab canCorrect={!finance} />
       ) : tab === "regions" ? (
         <RegionsTab canRequest={!finance} onRequested={() => setTab("approvals")} />
+      ) : tab === "payouts" ? (
+        <PayoutsTab canChange={!finance} />
+      ) : tab === "rules" ? (
+        <RulesTab canRequest={!finance} onRequested={() => setTab("approvals")} />
       ) : tab === "wallets" ? (
         <WalletsTab canChange={!finance} />
       ) : tab === "disputes" ? (
@@ -410,6 +427,18 @@ function ApprovalsTab({ onChanged }: { onChanged: () => void }) {
                       {c.region}{c.name ? ` (${c.name})` : ""} → {STATUS_LABEL[c.status]}{c.note ? ` · ${c.note}` : ""}
                     </Text>
                   ))
+                ) : "prizeId" in r.changes ? (
+                  <Text style={{ fontFamily: FONTS.regular, fontSize: 14, color: t.text }}>
+                    Pay {r.changes.number}: ${(r.changes.amountCents / 100).toLocaleString("en-US", { minimumFractionDigits: 2 })} to {r.changes.member} ({r.changes.quest})
+                  </Text>
+                ) : "member" in r.changes ? (
+                  <Text style={{ fontFamily: FONTS.regular, fontSize: 14, color: t.text }}>
+                    {r.changes.amount > 0 ? "Add" : "Remove"} {Math.abs(r.changes.amount).toLocaleString("en-US")} CosCoin {r.changes.amount > 0 ? "to" : "from"} {r.changes.member}
+                  </Text>
+                ) : "body" in r.changes ? (
+                  <Text style={{ fontFamily: FONTS.regular, fontSize: 14, color: t.text }}>
+                    Publish “{r.changes.title}” ({r.changes.body.length.toLocaleString("en-US")} characters)
+                  </Text>
                 ) : "transactionId" in r.changes ? (
                   <Text style={{ fontFamily: FONTS.regular, fontSize: 14, color: t.text }}>
                     Reverse {r.changes.number} ({r.changes.type}): {r.changes.book === "money" ? `$${(r.changes.total / 100).toFixed(2)}` : `${r.changes.total} CosCoin`} goes back the other way
@@ -797,7 +826,7 @@ function PricesTab({ canRequest, onRequested }: { canRequest: boolean; onRequest
 
 // ---------- What CosCoin can buy (the item catalog) ----------
 
-type ItemRow = { id: string; name: string; kind: string; priceCosCoin: string; game: string; status: "active" | "open"; boughtCoinsOnly: boolean };
+type ItemRow = { id: string; name: string; kind: string; priceCosCoin: string; game: string; status: "active" | "open"; boughtCoinsOnly: boolean; imageUrl: string; subtitle: string; section: string; isNew: boolean; dropEndsAt: string; free: boolean };
 const ITEM_KINDS = ["cosmetic", "skin", "weapon", "ammo", "bundle", "faction_switch", "other"];
 const ITEM_GAMES = ["all", "social", "costquest", "trivia", "parlay"];
 
@@ -813,7 +842,7 @@ function ItemsTab({ canRequest, onRequested }: { canRequest: boolean; onRequeste
     getItemCatalog()
       .then((d) => {
         setData(d);
-        setRows(d.current.items.map((i) => ({ id: i.id, name: i.name, kind: i.kind, priceCosCoin: i.priceCosCoin === null ? "" : String(i.priceCosCoin), game: i.game, status: i.status, boughtCoinsOnly: Boolean(i.boughtCoinsOnly) })));
+        setRows(d.current.items.map((i) => ({ id: i.id, name: i.name, kind: i.kind, priceCosCoin: i.priceCosCoin === null ? "" : String(i.priceCosCoin), game: i.game, status: i.status, boughtCoinsOnly: Boolean(i.boughtCoinsOnly), imageUrl: i.imageUrl || "", subtitle: i.subtitle || "", section: i.section || "elite_merch", isNew: Boolean(i.isNew), dropEndsAt: i.dropEndsAt ? i.dropEndsAt.slice(0, 10) : "", free: Boolean(i.free) })));
       })
       .catch((e) => setError(e?.message || "Couldn't load the catalog."));
   }, []);
@@ -872,12 +901,18 @@ function ItemsTab({ canRequest, onRequested }: { canRequest: boolean; onRequeste
                 <TextInput value={r.priceCosCoin} onChangeText={(v) => set(i, { priceCosCoin: v.replace(/[^0-9]/g, "").slice(0, 7) })} placeholder="CosCoin" keyboardType="number-pad" placeholderTextColor={t.faint} style={[input, { width: 90 }]} accessibilityLabel="Price in CosCoin" />
                 <Select<string> value={r.game} options={ITEM_GAMES.map((g) => ({ value: g, label: g }))} onChange={(v) => set(i, { game: v })} minWidth={110} />
                 <Select<"any" | "bought"> value={r.boughtCoinsOnly ? "bought" : "any"} options={[{ value: "any", label: "Any coins" }, { value: "bought", label: "Bought coins only" }]} onChange={(v) => set(i, { boughtCoinsOnly: v === "bought" })} minWidth={150} />
+                <Select<string> value={r.section} options={[{ value: "elite_merch", label: "Shop: Elite Merch" }, { value: "remix", label: "Shop: Manny's Remix" }, { value: "deals", label: "Shop: Deals" }, { value: "wardrobe", label: "Not in the shop" }]} onChange={(v) => set(i, { section: v })} minWidth={170} />
+                <Select<"no" | "yes"> value={r.free ? "yes" : "no"} options={[{ value: "no", label: "Paid" }, { value: "yes", label: "Free reward" }]} onChange={(v) => set(i, { free: v === "yes", priceCosCoin: v === "yes" ? "" : r.priceCosCoin })} minWidth={120} />
+                <Select<"no" | "yes"> value={r.isNew ? "yes" : "no"} options={[{ value: "no", label: "Not new" }, { value: "yes", label: "NEW tag" }]} onChange={(v) => set(i, { isNew: v === "yes" })} minWidth={110} />
+                <TextInput value={r.subtitle} onChangeText={(v) => set(i, { subtitle: v.slice(0, 80) })} placeholder="Subtitle (e.g. Shimmer queen)" placeholderTextColor={t.faint} style={[input, { flex: 1, minWidth: 160 }]} accessibilityLabel="Subtitle" />
+                <TextInput value={r.imageUrl} onChangeText={(v) => set(i, { imageUrl: v.trim().slice(0, 500) })} placeholder="Picture URL (https://…)" autoCapitalize="none" placeholderTextColor={t.faint} style={[input, { flex: 1, minWidth: 200 }]} accessibilityLabel="Picture URL" />
+                <TextInput value={r.dropEndsAt} onChangeText={(v) => set(i, { dropEndsAt: v.replace(/[^0-9-]/g, "").slice(0, 10) })} placeholder="Ends YYYY-MM-DD" placeholderTextColor={t.faint} style={[input, { width: 140 }]} accessibilityLabel="Offer ends (date)" />
                 <Select<"active" | "open"> value={r.status} options={[{ value: "active", label: "On sale" }, { value: "open", label: "OPEN" }]} onChange={(v) => set(i, { status: v })} minWidth={100} />
                 <Button label="Remove" variant="ghost" onPress={() => setRows((all) => all.filter((_, j) => j !== i))} />
               </View>
             ))}
             <View style={{ flexDirection: "row" }}>
-              <Button label="Add an item" variant="ghost" icon="add-outline" onPress={() => setRows((all) => [...all, { id: "", name: "", kind: "skin", priceCosCoin: "", game: "all", status: "open", boughtCoinsOnly: false }])} />
+              <Button label="Add an item" variant="ghost" icon="add-outline" onPress={() => setRows((all) => [...all, { id: "", name: "", kind: "skin", priceCosCoin: "", game: "all", status: "open", boughtCoinsOnly: false, imageUrl: "", subtitle: "", section: "elite_merch", isNew: false, dropEndsAt: "", free: false }])} />
             </View>
             <ReasonBox value={reason} onChange={setReason} placeholder="e.g. Items and prices from Adewale's game mechanics document, approved by Mark." />
             <View style={{ flexDirection: "row" }}>
@@ -1108,6 +1143,7 @@ function WalletsTab({ canChange }: { canChange: boolean }) {
           </View>
         )}
       </Card>
+      {canChange ? <AdjustCard /> : null}
       {canChange ? (
         <Card>
           <CardHeader title="Freeze or unfreeze" subtitle="Type the reason first: it's needed for both, and kept in the audit log." />
@@ -1120,6 +1156,238 @@ function WalletsTab({ canChange }: { canChange: boolean }) {
           </View>
         </Card>
       ) : null}
+    </View>
+  );
+}
+
+// ---------- Official rules (legal plan, section 9) ----------
+
+function RulesTab({ canRequest, onRequested }: { canRequest: boolean; onRequested: () => void }) {
+  const t = useAdminTheme();
+  const [data, setData] = useState<{ current: AdminRules | null; history: { version: number; title: string; publishedAt: string }[] } | null>(null);
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  const load = useCallback(() => {
+    getAdminRules()
+      .then((d) => {
+        setData(d);
+        setTitle(d.current?.title || "CosQuest Official Contest Rules");
+        setBody(d.current?.body || "");
+      })
+      .catch((e) => setError(e?.message || "Couldn't load the rules."));
+  }, []);
+  useEffect(load, [load]);
+
+  const input = { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12, borderWidth: 1, borderColor: t.border, backgroundColor: t.cardSoft, fontFamily: FONTS.regular, fontSize: 14, color: t.text, ...(Platform.OS === "web" ? ({ outlineStyle: "none" } as object) : null) };
+  const submit = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      await requestRules(title.trim(), body, reason.trim());
+      setReason("");
+      onRequested();
+    } catch (e: any) {
+      setError(e?.message || "Couldn't send the request.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const c = data?.current;
+  return (
+    <View style={{ gap: 16 }}>
+      {error ? <Notice icon="alert-circle-outline" tone="red" text={error} /> : null}
+      <Card>
+        <CardHeader title="Official rules" subtitle={c ? `Version ${c.version}, published ${new Date(c.publishedAt).toLocaleDateString()}. Every ticket accepts the current version at checkout.` : "No rules published yet: checkout doesn't ask for acceptance until the first version is approved."} />
+        {c ? <Text style={{ marginTop: 10, fontFamily: FONTS.regular, fontSize: 13.5, color: t.muted }}>Public page: cosquest.vercel.app/rules</Text> : null}
+        {data?.history?.length ? (
+          <View style={{ marginTop: 10, gap: 4 }}>
+            {data.history.map((v) => (
+              <Text key={v.version} style={{ fontFamily: FONTS.regular, fontSize: 13, color: t.text }}>v{v.version} · {v.title} · {new Date(v.publishedAt).toLocaleDateString()}</Text>
+            ))}
+          </View>
+        ) : null}
+      </Card>
+      {canRequest ? (
+        <Card>
+          <CardHeader title="Publish a new version" subtitle="Paste the lawyer-reviewed text. Use # for headings and - for bullet points. Another admin or the finance approver approves it." />
+          <View style={{ marginTop: 14, gap: 12 }}>
+            <Field label="Title">
+              <TextInput value={title} onChangeText={(v) => setTitle(v.slice(0, 120))} placeholderTextColor={t.faint} style={[input, { height: 44 }]} />
+            </Field>
+            <Field label="Rules text">
+              <TextInput value={body} onChangeText={(v) => setBody(v.slice(0, 60000))} multiline placeholder={"# Who can enter\n- 18 or over\n..."} placeholderTextColor={t.faint} style={[input, { minHeight: 260, textAlignVertical: "top" }]} />
+            </Field>
+            <ReasonBox value={reason} onChange={setReason} placeholder="e.g. Rules reviewed by counsel on 28 Nov." />
+            <View style={{ flexDirection: "row" }}>
+              <Button label="Send for approval" variant="primary" icon="send-outline" loading={busy} disabled={title.trim().length < 3 || body.trim().length < 50 || reason.trim().length < 3} onPress={submit} />
+            </View>
+          </View>
+        </Card>
+      ) : null}
+    </View>
+  );
+}
+
+// ---------- CosCoin adjustments (a second person approves) ----------
+
+function AdjustCard() {
+  const t = useAdminTheme();
+  const [username, setUsername] = useState("");
+  const [amount, setAmount] = useState("");
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [done, setDone] = useState("");
+  const n = Number.parseInt(amount, 10);
+  const valid = username.trim() && Number.isInteger(n) && n !== 0 && Math.abs(n) <= 10000 && reason.trim().length >= 3;
+  const input = { height: 44, paddingHorizontal: 14, borderRadius: 12, borderWidth: 1, borderColor: t.border, backgroundColor: t.cardSoft, fontFamily: FONTS.regular, fontSize: 14, color: t.text, ...(Platform.OS === "web" ? ({ outlineStyle: "none" } as object) : null) };
+  const submit = async () => {
+    setBusy(true);
+    setError("");
+    setDone("");
+    try {
+      const r = await requestAdjustment(username.trim(), n, reason.trim());
+      setDone(`Sent for approval as ${r.request.number}. Another admin or the finance approver approves it in Approvals.`);
+      setUsername("");
+      setAmount("");
+      setReason("");
+    } catch (e: any) {
+      setError(e?.message || "Couldn't send the request.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Card>
+      <CardHeader title="Add or remove CosCoin" subtitle="For compensation or corrections. Added coins count as earned (not bought). Never below zero. A second person approves; the ledger keeps who asked and who approved." />
+      <View style={{ marginTop: 14, gap: 12 }}>
+        {error ? <Notice icon="alert-circle-outline" tone="red" text={error} /> : null}
+        {done ? <Notice icon="checkmark-circle-outline" tone="green" text={done} /> : null}
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
+          <TextInput value={username} onChangeText={setUsername} placeholder="@username" autoCapitalize="none" placeholderTextColor={t.faint} style={[input, { width: 200 }]} accessibilityLabel="Member's username" />
+          <TextInput value={amount} onChangeText={(v) => setAmount(v.replace(/[^0-9-]/g, "").slice(0, 6))} placeholder="+200 or -150" keyboardType="numbers-and-punctuation" placeholderTextColor={t.faint} style={[input, { width: 140 }]} accessibilityLabel="CosCoin to add (or remove with a minus)" />
+        </View>
+        <ReasonBox value={reason} onChange={setReason} placeholder="e.g. Compensation for a raid reward lost in the 26 Nov outage." />
+        <View style={{ flexDirection: "row" }}>
+          <Button label="Send for approval" variant="primary" icon="send-outline" loading={busy} disabled={!valid} onPress={submit} />
+        </View>
+      </View>
+    </Card>
+  );
+}
+
+// ---------- Payouts: prizes won, claims, payouts (PrizeClaim contract) ----------
+
+const PRIZE_STATUS: Record<AdminPrize["status"], { label: string; tone: "green" | "amber" | "red" | "blue" | "pink" }> = {
+  awaiting_claim: { label: "Awaiting claim", tone: "pink" },
+  submitted: { label: "Claim to check", tone: "amber" },
+  verified: { label: "Verified", tone: "blue" },
+  payout_requested: { label: "Payout in Approvals", tone: "blue" },
+  held: { label: "Held (dispute window)", tone: "blue" },
+  paid: { label: "Paid", tone: "green" },
+  forfeited: { label: "Forfeited", tone: "red" },
+  rejected: { label: "Rejected", tone: "red" },
+};
+
+function PayoutsTab({ canChange }: { canChange: boolean }) {
+  const t = useAdminTheme();
+  const [status, setStatus] = useState<string>("");
+  const [rows, setRows] = useState<AdminPrize[] | null>(null);
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState("");
+  const [done, setDone] = useState("");
+
+  const load = useCallback(() => {
+    getPrizes(status || undefined)
+      .then((d) => setRows(d.prizes))
+      .catch((e) => setError(e?.message || "Couldn't load the prizes."));
+  }, [status]);
+  useEffect(load, [load]);
+
+  const run = async (id: string, fn: () => Promise<{ auditEvent: string; request?: { number: string } }>, text: string) => {
+    setBusy(id);
+    setError("");
+    setDone("");
+    try {
+      const r = await fn();
+      setDone(`${text}${r.request ? ` Waiting in Approvals as ${r.request.number}.` : ""} Recorded as ${r.auditEvent}.`);
+      setNote("");
+      load();
+    } catch (e: any) {
+      setError(e?.message || "That didn't work.");
+    } finally {
+      setBusy(null);
+    }
+  };
+  const usd = (cents: number) => `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
+  const input = { height: 44, paddingHorizontal: 14, borderRadius: 12, borderWidth: 1, borderColor: t.border, backgroundColor: t.cardSoft, fontFamily: FONTS.regular, fontSize: 14, color: t.text, ...(Platform.OS === "web" ? ({ outlineStyle: "none" } as object) : null) };
+
+  return (
+    <View style={{ gap: 16 }}>
+      {error ? <Notice icon="alert-circle-outline" tone="red" text={error} /> : null}
+      {done ? <Notice icon="checkmark-circle-outline" tone="green" text={done} /> : null}
+      <Card>
+        <CardHeader
+          title="Prizes and payouts"
+          subtitle="Winners claim with identity, payout details and the tax form. Check the claim, request the payout (a second admin approves; the finance approver above the limit), wait for the hold, then mark it paid with the reference."
+          right={
+            <View style={{ flexDirection: "row", gap: 10, alignItems: "center" }}>
+              <Select<string> value={status} options={[{ value: "", label: "All" }, ...Object.entries(PRIZE_STATUS).map(([value, s]) => ({ value, label: s.label }))]} onChange={setStatus} minWidth={170} />
+              {Platform.OS === "web" ? <Button label="Export CSV" icon="download-outline" onPress={() => downloadPrizesCsv().catch((e) => setError(e.message))} /> : null}
+            </View>
+          }
+        />
+        {canChange ? (
+          <View style={{ marginTop: 12 }}>
+            <TextInput value={note} onChangeText={setNote} placeholder="Reason (to reject) or payment reference (to mark paid)" placeholderTextColor={t.faint} style={input} accessibilityLabel="Reason or payment reference" />
+          </View>
+        ) : null}
+        {!rows ? (
+          <Loading />
+        ) : !rows.length ? (
+          <Text style={{ marginTop: 14, fontFamily: FONTS.regular, fontSize: 14, color: t.muted }}>No prizes here yet. Prizes appear when results with a prize amount are published.</Text>
+        ) : (
+          <View style={{ marginTop: 14, gap: 8 }}>
+            {rows.map((p) => {
+              const holdOver = p.holdUntil ? new Date(p.holdUntil) <= new Date() : false;
+              return (
+                <View key={p.id} style={{ gap: 6, padding: 12, borderRadius: 14, borderWidth: 1, borderColor: t.border, backgroundColor: t.cardSoft }}>
+                  <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
+                    <Pill label={PRIZE_STATUS[p.status].label} tone={PRIZE_STATUS[p.status].tone} />
+                    <Text style={{ fontFamily: FONTS.semibold, fontSize: 14, color: t.text }}>{p.number} · {p.member}</Text>
+                    <Text style={{ flex: 1, minWidth: 200, fontFamily: FONTS.regular, fontSize: 13, color: t.muted }}>
+                      {p.quest.title} · place {p.place}
+                    </Text>
+                    <Text style={{ fontFamily: FONTS.bold, fontSize: 15, color: t.text }}>{usd(p.amountCents)}</Text>
+                  </View>
+                  <Text style={{ fontFamily: FONTS.regular, fontSize: 12.5, color: t.muted }}>
+                    {p.identity ? `${p.identity.legalName}${p.identity.dateOfBirth ? ` · born ${p.identity.dateOfBirth}` : ""}` : `Claim by ${new Date(p.claimDeadline).toLocaleDateString()}`}
+                    {p.payoutMethod ? ` · ${p.payoutMethod.type === "ach" ? `ACH ••••${p.payoutMethod.accountLast4} (routing ••••${p.payoutMethod.routingLast4})` : `Check to ${p.payoutMethod.mailingAddress}`}` : ""}
+                    {p.tax.form ? ` · ${p.tax.form === "w9" ? "W-9" : "W-8BEN"} ${p.tax.status}${p.tax.tinLast4 ? ` ••••${p.tax.tinLast4}` : ""}${p.tax.country && p.tax.form === "w8ben" ? ` (${p.tax.country})` : ""}` : ""}
+                    {p.holdUntil && p.status === "held" ? ` · hold until ${new Date(p.holdUntil).toLocaleDateString()}` : ""}
+                    {p.paymentRef ? ` · ref ${p.paymentRef}` : ""}
+                    {p.rejectedReason ? ` · ${p.rejectedReason}` : ""}
+                  </Text>
+                  {canChange ? (
+                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                      {p.status === "submitted" ? <Button label="Verify claim" variant="primary" icon="checkmark-outline" loading={busy === p.id} onPress={() => run(p.id, () => verifyPrize(p.id), `${p.number} verified.`)} /> : null}
+                      {p.status === "verified" ? <Button label="Request payout" variant="primary" icon="send-outline" loading={busy === p.id} onPress={() => run(p.id, () => requestPrizePayout(p.id), `Payout for ${p.number} requested.`)} /> : null}
+                      {p.status === "held" ? <Button label={holdOver ? "Mark paid" : "On hold"} variant="primary" icon="cash-outline" loading={busy === p.id} disabled={!holdOver || note.trim().length < 3} onPress={() => run(p.id, () => markPrizePaid(p.id, note.trim()), `${p.number} marked paid.`)} /> : null}
+                      {["awaiting_claim", "submitted", "verified"].includes(p.status) ? <Button label="Reject" variant="ghost" icon="close-outline" loading={busy === p.id} disabled={note.trim().length < 3} onPress={() => run(p.id, () => rejectPrize(p.id, note.trim()), `${p.number} rejected.`)} /> : null}
+                    </View>
+                  ) : null}
+                </View>
+              );
+            })}
+          </View>
+        )}
+      </Card>
     </View>
   );
 }

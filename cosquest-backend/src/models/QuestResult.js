@@ -13,6 +13,10 @@ const winnerSchema = new mongoose.Schema(
     ticket: { type: mongoose.Schema.Types.ObjectId, ref: 'Ticket', required: true },
     place: { type: Number, required: true, min: 1, max: 100 },
     prizeNote: { type: String, default: '', maxlength: 200 },
+    // The prize in cents (0 = none): publishing creates a PrizeClaim to claim and pay out.
+    prizeCents: { type: Number, default: 0, min: 0 },
+    // Verified points when the results come from the points ranking.
+    points: { type: Number, default: null },
   },
   { _id: false }
 );
@@ -22,6 +26,9 @@ const questResultSchema = new mongoose.Schema(
     quest: { type: mongoose.Schema.Types.ObjectId, ref: 'Quest', required: true },
     winners: { type: [winnerSchema], default: [] },
     publishedAt: { type: Date, default: null },
+    // Filled from the points ranking (questRanking.js), with the quest's scoring version.
+    rankedFromPoints: { type: Boolean, default: false },
+    scoringVersion: { type: Number, default: null },
     publishedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   },

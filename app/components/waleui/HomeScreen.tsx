@@ -83,7 +83,7 @@ const LEFT: { id: string; label: string; pic?: Pic; tx?: number; y: number; go: 
 const RIGHT: { id: string; label: string; pic: Pic; tx: number; y: number; go: () => void }[] = [
   { id: "weapon", label: "WEAPON", pic: { src: require("@/assets/images/waleui/icon_swords.png"), x: 272, y: 224.5, w: 16.75, h: 16.5 }, tx: 292.5, y: 217.5, go: () => router.push("/wale/weapons") },
   { id: "wardrobe", label: "WARDROBE", pic: { src: require("@/assets/images/waleui/icon_wardrobe.png"), x: 275, y: 258, w: 13.75, h: 19 }, tx: 298.5, y: 252.5, go: () => router.push("/wale/wardrobe") },
-  { id: "shop", label: appConfig.coinPurchase ? "SHOP" : "COINS", pic: { src: require("@/assets/images/waleui/icon_shop.png"), x: 273.75, y: 294, w: 17.5, h: 18 }, tx: 301.5, y: 287.5, go: () => openGameSheet("coins") },
+  { id: "shop", label: appConfig.coinPurchase ? "SHOP" : "COINS", pic: { src: require("@/assets/images/waleui/icon_shop.png"), x: 273.75, y: 294, w: 17.5, h: 18 }, tx: 301.5, y: 287.5, go: () => require("expo-router").router.push("/shop") },
 ];
 
 // soon: nothing behind it yet (News), drawn only with EXPO_PUBLIC_SHOW_PLACEHOLDERS=1 (services/releaseGates.ts);

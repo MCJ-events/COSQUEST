@@ -39,6 +39,12 @@ const TYPES = {
   'costcoin.issue': 'Purchase',
   'costcoin.spend': 'Spend',
   'costcoin.reward': 'Reward',
+  'costcoin.clawback': 'Clawback',
+  'costcoin.clawback_returned': 'Clawback returned',
+  'costcoin.adjustment': 'Adjustment',
+  'prize.payable': 'Prize payable',
+  'prize.paid': 'Prize paid',
+  'prize.forfeited': 'Prize returned (unpaid)',
   'settlement.platform': 'Settlement: platform share',
   'settlement.winner': 'Settlement: winner share',
   payout: 'Payout',
@@ -258,10 +264,19 @@ async function financeChecks() {
   const held = sum(wallets, 'balance');
   // Coins earned in games come in through CosCoin Rewards.
   const rewarded = coins.find((r) => r.code === 'CC-REWARDS');
-  const expected = (issued?.balance || 0) + (rewarded?.balance || 0) - (spent?.balance || 0);
+  // Coins added or removed by admins come in through CosCoin Adjustments.
+  const adjusted = coins.find((r) => r.code === 'CC-ADJUST');
+  const expected = (issued?.balance || 0) + (rewarded?.balance || 0) + (adjusted?.balance || 0) - (spent?.balance || 0);
   checks.push({ name: 'Wallets equal coins issued and rewarded minus coins spent', pass: coins.length ? held === expected : null, detail: coins.length ? held - expected : 'No CosCoin yet' });
-  const below = [...wallets, ...pools].filter((r) => r.balance < 0);
-  checks.push({ name: 'No wallet or quest pool is below zero', pass: !below.length, detail: below.length ? below.map((r) => `${r.label}: ${r.balance}`).join('; ') : 0 });
+  // A wallet goes below zero only when a chargeback took back coins already spent (it owes coins and stays frozen).
+  const clawed = new Set((await LedgerTransaction.distinct('user', { kind: 'costcoin.clawback' })).map(String));
+  const owed = wallets.filter((r) => r.balance < 0 && clawed.has(r.account.slice('CC-WALLET:'.length)));
+  const below = [...wallets.filter((r) => !owed.includes(r)), ...pools].filter((r) => r.balance < 0);
+  checks.push({
+    name: 'No wallet or quest pool is below zero (except coins owed after a chargeback)',
+    pass: !below.length,
+    detail: below.length ? below.map((r) => `${r.label}: ${r.balance}`).join('; ') : owed.length ? `${owed.length} wallet(s) owe coins after a chargeback (frozen)` : 0,
+  });
   return checks;
 }
 
@@ -272,6 +287,8 @@ async function checkDue() {
   lastCheck = Date.now();
   // Once a day after 02:00 UTC: yesterday's payments checked against Stripe (stripeReconcile.js).
   require('./stripeReconcile').runDue().catch((error) => console.error('[stripe-check] failed:', error.message));
+  // Prizes not claimed by their deadline are forfeited (published rule).
+  require('./prizes').forfeitDue().catch((error) => console.error('[prizes] forfeit failed:', error.message));
   return check();
 }
 

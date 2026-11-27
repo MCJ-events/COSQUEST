@@ -124,7 +124,7 @@ async function unfreeze(userId, { reason, by }) {
 /** { balance, bought, earned }: earned coins are the ones not bought. */
 function split(w) {
   const balance = w?.balance || 0;
-  const bought = Math.min(balance, w?.purchased || 0);
+  const bought = Math.max(0, Math.min(balance, w?.purchased || 0));
   return { balance, bought, earned: balance - bought };
 }
 

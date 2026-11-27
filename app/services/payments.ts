@@ -41,11 +41,14 @@ export type Eligibility = {
 
 export type CheckoutLink = { url: string; expiresAt: string };
 
+/** How the quest's points are scored (shown before paying). */
+export type QuestScoring = { rules: string; tieBreak: string; tieBreakText: string; version: number };
+
 export type RedeemedCheckout = {
   checkoutToken: string;
   expiresAt: string;
   member: { name: string; username: string | null };
-  quest: Quest;
+  quest: Quest & { scoring?: QuestScoring | null };
   ticketTypes: TicketType[];
   selectedTicketTypeId: string | null;
   eligibility: Eligibility;
@@ -62,11 +65,11 @@ export const getEligibility = (questId: string, token: string) => request<Eligib
 export const redeemCheckoutLink = (h: string) => request<RedeemedCheckout>("/api/payments/handoff/redeem", { method: "POST", body: { h } });
 
 /** The website: Stripe's page for this ticket (returns to /checkout/return). */
-export const startWebCheckout = (checkoutToken: string, ticketTypeId: string | null, position?: { lat: number; lng: number; accuracy: number } | null) =>
+export const startWebCheckout = (checkoutToken: string, ticketTypeId: string | null, position?: { lat: number; lng: number; accuracy: number } | null, acceptedRulesVersion?: number) =>
   request<{ order: Order; checkoutUrl: string | null; ticket: { id: string } | null; reused: boolean }>("/api/payments/checkout", {
     method: "POST",
     token: checkoutToken,
-    body: { ...(ticketTypeId ? { ticketTypeId } : {}), ...(position ? { position } : {}) },
+    body: { ...(ticketTypeId ? { ticketTypeId } : {}), ...(position ? { position } : {}), ...(acceptedRulesVersion ? { acceptedRulesVersion } : {}) },
   });
 
 /** The website's return page: where the order stands (asks Stripe if still pending). */

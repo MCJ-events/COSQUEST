@@ -31,6 +31,11 @@ const orderSchema = new mongoose.Schema(
     method: { type: String, enum: ['checkout', 'sheet'], default: 'checkout' },
     // Where Stripe's page sends the person back: the app, or the website checkout.
     returnTo: { type: String, enum: ['app', 'web'], default: 'app' },
+    // The official rules version the buyer accepted at checkout (null before rules were published).
+    rulesVersion: { type: Number, default: null },
+    rulesAcceptedAt: { type: Date, default: null },
+    // The quest's scoring version shown at checkout.
+    scoringVersion: { type: Number, default: null },
     // Whether this order still holds a seat (pending, not yet released).
     holding: { type: Boolean, default: false },
     holdExpiresAt: { type: Date, default: null },

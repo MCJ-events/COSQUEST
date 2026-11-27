@@ -37,6 +37,10 @@ async function decide(admin, requestId, { approve, note = '' }) {
   if (request.status !== 'pending') fail(409, `This request was already ${request.status}.`, 'already_decided');
   if (String(request.requestedBy) === String(admin._id)) fail(403, "You can't approve or reject your own request: another admin must.", 'own_request');
   if (!approve && String(note).trim().length < 3) fail(400, 'Say why it is rejected.', 'reason_required');
+  // A CosCoin removal needs the coins to still be there (checked before deciding).
+  if (approve && request.kind === 'coscoin_adjustment') await require('./coscoinAdjust').checkApplies(request);
+  // A payout: still waiting, and above the payout limit only the finance approver may approve.
+  if (approve && request.kind === 'payout') await require('./prizes').checkPayoutApproval(request, admin);
   // Claim the decision once (two admins clicking at the same time).
   const claimed = await ApprovalRequest.findOneAndUpdate(
     { _id: request._id, status: 'pending' },
@@ -48,6 +52,11 @@ async function decide(admin, requestId, { approve, note = '' }) {
   // CosCoin price table: the approved table becomes the next version (v1, v2...).
   // What CosCoin can buy: the approved catalog becomes the next version (c1, c2...).
   // Ledger corrections: recorded only once a second person approves.
+  // Official rules: the approved text becomes the next version.
+  if (approve && claimed.kind === 'payout') await require('./prizes').applyApproved(claimed, admin);
+  if (!approve && claimed.kind === 'payout') await require('./prizes').payoutRejected(claimed, admin);
+  if (approve && claimed.kind === 'coscoin_adjustment') await require('./coscoinAdjust').applyApproved(claimed, admin);
+  if (approve && claimed.kind === 'official_rules') await require('./officialRules').applyApproved(claimed, admin);
   if (approve && claimed.kind === 'ledger_reversal') await require('./ledgerCorrections').applyApproved(claimed, admin);
   if (approve && claimed.kind === 'item_catalog') await require('./itemCatalog').applyApproved(claimed, admin);
   if (approve && claimed.kind === 'price_table') await require('./priceTable').applyApproved(claimed, admin);

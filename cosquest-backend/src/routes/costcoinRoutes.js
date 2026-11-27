@@ -24,5 +24,9 @@ const g = require('../controllers/coscoinGameController');
 router.post('/costcoin/game/rewards', g.requireGameKey, a(g.reward));
 router.post('/costcoin/game/flags', g.requireGameKey, a(g.flag));
 router.get('/costcoin/game/wallet/:userId', g.requireGameKey, a(g.walletOf));
+// The Shop screen: one call, and free rewards.
+const shopC = require('../controllers/shopController');
+router.get('/shop', ...member, a(shopC.shop));
+router.post('/shop/free/:itemId', ...member, a(shopC.claimFree));
 
 module.exports = router;

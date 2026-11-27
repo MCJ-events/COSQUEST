@@ -83,7 +83,7 @@ async function redeem(req, res) {
     checkoutToken: session.token,
     expiresAt: session.expiresAt,
     member: { name: p.displayName || [p.firstName, p.lastName].filter(Boolean).join(' ') || p.username || 'You', username: p.username || null },
-    quest: serializeQuest(quest),
+    quest: { ...serializeQuest(quest), scoring: require('../utils/questScoring').json(quest) },
     ticketTypes: types.map((tt) => tickets.ticketTypeJson(tt, new Date(), quest)),
     selectedTicketTypeId: claims.tt || null,
     eligibility: { allowed: result.allowed, ...(result.allowed ? {} : { reason: result.reason, code: result.code, message: result.message }), mode: result.mode },
@@ -109,6 +109,8 @@ async function checkout(req, res) {
     if (!quest) return res.status(404).json({ error: 'Quest not found.' });
     const p = req.body?.position;
     const position = p && typeof p === 'object' ? { lat: p.lat, lng: p.lng, accuracy: p.accuracy } : null;
+    // Official rules: once published, the buyer accepts the current version (saved on the order).
+    const rulesVersion = await require('../utils/officialRules').acceptedForCheckout(req.body?.acceptedRulesVersion);
     // Eligibility is checked in startCheckout, against the ticket type chosen.
     const started = await tickets.startCheckout({
       user: req.user,
@@ -118,6 +120,8 @@ async function checkout(req, res) {
       returnTo: 'web',
       ip: req.ip,
     });
+    if (rulesVersion) await Order.updateOne({ _id: started.order._id, rulesVersion: null }, { $set: { rulesVersion, rulesAcceptedAt: new Date() } });
+    if (quest.scoring?.version) await Order.updateOne({ _id: started.order._id, scoringVersion: null }, { $set: { scoringVersion: quest.scoring.version } });
     return res.status(started.ticket ? 201 : started.reused ? 200 : 201).json({
       order: tickets.orderJson(started.order, started.ticket),
       checkoutUrl: started.order.status === 'pending' ? started.order.stripe.checkoutUrl : null,

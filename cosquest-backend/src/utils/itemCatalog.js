@@ -13,7 +13,8 @@ function fail(status, message, code) {
 }
 
 const label = (v) => (v ? `c${v.version}` : null);
-const itemJson = (i) => ({ id: i.id, name: i.name, kind: i.kind, priceCosCoin: i.priceCosCoin ?? null, stackable: Boolean(i.stackable), boughtCoinsOnly: Boolean(i.boughtCoinsOnly), game: i.game || 'all', status: i.status, note: i.note || '' });
+const itemJson = (i) => ({ id: i.id, name: i.name, kind: i.kind, priceCosCoin: i.priceCosCoin ?? null, stackable: Boolean(i.stackable), boughtCoinsOnly: Boolean(i.boughtCoinsOnly), game: i.game || 'all', status: i.status, note: i.note || '', imageUrl: i.imageUrl || '', subtitle: i.subtitle || '', section: i.section || 'elite_merch', isNew: Boolean(i.newTag), dropEndsAt: i.dropEndsAt ? new Date(i.dropEndsAt).toISOString() : null, free: Boolean(i.free) });
+const SECTIONS = ['elite_merch', 'remix', 'deals', 'wardrobe'];
 const catalogJson = (v) => ({ catalogVersion: label(v), items: v ? v.items.map(itemJson) : [], approvedAt: v?.createdAt || null });
 
 async function latest() {
@@ -52,8 +53,16 @@ function cleanItems(input) {
     const raw = i?.priceCosCoin;
     const price = raw === null || raw === undefined || raw === '' ? null : Number(raw);
     if (price !== null && (!Number.isInteger(price) || price < 1 || price > 1000000)) fail(400, `${id}: the price is a whole number of CosCoin from 1.`, 'bad_item_price');
-    if (status === 'active' && price === null) fail(400, `${id}: an item on sale needs its CosCoin price (or mark it open).`, 'bad_item_price');
-    return { id, name, kind, priceCosCoin: price, stackable: kind === 'ammo' ? true : Boolean(i?.stackable), boughtCoinsOnly: Boolean(i?.boughtCoinsOnly), game, status, note: String(i?.note || '').slice(0, 200) };
+    const free = Boolean(i?.free);
+    const section = SECTIONS.includes(i?.section) ? i.section : 'elite_merch';
+    if (free && price !== null) fail(400, `${id}: a free reward has no price.`, 'bad_item_price');
+    if (free && section !== 'remix') fail(400, `${id}: free rewards are in Manny's Remix.`, 'bad_item');
+    const imageUrl = String(i?.imageUrl || '').trim();
+    if (imageUrl && (!/^https:\/\/[^\s]+$/.test(imageUrl) || imageUrl.length > 500)) fail(400, `${id}: the picture must be an https:// link.`, 'bad_image');
+    const ends = i?.dropEndsAt ? new Date(i.dropEndsAt) : null;
+    if (ends && Number.isNaN(ends.getTime())) fail(400, `${id}: the end date is not a date (YYYY-MM-DD).`, 'bad_date');
+    if (status === 'active' && price === null && !free) fail(400, `${id}: an item on sale needs its CosCoin price (or mark it open).`, 'bad_item_price');
+    return { id, name, kind, priceCosCoin: price, stackable: kind === 'ammo' ? true : Boolean(i?.stackable), boughtCoinsOnly: Boolean(i?.boughtCoinsOnly), game, status, note: String(i?.note || '').slice(0, 200), imageUrl, subtitle: String(i?.subtitle || '').trim().slice(0, 80), section, newTag: Boolean(i?.isNew), dropEndsAt: ends, free };
   });
   if (new Set(items.map((i) => i.id)).size !== items.length) fail(400, 'Each item id once.', 'duplicate_item');
   return items;

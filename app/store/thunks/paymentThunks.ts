@@ -88,14 +88,14 @@ export const redeemCheckout = createAsyncThunk("payment/redeemCheckout", async (
 });
 
 /** Stripe's page for the chosen ticket (a full page change; it returns to /checkout/return). */
-export const payNow = createAsyncThunk<{ orderId: string; ticketId: string | null }, { position?: { lat: number; lng: number; accuracy: number } | null } | undefined, { state: RootState; rejectValue: ReturnType<typeof problem> }>(
+export const payNow = createAsyncThunk<{ orderId: string; ticketId: string | null }, { position?: { lat: number; lng: number; accuracy: number } | null; acceptedRulesVersion?: number } | undefined, { state: RootState; rejectValue: ReturnType<typeof problem> }>(
   "payment/payNow",
   async (arg, { getState, rejectWithValue }) => {
     const web = getState().payment.web;
     const pass = web.checkoutToken || savedPass()?.token;
     if (!pass) return rejectWithValue({ message: "This checkout has expired. Go back to CosQuest and tap Pay again.", code: "checkout_expired", data: null });
     try {
-      const result = await startWebCheckout(pass, web.selectedTicketTypeId, arg?.position || null);
+      const result = await startWebCheckout(pass, web.selectedTicketTypeId, arg?.position || null, arg?.acceptedRulesVersion);
       if (result.checkoutUrl && Platform.OS === "web") window.location.assign(result.checkoutUrl);
       return { orderId: result.order.id, ticketId: result.ticket?.id || null };
     } catch (e) {

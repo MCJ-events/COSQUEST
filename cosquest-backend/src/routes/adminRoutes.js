@@ -210,5 +210,26 @@ const walletsAdmin = require('../controllers/adminWalletsController');
 router.get('/wallets', a(walletsAdmin.list));
 router.post('/wallets/freeze', a(walletsAdmin.freeze));
 router.post('/wallets/unfreeze', a(walletsAdmin.unfreeze));
+router.post('/wallets/adjustments', a(require('../controllers/adjustController').requestAdjustment));
+// Prizes and payouts (PrizeClaim).
+const prizesAdmin = require('../controllers/adminPrizesController');
+router.get('/prizes', a(prizesAdmin.list));
+router.get('/prizes/export', a(prizesAdmin.exportCsv));
+router.get('/prizes/tax-totals', a(prizesAdmin.taxTotals));
+// Points and the ranking.
+const rankingAdmin = require('../controllers/rankingController');
+router.put('/quests/:questId/scores', a(rankingAdmin.adminScores));
+router.get('/quests/:questId/ranking', a(rankingAdmin.getRanking));
+router.post('/quests/:questId/ranking/draft', a(rankingAdmin.draft));
+router.post('/prizes/:prizeId/verify', a(prizesAdmin.verify));
+router.post('/prizes/:prizeId/reject', a(prizesAdmin.reject));
+router.post('/prizes/:prizeId/payout-request', a(prizesAdmin.payoutRequest));
+router.post('/prizes/:prizeId/paid', a(prizesAdmin.paid));
+router.post('/prizes/:prizeId/reveal', a(prizesAdmin.reveal));
+
+// Official contest rules: versions, published through approvals.
+const rulesAdmin = require('../controllers/rulesController');
+router.get('/rules', a(rulesAdmin.admin));
+router.post('/rules/requests', a(rulesAdmin.requestPublish));
 
 module.exports = router;
