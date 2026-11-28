@@ -88,6 +88,8 @@ const paymentSlice = createSlice({
       })
 
       .addCase(redeemCheckout.pending, (state) => {
+        // The link is one-use: a repeat attempt keeps the checkout that worked.
+        if (state.web.status === "redeeming" || (state.web.status === "ready" && state.web.checkoutToken)) return;
         state.web = { ...initialState.web, status: "redeeming" };
       })
       .addCase(redeemCheckout.fulfilled, (state, action) => {
@@ -106,6 +108,11 @@ const paymentSlice = createSlice({
         };
       })
       .addCase(redeemCheckout.rejected, (state, action) => {
+        // A repeat attempt failing (link already used) must not undo the one that worked.
+        if (state.web.checkoutToken) {
+          state.web.status = "ready";
+          return;
+        }
         state.web.status = "error";
         state.web.error = asProblem(action.payload, "This checkout link isn't valid. Go back to CosQuest and tap Pay again.");
       })
