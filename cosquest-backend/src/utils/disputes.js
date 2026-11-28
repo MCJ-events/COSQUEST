@@ -66,6 +66,8 @@ async function fromStripe(type, d) {
     }
     console.warn(`[disputes] ${d.id}: ${d.reason} on ${dispute.orderLabel || pi} (${d.amount} ${d.currency})`);
   }
+  // It may have arrived before its payment was recorded: match it now if it wasn't then.
+  if (dispute.paymentType === 'unknown') dispute = await matchLate(dispute);
   const refs = { user: dispute.user, order: dispute.paymentType === 'ticket' ? dispute.order : null, processorRef: pi };
 
   // The money leaves Stripe when the dispute opens (once).
@@ -200,4 +202,41 @@ function disputeJson(d) {
   return { id: String(d._id), stripeDisputeId: d.stripeDisputeId, amount: d.amount, currency: d.currency, reason: d.reason, status: d.status, outcome: d.outcome, paymentType: d.paymentType, orderLabel: d.orderLabel, user: d.user ? String(d.user) : null, walletFrozen: d.walletFrozen, evidenceDueBy: d.evidenceDueBy, openedAt: d.openedAt, closedAt: d.closedAt };
 }
 
-module.exports = { fromStripe, unfreeze, disputeJson, paymentOf };
+/**
+ * A dispute can reach us before its payment is recorded as paid (Stripe's test card and
+ * fast chargebacks open the dispute at once). Then it starts as "unknown"; it is matched
+ * again on Stripe's next event, when admins open the Disputes tab, and every hour.
+ */
+async function matchLate(dispute) {
+  if (dispute.paymentType !== 'unknown' || !dispute.paymentIntentId) return dispute;
+  const pay = await paymentOf(dispute.paymentIntentId);
+  if (pay.paymentType === 'unknown') return dispute;
+  const updated = await Dispute.findOneAndUpdate(
+    { _id: dispute._id, paymentType: 'unknown' },
+    { $set: { paymentType: pay.paymentType, order: pay.order || null, orderLabel: pay.orderLabel || null, user: pay.user || null }, $push: { history: step('matched', `matched to ${pay.orderLabel}`) } },
+    { new: true }
+  );
+  return updated || (await Dispute.findById(dispute._id));
+}
+
+/** Re-match recent "unknown" disputes; a CosCoin one then freezes the wallet and takes the coins back. */
+async function rematchUnknown() {
+  const since = new Date(Date.now() - 60 * 864e5);
+  const rows = await Dispute.find({ paymentType: 'unknown', paymentIntentId: { $ne: null }, createdAt: { $gte: since } }).limit(100);
+  let matched = 0;
+  for (const row of rows) {
+    const d = await matchLate(row);
+    if (d.paymentType === 'unknown') continue;
+    matched += 1;
+    if (d.paymentType === 'coscoin' && d.user) {
+      if (!d.walletFrozen) {
+        await freezeWallet(d.user, `Card dispute on ${d.orderLabel}`);
+        await Dispute.updateOne({ _id: d._id }, { $set: { walletFrozen: true }, $push: { history: step('wallet_frozen') } });
+      }
+      if (d.outcome !== 'won') await clawback(d, d.stripeDisputeId);
+    }
+  }
+  return matched;
+}
+
+module.exports = { fromStripe, unfreeze, disputeJson, paymentOf, rematchUnknown };
