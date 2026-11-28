@@ -24,6 +24,7 @@ async function request(admin, { username, amount, reason }) {
   if (why.length < 3) fail(400, 'A reason is required.', 'reason_required');
   const user = await User.findOne({ 'profile.usernameNormalized': name }).select('_id profile.username').lean();
   if (!user) fail(404, 'Member not found.', 'member_not_found');
+  if (String(user._id) === String(admin._id)) fail(403, "You can't adjust your own coins: another admin must ask.", 'own_wallet');
   const member = `@${user.profile?.username || name}`;
   if (coins < 0) await checkBalance(user._id, -coins);
   return ApprovalRequest.create({
@@ -41,8 +42,9 @@ async function checkBalance(userId, coins) {
   if ((w?.balance || 0) < coins) fail(409, `The member has ${w?.balance || 0} CosCoin: ${coins} can't be removed. Reject this request or ask for less.`, 'not_enough_coins');
 }
 
-async function checkApplies(request) {
+async function checkApplies(request, admin) {
   const { userId, amount } = request.changes || {};
+  if (admin && String(userId) === String(admin._id)) fail(403, "You can't approve coins for your own wallet.", 'own_wallet');
   if (amount < 0) await checkBalance(userId, -amount);
 }
 

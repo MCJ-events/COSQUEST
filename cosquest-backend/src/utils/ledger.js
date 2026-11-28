@@ -246,7 +246,7 @@ async function financeChecks() {
   checks.push({
     name: 'Quest pools are zero after settlement (or cancellation)',
     pass: closedPools.length ? !notEmpty.length : null,
-    detail: notEmpty.length ? notEmpty.map((p) => `${p.label}: ${p.balance}`).join('; ') : `${waiting.length} ended quest(s) waiting for settlement (the prize formula isn't approved yet)`,
+    detail: notEmpty.length ? notEmpty.map((p) => `${p.label}: ${p.balance}`).join('; ') : `${waiting.length} ended quest(s) waiting for their results to be published`,
   });
 
   // Payouts: never more than the winner shares approved.
@@ -254,7 +254,7 @@ async function financeChecks() {
   checks.push({
     name: 'Payouts payable is never below zero (paid out at most what was won)',
     pass: payable ? payable.balance >= 0 : null,
-    detail: payable ? `${payable.balance} cents approved, not yet paid out` : 'No payouts yet',
+    detail: payable ? `$${(payable.balance / 100).toLocaleString('en-US', { minimumFractionDigits: 2 })} won, not yet paid out` : 'No payouts yet',
   });
 
   // CosCoin: what wallets hold = coins issued - coins spent, and no wallet below zero.

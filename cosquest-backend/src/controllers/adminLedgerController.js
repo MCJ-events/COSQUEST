@@ -53,7 +53,18 @@ async function transactions(req, res) {
     LedgerTransaction.find(filter).sort({ createdAt: -1, number: -1 }).skip(offset).limit(PAGE),
     LedgerTransaction.countDocuments(filter),
   ]);
-  return res.json({ transactions: rows.map(ledger.txJson), total, offset, pageSize: PAGE });
+  // Wallets show the member's @username instead of their id.
+  const txs = rows.map(ledger.txJson);
+  const ids = [...new Set(txs.flatMap((t) => t.lines.map((l) => String(l.account))).filter((a) => a.startsWith('CC-WALLET:')).map((a) => a.slice('CC-WALLET:'.length)))].filter((id) => mongoose.isValidObjectId(id));
+  const people = ids.length ? await User.find({ _id: { $in: ids } }).select('profile.username').lean() : [];
+  const handles = new Map(people.map((u) => [String(u._id), u.profile?.username ? `@${u.profile.username}` : null]));
+  for (const t of txs) {
+    for (const l of t.lines) {
+      const id = String(l.account).startsWith('CC-WALLET:') ? String(l.account).slice('CC-WALLET:'.length) : null;
+      if (id && handles.get(id)) l.label = `${handles.get(id)} Wallet`;
+    }
+  }
+  return res.json({ transactions: txs, total, offset, pageSize: PAGE });
 }
 
 async function balances(req, res) {
