@@ -178,7 +178,9 @@ async function requestPayout(admin, id, reason = '') {
   if (!c) fail(404, 'Prize not found.');
   if (c.status !== 'verified') fail(409, 'Only a verified claim can be paid.', 'wrong_status');
   if (c.tax?.status !== 'verified') fail(409, 'The tax form must be verified first.', 'tax_missing');
-  const why = String(reason || '').trim() || `Prize for ${c.place} place in ${c.quest?.title || 'the quest'}`;
+  if (String(c.user?._id || c.user) === String(admin._id)) fail(403, "You can't request the payout of your own prize: another admin must.", 'own_prize');
+  const nth = c.place === 1 ? '1st' : c.place === 2 ? '2nd' : c.place === 3 ? '3rd' : `${c.place}th`;
+  const why = String(reason || '').trim() || `Prize for ${nth} place in ${c.quest?.title || 'the quest'}`;
   const request = await ApprovalRequest.create({
     number: await Counter.next('approval', 1),
     kind: 'payout',
@@ -195,6 +197,7 @@ async function requestPayout(admin, id, reason = '') {
 async function checkPayoutApproval(request, admin) {
   const c = await PrizeClaim.findById(request.changes?.prizeId).lean();
   if (!c || c.status !== 'payout_requested') fail(409, 'This prize is no longer waiting for a payout.', 'wrong_status');
+  if (String(c.user) === String(admin._id)) fail(403, "You can't approve the payout of your own prize.", 'own_prize');
   const limit = (await require('./paymentSettings').current()).payoutApprovalLimitCents;
   if (limit !== null && limit !== undefined && c.amountCents > limit && admin.platformRole !== 'finance') {
     fail(403, `Above the payout approval limit ($${(limit / 100).toLocaleString('en-US')}): the finance approver must approve this payout.`, 'finance_required');

@@ -38,7 +38,7 @@ async function decide(admin, requestId, { approve, note = '' }) {
   if (String(request.requestedBy) === String(admin._id)) fail(403, "You can't approve or reject your own request: another admin must.", 'own_request');
   if (!approve && String(note).trim().length < 3) fail(400, 'Say why it is rejected.', 'reason_required');
   // A CosCoin removal needs the coins to still be there (checked before deciding).
-  if (approve && request.kind === 'coscoin_adjustment') await require('./coscoinAdjust').checkApplies(request);
+  if (approve && request.kind === 'coscoin_adjustment') await require('./coscoinAdjust').checkApplies(request, admin);
   // A payout: still waiting, and above the payout limit only the finance approver may approve.
   if (approve && request.kind === 'payout') await require('./prizes').checkPayoutApproval(request, admin);
   // Claim the decision once (two admins clicking at the same time).

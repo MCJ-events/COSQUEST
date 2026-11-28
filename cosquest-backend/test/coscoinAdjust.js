@@ -56,6 +56,9 @@ async function run(baseUrl) {
   const equal = checks.find((c) => /issued and rewarded/.test(c.name));
   check(equal && equal.pass !== false, 'wallets still match the books (adjustments counted)', equal);
 
+  const own = await request('POST', '/api/admin/wallets/adjustments', a, { username: `adja${suffix}`, amount: 100, reason: 'For me' });
+  check(own.status === 403 && own.data.code === 'own_wallet', "an admin can't ask coins for their own wallet", own.data);
+
   console.log(`\ncoscoin adjustments: ${ok} passed, ${bad} failed`);
   return { pass: ok, fail: bad };
 }
