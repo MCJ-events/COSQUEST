@@ -75,7 +75,7 @@ export function Select<V extends string>({ value, options, onChange, minWidth = 
         <Text style={{ fontFamily: FONTS.medium, fontSize: 12.5, color: t.text }}>{current?.label}</Text>
       </Pressable>
       {open ? (
-        <View style={{ position: "absolute", top: 44, left: 0, minWidth: Math.max(minWidth, 170), padding: 6, borderRadius: 10, borderWidth: 1, borderColor: t.border, backgroundColor: t.card, shadowColor: "#000", shadowOpacity: 0.12, shadowRadius: 14, shadowOffset: { width: 0, height: 6 } }}>
+        <View style={{ marginTop: 6, minWidth: Math.max(minWidth, 170), padding: 6, borderRadius: 10, borderWidth: 1, borderColor: t.border, backgroundColor: t.card, shadowColor: "#000", shadowOpacity: 0.12, shadowRadius: 14, shadowOffset: { width: 0, height: 6 } }}>
           {options.map((option) => (
             <Pressable
               key={option.value}

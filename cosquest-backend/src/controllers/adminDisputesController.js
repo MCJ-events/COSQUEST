@@ -8,6 +8,8 @@ const disputes = require('../utils/disputes');
 const { recordAudit } = require('../utils/audit');
 
 async function list(req, res) {
+  // Disputes that arrived before their payment was recorded are matched again first.
+  await require('../utils/disputes').rematchUnknown().catch((error) => console.error('[disputes] rematch failed:', error.message));
   const filter = ['open', 'won', 'lost'].includes(req.query.outcome) ? { outcome: req.query.outcome } : {};
   const rows = await Dispute.find(filter).sort({ openedAt: -1 }).limit(200).lean();
   const users = await User.find({ _id: { $in: rows.map((r) => r.user).filter(Boolean) } }).select('profile.username').lean();

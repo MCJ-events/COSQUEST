@@ -45,6 +45,19 @@ async function run() {
   w = await Wallet.findOne({ user: u._id }).lean();
   check(w.balance === 200 && (await LedgerTransaction.countDocuments({ kind: 'costcoin.clawback_returned', user: u._id })) === 1, 'given back once only', w.balance);
 
+  // A dispute that arrives BEFORE the payment is recorded is matched later.
+  const pi2 = `pi_cb_late_${suffix}`;
+  const late = await CostcoinOrder.create({ number: await Counter.next('costcoinOrder', 1000), user: u._id, bundleId: 'B-80', priceVersion: 'v1', priceCents: 100, costcoin: 80, expiresAt: new Date(Date.now() + 3600e3), status: 'pending' });
+  await disputes.fromStripe('charge.dispute.created', { id: `dp_late_${suffix}`, payment_intent: pi2, amount: 100, currency: 'usd', reason: 'fraudulent', status: 'needs_response' });
+  const Dispute = require('../src/models/Dispute');
+  check((await Dispute.findOne({ stripeDisputeId: `dp_late_${suffix}` })).paymentType === 'unknown', 'a dispute before its payment is recorded starts as unknown', null);
+  await CostcoinOrder.updateOne({ _id: late._id }, { $set: { status: 'paid', 'stripe.paymentIntentId': pi2 } });
+  await Wallet.updateOne({ user: u._id }, { $inc: { balance: 80, purchased: 80 } });
+  const matched = await disputes.rematchUnknown();
+  const lateD = await Dispute.findOne({ stripeDisputeId: `dp_late_${suffix}` });
+  check(matched >= 1 && lateD.paymentType === 'coscoin' && lateD.orderLabel === `CC-${late.number}` && lateD.walletFrozen, 'matched later: CC order found, wallet frozen', lateD);
+  check(await LedgerTransaction.countDocuments({ key: `cc-clawback-dp_late_${suffix}` }) === 1, 'and its coins are taken back once', null);
+
   console.log(`\ncoscoin clawback: ${ok} passed, ${bad} failed`);
   return { pass: ok, fail: bad };
 }

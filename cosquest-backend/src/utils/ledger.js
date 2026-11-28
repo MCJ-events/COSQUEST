@@ -289,6 +289,8 @@ async function checkDue() {
   require('./stripeReconcile').runDue().catch((error) => console.error('[stripe-check] failed:', error.message));
   // Prizes not claimed by their deadline are forfeited (published rule).
   require('./prizes').forfeitDue().catch((error) => console.error('[prizes] forfeit failed:', error.message));
+  // Disputes that arrived before their payment was recorded.
+  require('./disputes').rematchUnknown().catch((error) => console.error('[disputes] rematch failed:', error.message));
   return check();
 }
 
